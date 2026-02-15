@@ -152,6 +152,48 @@
 
 ※ 運営側が随時新モジュールを追加予定。選択式モジュールが10個を超えた場合、11個目以降の有効化には有料プランが必要
 
+### レベル別モジュール適用
+
+モジュールは**組織・チーム・個人**の各レベルで利用可能なものが異なる。SYSTEM_ADMINがシステム管理画面から各レベルへのモジュール適用設定を調整可能。
+
+#### デフォルト機能のレベル別適用
+
+| No. | 機能名 | 組織 | チーム | 個人 |
+|-----|--------|:----:|:------:|:----:|
+| 1 | ダッシュボード | ○ | ○ | ○ |
+| 2 | TODO管理 | ○ | ○ | ○ |
+| 3 | タイムライン | ○ | ○ | ○ |
+| 4 | CMS（ブログ・お知らせ） | ○ | ○ | - |
+| 5 | チャット | ○ | ○ | ○ |
+| 6 | プッシュ通知 | ○ | ○ | ○ |
+| 7 | アンケート・投票 | ○ | ○ | - |
+| 8 | ファイル共有 | ○ | ○ | ○ |
+| 9 | 検索 | ○ | ○ | ○ |
+| 10 | 通報・モデレーション | ○ | ○ | ○ |
+| 11 | メンション | ○ | ○ | ○ |
+| 12 | 監査ログ | ○ | ○ | - |
+| 13 | データエクスポート | ○ | ○ | ○ |
+| 14 | 多言語対応 (i18n) | ○ | ○ | ○ |
+| 15 | スケジュール・出欠管理 | ○ | ○ | ○ |
+| 16 | 活動記録 | ○ | ○ | - |
+| 17 | 掲示板 | ○ | ○ | - |
+| 18 | マッチング・対外交流 | - | ○ | - |
+| 19 | パフォーマンス管理 | - | ○ | ○ |
+| 20 | メンバー紹介 | ○ | ○ | - |
+
+#### 選択式モジュールのレベル別適用
+
+| No. | モジュール名 | 組織 | チーム | 個人 | 備考 |
+|-----|-------------|:----:|:------:|:----:|------|
+| 1 | QR会員証 | ○ | ○ | ○ | |
+| 2 | 会費・決済 | ○ | ○ | - | |
+| 3 | 予約管理 | - | ○（枠管理） | ○（予約のみ） | チーム: 予約枠の作成・管理 / 個人: 予約・キャンセル・履歴閲覧 |
+| 4 | サービス履歴 | - | ○ | ○ | チーム: 記録管理 / 個人: 自分の履歴閲覧 |
+| 5 | 備品管理 | ○ | ○ | - | |
+| 6 | ギャラリー | ○ | ○ | - | |
+
+※ SYSTEM_ADMINはシステム管理画面から各レベルへのモジュール適用ON/OFFを調整可能
+
 ### テンプレート × 推奨選択式モジュール対応表（プリセット）
 
 テンプレート選択時に、以下の選択式モジュールが自動で有効化される。管理者が後からON/OFF変更可能。
@@ -315,10 +357,9 @@
 - 組織やチームに対する会費の支払い・集金機能
 
 #### W. 予約管理
-- 時間枠ベースの予約・キャンセル
-- スタッフ別の予約枠管理
+- **チームアカウント（枠管理）**: 時間枠の作成・編集・削除、スタッフ別の予約枠管理、予約状況の一覧管理
+- **個人アカウント（予約のみ）**: 予約の申込・キャンセル、予約履歴の閲覧
 - 予約時間が近づいたらプッシュ通知でリマインド
-- 予約履歴の管理
 
 #### X. サービス履歴
 - 施術記録・来店記録・対応履歴等の汎用記録システム
@@ -344,6 +385,7 @@
 - プラットフォーム全体の管理を `/system-admin` 配下に集約
 - 全組織・チームの一覧・管理
 - 定型テンプレート・モジュールの作成・編集・管理
+- **モジュールのレベル別適用管理**: 各モジュール（デフォルト・選択式）を組織/チーム/個人のどのレベルで利用可能にするかをON/OFFで制御
 - ユーザーBAN・通報管理
 - 監査ログ閲覧
 - システム設定・メンテナンス
@@ -369,8 +411,8 @@
 ### グループ階層 (3テーブル)
 `groups`, `group_members`, `group_hierarchy`
 
-### テンプレート・モジュール (5テーブル)
-`team_templates`, `template_modules`, `template_fields`, `module_definitions`, `module_field_definitions`
+### テンプレート・モジュール (6テーブル)
+`team_templates`, `template_modules`, `template_fields`, `module_definitions`, `module_field_definitions`, `module_level_availability`
 
 ### プラン・課金 (3テーブル)
 `subscription_plans`, `team_subscriptions`, `subscription_invoices`
@@ -471,7 +513,7 @@
 `GET /templates`, `GET /templates/{id}`, `GET /templates/{id}/modules`, `PUT /templates/{id}/modules`
 
 ### テンプレート管理（SYSTEM_ADMIN専用）
-`POST /system-admin/templates`, `PUT /system-admin/templates/{id}`, `DELETE /system-admin/templates/{id}`, `POST /system-admin/modules`, `PUT /system-admin/modules/{id}`, `DELETE /system-admin/modules/{id}`
+`POST /system-admin/templates`, `PUT /system-admin/templates/{id}`, `DELETE /system-admin/templates/{id}`, `POST /system-admin/modules`, `PUT /system-admin/modules/{id}`, `DELETE /system-admin/modules/{id}`, `GET /system-admin/modules/level-availability`, `PUT /system-admin/modules/{id}/level-availability`
 
 ### QR会員証
 `GET /members/{id}/card`, `POST /members/{id}/card/generate`, `GET /members/card/verify/{code}`
