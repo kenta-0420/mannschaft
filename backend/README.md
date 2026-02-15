@@ -26,7 +26,10 @@
 | 認証 | JWT (jjwt) + Spring Security 6 |
 | APIドキュメント | Springdoc OpenAPI (Swagger UI) |
 | マッピング | MapStruct |
-| その他 | Lombok, WebSocket (STOMP) |
+| リアルタイム通信 | WebSocket (STOMP), Redis (メッセージブローカー) |
+| キャッシュ/セッション | Redis (トークン無効化管理) |
+| テスト | Testcontainers (MySQL 8.0) |
+| その他 | Lombok, Virtual Threads (Project Loom) |
 
 ### フロントエンド（別リポジトリ）
 
@@ -446,13 +449,41 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 
 ## インフラ構成
 
-- **初期**: AWS EC2 + MySQL
+- **初期**: AWS EC2 + MySQL + Redis
 - **将来**: ロリポップ等のレンタルサーバーへの移行も考慮
-- ファイルストレージ抽象化（Local / S3 切替可能）
+- ファイルストレージ: S3互換オブジェクトストレージ（Local / S3 切替可能な抽象化設計）
 - Spring Boot fat JAR（Java 21 があればどこでも動作）
 - 全シークレットは環境変数管理
 - WAR パッケージングへの変更も容易
 - 決済機能導入時にはセキュリティ要件の追加検討
+
+---
+
+## アーキテクチャ・開発ガイドライン
+
+### ストレージ戦略
+- 画像および大容量ファイルは外部オブジェクトストレージ（S3互換）へ保存
+- クライアントからのアップロードは、バックエンドが発行する**署名付きURL（Pre-signed URL）**を利用してストレージへ直接送信する設計
+- サーバーを経由しないため、アップロード時のサーバー負荷を軽減
+
+### スケーラビリティと通信
+- WebSocket (STOMP) のメッセージブローカーとして **Redis** を利用（将来的な複数台構成を想定）
+- 認証情報の無効化（ログアウト・トークンブラックリスト）管理にも Redis を活用
+- Java 21 の **Virtual Threads** (Project Loom) を活用し、大量の同時接続を効率的に処理
+
+### 開発・テスト環境
+- データベースを用いたテストには **Testcontainers** を使用し、Dockerコンテナ上で MySQL 8.0 を立ち上げて実行
+- Flyway のマイグレーションファイルは `src/main/resources/db/migration` にバージョン管理して配置
+- CORS設定は開発環境と本番環境で適切に切り替えられるようプロファイル管理
+
+### フロントエンド・バックエンド連携
+- APIの型定義は **Springdoc OpenAPI** が生成する `swagger.json` を基に、フロントエンド（Nuxt 3）側で **OpenAPI Generator** 等を用いて型定義を自動生成
+- バックエンドのAPI変更がフロントエンドの型に即座に反映されるワークフローを構築
+
+### パフォーマンス最適化
+- Nuxt 3 の SSR を活用し、チーム紹介などの公開ページにおける **LCP（Largest Contentful Paint）を 2.5s 以内** に抑える
+- 画像は適切なフォーマット（WebP/AVIF）と遅延読み込みで最適化
+- API レスポンスの適切なキャッシュ戦略（Redis + HTTP キャッシュヘッダー）
 
 ---
 
