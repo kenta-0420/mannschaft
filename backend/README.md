@@ -134,12 +134,29 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 - スマホ画面での表示に最適化
 - 来店・受付時のスキャンによる本人確認
 
-#### B. マイダッシュボード（ログイン後のホーム画面）
-- 各アカウントが個人ダッシュボードを持つ
+#### B. ダッシュボード（ログイン後のホーム画面）
+
+組織・チーム・個人それぞれにダッシュボードを持ち、全ウィジェットの表示/非表示をトグルスイッチで自由にカスタマイズ可能。
+
+**個人ダッシュボード:**
 - お知らせ欄（重要度付き通知）、直近イベント + 出欠状況、自分の投稿一覧、未読スレッド、最近のアクティビティ
-- **UXカスタマイズ**: チェックリスト形式のトグルスイッチで、ウィジェットの表示/非表示を自由に切り替え可能
 - 所属するチーム/組織ごとのパフォーマンスサマリー表示
 - 個人カレンダー搭載（**Googleカレンダーとの同期**対応）
+- 個人TODOリスト（期限設定、優先度、完了チェック）
+
+**チームダッシュボード:**
+- チーム全体のお知らせ、直近イベント、メンバー出欠状況一覧
+- チームTODO（担当者の割り振り、期限設定、優先度、進捗ステータス管理）
+- チーム活動サマリー、最新投稿、未読スレッド数
+
+**組織ダッシュボード:**
+- 傘下チーム一覧と各チームの活動状況
+- 組織TODO（担当者・担当チームの割り振り、期限設定、優先度、進捗ステータス管理）
+- 組織全体のお知らせ、統計サマリー
+
+**共通:**
+- 全ウィジェットはトグルスイッチで表示/非表示を切り替え可能
+- ウィジェットの追加・並び替えによるレイアウトカスタマイズ
 
 #### C. タイムライン・コミュニケーション
 - X（旧Twitter）風UIのチーム内限定投稿・交流
@@ -275,6 +292,12 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 ### テンプレート・モジュール (6テーブル)
 `team_templates`, `template_modules`, `template_fields`, `module_definitions`, `module_field_definitions`, `template_marketplace`
 
+### TODO管理 (3テーブル)
+`todos`, `todo_assignees`, `todo_comments`
+
+### ダッシュボード設定 (1テーブル)
+`dashboard_widget_settings`
+
 ### QR会員証 (1テーブル)
 `member_cards`
 
@@ -360,6 +383,11 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 | GET | `/dashboard/unread-threads` | 未読スレッド |
 | GET | `/dashboard/activity` | 最近のアクティビティ |
 | PUT | `/dashboard/widgets` | ウィジェット表示設定 |
+| GET | `/dashboard/team/{id}` | チームダッシュボード取得 |
+| GET | `/dashboard/organization/{id}` | 組織ダッシュボード取得 |
+
+### TODO管理
+`GET/POST /todos`, `GET/PUT/DELETE /todos/{id}`, `PATCH /todos/{id}/status`, `POST /todos/{id}/assignees`, `DELETE /todos/{id}/assignees/{userId}`, `POST /todos/{id}/comments`, `GET /todos/my`, `GET /teams/{id}/todos`, `GET /organizations/{id}/todos`
 
 ### タイムライン
 `GET/POST /timeline`, `GET/PUT/DELETE /timeline/{id}`, `POST /timeline/{id}/replies`, `POST/DELETE /timeline/{id}/reactions`, `PATCH /timeline/{id}/pin`
