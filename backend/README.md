@@ -84,6 +84,13 @@
 ※ ロール・パーミッションは管理者画面から自由に追加・編集・削除可能
 ※ グループ単位でもロール設定可能
 
+### セキュリティ・認証
+
+- **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
+- **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
+- **パスワードリセット**: メールによるリセットフロー（トークン有効期限付き）
+- **アカウント凍結・退会フロー**: 管理者によるアカウント凍結、ユーザー自身の退会申請、退会時のデータ保持ポリシー（一定期間後に完全削除）
+
 ---
 
 ## モジュール式テンプレートシステム
@@ -92,15 +99,14 @@
 
 ### テンプレートの特徴
 
-- **属性テンプレート**: 業種に応じた最適な機能モジュールと情報入力項目をプリセット
-- **カスタム作成**: モジュール自体の項目変更や、完全新規モジュールの作成が可能
-- **共有マーケット**: カスタムモジュール・テンプレートを他ユーザーへ公開・共有
+- **定型テンプレート方式**: 運営側（SYSTEM_ADMIN）が業種別の定型テンプレートを作成・管理。ユーザーはその中から選択する
+- **運営による随時追加**: 新しい業種・ユースケースが必要になった場合、運営側がテンプレートを追加
+- **モジュールON/OFF**: チーム管理者は選択したテンプレートのモジュールを後からON/OFF変更可能
 - **権限と公開設定**: 組織内でのチーム情報の開示レベル（組織内のみ、全公開、非公開）を各チームの裁量で設定可能
-- 想定外のユースケースにもユーザー自身で対応可能な設計
 
 ### コア機能モジュール（全テンプレート共通）
 
-QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お知らせ） / チャット / 会費・決済 / プッシュ通知 / アンケート・投票 / ファイル共有
+QR会員証 / ダッシュボード / TODO管理 / タイムライン / CMS（ブログ・お知らせ） / チャット / 会費・決済 / プッシュ通知 / アンケート・投票 / ファイル共有 / 検索 / 通報・モデレーション
 
 ### 選択式機能モジュール
 
@@ -199,31 +205,59 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 - フォルダ管理（階層構造）
 - アクセス権限設定（チーム内/グループ内/個別指定）
 
+#### J. 検索
+- チーム横断のグローバル検索（投稿、スレッド、ファイル、メンバー等）
+- フィルタリング（日付、カテゴリ、投稿者等）
+- 検索結果のハイライト表示
+
+#### K. 通報・モデレーション
+- 不適切コンテンツの通報機能（投稿、チャット、マッチング等）
+- 通報内容のレビュー・対応フロー（SYSTEM_ADMIN / ADMIN）
+- ユーザーBAN・コンテンツ削除・警告の段階的対応
+
+#### L. メンション
+- タイムライン / チャット / 掲示板での `@ユーザー名` によるメンション通知
+- メンションされた投稿の一覧表示
+
+#### M. 監査ログ
+- 管理者操作の履歴記録（誰がいつ何を変更したか）
+- ロール変更、メンバー追加/削除、設定変更等を自動記録
+- SYSTEM_ADMINによる監査ログ閲覧・検索
+
+#### N. データエクスポート
+- チーム解散時や移行時にデータをまとめて出力（CSV / JSON）
+- メンバー一覧、活動記録、スケジュール等の一括エクスポート
+
+#### O. 多言語対応 (i18n)
+- 初期対応: 日本語 / 英語
+- メッセージ・ラベルの外部化（Spring MessageSource + フロントエンドi18nプラグイン）
+- 将来の言語追加に対応可能な設計
+
 ### 選択式機能モジュール
 
-#### J. スケジュール・出欠管理
+#### P. スケジュール・出欠管理
 - カレンダー表示（イベント日程）
 - **Googleカレンダーとの双方向同期**
 - ボタン一つで出欠回答（出席・欠席・保留）、管理者による集計・CSV出力
 - カレンダー作成時の出欠機能ON/OFF、締切日時設定
 
-#### K. 予約管理
+#### Q. 予約管理
 - 時間枠ベースの予約・キャンセル
 - スタッフ別の予約枠管理
 - 予約時間が近づいたらプッシュ通知でリマインド
 - 予約履歴の管理
 
-#### L. サービス履歴
+#### R. サービス履歴
 - 施術記録・来店記録・対応履歴等の汎用記録システム
 - チームごとに保存したい項目を自由に設定（カスタムフィールド対応）
 - メンバー個人のダッシュボードへ自動反映
 
-#### M. 活動記録
+#### S. 活動記録
 - 活動内容の記録（スコア、参加者、評価等）
 - カスタムフィールドで業種に応じた記録項目を自由定義
 - 統計・集計機能
 
-#### N. 掲示板
+#### T. 掲示板
 - **カテゴリ別**: 目的ごとにカテゴリを自由作成（連絡事項、相談、雑談等）
 - **ネスト返信（ツリー構造）**: 特定の発言に返信すると、その下に深くなっていく（LINEのように流れない）
 - **重要度5段階**: CRITICAL → IMPORTANT → WARNING → INFO → LOW
@@ -233,44 +267,44 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
   - 閲覧者表示: アイコンが並び、クリックでアカウント名表示
 - ピン留め・ロック機能
 
-#### O. マッチング・対外交流
+#### U. マッチング・対外交流
 - 地域やレベルに応じた対戦相手・交流先の募集・応募
 - マッチング成立時、**双方のスケジュールへ自動反映**
 - **NGチーム設定**: トラブル防止のため、特定の相手をブロック・非表示にする機能
 
-#### P. パフォーマンス管理
+#### V. パフォーマンス管理
 - カスタムデータ記録（得点、出場時間、走行距離等を自由に定義）
 - チームで記録されたデータが個人の専用ダッシュボードへ自動反映
 - 個人・チーム統計ダッシュボード
 
-#### Q. メンバー紹介
+#### W. メンバー紹介
 - **メインページ** + 月/年ごとの詳細ページ（階層構造）
 - メインページから各詳細ページへ遷移可能
 - **メンバー一覧ページ**（年度ごと作成）: 画像、名前、一言、拡張フィールド対応
 - 管理者が「作成ボタン」でプロフィール項目を自由に追加可能
 
-#### R. 備品管理
+#### X. 備品管理
 - 備品・在庫の管理 +「誰が持っているか」のステータス管理
 
 ### 管理者ダッシュボード
 
-#### S. 管理者ダッシュボード
+#### Y. 管理者ダッシュボード
 - 全管理機能を `/admin` 配下に集約
 - ユーザー管理、ロール・パーミッション管理、モジュール設定、スケジュール管理、ブログ管理、掲示板カテゴリ管理、備品管理、メンバー紹介管理、広告・スポンサー管理、予約管理設定、Googleカレンダー設定、LINE設定、SNS設定
 - ロール・パーミッションの動的管理（チェックボックスで権限ON/OFF）
 - テンプレート・モジュールのON/OFF管理
 
-#### T. システム管理者ダッシュボード
+#### Z. システム管理者ダッシュボード
 - プラットフォーム全体の管理を `/system-admin` 配下に集約
 - 全組織・チームの一覧・管理
-- テンプレート・モジュールのマスター管理
+- 定型テンプレート・モジュールの作成・編集・管理
 - ユーザーBAN・通報管理
+- 監査ログ閲覧
 - システム設定・メンテナンス
-- テンプレート共有マーケットの管理
 
 ### 外部連携
 
-#### U. 外部連携
+#### AA. 外部連携
 - LINE Messaging API（通知、アカウント連携）
 - Googleカレンダー（双方向同期）
 - Instagram / X API（SNSフィードキャッシュ）
@@ -280,8 +314,8 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 
 ## DB設計
 
-### 認証・権限 (7テーブル)
-`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `refresh_tokens`, `system_admins`
+### 認証・権限 (10テーブル)
+`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `refresh_tokens`, `system_admins`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`
 
 ### 組織・マルチ所属 (4テーブル)
 `organizations`, `organization_members`, `team_memberships`, `invitation_links`
@@ -289,8 +323,8 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 ### グループ階層 (3テーブル)
 `groups`, `group_members`, `group_hierarchy`
 
-### テンプレート・モジュール (6テーブル)
-`team_templates`, `template_modules`, `template_fields`, `module_definitions`, `module_field_definitions`, `template_marketplace`
+### テンプレート・モジュール (5テーブル)
+`team_templates`, `template_modules`, `template_fields`, `module_definitions`, `module_field_definitions`
 
 ### TODO管理 (3テーブル)
 `todos`, `todo_assignees`, `todo_comments`
@@ -343,6 +377,12 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 ### 決済・会費 (3テーブル)
 `payment_plans`, `payment_transactions`, `membership_fees`
 
+### 通報・モデレーション (2テーブル)
+`reports`, `moderation_actions`
+
+### 監査ログ (1テーブル)
+`audit_logs`
+
 ### 外部連携・広告 (5テーブル)
 `line_integration_config`, `google_calendar_sync`, `sns_feed_cache`, `ad_slots`, `sponsors`
 
@@ -360,6 +400,14 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 | POST | `/auth/refresh` | トークンリフレッシュ |
 | POST | `/auth/logout` | ログアウト |
 | GET | `/auth/me` | プロフィール取得 |
+| POST | `/auth/oauth/{provider}` | OAuth2ソーシャルログイン（Google/LINE/Apple） |
+| GET | `/auth/oauth/{provider}/callback` | OAuthコールバック |
+| POST | `/auth/password-reset/request` | パスワードリセット要求 |
+| POST | `/auth/password-reset/confirm` | パスワードリセット実行 |
+| POST | `/auth/2fa/setup` | 2FA設定 |
+| POST | `/auth/2fa/verify` | 2FA検証 |
+| DELETE | `/auth/2fa` | 2FA無効化 |
+| POST | `/auth/deactivate` | アカウント退会申請 |
 
 ### 組織管理
 `CRUD /organizations`, `GET /organizations/{id}/teams`, `POST /organizations/{id}/invite`, `POST /invitations/{token}/accept`, `GET /users/{id}/teams`, `GET /users/{id}/organizations`
@@ -368,7 +416,10 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 `CRUD /groups`, `GET /groups/{id}/members`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{userId}`, `GET /organizations/{id}/groups`
 
 ### テンプレート・モジュール
-`GET /templates`, `GET /templates/{id}`, `POST /templates`, `PUT /templates/{id}`, `GET /templates/{id}/modules`, `PUT /templates/{id}/modules`, `GET /modules`, `POST /modules`, `PUT /modules/{id}`, `POST /templates/marketplace/publish`, `GET /templates/marketplace`
+`GET /templates`, `GET /templates/{id}`, `GET /templates/{id}/modules`, `PUT /templates/{id}/modules`
+
+### テンプレート管理（SYSTEM_ADMIN専用）
+`POST /system-admin/templates`, `PUT /system-admin/templates/{id}`, `DELETE /system-admin/templates/{id}`, `POST /system-admin/modules`, `PUT /system-admin/modules/{id}`, `DELETE /system-admin/modules/{id}`
 
 ### QR会員証
 `GET /members/{id}/card`, `POST /members/{id}/card/generate`, `GET /members/card/verify/{code}`
@@ -434,6 +485,18 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 ### 決済・会費
 `POST /payments/plans`, `GET /payments/plans`, `POST /payments/charge`, `GET /payments/history`, `POST /membership-fees/collect`, `GET /membership-fees/status`
 
+### 検索
+`GET /search?q={query}&type={type}&scope={scope}`, `GET /search/suggestions`
+
+### 通報・モデレーション
+`POST /reports`, `GET /admin/reports`, `PATCH /admin/reports/{id}/resolve`, `POST /admin/moderation/ban/{userId}`, `DELETE /admin/moderation/ban/{userId}`
+
+### 監査ログ
+`GET /admin/audit-logs`, `GET /system-admin/audit-logs`
+
+### データエクスポート
+`POST /export/team/{id}`, `GET /export/status/{jobId}`, `GET /export/download/{jobId}`
+
 ### 通知
 `GET /notifications`, `GET /notifications/unread-count`, `PATCH /notifications/{id}/read`, `PATCH /notifications/read-all`, `WS /ws`
 
@@ -444,7 +507,7 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 `GET /admin/dashboard`, `/admin/users/**`, `/admin/roles/**`, `/admin/permissions/**`, `/admin/modules/**`, `/admin/schedules/**`, `/admin/blog/**`, `/admin/bulletin/categories/**`, `/admin/equipment/**`, `/admin/team/**`, `/admin/ads/**`, `/admin/sponsors/**`, `/admin/reservations/**`, `/admin/google-calendar/**`, `/admin/line/**`, `/admin/sns/**`
 
 ### システム管理者
-`GET /system-admin/dashboard`, `/system-admin/organizations/**`, `/system-admin/teams/**`, `/system-admin/users/**`, `/system-admin/templates/**`, `/system-admin/modules/**`, `/system-admin/marketplace/**`, `/system-admin/reports/**`, `/system-admin/settings/**`
+`GET /system-admin/dashboard`, `/system-admin/organizations/**`, `/system-admin/teams/**`, `/system-admin/users/**`, `/system-admin/templates/**`, `/system-admin/modules/**`, `/system-admin/reports/**`, `/system-admin/audit-logs/**`, `/system-admin/settings/**`
 
 ### Googleカレンダー連携
 `GET /admin/google-calendar/status`, `POST /admin/google-calendar/connect`, `GET /admin/google-calendar/callback`, `DELETE /admin/google-calendar/disconnect`, `POST /admin/google-calendar/sync`, `PUT /admin/google-calendar/settings`, `GET /admin/google-calendar/preview`
@@ -470,7 +533,7 @@ QR会員証 / ダッシュボード / タイムライン / CMS（ブログ・お
 | **7** | サービス履歴 + パフォーマンス管理 + 備品管理 | サービス履歴API + パフォーマンスAPI + 備品API |
 | **8** | マッチング・対外交流 + 会費・決済 | マッチングAPI + 決済API |
 | **9** | LINE連携・SNS・広告・スポンサー | 外部連携API群 |
-| **10** | 管理者ダッシュボード + システム管理者ダッシュボード + テンプレート共有マーケット | 管理画面 + マーケット |
+| **10** | 管理者ダッシュボード + システム管理者ダッシュボード + 通報・モデレーション + 監査ログ | 管理画面 + 運用ツール |
 | **11** | ポリッシュ・テスト・Docker化 | 本番デプロイ可能 |
 
 ---
