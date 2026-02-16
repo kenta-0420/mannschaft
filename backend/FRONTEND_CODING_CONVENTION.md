@@ -11,7 +11,9 @@
 - **Components**: `PascalCase` で命名し、2語以上の単語を組み合わせる（例: `TeamList.vue`, `UserBaseButton.vue`）。
 - **Variables / Functions**: `camelCase` を使用する。
 - **Constants**: `UPPER_SNAKE_CASE` を使用する。
-- **Files / Directories**: 原則 `kebab-case` とする。
+- **Files / Directories**: 原則 `kebab-case` とする。ただし以下は例外として `camelCase` を使用する:
+    - `composables/` 配下: `use[Feature].ts`（例: `useAuth.ts`, `useErrorHandler.ts`）
+    - `stores/` 配下: `use[Name]Store.ts`（例: `useAuthStore.ts`）
 - **Stores**: `use[Name]Store` 形式で命名する（例: `useAuthStore`）。
 
 ## 3. スタイリング 🎨
@@ -28,14 +30,13 @@
 | `layouts/` | 共通のページ外装。 |
 | `stores/` | Piniaによるグローバル状態管理。 |
 | `utils/` | 状態を持たない純粋な関数（Helper）。 |
+| `types/` | TypeScript型定義。`types/generated/` にOpenAPI Generator自動生成型を配置。 |
 | `assets/` | CSSや画像などの静的リソース。 |
 
 ### 状態管理の使い分け
 - **Pinia stores**: ログイン情報やカート情報など、アプリケーション全体で共有し画面を跨いで保持すべき状態に使用する。
 - **Composables**: 各機能（ページ）に閉じたロジックや、その画面内だけで使う一時的な状態に使用する。
 - 基本方針: **Composables を優先**し、グローバルな管理が必要になった時のみ Pinia を導入する。
-
-
 
 ## 5. API通信規約 (API Client & Fetch Settings) 📡
 Nuxt 3 標準の `ofetch` をベースにした共通クライアントを使用する。
@@ -44,8 +45,8 @@ Nuxt 3 標準の `ofetch` をベースにした共通クライアントを使用
 - **Base URL**: `runtimeConfig.public.apiBase` から取得する。
 - **Authentication**: リクエストヘッダーに `Authorization: Bearer <JWT>` を自動付与する（AuthStoreから取得）。
 - **Method Usage**:
-    - **`useFetch` / **`useAsyncData`**: SSRが必要なページ初期データの取得に使用。
-    - **`$fetch`**: ユーザー操作に伴うデータ送信（POST/PUT/DELETE等）に使用。
+    - `useFetch` / `useAsyncData`: SSRが必要なページ初期データの取得に使用。
+    - `$fetch`: ユーザー操作に伴うデータ送信（POST/PUT/DELETE等）に使用。
 - **Error Handling**: 401 (Unauthorized) 発生時は、認証ストアをクリアしログイン画面へリダイレクトする共通処理を実装する。
 
 ## 6. コンポーネント設計 (Component Design)
@@ -63,3 +64,13 @@ Nuxt 3 標準の `ofetch` をベースにした共通クライアントを使用
 ## 8. パフォーマンス (Performance)
 - **NuxtImg**: 画像には `NuxtImg` モジュールを活用し、フォーマット最適化を行う。
 - **Lazy Loading**: ページ下部の重いコンポーネントは `Lazy` プレフィックスコンポーネント（例: `<LazyHeavyChart />`）として読み込む。
+
+## 9. テスト (Testing) 🧪
+- **基本ツール**: **Vitest** と **Vue Test Utils** を採用する。
+- **テスト対象の優先順位**:
+    1. **Composables**: 共通ロジック（`useApi.ts`, `useErrorHandler.ts` 等）
+    2. **Zodバリデーション定義**: スキーマの正常系・異常系
+    3. **Piniaストア**: 状態管理のアクション・ゲッター
+    4. **UIコンポーネント**: 重要な操作フロー（フォーム送信、条件分岐表示等）
+- **テストファイル配置**: 対象ファイルと同じディレクトリに `[filename].spec.ts` として作成する（例: `composables/useAuth.spec.ts`）。
+- **E2Eテスト**: **Playwright** を将来的に導入予定。現時点では方針策定のみとし、プロジェクト成熟後に着手する。
