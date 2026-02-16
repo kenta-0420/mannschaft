@@ -28,6 +28,7 @@
 | `composables/` | 状態を持つロジック、および共通APIクライアント。 |
 | `pages/` | ファイルシステムルーティングに基づく各画面。 |
 | `layouts/` | 共通のページ外装。 |
+| `middleware/` | ルートガード（認証チェック、ロール制御、モジュール有効化チェック）。 |
 | `stores/` | Piniaによるグローバル状態管理。 |
 | `utils/` | 状態を持たない純粋な関数（Helper）。 |
 | `types/` | TypeScript型定義。`types/generated/` にOpenAPI Generator自動生成型を配置。 |
