@@ -176,6 +176,19 @@
 * **ファイルアップロード**: ファイルのアップロードは Pre-signed URL 経由で行うため、API サーバーにファイルを直接送信しない。`spring.servlet.multipart.max-file-size` は小さく設定し（例: 1MB）、不正な大容量リクエストを遮断する。
 * **例外**: アバター画像など小さなファイルを API 経由で受け付ける場合は、エンドポイントごとに個別設定する。
 
+### 静的解析 (Checkstyle)
+* **導入方針**: Gradle の Checkstyle プラグインを導入し、`gradle checkstyleMain` でコーディング規約への準拠を自動検証する。
+* **設定ファイル**: `config/checkstyle/checkstyle.xml` にプロジェクト共通のルールセットを配置する。Google Java Style をベースに、本規約に合わせてカスタマイズする。
+* **主な検査項目**:
+    * インデント（半角スペース4つ）
+    * 命名規則（camelCase / PascalCase / UPPER_SNAKE_CASE）
+    * メソッド行数上限（200行）
+    * ネスト深度上限（3階層）
+    * `import` の整理（ワイルドカードインポート `*` の禁止、未使用インポートの検出）
+    * Javadoc の存在チェック（クラスレベル必須）
+* **CI 統合**: GitHub Actions の CI パイプラインに `checkstyleMain` タスクを組み込み、違反がある場合はビルドを失敗させる。
+* **抑制**: やむを得ず規約に従えない箇所は `@SuppressWarnings("checkstyle:ルール名")` で個別に抑制し、理由をコメントに残すこと。ファイル単位での抑制（`suppressions.xml`）は原則禁止する。
+
 ### テスト実行環境
 * **統合テスト**: データベースを用いた統合テストには **Testcontainers** (MySQL 8.0) を使用する。ローカル環境に MySQL をインストールする必要はない。
 * **CI/CD**: GitHub Actions 等の CI パイプラインでも Testcontainers を実行する。Docker-in-Docker または Docker Socket マウント方式を使用すること。
