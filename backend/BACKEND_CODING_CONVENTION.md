@@ -9,7 +9,8 @@
 * **インデント**: **半角スペース4つ**を使用してください。
 * **クラス命名**: `～Manager` や `～Util` といった曖昧な名称は避け、責務を具体的に表現してください。
 * **ボイラープレートの削減**: **Lombok** を積極的に活用してください。
-    - `@Getter`, `@Setter`, `@RequiredArgsConstructor` を基本とし、不要な `toString` や `equals` のオーバーライドは避けること。
+    - **DTO / Request / Response**: `@Getter`, `@Setter`, `@RequiredArgsConstructor` を基本とし、不要な `toString` や `equals` のオーバーライドは避けること。
+    - **JPA Entity**: クラスレベルの `@Setter` は禁止する。`@Getter` + `@NoArgsConstructor(access = AccessLevel.PROTECTED)` を基本とし、状態変更はビジネスメソッド（例: `changeEmail(String email)`）経由で行うこと。不正な状態遷移を防止し、ドメインロジックを Entity 内に集約するため。
 * **DI方式**: **コンストラクタインジェクションを必須** とし、`@Autowired` によるフィールドインジェクションは禁止する。Lombok の `@RequiredArgsConstructor` と `final` フィールドを組み合わせて実装すること。
 * **マジックナンバーの禁止**: 意味のある数字は直接記述せず、必ず定数（`static final`）を定義してください。
 * **区分値の管理**: 区分値や状態フラグは String/int 定数ではなく、原則として **Enum** を使用してください。
@@ -132,6 +133,14 @@
 * **保存場所**: フロントエンドでは `localStorage` / `sessionStorage` に保存し、`Authorization: Bearer` ヘッダーで送信する。Cookie には格納しない（CSRF攻撃を構造的に排除するため）。
 * **デバイスバインディング（推奨）**: Refresh Token 使用時に、発行時のIPアドレスおよびUser-Agentとの一致を検証することを推奨する。不一致の場合はトークンを無効化し、再ログインを要求する。これにより、XSSで Refresh Token が漏洩した場合でも、異なるデバイスからの悪用を防止できる。
 
+### WebSocket (STOMP) 認証規約
+* **認証方式**: REST API と同様に JWT を使用するが、セキュリティ確保のためクエリパラメータでのトークン送付は禁止する。
+* **トークン送付タイミング**: STOMP の `CONNECT` フレーム送信時に、カスタムヘッダー（`Authorization`）として Bearer トークンを付与する。
+* **サーバー側検証**:
+    * `ChannelInterceptor` を実装し、`preSend` メソッドにて `CONNECT` コマンド受信時のヘッダー検証を行う。
+    * 有効なトークンが確認できない場合は、接続を拒否（例外をスロー）する。
+* **ハンドシェイク時**: 初期接続（HTTP Handshake）時は認証をスキップし、その後の STOMP プロトコルレベルで認証を強制する構成とする。
+
 ### レートリミット（リクエスト制限）規約
 * **必須適用箇所**:
     * ログインAPI（認証試行）
@@ -154,6 +163,13 @@
     * **ファイルサイズ**: 発行時に `content-length-range` を指定し、期待されるファイルサイズ（例：5MB以下）を超えるリクエストを拒否する。
     * **ファイル形式**: `Content-Type` を固定し、予期せぬファイル形式のアップロードを防止する。
 * **一度限りの使用**: セキュリティ向上のため、1つのURLで実行できる操作は1回のみ（Single Use）とする実装を検討する。
+
+### コンテンツセキュリティポリシー (CSP) 運用規約
+* **基本方針**: XSS攻撃に対する多層防御として、HTTPレスポンスヘッダーに `Content-Security-Policy` を設定する。
+* **デフォルト設定**: `default-src 'self';` を基本とし、原則として自ドメイン以外のリソース読み込みを制限する。
+* **スクリプト制限**: `script-src 'self';` とし、HTML内に直接記述されたインラインスクリプトの実行を禁止する。
+* **外部リソースの許可**: Google Fonts、外部分析ツール（GA等）、特定の外部APIなど、業務上必要なドメインのみを明示的にホワイトリストへ追加する。
+* **運用開始ステップ**: 開発初期は `Content-Security-Policy-Report-Only` ヘッダーを使用し、正常な動作を妨げないことを確認してから正式に適用（Enforce）する。
 
 ### APIリクエストサイズ制限
 * **リクエストボディ**: Spring Boot のデフォルト設定をベースに、APIエンドポイントのリクエストボディは原則 **1MB以下** に制限する。
