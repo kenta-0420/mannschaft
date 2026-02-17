@@ -76,8 +76,10 @@
 - [ ] ER図の確定と全テーブルのカラム定義
 - [ ] Spring Security 権限設計の詳細仕様
 - [ ] 開発環境のDocker Compose構成（MySQL + Redis + MinIO）
-- [ ] CI/CD パイプライン構築（GitHub Actions）
+- [ ] CI/CD パイプライン構築（GitHub Actions + Testcontainers対応）
 - [ ] コーディング規約の共有と適用
+- [ ] OpenAPI → Zod スキーマ自動生成ワークフローの構築（`openapi-zod-client` 等の選定・導入）
+- [ ] 論理削除カラム（`deleted_at`）の適用テーブル一覧の確定
 
 ### Phase 4 開始前（チャット）
 - [ ] WebSocket + Redis のスケーリング設計
@@ -88,6 +90,7 @@
 - [ ] 決済代行サービスの選定
 - [ ] 特定商取引法に基づく表記の準備
 - [ ] セキュリティ監査の実施計画
+- [ ] `subscription_plans`（プラットフォーム課金）と `payment_plans`（チーム内会費）の役割分担を最終確認し、スキーマのカラム定義を確定する
 
 ### Phase 11 開始前（本番デプロイ）
 - [ ] インフラ構成の最終確定

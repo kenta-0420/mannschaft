@@ -104,7 +104,7 @@
 - **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
 - **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
 - **パスワードリセット**: メールによるリセットフロー（トークン有効期限付き）
-- **アカウント凍結・退会フロー**: 管理者によるアカウント凍結、ユーザー自身の退会申請、退会時のデータ保持ポリシー（一定期間後に完全削除）
+- **アカウント凍結・退会フロー**: 管理者によるアカウント凍結、ユーザー自身の退会申請。退会申請後30日間は論理削除（猶予期間）、その後個人情報を物理削除。決済履歴は税法に基づき7年間保持。詳細は `.claudecode.md` §7「データ保持・削除規約」を参照
 
 ---
 
@@ -125,9 +125,10 @@
 | プラン | 選択式モジュール数 | 料金 |
 |--------|-------------------|------|
 | 無料プラン | 10モジュールまで | 無料 |
-| 有料プラン | 11モジュール以上 | 課金（従量 or 定額） |
+| 有料プラン | 11モジュール以上 | 課金（定額 `FLAT` / 従量 `METERED` を `plan_type` で管理） |
 
 ※ デフォルト機能は無料プランに含まれ、モジュール数にカウントされない
+※ 課金モデルの設計指針は `.claudecode.md` §8「サブスクリプション設計指針」を参照
 
 ### デフォルト機能（全チーム常時有効・選択リスト非表示）
 
@@ -417,8 +418,15 @@
 
 ## DB設計
 
-### 認証・権限 (10テーブル)
-`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `refresh_tokens`, `system_admins`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`
+### 認証・権限 (9テーブル)
+`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`
+
+※ SYSTEM_ADMIN は `roles` テーブルの1レコード + `user_roles` で割り当て。専用テーブルは設けず RBAC に統一する
+
+### チーム管理 (1テーブル)
+`teams`
+
+※ `organization_id` は nullable。組織に属する場合は値あり、独立チームの場合は NULL
 
 ### 組織・マルチ所属 (4テーブル)
 `organizations`, `organization_members`, `team_memberships`, `invitation_links`
@@ -429,8 +437,10 @@
 ### テンプレート・モジュール (6テーブル)
 `team_templates`, `template_modules`, `template_fields`, `module_definitions`, `module_field_definitions`, `module_level_availability`
 
-### プラン・課金 (3テーブル)
+### プラン・サブスクリプション (3テーブル)
 `subscription_plans`, `team_subscriptions`, `subscription_invoices`
+
+※ `subscription_plans`: プラットフォームのモジュール課金プラン（無料/有料、`plan_type`: FLAT/METERED）。チームがどのプランに加入しているかを管理
 
 ### TODO管理 (3テーブル)
 `todos`, `todo_assignees`, `todo_comments`
@@ -482,6 +492,8 @@
 
 ### 決済・会費 (3テーブル)
 `payment_plans`, `payment_transactions`, `membership_fees`
+
+※ `payment_plans`: チームが自チームのメンバーから徴収する会費の設定（月会費/年会費/都度払い）。プラットフォームのサブスクリプション（`subscription_plans`）とは別概念
 
 ### 通報・モデレーション (2テーブル)
 `reports`, `moderation_actions`
@@ -710,10 +722,4 @@
 ## Instructions
 - 開発にあたっては、必ずルートの `.claudecode.md` および `BACKEND_CODING_CONVENTION.md`,`FRONTEND_CODING_CONVENTION.md` に記載された規約を最優先で遵守すること。
 - ディレクトリ構成は機能別（Feature-based）パッケージングを採用すること。
-
-## 開発フローの制約（必須）
-新しい機能の実装に取り掛かる際は、勝手にコードを書き始めず、必ず以下の手順を踏むこと：
-
-1. **要件の確認とすり合わせ**: 実装する機能の詳細と、必要なテーブル定義（DDL）の案を提示し、ユーザーの承認を得ること。
-2. **設計案の提示**: 機能パッケージ内のクラス構成や、APIのインターフェース案（エンドポイント名など）を提示すること。
-3. **承認後の実装**: ユーザーから「Goサイン」が出た後に、初めて実際のコーディングを開始すること。
+- 開発フローの制約（AI/人間の区別）は `.claudecode.md` §10 を参照すること。
