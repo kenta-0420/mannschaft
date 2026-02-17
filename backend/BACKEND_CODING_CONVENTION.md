@@ -189,6 +189,38 @@
 * **CI 統合**: GitHub Actions の CI パイプラインに `checkstyleMain` タスクを組み込み、違反がある場合はビルドを失敗させる。
 * **抑制**: やむを得ず規約に従えない箇所は `@SuppressWarnings("checkstyle:ルール名")` で個別に抑制し、理由をコメントに残すこと。ファイル単位での抑制（`suppressions.xml`）は原則禁止する。
 
+### 静的バグ検出 (SpotBugs)
+* **導入方針**: Gradle の SpotBugs プラグインを導入し、`gradle spotbugsMain` でバグパターンを自動検出する。Checkstyle がスタイルを検査するのに対し、SpotBugs は**実際のバグ**（NullPointerException、リソースリーク、並行処理の不具合等）を検出する。両者は役割が異なるため併用する。
+* **検出レベル**: 報告レベルは `medium` 以上、検出努力（effort）は `max` を基本設定とする。
+* **主な検出カテゴリ**:
+    * Null参照の可能性（`NP_NULL_ON_SOME_PATH` 等）
+    * リソースの閉じ忘れ（`OBL_UNSATISFIED_OBLIGATION` 等）
+    * 並行処理の問題（`IS2_INCONSISTENT_SYNC` 等）
+    * 無意味な比較・計算（`EC_UNRELATED_TYPES` 等）
+* **CI 統合**: GitHub Actions の CI パイプラインに `spotbugsMain` タスクを組み込み、`medium` 以上のバグが検出された場合はビルドを失敗させる。
+* **抑制**: 誤検知の場合は `@SuppressFBWarnings(value = "ルール名", justification = "理由")` で個別に抑制し、理由を必ず明記すること。
+
+### EditorConfig
+* **目的**: IDE やエディタ間でインデント・改行コード・文字コードを統一し、環境差異によるフォーマット崩れを防止する。
+* **設定ファイル**: プロジェクトルートに `.editorconfig` を配置する。
+* **主な設定内容**:
+    * `charset = utf-8`
+    * `end_of_line = lf`（改行コードを LF に統一し、Git の CRLF 警告を解消する）
+    * `indent_style = space`
+    * Java ファイル: `indent_size = 4`
+    * Vue / TypeScript / JSON / YAML ファイル: `indent_size = 2`
+    * `trim_trailing_whitespace = true`
+    * `insert_final_newline = true`
+* **適用範囲**: バックエンド・フロントエンド共通で適用する。
+
+### pre-commit フック
+* **目的**: コミット前に静的解析・フォーマットチェックを自動実行し、規約違反がリポジトリに混入するのを防止する。CI まで待たずにローカルで即検知できるため、フィードバックループが短縮される。
+* **バックエンド**: Gradle の `checkstyleMain` および `spotbugsMain` タスクをコミット前に実行する。Git の `pre-commit` フックスクリプト、または Gradle プラグイン（例: `gradle-git-hooks`）で設定する。
+* **フロントエンド（別リポジトリ）**: **Husky** + **lint-staged** を導入する。
+    * `husky`: Git フックの管理を行い、`pre-commit` 時に lint-staged を呼び出す。
+    * `lint-staged`: ステージされたファイルのみを対象に `eslint --fix` および `prettier --write` を実行する。全ファイルを対象にしないことで高速性を維持する。
+* **強制力**: フックのスキップ（`git commit --no-verify`）は緊急時のみに限定し、通常の開発では禁止する。
+
 ### テスト実行環境
 * **統合テスト**: データベースを用いた統合テストには **Testcontainers** (MySQL 8.0) を使用する。ローカル環境に MySQL をインストールする必要はない。
 * **CI/CD**: GitHub Actions 等の CI パイプラインでも Testcontainers を実行する。Docker-in-Docker または Docker Socket マウント方式を使用すること。

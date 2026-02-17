@@ -78,11 +78,25 @@ Nuxt 3 標準の `ofetch` をベースにした共通クライアントを使用
 - **自動生成の導入**: `openapi-zod-client` 等のツールを活用し、OpenAPI 定義からフロントエンド用の Zod スキーマを自動生成するワークフローを構築する。
 - **目的**: 二重定義による実装漏れや、フロントとバックでのバリデーションルールの乖離を防止し、メンテナンスコストを削減するため。
 
-## 8. パフォーマンス (Performance)
+## 8. 静的解析・フォーマッター (ESLint + Prettier)
+- **ESLint**: TypeScript / Vue ファイルのコード品質チェックに使用する。バックエンドにおける Checkstyle に相当する役割。
+    - **設定ベース**: `@nuxt/eslint-config` をベースに、本規約に合わせてカスタマイズする。
+    - **主な検査項目**:
+        - `any` 型の使用禁止（`@typescript-eslint/no-explicit-any`）
+        - 未使用変数の検出（`@typescript-eslint/no-unused-vars`）
+        - `v-html` の使用警告（`vue/no-v-html`）
+        - コンポーネント命名の PascalCase 強制（`vue/component-name-in-template-casing`）
+    - **CI 統合**: GitHub Actions の CI パイプラインに `npx eslint .` を組み込み、エラーがある場合はビルドを失敗させる。
+- **Prettier**: コードフォーマットの自動統一に使用する。ESLint とはルールが競合しないよう `eslint-config-prettier` で Prettier 側を優先する。
+    - **主な設定**: `semi: false`, `singleQuote: true`, `tabWidth: 2`, `trailingComma: 'all'`（Nuxt 3 コミュニティの標準に準拠）。
+    - **保存時自動整形**: IDE（VS Code 等）の設定で保存時に Prettier を自動実行し、手動フォーマットの手間を排除する。
+- **抑制**: やむを得ず規約に従えない箇所は `// eslint-disable-next-line ルール名 -- 理由` で1行単位で抑制すること。ファイル単位の `/* eslint-disable */` は原則禁止する。
+
+## 9. パフォーマンス (Performance)
 - **NuxtImg**: 画像には `NuxtImg` モジュールを活用し、フォーマット最適化を行う。
 - **Lazy Loading**: ページ下部の重いコンポーネントは `Lazy` プレフィックスコンポーネント（例: `<LazyHeavyChart />`）として読み込む。
 
-## 9. テスト (Testing)
+## 10. テスト (Testing)
 - **基本ツール**: **Vitest** と **Vue Test Utils** を採用する。
 - **テスト対象の優先順位**:
     1. **Composables**: 共通ロジック（`useApi.ts`, `useErrorHandler.ts` 等）
