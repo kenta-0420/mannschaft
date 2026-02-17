@@ -87,7 +87,39 @@
     - これにより、読み取り時のDB最適化（スレーブ参照、フラッシュ不要）が自動的に効く。
 * **テスト容易性**: 現在時刻や外部通信などの「変動要素」はモック化可能な設計にし、ユニットテストの実行を容易にしてください。
 
-## 5. ログと運用監視
+## 5. データアクセスと開発環境
+
+### データアクセス (Spring Data JPA + QueryDSL)
+* **基本方式**: データアクセスには **Spring Data JPA** を使用する。各機能パッケージ内に `[Feature]Repository` インターフェースを作成し、`JpaRepository<Entity, Long>` を継承すること。
+* **クエリ戦略**:
+    * **単純なCRUDおよび名前ベースのクエリ**: Spring Data JPA の派生クエリメソッド（`findByEmail`, `findByStatusAndCreatedAtAfter` 等）を優先的に使用する。
+    * **動的フィルタリング**: `.claudecode.md` §12 で定めたフィルタリング規約（`?status=active&price_min=1000` 等）の実装には **QueryDSL** を使用する。`BooleanBuilder` または `BooleanExpression` を用いてタイプセーフに条件を組み立てること。文字列ベースの `@Query` で動的条件を結合する方式は禁止する。
+    * **固定的な複雑クエリ**: JOIN が多い集計クエリやレポート用クエリなど、動的条件を伴わない固定的な複雑クエリは `@Query`（JPQL）で記述してよい。ネイティブSQL（`nativeQuery = true`）は最終手段とし、使用時はコメントで理由を記載すること。
+* **QueryDSL 設定**: Gradle の `com.querydsl` プラグインおよび APT（Annotation Processing Tool）を導入し、`Q` クラスを自動生成する。生成されたクラスは `build/generated` 配下に出力し、バージョン管理対象外とする。
+* **N+1 問題の防止**: リレーションの取得には `@EntityGraph` またはJPQLの `JOIN FETCH` を明示的に使用し、Lazy Loading による N+1 問題を防止すること。
+
+### コネクションプール (HikariCP)
+* **使用ライブラリ**: Spring Boot 標準の **HikariCP** をそのまま使用する。別のプールライブラリへの変更は禁止する。
+* **設定指針**:
+    * `maximum-pool-size`: デフォルト `10`。本番環境ではDB接続数の上限とアプリケーションインスタンス数を考慮して調整する（目安: `DB max_connections / インスタンス数 - 余裕`）。
+    * `minimum-idle`: `maximum-pool-size` と同値に設定し、コネクションの急増減を防ぐ（HikariCP 推奨設定）。
+    * `connection-timeout`: `30000`ms（30秒）。これを超えた場合は `SQLException` がスローされる。
+    * `leak-detection-threshold`: 開発環境では `2000`ms に設定し、コネクションリークを早期検出する。本番環境では `0`（無効）でよい。
+* **環境別設定**: プール設定は `application-{profile}.yml` でプロファイル別に管理する。
+
+### 開発環境ツール
+* **Spring Boot DevTools**:
+    * 開発時の `spring-boot-devtools` 依存を追加し、コード変更時の自動リスタートとライブリロードを有効化する。
+    * `build.gradle.kts` では `developmentOnly` スコープで追加し、本番ビルドに含めないこと。
+    * テンプレートファイルやプロパティ変更時のキャッシュ無効化も自動で行われる。
+* **Spring Boot Docker Compose Support**（Spring Boot 3.1+）:
+    * プロジェクトルートに `compose.yml`（MySQL + Redis + MinIO）を配置し、`gradle bootRun` 実行時にコンテナを自動起動・自動停止させる。
+    * `spring-boot-docker-compose` 依存を追加し、手動での `docker compose up/down` を不要にする。
+    * CI 環境では Docker Compose Support を無効化し、Testcontainers を使用すること（`spring.docker.compose.enabled=false`）。
+
+---
+
+## 6. ログと運用監視
 * **ログフレームワーク**: **SLF4J + Logback**（Spring Boot標準）を使用する。`System.out.println` によるログ出力は**禁止**とし、Lombok の `@Slf4j` アノテーションを使用すること。
 * **トレーサビリティ**: ログには「誰が」「いつ」「何を（どのIDに対して）」操作したかを特定できる情報を必ず含めてください。
 * **ログレベル**: 適切にレベルを使い分け、障害発生時の追跡性を確保してください。
@@ -107,7 +139,7 @@
 * **記録項目**: タイムスタンプ、実行ユーザーID、操作種別、対象リソース識別子、IPアドレス、実行結果（成功/失敗）。
 * **保存期間**: セキュリティおよびコンプライアンスの観点から、最低 **1年間** は検索可能な状態で保持する。
 
-## 6. セキュリティ
+## 7. セキュリティ
 * **機密情報の保護**: APIキー、パスワード、暗号化鍵などをソースコードに直接記述（ハードコード）することを厳禁とします。
 * **インジェクション対策**: SQL発行時は文字列結合を避け、必ず **プレースホルダ** を使用してください。
 * **情報の秘匿**: パスワードや機密性の高い個人情報をログに出力しないでください。
