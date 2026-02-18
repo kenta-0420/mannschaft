@@ -174,6 +174,9 @@
 | 5 | 備品管理 | 在庫管理・貸出ステータス |
 | 6 | ギャラリー | 写真アルバム・アップロード・閲覧権限 |
 | 7 | シフト管理 | 週/月シフト作成・希望収集・確定通知 |
+| 8 | 議決権行使・委任状 | 総会議案への電子投票・委任状提出・結果集計 |
+| 9 | 住民台帳 | 居室情報・居住者管理・物件売買/賃貸掲示（非公開設定対応） |
+| 10 | 駐車場区画管理 | 区画登録・個別価格設定・割り当て・空き管理・譲渡希望掲示 |
 
 ※ 運営側が随時新モジュールを追加予定。選択式モジュールが10個を超えた場合、11個目以降の有効化には有料プランが必要
 
@@ -220,6 +223,9 @@
 | 5 | 備品管理 | ○ | ○ | - | |
 | 6 | ギャラリー | ○ | ○ | - | |
 | 7 | シフト管理 | - | ○（作成・管理） | ○（希望提出） | チーム: シフト作成・編集・確定 / 個人: 希望日時の提出・確定シフトの確認 |
+| 8 | 議決権行使・委任状 | ○ | ○ | ○（投票・委任） | 組織/チーム: 議案作成・集計 / 個人: 議決権行使・委任状提出 |
+| 9 | 住民台帳 | ○ | ○ | ○（自室のみ） | ADMIN/DEPUTY_ADMIN: 全件閲覧・編集 / 個人: 自室・自身の情報のみ閲覧（他居住者は非公開） |
+| 10 | 駐車場区画管理 | ○ | ○ | ○（申請・確認） | 管理者: 区画管理・割り当て・価格設定 / 個人: 空き確認・申請・譲渡希望登録 |
 
 ※ SYSTEM_ADMINはシステム管理画面から各レベルへのモジュール適用ON/OFFを調整可能
 
@@ -227,15 +233,18 @@
 
 テンプレート選択時に、以下の選択式モジュールが自動で有効化される。管理者が後からON/OFF変更可能。
 
-| 選択式モジュール | スポーツ | 整骨院 | 学校 | 会社 | 飲食店 | 美容室 | ジム | サークル | 町内会 |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| QR会員証 | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ |
-| 会費・決済 | ○ | ○ | ○ | ○ | - | - | ○ | ○ | ○ |
-| 予約管理 | - | ○ | - | - | ○ | ○ | ○ | - | - |
-| サービス履歴 | - | ○ | - | - | - | ○ | ○ | - | - |
-| 備品管理 | ○ | ○ | ○ | ○ | ○ | ○ | ○ | - | ○ |
-| ギャラリー | ○ | - | ○ | ○ | ○ | ○ | - | ○ | ○ |
-| シフト管理 | - | ○ | - | ○ | ○ | ○ | ○ | - | - |
+| 選択式モジュール | スポーツ | 整骨院 | 学校 | 会社 | 飲食店 | 美容室 | ジム | サークル | 町内会 | マンション |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| QR会員証 | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ |
+| 会費・決済 | ○ | ○ | ○ | ○ | - | - | ○ | ○ | ○ | ○ |
+| 予約管理 | - | ○ | - | - | ○ | ○ | ○ | - | - | ○ |
+| サービス履歴 | - | ○ | - | - | - | ○ | ○ | - | - | - |
+| 備品管理 | ○ | ○ | ○ | ○ | ○ | ○ | ○ | - | ○ | ○ |
+| ギャラリー | ○ | - | ○ | ○ | ○ | ○ | - | ○ | ○ | ○ |
+| シフト管理 | - | ○ | - | ○ | ○ | ○ | ○ | - | - | - |
+| 議決権行使・委任状 | - | - | - | ○ | - | - | - | ○ | ○ | ○ |
+| 住民台帳 | - | - | - | - | - | - | - | - | - | ○ |
+| 駐車場区画管理 | - | - | - | ○ | - | - | - | - | ○ | ○ |
 
 ※ デフォルト機能（23個）は全テンプレートで常時有効のため表に含まない
 
@@ -427,6 +436,26 @@
 - メンバーが希望日時を事前に提出（希望収集フェーズ）
 - 確定後はメンバーへプッシュ通知、個人ダッシュボードへ自動反映
 - スタッフ別・日付別の一覧表示
+
+#### 8. 議決権行使・委任状
+- 総会・定期会議の議案に対して **電子で賛否を投票**（出席/賛成/反対/棄権）
+- 出席できない場合は **委任状を電子提出**（代理人を指定、または白紙委任）
+- 投票期限・定足数の設定、リアルタイム集計・結果表示
+- 電子印鑑と連携し、提出の証跡を記録
+- NPO・協同組合・株主総会など総会を持つ組織で汎用利用可能
+
+#### 9. 住民台帳
+- 居室（部屋番号）と区分所有者・賃借人を紐付けて管理
+- 所有者 / 賃借人の区別、入退居日の記録
+- **非公開設定**: 台帳全体を ADMIN/DEPUTY_ADMIN のみ閲覧可に設定可能。個人は自室・自身の情報のみ閲覧
+- **物件掲示板**: 売買希望・賃貸希望・駐車場区画の譲渡希望を居住者間で掲示（公開範囲はメンバー内のみ）
+
+#### 10. 駐車場区画管理
+- 区画番号・種別（屋内/屋外/身障者用等）・**個別価格設定**（月額）を区画ごとに登録
+- 利用者の割り当て: 単一指定・**複数同時指定・一括指定**に対応
+- 空き状況をリアルタイム表示（VACANT / OCCUPIED / MAINTENANCE）
+- 空き申請・抽選機能（希望者が申請 → 管理者が抽選または先着で割り当て）
+- **譲渡・売買希望リスト**: 居住者が不要な区画の譲渡希望を掲示
 
 ### 管理者ダッシュボード
 
@@ -627,6 +656,24 @@
 ### シフト管理 (3テーブル)
 `shift_schedules`, `shift_slots`, `shift_requests`
 
+### 議決権行使・委任状 (2テーブル)
+`proxy_votes`, `proxy_delegations`
+
+### 住民台帳・物件情報 (3テーブル)
+`dwelling_units`, `resident_registry`, `property_listings`
+
+※ `dwelling_units`: 部屋番号・種別・間取り等の居室マスター
+※ `resident_registry`: 区分所有者/賃借人の区別・入退居日を管理。`is_public=false` で ADMIN/DEPUTY_ADMIN のみ閲覧可
+※ `property_listings`: 居住者間の売買/賃貸/駐車場譲渡希望の掲示（`listing_type`: SALE/RENT/PARKING）
+
+### 駐車場区画管理 (4テーブル)
+`parking_spaces`, `parking_assignments`, `parking_applications`, `parking_listings`
+
+※ `parking_spaces`: 区画番号・種別・`price_per_month`（個別価格設定）・`status`（VACANT/OCCUPIED/MAINTENANCE）
+※ `parking_assignments`: 利用者と区画の紐付け。複数区画の一括割り当てに対応
+※ `parking_applications`: 空き区画への申請・抽選エントリー
+※ `parking_listings`: 区画の譲渡・売買希望リスト
+
 ### 外部連携・広告 (5テーブル)
 `line_integration_config`, `google_calendar_sync`, `sns_feed_cache`, `ad_slots`, `sponsors`
 
@@ -793,6 +840,15 @@
 
 ### シフト管理
 `GET/POST /shifts/schedules`, `GET/PUT/DELETE /shifts/schedules/{id}`, `PATCH /shifts/schedules/{id}/publish`, `GET/POST /shifts/schedules/{id}/slots`, `PUT/DELETE /shifts/slots/{id}`, `GET/POST /shifts/requests`, `GET /shifts/my`
+
+### 議決権行使・委任状
+`GET/POST /proxy-votes`, `GET /proxy-votes/{id}`, `GET /proxy-votes/{id}/results`, `POST /proxy-votes/{id}/cast`, `POST /proxy-votes/{id}/delegate`, `GET /proxy-votes/my`
+
+### 住民台帳・物件情報
+`GET/POST /dwelling-units`, `GET/PUT/DELETE /dwelling-units/{id}`, `GET/POST /dwelling-units/{id}/residents`, `PUT/DELETE /dwelling-units/{unitId}/residents/{id}`, `GET/POST /property-listings`, `GET/PUT/DELETE /property-listings/{id}`
+
+### 駐車場区画管理
+`GET/POST /parking/spaces`, `GET/PUT/DELETE /parking/spaces/{id}`, `POST /parking/spaces/bulk-assign`, `GET /parking/spaces/vacant`, `GET/POST /parking/applications`, `PATCH /parking/applications/{id}/approve`, `GET/POST /parking/listings`, `GET/PUT/DELETE /parking/listings/{id}`
 
 ---
 
