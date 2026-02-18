@@ -456,17 +456,19 @@
 
 #### 11. カルテ
 - 来店ごとにカルテを作成・蓄積し、顧客の施術履歴を体系的に管理
-- **問診票・初回同意書**: 電子印鑑と連携してペーパーレス化。テンプレートをカスタマイズ可能
-- **アレルギー・禁忌情報**: 施術前に画面上部に目立つ形で表示し安全管理を徹底
-- **ビフォーアフター写真**: 来店ごとに写真を紐付け。顧客への公開/非公開を施術者が選択
-- **担当スタッフ記録**: 誰が施術したかを記録・集計
-- **身体チャート** （整骨院向け）: 人体図に痛み・施術箇所をタップでマーク
-- **カラー・薬剤レシピ記録** （美容室向け）: 使用カラー剤・配合比率・放置時間を記録。次回再現に活用
-- **パッチテスト記録** （美容室向け）: テスト日時・結果を記録
-- **経過観察グラフ**: 痛みレベル・施術回数・来店頻度を時系列グラフで表示
-- **次回推奨メモ**: 次回施術の提案を記録。予約リマインドと連携
-- **顧客への部分共有**: 次回メモ・写真など施術者が許可した項目のみ顧客ダッシュボードに表示
-- **PDF出力**: カルテを印刷・保存用にPDF出力
+- **セクション選択式**: 以下のセクションを管理者が ON/OFF で選択して使用。不要なセクションは非表示にできる
+  - 問診票・初回同意書（電子印鑑連携）
+  - アレルギー・禁忌情報（施術前に目立つ警告表示）
+  - ビフォーアフター写真（顧客への公開/非公開を施術者が選択）
+  - 担当スタッフ記録
+  - 身体チャート（整骨院向け: 人体図にタップでマーク）
+  - カラー・薬剤レシピ記録（美容室向け: 配合比率・放置時間）
+  - パッチテスト記録（美容室向け）
+  - 経過観察グラフ（来店頻度・痛みレベルの時系列表示）
+  - 次回推奨メモ（予約リマインドと連携）
+  - 顧客への部分共有
+  - PDF出力
+- **カスタム項目**: デフォルト項目に加え、独自項目を最大5つまで追加可能（型: テキスト / 数値 / 日付 / 選択肢 / チェックボックス）
 - ※ 選択式モジュール11個目のため**有料プランが必要**
 
 #### 10. 駐車場区画管理
@@ -688,14 +690,16 @@
 ※ `resident_registry`: 区分所有者/賃借人の区別・入退居日を管理。`is_public=false` で ADMIN/DEPUTY_ADMIN のみ閲覧可
 ※ `property_listings`: 居住者間の売買/賃貸/駐車場譲渡希望の掲示（`listing_type`: SALE/RENT/PARKING）
 
-### カルテ (5テーブル)
-`chart_records`, `chart_intake_forms`, `chart_photos`, `chart_body_marks`, `chart_formulas`
+### カルテ (7テーブル)
+`chart_records`, `chart_intake_forms`, `chart_photos`, `chart_body_marks`, `chart_formulas`, `chart_section_settings`, `chart_custom_fields`
 
 ※ `chart_records`: カルテ本体（来店日・担当スタッフ・次回推奨メモ・顧客共有フラグ・アレルギー禁忌情報）
 ※ `chart_intake_forms`: 問診票・同意書（電子印鑑と連携。初回 or 毎回更新）
 ※ `chart_photos`: ビフォーアフター写真（`photo_type`: BEFORE/AFTER, `is_shared_to_customer`）
 ※ `chart_body_marks`: 身体チャートのマーク情報（整骨院向け。座標・種別・メモ）
 ※ `chart_formulas`: カラー・薬剤レシピ（美容室向け。薬剤名・配合比率・放置時間・パッチテスト記録）
+※ `chart_section_settings`: チームごとのセクション ON/OFF 設定（`team_id`, `section_type` ENUM, `is_enabled`）
+※ `chart_custom_fields`: カスタム項目定義（`team_id`, `field_name`, `field_type`: TEXT/NUMBER/DATE/SELECT/CHECKBOX, `sort_order`）。1チームにつき最大5件
 
 ### 駐車場区画管理 (5テーブル)
 `parking_spaces`, `parking_assignments`, `parking_applications`, `parking_listings`, `registered_vehicles`
@@ -883,7 +887,7 @@
 `GET/POST /dwelling-units`, `GET/PUT/DELETE /dwelling-units/{id}`, `GET/POST /dwelling-units/{id}/residents`, `PUT/DELETE /dwelling-units/{unitId}/residents/{id}`, `GET/POST /property-listings`, `GET/PUT/DELETE /property-listings/{id}`
 
 ### カルテ
-`GET/POST /charts`, `GET/PUT/DELETE /charts/{id}`, `POST /charts/{id}/photos`, `DELETE /charts/photos/{id}`, `GET/PUT /charts/{id}/intake-form`, `PUT /charts/{id}/body-marks`, `GET/POST /charts/{id}/formulas`, `PUT/DELETE /charts/formulas/{id}`, `GET /charts/{id}/pdf`, `PATCH /charts/{id}/share`, `GET /charts/customer/{userId}`
+`GET/POST /charts`, `GET/PUT/DELETE /charts/{id}`, `POST /charts/{id}/photos`, `DELETE /charts/photos/{id}`, `GET/PUT /charts/{id}/intake-form`, `PUT /charts/{id}/body-marks`, `GET/POST /charts/{id}/formulas`, `PUT/DELETE /charts/formulas/{id}`, `GET /charts/{id}/pdf`, `PATCH /charts/{id}/share`, `GET /charts/customer/{userId}`, `GET/PUT /charts/settings/sections`, `GET/POST /charts/settings/custom-fields`, `PUT/DELETE /charts/settings/custom-fields/{id}`
 
 ### 駐車場区画管理
 `GET/POST /parking/spaces`, `GET/PUT/DELETE /parking/spaces/{id}`, `POST /parking/spaces/bulk-assign`, `GET /parking/spaces/vacant`, `GET/POST /parking/applications`, `PATCH /parking/applications/{id}/approve`, `GET/POST /parking/listings`, `GET/PUT/DELETE /parking/listings/{id}`
