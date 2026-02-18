@@ -549,12 +549,25 @@
 | 参照カード | チャットメッセージ・タイムライン投稿・掲示板スレッド/返信・ブログ記事・ファイルをストック | `content_snapshot` で内容を保持（元が削除されても残る） |
 | メモカード | ボード専用の独立したテキストメモ | なし |
 | URLカード | 外部URLとタイトル・OGPサムネイルを表示 | なし |
+| 見出しカード | ボード上に横長のタイトルバーを配置。カードを束ねる意図を示す見出しとして機能（コンテナではなく視覚的なラベル） | なし |
+
+**セクション（折りたたみグループ）**
+
+ボードの最大の整理単位。**見出し付きの領域**にカードを格納し、折りたたみ（collapse）で領域をタイトルバーだけに縮小できる。
+
+- **見出しを付ける**: セクション名（例: 「来週の議題」「決定事項まとめ」）を設定
+- **カードを追加**: セクション内に参照カード・メモカード・URLカード・見出しカードを配置
+- **折りたたみ**: セクションを折りたたむと、名前のタイトルバーだけが残り、内包するカードが非表示になる（データは保持）
+- **展開**: タイトルバーをクリックすると全カードが再表示
+
+> **見出しカード vs セクション の使い分け**
+> - **見出しカード**: 「このあたりの話題は〇〇について」という視覚的な仕切り線。格納の概念なし
+> - **セクション**: 関連カードを一つにまとめ、折りたたんでボードをスッキリさせたい場合
 
 **ビジュアル整理**
 - **自由配置**: カードをドラッグ＆ドロップで任意の座標に配置（X/Y座標をDBに保存）
 - **カラーラベリング**: 付箋の色を6色から選択（白/黄/赤/青/緑/紫）
 - **カードサイズ**: small / medium / large の3段階
-- **グループ（島）**: 複数カードを矩形ボックスで囲んでグループ化。グループにラベルを付与
 - **ボード背景**: コルク風テクスチャ / ホワイト / ダーク から選択
 
 **コンテキスト保持**
@@ -851,8 +864,8 @@
 `corkboards`, `corkboard_cards`, `corkboard_groups`, `corkboard_card_groups`
 
 ※ `corkboards`: ボードマスター（`scope_type` ENUM: PERSONAL/TEAM/ORGANIZATION, `scope_id` nullable, `owner_id` nullable（PERSONALの場合はuser_id）, `name`, `background_style` ENUM: CORK/WHITE/DARK, `is_default` BOOLEAN）。個人・チーム・組織それぞれに複数ボードを作成可能
-※ `corkboard_cards`: カード（`board_id`, `card_type` ENUM: REFERENCE/MEMO/URL, `ref_type` ENUM nullable: CHAT_MESSAGE/TIMELINE_POST/BULLETIN_THREAD/BLOG_POST/FILE, `ref_id` BIGINT nullable, `content_snapshot` TEXT nullable（参照元削除後も内容を保持）, `ref_url` VARCHAR nullable, `pos_x` INT, `pos_y` INT, `card_width` INT DEFAULT 200, `card_height` INT DEFAULT 150, `color` ENUM: WHITE/YELLOW/RED/BLUE/GREEN/PURPLE, `user_note` TEXT nullable, `title` VARCHAR nullable, `auto_archive_at` DATETIME nullable, `is_archived` BOOLEAN DEFAULT false, `created_by` FK users）。`auto_archive_at` を過ぎたカードはバッチで `is_archived=true` に更新し折りたたみ表示（データは保持）
-※ `corkboard_groups`: グループ（島）（`board_id`, `name` VARCHAR nullable, `pos_x` INT, `pos_y` INT, `group_width` INT, `group_height` INT, `color` ENUM: TRANSPARENT/LIGHT_YELLOW/LIGHT_BLUE/LIGHT_GREEN/LIGHT_PURPLE）。グループはボード上の矩形ボックスとして描画し、内包カードを視覚的にグルーピングする
+※ `corkboard_cards`: カード（`board_id`, `card_type` ENUM: REFERENCE/MEMO/URL/SECTION_HEADER, `ref_type` ENUM nullable: CHAT_MESSAGE/TIMELINE_POST/BULLETIN_THREAD/BLOG_POST/FILE, `ref_id` BIGINT nullable, `content_snapshot` TEXT nullable（参照元削除後も内容を保持）, `ref_url` VARCHAR nullable, `pos_x` INT, `pos_y` INT, `card_width` INT DEFAULT 200, `card_height` INT DEFAULT 150, `color` ENUM: WHITE/YELLOW/RED/BLUE/GREEN/PURPLE, `user_note` TEXT nullable, `title` VARCHAR nullable, `auto_archive_at` DATETIME nullable, `is_archived` BOOLEAN DEFAULT false, `created_by` FK users）。`SECTION_HEADER` は `title` のみ使用し、他のコンテンツフィールドは NULL。横長タイトルバーとして描画する
+※ `corkboard_groups`: セクション（折りたたみ可能な名前付きコンテナ）（`board_id`, `name` VARCHAR（セクション見出し）, `pos_x` INT, `pos_y` INT, `group_width` INT, `group_height` INT, `color` ENUM: TRANSPARENT/LIGHT_YELLOW/LIGHT_BLUE/LIGHT_GREEN/LIGHT_PURPLE, `is_collapsed` BOOLEAN DEFAULT false）。`is_collapsed=true` 時はタイトルバーのみ描画しセクション内のカードを非表示にする。カードをセクション内に追加すると `corkboard_card_groups` に紐付けが保存される
 ※ `corkboard_card_groups`: カードとグループの中間テーブル（`card_id`, `group_id`）。1枚のカードは複数グループに属さない設計とし、移動時は旧グループとの紐付けを更新する
 
 ### QR会員証 (1テーブル)
@@ -1198,7 +1211,7 @@
 `POST /error-reports` (送信・認証不要), `GET /system-admin/error-reports` (一覧・SYSTEM_ADMIN), `GET /system-admin/error-reports/{id}` (詳細), `PATCH /system-admin/error-reports/{id}/status` (ステータス更新)
 
 ### コルクボード
-`GET/POST /corkboards` (ボード一覧・作成), `GET/PUT/DELETE /corkboards/{id}` (詳細・更新・削除), `GET/POST /corkboards/{id}/cards` (カード一覧・追加), `PUT/DELETE /corkboards/{id}/cards/{cardId}` (カード更新・削除), `PATCH /corkboards/{id}/cards/{cardId}/position` (位置のみ更新。頻繁に呼ばれるため軽量エンドポイントを分離), `GET/POST /corkboards/{id}/groups` (グループ一覧・作成), `PUT/DELETE /corkboards/{id}/groups/{groupId}` (グループ更新・削除), `GET /chat/messages/{id}/context` (参照カードのコンテキスト取得。前後N件), `GET /timeline-posts/{id}/context` (同上・タイムライン), `GET /bulletin-threads/{id}/context` (同上・掲示板)
+`GET/POST /corkboards` (ボード一覧・作成), `GET/PUT/DELETE /corkboards/{id}` (詳細・更新・削除), `GET/POST /corkboards/{id}/cards` (カード一覧・追加), `PUT/DELETE /corkboards/{id}/cards/{cardId}` (カード更新・削除), `PATCH /corkboards/{id}/cards/{cardId}/position` (位置のみ更新。頻繁に呼ばれるため軽量エンドポイントを分離), `GET/POST /corkboards/{id}/sections` (セクション一覧・作成), `PUT/DELETE /corkboards/{id}/sections/{sectionId}` (セクション更新・削除), `PATCH /corkboards/{id}/sections/{sectionId}/collapse` (折りたたみ状態のトグル), `GET /chat/messages/{id}/context` (参照カードのコンテキスト取得。前後N件), `GET /timeline-posts/{id}/context` (同上・タイムライン), `GET /bulletin-threads/{id}/context` (同上・掲示板)
 
 ### 課金サマリー（ダッシュボード用）
 `GET /teams/{id}/billing/current-month` (今月の課金合計・内訳。ADMIN/DEPUTY_ADMIN), `GET /organizations/{id}/billing/current-month` (今月の課金合計・内訳。ADMIN/DEPUTY_ADMIN), `GET /users/me/billing/current-month` (個人向け課金サマリー。将来対応)
