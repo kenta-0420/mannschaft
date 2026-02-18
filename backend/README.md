@@ -95,7 +95,7 @@
 |--------|----------|-------------|
 | システム管理者 (SYSTEM_ADMIN) | プラットフォーム全体 | 全組織・チームの管理、テンプレート管理、システム設定、ユーザーBAN |
 | 管理者 (ADMIN) | チーム/組織内 | 全機能（メンバー管理、備品管理、広告設定、投稿編集、ロール管理、モジュール設定） |
-| 副管理者 (DEPUTY_ADMIN) | チーム/組織内 | ADMIN が許可した操作のみ（緊急安否確認・回覧板・スケジュール管理等）。権限範囲はチーム/組織ごとに ADMIN が設定。複数人に割り当て可能 |
+| 副管理者 (DEPUTY_ADMIN) | チーム/組織内 | ADMIN が許可した操作のみ。操作権限はパーミッションを個別選択して構成した**権限グループ**単位で管理。複数の権限グループをテンプレートとして作成でき、ユーザーごとに割り当て可能。コンテンツ削除権限はデフォルト非付与（明示的許可が必要） |
 | メンバー (MEMBER) | チーム/組織内 | プラットフォームデフォルトの操作（ADMIN が範囲を制限可能） |
 | サポーター (SUPPORTER) | チーム/組織内 | サポーター限定コンテンツ、活動速報 |
 | ゲスト (GUEST) | チーム/組織内 | スケジュール・活動記録、公式ブログ、SNSフィード |
@@ -103,7 +103,9 @@
 ※ Phase 1 では上記の固定ロールのみで実装する。ただし、DB設計は `roles` + `permissions` + 中間テーブル（RBAC）方式とし、将来的なカスタムロール追加に対応可能な構造にする
 ※ Phase 1 の管理者画面では「ユーザーへのロール割り当て」のみ、ロール自体の追加・編集は将来対応
 ※ グループ単位でもロール設定可能
-※ DEPUTY_ADMIN・MEMBER の権限は 3 層で管理する: ① SYSTEM_ADMIN がロールごとの権限の上限（天井）を設定 → ② 各チーム/組織の ADMIN がその天井内でチェックボックスにより ON/OFF → ③ ユーザーに割り当て
+※ DEPUTY_ADMIN・MEMBER の権限は 3 層で管理する: ① SYSTEM_ADMIN がロールごとの権限の上限（天井）を設定 → ② 各チーム/組織の ADMIN がその天井内でパーミッションを個別選択して権限グループを構成 → ③ ユーザーに権限グループを割り当て
+※ **DEPUTY_ADMIN 権限グループ**: ADMIN は操作権限を個別選択した名前付きグループ（`team_permission_groups`）を複数作成・テンプレートとして保存できる。「Aさんにはグループ1（受付・安否確認）、B・CさんにはグループA2（スケジュール・ファイル管理）」のような運用が可能
+※ **コンテンツ削除のデフォルト非付与**: 投稿・チャット・掲示板スレッド等の他者コンテンツ削除権限は DEPUTY_ADMIN のデフォルトパーミッションに含めない。コンテンツの責任はその組織・チームに帰属するため、削除は ADMIN が担う。DEPUTY_ADMIN への付与が必要な場合は権限グループで明示的に設定する
 ※ `user_roles` は `team_id` / `organization_id` のスコープカラムを持ち、「チームAでは DEPUTY_ADMIN・チームBでは MEMBER」のようなマルチ所属に対応
 
 ### セキュリティ・認証
@@ -183,6 +185,8 @@
 | 21 | 回覧板 | 文書の順番/一斉回覧・電子押印・完了管理 |
 | 22 | 電子印鑑 | 登録姓を印鑑風に生成・各機能で横断利用 |
 | 23 | 緊急安否確認 | 災害・緊急時の一斉安否確認・集計 |
+| 24 | アクセス解析 | ページビュー数の日別・月別・累計表示（Chart.js グラフ） |
+| 25 | テーマ・外観カスタマイズ | ライト/ダーク切替・背景色5色・期間限定シーズナル壁紙 |
 
 ### 選択式モジュール（カタログから選択・課金対象）
 
@@ -233,6 +237,8 @@
 | 21 | 回覧板 | ○ | ○ | - |
 | 22 | 電子印鑑 | ○ | ○ | ○ |
 | 23 | 緊急安否確認 | ○ | ○ | ○ |
+| 24 | アクセス解析 | ○ | ○ | ○ |
+| 25 | テーマ・外観カスタマイズ | ○ | ○ | ○ |
 
 #### 選択式モジュールのレベル別適用
 
@@ -429,6 +435,19 @@
 - 未回答者への自動リマインド（時間間隔を設定可能）
 - スケジュール・出欠の仕組みを流用して実装コストを低減
 
+#### 24. アクセス解析
+- チームプロフィール・ブログ記事・活動記録等のページビュー数を自動集計
+- **日別・月別・累計**グラフをダッシュボードウィジェットとして表示（Chart.js）
+- ログイン済みメンバーの閲覧 / ゲスト閲覧を区別してカウント
+- 生ログは **90日間** 保持後に物理削除。日次集計データは永続保持
+- 管理者はコンテンツ別（投稿・ページ等）のランキングを閲覧可能
+
+#### 25. テーマ・外観カスタマイズ
+- **ライト/ダークモード**: ユーザーが個別に切替。`SYSTEM`（OS設定に追従）も選択可能
+- **背景色プリセット**: 5色から選択（デフォルト / ブルー / グリーン / パープル / オレンジ）。ユーザー個人の設定として保存
+- **シーズナル壁紙**: SYSTEM_ADMINが開始・終了日時を設定した期間限定壁紙を配信。有効期間中は全ユーザーの背景に適用される（ユーザーの色設定より優先）
+- 設定はブラウザの `localStorage` にも保存し、ログイン前も適用
+
 ### 選択式モジュール詳細
 
 #### 1. QR会員証
@@ -507,8 +526,10 @@
 #### AA. 管理者ダッシュボード
 - 全管理機能を `/admin` 配下に集約
 - ユーザー管理、ロール・パーミッション管理、モジュール設定、スケジュール管理、ブログ管理、掲示板カテゴリ管理、備品管理、メンバー紹介管理、広告・スポンサー管理、予約管理設定、Googleカレンダー設定、LINE設定、SNS設定
-- **DEPUTY_ADMIN・MEMBER の権限カスタマイズ**: チェックボックスで各ロールの権限を ON/OFF（`team_role_permissions` に保存）。SYSTEM_ADMIN が定めた上限の範囲内で設定可能
-- **DEPUTY_ADMIN の割り当て**: 複数ユーザーを DEPUTY_ADMIN に任命可能
+- **DEPUTY_ADMIN 権限グループ管理**: パーミッションを個別選択した名前付きグループの作成・編集・複製・削除。グループはテンプレートとして保存でき、DEPUTY_ADMIN ユーザーへ割り当てる。「グループ1（受付・安否確認担当）」「グループ2（スケジュール・ファイル管理担当）」など複数グループの運用が可能。SYSTEM_ADMIN が定めた権限の上限（天井）の範囲内で設定可能
+- **DEPUTY_ADMIN の割り当て**: 複数ユーザーを DEPUTY_ADMIN に任命し、それぞれに権限グループを割り当て
+- **MEMBER の権限調整**: チェックボックスで MEMBER のデフォルト操作を ON/OFF（`team_role_permissions` に保存）
+- **コンテンツ削除ポリシー**: 掲示板・タイムライン・チャット等の他者コンテンツ削除は ADMIN が担う。DEPUTY_ADMIN への削除権限付与は権限グループで明示的に設定した場合のみ有効
 - テンプレート・モジュールのON/OFF管理
 
 #### AB. システム管理者ダッシュボード
@@ -521,6 +542,7 @@
 - **パッケージ管理**: モジュールをまとめたパッケージの作成・編集・公開/非公開・価格設定
 - **割引キャンペーン管理**: 期間限定割引の作成・対象指定（全体/モジュール/パッケージ）・クーポンコード発行・利用状況確認
 - **ストレージプラン管理**: ストレージプランの作成・編集（無料枠・月額/年額・超過従量単価・ハードキャップ）。各チームのストレージ使用状況の一覧確認
+- **シーズナル壁紙管理**: 期間限定壁紙の作成・画像アップロード・公開期間設定（開始/終了日時）。プレビュー確認後に公開。有効期間中は全ユーザーへ自動適用
 - **消費税設定**: 税名称・税率・表示方式（税込/税抜）の設定
 - ユーザーBAN・通報管理
 - 監査ログ閲覧
@@ -585,15 +607,17 @@
 
 ## DB設計
 
-### 認証・権限 (10テーブル)
-`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `team_role_permissions`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`
+### 認証・権限 (12テーブル)
+`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `team_role_permissions`, `team_permission_groups`, `permission_group_items`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`
 
 ※ SYSTEM_ADMIN は `roles` テーブルの1レコード + `user_roles` で割り当て。専用テーブルは設けず RBAC に統一する
 ※ `users`: `last_name` / `first_name`（実名）・`display_name`（愛称1、表示用ニックネーム）・`nickname2`（愛称2、nullable）を持つ。電子印鑑は `last_name` を使用。検索・メンションでは実名・愛称いずれでもヒットするようにする
 ※ `users.is_searchable BOOLEAN DEFAULT true`: OFF にすると他ユーザーの検索結果に表示されない（メンションは引き続き利用可能）
-※ `role_permissions`: プラットフォームレベルの権限デフォルト（SYSTEM_ADMIN が管理）
-※ `team_role_permissions`: チーム/組織レベルの権限カスタマイズ（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `role_id`, `permission_id`, `is_enabled`）。DEPUTY_ADMIN と MEMBER が対象。レコードが存在しない場合は `role_permissions` のデフォルトを使用
-※ `user_roles`: `team_id` / `organization_id` のスコープカラムを持ち、マルチ所属・複数 DEPUTY_ADMIN に対応
+※ `role_permissions`: プラットフォームレベルの権限デフォルト（SYSTEM_ADMIN が管理）。コンテンツ削除系パーミッション（`CONTENT_DELETE` 等）は DEPUTY_ADMIN のデフォルトを `false` に設定する
+※ `team_role_permissions`: チーム/組織レベルの権限カスタマイズ（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `role_id`, `permission_id`, `is_enabled`）。主に MEMBER のデフォルト調整に使用
+※ `team_permission_groups`: ADMIN が作成する名前付き権限グループ（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `name`, `description` nullable, `created_by`）。テンプレートとして保存・複製可能
+※ `permission_group_items`: 各権限グループに含まれるパーミッション（`group_id`, `permission_id`, `is_enabled`）。パーミッションを個別に ON/OFF する
+※ `user_roles`: `team_id` / `organization_id` のスコープカラムを持ち、マルチ所属・複数 DEPUTY_ADMIN に対応。`permission_group_id` (FK → `team_permission_groups`, nullable) を持ち、DEPUTY_ADMIN へのグループ割り当てを管理する。null の場合は `team_role_permissions` のデフォルトを使用
 ※ `two_factor_auth`: TOTP シークレット・有効フラグを保持。バックアップコード（8桁 × 10件）をハッシュ化して別カラムに保存し、デバイス紛失時の緊急復旧に対応する
 ※ `password_reset_tokens`: トークンは `SecureRandom` + Base64URL 方式で生成。有効期限は発行から **30分** とし、使用済みトークンは即時無効化する
 
@@ -641,6 +665,18 @@
 
 ### ダッシュボード設定 (1テーブル)
 `dashboard_widget_settings`
+
+### アクセス解析 (2テーブル)
+`page_view_logs`, `page_view_daily_stats`
+
+※ `page_view_logs`: 生ログ（`target_type` ENUM: TEAM_PROFILE/BLOG_POST/ACTIVITY_RECORD 等, `target_id`, `team_id`, `viewer_type`: MEMBER/GUEST/ANONYMOUS, `viewed_at`）。保持期間 **90日** 後にバッチ物理削除
+※ `page_view_daily_stats`: 日次集計（`target_type`, `target_id`, `team_id`, `date` DATE, `view_count`, `member_view_count`, `guest_view_count`）。永続保持。バッチで毎日 0:00 に前日分を集計・書き込む
+
+### 外観設定 (2テーブル)
+`user_appearance_settings`, `seasonal_themes`
+
+※ `user_appearance_settings`: ユーザーの外観設定（`user_id`, `theme_mode` ENUM: LIGHT/DARK/SYSTEM, `color_preset` ENUM: DEFAULT/BLUE/GREEN/PURPLE/ORANGE）。レコードが存在しない場合はデフォルト（SYSTEM + DEFAULT）を適用
+※ `seasonal_themes`: SYSTEM_ADMINが設定する期間限定壁紙（`name`, `image_url`, `start_at`, `end_at` nullable, `is_active`）。有効期間中はユーザー個人の色設定より優先して全画面に適用
 
 ### QR会員証 (1テーブル)
 `member_cards`
@@ -931,7 +967,7 @@
 `GET/POST /team/pages`, `GET/PUT/DELETE /team/pages/{id}`, `PATCH /team/pages/{id}/publish`, `GET/POST /team/pages/{id}/sections`, `PUT/DELETE /team/sections/{id}`, `GET/POST /team/members`, `GET/PUT/DELETE /team/members/{id}`, `POST /team/members/bulk`, `GET/POST /team/member-fields`, `PUT/DELETE /team/member-fields/{id}`
 
 ### 管理者ダッシュボード
-`GET /admin/dashboard`, `/admin/users/**`, `/admin/roles/**`, `/admin/permissions/**`, `/admin/modules/**`, `/admin/schedules/**`, `/admin/blog/**`, `/admin/bulletin/categories/**`, `/admin/equipment/**`, `/admin/team/**`, `/admin/ads/**`, `/admin/sponsors/**`, `/admin/reservations/**`, `/admin/google-calendar/**`, `/admin/line/**`, `/admin/sns/**`
+`GET /admin/dashboard`, `/admin/users/**`, `/admin/roles/**`, `/admin/permissions/**`, `/admin/modules/**`, `/admin/schedules/**`, `/admin/blog/**`, `/admin/bulletin/categories/**`, `/admin/equipment/**`, `/admin/team/**`, `/admin/ads/**`, `/admin/sponsors/**`, `/admin/reservations/**`, `/admin/google-calendar/**`, `/admin/line/**`, `/admin/sns/**`, `GET/POST /admin/permission-groups` (権限グループ一覧・作成), `GET/PUT/DELETE /admin/permission-groups/{id}` (編集・削除), `POST /admin/permission-groups/{id}/duplicate` (複製), `PUT /admin/permission-groups/{id}/assign/{userId}` (ユーザーへのグループ割り当て)`
 
 ### システム管理者
 `GET /system-admin/dashboard`, `/system-admin/organizations/**`, `/system-admin/teams/**`, `/system-admin/users/**`, `/system-admin/templates/**`, `/system-admin/modules/**`, `/system-admin/reports/**`, `/system-admin/audit-logs/**`, `/system-admin/settings/**`
@@ -968,6 +1004,12 @@
 
 ### 駐車場区画管理
 `GET/POST /parking/spaces`, `GET/PUT/DELETE /parking/spaces/{id}`, `POST /parking/spaces/bulk-assign`, `GET /parking/spaces/vacant`, `GET/POST /parking/applications`, `PATCH /parking/applications/{id}/approve`, `GET/POST /parking/listings`, `GET/PUT/DELETE /parking/listings/{id}`
+
+### アクセス解析
+`GET /teams/{id}/analytics` (累計), `GET /teams/{id}/analytics/daily` (日別), `GET /teams/{id}/analytics/monthly` (月別), `GET /teams/{id}/analytics/content` (コンテンツ別ランキング)
+
+### 外観設定
+`GET/PUT /users/appearance` (ユーザー個人設定), `GET /seasonal-themes/active` (現在有効なシーズナルテーマ取得), `GET/POST/PUT/DELETE /system-admin/seasonal-themes` (SYSTEM_ADMIN管理)
 
 ---
 
