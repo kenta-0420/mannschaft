@@ -153,11 +153,26 @@
 | フリープラン | デフォルト機能（27個）＋ 選択式モジュール最大10個まで無料 |
 | 個別モジュール課金 | 選択式モジュールを1個単位で有効化。月額または年額サブスクリプション |
 | パッケージ課金 | 複数モジュールをセットにしたパッケージを割引価格で購入 |
+| 組織数課金 | 組織配下のアクティブなチーム数に応じた月額課金。組織種別（非営利/営利）ごとに無料枠と単価を設定 |
 
 - デフォルト機能はいずれの課金方式でも無料。モジュール数カウント対象外
 - 月額・年額の選択制（年額は月額×12に対して割引率を設定可能）
 - **全価格・パッケージ構成・割引はSYSTEM_ADMINが管理画面からリアルタイムに設定変更可能**
 - 価格変更は翌請求サイクルから適用。既存契約中のチームへは移行猶予期間を設ける
+
+#### 組織数課金
+
+組織（`organizations`）は登録時に **組織種別（`org_type`）** を設定する。種別ごとに無料枠と超過課金単価が異なる。課金対象はアーカイブされていないアクティブなチーム数（`archived_at IS NULL`）を月次バッチで集計する。
+
+| 組織種別 | 無料枠 | 超過課金単価（月額・1チームあたり） |
+|---------|-------|-------------------------------|
+| 非営利団体 (NONPROFIT) | 20チームまで無料 | 超過分はSYSTEM_ADMINが設定（将来検討） |
+| 営利組織 (FORPROFIT) | 5チームまで無料（6チーム目から課金） | 200円 |
+
+- 無料枠・単価はすべて **SYSTEM_ADMINが管理画面からリアルタイムに設定変更可能**
+- 課金は翌月請求。チーム数が無料枠以下に戻った場合は翌月から無課金に戻る
+- モジュール課金と組織数課金は **独立した請求軸**（合算して1枚の請求書に表示）
+- 組織種別は組織作成時に選択。変更には SYSTEM_ADMIN の承認が必要（悪用防止）
 
 #### 割引・クーポン
 
@@ -595,6 +610,8 @@
 - **割引キャンペーン管理**: 期間限定割引の作成・対象指定（全体/モジュール/パッケージ）・クーポンコード発行・利用状況確認
 - **ストレージプラン管理**: ストレージプランの作成・編集（無料枠・月額/年額・超過従量単価・ハードキャップ）。各チームのストレージ使用状況の一覧確認
 - **シーズナル壁紙管理**: 期間限定壁紙の作成・画像アップロード・公開期間設定（開始/終了日時）。プレビュー確認後に公開。有効期間中は全ユーザーへ自動適用
+- **組織数課金設定**: 組織種別（非営利/営利）ごとの無料枠チーム数・超過課金単価（円/月）を設定。変更は翌月請求サイクルから反映。各組織の現在のチーム数・課金状況の一覧確認
+- **組織種別変更承認**: 組織から申請された `org_type` の変更リクエストを審査・承認/拒否
 - **消費税設定**: 税名称・税率・表示方式（税込/税抜）の設定
 - **エラーレポート管理**: ユーザーから送信されたエラーレポートの一覧・詳細確認（スタックトレース・発生ページ・ユーザーエージェント・任意コメント）。ステータス管理（未対応 / 対応中 / 解決済み）
 - **アフィリエイト設定**: AmazonアソシエイトのタグIDと表示配置（サイドバー右・バナーフッター等）を管理画面から設定・切り替え。将来は楽天アフィリエイト等の追加も対応できる設計とする
@@ -690,6 +707,7 @@
 `organizations`, `organization_members`, `team_memberships`, `invitation_links`
 
 ※ `organizations`: `name`（正式名称）・`nickname1`・`nickname2`（愛称、両方 nullable）を持つ。検索・表示では正式名称と愛称いずれでもヒットするようにする
+※ `organizations.org_type` ENUM: NONPROFIT/FORPROFIT。組織作成時に選択。組織数課金の無料枠・単価の適用区分に使用する。変更はSYSTEM_ADMINの承認が必要
 ※ `organizations.is_searchable BOOLEAN DEFAULT true`: OFF にすると検索結果に表示されない
 ※ `organizations.archived_at DATETIME nullable`: 傘下の全チーム・全メンバーの最終ログインのうち最新が12ヶ月経過した時点でバッチ処理が付与。いずれかのメンバーがログインすると即時クリア
 ※ `invitation_links`: `invite_type`（ENUM: `EMAIL` / `URL` / `QR`）・`token`（`SecureRandom` + Base64URL 方式で生成する暗号論的乱数トークン）・`expires_at`（nullable、null=無期限）・`max_uses`（nullable、null=無制限）・`used_count`・`is_active`（手動無効化フラグ）を持つ。QR コードはトークンから動的生成し画像は保存しない。期限切れ・上限到達・`is_active=false` のいずれかで即時失効
@@ -717,6 +735,27 @@
 ※ `tax_settings`: 消費税設定（`tax_name`, `rate` DECIMAL e.g. 10.00, `is_included_in_price` BOOLEAN, `is_active`）。複数レコードで将来の複数税率に対応できる設計とする
 ※ `team_subscriptions`: チームの現在の契約状態（`billing_cycle`: MONTHLY/YEARLY, `current_period_start`, `current_period_end`, `next_billing_date`, `status`: ACTIVE/TRIALING/PAST_DUE/CANCELED）。モジュール個別・パッケージいずれの契約も本テーブルで管理
 ※ `subscription_invoices`: 月次/年次の請求書（税抜額・税額・税込額・適用割引・キャンペーンIDを明記）
+
+### 組織数課金 (2テーブル)
+`org_count_billing_tiers`, `org_count_invoices`
+
+※ `org_count_billing_tiers`: 組織種別ごとの無料枠・課金単価の設定テーブル。SYSTEM_ADMINが管理画面から変更可能
+  - `org_type` ENUM: NONPROFIT/FORPROFIT
+  - `free_tier_count` INT（無料上限チーム数。例: NONPROFIT=20, FORPROFIT=5）
+  - `price_per_unit_monthly` DECIMAL（超過1チームあたりの月額。例: FORPROFIT=200.00）
+  - `currency` VARCHAR DEFAULT 'JPY'
+  - `is_active` BOOLEAN
+  - 各 `org_type` につき有効レコードは1件のみ。変更時は翌月請求サイクルから適用
+※ `org_count_invoices`: 月次の組織数課金請求書
+  - `organization_id`、`billing_month` DATE（月初日）
+  - `org_type` ENUM（発行時点のスナップショット）
+  - `team_count` INT（集計月時点のアクティブチーム数）
+  - `free_tier_count` INT（適用された無料枠数）
+  - `billed_count` INT（課金対象チーム数 = team_count - free_tier_count, MIN 0）
+  - `unit_price` DECIMAL、`subtotal` DECIMAL、`tax_amount` DECIMAL、`total_amount` DECIMAL
+  - `status` ENUM: PENDING/PAID/FAILED
+  - `billed_count = 0` の場合はレコードを作成しない（課金なし月はスキップ）
+  - モジュール課金の `subscription_invoices` とは独立したテーブルだが、同一請求書PDFに合算して表示する
 
 ### TODO管理 (3テーブル)
 `todos`, `todo_assignees`, `todo_comments`
@@ -1098,6 +1137,9 @@
 
 ### エラーレポート
 `POST /error-reports` (送信・認証不要), `GET /system-admin/error-reports` (一覧・SYSTEM_ADMIN), `GET /system-admin/error-reports/{id}` (詳細), `PATCH /system-admin/error-reports/{id}/status` (ステータス更新)
+
+### 組織数課金
+`GET /organizations/{id}/billing/team-count` (現在のチーム数・課金見込み額確認), `GET /organizations/{id}/billing/invoices` (組織数課金請求書一覧), `GET /organizations/{id}/billing/invoices/{month}` (月次請求書詳細), `POST /organizations/{id}/org-type/change-request` (組織種別変更申請), `GET/PUT /system-admin/org-count-billing-tiers` (無料枠・単価設定), `GET /system-admin/org-count-billing/overview` (全組織のチーム数・課金状況一覧), `GET/PATCH /system-admin/org-type-change-requests` (種別変更申請の一覧・承認/拒否)
 
 ### 広告・アフィリエイト
 `GET /ads/active` (ページ属性に応じたアクティブ広告取得・認証不要), `POST /ads/{id}/impression` (インプレッション記録・将来), `POST /ads/{id}/click` (クリックログ記録・将来), `GET/POST/PUT/PATCH/DELETE /system-admin/affiliate-configs` (アフィリエイト設定管理), `GET/POST /system-admin/ads` (将来: 広告クリエイティブ管理), `PUT/DELETE /system-admin/ads/{id}` (将来), `GET/POST /system-admin/ad-campaigns` (将来: キャンペーン管理), `PUT/DELETE /system-admin/ad-campaigns/{id}` (将来), `GET /system-admin/ad-campaigns/{id}/stats` (将来: インプレッション・クリック統計)
