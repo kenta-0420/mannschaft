@@ -342,6 +342,7 @@
 - ドキュメント・資料の共有ストレージ
 - フォルダ管理（階層構造）
 - アクセス権限設定（チーム内/グループ内/個別指定）
+- **ストレージ容量管理**: チームごとに使用量をリアルタイム表示。無料枠を超えた場合は追加ストレージプランへのアップグレードを促す。無料枠・プラン価格は SYSTEM_ADMIN が管理画面から設定する
 
 #### 9. 検索
 - チーム横断のグローバル検索（投稿、スレッド、ファイル、メンバー等）
@@ -519,6 +520,7 @@
 - **モジュール価格管理**: 選択式モジュールごとの月額・年額価格をリアルタイムに設定変更
 - **パッケージ管理**: モジュールをまとめたパッケージの作成・編集・公開/非公開・価格設定
 - **割引キャンペーン管理**: 期間限定割引の作成・対象指定（全体/モジュール/パッケージ）・クーポンコード発行・利用状況確認
+- **ストレージプラン管理**: ストレージプランの作成・編集（無料枠・月額/年額・超過従量単価・ハードキャップ）。各チームのストレージ使用状況の一覧確認
 - **消費税設定**: 税名称・税率・表示方式（税込/税抜）の設定
 - ユーザーBAN・通報管理
 - 監査ログ閲覧
@@ -690,7 +692,21 @@
 ### ファイル共有 (3テーブル)
 `shared_files`, `shared_folders`, `file_permissions`
 
-※ `shared_files`: チームごとのストレージ使用量を `storage_used_bytes` カラムで管理。無料プランは **5GB**・有料プランは **50GB** を上限とし、超過時はアップロードを拒否する
+※ `shared_files`: チームごとのストレージ使用量を `storage_used_bytes`（BIGINT, bytes）カラムで denormalize 管理。ファイルアップロード時に加算・削除時に減算するアトミック更新で維持する
+※ ストレージ上限・価格は `storage_plans` で一元管理する（ハードコードしない）。超過時はアップロードを拒否しプランアップグレードを促す
+
+### ストレージ課金 (2テーブル)
+`storage_plans`, `team_storage_subscriptions`
+
+※ `storage_plans`: ストレージプランの定義。SYSTEM_ADMINが管理画面から全項目を設定・変更可能
+  - `name`（例: フリー / スタンダード / プロ）
+  - `included_bytes` BIGINT（無料枠。例: 5GB = 5,368,709,120）
+  - `price_monthly` DECIMAL（月額料金。0 = 無料枠）
+  - `price_yearly` DECIMAL（年額料金）
+  - `price_per_extra_gb` DECIMAL（無料枠超過分の従量単価。nullable = 超過アップロード不可）
+  - `max_bytes` BIGINT nullable（ハードキャップ。null = 従量課金で無制限）
+  - `is_active` BOOLEAN
+※ `team_storage_subscriptions`: チームが加入中のストレージプラン（`team_id`, `storage_plan_id`, `billing_cycle`: MONTHLY/YEARLY, `status`, `current_period_end`）。ストレージプランとモジュールサブスクリプションは独立して管理する
 
 ### 運営ツール (2テーブル)
 `equipment_items`, `equipment_assignments`
@@ -795,10 +811,10 @@
 ### プラン・課金
 
 #### チーム向け
-`GET /modules/prices`, `GET /packages`, `GET /discount-campaigns`, `POST /discount-campaigns/validate` (クーポンコード検証), `GET /teams/{id}/subscription`, `POST /teams/{id}/subscription`, `PUT /teams/{id}/subscription`, `DELETE /teams/{id}/subscription` (解約), `GET /teams/{id}/subscription/invoices`
+`GET /modules/prices`, `GET /packages`, `GET /discount-campaigns`, `POST /discount-campaigns/validate` (クーポンコード検証), `GET /teams/{id}/subscription`, `POST /teams/{id}/subscription`, `PUT /teams/{id}/subscription`, `DELETE /teams/{id}/subscription` (解約), `GET /teams/{id}/subscription/invoices`, `GET /storage-plans`, `GET /teams/{id}/storage`, `POST /teams/{id}/storage/subscription`, `PUT /teams/{id}/storage/subscription`
 
 #### システム管理者向け（`/system-admin`）
-`GET/POST/PUT/DELETE /system-admin/module-prices`, `GET/POST/PUT/DELETE /system-admin/packages`, `GET/POST/PUT/DELETE /system-admin/discount-campaigns`, `GET /system-admin/discount-campaigns/{id}/usages`, `GET/PUT /system-admin/tax-settings`
+`GET/POST/PUT/DELETE /system-admin/module-prices`, `GET/POST/PUT/DELETE /system-admin/packages`, `GET/POST/PUT/DELETE /system-admin/discount-campaigns`, `GET /system-admin/discount-campaigns/{id}/usages`, `GET/PUT /system-admin/tax-settings`, `GET/POST/PUT/DELETE /system-admin/storage-plans`, `GET /system-admin/storage-usage` (全チームのストレージ使用状況一覧)
 
 ### チーム管理
 | Method | Path | 説明 |
