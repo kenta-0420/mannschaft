@@ -130,13 +130,31 @@
 
 ### 料金プラン
 
-| プラン | 選択式モジュール数 | 料金 |
-|--------|-------------------|------|
-| 無料プラン | 10モジュールまで | 無料 |
-| 有料プラン | 11モジュール以上 | 課金（定額 `FLAT` / 従量 `METERED` を `plan_type` で管理） |
+#### 課金方式
 
-※ デフォルト機能は無料プランに含まれ、モジュール数にカウントされない
-※ 課金モデルの設計指針は `.claudecode.md` §9「サブスクリプション設計指針」を参照
+| 方式 | 概要 |
+|------|------|
+| フリープラン | デフォルト機能（23個）＋ 選択式モジュール最大10個まで無料 |
+| 個別モジュール課金 | 選択式モジュールを1個単位で有効化。月額または年額サブスクリプション |
+| パッケージ課金 | 複数モジュールをセットにしたパッケージを割引価格で購入 |
+
+- デフォルト機能はいずれの課金方式でも無料。モジュール数カウント対象外
+- 月額・年額の選択制（年額は月額×12に対して割引率を設定可能）
+- **全価格・パッケージ構成・割引はSYSTEM_ADMINが管理画面からリアルタイムに設定変更可能**
+- 価格変更は翌請求サイクルから適用。既存契約中のチームへは移行猶予期間を設ける
+
+#### 割引・クーポン
+
+- **期間限定割引キャンペーン**: 開始日時・終了日時・割引率（%）または割引額（固定）を設定。モジュール全体・特定モジュール・特定パッケージを対象に指定可能
+- **クーポンコード**: キャンペーンにコードを紐付け、コード入力者のみが割引を受けられる方式を選択可能。利用上限回数（nullable）も設定可能
+
+#### 消費税
+
+- SYSTEM_ADMINが税名称・税率を設定（例: 消費税 10%）。複数税率の登録に対応できる設計とする
+- 請求書・支払い画面では**税抜価格・税込価格を両方表示**する
+- `is_included_in_price` フラグで表示価格を税込み統一か税抜き表示かを切り替え可能
+
+※ 課金モデルの実装詳細は `.claudecode.md` §9「サブスクリプション設計指針」を参照
 
 ### デフォルト機能（全チーム常時有効・選択リスト非表示）
 
@@ -498,6 +516,10 @@
 - 定型テンプレート・モジュールの作成・編集・管理
 - **モジュールのレベル別適用管理**: 各モジュール（デフォルト・選択式）を組織/チーム/個人のどのレベルで利用可能にするかをON/OFFで制御
 - **ロール権限の上限設定**: DEPUTY_ADMIN・MEMBER がチーム/組織レベルで付与できる権限の上限（天井）を `role_permissions` で管理
+- **モジュール価格管理**: 選択式モジュールごとの月額・年額価格をリアルタイムに設定変更
+- **パッケージ管理**: モジュールをまとめたパッケージの作成・編集・公開/非公開・価格設定
+- **割引キャンペーン管理**: 期間限定割引の作成・対象指定（全体/モジュール/パッケージ）・クーポンコード発行・利用状況確認
+- **消費税設定**: 税名称・税率・表示方式（税込/税抜）の設定
 - ユーザーBAN・通報管理
 - 監査ログ閲覧
 - システム設定・メンテナンス
@@ -599,10 +621,18 @@
 ※ `template_fields`: 業種テンプレートに含まれるカスタム項目の定義（テンプレートレベルの設定。運営が業種別プリセットとして管理）
 ※ `module_field_definitions`: 各モジュールが提供する汎用フィールドの定義（モジュールレベルの設定。モジュール固有の入力項目スキーマ）
 
-### プラン・サブスクリプション (3テーブル)
-`subscription_plans`, `team_subscriptions`, `subscription_invoices`
+### プラン・サブスクリプション (9テーブル)
+`subscription_plans`, `module_prices`, `plan_packages`, `plan_package_modules`, `discount_campaigns`, `team_discount_usages`, `tax_settings`, `team_subscriptions`, `subscription_invoices`
 
-※ `subscription_plans`: プラットフォームのモジュール課金プラン（無料/有料、`plan_type`: FLAT/METERED）。チームがどのプランに加入しているかを管理
+※ `subscription_plans`: プラン種別の定義（FREE / INDIVIDUAL / PACKAGE）。フリープランは選択式モジュール10個まで無料
+※ `module_prices`: 選択式モジュールの個別価格（`module_definition_id`, `monthly_price`, `yearly_price`, `currency`）。SYSTEM_ADMINが管理画面から設定変更。変更は翌請求サイクルから適用
+※ `plan_packages`: パッケージ定義（`name`, `description`, `monthly_price`, `yearly_price`, `is_active`）。SYSTEM_ADMINが管理・随時追加
+※ `plan_package_modules`: パッケージに含まれる選択式モジュールの中間テーブル（`package_id`, `module_definition_id`）
+※ `discount_campaigns`: 期間限定割引キャンペーン（`name`, `discount_type`: PERCENTAGE/FIXED_AMOUNT, `discount_value`, `start_at`, `end_at`, `target_type`: ALL/MODULE/PACKAGE, `target_id` nullable, `coupon_code` nullable, `max_uses` nullable, `used_count`）。SYSTEM_ADMINが設定
+※ `team_discount_usages`: チームへのキャンペーン適用履歴（重複適用防止・上限管理）
+※ `tax_settings`: 消費税設定（`tax_name`, `rate` DECIMAL e.g. 10.00, `is_included_in_price` BOOLEAN, `is_active`）。複数レコードで将来の複数税率に対応できる設計とする
+※ `team_subscriptions`: チームの現在の契約状態（`billing_cycle`: MONTHLY/YEARLY, `current_period_start`, `current_period_end`, `next_billing_date`, `status`: ACTIVE/TRIALING/PAST_DUE/CANCELED）。モジュール個別・パッケージいずれの契約も本テーブルで管理
+※ `subscription_invoices`: 月次/年次の請求書（税抜額・税額・税込額・適用割引・キャンペーンIDを明記）
 
 ### TODO管理 (3テーブル)
 `todos`, `todo_assignees`, `todo_comments`
@@ -762,7 +792,12 @@
 | POST | `/auth/deactivate` | アカウント退会申請 |
 
 ### プラン・課金
-`GET /plans`, `GET /teams/{id}/subscription`, `POST /teams/{id}/subscription`, `PUT /teams/{id}/subscription`, `GET /teams/{id}/subscription/invoices`
+
+#### チーム向け
+`GET /modules/prices`, `GET /packages`, `GET /discount-campaigns`, `POST /discount-campaigns/validate` (クーポンコード検証), `GET /teams/{id}/subscription`, `POST /teams/{id}/subscription`, `PUT /teams/{id}/subscription`, `DELETE /teams/{id}/subscription` (解約), `GET /teams/{id}/subscription/invoices`
+
+#### システム管理者向け（`/system-admin`）
+`GET/POST/PUT/DELETE /system-admin/module-prices`, `GET/POST/PUT/DELETE /system-admin/packages`, `GET/POST/PUT/DELETE /system-admin/discount-campaigns`, `GET /system-admin/discount-campaigns/{id}/usages`, `GET/PUT /system-admin/tax-settings`
 
 ### チーム管理
 | Method | Path | 説明 |
