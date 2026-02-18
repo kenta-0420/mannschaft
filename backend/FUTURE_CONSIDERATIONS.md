@@ -117,13 +117,22 @@
 
 ### Phase 10 開始前（運用最適化）
 - [ ] 非アクティブアーカイブバッチの設計と実装
-  - [ ] 対象ユーザーの抽出クエリ（`last_login_at < NOW() - INTERVAL 6 MONTH AND archived_at IS NULL`）
-  - [ ] アーカイブ実行前のメール通知テンプレートの作成（日本語・英語）
-  - [ ] Redis キャッシュ削除処理（対象ユーザーの全キーを SCAN + DEL）
-  - [ ] S3 オブジェクト移行処理（標準 → Glacier Instant Retrieval へのライフサイクルルール設定）
-  - [ ] `users.archived_at` 付与 + `users.last_login_at` カラムの追加確認
-  - [ ] ログイン成功時のアーカイブ解除処理（`archived_at` クリア・S3 復元トリガー）
-  - [ ] フロントエンドの「アカウントを復元中...」ローディング画面の実装
+  - 個人ユーザー（6ヶ月）
+    - [ ] 対象抽出クエリ（`last_login_at < NOW() - INTERVAL 6 MONTH AND archived_at IS NULL`）
+    - [ ] アーカイブ前メール通知テンプレートの作成（日本語・英語）
+    - [ ] Redis キャッシュ削除処理（SCAN + DEL）
+    - [ ] S3 オブジェクト → Glacier Instant Retrieval 移行（ライフサイクルルール設定）
+    - [ ] `users.archived_at` 付与 + `users.last_login_at` カラムの追加確認
+    - [ ] ログイン成功時のアーカイブ解除処理（`archived_at` クリア・S3 復元トリガー）
+    - [ ] フロントエンドの「アカウントを復元中...」ローディング画面の実装
+  - チーム・組織（12ヶ月 / 全メンバーの最新ログインが基準）
+    - [ ] 対象抽出クエリ（全メンバーの `MAX(last_login_at)` が12ヶ月前を超えたチーム/組織）
+    - [ ] `teams.archived_at` / `organizations.archived_at` カラムの追加確認
+    - [ ] アーカイブ中チーム/組織の検索・一覧クエリからの除外処理
+    - [ ] チーム/組織の Redis キャッシュ（`team:modules:{id}` 等）削除処理
+    - [ ] S3 上のチーム/組織ファイルの Glacier Instant Retrieval 移行
+    - [ ] いずれかのメンバーがログインした際のチーム/組織アーカイブ解除処理
+    - [ ] アーカイブ前の ADMIN へのメール通知（「12ヶ月間ログインがありません」）
 
 ### Phase 11 開始前（本番デプロイ）
 - [ ] インフラ構成の最終確定
