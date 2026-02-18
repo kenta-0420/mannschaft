@@ -519,12 +519,15 @@
 ※ `organization_id` は nullable。組織に属する場合は値あり、独立チームの場合は NULL
 ※ `member_count` カラムを denormalize で保持し、メンバー追加・削除時にアトミック更新する（COUNT クエリ廃止）
 ※ `name`（正式名称）・`nickname1`・`nickname2`（愛称、両方 nullable）を持つ。検索・表示では正式名称と愛称いずれでもヒットするようにする
+※ `is_searchable BOOLEAN DEFAULT true`: OFF にすると検索結果に表示されない（招待URLのみで参加できる非公開チーム等に対応）
 
 ### 組織・マルチ所属 (4テーブル)
 `organizations`, `organization_members`, `team_memberships`, `invitation_links`
 
 ※ `organizations`: `name`（正式名称）・`nickname1`・`nickname2`（愛称、両方 nullable）を持つ。検索・表示では正式名称と愛称いずれでもヒットするようにする
+※ `organizations.is_searchable BOOLEAN DEFAULT true`: OFF にすると検索結果に表示されない
 ※ `users`: `last_name` / `first_name`（実名）・`display_name`（愛称1、表示用ニックネーム）・`nickname2`（愛称2、nullable）を持つ。電子印鑑は `last_name` を使用。検索・メンションでは実名・愛称いずれでもヒットするようにする
+※ `users.is_searchable BOOLEAN DEFAULT true`: OFF にすると他ユーザーの検索結果に表示されない（メンションは引き続き利用可能）
 
 ### グループ階層 (3テーブル)
 `groups`, `group_members`, `group_hierarchy`
