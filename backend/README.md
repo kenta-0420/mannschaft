@@ -582,6 +582,7 @@
 - **ストレージプラン管理**: ストレージプランの作成・編集（無料枠・月額/年額・超過従量単価・ハードキャップ）。各チームのストレージ使用状況の一覧確認
 - **シーズナル壁紙管理**: 期間限定壁紙の作成・画像アップロード・公開期間設定（開始/終了日時）。プレビュー確認後に公開。有効期間中は全ユーザーへ自動適用
 - **消費税設定**: 税名称・税率・表示方式（税込/税抜）の設定
+- **エラーレポート管理**: ユーザーから送信されたエラーレポートの一覧・詳細確認（スタックトレース・発生ページ・ユーザーエージェント・任意コメント）。ステータス管理（未対応 / 対応中 / 解決済み）
 - ユーザーBAN・通報管理
 - 監査ログ閲覧
 - システム設定・メンテナンス
@@ -725,6 +726,11 @@
 ※ `direct_mail_logs`: 送信セッション（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `sender_id`, `subject`, `body`, `recipient_type` ENUM: ALL/GROUP/ROLE/SELECTED, `scheduled_at` nullable, `sent_at` nullable, `status` ENUM: DRAFT/SCHEDULED/SENT/FAILED）
 ※ `direct_mail_recipients`: 受信者ごとの配信状況（`log_id`, `user_id`, `email_address`, `status` ENUM: PENDING/SENT/FAILED/BOUNCED, `opened_at` nullable）
 ※ **週次送信制限**: チーム/組織単位で週3回まで。制限カウントは Redis（`dm:weekly:{scopeType}:{scopeId}:{isoYearWeek}`、TTL 8日）で管理。Phase 8 の課金導入以降に上限緩和・無制限プランを検討する
+
+### エラーレポート (1テーブル)
+`error_reports`
+
+※ `error_reports`: ユーザーから送信されたエラー情報（`user_id` nullable, `error_message` TEXT, `stack_trace` TEXT, `route` VARCHAR, `user_agent` VARCHAR, `app_version` VARCHAR, `additional_message` TEXT nullable, `status` ENUM: NEW/REVIEWING/RESOLVED, `created_at`）。認証不要の公開エンドポイントで受け付ける
 
 ### QR会員証 (1テーブル)
 `member_cards`
@@ -1065,6 +1071,9 @@
 ### ダイレクトメール配信
 `GET /direct-mails/quota` (週次残回数確認), `POST /direct-mails` (送信・予約送信), `GET /direct-mails` (送信履歴一覧), `GET /direct-mails/{id}` (詳細・開封状況), `DELETE /direct-mails/{id}` (予約送信キャンセル)
 
+### エラーレポート
+`POST /error-reports` (送信・認証不要), `GET /system-admin/error-reports` (一覧・SYSTEM_ADMIN), `GET /system-admin/error-reports/{id}` (詳細), `PATCH /system-admin/error-reports/{id}/status` (ステータス更新)
+
 ---
 
 ## 実装フェーズ
@@ -1109,6 +1118,30 @@
 - 認証情報の無効化（ログアウト・トークンブラックリスト）管理にも Redis を活用
 - Java 21 の **Virtual Threads** (Project Loom) を活用し、大量の同時接続を効率的に処理
 - **WebSocket 認証**: 接続ハンドシェイク時に `Authorization: Bearer <JWT>` ヘッダーを送信し、Spring Security の `HandshakeInterceptor` で検証する。STOMP `CONNECT` フレームでも同様に JWT を付与する
+
+### エラーレポート収集
+エンドユーザーがエラーに遭遇した際に、開発者へ自動的に情報を届ける仕組みを全画面共通で提供する。
+
+**ユーザー側のフロー**
+1. 未捕捉エラー発生 → グローバルエラーハンドラーがキャッチ
+2. エラーレポートモーダル（子画面）をポップアップ表示
+3. モーダル内容:
+   - 「予期せぬエラーが発生しました。開発チームへ報告しますか？」
+   - 任意コメント入力欄（「このとき何をしていましたか？」）
+   - 「送信する」ボタン / 「閉じる」ボタン
+4. 送信後: 「ご報告ありがとうございます！開発チームが確認します。」を表示してモーダルを閉じる
+
+**自動収集する情報**（ユーザーには非表示）
+- エラーメッセージ・スタックトレース
+- 発生ページ（ルートパス）
+- ブラウザ・OS情報（User-Agent）
+- アプリバージョン
+- ユーザーID（ログイン中の場合）・発生日時
+
+**実装方針（フロントエンド）**
+- Nuxt の `vueApp.config.errorHandler` と `window.addEventListener('unhandledrejection', ...)` でグローバルに捕捉
+- `useErrorReport` composable でモーダル表示・送信ロジックを管理
+- 認証不要の公開エンドポイント（`POST /error-reports`）へ送信
 
 ### 開発・テスト環境
 - データベースを用いたテストには **Testcontainers** を使用し、Dockerコンテナ上で MySQL 8.0 を立ち上げて実行

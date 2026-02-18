@@ -20,6 +20,8 @@
 - **Tailwind CSS**: スタイリングには **Tailwind CSS** を使用してください。
 - **ユーティリティ優先**: インラインの `<style>` は最小限にし、可能な限り Tailwind のユーティリティクラスで完結させること。
 - **共通化**: 繰り返し利用されるデザインパターンは、コンポーネント化して再利用性を高めること。
+- **ダークモード**: Tailwind の `dark:` バリアントで実装する。`tailwind.config` の `darkMode: 'class'` を使用し、`<html>` 要素へのクラス付与で切替を制御する。ユーザー設定（`user_appearance_settings`）に応じて `useAppearance` composable が自動付与する。OS設定追従（SYSTEM）には `window.matchMedia('(prefers-color-scheme: dark)')` を使用する。
+- **背景色プリセット・シーズナル壁紙**: CSS カスタムプロパティ（`--bg-color`, `--bg-image`）を `<html>` または `<body>` に付与し、Tailwind の任意値（`bg-[var(--bg-color)]`）で参照する。シーズナル壁紙はAPIから取得した `image_url` を設定する。
 
 ## 4. ディレクトリ構成と責務 (Directory Structure)
 | ディレクトリ | 役割・責務 |
@@ -228,3 +230,58 @@ npx lint-staged
     - 同一ディレクトリ内であっても、`__tests__/` などのサブディレクトリを作成してテストを分離することは**禁止**する。
     - プロジェクト全体でテスト配置のパターンを1つに絞り、ディレクトリ構造の迷いを完全に排除する。
 - **E2Eテスト**: **Playwright** を将来的に導入予定。現時点では方針策定のみとし、プロジェクト成熟後に着手する。
+
+## 11. エラーレポート (Error Reporting)
+
+アプリケーション全体で発生した予期せぬエラーをユーザー経由で開発者へ通知するための仕組みを設ける。
+
+### グローバルエラーハンドラーの設置
+
+**`plugins/errorHandler.client.ts`** にクライアント専用プラグインを作成し、以下2つのエラーソースを捕捉する。
+
+```ts
+export default defineNuxtPlugin((nuxtApp) => {
+  // Vue コンポーネント内の同期・非同期エラー
+  nuxtApp.vueApp.config.errorHandler = (error, instance, info) => {
+    useErrorReport().capture(error, { context: info })
+  }
+
+  // Promise の未処理 rejection（fetch失敗等）
+  window.addEventListener('unhandledrejection', (event) => {
+    useErrorReport().capture(event.reason)
+  })
+})
+```
+
+### `useErrorReport` composable
+
+**`composables/useErrorReport.ts`** に実装する。
+
+- **`capture(error, meta?)`**: エラーを受け取り、エラーレポートモーダル（`ErrorReportModal.vue`）を表示状態にする。自動収集情報（エラーメッセージ・スタックトレース・URL・UA・タイムスタンプ）を内部 state に保持する。
+- **`submit(userComment?)`**: バックエンドの公開エンドポイント `POST /api/v1/error-reports` へ送信する。認証不要のため `$fetch` のベースURLのみ使用し、JWT は付与しない。送信後はモーダルを「送信完了」状態に切り替え、お礼メッセージを表示する。
+- **エラー連鎖の防止**: `capture` 内でさらにエラーが発生した場合は `console.error` に留め、再帰的なモーダル表示を行わない。
+
+### `ErrorReportModal.vue` コンポーネント
+
+- 通常のページ遷移をブロックしない **モーダル（オーバーレイ）** として実装する。`Teleport` を利用して `<body>` 直下に描画する。
+- **表示状態**:
+  1. **入力画面**: エラー発生の旨を伝えるメッセージ + 任意のコメント入力欄 + 「送信する」ボタン + 「閉じる」リンク
+  2. **送信中**: ボタンをローディング状態にし、二重送信を防止する。
+  3. **完了画面**: 「ご報告ありがとうございます。開発チームが確認します。」とお礼を表示し、数秒後に自動クローズ。
+- エラーの技術的詳細（スタックトレース等）はユーザーに表示しない。
+
+### 送信データ仕様
+
+| フィールド | 取得方法 |
+| :--- | :--- |
+| `error_message` | `error.message` |
+| `stack_trace` | `error.stack`（先頭2,000文字） |
+| `page_url` | `window.location.href` |
+| `user_agent` | `navigator.userAgent` |
+| `user_comment` | ユーザー入力（任意） |
+| `user_id` | AuthStore から取得（未ログイン時は null） |
+| `occurred_at` | `new Date().toISOString()` |
+
+### 注意事項
+- エラーレポートの送信エンドポイントは認証不要（`POST /api/v1/error-reports` は公開）。ただしレート制限をバックエンドで実施する。
+- 開発環境（`NODE_ENV === 'development'`）では `console.error` へのフォールスルーのみとし、モーダルを表示しないオプションを設ける（開発中の誤送信防止）。
