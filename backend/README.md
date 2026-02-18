@@ -398,6 +398,7 @@
 - ユーザー登録時の姓を印鑑風フォントで SVG 生成・保持
 - 回覧板・同意書など複数機能で横断利用できる共通コンポーネント
 - 押印日時・対象ドキュメントのログを記録
+- 姓（`last_name`）の変更時は印鑑 SVG を自動的に再生成する。`POST /users/{id}/seal/regenerate` は手動再生成のためのエンドポイント
 
 #### 23. 緊急安否確認
 - 管理者がワンクリックで全メンバーへ安否確認プッシュ通知を一斉送信
@@ -452,7 +453,15 @@
 - 居室（部屋番号）と区分所有者・賃借人を紐付けて管理
 - 所有者 / 賃借人の区別、入退居日の記録
 - **非公開設定**: 台帳全体を ADMIN/DEPUTY_ADMIN のみ閲覧可に設定可能。個人は自室・自身の情報のみ閲覧
-- **物件掲示板**: 売買希望・賃貸希望・駐車場区画の譲渡希望を居住者間で掲示（公開範囲はメンバー内のみ）
+- **物件掲示板**: 売買希望・賃貸希望を居住者間で掲示（公開範囲はメンバー内のみ）。駐車場区画の譲渡希望は駐車場区画管理モジュールで掲示する
+
+#### 10. 駐車場区画管理
+- 区画番号・種別（屋内/屋外/身障者用等）・**個別価格設定**（月額）を区画ごとに登録
+- **車両登録**: 個人アカウントが車・バイク・自転車を最大3台まで登録（ナンバー・ニックネーム）
+- 利用者の割り当て: 車両単位で紐付け。単一指定・**複数同時指定・一括指定**に対応
+- 空き状況をリアルタイム表示（VACANT / OCCUPIED / MAINTENANCE）
+- 空き申請・抽選機能（希望者が申請 → 管理者が抽選または先着で割り当て）
+- **譲渡希望リスト**: 居住者が不要な区画の譲渡希望を掲示
 
 #### 11. カルテ
 - 来店ごとにカルテを作成・蓄積し、顧客の施術履歴を体系的に管理
@@ -470,14 +479,6 @@
   - PDF出力
 - **カスタム項目**: デフォルト項目に加え、独自項目を最大5つまで追加可能（型: テキスト / 数値 / 日付 / 選択肢 / チェックボックス）
 - ※ 選択式モジュール11個目のため**有料プランが必要**
-
-#### 10. 駐車場区画管理
-- 区画番号・種別（屋内/屋外/身障者用等）・**個別価格設定**（月額）を区画ごとに登録
-- **車両登録**: 個人アカウントが車・バイク・自転車を最大3台まで登録（ナンバー・ニックネーム）
-- 利用者の割り当て: 車両単位で紐付け。単一指定・**複数同時指定・一括指定**に対応
-- 空き状況をリアルタイム表示（VACANT / OCCUPIED / MAINTENANCE）
-- 空き申請・抽選機能（希望者が申請 → 管理者が抽選または先着で割り当て）
-- **譲渡・売買希望リスト**: 居住者が不要な区画の譲渡希望を掲示
 
 ### 管理者ダッシュボード
 
@@ -535,13 +536,14 @@
 - 投稿作成・削除時にキャッシュを即時無効化
 - **未読通知数**: `unread:{userId}` を Redis カウンターで管理（通知追加で +1、既読で -1）。ダッシュボード・ヘッダーの COUNT クエリを廃止
 - **チームモジュール設定**: `team:modules:{teamId}` にキャッシュ（設定変更時に無効化）。モジュール有効化チェックのたびに JOIN する処理を排除
+- **SNS フィードキャッシュ**: Instagram/X API の取得結果を `sns_feed:{teamId}:{provider}` に保存（TTL: 15分）。DB テーブルは使用しない
 
 ### クエリ最適化
 
 - **カーソルベースページネーション**: `WHERE id < :cursor ORDER BY id DESC LIMIT N`（OFFSET 廃止）
 - **JOIN 一括取得**: タイムライン一覧は投稿者情報・リアクション数・添付ファイルを1クエリで取得
 - **IN 句バッチ取得**: 関連エンティティは `WHERE id IN (...)` で N+1 を排除
-- **カウンターキャッシュ（denormalize）**: `COUNT(*)` クエリを廃止するため、集計値を専用カラムに保持してアトミック更新する（対象: `timeline_posts.reaction_count`, `timeline_posts.reply_count`, `teams.member_count`, `chat_channels.last_message_at`, `chat_channel_members.unread_count`, `bulletin_threads.reply_count`, `schedule_events.attending_count`, `schedule_events.absent_count`, `schedule_events.pending_count`）
+- **カウンターキャッシュ（denormalize）**: `COUNT(*)` クエリを廃止するため、集計値や表示最適化カラムを保持してアトミック更新する（対象: `timeline_posts.reaction_count`, `timeline_posts.reply_count`, `teams.member_count`, `chat_channels.last_message_at`, `chat_channels.last_message_preview`（最新メッセージ冒頭100字）, `chat_channel_members.unread_count`, `bulletin_threads.reply_count`, `schedule_events.attending_count`, `schedule_events.absent_count`, `schedule_events.pending_count`）
 - **ダッシュボード一括取得**: `/dashboard` エンドポイントは内部でも JOIN / Redis を活用し、SQL 発行を最小化する
 - **JWT ロール埋め込み**: JWT ペイロードにロール情報を含め、ロール・パーミッション確認の DB アクセスをゼロにする。ロール変更時は Redis 無効化フラグ（`token:invalidated:{userId}`）で即時反映
 - **FULLTEXT インデックス**: `LIKE '%...%'` によるフルテーブルスキャンを排除。`blog_posts.body`, `bulletin_threads.title`, `timeline_posts.content`, `chat_messages.body` に MySQL FULLTEXT インデックスを付与し `MATCH() AGAINST()` 構文で検索する
@@ -579,7 +581,7 @@
 ※ `organizations.is_searchable BOOLEAN DEFAULT true`: OFF にすると検索結果に表示されない
 ※ `users`: `last_name` / `first_name`（実名）・`display_name`（愛称1、表示用ニックネーム）・`nickname2`（愛称2、nullable）を持つ。電子印鑑は `last_name` を使用。検索・メンションでは実名・愛称いずれでもヒットするようにする
 ※ `users.is_searchable BOOLEAN DEFAULT true`: OFF にすると他ユーザーの検索結果に表示されない（メンションは引き続き利用可能）
-※ `invitation_links`: `invite_type`（ENUM: `EMAIL` / `URL` / `QR`）・`token`・`expires_at`（nullable、null=無期限）・`max_uses`（nullable、null=無制限）・`used_count`・`is_active`（手動無効化フラグ）を持つ。QR コードはトークンから動的生成し画像は保存しない。期限切れ・上限到達・`is_active=false` のいずれかで即時失効
+※ `invitation_links`: `invite_type`（ENUM: `EMAIL` / `URL` / `QR`）・`token`（`SecureRandom` + Base64URL 方式で生成する暗号論的乱数トークン）・`expires_at`（nullable、null=無期限）・`max_uses`（nullable、null=無制限）・`used_count`・`is_active`（手動無効化フラグ）を持つ。QR コードはトークンから動的生成し画像は保存しない。期限切れ・上限到達・`is_active=false` のいずれかで即時失効
 
 ### グループ階層 (3テーブル)
 `groups`, `group_members`, `group_hierarchy`
@@ -668,6 +670,8 @@
 ### 監査ログ (1テーブル)
 `audit_logs`
 
+※ 大量蓄積を防ぐため保持期間を **2年**（設定変更可）とし、期限超過分はバッチ処理でアーカイブまたは物理削除する
+
 ### 回覧板 (2テーブル)
 `circulation_documents`, `circulation_recipients`
 
@@ -683,35 +687,41 @@
 ### 議決権行使・委任状 (2テーブル)
 `proxy_votes`, `proxy_delegations`
 
+※ `proxy_votes`: 議案・投票セッション（タイトル・期限・定足数・集計結果）を管理。個人の投票回答（`user_id`, `vote_type`: ATTEND/APPROVE/REJECT/ABSTAIN）のカラム設計は Phase 1 で確定すること
+※ `proxy_delegations`: 委任状（委任者 `user_id`・代理人 `delegate_user_id`・対象議案・白紙委任フラグ・電子印鑑記録）を管理
+※ 投票の秘匿性: `is_anonymous` フラグで無記名/記名を切り替え可能。無記名時は集計結果のみ公開し、個人の投票内容は ADMIN にも非公開とする
+
 ### 住民台帳・物件情報 (3テーブル)
 `dwelling_units`, `resident_registry`, `property_listings`
 
 ※ `dwelling_units`: 部屋番号・種別・間取り等の居室マスター
 ※ `resident_registry`: 区分所有者/賃借人の区別・入退居日を管理。`is_public=false` で ADMIN/DEPUTY_ADMIN のみ閲覧可
-※ `property_listings`: 居住者間の売買/賃貸/駐車場譲渡希望の掲示（`listing_type`: SALE/RENT/PARKING）
+※ `property_listings`: 居住者間の物件売買/賃貸希望の掲示（`listing_type`: SALE/RENT）。駐車場区画の譲渡希望は `parking_listings` で管理するため本テーブルには含まない
 
 ### カルテ (7テーブル)
 `chart_records`, `chart_intake_forms`, `chart_photos`, `chart_body_marks`, `chart_formulas`, `chart_section_settings`, `chart_custom_fields`
 
 ※ `chart_records`: カルテ本体（来店日・担当スタッフ・次回推奨メモ・顧客共有フラグ・アレルギー禁忌情報）
 ※ `chart_intake_forms`: 問診票・同意書（電子印鑑と連携。初回 or 毎回更新）
-※ `chart_photos`: ビフォーアフター写真（`photo_type`: BEFORE/AFTER, `is_shared_to_customer`）
+※ `chart_photos`: ビフォーアフター写真（`photo_type`: BEFORE/AFTER, `is_shared_to_customer`）。写真は S3 に保存し CloudFront **署名付きURL（Signed URL）**でのみアクセス可能にする（医療・美容記録のため公開 URL は使用しない）。1カルテあたり最大20枚を推奨上限とする
 ※ `chart_body_marks`: 身体チャートのマーク情報（整骨院向け。座標・種別・メモ）
 ※ `chart_formulas`: カラー・薬剤レシピ（美容室向け。薬剤名・配合比率・放置時間・パッチテスト記録）
-※ `chart_section_settings`: チームごとのセクション ON/OFF 設定（`team_id`, `section_type` ENUM, `is_enabled`）
+※ `chart_section_settings`: チームごとのセクション ON/OFF 設定（`team_id`, `section_type` ENUM: `INTAKE_FORM` / `ALLERGY` / `PHOTOS` / `STAFF` / `BODY_CHART` / `FORMULA` / `PATCH_TEST` / `PROGRESS_GRAPH` / `NEXT_MEMO`, `is_enabled`）
 ※ `chart_custom_fields`: カスタム項目定義（`team_id`, `field_name`, `field_type`: TEXT/NUMBER/DATE/SELECT/CHECKBOX, `sort_order`）。1チームにつき最大5件
 
 ### 駐車場区画管理 (5テーブル)
 `parking_spaces`, `parking_assignments`, `parking_applications`, `parking_listings`, `registered_vehicles`
 
 ※ `parking_spaces`: 区画番号・種別・`price_per_month`（個別価格設定）・`status`（VACANT/OCCUPIED/MAINTENANCE）
-※ `registered_vehicles`: ユーザーの車両登録（`user_id`, `vehicle_type`: CAR/MOTORCYCLE/BICYCLE, `plate_number`, `nickname` nullable）。1ユーザーにつき最大3台まで登録可能
+※ `registered_vehicles`: ユーザーの車両登録（`user_id`, `vehicle_type`: CAR/MOTORCYCLE/BICYCLE, `plate_number`（個人情報のため暗号化して保存）, `nickname` nullable）。1ユーザーにつき最大3台まで登録可能
 ※ `parking_assignments`: 車両（`vehicle_id`）と区画の紐付け。複数区画の一括割り当てに対応
 ※ `parking_applications`: 空き区画への申請・抽選エントリー
 ※ `parking_listings`: 区画の譲渡・売買希望リスト
 
-### 外部連携・広告 (5テーブル)
-`line_integration_config`, `google_calendar_sync`, `sns_feed_cache`, `ad_slots`, `sponsors`
+### 外部連携・広告 (4テーブル)
+`line_integration_config`, `google_calendar_sync`, `ad_slots`, `sponsors`
+
+※ SNS フィードキャッシュ（Instagram/X API レスポンス）は揮発性データのため MySQL テーブルではなく **Redis**（key: `sns_feed:{teamId}:{provider}`、TTL: 15分）で管理する
 
 ---
 
@@ -904,9 +914,9 @@
 | **4** | タイムライン + チャット（階層スレッド・絵文字リアクション）+ プッシュ通知 | X風フィード + チャットAPI + WebSocket通知 |
 | **5** | 掲示板 + 回覧板 + 電子印鑑 + アンケート・投票 + ファイル共有 | 掲示板API + 回覧板API + 電子印鑑API + アンケートAPI + ファイルAPI |
 | **6** | CMS（ブログ・活動記録）+ メンバー紹介 + ギャラリー | CMS API群 |
-| **7** | サービス履歴 + パフォーマンス管理 + 備品管理 | サービス履歴API + パフォーマンスAPI + 備品API |
-| **8** | マッチング・対外交流 + 会費・決済 | マッチングAPI + 決済API |
-| **9** | LINE連携・SNS・広告・スポンサー | 外部連携API群 |
+| **7** | サービス履歴 + パフォーマンス管理 + 備品管理 + カルテ | サービス履歴API + パフォーマンスAPI + 備品API + カルテAPI |
+| **8** | マッチング・対外交流 + 会費・決済 + 議決権行使・委任状 | マッチングAPI + 決済API + 議決権行使API |
+| **9** | LINE連携・SNS・広告・スポンサー + 住民台帳 + 駐車場区画管理 | 外部連携API群 + 住民台帳API + 駐車場API |
 | **10** | 管理者ダッシュボード + システム管理者ダッシュボード + 通報・モデレーション + 監査ログ | 管理画面 + 運用ツール |
 | **11** | ポリッシュ・テスト・Docker化 | 本番デプロイ可能 |
 
@@ -935,6 +945,7 @@
 - WebSocket (STOMP) のメッセージブローカーとして **Redis** を利用（将来的な複数台構成を想定）
 - 認証情報の無効化（ログアウト・トークンブラックリスト）管理にも Redis を活用
 - Java 21 の **Virtual Threads** (Project Loom) を活用し、大量の同時接続を効率的に処理
+- **WebSocket 認証**: 接続ハンドシェイク時に `Authorization: Bearer <JWT>` ヘッダーを送信し、Spring Security の `HandshakeInterceptor` で検証する。STOMP `CONNECT` フレームでも同様に JWT を付与する
 
 ### 開発・テスト環境
 - データベースを用いたテストには **Testcontainers** を使用し、Dockerコンテナ上で MySQL 8.0 を立ち上げて実行
@@ -955,15 +966,15 @@
 ## Git運用ルール
 
 ### ブランチ戦略（GitHub Flow 準拠）
-- **メインブランチ (`main`)**:
+- **メインブランチ (`master`)**:
     - 常にデプロイ可能で、テストがパスした状態を維持する。
     - 開発者（およびAI）による直接のコミットは禁止する。
 - **フィーチャーブランチ (`feature/[issue-number]-[description]`)**:
-    - すべての作業は `main` から分岐したフィーチャーブランチで行う。
+    - すべての作業は `master` から分岐したフィーチャーブランチで行う。
     - コミットメッセージは下記の規約を遵守し、`pre-commit` フックをパスさせること。
 - **マージプロセス**:
-    - 完了後はプルリクエスト (PR) を作成し、CI（テスト・静的解析）が合格したことを確認して `main` へマージする。
-- **リリース**: `main` へのマージ後、必要に応じて Git タグ（`v1.0.0` 等）を付与してリリースを管理する。
+    - 完了後はプルリクエスト (PR) を作成し、CI（テスト・静的解析）が合格したことを確認して `master` へマージする。
+- **リリース**: `master` へのマージ後、必要に応じて Git タグ（`v1.0.0` 等）を付与してリリースを管理する。
 
 ### コミットメッセージ
 - コミットメッセージには **変更内容の要約を日本語で記載** する
