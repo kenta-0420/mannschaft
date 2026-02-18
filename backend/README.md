@@ -150,7 +150,7 @@
 
 | 方式 | 概要 |
 |------|------|
-| フリープラン | デフォルト機能（23個）＋ 選択式モジュール最大10個まで無料 |
+| フリープラン | デフォルト機能（27個）＋ 選択式モジュール最大10個まで無料 |
 | 個別モジュール課金 | 選択式モジュールを1個単位で有効化。月額または年額サブスクリプション |
 | パッケージ課金 | 複数モジュールをセットにしたパッケージを割引価格で購入 |
 
@@ -202,6 +202,7 @@
 | 24 | アクセス解析 | ページビュー数の日別・月別・累計表示（Chart.js グラフ） |
 | 25 | テーマ・外観カスタマイズ | ライト/ダーク切替・背景色5色・期間限定シーズナル壁紙 |
 | 26 | ダイレクトメール配信 | 組織/チーム内メンバーへのメール一斉・個別送信（週3回まで無料） |
+| 27 | 広告表示 | フリープラン利用中のチーム/組織のページにプラットフォーム広告を自動表示。初期はAmazonアソシエイト。将来はターゲティング広告（組織カテゴリ・地域等）・内部組織ページへのリンク広告に拡張 |
 
 ### 選択式モジュール（カタログから選択・課金対象）
 
@@ -255,6 +256,7 @@
 | 24 | アクセス解析 | ○ | ○ | ○ |
 | 25 | テーマ・外観カスタマイズ | ○ | ○ | ○ |
 | 26 | ダイレクトメール配信 | ○ | ○ | - | 送信は ADMIN/DEPUTY_ADMIN のみ。個人は受信のみ |
+| 27 | 広告表示 | ○ | ○ | ○ | フリープランのみ表示。有料プランは非表示。ユーザー自身は表示のみ（広告管理はSYSTEM_ADMINが担う） |
 
 #### 選択式モジュールのレベル別適用
 
@@ -292,7 +294,7 @@
 | 駐車場区画管理 | - | - | - | ○ | - | - | - | - | ○ | ○ |
 | カルテ | - | ○ | - | - | - | ○ | ○ | - | - | - |
 
-※ デフォルト機能（23個）は全テンプレートで常時有効のため表に含まない
+※ デフォルト機能（27個）は全テンプレートで常時有効のため表に含まない
 
 ---
 
@@ -486,6 +488,18 @@
 - **送信履歴**: 件名・送信日時・送信数・開封率を一覧表示（管理者のみ閲覧可）
 - ※ 無料枠超過後の課金設定は決済機能（Phase 8）導入時に検討。それまでは週3回が上限
 
+#### 27. 広告表示
+- **フリープランのみ表示**: 有料プランに加入済みのチーム/組織は広告非表示。フリープランでのプラットフォーム収益化手段として機能する
+- **初期実装（Phase 9）: Amazonアソシエイト**
+  - SYSTEM_ADMINがアソシエイトタグIDと表示配置（サイドバー右・バナーフッター等）を管理画面から設定
+  - フロントエンドが設定を取得してSSR時に描画。ユーザー属性（チームカテゴリ等）に応じたアソシエイトリンクのカテゴリ切り替えを将来対応
+- **将来: ターゲティング広告プラットフォーム**
+  - 広告クリエイティブ（画像・タイトル・リンク先）をSYSTEM_ADMINが審査・登録
+  - **リンク先**: プラットフォーム内の組織/チームページ（内部リンク）または外部URL（外部HP等）を選択可能
+  - **ターゲティング**: 組織カテゴリ（スポーツ/整骨院/学校等）・地域・ユーザーロールに応じた広告の絞り込み配信
+  - **インプレッション・クリック計測**: 表示回数・クリック数を記録し、広告効果測定と将来の課金計算（CPM/CPC）に活用
+  - 広告主は組織アカウントを持つ運営者が申請し、SYSTEM_ADMINが審査・承認後に掲載
+
 ### 選択式モジュール詳細
 
 #### 1. QR会員証
@@ -563,7 +577,7 @@
 
 #### AA. 管理者ダッシュボード
 - 全管理機能を `/admin` 配下に集約
-- ユーザー管理、ロール・パーミッション管理、モジュール設定、スケジュール管理、ブログ管理、掲示板カテゴリ管理、備品管理、メンバー紹介管理、広告・スポンサー管理、予約管理設定、Googleカレンダー設定、LINE設定、SNS設定
+- ユーザー管理、ロール・パーミッション管理、モジュール設定、スケジュール管理、ブログ管理、掲示板カテゴリ管理、備品管理、メンバー紹介管理、広告・スポンサー管理（将来: 自チーム/組織の広告出稿申請・クリエイティブ登録）、予約管理設定、Googleカレンダー設定、LINE設定、SNS設定
 - **DEPUTY_ADMIN 権限グループ管理**: パーミッションを個別選択した名前付きグループの作成・編集・複製・削除。グループはテンプレートとして保存でき、DEPUTY_ADMIN ユーザーへ割り当てる。「グループ1（受付・安否確認担当）」「グループ2（スケジュール・ファイル管理担当）」など複数グループの運用が可能。SYSTEM_ADMIN が定めた権限の上限（天井）の範囲内で設定可能
 - **DEPUTY_ADMIN の割り当て**: 複数ユーザーを DEPUTY_ADMIN に任命し、それぞれに権限グループを割り当て
 - **MEMBER の権限調整**: チェックボックスで MEMBER のデフォルト操作を ON/OFF（`team_role_permissions` に保存）
@@ -583,6 +597,8 @@
 - **シーズナル壁紙管理**: 期間限定壁紙の作成・画像アップロード・公開期間設定（開始/終了日時）。プレビュー確認後に公開。有効期間中は全ユーザーへ自動適用
 - **消費税設定**: 税名称・税率・表示方式（税込/税抜）の設定
 - **エラーレポート管理**: ユーザーから送信されたエラーレポートの一覧・詳細確認（スタックトレース・発生ページ・ユーザーエージェント・任意コメント）。ステータス管理（未対応 / 対応中 / 解決済み）
+- **アフィリエイト設定**: AmazonアソシエイトのタグIDと表示配置（サイドバー右・バナーフッター等）を管理画面から設定・切り替え。将来は楽天アフィリエイト等の追加も対応できる設計とする
+- **広告管理（将来）**: プラットフォーム全体の広告クリエイティブ（画像・タイトル・リンク先・リンク種別）の登録・審査・公開管理。キャンペーン（掲載期間・表示対象プランスコープ・ターゲティング条件）の作成・一覧確認。インプレッション・クリック数の統計確認
 - ユーザーBAN・通報管理
 - 監査ログ閲覧
 - システム設定・メンテナンス
@@ -593,7 +609,7 @@
 - LINE Messaging API（通知、アカウント連携）
 - Googleカレンダー（双方向同期）
 - Instagram / X API（SNSフィードキャッシュ）
-- Amazonアソシエイト
+- Amazonアソシエイト（SYSTEM_ADMINがタグIDと表示配置を設定。フリープランのページのサイドバー/バナーにアソシエイトリンクを表示し、クリック報酬による収益化を実現）
 
 ---
 
@@ -731,6 +747,15 @@
 `error_reports`
 
 ※ `error_reports`: ユーザーから送信されたエラー情報（`user_id` nullable, `error_message` TEXT, `stack_trace` TEXT, `route` VARCHAR, `user_agent` VARCHAR, `app_version` VARCHAR, `additional_message` TEXT nullable, `status` ENUM: NEW/REVIEWING/RESOLVED, `created_at`）。認証不要の公開エンドポイントで受け付ける
+
+### 広告・アフィリエイト (初期1テーブル / 将来6テーブル)
+`affiliate_configs`（初期）/ `ads`, `ad_campaigns`, `ad_targeting_rules`, `ad_impressions`, `ad_clicks`（将来）
+
+※ `affiliate_configs`: SYSTEM_ADMINが管理するアフィリエイト設定（`provider` ENUM: AMAZON, `tag_id` VARCHAR, `placement` ENUM: SIDEBAR_RIGHT/BANNER_FOOTER, `description` VARCHAR nullable, `is_active` BOOLEAN）。初期はAmazonアソシエイトのみ対応。将来の楽天等の追加に備え `provider` ENUM で拡張できる設計とする
+※ `ads`（将来）: 広告クリエイティブ（`title`, `image_url` S3, `click_url`, `click_type` ENUM: INTERNAL_ORG/EXTERNAL_URL/AFFILIATE, `target_organization_id` nullable（INTERNAL_ORG時）, `is_active`）。SYSTEM_ADMINが審査・管理
+※ `ad_campaigns`（将来）: 広告キャンペーン（`ad_id`, `advertiser_organization_id` nullable, `start_at`, `end_at`, `plan_scope` ENUM: FREE_ONLY/ALL, `daily_impression_limit` INT nullable, `status` ENUM: DRAFT/ACTIVE/PAUSED/ENDED）。フリープランのみに表示するか全プランに表示するかを `plan_scope` で制御
+※ `ad_targeting_rules`（将来）: ターゲティング条件（`campaign_id`, `rule_type` ENUM: ORG_CATEGORY/REGION/USER_ROLE/ALL, `rule_value` VARCHAR）。複数条件は AND 結合。rule_type=ALL は全ユーザー対象（ターゲティングなし）
+※ `ad_impressions` / `ad_clicks`（将来）: インプレッション・クリックの集計ログ（`ad_id`, `campaign_id`, `team_id`, `user_id` nullable, `occurred_at`）。課金計算・効果測定に使用。生ログは90日保持後に物理削除し、日次集計に集約
 
 ### QR会員証 (1テーブル)
 `member_cards`
@@ -1073,6 +1098,9 @@
 
 ### エラーレポート
 `POST /error-reports` (送信・認証不要), `GET /system-admin/error-reports` (一覧・SYSTEM_ADMIN), `GET /system-admin/error-reports/{id}` (詳細), `PATCH /system-admin/error-reports/{id}/status` (ステータス更新)
+
+### 広告・アフィリエイト
+`GET /ads/active` (ページ属性に応じたアクティブ広告取得・認証不要), `POST /ads/{id}/impression` (インプレッション記録・将来), `POST /ads/{id}/click` (クリックログ記録・将来), `GET/POST/PUT/PATCH/DELETE /system-admin/affiliate-configs` (アフィリエイト設定管理), `GET/POST /system-admin/ads` (将来: 広告クリエイティブ管理), `PUT/DELETE /system-admin/ads/{id}` (将来), `GET/POST /system-admin/ad-campaigns` (将来: キャンペーン管理), `PUT/DELETE /system-admin/ad-campaigns/{id}` (将来), `GET /system-admin/ad-campaigns/{id}/stats` (将来: インプレッション・クリック統計)
 
 ---
 
