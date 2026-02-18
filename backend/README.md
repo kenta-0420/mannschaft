@@ -201,6 +201,7 @@
 | 23 | 緊急安否確認 | 災害・緊急時の一斉安否確認・集計 |
 | 24 | アクセス解析 | ページビュー数の日別・月別・累計表示（Chart.js グラフ） |
 | 25 | テーマ・外観カスタマイズ | ライト/ダーク切替・背景色5色・期間限定シーズナル壁紙 |
+| 26 | ダイレクトメール配信 | 組織/チーム内メンバーへのメール一斉・個別送信（週3回まで無料） |
 
 ### 選択式モジュール（カタログから選択・課金対象）
 
@@ -253,6 +254,7 @@
 | 23 | 緊急安否確認 | ○ | ○ | ○ |
 | 24 | アクセス解析 | ○ | ○ | ○ |
 | 25 | テーマ・外観カスタマイズ | ○ | ○ | ○ |
+| 26 | ダイレクトメール配信 | ○ | ○ | - | 送信は ADMIN/DEPUTY_ADMIN のみ。個人は受信のみ |
 
 #### 選択式モジュールのレベル別適用
 
@@ -475,6 +477,14 @@
 - **背景色プリセット**: 5色から選択（デフォルト / ブルー / グリーン / パープル / オレンジ）。ユーザー個人の設定として保存
 - **シーズナル壁紙**: SYSTEM_ADMINが開始・終了日時を設定した期間限定壁紙を配信。有効期間中は全ユーザーの背景に適用される（ユーザーの色設定より優先）
 - 設定はブラウザの `localStorage` にも保存し、ログイン前も適用
+
+#### 26. ダイレクトメール配信
+- ADMIN / DEPUTY_ADMIN（権限付与済み）が組織/チーム内のメンバーへメールを送信する機能
+- **送信対象**: 全メンバー一斉 / グループ指定 / ロール指定 / 個別選択 から選択可能
+- **件名・本文**（リッチテキスト対応）・送信日時（即時 or 予約送信）を設定
+- **送信回数制限**: チーム/組織単位で **週3回まで無料**。制限到達後は翌週月曜0時にリセット。送信前に残回数を表示する
+- **送信履歴**: 件名・送信日時・送信数・開封率を一覧表示（管理者のみ閲覧可）
+- ※ 無料枠超過後の課金設定は決済機能（Phase 8）導入時に検討。それまでは週3回が上限
 
 ### 選択式モジュール詳細
 
@@ -708,6 +718,13 @@
 
 ※ `user_appearance_settings`: ユーザーの外観設定（`user_id`, `theme_mode` ENUM: LIGHT/DARK/SYSTEM, `color_preset` ENUM: DEFAULT/BLUE/GREEN/PURPLE/ORANGE）。レコードが存在しない場合はデフォルト（SYSTEM + DEFAULT）を適用
 ※ `seasonal_themes`: SYSTEM_ADMINが設定する期間限定壁紙（`name`, `image_url`, `start_at`, `end_at` nullable, `is_active`）。有効期間中はユーザー個人の色設定より優先して全画面に適用
+
+### ダイレクトメール配信 (2テーブル)
+`direct_mail_logs`, `direct_mail_recipients`
+
+※ `direct_mail_logs`: 送信セッション（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `sender_id`, `subject`, `body`, `recipient_type` ENUM: ALL/GROUP/ROLE/SELECTED, `scheduled_at` nullable, `sent_at` nullable, `status` ENUM: DRAFT/SCHEDULED/SENT/FAILED）
+※ `direct_mail_recipients`: 受信者ごとの配信状況（`log_id`, `user_id`, `email_address`, `status` ENUM: PENDING/SENT/FAILED/BOUNCED, `opened_at` nullable）
+※ **週次送信制限**: チーム/組織単位で週3回まで。制限カウントは Redis（`dm:weekly:{scopeType}:{scopeId}:{isoYearWeek}`、TTL 8日）で管理。Phase 8 の課金導入以降に上限緩和・無制限プランを検討する
 
 ### QR会員証 (1テーブル)
 `member_cards`
@@ -1044,6 +1061,9 @@
 
 ### 外観設定
 `GET/PUT /users/appearance` (ユーザー個人設定), `GET /seasonal-themes/active` (現在有効なシーズナルテーマ取得), `GET/POST/PUT/DELETE /system-admin/seasonal-themes` (SYSTEM_ADMIN管理)
+
+### ダイレクトメール配信
+`GET /direct-mails/quota` (週次残回数確認), `POST /direct-mails` (送信・予約送信), `GET /direct-mails` (送信履歴一覧), `GET /direct-mails/{id}` (詳細・開封状況), `DELETE /direct-mails/{id}` (予約送信キャンセル)
 
 ---
 
