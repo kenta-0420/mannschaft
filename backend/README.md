@@ -83,7 +83,7 @@
 
 ### 紐付けと所属
 
-- **招待URL連携**: チーム発行のURLから個人が紐付けされ、スムーズにメンバー加入
+- **招待URL・QRコード**: チーム/組織が発行した招待URL またはQRコードから個人がスムーズにメンバー加入。QRコードには有効期限（1日/7日/30日/90日/無期限）と使用回数上限（nullable）を設定可能。期限切れ・上限到達・手動無効化で即座に失効する
 - **マルチ所属**: 1つの個人アカウントで複数のチームや組織に同時に所属可能
 - **サポーター枠**: 招待不要で、外部から特定のチームを支援・フォローできる独立した枠組み
 
@@ -528,6 +528,7 @@
 ※ `organizations.is_searchable BOOLEAN DEFAULT true`: OFF にすると検索結果に表示されない
 ※ `users`: `last_name` / `first_name`（実名）・`display_name`（愛称1、表示用ニックネーム）・`nickname2`（愛称2、nullable）を持つ。電子印鑑は `last_name` を使用。検索・メンションでは実名・愛称いずれでもヒットするようにする
 ※ `users.is_searchable BOOLEAN DEFAULT true`: OFF にすると他ユーザーの検索結果に表示されない（メンションは引き続き利用可能）
+※ `invitation_links`: `invite_type`（ENUM: `EMAIL` / `URL` / `QR`）・`token`・`expires_at`（nullable、null=無期限）・`max_uses`（nullable、null=無制限）・`used_count`・`is_active`（手動無効化フラグ）を持つ。QR コードはトークンから動的生成し画像は保存しない。期限切れ・上限到達・`is_active=false` のいずれかで即時失効
 
 ### グループ階層 (3テーブル)
 `groups`, `group_members`, `group_hierarchy`
@@ -671,6 +672,9 @@
 
 ### 組織管理
 `CRUD /organizations`, `GET /organizations/{id}/teams`, `POST /organizations/{id}/invite`, `POST /invitations/{token}/accept`, `GET /users/{id}/teams`, `GET /users/{id}/organizations`
+
+### 招待・QRコード
+`POST /teams/{id}/invitations`, `GET /teams/{id}/invitations`, `DELETE /teams/{id}/invitations/{invitationId}`, `POST /organizations/{id}/invitations`, `GET /organizations/{id}/invitations`, `DELETE /organizations/{id}/invitations/{invitationId}`, `POST /invitations/{token}/accept`, `GET /invitations/{token}/verify`
 
 ### グループ管理
 `CRUD /groups`, `GET /groups/{id}/members`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{userId}`, `GET /organizations/{id}/groups`
