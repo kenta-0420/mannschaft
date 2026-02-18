@@ -115,6 +115,15 @@
 - **パスワードリセット**: メールによるリセットフロー。トークン有効期限は **30分**
 - **レート制限・ブルートフォース対策**: ログイン試行を IP + アカウント単位で Redis カウンター管理。5回失敗でアカウントを **30分** ロック。パスワードリセット・2FA検証エンドポイントにも同様のレート制限を適用する
 - **アカウント凍結・退会フロー**: 管理者によるアカウント凍結、ユーザー自身の退会申請。退会申請後30日間は論理削除（猶予期間）、その後個人情報を物理削除。決済履歴は税法に基づき7年間保持。詳細は `.claudecode.md` §8「データ保持・削除規約」を参照
+- **非アクティブアーカイブ**: 最終ログインから **6ヶ月** 経過したユーザーを段階的にアーカイブする。アーカイブ実行前にメール通知を送り、ログインで即時解除可能
+
+  | アーカイブ対象 | 処理 | 節約効果 |
+  |--------------|------|---------|
+  | Redis キャッシュ | フィードキャッシュ・未読カウンター等を全削除 | 大（Redis はメモリが高価） |
+  | S3 ファイル | Glacier Instant Retrieval（低価格ティア）へ移行 | 中（ストレージ費用削減） |
+  | MySQL データ | 移動しない。`users.archived_at` タイムスタンプのみ付与 | 小（フラグでクエリ除外は可能） |
+
+  ログイン復帰時は `archived_at` をクリアし、S3 復元（Glacier Instant Retrieval は体感遅延なし）と Redis キャッシュの遅延再構築を行う。フロントエンドは「アカウントを復元中...」のローディング表示で数秒の復帰時間をカバーする
 
 ---
 
@@ -627,6 +636,7 @@
 ※ SYSTEM_ADMIN は `roles` テーブルの1レコード + `user_roles` で割り当て。専用テーブルは設けず RBAC に統一する
 ※ `users`: `last_name` / `first_name`（実名）・`display_name`（愛称1、表示用ニックネーム）・`nickname2`（愛称2、nullable）を持つ。電子印鑑は `last_name` を使用。検索・メンションでは実名・愛称いずれでもヒットするようにする
 ※ `users.is_searchable BOOLEAN DEFAULT true`: OFF にすると他ユーザーの検索結果に表示されない（メンションは引き続き利用可能）
+※ `users.archived_at DATETIME nullable`: 最終ログインから6ヶ月経過時にバッチ処理で付与。null = アクティブ。ログイン成功時にクリアする。アーカイブ中はリスト系クエリから除外し、Redis キャッシュも保持しない
 ※ `role_permissions`: プラットフォームレベルの権限デフォルト（SYSTEM_ADMIN が管理）。コンテンツ削除系パーミッション（`CONTENT_DELETE` 等）は DEPUTY_ADMIN のデフォルトを `false` に設定する
 ※ `team_role_permissions`: チーム/組織レベルの権限カスタマイズ（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `role_id`, `permission_id`, `is_enabled`）。主に MEMBER のデフォルト調整に使用
 ※ `team_permission_groups`: ADMIN が作成する名前付き権限グループ（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `name`, `description` nullable, `created_by`）。テンプレートとして保存・複製可能
