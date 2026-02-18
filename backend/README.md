@@ -177,6 +177,7 @@
 | 8 | 議決権行使・委任状 | 総会議案への電子投票・委任状提出・結果集計 |
 | 9 | 住民台帳 | 居室情報・居住者管理・物件売買/賃貸掲示（非公開設定対応） |
 | 10 | 駐車場区画管理 | 区画登録・個別価格設定・割り当て・空き管理・譲渡希望掲示 |
+| 11 | カルテ | 問診票・ビフォーアフター写真・身体チャート・薬剤レシピ・経過グラフ（**有料プラン必須**） |
 
 ※ 運営側が随時新モジュールを追加予定。選択式モジュールが10個を超えた場合、11個目以降の有効化には有料プランが必要
 
@@ -226,6 +227,7 @@
 | 8 | 議決権行使・委任状 | ○ | ○ | ○（投票・委任） | 組織/チーム: 議案作成・集計 / 個人: 議決権行使・委任状提出 |
 | 9 | 住民台帳 | ○ | ○ | ○（自室のみ） | ADMIN/DEPUTY_ADMIN: 全件閲覧・編集 / 個人: 自室・自身の情報のみ閲覧（他居住者は非公開） |
 | 10 | 駐車場区画管理 | ○ | ○ | ○（申請・確認） | 管理者: 区画管理・割り当て・価格設定 / 個人: 空き確認・申請・譲渡希望登録 |
+| 11 | カルテ | - | ○（作成・管理） | ○（自分のカルテのみ） | チーム: カルテ作成・管理・閲覧 / 個人: 施術者が許可した情報のみ閲覧 |
 
 ※ SYSTEM_ADMINはシステム管理画面から各レベルへのモジュール適用ON/OFFを調整可能
 
@@ -245,6 +247,7 @@
 | 議決権行使・委任状 | - | - | - | ○ | - | - | - | ○ | ○ | ○ |
 | 住民台帳 | - | - | - | - | - | - | - | - | - | ○ |
 | 駐車場区画管理 | - | - | - | ○ | - | - | - | - | ○ | ○ |
+| カルテ | - | ○ | - | - | - | ○ | ○ | - | - | - |
 
 ※ デフォルト機能（23個）は全テンプレートで常時有効のため表に含まない
 
@@ -450,6 +453,21 @@
 - 所有者 / 賃借人の区別、入退居日の記録
 - **非公開設定**: 台帳全体を ADMIN/DEPUTY_ADMIN のみ閲覧可に設定可能。個人は自室・自身の情報のみ閲覧
 - **物件掲示板**: 売買希望・賃貸希望・駐車場区画の譲渡希望を居住者間で掲示（公開範囲はメンバー内のみ）
+
+#### 11. カルテ
+- 来店ごとにカルテを作成・蓄積し、顧客の施術履歴を体系的に管理
+- **問診票・初回同意書**: 電子印鑑と連携してペーパーレス化。テンプレートをカスタマイズ可能
+- **アレルギー・禁忌情報**: 施術前に画面上部に目立つ形で表示し安全管理を徹底
+- **ビフォーアフター写真**: 来店ごとに写真を紐付け。顧客への公開/非公開を施術者が選択
+- **担当スタッフ記録**: 誰が施術したかを記録・集計
+- **身体チャート** （整骨院向け）: 人体図に痛み・施術箇所をタップでマーク
+- **カラー・薬剤レシピ記録** （美容室向け）: 使用カラー剤・配合比率・放置時間を記録。次回再現に活用
+- **パッチテスト記録** （美容室向け）: テスト日時・結果を記録
+- **経過観察グラフ**: 痛みレベル・施術回数・来店頻度を時系列グラフで表示
+- **次回推奨メモ**: 次回施術の提案を記録。予約リマインドと連携
+- **顧客への部分共有**: 次回メモ・写真など施術者が許可した項目のみ顧客ダッシュボードに表示
+- **PDF出力**: カルテを印刷・保存用にPDF出力
+- ※ 選択式モジュール11個目のため**有料プランが必要**
 
 #### 10. 駐車場区画管理
 - 区画番号・種別（屋内/屋外/身障者用等）・**個別価格設定**（月額）を区画ごとに登録
@@ -670,6 +688,15 @@
 ※ `resident_registry`: 区分所有者/賃借人の区別・入退居日を管理。`is_public=false` で ADMIN/DEPUTY_ADMIN のみ閲覧可
 ※ `property_listings`: 居住者間の売買/賃貸/駐車場譲渡希望の掲示（`listing_type`: SALE/RENT/PARKING）
 
+### カルテ (5テーブル)
+`chart_records`, `chart_intake_forms`, `chart_photos`, `chart_body_marks`, `chart_formulas`
+
+※ `chart_records`: カルテ本体（来店日・担当スタッフ・次回推奨メモ・顧客共有フラグ・アレルギー禁忌情報）
+※ `chart_intake_forms`: 問診票・同意書（電子印鑑と連携。初回 or 毎回更新）
+※ `chart_photos`: ビフォーアフター写真（`photo_type`: BEFORE/AFTER, `is_shared_to_customer`）
+※ `chart_body_marks`: 身体チャートのマーク情報（整骨院向け。座標・種別・メモ）
+※ `chart_formulas`: カラー・薬剤レシピ（美容室向け。薬剤名・配合比率・放置時間・パッチテスト記録）
+
 ### 駐車場区画管理 (5テーブル)
 `parking_spaces`, `parking_assignments`, `parking_applications`, `parking_listings`, `registered_vehicles`
 
@@ -854,6 +881,9 @@
 
 ### 住民台帳・物件情報
 `GET/POST /dwelling-units`, `GET/PUT/DELETE /dwelling-units/{id}`, `GET/POST /dwelling-units/{id}/residents`, `PUT/DELETE /dwelling-units/{unitId}/residents/{id}`, `GET/POST /property-listings`, `GET/PUT/DELETE /property-listings/{id}`
+
+### カルテ
+`GET/POST /charts`, `GET/PUT/DELETE /charts/{id}`, `POST /charts/{id}/photos`, `DELETE /charts/photos/{id}`, `GET/PUT /charts/{id}/intake-form`, `PUT /charts/{id}/body-marks`, `GET/POST /charts/{id}/formulas`, `PUT/DELETE /charts/formulas/{id}`, `GET /charts/{id}/pdf`, `PATCH /charts/{id}/share`, `GET /charts/customer/{userId}`
 
 ### 駐車場区画管理
 `GET/POST /parking/spaces`, `GET/PUT/DELETE /parking/spaces/{id}`, `POST /parking/spaces/bulk-assign`, `GET /parking/spaces/vacant`, `GET/POST /parking/applications`, `PATCH /parking/applications/{id}/approve`, `GET/POST /parking/listings`, `GET/PUT/DELETE /parking/listings/{id}`
