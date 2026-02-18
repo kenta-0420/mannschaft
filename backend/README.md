@@ -306,6 +306,7 @@
 - LINE連携による自動通知
 - WebSocketによるリアルタイムポップアップ通知
 - 重要度に応じた通知チャネル自動選択
+- **通知受信設定**: 個人アカウントが所属する組織・チームごとに通知の受け取り ON/OFF を設定可能
 
 #### G. アンケート・投票
 - カスタム設問作成（単一選択・複数選択・自由記述等）
@@ -584,8 +585,10 @@
 
 ※ メンション（@ユーザー名）はタイムライン・チャット・掲示板など複数機能で横断的に使用されるため、ポリモーフィックテーブル（`target_type` + `target_id`）として設計する。Phase 1 で詳細カラム定義を確定すること
 
-### タイムライン・通知 (4テーブル)
-`timeline_posts`, `timeline_post_attachments`, `timeline_post_reactions`, `notifications`
+### タイムライン・通知 (5テーブル)
+`timeline_posts`, `timeline_post_attachments`, `timeline_post_reactions`, `notifications`, `notification_preferences`
+
+※ `notification_preferences`: ユーザーが組織/チームごとに通知受信を ON/OFF する設定（`user_id`, `scope_type`: TEAM/ORGANIZATION, `scope_id`, `is_enabled` DEFAULT true）。レコードが存在しない場合は受信する（opt-out 方式）
 
 ※ `timeline_post_attachments`: `attachment_type` は `IMAGE` / `FILE` / `VIDEO_LINK` の ENUM。`VIDEO_LINK` は `video_url`（外部URL）・`video_thumbnail`・`video_title` カラムを持ち、ファイルストレージは使用しない
 ※ `timeline_posts`: `reaction_count`・`reply_count` カラムを denormalize で保持し、リアクション追加・削除時にアトミック更新する（COUNT クエリ廃止）
@@ -810,6 +813,9 @@
 
 ### 通知
 `GET /notifications`, `GET /notifications/unread-count`, `PATCH /notifications/{id}/read`, `PATCH /notifications/read-all`, `WS /ws`
+
+### 通知受信設定
+`GET /notification-preferences`, `PUT /notification-preferences/teams/{teamId}`, `PUT /notification-preferences/organizations/{orgId}`
 
 ### メンバー紹介
 `GET/POST /team/pages`, `GET/PUT/DELETE /team/pages/{id}`, `PATCH /team/pages/{id}/publish`, `GET/POST /team/pages/{id}/sections`, `PUT/DELETE /team/sections/{id}`, `GET/POST /team/members`, `GET/PUT/DELETE /team/members/{id}`, `POST /team/members/bulk`, `GET/POST /team/member-fields`, `PUT/DELETE /team/member-fields/{id}`
