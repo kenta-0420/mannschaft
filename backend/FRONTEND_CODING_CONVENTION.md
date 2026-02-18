@@ -214,11 +214,28 @@ npx lint-staged
 
 - **強制力**: フックのスキップ（`git commit --no-verify`）は緊急時のみに限定し、通常の開発では禁止する。
 
-## 9. パフォーマンス (Performance)
+## 9. ドラッグ＆ドロップ (Drag & Drop)
+
+コルクボード機能など、カードの自由配置が必要な画面では **`@vueuse/core` の `useDraggable`** を使用する。
+
+- **採用理由**: Nuxt 3 / Vue 3 の Composition API と親和性が高く、リスト並び替えではなく**自由座標配置**に適している。SSR との相性も問題なし（`client-only` ラッパーを使用）
+- **位置の保存**: ドラッグ終了時（`pointerup`）にのみ `PATCH /corkboards/{id}/cards/{cardId}/position` を呼び出す。ドラッグ中は CSS transform でリアルタイム移動させ、APIコールは行わない（過剰なリクエストを防止）
+- **リスト並び替え**（TODO、シフト管理等）が必要な場合は `vue-draggable-next`（Sortable.js ベース）を使用する
+
+```ts
+// 使用例: コルクボードカードの自由配置
+const cardEl = ref<HTMLElement | null>(null)
+const { x, y, isDragging } = useDraggable(cardEl, {
+  initialValue: { x: card.pos_x, y: card.pos_y },
+  onEnd: () => updateCardPosition(card.id, x.value, y.value),
+})
+```
+
+## 10. パフォーマンス (Performance)
 - **NuxtImg**: 画像には `NuxtImg` モジュールを活用し、フォーマット最適化を行う。
 - **Lazy Loading**: ページ下部の重いコンポーネントは `Lazy` プレフィックスコンポーネント（例: `<LazyHeavyChart />`）として読み込む。
 
-## 10. テスト (Testing)
+## 11. テスト (Testing)
 - **基本ツール**: **Vitest** と **Vue Test Utils** を採用する。
 - **テスト対象の優先順位**:
     1. **Composables**: 共通ロジック（`useApi.ts`, `useErrorHandler.ts` 等）
@@ -231,7 +248,7 @@ npx lint-staged
     - プロジェクト全体でテスト配置のパターンを1つに絞り、ディレクトリ構造の迷いを完全に排除する。
 - **E2Eテスト**: **Playwright** を将来的に導入予定。現時点では方針策定のみとし、プロジェクト成熟後に着手する。
 
-## 11. エラーレポート (Error Reporting)
+## 12. エラーレポート (Error Reporting)
 
 アプリケーション全体で発生した予期せぬエラーをユーザー経由で開発者へ通知するための仕組みを設ける。
 

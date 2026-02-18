@@ -150,7 +150,7 @@
 
 | 方式 | 概要 |
 |------|------|
-| フリープラン | デフォルト機能（27個）＋ 選択式モジュール最大10個まで無料 |
+| フリープラン | デフォルト機能（28個）＋ 選択式モジュール最大10個まで無料 |
 | 個別モジュール課金 | 選択式モジュールを1個単位で有効化。月額または年額サブスクリプション |
 | パッケージ課金 | 複数モジュールをセットにしたパッケージを割引価格で購入 |
 | 組織数課金 | 組織配下のアクティブなチーム数に応じた月額課金。組織種別（非営利/営利）ごとに無料枠と単価を設定 |
@@ -225,6 +225,7 @@
 | 25 | テーマ・外観カスタマイズ | ライト/ダーク切替・背景色5色・期間限定シーズナル壁紙 |
 | 26 | ダイレクトメール配信 | 組織/チーム内メンバーへのメール一斉・個別送信（週3回まで無料） |
 | 27 | 広告表示 | フリープラン利用中のチーム/組織のページにプラットフォーム広告を自動表示。初期はAmazonアソシエイト。将来はターゲティング広告（組織カテゴリ・地域等）・内部組織ページへのリンク広告に拡張 |
+| 28 | コルクボード | チャット・投稿・掲示板・ファイルをカード化してドラッグ＆ドロップで自由配置。重要情報の視覚的ストック・整理。個人/チーム/組織の3スコープ対応 |
 
 ### 選択式モジュール（カタログから選択・課金対象）
 
@@ -279,6 +280,7 @@
 | 25 | テーマ・外観カスタマイズ | ○ | ○ | ○ |
 | 26 | ダイレクトメール配信 | ○ | ○ | - | 送信は ADMIN/DEPUTY_ADMIN のみ。個人は受信のみ |
 | 27 | 広告表示 | ○ | ○ | ○ | フリープランのみ表示。有料プランは非表示。ユーザー自身は表示のみ（広告管理はSYSTEM_ADMINが担う） |
+| 28 | コルクボード | ○ | ○ | ○ | 個人: 個人ボードのみ作成・管理可。チーム/組織: 共有ボードはADMINが作成、編集権限はADMINが設定 |
 
 #### 選択式モジュールのレベル別適用
 
@@ -316,7 +318,7 @@
 | 駐車場区画管理 | - | - | - | ○ | - | - | - | - | ○ | ○ |
 | カルテ | - | ○ | - | - | - | ○ | ○ | - | - | - |
 
-※ デフォルト機能（27個）は全テンプレートで常時有効のため表に含まない
+※ デフォルト機能（28個）は全テンプレートで常時有効のため表に含まない
 
 ---
 
@@ -531,6 +533,38 @@
   - **ターゲティング**: 組織カテゴリ（スポーツ/整骨院/学校等）・地域・ユーザーロールに応じた広告の絞り込み配信
   - **インプレッション・クリック計測**: 表示回数・クリック数を記録し、広告効果測定と将来の課金計算（CPM/CPC）に活用
   - 広告主は組織アカウントを持つ運営者が申請し、SYSTEM_ADMINが審査・承認後に掲載
+
+#### 28. コルクボード
+チャットや投稿の流れに埋もれがちな重要情報を「新聞の切り抜き」感覚でカード化し、ドラッグ＆ドロップで自由に配置・整理できる視覚型ストックボード。
+
+**ボードのスコープ**
+- **個人ボード**: 自分専用。他のメンバーには非公開。複数作成可能
+- **チーム共有ボード**: チームメンバー全員が閲覧可能。作成はADMIN/DEPUTY_ADMIN、編集権限はADMINが設定
+- **組織共有ボード**: 組織メンバー全員が閲覧可能。同上
+
+**カードの種類**
+
+| 種別 | 説明 | 元コンテンツ |
+|------|------|------------|
+| 参照カード | チャットメッセージ・タイムライン投稿・掲示板スレッド/返信・ブログ記事・ファイルをストック | `content_snapshot` で内容を保持（元が削除されても残る） |
+| メモカード | ボード専用の独立したテキストメモ | なし |
+| URLカード | 外部URLとタイトル・OGPサムネイルを表示 | なし |
+
+**ビジュアル整理**
+- **自由配置**: カードをドラッグ＆ドロップで任意の座標に配置（X/Y座標をDBに保存）
+- **カラーラベリング**: 付箋の色を6色から選択（白/黄/赤/青/緑/紫）
+- **カードサイズ**: small / medium / large の3段階
+- **グループ（島）**: 複数カードを矩形ボックスで囲んでグループ化。グループにラベルを付与
+- **ボード背景**: コルク風テクスチャ / ホワイト / ダーク から選択
+
+**コンテキスト保持**
+- 参照カードをクリック → サイドパネルで元コンテンツの**前後5件**のコンテキストを表示。元コンテンツへのリンクも提供
+- `content_snapshot` により、元の投稿が削除された後もカード上でテキストを確認可能
+
+**追加メモ・自動アーカイブ**
+- 各カードに付箋メモ（`user_note`）を追記可能
+- カードごとに **自動アーカイブ日時**（`auto_archive_at`）を設定可能。期限到達後はカードを折りたたみ表示（データは保持）
+- ボード内キーワード検索・カラーフィルターで目的のカードを素早く特定
 
 ### 選択式モジュール詳細
 
@@ -812,6 +846,14 @@
 ※ `ad_campaigns`（将来）: 広告キャンペーン（`ad_id`, `advertiser_organization_id` nullable, `start_at`, `end_at`, `plan_scope` ENUM: FREE_ONLY/ALL, `daily_impression_limit` INT nullable, `status` ENUM: DRAFT/ACTIVE/PAUSED/ENDED）。フリープランのみに表示するか全プランに表示するかを `plan_scope` で制御
 ※ `ad_targeting_rules`（将来）: ターゲティング条件（`campaign_id`, `rule_type` ENUM: ORG_CATEGORY/REGION/USER_ROLE/ALL, `rule_value` VARCHAR）。複数条件は AND 結合。rule_type=ALL は全ユーザー対象（ターゲティングなし）
 ※ `ad_impressions` / `ad_clicks`（将来）: インプレッション・クリックの集計ログ（`ad_id`, `campaign_id`, `team_id`, `user_id` nullable, `occurred_at`）。課金計算・効果測定に使用。生ログは90日保持後に物理削除し、日次集計に集約
+
+### コルクボード (4テーブル)
+`corkboards`, `corkboard_cards`, `corkboard_groups`, `corkboard_card_groups`
+
+※ `corkboards`: ボードマスター（`scope_type` ENUM: PERSONAL/TEAM/ORGANIZATION, `scope_id` nullable, `owner_id` nullable（PERSONALの場合はuser_id）, `name`, `background_style` ENUM: CORK/WHITE/DARK, `is_default` BOOLEAN）。個人・チーム・組織それぞれに複数ボードを作成可能
+※ `corkboard_cards`: カード（`board_id`, `card_type` ENUM: REFERENCE/MEMO/URL, `ref_type` ENUM nullable: CHAT_MESSAGE/TIMELINE_POST/BULLETIN_THREAD/BLOG_POST/FILE, `ref_id` BIGINT nullable, `content_snapshot` TEXT nullable（参照元削除後も内容を保持）, `ref_url` VARCHAR nullable, `pos_x` INT, `pos_y` INT, `card_width` INT DEFAULT 200, `card_height` INT DEFAULT 150, `color` ENUM: WHITE/YELLOW/RED/BLUE/GREEN/PURPLE, `user_note` TEXT nullable, `title` VARCHAR nullable, `auto_archive_at` DATETIME nullable, `is_archived` BOOLEAN DEFAULT false, `created_by` FK users）。`auto_archive_at` を過ぎたカードはバッチで `is_archived=true` に更新し折りたたみ表示（データは保持）
+※ `corkboard_groups`: グループ（島）（`board_id`, `name` VARCHAR nullable, `pos_x` INT, `pos_y` INT, `group_width` INT, `group_height` INT, `color` ENUM: TRANSPARENT/LIGHT_YELLOW/LIGHT_BLUE/LIGHT_GREEN/LIGHT_PURPLE）。グループはボード上の矩形ボックスとして描画し、内包カードを視覚的にグルーピングする
+※ `corkboard_card_groups`: カードとグループの中間テーブル（`card_id`, `group_id`）。1枚のカードは複数グループに属さない設計とし、移動時は旧グループとの紐付けを更新する
 
 ### QR会員証 (1テーブル)
 `member_cards`
@@ -1154,6 +1196,9 @@
 
 ### エラーレポート
 `POST /error-reports` (送信・認証不要), `GET /system-admin/error-reports` (一覧・SYSTEM_ADMIN), `GET /system-admin/error-reports/{id}` (詳細), `PATCH /system-admin/error-reports/{id}/status` (ステータス更新)
+
+### コルクボード
+`GET/POST /corkboards` (ボード一覧・作成), `GET/PUT/DELETE /corkboards/{id}` (詳細・更新・削除), `GET/POST /corkboards/{id}/cards` (カード一覧・追加), `PUT/DELETE /corkboards/{id}/cards/{cardId}` (カード更新・削除), `PATCH /corkboards/{id}/cards/{cardId}/position` (位置のみ更新。頻繁に呼ばれるため軽量エンドポイントを分離), `GET/POST /corkboards/{id}/groups` (グループ一覧・作成), `PUT/DELETE /corkboards/{id}/groups/{groupId}` (グループ更新・削除), `GET /chat/messages/{id}/context` (参照カードのコンテキスト取得。前後N件), `GET /timeline-posts/{id}/context` (同上・タイムライン), `GET /bulletin-threads/{id}/context` (同上・掲示板)
 
 ### 課金サマリー（ダッシュボード用）
 `GET /teams/{id}/billing/current-month` (今月の課金合計・内訳。ADMIN/DEPUTY_ADMIN), `GET /organizations/{id}/billing/current-month` (今月の課金合計・内訳。ADMIN/DEPUTY_ADMIN), `GET /users/me/billing/current-month` (個人向け課金サマリー。将来対応)
