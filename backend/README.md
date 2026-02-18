@@ -36,7 +36,9 @@
 | APIドキュメント | Springdoc OpenAPI (Swagger UI) |
 | マッピング | MapStruct |
 | リアルタイム通信 | WebSocket (STOMP), Redis (メッセージブローカー) |
-| キャッシュ/セッション | Redis (トークン無効化管理) |
+| キャッシュ/セッション | Redis (トークン無効化・タイムラインフィードキャッシュ) |
+| ストレージ | AWS S3 + CloudFront (CDN) |
+| 画像処理 | AWS Lambda (WebP変換・サムネイル自動生成) |
 | テスト | Testcontainers (MySQL 8.0) |
 | その他 | Lombok, Virtual Threads (Project Loom) |
 
@@ -416,6 +418,40 @@
 
 ---
 
+## インフラ・パフォーマンス設計
+
+### 画像ストレージ
+
+- **Pre-signed URL**: クライアントがサーバーを経由せず S3 へ直接アップロード（サーバー転送コスト 0）
+- **自動変換**: S3 への新規アップロードをトリガーに Lambda が WebP 変換 + 3サイズ生成（thumbnail: 150px / medium: 600px / original）
+- **CloudFront 配信**: 画像は CloudFront (CDN) 経由で配信し、S3 への直接リクエストを排除
+- **サイズ制限**:
+
+| 種別 | 上限 | 保存形式 |
+|------|------|---------|
+| アバター | 2MB | WebP 変換, 150×150 固定 |
+| 投稿画像 | 10MB / 枚・最大4枚 | WebP 変換, medium + original |
+| チームロゴ | 2MB | WebP 変換, 400×400 固定 |
+
+### 動画
+
+- **外部リンクのみ**: 動画ファイルのアップロードは行わない。YouTube / Vimeo 等の URL を貼り付ける方式とする
+- **メタデータ自動取得**: 投稿時に oEmbed API を呼び出し、サムネイル URL・タイトルを `timeline_post_attachments` に保存
+
+### フィードキャッシュ（Redis）
+
+- タイムライン最新フィードを Sorted Set でキャッシュ（key: `timeline:{scope}:{id}`, score: 投稿 timestamp）
+- 個別投稿は Hash でキャッシュ（key: `post:{postId}`, TTL: 5分）
+- 投稿作成・削除時にキャッシュを即時無効化
+
+### クエリ最適化
+
+- **カーソルベースページネーション**: `WHERE id < :cursor ORDER BY id DESC LIMIT N`（OFFSET 廃止）
+- **JOIN 一括取得**: タイムライン一覧は投稿者情報・リアクション数・添付ファイルを1クエリで取得
+- **IN 句バッチ取得**: 関連エンティティは `WHERE id IN (...)` で N+1 を排除
+
+---
+
 ## DB設計
 
 ### 認証・権限 (9テーブル)
@@ -458,6 +494,8 @@
 
 ### タイムライン・通知 (4テーブル)
 `timeline_posts`, `timeline_post_attachments`, `timeline_post_reactions`, `notifications`
+
+※ `timeline_post_attachments`: `attachment_type` は `IMAGE` / `FILE` / `VIDEO_LINK` の ENUM。`VIDEO_LINK` は `video_url`（外部URL）・`video_thumbnail`・`video_title` カラムを持ち、ファイルストレージは使用しない
 
 ### チャット (4テーブル)
 `chat_channels`, `chat_messages`, `chat_channel_members`, `chat_message_reactions`
