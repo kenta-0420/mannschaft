@@ -453,7 +453,8 @@
 
 #### 10. 駐車場区画管理
 - 区画番号・種別（屋内/屋外/身障者用等）・**個別価格設定**（月額）を区画ごとに登録
-- 利用者の割り当て: 単一指定・**複数同時指定・一括指定**に対応
+- **車両登録**: 個人アカウントが車・バイク・自転車を最大3台まで登録（ナンバー・ニックネーム）
+- 利用者の割り当て: 車両単位で紐付け。単一指定・**複数同時指定・一括指定**に対応
 - 空き状況をリアルタイム表示（VACANT / OCCUPIED / MAINTENANCE）
 - 空き申請・抽選機能（希望者が申請 → 管理者が抽選または先着で割り当て）
 - **譲渡・売買希望リスト**: 居住者が不要な区画の譲渡希望を掲示
@@ -669,11 +670,12 @@
 ※ `resident_registry`: 区分所有者/賃借人の区別・入退居日を管理。`is_public=false` で ADMIN/DEPUTY_ADMIN のみ閲覧可
 ※ `property_listings`: 居住者間の売買/賃貸/駐車場譲渡希望の掲示（`listing_type`: SALE/RENT/PARKING）
 
-### 駐車場区画管理 (4テーブル)
-`parking_spaces`, `parking_assignments`, `parking_applications`, `parking_listings`
+### 駐車場区画管理 (5テーブル)
+`parking_spaces`, `parking_assignments`, `parking_applications`, `parking_listings`, `registered_vehicles`
 
 ※ `parking_spaces`: 区画番号・種別・`price_per_month`（個別価格設定）・`status`（VACANT/OCCUPIED/MAINTENANCE）
-※ `parking_assignments`: 利用者と区画の紐付け。複数区画の一括割り当てに対応
+※ `registered_vehicles`: ユーザーの車両登録（`user_id`, `vehicle_type`: CAR/MOTORCYCLE/BICYCLE, `plate_number`, `nickname` nullable）。1ユーザーにつき最大3台まで登録可能
+※ `parking_assignments`: 車両（`vehicle_id`）と区画の紐付け。複数区画の一括割り当てに対応
 ※ `parking_applications`: 空き区画への申請・抽選エントリー
 ※ `parking_listings`: 区画の譲渡・売買希望リスト
 
