@@ -522,6 +522,8 @@
 ### 組織・マルチ所属 (4テーブル)
 `organizations`, `organization_members`, `team_memberships`, `invitation_links`
 
+※ `organizations`: `name`（正式名称）・`nickname1`・`nickname2`（愛称、両方 nullable）を持つ。検索・表示では正式名称と愛称いずれでもヒットするようにする
+
 ### グループ階層 (3テーブル)
 `groups`, `group_members`, `group_hierarchy`
 
