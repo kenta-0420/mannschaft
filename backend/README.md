@@ -708,6 +708,7 @@
 `payment_plans`, `payment_transactions`, `membership_fees`
 
 ※ `payment_plans`: チームが自チームのメンバーから徴収する会費の設定（月会費/年会費/都度払い）。プラットフォームのサブスクリプション（`subscription_plans`）とは別概念
+※ 拡張設計: 将来的に組織レベルの年会費徴収・物販機能を実装する際は、`payment_plans` に `scope_type` (TEAM/ORGANIZATION) カラムを追加することで対応可能な設計とする。物販テーブル群（`products`, `orders`, `order_items` 等）は Phase 8 以降に別セクションとして追加する
 
 ### 通報・モデレーション (2テーブル)
 `reports`, `moderation_actions`
