@@ -108,7 +108,8 @@
 
 - **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
 - **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
-- **パスワードリセット**: メールによるリセットフロー（トークン有効期限付き）
+- **パスワードリセット**: メールによるリセットフロー。トークン有効期限は **30分**
+- **レート制限・ブルートフォース対策**: ログイン試行を IP + アカウント単位で Redis カウンター管理。5回失敗でアカウントを **30分** ロック。パスワードリセット・2FA検証エンドポイントにも同様のレート制限を適用する
 - **アカウント凍結・退会フロー**: 管理者によるアカウント凍結、ユーザー自身の退会申請。退会申請後30日間は論理削除（猶予期間）、その後個人情報を物理削除。決済履歴は税法に基づき7年間保持。詳細は `.claudecode.md` §8「データ保持・削除規約」を参照
 
 ---
@@ -257,7 +258,7 @@
 
 ### デフォルト機能詳細
 
-#### A. ダッシュボード（ログイン後のホーム画面）
+#### 1. ダッシュボード（ログイン後のホーム画面）
 
 組織・チーム・個人それぞれにダッシュボードを持ち、全ウィジェットの表示/非表示をトグルスイッチで自由にカスタマイズ可能。
 
@@ -281,29 +282,29 @@
 - 全ウィジェットはトグルスイッチで表示/非表示を切り替え可能
 - ウィジェットの追加・並び替えによるレイアウトカスタマイズ
 
-#### B. TODO管理
+#### 2. TODO管理
 - 個人TODOリスト（期限設定、優先度、完了チェック）
 - チームTODO（担当者の割り振り、期限設定、優先度、進捗ステータス管理）
 - 組織TODO（担当者・担当チームの割り振り）
 
-#### C. タイムライン・コミュニケーション
+#### 3. タイムライン・コミュニケーション
 - X（旧Twitter）風UIのチーム内限定投稿・交流
 - LINE連携による自動通知（日程更新、出欠督促）
 - アカウントごとのポップアップ通知（WebSocket）
 
-#### D. コンテンツ管理 (CMS)
+#### 4. コンテンツ管理 (CMS)
 - **ブログ**: 「外部公開用」と「メンバー限定用」の出し分け
 - **お知らせ**: 重要度付き通知配信
 - **広告枠**: Amazonアフィリエイト広告の埋め込み
 - **スポンサー**: バナー表示（GOLD/SILVER/BRONZE ティア）
 
-#### E. チャット
+#### 5. チャット
 - **階層化スレッド**: 特定のコメントに対して返答を階層化（Slack/Teamsスタイル）。情報の埋没を防止
 - **絵文字リアクション**: メッセージへの絵文字のみの返答（Slack/Teams風）
 - **グループ管理**: 複数チーム間、またはチーム代表者・管理者限定のチャットルーム作成
 - **チーム間メッセージング**: 組織を横断したコミュニケーション
 
-#### F. プッシュ通知
+#### 6. プッシュ通知
 - 予約リマインド（予約時間が近づいたら自動通知）
 - 出欠督促、お知らせ配信
 - LINE連携による自動通知
@@ -311,57 +312,57 @@
 - 重要度に応じた通知チャネル自動選択
 - **通知受信設定**: 個人アカウントが所属する組織・チームごとに通知の受け取り ON/OFF を設定可能
 
-#### G. アンケート・投票
+#### 7. アンケート・投票
 - カスタム設問作成（単一選択・複数選択・自由記述等）
 - 匿名/記名の切替
 - 集計結果のグラフ表示
 - 回答期限の設定
 
-#### H. ファイル共有
+#### 8. ファイル共有
 - ドキュメント・資料の共有ストレージ
 - フォルダ管理（階層構造）
 - アクセス権限設定（チーム内/グループ内/個別指定）
 
-#### I. 検索
+#### 9. 検索
 - チーム横断のグローバル検索（投稿、スレッド、ファイル、メンバー等）
 - フィルタリング（日付、カテゴリ、投稿者等）
 - 検索結果のハイライト表示
 
-#### J. 通報・モデレーション
+#### 10. 通報・モデレーション
 - 不適切コンテンツの通報機能（投稿、チャット、マッチング等）
 - 通報内容のレビュー・対応フロー（SYSTEM_ADMIN / ADMIN）
 - ユーザーBAN・コンテンツ削除・警告の段階的対応
 
-#### K. メンション
+#### 11. メンション
 - タイムライン / チャット / 掲示板での `@ユーザー名` によるメンション通知
 - メンションされた投稿の一覧表示
 
-#### L. 監査ログ
+#### 12. 監査ログ
 - 管理者操作の履歴記録（誰がいつ何を変更したか）
 - ロール変更、メンバー追加/削除、設定変更等を自動記録
 - SYSTEM_ADMINによる監査ログ閲覧・検索
 
-#### M. データエクスポート
+#### 13. データエクスポート
 - チーム解散時や移行時にデータをまとめて出力（CSV / JSON）
 - メンバー一覧、活動記録、スケジュール等の一括エクスポート
 
-#### N. 多言語対応 (i18n)
+#### 14. 多言語対応 (i18n)
 - 初期対応: 日本語 / 英語
 - メッセージ・ラベルの外部化（Spring MessageSource + フロントエンドi18nプラグイン）
 - 将来の言語追加に対応可能な設計
 
-#### O. スケジュール・出欠管理
+#### 15. スケジュール・出欠管理
 - カレンダー表示（イベント日程）
 - **Googleカレンダーとの双方向同期**
 - ボタン一つで出欠回答（出席・欠席・保留）、管理者による集計・CSV出力
 - カレンダー作成時の出欠機能ON/OFF、締切日時設定
 
-#### P. 活動記録
+#### 16. 活動記録
 - 活動内容の記録（スコア、参加者、評価等）
 - カスタムフィールドで業種に応じた記録項目を自由定義
 - 統計・集計機能
 
-#### Q. 掲示板
+#### 17. 掲示板
 - **カテゴリ別**: 目的ごとにカテゴリを自由作成（連絡事項、相談、雑談等）
 - **ネスト返信（ツリー構造）**: 特定の発言に返信すると、その下に深くなっていく（LINEのように流れない）
 - **重要度5段階**: CRITICAL → IMPORTANT → WARNING → INFO → LOW
@@ -371,17 +372,17 @@
   - 閲覧者表示: アイコンが並び、クリックでアカウント名表示
 - ピン留め・ロック機能
 
-#### R. マッチング・対外交流
+#### 18. マッチング・対外交流
 - 地域やレベルに応じた対戦相手・交流先の募集・応募
 - マッチング成立時、**双方のスケジュールへ自動反映**
 - **NGチーム設定**: トラブル防止のため、特定の相手をブロック・非表示にする機能
 
-#### S. パフォーマンス管理
+#### 19. パフォーマンス管理
 - カスタムデータ記録（得点、出場時間、走行距離等を自由に定義）
 - チームで記録されたデータが個人の専用ダッシュボードへ自動反映
 - 個人・チーム統計ダッシュボード
 
-#### T. メンバー紹介
+#### 20. メンバー紹介
 - **メインページ** + 月/年ごとの詳細ページ（階層構造）
 - メインページから各詳細ページへ遷移可能
 - **メンバー一覧ページ**（年度ごと作成）: 画像、名前、一言、拡張フィールド対応
@@ -409,30 +410,30 @@
 
 ### 選択式モジュール詳細
 
-#### U. QR会員証
+#### 1. QR会員証
 - メンバーごとに一意のIDを発行し、QRコードを生成
 - スマホ画面での表示に最適化
 - 来店・受付時のスキャンによる本人確認
 
-#### V. 会費・決済
+#### 2. 会費・決済
 - 月会費・年会費・都度払いの設定
 - 集金管理・支払い状況の一覧表示
 - 組織やチームに対する会費の支払い・集金機能
 
-#### W. 予約管理
+#### 3. 予約管理
 - **チームアカウント（枠管理）**: 時間枠の作成・編集・削除、スタッフ別の予約枠管理、予約状況の一覧管理
 - **個人アカウント（予約のみ）**: 予約の申込・キャンセル、予約履歴の閲覧
 - 予約時間が近づいたらプッシュ通知でリマインド
 
-#### X. サービス履歴
+#### 4. サービス履歴
 - 施術記録・来店記録・対応履歴等の汎用記録システム
 - チームごとに保存したい項目を自由に設定（カスタムフィールド対応）
 - メンバー個人のダッシュボードへ自動反映
 
-#### Y. 備品管理
+#### 5. 備品管理
 - 備品・在庫の管理 +「誰が持っているか」のステータス管理
 
-#### Z. ギャラリー
+#### 6. ギャラリー
 - メンバーのみが閲覧・アップロードできる写真アルバム
 - アルバム管理・閲覧権限設定
 
@@ -562,9 +563,13 @@
 `users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `team_role_permissions`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`
 
 ※ SYSTEM_ADMIN は `roles` テーブルの1レコード + `user_roles` で割り当て。専用テーブルは設けず RBAC に統一する
+※ `users`: `last_name` / `first_name`（実名）・`display_name`（愛称1、表示用ニックネーム）・`nickname2`（愛称2、nullable）を持つ。電子印鑑は `last_name` を使用。検索・メンションでは実名・愛称いずれでもヒットするようにする
+※ `users.is_searchable BOOLEAN DEFAULT true`: OFF にすると他ユーザーの検索結果に表示されない（メンションは引き続き利用可能）
 ※ `role_permissions`: プラットフォームレベルの権限デフォルト（SYSTEM_ADMIN が管理）
 ※ `team_role_permissions`: チーム/組織レベルの権限カスタマイズ（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `role_id`, `permission_id`, `is_enabled`）。DEPUTY_ADMIN と MEMBER が対象。レコードが存在しない場合は `role_permissions` のデフォルトを使用
 ※ `user_roles`: `team_id` / `organization_id` のスコープカラムを持ち、マルチ所属・複数 DEPUTY_ADMIN に対応
+※ `two_factor_auth`: TOTP シークレット・有効フラグを保持。バックアップコード（8桁 × 10件）をハッシュ化して別カラムに保存し、デバイス紛失時の緊急復旧に対応する
+※ `password_reset_tokens`: トークンは `SecureRandom` + Base64URL 方式で生成。有効期限は発行から **30分** とし、使用済みトークンは即時無効化する
 
 ### チーム管理 (1テーブル)
 `teams`
@@ -579,15 +584,18 @@
 
 ※ `organizations`: `name`（正式名称）・`nickname1`・`nickname2`（愛称、両方 nullable）を持つ。検索・表示では正式名称と愛称いずれでもヒットするようにする
 ※ `organizations.is_searchable BOOLEAN DEFAULT true`: OFF にすると検索結果に表示されない
-※ `users`: `last_name` / `first_name`（実名）・`display_name`（愛称1、表示用ニックネーム）・`nickname2`（愛称2、nullable）を持つ。電子印鑑は `last_name` を使用。検索・メンションでは実名・愛称いずれでもヒットするようにする
-※ `users.is_searchable BOOLEAN DEFAULT true`: OFF にすると他ユーザーの検索結果に表示されない（メンションは引き続き利用可能）
 ※ `invitation_links`: `invite_type`（ENUM: `EMAIL` / `URL` / `QR`）・`token`（`SecureRandom` + Base64URL 方式で生成する暗号論的乱数トークン）・`expires_at`（nullable、null=無期限）・`max_uses`（nullable、null=無制限）・`used_count`・`is_active`（手動無効化フラグ）を持つ。QR コードはトークンから動的生成し画像は保存しない。期限切れ・上限到達・`is_active=false` のいずれかで即時失効
 
 ### グループ階層 (3テーブル)
 `groups`, `group_members`, `group_hierarchy`
 
+※ `group_hierarchy`: 隣接リスト（`parent_group_id`）＋クロージャテーブル方式で実装。深い階層の一括取得には MySQL 8.0 の再帰的 CTE（`WITH RECURSIVE`）を使用する
+
 ### テンプレート・モジュール (6テーブル)
 `team_templates`, `template_modules`, `template_fields`, `module_definitions`, `module_field_definitions`, `module_level_availability`
+
+※ `template_fields`: 業種テンプレートに含まれるカスタム項目の定義（テンプレートレベルの設定。運営が業種別プリセットとして管理）
+※ `module_field_definitions`: 各モジュールが提供する汎用フィールドの定義（モジュールレベルの設定。モジュール固有の入力項目スキーマ）
 
 ### プラン・サブスクリプション (3テーブル)
 `subscription_plans`, `team_subscriptions`, `subscription_invoices`
@@ -611,7 +619,8 @@
 ### タイムライン・通知 (5テーブル)
 `timeline_posts`, `timeline_post_attachments`, `timeline_post_reactions`, `notifications`, `notification_preferences`
 
-※ `notification_preferences`: ユーザーが組織/チームごとに通知受信を ON/OFF する設定（`user_id`, `scope_type`: TEAM/ORGANIZATION, `scope_id`, `is_enabled` DEFAULT true）。レコードが存在しない場合は受信する（opt-out 方式）
+※ `notifications`: 既読通知は **90日後** にバッチで物理削除する（大量蓄積防止）
+※ `notification_preferences`: ユーザーが組織/チームごとに通知受信を ON/OFF する設定（`user_id`, `scope_type`: TEAM/ORGANIZATION, `scope_id`, `is_enabled` DEFAULT true）。レコードが存在しない場合は受信する（opt-out 方式）。将来的にはグループ単位の通知制御（`scope_type`: GROUP）への拡張を検討する
 
 ※ `timeline_post_attachments`: `attachment_type` は `IMAGE` / `FILE` / `VIDEO_LINK` の ENUM。`VIDEO_LINK` は `video_url`（外部URL）・`video_thumbnail`・`video_title` カラムを持ち、ファイルストレージは使用しない
 ※ `timeline_posts`: `reaction_count`・`reply_count` カラムを denormalize で保持し、リアクション追加・削除時にアトミック更新する（COUNT クエリ廃止）
@@ -626,6 +635,7 @@
 `schedule_events`, `attendance_responses`, `event_surveys`, `event_survey_responses`
 
 ※ `schedule_events`: `attending_count`・`absent_count`・`pending_count` を denormalize で保持し、出欠回答時にアトミック更新する（出欠集計の COUNT クエリ廃止）
+※ `event_surveys` / `event_survey_responses`: イベントに紐付いた簡易アンケート（出欠確認時の追加質問等）。独立したアンケート機能の `surveys` / `survey_responses`（後述）とは設計上別テーブルとして管理する
 
 ### 予約管理 (3テーブル)
 `reservation_slots`, `reservations`, `reservation_reminders`
@@ -637,6 +647,7 @@
 `blog_posts`, `blog_tags`, `blog_post_tags`, `activity_results`, `activity_participants`, `bulletin_categories`, `bulletin_threads`, `bulletin_replies`, `bulletin_read_status`
 
 ※ `bulletin_threads`: `reply_count` を denormalize で保持し、スレッド一覧取得時の COUNT クエリを廃止
+※ `bulletin_read_status`: スレッド削除時にカスケード削除する。既読データは投稿から **90日後** にバッチで物理削除する（蓄積量削減）
 
 ### ギャラリー (2テーブル)
 `photo_albums`, `photos`
@@ -646,6 +657,8 @@
 
 ### ファイル共有 (3テーブル)
 `shared_files`, `shared_folders`, `file_permissions`
+
+※ `shared_files`: チームごとのストレージ使用量を `storage_used_bytes` カラムで管理。無料プランは **5GB**・有料プランは **50GB** を上限とし、超過時はアップロードを拒否する
 
 ### 運営ツール (2テーブル)
 `equipment_items`, `equipment_assignments`
