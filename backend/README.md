@@ -443,14 +443,18 @@
 - タイムライン最新フィードを Sorted Set でキャッシュ（key: `timeline:{scope}:{id}`, score: 投稿 timestamp）
 - 個別投稿は Hash でキャッシュ（key: `post:{postId}`, TTL: 5分）
 - 投稿作成・削除時にキャッシュを即時無効化
+- **未読通知数**: `unread:{userId}` を Redis カウンターで管理（通知追加で +1、既読で -1）。ダッシュボード・ヘッダーの COUNT クエリを廃止
+- **チームモジュール設定**: `team:modules:{teamId}` にキャッシュ（設定変更時に無効化）。モジュール有効化チェックのたびに JOIN する処理を排除
 
 ### クエリ最適化
 
 - **カーソルベースページネーション**: `WHERE id < :cursor ORDER BY id DESC LIMIT N`（OFFSET 廃止）
 - **JOIN 一括取得**: タイムライン一覧は投稿者情報・リアクション数・添付ファイルを1クエリで取得
 - **IN 句バッチ取得**: 関連エンティティは `WHERE id IN (...)` で N+1 を排除
-- **カウンターキャッシュ（denormalize）**: `COUNT(*)` クエリを廃止するため、集計値を専用カラムに保持してアトミック更新する（対象: `timeline_posts.reaction_count`, `timeline_posts.reply_count`, `teams.member_count`）
+- **カウンターキャッシュ（denormalize）**: `COUNT(*)` クエリを廃止するため、集計値を専用カラムに保持してアトミック更新する（対象: `timeline_posts.reaction_count`, `timeline_posts.reply_count`, `teams.member_count`, `chat_channels.last_message_at`, `chat_channel_members.unread_count`, `bulletin_threads.reply_count`, `schedule_events.attending_count`, `schedule_events.absent_count`, `schedule_events.pending_count`）
 - **ダッシュボード一括取得**: `/dashboard` エンドポイントは内部でも JOIN / Redis を活用し、SQL 発行を最小化する
+- **JWT ロール埋め込み**: JWT ペイロードにロール情報を含め、ロール・パーミッション確認の DB アクセスをゼロにする。ロール変更時は Redis 無効化フラグ（`token:invalidated:{userId}`）で即時反映
+- **FULLTEXT インデックス**: `LIKE '%...%'` によるフルテーブルスキャンを排除。`blog_posts.body`, `bulletin_threads.title`, `timeline_posts.content`, `chat_messages.body` に MySQL FULLTEXT インデックスを付与し `MATCH() AGAINST()` 構文で検索する
 
 ### 通信量削減
 
@@ -510,8 +514,13 @@
 ### チャット (4テーブル)
 `chat_channels`, `chat_messages`, `chat_channel_members`, `chat_message_reactions`
 
+※ `chat_channels`: `last_message_at`・`last_message_preview`（最新メッセージ冒頭100字）を denormalize で保持し、チャンネル一覧取得時の `chat_messages` JOIN を排除
+※ `chat_channel_members`: `unread_count` を denormalize で保持し、メッセージ送信時に +1・既読時に 0 リセットするアトミック更新で管理
+
 ### スケジュール・出欠 (4テーブル)
 `schedule_events`, `attendance_responses`, `event_surveys`, `event_survey_responses`
+
+※ `schedule_events`: `attending_count`・`absent_count`・`pending_count` を denormalize で保持し、出欠回答時にアトミック更新する（出欠集計の COUNT クエリ廃止）
 
 ### 予約管理 (3テーブル)
 `reservation_slots`, `reservations`, `reservation_reminders`
@@ -521,6 +530,8 @@
 
 ### コンテンツ管理 (9テーブル)
 `blog_posts`, `blog_tags`, `blog_post_tags`, `activity_results`, `activity_participants`, `bulletin_categories`, `bulletin_threads`, `bulletin_replies`, `bulletin_read_status`
+
+※ `bulletin_threads`: `reply_count` を denormalize で保持し、スレッド一覧取得時の COUNT クエリを廃止
 
 ### ギャラリー (2テーブル)
 `photo_albums`, `photos`
