@@ -93,13 +93,16 @@
 |--------|----------|-------------|
 | システム管理者 (SYSTEM_ADMIN) | プラットフォーム全体 | 全組織・チームの管理、テンプレート管理、システム設定、ユーザーBAN |
 | 管理者 (ADMIN) | チーム/組織内 | 全機能（メンバー管理、備品管理、広告設定、投稿編集、ロール管理、モジュール設定） |
-| メンバー (MEMBER) | チーム/組織内 | 出欠回答、限定コンテンツ閲覧、ギャラリー、タイムライン投稿、掲示板、チャット |
+| 副管理者 (DEPUTY_ADMIN) | チーム/組織内 | ADMIN が許可した操作のみ（緊急安否確認・回覧板・スケジュール管理等）。権限範囲はチーム/組織ごとに ADMIN が設定。複数人に割り当て可能 |
+| メンバー (MEMBER) | チーム/組織内 | プラットフォームデフォルトの操作（ADMIN が範囲を制限可能） |
 | サポーター (SUPPORTER) | チーム/組織内 | サポーター限定コンテンツ、活動速報 |
 | ゲスト (GUEST) | チーム/組織内 | スケジュール・活動記録、公式ブログ、SNSフィード |
 
 ※ Phase 1 では上記の固定ロールのみで実装する。ただし、DB設計は `roles` + `permissions` + 中間テーブル（RBAC）方式とし、将来的なカスタムロール追加に対応可能な構造にする
 ※ Phase 1 の管理者画面では「ユーザーへのロール割り当て」のみ、ロール自体の追加・編集は将来対応
 ※ グループ単位でもロール設定可能
+※ DEPUTY_ADMIN・MEMBER の権限は 3 層で管理する: ① SYSTEM_ADMIN がロールごとの権限の上限（天井）を設定 → ② 各チーム/組織の ADMIN がその天井内でチェックボックスにより ON/OFF → ③ ユーザーに割り当て
+※ `user_roles` は `team_id` / `organization_id` のスコープカラムを持ち、「チームAでは DEPUTY_ADMIN・チームBでは MEMBER」のようなマルチ所属に対応
 
 ### セキュリティ・認証
 
@@ -430,7 +433,8 @@
 #### AA. 管理者ダッシュボード
 - 全管理機能を `/admin` 配下に集約
 - ユーザー管理、ロール・パーミッション管理、モジュール設定、スケジュール管理、ブログ管理、掲示板カテゴリ管理、備品管理、メンバー紹介管理、広告・スポンサー管理、予約管理設定、Googleカレンダー設定、LINE設定、SNS設定
-- ロール・パーミッションの動的管理（チェックボックスで権限ON/OFF）
+- **DEPUTY_ADMIN・MEMBER の権限カスタマイズ**: チェックボックスで各ロールの権限を ON/OFF（`team_role_permissions` に保存）。SYSTEM_ADMIN が定めた上限の範囲内で設定可能
+- **DEPUTY_ADMIN の割り当て**: 複数ユーザーを DEPUTY_ADMIN に任命可能
 - テンプレート・モジュールのON/OFF管理
 
 #### AB. システム管理者ダッシュボード
@@ -438,6 +442,7 @@
 - 全組織・チームの一覧・管理
 - 定型テンプレート・モジュールの作成・編集・管理
 - **モジュールのレベル別適用管理**: 各モジュール（デフォルト・選択式）を組織/チーム/個人のどのレベルで利用可能にするかをON/OFFで制御
+- **ロール権限の上限設定**: DEPUTY_ADMIN・MEMBER がチーム/組織レベルで付与できる権限の上限（天井）を `role_permissions` で管理
 - ユーザーBAN・通報管理
 - 監査ログ閲覧
 - システム設定・メンテナンス
@@ -500,10 +505,13 @@
 
 ## DB設計
 
-### 認証・権限 (9テーブル)
-`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`
+### 認証・権限 (10テーブル)
+`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `team_role_permissions`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`
 
 ※ SYSTEM_ADMIN は `roles` テーブルの1レコード + `user_roles` で割り当て。専用テーブルは設けず RBAC に統一する
+※ `role_permissions`: プラットフォームレベルの権限デフォルト（SYSTEM_ADMIN が管理）
+※ `team_role_permissions`: チーム/組織レベルの権限カスタマイズ（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `role_id`, `permission_id`, `is_enabled`）。DEPUTY_ADMIN と MEMBER が対象。レコードが存在しない場合は `role_permissions` のデフォルトを使用
+※ `user_roles`: `team_id` / `organization_id` のスコープカラムを持ち、マルチ所属・複数 DEPUTY_ADMIN に対応
 
 ### チーム管理 (1テーブル)
 `teams`
