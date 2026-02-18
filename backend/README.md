@@ -449,6 +449,14 @@
 - **カーソルベースページネーション**: `WHERE id < :cursor ORDER BY id DESC LIMIT N`（OFFSET 廃止）
 - **JOIN 一括取得**: タイムライン一覧は投稿者情報・リアクション数・添付ファイルを1クエリで取得
 - **IN 句バッチ取得**: 関連エンティティは `WHERE id IN (...)` で N+1 を排除
+- **カウンターキャッシュ（denormalize）**: `COUNT(*)` クエリを廃止するため、集計値を専用カラムに保持してアトミック更新する（対象: `timeline_posts.reaction_count`, `timeline_posts.reply_count`, `teams.member_count`）
+- **ダッシュボード一括取得**: `/dashboard` エンドポイントは内部でも JOIN / Redis を活用し、SQL 発行を最小化する
+
+### 通信量削減
+
+- **gzip 圧縮**: Spring Boot の `server.compression.enabled=true` で JSON レスポンスを 60〜80% 圧縮
+- **Conditional GET (ETag)**: チームプロフィール・モジュール設定など変化頻度が低いリソースに ETag を付与し、未変更時は 304 Not Modified（ボディ 0 バイト）を返す
+- **WebSocket 差分更新**: タイムライン新着・通知は WebSocket で push し、定期ポーリングを廃止する
 
 ---
 
@@ -463,6 +471,7 @@
 `teams`
 
 ※ `organization_id` は nullable。組織に属する場合は値あり、独立チームの場合は NULL
+※ `member_count` カラムを denormalize で保持し、メンバー追加・削除時にアトミック更新する（COUNT クエリ廃止）
 
 ### 組織・マルチ所属 (4テーブル)
 `organizations`, `organization_members`, `team_memberships`, `invitation_links`
@@ -496,6 +505,7 @@
 `timeline_posts`, `timeline_post_attachments`, `timeline_post_reactions`, `notifications`
 
 ※ `timeline_post_attachments`: `attachment_type` は `IMAGE` / `FILE` / `VIDEO_LINK` の ENUM。`VIDEO_LINK` は `video_url`（外部URL）・`video_thumbnail`・`video_title` カラムを持ち、ファイルストレージは使用しない
+※ `timeline_posts`: `reaction_count`・`reply_count` カラムを denormalize で保持し、リアクション追加・削除時にアトミック更新する（COUNT クエリ廃止）
 
 ### チャット (4テーブル)
 `chat_channels`, `chat_messages`, `chat_channel_members`, `chat_message_reactions`
