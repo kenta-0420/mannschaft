@@ -80,9 +80,9 @@
 - [ ] コーディング規約の共有と適用
 - [ ] OpenAPI → Zod スキーマ自動生成ワークフローの構築（`openapi-zod-client` 等の選定・導入）
 - [ ] 論理削除カラム（`deleted_at`）の適用テーブル一覧の確定
-- [ ] BaseEntity / SoftDeletableEntity の実装（`.claudecode.md` §10 参照）
+- [ ] BaseEntity / SoftDeletableEntity の実装（`.claudecode.md` §11 参照）
 - [ ] `mentions` テーブルの詳細カラム定義の確定（ポリモーフィック設計）
-- [ ] `CursorPagedResponse` の実装（`.claudecode.md` §11 参照）
+- [ ] `CursorPagedResponse` の実装（`.claudecode.md` §12 参照）
 
 ### Phase 4 開始前（チャット）
 - [ ] WebSocket + Redis のスケーリング設計

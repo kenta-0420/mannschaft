@@ -92,6 +92,126 @@ Nuxt 3 標準の `ofetch` をベースにした共通クライアントを使用
     - **保存時自動整形**: IDE（VS Code 等）の設定で保存時に Prettier を自動実行し、手動フォーマットの手間を排除する。
 - **抑制**: やむを得ず規約に従えない箇所は `// eslint-disable-next-line ルール名 -- 理由` で1行単位で抑制すること。ファイル単位の `/* eslint-disable */` は原則禁止する。
 
+### 設定ファイル一覧
+プロジェクトルートに以下の設定ファイルを配置し、チーム全体で統一する。
+
+**`eslint.config.mjs`**（Flat Config 形式）:
+```js
+import { createConfigForNuxt } from '@nuxt/eslint-config/flat'
+
+export default createConfigForNuxt({
+  features: { tooling: true, stylistic: true },
+}).append({
+  rules: {
+    '@typescript-eslint/no-explicit-any': 'error',
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    'vue/no-v-html': 'warn',
+    'vue/component-name-in-template-casing': ['error', 'PascalCase'],
+  },
+})
+```
+
+**`.prettierrc`**:
+```json
+{
+  "semi": false,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "all",
+  "printWidth": 100,
+  "endOfLine": "lf"
+}
+```
+
+**`.prettierignore`**:
+```
+dist/
+.nuxt/
+.output/
+node_modules/
+types/generated/
+```
+
+### IDE 設定（フロントエンド）
+開発者がコーディング中にリアルタイムでミスに気づけるよう、以下の IDE 設定を整備する。
+
+#### VS Code
+**`.vscode/extensions.json`**（推奨拡張機能）:
+```json
+{
+  "recommendations": [
+    "vue.volar",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "editorconfig.editorconfig",
+    "bradlc.vscode-tailwindcss"
+  ]
+}
+```
+
+**`.vscode/settings.json`**（ワークスペース設定）:
+```json
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "[vue]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "eslint.validate": ["javascript", "typescript", "vue"],
+  "files.eol": "\n",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "typescript.tsdk": "node_modules/typescript/lib"
+}
+```
+
+上記により、保存時に Prettier によるフォーマットと ESLint による自動修正が同時に実行される。
+
+### pre-commit フック セットアップ手順
+コミット前に ESLint / Prettier を自動実行し、規約違反がリポジトリに混入するのを防止する。
+
+1. **依存インストールと Husky 初期化**:
+```bash
+npm install -D husky lint-staged
+npx husky init
+```
+
+2. **`package.json` に prepare スクリプトを確認**（`npx husky init` で自動追加される）:
+```json
+{
+  "scripts": {
+    "prepare": "husky"
+  }
+}
+```
+
+3. **`.husky/pre-commit` を編集**:
+```bash
+npx lint-staged
+```
+
+4. **`package.json` に lint-staged 設定を追加**:
+```json
+{
+  "lint-staged": {
+    "*.{ts,vue}": ["eslint --fix", "prettier --write"],
+    "*.{json,md,yml,css}": ["prettier --write"]
+  }
+}
+```
+
+5. **動作確認**: `git add` でステージしたファイルのみを対象にチェックが実行される。全ファイルを対象にしないことで高速性を維持する。
+
+6. **新規開発者のオンボーディング**: `npm install` 実行時に `prepare` スクリプト経由で Husky が自動セットアップされるため、追加の手順は不要。
+
+- **強制力**: フックのスキップ（`git commit --no-verify`）は緊急時のみに限定し、通常の開発では禁止する。
+
 ## 9. パフォーマンス (Performance)
 - **NuxtImg**: 画像には `NuxtImg` モジュールを活用し、フォーマット最適化を行う。
 - **Lazy Loading**: ページ下部の重いコンポーネントは `Lazy` プレフィックスコンポーネント（例: `<LazyHeavyChart />`）として読み込む。

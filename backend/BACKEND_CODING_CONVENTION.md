@@ -93,7 +93,7 @@
 * **基本方式**: データアクセスには **Spring Data JPA** を使用する。各機能パッケージ内に `[Feature]Repository` インターフェースを作成し、`JpaRepository<Entity, Long>` を継承すること。
 * **クエリ戦略**:
     * **単純なCRUDおよび名前ベースのクエリ**: Spring Data JPA の派生クエリメソッド（`findByEmail`, `findByStatusAndCreatedAtAfter` 等）を優先的に使用する。
-    * **動的フィルタリング**: `.claudecode.md` §12 で定めたフィルタリング規約（`?status=active&price_min=1000` 等）の実装には **QueryDSL** を使用する。`BooleanBuilder` または `BooleanExpression` を用いてタイプセーフに条件を組み立てること。文字列ベースの `@Query` で動的条件を結合する方式は禁止する。
+    * **動的フィルタリング**: `.claudecode.md` §13 で定めたフィルタリング規約（`?status=active&price_min=1000` 等）の実装には **QueryDSL** を使用する。`BooleanBuilder` または `BooleanExpression` を用いてタイプセーフに条件を組み立てること。文字列ベースの `@Query` で動的条件を結合する方式は禁止する。
     * **固定的な複雑クエリ**: JOIN が多い集計クエリやレポート用クエリなど、動的条件を伴わない固定的な複雑クエリは `@Query`（JPQL）で記述してよい。ネイティブSQL（`nativeQuery = true`）は最終手段とし、使用時はコメントで理由を記載すること。
 * **QueryDSL 設定**: Gradle の `com.querydsl` プラグインおよび APT（Annotation Processing Tool）を導入し、`Q` クラスを自動生成する。生成されたクラスは `build/generated` 配下に出力し、バージョン管理対象外とする。
 * **N+1 問題の防止**: リレーションの取得には `@EntityGraph` またはJPQLの `JOIN FETCH` を明示的に使用し、Lazy Loading による N+1 問題を防止すること。
@@ -117,9 +117,45 @@
     * `spring-boot-docker-compose` 依存を追加し、手動での `docker compose up/down` を不要にする。
     * CI 環境では Docker Compose Support を無効化し、Testcontainers を使用すること（`spring.docker.compose.enabled=false`）。
 
+### APIドキュメント (Springdoc OpenAPI) 設定規約
+* **グループ化**:
+    * `Public API`（`/api/v1/...`）、`Admin API`（`/admin/...`）、`Internal API`（`/internal/...`）の3区分でグループを定義する。
+* **認証スキーマ**:
+    * JWT Bearer 認証を `SecurityScheme` として定義し、Swagger UI 上で全エンドポイントに対してトークンを送信できる構成にする。
+* **レスポンス記述**:
+    * 各 API には、正常系（200/201）だけでなく、想定される異常系（400, 401, 403, 404）のレスポンス例を明記する。
+* **自動同期**:
+    * この OpenAPI 仕様を「唯一の正解（Single Source of Truth）」とし、フロントエンドの Zod スキーマ生成のソースとして活用する（FRONTEND_CODING_CONVENTION.md §7「フロント・バック間のバリデーション同期」参照）。
+
 ---
 
-## 6. ログと運用監視
+## 6. 環境設定・プロファイル管理規約
+* **プロファイル分離**: `default`（共通）, `local`（開発）, `test`（テスト）, `prod`（本番）の4種類を基本構成とする。
+* **機密情報の秘匿**:
+    * パスワード、APIキー、シークレット等の機密情報は設定ファイルに直接記述（ハードコード）することを厳禁とする。
+    * 必ず `${ENV_NAME}` 形式で環境変数を参照し、実行環境（Docker/GitHub Actions等）側で注入する。
+* **ローカル開発**: `.gitignore` に `application-local.yml` を追加し、個人環境固有の設定がリポジトリに混入しないよう徹底する。
+* **検証**: 起動時に必須の環境変数が不足している場合、速やかにエラーで終了（Fail-fast）するよう実装する。
+
+### 初期データ (Seed) 管理規約
+* **マスターデータ**: システムの動作に不可欠な固定データ（ロール、権限、モジュール定義）は、`Flyway` の SQL マイグレーションファイルを使用して投入する。
+* **アカウント・デモデータ**: 管理者ユーザーの作成など、ビジネスロジック（パスワードのハッシュ化等）を伴う初期データは、Spring Boot の `ApplicationRunner` を使用して投入する。
+* **環境別投入**: 開発環境専用のデモデータは、プロファイル（`local`, `dev`）が有効な場合のみ実行されるよう `@Profile` で制御する。
+* **冪等性の担保**: すでにデータが存在する場合はスキップするなど、何度起動してもエラーにならない（冪等性）実装を徹底する。
+
+### CI/CD パイプライン規約 (GitHub Actions)
+* **トリガー**: `main` ブランチへのプルリクエスト作成時、および `main` へのマージ時に自動実行する。
+* **バックエンド・ジョブ**:
+    1. **Build**: Java 21 環境でのコンパイル確認。
+    2. **Lint**: Checkstyle による静的スタイルチェック。
+    3. **Analyze**: SpotBugs による潜在的バグの検出。
+    4. **Test**: JUnit 5 によるテスト実行と JaCoCo によるカバレッジ計測（80%未満は失敗扱いを推奨）。
+* **フロントエンド・ジョブ**:
+    1. **Lint**: ESLint & Prettier によるコード整形チェック。
+    2. **Test**: ユニットテストの実行。
+* **マージ条件**: すべてのチェックが「Pass」かつ、1名以上の承認（Approve）がある場合のみマージ可能とする。
+
+## 7. ログと運用監視
 * **ログフレームワーク**: **SLF4J + Logback**（Spring Boot標準）を使用する。`System.out.println` によるログ出力は**禁止**とし、Lombok の `@Slf4j` アノテーションを使用すること。
 * **トレーサビリティ**: ログには「誰が」「いつ」「何を（どのIDに対して）」操作したかを特定できる情報を必ず含めてください。
 * **ログレベル**: 適切にレベルを使い分け、障害発生時の追跡性を確保してください。
@@ -139,7 +175,7 @@
 * **記録項目**: タイムスタンプ、実行ユーザーID、操作種別、対象リソース識別子、IPアドレス、実行結果（成功/失敗）。
 * **保存期間**: セキュリティおよびコンプライアンスの観点から、最低 **1年間** は検索可能な状態で保持する。
 
-## 7. セキュリティ
+## 8. セキュリティ
 * **機密情報の保護**: APIキー、パスワード、暗号化鍵などをソースコードに直接記述（ハードコード）することを厳禁とします。
 * **インジェクション対策**: SQL発行時は文字列結合を避け、必ず **プレースホルダ** を使用してください。
 * **情報の秘匿**: パスワードや機密性の高い個人情報をログに出力しないでください。
@@ -245,13 +281,106 @@
     * `insert_final_newline = true`
 * **適用範囲**: バックエンド・フロントエンド共通で適用する。
 
+### IDE 設定（バックエンド）
+開発者がコーディング中にリアルタイムで規約違反に気づけるよう、以下の IDE 設定を整備する。
+
+#### VS Code
+* **推奨拡張機能**: プロジェクトルートに `.vscode/extensions.json` を配置し、チーム全体で統一する。
+```json
+{
+  "recommendations": [
+    "vscjava.vscode-java-pack",
+    "shengchen.vscode-checkstyle",
+    "editorconfig.editorconfig",
+    "eamodio.gitlens"
+  ]
+}
+```
+* **ワークスペース設定**: `.vscode/settings.json` を配置する。
+```json
+{
+  "java.format.settings.url": "config/checkstyle/checkstyle.xml",
+  "java.format.enabled": true,
+  "editor.formatOnSave": true,
+  "java.checkstyle.configuration": "${workspaceFolder}/config/checkstyle/checkstyle.xml",
+  "java.checkstyle.version": "10.17.0",
+  "files.eol": "\n",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true
+}
+```
+
+#### IntelliJ IDEA
+* **推奨プラグイン**: `CheckStyle-IDEA`, `Save Actions`（または IDE 標準の Save Actions）。
+* **Checkstyle 連携**: `CheckStyle-IDEA` プラグインで `config/checkstyle/checkstyle.xml` を読み込み、リアルタイムインスペクションを有効化する。
+* **保存時アクション**: `Settings → Tools → Actions on Save` で以下を有効化する。
+    * `Reformat code`（コードフォーマット）
+    * `Optimize imports`（未使用インポートの除去）
+* **コードスタイル同期**: `Settings → Editor → Code Style → Java → Import Scheme → Checkstyle configuration` で Checkstyle 設定をインポートし、IDE のフォーマッタと規約を一致させる。
+* **設定ファイル**: `.idea/` 配下の設定は `.gitignore` で除外し、プロジェクト共有が必要な設定は `README` またはセットアップガイドに手順を記載する。
+
 ### pre-commit フック
 * **目的**: コミット前に静的解析・フォーマットチェックを自動実行し、規約違反がリポジトリに混入するのを防止する。CI まで待たずにローカルで即検知できるため、フィードバックループが短縮される。
-* **バックエンド**: Gradle の `checkstyleMain` および `spotbugsMain` タスクをコミット前に実行する。Git の `pre-commit` フックスクリプト、または Gradle プラグイン（例: `gradle-git-hooks`）で設定する。
-* **フロントエンド（別リポジトリ）**: **Husky** + **lint-staged** を導入する。
-    * `husky`: Git フックの管理を行い、`pre-commit` 時に lint-staged を呼び出す。
-    * `lint-staged`: ステージされたファイルのみを対象に `eslint --fix` および `prettier --write` を実行する。全ファイルを対象にしないことで高速性を維持する。
-* **強制力**: フックのスキップ（`git commit --no-verify`）は緊急時のみに限定し、通常の開発では禁止する。
+
+#### バックエンド セットアップ手順
+`gradle-git-hooks` プラグインを使用し、Gradle ビルドと Git フックを統合する。
+
+1. **`build.gradle.kts` にプラグイン追加**:
+```kotlin
+plugins {
+    id("com.github.niclasvoss.gradle-git-hooks") version "0.0.3"
+}
+
+gitHooks {
+    preCommit = "checkstyleMain spotbugsMain"
+}
+```
+
+2. **フック登録**: プロジェクトのクローン後に以下を実行する。
+```bash
+./gradlew installGitHooks
+```
+
+3. **代替方式（手動スクリプト）**: プラグインを使用しない場合は、`.githooks/pre-commit` にシェルスクリプトを配置し、`git config core.hooksPath .githooks` で有効化する。
+```bash
+#!/bin/sh
+echo "Running pre-commit checks..."
+./gradlew checkstyleMain spotbugsMain --daemon
+if [ $? -ne 0 ]; then
+  echo "Pre-commit checks failed. Commit aborted."
+  exit 1
+fi
+```
+
+#### フロントエンド セットアップ手順（別リポジトリ）
+**Husky** + **lint-staged** を導入する。
+
+1. **依存インストールとHusky初期化**:
+```bash
+npm install -D husky lint-staged
+npx husky init
+```
+
+2. **`.husky/pre-commit` を編集**:
+```bash
+npx lint-staged
+```
+
+3. **`package.json` に lint-staged 設定を追加**:
+```json
+{
+  "lint-staged": {
+    "*.{ts,vue}": ["eslint --fix", "prettier --write"],
+    "*.{json,md,yml}": ["prettier --write"]
+  }
+}
+```
+
+4. **動作確認**: ステージされたファイルのみを対象に `eslint --fix` および `prettier --write` が実行される。全ファイルを対象にしないことで高速性を維持する。
+
+#### 強制力
+* フックのスキップ（`git commit --no-verify`）は緊急時のみに限定し、通常の開発では禁止する。
+* 新規開発者のオンボーディング手順に `./gradlew installGitHooks`（バックエンド）および `npm install`（フロントエンド、Husky が `prepare` スクリプト経由で自動設定）を含めること。
 
 ### テスト実行環境
 * **統合テスト**: データベースを用いた統合テストには **Testcontainers** (MySQL 8.0) を使用する。ローカル環境に MySQL をインストールする必要はない。
