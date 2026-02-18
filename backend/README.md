@@ -429,11 +429,25 @@
 - 姓（`last_name`）の変更時は印鑑 SVG を自動的に再生成する。`POST /users/{id}/seal/regenerate` は手動再生成のためのエンドポイント
 
 #### 23. 緊急安否確認
-- 管理者がワンクリックで全メンバーへ安否確認プッシュ通知を一斉送信
-- メンバーは「無事」「要支援」「その他（自由記述）」で回答
-- 管理者画面でリアルタイム集計（回答済み / 未回答 / 要支援の人数・一覧）
+- 管理者がワンクリックで全メンバーへ安否確認を一斉送信（プッシュ通知 + WebSocket）
+
+**メンバー側の表示フロー**
+- **ログイン中の場合**: 送信直後にモーダル（子画面）をポップアップ。背景をオーバーレイでブロックし、回答するまで閉じられない
+- **ログイン後の場合**: 未回答の安否確認が存在する状態でログインすると、直後に同モーダルを自動表示。回答済みの場合はスキップ
+
+**安否報告フロー（モーダル内）**
+1. 「安全を報告する」ボタンを表示
+2. ボタン押下後に以下を表示:
+   - GPS位置情報を送信するかどうかのチェックボックス（任意・デフォルト OFF）
+   - メッセージ入力欄（自由記述、nullable）
+   - 「送信する」ボタン
+3. GPS 同意時はブラウザの Geolocation API で現在位置（緯度・経度）を取得して送信
+
+**管理者側の機能**
+- **専用掲示板の自動作成**: 安否確認実行時に対象スコープ（チーム/組織/グループ）内の掲示板へ専用スレッドを自動生成（タイトル: 「【安否確認】{実行日時}」、優先度: 最高）
+- 掲示板スレッドにメンバー全員の安否ステータス（安全 / 要支援 / 未回答）と任意メッセージをリアルタイム掲載。回答のたびに自動更新（WebSocket）
+- 管理者画面でも並行してリアルタイム集計（回答済み / 未回答 / 要支援の人数・一覧・GPS位置マップ）
 - 未回答者への自動リマインド（時間間隔を設定可能）
-- スケジュール・出欠の仕組みを流用して実装コストを低減
 
 #### 24. アクセス解析
 - チームプロフィール・ブログ記事・活動記録等のページビュー数を自動集計
@@ -779,6 +793,9 @@
 ### 緊急安否確認 (2テーブル)
 `safety_checks`, `safety_responses`
 
+※ `safety_checks`: 安否確認セッション（`scope_type`: TEAM/ORGANIZATION/GROUP, `scope_id`, `created_by`, `status`: ACTIVE/CLOSED, `reminder_interval_minutes`, `bulletin_thread_id` FK → `bulletin_threads`）。実行と同時に専用掲示板スレッドを自動生成し `bulletin_thread_id` に保存する
+※ `safety_responses`: 個人の回答（`safety_check_id`, `user_id`, `status` ENUM: SAFE/NEED_SUPPORT/OTHER, `message` TEXT nullable, `gps_shared` BOOLEAN DEFAULT false, `gps_latitude` DECIMAL(10,7) nullable, `gps_longitude` DECIMAL(10,7) nullable, `responded_at`）。回答保存後に WebSocket で掲示板スレッドの集計情報をリアルタイム更新する
+
 ### シフト管理 (3テーブル)
 `shift_schedules`, `shift_slots`, `shift_requests`
 
@@ -988,7 +1005,7 @@
 `GET /users/{id}/seal`, `POST /users/{id}/seal/regenerate`
 
 ### 緊急安否確認
-`POST /safety-checks`, `GET /safety-checks/{id}`, `POST /safety-checks/{id}/respond`, `GET /safety-checks/{id}/results`, `GET /safety-checks/my`
+`POST /safety-checks` (実行・掲示板スレッド自動生成), `GET /safety-checks/{id}`, `PATCH /safety-checks/{id}/close`, `POST /safety-checks/{id}/respond` (GPS座標・メッセージ・gps_shared フラグを含む), `GET /safety-checks/{id}/results` (集計・GPS位置一覧), `GET /safety-checks/my` (未回答確認・ログイン直後チェック用)
 
 ### シフト管理
 `GET/POST /shifts/schedules`, `GET/PUT/DELETE /shifts/schedules/{id}`, `PATCH /shifts/schedules/{id}/publish`, `GET/POST /shifts/schedules/{id}/slots`, `PUT/DELETE /shifts/slots/{id}`, `GET/POST /shifts/requests`, `GET /shifts/my`
