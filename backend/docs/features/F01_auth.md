@@ -68,8 +68,11 @@ JWT によるステートレス認証を提供する。
 | `first_name_kana` | VARCHAR(50) | YES | NULL | 名（カナ）|
 | `avatar_url` | VARCHAR(500) | YES | NULL | S3 オブジェクトキーを保存（表示時に Pre-signed URL 生成）|
 | `phone_number` | VARCHAR(20) | YES | NULL | 任意。将来のSMS認証用 |
+| `locale` | VARCHAR(10) | NO | `ja` | 表示言語。BCP 47 タグ（`ja` / `en` 等）。メール送信言語にも使用 |
+| `timezone` | VARCHAR(50) | NO | `Asia/Tokyo` | IANA タイムゾーン名。日時表示の基準 |
 | `status` | ENUM | NO | `PENDING_VERIFICATION` | `PENDING_VERIFICATION` / `ACTIVE` / `FROZEN` / `ARCHIVED` |
 | `last_login_at` | DATETIME | YES | NULL | アーカイブ判定・非アクティブ検出 |
+| `reminder_sent_at` | DATETIME | YES | NULL | PENDING_VERIFICATION 状態でのリマインダーメール送信日時（クリーンアップバッチ用）|
 | `archived_at` | DATETIME | YES | NULL | 非アクティブアーカイブ日時 |
 | `deleted_at` | DATETIME | YES | NULL | 退会申請日。30日後に個人情報を物理削除 |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
@@ -78,17 +81,20 @@ JWT によるステートレス認証を提供する。
 **インデックス**
 ```sql
 UNIQUE KEY uq_users_email (email)
-INDEX idx_users_status_last_login (status, last_login_at)  -- 非アクティブアーカイブバッチ用
-INDEX idx_users_deleted_at (deleted_at)                    -- 退会後30日の物理削除バッチ用
+INDEX idx_users_status_last_login (status, last_login_at)      -- 非アクティブアーカイブバッチ用
+INDEX idx_users_status_created_at (status, created_at)         -- PENDING_VERIFICATION クリーンアップバッチ用
+INDEX idx_users_deleted_at (deleted_at)                        -- 退会後30日の物理削除バッチ用
 ```
 
 **status の遷移**
 ```
 PENDING_VERIFICATION
-  └─（メール認証完了）──→ ACTIVE
-       ├─（SYSTEM_ADMIN 凍結）──→ FROZEN ──（凍結解除）──→ ACTIVE
-       ├─（退会申請）──→ deleted_at 付与 ──（30日後バッチ）──→ 個人情報物理削除
-       └─（6ヶ月非アクティブ）──→ ARCHIVED ──（ログイン）──→ ACTIVE
+  ├─（メール認証完了）──→ ACTIVE
+  │    ├─（SYSTEM_ADMIN 凍結）──→ FROZEN ──（凍結解除）──→ ACTIVE
+  │    ├─（退会申請）──→ deleted_at 付与 ──（30日後バッチ）──→ 個人情報物理削除
+  │    └─（6ヶ月非アクティブ）──→ ARCHIVED ──（ログイン）──→ ACTIVE
+  ├─（7日後バッチ）──→ リマインダーメール送信（reminder_sent_at 更新）
+  └─（30日後バッチ）──→ レコード物理削除（未認証のまま放置）
 ```
 
 **備考**
@@ -807,6 +813,8 @@ users (1) ──── (N) webauthn_credentials
 
 ## 5. ビジネスロジック
 
+> **audit_logs について**: 各フローで「audit_logs に記録」と記載している箇所は、`F02_audit_logs.md` で定義する `audit_logs` テーブルへの書き込みを指す。テーブル定義・イベントタイプ一覧・保持ポリシーは `F02_audit_logs.md` を参照。
+
 ### ユーザー登録フロー
 ```
 1. POST /auth/register 受付
@@ -1169,6 +1177,36 @@ totp_used:{user_id}:{6桁コード}  →  値: "1"、TTL: 90秒
                                 └─ deleted_at = NULL → 通常利用に戻る
 ```
 
+### PENDING_VERIFICATION クリーンアップポリシー
+
+メールアドレスを確認しないまま放置されたアカウントを定期的にクリーンアップする。
+
+```
+【7日後バッチ: リマインダーメール】
+対象: status = PENDING_VERIFICATION
+      AND created_at <= NOW() - 7日
+      AND reminder_sent_at IS NULL
+処理:
+  1. 登録メールアドレスへリマインダーメールを送信
+     「アカウントの確認がまだ完了していません。期限内に確認してください。」
+  2. users.reminder_sent_at = 現在日時 に更新
+
+【30日後バッチ: レコード物理削除】
+対象: status = PENDING_VERIFICATION
+      AND created_at <= NOW() - 30日
+処理:
+  1. email_verification_tokens を物理削除（CASCADE or 明示削除）
+  2. users レコードを物理削除
+  ※ 個人情報（email / 氏名）は登録から30日以内のため、退会フローとは異なりバッチで即時削除して構わない
+```
+
+**バッチ実装フェーズ**: Phase 10 以降（Phase 1 では手動対応）
+
+**設計上の注意**
+- リマインダーメールは1回のみ送信（`reminder_sent_at IS NULL` 条件で重複防止）
+- 30日バッチは `reminder_sent_at` の有無を問わず削除（送信できなかった場合も対象）
+- 削除前に `audit_logs` に `PENDING_USER_CLEANED_UP` を記録する（user_id が消えるため metadata に email を保存）
+
 ---
 
 ## 6. セキュリティ考慮事項
@@ -1209,7 +1247,8 @@ V1.007__create_webauthn_credentials_table.sql
 V1.008__create_email_change_tokens_table.sql
 V1.009__create_oauth_link_tokens_table.sql
 V1.010__create_mfa_recovery_tokens_table.sql
-V1.011__seed_system_admin_user.sql
+V1.011__create_audit_logs_table.sql      -- F02_audit_logs.md 参照
+V1.012__seed_system_admin_user.sql
 ```
 
 **V1.008 の注意点**
@@ -1244,3 +1283,4 @@ V1.011__seed_system_admin_user.sql
 | 2026-02-19 | 退会申請キャンセルAPI（`POST /users/me/withdrawal/cancel`）を追加。猶予期間中の再ログイン許可・`pending_deletion_until` レスポンスフィールド・キャンセルフローを定義 |
 | 2026-02-19 | 2FA完全ロックアウト回復フローを追加。`mfa_recovery_tokens` テーブル新設。メールベース回復（1時間有効・24時間3回制限）・回復後の2FA強制リセット・ADMIN向け再設定強制を定義 |
 | 2026-02-19 | `refresh_tokens.last_used_at` カラムを追加。ローテーション時に更新し、セッション一覧の「最終アクティブ」に直接使用。`GET /auth/sessions` の備考の矛盾を解消 |
+| 2026-02-19 | #13: `users` に `locale` / `timezone` / `reminder_sent_at` カラムを追加。#14: `audit_logs` の詳細定義を `F02_audit_logs.md` へ分離し cross-reference 注記を追加。#15: PENDING_VERIFICATION クリーンアップポリシー（7日リマインダー・30日物理削除）を定義 |
