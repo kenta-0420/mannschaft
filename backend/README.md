@@ -833,8 +833,14 @@
 ### アクセス解析 (2テーブル)
 `page_view_logs`, `page_view_daily_stats`
 
-※ `page_view_logs`: 生ログ（`target_type` ENUM: TEAM_PROFILE/BLOG_POST/ACTIVITY_RECORD 等, `target_id`, `team_id`, `viewer_type`: MEMBER/GUEST/ANONYMOUS, `viewed_at`）。保持期間 **90日** 後にバッチ物理削除
+※ `page_view_logs`: 生ログ（`target_type` ENUM: TEAM_PROFILE/BLOG_POST/ACTIVITY_RECORD 等, `target_id`, `team_id`, `viewer_type`: MEMBER/GUEST/ANONYMOUS, `viewed_at`）。保持期間 **90日** 後にバッチ物理削除。90日で数千万件規模になりうるため以下のインデックスを必須とする
+  - `INDEX (team_id, viewed_at)` — チーム別期間絞り込みの基本クエリ用（最重要）
+  - `INDEX (target_type, target_id, viewed_at)` — コンテンツ別ランキング集計用
+  - `INDEX (viewed_at)` — 90日バッチ削除の対象抽出用
 ※ `page_view_daily_stats`: 日次集計（`target_type`, `target_id`, `team_id`, `date` DATE, `view_count`, `member_view_count`, `guest_view_count`）。永続保持。バッチで毎日 0:00 に前日分を集計・書き込む
+  - `INDEX (team_id, date)` — ダッシュボードの日別・月別グラフ用
+  - `INDEX (target_type, target_id, date)` — コンテンツ別ランキング用
+  - `UNIQUE (target_type, target_id, date)` — 日次集計の二重書き込み防止
 
 ### 外観設定 (2テーブル)
 `user_appearance_settings`, `seasonal_themes`
