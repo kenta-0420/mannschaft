@@ -1293,6 +1293,11 @@
 - `useErrorReport` composable でモーダル表示・送信ロジックを管理
 - 認証不要の公開エンドポイント（`POST /error-reports`）へ送信
 
+**バックエンドのレートリミット**（スパム・DoS 対策）
+- 短期制限: 同一 IP につき **1分間に5回まで**
+- 日次制限: 同一 IP につき **1日50回まで**
+- 超過時は `429 Too Many Requests` + `Retry-After` ヘッダーを返す
+
 ### 開発・テスト環境
 - データベースを用いたテストには **Testcontainers** を使用し、Dockerコンテナ上で MySQL 8.0 を立ち上げて実行
 - Flyway のマイグレーションファイルは `src/main/resources/db/migration` にバージョン管理して配置
