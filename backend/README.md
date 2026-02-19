@@ -546,7 +546,7 @@
 
 | 種別 | 説明 | 元コンテンツ |
 |------|------|------------|
-| 参照カード | チャットメッセージ・タイムライン投稿・掲示板スレッド/返信・ブログ記事・ファイルをストック | `content_snapshot` で内容を保持（元が削除されても残る） |
+| 参照カード | チャットメッセージ・タイムライン投稿・掲示板スレッド/返信・ブログ記事・ファイルをストック（初期対応。新機能追加時に `ref_type` を拡張して対応可能） | `content_snapshot` で内容を保持（元が削除されても残る） |
 | メモカード | ボード専用の独立したテキストメモ | なし |
 | URLカード | 外部URLとタイトル・OGPサムネイルを表示 | なし |
 | 見出しカード | ボード上に横長のタイトルバーを配置。カードを束ねる意図を示す見出しとして機能（コンテナではなく視覚的なラベル） | なし |
@@ -864,7 +864,7 @@
 `corkboards`, `corkboard_cards`, `corkboard_groups`, `corkboard_card_groups`
 
 ※ `corkboards`: ボードマスター（`scope_type` ENUM: PERSONAL/TEAM/ORGANIZATION, `scope_id` nullable, `owner_id` nullable（PERSONALの場合はuser_id）, `name`, `background_style` ENUM: CORK/WHITE/DARK, `is_default` BOOLEAN）。個人・チーム・組織それぞれに複数ボードを作成可能
-※ `corkboard_cards`: カード（`board_id`, `card_type` ENUM: REFERENCE/MEMO/URL/SECTION_HEADER, `ref_type` ENUM nullable: CHAT_MESSAGE/TIMELINE_POST/BULLETIN_THREAD/BLOG_POST/FILE, `ref_id` BIGINT nullable, `content_snapshot` TEXT nullable（参照元削除後も内容を保持）, `ref_url` VARCHAR nullable, `pos_x` INT, `pos_y` INT, `card_width` INT DEFAULT 200, `card_height` INT DEFAULT 150, `color` ENUM: WHITE/YELLOW/RED/BLUE/GREEN/PURPLE, `user_note` TEXT nullable, `title` VARCHAR nullable, `auto_archive_at` DATETIME nullable, `is_archived` BOOLEAN DEFAULT false, `created_by` FK users）。`SECTION_HEADER` は `title` のみ使用し、他のコンテンツフィールドは NULL。横長タイトルバーとして描画する
+※ `corkboard_cards`: カード（`board_id`, `card_type` ENUM: REFERENCE/MEMO/URL/SECTION_HEADER, `ref_type` ENUM nullable: CHAT_MESSAGE/TIMELINE_POST/BULLETIN_THREAD/BLOG_POST/FILE（拡張ENUM: 新機能実装時に Flyway `ALTER TABLE corkboard_cards MODIFY COLUMN ref_type ENUM(...)` で追加。例: SURVEY_RESPONSE/SAFETY_REPORT 等）, `ref_id` BIGINT nullable, `content_snapshot` TEXT nullable（参照元削除後も内容を保持。上限5,000文字を推奨）, `ref_url` VARCHAR nullable, `pos_x` INT, `pos_y` INT, `card_width` INT DEFAULT 200, `card_height` INT DEFAULT 150, `color` ENUM: WHITE/YELLOW/RED/BLUE/GREEN/PURPLE, `user_note` TEXT nullable, `title` VARCHAR nullable, `auto_archive_at` DATETIME nullable, `is_archived` BOOLEAN DEFAULT false, `created_by` FK users）。`SECTION_HEADER` は `title` のみ使用し、他のコンテンツフィールドは NULL。横長タイトルバーとして描画する
 ※ `corkboard_groups`: セクション（折りたたみ可能な名前付きコンテナ）（`board_id`, `name` VARCHAR（セクション見出し）, `pos_x` INT, `pos_y` INT, `group_width` INT, `group_height` INT, `color` ENUM: TRANSPARENT/LIGHT_YELLOW/LIGHT_BLUE/LIGHT_GREEN/LIGHT_PURPLE, `is_collapsed` BOOLEAN DEFAULT false）。`is_collapsed=true` 時はタイトルバーのみ描画しセクション内のカードを非表示にする。カードをセクション内に追加すると `corkboard_card_groups` に紐付けが保存される
 ※ `corkboard_card_groups`: カードとグループの中間テーブル（`card_id`, `group_id`）。1枚のカードは複数グループに属さない設計とし、移動時は旧グループとの紐付けを更新する
 
