@@ -1,8 +1,8 @@
 # F01: 認証・ユーザー管理
 
-> **ステータス**: 🟡 設計中
+> **ステータス**: 🟢 設計確定
 > **実装フェーズ**: Phase 1
-> **最終更新**: 2026-02-19
+> **最終更新**: 2026-02-20
 
 ---
 
@@ -392,7 +392,7 @@ users (1) ──── (N) webauthn_credentials
 | POST | `/api/v1/auth/2fa/verify` | 必要 | TOTP 初回認証（有効化）|
 | POST | `/api/v1/auth/2fa/validate` | 必要（mfa_session_token）| ログイン時の TOTP コード検証 |
 | POST | `/api/v1/auth/2fa/backup-codes/regenerate` | 必要 | バックアップコード再生成 |
-| POST | `/api/v1/auth/2fa/recovery/request` | 不要（mfa_session_token）| 2FAロックアウト回復メール送信 |
+| POST | `/api/v1/auth/2fa/recovery/request` | 必要（mfa_session_token）| 2FAロックアウト回復メール送信 |
 | POST | `/api/v1/auth/2fa/recovery/confirm` | 不要 | 回復トークン検証・2FAバイパスログイン |
 | POST | `/api/v1/auth/webauthn/register/begin` | 必要 | WebAuthn 登録開始（challenge 取得）|
 | POST | `/api/v1/auth/webauthn/register/complete` | 必要 | WebAuthn 登録完了（公開鍵保存）|
@@ -413,6 +413,40 @@ users (1) ──── (N) webauthn_credentials
 ---
 
 ### リクエスト／レスポンス仕様（主要エンドポイント）
+
+#### `POST /api/v1/auth/register`
+
+**リクエストボディ**
+```json
+{
+  "email": "user@example.com",
+  "password": "P@ssw0rd!",
+  "display_name": "田中 太郎"
+}
+```
+
+**バリデーション**
+- `email`: 必須・メール形式・他ユーザーと重複しないこと
+- `password`: 必須・パスワードポリシー準拠（8文字以上・英大文字/小文字/数字/記号のうち3種以上・メールアドレスと同一禁止）
+- `display_name`: 必須・1〜50文字
+
+**レスポンス（201 Created）**
+```json
+{
+  "data": {
+    "message": "確認メールを user@example.com に送信しました。24時間以内に確認してください。"
+  }
+}
+```
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | バリデーションエラー（形式不正・ポリシー違反）|
+| 409 | メールアドレスが既に使用されている |
+| 429 | レートリミット超過（同一IP: 1時間10回まで）|
+
+---
 
 #### `POST /api/v1/auth/login`
 
@@ -485,7 +519,7 @@ users (1) ──── (N) webauthn_credentials
 #### `DELETE /api/v1/auth/sessions`（全デバイスログアウト）
 
 - 当該ユーザーの全 `refresh_tokens` に `revoked_at` を設定
-- Redis に無効化タイムスタンプを設定（`user_invalidated_at:{user_id}` = 現在 Unix timestamp、TTL 15分）
+- Redis に無効化タイムスタンプを設定（`user_invalidated_at:{user_id}` = 現在 Unix timestamp、TTL 900秒）
 - JWT 検証時に `iat < user_invalidated_at` なら 401 を返す（既存の全 Access Token が即時無効化）
 - レスポンス: `204 No Content`
 
@@ -540,6 +574,41 @@ users (1) ──── (N) webauthn_credentials
 
 ---
 
+#### `POST /api/v1/auth/webauthn/login/begin`
+
+**リクエストボディ**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "challenge": "<base64url_encoded_challenge>",
+    "rpId": "mannschaft.example.com",
+    "allowCredentials": [
+      {
+        "id": "<base64url_credential_id>",
+        "type": "public-key"
+      }
+    ],
+    "timeout": 60000
+  }
+}
+```
+※ `challenge` は Redis に TTL 5分で保存（リプレイ攻撃防止）。`allowCredentials` にはユーザーが登録したデバイスの `credential_id` 一覧を返す。
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 404 | メールアドレスに対応するユーザーが存在しない |
+| 423 | アカウントロック中（FROZEN）|
+
+---
+
 #### `PATCH /api/v1/auth/webauthn/credentials/{id}`
 
 **リクエストボディ**
@@ -567,6 +636,23 @@ users (1) ──── (N) webauthn_credentials
 | ステータス | 条件 |
 |-----------|------|
 | 404 | 指定 ID が存在しない、または他ユーザーのデバイス |
+
+---
+
+#### `DELETE /api/v1/auth/webauthn/credentials/{id}`（デバイス登録解除）
+
+**リクエストボディ**
+- なし
+
+**レスポンス（204 No Content）**
+- ボディなし
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 404 | 指定 ID が存在しない、または他ユーザーのデバイス |
+
+※ WebAuthn が唯一のログイン手段であっても削除可能（パスワードリセットフローで復旧可能なため）。最後のデバイスを削除する場合、フロントエンドは「生体認証が無効になります」の警告を表示する。
 
 ---
 
@@ -632,7 +718,7 @@ users (1) ──── (N) webauthn_credentials
 |-----------|------|
 | 400 | バリデーションエラー（ポリシー違反・現在と同じパスワード） |
 | 401 | `current_password` が不一致 |
-| 403 | OAuth のみのアカウント（`password_hash` が NULL）— パスワード設定が必要 |
+| 403 | OAuth のみのアカウント（`password_hash` が NULL）— パスワードリセットフロー（`/auth/password-reset/request`）で初期設定が必要 |
 | 429 | レートリミット超過（1分5回まで） |
 
 **備考**
@@ -808,6 +894,30 @@ users (1) ──── (N) webauthn_credentials
 |-----------|------|
 | 400 | トークン形式不正・期限切れ・使用済み |
 | 409 | トークン発行後に変更先メールが他ユーザーに使われた（競合）|
+
+---
+
+#### `DELETE /api/v1/users/me`（退会申請）
+
+**リクエストボディ**
+```json
+{
+  "current_password": "P@ssw0rd!"
+}
+```
+
+**バリデーション**
+- `current_password`: パスワードが設定されているアカウントは必須。OAuth 専用アカウント（`password_hash=NULL`）は不要（JWT 認証済みで確認完了とみなす）
+
+**レスポンス（204 No Content）**
+- ボディなし
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | バリデーションエラー |
+| 401 | `current_password` が不一致 |
+| 429 | レートリミット超過（1分3回まで）|
 
 ---
 
@@ -1128,7 +1238,7 @@ totp_used:{user_id}:{6桁コード}  →  値: "1"、TTL: 90秒
 ### パスワード変更フロー
 ```
 1. PATCH /users/me/password 受付（Access Token で認証済みユーザー）
-2. users.password_hash が NULL の場合は 403 を返す（OAuth のみのアカウント）
+2. users.password_hash が NULL の場合は 403 を返す（OAuth のみのアカウント → パスワードリセットフローで初期設定が必要）
 3. current_password を bcrypt で検証（失敗 → 401。失敗回数は Redis でカウント・ログイン失敗カウンタとは別管理）
 4. new_password のポリシー検証（8文字以上・3種以上・メールアドレスと同一禁止・現在と同一禁止）
 5. new_password を bcrypt（cost 12）でハッシュ化
@@ -1140,9 +1250,36 @@ totp_used:{user_id}:{6桁コード}  →  値: "1"、TTL: 90秒
 10. 204 No Content を返す
 ```
 
+### パスワードリセットフロー
+
+> **OAuth 専用アカウントのパスワード初期設定**: `password_hash=NULL` のアカウント（OAuth のみで登録）が初めてパスワードを設定する場合、`PATCH /users/me/password` は現在のパスワードが必須のため使用できない。このフローを使って新規設定する。
+
+```
+【リセットメール送信: POST /auth/password-reset/request】
+1. email を受け取る
+2. email で users を検索（存在しない場合も成功レスポンスを返す: ユーザー列挙防止）
+3. status チェック: FROZEN → 処理せずに成功レスポンスを返す（列挙防止）
+4. 未使用の既存 password_reset_tokens があれば used_at を設定して無効化
+5. password_reset_tokens に有効期限1時間のトークンを生成・保存
+6. パスワードリセットメールを送信（ApplicationEvent → MailService）
+7. 202 Accepted を返す（ユーザーの存在有無に関わらず同一レスポンス）
+
+【パスワード再設定: POST /auth/password-reset/confirm】
+1. token を受け取り、token_hash で password_reset_tokens を検索
+2. used_at 設定済み（使用済み）または expires_at 超過 → 400
+3. new_password のポリシー検証（8文字以上・3種以上・メールアドレスと同一禁止）
+4. password_reset_tokens.used_at を現在日時に設定
+5. users.password_hash を new_password の bcrypt（cost 12）ハッシュに更新
+6. 全 Refresh Token に revoked_at を設定（全セッションを失効）
+7. Redis に `user_invalidated_at:{user_id}` = 現在 Unix timestamp（TTL 900秒）を設定 → 全 Access Token を即時無効化
+8. audit_logs に PASSWORD_CHANGED を記録
+9. 204 No Content を返す
+```
+
 ### 退会フロー
 ```
 1. DELETE /users/me 受付・パスワード再確認
+   ※ OAuth 専用アカウント（password_hash=NULL）はパスワード不要（JWT 認証済みで確認完了とみなす）
 2. users.deleted_at を現在日時に設定
 3. 全 Refresh Token を失効・Redis に `user_invalidated_at:{user_id}` を設定（TTL 900秒）
 4. audit_logs に WITHDRAWAL_REQUESTED を記録
@@ -1251,7 +1388,7 @@ V1.011__create_audit_logs_table.sql      -- F02_audit_logs.md 参照
 V1.012__seed_system_admin_user.sql
 ```
 
-**V1.008 の注意点**
+**V1.012 の注意点**
 - Flyway SQL には平文パスワードを書かない
 - `ApplicationRunner`（`@Profile("!test")`）で SYSTEM_ADMIN を作成し、Spring の `PasswordEncoder` でハッシュ化する
 - 環境変数 `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PASSWORD` から読み込む
@@ -1284,3 +1421,4 @@ V1.012__seed_system_admin_user.sql
 | 2026-02-19 | 2FA完全ロックアウト回復フローを追加。`mfa_recovery_tokens` テーブル新設。メールベース回復（1時間有効・24時間3回制限）・回復後の2FA強制リセット・ADMIN向け再設定強制を定義 |
 | 2026-02-19 | `refresh_tokens.last_used_at` カラムを追加。ローテーション時に更新し、セッション一覧の「最終アクティブ」に直接使用。`GET /auth/sessions` の備考の矛盾を解消 |
 | 2026-02-19 | #13: `users` に `locale` / `timezone` / `reminder_sent_at` カラムを追加。#14: `audit_logs` の詳細定義を `F02_audit_logs.md` へ分離し cross-reference 注記を追加。#15: PENDING_VERIFICATION クリーンアップポリシー（7日リマインダー・30日物理削除）を定義 |
+| 2026-02-20 | 整合性10項目を修正: ステータスを設計確定に変更（B）。V1.012注意点の誤記を修正（A）。`user_invalidated_at` TTL を「900秒」に統一（G）。`2fa/recovery/request` 認証列を「不要」→「必要」に修正（H）。`POST /auth/register` の詳細 API 仕様（リクエスト・バリデーション・エラー）を追加（E）。`DELETE /users/me` の詳細 API 仕様を追加（OAuth専用アカウントはパスワード不要と定義）（F）。`POST /auth/webauthn/login/begin` のリクエスト・レスポンス仕様を追加（I）。`DELETE /auth/webauthn/credentials/{id}` の詳細 API 仕様を追加（J）。パスワードリセットフロー（ビジネスロジック）を追加（C）。OAuth専用アカウントのパスワード初期設定をパスワードリセットフロー流用と定義（D）|
