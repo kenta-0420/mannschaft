@@ -583,6 +583,81 @@ schedules (1) ──── (N) user_schedule_google_events
 
 ---
 
+#### `GET /api/v1/teams/{id}/schedules/{scheduleId}/attendances`
+
+チームメンバー全員の出欠回答を個人単位で返す。補足コメント（reason）とアンケート回答（survey_responses）を含む。ADMIN のみ参照可能。
+
+**クエリパラメータ**
+| パラメータ | 型 | デフォルト | 説明 |
+|-----------|---|-----------|------|
+| `status` | String | — | 出欠ステータスで絞り込み（ATTENDING / PARTIAL / ABSENT / UNDECIDED）|
+| `sort` | String | `name` | 並び順（`name` / `responded_at` / `status`）|
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "schedule_id": 20,
+    "comment_option": "OPTIONAL",
+    "summary": {
+      "attending": 12,
+      "partial": 2,
+      "absent": 3,
+      "undecided": 9
+    },
+    "members": [
+      {
+        "user_id": 1,
+        "display_name": "田中 太郎",
+        "status": "PARTIAL",
+        "reason": "15分遅刻します",
+        "responded_at": "2026-04-01T10:00:00Z",
+        "survey_responses": [
+          {
+            "event_survey_id": 5,
+            "question": "バス乗り合いに参加しますか？",
+            "question_type": "BOOLEAN",
+            "answer_text": "true",
+            "answer_options": null
+          }
+        ]
+      },
+      {
+        "user_id": 2,
+        "display_name": "鈴木 花子",
+        "status": "ABSENT",
+        "reason": "体調不良",
+        "responded_at": "2026-03-31T15:00:00Z",
+        "survey_responses": [
+          {
+            "event_survey_id": 5,
+            "question": "バス乗り合いに参加しますか？",
+            "question_type": "BOOLEAN",
+            "answer_text": "false",
+            "answer_options": null
+          }
+        ]
+      },
+      {
+        "user_id": 3,
+        "display_name": "山田 次郎",
+        "status": "UNDECIDED",
+        "reason": null,
+        "responded_at": null,
+        "survey_responses": []
+      }
+    ]
+  }
+}
+```
+
+> - `comment_option` をレスポンスに含め、フロントエンドがコメント欄の表示制御に使用できるようにする
+> - `reason` は `comment_option = HIDDEN` の場合は常に `null`（送信されなかったため）
+> - `survey_responses` は `event_surveys` の全設問分を返す（未回答の設問は含まない）
+> - UNDECIDED メンバーも一覧に含める（未回答者の把握のため）
+
+---
+
 #### `GET /api/v1/organizations/{id}/schedules/{scheduleId}/attendances`
 
 組織スケジュールの出欠をチーム別に集計して返す。個別メンバーの出欠情報は含まない。
@@ -594,6 +669,7 @@ schedules (1) ──── (N) user_schedule_google_events
     "schedule_id": 30,
     "total": {
       "attending": 45,
+      "partial": 5,
       "absent": 10,
       "undecided": 15
     },
@@ -602,6 +678,7 @@ schedules (1) ──── (N) user_schedule_google_events
         "team_id": 1,
         "team_name": "Aチーム",
         "attending": 20,
+        "partial": 3,
         "absent": 4,
         "undecided": 6
       },
@@ -609,6 +686,7 @@ schedules (1) ──── (N) user_schedule_google_events
         "team_id": 2,
         "team_name": "Bチーム",
         "attending": 25,
+        "partial": 2,
         "absent": 6,
         "undecided": 9
       },
@@ -616,6 +694,7 @@ schedules (1) ──── (N) user_schedule_google_events
         "team_id": null,
         "team_name": "チーム未所属",
         "attending": 0,
+        "partial": 0,
         "absent": 0,
         "undecided": 0
       }
@@ -1239,6 +1318,7 @@ V3.015__create_user_schedule_google_events_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-02-21 | `GET /teams/{id}/schedules/{scheduleId}/attendances` のレスポンス仕様を策定。メンバー個別の status / reason / survey_responses を返す。組織レベル集計に partial フィールドを追加 |
 | 2026-02-21 | `schedules.comment_option`（HIDDEN / OPTIONAL / REQUIRED）を追加。省略時は同スコープの直近スケジュール設定を自動適用。出欠回答フローに REQUIRED バリデーションを追加 |
 | 2026-02-21 | PARTIAL（遅刻・早退）ステータスを追加。出席率（広義・完全）計算定義を策定。チームダッシュボード用 `GET /teams/{id}/attendance-stats` と個人ダッシュボード用 `GET /me/attendance-stats` を追加 |
 | 2026-02-21 | 精査: Google カレンダー個人同期・クロスチームスケジュール招待・出欠リマインダー・組織スケジュールのチーム別出欠集計を追加。テーブル5件追加（schedule_attendance_reminders / schedule_cross_refs / user_google_calendar_connections / user_calendar_sync_settings / user_schedule_google_events）。API 11本追加。Flyway V3.011〜V3.015 追加 |
