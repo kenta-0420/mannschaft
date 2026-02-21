@@ -66,6 +66,7 @@
 | `status` | ENUM('SCHEDULED', 'CANCELLED', 'COMPLETED') | NO | 'SCHEDULED' | 開催状態 |
 | `attendance_required` | BOOLEAN | NO | FALSE | 出欠確認が必要か |
 | `attendance_deadline` | DATETIME | YES | NULL | 出欠回答期限（NULL = 無期限）|
+| `comment_option` | ENUM('HIDDEN', 'OPTIONAL', 'REQUIRED') | NO | 'OPTIONAL' | 補足コメント欄の表示設定（`attendance_required = FALSE` の場合は無視）|
 | `parent_schedule_id` | BIGINT UNSIGNED | YES | NULL | 繰り返しスケジュールの親 ID（自己参照 FK; NULL = 単発または繰り返しの親自身）|
 | `recurrence_rule` | JSON | YES | NULL | 繰り返しルール（親スケジュールのみ設定。下記形式参照）|
 | `is_exception` | BOOLEAN | NO | FALSE | 繰り返しのうち個別変更された回（TRUE = 親から独立した内容を持つ）|
@@ -107,6 +108,11 @@ INDEX idx_sch_google_calendar (google_calendar_event_id)
 - `team_id` と `organization_id` はどちらか一方のみ非 NULL（XOR; アプリ層でバリデーション）
 - `parent_schedule_id IS NOT NULL`（子）の場合、`recurrence_rule` は NULL とする
 - `all_day = TRUE` の場合、`start_at` の時刻は `00:00:00` に固定し `end_at` は NULL または `23:59:59` で統一する
+- `comment_option` の挙動:
+  - `HIDDEN`: コメント欄を非表示。送信された `reason` 値はバックエンドで無視し保存しない
+  - `OPTIONAL`: コメント欄を任意表示（デフォルト）
+  - `REQUIRED`: コメント欄を必須表示。`reason` が空の場合は出欠回答を 400 で拒否
+- `comment_option` 省略時: 同一スコープ（team_id / organization_id）の直近スケジュールの設定を自動適用。前回設定が存在しない場合は `OPTIONAL`
 - 論理削除: `deleted_at DATETIME nullable`
 
 ---
@@ -390,6 +396,7 @@ schedules (1) ──── (N) user_schedule_google_events
   "visibility": "MEMBERS_ONLY",
   "attendance_required": true,
   "attendance_deadline": "2026-04-03T23:59:59",
+  "comment_option": "OPTIONAL",
   "surveys": [
     {
       "question": "バス乗り合いに参加しますか？",
@@ -569,7 +576,7 @@ schedules (1) ──── (N) user_schedule_google_events
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
-| 400 | バリデーションエラー・`is_required` の設問に未回答 |
+| 400 | バリデーションエラー・`is_required` の設問に未回答・`comment_option = REQUIRED` で `reason` が空 |
 | 403 | SUPPORTER / GUEST は出欠回答不可 |
 | 409 | `attendance_deadline` を過ぎている |
 | 422 | `attendance_required = false` のスケジュールへの回答 / `status = CANCELLED` のスケジュール |
@@ -939,22 +946,25 @@ Google OAuth 2.0 の認可コードを受け取り、アクセストークン・
 1. POST /api/v1/teams/{id}/schedules を受付
 2. MANAGE_SCHEDULES 権限を確認
 3. バリデーション（start_at < end_at、title 必須 等）
-4. schedules に INSERT（recurrence_rule = NULL、parent_schedule_id = NULL）
-5. surveys が存在する場合: event_surveys を全件 INSERT
-6. reminders が存在する場合:
+4. `comment_option` が省略されている場合:
+   同一スコープの直近スケジュール（attendance_required = TRUE、deleted_at IS NULL）を取得し
+   その `comment_option` を適用。存在しない場合は 'OPTIONAL'
+5. schedules に INSERT（recurrence_rule = NULL、parent_schedule_id = NULL）
+6. surveys が存在する場合: event_surveys を全件 INSERT
+7. reminders が存在する場合:
    a. 各 remind_at が attendance_deadline（または start_at）より前か確認 → 違反は 400
    b. schedule_attendance_reminders を全件 INSERT
-7. attendance_required = TRUE の場合:
+8. attendance_required = TRUE の場合:
    a. 当該チームの全 MEMBER・ADMIN・DEPUTY_ADMIN の user_id を取得
    b. schedule_attendances を (status='UNDECIDED') で一括 INSERT
    c. プッシュ通知「出欠確認が届きました」を送信（通知機能実装後）
-8. Google カレンダー個人同期（@Async）:
+9. Google カレンダー個人同期（@Async）:
    a. このチームの user_calendar_sync_settings.is_enabled = TRUE かつ
       user_google_calendar_connections.is_active = TRUE のユーザーを取得
    b. 各ユーザーの Google Calendar に非同期でイベント作成
    c. 作成成功時に user_schedule_google_events に INSERT
-9. audit_logs に SCHEDULE_CREATED を記録
-10. 201 Created を返す
+10. audit_logs に SCHEDULE_CREATED を記録
+11. 201 Created を返す
 ```
 
 ---
@@ -987,12 +997,16 @@ Google OAuth 2.0 の認可コードを受け取り、アクセストークン・
 3. attendance_required = TRUE か確認 → FALSE は 422
 4. リクエスト者が当該チームの MEMBER 以上か確認（SUPPORTER / GUEST は 403）
 5. attendance_deadline が設定されている場合: deadline < NOW() であれば 409
-6. schedule_attendances を UPSERT（UNIQUE KEY: schedule_id + user_id）
-7. survey_responses が含まれる場合:
+6. comment_option に応じて reason をバリデーション:
+   - HIDDEN   → reason 値を無視（保存時に NULL に上書き）
+   - OPTIONAL → バリデーションなし
+   - REQUIRED → reason が null または空文字の場合 400
+7. schedule_attendances を UPSERT（UNIQUE KEY: schedule_id + user_id）
+8. survey_responses が含まれる場合:
    a. is_required = TRUE の全設問に回答があるか確認 → 未回答は 400
    b. event_survey_responses を UPSERT
-8. responded_at が NULL の場合（初回回答）: NOW() を設定
-9. 200 OK を返す
+9. responded_at が NULL の場合（初回回答）: NOW() を設定
+10. 200 OK を返す
 ```
 
 ---
@@ -1225,6 +1239,7 @@ V3.015__create_user_schedule_google_events_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-02-21 | `schedules.comment_option`（HIDDEN / OPTIONAL / REQUIRED）を追加。省略時は同スコープの直近スケジュール設定を自動適用。出欠回答フローに REQUIRED バリデーションを追加 |
 | 2026-02-21 | PARTIAL（遅刻・早退）ステータスを追加。出席率（広義・完全）計算定義を策定。チームダッシュボード用 `GET /teams/{id}/attendance-stats` と個人ダッシュボード用 `GET /me/attendance-stats` を追加 |
 | 2026-02-21 | 精査: Google カレンダー個人同期・クロスチームスケジュール招待・出欠リマインダー・組織スケジュールのチーム別出欠集計を追加。テーブル5件追加（schedule_attendance_reminders / schedule_cross_refs / user_google_calendar_connections / user_calendar_sync_settings / user_schedule_google_events）。API 11本追加。Flyway V3.011〜V3.015 追加 |
 | 2026-02-21 | 初版作成 |
