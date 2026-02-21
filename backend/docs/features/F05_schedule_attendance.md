@@ -118,8 +118,8 @@ INDEX idx_sch_google_calendar (google_calendar_event_id)
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
 | `schedule_id` | BIGINT UNSIGNED | NO | — | FK → schedules（ON DELETE CASCADE）|
 | `user_id` | BIGINT UNSIGNED | NO | — | FK → users（ON DELETE CASCADE）|
-| `status` | ENUM('ATTENDING', 'ABSENT', 'UNDECIDED') | NO | 'UNDECIDED' | 出欠ステータス |
-| `reason` | VARCHAR(500) | YES | NULL | 理由・コメント |
+| `status` | ENUM('ATTENDING', 'PARTIAL', 'ABSENT', 'UNDECIDED') | NO | 'UNDECIDED' | 出欠ステータス（PARTIAL = 遅刻・早退）|
+| `reason` | VARCHAR(500) | YES | NULL | 理由・補足コメント（例: 「15分遅刻」「17時に早退予定」）。全ステータスで任意入力可 |
 | `responded_at` | DATETIME | YES | NULL | 初回回答日時（初めて UNDECIDED 以外に変更した時点で設定・以降更新しない）|
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
@@ -370,6 +370,8 @@ schedules (1) ──── (N) user_schedule_google_events
 | GET | `/api/v1/me/calendar-sync-settings` | 必要 | チーム・組織別の同期設定一覧 |
 | PUT | `/api/v1/me/teams/{id}/calendar-sync` | 必要 | チームの Google カレンダー同期 ON/OFF |
 | PUT | `/api/v1/me/organizations/{id}/calendar-sync` | 必要 | 組織の Google カレンダー同期 ON/OFF |
+| GET | `/api/v1/teams/{id}/attendance-stats` | 必要（ADMIN）| チームメンバー全員の出席率（ダッシュボード用）|
+| GET | `/api/v1/me/attendance-stats` | 必要 | 自分の出席率（チーム・組織別・全体）|
 
 ### リクエスト／レスポンス仕様
 
@@ -495,6 +497,7 @@ schedules (1) ──── (N) user_schedule_google_events
       "my_attendance": "UNDECIDED",
       "attendance_summary": {
         "attending": 12,
+        "partial": 2,
         "absent": 3,
         "undecided": 9
       },
@@ -794,7 +797,141 @@ Google OAuth 2.0 の認可コードを受け取り、アクセストークン・
 
 ---
 
+#### `GET /api/v1/teams/{id}/attendance-stats`
+
+チームメンバー全員の出席率をダッシュボード用に返す。ADMIN のみ参照可能。
+
+**クエリパラメータ**
+| パラメータ | 型 | デフォルト | 説明 |
+|-----------|---|-----------|------|
+| `from` | ISO 8601 date | 3ヶ月前 | 集計開始日（inclusive）|
+| `to` | ISO 8601 date | 今日 | 集計終了日（inclusive）|
+| `user_id` | Long | — | 特定メンバーに絞り込み（省略時は全員）|
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "period": { "from": "2025-11-21", "to": "2026-02-21" },
+    "team_summary": {
+      "total_schedules": 24,
+      "avg_attendance_rate": 82.5,
+      "avg_strict_rate": 66.7
+    },
+    "members": [
+      {
+        "user_id": 1,
+        "display_name": "田中 太郎",
+        "total_required": 24,
+        "attending": 16,
+        "partial": 4,
+        "absent": 4,
+        "undecided": 0,
+        "attendance_rate": 83.3,
+        "strict_rate": 66.7
+      },
+      {
+        "user_id": 2,
+        "display_name": "鈴木 花子",
+        "total_required": 24,
+        "attending": 18,
+        "partial": 2,
+        "absent": 3,
+        "undecided": 1,
+        "attendance_rate": 87.0,
+        "strict_rate": 78.3
+      }
+    ]
+  }
+}
+```
+
+> - `attendance_rate` = (ATTENDING + PARTIAL) / (ATTENDING + PARTIAL + ABSENT) × 100（応答済みのみで計算）
+> - `strict_rate` = ATTENDING / (ATTENDING + PARTIAL + ABSENT) × 100（完全出席のみをカウント）
+> - `undecided` は分母に含めない
+> - `total_required` は `attendance_required = TRUE` かつ `status != CANCELLED` のスケジュール数
+
+---
+
+#### `GET /api/v1/me/attendance-stats`
+
+自分の出席率をチーム・組織別および全体でまとめて返す。個人ダッシュボード用。
+
+**クエリパラメータ**
+| パラメータ | 型 | デフォルト | 説明 |
+|-----------|---|-----------|------|
+| `from` | ISO 8601 date | 3ヶ月前 | 集計開始日（inclusive）|
+| `to` | ISO 8601 date | 今日 | 集計終了日（inclusive）|
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "period": { "from": "2025-11-21", "to": "2026-02-21" },
+    "overall": {
+      "total_required": 30,
+      "attending": 20,
+      "partial": 6,
+      "absent": 4,
+      "undecided": 0,
+      "attendance_rate": 86.7,
+      "strict_rate": 66.7
+    },
+    "by_scope": [
+      {
+        "scope_type": "TEAM",
+        "scope_id": 1,
+        "scope_name": "FC Tokyo Youth",
+        "total_required": 20,
+        "attending": 14,
+        "partial": 4,
+        "absent": 2,
+        "undecided": 0,
+        "attendance_rate": 90.0,
+        "strict_rate": 70.0
+      },
+      {
+        "scope_type": "ORGANIZATION",
+        "scope_id": 3,
+        "scope_name": "東京FC",
+        "total_required": 10,
+        "attending": 6,
+        "partial": 2,
+        "absent": 2,
+        "undecided": 0,
+        "attendance_rate": 80.0,
+        "strict_rate": 60.0
+      }
+    ]
+  }
+}
+```
+
+> `attendance_rate` / `strict_rate` の計算式は `GET /teams/{id}/attendance-stats` と同様
+
+---
+
 ## 5. ビジネスロジック
+
+### 出席率計算定義
+
+出席率は以下の定義に基づき、スケジュール一覧・ダッシュボードの全集計で統一して使用する。
+
+| 指標 | 計算式 | 用途 |
+|------|--------|------|
+| **出席率** | (ATTENDING + PARTIAL) / (ATTENDING + PARTIAL + ABSENT) × 100 | 「参加した」割合。ダッシュボードのメイン指標 |
+| **完全出席率** | ATTENDING / (ATTENDING + PARTIAL + ABSENT) × 100 | 遅刻・早退なしで参加した割合。補助指標 |
+
+**集計の前提条件（分母に含めるスケジュール）**
+- `attendance_required = TRUE`
+- `status != CANCELLED`
+- `deleted_at IS NULL`
+- `start_at` が集計期間内
+
+**UNDECIDED の扱い**
+- 分母・分子ともに含めない（未回答は欠席と同一視しない）
+- `total_required` はリクエスト者が対象のスケジュール総数（UNDECIDED 含む）
+- `undecided` は残カウントとして返し、フロントエンドで「未回答あり」の警告表示に使用する
 
 ### スケジュール作成フロー（単発）
 
@@ -1003,7 +1140,7 @@ Google OAuth 2.0 の認可コードを受け取り、アクセストークン・
 2. 操作者が当該組織の ADMIN か確認
 3. スケジュールが当該組織スコープ（organization_id 一致）か確認
 4. schedule_attendances を取得し、user_id から team_memberships でチームを解決
-5. チームごとに attending / absent / undecided を集計:
+5. チームごとに attending / partial / absent / undecided を集計:
    - チームに所属しない組織直接メンバーは team_id = null として集計
 6. 集計結果のみ返す（個別 user_id・名前は含まない）
 7. 200 OK を返す
@@ -1068,7 +1205,9 @@ V3.015__create_user_schedule_google_events_table.sql
 
 ## 8. 未解決事項
 
-- [ ] 「出欠ステータスは」の項目が未完了のため、追加ステータス（`TENTATIVE`（仮）・`LATE`（遅刻）等）の必要性を確認する（現設計: ATTENDING / ABSENT / UNDECIDED）
+- [ ] 出席率の集計期間のデフォルト（現: 3ヶ月）を、シーズン単位（開始日〜終了日）で設定できるかを確定する（シーズン管理機能との連動）
+- [ ] UNDECIDED のまま `attendance_deadline` を過ぎたメンバーを ABSENT として出席率計算に含めるオプション設定の必要性を確認する（現設計は UNDECIDED を除外）
+- [ ] 大規模チームでの出席率集計パフォーマンス: 将来的に `member_attendance_stats` キャッシュテーブルを設けるかを Phase 4+ で検討する（現設計はオンザフライ計算）
 - [ ] 繰り返しスケジュール自動展開バッチのスケジュール（毎週 or 毎日・実行時刻）を確定する
 - [ ] Google Calendar 管理者レベル共有連携（`google_calendar_event_id` カラムの用途）は F09 で別途設計し、個人同期との役割分担を確定する
 - [ ] `event_type` の選択肢はテンプレート（SPORTS / SCHOOL 等）に応じて表示切替するかを確定する（テンプレート管理 feature doc で検討）
@@ -1086,5 +1225,6 @@ V3.015__create_user_schedule_google_events_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-02-21 | PARTIAL（遅刻・早退）ステータスを追加。出席率（広義・完全）計算定義を策定。チームダッシュボード用 `GET /teams/{id}/attendance-stats` と個人ダッシュボード用 `GET /me/attendance-stats` を追加 |
 | 2026-02-21 | 精査: Google カレンダー個人同期・クロスチームスケジュール招待・出欠リマインダー・組織スケジュールのチーム別出欠集計を追加。テーブル5件追加（schedule_attendance_reminders / schedule_cross_refs / user_google_calendar_connections / user_calendar_sync_settings / user_schedule_google_events）。API 11本追加。Flyway V3.011〜V3.015 追加 |
 | 2026-02-21 | 初版作成 |
