@@ -67,7 +67,7 @@
 | `attendance_required` | BOOLEAN | NO | FALSE | 出欠確認が必要か |
 | `attendance_deadline` | DATETIME | YES | NULL | 出欠回答期限（NULL = 無期限）|
 | `comment_option` | ENUM('HIDDEN', 'OPTIONAL', 'REQUIRED') | NO | 'OPTIONAL' | 補足コメント欄の表示設定（`attendance_required = FALSE` の場合は無視）|
-| `parent_schedule_id` | BIGINT UNSIGNED | YES | NULL | 繰り返しスケジュールの親 ID（自己参照 FK; NULL = 単発または繰り返しの親自身）|
+| `parent_schedule_id` | BIGINT UNSIGNED | YES | NULL | 繰り返しスケジュールの親 ID（自己参照 FK; ON DELETE RESTRICT; NULL = 単発または繰り返しの親自身）|
 | `recurrence_rule` | JSON | YES | NULL | 繰り返しルール（親スケジュールのみ設定。下記形式参照）|
 | `is_exception` | BOOLEAN | NO | FALSE | 繰り返しのうち個別変更された回（TRUE = 親から独立した内容を持つ）|
 | `google_calendar_event_id` | VARCHAR(255) | YES | NULL | チーム・組織の共有 Google Calendar イベント ID（F09: 管理者レベルの Google 連携で使用）|
@@ -244,6 +244,7 @@ UNIQUE KEY uq_scr_source_target (source_schedule_id, target_type, target_id)   -
 - 承認後の `target_schedule_id` スケジュールは独立管理（招待元の変更は自動連動しない）
 - 招待元スケジュールがキャンセルされた場合、招待先スケジュールには通知のみ（自動キャンセルはしない）
 - `status = 'CANCELLED'` は招待元 ADMIN が承認前に取り消した場合
+- `UNIQUE KEY uq_scr_source_target` により同一 source + target への重複 INSERT は常に禁止される。`REJECTED` / `CANCELLED` 後に再招待する場合はアプリ層で既存行を `status = PENDING` に UPDATE する（新規 INSERT ではなく UPDATE で対応）
 
 ---
 
@@ -635,7 +636,7 @@ schedules (1) ──── (N) user_schedule_google_events
 |-----------|------|
 | 403 | 権限不足（MANAGE_SCHEDULES なし）|
 | 404 | スケジュールが存在しない / 削除済み |
-| 422 | `status = CANCELLED` のスケジュールを更新 |
+| 422 | `status = CANCELLED` または `COMPLETED` のスケジュールを更新 |
 
 ---
 
@@ -690,6 +691,31 @@ schedules (1) ──── (N) user_schedule_google_events
 #### `POST /api/v1/organizations/{id}/schedules/{scheduleId}/cancel`
 
 組織スケジュールをキャンセルする。クエリパラメータ・レスポンス・エラーレスポンスはチーム版（`POST /teams/{id}/schedules/{scheduleId}/cancel`）と同様。
+
+---
+
+#### `GET /api/v1/organizations/{id}/schedules`
+
+チームスケジュール一覧（`GET /api/v1/teams/{id}/schedules`）と同様。クエリパラメータ（`from` / `to` / `event_type` / `status`）・レスポンス形式は同一。`organization_id` に紐づくスケジュールを返す。
+
+---
+
+#### `POST /api/v1/organizations/{id}/schedules`
+
+チームスケジュール作成（`POST /api/v1/teams/{id}/schedules`）と同様。リクエストボディ・レスポンス形式は同一。内部では `organization_id` が設定され `team_id` は NULL となる。
+
+---
+
+#### `GET /api/v1/organizations/{id}/schedules/{scheduleId}`
+
+チームスケジュール詳細（`GET /api/v1/teams/{id}/schedules/{scheduleId}`）と同様。レスポンス形式は同一。ただし以下の差分がある:
+- `cross_invitations` フィールドは含まない（クロスチーム招待機能はチームスコープのみ）
+
+---
+
+#### `PATCH /api/v1/organizations/{id}/schedules/{scheduleId}`
+
+チームスケジュール更新（`PATCH /api/v1/teams/{id}/schedules/{scheduleId}`）と同様。リクエストボディ・`update_scope` の挙動・レスポンス・エラーレスポンスは同一。
 
 ---
 
@@ -927,7 +953,7 @@ schedules (1) ──── (N) user_schedule_google_events
 | ステータス | 条件 |
 |-----------|------|
 | 404 | `target_id` のチーム / 組織が存在しない |
-| 409 | 同一 source + target への重複招待（PENDING または ACCEPTED）|
+| 409 | 同一 source + target への重複招待（PENDING または ACCEPTED）。REJECTED / CANCELLED 後の再招待は既存行を PENDING に更新（409 にはならない）|
 | 422 | `status = CANCELLED` のスケジュールへの招待 |
 
 ---
@@ -1395,15 +1421,17 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 3. recurrence_rule の形式をバリデーション
 4. `comment_option` が省略されている場合: 単発フロー step 4 と同様に同一スコープ直近設定を自動適用
 5. 親スケジュールを schedules に INSERT（recurrence_rule を保存、parent_schedule_id = NULL）
+5a. recurrence_rule から展開予定件数を事前算出し generated_count として保持（@Async 開始前・同期処理で実施）:
+    - 展開範囲: 作成日から最大12ヶ月先（または end_date / count に達した方が先）
+    - 上限 200件; 超過する場合は超過分を切り捨て generated_count = 200 とし end_date を自動調整
 6. recurrence_rule に従って子スケジュールを展開（@Async）:
-   a. 展開範囲: 作成日から最大12ヶ月先（または end_date / count に達した方）
-   b. 上限: 200件。超過する場合は end_date を自動調整してユーザーに通知
-   c. 各子スケジュールを schedules に INSERT（parent_schedule_id = 親 ID、recurrence_rule = NULL）
+   a. 5a で算出した件数分を schedules に INSERT（parent_schedule_id = 親 ID、recurrence_rule = NULL）
+   b. end_date を自動調整した場合はユーザーに通知
 7. attendance_required = TRUE の場合: 全子スケジュールに対して単発フロー step 8 を適用
 8. Google カレンダー個人同期: 全子スケジュールに対して単発フロー step 9 を適用
 9. audit_logs に SCHEDULE_CREATED を記録
    metadata: {"recurrence_type": "WEEKLY", "generated_count": 74}
-10. 201 Created を返す
+10. 201 Created を返す（generated_count を含む; @Async の展開処理は非同期で継続）
 ```
 
 ---
@@ -1510,9 +1538,12 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
    schedule_attendances レコードは変更しない（出欠履歴を保持）
 5. 影響スケジュールのうち attendance_required = TRUE のものに対して一括プッシュ通知（通知機能実装後）
 6. Google カレンダー同期: 各対象スケジュールのイベントを削除（@Async）
-7. audit_logs に SCHEDULE_CANCELLED を記録
+7. クロスチームリンクの確認: キャンセル対象スケジュールに紐づく schedule_cross_refs で
+   status = ACCEPTED のものがある場合、target_schedule の所属チーム/組織 ADMIN に通知
+   「〇〇チームが招待スケジュールをキャンセルしました」
+8. audit_logs に SCHEDULE_CANCELLED を記録
    metadata: {"update_scope": "THIS_AND_FOLLOWING", "cancelled_count": N}
-8. 200 OK を返す（cancelled_count: N）
+9. 200 OK を返す（cancelled_count: N）
 
 [ALL]
 1〜3. THIS_ONLY と同様
@@ -1520,9 +1551,12 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
    schedule_attendances レコードは変更しない（出欠履歴を保持）
 5. 影響スケジュールのうち attendance_required = TRUE のものに対して一括プッシュ通知（通知機能実装後）
 6. Google カレンダー同期: 全対象スケジュールのイベントを削除（@Async）
-7. audit_logs に SCHEDULE_CANCELLED を記録
+7. クロスチームリンクの確認: キャンセル対象スケジュールに紐づく schedule_cross_refs で
+   status = ACCEPTED のものがある場合、target_schedule の所属チーム/組織 ADMIN に通知
+   「〇〇チームが招待スケジュールをキャンセルしました」
+8. audit_logs に SCHEDULE_CANCELLED を記録
    metadata: {"update_scope": "ALL", "cancelled_count": N}
-8. 200 OK を返す（cancelled_count: N）
+9. 200 OK を返す（cancelled_count: N）
 ```
 
 ---
@@ -1576,7 +1610,8 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 1. schedule_attendance_reminders から is_sent = FALSE かつ remind_at <= NOW() のレコードを取得
 2. 各リマインダーについて:
    a. 紐づくスケジュールが status = SCHEDULED かつ deleted_at IS NULL か確認（CANCELLED はスキップ）
-   b. attendance_deadline が未到来か確認（期限切れはスキップ）
+   b. attendance_deadline が設定されている場合: deadline < NOW() であれば期限切れとしてスキップ
+      attendance_deadline = NULL（無期限）の場合はスキップしない（必ず通知する）
    c. schedule_attendances から status = UNDECIDED の user_id 一覧を取得
    d. 各ユーザーにプッシュ通知「出欠未回答です。期限は〇〇です。」を送信
    e. schedule_attendance_reminders.is_sent = TRUE、sent_at = NOW() に UPDATE
@@ -1593,7 +1628,10 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 2. 操作者が当該チームの ADMIN か確認
 3. target_id のチーム / 組織が存在するか確認 → なければ 404
 4. スケジュールが SCHEDULED 状態か確認 → CANCELLED は 422
-5. 同一 source + target への重複招待がないか確認（PENDING / ACCEPTED）→ あれば 409
+5. 同一 source + target の既存招待レコードを確認:
+   - PENDING または ACCEPTED の場合: 409
+   - REJECTED または CANCELLED の場合: status = PENDING、message を更新（再招待 UPDATE）→ 手順 7 へスキップ
+   - 存在しない場合: 次手順へ
 6. schedule_cross_refs に INSERT（status = PENDING）
 7. 招待先チーム / 組織の ADMIN にプッシュ通知「〇〇から試合招待が届きました」
 8. 201 Created を返す
@@ -1641,7 +1679,8 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 5. 200 OK を返す
 
 [同期有効化]
-1. PUT /api/v1/me/teams/{id}/calendar-sync（is_enabled: true）を受付
+1. PUT /api/v1/me/teams/{id}/calendar-sync または PUT /api/v1/me/organizations/{id}/calendar-sync
+   （is_enabled: true）を受付（以降のフローは両スコープ共通。scope_type が TEAM / ORGANIZATION で異なるのみ）
 2. user_google_calendar_connections.is_active = TRUE か確認（未連携は 422）
 3. user_calendar_sync_settings を UPSERT（is_enabled = true）
 4. バックフィル対象件数を事前に取得（@Async 開始前・同期処理とは別に実施）:
@@ -1761,6 +1800,7 @@ V3.015__create_user_schedule_google_events_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-02-23 | 精査(4回目): 組織版エンドポイント4本の spec 追加（GET/POST list・GET detail・PATCH）。PATCH 422 に COMPLETED を追記。schedule_cross_refs UNIQUE KEY と再招待フローを整合（UPDATE方式を明記）。繰り返し作成フローの generated_count を @Async 前に事前算出するよう修正。キャンセルフロー THIS_AND_FOLLOWING / ALL にクロスチームリンク確認を追加。Google 同期フロー [同期有効化] に組織版を明記。リマインダーバッチの deadline = NULL 挙動を明記。parent_schedule_id FK に ON DELETE RESTRICT 追記 |
 | 2026-02-23 | 精査(3回目): POST /cancel spec 追加（teams・orgs 版・update_scope 対応）。DELETE /cross-invite/{invitationId} spec 追加。POST /reject spec 追加。繰り返しキャンセルに update_scope 適用。単発作成フローに組織スコープ適用を明記。招待承認フローのミラースケジュールコピーフィールドを明定義。backfill_count を @Async 前に取得するよう修正。schedule_cross_refs.source_schedule_id FK に ON DELETE CASCADE 追記。total_required 集計条件に deleted_at IS NULL 追記。キャンセルフローに出欠レコード保持を明記。THIS_AND_FOLLOWING 削除フローに当該スケジュール自身の削除を明記 |
 | 2026-02-23 | 精査(2回目): DELETE 認証要件修正・`?update_scope` クエリパラメータ定義。PATCH レスポンス仕様追加。DELETE spec セクション追加。組織版 attendance / calendar-sync レスポンス仕様追加。単発作成フローに surveys バリデーション追加。繰り返し更新 THIS_AND_FOLLOWING の is_exception 削除範囲を統一。組織スコープ出欠回答フロー追加。event_surveys PATCH ハンドリングを未解決事項に追加 |
 | 2026-02-23 | 精査(1回目): `POST /organizations/{id}/schedules/{scheduleId}/attendance` を追加。スケジュール詳細・`GET /me/schedules`・disconnect・calendar-sync-settings のレスポンス仕様を追記。繰り返し作成フローに comment_option ステップ追加・参照番号修正。スケジュール削除フロー（単発 / THIS_AND_FOLLOWING / ALL）を追記。繰り返し ALL 更新での comment_option 伝播を明記。組織スコープの attendance_required 時 INSERT 対象を明記。`my_attendance` に reason を追加。未解決事項2件追加 |
