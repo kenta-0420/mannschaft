@@ -368,6 +368,7 @@ schedules (1) ──── (N) user_schedule_google_events
 | PATCH | `/api/v1/organizations/{id}/schedules/{scheduleId}` | 必要（MANAGE_SCHEDULES）| 組織スケジュール更新 |
 | DELETE | `/api/v1/organizations/{id}/schedules/{scheduleId}` | 必要（ADMIN）| 組織スケジュール削除 |
 | POST | `/api/v1/organizations/{id}/schedules/{scheduleId}/cancel` | 必要（ADMIN）| 組織スケジュールキャンセル |
+| POST | `/api/v1/organizations/{id}/schedules/{scheduleId}/attendance` | 必要（MEMBER）| 組織スケジュールへの出欠回答・変更 |
 | GET | `/api/v1/organizations/{id}/schedules/{scheduleId}/attendances` | 必要（ADMIN）| チーム別出欠集計（個人情報なし）|
 | GET | `/api/v1/me/schedules` | 必要 | 全チーム・組織横断のスケジュール一覧 |
 | GET | `/api/v1/me/google-calendar/status` | 必要 | Google カレンダー連携状態確認 |
@@ -501,7 +502,7 @@ schedules (1) ──── (N) user_schedule_google_events
       "status": "SCHEDULED",
       "attendance_required": true,
       "attendance_deadline": "2026-04-03T23:59:59",
-      "my_attendance": "UNDECIDED",
+      "my_attendance": { "status": "UNDECIDED", "reason": null },
       "attendance_summary": {
         "attending": 12,
         "partial": 2,
@@ -515,8 +516,75 @@ schedules (1) ──── (N) user_schedule_google_events
 }
 ```
 
-> - `my_attendance`: リクエスト者自身の出欠ステータス（`attendance_required = false` の場合は null）
+> - `my_attendance`: リクエスト者自身の出欠情報（`attendance_required = false` の場合は null）。形式: `{"status": "...", "reason": "..."}`。reason は `comment_option = HIDDEN` のスケジュールでは常に null
 > - `attendance_summary`: ADMIN のみ返す。MEMBER / DEPUTY_ADMIN には null（プライバシー保護）
+
+---
+
+#### `GET /api/v1/teams/{id}/schedules/{scheduleId}`
+
+スケジュールの詳細情報を返す。出欠アンケート設問・リマインダー設定・クロスチーム招待状況も含む。
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "id": 20,
+    "title": "vs 東京FC 練習試合",
+    "description": "ホームゲーム。ユニフォーム持参。",
+    "location": "駒沢オリンピック公園陸上競技場",
+    "start_at": "2026-04-05T13:00:00",
+    "end_at": "2026-04-05T17:00:00",
+    "all_day": false,
+    "event_type": "MATCH",
+    "visibility": "MEMBERS_ONLY",
+    "status": "SCHEDULED",
+    "attendance_required": true,
+    "attendance_deadline": "2026-04-03T23:59:59",
+    "comment_option": "OPTIONAL",
+    "parent_schedule_id": null,
+    "recurrence_rule": null,
+    "is_exception": false,
+    "created_by": 1,
+    "created_at": "2026-03-01T10:00:00Z",
+    "updated_at": "2026-03-01T10:00:00Z",
+    "my_attendance": { "status": "UNDECIDED", "reason": null },
+    "attendance_summary": {
+      "attending": 12,
+      "partial": 2,
+      "absent": 3,
+      "undecided": 9
+    },
+    "surveys": [
+      {
+        "id": 5,
+        "question": "バス乗り合いに参加しますか？",
+        "question_type": "BOOLEAN",
+        "options": null,
+        "is_required": true,
+        "sort_order": 1
+      }
+    ],
+    "reminders": [
+      { "id": 1, "remind_at": "2026-03-29T09:00:00", "is_sent": false },
+      { "id": 2, "remind_at": "2026-04-02T09:00:00", "is_sent": false }
+    ],
+    "cross_invitations": [
+      {
+        "invitation_id": 100,
+        "target_type": "TEAM",
+        "target_id": 42,
+        "target_name": "FC Tokyo Youth B",
+        "status": "PENDING"
+      }
+    ]
+  }
+}
+```
+
+> - `attendance_summary`: ADMIN のみ返す（MEMBER / DEPUTY_ADMIN には null）
+> - `reminders`: スケジュール作成者 / ADMIN のみ返す
+> - `cross_invitations`: このスケジュールから送信した招待一覧（ADMIN のみ返す）。受信招待は `GET /teams/{id}/schedule-invitations` で取得
 
 ---
 
@@ -836,6 +904,50 @@ Google OAuth 2.0 の認可コードを受け取り、アクセストークン・
 
 ---
 
+#### `DELETE /api/v1/me/google-calendar/disconnect`
+
+Google Calendar 連携を解除する。Google 側での認可取り消し（revoke）も実施する。解除後は全チーム・組織の同期が停止する（`user_google_calendar_connections.is_active = FALSE`）。
+
+**レスポンス（204 No Content）**
+
+> - 再連携は `POST /me/google-calendar/connect` から再実施
+> - `user_calendar_sync_settings` のレコードは削除しない（再連携時に設定を復元するため）
+
+---
+
+#### `GET /api/v1/me/calendar-sync-settings`
+
+ユーザーが所属する全チーム・組織の Google カレンダー同期設定一覧を返す。
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "is_connected": true,
+    "google_account_email": "user@gmail.com",
+    "sync_settings": [
+      {
+        "scope_type": "TEAM",
+        "scope_id": 1,
+        "scope_name": "FC Tokyo Youth",
+        "is_enabled": true
+      },
+      {
+        "scope_type": "ORGANIZATION",
+        "scope_id": 3,
+        "scope_name": "東京FC",
+        "is_enabled": false
+      }
+    ]
+  }
+}
+```
+
+> - `is_connected = false` の場合、`sync_settings` の `is_enabled` は全て `false` として返す
+> - 退会済みチーム・組織の設定は含まない（所属中のみ）
+
+---
+
 #### `PUT /api/v1/me/teams/{id}/calendar-sync`
 
 チームの Google カレンダー同期を ON/OFF 切り替える。初回 ON 時に過去の未同期スケジュール（今日以降の未来分）を一括同期する。
@@ -880,6 +992,50 @@ Google OAuth 2.0 の認可コードを受け取り、アクセストークン・
 | `to` | ISO 8601 date | 30日後 | 取得終了日 |
 | `attendance_required_only` | Boolean | false | 出欠確認が必要なもののみ |
 | `undecided_only` | Boolean | false | 自分が未回答のもののみ |
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": [
+    {
+      "id": 10,
+      "scope_type": "TEAM",
+      "scope_id": 1,
+      "scope_name": "FC Tokyo Youth",
+      "title": "火木練習",
+      "start_at": "2026-04-01T19:00:00",
+      "end_at": "2026-04-01T21:00:00",
+      "all_day": false,
+      "event_type": "PRACTICE",
+      "location": null,
+      "status": "SCHEDULED",
+      "attendance_required": false,
+      "attendance_deadline": null,
+      "my_attendance": null
+    },
+    {
+      "id": 20,
+      "scope_type": "TEAM",
+      "scope_id": 1,
+      "scope_name": "FC Tokyo Youth",
+      "title": "vs 東京FC 練習試合",
+      "start_at": "2026-04-05T13:00:00",
+      "end_at": "2026-04-05T17:00:00",
+      "all_day": false,
+      "event_type": "MATCH",
+      "location": "駒沢オリンピック公園陸上競技場",
+      "status": "SCHEDULED",
+      "attendance_required": true,
+      "attendance_deadline": "2026-04-03T23:59:59",
+      "my_attendance": { "status": "UNDECIDED", "reason": null }
+    }
+  ]
+}
+```
+
+> - `scope_type` / `scope_id` / `scope_name`: スケジュールが属するチームまたは組織の情報（横断表示用）
+> - `attendance_summary` は含まない（個人ビューのため集計情報は非表示）
+> - `from`〜`to` の期間内で `start_at` が一致するスケジュールを全チーム・組織横断で返す
 
 ---
 
@@ -1034,7 +1190,9 @@ Google OAuth 2.0 の認可コードを受け取り、アクセストークン・
    a. 各 remind_at が attendance_deadline（または start_at）より前か確認 → 違反は 400
    b. schedule_attendance_reminders を全件 INSERT
 8. attendance_required = TRUE の場合:
-   a. 当該チームの全 MEMBER・ADMIN・DEPUTY_ADMIN の user_id を取得
+   a. スコープに応じて対象ユーザーを取得:
+      - チームスコープ: 当該チームの全 MEMBER・ADMIN・DEPUTY_ADMIN
+      - 組織スコープ: 組織に所属する全 MEMBER・ADMIN・DEPUTY_ADMIN（全所属チームのメンバー + 組織直接所属メンバー、重複は除外）
    b. schedule_attendances を (status='UNDECIDED') で一括 INSERT
    c. プッシュ通知「出欠確認が届きました」を送信（通知機能実装後）
 9. Google カレンダー個人同期（@Async）:
@@ -1054,16 +1212,17 @@ Google OAuth 2.0 の認可コードを受け取り、アクセストークン・
 1. recurrence_rule を含むリクエストを受付
 2. MANAGE_SCHEDULES 権限を確認
 3. recurrence_rule の形式をバリデーション
-4. 親スケジュールを schedules に INSERT（recurrence_rule を保存、parent_schedule_id = NULL）
-5. recurrence_rule に従って子スケジュールを展開（@Async）:
+4. `comment_option` が省略されている場合: 単発フロー step 4 と同様に同一スコープ直近設定を自動適用
+5. 親スケジュールを schedules に INSERT（recurrence_rule を保存、parent_schedule_id = NULL）
+6. recurrence_rule に従って子スケジュールを展開（@Async）:
    a. 展開範囲: 作成日から最大12ヶ月先（または end_date / count に達した方）
    b. 上限: 200件。超過する場合は end_date を自動調整してユーザーに通知
    c. 各子スケジュールを schedules に INSERT（parent_schedule_id = 親 ID、recurrence_rule = NULL）
-6. attendance_required = TRUE の場合: 全子スケジュールに対して単発フロー step 7 を適用
-7. Google カレンダー個人同期: 全子スケジュールに対して単発フロー step 8 を適用
-8. audit_logs に SCHEDULE_CREATED を記録
+7. attendance_required = TRUE の場合: 全子スケジュールに対して単発フロー step 8 を適用
+8. Google カレンダー個人同期: 全子スケジュールに対して単発フロー step 9 を適用
+9. audit_logs に SCHEDULE_CREATED を記録
    metadata: {"recurrence_type": "WEEKLY", "generated_count": 74}
-9. 201 Created を返す
+10. 201 Created を返す
 ```
 
 ---
@@ -1111,6 +1270,8 @@ Google OAuth 2.0 の認可コードを受け取り、アクセストークン・
 [ALL]
 1. 親スケジュールを UPDATE（変更フィールドのみ）
 2. is_exception = FALSE の全子スケジュールを同一フィールドで UPDATE
+   （`comment_option` が変更対象に含まれる場合は is_exception = FALSE のスケジュールにのみ伝播。
+    is_exception = TRUE の子スケジュールは個別設定を保持するため更新しない）
 3. 全子スケジュールの Google Calendar イベントを更新（@Async）
 4. audit_logs に SCHEDULE_UPDATED を記録（metadata: {"update_scope": "ALL"}）
 ```
@@ -1134,6 +1295,47 @@ Google OAuth 2.0 の認可コードを受け取り、アクセストークン・
 8. audit_logs に SCHEDULE_CANCELLED を記録
 9. 200 OK を返す
 ```
+
+---
+
+### スケジュール削除フロー
+
+スケジュールを論理削除する。繰り返しスケジュールの場合は `update_scope` で削除範囲を指定する。
+
+```
+[単発 / THIS_ONLY（繰り返しの1回のみ削除）]
+1. DELETE /api/v1/teams/{id}/schedules/{scheduleId} を受付
+2. 権限確認:
+   - 操作者が ADMIN の場合: 無条件で削除可能
+   - created_by = 操作者の場合: 削除可能（自分のスケジュール）
+   - 他者作成スケジュールを削除するには DELETE_OTHERS_CONTENT 権限が必要（なければ 403）
+3. 対象スケジュールの deleted_at = NOW() に UPDATE（論理削除）
+4. 対象スケジュールを同期しているユーザーの Google Calendar イベントを削除（@Async）
+5. クロスチームリンクの確認:
+   紐づく schedule_cross_refs（source_schedule_id / target_schedule_id）の ACCEPTED なものがある場合
+   相手チーム / 組織の ADMIN に「スケジュールが削除されました」と通知
+6. audit_logs に SCHEDULE_DELETED を記録
+7. 204 No Content を返す
+
+[THIS_AND_FOLLOWING（この回以降を削除）]
+1. 当該スケジュールの start_at 以降の全子スケジュール（is_exception の有無問わず）を論理削除
+2. 親スケジュールの recurrence_rule.end_date を「当該スケジュールの start_at の前日」に更新（それ以前は存続）
+3. 削除された子スケジュールの Google Calendar イベントを全件削除（@Async）
+4. audit_logs に SCHEDULE_DELETED を記録
+   metadata: {"update_scope": "THIS_AND_FOLLOWING", "deleted_count": N}
+5. 204 No Content を返す
+
+[ALL（繰り返し全回 + 親を削除）]
+1. 全子スケジュール（is_exception の有無問わず）および親スケジュールを論理削除
+2. 全 Google Calendar イベントを削除（@Async）
+3. audit_logs に SCHEDULE_DELETED を記録
+   metadata: {"update_scope": "ALL", "deleted_count": N}
+4. 204 No Content を返す
+```
+
+> - 単発スケジュールはリクエストボディ不要（`update_scope` 不要）
+> - 繰り返しの子スケジュールに対して `update_scope` が省略された場合は `THIS_ONLY` として扱う
+> - `status = CANCELLED` のスケジュールも削除可能（キャンセルと論理削除は独立した操作）
 
 ---
 
@@ -1311,6 +1513,8 @@ V3.015__create_user_schedule_google_events_table.sql
 - [ ] Google Calendar 同期エラー時の最大リトライ回数・最終失敗時のユーザー通知方法を確定する
 - [ ] 組織スケジュールの出欠確認: チームに所属しない組織直接メンバーへの出欠通知フローを確定する
 - [ ] クロスチーム招待承認後、招待元が内容（日時・場所）を変更した場合の招待先への通知仕様を確定する
+- [ ] `schedules.status = COMPLETED` のセットタイミングを確定する（手動操作 / end_at 経過後の自動バッチ / どちらも対応するか）
+- [ ] `visibility = 'ORGANIZATION'` のスケジュールを SUPPORTER が閲覧できるかを確定する（スコープ表 "visibility に従う" の具体的な可視性ルールを整理する）
 
 ---
 
@@ -1318,6 +1522,7 @@ V3.015__create_user_schedule_google_events_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-02-23 | 精査対応: `POST /organizations/{id}/schedules/{scheduleId}/attendance` を追加。スケジュール詳細・`GET /me/schedules`・disconnect・calendar-sync-settings のレスポンス仕様を追記。繰り返し作成フローに comment_option ステップ追加・参照番号修正。スケジュール削除フロー（単発 / THIS_AND_FOLLOWING / ALL）を追記。繰り返し ALL 更新での comment_option 伝播を明記。組織スコープの attendance_required 時 INSERT 対象を明記。`my_attendance` に reason を追加。未解決事項2件追加 |
 | 2026-02-21 | `GET /teams/{id}/schedules/{scheduleId}/attendances` のレスポンス仕様を策定。メンバー個別の status / reason / survey_responses を返す。組織レベル集計に partial フィールドを追加 |
 | 2026-02-21 | `schedules.comment_option`（HIDDEN / OPTIONAL / REQUIRED）を追加。省略時は同スコープの直近スケジュール設定を自動適用。出欠回答フローに REQUIRED バリデーションを追加 |
 | 2026-02-21 | PARTIAL（遅刻・早退）ステータスを追加。出席率（広義・完全）計算定義を策定。チームダッシュボード用 `GET /teams/{id}/attendance-stats` と個人ダッシュボード用 `GET /me/attendance-stats` を追加 |
