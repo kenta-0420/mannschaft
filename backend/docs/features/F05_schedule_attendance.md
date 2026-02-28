@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 3
-> **最終更新**: 2026-02-23
+> **最終更新**: 2026-02-28
 
 ---
 
@@ -19,10 +19,10 @@
 |--------|--------------|
 | SYSTEM_ADMIN | 全スケジュールの参照・強制削除 |
 | ADMIN | スケジュールの作成・編集・削除・キャンセル。出欠一覧・集計の参照。クロスチーム招待の送受信 |
-| DEPUTY_ADMIN | `MANAGE_SCHEDULES` 権限を持つ場合: スケジュール作成・編集・削除 |
-| MEMBER | デフォルトで `MANAGE_SCHEDULES` を保持（作成・編集）。他者のスケジュール削除は `DELETE_OTHERS_CONTENT` 権限が必要。自分の出欠を回答 |
-| SUPPORTER | スケジュール閲覧のみ（visibility に従う）。出欠回答は不可 |
-| GUEST | 閲覧のみ（`visibility = PUBLIC` のスケジュールのみ）|
+| DEPUTY_ADMIN | `MANAGE_SCHEDULES` 権限を持つ場合: スケジュール作成・編集・自己作成スケジュールの削除。他者作成スケジュールの削除は `MANAGE_SCHEDULES` + `DELETE_OTHERS_CONTENT` の両方が必要 |
+| MEMBER | デフォルトで `MANAGE_SCHEDULES` を保持（作成・編集）。他者のスケジュール削除は `DELETE_OTHERS_CONTENT` 権限が必要。`min_response_role IN ('SUPPORTER+', 'MEMBER+')` のスケジュールに出欠回答可 |
+| SUPPORTER | `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールを閲覧可（`visibility` 設定に従う）。`min_response_role = 'SUPPORTER+'` のスケジュールに限り出欠回答可 |
+| GUEST | `min_view_role = 'ANYONE'` のスケジュールのみ閲覧可 |
 
 ### 対象レベル
 - [x] 組織 (Organization)
@@ -62,7 +62,9 @@
 | `end_at` | DATETIME | YES | NULL | 終了日時（NULL = 終了時間未定）|
 | `all_day` | BOOLEAN | NO | FALSE | 終日フラグ（TRUE の場合、時刻は無効とし start_at を日付のみで扱う）|
 | `event_type` | ENUM('PRACTICE', 'MATCH', 'EVENT', 'MEETING', 'OTHER') | NO | 'OTHER' | イベント種別（カレンダー表示のカテゴリ分け用）|
-| `visibility` | ENUM('MEMBERS_ONLY', 'ORGANIZATION', 'PUBLIC') | NO | 'MEMBERS_ONLY' | 公開範囲 |
+| `visibility` | ENUM('MEMBERS_ONLY', 'ORGANIZATION') | NO | 'MEMBERS_ONLY' | 公開スコープ（どの範囲まで公開するか。`min_view_role = 'ANYONE'` の場合は無効）|
+| `min_view_role` | ENUM('ANYONE', 'SUPPORTER+', 'MEMBER+', 'ADMIN_ONLY') | NO | 'MEMBER+' | 閲覧可能な最小権限。省略時はチーム/組織の `default_schedule_min_view_role` 設定を継承し、設定がない場合は `MEMBER+`。`ANYONE` は未ログイン含む全員に公開（`visibility` を上書き）|
+| `min_response_role` | ENUM('SUPPORTER+', 'MEMBER+', 'ADMIN_ONLY') | NO | 'MEMBER+' | 出欠回答可能な最小権限。省略時はチーム/組織の `default_schedule_min_response_role` 設定を継承し、設定がない場合は `MEMBER+`。`attendance_required = TRUE` 時、このロール以上のメンバーのみ `schedule_attendances` に登録される |
 | `status` | ENUM('SCHEDULED', 'CANCELLED', 'COMPLETED') | NO | 'SCHEDULED' | 開催状態 |
 | `attendance_required` | BOOLEAN | NO | FALSE | 出欠確認が必要か |
 | `attendance_deadline` | DATETIME | YES | NULL | 出欠回答期限（NULL = 無期限）|
@@ -109,10 +111,27 @@ INDEX idx_sch_google_calendar (google_calendar_event_id)
 - `parent_schedule_id IS NOT NULL`（子）の場合、`recurrence_rule` は NULL とする
 - `all_day = TRUE` の場合、`start_at` の時刻は `00:00:00` に固定し `end_at` は NULL または `23:59:59` で統一する
 - `comment_option` の挙動:
-  - `HIDDEN`: コメント欄を非表示。送信された `reason` 値はバックエンドで無視し保存しない
+  - `HIDDEN`: コメント欄を非表示。送信された `comment` 値はバックエンドで無視し保存しない
   - `OPTIONAL`: コメント欄を任意表示（デフォルト）
-  - `REQUIRED`: コメント欄を必須表示。`reason` が空の場合は出欠回答を 400 で拒否
+  - `REQUIRED`: コメント欄を必須表示。`comment` が空の場合は出欠回答を 400 で拒否
 - `comment_option` 省略時: 同一スコープ（team_id / organization_id）の直近スケジュールの設定を自動適用。前回設定が存在しない場合は `OPTIONAL`
+- `min_view_role` の挙動:
+  - `ANYONE`: 未ログイン含む全員に公開。`visibility` を上書きしパブリックスケジュールとして扱う
+  - `SUPPORTER+`: SUPPORTER・MEMBER・DEPUTY_ADMIN・ADMIN が閲覧可
+  - `MEMBER+`: MEMBER・DEPUTY_ADMIN・ADMIN のみ閲覧可（デフォルト）
+  - `ADMIN_ONLY`: DEPUTY_ADMIN・ADMIN のみ閲覧可（機密スケジュール等）
+- `min_view_role` 省略時: チーム/組織の `default_schedule_min_view_role` 設定を継承。設定がない場合は `MEMBER+`
+- `min_response_role` の挙動:
+  - `SUPPORTER+`: SUPPORTER・MEMBER・DEPUTY_ADMIN・ADMIN が出欠回答可
+  - `MEMBER+`: MEMBER・DEPUTY_ADMIN・ADMIN のみ出欠回答可（デフォルト）
+  - `ADMIN_ONLY`: DEPUTY_ADMIN・ADMIN のみ出欠回答可
+- `min_response_role` 省略時: チーム/組織の `default_schedule_min_response_role` 設定を継承。設定がない場合は `MEMBER+`
+- `min_response_role` は `min_view_role` と独立した設定。回答権限のないユーザーはスケジュールを閲覧可能だが PATCH /responses は 403 を返す
+- `attendance_required = TRUE` 時、`min_response_role` 以上のロールを持つユーザーのみ `schedule_attendances` に INSERT される
+- **`min_view_role` の評価スコープ（親子関係）**:
+  - `visibility = 'MEMBERS_ONLY'`: スケジュールを所有するチーム/組織への**直接所属ロール**で評価する
+  - `visibility = 'ORGANIZATION'`（チームスコープのスケジュールを組織共有する場合）: 親組織への**直接所属ロール**で評価する
+  - 親グループのロールは子グループのスケジュールに**継承しない**（例: 学校の SUPPORTER は、クラスに直接所属していない場合はクラスの `visibility = MEMBERS_ONLY` スケジュールを閲覧不可）
 - 論理削除: `deleted_at DATETIME nullable`
 
 ---
@@ -125,7 +144,7 @@ INDEX idx_sch_google_calendar (google_calendar_event_id)
 | `schedule_id` | BIGINT UNSIGNED | NO | — | FK → schedules（ON DELETE CASCADE）|
 | `user_id` | BIGINT UNSIGNED | NO | — | FK → users（ON DELETE CASCADE）|
 | `status` | ENUM('ATTENDING', 'PARTIAL', 'ABSENT', 'UNDECIDED') | NO | 'UNDECIDED' | 出欠ステータス（PARTIAL = 遅刻・早退）|
-| `reason` | VARCHAR(500) | YES | NULL | 理由・補足コメント（例: 「15分遅刻」「17時に早退予定」）。全ステータスで任意入力可 |
+| `comment` | VARCHAR(500) | YES | NULL | 補足コメント（例: 「15分遅刻」「17時に早退予定」）。全ステータスで任意入力可 |
 | `responded_at` | DATETIME | YES | NULL | 初回回答日時（初めて UNDECIDED 以外に変更した時点で設定・以降更新しない）|
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
@@ -350,28 +369,27 @@ schedules (1) ──── (N) user_schedule_google_events
 ### エンドポイント一覧
 | メソッド | パス | 認証 | 説明 |
 |---------|-----|------|------|
-| GET | `/api/v1/teams/{id}/schedules` | 必要（MEMBER+）| スケジュール一覧（期間指定）|
+| GET | `/api/v1/teams/{id}/schedules` | 必要（min_view_role 以上; デフォルト MEMBER+）| スケジュール一覧（期間指定）|
 | POST | `/api/v1/teams/{id}/schedules` | 必要（MANAGE_SCHEDULES）| スケジュール作成（繰り返し含む）|
-| GET | `/api/v1/teams/{id}/schedules/{scheduleId}` | 必要（MEMBER+）| スケジュール詳細 |
+| GET | `/api/v1/teams/{id}/schedules/{scheduleId}` | 必要（当該スケジュールの min_view_role 以上）| スケジュール詳細 |
 | PATCH | `/api/v1/teams/{id}/schedules/{scheduleId}` | 必要（MANAGE_SCHEDULES）| スケジュール更新（update_scope 指定）|
 | DELETE | `/api/v1/teams/{id}/schedules/{scheduleId}` | 必要（自分が作成: MEMBER以上 / 他者作成: DELETE_OTHERS_CONTENT / 強制: ADMIN）| スケジュール論理削除（繰り返しは `?update_scope` で範囲指定）|
 | POST | `/api/v1/teams/{id}/schedules/{scheduleId}/cancel` | 必要（ADMIN）| キャンセル（status = CANCELLED）。繰り返しは `?update_scope` で範囲指定 |
 | GET | `/api/v1/teams/{id}/schedules/{scheduleId}/attendances` | 必要（ADMIN）| 出欠一覧・集計（ADMIN 用）|
-| POST | `/api/v1/teams/{id}/schedules/{scheduleId}/attendance` | 必要（MEMBER）| 出欠を回答・変更 |
 | POST | `/api/v1/teams/{id}/schedules/{scheduleId}/cross-invite` | 必要（ADMIN）| 他チーム・組織へのスケジュール招待送信 |
 | DELETE | `/api/v1/teams/{id}/schedules/{scheduleId}/cross-invite/{invitationId}` | 必要（ADMIN）| 送信済み招待のキャンセル |
 | GET | `/api/v1/teams/{id}/schedule-invitations` | 必要（ADMIN）| 受信したスケジュール招待一覧 |
 | POST | `/api/v1/teams/{id}/schedule-invitations/{invitationId}/accept` | 必要（ADMIN）| スケジュール招待を承認 |
 | POST | `/api/v1/teams/{id}/schedule-invitations/{invitationId}/reject` | 必要（ADMIN）| スケジュール招待を拒否 |
-| GET | `/api/v1/organizations/{id}/schedules` | 必要（MEMBER+）| 組織スケジュール一覧 |
+| GET | `/api/v1/organizations/{id}/schedules` | 必要（min_view_role 以上; デフォルト MEMBER+）| 組織スケジュール一覧 |
 | POST | `/api/v1/organizations/{id}/schedules` | 必要（MANAGE_SCHEDULES）| 組織スケジュール作成 |
-| GET | `/api/v1/organizations/{id}/schedules/{scheduleId}` | 必要（MEMBER+）| 組織スケジュール詳細 |
+| GET | `/api/v1/organizations/{id}/schedules/{scheduleId}` | 必要（当該スケジュールの min_view_role 以上）| 組織スケジュール詳細 |
 | PATCH | `/api/v1/organizations/{id}/schedules/{scheduleId}` | 必要（MANAGE_SCHEDULES）| 組織スケジュール更新 |
 | DELETE | `/api/v1/organizations/{id}/schedules/{scheduleId}` | 必要（自分が作成: MEMBER以上 / 他者作成: DELETE_OTHERS_CONTENT / 強制: ADMIN）| 組織スケジュール削除（繰り返しは `?update_scope` で範囲指定）|
 | POST | `/api/v1/organizations/{id}/schedules/{scheduleId}/cancel` | 必要（ADMIN）| 組織スケジュールキャンセル（繰り返しは `?update_scope` で範囲指定）|
-| POST | `/api/v1/organizations/{id}/schedules/{scheduleId}/attendance` | 必要（MEMBER）| 組織スケジュールへの出欠回答・変更 |
 | GET | `/api/v1/organizations/{id}/schedules/{scheduleId}/attendances` | 必要（ADMIN）| チーム別出欠集計（個人情報なし）|
-| GET | `/api/v1/me/schedules` | 必要 | 全チーム・組織横断のスケジュール一覧 |
+| PATCH | `/api/v1/schedules/{scheduleId}/responses` | 必要（当該スケジュールの min_response_role 以上）| 出欠を回答・変更（チーム/組織スコープ共通の統一エンドポイント）|
+| GET | `/api/v1/my/calendar` | 必要 | 全チーム・組織横断のスケジュール一覧（自分の回答ステータス付き）|
 | GET | `/api/v1/me/google-calendar/status` | 必要 | Google カレンダー連携状態確認 |
 | POST | `/api/v1/me/google-calendar/connect` | 必要 | Google Calendar OAuth 連携（認可コード受取）|
 | DELETE | `/api/v1/me/google-calendar/disconnect` | 必要 | Google Calendar 連携解除 |
@@ -396,6 +414,8 @@ schedules (1) ──── (N) user_schedule_google_events
   "all_day": false,
   "event_type": "MATCH",
   "visibility": "MEMBERS_ONLY",
+  "min_view_role": "MEMBER+",
+  "min_response_role": "MEMBER+",
   "attendance_required": true,
   "attendance_deadline": "2026-04-03T23:59:59",
   "comment_option": "OPTIONAL",
@@ -423,6 +443,8 @@ schedules (1) ──── (N) user_schedule_google_events
   "all_day": false,
   "event_type": "PRACTICE",
   "visibility": "MEMBERS_ONLY",
+  "min_view_role": "SUPPORTER+",
+  "min_response_role": "MEMBER+",
   "attendance_required": false,
   "recurrence_rule": {
     "type": "WEEKLY",
@@ -485,9 +507,12 @@ schedules (1) ──── (N) user_schedule_google_events
       "event_type": "PRACTICE",
       "location": null,
       "status": "SCHEDULED",
+      "visibility": "MEMBERS_ONLY",
+      "min_view_role": "SUPPORTER+",
+      "min_response_role": "MEMBER+",
       "attendance_required": false,
       "attendance_deadline": null,
-      "my_attendance": null,
+      "my_response": null,
       "attendance_summary": null,
       "parent_schedule_id": 1,
       "is_exception": false
@@ -501,9 +526,12 @@ schedules (1) ──── (N) user_schedule_google_events
       "event_type": "MATCH",
       "location": "駒沢オリンピック公園陸上競技場",
       "status": "SCHEDULED",
+      "visibility": "MEMBERS_ONLY",
+      "min_view_role": "MEMBER+",
+      "min_response_role": "MEMBER+",
       "attendance_required": true,
       "attendance_deadline": "2026-04-03T23:59:59",
-      "my_attendance": { "status": "UNDECIDED", "reason": null },
+      "my_response": { "status": "UNDECIDED", "comment": null },
       "attendance_summary": {
         "attending": 12,
         "partial": 2,
@@ -517,8 +545,9 @@ schedules (1) ──── (N) user_schedule_google_events
 }
 ```
 
-> - `my_attendance`: リクエスト者自身の出欠情報（`attendance_required = false` の場合は null）。形式: `{"status": "...", "reason": "..."}`。reason は `comment_option = HIDDEN` のスケジュールでは常に null
+> - `my_response`: リクエスト者自身の出欠情報。`attendance_required = false` の場合、またはリクエスト者が `min_response_role` 未満のロールで出欠対象外の場合は null。形式: `{"status": "...", "comment": "..."}`。`comment` は `comment_option = HIDDEN` のスケジュールでは常に null
 > - `attendance_summary`: ADMIN のみ返す。MEMBER / DEPUTY_ADMIN には null（プライバシー保護）
+> - `min_view_role` に基づくフィルタリング: SUPPORTER は `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールのみ返す。MEMBER は `min_view_role IN ('ANYONE', 'SUPPORTER+', 'MEMBER+')` を返す。DEPUTY_ADMIN / ADMIN はすべて（`ADMIN_ONLY` 含む）返す
 
 ---
 
@@ -539,6 +568,8 @@ schedules (1) ──── (N) user_schedule_google_events
     "all_day": false,
     "event_type": "MATCH",
     "visibility": "MEMBERS_ONLY",
+    "min_view_role": "MEMBER+",
+    "min_response_role": "MEMBER+",
     "status": "SCHEDULED",
     "attendance_required": true,
     "attendance_deadline": "2026-04-03T23:59:59",
@@ -549,7 +580,7 @@ schedules (1) ──── (N) user_schedule_google_events
     "created_by": 1,
     "created_at": "2026-03-01T10:00:00Z",
     "updated_at": "2026-03-01T10:00:00Z",
-    "my_attendance": { "status": "UNDECIDED", "reason": null },
+    "my_response": { "status": "UNDECIDED", "comment": null },
     "attendance_summary": {
       "attending": 12,
       "partial": 2,
@@ -719,13 +750,21 @@ schedules (1) ──── (N) user_schedule_google_events
 
 ---
 
-#### `POST /api/v1/teams/{id}/schedules/{scheduleId}/attendance`
+#### `DELETE /api/v1/organizations/{id}/schedules/{scheduleId}`
+
+チームスケジュール削除（`DELETE /api/v1/teams/{id}/schedules/{scheduleId}`）と同様。クエリパラメータ（`?update_scope`）・レスポンス・エラーレスポンスは同一。内部では `organization_id` が対象スコープとなる。
+
+---
+
+#### `PATCH /api/v1/schedules/{scheduleId}/responses`
+
+チーム・組織スコープを問わず、スケジュール ID だけで出欠を回答・変更する統一エンドポイント。サーバー側でスケジュールの所属スコープを解決し、リクエスト者が当該スケジュールの `min_response_role` 以上のロールを持つことを確認する。
 
 **リクエストボディ**
 ```json
 {
   "status": "ATTENDING",
-  "reason": null,
+  "comment": null,
   "survey_responses": [
     {
       "event_survey_id": 5,
@@ -741,7 +780,7 @@ schedules (1) ──── (N) user_schedule_google_events
   "data": {
     "schedule_id": 20,
     "status": "ATTENDING",
-    "reason": null,
+    "comment": null,
     "responded_at": "2026-04-01T10:00:00Z"
   }
 }
@@ -750,16 +789,16 @@ schedules (1) ──── (N) user_schedule_google_events
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
-| 400 | バリデーションエラー・`is_required` の設問に未回答・`comment_option = REQUIRED` で `reason` が空 |
-| 403 | SUPPORTER / GUEST は出欠回答不可 |
+| 400 | バリデーションエラー・`is_required` の設問に未回答・`comment_option = REQUIRED` で `comment` が空 |
+| 403 | 当該スケジュールの `min_response_role` 未満のロール（回答権限不足）|
 | 409 | `attendance_deadline` を過ぎている |
-| 422 | `attendance_required = false` のスケジュールへの回答 / `status = CANCELLED` のスケジュール |
+| 422 | `attendance_required = false` のスケジュールへの回答 / `status = CANCELLED` または `COMPLETED` のスケジュール |
 
 ---
 
 #### `GET /api/v1/teams/{id}/schedules/{scheduleId}/attendances`
 
-チームメンバー全員の出欠回答を個人単位で返す。補足コメント（reason）とアンケート回答（survey_responses）を含む。ADMIN のみ参照可能。
+チームメンバー全員の出欠回答を個人単位で返す。補足コメント（comment）とアンケート回答（survey_responses）を含む。ADMIN のみ参照可能。
 
 **クエリパラメータ**
 | パラメータ | 型 | デフォルト | 説明 |
@@ -784,7 +823,7 @@ schedules (1) ──── (N) user_schedule_google_events
         "user_id": 1,
         "display_name": "田中 太郎",
         "status": "PARTIAL",
-        "reason": "15分遅刻します",
+        "comment": "15分遅刻します",
         "responded_at": "2026-04-01T10:00:00Z",
         "survey_responses": [
           {
@@ -800,7 +839,7 @@ schedules (1) ──── (N) user_schedule_google_events
         "user_id": 2,
         "display_name": "鈴木 花子",
         "status": "ABSENT",
-        "reason": "体調不良",
+        "comment": "体調不良",
         "responded_at": "2026-03-31T15:00:00Z",
         "survey_responses": [
           {
@@ -816,7 +855,7 @@ schedules (1) ──── (N) user_schedule_google_events
         "user_id": 3,
         "display_name": "山田 次郎",
         "status": "UNDECIDED",
-        "reason": null,
+        "comment": null,
         "responded_at": null,
         "survey_responses": []
       }
@@ -826,8 +865,8 @@ schedules (1) ──── (N) user_schedule_google_events
 ```
 
 > - `comment_option` をレスポンスに含め、フロントエンドがコメント欄の表示制御に使用できるようにする
-> - `reason` は `comment_option = HIDDEN` の場合は常に `null`（送信されなかったため）
-> - `survey_responses` は `event_surveys` の全設問分を返す（未回答の設問は含まない）
+> - `comment` は `comment_option = HIDDEN` の場合は常に `null`（送信されなかったため）
+> - `survey_responses` は回答済みの設問のみ返す（未回答の設問は含まない）
 > - UNDECIDED メンバーも一覧に含める（未回答者の把握のため）
 
 ---
@@ -879,46 +918,6 @@ schedules (1) ──── (N) user_schedule_google_events
 
 > - 個人レベルの出欠詳細（user_id・名前・個別ステータス）は含まない
 > - `team_id: null` は組織に直接所属しているがいずれのチームにも属さないメンバーの集計
-
----
-
-#### `POST /api/v1/organizations/{id}/schedules/{scheduleId}/attendance`
-
-組織スケジュールへの出欠を回答・変更する。リクエスト/レスポンス仕様はチーム版と同一。
-
-**リクエストボディ**
-```json
-{
-  "status": "ATTENDING",
-  "reason": null,
-  "survey_responses": [
-    {
-      "event_survey_id": 5,
-      "answer_text": "true"
-    }
-  ]
-}
-```
-
-**レスポンス（200 OK）**
-```json
-{
-  "data": {
-    "schedule_id": 30,
-    "status": "ATTENDING",
-    "reason": null,
-    "responded_at": "2026-04-01T10:00:00Z"
-  }
-}
-```
-
-**エラーレスポンス**
-| ステータス | 条件 |
-|-----------|------|
-| 400 | バリデーションエラー・`is_required` の設問に未回答・`comment_option = REQUIRED` で `reason` が空 |
-| 403 | SUPPORTER / GUEST は出欠回答不可 |
-| 409 | `attendance_deadline` を過ぎている |
-| 422 | `attendance_required = false` のスケジュールへの回答 / `status = CANCELLED` のスケジュール |
 
 ---
 
@@ -1187,7 +1186,9 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 
 ---
 
-#### `GET /api/v1/me/schedules`
+#### `GET /api/v1/my/calendar`
+
+全チーム・組織横断のスケジュールを統合して返す。各スケジュールに自分の現在の回答ステータス（`my_response`）を LEFT JOIN して返す。
 
 **クエリパラメータ**
 | パラメータ | 型 | デフォルト | 説明 |
@@ -1213,9 +1214,11 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
       "event_type": "PRACTICE",
       "location": null,
       "status": "SCHEDULED",
+      "min_view_role": "SUPPORTER+",
+      "min_response_role": "MEMBER+",
       "attendance_required": false,
       "attendance_deadline": null,
-      "my_attendance": null
+      "my_response": null
     },
     {
       "id": 20,
@@ -1229,17 +1232,21 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
       "event_type": "MATCH",
       "location": "駒沢オリンピック公園陸上競技場",
       "status": "SCHEDULED",
+      "min_view_role": "MEMBER+",
+      "min_response_role": "MEMBER+",
       "attendance_required": true,
       "attendance_deadline": "2026-04-03T23:59:59",
-      "my_attendance": { "status": "UNDECIDED", "reason": null }
+      "my_response": { "status": "UNDECIDED", "comment": null }
     }
   ]
 }
 ```
 
 > - `scope_type` / `scope_id` / `scope_name`: スケジュールが属するチームまたは組織の情報（横断表示用）
+> - `my_response`: リクエスト者自身の出欠情報。`attendance_required = false` の場合、またはリクエスト者が `min_response_role` 未満のロールで出欠対象外の場合は null。形式: `{"status": "...", "comment": "..."}`。`comment_option = HIDDEN` のスケジュールでは `comment` は常に null
+> - `min_response_role`: フロントエンドが回答 UI の表示可否判定に使用する。リクエスト者のロールが `min_response_role` 未満の場合は回答ボタンを非表示にする
 > - `attendance_summary` は含まない（個人ビューのため集計情報は非表示）
-> - `from`〜`to` の期間内で `start_at` が一致するスケジュールを全チーム・組織横断で返す
+> - `from`〜`to` の期間内で `start_at` が一致するスケジュールを全チーム・組織横断で返す。`min_view_role` に基づくフィルタリングを適用する
 
 ---
 
@@ -1389,6 +1396,10 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 4. `comment_option` が省略されている場合:
    同一スコープの直近スケジュール（attendance_required = TRUE、deleted_at IS NULL）を取得し
    その `comment_option` を適用。存在しない場合は 'OPTIONAL'
+4a. `min_view_role` が省略されている場合:
+   チーム/組織の `default_schedule_min_view_role` 設定を取得して適用。設定がない場合は 'MEMBER+'
+4b. `min_response_role` が省略されている場合:
+   チーム/組織の `default_schedule_min_response_role` 設定を取得して適用。設定がない場合は 'MEMBER+'
 5. schedules に INSERT（recurrence_rule = NULL、parent_schedule_id = NULL）
 6. surveys が存在する場合:
    a. attendance_required = FALSE の場合は 400（surveys は attendance_required = TRUE のスケジュールのみ設定可）
@@ -1397,9 +1408,11 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
    a. 各 remind_at が attendance_deadline（または start_at）より前か確認 → 違反は 400
    b. schedule_attendance_reminders を全件 INSERT
 8. attendance_required = TRUE の場合:
-   a. スコープに応じて対象ユーザーを取得:
-      - チームスコープ: 当該チームの全 MEMBER・ADMIN・DEPUTY_ADMIN
-      - 組織スコープ: 組織に所属する全 MEMBER・ADMIN・DEPUTY_ADMIN（全所属チームのメンバー + 組織直接所属メンバー、重複は除外）
+   a. スコープに応じて、min_response_role 以上のロールを持つ対象ユーザーを取得:
+      - チームスコープ: 当該チームのメンバーのうち min_response_role 以上のロールを持つ全員
+      - 組織スコープ: 組織に所属するメンバーのうち min_response_role 以上のロールを持つ全員
+        （全所属チームのメンバー + 組織直接所属メンバー、重複は除外）
+      ※ ロール判定基準: SUPPORTER+ ≧ SUPPORTER, MEMBER+ ≧ MEMBER, ADMIN_ONLY ≧ DEPUTY_ADMIN
    b. schedule_attendances を (status='UNDECIDED') で一括 INSERT
    c. プッシュ通知「出欠確認が届きました」を送信（通知機能実装後）
 9. Google カレンダー個人同期（@Async）:
@@ -1420,62 +1433,49 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 2. MANAGE_SCHEDULES 権限を確認
 3. recurrence_rule の形式をバリデーション
 4. `comment_option` が省略されている場合: 単発フロー step 4 と同様に同一スコープ直近設定を自動適用
+4a. `min_view_role` が省略されている場合: 単発フロー step 4a と同様にチーム/組織設定を自動適用
+4b. `min_response_role` が省略されている場合: 単発フロー step 4b と同様にチーム/組織設定を自動適用
 5. 親スケジュールを schedules に INSERT（recurrence_rule を保存、parent_schedule_id = NULL）
-5a. recurrence_rule から展開予定件数を事前算出し generated_count として保持（@Async 開始前・同期処理で実施）:
+6. recurrence_rule から展開予定件数を事前算出し generated_count として保持（@Async 開始前・同期処理で実施）:
     - 展開範囲: 作成日から最大12ヶ月先（または end_date / count に達した方が先）
     - 上限 200件; 超過する場合は超過分を切り捨て generated_count = 200 とし end_date を自動調整
-6. recurrence_rule に従って子スケジュールを展開（@Async）:
-   a. 5a で算出した件数分を schedules に INSERT（parent_schedule_id = 親 ID、recurrence_rule = NULL）
+7. recurrence_rule に従って子スケジュールを展開（@Async）:
+   a. 6. で算出した件数分を schedules に INSERT（parent_schedule_id = 親 ID、recurrence_rule = NULL）
    b. end_date を自動調整した場合はユーザーに通知
-7. attendance_required = TRUE の場合: 全子スケジュールに対して単発フロー step 8 を適用
-8. Google カレンダー個人同期: 全子スケジュールに対して単発フロー step 9 を適用
-9. audit_logs に SCHEDULE_CREATED を記録
-   metadata: {"recurrence_type": "WEEKLY", "generated_count": 74}
-10. 201 Created を返す（generated_count を含む; @Async の展開処理は非同期で継続）
+8. attendance_required = TRUE の場合: 全子スケジュールに対して単発フロー step 8 を適用
+9. Google カレンダー個人同期: 全子スケジュールに対して単発フロー step 9 を適用
+10. audit_logs に SCHEDULE_CREATED を記録
+    metadata: {"recurrence_type": "WEEKLY", "generated_count": 74}
+11. 201 Created を返す（generated_count を含む; @Async の展開処理は非同期で継続）
 ```
 
 ---
 
-### 出欠回答フロー
+### 出欠回答フロー（`PATCH /api/v1/schedules/{scheduleId}/responses`）
+
+チーム・組織スコープ共通の統一フロー。
 
 ```
-1. POST /api/v1/teams/{id}/schedules/{scheduleId}/attendance を受付
-2. スケジュールが存在・未削除・status = SCHEDULED か確認（CANCELLED / COMPLETED は 422）
-3. attendance_required = TRUE か確認 → FALSE は 422
-4. リクエスト者が当該チームの MEMBER 以上か確認（SUPPORTER / GUEST は 403）
-5. attendance_deadline が設定されている場合: deadline < NOW() であれば 409
-6. comment_option に応じて reason をバリデーション:
-   - HIDDEN   → reason 値を無視（保存時に NULL に上書き）
+1. PATCH /api/v1/schedules/{scheduleId}/responses を受付
+2. スケジュールを schedules テーブルから取得。存在しない / deleted_at IS NOT NULL → 404
+3. スケジュールの team_id / organization_id からスコープを解決
+4. スケジュールが status = SCHEDULED か確認（CANCELLED / COMPLETED は 422）
+5. attendance_required = TRUE か確認 → FALSE は 422
+6. リクエスト者のスコープ内ロールが min_response_role 以上か確認 → 不足は 403
+   - チームスコープ: 当該チームへの直接所属ロールで判定
+   - 組織スコープ: 組織直接所属またはいずれかの所属チームが当該組織に属している場合のロールで判定
+   ※ GUEST は min_response_role = 'SUPPORTER+' でも不可（GUEST は SUPPORTER 未満のため）
+7. attendance_deadline が設定されている場合: deadline < NOW() であれば 409
+8. comment_option に応じて comment をバリデーション:
+   - HIDDEN   → comment 値を無視（保存時に NULL に上書き）
    - OPTIONAL → バリデーションなし
-   - REQUIRED → reason が null または空文字の場合 400
-7. schedule_attendances を UPSERT（UNIQUE KEY: schedule_id + user_id）
-8. survey_responses が含まれる場合:
-   a. is_required = TRUE の全設問に回答があるか確認 → 未回答は 400
-   b. event_survey_responses を UPSERT
-9. responded_at が NULL の場合（初回回答）: NOW() を設定
-10. 200 OK を返す
-```
-
----
-
-### 出欠回答フロー（組織スコープ）
-
-`POST /api/v1/organizations/{id}/schedules/{scheduleId}/attendance` の処理。チームフローと基本は同様だが、所属確認が組織ベースになる。
-
-```
-1. POST /api/v1/organizations/{id}/schedules/{scheduleId}/attendance を受付
-2. スケジュールが存在・未削除・status = SCHEDULED か確認（CANCELLED / COMPLETED は 422）
-3. attendance_required = TRUE か確認 → FALSE は 422
-4. リクエスト者が当該組織の MEMBER 以上か確認（SUPPORTER / GUEST は 403）
-   （組織直接所属 / いずれかの所属チームが当該組織に属している どちらか一方でOK）
-5. attendance_deadline が設定されている場合: deadline < NOW() であれば 409
-6. comment_option に応じて reason をバリデーション（チームフロー step 6 と同様）
-7. schedule_attendances を UPSERT（UNIQUE KEY: schedule_id + user_id）
-8. survey_responses が含まれる場合:
-   a. is_required = TRUE の全設問に回答があるか確認 → 未回答は 400
-   b. event_survey_responses を UPSERT
-9. responded_at が NULL の場合（初回回答）: NOW() を設定
-10. 200 OK を返す
+   - REQUIRED → comment が null または空文字の場合 400
+9. schedule_attendances を UPSERT（UNIQUE KEY: schedule_id + user_id）
+10. survey_responses が含まれる場合:
+    a. is_required = TRUE の全設問に回答があるか確認 → 未回答は 400
+    b. event_survey_responses を UPSERT
+11. responded_at が NULL の場合（初回回答）: NOW() を設定
+12. 200 OK を返す
 ```
 
 ---
@@ -1484,22 +1484,29 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 
 ```
 [THIS_ONLY]
+0. 権限確認: 操作者が ADMIN、または created_by = 操作者、または MANAGE_SCHEDULES 権限を持つこと（なければ 403）
 1. 当該スケジュールのみ UPDATE
 2. is_exception = TRUE に設定
 3. 当該スケジュールを同期しているユーザーの Google Calendar イベントを更新（@Async）
 4. audit_logs に SCHEDULE_UPDATED を記録（metadata: {"update_scope": "THIS_ONLY"}）
 
 [THIS_AND_FOLLOWING]
+0. 権限確認: 操作者が ADMIN、または created_by = 操作者、または MANAGE_SCHEDULES 権限を持つこと（なければ 403）
 1. 当該スケジュールの start_at 以降の全子スケジュール（is_exception の有無問わず）を論理削除
-   （is_exception = TRUE の個別変更済みスケジュールも含めて削除し、新しい繰り返しで再展開する）
-2. 親スケジュールの recurrence_rule.end_date を「当該スケジュールの start_at の前日」に更新（分割）
-3. 変更内容で新しい親スケジュールを INSERT
+   （is_exception = TRUE の孤立データが残らないよう、削除前に関連する schedule_attendances / event_survey_responses も CASCADE で削除済みであることを確認）
+2. 既存の親スケジュールの recurrence_rule を以下の通り更新し、シリーズを当日前日で打ち切る（ルール変換）:
+   - end_type = DATE の場合: end_date = 当該スケジュールの start_at の前日
+   - end_type = COUNT の場合: end_type を COUNT → DATE に変換し、end_date = 当該スケジュールの start_at の前日
+   - end_type = NEVER の場合: end_type を NEVER → DATE に変換し、end_date = 当該スケジュールの start_at の前日
+3. 変更内容で新しい親スケジュールを INSERT（当日以降を新しい別シリーズとして作成。新たに採番された parent_id を持つ）
 4. 新しい親の recurrence_rule に従って子スケジュールを再展開（@Async）
+4a. attendance_required = TRUE の場合: 新しい子スケジュールに対して単発フロー step 8 を適用（min_response_role 以上のロールを持つメンバーに schedule_attendances を一括 INSERT）
 5. 削除された子スケジュールの Google Calendar イベントを削除（@Async）
 6. 新しい子スケジュールを Google カレンダーに追加（@Async）
 7. audit_logs に SCHEDULE_UPDATED を記録（metadata: {"update_scope": "THIS_AND_FOLLOWING"}）
 
 [ALL]
+0. 権限確認: 操作者が ADMIN、または created_by = 操作者、または MANAGE_SCHEDULES 権限を持つこと（なければ 403）
 1. 親スケジュールを UPDATE（変更フィールドのみ）
 2. is_exception = FALSE の全子スケジュールを同一フィールドで UPDATE
    （`comment_option` が変更対象に含まれる場合は is_exception = FALSE のスケジュールにのみ伝播。
@@ -1570,8 +1577,9 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 1. DELETE /api/v1/teams/{id}/schedules/{scheduleId} を受付
 2. 権限確認:
    - 操作者が ADMIN の場合: 無条件で削除可能
-   - created_by = 操作者の場合: 削除可能（自分のスケジュール）
+   - created_by = 操作者の場合: 削除可能（MEMBER / DEPUTY_ADMIN いずれも自作スケジュールは削除可）
    - 他者作成スケジュールを削除するには DELETE_OTHERS_CONTENT 権限が必要（なければ 403）
+     ※ DEPUTY_ADMIN が他者作成スケジュールを削除するには MANAGE_SCHEDULES + DELETE_OTHERS_CONTENT の両方が必要
 3. 対象スケジュールの deleted_at = NOW() に UPDATE（論理削除）
 4. 対象スケジュールを同期しているユーザーの Google Calendar イベントを削除（@Async）
 5. クロスチームリンクの確認:
@@ -1581,19 +1589,32 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 7. 204 No Content を返す
 
 [THIS_AND_FOLLOWING（この回以降を削除）]
+0. 権限確認: 単発/THIS_ONLY フロー step 2 と同様
 1. 当該スケジュール自身を含む、start_at 以降の全子スケジュール（is_exception の有無問わず）を論理削除
-2. 親スケジュールの recurrence_rule.end_date を「当該スケジュールの start_at の前日」に更新（それ以前は存続）
-3. 削除された子スケジュールの Google Calendar イベントを全件削除（@Async）
-4. audit_logs に SCHEDULE_DELETED を記録
+   （is_exception = TRUE の例外スケジュールも含めて削除し、孤立データが残らないようにする）
+2. 親スケジュールの recurrence_rule を以下の通り更新し、シリーズを当日前日で打ち切る（ルール変換）:
+   - end_type = DATE の場合: end_date = 当該スケジュールの start_at の前日
+   - end_type = COUNT の場合: end_type を COUNT → DATE に変換し、end_date = 当該スケジュールの start_at の前日
+   - end_type = NEVER の場合: end_type を NEVER → DATE に変換し、end_date = 当該スケジュールの start_at の前日
+3. クロスチームリンクの確認:
+   削除対象スケジュールに紐づく schedule_cross_refs（source_schedule_id / target_schedule_id）で
+   status = ACCEPTED のものがある場合、相手チーム / 組織の ADMIN に「スケジュールが削除されました」と通知
+4. 削除された子スケジュールの Google Calendar イベントを全件削除（@Async）
+5. audit_logs に SCHEDULE_DELETED を記録
    metadata: {"update_scope": "THIS_AND_FOLLOWING", "deleted_count": N}
-5. 204 No Content を返す
+6. 204 No Content を返す
 
 [ALL（繰り返し全回 + 親を削除）]
+0. 権限確認: 単発/THIS_ONLY フロー step 2 と同様
 1. 全子スケジュール（is_exception の有無問わず）および親スケジュールを論理削除
-2. 全 Google Calendar イベントを削除（@Async）
-3. audit_logs に SCHEDULE_DELETED を記録
+   （is_exception = TRUE の例外スケジュールも含めて削除し、孤立データが残らないようにする）
+2. クロスチームリンクの確認:
+   削除対象スケジュールに紐づく schedule_cross_refs（source_schedule_id / target_schedule_id）で
+   status = ACCEPTED のものがある場合、相手チーム / 組織の ADMIN に「スケジュールが削除されました」と通知
+3. 全 Google Calendar イベントを削除（@Async）
+4. audit_logs に SCHEDULE_DELETED を記録
    metadata: {"update_scope": "ALL", "deleted_count": N}
-4. 204 No Content を返す
+5. 204 No Content を返す
 ```
 
 > - 単発スケジュールはリクエストボディ不要（`update_scope` 不要）
@@ -1645,12 +1666,14 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
       - team_id = 自チームの ID（承認した team_id）
       - title, description, location, start_at, end_at, all_day, event_type をコピー
       - visibility = 'MEMBERS_ONLY'（招待先チームのデフォルト；招待元の visibility は引き継がない）
+      - min_view_role = 招待先チームの default_schedule_min_view_role（招待元の値は引き継がない）
+      - min_response_role = 招待先チームの default_schedule_min_response_role（招待元の値は引き継がない）
       - attendance_required, attendance_deadline, comment_option をコピー
       - status = 'SCHEDULED'
       - is_exception = FALSE, parent_schedule_id = NULL（単発スケジュールとして作成）
       - recurrence_rule = NULL（繰り返し設定はコピーしない）
       - created_by = 操作者（承認した ADMIN のユーザー ID）
-   b. attendance_required = TRUE の場合: 自チームの全メンバーに schedule_attendances を INSERT
+   b. attendance_required = TRUE の場合: 自チームのメンバーのうち min_response_role 以上のロールを持つ全員に schedule_attendances を INSERT（単発フロー step 8 と同様の絞り込み）
 5. schedule_cross_refs.target_schedule_id = 新スケジュール ID、status = ACCEPTED、
    responded_at = NOW() に UPDATE
 6. 招待元チームの ADMIN に「招待が承認されました」と通知
@@ -1726,9 +1749,10 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 
 ```
 バッチフロー:
-1. parent_schedule_id = NULL かつ recurrence_rule IS NOT NULL の全スケジュールを取得
+1. parent_schedule_id = NULL かつ recurrence_rule IS NOT NULL かつ deleted_at IS NULL かつ status = 'SCHEDULED' の全スケジュールを取得
 2. 各親スケジュールについて: 最後の子スケジュールの start_at から30日以内になっているか確認
 3. 条件を満たす親スケジュールの子を追加展開（次の12ヶ月分）
+3a. attendance_required = TRUE の場合: 新しい子スケジュールに対して単発フロー step 8 を適用（min_response_role 以上のロールを持つメンバーに schedule_attendances を一括 INSERT）
 4. 新しい子スケジュールの Google カレンダー同期（同期設定ユーザーに対して）
 5. audit_logs に SCHEDULE_RECURRENCE_EXPANDED を記録
 ```
@@ -1740,7 +1764,12 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 - **権限チェック**: スケジュール作成・編集には `MANAGE_SCHEDULES` 権限を F03 の権限解決ロジック経由で確認する
 - **他者スケジュールの削除**: MEMBER が自分以外の作成スケジュールを削除するには `DELETE_OTHERS_CONTENT` 権限が必要。ADMIN は無条件で削除可能
 - **出欠情報のプライバシー**: `attendance_summary`（数値集計）は ADMIN のみ返す。MEMBER は自分のステータスのみ参照可能。組織レベルの出欠集計はチーム単位の件数のみ開示し、個人の出欠情報は返さない
-- **可視性制御**: `visibility = 'MEMBERS_ONLY'` のスケジュールは SUPPORTER / GUEST・未ログインユーザーに返さない
+- **可視性制御（スコープ）**: `visibility = 'MEMBERS_ONLY'` のスケジュールは当該チーム/組織の所属者にのみ返す。未ログインユーザーには返さない
+- **可視性制御（ロール）**: `min_view_role` によるフィルタリングを全閲覧系エンドポイントで実施する。SUPPORTER は `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールのみ閲覧可。GUEST は `min_view_role = 'ANYONE'` のみ閲覧可。`min_view_role` は作成・編集権限を持つ MEMBER 以上のみが変更可能（SUPPORTER/GUEST 自身は変更不可）
+- **回答権限制御（min_response_role）**: `min_response_role` によるチェックを `PATCH /schedules/{scheduleId}/responses` で実施する。`min_view_role`（閲覧可否）とは独立した2軸制御。回答権限がないユーザーはスケジュールを閲覧可能だが 403 を返す。`attendance_required = TRUE` 時の `schedule_attendances` 一括 INSERT も `min_response_role` 以上のロールを持つメンバーのみを対象とする
+- **繰り返し一括操作の権限確認**: `THIS_AND_FOLLOWING` / `ALL` スコープの更新・削除時も必ず権限確認（作成者 or MANAGE_SCHEDULES or ADMIN）を実施する。スコープが広いほど影響が大きいため省略不可
+- **is_exception 孤立データ防止**: `THIS_AND_FOLLOWING` / `ALL` の一括削除・更新時は `is_exception = TRUE` の例外スケジュールも対象に含め、孤立データ（削除済み親の子が残存する状態）を防ぐ
+- **親子スコープの非継承**: `min_view_role` の評価はスケジュールの所有エンティティへの直接所属ロールのみを参照する。親グループ/組織のロールは子グループのスケジュールに継承しない。`visibility = 'ORGANIZATION'` の場合のみ親組織への直接所属ロールで評価する（階層は1段のみ適用し、さらに上の祖先グループへは伝播しない）
 - **繰り返し展開の上限**: 一括 INSERT 200件の制限でリソース枯渇を防ぐ。展開は非同期（Spring `@Async`）で実行し、作成 API のレスポンスをブロックしない
 - **スコープ越境防止**: team_id / organization_id がリクエスト者の所属スコープと一致するかを全エンドポイントで確認する
 - **Google Calendar OAuth トークン管理**: `access_token` / `refresh_token` は AES-256-GCM で暗号化して保存。平文での DB 保存・ログ出力は禁止。Google OAuth スコープは `https://www.googleapis.com/auth/calendar.events` のみ要求（最小権限）
@@ -1785,12 +1814,13 @@ V3.015__create_user_schedule_google_events_table.sql
 - [ ] `event_type` の選択肢はテンプレート（SPORTS / SCHOOL 等）に応じて表示切替するかを確定する（テンプレート管理 feature doc で検討）
 - [ ] 出欠集計（attending / absent / undecided の件数）を MEMBER にも件数のみ開示するかを確定する（現設計は ADMIN のみ）
 - [ ] 大規模チーム（1000人規模）への一括 `schedule_attendances` INSERT 時のパフォーマンス対策（バッチ INSERT 分割・バックグラウンド処理化等）
-- [ ] `visibility = 'PUBLIC'` のスケジュールを未ログインユーザーに公開するかを確定する（チームの `visibility` との連動ルールを整理）
+- [ ] `min_view_role = 'ANYONE'` 設定時の未ログインユーザーへの公開挙動を確定する（チームの `visibility` 設定との連動ルール・公開 URL の設計等）
 - [ ] クロスチーム招待時、招待先チームが非公開の場合でも招待を送れるかを確定する（招待送信時のプライバシー設計）
 - [ ] Google Calendar 同期エラー時の最大リトライ回数・最終失敗時のユーザー通知方法を確定する
 - [ ] 組織スケジュールの出欠確認: チームに所属しない組織直接メンバーへの出欠通知フローを確定する
 - [ ] クロスチーム招待承認後、招待元が内容（日時・場所）を変更した場合の招待先への通知仕様を確定する
 - [ ] `PATCH /teams/{id}/schedules/{scheduleId}` でアンケート設問（surveys）を変更できるかを確定する（変更できる場合、既存の `event_survey_responses` の扱いを定義する）
+- [ ] スケジュール更新で `min_response_role` を変更した場合の `schedule_attendances` の扱いを確定する（例: MEMBER+ → SUPPORTER+ に緩和した場合に SUPPORTER を retroactively INSERT するか）
 - [ ] `schedules.status = COMPLETED` のセットタイミングを確定する（手動操作 / end_at 経過後の自動バッチ / どちらも対応するか）
 - [ ] `visibility = 'ORGANIZATION'` のスケジュールを SUPPORTER が閲覧できるかを確定する（スコープ表 "visibility に従う" の具体的な可視性ルールを整理する）
 
@@ -1800,10 +1830,20 @@ V3.015__create_user_schedule_google_events_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-02-28 | 精査(14回目): ① 自動展開バッチ step 1 のフィルタ条件に `deleted_at IS NULL` と `status = 'SCHEDULED'` を追加（削除済み・キャンセル済みの親スケジュールが再展開されるバグを防止）。② 自動展開バッチ step 3 後に step 3a を追加（attendance_required = TRUE の場合、新規展開した子スケジュールに schedule_attendances を一括 INSERT）。③ PATCH /responses エラーテーブルの 422 条件に COMPLETED を追記（フロー step 4 では CANCELLED / COMPLETED 両方が 422 と明記されていたが、エラーテーブルに COMPLETED が欠落していた） |
+| 2026-02-28 | 精査(13回目): ① 繰り返し更新フロー THIS_AND_FOLLOWING の step 4 後に step 4a を追加（attendance_required = TRUE の場合、再展開した子スケジュールに対して単発フロー step 8 を適用し schedule_attendances を一括 INSERT）。② 削除フロー THIS_AND_FOLLOWING / ALL にクロスチームリンク確認ステップを追加（単発/THIS_ONLY の step 5 と統一。キャンセルフローでは3パターンとも存在していたが削除フローでは欠落していた） |
+| 2026-02-28 | 精査(12回目): ① 最終更新日を 2026-02-28 に修正。② クロスチーム招待承認フロー step 4a に min_view_role / min_response_role のコピーロジックを追加（招待先チームの default 値を適用）。③ 招待承認フロー step 4b の schedule_attendances INSERT 対象を「全メンバー」から「min_response_role 以上のロールを持つ全員」に修正（単発作成フロー step 8 と統一） |
+| 2026-02-28 | 精査(11回目): ① GET スケジュール一覧の min_view_role フィルタリング注記で旧 enum 値（SUPPORTER/GUEST）を使用していた誤りを修正（正: ANYONE/SUPPORTER+）、MEMBER の可視範囲を正確に記載。② 単発作成フロー step 4a のデフォルト値 'MEMBER' → 'MEMBER+' に修正。③ 削除フロー THIS_AND_FOLLOWING に end_type=NEVER→DATE 変換を追記（更新フローと統一）。④ 未解決事項の visibility='PUBLIC' を min_view_role='ANYONE' ベースの表現に更新。⑤ 閲覧権限（min_view_role）と回答権限（min_response_role）を独立した2軸設計に変更。schedules テーブルに min_response_role カラム追加（ENUM: SUPPORTER+/MEMBER+/ADMIN_ONLY、DEFAULT: MEMBER+）。チーム/組織の default_schedule_min_response_role 設定対応。スコープ表・単発/繰り返し作成フロー（step 4b・schedule_attendances 対象絞り込み）・出欠回答フロー step 6・PATCH /responses spec・my/calendar レスポンス・セキュリティ考慮事項を一括更新 |
+| 2026-02-28 | 精査(10回目): 繰り返し作成フローのステップ番号を修正（5a → 6、以降を +1 繰り上げ）。survey_responses 注釈の矛盾解消（「全設問分を返す（未回答は含まない）」→「回答済みの設問のみ返す（未回答の設問は含まない）」） |
+| 2026-02-28 | 精査(9回目): DEPUTY_ADMIN の削除権限を明確化。自己作成は MANAGE_SCHEDULES のみで削除可、他者作成は MANAGE_SCHEDULES + DELETE_OTHERS_CONTENT の両方が必要。スコープ表・削除フロー step 2 を統一 |
+| 2026-02-28 | 仕様変更(8回目): `min_view_role` enum を ANYONE / SUPPORTER+ / MEMBER+ / ADMIN_ONLY に再設計（フィールド名・テーブル名は変更なし）。`reason` → `comment` リネーム。出欠回答を `PATCH /api/v1/schedules/{id}/responses` 統一エンドポイント化。`GET /me/schedules` → `GET /my/calendar`（`my_response` フィールドで回答ステータス統合）。THIS_AND_FOLLOWING / ALL の更新・削除フローに権限確認 step 0・is_exception 孤立データ防止・end_type=COUNT 変換方法を追加 |
+| 2026-02-28 | 精査(7回目): `min_view_role` の評価スコープ（親子関係）を明記。直接所属ロールのみで評価し親グループのロールは継承しない原則を `schedules` 備考・セキュリティ考慮事項に追加。`visibility = 'ORGANIZATION'` 時は親組織への直接所属ロールで評価（階層1段のみ）を明記 |
+| 2026-02-28 | 精査(6回目): `min_view_role`（MEMBER / SUPPORTER / GUEST）を `schedules` テーブルに追加。チーム/組織設定の `default_schedule_min_view_role` から初期値を継承。スコープ表・API認証要件・リクエスト/レスポンス例・作成フロー・セキュリティ考慮事項を一括更新。`visibility` の説明を「スコープ制御」に整理し `min_view_role` と役割を分離 |
+| 2026-02-28 | 精査(5回目): `DELETE /api/v1/organizations/{id}/schedules/{scheduleId}` spec セクション追加（チーム版と同様・organization_id がスコープ対象） |
 | 2026-02-23 | 精査(4回目): 組織版エンドポイント4本の spec 追加（GET/POST list・GET detail・PATCH）。PATCH 422 に COMPLETED を追記。schedule_cross_refs UNIQUE KEY と再招待フローを整合（UPDATE方式を明記）。繰り返し作成フローの generated_count を @Async 前に事前算出するよう修正。キャンセルフロー THIS_AND_FOLLOWING / ALL にクロスチームリンク確認を追加。Google 同期フロー [同期有効化] に組織版を明記。リマインダーバッチの deadline = NULL 挙動を明記。parent_schedule_id FK に ON DELETE RESTRICT 追記 |
 | 2026-02-23 | 精査(3回目): POST /cancel spec 追加（teams・orgs 版・update_scope 対応）。DELETE /cross-invite/{invitationId} spec 追加。POST /reject spec 追加。繰り返しキャンセルに update_scope 適用。単発作成フローに組織スコープ適用を明記。招待承認フローのミラースケジュールコピーフィールドを明定義。backfill_count を @Async 前に取得するよう修正。schedule_cross_refs.source_schedule_id FK に ON DELETE CASCADE 追記。total_required 集計条件に deleted_at IS NULL 追記。キャンセルフローに出欠レコード保持を明記。THIS_AND_FOLLOWING 削除フローに当該スケジュール自身の削除を明記 |
 | 2026-02-23 | 精査(2回目): DELETE 認証要件修正・`?update_scope` クエリパラメータ定義。PATCH レスポンス仕様追加。DELETE spec セクション追加。組織版 attendance / calendar-sync レスポンス仕様追加。単発作成フローに surveys バリデーション追加。繰り返し更新 THIS_AND_FOLLOWING の is_exception 削除範囲を統一。組織スコープ出欠回答フロー追加。event_surveys PATCH ハンドリングを未解決事項に追加 |
-| 2026-02-23 | 精査(1回目): `POST /organizations/{id}/schedules/{scheduleId}/attendance` を追加。スケジュール詳細・`GET /me/schedules`・disconnect・calendar-sync-settings のレスポンス仕様を追記。繰り返し作成フローに comment_option ステップ追加・参照番号修正。スケジュール削除フロー（単発 / THIS_AND_FOLLOWING / ALL）を追記。繰り返し ALL 更新での comment_option 伝播を明記。組織スコープの attendance_required 時 INSERT 対象を明記。`my_attendance` に reason を追加。未解決事項2件追加 |
+| 2026-02-23 | 精査(1回目): `POST /organizations/{id}/schedules/{scheduleId}/attendance` を追加。スケジュール詳細・`GET /me/schedules`・disconnect・calendar-sync-settings のレスポンス仕様を追記。繰り返し作成フローに comment_option ステップ追加・参照番号修正。スケジュール削除フロー（単発 / THIS_AND_FOLLOWING / ALL）を追記。繰り返し ALL 更新での comment_option 伝播を明記。組織スコープの attendance_required 時 INSERT 対象を明記。`my_response` に reason を追加。未解決事項2件追加 |
 | 2026-02-21 | `GET /teams/{id}/schedules/{scheduleId}/attendances` のレスポンス仕様を策定。メンバー個別の status / reason / survey_responses を返す。組織レベル集計に partial フィールドを追加 |
 | 2026-02-21 | `schedules.comment_option`（HIDDEN / OPTIONAL / REQUIRED）を追加。省略時は同スコープの直近スケジュール設定を自動適用。出欠回答フローに REQUIRED バリデーションを追加 |
 | 2026-02-21 | PARTIAL（遅刻・早退）ステータスを追加。出席率（広義・完全）計算定義を策定。チームダッシュボード用 `GET /teams/{id}/attendance-stats` と個人ダッシュボード用 `GET /me/attendance-stats` を追加 |
