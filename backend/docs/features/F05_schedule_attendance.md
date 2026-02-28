@@ -953,7 +953,7 @@ schedules (1) ──── (N) user_schedule_google_events
 |-----------|------|
 | 404 | `target_id` のチーム / 組織が存在しない |
 | 409 | 同一 source + target への重複招待（PENDING または ACCEPTED）。REJECTED / CANCELLED 後の再招待は既存行を PENDING に更新（409 にはならない）|
-| 422 | `status = CANCELLED` のスケジュールへの招待 |
+| 422 | `status = CANCELLED` または `COMPLETED` のスケジュールへの招待 |
 
 ---
 
@@ -1648,7 +1648,7 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 1. POST /api/v1/teams/{id}/schedules/{scheduleId}/cross-invite を受付
 2. 操作者が当該チームの ADMIN か確認
 3. target_id のチーム / 組織が存在するか確認 → なければ 404
-4. スケジュールが SCHEDULED 状態か確認 → CANCELLED は 422
+4. スケジュールが SCHEDULED 状態か確認 → CANCELLED / COMPLETED は 422
 5. 同一 source + target の既存招待レコードを確認:
    - PENDING または ACCEPTED の場合: 409
    - REJECTED または CANCELLED の場合: status = PENDING、message を更新（再招待 UPDATE）→ 手順 7 へスキップ
@@ -1750,7 +1750,7 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 ```
 バッチフロー:
 1. parent_schedule_id = NULL かつ recurrence_rule IS NOT NULL かつ deleted_at IS NULL かつ status = 'SCHEDULED' の全スケジュールを取得
-2. 各親スケジュールについて: 最後の子スケジュールの start_at から30日以内になっているか確認
+2. 各親スケジュールについて: 最後の子スケジュール（`deleted_at IS NULL`）の start_at から30日以内になっているか確認
 3. 条件を満たす親スケジュールの子を追加展開（次の12ヶ月分）
 3a. attendance_required = TRUE の場合: 新しい子スケジュールに対して単発フロー step 8 を適用（min_response_role 以上のロールを持つメンバーに schedule_attendances を一括 INSERT）
 4. 新しい子スケジュールの Google カレンダー同期（同期設定ユーザーに対して）
@@ -1830,6 +1830,7 @@ V3.015__create_user_schedule_google_events_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-02-28 | 精査(15回目): ① クロスチーム招待送信のエラーテーブル（422条件）と招待送信フロー step 4 に COMPLETED を追加（CANCELLED のみ記載されており、CANCELLED / COMPLETED 両方を 422 とする他エンドポイントと不整合だった）。② 自動展開バッチ step 2 の「最後の子スケジュール」取得条件に `deleted_at IS NULL` を追記（論理削除済みの子スケジュールが最後の子として取得される可能性を排除） |
 | 2026-02-28 | 精査(14回目): ① 自動展開バッチ step 1 のフィルタ条件に `deleted_at IS NULL` と `status = 'SCHEDULED'` を追加（削除済み・キャンセル済みの親スケジュールが再展開されるバグを防止）。② 自動展開バッチ step 3 後に step 3a を追加（attendance_required = TRUE の場合、新規展開した子スケジュールに schedule_attendances を一括 INSERT）。③ PATCH /responses エラーテーブルの 422 条件に COMPLETED を追記（フロー step 4 では CANCELLED / COMPLETED 両方が 422 と明記されていたが、エラーテーブルに COMPLETED が欠落していた） |
 | 2026-02-28 | 精査(13回目): ① 繰り返し更新フロー THIS_AND_FOLLOWING の step 4 後に step 4a を追加（attendance_required = TRUE の場合、再展開した子スケジュールに対して単発フロー step 8 を適用し schedule_attendances を一括 INSERT）。② 削除フロー THIS_AND_FOLLOWING / ALL にクロスチームリンク確認ステップを追加（単発/THIS_ONLY の step 5 と統一。キャンセルフローでは3パターンとも存在していたが削除フローでは欠落していた） |
 | 2026-02-28 | 精査(12回目): ① 最終更新日を 2026-02-28 に修正。② クロスチーム招待承認フロー step 4a に min_view_role / min_response_role のコピーロジックを追加（招待先チームの default 値を適用）。③ 招待承認フロー step 4b の schedule_attendances INSERT 対象を「全メンバー」から「min_response_role 以上のロールを持つ全員」に修正（単発作成フロー step 8 と統一） |
