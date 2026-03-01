@@ -163,8 +163,8 @@ V3.016__add_user_id_to_schedules.sql
    - 固定値: attendance_required = FALSE、attendance_status = READY、
      min_view_role = 'ADMIN_ONLY'、visibility = 'MEMBERS_ONLY'、
      min_response_role = 'ADMIN_ONLY'、comment_option = 'HIDDEN'
-4. Google カレンダー同期（user_calendar_sync_settings で個人スコープの
-   同期が有効な場合のみ @Async で実施）
+4. Google カレンダー同期（user_google_calendar_connections.is_active = TRUE かつ
+   personal_sync_enabled = TRUE の場合のみ @Async で実施）
 5. audit_logs に PERSONAL_SCHEDULE_CREATED を記録
 6. 201 Created を返す
 ```
@@ -177,7 +177,7 @@ V3.016__add_user_id_to_schedules.sql
 
 - `user_id IS NOT NULL` のスケジュールは、`user_id = current_user_id` の確認なしに API から取得・変更できない
 - `GET /teams/{id}/schedules` 等のチーム・組織系エンドポイントのクエリには `user_id IS NULL` を必須条件として付与し、個人スコープのレコードが混入しないようにする
-- `GET /my/calendar`（横断ビュー）のみ `user_id = current_user_id` のレコードを含めて返す（`F05_schedule_shared.md` Section 4 の当該エンドポイントを更新予定）
+- `GET /my/calendar`（横断ビュー）のみ `user_id = current_user_id` のレコードを含めて返す（`scope_type = "PERSONAL"` として統合表示。`F05_schedule_shared.md` Section 4 参照）
 
 ---
 
@@ -192,9 +192,9 @@ V3.016__add_user_id_to_schedules.sql
 
 ## 7. 未解決事項
 
-- [ ] Google → アプリ への双方向同期（Google Calendar Webhook Push Notifications）の実装フェーズを確定する（Phase 3 同時か Phase 4+ か）
-- [ ] `GET /my/calendar` のレスポンスに個人スケジュールを含める形への更新（`F05_schedule_shared.md` Section 4 を修正）
-- [ ] 個人スケジュールを Google カレンダー同期する際、`user_calendar_sync_settings` に scope_type = 'PERSONAL' を追加するか確定する（現在 scope_type は TEAM / ORGANIZATION のみ）
+- [x] Google → アプリ への双方向同期（Google Calendar Webhook Push Notifications）の実装フェーズを確定する → **Phase 4+** に決定。Phase 3 は app→Google 一方向同期のみ実装。双方向同期は Webhook 受信サーバーの運用が複雑なため後回し
+- [x] `GET /my/calendar` のレスポンスに個人スケジュールを含める形への更新 → `scope_type = "PERSONAL"`・`scope_id = null`・`scope_name = "個人"` として統合。`min_view_role` / `min_response_role` / `my_response` は null を返す（`F05_schedule_shared.md` Section 4 更新済み）
+- [x] 個人スケジュールを Google カレンダー同期する際の設定管理方法を確定 → `user_calendar_sync_settings` への scope_type='PERSONAL' 追加は不採用（`scope_id` が個人スコープには存在しないため）。代わりに `user_google_calendar_connections.personal_sync_enabled BOOLEAN DEFAULT FALSE` を追加（`F05_schedule_shared.md` Section 3 更新済み・Flyway V3.017 追加）
 
 ---
 
@@ -202,4 +202,5 @@ V3.016__add_user_id_to_schedules.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-01 | 未解決事項を全件解決: ① Google→App 双方向同期を Phase 4+ に決定（Phase 3 は一方向のみ）。② `GET /my/calendar` に個人スケジュールを統合（`F05_schedule_shared.md` Section 4 更新）。③ 個人 Google 同期設定を `user_google_calendar_connections.personal_sync_enabled` で管理に確定（`user_calendar_sync_settings` への PERSONAL 追加は不採用）。作成フロー step 4 を `personal_sync_enabled` 参照に修正 |
 | 2026-03-01 | 初版作成: `schedules` テーブル再利用・完全非公開方針（オーナーチェックのみ）を採用。F05_schedule_attendance.md を F05_schedule_shared.md にリネームして分割 |

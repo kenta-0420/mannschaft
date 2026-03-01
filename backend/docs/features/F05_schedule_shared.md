@@ -299,6 +299,7 @@ UNIQUE KEY uq_scr_source_target (source_schedule_id, target_type, target_id)   -
 | `refresh_token` | TEXT | NO | — | リフレッシュトークン（AES-256-GCM 暗号化）|
 | `token_expires_at` | DATETIME | NO | — | アクセストークンの有効期限 |
 | `is_active` | BOOLEAN | NO | TRUE | 連携が有効かどうか（トークン失効・手動解除で FALSE）|
+| `personal_sync_enabled` | BOOLEAN | NO | FALSE | 個人スケジュール（`schedules.user_id IS NOT NULL`）を Google カレンダーへ同期するか（アプリ→Google 一方向）。`is_active = FALSE` の場合は同期されない |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 
@@ -311,6 +312,7 @@ UNIQUE KEY uq_ugcc_user_id (user_id)    -- 1ユーザー1 Google アカウント
 - `access_token` / `refresh_token` は **平文保存禁止**（AES-256-GCM 等で暗号化必須）
 - 1ユーザーにつき1 Google アカウント連携（複数アカウント対応は Phase 4+ で検討）
 - ユーザー退会時は `ON DELETE CASCADE` で物理削除し、Google 側の revoke も実施する
+- 個人スケジュールの同期設定は `user_calendar_sync_settings` ではなく本カラム（`personal_sync_enabled`）で管理する。チーム・組織は scope_id が必要だが個人スコープに scope_id は存在しないため
 
 ---
 
@@ -1325,7 +1327,7 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 
 #### `GET /api/v1/my/calendar`
 
-全チーム・組織横断のスケジュールを統合して返す。各スケジュールに自分の現在の回答ステータス（`my_response`）を LEFT JOIN して返す。
+全チーム・組織・個人横断のスケジュールを統合して返す。チーム・組織スケジュールには自分の現在の回答ステータス（`my_response`）を LEFT JOIN して返す。個人スケジュール（`scope_type = "PERSONAL"`）は常に `my_response = null`。
 
 **クエリパラメータ**
 | パラメータ | 型 | デフォルト | 説明 |
@@ -1374,16 +1376,35 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
       "attendance_required": true,
       "attendance_deadline": "2026-04-03T23:59:59",
       "my_response": { "status": "UNDECIDED", "comment": null }
+    },
+    {
+      "id": 500,
+      "scope_type": "PERSONAL",
+      "scope_id": null,
+      "scope_name": "個人",
+      "title": "歯医者の予約",
+      "start_at": "2026-04-10T14:00:00",
+      "end_at": "2026-04-10T15:00:00",
+      "all_day": false,
+      "event_type": "OTHER",
+      "location": "〇〇歯科",
+      "status": "SCHEDULED",
+      "min_view_role": null,
+      "min_response_role": null,
+      "attendance_required": false,
+      "attendance_deadline": null,
+      "my_response": null
     }
   ]
 }
 ```
 
-> - `scope_type` / `scope_id` / `scope_name`: スケジュールが属するチームまたは組織の情報（横断表示用）
-> - `my_response`: リクエスト者自身の出欠情報。`attendance_required = false` の場合、またはリクエスト者が `min_response_role` 未満のロールで出欠対象外の場合は null。形式: `{"status": "...", "comment": "..."}`。`comment_option = HIDDEN` のスケジュールでは `comment` は常に null
-> - `min_response_role`: フロントエンドが回答 UI の表示可否判定に使用する。リクエスト者のロールが `min_response_role` 未満の場合は回答ボタンを非表示にする
+> - `scope_type` / `scope_id` / `scope_name`: スケジュールが属するスコープの情報（横断表示用）。`scope_type = "PERSONAL"` の場合、`scope_id = null`・`scope_name = "個人"` 固定
+> - `my_response`: リクエスト者自身の出欠情報。`scope_type = "PERSONAL"` の場合・`attendance_required = false` の場合・リクエスト者が `min_response_role` 未満のロールで出欠対象外の場合は null。形式: `{"status": "...", "comment": "..."}`。`comment_option = HIDDEN` のスケジュールでは `comment` は常に null
+> - `min_view_role` / `min_response_role`: `scope_type = "PERSONAL"` の場合は null（個人スコープに閲覧/回答権限の概念がないため）。フロントエンドはこれらが null の場合は回答 UI を非表示にする
 > - `attendance_summary` は含まない（個人ビューのため集計情報は非表示）
-> - `from`〜`to` の期間内で `start_at` が一致するスケジュールを全チーム・組織横断で返す。`min_view_role` に基づくフィルタリングを適用する
+> - `from`〜`to` の期間内で `start_at` が一致するスケジュールを全チーム・組織・個人横断で返す。チーム・組織スケジュールには `min_view_role` に基づくフィルタリングを適用する。個人スケジュールは `schedules.user_id = current_user_id` で絞り込む
+> - `attendance_required_only = true` および `undecided_only = true` フィルタは個人スケジュールを除外する（`attendance_required` が常に false のため）
 
 ---
 
@@ -2008,6 +2029,7 @@ V3.013__create_user_google_calendar_connections_table.sql
 V3.014__create_user_calendar_sync_settings_table.sql
 V3.015__create_user_schedule_google_events_table.sql
 V3.016__add_user_id_to_schedules.sql                    -- schedules.user_id カラム追加・INDEX・CHECK 制約（F05_schedule_personal.md と共有）
+V3.017__add_personal_sync_to_calendar_connections.sql   -- user_google_calendar_connections.personal_sync_enabled カラム追加
 
 -- Phase 4+（本テーブルが必要になったタイミングで実行）
 V4.001__create_member_attendance_stats_table.sql
@@ -2023,6 +2045,7 @@ V4.001__create_member_attendance_stats_table.sql
 - V3.013 は V1.005（users）完了後
 - V3.014 は V1.005（users）完了後
 - V3.015 は V1.005（users）および V3.007（schedules）完了後
+- V3.017 は V3.013（user_google_calendar_connections）完了後
 
 ---
 
@@ -2050,6 +2073,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-01 | 個人スケジュール統合: `GET /api/v1/my/calendar` に個人スケジュールを追加（`scope_type = "PERSONAL"`・`scope_id = null`・`scope_name = "個人"`）。`user_google_calendar_connections` に `personal_sync_enabled BOOLEAN DEFAULT FALSE` を追加（個人スケジュールの Google 同期設定；`user_calendar_sync_settings` への scope_type='PERSONAL' 追加は不採用）。Flyway V3.017 追加 |
 | 2026-03-01 | ドキュメント分割: F05_schedule_attendance.md を F05_schedule_shared.md にリネーム（組織・チームスコープ専用）。個人スケジュール機能を F05_schedule_personal.md として分離。schedules テーブルに user_id カラム追加（三者XOR CHECK制約・INDEX idx_sch_user_start）。Flyway V3.016 追加 |
 | 2026-03-01 | 未ログインアクセスポリシー確定: `min_view_role = 'ANYONE'` 設定時の未ログインユーザーを GUEST 相当として扱う Optional Authentication パターンに決定。`public_token` カラム・専用 URL は不採用（通常エンドポイントのフィルタリングで保護）。Section 2 スコープ表に「GUEST / 未ログイン」を明記。Section 6 セキュリティ考慮事項に未ログインアクセスポリシー・返却フィールドの制限・401/403 使い分けを追記。未解決事項を解決済みに更新 |
 | 2026-03-01 | 大規模チーム向け出欠データ生成最適化: `schedules` テーブルに `attendance_status ENUM('READY','GENERATING')` カラムを追加。単発フロー step 8（schedule_attendances 一括 INSERT）を @Async 化し 500件チャンク分割バルク INSERT に変更。スケジュール詳細レスポンスに `attendance_status` フィールドを追加（GENERATING 時フロントエンドが 3秒ポーリングで完了を検知）。セキュリティ考慮事項に大規模 INSERT 最適化を追記。未解決事項を解決済みに更新 |
