@@ -473,9 +473,12 @@ END:VCALENDAR
 | `LOCATION` | `location` フィールドの内容（NULL の場合は省略）| |
 
 **配信スコープ**
-- 配信期間: 過去1ヶ月〜未来12ヶ月（未解決事項参照）
-- 配信対象: `GET /my/calendar` と同じ横断ビュー（個人 + 参加中の全チーム/組織スケジュール）
-- visibility フィルタ: ユーザーの現在ロールを動的に評価し `min_view_role` 条件を満たすスケジュールのみ配信
+- **配信期間**: `start_at >= TODAY - 2ヶ月` かつ `start_at <= TODAY + 12ヶ月`
+- **配信対象**: `GET /my/calendar` と同じ横断ビュー（個人 + 参加中の全チーム/組織スケジュール）
+- **visibility フィルタ**: ユーザーの現在ロールを動的に評価し `min_view_role` 条件を満たすスケジュールのみ配信
+- **件数上限**: 最大 500件。超過した場合は未来のスケジュールを優先して返す（詳細は Section 5 参照）
+- **キャッシュ**: Redis に TTL 15分でキャッシュ（`ical:{token}` をキーとして iCal 文字列を保存）。キャッシュヒット時は DB クエリを省略して即時返却。TTL 自然失効で最大15分の更新ラグが発生する（許容範囲と判断）
+- **将来の拡張**: 過去遡及範囲は Phase 4+ の「プロ設定」でユーザー選択式への拡張を検討。初期リリースでは固定
 
 **エラーレスポンス**
 | ステータス | 条件 |
@@ -573,18 +576,29 @@ END:VCALENDAR
 [GET /ical/{token}.ics 受付時]
 1. {token} をキーに user_ical_tokens を検索
 2. レコードが存在しない または is_active = FALSE → 404 を返す
-3. レート制限チェック（last_polled_at との差分。詳細は未確定）
-4. user_ical_tokens.last_polled_at を現在時刻に UPDATE
-5. user_id からユーザーのロール情報を取得
-6. GET /my/calendar と同一のクエリで schedules を取得（期間: 過去1ヶ月〜未来12ヶ月）
-   - ロールに基づく min_view_role フィルタを適用（Google Calendar 同期と同一ロジック）
-7. 条件付きリクエスト対応（ETag / If-None-Match チェック。一致すれば 304 を返す）
+3. レート制限チェック（last_polled_at との差分。詳細は未解決事項参照）
+4. Redis キャッシュ確認（key: `ical:{token}`、TTL: 15分）
+   - HIT: キャッシュ済み iCal 文字列を即時返却 → step 10 へ
+   - MISS: step 5 へ進む
+5. user_ical_tokens.last_polled_at を現在時刻に UPDATE
+6. user_id からユーザーのロール情報を取得
+7. スケジュールを2段階クエリで取得（min_view_role フィルタを適用）:
+   a. 未来スケジュール: start_at >= TODAY かつ start_at <= TODAY + 12ヶ月
+      ORDER BY start_at ASC  LIMIT 500
+   b. 過去スケジュール: start_at >= TODAY - 2ヶ月 かつ start_at < TODAY
+      ORDER BY start_at DESC  LIMIT MAX(0, 500 - 手順aの件数)
+   c. a + b をマージして start_at ASC で再ソート（合計最大 500件）
 8. schedules を RFC 5545 形式に変換して VCALENDAR を生成
    - VEVENT の UID: schedule-{id}@mannschaft.app
    - SUMMARY: チーム/組織は "[{scope_name}] {title}"、個人は "{title}"
    - status = CANCELLED → STATUS:CANCELLED、それ以外 → STATUS:CONFIRMED
    - all_day = TRUE → DTSTART;VALUE=DATE:、FALSE → DTSTART;TZID=Asia/Tokyo:
-9. Content-Type: text/calendar でレスポンスを返す
+9. 生成した iCal 文字列を Redis にキャッシュ（key: `ical:{token}`、TTL: 15分）
+10. Content-Type: text/calendar; charset=utf-8 でレスポンスを返す
+
+[トークン再生成・削除時のキャッシュ処理]
+- POST /api/v1/me/ical/token/regenerate: 旧トークンの Redis キャッシュを明示的に削除（`DEL ical:{旧token}`）
+- DELETE /api/v1/me/ical/token: 同様に Redis キャッシュを削除
 
 [トークン生成（GET /api/v1/me/ical/token で未発行時）]
 1. SecureRandom で 32 バイトのランダム値を生成（hex エンコードで 64 文字）
@@ -629,7 +643,7 @@ V3.019__add_sync_error_columns_to_calendar_connections.sql
 
 - [x] Google Calendar 同期エラー時の最大リトライ回数・最終失敗時のユーザー通知方法を確定する: リトライ3回（指数バックオフ 1分→10分→1時間）。AUTH_ERROR のみ即時停止・`is_active = FALSE`。全失敗時に `user_google_calendar_connections.last_sync_error_*` を記録してアプリ内通知。`POST /me/google-calendar/sync` で手動再同期可能（Section 4・Section 5・Section 6 参照）
 - [ ] Google Calendar 管理者レベル共有連携（`schedules.google_calendar_event_id` カラムの用途）は F09 で別途設計し、個人同期との役割分担を確定する
-- [ ] **[iCal]** iCal 配信期間の範囲を確定する（現状: 過去1ヶ月〜未来12ヶ月と仮定定義。外部カレンダーは初回購読時に全期間を取得するため、過去の遡及範囲が多いと生成コストが上がる）
+- [x] **[iCal]** iCal 配信期間の範囲を確定する: 過去2ヶ月〜未来12ヶ月・最大500件（未来優先の2段階クエリ）・Redis TTL 15分キャッシュ（Section 4・Section 5 参照）
 - [ ] **[iCal]** レート制限の実装方法を確定する（外部カレンダーアプリの過剰ポーリング対策。`last_polled_at` による DB チェック vs Redis カウンター vs Nginx 設定）
 - [ ] **[iCal]** ETag / If-None-Match による条件付きリクエスト対応を実装するか確定する（実装するとポーリング時のDB負荷を大幅に削減できる）
 - [ ] **[iCal]** `webcal://` スキームの対応方法を確定する（`https://` → `webcal://` のリダイレクト対応 vs フロントエンドで URL を両方表示するだけ）
@@ -640,6 +654,7 @@ V3.019__add_sync_error_columns_to_calendar_connections.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-01 | iCal 配信期間・パフォーマンス仕様を確定: 過去2ヶ月〜未来12ヶ月・最大500件（未来優先の2段階クエリでマージ）・Redis TTL 15分キャッシュ（`ical:{token}` キー）・トークン再生成/削除時の明示的キャッシュ削除・Phase 4+ 拡張（プロ設定）を明記 |
 | 2026-03-01 | Google Calendar 同期エラーハンドリングを確定: リトライ3回（指数バックオフ 1min→10min→1hr）・AUTH_ERROR は即時停止・`user_google_calendar_connections` にエラー追跡カラム 3 つ追加（Flyway V3.019）・手動再同期 `POST /me/google-calendar/sync` を追加・Spring @Retryable + @Recover の実装方針を明記 |
 | 2026-03-01 | iCal 購読 URL 機能を追加: `user_ical_tokens` テーブル・トークン管理 API 3本・iCal ファイル配信エンドポイント（`GET /ical/{token}.ics`）・iCal 生成フロー・Flyway V3.018 を追加。配信スコープは横断ビュー（個人+全チーム/組織）の1URL固定、visibility はユーザーロールの動的評価 |
 | 2026-03-01 | 初版作成: F05_schedule_shared.md から Google Calendar 個人同期関連を分離。テーブル定義・API 仕様・ビジネスロジック・Flyway マイグレーションを移管 |
