@@ -1,8 +1,9 @@
-# F05: スケジュール・出欠管理
+# F05: スケジュール・出欠管理（組織・チームスコープ）
 
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 3
-> **最終更新**: 2026-02-28
+> **最終更新**: 2026-03-01
+> **関連ドキュメント**: 個人スケジュール → `F05_schedule_personal.md` / 外部連携 → `F08_external_integration.md`（予定）
 
 ---
 
@@ -54,8 +55,9 @@
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|---|------|-----------|------|
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
-| `team_id` | BIGINT UNSIGNED | YES | NULL | FK → teams（チームスコープ; NULL = 組織スコープ）|
-| `organization_id` | BIGINT UNSIGNED | YES | NULL | FK → organizations（組織スコープ; NULL = チームスコープ）|
+| `team_id` | BIGINT UNSIGNED | YES | NULL | FK → teams（チームスコープ; NULL = 組織または個人スコープ）|
+| `organization_id` | BIGINT UNSIGNED | YES | NULL | FK → organizations（組織スコープ; NULL = チームまたは個人スコープ）|
+| `user_id` | BIGINT UNSIGNED | YES | NULL | FK → users（個人スコープ; NULL = チームまたは組織スコープ）。ON DELETE CASCADE |
 | `title` | VARCHAR(200) | NO | — | タイトル |
 | `description` | TEXT | YES | NULL | 詳細説明 |
 | `location` | VARCHAR(300) | YES | NULL | 場所・会場名 |
@@ -84,6 +86,7 @@
 ```sql
 INDEX idx_sch_team_start (team_id, start_at)            -- チーム別カレンダー取得用
 INDEX idx_sch_org_start (organization_id, start_at)     -- 組織別カレンダー取得用
+INDEX idx_sch_user_start (user_id, start_at)            -- 個人カレンダー取得用
 INDEX idx_sch_parent (parent_schedule_id)               -- 繰り返し子スケジュール取得用
 UNIQUE KEY uq_sch_parent_start (parent_schedule_id, start_at)  -- 繰り返し展開の重複防止（parent_schedule_id = NULL 行は制約対象外）
 INDEX idx_sch_google_calendar (google_calendar_event_id)
@@ -110,7 +113,15 @@ INDEX idx_sch_google_calendar (google_calendar_event_id)
 | `count` | Int | end_type = COUNT の場合の繰り返し回数 |
 
 **制約・備考**
-- `team_id` と `organization_id` はどちらか一方のみ非 NULL（XOR; アプリ層でバリデーション）
+- `team_id`・`organization_id`・`user_id` は三者うちいずれか1つのみ非 NULL（XOR）。DB レベルでは CHECK 制約、アプリ層でも重複バリデーションを実施する:
+  ```sql
+  CONSTRAINT chk_schedule_scope CHECK (
+    (team_id IS NOT NULL AND organization_id IS NULL AND user_id IS NULL) OR
+    (team_id IS NULL AND organization_id IS NOT NULL AND user_id IS NULL) OR
+    (team_id IS NULL AND organization_id IS NULL AND user_id IS NOT NULL)
+  )
+  ```
+- `user_id IS NOT NULL`（個人スコープ）のスケジュールは `attendance_required = FALSE`・`min_view_role = 'ADMIN_ONLY'`・`visibility = 'MEMBERS_ONLY'` が固定値となり変更不可（詳細は `F05_schedule_personal.md` 参照）
 - `parent_schedule_id IS NOT NULL`（子）の場合、`recurrence_rule` は NULL とする
 - `all_day = TRUE` の場合、`start_at` の時刻は `00:00:00` に固定し `end_at` は NULL または `23:59:59` で統一する
 - `comment_option` の挙動:
@@ -401,7 +412,7 @@ INDEX idx_mas_user_month  (user_id, year_month)               -- 個人ダッシ
 
 ### ER図（テキスト形式）
 ```
-teams / organizations (1) ──── (N) schedules
+teams / organizations / users (1) ──── (N) schedules   ※ team_id / organization_id / user_id の三者XOR
 schedules (1) ──── (N) schedules              ※ parent_schedule_id（自己参照・繰り返し）
 schedules (1) ──── (N) schedule_attendances
 users (1) ──── (N) schedule_attendances
@@ -1996,6 +2007,7 @@ V3.012__create_schedule_cross_refs_table.sql
 V3.013__create_user_google_calendar_connections_table.sql
 V3.014__create_user_calendar_sync_settings_table.sql
 V3.015__create_user_schedule_google_events_table.sql
+V3.016__add_user_id_to_schedules.sql                    -- schedules.user_id カラム追加・INDEX・CHECK 制約（F05_schedule_personal.md と共有）
 
 -- Phase 4+（本テーブルが必要になったタイミングで実行）
 V4.001__create_member_attendance_stats_table.sql
@@ -2038,6 +2050,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-01 | ドキュメント分割: F05_schedule_attendance.md を F05_schedule_shared.md にリネーム（組織・チームスコープ専用）。個人スケジュール機能を F05_schedule_personal.md として分離。schedules テーブルに user_id カラム追加（三者XOR CHECK制約・INDEX idx_sch_user_start）。Flyway V3.016 追加 |
 | 2026-03-01 | 未ログインアクセスポリシー確定: `min_view_role = 'ANYONE'` 設定時の未ログインユーザーを GUEST 相当として扱う Optional Authentication パターンに決定。`public_token` カラム・専用 URL は不採用（通常エンドポイントのフィルタリングで保護）。Section 2 スコープ表に「GUEST / 未ログイン」を明記。Section 6 セキュリティ考慮事項に未ログインアクセスポリシー・返却フィールドの制限・401/403 使い分けを追記。未解決事項を解決済みに更新 |
 | 2026-03-01 | 大規模チーム向け出欠データ生成最適化: `schedules` テーブルに `attendance_status ENUM('READY','GENERATING')` カラムを追加。単発フロー step 8（schedule_attendances 一括 INSERT）を @Async 化し 500件チャンク分割バルク INSERT に変更。スケジュール詳細レスポンスに `attendance_status` フィールドを追加（GENERATING 時フロントエンドが 3秒ポーリングで完了を検知）。セキュリティ考慮事項に大規模 INSERT 最適化を追記。未解決事項を解決済みに更新 |
 | 2026-03-01 | 出欠集計サマリーの開示範囲変更: `attendance_summary`・`GET /schedules/{id}/stats` の参照権限を「ADMIN のみ」から「当該スケジュールの min_response_role 以上のロール」に変更。個人名付き一覧（attendances）・ダッシュボード統計（attendance-stats）は引き続き ADMIN のみ。Section 2 スコープ表・API 一覧・スケジュール一覧/詳細レスポンス注記・stats エンドポイント説明・セキュリティ考慮事項・未解決事項を一括更新 |
