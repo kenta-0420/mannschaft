@@ -22,7 +22,7 @@
 | DEPUTY_ADMIN | `MANAGE_SCHEDULES` 権限を持つ場合: スケジュール作成・編集・自己作成スケジュールの削除。他者作成スケジュールの削除は `MANAGE_SCHEDULES` + `DELETE_OTHERS_CONTENT` の両方が必要。`min_response_role` 以上のスケジュールの出欠集計サマリー（件数のみ）参照可 |
 | MEMBER | デフォルトで `MANAGE_SCHEDULES` を保持（作成・編集）。他者のスケジュール削除は `DELETE_OTHERS_CONTENT` 権限が必要。`min_response_role IN ('SUPPORTER+', 'MEMBER+')` のスケジュールに出欠回答可・出欠集計サマリー（件数のみ）参照可 |
 | SUPPORTER | `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールを閲覧可（`visibility` 設定に従う）。`min_response_role = 'SUPPORTER+'` のスケジュールに限り出欠回答可・出欠集計サマリー（件数のみ）参照可 |
-| GUEST | `min_view_role = 'ANYONE'` のスケジュールのみ閲覧可 |
+| GUEST / 未ログイン | `min_view_role = 'ANYONE'` のスケジュールのみ閲覧可。未ログインユーザーは GUEST と同等に扱う（Optional Authentication）|
 
 ### 対象レベル
 - [x] 組織 (Organization)
@@ -1970,6 +1970,7 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 - **他者スケジュールの削除**: MEMBER が自分以外の作成スケジュールを削除するには `DELETE_OTHERS_CONTENT` 権限が必要。ADMIN は無条件で削除可能
 - **出欠情報のプライバシー**: `attendance_summary`（件数集計）は当該スケジュールの `min_response_role` 以上のロールのみ返す（min_response_role 未満は null）。個別メンバーの出欠一覧（`GET /teams/{id}/schedules/{scheduleId}/attendances`、個人名・回答内容付き）は ADMIN のみ参照可能。ダッシュボード統計（`GET /teams/{id}/attendance-stats` 等、個人別出席率付き）も ADMIN のみ。組織レベルの出欠集計はチーム単位の件数のみ開示し、個人の出欠情報は返さない
 - **可視性制御（スコープ）**: `visibility = 'MEMBERS_ONLY'` のスケジュールは当該チーム/組織の所属者にのみ返す。未ログインユーザーには返さない
+- **未ログインアクセスのポリシー（ANYONE 設定）**: `min_view_role = 'ANYONE'` のスケジュールはスケジュール一覧・詳細エンドポイントで未認証アクセスを許可する（Optional Authentication）。Spring Security で `permitAll()` を設定し、未認証リクエストはアプリ層で GUEST 相当として処理する。返すフィールドは GUEST ロールと同等に制限する（`my_response`・`attendance_summary`・`surveys`・`reminders`・`cross_invitations` は常に null）。エンドポイント別の動作: 一覧（`GET /teams/{id}/schedules`）では `min_view_role = 'ANYONE'` のスケジュールのみ返す。詳細（`GET /teams/{id}/schedules/{id}`）では当該スケジュールの `min_view_role` を確認し、`ANYONE` 以外なら 401 を返す。`public_token` 等の専用 URL は設けない（通常エンドポイントのフィルタリングで保護する）
 - **可視性制御（ロール）**: `min_view_role` によるフィルタリングを全閲覧系エンドポイントで実施する。SUPPORTER は `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールのみ閲覧可。GUEST は `min_view_role = 'ANYONE'` のみ閲覧可。`min_view_role` は作成・編集権限を持つ MEMBER 以上のみが変更可能（SUPPORTER/GUEST 自身は変更不可）
 - **回答権限制御（min_response_role）**: `min_response_role` によるチェックを `PATCH /schedules/{scheduleId}/responses` で実施する。`min_view_role`（閲覧可否）とは独立した2軸制御。回答権限がないユーザーはスケジュールを閲覧可能だが 403 を返す。`attendance_required = TRUE` 時の `schedule_attendances` 一括 INSERT も `min_response_role` 以上のロールを持つメンバーのみを対象とする
 - **繰り返し一括操作の権限確認**: `THIS_AND_FOLLOWING` / `ALL` スコープの更新・削除時も必ず権限確認（作成者 or MANAGE_SCHEDULES or ADMIN）を実施する。スコープが広いほど影響が大きいため省略不可
@@ -2021,7 +2022,7 @@ V4.001__create_member_attendance_stats_table.sql
 - [ ] `event_type` の選択肢はテンプレート（SPORTS / SCHOOL 等）に応じて表示切替するかを確定する（テンプレート管理 feature doc で検討）
 - [x] 出欠集計の開示範囲を確定: 当該スケジュールの `min_response_role` 以上のロールへ件数のみ開示（`attendance_summary`・`GET /schedules/{id}/stats`）。個人名付き一覧（`GET /attendances`）・ダッシュボード統計（`GET /attendance-stats`）は引き続き ADMIN のみ
 - [x] 大規模チーム（1000人規模）への一括 `schedule_attendances` INSERT 対策を確定: @Async 非同期化・500件チャンク分割バルク INSERT・`schedules.attendance_status ENUM('READY','GENERATING')` による生成状態管理（Section 3・Section 5・Section 6 参照）
-- [ ] `min_view_role = 'ANYONE'` 設定時の未ログインユーザーへの公開挙動を確定する（チームの `visibility` 設定との連動ルール・公開 URL の設計等）
+- [x] `min_view_role = 'ANYONE'` 設定時の未ログインアクセスを確定: 未ログインユーザーを GUEST 相当として扱う Optional Authentication パターン。専用 URL・`public_token` なし。一覧は ANYONE スケジュールのみ返し、詳細は ANYONE 以外なら 401。返すフィールドは GUEST ロールと同等に制限（Section 6 参照）
 - [ ] クロスチーム招待時、招待先チームが非公開の場合でも招待を送れるかを確定する（招待送信時のプライバシー設計）
 - [ ] Google Calendar 同期エラー時の最大リトライ回数・最終失敗時のユーザー通知方法を確定する
 - [ ] 組織スケジュールの出欠確認: チームに所属しない組織直接メンバーへの出欠通知フローを確定する
@@ -2037,6 +2038,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-01 | 未ログインアクセスポリシー確定: `min_view_role = 'ANYONE'` 設定時の未ログインユーザーを GUEST 相当として扱う Optional Authentication パターンに決定。`public_token` カラム・専用 URL は不採用（通常エンドポイントのフィルタリングで保護）。Section 2 スコープ表に「GUEST / 未ログイン」を明記。Section 6 セキュリティ考慮事項に未ログインアクセスポリシー・返却フィールドの制限・401/403 使い分けを追記。未解決事項を解決済みに更新 |
 | 2026-03-01 | 大規模チーム向け出欠データ生成最適化: `schedules` テーブルに `attendance_status ENUM('READY','GENERATING')` カラムを追加。単発フロー step 8（schedule_attendances 一括 INSERT）を @Async 化し 500件チャンク分割バルク INSERT に変更。スケジュール詳細レスポンスに `attendance_status` フィールドを追加（GENERATING 時フロントエンドが 3秒ポーリングで完了を検知）。セキュリティ考慮事項に大規模 INSERT 最適化を追記。未解決事項を解決済みに更新 |
 | 2026-03-01 | 出欠集計サマリーの開示範囲変更: `attendance_summary`・`GET /schedules/{id}/stats` の参照権限を「ADMIN のみ」から「当該スケジュールの min_response_role 以上のロール」に変更。個人名付き一覧（attendances）・ダッシュボード統計（attendance-stats）は引き続き ADMIN のみ。Section 2 スコープ表・API 一覧・スケジュール一覧/詳細レスポンス注記・stats エンドポイント説明・セキュリティ考慮事項・未解決事項を一括更新 |
 | 2026-03-01 | バッチ設計確定: 繰り返しスケジュール自動展開バッチを毎日 JST 03:30 実行に確定。ロジックを「残り30日以内トリガー＋12ヶ月追加」から「毎日・今日〜12ヶ月先の不足分を補完（Idempotent）」に変更。schedules テーブルに UNIQUE KEY uq_sch_parent_start (parent_schedule_id, start_at) を追加し DB レベルで重複展開を防止。未解決事項を解決済みに更新 |
