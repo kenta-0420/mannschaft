@@ -18,10 +18,10 @@
 | ロール | 操作可能な範囲 |
 |--------|--------------|
 | SYSTEM_ADMIN | 全スケジュールの参照・強制削除 |
-| ADMIN | スケジュールの作成・編集・削除・キャンセル。出欠一覧・集計の参照。クロスチーム招待の送受信 |
-| DEPUTY_ADMIN | `MANAGE_SCHEDULES` 権限を持つ場合: スケジュール作成・編集・自己作成スケジュールの削除。他者作成スケジュールの削除は `MANAGE_SCHEDULES` + `DELETE_OTHERS_CONTENT` の両方が必要 |
-| MEMBER | デフォルトで `MANAGE_SCHEDULES` を保持（作成・編集）。他者のスケジュール削除は `DELETE_OTHERS_CONTENT` 権限が必要。`min_response_role IN ('SUPPORTER+', 'MEMBER+')` のスケジュールに出欠回答可 |
-| SUPPORTER | `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールを閲覧可（`visibility` 設定に従う）。`min_response_role = 'SUPPORTER+'` のスケジュールに限り出欠回答可 |
+| ADMIN | スケジュールの作成・編集・削除・キャンセル。個人名付き出欠一覧・集計・ダッシュボード統計の参照。クロスチーム招待の送受信 |
+| DEPUTY_ADMIN | `MANAGE_SCHEDULES` 権限を持つ場合: スケジュール作成・編集・自己作成スケジュールの削除。他者作成スケジュールの削除は `MANAGE_SCHEDULES` + `DELETE_OTHERS_CONTENT` の両方が必要。`min_response_role` 以上のスケジュールの出欠集計サマリー（件数のみ）参照可 |
+| MEMBER | デフォルトで `MANAGE_SCHEDULES` を保持（作成・編集）。他者のスケジュール削除は `DELETE_OTHERS_CONTENT` 権限が必要。`min_response_role IN ('SUPPORTER+', 'MEMBER+')` のスケジュールに出欠回答可・出欠集計サマリー（件数のみ）参照可 |
+| SUPPORTER | `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールを閲覧可（`visibility` 設定に従う）。`min_response_role = 'SUPPORTER+'` のスケジュールに限り出欠回答可・出欠集計サマリー（件数のみ）参照可 |
 | GUEST | `min_view_role = 'ANYONE'` のスケジュールのみ閲覧可 |
 
 ### 対象レベル
@@ -444,7 +444,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 | POST | `/api/v1/organizations/{id}/schedules/{scheduleId}/cancel` | 必要（ADMIN）| 組織スケジュールキャンセル（繰り返しは `?update_scope` で範囲指定）|
 | GET | `/api/v1/organizations/{id}/schedules/{scheduleId}/attendances` | 必要（ADMIN）| チーム別出欠集計（個人情報なし）|
 | PATCH | `/api/v1/schedules/{scheduleId}/responses` | 必要（当該スケジュールの min_response_role 以上）| 出欠を回答・変更（チーム/組織スコープ共通の統一エンドポイント）|
-| GET | `/api/v1/schedules/{id}/stats` | 必要（ADMIN）| スケジュール単位の出欠集計サマリー（treat_undecided フラグ適用済み）|
+| GET | `/api/v1/schedules/{id}/stats` | 必要（当該スケジュールの min_response_role 以上）| スケジュール単位の出欠集計サマリー（件数のみ・treat_undecided フラグ適用済み）|
 | POST | `/api/v1/schedules/{id}/remind` | 必要（ADMIN）| 未回答（UNDECIDED）メンバーへ即時リマインド通知 |
 | GET | `/api/v1/my/calendar` | 必要 | 全チーム・組織横断のスケジュール一覧（自分の回答ステータス付き）|
 | GET | `/api/v1/me/google-calendar/status` | 必要 | Google カレンダー連携状態確認 |
@@ -604,7 +604,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 ```
 
 > - `my_response`: リクエスト者自身の出欠情報。`attendance_required = false` の場合、またはリクエスト者が `min_response_role` 未満のロールで出欠対象外の場合は null。形式: `{"status": "...", "comment": "..."}`。`comment` は `comment_option = HIDDEN` のスケジュールでは常に null
-> - `attendance_summary`: ADMIN のみ返す。MEMBER / DEPUTY_ADMIN には null（プライバシー保護）
+> - `attendance_summary`: 当該スケジュールの `min_response_role` 以上のロールを持つリクエスト者のみ返す（min_response_role 未満の場合は null）。内容は件数集計のみで個人情報は含まない
 > - `min_view_role` に基づくフィルタリング: SUPPORTER は `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールのみ返す。MEMBER は `min_view_role IN ('ANYONE', 'SUPPORTER+', 'MEMBER+')` を返す。DEPUTY_ADMIN / ADMIN はすべて（`ADMIN_ONLY` 含む）返す
 
 ---
@@ -672,7 +672,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 }
 ```
 
-> - `attendance_summary`: ADMIN のみ返す（MEMBER / DEPUTY_ADMIN には null）
+> - `attendance_summary`: 当該スケジュールの `min_response_role` 以上のロールを持つリクエスト者のみ返す（min_response_role 未満の場合は null）。内容は件数集計のみで個人情報は含まない
 > - `reminders`: スケジュール作成者 / ADMIN のみ返す
 > - `cross_invitations`: このスケジュールから送信した招待一覧（ADMIN のみ返す）。受信招待は `GET /teams/{id}/schedule-invitations` で取得
 
@@ -981,9 +981,9 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 
 #### `GET /api/v1/schedules/{id}/stats`
 
-スケジュール単位の出欠集計サマリーを返す。ADMIN のみ参照可能。個別メンバーの出欠一覧は `GET /teams/{id}/schedules/{scheduleId}/attendances` を使用する。
+スケジュール単位の出欠集計サマリーを返す。当該スケジュールの `min_response_role` 以上のロールを持つメンバーが参照可能。個別メンバーの出欠一覧（個人名付き）は ADMIN 専用の `GET /teams/{id}/schedules/{scheduleId}/attendances` を使用する。
 
-> **自動リマインダーとの違い**: `schedule_attendance_reminders` は期日前の定期自動通知。このエンドポイントは管理者が「誰が未回答か」を即座に確認するためのサマリー取得。
+> **自動リマインダーとの違い**: `schedule_attendance_reminders` は期日前の定期自動通知。このエンドポイントは出欠回答権限を持つメンバーが現在の回答状況（件数）を確認するためのサマリー取得。なお未回答者へのリマインド送信ボタン（`POST /remind`）は ADMIN のみ表示する。
 
 **レスポンス（200 OK）**
 ```json
@@ -1962,7 +1962,7 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 
 - **権限チェック**: スケジュール作成・編集には `MANAGE_SCHEDULES` 権限を F03 の権限解決ロジック経由で確認する
 - **他者スケジュールの削除**: MEMBER が自分以外の作成スケジュールを削除するには `DELETE_OTHERS_CONTENT` 権限が必要。ADMIN は無条件で削除可能
-- **出欠情報のプライバシー**: `attendance_summary`（数値集計）は ADMIN のみ返す。MEMBER は自分のステータスのみ参照可能。組織レベルの出欠集計はチーム単位の件数のみ開示し、個人の出欠情報は返さない
+- **出欠情報のプライバシー**: `attendance_summary`（件数集計）は当該スケジュールの `min_response_role` 以上のロールのみ返す（min_response_role 未満は null）。個別メンバーの出欠一覧（`GET /teams/{id}/schedules/{scheduleId}/attendances`、個人名・回答内容付き）は ADMIN のみ参照可能。ダッシュボード統計（`GET /teams/{id}/attendance-stats` 等、個人別出席率付き）も ADMIN のみ。組織レベルの出欠集計はチーム単位の件数のみ開示し、個人の出欠情報は返さない
 - **可視性制御（スコープ）**: `visibility = 'MEMBERS_ONLY'` のスケジュールは当該チーム/組織の所属者にのみ返す。未ログインユーザーには返さない
 - **可視性制御（ロール）**: `min_view_role` によるフィルタリングを全閲覧系エンドポイントで実施する。SUPPORTER は `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールのみ閲覧可。GUEST は `min_view_role = 'ANYONE'` のみ閲覧可。`min_view_role` は作成・編集権限を持つ MEMBER 以上のみが変更可能（SUPPORTER/GUEST 自身は変更不可）
 - **回答権限制御（min_response_role）**: `min_response_role` によるチェックを `PATCH /schedules/{scheduleId}/responses` で実施する。`min_view_role`（閲覧可否）とは独立した2軸制御。回答権限がないユーザーはスケジュールを閲覧可能だが 403 を返す。`attendance_required = TRUE` 時の `schedule_attendances` 一括 INSERT も `min_response_role` 以上のロールを持つメンバーのみを対象とする
@@ -2012,7 +2012,7 @@ V4.001__create_member_attendance_stats_table.sql
 - [x] 繰り返しスケジュール自動展開バッチのスケジュールを確定: 毎日 JST 03:30 実行。ロジックを「今日〜12ヶ月先の不足分を毎日補完（Idempotent）」に変更。schedules テーブルに UNIQUE KEY (parent_schedule_id, start_at) 追加（Section 3・Section 5 参照）
 - [ ] Google Calendar 管理者レベル共有連携（`google_calendar_event_id` カラムの用途）は F09 で別途設計し、個人同期との役割分担を確定する
 - [ ] `event_type` の選択肢はテンプレート（SPORTS / SCHOOL 等）に応じて表示切替するかを確定する（テンプレート管理 feature doc で検討）
-- [ ] 出欠集計（attending / absent / undecided の件数）を MEMBER にも件数のみ開示するかを確定する（現設計は ADMIN のみ）
+- [x] 出欠集計の開示範囲を確定: 当該スケジュールの `min_response_role` 以上のロールへ件数のみ開示（`attendance_summary`・`GET /schedules/{id}/stats`）。個人名付き一覧（`GET /attendances`）・ダッシュボード統計（`GET /attendance-stats`）は引き続き ADMIN のみ
 - [ ] 大規模チーム（1000人規模）への一括 `schedule_attendances` INSERT 時のパフォーマンス対策（バッチ INSERT 分割・バックグラウンド処理化等）
 - [ ] `min_view_role = 'ANYONE'` 設定時の未ログインユーザーへの公開挙動を確定する（チームの `visibility` 設定との連動ルール・公開 URL の設計等）
 - [ ] クロスチーム招待時、招待先チームが非公開の場合でも招待を送れるかを確定する（招待送信時のプライバシー設計）
@@ -2030,6 +2030,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-01 | 出欠集計サマリーの開示範囲変更: `attendance_summary`・`GET /schedules/{id}/stats` の参照権限を「ADMIN のみ」から「当該スケジュールの min_response_role 以上のロール」に変更。個人名付き一覧（attendances）・ダッシュボード統計（attendance-stats）は引き続き ADMIN のみ。Section 2 スコープ表・API 一覧・スケジュール一覧/詳細レスポンス注記・stats エンドポイント説明・セキュリティ考慮事項・未解決事項を一括更新 |
 | 2026-03-01 | バッチ設計確定: 繰り返しスケジュール自動展開バッチを毎日 JST 03:30 実行に確定。ロジックを「残り30日以内トリガー＋12ヶ月追加」から「毎日・今日〜12ヶ月先の不足分を補完（Idempotent）」に変更。schedules テーブルに UNIQUE KEY uq_sch_parent_start (parent_schedule_id, start_at) を追加し DB レベルで重複展開を防止。未解決事項を解決済みに更新 |
 | 2026-03-01 | キャッシュ設計追加: `member_attendance_stats`（月次スナップショット）を Section 3 に追加。提案設計から以下を修正 → ① `organization_id` 単独キーを `(user_id, scope_type, scope_id, year_month)` 複合主キーに変更（チーム・組織両スコープ対応）、② `count_partial` 追加（PARTIAL ステータス対応）、③ 任意期間クエリ対応のため累積値から月次スナップショット形式に変更、④ `treat_undecided_as_absent_after_deadline` は生値保存・API 側動的適用に修正（フラグ変更時の大量再計算を回避）。Flyway V4.001 追加。未解決事項①を解決済みに更新 |
 | 2026-03-01 | 未解決事項解決②: `treat_undecided_as_absent_after_deadline` フラグ（teams / organizations テーブル、BOOLEAN DEFAULT FALSE）を追加。期限経過後の UNDECIDED を ABSENT として扱う計算モードを定義（PARTIAL を含む既存定義と整合）。`GET /api/v1/schedules/{id}/stats`（出欠サマリー・フラグ適用済み）と `POST /api/v1/schedules/{id}/remind`（UNDECIDED メンバーへの即時手動通知）を追加。自動リマインダー（schedule_attendance_reminders）との役割分担を明記 |
