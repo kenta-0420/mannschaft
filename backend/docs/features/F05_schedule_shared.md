@@ -3,7 +3,7 @@
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 3
 > **最終更新**: 2026-03-01
-> **関連ドキュメント**: 個人スケジュール → `F05_schedule_personal.md` / 外部連携 → `F08_external_integration.md`（予定）
+> **関連ドキュメント**: 個人スケジュール → `F05_schedule_personal.md` / 外部連携 → `F08_external_integration.md`
 
 ---
 
@@ -43,9 +43,8 @@
 | `event_survey_responses` | アンケート設問への個人回答 | なし |
 | `schedule_attendance_reminders` | 出欠リマインダー設定（未回答者への期日前通知）| なし |
 | `schedule_cross_refs` | クロスチーム・組織スケジュール招待（試合マッチング等）| なし |
-| `user_google_calendar_connections` | ユーザーの Google Calendar OAuth 連携情報 | なし |
-| `user_calendar_sync_settings` | ユーザーが Google カレンダーに同期するチーム・組織の設定 | なし |
-| `user_schedule_google_events` | ユーザーごとのスケジュール↔Google Calendar イベント ID マッピング | なし |
+
+> Google Calendar 連携テーブル（`user_google_calendar_connections` / `user_calendar_sync_settings` / `user_schedule_google_events`）の定義は `F08_external_integration.md` Section 3 を参照。
 | `member_attendance_stats` | メンバー出席統計月次キャッシュ（Phase 4+）| なし |
 
 ### テーブル定義
@@ -285,85 +284,6 @@ UNIQUE KEY uq_scr_source_target (source_schedule_id, target_type, target_id)   -
 
 ---
 
-#### `user_google_calendar_connections`
-
-ユーザーが個人 Google カレンダーへの自動同期を利用するために必要な OAuth 2.0 認可情報を管理するテーブル。
-
-| カラム名 | 型 | NULL | デフォルト | 説明 |
-|---------|---|------|-----------|------|
-| `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
-| `user_id` | BIGINT UNSIGNED | NO | — | FK → users（ON DELETE CASCADE）|
-| `google_account_email` | VARCHAR(255) | NO | — | 連携した Google アカウントのメールアドレス |
-| `google_calendar_id` | VARCHAR(255) | NO | 'primary' | 同期先カレンダー ID（デフォルト: ユーザーのメインカレンダー）|
-| `access_token` | TEXT | NO | — | Google Calendar API アクセストークン（AES-256-GCM 暗号化）|
-| `refresh_token` | TEXT | NO | — | リフレッシュトークン（AES-256-GCM 暗号化）|
-| `token_expires_at` | DATETIME | NO | — | アクセストークンの有効期限 |
-| `is_active` | BOOLEAN | NO | TRUE | 連携が有効かどうか（トークン失効・手動解除で FALSE）|
-| `personal_sync_enabled` | BOOLEAN | NO | FALSE | 個人スケジュール（`schedules.user_id IS NOT NULL`）を Google カレンダーへ同期するか（アプリ→Google 一方向）。`is_active = FALSE` の場合は同期されない |
-| `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
-| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
-
-**インデックス**
-```sql
-UNIQUE KEY uq_ugcc_user_id (user_id)    -- 1ユーザー1 Google アカウント連携（Phase 3 制限）
-```
-
-**制約・備考**
-- `access_token` / `refresh_token` は **平文保存禁止**（AES-256-GCM 等で暗号化必須）
-- 1ユーザーにつき1 Google アカウント連携（複数アカウント対応は Phase 4+ で検討）
-- ユーザー退会時は `ON DELETE CASCADE` で物理削除し、Google 側の revoke も実施する
-- 個人スケジュールの同期設定は `user_calendar_sync_settings` ではなく本カラム（`personal_sync_enabled`）で管理する。チーム・組織は scope_id が必要だが個人スコープに scope_id は存在しないため
-
----
-
-#### `user_calendar_sync_settings`
-
-ユーザーが Google カレンダーへの自動同期を有効化したチーム・組織のリスト。
-
-| カラム名 | 型 | NULL | デフォルト | 説明 |
-|---------|---|------|-----------|------|
-| `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
-| `user_id` | BIGINT UNSIGNED | NO | — | FK → users（ON DELETE CASCADE）|
-| `scope_type` | ENUM('TEAM', 'ORGANIZATION') | NO | — | 同期対象の種別 |
-| `scope_id` | BIGINT UNSIGNED | NO | — | 同期対象のチーム / 組織 ID |
-| `is_enabled` | BOOLEAN | NO | TRUE | 同期が有効かどうか |
-| `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
-| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
-
-**インデックス**
-```sql
-UNIQUE KEY uq_ucss_user_scope (user_id, scope_type, scope_id)
-INDEX idx_ucss_scope (scope_type, scope_id, is_enabled)    -- スケジュール変更時に同期対象ユーザーを検索
-```
-
-**制約・備考**
-- `user_google_calendar_connections.is_active = TRUE` でないと同期は実行されない（アプリ層でチェック）
-- ユーザーがチーム・組織を退会しても設定レコードは削除しない（再加入時の自動復元のため）
-
----
-
-#### `user_schedule_google_events`
-
-ユーザーごとの「スケジュール → Google Calendar イベント ID」マッピングテーブル。Google Calendar API の更新・削除操作に使用する。
-
-| カラム名 | 型 | NULL | デフォルト | 説明 |
-|---------|---|------|-----------|------|
-| `user_id` | BIGINT UNSIGNED | NO | — | FK → users（ON DELETE CASCADE）|
-| `schedule_id` | BIGINT UNSIGNED | NO | — | FK → schedules（ON DELETE CASCADE）|
-| `google_event_id` | VARCHAR(255) | NO | — | Google Calendar のイベント ID |
-| `last_synced_at` | DATETIME | NO | — | 最終同期日時 |
-
-**インデックス**
-```sql
-UNIQUE KEY uq_usge_user_schedule (user_id, schedule_id)   -- PK 代替（AUTO_INCREMENT PK なし）
-INDEX idx_usge_schedule_id (schedule_id)                  -- スケジュール更新時に全同期ユーザーを検索
-```
-
-**制約・備考**
-- 同期エラー（API エラー・トークン期限切れ等）が発生した場合はバッチで最大3回再試行
-
----
-
 #### `member_attendance_stats`（Phase 4+ キャッシュテーブル）
 
 メンバーの出席統計をスコープ・月単位で事前集計したキャッシュテーブル。大規模チーム（1000人規模）での `GET /teams/{id}/attendance-stats` 等の高速化を目的とする。Phase 3 ではオンザフライ計算で実装し、Phase 4 でこのテーブルを導入してクエリを切り替える。
@@ -424,10 +344,7 @@ users (1) ──── (N) event_survey_responses
 schedules (1) ──── (N) schedule_attendance_reminders
 schedules (1) ──── (N) schedule_cross_refs         ※ source_schedule_id
 schedules (0..1) ──── (N) schedule_cross_refs      ※ target_schedule_id
-users (1) ──── (1) user_google_calendar_connections
-users (1) ──── (N) user_calendar_sync_settings
-users (1) ──── (N) user_schedule_google_events
-schedules (1) ──── (N) user_schedule_google_events
+users / schedules ──── Google Calendar 連携テーブル（詳細は F08_external_integration.md 参照）
 users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scope_type/scope_id でチーム・組織両対応）
 ```
 
@@ -461,12 +378,9 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 | GET | `/api/v1/schedules/{id}/stats` | 必要（当該スケジュールの min_response_role 以上）| スケジュール単位の出欠集計サマリー（件数のみ・treat_undecided フラグ適用済み）|
 | POST | `/api/v1/schedules/{id}/remind` | 必要（ADMIN）| 未回答（UNDECIDED）メンバーへ即時リマインド通知 |
 | GET | `/api/v1/my/calendar` | 必要 | 全チーム・組織横断のスケジュール一覧（自分の回答ステータス付き）|
-| GET | `/api/v1/me/google-calendar/status` | 必要 | Google カレンダー連携状態確認 |
-| POST | `/api/v1/me/google-calendar/connect` | 必要 | Google Calendar OAuth 連携（認可コード受取）|
-| DELETE | `/api/v1/me/google-calendar/disconnect` | 必要 | Google Calendar 連携解除 |
-| GET | `/api/v1/me/calendar-sync-settings` | 必要 | チーム・組織別の同期設定一覧 |
-| PUT | `/api/v1/me/teams/{id}/calendar-sync` | 必要 | チームの Google カレンダー同期 ON/OFF |
-| PUT | `/api/v1/me/organizations/{id}/calendar-sync` | 必要 | 組織の Google カレンダー同期 ON/OFF |
+
+> Google Calendar 連携 API（`/me/google-calendar/*` / `/me/calendar-sync-settings` / `/me/teams/{id}/calendar-sync` / `/me/organizations/{id}/calendar-sync`）の仕様は `F08_external_integration.md` Section 4 を参照。
+
 | GET | `/api/v1/organizations/{id}/attendance-stats` | 必要（ADMIN）| 組織内チーム別の出席率（ダッシュボード用）|
 | GET | `/api/v1/teams/{id}/attendance-stats` | 必要（ADMIN）| チームメンバー全員の出席率（ダッシュボード用）|
 | GET | `/api/v1/me/attendance-stats` | 必要 | 自分の出席率（チーム・組織別・全体）|
@@ -1176,152 +1090,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 | 404 | 招待が存在しない / 招待先が自チームでない |
 | 422 | 招待がすでに `ACCEPTED` / `REJECTED` / `CANCELLED` 状態 |
 
----
-
-#### `GET /api/v1/me/google-calendar/status`
-
-**レスポンス（200 OK）**
-```json
-{
-  "data": {
-    "is_connected": true,
-    "google_account_email": "user@gmail.com",
-    "google_calendar_id": "primary",
-    "is_active": true
-  }
-}
-```
-
----
-
-#### `POST /api/v1/me/google-calendar/connect`
-
-Google OAuth 2.0 の認可コードを受け取り、アクセストークン・リフレッシュトークンを取得して保存する。
-
-**リクエストボディ**
-```json
-{
-  "code": "4/P7q7W91a-oMsCeLvIaQm6bTrgtp...",
-  "redirect_uri": "https://app.mannschaft.example.com/oauth/google-calendar/callback"
-}
-```
-
-**レスポンス（200 OK）**
-```json
-{
-  "data": {
-    "google_account_email": "user@gmail.com",
-    "is_active": true
-  }
-}
-```
-
----
-
-#### `DELETE /api/v1/me/google-calendar/disconnect`
-
-Google Calendar 連携を解除する。Google 側での認可取り消し（revoke）も実施する。解除後は全チーム・組織の同期が停止する（`user_google_calendar_connections.is_active = FALSE`）。
-
-**レスポンス（204 No Content）**
-
-> - 再連携は `POST /me/google-calendar/connect` から再実施
-> - `user_calendar_sync_settings` のレコードは削除しない（再連携時に設定を復元するため）
-
----
-
-#### `GET /api/v1/me/calendar-sync-settings`
-
-ユーザーが所属する全チーム・組織の Google カレンダー同期設定一覧を返す。
-
-**レスポンス（200 OK）**
-```json
-{
-  "data": {
-    "is_connected": true,
-    "google_account_email": "user@gmail.com",
-    "sync_settings": [
-      {
-        "scope_type": "TEAM",
-        "scope_id": 1,
-        "scope_name": "FC Tokyo Youth",
-        "is_enabled": true
-      },
-      {
-        "scope_type": "ORGANIZATION",
-        "scope_id": 3,
-        "scope_name": "東京FC",
-        "is_enabled": false
-      }
-    ]
-  }
-}
-```
-
-> - `is_connected = false` の場合、`sync_settings` の `is_enabled` は全て `false` として返す
-> - 退会済みチーム・組織の設定は含まない（所属中のみ）
-
----
-
-#### `PUT /api/v1/me/teams/{id}/calendar-sync`
-
-チームの Google カレンダー同期を ON/OFF 切り替える。初回 ON 時に過去の未同期スケジュール（今日以降の未来分）を一括同期する。
-
-**リクエストボディ**
-```json
-{
-  "is_enabled": true
-}
-```
-
-**レスポンス（200 OK）**
-```json
-{
-  "data": {
-    "team_id": 1,
-    "is_enabled": true,
-    "backfill_count": 12
-  }
-}
-```
-
-> `backfill_count`: 初回 ON 時に遡り同期したスケジュール件数。既に同期済みまたは OFF 切替時は 0
-
-**エラーレスポンス（共通）**
-| ステータス | 条件 |
-|-----------|------|
-| 400 | バリデーションエラー（from > to 等）|
-| 401 | 未認証 |
-| 403 | 権限不足 |
-| 404 | リソース不存在 |
-| 422 | Google Calendar 未連携のまま同期 ON を要求（`/me/google-calendar/connect` が未完了）|
-
----
-
-#### `PUT /api/v1/me/organizations/{id}/calendar-sync`
-
-組織の Google カレンダー同期を ON/OFF 切り替える。初回 ON 時に今日以降の未同期スケジュールを一括同期する。
-
-**リクエストボディ**
-```json
-{
-  "is_enabled": true
-}
-```
-
-**レスポンス（200 OK）**
-```json
-{
-  "data": {
-    "organization_id": 3,
-    "is_enabled": true,
-    "backfill_count": 5
-  }
-}
-```
-
-> `backfill_count`: 初回 ON 時に遡り同期したスケジュール件数。既に同期済みまたは OFF 切替時は 0
-
-エラーレスポンスはチーム版（`PUT /me/teams/{id}/calendar-sync`）と同様。
+> Google Calendar 連携 API の仕様（`/me/google-calendar/*` / `/me/calendar-sync-settings` / `/me/teams/{id}/calendar-sync` / `/me/organizations/{id}/calendar-sync`）は `F08_external_integration.md` Section 4 を参照。
 
 ---
 
@@ -1921,40 +1690,7 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 
 ---
 
-### Google カレンダー個人同期フロー
-
-```
-[連携開始]
-1. POST /api/v1/me/google-calendar/connect を受付
-2. Google OAuth 2.0 認可コードを Google Token Endpoint に送信
-3. アクセストークン・リフレッシュトークンを取得
-4. 両トークンを AES-256-GCM で暗号化して user_google_calendar_connections に UPSERT
-5. 200 OK を返す
-
-[同期有効化]
-1. PUT /api/v1/me/teams/{id}/calendar-sync または PUT /api/v1/me/organizations/{id}/calendar-sync
-   （is_enabled: true）を受付（以降のフローは両スコープ共通。scope_type が TEAM / ORGANIZATION で異なるのみ）
-2. user_google_calendar_connections.is_active = TRUE か確認（未連携は 422）
-3. user_calendar_sync_settings を UPSERT（is_enabled = true）
-4. バックフィル対象件数を事前に取得（@Async 開始前・同期処理とは別に実施）:
-   a. 当該チームの schedules（start_at >= NOW()、deleted_at IS NULL）を取得
-   b. user_schedule_google_events に未登録のスケジュールを抽出し、件数を backfill_count として保持
-5. 200 OK を返す（backfill_count を含む; バックフィル処理は @Async で非同期継続）
-6. @Async: 手順 4-b の未登録スケジュールを Google Calendar にイベント作成
-   → 成功したものを user_schedule_google_events に INSERT
-
-[スケジュール変更時の自動同期（ApplicationEvent 受信）]
-- SCHEDULE_CREATED  → 同期設定ユーザーの Google Calendar にイベント作成 → user_schedule_google_events INSERT
-- SCHEDULE_UPDATED  → user_schedule_google_events から google_event_id を取得 → Google Calendar API で UPDATE
-- SCHEDULE_CANCELLED / SCHEDULE_DELETED
-                   → user_schedule_google_events から google_event_id を取得 → Google Calendar API でイベント削除
-                   → user_schedule_google_events からレコードを DELETE
-
-[トークンリフレッシュ]
-- API 呼び出し前に token_expires_at を確認
-- 期限切れの場合: Google Token Endpoint にリフレッシュトークンで再取得
-- リフレッシュ失敗時: is_active = FALSE に設定し、ユーザーに再連携通知を送信
-```
+> Google カレンダー個人同期フローは `F08_external_integration.md` Section 5 を参照。
 
 ---
 
@@ -2025,11 +1761,8 @@ V3.009__create_event_surveys_table.sql
 V3.010__create_event_survey_responses_table.sql
 V3.011__create_schedule_attendance_reminders_table.sql
 V3.012__create_schedule_cross_refs_table.sql
-V3.013__create_user_google_calendar_connections_table.sql
-V3.014__create_user_calendar_sync_settings_table.sql
-V3.015__create_user_schedule_google_events_table.sql
+-- Google Calendar 連携テーブルのマイグレーション（V3.013〜V3.015・V3.017）は F08_external_integration.md Section 6 を参照
 V3.016__add_user_id_to_schedules.sql                    -- schedules.user_id カラム追加・INDEX・CHECK 制約（F05_schedule_personal.md と共有）
-V3.017__add_personal_sync_to_calendar_connections.sql   -- user_google_calendar_connections.personal_sync_enabled カラム追加
 
 -- Phase 4+（本テーブルが必要になったタイミングで実行）
 V4.001__create_member_attendance_stats_table.sql
@@ -2042,10 +1775,8 @@ V4.001__create_member_attendance_stats_table.sql
 - V3.010 は V3.009（event_surveys）および V1.005（users）完了後
 - V3.011 は V3.007（schedules）完了後
 - V3.012 は V3.007（schedules）完了後
-- V3.013 は V1.005（users）完了後
-- V3.014 は V1.005（users）完了後
-- V3.015 は V1.005（users）および V3.007（schedules）完了後
-- V3.017 は V3.013（user_google_calendar_connections）完了後
+- V3.016 は V3.007（schedules）および V1.005（users）完了後（F05_schedule_personal.md と共有）
+- Google Calendar 連携マイグレーション（V3.013〜V3.015・V3.017）の依存関係は F08_external_integration.md Section 6 を参照
 
 ---
 
@@ -2059,7 +1790,6 @@ V4.001__create_member_attendance_stats_table.sql
 - [x] 大規模チーム（1000人規模）への一括 `schedule_attendances` INSERT 対策を確定: @Async 非同期化・500件チャンク分割バルク INSERT・`schedules.attendance_status ENUM('READY','GENERATING')` による生成状態管理（Section 3・Section 5・Section 6 参照）
 - [x] `min_view_role = 'ANYONE'` 設定時の未ログインアクセスを確定: 未ログインユーザーを GUEST 相当として扱う Optional Authentication パターン。専用 URL・`public_token` なし。一覧は ANYONE スケジュールのみ返し、詳細は ANYONE 以外なら 401。返すフィールドは GUEST ロールと同等に制限（Section 6 参照）
 - [ ] クロスチーム招待時、招待先チームが非公開の場合でも招待を送れるかを確定する（招待送信時のプライバシー設計）
-- [ ] Google Calendar 同期エラー時の最大リトライ回数・最終失敗時のユーザー通知方法を確定する
 - [ ] 組織スケジュールの出欠確認: チームに所属しない組織直接メンバーへの出欠通知フローを確定する
 - [ ] クロスチーム招待承認後、招待元が内容（日時・場所）を変更した場合の招待先への通知仕様を確定する
 - [ ] `PATCH /teams/{id}/schedules/{scheduleId}` でアンケート設問（surveys）を変更できるかを確定する（変更できる場合、既存の `event_survey_responses` の扱いを定義する）
@@ -2073,6 +1803,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-01 | Google Calendar 連携を F08_external_integration.md へ分離: テーブル定義（user_google_calendar_connections / user_calendar_sync_settings / user_schedule_google_events）・API 仕様 6本・ビジネスロジック（Google カレンダー個人同期フロー）・Flyway V3.013〜V3.015・V3.017 を移管。本ドキュメントには F08 への参照のみ残す |
 | 2026-03-01 | 個人スケジュール統合: `GET /api/v1/my/calendar` に個人スケジュールを追加（`scope_type = "PERSONAL"`・`scope_id = null`・`scope_name = "個人"`）。`user_google_calendar_connections` に `personal_sync_enabled BOOLEAN DEFAULT FALSE` を追加（個人スケジュールの Google 同期設定；`user_calendar_sync_settings` への scope_type='PERSONAL' 追加は不採用）。Flyway V3.017 追加 |
 | 2026-03-01 | ドキュメント分割: F05_schedule_attendance.md を F05_schedule_shared.md にリネーム（組織・チームスコープ専用）。個人スケジュール機能を F05_schedule_personal.md として分離。schedules テーブルに user_id カラム追加（三者XOR CHECK制約・INDEX idx_sch_user_start）。Flyway V3.016 追加 |
 | 2026-03-01 | 未ログインアクセスポリシー確定: `min_view_role = 'ANYONE'` 設定時の未ログインユーザーを GUEST 相当として扱う Optional Authentication パターンに決定。`public_token` カラム・専用 URL は不採用（通常エンドポイントのフィルタリングで保護）。Section 2 スコープ表に「GUEST / 未ログイン」を明記。Section 6 セキュリティ考慮事項に未ログインアクセスポリシー・返却フィールドの制限・401/403 使い分けを追記。未解決事項を解決済みに更新 |

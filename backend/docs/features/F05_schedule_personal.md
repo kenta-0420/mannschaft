@@ -3,7 +3,7 @@
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 3
 > **最終更新**: 2026-03-01
-> **関連ドキュメント**: 組織・チームスケジュール → `F05_schedule_shared.md` / 外部連携 → `F08_external_integration.md`（予定）
+> **関連ドキュメント**: 組織・チームスケジュール → `F05_schedule_shared.md` / 外部連携 → `F08_external_integration.md`
 
 ---
 
