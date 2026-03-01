@@ -84,6 +84,7 @@
 INDEX idx_sch_team_start (team_id, start_at)            -- チーム別カレンダー取得用
 INDEX idx_sch_org_start (organization_id, start_at)     -- 組織別カレンダー取得用
 INDEX idx_sch_parent (parent_schedule_id)               -- 繰り返し子スケジュール取得用
+UNIQUE KEY uq_sch_parent_start (parent_schedule_id, start_at)  -- 繰り返し展開の重複防止（parent_schedule_id = NULL 行は制約対象外）
 INDEX idx_sch_google_calendar (google_calendar_event_id)
 ```
 
@@ -1936,16 +1937,23 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 
 ### 繰り返しスケジュール自動展開バッチ
 
-`end_type = NEVER` または遠い将来の `end_date` を持つ繰り返しスケジュールは、初回作成時には最大12ヶ月分のみ展開する。バッチが定期実行（例: 毎週月曜 AM2:00）され、残り30日以内に展開済み子スケジュールが尽きる親スケジュールを検出し、次の12ヶ月分を追加展開する。
+`end_type = NEVER` または遠い将来の `end_date` を持つ繰り返しスケジュールは、初回作成時には最大12ヶ月分のみ展開する。バッチが**毎日 JST 03:30** に定期実行され、全アクティブな親スケジュールを対象に「今日〜12ヶ月先」の範囲で不足している子スケジュールを補完する（Idempotent: すでに存在する子はスキップ）。
+
+> **実行時刻の根拠**: ユーザーのアクティビティが最小となる深夜帯であり、仮に失敗しても翌朝の業務開始前に再実行のチャンスがある。
 
 ```
-バッチフロー:
+バッチフロー（毎日 JST 03:30 実行）:
 1. parent_schedule_id = NULL かつ recurrence_rule IS NOT NULL かつ deleted_at IS NULL かつ status = 'SCHEDULED' の全スケジュールを取得
-2. 各親スケジュールについて: 最後の子スケジュール（`deleted_at IS NULL`）の start_at から30日以内になっているか確認
-3. 条件を満たす親スケジュールの子を追加展開（次の12ヶ月分）
-3a. attendance_required = TRUE の場合: 新しい子スケジュールに対して単発フロー step 8 を適用（min_response_role 以上のロールを持つメンバーに schedule_attendances を一括 INSERT）
-4. 新しい子スケジュールの Google カレンダー同期（同期設定ユーザーに対して）
-5. audit_logs に SCHEDULE_RECURRENCE_EXPANDED を記録
+2. 各親スケジュールについて: recurrence_rule から「今日〜今日+12ヶ月」の範囲に発生する日付一覧を算出
+   （end_date / count 上限に達する場合はその時点まで）
+3. 算出した各発生日について、すでに子スケジュール（deleted_at IS NULL）が存在するか UNIQUE KEY (parent_schedule_id, start_at) で確認:
+   - 存在する（論理削除されていない） → スキップ（Idempotent）
+   - 存在しない → schedules に INSERT（parent_schedule_id = 親 ID、recurrence_rule = NULL）
+4. 新規 INSERT した子スケジュールについて:
+   4a. attendance_required = TRUE の場合: 単発フロー step 8 を適用（min_response_role 以上のロールを持つメンバーに schedule_attendances を一括 INSERT）
+   4b. Google カレンダー同期（同期設定ユーザーに対して @Async で実施）
+5. 展開が発生した場合のみ audit_logs に SCHEDULE_RECURRENCE_EXPANDED を記録
+   metadata: {"expanded_count": N}
 ```
 
 ---
@@ -2001,7 +2009,7 @@ V4.001__create_member_attendance_stats_table.sql
 ## 8. 未解決事項
 
 - [x] 大規模チームでの出席率集計パフォーマンス: Phase 4+ で `member_attendance_stats` 月次スナップショットテーブルを導入（Section 3 参照）。Phase 3 はオンザフライ計算で運用
-- [ ] 繰り返しスケジュール自動展開バッチのスケジュール（毎週 or 毎日・実行時刻）を確定する
+- [x] 繰り返しスケジュール自動展開バッチのスケジュールを確定: 毎日 JST 03:30 実行。ロジックを「今日〜12ヶ月先の不足分を毎日補完（Idempotent）」に変更。schedules テーブルに UNIQUE KEY (parent_schedule_id, start_at) 追加（Section 3・Section 5 参照）
 - [ ] Google Calendar 管理者レベル共有連携（`google_calendar_event_id` カラムの用途）は F09 で別途設計し、個人同期との役割分担を確定する
 - [ ] `event_type` の選択肢はテンプレート（SPORTS / SCHOOL 等）に応じて表示切替するかを確定する（テンプレート管理 feature doc で検討）
 - [ ] 出欠集計（attending / absent / undecided の件数）を MEMBER にも件数のみ開示するかを確定する（現設計は ADMIN のみ）
@@ -2022,6 +2030,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-01 | バッチ設計確定: 繰り返しスケジュール自動展開バッチを毎日 JST 03:30 実行に確定。ロジックを「残り30日以内トリガー＋12ヶ月追加」から「毎日・今日〜12ヶ月先の不足分を補完（Idempotent）」に変更。schedules テーブルに UNIQUE KEY uq_sch_parent_start (parent_schedule_id, start_at) を追加し DB レベルで重複展開を防止。未解決事項を解決済みに更新 |
 | 2026-03-01 | キャッシュ設計追加: `member_attendance_stats`（月次スナップショット）を Section 3 に追加。提案設計から以下を修正 → ① `organization_id` 単独キーを `(user_id, scope_type, scope_id, year_month)` 複合主キーに変更（チーム・組織両スコープ対応）、② `count_partial` 追加（PARTIAL ステータス対応）、③ 任意期間クエリ対応のため累積値から月次スナップショット形式に変更、④ `treat_undecided_as_absent_after_deadline` は生値保存・API 側動的適用に修正（フラグ変更時の大量再計算を回避）。Flyway V4.001 追加。未解決事項①を解決済みに更新 |
 | 2026-03-01 | 未解決事項解決②: `treat_undecided_as_absent_after_deadline` フラグ（teams / organizations テーブル、BOOLEAN DEFAULT FALSE）を追加。期限経過後の UNDECIDED を ABSENT として扱う計算モードを定義（PARTIAL を含む既存定義と整合）。`GET /api/v1/schedules/{id}/stats`（出欠サマリー・フラグ適用済み）と `POST /api/v1/schedules/{id}/remind`（UNDECIDED メンバーへの即時手動通知）を追加。自動リマインダー（schedule_attendance_reminders）との役割分担を明記 |
 | 2026-03-01 | 未解決事項解決①: 出席率の集計期間を任意指定可能（最長12ヶ月、デフォルト3ヶ月）に確定。組織ダッシュボード用 `GET /organizations/{id}/attendance-stats`（チーム別集計・個人情報なし）を追加。全3エンドポイントに最長12ヶ月制約（超過時 400）を追記。ビジネスロジックに集計期間の制約セクションを追加 |
