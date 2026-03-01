@@ -62,8 +62,11 @@ Google→アプリ の双方向同期（Google Calendar Webhook Push Notificatio
 | `access_token` | TEXT | NO | — | Google Calendar API アクセストークン（AES-256-GCM 暗号化）|
 | `refresh_token` | TEXT | NO | — | リフレッシュトークン（AES-256-GCM 暗号化）|
 | `token_expires_at` | DATETIME | NO | — | アクセストークンの有効期限 |
-| `is_active` | BOOLEAN | NO | TRUE | 連携が有効かどうか（トークン失効・手動解除で FALSE）|
+| `is_active` | BOOLEAN | NO | TRUE | 連携が有効かどうか（AUTH_ERROR または手動解除で FALSE）|
 | `personal_sync_enabled` | BOOLEAN | NO | FALSE | 個人スケジュール（`schedules.user_id IS NOT NULL`）を Google カレンダーへ同期するか（アプリ→Google 一方向）。`is_active = FALSE` の場合は同期されない |
+| `last_sync_error_type` | ENUM('AUTH_ERROR', 'QUOTA_EXCEEDED', 'NETWORK_ERROR', 'SERVER_ERROR') | YES | NULL | 直近の同期エラー種別。同期成功時に NULL にリセット |
+| `last_sync_error_message` | TEXT | YES | NULL | ユーザー向けエラー詳細（設定画面の Google 連携セクションに表示）。同期成功時に NULL にリセット |
+| `last_sync_error_at` | DATETIME | YES | NULL | 最後のエラー発生日時（全リトライ失敗後に記録）。同期成功時に NULL にリセット |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 
@@ -182,6 +185,7 @@ users (1) ──── (1) user_ical_tokens
 | GET | `/api/v1/me/calendar-sync-settings` | 必要 | チーム・組織別の同期設定一覧 |
 | PUT | `/api/v1/me/teams/{id}/calendar-sync` | 必要 | チームの Google カレンダー同期 ON/OFF |
 | PUT | `/api/v1/me/organizations/{id}/calendar-sync` | 必要 | 組織の Google カレンダー同期 ON/OFF |
+| POST | `/api/v1/me/google-calendar/sync` | 必要 | 手動再同期（未同期・失敗スケジュールを再プッシュ）|
 
 #### iCal 購読 URL
 | メソッド | パス | 認証 | 説明 |
@@ -342,6 +346,29 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 
 ---
 
+#### `POST /api/v1/me/google-calendar/sync`
+
+同期エラーで失敗したスケジュールを手動で再同期する。`is_active = TRUE` の場合のみ実行可能。
+
+**レスポンス（202 Accepted）**
+```json
+{
+  "data": {
+    "backfill_count": 3,
+    "message": "同期を開始しました。完了まで数分かかる場合があります。"
+  }
+}
+```
+
+> - `backfill_count`: 未同期スケジュール（`user_schedule_google_events` に未登録）のスケジュール数（@Async 開始前に事前算出）
+> - 同期処理は @Async で非同期実行。成功後に `last_sync_error_*` をクリアする
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 401 | 未認証 |
+| 422 | `is_active = FALSE`（AUTH_ERROR による連携解除済み。`/me/google-calendar/connect` で再連携が必要）|
+
 ---
 
 ### iCal 購読 URL API 仕様
@@ -497,6 +524,49 @@ END:VCALENDAR
 
 ---
 
+### Google Calendar 同期エラーハンドリングフロー
+
+```
+[エラー種別の判定と即時対応]
+- 401 / 403（認証エラー）    → AUTH_ERROR: リトライなし。即座に失敗処理へ進む
+- 429（クォータ超過）        → QUOTA_EXCEEDED: リトライ対象
+- 5xx（Google サーバーエラー）→ SERVER_ERROR: リトライ対象
+- タイムアウト・接続失敗      → NETWORK_ERROR: リトライ対象
+
+[リトライ戦略（QUOTA_EXCEEDED / SERVER_ERROR / NETWORK_ERROR の場合）]
+- Spring @Retryable を使用:
+    maxAttempts = 4（初回1回 + 再試行3回）
+    backoff = @Backoff(delay = 60_000, multiplier = 10.0, maxDelay = 3_600_000)
+    → 試行タイミング: 即時 → 1分後 → 10分後 → 1時間後
+- ※ @Async と @Retryable の同一メソッド適用は Spring AOP の制約により不可。
+      リトライ対象の同期ロジックは別サービスクラスに切り出して @Retryable を付与する
+
+[全リトライ失敗時 / AUTH_ERROR 時（@Recover または catch で処理）]
+1. user_google_calendar_connections を UPDATE:
+   - last_sync_error_type = '{エラー種別}'
+   - last_sync_error_message = '{ユーザー向けメッセージ}'（例: "Google カレンダーとの同期に失敗しました。設定画面から再同期を試みてください"）
+   - last_sync_error_at = NOW()
+   - AUTH_ERROR の場合のみ: is_active = FALSE
+2. アプリ内通知を送信（通知システムの設計は別途 Feature Doc で定義）
+   - 通知内容: "{チーム名} のスケジュールが Google カレンダーに同期できませんでした"
+   - AUTH_ERROR の場合: "Google カレンダーの連携が切れました。再連携してください"
+
+[同期成功時]
+- last_sync_error_type / last_sync_error_message / last_sync_error_at を NULL にリセット
+  （設定画面のエラー表示をクリアするため）
+
+[手動再同期（POST /api/v1/me/google-calendar/sync）]
+1. is_active = FALSE なら 422 を返す（AUTH_ERROR のため再連携が先決）
+2. 未同期スケジュールを検出（backfill ロジックと同一: schedules と user_schedule_google_events を比較）
+3. backfill_count を返す（202 Accepted）
+4. @Async で未同期スケジュールを Google Calendar に再プッシュ
+   - リトライ戦略（上記と同様）で実行
+   - 成功後: last_sync_error_* を NULL にリセット
+   - 失敗後: last_sync_error_* を更新
+```
+
+---
+
 ### iCal ファイル生成フロー
 
 ```
@@ -538,6 +608,11 @@ V3.014__create_user_calendar_sync_settings_table.sql
 V3.015__create_user_schedule_google_events_table.sql
 V3.017__add_personal_sync_to_calendar_connections.sql   -- user_google_calendar_connections.personal_sync_enabled カラム追加
 V3.018__create_user_ical_tokens_table.sql
+V3.019__add_sync_error_columns_to_calendar_connections.sql
+  -- user_google_calendar_connections に追加:
+  --   last_sync_error_type ENUM('AUTH_ERROR','QUOTA_EXCEEDED','NETWORK_ERROR','SERVER_ERROR') NULL
+  --   last_sync_error_message TEXT NULL
+  --   last_sync_error_at DATETIME NULL
 ```
 
 **マイグレーション上の注意点**
@@ -546,12 +621,13 @@ V3.018__create_user_ical_tokens_table.sql
 - V3.015 は V1.005（users）および V3.007（schedules）完了後
 - V3.017 は V3.013（user_google_calendar_connections）完了後
 - V3.018 は V1.005（users）完了後
+- V3.019 は V3.013（user_google_calendar_connections）完了後
 
 ---
 
 ## 7. 未解決事項
 
-- [ ] Google Calendar 同期エラー時の最大リトライ回数・最終失敗時のユーザー通知方法を確定する（現状: `user_schedule_google_events` 備考では「最大3回再試行」と仮定定義）
+- [x] Google Calendar 同期エラー時の最大リトライ回数・最終失敗時のユーザー通知方法を確定する: リトライ3回（指数バックオフ 1分→10分→1時間）。AUTH_ERROR のみ即時停止・`is_active = FALSE`。全失敗時に `user_google_calendar_connections.last_sync_error_*` を記録してアプリ内通知。`POST /me/google-calendar/sync` で手動再同期可能（Section 4・Section 5・Section 6 参照）
 - [ ] Google Calendar 管理者レベル共有連携（`schedules.google_calendar_event_id` カラムの用途）は F09 で別途設計し、個人同期との役割分担を確定する
 - [ ] **[iCal]** iCal 配信期間の範囲を確定する（現状: 過去1ヶ月〜未来12ヶ月と仮定定義。外部カレンダーは初回購読時に全期間を取得するため、過去の遡及範囲が多いと生成コストが上がる）
 - [ ] **[iCal]** レート制限の実装方法を確定する（外部カレンダーアプリの過剰ポーリング対策。`last_polled_at` による DB チェック vs Redis カウンター vs Nginx 設定）
@@ -564,5 +640,6 @@ V3.018__create_user_ical_tokens_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-01 | Google Calendar 同期エラーハンドリングを確定: リトライ3回（指数バックオフ 1min→10min→1hr）・AUTH_ERROR は即時停止・`user_google_calendar_connections` にエラー追跡カラム 3 つ追加（Flyway V3.019）・手動再同期 `POST /me/google-calendar/sync` を追加・Spring @Retryable + @Recover の実装方針を明記 |
 | 2026-03-01 | iCal 購読 URL 機能を追加: `user_ical_tokens` テーブル・トークン管理 API 3本・iCal ファイル配信エンドポイント（`GET /ical/{token}.ics`）・iCal 生成フロー・Flyway V3.018 を追加。配信スコープは横断ビュー（個人+全チーム/組織）の1URL固定、visibility はユーザーロールの動的評価 |
 | 2026-03-01 | 初版作成: F05_schedule_shared.md から Google Calendar 個人同期関連を分離。テーブル定義・API 仕様・ビジネスロジック・Flyway マイグレーションを移管 |
