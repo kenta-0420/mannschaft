@@ -68,6 +68,7 @@
 | `min_response_role` | ENUM('SUPPORTER+', 'MEMBER+', 'ADMIN_ONLY') | NO | 'MEMBER+' | 出欠回答可能な最小権限。省略時はチーム/組織の `default_schedule_min_response_role` 設定を継承し、設定がない場合は `MEMBER+`。`attendance_required = TRUE` 時、このロール以上のメンバーのみ `schedule_attendances` に登録される |
 | `status` | ENUM('SCHEDULED', 'CANCELLED', 'COMPLETED') | NO | 'SCHEDULED' | 開催状態 |
 | `attendance_required` | BOOLEAN | NO | FALSE | 出欠確認が必要か |
+| `attendance_status` | ENUM('READY', 'GENERATING') | NO | 'READY' | 出欠レコードの生成状態。`attendance_required = TRUE` かつ大規模チームの場合、@Async 処理中は GENERATING になる。`attendance_required = FALSE` の場合は常に READY |
 | `attendance_deadline` | DATETIME | YES | NULL | 出欠回答期限（NULL = 無期限）|
 | `comment_option` | ENUM('HIDDEN', 'OPTIONAL', 'REQUIRED') | NO | 'OPTIONAL' | 補足コメント欄の表示設定（`attendance_required = FALSE` の場合は無視）|
 | `parent_schedule_id` | BIGINT UNSIGNED | YES | NULL | 繰り返しスケジュールの親 ID（自己参照 FK; ON DELETE RESTRICT; NULL = 単発または繰り返しの親自身）|
@@ -630,6 +631,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
     "min_response_role": "MEMBER+",
     "status": "SCHEDULED",
     "attendance_required": true,
+    "attendance_status": "READY",
     "attendance_deadline": "2026-04-03T23:59:59",
     "comment_option": "OPTIONAL",
     "parent_schedule_id": null,
@@ -672,6 +674,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 }
 ```
 
+> - `attendance_status`: `GENERATING` の場合、フロントエンドは「出欠表を生成中...」を表示し、定期ポーリング（例: 3秒間隔で `GET /schedules/{id}` を再取得）で READY への遷移を確認する。`attendance_required = FALSE` の場合は常に `READY`
 > - `attendance_summary`: 当該スケジュールの `min_response_role` 以上のロールを持つリクエスト者のみ返す（min_response_role 未満の場合は null）。内容は件数集計のみで個人情報は含まない
 > - `reminders`: スケジュール作成者 / ADMIN のみ返す
 > - `cross_invitations`: このスケジュールから送信した招待一覧（ADMIN のみ返す）。受信招待は `GET /teams/{id}/schedule-invitations` で取得
@@ -1600,13 +1603,16 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
    a. 各 remind_at が attendance_deadline（または start_at）より前か確認 → 違反は 400
    b. schedule_attendance_reminders を全件 INSERT
 8. attendance_required = TRUE の場合:
-   a. スコープに応じて、min_response_role 以上のロールを持つ対象ユーザーを取得:
-      - チームスコープ: 当該チームのメンバーのうち min_response_role 以上のロールを持つ全員
-      - 組織スコープ: 組織に所属するメンバーのうち min_response_role 以上のロールを持つ全員
-        （全所属チームのメンバー + 組織直接所属メンバー、重複は除外）
-      ※ ロール判定基準: SUPPORTER+ ≧ SUPPORTER, MEMBER+ ≧ MEMBER, ADMIN_ONLY ≧ DEPUTY_ADMIN
-   b. schedule_attendances を (status='UNDECIDED') で一括 INSERT
-   c. プッシュ通知「出欠確認が届きました」を送信（通知機能実装後）
+   a. schedules.attendance_status = 'GENERATING' に UPDATE
+   b. 以下を @Async で実行（メインのレスポンスをブロックしない）:
+      i.  スコープに応じて、min_response_role 以上のロールを持つ対象ユーザーを取得:
+          - チームスコープ: 当該チームのメンバーのうち min_response_role 以上のロールを持つ全員
+          - 組織スコープ: 組織に所属するメンバーのうち min_response_role 以上のロールを持つ全員
+            （全所属チームのメンバー + 組織直接所属メンバー、重複は除外）
+          ※ ロール判定基準: SUPPORTER+ ≧ SUPPORTER, MEMBER+ ≧ MEMBER, ADMIN_ONLY ≧ DEPUTY_ADMIN
+      ii. schedule_attendances を 500件単位のチャンクに分割してバルク INSERT（status='UNDECIDED'）
+      iii. 全チャンク完了後: schedules.attendance_status = 'READY' に UPDATE
+      iv. プッシュ通知「出欠確認が届きました」を送信（通知機能実装後）
 9. Google カレンダー個人同期（@Async）:
    a. このチームの user_calendar_sync_settings.is_enabled = TRUE かつ
       user_google_calendar_connections.is_active = TRUE のユーザーを取得
@@ -1970,6 +1976,7 @@ Google Calendar 連携を解除する。Google 側での認可取り消し（rev
 - **is_exception 孤立データ防止**: `THIS_AND_FOLLOWING` / `ALL` の一括削除・更新時は `is_exception = TRUE` の例外スケジュールも対象に含め、孤立データ（削除済み親の子が残存する状態）を防ぐ
 - **親子スコープの非継承**: `min_view_role` の評価はスケジュールの所有エンティティへの直接所属ロールのみを参照する。親グループ/組織のロールは子グループのスケジュールに継承しない。`visibility = 'ORGANIZATION'` の場合のみ親組織への直接所属ロールで評価する（階層は1段のみ適用し、さらに上の祖先グループへは伝播しない）
 - **繰り返し展開の上限**: 一括 INSERT 200件の制限でリソース枯渇を防ぐ。展開は非同期（Spring `@Async`）で実行し、作成 API のレスポンスをブロックしない
+- **大規模チーム向け出欠レコード生成**: `schedule_attendances` の一括 INSERT を `@Async` で非同期化し、500件単位のチャンクに分割してバルク INSERT する。処理中は `schedules.attendance_status = 'GENERATING'` で状態を管理し、フロントエンドが生成中表示を制御できるようにする
 - **スコープ越境防止**: team_id / organization_id がリクエスト者の所属スコープと一致するかを全エンドポイントで確認する
 - **Google Calendar OAuth トークン管理**: `access_token` / `refresh_token` は AES-256-GCM で暗号化して保存。平文での DB 保存・ログ出力は禁止。Google OAuth スコープは `https://www.googleapis.com/auth/calendar.events` のみ要求（最小権限）
 - **クロスチーム招待のスコープ確認**: 招待元・招待先いずれも操作者が当該チーム / 組織の ADMIN であることを確認する。招待承認時も招待先チームへの所属確認を必ず実施する
@@ -2013,7 +2020,7 @@ V4.001__create_member_attendance_stats_table.sql
 - [ ] Google Calendar 管理者レベル共有連携（`google_calendar_event_id` カラムの用途）は F09 で別途設計し、個人同期との役割分担を確定する
 - [ ] `event_type` の選択肢はテンプレート（SPORTS / SCHOOL 等）に応じて表示切替するかを確定する（テンプレート管理 feature doc で検討）
 - [x] 出欠集計の開示範囲を確定: 当該スケジュールの `min_response_role` 以上のロールへ件数のみ開示（`attendance_summary`・`GET /schedules/{id}/stats`）。個人名付き一覧（`GET /attendances`）・ダッシュボード統計（`GET /attendance-stats`）は引き続き ADMIN のみ
-- [ ] 大規模チーム（1000人規模）への一括 `schedule_attendances` INSERT 時のパフォーマンス対策（バッチ INSERT 分割・バックグラウンド処理化等）
+- [x] 大規模チーム（1000人規模）への一括 `schedule_attendances` INSERT 対策を確定: @Async 非同期化・500件チャンク分割バルク INSERT・`schedules.attendance_status ENUM('READY','GENERATING')` による生成状態管理（Section 3・Section 5・Section 6 参照）
 - [ ] `min_view_role = 'ANYONE'` 設定時の未ログインユーザーへの公開挙動を確定する（チームの `visibility` 設定との連動ルール・公開 URL の設計等）
 - [ ] クロスチーム招待時、招待先チームが非公開の場合でも招待を送れるかを確定する（招待送信時のプライバシー設計）
 - [ ] Google Calendar 同期エラー時の最大リトライ回数・最終失敗時のユーザー通知方法を確定する
@@ -2030,6 +2037,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-01 | 大規模チーム向け出欠データ生成最適化: `schedules` テーブルに `attendance_status ENUM('READY','GENERATING')` カラムを追加。単発フロー step 8（schedule_attendances 一括 INSERT）を @Async 化し 500件チャンク分割バルク INSERT に変更。スケジュール詳細レスポンスに `attendance_status` フィールドを追加（GENERATING 時フロントエンドが 3秒ポーリングで完了を検知）。セキュリティ考慮事項に大規模 INSERT 最適化を追記。未解決事項を解決済みに更新 |
 | 2026-03-01 | 出欠集計サマリーの開示範囲変更: `attendance_summary`・`GET /schedules/{id}/stats` の参照権限を「ADMIN のみ」から「当該スケジュールの min_response_role 以上のロール」に変更。個人名付き一覧（attendances）・ダッシュボード統計（attendance-stats）は引き続き ADMIN のみ。Section 2 スコープ表・API 一覧・スケジュール一覧/詳細レスポンス注記・stats エンドポイント説明・セキュリティ考慮事項・未解決事項を一括更新 |
 | 2026-03-01 | バッチ設計確定: 繰り返しスケジュール自動展開バッチを毎日 JST 03:30 実行に確定。ロジックを「残り30日以内トリガー＋12ヶ月追加」から「毎日・今日〜12ヶ月先の不足分を補完（Idempotent）」に変更。schedules テーブルに UNIQUE KEY uq_sch_parent_start (parent_schedule_id, start_at) を追加し DB レベルで重複展開を防止。未解決事項を解決済みに更新 |
 | 2026-03-01 | キャッシュ設計追加: `member_attendance_stats`（月次スナップショット）を Section 3 に追加。提案設計から以下を修正 → ① `organization_id` 単独キーを `(user_id, scope_type, scope_id, year_month)` 複合主キーに変更（チーム・組織両スコープ対応）、② `count_partial` 追加（PARTIAL ステータス対応）、③ 任意期間クエリ対応のため累積値から月次スナップショット形式に変更、④ `treat_undecided_as_absent_after_deadline` は生値保存・API 側動的適用に修正（フラグ変更時の大量再計算を回避）。Flyway V4.001 追加。未解決事項①を解決済みに更新 |
