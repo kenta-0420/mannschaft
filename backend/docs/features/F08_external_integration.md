@@ -477,14 +477,25 @@ END:VCALENDAR
 - **配信対象**: `GET /my/calendar` と同じ横断ビュー（個人 + 参加中の全チーム/組織スケジュール）
 - **visibility フィルタ**: ユーザーの現在ロールを動的に評価し `min_view_role` 条件を満たすスケジュールのみ配信
 - **件数上限**: 最大 500件。超過した場合は未来のスケジュールを優先して返す（詳細は Section 5 参照）
-- **キャッシュ**: Redis に TTL 15分でキャッシュ（`ical:{token}` をキーとして iCal 文字列を保存）。キャッシュヒット時は DB クエリを省略して即時返却。TTL 自然失効で最大15分の更新ラグが発生する（許容範囲と判断）
+- **キャッシュ**: Redis TTL 15分（`ical:{token}` に iCal 文字列 + ETag を保存）。キャッシュヒット時は DB クエリ省略。TTL 自然失効で最大15分の更新ラグが発生する（許容範囲と判断）
 - **将来の拡張**: 過去遡及範囲は Phase 4+ の「プロ設定」でユーザー選択式への拡張を検討。初期リリースでは固定
+
+**レスポンスヘッダー（通常時）**
+```
+Content-Type: text/calendar; charset=utf-8
+ETag: "{iCal 文字列の SHA256 ハッシュ (hex 64文字)}"
+Last-Modified: "{対象スケジュール群の最大 updated_at (RFC 7231 形式)}"
+```
+
+> - クライアントが `If-None-Match: "{ETag}"` を送信し一致した場合 → **304 Not Modified**（ボディなし）
+> - Apple Calendar・Google Calendar・Outlook はいずれも ETag / Last-Modified を尊重し、304 受信時はデータ転送を省略する
 
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
+| 304 | クライアントのキャッシュが最新（`If-None-Match` が現在の ETag と一致）|
 | 404 | トークンが存在しない / `is_active = FALSE` |
-| 429 | レート制限超過（未解決事項参照）|
+| 429 | レート制限超過（`Retry-After: 300` ヘッダーを返す）|
 
 ---
 
@@ -576,11 +587,16 @@ END:VCALENDAR
 [GET /ical/{token}.ics 受付時]
 1. {token} をキーに user_ical_tokens を検索
 2. レコードが存在しない または is_active = FALSE → 404 を返す
-3. レート制限チェック（last_polled_at との差分。詳細は未解決事項参照）
-4. Redis キャッシュ確認（key: `ical:{token}`、TTL: 15分）
-   - HIT: キャッシュ済み iCal 文字列を即時返却 → step 10 へ
+3. Redis レート制限チェック（key: `ical_ratelimit:{token}`、TTL: 5分）
+   - key が存在する → 429 を返す（`Retry-After: 300` ヘッダー付き）
+   - key が存在しない → SET（TTL 5分）して step 4 へ進む
+   ※ Nginx `limit_req_zone` による IP 単位のバースト保護（後述）と二層構成
+4. Redis キャッシュ確認（key: `ical:{token}`）→ {icaString, etag} を取得
+   - HIT:
+     a. `If-None-Match` ヘッダーが存在し、stored etag と一致 → 304 Not Modified を返す
+     b. 一致しない または `If-None-Match` なし → cached iCal 文字列を返す（step 11 へ）
    - MISS: step 5 へ進む
-5. user_ical_tokens.last_polled_at を現在時刻に UPDATE
+5. user_ical_tokens.last_polled_at を現在時刻に UPDATE（キャッシュ MISS 時のみ DB 書込み）
 6. user_id からユーザーのロール情報を取得
 7. スケジュールを2段階クエリで取得（min_view_role フィルタを適用）:
    a. 未来スケジュール: start_at >= TODAY かつ start_at <= TODAY + 12ヶ月
@@ -593,12 +609,15 @@ END:VCALENDAR
    - SUMMARY: チーム/組織は "[{scope_name}] {title}"、個人は "{title}"
    - status = CANCELLED → STATUS:CANCELLED、それ以外 → STATUS:CONFIRMED
    - all_day = TRUE → DTSTART;VALUE=DATE:、FALSE → DTSTART;TZID=Asia/Tokyo:
-9. 生成した iCal 文字列を Redis にキャッシュ（key: `ical:{token}`、TTL: 15分）
-10. Content-Type: text/calendar; charset=utf-8 でレスポンスを返す
+9. ETag を計算: SHA256(iCal 文字列) → hex 64文字
+10. {icalString, etag} を Redis にキャッシュ（key: `ical:{token}`、TTL: 15分）
+    `If-None-Match` が新 etag と一致する場合 → 304 Not Modified を返す（稀だが考慮）
+11. ETag・Last-Modified ヘッダーを付与し、Content-Type: text/calendar; charset=utf-8 で返す
 
 [トークン再生成・削除時のキャッシュ処理]
-- POST /api/v1/me/ical/token/regenerate: 旧トークンの Redis キャッシュを明示的に削除（`DEL ical:{旧token}`）
-- DELETE /api/v1/me/ical/token: 同様に Redis キャッシュを削除
+- POST /api/v1/me/ical/token/regenerate:
+  旧トークンの Redis キャッシュを明示削除（`DEL ical:{旧token}`、`DEL ical_ratelimit:{旧token}`）
+- DELETE /api/v1/me/ical/token: 同様に両キーを削除
 
 [トークン生成（GET /api/v1/me/ical/token で未発行時）]
 1. SecureRandom で 32 バイトのランダム値を生成（hex エンコードで 64 文字）
@@ -610,6 +629,47 @@ END:VCALENDAR
 2. user_ical_tokens を UPDATE（token = 新トークン、last_polled_at = NULL、updated_at = 現在時刻）
 3. 旧トークンは即時無効化（UPDATE により参照不可）
 4. 新しい iCal URL をレスポンスとして返す
+```
+
+---
+
+### iCal レート制限・通信最適化
+
+```
+[レート制限の二層構成]
+
+層1 - Nginx（IP 単位のバースト保護）:
+  limit_req_zone $binary_remote_addr zone=ical:10m rate=30r/m;
+  → 1 IP あたり 30 リクエスト/分（同一 NAT IP の複数ユーザーを考慮した緩い上限）
+  → バースト攻撃・クローラーをアプリ到達前に遮断
+
+層2 - Redis（トークン単位の持続レート制限）:
+  key:   ical_ratelimit:{token}
+  TTL:   300秒（5分）
+  操作:  EXISTS → 429 の場合はここで返す / 存在しない場合は SET EX 300 して続行
+  → Apple Calendar（15分間隔）/ Google Calendar・Outlook（1時間以上）の標準ポーリングに対し
+     1回/5分は十分な余裕を持つ設定
+  → 同一トークンからの過剰ポーリング（バグ・手動リロード連打等）を個別に制御
+
+[ETag によるデータ転送最適化]
+  ETag 値: SHA256(iCal 文字列全体) → hex 64文字
+  保存先:  Redis（`ical:{token}` に iCal 文字列と etag をペアで保存）
+  動作:
+    - クライアントが `If-None-Match: "前回の ETag"` を送信
+    - サーバーがキャッシュから現在の etag を取得し比較
+    - 一致: 304 Not Modified（ボディなし）→ 転送量ゼロ
+    - 不一致 / ヘッダーなし: 全 iCal データを返す（ETag ヘッダー付き）
+  効果:
+    - スケジュールが更新されない限り、ポーリングごとのデータ転送量ゼロ
+    - Apple Calendar は ETag を正しく処理することを確認済み（標準動作）
+
+[標準的なカレンダーアプリとの対応表]
+  アプリ            | 標準ポーリング間隔 | レート制限（5分/回）| ETag 対応 |
+  ------------------|-------------------|---------------------|-----------|
+  Apple Calendar    | 15分              | ◎ 問題なし           | ○        |
+  Google Calendar   | 1〜24時間         | ◎ 問題なし           | ○        |
+  Outlook           | 1〜3時間          | ◎ 問題なし           | ○        |
+  Thunderbird       | 30分〜1時間       | ◎ 問題なし           | ○        |
 ```
 
 ---
@@ -644,8 +704,8 @@ V3.019__add_sync_error_columns_to_calendar_connections.sql
 - [x] Google Calendar 同期エラー時の最大リトライ回数・最終失敗時のユーザー通知方法を確定する: リトライ3回（指数バックオフ 1分→10分→1時間）。AUTH_ERROR のみ即時停止・`is_active = FALSE`。全失敗時に `user_google_calendar_connections.last_sync_error_*` を記録してアプリ内通知。`POST /me/google-calendar/sync` で手動再同期可能（Section 4・Section 5・Section 6 参照）
 - [ ] Google Calendar 管理者レベル共有連携（`schedules.google_calendar_event_id` カラムの用途）は F09 で別途設計し、個人同期との役割分担を確定する
 - [x] **[iCal]** iCal 配信期間の範囲を確定する: 過去2ヶ月〜未来12ヶ月・最大500件（未来優先の2段階クエリ）・Redis TTL 15分キャッシュ（Section 4・Section 5 参照）
-- [ ] **[iCal]** レート制限の実装方法を確定する（外部カレンダーアプリの過剰ポーリング対策。`last_polled_at` による DB チェック vs Redis カウンター vs Nginx 設定）
-- [ ] **[iCal]** ETag / If-None-Match による条件付きリクエスト対応を実装するか確定する（実装するとポーリング時のDB負荷を大幅に削減できる）
+- [x] **[iCal]** レート制限の実装方法を確定する: Nginx（IP 単位・30req/分）+ Redis（トークン単位・1req/5分、key: `ical_ratelimit:{token}` TTL 300秒）の二層構成。Apple/Google/Outlook の標準ポーリング間隔は全て許容範囲（Section 5 参照）
+- [x] **[iCal]** ETag / If-None-Match による条件付きリクエスト対応: SHA256(iCal 文字列) を ETag として Redis キャッシュと共に保存。ETag 一致時は 304 返却でデータ転送量ゼロ（Section 4・Section 5 参照）
 - [ ] **[iCal]** `webcal://` スキームの対応方法を確定する（`https://` → `webcal://` のリダイレクト対応 vs フロントエンドで URL を両方表示するだけ）
 
 ---
@@ -654,6 +714,7 @@ V3.019__add_sync_error_columns_to_calendar_connections.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-01 | iCal レート制限・通信最適化を確定: Nginx IP 単位（30req/分）+ Redis トークン単位（1req/5分・`ical_ratelimit:{token}` TTL 300秒）の二層レート制限。ETag = SHA256(iCal 文字列) を Redis キャッシュに併記し `If-None-Match` 一致時に 304 返却。`last_polled_at` 更新をキャッシュ MISS 時のみに限定してDB負荷削減。主要カレンダーアプリ4種との対応表を追記 |
 | 2026-03-01 | iCal 配信期間・パフォーマンス仕様を確定: 過去2ヶ月〜未来12ヶ月・最大500件（未来優先の2段階クエリでマージ）・Redis TTL 15分キャッシュ（`ical:{token}` キー）・トークン再生成/削除時の明示的キャッシュ削除・Phase 4+ 拡張（プロ設定）を明記 |
 | 2026-03-01 | Google Calendar 同期エラーハンドリングを確定: リトライ3回（指数バックオフ 1min→10min→1hr）・AUTH_ERROR は即時停止・`user_google_calendar_connections` にエラー追跡カラム 3 つ追加（Flyway V3.019）・手動再同期 `POST /me/google-calendar/sync` を追加・Spring @Retryable + @Recover の実装方針を明記 |
 | 2026-03-01 | iCal 購読 URL 機能を追加: `user_ical_tokens` テーブル・トークン管理 API 3本・iCal ファイル配信エンドポイント（`GET /ical/{token}.ics`）・iCal 生成フロー・Flyway V3.018 を追加。配信スコープは横断ビュー（個人+全チーム/組織）の1URL固定、visibility はユーザーロールの動的評価 |
