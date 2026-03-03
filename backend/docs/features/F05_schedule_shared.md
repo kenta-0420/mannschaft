@@ -1590,6 +1590,40 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 
 ---
 
+### `min_response_role` 変更時の `schedule_attendances` 更新フロー
+
+`PATCH /teams/{id}/schedules/{scheduleId}` で `min_response_role` が変更された場合、かつ `attendance_required = TRUE` の場合のみ適用する。
+
+```
+[ロール緩和時（対象拡大: 例 MEMBER+ → SUPPORTER+）]
+1. 新しい min_response_role の適用範囲に入るが、既存の schedule_attendances にレコードがない
+   ユーザーを特定する（既存 UNIQUE KEY: schedule_id + user_id でチェック）
+2. 対象ユーザーが存在する場合:
+   a. schedules.attendance_status = 'GENERATING' に UPDATE
+   b. 以下を @Async で実行（作成フロー step 8 と同一のバックグラウンド処理パターン）:
+      i.  新たに対象となったユーザーリストを取得（スコープに応じて team / org メンバー解決）
+      ii. schedule_attendances を 500件単位のチャンクでバルク INSERT（status = 'UNDECIDED'）
+          UNIQUE KEY により既存レコードとの競合は INSERT IGNORE で安全にスキップ
+      iii. 全チャンク完了後: schedules.attendance_status = 'READY' に UPDATE
+      iv.  追加対象ユーザーへ通知「出欠確認が届きました（対象に追加されました）」（通知機能実装後）
+
+[ロール制限時（対象縮小: 例 SUPPORTER+ → MEMBER+）]
+- 自動削除は行わない。既存の schedule_attendances レコードはすべて保持する。
+  ・既に回答済み（ATTENDING / PARTIAL / ABSENT）のレコードは出欠履歴として有意義なため削除しない
+  ・UNDECIDED レコードのみ削除する条件付き削除は Phase 4+ で対応（削除コスト vs メリット分析要）
+- 集計（GET /schedules/{id}/stats）時に「対象外ロールの UNDECIDED レコードが含まれる」状態になるが
+  Phase 3 では許容する。厳密な集計が必要な場合は min_response_role フィルタをクエリに適用する
+
+[update_scope ごとの適用範囲]
+- THIS_ONLY（単発含む）: 当該スケジュール 1 件に対して上記フローを実行
+- THIS_AND_FOLLOWING: 新しい親シリーズの子スケジュールは step 4a（単発フロー step 8 の適用）で処理済み。
+  追加フロー不要
+- ALL: is_exception = FALSE の全子スケジュールに対して上記フロー（緩和時）または無処理（制限時）を
+  @Async で適用（子スケジュール数 × 新対象メンバー数の積で処理量が大きくなる可能性があるため非同期必須）
+```
+
+---
+
 ### 繰り返しスケジュール更新フロー
 
 ```
@@ -1606,6 +1640,8 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
      ② target_schedule_id の schedule_attendances を持つメンバーにも同通知を送信
    - mirror スケジュール（target_schedule_id）は自動更新しない。target チームの ADMIN が手動で対応する
    ※ メール通知の送信可否は通知システム Feature Doc の重要度設定に従う
+3b. min_response_role が変更された場合（attendance_required = TRUE のみ）:
+   Section 5「min_response_role 変更時の schedule_attendances 更新フロー」の [THIS_ONLY] を適用
 4. audit_logs に SCHEDULE_UPDATED を記録（metadata: {"update_scope": "THIS_ONLY"}）
 
 [THIS_AND_FOLLOWING]
@@ -1643,6 +1679,8 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
        （通知ペイロードに変更フィールド名・変更後の値を含める）
      ② target_schedule_id の schedule_attendances を持つメンバーにも同通知を送信
    - mirror スケジュール（target_schedule_id）は自動更新しない
+3b. min_response_role が変更された場合（attendance_required = TRUE のみ）:
+   Section 5「min_response_role 変更時の schedule_attendances 更新フロー」の [update_scope = ALL] を適用
 4. audit_logs に SCHEDULE_UPDATED を記録（metadata: {"update_scope": "ALL"}）
 ```
 
@@ -1950,7 +1988,7 @@ V4.001__create_member_attendance_stats_table.sql
 - [x] 組織スケジュールの出欠確認: チームに所属しない組織直接メンバーへの出欠通知フローを確定する: 既存フローで対応済み。スケジュール作成フロー step 8i「全所属チームのメンバー + 組織直接所属メンバー（重複除外）」に含まれるため通知・schedule_attendances 生成は自動的に行われる。出欠回答フロー step 6 で組織直接所属ロールによる回答権限を確認。集計は `GET /organizations/{id}/schedules/{id}/attendances` の `team_id: null`「チーム未所属（組織直接メンバー）」グループで区別表示。ダッシュボードへの表示は `GET /my/calendar` の横断ビューで対応（専用セクション表示はフロントエンド判断）
 - [x] クロスチーム招待承認後、招待元が内容（日時・場所）を変更した場合の招待先への通知仕様を確定する: 更新フロー THIS_ONLY / THIS_AND_FOLLOWING / ALL の各 `3a` / `6a` / `3a` に cross-ref 通知ステップを追加。通知トリガーは `start_at` / `end_at` / `location` / `title` の変更（`address` フィールドは存在しないため `location` のみ）。通知対象: target チーム ADMIN（常時）+ mirror schedule の schedule_attendances 保持メンバー。mirror schedule は自動更新しない（独立管理方針を維持）。通知ペイロードに変更フィールド名・変更後の値を含め、フロントエンドが「変更あり」バッジを表示できるようにする（Section 5 参照）
 - [x] `PATCH /teams/{id}/schedules/{scheduleId}` でアンケート設問（surveys）を変更できるかを確定する: `THIS_ONLY`（単発含む）のみ対応。id ベースの差分更新（id あり=更新、id なし=追加、リスト外 id=削除）。安全な変更（question テキスト / is_required / sort_order）は常に許可。危険な変更（question_type / options 変更・削除）は `force_clear_responses = true` がない限り 422。`THIS_AND_FOLLOWING` / `ALL` で surveys を含むリクエストは 422（Phase 4+）。既存回答の削除は ON DELETE CASCADE で自動物理削除（Section 4・Section 5「アンケート設問更新フロー」参照）
-- [ ] スケジュール更新で `min_response_role` を変更した場合の `schedule_attendances` の扱いを確定する（例: MEMBER+ → SUPPORTER+ に緩和した場合に SUPPORTER を retroactively INSERT するか）
+- [x] スケジュール更新で `min_response_role` を変更した場合の `schedule_attendances` の扱いを確定する: 緩和時（対象拡大）→ 新対象メンバーに retroactively INSERT（`@Async` + 500件チャンクバルク INSERT・`GENERATING → READY` 状態管理。作成フロー step 8 と同一パターン）。制限時（対象縮小）→ 自動削除なし（既存回答データ保護）。UNDECIDED のみ条件付き削除は Phase 4+。ALL スコープ更新時は全子スケジュールに同フローを適用（Section 5「min_response_role 変更時の schedule_attendances 更新フロー」参照）
 - [ ] `schedules.status = COMPLETED` のセットタイミングを確定する（手動操作 / end_at 経過後の自動バッチ / どちらも対応するか）
 - [ ] `visibility = 'ORGANIZATION'` のスケジュールを SUPPORTER が閲覧できるかを確定する（スコープ表 "visibility に従う" の具体的な可視性ルールを整理する）
 
@@ -1960,6 +1998,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-03 | min_response_role 変更時の schedule_attendances 更新仕様確定: 緩和時は @Async + 500件チャンクバルク INSERT で retroactively 追加（GENERATING → READY 状態管理）。制限時は自動削除なし（既存回答データ保護・UNDECIDED 条件付き削除は Phase 4+）。繰り返し ALL スコープ更新時は全子スケジュールに適用。Section 5 に新フロー追加。THIS_ONLY / ALL 更新フローに 3b ステップ参照を追記 |
 | 2026-03-03 | アンケート設問更新仕様確定: PATCH での surveys 変更を THIS_ONLY（単発含む）のみ対応に限定。id ベース差分更新。安全変更（question テキスト / is_required / sort_order）は常に許可。危険変更（question_type / options 変更・削除）は force_clear_responses = true が必要（false の場合 422 + 影響設問情報を返す）。事前に event_survey_responses を DELETE してから question_type/options を UPDATE。THIS_AND_FOLLOWING / ALL への surveys 変更は 422（Phase 4+）。Section 5「アンケート設問更新フロー」を新設 |
 | 2026-03-03 | クロスチーム招待変更通知確定: 更新フロー THIS_ONLY / THIS_AND_FOLLOWING / ALL に cross-ref 通知ステップを追加（step 3a / 6a / 3a）。通知トリガーは start_at / end_at / location / title の変更時。通知対象: target チーム ADMIN + mirror schedule の schedule_attendances 保持メンバー。mirror schedule は自動更新しない（独立管理維持） |
 | 2026-03-03 | 組織直接メンバーへの出欠フロー確定: 既存フロー（スケジュール作成 step 8i・出欠回答 step 6）が既に対応済みであることを明文化。集計レスポンスの `team_id: null` グループ名を「チーム未所属（組織直接メンバー）」に統一。通知 step iv に組織直接メンバーへの適用注記を追記 |
