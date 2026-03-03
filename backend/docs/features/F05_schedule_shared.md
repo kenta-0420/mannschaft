@@ -651,12 +651,25 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 > - `THIS_AND_FOLLOWING`: 新しく生成された親スケジュール（`parent_schedule_id = null`）を返す
 > - `ALL` または省略: 更新された親スケジュールを返す
 
+**`surveys` フィールドを含む場合の追加仕様**
+
+`surveys` を省略した場合、既存の設問は変更されない。指定した場合は以下の差分更新ルールを適用する:
+- `id` あり → 既存設問の更新（後述の安全判定に従う）
+- `id` なし → 新規設問追加（常に許可）
+- リストに含まれない既存設問の `id` → 削除（`force_clear_responses` 要否は後述）
+
+`force_clear_responses` (boolean, default: `false`): 既存回答データがある場合に、設問の削除・`question_type` 変更・`options` 変更を強制的に許可するフラグ。`false` の場合、これらの操作があると 422 を返す。
+
+> `surveys` 変更は `update_scope = THIS_ONLY`（単発スケジュールを含む）にのみ対応。`THIS_AND_FOLLOWING` / `ALL` の場合は 422（詳細は Section 5「アンケート設問更新フロー」参照）
+
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
 | 403 | 権限不足（MANAGE_SCHEDULES なし）|
 | 404 | スケジュールが存在しない / 削除済み |
 | 422 | `status = CANCELLED` または `COMPLETED` のスケジュールを更新 |
+| 422 | `surveys` フィールドを含む、かつ `update_scope = THIS_AND_FOLLOWING / ALL`（surveys 変更は THIS_ONLY のみ対応・Phase 4+ で拡張予定）|
+| 422 | `surveys` の変更（削除 / `question_type` 変更 / `options` 変更）が必要だが対象設問に既存回答が存在し、かつ `force_clear_responses = false`（`error.code: survey_responses_exist`・影響設問 ID・回答件数を返す）|
 
 ---
 
@@ -1531,6 +1544,52 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 
 ---
 
+### アンケート設問更新フロー（PATCH 時に `surveys` フィールドが含まれる場合）
+
+適用範囲: 単発スケジュール、または `update_scope = THIS_ONLY` の場合のみ。`THIS_AND_FOLLOWING` / `ALL` は 422 を返す。
+
+```
+[設問変更の差分計算と安全判定]
+1. DB の既存 event_surveys（schedule_id = 対象スケジュール）を取得
+2. リクエストの surveys 配列と照合:
+   - id なし → 新規追加対象（常に許可・schedule_id 単位で最大10件超過時は 400）
+   - id あり かつ DB に存在 → 更新対象（以下の安全判定へ）
+   - DB に存在するが request に含まれていない id → 削除対象（以下の安全判定へ）
+3. 操作の安全性を判定:
+   ■ 安全（event_survey_responses の有無に関わらず常に許可）:
+     - question テキスト変更（`question` フィールドのみ）
+     - is_required / sort_order 変更
+   ■ 危険（event_survey_responses が存在する場合は force_clear_responses = true が必要）:
+     - question_type の変更（answer_text / answer_options と型不整合になる）
+     - options 配列の変更（既存の answer_options の選択値が無効になる可能性がある）
+     - 設問の削除（関連する event_survey_responses が消去される）
+4. 危険な操作が 1 件以上あり、かつ対象設問に event_survey_responses > 0 の場合:
+   a. force_clear_responses = false（デフォルト）→ 422 を返す:
+      {
+        "error": {
+          "code": "survey_responses_exist",
+          "affected_surveys": [
+            { "id": 1, "question": "バス乗り合いに参加しますか？", "response_count": 12 }
+          ]
+        }
+      }
+   b. force_clear_responses = true → 次ステップへ進む
+
+[設問変更の実行]
+5. 削除対象: event_surveys を DELETE
+   （event_survey_responses は FK ON DELETE CASCADE で自動物理削除。force_clear_responses = true が保証された後のみ実行）
+6. 危険な更新対象（question_type / options 変更）:
+   当該設問の event_survey_responses を先に DELETE → event_surveys を UPDATE
+7. 安全な更新対象（question / is_required / sort_order 変更）:
+   event_surveys を直接 UPDATE（responses への影響なし）
+8. 新規追加対象: event_surveys に INSERT
+9. force_clear_responses = true かつ responses が削除された場合:
+   影響を受けたユーザー（削除された responses の user_id）へ通知
+   「アンケート設問が変更されました。再回答をお願いします。」（通知機能 Feature Doc 参照）
+```
+
+---
+
 ### 繰り返しスケジュール更新フロー
 
 ```
@@ -1890,7 +1949,7 @@ V4.001__create_member_attendance_stats_table.sql
 - [ ] クロスチーム招待時、招待先チームが非公開の場合でも招待を送れるかを確定する（招待送信時のプライバシー設計）
 - [x] 組織スケジュールの出欠確認: チームに所属しない組織直接メンバーへの出欠通知フローを確定する: 既存フローで対応済み。スケジュール作成フロー step 8i「全所属チームのメンバー + 組織直接所属メンバー（重複除外）」に含まれるため通知・schedule_attendances 生成は自動的に行われる。出欠回答フロー step 6 で組織直接所属ロールによる回答権限を確認。集計は `GET /organizations/{id}/schedules/{id}/attendances` の `team_id: null`「チーム未所属（組織直接メンバー）」グループで区別表示。ダッシュボードへの表示は `GET /my/calendar` の横断ビューで対応（専用セクション表示はフロントエンド判断）
 - [x] クロスチーム招待承認後、招待元が内容（日時・場所）を変更した場合の招待先への通知仕様を確定する: 更新フロー THIS_ONLY / THIS_AND_FOLLOWING / ALL の各 `3a` / `6a` / `3a` に cross-ref 通知ステップを追加。通知トリガーは `start_at` / `end_at` / `location` / `title` の変更（`address` フィールドは存在しないため `location` のみ）。通知対象: target チーム ADMIN（常時）+ mirror schedule の schedule_attendances 保持メンバー。mirror schedule は自動更新しない（独立管理方針を維持）。通知ペイロードに変更フィールド名・変更後の値を含め、フロントエンドが「変更あり」バッジを表示できるようにする（Section 5 参照）
-- [ ] `PATCH /teams/{id}/schedules/{scheduleId}` でアンケート設問（surveys）を変更できるかを確定する（変更できる場合、既存の `event_survey_responses` の扱いを定義する）
+- [x] `PATCH /teams/{id}/schedules/{scheduleId}` でアンケート設問（surveys）を変更できるかを確定する: `THIS_ONLY`（単発含む）のみ対応。id ベースの差分更新（id あり=更新、id なし=追加、リスト外 id=削除）。安全な変更（question テキスト / is_required / sort_order）は常に許可。危険な変更（question_type / options 変更・削除）は `force_clear_responses = true` がない限り 422。`THIS_AND_FOLLOWING` / `ALL` で surveys を含むリクエストは 422（Phase 4+）。既存回答の削除は ON DELETE CASCADE で自動物理削除（Section 4・Section 5「アンケート設問更新フロー」参照）
 - [ ] スケジュール更新で `min_response_role` を変更した場合の `schedule_attendances` の扱いを確定する（例: MEMBER+ → SUPPORTER+ に緩和した場合に SUPPORTER を retroactively INSERT するか）
 - [ ] `schedules.status = COMPLETED` のセットタイミングを確定する（手動操作 / end_at 経過後の自動バッチ / どちらも対応するか）
 - [ ] `visibility = 'ORGANIZATION'` のスケジュールを SUPPORTER が閲覧できるかを確定する（スコープ表 "visibility に従う" の具体的な可視性ルールを整理する）
@@ -1901,6 +1960,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-03 | アンケート設問更新仕様確定: PATCH での surveys 変更を THIS_ONLY（単発含む）のみ対応に限定。id ベース差分更新。安全変更（question テキスト / is_required / sort_order）は常に許可。危険変更（question_type / options 変更・削除）は force_clear_responses = true が必要（false の場合 422 + 影響設問情報を返す）。事前に event_survey_responses を DELETE してから question_type/options を UPDATE。THIS_AND_FOLLOWING / ALL への surveys 変更は 422（Phase 4+）。Section 5「アンケート設問更新フロー」を新設 |
 | 2026-03-03 | クロスチーム招待変更通知確定: 更新フロー THIS_ONLY / THIS_AND_FOLLOWING / ALL に cross-ref 通知ステップを追加（step 3a / 6a / 3a）。通知トリガーは start_at / end_at / location / title の変更時。通知対象: target チーム ADMIN + mirror schedule の schedule_attendances 保持メンバー。mirror schedule は自動更新しない（独立管理維持） |
 | 2026-03-03 | 組織直接メンバーへの出欠フロー確定: 既存フロー（スケジュール作成 step 8i・出欠回答 step 6）が既に対応済みであることを明文化。集計レスポンスの `team_id: null` グループ名を「チーム未所属（組織直接メンバー）」に統一。通知 step iv に組織直接メンバーへの適用注記を追記 |
 | 2026-03-03 | クロスチーム招待プライバシー設計確定: PRIVATE チームへの双方向承認フロー追加（`AWAITING_CONFIRMATION` 状態・`POST /confirm` エンドポイント）。招待前情報マスキングポリシーを明文化。PRIVATE チーム存在隠蔽ポリシーを追加。Flyway V3.020 追加 |
