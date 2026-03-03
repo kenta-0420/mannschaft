@@ -1539,6 +1539,14 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 1. 当該スケジュールのみ UPDATE
 2. is_exception = TRUE に設定
 3. 当該スケジュールを同期しているユーザーの Google Calendar イベントを更新（@Async）
+3a. クロスチームリンクの確認（start_at / end_at / location / title のいずれかが変更された場合のみ実行）:
+   - 当該スケジュールを source_schedule_id とする schedule_cross_refs（status = ACCEPTED）を取得
+   - 存在する場合:
+     ① target_schedule の所属チーム/組織 ADMIN に通知「招待スケジュールの内容が変更されました」
+       （通知ペイロードに変更フィールド名・変更後の値を含める。フロントエンドが「変更あり」バッジを表示するための差分情報として使用）
+     ② target_schedule_id の schedule_attendances を持つメンバーにも同通知を送信
+   - mirror スケジュール（target_schedule_id）は自動更新しない。target チームの ADMIN が手動で対応する
+   ※ メール通知の送信可否は通知システム Feature Doc の重要度設定に従う
 4. audit_logs に SCHEDULE_UPDATED を記録（metadata: {"update_scope": "THIS_ONLY"}）
 
 [THIS_AND_FOLLOWING]
@@ -1554,6 +1562,12 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 4a. attendance_required = TRUE の場合: 新しい子スケジュールに対して単発フロー step 8 を適用（min_response_role 以上のロールを持つメンバーに schedule_attendances を一括 INSERT）
 5. 削除された子スケジュールの Google Calendar イベントを削除（@Async）
 6. 新しい子スケジュールを Google カレンダーに追加（@Async）
+6a. クロスチームリンクの確認:
+   - 論理削除した子スケジュールのうち、source_schedule_id として schedule_cross_refs（status = ACCEPTED）が存在するものを取得
+   - 存在する場合:
+     ① target_schedule の所属チーム/組織 ADMIN に通知「招待スケジュールが変更・再作成されました」
+     ② target_schedule_id の schedule_attendances を持つメンバーにも同通知を送信
+   - mirror スケジュール（target_schedule_id）は自動更新しない
 7. audit_logs に SCHEDULE_UPDATED を記録（metadata: {"update_scope": "THIS_AND_FOLLOWING"}）
 
 [ALL]
@@ -1563,6 +1577,13 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
    （`comment_option` が変更対象に含まれる場合は is_exception = FALSE のスケジュールにのみ伝播。
     is_exception = TRUE の子スケジュールは個別設定を保持するため更新しない）
 3. 全子スケジュールの Google Calendar イベントを更新（@Async）
+3a. クロスチームリンクの確認（start_at / end_at / location / title のいずれかが変更された場合のみ実行）:
+   - 親スケジュールおよび全子スケジュールを source_schedule_id とする schedule_cross_refs（status = ACCEPTED）を取得
+   - 存在する場合:
+     ① target_schedule の所属チーム/組織 ADMIN に通知「招待スケジュールの内容が変更されました」
+       （通知ペイロードに変更フィールド名・変更後の値を含める）
+     ② target_schedule_id の schedule_attendances を持つメンバーにも同通知を送信
+   - mirror スケジュール（target_schedule_id）は自動更新しない
 4. audit_logs に SCHEDULE_UPDATED を記録（metadata: {"update_scope": "ALL"}）
 ```
 
@@ -1868,7 +1889,7 @@ V4.001__create_member_attendance_stats_table.sql
 - [x] `min_view_role = 'ANYONE'` 設定時の未ログインアクセスを確定: 未ログインユーザーを GUEST 相当として扱う Optional Authentication パターン。専用 URL・`public_token` なし。一覧は ANYONE スケジュールのみ返し、詳細は ANYONE 以外なら 401。返すフィールドは GUEST ロールと同等に制限（Section 6 参照）
 - [ ] クロスチーム招待時、招待先チームが非公開の場合でも招待を送れるかを確定する（招待送信時のプライバシー設計）
 - [x] 組織スケジュールの出欠確認: チームに所属しない組織直接メンバーへの出欠通知フローを確定する: 既存フローで対応済み。スケジュール作成フロー step 8i「全所属チームのメンバー + 組織直接所属メンバー（重複除外）」に含まれるため通知・schedule_attendances 生成は自動的に行われる。出欠回答フロー step 6 で組織直接所属ロールによる回答権限を確認。集計は `GET /organizations/{id}/schedules/{id}/attendances` の `team_id: null`「チーム未所属（組織直接メンバー）」グループで区別表示。ダッシュボードへの表示は `GET /my/calendar` の横断ビューで対応（専用セクション表示はフロントエンド判断）
-- [ ] クロスチーム招待承認後、招待元が内容（日時・場所）を変更した場合の招待先への通知仕様を確定する
+- [x] クロスチーム招待承認後、招待元が内容（日時・場所）を変更した場合の招待先への通知仕様を確定する: 更新フロー THIS_ONLY / THIS_AND_FOLLOWING / ALL の各 `3a` / `6a` / `3a` に cross-ref 通知ステップを追加。通知トリガーは `start_at` / `end_at` / `location` / `title` の変更（`address` フィールドは存在しないため `location` のみ）。通知対象: target チーム ADMIN（常時）+ mirror schedule の schedule_attendances 保持メンバー。mirror schedule は自動更新しない（独立管理方針を維持）。通知ペイロードに変更フィールド名・変更後の値を含め、フロントエンドが「変更あり」バッジを表示できるようにする（Section 5 参照）
 - [ ] `PATCH /teams/{id}/schedules/{scheduleId}` でアンケート設問（surveys）を変更できるかを確定する（変更できる場合、既存の `event_survey_responses` の扱いを定義する）
 - [ ] スケジュール更新で `min_response_role` を変更した場合の `schedule_attendances` の扱いを確定する（例: MEMBER+ → SUPPORTER+ に緩和した場合に SUPPORTER を retroactively INSERT するか）
 - [ ] `schedules.status = COMPLETED` のセットタイミングを確定する（手動操作 / end_at 経過後の自動バッチ / どちらも対応するか）
@@ -1880,6 +1901,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-03 | クロスチーム招待変更通知確定: 更新フロー THIS_ONLY / THIS_AND_FOLLOWING / ALL に cross-ref 通知ステップを追加（step 3a / 6a / 3a）。通知トリガーは start_at / end_at / location / title の変更時。通知対象: target チーム ADMIN + mirror schedule の schedule_attendances 保持メンバー。mirror schedule は自動更新しない（独立管理維持） |
 | 2026-03-03 | 組織直接メンバーへの出欠フロー確定: 既存フロー（スケジュール作成 step 8i・出欠回答 step 6）が既に対応済みであることを明文化。集計レスポンスの `team_id: null` グループ名を「チーム未所属（組織直接メンバー）」に統一。通知 step iv に組織直接メンバーへの適用注記を追記 |
 | 2026-03-03 | クロスチーム招待プライバシー設計確定: PRIVATE チームへの双方向承認フロー追加（`AWAITING_CONFIRMATION` 状態・`POST /confirm` エンドポイント）。招待前情報マスキングポリシーを明文化。PRIVATE チーム存在隠蔽ポリシーを追加。Flyway V3.020 追加 |
 | 2026-03-01 | Google Calendar 連携を F08_external_integration.md へ分離: テーブル定義（user_google_calendar_connections / user_calendar_sync_settings / user_schedule_google_events）・API 仕様 6本・ビジネスロジック（Google カレンダー個人同期フロー）・Flyway V3.013〜V3.015・V3.017 を移管。本ドキュメントには F08 への参照のみ残す |
