@@ -894,7 +894,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
       },
       {
         "team_id": null,
-        "team_name": "チーム未所属",
+        "team_name": "チーム未所属（組織直接メンバー）",
         "attending": 0,
         "partial": 0,
         "absent": 0,
@@ -906,7 +906,8 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 ```
 
 > - 個人レベルの出欠詳細（user_id・名前・個別ステータス）は含まない
-> - `team_id: null` は組織に直接所属しているがいずれのチームにも属さないメンバーの集計
+> - `team_id: null`「チーム未所属（組織直接メンバー）」グループ: 組織に直接所属しているがいずれのチームにも属さないメンバー（組織管理者・事務局スタッフ等）の集計。出欠通知・回答・集計は他チームメンバーと同一フローで処理される（スケジュール作成フロー step 8i・出欠回答フロー step 6 参照）
+> - フロントエンド補足: `GET /my/calendar` が組織スコープのスケジュールも返すため、組織直接メンバーのダッシュボードには既存の横断ビューで組織スケジュールが表示される（「組織全体の予定」専用セクションの表示分割はフロントエンドの実装判断）
 
 ---
 
@@ -1463,6 +1464,8 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
       ii. schedule_attendances を 500件単位のチャンクに分割してバルク INSERT（status='UNDECIDED'）
       iii. 全チャンク完了後: schedules.attendance_status = 'READY' に UPDATE
       iv. プッシュ通知「出欠確認が届きました」を送信（通知機能実装後）
+          ※ 組織スコープの場合、直接所属メンバー（team_id を持たない組織メンバー）も送信対象に含まれる
+          ※ メール通知は通知機能 Feature Doc で定義する送信可否設定に従う
 9. Google カレンダー個人同期（@Async）:
    a. このチームの user_calendar_sync_settings.is_enabled = TRUE かつ
       user_google_calendar_connections.is_active = TRUE のユーザーを取得
@@ -1864,7 +1867,7 @@ V4.001__create_member_attendance_stats_table.sql
 - [x] 大規模チーム（1000人規模）への一括 `schedule_attendances` INSERT 対策を確定: @Async 非同期化・500件チャンク分割バルク INSERT・`schedules.attendance_status ENUM('READY','GENERATING')` による生成状態管理（Section 3・Section 5・Section 6 参照）
 - [x] `min_view_role = 'ANYONE'` 設定時の未ログインアクセスを確定: 未ログインユーザーを GUEST 相当として扱う Optional Authentication パターン。専用 URL・`public_token` なし。一覧は ANYONE スケジュールのみ返し、詳細は ANYONE 以外なら 401。返すフィールドは GUEST ロールと同等に制限（Section 6 参照）
 - [ ] クロスチーム招待時、招待先チームが非公開の場合でも招待を送れるかを確定する（招待送信時のプライバシー設計）
-- [ ] 組織スケジュールの出欠確認: チームに所属しない組織直接メンバーへの出欠通知フローを確定する
+- [x] 組織スケジュールの出欠確認: チームに所属しない組織直接メンバーへの出欠通知フローを確定する: 既存フローで対応済み。スケジュール作成フロー step 8i「全所属チームのメンバー + 組織直接所属メンバー（重複除外）」に含まれるため通知・schedule_attendances 生成は自動的に行われる。出欠回答フロー step 6 で組織直接所属ロールによる回答権限を確認。集計は `GET /organizations/{id}/schedules/{id}/attendances` の `team_id: null`「チーム未所属（組織直接メンバー）」グループで区別表示。ダッシュボードへの表示は `GET /my/calendar` の横断ビューで対応（専用セクション表示はフロントエンド判断）
 - [ ] クロスチーム招待承認後、招待元が内容（日時・場所）を変更した場合の招待先への通知仕様を確定する
 - [ ] `PATCH /teams/{id}/schedules/{scheduleId}` でアンケート設問（surveys）を変更できるかを確定する（変更できる場合、既存の `event_survey_responses` の扱いを定義する）
 - [ ] スケジュール更新で `min_response_role` を変更した場合の `schedule_attendances` の扱いを確定する（例: MEMBER+ → SUPPORTER+ に緩和した場合に SUPPORTER を retroactively INSERT するか）
@@ -1877,6 +1880,8 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-03 | 組織直接メンバーへの出欠フロー確定: 既存フロー（スケジュール作成 step 8i・出欠回答 step 6）が既に対応済みであることを明文化。集計レスポンスの `team_id: null` グループ名を「チーム未所属（組織直接メンバー）」に統一。通知 step iv に組織直接メンバーへの適用注記を追記 |
+| 2026-03-03 | クロスチーム招待プライバシー設計確定: PRIVATE チームへの双方向承認フロー追加（`AWAITING_CONFIRMATION` 状態・`POST /confirm` エンドポイント）。招待前情報マスキングポリシーを明文化。PRIVATE チーム存在隠蔽ポリシーを追加。Flyway V3.020 追加 |
 | 2026-03-01 | Google Calendar 連携を F08_external_integration.md へ分離: テーブル定義（user_google_calendar_connections / user_calendar_sync_settings / user_schedule_google_events）・API 仕様 6本・ビジネスロジック（Google カレンダー個人同期フロー）・Flyway V3.013〜V3.015・V3.017 を移管。本ドキュメントには F08 への参照のみ残す |
 | 2026-03-01 | 個人スケジュール統合: `GET /api/v1/my/calendar` に個人スケジュールを追加（`scope_type = "PERSONAL"`・`scope_id = null`・`scope_name = "個人"`）。`user_google_calendar_connections` に `personal_sync_enabled BOOLEAN DEFAULT FALSE` を追加（個人スケジュールの Google 同期設定；`user_calendar_sync_settings` への scope_type='PERSONAL' 追加は不採用）。Flyway V3.017 追加 |
 | 2026-03-01 | ドキュメント分割: F05_schedule_attendance.md を F05_schedule_shared.md にリネーム（組織・チームスコープ専用）。個人スケジュール機能を F05_schedule_personal.md として分離。schedules テーブルに user_id カラム追加（三者XOR CHECK制約・INDEX idx_sch_user_start）。Flyway V3.016 追加 |
