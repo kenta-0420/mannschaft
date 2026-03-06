@@ -22,7 +22,7 @@
 | ADMIN | スケジュールの作成・編集・削除・キャンセル。個人名付き出欠一覧・集計・ダッシュボード統計の参照。クロスチーム招待の送受信 |
 | DEPUTY_ADMIN | `MANAGE_SCHEDULES` 権限を持つ場合: スケジュール作成・編集・自己作成スケジュールの削除。他者作成スケジュールの削除は `MANAGE_SCHEDULES` + `DELETE_OTHERS_CONTENT` の両方が必要。`min_response_role` 以上のスケジュールの出欠集計サマリー（件数のみ）参照可 |
 | MEMBER | デフォルトで `MANAGE_SCHEDULES` を保持（作成・編集）。他者のスケジュール削除は `DELETE_OTHERS_CONTENT` 権限が必要。`min_response_role IN ('SUPPORTER+', 'MEMBER+')` のスケジュールに出欠回答可・出欠集計サマリー（件数のみ）参照可 |
-| SUPPORTER | `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールを閲覧可（`visibility` 設定に従う）。`min_response_role = 'SUPPORTER+'` のスケジュールに限り出欠回答可・出欠集計サマリー（件数のみ）参照可 |
+| SUPPORTER | `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールのみ閲覧可。スコープ判定は `visibility` に従う（`MEMBERS_ONLY`: 所有チーム/組織への直接所属が必要。`ORGANIZATION`: 親組織への直接所属ロールで評価）。`visibility = 'ORGANIZATION'` でも `min_view_role = 'MEMBER+'`（デフォルト）なら閲覧不可。SUPPORTER に見せる場合は `min_view_role = 'SUPPORTER+'` を明示する。`min_response_role = 'SUPPORTER+'` のスケジュールに限り出欠回答可・出欠集計サマリー（件数のみ）参照可 |
 | GUEST / 未ログイン | `min_view_role = 'ANYONE'` のスケジュールのみ閲覧可。未ログインユーザーは GUEST と同等に扱う（Optional Authentication）|
 
 ### 対象レベル
@@ -145,6 +145,12 @@ INDEX idx_sch_google_calendar (google_calendar_event_id)
   - `visibility = 'MEMBERS_ONLY'`: スケジュールを所有するチーム/組織への**直接所属ロール**で評価する
   - `visibility = 'ORGANIZATION'`（チームスコープのスケジュールを組織共有する場合）: 親組織への**直接所属ロール**で評価する
   - 親グループのロールは子グループのスケジュールに**継承しない**（例: 学校の SUPPORTER は、クラスに直接所属していない場合はクラスの `visibility = MEMBERS_ONLY` スケジュールを閲覧不可）
+- **SUPPORTER と `visibility = 'ORGANIZATION'` の組み合わせ**:
+  - `visibility = 'ORGANIZATION'` + `min_view_role = 'SUPPORTER+'`: 親組織に直接所属する SUPPORTER も閲覧可（組織全体へのお知らせ等に適する）
+  - `visibility = 'ORGANIZATION'` + `min_view_role = 'MEMBER+'`（デフォルト）: 親組織の SUPPORTER は閲覧不可。チームメンバーおよび組織の MEMBER 以上のみ閲覧可
+  - SUPPORTER に org-shared スケジュールをデフォルトで表示したい場合: `organizations.default_schedule_min_view_role = 'SUPPORTER+'` を設定する
+  - 「運営専用」スケジュール（SUPPORTER を除外）: `min_view_role = 'ADMIN_ONLY'`（DEPUTY_ADMIN/ADMIN のみ）または `min_view_role = 'MEMBER+'`（MEMBER 以上のみ）を明示的に設定する
+  - `visibility = 'ORGANIZATION'` は**チームスコープのスケジュールにのみ有効**（組織スコープのスケジュールでは `MEMBERS_ONLY` と実質同義）
 - **`treat_undecided_as_absent_after_deadline`**（`teams` / `organizations` テーブルに追加する設定、BOOLEAN, DEFAULT FALSE）の挙動:
   - `FALSE`（デフォルト）または `attendance_deadline IS NULL`: UNDECIDED は分母・分子ともに含めない（回答済みのみで計算）
   - `TRUE` かつ `attendance_deadline < NOW()`: UNDECIDED を ABSENT として扱い、分母を `total_members`（全対象メンバー数）に変更する
@@ -1965,7 +1971,7 @@ V3.021__add_idx_sch_status_end_at.sql
 - **権限チェック**: スケジュール作成・編集には `MANAGE_SCHEDULES` 権限を F03 の権限解決ロジック経由で確認する
 - **他者スケジュールの削除**: MEMBER が自分以外の作成スケジュールを削除するには `DELETE_OTHERS_CONTENT` 権限が必要。ADMIN は無条件で削除可能
 - **出欠情報のプライバシー**: `attendance_summary`（件数集計）は当該スケジュールの `min_response_role` 以上のロールのみ返す（min_response_role 未満は null）。個別メンバーの出欠一覧（`GET /teams/{id}/schedules/{scheduleId}/attendances`、個人名・回答内容付き）は ADMIN のみ参照可能。ダッシュボード統計（`GET /teams/{id}/attendance-stats` 等、個人別出席率付き）も ADMIN のみ。組織レベルの出欠集計はチーム単位の件数のみ開示し、個人の出欠情報は返さない
-- **可視性制御（スコープ）**: `visibility = 'MEMBERS_ONLY'` のスケジュールは当該チーム/組織の所属者にのみ返す。未ログインユーザーには返さない
+- **可視性制御（スコープ）**: `visibility = 'MEMBERS_ONLY'` のスケジュールは当該チーム/組織の直接所属者にのみ返す（未ログイン含む非所属ユーザーには返さない）。`visibility = 'ORGANIZATION'` のスケジュールは所有チームの親組織メンバーにも返す（評価ロール: 親組織への直接所属ロール）。SUPPORTER が `visibility = 'ORGANIZATION'` スケジュールを閲覧できるのは `min_view_role = 'SUPPORTER+'` を明示した場合のみ（`min_view_role = 'MEMBER+'` デフォルトでは閲覧不可）。「組織全体公開かつ SUPPORTER 閲覧可」は `visibility = 'ORGANIZATION'` + `min_view_role = 'SUPPORTER+'` の組み合わせで実現する
 - **未ログインアクセスのポリシー（ANYONE 設定）**: `min_view_role = 'ANYONE'` のスケジュールはスケジュール一覧・詳細エンドポイントで未認証アクセスを許可する（Optional Authentication）。Spring Security で `permitAll()` を設定し、未認証リクエストはアプリ層で GUEST 相当として処理する。返すフィールドは GUEST ロールと同等に制限する（`my_response`・`attendance_summary`・`surveys`・`reminders`・`cross_invitations` は常に null）。エンドポイント別の動作: 一覧（`GET /teams/{id}/schedules`）では `min_view_role = 'ANYONE'` のスケジュールのみ返す。詳細（`GET /teams/{id}/schedules/{id}`）では当該スケジュールの `min_view_role` を確認し、`ANYONE` 以外なら 401 を返す。`public_token` 等の専用 URL は設けない（通常エンドポイントのフィルタリングで保護する）
 - **可視性制御（ロール）**: `min_view_role` によるフィルタリングを全閲覧系エンドポイントで実施する。SUPPORTER は `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールのみ閲覧可。GUEST は `min_view_role = 'ANYONE'` のみ閲覧可。`min_view_role` は作成・編集権限を持つ MEMBER 以上のみが変更可能（SUPPORTER/GUEST 自身は変更不可）
 - **回答権限制御（min_response_role）**: `min_response_role` によるチェックを `PATCH /schedules/{scheduleId}/responses` で実施する。`min_view_role`（閲覧可否）とは独立した2軸制御。回答権限がないユーザーはスケジュールを閲覧可能だが 403 を返す。`attendance_required = TRUE` 時の `schedule_attendances` 一括 INSERT も `min_response_role` 以上のロールを持つメンバーのみを対象とする
@@ -2027,7 +2033,7 @@ V4.001__create_member_attendance_stats_table.sql
 - [x] `PATCH /teams/{id}/schedules/{scheduleId}` でアンケート設問（surveys）を変更できるかを確定する: `THIS_ONLY`（単発含む）のみ対応。id ベースの差分更新（id あり=更新、id なし=追加、リスト外 id=削除）。安全な変更（question テキスト / is_required / sort_order）は常に許可。危険な変更（question_type / options 変更・削除）は `force_clear_responses = true` がない限り 422。`THIS_AND_FOLLOWING` / `ALL` で surveys を含むリクエストは 422（Phase 4+）。既存回答の削除は ON DELETE CASCADE で自動物理削除（Section 4・Section 5「アンケート設問更新フロー」参照）
 - [x] スケジュール更新で `min_response_role` を変更した場合の `schedule_attendances` の扱いを確定する: 緩和時（対象拡大）→ 新対象メンバーに retroactively INSERT（`@Async` + 500件チャンクバルク INSERT・`GENERATING → READY` 状態管理。作成フロー step 8 と同一パターン）。制限時（対象縮小）→ 自動削除なし（既存回答データ保護）。UNDECIDED のみ条件付き削除は Phase 4+。ALL スコープ更新時は全子スケジュールに同フローを適用（Section 5「min_response_role 変更時の schedule_attendances 更新フロー」参照）
 - [x] `schedules.status = COMPLETED` のセットタイミングを確定する: 毎時バッチ（`status = SCHEDULED` かつ `end_at < NOW()`）と ADMIN 手動 PATCH（`status: "COMPLETED"` フィールド指定）の両方を採用。COMPLETED 後の出欠修正は ADMIN のみ PATCH /responses で許可（一般ユーザーは 422）。INDEX `idx_sch_status_end_at (status, end_at)` を Flyway V3.021 で追加。Section 5「スケジュール自動完了バッチ」・出欠回答フロー step 4 参照
-- [ ] `visibility = 'ORGANIZATION'` のスケジュールを SUPPORTER が閲覧できるかを確定する（スコープ表 "visibility に従う" の具体的な可視性ルールを整理する）
+- [x] `visibility = 'ORGANIZATION'` のスケジュールを SUPPORTER が閲覧できるかを確定する: `min_view_role = 'SUPPORTER+'` を明示した場合のみ閲覧可。`min_view_role = 'MEMBER+'`（デフォルト）では閲覧不可。「運営専用」は `min_view_role = 'ADMIN_ONLY'` / `'MEMBER+'` で実現。org レベルで SUPPORTER へのデフォルト表示を有効化したい場合は `organizations.default_schedule_min_view_role = 'SUPPORTER+'` を設定。`visibility = 'ORGANIZATION'` はチームスコープのスケジュールにのみ有効（組織スコープでは MEMBERS_ONLY と同義）。Section 2 スコープ表・Section 3 備考・Section 6 可視性制御（スコープ）を一括更新
 
 ---
 
@@ -2035,6 +2041,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-06 | visibility = 'ORGANIZATION' + SUPPORTER の閲覧権限ルール確定: min_view_role = 'SUPPORTER+' を明示した場合のみ閲覧可（min_view_role = 'MEMBER+' デフォルトでは閲覧不可）。「運営専用」= min_view_role = 'ADMIN_ONLY' / 'MEMBER+' の明示設定で実現。org デフォルトは organizations.default_schedule_min_view_role = 'SUPPORTER+' で変更可。visibility と min_view_role の 2 軸設計を Section 2 スコープ表・Section 3 備考（SUPPORTER + ORGANIZATION 組み合わせルールを追加）・Section 6 可視性制御に明記 |
 | 2026-03-06 | schedules.status = COMPLETED セットタイミング確定: 毎時バッチ（status = SCHEDULED かつ end_at 経過で自動遷移）と ADMIN 手動 PATCH（status: "COMPLETED" フィールド指定）の両方を採用。COMPLETED 後の出欠修正は ADMIN のみ PATCH /responses で許可。出欠回答フロー step 4 を ADMIN バイパス対応に更新。PATCH /schedules に COMPLETED 手動設定の注記・エラーテーブルに 403（ADMIN 以外）と 422（終端状態からの再更新）を追加。PATCH /responses のエラーテーブルを ADMIN/非 ADMIN で分離。Section 5 に「スケジュール自動完了バッチ」フロー新設。Flyway V3.021（INDEX idx_sch_status_end_at 追加）追加 |
 | 2026-03-03 | min_response_role 変更時の schedule_attendances 更新仕様確定: 緩和時は @Async + 500件チャンクバルク INSERT で retroactively 追加（GENERATING → READY 状態管理）。制限時は自動削除なし（既存回答データ保護・UNDECIDED 条件付き削除は Phase 4+）。繰り返し ALL スコープ更新時は全子スケジュールに適用。Section 5 に新フロー追加。THIS_ONLY / ALL 更新フローに 3b ステップ参照を追記 |
 | 2026-03-03 | アンケート設問更新仕様確定: PATCH での surveys 変更を THIS_ONLY（単発含む）のみ対応に限定。id ベース差分更新。安全変更（question テキスト / is_required / sort_order）は常に許可。危険変更（question_type / options 変更・削除）は force_clear_responses = true が必要（false の場合 422 + 影響設問情報を返す）。事前に event_survey_responses を DELETE してから question_type/options を UPDATE。THIS_AND_FOLLOWING / ALL への surveys 変更は 422（Phase 4+）。Section 5「アンケート設問更新フロー」を新設 |
