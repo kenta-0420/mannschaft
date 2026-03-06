@@ -662,12 +662,16 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 
 > `surveys` 変更は `update_scope = THIS_ONLY`（単発スケジュールを含む）にのみ対応。`THIS_AND_FOLLOWING` / `ALL` の場合は 422（詳細は Section 5「アンケート設問更新フロー」参照）
 
+> `status` フィールドに `"COMPLETED"` を指定することで、`SCHEDULED` → `COMPLETED` への手動遷移が可能（ADMIN のみ）。対象スケジュールが `CANCELLED` または既に `COMPLETED` の場合は 422。`THIS_AND_FOLLOWING` / `ALL` スコープでの一括 COMPLETED 設定は 422（自動完了バッチで対応）。
+
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
 | 403 | 権限不足（MANAGE_SCHEDULES なし）|
+| 403 | ADMIN 以外が `status: "COMPLETED"` を手動設定しようとした |
 | 404 | スケジュールが存在しない / 削除済み |
-| 422 | `status = CANCELLED` または `COMPLETED` のスケジュールを更新 |
+| 422 | `status = CANCELLED` のスケジュールを更新 |
+| 422 | `status = COMPLETED` のスケジュールを更新（COMPLETED 状態からの再更新は ADMIN 含む全員不可・終端状態）|
 | 422 | `surveys` フィールドを含む、かつ `update_scope = THIS_AND_FOLLOWING / ALL`（surveys 変更は THIS_ONLY のみ対応・Phase 4+ で拡張予定）|
 | 422 | `surveys` の変更（削除 / `question_type` 変更 / `options` 変更）が必要だが対象設問に既存回答が存在し、かつ `force_clear_responses = false`（`error.code: survey_responses_exist`・影響設問 ID・回答件数を返す）|
 
@@ -794,7 +798,9 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 | 400 | バリデーションエラー・`is_required` の設問に未回答・`comment_option = REQUIRED` で `comment` が空 |
 | 403 | 当該スケジュールの `min_response_role` 未満のロール（回答権限不足）|
 | 409 | `attendance_deadline` を過ぎている |
-| 422 | `attendance_required = false` のスケジュールへの回答 / `status = CANCELLED` または `COMPLETED` のスケジュール |
+| 422 | `attendance_required = false` のスケジュールへの回答 |
+| 422 | `status = CANCELLED` のスケジュール（ADMIN 含む全員不可）|
+| 422 | `status = COMPLETED` のスケジュール（ADMIN 以外。ADMIN は COMPLETED 後の出欠手動修正のため許可）|
 
 ---
 
@@ -1523,7 +1529,11 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 1. PATCH /api/v1/schedules/{scheduleId}/responses を受付
 2. スケジュールを schedules テーブルから取得。存在しない / deleted_at IS NOT NULL → 404
 3. スケジュールの team_id / organization_id からスコープを解決
-4. スケジュールが status = SCHEDULED か確認（CANCELLED / COMPLETED は 422）
+4. スケジュールのステータス確認:
+   - status = CANCELLED → 422（ADMIN 含む全員不可）
+   - status = COMPLETED かつ操作者が ADMIN → 許可（ADMIN による COMPLETED 後の出欠手動修正）
+   - status = COMPLETED かつ操作者が ADMIN 以外 → 422
+   - status = SCHEDULED → 次ステップへ
 5. attendance_required = TRUE か確認 → FALSE は 422
 6. リクエスト者のスコープ内ロールが min_response_role 以上か確認 → 不足は 403
    - チームスコープ: 当該チームへの直接所属ロールで判定
@@ -1886,6 +1896,32 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 
 ---
 
+### スケジュール自動完了バッチ（status = COMPLETED 自動遷移）
+
+`status = SCHEDULED` のスケジュールが `end_at` を経過した場合に、自動で `COMPLETED` へ遷移させるバッチ。**毎時 0 分**に定期実行する。
+
+```
+バッチフロー（毎時 0 分実行）:
+1. status = 'SCHEDULED' かつ end_at < NOW() かつ deleted_at IS NULL のスケジュールを取得
+   （INDEX: idx_sch_status_end_at (status, end_at) を使用）
+2. 対象スケジュールの status = 'COMPLETED' に UPDATE
+3. audit_logs に SCHEDULE_COMPLETED を記録（metadata: {"trigger": "batch", "count": N}）
+4. 処理件数を application log に出力（0 件の場合もログ出力）
+```
+
+> - 繰り返しスケジュールでは **個別の子スケジュール** が `end_at` を経過した時点でその子が COMPLETED に遷移する（親スケジュールは繰り返しシリーズ管理用のため、バッチ対象外）
+> - `end_at IS NULL`（終了時刻なし）のスケジュールはバッチ対象外（COMPLETED への遷移は手動のみ）
+> - ADMIN による手動完了（`PATCH` に `status: "COMPLETED"` を指定）は、バッチとは独立して任意のタイミングで実行可能
+
+**Flyway 追加インデックス**
+```sql
+V3.021__add_idx_sch_status_end_at.sql
+  -- schedules テーブルへの変更:
+  --   INDEX idx_sch_status_end_at (status, end_at) 追加（自動完了バッチ用）
+```
+
+---
+
 ### 組織スケジュール出欠集計フロー
 
 ```
@@ -1958,6 +1994,7 @@ V3.012__create_schedule_cross_refs_table.sql
 -- Google Calendar 連携テーブルのマイグレーション（V3.013〜V3.015・V3.017）は F08_external_integration.md Section 6 を参照
 V3.016__add_user_id_to_schedules.sql                    -- schedules.user_id カラム追加・INDEX・CHECK 制約（F05_schedule_personal.md と共有）
 V3.020__update_schedule_cross_refs_status_enum.sql       -- schedule_cross_refs.status ENUM に 'AWAITING_CONFIRMATION' を追加
+V3.021__add_idx_sch_status_end_at.sql                    -- schedules.idx_sch_status_end_at (status, end_at) INDEX 追加（自動完了バッチ用）
 
 -- Phase 4+（本テーブルが必要になったタイミングで実行）
 V4.001__create_member_attendance_stats_table.sql
@@ -1989,7 +2026,7 @@ V4.001__create_member_attendance_stats_table.sql
 - [x] クロスチーム招待承認後、招待元が内容（日時・場所）を変更した場合の招待先への通知仕様を確定する: 更新フロー THIS_ONLY / THIS_AND_FOLLOWING / ALL の各 `3a` / `6a` / `3a` に cross-ref 通知ステップを追加。通知トリガーは `start_at` / `end_at` / `location` / `title` の変更（`address` フィールドは存在しないため `location` のみ）。通知対象: target チーム ADMIN（常時）+ mirror schedule の schedule_attendances 保持メンバー。mirror schedule は自動更新しない（独立管理方針を維持）。通知ペイロードに変更フィールド名・変更後の値を含め、フロントエンドが「変更あり」バッジを表示できるようにする（Section 5 参照）
 - [x] `PATCH /teams/{id}/schedules/{scheduleId}` でアンケート設問（surveys）を変更できるかを確定する: `THIS_ONLY`（単発含む）のみ対応。id ベースの差分更新（id あり=更新、id なし=追加、リスト外 id=削除）。安全な変更（question テキスト / is_required / sort_order）は常に許可。危険な変更（question_type / options 変更・削除）は `force_clear_responses = true` がない限り 422。`THIS_AND_FOLLOWING` / `ALL` で surveys を含むリクエストは 422（Phase 4+）。既存回答の削除は ON DELETE CASCADE で自動物理削除（Section 4・Section 5「アンケート設問更新フロー」参照）
 - [x] スケジュール更新で `min_response_role` を変更した場合の `schedule_attendances` の扱いを確定する: 緩和時（対象拡大）→ 新対象メンバーに retroactively INSERT（`@Async` + 500件チャンクバルク INSERT・`GENERATING → READY` 状態管理。作成フロー step 8 と同一パターン）。制限時（対象縮小）→ 自動削除なし（既存回答データ保護）。UNDECIDED のみ条件付き削除は Phase 4+。ALL スコープ更新時は全子スケジュールに同フローを適用（Section 5「min_response_role 変更時の schedule_attendances 更新フロー」参照）
-- [ ] `schedules.status = COMPLETED` のセットタイミングを確定する（手動操作 / end_at 経過後の自動バッチ / どちらも対応するか）
+- [x] `schedules.status = COMPLETED` のセットタイミングを確定する: 毎時バッチ（`status = SCHEDULED` かつ `end_at < NOW()`）と ADMIN 手動 PATCH（`status: "COMPLETED"` フィールド指定）の両方を採用。COMPLETED 後の出欠修正は ADMIN のみ PATCH /responses で許可（一般ユーザーは 422）。INDEX `idx_sch_status_end_at (status, end_at)` を Flyway V3.021 で追加。Section 5「スケジュール自動完了バッチ」・出欠回答フロー step 4 参照
 - [ ] `visibility = 'ORGANIZATION'` のスケジュールを SUPPORTER が閲覧できるかを確定する（スコープ表 "visibility に従う" の具体的な可視性ルールを整理する）
 
 ---
@@ -1998,6 +2035,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-06 | schedules.status = COMPLETED セットタイミング確定: 毎時バッチ（status = SCHEDULED かつ end_at 経過で自動遷移）と ADMIN 手動 PATCH（status: "COMPLETED" フィールド指定）の両方を採用。COMPLETED 後の出欠修正は ADMIN のみ PATCH /responses で許可。出欠回答フロー step 4 を ADMIN バイパス対応に更新。PATCH /schedules に COMPLETED 手動設定の注記・エラーテーブルに 403（ADMIN 以外）と 422（終端状態からの再更新）を追加。PATCH /responses のエラーテーブルを ADMIN/非 ADMIN で分離。Section 5 に「スケジュール自動完了バッチ」フロー新設。Flyway V3.021（INDEX idx_sch_status_end_at 追加）追加 |
 | 2026-03-03 | min_response_role 変更時の schedule_attendances 更新仕様確定: 緩和時は @Async + 500件チャンクバルク INSERT で retroactively 追加（GENERATING → READY 状態管理）。制限時は自動削除なし（既存回答データ保護・UNDECIDED 条件付き削除は Phase 4+）。繰り返し ALL スコープ更新時は全子スケジュールに適用。Section 5 に新フロー追加。THIS_ONLY / ALL 更新フローに 3b ステップ参照を追記 |
 | 2026-03-03 | アンケート設問更新仕様確定: PATCH での surveys 変更を THIS_ONLY（単発含む）のみ対応に限定。id ベース差分更新。安全変更（question テキスト / is_required / sort_order）は常に許可。危険変更（question_type / options 変更・削除）は force_clear_responses = true が必要（false の場合 422 + 影響設問情報を返す）。事前に event_survey_responses を DELETE してから question_type/options を UPDATE。THIS_AND_FOLLOWING / ALL への surveys 変更は 422（Phase 4+）。Section 5「アンケート設問更新フロー」を新設 |
 | 2026-03-03 | クロスチーム招待変更通知確定: 更新フロー THIS_ONLY / THIS_AND_FOLLOWING / ALL に cross-ref 通知ステップを追加（step 3a / 6a / 3a）。通知トリガーは start_at / end_at / location / title の変更時。通知対象: target チーム ADMIN + mirror schedule の schedule_attendances 保持メンバー。mirror schedule は自動更新しない（独立管理維持） |
