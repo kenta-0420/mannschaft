@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 3
-> **最終更新**: 2026-03-01
+> **最終更新**: 2026-03-07
 > **関連ドキュメント**: 個人スケジュール → `F05_schedule_personal.md` / 外部連携 → `F08_external_integration.md`
 
 ---
@@ -45,6 +45,7 @@
 | `schedule_cross_refs` | クロスチーム・組織スケジュール招待（試合マッチング等）| なし |
 
 > Google Calendar 連携テーブル（`user_google_calendar_connections` / `user_calendar_sync_settings` / `user_schedule_google_events`）の定義は `F08_external_integration.md` Section 3 を参照。
+
 | `member_attendance_stats` | メンバー出席統計月次キャッシュ（Phase 4+）| なし |
 
 ### テーブル定義
@@ -678,6 +679,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 | 404 | スケジュールが存在しない / 削除済み |
 | 422 | `status = CANCELLED` のスケジュールを更新 |
 | 422 | `status = COMPLETED` のスケジュールを更新（COMPLETED 状態からの再更新は ADMIN 含む全員不可・終端状態）|
+| 422 | `status: "COMPLETED"` を `update_scope = THIS_AND_FOLLOWING / ALL` で一括設定しようとした（自動完了バッチで対応。手動 COMPLETED は THIS_ONLY のみ）|
 | 422 | `surveys` フィールドを含む、かつ `update_scope = THIS_AND_FOLLOWING / ALL`（surveys 変更は THIS_ONLY のみ対応・Phase 4+ で拡張予定）|
 | 422 | `surveys` の変更（削除 / `question_type` 変更 / `options` 変更）が必要だが対象設問に既存回答が存在し、かつ `force_clear_responses = false`（`error.code: survey_responses_exist`・影響設問 ID・回答件数を返す）|
 
@@ -1546,6 +1548,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
    - 組織スコープ: 組織直接所属またはいずれかの所属チームが当該組織に属している場合のロールで判定
    ※ GUEST は min_response_role = 'SUPPORTER+' でも不可（GUEST は SUPPORTER 未満のため）
 7. attendance_deadline が設定されている場合: deadline < NOW() であれば 409
+   （ただし step 4 で ADMIN + COMPLETED として許可された場合は deadline チェックをスキップする）
 8. comment_option に応じて comment をバリデーション:
    - HIDDEN   → comment 値を無視（保存時に NULL に上書き）
    - OPTIONAL → バリデーションなし
@@ -1908,7 +1911,8 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 
 ```
 バッチフロー（毎時 0 分実行）:
-1. status = 'SCHEDULED' かつ end_at < NOW() かつ deleted_at IS NULL のスケジュールを取得
+1. status = 'SCHEDULED' かつ end_at < NOW() かつ deleted_at IS NULL かつ
+   recurrence_rule IS NULL のスケジュールを取得（繰り返しの親スケジュールを除外）
    （INDEX: idx_sch_status_end_at (status, end_at) を使用）
 2. 対象スケジュールの status = 'COMPLETED' に UPDATE
 3. audit_logs に SCHEDULE_COMPLETED を記録（metadata: {"trigger": "batch", "count": N}）
@@ -2041,6 +2045,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-07 | 精査(16回目): ① テーブル一覧セクションの `member_attendance_stats` 行がブロック引用直後に連結し Markdown 構造が破損していた問題を修正（空行を挿入）。② 自動完了バッチのクエリ条件に `recurrence_rule IS NULL` を追加（繰り返しの親スケジュールがバッチで誤って COMPLETED に遷移するバグを防止）。③ 出欠回答フロー step 7 に「ADMIN + COMPLETED の場合は deadline チェックをスキップ」を追記（ADMIN が COMPLETED 後に出欠を手動修正する際、期限切れ 409 でブロックされる問題を修正）。④ PATCH /schedules エラーテーブルに `status: "COMPLETED"` の `THIS_AND_FOLLOWING / ALL` 一括設定を 422 とする行を追加（注記には記載があったがエラーテーブルに欠落していた）。⑤ 最終更新日を 2026-03-07 に更新 |
 | 2026-03-06 | visibility = 'ORGANIZATION' + SUPPORTER の閲覧権限ルール確定: min_view_role = 'SUPPORTER+' を明示した場合のみ閲覧可（min_view_role = 'MEMBER+' デフォルトでは閲覧不可）。「運営専用」= min_view_role = 'ADMIN_ONLY' / 'MEMBER+' の明示設定で実現。org デフォルトは organizations.default_schedule_min_view_role = 'SUPPORTER+' で変更可。visibility と min_view_role の 2 軸設計を Section 2 スコープ表・Section 3 備考（SUPPORTER + ORGANIZATION 組み合わせルールを追加）・Section 6 可視性制御に明記 |
 | 2026-03-06 | schedules.status = COMPLETED セットタイミング確定: 毎時バッチ（status = SCHEDULED かつ end_at 経過で自動遷移）と ADMIN 手動 PATCH（status: "COMPLETED" フィールド指定）の両方を採用。COMPLETED 後の出欠修正は ADMIN のみ PATCH /responses で許可。出欠回答フロー step 4 を ADMIN バイパス対応に更新。PATCH /schedules に COMPLETED 手動設定の注記・エラーテーブルに 403（ADMIN 以外）と 422（終端状態からの再更新）を追加。PATCH /responses のエラーテーブルを ADMIN/非 ADMIN で分離。Section 5 に「スケジュール自動完了バッチ」フロー新設。Flyway V3.021（INDEX idx_sch_status_end_at 追加）追加 |
 | 2026-03-03 | min_response_role 変更時の schedule_attendances 更新仕様確定: 緩和時は @Async + 500件チャンクバルク INSERT で retroactively 追加（GENERATING → READY 状態管理）。制限時は自動削除なし（既存回答データ保護・UNDECIDED 条件付き削除は Phase 4+）。繰り返し ALL スコープ更新時は全子スケジュールに適用。Section 5 に新フロー追加。THIS_ONLY / ALL 更新フローに 3b ステップ参照を追記 |
