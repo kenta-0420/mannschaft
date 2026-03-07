@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 1
-> **最終更新**: 2026-02-21 (F05イベント追記)
+> **最終更新**: 2026-03-07
 
 ---
 
@@ -351,7 +351,7 @@ V1.011__create_audit_logs_table.sql
 
 ## 8. 未解決事項
 
-- [ ] `GET /users/me/audit-logs`（自分のログ参照）の実装 Phase を確定する（Phase 3 候補）
+- [x] `GET /users/me/audit-logs`（自分のログ参照）の実装 Phase を確定する（Phase 3 候補）→ **Phase 3 に確定**。Section 4・5 の「Phase 3 以降」表記は維持（F05 と同フェーズで実装）
 - [ ] `GET /admin/audit-logs` の `metadata` フィールドを全件返すか、一部キーのみ返すかを実装前に確定する（個人情報漏洩リスクの精査）
 - [ ] 1年超過分のアーカイブ先（S3 バケット名・パス設計）を Phase 10 開始前に確定する
 - [ ] Phase 3 で ADMIN が自組織ログを参照する際、`team_id` / `organization_id` が NULL（プラットフォームレベル操作）のレコードをどう扱うかを確定する
@@ -364,6 +364,7 @@ V1.011__create_audit_logs_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-07 | `GET /users/me/audit-logs` の実装 Phase を Phase 3 に確定（未解決事項を解決済みに更新）|
 | 2026-02-21 | F05 対応のイベントを「今後追加予定」一覧に追記（`SCHEDULE_CREATED` / `SCHEDULE_UPDATED` / `SCHEDULE_CANCELLED` / `SCHEDULE_DELETED` / `SCHEDULE_RECURRENCE_EXPANDED`）|
 | 2026-02-21 | F03・F04 対応のイベントを「今後追加予定」一覧に追記（`ORGANIZATION_ORG_TYPE_CHANGED` / `TEAM_MEMBER_PERMISSION_GROUP_ASSIGNED` / payment 系4件）。`TEAM/ORGANIZATION_MEMBER_BLOCKED` の説明にメンバー同時除名の旨を追記 |
 | 2026-02-21 | `target_user_id` 説明にバッチ操作ケースを追記。`ACCOUNT_UNLOCKED` を管理者手動解除のみに限定（Redis TTL 自然失効はイベント対象外と明記）。`MFA_DISABLED` のトリガー条件を明確化。`me/audit-logs` にもソート順を追記。セキュリティ考慮事項の email_hash 対象を両イベントに更新。Flyway に FK 追加タイミング設計（Phase 1 では INT のみ・FK は後続 migration）を追記。`EMAIL_VERIFIED` 未解決事項を対応済みに更新 |
