@@ -89,6 +89,7 @@ INDEX idx_sch_org_start (organization_id, start_at)     -- 組織別カレンダ
 INDEX idx_sch_user_start (user_id, start_at)            -- 個人カレンダー取得用
 INDEX idx_sch_parent (parent_schedule_id)               -- 繰り返し子スケジュール取得用
 UNIQUE KEY uq_sch_parent_start (parent_schedule_id, start_at)  -- 繰り返し展開の重複防止（parent_schedule_id = NULL 行は制約対象外）
+INDEX idx_sch_status_end_at (status, end_at)              -- 自動完了バッチ用（V3.021）
 INDEX idx_sch_google_calendar (google_calendar_event_id)
 ```
 
@@ -805,7 +806,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 |-----------|------|
 | 400 | バリデーションエラー・`is_required` の設問に未回答・`comment_option = REQUIRED` で `comment` が空 |
 | 403 | 当該スケジュールの `min_response_role` 未満のロール（回答権限不足）|
-| 409 | `attendance_deadline` を過ぎている |
+| 409 | `attendance_deadline` を過ぎている（ただし ADMIN が COMPLETED スケジュールの出欠修正を行う場合は deadline チェックをスキップ）|
 | 422 | `attendance_required = false` のスケジュールへの回答 |
 | 422 | `status = CANCELLED` のスケジュール（ADMIN 含む全員不可）|
 | 422 | `status = COMPLETED` のスケジュール（ADMIN 以外。ADMIN は COMPLETED 後の出欠手動修正のため許可）|
@@ -1165,7 +1166,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 |-----------|------|
 | 403 | ADMIN 権限なし |
 | 404 | 招待が存在しない / 招待先が自チームでない |
-| 422 | 招待がすでに `ACCEPTED` / `REJECTED` / `CANCELLED` 状態 |
+| 422 | 招待がすでに `AWAITING_CONFIRMATION` / `ACCEPTED` / `REJECTED` / `CANCELLED` 状態（`AWAITING_CONFIRMATION` は既に承認済みのため `confirm` か `cancel` のみ許容）|
 
 > Google Calendar 連携 API の仕様（`/me/google-calendar/*` / `/me/calendar-sync-settings` / `/me/teams/{id}/calendar-sync` / `/me/organizations/{id}/calendar-sync`）は `F08_external_integration.md` Section 4 を参照。
 
@@ -1818,7 +1819,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 ```
 1. schedule_attendance_reminders から is_sent = FALSE かつ remind_at <= NOW() のレコードを取得
 2. 各リマインダーについて:
-   a. 紐づくスケジュールが status = SCHEDULED かつ deleted_at IS NULL か確認（CANCELLED はスキップ）
+   a. 紐づくスケジュールが status = SCHEDULED かつ deleted_at IS NULL か確認（CANCELLED / COMPLETED はスキップ）
    b. attendance_deadline が設定されている場合: deadline < NOW() であれば期限切れとしてスキップ
       attendance_deadline = NULL（無期限）の場合はスキップしない（必ず通知する）
    c. schedule_attendances から status = UNDECIDED の user_id 一覧を取得
@@ -2045,6 +2046,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-07 | 精査(17回目): ① `schedules` テーブルのインデックス一覧に `idx_sch_status_end_at (status, end_at)` を追加（V3.021 で定義済みだがテーブル定義セクションに欠落していた）。② `PATCH /responses` エラーテーブルの 409（deadline 超過）に「ADMIN が COMPLETED スケジュールの出欠修正を行う場合は deadline チェックをスキップ」の注記を追加（出欠回答フロー step 7 との整合）。③ 出欠リマインダーバッチ step 2a のスキップ条件に COMPLETED を追加（CANCELLED のみだった。COMPLETED スケジュールに attendance_deadline = NULL の場合リマインダーが誤送信される問題を防止）。④ `POST /reject` エラーテーブルの 422 条件に `AWAITING_CONFIRMATION` を追加（フロー step 3 では不可と明記されていたがエラーテーブルに欠落していた） |
 | 2026-03-07 | 精査(16回目): ① テーブル一覧セクションの `member_attendance_stats` 行がブロック引用直後に連結し Markdown 構造が破損していた問題を修正（空行を挿入）。② 自動完了バッチのクエリ条件に `recurrence_rule IS NULL` を追加（繰り返しの親スケジュールがバッチで誤って COMPLETED に遷移するバグを防止）。③ 出欠回答フロー step 7 に「ADMIN + COMPLETED の場合は deadline チェックをスキップ」を追記（ADMIN が COMPLETED 後に出欠を手動修正する際、期限切れ 409 でブロックされる問題を修正）。④ PATCH /schedules エラーテーブルに `status: "COMPLETED"` の `THIS_AND_FOLLOWING / ALL` 一括設定を 422 とする行を追加（注記には記載があったがエラーテーブルに欠落していた）。⑤ 最終更新日を 2026-03-07 に更新 |
 | 2026-03-06 | visibility = 'ORGANIZATION' + SUPPORTER の閲覧権限ルール確定: min_view_role = 'SUPPORTER+' を明示した場合のみ閲覧可（min_view_role = 'MEMBER+' デフォルトでは閲覧不可）。「運営専用」= min_view_role = 'ADMIN_ONLY' / 'MEMBER+' の明示設定で実現。org デフォルトは organizations.default_schedule_min_view_role = 'SUPPORTER+' で変更可。visibility と min_view_role の 2 軸設計を Section 2 スコープ表・Section 3 備考（SUPPORTER + ORGANIZATION 組み合わせルールを追加）・Section 6 可視性制御に明記 |
 | 2026-03-06 | schedules.status = COMPLETED セットタイミング確定: 毎時バッチ（status = SCHEDULED かつ end_at 経過で自動遷移）と ADMIN 手動 PATCH（status: "COMPLETED" フィールド指定）の両方を採用。COMPLETED 後の出欠修正は ADMIN のみ PATCH /responses で許可。出欠回答フロー step 4 を ADMIN バイパス対応に更新。PATCH /schedules に COMPLETED 手動設定の注記・エラーテーブルに 403（ADMIN 以外）と 422（終端状態からの再更新）を追加。PATCH /responses のエラーテーブルを ADMIN/非 ADMIN で分離。Section 5 に「スケジュール自動完了バッチ」フロー新設。Flyway V3.021（INDEX idx_sch_status_end_at 追加）追加 |
