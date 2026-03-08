@@ -196,8 +196,9 @@ UNIQUE KEY uq_permission_name (name)
 | `DELETE_OTHERS_CONTENT` | 他メンバーのコンテンツ削除（デフォルト非付与）| TEAM |
 | `MANAGE_ANNOUNCEMENTS` | お知らせ配信 | TEAM |
 | `SEND_SAFETY_CONFIRMATION` | 安否確認送信 | TEAM |
+| `MANAGE_PAYMENTS` | 支払い管理（F04; Phase 3 追加予定）| TEAM |
 
-> 各機能モジュール（スケジュール・ファイル・チャット等）の実装時に順次追加する。
+> 各機能モジュール（スケジュール・ファイル・チャット等）の実装時に順次追加する。`MANAGE_PAYMENTS` の scope は F04 の詳細設計時に ORGANIZATION スコープへ変更する可能性がある。
 
 ---
 
@@ -217,7 +218,7 @@ UNIQUE KEY uq_rp_role_permission (role_id, permission_id)
 INDEX idx_rp_permission (permission_id)
 ```
 
-**シードデータ（V2.015__seed_role_permissions.sql / V2.021__seed_member_permission_ceiling.sql）**
+**シードデータ（V2.015__seed_role_permissions.sql / V2.021__seed_member_permission_ceiling.sql / Phase 3: V3.xxx__add_manage_payments_permission.sql）**
 
 凡例: **✓** = is_default TRUE（自動付与） / **△** = is_default FALSE（天井のみ・権限グループ経由で個別付与可）
 
@@ -234,15 +235,18 @@ INDEX idx_rp_permission (permission_id)
 | `DELETE_OTHERS_CONTENT` | ✓ | ✓ | △ | △ | - | - |
 | `MANAGE_ANNOUNCEMENTS` | ✓ | ✓ | △ | △ | - | - |
 | `SEND_SAFETY_CONFIRMATION` | ✓ | ✓ | △ | △ | - | - |
+| `MANAGE_PAYMENTS` | ✓ | ✓ | △ | - | - | - |（Phase 3 / V3.xxx 追加）|
 
-合計レコード数: 11 + 11 + 11 + 6（✓3 + △3） = **39件**
+Phase 2 合計レコード数: 11 + 11 + 11 + 6（✓3 + △3） = **39件**
+Phase 3 追加（MANAGE_PAYMENTS）: SYSTEM_ADMIN ✓ + ADMIN ✓ + DEPUTY_ADMIN △ = **+3件 → 合計42件**
 
 **制約・備考**
-- **SYSTEM_ADMIN**: 全11件（is_default = TRUE）。権限チェックは JWT 判定に統一（runtime で DB 参照しない）。シードは監査・将来対応のため投入する
-- **ADMIN**: 全11件（is_default = TRUE）。`DELETE_OTHERS_CONTENT` を含む全パーミッションを行使可能
-- **DEPUTY_ADMIN**: 全11件（is_default = FALSE）。**天井（ceiling）定義**として機能する。runtime での権限解決は role_permissions を参照せず `user_permission_groups` のみを使用する（権限グループ未割り当ての DEPUTY_ADMIN は実効パーミッション 0）
+- **SYSTEM_ADMIN**: Phase 3 以降 全12件（is_default = TRUE）。権限チェックは JWT 判定に統一（runtime で DB 参照しない）。シードは監査・将来対応のため投入する
+- **ADMIN**: Phase 3 以降 全12件（is_default = TRUE）。`DELETE_OTHERS_CONTENT` / `MANAGE_PAYMENTS` を含む全パーミッションを行使可能
+- **DEPUTY_ADMIN**: Phase 3 以降 全12件（is_default = FALSE）。**天井（ceiling）定義**として機能する。runtime での権限解決は role_permissions を参照せず `user_permission_groups` のみを使用する（権限グループ未割り当ての DEPUTY_ADMIN は実効パーミッション 0）
 - **MEMBER（is_default = TRUE）**: `MANAGE_SCHEDULES` / `MANAGE_FILES` / `MANAGE_POSTS` の3件。チーム参加と同時に全 MEMBER へ自動付与
 - **MEMBER（is_default = FALSE）**: `DELETE_OTHERS_CONTENT` / `MANAGE_ANNOUNCEMENTS` / `SEND_SAFETY_CONFIRMATION` の3件。天井のみ（自動付与なし）。ADMIN が MEMBER 用権限グループを作成し特定ユーザーへ割り当てた場合のみ有効
+- **`MANAGE_PAYMENTS`**: MEMBER の role_permissions に含めない（天井エントリなし）。MEMBER は支払い管理権限を付与不可
 - **`DELETE_OTHERS_CONTENT`**: DEPUTY_ADMIN / MEMBER いずれの天井にも含める。ただしいかなるデフォルト権限グループにも含めない。ADMIN が意図的に付与した場合のみ有効
 - **SUPPORTER / GUEST**: role_permissions なし。閲覧権限はロールチェックで制御し、パーミッションテーブルは参照しない
 
@@ -1343,6 +1347,15 @@ V2.022__rename_permission_groups_tables.sql
   --   INDEX idx_pg_team_id / idx_pg_team_role（旧 idx_tpg_* をリネーム）
   -- team_permission_group_permissions → permission_group_permissions にリネーム
   --   FK および UNIQUE KEY 名を uq_pgp_group_permission / idx_pgp_permission にリネーム
+
+-- Phase 3 （F04 支払い管理実装時）
+V3.xxx__add_manage_payments_permission.sql
+  -- permissions に MANAGE_PAYMENTS（display_name='支払い管理', scope='TEAM'）を INSERT
+  -- role_permissions に3件 INSERT:
+  --   (SYSTEM_ADMIN, MANAGE_PAYMENTS, is_default=TRUE)
+  --   (ADMIN,        MANAGE_PAYMENTS, is_default=TRUE)
+  --   (DEPUTY_ADMIN, MANAGE_PAYMENTS, is_default=FALSE)
+  -- ※ MEMBER には追加しない（支払い管理権限は ADMIN/DEPUTY_ADMIN 以上）
 ```
 
 **マイグレーション上の注意点**
@@ -1367,7 +1380,7 @@ V2.022__rename_permission_groups_tables.sql
 - [x] `teams.template` の型: VARCHAR(50) → 将来的に FK → `team_templates` テーブルへ移行するタイミングを確定する → **Phase 2 は VARCHAR(50) のままアプリ層 enum 定数でバリデーション**。テンプレートごとのメタデータ（カスタムフィールド等）が必要になった段階で `team_templates` テーブルを新設し FK へ移行（テンプレート管理 feature doc で設計）
 - [x] 組織階層の最大深さ（現在3階層固定）をシステム設定として管理可能にするかを確定する → **`app.org.max-depth` 設定値（デフォルト: 5）に外出し**。再帰構造（`parent_organization_id`）はどの深さにも対応するため、設定値変更だけで上限を調整可能。Service 層・CTE ともにハードコードなしで設定値を参照。超過時は 422
 - [x] MEMBER のデフォルト権限（MANAGE_SCHEDULES / MANAGE_FILES / MANAGE_POSTS）をチーム単位または個人単位で剥奪する「制限機能」の設計（Phase 3 以降） → **権限グループによる完全上書き（オーバーライド）方式を採用**。グループ割り当て時は `is_default` を無視しグループ内権限のみが実効権限となるため、マイナス計算のロジックなしで制限が可能。MEMBER 天井を `is_default = FALSE` の3件→ 全6件に拡張。権限解決ロジック・3層制御説明・フロー例を更新
-- [ ] F04（支払い管理）で定義された `MANAGE_PAYMENTS` パーミッションを `permissions` シードに追加する（Phase 3 実装前に確定）
+- [x] F04（支払い管理）で定義された `MANAGE_PAYMENTS` パーミッションを `permissions` シードに追加する（Phase 3 実装前に確定）→ **Phase 3 の V3.xxx で追加**。SYSTEM_ADMIN ✓ / ADMIN ✓ / DEPUTY_ADMIN △。MEMBER には付与不可（天井エントリなし）。scope = TEAM（F04 詳細設計時に ORGANIZATION への変更を検討）。Flyway マイグレーションと role_permissions シード表に反映済み
 - ~~`ORGANIZATION_MEMBER_JOINED` イベントを F02 イベントカタログの「今後追加予定」に追記する~~ → 対応済み（2026-02-21）
 
 ---
@@ -1387,6 +1400,7 @@ V2.022__rename_permission_groups_tables.sql
 | 2026-02-21 | 精査・整合性修正: 組織作成フローの `org_type_verified` 残存を削除。ロール変更フローの権限グループ削除条件を「DEPUTY_ADMIN でも MEMBER でもない場合」に修正。メンバー一覧レスポンスの `permission_groups` 返却条件を MEMBER にも拡張。テーブル一覧の `team_permission_groups` 説明を DEPUTY_ADMIN / MEMBER 両対応に更新。ブロックフローのイベント種別を `TEAM/ORGANIZATION_MEMBER_REMOVED`（reason:BLOCK）→ `TEAM/ORGANIZATION_MEMBER_BLOCKED` に修正。チーム・組織のブロック解除フローを新設。未解決事項に `MANAGE_PAYMENTS` パーミッション追加タスクを追記 |
 | 2026-02-21 | 招待トークンレートリミット・QRコード対応（Issue #10）: セキュリティ考慮事項のレートリミットをテーブル形式に整理し `POST /teams\|organizations/{id}/invite-tokens` に 10 req/hour per user を追加。`GET /api/v1/invite/{token}/qr` エンドポイントを追加（ZXing による動的 PNG 生成・S3 保存なし・`size` パラメータ対応）|
 | 2026-03-08 | 組織階層の最大深さを3階層→`app.org.max-depth` 設定値（デフォルト: 5）に変更: 再帰構造（parent_organization_id）はどの深さにも対応するため、設定値変更だけで上限を調整可能。Service 層・CTE ともにハードコードを廃止し設定値を参照する設計に更新 |
+| 2026-03-09 | `MANAGE_PAYMENTS` パーミッションを確定: Phase 3 V3.xxx で追加（SYSTEM_ADMIN✓ / ADMIN✓ / DEPUTY_ADMIN△ / MEMBER なし）。permissions シード表に追記・role_permissions シード表に行追加・Phase 3 Flyway マイグレーション定義を追加。scope=TEAM（F04 設計時に再確認）|
 | 2026-03-09 | MEMBER 権限をオーバーライドモデルに変更: グループ割り当て時は is_default を無視しグループ内権限のみを実効権限とする設計に統一。権限解決ロジック step 6・MEMBER 天井定義（is_default=FALSE の3件→ 全6件）・3層制御説明・デフォルト権限注記・MEMBER 権限グループ設定フロー（例1:追加維持 / 例2:制限）を更新 |
 | 2026-03-09 | 組織階層の最大深さをアプリ層固定から `app.org.max-depth` 設定値（デフォルト: 5）への外出しに修正: 再帰構造を活かした拡張性確保のため。階層構造の説明・例・CTE（`:maxDepth - 1`）・組織作成フロー・organizations テーブル備考・未解決事項を更新 |
 | 2026-03-08 | `teams.template` の移行方針を確定: Phase 2 は VARCHAR(50) + アプリ層 enum 定数バリデーションで運用。`team_templates` テーブルへの FK 移行はメタデータが必要になった段階でテンプレート管理 feature doc にて実施。テーブル定義・制約備考・未解決事項を更新 |
