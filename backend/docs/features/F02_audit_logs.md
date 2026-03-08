@@ -315,6 +315,9 @@ organizations (1) ──── (N) audit_logs   ※ organization_id は SET NULL
 - SYSTEM_ADMIN のみ全ログを参照可能（Phase 1）
 - 将来的に ADMIN が自組織・チームスコープのログを参照できるようにする（Phase 3 以降）
   - `team_id` または `organization_id` が自 ADMIN のスコープに含まれるレコードのみ返す
+  - **`team_id` / `organization_id` が NULL のレコードは ADMIN に開示しない**（プラットフォームレベル操作・個人の認証設定は ADMIN の監視範囲外）
+  - ADMIN が特定メンバーを `user_id` で絞り込む場合も同様に `organization_id = :myOrgId` OR `team_id IN (:myTeamIds)` を **WHERE 句に必須条件として常に付与**する（PASSWORD_CHANGED / MFA_ENABLED 等の個人認証ログが混入しないようにする）
+  - セキュリティ上の重大懸念（アカウント乗っ取り疑い等）がある場合は SYSTEM_ADMIN が調査を行う運用とする
 - 一般ユーザーは自分の `user_id` に該当するログのみ参照可能（Phase 3 以降）
 
 ### `metadata` 返却方針
@@ -378,7 +381,7 @@ V1.011__create_audit_logs_table.sql
 - [x] `GET /users/me/audit-logs`（自分のログ参照）の実装 Phase を確定する（Phase 3 候補）→ **Phase 3 に確定**。Section 4・5 の「Phase 3 以降」表記は維持（F05 と同フェーズで実装）
 - [x] `GET /admin/audit-logs` の `metadata` フィールドを全件返すか、一部キーのみ返すかを実装前に確定する（個人情報漏洩リスクの精査）→ **全件返却に確定**（SYSTEM_ADMIN 特権ユーザーのみ対象・調査網羅性優先）。PII 保護は DB 保存時の記録ルールで対処（ハッシュ化対象: `WITHDRAWAL_COMPLETED` / `PENDING_USER_CLEANED_UP`。`EMAIL_CHANGE_REQUESTED` / `EMAIL_CHANGED` は調査上の必要性から平文保持）。Phase 3+ で ADMIN 向けに公開する際は `new_email` / `old_email` キーを除去するプロジェクション処理を実装する（Section 5 参照）
 - [x] 1年超過分のアーカイブ先（S3 バケット名・パス設計）を Phase 10 開始前に確定する → **Phase 2〜3 でインフラ構成確定と同時に決定**する方針に変更（Phase 10 まで先送りしない。現時点では DB ストレージに余裕があり先行設計は不要。インフラ選定後に S3 互換ストレージのバケット名・パス設計を共通インフラ定義として確定し、アーカイブバッチも同時に実装する。Section 6 更新済み）
-- [ ] Phase 3 で ADMIN が自組織ログを参照する際、`team_id` / `organization_id` が NULL（プラットフォームレベル操作）のレコードをどう扱うかを確定する
+- [x] Phase 3 で ADMIN が自組織ログを参照する際、`team_id` / `organization_id` が NULL（プラットフォームレベル操作）のレコードをどう扱うかを確定する → **ADMIN に開示しない**。個人の認証設定（PASSWORD_CHANGED / MFA 系 / OAuth 系 / ログイン系）はチーム管理者の監視範囲外とし、重大懸念がある場合は SYSTEM_ADMIN が調査する運用。実装では `organization_id = :myOrgId` OR `team_id IN (...)` を WHERE 句に必須条件として常に付与し、`user_id` による絞り込み時も NULL スコープレコードが混入しないよう徹底する（Section 5 参照）
 - [ ] `session_id` の記録要否を確定する（セッション単位での行動追跡が必要か）
 - ~~`EMAIL_VERIFIED` の audit_logs 記録ステップを F01 メール認証フローに追記する~~ → 対応済み（2026-02-21）
 
@@ -388,6 +391,7 @@ V1.011__create_audit_logs_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-08 | Phase 3 ADMIN ログ参照の NULL スコープ除外ポリシーを確定: `team_id` / `organization_id` が NULL のレコードは ADMIN に開示しない。`user_id` で特定メンバーを絞り込む場合も `organization_id = :myOrgId` OR `team_id IN (...)` を WHERE 句に必須条件として付与し NULL スコープレコードの混入を防ぐ。Section 5 参照方針を更新 |
 | 2026-03-08 | アーカイブ先確定タイミングを変更: 「Phase 10 開始前」→「Phase 2〜3 でインフラ構成確定と同時に決定」。Section 6 保持ポリシーを更新（Phase 10 以降の記述を削除し Phase 2〜3 での確定を明記）。未解決事項を解決済みに更新 |
 | 2026-03-07 | `metadata` 返却方針を確定: `GET /admin/audit-logs`（SYSTEM_ADMIN）は JSON 全件返却。PII 保護は DB 保存時の記録ルールで対処（退会系イベントはハッシュ化・`EMAIL_CHANGE` 系は調査上の必要性から平文保持）。Phase 3+ ADMIN 向けはプロジェクション処理を追加実装予定。`GET /users/me/audit-logs` の metadata も全件返却に確定。Section 4・5・6・8 を更新 |
 | 2026-03-07 | `GET /users/me/audit-logs` の実装 Phase を Phase 3 に確定（未解決事項を解決済みに更新）|
