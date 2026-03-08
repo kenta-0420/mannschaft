@@ -256,12 +256,14 @@ INDEX idx_rp_permission (permission_id)
 | `role_id` | BIGINT UNSIGNED | NO | — | FK → roles |
 | `team_id` | BIGINT UNSIGNED | YES | NULL | FK → teams（チームスコープ; NULL = 組織またはプラットフォーム）|
 | `organization_id` | BIGINT UNSIGNED | YES | NULL | FK → organizations（組織スコープ; NULL = チームまたはプラットフォーム）|
+| `scope_key` | VARCHAR(30) | NO | — | STORED 生成列。`COALESCE(CONCAT('org:', organization_id), CONCAT('team:', team_id), 'platform')` で導出。一意性保証用 |
 | `granted_by` | BIGINT UNSIGNED | YES | NULL | FK → users（付与者; システム付与・シードは NULL; SET NULL on delete）|
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 
 **インデックス**
 ```sql
+UNIQUE KEY uq_ur_user_scope (user_id, scope_key)   -- DBレベルの一意性保証（同一スコープへの重複ロール防止）
 INDEX idx_ur_user_id (user_id)
 INDEX idx_ur_team_id (team_id)
 INDEX idx_ur_organization_id (organization_id)
@@ -277,8 +279,9 @@ INDEX idx_ur_user_org (user_id, organization_id)
 | チームレベル | Y | NULL | チーム Y の DEPUTY_ADMIN |
 
 **制約・備考**
-- 1ユーザーが同一スコープに複数ロールを持つことはできない（アプリケーション Service 層で強制）
-- MySQL UNIQUE の NULL 制限（NULL 同士が一致しない）により DB 制約では一意性を完全保証できないため、Service 層で挿入前に重複確認クエリを実行する
+- 1ユーザーが同一スコープに複数ロールを持つことはできない。`UNIQUE KEY uq_ur_user_scope (user_id, scope_key)` で DB レベルで保証する
+- `scope_key` は STORED 生成列（`COALESCE(CONCAT('org:', organization_id), CONCAT('team:', team_id), 'platform')`）。MySQL の UNIQUE 制約が NULL を重複と見なさない仕様を回避し、`SELECT FOR UPDATE` によるロック競合なしに一意性を強制できる
+- 重複挿入時は DB が一意制約違反を発生させるため、Service 層は例外ハンドリングのみで対応可（挿入前の重複確認クエリは不要）
 - `team_id` と `organization_id` を同時に非 NULL にすることはアプリ層で禁止（XOR または両方 NULL）
 - チーム論理削除後も `user_roles` は保持する。削除済みチームはアプリ層でフィルタリング
 
@@ -1296,6 +1299,8 @@ V2.005__create_roles_table.sql
 V2.006__create_permissions_table.sql
 V2.007__create_role_permissions_table.sql
 V2.008__create_user_roles_table.sql
+  -- scope_key VARCHAR(30) GENERATED ALWAYS AS (COALESCE(CONCAT('org:', organization_id), CONCAT('team:', team_id), 'platform')) STORED
+  -- UNIQUE KEY uq_ur_user_scope (user_id, scope_key)
 V2.009__create_team_permission_groups_table.sql
 V2.010__create_team_permission_group_permissions_table.sql
 V2.011__create_user_permission_groups_table.sql
@@ -1339,7 +1344,7 @@ V2.022__rename_permission_groups_tables.sql
 - ~~組織レベルのサポーター登録（`POST /api/v1/organizations/{id}/follow`）の必要性を確認する~~ → 対応済み（2026-02-21、チームと対称的に実装）
 - [x] `invite_tokens.created_by` が退会した場合に紐付くトークンを自動失効させるか、そのまま残すかを確定する → **自動失効させず有効のままとする**（`created_by` は `SET NULL on delete`）。理由: 運用継続性の確保・管理責任はチーム/組織に帰属・他の ADMIN による手動 revoke が代替手段として存在するため
 - [x] チーム論理削除時に `invite_tokens.revoked_at` を自動設定するか確定する → **自動設定する**（一括失効）。組織論理削除時も同様に直属トークンを一括失効。子チームのトークンは組織削除では失効させない（チームが独立存続するため）。チーム/組織削除フローをビジネスロジックに追加
-- [ ] `user_roles` の一意性保証方法を Phase 2 実装時に確定する（MySQL 8.0 関数インデックス / アプリ層 + SELECT FOR UPDATE / generated column 等）
+- [x] `user_roles` の一意性保証方法を Phase 2 実装時に確定する → **STORED 生成列 `scope_key` + `UNIQUE KEY (user_id, scope_key)`** を採用。`COALESCE(CONCAT('org:', organization_id), CONCAT('team:', team_id), 'platform')` で NULL 問題を回避し、DB レベルで一意性を強制。Service 層は例外ハンドリングのみで対応可
 - [ ] `teams.template` の型: VARCHAR(50) → 将来的に FK → `team_templates` テーブルへ移行するタイミングを確定する（テンプレート管理 feature doc で設計）
 - [ ] 組織階層の最大深さ（現在3階層固定）をシステム設定として管理可能にするかを確定する
 - [ ] MEMBER のデフォルト権限（MANAGE_SCHEDULES / MANAGE_FILES / MANAGE_POSTS）をチーム単位または個人単位で剥奪する「制限機能」の設計（Phase 3 以降）。現設計では追加付与のみ対応
@@ -1362,6 +1367,7 @@ V2.022__rename_permission_groups_tables.sql
 | 2026-02-21 | org_type 変更フロー対応（Issue #9）: `org_type_verified` カラムを削除（自己申告制のため審査フラグ不要）。org_type 変更フローをビジネスロジックに追加。セキュリティ考慮事項の org_type 記述を「ADMIN による自己申告制・即時反映・audit_logs に記録」に更新。組織作成フローから SYSTEM_ADMIN への審査通知を削除 |
 | 2026-02-21 | 精査・整合性修正: 組織作成フローの `org_type_verified` 残存を削除。ロール変更フローの権限グループ削除条件を「DEPUTY_ADMIN でも MEMBER でもない場合」に修正。メンバー一覧レスポンスの `permission_groups` 返却条件を MEMBER にも拡張。テーブル一覧の `team_permission_groups` 説明を DEPUTY_ADMIN / MEMBER 両対応に更新。ブロックフローのイベント種別を `TEAM/ORGANIZATION_MEMBER_REMOVED`（reason:BLOCK）→ `TEAM/ORGANIZATION_MEMBER_BLOCKED` に修正。チーム・組織のブロック解除フローを新設。未解決事項に `MANAGE_PAYMENTS` パーミッション追加タスクを追記 |
 | 2026-02-21 | 招待トークンレートリミット・QRコード対応（Issue #10）: セキュリティ考慮事項のレートリミットをテーブル形式に整理し `POST /teams\|organizations/{id}/invite-tokens` に 10 req/hour per user を追加。`GET /api/v1/invite/{token}/qr` エンドポイントを追加（ZXing による動的 PNG 生成・S3 保存なし・`size` パラメータ対応）|
+| 2026-03-08 | `user_roles` 一意性保証を確定: STORED 生成列 `scope_key`（COALESCE 式）+ `UNIQUE KEY uq_ur_user_scope (user_id, scope_key)` を採用。テーブル定義・インデックス・制約備考を更新。Flyway V2.008 コメントに生成列定義を明記。未解決事項を解決済みに変更 |
 | 2026-03-08 | チーム・組織論理削除フローを追加: 削除時に紐付く invite_tokens を一括失効（revoked_at = NOW()）する設計に確定。invite_tokens 制約・備考に「チーム/組織論理削除時の扱い」を追記。組織削除時は直属トークンのみ失効（子チームのトークンはそのまま）。未解決事項を解決済みに変更 |
 | 2026-03-08 | 招待トークン発行者退会時の扱いを確定: 自動失効なし・`created_by` は SET NULL on delete で有効のまま残す設計を `invite_tokens` 制約・備考に明記。理由（運用継続性・管理責任の所在・手動 revoke が代替手段）を記載 |
 | 2026-03-08 | 組織レベル権限グループ対応: `team_permission_groups` → `permission_groups`、`team_permission_group_permissions` → `permission_group_permissions` にリネームし、`organization_id` カラム（XOR 制約 `chk_pg_scope`）を追加。チーム・組織スコープを単一テーブルで共通管理する設計に変更。組織向け権限グループ管理 API（`GET/POST/PATCH/DELETE /organizations/{id}/permission-groups` および `PUT /organizations/{id}/members/{userId}/permission-groups`）を追加。権限解決ロジック・3層制御説明をテーブル名変更・スコープ分岐の注記追加に合わせ更新。Flyway V2.022 追加。|
