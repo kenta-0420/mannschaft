@@ -385,6 +385,7 @@ INDEX idx_it_organization_id (organization_id)
 - `team_id` と `organization_id` はどちらか一方のみ非 NULL（XOR; アプリ層でバリデーション）
 - `used_count` インクリメントは `SELECT ... FOR UPDATE` でアトミックに実行（同時参加による上限超過防止）
 - 有効期限の選択肢: 1日 / 7日 / 30日 / 90日 / 無期限
+- **発行者退会時の扱い**: `created_by` は `SET NULL on delete`。発行者が退会してもトークンは自動失効させず有効のままとする。理由: ① 引退・卒業等により発行者が交代しても既存の募集 URL が無効にならないよう運用継続性を保つため ② 招待 URL の管理責任は個人ではなくチーム/組織に帰属するため ③ 必要な場合は他の ADMIN が `revoked_at` を手動設定して失効させることが可能なため
 
 ---
 
@@ -1302,7 +1303,7 @@ V2.022__rename_permission_groups_tables.sql
 
 - [x] 組織レベルの DEPUTY_ADMIN 権限グループの必要性を Phase 2 開始前に確認する（現設計はチームスコープのみ）→ **対応済み（2026-03-08）**: `team_permission_groups` / `team_permission_group_permissions` を `permission_groups` / `permission_group_permissions` に統合リネームし、`organization_id` カラム（XOR 制約）を追加。チーム・組織共通で同一テーブルを使用する設計に変更。API も `GET/POST/PATCH/DELETE /organizations/{id}/permission-groups` および `PUT /organizations/{id}/members/{userId}/permission-groups` を追加
 - ~~組織レベルのサポーター登録（`POST /api/v1/organizations/{id}/follow`）の必要性を確認する~~ → 対応済み（2026-02-21、チームと対称的に実装）
-- [ ] `invite_tokens.created_by` が退会した場合に紐付くトークンを自動失効させるか、そのまま残すかを確定する
+- [x] `invite_tokens.created_by` が退会した場合に紐付くトークンを自動失効させるか、そのまま残すかを確定する → **自動失効させず有効のままとする**（`created_by` は `SET NULL on delete`）。理由: 運用継続性の確保・管理責任はチーム/組織に帰属・他の ADMIN による手動 revoke が代替手段として存在するため
 - [ ] チーム論理削除時に `invite_tokens.revoked_at` を自動設定するか確定する
 - [ ] `user_roles` の一意性保証方法を Phase 2 実装時に確定する（MySQL 8.0 関数インデックス / アプリ層 + SELECT FOR UPDATE / generated column 等）
 - [ ] `teams.template` の型: VARCHAR(50) → 将来的に FK → `team_templates` テーブルへ移行するタイミングを確定する（テンプレート管理 feature doc で設計）
@@ -1327,4 +1328,5 @@ V2.022__rename_permission_groups_tables.sql
 | 2026-02-21 | org_type 変更フロー対応（Issue #9）: `org_type_verified` カラムを削除（自己申告制のため審査フラグ不要）。org_type 変更フローをビジネスロジックに追加。セキュリティ考慮事項の org_type 記述を「ADMIN による自己申告制・即時反映・audit_logs に記録」に更新。組織作成フローから SYSTEM_ADMIN への審査通知を削除 |
 | 2026-02-21 | 精査・整合性修正: 組織作成フローの `org_type_verified` 残存を削除。ロール変更フローの権限グループ削除条件を「DEPUTY_ADMIN でも MEMBER でもない場合」に修正。メンバー一覧レスポンスの `permission_groups` 返却条件を MEMBER にも拡張。テーブル一覧の `team_permission_groups` 説明を DEPUTY_ADMIN / MEMBER 両対応に更新。ブロックフローのイベント種別を `TEAM/ORGANIZATION_MEMBER_REMOVED`（reason:BLOCK）→ `TEAM/ORGANIZATION_MEMBER_BLOCKED` に修正。チーム・組織のブロック解除フローを新設。未解決事項に `MANAGE_PAYMENTS` パーミッション追加タスクを追記 |
 | 2026-02-21 | 招待トークンレートリミット・QRコード対応（Issue #10）: セキュリティ考慮事項のレートリミットをテーブル形式に整理し `POST /teams\|organizations/{id}/invite-tokens` に 10 req/hour per user を追加。`GET /api/v1/invite/{token}/qr` エンドポイントを追加（ZXing による動的 PNG 生成・S3 保存なし・`size` パラメータ対応）|
+| 2026-03-08 | 招待トークン発行者退会時の扱いを確定: 自動失効なし・`created_by` は SET NULL on delete で有効のまま残す設計を `invite_tokens` 制約・備考に明記。理由（運用継続性・管理責任の所在・手動 revoke が代替手段）を記載 |
 | 2026-03-08 | 組織レベル権限グループ対応: `team_permission_groups` → `permission_groups`、`team_permission_group_permissions` → `permission_group_permissions` にリネームし、`organization_id` カラム（XOR 制約 `chk_pg_scope`）を追加。チーム・組織スコープを単一テーブルで共通管理する設計に変更。組織向け権限グループ管理 API（`GET/POST/PATCH/DELETE /organizations/{id}/permission-groups` および `PUT /organizations/{id}/members/{userId}/permission-groups`）を追加。権限解決ロジック・3層制御説明をテーブル名変更・スコープ分岐の注記追加に合わせ更新。Flyway V2.022 追加。|
