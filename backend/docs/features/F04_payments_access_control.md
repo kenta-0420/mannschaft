@@ -226,7 +226,7 @@ INDEX idx_oar_payment_item (payment_item_id)
 |---------|---|------|-----------|------|
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
 | `payment_item_id` | BIGINT UNSIGNED | NO | — | FK → payment_items |
-| `content_type` | ENUM('POST', 'FILE', 'ANNOUNCEMENT', 'SCHEDULE') | NO | — | コンテンツ種別 |
+| `content_type` | VARCHAR(50) | NO | — | コンテンツ種別（下記「許容値一覧」参照）|
 | `content_id` | BIGINT UNSIGNED | NO | — | 対象コンテンツの ID |
 | `created_by` | BIGINT UNSIGNED | YES | NULL | FK → users（SET NULL on delete）|
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
@@ -237,10 +237,45 @@ UNIQUE KEY uq_cpg_item_content (payment_item_id, content_type, content_id)
 INDEX idx_cpg_content (content_type, content_id)   -- コンテンツ取得時の逆引き用
 ```
 
+**`content_type` 許容値一覧**
+
+`ENUM` ではなく `VARCHAR(50)` を採用し、バリデーションはアプリ層（`ContentGateType` 定数クラス）で管理する。新しいコンテンツモジュールが追加されても F04 の DB スキーマを ALTER TABLE せず拡張できる（疎結合・OCP 遵守）。
+
+| 値 | 対応コンテンツ | 追加フェーズ |
+|----|--------------|------------|
+| `POST` | 投稿（掲示板・ブログ等）| Phase 3 |
+| `FILE` | ファイル（ドキュメント・画像等）| Phase 3 |
+| `ANNOUNCEMENT` | お知らせ | Phase 3 |
+| `SCHEDULE` | スケジュール | Phase 3 |
+| `VIDEO` | 動画コンテンツ | Phase 4+ |
+| `CHAT_MESSAGE` | チャットメッセージ / スレッド | Phase 4+ |
+
+> 上記以外の値が API 経由で送信された場合は **422 Unprocessable Entity** を返す（アプリ層で `ContentGateType` 定数との照合バリデーションを実施）。
+
+**Java 実装指針**
+```java
+// com.mannschaft.app.feature.payment.constant.ContentGateType
+public final class ContentGateType {
+    public static final String POST         = "POST";
+    public static final String FILE         = "FILE";
+    public static final String ANNOUNCEMENT = "ANNOUNCEMENT";
+    public static final String SCHEDULE     = "SCHEDULE";
+    // Phase 4+: VIDEO, CHAT_MESSAGE を追加（DB マイグレーション不要）
+
+    public static final Set<String> SUPPORTED = Set.of(POST, FILE, ANNOUNCEMENT, SCHEDULE);
+
+    public static boolean isSupported(String value) {
+        return SUPPORTED.contains(value);
+    }
+}
+```
+> 新しいコンテンツモジュール追加時は `SUPPORTED` セットに定数を追加し、該当モジュールの Service を `ContentGateResolver`（ストラテジーパターン）に登録するだけで F04 のコアロジックを無変更で拡張できる。
+
 **制約・備考**
 - 1つのコンテンツに複数の `payment_item` を紐付け可能（**全件**有効な PAID 状態で閲覧可）
 - コンテンツ削除時は各コンテンツモジュールのアプリ層でこのテーブルのレコードもカスケード削除する
 - `content_id` は各コンテンツテーブルへの論理 FK（物理 FK は設定しない）
+- **ENUM → VARCHAR 変更理由**: ENUM は値追加のたびに ALTER TABLE（テーブルロック）が必要なため避ける。VARCHAR + アプリ層バリデーションにより、新モジュール追加時の DB 変更コストをゼロにする
 
 ---
 
@@ -993,7 +1028,7 @@ V4.002__create_member_subscriptions_table.sql
 - [x] `payment_items.stripe_price_id` の設定方法: **自動生成を基本とし、手動紐付けも移行目的でサポートする方式に決定**（Section 5「Stripe Price 管理フロー」参照）。①`is_active = TRUE` で支払い項目を作成すると Stripe Product・Price を同期生成（フロー A）。②既存 Stripe 運用からの移行用として `stripe_price_id` を直接指定した場合は Stripe から金額・通貨を取得してバリデーション（フロー B）。③`amount`/`currency` 変更時は旧 Price をアーカイブし新 Price を生成（フロー C）。④`is_active` 変更時の Stripe 操作も定義済み（フロー D）。Stripe API は同期呼び出し・失敗時は DB ロールバック
 - [x] Stripe Subscription（自動更新）対応（Phase 4 以降）: **Phase 4 設計を確定**（Section 3・5・7 に追加済み）。`payment_items.is_recurring` フラグで一回払い / 自動更新を切り替え。Stripe Checkout `mode=subscription` 経由で加入（SCA・カード保管を Stripe に委譲）。解約・再有効化 API は「Stripe 先、DB 後」でロールバック一貫性を保証。Webhook 冪等性は `stripe_subscription_id` / `stripe_payment_intent_id` をキーとして保証。`invoice.payment_succeeded` で毎期の `member_payments` PAID レコードを生成（アクセス制御ロジックはそのまま流用可能）。`is_recurring` の後変更は禁止（422）
 - [x] 有効期限切れバッチのスケジュール（毎日 AM3:00 等）と通知タイミング（期限7日前・当日等）の確定: **2フェーズ設計に確定**。AM 3:00 監視バッチ（ShedLock）で通知対象を抽出してキュー登録、AM 8:00 通知バッチで送信。通知は「7日前リマインド（REMINDER_7D）」と「期限当日（EXPIRY_DAY）」の2種。更新済みメンバー（新しい有効 PAID が存在）および Subscription 自動更新中メンバーはスキップ。`member_payments.status` は変更しない（有効判定は `valid_until >= CURDATE()` でリアルタイム計算）
-- [ ] `content_payment_gates.content_type` に追加する値（CHAT_MESSAGE、VIDEO 等）を各コンテンツ機能の設計時に確定する
+- [x] `content_payment_gates.content_type` に追加する値（CHAT_MESSAGE、VIDEO 等）を各コンテンツ機能の設計時に確定する: **VARCHAR(50) + アプリ層バリデーション方式に変更**（ENUM 廃止）。Phase 3 初期値: `POST` / `FILE` / `ANNOUNCEMENT` / `SCHEDULE`。Phase 4+ 予定: `VIDEO` / `CHAT_MESSAGE`。新モジュール追加時は `ContentGateType` 定数に追加するのみで DB ALTER TABLE 不要（OCP 遵守）。不正値は 422 で弾く
 - [ ] 返金操作の提供範囲: Stripe ダッシュボード操作 + webhook による状態同期のみとするか、ADMIN が API 経由で返金を実行できるエンドポイントを提供するかを確定する
 - [ ] DEPUTY_ADMIN への `MANAGE_PAYMENTS` パーミッション追加: F03 の `permissions` シードに追記が必要（F03 の未解決事項と連動）
 - [ ] コンテンツ単位ロックのタイトル表示: タイトルすら非表示にする「完全非公開」オプションの必要性を確認する
@@ -1004,6 +1039,7 @@ V4.002__create_member_subscriptions_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-10 | `content_payment_gates.content_type` を ENUM → VARCHAR(50) に変更（未解決④解決）: 疎結合・OCP 遵守のため VARCHAR + アプリ層バリデーション方式を採用。`ContentGateType` 定数クラスと許容値一覧・Java 実装指針を追記。Phase 3 初期値（POST/FILE/ANNOUNCEMENT/SCHEDULE）と Phase 4+ 予定値（VIDEO/CHAT_MESSAGE）を文書化 |
 | 2026-03-10 | 有効期限切れバッチ設計確定（未解決③解決）: AM 3:00 監視バッチ + AM 8:00 通知バッチの2フェーズ設計。通知タイミング（7日前・当日）・Subscription 自動更新メンバーのスキップ条件・status 非変更の設計根拠を追記 |
 | 2026-03-10 | Stripe Subscription 設計確定（未解決②解決）: Phase 4 設計として `is_recurring` / `billing_interval` カラム追加計画・`member_subscriptions` テーブル定義・Subscription 開始 / 解約 / 再有効化フロー・新規 Webhook イベント（`invoice.payment_succeeded` 等）・Flyway Phase 4 マイグレーション（V4.001〜002）を追加。Checkout エンドポイントに mode=subscription 分岐を追記 |
 | 2026-03-10 | `stripe_price_id` 管理フロー確定（未解決①解決）: POST/PATCH に `is_active` フィールド追加・Stripe 自動生成フロー（A）・手動紐付けフロー（B）・金額変更フロー（C）・is_active 変更フロー（D）を追加。PATCH 仕様セクション新規追加。支払い項目作成フローに Stripe 同期呼び出し・ロールバック処理を追加 |
