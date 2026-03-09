@@ -1941,15 +1941,19 @@ WHERE t.archived_at IS NULL
 - **フォロー登録の公開制限**: チーム/組織フォローはいずれも `visibility = PUBLIC` かつ `supporter_enabled = TRUE` のエンティティのみ受け付ける。条件を満たさない場合は 403
 - **レートリミット**: 以下のエンドポイントに Bucket4j を適用する
 
-  | エンドポイント | 制限 | 単位 | 目的 |
-  |--------------|------|------|------|
-  | `POST /teams/{id}/invite-tokens` | 10 req/hour | per user | 悪意ある ADMIN による大量トークン生成を防止 |
-  | `POST /organizations/{id}/invite-tokens` | 10 req/hour | per user | 同上 |
-  | `POST /invite/{token}/join` | 10 req/min | per user | トークンのブルートフォース探索を防止 |
-  | `POST /teams/{id}/follow` | 10 req/min | per user | フォロー操作の乱用防止 |
-  | `POST /organizations/{id}/follow` | 10 req/min | per user | フォロー操作の乱用防止 |
+  | エンドポイント | 制限 | 単位 | 認証 | 目的 |
+  |--------------|------|------|------|------|
+  | `GET /invite/{token}` | 10 req/min | **per IP** | 不要 | 未認証エンドポイントへのトークン列挙試行・DoS 防止 |
+  | `GET /invite/{token}/qr` | 10 req/min | **per IP** | 不要 | 同上（PNG 画像生成リソースの保護）|
+  | `POST /invite/{token}/join` | 10 req/min | per user | 必要 | トークンのブルートフォース探索を防止 |
+  | `POST /teams/{id}/invite-tokens` | 10 req/hour | per user | 必要 | 悪意ある ADMIN による大量トークン生成を防止 |
+  | `POST /organizations/{id}/invite-tokens` | 10 req/hour | per user | 必要 | 同上 |
+  | `POST /teams/{id}/follow` | 10 req/min | per user | 必要 | フォロー操作の乱用防止 |
+  | `POST /organizations/{id}/follow` | 10 req/min | per user | 必要 | フォロー操作の乱用防止 |
 
-  > トークン作成のレートリミットは per user（ADMIN 個人）で適用する。`max_uses` を大きく設定すれば1枚のトークンで多人数を招待できるため、枚数制限はあくまで大量生成の乱用防止が目的
+  > - **per IP vs per user**: 未認証エンドポイント（`GET /invite/*`）は user ID が存在しないため IP アドレスをキーに制限する。認証済みエンドポイントは user ID をキーに適用し、NAT・プロキシ環境での誤検知を防ぐ
+  > - **optional-auth エンドポイント**（`GET /teams/{id}`・`GET /organizations/{id}` など認証「任意」のもの）: 連番 ID が列挙可能だが、非公開エンティティは 403/404 のみ返し内部情報を返さない。SNS 経由の大量流入も想定されるため現時点では厳格な制限を設けず、将来的に問題が顕在化した場合に Nginx 等のゲートウェイで IP 単位のグローバル制限を追加することで対応する
+  > - トークン作成のレートリミットは per user（ADMIN 個人）で適用する。`max_uses` を大きく設定すれば1枚のトークンで多人数を招待できるため、枚数制限はあくまで大量生成の乱用防止が目的
 
 ---
 
@@ -2080,3 +2084,4 @@ V3.xxx__add_manage_payments_permission.sql
 | 2026-03-09 | `invite_tokens` に DB レベルの XOR CHECK 制約（`chk_it_scope`）を追加: 制約備考の「アプリ層でバリデーション」を `chk_it_scope CHECK ((team_id IS NULL) != (organization_id IS NULL))` に変更。`permission_groups.chk_pg_scope` と同方式。Flyway V2.012 コメントに反映 |
 | 2026-03-09 | 一覧取得系 API に visibility 依存の認可ルール・返却粒度を追加（B-7 対応）: ① `GET /teams/{id}/members` に認可ルール表（PUBLIC/ORGANIZATION_ONLY/PRIVATE × アクセス可能者）・ロール別返却フィールド表・エラーレスポンスを追記。ADMIN/DEPUTY_ADMIN は全フィールド、MEMBER/SUPPORTER/GUEST および非メンバー（PUBLIC）は基本プロフィールのみ返却。② `GET /organizations/{id}/members` の仕様セクションを新設（組織は PUBLIC/PRIVATE の2値のみ、ロール別返却粒度はチームと同一）。③ `GET /organizations/{id}/teams` の仕様セクションを新設（PRIVATE 組織は組織メンバーのみ閲覧可・返却チームは各 visibility でフィルタ）。④ `GET /teams/{id}/organizations` の仕様セクションを新設（PRIVATE チームはチームメンバーのみ閲覧可・返却組織は各 visibility でフィルタ）。エンドポイント一覧の認証欄を visibility 依存の注記に更新 |
 | 2026-03-09 | アーカイブ・アーカイブ解除 API とフローを追加（B-8 対応）: ① エンドポイント一覧に `PATCH /teams/{id}/archive`・`/unarchive`・`PATCH /organizations/{id}/archive`・`/unarchive` を追加（ADMIN 専用・204 No Content）。② 自動アーカイブバッチ（チームのみ・毎月1日 03:00 JST）をビジネスロジックに追加。判定条件: 全メンバーの最終ログイン（`users.last_login_at`・F02 クロスフィーチャー参照）の最大値が 12ヶ月超過。SUPPORTER 含む全ロールを対象。NULL ログインは `COALESCE(last_login_at, '1970-01-01')` で処理。③ 手動アーカイブ / 解除フローを追加（アーカイブ時に `invite_tokens` を一括失効・audit_logs に reason: MANUAL）。④ アーカイブ状態の書き込み制限一覧（F03 スコープのブロック対象 / 許可対象操作）を追加。F04・F05 等への横断チェック指示を注記。⑤ 組織自動アーカイブ条件が未定義のため未解決事項に追記 |
+| 2026-03-09 | 未認証招待 API にレートリミットを追加（C-1・C-2 対応）: `GET /invite/{token}` と `GET /invite/{token}/qr` に 10 req/min per IP を追加。既存テーブルに認証列を追加し per IP / per user の使い分けを明記。optional-auth GET エンドポイント（`/teams/{id}`・`/organizations/{id}` 等）は将来対応（現時点で厳格制限は不採用）とする理由を注記 |
