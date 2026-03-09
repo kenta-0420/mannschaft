@@ -1823,8 +1823,6 @@ WHERE tom.organization_id IN (SELECT id FROM org_subtree)
 
 ### 自動アーカイブバッチ（チーム）
 
-> 組織の自動アーカイブ条件は未解決事項（Section 8 参照）。組織は手動アーカイブ API のみ提供する。
-
 **スケジュール**: 毎月1日 03:00 JST（Spring `@Scheduled(cron = "0 0 3 1 * *")`）
 
 **アーカイブ判定条件**: チームに所属する全メンバー（任意ロール・`user_roles.team_id = 対象チームID`）の最終ログイン日時（`users.last_login_at`）のうち最大値が 12ヶ月以上前である場合にアーカイブ対象とする。
@@ -1861,18 +1859,105 @@ WHERE t.archived_at IS NULL
 
 ---
 
-### 手動アーカイブフロー（チーム / 組織共通）
+### 自動アーカイブバッチ（組織）
 
+**スケジュール**: チームバッチと同一（毎月1日 03:00 JST）。チームバッチの完了後に実行する。
+
+**アーカイブ判定条件**: 以下の**すべて**を満たす組織をアーカイブ対象とする。
+
+| # | 条件 |
+|---|------|
+| C1 | 組織に**直接所属する全メンバー**（`user_roles.organization_id = 対象組織ID`）の最終ログイン最大値が 12ヶ月以上前 |
+| C2 | 組織に **ACTIVE 所属する全チーム**（`team_org_memberships.status = 'ACTIVE'`）の**全メンバー**の最終ログイン最大値が 12ヶ月以上前 |
+| C3 | 当該組織に関連する**有効な支払い**（`member_payments.expires_at > NOW()`）が存在しない（F04 クロスフィーチャー参照・カラム名は F04 設計時に確定）|
+
+> - C1・C2 の `last_login_at` NULL 処理は `COALESCE(last_login_at, '1970-01-01')` で統一
+> - 子組織（`parent_organization_id` で連なる下位組織）はカスケード対象外。子組織は独自の条件でバッチ判定される
+> - `member_payments` は F04 スコープ。F04 設計完了まで C3 はバッチに組み込まず、C1・C2 のみで先行実装可
+
+**バッチ SQL**（概略）:
+```sql
+-- Step 1: 対象組織 ID リストを取得
+SELECT o.id FROM organizations o
+WHERE o.archived_at IS NULL
+  AND o.deleted_at IS NULL
+  -- C1: 直接所属メンバー全員が 12ヶ月超ログインなし
+  AND NOT EXISTS (
+    SELECT 1 FROM user_roles ur
+    JOIN users u ON u.id = ur.user_id
+    WHERE ur.organization_id = o.id
+      AND COALESCE(u.last_login_at, '1970-01-01') >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+  )
+  -- C2: ACTIVE 所属チームの全メンバーも 12ヶ月超ログインなし
+  AND NOT EXISTS (
+    SELECT 1 FROM user_roles ur
+    JOIN users u ON u.id = ur.user_id
+    JOIN team_org_memberships tom
+      ON tom.team_id = ur.team_id AND tom.status = 'ACTIVE'
+    WHERE tom.organization_id = o.id
+      AND COALESCE(u.last_login_at, '1970-01-01') >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+  )
+  -- C3: 有効な支払いなし（F04 確定後に追加）
+  -- AND NOT EXISTS (
+  --   SELECT 1 FROM member_payments mp
+  --   WHERE mp.organization_id = o.id AND mp.expires_at > NOW()
+  -- )
+;
 ```
-1. PATCH /api/v1/teams/{id}/archive（または /organizations/{id}/archive）を受付
+
+**バッチフロー**:
+```
+1. 上記 SQL で対象組織 ID リストを取得
+2. organizations.archived_at = NOW() を一括 UPDATE
+3. カスケードアーカイブ対象チームを抽出:
+     「対象組織ID にのみ ACTIVE 所属し、他に ACTIVE な org 所属を持たないチーム」
+     （複数組織に所属するチームはカスケード対象外・他組織配下での継続稼働を保護）
+4. 対象チームの teams.archived_at = NOW() を一括 UPDATE
+5. 対象組織・カスケードチームの invite_tokens を一括失効:
+     UPDATE invite_tokens SET revoked_at = NOW()
+     WHERE (organization_id IN (...対象組織ID...)
+        OR team_id IN (...カスケードチームID...))
+     AND revoked_at IS NULL
+6. audit_logs に ORGANIZATION_ARCHIVED（reason: AUTO_INACTIVE）を件数分 INSERT
+7. カスケードアーカイブされたチームの audit_logs に
+     TEAM_ARCHIVED（reason: AUTO_CASCADE_ORG）を件数分 INSERT
+8. バッチ実行ログに組織・チームそれぞれのアーカイブ件数を記録
+```
+
+---
+
+### 手動アーカイブフロー
+
+**チームの場合:**
+```
+1. PATCH /api/v1/teams/{id}/archive を受付
 2. ADMIN 権限チェック → ADMIN 未満は 403
 3. archived_at IS NOT NULL → すでにアーカイブ済み → 422
-4. archived_at = NOW() で UPDATE
+4. teams.archived_at = NOW() で UPDATE
 5. invite_tokens を一括失効:
      UPDATE invite_tokens SET revoked_at = NOW()
-     WHERE team_id（または organization_id）= 対象ID AND revoked_at IS NULL
-6. audit_logs に TEAM_ARCHIVED（または ORGANIZATION_ARCHIVED）（reason: MANUAL）を記録
+     WHERE team_id = 対象ID AND revoked_at IS NULL
+6. audit_logs に TEAM_ARCHIVED（reason: MANUAL）を記録
 7. 204 No Content を返す
+```
+
+**組織の場合（カスケードあり）:**
+```
+1. PATCH /api/v1/organizations/{id}/archive を受付
+2. ADMIN 権限チェック → ADMIN 未満は 403
+3. archived_at IS NOT NULL → すでにアーカイブ済み → 422
+4. organizations.archived_at = NOW() で UPDATE
+5. カスケードアーカイブ対象チームを抽出:
+     「この組織にのみ ACTIVE 所属し、他に ACTIVE な org 所属を持たないチーム」
+     ※ 複数組織に所属するチームはカスケード対象外
+6. 対象チームの teams.archived_at = NOW() を UPDATE
+7. 組織・カスケードチームの invite_tokens を一括失効:
+     UPDATE invite_tokens SET revoked_at = NOW()
+     WHERE (organization_id = 対象ID OR team_id IN (...カスケードチームID...))
+     AND revoked_at IS NULL
+8. audit_logs に ORGANIZATION_ARCHIVED（reason: MANUAL）を記録
+9. カスケードされたチームの audit_logs に TEAM_ARCHIVED（reason: MANUAL_CASCADE_ORG）を記録
+10. 204 No Content を返す
 ```
 
 ---
@@ -2051,7 +2136,7 @@ V3.xxx__add_manage_payments_permission.sql
 - [x] F04（支払い管理）で定義された `MANAGE_PAYMENTS` パーミッションを `permissions` シードに追加する（Phase 3 実装前に確定）→ **Phase 3 の V3.xxx で追加**。SYSTEM_ADMIN ✓ / ADMIN ✓ / DEPUTY_ADMIN △。MEMBER には付与不可（天井エントリなし）。scope = TEAM（F04 詳細設計時に ORGANIZATION への変更を検討）。Flyway マイグレーションと role_permissions シード表に反映済み
 - ~~`ORGANIZATION_MEMBER_JOINED` イベントを F02 イベントカタログの「今後追加予定」に追記する~~ → 対応済み（2026-02-21）
 - [x] MEMBER / DEPUTY_ADMIN の自主退会フローが未定義 → **対応済み（2026-03-09）**: `DELETE /teams/{id}/me` / `DELETE /organizations/{id}/me` エンドポイントおよびフローを追加。最後のADMIN保護・SUPPORTER 誘導・payment data 保持（F04 参照）・組織退会は直属ロールのみ削除を明記
-- [ ] **組織の自動アーカイブ条件が未定義**: `organizations.archived_at` と `idx_org_archived`（バッチ用インデックス）は定義済みだが、自動アーカイブバッチの判定条件が未決定。候補案: ① 直接所属メンバーの最終ログイン12ヶ月経過（チームと同方式）② 直接所属メンバー + 配下チーム全メンバーの最終ログイン12ヶ月経過（子エンティティを活動基準に含める）。子組織・子チームが活動中でも組織自体が休眠しているケースを考慮して確定が必要
+- [x] **組織の自動アーカイブ条件が未定義** → **対応済み（2026-03-09）**: 案②（直接所属メンバー + ACTIVE 所属チームの全メンバーの最終ログイン12ヶ月超過）を採用。加えて有効な `member_payments` が存在しないことを C3 条件として追加（F04 設計確定後に実装）。カスケードアーカイブは「このorgにのみ ACTIVE 所属するチーム」に限定し、多対多所属チームへの誤波及を防止。子組織はカスケード対象外（独自バッチで判定）。手動アーカイブフローにも同カスケードロジックを適用（reason: MANUAL_CASCADE_ORG）
 
 ---
 
@@ -2089,3 +2174,4 @@ V3.xxx__add_manage_payments_permission.sql
 | 2026-03-09 | アーカイブ・アーカイブ解除 API とフローを追加（B-8 対応）: ① エンドポイント一覧に `PATCH /teams/{id}/archive`・`/unarchive`・`PATCH /organizations/{id}/archive`・`/unarchive` を追加（ADMIN 専用・204 No Content）。② 自動アーカイブバッチ（チームのみ・毎月1日 03:00 JST）をビジネスロジックに追加。判定条件: 全メンバーの最終ログイン（`users.last_login_at`・F02 クロスフィーチャー参照）の最大値が 12ヶ月超過。SUPPORTER 含む全ロールを対象。NULL ログインは `COALESCE(last_login_at, '1970-01-01')` で処理。③ 手動アーカイブ / 解除フローを追加（アーカイブ時に `invite_tokens` を一括失効・audit_logs に reason: MANUAL）。④ アーカイブ状態の書き込み制限一覧（F03 スコープのブロック対象 / 許可対象操作）を追加。F04・F05 等への横断チェック指示を注記。⑤ 組織自動アーカイブ条件が未定義のため未解決事項に追記 |
 | 2026-03-09 | 未認証招待 API にレートリミットを追加（C-1・C-2 対応）: `GET /invite/{token}` と `GET /invite/{token}/qr` に 10 req/min per IP を追加。既存テーブルに認証列を追加し per IP / per user の使い分けを明記。optional-auth GET エンドポイント（`/teams/{id}`・`/organizations/{id}` 等）は将来対応（現時点で厳格制限は不採用）とする理由を注記 |
 | 2026-03-09 | 招待 API エラーレスポンス・QR キャッシュ対応（C-2 補完）: `GET /invite/{token}` と `GET /invite/{token}/qr` のエラーレスポンス表に `429 Too Many Requests`（レートリミット超過）を追記。`GET /invite/{token}/qr` に ZXing PNG 生成の CPU コストを踏まえた Redis / オンヒープキャッシュ推奨注記（キー: `{token}:{size}`・TTL 5分）を追記 |
+| 2026-03-10 | 組織自動アーカイブバッチを追加（未解決事項解決）: 案②（直接所属メンバー + ACTIVE 所属チーム全メンバーの最終ログイン12ヶ月超過）を採用。C3 条件として有効な `member_payments` 不存在を追加（F04 設計確定後に実装・現時点は SQL コメントアウト）。カスケードアーカイブ対象を「このorgにのみ ACTIVE 所属するチーム」に限定（多対多所属チームへの誤波及を防止）。子組織はカスケード対象外。手動アーカイブフローをチーム / 組織で分割し、組織フローにカスケードロジック（MANUAL_CASCADE_ORG）を追加。バッチ SQL・フロー（6〜8ステップ）・audit_logs reason を明記 |
