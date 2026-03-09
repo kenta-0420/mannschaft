@@ -858,9 +858,83 @@ is_recurring = TRUE の payment_item を POST / PATCH 時:
 
 ---
 
-### 有効期限切れバッチ（参考）
+### 有効期限切れバッチ
 
-`member_payments.valid_until < CURDATE()` のレコードを定期バッチで検知し、メンバーへ期限切れ通知を送る（例: 期限7日前・当日）。`status` の変更は行わない（履歴保持）。アクセス制御の有効判定は常にリアルタイムの `valid_until >= CURDATE()` で行う。
+「判定（AM 3:00）」と「通知送信（AM 8:00）」の2フェーズに分離する。AM 3:00 の低トラフィック帯に重い集計クエリを済ませてキューを生成し、ユーザーが活動する AM 8:00 に軽い読み取りで通知を送ることで、**サーバー負荷の分散**と**通知開封率の向上**を両立する。
+
+#### フェーズ 1: 有効期限監視バッチ（毎日 AM 3:00 JST）
+
+```
+@Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
+@ShedLock(name = "payment-expiry-detection", lockAtMostFor = "30m")
+
+1. 通知対象を2種類のクエリで取得（どちらも同一のフィルタ条件を適用）:
+
+   共通フィルタ:
+   - mp.status = 'PAID'
+   - 更新済みスキップ（下記 NOT EXISTS）:
+       NOT EXISTS (
+         SELECT 1 FROM member_payments mp2
+         WHERE mp2.user_id          = mp.user_id
+           AND mp2.payment_item_id  = mp.payment_item_id
+           AND mp2.status = 'PAID'
+           AND mp2.valid_until > mp.valid_until  -- より新しい有効 PAID が存在 = 更新済み
+       )
+   - Subscription 自動更新メンバーをスキップ（Stripe dunning が担当するため重複通知を防ぐ）:
+       NOT EXISTS (
+         SELECT 1 FROM member_subscriptions ms
+         WHERE ms.user_id          = mp.user_id
+           AND ms.payment_item_id  = mp.payment_item_id
+           AND ms.status IN ('ACTIVE', 'PAST_DUE')  -- 自動更新中 or 督促中はスキップ
+       )
+
+   [7日前リマインド対象]
+   WHERE mp.valid_until = DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+   + 上記共通フィルタ
+
+   [期限当日対象]
+   WHERE mp.valid_until = CURDATE()
+   + 上記共通フィルタ
+
+2. 各対象を通知キューに PENDING で登録（通知機能との連携。通知種別: PAYMENT_EXPIRY_REMINDER_7D / PAYMENT_EXPIRY_DAY）
+3. audit_logs に PAYMENT_EXPIRY_QUEUED を記録（通知対象件数・種別）
+```
+
+#### フェーズ 2: 有効期限通知バッチ（毎日 AM 8:00 JST）
+
+```
+@Scheduled(cron = "0 0 8 * * *", zone = "Asia/Tokyo")
+@ShedLock(name = "payment-expiry-notification", lockAtMostFor = "30m")
+
+1. フェーズ 1 でキューされた当日 PENDING の通知対象を取得
+2. ユーザーごとにプッシュ通知 / メール通知を送信（通知機能 spec 参照）
+   - PAYMENT_EXPIRY_REMINDER_7D: 「{payment_item.name} の有効期限が7日後（{valid_until}）に迫っています」
+   - PAYMENT_EXPIRY_DAY:        「{payment_item.name} の有効期限が本日（{valid_until}）です。お早めにお手続きください」
+3. 送信済みを SENT にマーク・失敗を FAILED にマーク
+4. audit_logs に PAYMENT_EXPIRY_NOTIFIED を記録（送信成功件数）
+```
+
+#### status 非変更の設計意図
+
+`member_payments.status` は期限切れ後も `PAID` のまま変更しない。
+
+| 理由 | 説明 |
+|------|------|
+| 事実の保持 | 「過去に確かに支払った」という事実は `PAID` として永続する。遡及修正・返金トレースに不可欠 |
+| 有効判定の一元化 | 有効かどうかの判定は `valid_until >= CURDATE()` の計算で行い、バッチによる status 書き換えに依存しない |
+| バッチ停止耐性 | バッチが遅延・未実行でも「EXPIRED 書き換え済み / 未済」の中間状態が発生せず、アクセス制御は常に正確に機能する |
+| ADMIN 手動延長の簡潔さ | `valid_until` を UPDATE するだけで即時アクセス回復。status を EXPIRED → PAID に戻す操作が不要 |
+
+#### アクセス制御との連携
+
+```
+有効判定（Section 5「アクセス制御解決ロジック」より）:
+  status = 'PAID'
+  AND (valid_until IS NULL OR valid_until >= CURDATE())
+
+→ valid_until < CURDATE() のレコードはバッチ実行の有無にかかわらずリアルタイムにアクセス不可
+→ バッチは「通知を送る」ためのみ存在し、アクセス制御の判定に関与しない
+```
 
 ---
 
@@ -918,7 +992,7 @@ V4.002__create_member_subscriptions_table.sql
 
 - [x] `payment_items.stripe_price_id` の設定方法: **自動生成を基本とし、手動紐付けも移行目的でサポートする方式に決定**（Section 5「Stripe Price 管理フロー」参照）。①`is_active = TRUE` で支払い項目を作成すると Stripe Product・Price を同期生成（フロー A）。②既存 Stripe 運用からの移行用として `stripe_price_id` を直接指定した場合は Stripe から金額・通貨を取得してバリデーション（フロー B）。③`amount`/`currency` 変更時は旧 Price をアーカイブし新 Price を生成（フロー C）。④`is_active` 変更時の Stripe 操作も定義済み（フロー D）。Stripe API は同期呼び出し・失敗時は DB ロールバック
 - [x] Stripe Subscription（自動更新）対応（Phase 4 以降）: **Phase 4 設計を確定**（Section 3・5・7 に追加済み）。`payment_items.is_recurring` フラグで一回払い / 自動更新を切り替え。Stripe Checkout `mode=subscription` 経由で加入（SCA・カード保管を Stripe に委譲）。解約・再有効化 API は「Stripe 先、DB 後」でロールバック一貫性を保証。Webhook 冪等性は `stripe_subscription_id` / `stripe_payment_intent_id` をキーとして保証。`invoice.payment_succeeded` で毎期の `member_payments` PAID レコードを生成（アクセス制御ロジックはそのまま流用可能）。`is_recurring` の後変更は禁止（422）
-- [ ] 有効期限切れバッチのスケジュール（毎日 AM3:00 等）と通知タイミング（期限7日前・当日等）の確定
+- [x] 有効期限切れバッチのスケジュール（毎日 AM3:00 等）と通知タイミング（期限7日前・当日等）の確定: **2フェーズ設計に確定**。AM 3:00 監視バッチ（ShedLock）で通知対象を抽出してキュー登録、AM 8:00 通知バッチで送信。通知は「7日前リマインド（REMINDER_7D）」と「期限当日（EXPIRY_DAY）」の2種。更新済みメンバー（新しい有効 PAID が存在）および Subscription 自動更新中メンバーはスキップ。`member_payments.status` は変更しない（有効判定は `valid_until >= CURDATE()` でリアルタイム計算）
 - [ ] `content_payment_gates.content_type` に追加する値（CHAT_MESSAGE、VIDEO 等）を各コンテンツ機能の設計時に確定する
 - [ ] 返金操作の提供範囲: Stripe ダッシュボード操作 + webhook による状態同期のみとするか、ADMIN が API 経由で返金を実行できるエンドポイントを提供するかを確定する
 - [ ] DEPUTY_ADMIN への `MANAGE_PAYMENTS` パーミッション追加: F03 の `permissions` シードに追記が必要（F03 の未解決事項と連動）
@@ -930,6 +1004,7 @@ V4.002__create_member_subscriptions_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-10 | 有効期限切れバッチ設計確定（未解決③解決）: AM 3:00 監視バッチ + AM 8:00 通知バッチの2フェーズ設計。通知タイミング（7日前・当日）・Subscription 自動更新メンバーのスキップ条件・status 非変更の設計根拠を追記 |
 | 2026-03-10 | Stripe Subscription 設計確定（未解決②解決）: Phase 4 設計として `is_recurring` / `billing_interval` カラム追加計画・`member_subscriptions` テーブル定義・Subscription 開始 / 解約 / 再有効化フロー・新規 Webhook イベント（`invoice.payment_succeeded` 等）・Flyway Phase 4 マイグレーション（V4.001〜002）を追加。Checkout エンドポイントに mode=subscription 分岐を追記 |
 | 2026-03-10 | `stripe_price_id` 管理フロー確定（未解決①解決）: POST/PATCH に `is_active` フィールド追加・Stripe 自動生成フロー（A）・手動紐付けフロー（B）・金額変更フロー（C）・is_active 変更フロー（D）を追加。PATCH 仕様セクション新規追加。支払い項目作成フローに Stripe 同期呼び出し・ロールバック処理を追加 |
 | 2026-02-21 | 初版作成 |
