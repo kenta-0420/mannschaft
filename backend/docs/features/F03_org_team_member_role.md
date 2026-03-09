@@ -392,7 +392,7 @@ INDEX idx_it_organization_id (organization_id)
 ```
 
 **制約・備考**
-- `team_id` と `organization_id` はどちらか一方のみ非 NULL（XOR; アプリ層でバリデーション）
+- `team_id` と `organization_id` はどちらか一方のみ非 NULL（真の XOR; 両方 NULL は不正なため DB レベルの CHECK 制約 `chk_it_scope` で保証する。`permission_groups` の `chk_pg_scope` と同方式）
 - `used_count` インクリメントは `SELECT ... FOR UPDATE` でアトミックに実行（同時参加による上限超過防止）
 - 有効期限の選択肢: 1日 / 7日 / 30日 / 90日 / 無期限
 - **発行者退会時の扱い**: `created_by` は `SET NULL on delete`。発行者が退会してもトークンは自動失効させず有効のままとする。理由: ① 引退・卒業等により発行者が交代しても既存の募集 URL が無効にならないよう運用継続性を保つため ② 招待 URL の管理責任は個人ではなくチーム/組織に帰属するため ③ 必要な場合は他の ADMIN が `revoked_at` を手動設定して失効させることが可能なため
@@ -1633,6 +1633,8 @@ V2.009__create_team_permission_groups_table.sql
 V2.010__create_team_permission_group_permissions_table.sql
 V2.011__create_user_permission_groups_table.sql
 V2.012__create_invite_tokens_table.sql
+  --   CONSTRAINT chk_it_scope CHECK ((team_id IS NULL) != (organization_id IS NULL))
+  --   ※ invite_tokens は必ずチームまたは組織のどちらか一方に属するため真の XOR 制約を使用（両方 NULL 不可）
 V2.013__seed_roles.sql
 V2.014__seed_permissions.sql
 V2.015__seed_role_permissions.sql
@@ -1735,3 +1737,4 @@ V3.xxx__add_manage_payments_permission.sql
 | 2026-03-09 | 親リソース認可チェックを追加: チーム作成（organization_id 指定時）および子組織作成（parent_organization_id 指定時）に、親リソースの ADMIN チェックを必須化。存在しない・論理削除済みは 404、権限不足は 403。DEPUTY_ADMIN への CREATE_TEAM 委任は Phase 3 以降で検討。セキュリティ考慮事項に「親リソース認可チェック」項目を追加 |
 | 2026-03-09 | 自主退会フローを追加: `DELETE /teams/{id}/me` / `DELETE /organizations/{id}/me` エンドポイントを追加。最後のADMIN保護（422）・SUPPORTER は `/follow` へ誘導（422）・user_permission_groups の削除・audit_logs TEAM/ORGANIZATION_MEMBER_LEFT（reason: SELF_DEPARTURE）を定義。支払いデータは削除しない（F04 参照）。組織退会は組織直属ロールのみ削除し配下チームへの所属は保持する設計 |
 | 2026-03-09 | 精査対応（記載不具合修正）: ① role_permissions シードの `MANAGE_PAYMENTS` 行末注釈をテーブル外に移動（Markdown 崩れ修正）② DEPUTY_ADMIN 3層制御の件数を「Phase 2 時点で11件、Phase 3 以降 12件」に修正 ③ ロール変更フロー step 7 に DEPUTY_ADMIN→MEMBER 遷移時の `target_role='DEPUTY_ADMIN'` グループ削除を明記 ④ 変更履歴の日付順序を時系列順（2026-03-08→2026-03-09）に整列 ⑤ Section 2 MEMBER ロール説明をオーバーライドモデルに合わせ修正 ⑥ `user_roles` 制約備考に CHECK 制約（`chk_ur_scope`）を追加・Flyway V2.008 コメントに反映 |
+| 2026-03-09 | `invite_tokens` に DB レベルの XOR CHECK 制約（`chk_it_scope`）を追加: 制約備考の「アプリ層でバリデーション」を `chk_it_scope CHECK ((team_id IS NULL) != (organization_id IS NULL))` に変更。`permission_groups.chk_pg_scope` と同方式。Flyway V2.012 コメントに反映 |
