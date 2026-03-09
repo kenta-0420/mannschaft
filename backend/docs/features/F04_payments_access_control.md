@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 3
-> **最終更新**: 2026-02-21
+> **最終更新**: 2026-03-10
 
 ---
 
@@ -258,11 +258,17 @@ users (1) ──── (N) member_payments
   "description": "2025年4月〜2026年3月分",
   "type": "ANNUAL_FEE",
   "amount": 5000,
-  "currency": "JPY"
+  "currency": "JPY",
+  "is_active": true
 }
 ```
 
+> - `is_active` は省略可（デフォルト `true`）。`true` の場合はバックエンドが Stripe Product / Price を自動生成する
+> - `stripe_price_id` を直接指定することも可能（既存 Stripe 運用からの移行目的）。その場合はバックエンドが Stripe から金額・通貨を取得し `amount` / `currency` と一致するか検証する（詳細は「Stripe Price 管理フロー」参照）
+
 **レスポンス（201 Created）**
+
+`is_active = true` で作成した場合（Stripe Price 自動生成済み）:
 ```json
 {
   "data": {
@@ -272,11 +278,81 @@ users (1) ──── (N) member_payments
     "amount": 5000,
     "currency": "JPY",
     "is_active": true,
+    "stripe_product_id": "prod_xxxxxxxxxxxxxxxx",
+    "stripe_price_id": "price_xxxxxxxxxxxxxxxx",
+    "created_at": "2026-03-01T10:00:00Z"
+  }
+}
+```
+
+`is_active = false` で作成した場合（オフライン専用・Stripe 未連携）:
+```json
+{
+  "data": {
+    "id": 2,
+    "name": "現金払い専用 月謝",
+    "type": "MONTHLY_FEE",
+    "amount": 3000,
+    "currency": "JPY",
+    "is_active": false,
+    "stripe_product_id": null,
     "stripe_price_id": null,
     "created_at": "2026-03-01T10:00:00Z"
   }
 }
 ```
+
+**エラーレスポンス（作成時）**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | バリデーションエラー（amount ≤ 0、不正な currency 等）|
+| 403 | 権限不足 |
+| 422 | `stripe_price_id` 手動指定時に Stripe 上の金額・通貨と不一致 |
+| 502 | Stripe API との通信失敗（DB ロールバック済み）|
+
+---
+
+#### `PATCH /api/v1/teams/{id}/payment-items/{itemId}`
+
+`name` / `description` / `amount` / `currency` / `is_active` を部分更新する。
+
+**リクエストボディ**（変更するフィールドのみ指定）
+```json
+{
+  "amount": 6000
+}
+```
+
+> - `amount` または `currency` を変更した場合、既存の Stripe Price をアーカイブし新しい Price を自動生成する（Stripe Price は作成後に金額変更不可のため）
+> - `is_active: false` に変更した場合、既存の Stripe Price を Stripe 側でアーカイブする
+> - `is_active: true` に再変更した場合（アーカイブ済み Price は再有効化不可のため）新規 Price を自動生成する
+> - `stripe_price_id` を直接指定することも可能（移行目的）。指定時は Stripe からの金額・通貨バリデーションを実施する
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "id": 1,
+    "name": "2025年度 年会費",
+    "type": "ANNUAL_FEE",
+    "amount": 6000,
+    "currency": "JPY",
+    "is_active": true,
+    "stripe_product_id": "prod_xxxxxxxxxxxxxxxx",
+    "stripe_price_id": "price_yyyyyyyyyyyyyyyy",
+    "updated_at": "2026-04-01T10:00:00Z"
+  }
+}
+```
+
+**エラーレスポンス（更新時）**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | バリデーションエラー |
+| 403 | 権限不足 |
+| 404 | 支払い項目が存在しない / 論理削除済み |
+| 422 | `stripe_price_id` 手動指定時に Stripe 上の金額・通貨と不一致 |
+| 502 | Stripe API 通信失敗（DB ロールバック済み）|
 
 ---
 
@@ -463,11 +539,74 @@ Stripe-Signature: t=xxxx,v1=xxxx
 2. 操作者が当該チームの ADMIN か確認
 3. バリデーション（amount > 0、currency は許容リスト内）
 4. payment_items に INSERT（stripe_product_id / stripe_price_id は NULL のまま）
-5. audit_logs に PAYMENT_ITEM_CREATED を記録
-6. 201 Created を返す
+5. is_active = TRUE の場合 → Stripe Price 管理フロー「A. 自動作成」を同期実行:
+   - 成功: stripe_product_id / stripe_price_id を payment_items に UPDATE
+   - 失敗（Stripe API エラー）: payment_items を DELETE してロールバック → 502 を返す
+   ※ is_active = FALSE の場合は Stripe API を呼び出さない（stripe_price_id = NULL のまま）
+6. audit_logs に PAYMENT_ITEM_CREATED を記録
+7. 201 Created を返す
 ```
 
-> Stripe Product / Price の作成は、ADMIN がオンライン決済を有効化する操作（PATCH で `stripe_price_id` を設定）を別途行った際に実行する。この設計の詳細は Phase 3 実装時に確定する。
+---
+
+### Stripe Price 管理フロー
+
+> Stripe API は同期呼び出しで実装する。Stripe 失敗時は DB の変更をロールバックし不整合（アプリ更新済み / Stripe 未更新）を防ぐ。
+
+#### A. 自動作成（新規・再有効化）
+
+```
+1. Stripe API で Product を作成（payment_item と 1:1 で作成・金額変更時は流用）:
+     POST /v1/products {
+       name: payment_items.name,
+       metadata: { payment_item_id: "<ID>" }
+     }
+   → stripe_product_id を保存
+2. Stripe API で Price を作成:
+     POST /v1/prices {
+       unit_amount: <通貨換算後の金額 ※>,
+       currency: payment_items.currency,
+       product: stripe_product_id
+     }
+   → stripe_price_id を保存
+```
+
+> ※ **通貨別の unit_amount 変換**:
+> - JPY（ゼロ小数点通貨）: `unit_amount = amount`（例: ¥5000 → 5000）
+> - USD / EUR 等: `unit_amount = amount × 100`（例: $50.00 → 5000）
+> - Stripe のゼロ小数点通貨リストを参照し、通貨コードに応じて分岐する（[Stripe Docs: Zero-decimal currencies](https://docs.stripe.com/currencies#zero-decimal)）
+
+#### B. 手動紐付け（既存 Price ID を直接指定する移行フロー）
+
+```
+1. リクエストに stripe_price_id が含まれる場合
+2. Stripe API で Price を取得: GET /v1/prices/{stripe_price_id}
+3. price.unit_amount と payment_items.amount を通貨換算して比較 → 不一致は 422
+4. price.currency と payment_items.currency を比較 → 不一致は 422
+5. price.product を stripe_product_id として保存
+6. stripe_price_id を payment_items に保存
+```
+
+#### C. 金額・通貨変更時（PATCH で amount / currency を変更 + is_active = TRUE）
+
+```
+1. 変更前の stripe_price_id が存在する場合:
+     Stripe API で既存 Price をアーカイブ（非アクティブ化）:
+     POST /v1/prices/{old_stripe_price_id} { active: false }
+2. 変更後の金額・通貨でフロー A（自動作成）の step 2 を実行（Product は既存を流用）
+3. payment_items.stripe_price_id を新 Price ID に UPDATE
+```
+
+> `amount`・`currency` いずれかが変更された場合にのみ実行する。変更がない PATCH（name や description のみ）は Stripe API を呼び出さない（冪等性保証）
+
+#### D. is_active 変更時
+
+| 変更内容 | Stripe 操作 |
+|---------|------------|
+| TRUE → FALSE | 既存 `stripe_price_id` を Stripe でアーカイブ（`active: false`）。`stripe_price_id` は DB に保持（履歴として残す）|
+| FALSE → TRUE | フロー A を実行して新しい Price を作成（アーカイブ済み Price は再有効化不可）|
+| TRUE → TRUE（変化なし）| Stripe API 呼び出しなし |
+| FALSE → FALSE（変化なし）| Stripe API 呼び出しなし |
 
 ---
 
@@ -606,7 +745,7 @@ V3.006__create_content_payment_gates_table.sql
 
 ## 8. 未解決事項
 
-- [ ] `payment_items.stripe_price_id` の設定方法: ADMIN が Stripe ダッシュボードで作成した ID を手動入力するか、PATCH 操作時にバックエンドが Stripe API で自動作成するかを Phase 3 開始前に確定する
+- [x] `payment_items.stripe_price_id` の設定方法: **自動生成を基本とし、手動紐付けも移行目的でサポートする方式に決定**（Section 5「Stripe Price 管理フロー」参照）。①`is_active = TRUE` で支払い項目を作成すると Stripe Product・Price を同期生成（フロー A）。②既存 Stripe 運用からの移行用として `stripe_price_id` を直接指定した場合は Stripe から金額・通貨を取得してバリデーション（フロー B）。③`amount`/`currency` 変更時は旧 Price をアーカイブし新 Price を生成（フロー C）。④`is_active` 変更時の Stripe 操作も定義済み（フロー D）。Stripe API は同期呼び出し・失敗時は DB ロールバック
 - [ ] Stripe Subscription（自動更新）対応（Phase 4 以降）: 月謝のように毎月自動で請求・更新するケースの設計
 - [ ] 有効期限切れバッチのスケジュール（毎日 AM3:00 等）と通知タイミング（期限7日前・当日等）の確定
 - [ ] `content_payment_gates.content_type` に追加する値（CHAT_MESSAGE、VIDEO 等）を各コンテンツ機能の設計時に確定する
@@ -620,4 +759,5 @@ V3.006__create_content_payment_gates_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-10 | `stripe_price_id` 管理フロー確定（未解決①解決）: POST/PATCH に `is_active` フィールド追加・Stripe 自動生成フロー（A）・手動紐付けフロー（B）・金額変更フロー（C）・is_active 変更フロー（D）を追加。PATCH 仕様セクション新規追加。支払い項目作成フローに Stripe 同期呼び出し・ロールバック処理を追加 |
 | 2026-02-21 | 初版作成 |
