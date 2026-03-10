@@ -218,7 +218,7 @@ UNIQUE KEY uq_rp_role_permission (role_id, permission_id)
 INDEX idx_rp_permission (permission_id)
 ```
 
-**シードデータ（V2.015__seed_role_permissions.sql / V2.021__seed_member_permission_ceiling.sql / Phase 3: V3.008__add_manage_payments_permission.sql）**
+**シードデータ（V2.015__seed_role_permissions.sql / V2.021__seed_member_permission_ceiling.sql / Phase 3: V3.007__add_manage_payments_permission.sql）**
 
 凡例: **✓** = is_default TRUE（自動付与） / **△** = is_default FALSE（天井のみ・権限グループ経由で個別付与可）
 
@@ -237,7 +237,7 @@ INDEX idx_rp_permission (permission_id)
 | `SEND_SAFETY_CONFIRMATION` | ✓ | ✓ | △ | △ | - | - |
 | `MANAGE_PAYMENTS` | ✓ | ✓ | △ | - | - | - |
 
-> ※ `MANAGE_PAYMENTS` は Phase 3 / V3.008 で追加
+> ※ `MANAGE_PAYMENTS` は Phase 3 / V3.007 で追加
 
 Phase 2 合計レコード数: 11 + 11 + 11 + 6（✓3 + △3） = **39件**
 Phase 3 追加（MANAGE_PAYMENTS）: SYSTEM_ADMIN ✓ + ADMIN ✓ + DEPUTY_ADMIN △ = **+3件 → 合計42件**
@@ -2101,8 +2101,8 @@ V2.023__refactor_team_org_memberships.sql
   --   INDEX idx_tom_team_id, idx_tom_org_id, idx_tom_status
 
 -- Phase 3 （F04 支払い管理実装時）
-V3.008__add_manage_payments_permission.sql
-  -- permissions に MANAGE_PAYMENTS（display_name='支払い管理', scope='TEAM'）を INSERT
+V3.007__add_manage_payments_permission.sql
+  -- permissions に MANAGE_PAYMENTS（display_name='支払い管理', scope='ORGANIZATION'）を INSERT
   -- role_permissions に3件 INSERT:
   --   (SYSTEM_ADMIN, MANAGE_PAYMENTS, is_default=TRUE)
   --   (ADMIN,        MANAGE_PAYMENTS, is_default=TRUE)
@@ -2133,7 +2133,7 @@ V3.008__add_manage_payments_permission.sql
 - [x] `teams.template` の型: VARCHAR(50) → 将来的に FK → `team_templates` テーブルへ移行するタイミングを確定する → **Phase 2 は VARCHAR(50) のままアプリ層 enum 定数でバリデーション**。テンプレートごとのメタデータ（カスタムフィールド等）が必要になった段階で `team_templates` テーブルを新設し FK へ移行（テンプレート管理 feature doc で設計）
 - [x] 組織階層の最大深さ（現在3階層固定）をシステム設定として管理可能にするかを確定する → **`app.org.max-depth` 設定値（デフォルト: 5）に外出し**。再帰構造（`parent_organization_id`）はどの深さにも対応するため、設定値変更だけで上限を調整可能。Service 層・CTE ともにハードコードなしで設定値を参照。超過時は 422
 - [x] MEMBER のデフォルト権限（MANAGE_SCHEDULES / MANAGE_FILES / MANAGE_POSTS）をチーム単位または個人単位で剥奪する「制限機能」の設計（Phase 3 以降） → **権限グループによる完全上書き（オーバーライド）方式を採用**。グループ割り当て時は `is_default` を無視しグループ内権限のみが実効権限となるため、マイナス計算のロジックなしで制限が可能。MEMBER 天井を `is_default = FALSE` の3件→ 全6件に拡張。権限解決ロジック・3層制御説明・フロー例を更新
-- [x] F04（支払い管理）で定義された `MANAGE_PAYMENTS` パーミッションを `permissions` シードに追加する（Phase 3 実装前に確定）→ **Phase 3 の V3.008 で追加**。SYSTEM_ADMIN ✓ / ADMIN ✓ / DEPUTY_ADMIN △。MEMBER には付与不可（天井エントリなし）。scope = ORGANIZATION（F04 確定設計でチーム・組織の両方に支払い管理 API が存在するため ORGANIZATION に確定）。Flyway マイグレーションと role_permissions シード表に反映済み
+- [x] F04（支払い管理）で定義された `MANAGE_PAYMENTS` パーミッションを `permissions` シードに追加する（Phase 3 実装前に確定）→ **Phase 3 の V3.007 で追加**。SYSTEM_ADMIN ✓ / ADMIN ✓ / DEPUTY_ADMIN △。MEMBER には付与不可（天井エントリなし）。scope = ORGANIZATION（F04 確定設計でチーム・組織の両方に支払い管理 API が存在するため ORGANIZATION に確定）。Flyway マイグレーションと role_permissions シード表に反映済み
 - ~~`ORGANIZATION_MEMBER_JOINED` イベントを F02 イベントカタログの「今後追加予定」に追記する~~ → 対応済み（2026-02-21）
 - [x] MEMBER / DEPUTY_ADMIN の自主退会フローが未定義 → **対応済み（2026-03-09）**: `DELETE /teams/{id}/me` / `DELETE /organizations/{id}/me` エンドポイントおよびフローを追加。最後のADMIN保護・SUPPORTER 誘導・payment data 保持（F04 参照）・組織退会は直属ロールのみ削除を明記
 - [x] **組織の自動アーカイブ条件が未定義** → **対応済み（2026-03-09）**: 案②（直接所属メンバー + ACTIVE 所属チームの全メンバーの最終ログイン12ヶ月超過）を採用。加えて有効な `member_payments` が存在しないことを C3 条件として追加（F04 設計確定後に実装）。カスケードアーカイブは「このorgにのみ ACTIVE 所属するチーム」に限定し、多対多所属チームへの誤波及を防止。子組織はカスケード対象外（独自バッチで判定）。手動アーカイブフローにも同カスケードロジックを適用（reason: MANUAL_CASCADE_ORG）
