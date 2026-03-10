@@ -231,6 +231,7 @@ INDEX idx_oar_payment_item (payment_item_id)
 | `payment_item_id` | BIGINT UNSIGNED | NO | — | FK → payment_items |
 | `content_type` | VARCHAR(50) | NO | — | コンテンツ種別（下記「許容値一覧」参照）|
 | `content_id` | BIGINT UNSIGNED | NO | — | 対象コンテンツの ID |
+| `is_title_hidden` | BOOLEAN | NO | FALSE | TRUE = 未払い者にコンテンツの存在自体を返さない（完全非公開）。FALSE = 「🔒 + タイトル」を表示（デフォルト）|
 | `created_by` | BIGINT UNSIGNED | YES | NULL | FK → users（SET NULL on delete）|
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 
@@ -963,17 +964,43 @@ is_recurring = TRUE の payment_item を POST / PATCH 時:
 4. 全体ロックをパスした場合、表示対象コンテンツに対して
    content_payment_gates WHERE content_type = X AND content_id = Y を取得
 5. ゲートが存在する場合: 上記と同様に member_payments を確認
-6. 未払いの場合 → 当該コンテンツのみ 403（「この内容を閲覧するには支払いが必要です」）
+6. 未払いの場合:
+   - is_title_hidden = FALSE → 当該コンテンツを「🔒 + タイトル」付きで一覧に含める（内容は返さない）
+   - is_title_hidden = TRUE  → 当該コンテンツをレスポンスから除外する（存在自体を隠す）
 ```
+
+> **一覧取得 SQL のフィルタリング指針（is_title_hidden = TRUE の場合）**
+>
+> コンテンツ一覧クエリ（例: `SELECT * FROM posts WHERE team_id = ?`）に以下を付加する:
+> ```sql
+> -- 未払い × 完全非公開のコンテンツを除外
+> AND NOT EXISTS (
+>   SELECT 1 FROM content_payment_gates cpg
+>   WHERE cpg.content_type = 'POST'
+>     AND cpg.content_id = posts.id
+>     AND cpg.is_title_hidden = TRUE
+>     AND NOT EXISTS (
+>       SELECT 1 FROM member_payments mp
+>       WHERE mp.user_id         = :currentUserId
+>         AND mp.payment_item_id = cpg.payment_item_id
+>         AND mp.status          = 'PAID'
+>         AND (mp.valid_until IS NULL OR mp.valid_until >= CURDATE())
+>     )
+> )
+> ```
+> 上記は「is_title_hidden=TRUE のゲートが存在する、かつ未払い」なコンテンツのみを除外する。払い済みコンテンツおよび is_title_hidden=FALSE のコンテンツは通常通り返す。
 
 **ロック状態の表示仕様**
 
-| 状態 | フロントエンドの表示 |
-|------|----------------|
-| 全体ロック（未払い）| チーム/組織のトップに「〇〇の支払いが必要です」バナーを表示し、コンテンツ一覧は非表示 |
-| コンテンツ単位ロック | コンテンツ一覧には「🔒 タイトル」で表示（存在は示すが内容は隠す）|
+| 状態 | `is_title_hidden` | フロントエンドの表示 |
+|------|:-----------------:|----------------|
+| 全体ロック（未払い）| — | チーム/組織のトップに「〇〇の支払いが必要です」バナーを表示し、コンテンツ一覧は非表示 |
+| コンテンツ単位ロック（タイトル表示）| FALSE（デフォルト）| コンテンツ一覧には「🔒 タイトル」で表示（存在は示すが内容は隠す）。「支払うと何が見られるか」をユーザーが判断できる |
+| コンテンツ単位ロック（完全非公開）| TRUE | レスポンスからコンテンツを除外。存在自体が未払い者に伝わらない。機密性の高い限定情報に適用 |
 
-> コンテンツ単位ロックでは、タイトルのみ表示することで「支払うと何が見られるか」をユーザーが判断できるようにする。
+> **ADMIN 向けの設定ガイドライン（フロントエンドの設定 UI で表示推奨）**:
+> - `is_title_hidden = FALSE`（デフォルト）: 支払いを促したい「魅力的なコンテンツ」に使用。タイトルを見せることで購入動機を作れる
+> - `is_title_hidden = TRUE`: 機密性の高い「限定情報」に使用。コンテンツの存在すら非公開にする
 
 ---
 
@@ -1089,6 +1116,18 @@ V3.007__add_refund_columns_to_member_payments.sql
   -- member_payments テーブルへの追加:
   --   stripe_refund_id VARCHAR(100) NULL UNIQUE  -- re_xxxx; NULL 除く UNIQUE
   --   refunded_at      DATETIME     NULL
+
+V3.008__add_manage_payments_permission.sql
+  -- permissions に MANAGE_PAYMENTS（display_name='支払い管理', scope='ORGANIZATION'）を INSERT
+  -- role_permissions に追加:
+  --   (SYSTEM_ADMIN, MANAGE_PAYMENTS, is_default=TRUE)
+  --   (ADMIN,        MANAGE_PAYMENTS, is_default=TRUE)
+  --   (DEPUTY_ADMIN, MANAGE_PAYMENTS, is_default=FALSE)
+  ※ F03 の V3.008 と同一ファイル。F03 と F04 は同一 Phase 3 実装でまとめて投入する
+
+V3.009__add_is_title_hidden_to_content_payment_gates.sql
+  -- content_payment_gates テーブルへの追加:
+  --   is_title_hidden BOOLEAN NOT NULL DEFAULT FALSE
 ```
 
 **Phase 3 マイグレーション注意点**
@@ -1124,8 +1163,8 @@ V4.002__create_member_subscriptions_table.sql
 - [x] 有効期限切れバッチのスケジュール（毎日 AM3:00 等）と通知タイミング（期限7日前・当日等）の確定: **2フェーズ設計に確定**。AM 3:00 監視バッチ（ShedLock）で通知対象を抽出してキュー登録、AM 8:00 通知バッチで送信。通知は「7日前リマインド（REMINDER_7D）」と「期限当日（EXPIRY_DAY）」の2種。更新済みメンバー（新しい有効 PAID が存在）および Subscription 自動更新中メンバーはスキップ。`member_payments.status` は変更しない（有効判定は `valid_until >= CURDATE()` でリアルタイム計算）
 - [x] `content_payment_gates.content_type` に追加する値（CHAT_MESSAGE、VIDEO 等）を各コンテンツ機能の設計時に確定する: **VARCHAR(50) + アプリ層バリデーション方式に変更**（ENUM 廃止）。Phase 3 初期値: `POST` / `FILE` / `ANNOUNCEMENT` / `SCHEDULE`。Phase 4+ 予定: `VIDEO` / `CHAT_MESSAGE`。新モジュール追加時は `ContentGateType` 定数に追加するのみで DB ALTER TABLE 不要（OCP 遵守）。不正値は 422 で弾く
 - [x] 返金操作の提供範囲: **アプリ内全額返金エンドポイントを提供する方式に確定**（Section 4・5 参照）。ADMIN が支払い詳細画面の「返金実行」ボタンから直接 Stripe Refund API を呼び出し、`member_payments.status` を `REFUNDED` に更新する。まず「全額返金のみ」をサポートし、一部返金などの複雑な操作は Stripe ダッシュボードへ誘導する。`charge.refunded` Webhook 受信時も同様のステータス更新ロジックを走らせ冪等性を確保。手動払い（`payment_method = 'MANUAL'`）は返金エンドポイントの対象外とし、既存の DELETE（CANCELLED）エンドポイントで対応
-- [ ] DEPUTY_ADMIN への `MANAGE_PAYMENTS` パーミッション追加: F03 の `permissions` シードに追記が必要（F03 の未解決事項と連動）
-- [ ] コンテンツ単位ロックのタイトル表示: タイトルすら非表示にする「完全非公開」オプションの必要性を確認する
+- [x] DEPUTY_ADMIN への `MANAGE_PAYMENTS` パーミッション追加: **F03 の V3.008 マイグレーションで確定**（Section 7 参照）。SYSTEM_ADMIN ✓ / ADMIN ✓ / DEPUTY_ADMIN △（権限グループ経由で個別委譲）。MEMBER には付与不可。scope = ORGANIZATION（F04 が組織・チーム両方の支払い管理 API を持つため ORGANIZATION に確定）
+- [x] コンテンツ単位ロックのタイトル表示: **`is_title_hidden` フラグ（BOOLEAN, DEFAULT FALSE）を `content_payment_gates` に追加して解決**（Section 3・5 参照）。FALSE = 「🔒 + タイトル」表示（購入動機を訴求したいコンテンツ向け）/ TRUE = 完全非公開（コンテンツの存在自体を除外・機密情報向け）。一覧取得クエリでの NOT EXISTS フィルタリング指針を Section 5 に追記
 
 ---
 
@@ -1133,6 +1172,8 @@ V4.002__create_member_subscriptions_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-10 | `content_payment_gates` に `is_title_hidden` フラグ追加（未解決⑦解決）: 未払い者向けの秘匿レベルを FALSE（🔒 + タイトル表示）/ TRUE（完全非公開）の2択で制御。一覧取得クエリの NOT EXISTS フィルタリング SQL 指針・ADMIN 向け設定ガイドラインを追加。Flyway V3.009 追加 |
+| 2026-03-10 | `MANAGE_PAYMENTS` パーミッション scope を ORGANIZATION に確定し F04 未解決⑥を解決: F03 の V3.008 マイグレーションで SYSTEM_ADMIN/ADMIN/DEPUTY_ADMIN に追加。DEPUTY_ADMIN は天井（is_default=FALSE）として定義し権限グループ経由で個別委譲可能 |
 | 2026-03-10 | アプリ内全額返金機能を追加（未解決⑤解決）: ADMIN が支払い詳細画面から直接 Stripe 返金 API を呼び出せるエンドポイント（`POST /payments/{paymentId}/refund`）を追加。返金ボタン・強力な確認ダイアログ・Stripe ダッシュボード誘導リンクの UI 指針を定義。`member_payments` に `stripe_refund_id` / `refunded_at` カラム追加（V3.007 マイグレーション）。`charge.refunded` Webhook との冪等処理・手動払いとの分離・監査ログ設計を明文化 |
 | 2026-03-10 | `content_payment_gates.content_type` を ENUM → VARCHAR(50) に変更（未解決④解決）: 疎結合・OCP 遵守のため VARCHAR + アプリ層バリデーション方式を採用。`ContentGateType` 定数クラスと許容値一覧・Java 実装指針を追記。Phase 3 初期値（POST/FILE/ANNOUNCEMENT/SCHEDULE）と Phase 4+ 予定値（VIDEO/CHAT_MESSAGE）を文書化 |
 | 2026-03-10 | 有効期限切れバッチ設計確定（未解決③解決）: AM 3:00 監視バッチ + AM 8:00 通知バッチの2フェーズ設計。通知タイミング（7日前・当日）・Subscription 自動更新メンバーのスキップ条件・status 非変更の設計根拠を追記 |
