@@ -83,7 +83,7 @@ JWT によるステートレス認証を提供する。
 UNIQUE KEY uq_users_email (email)
 INDEX idx_users_status_last_login (status, last_login_at)      -- 非アクティブアーカイブバッチ用
 INDEX idx_users_status_created_at (status, created_at)         -- PENDING_VERIFICATION クリーンアップバッチ用
-INDEX idx_users_deleted_at (deleted_at)                        -- 退会後30日の物理削除バッチ用
+INDEX idx_users_deleted_at (deleted_at)                        -- 退会後30日の匿名化バッチ用
 ```
 
 **status の遷移**
@@ -1305,10 +1305,11 @@ totp_used:{user_id}:{6桁コード}  →  値: "1"、TTL: 90秒
 2. users.deleted_at を現在日時に設定
 3. 全 Refresh Token を失効・Redis に `user_invalidated_at:{user_id}` を設定（TTL 900秒）
 4. audit_logs に WITHDRAWAL_REQUESTED を記録
-5. 30日後バッチ（Phase 10 以降で実装）:
-   - email / 氏名 / 電話番号 / avatar_url を NULL に上書き
+5. 30日後バッチ（Phase 10 以降で実装）— 匿名化処理:
+   - email / 氏名 / 電話番号 / avatar_url を NULL に上書き（個人情報スクラビング）
    - oauth_accounts / two_factor_auth / webauthn_credentials を物理削除
-   - 決済履歴（payment_records 等）は税法準拠で7年間保持
+   - 決済履歴（member_payments / stripe_customers / member_subscriptions）は税法準拠で保持（FK ON DELETE RESTRICT により users レコードの物理削除は不可）
+   - users レコード自体は物理削除しない（論理削除 + 匿名化で運用）
 ```
 
 ### 退会申請キャンセルフロー
