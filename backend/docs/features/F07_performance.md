@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 7
-> **最終更新**: 2026-03-10
+> **最終更新**: 2026-03-11
 > **モジュール種別**: デフォルト機能 #19
 
 ---
@@ -126,6 +126,7 @@ users (1) ──── (N) performance_records [recorded_by]
 | POST | `/api/v1/teams/{teamId}/performance/records/bulk` | 必要 | 一括記録入力（複数メンバー×複数指標）|
 | GET | `/api/v1/teams/{teamId}/performance/stats` | 必要 | チーム統計ダッシュボード |
 | GET | `/api/v1/teams/{teamId}/members/{userId}/performance` | 必要 | 特定メンバーのパフォーマンス |
+| GET | `/api/v1/teams/{teamId}/performance/records/export` | 必要 | パフォーマンス記録CSVエクスポート |
 | GET | `/api/v1/performance/me` | 必要 | 自分のパフォーマンス（全チーム横断）|
 
 ### リクエスト／レスポンス仕様
@@ -207,6 +208,46 @@ users (1) ──── (N) performance_records [recorded_by]
 | 404 | `metric_id` / `user_id` が存在しない |
 | 422 | `user_id` がチームに所属していない |
 
+#### `GET /api/v1/teams/{teamId}/performance/records/export`
+
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_PERFORMANCE`）
+
+パフォーマンス記録を CSV 形式でエクスポートする。対象件数が 1,000 件以下の場合はストリーミングレスポンスで即時返却し、1,000 件超の場合は非同期ジョブを起動して完了後にダウンロード URL を通知する（サービス記録エクスポートと同一パターン）。
+
+**クエリパラメータ**
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| `metric_id` | Long | No | 特定指標でフィルタ |
+| `user_id` | Long | No | 特定ユーザーでフィルタ |
+| `date_from` | Date | No | 期間開始日 |
+| `date_to` | Date | No | 期間終了日 |
+
+**レスポンス（200 OK / ≤1,000 件）**
+- `Content-Type: text/csv; charset=UTF-8`
+- `Content-Disposition: attachment; filename="performance_records_{teamId}_{yyyyMMdd}.csv"`
+- CSV カラム: `recorded_date, user_display_name, metric_name, value, unit, note`
+
+**レスポンス（202 Accepted / >1,000 件）**
+```json
+{
+  "data": {
+    "job_id": "export-perf-abc123",
+    "status": "PROCESSING",
+    "message": "エクスポートを開始しました。完了後に通知します。"
+  }
+}
+```
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 403 | 権限不足 |
+| 404 | チームが存在しない |
+
+**備考**: CSV インポート機能は後続フェーズで対応予定。
+
+---
+
 #### `GET /api/v1/teams/{teamId}/performance/stats`
 
 **認可**: ADMIN / DEPUTY_ADMIN / MEMBER（`is_visible_to_members = true` の指標のみ）
@@ -231,8 +272,9 @@ users (1) ──── (N) performance_records [recorded_by]
         "team_total": 45,
         "team_avg": 2.25,
         "ranking": [
-          { "user_id": 42, "display_name": "田中太郎", "value": 12 },
-          { "user_id": 43, "display_name": "山田次郎", "value": 8 }
+          { "rank": 1, "user_id": 42, "display_name": "田中太郎", "value": 12 },
+          { "rank": 1, "user_id": 44, "display_name": "佐藤花子", "value": 12 },
+          { "rank": 3, "user_id": 43, "display_name": "山田次郎", "value": 8 }
         ]
       }
     ],
@@ -286,6 +328,8 @@ users (1) ──── (N) performance_records [recorded_by]
 - **集計方法の切り替え**: `aggregation_type` に基づいて SQL 集計関数を動的に選択（SUM/AVG/MAX/MIN）。LATEST は `recorded_date DESC` の先頭レコードの値
 - **MEMBER の閲覧制限**: `is_visible_to_members = false` の指標はチーム統計に含めない。個人ダッシュボードでは自分の記録のみ表示
 - **INTEGER 型バリデーション**: `data_type = 'INTEGER'` の場合、`value` が整数であることを検証（小数点以下が 0 でない場合は 400 エラー）
+- **ランキング順位**: 競技式ランキング（competition ranking）を採用。同値のメンバーは同順位を付与し、次の順位をスキップする（例: 1位, 1位, 3位）
+- **チャート表示期間**: 個人ダッシュボードのチャート表示期間のデフォルトは **直近3ヶ月**。ユーザーは 6ヶ月 / 1年 に切り替え可能
 
 ---
 
@@ -313,10 +357,10 @@ V7.009__create_performance_records_table.sql
 
 ## 8. 未解決事項
 
-- [ ] パフォーマンス記録の CSV インポート / エクスポート機能のスコープ確認
-- [ ] チーム統計の Redis キャッシュ TTL を 5分で固定するか、設定可能にするか
-- [ ] ランキング表示の同率順位の扱い（同値の場合は同順位で表示し、次の順位をスキップするか）
-- [ ] 個人ダッシュボードでのチャート表示期間のデフォルト値（直近3ヶ月 / 6ヶ月 / 1年）
+- ~~CSV インポート / エクスポート機能のスコープ確認~~ → CSVエクスポートを追加（≤1,000件: ストリーミング、>1,000件: 非同期ジョブ）。CSVインポートは後続フェーズで対応
+- ~~チーム統計の Redis キャッシュ TTL を 5分で固定するか、設定可能にするか~~ → TTL 5分で固定
+- ~~ランキング表示の同率順位の扱い~~ → 競技式ランキング採用（同値=同順位、次の順位スキップ。例: 1位, 1位, 3位）
+- ~~個人ダッシュボードでのチャート表示期間のデフォルト値~~ → デフォルト3ヶ月、ユーザーが6ヶ月/1年に切り替え可能
 
 ---
 
@@ -325,3 +369,4 @@ V7.009__create_performance_records_table.sql
 | 日付 | 変更内容 |
 |------|---------|
 | 2026-03-10 | 初版作成 |
+| 2026-03-11 | 未解決事項4件を解決: CSVエクスポートAPI追加、Redis TTL 5分固定、競技式ランキング採用、チャートデフォルト3ヶ月 |
