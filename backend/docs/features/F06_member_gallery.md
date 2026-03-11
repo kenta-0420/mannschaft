@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 6
-> **最終更新**: 2026-03-11
+> **最終更新**: 2026-03-12
 
 ---
 
@@ -76,10 +76,12 @@
 | `page_type` | ENUM('MAIN', 'YEARLY') | NO | — | ページ種別（メインページ / 年度ページ） |
 | `year` | SMALLINT UNSIGNED | YES | NULL | 対象年度（YEARLY の場合のみ。例: 2026） |
 | `description` | TEXT | YES | NULL | ページの説明文 |
-| `cover_image_url` | VARCHAR(500) | YES | NULL | カバー画像 URL（S3） |
+| `cover_image_s3_key` | VARCHAR(500) | YES | NULL | カバー画像の S3 オブジェクトキー（CDN ドメインはアプリ層で付与） |
 | `visibility` | ENUM('PUBLIC', 'MEMBERS_ONLY') | NO | 'MEMBERS_ONLY' | 公開範囲 |
 | `status` | ENUM('DRAFT', 'PUBLISHED') | NO | 'DRAFT' | 公開ステータス |
-| `allow_self_edit` | BOOLEAN | NO | FALSE | TRUE = MEMBER が自分のプロフィール（bio, photo_url, カスタムフィールド値）を直接編集可能 |
+| `preview_token` | VARCHAR(64) | YES | NULL | 下書きプレビュー共有トークン（SecureRandom で生成。NULL = 未発行） |
+| `preview_token_expires_at` | DATETIME | YES | NULL | プレビュートークン有効期限（発行から24時間） |
+| `allow_self_edit` | BOOLEAN | NO | FALSE | TRUE = MEMBER が自分のプロフィール（bio, photo_s3_key, カスタムフィールド値）を直接編集可能 |
 | `sort_order` | INT | NO | 0 | 表示順（メインページからの遷移順序） |
 | `created_by` | BIGINT UNSIGNED | YES | NULL | FK → users（SET NULL on delete） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
@@ -125,7 +127,7 @@ INDEX idx_tp_org_status (organization_id, status, sort_order) -- 組織別ペー
 | `section_type` | ENUM('TEXT', 'IMAGE', 'MEMBER_LIST', 'HEADING') | NO | — | セクション種別 |
 | `title` | VARCHAR(200) | YES | NULL | セクション見出し（HEADING / TEXT 用） |
 | `content` | TEXT | YES | NULL | テキストコンテンツ（TEXT 用） |
-| `image_url` | VARCHAR(500) | YES | NULL | 画像 URL（IMAGE 用、S3） |
+| `image_s3_key` | VARCHAR(500) | YES | NULL | 画像の S3 オブジェクトキー（IMAGE 用） |
 | `image_caption` | VARCHAR(200) | YES | NULL | 画像キャプション |
 | `sort_order` | INT | NO | 0 | 表示順 |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
@@ -137,7 +139,7 @@ INDEX idx_tps_page_order (team_page_id, sort_order)  -- ページ内セクショ
 ```
 
 **制約・備考**
-- `section_type = 'MEMBER_LIST'` の場合、このセクション位置にそのページの `member_profiles` 一覧を表示する。`content`, `image_url` は NULL
+- `section_type = 'MEMBER_LIST'` の場合、このセクション位置にそのページの `member_profiles` 一覧を表示する。`content`, `image_s3_key` は NULL
 - ページ削除時にカスケード削除
 - 物理削除
 
@@ -149,7 +151,7 @@ INDEX idx_tps_page_order (team_page_id, sort_order)  -- ページ内セクショ
 | `team_page_id` | BIGINT UNSIGNED | NO | — | FK → team_pages（CASCADE） |
 | `user_id` | BIGINT UNSIGNED | YES | NULL | FK → users（SET NULL on delete。退会後も掲載保持） |
 | `display_name` | VARCHAR(100) | NO | — | 表示名（登録時のスナップショット） |
-| `photo_url` | VARCHAR(500) | YES | NULL | プロフィール画像 URL（S3） |
+| `photo_s3_key` | VARCHAR(500) | YES | NULL | プロフィール画像の S3 オブジェクトキー |
 | `bio` | VARCHAR(500) | YES | NULL | 一言・自己紹介 |
 | `position` | VARCHAR(100) | YES | NULL | 役職・ポジション |
 | `custom_field_values` | JSON | YES | NULL | カスタムフィールド値（{"field_id": "value", ...}。例: {"1": "10", "2": "A型"}） |
@@ -166,8 +168,9 @@ INDEX idx_mp_user (user_id)                          -- ユーザー別掲載一
 ```
 
 **制約・備考**
-- `user_id` が NULL になった場合でも `display_name` と `photo_url` で掲載を継続
-- **MEMBER セルフ編集**: `team_pages.allow_self_edit = true` の場合、MEMBER は自分の `member_profiles` レコード（`user_id` = 自分）に対して `bio`, `photo_url`, `custom_field_values` を直接編集可能（即時反映、承認不要）。`display_name`, `position`, `sort_order`, `is_visible` は ADMIN/DEPUTY_ADMIN のみ編集可能（ページの見た目制御は管理者が責任を持つ）。不適切な内容は ADMIN が `is_visible = false` で対処
+- `user_id` が NULL になった場合でも `display_name` と `photo_s3_key` で掲載を継続
+- **MEMBER セルフ編集**: `team_pages.allow_self_edit = true` の場合、MEMBER は自分の `member_profiles` レコード（`user_id` = 自分）に対して `bio`, `photo_s3_key`, `custom_field_values` を直接編集可能（即時反映、承認不要）。`display_name`, `position`, `sort_order`, `is_visible` は ADMIN/DEPUTY_ADMIN のみ編集可能（ページの見た目制御は管理者が責任を持つ）。不適切な内容は ADMIN が `is_visible = false` で対処
+- **custom_field_values の JSON バリデーション**: Service 層で `member_profile_fields` と照合し、存在しない field_id の値を拒否・field_type に応じた型チェック（NUMBER なら数値文字列か）・is_required フィールドの未入力チェックを実施する。不正な JSON 構造は 400 エラー
 - 物理削除（ページ削除時にカスケード削除）
 
 #### `member_profile_fields`
@@ -239,9 +242,10 @@ INDEX idx_pa_created_by (created_by)                     -- 作成者別一覧
 |---------|---|------|-----------|------|
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
 | `album_id` | BIGINT UNSIGNED | NO | — | FK → photo_albums（CASCADE） |
-| `file_url` | VARCHAR(500) | NO | — | 写真ファイル URL（S3） |
-| `thumbnail_url` | VARCHAR(500) | YES | NULL | サムネイル URL（S3。自動生成） |
+| `s3_key` | VARCHAR(500) | NO | — | 写真ファイルの S3 オブジェクトキー |
+| `thumbnail_s3_key` | VARCHAR(500) | YES | NULL | サムネイルの S3 オブジェクトキー（非同期生成） |
 | `original_filename` | VARCHAR(255) | NO | — | 元ファイル名 |
+| `content_type` | VARCHAR(50) | NO | — | MIME タイプ（image/jpeg, image/png, image/webp。HEIC は変換後 image/jpeg） |
 | `file_size` | INT UNSIGNED | NO | — | ファイルサイズ（bytes） |
 | `width` | INT UNSIGNED | YES | NULL | 画像幅（px） |
 | `height` | INT UNSIGNED | YES | NULL | 画像高さ（px） |
@@ -250,6 +254,7 @@ INDEX idx_pa_created_by (created_by)                     -- 作成者別一覧
 | `sort_order` | INT | NO | 0 | 表示順 |
 | `uploaded_by` | BIGINT UNSIGNED | YES | NULL | FK → users（SET NULL on delete） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
+| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | キャプション編集等 |
 
 **インデックス**
 ```sql
@@ -263,8 +268,9 @@ INDEX idx_ph_uploaded_by (uploaded_by)            -- アップロードユーザ
 - 物理削除
 - サムネイルは S3 アップロード後に Lambda / バックエンド非同期ジョブで生成（短辺300px にリサイズ）
 - `taken_at` は EXIF の `DateTimeOriginal` から抽出。EXIF がない場合は NULL
-- アップロード可能な形式: JPEG, PNG, WebP, HEIC（HEIC は JPEG に変換して保存）
+- アップロード可能な形式: JPEG, PNG, WebP, HEIC（HEIC は JPEG に変換して保存。`content_type` は変換後の MIME タイプを記録）
 - 1枚あたりの最大ファイルサイズ: 20MB（アプリケーション層でバリデーション）
+- `cover_photo_id = NULL` かつ写真が0枚のアルバムは、フロントエンドでプレースホルダー画像を表示する
 
 ### ER図（テキスト形式）
 
@@ -312,6 +318,9 @@ photo_albums        (N) ──── (1) photos (cover_photo_id)
 | PUT | `/api/v1/team/member-fields/{id}` | 必要 | プロフィールフィールド定義更新 |
 | DELETE | `/api/v1/team/member-fields/{id}` | 必要 | プロフィールフィールド定義無効化 |
 | POST | `/api/v1/team/pages/{id}/copy-members` | 必要 | 前年度ページからメンバーをコピー |
+| PATCH | `/api/v1/team/members/reorder` | 必要 | メンバー表示順の一括更新（ドラッグ＆ドロップ用） |
+| POST | `/api/v1/team/pages/{id}/preview-token` | 必要 | プレビュー共有トークン発行（24時間有効） |
+| DELETE | `/api/v1/team/pages/{id}/preview-token` | 必要 | プレビュートークン無効化 |
 
 #### ギャラリー
 | メソッド | パス | 認証 | 説明 |
@@ -323,7 +332,10 @@ photo_albums        (N) ──── (1) photos (cover_photo_id)
 | DELETE | `/api/v1/gallery/albums/{id}` | 必要 | アルバム削除（論理削除） |
 | POST | `/api/v1/gallery/albums/{id}/photos` | 必要 | 写真アップロード |
 | DELETE | `/api/v1/gallery/photos/{id}` | 必要 | 写真削除 |
+| PUT | `/api/v1/gallery/photos/{id}` | 必要 | 写真情報更新（キャプション等） |
+| GET | `/api/v1/gallery/photos/{id}/download` | 必要 | 個別写真ダウンロード（Pre-signed URL） |
 | GET | `/api/v1/gallery/albums/{id}/download` | 必要 | アルバム写真の一括ダウンロード（ZIP） |
+| POST | `/api/v1/system-admin/gallery/regenerate-thumbnails` | 必要 | サムネイル一括再生成（SYSTEM_ADMIN） |
 
 ### リクエスト／レスポンス仕様
 
@@ -340,7 +352,7 @@ photo_albums        (N) ──── (1) photos (cover_photo_id)
   "page_type": "YEARLY",
   "year": 2026,
   "description": "2026年度のチームメンバーを紹介します。",
-  "cover_image_url": "https://s3.example.com/pages/cover-789.jpg",
+  "cover_image_s3_key": "pages/cover-789.jpg",
   "visibility": "PUBLIC"
 }
 ```
@@ -377,7 +389,7 @@ photo_albums        (N) ──── (1) photos (cover_photo_id)
     "page_type": "YEARLY",
     "year": 2026,
     "description": "2026年度のチームメンバーを紹介します。",
-    "cover_image_url": "https://s3.example.com/pages/cover-789.jpg",
+    "cover_image_url": "https://cdn.example.com/pages/cover-789.jpg",
     "visibility": "PUBLIC",
     "status": "PUBLISHED",
     "sections": [
@@ -404,7 +416,7 @@ photo_albums        (N) ──── (1) photos (cover_photo_id)
       {
         "id": 1,
         "display_name": "田中太郎",
-        "photo_url": "https://s3.example.com/profiles/tanaka.jpg",
+        "photo_url": "https://cdn.example.com/profiles/tanaka.jpg",
         "bio": "よろしくお願いします！",
         "position": "キャプテン",
         "sort_order": 0,
@@ -432,7 +444,7 @@ photo_albums        (N) ──── (1) photos (cover_photo_id)
     {
       "user_id": 10,
       "display_name": "田中太郎",
-      "photo_url": "https://s3.example.com/profiles/tanaka.jpg",
+      "photo_s3_key": "profiles/tanaka.jpg",
       "bio": "よろしくお願いします！",
       "position": "キャプテン",
       "custom_fields": {
@@ -443,7 +455,7 @@ photo_albums        (N) ──── (1) photos (cover_photo_id)
     {
       "user_id": 11,
       "display_name": "鈴木花子",
-      "photo_url": null,
+      "photo_s3_key": null,
       "bio": "新メンバーです",
       "position": "マネージャー",
       "custom_fields": {
@@ -493,7 +505,7 @@ photo_albums        (N) ──── (1) photos (cover_photo_id)
 ```
 1. コピー元ページの member_profiles（is_visible = true）を取得
 2. 各メンバーをコピー先ページに INSERT:
-   - user_id, display_name, photo_url, bio, position, custom_field_values, sort_order をコピー
+   - user_id, display_name, photo_s3_key, bio, position, custom_field_values, sort_order をコピー
    - is_visible = true（デフォルト）
 3. コピー先に同じ user_id が既に存在する場合はスキップ
 4. コピー後、ADMIN が卒業/退会メンバーを削除、新メンバーを追加する運用フロー
@@ -562,13 +574,13 @@ Pre-signed URL 方式の場合:
 {
   "photos": [
     {
-      "file_url": "https://s3.example.com/gallery/photo-001.jpg",
+      "s3_key": "gallery/team-1/photo-001.jpg",
       "original_filename": "IMG_1234.jpg",
       "file_size": 3145728,
       "caption": "集合写真"
     },
     {
-      "file_url": "https://s3.example.com/gallery/photo-002.jpg",
+      "s3_key": "gallery/team-1/photo-002.jpg",
       "original_filename": "IMG_1235.jpg",
       "file_size": 2097152,
       "caption": null
@@ -587,12 +599,12 @@ Pre-signed URL 方式の場合:
       {
         "id": 101,
         "thumbnail_url": null,
-        "status": "PROCESSING"
+        "processing_status": "PROCESSING"
       },
       {
         "id": 102,
         "thumbnail_url": null,
-        "status": "PROCESSING"
+        "processing_status": "PROCESSING"
       }
     ]
   }
@@ -600,7 +612,7 @@ Pre-signed URL 方式の場合:
 ```
 
 **備考**
-- サムネイルは非同期生成。`status = 'PROCESSING'` → 完了後に `thumbnail_url` が設定される
+- サムネイルは非同期生成。`processing_status = 'PROCESSING'` → 完了後に `thumbnail_url` が設定される
 - 1リクエストあたり最大20枚
 - EXIF から `taken_at`, `width`, `height` を自動抽出
 
@@ -636,8 +648,8 @@ Pre-signed URL 方式の場合:
     "photos": [
       {
         "id": 101,
-        "file_url": "https://s3.example.com/gallery/photo-001.jpg",
-        "thumbnail_url": "https://s3.example.com/gallery/thumb/photo-001.jpg",
+        "file_url": "https://cdn.example.com/gallery/team-1/photo-001.jpg",
+        "thumbnail_url": "https://cdn.example.com/gallery/team-1/thumb/photo-001.jpg",
         "caption": "集合写真",
         "width": 4032,
         "height": 3024,
@@ -691,6 +703,151 @@ Pre-signed URL 方式の場合:
 | 403 | `allow_download = false`、権限不足、visibility 制限 |
 | 404 | アルバムが存在しない |
 
+#### `GET /api/v1/team/members`
+
+**認可**: ページの `visibility` と `status` に応じたアクセス制御
+
+**クエリパラメータ**
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| `team_page_id` | Long | ○ | ページ ID |
+| `cursor` | Long | × | カーソル（前ページ最後の member_profile ID） |
+| `limit` | Int | × | 取得件数（デフォルト: 50、最大: 100） |
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": [...],
+  "meta": {
+    "next_cursor": 51,
+    "has_next": true,
+    "total_count": 85
+  }
+}
+```
+
+#### `PATCH /api/v1/team/members/reorder`
+
+**認可**: ADMIN、または `MANAGE_CONTENT` 権限を持つ DEPUTY_ADMIN
+
+**リクエストボディ**
+```json
+{
+  "team_page_id": 5,
+  "orders": [
+    { "id": 1, "sort_order": 0 },
+    { "id": 2, "sort_order": 1 },
+    { "id": 3, "sort_order": 2 }
+  ]
+}
+```
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "updated_count": 3
+  }
+}
+```
+
+**備考**
+- `orders` の上限: 100件。超過時は 400 エラー
+- 存在しない ID はスキップ（エラーにしない）
+
+#### `POST /api/v1/team/pages/{id}/preview-token`
+
+**認可**: ADMIN、`MANAGE_CONTENT` 権限を持つ DEPUTY_ADMIN、またはページの作成者
+
+DRAFT 状態のメンバー紹介ページに対して24時間有効なプレビュー共有トークンを発行する。
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "id": 5,
+    "preview_token": "a1b2c3d4e5f6...",
+    "preview_url": "https://example.com/team/pages/members-2026?preview_token=a1b2c3d4e5f6...",
+    "expires_at": "2026-03-13T10:00:00"
+  }
+}
+```
+
+**備考**
+- 既存トークンがある場合は上書き（再発行）
+- `GET /team/pages/{id}?preview_token={token}` で DRAFT 状態のページを認証不要で閲覧可能。無効・期限切れは 410 Gone
+- ページが PUBLISHED に遷移した場合、トークンを自動で NULL にリセット
+
+#### `GET /api/v1/gallery/albums`
+
+**認可**: MEMBER 以上 + visibility チェック
+
+**クエリパラメータ**
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| `team_id` | Long | △ | チーム ID（team_id / organization_id のいずれか必須） |
+| `organization_id` | Long | △ | 組織 ID |
+| `q` | String | × | タイトル部分一致検索 |
+| `from` | Date | × | event_date の開始日 |
+| `to` | Date | × | event_date の終了日 |
+| `visibility` | String | × | 公開範囲フィルタ（ADMIN/DEPUTY_ADMIN のみ） |
+| `cursor` | Long | × | カーソル（前ページ最後のアルバム ID） |
+| `limit` | Int | × | 取得件数（デフォルト: 20、最大: 50） |
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": [...],
+  "meta": {
+    "next_cursor": 7,
+    "has_next": true
+  }
+}
+```
+
+#### `PUT /api/v1/gallery/photos/{id}`
+
+**認可**: アップロードした本人、ADMIN、または DEPUTY_ADMIN（MANAGE_CONTENT）
+
+**リクエストボディ**
+```json
+{
+  "caption": "集合写真（更新）",
+  "sort_order": 5
+}
+```
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "id": 101,
+    "caption": "集合写真（更新）",
+    "sort_order": 5,
+    "updated_at": "2026-03-12T15:00:00"
+  }
+}
+```
+
+#### `GET /api/v1/gallery/photos/{id}/download`
+
+**認可**: MEMBER 以上 + アルバムの `visibility` チェック + `allow_download = true`
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "download_url": "https://s3.example.com/gallery/photo-001.jpg?...",
+    "original_filename": "IMG_1234.jpg",
+    "expires_at": "2026-03-12T14:30:00"
+  }
+}
+```
+
+**備考**
+- Pre-signed URL（有効期限: 30分、`Content-Disposition: attachment`）
+- `allow_download = false` の場合は 403
+
 ---
 
 ## 5. ビジネスロジック
@@ -717,9 +874,10 @@ Pre-signed URL 方式の場合:
 3. POST /gallery/albums/{id}/photos で写真メタデータをバックエンドに登録
 4. バックエンド非同期ジョブ:
    a. EXIF 情報抽出（撮影日時、幅、高さ）
-   b. サムネイル生成（短辺300px）
-   c. HEIC → JPEG 変換（該当する場合）
-   d. photos レコードを更新（thumbnail_url, taken_at, width, height）
+   b. EXIF GPS 情報のストリップ（位置情報漏洩防止）
+   c. サムネイル生成（短辺300px）
+   d. HEIC → JPEG 変換（該当する場合）
+   e. photos レコードを更新（thumbnail_s3_key, taken_at, width, height, content_type）
 5. photo_albums.photo_count をアトミック更新
 ```
 
@@ -730,8 +888,8 @@ Pre-signed URL 方式の場合:
 1. photos レコードを物理削除
 2. photo_albums.photo_count をアトミック減算
 3. ApplicationEvent を発行 → 非同期リスナーが S3 ファイルを削除
-   - file_url のファイル
-   - thumbnail_url のファイル
+   - s3_key のファイル
+   - thumbnail_s3_key のファイル
 
 アルバム論理削除時:
 - photos レコードはカスケード削除されない（論理削除のため）
@@ -762,14 +920,72 @@ Pre-signed URL 方式の場合:
      フロントエンドで右クリック保存抑制（完全防止は不可能だがカジュアルコピー抑止として有効）
 ```
 
+### ストレージクォータ
+
+```
+- チーム/組織あたりの上限:
+  - 写真枚数: 5,000枚
+  - 総容量: 10GB
+- アップロード時に現在の使用量を確認し、超過時は 413 Payload Too Large を返却
+- 使用量は photo_albums ごとの photo_count と photos.file_size の SUM で算出
+- ADMIN は使用量をダッシュボードで確認可能（将来の利用状況 API で提供）
+```
+
+### S3 孤立ファイルクリーンアップ
+
+```
+対象: メンバープロフィール画像、ページカバー画像、セクション画像
+
+- メンバープロフィール画像の更新時:
+  1. 旧 photo_s3_key を取得
+  2. 新しい photo_s3_key で UPDATE
+  3. ApplicationEvent を発行 → 非同期リスナーが旧 S3 ファイルを削除
+
+- ページカバー画像・セクション画像も同様のフロー
+- 削除対象が NULL（画像未設定だった場合）は何もしない
+```
+
+### 論理削除の物理削除ポリシー
+
+```
+- 対象テーブル: team_pages, photo_albums
+- 物理削除タイミング: 論理削除（deleted_at）から 90日後
+- 実行間隔: 週次バッチ（日曜深夜2:00。F06_cms_blog と同一バッチ）
+- 処理:
+  1. team_pages: 関連する team_page_sections, member_profiles をカスケード削除
+     - member_profiles.photo_s3_key の S3 ファイルを非同期削除
+  2. photo_albums: 関連する photos をカスケード削除
+     - 全写真の s3_key + thumbnail_s3_key を非同期バッチで S3 削除
+  3. 物理 DELETE 実行
+- 1回あたりの処理上限: 100件（写真数が多いため控えめに設定）
+```
+
+### サムネイル再生成
+
+```
+POST /api/v1/system-admin/gallery/regenerate-thumbnails
+
+- 認可: SYSTEM_ADMIN のみ
+- 用途: サムネイルサイズ変更、品質変更時に既存サムネイルを再生成
+- 処理:
+  1. 全 photos レコード（または team_id / organization_id 指定）を対象
+  2. 非同期バッチジョブとして実行（202 Accepted を即時返却）
+  3. 各写真の s3_key から元画像を取得し、サムネイルを再生成
+  4. thumbnail_s3_key を更新
+- リクエストボディ:
+  { "team_id": 1 }  // 省略時は全チーム/組織
+- レスポンス: { "data": { "job_id": "regen-thumb-xyz", "status": "PROCESSING" } }
+```
+
 ---
 
 ## 6. セキュリティ考慮事項
 
 - **認可チェック**: TeamPageService / GalleryService の入り口で所属検証
 - **画像バリデーション**: アップロードされたファイルの Content-Type と Magic Bytes を検証（偽装防止）
-- **EXIF プライバシー**: GPS 情報が含まれる EXIF データは保存時にストリップする（位置情報漏洩防止）
-- **S3 アクセス制御**: ギャラリー写真は CloudFront 署名付き URL（Signed URL）でのみアクセス可能。直接 S3 URL はブロック
+- **EXIF プライバシー**: **全画像アップロード（ギャラリー写真・メンバープロフィール画像・ページカバー画像・セクション画像）**で GPS 情報を含む EXIF データをストリップする（位置情報漏洩防止）
+- **S3 アクセス制御**: ギャラリー写真は CloudFront 署名付き URL（Signed URL）でのみアクセス可能。直接 S3 URL はブロック。s3_key から CDN URL への変換はアプリケーション層で実施
+- **プレビュートークン**: SecureRandom で64文字のトークンを生成。有効期限24時間。推測不可能なエントロピーを確保
 - **レートリミット**: 写真アップロード API に `Bucket4j` で 1分間に30回の制限
 - **ファイルサイズ制限**: 1枚あたり20MB、1アルバムあたり500枚を上限
 - **一括登録の保護**: `POST /team/members/bulk` は1リクエストあたり最大100件
@@ -780,16 +996,17 @@ Pre-signed URL 方式の場合:
 ## 7. Flywayマイグレーション
 
 ```
-V6.012__create_team_pages.sql              -- team_pages テーブル作成
-V6.013__create_team_page_sections.sql      -- team_page_sections テーブル作成
-V6.014__create_member_profiles.sql         -- member_profiles テーブル作成
-V6.015__create_member_profile_fields.sql   -- member_profile_fields テーブル作成
-V6.016__create_photo_albums.sql            -- photo_albums テーブル作成
-V6.017__create_photos.sql                  -- photos テーブル作成
-V6.018__add_photo_albums_cover_fk.sql      -- photo_albums.cover_photo_id FK 追加（循環参照回避）
+V6.015__create_team_pages.sql              -- team_pages テーブル作成
+V6.016__create_team_page_sections.sql      -- team_page_sections テーブル作成
+V6.017__create_member_profiles.sql         -- member_profiles テーブル作成
+V6.018__create_member_profile_fields.sql   -- member_profile_fields テーブル作成
+V6.019__create_photo_albums.sql            -- photo_albums テーブル作成
+V6.020__create_photos.sql                  -- photos テーブル作成
+V6.021__add_photo_albums_cover_fk.sql      -- photo_albums.cover_photo_id FK 追加（循環参照回避）
 ```
 
 **マイグレーション上の注意点**
+- 番号は V6.015 から開始（V6.001〜V6.014 は F06_cms_blog.md で使用済み）
 - `team_pages` は `teams`, `organizations`, `users` テーブルに依存（Phase 1 で作成済み）
 - `photo_albums.cover_photo_id` の FK は `photos` テーブル作成後に ALTER TABLE で追加
 - ギャラリーテーブルは選択式モジュールだが、テーブル自体は常に作成（モジュール有効化チェックはアプリケーション層で実施）
@@ -798,11 +1015,11 @@ V6.018__add_photo_albums_cover_fk.sql      -- photo_albums.cover_photo_id FK 追
 
 ## 8. 未解決事項
 
-- [x] ~~①メンバー自身によるプロフィール編集~~ → **`team_pages.allow_self_edit` フラグで制御（承認なし・即時反映）**。TRUE の場合 MEMBER は自分の `bio`, `photo_url`, `custom_field_values` を直接編集可能。`display_name`, `position`, `sort_order`, `is_visible` は ADMIN/DEPUTY_ADMIN のみ編集可能。不適切な内容は ADMIN が `is_visible = false` で対処
+- [x] ~~①メンバー自身によるプロフィール編集~~ → **`team_pages.allow_self_edit` フラグで制御（承認なし・即時反映）**。TRUE の場合 MEMBER は自分の `bio`, `photo_s3_key`, `custom_field_values` を直接編集可能。`display_name`, `position`, `sort_order`, `is_visible` は ADMIN/DEPUTY_ADMIN のみ編集可能。不適切な内容は ADMIN が `is_visible = false` で対処
 - [x] ~~②プロフィールフィールドの値格納方式~~ → **JSON カラム方式を採用**。`member_profiles` に `custom_field_values JSON` カラムを追加。格納形式: `{"field_id": "value", ...}`。EAV テーブル不要。理由: プロフィールは表示用途が主で数値集計不要、JSON なら1レコードで完結し一覧取得がシンプル、MySQL 8.0 の `JSON_EXTRACT` で個別検索にも対応可能
 - [x] ~~③前年度メンバーのコピー機能~~ → **Phase 6 で実装**。`POST /api/v1/team/pages/{id}/copy-members` API を追加。ソースページの `is_visible = true` のメンバーを全員コピー（同一 `user_id` はスキップ）。コピー後に ADMIN が卒業/退会メンバーを削除、新メンバーを追加する運用フロー
 - [x] ~~④ギャラリーの SUPPORTER 公開~~ → **`SUPPORTERS_AND_ABOVE` を visibility ENUM に追加**。`ENUM('ALL_MEMBERS', 'SUPPORTERS_AND_ABOVE', 'ADMIN_ONLY')` に拡張。PUBLIC（外部公開）は追加しない（プライバシー性の高いコンテンツのため認証必須の範囲に限定）
-- [x] ~~⑤写真のダウンロード制限~~ → **`photo_albums.allow_download` フラグで制御**。TRUE = 個別・一括ダウンロード許可、`GET /api/v1/gallery/albums/{id}/download` で ZIP 一括ダウンロード（最大100枚、S3 一時保存・1時間有効）。FALSE = 閲覧のみ（CloudFront Signed URL に `Content-Disposition: inline` 強制、一括ダウンロード API は 403）
+- [x] ~~⑤写真のダウンロード制限~~ → **`photo_albums.allow_download` フラグで制御**。TRUE = 個別ダウンロード（`GET /gallery/photos/{id}/download`）+ 一括ダウンロード（`GET /gallery/albums/{id}/download` で ZIP、最大100枚、S3 一時保存・1時間有効）。FALSE = 閲覧のみ（CloudFront Signed URL に `Content-Disposition: inline` 強制、ダウンロード API は 403）
 
 ---
 
@@ -813,3 +1030,4 @@ V6.018__add_photo_albums_cover_fk.sql      -- photo_albums.cover_photo_id FK 追
 | 2026-03-10 | 初版作成 |
 | 2026-03-11 | 未解決事項①〜⑤を解決: allow_self_edit フラグ追加、JSON カラム方式確定（custom_field_values）、前年度メンバーコピー API 追加、SUPPORTERS_AND_ABOVE 公開追加、allow_download フラグ＋一括ダウンロード API 追加 |
 | 2026-03-11 | ページネーションレスポンスの has_more → has_next に改名（PaginationMeta 共通化） |
+| 2026-03-12 | 設計改善: Flyway 番号衝突修正（V6.015〜V6.021 にリナンバリング）、全画像カラムを s3_key 方式に統一（F07 と整合）、photos に content_type・updated_at 追加、プレビュー共有トークン追加、メンバー並び替え API・個別写真ダウンロード API・写真更新 API・アルバム検索パラメータ・メンバー一覧 pagination 追加、ストレージクォータ（5,000枚/10GB）追加、S3 孤立ファイルクリーンアップ・論理→物理削除ポリシー・サムネイル再生成 API 追加、EXIF GPS ストリップを全画像に拡大適用、custom_field_values JSON バリデーション注意書き追加、0枚アルバムのプレースホルダー表示明記 |

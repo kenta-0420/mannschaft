@@ -60,7 +60,7 @@
 | `purchase_date` | DATE | YES | NULL | 購入日 |
 | `purchase_price` | DECIMAL(10,2) | YES | NULL | 購入金額 |
 | `s3_key` | VARCHAR(500) | YES | NULL | 備品画像の S3 オブジェクトキー（CDN ドメイン変更に強い。chart_photos.s3_key と設計統一） |
-| `qr_code` | VARCHAR(100) | YES | NULL | QR コード識別子（備品登録時に自動生成。スキャンで貸出/返却画面に遷移） |
+| `qr_code` | VARCHAR(100) | NO | — | QR コード識別子（備品作成時に自動生成。スキャンで備品詳細画面にディープリンク遷移） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 | `deleted_at` | DATETIME | YES | NULL | 論理削除 |
@@ -173,6 +173,8 @@ users (1) ──── (N) equipment_assignments [assigned_by_user_id]
 | POST | `/api/v1/organizations/{orgId}/equipment/{id}/assign-bulk` | 必要 | 一括貸出（組織、最大20件）|
 | PATCH | `/api/v1/teams/{teamId}/equipment/{id}/return-bulk` | 必要 | 一括返却（チーム）|
 | PATCH | `/api/v1/organizations/{orgId}/equipment/{id}/return-bulk` | 必要 | 一括返却（組織）|
+| GET | `/api/v1/teams/{teamId}/equipment/qr-codes` | 必要 | QRコード一覧取得（チーム、フィルタ対応）|
+| GET | `/api/v1/organizations/{orgId}/equipment/qr-codes` | 必要 | QRコード一覧取得（組織、フィルタ対応）|
 
 ### リクエスト／レスポンス仕様
 
@@ -506,6 +508,84 @@ users (1) ──── (N) equipment_assignments [assigned_by_user_id]
 | 404 | assignment_id が存在しない |
 | 409 | 既に返却済みの assignment が含まれる |
 
+#### `GET /api/v1/{teams/{teamId} | organizations/{orgId}}/equipment/qr-codes`
+
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_EQUIPMENT`）
+
+> 備品のQRコード情報を一覧取得する。フロントエンドでQR画像を生成し、印刷用レイアウトに展開する。
+
+**クエリパラメータ**
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| `ids` | String | No | 個別指定（カンマ区切り、例: `1,3,5`）。指定時は他フィルタ無視 |
+| `category` | String | No | カテゴリでフィルタ（例: `ユニフォーム`） |
+| `status` | String | No | ステータスでフィルタ（デフォルト: RETIRED を除く全件） |
+| `name_like` | String | No | 備品名部分一致検索 |
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "プロジェクター",
+      "category": "映像機器",
+      "storage_location": "事務室棚A",
+      "qr_code": "EQ-T10-a1b2c3d4",
+      "qr_url": "https://{domain}/eq/EQ-T10-a1b2c3d4"
+    },
+    {
+      "id": 3,
+      "name": "ビブス赤 #1",
+      "category": "ユニフォーム",
+      "storage_location": "倉庫B",
+      "qr_code": "EQ-T10-e5f6g7h8",
+      "qr_url": "https://{domain}/eq/EQ-T10-e5f6g7h8"
+    }
+  ]
+}
+```
+
+**フロントエンド印刷フロー**
+```
+1. ユーザーが印刷対象を選択（3つの選択方法）:
+   a. 個別選択: 備品一覧のチェックボックスで任意の備品を選択
+   b. カテゴリ選択: カテゴリドロップダウンで絞り込み（例:「ユニフォーム」のみ）
+   c. 全件: フィルタなしで全備品（RETIRED除く）
+2. GET /equipment/qr-codes にフィルタ条件を送信
+3. フロントエンドで qr_url を元に QR 画像を生成（qrcode.js 等で SVG 生成）
+4. 印刷用レイアウトに展開（備品名 + カテゴリ + 保管場所 + QR画像）
+5. ブラウザ印刷（CSS @media print）でラベルシール用に出力
+```
+
+---
+
+### QRコードによる備品操作フロー
+
+#### ディープリンク設計
+
+QRコードに埋め込むURL形式:
+```
+https://{domain}/eq/{qr_code}
+```
+- 例: `https://app.mannschaft.example/eq/EQ-T10-a1b2c3d4`
+- 短縮パス `/eq/` を使用（QRコードの情報密度を下げ、読み取り精度を向上）
+
+#### スキャン → 操作フロー
+```
+1. ユーザーがスマホカメラ or アプリ内スキャナーで備品のQRコードを読み取り
+2. ディープリンク /eq/{qr_code} にアクセス
+3. バックエンドが qr_code から equipment_items を検索
+   - 見つからない or 論理削除済み → 404 エラー画面
+4. ユーザーのロール・所属に応じて備品詳細画面を表示:
+   - ADMIN/DEPUTY_ADMIN: 貸出・返却・編集ボタンを表示
+   - MEMBER: 備品情報の閲覧 + 自分の貸出分があれば返却ボタンを表示
+   - 未ログイン: ログイン画面にリダイレクト（リダイレクト先を保持）
+5. ユーザーが操作を実行（通常の API を呼び出し）
+```
+
+> **未ログイン時の UX**: QRスキャン → ログイン画面 → ログイン完了後に元の備品詳細画面へ自動遷移（`redirect_to` パラメータで保持）。
+
 ---
 
 ## 5. ビジネスロジック
@@ -625,7 +705,7 @@ V7.011__create_equipment_assignments_table.sql
 
 - ~~備品画像の複数枚アップロード対応（1枚 or 複数枚）~~ → **解決: 1枚のみ**。識別用途のため複数枚は不要。`image_url` 単一カラムで確定
 - ~~カテゴリをマスターテーブル化するか、自由入力のままにするか~~ → **解決: 自由入力（VARCHAR）のまま**。業種ごとにカテゴリが全く異なるため、マスター管理のメリットが薄い
-- ~~備品の棚卸し（定期的な在庫確認）機能を Phase 7 に含めるか~~ → **解決: 後続フェーズに延期**。Phase 7 スコープ外
+- ~~備品の棚卸し（定期的な在庫確認）機能を Phase 7 に含めるか~~ → **解決: 後続フェーズに延期**。Phase 7 スコープ外。QRコードスキャン基盤が Phase 7 で整うため、棚卸し機能の実装コストは低い
 - ~~MEMBER が自分で備品貸出をリクエストする機能（承認フロー付き）の要否~~ → **解決: 後続フェーズに延期**。Phase 7 は ADMIN 操作のみ（ただし MEMBER 自己返却は Phase 7 で対応）
 - ~~備品の移管（チーム間・組織⇔チーム間の scope 変更）~~ → **解決: 後続フェーズに延期**。FK付け替え・貸出履歴の整合性が複雑で、実運用頻度も低い。削除→再作成で代替可能
 
@@ -643,3 +723,4 @@ V7.011__create_equipment_assignments_table.sql
 | 2026-03-11 | 精査③: 組織スコープの貸出・返却・履歴・遅延 API 追加（チームと同一 Service で共通化）、`last_overdue_notified_at` カラム追加（重複通知防止） |
 | 2026-03-11 | 改善6件: QRコード一意制約+生成ルール追加、カテゴリ一覧API追加、消耗品消費フロー定義、画像アップロード/削除API追加、assigned_quantity整合性チェックバッチ追加、監査ログ連携(F02)明記 |
 | 2026-03-12 | 改善4件: 一括貸出/返却API追加（最大20件、アトミック実行）、MEMBER自己返却を許可、備品移管を後続フェーズに延期、返却遅延通知を2段階エスカレーション化（7日閾値、application.yml管理） |
+| 2026-03-12 | QRコード運用設計: ディープリンク（`/eq/{qr_code}`）定義、スキャン→操作フロー追加、QRコード印刷API追加（個別/カテゴリ/全件フィルタ対応）、qr_code を NOT NULL に変更 |
