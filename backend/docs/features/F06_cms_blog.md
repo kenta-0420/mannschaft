@@ -584,7 +584,7 @@ page_view_logs / page_view_daily_stats ──── activity_results (target_typ
   ],
   "meta": {
     "next_cursor": 41,
-    "has_more": true,
+    "has_next": true,
     "total_count": 85
   }
 }
@@ -918,6 +918,49 @@ MEMBER（`WRITE_BLOG` 権限・自分の記事のみ）:
   }
 }
 ```
+
+#### `GET /api/v1/activities`
+
+**認可**: 公開範囲に応じたアクセス制御
+- `PUBLIC`: 認証不要
+- `SUPPORTERS_AND_ABOVE`: SUPPORTER 以上
+- `MEMBERS_ONLY`: MEMBER 以上
+
+**クエリパラメータ**
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| `team_id` | Long | △ | チーム ID（team_id / organization_id のいずれか必須） |
+| `organization_id` | Long | △ | 組織 ID |
+| `visibility` | String | × | 公開範囲フィルタ（ADMIN/DEPUTY_ADMIN のみ） |
+| `from` | Date | × | 期間開始日 |
+| `to` | Date | × | 期間終了日 |
+| `cursor` | Long | × | カーソル（前ページ最後の ID） |
+| `limit` | Int | × | 取得件数（デフォルト: 20、最大: 50） |
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": [
+    {
+      "id": 15,
+      "title": "第5回練習試合 vs チームB",
+      "activity_date": "2026-03-08",
+      "location": "市民グラウンド",
+      "visibility": "MEMBERS_ONLY",
+      "participant_count": 11,
+      "cover_image_url": "https://s3.example.com/activities/cover-456.jpg",
+      "created_at": "2026-03-08T18:00:00"
+    }
+  ],
+  "meta": {
+    "next_cursor": 14,
+    "has_next": true,
+    "total_count": 42
+  }
+}
+```
+
+---
 
 #### `GET /api/v1/activities/stats`
 

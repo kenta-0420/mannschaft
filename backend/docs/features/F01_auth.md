@@ -66,6 +66,9 @@ JWT によるステートレス認証を提供する。
 | `first_name` | VARCHAR(50) | NO | — | 名 |
 | `last_name_kana` | VARCHAR(50) | YES | NULL | 姓（カナ）|
 | `first_name_kana` | VARCHAR(50) | YES | NULL | 名（カナ）|
+| `display_name` | VARCHAR(50) | NO | — | 表示用ニックネーム（愛称1）|
+| `nickname2` | VARCHAR(50) | YES | NULL | 愛称2（任意）|
+| `is_searchable` | BOOLEAN | NO | TRUE | OFF にすると他ユーザーの検索結果に非表示（メンションは可）|
 | `avatar_url` | VARCHAR(500) | YES | NULL | S3 オブジェクトキーを保存（表示時に Pre-signed URL 生成）|
 | `phone_number` | VARCHAR(20) | YES | NULL | 任意。将来のSMS認証用 |
 | `locale` | VARCHAR(10) | NO | `ja` | 表示言語。BCP 47 タグ（`ja` / `en` 等）。メール送信言語にも使用 |
@@ -421,13 +424,17 @@ users (1) ──── (N) webauthn_credentials
 {
   "email": "user@example.com",
   "password": "P@ssw0rd!",
-  "display_name": "田中 太郎"
+  "last_name": "田中",
+  "first_name": "太郎",
+  "display_name": "たなたろ"
 }
 ```
 
 **バリデーション**
 - `email`: 必須・メール形式・他ユーザーと重複しないこと
 - `password`: 必須・パスワードポリシー準拠（8文字以上・英大文字/小文字/数字/記号のうち3種以上・メールアドレスと同一禁止）
+- `last_name`: 必須・1〜50文字
+- `first_name`: 必須・1〜50文字
 - `display_name`: 必須・1〜50文字
 
 **レスポンス（201 Created）**
@@ -1281,7 +1288,7 @@ totp_used:{user_id}:{6桁コード}  →  値: "1"、TTL: 90秒
 2. email で users を検索（存在しない場合も成功レスポンスを返す: ユーザー列挙防止）
 3. status チェック: FROZEN → 処理せずに成功レスポンスを返す（列挙防止）
 4. 未使用の既存 password_reset_tokens があれば used_at を設定して無効化
-5. password_reset_tokens に有効期限1時間のトークンを生成・保存
+5. password_reset_tokens に有効期限30分のトークンを生成・保存
 6. パスワードリセットメールを送信（ApplicationEvent → MailService）
 7. audit_logs に PASSWORD_RESET_REQUESTED を記録（ユーザーが存在する場合のみ。存在しない場合は記録しない）
 8. 202 Accepted を返す（ユーザーの存在有無に関わらず同一レスポンス）
@@ -1446,4 +1453,5 @@ V1.012__seed_system_admin_user.sql
 | 2026-02-19 | #13: `users` に `locale` / `timezone` / `reminder_sent_at` カラムを追加。#14: `audit_logs` の詳細定義を `F02_audit_logs.md` へ分離し cross-reference 注記を追加。#15: PENDING_VERIFICATION クリーンアップポリシー（7日リマインダー・30日物理削除）を定義 |
 | 2026-02-21 | メール認証フロー（`EMAIL_VERIFIED` 記録）のビジネスロジックを新規追加。`PENDING_USER_CLEANED_UP` の metadata を email 平文から email_hash（SHA-256）に変更 |
 | 2026-02-21 | F02 整合性対応: `USER_REGISTERED` / `OAUTH_USER_REGISTERED` / `PASSWORD_RESET_REQUESTED` / `ACCOUNT_LOCKED` の audit_logs 記録ステップを追加。パスワードリセット完了の記録イベントを `PASSWORD_CHANGED` → `PASSWORD_RESET_COMPLETED` に修正。WebAuthn デバイス登録完了フロー（`WEBAUTHN_CREDENTIAL_REGISTERED`）を新規追加 |
+| 2026-03-11 | README 横断精査: `users` テーブルに `display_name`・`nickname2`・`is_searchable` カラムを追加。register API を `last_name` + `first_name` + `display_name` の3フィールドに変更。パスワードリセットフローの有効期限を「1時間」→「30分」に修正（テーブル定義と統一）|
 | 2026-02-20 | 整合性10項目を修正: ステータスを設計確定に変更（B）。V1.012注意点の誤記を修正（A）。`user_invalidated_at` TTL を「900秒」に統一（G）。`2fa/recovery/request` 認証列を「不要」→「必要」に修正（H）。`POST /auth/register` の詳細 API 仕様（リクエスト・バリデーション・エラー）を追加（E）。`DELETE /users/me` の詳細 API 仕様を追加（OAuth専用アカウントはパスワード不要と定義）（F）。`POST /auth/webauthn/login/begin` のリクエスト・レスポンス仕様を追加（I）。`DELETE /auth/webauthn/credentials/{id}` の詳細 API 仕様を追加（J）。パスワードリセットフロー（ビジネスロジック）を追加（C）。OAuth専用アカウントのパスワード初期設定をパスワードリセットフロー流用と定義（D）|

@@ -104,7 +104,7 @@
 ※ Phase 1 の管理者画面では「ユーザーへのロール割り当て」のみ、ロール自体の追加・編集は将来対応
 ※ グループ単位でもロール設定可能
 ※ DEPUTY_ADMIN・MEMBER の権限は 3 層で管理する: ① SYSTEM_ADMIN がロールごとの権限の上限（天井）を設定 → ② 各チーム/組織の ADMIN がその天井内でパーミッションを個別選択して権限グループを構成 → ③ ユーザーに権限グループを割り当て
-※ **DEPUTY_ADMIN 権限グループ**: ADMIN は操作権限を個別選択した名前付きグループ（`team_permission_groups`）を複数作成・テンプレートとして保存できる。「Aさんにはグループ1（受付・安否確認）、B・CさんにはグループA2（スケジュール・ファイル管理）」のような運用が可能
+※ **DEPUTY_ADMIN 権限グループ**: ADMIN は操作権限を個別選択した名前付きグループ（`permission_groups`）を複数作成・テンプレートとして保存できる。「Aさんにはグループ1（受付・安否確認）、B・CさんにはグループA2（スケジュール・ファイル管理）」のような運用が可能
 ※ **コンテンツ削除のデフォルト非付与**: 投稿・チャット・掲示板スレッド等の他者コンテンツ削除権限は DEPUTY_ADMIN のデフォルトパーミッションに含めない。コンテンツの責任はその組織・チームに帰属するため、削除は ADMIN が担う。DEPUTY_ADMIN への付与が必要な場合は権限グループで明示的に設定する
 ※ `user_roles` は `team_id` / `organization_id` のスコープカラムを持ち、「チームAでは DEPUTY_ADMIN・チームBでは MEMBER」のようなマルチ所属に対応
 
@@ -727,7 +727,12 @@
 
 ### クエリ最適化
 
-- **カーソルベースページネーション**: `WHERE id < :cursor ORDER BY id DESC LIMIT N`（OFFSET 廃止）
+- **ページネーション方式（適材適所）**: データ特性に応じて2方式を使い分ける
+  - **Cursor-based（`cursor` / `limit`）**: フィード・タイムライン系（ブログ記事、お知らせ、活動記録、ギャラリー写真）。無限スクロール向き。`WHERE id < :cursor ORDER BY id DESC LIMIT N`。頻繁な更新でもデータ重複・欠落を防止
+  - **Offset-based（`page` / `size`）**: 台帳・管理画面系（備品管理、サービス履歴、パフォーマンス、カルテ、監査ログ、メンバー一覧、支払い管理）。ページ番号ジャンプ・検索ソートに適合
+  - **共通レスポンス**: 全ページネーション応答に `has_next: boolean` を含む `PaginationMeta` を返し、フロントエンドが方式を意識せず次ページ有無を判定できるようにする。Cursor 方式でも `total_count`（概算可）を返す
+  - **Offset-based meta**: `{ "page": 0, "size": 20, "total_elements": 150, "total_pages": 8, "has_next": true }`
+  - **Cursor-based meta**: `{ "next_cursor": 41, "limit": 20, "total_count": 150, "has_next": true }`
 - **JOIN 一括取得**: タイムライン一覧は投稿者情報・リアクション数・添付ファイルを1クエリで取得
 - **IN 句バッチ取得**: 関連エンティティは `WHERE id IN (...)` で N+1 を排除
 - **カウンターキャッシュ（denormalize）**: `COUNT(*)` クエリを廃止するため、集計値や表示最適化カラムを保持してアトミック更新する（対象: `timeline_posts.reaction_count`, `timeline_posts.reply_count`, `teams.member_count`, `chat_channels.last_message_at`, `chat_channels.last_message_preview`（最新メッセージ冒頭100字）, `chat_channel_members.unread_count`, `bulletin_threads.reply_count`）
@@ -745,8 +750,8 @@
 
 ## DB設計
 
-### 認証・権限 (13テーブル)
-`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `team_role_permissions`, `permission_groups`, `permission_group_permissions`, `user_permission_groups`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`
+### 認証・権限 (18テーブル)
+`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `team_role_permissions`, `permission_groups`, `permission_group_permissions`, `user_permission_groups`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`, `email_verification_tokens`, `email_change_tokens`, `oauth_link_tokens`, `mfa_recovery_tokens`, `webauthn_credentials`
 
 ※ SYSTEM_ADMIN は `roles` テーブルの1レコード + `user_roles` で割り当て。専用テーブルは設けず RBAC に統一する
 ※ `users`: `last_name` / `first_name`（実名）・`display_name`（愛称1、表示用ニックネーム）・`nickname2`（愛称2、nullable）を持つ。電子印鑑は `last_name` を使用。検索・メンションでは実名・愛称いずれでもヒットするようにする
@@ -758,7 +763,7 @@
 ※ `permission_group_permissions`: 各権限グループに含まれるパーミッション（`group_id`, `permission_id`, `is_enabled`）。パーミッションを個別に ON/OFF する
 ※ `user_permission_groups`: ユーザーと権限グループの多対多中間テーブル（`user_role_id` FK → `user_roles`, `permission_group_id` FK → `permission_groups`）。1ユーザーに複数グループを割り当て可能
 ※ `user_roles`: `team_id` / `organization_id` のスコープカラムを持ち、マルチ所属・複数 DEPUTY_ADMIN に対応。権限グループの割り当ては `user_permission_groups` で管理する
-※ `two_factor_auth`: TOTP シークレット・有効フラグを保持。バックアップコード（8桁 × 10件）をハッシュ化して別カラムに保存し、デバイス紛失時の緊急復旧に対応する
+※ `two_factor_auth`: TOTP シークレット・有効フラグを保持。バックアップコード（8桁 × 8件）をハッシュ化して別カラムに保存し、デバイス紛失時の緊急復旧に対応する
 ※ `password_reset_tokens`: トークンは `SecureRandom` + Base64URL 方式で生成。有効期限は発行から **30分** とし、使用済みトークンは即時無効化する
 
 ### チーム管理 (1テーブル)
@@ -901,13 +906,13 @@
 ※ `chat_channels`: `last_message_at`・`last_message_preview`（最新メッセージ冒頭100字）を denormalize で保持し、チャンネル一覧取得時の `chat_messages` JOIN を排除
 ※ `chat_channel_members`: `unread_count` を denormalize で保持し、メッセージ送信時に +1・既読時に 0 リセットするアトミック更新で管理
 
-### スケジュール・出欠 (7テーブル)
-`schedules`, `schedule_attendances`, `schedule_surveys`, `schedule_survey_responses`, `schedule_attendance_reminders`, `schedule_cross_team_invitations`, `schedule_invitation_responses`
+### スケジュール・出欠 (6テーブル)
+`schedules`, `schedule_attendances`, `event_surveys`, `event_survey_responses`, `schedule_attendance_reminders`, `schedule_cross_refs`
 
 ※ `schedules`: 三者 XOR 制約（`team_id` / `organization_id` / `user_id` のいずれか1つのみ非 NULL）でスコープを管理。繰り返しルール（`recurrence_rule` JSON）をサポート
-※ `schedule_attendances`: 出欠回答テーブル。`response`（ATTENDING / ABSENT / PENDING）で管理
-※ `schedule_surveys` / `schedule_survey_responses`: スケジュールに紐付いた簡易アンケート（出欠確認時の追加質問等）。独立したアンケート機能の `surveys` / `survey_responses`（後述）とは設計上別テーブルとして管理する
-※ `schedule_cross_team_invitations` / `schedule_invitation_responses`: クロスチーム招待の管理テーブル
+※ `schedule_attendances`: 出欠回答テーブル。`status`（ATTENDING / PARTIAL / ABSENT / UNDECIDED）で管理
+※ `event_surveys` / `event_survey_responses`: スケジュールに紐付いた簡易アンケート（出欠確認時の追加質問等）。独立したアンケート機能の `surveys` / `survey_responses`（後述）とは設計上別テーブルとして管理する
+※ `schedule_cross_refs`: クロスチーム・組織スケジュール招待テーブル（試合マッチング等）
 
 ### 予約管理 (3テーブル)
 `reservation_slots`, `reservations`, `reservation_reminders`
@@ -958,13 +963,14 @@
 ### パフォーマンス管理 (2テーブル)
 `performance_metrics`, `performance_records`
 
-### 決済・会費 (5テーブル)
-`payment_items`, `member_payments`, `stripe_customers`, `stripe_connected_accounts`, `payment_refunds`
+### 決済・会費 (6テーブル)
+`payment_items`, `stripe_customers`, `member_payments`, `team_access_requirements`, `organization_access_requirements`, `content_payment_gates`
 
-※ `payment_items`: チーム/組織が管理する支払い対象アイテム（月会費/年会費/都度払い/イベント参加費等）。`scope_type`（TEAM/ORGANIZATION）でスコープを管理
-※ `member_payments`: メンバーの支払い記録。Stripe 決済の `payment_intent_id` を保持
-※ `stripe_customers` / `stripe_connected_accounts`: Stripe Connect 連携テーブル
-※ `payment_refunds`: アプリ内全額返金の記録テーブル
+※ `payment_items`: 支払い項目定義（年会費/月謝/アイテム代金/寄付）。`team_id` / `organization_id` の XOR 制約でスコープを管理
+※ `stripe_customers`: ユーザーの Stripe 顧客 ID 管理（1ユーザー1レコード、遅延生成）
+※ `member_payments`: 支払い記録（Stripe 自動 / ADMIN 手動）。Stripe 決済の `payment_intent_id` を保持
+※ `team_access_requirements` / `organization_access_requirements`: チーム/組織全体ロックに必要な支払い項目の紐付け
+※ `content_payment_gates`: コンテンツ単位のアクセスゲート設定（ポリモーフィック）
 ※ 拡張設計: 物販テーブル群（`products`, `orders`, `order_items` 等）は Phase 8 以降に別セクションとして追加する
 
 ### 通報・モデレーション (2テーブル)

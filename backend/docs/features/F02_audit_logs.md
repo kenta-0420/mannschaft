@@ -246,7 +246,8 @@ organizations (1) ──── (N) audit_logs   ※ organization_id は SET NULL
     "page": 0,
     "size": 20,
     "total_elements": 1234,
-    "total_pages": 62
+    "total_pages": 62,
+    "has_next": true
   }
 }
 ```
@@ -285,7 +286,8 @@ organizations (1) ──── (N) audit_logs   ※ organization_id は SET NULL
     "page": 0,
     "size": 20,
     "total_elements": 58,
-    "total_pages": 3
+    "total_pages": 3,
+    "has_next": true
   }
 }
 ```

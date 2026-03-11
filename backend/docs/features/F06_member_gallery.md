@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 6
-> **最終更新**: 2026-03-10
+> **最終更新**: 2026-03-11
 
 ---
 
@@ -33,7 +33,7 @@
 | ADMIN | アルバムの作成・編集・削除、写真のアップロード・削除、閲覧権限設定 |
 | DEPUTY_ADMIN | `MANAGE_CONTENT` 権限を持つ場合: アルバム作成・編集、写真アップロード・削除 |
 | MEMBER | 閲覧権限のあるアルバムの参照、写真アップロード（ADMIN が許可した場合） |
-| SUPPORTER | 対象外（メンバーのみが閲覧・アップロードできる） |
+| SUPPORTER | `SUPPORTERS_AND_ABOVE` 公開設定のアルバムを閲覧可 |
 | GUEST | 対象外 |
 
 ### 対象レベル
@@ -79,6 +79,7 @@
 | `cover_image_url` | VARCHAR(500) | YES | NULL | カバー画像 URL（S3） |
 | `visibility` | ENUM('PUBLIC', 'MEMBERS_ONLY') | NO | 'MEMBERS_ONLY' | 公開範囲 |
 | `status` | ENUM('DRAFT', 'PUBLISHED') | NO | 'DRAFT' | 公開ステータス |
+| `allow_self_edit` | BOOLEAN | NO | FALSE | TRUE = MEMBER が自分のプロフィール（bio, photo_url, カスタムフィールド値）を直接編集可能 |
 | `sort_order` | INT | NO | 0 | 表示順（メインページからの遷移順序） |
 | `created_by` | BIGINT UNSIGNED | YES | NULL | FK → users（SET NULL on delete） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
@@ -151,6 +152,7 @@ INDEX idx_tps_page_order (team_page_id, sort_order)  -- ページ内セクショ
 | `photo_url` | VARCHAR(500) | YES | NULL | プロフィール画像 URL（S3） |
 | `bio` | VARCHAR(500) | YES | NULL | 一言・自己紹介 |
 | `position` | VARCHAR(100) | YES | NULL | 役職・ポジション |
+| `custom_field_values` | JSON | YES | NULL | カスタムフィールド値（{"field_id": "value", ...}。例: {"1": "10", "2": "A型"}） |
 | `sort_order` | INT | NO | 0 | 表示順 |
 | `is_visible` | BOOLEAN | NO | TRUE | 表示/非表示 |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
@@ -165,7 +167,7 @@ INDEX idx_mp_user (user_id)                          -- ユーザー別掲載一
 
 **制約・備考**
 - `user_id` が NULL になった場合でも `display_name` と `photo_url` で掲載を継続
-- MEMBER は自分の `bio` のみ編集可能（ADMIN が `allow_self_edit` を有効にした場合。フラグは `team_pages` に持たせる案あり → 未解決事項①）
+- **MEMBER セルフ編集**: `team_pages.allow_self_edit = true` の場合、MEMBER は自分の `member_profiles` レコード（`user_id` = 自分）に対して `bio`, `photo_url`, `custom_field_values` を直接編集可能（即時反映、承認不要）。`display_name`, `position`, `sort_order`, `is_visible` は ADMIN/DEPUTY_ADMIN のみ編集可能（ページの見た目制御は管理者が責任を持つ）。不適切な内容は ADMIN が `is_visible = false` で対処
 - 物理削除（ページ削除時にカスケード削除）
 
 #### `member_profile_fields`
@@ -192,8 +194,8 @@ INDEX idx_mpf_org (organization_id, sort_order)   -- 組織別フィールド一
 
 **制約・備考**
 - `team_id` と `organization_id` は XOR（CHECK 制約）
-- フィールド定義はチーム/組織全体で共通。各ページの `member_profiles` にフィールド値を格納
-- プロフィールフィールドの値は `member_profiles` に JSON カラムとして持つか、EAV テーブルを別途作るか → 未解決事項②
+- フィールド定義はチーム/組織全体で共通。各ページの `member_profiles.custom_field_values` JSON カラムにフィールド値を格納
+- **JSON 方式を採用した理由**: プロフィールは表示用途が主で数値集計不要、JSON なら1レコードで完結し一覧取得がシンプル、MySQL 8.0 の `JSON_EXTRACT` で個別検索にも対応可能
 - フィールド定義は物理削除しない。`is_active = FALSE` で非表示
 
 #### `photo_albums`
@@ -207,8 +209,9 @@ INDEX idx_mpf_org (organization_id, sort_order)   -- 組織別フィールド一
 | `description` | VARCHAR(500) | YES | NULL | アルバムの説明 |
 | `cover_photo_id` | BIGINT UNSIGNED | YES | NULL | FK → photos（アルバムのカバー写真。NULL = 先頭写真を自動使用） |
 | `event_date` | DATE | YES | NULL | イベント日（任意。アルバムの時系列整理用） |
-| `visibility` | ENUM('ALL_MEMBERS', 'ADMIN_ONLY') | NO | 'ALL_MEMBERS' | 閲覧権限 |
+| `visibility` | ENUM('ALL_MEMBERS', 'SUPPORTERS_AND_ABOVE', 'ADMIN_ONLY') | NO | 'ALL_MEMBERS' | 閲覧権限（PUBLIC は追加しない。ギャラリーはプライバシー性が高いため認証必須の範囲に限定） |
 | `allow_member_upload` | BOOLEAN | NO | FALSE | MEMBER による写真アップロード許可 |
+| `allow_download` | BOOLEAN | NO | TRUE | TRUE = 個別・一括ダウンロード許可。FALSE = 閲覧のみ（カジュアルコピー抑止） |
 | `photo_count` | INT UNSIGNED | NO | 0 | 写真数（denormalize） |
 | `created_by` | BIGINT UNSIGNED | YES | NULL | FK → users（SET NULL on delete） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
@@ -272,7 +275,7 @@ team_pages          (1) ──── (N) member_profiles
 member_profiles     (N) ──── (1) users
 
 teams/organizations (1) ──── (N) member_profile_fields
-member_profiles     ── custom field values ── member_profile_fields (※値の格納方式は未解決事項②)
+member_profiles.custom_field_values (JSON) ── references ── member_profile_fields (field_id をキーに参照)
 
 teams/organizations (1) ──── (N) photo_albums
 photo_albums        (1) ──── (N) photos
@@ -308,6 +311,7 @@ photo_albums        (N) ──── (1) photos (cover_photo_id)
 | POST | `/api/v1/team/member-fields` | 必要 | プロフィールフィールド定義作成 |
 | PUT | `/api/v1/team/member-fields/{id}` | 必要 | プロフィールフィールド定義更新 |
 | DELETE | `/api/v1/team/member-fields/{id}` | 必要 | プロフィールフィールド定義無効化 |
+| POST | `/api/v1/team/pages/{id}/copy-members` | 必要 | 前年度ページからメンバーをコピー |
 
 #### ギャラリー
 | メソッド | パス | 認証 | 説明 |
@@ -319,6 +323,7 @@ photo_albums        (N) ──── (1) photos (cover_photo_id)
 | DELETE | `/api/v1/gallery/albums/{id}` | 必要 | アルバム削除（論理削除） |
 | POST | `/api/v1/gallery/albums/{id}/photos` | 必要 | 写真アップロード |
 | DELETE | `/api/v1/gallery/photos/{id}` | 必要 | 写真削除 |
+| GET | `/api/v1/gallery/albums/{id}/download` | 必要 | アルバム写真の一括ダウンロード（ZIP） |
 
 ### リクエスト／レスポンス仕様
 
@@ -469,6 +474,51 @@ photo_albums        (N) ──── (1) photos (cover_photo_id)
 | 404 | team_page_id が存在しない |
 | 409 | 重複する user_id が含まれている |
 
+#### `POST /api/v1/team/pages/{id}/copy-members`
+
+**認可**: ADMIN、または `MANAGE_CONTENT` 権限を持つ DEPUTY_ADMIN
+
+**リクエストボディ**
+```json
+{
+  "source_page_id": 4
+}
+```
+
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| `source_page_id` | Long | ○ | コピー元ページ ID（通常は前年度ページ） |
+
+**処理内容**
+```
+1. コピー元ページの member_profiles（is_visible = true）を取得
+2. 各メンバーをコピー先ページに INSERT:
+   - user_id, display_name, photo_url, bio, position, custom_field_values, sort_order をコピー
+   - is_visible = true（デフォルト）
+3. コピー先に同じ user_id が既に存在する場合はスキップ
+4. コピー後、ADMIN が卒業/退会メンバーを削除、新メンバーを追加する運用フロー
+```
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "copied_count": 22,
+    "skipped_count": 3,
+    "skipped_user_ids": [15, 23, 41]
+  }
+}
+```
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | source_page_id 未指定、またはコピー元とコピー先が同一ページ |
+| 403 | 権限不足、またはコピー元ページが異なるスコープ |
+| 404 | コピー元ページが存在しない |
+
+---
+
 #### `POST /api/v1/gallery/albums`
 
 **認可**: ADMIN、または `MANAGE_CONTENT` 権限を持つ DEPUTY_ADMIN
@@ -601,10 +651,45 @@ Pre-signed URL 方式の場合:
   },
   "meta": {
     "next_cursor": 130,
-    "has_more": true
+    "has_next": true
   }
 }
 ```
+
+#### `GET /api/v1/gallery/albums/{id}/download`
+
+**認可**: MEMBER 以上 + アルバムの `visibility` チェック + `allow_download = true`
+
+**クエリパラメータ**
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| `photo_ids` | String | × | 写真 ID（カンマ区切り。指定なし = アルバム全写真） |
+| `limit` | Int | × | 最大枚数（デフォルト: 100、最大: 100） |
+
+**処理内容**
+```
+1. allow_download = false の場合 → 403
+2. 対象写真を S3 から取得し、サーバーサイドで ZIP 生成
+3. ZIP を S3 の一時バケットに保存（有効期限: 1時間）
+4. Pre-signed URL を返却
+```
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "download_url": "https://s3.example.com/tmp/download-abc123.zip?...",
+    "photo_count": 45,
+    "expires_at": "2026-03-11T14:00:00"
+  }
+}
+```
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 403 | `allow_download = false`、権限不足、visibility 制限 |
+| 404 | アルバムが存在しない |
 
 ---
 
@@ -619,8 +704,9 @@ Pre-signed URL 方式の場合:
 4. プレビュー確認後、PATCH /publish で status = PUBLISHED
 5. 翌年度:
    a. 新しい YEARLY ページを作成（year = 2027）
-   b. メンバーを新規登録 or 前年度ページからコピー（将来拡張）
-   c. メインページのセクションを更新して新年度ページへのリンクを追加
+   b. POST /team/pages/{id}/copy-members で前年度ページからメンバーを一括コピー
+   c. 卒業/退会メンバーを削除、新メンバーを追加
+   d. メインページのセクションを更新して新年度ページへのリンクを追加
 ```
 
 ### ギャラリー写真アップロードフロー
@@ -667,9 +753,13 @@ Pre-signed URL 方式の場合:
 ギャラリー:
 1. ギャラリーモジュールが有効化されていること（選択式モジュール No.6）
 2. visibility = ALL_MEMBERS → チーム/組織の MEMBER 以上
-3. visibility = ADMIN_ONLY → ADMIN, DEPUTY_ADMIN のみ
-4. 写真アップロード: ADMIN, DEPUTY_ADMIN, または allow_member_upload = true の場合 MEMBER
-5. 写真削除: アップロードした本人、または ADMIN/DEPUTY_ADMIN
+3. visibility = SUPPORTERS_AND_ABOVE → SUPPORTER 以上
+4. visibility = ADMIN_ONLY → ADMIN, DEPUTY_ADMIN のみ
+5. 写真アップロード: ADMIN, DEPUTY_ADMIN, または allow_member_upload = true の場合 MEMBER
+6. 写真削除: アップロードした本人、または ADMIN/DEPUTY_ADMIN
+7. 写真ダウンロード: allow_download = true の場合のみ。閲覧権限を持つ全ユーザー
+   - allow_download = false の場合: CloudFront Signed URL に Content-Disposition: inline を強制。
+     フロントエンドで右クリック保存抑制（完全防止は不可能だがカジュアルコピー抑止として有効）
 ```
 
 ---
@@ -683,6 +773,7 @@ Pre-signed URL 方式の場合:
 - **レートリミット**: 写真アップロード API に `Bucket4j` で 1分間に30回の制限
 - **ファイルサイズ制限**: 1枚あたり20MB、1アルバムあたり500枚を上限
 - **一括登録の保護**: `POST /team/members/bulk` は1リクエストあたり最大100件
+- **ダウンロード制限**: `allow_download = false` のアルバムは一括ダウンロード API を 403 で拒否。CloudFront Signed URL に `Content-Disposition: inline` を強制し、ブラウザのダウンロードダイアログを抑制。ZIP 一括ダウンロードの一時ファイルは S3 ライフサイクルルールで1時間後に自動削除
 
 ---
 
@@ -707,11 +798,11 @@ V6.018__add_photo_albums_cover_fk.sql      -- photo_albums.cover_photo_id FK 追
 
 ## 8. 未解決事項
 
-- [ ] ①メンバー自身によるプロフィール編集: MEMBER が自分の `bio` や写真を直接編集できるか、ADMIN 承認制にするか。`team_pages.allow_self_edit` フラグで制御する案
-- [ ] ②プロフィールフィールドの値格納方式: `member_profiles` に `custom_fields JSON` カラムを追加する方式か、`member_profile_values`（EAV）テーブルを別途作成する方式か。JSON 方式はシンプルだがフィールド単位の検索・集計が困難
-- [ ] ③前年度メンバーのコピー機能: 年度更新時に前年度ページのメンバーを新年度ページにコピーする機能の要否
-- [ ] ④ギャラリーの SUPPORTER 公開: 現在の設計ではメンバー限定だが、SUPPORTER にも公開するオプションを追加するか
-- [ ] ⑤写真のダウンロード制限: メンバーによる一括ダウンロードを許可するか、閲覧のみに制限するか
+- [x] ~~①メンバー自身によるプロフィール編集~~ → **`team_pages.allow_self_edit` フラグで制御（承認なし・即時反映）**。TRUE の場合 MEMBER は自分の `bio`, `photo_url`, `custom_field_values` を直接編集可能。`display_name`, `position`, `sort_order`, `is_visible` は ADMIN/DEPUTY_ADMIN のみ編集可能。不適切な内容は ADMIN が `is_visible = false` で対処
+- [x] ~~②プロフィールフィールドの値格納方式~~ → **JSON カラム方式を採用**。`member_profiles` に `custom_field_values JSON` カラムを追加。格納形式: `{"field_id": "value", ...}`。EAV テーブル不要。理由: プロフィールは表示用途が主で数値集計不要、JSON なら1レコードで完結し一覧取得がシンプル、MySQL 8.0 の `JSON_EXTRACT` で個別検索にも対応可能
+- [x] ~~③前年度メンバーのコピー機能~~ → **Phase 6 で実装**。`POST /api/v1/team/pages/{id}/copy-members` API を追加。ソースページの `is_visible = true` のメンバーを全員コピー（同一 `user_id` はスキップ）。コピー後に ADMIN が卒業/退会メンバーを削除、新メンバーを追加する運用フロー
+- [x] ~~④ギャラリーの SUPPORTER 公開~~ → **`SUPPORTERS_AND_ABOVE` を visibility ENUM に追加**。`ENUM('ALL_MEMBERS', 'SUPPORTERS_AND_ABOVE', 'ADMIN_ONLY')` に拡張。PUBLIC（外部公開）は追加しない（プライバシー性の高いコンテンツのため認証必須の範囲に限定）
+- [x] ~~⑤写真のダウンロード制限~~ → **`photo_albums.allow_download` フラグで制御**。TRUE = 個別・一括ダウンロード許可、`GET /api/v1/gallery/albums/{id}/download` で ZIP 一括ダウンロード（最大100枚、S3 一時保存・1時間有効）。FALSE = 閲覧のみ（CloudFront Signed URL に `Content-Disposition: inline` 強制、一括ダウンロード API は 403）
 
 ---
 
@@ -720,3 +811,4 @@ V6.018__add_photo_albums_cover_fk.sql      -- photo_albums.cover_photo_id FK 追
 | 日付 | 変更内容 |
 |------|---------|
 | 2026-03-10 | 初版作成 |
+| 2026-03-11 | 未解決事項①〜⑤を解決: allow_self_edit フラグ追加、JSON カラム方式確定（custom_field_values）、前年度メンバーコピー API 追加、SUPPORTERS_AND_ABOVE 公開追加、allow_download フラグ＋一括ダウンロード API 追加 |

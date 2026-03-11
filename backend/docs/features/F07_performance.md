@@ -55,7 +55,7 @@
 | `data_type` | ENUM('INTEGER', 'DECIMAL', 'TIME') | NO | 'DECIMAL' | データ型 |
 | `aggregation_type` | ENUM('SUM', 'AVG', 'MAX', 'MIN', 'LATEST') | NO | 'SUM' | 統計集計方法 |
 | `description` | VARCHAR(500) | YES | NULL | 指標の説明 |
-| `sort_order` | SMALLINT UNSIGNED | NO | 0 | 表示順 |
+| `sort_order` | INT | NO | 0 | 表示順 |
 | `is_visible_to_members` | BOOLEAN | NO | TRUE | MEMBER にチーム統計を公開するか |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
@@ -223,7 +223,7 @@ users (1) ──── (N) performance_records [recorded_by]
 | `date_to` | Date | No | 期間終了日 |
 
 **レスポンス（200 OK / ≤1,000 件）**
-- `Content-Type: text/csv; charset=UTF-8`
+- `Content-Type: text/csv; charset=UTF-8`（BOM 付き UTF-8。Excel 文字化け防止）
 - `Content-Disposition: attachment; filename="performance_records_{teamId}_{yyyyMMdd}.csv"`
 - CSV カラム: `recorded_date, user_display_name, metric_name, value, unit, note`
 
@@ -244,7 +244,9 @@ users (1) ──── (N) performance_records [recorded_by]
 | 403 | 権限不足 |
 | 404 | チームが存在しない |
 
-**備考**: CSV インポート機能は後続フェーズで対応予定。
+**備考**
+- CSV インポート機能は後続フェーズで対応予定
+- CSV インジェクション対策: セル値の先頭が `=`, `+`, `-`, `@` の場合はシングルクォートを先頭に付与
 
 ---
 
@@ -296,8 +298,80 @@ users (1) ──── (N) performance_records [recorded_by]
 | `team_id` | Long | No | 特定チームでフィルタ |
 | `date_from` | Date | No | 期間開始日 |
 | `date_to` | Date | No | 期間終了日 |
+| `cursor` | Long | No | カーソル（前ページ最後のチーム ID） |
+| `limit` | Int | No | 取得件数（デフォルト 20） |
 
-**レスポンス（200 OK）**: チームごとにグルーピングされた自身のパフォーマンスサマリー（各指標の集計値 + 直近レコード）
+**レスポンス（200 OK）**
+```json
+{
+  "data": [
+    {
+      "team_id": 10,
+      "team_name": "チームA",
+      "metrics": [
+        {
+          "metric_id": 1,
+          "name": "得点",
+          "unit": "点",
+          "aggregation_type": "SUM",
+          "total": 12,
+          "record_count": 18,
+          "latest_record": {
+            "recorded_date": "2026-03-10",
+            "value": 2,
+            "note": "練習試合 vs ○○チーム"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### `GET /api/v1/teams/{teamId}/members/{userId}/performance`
+
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_PERFORMANCE`）。自分のデータは MEMBER 以上
+
+**クエリパラメータ**
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| `date_from` | Date | No | 期間開始日 |
+| `date_to` | Date | No | 期間終了日 |
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "user_id": 42,
+    "display_name": "田中太郎",
+    "period": { "from": "2026-01-01", "to": "2026-03-10" },
+    "metrics": [
+      {
+        "metric_id": 1,
+        "name": "得点",
+        "unit": "点",
+        "aggregation_type": "SUM",
+        "total": 12,
+        "avg": 0.67,
+        "max": 3,
+        "min": 0,
+        "record_count": 18,
+        "trend": [
+          { "month": "2026-01", "value": 5 },
+          { "month": "2026-02", "value": 4 },
+          { "month": "2026-03", "value": 3 }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 403 | 権限不足（MEMBER が他メンバーのデータを参照）|
+| 404 | ユーザーがチームに所属していない |
 
 ---
 
@@ -339,6 +413,7 @@ users (1) ──── (N) performance_records [recorded_by]
 - **データ公開制御**: MEMBER が他メンバーの個別記録を直接参照するエンドポイントは提供しない。チーム統計は `is_visible_to_members` で制御
 - **一括入力のサイズ制限**: `bulk` エンドポイントは 1リクエストあたり最大 **200 entries**（アプリ層で検証）
 - **レートリミット**: 記録作成 API に `Bucket4j` で 1分間に60回の制限を適用
+- **CSV インジェクション対策**: CSV エクスポート時、セル値の先頭が `=`, `+`, `-`, `@` の場合はシングルクォートを先頭に付与する
 
 ---
 
@@ -370,3 +445,5 @@ V7.009__create_performance_records_table.sql
 |------|---------|
 | 2026-03-10 | 初版作成 |
 | 2026-03-11 | 未解決事項4件を解決: CSVエクスポートAPI追加、Redis TTL 5分固定、競技式ランキング採用、チャートデフォルト3ヶ月 |
+| 2026-03-11 | 精査: /performance/me レスポンス JSON 追加、/members/{userId}/performance 詳細仕様追加、CSV インジェクション対策追加 |
+| 2026-03-11 | 精査②: CSV エクスポートに BOM 付き UTF-8 明記、/performance/me にページネーションパラメータ追加、sort_order 型を INT に統一 |

@@ -9,7 +9,7 @@
 
 ## 1. 概要
 
-来店ごとにカルテを作成・蓄積し、顧客の施術履歴を体系的に管理する機能。美容室のカラーレシピ、整骨院の身体チャート、エステのビフォーアフター写真など業種ごとに必要なセクションを ON/OFF で切り替えて使用できる。問診票・同意書は電子印鑑（F05 掲示板系）と連携し、施術前の確認フローをデジタル化する。カルテ写真は医療・美容記録のため CloudFront 署名付き URL でのみアクセス可能とし、公開 URL は使用しない。
+来店ごとにカルテを作成・蓄積し、顧客の施術履歴を体系的に管理する機能。美容室のカラーレシピ、整骨院の身体チャート、エステのビフォーアフター写真など業種ごとに必要なセクションを ON/OFF で切り替えて使用できる。問診票・同意書は電子印鑑（デフォルト機能 #22）と連携し、施術前の確認フローをデジタル化する。カルテ写真は医療・美容記録のため CloudFront 署名付き URL でのみアクセス可能とし、公開 URL は使用しない。
 
 ---
 
@@ -117,7 +117,7 @@ INDEX idx_cif_type (chart_record_id, form_type)
     ]
   }
   ```
-- `electronic_seal_id` は F05 系の `electronic_seals` テーブルへの FK（Phase 5 で作成済み前提）
+- `electronic_seal_id` は `electronic_seals` テーブル（デフォルト機能 #22: 電子印鑑）への FK。Phase 1 で作成済み前提
 - 初回問診（`is_initial = true`）は顧客の最初のカルテに1回のみ。以降のカルテでは `is_initial = false` の更新型問診のみ
 
 ---
@@ -158,6 +158,7 @@ INDEX idx_cift_team_type (team_id, form_type)
 - `is_default = true` はチーム×`form_type` あたり最大1件（アプリ層で検証）。カルテ作成時に `is_default = true` のテンプレートが自動選択される
 - 1チームあたりのテンプレート上限: **10件**（アプリ層で検証）
 - テンプレート未作成の場合、問診票セクションは空のフリーテキスト入力にフォールバック
+- テンプレートの削除: 物理削除。既存の `chart_intake_forms.content` にはテンプレート適用後の質問＋回答がスナップショットとして保存済みのため、テンプレート削除の影響を受けない
 
 ---
 
@@ -174,7 +175,7 @@ INDEX idx_cift_team_type (team_id, form_type)
 | `original_filename` | VARCHAR(300) | NO | — | アップロード時のファイル名 |
 | `file_size_bytes` | INT UNSIGNED | NO | — | ファイルサイズ（バイト）|
 | `content_type` | VARCHAR(50) | NO | — | MIME タイプ（image/jpeg 等）|
-| `sort_order` | SMALLINT UNSIGNED | NO | 0 | 表示順 |
+| `sort_order` | INT | NO | 0 | 表示順 |
 | `is_shared_to_customer` | BOOLEAN | NO | FALSE | 顧客に個別共有するか |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 
@@ -205,7 +206,7 @@ INDEX idx_cp_chart_type (chart_record_id, photo_type)
 | `x_position` | DECIMAL(5,2) | NO | — | X 座標（0.00〜100.00、人体図上の相対位置 %）|
 | `y_position` | DECIMAL(5,2) | NO | — | Y 座標（0.00〜100.00）|
 | `mark_type` | ENUM('PAIN', 'NUMBNESS', 'STIFFNESS', 'SWELLING', 'OTHER') | NO | — | マーク種別 |
-| `severity` | TINYINT UNSIGNED | NO | 1 | 重症度（1〜5）|
+| `severity` | TINYINT UNSIGNED | NO | — | 重症度（1〜5）|
 | `note` | VARCHAR(300) | YES | NULL | マーク個別メモ |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 
@@ -236,7 +237,7 @@ INDEX idx_cbm_chart (chart_record_id)
 | `patch_test_date` | DATE | YES | NULL | パッチテスト実施日 |
 | `patch_test_result` | ENUM('POSITIVE', 'NEGATIVE', 'NOT_DONE') | YES | NULL | パッチテスト結果 |
 | `note` | VARCHAR(500) | YES | NULL | 備考 |
-| `sort_order` | SMALLINT UNSIGNED | NO | 0 | 表示順 |
+| `sort_order` | INT | NO | 0 | 表示順 |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 
@@ -287,7 +288,7 @@ UNIQUE KEY uq_css_team_section (team_id, section_type)   -- チーム×セクシ
 | `field_name` | VARCHAR(100) | NO | — | フィールド名 |
 | `field_type` | ENUM('TEXT', 'NUMBER', 'DATE', 'SELECT', 'CHECKBOX') | NO | — | フィールド型 |
 | `options` | JSON | YES | NULL | SELECT 型の選択肢リスト |
-| `sort_order` | SMALLINT UNSIGNED | NO | 0 | 表示順 |
+| `sort_order` | INT | NO | 0 | 表示順 |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 
@@ -374,6 +375,24 @@ electronic_seals (1) ──── (N) chart_intake_forms [electronic_seal_id]
 | DELETE | `/api/v1/teams/{teamId}/charts/settings/custom-fields/{id}` | 必要 | カスタムフィールド削除 |
 
 ### リクエスト／レスポンス仕様
+
+#### `GET /api/v1/teams/{teamId}/charts`
+
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_CHARTS`）
+
+**クエリパラメータ**
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| `customer_user_id` | Long | No | 特定顧客でフィルタ |
+| `staff_user_id` | Long | No | 担当スタッフでフィルタ |
+| `visit_date_from` | Date | No | 期間開始日 |
+| `visit_date_to` | Date | No | 期間終了日 |
+| `is_shared_to_customer` | Boolean | No | 顧客共有状態でフィルタ |
+| `page` | Integer | No | ページ番号（0始まり、デフォルト 0） |
+| `size` | Integer | No | 件数（デフォルト 20、最大 100） |
+| `sort` | String | No | ソート（デフォルト `visitDate,desc`） |
+
+**レスポンス（200 OK）**: `PagedResponse<ChartRecordSummaryResponse>`
 
 #### `POST /api/v1/teams/{teamId}/charts`
 
@@ -572,6 +591,10 @@ electronic_seals (1) ──── (N) chart_intake_forms [electronic_seal_id]
 }
 ```
 
+**備考**
+- `customer_user_id` はコピー元カルテから自動継承（リクエストで指定不要）
+- コピー元とコピー先は同一チーム・同一顧客であること（異なる場合は 400）
+
 **レスポンス（201 Created）**: カルテ作成と同一のレスポンス形式（`ChartRecordResponse`）。コピー元のデフォルト値が設定された状態で返却。
 
 **エラーレスポンス**
@@ -592,12 +615,26 @@ electronic_seals (1) ──── (N) chart_intake_forms [electronic_seal_id]
 | パラメータ | 型 | 必須 | 説明 |
 |-----------|---|------|------|
 | `team_id` | Long | No | 特定チームでフィルタ |
-| `page` | Integer | No | ページ番号（0始まり）|
-| `size` | Integer | No | 件数（デフォルト 20）|
+| `page` | Integer | No | ページ番号（0始まり） |
+| `size` | Integer | No | 件数（デフォルト 20） |
 
 **レスポンス（200 OK）**: `PagedResponse<ChartRecordSummaryResponse>`
 - `is_shared_to_customer = true` のレコードのみ返却
 - 写真は `is_shared_to_customer = true` のもののみ含む
+
+#### `GET /api/v1/teams/{teamId}/charts/customer/{userId}`
+
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_CHARTS`）
+
+特定顧客の全カルテを一覧取得する。
+
+**クエリパラメータ**
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| `page` | Integer | No | ページ番号（0始まり、デフォルト 0） |
+| `size` | Integer | No | 件数（デフォルト 20、最大 100） |
+
+**レスポンス（200 OK）**: `PagedResponse<ChartRecordSummaryResponse>`
 
 #### `PUT /api/v1/teams/{teamId}/charts/settings/sections`
 
@@ -708,6 +745,8 @@ electronic_seals (1) ──── (N) chart_intake_forms [electronic_seal_id]
 - **レートリミット**: 写真アップロード API に `Bucket4j` で 1分間に20回の制限を適用
 - **ファイルバリデーション**: アップロード画像は Content-Type ヘッダーだけでなく、Magic Bytes（ファイルシグネチャ）も検証して偽装を防止
 - **PDF エクスポートの認可**: PDF にはカルテの全情報（共有設定に関わらず）が含まれるため、ADMIN / DEPUTY_ADMIN のみアクセス可能
+- **XSS 対策**: `chief_complaint`, `treatment_note`, `next_recommendation`, `allergy_info`, カスタムフィールド TEXT 型値はレスポンス時にサニタイズする
+- **PDF 生成のタイムアウト**: 写真が多い場合（最大20枚の S3 取得）を考慮し、PDF 生成のタイムアウトを30秒に設定。超過時は写真なし版を生成してエラーメッセージを付与する
 
 ---
 
@@ -727,7 +766,7 @@ V7.020__create_chart_intake_form_templates_table.sql
 
 **マイグレーション上の注意点**
 - `chart_records` は `teams`・`users` テーブルへの FK を持つ
-- `chart_intake_forms` は `electronic_seals` テーブル（Phase 5 で作成）への FK を持つ
+- `chart_intake_forms` は `electronic_seals` テーブル（Phase 1 で作成済み）への FK を持つ
 - `chart_section_settings` のシードデータ: チーム初回利用時にアプリ層で INSERT するため、マイグレーションでのシードは不要
 - `chart_custom_fields` / `chart_custom_values` は `service_record_fields` / `service_record_values` と同じ EAV パターンだが、カルテ専用として独立テーブルを維持（テーブル結合の複雑化を防止）
 - `chart_intake_form_templates` は `teams` テーブルへの FK を持つ
@@ -751,3 +790,5 @@ V7.020__create_chart_intake_form_templates_table.sql
 |------|---------|
 | 2026-03-10 | 初版作成 |
 | 2026-03-11 | 未解決事項 6件を全件解決: allergy_info 暗号化を Phase 10-11 に延期、PROGRESS_GRAPH 仕様確定（Chart.js 折れ線）、問診票テンプレートのチーム別カスタマイズ対応（`chart_intake_form_templates` 追加）、EXIF GPS 自動ストリップ、カルテコピー機能追加（`POST /charts/{id}/copy`）、body_part ENUM に HAND/FOOT 追加 |
+| 2026-03-11 | 精査: electronic_seals 参照先を「デフォルト機能 #22」に修正、XSS 対策明記、PDF 生成タイムアウト考慮追加、カルテコピーの customer_user_id 自動継承を明記 |
+| 2026-03-11 | 精査②: GET /charts 一覧 API のクエリパラメータ追加、ページネーションを cursor/limit に統一、sort_order 型を INT に統一、問診票テンプレート削除挙動明記 |
