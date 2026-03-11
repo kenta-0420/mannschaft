@@ -115,7 +115,7 @@ INDEX idx_tp_org_status (organization_id, status, sort_order) -- 組織別ペー
       OR (page_type = 'YEARLY' AND year IS NOT NULL)
     )
   ```
-- チーム/組織あたり MAIN ページは1つのみ（アプリケーション層で制御）
+- チーム/組織あたり MAIN ページは1つのみ。**Service 層で `page_type = 'MAIN'` かつ同一スコープの未削除レコード存在チェック**を行い、重複時は 409 Conflict を返却する。DB の Generated Column や部分一意インデックスは使用しない（シンプルさ優先）
 - 論理削除: `deleted_at DATETIME nullable`（SoftDeletableEntity 適用）
 
 #### `team_page_sections`
@@ -1020,6 +1020,8 @@ V6.021__add_photo_albums_cover_fk.sql      -- photo_albums.cover_photo_id FK 追
 - [x] ~~③前年度メンバーのコピー機能~~ → **Phase 6 で実装**。`POST /api/v1/team/pages/{id}/copy-members` API を追加。ソースページの `is_visible = true` のメンバーを全員コピー（同一 `user_id` はスキップ）。コピー後に ADMIN が卒業/退会メンバーを削除、新メンバーを追加する運用フロー
 - [x] ~~④ギャラリーの SUPPORTER 公開~~ → **`SUPPORTERS_AND_ABOVE` を visibility ENUM に追加**。`ENUM('ALL_MEMBERS', 'SUPPORTERS_AND_ABOVE', 'ADMIN_ONLY')` に拡張。PUBLIC（外部公開）は追加しない（プライバシー性の高いコンテンツのため認証必須の範囲に限定）
 - [x] ~~⑤写真のダウンロード制限~~ → **`photo_albums.allow_download` フラグで制御**。TRUE = 個別ダウンロード（`GET /gallery/photos/{id}/download`）+ 一括ダウンロード（`GET /gallery/albums/{id}/download` で ZIP、最大100枚、S3 一時保存・1時間有効）。FALSE = 閲覧のみ（CloudFront Signed URL に `Content-Disposition: inline` 強制、ダウンロード API は 403）
+- [x] ~~⑥写真への人物タグ付け~~ → **将来フェーズへ延期**。`photo_tags` テーブル（photo_id, user_id, 座標）で写真内のメンバーをタグ付けし「自分が写っている写真」を横断検索する機能。需要はあるが Phase 6 のスコープ外として将来実装
+- [x] ~~⑦MAIN ページ一意制約の DB 化~~ → **アプリケーション層（Service）で制御する**。DB の Generated Column や部分一意インデックスは使用せず、`page_type = 'MAIN'` の作成時に同一スコープの未削除レコード存在チェックを行い 409 Conflict で拒否する。シンプルさ優先
 
 ---
 
@@ -1031,3 +1033,4 @@ V6.021__add_photo_albums_cover_fk.sql      -- photo_albums.cover_photo_id FK 追
 | 2026-03-11 | 未解決事項①〜⑤を解決: allow_self_edit フラグ追加、JSON カラム方式確定（custom_field_values）、前年度メンバーコピー API 追加、SUPPORTERS_AND_ABOVE 公開追加、allow_download フラグ＋一括ダウンロード API 追加 |
 | 2026-03-11 | ページネーションレスポンスの has_more → has_next に改名（PaginationMeta 共通化） |
 | 2026-03-12 | 設計改善: Flyway 番号衝突修正（V6.015〜V6.021 にリナンバリング）、全画像カラムを s3_key 方式に統一（F07 と整合）、photos に content_type・updated_at 追加、プレビュー共有トークン追加、メンバー並び替え API・個別写真ダウンロード API・写真更新 API・アルバム検索パラメータ・メンバー一覧 pagination 追加、ストレージクォータ（5,000枚/10GB）追加、S3 孤立ファイルクリーンアップ・論理→物理削除ポリシー・サムネイル再生成 API 追加、EXIF GPS ストリップを全画像に拡大適用、custom_field_values JSON バリデーション注意書き追加、0枚アルバムのプレースホルダー表示明記 |
+| 2026-03-12 | 決定事項: ⑥写真人物タグ付け → 将来フェーズへ延期、⑦MAIN ページ一意制約 → Service 層で制御（DB 特殊機能不使用） |
