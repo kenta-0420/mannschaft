@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 7
-> **最終更新**: 2026-03-11
+> **最終更新**: 2026-03-12
 > **モジュール種別**: デフォルト機能 #19
 
 ---
@@ -21,7 +21,7 @@
 | SYSTEM_ADMIN | 全チームのパフォーマンスデータを参照 |
 | ADMIN | 指標定義の作成・編集・削除、全メンバーの記録入力・編集・削除、チーム統計閲覧 |
 | DEPUTY_ADMIN | `MANAGE_PERFORMANCE` 権限を持つ場合: 記録入力・編集・削除、チーム統計閲覧 |
-| MEMBER | 自分のパフォーマンスデータ閲覧、チーム統計閲覧（ADMIN が許可した場合）|
+| MEMBER | 自分のパフォーマンスデータ閲覧、チーム統計閲覧（ADMIN が許可した場合）、**`is_self_recordable = true` の指標に限り自分の記録を入力** |
 | SUPPORTER | 対象外 |
 | GUEST | 対象外 |
 
@@ -39,6 +39,8 @@
 |-----------|------|---------|
 | `performance_metrics` | チームごとのパフォーマンス指標定義 | `is_active` による論理無効化 |
 | `performance_records` | メンバーごとの指標値の記録 | なし |
+| `performance_metric_templates` | スポーツ別の指標テンプレート（SYSTEM_ADMIN管理） | なし |
+| `performance_monthly_summaries` | 月次集計サマリー（日次バッチで生成） | なし |
 
 ### テーブル定義
 
@@ -55,8 +57,10 @@
 | `data_type` | ENUM('INTEGER', 'DECIMAL', 'TIME') | NO | 'DECIMAL' | データ型 |
 | `aggregation_type` | ENUM('SUM', 'AVG', 'MAX', 'MIN', 'LATEST') | NO | 'SUM' | 統計集計方法 |
 | `description` | VARCHAR(500) | YES | NULL | 指標の説明 |
+| `target_value` | DECIMAL(15,4) | YES | NULL | 目標値（NULL = 目標未設定。ダッシュボードで達成率を表示） |
 | `sort_order` | INT | NO | 0 | 表示順 |
 | `is_visible_to_members` | BOOLEAN | NO | TRUE | MEMBER にチーム統計を公開するか |
+| `is_self_recordable` | BOOLEAN | NO | FALSE | TRUE = MEMBER が自分の記録を入力可能（例: 走行距離、自主トレ回数）|
 | `is_active` | BOOLEAN | NO | TRUE | FALSE = 新規記録入力時に非表示（既存レコードは保持） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
@@ -71,6 +75,7 @@ INDEX idx_pm_team_sort (team_id, sort_order)   -- チーム内の指標一覧取
 - `data_type = 'TIME'` の場合、値は分単位の整数で保存する（例: 90分 → `90`）。表示時にフロントエンドで `HH:MM` 形式に変換
 - 指標は物理削除しない。`is_active = FALSE` で論理無効化し、既存の `performance_records` のデータを保護する
 - `aggregation_type` はチーム統計ダッシュボードでの集計に使用（例: SUM = 累計得点、AVG = 平均出場時間）
+- `target_value` は `aggregation_type` と組み合わせて達成率を算出する（例: SUM 指標で target_value = 50 → 累計得点 38 なら達成率 76%）
 
 ---
 
@@ -83,9 +88,10 @@ INDEX idx_pm_team_sort (team_id, sort_order)   -- チーム内の指標一覧取
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
 | `metric_id` | BIGINT UNSIGNED | NO | — | FK → performance_metrics（ON DELETE RESTRICT）|
 | `user_id` | BIGINT UNSIGNED | NO | — | FK → users（ON DELETE RESTRICT）|
-| `recorded_date` | DATE | NO | — | 記録日 |
+| `schedule_id` | BIGINT UNSIGNED | YES | NULL | FK → schedules（ON DELETE SET NULL）。紐付け元のスケジュールイベント |
+| `recorded_date` | DATE | NO | — | 記録日（schedule_id 指定時はスケジュールの日付を自動セット）|
 | `value` | DECIMAL(15,4) | NO | — | 記録値（INTEGER/DECIMAL/TIME すべて数値として保存）|
-| `note` | VARCHAR(300) | YES | NULL | メモ（例: 練習試合 vs ○○チーム）|
+| `note` | VARCHAR(300) | YES | NULL | メモ（schedule_id 指定時はスケジュール名を自動セット、手動上書き可）|
 | `recorded_by` | BIGINT UNSIGNED | YES | NULL | FK → users（記録者; SET NULL on delete）|
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
@@ -95,19 +101,109 @@ INDEX idx_pm_team_sort (team_id, sort_order)   -- チーム内の指標一覧取
 INDEX idx_pr_metric_user (metric_id, user_id)              -- 特定指標×特定ユーザーの時系列取得
 INDEX idx_pr_metric_date (metric_id, recorded_date DESC)   -- 指標ごとの日付降順一覧
 INDEX idx_pr_user_date (user_id, recorded_date DESC)       -- ユーザーの全指標日付降順一覧
+INDEX idx_pr_schedule (schedule_id)                         -- スケジュール別パフォーマンス一覧
 ```
 
 **制約・備考**
 - 同一ユーザー・同一指標・同一日に複数レコードを許可する（例: 1日に2試合出場した場合）
 - `user_id` ON DELETE RESTRICT: パフォーマンスデータの保全。ユーザー退会は論理削除で対応
 - `value` の `DECIMAL(15,4)` は整数値から小数値まで対応（TIME 型は分単位の整数値で保存）
+- `schedule_id` ON DELETE SET NULL: スケジュールが削除されてもパフォーマンスデータは保持（紐付けだけ解除）
+
+---
+
+#### `performance_metric_templates`
+
+SYSTEM_ADMIN が管理するスポーツ別の指標テンプレート。チーム作成時やモジュール有効化時に、テンプレートから指標セットを一括作成できる。
+
+| カラム名 | 型 | NULL | デフォルト | 説明 |
+|---------|---|------|-----------|------|
+| `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
+| `sport_category` | VARCHAR(50) | NO | — | スポーツカテゴリ（例: サッカー、バスケットボール、陸上、水泳）|
+| `name` | VARCHAR(100) | NO | — | 指標名（例: 得点、アシスト、走行距離）|
+| `unit` | VARCHAR(30) | YES | NULL | 単位（例: 点、回、km）|
+| `data_type` | ENUM('INTEGER', 'DECIMAL', 'TIME') | NO | 'DECIMAL' | データ型 |
+| `aggregation_type` | ENUM('SUM', 'AVG', 'MAX', 'MIN', 'LATEST') | NO | 'SUM' | 推奨集計方法 |
+| `description` | VARCHAR(500) | YES | NULL | 指標の説明 |
+| `sort_order` | INT | NO | 0 | テンプレート内の表示順 |
+| `is_self_recordable` | BOOLEAN | NO | FALSE | 推奨の自己記録可否（テンプレートからの一括作成時に引き継ぐ）|
+| `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
+| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
+
+**インデックス**
+```sql
+INDEX idx_pmt_sport (sport_category, sort_order)   -- スポーツ別テンプレート一覧取得用
+```
+
+**制約・備考**
+- SYSTEM_ADMIN のみ CRUD 可能。一般ユーザーは読み取り専用
+- `sport_category` は自由入力（ENUM ではない）。初期データは Flyway の seed で投入
+- テンプレートから作成した指標は独立したレコードになる（テンプレートを後から変更しても既存の指標には影響しない）
+
+**初期テンプレート例**
+
+| sport_category | name | unit | data_type | aggregation_type |
+|---------------|------|------|-----------|-----------------|
+| サッカー | 得点 | 点 | INTEGER | SUM |
+| サッカー | アシスト | 回 | INTEGER | SUM |
+| サッカー | 出場時間 | 分 | TIME | SUM |
+| サッカー | 走行距離 | km | DECIMAL | SUM |
+| サッカー | パス成功率 | % | DECIMAL | AVG |
+| バスケットボール | 得点 | 点 | INTEGER | SUM |
+| バスケットボール | リバウンド | 回 | INTEGER | SUM |
+| バスケットボール | アシスト | 回 | INTEGER | SUM |
+| バスケットボール | スティール | 回 | INTEGER | SUM |
+| バスケットボール | フリースロー成功率 | % | DECIMAL | AVG |
+| 陸上 | タイム | 分 | TIME | MIN |
+| 陸上 | 距離 | m | DECIMAL | MAX |
+| 水泳 | タイム | 分 | TIME | MIN |
+| 水泳 | ラップタイム | 秒 | DECIMAL | MIN |
+| 汎用 | 出席回数 | 回 | INTEGER | SUM |
+| 汎用 | 練習時間 | 分 | TIME | SUM |
+
+---
+
+#### `performance_monthly_summaries`
+
+月次集計のサマリーテーブル。日次バッチで前日分を反映し、統計クエリのパフォーマンスを最適化する。
+
+| カラム名 | 型 | NULL | デフォルト | 説明 |
+|---------|---|------|-----------|------|
+| `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
+| `metric_id` | BIGINT UNSIGNED | NO | — | FK → performance_metrics（ON DELETE CASCADE）|
+| `user_id` | BIGINT UNSIGNED | NO | — | FK → users（ON DELETE CASCADE）|
+| `year_month` | CHAR(7) | NO | — | 集計対象月（例: 2026-03）|
+| `sum_value` | DECIMAL(15,4) | NO | 0 | 月次合計 |
+| `avg_value` | DECIMAL(15,4) | NO | 0 | 月次平均 |
+| `max_value` | DECIMAL(15,4) | YES | NULL | 月次最大値 |
+| `min_value` | DECIMAL(15,4) | YES | NULL | 月次最小値 |
+| `latest_value` | DECIMAL(15,4) | YES | NULL | 月内の最新記録値 |
+| `record_count` | INT UNSIGNED | NO | 0 | 月内の記録件数 |
+| `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
+| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
+
+**インデックス**
+```sql
+UNIQUE INDEX uq_pms_metric_user_month (metric_id, user_id, year_month)  -- 重複防止 + 高速検索
+INDEX idx_pms_user_month (user_id, year_month DESC)                      -- ユーザー別月次推移取得
+```
+
+**制約・備考**
+- 日次バッチ（毎朝 3:00 実行）で前日の `performance_records` を集計し、該当月の行を UPSERT
+- `aggregation_type` に応じた値を全パターン事前計算して保持（クエリ時に切り替え不要）
+- ON DELETE CASCADE: 指標やユーザーが削除された場合はサマリーも連動削除（データ量削減）
+- 統計ダッシュボードは原則サマリーテーブルから取得し、当月分のみ `performance_records` をリアルタイム集計して補完する
 
 ### ER図（テキスト形式）
 ```
 teams (1) ──── (N) performance_metrics
 performance_metrics (1) ──── (N) performance_records
+performance_metrics (1) ──── (N) performance_monthly_summaries
 users (1) ──── (N) performance_records [user_id]
 users (1) ──── (N) performance_records [recorded_by]
+users (1) ──── (N) performance_monthly_summaries [user_id]
+schedules (1) ──── (N) performance_records [schedule_id]  ※任意紐付け
+performance_metric_templates — 独立テーブル（FK なし、SYSTEM_ADMIN 管理）
 ```
 
 ---
@@ -129,6 +225,11 @@ users (1) ──── (N) performance_records [recorded_by]
 | GET | `/api/v1/teams/{teamId}/members/{userId}/performance` | 必要 | 特定メンバーのパフォーマンス |
 | GET | `/api/v1/teams/{teamId}/performance/records/export` | 必要 | パフォーマンス記録CSVエクスポート |
 | GET | `/api/v1/performance/me` | 必要 | 自分のパフォーマンス（全チーム横断）|
+| GET | `/api/v1/teams/{teamId}/schedules/{scheduleId}/performance` | 必要 | スケジュール紐付きパフォーマンス一覧 |
+| POST | `/api/v1/teams/{teamId}/schedules/{scheduleId}/performance/records/bulk` | 必要 | スケジュールからの一括記録入力（テンプレート選択対応）|
+| POST | `/api/v1/teams/{teamId}/performance/records/self` | 必要 | MEMBER 自己記録入力（`is_self_recordable = true` の指標のみ）|
+| GET | `/api/v1/performance/metric-templates` | 必要 | 指標テンプレート一覧取得（sport_category 別）|
+| POST | `/api/v1/teams/{teamId}/performance/metrics/from-template` | 必要 | テンプレートから指標を一括作成 |
 
 ### リクエスト／レスポンス仕様
 
@@ -144,8 +245,10 @@ users (1) ──── (N) performance_records [recorded_by]
   "data_type": "INTEGER",
   "aggregation_type": "SUM",
   "description": "試合ごとの得点",
+  "target_value": 50,
   "sort_order": 1,
-  "is_visible_to_members": true
+  "is_visible_to_members": true,
+  "is_self_recordable": false
 }
 ```
 
@@ -159,8 +262,10 @@ users (1) ──── (N) performance_records [recorded_by]
     "data_type": "INTEGER",
     "aggregation_type": "SUM",
     "description": "試合ごとの得点",
+    "target_value": 50,
     "sort_order": 1,
-    "is_visible_to_members": true
+    "is_visible_to_members": true,
+    "is_self_recordable": false
   }
 }
 ```
@@ -204,10 +309,225 @@ users (1) ──── (N) performance_records [recorded_by]
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
-| 400 | バリデーションエラー（entries が空、value の型不一致等）|
+| 400 | バリデーションエラー（entries が空、value の型不一致等）。全件ロールバック |
 | 403 | 権限不足 |
 | 404 | `metric_id` / `user_id` が存在しない |
 | 422 | `user_id` がチームに所属していない |
+
+> **バリデーションエラー詳細**: 400 / 404 / 422 エラー時、どの entry が不正かを一括報告する。1件でもエラーがあれば全件ロールバック。
+```json
+{
+  "error": "BULK_VALIDATION_FAILED",
+  "message": "4件中2件のバリデーションエラー",
+  "failed_entries": [
+    { "index": 1, "field": "value", "reason": "INTEGER 型の指標に小数値は入力できません" },
+    { "index": 3, "field": "user_id", "reason": "ユーザー(id=99)はチームに所属していません" }
+  ]
+}
+```
+
+#### `POST /api/v1/teams/{teamId}/schedules/{scheduleId}/performance/records/bulk`
+
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_PERFORMANCE`）
+
+> スケジュールイベント（試合・練習等）と紐付けてパフォーマンスを一括入力する。テンプレート（指標セット×出席メンバーのマトリクス）を自動生成し、入力を効率化する。
+
+**リクエストボディ**
+```json
+{
+  "template": "from_schedule",
+  "entries": [
+    { "user_id": 42, "metric_id": 1, "value": 2 },
+    { "user_id": 42, "metric_id": 2, "value": 75 },
+    { "user_id": 43, "metric_id": 1, "value": 1 },
+    { "user_id": 43, "metric_id": 2, "value": 90 }
+  ]
+}
+```
+
+**`template` パラメータ**
+| 値 | 動作 |
+|----|------|
+| `from_schedule` | スケジュールの出席確認済みメンバー × チームの全 active 指標のマトリクスを自動生成。フロントエンドで表形式の入力フォームを表示 |
+| `from_metrics` | チームの全 active 指標のみ展開。メンバーは手動選択 |
+| （省略） | テンプレートなし。通常の bulk 入力と同様 |
+
+**処理**
+1. `scheduleId` の存在・チーム所属を検証
+2. 全 `performance_records` に `schedule_id = scheduleId` をセット
+3. `recorded_date` はスケジュールの `start_date` を自動セット（リクエストボディでの指定不要）
+4. `note` 未指定の場合、スケジュール名を自動セット（例: 「練習試合 vs ○○チーム」）
+5. 以降は通常の bulk 入力と同一のバリデーション・保存ロジック
+
+**レスポンス（201 Created）**
+```json
+{
+  "data": {
+    "created_count": 4,
+    "schedule_id": 100,
+    "schedule_name": "練習試合 vs ○○チーム",
+    "recorded_date": "2026-03-10"
+  }
+}
+```
+
+**エラーレスポンス**: 通常の bulk 入力と同一 + 以下を追加
+
+| ステータス | 条件 |
+|-----------|------|
+| 404 | `scheduleId` が存在しない / チームに紐付かない |
+
+#### `GET /api/v1/teams/{teamId}/schedules/{scheduleId}/performance`
+
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_PERFORMANCE`）。MEMBER は `is_visible_to_members = true` の指標のみ
+
+> 特定スケジュールに紐付くパフォーマンス記録を一覧取得する。
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "schedule_id": 100,
+    "schedule_name": "練習試合 vs ○○チーム",
+    "recorded_date": "2026-03-10",
+    "members": [
+      {
+        "user_id": 42,
+        "display_name": "田中太郎",
+        "records": [
+          { "metric_id": 1, "metric_name": "得点", "value": 2, "unit": "点" },
+          { "metric_id": 2, "metric_name": "出場時間", "value": 75, "unit": "分" }
+        ]
+      },
+      {
+        "user_id": 43,
+        "display_name": "山田次郎",
+        "records": [
+          { "metric_id": 1, "metric_name": "得点", "value": 1, "unit": "点" },
+          { "metric_id": 2, "metric_name": "出場時間", "value": 90, "unit": "分" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### `POST /api/v1/teams/{teamId}/performance/records/self`
+
+**認可**: MEMBER 以上（自分の記録のみ）
+
+> `is_self_recordable = true` の指標に限り、MEMBER が自分のパフォーマンスを記録する。ADMIN/DEPUTY_ADMIN が入力した「公式記録」と区別するため、`recorded_by = currentUser.id` かつ `user_id = currentUser.id` で固定。
+
+**リクエストボディ**
+```json
+{
+  "metric_id": 4,
+  "recorded_date": "2026-03-10",
+  "value": 8.5,
+  "note": "自主トレ - 朝ラン"
+}
+```
+
+**レスポンス（201 Created）**
+```json
+{
+  "data": {
+    "id": 500,
+    "metric_id": 4,
+    "metric_name": "走行距離",
+    "value": 8.5,
+    "unit": "km",
+    "recorded_date": "2026-03-10",
+    "recorded_by": "self"
+  }
+}
+```
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | バリデーションエラー |
+| 403 | 権限不足 |
+| 422 | `metric_id` の `is_self_recordable = false`（ADMIN 専用指標への自己記録は不可）|
+
+**制約**
+- MEMBER は自分の記録の更新・削除は不可（ADMIN/DEPUTY_ADMIN のみ）。誤入力時は ADMIN に修正を依頼する運用
+- `schedule_id` は指定不可（スケジュール紐付けは ADMIN 操作のみ）
+- レートリミット: 1分間に10回（不正な大量入力防止）
+
+#### `GET /api/v1/performance/metric-templates`
+
+**認可**: MEMBER 以上（テンプレート閲覧は全員可能）
+
+> スポーツ別の指標テンプレート一覧を取得する。チーム作成時やモジュール有効化時に、テンプレートを選んで指標を一括作成する導線で使用。
+
+**クエリパラメータ**
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| `sport_category` | String | No | スポーツカテゴリでフィルタ（例: サッカー） |
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "categories": ["サッカー", "バスケットボール", "陸上", "水泳", "汎用"],
+    "templates": [
+      {
+        "sport_category": "サッカー",
+        "metrics": [
+          { "name": "得点", "unit": "点", "data_type": "INTEGER", "aggregation_type": "SUM", "is_self_recordable": false },
+          { "name": "アシスト", "unit": "回", "data_type": "INTEGER", "aggregation_type": "SUM", "is_self_recordable": false },
+          { "name": "出場時間", "unit": "分", "data_type": "TIME", "aggregation_type": "SUM", "is_self_recordable": false },
+          { "name": "走行距離", "unit": "km", "data_type": "DECIMAL", "aggregation_type": "SUM", "is_self_recordable": true },
+          { "name": "パス成功率", "unit": "%", "data_type": "DECIMAL", "aggregation_type": "AVG", "is_self_recordable": false }
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### `POST /api/v1/teams/{teamId}/performance/metrics/from-template`
+
+**認可**: ADMIN のみ
+
+> テンプレートから指標を一括作成する。作成後は独立したレコードになり、個別に編集・削除可能。
+
+**リクエストボディ**
+```json
+{
+  "sport_category": "サッカー",
+  "exclude_names": ["パス成功率"]
+}
+```
+- `sport_category`: テンプレートのスポーツカテゴリを指定
+- `exclude_names`: テンプレートから除外する指標名（任意。全件作成する場合は省略）
+
+**レスポンス（201 Created）**
+```json
+{
+  "data": {
+    "created_count": 4,
+    "metrics": [
+      { "id": 1, "name": "得点", "unit": "点", "data_type": "INTEGER", "aggregation_type": "SUM" },
+      { "id": 2, "name": "アシスト", "unit": "回", "data_type": "INTEGER", "aggregation_type": "SUM" },
+      { "id": 3, "name": "出場時間", "unit": "分", "data_type": "TIME", "aggregation_type": "SUM" },
+      { "id": 4, "name": "走行距離", "unit": "km", "data_type": "DECIMAL", "aggregation_type": "SUM" }
+    ]
+  }
+}
+```
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | `sport_category` が存在しない |
+| 403 | 権限不足 |
+| 409 | テンプレート適用後に指標上限（active 30件）を超過する |
+
+**制約**
+- 同一チームに同一テンプレートの再適用は可能（重複チェックは名前で行い、既存の同名指標はスキップ）
+- テンプレートの `is_self_recordable` / `sort_order` / `description` も引き継ぐ
 
 #### `GET /api/v1/teams/{teamId}/performance/records/export`
 
@@ -274,6 +594,8 @@ users (1) ──── (N) performance_records [recorded_by]
         "aggregation_type": "SUM",
         "team_total": 45,
         "team_avg": 2.25,
+        "target_value": 50,
+        "achievement_rate": 0.90,
         "ranking": [
           { "rank": 1, "user_id": 42, "display_name": "田中太郎", "value": 12 },
           { "rank": 1, "user_id": 44, "display_name": "佐藤花子", "value": 12 },
@@ -317,6 +639,11 @@ users (1) ──── (N) performance_records [recorded_by]
           "aggregation_type": "SUM",
           "total": 12,
           "record_count": 18,
+          "target_value": 50,
+          "achievement_rate": 0.24,
+          "previous_value": 1,
+          "latest_value": 2,
+          "change_rate": 1.0,
           "latest_record": {
             "recorded_date": "2026-03-10",
             "value": 2,
@@ -357,6 +684,11 @@ users (1) ──── (N) performance_records [recorded_by]
         "max": 3,
         "min": 0,
         "record_count": 18,
+        "target_value": 50,
+        "achievement_rate": 0.24,
+        "previous_value": 1,
+        "latest_value": 3,
+        "change_rate": 2.0,
         "trend": [
           { "month": "2026-01", "value": 5 },
           { "month": "2026-02", "value": 4 },
@@ -388,15 +720,68 @@ users (1) ──── (N) performance_records [recorded_by]
 4. metric_id の存在・data_type に基づく値バリデーション
 5. performance_records を INSERT
 6. ApplicationEvent（PerformanceRecordedEvent）を発行
-7. ダッシュボードの統計キャッシュ（Redis）を無効化
+7. 該当 metric_id の統計キャッシュを無効化
+```
+
+#### MEMBER 自己記録入力
+```
+1. MEMBER が自分のパフォーマンス記録フォームを開く
+2. is_self_recordable = true の指標のみ入力フォームに表示
+3. バックエンドが metric_id の is_self_recordable = true を検証（false → 422）
+4. user_id = currentUser.id / recorded_by = currentUser.id を強制セット
+5. performance_records を INSERT
+6. ApplicationEvent（PerformanceSelfRecordedEvent）を発行
+7. 該当 metric_id の統計キャッシュを無効化
+```
+
+#### テンプレートからの指標一括作成
+```
+1. ADMIN がチーム設定画面で「テンプレートから指標を作成」を選択
+2. スポーツカテゴリ一覧を表示（GET /performance/metric-templates）
+3. カテゴリを選択 → 含まれる指標セットをプレビュー表示
+4. 不要な指標のチェックを外して一括作成を実行
+5. 同名の既存指標はスキップし、新規分のみ INSERT
+6. 作成後の active 指標数が 30件を超える場合は 409 エラー
+```
+
+#### スケジュールからのパフォーマンス入力
+```
+1. スケジュール詳細画面で「パフォーマンス入力」ボタンを押下
+2. テンプレート選択:
+   a. from_schedule: 出席確認済みメンバー × active 指標のマトリクスを自動生成
+   b. from_metrics: active 指標のみ展開、メンバーは手動選択
+3. フロントエンドで表形式の入力フォームを表示（行: メンバー、列: 指標）
+4. 値を入力して一括送信
+5. schedule_id を全レコードにセット、recorded_date はスケジュール日付を自動適用
+6. 以降は通常の bulk 入力と同一フロー
 ```
 
 #### 統計ダッシュボード表示
 ```
 1. ユーザーがチームの統計ダッシュボードを表示
-2. Redis キャッシュを確認（TTL: 5分）
-3. キャッシュミスの場合、performance_records を aggregation_type に基づいて集計
-4. 集計結果をキャッシュに保存してレスポンス
+2. Redis キャッシュを確認（キーは team:{teamId}:perf:stats:{metricId}:{period}、TTL: 5分）
+3. キャッシュミスの場合:
+   a. 過去月: performance_monthly_summaries から取得（高速）
+   b. 当月: performance_records をリアルタイム集計して補完
+   c. 両者をマージして期間全体の統計を算出
+4. 目標値が設定されている指標は achievement_rate（= 集計値 / target_value）を算出
+5. 前回比を算出（previous_value: 直近2番目の記録値、change_rate: (latest - previous) / previous）
+6. 集計結果をキャッシュに保存してレスポンス
+```
+
+#### 月次サマリー集計バッチ
+```
+1. 日次バッチ（毎朝 3:00 実行）
+2. 前日の performance_records を metric_id × user_id × year_month で集計
+3. performance_monthly_summaries を UPSERT:
+   - sum_value: SUM(value)
+   - avg_value: AVG(value)
+   - max_value: MAX(value)
+   - min_value: MIN(value)
+   - latest_value: recorded_date DESC の先頭 value
+   - record_count: COUNT(*)
+4. 全集計パターン（SUM/AVG/MAX/MIN/LATEST）を事前計算して保持
+5. 処理完了後、該当月の統計キャッシュを無効化
 ```
 
 ### 重要な判定ロジック
@@ -406,6 +791,9 @@ users (1) ──── (N) performance_records [recorded_by]
 - **INTEGER 型バリデーション**: `data_type = 'INTEGER'` の場合、`value` が整数であることを検証（小数点以下が 0 でない場合は 400 エラー）
 - **ランキング順位**: 競技式ランキング（competition ranking）を採用。同値のメンバーは同順位を付与し、次の順位をスキップする（例: 1位, 1位, 3位）
 - **チャート表示期間**: 個人ダッシュボードのチャート表示期間のデフォルトは **直近3ヶ月**。ユーザーは 6ヶ月 / 1年 に切り替え可能
+- **目標達成率**: `target_value` が設定されている指標のみ算出。`achievement_rate = aggregated_value / target_value`。`target_value = NULL` の場合はレスポンスで `achievement_rate = null`
+- **前回比（change_rate）**: 直近2回の記録値から算出。`change_rate = (latest_value - previous_value) / previous_value`。記録が1件以下の場合は `null`。前回値が 0 の場合も `null`（ゼロ除算防止）
+- **統計キャッシュ粒度**: Redis キーは `team:{teamId}:perf:stats:{metricId}:{period}` に分割。記録入力時は該当 `metricId` のキャッシュのみ無効化（ワイルドカード `team:{teamId}:perf:stats:{metricId}:*` で削除）
 
 ---
 
@@ -416,6 +804,10 @@ users (1) ──── (N) performance_records [recorded_by]
 - **一括入力のサイズ制限**: `bulk` エンドポイントは 1リクエストあたり最大 **200 entries**（アプリ層で検証）
 - **レートリミット**: 記録作成 API に `Bucket4j` で 1分間に60回の制限を適用
 - **CSV インジェクション対策**: CSV エクスポート時、セル値の先頭が `=`, `+`, `-`, `@` の場合はシングルクォートを先頭に付与する
+- **監査ログ連携（F02）**: 以下の操作を `audit_logs` に記録する（`ApplicationEvent` 経由で非同期書き込み）:
+  - 指標の作成・更新・無効化（`PERF_METRIC_CREATED` / `PERF_METRIC_UPDATED` / `PERF_METRIC_DEACTIVATED`）
+  - 記録の作成・更新・削除（`PERF_RECORD_CREATED` / `PERF_RECORD_UPDATED` / `PERF_RECORD_DELETED`）
+  - 記録の更新・削除時は旧値（`old_value`）も `audit_logs.details` JSON に含める（改ざん追跡用）
 
 ---
 
@@ -428,7 +820,7 @@ V7.009__create_performance_records_table.sql
 
 **マイグレーション上の注意点**
 - `performance_metrics` は `teams` テーブルへの FK を持つ
-- `performance_records` は `performance_metrics`・`users` テーブルへの FK を持つ
+- `performance_records` は `performance_metrics`・`users`・`schedules` テーブルへの FK を持つ（`schedule_id` は NULL 許容、ON DELETE SET NULL）
 
 ---
 
@@ -438,6 +830,9 @@ V7.009__create_performance_records_table.sql
 - ~~チーム統計の Redis キャッシュ TTL を 5分で固定するか、設定可能にするか~~ → TTL 5分で固定
 - ~~ランキング表示の同率順位の扱い~~ → 競技式ランキング採用（同値=同順位、次の順位スキップ。例: 1位, 1位, 3位）
 - ~~個人ダッシュボードでのチャート表示期間のデフォルト値~~ → デフォルト3ヶ月、ユーザーが6ヶ月/1年に切り替え可能
+- ~~MEMBER による自己記録入力の可否~~ → **未決定**。`is_self_recordable` フラグで指標ごとに制御する案あり。後続フェーズで検討
+- ~~指標テンプレート（スポーツ別の初期指標セット一括作成）~~ → **未決定**。SYSTEM_ADMIN 管理の `performance_metric_templates` テーブルで提供する案あり。後続フェーズで検討
+- ~~月次サマリーテーブルによる統計クエリ最適化~~ → **未決定**。初期段階ではインデックス + Redis キャッシュで対応。データ量増加時に `performance_monthly_summaries` テーブル追加を検討
 
 ---
 
@@ -450,3 +845,4 @@ V7.009__create_performance_records_table.sql
 | 2026-03-11 | 精査: /performance/me レスポンス JSON 追加、/members/{userId}/performance 詳細仕様追加、CSV インジェクション対策追加 |
 | 2026-03-11 | 精査②: CSV エクスポートに BOM 付き UTF-8 明記、/performance/me にページネーションパラメータ追加、sort_order 型を INT に統一 |
 | 2026-03-11 | 精査③: `performance_metrics` に `is_active` 追加。物理削除 → 論理無効化に変更。FK を ON DELETE CASCADE → RESTRICT に変更。既存パフォーマンスデータの保護を優先 |
+| 2026-03-12 | 改善6件: スケジュール紐付け（schedule_id + テンプレート選択付き一括入力API）、目標値（target_value + achievement_rate）、前回比（previous_value + change_rate）、bulkエラー詳細（failed_entries）、統計キャッシュ粒度改善（metricId別）、監査ログ連携（F02、旧値保持） |

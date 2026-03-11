@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟢 設計完了
 > **実装フェーズ**: Phase 3
-> **最終更新**: 2026-03-11
+> **最終更新**: 2026-03-12
 > **関連ドキュメント**: 組織・チームスケジュール → `F05_schedule_shared.md` / 外部連携 → `F08_external_integration.md`
 
 ---
@@ -40,6 +40,14 @@
 - `user_schedule_google_events` テーブルが `schedule_id` で参照しているため変更不要（Google 同期が流用可能）
 - 繰り返しルール（`recurrence_rule` JSON）・展開バッチがそのまま流用できる
 - `GET /my/calendar` で `team_id OR organization_id OR user_id` の単一クエリで横断取得でき UNION 不要
+
+### 個人スコープ専用カラム
+
+`schedules` テーブルに以下のカラムを追加する。個人スコープ（`user_id IS NOT NULL`）でのみ使用し、チーム・組織スコープでは NULL 固定とする。
+
+| カラム | 型 | デフォルト | 説明 |
+|--------|---|-----------|------|
+| `color` | `VARCHAR(7) NULL` | `NULL` | カレンダー表示用カラーラベル（例: `#FF5733`）。UI で予定を視覚的に分類する用途 |
 
 ### 個人スコープでの固定値フィールド
 
