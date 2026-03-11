@@ -486,7 +486,8 @@ users (1) ──── (N) member_subscriptions
 }
 ```
 
-> `valid_from` / `valid_until` は任意。省略時は `paid_at` 当日から `type` に応じて自動計算（ANNUAL_FEE = +365日 / MONTHLY_FEE = +31日 / ITEM = NULL）。
+> - `valid_from` / `valid_until` は任意。省略時は `paid_at` 当日から `type` に応じて自動計算（ANNUAL_FEE = +365日 / MONTHLY_FEE = +31日 / ITEM = NULL）
+> - `recorded_by` はリクエストボディに含めない。JWT の `current_user_id` から自動設定する（ADMIN / MANAGE_PAYMENTS 権限を持つ DEPUTY_ADMIN のユーザー ID）
 
 **レスポンス（201 Created）**
 ```json
@@ -549,6 +550,7 @@ users (1) ──── (N) member_subscriptions
     "size": 50,
     "total_elements": 24,
     "total_pages": 1,
+    "has_next": false,
     "paid_count": 18,
     "unpaid_count": 6
   }
@@ -654,7 +656,8 @@ users (1) ──── (N) member_subscriptions
     "page": 0,
     "size": 50,
     "total_elements": 3,
-    "total_pages": 1
+    "total_pages": 1,
+    "has_next": false
   }
 }
 ```
@@ -802,7 +805,8 @@ users (1) ──── (N) member_subscriptions
     "page": 0,
     "size": 20,
     "total_elements": 5,
-    "total_pages": 1
+    "total_pages": 1,
+    "has_next": false
   }
 }
 ```
@@ -855,6 +859,8 @@ Stripe-Signature: t=xxxx,v1=xxxx
 ```
 
 **リクエストボディ**: Stripe の生 JSON イベントペイロード（Content-Type: application/json）
+
+> **実装上の注意**: Stripe Webhook の署名検証には HTTP リクエストの**生ボディ（raw body）**が必要。Spring Boot では `@RequestBody String payload` でパース前の文字列を受け取り、`Webhook.constructEvent(payload, sigHeader, endpointSecret)` に渡す。JSON をパースしたオブジェクトからの再シリアライズでは署名が一致しないため注意
 
 **対応イベント — Phase 3（一回払い）**
 | Stripe イベント | 処理内容 |
@@ -1000,6 +1006,7 @@ Stripe-Signature: t=xxxx,v1=xxxx
    [checkout.session.completed]
    a. session の metadata から member_payment_id を取得
    b. member_payments を SELECT ... FOR UPDATE で取得
+      ※ 防御的チェック: 取得した member_payment の payment_item_id が session.line_items の price に対応する payment_item と一致するか検証する（Stripe 署名検証済みのため改ざんリスクは実質ゼロだが defense-in-depth として実施）
    c. status が PENDING であることを確認（PAID は冪等処理でスキップ）
    d. stripe_payment_intent_id を保存
    e. amount_paid = payment_intent.amount_received を通貨換算して上書き（PENDING 時の仮値を Stripe 実受領額で確定）
@@ -1021,6 +1028,8 @@ Stripe-Signature: t=xxxx,v1=xxxx
    e. audit_logs に PAYMENT_CHECKOUT_EXPIRED を記録
       （metadata: checkout_session_id, payment_item_id, user_id）
    f. メンバーに「決済が完了しませんでした」通知を送信（通知機能実装後）
+   ※ CANCELLED 後の再決済: 409 判定は `status = 'PAID'` のみチェックするため、
+      CANCELLED 後に同一 payment_item への再 Checkout が可能（新しい PENDING レコードが作成される）
 
    [charge.refunded]
    a. stripe_payment_intent_id で member_payments を SELECT ... FOR UPDATE で取得
@@ -1369,6 +1378,7 @@ is_recurring = TRUE の payment_item を POST / PATCH 時:
 - **返金スコープ**: 返金エンドポイントは `payment_method = 'STRIPE'` のレコードのみ受け付ける。手動払いの取り消しは `DELETE` エンドポイント（`status = 'CANCELLED'`）に一本化し、Stripe 操作を伴う返金と明確に分離する
 - **部分返金の安全処理**: アプリ内では全額返金のみ提供する。Stripe ダッシュボードから部分返金が行われた場合、`charge.refunded` Webhook で検知するが `status` は `PAID` のまま維持しアクセス権を保護する。ADMIN に通知して手動確認を促す
 - **`type` イミュータブル**: `payment_items.type` は PATCH で変更不可。`ANNUAL_FEE` → `DONATION` 等の変更は `access_requirements` / `content_payment_gates` との紐付け整合性を破壊するため 422 で拒否する
+- **`MANAGE_PAYMENTS` スコープの適用範囲**: `MANAGE_PAYMENTS` は ORGANIZATION スコープで付与されるが（F03 V3.007 参照）、組織配下の全チームの支払い操作（`/teams/{id}/payment-items/...`）にも適用される。認可チェックは「操作対象チームが当該組織に所属しているか」を `team_org_memberships` で検証し、組織レベルの権限をチームレベル API に橋渡しする
 
 ### Stripe API キー・Webhook Secret 管理方針
 
@@ -1458,6 +1468,7 @@ V4.002__create_member_subscriptions_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-11 | 精査（深度レビュー）: ① Webhook エンドポイントに raw body 要件注記追加（Stripe 署名検証には生文字列が必須・再シリアライズ不可）② 手動支払い記録の `recorded_by` が JWT の `current_user_id` から自動設定される旨を明記 ③ MANAGE_PAYMENTS スコープの適用範囲を明確化（ORGANIZATION スコープ → 配下全チームの支払い操作に適用。team_org_memberships 経由の検証）④ Webhook の member_payment_id に defense-in-depth チェック追加（payment_item_id と session.line_items の整合性検証）⑤ checkout.session.expired 後の再決済可能性を明記（CANCELLED は 409 判定対象外）|
 | 2026-03-10 | 精査③: ①DONATION型 valid_from矛盾を解消（paid_atをセットする方式に統一） ②PATCHエラーテーブルにtype変更422追加 ③Checkoutエラーテーブルに403追加 ④手動支払い記録フローにDONATION重複チェック例外追加 ⑤返金エラー403にMANAGE_PAYMENTS記述追加 ⑥charge.refunded Webhook audit_logsの全額/部分分岐を整理（重複記録防止） ⑦MEMBERスコープにDONATION追記 |
 | 2026-03-10 | 精査②: ①V4.002 Flyway の ON DELETE CASCADE → RESTRICT 修正 ②部分返金 Webhook ハンドリング追加（PAID 維持 + ADMIN 通知） ③`type` イミュータブル制約を PATCH 仕様に追加 ④DEPUTY_ADMIN（MANAGE_PAYMENTS）のエンドポイント認可を一覧表に反映（GET/POST/PATCH payments） ⑤`payment_item_id` FK に ON DELETE RESTRICT を全テーブルで明示 ⑥Phase 3 マイグレーション統合（V3.007/V3.009 を V3.003/V3.006 に吸収） ⑦SUPPORTER スコープに DONATION を明記 ⑧`created_by` SET NULL のフェイルセーフ注釈追加 |
 | 2026-03-10 | 精査対応（設計完了）: ①`payment_items` に XOR CHECK 制約（`chk_pi_scope`）を明記し DB レベルの排他保証を追加 ②`payment_item_id` の関連テーブルカスケード削除をアプリ層制御と明示（物理 CASCADE なし）③`valid_from` は NULL 禁止・`paid_at` 当日を自動セット ④ITEM 型 `valid_until = NULL` は「買い切り永続アクセス」と確定 ⑤409 判定条件を SQL 式で明確化 ⑥Webhook イベント表を Phase 3（一回払い）/ Phase 4（Subscription）に分割 ⑦Webhook ハンドラで 5xx を返さない設計方針を追加 ⑧返金 API と `charge.refunded` Webhook の競合を `SELECT ... FOR UPDATE` で解決 ⑨`cancel_at_period_end` ライフサイクルと解約後 `member_payments` の扱いを明記 ⑩DEPUTY_ADMIN の操作も audit_logs 対象に（`operator_role` カラム記録）⑪`content_payment_gates` の横断スコープ防止を明示 ⑫`payment_status` フィールドを `status` に統一（レスポンスの用語揺れ修正）⑬ドキュメントステータスを「設計完了」に更新 |
@@ -1469,3 +1480,4 @@ V4.002__create_member_subscriptions_table.sql
 | 2026-03-10 | Stripe Subscription 設計確定（未解決②解決）: Phase 4 設計として `is_recurring` / `billing_interval` カラム追加計画・`member_subscriptions` テーブル定義・Subscription 開始 / 解約 / 再有効化フロー・新規 Webhook イベント（`invoice.payment_succeeded` 等）・Flyway Phase 4 マイグレーション（V4.001〜002）を追加。Checkout エンドポイントに mode=subscription 分岐を追記 |
 | 2026-03-10 | `stripe_price_id` 管理フロー確定（未解決①解決）: POST/PATCH に `is_active` フィールド追加・Stripe 自動生成フロー（A）・手動紐付けフロー（B）・金額変更フロー（C）・is_active 変更フロー（D）を追加。PATCH 仕様セクション新規追加。支払い項目作成フローに Stripe 同期呼び出し・ロールバック処理を追加 |
 | 2026-02-21 | 初版作成 |
+| 2026-03-11 | PaginationMeta に has_next フィールド追加（共通レスポンス統一） |

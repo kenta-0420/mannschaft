@@ -748,3 +748,4 @@ V7.007__create_service_record_template_values_table.sql
 | 2026-03-11 | 精査: XSS 対策を title/note にも拡大、CSV インジェクション対策追加、CSV エクスポート非同期ジョブのダウンロード方法明確化 |
 | 2026-03-11 | `service_record_fields` に `is_active` カラム追加。物理削除 → 論理無効化に変更。FK を ON DELETE CASCADE → RESTRICT に変更。既存記録データの保護を優先 |
 | 2026-03-11 | 精査②: ページネーションを cursor/limit に統一（README 準拠）、対象レベルに Organization 追記（テンプレート共有）、sort_order 型を INT に統一 |
+| 2026-03-11 | ページネーション方式を Offset-based（page/size）に変更（台帳系データとして適材適所の方針適用） |

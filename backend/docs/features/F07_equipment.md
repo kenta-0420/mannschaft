@@ -103,6 +103,7 @@ INDEX idx_ei_status_org (organization_id, status)             -- 組織別ステ
 | `returned_at` | DATETIME | YES | NULL | 実際の返却日時（NULL = 未返却）|
 | `returned_by_user_id` | BIGINT UNSIGNED | YES | NULL | FK → users（返却操作者; SET NULL on delete）|
 | `note` | VARCHAR(300) | YES | NULL | 備考 |
+| `last_overdue_notified_at` | DATETIME | YES | NULL | 最終遅延通知日時（バッチによる重複通知防止用） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 
@@ -146,11 +147,15 @@ users (1) ──── (N) equipment_assignments [assigned_by_user_id]
 | GET | `/api/v1/teams/{teamId}/equipment/{id}` | 必要 | 備品詳細取得 |
 | PUT | `/api/v1/teams/{teamId}/equipment/{id}` | 必要 | 備品情報更新 |
 | DELETE | `/api/v1/teams/{teamId}/equipment/{id}` | 必要 | 備品削除（論理削除）|
-| POST | `/api/v1/teams/{teamId}/equipment/{id}/assign` | 必要 | 備品を貸出 |
-| PATCH | `/api/v1/teams/{teamId}/equipment/{id}/return` | 必要 | 備品を返却 |
-| GET | `/api/v1/teams/{teamId}/equipment/{id}/history` | 必要 | 備品の貸出・返却履歴 |
-| GET | `/api/v1/teams/{teamId}/equipment/overdue` | 必要 | 返却遅延一覧 |
-| GET | `/api/v1/equipment/my-assignments` | 必要 | 自分が借りている備品一覧（全チーム横断）|
+| POST | `/api/v1/teams/{teamId}/equipment/{id}/assign` | 必要 | 備品を貸出（チーム） |
+| POST | `/api/v1/organizations/{orgId}/equipment/{id}/assign` | 必要 | 備品を貸出（組織） |
+| PATCH | `/api/v1/teams/{teamId}/equipment/{id}/return` | 必要 | 備品を返却（チーム） |
+| PATCH | `/api/v1/organizations/{orgId}/equipment/{id}/return` | 必要 | 備品を返却（組織） |
+| GET | `/api/v1/teams/{teamId}/equipment/{id}/history` | 必要 | 備品の貸出・返却履歴（チーム） |
+| GET | `/api/v1/organizations/{orgId}/equipment/{id}/history` | 必要 | 備品の貸出・返却履歴（組織） |
+| GET | `/api/v1/teams/{teamId}/equipment/overdue` | 必要 | 返却遅延一覧（チーム） |
+| GET | `/api/v1/organizations/{orgId}/equipment/overdue` | 必要 | 返却遅延一覧（組織） |
+| GET | `/api/v1/equipment/my-assignments` | 必要 | 自分が借りている備品一覧（全チーム・組織横断）|
 
 ### リクエスト／レスポンス仕様
 
@@ -198,9 +203,11 @@ users (1) ──── (N) equipment_assignments [assigned_by_user_id]
 | 403 | 権限不足 |
 | 404 | `teamId` が存在しない |
 
-#### `POST /api/v1/teams/{teamId}/equipment/{id}/assign`
+#### `POST /api/v1/{teams/{teamId} | organizations/{orgId}}/equipment/{id}/assign`
 
 **認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_EQUIPMENT`）
+
+> **実装上の共通化**: チーム・組織エンドポイントは同一の `EquipmentAssignmentService` を呼び出す。パスから `scopeType`（TEAM/ORGANIZATION）と `scopeId` を解決し、備品の所属スコープと一致することを検証する。`assigned_to_user_id` はそのスコープ（チーム所属 or 組織所属）を検証する。
 
 **リクエストボディ**
 ```json
@@ -235,11 +242,13 @@ users (1) ──── (N) equipment_assignments [assigned_by_user_id]
 | 403 | 権限不足 |
 | 404 | 備品 / ユーザーが存在しない |
 | 409 | 在庫不足（available_quantity < 要求 quantity）|
-| 422 | `assigned_to_user_id` がチームに所属していない |
+| 422 | `assigned_to_user_id` がチーム/組織に所属していない |
 
-#### `PATCH /api/v1/teams/{teamId}/equipment/{id}/return`
+#### `PATCH /api/v1/{teams/{teamId} | organizations/{orgId}}/equipment/{id}/return`
 
 **認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_EQUIPMENT`）
+
+> チーム・組織で同一ロジック（`EquipmentAssignmentService`）。パスからスコープを解決。
 
 **リクエストボディ**
 ```json
@@ -295,8 +304,8 @@ users (1) ──── (N) equipment_assignments [assigned_by_user_id]
 #### 備品貸出
 ```
 1. ADMIN/DEPUTY_ADMIN が貸出フォームを入力（対象メンバー・数量・返却予定日）
-2. バックエンドがチーム所属・権限を検証
-3. assigned_to_user_id のチーム/組織所属を検証
+2. バックエンドがスコープ所属（チーム or 組織）・権限を検証
+3. assigned_to_user_id のスコープ所属を検証（チーム備品→チーム所属、組織備品→組織所属）
 4. 在庫チェック: available_quantity >= 要求 quantity
 5. equipment_assignments に INSERT + equipment_items.status を必要に応じて更新
    （全数貸出 → ALL_ASSIGNED）
@@ -315,10 +324,13 @@ users (1) ──── (N) equipment_assignments [assigned_by_user_id]
 
 #### 返却遅延通知（バッチ）
 ```
-1. 日次バッチ（毎朝 9:00 実行）で expected_return_at < 本日 かつ returned_at IS NULL のレコードを検索
+1. 日次バッチ（毎朝 9:00 実行）で以下の条件のレコードを検索:
+   - expected_return_at < 本日
+   - returned_at IS NULL
+   - last_overdue_notified_at IS NULL OR last_overdue_notified_at < 本日 00:00
 2. 対象メンバーへプッシュ通知 + アプリ内通知:「[備品名] の返却予定日を過ぎています」
-3. チームの ADMIN へアプリ内通知:「[メンバー名] が [備品名] を未返却です（期限: yyyy-MM-dd）」
-4. 同一備品について毎日重複通知しない（通知済みフラグまたは最終通知日で制御）
+3. チーム/組織の ADMIN へアプリ内通知:「[メンバー名] が [備品名] を未返却です（期限: yyyy-MM-dd）」
+4. 通知送信後に equipment_assignments.last_overdue_notified_at = NOW() を更新（同日の重複通知を防止）
 ```
 
 ### 重要な判定ロジック
@@ -368,3 +380,5 @@ V7.011__create_equipment_assignments_table.sql
 | 2026-03-11 | 未解決事項 4件をすべて解決（画像1枚確定・カテゴリ自由入力確定・棚卸し延期・MEMBERセルフ貸出延期） |
 | 2026-03-11 | 精査: MEMBER自分の貸出確認API追加、組織スコープ詳細API補完、status フィルタに RETIRED 追加、equipment_assignments に updated_at 追加、返却遅延バッチ通知詳細化 |
 | 2026-03-11 | 精査②: 組織スコープのインデックス追加（category/status）、ページネーションを cursor/limit に統一 |
+| 2026-03-11 | ページネーション方式を Offset-based（page/size）に変更（台帳系データとして適材適所の方針適用） |
+| 2026-03-11 | 精査③: 組織スコープの貸出・返却・履歴・遅延 API 追加（チームと同一 Service で共通化）、`last_overdue_notified_at` カラム追加（重複通知防止） |

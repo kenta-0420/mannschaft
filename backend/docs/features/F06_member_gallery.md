@@ -812,3 +812,4 @@ V6.018__add_photo_albums_cover_fk.sql      -- photo_albums.cover_photo_id FK 追
 |------|---------|
 | 2026-03-10 | 初版作成 |
 | 2026-03-11 | 未解決事項①〜⑤を解決: allow_self_edit フラグ追加、JSON カラム方式確定（custom_field_values）、前年度メンバーコピー API 追加、SUPPORTERS_AND_ABOVE 公開追加、allow_download フラグ＋一括ダウンロード API 追加 |
+| 2026-03-11 | ページネーションレスポンスの has_more → has_next に改名（PaginationMeta 共通化） |

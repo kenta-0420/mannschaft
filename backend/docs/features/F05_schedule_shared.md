@@ -23,7 +23,7 @@
 | DEPUTY_ADMIN | `MANAGE_SCHEDULES` 権限を持つ場合: スケジュール作成・編集・自己作成スケジュールの削除。他者作成スケジュールの削除は `MANAGE_SCHEDULES` + `DELETE_OTHERS_CONTENT` の両方が必要。`min_response_role` 以上のスケジュールの出欠集計サマリー（件数のみ）参照可 |
 | MEMBER | デフォルトで `MANAGE_SCHEDULES` を保持（作成・編集）。他者のスケジュール削除は `DELETE_OTHERS_CONTENT` 権限が必要。`min_response_role IN ('SUPPORTER+', 'MEMBER+')` のスケジュールに出欠回答可・出欠集計サマリー（件数のみ）参照可 |
 | SUPPORTER | `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールのみ閲覧可。スコープ判定は `visibility` に従う（`MEMBERS_ONLY`: 所有チーム/組織への直接所属が必要。`ORGANIZATION`: 親組織への直接所属ロールで評価）。`visibility = 'ORGANIZATION'` でも `min_view_role = 'MEMBER+'`（デフォルト）なら閲覧不可。SUPPORTER に見せる場合は `min_view_role = 'SUPPORTER+'` を明示する。`min_response_role = 'SUPPORTER+'` のスケジュールに限り出欠回答可・出欠集計サマリー（件数のみ）参照可 |
-| GUEST / 未ログイン | `min_view_role = 'ANYONE'` のスケジュールのみ閲覧可。未ログインユーザーは GUEST と同等に扱う（Optional Authentication）|
+| GUEST | `min_view_role = 'ANYONE'` のスケジュールのみ閲覧可（認証必須。未ログインユーザーは 401）|
 
 ### 対象レベル
 - [x] 組織 (Organization)
@@ -66,7 +66,7 @@
 | `all_day` | BOOLEAN | NO | FALSE | 終日フラグ（TRUE の場合、時刻は無効とし start_at を日付のみで扱う）|
 | `event_type` | ENUM('PRACTICE', 'MATCH', 'EVENT', 'MEETING', 'OTHER') | NO | 'OTHER' | イベント種別（カレンダー表示のカテゴリ分け用）|
 | `visibility` | ENUM('MEMBERS_ONLY', 'ORGANIZATION') | NO | 'MEMBERS_ONLY' | 公開スコープ（どの範囲まで公開するか。`min_view_role = 'ANYONE'` の場合は無効）|
-| `min_view_role` | ENUM('ANYONE', 'SUPPORTER+', 'MEMBER+', 'ADMIN_ONLY') | NO | 'MEMBER+' | 閲覧可能な最小権限。省略時はチーム/組織の `default_schedule_min_view_role` 設定を継承し、設定がない場合は `MEMBER+`。`ANYONE` は未ログイン含む全員に公開（`visibility` を上書き）|
+| `min_view_role` | ENUM('ANYONE', 'SUPPORTER+', 'MEMBER+', 'ADMIN_ONLY') | NO | 'MEMBER+' | 閲覧可能な最小権限。省略時はチーム/組織の `default_schedule_min_view_role` 設定を継承し、設定がない場合は `MEMBER+`。`ANYONE` は認証済みの全ロール（GUEST 含む）に公開（`visibility` を上書き。未ログインは 401）|
 | `min_response_role` | ENUM('SUPPORTER+', 'MEMBER+', 'ADMIN_ONLY') | NO | 'MEMBER+' | 出欠回答可能な最小権限。省略時はチーム/組織の `default_schedule_min_response_role` 設定を継承し、設定がない場合は `MEMBER+`。`attendance_required = TRUE` 時、このロール以上のメンバーのみ `schedule_attendances` に登録される |
 | `status` | ENUM('SCHEDULED', 'CANCELLED', 'COMPLETED') | NO | 'SCHEDULED' | 開催状態 |
 | `attendance_required` | BOOLEAN | NO | FALSE | 出欠確認が必要か |
@@ -131,7 +131,7 @@ INDEX idx_sch_google_calendar (google_calendar_event_id)
   - `REQUIRED`: コメント欄を必須表示。`comment` が空の場合は出欠回答を 400 で拒否
 - `comment_option` 省略時: 同一スコープ（team_id / organization_id）の直近スケジュールの設定を自動適用。前回設定が存在しない場合は `OPTIONAL`
 - `min_view_role` の挙動:
-  - `ANYONE`: 未ログイン含む全員に公開。`visibility` を上書きしパブリックスケジュールとして扱う
+  - `ANYONE`: 認証済みの全ロール（GUEST 含む）に公開。未ログインユーザーは閲覧不可（401）。`visibility` を上書きしパブリックスケジュールとして扱う
   - `SUPPORTER+`: SUPPORTER・MEMBER・DEPUTY_ADMIN・ADMIN が閲覧可
   - `MEMBER+`: MEMBER・DEPUTY_ADMIN・ADMIN のみ閲覧可（デフォルト）
   - `ADMIN_ONLY`: DEPUTY_ADMIN・ADMIN のみ閲覧可（機密スケジュール等）
@@ -703,6 +703,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 |-----------|------|
 | 403 | 他者が作成したスケジュールで DELETE_OTHERS_CONTENT 権限なし |
 | 404 | スケジュールが存在しない / 削除済み |
+| 422 | 当該チームがアーカイブ済み（`archived_at IS NOT NULL`）|
 
 ---
 
@@ -1854,7 +1855,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 4. スケジュールが SCHEDULED 状態か確認 → CANCELLED / COMPLETED は 422
 5. 同一 source + target の既存招待レコードを確認:
    - PENDING または ACCEPTED または AWAITING_CONFIRMATION の場合: 409
-   - REJECTED または CANCELLED の場合: status = PENDING、message を更新（再招待 UPDATE）→ 手順 7 へスキップ
+   - REJECTED または CANCELLED の場合: status = PENDING、message を更新、responded_at = NULL にリセット（再招待 UPDATE）→ 手順 7 へスキップ
    - 存在しない場合: 次手順へ
 6. schedule_cross_refs に INSERT（status = PENDING）
 7. 招待先チーム / 組織の ADMIN にプッシュ通知「〇〇から試合招待が届きました」
@@ -2017,7 +2018,7 @@ V3.021__add_idx_sch_status_end_at.sql
 - **他者スケジュールの削除**: MEMBER が自分以外の作成スケジュールを削除するには `DELETE_OTHERS_CONTENT` 権限が必要。ADMIN は無条件で削除可能
 - **出欠情報のプライバシー**: `attendance_summary`（件数集計）は当該スケジュールの `min_response_role` 以上のロールのみ返す（min_response_role 未満は null）。個別メンバーの出欠一覧（`GET /teams/{id}/schedules/{scheduleId}/attendances`、個人名・回答内容付き）は ADMIN のみ参照可能。ダッシュボード統計（`GET /teams/{id}/attendance-stats` 等、個人別出席率付き）も ADMIN のみ。組織レベルの出欠集計はチーム単位の件数のみ開示し、個人の出欠情報は返さない
 - **可視性制御（スコープ）**: `visibility = 'MEMBERS_ONLY'` のスケジュールは当該チーム/組織の直接所属者にのみ返す（未ログイン含む非所属ユーザーには返さない）。`visibility = 'ORGANIZATION'` のスケジュールは所有チームの親組織メンバーにも返す（評価ロール: 親組織への直接所属ロール）。SUPPORTER が `visibility = 'ORGANIZATION'` スケジュールを閲覧できるのは `min_view_role = 'SUPPORTER+'` を明示した場合のみ（`min_view_role = 'MEMBER+'` デフォルトでは閲覧不可）。「組織全体公開かつ SUPPORTER 閲覧可」は `visibility = 'ORGANIZATION'` + `min_view_role = 'SUPPORTER+'` の組み合わせで実現する
-- **未ログインアクセスのポリシー（ANYONE 設定）**: `min_view_role = 'ANYONE'` のスケジュールはスケジュール一覧・詳細エンドポイントで未認証アクセスを許可する（Optional Authentication）。Spring Security で `permitAll()` を設定し、未認証リクエストはアプリ層で GUEST 相当として処理する。返すフィールドは GUEST ロールと同等に制限する（`my_response`・`attendance_summary`・`surveys`・`reminders`・`cross_invitations` は常に null）。エンドポイント別の動作: 一覧（`GET /teams/{id}/schedules`）では `min_view_role = 'ANYONE'` のスケジュールのみ返す。詳細（`GET /teams/{id}/schedules/{id}`）では当該スケジュールの `min_view_role` を確認し、`ANYONE` 以外なら 401 を返す。`public_token` 等の専用 URL は設けない（通常エンドポイントのフィルタリングで保護する）
+- **ANYONE 設定のアクセスポリシー**: `min_view_role = 'ANYONE'` は「認証済みの全ロール（GUEST 含む）に公開」を意味する。未ログインユーザーは 401 を返す（認証必須）。スケジュールの公開範囲は組織/チーム内に限定し、未認証アクセスによるパブリック公開は SEO 目的のコンテンツ（F06 ブログ等）に留める設計判断。GUEST は認証済みの最低ロールとして `ANYONE` スケジュールを閲覧可能
 - **可視性制御（ロール）**: `min_view_role` によるフィルタリングを全閲覧系エンドポイントで実施する。SUPPORTER は `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールのみ閲覧可。GUEST は `min_view_role = 'ANYONE'` のみ閲覧可。`min_view_role` は作成・編集権限を持つ MEMBER 以上のみが変更可能（SUPPORTER/GUEST 自身は変更不可）
 - **回答権限制御（min_response_role）**: `min_response_role` によるチェックを `PATCH /schedules/{scheduleId}/responses` で実施する。`min_view_role`（閲覧可否）とは独立した2軸制御。回答権限がないユーザーはスケジュールを閲覧可能だが 403 を返す。`attendance_required = TRUE` 時の `schedule_attendances` 一括 INSERT も `min_response_role` 以上のロールを持つメンバーのみを対象とする
 - **繰り返し一括操作の権限確認**: `THIS_AND_FOLLOWING` / `ALL` スコープの更新・削除時も必ず権限確認（作成者 or MANAGE_SCHEDULES or ADMIN）を実施する。スコープが広いほど影響が大きいため省略不可
@@ -2072,7 +2073,7 @@ V4.001__create_member_attendance_stats_table.sql
 - [ ] 組織スコープのクロスチーム招待受信エンドポイントが未定義: `schedule_cross_refs.target_type` に `'ORGANIZATION'` が含まれるが、組織スコープの受信招待一覧（`GET /organizations/{id}/schedule-invitations`）・承認（`POST /organizations/{id}/schedule-invitations/{id}/accept`）・拒否（`POST /organizations/{id}/schedule-invitations/{id}/reject`）エンドポイントがない。チーム版と同様のエンドポイントを組織スコープに追加するか、`target_type` を `'TEAM'` のみに制限するかを確定する
 - [x] 出欠集計の開示範囲を確定: 当該スケジュールの `min_response_role` 以上のロールへ件数のみ開示（`attendance_summary`・`GET /schedules/{id}/stats`）。個人名付き一覧（`GET /attendances`）・ダッシュボード統計（`GET /attendance-stats`）は引き続き ADMIN のみ
 - [x] 大規模チーム（1000人規模）への一括 `schedule_attendances` INSERT 対策を確定: @Async 非同期化・500件チャンク分割バルク INSERT・`schedules.attendance_status ENUM('READY','GENERATING')` による生成状態管理（Section 3・Section 5・Section 6 参照）
-- [x] `min_view_role = 'ANYONE'` 設定時の未ログインアクセスを確定: 未ログインユーザーを GUEST 相当として扱う Optional Authentication パターン。専用 URL・`public_token` なし。一覧は ANYONE スケジュールのみ返し、詳細は ANYONE 以外なら 401。返すフィールドは GUEST ロールと同等に制限（Section 6 参照）
+- [x] `min_view_role = 'ANYONE'` 設定時の未ログインアクセスを確定: `ANYONE` は認証済みの全ロール（GUEST 含む）に公開。未ログインユーザーは 401 を返す（認証必須）。スケジュールの公開範囲は組織/チーム内に限定し、未認証パブリック公開は SEO 目的コンテンツ（F06 ブログ等）に留める。GUEST は認証済みの最低ロールとして ANYONE スケジュールを閲覧可能（Section 2・Section 6 参照）
 - [x] クロスチーム招待時、招待先チームが非公開の場合でも招待を送れるかを確定する（招待送信時のプライバシー設計）: PRIVATE チームへの招待は team ID を直接指定すれば送信可能。ただし存在の有無と PRIVATE 判定を区別せず一律 404 を返す（サイドチャネル漏洩防止）。承認後は双方向合意フロー（`AWAITING_CONFIRMATION` 状態・`POST /confirm` エンドポイント）を経由してミラースケジュールを作成する（Section 4・Section 5「クロスチームスケジュール招待フロー」・Section 6「PRIVATE チームの存在隠蔽」参照）
 - [x] 組織スケジュールの出欠確認: チームに所属しない組織直接メンバーへの出欠通知フローを確定する: 既存フローで対応済み。スケジュール作成フロー step 8i「全所属チームのメンバー + 組織直接所属メンバー（重複除外）」に含まれるため通知・schedule_attendances 生成は自動的に行われる。出欠回答フロー step 6 で組織直接所属ロールによる回答権限を確認。集計は `GET /organizations/{id}/schedules/{id}/attendances` の `team_id: null`「チーム未所属（組織直接メンバー）」グループで区別表示。ダッシュボードへの表示は `GET /my/calendar` の横断ビューで対応（専用セクション表示はフロントエンド判断）
 - [x] クロスチーム招待承認後、招待元が内容（日時・場所）を変更した場合の招待先への通知仕様を確定する: 更新フロー THIS_ONLY / THIS_AND_FOLLOWING / ALL の各 `3a` / `6a` / `3a` に cross-ref 通知ステップを追加。通知トリガーは `start_at` / `end_at` / `location` / `title` の変更（`address` フィールドは存在しないため `location` のみ）。通知対象: target チーム ADMIN（常時）+ mirror schedule の schedule_attendances 保持メンバー。mirror schedule は自動更新しない（独立管理方針を維持）。通知ペイロードに変更フィールド名・変更後の値を含め、フロントエンドが「変更あり」バッジを表示できるようにする（Section 5 参照）
@@ -2087,6 +2088,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-11 | 精査（深度レビュー）: ① DELETE エンドポイントのエラーテーブルにアーカイブ済みチーム 422 を追加 ② クロスチーム再招待フロー（REJECTED/CANCELLED → PENDING 更新）に `responded_at = NULL` リセットを追記 ③ `min_view_role = 'ANYONE'` を認証必須に変更（未ログインは 401。GUEST は認証済み最低ロールとして閲覧可。Optional Authentication を廃止し、未認証パブリック公開は F06 ブログ等に限定）|
 | 2026-03-11 | 精査(18回目): ① エンドポイント一覧に `POST /teams/{id}/schedule-invitations/{invitationId}/confirm` を追加（仕様定義は存在したがテーブルに欠落していた）② `PATCH /responses` エラーテーブルに 404（スケジュール不存在 / 論理削除済み）を追加（フロー step 2 で 404 を返すと明記されていたがエラーテーブルに欠落）③ `GET /schedules/{id}/stats` にエラーレスポンステーブルを新設（403 / 404 / 422）④ `POST /remind` の `attendance_required = FALSE` エラーを 409 → 422 に修正（`PATCH /responses` の同条件 422 との整合）⑤ アーカイブ状態における書き込み制限セクションを追加（F03 の「F05 等も同様にアーカイブチェック必要」指示に対応。ブロック対象 8 操作・許可対象 4 操作を列挙）⑥ 各エラーテーブルにアーカイブ済み 422 を追加（`PATCH /responses`・`GET /stats`・`POST /remind`）⑦ 組織スコープのクロスチーム招待受信エンドポイント欠落を未解決事項に追加（`target_type = 'ORGANIZATION'` に対応するエンドポイントが未定義） |
 | 2026-03-07 | 精査(17回目): ① `schedules` テーブルのインデックス一覧に `idx_sch_status_end_at (status, end_at)` を追加（V3.021 で定義済みだがテーブル定義セクションに欠落していた）。② `PATCH /responses` エラーテーブルの 409（deadline 超過）に「ADMIN が COMPLETED スケジュールの出欠修正を行う場合は deadline チェックをスキップ」の注記を追加（出欠回答フロー step 7 との整合）。③ 出欠リマインダーバッチ step 2a のスキップ条件に COMPLETED を追加（CANCELLED のみだった。COMPLETED スケジュールに attendance_deadline = NULL の場合リマインダーが誤送信される問題を防止）。④ `POST /reject` エラーテーブルの 422 条件に `AWAITING_CONFIRMATION` を追加（フロー step 3 では不可と明記されていたがエラーテーブルに欠落していた） |
 | 2026-03-07 | 精査(16回目): ① テーブル一覧セクションの `member_attendance_stats` 行がブロック引用直後に連結し Markdown 構造が破損していた問題を修正（空行を挿入）。② 自動完了バッチのクエリ条件に `recurrence_rule IS NULL` を追加（繰り返しの親スケジュールがバッチで誤って COMPLETED に遷移するバグを防止）。③ 出欠回答フロー step 7 に「ADMIN + COMPLETED の場合は deadline チェックをスキップ」を追記（ADMIN が COMPLETED 後に出欠を手動修正する際、期限切れ 409 でブロックされる問題を修正）。④ PATCH /schedules エラーテーブルに `status: "COMPLETED"` の `THIS_AND_FOLLOWING / ALL` 一括設定を 422 とする行を追加（注記には記載があったがエラーテーブルに欠落していた）。⑤ 最終更新日を 2026-03-07 に更新 |

@@ -37,7 +37,7 @@
 ### テーブル一覧
 | テーブル名 | 役割 | 論理削除 |
 |-----------|------|---------|
-| `performance_metrics` | チームごとのパフォーマンス指標定義 | なし |
+| `performance_metrics` | チームごとのパフォーマンス指標定義 | `is_active` による論理無効化 |
 | `performance_records` | メンバーごとの指標値の記録 | なし |
 
 ### テーブル定義
@@ -57,6 +57,7 @@
 | `description` | VARCHAR(500) | YES | NULL | 指標の説明 |
 | `sort_order` | INT | NO | 0 | 表示順 |
 | `is_visible_to_members` | BOOLEAN | NO | TRUE | MEMBER にチーム統計を公開するか |
+| `is_active` | BOOLEAN | NO | TRUE | FALSE = 新規記録入力時に非表示（既存レコードは保持） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 
@@ -66,9 +67,9 @@ INDEX idx_pm_team_sort (team_id, sort_order)   -- チーム内の指標一覧取
 ```
 
 **制約・備考**
-- 1チームあたりの指標上限: **30件**（アプリ層で検証）
+- 1チームあたりの指標上限: **30件**（`is_active = true` のもののみカウント。アプリ層で検証）
 - `data_type = 'TIME'` の場合、値は分単位の整数で保存する（例: 90分 → `90`）。表示時にフロントエンドで `HH:MM` 形式に変換
-- 指標削除時: `performance_records` の対応レコードもカスケード削除する
+- 指標は物理削除しない。`is_active = FALSE` で論理無効化し、既存の `performance_records` のデータを保護する
 - `aggregation_type` はチーム統計ダッシュボードでの集計に使用（例: SUM = 累計得点、AVG = 平均出場時間）
 
 ---
@@ -80,7 +81,7 @@ INDEX idx_pm_team_sort (team_id, sort_order)   -- チーム内の指標一覧取
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|---|------|-----------|------|
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
-| `metric_id` | BIGINT UNSIGNED | NO | — | FK → performance_metrics（ON DELETE CASCADE）|
+| `metric_id` | BIGINT UNSIGNED | NO | — | FK → performance_metrics（ON DELETE RESTRICT）|
 | `user_id` | BIGINT UNSIGNED | NO | — | FK → users（ON DELETE RESTRICT）|
 | `recorded_date` | DATE | NO | — | 記録日 |
 | `value` | DECIMAL(15,4) | NO | — | 記録値（INTEGER/DECIMAL/TIME すべて数値として保存）|
@@ -119,7 +120,7 @@ users (1) ──── (N) performance_records [recorded_by]
 | GET | `/api/v1/teams/{teamId}/performance/metrics` | 必要 | 指標定義一覧取得 |
 | POST | `/api/v1/teams/{teamId}/performance/metrics` | 必要 | 指標定義作成 |
 | PUT | `/api/v1/teams/{teamId}/performance/metrics/{id}` | 必要 | 指標定義更新 |
-| DELETE | `/api/v1/teams/{teamId}/performance/metrics/{id}` | 必要 | 指標定義削除（関連レコードもカスケード削除）|
+| DELETE | `/api/v1/teams/{teamId}/performance/metrics/{id}` | 必要 | 指標定義無効化（is_active = false） |
 | POST | `/api/v1/teams/{teamId}/performance/records` | 必要 | パフォーマンス記録入力 |
 | PUT | `/api/v1/teams/{teamId}/performance/records/{id}` | 必要 | パフォーマンス記録更新 |
 | DELETE | `/api/v1/teams/{teamId}/performance/records/{id}` | 必要 | パフォーマンス記録削除 |
@@ -169,7 +170,7 @@ users (1) ──── (N) performance_records [recorded_by]
 |-----------|------|
 | 400 | バリデーションエラー |
 | 403 | 権限不足 |
-| 409 | 指標上限（30件）超過 |
+| 409 | 指標上限（is_active = true が30件）超過 |
 
 #### `POST /api/v1/teams/{teamId}/performance/records/bulk`
 
@@ -401,6 +402,7 @@ users (1) ──── (N) performance_records [recorded_by]
 ### 重要な判定ロジック
 - **集計方法の切り替え**: `aggregation_type` に基づいて SQL 集計関数を動的に選択（SUM/AVG/MAX/MIN）。LATEST は `recorded_date DESC` の先頭レコードの値
 - **MEMBER の閲覧制限**: `is_visible_to_members = false` の指標はチーム統計に含めない。個人ダッシュボードでは自分の記録のみ表示
+- **指標無効化**: `is_active = false` の指標は新規記録入力フォームに表示されないが、既存レコードの統計・チャートには引き続き含まれる。無効化時は確認ダイアログで「この指標は新規入力で非表示になります。既存の記録データは保持されます」と表示（フロントエンド）
 - **INTEGER 型バリデーション**: `data_type = 'INTEGER'` の場合、`value` が整数であることを検証（小数点以下が 0 でない場合は 400 エラー）
 - **ランキング順位**: 競技式ランキング（competition ranking）を採用。同値のメンバーは同順位を付与し、次の順位をスキップする（例: 1位, 1位, 3位）
 - **チャート表示期間**: 個人ダッシュボードのチャート表示期間のデフォルトは **直近3ヶ月**。ユーザーは 6ヶ月 / 1年 に切り替え可能
@@ -447,3 +449,4 @@ V7.009__create_performance_records_table.sql
 | 2026-03-11 | 未解決事項4件を解決: CSVエクスポートAPI追加、Redis TTL 5分固定、競技式ランキング採用、チャートデフォルト3ヶ月 |
 | 2026-03-11 | 精査: /performance/me レスポンス JSON 追加、/members/{userId}/performance 詳細仕様追加、CSV インジェクション対策追加 |
 | 2026-03-11 | 精査②: CSV エクスポートに BOM 付き UTF-8 明記、/performance/me にページネーションパラメータ追加、sort_order 型を INT に統一 |
+| 2026-03-11 | 精査③: `performance_metrics` に `is_active` 追加。物理削除 → 論理無効化に変更。FK を ON DELETE CASCADE → RESTRICT に変更。既存パフォーマンスデータの保護を優先 |
