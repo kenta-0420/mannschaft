@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟢 設計確定
 > **実装フェーズ**: Phase 1
-> **最終更新**: 2026-03-08
+> **最終更新**: 2026-03-12
 
 ---
 
@@ -471,6 +471,7 @@ V1.011__create_audit_logs_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-12 | UX・保守性改善6項目: ① F01 新イベント4件をカタログに追加（`LOGOUT_SESSION` / `DEVICE_FINGERPRINT_MISMATCH` / `NEW_DEVICE_LOGIN` / `PASSWORD_SETUP`）② `event_type` のカンマ区切り複数指定を全 API に追加 ③ イベントカテゴリ定義（`AuditEventCategory` enum）と `event_category` クエリパラメータを追加 ④ `AuditEventType` enum によるアプリケーション層での型管理方針を明記 ⑤ ADMIN 向けスコープ付きログ参照 API 枠を追加（`GET /teams/{id}/audit-logs` / `GET /organizations/{id}/audit-logs`、Phase 3 以降） ⑥ アーカイブ済みログの検索方針（Athena / S3 Select）を保持ポリシーに追記 |
 | 2026-03-11 | 精査（深度レビュー）: ① ACCOUNT_LOCKED トリガー説明を「5回目の LOGIN_FAILED 記録直後に発動」に明確化 ② 「今後追加予定」に欠落イベント6件追加（PERSONAL_SCHEDULE_UPDATED / PERSONAL_SCHEDULE_DELETED / TEAM_INVITE_TOKEN_CREATED / ORGANIZATION_INVITE_TOKEN_CREATED / TEAM_MEMBER_PERMISSION_GROUP_UNASSIGNED）③ LOGIN_FAILED の記録条件「ユーザーが存在する場合のみ」をイベントカタログに明記 |
 | 2026-03-08 | 精査(1回目): ① `GET /admin/audit-logs` と `GET /users/me/audit-logs` のレスポンス JSON 例に `session_hash` フィールドを追加（カラム追加時にレスポンス例への反映が欠落していた）。② `GET /admin/audit-logs` のクエリパラメータに `session_hash` フィルタを追加（セッション単位のフォレンジック用）。③ Flyway 注意点の `team_id` / `organization_id` の型名を「INT」→「`BIGINT UNSIGNED`」に修正（テーブル定義との不整合）。④ `session_hash = NULL` のイベント一覧を一般ルール化（「未認証状態のイベントは一律 NULL」）し、欠落していた `USER_REGISTERED` / `OAUTH_USER_REGISTERED` / `PASSWORD_RESET_COMPLETED` / `MFA_RECOVERY_REQUESTED` / `MFA_RECOVERY_COMPLETED` を追加。⑤ 「今後追加予定」に `SCHEDULE_COMPLETED`（F05 自動完了バッチで定義済み）と `PERSONAL_SCHEDULE_CREATED`（F05_schedule_personal.md で定義済み）を追加 |
 | 2026-03-08 | `session_hash` カラムを `audit_logs` テーブルに追加確定: `SHA-256(refresh_token_jti)` を保存。セッション単位のフォレンジック追跡を可能にする。バッチ・`ACCOUNT_LOCKED`・`LOGIN_FAILED`・`PASSWORD_RESET_REQUESTED` は NULL。`idx_al_session_hash` インデックス追加。`AuditLogService.record()` の引数に `sessionHash` を追加。Section 3（カラム定義・インデックス）・Section 5（書き込み方針・session_hash 生成ルール）・Section 6（session_hash の安全性）を更新 |
