@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 7
-> **最終更新**: 2026-03-10
+> **最終更新**: 2026-03-12
 > **モジュール種別**: 選択式モジュール #5
 
 ---
@@ -21,7 +21,7 @@
 | SYSTEM_ADMIN | 全組織・チームの備品情報を参照 |
 | ADMIN | 備品の作成・編集・削除、貸出・返却の管理、在庫状況の参照 |
 | DEPUTY_ADMIN | `MANAGE_EQUIPMENT` 権限を持つ場合: 備品の作成・編集、貸出・返却の管理 |
-| MEMBER | 備品一覧の閲覧、自分が借りている備品の確認 |
+| MEMBER | 備品一覧の閲覧、自分が借りている備品の確認、**自分の貸出分の返却操作** |
 | SUPPORTER | 対象外 |
 | GUEST | 対象外 |
 
@@ -53,11 +53,14 @@
 | `description` | VARCHAR(500) | YES | NULL | 説明・備考 |
 | `category` | VARCHAR(100) | YES | NULL | カテゴリ（例: 映像機器、ユニフォーム）|
 | `quantity` | INT UNSIGNED | NO | 1 | 保有数量 |
+| `assigned_quantity` | INT UNSIGNED | NO | 0 | 貸出中数量（貸出/返却時にアトミック更新。一覧クエリで SUM() 不要） |
 | `status` | ENUM('AVAILABLE', 'ALL_ASSIGNED', 'MAINTENANCE', 'RETIRED') | NO | 'AVAILABLE' | 全体ステータス |
+| `is_consumable` | BOOLEAN | NO | FALSE | 消耗品フラグ（TRUE = 返却不要。在庫消費のみ） |
 | `storage_location` | VARCHAR(200) | YES | NULL | 保管場所（例: 事務室棚A、倉庫B）|
 | `purchase_date` | DATE | YES | NULL | 購入日 |
 | `purchase_price` | DECIMAL(10,2) | YES | NULL | 購入金額 |
-| `image_url` | VARCHAR(500) | YES | NULL | 備品画像 URL（S3）|
+| `s3_key` | VARCHAR(500) | YES | NULL | 備品画像の S3 オブジェクトキー（CDN ドメイン変更に強い。chart_photos.s3_key と設計統一） |
+| `qr_code` | VARCHAR(100) | YES | NULL | QR コード識別子（備品登録時に自動生成。スキャンで貸出/返却画面に遷移） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 | `deleted_at` | DATETIME | YES | NULL | 論理削除 |
@@ -70,6 +73,7 @@ INDEX idx_ei_category_team (team_id, category)                -- チーム別カ
 INDEX idx_ei_category_org (organization_id, category)         -- 組織別カテゴリ一覧用
 INDEX idx_ei_status_team (team_id, status)                    -- チーム別ステータス一覧用
 INDEX idx_ei_status_org (organization_id, status)             -- 組織別ステータス一覧用
+UNIQUE INDEX uq_ei_qr_code (qr_code)                          -- QRコード一意制約（NULL許容）
 ```
 
 **制約・備考**
@@ -84,6 +88,7 @@ INDEX idx_ei_status_org (organization_id, status)             -- 組織別ステ
 - 論理削除: `deleted_at DATETIME nullable`（SoftDeletableEntity 適用）
 - `status` は denormalize: `equipment_assignments` の貸出状況から計算可能だが、一覧取得の高速化のために保持。貸出・返却時にアトミック更新
 - `RETIRED` は廃棄済み備品（一覧から非表示だが記録は保持）
+- `qr_code` の生成ルール: 備品作成時に `EQ-{orgId or teamId}-{UUID v7 先頭8桁}` 形式で自動生成（例: `EQ-T10-a1b2c3d4`）。UNIQUE 制約により重複を防止
 
 ---
 
@@ -156,6 +161,18 @@ users (1) ──── (N) equipment_assignments [assigned_by_user_id]
 | GET | `/api/v1/teams/{teamId}/equipment/overdue` | 必要 | 返却遅延一覧（チーム） |
 | GET | `/api/v1/organizations/{orgId}/equipment/overdue` | 必要 | 返却遅延一覧（組織） |
 | GET | `/api/v1/equipment/my-assignments` | 必要 | 自分が借りている備品一覧（全チーム・組織横断）|
+| GET | `/api/v1/teams/{teamId}/equipment/categories` | 必要 | チーム備品カテゴリ一覧（DISTINCT、サジェスト用）|
+| GET | `/api/v1/organizations/{orgId}/equipment/categories` | 必要 | 組織備品カテゴリ一覧（DISTINCT、サジェスト用）|
+| POST | `/api/v1/teams/{teamId}/equipment/{id}/consume` | 必要 | 消耗品の消費記録（チーム）|
+| POST | `/api/v1/organizations/{orgId}/equipment/{id}/consume` | 必要 | 消耗品の消費記録（組織）|
+| POST | `/api/v1/teams/{teamId}/equipment/{id}/image/presigned-url` | 必要 | 備品画像アップロード用 Pre-signed URL 取得（チーム）|
+| POST | `/api/v1/organizations/{orgId}/equipment/{id}/image/presigned-url` | 必要 | 備品画像アップロード用 Pre-signed URL 取得（組織）|
+| DELETE | `/api/v1/teams/{teamId}/equipment/{id}/image` | 必要 | 備品画像削除（チーム）|
+| DELETE | `/api/v1/organizations/{orgId}/equipment/{id}/image` | 必要 | 備品画像削除（組織）|
+| POST | `/api/v1/teams/{teamId}/equipment/{id}/assign-bulk` | 必要 | 一括貸出（チーム、最大20件）|
+| POST | `/api/v1/organizations/{orgId}/equipment/{id}/assign-bulk` | 必要 | 一括貸出（組織、最大20件）|
+| PATCH | `/api/v1/teams/{teamId}/equipment/{id}/return-bulk` | 必要 | 一括返却（チーム）|
+| PATCH | `/api/v1/organizations/{orgId}/equipment/{id}/return-bulk` | 必要 | 一括返却（組織）|
 
 ### リクエスト／レスポンス仕様
 
@@ -246,9 +263,10 @@ users (1) ──── (N) equipment_assignments [assigned_by_user_id]
 
 #### `PATCH /api/v1/{teams/{teamId} | organizations/{orgId}}/equipment/{id}/return`
 
-**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_EQUIPMENT`）
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_EQUIPMENT`）/ **MEMBER（自分の貸出分のみ）**
 
 > チーム・組織で同一ロジック（`EquipmentAssignmentService`）。パスからスコープを解決。
+> MEMBER は `assignment.assigned_to_user_id = currentUser.id` の場合のみ返却可能。他メンバーの分は 403 エラー。
 
 **リクエストボディ**
 ```json
@@ -295,6 +313,199 @@ users (1) ──── (N) equipment_assignments [assigned_by_user_id]
 **レスポンス（200 OK）**: `PagedResponse<EquipmentItemResponse>`
 - 各備品には `available_quantity`（= `quantity` - 貸出中数量）を算出して含める
 
+#### `GET /api/v1/{teams/{teamId} | organizations/{orgId}}/equipment/categories`
+
+**認可**: MEMBER 以上
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": ["映像機器", "ユニフォーム", "事務用品"]
+}
+```
+- スコープ内の `equipment_items.category` を `DISTINCT` で取得（`deleted_at IS NULL`、NULL 除外）
+- ソート: 五十音順（`ORDER BY category ASC`）
+- フロントエンドのカテゴリ入力フィールドでオートコンプリート候補として使用
+
+#### `POST /api/v1/{teams/{teamId} | organizations/{orgId}}/equipment/{id}/consume`
+
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_EQUIPMENT`）
+
+> 消耗品（`is_consumable = TRUE`）専用。返却不要の在庫消費を記録する。
+
+**リクエストボディ**
+```json
+{
+  "quantity": 5,
+  "consumed_by_user_id": 42,
+  "note": "練習用テーピング消費"
+}
+```
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "equipment_item_id": 1,
+    "equipment_name": "テーピング",
+    "consumed_quantity": 5,
+    "remaining_quantity": 15,
+    "consumed_at": "2026-03-10T10:00:00"
+  }
+}
+```
+
+**処理**
+1. `is_consumable = TRUE` であることを検証（FALSE なら 422 エラー）
+2. `quantity` を `equipment_items.quantity` から減算（残量 < 要求量なら 409 エラー）
+3. `equipment_assignments` に INSERT（`returned_at = assigned_at` = 即時消費扱い）
+4. `equipment_items.assigned_quantity` は変更しない（返却待ちではないため）
+5. 残量 = 0 なら `status` = `RETIRED` に自動更新
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | バリデーションエラー |
+| 403 | 権限不足 |
+| 404 | 備品が存在しない |
+| 409 | 在庫不足（remaining_quantity < 要求 quantity）|
+| 422 | `is_consumable = FALSE`（消耗品ではない備品に対する消費操作）|
+
+#### `POST /api/v1/{teams/{teamId} | organizations/{orgId}}/equipment/{id}/image/presigned-url`
+
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_EQUIPMENT`）
+
+**リクエストボディ**
+```json
+{
+  "content_type": "image/jpeg",
+  "file_size": 2048000
+}
+```
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "upload_url": "https://s3.amazonaws.com/...",
+    "s3_key": "equipment/{scopeType}/{scopeId}/{equipmentId}/{uuid}.jpg",
+    "expires_in": 600
+  }
+}
+```
+
+**処理**
+1. `content_type` が `image/jpeg`, `image/png`, `image/webp` のいずれかであることを検証
+2. `file_size` が 5MB 以下であることを検証
+3. S3 Pre-signed PUT URL を生成（有効期限 600秒）
+4. `equipment_items.s3_key` を更新（既存画像がある場合は旧 S3 オブジェクトを非同期削除）
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | 不正な content_type / file_size 超過 |
+| 403 | 権限不足 |
+| 404 | 備品が存在しない |
+
+#### `DELETE /api/v1/{teams/{teamId} | organizations/{orgId}}/equipment/{id}/image`
+
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_EQUIPMENT`）
+
+**レスポンス（204 No Content）**
+
+**処理**
+1. `equipment_items.s3_key` を NULL に更新
+2. 旧 S3 オブジェクトを非同期削除（`ApplicationEvent` 経由）
+
+#### `POST /api/v1/{teams/{teamId} | organizations/{orgId}}/equipment/{id}/assign-bulk`
+
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_EQUIPMENT`）
+
+> 1つの備品を複数メンバーへ同時貸出する。内部的には単体 assign のループだが、1トランザクションでアトミック実行。
+
+**リクエストボディ**
+```json
+{
+  "assignments": [
+    { "assigned_to_user_id": 42, "quantity": 1 },
+    { "assigned_to_user_id": 43, "quantity": 1 },
+    { "assigned_to_user_id": 44, "quantity": 2 }
+  ],
+  "expected_return_at": "2026-04-10",
+  "note": "練習試合用ビブス"
+}
+```
+
+**レスポンス（201 Created）**
+```json
+{
+  "data": {
+    "created_count": 3,
+    "total_assigned_quantity": 4,
+    "equipment_status": "ALL_ASSIGNED",
+    "available_quantity": 0,
+    "assignments": [
+      { "assignment_id": 100, "assigned_to_user_id": 42, "quantity": 1 },
+      { "assignment_id": 101, "assigned_to_user_id": 43, "quantity": 1 },
+      { "assignment_id": 102, "assigned_to_user_id": 44, "quantity": 2 }
+    ]
+  }
+}
+```
+
+**制約**
+- `assignments` 配列の最大要素数: 20件
+- 合計 quantity が available_quantity を超える場合は 409 エラー（全件ロールバック）
+- 各 `assigned_to_user_id` のスコープ所属を検証（1件でも不正なら 422 エラーで全件ロールバック）
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | バリデーションエラー / assignments が空 / 21件以上 |
+| 403 | 権限不足 |
+| 404 | 備品が存在しない |
+| 409 | 在庫不足（合計 quantity > available_quantity）|
+| 422 | `assigned_to_user_id` がスコープに所属していない（エラー対象のユーザーIDを返却）|
+
+#### `PATCH /api/v1/{teams/{teamId} | organizations/{orgId}}/equipment/{id}/return-bulk`
+
+**認可**: ADMIN / DEPUTY_ADMIN（`MANAGE_EQUIPMENT`）
+
+> 複数の貸出レコードを一括返却する。
+
+**リクエストボディ**
+```json
+{
+  "assignment_ids": [100, 101, 102],
+  "note": "練習試合後に一括回収"
+}
+```
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "returned_count": 3,
+    "returned_at": "2026-04-10T17:00:00",
+    "equipment_status": "AVAILABLE",
+    "available_quantity": 4
+  }
+}
+```
+
+**制約**
+- `assignment_ids` の最大要素数: 20件
+- 全 assignment が同一 `equipment_item_id` に属することを検証（異なる備品が混在 → 400 エラー）
+- 既に返却済みの assignment が含まれる場合は 409 エラー（全件ロールバック）
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | バリデーションエラー / assignment_ids が空 / 21件以上 / 異なる備品の混在 |
+| 403 | 権限不足 |
+| 404 | assignment_id が存在しない |
+| 409 | 既に返却済みの assignment が含まれる |
+
 ---
 
 ## 5. ビジネスロジック
@@ -316,37 +527,84 @@ users (1) ──── (N) equipment_assignments [assigned_by_user_id]
 
 #### 備品返却
 ```
-1. ADMIN/DEPUTY_ADMIN が返却操作を実行
-2. equipment_assignments.returned_at を SET + equipment_items.status を更新
-   （ALL_ASSIGNED → AVAILABLE）
-3. トランザクション内でアトミックに実行
+1. ADMIN/DEPUTY_ADMIN または MEMBER（自分の貸出分のみ）が返却操作を実行
+   - MEMBER の場合: assignment.assigned_to_user_id = currentUser.id を検証（不一致 → 403）
+   - ADMIN/DEPUTY_ADMIN: 任意の assignment を返却可能
+2. equipment_assignments.returned_at を SET + returned_by_user_id = currentUser.id
+3. equipment_items.assigned_quantity を減算 + status を更新（ALL_ASSIGNED → AVAILABLE）
+4. トランザクション内でアトミックに実行
+5. ApplicationEvent（EquipmentReturnedEvent）を発行
 ```
 
-#### 返却遅延通知（バッチ）
+#### 一括貸出
+```
+1. ADMIN/DEPUTY_ADMIN が一括貸出フォームを入力（対象メンバー配列・数量・返却予定日）
+2. 合計貸出数量 <= available_quantity を検証
+3. 全 assigned_to_user_id のスコープ所属を検証
+4. ループで equipment_assignments に INSERT（最大20件）
+5. equipment_items.assigned_quantity / status をアトミック更新
+6. 1トランザクションで実行（途中失敗で全ロールバック）
+7. ApplicationEvent（EquipmentBulkAssignedEvent）を発行
+```
+
+#### 一括返却
+```
+1. ADMIN/DEPUTY_ADMIN が一括返却を実行（assignment_ids 配列）
+2. 全 assignment が同一備品かつ未返却であることを検証
+3. ループで returned_at / returned_by_user_id を SET（最大20件）
+4. equipment_items.assigned_quantity / status をアトミック更新
+5. 1トランザクションで実行（途中失敗で全ロールバック）
+6. ApplicationEvent（EquipmentBulkReturnedEvent）を発行
+```
+
+#### 消耗品の消費
+```
+1. ADMIN/DEPUTY_ADMIN が消費記録を実行
+2. is_consumable = TRUE であることを検証（FALSE → 422 エラー）
+3. equipment_items.quantity から消費数量を減算（在庫不足 → 409 エラー）
+4. equipment_assignments に記録（assigned_at = returned_at = NOW()、即時消費扱い）
+5. 残量 = 0 → status を RETIRED に自動更新
+6. トランザクション内でアトミックに実行
+7. ApplicationEvent（EquipmentConsumedEvent）を発行
+```
+
+#### 返却遅延通知（バッチ・2段階エスカレーション）
 ```
 1. 日次バッチ（毎朝 9:00 実行）で以下の条件のレコードを検索:
    - expected_return_at < 本日
    - returned_at IS NULL
    - last_overdue_notified_at IS NULL OR last_overdue_notified_at < 本日 00:00
-2. 対象メンバーへプッシュ通知 + アプリ内通知:「[備品名] の返却予定日を過ぎています」
-3. チーム/組織の ADMIN へアプリ内通知:「[メンバー名] が [備品名] を未返却です（期限: yyyy-MM-dd）」
-4. 通知送信後に equipment_assignments.last_overdue_notified_at = NOW() を更新（同日の重複通知を防止）
+2. 超過日数を計算: overdue_days = DATEDIFF(NOW(), expected_return_at)
+3. 【通常（超過 1〜6日）】本人のみ通知:
+   - プッシュ通知 + アプリ内通知:「[備品名] の返却予定日を過ぎています（{overdue_days}日超過）」
+4. 【エスカレーション（超過 7日以上）】本人 + ADMIN に通知:
+   - 本人: プッシュ通知 + アプリ内通知:「[備品名] の返却予定日を {overdue_days}日 過ぎています。早急にご返却ください」
+   - ADMIN: アプリ内通知:「[メンバー名] が [備品名] を未返却です（期限: yyyy-MM-dd、{overdue_days}日超過）」
+5. 通知送信後に equipment_assignments.last_overdue_notified_at = NOW() を更新（同日の重複通知を防止）
 ```
+
+> **エスカレーション閾値**: `application.yml` の `equipment.overdue.escalation-days: 7` で管理。チーム/組織ごとの個別設定は不要（全体統一）。
 
 ### 重要な判定ロジック
 - **available_quantity の計算**: `equipment_items.quantity` - `SUM(equipment_assignments.quantity WHERE returned_at IS NULL AND equipment_item_id = ?)`
 - **status 自動更新**: `available_quantity = 0` → `ALL_ASSIGNED`、`available_quantity > 0` → `AVAILABLE`（`MAINTENANCE`・`RETIRED` は手動設定のみ）
 - **論理削除制約**: 貸出中（未返却）の備品は論理削除不可。先にすべて返却する必要がある
+- **消耗品の在庫ゼロ判定**: 消費により `quantity = 0` になった消耗品は自動的に `RETIRED` に遷移。再入荷時は ADMIN が `quantity` を増やし `status` を `AVAILABLE` に手動変更
+- **assigned_quantity 整合性チェック**: 日次バッチ（返却遅延通知と同タイミング）で `equipment_items.assigned_quantity` と `SUM(equipment_assignments.quantity WHERE returned_at IS NULL)` の不整合を検知し、不一致があればアプリ内アラート（ADMIN宛）+ ログ出力。自動修正は行わない（原因調査を優先）
 
 ---
 
 ## 6. セキュリティ考慮事項
 
 - **認可チェック**: `EquipmentService` の入り口で `teamId`/`orgId` と `currentUser` の所属・ロールを検証
-- **MEMBER の操作制限**: MEMBER は閲覧のみ。貸出・返却の操作は ADMIN/DEPUTY_ADMIN に限定
+- **MEMBER の操作制限**: MEMBER は閲覧 + 自分の貸出分の返却のみ。貸出操作・他メンバー分の返却は ADMIN/DEPUTY_ADMIN に限定。MEMBER の返却時は `assignment.assigned_to_user_id = currentUser.id` を厳密検証
 - **画像アップロード**: 備品画像は S3 にアップロード。ファイルサイズ上限 5MB、許可形式 JPEG/PNG/WebP
 - **レートリミット**: 備品作成 API に `Bucket4j` で 1分間に30回の制限を適用
 - **MEMBER のデータ制限**: `/equipment/my-assignments` は `currentUser.id = assigned_to_user_id` で厳密フィルタ。他メンバーの貸出状況は参照不可（備品一覧では available_quantity のみ表示）
+- **監査ログ連携（F02）**: 以下の操作を `audit_logs` に記録する（`ApplicationEvent` 経由で非同期書き込み）:
+  - 備品の作成・更新・論理削除（`EQUIPMENT_CREATED` / `EQUIPMENT_UPDATED` / `EQUIPMENT_DELETED`）
+  - 貸出・返却・消費（`EQUIPMENT_ASSIGNED` / `EQUIPMENT_RETURNED` / `EQUIPMENT_CONSUMED`）
+  - ステータス手動変更（`EQUIPMENT_STATUS_CHANGED`、MAINTENANCE / RETIRED への手動遷移）
 
 ---
 
@@ -368,7 +626,8 @@ V7.011__create_equipment_assignments_table.sql
 - ~~備品画像の複数枚アップロード対応（1枚 or 複数枚）~~ → **解決: 1枚のみ**。識別用途のため複数枚は不要。`image_url` 単一カラムで確定
 - ~~カテゴリをマスターテーブル化するか、自由入力のままにするか~~ → **解決: 自由入力（VARCHAR）のまま**。業種ごとにカテゴリが全く異なるため、マスター管理のメリットが薄い
 - ~~備品の棚卸し（定期的な在庫確認）機能を Phase 7 に含めるか~~ → **解決: 後続フェーズに延期**。Phase 7 スコープ外
-- ~~MEMBER が自分で備品貸出をリクエストする機能（承認フロー付き）の要否~~ → **解決: 後続フェーズに延期**。Phase 7 は ADMIN 操作のみ
+- ~~MEMBER が自分で備品貸出をリクエストする機能（承認フロー付き）の要否~~ → **解決: 後続フェーズに延期**。Phase 7 は ADMIN 操作のみ（ただし MEMBER 自己返却は Phase 7 で対応）
+- ~~備品の移管（チーム間・組織⇔チーム間の scope 変更）~~ → **解決: 後続フェーズに延期**。FK付け替え・貸出履歴の整合性が複雑で、実運用頻度も低い。削除→再作成で代替可能
 
 ---
 
@@ -382,3 +641,5 @@ V7.011__create_equipment_assignments_table.sql
 | 2026-03-11 | 精査②: 組織スコープのインデックス追加（category/status）、ページネーションを cursor/limit に統一 |
 | 2026-03-11 | ページネーション方式を Offset-based（page/size）に変更（台帳系データとして適材適所の方針適用） |
 | 2026-03-11 | 精査③: 組織スコープの貸出・返却・履歴・遅延 API 追加（チームと同一 Service で共通化）、`last_overdue_notified_at` カラム追加（重複通知防止） |
+| 2026-03-11 | 改善6件: QRコード一意制約+生成ルール追加、カテゴリ一覧API追加、消耗品消費フロー定義、画像アップロード/削除API追加、assigned_quantity整合性チェックバッチ追加、監査ログ連携(F02)明記 |
+| 2026-03-12 | 改善4件: 一括貸出/返却API追加（最大20件、アトミック実行）、MEMBER自己返却を許可、備品移管を後続フェーズに延期、返却遅延通知を2段階エスカレーション化（7日閾値、application.yml管理） |
