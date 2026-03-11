@@ -1,8 +1,8 @@
 # F05: 個人スケジュール管理
 
-> **ステータス**: 🟡 設計中
+> **ステータス**: 🟢 設計完了
 > **実装フェーズ**: Phase 3
-> **最終更新**: 2026-03-01
+> **最終更新**: 2026-03-11
 > **関連ドキュメント**: 組織・チームスケジュール → `F05_schedule_shared.md` / 外部連携 → `F08_external_integration.md`
 
 ---
@@ -203,4 +203,5 @@ V3.016__add_user_id_to_schedules.sql
 | 日付 | 変更内容 |
 |------|---------|
 | 2026-03-01 | 未解決事項を全件解決: ① Google→App 双方向同期を Phase 4+ に決定（Phase 3 は一方向のみ）。② `GET /my/calendar` に個人スケジュールを統合（`F05_schedule_shared.md` Section 4 更新）。③ 個人 Google 同期設定を `user_google_calendar_connections.personal_sync_enabled` で管理に確定（`user_calendar_sync_settings` への PERSONAL 追加は不採用）。作成フロー step 4 を `personal_sync_enabled` 参照に修正 |
+| 2026-03-11 | ステータスを 🟢 設計完了 に変更（未解決事項が全件解決済み）。最終更新日を更新 |
 | 2026-03-01 | 初版作成: `schedules` テーブル再利用・完全非公開方針（オーナーチェックのみ）を採用。F05_schedule_attendance.md を F05_schedule_shared.md にリネームして分割 |

@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 3
-> **最終更新**: 2026-03-07
+> **最終更新**: 2026-03-11
 > **関連ドキュメント**: 個人スケジュール → `F05_schedule_personal.md` / 外部連携 → `F08_external_integration.md`
 
 ---
@@ -376,6 +376,7 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 | GET | `/api/v1/teams/{id}/schedule-invitations` | 必要（ADMIN）| 受信したスケジュール招待一覧 |
 | POST | `/api/v1/teams/{id}/schedule-invitations/{invitationId}/accept` | 必要（ADMIN）| スケジュール招待を承認 |
 | POST | `/api/v1/teams/{id}/schedule-invitations/{invitationId}/reject` | 必要（ADMIN）| スケジュール招待を拒否 |
+| POST | `/api/v1/teams/{id}/schedule-invitations/{invitationId}/confirm` | 必要（ADMIN）| スケジュール招待を最終確認（PRIVATE チームへの招待時のみ。`{id}` は招待元チーム ID）|
 | GET | `/api/v1/organizations/{id}/schedules` | 必要（min_view_role 以上; デフォルト MEMBER+）| 組織スケジュール一覧 |
 | POST | `/api/v1/organizations/{id}/schedules` | 必要（MANAGE_SCHEDULES）| 組織スケジュール作成 |
 | GET | `/api/v1/organizations/{id}/schedules/{scheduleId}` | 必要（当該スケジュールの min_view_role 以上）| 組織スケジュール詳細 |
@@ -806,8 +807,10 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 |-----------|------|
 | 400 | バリデーションエラー・`is_required` の設問に未回答・`comment_option = REQUIRED` で `comment` が空 |
 | 403 | 当該スケジュールの `min_response_role` 未満のロール（回答権限不足）|
+| 404 | スケジュールが存在しない / 論理削除済み |
 | 409 | `attendance_deadline` を過ぎている（ただし ADMIN が COMPLETED スケジュールの出欠修正を行う場合は deadline チェックをスキップ）|
 | 422 | `attendance_required = false` のスケジュールへの回答 |
+| 422 | 対象スケジュールのチーム / 組織がアーカイブ済み |
 | 422 | `status = CANCELLED` のスケジュール（ADMIN 含む全員不可）|
 | 422 | `status = COMPLETED` のスケジュール（ADMIN 以外。ADMIN は COMPLETED 後の出欠手動修正のため許可）|
 
@@ -973,6 +976,14 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 > - `strict_rate`: `attendance_rate` と同じ分母ロジックで `count_attending` のみを分子に使用
 > - `count_undecided > 0` の場合、フロントエンドは「未回答者にリマインドを送る」ボタンを表示する
 
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 403 | 当該スケジュールの `min_response_role` 未満のロール |
+| 404 | スケジュールが存在しない / 論理削除済み |
+| 422 | `attendance_required = FALSE` のスケジュール（出欠確認対象外） |
+| 422 | 対象スケジュールのチーム / 組織がアーカイブ済み |
+
 ---
 
 #### `POST /api/v1/schedules/{id}/remind`
@@ -997,7 +1008,8 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 |-----------|------|
 | 403 | ADMIN 以外が実行しようとした |
 | 404 | スケジュールが存在しない / 論理削除済み |
-| 409 | `attendance_required = FALSE` のスケジュール（出欠確認対象外）|
+| 422 | `attendance_required = FALSE` のスケジュール（出欠確認対象外）|
+| 422 | 対象スケジュールのチーム / 組織がアーカイブ済み |
 
 > - `notified_count = 0` の場合（全員回答済み）も 200 OK を返す
 > - 通知の実際の送信はバックグラウンド処理（`@Async`）で行い、API はカウントを即時返却する
@@ -1971,6 +1983,34 @@ V3.021__add_idx_sch_status_end_at.sql
 
 ---
 
+### アーカイブ状態における書き込み制限
+
+アーカイブ済みチーム / 組織（`archived_at IS NOT NULL`）に対する書き込み操作は、Service 層の入り口で `archived_at` を確認し 422（`"TEAM_ARCHIVED"` / `"ORGANIZATION_ARCHIVED"`）を返してブロックする（F03 設計に準拠）。
+
+**F05 スコープでのブロック対象操作:**
+
+| 操作 | 対象エンドポイント |
+|------|-----------------|
+| スケジュール作成 | `POST /teams/{id}/schedules`・`POST /organizations/{id}/schedules` |
+| スケジュール更新 | `PATCH /teams/{id}/schedules/{scheduleId}`・`PATCH /organizations/{id}/schedules/{scheduleId}` |
+| スケジュールキャンセル | `POST /teams/{id}/schedules/{scheduleId}/cancel`・`POST /organizations/{id}/schedules/{scheduleId}/cancel` |
+| 出欠回答 | `PATCH /schedules/{scheduleId}/responses`（対象スケジュールのチーム / 組織がアーカイブ済みの場合）|
+| 即時リマインド送信 | `POST /schedules/{id}/remind`（同上）|
+| クロスチーム招待送信 | `POST /teams/{id}/schedules/{scheduleId}/cross-invite` |
+| 招待承認 | `POST /teams/{id}/schedule-invitations/{invitationId}/accept`（承認するチームがアーカイブ済みの場合）|
+| 招待確認 | `POST /teams/{id}/schedule-invitations/{invitationId}/confirm`（招待先チームがアーカイブ済みの場合）|
+
+**アーカイブ中も許可する操作:**
+
+| 操作 | 理由 |
+|------|------|
+| 全 GET 操作 | 読み取り専用のため影響なし |
+| スケジュール論理削除 | ADMIN によるクリーンアップ目的（`DELETE /teams/{id}/schedules/{id}` 等）|
+| 招待拒否 | 受信済み招待の拒否は常に許可（`POST /reject`）|
+| 招待キャンセル | 送信済み招待のキャンセルは常に許可（`DELETE /cross-invite/{id}`）|
+
+---
+
 ## 6. セキュリティ考慮事項
 
 - **権限チェック**: スケジュール作成・編集には `MANAGE_SCHEDULES` 権限を F03 の権限解決ロジック経由で確認する
@@ -2029,6 +2069,7 @@ V4.001__create_member_attendance_stats_table.sql
 - [x] 繰り返しスケジュール自動展開バッチのスケジュールを確定: 毎日 JST 03:30 実行。ロジックを「今日〜12ヶ月先の不足分を毎日補完（Idempotent）」に変更。schedules テーブルに UNIQUE KEY (parent_schedule_id, start_at) 追加（Section 3・Section 5 参照）
 - [ ] Google Calendar 管理者レベル共有連携（`google_calendar_event_id` カラムの用途）は F09 で別途設計し、個人同期との役割分担を確定する
 - [ ] `event_type` の選択肢はテンプレート（SPORTS / SCHOOL 等）に応じて表示切替するかを確定する（テンプレート管理 feature doc で検討）
+- [ ] 組織スコープのクロスチーム招待受信エンドポイントが未定義: `schedule_cross_refs.target_type` に `'ORGANIZATION'` が含まれるが、組織スコープの受信招待一覧（`GET /organizations/{id}/schedule-invitations`）・承認（`POST /organizations/{id}/schedule-invitations/{id}/accept`）・拒否（`POST /organizations/{id}/schedule-invitations/{id}/reject`）エンドポイントがない。チーム版と同様のエンドポイントを組織スコープに追加するか、`target_type` を `'TEAM'` のみに制限するかを確定する
 - [x] 出欠集計の開示範囲を確定: 当該スケジュールの `min_response_role` 以上のロールへ件数のみ開示（`attendance_summary`・`GET /schedules/{id}/stats`）。個人名付き一覧（`GET /attendances`）・ダッシュボード統計（`GET /attendance-stats`）は引き続き ADMIN のみ
 - [x] 大規模チーム（1000人規模）への一括 `schedule_attendances` INSERT 対策を確定: @Async 非同期化・500件チャンク分割バルク INSERT・`schedules.attendance_status ENUM('READY','GENERATING')` による生成状態管理（Section 3・Section 5・Section 6 参照）
 - [x] `min_view_role = 'ANYONE'` 設定時の未ログインアクセスを確定: 未ログインユーザーを GUEST 相当として扱う Optional Authentication パターン。専用 URL・`public_token` なし。一覧は ANYONE スケジュールのみ返し、詳細は ANYONE 以外なら 401。返すフィールドは GUEST ロールと同等に制限（Section 6 参照）
@@ -2046,6 +2087,7 @@ V4.001__create_member_attendance_stats_table.sql
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-03-11 | 精査(18回目): ① エンドポイント一覧に `POST /teams/{id}/schedule-invitations/{invitationId}/confirm` を追加（仕様定義は存在したがテーブルに欠落していた）② `PATCH /responses` エラーテーブルに 404（スケジュール不存在 / 論理削除済み）を追加（フロー step 2 で 404 を返すと明記されていたがエラーテーブルに欠落）③ `GET /schedules/{id}/stats` にエラーレスポンステーブルを新設（403 / 404 / 422）④ `POST /remind` の `attendance_required = FALSE` エラーを 409 → 422 に修正（`PATCH /responses` の同条件 422 との整合）⑤ アーカイブ状態における書き込み制限セクションを追加（F03 の「F05 等も同様にアーカイブチェック必要」指示に対応。ブロック対象 8 操作・許可対象 4 操作を列挙）⑥ 各エラーテーブルにアーカイブ済み 422 を追加（`PATCH /responses`・`GET /stats`・`POST /remind`）⑦ 組織スコープのクロスチーム招待受信エンドポイント欠落を未解決事項に追加（`target_type = 'ORGANIZATION'` に対応するエンドポイントが未定義） |
 | 2026-03-07 | 精査(17回目): ① `schedules` テーブルのインデックス一覧に `idx_sch_status_end_at (status, end_at)` を追加（V3.021 で定義済みだがテーブル定義セクションに欠落していた）。② `PATCH /responses` エラーテーブルの 409（deadline 超過）に「ADMIN が COMPLETED スケジュールの出欠修正を行う場合は deadline チェックをスキップ」の注記を追加（出欠回答フロー step 7 との整合）。③ 出欠リマインダーバッチ step 2a のスキップ条件に COMPLETED を追加（CANCELLED のみだった。COMPLETED スケジュールに attendance_deadline = NULL の場合リマインダーが誤送信される問題を防止）。④ `POST /reject` エラーテーブルの 422 条件に `AWAITING_CONFIRMATION` を追加（フロー step 3 では不可と明記されていたがエラーテーブルに欠落していた） |
 | 2026-03-07 | 精査(16回目): ① テーブル一覧セクションの `member_attendance_stats` 行がブロック引用直後に連結し Markdown 構造が破損していた問題を修正（空行を挿入）。② 自動完了バッチのクエリ条件に `recurrence_rule IS NULL` を追加（繰り返しの親スケジュールがバッチで誤って COMPLETED に遷移するバグを防止）。③ 出欠回答フロー step 7 に「ADMIN + COMPLETED の場合は deadline チェックをスキップ」を追記（ADMIN が COMPLETED 後に出欠を手動修正する際、期限切れ 409 でブロックされる問題を修正）。④ PATCH /schedules エラーテーブルに `status: "COMPLETED"` の `THIS_AND_FOLLOWING / ALL` 一括設定を 422 とする行を追加（注記には記載があったがエラーテーブルに欠落していた）。⑤ 最終更新日を 2026-03-07 に更新 |
 | 2026-03-06 | visibility = 'ORGANIZATION' + SUPPORTER の閲覧権限ルール確定: min_view_role = 'SUPPORTER+' を明示した場合のみ閲覧可（min_view_role = 'MEMBER+' デフォルトでは閲覧不可）。「運営専用」= min_view_role = 'ADMIN_ONLY' / 'MEMBER+' の明示設定で実現。org デフォルトは organizations.default_schedule_min_view_role = 'SUPPORTER+' で変更可。visibility と min_view_role の 2 軸設計を Section 2 スコープ表・Section 3 備考（SUPPORTER + ORGANIZATION 組み合わせルールを追加）・Section 6 可視性制御に明記 |

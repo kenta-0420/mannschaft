@@ -689,13 +689,13 @@ Pre-signed URL 方式の場合:
 ## 7. Flywayマイグレーション
 
 ```
-V6.011__create_team_pages.sql              -- team_pages テーブル作成
-V6.012__create_team_page_sections.sql      -- team_page_sections テーブル作成
-V6.013__create_member_profiles.sql         -- member_profiles テーブル作成
-V6.014__create_member_profile_fields.sql   -- member_profile_fields テーブル作成
-V6.015__create_photo_albums.sql            -- photo_albums テーブル作成
-V6.016__create_photos.sql                  -- photos テーブル作成
-V6.017__add_photo_albums_cover_fk.sql      -- photo_albums.cover_photo_id FK 追加（循環参照回避）
+V6.012__create_team_pages.sql              -- team_pages テーブル作成
+V6.013__create_team_page_sections.sql      -- team_page_sections テーブル作成
+V6.014__create_member_profiles.sql         -- member_profiles テーブル作成
+V6.015__create_member_profile_fields.sql   -- member_profile_fields テーブル作成
+V6.016__create_photo_albums.sql            -- photo_albums テーブル作成
+V6.017__create_photos.sql                  -- photos テーブル作成
+V6.018__add_photo_albums_cover_fk.sql      -- photo_albums.cover_photo_id FK 追加（循環参照回避）
 ```
 
 **マイグレーション上の注意点**

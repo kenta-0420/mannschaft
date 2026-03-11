@@ -172,8 +172,7 @@
 - 無料枠・単価はすべて **SYSTEM_ADMINが管理画面からリアルタイムに設定変更可能**
 - 課金は翌月請求。チーム数が無料枠以下に戻った場合は翌月から無課金に戻る
 - モジュール課金と組織数課金は **独立した請求軸**（合算して1枚の請求書に表示）
-- 組織種別は組織作成時に選択。変更には SYSTEM_ADMIN の承認が必要（悪用防止）
-- **NONPROFIT 申請時の証明審査**: `org_type=NONPROFIT` を選択した組織は、法人登記証明書等の証憑を提出し SYSTEM_ADMIN が審査・承認するまでは暫定的に FORPROFIT として扱う。承認後に `org_type` を NONPROFIT へ更新し、翌月から優遇課金を適用する
+- 組織種別は組織作成時に選択。ADMIN が管理画面から自己申告で変更可能（承認不要）。変更は翌月の請求サイクルから反映される
 
 #### 課金タイミング
 
@@ -433,7 +432,7 @@
 
 #### 15. スケジュール・出欠管理
 - カレンダー表示（イベント日程）
-- **Googleカレンダーとの双方向同期**
+- **Googleカレンダーとの同期**（Phase 3: アプリ→Google 一方向、Phase 4+: 双方向）
 - ボタン一つで出欠回答（出席・欠席・保留）、管理者による集計・CSV出力
 - カレンダー作成時の出欠機能ON/OFF、締切日時設定
 
@@ -678,7 +677,7 @@
 - **ストレージプラン管理**: ストレージプランの作成・編集（無料枠・月額/年額・超過従量単価・ハードキャップ）。各チームのストレージ使用状況の一覧確認
 - **シーズナル壁紙管理**: 期間限定壁紙の作成・画像アップロード・公開期間設定（開始/終了日時）。プレビュー確認後に公開。有効期間中は全ユーザーへ自動適用
 - **組織数課金設定**: 組織種別（非営利/営利）ごとの無料枠チーム数・超過課金単価（円/月）を設定。変更は翌月請求サイクルから反映。各組織の現在のチーム数・課金状況の一覧確認
-- **組織種別変更承認**: 組織から申請された `org_type` の変更リクエストを審査・承認/拒否
+
 - **消費税設定**: 税名称・税率・表示方式（税込/税抜）の設定
 - **エラーレポート管理**: ユーザーから送信されたエラーレポートの一覧・詳細確認（スタックトレース・発生ページ・ユーザーエージェント・任意コメント）。ステータス管理（未対応 / 対応中 / 解決済み）
 - **アフィリエイト設定**: AmazonアソシエイトのタグIDと表示配置（サイドバー右・バナーフッター等）を管理画面から設定・切り替え。将来は楽天アフィリエイト等の追加も対応できる設計とする
@@ -691,7 +690,7 @@
 
 #### AC. 外部連携
 - LINE Messaging API（通知、アカウント連携）
-- Googleカレンダー（双方向同期）
+- Googleカレンダー（Phase 3: アプリ→Google 一方向同期、Phase 4+: 双方向同期）
 - Instagram / X API（SNSフィードキャッシュ）
 - Amazonアソシエイト（SYSTEM_ADMINがタグIDと表示配置を設定。フリープランのページのサイドバー/バナーにアソシエイトリンクを表示し、クリック報酬による収益化を実現）
 
@@ -731,7 +730,7 @@
 - **カーソルベースページネーション**: `WHERE id < :cursor ORDER BY id DESC LIMIT N`（OFFSET 廃止）
 - **JOIN 一括取得**: タイムライン一覧は投稿者情報・リアクション数・添付ファイルを1クエリで取得
 - **IN 句バッチ取得**: 関連エンティティは `WHERE id IN (...)` で N+1 を排除
-- **カウンターキャッシュ（denormalize）**: `COUNT(*)` クエリを廃止するため、集計値や表示最適化カラムを保持してアトミック更新する（対象: `timeline_posts.reaction_count`, `timeline_posts.reply_count`, `teams.member_count`, `chat_channels.last_message_at`, `chat_channels.last_message_preview`（最新メッセージ冒頭100字）, `chat_channel_members.unread_count`, `bulletin_threads.reply_count`, `schedule_events.attending_count`, `schedule_events.absent_count`, `schedule_events.pending_count`）
+- **カウンターキャッシュ（denormalize）**: `COUNT(*)` クエリを廃止するため、集計値や表示最適化カラムを保持してアトミック更新する（対象: `timeline_posts.reaction_count`, `timeline_posts.reply_count`, `teams.member_count`, `chat_channels.last_message_at`, `chat_channels.last_message_preview`（最新メッセージ冒頭100字）, `chat_channel_members.unread_count`, `bulletin_threads.reply_count`）
 - **ダッシュボード一括取得**: `/dashboard` エンドポイントは内部でも JOIN / Redis を活用し、SQL 発行を最小化する
 - **JWT ロール埋め込み**: JWT ペイロードにロール情報を含め、ロール・パーミッション確認の DB アクセスをゼロにする。ロール変更時は Redis 無効化フラグ（`token:invalidated:{userId}`）で即時反映
 - **FULLTEXT インデックス**: `LIKE '%...%'` によるフルテーブルスキャンを排除。`blog_posts.body`, `bulletin_threads.title`, `timeline_posts.content`, `chat_messages.body` に MySQL FULLTEXT インデックスを付与し `MATCH() AGAINST()` 構文で検索する
@@ -746,8 +745,8 @@
 
 ## DB設計
 
-### 認証・権限 (12テーブル)
-`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `team_role_permissions`, `team_permission_groups`, `permission_group_items`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`
+### 認証・権限 (13テーブル)
+`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `team_role_permissions`, `permission_groups`, `permission_group_permissions`, `user_permission_groups`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`
 
 ※ SYSTEM_ADMIN は `roles` テーブルの1レコード + `user_roles` で割り当て。専用テーブルは設けず RBAC に統一する
 ※ `users`: `last_name` / `first_name`（実名）・`display_name`（愛称1、表示用ニックネーム）・`nickname2`（愛称2、nullable）を持つ。電子印鑑は `last_name` を使用。検索・メンションでは実名・愛称いずれでもヒットするようにする
@@ -755,29 +754,31 @@
 ※ `users.archived_at DATETIME nullable`: 最終ログインから6ヶ月経過時にバッチ処理で付与。null = アクティブ。ログイン成功時にクリアする。アーカイブ中はリスト系クエリから除外し、Redis キャッシュも保持しない
 ※ `role_permissions`: プラットフォームレベルの権限デフォルト（SYSTEM_ADMIN が管理）。コンテンツ削除系パーミッション（`CONTENT_DELETE` 等）は DEPUTY_ADMIN のデフォルトを `false` に設定する
 ※ `team_role_permissions`: チーム/組織レベルの権限カスタマイズ（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `role_id`, `permission_id`, `is_enabled`）。主に MEMBER のデフォルト調整に使用
-※ `team_permission_groups`: ADMIN が作成する名前付き権限グループ（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `name`, `description` nullable, `created_by`）。テンプレートとして保存・複製可能
-※ `permission_group_items`: 各権限グループに含まれるパーミッション（`group_id`, `permission_id`, `is_enabled`）。パーミッションを個別に ON/OFF する
-※ `user_roles`: `team_id` / `organization_id` のスコープカラムを持ち、マルチ所属・複数 DEPUTY_ADMIN に対応。`permission_group_id` (FK → `team_permission_groups`, nullable) を持ち、DEPUTY_ADMIN へのグループ割り当てを管理する。null の場合は `team_role_permissions` のデフォルトを使用
+※ `permission_groups`: ADMIN が作成する名前付き権限グループ（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `name`, `description` nullable, `created_by`）。テンプレートとして保存・複製可能
+※ `permission_group_permissions`: 各権限グループに含まれるパーミッション（`group_id`, `permission_id`, `is_enabled`）。パーミッションを個別に ON/OFF する
+※ `user_permission_groups`: ユーザーと権限グループの多対多中間テーブル（`user_role_id` FK → `user_roles`, `permission_group_id` FK → `permission_groups`）。1ユーザーに複数グループを割り当て可能
+※ `user_roles`: `team_id` / `organization_id` のスコープカラムを持ち、マルチ所属・複数 DEPUTY_ADMIN に対応。権限グループの割り当ては `user_permission_groups` で管理する
 ※ `two_factor_auth`: TOTP シークレット・有効フラグを保持。バックアップコード（8桁 × 10件）をハッシュ化して別カラムに保存し、デバイス紛失時の緊急復旧に対応する
 ※ `password_reset_tokens`: トークンは `SecureRandom` + Base64URL 方式で生成。有効期限は発行から **30分** とし、使用済みトークンは即時無効化する
 
 ### チーム管理 (1テーブル)
 `teams`
 
-※ `organization_id` は nullable。組織に属する場合は値あり、独立チームの場合は NULL
+※ チームと組織の紐付けは `team_org_memberships` テーブルで管理する多対多関係。1つのチームが複数組織に所属可能
 ※ `member_count` カラムを denormalize で保持し、メンバー追加・削除時にアトミック更新する（COUNT クエリ廃止）
 ※ `name`（正式名称）・`nickname1`・`nickname2`（愛称、両方 nullable）を持つ。検索・表示では正式名称と愛称いずれでもヒットするようにする
 ※ `is_searchable BOOLEAN DEFAULT true`: OFF にすると検索結果に表示されない（招待URLのみで参加できる非公開チーム等に対応）
 ※ `archived_at DATETIME nullable`: 全メンバーの最終ログインのうち最新が12ヶ月経過した時点でバッチ処理が付与。null = アクティブ。いずれかのメンバーがログインすると即時クリア
 
-### 組織・マルチ所属 (4テーブル)
-`organizations`, `organization_members`, `team_memberships`, `invitation_links`
+### 組織・マルチ所属 (5テーブル)
+`organizations`, `organization_members`, `team_org_memberships`, `team_memberships`, `invite_tokens`
 
 ※ `organizations`: `name`（正式名称）・`nickname1`・`nickname2`（愛称、両方 nullable）を持つ。検索・表示では正式名称と愛称いずれでもヒットするようにする
-※ `organizations.org_type` ENUM: NONPROFIT/FORPROFIT。組織作成時に選択。組織数課金の無料枠・単価の適用区分に使用する。変更はSYSTEM_ADMINの承認が必要
+※ `organizations.org_type` ENUM: NONPROFIT/FORPROFIT。組織作成時に選択。組織数課金の無料枠・単価の適用区分に使用する。ADMIN が管理画面から自己申告で変更可能（承認不要）
 ※ `organizations.is_searchable BOOLEAN DEFAULT true`: OFF にすると検索結果に表示されない
 ※ `organizations.archived_at DATETIME nullable`: 傘下の全チーム・全メンバーの最終ログインのうち最新が12ヶ月経過した時点でバッチ処理が付与。いずれかのメンバーがログインすると即時クリア
-※ `invitation_links`: `invite_type`（ENUM: `EMAIL` / `URL` / `QR`）・`token`（`SecureRandom` + Base64URL 方式で生成する暗号論的乱数トークン）・`expires_at`（nullable、null=無期限）・`max_uses`（nullable、null=無制限）・`used_count`・`is_active`（手動無効化フラグ）を持つ。QR コードはトークンから動的生成し画像は保存しない。期限切れ・上限到達・`is_active=false` のいずれかで即時失効
+※ `team_org_memberships`: チームと組織の多対多中間テーブル（`team_id`, `organization_id`, `joined_at`）。V2.023 で `teams.organization_id` を DROP し本テーブルへ移行
+※ `invite_tokens`: `invite_type`（ENUM: `EMAIL` / `URL` / `QR`）・`token`（`SecureRandom` + Base64URL 方式で生成する暗号論的乱数トークン）・`expires_at`（nullable、null=無期限）・`max_uses`（nullable、null=無制限）・`used_count`・`is_active`（手動無効化フラグ）を持つ。QR コードはトークンから動的生成し画像は保存しない。期限切れ・上限到達・`is_active=false` のいずれかで即時失効
 
 ### グループ階層 (3テーブル)
 `groups`, `group_members`, `group_hierarchy`
@@ -900,11 +901,13 @@
 ※ `chat_channels`: `last_message_at`・`last_message_preview`（最新メッセージ冒頭100字）を denormalize で保持し、チャンネル一覧取得時の `chat_messages` JOIN を排除
 ※ `chat_channel_members`: `unread_count` を denormalize で保持し、メッセージ送信時に +1・既読時に 0 リセットするアトミック更新で管理
 
-### スケジュール・出欠 (4テーブル)
-`schedule_events`, `attendance_responses`, `event_surveys`, `event_survey_responses`
+### スケジュール・出欠 (7テーブル)
+`schedules`, `schedule_attendances`, `schedule_surveys`, `schedule_survey_responses`, `schedule_attendance_reminders`, `schedule_cross_team_invitations`, `schedule_invitation_responses`
 
-※ `schedule_events`: `attending_count`・`absent_count`・`pending_count` を denormalize で保持し、出欠回答時にアトミック更新する（出欠集計の COUNT クエリ廃止）
-※ `event_surveys` / `event_survey_responses`: イベントに紐付いた簡易アンケート（出欠確認時の追加質問等）。独立したアンケート機能の `surveys` / `survey_responses`（後述）とは設計上別テーブルとして管理する
+※ `schedules`: 三者 XOR 制約（`team_id` / `organization_id` / `user_id` のいずれか1つのみ非 NULL）でスコープを管理。繰り返しルール（`recurrence_rule` JSON）をサポート
+※ `schedule_attendances`: 出欠回答テーブル。`response`（ATTENDING / ABSENT / PENDING）で管理
+※ `schedule_surveys` / `schedule_survey_responses`: スケジュールに紐付いた簡易アンケート（出欠確認時の追加質問等）。独立したアンケート機能の `surveys` / `survey_responses`（後述）とは設計上別テーブルとして管理する
+※ `schedule_cross_team_invitations` / `schedule_invitation_responses`: クロスチーム招待の管理テーブル
 
 ### 予約管理 (3テーブル)
 `reservation_slots`, `reservations`, `reservation_reminders`
@@ -955,11 +958,14 @@
 ### パフォーマンス管理 (2テーブル)
 `performance_metrics`, `performance_records`
 
-### 決済・会費 (3テーブル)
-`payment_plans`, `payment_transactions`, `membership_fees`
+### 決済・会費 (5テーブル)
+`payment_items`, `member_payments`, `stripe_customers`, `stripe_connected_accounts`, `payment_refunds`
 
-※ `payment_plans`: チームが自チームのメンバーから徴収する会費の設定（月会費/年会費/都度払い）。プラットフォームのサブスクリプション（`subscription_plans`）とは別概念
-※ 拡張設計: 将来的に組織レベルの年会費徴収・物販機能を実装する際は、`payment_plans` に `scope_type` (TEAM/ORGANIZATION) カラムを追加することで対応可能な設計とする。物販テーブル群（`products`, `orders`, `order_items` 等）は Phase 8 以降に別セクションとして追加する
+※ `payment_items`: チーム/組織が管理する支払い対象アイテム（月会費/年会費/都度払い/イベント参加費等）。`scope_type`（TEAM/ORGANIZATION）でスコープを管理
+※ `member_payments`: メンバーの支払い記録。Stripe 決済の `payment_intent_id` を保持
+※ `stripe_customers` / `stripe_connected_accounts`: Stripe Connect 連携テーブル
+※ `payment_refunds`: アプリ内全額返金の記録テーブル
+※ 拡張設計: 物販テーブル群（`products`, `orders`, `order_items` 等）は Phase 8 以降に別セクションとして追加する
 
 ### 通報・モデレーション (2テーブル)
 `reports`, `moderation_actions`
@@ -1018,8 +1024,8 @@
 ※ `parking_applications`: 空き区画への申請・抽選エントリー
 ※ `parking_listings`: 区画の譲渡・売買希望リスト
 
-### 外部連携・広告 (4テーブル)
-`line_integration_config`, `google_calendar_sync`, `ad_slots`, `sponsors`
+### 外部連携・広告 (7テーブル)
+`line_integration_config`, `user_google_calendar_connections`, `user_calendar_sync_settings`, `user_schedule_google_events`, `ad_slots`, `sponsors`, `ical_subscriptions`
 
 ※ SNS フィードキャッシュ（Instagram/X API レスポンス）は揮発性データのため MySQL テーブルではなく **Redis**（key: `sns_feed:{teamId}:{provider}`、TTL: 15分）で管理する
 
@@ -1058,7 +1064,6 @@
 | Method | Path | 説明 |
 |--------|------|------|
 | POST | `/teams` | 独立チームの作成 |
-| POST | `/organizations/{orgId}/teams` | 組織配下にチーム作成 |
 | GET | `/teams/{teamId}` | チーム情報取得 |
 | PATCH | `/teams/{teamId}` | チーム情報更新 |
 | DELETE | `/teams/{teamId}` | チーム削除 |
@@ -1066,13 +1071,13 @@
 | POST | `/teams/{teamId}/members` | メンバー追加 |
 | DELETE | `/teams/{teamId}/members/{userId}` | メンバー削除 |
 
-※ チームは組織に属する場合（`organization_id` あり）と独立して存在する場合（`organization_id` = null）の両方を許容する
+※ チームと組織の紐付けは `team_org_memberships` で管理。組織配下へのチーム追加は `POST /organizations/{orgId}/teams/{teamId}/join` で既存チームを参加させる方式
 
 ### 組織管理
-`CRUD /organizations`, `GET /organizations/{id}/teams`, `POST /organizations/{id}/invite`, `POST /invitations/{token}/accept`, `GET /users/{id}/teams`, `GET /users/{id}/organizations`
+`CRUD /organizations`, `GET /organizations/{id}/teams`, `POST /organizations/{id}/invite`, `POST /invite-tokens/{token}/accept`, `GET /me/teams`, `GET /me/organizations`
 
 ### 招待・QRコード
-`POST /teams/{id}/invitations`, `GET /teams/{id}/invitations`, `DELETE /teams/{id}/invitations/{invitationId}`, `POST /organizations/{id}/invitations`, `GET /organizations/{id}/invitations`, `DELETE /organizations/{id}/invitations/{invitationId}`, `POST /invitations/{token}/accept`, `GET /invitations/{token}/verify`
+`POST /teams/{id}/invite-tokens`, `GET /teams/{id}/invite-tokens`, `DELETE /teams/{id}/invite-tokens/{tokenId}`, `POST /organizations/{id}/invite-tokens`, `GET /organizations/{id}/invite-tokens`, `DELETE /organizations/{id}/invite-tokens/{tokenId}`, `POST /invite-tokens/{token}/join`, `GET /invite-tokens/{token}/verify`
 
 ### グループ管理
 `CRUD /groups`, `GET /groups/{id}/members`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{userId}`, `GET /organizations/{id}/groups`

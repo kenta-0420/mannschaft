@@ -271,6 +271,7 @@ users (1) ──── (N) service_record_reactions [user_id]
 | POST | `/api/v1/teams/{teamId}/service-record-fields` | 必要 | カスタムフィールド作成 |
 | PUT | `/api/v1/teams/{teamId}/service-record-fields/{id}` | 必要 | カスタムフィールド更新 |
 | DELETE | `/api/v1/teams/{teamId}/service-record-fields/{id}` | 必要 | カスタムフィールド削除 |
+| PATCH | `/api/v1/teams/{teamId}/service-record-fields/sort-order` | 必要 | カスタムフィールド並び替え（一括更新）|
 | GET | `/api/v1/teams/{teamId}/service-records/settings` | 必要 | 機能設定取得 |
 | PUT | `/api/v1/teams/{teamId}/service-records/settings` | 必要 | 機能設定更新 |
 | POST | `/api/v1/teams/{teamId}/service-records/{id}/reactions` | 必要 | リアクション追加（トグル）|
