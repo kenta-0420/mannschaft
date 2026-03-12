@@ -2,6 +2,39 @@
 
 あらゆる組織・チーム・個人をシームレスに管理するWebアプリケーション。
 
+---
+
+## 目次
+
+- [プロジェクト基本情報](#プロジェクト基本情報)
+- [想定ユースケース](#想定ユースケース)
+- [技術スタック](#技術スタック)
+- [アプリケーション形態](#アプリケーション形態)
+- [アカウント構造](#アカウント構造)
+  - [3層構造（3形態対応）](#3層構造3形態対応)
+  - [ロール・パーミッション](#ロールパーミッション)
+  - [セキュリティ・認証](#セキュリティ認証)
+- [モジュール式テンプレートシステム](#モジュール式テンプレートシステム)
+  - [料金プラン](#料金プラン)
+  - [デフォルト機能一覧](#デフォルト機能全チーム常時有効選択リスト非表示)
+  - [選択式モジュール一覧](#選択式モジュールカタログから選択課金対象)
+  - [レベル別モジュール適用](#レベル別モジュール適用)
+  - [テンプレート × 推奨モジュール対応表](#テンプレート--推奨選択式モジュール対応表プリセット)
+- [主要機能](#主要機能)
+  - [デフォルト機能詳細](#デフォルト機能詳細)
+  - [選択式モジュール詳細](#選択式モジュール詳細)
+  - [管理者ダッシュボード](#管理者ダッシュボード)
+  - [外部連携](#外部連携)
+- [インフラ・パフォーマンス設計](#インフラパフォーマンス設計)
+- [DB設計](#db設計)
+- [API設計](#api設計)
+- [実装フェーズ](#実装フェーズ)
+- [インフラ構成](#インフラ構成)
+- [アーキテクチャ・開発ガイドライン](#アーキテクチャ開発ガイドライン)
+- [Git運用ルール](#git運用ルール)
+
+---
+
 ## プロジェクト基本情報
 
 | 項目 | 値 |
@@ -109,6 +142,8 @@
 ※ `user_roles` は `team_id` / `organization_id` のスコープカラムを持ち、「チームAでは DEPUTY_ADMIN・チームBでは MEMBER」のようなマルチ所属に対応
 
 ### セキュリティ・認証
+
+> 📄 詳細設計: [docs/features/F01_auth.md](docs/features/F01_auth.md) | [docs/features/F03_org_team_member_role.md](docs/features/F03_org_team_member_role.md)
 
 - **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
 - **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
@@ -371,6 +406,9 @@
 - アカウントごとのポップアップ通知（WebSocket）
 
 #### 4. コンテンツ管理 (CMS)
+
+> 📄 詳細設計: [docs/features/F06_cms_blog.md](docs/features/F06_cms_blog.md)
+
 - **ブログ**: 「外部公開用」と「メンバー限定用」の出し分け
 - **お知らせ**: 重要度付き通知配信
 - **広告枠**: Amazonアフィリエイト広告の埋め込み
@@ -417,6 +455,9 @@
 - メンションされた投稿の一覧表示
 
 #### 12. 監査ログ
+
+> 📄 詳細設計: [docs/features/F02_audit_logs.md](docs/features/F02_audit_logs.md)
+
 - 管理者操作の履歴記録（誰がいつ何を変更したか）
 - ロール変更、メンバー追加/削除、設定変更等を自動記録
 - SYSTEM_ADMINによる監査ログ閲覧・検索
@@ -431,6 +472,9 @@
 - 将来の言語追加に対応可能な設計
 
 #### 15. スケジュール・出欠管理
+
+> 📄 詳細設計: [docs/features/F05_schedule_shared.md](docs/features/F05_schedule_shared.md) | [docs/features/F05_schedule_personal.md](docs/features/F05_schedule_personal.md)
+
 - カレンダー表示（イベント日程）
 - **Googleカレンダーとの同期**（Phase 3: アプリ→Google 一方向、Phase 4+: 双方向）
 - ボタン一つで出欠回答（出席・欠席・保留）、管理者による集計・CSV出力
@@ -457,11 +501,17 @@
 - **NGチーム設定**: トラブル防止のため、特定の相手をブロック・非表示にする機能
 
 #### 19. パフォーマンス管理
+
+> 📄 詳細設計: [docs/features/F07_performance.md](docs/features/F07_performance.md)
+
 - カスタムデータ記録（得点、出場時間、走行距離等を自由に定義）
 - チームで記録されたデータが個人の専用ダッシュボードへ自動反映
 - 個人・チーム統計ダッシュボード
 
 #### 20. メンバー紹介
+
+> 📄 詳細設計: [docs/features/F06_member_gallery.md](docs/features/F06_member_gallery.md)
+
 - **メインページ** + 月/年ごとの詳細ページ（階層構造）
 - メインページから各詳細ページへ遷移可能
 - **メンバー一覧ページ**（年度ごと作成）: 画像、名前、一言、拡張フィールド対応
@@ -589,6 +639,9 @@
 - 来店・受付時のスキャンによる本人確認
 
 #### 2. 会費・決済
+
+> 📄 詳細設計: [docs/features/F04_payments_access_control.md](docs/features/F04_payments_access_control.md)
+
 - 月会費・年会費・都度払いの設定
 - 集金管理・支払い状況の一覧表示
 - 組織やチームに対する会費の支払い・集金機能
@@ -599,11 +652,17 @@
 - 予約時間が近づいたらプッシュ通知でリマインド
 
 #### 4. サービス履歴
+
+> 📄 詳細設計: [docs/features/F07_service_records.md](docs/features/F07_service_records.md)
+
 - 施術記録・来店記録・対応履歴等の汎用記録システム
 - チームごとに保存したい項目を自由に設定（カスタムフィールド対応）
 - メンバー個人のダッシュボードへ自動反映
 
 #### 5. 備品管理
+
+> 📄 詳細設計: [docs/features/F07_equipment.md](docs/features/F07_equipment.md)
+
 - 備品・在庫の管理 +「誰が持っているか」のステータス管理
 
 #### 6. ギャラリー
@@ -638,6 +697,9 @@
 - **譲渡希望リスト**: 居住者が不要な区画の譲渡希望を掲示
 
 #### 11. カルテ
+
+> 📄 詳細設計: [docs/features/F07_chart.md](docs/features/F07_chart.md)
+
 - 来店ごとにカルテを作成・蓄積し、顧客の施術履歴を体系的に管理
 - **セクション選択式**: 以下のセクションを管理者が ON/OFF で選択して使用。不要なセクションは非表示にできる
   - 問診票・初回同意書（電子印鑑連携）
@@ -689,6 +751,9 @@
 ### 外部連携
 
 #### AC. 外部連携
+
+> 📄 詳細設計: [docs/features/F08_external_integration.md](docs/features/F08_external_integration.md)
+
 - LINE Messaging API（通知、アカウント連携）
 - Googleカレンダー（Phase 3: アプリ→Google 一方向同期、Phase 4+: 双方向同期）
 - Instagram / X API（SNSフィードキャッシュ）
@@ -750,85 +815,28 @@
 
 ## DB設計
 
+> 📄 各テーブルのカラム定義・制約・設計判断の詳細: [docs/db_design_details.md](docs/db_design_details.md)
+
 ### 認証・権限 (18テーブル)
 `users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `team_role_permissions`, `permission_groups`, `permission_group_permissions`, `user_permission_groups`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`, `email_verification_tokens`, `email_change_tokens`, `oauth_link_tokens`, `mfa_recovery_tokens`, `webauthn_credentials`
 
-※ SYSTEM_ADMIN は `roles` テーブルの1レコード + `user_roles` で割り当て。専用テーブルは設けず RBAC に統一する
-※ `users`: `last_name` / `first_name`（実名）・`display_name`（愛称1、表示用ニックネーム）・`nickname2`（愛称2、nullable）を持つ。電子印鑑は `last_name` を使用。検索・メンションでは実名・愛称いずれでもヒットするようにする
-※ `users.is_searchable BOOLEAN DEFAULT true`: OFF にすると他ユーザーの検索結果に表示されない（メンションは引き続き利用可能）
-※ `users.archived_at DATETIME nullable`: 最終ログインから6ヶ月経過時にバッチ処理で付与。null = アクティブ。ログイン成功時にクリアする。アーカイブ中はリスト系クエリから除外し、Redis キャッシュも保持しない
-※ `role_permissions`: プラットフォームレベルの権限デフォルト（SYSTEM_ADMIN が管理）。コンテンツ削除系パーミッション（`CONTENT_DELETE` 等）は DEPUTY_ADMIN のデフォルトを `false` に設定する
-※ `team_role_permissions`: チーム/組織レベルの権限カスタマイズ（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `role_id`, `permission_id`, `is_enabled`）。主に MEMBER のデフォルト調整に使用
-※ `permission_groups`: ADMIN が作成する名前付き権限グループ（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `name`, `description` nullable, `created_by`）。テンプレートとして保存・複製可能
-※ `permission_group_permissions`: 各権限グループに含まれるパーミッション（`group_id`, `permission_id`, `is_enabled`）。パーミッションを個別に ON/OFF する
-※ `user_permission_groups`: ユーザーと権限グループの多対多中間テーブル（`user_role_id` FK → `user_roles`, `permission_group_id` FK → `permission_groups`）。1ユーザーに複数グループを割り当て可能
-※ `user_roles`: `team_id` / `organization_id` のスコープカラムを持ち、マルチ所属・複数 DEPUTY_ADMIN に対応。権限グループの割り当ては `user_permission_groups` で管理する
-※ `two_factor_auth`: TOTP シークレット・有効フラグを保持。バックアップコード（8桁 × 8件）をハッシュ化して別カラムに保存し、デバイス紛失時の緊急復旧に対応する
-※ `password_reset_tokens`: トークンは `SecureRandom` + Base64URL 方式で生成。有効期限は発行から **30分** とし、使用済みトークンは即時無効化する
-
 ### チーム管理 (1テーブル)
-`teams`
-
-※ チームと組織の紐付けは `team_org_memberships` テーブルで管理する多対多関係。1つのチームが複数組織に所属可能
-※ `member_count` カラムを denormalize で保持し、メンバー追加・削除時にアトミック更新する（COUNT クエリ廃止）
-※ `name`（正式名称）・`nickname1`・`nickname2`（愛称、両方 nullable）を持つ。検索・表示では正式名称と愛称いずれでもヒットするようにする
-※ `is_searchable BOOLEAN DEFAULT true`: OFF にすると検索結果に表示されない（招待URLのみで参加できる非公開チーム等に対応）
-※ `archived_at DATETIME nullable`: 全メンバーの最終ログインのうち最新が12ヶ月経過した時点でバッチ処理が付与。null = アクティブ。いずれかのメンバーがログインすると即時クリア
+`teams` — 正式名称・愛称・member_count(denormalize)・検索可否・アーカイブ状態を管理
 
 ### 組織・マルチ所属 (5テーブル)
 `organizations`, `organization_members`, `team_org_memberships`, `team_memberships`, `invite_tokens`
 
-※ `organizations`: `name`（正式名称）・`nickname1`・`nickname2`（愛称、両方 nullable）を持つ。検索・表示では正式名称と愛称いずれでもヒットするようにする
-※ `organizations.org_type` ENUM: NONPROFIT/FORPROFIT。組織作成時に選択。組織数課金の無料枠・単価の適用区分に使用する。ADMIN が管理画面から自己申告で変更可能（承認不要）
-※ `organizations.is_searchable BOOLEAN DEFAULT true`: OFF にすると検索結果に表示されない
-※ `organizations.archived_at DATETIME nullable`: 傘下の全チーム・全メンバーの最終ログインのうち最新が12ヶ月経過した時点でバッチ処理が付与。いずれかのメンバーがログインすると即時クリア
-※ `team_org_memberships`: チームと組織の多対多中間テーブル（`team_id`, `organization_id`, `joined_at`）。V2.023 で `teams.organization_id` を DROP し本テーブルへ移行
-※ `invite_tokens`: `invite_type`（ENUM: `EMAIL` / `URL` / `QR`）・`token`（`SecureRandom` + Base64URL 方式で生成する暗号論的乱数トークン）・`expires_at`（nullable、null=無期限）・`max_uses`（nullable、null=無制限）・`used_count`・`is_active`（手動無効化フラグ）を持つ。QR コードはトークンから動的生成し画像は保存しない。期限切れ・上限到達・`is_active=false` のいずれかで即時失効
-
 ### グループ階層 (3テーブル)
-`groups`, `group_members`, `group_hierarchy`
-
-※ `group_hierarchy`: 隣接リスト（`parent_group_id`）＋クロージャテーブル方式で実装。深い階層の一括取得には MySQL 8.0 の再帰的 CTE（`WITH RECURSIVE`）を使用する
+`groups`, `group_members`, `group_hierarchy` — 隣接リスト＋クロージャテーブル方式、再帰CTE対応
 
 ### テンプレート・モジュール (6テーブル)
 `team_templates`, `template_modules`, `template_fields`, `module_definitions`, `module_field_definitions`, `module_level_availability`
 
-※ `template_fields`: 業種テンプレートに含まれるカスタム項目の定義（テンプレートレベルの設定。運営が業種別プリセットとして管理）
-※ `module_field_definitions`: 各モジュールが提供する汎用フィールドの定義（モジュールレベルの設定。モジュール固有の入力項目スキーマ）
-
 ### プラン・サブスクリプション (9テーブル)
 `subscription_plans`, `module_prices`, `plan_packages`, `plan_package_modules`, `discount_campaigns`, `team_discount_usages`, `tax_settings`, `team_subscriptions`, `subscription_invoices`
 
-※ `subscription_plans`: プラン種別の定義（FREE / INDIVIDUAL / PACKAGE）。フリープランは選択式モジュール10個まで無料
-※ `module_prices`: 選択式モジュールの個別価格（`module_definition_id`, `monthly_price`, `yearly_price`, `currency`）。SYSTEM_ADMINが管理画面から設定変更。変更は翌請求サイクルから適用
-※ `plan_packages`: パッケージ定義（`name`, `description`, `monthly_price`, `yearly_price`, `is_active`）。SYSTEM_ADMINが管理・随時追加
-※ `plan_package_modules`: パッケージに含まれる選択式モジュールの中間テーブル（`package_id`, `module_definition_id`）
-※ `discount_campaigns`: 期間限定割引キャンペーン（`name`, `discount_type`: PERCENTAGE/FIXED_AMOUNT, `discount_value`, `start_at`, `end_at`, `target_type`: ALL/MODULE/PACKAGE, `target_id` nullable, `coupon_code` nullable, `max_uses` nullable, `used_count`）。SYSTEM_ADMINが設定
-※ `team_discount_usages`: チームへのキャンペーン適用履歴（重複適用防止・上限管理）
-※ `tax_settings`: 消費税設定（`tax_name`, `rate` DECIMAL e.g. 10.00, `is_included_in_price` BOOLEAN, `is_active`）。複数レコードで将来の複数税率に対応できる設計とする
-※ `team_subscriptions`: チームの現在の契約状態（`billing_cycle`: MONTHLY/YEARLY, `current_period_start`, `current_period_end`, `next_billing_date`, `status`: ACTIVE/TRIALING/PAST_DUE/CANCELED）。モジュール個別・パッケージいずれの契約も本テーブルで管理
-※ `subscription_invoices`: 月次/年次の請求書（税抜額・税額・税込額・適用割引・キャンペーンIDを明記）
-
 ### 組織数課金 (2テーブル)
-`org_count_billing_tiers`, `org_count_invoices`
-
-※ `org_count_billing_tiers`: 組織種別ごとの無料枠・課金単価の設定テーブル。SYSTEM_ADMINが管理画面から変更可能
-  - `org_type` ENUM: NONPROFIT/FORPROFIT
-  - `free_tier_count` INT（無料上限チーム数。例: NONPROFIT=20, FORPROFIT=5）
-  - `price_per_unit_monthly` DECIMAL（超過1チームあたりの月額。例: FORPROFIT=200.00）
-  - `currency` VARCHAR DEFAULT 'JPY'
-  - `is_active` BOOLEAN
-  - 各 `org_type` につき有効レコードは1件のみ。変更時は翌月請求サイクルから適用
-※ `org_count_invoices`: 月次の組織数課金請求書
-  - `organization_id`、`billing_month` DATE（月初日）
-  - `org_type` ENUM（発行時点のスナップショット）
-  - `team_count` INT（集計月時点のアクティブチーム数）
-  - `free_tier_count` INT（適用された無料枠数）
-  - `billed_count` INT（課金対象チーム数 = team_count - free_tier_count, MIN 0）
-  - `unit_price` DECIMAL、`subtotal` DECIMAL、`tax_amount` DECIMAL、`total_amount` DECIMAL
-  - `status` ENUM: PENDING/PAID/FAILED
-  - `billed_count = 0` の場合はレコードを作成しない（課金なし月はスキップ）
-  - モジュール課金の `subscription_invoices` とは独立したテーブルだが、同一請求書PDFに合算して表示する
+`org_count_billing_tiers`, `org_count_invoices` — 組織種別(NONPROFIT/FORPROFIT)ごとの無料枠・課金単価管理
 
 ### TODO管理 (3テーブル)
 `todos`, `todo_assignees`, `todo_comments`
@@ -837,82 +845,37 @@
 `dashboard_widget_settings`
 
 ### アクセス解析 (2テーブル)
-`page_view_logs`, `page_view_daily_stats`
-
-※ `page_view_logs`: 生ログ（`target_type` ENUM: TEAM_PROFILE/BLOG_POST/ACTIVITY_RECORD 等, `target_id`, `team_id`, `viewer_type`: MEMBER/GUEST/ANONYMOUS, `viewed_at`）。保持期間 **90日** 後にバッチ物理削除。90日で数千万件規模になりうるため以下のインデックスを必須とする
-  - `INDEX (team_id, viewed_at)` — チーム別期間絞り込みの基本クエリ用（最重要）
-  - `INDEX (target_type, target_id, viewed_at)` — コンテンツ別ランキング集計用
-  - `INDEX (viewed_at)` — 90日バッチ削除の対象抽出用
-※ `page_view_daily_stats`: 日次集計（`target_type`, `target_id`, `team_id`, `date` DATE, `view_count`, `member_view_count`, `guest_view_count`）。永続保持。バッチで毎日 0:00 に前日分を集計・書き込む
-  - `INDEX (team_id, date)` — ダッシュボードの日別・月別グラフ用
-  - `INDEX (target_type, target_id, date)` — コンテンツ別ランキング用
-  - `UNIQUE (target_type, target_id, date)` — 日次集計の二重書き込み防止
+`page_view_logs`, `page_view_daily_stats` — 生ログ90日保持→物理削除、日次集計は永続保持
 
 ### 外観設定 (2テーブル)
 `user_appearance_settings`, `seasonal_themes`
 
-※ `user_appearance_settings`: ユーザーの外観設定（`user_id`, `theme_mode` ENUM: LIGHT/DARK/SYSTEM, `color_preset` ENUM: DEFAULT/BLUE/GREEN/PURPLE/ORANGE）。レコードが存在しない場合はデフォルト（SYSTEM + DEFAULT）を適用
-※ `seasonal_themes`: SYSTEM_ADMINが設定する期間限定壁紙（`name`, `image_url`, `start_at`, `end_at` nullable, `is_active`）。有効期間中はユーザー個人の色設定より優先して全画面に適用
-
 ### ダイレクトメール配信 (2テーブル)
-`direct_mail_logs`, `direct_mail_recipients`
-
-※ `direct_mail_logs`: 送信セッション（`scope_type`: TEAM/ORGANIZATION, `scope_id`, `sender_id`, `subject`, `body`, `recipient_type` ENUM: ALL/GROUP/ROLE/SELECTED, `scheduled_at` nullable, `sent_at` nullable, `status` ENUM: DRAFT/SCHEDULED/SENT/FAILED）
-※ `direct_mail_recipients`: 受信者ごとの配信状況（`log_id`, `user_id`, `email_address`, `status` ENUM: PENDING/SENT/FAILED/BOUNCED, `opened_at` nullable）
-※ **週次送信制限**: チーム/組織単位で週3回まで。制限カウントは Redis（`dm:weekly:{scopeType}:{scopeId}:{isoYearWeek}`、TTL 8日）で管理。Phase 8 の課金導入以降に上限緩和・無制限プランを検討する
+`direct_mail_logs`, `direct_mail_recipients` — 週3回制限はRedisカウンター管理
 
 ### エラーレポート (1テーブル)
-`error_reports`
-
-※ `error_reports`: ユーザーから送信されたエラー情報（`user_id` nullable, `error_message` TEXT, `stack_trace` TEXT, `route` VARCHAR, `user_agent` VARCHAR, `app_version` VARCHAR, `additional_message` TEXT nullable, `status` ENUM: NEW/REVIEWING/RESOLVED, `created_at`）。認証不要の公開エンドポイントで受け付ける
+`error_reports` — 認証不要の公開エンドポイントで受付
 
 ### 広告・アフィリエイト (初期1テーブル / 将来6テーブル)
 `affiliate_configs`（初期）/ `ads`, `ad_campaigns`, `ad_targeting_rules`, `ad_impressions`, `ad_clicks`（将来）
 
-※ `affiliate_configs`: SYSTEM_ADMINが管理するアフィリエイト設定（`provider` ENUM: AMAZON, `tag_id` VARCHAR, `placement` ENUM: SIDEBAR_RIGHT/BANNER_FOOTER, `description` VARCHAR nullable, `is_active` BOOLEAN）。初期はAmazonアソシエイトのみ対応。将来の楽天等の追加に備え `provider` ENUM で拡張できる設計とする
-※ `ads`（将来）: 広告クリエイティブ（`title`, `image_url` S3, `click_url`, `click_type` ENUM: INTERNAL_ORG/EXTERNAL_URL/AFFILIATE, `target_organization_id` nullable（INTERNAL_ORG時）, `is_active`）。SYSTEM_ADMINが審査・管理
-※ `ad_campaigns`（将来）: 広告キャンペーン（`ad_id`, `advertiser_organization_id` nullable, `start_at`, `end_at`, `plan_scope` ENUM: FREE_ONLY/ALL, `daily_impression_limit` INT nullable, `status` ENUM: DRAFT/ACTIVE/PAUSED/ENDED）。フリープランのみに表示するか全プランに表示するかを `plan_scope` で制御
-※ `ad_targeting_rules`（将来）: ターゲティング条件（`campaign_id`, `rule_type` ENUM: ORG_CATEGORY/REGION/USER_ROLE/ALL, `rule_value` VARCHAR）。複数条件は AND 結合。rule_type=ALL は全ユーザー対象（ターゲティングなし）
-※ `ad_impressions` / `ad_clicks`（将来）: インプレッション・クリックの集計ログ（`ad_id`, `campaign_id`, `team_id`, `user_id` nullable, `occurred_at`）。課金計算・効果測定に使用。生ログは90日保持後に物理削除し、日次集計に集約
-
 ### コルクボード (4テーブル)
 `corkboards`, `corkboard_cards`, `corkboard_groups`, `corkboard_card_groups`
-
-※ `corkboards`: ボードマスター（`scope_type` ENUM: PERSONAL/TEAM/ORGANIZATION, `scope_id` nullable, `owner_id` nullable（PERSONALの場合はuser_id）, `name`, `background_style` ENUM: CORK/WHITE/DARK, `is_default` BOOLEAN）。個人・チーム・組織それぞれに複数ボードを作成可能
-※ `corkboard_cards`: カード（`board_id`, `card_type` ENUM: REFERENCE/MEMO/URL/SECTION_HEADER, `ref_type` ENUM nullable: CHAT_MESSAGE/TIMELINE_POST/BULLETIN_THREAD/BLOG_POST/FILE（拡張ENUM: 新機能実装時に Flyway `ALTER TABLE corkboard_cards MODIFY COLUMN ref_type ENUM(...)` で追加。例: SURVEY_RESPONSE/SAFETY_REPORT 等）, `ref_id` BIGINT nullable, `content_snapshot` TEXT nullable（参照元削除後も内容を保持。上限5,000文字を推奨）, `ref_url` VARCHAR nullable, `pos_x` INT, `pos_y` INT, `card_width` INT DEFAULT 200, `card_height` INT DEFAULT 150, `color` ENUM: WHITE/YELLOW/RED/BLUE/GREEN/PURPLE, `user_note` TEXT nullable, `title` VARCHAR nullable, `auto_archive_at` DATETIME nullable, `is_archived` BOOLEAN DEFAULT false, `created_by` FK users）。`SECTION_HEADER` は `title` のみ使用し、他のコンテンツフィールドは NULL。横長タイトルバーとして描画する
-※ `corkboard_groups`: セクション（折りたたみ可能な名前付きコンテナ）（`board_id`, `name` VARCHAR（セクション見出し）, `pos_x` INT, `pos_y` INT, `group_width` INT, `group_height` INT, `color` ENUM: TRANSPARENT/LIGHT_YELLOW/LIGHT_BLUE/LIGHT_GREEN/LIGHT_PURPLE, `is_collapsed` BOOLEAN DEFAULT false）。`is_collapsed=true` 時はタイトルバーのみ描画しセクション内のカードを非表示にする。カードをセクション内に追加すると `corkboard_card_groups` に紐付けが保存される
-※ `corkboard_card_groups`: カードとグループの中間テーブル（`card_id`, `group_id`）。1枚のカードは複数グループに属さない設計とし、移動時は旧グループとの紐付けを更新する
 
 ### QR会員証 (1テーブル)
 `member_cards`
 
 ### メンション (1テーブル)
-`mentions`
-
-※ メンション（@ユーザー名）はタイムライン・チャット・掲示板など複数機能で横断的に使用されるため、ポリモーフィックテーブル（`target_type` + `target_id`）として設計する。Phase 1 で詳細カラム定義を確定すること
+`mentions` — ポリモーフィックテーブル（`target_type` + `target_id`）で複数機能横断
 
 ### タイムライン・通知 (5テーブル)
 `timeline_posts`, `timeline_post_attachments`, `timeline_post_reactions`, `notifications`, `notification_preferences`
 
-※ `notifications`: 既読通知は **90日後** にバッチで物理削除する（大量蓄積防止）
-※ `notification_preferences`: ユーザーが組織/チームごとに通知受信を ON/OFF する設定（`user_id`, `scope_type`: TEAM/ORGANIZATION, `scope_id`, `is_enabled` DEFAULT true）。レコードが存在しない場合は受信する（opt-out 方式）。将来的にはグループ単位の通知制御（`scope_type`: GROUP）への拡張を検討する
-
-※ `timeline_post_attachments`: `attachment_type` は `IMAGE` / `FILE` / `VIDEO_LINK` の ENUM。`VIDEO_LINK` は `video_url`（外部URL）・`video_thumbnail`・`video_title` カラムを持ち、ファイルストレージは使用しない
-※ `timeline_posts`: `reaction_count`・`reply_count` カラムを denormalize で保持し、リアクション追加・削除時にアトミック更新する（COUNT クエリ廃止）
-
 ### チャット (4テーブル)
 `chat_channels`, `chat_messages`, `chat_channel_members`, `chat_message_reactions`
 
-※ `chat_channels`: `last_message_at`・`last_message_preview`（最新メッセージ冒頭100字）を denormalize で保持し、チャンネル一覧取得時の `chat_messages` JOIN を排除
-※ `chat_channel_members`: `unread_count` を denormalize で保持し、メッセージ送信時に +1・既読時に 0 リセットするアトミック更新で管理
-
 ### スケジュール・出欠 (6テーブル)
 `schedules`, `schedule_attendances`, `event_surveys`, `event_survey_responses`, `schedule_attendance_reminders`, `schedule_cross_refs`
-
-※ `schedules`: 三者 XOR 制約（`team_id` / `organization_id` / `user_id` のいずれか1つのみ非 NULL）でスコープを管理。繰り返しルール（`recurrence_rule` JSON）をサポート
-※ `schedule_attendances`: 出欠回答テーブル。`status`（ATTENDING / PARTIAL / ABSENT / UNDECIDED）で管理
-※ `event_surveys` / `event_survey_responses`: スケジュールに紐付いた簡易アンケート（出欠確認時の追加質問等）。独立したアンケート機能の `surveys` / `survey_responses`（後述）とは設計上別テーブルとして管理する
-※ `schedule_cross_refs`: クロスチーム・組織スケジュール招待テーブル（試合マッチング等）
 
 ### 予約管理 (3テーブル)
 `reservation_slots`, `reservations`, `reservation_reminders`
@@ -923,9 +886,6 @@
 ### コンテンツ管理 (9テーブル)
 `blog_posts`, `blog_tags`, `blog_post_tags`, `activity_results`, `activity_participants`, `bulletin_categories`, `bulletin_threads`, `bulletin_replies`, `bulletin_read_status`
 
-※ `bulletin_threads`: `reply_count` を denormalize で保持し、スレッド一覧取得時の COUNT クエリを廃止
-※ `bulletin_read_status`: スレッド削除時にカスケード削除する。既読データは投稿から **90日後** にバッチで物理削除する（蓄積量削減）
-
 ### ギャラリー (2テーブル)
 `photo_albums`, `photos`
 
@@ -935,21 +895,8 @@
 ### ファイル共有 (3テーブル)
 `shared_files`, `shared_folders`, `file_permissions`
 
-※ `shared_files`: チームごとのストレージ使用量を `storage_used_bytes`（BIGINT, bytes）カラムで denormalize 管理。ファイルアップロード時に加算・削除時に減算するアトミック更新で維持する
-※ ストレージ上限・価格は `storage_plans` で一元管理する（ハードコードしない）。超過時はアップロードを拒否しプランアップグレードを促す
-
 ### ストレージ課金 (2テーブル)
 `storage_plans`, `team_storage_subscriptions`
-
-※ `storage_plans`: ストレージプランの定義。SYSTEM_ADMINが管理画面から全項目を設定・変更可能
-  - `name`（例: フリー / スタンダード / プロ）
-  - `included_bytes` BIGINT（無料枠。例: 5GB = 5,368,709,120）
-  - `price_monthly` DECIMAL（月額料金。0 = 無料枠）
-  - `price_yearly` DECIMAL（年額料金）
-  - `price_per_extra_gb` DECIMAL（無料枠超過分の従量単価。nullable = 超過アップロード不可）
-  - `max_bytes` BIGINT nullable（ハードキャップ。null = 従量課金で無制限）
-  - `is_active` BOOLEAN
-※ `team_storage_subscriptions`: チームが加入中のストレージプラン（`team_id`, `storage_plan_id`, `billing_cycle`: MONTHLY/YEARLY, `status`, `current_period_end`）。ストレージプランとモジュールサブスクリプションは独立して管理する
 
 ### 運営ツール (2テーブル)
 `equipment_items`, `equipment_assignments`
@@ -966,20 +913,11 @@
 ### 決済・会費 (6テーブル)
 `payment_items`, `stripe_customers`, `member_payments`, `team_access_requirements`, `organization_access_requirements`, `content_payment_gates`
 
-※ `payment_items`: 支払い項目定義（年会費/月謝/アイテム代金/寄付）。`team_id` / `organization_id` の XOR 制約でスコープを管理
-※ `stripe_customers`: ユーザーの Stripe 顧客 ID 管理（1ユーザー1レコード、遅延生成）
-※ `member_payments`: 支払い記録（Stripe 自動 / ADMIN 手動）。Stripe 決済の `payment_intent_id` を保持
-※ `team_access_requirements` / `organization_access_requirements`: チーム/組織全体ロックに必要な支払い項目の紐付け
-※ `content_payment_gates`: コンテンツ単位のアクセスゲート設定（ポリモーフィック）
-※ 拡張設計: 物販テーブル群（`products`, `orders`, `order_items` 等）は Phase 8 以降に別セクションとして追加する
-
 ### 通報・モデレーション (2テーブル)
 `reports`, `moderation_actions`
 
 ### 監査ログ (1テーブル)
-`audit_logs`
-
-※ 大量蓄積を防ぐため保持期間を **2年**（設定変更可）とし、期限超過分はバッチ処理でアーカイブまたは物理削除する
+`audit_logs` — 保持期間2年（設定変更可）、期限超過分はバッチ削除
 
 ### 回覧板 (2テーブル)
 `circulation_documents`, `circulation_recipients`
@@ -990,50 +928,23 @@
 ### 緊急安否確認 (2テーブル)
 `safety_checks`, `safety_responses`
 
-※ `safety_checks`: 安否確認セッション（`scope_type`: TEAM/ORGANIZATION/GROUP, `scope_id`, `created_by`, `status`: ACTIVE/CLOSED, `reminder_interval_minutes`, `bulletin_thread_id` FK → `bulletin_threads`）。実行と同時に専用掲示板スレッドを自動生成し `bulletin_thread_id` に保存する
-※ `safety_responses`: 個人の回答（`safety_check_id`, `user_id`, `status` ENUM: SAFE/NEED_SUPPORT/OTHER, `message` TEXT nullable, `gps_shared` BOOLEAN DEFAULT false, `gps_latitude` DECIMAL(10,7) nullable, `gps_longitude` DECIMAL(10,7) nullable, `responded_at`）。回答保存後に WebSocket で掲示板スレッドの集計情報をリアルタイム更新する
-
 ### シフト管理 (3テーブル)
 `shift_schedules`, `shift_slots`, `shift_requests`
 
 ### 議決権行使・委任状 (2テーブル)
 `proxy_votes`, `proxy_delegations`
 
-※ `proxy_votes`: 議案・投票セッション（タイトル・期限・定足数・集計結果）を管理。個人の投票回答（`user_id`, `vote_type`: ATTEND/APPROVE/REJECT/ABSTAIN）のカラム設計は Phase 1 で確定すること
-※ `proxy_delegations`: 委任状（委任者 `user_id`・代理人 `delegate_user_id`・対象議案・白紙委任フラグ・電子印鑑記録）を管理
-※ 投票の秘匿性: `is_anonymous` フラグで無記名/記名を切り替え可能。無記名時は集計結果のみ公開し、個人の投票内容は ADMIN にも非公開とする
-
 ### 住民台帳・物件情報 (3テーブル)
 `dwelling_units`, `resident_registry`, `property_listings`
-
-※ `dwelling_units`: 部屋番号・種別・間取り等の居室マスター
-※ `resident_registry`: 区分所有者/賃借人の区別・入退居日を管理。`is_public=false` で ADMIN/DEPUTY_ADMIN のみ閲覧可
-※ `property_listings`: 居住者間の物件売買/賃貸希望の掲示（`listing_type`: SALE/RENT）。駐車場区画の譲渡希望は `parking_listings` で管理するため本テーブルには含まない
 
 ### カルテ (7テーブル)
 `chart_records`, `chart_intake_forms`, `chart_photos`, `chart_body_marks`, `chart_formulas`, `chart_section_settings`, `chart_custom_fields`
 
-※ `chart_records`: カルテ本体（来店日・担当スタッフ・次回推奨メモ・顧客共有フラグ・アレルギー禁忌情報）
-※ `chart_intake_forms`: 問診票・同意書（電子印鑑と連携。初回 or 毎回更新）
-※ `chart_photos`: ビフォーアフター写真（`photo_type`: BEFORE/AFTER, `is_shared_to_customer`）。写真は S3 に保存し CloudFront **署名付きURL（Signed URL）**でのみアクセス可能にする（医療・美容記録のため公開 URL は使用しない）。1カルテあたり最大20枚を推奨上限とする
-※ `chart_body_marks`: 身体チャートのマーク情報（整骨院向け。座標・種別・メモ）
-※ `chart_formulas`: カラー・薬剤レシピ（美容室向け。薬剤名・配合比率・放置時間・パッチテスト記録）
-※ `chart_section_settings`: チームごとのセクション ON/OFF 設定（`team_id`, `section_type` ENUM: `INTAKE_FORM` / `ALLERGY` / `PHOTOS` / `STAFF` / `BODY_CHART` / `FORMULA` / `PATCH_TEST` / `PROGRESS_GRAPH` / `NEXT_MEMO`, `is_enabled`）
-※ `chart_custom_fields`: カスタム項目定義（`team_id`, `field_name`, `field_type`: TEXT/NUMBER/DATE/SELECT/CHECKBOX, `sort_order`）。1チームにつき最大5件
-
 ### 駐車場区画管理 (5テーブル)
 `parking_spaces`, `parking_assignments`, `parking_applications`, `parking_listings`, `registered_vehicles`
 
-※ `parking_spaces`: 区画番号・種別・`price_per_month`（個別価格設定）・`status`（VACANT/OCCUPIED/MAINTENANCE）
-※ `registered_vehicles`: ユーザーの車両登録（`user_id`, `vehicle_type`: CAR/MOTORCYCLE/BICYCLE, `plate_number`（個人情報のため暗号化して保存）, `nickname` nullable）。1ユーザーにつき最大3台まで登録可能
-※ `parking_assignments`: 車両（`vehicle_id`）と区画の紐付け。複数区画の一括割り当てに対応
-※ `parking_applications`: 空き区画への申請・抽選エントリー
-※ `parking_listings`: 区画の譲渡・売買希望リスト
-
 ### 外部連携・広告 (7テーブル)
 `line_integration_config`, `user_google_calendar_connections`, `user_calendar_sync_settings`, `user_schedule_google_events`, `ad_slots`, `sponsors`, `ical_subscriptions`
-
-※ SNS フィードキャッシュ（Instagram/X API レスポンス）は揮発性データのため MySQL テーブルではなく **Redis**（key: `sns_feed:{teamId}:{provider}`、TTL: 15分）で管理する
 
 ---
 
