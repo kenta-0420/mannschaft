@@ -691,8 +691,8 @@ https://{domain}/eq/{qr_code}
 ## 7. Flywayマイグレーション
 
 ```
-V7.010__create_equipment_items_table.sql
-V7.011__create_equipment_assignments_table.sql
+V7.008__create_equipment_items_table.sql
+V7.009__create_equipment_assignments_table.sql
 ```
 
 **マイグレーション上の注意点**

@@ -346,7 +346,7 @@ V3.018__add_personal_schedule_columns.sql
 
 - [x] Google → アプリ への双方向同期（Google Calendar Webhook Push Notifications）の実装フェーズを確定する → **Phase 4+** に決定。Phase 3 は app→Google 一方向同期のみ実装。双方向同期は Webhook 受信サーバーの運用が複雑なため後回し
 - [x] `GET /my/calendar` のレスポンスに個人スケジュールを含める形への更新 → `scope_type = "PERSONAL"`・`scope_id = null`・`scope_name = "個人"` として統合。`min_view_role` / `min_response_role` / `my_response` は null を返す（`F05_schedule_shared.md` Section 4 更新済み）
-- [x] 個人スケジュールを Google カレンダー同期する際の設定管理方法を確定 → `user_calendar_sync_settings` への scope_type='PERSONAL' 追加は不採用（`scope_id` が個人スコープには存在しないため）。代わりに `user_google_calendar_connections.personal_sync_enabled BOOLEAN DEFAULT FALSE` を追加（`F05_schedule_shared.md` Section 3 更新済み・Flyway V3.017 追加）
+- [x] 個人スケジュールを Google カレンダー同期する際の設定管理方法を確定 → `user_calendar_sync_settings` への scope_type='PERSONAL' 追加は不採用（`scope_id` が個人スコープには存在しないため）。代わりに `user_google_calendar_connections.personal_sync_enabled BOOLEAN DEFAULT FALSE` を追加（`F05_schedule_shared.md` Section 3 更新済み・F08 V3.013 CREATE TABLE に統合）
 
 ---
 

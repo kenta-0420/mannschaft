@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟡 設計中
 > **実装フェーズ**: Phase 3
-> **最終更新**: 2026-03-11
+> **最終更新**: 2026-03-12
 > **関連ドキュメント**: 個人スケジュール → `F05_schedule_personal.md` / 外部連携 → `F08_external_integration.md`
 
 ---
@@ -371,6 +371,9 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 | DELETE | `/api/v1/teams/{id}/schedules/{scheduleId}` | 必要（自分が作成: MEMBER以上 / 他者作成: DELETE_OTHERS_CONTENT / 強制: ADMIN）| スケジュール論理削除（繰り返しは `?update_scope` で範囲指定）|
 | POST | `/api/v1/teams/{id}/schedules/{scheduleId}/cancel` | 必要（ADMIN）| キャンセル（status = CANCELLED）。繰り返しは `?update_scope` で範囲指定 |
 | GET | `/api/v1/teams/{id}/schedules/{scheduleId}/attendances` | 必要（ADMIN）| 出欠一覧・集計（ADMIN 用）|
+| PATCH | `/api/v1/teams/{id}/schedules/{scheduleId}/attendances/bulk` | 必要（ADMIN）| 出欠一括更新（ADMIN 用）|
+| GET | `/api/v1/teams/{id}/schedules/{scheduleId}/attendances/export` | 必要（ADMIN）| 出欠一覧CSVエクスポート |
+| POST | `/api/v1/teams/{id}/schedules/{scheduleId}/duplicate` | 必要（MANAGE_SCHEDULES）| スケジュール複製 |
 | POST | `/api/v1/teams/{id}/schedules/{scheduleId}/cross-invite` | 必要（ADMIN）| 他チーム・組織へのスケジュール招待送信 |
 | DELETE | `/api/v1/teams/{id}/schedules/{scheduleId}/cross-invite/{invitationId}` | 必要（ADMIN）| 送信済み招待のキャンセル |
 | GET | `/api/v1/teams/{id}/schedule-invitations` | 必要（ADMIN）| 受信したスケジュール招待一覧 |
@@ -384,6 +387,11 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 | DELETE | `/api/v1/organizations/{id}/schedules/{scheduleId}` | 必要（自分が作成: MEMBER以上 / 他者作成: DELETE_OTHERS_CONTENT / 強制: ADMIN）| 組織スケジュール削除（繰り返しは `?update_scope` で範囲指定）|
 | POST | `/api/v1/organizations/{id}/schedules/{scheduleId}/cancel` | 必要（ADMIN）| 組織スケジュールキャンセル（繰り返しは `?update_scope` で範囲指定）|
 | GET | `/api/v1/organizations/{id}/schedules/{scheduleId}/attendances` | 必要（ADMIN）| チーム別出欠集計（個人情報なし）|
+| GET | `/api/v1/organizations/{id}/schedules/{scheduleId}/attendances/export` | 必要（ADMIN）| 組織出欠集計CSVエクスポート |
+| POST | `/api/v1/organizations/{id}/schedules/{scheduleId}/duplicate` | 必要（MANAGE_SCHEDULES）| 組織スケジュール複製 |
+| GET | `/api/v1/organizations/{id}/schedule-invitations` | 必要（ADMIN）| 受信したスケジュール招待一覧（組織スコープ）|
+| POST | `/api/v1/organizations/{id}/schedule-invitations/{invitationId}/accept` | 必要（ADMIN）| 組織スケジュール招待を承認 |
+| POST | `/api/v1/organizations/{id}/schedule-invitations/{invitationId}/reject` | 必要（ADMIN）| 組織スケジュール招待を拒否 |
 | PATCH | `/api/v1/schedules/{scheduleId}/responses` | 必要（当該スケジュールの min_response_role 以上）| 出欠を回答・変更（チーム/組織スコープ共通の統一エンドポイント）|
 | GET | `/api/v1/schedules/{id}/stats` | 必要（当該スケジュールの min_response_role 以上）| スケジュール単位の出欠集計サマリー（件数のみ・treat_undecided フラグ適用済み）|
 | POST | `/api/v1/schedules/{id}/remind` | 必要（ADMIN）| 未回答（UNDECIDED）メンバーへ即時リマインド通知 |
@@ -393,6 +401,8 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 
 | GET | `/api/v1/organizations/{id}/attendance-stats` | 必要（ADMIN）| 組織内チーム別の出席率（ダッシュボード用）|
 | GET | `/api/v1/teams/{id}/attendance-stats` | 必要（ADMIN）| チームメンバー全員の出席率（ダッシュボード用）|
+| GET | `/api/v1/teams/{id}/attendance-stats/export` | 必要（ADMIN）| チーム出席統計CSVエクスポート |
+| GET | `/api/v1/organizations/{id}/attendance-stats/export` | 必要（ADMIN）| 組織出席統計CSVエクスポート |
 | GET | `/api/v1/me/attendance-stats` | 必要 | 自分の出席率（チーム・組織別・全体）|
 
 ### リクエスト／レスポンス仕様
@@ -487,8 +497,11 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
 |-----------|---|-----------|------|
 | `from` | ISO 8601 date | 今月1日 | 取得開始日（inclusive）|
 | `to` | ISO 8601 date | 今月末日 | 取得終了日（inclusive）|
+| `q` | String | — | キーワード検索（`title` と `location` を部分一致検索）|
 | `event_type` | String | — | 種別フィルタ（PRACTICE / MATCH / EVENT / MEETING / OTHER）|
 | `status` | String | — | 状態フィルタ（SCHEDULED / CANCELLED / COMPLETED）|
+| `cursor` | String | — | ページネーションカーソル（前回レスポンスの `next_cursor`）|
+| `size` | Int | `50` | 1ページあたりの取得件数（最大 100）|
 
 **レスポンス（200 OK）**
 ```json
@@ -537,10 +550,16 @@ users (1) ──── (N) member_attendance_stats           ※ Phase 4+（scop
       "parent_schedule_id": null,
       "is_exception": false
     }
-  ]
+  ],
+  "meta": {
+    "size": 50,
+    "has_next": true,
+    "next_cursor": "eyJzIjoiMjAyNi0wNC0wNVQxMzowMDowMCIsImlkIjoyMH0"
+  }
 }
 ```
 
+> - カーソルは `start_at` + `id` の複合キーでエンコード
 > - `my_response`: リクエスト者自身の出欠情報。`attendance_required = false` の場合、またはリクエスト者が `min_response_role` 未満のロールで出欠対象外の場合は null。形式: `{"status": "...", "comment": "..."}`。`comment` は `comment_option = HIDDEN` のスケジュールでは常に null
 > - `attendance_summary`: 当該スケジュールの `min_response_role` 以上のロールを持つリクエスト者のみ返す（min_response_role 未満の場合は null）。内容は件数集計のみで個人情報は含まない
 > - `min_view_role` に基づくフィルタリング: SUPPORTER は `min_view_role IN ('ANYONE', 'SUPPORTER+')` のスケジュールのみ返す。MEMBER は `min_view_role IN ('ANYONE', 'SUPPORTER+', 'MEMBER+')` を返す。DEPUTY_ADMIN / ADMIN はすべて（`ADMIN_ONLY` 含む）返す
