@@ -829,8 +829,8 @@
 ### グループ階層 (3テーブル)
 `groups`, `group_members`, `group_hierarchy` — 隣接リスト＋クロージャテーブル方式、再帰CTE対応
 
-### テンプレート・モジュール (6テーブル)
-`team_templates`, `template_modules`, `template_fields`, `module_definitions`, `module_field_definitions`, `module_level_availability`
+### テンプレート・モジュール (9テーブル)
+`team_templates`, `template_modules`, `template_fields`, `module_definitions`, `module_field_definitions`, `module_level_availability`, `team_enabled_modules`, `module_recommendations`, `team_module_snapshots`
 
 ### プラン・サブスクリプション (9テーブル)
 `subscription_plans`, `module_prices`, `plan_packages`, `plan_package_modules`, `discount_campaigns`, `team_discount_usages`, `tax_settings`, `team_subscriptions`, `subscription_invoices`
@@ -922,8 +922,8 @@
 ### 回覧板 (2テーブル)
 `circulation_documents`, `circulation_recipients`
 
-### 電子印鑑 (1テーブル)
-`electronic_seals`
+### 電子印鑑 (2テーブル)
+`electronic_seals`, `seal_stamp_logs`
 
 ### 緊急安否確認 (2テーブル)
 `safety_checks`, `safety_responses`
@@ -1109,7 +1109,7 @@
 `GET/POST /circulation`, `GET/PUT/DELETE /circulation/{id}`, `POST /circulation/{id}/stamp`, `GET /circulation/{id}/status`, `GET /circulation/my`
 
 ### 電子印鑑
-`GET /users/{id}/seal`, `POST /users/{id}/seal/regenerate`
+`GET /users/{id}/seal`, `POST /users/{id}/seal/regenerate`, `GET /users/{id}/seal/stamps`, `POST /seal/stamps/{stampId}/revoke`, `GET /seal/stamps/{stampId}/verify`
 
 ### 緊急安否確認
 `POST /safety-checks` (実行・掲示板スレッド自動生成), `GET /safety-checks/{id}`, `PATCH /safety-checks/{id}/close`, `POST /safety-checks/{id}/respond` (GPS座標・メッセージ・gps_shared フラグを含む), `GET /safety-checks/{id}/results` (集計・GPS位置一覧), `GET /safety-checks/my` (未回答確認・ログイン直後チェック用)
@@ -1124,7 +1124,7 @@
 `GET/POST /dwelling-units`, `GET/PUT/DELETE /dwelling-units/{id}`, `GET/POST /dwelling-units/{id}/residents`, `PUT/DELETE /dwelling-units/{unitId}/residents/{id}`, `GET/POST /property-listings`, `GET/PUT/DELETE /property-listings/{id}`
 
 ### カルテ
-`GET/POST /charts`, `GET/PUT/DELETE /charts/{id}`, `POST /charts/{id}/photos`, `DELETE /charts/photos/{id}`, `GET/PUT /charts/{id}/intake-form`, `PUT /charts/{id}/body-marks`, `GET/POST /charts/{id}/formulas`, `PUT/DELETE /charts/formulas/{id}`, `GET /charts/{id}/pdf`, `PATCH /charts/{id}/share`, `GET /charts/customer/{userId}`, `GET/PUT /charts/settings/sections`, `GET/POST /charts/settings/custom-fields`, `PUT/DELETE /charts/settings/custom-fields/{id}`
+`GET/POST /charts`, `GET/PUT/DELETE /charts/{id}`, `POST /charts/{id}/photos`, `DELETE /charts/photos/{id}`, `GET/PUT /charts/{id}/intake-form`, `PUT /charts/{id}/body-marks`, `GET/POST /charts/{id}/formulas`, `PUT/DELETE /charts/formulas/{id}`, `GET /charts/{id}/pdf`, `PATCH /charts/{id}/share`, `POST /charts/{id}/stamp`, `GET /charts/customer/{userId}`, `GET/PUT /charts/settings/sections`, `GET/POST /charts/settings/custom-fields`, `PUT/DELETE /charts/settings/custom-fields/{id}`
 
 ### 駐車場区画管理
 `GET/POST /parking/spaces`, `GET/PUT/DELETE /parking/spaces/{id}`, `POST /parking/spaces/bulk-assign`, `GET /parking/spaces/vacant`, `GET/POST /parking/applications`, `PATCH /parking/applications/{id}/approve`, `GET/POST /parking/listings`, `GET/PUT/DELETE /parking/listings/{id}`
@@ -1153,6 +1153,10 @@
 ### 広告・アフィリエイト
 `GET /ads/active` (ページ属性に応じたアクティブ広告取得・認証不要), `POST /ads/{id}/impression` (インプレッション記録・将来), `POST /ads/{id}/click` (クリックログ記録・将来), `GET/POST/PUT/PATCH/DELETE /system-admin/affiliate-configs` (アフィリエイト設定管理), `GET/POST /system-admin/ads` (将来: 広告クリエイティブ管理), `PUT/DELETE /system-admin/ads/{id}` (将来), `GET/POST /system-admin/ad-campaigns` (将来: キャンペーン管理), `PUT/DELETE /system-admin/ad-campaigns/{id}` (将来), `GET /system-admin/ad-campaigns/{id}/stats` (将来: インプレッション・クリック統計)
 
+### プロモーション配信（ターゲット通知・クーポン）
+ADMIN/事業者（整骨院・美容院等）が郵便番号・ロール等の属性でセグメントを定義し、メンバー・サポーターにプッシュ通知型のプロモーション（クーポン・販促情報）を配信する。通知基盤（F04.3）の `notification_type = PROMOTION` として既存チャネル（IN_APP / Push / LINE）で配信。
+`GET/POST /promotions` (プロモーション一覧/作成), `GET/PUT/DELETE /promotions/{id}` (詳細/更新/削除), `POST /promotions/{id}/publish` (配信実行), `GET /promotions/{id}/stats` (開封率・クーポン利用率等の効果測定), `GET/POST /promotions/{id}/segments` (ターゲットセグメント管理: 郵便番号・ロール・チーム属性), `GET/POST /coupons` (クーポン一覧/作成), `GET/PUT/DELETE /coupons/{id}` (詳細/更新/無効化), `POST /coupons/{id}/redeem` (クーポン利用), `GET /coupons/my` (自分の受け取り済みクーポン一覧), `GET /system-admin/promotions/billing` (プロモーション課金状況一覧)
+
 ---
 
 ## 実装フェーズ
@@ -1167,7 +1171,7 @@
 | **6** | CMS（ブログ・活動記録）+ メンバー紹介 + ギャラリー | CMS API群 |
 | **7** | サービス履歴 + パフォーマンス管理 + 備品管理 + カルテ | サービス履歴API + パフォーマンスAPI + 備品API + カルテAPI |
 | **8** | マッチング・対外交流 + 会費・決済 + 議決権行使・委任状 | マッチングAPI + 決済API + 議決権行使API |
-| **9** | LINE連携・SNS・広告・スポンサー + 住民台帳 + 駐車場区画管理 | 外部連携API群 + 住民台帳API + 駐車場API |
+| **9** | LINE連携・SNS・広告・スポンサー + プロモーション配信（郵便番号ターゲティング・クーポン） + 住民台帳 + 駐車場区画管理 | 外部連携API群 + プロモーションAPI + 住民台帳API + 駐車場API |
 | **10** | 管理者ダッシュボード + システム管理者ダッシュボード + 通報・モデレーション + 監査ログ | 管理画面 + 運用ツール |
 | **11** | ポリッシュ・テスト・Docker化 | 本番デプロイ可能 |
 
