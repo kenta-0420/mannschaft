@@ -925,8 +925,8 @@
 ### 電子印鑑 (2テーブル)
 `electronic_seals`, `seal_stamp_logs`
 
-### 緊急安否確認 (2テーブル)
-`safety_checks`, `safety_responses`
+### 緊急安否確認 (5テーブル)
+`safety_checks`, `safety_responses`, `safety_check_message_presets`, `safety_check_templates`, `safety_response_followups`
 
 ### シフト管理 (3テーブル)
 `shift_schedules`, `shift_slots`, `shift_requests`

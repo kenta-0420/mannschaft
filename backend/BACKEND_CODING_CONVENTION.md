@@ -26,6 +26,37 @@
     - 例: `AuthLoginController`, `AuthOAuthController`
 * **データ変換**: EntityとDTOの変換には **MapStruct** を使用してください。
     - 各機能パッケージ内に `Mapper` インターフェースを作成し、手動での詰め替え（setter地獄）を避けること。
+
+### MapStruct 変換パターン
+
+各機能パッケージ内に `[Feature]Mapper` インターフェースを1つ作成し、`@Mapper(componentModel = "spring")` を付与して Spring Bean として注入する。
+
+```java
+// ① 基本変換（フィールド名が一致する場合は自動マッピング）
+@Mapper(componentModel = "spring")
+public interface UserMapper {
+    UserDetailResponse toDetailResponse(UserEntity entity);
+    UserSummaryResponse toSummaryResponse(UserEntity entity);
+    List<UserSummaryResponse> toSummaryList(List<UserEntity> entities);
+}
+
+// ② フィールド名が異なる場合
+@Mapping(source = "team.name", target = "teamName")
+MemberResponse toResponse(UserEntity user);
+
+// ③ 変換ロジックが必要な場合（default メソッド）
+default String formatFullName(UserEntity user) {
+    return user.getLastName() + " " + user.getFirstName();
+}
+
+// ④ null 時のデフォルト値
+@Mapping(target = "avatarUrl", defaultValue = "/images/default-avatar.png")
+UserSummaryResponse toSummary(UserEntity entity);
+```
+
+**禁止事項**:
+- Entity → Entity の変換に MapStruct を使わない（Entity の状態変更はビジネスメソッド経由で行うこと）。
+- 1つの Mapper が他機能の Entity に依存する場合は、`uses = {OtherMapper.class}` で委譲する（直接変換しない）。
 * **メソッドの長さ**: 1メソッドは **200行以内** とします（絶対上限）。ただし、Service分割の判断基準（§2.1）では **100行超過** で分割を検討するため、実質的には100行を超えたら見直しの対象とし、200行は「いかなる理由でも超えてはならない」ハードリミットとする。
 * **ネストの深さ**: `if` や `for` のネストは **3階層以内** を目指し、**早期 return（ガード句）** を活用して可読性を高めてください。
 * **文字列結合**: Java 21+ の最適化（`StringConcatFactory`）を活用するため、ループ内を含め、原則として `+` 演算子による結合を許可する。ただし、極端にループ回数が多い場合や、パフォーマンスが最優先される特殊な処理に限り、明示的な `StringBuilder` の使用を検討すること。
@@ -80,6 +111,24 @@
     - 数値達成のみを目的とせず、**境界値テスト**や**異常系パターンの網羅**を優先すること。
 * **例外の処理**: 例外の握り潰し（catchブロックを空にする）は原則禁止です。必ずログ出力または再スローを行ってください。
 * **バリデーション**: メソッドの入り口で **引数チェック（Validation）** を実施し、不正な場合は早期に例外を投げてください。
+
+### バリデーションの責務分離
+
+#### Controller層（Jakarta Bean Validation）— 形式チェック
+Request DTO に Jakarta Bean Validation アノテーションを付与し、「入力値の形式」を検証する。
+- `@NotBlank`, `@NotNull`, `@Size`, `@Email`, `@Pattern`, `@Min`, `@Max` 等
+- 「このフィールドは必須」「8文字以上」「メール形式」といった、ビジネスロジックに依存しない形式検証が対象
+
+#### Service層（コード内チェック）— ビジネスルールチェック
+Service メソッド内でビジネスルールを検証し、違反時は `BusinessException` をスローする。
+- 「このメールアドレスは既に登録済み」
+- 「このチームの定員を超えている」
+- 「この操作は ADMIN 権限が必要」
+
+#### ルール
+- Controller で形式が正しいことを保証し、Service は形式チェック済みの値だけを扱う
+- **カスタムバリデーションアノテーション（`@UniqueEmail` 等）は作成しない**。DB アクセスを伴うチェックは Service の責務であり、アノテーション化すると追跡が困難になるため。
+- **グループバリデーション（`groups`）は使わない**。Create / Update で DTO を分離するため不要（`.claudecode.md` §19 参照）。
 * **Null安全**: 戻り値が空になる可能性がある場合は `Optional` を検討し、原則として `null` を直接返さないでください。
 * **トランザクション管理**:
     - Service クラスのクラスレベルに `@Transactional(readOnly = true)` を付与する（デフォルトを読み取り専用にする）。
@@ -385,6 +434,47 @@ npx lint-staged
 #### 強制力
 * フックのスキップ（`git commit --no-verify`）は緊急時のみに限定し、通常の開発では禁止する。
 * 新規開発者のオンボーディング手順に `./gradlew installGitHooks`（バックエンド）および `npm install`（フロントエンド、Husky が `prepare` スクリプト経由で自動設定）を含めること。
+
+### テストデータ作成パターン（TestFixture 方式）
+
+テストデータの生成を集約するため、**TestFixture クラス**を作成する。
+
+#### 配置ルール
+```
+src/test/java/com/mannschaft/app/
+├── common/
+│   └── TestFixture.java          # 共通ヘルパー（User, Team 等の頻出エンティティ）
+└── [feature]/
+    └── [Feature]TestFixture.java  # 機能固有のテストデータ
+```
+
+#### 書き方
+```java
+public class TestFixture {
+    // 「最低限有効なデフォルト値」を持つ static メソッドを用意する
+    public static UserEntity defaultUser() {
+        return UserEntity.builder()
+            .email("test@example.com")
+            .lastName("テスト")
+            .firstName("太郎")
+            .displayName("テスト太郎")
+            .build();
+    }
+
+    // テストごとに必要なフィールドだけオーバーライドする
+    public static UserEntity userWithRole(RoleType role) {
+        return defaultUser().toBuilder()
+            .role(role)
+            .build();
+    }
+}
+```
+
+#### ルール
+- DB に保存する場合は **Repository 経由**で行う: `userRepository.save(TestFixture.defaultUser())`
+- **手書きの INSERT SQL は禁止**（エンティティの変更に追従できなくなるため）
+- テスト間でデータが干渉しないよう、`@Transactional`（自動ロールバック）または `@BeforeEach` でクリーンアップする
+- テストメソッド名は日本語を許容する（例: `void 管理者のみチーム作成が可能()`）。テストの意図を明確にすることを優先する
 
 ### テスト実行環境
 * **統合テスト**: データベースを用いた統合テストには **Testcontainers** (MySQL 8.0) を使用する。ローカル環境に MySQL をインストールする必要はない。
