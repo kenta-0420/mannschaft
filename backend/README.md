@@ -401,7 +401,9 @@
 - 組織TODO（担当者・担当チームの割り振り）
 
 #### 3. タイムライン・コミュニケーション
-- X（旧Twitter）風UIのチーム内限定投稿・交流
+- X（旧Twitter）風UIのチーム内限定投稿・交流（クローズドタイムライン）
+- プラットフォーム全体のパブリックタイムライン（ソーシャルプロフィールによる匿名投稿 + チーム/組織の公式投稿）
+- ソーシャルプロフィール（匿名人格、1ユーザー最大3つ）+ フォロー機能
 - LINE連携による自動通知（日程更新、出欠督促）
 - アカウントごとのポップアップ通知（WebSocket）
 
@@ -868,8 +870,11 @@
 ### メンション (1テーブル)
 `mentions` — ポリモーフィックテーブル（`target_type` + `target_id`）で複数機能横断
 
-### タイムライン・通知 (5テーブル)
-`timeline_posts`, `timeline_post_attachments`, `timeline_post_reactions`, `notifications`, `notification_preferences`
+### タイムライン・通知 (8テーブル)
+`timeline_posts`, `timeline_post_attachments`, `timeline_post_reactions`, `timeline_bookmarks`, `timeline_post_edits`, `user_mutes`, `notifications`, `notification_preferences`
+
+### ソーシャルプロフィール・フォロー (2テーブル)
+`user_social_profiles`, `follows`
 
 ### チャット (4テーブル)
 `chat_channels`, `chat_messages`, `chat_channel_members`, `chat_message_reactions`
@@ -913,8 +918,8 @@
 ### 決済・会費 (6テーブル)
 `payment_items`, `stripe_customers`, `member_payments`, `team_access_requirements`, `organization_access_requirements`, `content_payment_gates`
 
-### 通報・モデレーション (2テーブル)
-`reports`, `moderation_actions`
+### 通報・モデレーション (1テーブル)
+`content_reports` — ポリモーフィック通報管理（`target_type` + `target_id`）。対応アクション（削除・凍結）は API パラメータで実行
 
 ### 監査ログ (1テーブル)
 `audit_logs` — 保持期間2年（設定変更可）、期限超過分はバッチ削除
@@ -1025,7 +1030,10 @@
 `GET/POST /todos`, `GET/PUT/DELETE /todos/{id}`, `PATCH /todos/{id}/status`, `POST /todos/{id}/assignees`, `DELETE /todos/{id}/assignees/{userId}`, `POST /todos/{id}/comments`, `GET /todos/my`, `GET /teams/{id}/todos`, `GET /organizations/{id}/todos`
 
 ### タイムライン
-`GET/POST /timeline`, `GET/PUT/DELETE /timeline/{id}`, `POST /timeline/{id}/replies`, `POST/DELETE /timeline/{id}/reactions`, `PATCH /timeline/{id}/pin`
+`GET/POST /timeline`, `GET/PUT/DELETE /timeline/{id}`, `POST/GET /timeline/{id}/replies`, `POST/DELETE /timeline/{id}/reactions`, `GET /timeline/{id}/reactions`, `PATCH /timeline/{id}/pin`, `POST/DELETE /timeline/{id}/bookmark`, `GET /timeline/bookmarks`, `GET /timeline/my`, `GET /timeline/search`, `GET /timeline/drafts`, `GET /timeline/scheduled`, `GET /timeline/{id}/edits`, `PUT /timeline/{id}/read`, `POST/DELETE /mutes`, `GET /mutes`
+
+### ソーシャルプロフィール・フォロー
+`POST /social-profiles`, `GET /social-profiles/me`, `GET /social-profiles/handle/{handle}`, `PUT/DELETE /social-profiles/{id}`, `PATCH /admin/social-profiles/{id}/freeze`, `POST /follows`, `DELETE /follows/{followedType}/{followedId}`, `GET /follows/following`, `GET /follows/followers`, `GET /follows/check`
 
 ### チャット
 `CRUD /chat/channels`, `GET /chat/channels/{id}/messages`, `POST /chat/channels/{id}/messages`, `PUT/DELETE /chat/messages/{id}`, `POST /chat/messages/{id}/reactions`, `DELETE /chat/messages/{id}/reactions/{emoji}`, `WS /ws/chat`
@@ -1073,7 +1081,7 @@
 `GET /search?q={query}&type={type}&scope={scope}`, `GET /search/suggestions`
 
 ### 通報・モデレーション
-`POST /reports`, `GET /admin/reports`, `PATCH /admin/reports/{id}/resolve`, `POST /admin/moderation/ban/{userId}`, `DELETE /admin/moderation/ban/{userId}`
+`POST /reports`, `GET /admin/reports`, `GET /admin/reports/{id}`, `PATCH /admin/reports/{id}`
 
 ### 監査ログ
 `GET /admin/audit-logs`, `GET /system-admin/audit-logs`

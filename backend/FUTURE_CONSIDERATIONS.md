@@ -147,6 +147,52 @@ Phase 5 では個人の丸印（認印）のみを実装。将来、組織とし
 - 用途例: 組織間契約書、公式声明への承認、外部向け証明書
 - 角印の押印権限: ADMIN のみ（組織を代表する印鑑のため）
 
+### シフト管理 — `assigned_user_ids` の正規化テーブル移行
+
+`shift_slots.assigned_user_ids`（JSON 配列）は現行設計で問題なく動作するが、`GET /shifts/my` がユーザーのシフトを全チームから横断検索する際に `JSON_CONTAINS` のフルスキャンがボトルネックになる可能性がある。Redis キャッシュ（`mannschaft:cache:user-shifts:{userId}`、TTL 30分）で緩和するが、キャッシュミス時のレイテンシ突発悪化が懸念される。
+
+**移行候補**: `shift_slot_assignments` 正規化テーブル
+- `slot_id` BIGINT UNSIGNED FK → shift_slots (ON DELETE CASCADE)
+- `user_id` BIGINT UNSIGNED FK → users (ON DELETE CASCADE)
+- UNIQUE KEY `uq_slot_assignments (slot_id, user_id)`
+- INDEX `idx_slot_assignments_user (user_id, slot_id)` — `GET /shifts/my` の高速化
+
+**移行判断基準**: チーム数 × シフト枠数が増加し、Redis キャッシュミス時のクエリが 100ms を超えるようになった場合に移行を検討する。
+
+### 予約管理 — シフト確定時の予約枠自動生成（Phase 5+）
+
+Phase 3 ではシフトと予約枠の連携は参照のみ（シフト外の枠作成時に警告表示するがブロックしない）。シフトの粒度（勤務時間帯）と予約枠の粒度（30分メニュー単位）が異なるため、マッピングルールの設計が複雑。シフト管理と予約管理の両方が安定稼働した後に検討する。
+
+- `ShiftPublishedEvent` を購読し、確定シフトの勤務時間帯からデフォルトメニューの予約枠を自動生成するリスナーを追加
+- ADMIN が自動生成ルールを設定（例: 「田中スタッフの午前シフト → 整体60分コースの枠を30分間隔で自動作成」）
+- 自動生成された枠は `is_auto_generated = TRUE` で識別し、ADMIN が個別に編集可能
+
+### 予約管理 — メニューマスターテーブル（Phase 5+）
+
+Phase 3 では予約枠の `title` はフリーテキスト。多業種対応（整骨院・飲食店・ジム等）のため、汎用的なメニューマスター設計が困難。フロントエンドの入力サジェスト（過去タイトル候補表示）で入力の一貫性を補完する。利用パターンが蓄積された段階でマスター化を検討する。
+
+- `reservation_menus` テーブル: id, team_id, name, duration_minutes, price, description, display_order, is_active
+- 予約枠作成時に `menu_id` を指定すると `title` / `price` / 枠の長さを自動設定
+- メニュー CRUD API（`/api/v1/teams/{teamId}/reservation-menus`）
+
+### 予約管理 — キャンセル待ち機能（Phase 5+）
+
+Phase 3 では `FULL` → キャンセル → `AVAILABLE` に自動復帰する仕組みでMVPは十分。利用規模が成長し、人気枠が常に FULL になるほどの需要が出てから実装する。
+
+- `reservation_waitlist` テーブル: id, reservation_slot_id, user_id, line_preference_id (nullable), position, status, notified_at, expires_at, created_at
+- 空きが発生したら待ちリストの先頭ユーザーに自動通知（`notification_type = RESERVATION_WAITLIST_AVAILABLE`）
+- 通知後の有効期限（例: 30分）以内に予約しない場合、次の待ちユーザーに通知を繰り上げ
+- ADMIN 設定: `waitlist_enabled`（デフォルト: FALSE）、`waitlist_max_per_slot`（1枠あたりの最大待ち人数）
+
+### シフト管理 — Google カレンダー自動同期
+
+Phase 3 ではシフト確定後の Google カレンダー同期は実装しない。`ShiftPublishedEvent` を発行する設計は組み込み済みのため、将来このイベントを購読して Google Calendar API に連携するリスナーを追加するだけで対応可能。
+
+- `user_calendar_sync_settings` に `sync_shifts BOOLEAN DEFAULT FALSE` カラムを追加（ユーザーが個別に ON/OFF）
+- 同期対象: `PUBLISHED` 状態のシフトのうち、自分が `assigned_user_ids` に含まれるスロット
+- イベント生成: slot_date + start_time/end_time → Google Calendar Event として同期
+- 公開後に `assigned_user_ids` が変更された場合: `ShiftAssignmentChangedEvent` を購読して該当イベントを更新/削除
+
 ### AI活用
 - チャットボットによるFAQ自動応答
 - パフォーマンスデータの分析・レコメンド
@@ -273,6 +319,35 @@ Phase 5 では個人の丸印（認印）のみを実装。将来、組織とし
 - [ ] 非営利団体への `org_type=NONPROFIT` 設定に必要な証明（法人登記等）の確認・審査フローを設計する
 - [ ] 課金タイミングルール（月のどこで契約しても当月は課金対象・日割りなし）をStripe等の決済基盤で実装する方法を確認する
 - [ ] ダッシュボード課金サマリーウィジェットの `/billing/current-month` APIが返すレスポンス形式（課金軸ごとの内訳・税込合計）を確定する
+
+### ブログ記事の有料販売（Phase 8+）
+
+個人ブログ記事を有料で販売する仕組み。note や Substack のようなクリエイターエコノミー機能。Phase 8 の決済基盤が整った段階で検討する。
+
+**検討事項**
+- [ ] 記事の価格設定（著者が自由に設定 / プラットフォーム手数料率の決定）
+- [ ] 購入済み記事の閲覧管理テーブル設計（`blog_post_purchases`: user_id, blog_post_id, price, purchased_at）
+- [ ] 記事プレビュー範囲の設定（冒頭 N 文字を無料公開、残りを有料壁で保護）
+- [ ] 著者への収益分配フロー（Stripe Connect / 振込バッチ等）
+- [ ] 返金ポリシーの策定
+- [ ] `blog_posts.visibility` に `PAID` を追加するか、別カラム `price` で管理するかの設計判断
+- [ ] 特定商取引法・資金決済法との適合確認
+
+### ハッシュタグ基盤（Phase 9+）
+
+タイムライン・掲示板・チャットを横断した統一的なハッシュタグ機能。Phase 4 のタイムライン設計時に検討したが、有効に機能させるには「タグ別フィード」「トレンド表示」「オートコンプリート」等の周辺機能が必要であり、単体での実装は工数に見合わない。Phase 9 のグローバル検索機能と合わせて統一タグ基盤として設計する。
+
+**必要テーブル（Phase 9+ で設計確定）**
+- `hashtags`: id, name (VARCHAR(100), UNIQUE), usage_count (INT, denormalized), created_at
+- `hashtaggables`: id, hashtag_id (FK), target_type ENUM('TIMELINE_POST', 'BULLETIN_THREAD', 'CHAT_MESSAGE'), target_id, created_at — ポリモーフィック中間テーブル
+
+**実装項目**
+- [ ] ハッシュタグのパース・正規化ロジック（全角→半角、大文字→小文字統一）
+- [ ] タグ別フィード API（`GET /hashtags/{name}/posts`）
+- [ ] トレンドハッシュタグ API（`GET /hashtags/trending` — 直近24時間の usage_count 上位）
+- [ ] オートコンプリート API（`GET /hashtags/suggest?q=xxx` — 前方一致）
+- [ ] フロントエンドの `#` ハイライト表示 + リンク化
+- [ ] タイムライン・掲示板・チャット横断検索との統合
 
 ### Phase 9 開始前（広告・外部連携）
 - [ ] 広告 DB テーブルの追加範囲を機能設計時に確定する

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(git:*)",
+      "Bash(grep:*)",
+      "Bash(pwd && ls docs/features/F07*)",
+      "Bash(ls F07* 2>/dev/null; ls *.md | head -20)",
+      "Bash(ls /c/cloudeProject/docs/features/F05*)",
+      "Bash(find C:\\\\cloudeProject/docs/features -name \"*chat*\" -o -name \"*4.2*\" 2>/dev/null | head -20)"
+    ]
+  }
+}
