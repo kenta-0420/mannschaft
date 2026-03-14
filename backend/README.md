@@ -402,8 +402,8 @@
 
 #### 3. タイムライン・コミュニケーション
 - X（旧Twitter）風UIのチーム内限定投稿・交流（クローズドタイムライン）
-- プラットフォーム全体のパブリックタイムライン（ソーシャルプロフィールによる匿名投稿 + チーム/組織の公式投稿）
-- ソーシャルプロフィール（匿名人格、1ユーザー最大3つ）+ フォロー機能
+- プラットフォーム全体のパブリックタイムライン（ソーシャルプロフィールによる匿名投稿 + チーム/組織の公式投稿）— **初回リリースでは無効、アップデートで解放**
+- ソーシャルプロフィール（匿名人格、1ユーザー最大3つ）+ フォロー機能 — パブリックタイムラインと同時解放
 - LINE連携による自動通知（日程更新、出欠督促）
 - アカウントごとのポップアップ通知（WebSocket）
 
@@ -819,8 +819,11 @@
 
 > 📄 各テーブルのカラム定義・制約・設計判断の詳細: [docs/db_design_details.md](docs/db_design_details.md)
 
-### 認証・権限 (18テーブル)
-`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `team_role_permissions`, `permission_groups`, `permission_group_permissions`, `user_permission_groups`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`, `email_verification_tokens`, `email_change_tokens`, `oauth_link_tokens`, `mfa_recovery_tokens`, `webauthn_credentials`
+### 認証・権限・ユーザー基盤 (19テーブル)
+`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `team_role_permissions`, `permission_groups`, `permission_group_permissions`, `user_permission_groups`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`, `email_verification_tokens`, `email_change_tokens`, `oauth_link_tokens`, `mfa_recovery_tokens`, `webauthn_credentials`, `user_blocks`
+
+### プラットフォーム設定 (1テーブル)
+`platform_settings` — key-value 形式のプラットフォーム全体設定（SYSTEM_ADMIN が管理）。`public_timeline_enabled`（パブリックタイムライン開放フラグ）等のフィーチャーフラグを管理
 
 ### チーム管理 (1テーブル)
 `teams` — 正式名称・愛称・member_count(denormalize)・検索可否・アーカイブ状態を管理
@@ -870,8 +873,8 @@
 ### メンション (1テーブル)
 `mentions` — ポリモーフィックテーブル（`target_type` + `target_id`）で複数機能横断
 
-### タイムライン・通知 (8テーブル)
-`timeline_posts`, `timeline_post_attachments`, `timeline_post_reactions`, `timeline_bookmarks`, `timeline_post_edits`, `user_mutes`, `notifications`, `notification_preferences`
+### タイムライン・通知 (11テーブル)
+`timeline_posts`, `timeline_post_attachments`, `timeline_post_reactions`, `timeline_bookmarks`, `timeline_post_edits`, `user_mutes`, `timeline_polls`, `timeline_poll_options`, `timeline_poll_votes`, `notifications`, `notification_preferences`
 
 ### ソーシャルプロフィール・フォロー (2テーブル)
 `user_social_profiles`, `follows`
@@ -924,8 +927,8 @@
 ### 監査ログ (1テーブル)
 `audit_logs` — 保持期間2年（設定変更可）、期限超過分はバッチ削除
 
-### 回覧板 (2テーブル)
-`circulation_documents`, `circulation_recipients`
+### 回覧板 (4テーブル)
+`circulation_documents`, `circulation_recipients`, `circulation_attachments`, `circulation_comments`
 
 ### 電子印鑑 (2テーブル)
 `electronic_seals`, `seal_stamp_logs`
@@ -1030,7 +1033,7 @@
 `GET/POST /todos`, `GET/PUT/DELETE /todos/{id}`, `PATCH /todos/{id}/status`, `POST /todos/{id}/assignees`, `DELETE /todos/{id}/assignees/{userId}`, `POST /todos/{id}/comments`, `GET /todos/my`, `GET /teams/{id}/todos`, `GET /organizations/{id}/todos`
 
 ### タイムライン
-`GET/POST /timeline`, `GET/PUT/DELETE /timeline/{id}`, `POST/GET /timeline/{id}/replies`, `POST/DELETE /timeline/{id}/reactions`, `GET /timeline/{id}/reactions`, `PATCH /timeline/{id}/pin`, `POST/DELETE /timeline/{id}/bookmark`, `GET /timeline/bookmarks`, `GET /timeline/my`, `GET /timeline/search`, `GET /timeline/drafts`, `GET /timeline/scheduled`, `GET /timeline/{id}/edits`, `PUT /timeline/{id}/read`, `POST/DELETE /mutes`, `GET /mutes`
+`GET/POST /timeline`, `GET/PUT/DELETE /timeline/{id}`, `POST/GET /timeline/{id}/replies`, `POST/DELETE /timeline/{id}/reactions`, `GET /timeline/{id}/reactions`, `PATCH /timeline/{id}/pin`, `POST/DELETE /timeline/{id}/bookmark`, `GET /timeline/bookmarks`, `GET /timeline/my`, `GET /timeline/search`, `GET /timeline/drafts`, `GET /timeline/scheduled`, `GET /timeline/{id}/edits`, `PUT /timeline/{id}/read`, `POST/DELETE /timeline/{id}/repost`, `POST/DELETE /timeline/{id}/poll/vote`, `GET /timeline/stats`, `POST/DELETE /mutes`, `GET /mutes`
 
 ### ソーシャルプロフィール・フォロー
 `POST /social-profiles`, `GET /social-profiles/me`, `GET /social-profiles/handle/{handle}`, `PUT/DELETE /social-profiles/{id}`, `PATCH /admin/social-profiles/{id}/freeze`, `POST /follows`, `DELETE /follows/{followedType}/{followedId}`, `GET /follows/following`, `GET /follows/followers`, `GET /follows/check`
@@ -1114,7 +1117,7 @@
 `GET /ads`, `GET /sponsors`, `CRUD /admin/ads`, `CRUD /admin/sponsors`
 
 ### 回覧板
-`GET/POST /circulation`, `GET/PUT/DELETE /circulation/{id}`, `POST /circulation/{id}/stamp`, `GET /circulation/{id}/status`, `GET /circulation/my`
+`GET/POST /circulations`, `GET/PUT/DELETE /circulations/{id}`, `POST /circulations/{id}/start`, `POST /circulations/{id}/cancel`, `GET /circulations/{id}/recipients`, `PATCH /circulations/{id}/recipients/{recipientId}/skip`, `POST /circulations/{id}/stamp`, `GET /circulations/{id}/status`, `POST /circulations/{id}/remind`, `GET /circulations/my`, `GET /circulations/my/pending`, `GET/POST/DELETE /circulations/{id}/comments`, `GET/POST/DELETE /circulations/{id}/attachments`
 
 ### 電子印鑑
 `GET /users/{id}/seal`, `POST /users/{id}/seal/regenerate`, `GET /users/{id}/seal/stamps`, `POST /seal/stamps/{stampId}/revoke`, `GET /seal/stamps/{stampId}/verify`
