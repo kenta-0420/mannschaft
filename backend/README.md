@@ -678,11 +678,13 @@
 - スタッフ別・日付別の一覧表示
 
 #### 8. 議決権行使・委任状
-- 総会・定期会議の議案に対して **電子で賛否を投票**（出席/賛成/反対/棄権）
+- **2つの決議モード**: 総会決議（MEETING: 当日リアルタイム投票）と書面決議（WRITTEN: 非同期投票期間）
+- 総会決議: 事前に委任状を収集 → 当日に議案ごとの討論・投票・即時集計。一括投票にも対応
+- 書面決議: 投票期間中に全員が非同期で賛否を投票。委任も同時受付
 - 出席できない場合は **委任状を電子提出**（代理人を指定、または白紙委任）
-- 投票期限・定足数の設定、リアルタイム集計・結果表示
-- 電子印鑑と連携し、提出の証跡を記録
-- NPO・協同組合・株主総会など総会を持つ組織で汎用利用可能
+- 定足数チェック・議案別可決要件（過半数/2/3/全員一致）・リアルタイム集計
+- 電子印鑑連携（証跡記録）・議事録 PDF 自動生成 + 手動添付
+- NPO・協同組合・管理組合・株主総会など総会を持つ組織で汎用利用可能
 
 #### 9. 住民台帳
 - 居室（部屋番号）と区分所有者・賃借人を紐付けて管理
@@ -912,8 +914,8 @@
 ### メンバー紹介 (4テーブル)
 `team_pages`, `team_page_sections`, `member_profiles`, `member_profile_fields`
 
-### マッチング (4テーブル)
-`match_requests`, `match_proposals`, `match_reviews`, `ng_teams`
+### マッチング (9テーブル)
+`match_requests`, `match_proposals`, `match_proposal_dates`, `match_reviews`, `match_request_templates`, `match_notification_preferences`, `ng_teams`, `prefectures`, `cities`
 
 ### パフォーマンス管理 (2テーブル)
 `performance_metrics`, `performance_records`
@@ -939,8 +941,8 @@
 ### シフト管理 (3テーブル)
 `shift_schedules`, `shift_slots`, `shift_requests`
 
-### 議決権行使・委任状 (2テーブル)
-`proxy_votes`, `proxy_delegations`
+### 議決権行使・委任状 (6テーブル)
+`proxy_vote_sessions`, `proxy_vote_motions`, `proxy_vote_attachments`, `proxy_vote_motion_comments`, `proxy_votes`, `proxy_delegations`
 
 ### 住民台帳・物件情報 (3テーブル)
 `dwelling_units`, `resident_registry`, `property_listings`
@@ -1072,7 +1074,7 @@
 `GET/POST /files`, `GET/DELETE /files/{id}`, `GET /files/{id}/download`, `CRUD /folders`, `PUT /files/{id}/permissions`
 
 ### マッチング
-`GET/POST /matching/requests`, `GET/PUT/DELETE /matching/requests/{id}`, `POST /matching/requests/{id}/propose`, `PATCH /matching/proposals/{id}/accept`, `PATCH /matching/proposals/{id}/reject`, `POST /matching/reviews`, `CRUD /matching/ng-teams`
+`GET /matching/requests`, `POST /teams/{teamId}/matching/requests`, `GET/PUT/DELETE /matching/requests/{id}`, `GET /teams/{teamId}/matching/requests`, `POST /teams/{teamId}/matching/requests/{id}/propose`, `GET /matching/requests/{id}/proposals`, `GET /teams/{teamId}/matching/proposals`, `PATCH /matching/proposals/{id}/accept|reject|withdraw|cancel|agree-cancel`, `POST /matching/reviews`, `GET /teams/{teamId}/matching/reviews`, `GET /teams/{teamId}/matching/cancellations`, `CRUD /teams/{teamId}/matching/ng-teams`, `GET /master/prefectures`, `GET /master/prefectures/{code}/cities`, `GET /matching/activity-suggestions`, `GET/PUT /teams/{teamId}/matching/notification-preferences`, `GET/POST /teams/{teamId}/matching/templates`, `PUT/DELETE /teams/{teamId}/matching/templates/{id}`
 
 ### パフォーマンス
 `CRUD /performance/metrics`, `POST /performance/records`, `GET /performance/stats`, `GET /members/{id}/performance`
@@ -1129,7 +1131,7 @@
 `GET/POST /shifts/schedules`, `GET/PUT/DELETE /shifts/schedules/{id}`, `PATCH /shifts/schedules/{id}/publish`, `GET/POST /shifts/schedules/{id}/slots`, `PUT/DELETE /shifts/slots/{id}`, `GET/POST /shifts/requests`, `GET /shifts/my`
 
 ### 議決権行使・委任状
-`GET/POST /proxy-votes`, `GET /proxy-votes/{id}`, `GET /proxy-votes/{id}/results`, `POST /proxy-votes/{id}/cast`, `POST /proxy-votes/{id}/delegate`, `GET /proxy-votes/my`
+`GET/POST /proxy-votes`, `GET/PUT/DELETE /proxy-votes/{id}`, `PATCH /proxy-votes/{id}/open`, `PATCH /proxy-votes/{id}/close`, `PATCH /proxy-votes/{id}/finalize`, `POST /proxy-votes/{id}/motions`, `PUT/DELETE /proxy-votes/motions/{motionId}`, `POST /proxy-votes/motions/{motionId}/attachments`, `GET/POST /proxy-votes/motions/{motionId}/comments`, `DELETE /proxy-votes/motions/{motionId}/comments/{commentId}`, `PATCH /proxy-votes/motions/{motionId}/start-vote`, `PATCH /proxy-votes/motions/{motionId}/end-vote`, `PATCH /proxy-votes/{id}/start-all-votes`, `POST/PUT /proxy-votes/{id}/cast`, `POST/DELETE /proxy-votes/{id}/delegate`, `PATCH /proxy-votes/delegations/{delegationId}/review`, `GET /proxy-votes/{id}/results`, `GET /proxy-votes/{id}/results/csv`, `GET /proxy-votes/{id}/attendance`, `GET /proxy-votes/my`, `POST /proxy-votes/{id}/remind`, `POST /proxy-votes/{id}/attachments`, `DELETE /proxy-votes/attachments/{attachmentId}`, `POST /proxy-votes/{id}/clone`, `GET /proxy-votes/{id}/minutes-pdf`
 
 ### 住民台帳・物件情報
 `GET/POST /dwelling-units`, `GET/PUT/DELETE /dwelling-units/{id}`, `GET/POST /dwelling-units/{id}/residents`, `PUT/DELETE /dwelling-units/{unitId}/residents/{id}`, `GET/POST /property-listings`, `GET/PUT/DELETE /property-listings/{id}`
