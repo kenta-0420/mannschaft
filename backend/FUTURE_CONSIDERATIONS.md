@@ -256,6 +256,41 @@ Phase 4 ではチャット添付画像はフロントエンドの `<img loading=
 - サムネイルサイズ: 幅400px（アスペクト比維持）、WebP 形式（ファイルサイズ削減）
 - フロントエンド: `thumbnail_key` が存在すればサムネイル URL を表示、なければ元画像を遅延読み込み
 
+### QR会員証 — Apple Wallet / Google Pay 連携
+
+デジタル会員証をネイティブのウォレットアプリに追加できる機能。PWA では対応困難なため、ネイティブアプリ化（Phase 11+）と同時に検討する。
+
+- Apple Pass (pkpass) ファイルの生成 API（`GET /member-cards/{id}/wallet/apple`）
+- Google Pay Pass の生成 API（`GET /member-cards/{id}/wallet/google`）
+- Pass 内に QR コードを埋め込み、ロック画面から直接表示可能
+- Pass の更新: `card_number` / `display_name` 変更時に Push Notification で Pass を自動更新
+- `qr_secret` 再生成時は旧 Pass を無効化し、新 Pass をウォレットに再登録するフローが必要
+
+### QR会員証 — レジ / POS 連携（Phase 8+）
+
+チェックインと売上データを紐付け、メンバー別の購買履歴・累計売上を管理する機能。Phase 8 の決済基盤が整った段階で実装する。
+
+**概要**:
+- チェックイン時に「会計セッション」を自動開始し、レジで会計完了時にセッションをクローズ
+- `member_card_checkins.transaction_id` で売上データと紐付け（Phase 2 でカラムを先行追加済み）
+- `member_cards.total_spend`（累計売上額。Phase 2 でカラムを先行追加済み）を会計完了時にアトミック更新
+
+**必要テーブル（Phase 8 で設計確定）**:
+- `transactions`: id, team_id, member_card_id (nullable), amount, tax, payment_method, status, created_at
+- `transaction_items`: id, transaction_id, item_name, unit_price, quantity, subtotal
+- `daily_sales_summary`: team_id, date, total_amount, transaction_count, member_checkin_count（日次集計）
+
+**想定 API**:
+- `POST /teams/{teamId}/transactions` — 会計登録（チェックインと自動紐付け）
+- `GET /teams/{teamId}/transactions` — 売上一覧
+- `GET /teams/{teamId}/sales/stats` — 売上統計（日別・月別・メンバー別）
+- `GET /member-cards/{id}/purchase-history` — メンバー別購買履歴
+
+**メンバー別分析（ADMIN ダッシュボード）**:
+- 来店頻度 × 平均客単価のマトリクス（常連×高単価 / 新規×低単価 等のセグメント分析）
+- LTV（顧客生涯価値）推定: `total_spend / 所属月数 × 平均継続月数`
+- 休眠会員の検出: `last_checkin_at` が N 日以上前のアクティブ会員をリストアップ
+
 ### AI活用
 - チャットボットによるFAQ自動応答
 - パフォーマンスデータの分析・レコメンド
@@ -360,6 +395,16 @@ Phase 4 ではチャット添付画像はフロントエンドの `<img loading=
 - [ ] 上限値の管理方法を確定する（`subscription_plans` にカラム追加 or `module_plan_limits` 汎用テーブル）
 - [ ] 具体的なプラン段階と上限数を決定する（例: 無料=10件 / スタンダード=30件 / プロ=無制限）
 
+### 議決権行使 — 重み付け投票（Phase 9+）
+
+Phase 8 では1人1票で実装。株式会社・投資組合等で出資比率に応じた議決権重み付けが必要になった場合に対応する。
+
+- `proxy_vote_sessions` に `is_weighted BOOLEAN DEFAULT FALSE` カラムを追加
+- `proxy_vote_weights` テーブル新設: `session_id`, `user_id`, `weight DECIMAL(10,2)`（例: 出資10口 → weight=10.00）
+- 集計ロジック変更: `COUNT(*)` → `SUM(weight)`。定足数チェック・可決要件判定の全箇所を切替
+- 委任投票の重み: 委任者の weight が代理人の投票に加算される
+- 導入判断基準: 利用チームから重み付け投票の要望が複数件出た段階で実装を検討
+
 ### Phase 8 開始前（決済）
 - [ ] 決済代行サービスの選定（Stripe 推奨。Webhook による課金イベント処理を実装）
 - [ ] 特定商取引法に基づく表記の準備
@@ -395,6 +440,17 @@ Phase 4 ではチャット添付画像はフロントエンドの `<img loading=
 - [ ] 返金ポリシーの策定
 - [ ] `blog_posts.visibility` に `PAID` を追加するか、別カラム `price` で管理するかの設計判断
 - [ ] 特定商取引法・資金決済法との適合確認
+
+### 回覧テンプレート機能（Phase 8+）
+
+定期回覧（月次安全点検・週次報告等）の雛形を保存・再利用する機能。Phase 5 の回覧板が実運用で定着し、利用パターンが明確になった後に実装する。
+
+**検討事項**
+- [ ] `circulation_templates` テーブル設計（title, body, recipient_ids JSON, circulation_mode, stamp_display_style, attachments）
+- [ ] テンプレートからの回覧作成 API（`POST /circulation/from-template/{templateId}`）
+- [ ] テンプレートの共有範囲（作成者のみ / スコープ内共有）
+- [ ] 定期実行スケジュール（cron 式で自動回覧作成 + DRAFT 保存 → ADMIN が確認後に start）
+- [ ] テンプレートの recipient_ids をロールベース（例: 全 MEMBER）にするか固定 ID リストにするかの設計判断
 
 ### ハッシュタグ基盤（Phase 9+）
 

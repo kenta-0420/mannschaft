@@ -1117,7 +1117,7 @@
 `GET /ads`, `GET /sponsors`, `CRUD /admin/ads`, `CRUD /admin/sponsors`
 
 ### 回覧板
-`GET/POST /circulations`, `GET/PUT/DELETE /circulations/{id}`, `POST /circulations/{id}/start`, `POST /circulations/{id}/cancel`, `GET /circulations/{id}/recipients`, `PATCH /circulations/{id}/recipients/{recipientId}/skip`, `POST /circulations/{id}/stamp`, `GET /circulations/{id}/status`, `POST /circulations/{id}/remind`, `GET /circulations/my`, `GET /circulations/my/pending`, `GET/POST/DELETE /circulations/{id}/comments`, `GET/POST/DELETE /circulations/{id}/attachments`
+`GET/POST /circulation`, `GET/PUT/DELETE /circulation/{id}`, `POST /circulation/{id}/start`, `POST /circulation/{id}/cancel`, `POST /circulation/{id}/force-complete`, `POST /circulation/{id}/stamp`, `PATCH /circulation/{id}/recipients/{userId}/skip`, `POST /circulation/{id}/remind`, `GET /circulation/{id}/status`, `GET /circulation/{id}/export`（PDF証跡）, `GET /circulation/my`, `POST/DELETE /circulation/{id}/attachments`, `DELETE /circulation/{id}/attachments/{attachmentId}`, `GET/POST /circulation/{id}/comments`, `DELETE /circulation/{id}/comments/{commentId}`
 
 ### 電子印鑑
 `GET /users/{id}/seal`, `POST /users/{id}/seal/regenerate`, `GET /users/{id}/seal/stamps`, `POST /seal/stamps/{stampId}/revoke`, `GET /seal/stamps/{stampId}/verify`
