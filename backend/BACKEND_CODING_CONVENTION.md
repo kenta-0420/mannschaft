@@ -9,8 +9,14 @@
 * **インデント**: **半角スペース4つ**を使用してください。
 * **クラス命名**: `～Manager` や `～Util` といった曖昧な名称は避け、責務を具体的に表現してください。
 * **ボイラープレートの削減**: **Lombok** を積極的に活用してください。
-    - **DTO / Request / Response**: `@Getter`, `@Setter`, `@RequiredArgsConstructor` を基本とし、不要な `toString` や `equals` のオーバーライドは避けること。
-    - **JPA Entity**: クラスレベルの `@Setter` は禁止する。`@Getter` + `@NoArgsConstructor(access = AccessLevel.PROTECTED)` を基本とし、状態変更はビジネスメソッド（例: `changeEmail(String email)`）経由で行うこと。不正な状態遷移を防止し、ドメインロジックを Entity 内に集約するため。
+    - **DTO / Request / Response**: `@Getter` + `@RequiredArgsConstructor` を基本とし、フィールドは `final` で宣言する（不変オブジェクト）。`@Setter` は使用しない（`.claudecode.md` §19 DTO粒度ルール参照）。Jackson がコンストラクタ引数名を認識してデシリアライズできるよう、`build.gradle.kts` に `-parameters` コンパイラオプションを追加すること（下記参照）。不要な `toString` や `equals` のオーバーライドは避けること。
+```kotlin
+// build.gradle.kts — Jackson がコンストラクタ引数名を認識するために必須
+tasks.withType<JavaCompile> {
+    options.compilerArgs.add("-parameters")
+}
+```
+    - **JPA Entity**: クラスレベルの `@Setter` は禁止する。`@Getter` + `@NoArgsConstructor(access = AccessLevel.PROTECTED)` + `@Builder(toBuilder = true)` + `@AllArgsConstructor(access = AccessLevel.PRIVATE)` を基本とし、状態変更はビジネスメソッド（例: `changeEmail(String email)`）経由で行うこと。`@Builder` はテストデータ作成（TestFixture）で活用するため付与する。`toBuilder = true` により既存インスタンスの一部フィールドだけ変更したコピーを作成できる。不正な状態遷移を防止し、ドメインロジックを Entity 内に集約するため。
 * **DI方式**: **コンストラクタインジェクションを必須** とし、`@Autowired` によるフィールドインジェクションは禁止する。Lombok の `@RequiredArgsConstructor` と `final` フィールドを組み合わせて実装すること。
 * **マジックナンバーの禁止**: 意味のある数字は直接記述せず、必ず定数（`static final`）を定義してください。
 * **区分値の管理**: 区分値や状態フラグは String/int 定数ではなく、原則として **Enum** を使用してください。
@@ -144,7 +150,15 @@ Service メソッド内でビジネスルールを検証し、違反時は `Busi
     * **単純なCRUDおよび名前ベースのクエリ**: Spring Data JPA の派生クエリメソッド（`findByEmail`, `findByStatusAndCreatedAtAfter` 等）を優先的に使用する。
     * **動的フィルタリング**: `.claudecode.md` §13 で定めたフィルタリング規約（`?status=active&price_min=1000` 等）の実装には **QueryDSL** を使用する。`BooleanBuilder` または `BooleanExpression` を用いてタイプセーフに条件を組み立てること。文字列ベースの `@Query` で動的条件を結合する方式は禁止する。
     * **固定的な複雑クエリ**: JOIN が多い集計クエリやレポート用クエリなど、動的条件を伴わない固定的な複雑クエリは `@Query`（JPQL）で記述してよい。ネイティブSQL（`nativeQuery = true`）は最終手段とし、使用時はコメントで理由を記載すること。
-* **QueryDSL 設定**: Gradle の `com.querydsl` プラグインおよび APT（Annotation Processing Tool）を導入し、`Q` クラスを自動生成する。生成されたクラスは `build/generated` 配下に出力し、バージョン管理対象外とする。
+* **QueryDSL 設定**: Spring Boot 3.x (Jakarta EE) 環境では、`querydsl-jpa` に **`:jakarta` クラシファイア**を指定すること（`javax` → `jakarta` 名前空間対応）。Gradle の APT（Annotation Processing Tool）を導入し、`Q` クラスを自動生成する。生成されたクラスは `build/generated` 配下に出力し、バージョン管理対象外とする。
+```kotlin
+// build.gradle.kts
+dependencies {
+    implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
+    annotationProcessor("com.querydsl:querydsl-apt:5.1.0:jakarta")
+    annotationProcessor("jakarta.persistence:jakarta.persistence-api")
+}
+```
 * **N+1 問題の防止**: リレーションの取得には `@EntityGraph` またはJPQLの `JOIN FETCH` を明示的に使用し、Lazy Loading による N+1 問題を防止すること。
 
 ### コネクションプール (HikariCP)
@@ -162,13 +176,13 @@ Service メソッド内でビジネスルールを検証し、違反時は `Busi
     * `build.gradle.kts` では `developmentOnly` スコープで追加し、本番ビルドに含めないこと。
     * テンプレートファイルやプロパティ変更時のキャッシュ無効化も自動で行われる。
 * **Spring Boot Docker Compose Support**（Spring Boot 3.1+）:
-    * プロジェクトルートに `compose.yml`（MySQL + Redis + MinIO）を配置し、`gradle bootRun` 実行時にコンテナを自動起動・自動停止させる。
+    * プロジェクトルートに `compose.yml`（MySQL + Redis）を配置し、`gradle bootRun` 実行時にコンテナを自動起動・自動停止させる。
     * `spring-boot-docker-compose` 依存を追加し、手動での `docker compose up/down` を不要にする。
     * CI 環境では Docker Compose Support を無効化し、Testcontainers を使用すること（`spring.docker.compose.enabled=false`）。
 
 ### APIドキュメント (Springdoc OpenAPI) 設定規約
 * **グループ化**:
-    * `Public API`（`/api/v1/...`）、`Admin API`（`/admin/...`）、`Internal API`（`/internal/...`）の3区分でグループを定義する。
+    * `Public API`（`/api/v1/...`）、`Admin API`（`/api/v1/admin/...`）、`System Admin API`（`/api/v1/system-admin/...`）、`Internal API`（`/internal/...`）の4区分でグループを定義する。
 * **認証スキーマ**:
     * JWT Bearer 認証を `SecurityScheme` として定義し、Swagger UI 上で全エンドポイントに対してトークンを送信できる構成にする。
 * **レスポンス記述**:
@@ -193,15 +207,10 @@ Service メソッド内でビジネスルールを検証し、違反時は `Busi
 * **冪等性の担保**: すでにデータが存在する場合はスキップするなど、何度起動してもエラーにならない（冪等性）実装を徹底する。
 
 ### CI/CD パイプライン規約 (GitHub Actions)
+CI/CD パイプラインの詳細設定（ワークフロー YAML、JaCoCo 集計、ブランチ保護ルール等）は `TEST_CONVENTION.md` §8 に定義する。ここでは方針のみ記載する。
 * **トリガー**: `main` ブランチへのプルリクエスト作成時、および `main` へのマージ時に自動実行する。
-* **バックエンド・ジョブ**:
-    1. **Build**: Java 21 環境でのコンパイル確認。
-    2. **Lint**: Checkstyle による静的スタイルチェック。
-    3. **Analyze**: SpotBugs による潜在的バグの検出。
-    4. **Test**: JUnit 5 によるテスト実行と JaCoCo によるカバレッジ計測（80%未満は失敗扱いを推奨）。
-* **フロントエンド・ジョブ**:
-    1. **Lint**: ESLint & Prettier によるコード整形チェック。
-    2. **Test**: ユニットテストの実行。
+* **バックエンド**: Build → Checkstyle → SpotBugs → Unit Tests → Integration Tests → JaCoCo（80%未満で失敗）。
+* **フロントエンド**（別リポジトリ）: ESLint + Prettier → Type Check → Vitest。
 * **マージ条件**: すべてのチェックが「Pass」かつ、1名以上の承認（Approve）がある場合のみマージ可能とする。
 
 ## 7. ログと運用監視
@@ -222,7 +231,7 @@ Service メソッド内でビジネスルールを検証し、違反時は `Busi
     * 設定関連: システム設定の変更、課金プランの変更。
     * データ操作: データの物理削除、大量データのCSVエクスポート。
 * **記録項目**: タイムスタンプ、実行ユーザーID、操作種別、対象リソース識別子、IPアドレス、実行結果（成功/失敗）。
-* **保存期間**: セキュリティおよびコンプライアンスの観点から、最低 **1年間** は検索可能な状態で保持する。
+* **保存期間**: セキュリティおよびコンプライアンスの観点から、最低 **2年間** は検索可能な状態で保持する（README.md DB設計と統一。設定変更可）。
 
 ## 8. セキュリティ
 * **機密情報の保護**: APIキー、パスワード、暗号化鍵などをソースコードに直接記述（ハードコード）することを厳禁とします。
@@ -275,7 +284,7 @@ Service メソッド内でビジネスルールを検証し、違反時は `Busi
 
 ### CORS（交差オリジンリソース共有）設定規約
 * **ワイルドカードの禁止**: `AllowedOrigins` に `*`（すべて許可）を設定することを禁止する。必ず信頼できる特定のドメインのみを許可すること。
-* **環境変数による管理**: 許可するドメイン（Origin）のリストは、コード内に直接記述（ハードコード）せず、`ALLOWED_ORIGINS` 等の環境変数として外部から注入する構成とする。
+* **環境変数による管理**: 許可するドメイン（Origin）のリストは、コード内に直接記述（ハードコード）せず、`MANNSCHAFT_ALLOWED_ORIGINS` 環境変数として外部から注入する構成とする（`.claudecode.md` §21 命名規約に準拠）。
 * **環境別の設定**: 開発環境（localhost等）と本番環境で許可リストを適切に切り分け、本番環境に不要なドメインが含まれないよう徹底する。
 
 ### ストレージ（Pre-signed URL）運用規約

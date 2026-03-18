@@ -138,6 +138,36 @@
 - 法務確認が完了するまで実装に着手しない
 - 別フィーチャードキュメント（F12 等）として独立して設計する
 
+### 施設予約 — 繰り返し予約（定期予約）（Phase 10+）
+
+Phase 9 では個別予約のみで運用。施設予約は駐車場と違い人気時間帯（会議室の午前・昼前後等）に競合が頻発するため、繰り返し予約の一括先取りは他メンバーの公平性を著しく損なう。競合時の部分成功ハンドリング（6週中3週は空き・3週は先客）やキャンセル連鎖の扱いも複雑。運用実績で定期予約の需要が確認された段階で導入する。
+
+**設計方針（実装時）**
+- `facility_recurring_bookings` テーブルを F09.3 `parking_visitor_recurring` と同構造で作成（`recurrence_type` ENUM('WEEKLY', 'BIWEEKLY', 'MONTHLY'), `day_of_week`, `time_from`, `time_to`, `next_generate_date`）
+- バッチが `facility_usage_rules.advance_booking_days` 日先まで個別 `facility_bookings` を生成（承認制なら `PENDING_APPROVAL` で生成）
+- 競合時はスキップして通知（部分生成方式）。ユーザーに「X月X日は先約あり」を通知し、代替日時の手動予約を促す
+- `facility_bookings` に `booking_group_id` カラムを追加し、同一繰り返しグループの一括キャンセルを可能にする
+
+### 施設予約 — ブラックアウト日のパターン管理（Phase 10+）
+
+Phase 9 では `facility_usage_rules.blackout_dates` JSON 配列で個別日付を管理。年間10〜20件程度の除外日は手動追加で十分であり、CRON 式パターン管理は管理者の理解が難しく設定ミスリスクが高い。パターン管理のニーズが運用で確認された段階で導入する。
+
+**設計方針（実装時）**
+- `facility_blackout_rules` テーブル: `facility_id` FK, `rule_type` ENUM('SPECIFIC_DATE', 'ANNUAL_RANGE', 'WEEKLY_DAY'), `specific_date` DATE NULL, `month_from`/`day_from`/`month_to`/`day_to` TINYINT NULL（年次範囲用）, `day_of_week` TINYINT NULL（定休日用）, `description` VARCHAR(200)
+- CRON 式は採用しない。3パターンの UI ドロップダウンで直感的に設定
+- 既存 JSON の `blackout_dates` は残し、テーブルとの OR 条件で判定（移行不要）
+
+### 施設予約 — 備品の保証金・破損追跡（Phase 10+）
+
+高額備品（プロジェクター等）の保証金デポジットや、返却時の破損報告・修理費請求のワークフロー。Stripe Authorization Hold の有効期限は最大7日間（カード発行会社依存）で長期レンタルには使えず適用範囲が限定される。破損報告ワークフロー（状態確認→破損認定→見積→請求→異議申立て）は施設予約本体と独立した大きな機能。高額備品は対面管理が現実的でシステム化の優先度が低い。運用ニーズが確認されてから実装する。
+
+**設計方針（実装時）**
+- `facility_equipment_deposits` テーブル: `booking_equipment_id` FK, `deposit_amount` DECIMAL, `stripe_payment_intent_id` VARCHAR, `status` ENUM('HELD', 'CAPTURED', 'RELEASED', 'DISPUTED')
+- 予約確定時に Stripe `PaymentIntent` を `capture_method=manual` で作成（仮売上）
+- チェックアウト（`COMPLETED`）後24時間以内に管理者が「問題なし」→ Hold 解放、「破損あり」→ 保証金を Capture
+- 破損報告: `facility_damage_reports` テーブル（画像URL・破損内容・修理費見積・ステータス）を別途追加
+- 修理費が保証金を超過する場合は追加請求（別の PaymentIntent）
+
 ### 電子印鑑 — 角印（組織印）の追加
 
 Phase 5 では個人の丸印（認印）のみを実装。将来、組織として公式に承認した証跡が必要になった場合に角印を追加する。
