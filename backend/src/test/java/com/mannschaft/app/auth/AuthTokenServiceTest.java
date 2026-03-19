@@ -1,5 +1,6 @@
 package com.mannschaft.app.auth;
 
+import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;

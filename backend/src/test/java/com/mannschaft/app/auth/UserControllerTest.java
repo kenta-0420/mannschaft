@@ -1,5 +1,9 @@
 package com.mannschaft.app.auth;
 
+import com.mannschaft.app.auth.controller.UserController;
+import com.mannschaft.app.auth.service.AuthOAuthService;
+import com.mannschaft.app.auth.service.AuthService;
+import com.mannschaft.app.auth.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.dto.ChangePasswordRequest;
 import com.mannschaft.app.auth.dto.LoginHistoryResponse;

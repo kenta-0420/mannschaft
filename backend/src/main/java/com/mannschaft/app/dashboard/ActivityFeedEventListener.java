@@ -1,5 +1,8 @@
 package com.mannschaft.app.dashboard;
 
+import com.mannschaft.app.dashboard.entity.ActivityFeedEntity;
+import com.mannschaft.app.dashboard.repository.ActivityFeedRepository;
+import com.mannschaft.app.dashboard.service.ActivitySummaryGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;

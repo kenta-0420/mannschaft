@@ -1,5 +1,19 @@
 package com.mannschaft.app.auth;
 
+import com.mannschaft.app.auth.entity.EmailChangeTokenEntity;
+import com.mannschaft.app.auth.entity.OAuthAccountEntity;
+import com.mannschaft.app.auth.entity.RefreshTokenEntity;
+import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.entity.WebAuthnCredentialEntity;
+import com.mannschaft.app.auth.repository.EmailChangeTokenRepository;
+import com.mannschaft.app.auth.repository.OAuthAccountRepository;
+import com.mannschaft.app.auth.repository.RefreshTokenRepository;
+import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
+import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.auth.dto.ChangePasswordRequest;
 import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.RequestEmailChangeRequest;
