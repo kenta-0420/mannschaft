@@ -1,0 +1,230 @@
+package com.mannschaft.app.template;
+
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.template.dto.LevelAvailabilityResponse;
+import com.mannschaft.app.template.dto.ModuleResponse;
+import com.mannschaft.app.template.dto.ModuleSummaryResponse;
+import com.mannschaft.app.template.dto.TeamModuleResponse;
+import com.mannschaft.app.template.dto.ToggleModuleRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * モジュール管理サービス。モジュールカタログ参照・チームモジュール有効化を提供する。
+ */
+@Service
+@Transactional(readOnly = true)
+@RequiredArgsConstructor
+@Slf4j
+public class ModuleService {
+
+    private static final int FREE_PLAN_MODULE_LIMIT = 10;
+
+    private final ModuleDefinitionRepository moduleDefinitionRepository;
+    private final ModuleLevelAvailabilityRepository moduleLevelAvailabilityRepository;
+    private final ModuleRecommendationRepository moduleRecommendationRepository;
+    private final TeamEnabledModuleRepository teamEnabledModuleRepository;
+    private final TemplateModuleRepository templateModuleRepository;
+    private final TeamTemplateRepository teamTemplateRepository;
+
+    /**
+     * 選択式モジュールカタログを取得する（OPTIONAL + is_active のみ）。
+     *
+     * @return モジュール詳細リスト
+     */
+    public List<ModuleResponse> getModuleCatalog() {
+        return moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
+                .stream()
+                .filter(ModuleDefinitionEntity::getIsActive)
+                .map(this::toModuleResponse)
+                .toList();
+    }
+
+    /**
+     * モジュール詳細を取得する。
+     *
+     * @param id モジュールID
+     * @return モジュール詳細レスポンス
+     */
+    public ApiResponse<ModuleResponse> getModule(Long id) {
+        ModuleDefinitionEntity module = findModuleOrThrow(id);
+        return ApiResponse.of(toModuleResponse(module));
+    }
+
+    /**
+     * チームの有効モジュール一覧を取得する。
+     *
+     * @param teamId チームID
+     * @return チームモジュールレスポンスリスト
+     */
+    public List<TeamModuleResponse> getTeamModules(Long teamId) {
+        return teamEnabledModuleRepository.findByTeamId(teamId).stream()
+                .map(tem -> {
+                    ModuleDefinitionEntity module = moduleDefinitionRepository.findById(tem.getModuleId())
+                            .orElse(null);
+                    if (module == null) {
+                        return null;
+                    }
+                    return new TeamModuleResponse(
+                            module.getId(),
+                            module.getName(),
+                            module.getSlug(),
+                            tem.getIsEnabled(),
+                            tem.getEnabledAt(),
+                            tem.getTrialExpiresAt());
+                })
+                .filter(r -> r != null)
+                .toList();
+    }
+
+    /**
+     * チームのモジュール有効/無効を切り替える。
+     * 無料上限10チェック、有料プランチェック、レベルチェックを実施する。
+     *
+     * @param teamId  チームID
+     * @param request トグルリクエスト
+     * @param userId  操作ユーザーID
+     */
+    @Transactional
+    public void toggleTeamModule(Long teamId, ToggleModuleRequest request, Long userId) {
+        ModuleDefinitionEntity module = findModuleOrThrow(request.getModuleId());
+
+        // レベルチェック（TEAMレベルで利用可能か）
+        moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                module.getId(), ModuleLevelAvailabilityEntity.Level.TEAM)
+                .ifPresent(availability -> {
+                    if (!availability.getIsAvailable()) {
+                        throw new BusinessException(TemplateErrorCode.TMPL_005);
+                    }
+                });
+
+        if (request.isEnabled()) {
+            // 有料プランチェック
+            if (module.getRequiresPaidPlan()) {
+                // TODO: チームのプラン状態を確認する実装
+                throw new BusinessException(TemplateErrorCode.TMPL_004);
+            }
+
+            // 無料上限チェック
+            long enabledCount = teamEnabledModuleRepository.findByTeamId(teamId).stream()
+                    .filter(TeamEnabledModuleEntity::getIsEnabled)
+                    .count();
+            if (enabledCount >= FREE_PLAN_MODULE_LIMIT) {
+                throw new BusinessException(TemplateErrorCode.TMPL_003);
+            }
+        }
+
+        TeamEnabledModuleEntity existing = teamEnabledModuleRepository
+                .findByTeamIdAndModuleId(teamId, request.getModuleId())
+                .orElse(null);
+
+        if (existing != null) {
+            LocalDateTime now = LocalDateTime.now();
+            TeamEnabledModuleEntity updated = existing.toBuilder()
+                    .isEnabled(request.isEnabled())
+                    .enabledAt(request.isEnabled() ? now : existing.getEnabledAt())
+                    .disabledAt(!request.isEnabled() ? now : null)
+                    .enabledBy(userId)
+                    .build();
+            teamEnabledModuleRepository.save(updated);
+        } else {
+            LocalDateTime now = LocalDateTime.now();
+            TeamEnabledModuleEntity newEntity = TeamEnabledModuleEntity.builder()
+                    .teamId(teamId)
+                    .moduleId(request.getModuleId())
+                    .isEnabled(request.isEnabled())
+                    .enabledAt(request.isEnabled() ? now : null)
+                    .enabledBy(userId)
+                    .trialUsed(false)
+                    .trialExpiresAt(module.getTrialDays() != null && module.getTrialDays() > 0
+                            ? now.plusDays(module.getTrialDays()) : null)
+                    .build();
+            teamEnabledModuleRepository.save(newEntity);
+        }
+
+        log.info("モジュール切替完了: teamId={}, moduleId={}, enabled={}", teamId, request.getModuleId(), request.isEnabled());
+    }
+
+    /**
+     * テンプレートの推奨モジュールをチームに自動適用する。
+     *
+     * @param teamId     チームID
+     * @param templateId テンプレートID
+     * @param userId     操作ユーザーID
+     */
+    @Transactional
+    public void applyTemplate(Long teamId, Long templateId, Long userId) {
+        teamTemplateRepository.findById(templateId)
+                .orElseThrow(() -> new BusinessException(TemplateErrorCode.TMPL_001));
+
+        List<TemplateModuleEntity> templateModules = templateModuleRepository.findByTemplateId(templateId);
+        LocalDateTime now = LocalDateTime.now();
+
+        for (TemplateModuleEntity tm : templateModules) {
+            if (teamEnabledModuleRepository.findByTeamIdAndModuleId(teamId, tm.getModuleId()).isPresent()) {
+                continue;
+            }
+            ModuleDefinitionEntity module = moduleDefinitionRepository.findById(tm.getModuleId()).orElse(null);
+            if (module == null) {
+                continue;
+            }
+            TeamEnabledModuleEntity newEntity = TeamEnabledModuleEntity.builder()
+                    .teamId(teamId)
+                    .moduleId(tm.getModuleId())
+                    .isEnabled(true)
+                    .enabledAt(now)
+                    .enabledBy(userId)
+                    .trialUsed(false)
+                    .trialExpiresAt(module.getTrialDays() != null && module.getTrialDays() > 0
+                            ? now.plusDays(module.getTrialDays()) : null)
+                    .build();
+            teamEnabledModuleRepository.save(newEntity);
+        }
+
+        log.info("テンプレート適用完了: teamId={}, templateId={}", teamId, templateId);
+    }
+
+    // ========================================
+    // ヘルパー（private）
+    // ========================================
+
+    private ModuleDefinitionEntity findModuleOrThrow(Long id) {
+        return moduleDefinitionRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(TemplateErrorCode.TMPL_002));
+    }
+
+    private ModuleResponse toModuleResponse(ModuleDefinitionEntity module) {
+        List<LevelAvailabilityResponse> levels = moduleLevelAvailabilityRepository
+                .findByModuleId(module.getId()).stream()
+                .map(la -> new LevelAvailabilityResponse(
+                        la.getLevel().name(), la.getIsAvailable(), la.getNote()))
+                .toList();
+
+        List<ModuleSummaryResponse> recs = moduleRecommendationRepository
+                .findByModuleId(module.getId()).stream()
+                .map(rec -> moduleDefinitionRepository.findById(rec.getRecommendedModuleId()).orElse(null))
+                .filter(m -> m != null)
+                .map(m -> new ModuleSummaryResponse(
+                        m.getId(), m.getName(), m.getSlug(), m.getModuleType().name()))
+                .toList();
+
+        return new ModuleResponse(
+                module.getId(),
+                module.getName(),
+                module.getSlug(),
+                module.getDescription(),
+                module.getModuleType().name(),
+                module.getModuleNumber(),
+                module.getRequiresPaidPlan(),
+                module.getTrialDays(),
+                module.getIsActive(),
+                levels,
+                recs);
+    }
+}
