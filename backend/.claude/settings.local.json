@@ -65,7 +65,8 @@
       "Bash(powershell.exe -Command \"Test-NetConnection -ComputerName localhost -Port 6379 -WarningAction SilentlyContinue | Select-Object TcpTestSucceeded\" 2>&1)",
       "Bash(powershell.exe -Command \"Test-NetConnection -ComputerName localhost -Port 6379 -WarningAction SilentlyContinue | Select-Object TcpTestSucceeded; Test-NetConnection -ComputerName localhost -Port 3306 -WarningAction SilentlyContinue | Select-Object TcpTestSucceeded\" 2>&1)",
       "Bash(find docs:*)",
-      "Bash(xargs sed:*)"
+      "Bash(xargs sed:*)",
+      "Bash(wc:*)"
     ]
   },
   "worktree": {

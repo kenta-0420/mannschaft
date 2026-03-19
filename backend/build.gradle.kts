@@ -79,6 +79,7 @@ tasks.withType<Test> {
 tasks.withType<JavaCompile> {
     options.compilerArgs.addAll(listOf(
         "-Amapstruct.defaultComponentModel=spring",
-        "-Amapstruct.unmappedTargetPolicy=ERROR"
+        "-Amapstruct.unmappedTargetPolicy=ERROR",
+        "-parameters"
     ))
 }
