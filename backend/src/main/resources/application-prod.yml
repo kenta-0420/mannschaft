@@ -1,0 +1,24 @@
+# 本番用プロファイル
+# 全て環境変数から注入（デフォルト値なし = 未設定時は起動失敗）
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST}
+      port: ${SPRING_REDIS_PORT:6379}
+
+  jpa:
+    show-sql: false
+
+mannschaft:
+  jwt:
+    secret: ${MANNSCHAFT_JWT_SECRET}
+    access-token-expiration: ${MANNSCHAFT_JWT_ACCESS_EXPIRATION:900}
+    refresh-token-expiration: ${MANNSCHAFT_JWT_REFRESH_EXPIRATION:604800}
+
+server:
+  port: ${SERVER_PORT:8080}

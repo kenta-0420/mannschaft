@@ -826,141 +826,30 @@
 ## DB設計
 
 > 📄 各テーブルのカラム定義・制約・設計判断の詳細: [docs/db_design_details.md](docs/db_design_details.md)
+> 📄 テーブル一覧・インデックス・FK 制約の正（Single Source of Truth）は各フィーチャードキュメントの「DB設計」セクション
 
-### 認証・権限・ユーザー基盤 (19テーブル)
-`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `team_role_permissions`, `permission_groups`, `permission_group_permissions`, `user_permission_groups`, `refresh_tokens`, `two_factor_auth`, `oauth_accounts`, `password_reset_tokens`, `email_verification_tokens`, `email_change_tokens`, `oauth_link_tokens`, `mfa_recovery_tokens`, `webauthn_credentials`, `user_blocks`
+### 設計方針
+- 全テーブルは Flyway で管理（命名: `V{phase}.{連番}__{説明}.sql`）
+- 論理削除: `deleted_at DATETIME NULL`（テーブルごとに採否を判断）
+- 楽観的ロック: `version INT NOT NULL DEFAULT 0`（競合が発生しうるテーブルに適用）
+- タイムスタンプ: `created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`, `updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+- ENUM 非使用: VARCHAR + アプリ層バリデーション（ALTER TABLE なしで値追加可能）
 
-### プラットフォーム設定 (1テーブル)
-`platform_settings` — key-value 形式のプラットフォーム全体設定（SYSTEM_ADMIN が管理）。`public_timeline_enabled`（パブリックタイムライン開放フラグ）等のフィーチャーフラグを管理
+### Phase 別テーブル概要
 
-### チーム管理 (1テーブル)
-`teams` — 正式名称・愛称・member_count(denormalize)・検索可否・アーカイブ状態を管理
-
-### 組織・マルチ所属 (5テーブル)
-`organizations`, `organization_members`, `team_org_memberships`, `team_memberships`, `invite_tokens`
-
-### グループ階層 (3テーブル)
-`groups`, `group_members`, `group_hierarchy` — 隣接リスト＋クロージャテーブル方式、再帰CTE対応
-
-### テンプレート・モジュール (9テーブル)
-`team_templates`, `template_modules`, `template_fields`, `module_definitions`, `module_field_definitions`, `module_level_availability`, `team_enabled_modules`, `module_recommendations`, `team_module_snapshots`
-
-### プラン・サブスクリプション (9テーブル)
-`subscription_plans`, `module_prices`, `plan_packages`, `plan_package_modules`, `discount_campaigns`, `team_discount_usages`, `tax_settings`, `team_subscriptions`, `subscription_invoices`
-
-### 組織数課金 (2テーブル)
-`org_count_billing_tiers`, `org_count_invoices` — 組織種別(NONPROFIT/FORPROFIT)ごとの無料枠・課金単価管理
-
-### TODO管理 (3テーブル)
-`todos`, `todo_assignees`, `todo_comments`
-
-### ダッシュボード設定 (1テーブル)
-`dashboard_widget_settings`
-
-### アクセス解析 (2テーブル)
-`page_view_logs`, `page_view_daily_stats` — 生ログ90日保持→物理削除、日次集計は永続保持
-
-### 外観設定 (2テーブル)
-`user_appearance_settings`, `seasonal_themes`
-
-### ダイレクトメール配信 (2テーブル)
-`direct_mail_logs`, `direct_mail_recipients` — 週3回制限はRedisカウンター管理
-
-### エラーレポート (1テーブル)
-`error_reports` — 認証不要の公開エンドポイントで受付
-
-### 広告・アフィリエイト (初期1テーブル / 将来6テーブル)
-`affiliate_configs`（初期）/ `ads`, `ad_campaigns`, `ad_targeting_rules`, `ad_impressions`, `ad_clicks`（将来）
-
-### コルクボード (4テーブル)
-`corkboards`, `corkboard_cards`, `corkboard_groups`, `corkboard_card_groups`
-
-### QR会員証 (1テーブル)
-`member_cards`
-
-### メンション (1テーブル)
-`mentions` — ポリモーフィックテーブル（`target_type` + `target_id`）で複数機能横断
-
-### タイムライン・通知 (11テーブル)
-`timeline_posts`, `timeline_post_attachments`, `timeline_post_reactions`, `timeline_bookmarks`, `timeline_post_edits`, `user_mutes`, `timeline_polls`, `timeline_poll_options`, `timeline_poll_votes`, `notifications`, `notification_preferences`
-
-### ソーシャルプロフィール・フォロー (2テーブル)
-`user_social_profiles`, `follows`
-
-### チャット (4テーブル)
-`chat_channels`, `chat_messages`, `chat_channel_members`, `chat_message_reactions`
-
-### スケジュール・出欠 (6テーブル)
-`schedules`, `schedule_attendances`, `event_surveys`, `event_survey_responses`, `schedule_attendance_reminders`, `schedule_cross_refs`
-
-### 予約管理 (3テーブル)
-`reservation_slots`, `reservations`, `reservation_reminders`
-
-### サービス履歴 (2テーブル)
-`service_records`, `service_record_fields`
-
-### コンテンツ管理 (9テーブル)
-`blog_posts`, `blog_tags`, `blog_post_tags`, `activity_results`, `activity_participants`, `bulletin_categories`, `bulletin_threads`, `bulletin_replies`, `bulletin_read_status`
-
-### ギャラリー (2テーブル)
-`photo_albums`, `photos`
-
-### アンケート・投票 (4テーブル)
-`surveys`, `survey_questions`, `survey_options`, `survey_responses`
-
-### ファイル共有 (3テーブル)
-`shared_files`, `shared_folders`, `file_permissions`
-
-### ストレージ課金 (2テーブル)
-`storage_plans`, `team_storage_subscriptions`
-
-### 運営ツール (2テーブル)
-`equipment_items`, `equipment_assignments`
-
-### メンバー紹介 (4テーブル)
-`team_pages`, `team_page_sections`, `member_profiles`, `member_profile_fields`
-
-### マッチング (9テーブル)
-`match_requests`, `match_proposals`, `match_proposal_dates`, `match_reviews`, `match_request_templates`, `match_notification_preferences`, `ng_teams`, `prefectures`, `cities`
-
-### パフォーマンス管理 (2テーブル)
-`performance_metrics`, `performance_records`
-
-### 決済・会費 (6テーブル)
-`payment_items`, `stripe_customers`, `member_payments`, `team_access_requirements`, `organization_access_requirements`, `content_payment_gates`
-
-### 通報・モデレーション (1テーブル)
-`content_reports` — ポリモーフィック通報管理（`target_type` + `target_id`）。対応アクション（削除・凍結）は API パラメータで実行
-
-### 監査ログ (1テーブル)
-`audit_logs` — 保持期間2年（設定変更可）、期限超過分はバッチ削除
-
-### 回覧板 (4テーブル)
-`circulation_documents`, `circulation_recipients`, `circulation_attachments`, `circulation_comments`
-
-### 電子印鑑 (2テーブル)
-`electronic_seals`, `seal_stamp_logs`
-
-### 緊急安否確認 (5テーブル)
-`safety_checks`, `safety_responses`, `safety_check_message_presets`, `safety_check_templates`, `safety_response_followups`
-
-### シフト管理 (3テーブル)
-`shift_schedules`, `shift_slots`, `shift_requests`
-
-### 議決権行使・委任状 (6テーブル)
-`proxy_vote_sessions`, `proxy_vote_motions`, `proxy_vote_attachments`, `proxy_vote_motion_comments`, `proxy_votes`, `proxy_delegations`
-
-### 住民台帳・物件情報 (3テーブル)
-`dwelling_units`, `resident_registry`, `property_listings`
-
-### カルテ (7テーブル)
-`chart_records`, `chart_intake_forms`, `chart_photos`, `chart_body_marks`, `chart_formulas`, `chart_section_settings`, `chart_custom_fields`
-
-### 駐車場区画管理 (5テーブル)
-`parking_spaces`, `parking_assignments`, `parking_applications`, `parking_listings`, `registered_vehicles`
-
-### 外部連携・広告 (7テーブル)
-`line_integration_config`, `user_google_calendar_connections`, `user_calendar_sync_settings`, `user_schedule_google_events`, `ad_slots`, `sponsors`, `ical_subscriptions`
+| Phase | 機能領域 | 詳細設計 |
+|-------|---------|---------|
+| 1 | 認証・権限・ユーザー基盤、プラットフォーム設定、チーム・組織・グループ階層、テンプレート・モジュール、プラン・サブスクリプション | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md) |
+| 2 | QR会員証、ダッシュボード、TODO・プロジェクト、アクセス解析、外観設定 | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.3](docs/features/F02.3_todo_project.md) |
+| 3 | スケジュール・出欠、個人スケジュール、Googleカレンダー連携、予約管理、シフト管理、緊急安否確認、順番待ち | [F03.1](docs/features/F03.1_schedule_shared.md), [F03.2](docs/features/F03.2_schedule_personal.md), [F03.3](docs/features/F03.3_google_calendar.md), [F03.4](docs/features/F03.4_reservation.md), [F03.5](docs/features/F03.5_shift.md), [F03.6](docs/features/F03.6_safety_check.md), [F03.7](docs/features/F03.7_queue.md) |
+| 4 | タイムライン、チャット、プッシュ通知、ソーシャルプロフィール・フォロー、通報・モデレーション、グローバル検索 | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md) |
+| 5 | 掲示板、回覧板、電子印鑑、アンケート・投票、ファイル共有 | [F05.1](docs/features/F05.1_bulletin_board.md), [F05.2](docs/features/F05.2_circular.md), [F05.3](docs/features/F05.3_digital_seal.md), [F05.4](docs/features/F05.4_survey_vote.md), [F05.5](docs/features/F05.5_file_sharing.md) |
+| 6 | CMS・ブログ、メンバー紹介・ギャラリー、タイムラインダイジェスト、活動記録 | [F06.1](docs/features/F06.1_cms_blog.md), [F06.2](docs/features/F06.2_member_gallery.md), [F06.3](docs/features/F06.3_timeline_digest.md), [F06.4](docs/features/F06.4_activity_records.md) |
+| 7 | サービス記録、パフォーマンス管理、備品管理、カルテ | [F07.1](docs/features/F07.1_service_records.md), [F07.2](docs/features/F07.2_performance.md), [F07.3](docs/features/F07.3_equipment.md), [F07.4](docs/features/F07.4_chart.md) |
+| 8 | マッチング、決済・会費・入退室、議決権行使・委任状、領収書、回数券 | [F08.1](docs/features/F08.1_matching.md), [F08.2](docs/features/F08.2_payments_access_control.md), [F08.3](docs/features/F08.3_voting_proxy.md), [F08.4](docs/features/F08.4_receipt.md), [F08.5](docs/features/F08.5_ticket_book.md) |
+| 9 | 住民台帳、プロモーション配信、駐車場区画、LINE/SNS連携、施設予約、ダイレクトメール、広告、コルクボード | [F09.1](docs/features/F09.1_resident_registry.md), [F09.2](docs/features/F09.2_promotion_targeting.md), [F09.3](docs/features/F09.3_parking.md), [F09.4](docs/features/F09.4_line_sns.md), [F09.5](docs/features/F09.5_facility_booking.md), [F09.6](docs/features/F09.6_direct_mail.md), [F09.7](docs/features/F09.7_advertising.md), [F09.8](docs/features/F09.8_corkboard.md) |
+| 10 | 管理者ダッシュボード、通報モデレーション、監査ログ | [F10.1](docs/features/F10.1_admin_dashboard.md), [F10.2](docs/features/F10.2_moderation.md), [F10.3](docs/features/F10.3_audit_logs.md) |
+| 11 | ワークフロー、予算会計、フォームビルダー、ナレッジベース、イベント管理、スキル認定、Webhook/API、ゲーミフィケーション、オフラインPWA、多言語コンテンツ、デジタルサイネージ、インシデント管理、オンボーディング | [F11.1](docs/features/F11.1_workflow_approval.md), [F11.2](docs/features/F11.2_budget_accounting.md), [F11.3](docs/features/F11.3_form_builder.md), [F11.4](docs/features/F11.4_knowledge_base.md), [F11.5](docs/features/F11.5_event_management.md), [F11.6](docs/features/F11.6_skill_certification.md), [F11.7](docs/features/F11.7_webhook_api.md), [F11.8](docs/features/F11.8_gamification.md), [F11.9](docs/features/F11.9_offline_pwa.md), [F11.10](docs/features/F11.10_multilingual_content.md), [F11.11](docs/features/F11.11_digital_signage.md), [F11.12](docs/features/F11.12_incident_management.md), [F11.13](docs/features/F11.13_onboarding.md) |
 
 ---
 
@@ -968,213 +857,33 @@
 
 全APIプレフィックス: `/api/v1`
 
-### 認証
-| Method | Path | 説明 |
-|--------|------|------|
-| POST | `/auth/register` | ユーザー登録 |
-| POST | `/auth/login` | ログイン |
-| POST | `/auth/refresh` | トークンリフレッシュ |
-| POST | `/auth/logout` | ログアウト |
-| GET | `/auth/me` | プロフィール取得 |
-| POST | `/auth/oauth/{provider}` | OAuth2ソーシャルログイン（Google/LINE/Apple） |
-| GET | `/auth/oauth/{provider}/callback` | OAuthコールバック |
-| POST | `/auth/password-reset/request` | パスワードリセット要求 |
-| POST | `/auth/password-reset/confirm` | パスワードリセット実行 |
-| POST | `/auth/2fa/setup` | 2FA設定 |
-| POST | `/auth/2fa/verify` | 2FA検証 |
-| DELETE | `/auth/2fa` | 2FA無効化 |
-| POST | `/auth/deactivate` | アカウント退会申請 |
+> 📄 各エンドポイントのリクエスト/レスポンス仕様・認可ルール・エラーレスポンスの正（Single Source of Truth）は各フィーチャードキュメントの「API設計」セクション
 
-### プラン・課金
+### 設計原則
+- RESTful（リソース指向）、JSON リクエスト/レスポンス
+- 認証: JWT Bearer トークン（Authorization ヘッダー）
+- レスポンス形式: `ApiResponse<T>`（単一）/ `PagedResponse<T>`（リスト+meta）/ `ErrorResponse`（error+fieldErrors）
+- スコープ付きリソース: `/teams/{teamId}/...` または `/organizations/{orgId}/...`
+- WebSocket: STOMP over SockJS（`/ws`）
 
-#### チーム向け
-`GET /modules/prices`, `GET /packages`, `GET /discount-campaigns`, `POST /discount-campaigns/validate` (クーポンコード検証), `GET /teams/{id}/subscription`, `POST /teams/{id}/subscription`, `PUT /teams/{id}/subscription`, `DELETE /teams/{id}/subscription` (解約), `GET /teams/{id}/subscription/invoices`, `GET /storage-plans`, `GET /teams/{id}/storage`, `POST /teams/{id}/storage/subscription`, `PUT /teams/{id}/storage/subscription`
+### Phase 別 API 概要
 
-#### システム管理者向け（`/system-admin`）
-`GET/POST/PUT/DELETE /system-admin/module-prices`, `GET/POST/PUT/DELETE /system-admin/packages`, `GET/POST/PUT/DELETE /system-admin/discount-campaigns`, `GET /system-admin/discount-campaigns/{id}/usages`, `GET/PUT /system-admin/tax-settings`, `GET/POST/PUT/DELETE /system-admin/storage-plans`, `GET /system-admin/storage-usage` (全チームのストレージ使用状況一覧)
-
-### チーム管理
-| Method | Path | 説明 |
-|--------|------|------|
-| POST | `/teams` | 独立チームの作成 |
-| GET | `/teams/{teamId}` | チーム情報取得 |
-| PATCH | `/teams/{teamId}` | チーム情報更新 |
-| DELETE | `/teams/{teamId}` | チーム削除 |
-| GET | `/teams/{teamId}/members` | チームメンバー一覧 |
-| POST | `/teams/{teamId}/members` | メンバー追加 |
-| DELETE | `/teams/{teamId}/members/{userId}` | メンバー削除 |
-
-※ チームと組織の紐付けは `team_org_memberships` で管理。組織配下へのチーム追加は `POST /organizations/{orgId}/teams/{teamId}/join` で既存チームを参加させる方式
-
-### 組織管理
-`CRUD /organizations`, `GET /organizations/{id}/teams`, `POST /organizations/{id}/invite`, `POST /invite-tokens/{token}/accept`, `GET /me/teams`, `GET /me/organizations`
-
-### 招待・QRコード
-`POST /teams/{id}/invite-tokens`, `GET /teams/{id}/invite-tokens`, `DELETE /teams/{id}/invite-tokens/{tokenId}`, `POST /organizations/{id}/invite-tokens`, `GET /organizations/{id}/invite-tokens`, `DELETE /organizations/{id}/invite-tokens/{tokenId}`, `POST /invite-tokens/{token}/join`, `GET /invite-tokens/{token}/verify`
-
-### グループ管理
-`CRUD /groups`, `GET /groups/{id}/members`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{userId}`, `GET /organizations/{id}/groups`
-
-### テンプレート・モジュール
-`GET /templates`, `GET /templates/{id}`, `GET /templates/{id}/modules`, `PUT /templates/{id}/modules`
-
-### テンプレート管理（SYSTEM_ADMIN専用）
-`POST /system-admin/templates`, `PUT /system-admin/templates/{id}`, `DELETE /system-admin/templates/{id}`, `POST /system-admin/modules`, `PUT /system-admin/modules/{id}`, `DELETE /system-admin/modules/{id}`, `GET /system-admin/modules/level-availability`, `PUT /system-admin/modules/{id}/level-availability`
-
-### QR会員証
-`GET /members/{id}/card`, `POST /members/{id}/card/generate`, `GET /members/card/verify/{code}`
-
-### マイダッシュボード
-| Method | Path | 説明 |
-|--------|------|------|
-| GET | `/dashboard` | ダッシュボード一括取得 |
-| GET | `/dashboard/notices` | お知らせ欄 |
-| GET | `/dashboard/my-posts` | 自分の投稿一覧 |
-| GET | `/dashboard/upcoming-events` | 直近イベント + 出欠状況 |
-| GET | `/dashboard/unread-threads` | 未読スレッド |
-| GET | `/dashboard/activity` | 最近のアクティビティ |
-| PUT | `/dashboard/widgets` | ウィジェット表示設定 |
-| GET | `/dashboard/team/{id}` | チームダッシュボード取得 |
-| GET | `/dashboard/organization/{id}` | 組織ダッシュボード取得 |
-
-### TODO管理
-`GET/POST /todos`, `GET/PUT/DELETE /todos/{id}`, `PATCH /todos/{id}/status`, `POST /todos/{id}/assignees`, `DELETE /todos/{id}/assignees/{userId}`, `POST /todos/{id}/comments`, `GET /todos/my`, `GET /teams/{id}/todos`, `GET /organizations/{id}/todos`
-
-### タイムライン
-`GET/POST /timeline`, `GET/PUT/DELETE /timeline/{id}`, `POST/GET /timeline/{id}/replies`, `POST/DELETE /timeline/{id}/reactions`, `GET /timeline/{id}/reactions`, `PATCH /timeline/{id}/pin`, `POST/DELETE /timeline/{id}/bookmark`, `GET /timeline/bookmarks`, `GET /timeline/my`, `GET /timeline/search`, `GET /timeline/drafts`, `GET /timeline/scheduled`, `GET /timeline/{id}/edits`, `PUT /timeline/{id}/read`, `POST/DELETE /timeline/{id}/repost`, `POST/DELETE /timeline/{id}/poll/vote`, `GET /timeline/stats`, `POST/DELETE /mutes`, `GET /mutes`
-
-### ソーシャルプロフィール・フォロー
-`POST /social-profiles`, `GET /social-profiles/me`, `GET /social-profiles/handle/{handle}`, `PUT/DELETE /social-profiles/{id}`, `PATCH /admin/social-profiles/{id}/freeze`, `POST /follows`, `DELETE /follows/{followedType}/{followedId}`, `GET /follows/following`, `GET /follows/followers`, `GET /follows/check`
-
-### チャット
-`CRUD /chat/channels`, `GET /chat/channels/{id}/messages`, `POST /chat/channels/{id}/messages`, `PUT/DELETE /chat/messages/{id}`, `POST /chat/messages/{id}/reactions`, `DELETE /chat/messages/{id}/reactions/{emoji}`, `WS /ws/chat`
-
-### スケジュール・出欠
-`GET/POST /schedules`, `GET/PUT/DELETE /schedules/{id}`, `POST /schedules/{id}/attendance`, `GET /schedules/{id}/attendance`, `GET /schedules/{id}/attendance/export`, `GET /schedules/calendar`
-
-### 予約管理
-`GET/POST /reservations`, `GET/PUT/DELETE /reservations/{id}`, `GET /reservation-slots`, `POST /reservation-slots`, `PUT/DELETE /reservation-slots/{id}`, `GET /reservations/upcoming`
-
-### サービス履歴
-`GET/POST /service-records`, `GET/PUT/DELETE /service-records/{id}`, `GET /members/{id}/service-history`, `CRUD /service-record-fields`
-
-### ブログ
-`GET/POST /blog/posts`, `GET /blog/posts/{slug}`, `PUT/DELETE /blog/posts/{id}`, `PATCH /blog/posts/{id}/publish`
-
-### 活動記録
-`GET/POST /activities`, `GET/PUT/DELETE /activities/{id}`, `POST/DELETE /activities/{id}/participants`
-
-### ギャラリー
-`GET/POST /gallery/albums`, `GET/PUT/DELETE /gallery/albums/{id}`, `POST /gallery/albums/{id}/photos`, `DELETE /gallery/photos/{id}`
-
-### 備品管理
-`GET/POST /equipment`, `GET/PUT/DELETE /equipment/{id}`, `POST /equipment/{id}/assign`, `PATCH /equipment/{id}/return`
-
-### 掲示板
-`GET/POST /bulletin/categories`, `PUT/DELETE /bulletin/categories/{id}`, `GET/POST /bulletin/threads`, `GET/PUT/DELETE /bulletin/threads/{id}`, `PATCH /bulletin/threads/{id}/priority`, `POST /bulletin/threads/{id}/read`, `GET /bulletin/threads/{id}/readers`, `PATCH /bulletin/threads/{id}/pin`, `PATCH /bulletin/threads/{id}/lock`, `POST /bulletin/threads/{id}/replies`, `POST /bulletin/replies/{id}/replies`, `PUT/DELETE /bulletin/replies/{id}`
-
-### アンケート・投票
-`GET/POST /surveys`, `GET/PUT/DELETE /surveys/{id}`, `POST /surveys/{id}/responses`, `GET /surveys/{id}/results`
-
-### ファイル共有
-`GET/POST /files`, `GET/DELETE /files/{id}`, `GET /files/{id}/download`, `CRUD /folders`, `PUT /files/{id}/permissions`
-
-### マッチング
-`GET /matching/requests`, `POST /teams/{teamId}/matching/requests`, `GET/PUT/DELETE /matching/requests/{id}`, `GET /teams/{teamId}/matching/requests`, `POST /teams/{teamId}/matching/requests/{id}/propose`, `GET /matching/requests/{id}/proposals`, `GET /teams/{teamId}/matching/proposals`, `PATCH /matching/proposals/{id}/accept|reject|withdraw|cancel|agree-cancel`, `POST /matching/reviews`, `GET /teams/{teamId}/matching/reviews`, `GET /teams/{teamId}/matching/cancellations`, `CRUD /teams/{teamId}/matching/ng-teams`, `GET /master/prefectures`, `GET /master/prefectures/{code}/cities`, `GET /matching/activity-suggestions`, `GET/PUT /teams/{teamId}/matching/notification-preferences`, `GET/POST /teams/{teamId}/matching/templates`, `PUT/DELETE /teams/{teamId}/matching/templates/{id}`
-
-### パフォーマンス
-`CRUD /performance/metrics`, `POST /performance/records`, `GET /performance/stats`, `GET /members/{id}/performance`
-
-### 決済・会費
-`POST /payments/plans`, `GET /payments/plans`, `POST /payments/charge`, `GET /payments/history`, `POST /membership-fees/collect`, `GET /membership-fees/status`
-
-### 検索
-`GET /search?q={query}&type={type}&scope={scope}`, `GET /search/suggestions`
-
-### 通報・モデレーション
-`POST /reports`, `GET /admin/reports`, `GET /admin/reports/{id}`, `PATCH /admin/reports/{id}`
-
-### 監査ログ
-`GET /admin/audit-logs`, `GET /system-admin/audit-logs`
+| Phase | 機能領域 | 主要エンドポイント例 | 詳細設計 |
+|-------|---------|-------------------|---------|
+| 1 | 認証・権限、チーム・組織、テンプレート・モジュール、プラン・課金 | `/auth/**`, `/teams/**`, `/organizations/**`, `/templates/**`, `/system-admin/**` | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md) |
+| 2 | QR会員証、ダッシュボード、TODO | `/members/card/**`, `/dashboard/**`, `/todos/**` | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.3](docs/features/F02.3_todo_project.md) |
+| 3 | スケジュール、予約、シフト、安否確認、順番待ち | `/schedules/**`, `/reservations/**`, `/shifts/**`, `/safety-checks/**`, `/queues/**` | [F03.1](docs/features/F03.1_schedule_shared.md), [F03.2](docs/features/F03.2_schedule_personal.md), [F03.3](docs/features/F03.3_google_calendar.md), [F03.4](docs/features/F03.4_reservation.md), [F03.5](docs/features/F03.5_shift.md), [F03.6](docs/features/F03.6_safety_check.md), [F03.7](docs/features/F03.7_queue.md) |
+| 4 | タイムライン、チャット、通知、ソーシャルプロフィール、検索 | `/timeline/**`, `/chat/**`, `/notifications/**`, `/social-profiles/**`, `/search/**` | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md) |
+| 5 | 掲示板、回覧板、電子印鑑、アンケート、ファイル共有 | `/bulletin/**`, `/circulation/**`, `/seal/**`, `/surveys/**`, `/files/**` | [F05.1](docs/features/F05.1_bulletin_board.md), [F05.2](docs/features/F05.2_circular.md), [F05.3](docs/features/F05.3_digital_seal.md), [F05.4](docs/features/F05.4_survey_vote.md), [F05.5](docs/features/F05.5_file_sharing.md) |
+| 6 | CMS・ブログ、メンバー紹介、ギャラリー、活動記録 | `/blog/**`, `/team/pages/**`, `/gallery/**`, `/activities/**` | [F06.1](docs/features/F06.1_cms_blog.md), [F06.2](docs/features/F06.2_member_gallery.md), [F06.3](docs/features/F06.3_timeline_digest.md), [F06.4](docs/features/F06.4_activity_records.md) |
+| 7 | サービス記録、パフォーマンス、備品管理、カルテ | `/service-records/**`, `/performance/**`, `/equipment/**`, `/charts/**` | [F07.1](docs/features/F07.1_service_records.md), [F07.2](docs/features/F07.2_performance.md), [F07.3](docs/features/F07.3_equipment.md), [F07.4](docs/features/F07.4_chart.md) |
+| 8 | マッチング、決済・会費、議決権、領収書、回数券 | `/matching/**`, `/payments/**`, `/proxy-votes/**`, `/admin/receipts/**`, `/ticket-products/**` | [F08.1](docs/features/F08.1_matching.md), [F08.2](docs/features/F08.2_payments_access_control.md), [F08.3](docs/features/F08.3_voting_proxy.md), [F08.4](docs/features/F08.4_receipt.md), [F08.5](docs/features/F08.5_ticket_book.md) |
+| 9 | 住民台帳、プロモーション、駐車場、LINE/SNS、施設予約、DM、広告、コルクボード | `/dwelling-units/**`, `/promotions/**`, `/parking/**`, `/line/**`, `/facilities/**`, `/direct-mails/**`, `/ads/**`, `/corkboards/**` | [F09.1](docs/features/F09.1_resident_registry.md), [F09.2](docs/features/F09.2_promotion_targeting.md), [F09.3](docs/features/F09.3_parking.md), [F09.4](docs/features/F09.4_line_sns.md), [F09.5](docs/features/F09.5_facility_booking.md), [F09.6](docs/features/F09.6_direct_mail.md), [F09.7](docs/features/F09.7_advertising.md), [F09.8](docs/features/F09.8_corkboard.md) |
+| 10 | 管理者ダッシュボード、モデレーション、監査ログ | `/admin/dashboard/**`, `/admin/reports/**`, `/admin/audit-logs/**` | [F10.1](docs/features/F10.1_admin_dashboard.md), [F10.2](docs/features/F10.2_moderation.md), [F10.3](docs/features/F10.3_audit_logs.md) |
+| 11 | ワークフロー、予算会計、フォーム、ナレッジベース、イベント、スキル、Webhook、ゲーミフィケーション等 | `/workflows/**`, `/budgets/**`, `/forms/**`, `/kb/**`, `/events/**`, `/skills/**`, `/webhooks/**`, `/badges/**` | [F11.1](docs/features/F11.1_workflow_approval.md)〜[F11.13](docs/features/F11.13_onboarding.md) |
 
 ### データエクスポート
 `POST /export/team/{id}`, `GET /export/status/{jobId}`, `GET /export/download/{jobId}`
-
-### 通知
-`GET /notifications`, `GET /notifications/unread-count`, `PATCH /notifications/{id}/read`, `PATCH /notifications/read-all`, `WS /ws`
-
-### 通知受信設定
-`GET /notification-preferences`, `PUT /notification-preferences/teams/{teamId}`, `PUT /notification-preferences/organizations/{orgId}`
-
-### メンバー紹介
-`GET/POST /team/pages`, `GET/PUT/DELETE /team/pages/{id}`, `PATCH /team/pages/{id}/publish`, `GET/POST /team/pages/{id}/sections`, `PUT/DELETE /team/sections/{id}`, `GET/POST /team/members`, `GET/PUT/DELETE /team/members/{id}`, `POST /team/members/bulk`, `GET/POST /team/member-fields`, `PUT/DELETE /team/member-fields/{id}`
-
-### 管理者ダッシュボード
-`GET /admin/dashboard`, `/admin/users/**`, `/admin/roles/**`, `/admin/permissions/**`, `/admin/modules/**`, `/admin/schedules/**`, `/admin/blog/**`, `/admin/bulletin/categories/**`, `/admin/equipment/**`, `/admin/team/**`, `/admin/ads/**`, `/admin/sponsors/**`, `/admin/reservations/**`, `/admin/google-calendar/**`, `/admin/line/**`, `/admin/sns/**`, `GET/POST /admin/permission-groups` (権限グループ一覧・作成), `GET/PUT/DELETE /admin/permission-groups/{id}` (編集・削除), `POST /admin/permission-groups/{id}/duplicate` (複製), `PUT /admin/permission-groups/{id}/assign/{userId}` (ユーザーへのグループ割り当て)`
-
-### システム管理者
-`GET /system-admin/dashboard`, `/system-admin/organizations/**`, `/system-admin/teams/**`, `/system-admin/users/**`, `/system-admin/templates/**`, `/system-admin/modules/**`, `/system-admin/reports/**`, `/system-admin/audit-logs/**`, `/system-admin/settings/**`
-
-### Googleカレンダー連携
-`GET /admin/google-calendar/status`, `POST /admin/google-calendar/connect`, `GET /admin/google-calendar/callback`, `DELETE /admin/google-calendar/disconnect`, `POST /admin/google-calendar/sync`, `PUT /admin/google-calendar/settings`, `GET /admin/google-calendar/preview`
-
-### LINE連携
-`POST /line/webhook`, `POST/DELETE /line/link`
-
-### 広告・スポンサー
-`GET /ads`, `GET /sponsors`, `CRUD /admin/ads`, `CRUD /admin/sponsors`
-
-### 回覧板
-`GET/POST /circulation`, `GET/PUT/DELETE /circulation/{id}`, `POST /circulation/{id}/start`, `POST /circulation/{id}/cancel`, `POST /circulation/{id}/force-complete`, `POST /circulation/{id}/stamp`, `PATCH /circulation/{id}/recipients/{userId}/skip`, `POST /circulation/{id}/remind`, `GET /circulation/{id}/status`, `GET /circulation/{id}/export`（PDF証跡）, `GET /circulation/my`, `POST/DELETE /circulation/{id}/attachments`, `DELETE /circulation/{id}/attachments/{attachmentId}`, `GET/POST /circulation/{id}/comments`, `DELETE /circulation/{id}/comments/{commentId}`
-
-### 電子印鑑
-`GET /users/{id}/seal`, `POST /users/{id}/seal/regenerate`, `GET /users/{id}/seal/stamps`, `POST /seal/stamps/{stampId}/revoke`, `GET /seal/stamps/{stampId}/verify`
-
-### 緊急安否確認
-`POST /safety-checks` (実行・掲示板スレッド自動生成), `GET /safety-checks/{id}`, `PATCH /safety-checks/{id}/close`, `POST /safety-checks/{id}/respond` (GPS座標・メッセージ・gps_shared フラグを含む), `GET /safety-checks/{id}/results` (集計・GPS位置一覧), `GET /safety-checks/my` (未回答確認・ログイン直後チェック用)
-
-### シフト管理
-`GET/POST /shifts/schedules`, `GET/PUT/DELETE /shifts/schedules/{id}`, `PATCH /shifts/schedules/{id}/publish`, `GET/POST /shifts/schedules/{id}/slots`, `PUT/DELETE /shifts/slots/{id}`, `GET/POST /shifts/requests`, `GET /shifts/my`
-
-### 議決権行使・委任状
-`GET/POST /proxy-votes`, `GET/PUT/DELETE /proxy-votes/{id}`, `PATCH /proxy-votes/{id}/open`, `PATCH /proxy-votes/{id}/close`, `PATCH /proxy-votes/{id}/finalize`, `POST /proxy-votes/{id}/motions`, `PUT/DELETE /proxy-votes/motions/{motionId}`, `POST /proxy-votes/motions/{motionId}/attachments`, `GET/POST /proxy-votes/motions/{motionId}/comments`, `DELETE /proxy-votes/motions/{motionId}/comments/{commentId}`, `PATCH /proxy-votes/motions/{motionId}/start-vote`, `PATCH /proxy-votes/motions/{motionId}/end-vote`, `PATCH /proxy-votes/{id}/start-all-votes`, `POST/PUT /proxy-votes/{id}/cast`, `POST/DELETE /proxy-votes/{id}/delegate`, `PATCH /proxy-votes/delegations/{delegationId}/review`, `GET /proxy-votes/{id}/results`, `GET /proxy-votes/{id}/results/csv`, `GET /proxy-votes/{id}/attendance`, `GET /proxy-votes/my`, `POST /proxy-votes/{id}/remind`, `POST /proxy-votes/{id}/attachments`, `DELETE /proxy-votes/attachments/{attachmentId}`, `POST /proxy-votes/{id}/clone`, `GET /proxy-votes/{id}/minutes-pdf`
-
-### 住民台帳・物件情報
-`GET/POST /dwelling-units`, `GET/PUT/DELETE /dwelling-units/{id}`, `GET/POST /dwelling-units/{id}/residents`, `PUT/DELETE /dwelling-units/{unitId}/residents/{id}`, `GET/POST /property-listings`, `GET/PUT/DELETE /property-listings/{id}`
-
-### カルテ
-`GET/POST /charts`, `GET/PUT/DELETE /charts/{id}`, `POST /charts/{id}/photos`, `DELETE /charts/photos/{id}`, `GET/PUT /charts/{id}/intake-form`, `PUT /charts/{id}/body-marks`, `GET/POST /charts/{id}/formulas`, `PUT/DELETE /charts/formulas/{id}`, `GET /charts/{id}/pdf`, `PATCH /charts/{id}/share`, `POST /charts/{id}/stamp`, `GET /charts/customer/{userId}`, `GET/PUT /charts/settings/sections`, `GET/POST /charts/settings/custom-fields`, `PUT/DELETE /charts/settings/custom-fields/{id}`
-
-### 駐車場区画管理
-`GET/POST /parking/spaces`, `GET/PUT/DELETE /parking/spaces/{id}`, `POST /parking/spaces/bulk-assign`, `GET /parking/spaces/vacant`, `GET/POST /parking/applications`, `PATCH /parking/applications/{id}/approve`, `GET/POST /parking/listings`, `GET/PUT/DELETE /parking/listings/{id}`
-
-### アクセス解析
-`GET /teams/{id}/analytics` (累計), `GET /teams/{id}/analytics/daily` (日別), `GET /teams/{id}/analytics/monthly` (月別), `GET /teams/{id}/analytics/content` (コンテンツ別ランキング)
-
-### 外観設定
-`GET/PUT /users/appearance` (ユーザー個人設定), `GET /seasonal-themes/active` (現在有効なシーズナルテーマ取得), `GET/POST/PUT/DELETE /system-admin/seasonal-themes` (SYSTEM_ADMIN管理)
-
-### ダイレクトメール配信
-`GET /direct-mails/quota` (週次残回数確認), `POST /direct-mails` (送信・予約送信), `GET /direct-mails` (送信履歴一覧), `GET /direct-mails/{id}` (詳細・開封状況), `DELETE /direct-mails/{id}` (予約送信キャンセル)
-
-### エラーレポート
-`POST /error-reports` (送信・認証不要), `GET /system-admin/error-reports` (一覧・SYSTEM_ADMIN), `GET /system-admin/error-reports/{id}` (詳細), `PATCH /system-admin/error-reports/{id}/status` (ステータス更新)
-
-### コルクボード
-`GET/POST /corkboards` (ボード一覧・作成), `GET/PUT/DELETE /corkboards/{id}` (詳細・更新・削除), `GET/POST /corkboards/{id}/cards` (カード一覧・追加), `PUT/DELETE /corkboards/{id}/cards/{cardId}` (カード更新・削除), `PATCH /corkboards/{id}/cards/{cardId}/position` (位置のみ更新。頻繁に呼ばれるため軽量エンドポイントを分離), `GET/POST /corkboards/{id}/sections` (セクション一覧・作成), `PUT/DELETE /corkboards/{id}/sections/{sectionId}` (セクション更新・削除), `PATCH /corkboards/{id}/sections/{sectionId}/collapse` (折りたたみ状態のトグル), `GET /chat/messages/{id}/context` (参照カードのコンテキスト取得。前後N件), `GET /timeline-posts/{id}/context` (同上・タイムライン), `GET /bulletin-threads/{id}/context` (同上・掲示板)
-
-### 課金サマリー（ダッシュボード用）
-`GET /teams/{id}/billing/current-month` (今月の課金合計・内訳。ADMIN/DEPUTY_ADMIN), `GET /organizations/{id}/billing/current-month` (今月の課金合計・内訳。ADMIN/DEPUTY_ADMIN), `GET /users/me/billing/current-month` (個人向け課金サマリー。将来対応)
-
-### 組織数課金
-`GET /organizations/{id}/billing/team-count` (現在のチーム数・課金見込み額確認), `GET /organizations/{id}/billing/invoices` (組織数課金請求書一覧), `GET /organizations/{id}/billing/invoices/{month}` (月次請求書詳細), `POST /organizations/{id}/org-type/change-request` (組織種別変更申請), `GET/PUT /system-admin/org-count-billing-tiers` (無料枠・単価設定), `GET /system-admin/org-count-billing/overview` (全組織のチーム数・課金状況一覧), `GET/PATCH /system-admin/org-type-change-requests` (種別変更申請の一覧・承認/拒否)
-
-### 広告・アフィリエイト
-`GET /ads/active` (ページ属性に応じたアクティブ広告取得・認証不要), `POST /ads/{id}/impression` (インプレッション記録・将来), `POST /ads/{id}/click` (クリックログ記録・将来), `GET/POST/PUT/PATCH/DELETE /system-admin/affiliate-configs` (アフィリエイト設定管理), `GET/POST /system-admin/ads` (将来: 広告クリエイティブ管理), `PUT/DELETE /system-admin/ads/{id}` (将来), `GET/POST /system-admin/ad-campaigns` (将来: キャンペーン管理), `PUT/DELETE /system-admin/ad-campaigns/{id}` (将来), `GET /system-admin/ad-campaigns/{id}/stats` (将来: インプレッション・クリック統計)
-
-### プロモーション配信（ターゲット通知・クーポン）
-ADMIN/事業者（整骨院・美容院等）が郵便番号・ロール等の属性でセグメントを定義し、メンバー・サポーターにプッシュ通知型のプロモーション（クーポン・販促情報）を配信する。通知基盤（F04.3）の `notification_type = PROMOTION` として既存チャネル（IN_APP / Push / LINE）で配信。
-`GET/POST /promotions` (プロモーション一覧/作成), `GET/PUT/DELETE /promotions/{id}` (詳細/更新/削除), `POST /promotions/{id}/publish` (配信実行), `GET /promotions/{id}/stats` (開封率・クーポン利用率等の効果測定), `GET/POST /promotions/{id}/segments` (ターゲットセグメント管理: 郵便番号・ロール・チーム属性), `GET/POST /coupons` (クーポン一覧/作成), `GET/PUT/DELETE /coupons/{id}` (詳細/更新/無効化), `POST /coupons/{id}/redeem` (クーポン利用), `GET /coupons/my` (自分の受け取り済みクーポン一覧), `GET /system-admin/promotions/billing` (プロモーション課金状況一覧)
 
 ---
 

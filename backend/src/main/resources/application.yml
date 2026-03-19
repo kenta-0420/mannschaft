@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: mannschaft
+
+  # デフォルトプロファイル（明示指定がない場合は local）
+  profiles:
+    default: local
+
+  # Virtual Threads（Java 21）
+  threads:
+    virtual:
+      enabled: true
+
+  # JPA / Hibernate（共通設定。環境依存は各プロファイルで上書き）
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # Flyway
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  # Jackson — ISO 8601 文字列で出力（.claudecode.md §20）
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+# Server
+server:
+  port: 8080
+
+# JWT（アプリ固有設定。本番は環境変数で上書き）
+mannschaft:
+  jwt:
+    secret: ${MANNSCHAFT_JWT_SECRET:dev-secret-key-change-in-production-minimum-256-bits-long}
+    access-token-expiration: ${MANNSCHAFT_JWT_ACCESS_EXPIRATION:900}
+    refresh-token-expiration: ${MANNSCHAFT_JWT_REFRESH_EXPIRATION:604800}

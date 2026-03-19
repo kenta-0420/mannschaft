@@ -1,0 +1,12 @@
+spring:
+  # Testcontainers が自動で MySQL を起動するため DataSource は不要
+  datasource:
+    url: jdbc:tc:mysql:8.0:///mannschaft?serverTimezone=Asia/Tokyo
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
