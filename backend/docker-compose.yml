@@ -2,6 +2,7 @@ services:
   mysql:
     image: mysql:8.0
     container_name: mannschaft-mysql
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: mannschaft
@@ -16,14 +17,15 @@ services:
       --collation-server=utf8mb4_unicode_ci
       --default-time-zone=+09:00
 
-  redis:
-    image: redis:7-alpine
-    container_name: mannschaft-redis
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: mannschaft-valkey
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
-      - redis-data:/data
+      - valkey-data:/data
 
 volumes:
   mysql-data:
-  redis-data:
+  valkey-data:

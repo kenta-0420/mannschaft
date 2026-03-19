@@ -68,8 +68,8 @@
 | 認証 | JWT (jjwt) + Spring Security 6 |
 | APIドキュメント | Springdoc OpenAPI (Swagger UI) |
 | マッピング | MapStruct |
-| リアルタイム通信 | WebSocket (STOMP), Redis (メッセージブローカー) |
-| キャッシュ/セッション | Redis (トークン無効化・タイムラインフィードキャッシュ) |
+| リアルタイム通信 | WebSocket (STOMP), Valkey (メッセージブローカー) |
+| キャッシュ/セッション | Valkey (トークン無効化・タイムラインフィードキャッシュ) |
 | ストレージ | AWS S3 + CloudFront (CDN) |
 | 画像処理 | AWS Lambda (WebP変換・サムネイル自動生成) |
 | テスト | Testcontainers (MySQL 8.0) |
@@ -148,7 +148,7 @@
 - **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
 - **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
 - **パスワードリセット**: メールによるリセットフロー。トークン有効期限は **30分**
-- **レート制限・ブルートフォース対策**: ログイン試行を IP + アカウント単位で Redis カウンター管理。5回失敗でアカウントを **30分** ロック。パスワードリセット・2FA検証エンドポイントにも同様のレート制限を適用する
+- **レート制限・ブルートフォース対策**: ログイン試行を IP + アカウント単位で Valkey カウンター管理。5回失敗でアカウントを **30分** ロック。パスワードリセット・2FA検証エンドポイントにも同様のレート制限を適用する
 - **アカウント凍結・退会フロー**: 管理者によるアカウント凍結、ユーザー自身の退会申請。退会申請後30日間は論理削除（猶予期間）、その後個人情報を物理削除。決済履歴は税法に基づき7年間保持。詳細は `.claudecode.md` §8「データ保持・削除規約」を参照
 - **非アクティブアーカイブ**: 一定期間ログインがないユーザー・チーム・組織を段階的にアーカイブする。アーカイブ前にメール通知を送り、ログインで即時解除可能
 
@@ -159,11 +159,11 @@
 
   | アーカイブ処理 | 内容 | 節約効果 |
   |--------------|------|---------|
-  | Redis キャッシュ | フィードキャッシュ・未読カウンター等を全削除 | 大（Redis はメモリが高価） |
+  | Valkey キャッシュ | フィードキャッシュ・未読カウンター等を全削除 | 大（Valkey はメモリが高価） |
   | S3 ファイル | Glacier Instant Retrieval（低価格ティア）へ移行 | 中（ストレージ費用削減） |
   | MySQL データ | 移動しない。`archived_at` タイムスタンプのみ付与。検索・一覧クエリから除外 | 小 |
 
-  ログイン復帰時は `archived_at` をクリアし、S3 復元（Glacier Instant Retrieval は体感遅延なし）と Redis キャッシュの遅延再構築を行う。フロントエンドは「アカウントを復元中...」のローディング表示でカバーする
+  ログイン復帰時は `archived_at` をクリアし、S3 復元（Glacier Instant Retrieval は体感遅延なし）と Valkey キャッシュの遅延再構築を行う。フロントエンドは「アカウントを復元中...」のローディング表示でカバーする
 
 ---
 
@@ -791,12 +791,12 @@
 - **外部リンクのみ**: 動画ファイルのアップロードは行わない。YouTube / Vimeo 等の URL を貼り付ける方式とする
 - **メタデータ自動取得**: 投稿時に oEmbed API を呼び出し、サムネイル URL・タイトルを `timeline_post_attachments` に保存
 
-### フィードキャッシュ（Redis）
+### フィードキャッシュ（Valkey）
 
 - タイムライン最新フィードを Sorted Set でキャッシュ（key: `timeline:{scope}:{id}`, score: 投稿 timestamp）
 - 個別投稿は Hash でキャッシュ（key: `post:{postId}`, TTL: 5分）
 - 投稿作成・削除時にキャッシュを即時無効化
-- **未読通知数**: `unread:{userId}` を Redis カウンターで管理（通知追加で +1、既読で -1）。ダッシュボード・ヘッダーの COUNT クエリを廃止
+- **未読通知数**: `unread:{userId}` を Valkey カウンターで管理（通知追加で +1、既読で -1）。ダッシュボード・ヘッダーの COUNT クエリを廃止
 - **チームモジュール設定**: `team:modules:{teamId}` にキャッシュ（設定変更時に無効化）。モジュール有効化チェックのたびに JOIN する処理を排除
 - **SNS フィードキャッシュ**: Instagram/X API の取得結果を `sns_feed:{teamId}:{provider}` に保存（TTL: 15分）。DB テーブルは使用しない
 
@@ -811,8 +811,8 @@
 - **JOIN 一括取得**: タイムライン一覧は投稿者情報・リアクション数・添付ファイルを1クエリで取得
 - **IN 句バッチ取得**: 関連エンティティは `WHERE id IN (...)` で N+1 を排除
 - **カウンターキャッシュ（denormalize）**: `COUNT(*)` クエリを廃止するため、集計値や表示最適化カラムを保持してアトミック更新する（対象: `timeline_posts.reaction_count`, `timeline_posts.reply_count`, `teams.member_count`, `chat_channels.last_message_at`, `chat_channels.last_message_preview`（最新メッセージ冒頭100字）, `chat_channel_members.unread_count`, `bulletin_threads.reply_count`）
-- **ダッシュボード一括取得**: `/dashboard` エンドポイントは内部でも JOIN / Redis を活用し、SQL 発行を最小化する
-- **JWT ロール埋め込み**: JWT ペイロードにロール情報を含め、ロール・パーミッション確認の DB アクセスをゼロにする。ロール変更時は Redis 無効化フラグ（`token:invalidated:{userId}`）で即時反映
+- **ダッシュボード一括取得**: `/dashboard` エンドポイントは内部でも JOIN / Valkey を活用し、SQL 発行を最小化する
+- **JWT ロール埋め込み**: JWT ペイロードにロール情報を含め、ロール・パーミッション確認の DB アクセスをゼロにする。ロール変更時は Valkey 無効化フラグ（`token:invalidated:{userId}`）で即時反映
 - **FULLTEXT インデックス**: `LIKE '%...%'` によるフルテーブルスキャンを排除。`blog_posts.body`, `bulletin_threads.title`, `timeline_posts.content`, `chat_messages.body` に MySQL FULLTEXT インデックスを付与し `MATCH() AGAINST()` 構文で検索する
 
 ### 通信量削減
@@ -907,7 +907,7 @@
 
 ## インフラ構成
 
-- **初期**: AWS EC2 + MySQL + Redis
+- **初期**: AWS EC2 + MySQL + Valkey
 - **将来**: ロリポップ等のレンタルサーバーへの移行も考慮
 - ファイルストレージ: S3互換オブジェクトストレージ（Local / S3 切替可能な抽象化設計）
 - Spring Boot fat JAR（Java 21 があればどこでも動作）
@@ -923,7 +923,7 @@
 > - ストレージ戦略（Pre-signed URL フロー）: `.claudecode.md` §26
 > - WebSocket 認証 / JWT / レートリミット: `BACKEND_CODING_CONVENTION.md` §8
 > - Virtual Threads / 非同期ジョブ: `.claudecode.md` §15
-> - Redis キー命名・TTL: `.claudecode.md` §24
+> - Valkey キー命名・TTL: `.claudecode.md` §24
 > - エラーレポート収集: `FRONTEND_CODING_CONVENTION.md` §13 + `BACKEND_CODING_CONVENTION.md` §8
 > - 開発・テスト環境: `BACKEND_CODING_CONVENTION.md` §5 + `TEST_CONVENTION.md`
 > - フロントエンド・バックエンド連携（OpenAPI 型同期）: `BACKEND_CODING_CONVENTION.md` §5 + `FRONTEND_CODING_CONVENTION.md` §7

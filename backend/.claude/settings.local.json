@@ -56,7 +56,16 @@
       "Bash(pkill -f \"nuxt dev\")",
       "Bash(wsl:*)",
       "Bash(winget uninstall:*)",
-      "Bash(iconv -f UTF-16LE -t UTF-8)"
+      "Bash(iconv -f UTF-16LE -t UTF-8)",
+      "Bash(curl -s telnet://localhost:3306)",
+      "Bash(curl -s telnet://127.0.0.1:3306 --max-time 3)",
+      "Bash(powershell.exe -Command \"Test-NetConnection -ComputerName localhost -Port 3306\" 2>&1)",
+      "Bash(powershell.exe -Command \"Test-NetConnection -ComputerName localhost -Port 3306 -WarningAction SilentlyContinue | Select-Object TcpTestSucceeded\" 2>&1)",
+      "Bash(wsl -d Ubuntu-24.04 -- bash -c \"cd /mnt/c/cloudeProject && docker compose up -d && echo ''''Started''''\")",
+      "Bash(powershell.exe -Command \"Test-NetConnection -ComputerName localhost -Port 6379 -WarningAction SilentlyContinue | Select-Object TcpTestSucceeded\" 2>&1)",
+      "Bash(powershell.exe -Command \"Test-NetConnection -ComputerName localhost -Port 6379 -WarningAction SilentlyContinue | Select-Object TcpTestSucceeded; Test-NetConnection -ComputerName localhost -Port 3306 -WarningAction SilentlyContinue | Select-Object TcpTestSucceeded\" 2>&1)",
+      "Bash(find docs:*)",
+      "Bash(xargs sed:*)"
     ]
   },
   "worktree": {

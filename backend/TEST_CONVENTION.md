@@ -163,32 +163,32 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTest {
 }
 ```
 
-### 3.3 Redis を使うテスト
+### 3.3 Valkey を使うテスト
 
-Redis に依存するテスト（JWT ブラックリスト、レートリミット等）では Testcontainers の Redis コンテナを使用する。
+Valkey に依存するテスト（JWT ブラックリスト、レートリミット等）では Testcontainers の Valkey コンテナを使用する。
 
 ```java
-public abstract class AbstractIntegrationTestWithRedis extends AbstractIntegrationTest {
+public abstract class AbstractIntegrationTestWithValkey extends AbstractIntegrationTest {
 
     // 親クラスと同様に Singleton Container パターンを採用
-    static final GenericContainer<?> REDIS;
+    static final GenericContainer<?> VALKEY;
 
     static {
-        REDIS = new GenericContainer<>("redis:7-alpine")
+        VALKEY = new GenericContainer<>("valkey/valkey:8-alpine")
             .withExposedPorts(6379);
-        REDIS.start();
+        VALKEY.start();
     }
 
     @DynamicPropertySource
-    static void configureRedis(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.redis.host", REDIS::getHost);
-        registry.add("spring.data.redis.port", REDIS::getFirstMappedPort);
+    static void configureValkey(DynamicPropertyRegistry registry) {
+        registry.add("spring.data.redis.host", VALKEY::getHost);
+        registry.add("spring.data.redis.port", VALKEY::getFirstMappedPort);
     }
 }
 ```
 
-- Redis を使わないテストは `AbstractIntegrationTest` を継承する（Redis コンテナの起動コストを避ける）
-- Redis を使うテストのみ `AbstractIntegrationTestWithRedis` を継承する
+- Valkey を使わないテストは `AbstractIntegrationTest` を継承する（Valkey コンテナの起動コストを避ける）
+- Valkey を使うテストのみ `AbstractIntegrationTestWithValkey` を継承する
 
 ---
 
@@ -273,7 +273,7 @@ void チーム作成_ADMIN権限で正常なリクエスト_201が返される()
 src/test/java/com/mannschaft/app/
 ├── common/
 │   ├── AbstractIntegrationTest.java          # 結合テスト基底（MySQL）
-│   ├── AbstractIntegrationTestWithRedis.java # 結合テスト基底（MySQL + Redis）
+│   ├── AbstractIntegrationTestWithValkey.java # 結合テスト基底（MySQL + Valkey）
 │   └── TestFixture.java                      # 共通テストデータ
 └── [feature]/
     ├── [Feature]ServiceTest.java             # 単体テスト
