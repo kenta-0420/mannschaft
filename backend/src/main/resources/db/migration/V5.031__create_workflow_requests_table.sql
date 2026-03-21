@@ -1,0 +1,27 @@
+-- F05.6 汎用ワークフロー・承認エンジン: workflow_requests テーブル
+CREATE TABLE workflow_requests (
+    id                  BIGINT        NOT NULL AUTO_INCREMENT,
+    template_id         BIGINT        NOT NULL,
+    scope_type          VARCHAR(20)   NOT NULL,
+    scope_id            BIGINT        NOT NULL,
+    title               VARCHAR(200)  NOT NULL,
+    status              VARCHAR(20)   NOT NULL DEFAULT 'DRAFT',
+    requested_by        BIGINT        NULL,
+    requested_at        DATETIME      NULL,
+    current_step_order  TINYINT       NULL,
+    field_values        JSON          NULL,
+    version             BIGINT        NOT NULL DEFAULT 0,
+    source_type         VARCHAR(30)   NULL,
+    source_id           BIGINT        NULL,
+    created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at          DATETIME      NULL,
+    PRIMARY KEY (id),
+    INDEX idx_workflow_requests_template (template_id),
+    INDEX idx_workflow_requests_scope (scope_type, scope_id),
+    INDEX idx_workflow_requests_status (status),
+    INDEX idx_workflow_requests_requested_by (requested_by),
+    INDEX idx_workflow_requests_source (source_type, source_id),
+    CONSTRAINT fk_workflow_requests_template FOREIGN KEY (template_id) REFERENCES workflow_templates(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_workflow_requests_requested_by FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
