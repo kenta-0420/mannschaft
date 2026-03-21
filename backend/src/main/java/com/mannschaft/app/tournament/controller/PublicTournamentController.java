@@ -55,7 +55,7 @@ public class PublicTournamentController {
     @Operation(summary = "公開大会詳細")
     public ResponseEntity<ApiResponse<TournamentResponse>> getPublicTournament(
             @PathVariable Long orgId, @PathVariable Long tId) {
-        return ResponseEntity.ok(ApiResponse.of(tournamentService.getTournament(tId)));
+        return ResponseEntity.ok(ApiResponse.of(tournamentService.getPublicTournament(orgId, tId)));
     }
 
     @GetMapping("/{tId}/divisions/{divId}/standings")

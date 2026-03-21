@@ -98,6 +98,24 @@ public class TournamentService {
     }
 
     /**
+     * 公開大会詳細を取得する。visibility = PUBLIC のみ返却。
+     */
+    public TournamentResponse getPublicTournament(Long orgId, Long tournamentId) {
+        TournamentEntity tournament = findTournamentOrThrow(tournamentId);
+        if (!tournament.getOrganizationId().equals(orgId)
+                || tournament.getVisibility() != TournamentVisibility.PUBLIC) {
+            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+        List<TiebreakerResponse> tiebreakers = tiebreakerRepository
+                .findByTournamentIdOrderByPriorityAsc(tournamentId)
+                .stream().map(mapper::toTiebreakerResponse).toList();
+        List<StatDefResponse> statDefs = statDefRepository
+                .findByTournamentIdOrderBySortOrderAsc(tournamentId)
+                .stream().map(mapper::toStatDefResponse).toList();
+        return mapper.toTournamentResponse(tournament, tiebreakers, statDefs);
+    }
+
+    /**
      * 大会を作成する。
      */
     @Transactional
