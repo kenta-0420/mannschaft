@@ -1,0 +1,28 @@
+CREATE TABLE chat_channels (
+    id                   BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    channel_type         VARCHAR(20)      NOT NULL,
+    team_id              BIGINT UNSIGNED,
+    organization_id      BIGINT UNSIGNED,
+    name                 VARCHAR(100),
+    icon_key             VARCHAR(500),
+    description          VARCHAR(500),
+    is_private           BOOLEAN          NOT NULL DEFAULT FALSE,
+    created_by           BIGINT UNSIGNED,
+    last_message_at      DATETIME,
+    last_message_preview VARCHAR(100),
+    source_type          VARCHAR(30),
+    source_id            BIGINT UNSIGNED,
+    is_archived          BOOLEAN          NOT NULL DEFAULT FALSE,
+    version              BIGINT           NOT NULL DEFAULT 0,
+    created_at           DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at           DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at           DATETIME,
+
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_channel_source (source_type, source_id),
+    INDEX idx_channel_team (team_id, is_archived, last_message_at DESC),
+    INDEX idx_channel_org (organization_id, is_archived, last_message_at DESC),
+    CONSTRAINT fk_channel_team FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+    CONSTRAINT fk_channel_org FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_channel_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='チャットチャンネル';
