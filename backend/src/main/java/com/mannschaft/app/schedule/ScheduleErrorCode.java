@@ -57,7 +57,46 @@ public enum ScheduleErrorCode implements ErrorCode {
     INVALID_SCOPE("SCHEDULE_015", "スケジュールのスコープが不正です", Severity.ERROR),
 
     /** アクセス権なし */
-    ACCESS_DENIED("SCHEDULE_016", "このスケジュールへのアクセス権がありません", Severity.WARN);
+    ACCESS_DENIED("SCHEDULE_016", "このスケジュールへのアクセス権がありません", Severity.WARN),
+
+    /** 個人リマインダー上限超過 */
+    PERSONAL_REMINDER_LIMIT_EXCEEDED("SCHEDULE_019", "個人スケジュールのリマインダーは最大3件です", Severity.ERROR),
+
+    /** 個人スケジュール上限超過 */
+    PERSONAL_SCHEDULE_LIMIT_EXCEEDED("SCHEDULE_020", "個人スケジュールの上限（1000件）に達しています", Severity.WARN),
+
+    /** 一括削除上限超過 */
+    BATCH_DELETE_LIMIT_EXCEEDED("SCHEDULE_021", "一括削除は最大50件までです", Severity.ERROR),
+
+    /** スケジュール所有者不一致 */
+    NOT_SCHEDULE_OWNER("SCHEDULE_022", "このスケジュールの所有者ではありません", Severity.WARN),
+
+    /** Google Calendar未連携 */
+    GOOGLE_CALENDAR_NOT_CONNECTED("SCHEDULE_030", "Google Calendarが連携されていません", Severity.WARN),
+
+    /** Google Calendar連携済み */
+    GOOGLE_CALENDAR_ALREADY_CONNECTED("SCHEDULE_031", "Google Calendarは既に連携されています", Severity.WARN),
+
+    /** Google Calendar認証エラー */
+    GOOGLE_CALENDAR_AUTH_ERROR("SCHEDULE_032", "Google Calendar認証エラー", Severity.ERROR),
+
+    /** Google Calendar同期失敗 */
+    GOOGLE_CALENDAR_SYNC_FAILED("SCHEDULE_033", "Google Calendar同期に失敗しました", Severity.ERROR),
+
+    /** iCalトークン不在 */
+    ICAL_TOKEN_NOT_FOUND("SCHEDULE_040", "iCalトークンが見つかりません", Severity.WARN),
+
+    /** iCalトークン無効 */
+    ICAL_TOKEN_INACTIVE("SCHEDULE_041", "iCalトークンが無効です", Severity.WARN),
+
+    /** iCalレート制限 */
+    ICAL_RATE_LIMITED("SCHEDULE_042", "リクエスト頻度が高すぎます", Severity.WARN),
+
+    /** OAuthステート不一致 */
+    OAUTH_STATE_MISMATCH("SCHEDULE_043", "CSRF検証に失敗しました", Severity.ERROR),
+
+    /** OAuthトークン取得失敗 */
+    OAUTH_TOKEN_EXCHANGE_FAILED("SCHEDULE_044", "OAuthトークン取得に失敗しました", Severity.ERROR);
 
     private final String code;
     private final String message;

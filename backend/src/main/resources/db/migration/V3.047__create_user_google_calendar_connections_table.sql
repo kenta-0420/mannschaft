@@ -1,0 +1,20 @@
+CREATE TABLE user_google_calendar_connections (
+    id                      BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id                 BIGINT UNSIGNED NOT NULL,
+    google_account_email    VARCHAR(255)    NOT NULL,
+    google_calendar_id      VARCHAR(255)    NOT NULL DEFAULT 'primary',
+    access_token            TEXT            NOT NULL,
+    refresh_token           TEXT            NOT NULL,
+    token_expires_at        DATETIME        NOT NULL,
+    is_active               BOOLEAN         NOT NULL DEFAULT TRUE,
+    personal_sync_enabled   BOOLEAN         NOT NULL DEFAULT FALSE,
+    last_sync_error_type    VARCHAR(30),
+    last_sync_error_message TEXT,
+    last_sync_error_at      DATETIME,
+    encryption_key_version  INT UNSIGNED    NOT NULL DEFAULT 1,
+    created_at              DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_ugcc_user (user_id),
+    CONSTRAINT fk_ugcc_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Google Calendar OAuth連携情報';
