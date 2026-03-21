@@ -62,6 +62,7 @@ public class PublicTournamentController {
     @Operation(summary = "公開順位表")
     public ResponseEntity<ApiResponse<List<StandingResponse>>> getPublicStandings(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
+        tournamentService.verifyPublicAccess(orgId, tId);
         return ResponseEntity.ok(ApiResponse.of(standingsQueryService.getStandings(divId)));
     }
 
@@ -71,6 +72,7 @@ public class PublicTournamentController {
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable String statKey,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
+        tournamentService.verifyPublicAccess(orgId, tId);
         Page<IndividualRankingResponse> result =
                 rankingsCalculationService.getRankings(tId, statKey, PageRequest.of(page, size));
         return ResponseEntity.ok(PagedResponse.of(result.getContent(),
@@ -81,7 +83,7 @@ public class PublicTournamentController {
     @Operation(summary = "公開トーナメント表")
     public ResponseEntity<ApiResponse<List<MatchResponse>>> getPublicBracket(
             @PathVariable Long orgId, @PathVariable Long tId) {
-        // ブラケット = 全試合カードをnext_match_id付きで返却
+        tournamentService.verifyPublicAccess(orgId, tId);
         // TODO: ブラケット専用レスポンス構築
         return ResponseEntity.ok(ApiResponse.of(List.of()));
     }
@@ -90,6 +92,7 @@ public class PublicTournamentController {
     @Operation(summary = "公開対戦マトリクス")
     public ResponseEntity<ApiResponse<MatrixResponse>> getPublicMatrix(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
+        tournamentService.verifyPublicAccess(orgId, tId);
         return ResponseEntity.ok(ApiResponse.of(standingsQueryService.getMatrix(divId)));
     }
 }

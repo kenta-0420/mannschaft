@@ -98,14 +98,22 @@ public class TournamentService {
     }
 
     /**
-     * 公開大会詳細を取得する。visibility = PUBLIC のみ返却。
+     * 公開アクセス可能か検証する。visibility = PUBLIC かつ指定組織に所属していることを確認。
      */
-    public TournamentResponse getPublicTournament(Long orgId, Long tournamentId) {
+    public void verifyPublicAccess(Long orgId, Long tournamentId) {
         TournamentEntity tournament = findTournamentOrThrow(tournamentId);
         if (!tournament.getOrganizationId().equals(orgId)
                 || tournament.getVisibility() != TournamentVisibility.PUBLIC) {
             throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
         }
+    }
+
+    /**
+     * 公開大会詳細を取得する。visibility = PUBLIC のみ返却。
+     */
+    public TournamentResponse getPublicTournament(Long orgId, Long tournamentId) {
+        verifyPublicAccess(orgId, tournamentId);
+        TournamentEntity tournament = findTournamentOrThrow(tournamentId);
         List<TiebreakerResponse> tiebreakers = tiebreakerRepository
                 .findByTournamentIdOrderByPriorityAsc(tournamentId)
                 .stream().map(mapper::toTiebreakerResponse).toList();
