@@ -1,0 +1,76 @@
+package com.mannschaft.app.survey.controller;
+
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.survey.dto.AddResultViewersRequest;
+import com.mannschaft.app.survey.dto.AddTargetsRequest;
+import com.mannschaft.app.survey.dto.SurveyResultResponse;
+import com.mannschaft.app.survey.service.SurveyResultService;
+import com.mannschaft.app.survey.service.SurveyService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * アンケート結果・配信管理コントローラー。結果閲覧・配信対象・閲覧者管理APIを提供する。
+ */
+@RestController
+@RequestMapping("/api/v1/surveys/{surveyId}")
+@Tag(name = "アンケート結果・配信管理", description = "F05.4 結果集計・配信対象・閲覧者管理")
+@RequiredArgsConstructor
+public class SurveyResultController {
+
+    private final SurveyResultService resultService;
+    private final SurveyService surveyService;
+
+    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
+    private Long getCurrentUserId() {
+        return 1L;
+    }
+
+    /**
+     * アンケート結果を取得する。
+     */
+    @GetMapping("/results")
+    @Operation(summary = "アンケート結果取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<SurveyResultResponse>> getResults(
+            @PathVariable Long surveyId) {
+        SurveyResultResponse response = resultService.getResults(surveyId, getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 配信対象を追加する。
+     */
+    @PostMapping("/targets")
+    @Operation(summary = "配信対象追加")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "追加成功")
+    public ResponseEntity<Void> addTargets(
+            @PathVariable Long surveyId,
+            @Valid @RequestBody AddTargetsRequest request) {
+        surveyService.addTargets(surveyId, request.getUserIds());
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    /**
+     * 結果閲覧者を追加する。
+     */
+    @PostMapping("/result-viewers")
+    @Operation(summary = "結果閲覧者追加")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "追加成功")
+    public ResponseEntity<Void> addResultViewers(
+            @PathVariable Long surveyId,
+            @Valid @RequestBody AddResultViewersRequest request) {
+        surveyService.addResultViewers(surveyId, request.getUserIds());
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+}
