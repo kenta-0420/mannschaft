@@ -1,0 +1,21 @@
+CREATE TABLE shared_folders (
+    id         BIGINT       NOT NULL AUTO_INCREMENT,
+    scope_type VARCHAR(20)  NOT NULL,
+    team_id    BIGINT       NULL,
+    organization_id BIGINT  NULL,
+    user_id    BIGINT       NULL,
+    parent_id  BIGINT       NULL,
+    name       VARCHAR(255) NOT NULL,
+    description VARCHAR(500) NULL,
+    created_by BIGINT       NULL,
+    version    BIGINT       NOT NULL DEFAULT 0,
+    created_at DATETIME(6)  NOT NULL,
+    updated_at DATETIME(6)  NOT NULL,
+    deleted_at DATETIME(6)  NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_shared_folders_team      FOREIGN KEY (team_id)         REFERENCES teams(id)         ON DELETE CASCADE,
+    CONSTRAINT fk_shared_folders_org       FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_shared_folders_user      FOREIGN KEY (user_id)         REFERENCES users(id)         ON DELETE SET NULL,
+    CONSTRAINT fk_shared_folders_parent    FOREIGN KEY (parent_id)       REFERENCES shared_folders(id) ON DELETE SET NULL,
+    CONSTRAINT fk_shared_folders_created   FOREIGN KEY (created_by)      REFERENCES users(id)         ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
