@@ -66,17 +66,25 @@ public class PerformanceExportService {
     }
 
     /**
-     * CSVインジェクション対策: 先頭が危険文字の場合はシングルクォートを付与する。
+     * CSVインジェクション対策 + CSV引用符処理。
+     * 先頭が危険文字の場合はシングルクォートを付与し、
+     * カンマ・引用符・改行を含む場合はダブルクォートで囲む。
      */
     private String sanitizeCsvValue(String value) {
         if (value == null) return "";
-        String trimmed = value.trim();
-        if (trimmed.startsWith("=") || trimmed.startsWith("+") || trimmed.startsWith("-") || trimmed.startsWith("@")) {
-            return "'" + trimmed;
+        String sanitized = value.trim();
+
+        // 1. CSVインジェクション対策: 先頭が危険文字の場合はシングルクォートを付与
+        if (sanitized.startsWith("=") || sanitized.startsWith("+")
+                || sanitized.startsWith("-") || sanitized.startsWith("@")) {
+            sanitized = "'" + sanitized;
         }
-        if (trimmed.contains(",") || trimmed.contains("\"") || trimmed.contains("\n")) {
-            return "\"" + trimmed.replace("\"", "\"\"") + "\"";
+
+        // 2. CSV引用符処理: カンマ・引用符・改行を含む場合はダブルクォートで囲む
+        if (sanitized.contains(",") || sanitized.contains("\"") || sanitized.contains("\n")) {
+            sanitized = "\"" + sanitized.replace("\"", "\"\"") + "\"";
         }
-        return trimmed;
+
+        return sanitized;
     }
 }

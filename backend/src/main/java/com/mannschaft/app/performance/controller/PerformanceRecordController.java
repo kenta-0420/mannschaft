@@ -148,6 +148,6 @@ public class PerformanceRecordController {
         exportService.exportCsv(writer, teamId, metricId, userId, dateFrom, dateTo);
         writer.flush();
 
-        return null;
+        return ResponseEntity.ok().build();
     }
 }

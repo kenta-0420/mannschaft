@@ -45,7 +45,9 @@ public class PerformancePersonalController {
     public ResponseEntity<ApiResponse<List<MyPerformanceResponse>>> getMyPerformance(
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int limit) {
         List<MyPerformanceResponse> response = statsService.getMyPerformance(
                 getCurrentUserId(), teamId, dateFrom, dateTo);
         return ResponseEntity.ok(ApiResponse.of(response));

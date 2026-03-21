@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -47,9 +48,9 @@ public class ServiceRecordTemplateController {
     @Operation(summary = "テンプレート一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TemplateResponse>>> listTeamTemplates(
-            @PathVariable Long teamId) {
-        // TODO: チームから組織IDを取得
-        Long organizationId = null;
+            @PathVariable Long teamId,
+            @RequestParam(required = false) Long organizationId) {
+        // organizationId が指定された場合、組織スコープのテンプレートも含めて返却する
         List<TemplateResponse> response = templateService.listTeamTemplates(teamId, organizationId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

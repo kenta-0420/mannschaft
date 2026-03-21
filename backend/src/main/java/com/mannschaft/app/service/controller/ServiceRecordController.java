@@ -21,6 +21,7 @@ import com.mannschaft.app.service.service.ServiceRecordExportService;
 import com.mannschaft.app.service.service.ServiceRecordService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -80,14 +81,25 @@ public class ServiceRecordController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "serviceDate,desc") String sort) {
+            @RequestParam(defaultValue = "serviceDate,desc") String sort,
+            HttpServletRequest httpRequest) {
         String[] sortParts = sort.split(",");
         Sort sortObj = sortParts.length > 1
                 ? Sort.by(Sort.Direction.fromString(sortParts[1]), sortParts[0])
                 : Sort.by(Sort.Direction.DESC, sortParts[0]);
 
-        // TODO: カスタムフィールドフィルタのパース
+        // custom_field.{fieldId}={value} パラメータをパース
         Map<Long, String> customFieldFilters = new HashMap<>();
+        httpRequest.getParameterMap().forEach((key, values) -> {
+            if (key.startsWith("custom_field.") && values.length > 0) {
+                try {
+                    Long fieldId = Long.parseLong(key.substring("custom_field.".length()));
+                    customFieldFilters.put(fieldId, values[0]);
+                } catch (NumberFormatException ignored) {
+                    // 不正なfieldIdは無視
+                }
+            }
+        });
 
         Page<ServiceRecordResponse> result = recordService.listRecords(
                 teamId, memberUserId, staffUserId, serviceDateFrom, serviceDateTo,
@@ -368,6 +380,6 @@ public class ServiceRecordController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
-        return null;
+        return ResponseEntity.ok().build();
     }
 }

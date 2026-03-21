@@ -1,6 +1,7 @@
 package com.mannschaft.app.performance.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.performance.MetricDataType;
 import com.mannschaft.app.performance.PerformanceErrorCode;
 import com.mannschaft.app.performance.PerformanceMapper;
@@ -125,7 +126,7 @@ public class PerformanceRecordService {
      */
     @Transactional
     public BulkRecordResponse createBulkRecords(Long teamId, Long currentUserId, BulkRecordRequest request) {
-        List<String> errors = new ArrayList<>();
+        List<ErrorResponse.FieldError> fieldErrors = new ArrayList<>();
 
         for (int i = 0; i < request.getEntries().size(); i++) {
             BulkRecordRequest.Entry entry = request.getEntries().get(i);
@@ -133,12 +134,13 @@ public class PerformanceRecordService {
                 PerformanceMetricEntity metric = metricService.getMetricEntity(teamId, entry.getMetricId());
                 validateValue(metric, entry.getValue());
             } catch (BusinessException e) {
-                errors.add("entry[" + i + "]: " + e.getMessage());
+                fieldErrors.add(new ErrorResponse.FieldError(
+                        "entries[" + i + "].value", e.getMessage()));
             }
         }
 
-        if (!errors.isEmpty()) {
-            throw new BusinessException(PerformanceErrorCode.BULK_VALIDATION_FAILED);
+        if (!fieldErrors.isEmpty()) {
+            throw new BusinessException(PerformanceErrorCode.BULK_VALIDATION_FAILED, fieldErrors);
         }
 
         int created = 0;

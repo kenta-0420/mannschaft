@@ -44,10 +44,16 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,6 +81,7 @@ public class ServiceRecordService {
     private final ServiceRecordSettingsRepository settingsRepository;
     private final ServiceRecordReactionRepository reactionRepository;
     private final ServiceRecordMapper mapper;
+    private final ObjectMapper objectMapper;
 
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
@@ -604,6 +611,11 @@ public class ServiceRecordService {
                 throw new BusinessException(ServiceRecordErrorCode.FIELD_NOT_FOUND);
             }
 
+            // 値が非空の場合、フィールド型に応じたバリデーションを実行
+            if (cf.getValue() != null && !cf.getValue().isBlank()) {
+                validateFieldValue(field, cf.getValue());
+            }
+
             ServiceRecordValueEntity value = ServiceRecordValueEntity.builder()
                     .serviceRecordId(recordId)
                     .fieldId(cf.getFieldId())
@@ -615,6 +627,71 @@ public class ServiceRecordService {
         // CONFIRMED の場合のみ必須チェック
         if (status == ServiceRecordStatus.CONFIRMED) {
             validateRequiredFields(recordId, teamId);
+        }
+    }
+
+    /**
+     * フィールド型に応じた値バリデーションを実行する。
+     */
+    private void validateFieldValue(ServiceRecordFieldEntity field, String value) {
+        switch (field.getFieldType()) {
+            case NUMBER -> {
+                try {
+                    new BigDecimal(value);
+                } catch (NumberFormatException e) {
+                    throw new BusinessException(ServiceRecordErrorCode.FIELD_VALUE_INVALID);
+                }
+            }
+            case DATE -> {
+                try {
+                    LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE);
+                } catch (DateTimeParseException e) {
+                    throw new BusinessException(ServiceRecordErrorCode.FIELD_VALUE_INVALID);
+                }
+            }
+            case SELECT -> {
+                List<String> options = parseOptions(field.getOptions());
+                if (!options.contains(value)) {
+                    throw new BusinessException(ServiceRecordErrorCode.FIELD_VALUE_INVALID);
+                }
+            }
+            case MULTISELECT -> {
+                List<String> options = parseOptions(field.getOptions());
+                List<String> selectedValues;
+                try {
+                    selectedValues = objectMapper.readValue(value, new TypeReference<>() {});
+                } catch (JsonProcessingException e) {
+                    throw new BusinessException(ServiceRecordErrorCode.FIELD_VALUE_INVALID);
+                }
+                for (String sv : selectedValues) {
+                    if (!options.contains(sv)) {
+                        throw new BusinessException(ServiceRecordErrorCode.FIELD_VALUE_INVALID);
+                    }
+                }
+            }
+            case CHECKBOX -> {
+                if (!"true".equals(value) && !"false".equals(value)) {
+                    throw new BusinessException(ServiceRecordErrorCode.FIELD_VALUE_INVALID);
+                }
+            }
+            default -> {
+                // TEXT: バリデーション不要
+            }
+        }
+    }
+
+    /**
+     * フィールドの options JSON を文字列リストにパースする。
+     */
+    private List<String> parseOptions(String optionsJson) {
+        if (optionsJson == null || optionsJson.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return objectMapper.readValue(optionsJson, new TypeReference<>() {});
+        } catch (JsonProcessingException e) {
+            log.warn("options JSONパース失敗: {}", optionsJson, e);
+            return Collections.emptyList();
         }
     }
 
