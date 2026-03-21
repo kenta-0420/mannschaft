@@ -1,6 +1,9 @@
 package com.mannschaft.app.cms.controller;
 
+import com.mannschaft.app.cms.dto.AutoSaveRequest;
 import com.mannschaft.app.cms.dto.BlogPostResponse;
+import com.mannschaft.app.cms.dto.BulkActionRequest;
+import com.mannschaft.app.cms.dto.BulkActionResponse;
 import com.mannschaft.app.cms.dto.CreateBlogPostRequest;
 import com.mannschaft.app.cms.dto.PublishRequest;
 import com.mannschaft.app.cms.dto.UpdateBlogPostRequest;
@@ -14,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,8 +57,15 @@ public class BlogPostController {
     public ResponseEntity<PagedResponse<BlogPostResponse>> listPosts(
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) Long organizationId,
+            @RequestParam(required = false) String postType,
+            @RequestParam(required = false) List<Long> tagIds,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long authorId,
+            @RequestParam(required = false) String visibility,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        // TODO: postType, tagIds, status, authorId, visibility, q フィルタの実装
         Page<BlogPostResponse> result;
         if (teamId != null) {
             result = postService.listByTeam(teamId, PageRequest.of(page, size));
@@ -76,8 +87,14 @@ public class BlogPostController {
             @PathVariable String slug,
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) Long organizationId,
-            @RequestParam(required = false) Long userId) {
-        BlogPostResponse response = postService.getBySlug(teamId, organizationId, userId, slug);
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String previewToken) {
+        BlogPostResponse response;
+        if (previewToken != null) {
+            response = postService.getBySlugWithPreviewToken(teamId, organizationId, userId, slug, previewToken);
+        } else {
+            response = postService.getBySlug(teamId, organizationId, userId, slug);
+        }
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -128,6 +145,48 @@ public class BlogPostController {
             @Valid @RequestBody PublishRequest request) {
         BlogPostResponse response = postService.changeStatus(id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 下書きを自動保存する（エディタ30秒間隔）。
+     */
+    @PatchMapping("/posts/{id}/auto-save")
+    @Operation(summary = "下書き自動保存")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "保存成功")
+    public ResponseEntity<ApiResponse<BlogPostResponse>> autoSave(
+            @PathVariable Long id,
+            @Valid @RequestBody AutoSaveRequest request) {
+        BlogPostResponse response = postService.autoSave(id, getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 一括ステータス変更を実行する（ARCHIVE / DELETE / PUBLISH）。
+     */
+    @PatchMapping("/posts/bulk")
+    @Operation(summary = "一括ステータス変更")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "処理成功")
+    public ResponseEntity<ApiResponse<BulkActionResponse>> bulkAction(
+            @Valid @RequestBody BulkActionRequest request) {
+        BulkActionResponse response = postService.bulkAction(request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * RSS/Atomフィードを取得する（PUBLIC記事のみ）。
+     */
+    @GetMapping(value = "/feed", produces = {MediaType.APPLICATION_XML_VALUE, "application/rss+xml", "application/atom+xml"})
+    @Operation(summary = "RSS/Atomフィード取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<BlogPostResponse>>> getFeed(
+            @RequestParam(required = false) Long teamId,
+            @RequestParam(required = false) Long organizationId,
+            @RequestParam(defaultValue = "rss") String format) {
+        List<BlogPostResponse> posts = postService.listPublicPostsForFeed(teamId, organizationId);
+        // TODO: RSS/Atom XML形式への変換は将来実装。現時点ではJSON形式で返却
+        return ResponseEntity.ok()
+                .header("Cache-Control", "public, max-age=600")
+                .body(ApiResponse.of(posts));
     }
 
     /**

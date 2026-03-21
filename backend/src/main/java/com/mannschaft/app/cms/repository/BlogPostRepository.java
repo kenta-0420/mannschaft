@@ -1,6 +1,7 @@
 package com.mannschaft.app.cms.repository;
 
 import com.mannschaft.app.cms.PostStatus;
+import com.mannschaft.app.cms.Visibility;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -45,4 +47,10 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
     Page<BlogPostEntity> searchByOrganization(@Param("orgId") Long orgId, @Param("keyword") String keyword, Pageable pageable);
 
     long countBySeriesId(Long seriesId);
+
+    List<BlogPostEntity> findTop20ByTeamIdAndStatusAndVisibilityOrderByPublishedAtDesc(
+            Long teamId, PostStatus status, Visibility visibility);
+
+    List<BlogPostEntity> findTop20ByOrganizationIdAndStatusAndVisibilityOrderByPublishedAtDesc(
+            Long organizationId, PostStatus status, Visibility visibility);
 }

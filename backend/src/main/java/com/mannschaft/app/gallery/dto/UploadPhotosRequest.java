@@ -29,7 +29,7 @@ public class UploadPhotosRequest {
         private final String originalFilename;
 
         @NotNull
-        private final Integer fileSize;
+        private final Long fileSize;
 
         private final String contentType;
 

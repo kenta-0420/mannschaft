@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
@@ -17,53 +18,32 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CreateActivityRequest {
 
-    private final Long teamId;
-    private final Long organizationId;
+    @NotNull
     private final Long templateId;
 
     @NotBlank
     @Size(max = 200)
     private final String title;
 
-    @Size(max = 10000)
-    private final String description;
-
     @NotNull
     private final LocalDate activityDate;
 
-    @Size(max = 200)
-    private final String location;
+    private final LocalTime activityTimeStart;
+
+    private final LocalTime activityTimeEnd;
+
+    @Size(max = 10000)
+    private final String description;
+
+    private final Map<String, Object> fieldValues;
 
     private final String visibility;
 
-    @Size(max = 500)
-    private final String coverImageUrl;
+    private final List<Long> participantUserIds;
 
-    private final Long scheduleEventId;
-    private final List<ParticipantInput> participants;
-    private final List<CustomValueInput> customValues;
+    private final List<Long> fileIds;
 
-    /**
-     * 参加者入力。
-     */
-    @Getter
-    @RequiredArgsConstructor
-    public static class ParticipantInput {
-        private final Long userId;
-        private final String memberNumber;
-        private final String participationType;
-        private final Integer minutesPlayed;
-        private final String note;
-        private final List<CustomValueInput> customValues;
-    }
+    private final Long scheduleId;
 
-    /**
-     * カスタムフィールド値入力。
-     */
-    @Getter
-    @RequiredArgsConstructor
-    public static class CustomValueInput {
-        private final Long customFieldId;
-        private final String value;
-    }
+    private final Boolean postToTimeline;
 }

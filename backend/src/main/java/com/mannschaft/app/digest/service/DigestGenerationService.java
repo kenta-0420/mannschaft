@@ -26,7 +26,6 @@ import com.mannschaft.app.digest.repository.TimelineDigestConfigRepository;
 import com.mannschaft.app.digest.repository.TimelineDigestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,7 +49,7 @@ public class DigestGenerationService {
 
     private final TimelineDigestRepository digestRepository;
     private final TimelineDigestConfigRepository configRepository;
-    private final DigestAiProvider aiProvider;
+    private final DigestAsyncExecutor digestAsyncExecutor;
     private final TemplateDigestGenerator templateGenerator;
     private final DigestMapper digestMapper;
     private final DigestProperties digestProperties;
@@ -118,12 +117,24 @@ public class DigestGenerationService {
             // TEMPLATE: 同期処理
             generateTemplateDigest(saved, config.orElse(null));
         } else {
-            // AI スタイル: 非同期処理
-            generateAiDigestAsync(saved, config.orElse(null), request.getCustomPromptSuffix());
+            // AI スタイル: 非同期処理（別 Bean 経由で @Async プロキシを有効化）
+            TimelineDigestConfigEntity cfg = config.orElse(null);
+            digestAsyncExecutor.generateAiDigestAsync(
+                    saved.getId(),
+                    scopeType.name(),
+                    request.getScopeId(),
+                    style.name(),
+                    request.getCustomPromptSuffix(),
+                    cfg != null ? cfg.getIncludeReactions() : true,
+                    cfg != null ? cfg.getIncludePolls() : true,
+                    cfg != null ? cfg.getIncludeDiffFromPrevious() : false,
+                    cfg != null ? cfg.getLanguage() : "ja"
+            );
         }
 
+        AiQuotaResponse aiQuota = buildAiQuota(scopeType, request.getScopeId());
         // TODO: estimatedPostCount を実際の投稿クエリ結果から設定
-        return new DigestGenerateResponse(saved.getId(), saved.getStatus().name(), null);
+        return new DigestGenerateResponse(saved.getId(), saved.getStatus().name(), null, aiQuota);
     }
 
     /**
@@ -152,12 +163,16 @@ public class DigestGenerationService {
         log.info("ダイジェストを公開しました: id={}, scope={}:{}",
                 digestId, digest.getScopeType(), digest.getScopeId());
 
+        // TODO: stale_warning の実際の計算（source_post_ids の投稿の updated_at / deleted_at 検査）
+        StaleWarningResponse staleWarning = new StaleWarningResponse(0, 0);
+
         // TODO: 実際の blogPostId と slug を返す
         return new DigestPublishResponse(
                 digestId,
                 null, // blogPostId - F06.1 統合後に設定
                 null, // blogPostSlug - F06.1 統合後に設定
-                "DRAFT"
+                "DRAFT",
+                staleWarning
         );
     }
 
@@ -274,11 +289,24 @@ public class DigestGenerationService {
         if (newStyle == DigestStyle.TEMPLATE) {
             generateTemplateDigest(saved, config.orElse(null));
         } else {
-            generateAiDigestAsync(saved, config.orElse(null), request.getCustomPromptSuffix());
+            // 別 Bean 経由で @Async プロキシを有効化
+            TimelineDigestConfigEntity cfg = config.orElse(null);
+            digestAsyncExecutor.generateAiDigestAsync(
+                    saved.getId(),
+                    original.getScopeType().name(),
+                    original.getScopeId(),
+                    newStyle.name(),
+                    request.getCustomPromptSuffix(),
+                    cfg != null ? cfg.getIncludeReactions() : true,
+                    cfg != null ? cfg.getIncludePolls() : true,
+                    cfg != null ? cfg.getIncludeDiffFromPrevious() : false,
+                    cfg != null ? cfg.getLanguage() : "ja"
+            );
         }
 
+        AiQuotaResponse aiQuota = buildAiQuota(original.getScopeType(), original.getScopeId());
         log.info("ダイジェストを再生成しました: originalId={}, newId={}", digestId, saved.getId());
-        return new DigestGenerateResponse(saved.getId(), saved.getStatus().name(), null);
+        return new DigestGenerateResponse(saved.getId(), saved.getStatus().name(), null, aiQuota);
     }
 
     /**
@@ -403,59 +431,4 @@ public class DigestGenerationService {
         digestRepository.save(generated);
     }
 
-    /**
-     * AI スタイルのダイジェストを非同期生成する。
-     */
-    @Async
-    public void generateAiDigestAsync(TimelineDigestEntity digest, TimelineDigestConfigEntity config, String customPrompt) {
-        try {
-            // TODO: タイムラインから実際の投稿データを取得する
-            List<Map<String, Object>> posts = new ArrayList<>();
-
-            boolean includeReactions = config != null ? config.getIncludeReactions() : true;
-            boolean includePolls = config != null ? config.getIncludePolls() : true;
-            String language = config != null ? config.getLanguage() : "ja";
-
-            // 差分ハイライト用の前回ダイジェスト
-            String previousBody = null;
-            if (config != null && config.getIncludeDiffFromPrevious()) {
-                List<TimelineDigestEntity> previous = digestRepository.findLatestPublishedByScope(
-                        digest.getScopeType(), digest.getScopeId());
-                if (!previous.isEmpty()) {
-                    previousBody = previous.get(0).getGeneratedBody();
-                }
-            }
-
-            DigestAiProvider.AiDigestResult result = aiProvider.generate(
-                    posts, digest.getDigestStyle(), language, customPrompt,
-                    previousBody, includeReactions, includePolls);
-
-            TimelineDigestEntity generated = digest.toBuilder()
-                    .status(DigestStatus.GENERATED)
-                    .generatedTitle(result.title())
-                    .generatedBody(result.body())
-                    .generatedExcerpt(result.excerpt())
-                    .aiModel(result.aiModel())
-                    .aiInputTokens(result.inputTokens())
-                    .aiOutputTokens(result.outputTokens())
-                    .postCount(posts.size())
-                    .build();
-            digestRepository.save(generated);
-
-            // TODO: プッシュ通知（「ダイジェストの生成が完了しました」）
-            // TODO: WebSocket ステータス通知
-
-            log.info("AI ダイジェスト生成完了: id={}, model={}", digest.getId(), result.aiModel());
-
-        } catch (Exception e) {
-            log.error("AI ダイジェスト生成失敗: id={}", digest.getId(), e);
-            TimelineDigestEntity failed = digest.toBuilder()
-                    .status(DigestStatus.FAILED)
-                    .errorMessage(e.getMessage())
-                    .build();
-            digestRepository.save(failed);
-
-            // TODO: ADMIN にプッシュ通知（「ダイジェスト生成に失敗しました」）
-        }
-    }
 }

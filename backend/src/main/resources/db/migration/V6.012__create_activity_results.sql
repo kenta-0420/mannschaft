@@ -1,0 +1,28 @@
+-- F06.4: 活動記録テーブル
+CREATE TABLE activity_results (
+    id                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    scope_type          VARCHAR(20) NOT NULL,
+    scope_id            BIGINT UNSIGNED NOT NULL,
+    template_id         BIGINT UNSIGNED NOT NULL,
+    title               VARCHAR(200) NOT NULL,
+    activity_date       DATE NOT NULL,
+    activity_time_start TIME NULL,
+    activity_time_end   TIME NULL,
+    description         TEXT NULL,
+    field_values        JSON NOT NULL DEFAULT ('{}'),
+    attachments         JSON NULL,
+    visibility          VARCHAR(20) NOT NULL DEFAULT 'MEMBERS_ONLY',
+    schedule_id         BIGINT UNSIGNED NULL,
+    created_by          BIGINT UNSIGNED NULL,
+    created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at          DATETIME NULL,
+    PRIMARY KEY (id),
+    INDEX idx_ar_scope (scope_type, scope_id, activity_date DESC),
+    INDEX idx_ar_template (template_id, activity_date DESC),
+    INDEX idx_ar_schedule (schedule_id),
+    INDEX idx_ar_visibility (scope_type, scope_id, visibility, activity_date DESC),
+    CONSTRAINT fk_ar_template FOREIGN KEY (template_id) REFERENCES activity_templates (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ar_schedule FOREIGN KEY (schedule_id) REFERENCES schedules (id) ON DELETE SET NULL,
+    CONSTRAINT fk_ar_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

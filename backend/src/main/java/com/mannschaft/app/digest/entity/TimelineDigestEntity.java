@@ -76,7 +76,8 @@ public class TimelineDigestEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private DigestStatus status;
+    @Builder.Default
+    private DigestStatus status = DigestStatus.GENERATING;
 
     private Long blogPostId;
 
@@ -96,5 +97,54 @@ public class TimelineDigestEntity {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    // ========================================
+    // Business methods
+    // ========================================
+
+    /**
+     * ダイジェスト生成完了に遷移する。
+     */
+    public void markGenerated(String title, String body, String excerpt,
+                               String model, Integer inputTokens, Integer outputTokens,
+                               int postCount) {
+        this.status = DigestStatus.GENERATED;
+        this.generatedTitle = title;
+        this.generatedBody = body;
+        this.generatedExcerpt = excerpt;
+        this.aiModel = model;
+        this.aiInputTokens = inputTokens;
+        this.aiOutputTokens = outputTokens;
+        this.postCount = postCount;
+    }
+
+    /**
+     * ダイジェスト生成失敗に遷移する。
+     */
+    public void markFailed(String errorMessage) {
+        this.status = DigestStatus.FAILED;
+        this.errorMessage = errorMessage;
+    }
+
+    /**
+     * ダイジェストを公開済みに遷移する。
+     */
+    public void markPublished() {
+        this.status = DigestStatus.PUBLISHED;
+    }
+
+    /**
+     * ダイジェストを破棄に遷移する。
+     */
+    public void discard() {
+        this.status = DigestStatus.DISCARDED;
+    }
+
+    /**
+     * ダイジェストが編集可能か判定する（GENERATED のみ）。
+     */
+    public boolean isEditable() {
+        return this.status == DigestStatus.GENERATED;
     }
 }

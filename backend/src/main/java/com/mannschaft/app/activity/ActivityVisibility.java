@@ -5,6 +5,5 @@ package com.mannschaft.app.activity;
  */
 public enum ActivityVisibility {
     PUBLIC,
-    MEMBERS_ONLY,
-    SUPPORTERS_AND_ABOVE
+    MEMBERS_ONLY
 }

@@ -2,12 +2,14 @@ package com.mannschaft.app.activity.service;
 
 import com.mannschaft.app.activity.ActivityErrorCode;
 import com.mannschaft.app.activity.ActivityMapper;
+import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.ActivityVisibility;
-import com.mannschaft.app.activity.ParticipationType;
+import com.mannschaft.app.activity.dto.ActivityListResponse;
 import com.mannschaft.app.activity.dto.ActivityParticipantResponse;
 import com.mannschaft.app.activity.dto.ActivityResultResponse;
 import com.mannschaft.app.activity.dto.AddParticipantsRequest;
 import com.mannschaft.app.activity.dto.CreateActivityRequest;
+import com.mannschaft.app.activity.dto.DuplicateActivityRequest;
 import com.mannschaft.app.activity.dto.RemoveParticipantsRequest;
 import com.mannschaft.app.activity.dto.UpdateActivityRequest;
 import com.mannschaft.app.activity.entity.ActivityParticipantEntity;
@@ -15,8 +17,9 @@ import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.entity.ActivityTemplateEntity;
 import com.mannschaft.app.activity.repository.ActivityParticipantRepository;
 import com.mannschaft.app.activity.repository.ActivityResultRepository;
-import com.mannschaft.app.activity.repository.ActivityTemplateRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 活動記録サービス。活動記録のCRUD・参加者管理を担当する。
@@ -38,107 +42,119 @@ public class ActivityResultService {
 
     private final ActivityResultRepository resultRepository;
     private final ActivityParticipantRepository participantRepository;
-    private final ActivityTemplateRepository templateRepository;
+    private final ActivityTemplateService templateService;
     private final ActivityMapper activityMapper;
+    private final ObjectMapper objectMapper;
 
     /**
-     * チーム別活動記録一覧をページング取得する。
+     * 活動記録一覧をページング取得する。
      */
-    public Page<ActivityResultResponse> listByTeam(Long teamId, Pageable pageable) {
-        return resultRepository.findByTeamIdOrderByActivityDateDesc(teamId, pageable)
-                .map(activityMapper::toActivityResultResponse);
+    public Page<ActivityResultEntity> listActivities(ActivityScopeType scopeType, Long scopeId,
+                                                      Long templateId, Pageable pageable) {
+        if (templateId != null) {
+            return resultRepository.findByScopeTypeAndScopeIdAndTemplateIdOrderByActivityDateDescIdDesc(
+                    scopeType, scopeId, templateId, pageable);
+        }
+        return resultRepository.findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
+                scopeType, scopeId, pageable);
     }
 
     /**
-     * 組織別活動記録一覧をページング取得する。
+     * 公開活動記録一覧をページング取得する。
      */
-    public Page<ActivityResultResponse> listByOrganization(Long organizationId, Pageable pageable) {
-        return resultRepository.findByOrganizationIdOrderByActivityDateDesc(organizationId, pageable)
-                .map(activityMapper::toActivityResultResponse);
+    public Page<ActivityResultEntity> listPublicActivities(ActivityScopeType scopeType, Long scopeId,
+                                                            Pageable pageable) {
+        return resultRepository.findByScopeTypeAndScopeIdAndVisibilityOrderByActivityDateDescIdDesc(
+                scopeType, scopeId, ActivityVisibility.PUBLIC, pageable);
     }
 
     /**
      * 活動記録詳細を取得する。
      */
-    public ActivityResultResponse getActivity(Long id) {
-        ActivityResultEntity entity = findActivityOrThrow(id);
-        return activityMapper.toActivityResultResponse(entity);
+    public ActivityResultEntity getActivity(Long id) {
+        return findActivityOrThrow(id);
     }
 
     /**
      * 活動記録を作成する。
      */
     @Transactional
-    public ActivityResultResponse createActivity(Long userId, CreateActivityRequest request) {
+    public ActivityResultEntity createActivity(Long userId, ActivityScopeType scopeType,
+                                                Long scopeId, CreateActivityRequest request) {
+        // テンプレート存在チェック
+        templateService.findTemplateOrThrow(request.getTemplateId());
+
+        // 時刻バリデーション
+        if (request.getActivityTimeStart() != null && request.getActivityTimeEnd() != null
+                && request.getActivityTimeEnd().isBefore(request.getActivityTimeStart())) {
+            throw new BusinessException(ActivityErrorCode.INVALID_TIME_RANGE);
+        }
+
         ActivityVisibility visibility = request.getVisibility() != null
                 ? ActivityVisibility.valueOf(request.getVisibility()) : ActivityVisibility.MEMBERS_ONLY;
 
+        String fieldValuesJson = serializeFieldValues(request.getFieldValues());
+        String attachmentsJson = serializeAttachments(request.getFileIds());
+
         ActivityResultEntity entity = ActivityResultEntity.builder()
-                .teamId(request.getTeamId())
-                .organizationId(request.getOrganizationId())
+                .scopeType(scopeType)
+                .scopeId(scopeId)
                 .templateId(request.getTemplateId())
                 .title(request.getTitle())
-                .description(request.getDescription())
                 .activityDate(request.getActivityDate())
-                .location(request.getLocation())
+                .activityTimeStart(request.getActivityTimeStart())
+                .activityTimeEnd(request.getActivityTimeEnd())
+                .description(request.getDescription())
+                .fieldValues(fieldValuesJson)
+                .attachments(attachmentsJson)
                 .visibility(visibility)
-                .coverImageUrl(request.getCoverImageUrl())
-                .scheduleEventId(request.getScheduleEventId())
+                .scheduleId(request.getScheduleId())
                 .createdBy(userId)
                 .build();
 
         ActivityResultEntity saved = resultRepository.save(entity);
 
-        // テンプレートの使用回数を更新
-        if (request.getTemplateId() != null) {
-            templateRepository.findById(request.getTemplateId())
-                    .ifPresent(t -> {
-                        t.incrementUseCount();
-                        templateRepository.save(t);
-                    });
-        }
-
         // 参加者の登録
-        if (request.getParticipants() != null && !request.getParticipants().isEmpty()) {
-            int addedCount = 0;
-            for (CreateActivityRequest.ParticipantInput p : request.getParticipants()) {
-                ParticipationType type = p.getParticipationType() != null
-                        ? ParticipationType.valueOf(p.getParticipationType()) : ParticipationType.OTHER;
+        if (request.getParticipantUserIds() != null && !request.getParticipantUserIds().isEmpty()) {
+            for (Long participantUserId : request.getParticipantUserIds()) {
                 ActivityParticipantEntity participant = ActivityParticipantEntity.builder()
                         .activityResultId(saved.getId())
-                        .userId(p.getUserId())
-                        .displayName(p.getMemberNumber() != null ? p.getMemberNumber() : "参加者")
-                        .memberNumber(p.getMemberNumber())
-                        .participationType(type)
-                        .minutesPlayed(p.getMinutesPlayed())
-                        .note(p.getNote())
+                        .userId(participantUserId)
                         .build();
                 participantRepository.save(participant);
-                addedCount++;
             }
-            saved.incrementParticipantCount(addedCount);
-            saved = resultRepository.save(saved);
         }
 
         log.info("活動記録作成: activityId={}, title={}", saved.getId(), saved.getTitle());
-        return activityMapper.toActivityResultResponse(saved);
+        return saved;
     }
 
     /**
      * 活動記録を更新する。
      */
     @Transactional
-    public ActivityResultResponse updateActivity(Long id, UpdateActivityRequest request) {
+    public ActivityResultEntity updateActivity(Long id, UpdateActivityRequest request) {
         ActivityResultEntity entity = findActivityOrThrow(id);
+
+        // 時刻バリデーション
+        if (request.getActivityTimeStart() != null && request.getActivityTimeEnd() != null
+                && request.getActivityTimeEnd().isBefore(request.getActivityTimeStart())) {
+            throw new BusinessException(ActivityErrorCode.INVALID_TIME_RANGE);
+        }
+
         ActivityVisibility visibility = request.getVisibility() != null
                 ? ActivityVisibility.valueOf(request.getVisibility()) : entity.getVisibility();
 
-        entity.update(request.getTitle(), request.getDescription(), request.getActivityDate(),
-                request.getLocation(), visibility, request.getCoverImageUrl());
+        String fieldValuesJson = serializeFieldValues(request.getFieldValues());
+        String attachmentsJson = serializeAttachments(request.getFileIds());
+
+        entity.update(request.getTitle(), request.getActivityDate(),
+                request.getActivityTimeStart(), request.getActivityTimeEnd(),
+                request.getDescription(), fieldValuesJson, attachmentsJson, visibility);
 
         ActivityResultEntity saved = resultRepository.save(entity);
         log.info("活動記録更新: activityId={}", id);
-        return activityMapper.toActivityResultResponse(saved);
+        return saved;
     }
 
     /**
@@ -156,25 +172,44 @@ public class ActivityResultService {
      * 活動記録を複製する。
      */
     @Transactional
-    public ActivityResultResponse duplicateActivity(Long id, Long userId) {
+    public ActivityResultEntity duplicateActivity(Long id, Long userId, DuplicateActivityRequest request) {
         ActivityResultEntity original = findActivityOrThrow(id);
 
+        String title = request != null && request.getTitle() != null
+                ? request.getTitle() : original.getTitle();
+        LocalDate activityDate = request != null && request.getActivityDate() != null
+                ? request.getActivityDate() : LocalDate.now();
+
         ActivityResultEntity copy = ActivityResultEntity.builder()
-                .teamId(original.getTeamId())
-                .organizationId(original.getOrganizationId())
+                .scopeType(original.getScopeType())
+                .scopeId(original.getScopeId())
                 .templateId(original.getTemplateId())
-                .title(original.getTitle() + "（コピー）")
+                .title(title)
+                .activityDate(activityDate)
+                .activityTimeStart(original.getActivityTimeStart())
+                .activityTimeEnd(original.getActivityTimeEnd())
                 .description(original.getDescription())
-                .activityDate(LocalDate.now())
-                .location(original.getLocation())
+                .fieldValues(original.getFieldValues())
                 .visibility(original.getVisibility())
-                .coverImageUrl(original.getCoverImageUrl())
                 .createdBy(userId)
                 .build();
 
         ActivityResultEntity saved = resultRepository.save(copy);
+
+        // 参加者のコピー
+        List<ActivityParticipantEntity> originalParticipants =
+                participantRepository.findByActivityResultIdOrderByCreatedAtAsc(id);
+        for (ActivityParticipantEntity p : originalParticipants) {
+            ActivityParticipantEntity participantCopy = ActivityParticipantEntity.builder()
+                    .activityResultId(saved.getId())
+                    .userId(p.getUserId())
+                    .roleLabel(p.getRoleLabel())
+                    .build();
+            participantRepository.save(participantCopy);
+        }
+
         log.info("活動記録複製: originalId={}, newId={}", id, saved.getId());
-        return activityMapper.toActivityResultResponse(saved);
+        return saved;
     }
 
     /**
@@ -182,34 +217,26 @@ public class ActivityResultService {
      */
     @Transactional
     public List<ActivityParticipantResponse> addParticipants(Long activityId, AddParticipantsRequest request) {
-        ActivityResultEntity entity = findActivityOrThrow(activityId);
-        int addedCount = 0;
+        findActivityOrThrow(activityId);
 
-        for (CreateActivityRequest.ParticipantInput p : request.getParticipants()) {
+        for (Long userId : request.getUserIds()) {
             // 重複チェック
-            if (p.getUserId() != null) {
-                if (participantRepository.findByActivityResultIdAndUserId(activityId, p.getUserId()).isPresent()) {
-                    continue;
-                }
+            if (participantRepository.findByActivityResultIdAndUserId(activityId, userId).isPresent()) {
+                continue;
             }
 
-            ParticipationType type = p.getParticipationType() != null
-                    ? ParticipationType.valueOf(p.getParticipationType()) : ParticipationType.OTHER;
+            String roleLabel = null;
+            if (request.getRoleLabels() != null) {
+                roleLabel = request.getRoleLabels().get(String.valueOf(userId));
+            }
+
             ActivityParticipantEntity participant = ActivityParticipantEntity.builder()
                     .activityResultId(activityId)
-                    .userId(p.getUserId())
-                    .displayName(p.getMemberNumber() != null ? p.getMemberNumber() : "参加者")
-                    .memberNumber(p.getMemberNumber())
-                    .participationType(type)
-                    .minutesPlayed(p.getMinutesPlayed())
-                    .note(p.getNote())
+                    .userId(userId)
+                    .roleLabel(roleLabel)
                     .build();
             participantRepository.save(participant);
-            addedCount++;
         }
-
-        entity.incrementParticipantCount(addedCount);
-        resultRepository.save(entity);
 
         List<ActivityParticipantEntity> participants =
                 participantRepository.findByActivityResultIdOrderByCreatedAtAsc(activityId);
@@ -220,19 +247,11 @@ public class ActivityResultService {
      * 参加者を削除する。
      */
     @Transactional
-    public void removeParticipants(Long activityId, RemoveParticipantsRequest request) {
-        ActivityResultEntity entity = findActivityOrThrow(activityId);
-        participantRepository.deleteByActivityResultIdAndUserIdIn(activityId, request.getUserIds());
-        entity.decrementParticipantCount(request.getUserIds().size());
-        resultRepository.save(entity);
-        log.info("参加者削除: activityId={}, count={}", activityId, request.getUserIds().size());
-    }
-
-    /**
-     * 参加者一覧を取得する。
-     */
-    public List<ActivityParticipantResponse> listParticipants(Long activityId) {
+    public List<ActivityParticipantResponse> removeParticipants(Long activityId, RemoveParticipantsRequest request) {
         findActivityOrThrow(activityId);
+        participantRepository.deleteByActivityResultIdAndUserIdIn(activityId, request.getUserIds());
+        log.info("参加者削除: activityId={}, count={}", activityId, request.getUserIds().size());
+
         List<ActivityParticipantEntity> participants =
                 participantRepository.findByActivityResultIdOrderByCreatedAtAsc(activityId);
         return activityMapper.toParticipantResponseList(participants);
@@ -244,5 +263,27 @@ public class ActivityResultService {
     ActivityResultEntity findActivityOrThrow(Long id) {
         return resultRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ActivityErrorCode.ACTIVITY_NOT_FOUND));
+    }
+
+    private String serializeFieldValues(Map<String, Object> fieldValues) {
+        if (fieldValues == null || fieldValues.isEmpty()) {
+            return "{}";
+        }
+        try {
+            return objectMapper.writeValueAsString(fieldValues);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("field_valuesのシリアライズに失敗しました", e);
+        }
+    }
+
+    private String serializeAttachments(List<Long> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(Map.of("file_ids", fileIds));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("attachmentsのシリアライズに失敗しました", e);
+        }
     }
 }

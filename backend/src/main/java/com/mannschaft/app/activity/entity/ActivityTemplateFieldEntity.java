@@ -1,6 +1,5 @@
 package com.mannschaft.app.activity.entity;
 
-import com.mannschaft.app.activity.FieldScope;
 import com.mannschaft.app.activity.FieldType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,8 +14,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 /**
  * 活動テンプレートフィールド定義エンティティ。
@@ -36,36 +33,48 @@ public class ActivityTemplateFieldEntity {
     @Column(nullable = false)
     private Long templateId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 15)
-    @Builder.Default
-    private FieldScope scope = FieldScope.ACTIVITY;
+    @Column(nullable = false, length = 50)
+    private String fieldKey;
 
     @Column(nullable = false, length = 100)
-    private String fieldName;
+    private String fieldLabel;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private FieldType fieldType;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isRequired = false;
+
     @Column(columnDefinition = "JSON")
-    private String options;
+    private String optionsJson;
+
+    @Column(length = 200)
+    private String placeholder;
 
     @Column(length = 20)
     private String unit;
 
     @Column(nullable = false)
     @Builder.Default
-    private Boolean isRequired = false;
-
-    @Column(length = 500)
-    private String defaultValue;
+    private Boolean isAggregatable = false;
 
     @Column(nullable = false)
     @Builder.Default
     private Integer sortOrder = 0;
 
-    @Column(nullable = false)
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    /**
+     * フィールド情報を更新する（field_type と field_key は変更不可）。
+     */
+    public void update(String fieldLabel, Boolean isRequired, String optionsJson,
+                       String placeholder, String unit, Boolean isAggregatable, Integer sortOrder) {
+        this.fieldLabel = fieldLabel;
+        this.isRequired = isRequired;
+        this.optionsJson = optionsJson;
+        this.placeholder = placeholder;
+        this.unit = unit;
+        this.isAggregatable = isAggregatable;
+        this.sortOrder = sortOrder;
+    }
 }

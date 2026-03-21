@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 参加者追加リクエストDTO。
@@ -14,5 +15,7 @@ import java.util.List;
 public class AddParticipantsRequest {
 
     @NotEmpty
-    private final List<CreateActivityRequest.ParticipantInput> participants;
+    private final List<Long> userIds;
+
+    private final Map<String, String> roleLabels;
 }

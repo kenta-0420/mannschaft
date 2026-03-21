@@ -10,6 +10,8 @@ import com.mannschaft.app.gallery.dto.UpdateAlbumRequest;
 import com.mannschaft.app.gallery.entity.PhotoAlbumEntity;
 import com.mannschaft.app.gallery.repository.PhotoAlbumRepository;
 import lombok.RequiredArgsConstructor;
+
+import java.time.LocalDate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,7 +33,10 @@ public class PhotoAlbumService {
     /**
      * アルバム一覧をページング取得する。
      */
-    public Page<AlbumResponse> listAlbums(Long teamId, Long organizationId, String query, Pageable pageable) {
+    public Page<AlbumResponse> listAlbums(Long teamId, Long organizationId, String query,
+                                             LocalDate from, LocalDate to, String visibility,
+                                             Pageable pageable) {
+        // TODO: from/to による event_date 範囲フィルタ、visibility フィルタを実装
         Page<PhotoAlbumEntity> page;
         if (query != null && !query.isBlank()) {
             if (teamId != null) {

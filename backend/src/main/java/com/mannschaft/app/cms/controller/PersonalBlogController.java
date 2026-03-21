@@ -4,7 +4,9 @@ import com.mannschaft.app.cms.dto.BlogPostResponse;
 import com.mannschaft.app.cms.dto.BlogSettingsResponse;
 import com.mannschaft.app.cms.dto.CreateBlogPostRequest;
 import com.mannschaft.app.cms.dto.PublishRequest;
+import com.mannschaft.app.cms.dto.SelfReviewRequest;
 import com.mannschaft.app.cms.dto.SharePostRequest;
+import com.mannschaft.app.cms.dto.SharePostResponse;
 import com.mannschaft.app.cms.dto.UpdateBlogSettingsRequest;
 import com.mannschaft.app.cms.service.BlogPostService;
 import com.mannschaft.app.cms.service.UserBlogSettingsService;
@@ -121,6 +123,45 @@ public class PersonalBlogController {
             @PathVariable Long id,
             @Valid @RequestBody PublishRequest request) {
         BlogPostResponse response = postService.changeStatus(id, request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 個人ブログ記事をチーム/組織に共有する（実名記事のみ）。
+     */
+    @PostMapping("/me/blog/posts/{id}/share")
+    @Operation(summary = "個人ブログ記事共有")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "共有成功")
+    public ResponseEntity<ApiResponse<SharePostResponse>> sharePost(
+            @PathVariable Long id,
+            @Valid @RequestBody SharePostRequest request) {
+        SharePostResponse response = postService.sharePost(id, getCurrentUserId(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * 共有を取り消す。
+     */
+    @DeleteMapping("/me/blog/posts/{id}/shares/{shareId}")
+    @Operation(summary = "共有取消")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")
+    public ResponseEntity<Void> revokeShare(
+            @PathVariable Long id,
+            @PathVariable Long shareId) {
+        postService.revokeShare(id, shareId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * セルフレビュー結果を処理する（PUBLISH / DRAFT / DELETE）。
+     */
+    @PatchMapping("/me/blog/posts/{id}/self-review")
+    @Operation(summary = "セルフレビュー結果")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "処理成功")
+    public ResponseEntity<ApiResponse<BlogPostResponse>> selfReview(
+            @PathVariable Long id,
+            @Valid @RequestBody SelfReviewRequest request) {
+        BlogPostResponse response = postService.selfReview(id, getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

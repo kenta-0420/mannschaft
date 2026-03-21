@@ -1,5 +1,6 @@
 package com.mannschaft.app.activity.entity;
 
+import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.ActivityVisibility;
 import com.mannschaft.app.common.BaseEntity;
 import jakarta.persistence.Column;
@@ -7,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,6 +18,7 @@ import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 /**
  * 活動記録エンティティ。
@@ -29,41 +32,42 @@ import java.time.LocalDateTime;
 @Builder(toBuilder = true)
 public class ActivityResultEntity extends BaseEntity {
 
-    private Long teamId;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ActivityScopeType scopeType;
 
-    private Long organizationId;
+    @Column(nullable = false)
+    private Long scopeId;
 
+    @Column(nullable = false)
     private Long templateId;
 
     @Column(nullable = false, length = 200)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
     @Column(nullable = false)
     private LocalDate activityDate;
 
-    @Column(length = 200)
-    private String location;
+    private LocalTime activityTimeStart;
+
+    private LocalTime activityTimeEnd;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(nullable = false, columnDefinition = "JSON")
+    @Builder.Default
+    private String fieldValues = "{}";
+
+    @Column(columnDefinition = "JSON")
+    private String attachments;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 20)
     @Builder.Default
     private ActivityVisibility visibility = ActivityVisibility.MEMBERS_ONLY;
 
-    @Column(length = 500)
-    private String coverImageUrl;
-
-    private Long scheduleEventId;
-
-    @Column(nullable = false)
-    @Builder.Default
-    private Integer participantCount = 0;
-
-    @Column(nullable = false)
-    @Builder.Default
-    private Integer viewCount = 0;
+    private Long scheduleId;
 
     private Long createdBy;
 
@@ -72,35 +76,17 @@ public class ActivityResultEntity extends BaseEntity {
     /**
      * 活動記録を更新する。
      */
-    public void update(String title, String description, LocalDate activityDate,
-                       String location, ActivityVisibility visibility, String coverImageUrl) {
+    public void update(String title, LocalDate activityDate, LocalTime activityTimeStart,
+                       LocalTime activityTimeEnd, String description, String fieldValues,
+                       String attachments, ActivityVisibility visibility) {
         this.title = title;
-        this.description = description;
         this.activityDate = activityDate;
-        this.location = location;
+        this.activityTimeStart = activityTimeStart;
+        this.activityTimeEnd = activityTimeEnd;
+        this.description = description;
+        this.fieldValues = fieldValues;
+        this.attachments = attachments;
         this.visibility = visibility;
-        this.coverImageUrl = coverImageUrl;
-    }
-
-    /**
-     * 参加者数をインクリメントする。
-     */
-    public void incrementParticipantCount(int count) {
-        this.participantCount += count;
-    }
-
-    /**
-     * 参加者数をデクリメントする。
-     */
-    public void decrementParticipantCount(int count) {
-        this.participantCount = Math.max(0, this.participantCount - count);
-    }
-
-    /**
-     * 閲覧数をインクリメントする。
-     */
-    public void incrementViewCount() {
-        this.viewCount++;
     }
 
     /**

@@ -29,6 +29,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
+import java.util.List;
+
 /**
  * 写真アルバムコントローラー。アルバムのCRUD・写真アップロード・ダウンロードAPIを提供する。
  */
@@ -56,9 +59,12 @@ public class PhotoAlbumController {
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) Long organizationId,
             @RequestParam(required = false) String q,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to,
+            @RequestParam(required = false) String visibility,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<AlbumResponse> result = albumService.listAlbums(teamId, organizationId, q, PageRequest.of(page, size));
+        Page<AlbumResponse> result = albumService.listAlbums(teamId, organizationId, q, from, to, visibility, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -147,8 +153,11 @@ public class PhotoAlbumController {
     @GetMapping("/{id}/download")
     @Operation(summary = "アルバム一括ダウンロード")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ダウンロードURL生成成功")
-    public ResponseEntity<ApiResponse<DownloadResponse>> downloadAlbum(@PathVariable Long id) {
-        DownloadResponse response = photoService.getAlbumDownloadUrl(id);
+    public ResponseEntity<ApiResponse<DownloadResponse>> downloadAlbum(
+            @PathVariable Long id,
+            @RequestParam(required = false) List<Long> photoIds,
+            @RequestParam(defaultValue = "100") int limit) {
+        DownloadResponse response = photoService.getAlbumDownloadUrl(id, photoIds, limit);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

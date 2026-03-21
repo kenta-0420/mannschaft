@@ -52,8 +52,13 @@ public class DigestConfigService {
      *
      * @throws BusinessException バリデーションエラー
      */
+    /**
+     * 設定が新規作成されたかどうかを含むレスポンス。
+     */
+    public record ConfigSaveResult(DigestConfigResponse response, boolean created) {}
+
     @Transactional
-    public DigestConfigResponse createOrUpdateConfig(DigestConfigRequest request, Long userId) {
+    public ConfigSaveResult createOrUpdateConfig(DigestConfigRequest request, Long userId) {
         DigestScopeType scopeType = DigestScopeType.valueOf(request.getScopeType());
         ScheduleType scheduleType = ScheduleType.valueOf(request.getScheduleType());
         DigestStyle digestStyle = DigestStyle.valueOf(request.getDigestStyle());
@@ -112,11 +117,12 @@ public class DigestConfigService {
                     .build();
         }
 
+        boolean isNew = existing.isEmpty();
         TimelineDigestConfigEntity saved = configRepository.save(config);
         log.info("ダイジェスト設定を{}しました: scope={}:{}, scheduleType={}",
-                existing.isPresent() ? "更新" : "作成",
+                isNew ? "作成" : "更新",
                 scopeType, request.getScopeId(), scheduleType);
-        return digestMapper.toConfigResponse(saved);
+        return new ConfigSaveResult(digestMapper.toConfigResponse(saved), isNew);
     }
 
     /**

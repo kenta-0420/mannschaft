@@ -7,7 +7,9 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 活動記録更新リクエストDTO。
@@ -20,19 +22,21 @@ public class UpdateActivityRequest {
     @Size(max = 200)
     private final String title;
 
-    @Size(max = 10000)
-    private final String description;
-
     @NotNull
     private final LocalDate activityDate;
 
-    @Size(max = 200)
-    private final String location;
+    private final LocalTime activityTimeStart;
+
+    private final LocalTime activityTimeEnd;
+
+    @Size(max = 10000)
+    private final String description;
+
+    private final Map<String, Object> fieldValues;
 
     private final String visibility;
 
-    @Size(max = 500)
-    private final String coverImageUrl;
+    private final List<Long> participantUserIds;
 
-    private final List<CreateActivityRequest.CustomValueInput> customValues;
+    private final List<Long> fileIds;
 }

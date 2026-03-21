@@ -13,4 +13,5 @@ public class DigestGenerateResponse {
     private final Long id;
     private final String status;
     private final Integer estimatedPostCount;
+    private final AiQuotaResponse aiQuota;
 }

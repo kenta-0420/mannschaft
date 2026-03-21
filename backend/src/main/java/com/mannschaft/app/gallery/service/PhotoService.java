@@ -172,14 +172,25 @@ public class PhotoService {
     /**
      * アルバム一括ダウンロード用の Pre-signed URL を生成する。
      */
-    public DownloadResponse getAlbumDownloadUrl(Long albumId) {
+    public DownloadResponse getAlbumDownloadUrl(Long albumId, List<Long> photoIds, int limit) {
         PhotoAlbumEntity album = albumService.findAlbumOrThrow(albumId);
 
         if (!album.getAllowDownload()) {
             throw new BusinessException(GalleryErrorCode.DOWNLOAD_NOT_ALLOWED);
         }
 
-        List<PhotoEntity> photos = photoRepository.findByAlbumIdOrderBySortOrder(albumId);
+        List<PhotoEntity> photos;
+        if (photoIds != null && !photoIds.isEmpty()) {
+            // 指定された写真IDのみ取得（選択ダウンロード）
+            photos = photoRepository.findByAlbumIdAndIdIn(albumId, photoIds);
+        } else {
+            photos = photoRepository.findByAlbumIdOrderBySortOrder(albumId);
+        }
+
+        // limit で最大枚数を制限
+        if (photos.size() > limit) {
+            photos = photos.subList(0, limit);
+        }
 
         // TODO: S3 から ZIP 生成 → 一時バケットに保存 → Pre-signed URL 返却
         String jobId = UUID.randomUUID().toString();

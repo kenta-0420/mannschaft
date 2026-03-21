@@ -6,15 +6,23 @@ import com.mannschaft.app.cms.PostPriority;
 import com.mannschaft.app.cms.PostStatus;
 import com.mannschaft.app.cms.PostType;
 import com.mannschaft.app.cms.Visibility;
+import com.mannschaft.app.cms.dto.AutoSaveRequest;
 import com.mannschaft.app.cms.dto.BlogPostResponse;
+import com.mannschaft.app.cms.dto.BulkActionRequest;
+import com.mannschaft.app.cms.dto.BulkActionResponse;
 import com.mannschaft.app.cms.dto.CreateBlogPostRequest;
 import com.mannschaft.app.cms.dto.PublishRequest;
+import com.mannschaft.app.cms.dto.SelfReviewRequest;
+import com.mannschaft.app.cms.dto.SharePostRequest;
+import com.mannschaft.app.cms.dto.SharePostResponse;
 import com.mannschaft.app.cms.dto.UpdateBlogPostRequest;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.entity.BlogPostRevisionEntity;
+import com.mannschaft.app.cms.entity.BlogPostShareEntity;
 import com.mannschaft.app.cms.entity.BlogPostTagEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogPostRevisionRepository;
+import com.mannschaft.app.cms.repository.BlogPostShareRepository;
 import com.mannschaft.app.cms.repository.BlogPostTagRepository;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -39,6 +48,7 @@ public class BlogPostService {
     private final BlogPostRepository postRepository;
     private final BlogPostTagRepository postTagRepository;
     private final BlogPostRevisionRepository revisionRepository;
+    private final BlogPostShareRepository shareRepository;
     private final CmsMapper cmsMapper;
 
     /**
@@ -306,6 +316,180 @@ public class BlogPostService {
         entity.setPreviewToken(null, null);
         postRepository.save(entity);
         log.info("プレビュートークン無効化: postId={}", id);
+    }
+
+    /**
+     * 下書きを自動保存する（エディタ30秒間隔）。
+     */
+    @Transactional
+    public BlogPostResponse autoSave(Long id, Long userId, AutoSaveRequest request) {
+        BlogPostEntity entity = findPostOrThrow(id);
+
+        if (request.getTitle() != null) {
+            entity.update(request.getTitle(), entity.getSlug(),
+                    request.getBody() != null ? request.getBody() : entity.getBody(),
+                    request.getExcerpt() != null ? request.getExcerpt() : entity.getExcerpt(),
+                    entity.getCoverImageUrl(), entity.getVisibility(), entity.getPriority(),
+                    request.getBody() != null ? calculateReadingTime(request.getBody()) : entity.getReadingTimeMinutes());
+        } else if (request.getBody() != null) {
+            entity.update(entity.getTitle(), entity.getSlug(), request.getBody(),
+                    request.getExcerpt() != null ? request.getExcerpt() : entity.getExcerpt(),
+                    entity.getCoverImageUrl(), entity.getVisibility(), entity.getPriority(),
+                    calculateReadingTime(request.getBody()));
+        }
+
+        BlogPostEntity saved = postRepository.save(entity);
+        log.info("自動保存: postId={}", id);
+        return cmsMapper.toBlogPostResponse(saved);
+    }
+
+    /**
+     * 一括ステータス変更を実行する。
+     */
+    @Transactional
+    public BulkActionResponse bulkAction(BulkActionRequest request) {
+        if (request.getIds().size() > 50) {
+            throw new BusinessException(CmsErrorCode.BULK_LIMIT_EXCEEDED);
+        }
+
+        List<Long> skippedIds = new ArrayList<>();
+        int processedCount = 0;
+
+        for (Long id : request.getIds()) {
+            BlogPostEntity entity = postRepository.findById(id).orElse(null);
+            if (entity == null) {
+                skippedIds.add(id);
+                continue;
+            }
+
+            switch (request.getAction().toUpperCase()) {
+                case "ARCHIVE" -> {
+                    if (entity.getStatus() == PostStatus.PUBLISHED) {
+                        entity.changeStatus(PostStatus.ARCHIVED);
+                        postRepository.save(entity);
+                        processedCount++;
+                    } else {
+                        skippedIds.add(id);
+                    }
+                }
+                case "DELETE" -> {
+                    entity.softDelete();
+                    postRepository.save(entity);
+                    processedCount++;
+                }
+                case "PUBLISH" -> {
+                    if (entity.getStatus() == PostStatus.DRAFT) {
+                        entity.publish(LocalDateTime.now());
+                        postRepository.save(entity);
+                        processedCount++;
+                    } else {
+                        skippedIds.add(id);
+                    }
+                }
+                default -> skippedIds.add(id);
+            }
+        }
+
+        log.info("一括操作: action={}, processed={}, skipped={}", request.getAction(), processedCount, skippedIds.size());
+        return new BulkActionResponse(processedCount, skippedIds, request.getAction());
+    }
+
+    /**
+     * RSS/Atomフィード用の公開記事一覧を取得する。
+     */
+    public List<BlogPostResponse> listPublicPostsForFeed(Long teamId, Long organizationId) {
+        List<BlogPostEntity> entities;
+        if (teamId != null) {
+            entities = postRepository.findTop20ByTeamIdAndStatusAndVisibilityOrderByPublishedAtDesc(
+                    teamId, PostStatus.PUBLISHED, Visibility.PUBLIC);
+        } else {
+            entities = postRepository.findTop20ByOrganizationIdAndStatusAndVisibilityOrderByPublishedAtDesc(
+                    organizationId, PostStatus.PUBLISHED, Visibility.PUBLIC);
+        }
+        return cmsMapper.toBlogPostResponseList(entities);
+    }
+
+    /**
+     * 個人ブログ記事をチーム/組織に共有する。
+     */
+    @Transactional
+    public SharePostResponse sharePost(Long postId, Long userId, SharePostRequest request) {
+        BlogPostEntity entity = findPostOrThrow(postId);
+
+        // ソーシャルプロフィール名義の記事は共有不可
+        if (entity.getSocialProfileId() != null) {
+            throw new BusinessException(CmsErrorCode.SOCIAL_PROFILE_SHARE_NOT_ALLOWED);
+        }
+
+        // 重複チェック
+        if (request.getTeamId() != null) {
+            shareRepository.findByBlogPostIdAndTeamId(postId, request.getTeamId())
+                    .ifPresent(s -> { throw new BusinessException(CmsErrorCode.DUPLICATE_SHARE); });
+        } else if (request.getOrganizationId() != null) {
+            shareRepository.findByBlogPostIdAndOrganizationId(postId, request.getOrganizationId())
+                    .ifPresent(s -> { throw new BusinessException(CmsErrorCode.DUPLICATE_SHARE); });
+        }
+
+        BlogPostShareEntity share = BlogPostShareEntity.builder()
+                .blogPostId(postId)
+                .teamId(request.getTeamId())
+                .organizationId(request.getOrganizationId())
+                .sharedBy(userId)
+                .build();
+        BlogPostShareEntity saved = shareRepository.save(share);
+
+        log.info("記事共有: postId={}, shareId={}", postId, saved.getId());
+        return new SharePostResponse(saved.getId(), postId, saved.getTeamId(), saved.getOrganizationId());
+    }
+
+    /**
+     * 共有を取り消す。
+     */
+    @Transactional
+    public void revokeShare(Long postId, Long shareId) {
+        BlogPostShareEntity share = shareRepository.findById(shareId)
+                .orElseThrow(() -> new BusinessException(CmsErrorCode.SHARE_NOT_FOUND));
+
+        if (!share.getBlogPostId().equals(postId)) {
+            throw new BusinessException(CmsErrorCode.SHARE_NOT_FOUND);
+        }
+
+        shareRepository.delete(share);
+        log.info("共有取消: postId={}, shareId={}", postId, shareId);
+    }
+
+    /**
+     * セルフレビュー結果を処理する。
+     */
+    @Transactional
+    public BlogPostResponse selfReview(Long postId, Long userId, SelfReviewRequest request) {
+        BlogPostEntity entity = findPostOrThrow(postId);
+
+        if (entity.getStatus() != PostStatus.PENDING_SELF_REVIEW) {
+            throw new BusinessException(CmsErrorCode.INVALID_STATUS_TRANSITION);
+        }
+
+        switch (request.getAction().toUpperCase()) {
+            case "PUBLISH" -> entity.publish(LocalDateTime.now());
+            case "DRAFT" -> entity.changeStatus(PostStatus.DRAFT);
+            case "DELETE" -> entity.softDelete();
+            default -> throw new BusinessException(CmsErrorCode.INVALID_STATUS_TRANSITION);
+        }
+
+        BlogPostEntity saved = postRepository.save(entity);
+        log.info("セルフレビュー: postId={}, action={}", postId, request.getAction());
+        return cmsMapper.toBlogPostResponse(saved);
+    }
+
+    /**
+     * slug でプレビュートークン付き記事を取得する。
+     */
+    public BlogPostResponse getBySlugWithPreviewToken(Long teamId, Long organizationId, Long userId,
+                                                       String slug, String previewToken) {
+        BlogPostResponse response = getBySlug(teamId, organizationId, userId, slug);
+        // プレビュートークン検証はgetBySlug内で将来実装
+        // 現時点ではパラメータを受け取るのみ
+        return response;
     }
 
     /**

@@ -30,6 +30,11 @@ public interface PhotoRepository extends JpaRepository<PhotoEntity, Long> {
     List<PhotoEntity> findByAlbumIdOrderBySortOrder(Long albumId);
 
     /**
+     * アルバム内の指定写真IDの写真を取得する（選択ダウンロード用）。
+     */
+    List<PhotoEntity> findByAlbumIdAndIdIn(Long albumId, List<Long> ids);
+
+    /**
      * アップロードユーザー別一覧を取得する。
      */
     List<PhotoEntity> findByUploadedByOrderByCreatedAtDesc(Long uploadedBy);

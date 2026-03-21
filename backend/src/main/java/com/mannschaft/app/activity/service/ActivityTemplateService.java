@@ -4,28 +4,34 @@ import com.mannschaft.app.activity.ActivityErrorCode;
 import com.mannschaft.app.activity.ActivityMapper;
 import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.ActivityVisibility;
-import com.mannschaft.app.activity.FieldScope;
 import com.mannschaft.app.activity.FieldType;
+import com.mannschaft.app.activity.PresetCategory;
 import com.mannschaft.app.activity.dto.ActivityTemplateResponse;
 import com.mannschaft.app.activity.dto.CreateTemplateRequest;
+import com.mannschaft.app.activity.dto.DuplicateTemplateRequest;
 import com.mannschaft.app.activity.dto.ImportTemplateRequest;
 import com.mannschaft.app.activity.dto.UpdateTemplateRequest;
 import com.mannschaft.app.activity.entity.ActivityTemplateEntity;
 import com.mannschaft.app.activity.entity.ActivityTemplateFieldEntity;
+import com.mannschaft.app.activity.entity.SystemActivityTemplatePresetEntity;
 import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
 import com.mannschaft.app.activity.repository.ActivityTemplateRepository;
+import com.mannschaft.app.activity.repository.SystemActivityTemplatePresetRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * 活動テンプレートサービス。テンプレートのCRUD・共有・インポートを担当する。
+ * 活動テンプレートサービス。テンプレートのCRUD・複製・インポートを担当する。
  */
 @Slf4j
 @Service
@@ -33,20 +39,21 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class ActivityTemplateService {
 
+    private static final int MAX_TEMPLATES_PER_SCOPE = 20;
+    private static final int MAX_FIELDS_PER_TEMPLATE = 15;
+
     private final ActivityTemplateRepository templateRepository;
     private final ActivityTemplateFieldRepository fieldRepository;
+    private final SystemActivityTemplatePresetRepository presetRepository;
     private final ActivityMapper activityMapper;
+    private final ObjectMapper objectMapper;
 
     /**
      * テンプレート一覧を取得する。
      */
-    public List<ActivityTemplateResponse> listTemplates(Long teamId, Long organizationId) {
-        List<ActivityTemplateEntity> templates;
-        if (teamId != null) {
-            templates = templateRepository.findByTeamIdOrderByCreatedAtDesc(teamId);
-        } else {
-            templates = templateRepository.findByOrganizationIdOrderByCreatedAtDesc(organizationId);
-        }
+    public List<ActivityTemplateResponse> listTemplates(ActivityScopeType scopeType, Long scopeId) {
+        List<ActivityTemplateEntity> templates =
+                templateRepository.findByScopeTypeAndScopeIdOrderBySortOrderAsc(scopeType, scopeId);
         return templates.stream().map(this::toResponseWithFields).collect(Collectors.toList());
     }
 
@@ -59,47 +66,35 @@ public class ActivityTemplateService {
     }
 
     /**
-     * 公式テンプレート一覧を取得する。
-     */
-    public List<ActivityTemplateResponse> listOfficialTemplates() {
-        List<ActivityTemplateEntity> templates = templateRepository.findByScopeTypeAndIsOfficialTrue("SYSTEM");
-        return templates.stream().map(this::toResponseWithFields).collect(Collectors.toList());
-    }
-
-    /**
      * テンプレートを作成する。
      */
     @Transactional
-    public ActivityTemplateResponse createTemplate(Long userId, CreateTemplateRequest request) {
+    public ActivityTemplateResponse createTemplate(Long userId, ActivityScopeType scopeType,
+                                                    Long scopeId, CreateTemplateRequest request) {
         // 上限チェック
-        long count = request.getTeamId() != null
-                ? templateRepository.countByTeamId(request.getTeamId())
-                : templateRepository.countByOrganizationId(request.getOrganizationId());
-        if (count >= 10) {
+        long count = templateRepository.countByScopeTypeAndScopeId(scopeType, scopeId);
+        if (count >= MAX_TEMPLATES_PER_SCOPE) {
             throw new BusinessException(ActivityErrorCode.TEMPLATE_LIMIT_EXCEEDED);
         }
 
         // フィールド数チェック
-        if (request.getFields() != null && request.getFields().size() > 20) {
+        if (request.getFields() != null && request.getFields().size() > MAX_FIELDS_PER_TEMPLATE) {
             throw new BusinessException(ActivityErrorCode.FIELD_LIMIT_EXCEEDED);
         }
 
-        ActivityScopeType scopeType = request.getTeamId() != null
-                ? ActivityScopeType.TEAM : ActivityScopeType.ORGANIZATION;
         ActivityVisibility visibility = request.getDefaultVisibility() != null
                 ? ActivityVisibility.valueOf(request.getDefaultVisibility()) : ActivityVisibility.MEMBERS_ONLY;
 
         ActivityTemplateEntity entity = ActivityTemplateEntity.builder()
                 .scopeType(scopeType)
-                .teamId(request.getTeamId())
-                .organizationId(request.getOrganizationId())
+                .scopeId(scopeId)
                 .name(request.getName())
                 .description(request.getDescription())
                 .icon(request.getIcon())
                 .color(request.getColor())
-                .defaultTitlePattern(request.getDefaultTitlePattern())
+                .isParticipantRequired(request.getIsParticipantRequired() != null
+                        ? request.getIsParticipantRequired() : true)
                 .defaultVisibility(visibility)
-                .defaultLocation(request.getDefaultLocation())
                 .createdBy(userId)
                 .build();
 
@@ -111,13 +106,14 @@ public class ActivityTemplateService {
             for (CreateTemplateRequest.TemplateFieldInput field : request.getFields()) {
                 ActivityTemplateFieldEntity fieldEntity = ActivityTemplateFieldEntity.builder()
                         .templateId(saved.getId())
-                        .scope(field.getScope() != null ? FieldScope.valueOf(field.getScope()) : FieldScope.ACTIVITY)
-                        .fieldName(field.getFieldName())
+                        .fieldKey(field.getFieldKey())
+                        .fieldLabel(field.getFieldLabel())
                         .fieldType(FieldType.valueOf(field.getFieldType()))
-                        .options(field.getOptions())
-                        .unit(field.getUnit())
                         .isRequired(field.getIsRequired() != null && field.getIsRequired())
-                        .defaultValue(field.getDefaultValue())
+                        .optionsJson(field.getOptionsJson())
+                        .placeholder(field.getPlaceholder())
+                        .unit(field.getUnit())
+                        .isAggregatable(field.getIsAggregatable() != null && field.getIsAggregatable())
                         .sortOrder(field.getSortOrder() != null ? field.getSortOrder() : order++)
                         .build();
                 fieldRepository.save(fieldEntity);
@@ -138,29 +134,67 @@ public class ActivityTemplateService {
                 ? ActivityVisibility.valueOf(request.getDefaultVisibility()) : entity.getDefaultVisibility();
 
         entity.update(request.getName(), request.getDescription(), request.getIcon(),
-                request.getColor(), request.getDefaultTitlePattern(), visibility,
-                request.getDefaultLocation());
+                request.getColor(),
+                request.getIsParticipantRequired() != null ? request.getIsParticipantRequired() : entity.getIsParticipantRequired(),
+                visibility, entity.getSortOrder());
 
-        // フィールドの更新（全量入れ替え）
+        // フィールドの更新（field_key ベースの差分更新）
         if (request.getFields() != null) {
-            if (request.getFields().size() > 20) {
+            if (request.getFields().size() > MAX_FIELDS_PER_TEMPLATE) {
                 throw new BusinessException(ActivityErrorCode.FIELD_LIMIT_EXCEEDED);
             }
-            fieldRepository.deleteByTemplateId(id);
+
+            List<ActivityTemplateFieldEntity> existingFields =
+                    fieldRepository.findByTemplateIdOrderBySortOrderAsc(id);
+            Map<String, ActivityTemplateFieldEntity> existingByKey = existingFields.stream()
+                    .collect(Collectors.toMap(ActivityTemplateFieldEntity::getFieldKey, Function.identity()));
+
+            // リクエストの field_key を収集
+            Map<String, CreateTemplateRequest.TemplateFieldInput> requestByKey = request.getFields().stream()
+                    .collect(Collectors.toMap(CreateTemplateRequest.TemplateFieldInput::getFieldKey, Function.identity()));
+
+            // 既存にあってリクエストにない → 削除
+            for (ActivityTemplateFieldEntity existing : existingFields) {
+                if (!requestByKey.containsKey(existing.getFieldKey())) {
+                    fieldRepository.delete(existing);
+                }
+            }
+
             int order = 0;
             for (CreateTemplateRequest.TemplateFieldInput field : request.getFields()) {
-                ActivityTemplateFieldEntity fieldEntity = ActivityTemplateFieldEntity.builder()
-                        .templateId(id)
-                        .scope(field.getScope() != null ? FieldScope.valueOf(field.getScope()) : FieldScope.ACTIVITY)
-                        .fieldName(field.getFieldName())
-                        .fieldType(FieldType.valueOf(field.getFieldType()))
-                        .options(field.getOptions())
-                        .unit(field.getUnit())
-                        .isRequired(field.getIsRequired() != null && field.getIsRequired())
-                        .defaultValue(field.getDefaultValue())
-                        .sortOrder(field.getSortOrder() != null ? field.getSortOrder() : order++)
-                        .build();
-                fieldRepository.save(fieldEntity);
+                ActivityTemplateFieldEntity existing = existingByKey.get(field.getFieldKey());
+                if (existing != null) {
+                    // field_type 変更チェック
+                    if (!existing.getFieldType().name().equals(field.getFieldType())) {
+                        throw new BusinessException(ActivityErrorCode.FIELD_TYPE_CHANGE_NOT_ALLOWED);
+                    }
+                    // 更新
+                    existing.update(
+                            field.getFieldLabel(),
+                            field.getIsRequired() != null ? field.getIsRequired() : existing.getIsRequired(),
+                            field.getOptionsJson(),
+                            field.getPlaceholder(),
+                            field.getUnit(),
+                            field.getIsAggregatable() != null ? field.getIsAggregatable() : existing.getIsAggregatable(),
+                            field.getSortOrder() != null ? field.getSortOrder() : order++
+                    );
+                    fieldRepository.save(existing);
+                } else {
+                    // 新規追加
+                    ActivityTemplateFieldEntity fieldEntity = ActivityTemplateFieldEntity.builder()
+                            .templateId(id)
+                            .fieldKey(field.getFieldKey())
+                            .fieldLabel(field.getFieldLabel())
+                            .fieldType(FieldType.valueOf(field.getFieldType()))
+                            .isRequired(field.getIsRequired() != null && field.getIsRequired())
+                            .optionsJson(field.getOptionsJson())
+                            .placeholder(field.getPlaceholder())
+                            .unit(field.getUnit())
+                            .isAggregatable(field.getIsAggregatable() != null && field.getIsAggregatable())
+                            .sortOrder(field.getSortOrder() != null ? field.getSortOrder() : order++)
+                            .build();
+                    fieldRepository.save(fieldEntity);
+                }
             }
         }
 
@@ -181,94 +215,118 @@ public class ActivityTemplateService {
     }
 
     /**
-     * テンプレートの共有を有効化する。
+     * テンプレートを別スコープにコピーする。
      */
     @Transactional
-    public ActivityTemplateResponse enableShare(Long id) {
-        ActivityTemplateEntity entity = findTemplateOrThrow(id);
-        String shareCode = UUID.randomUUID().toString().substring(0, 8);
-        entity.enableShare(shareCode);
-        ActivityTemplateEntity saved = templateRepository.save(entity);
-        log.info("テンプレート共有有効化: templateId={}, shareCode={}", id, shareCode);
-        return toResponseWithFields(saved);
-    }
+    public ActivityTemplateResponse duplicateTemplate(Long id, Long userId, DuplicateTemplateRequest request) {
+        ActivityTemplateEntity source = findTemplateOrThrow(id);
+        ActivityScopeType targetScopeType = ActivityScopeType.valueOf(request.getTargetScopeType());
+        Long targetScopeId = request.getTargetScopeId();
 
-    /**
-     * テンプレートの共有を無効化する。
-     */
-    @Transactional
-    public void disableShare(Long id) {
-        ActivityTemplateEntity entity = findTemplateOrThrow(id);
-        entity.disableShare();
-        templateRepository.save(entity);
-        log.info("テンプレート共有無効化: templateId={}", id);
-    }
-
-    /**
-     * テンプレートをインポートする。
-     */
-    @Transactional
-    public ActivityTemplateResponse importTemplate(Long userId, ImportTemplateRequest request) {
-        ActivityTemplateEntity source;
-        if (request.getSourceTemplateId() != null) {
-            source = findTemplateOrThrow(request.getSourceTemplateId());
-        } else if (request.getShareCode() != null) {
-            source = templateRepository.findByShareCode(request.getShareCode())
-                    .orElseThrow(() -> new BusinessException(ActivityErrorCode.SHARE_CODE_NOT_FOUND));
-        } else {
-            throw new BusinessException(ActivityErrorCode.TEMPLATE_NOT_FOUND);
-        }
-
-        // 上限チェック
-        long count = request.getTeamId() != null
-                ? templateRepository.countByTeamId(request.getTeamId())
-                : templateRepository.countByOrganizationId(request.getOrganizationId());
-        if (count >= 10) {
+        // コピー先の上限チェック
+        long count = templateRepository.countByScopeTypeAndScopeId(targetScopeType, targetScopeId);
+        if (count >= MAX_TEMPLATES_PER_SCOPE) {
             throw new BusinessException(ActivityErrorCode.TEMPLATE_LIMIT_EXCEEDED);
         }
 
-        ActivityScopeType scopeType = request.getTeamId() != null
-                ? ActivityScopeType.TEAM : ActivityScopeType.ORGANIZATION;
-
         ActivityTemplateEntity newTemplate = ActivityTemplateEntity.builder()
-                .scopeType(scopeType)
-                .teamId(request.getTeamId())
-                .organizationId(request.getOrganizationId())
-                .name(source.getName())
+                .scopeType(targetScopeType)
+                .scopeId(targetScopeId)
+                .name(source.getName() + "（コピー）")
                 .description(source.getDescription())
                 .icon(source.getIcon())
                 .color(source.getColor())
-                .defaultTitlePattern(source.getDefaultTitlePattern())
+                .isParticipantRequired(source.getIsParticipantRequired())
                 .defaultVisibility(source.getDefaultVisibility())
-                .defaultLocation(source.getDefaultLocation())
-                .sourceTemplateId(source.getId())
                 .createdBy(userId)
                 .build();
 
         ActivityTemplateEntity saved = templateRepository.save(newTemplate);
 
         // フィールドのコピー
-        List<ActivityTemplateFieldEntity> sourceFields = fieldRepository.findByTemplateIdOrderBySortOrderAsc(source.getId());
+        List<ActivityTemplateFieldEntity> sourceFields =
+                fieldRepository.findByTemplateIdOrderBySortOrderAsc(source.getId());
         for (ActivityTemplateFieldEntity field : sourceFields) {
             ActivityTemplateFieldEntity copy = ActivityTemplateFieldEntity.builder()
                     .templateId(saved.getId())
-                    .scope(field.getScope())
-                    .fieldName(field.getFieldName())
+                    .fieldKey(field.getFieldKey())
+                    .fieldLabel(field.getFieldLabel())
                     .fieldType(field.getFieldType())
-                    .options(field.getOptions())
-                    .unit(field.getUnit())
                     .isRequired(field.getIsRequired())
-                    .defaultValue(field.getDefaultValue())
+                    .optionsJson(field.getOptionsJson())
+                    .placeholder(field.getPlaceholder())
+                    .unit(field.getUnit())
+                    .isAggregatable(field.getIsAggregatable())
                     .sortOrder(field.getSortOrder())
                     .build();
             fieldRepository.save(copy);
         }
 
-        // インポート元のカウント更新
-        source.incrementImportCount();
-        templateRepository.save(source);
+        log.info("テンプレート複製: sourceId={}, newId={}, targetScope={}:{}", id, saved.getId(),
+                targetScopeType, targetScopeId);
+        return toResponseWithFields(saved);
+    }
 
-        log.info("テンプレートインポート: sourceId={}, newId={}", source.getId(), saved.getId());
+    /**
+     * プリセットテンプレートをスコープにインポートする。
+     */
+    @Transactional
+    public ActivityTemplateResponse importPreset(Long userId, ImportTemplateRequest request) {
+        SystemActivityTemplatePresetEntity preset = presetRepository.findById(request.getPresetId())
+                .orElseThrow(() -> new BusinessException(ActivityErrorCode.PRESET_NOT_FOUND));
+
+        ActivityScopeType scopeType = ActivityScopeType.valueOf(request.getScopeType());
+        Long scopeId = request.getScopeId();
+
+        // 上限チェック
+        long count = templateRepository.countByScopeTypeAndScopeId(scopeType, scopeId);
+        if (count >= MAX_TEMPLATES_PER_SCOPE) {
+            throw new BusinessException(ActivityErrorCode.TEMPLATE_LIMIT_EXCEEDED);
+        }
+
+        ActivityVisibility visibility = ActivityVisibility.valueOf(preset.getDefaultVisibility());
+
+        ActivityTemplateEntity newTemplate = ActivityTemplateEntity.builder()
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .name(preset.getName())
+                .description(preset.getDescription())
+                .icon(preset.getIcon())
+                .color(preset.getColor())
+                .isParticipantRequired(preset.getIsParticipantRequired())
+                .defaultVisibility(visibility)
+                .createdBy(userId)
+                .build();
+
+        ActivityTemplateEntity saved = templateRepository.save(newTemplate);
+
+        // fields_json を展開して activity_template_fields に INSERT
+        try {
+            List<Map<String, Object>> fields = objectMapper.readValue(
+                    preset.getFieldsJson(), new TypeReference<>() {});
+            int order = 0;
+            for (Map<String, Object> field : fields) {
+                ActivityTemplateFieldEntity fieldEntity = ActivityTemplateFieldEntity.builder()
+                        .templateId(saved.getId())
+                        .fieldKey((String) field.get("field_key"))
+                        .fieldLabel((String) field.get("field_label"))
+                        .fieldType(FieldType.valueOf((String) field.get("field_type")))
+                        .isRequired(field.get("is_required") != null && (Boolean) field.get("is_required"))
+                        .optionsJson(field.get("options_json") != null
+                                ? objectMapper.writeValueAsString(field.get("options_json")) : null)
+                        .placeholder((String) field.get("placeholder"))
+                        .unit((String) field.get("unit"))
+                        .isAggregatable(field.get("is_aggregatable") != null && (Boolean) field.get("is_aggregatable"))
+                        .sortOrder(field.get("sort_order") != null
+                                ? ((Number) field.get("sort_order")).intValue() : order++)
+                        .build();
+                fieldRepository.save(fieldEntity);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("プリセットのfields_jsonのパースに失敗しました", e);
+        }
+
+        log.info("プリセットインポート: presetId={}, newTemplateId={}", preset.getId(), saved.getId());
         return toResponseWithFields(saved);
     }
 
@@ -284,17 +342,18 @@ public class ActivityTemplateService {
      * テンプレートレスポンスにフィールド定義を付与して返す。
      */
     private ActivityTemplateResponse toResponseWithFields(ActivityTemplateEntity entity) {
-        List<ActivityTemplateFieldEntity> fields = fieldRepository.findByTemplateIdOrderBySortOrderAsc(entity.getId());
-        List<ActivityTemplateResponse.TemplateFieldResponse> fieldResponses = activityMapper.toTemplateFieldResponseList(fields);
+        List<ActivityTemplateFieldEntity> fields =
+                fieldRepository.findByTemplateIdOrderBySortOrderAsc(entity.getId());
+        List<ActivityTemplateResponse.TemplateFieldResponse> fieldResponses =
+                activityMapper.toTemplateFieldResponseList(fields);
         return new ActivityTemplateResponse(
                 entity.getId(), entity.getScopeType().name(),
-                entity.getTeamId(), entity.getOrganizationId(),
+                entity.getScopeId(),
                 entity.getName(), entity.getDescription(),
                 entity.getIcon(), entity.getColor(),
-                entity.getDefaultTitlePattern(), entity.getDefaultVisibility().name(),
-                entity.getDefaultLocation(), entity.getShareCode(),
-                entity.getIsShared(), entity.getIsOfficial(),
-                entity.getUseCount(), entity.getImportCount(),
+                entity.getIsParticipantRequired(),
+                entity.getDefaultVisibility().name(),
+                entity.getSortOrder(),
                 fieldResponses, entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }

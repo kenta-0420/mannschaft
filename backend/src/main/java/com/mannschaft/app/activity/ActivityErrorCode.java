@@ -17,17 +17,14 @@ public enum ActivityErrorCode implements ErrorCode {
     /** テンプレートが見つからない */
     TEMPLATE_NOT_FOUND("ACTIVITY_002", "テンプレートが見つかりません", Severity.WARN),
 
-    /** カスタムフィールドが見つからない */
-    CUSTOM_FIELD_NOT_FOUND("ACTIVITY_003", "カスタムフィールドが見つかりません", Severity.WARN),
-
     /** コメントが見つからない */
     COMMENT_NOT_FOUND("ACTIVITY_004", "コメントが見つかりません", Severity.WARN),
 
     /** テンプレート数上限超過 */
-    TEMPLATE_LIMIT_EXCEEDED("ACTIVITY_005", "テンプレート数の上限に到達しました", Severity.WARN),
+    TEMPLATE_LIMIT_EXCEEDED("ACTIVITY_005", "テンプレート数の上限（20件）に到達しました", Severity.WARN),
 
     /** フィールド数上限超過 */
-    FIELD_LIMIT_EXCEEDED("ACTIVITY_006", "フィールド数の上限（20個）を超えています", Severity.WARN),
+    FIELD_LIMIT_EXCEEDED("ACTIVITY_006", "フィールド数の上限（15個）を超えています", Severity.WARN),
 
     /** 権限不足 */
     INSUFFICIENT_PERMISSION("ACTIVITY_007", "この操作に必要な権限がありません", Severity.WARN),
@@ -53,14 +50,20 @@ public enum ActivityErrorCode implements ErrorCode {
     /** テンプレートIDの変更は不可 */
     TEMPLATE_CHANGE_NOT_ALLOWED("ACTIVITY_014", "テンプレートの変更はできません", Severity.WARN),
 
-    /** 共有コードが見つからない */
-    SHARE_CODE_NOT_FOUND("ACTIVITY_015", "共有コードが見つかりません", Severity.WARN),
-
     /** プリセットが見つからない */
     PRESET_NOT_FOUND("ACTIVITY_016", "プリセットテンプレートが見つかりません", Severity.WARN),
 
     /** 最低1名の参加者が必要 */
-    MINIMUM_PARTICIPANT_REQUIRED("ACTIVITY_017", "最低1名の参加者が必要です", Severity.WARN);
+    MINIMUM_PARTICIPANT_REQUIRED("ACTIVITY_017", "最低1名の参加者が必要です", Severity.WARN),
+
+    /** フィールド型の変更は禁止 */
+    FIELD_TYPE_CHANGE_NOT_ALLOWED("ACTIVITY_018", "フィールド型の変更はできません", Severity.WARN),
+
+    /** フィールドキーのリネームは禁止 */
+    FIELD_KEY_RENAME_NOT_ALLOWED("ACTIVITY_019", "フィールドキーの変更はできません", Severity.WARN),
+
+    /** 終了時刻が開始時刻より前 */
+    INVALID_TIME_RANGE("ACTIVITY_020", "終了時刻は開始時刻より後に設定してください", Severity.WARN);
 
     private final String code;
     private final String message;

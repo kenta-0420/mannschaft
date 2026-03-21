@@ -14,4 +14,5 @@ public class DigestPublishResponse {
     private final Long blogPostId;
     private final String blogPostSlug;
     private final String status;
+    private final StaleWarningResponse staleWarning;
 }

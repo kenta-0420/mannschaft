@@ -16,8 +16,6 @@ public class ActivityParticipantResponse {
     private final Long userId;
     private final String displayName;
     private final String memberNumber;
-    private final String participationType;
-    private final Integer minutesPlayed;
-    private final String note;
+    private final String roleLabel;
     private final LocalDateTime createdAt;
 }

@@ -51,8 +51,9 @@ public class DigestConfigController {
             @Valid @RequestBody DigestConfigRequest request) {
         // TODO: SecurityContext からユーザー ID を取得
         Long userId = 0L;
-        DigestConfigResponse response = digestConfigService.createOrUpdateConfig(request, userId);
-        return ResponseEntity.ok(ApiResponse.of(response));
+        DigestConfigService.ConfigSaveResult result = digestConfigService.createOrUpdateConfig(request, userId);
+        HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(status).body(ApiResponse.of(result.response()));
     }
 
     /**

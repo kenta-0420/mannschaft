@@ -1,7 +1,9 @@
 package com.mannschaft.app.activity.controller;
 
+import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.dto.ActivityTemplateResponse;
 import com.mannschaft.app.activity.dto.CreateTemplateRequest;
+import com.mannschaft.app.activity.dto.DuplicateTemplateRequest;
 import com.mannschaft.app.activity.dto.ImportTemplateRequest;
 import com.mannschaft.app.activity.dto.UpdateTemplateRequest;
 import com.mannschaft.app.activity.service.ActivityTemplateService;
@@ -25,11 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 活動テンプレートコントローラー。テンプレートのCRUD・共有・インポートAPIを提供する。
+ * 活動テンプレートコントローラー。テンプレートのCRUD・複製・インポートAPIを提供する。
  */
 @RestController
-@RequestMapping("/api/v1/activities/templates")
-@Tag(name = "活動テンプレート", description = "F06.4 活動テンプレートCRUD・共有・インポート")
+@RequestMapping("/api/v1/activity-templates")
+@Tag(name = "活動テンプレート", description = "F06.4 活動テンプレートCRUD・複製・インポート")
 @RequiredArgsConstructor
 public class ActivityTemplateController {
 
@@ -47,9 +49,10 @@ public class ActivityTemplateController {
     @Operation(summary = "テンプレート一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ActivityTemplateResponse>>> listTemplates(
-            @RequestParam(required = false) Long teamId,
-            @RequestParam(required = false) Long organizationId) {
-        return ResponseEntity.ok(ApiResponse.of(templateService.listTemplates(teamId, organizationId)));
+            @RequestParam("scope_type") String scopeType,
+            @RequestParam("scope_id") Long scopeId) {
+        return ResponseEntity.ok(ApiResponse.of(
+                templateService.listTemplates(ActivityScopeType.valueOf(scopeType), scopeId)));
     }
 
     /**
@@ -69,8 +72,11 @@ public class ActivityTemplateController {
     @Operation(summary = "テンプレート作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ActivityTemplateResponse>> createTemplate(
+            @RequestParam("scope_type") String scopeType,
+            @RequestParam("scope_id") Long scopeId,
             @Valid @RequestBody CreateTemplateRequest request) {
-        ActivityTemplateResponse response = templateService.createTemplate(getCurrentUserId(), request);
+        ActivityTemplateResponse response = templateService.createTemplate(
+                getCurrentUserId(), ActivityScopeType.valueOf(scopeType), scopeId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -98,45 +104,27 @@ public class ActivityTemplateController {
     }
 
     /**
-     * 公式テンプレート一覧を取得する。
+     * テンプレートを別スコープにコピーする。
      */
-    @GetMapping("/official")
-    @Operation(summary = "公式テンプレート一覧")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<ActivityTemplateResponse>>> listOfficialTemplates() {
-        return ResponseEntity.ok(ApiResponse.of(templateService.listOfficialTemplates()));
-    }
-
-    /**
-     * テンプレートをインポートする。
-     */
-    @PostMapping("/import")
-    @Operation(summary = "テンプレートインポート")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "インポート成功")
-    public ResponseEntity<ApiResponse<ActivityTemplateResponse>> importTemplate(
-            @Valid @RequestBody ImportTemplateRequest request) {
-        ActivityTemplateResponse response = templateService.importTemplate(getCurrentUserId(), request);
+    @PostMapping("/{id}/duplicate")
+    @Operation(summary = "テンプレート複製")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
+    public ResponseEntity<ApiResponse<ActivityTemplateResponse>> duplicateTemplate(
+            @PathVariable Long id,
+            @Valid @RequestBody DuplicateTemplateRequest request) {
+        ActivityTemplateResponse response = templateService.duplicateTemplate(id, getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     /**
-     * テンプレートの共有を有効化する。
+     * プリセットテンプレートをスコープにインポートする。
      */
-    @PostMapping("/{id}/share")
-    @Operation(summary = "共有有効化")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "有効化成功")
-    public ResponseEntity<ApiResponse<ActivityTemplateResponse>> enableShare(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(templateService.enableShare(id)));
-    }
-
-    /**
-     * テンプレートの共有を無効化する。
-     */
-    @DeleteMapping("/{id}/share")
-    @Operation(summary = "共有無効化")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "無効化成功")
-    public ResponseEntity<Void> disableShare(@PathVariable Long id) {
-        templateService.disableShare(id);
-        return ResponseEntity.noContent().build();
+    @PostMapping("/import-preset")
+    @Operation(summary = "プリセットインポート")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "インポート成功")
+    public ResponseEntity<ApiResponse<ActivityTemplateResponse>> importPreset(
+            @Valid @RequestBody ImportTemplateRequest request) {
+        ActivityTemplateResponse response = templateService.importPreset(getCurrentUserId(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

@@ -1,18 +1,20 @@
 package com.mannschaft.app.activity.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-import java.util.List;
-
 /**
- * 活動テンプレート更新リクエストDTO。
+ * プリセットテンプレート作成リクエストDTO（SYSTEM_ADMIN用）。
  */
 @Getter
 @RequiredArgsConstructor
-public class UpdateTemplateRequest {
+public class CreatePresetRequest {
+
+    @NotBlank
+    private final String category;
 
     @NotBlank
     @Size(max = 100)
@@ -31,5 +33,6 @@ public class UpdateTemplateRequest {
 
     private final String defaultVisibility;
 
-    private final List<CreateTemplateRequest.TemplateFieldInput> fields;
+    @NotNull
+    private final String fieldsJson;
 }

@@ -39,7 +39,7 @@ public class PhotoEntity extends BaseEntity {
     private String contentType;
 
     @Column(nullable = false)
-    private Integer fileSize;
+    private Long fileSize;
 
     private Integer width;
 

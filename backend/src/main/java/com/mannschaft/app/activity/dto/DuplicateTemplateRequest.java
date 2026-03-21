@@ -6,18 +6,15 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /**
- * プリセットテンプレートインポートリクエストDTO。
+ * テンプレート複製リクエストDTO。
  */
 @Getter
 @RequiredArgsConstructor
-public class ImportTemplateRequest {
-
-    @NotNull
-    private final Long presetId;
+public class DuplicateTemplateRequest {
 
     @NotBlank
-    private final String scopeType;
+    private final String targetScopeType;
 
     @NotNull
-    private final Long scopeId;
+    private final Long targetScopeId;
 }

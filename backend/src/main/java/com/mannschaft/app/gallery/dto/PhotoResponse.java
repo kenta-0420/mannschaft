@@ -18,7 +18,7 @@ public class PhotoResponse {
     private final String thumbnailS3Key;
     private final String originalFilename;
     private final String contentType;
-    private final Integer fileSize;
+    private final Long fileSize;
     private final Integer width;
     private final Integer height;
     private final String caption;
