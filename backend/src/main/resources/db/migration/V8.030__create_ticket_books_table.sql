@@ -1,0 +1,28 @@
+-- F08.5: 発行済み回数券テーブル
+CREATE TABLE ticket_books (
+    id                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    team_id             BIGINT UNSIGNED NOT NULL,
+    product_id          BIGINT UNSIGNED NOT NULL,
+    user_id             BIGINT UNSIGNED NOT NULL,
+    total_tickets       INTEGER         NOT NULL,
+    used_tickets        INTEGER         NOT NULL DEFAULT 0,
+    remaining_tickets   INTEGER GENERATED ALWAYS AS (total_tickets - used_tickets) STORED,
+    status              VARCHAR(20)     NOT NULL DEFAULT 'PENDING',
+    purchased_at        DATETIME        NULL,
+    expires_at          DATETIME        NULL,
+    payment_id          BIGINT UNSIGNED NULL,
+    issued_by           BIGINT UNSIGNED NULL,
+    note                VARCHAR(500)    NULL,
+    created_at          DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    INDEX idx_tb_user (user_id, team_id, status),
+    INDEX idx_tb_team (team_id, status, created_at DESC),
+    INDEX idx_tb_expires (status, expires_at),
+    INDEX idx_tb_pending_cleanup (status, created_at),
+    CONSTRAINT fk_tb_team FOREIGN KEY (team_id) REFERENCES teams(id),
+    CONSTRAINT fk_tb_product FOREIGN KEY (product_id) REFERENCES ticket_products(id),
+    CONSTRAINT fk_tb_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_tb_payment FOREIGN KEY (payment_id) REFERENCES ticket_payments(id),
+    CONSTRAINT fk_tb_issued_by FOREIGN KEY (issued_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
