@@ -1,0 +1,28 @@
+-- F07.2 パフォーマンス管理: 指標定義テーブル
+CREATE TABLE performance_metrics (
+    id                        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    team_id                   BIGINT UNSIGNED NOT NULL,
+    name                      VARCHAR(100)    NOT NULL,
+    unit                      VARCHAR(30)     NULL,
+    data_type                 ENUM('INTEGER', 'DECIMAL', 'TIME') NOT NULL DEFAULT 'DECIMAL',
+    aggregation_type          ENUM('SUM', 'AVG', 'MAX', 'MIN', 'LATEST') NOT NULL DEFAULT 'SUM',
+    description               VARCHAR(500)    NULL,
+    group_name                VARCHAR(50)     NULL,
+    target_value              DECIMAL(15,4)   NULL,
+    target_achieved_notified  BOOLEAN         NOT NULL DEFAULT FALSE,
+    min_value                 DECIMAL(15,4)   NULL,
+    max_value                 DECIMAL(15,4)   NULL,
+    sort_order                INT             NOT NULL DEFAULT 0,
+    is_visible_to_members     BOOLEAN         NOT NULL DEFAULT TRUE,
+    is_self_recordable        BOOLEAN         NOT NULL DEFAULT FALSE,
+    linked_activity_field_id  BIGINT UNSIGNED NULL,
+    is_active                 BOOLEAN         NOT NULL DEFAULT TRUE,
+    created_at                DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_pm_team      FOREIGN KEY (team_id) REFERENCES teams (id),
+    CONSTRAINT fk_pm_linked_field FOREIGN KEY (linked_activity_field_id) REFERENCES activity_custom_fields (id) ON DELETE SET NULL,
+    INDEX idx_pm_team_sort (team_id, sort_order),
+    INDEX idx_pm_team_group (team_id, group_name),
+    INDEX idx_pm_linked_field (linked_activity_field_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
