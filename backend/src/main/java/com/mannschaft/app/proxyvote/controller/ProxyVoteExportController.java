@@ -1,6 +1,8 @@
 package com.mannschaft.app.proxyvote.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
+import com.mannschaft.app.common.pdf.PdfResponseHelper;
 import com.mannschaft.app.proxyvote.dto.AttachmentResponse;
 import com.mannschaft.app.proxyvote.service.ProxyVoteAttachmentService;
 import com.mannschaft.app.proxyvote.service.ProxyVoteExportService;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -63,12 +66,13 @@ public class ProxyVoteExportController {
     @Operation(summary = "議事録 PDF エクスポート")
     public ResponseEntity<byte[]> exportMinutesPdf(@PathVariable Long id) {
         byte[] pdf = exportService.exportMinutesPdf(id);
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"minutes_" + id + "_" + timestamp + ".pdf\"")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdf);
+
+        String fileName = PdfFileNameBuilder.of("議事録")
+                .date(LocalDate.now())
+                .identifier(String.valueOf(id))
+                .build();
+
+        return PdfResponseHelper.toResponse(pdf, fileName);
     }
 
     /**

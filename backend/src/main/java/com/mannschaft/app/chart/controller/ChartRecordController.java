@@ -13,6 +13,9 @@ import com.mannschaft.app.chart.service.ChartRecordService;
 import com.mannschaft.app.chart.service.ChartSettingsService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
+import com.mannschaft.app.common.pdf.PdfGeneratorService;
+import com.mannschaft.app.common.pdf.PdfResponseHelper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -34,6 +37,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * カルテレコードコントローラー。カルテのCRUD・コピー・共有・ピン留め・PDF・顧客別一覧APIを提供する。
@@ -46,6 +52,7 @@ public class ChartRecordController {
 
     private final ChartRecordService chartRecordService;
     private final ChartSettingsService chartSettingsService;
+    private final PdfGeneratorService pdfGeneratorService;
 
     // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
     private Long getCurrentUserId() {
@@ -159,13 +166,21 @@ public class ChartRecordController {
     public ResponseEntity<byte[]> exportPdf(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        // TODO: PDF生成ライブラリ（iText等）統合後に実装
-        ChartRecordResponse chartData = chartRecordService.getChartForPdf(teamId, id);
-        byte[] placeholder = new byte[0];
-        return ResponseEntity.ok()
-                .header("Content-Type", "application/pdf")
-                .header("Content-Disposition", "attachment; filename=chart_" + id + ".pdf")
-                .body(placeholder);
+        ChartRecordResponse chart = chartRecordService.getChartForPdf(teamId, id);
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("chart", chart);
+        variables.put("title", "カルテ");
+        variables.put("photos", chart.getPhotos() != null ? chart.getPhotos() : Collections.emptyList());
+
+        byte[] pdfBytes = pdfGeneratorService.generateFromTemplate("pdf/chart-record", variables);
+
+        String fileName = PdfFileNameBuilder.of("カルテ")
+                .date(chart.getVisitDate())
+                .identifier(chart.getCustomerDisplayName() + "様")
+                .build();
+
+        return PdfResponseHelper.toResponse(pdfBytes, fileName);
     }
 
     /**

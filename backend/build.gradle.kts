@@ -69,6 +69,20 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:mysql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // === F12.1 PDF生成共通基盤 ===
+    // Thymeleaf: PDF用HTMLテンプレートエンジン（画面描画には使わない）
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+    // Flying Saucer: HTML/CSS → PDF変換（OpenPDFバックエンド、iText非依存）
+    implementation("org.xhtmlrenderer:flying-saucer-pdf-openpdf:9.4.0")
+    // OpenPDF: 低レベルPDF操作（オーバーレイ等）
+    implementation("com.github.librepdf:openpdf:2.0.3")
+    // Apache Batik: SVG→PNG変換（電子印鑑の描画に使用）
+    implementation("org.apache.xmlgraphics:batik-transcoder:1.17")
+    implementation("org.apache.xmlgraphics:batik-codec:1.17")
+
+    // PDF内容検証用（テストスコープのみ）
+    testImplementation("org.apache.pdfbox:pdfbox:3.0.3")
 }
 
 tasks.withType<Test> {

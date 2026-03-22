@@ -2,6 +2,9 @@ package com.mannschaft.app.ticket.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
+import com.mannschaft.app.common.pdf.PdfGeneratorService;
+import com.mannschaft.app.common.pdf.PdfResponseHelper;
 import com.mannschaft.app.ticket.dto.BulkConsumeRequest;
 import com.mannschaft.app.ticket.dto.BulkConsumeResponse;
 import com.mannschaft.app.ticket.dto.ConsumeByQrRequest;
@@ -33,6 +36,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * 回数券管理コントローラー（スタッフ向け）。
  * 手動発行・消化・取消・返金・延長・統計・エクスポート APIを提供する。
@@ -44,6 +52,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TicketBookController {
 
     private final TicketBookService bookService;
+    private final PdfGeneratorService pdfGeneratorService;
 
     // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
     private Long getCurrentUserId() {
@@ -199,7 +208,44 @@ public class TicketBookController {
             @PathVariable Long teamId,
             @RequestParam String format,
             @RequestParam String period) {
-        // TODO: CSV / PDF エクスポート実装
-        return ResponseEntity.ok(ApiResponse.of("エクスポート機能は未実装です: format=" + format + ", period=" + period));
+
+        if ("pdf".equalsIgnoreCase(format)) {
+            return exportStatsPdf(teamId, period);
+        } else if ("csv".equalsIgnoreCase(format)) {
+            // TODO: CSV エクスポート実装（F12.1 後続対応）
+            return ResponseEntity.ok(ApiResponse.of("CSVエクスポートは未実装です"));
+        }
+
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.of("サポートされていないフォーマットです: " + format));
+    }
+
+    /**
+     * 売上レポートをPDFでエクスポートする。
+     */
+    private ResponseEntity<?> exportStatsPdf(Long teamId, String period) {
+        // TODO: 売上データ集計サービスとの連携（現在は空データで骨格のみ生成）
+        // TODO: period パラメータの解析・バリデーション（30d, 90d, 1y 等）
+        // TODO: TeamService からチーム名を取得（現在は teamId で代替）
+        String teamIdentifier = String.valueOf(teamId);
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("title", "チケット売上レポート");
+        variables.put("teamName", teamIdentifier);
+        variables.put("periodStart", LocalDate.now().minusDays(30).toString());
+        variables.put("periodEnd", LocalDate.now().toString());
+        variables.put("salesItems", List.of());
+        variables.put("totalSoldCount", 0);
+        variables.put("totalAmount", 0);
+
+        byte[] pdfBytes = pdfGeneratorService.generateFromTemplate(
+                "pdf/ticket-sales-report", variables);
+
+        String fileName = PdfFileNameBuilder.of("売上レポート")
+                .date(LocalDate.now())
+                .identifier(teamIdentifier)
+                .build();
+
+        return PdfResponseHelper.toResponse(pdfBytes, fileName);
     }
 }

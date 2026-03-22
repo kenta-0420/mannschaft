@@ -1,6 +1,10 @@
 package com.mannschaft.app.ticket.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
+import com.mannschaft.app.common.pdf.PdfGeneratorService;
+import com.mannschaft.app.common.pdf.PdfResponseHelper;
+import com.mannschaft.app.ticket.PaymentMethod;
 import com.mannschaft.app.ticket.dto.QrCodeResponse;
 import com.mannschaft.app.ticket.dto.TicketBookDetailResponse;
 import com.mannschaft.app.ticket.dto.TicketBookResponse;
@@ -17,7 +21,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URI;
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 顧客向けチケットコントローラー。自分のチケット一覧・詳細・QR・ウィジェットを提供する。
@@ -29,6 +37,7 @@ import java.util.List;
 public class MyTicketController {
 
     private final TicketBookService bookService;
+    private final PdfGeneratorService pdfGeneratorService;
 
     // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
     private Long getCurrentUserId() {
@@ -72,10 +81,55 @@ public class MyTicketController {
             @PathVariable Long bookId) {
         TicketPaymentEntity payment = bookService.getReceiptPayment(teamId, bookId);
 
-        // TODO: Stripe 決済の場合は receipt_url にリダイレクト
-        // TODO: 現地決済の場合は PDF を生成してダウンロード
-        // 現在はプレースホルダーとして決済情報を返す
-        return ResponseEntity.ok(ApiResponse.of("領収書データ（PDF生成は未実装）: paymentId=" + payment.getId()));
+        // Stripe 決済の場合: Stripe の領収書 URL にリダイレクト
+        if (payment.getPaymentMethod() == PaymentMethod.STRIPE
+                && payment.getStripePaymentIntentId() != null) {
+            // TODO: Stripe API から正式な receipt_url を取得する実装に置き換える
+            //       現在は Stripe Dashboard の PaymentIntent ページへリダイレクト
+            String receiptUrl = "https://dashboard.stripe.com/payments/"
+                    + payment.getStripePaymentIntentId();
+            return ResponseEntity.status(302)
+                    .location(URI.create(receiptUrl))
+                    .build();
+        }
+
+        // 現地決済の場合: PDF 領収書を生成してダウンロード
+        return generateReceiptPdf(payment);
+    }
+
+    /**
+     * 現地決済の領収書PDFを生成する。
+     */
+    private ResponseEntity<?> generateReceiptPdf(TicketPaymentEntity payment) {
+        // テンプレートが期待する変数名にマッピング
+        Map<String, Object> paymentMap = new HashMap<>();
+        paymentMap.put("buyerName", String.valueOf(payment.getUserId()));  // TODO: UserService からユーザー名を取得
+        paymentMap.put("purchaseDate", payment.getPaidAt() != null
+                ? payment.getPaidAt().toLocalDate().toString() : LocalDate.now().toString());
+        paymentMap.put("amount", payment.getAmount());
+        paymentMap.put("eventName", "回数券");  // TODO: TicketProduct からイベント名・商品名を取得
+        paymentMap.put("ticketType", "回数券");  // TODO: TicketProduct から券種名を取得
+        paymentMap.put("quantity", 1);  // TODO: TicketBook から枚数を取得
+        paymentMap.put("paymentMethod", payment.getPaymentMethod().name());
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("title", "チケット領収書");
+        variables.put("payment", paymentMap);
+
+        byte[] pdfBytes = pdfGeneratorService.generateFromTemplate(
+                "pdf/ticket-receipt", variables);
+
+        LocalDate purchaseDate = payment.getPaidAt() != null
+                ? payment.getPaidAt().toLocalDate() : LocalDate.now();
+        // TODO: UserService からユーザー名を取得して購入者名に使用する
+        String buyerName = String.valueOf(payment.getUserId());
+
+        String fileName = PdfFileNameBuilder.of("チケット領収書")
+                .date(purchaseDate)
+                .identifier(buyerName + "様")
+                .build();
+
+        return PdfResponseHelper.toResponse(pdfBytes, fileName);
     }
 
     /**

@@ -13,6 +13,9 @@ import com.mannschaft.app.facility.dto.RejectBookingRequest;
 import com.mannschaft.app.facility.dto.UpdateBookingRequest;
 import com.mannschaft.app.facility.service.FacilityBookingService;
 import com.mannschaft.app.facility.service.FacilityPaymentService;
+import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
+import com.mannschaft.app.common.pdf.PdfGeneratorService;
+import com.mannschaft.app.common.pdf.PdfResponseHelper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,7 +36,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * チーム施設予約コントローラー。予約CRUD・承認・チェックイン・支払い・カレンダー・PDFを提供する。
@@ -48,6 +53,7 @@ public class TeamFacilityBookingController {
 
     private final FacilityBookingService bookingService;
     private final FacilityPaymentService paymentService;
+    private final PdfGeneratorService pdfGeneratorService;
 
     private Long getCurrentUserId() {
         return 1L;
@@ -219,16 +225,28 @@ public class TeamFacilityBookingController {
     }
 
     /**
-     * 確認用PDFを取得する（placeholder）。
+     * 確認用PDFを取得する。
      */
     @GetMapping("/{bookingId}/confirmation-pdf")
     @Operation(summary = "確認PDF")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<BookingDetailResponse>> getConfirmationPdf(
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "PDF生成成功",
+            content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/pdf"))
+    public ResponseEntity<byte[]> getConfirmationPdf(
             @PathVariable Long teamId,
             @PathVariable Long bookingId) {
-        // TODO: PDF生成実装時にバイナリレスポンスに変更
-        BookingDetailResponse response = bookingService.getBookingForPdf(bookingId);
-        return ResponseEntity.ok(ApiResponse.of(response));
+        BookingDetailResponse booking = bookingService.getBookingForPdf(bookingId);
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("booking", booking);
+        variables.put("title", "施設予約確認書");
+
+        byte[] pdfBytes = pdfGeneratorService.generateFromTemplate("pdf/facility-booking", variables);
+
+        String fileName = PdfFileNameBuilder.of("施設予約")
+                .date(booking.getBookingDate())
+                .identifier(booking.getFacilityName() + "_予約" + booking.getId())
+                .build();
+
+        return PdfResponseHelper.toResponse(pdfBytes, fileName);
     }
 }

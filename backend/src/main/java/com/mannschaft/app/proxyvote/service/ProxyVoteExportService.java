@@ -1,6 +1,7 @@
 package com.mannschaft.app.proxyvote.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.SessionStatus;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteMotionEntity;
@@ -15,7 +16,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * エクスポートサービス。CSV・PDF エクスポートを担当する。
@@ -28,6 +31,7 @@ public class ProxyVoteExportService {
 
     private final ProxyVoteSessionService sessionService;
     private final ProxyVoteMotionRepository motionRepository;
+    private final PdfGeneratorService pdfGeneratorService;
 
     /**
      * 投票結果を CSV でエクスポートする。
@@ -84,9 +88,15 @@ public class ProxyVoteExportService {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_FINALIZED);
         }
 
-        // TODO: Thymeleaf テンプレート → Flying Saucer で PDF 変換
+        List<ProxyVoteMotionEntity> motions = motionRepository.findBySessionIdOrderByMotionNumberAsc(sessionId);
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("session", session);
+        variables.put("title", "議事録");
+        variables.put("agendas", motions);
+
         log.info("議事録 PDF エクスポート: sessionId={}", sessionId);
-        return new byte[0]; // placeholder
+        return pdfGeneratorService.generateFromTemplate("pdf/proxy-vote-minutes", variables);
     }
 
     private String escapeCsv(String value) {
