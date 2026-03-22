@@ -1,6 +1,5 @@
 package com.mannschaft.app.auth.service;
 
-import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.auth.AuthErrorCode;
 import com.mannschaft.app.auth.entity.EmailVerificationTokenEntity;
 import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
@@ -64,7 +63,6 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final TwoFactorAuthRepository twoFactorAuthRepository;
-    private final AuditLogRepository auditLogRepository;
     private final AuthTokenService authTokenService;
     private final PasswordEncoder passwordEncoder;
     private final DomainEventPublisher eventPublisher;
@@ -259,7 +257,6 @@ public class AuthService {
      * @return ログイン成功レスポンス（LoginResponse）または 2FA要求レスポンス（MfaRequiredResponse）
      */
     @Transactional
-    @SuppressWarnings("unchecked")
     public ApiResponse<?> login(LoginRequest req, String ipAddress, String userAgent) {
         // 1. レートリミットチェック
         String rateLimitKey = "mannschaft:auth:login_attempt:" + req.getEmail() + ":" + ipAddress;
@@ -485,8 +482,9 @@ public class AuthService {
 
         // 5. 新Access Token + 新Refresh Token発行
         Long userId = existingToken.getUserId();
-        UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_007));
+        if (!userRepository.existsById(userId)) {
+            throw new BusinessException(AuthErrorCode.AUTH_007);
+        }
 
         String newAccessToken = authTokenService.issueAccessToken(userId, List.of("MEMBER"));
         String newRawRefreshToken = authTokenService.generateRefreshToken();

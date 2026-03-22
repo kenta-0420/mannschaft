@@ -92,6 +92,12 @@ public class ScheduleEntity extends BaseEntity {
     @Column(length = 20)
     private CommentOption commentOption;
 
+    private Long eventCategoryId;
+
+    private Long sourceScheduleId;
+
+    private Short academicYear;
+
     private Long parentScheduleId;
 
     @Column(columnDefinition = "JSON")

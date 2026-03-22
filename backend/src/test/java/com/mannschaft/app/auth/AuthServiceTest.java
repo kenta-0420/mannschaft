@@ -4,7 +4,6 @@ import com.mannschaft.app.auth.entity.EmailVerificationTokenEntity;
 import com.mannschaft.app.auth.entity.RefreshTokenEntity;
 import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
 import com.mannschaft.app.auth.repository.PasswordResetTokenRepository;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
@@ -65,9 +64,6 @@ class AuthServiceTest {
 
     @Mock
     private TwoFactorAuthRepository twoFactorAuthRepository;
-
-    @Mock
-    private AuditLogRepository auditLogRepository;
 
     @Mock
     private AuthTokenService authTokenService;
