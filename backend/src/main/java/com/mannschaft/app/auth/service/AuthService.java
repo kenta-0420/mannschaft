@@ -2,7 +2,6 @@ package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.auth.AuthErrorCode;
-import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.entity.EmailVerificationTokenEntity;
 import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
 import com.mannschaft.app.auth.entity.PasswordResetTokenEntity;

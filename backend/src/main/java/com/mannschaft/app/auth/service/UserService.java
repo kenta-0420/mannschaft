@@ -1,7 +1,6 @@
 package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.AuthErrorCode;
-import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.entity.EmailChangeTokenEntity;
 import com.mannschaft.app.auth.repository.EmailChangeTokenRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;

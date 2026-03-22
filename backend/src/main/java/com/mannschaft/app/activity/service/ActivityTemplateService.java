@@ -5,7 +5,6 @@ import com.mannschaft.app.activity.ActivityMapper;
 import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.ActivityVisibility;
 import com.mannschaft.app.activity.FieldType;
-import com.mannschaft.app.activity.PresetCategory;
 import com.mannschaft.app.activity.dto.ActivityTemplateResponse;
 import com.mannschaft.app.activity.dto.CreateTemplateRequest;
 import com.mannschaft.app.activity.dto.DuplicateTemplateRequest;

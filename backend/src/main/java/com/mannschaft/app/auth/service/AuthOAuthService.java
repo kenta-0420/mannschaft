@@ -1,7 +1,6 @@
 package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.AuthErrorCode;
-import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.entity.OAuthAccountEntity;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.entity.OAuthLinkTokenEntity;
@@ -29,7 +28,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
