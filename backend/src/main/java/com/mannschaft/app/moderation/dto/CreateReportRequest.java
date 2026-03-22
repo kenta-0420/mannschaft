@@ -28,4 +28,8 @@ public class CreateReportRequest {
     private final String scopeType;
 
     private final Long scopeId;
+
+    private final Long targetUserId;
+
+    private final String contentSnapshot;
 }

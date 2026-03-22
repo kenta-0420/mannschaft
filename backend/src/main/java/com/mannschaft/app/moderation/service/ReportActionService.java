@@ -210,10 +210,11 @@ public class ReportActionService {
     public ReportStatsResponse getStats() {
         long pending = reportRepository.countByStatus(ReportStatus.PENDING);
         long reviewing = reportRepository.countByStatus(ReportStatus.REVIEWING);
+        long escalated = reportRepository.countByStatus(ReportStatus.ESCALATED);
         long resolved = reportRepository.countByStatus(ReportStatus.RESOLVED);
         long dismissed = reportRepository.countByStatus(ReportStatus.DISMISSED);
-        long total = pending + reviewing + resolved + dismissed;
-        return new ReportStatsResponse(pending, reviewing, resolved, dismissed, total);
+        long total = pending + reviewing + escalated + resolved + dismissed;
+        return new ReportStatsResponse(pending, reviewing, escalated, resolved, dismissed, total);
     }
 
     /**
@@ -231,17 +232,7 @@ public class ReportActionService {
     }
 
     /**
-     * ユーザーの違反履歴（アクション対象）を取得する。
-     *
-     * @param pageable ページング
-     * @return 通報ページ
-     */
-    public Page<ContentReportEntity> getReportsPage(Pageable pageable) {
-        return reportRepository.findAll(pageable);
-    }
-
-    /**
-     * 全通報を取得する（システム管理者用）。
+     * 全通報を取得する（管理者用）。
      *
      * @param pageable ページング
      * @return 通報ページ

@@ -39,7 +39,9 @@ public class ModerationAppealService {
         ModerationAppealEntity appeal = appealRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ModerationExtErrorCode.APPEAL_NOT_FOUND));
 
-        if (!appeal.getAppealToken().equals(token)) {
+        if (!java.security.MessageDigest.isEqual(
+                appeal.getAppealToken().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                token.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
             throw new BusinessException(ModerationExtErrorCode.APPEAL_TOKEN_INVALID);
         }
 
@@ -75,7 +77,9 @@ public class ModerationAppealService {
         ModerationAppealEntity appeal = appealRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ModerationExtErrorCode.APPEAL_NOT_FOUND));
 
-        if (!appeal.getAppealToken().equals(token)) {
+        if (!java.security.MessageDigest.isEqual(
+                appeal.getAppealToken().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                token.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
             throw new BusinessException(ModerationExtErrorCode.APPEAL_TOKEN_INVALID);
         }
 

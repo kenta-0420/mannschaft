@@ -18,6 +18,7 @@ import com.mannschaft.app.moderation.dto.WarningReReviewResponse;
 import com.mannschaft.app.moderation.dto.YabaiUnflagResponse;
 import com.mannschaft.app.moderation.dto.SettingsHistoryResponse;
 import com.mannschaft.app.moderation.ModerationExtMapper;
+import com.mannschaft.app.moderation.service.ContentReportService;
 import com.mannschaft.app.moderation.service.ModerationAppealService;
 import com.mannschaft.app.moderation.service.ModerationSettingsService;
 import com.mannschaft.app.moderation.service.ModerationTemplateService;
@@ -55,6 +56,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SystemAdminModerationController {
 
+    private final ContentReportService contentReportService;
     private final UserViolationService violationService;
     private final ModerationAppealService appealService;
     private final YabaiUnflagService unflagService;
@@ -77,8 +79,7 @@ public class SystemAdminModerationController {
     @Operation(summary = "モデレーションダッシュボード")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ModerationDashboardResponse>> getDashboard() {
-        // TODO: pendingReportsCountはContentReportService経由で取得（既存サービス参照）
-        long pendingReports = 0;
+        long pendingReports = contentReportService.countPendingReports();
         long pendingAppeals = appealService.countPendingAppeals();
         long pendingReReviews = reReviewService.countPendingReReviews();
         long escalatedReReviews = reReviewService.countEscalatedReReviews();

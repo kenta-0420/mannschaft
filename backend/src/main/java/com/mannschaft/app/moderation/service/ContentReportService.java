@@ -54,12 +54,21 @@ public class ContentReportService {
                 .scopeId(req.getScopeId() != null ? req.getScopeId() : 0L)
                 .reason(ReportReason.valueOf(req.getReason()))
                 .description(req.getDescription())
+                .targetUserId(req.getTargetUserId())
+                .contentSnapshot(req.getContentSnapshot())
                 .build();
         report = reportRepository.save(report);
 
         log.info("コンテンツ通報作成: id={}, targetType={}, targetId={}, userId={}",
                 report.getId(), req.getTargetType(), req.getTargetId(), userId);
         return moderationMapper.toReportResponse(report);
+    }
+
+    /**
+     * 未対応の通報件数を取得する。
+     */
+    public long countPendingReports() {
+        return reportRepository.countByStatus(ReportStatus.PENDING);
     }
 
     /**

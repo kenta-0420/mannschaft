@@ -12,6 +12,7 @@ public class ReportStatsResponse {
 
     private final long pendingCount;
     private final long reviewingCount;
+    private final long escalatedCount;
     private final long resolvedCount;
     private final long dismissedCount;
     private final long totalCount;
