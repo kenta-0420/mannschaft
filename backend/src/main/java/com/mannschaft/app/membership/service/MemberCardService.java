@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.membership.CardStatus;
 import com.mannschaft.app.membership.CheckinType;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.membership.MembershipErrorCode;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.membership.dto.CardStatusResponse;
@@ -58,6 +59,7 @@ public class MemberCardService {
     private final QrTokenService qrTokenService;
     private final ApplicationEventPublisher eventPublisher;
     private final NameResolverService nameResolverService;
+    private final AccessControlService accessControlService;
 
     /**
      * 自分の会員証一覧を取得する。
@@ -156,7 +158,10 @@ public class MemberCardService {
             throw new BusinessException(MembershipErrorCode.MEMBERSHIP_002);
         }
 
-        // TODO: SUPPORTERロールチェック（MEMBERSHIP_004）
+        // SUPPORTERロール以上であることを検証（GUEST不可）
+        if (!accessControlService.hasRoleOrAbove(userId, card.getScopeId(), card.getScopeType().name(), "SUPPORTER")) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_004);
+        }
 
         if (card.getStatus() != CardStatus.ACTIVE) {
             throw new BusinessException(MembershipErrorCode.MEMBERSHIP_003);

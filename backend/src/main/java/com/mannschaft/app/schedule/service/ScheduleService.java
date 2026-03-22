@@ -1,6 +1,9 @@
 package com.mannschaft.app.schedule.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.EventType;
@@ -56,6 +59,8 @@ public class ScheduleService {
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
     private final NameResolverService nameResolverService;
+    private final AccessControlService accessControlService;
+    private final UserRoleRepository userRoleRepository;
 
     /**
      * スケジュールを単体取得する。存在しない場合は例外をスローする。
@@ -76,8 +81,12 @@ public class ScheduleService {
      */
     public ScheduleEntity getScheduleWithAccessCheck(Long id, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(id);
-        // TODO: ユーザーのスコープメンバーシップ・ロール確認
-        // 現時点では存在チェックのみ（権限管理Service実装後に連携）
+        // スコープメンバーシップ検証
+        if (schedule.getTeamId() != null) {
+            accessControlService.checkMembership(userId, schedule.getTeamId(), "TEAM");
+        } else if (schedule.getOrganizationId() != null) {
+            accessControlService.checkMembership(userId, schedule.getOrganizationId(), "ORGANIZATION");
+        }
         return schedule;
     }
 
@@ -277,9 +286,21 @@ public class ScheduleService {
                 .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to);
         personalSchedules.forEach(s -> entries.add(toCalendarEntry(s, SCOPE_TYPE_PERSONAL, userId)));
 
-        // TODO: チーム・組織スコープのスケジュールはメンバーシップ連携後に取得
-        // team_memberships から所属チームIDを取得し、各チームのスケジュールを取得
-        // organization_memberships から所属組織IDを取得し、各組織のスケジュールを取得
+        // 所属チームのスケジュールを取得
+        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
+        for (UserRoleEntity role : teamRoles) {
+            List<ScheduleEntity> teamSchedules = scheduleRepository
+                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, to);
+            teamSchedules.forEach(s -> entries.add(toCalendarEntry(s, "TEAM", role.getTeamId())));
+        }
+
+        // 所属組織のスケジュールを取得
+        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
+        for (UserRoleEntity role : orgRoles) {
+            List<ScheduleEntity> orgSchedules = scheduleRepository
+                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, to);
+            orgSchedules.forEach(s -> entries.add(toCalendarEntry(s, "ORGANIZATION", role.getOrganizationId())));
+        }
 
         return entries;
     }

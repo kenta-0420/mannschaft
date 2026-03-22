@@ -1,5 +1,6 @@
 package com.mannschaft.app.survey.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.survey.QuestionType;
 import com.mannschaft.app.survey.ResultsVisibility;
@@ -38,6 +39,7 @@ public class SurveyResultService {
     private final SurveyResponseRepository responseRepository;
     private final SurveyResultViewerRepository resultViewerRepository;
     private final SurveyService surveyService;
+    private final AccessControlService accessControlService;
 
     /**
      * アンケート結果を取得する。閲覧権限チェックを行う。
@@ -74,8 +76,9 @@ public class SurveyResultService {
                 }
             }
             case ADMINS_ONLY -> {
-                // TODO: ロール検証はSpring Security統合時に実装
-                if (!survey.getCreatedBy().equals(userId)) {
+                // 作成者またはADMIN/DEPUTY_ADMINのみ閲覧可能
+                if (!survey.getCreatedBy().equals(userId)
+                        && !accessControlService.isAdminOrAbove(userId, survey.getScopeId(), survey.getScopeType())) {
                     throw new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED);
                 }
             }

@@ -39,5 +39,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     boolean existsByUserIdAndTeamId(Long userId, Long teamId);
 
+    boolean existsByUserIdAndOrganizationId(Long userId, Long organizationId);
+
     void deleteByUserIdAndTeamId(Long userId, Long teamId);
 }

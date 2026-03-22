@@ -1,6 +1,7 @@
 package com.mannschaft.app.organization.controller;
 
 import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
@@ -56,6 +57,7 @@ public class OrganizationController {
 
     private final OrganizationService organizationService;
     private final RoleService roleService;
+    private final AccessControlService accessControlService;
     private final InviteService inviteService;
     private final PermissionGroupService permissionGroupService;
     private final BlockService blockService;
@@ -297,10 +299,7 @@ public class OrganizationController {
             @PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         List<String> permissions = roleService.resolveEffectivePermissions(userId, id, SCOPE_TYPE);
-        // ロール名を取得
-        String roleName = roleService.resolveEffectivePermissions(userId, id, SCOPE_TYPE).isEmpty()
-                ? null : null;
-        // TODO: ロール名をRoleServiceから直接取得する方法を追加
+        String roleName = accessControlService.getRoleName(userId, id, SCOPE_TYPE);
         return ResponseEntity.ok(ApiResponse.of(new EffectivePermissionsResponse(roleName, permissions)));
     }
 

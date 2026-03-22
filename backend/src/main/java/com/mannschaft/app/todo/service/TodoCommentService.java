@@ -1,5 +1,6 @@
 package com.mannschaft.app.todo.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
@@ -31,6 +32,7 @@ public class TodoCommentService {
 
     private final TodoCommentRepository commentRepository;
     private final TodoRepository todoRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * コメント一覧を取得する。
@@ -113,9 +115,12 @@ public class TodoCommentService {
         TodoCommentEntity comment = commentRepository.findByIdAndTodoId(commentId, todoId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.COMMENT_NOT_FOUND));
 
-        // TODO: ADMIN権限チェック。現在は本人のみ削除可能
+        // 本人またはADMIN/DEPUTY_ADMINが削除可能
         if (!comment.getUserId().equals(userId)) {
-            throw new BusinessException(TodoErrorCode.COMMENT_NOT_OWNER);
+            var todo = todoRepository.findById(todoId).orElse(null);
+            if (todo == null || !accessControlService.isAdminOrAbove(userId, todo.getScopeId(), todo.getScopeType().name())) {
+                throw new BusinessException(TodoErrorCode.COMMENT_NOT_OWNER);
+            }
         }
 
         commentRepository.delete(comment);

@@ -1,5 +1,6 @@
 package com.mannschaft.app.dashboard.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.dashboard.DashboardErrorCode;
 import com.mannschaft.app.dashboard.DashboardMapper;
@@ -32,6 +33,7 @@ public class DashboardWidgetService {
 
     private final DashboardWidgetSettingRepository widgetSettingRepository;
     private final DashboardMapper dashboardMapper;
+    private final AccessControlService accessControlService;
 
     /** ウィジェット名のマッピング（将来的にはi18n対応） */
     private static final Map<String, String> WIDGET_NAMES = Map.ofEntries(
@@ -130,9 +132,10 @@ public class DashboardWidgetService {
                 continue;
             }
 
-            // ロール制限ウィジェットの設定は無視（エラーにしない）
-            if (wk.isRoleRestricted()) {
-                // TODO: ロール判定。現時点では保存を許可する
+            // ロール制限ウィジェットはADMIN/DEPUTY_ADMIN以外は無視
+            if (wk.isRoleRestricted()
+                    && !accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name())) {
+                continue;
             }
 
             widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
@@ -156,8 +159,8 @@ public class DashboardWidgetService {
             );
         }
 
-        // TODO: isAdmin判定。現時点では true で返却
-        return getWidgetSettings(userId, scopeType, scopeId, true);
+        boolean isAdmin = accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name());
+        return getWidgetSettings(userId, scopeType, scopeId, isAdmin);
     }
 
     /**

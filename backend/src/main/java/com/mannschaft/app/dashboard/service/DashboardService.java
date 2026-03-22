@@ -7,6 +7,7 @@ import com.mannschaft.app.dashboard.dto.PersonalDashboardResponse;
 import com.mannschaft.app.dashboard.dto.ScopeCoverageResponse;
 import com.mannschaft.app.dashboard.dto.TeamDashboardResponse;
 import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.NameResolverService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ public class DashboardService {
 
     private final DashboardWidgetService widgetService;
     private final NameResolverService nameResolverService;
+    private final AccessControlService accessControlService;
 
     /** スコープ横断取得の上限スコープ数 */
     private static final int MAX_DISPLAY_SCOPES = 20;
@@ -102,10 +104,10 @@ public class DashboardService {
      * @param statsPeriod 統計期間（TODAY / WEEK / MONTH）
      */
     public TeamDashboardResponse getTeamDashboard(Long userId, Long teamId, String statsPeriod) {
-        // TODO: チームメンバーシップ検証（非メンバーは403）
-        // TODO: ロール・権限グループ判定
+        accessControlService.checkMembership(userId, teamId, "TEAM");
+        boolean isAdmin = accessControlService.isAdminOrAbove(userId, teamId, "TEAM");
 
-        List<WidgetSettingResponse> widgetSettings = widgetService.getWidgetSettings(userId, ScopeType.TEAM, teamId, true);
+        List<WidgetSettingResponse> widgetSettings = widgetService.getWidgetSettings(userId, ScopeType.TEAM, teamId, isAdmin);
 
         return TeamDashboardResponse.builder()
                 .teamNotices(List.of())
@@ -121,8 +123,7 @@ public class DashboardService {
                 .teamLatestPosts(List.of())
                 .teamUnreadThreads(Map.of("bulletin_count", 0, "chat_count", 0))
                 .teamMemberAttendance(Map.of("attending", 0, "absent", 0, "pending", 0))
-                // TODO: ADMIN/DEPUTY_ADMINの場合のみ課金サマリーを返却
-                .teamBilling(null)
+                .teamBilling(isAdmin ? Map.of() : null)
                 .teamPageViews(null)
                 .widgetSettings(widgetSettings)
                 .platformAnnouncements(List.of())
@@ -137,10 +138,10 @@ public class DashboardService {
      * @param statsPeriod 統計期間（TODAY / WEEK / MONTH）
      */
     public OrgDashboardResponse getOrgDashboard(Long userId, Long orgId, String statsPeriod) {
-        // TODO: 組織メンバーシップ検証（非メンバーは403）
-        // TODO: ロール・権限グループ判定
+        accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
+        boolean isAdmin = accessControlService.isAdminOrAbove(userId, orgId, "ORGANIZATION");
 
-        List<WidgetSettingResponse> widgetSettings = widgetService.getWidgetSettings(userId, ScopeType.ORGANIZATION, orgId, true);
+        List<WidgetSettingResponse> widgetSettings = widgetService.getWidgetSettings(userId, ScopeType.ORGANIZATION, orgId, isAdmin);
 
         return OrgDashboardResponse.builder()
                 .orgTeamList(List.of())
@@ -153,8 +154,7 @@ public class DashboardService {
                         "new_members_this_month", 0,
                         "active_rate", 0.0
                 ))
-                // TODO: ADMIN/DEPUTY_ADMINの場合のみ課金サマリーを返却
-                .orgBilling(null)
+                .orgBilling(isAdmin ? Map.of() : null)
                 .widgetSettings(widgetSettings)
                 .platformAnnouncements(List.of())
                 .build();

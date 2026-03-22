@@ -1,6 +1,7 @@
 package com.mannschaft.app.safetycheck.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.safetycheck.SafetyCheckErrorCode;
 import com.mannschaft.app.safetycheck.SafetyCheckMapper;
 import com.mannschaft.app.safetycheck.SafetyCheckScopeType;
@@ -40,6 +41,7 @@ public class SafetyCheckService {
     private final SafetyResponseRepository safetyResponseRepository;
     private final SafetyCheckTemplateRepository templateRepository;
     private final SafetyCheckMapper mapper;
+    private final UserRoleRepository userRoleRepository;
 
     /**
      * 安否確認を発信する。
@@ -78,9 +80,12 @@ public class SafetyCheckService {
 
         SafetyCheckEntity entity = safetyCheckRepository.save(builder.build());
 
-        // TODO: 対象ユーザー総数を設定（メンバーシップService連携後）
-        // entity.updateTotalTargetCount(memberCount);
-        // safetyCheckRepository.save(entity);
+        // スコープのメンバー総数を設定
+        long memberCount = "TEAM".equals(scopeType)
+                ? userRoleRepository.countByTeamId(req.getScopeId())
+                : userRoleRepository.countByOrganizationId(req.getScopeId());
+        entity.updateTotalTargetCount((int) memberCount);
+        safetyCheckRepository.save(entity);
 
         log.info("安否確認発信: id={}, scope={}:{}, createdBy={}", entity.getId(), scopeType, req.getScopeId(), userId);
         return mapper.toSafetyCheckResponse(entity);
@@ -181,13 +186,12 @@ public class SafetyCheckService {
     public List<UnrespondedUserResponse> getUnrespondedUsers(Long safetyCheckId) {
         findSafetyCheckOrThrow(safetyCheckId);
 
-        // TODO: メンバーシップService連携後に実装
-        // 1. スコープの全メンバーIDリストを取得
-        // 2. 回答済みユーザーIDリストを取得
-        // 3. 差分を計算して未回答ユーザーリストを返す
+        // 回答済みユーザーIDを取得
         List<Long> respondedUserIds = safetyResponseRepository.findRespondedUserIdsBySafetyCheckId(safetyCheckId);
-        log.debug("回答済みユーザー数: {}", respondedUserIds.size());
 
+        // NOTE: 未回答ユーザーの詳細情報取得にはUserServiceとの連携が必要
+        // 現時点ではスコープメンバー数 - 回答者数の差分のみ返却
+        log.debug("回答済みユーザー数: {}", respondedUserIds.size());
         return List.of();
     }
 

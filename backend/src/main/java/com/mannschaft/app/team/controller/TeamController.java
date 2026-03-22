@@ -1,6 +1,7 @@
 package com.mannschaft.app.team.controller;
 
 import com.mannschaft.app.team.service.TeamService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.role.service.BlockService;
@@ -56,6 +57,7 @@ public class TeamController {
 
     private final TeamService teamService;
     private final RoleService roleService;
+    private final AccessControlService accessControlService;
     private final InviteService inviteService;
     private final PermissionGroupService permissionGroupService;
     private final BlockService blockService;
@@ -296,8 +298,8 @@ public class TeamController {
             @PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         List<String> permissions = roleService.resolveEffectivePermissions(userId, id, SCOPE_TYPE);
-        // TODO: ロール名をRoleServiceから直接取得する方法を追加
-        return ResponseEntity.ok(ApiResponse.of(new EffectivePermissionsResponse(null, permissions)));
+        String roleName = accessControlService.getRoleName(userId, id, SCOPE_TYPE);
+        return ResponseEntity.ok(ApiResponse.of(new EffectivePermissionsResponse(roleName, permissions)));
     }
 
     @PostMapping("/{id}/transfer-ownership")

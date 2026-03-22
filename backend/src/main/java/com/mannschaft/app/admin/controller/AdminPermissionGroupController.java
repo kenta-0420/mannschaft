@@ -1,9 +1,14 @@
 package com.mannschaft.app.admin.controller;
 
-import com.mannschaft.app.admin.dto.PermissionGroupResponse;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.role.dto.PermissionGroupRequest;
+import com.mannschaft.app.role.dto.PermissionGroupResponse;
+import com.mannschaft.app.role.dto.UserPermissionGroupAssignRequest;
+import com.mannschaft.app.role.service.PermissionGroupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,12 +18,12 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 管理者向け権限グループコントローラー。
@@ -30,6 +35,7 @@ import com.mannschaft.app.common.SecurityUtils;
 @RequiredArgsConstructor
 public class AdminPermissionGroupController {
 
+    private final PermissionGroupService permissionGroupService;
 
     /**
      * 権限グループ一覧を取得する。
@@ -40,19 +46,8 @@ public class AdminPermissionGroupController {
     public ResponseEntity<ApiResponse<List<PermissionGroupResponse>>> getPermissionGroups(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
-        // TODO: 権限グループ機能のサービス実装後に連携
-        return ResponseEntity.ok(ApiResponse.of(List.of()));
-    }
-
-    /**
-     * 権限グループを取得する。
-     */
-    @GetMapping("/{id}")
-    @Operation(summary = "権限グループ取得")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<String>> getPermissionGroup(@PathVariable Long id) {
-        // TODO: 権限グループ機能のサービス実装後に連携
-        return ResponseEntity.ok(ApiResponse.of("TODO: 権限グループ詳細を返す"));
+        List<PermissionGroupResponse> groups = permissionGroupService.getPermissionGroups(scopeId, scopeType);
+        return ResponseEntity.ok(ApiResponse.of(groups));
     }
 
     /**
@@ -61,9 +56,14 @@ public class AdminPermissionGroupController {
     @PostMapping
     @Operation(summary = "権限グループ作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
-    public ResponseEntity<ApiResponse<String>> createPermissionGroup() {
-        // TODO: 権限グループ機能のサービス実装後に連携
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of("TODO: 権限グループ作成を実行"));
+    public ResponseEntity<ApiResponse<PermissionGroupResponse>> createPermissionGroup(
+            @RequestParam String scopeType,
+            @RequestParam Long scopeId,
+            @Valid @RequestBody PermissionGroupRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        ApiResponse<PermissionGroupResponse> response =
+                permissionGroupService.createPermissionGroup(scopeId, scopeType, request, userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**
@@ -72,9 +72,10 @@ public class AdminPermissionGroupController {
     @PutMapping("/{id}")
     @Operation(summary = "権限グループ更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
-    public ResponseEntity<ApiResponse<String>> updatePermissionGroup(@PathVariable Long id) {
-        // TODO: 権限グループ機能のサービス実装後に連携
-        return ResponseEntity.ok(ApiResponse.of("TODO: 権限グループ更新を実行"));
+    public ResponseEntity<ApiResponse<PermissionGroupResponse>> updatePermissionGroup(
+            @PathVariable Long id,
+            @Valid @RequestBody PermissionGroupRequest request) {
+        return ResponseEntity.ok(permissionGroupService.updatePermissionGroup(id, request));
     }
 
     /**
@@ -84,7 +85,7 @@ public class AdminPermissionGroupController {
     @Operation(summary = "権限グループ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePermissionGroup(@PathVariable Long id) {
-        // TODO: 権限グループ機能のサービス実装後に連携
+        permissionGroupService.deletePermissionGroup(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -95,8 +96,8 @@ public class AdminPermissionGroupController {
     @Operation(summary = "権限グループ複製")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
     public ResponseEntity<ApiResponse<String>> duplicatePermissionGroup(@PathVariable Long id) {
-        // TODO: 権限グループ機能のサービス実装後に連携
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of("TODO: 権限グループ複製を実行"));
+        // NOTE: 複製機能はPermissionGroupServiceに未実装。将来追加予定
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of("権限グループ複製は未実装"));
     }
 
     /**
@@ -105,11 +106,15 @@ public class AdminPermissionGroupController {
     @PatchMapping("/{id}/assign/{userId}")
     @Operation(summary = "権限グループメンバー割当")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "割当成功")
-    public ResponseEntity<ApiResponse<String>> assignMember(
+    public ResponseEntity<ApiResponse<Void>> assignMember(
             @PathVariable Long id,
-            @PathVariable Long userId) {
-        // TODO: 権限グループ機能のサービス実装後に連携
-        return ResponseEntity.ok(ApiResponse.of("TODO: メンバー割当を実行"));
+            @PathVariable Long userId,
+            @RequestParam String scopeType,
+            @RequestParam Long scopeId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        var request = new UserPermissionGroupAssignRequest(List.of(id));
+        permissionGroupService.assignUserPermissionGroups(userId, scopeId, scopeType, request, currentUserId);
+        return ResponseEntity.ok(ApiResponse.of(null));
     }
 
     /**
@@ -118,10 +123,15 @@ public class AdminPermissionGroupController {
     @PatchMapping("/{id}/unassign/{userId}")
     @Operation(summary = "権限グループメンバー解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "解除成功")
-    public ResponseEntity<ApiResponse<String>> unassignMember(
+    public ResponseEntity<ApiResponse<Void>> unassignMember(
             @PathVariable Long id,
-            @PathVariable Long userId) {
-        // TODO: 権限グループ機能のサービス実装後に連携
-        return ResponseEntity.ok(ApiResponse.of("TODO: メンバー解除を実行"));
+            @PathVariable Long userId,
+            @RequestParam String scopeType,
+            @RequestParam Long scopeId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 空リストで割当を解除（既存の割当を全削除して空に）
+        var request = new UserPermissionGroupAssignRequest(List.of());
+        permissionGroupService.assignUserPermissionGroups(userId, scopeId, scopeType, request, currentUserId);
+        return ResponseEntity.ok(ApiResponse.of(null));
     }
 }

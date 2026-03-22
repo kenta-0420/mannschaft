@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.ProxyVoteMapper;
@@ -29,6 +30,7 @@ public class ProxyVoteCommentService {
     private final ProxyVoteSessionService sessionService;
     private final ProxyVoteMotionCommentRepository commentRepository;
     private final ProxyVoteMapper mapper;
+    private final AccessControlService accessControlService;
 
     /**
      * 議案コメント一覧を取得する。
@@ -74,9 +76,14 @@ public class ProxyVoteCommentService {
             throw new BusinessException(ProxyVoteErrorCode.COMMENT_NOT_FOUND);
         }
 
-        // TODO: ADMIN 権限チェック（本人 or ADMIN のみ削除可能）
+        // 本人またはADMIN/DEPUTY_ADMINが削除可能
         if (!comment.getUserId().equals(currentUserId)) {
-            throw new BusinessException(ProxyVoteErrorCode.NOT_COMMENT_OWNER);
+            ProxyVoteMotionEntity motion = sessionService.findMotionOrThrow(motionId);
+            ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(motion.getSessionId());
+            Long orgId = session.getOrganizationId();
+            if (orgId == null || !accessControlService.isAdminOrAbove(currentUserId, orgId, "ORGANIZATION")) {
+                throw new BusinessException(ProxyVoteErrorCode.NOT_COMMENT_OWNER);
+            }
         }
 
         comment.softDelete();

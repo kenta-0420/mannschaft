@@ -1,5 +1,6 @@
 package com.mannschaft.app.dashboard.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
@@ -44,6 +45,7 @@ public class DashboardController {
     private final DashboardService dashboardService;
     private final DashboardWidgetService widgetService;
     private final ActivityFeedService activityFeedService;
+    private final AccessControlService accessControlService;
 
     // ============================================
     // 個人ダッシュボード
@@ -222,8 +224,8 @@ public class DashboardController {
         Long userId = SecurityUtils.getCurrentUserId();
         ScopeType parsed = widgetService.parseScopeType(scopeType);
         Long resolvedScopeId = widgetService.resolveScopeId(parsed, scopeId);
-        // TODO: isAdmin判定。現時点では true で返却
-        List<WidgetSettingResponse> response = widgetService.getWidgetSettings(userId, parsed, resolvedScopeId, true);
+        boolean isAdmin = accessControlService.isAdminOrAbove(userId, resolvedScopeId, parsed.name());
+        List<WidgetSettingResponse> response = widgetService.getWidgetSettings(userId, parsed, resolvedScopeId, isAdmin);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
