@@ -1,6 +1,7 @@
 package com.mannschaft.app.ticket.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.ticket.PaymentMethod;
 import com.mannschaft.app.ticket.PaymentStatus;
 import com.mannschaft.app.ticket.TicketBookStatus;
@@ -64,6 +65,7 @@ public class TicketBookService {
     private final StripeTicketService stripeTicketService;
     private final TicketQrService ticketQrService;
     private final TicketMapper ticketMapper;
+    private final NameResolverService nameResolverService;
 
     // ==================== チケット購入 ====================
 
@@ -583,8 +585,8 @@ public class TicketBookService {
         }).toList();
         int totalRemaining = items.stream().mapToInt(TicketSummaryResponse.ActiveTicketItem::getRemaining).sum();
 
-        // TODO: ユーザー名を取得する（UserService 導入後に対応）
-        return new TicketSummaryResponse(userId, "ユーザー", items, totalRemaining);
+        String userName = nameResolverService.resolveUserDisplayName(userId);
+        return new TicketSummaryResponse(userId, userName, items, totalRemaining);
     }
 
     // ==================== 統計 ====================

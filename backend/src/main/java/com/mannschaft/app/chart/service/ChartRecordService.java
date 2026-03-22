@@ -31,6 +31,7 @@ import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.chart.repository.ChartRecordTemplateRepository;
 import com.mannschaft.app.chart.repository.ChartSectionSettingRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -44,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * カルテレコードサービス。カルテのCRUD・コピー・共有・ピン留めを担当する。
@@ -64,6 +66,7 @@ public class ChartRecordService {
     private final ChartRecordTemplateRepository recordTemplateRepository;
     private final ChartMapper chartMapper;
     private final ChartPhotoUrlProvider photoUrlProvider;
+    private final NameResolverService nameResolverService;
 
     /**
      * カルテ一覧をフィルタ付きでページング取得する。
@@ -79,10 +82,18 @@ public class ChartRecordService {
             page = recordRepository.findByFilters(teamId, customerUserId, staffUserId,
                     visitDateFrom, visitDateTo, isSharedToCustomer, pageable);
         }
+        // ユーザーIDを収集してバッチ取得（N+1回避）
+        List<Long> userIds = page.getContent().stream()
+                .flatMap(e -> Stream.of(e.getCustomerUserId(), e.getStaffUserId()))
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, String> displayNames = nameResolverService.resolveUserDisplayNames(userIds);
+
         return page.map(entity -> chartMapper.toSummaryResponse(
                 entity,
-                null, // TODO: ユーザー名解決（UserServiceから取得）
-                null, // TODO: スタッフ名解決
+                displayNames.get(entity.getCustomerUserId()),
+                displayNames.get(entity.getStaffUserId()),
                 (int) photoRepository.countByChartRecordId(entity.getId())
         ));
     }
@@ -360,8 +371,8 @@ public class ChartRecordService {
 
         return chartMapper.toChartRecordResponse(
                 entity,
-                null, // TODO: ユーザー名解決
-                null, // TODO: スタッフ名解決
+                nameResolverService.resolveUserDisplayName(entity.getCustomerUserId()),
+                nameResolverService.resolveUserDisplayName(entity.getStaffUserId()),
                 sectionsEnabled,
                 customFieldValues,
                 photoResponses,

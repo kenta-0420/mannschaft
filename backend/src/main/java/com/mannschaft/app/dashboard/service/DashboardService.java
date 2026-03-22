@@ -7,6 +7,7 @@ import com.mannschaft.app.dashboard.dto.PersonalDashboardResponse;
 import com.mannschaft.app.dashboard.dto.ScopeCoverageResponse;
 import com.mannschaft.app.dashboard.dto.TeamDashboardResponse;
 import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
+import com.mannschaft.app.common.NameResolverService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ import java.util.Map;
 public class DashboardService {
 
     private final DashboardWidgetService widgetService;
+    private final NameResolverService nameResolverService;
 
     /** スコープ横断取得の上限スコープ数 */
     private static final int MAX_DISPLAY_SCOPES = 20;
@@ -162,8 +164,7 @@ public class DashboardService {
      * 挨拶ヘッダーを生成する。時間帯に応じた挨拶文とサマリーを返す。
      */
     private GreetingResponse buildGreeting(Long userId) {
-        // TODO: ユーザーの display_name を users テーブルから取得
-        String displayName = "ユーザー";
+        String displayName = nameResolverService.resolveUserDisplayName(userId);
 
         LocalTime now = LocalTime.now();
         String greetingPrefix;

@@ -1,6 +1,7 @@
 package com.mannschaft.app.ticket.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.pdf.PdfResponseHelper;
@@ -38,6 +39,7 @@ public class MyTicketController {
 
     private final TicketBookService bookService;
     private final PdfGeneratorService pdfGeneratorService;
+    private final NameResolverService nameResolverService;
 
     // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
     private Long getCurrentUserId() {
@@ -103,7 +105,7 @@ public class MyTicketController {
     private ResponseEntity<?> generateReceiptPdf(TicketPaymentEntity payment) {
         // テンプレートが期待する変数名にマッピング
         Map<String, Object> paymentMap = new HashMap<>();
-        paymentMap.put("buyerName", String.valueOf(payment.getUserId()));  // TODO: UserService からユーザー名を取得
+        paymentMap.put("buyerName", nameResolverService.resolveUserDisplayName(payment.getUserId()));
         paymentMap.put("purchaseDate", payment.getPaidAt() != null
                 ? payment.getPaidAt().toLocalDate().toString() : LocalDate.now().toString());
         paymentMap.put("amount", payment.getAmount());
@@ -121,8 +123,7 @@ public class MyTicketController {
 
         LocalDate purchaseDate = payment.getPaidAt() != null
                 ? payment.getPaidAt().toLocalDate() : LocalDate.now();
-        // TODO: UserService からユーザー名を取得して購入者名に使用する
-        String buyerName = String.valueOf(payment.getUserId());
+        String buyerName = nameResolverService.resolveUserDisplayName(payment.getUserId());
 
         String fileName = PdfFileNameBuilder.of("チケット領収書")
                 .date(purchaseDate)

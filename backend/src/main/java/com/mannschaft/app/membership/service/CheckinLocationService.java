@@ -2,6 +2,7 @@ package com.mannschaft.app.membership.service;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.membership.MembershipErrorCode;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.membership.dto.CheckinLocationResponse;
@@ -37,6 +38,7 @@ public class CheckinLocationService {
     private final CheckinLocationRepository locationRepository;
     private final MemberCardCheckinRepository checkinRepository;
     private final QrTokenService qrTokenService;
+    private final NameResolverService nameResolverService;
 
     /**
      * 拠点一覧を取得する。
@@ -182,8 +184,7 @@ public class CheckinLocationService {
         String qrToken = qrTokenService.generateLocationQrToken(
                 location.getLocationCode(), location.getLocationSecret());
 
-        // TODO: スコープ名の実取得
-        String scopeName = "TODO: スコープ名取得";
+        String scopeName = nameResolverService.resolveScopeName(scopeType.name(), scopeId);
 
         LocationQrResponse response = new LocationQrResponse(
                 location.getId(),

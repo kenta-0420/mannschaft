@@ -2,6 +2,7 @@ package com.mannschaft.app.digest.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.digest.DigestErrorCode;
 import com.mannschaft.app.digest.DigestMapper;
 import com.mannschaft.app.digest.DigestProperties;
@@ -53,6 +54,7 @@ public class DigestGenerationService {
     private final TemplateDigestGenerator templateGenerator;
     private final DigestMapper digestMapper;
     private final DigestProperties digestProperties;
+    private final NameResolverService nameResolverService;
 
     private static final int MAX_PERIOD_DAYS = 31;
     private static final int GENERATING_TIMEOUT_MINUTES = 5;
@@ -415,8 +417,7 @@ public class DigestGenerationService {
         // TODO: タイムラインから実際の投稿データを取得する
         List<Map<String, Object>> posts = new ArrayList<>();
 
-        // TODO: スコープ名を取得する
-        String scopeName = "スコープ";
+        String scopeName = nameResolverService.resolveScopeName(digest.getScopeType().name(), digest.getScopeId());
 
         TemplateDigestGenerator.TemplateResult result = templateGenerator.generate(
                 scopeName, digest.getPeriodStart(), digest.getPeriodEnd(), posts);

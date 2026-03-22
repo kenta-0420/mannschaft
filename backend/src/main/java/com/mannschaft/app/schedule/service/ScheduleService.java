@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.EventType;
 import com.mannschaft.app.schedule.MinResponseRole;
@@ -54,6 +55,7 @@ public class ScheduleService {
     private final ScheduleReminderService reminderService;
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
+    private final NameResolverService nameResolverService;
 
     /**
      * スケジュールを単体取得する。存在しない場合は例外をスローする。
@@ -654,7 +656,7 @@ public class ScheduleService {
                 entity.getStatus().name(),
                 scopeType,
                 scopeId,
-                "TODO:スコープ名取得",
+                nameResolverService.resolveScopeName(scopeType, scopeId),
                 null);
     }
 }

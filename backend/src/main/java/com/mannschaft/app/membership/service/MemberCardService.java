@@ -2,6 +2,7 @@ package com.mannschaft.app.membership.service;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.membership.CardStatus;
 import com.mannschaft.app.membership.CheckinType;
 import com.mannschaft.app.membership.MembershipErrorCode;
@@ -56,6 +57,7 @@ public class MemberCardService {
     private final CheckinLocationRepository locationRepository;
     private final QrTokenService qrTokenService;
     private final ApplicationEventPublisher eventPublisher;
+    private final NameResolverService nameResolverService;
 
     /**
      * 自分の会員証一覧を取得する。
@@ -481,12 +483,20 @@ public class MemberCardService {
         List<MemberCardCheckinEntity> checkins = checkinRepository
                 .findByMemberCardIdAndCheckedInAtBetweenOrderByCheckedInAtDesc(cardId, from, to);
 
+        // スタッフIDをバッチ取得（N+1回避）
+        List<Long> staffIds = checkins.stream()
+                .map(MemberCardCheckinEntity::getCheckedInBy)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        Map<Long, String> staffNames = nameResolverService.resolveUserDisplayNames(staffIds);
+
         List<CheckinHistoryResponse> responses = checkins.stream()
                 .map(c -> new CheckinHistoryResponse(
                         c.getId(),
                         c.getCheckinType().name(),
                         c.getCheckedInAt(),
-                        null, // TODO: スキャンスタッフ名解決
+                        c.getCheckedInBy() != null ? staffNames.get(c.getCheckedInBy()) : null,
                         c.getLocation(),
                         card.getCardNumber(),
                         card.getDisplayName()))
@@ -516,6 +526,14 @@ public class MemberCardService {
         List<MemberCardCheckinEntity> checkins = checkinRepository
                 .findByScopeAndPeriod(scopeType, scopeId, from, to);
 
+        // スタッフIDをバッチ取得（N+1回避）
+        List<Long> staffIds = checkins.stream()
+                .map(MemberCardCheckinEntity::getCheckedInBy)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        Map<Long, String> staffNames = nameResolverService.resolveUserDisplayNames(staffIds);
+
         // カードIDからカード情報を取得するためのマップ
         Map<Long, MemberCardEntity> cardMap = new HashMap<>();
 
@@ -527,7 +545,7 @@ public class MemberCardService {
                             c.getId(),
                             c.getCheckinType().name(),
                             c.getCheckedInAt(),
-                            null, // TODO: スキャンスタッフ名解決
+                            c.getCheckedInBy() != null ? staffNames.get(c.getCheckedInBy()) : null,
                             c.getLocation(),
                             card != null ? card.getCardNumber() : null,
                             card != null ? card.getDisplayName() : null);
@@ -573,15 +591,14 @@ public class MemberCardService {
         if (card.getScopeType() == ScopeType.PLATFORM) {
             return null;
         }
-        // TODO: チーム名/組織名の実取得（TeamRepository/OrganizationRepository連携）
-        return new MemberCardResponse.ScopeInfo(card.getScopeId(), "TODO: スコープ名取得");
+        String scopeName = nameResolverService.resolveScopeName(card.getScopeType().name(), card.getScopeId());
+        return new MemberCardResponse.ScopeInfo(card.getScopeId(), scopeName);
     }
 
     private String resolveScopeName(MemberCardEntity card) {
         if (card.getScopeType() == ScopeType.PLATFORM) {
             return "Mannschaft";
         }
-        // TODO: チーム名/組織名の実取得
-        return "TODO: スコープ名取得";
+        return nameResolverService.resolveScopeName(card.getScopeType().name(), card.getScopeId());
     }
 }

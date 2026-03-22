@@ -1,6 +1,7 @@
 package com.mannschaft.app.service.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.service.BulkCreateMode;
 import com.mannschaft.app.service.FieldType;
 import com.mannschaft.app.service.ReactionType;
@@ -82,6 +83,7 @@ public class ServiceRecordService {
     private final ServiceRecordReactionRepository reactionRepository;
     private final ServiceRecordMapper mapper;
     private final ObjectMapper objectMapper;
+    private final NameResolverService nameResolverService;
 
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
@@ -342,12 +344,13 @@ public class ServiceRecordService {
         Map<Long, Long> staffCounts = records.stream()
                 .filter(r -> r.getStaffUserId() != null)
                 .collect(Collectors.groupingBy(ServiceRecordEntity::getStaffUserId, Collectors.counting()));
+        Map<Long, String> staffNames = nameResolverService.resolveUserDisplayNames(staffCounts.keySet());
         List<ServiceHistorySummaryResponse.TopStaff> topStaff = staffCounts.entrySet().stream()
                 .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
                 .limit(5)
                 .map(e -> ServiceHistorySummaryResponse.TopStaff.builder()
                         .staffUserId(e.getKey())
-                        .staffName("") // TODO: UserService から取得
+                        .staffName(staffNames.getOrDefault(e.getKey(), ""))
                         .count(e.getValue())
                         .build())
                 .collect(Collectors.toList());

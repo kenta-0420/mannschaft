@@ -1,6 +1,7 @@
 package com.mannschaft.app.receipt.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.receipt.ReceiptErrorCode;
 import com.mannschaft.app.receipt.ReceiptMapper;
@@ -55,6 +56,7 @@ public class ReceiptService {
     private final ReceiptIssuerSettingsRepository issuerSettingsRepository;
     private final ReceiptMapper receiptMapper;
     private final ReceiptPdfGenerator pdfGenerator;
+    private final NameResolverService nameResolverService;
 
     /**
      * 領収書を発行する。
@@ -96,8 +98,7 @@ public class ReceiptService {
             if (request.getRecipientUserId() == null) {
                 throw new BusinessException(ReceiptErrorCode.RECIPIENT_NAME_REQUIRED);
             }
-            // TODO: users テーブルから display_name を取得
-            recipientName = "ユーザー#" + request.getRecipientUserId();
+            recipientName = nameResolverService.resolveUserDisplayName(request.getRecipientUserId());
         }
 
         ReceiptEntity receipt = ReceiptEntity.builder()

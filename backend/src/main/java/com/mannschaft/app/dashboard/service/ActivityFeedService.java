@@ -1,5 +1,6 @@
 package com.mannschaft.app.dashboard.service;
 
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.dashboard.DashboardMapper;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
@@ -11,7 +12,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * アクティビティフィードのクエリサービス。
@@ -26,6 +31,7 @@ public class ActivityFeedService {
 
     private final ActivityFeedRepository activityFeedRepository;
     private final DashboardMapper dashboardMapper;
+    private final NameResolverService nameResolverService;
 
     /** アクティビティ取得のデフォルト件数 */
     private static final int DEFAULT_LIMIT = 10;
@@ -55,13 +61,42 @@ public class ActivityFeedService {
                     scopeTypes, scopeIds, userId, PageRequest.of(0, resolvedLimit));
         }
 
-        // TODO: actor, scopeName をユーザー・チーム・組織テーブルからバッチ取得してマッピング
+        // actorId のバッチ名前解決
+        Set<Long> actorIds = entities.stream()
+                .map(ActivityFeedEntity::getActorId)
+                .collect(Collectors.toSet());
+        Map<Long, String> actorNames = nameResolverService.resolveUserDisplayNames(actorIds);
+
+        // scopeType + scopeId のバッチ名前解決
+        Set<Long> teamScopeIds = entities.stream()
+                .filter(e -> e.getScopeType() == ScopeType.TEAM)
+                .map(ActivityFeedEntity::getScopeId)
+                .collect(Collectors.toSet());
+        Set<Long> orgScopeIds = entities.stream()
+                .filter(e -> e.getScopeType() == ScopeType.ORGANIZATION)
+                .map(ActivityFeedEntity::getScopeId)
+                .collect(Collectors.toSet());
+
+        Map<Long, String> teamNames = nameResolverService.resolveTeamNames(teamScopeIds);
+        Map<Long, String> orgNames = nameResolverService.resolveOrganizationNames(orgScopeIds);
+
+        // scopeType ごとの名前マップを統合
+        Map<ScopeType, Map<Long, String>> scopeNameMaps = new HashMap<>();
+        scopeNameMaps.put(ScopeType.TEAM, teamNames);
+        scopeNameMaps.put(ScopeType.ORGANIZATION, orgNames);
+
         return entities.stream()
-                .map(entity -> dashboardMapper.toActivityFeedResponse(
-                        entity,
-                        new ActivityFeedResponse.ActorSummary(entity.getActorId(), "Unknown", null),
-                        "Unknown"
-                ))
+                .map(entity -> {
+                    String actorDisplayName = actorNames.getOrDefault(entity.getActorId(), "不明なユーザー");
+                    String scopeName = scopeNameMaps
+                            .getOrDefault(entity.getScopeType(), Map.of())
+                            .getOrDefault(entity.getScopeId(), "不明なスコープ");
+                    return dashboardMapper.toActivityFeedResponse(
+                            entity,
+                            new ActivityFeedResponse.ActorSummary(entity.getActorId(), actorDisplayName, null),
+                            scopeName
+                    );
+                })
                 .toList();
     }
 
