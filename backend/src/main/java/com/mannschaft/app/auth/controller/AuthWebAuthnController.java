@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * WebAuthn（パスキー・FIDO2）コントローラー。
@@ -49,8 +50,7 @@ public class AuthWebAuthnController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "チャレンジ生成成功")
     public ResponseEntity<ApiResponse<WebAuthnRegisterBeginResponse>> beginRegister() {
 
-        // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-        Long userId = 1L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(authWebAuthnService.beginRegister(userId));
     }
 
@@ -63,8 +63,7 @@ public class AuthWebAuthnController {
     public ResponseEntity<ApiResponse<MessageResponse>> completeRegister(
             @Valid @RequestBody WebAuthnRegisterCompleteRequest req) {
 
-        // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-        Long userId = 1L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 authWebAuthnService.completeRegister(userId, req));
     }
@@ -105,8 +104,7 @@ public class AuthWebAuthnController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<WebAuthnCredentialResponse>>> getCredentials() {
 
-        // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-        Long userId = 1L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(authWebAuthnService.getCredentials(userId));
     }
 
@@ -120,8 +118,7 @@ public class AuthWebAuthnController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateWebAuthnCredentialRequest req) {
 
-        // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-        Long userId = 1L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(authWebAuthnService.updateCredentialName(userId, id, req));
     }
 
@@ -133,8 +130,7 @@ public class AuthWebAuthnController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteCredential(@PathVariable Long id) {
 
-        // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-        Long userId = 1L;
+        Long userId = SecurityUtils.getCurrentUserId();
         authWebAuthnService.deleteCredential(userId, id);
         return ResponseEntity.noContent().build();
     }

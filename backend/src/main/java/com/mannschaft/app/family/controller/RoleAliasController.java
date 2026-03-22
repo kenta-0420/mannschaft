@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ロール呼称コントローラー。チームごとのロール表示名カスタマイズAPIを提供する。
@@ -29,10 +30,6 @@ public class RoleAliasController {
 
     private final RoleAliasService roleAliasService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * ロール呼称一覧を取得する。
@@ -53,6 +50,6 @@ public class RoleAliasController {
     public ResponseEntity<ApiResponse<List<RoleAliasResponse>>> updateAliases(
             @PathVariable Long teamId,
             @Valid @RequestBody RoleAliasRequest request) {
-        return ResponseEntity.ok(roleAliasService.updateAliases(teamId, getCurrentUserId(), request));
+        return ResponseEntity.ok(roleAliasService.updateAliases(teamId, SecurityUtils.getCurrentUserId(), request));
     }
 }

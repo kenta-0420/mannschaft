@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チャットメッセージコントローラー。メッセージの送受信・編集・削除・検索APIを提供する。
@@ -36,10 +37,6 @@ public class ChatMessageController {
 
     private final ChatMessageService messageService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
@@ -64,7 +61,7 @@ public class ChatMessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> sendMessage(
             @PathVariable Long channelId,
             @Valid @RequestBody SendMessageRequest request) {
-        MessageResponse response = messageService.sendMessage(channelId, request, getCurrentUserId());
+        MessageResponse response = messageService.sendMessage(channelId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -77,7 +74,7 @@ public class ChatMessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> editMessage(
             @PathVariable Long messageId,
             @Valid @RequestBody EditMessageRequest request) {
-        MessageResponse response = messageService.editMessage(messageId, request, getCurrentUserId());
+        MessageResponse response = messageService.editMessage(messageId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -88,7 +85,7 @@ public class ChatMessageController {
     @Operation(summary = "メッセージ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteMessage(@PathVariable Long messageId) {
-        messageService.deleteMessage(messageId, getCurrentUserId());
+        messageService.deleteMessage(messageId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -126,7 +123,7 @@ public class ChatMessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> forwardMessage(
             @PathVariable Long messageId,
             @Valid @RequestBody ForwardMessageRequest request) {
-        MessageResponse response = messageService.forwardMessage(messageId, request, getCurrentUserId());
+        MessageResponse response = messageService.forwardMessage(messageId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

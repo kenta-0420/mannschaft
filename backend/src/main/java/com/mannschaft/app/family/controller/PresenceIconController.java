@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * プレゼンスアイコンコントローラー。カスタムプレゼンスアイコンAPIを提供する。
@@ -29,10 +30,6 @@ public class PresenceIconController {
 
     private final PresenceIconService presenceIconService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * カスタムアイコン一覧を取得する。
@@ -53,6 +50,6 @@ public class PresenceIconController {
     public ResponseEntity<ApiResponse<List<PresenceIconResponse>>> updateIcons(
             @PathVariable Long teamId,
             @Valid @RequestBody PresenceIconRequest request) {
-        return ResponseEntity.ok(presenceIconService.updateIcons(teamId, getCurrentUserId(), request));
+        return ResponseEntity.ok(presenceIconService.updateIcons(teamId, SecurityUtils.getCurrentUserId(), request));
     }
 }

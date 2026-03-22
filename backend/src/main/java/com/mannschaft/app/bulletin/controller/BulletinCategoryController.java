@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 掲示板カテゴリコントローラー。カテゴリのCRUD APIを提供する。
@@ -34,10 +35,6 @@ public class BulletinCategoryController {
 
     private final BulletinCategoryService categoryService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * カテゴリ一覧を取得する。
@@ -79,7 +76,7 @@ public class BulletinCategoryController {
             @PathVariable Long scopeId,
             @Valid @RequestBody CreateCategoryRequest request) {
         ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
-        CategoryResponse response = categoryService.createCategory(type, scopeId, getCurrentUserId(), request);
+        CategoryResponse response = categoryService.createCategory(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

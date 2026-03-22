@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * タイムラインダイジェストコントローラー。
@@ -46,8 +47,7 @@ public class DigestController {
     @Operation(summary = "ダイジェスト手動生成")
     public ResponseEntity<ApiResponse<DigestGenerateResponse>> generate(
             @Valid @RequestBody DigestGenerateRequest request) {
-        // TODO: SecurityContext からユーザー ID を取得
-        Long userId = 0L;
+        Long userId = SecurityUtils.getCurrentUserId();
         DigestGenerateResponse response = digestGenerationService.generate(request, userId);
 
         HttpStatus status = "GENERATING".equals(response.getStatus())
@@ -112,8 +112,7 @@ public class DigestController {
     public ResponseEntity<ApiResponse<DigestGenerateResponse>> regenerate(
             @PathVariable Long id,
             @Valid @RequestBody DigestRegenerateRequest request) {
-        // TODO: SecurityContext からユーザー ID を取得
-        Long userId = 0L;
+        Long userId = SecurityUtils.getCurrentUserId();
         DigestGenerateResponse response = digestGenerationService.regenerate(id, request, userId);
 
         HttpStatus status = "GENERATING".equals(response.getStatus())

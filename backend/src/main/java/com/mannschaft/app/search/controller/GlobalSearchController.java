@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * グローバル検索コントローラー。横断検索およびサジェストAPIを提供する。
@@ -28,10 +29,6 @@ public class GlobalSearchController {
     private final SearchHistoryService searchHistoryService;
     private final SearchSuggestionService searchSuggestionService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 横断検索を実行する。9種別を横断して検索し、検索履歴を記録する。
@@ -41,7 +38,7 @@ public class GlobalSearchController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "検索成功")
     public ResponseEntity<ApiResponse<SearchResultResponse>> search(
             @RequestParam String q) {
-        Long userId = getCurrentUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         searchHistoryService.recordHistory(userId, q);
         SearchResultResponse result = globalSearchService.search(q, userId);
         return ResponseEntity.ok(ApiResponse.of(result));
@@ -55,7 +52,7 @@ public class GlobalSearchController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SearchSuggestionResponse>> suggest(
             @RequestParam(defaultValue = "") String q) {
-        SearchSuggestionResponse response = searchSuggestionService.suggest(q, getCurrentUserId());
+        SearchSuggestionResponse response = searchSuggestionService.suggest(q, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

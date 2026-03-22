@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 個人TODOコントローラー。全スコープ横断の自分のTODO一覧を提供する。
@@ -24,10 +25,6 @@ public class PersonalTodoController {
 
     private final TodoService todoService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 自分に割り当てられた全TODOを取得する（全スコープ横断）。
@@ -36,6 +33,6 @@ public class PersonalTodoController {
     @Operation(summary = "自分のTODO一覧（全スコープ横断）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TodoResponse>>> getMyTodos() {
-        return ResponseEntity.ok(todoService.getMyTodos(getCurrentUserId()));
+        return ResponseEntity.ok(todoService.getMyTodos(SecurityUtils.getCurrentUserId()));
     }
 }

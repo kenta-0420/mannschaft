@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 予約共通コントローラー。ログインユーザー自身の予約管理APIを提供する。
@@ -29,10 +30,6 @@ public class ReservationCommonController {
 
     private final ReservationService reservationService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 自分の予約一覧を取得する。
@@ -41,7 +38,7 @@ public class ReservationCommonController {
     @Operation(summary = "マイ予約一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ReservationResponse>>> listMyReservations() {
-        List<ReservationResponse> reservations = reservationService.listMyReservations(getCurrentUserId());
+        List<ReservationResponse> reservations = reservationService.listMyReservations(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(reservations));
     }
 
@@ -52,7 +49,7 @@ public class ReservationCommonController {
     @Operation(summary = "直近の予約一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ReservationResponse>>> listUpcomingReservations() {
-        List<ReservationResponse> reservations = reservationService.listUpcomingReservations(getCurrentUserId());
+        List<ReservationResponse> reservations = reservationService.listUpcomingReservations(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(reservations));
     }
 
@@ -65,7 +62,7 @@ public class ReservationCommonController {
     public ResponseEntity<ApiResponse<ReservationResponse>> cancelMyReservation(
             @PathVariable Long reservationId,
             @Valid @RequestBody CancelReservationRequest request) {
-        ReservationResponse response = reservationService.cancelByUser(getCurrentUserId(), reservationId, request);
+        ReservationResponse response = reservationService.cancelByUser(SecurityUtils.getCurrentUserId(), reservationId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

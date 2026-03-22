@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 共有ファイルコントローラー。ファイルのCRUD APIを提供する。
@@ -35,10 +36,6 @@ public class SharedFileController {
 
     private final SharedFileService fileService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * フォルダ内のファイル一覧をページングで取得する。
@@ -76,7 +73,7 @@ public class SharedFileController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<FileResponse>> createFile(
             @Valid @RequestBody CreateFileRequest request) {
-        FileResponse response = fileService.createFile(getCurrentUserId(), request);
+        FileResponse response = fileService.createFile(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

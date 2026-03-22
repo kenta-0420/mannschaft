@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * フォーム提出コントローラー。提出のCRUD・ステータス遷移APIを提供する。
@@ -35,10 +36,6 @@ public class FormSubmissionController {
 
     private final FormSubmissionService submissionService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * ユーザーの提出一覧を取得する。
@@ -52,7 +49,7 @@ public class FormSubmissionController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<FormSubmissionResponse> result = submissionService.listMySubmissions(
-                getCurrentUserId(), scopeType, scopeId, PageRequest.of(page, size));
+                SecurityUtils.getCurrentUserId(), scopeType, scopeId, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -83,7 +80,7 @@ public class FormSubmissionController {
             @PathVariable Long scopeId,
             @Valid @RequestBody CreateFormSubmissionRequest request) {
         FormSubmissionResponse response = submissionService.createSubmission(
-                scopeType, scopeId, getCurrentUserId(), request);
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -99,7 +96,7 @@ public class FormSubmissionController {
             @PathVariable Long submissionId,
             @Valid @RequestBody UpdateFormSubmissionRequest request) {
         FormSubmissionResponse response = submissionService.updateSubmission(
-                submissionId, getCurrentUserId(), request);
+                submissionId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -113,7 +110,7 @@ public class FormSubmissionController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long submissionId) {
-        submissionService.deleteSubmission(submissionId, getCurrentUserId());
+        submissionService.deleteSubmission(submissionId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

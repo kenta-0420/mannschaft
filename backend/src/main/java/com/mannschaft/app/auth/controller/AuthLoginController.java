@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 認証コアコントローラー。
@@ -106,7 +107,6 @@ public class AuthLoginController {
             @RequestParam(required = false) String jti,
             @RequestParam(required = false, defaultValue = "0") long exp) {
 
-        // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
         authService.logout(refreshTokenHash, jti, exp);
         return ResponseEntity.ok().build();
     }
@@ -119,8 +119,7 @@ public class AuthLoginController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "全デバイスログアウト成功")
     public ResponseEntity<Void> logoutAllDevices() {
 
-        // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-        Long userId = 1L;
+        Long userId = SecurityUtils.getCurrentUserId();
         authService.logoutAllDevices(userId);
         return ResponseEntity.noContent().build();
     }
@@ -133,8 +132,7 @@ public class AuthLoginController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "デバイスログアウト成功")
     public ResponseEntity<Void> logoutDevice(@PathVariable Long id) {
 
-        // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-        Long userId = 1L;
+        Long userId = SecurityUtils.getCurrentUserId();
         authService.logoutDevice(userId, id);
         return ResponseEntity.noContent().build();
     }
@@ -147,8 +145,7 @@ public class AuthLoginController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<SessionResponse>>> getSessions() {
 
-        // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-        Long userId = 1L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(authService.getSessions(userId));
     }
 

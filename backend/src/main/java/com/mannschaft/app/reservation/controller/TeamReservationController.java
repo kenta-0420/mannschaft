@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム予約コントローラー。予約のCRUD・ステータス遷移・統計APIを提供する。
@@ -44,10 +45,6 @@ public class TeamReservationController {
     private final ReservationService reservationService;
     private final ReservationReminderService reminderService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チームの予約一覧を取得する。
@@ -89,7 +86,7 @@ public class TeamReservationController {
     public ResponseEntity<ApiResponse<ReservationResponse>> createReservation(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateReservationRequest request) {
-        ReservationResponse response = reservationService.createReservation(teamId, getCurrentUserId(), request);
+        ReservationResponse response = reservationService.createReservation(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

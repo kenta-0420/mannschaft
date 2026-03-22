@@ -45,6 +45,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * SYSTEM_ADMIN向けモデレーション拡張コントローラー。
@@ -65,10 +66,6 @@ public class SystemAdminModerationController {
     private final ModerationSettingsService settingsService;
     private final ModerationExtMapper moderationExtMapper;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     // ========== ダッシュボード ==========
 
@@ -134,7 +131,7 @@ public class SystemAdminModerationController {
             @PathVariable Long id,
             @Valid @RequestBody ReviewAppealRequest request) {
         AppealResponse response = appealService.reviewAppeal(
-                id, request.getStatus(), request.getReviewNote(), getCurrentUserId());
+                id, request.getStatus(), request.getReviewNote(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -165,7 +162,7 @@ public class SystemAdminModerationController {
             @PathVariable Long id,
             @Valid @RequestBody ReviewUnflagRequest request) {
         YabaiUnflagResponse response = unflagService.reviewUnflagRequest(
-                id, request.getStatus(), request.getReviewNote(), getCurrentUserId());
+                id, request.getStatus(), request.getReviewNote(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -207,7 +204,7 @@ public class SystemAdminModerationController {
             @PathVariable Long id,
             @Valid @RequestBody ReviewReReviewRequest request) {
         WarningReReviewResponse response = reReviewService.systemAdminReview(
-                id, request.getStatus(), request.getReviewNote(), getCurrentUserId());
+                id, request.getStatus(), request.getReviewNote(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -237,7 +234,7 @@ public class SystemAdminModerationController {
         ModerationTemplateResponse response = templateService.createTemplate(
                 request.getName(), request.getActionType(), request.getReason(),
                 request.getTemplateText(), request.getLanguage(), request.getIsDefault(),
-                getCurrentUserId());
+                SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -290,7 +287,7 @@ public class SystemAdminModerationController {
             @PathVariable String key,
             @Valid @RequestBody UpdateSettingRequest request) {
         ModerationSettingsResponse response = settingsService.updateSetting(
-                key, request.getSettingValue(), getCurrentUserId());
+                key, request.getSettingValue(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

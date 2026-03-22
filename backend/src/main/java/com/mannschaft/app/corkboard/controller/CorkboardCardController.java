@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * コルクボードカードコントローラー。カードのCRUD・位置更新・アーカイブAPIを提供する。
@@ -35,10 +36,6 @@ public class CorkboardCardController {
 
     private final CorkboardCardService cardService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * カードを追加する。
@@ -48,7 +45,7 @@ public class CorkboardCardController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<CorkboardCardResponse>> createCard(
             @PathVariable Long boardId, @Valid @RequestBody CreateCardRequest request) {
-        CorkboardCardResponse response = cardService.createCard(boardId, getCurrentUserId(), request);
+        CorkboardCardResponse response = cardService.createCard(boardId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

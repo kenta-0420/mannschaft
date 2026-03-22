@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 通知コントローラー。ログインユーザーの通知管理APIを提供する。
@@ -31,10 +32,6 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 通知一覧を取得する。
@@ -43,7 +40,7 @@ public class NotificationController {
     @Operation(summary = "通知一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<NotificationResponse>> listNotifications(Pageable pageable) {
-        Page<NotificationResponse> page = notificationService.listNotifications(getCurrentUserId(), pageable);
+        Page<NotificationResponse> page = notificationService.listNotifications(SecurityUtils.getCurrentUserId(), pageable);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 page.getTotalElements(), page.getNumber(), page.getSize(), page.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(page.getContent(), meta));
@@ -56,7 +53,7 @@ public class NotificationController {
     @Operation(summary = "未読通知件数")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<UnreadCountResponse>> getUnreadCount() {
-        UnreadCountResponse response = notificationService.getUnreadCount(getCurrentUserId());
+        UnreadCountResponse response = notificationService.getUnreadCount(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -68,7 +65,7 @@ public class NotificationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "既読成功")
     public ResponseEntity<ApiResponse<NotificationResponse>> markAsRead(
             @PathVariable Long notificationId) {
-        NotificationResponse response = notificationService.markAsRead(getCurrentUserId(), notificationId);
+        NotificationResponse response = notificationService.markAsRead(SecurityUtils.getCurrentUserId(), notificationId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -80,7 +77,7 @@ public class NotificationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "未読戻し成功")
     public ResponseEntity<ApiResponse<NotificationResponse>> markAsUnread(
             @PathVariable Long notificationId) {
-        NotificationResponse response = notificationService.markAsUnread(getCurrentUserId(), notificationId);
+        NotificationResponse response = notificationService.markAsUnread(SecurityUtils.getCurrentUserId(), notificationId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -94,7 +91,7 @@ public class NotificationController {
             @PathVariable Long notificationId,
             @Valid @RequestBody SnoozeRequest request) {
         NotificationResponse response = notificationService.snoozeNotification(
-                getCurrentUserId(), notificationId, request);
+                SecurityUtils.getCurrentUserId(), notificationId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -105,7 +102,7 @@ public class NotificationController {
     @Operation(summary = "全件既読")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "全件既読成功")
     public ResponseEntity<ApiResponse<Integer>> markAllAsRead() {
-        int count = notificationService.markAllAsRead(getCurrentUserId());
+        int count = notificationService.markAllAsRead(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(count));
     }
 }

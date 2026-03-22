@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 個人コルクボードコントローラー。
@@ -34,10 +35,6 @@ public class MyCorkboardController {
 
     private final CorkboardService corkboardService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 個人ボード一覧を取得する。
@@ -46,7 +43,7 @@ public class MyCorkboardController {
     @Operation(summary = "個人コルクボード一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<CorkboardResponse>>> listBoards() {
-        List<CorkboardResponse> boards = corkboardService.listPersonalBoards(getCurrentUserId());
+        List<CorkboardResponse> boards = corkboardService.listPersonalBoards(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(boards));
     }
 
@@ -58,7 +55,7 @@ public class MyCorkboardController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<CorkboardResponse>> createBoard(
             @Valid @RequestBody CreateCorkboardRequest request) {
-        CorkboardResponse response = corkboardService.createPersonalBoard(getCurrentUserId(), request);
+        CorkboardResponse response = corkboardService.createPersonalBoard(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -69,7 +66,7 @@ public class MyCorkboardController {
     @Operation(summary = "個人コルクボード詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<CorkboardDetailResponse>> getBoard(@PathVariable Long id) {
-        CorkboardDetailResponse response = corkboardService.getPersonalBoard(getCurrentUserId(), id);
+        CorkboardDetailResponse response = corkboardService.getPersonalBoard(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -81,7 +78,7 @@ public class MyCorkboardController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<CorkboardResponse>> updateBoard(
             @PathVariable Long id, @Valid @RequestBody UpdateCorkboardRequest request) {
-        CorkboardResponse response = corkboardService.updatePersonalBoard(getCurrentUserId(), id, request);
+        CorkboardResponse response = corkboardService.updatePersonalBoard(SecurityUtils.getCurrentUserId(), id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -92,7 +89,7 @@ public class MyCorkboardController {
     @Operation(summary = "個人コルクボード削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteBoard(@PathVariable Long id) {
-        corkboardService.deletePersonalBoard(getCurrentUserId(), id);
+        corkboardService.deletePersonalBoard(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.noContent().build();
     }
 }

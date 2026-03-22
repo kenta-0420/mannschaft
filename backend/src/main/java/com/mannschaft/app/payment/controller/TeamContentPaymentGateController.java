@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームコンテンツゲートコントローラー。チーム内コンテンツのアクセスゲート管理を提供する。
@@ -34,9 +35,6 @@ public class TeamContentPaymentGateController {
 
     private final ContentPaymentGateService contentPaymentGateService;
 
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チーム内のコンテンツゲート一覧を取得する。
@@ -64,7 +62,7 @@ public class TeamContentPaymentGateController {
             @PathVariable Long id,
             @Valid @RequestBody ContentPaymentGateRequest request) {
         ContentGateSetResponse response = contentPaymentGateService.setTeamContentGates(
-                id, getCurrentUserId(), request);
+                id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

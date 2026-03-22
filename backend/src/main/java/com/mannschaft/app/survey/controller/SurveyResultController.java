@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * アンケート結果・配信管理コントローラー。結果閲覧・配信対象・閲覧者管理APIを提供する。
@@ -31,10 +32,6 @@ public class SurveyResultController {
     private final SurveyResultService resultService;
     private final SurveyService surveyService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * アンケート結果を取得する。
@@ -44,7 +41,7 @@ public class SurveyResultController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SurveyResultResponse>> getResults(
             @PathVariable Long surveyId) {
-        SurveyResultResponse response = resultService.getResults(surveyId, getCurrentUserId());
+        SurveyResultResponse response = resultService.getResults(surveyId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

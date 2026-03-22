@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * シフト希望コントローラー。シフト希望の提出・更新・サマリー取得APIを提供する。
@@ -35,10 +36,6 @@ public class ShiftRequestController {
 
     private final ShiftRequestService requestService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * スケジュールのシフト希望一覧を取得する。
@@ -59,7 +56,7 @@ public class ShiftRequestController {
     @Operation(summary = "マイシフト希望一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ShiftRequestResponse>>> listMyRequests() {
-        List<ShiftRequestResponse> responses = requestService.listMyRequests(getCurrentUserId());
+        List<ShiftRequestResponse> responses = requestService.listMyRequests(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -71,7 +68,7 @@ public class ShiftRequestController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "提出成功")
     public ResponseEntity<ApiResponse<ShiftRequestResponse>> submitRequest(
             @Valid @RequestBody CreateShiftRequestRequest request) {
-        ShiftRequestResponse response = requestService.submitRequest(request, getCurrentUserId());
+        ShiftRequestResponse response = requestService.submitRequest(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -84,7 +81,7 @@ public class ShiftRequestController {
     public ResponseEntity<ApiResponse<ShiftRequestResponse>> updateRequest(
             @PathVariable Long requestId,
             @Valid @RequestBody UpdateShiftRequestRequest request) {
-        ShiftRequestResponse response = requestService.updateRequest(requestId, request, getCurrentUserId());
+        ShiftRequestResponse response = requestService.updateRequest(requestId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

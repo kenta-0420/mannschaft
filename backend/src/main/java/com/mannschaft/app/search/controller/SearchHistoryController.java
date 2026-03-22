@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 検索履歴・保存済みクエリコントローラー。検索履歴管理および保存済みクエリ管理APIを提供する。
@@ -32,10 +33,6 @@ public class SearchHistoryController {
 
     private final SearchHistoryService searchHistoryService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 検索履歴一覧を取得する。
@@ -44,7 +41,7 @@ public class SearchHistoryController {
     @Operation(summary = "検索履歴一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<SearchHistoryResponse>>> listHistory() {
-        List<SearchHistoryResponse> histories = searchHistoryService.listHistory(getCurrentUserId());
+        List<SearchHistoryResponse> histories = searchHistoryService.listHistory(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(histories));
     }
 
@@ -55,7 +52,7 @@ public class SearchHistoryController {
     @Operation(summary = "検索履歴全削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteAllHistory() {
-        searchHistoryService.deleteAllHistory(getCurrentUserId());
+        searchHistoryService.deleteAllHistory(SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -66,7 +63,7 @@ public class SearchHistoryController {
     @Operation(summary = "検索履歴個別削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteHistory(@PathVariable Long historyId) {
-        searchHistoryService.deleteHistory(getCurrentUserId(), historyId);
+        searchHistoryService.deleteHistory(SecurityUtils.getCurrentUserId(), historyId);
         return ResponseEntity.noContent().build();
     }
 
@@ -77,7 +74,7 @@ public class SearchHistoryController {
     @Operation(summary = "保存済みクエリ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<SavedQueryResponse>>> listSavedQueries() {
-        List<SavedQueryResponse> savedQueries = searchHistoryService.listSavedQueries(getCurrentUserId());
+        List<SavedQueryResponse> savedQueries = searchHistoryService.listSavedQueries(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(savedQueries));
     }
 
@@ -89,7 +86,7 @@ public class SearchHistoryController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "保存成功")
     public ResponseEntity<ApiResponse<SavedQueryResponse>> saveQuery(
             @Valid @RequestBody SaveQueryRequest request) {
-        SavedQueryResponse response = searchHistoryService.saveQuery(getCurrentUserId(), request);
+        SavedQueryResponse response = searchHistoryService.saveQuery(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

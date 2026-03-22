@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 
 /**
@@ -38,10 +39,6 @@ public class TournamentTemplateController {
     private final TournamentTemplateService templateService;
     private final SystemPresetService presetService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/api/v1/organizations/{orgId}/tournament-templates")
     @Operation(summary = "テンプレート一覧")
@@ -60,7 +57,7 @@ public class TournamentTemplateController {
             @PathVariable Long orgId,
             @Valid @RequestBody CreateTemplateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(templateService.createTemplate(orgId, getCurrentUserId(), request)));
+                .body(ApiResponse.of(templateService.createTemplate(orgId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @PostMapping("/api/v1/organizations/{orgId}/tournament-templates/clone/{presetId}")
@@ -69,7 +66,7 @@ public class TournamentTemplateController {
             @PathVariable Long orgId,
             @PathVariable Long presetId) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(templateService.cloneFromPreset(orgId, getCurrentUserId(), presetId)));
+                .body(ApiResponse.of(templateService.cloneFromPreset(orgId, SecurityUtils.getCurrentUserId(), presetId)));
     }
 
     @GetMapping("/api/v1/organizations/{orgId}/tournament-templates/{templateId}")

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * システム管理者向けフィーチャーフラグコントローラー。
@@ -29,10 +30,6 @@ public class SystemAdminFeatureFlagController {
 
     private final FeatureFlagService featureFlagService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 全フィーチャーフラグ一覧を取得する。
@@ -54,7 +51,7 @@ public class SystemAdminFeatureFlagController {
     public ResponseEntity<ApiResponse<FeatureFlagResponse>> updateFlag(
             @PathVariable String flagKey,
             @Valid @RequestBody UpdateFeatureFlagRequest request) {
-        FeatureFlagResponse response = featureFlagService.updateFlag(flagKey, request, getCurrentUserId());
+        FeatureFlagResponse response = featureFlagService.updateFlag(flagKey, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

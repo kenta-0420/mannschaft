@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * システム管理者向けメンテナンススケジュールコントローラー。
@@ -34,10 +35,6 @@ public class SystemAdminMaintenanceController {
 
     private final MaintenanceScheduleService maintenanceService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * メンテナンススケジュール一覧を取得する。
@@ -69,7 +66,7 @@ public class SystemAdminMaintenanceController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<MaintenanceScheduleResponse>> createSchedule(
             @Valid @RequestBody CreateMaintenanceScheduleRequest request) {
-        MaintenanceScheduleResponse response = maintenanceService.createSchedule(request, getCurrentUserId());
+        MaintenanceScheduleResponse response = maintenanceService.createSchedule(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.created(URI.create("/api/v1/system-admin/maintenance-schedules/" + response.getId()))
                 .body(ApiResponse.of(response));
     }

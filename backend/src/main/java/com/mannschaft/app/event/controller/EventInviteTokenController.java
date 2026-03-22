@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * イベント招待トークンコントローラー。ゲスト招待トークンの作成・照会・無効化APIを提供する。
@@ -30,10 +31,6 @@ public class EventInviteTokenController {
 
     private final EventInviteTokenService inviteTokenService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 招待トークン一覧を取得する。
@@ -57,7 +54,7 @@ public class EventInviteTokenController {
             @PathVariable Long eventId,
             @Valid @RequestBody CreateInviteTokenRequest request) {
         InviteTokenResponse response = inviteTokenService.createToken(
-                eventId, getCurrentUserId(), request);
+                eventId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

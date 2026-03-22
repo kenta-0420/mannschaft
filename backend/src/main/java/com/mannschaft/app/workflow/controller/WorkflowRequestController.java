@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ワークフロー申請コントローラー。申請のCRUD・提出・取り下げAPIを提供する。
@@ -35,10 +36,6 @@ public class WorkflowRequestController {
 
     private final WorkflowRequestService requestService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 申請一覧を取得する。
@@ -84,7 +81,7 @@ public class WorkflowRequestController {
             @PathVariable Long scopeId,
             @Valid @RequestBody CreateWorkflowRequestRequest request) {
         WorkflowRequestResponse response = requestService.createRequest(
-                scopeType, scopeId, getCurrentUserId(), request);
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム予約スロットコントローラー。予約時間枠のCRUD・状態管理APIを提供する。
@@ -40,10 +41,6 @@ public class TeamReservationSlotController {
     private final ReservationSlotService slotService;
     private final ReservationService reservationService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * スロット一覧を取得する。
@@ -95,7 +92,7 @@ public class TeamReservationSlotController {
     public ResponseEntity<ApiResponse<ReservationSlotResponse>> createSlot(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateSlotRequest request) {
-        ReservationSlotResponse response = slotService.createSlot(teamId, request, getCurrentUserId());
+        ReservationSlotResponse response = slotService.createSlot(teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

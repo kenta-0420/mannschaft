@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム居住者書類コントローラー。
@@ -29,17 +30,13 @@ public class TeamResidentDocumentController {
 
     private final ResidentDocumentService documentService;
 
-    private Long getCurrentUserId() {
-        return 1L;
-    }
-
     @PostMapping("/api/v1/teams/{teamId}/residents/{residentId}/documents")
     @Operation(summary = "書類アップロード")
     public ResponseEntity<ApiResponse<ResidentDocumentResponse>> upload(
             @PathVariable Long teamId, @PathVariable Long residentId,
             @Valid @RequestBody UploadDocumentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.of(documentService.upload(residentId, getCurrentUserId(), request)));
+                ApiResponse.of(documentService.upload(residentId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @GetMapping("/api/v1/teams/{teamId}/residents/{residentId}/documents")

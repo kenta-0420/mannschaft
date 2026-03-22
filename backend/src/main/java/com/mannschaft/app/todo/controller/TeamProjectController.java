@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームプロジェクトコントローラー。チームスコープのプロジェクト・マイルストーンAPIを提供する。
@@ -45,10 +46,6 @@ public class TeamProjectController {
     private final ProjectService projectService;
     private final TodoService todoService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * プロジェクト一覧を取得する。
@@ -75,7 +72,7 @@ public class TeamProjectController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreateProjectRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(projectService.createProject(TodoScopeType.TEAM, teamId, request, getCurrentUserId()));
+                .body(projectService.createProject(TodoScopeType.TEAM, teamId, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**

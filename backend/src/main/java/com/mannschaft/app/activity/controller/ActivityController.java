@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 活動記録コントローラー。活動記録のCRUD・参加者管理APIを提供する。
@@ -41,10 +42,6 @@ public class ActivityController {
 
     private final ActivityResultService activityService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 活動記録一覧を取得する（Cursor-based ページネーション）。
@@ -83,7 +80,7 @@ public class ActivityController {
             @RequestParam("scope_id") Long scopeId,
             @Valid @RequestBody CreateActivityRequest request) {
         ActivityResultEntity response = activityService.createActivity(
-                getCurrentUserId(), ActivityScopeType.valueOf(scopeType), scopeId, request);
+                SecurityUtils.getCurrentUserId(), ActivityScopeType.valueOf(scopeType), scopeId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -119,7 +116,7 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<ActivityResultEntity>> duplicateActivity(
             @PathVariable Long id,
             @Valid @RequestBody(required = false) DuplicateActivityRequest request) {
-        ActivityResultEntity response = activityService.duplicateActivity(id, getCurrentUserId(), request);
+        ActivityResultEntity response = activityService.duplicateActivity(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

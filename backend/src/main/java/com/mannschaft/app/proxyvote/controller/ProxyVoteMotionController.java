@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 議案コントローラー。議案CRUD・投票制御・コメント・添付APIを提供する。
@@ -50,10 +51,6 @@ public class ProxyVoteMotionController {
     private final ProxyVoteCommentService commentService;
     private final ProxyVoteAttachmentService attachmentService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 議案を追加する。
@@ -108,7 +105,7 @@ public class ProxyVoteMotionController {
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
             @PathVariable Long motionId, @Valid @RequestBody CreateCommentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(commentService.createComment(motionId, request, getCurrentUserId())));
+                .body(ApiResponse.of(commentService.createComment(motionId, request, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -118,7 +115,7 @@ public class ProxyVoteMotionController {
     @Operation(summary = "コメント削除")
     public ResponseEntity<Void> deleteComment(
             @PathVariable Long motionId, @PathVariable Long commentId) {
-        commentService.deleteComment(motionId, commentId, getCurrentUserId());
+        commentService.deleteComment(motionId, commentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -151,7 +148,7 @@ public class ProxyVoteMotionController {
             @RequestPart("file") MultipartFile file,
             @RequestParam(value = "attachment_type", required = false) String attachmentType) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(attachmentService.addMotionAttachment(motionId, file, attachmentType, getCurrentUserId())));
+                .body(ApiResponse.of(attachmentService.addMotionAttachment(motionId, file, attachmentType, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -160,6 +157,6 @@ public class ProxyVoteMotionController {
     @PatchMapping("/{id}/start-all-votes")
     @Operation(summary = "全議案一括投票開始")
     public ResponseEntity<ApiResponse<SessionResponse>> startAllVotes(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(motionService.startAllVotes(id, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(motionService.startAllVotes(id, SecurityUtils.getCurrentUserId())));
     }
 }

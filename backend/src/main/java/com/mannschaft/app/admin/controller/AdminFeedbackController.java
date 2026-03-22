@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 管理者向けフィードバック管理コントローラー。
@@ -32,10 +33,6 @@ public class AdminFeedbackController {
 
     private final FeedbackService feedbackService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * フィードバック一覧を取得する。
@@ -63,7 +60,7 @@ public class AdminFeedbackController {
     public ResponseEntity<ApiResponse<FeedbackResponse>> respondToFeedback(
             @PathVariable Long id,
             @Valid @RequestBody FeedbackRespondRequest request) {
-        FeedbackResponse response = feedbackService.respondToFeedback(id, request, getCurrentUserId());
+        FeedbackResponse response = feedbackService.respondToFeedback(id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

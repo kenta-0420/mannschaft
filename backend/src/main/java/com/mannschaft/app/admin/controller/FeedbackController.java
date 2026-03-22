@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 一般ユーザー向けフィードバック（目安箱）コントローラー。
@@ -32,10 +33,6 @@ public class FeedbackController {
 
     private final FeedbackService feedbackService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * フィードバックを投稿する。
@@ -45,7 +42,7 @@ public class FeedbackController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "投稿成功")
     public ResponseEntity<ApiResponse<FeedbackResponse>> createFeedback(
             @Valid @RequestBody CreateFeedbackRequest request) {
-        FeedbackResponse response = feedbackService.createFeedback(request, getCurrentUserId());
+        FeedbackResponse response = feedbackService.createFeedback(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -56,7 +53,7 @@ public class FeedbackController {
     @Operation(summary = "自分のフィードバック一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<FeedbackResponse>> getMyFeedbacks(Pageable pageable) {
-        Page<FeedbackResponse> page = feedbackService.getMyFeedbacks(getCurrentUserId(), pageable);
+        Page<FeedbackResponse> page = feedbackService.getMyFeedbacks(SecurityUtils.getCurrentUserId(), pageable);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 page.getTotalElements(), page.getNumber(), page.getSize(), page.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(page.getContent(), meta));
@@ -69,7 +66,7 @@ public class FeedbackController {
     @Operation(summary = "フィードバック投票")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "投票成功")
     public ResponseEntity<Void> vote(@PathVariable Long id) {
-        feedbackService.vote(id, getCurrentUserId());
+        feedbackService.vote(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
@@ -80,7 +77,7 @@ public class FeedbackController {
     @Operation(summary = "フィードバック投票取消")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")
     public ResponseEntity<Void> unvote(@PathVariable Long id) {
-        feedbackService.unvote(id, getCurrentUserId());
+        feedbackService.unvote(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

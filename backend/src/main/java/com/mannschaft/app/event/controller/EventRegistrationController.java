@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * イベント参加登録コントローラー。参加登録のCRUD・承認・却下APIを提供する。
@@ -33,10 +34,6 @@ public class EventRegistrationController {
 
     private final EventRegistrationService registrationService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 参加登録一覧を取得する。
@@ -79,7 +76,7 @@ public class EventRegistrationController {
             @PathVariable Long eventId,
             @Valid @RequestBody CreateRegistrationRequest request) {
         RegistrationResponse response = registrationService.createRegistration(
-                eventId, getCurrentUserId(), request);
+                eventId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -106,7 +103,7 @@ public class EventRegistrationController {
             @PathVariable Long eventId,
             @PathVariable Long registrationId) {
         RegistrationResponse response = registrationService.approveRegistration(
-                registrationId, getCurrentUserId());
+                registrationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -120,7 +117,7 @@ public class EventRegistrationController {
             @PathVariable Long eventId,
             @PathVariable Long registrationId) {
         RegistrationResponse response = registrationService.rejectRegistration(
-                registrationId, getCurrentUserId());
+                registrationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

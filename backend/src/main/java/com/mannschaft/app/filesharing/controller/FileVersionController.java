@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ファイルバージョンコントローラー。ファイルのバージョン管理APIを提供する。
@@ -30,10 +31,6 @@ public class FileVersionController {
 
     private final SharedFileVersionService versionService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * ファイルの全バージョンを取得する。
@@ -69,7 +66,7 @@ public class FileVersionController {
     public ResponseEntity<ApiResponse<FileVersionResponse>> createVersion(
             @PathVariable Long fileId,
             @Valid @RequestBody CreateVersionRequest request) {
-        FileVersionResponse response = versionService.createVersion(fileId, getCurrentUserId(), request);
+        FileVersionResponse response = versionService.createVersion(fileId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

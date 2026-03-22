@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ブログシリーズコントローラー。連載シリーズのCRUD APIを提供する。
@@ -34,10 +35,6 @@ public class BlogSeriesController {
 
     private final BlogSeriesService seriesService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * シリーズ一覧を取得する。
@@ -59,7 +56,7 @@ public class BlogSeriesController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<BlogSeriesResponse>> createSeries(
             @Valid @RequestBody CreateSeriesRequest request) {
-        BlogSeriesResponse response = seriesService.createSeries(getCurrentUserId(), request);
+        BlogSeriesResponse response = seriesService.createSeries(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

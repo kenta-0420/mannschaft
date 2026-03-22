@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 会員証コントローラー。会員証のCRUD・QR認証・チェックインAPIを提供する。
@@ -44,10 +45,6 @@ public class MemberCardController {
 
     private final MemberCardService memberCardService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 自分の会員証一覧を取得する。
@@ -56,7 +53,7 @@ public class MemberCardController {
     @Operation(summary = "自分の会員証一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<MemberCardResponse>>> getMyCards() {
-        return ResponseEntity.ok(memberCardService.getMyCards(getCurrentUserId()));
+        return ResponseEntity.ok(memberCardService.getMyCards(SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -66,7 +63,7 @@ public class MemberCardController {
     @Operation(summary = "会員証詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<MemberCardDetailResponse>> getCardDetail(@PathVariable Long id) {
-        return ResponseEntity.ok(memberCardService.getCardDetail(id, getCurrentUserId()));
+        return ResponseEntity.ok(memberCardService.getCardDetail(id, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -76,7 +73,7 @@ public class MemberCardController {
     @Operation(summary = "QRコード表示用トークン取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<QrTokenResponse>> getQrToken(@PathVariable Long id) {
-        return ResponseEntity.ok(memberCardService.getQrToken(id, getCurrentUserId()));
+        return ResponseEntity.ok(memberCardService.getQrToken(id, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -86,7 +83,7 @@ public class MemberCardController {
     @Operation(summary = "QRコード再生成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再生成成功")
     public ResponseEntity<ApiResponse<RegenerateResponse>> regenerateQr(@PathVariable Long id) {
-        return ResponseEntity.ok(memberCardService.regenerateQr(id, getCurrentUserId()));
+        return ResponseEntity.ok(memberCardService.regenerateQr(id, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -97,7 +94,7 @@ public class MemberCardController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "認証結果")
     public ResponseEntity<ApiResponse<VerifyResponse>> verify(
             @Valid @RequestBody VerifyRequest request) {
-        return ResponseEntity.ok(memberCardService.verify(request, getCurrentUserId()));
+        return ResponseEntity.ok(memberCardService.verify(request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -108,7 +105,7 @@ public class MemberCardController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "チェックイン結果")
     public ResponseEntity<ApiResponse<SelfCheckinResponse>> selfCheckin(
             @Valid @RequestBody SelfCheckinRequest request) {
-        return ResponseEntity.ok(memberCardService.selfCheckin(request, getCurrentUserId()));
+        return ResponseEntity.ok(memberCardService.selfCheckin(request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -143,6 +140,6 @@ public class MemberCardController {
             @PathVariable Long id,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
-        return ResponseEntity.ok(memberCardService.getCheckinHistory(id, getCurrentUserId(), from, to));
+        return ResponseEntity.ok(memberCardService.getCheckinHistory(id, SecurityUtils.getCurrentUserId(), from, to));
     }
 }

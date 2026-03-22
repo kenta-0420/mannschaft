@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 安否確認管理者コントローラー。SYSTEM_ADMIN向けのプリセット・テンプレートCRUD APIを提供する。
@@ -38,10 +39,6 @@ public class SafetyAdminController {
     private final SafetyPresetService presetService;
     private final SafetyTemplateService templateService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     // --- プリセット管理 ---
 
@@ -113,7 +110,7 @@ public class SafetyAdminController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<SafetyTemplateResponse>> createTemplate(
             @Valid @RequestBody CreateTemplateRequest request) {
-        SafetyTemplateResponse response = templateService.createTemplate(request, getCurrentUserId());
+        SafetyTemplateResponse response = templateService.createTemplate(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

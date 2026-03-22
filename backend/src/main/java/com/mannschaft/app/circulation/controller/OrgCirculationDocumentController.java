@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織回覧文書コントローラー。組織スコープの回覧文書CRUD・ステータス管理APIを提供する。
@@ -34,10 +35,6 @@ public class OrgCirculationDocumentController {
 
     private final CirculationService circulationService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 回覧文書一覧を取得する。
@@ -80,7 +77,7 @@ public class OrgCirculationDocumentController {
             @PathVariable Long orgId,
             @Valid @RequestBody CreateDocumentRequest request) {
         DocumentResponse response = circulationService.createDocument(
-                SCOPE_TYPE, orgId, getCurrentUserId(), request);
+                SCOPE_TYPE, orgId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

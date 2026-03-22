@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織サブリースコントローラー（10 EP）。
@@ -32,10 +33,6 @@ public class OrgParkingSubleaseController {
     private final ParkingSpaceService spaceService;
 
     private static final String SCOPE_TYPE = ParkingScopeType.ORGANIZATION.name();
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping
     @Operation(summary = "組織サブリース一覧")
@@ -58,7 +55,7 @@ public class OrgParkingSubleaseController {
             @PathVariable Long organizationId,
             @Valid @RequestBody CreateSubleaseRequest request) {
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
-        SubleaseResponse result = subleaseService.create(spaceIds, getCurrentUserId(), request);
+        SubleaseResponse result = subleaseService.create(spaceIds, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
@@ -95,7 +92,7 @@ public class OrgParkingSubleaseController {
             @PathVariable Long organizationId, @PathVariable Long id,
             @Valid @RequestBody ApplySubleaseRequest request) {
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
-        SubleaseApplicationResponse result = subleaseService.apply(spaceIds, id, getCurrentUserId(), request);
+        SubleaseApplicationResponse result = subleaseService.apply(spaceIds, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 

@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ワークフローコメント・添付ファイルコントローラー。コメントCRUD・添付ファイル参照APIを提供する。
@@ -37,10 +38,6 @@ public class WorkflowCommentController {
     private final WorkflowRequestAttachmentRepository attachmentRepository;
     private final WorkflowMapper workflowMapper;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * コメント一覧を取得する。
@@ -63,7 +60,7 @@ public class WorkflowCommentController {
     public ResponseEntity<ApiResponse<WorkflowCommentResponse>> createComment(
             @PathVariable Long requestId,
             @Valid @RequestBody WorkflowCommentRequest request) {
-        WorkflowCommentResponse response = commentService.createComment(requestId, getCurrentUserId(), request);
+        WorkflowCommentResponse response = commentService.createComment(requestId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

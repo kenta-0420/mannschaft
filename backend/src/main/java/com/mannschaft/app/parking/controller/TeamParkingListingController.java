@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム譲渡希望コントローラー（7 EP）。
@@ -32,10 +33,6 @@ public class TeamParkingListingController {
     private final ParkingSpaceService spaceService;
 
     private static final String SCOPE_TYPE = ParkingScopeType.TEAM.name();
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping
     @Operation(summary = "チーム譲渡希望一覧")
@@ -58,7 +55,7 @@ public class TeamParkingListingController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreateListingRequest request) {
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
-        ListingResponse result = listingService.create(spaceIds, getCurrentUserId(), request);
+        ListingResponse result = listingService.create(spaceIds, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
@@ -95,7 +92,7 @@ public class TeamParkingListingController {
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody ListingApplyRequest request) {
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
-        ApplicationResponse result = listingService.apply(spaceIds, id, getCurrentUserId(), request);
+        ApplicationResponse result = listingService.apply(spaceIds, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 

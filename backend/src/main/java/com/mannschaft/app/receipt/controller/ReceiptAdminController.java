@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 領収書管理コントローラー（ADMIN用）。領収書の発行・無効化・検索・エクスポートAPIを提供する。
@@ -70,10 +71,6 @@ public class ReceiptAdminController {
     private final ReceiptService receiptService;
     private final ReceiptExportService exportService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 領収書を発行する。
@@ -86,7 +83,7 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @Valid @RequestBody CreateReceiptRequest request) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        ReceiptResponse response = receiptService.createReceipt(type, scopeId, getCurrentUserId(), request);
+        ReceiptResponse response = receiptService.createReceipt(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -101,7 +98,7 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @Valid @RequestBody BulkCreateReceiptRequest request) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        BulkResultResponse response = receiptService.bulkCreateReceipts(type, scopeId, getCurrentUserId(), request);
+        BulkResultResponse response = receiptService.bulkCreateReceipts(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -117,7 +114,7 @@ public class ReceiptAdminController {
             @PathVariable Long id,
             @Valid @RequestBody VoidReceiptRequest request) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        ReceiptResponse response = receiptService.voidReceipt(type, scopeId, id, getCurrentUserId(), request);
+        ReceiptResponse response = receiptService.voidReceipt(type, scopeId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -148,7 +145,7 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @Valid @RequestBody BulkVoidReceiptRequest request) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        BulkVoidResultResponse response = receiptService.bulkVoidReceipts(type, scopeId, getCurrentUserId(), request);
+        BulkVoidResultResponse response = receiptService.bulkVoidReceipts(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -163,7 +160,7 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @PathVariable Long id) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        ReceiptResponse response = receiptService.approveReceipt(type, scopeId, id, getCurrentUserId());
+        ReceiptResponse response = receiptService.approveReceipt(type, scopeId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

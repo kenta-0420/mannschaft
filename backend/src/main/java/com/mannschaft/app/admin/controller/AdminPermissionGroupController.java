@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 管理者向け権限グループコントローラー。
@@ -29,10 +30,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AdminPermissionGroupController {
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 権限グループ一覧を取得する。

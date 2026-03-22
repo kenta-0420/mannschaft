@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 個人フォルダコントローラー。個人スコープのフォルダCRUD APIを提供する。
@@ -29,10 +30,6 @@ public class PersonalFolderController {
 
     private final SharedFolderService folderService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 個人のルートフォルダ一覧を取得する。
@@ -41,7 +38,7 @@ public class PersonalFolderController {
     @Operation(summary = "個人ルートフォルダ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<FolderResponse>>> listRootFolders() {
-        List<FolderResponse> response = folderService.listPersonalRootFolders(getCurrentUserId());
+        List<FolderResponse> response = folderService.listPersonalRootFolders(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -53,7 +50,7 @@ public class PersonalFolderController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<FolderResponse>> createFolder(
             @Valid @RequestBody CreateFolderRequest request) {
-        FolderResponse response = folderService.createPersonalFolder(getCurrentUserId(), request);
+        FolderResponse response = folderService.createPersonalFolder(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

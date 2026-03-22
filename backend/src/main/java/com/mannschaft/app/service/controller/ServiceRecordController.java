@@ -45,6 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * サービス記録コントローラー。記録のCRUD・一括作成・複製・確定・添付・リアクション・エクスポートAPIを提供する。
@@ -58,10 +59,6 @@ public class ServiceRecordController {
     private final ServiceRecordService recordService;
     private final ServiceRecordExportService exportService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     // ==================== 1. サービス記録一覧 ====================
 
@@ -120,7 +117,7 @@ public class ServiceRecordController {
     public ResponseEntity<ApiResponse<ServiceRecordResponse>> createRecord(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateServiceRecordRequest request) {
-        ServiceRecordResponse response = recordService.createRecord(teamId, getCurrentUserId(), request);
+        ServiceRecordResponse response = recordService.createRecord(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -135,7 +132,7 @@ public class ServiceRecordController {
     public ResponseEntity<ApiResponse<BulkCreateResponse>> bulkCreate(
             @PathVariable Long teamId,
             @Valid @RequestBody BulkCreateServiceRecordRequest request) {
-        BulkCreateResponse response = recordService.bulkCreate(teamId, getCurrentUserId(), request);
+        BulkCreateResponse response = recordService.bulkCreate(teamId, SecurityUtils.getCurrentUserId(), request);
         HttpStatus httpStatus = response.getFailedCount() != null && response.getFailedCount() > 0
                 ? HttpStatus.MULTI_STATUS : HttpStatus.CREATED;
         return ResponseEntity.status(httpStatus).body(ApiResponse.of(response));
@@ -214,7 +211,7 @@ public class ServiceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @RequestBody(required = false) DuplicateServiceRecordRequest request) {
-        ServiceRecordResponse response = recordService.duplicateRecord(teamId, id, getCurrentUserId(), request);
+        ServiceRecordResponse response = recordService.duplicateRecord(teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -266,7 +263,7 @@ public class ServiceRecordController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<ServiceRecordResponse> result = recordService.getMyRecords(
-                getCurrentUserId(), teamId, PageRequest.of(page, size));
+                SecurityUtils.getCurrentUserId(), teamId, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -284,7 +281,7 @@ public class ServiceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody ReactionRequest request) {
-        ReactionResponse response = recordService.addReaction(teamId, id, getCurrentUserId(), request);
+        ReactionResponse response = recordService.addReaction(teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -299,7 +296,7 @@ public class ServiceRecordController {
     public ResponseEntity<Void> deleteReaction(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        recordService.deleteReaction(teamId, id, getCurrentUserId());
+        recordService.deleteReaction(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

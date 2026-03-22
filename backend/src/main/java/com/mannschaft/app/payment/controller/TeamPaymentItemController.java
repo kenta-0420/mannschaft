@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム支払い項目コントローラー。チーム単位の支払い項目 CRUD を提供する。
@@ -37,10 +38,6 @@ public class TeamPaymentItemController {
 
     private final PaymentItemService paymentItemService;
 
-    // TODO: JwtAuthenticationFilter 実装時に SecurityContextHolder から取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チーム支払い項目一覧を取得する。
@@ -65,7 +62,7 @@ public class TeamPaymentItemController {
     public ResponseEntity<ApiResponse<PaymentItemResponse>> createPaymentItem(
             @PathVariable Long id,
             @Valid @RequestBody CreatePaymentItemRequest request) {
-        PaymentItemResponse response = paymentItemService.createTeamPaymentItem(id, getCurrentUserId(), request);
+        PaymentItemResponse response = paymentItemService.createTeamPaymentItem(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

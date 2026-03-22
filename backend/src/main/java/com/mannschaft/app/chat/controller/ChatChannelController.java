@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チャットチャンネルコントローラー。チャンネルのCRUD・メンバー管理APIを提供する。
@@ -39,10 +40,6 @@ public class ChatChannelController {
     private final ChatChannelService channelService;
     private final ChatMemberService memberService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 自分が参加しているチャンネル一覧を取得する。
@@ -51,7 +48,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネル一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ChannelResponse>>> listChannels() {
-        List<ChannelResponse> channels = channelService.listMyChannels(getCurrentUserId());
+        List<ChannelResponse> channels = channelService.listMyChannels(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(channels));
     }
 
@@ -63,7 +60,7 @@ public class ChatChannelController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ChannelResponse>> createChannel(
             @Valid @RequestBody CreateChannelRequest request) {
-        ChannelResponse response = channelService.createChannel(request, getCurrentUserId());
+        ChannelResponse response = channelService.createChannel(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -146,7 +143,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネル参加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "参加成功")
     public ResponseEntity<ApiResponse<MemberResponse>> joinChannel(@PathVariable Long channelId) {
-        MemberResponse response = memberService.joinChannel(channelId, getCurrentUserId());
+        MemberResponse response = memberService.joinChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -173,7 +170,7 @@ public class ChatChannelController {
     public ResponseEntity<ApiResponse<MemberResponse>> updateSettings(
             @PathVariable Long channelId,
             @Valid @RequestBody ChannelSettingsRequest request) {
-        MemberResponse response = memberService.updateSettings(channelId, getCurrentUserId(), request);
+        MemberResponse response = memberService.updateSettings(channelId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

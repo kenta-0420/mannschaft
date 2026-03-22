@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織DMテンプレートコントローラー。
@@ -33,10 +34,6 @@ public class OrganizationDirectMailTemplateController {
 
     private final DirectMailTemplateService templateService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * テンプレート一覧を取得する。
@@ -58,7 +55,7 @@ public class OrganizationDirectMailTemplateController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<DirectMailTemplateResponse>> createTemplate(
             @PathVariable Long orgId, @Valid @RequestBody CreateDirectMailTemplateRequest request) {
-        DirectMailTemplateResponse response = templateService.createTemplate("ORGANIZATION", orgId, getCurrentUserId(), request);
+        DirectMailTemplateResponse response = templateService.createTemplate("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

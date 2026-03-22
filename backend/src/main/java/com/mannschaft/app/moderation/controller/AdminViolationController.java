@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ADMIN向け違反管理コントローラー。ユーザー違反履歴・内部メモ・再レビュー・テンプレートAPIを提供する。
@@ -41,10 +42,6 @@ public class AdminViolationController {
     private final WarningReReviewService reReviewService;
     private final ModerationTemplateService templateService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * ユーザー違反履歴を取得する。
@@ -88,7 +85,7 @@ public class AdminViolationController {
     public ResponseEntity<ApiResponse<InternalNoteResponse>> addNote(
             @PathVariable Long id,
             @Valid @RequestBody CreateInternalNoteRequest request) {
-        InternalNoteResponse response = noteService.addNote(id, getCurrentUserId(), request.getNote());
+        InternalNoteResponse response = noteService.addNote(id, SecurityUtils.getCurrentUserId(), request.getNote());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -113,7 +110,7 @@ public class AdminViolationController {
             @PathVariable Long id,
             @Valid @RequestBody ReviewReReviewRequest request) {
         WarningReReviewResponse response = reReviewService.adminReview(
-                id, request.getStatus(), request.getReviewNote(), getCurrentUserId());
+                id, request.getStatus(), request.getReviewNote(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

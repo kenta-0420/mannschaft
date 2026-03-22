@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームダイレクトメールコントローラー。
@@ -40,10 +41,6 @@ public class TeamDirectMailController {
 
     private final DirectMailService directMailService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * メールを作成する（下書き保存）。
@@ -53,7 +50,7 @@ public class TeamDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<DirectMailResponse>> createMail(
             @PathVariable Long teamId, @Valid @RequestBody CreateDirectMailRequest request) {
-        DirectMailResponse response = directMailService.createMail("TEAM", teamId, getCurrentUserId(), request);
+        DirectMailResponse response = directMailService.createMail("TEAM", teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

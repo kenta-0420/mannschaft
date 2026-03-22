@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 領収書マイページコントローラー。メンバー自身宛の領収書取得APIを提供する。
@@ -36,10 +37,6 @@ public class ReceiptMyController {
 
     private final ReceiptMyService receiptMyService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 自分宛の領収書一覧を取得する。
@@ -54,7 +51,7 @@ public class ReceiptMyController {
             @RequestParam(defaultValue = "20") int size) {
         ReceiptScopeType type = scopeType != null ? ReceiptScopeType.valueOf(scopeType.toUpperCase()) : null;
         PagedResponse<MyReceiptResponse> response = receiptMyService.listMyReceipts(
-                getCurrentUserId(), type, scopeId, page, size);
+                SecurityUtils.getCurrentUserId(), type, scopeId, page, size);
         return ResponseEntity.ok(response);
     }
 
@@ -65,7 +62,7 @@ public class ReceiptMyController {
     @Operation(summary = "自分宛の領収書PDFダウンロード")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ダウンロード成功")
     public ResponseEntity<byte[]> downloadMyReceiptPdf(@PathVariable Long id) {
-        byte[] pdf = receiptMyService.getMyReceiptPdf(getCurrentUserId(), id);
+        byte[] pdf = receiptMyService.getMyReceiptPdf(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"receipt_" + id + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
@@ -84,7 +81,7 @@ public class ReceiptMyController {
             @RequestParam(required = false) Long scopeId) {
         ReceiptScopeType type = scopeType != null ? ReceiptScopeType.valueOf(scopeType.toUpperCase()) : null;
         AnnualSummaryResponse response = receiptMyService.getAnnualSummary(
-                getCurrentUserId(), year, type, scopeId);
+                SecurityUtils.getCurrentUserId(), year, type, scopeId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

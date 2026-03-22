@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チャット・連絡先フォルダコントローラー。
@@ -38,20 +39,12 @@ public class ChatFolderController {
     private final ChatFolderService chatFolderService;
 
     /**
-     * 認証済みユーザーのIDを取得する。
-     * TODO: JWT Filter実装時に SecurityContext から取得するよう差し替える
-     */
-    private Long getAuthenticatedUserId() {
-        return 1L;
-    }
-
-    /**
      * カスタムフォルダ一覧を取得する。
      */
     @GetMapping
     @Operation(summary = "フォルダ一覧", description = "ユーザーのカスタムフォルダ一覧を取得する")
     public ResponseEntity<ApiResponse<List<ChatFolderResponse>>> getFolders() {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         List<ChatFolderResponse> response = chatFolderService.getFolders(userId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -63,7 +56,7 @@ public class ChatFolderController {
     @Operation(summary = "フォルダ作成", description = "新しいカスタムフォルダを作成する（上限20件）")
     public ResponseEntity<ApiResponse<ChatFolderResponse>> createFolder(
             @Valid @RequestBody CreateChatFolderRequest request) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         ChatFolderResponse response = chatFolderService.createFolder(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -76,7 +69,7 @@ public class ChatFolderController {
     public ResponseEntity<ApiResponse<ChatFolderResponse>> updateFolder(
             @PathVariable Long id,
             @Valid @RequestBody UpdateChatFolderRequest request) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         ChatFolderResponse response = chatFolderService.updateFolder(userId, id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -87,7 +80,7 @@ public class ChatFolderController {
     @DeleteMapping("/{id}")
     @Operation(summary = "フォルダ削除", description = "カスタムフォルダを削除する（配下アイテムは未分類に戻る）")
     public ResponseEntity<Void> deleteFolder(@PathVariable Long id) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         chatFolderService.deleteFolder(userId, id);
         return ResponseEntity.noContent().build();
     }
@@ -100,7 +93,7 @@ public class ChatFolderController {
     public ResponseEntity<ApiResponse<ChatFolderResponse>> assignItem(
             @PathVariable Long id,
             @Valid @RequestBody AssignFolderItemRequest request) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         ChatFolderResponse response = chatFolderService.assignItem(userId, id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -113,7 +106,7 @@ public class ChatFolderController {
     public ResponseEntity<Void> removeItem(
             @PathVariable String itemType,
             @PathVariable Long itemId) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         chatFolderService.removeItem(userId, itemType, itemId);
         return ResponseEntity.noContent().build();
     }
@@ -126,7 +119,7 @@ public class ChatFolderController {
     public ResponseEntity<ApiResponse<BulkAssignResultResponse>> bulkAssignItems(
             @PathVariable Long id,
             @Valid @RequestBody BulkAssignFolderItemsRequest request) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         BulkAssignResultResponse response = chatFolderService.bulkAssignItems(userId, id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

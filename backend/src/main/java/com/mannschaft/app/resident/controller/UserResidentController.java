@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 個人用居住者情報コントローラー。
@@ -21,19 +22,15 @@ public class UserResidentController {
 
     private final ResidentRegistryService residentService;
 
-    private Long getCurrentUserId() {
-        return 1L;
-    }
-
     @GetMapping("/api/v1/users/me/dwelling-unit")
     @Operation(summary = "自室情報")
     public ResponseEntity<ApiResponse<DwellingUnitResponse>> getMyUnit() {
-        return ResponseEntity.ok(ApiResponse.of(residentService.getMyUnit(getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(residentService.getMyUnit(SecurityUtils.getCurrentUserId())));
     }
 
     @GetMapping("/api/v1/users/me/resident-info")
     @Operation(summary = "自身の居住者情報")
     public ResponseEntity<ApiResponse<ResidentResponse>> getMyResidentInfo() {
-        return ResponseEntity.ok(ApiResponse.of(residentService.getMyResidentInfo(getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(residentService.getMyResidentInfo(SecurityUtils.getCurrentUserId())));
     }
 }

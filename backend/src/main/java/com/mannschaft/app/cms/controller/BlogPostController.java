@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ブログ記事コントローラー。記事のCRUD・公開制御・リビジョン管理APIを提供する。
@@ -43,10 +44,6 @@ public class BlogPostController {
 
     private final BlogPostService postService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 記事一覧を取得する。
@@ -106,7 +103,7 @@ public class BlogPostController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<BlogPostResponse>> createPost(
             @Valid @RequestBody CreateBlogPostRequest request) {
-        BlogPostResponse response = postService.createPost(getCurrentUserId(), request);
+        BlogPostResponse response = postService.createPost(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -119,7 +116,7 @@ public class BlogPostController {
     public ResponseEntity<ApiResponse<BlogPostResponse>> updatePost(
             @PathVariable Long id,
             @Valid @RequestBody UpdateBlogPostRequest request) {
-        BlogPostResponse response = postService.updatePost(id, getCurrentUserId(), request);
+        BlogPostResponse response = postService.updatePost(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -156,7 +153,7 @@ public class BlogPostController {
     public ResponseEntity<ApiResponse<BlogPostResponse>> autoSave(
             @PathVariable Long id,
             @Valid @RequestBody AutoSaveRequest request) {
-        BlogPostResponse response = postService.autoSave(id, getCurrentUserId(), request);
+        BlogPostResponse response = postService.autoSave(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -196,7 +193,7 @@ public class BlogPostController {
     @Operation(summary = "記事複製")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
     public ResponseEntity<ApiResponse<BlogPostResponse>> duplicatePost(@PathVariable Long id) {
-        BlogPostResponse response = postService.duplicatePost(id, getCurrentUserId());
+        BlogPostResponse response = postService.duplicatePost(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -220,7 +217,7 @@ public class BlogPostController {
     public ResponseEntity<ApiResponse<BlogPostResponse>> restoreRevision(
             @PathVariable Long id,
             @PathVariable Long revisionId) {
-        BlogPostResponse response = postService.restoreRevision(id, revisionId, getCurrentUserId());
+        BlogPostResponse response = postService.restoreRevision(id, revisionId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

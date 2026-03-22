@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * テンプレートコントローラー。チーム・組織テンプレートのCRUD APIを提供する。
@@ -34,10 +35,6 @@ public class ServiceRecordTemplateController {
 
     private final ServiceRecordTemplateService templateService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     // ==================== 24. チームテンプレート一覧 ====================
 
@@ -66,7 +63,7 @@ public class ServiceRecordTemplateController {
     public ResponseEntity<ApiResponse<TemplateResponse>> createTeamTemplate(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateTemplateRequest request) {
-        TemplateResponse response = templateService.createTeamTemplate(teamId, getCurrentUserId(), request);
+        TemplateResponse response = templateService.createTeamTemplate(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -141,7 +138,7 @@ public class ServiceRecordTemplateController {
     public ResponseEntity<ApiResponse<TemplateResponse>> createOrgTemplate(
             @PathVariable Long orgId,
             @Valid @RequestBody CreateTemplateRequest request) {
-        TemplateResponse response = templateService.createOrgTemplate(orgId, getCurrentUserId(), request);
+        TemplateResponse response = templateService.createOrgTemplate(orgId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

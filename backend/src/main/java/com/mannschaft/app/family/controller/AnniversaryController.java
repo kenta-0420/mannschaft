@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 記念日リマインダーコントローラー。記念日管理APIを提供する。
@@ -32,10 +33,6 @@ public class AnniversaryController {
 
     private final AnniversaryService anniversaryService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 記念日一覧を取得する。
@@ -57,7 +54,7 @@ public class AnniversaryController {
             @PathVariable Long teamId,
             @Valid @RequestBody AnniversaryRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(anniversaryService.createAnniversary(teamId, getCurrentUserId(), request));
+                .body(anniversaryService.createAnniversary(teamId, SecurityUtils.getCurrentUserId(), request));
     }
 
     /**

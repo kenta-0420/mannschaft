@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * タイムラインミュートコントローラー。ミュートの追加・解除・一覧取得APIを提供する。
@@ -31,10 +32,6 @@ public class TimelineMuteController {
 
     private final TimelineMuteService muteService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * ミュートを追加する。
@@ -45,7 +42,7 @@ public class TimelineMuteController {
     public ResponseEntity<ApiResponse<MuteResponse>> addMute(
             @Valid @RequestBody MuteRequest request) {
         MuteResponse response = muteService.addMute(
-                request.getMutedType(), request.getMutedId(), getCurrentUserId());
+                request.getMutedType(), request.getMutedId(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -58,7 +55,7 @@ public class TimelineMuteController {
     public ResponseEntity<Void> removeMute(
             @RequestParam String mutedType,
             @RequestParam Long mutedId) {
-        muteService.removeMute(mutedType, mutedId, getCurrentUserId());
+        muteService.removeMute(mutedType, mutedId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -69,7 +66,7 @@ public class TimelineMuteController {
     @Operation(summary = "ミュート一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<MuteResponse>>> getMutes() {
-        List<MuteResponse> mutes = muteService.getMutes(getCurrentUserId());
+        List<MuteResponse> mutes = muteService.getMutes(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(mutes));
     }
 }

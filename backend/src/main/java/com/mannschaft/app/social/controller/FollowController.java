@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * フォローコントローラー。フォロー・アンフォロー・一覧取得APIを提供する。
@@ -31,10 +32,6 @@ public class FollowController {
 
     private final FollowService followService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * フォローする。
@@ -45,7 +42,7 @@ public class FollowController {
     public ResponseEntity<ApiResponse<FollowResponse>> follow(
             @Valid @RequestBody FollowRequest request) {
         FollowResponse response = followService.follow(
-                request.getFollowedType(), request.getFollowedId(), getCurrentUserId());
+                request.getFollowedType(), request.getFollowedId(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -58,7 +55,7 @@ public class FollowController {
     public ResponseEntity<Void> unfollow(
             @RequestParam String followedType,
             @RequestParam Long followedId) {
-        followService.unfollow(followedType, followedId, getCurrentUserId());
+        followService.unfollow(followedType, followedId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -70,7 +67,7 @@ public class FollowController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<FollowResponse>>> getFollowing(
             @RequestParam(defaultValue = "20") int size) {
-        List<FollowResponse> following = followService.getFollowing(getCurrentUserId(), size);
+        List<FollowResponse> following = followService.getFollowing(SecurityUtils.getCurrentUserId(), size);
         return ResponseEntity.ok(ApiResponse.of(following));
     }
 
@@ -82,7 +79,7 @@ public class FollowController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<FollowResponse>>> getFollowers(
             @RequestParam(defaultValue = "20") int size) {
-        List<FollowResponse> followers = followService.getFollowers(getCurrentUserId(), size);
+        List<FollowResponse> followers = followService.getFollowers(SecurityUtils.getCurrentUserId(), size);
         return ResponseEntity.ok(ApiResponse.of(followers));
     }
 
@@ -95,7 +92,7 @@ public class FollowController {
     public ResponseEntity<ApiResponse<Boolean>> isFollowing(
             @RequestParam String followedType,
             @RequestParam Long followedId) {
-        boolean following = followService.isFollowing(followedType, followedId, getCurrentUserId());
+        boolean following = followService.isFollowing(followedType, followedId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(following));
     }
 }

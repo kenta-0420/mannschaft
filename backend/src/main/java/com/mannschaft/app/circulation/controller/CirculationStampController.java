@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 押印コントローラー。回覧文書への押印・スキップ・拒否APIを提供する。
@@ -26,10 +27,6 @@ public class CirculationStampController {
 
     private final CirculationStampService stampService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 押印する。
@@ -40,7 +37,7 @@ public class CirculationStampController {
     public ResponseEntity<ApiResponse<RecipientResponse>> stamp(
             @PathVariable Long documentId,
             @Valid @RequestBody StampRequest request) {
-        RecipientResponse response = stampService.stamp(documentId, getCurrentUserId(), request);
+        RecipientResponse response = stampService.stamp(documentId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -52,7 +49,7 @@ public class CirculationStampController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "スキップ成功")
     public ResponseEntity<ApiResponse<RecipientResponse>> skip(
             @PathVariable Long documentId) {
-        RecipientResponse response = stampService.skip(documentId, getCurrentUserId());
+        RecipientResponse response = stampService.skip(documentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -64,7 +61,7 @@ public class CirculationStampController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "拒否成功")
     public ResponseEntity<ApiResponse<RecipientResponse>> reject(
             @PathVariable Long documentId) {
-        RecipientResponse response = stampService.reject(documentId, getCurrentUserId());
+        RecipientResponse response = stampService.reject(documentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織プロモーション管理コントローラー。
@@ -36,10 +37,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class OrgPromotionController {
 
     private final PromotionService promotionService;
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/api/v1/organizations/{orgId}/promotions")
     @Operation(summary = "プロモーション一覧")
@@ -60,7 +57,7 @@ public class OrgPromotionController {
             @PathVariable Long orgId,
             @Valid @RequestBody CreatePromotionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.of(promotionService.create("ORGANIZATION", orgId, getCurrentUserId(), request)));
+                ApiResponse.of(promotionService.create("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @GetMapping("/api/v1/organizations/{orgId}/promotions/{id}")
@@ -111,7 +108,7 @@ public class OrgPromotionController {
     @Operation(summary = "承認")
     public ResponseEntity<ApiResponse<PromotionResponse>> approve(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.approve("ORGANIZATION", orgId, id, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.approve("ORGANIZATION", orgId, id, SecurityUtils.getCurrentUserId())));
     }
 
     @GetMapping("/api/v1/organizations/{orgId}/promotions/{id}/stats")

@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * シフトスケジュールコントローラー。シフトスケジュールのCRUD・ステータス遷移APIを提供する。
@@ -36,10 +37,6 @@ public class ShiftScheduleController {
 
     private final ShiftScheduleService scheduleService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チームのシフトスケジュール一覧を取得する。
@@ -81,7 +78,7 @@ public class ShiftScheduleController {
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> createSchedule(
             @RequestParam Long teamId,
             @Valid @RequestBody CreateShiftScheduleRequest request) {
-        ShiftScheduleResponse response = scheduleService.createSchedule(teamId, request, getCurrentUserId());
+        ShiftScheduleResponse response = scheduleService.createSchedule(teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -119,7 +116,7 @@ public class ShiftScheduleController {
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> transitionStatus(
             @PathVariable Long scheduleId,
             @RequestParam String status) {
-        ShiftScheduleResponse response = scheduleService.transitionStatus(scheduleId, status, getCurrentUserId());
+        ShiftScheduleResponse response = scheduleService.transitionStatus(scheduleId, status, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -131,7 +128,7 @@ public class ShiftScheduleController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> duplicateSchedule(
             @PathVariable Long scheduleId) {
-        ShiftScheduleResponse response = scheduleService.duplicateSchedule(scheduleId, getCurrentUserId());
+        ShiftScheduleResponse response = scheduleService.duplicateSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

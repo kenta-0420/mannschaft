@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 大会・リーグ管理コントローラー。
@@ -38,9 +39,6 @@ public class TournamentController {
 
     private final TournamentService tournamentService;
 
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping
     @Operation(summary = "大会一覧")
@@ -60,7 +58,7 @@ public class TournamentController {
             @PathVariable Long orgId,
             @Valid @RequestBody CreateTournamentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(tournamentService.createTournament(orgId, getCurrentUserId(), request)));
+                .body(ApiResponse.of(tournamentService.createTournament(orgId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @GetMapping("/{tournamentId}")
@@ -105,6 +103,6 @@ public class TournamentController {
             @PathVariable Long orgId,
             @PathVariable Long previousTournamentId) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(tournamentService.continueTournament(orgId, getCurrentUserId(), previousTournamentId)));
+                .body(ApiResponse.of(tournamentService.continueTournament(orgId, SecurityUtils.getCurrentUserId(), previousTournamentId)));
     }
 }

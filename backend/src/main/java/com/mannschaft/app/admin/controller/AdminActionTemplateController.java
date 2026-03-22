@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 管理者アクションテンプレートコントローラー。
@@ -34,10 +35,6 @@ public class AdminActionTemplateController {
 
     private final AdminActionTemplateService templateService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * テンプレート一覧を取得する。
@@ -64,7 +61,7 @@ public class AdminActionTemplateController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ActionTemplateResponse>> createTemplate(
             @Valid @RequestBody CreateActionTemplateRequest request) {
-        ActionTemplateResponse response = templateService.createTemplate(request, getCurrentUserId());
+        ActionTemplateResponse response = templateService.createTemplate(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

@@ -40,6 +40,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム管理コントローラー。
@@ -59,10 +60,6 @@ public class TeamController {
     private final PermissionGroupService permissionGroupService;
     private final BlockService blockService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     // ========================================
     // チーム CRUD
@@ -74,7 +71,7 @@ public class TeamController {
     public ResponseEntity<ApiResponse<TeamResponse>> createTeam(
             @Valid @RequestBody CreateTeamRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(teamService.createTeam(getCurrentUserId(), req));
+                .body(teamService.createTeam(SecurityUtils.getCurrentUserId(), req));
     }
 
     @GetMapping("/search")
@@ -126,7 +123,7 @@ public class TeamController {
     public ResponseEntity<Void> changeRole(
             @PathVariable Long id, @PathVariable Long userId,
             @Valid @RequestBody RoleChangeRequest req) {
-        roleService.changeRole(id, SCOPE_TYPE, userId, req, getCurrentUserId());
+        roleService.changeRole(id, SCOPE_TYPE, userId, req, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 
@@ -167,7 +164,7 @@ public class TeamController {
     @Operation(summary = "チームフォロー")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "フォロー成功")
     public ResponseEntity<Void> followTeam(@PathVariable Long id) {
-        teamService.followTeam(getCurrentUserId(), id);
+        teamService.followTeam(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok().build();
     }
 
@@ -175,7 +172,7 @@ public class TeamController {
     @Operation(summary = "チームフォロー解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "フォロー解除成功")
     public ResponseEntity<Void> unfollowTeam(@PathVariable Long id) {
-        teamService.unfollowTeam(getCurrentUserId(), id);
+        teamService.unfollowTeam(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.noContent().build();
     }
 
@@ -189,7 +186,7 @@ public class TeamController {
     public ResponseEntity<ApiResponse<InviteTokenResponse>> createInviteToken(
             @PathVariable Long id, @Valid @RequestBody CreateInviteTokenRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(inviteService.createInviteToken(id, SCOPE_TYPE, req, getCurrentUserId()));
+                .body(inviteService.createInviteToken(id, SCOPE_TYPE, req, SecurityUtils.getCurrentUserId()));
     }
 
     @GetMapping("/{id}/invite-tokens")
@@ -227,7 +224,7 @@ public class TeamController {
     public ResponseEntity<ApiResponse<PermissionGroupResponse>> createPermissionGroup(
             @PathVariable Long id, @Valid @RequestBody PermissionGroupRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(permissionGroupService.createPermissionGroup(id, SCOPE_TYPE, req, getCurrentUserId()));
+                .body(permissionGroupService.createPermissionGroup(id, SCOPE_TYPE, req, SecurityUtils.getCurrentUserId()));
     }
 
     @PatchMapping("/{id}/permission-groups/{groupId}")
@@ -255,7 +252,7 @@ public class TeamController {
             @PathVariable Long id, @PathVariable Long userId,
             @Valid @RequestBody UserPermissionGroupAssignRequest req) {
         permissionGroupService.assignUserPermissionGroups(
-                userId, id, SCOPE_TYPE, req, getCurrentUserId());
+                userId, id, SCOPE_TYPE, req, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 
@@ -276,7 +273,7 @@ public class TeamController {
     public ResponseEntity<ApiResponse<BlockResponse>> blockUser(
             @PathVariable Long id, @Valid @RequestBody BlockRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(blockService.blockUser(id, SCOPE_TYPE, req, getCurrentUserId()));
+                .body(blockService.blockUser(id, SCOPE_TYPE, req, SecurityUtils.getCurrentUserId()));
     }
 
     @DeleteMapping("/{id}/blocks/{userId}")
@@ -297,7 +294,7 @@ public class TeamController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<EffectivePermissionsResponse>> getMyPermissions(
             @PathVariable Long id) {
-        Long userId = getCurrentUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         List<String> permissions = roleService.resolveEffectivePermissions(userId, id, SCOPE_TYPE);
         // TODO: ロール名をRoleServiceから直接取得する方法を追加
         return ResponseEntity.ok(ApiResponse.of(new EffectivePermissionsResponse(null, permissions)));
@@ -316,7 +313,7 @@ public class TeamController {
     @Operation(summary = "チーム退会")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "退会成功")
     public ResponseEntity<Void> leaveTeam(@PathVariable Long id) {
-        roleService.leaveScope(getCurrentUserId(), id, SCOPE_TYPE);
+        roleService.leaveScope(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.noContent().build();
     }
 }

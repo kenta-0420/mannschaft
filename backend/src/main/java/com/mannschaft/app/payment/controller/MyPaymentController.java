@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 自分の支払いコントローラー。ログインユーザー自身の支払い状況・未払い要件を提供する。
@@ -33,9 +34,6 @@ public class MyPaymentController {
     private final MemberPaymentService memberPaymentService;
     private final PaymentRequirementService paymentRequirementService;
 
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 自分の支払い状況一覧を取得する。
@@ -46,7 +44,7 @@ public class MyPaymentController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<MemberPaymentResponse> result = memberPaymentService.listMyPayments(
-                getCurrentUserId(), PageRequest.of(page, Math.min(size, 100)));
+                SecurityUtils.getCurrentUserId(), PageRequest.of(page, Math.min(size, 100)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -59,7 +57,7 @@ public class MyPaymentController {
     @Operation(summary = "未払い項目一覧")
     public ResponseEntity<ApiResponse<List<PaymentRequirementResponse>>> getPaymentRequirements() {
         List<PaymentRequirementResponse> requirements =
-                paymentRequirementService.getPaymentRequirements(getCurrentUserId());
+                paymentRequirementService.getPaymentRequirements(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(requirements));
     }
 

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームセグメントプリセットコントローラー。
@@ -29,10 +30,6 @@ import java.util.List;
 public class TeamSegmentPresetController {
 
     private final SegmentPresetService presetService;
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/api/v1/teams/{teamId}/segment-presets")
     @Operation(summary = "プリセット一覧")
@@ -46,7 +43,7 @@ public class TeamSegmentPresetController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreateSegmentPresetRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.of(presetService.create("TEAM", teamId, getCurrentUserId(), request)));
+                ApiResponse.of(presetService.create("TEAM", teamId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @PutMapping("/api/v1/teams/{teamId}/segment-presets/{id}")

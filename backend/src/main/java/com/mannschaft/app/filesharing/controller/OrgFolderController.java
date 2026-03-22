@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織フォルダコントローラー。組織スコープのフォルダCRUD APIを提供する。
@@ -30,10 +31,6 @@ public class OrgFolderController {
 
     private final SharedFolderService folderService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 組織のルートフォルダ一覧を取得する。
@@ -56,7 +53,7 @@ public class OrgFolderController {
     public ResponseEntity<ApiResponse<FolderResponse>> createFolder(
             @PathVariable Long organizationId,
             @Valid @RequestBody CreateFolderRequest request) {
-        FolderResponse response = folderService.createOrgFolder(organizationId, getCurrentUserId(), request);
+        FolderResponse response = folderService.createOrgFolder(organizationId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

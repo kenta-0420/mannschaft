@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 昇格・降格管理コントローラー。
@@ -32,9 +33,6 @@ public class PromotionController {
 
     private final PromotionService promotionService;
 
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @PostMapping
     @Operation(summary = "昇降格実行")
@@ -42,7 +40,7 @@ public class PromotionController {
             @PathVariable Long orgId, @PathVariable Long tId,
             @Valid @RequestBody CreatePromotionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(promotionService.executePromotions(tId, getCurrentUserId(), request)));
+                .body(ApiResponse.of(promotionService.executePromotions(tId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @GetMapping

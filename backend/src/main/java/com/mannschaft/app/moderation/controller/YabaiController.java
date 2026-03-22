@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ヤバいやつ解除コントローラー（ユーザー用）。解除申請・状態確認APIを提供する。
@@ -27,10 +28,6 @@ public class YabaiController {
 
     private final YabaiUnflagService unflagService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * ヤバいやつ解除申請を作成する。
@@ -40,7 +37,7 @@ public class YabaiController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "申請成功")
     public ResponseEntity<ApiResponse<YabaiUnflagResponse>> createUnflagRequest(
             @Valid @RequestBody CreateUnflagRequest request) {
-        YabaiUnflagResponse response = unflagService.createUnflagRequest(getCurrentUserId(), request.getReason());
+        YabaiUnflagResponse response = unflagService.createUnflagRequest(SecurityUtils.getCurrentUserId(), request.getReason());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -51,7 +48,7 @@ public class YabaiController {
     @Operation(summary = "解除申請状態取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<YabaiUnflagResponse>> getUnflagRequestStatus() {
-        YabaiUnflagResponse response = unflagService.getLatestRequestStatus(getCurrentUserId());
+        YabaiUnflagResponse response = unflagService.getLatestRequestStatus(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

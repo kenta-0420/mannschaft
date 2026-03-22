@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * シフト交代リクエストコントローラー。交代申請・承諾・承認フローAPIを提供する。
@@ -33,10 +34,6 @@ public class ShiftSwapController {
 
     private final ShiftSwapService swapService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 交代リクエスト一覧を取得する。
@@ -58,7 +55,7 @@ public class ShiftSwapController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<SwapRequestResponse>> createSwapRequest(
             @Valid @RequestBody CreateSwapRequestRequest request) {
-        SwapRequestResponse response = swapService.createSwapRequest(request, getCurrentUserId());
+        SwapRequestResponse response = swapService.createSwapRequest(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -70,7 +67,7 @@ public class ShiftSwapController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "承諾成功")
     public ResponseEntity<ApiResponse<SwapRequestResponse>> acceptSwapRequest(
             @PathVariable Long swapId) {
-        SwapRequestResponse response = swapService.acceptSwapRequest(swapId, getCurrentUserId());
+        SwapRequestResponse response = swapService.acceptSwapRequest(swapId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -83,7 +80,7 @@ public class ShiftSwapController {
     public ResponseEntity<ApiResponse<SwapRequestResponse>> resolveSwapRequest(
             @PathVariable Long swapId,
             @Valid @RequestBody ResolveSwapRequestRequest request) {
-        SwapRequestResponse response = swapService.resolveSwapRequest(swapId, request, getCurrentUserId());
+        SwapRequestResponse response = swapService.resolveSwapRequest(swapId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -95,7 +92,7 @@ public class ShiftSwapController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "キャンセル成功")
     public ResponseEntity<Void> cancelSwapRequest(
             @PathVariable Long swapId) {
-        swapService.cancelSwapRequest(swapId, getCurrentUserId());
+        swapService.cancelSwapRequest(swapId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

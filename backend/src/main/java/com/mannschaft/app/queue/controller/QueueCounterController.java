@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 順番待ちカウンターコントローラー。カウンターのCRUD APIを提供する。
@@ -34,10 +35,6 @@ public class QueueCounterController {
 
     private final QueueCounterService counterService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * カテゴリ配下のカウンター一覧を取得する。
@@ -74,7 +71,7 @@ public class QueueCounterController {
     public ResponseEntity<ApiResponse<CounterResponse>> createCounter(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateCounterRequest request) {
-        CounterResponse counter = counterService.createCounter(request, getCurrentUserId());
+        CounterResponse counter = counterService.createCounter(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(counter));
     }
 

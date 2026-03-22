@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ファイルタグコントローラー。ファイルに対するタグ管理APIを提供する。
@@ -31,10 +32,6 @@ public class FileTagController {
 
     private final SharedFileTagService tagService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * ファイルのタグ一覧を取得する。
@@ -57,7 +54,7 @@ public class FileTagController {
     public ResponseEntity<ApiResponse<TagResponse>> addTag(
             @PathVariable Long fileId,
             @Valid @RequestBody CreateTagRequest request) {
-        TagResponse response = tagService.addTag(fileId, getCurrentUserId(), request);
+        TagResponse response = tagService.addTag(fileId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

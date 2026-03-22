@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ユーザー管理コントローラー。プロフィール操作・パスワード管理・メール変更・退会・OAuth連携・ログイン履歴を提供する。
@@ -44,21 +45,12 @@ public class UserController {
     private final com.mannschaft.app.auth.service.AuthService authService;
 
     /**
-     * 認証済みユーザーのIDを取得する。
-     * TODO: JWT Filter実装時に SecurityContext から取得するよう差し替える
-     */
-    private Long getAuthenticatedUserId() {
-        // TODO: JWT Filter実装時に SecurityContextHolder から userId を取得する
-        return 1L;
-    }
-
-    /**
      * 自分のプロフィールを取得する。
      */
     @GetMapping("/me")
     @Operation(summary = "プロフィール取得", description = "認証済みユーザーの自身のプロフィール情報を取得する")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getMyProfile() {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         ApiResponse<UserProfileResponse> response = userService.getUserProfile(userId);
         return ResponseEntity.ok(response);
     }
@@ -70,7 +62,7 @@ public class UserController {
     @Operation(summary = "プロフィール更新", description = "認証済みユーザーの自身のプロフィール情報を更新する")
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateMyProfile(
             @Valid @RequestBody UpdateProfileRequest req) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         ApiResponse<UserProfileResponse> response = userService.updateProfile(userId, req);
         return ResponseEntity.ok(response);
     }
@@ -82,7 +74,7 @@ public class UserController {
     @Operation(summary = "パスワード初期設定", description = "OAuth専用ユーザーがパスワードを新規設定する")
     public ResponseEntity<ApiResponse<MessageResponse>> setupPassword(
             @RequestParam String password) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         ApiResponse<MessageResponse> response = userService.setupPassword(userId, password);
         return ResponseEntity.ok(response);
     }
@@ -95,7 +87,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<MessageResponse>> changePassword(
             @Valid @RequestBody ChangePasswordRequest req,
             HttpServletRequest httpRequest) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         String ipAddress = httpRequest.getRemoteAddr();
         userService.changePassword(userId, req, ipAddress);
         return ResponseEntity.ok(ApiResponse.of(MessageResponse.of("パスワードを変更しました")));
@@ -108,7 +100,7 @@ public class UserController {
     @Operation(summary = "メールアドレス変更リクエスト", description = "新しいメールアドレスへの確認メールを送信する")
     public ResponseEntity<ApiResponse<MessageResponse>> requestEmailChange(
             @Valid @RequestBody RequestEmailChangeRequest req) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         ApiResponse<MessageResponse> response = userService.requestEmailChange(userId, req);
         return ResponseEntity.ok(response);
     }
@@ -131,7 +123,7 @@ public class UserController {
     @Operation(summary = "退会リクエスト", description = "退会をリクエストする（論理削除。30日間は取り消し可能）")
     public ResponseEntity<ApiResponse<MessageResponse>> requestWithdrawal(
             @Valid @RequestBody RequestWithdrawalRequest req) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         userService.requestWithdrawal(userId, req);
         return ResponseEntity.ok(ApiResponse.of(MessageResponse.of("退会リクエストを受け付けました")));
     }
@@ -142,7 +134,7 @@ public class UserController {
     @PostMapping("/me/withdrawal/cancel")
     @Operation(summary = "退会取り消し", description = "退会リクエストを取り消し、アカウントを復帰させる")
     public ResponseEntity<ApiResponse<MessageResponse>> cancelWithdrawal() {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         ApiResponse<MessageResponse> response = userService.cancelWithdrawal(userId);
         return ResponseEntity.ok(response);
     }
@@ -153,7 +145,7 @@ public class UserController {
     @GetMapping("/me/oauth")
     @Operation(summary = "OAuth連携一覧取得", description = "連携済みのOAuthプロバイダ一覧を取得する")
     public ResponseEntity<ApiResponse<List<OAuthProviderResponse>>> getConnectedProviders() {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         ApiResponse<List<OAuthProviderResponse>> response = authOAuthService.getConnectedProviders(userId);
         return ResponseEntity.ok(response);
     }
@@ -166,7 +158,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<MessageResponse>> disconnectProvider(
             @Parameter(description = "OAuthプロバイダ名 (GOOGLE, LINE, APPLE)")
             @PathVariable String provider) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         authOAuthService.disconnectProvider(userId, provider);
         return ResponseEntity.ok(ApiResponse.of(MessageResponse.of("OAuth連携を解除しました")));
     }
@@ -181,7 +173,7 @@ public class UserController {
             @RequestParam(required = false) String cursor,
             @Parameter(description = "取得件数（デフォルト20）")
             @RequestParam(defaultValue = "20") int limit) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         CursorPagedResponse<LoginHistoryResponse> response = authService.getLoginHistory(userId, cursor, limit);
         return ResponseEntity.ok(response);
     }

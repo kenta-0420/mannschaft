@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * メンバー紹介ページコントローラー。ページのCRUD・公開管理・プレビュートークンAPIを提供する。
@@ -38,10 +39,6 @@ public class TeamPageController {
 
     private final TeamPageService pageService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * ページ一覧を取得する。
@@ -79,7 +76,7 @@ public class TeamPageController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<TeamPageResponse>> createPage(
             @Valid @RequestBody CreateTeamPageRequest request) {
-        TeamPageResponse response = pageService.createPage(getCurrentUserId(), request);
+        TeamPageResponse response = pageService.createPage(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

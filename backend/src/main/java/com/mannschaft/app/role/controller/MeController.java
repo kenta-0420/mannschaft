@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * マイページコントローラー。ログインユーザーが所属するチーム・組織の一覧を提供する。
@@ -33,10 +34,6 @@ public class MeController {
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 自分が所属するチーム一覧を取得する。
@@ -45,7 +42,7 @@ public class MeController {
     @Operation(summary = "所属チーム一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TeamSummaryResponse>>> getMyTeams() {
-        Long userId = getCurrentUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
 
         List<TeamSummaryResponse> teams = teamRoles.stream()
@@ -72,7 +69,7 @@ public class MeController {
     @Operation(summary = "所属組織一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<OrganizationSummaryResponse>>> getMyOrganizations() {
-        Long userId = getCurrentUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
 
         List<OrganizationSummaryResponse> orgs = orgRoles.stream()

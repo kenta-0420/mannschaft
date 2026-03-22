@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームプロモーション管理コントローラー。
@@ -36,10 +37,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class TeamPromotionController {
 
     private final PromotionService promotionService;
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/api/v1/teams/{teamId}/promotions")
     @Operation(summary = "プロモーション一覧")
@@ -60,7 +57,7 @@ public class TeamPromotionController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreatePromotionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.of(promotionService.create("TEAM", teamId, getCurrentUserId(), request)));
+                ApiResponse.of(promotionService.create("TEAM", teamId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @GetMapping("/api/v1/teams/{teamId}/promotions/{id}")
@@ -111,7 +108,7 @@ public class TeamPromotionController {
     @Operation(summary = "承認")
     public ResponseEntity<ApiResponse<PromotionResponse>> approve(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.approve("TEAM", teamId, id, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.approve("TEAM", teamId, id, SecurityUtils.getCurrentUserId())));
     }
 
     @GetMapping("/api/v1/teams/{teamId}/promotions/{id}/stats")

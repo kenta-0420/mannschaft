@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織物件掲示板コントローラー。
@@ -36,10 +37,6 @@ import java.util.List;
 public class OrgPropertyListingController {
 
     private final PropertyListingService listingService;
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/api/v1/organizations/{orgId}/property-listings")
     @Operation(summary = "物件一覧")
@@ -61,7 +58,7 @@ public class OrgPropertyListingController {
             @PathVariable Long orgId,
             @Valid @RequestBody CreatePropertyListingRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.of(listingService.createForOrganization(orgId, getCurrentUserId(), request)));
+                ApiResponse.of(listingService.createForOrganization(orgId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @GetMapping("/api/v1/organizations/{orgId}/property-listings/{id}")
@@ -92,7 +89,7 @@ public class OrgPropertyListingController {
             @PathVariable Long orgId, @PathVariable Long id,
             @RequestBody CreateInquiryRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.of(listingService.createInquiry(id, getCurrentUserId(), request)));
+                ApiResponse.of(listingService.createInquiry(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @GetMapping("/api/v1/organizations/{orgId}/property-listings/{id}/inquiries")

@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 投票セッションコントローラー。セッションのCRUD・ライフサイクル・投票APIを提供する。
@@ -46,10 +47,6 @@ public class ProxyVoteSessionController {
 
     private final ProxyVoteSessionService sessionService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 投票セッション一覧を取得する。
@@ -66,7 +63,7 @@ public class ProxyVoteSessionController {
         SessionStatus sessionStatus = status != null ? SessionStatus.valueOf(status) : null;
         Page<SessionListResponse> result = sessionService.listSessions(
                 ProxyVoteScopeType.valueOf(scopeType), teamId, organizationId,
-                sessionStatus, getCurrentUserId(), PageRequest.of(page, Math.min(size, 50)));
+                sessionStatus, SecurityUtils.getCurrentUserId(), PageRequest.of(page, Math.min(size, 50)));
         return ResponseEntity.ok(PagedResponse.of(result.getContent(),
                 new PagedResponse.PageMeta(result.getTotalElements(), page, size, result.getTotalPages())));
     }
@@ -78,7 +75,7 @@ public class ProxyVoteSessionController {
     @Operation(summary = "投票セッション作成")
     public ResponseEntity<ApiResponse<SessionResponse>> createSession(
             @Valid @RequestBody CreateSessionRequest request) {
-        SessionResponse response = sessionService.createSession(request, getCurrentUserId());
+        SessionResponse response = sessionService.createSession(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -88,7 +85,7 @@ public class ProxyVoteSessionController {
     @GetMapping("/{id}")
     @Operation(summary = "セッション詳細")
     public ResponseEntity<ApiResponse<SessionResponse>> getSession(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(sessionService.getSession(id, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(sessionService.getSession(id, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -98,7 +95,7 @@ public class ProxyVoteSessionController {
     @Operation(summary = "セッション更新")
     public ResponseEntity<ApiResponse<SessionResponse>> updateSession(
             @PathVariable Long id, @Valid @RequestBody UpdateSessionRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(sessionService.updateSession(id, request, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(sessionService.updateSession(id, request, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -117,7 +114,7 @@ public class ProxyVoteSessionController {
     @PatchMapping("/{id}/open")
     @Operation(summary = "投票受付開始")
     public ResponseEntity<ApiResponse<SessionResponse>> openSession(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(sessionService.openSession(id, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(sessionService.openSession(id, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -126,7 +123,7 @@ public class ProxyVoteSessionController {
     @PatchMapping("/{id}/close")
     @Operation(summary = "投票締切")
     public ResponseEntity<ApiResponse<SessionResponse>> closeSession(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(sessionService.closeSession(id, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(sessionService.closeSession(id, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -136,7 +133,7 @@ public class ProxyVoteSessionController {
     @Operation(summary = "結果確定")
     public ResponseEntity<ApiResponse<FinalizeResponse>> finalizeSession(
             @PathVariable Long id, @RequestBody FinalizeRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(sessionService.finalizeSession(id, request, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(sessionService.finalizeSession(id, request, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -147,7 +144,7 @@ public class ProxyVoteSessionController {
     public ResponseEntity<ApiResponse<CastVoteResponse>> castVote(
             @PathVariable Long id, @Valid @RequestBody CastVoteRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(sessionService.castVote(id, request, getCurrentUserId())));
+                .body(ApiResponse.of(sessionService.castVote(id, request, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -157,7 +154,7 @@ public class ProxyVoteSessionController {
     @Operation(summary = "投票変更")
     public ResponseEntity<ApiResponse<CastVoteResponse>> updateVote(
             @PathVariable Long id, @Valid @RequestBody CastVoteRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(sessionService.updateVote(id, request, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(sessionService.updateVote(id, request, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -180,7 +177,7 @@ public class ProxyVoteSessionController {
             @RequestParam(defaultValue = "20") int size) {
         SessionStatus sessionStatus = status != null ? SessionStatus.valueOf(status) : null;
         Page<SessionListResponse> result = sessionService.getMyHistory(
-                getCurrentUserId(), sessionStatus, PageRequest.of(page, Math.min(size, 50)));
+                SecurityUtils.getCurrentUserId(), sessionStatus, PageRequest.of(page, Math.min(size, 50)));
         return ResponseEntity.ok(PagedResponse.of(result.getContent(),
                 new PagedResponse.PageMeta(result.getTotalElements(), page, size, result.getTotalPages())));
     }
@@ -202,6 +199,6 @@ public class ProxyVoteSessionController {
     public ResponseEntity<ApiResponse<SessionResponse>> cloneSession(
             @PathVariable Long id, @RequestBody CloneSessionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(sessionService.cloneSession(id, request, getCurrentUserId())));
+                .body(ApiResponse.of(sessionService.cloneSession(id, request, SecurityUtils.getCurrentUserId())));
     }
 }

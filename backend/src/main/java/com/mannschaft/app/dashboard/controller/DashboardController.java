@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ダッシュボードコントローラー。
@@ -44,14 +45,6 @@ public class DashboardController {
     private final DashboardWidgetService widgetService;
     private final ActivityFeedService activityFeedService;
 
-    /**
-     * 認証済みユーザーのIDを取得する。
-     * TODO: JWT Filter実装時に SecurityContext から取得するよう差し替える
-     */
-    private Long getAuthenticatedUserId() {
-        return 1L;
-    }
-
     // ============================================
     // 個人ダッシュボード
     // ============================================
@@ -64,7 +57,7 @@ public class DashboardController {
             description = "ログインユーザーの個人ダッシュボードを取得する。priority=CRITICALで第1段階ウィジェットのみ高速返却")
     public ResponseEntity<ApiResponse<PersonalDashboardResponse>> getPersonalDashboard(
             @Parameter(description = "取得優先度（CRITICAL / ALL）") @RequestParam(defaultValue = "ALL") String priority) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         PersonalDashboardResponse response = dashboardService.getPersonalDashboard(userId, priority);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -135,7 +128,7 @@ public class DashboardController {
     public ResponseEntity<ApiResponse<List<ActivityFeedResponse>>> getActivity(
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "10") Integer limit) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         // TODO: team_memberships から所属スコープIDを取得
         List<Long> scopeIds = List.of();
         List<ActivityFeedResponse> response = activityFeedService.getActivityFeed(userId, cursor, limit, scopeIds);
@@ -196,7 +189,7 @@ public class DashboardController {
     public ResponseEntity<ApiResponse<TeamDashboardResponse>> getTeamDashboard(
             @PathVariable Long teamId,
             @Parameter(description = "統計期間（TODAY / WEEK / MONTH）") @RequestParam(defaultValue = "WEEK") String statsPeriod) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         TeamDashboardResponse response = dashboardService.getTeamDashboard(userId, teamId, statsPeriod);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -209,7 +202,7 @@ public class DashboardController {
     public ResponseEntity<ApiResponse<OrgDashboardResponse>> getOrgDashboard(
             @PathVariable Long orgId,
             @Parameter(description = "統計期間（TODAY / WEEK / MONTH）") @RequestParam(defaultValue = "WEEK") String statsPeriod) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         OrgDashboardResponse response = dashboardService.getOrgDashboard(userId, orgId, statsPeriod);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -226,7 +219,7 @@ public class DashboardController {
     public ResponseEntity<ApiResponse<List<WidgetSettingResponse>>> getWidgetSettings(
             @RequestParam String scopeType,
             @RequestParam(required = false) Long scopeId) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         ScopeType parsed = widgetService.parseScopeType(scopeType);
         Long resolvedScopeId = widgetService.resolveScopeId(parsed, scopeId);
         // TODO: isAdmin判定。現時点では true で返却
@@ -241,7 +234,7 @@ public class DashboardController {
     @Operation(summary = "ウィジェット設定一括更新", description = "ウィジェットの表示/非表示・並び順を一括更新する")
     public ResponseEntity<ApiResponse<List<WidgetSettingResponse>>> updateWidgetSettings(
             @Valid @RequestBody UpdateWidgetSettingsRequest request) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         List<WidgetSettingResponse> response = widgetService.updateWidgetSettings(userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -254,7 +247,7 @@ public class DashboardController {
     public ResponseEntity<Void> resetWidgetSettings(
             @RequestParam String scopeType,
             @RequestParam(required = false) Long scopeId) {
-        Long userId = getAuthenticatedUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         ScopeType parsed = widgetService.parseScopeType(scopeType);
         Long resolvedScopeId = widgetService.resolveScopeId(parsed, scopeId);
         widgetService.resetWidgetSettings(userId, parsed, resolvedScopeId);

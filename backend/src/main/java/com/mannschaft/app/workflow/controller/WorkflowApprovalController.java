@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ワークフロー承認コントローラー。承認・却下APIを提供する。
@@ -26,10 +27,6 @@ public class WorkflowApprovalController {
 
     private final WorkflowApprovalService approvalService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 承認判断を行う。
@@ -40,7 +37,7 @@ public class WorkflowApprovalController {
     public ResponseEntity<ApiResponse<WorkflowRequestResponse>> decide(
             @PathVariable Long requestId,
             @Valid @RequestBody ApprovalDecisionRequest request) {
-        WorkflowRequestResponse response = approvalService.decide(requestId, getCurrentUserId(), request);
+        WorkflowRequestResponse response = approvalService.decide(requestId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

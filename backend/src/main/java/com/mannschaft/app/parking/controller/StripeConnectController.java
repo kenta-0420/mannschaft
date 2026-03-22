@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * Stripe Connect コントローラー（2 EP）。
@@ -25,21 +26,17 @@ public class StripeConnectController {
 
     private final StripeConnectService stripeConnectService;
 
-    private Long getCurrentUserId() {
-        return 1L;
-    }
-
     @PostMapping("/onboarding")
     @Operation(summary = "Stripe Connect オンボーディング開始")
     public ResponseEntity<ApiResponse<Map<String, String>>> startOnboarding() {
-        String url = stripeConnectService.startOnboarding(getCurrentUserId());
+        String url = stripeConnectService.startOnboarding(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(Map.of("onboardingUrl", url)));
     }
 
     @GetMapping("/status")
     @Operation(summary = "Stripe Connect ステータス取得")
     public ResponseEntity<ApiResponse<StripeConnectStatusResponse>> getStatus() {
-        StripeConnectStatusResponse result = stripeConnectService.getStatus(getCurrentUserId());
+        StripeConnectStatusResponse result = stripeConnectService.getStatus(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 }

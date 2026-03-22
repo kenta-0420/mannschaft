@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームフォルダコントローラー。チームスコープのフォルダCRUD APIを提供する。
@@ -33,10 +34,6 @@ public class TeamFolderController {
 
     private final SharedFolderService folderService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チームのルートフォルダ一覧を取得する。
@@ -85,7 +82,7 @@ public class TeamFolderController {
     public ResponseEntity<ApiResponse<FolderResponse>> createFolder(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateFolderRequest request) {
-        FolderResponse response = folderService.createTeamFolder(teamId, getCurrentUserId(), request);
+        FolderResponse response = folderService.createTeamFolder(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ユーザー用プロモーション・クーポンコントローラー。
@@ -34,17 +35,13 @@ public class UserPromotionController {
     private final PromotionDeliveryService deliveryService;
     private final CouponService couponService;
 
-    private Long getCurrentUserId() {
-        return 1L;
-    }
-
     @GetMapping("/api/v1/users/me/promotions")
     @Operation(summary = "受信プロモーション一覧")
     public ResponseEntity<PagedResponse<UserPromotionResponse>> listPromotions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<UserPromotionResponse> result = deliveryService.listByUser(
-                getCurrentUserId(), PageRequest.of(page, Math.min(size, 50)));
+                SecurityUtils.getCurrentUserId(), PageRequest.of(page, Math.min(size, 50)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -53,14 +50,14 @@ public class UserPromotionController {
     @PatchMapping("/api/v1/users/me/promotions/{deliveryId}/read")
     @Operation(summary = "既読マーク")
     public ResponseEntity<Void> markAsRead(@PathVariable Long deliveryId) {
-        deliveryService.markAsRead(getCurrentUserId(), deliveryId);
+        deliveryService.markAsRead(SecurityUtils.getCurrentUserId(), deliveryId);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/api/v1/users/me/coupons")
     @Operation(summary = "保有クーポン一覧")
     public ResponseEntity<ApiResponse<List<UserCouponResponse>>> listCoupons() {
-        return ResponseEntity.ok(ApiResponse.of(couponService.listUserCoupons(getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(couponService.listUserCoupons(SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/api/v1/users/me/coupons/{distributionId}/redeem")
@@ -68,7 +65,7 @@ public class UserPromotionController {
     public ResponseEntity<Void> redeemCoupon(
             @PathVariable Long distributionId,
             @RequestBody RedeemCouponRequest request) {
-        couponService.redeem(getCurrentUserId(), distributionId, request);
+        couponService.redeem(SecurityUtils.getCurrentUserId(), distributionId, request);
         return ResponseEntity.noContent().build();
     }
 }

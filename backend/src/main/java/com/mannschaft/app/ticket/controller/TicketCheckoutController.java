@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * Stripe Checkout コントローラー。チケット購入の決済フローを提供する。
@@ -23,10 +24,6 @@ public class TicketCheckoutController {
 
     private final TicketBookService bookService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * Stripe Checkout Session を作成する（MEMBER / SUPPORTER）。
@@ -37,7 +34,7 @@ public class TicketCheckoutController {
     public ResponseEntity<ApiResponse<CheckoutResponse>> createCheckout(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        CheckoutResponse response = bookService.createCheckout(teamId, id, getCurrentUserId());
+        CheckoutResponse response = bookService.createCheckout(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

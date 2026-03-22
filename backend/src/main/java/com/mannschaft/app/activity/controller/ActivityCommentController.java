@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 活動コメントコントローラー。コメントのCRUD APIを提供する。
@@ -33,10 +34,6 @@ public class ActivityCommentController {
 
     private final ActivityCommentService commentService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * コメント一覧を取得する。
@@ -58,7 +55,7 @@ public class ActivityCommentController {
     public ResponseEntity<ApiResponse<ActivityCommentResponse>> createComment(
             @PathVariable Long activityId,
             @Valid @RequestBody CreateCommentRequest request) {
-        ActivityCommentResponse response = commentService.createComment(activityId, getCurrentUserId(), request);
+        ActivityCommentResponse response = commentService.createComment(activityId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -72,7 +69,7 @@ public class ActivityCommentController {
             @PathVariable Long activityId,
             @PathVariable Long commentId,
             @Valid @RequestBody UpdateCommentRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(commentService.updateComment(commentId, getCurrentUserId(), request)));
+        return ResponseEntity.ok(ApiResponse.of(commentService.updateComment(commentId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     /**

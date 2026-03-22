@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織コンテンツゲートコントローラー。組織内コンテンツのアクセスゲート管理を提供する。
@@ -34,9 +35,6 @@ public class OrganizationContentPaymentGateController {
 
     private final ContentPaymentGateService contentPaymentGateService;
 
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping
     @Operation(summary = "組織コンテンツゲート一覧")
@@ -58,7 +56,7 @@ public class OrganizationContentPaymentGateController {
             @PathVariable Long id,
             @Valid @RequestBody ContentPaymentGateRequest request) {
         ContentGateSetResponse response = contentPaymentGateService.setOrganizationContentGates(
-                id, getCurrentUserId(), request);
+                id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

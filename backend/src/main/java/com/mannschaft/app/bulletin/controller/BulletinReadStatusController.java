@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 掲示板既読ステータスコントローラー。既読マーク・既読者一覧APIを提供する。
@@ -28,10 +29,6 @@ public class BulletinReadStatusController {
 
     private final BulletinReadStatusService readStatusService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * スレッドを既読にする。
@@ -44,7 +41,7 @@ public class BulletinReadStatusController {
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
         ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
-        readStatusService.markAsRead(type, scopeId, threadId, getCurrentUserId());
+        readStatusService.markAsRead(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 

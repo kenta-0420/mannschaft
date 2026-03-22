@@ -39,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム施設管理コントローラー。施設CRUD・ルール・料金・備品・空き状況APIを提供する。
@@ -55,10 +56,6 @@ public class TeamFacilityController {
     private final FacilityRuleService ruleService;
     private final FacilityEquipmentService equipmentService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チームの施設一覧を取得する。
@@ -85,7 +82,7 @@ public class TeamFacilityController {
     public ResponseEntity<ApiResponse<FacilityResponse>> createFacility(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateFacilityRequest request) {
-        FacilityResponse response = facilityService.createFacility(SCOPE_TYPE, teamId, getCurrentUserId(), request);
+        FacilityResponse response = facilityService.createFacility(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -99,7 +96,7 @@ public class TeamFacilityController {
             @PathVariable Long teamId,
             @Valid @RequestBody BulkCreateFacilityRequest request) {
         List<FacilityResponse> responses = facilityService.bulkCreateFacilities(
-                SCOPE_TYPE, teamId, getCurrentUserId(), request.getFacilities());
+                SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId(), request.getFacilities());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(responses));
     }
 

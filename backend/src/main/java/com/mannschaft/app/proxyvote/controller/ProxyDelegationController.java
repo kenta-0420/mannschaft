@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 委任状コントローラー。委任状の提出・取り下げ・承認/却下・出席状況APIを提供する。
@@ -32,10 +33,6 @@ public class ProxyDelegationController {
 
     private final ProxyDelegationService delegationService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 委任状を提出する。
@@ -45,7 +42,7 @@ public class ProxyDelegationController {
     public ResponseEntity<ApiResponse<DelegationResponse>> delegate(
             @PathVariable Long id, @RequestBody DelegateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(delegationService.delegate(id, request, getCurrentUserId())));
+                .body(ApiResponse.of(delegationService.delegate(id, request, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -54,7 +51,7 @@ public class ProxyDelegationController {
     @DeleteMapping("/{id}/delegate")
     @Operation(summary = "委任状取り下げ")
     public ResponseEntity<Void> cancelDelegation(@PathVariable Long id) {
-        delegationService.cancelDelegation(id, getCurrentUserId());
+        delegationService.cancelDelegation(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -66,7 +63,7 @@ public class ProxyDelegationController {
     public ResponseEntity<ApiResponse<DelegationResponse>> reviewDelegation(
             @PathVariable Long delegationId, @Valid @RequestBody ReviewDelegationRequest request) {
         return ResponseEntity.ok(ApiResponse.of(
-                delegationService.reviewDelegation(delegationId, request, getCurrentUserId())));
+                delegationService.reviewDelegation(delegationId, request, SecurityUtils.getCurrentUserId())));
     }
 
     /**

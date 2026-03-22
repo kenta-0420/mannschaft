@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 安否確認テンプレートコントローラー。テンプレートの取得・作成・更新APIを提供する。
@@ -33,10 +34,6 @@ public class SafetyTemplateController {
 
     private final SafetyTemplateService templateService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 利用可能なテンプレート一覧を取得する。
@@ -71,7 +68,7 @@ public class SafetyTemplateController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<SafetyTemplateResponse>> createTemplate(
             @Valid @RequestBody CreateTemplateRequest request) {
-        SafetyTemplateResponse response = templateService.createTemplate(request, getCurrentUserId());
+        SafetyTemplateResponse response = templateService.createTemplate(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

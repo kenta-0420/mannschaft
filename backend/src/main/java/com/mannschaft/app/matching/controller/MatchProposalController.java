@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 応募コントローラー。応募のCRUD・承諾・拒否・取り下げ・キャンセルAPIを提供する。
@@ -39,10 +40,6 @@ public class MatchProposalController {
 
     private final MatchProposalService proposalService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 募集への応募。
@@ -83,7 +80,7 @@ public class MatchProposalController {
     public ResponseEntity<ApiResponse<AcceptProposalResponse>> acceptProposal(
             @PathVariable Long id,
             @RequestBody(required = false) AcceptProposalRequest request) {
-        Long currentTeamId = getCurrentUserId();
+        Long currentTeamId = SecurityUtils.getCurrentUserId();
         AcceptProposalResponse response = proposalService.acceptProposal(id, currentTeamId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -97,7 +94,7 @@ public class MatchProposalController {
     public ResponseEntity<ApiResponse<ProposalStatusResponse>> rejectProposal(
             @PathVariable Long id,
             @RequestBody(required = false) StatusReasonRequest request) {
-        Long currentTeamId = getCurrentUserId();
+        Long currentTeamId = SecurityUtils.getCurrentUserId();
         String reason = request != null ? request.getStatusReason() : null;
         ProposalStatusResponse response = proposalService.rejectProposal(id, currentTeamId, reason);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -112,7 +109,7 @@ public class MatchProposalController {
     public ResponseEntity<ApiResponse<ProposalStatusResponse>> withdrawProposal(
             @PathVariable Long id,
             @RequestBody(required = false) StatusReasonRequest request) {
-        Long currentTeamId = getCurrentUserId();
+        Long currentTeamId = SecurityUtils.getCurrentUserId();
         String reason = request != null ? request.getStatusReason() : null;
         ProposalStatusResponse response = proposalService.withdrawProposal(id, currentTeamId, reason);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -127,7 +124,7 @@ public class MatchProposalController {
     public ResponseEntity<ApiResponse<ProposalStatusResponse>> cancelProposal(
             @PathVariable Long id,
             @Valid @RequestBody CancelProposalRequest request) {
-        Long currentTeamId = getCurrentUserId();
+        Long currentTeamId = SecurityUtils.getCurrentUserId();
         ProposalStatusResponse response = proposalService.cancelProposal(id, currentTeamId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -139,7 +136,7 @@ public class MatchProposalController {
     @Operation(summary = "合意キャンセルの承認")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "承認成功")
     public ResponseEntity<ApiResponse<AgreeCancelResponse>> agreeCancellation(@PathVariable Long id) {
-        Long currentTeamId = getCurrentUserId();
+        Long currentTeamId = SecurityUtils.getCurrentUserId();
         AgreeCancelResponse response = proposalService.agreeCancellation(id, currentTeamId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

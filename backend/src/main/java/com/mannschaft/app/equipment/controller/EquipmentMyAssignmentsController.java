@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 自分の貸出一覧コントローラー。全チーム・組織横断で自分が借りている備品を取得する。
@@ -25,10 +26,6 @@ public class EquipmentMyAssignmentsController {
 
     private final EquipmentAssignmentService assignmentService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 自分が借りている備品一覧を取得する（全チーム・組織横断）。
@@ -39,7 +36,7 @@ public class EquipmentMyAssignmentsController {
     public ResponseEntity<PagedResponse<AssignmentResponse>> getMyAssignments(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<AssignmentResponse> result = assignmentService.getMyAssignments(getCurrentUserId(), PageRequest.of(page, size));
+        Page<AssignmentResponse> result = assignmentService.getMyAssignments(SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));

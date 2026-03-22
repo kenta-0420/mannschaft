@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * SNSフィード設定コントローラー（チーム・組織共用）。
@@ -48,7 +49,7 @@ public class SnsFeedConfigController {
     public ApiResponse<SnsFeedConfigResponse> createForTeam(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateSnsFeedConfigRequest request) {
-        Long userId = 0L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(
                 snsFeedConfigService.create(ScopeType.TEAM, teamId, userId, request));
     }
@@ -100,7 +101,7 @@ public class SnsFeedConfigController {
     public ApiResponse<SnsFeedConfigResponse> createForOrg(
             @PathVariable Long orgId,
             @Valid @RequestBody CreateSnsFeedConfigRequest request) {
-        Long userId = 0L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(
                 snsFeedConfigService.create(ScopeType.ORGANIZATION, orgId, userId, request));
     }

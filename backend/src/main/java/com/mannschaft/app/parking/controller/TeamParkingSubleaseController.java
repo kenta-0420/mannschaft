@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームサブリースコントローラー（10 EP）。
@@ -32,10 +33,6 @@ public class TeamParkingSubleaseController {
     private final ParkingSpaceService spaceService;
 
     private static final String SCOPE_TYPE = ParkingScopeType.TEAM.name();
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping
     @Operation(summary = "チームサブリース一覧")
@@ -58,7 +55,7 @@ public class TeamParkingSubleaseController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreateSubleaseRequest request) {
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
-        SubleaseResponse result = subleaseService.create(spaceIds, getCurrentUserId(), request);
+        SubleaseResponse result = subleaseService.create(spaceIds, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
@@ -95,7 +92,7 @@ public class TeamParkingSubleaseController {
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody ApplySubleaseRequest request) {
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
-        SubleaseApplicationResponse result = subleaseService.apply(spaceIds, id, getCurrentUserId(), request);
+        SubleaseApplicationResponse result = subleaseService.apply(spaceIds, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 

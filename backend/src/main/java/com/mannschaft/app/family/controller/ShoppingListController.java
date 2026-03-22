@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * お買い物リストコントローラー。共有お買い物リストのCRUD APIを提供する。
@@ -36,10 +37,6 @@ public class ShoppingListController {
 
     private final ShoppingListService shoppingListService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping
     @Operation(summary = "お買い物リスト一覧")
@@ -55,7 +52,7 @@ public class ShoppingListController {
     public ResponseEntity<ApiResponse<ShoppingListResponse>> createList(
             @PathVariable Long teamId, @Valid @RequestBody ShoppingListRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(shoppingListService.createList(teamId, getCurrentUserId(), request));
+                .body(shoppingListService.createList(teamId, SecurityUtils.getCurrentUserId(), request));
     }
 
     @PutMapping("/{id}")
@@ -70,7 +67,7 @@ public class ShoppingListController {
     @Operation(summary = "お買い物リスト削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteList(@PathVariable Long teamId, @PathVariable Long id) {
-        shoppingListService.deleteList(teamId, id, getCurrentUserId());
+        shoppingListService.deleteList(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -87,7 +84,7 @@ public class ShoppingListController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "コピー成功")
     public ResponseEntity<ApiResponse<List<ShoppingItemResponse>>> copyFromTemplate(
             @PathVariable Long teamId, @PathVariable Long id, @RequestParam Long templateId) {
-        return ResponseEntity.ok(shoppingListService.copyFromTemplate(teamId, id, templateId, getCurrentUserId()));
+        return ResponseEntity.ok(shoppingListService.copyFromTemplate(teamId, id, templateId, SecurityUtils.getCurrentUserId()));
     }
 
     @GetMapping("/{id}/items")
@@ -104,7 +101,7 @@ public class ShoppingListController {
     public ResponseEntity<ApiResponse<ShoppingItemResponse>> addItem(
             @PathVariable Long teamId, @PathVariable Long id, @Valid @RequestBody ShoppingItemRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(shoppingListService.addItem(teamId, id, getCurrentUserId(), request));
+                .body(shoppingListService.addItem(teamId, id, SecurityUtils.getCurrentUserId(), request));
     }
 
     @PutMapping("/{id}/items/{itemId}")
@@ -130,7 +127,7 @@ public class ShoppingListController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ShoppingItemResponse>> toggleCheck(
             @PathVariable Long teamId, @PathVariable Long id, @PathVariable Long itemId) {
-        return ResponseEntity.ok(shoppingListService.toggleCheck(teamId, id, itemId, getCurrentUserId()));
+        return ResponseEntity.ok(shoppingListService.toggleCheck(teamId, id, itemId, SecurityUtils.getCurrentUserId()));
     }
 
     @DeleteMapping("/{id}/items/checked")

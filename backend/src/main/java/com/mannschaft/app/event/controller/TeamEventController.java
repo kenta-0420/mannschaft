@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームイベントコントローラー。チームスコープのイベントCRUD・ステータス管理APIを提供する。
@@ -38,10 +39,6 @@ public class TeamEventController {
 
     private final EventService eventService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チームのイベント一覧を取得する。
@@ -84,7 +81,7 @@ public class TeamEventController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreateEventRequest request) {
         EventDetailResponse response = eventService.createEvent(
-                EventScopeType.TEAM, teamId, getCurrentUserId(), request);
+                EventScopeType.TEAM, teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

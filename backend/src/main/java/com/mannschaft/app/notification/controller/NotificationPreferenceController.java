@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 通知設定コントローラー。通知設定・通知種別設定の管理APIを提供する。
@@ -30,10 +31,6 @@ public class NotificationPreferenceController {
 
     private final NotificationPreferenceService preferenceService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 通知設定一覧を取得する。
@@ -42,7 +39,7 @@ public class NotificationPreferenceController {
     @Operation(summary = "通知設定一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<PreferenceResponse>>> listPreferences() {
-        List<PreferenceResponse> responses = preferenceService.listPreferences(getCurrentUserId());
+        List<PreferenceResponse> responses = preferenceService.listPreferences(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -54,7 +51,7 @@ public class NotificationPreferenceController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<PreferenceResponse>> updatePreference(
             @Valid @RequestBody PreferenceUpdateRequest request) {
-        PreferenceResponse response = preferenceService.updatePreference(getCurrentUserId(), request);
+        PreferenceResponse response = preferenceService.updatePreference(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -65,7 +62,7 @@ public class NotificationPreferenceController {
     @Operation(summary = "通知種別設定一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TypePreferenceResponse>>> listTypePreferences() {
-        List<TypePreferenceResponse> responses = preferenceService.listTypePreferences(getCurrentUserId());
+        List<TypePreferenceResponse> responses = preferenceService.listTypePreferences(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -78,7 +75,7 @@ public class NotificationPreferenceController {
     public ResponseEntity<ApiResponse<List<TypePreferenceResponse>>> bulkUpdateTypePreferences(
             @Valid @RequestBody TypePreferenceBulkUpdateRequest request) {
         List<TypePreferenceResponse> responses =
-                preferenceService.bulkUpdateTypePreferences(getCurrentUserId(), request);
+                preferenceService.bulkUpdateTypePreferences(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 }

@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 募集投稿コントローラー。募集のCRUD・検索APIを提供する。
@@ -36,10 +37,6 @@ public class MatchRequestController {
 
     private final MatchRequestService requestService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 募集一覧（パブリック検索）。
@@ -58,8 +55,7 @@ public class MatchRequestController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        // TODO: currentTeamIdをセキュリティコンテキストから取得
-        Long currentTeamId = getCurrentUserId();
+        Long currentTeamId = SecurityUtils.getCurrentUserId();
 
         Page<MatchRequestResponse> result;
         if (keyword != null && !keyword.isBlank()) {
@@ -81,7 +77,7 @@ public class MatchRequestController {
     @Operation(summary = "募集詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<MatchRequestResponse>> getRequest(@PathVariable Long id) {
-        Long currentTeamId = getCurrentUserId();
+        Long currentTeamId = SecurityUtils.getCurrentUserId();
         MatchRequestResponse response = requestService.getRequest(id, currentTeamId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -95,7 +91,7 @@ public class MatchRequestController {
     public ResponseEntity<ApiResponse<MatchRequestResponse>> updateRequest(
             @PathVariable Long id,
             @Valid @RequestBody CreateMatchRequestRequest request) {
-        Long currentTeamId = getCurrentUserId();
+        Long currentTeamId = SecurityUtils.getCurrentUserId();
         MatchRequestResponse response = requestService.updateRequest(id, currentTeamId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -107,7 +103,7 @@ public class MatchRequestController {
     @Operation(summary = "募集の取り下げ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteRequest(@PathVariable Long id) {
-        Long currentTeamId = getCurrentUserId();
+        Long currentTeamId = SecurityUtils.getCurrentUserId();
         requestService.deleteRequest(id, currentTeamId);
         return ResponseEntity.noContent().build();
     }

@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 車両管理コントローラー。ユーザー自身の車両CRUD（4 EP）。
@@ -33,22 +34,18 @@ public class VehicleController {
 
     private final RegisteredVehicleService vehicleService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping
     @Operation(summary = "車両一覧")
     public ResponseEntity<ApiResponse<List<VehicleResponse>>> list() {
-        List<VehicleResponse> result = vehicleService.listByUser(getCurrentUserId());
+        List<VehicleResponse> result = vehicleService.listByUser(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
     @PostMapping
     @Operation(summary = "車両登録")
     public ResponseEntity<ApiResponse<VehicleResponse>> create(@Valid @RequestBody CreateVehicleRequest request) {
-        VehicleResponse result = vehicleService.create(getCurrentUserId(), request);
+        VehicleResponse result = vehicleService.create(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
@@ -56,14 +53,14 @@ public class VehicleController {
     @Operation(summary = "車両更新")
     public ResponseEntity<ApiResponse<VehicleResponse>> update(@PathVariable Long id,
                                                                 @Valid @RequestBody UpdateVehicleRequest request) {
-        VehicleResponse result = vehicleService.update(getCurrentUserId(), id, request);
+        VehicleResponse result = vehicleService.update(SecurityUtils.getCurrentUserId(), id, request);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "車両削除")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        vehicleService.delete(getCurrentUserId(), id);
+        vehicleService.delete(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.noContent().build();
     }
 }

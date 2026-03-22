@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 回数券商品コントローラー。商品のCRUD APIを提供する。
@@ -34,10 +35,6 @@ public class TicketProductController {
 
     private final TicketProductService productService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 商品一覧を取得する。
@@ -62,7 +59,7 @@ public class TicketProductController {
     public ResponseEntity<ApiResponse<TicketProductResponse>> createProduct(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateTicketProductRequest request) {
-        TicketProductResponse response = productService.createProduct(teamId, getCurrentUserId(), request);
+        TicketProductResponse response = productService.createProduct(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

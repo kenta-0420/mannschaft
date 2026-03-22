@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ファイルコメントコントローラー。ファイルに対するコメントCRUD APIを提供する。
@@ -33,10 +34,6 @@ public class FileCommentController {
 
     private final SharedFileCommentService commentService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * ファイルのコメント一覧を取得する。
@@ -59,7 +56,7 @@ public class FileCommentController {
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
             @PathVariable Long fileId,
             @Valid @RequestBody CreateCommentRequest request) {
-        CommentResponse response = commentService.createComment(fileId, getCurrentUserId(), request);
+        CommentResponse response = commentService.createComment(fileId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

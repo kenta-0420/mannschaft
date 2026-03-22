@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム区画申請コントローラー（6 EP）。
@@ -34,10 +35,6 @@ public class TeamParkingApplicationController {
     private final ParkingSpaceService spaceService;
 
     private static final String SCOPE_TYPE = ParkingScopeType.TEAM.name();
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping
     @Operation(summary = "チーム申請一覧")
@@ -60,7 +57,7 @@ public class TeamParkingApplicationController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreateApplicationRequest request) {
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
-        ApplicationResponse result = applicationService.create(spaceIds, getCurrentUserId(), request);
+        ApplicationResponse result = applicationService.create(spaceIds, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
@@ -84,7 +81,7 @@ public class TeamParkingApplicationController {
     @DeleteMapping("/{id}")
     @Operation(summary = "チーム申請取消")
     public ResponseEntity<Void> cancel(@PathVariable Long teamId, @PathVariable Long id) {
-        applicationService.cancel(id, getCurrentUserId());
+        applicationService.cancel(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

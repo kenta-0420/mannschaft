@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * タイムラインブックマークコントローラー。ブックマークの追加・削除・一覧取得APIを提供する。
@@ -29,10 +30,6 @@ public class TimelineBookmarkController {
 
     private final TimelineBookmarkService bookmarkService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 投稿をブックマークする。
@@ -41,7 +38,7 @@ public class TimelineBookmarkController {
     @Operation(summary = "ブックマーク追加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "追加成功")
     public ResponseEntity<ApiResponse<BookmarkResponse>> addBookmark(@PathVariable Long postId) {
-        BookmarkResponse response = bookmarkService.addBookmark(postId, getCurrentUserId());
+        BookmarkResponse response = bookmarkService.addBookmark(postId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -52,7 +49,7 @@ public class TimelineBookmarkController {
     @Operation(summary = "ブックマーク削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> removeBookmark(@PathVariable Long postId) {
-        bookmarkService.removeBookmark(postId, getCurrentUserId());
+        bookmarkService.removeBookmark(postId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -64,7 +61,7 @@ public class TimelineBookmarkController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<BookmarkResponse>>> getBookmarks(
             @RequestParam(defaultValue = "20") int size) {
-        List<BookmarkResponse> bookmarks = bookmarkService.getBookmarks(getCurrentUserId(), size);
+        List<BookmarkResponse> bookmarks = bookmarkService.getBookmarks(SecurityUtils.getCurrentUserId(), size);
         return ResponseEntity.ok(ApiResponse.of(bookmarks));
     }
 }

@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 予約営業時間コントローラー。営業時間・ブロック時間・設定管理APIを提供する。
@@ -39,10 +40,6 @@ public class ReservationBusinessHourController {
 
     private final ReservationBusinessHourService businessHourService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 営業時間設定を取得する。
@@ -92,7 +89,7 @@ public class ReservationBusinessHourController {
     public ResponseEntity<ApiResponse<BlockedTimeResponse>> createBlockedTime(
             @PathVariable Long teamId,
             @Valid @RequestBody BlockedTimeRequest request) {
-        BlockedTimeResponse response = businessHourService.createBlockedTime(teamId, request, getCurrentUserId());
+        BlockedTimeResponse response = businessHourService.createBlockedTime(teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

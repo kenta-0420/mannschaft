@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * タイムライン投稿コントローラー。投稿のCRUD・リプライ・ピン留めAPIを提供する。
@@ -35,10 +36,6 @@ public class TimelinePostController {
 
     private final TimelinePostService postService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 投稿を作成する。
@@ -48,7 +45,7 @@ public class TimelinePostController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<PostResponse>> createPost(
             @Valid @RequestBody CreatePostRequest request) {
-        PostResponse response = postService.createPost(request, getCurrentUserId());
+        PostResponse response = postService.createPost(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -59,7 +56,7 @@ public class TimelinePostController {
     @Operation(summary = "投稿詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<PostDetailResponse>> getPost(@PathVariable Long id) {
-        PostDetailResponse response = postService.getPostDetail(id, getCurrentUserId());
+        PostDetailResponse response = postService.getPostDetail(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -72,7 +69,7 @@ public class TimelinePostController {
     public ResponseEntity<ApiResponse<PostResponse>> updatePost(
             @PathVariable Long id,
             @Valid @RequestBody UpdatePostRequest request) {
-        PostResponse response = postService.updatePost(id, request, getCurrentUserId());
+        PostResponse response = postService.updatePost(id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -83,7 +80,7 @@ public class TimelinePostController {
     @Operation(summary = "投稿削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePost(@PathVariable Long id) {
-        postService.deletePost(id, getCurrentUserId());
+        postService.deletePost(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -109,7 +106,7 @@ public class TimelinePostController {
     public ResponseEntity<ApiResponse<PostResponse>> togglePin(
             @PathVariable Long id,
             @RequestParam boolean pinned) {
-        PostResponse response = postService.togglePin(id, pinned, getCurrentUserId());
+        PostResponse response = postService.togglePin(id, pinned, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

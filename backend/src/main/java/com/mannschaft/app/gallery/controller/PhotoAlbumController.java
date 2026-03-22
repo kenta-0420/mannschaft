@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 写真アルバムコントローラー。アルバムのCRUD・写真アップロード・ダウンロードAPIを提供する。
@@ -44,10 +45,6 @@ public class PhotoAlbumController {
     private final PhotoAlbumService albumService;
     private final PhotoService photoService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * アルバム一覧を取得する。
@@ -89,7 +86,7 @@ public class PhotoAlbumController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<AlbumResponse>> createAlbum(
             @Valid @RequestBody CreateAlbumRequest request) {
-        AlbumResponse response = albumService.createAlbum(getCurrentUserId(), request);
+        AlbumResponse response = albumService.createAlbum(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -126,7 +123,7 @@ public class PhotoAlbumController {
     public ResponseEntity<ApiResponse<UploadPhotosResponse>> uploadPhotos(
             @PathVariable Long id,
             @Valid @RequestBody UploadPhotosRequest request) {
-        UploadPhotosResponse response = photoService.uploadPhotos(id, getCurrentUserId(), request);
+        UploadPhotosResponse response = photoService.uploadPhotos(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

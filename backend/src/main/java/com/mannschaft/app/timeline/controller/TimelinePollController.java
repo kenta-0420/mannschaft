@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * タイムライン投票コントローラー。投票・投票結果取得APIを提供する。
@@ -27,10 +28,6 @@ public class TimelinePollController {
 
     private final TimelinePollService pollService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 投票する。
@@ -41,7 +38,7 @@ public class TimelinePollController {
     public ResponseEntity<ApiResponse<PollResponse>> vote(
             @PathVariable Long postId,
             @Valid @RequestBody PollVoteRequest request) {
-        PollResponse response = pollService.vote(postId, request.getOptionId(), getCurrentUserId());
+        PollResponse response = pollService.vote(postId, request.getOptionId(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -52,7 +49,7 @@ public class TimelinePollController {
     @Operation(summary = "投票結果取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<PollResponse>> getPoll(@PathVariable Long postId) {
-        PollResponse response = pollService.getPollByPostId(postId, getCurrentUserId());
+        PollResponse response = pollService.getPollByPostId(postId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

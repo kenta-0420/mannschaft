@@ -34,6 +34,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム会員証コントローラー。チーム単位の会員証一覧・チェックイン履歴・拠点管理・統計APIを提供する。
@@ -48,10 +49,6 @@ public class TeamMemberCardController {
     private final CheckinLocationService locationService;
     private final CheckinStatsService statsService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チームの会員証一覧を取得する。
@@ -118,7 +115,7 @@ public class TeamMemberCardController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreateCheckinLocationRequest request) {
         ApiResponse<CheckinLocationResponse> response =
-                locationService.createLocation(ScopeType.TEAM, teamId, request, getCurrentUserId());
+                locationService.createLocation(ScopeType.TEAM, teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

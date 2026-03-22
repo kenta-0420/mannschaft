@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 掲示板スレッドコントローラー。スレッドのCRUD・検索・状態管理APIを提供する。
@@ -36,10 +37,6 @@ public class BulletinThreadController {
 
     private final BulletinThreadService threadService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * スレッド一覧を取得する。
@@ -110,7 +107,7 @@ public class BulletinThreadController {
             @PathVariable Long scopeId,
             @Valid @RequestBody CreateThreadRequest request) {
         ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
-        ThreadResponse response = threadService.createThread(type, scopeId, getCurrentUserId(), request);
+        ThreadResponse response = threadService.createThread(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -126,7 +123,7 @@ public class BulletinThreadController {
             @PathVariable Long threadId,
             @Valid @RequestBody UpdateThreadRequest request) {
         ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
-        ThreadResponse response = threadService.updateThread(type, scopeId, threadId, getCurrentUserId(), request);
+        ThreadResponse response = threadService.updateThread(type, scopeId, threadId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

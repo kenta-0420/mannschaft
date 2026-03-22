@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * LINE BOT設定管理コントローラー（チーム・組織共用）。
@@ -42,8 +43,7 @@ public class LineBotConfigController {
     public ApiResponse<LineBotConfigResponse> createForTeam(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateLineBotConfigRequest request) {
-        // TODO: 認証情報からuserIdを取得
-        Long userId = 0L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(lineBotConfigService.create(ScopeType.TEAM, teamId, userId, request));
     }
 
@@ -112,7 +112,7 @@ public class LineBotConfigController {
     public ApiResponse<LineBotConfigResponse> createForOrg(
             @PathVariable Long orgId,
             @Valid @RequestBody CreateLineBotConfigRequest request) {
-        Long userId = 0L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(
                 lineBotConfigService.create(ScopeType.ORGANIZATION, orgId, userId, request));
     }

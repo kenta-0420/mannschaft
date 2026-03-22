@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織居住者管理コントローラー。
@@ -32,10 +33,6 @@ import java.util.List;
 public class OrgResidentController {
 
     private final ResidentRegistryService residentService;
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/api/v1/organizations/{orgId}/dwelling-units/{unitId}/residents")
     @Operation(summary = "居住者一覧")
@@ -71,7 +68,7 @@ public class OrgResidentController {
     @Operation(summary = "居住者確認")
     public ResponseEntity<ApiResponse<ResidentResponse>> verify(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(residentService.verify(id, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(residentService.verify(id, SecurityUtils.getCurrentUserId())));
     }
 
     @PatchMapping("/api/v1/organizations/{orgId}/residents/{id}/move-out")

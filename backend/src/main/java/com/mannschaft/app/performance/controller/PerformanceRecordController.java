@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.PrintWriter;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * パフォーマンス記録コントローラー。記録のCRUD・一括入力・エクスポートAPIを提供する。
@@ -44,10 +45,6 @@ public class PerformanceRecordController {
     private final PerformanceRecordService recordService;
     private final PerformanceExportService exportService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * パフォーマンス記録を入力する。
@@ -58,7 +55,7 @@ public class PerformanceRecordController {
     public ResponseEntity<ApiResponse<RecordResponse>> createRecord(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateRecordRequest request) {
-        RecordResponse response = recordService.createRecord(teamId, getCurrentUserId(), request);
+        RecordResponse response = recordService.createRecord(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -98,7 +95,7 @@ public class PerformanceRecordController {
     public ResponseEntity<ApiResponse<BulkRecordResponse>> createBulkRecords(
             @PathVariable Long teamId,
             @Valid @RequestBody BulkRecordRequest request) {
-        BulkRecordResponse response = recordService.createBulkRecords(teamId, getCurrentUserId(), request);
+        BulkRecordResponse response = recordService.createBulkRecords(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -111,7 +108,7 @@ public class PerformanceRecordController {
     public ResponseEntity<ApiResponse<RecordResponse>> createSelfRecord(
             @PathVariable Long teamId,
             @Valid @RequestBody SelfRecordRequest request) {
-        RecordResponse response = recordService.createSelfRecord(teamId, getCurrentUserId(), request);
+        RecordResponse response = recordService.createSelfRecord(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ファイル共有リンクコントローラー。外部共有リンク管理APIを提供する。
@@ -33,10 +34,6 @@ public class FileLinkController {
 
     private final SharedFileLinkService linkService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * ファイルの共有リンク一覧を取得する。
@@ -59,7 +56,7 @@ public class FileLinkController {
     public ResponseEntity<ApiResponse<LinkResponse>> createLink(
             @PathVariable Long fileId,
             @Valid @RequestBody CreateLinkRequest request) {
-        LinkResponse response = linkService.createLink(fileId, getCurrentUserId(), request);
+        LinkResponse response = linkService.createLink(fileId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

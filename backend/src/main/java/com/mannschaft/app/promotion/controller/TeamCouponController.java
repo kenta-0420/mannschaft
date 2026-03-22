@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームクーポン管理コントローラー。
@@ -32,10 +33,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class TeamCouponController {
 
     private final CouponService couponService;
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/api/v1/teams/{teamId}/coupons")
     @Operation(summary = "クーポン一覧")
@@ -55,7 +52,7 @@ public class TeamCouponController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreateCouponRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.of(couponService.create("TEAM", teamId, getCurrentUserId(), request)));
+                ApiResponse.of(couponService.create("TEAM", teamId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @GetMapping("/api/v1/teams/{teamId}/coupons/{id}")

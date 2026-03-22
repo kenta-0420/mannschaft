@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * モデレーション管理者コントローラー。通報レビュー・一覧取得APIを管理者向けに提供する。
@@ -29,10 +30,6 @@ public class ModerationAdminController {
     private final ContentReportService reportService;
     private final ReportActionService actionService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 未対応の通報一覧を取得する。
@@ -64,7 +61,7 @@ public class ModerationAdminController {
     @Operation(summary = "通報レビュー開始")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "レビュー開始成功")
     public ResponseEntity<ApiResponse<ReportResponse>> startReview(@PathVariable Long id) {
-        actionService.startReview(id, getCurrentUserId());
+        actionService.startReview(id, SecurityUtils.getCurrentUserId());
         ReportResponse response = reportService.getReport(id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

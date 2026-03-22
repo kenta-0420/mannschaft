@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * タイムラインリアクションコントローラー。リアクションの追加・削除・集計APIを提供する。
@@ -33,10 +34,6 @@ public class TimelineReactionController {
 
     private final TimelineReactionService reactionService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * リアクションを追加する。
@@ -47,7 +44,7 @@ public class TimelineReactionController {
     public ResponseEntity<ApiResponse<ReactionResponse>> addReaction(
             @PathVariable Long postId,
             @Valid @RequestBody ReactionRequest request) {
-        ReactionResponse response = reactionService.addReaction(postId, request.getEmoji(), getCurrentUserId());
+        ReactionResponse response = reactionService.addReaction(postId, request.getEmoji(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -60,7 +57,7 @@ public class TimelineReactionController {
     public ResponseEntity<Void> removeReaction(
             @PathVariable Long postId,
             @RequestParam String emoji) {
-        reactionService.removeReaction(postId, emoji, getCurrentUserId());
+        reactionService.removeReaction(postId, emoji, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

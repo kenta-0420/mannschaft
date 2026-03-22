@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織支払い記録コントローラー。組織単位の支払い記録管理 API を提供する。
@@ -45,9 +46,6 @@ public class OrganizationPaymentController {
 
     private final MemberPaymentService memberPaymentService;
 
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/payments")
     @Operation(summary = "組織メンバー支払い状況一覧")
@@ -71,7 +69,7 @@ public class OrganizationPaymentController {
             @PathVariable Long itemId,
             @Valid @RequestBody CreateManualPaymentRequest request) {
         MemberPaymentResponse response = memberPaymentService.createManualPayment(
-                itemId, getCurrentUserId(), request);
+                itemId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -93,7 +91,7 @@ public class OrganizationPaymentController {
             @PathVariable Long itemId,
             @Valid @RequestBody BulkPaymentRequest request) {
         BulkPaymentResponse response = memberPaymentService.createBulkPayments(
-                itemId, getCurrentUserId(), request);
+                itemId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -135,7 +133,7 @@ public class OrganizationPaymentController {
             @PathVariable Long itemId,
             @PathVariable Long paymentId) {
         MemberPaymentResponse response = memberPaymentService.refundPayment(
-                itemId, paymentId, getCurrentUserId());
+                itemId, paymentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

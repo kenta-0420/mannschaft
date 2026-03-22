@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム居住者管理コントローラー。
@@ -33,10 +34,6 @@ public class TeamResidentController {
 
     private final ResidentRegistryService residentService;
 
-    // TODO: SecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/api/v1/teams/{teamId}/dwelling-units/{unitId}/residents")
     @Operation(summary = "居住者一覧")
@@ -72,7 +69,7 @@ public class TeamResidentController {
     @Operation(summary = "居住者確認")
     public ResponseEntity<ApiResponse<ResidentResponse>> verify(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(residentService.verify(id, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(residentService.verify(id, SecurityUtils.getCurrentUserId())));
     }
 
     @PatchMapping("/api/v1/teams/{teamId}/residents/{id}/move-out")

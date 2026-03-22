@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームTODOコントローラー。チームスコープのTODO・担当者・コメントAPIを提供する。
@@ -48,10 +49,6 @@ public class TeamTodoController {
     private final TodoService todoService;
     private final TodoCommentService commentService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * TODO一覧を取得する。
@@ -79,7 +76,7 @@ public class TeamTodoController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreateTodoRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(todoService.createTodo(TodoScopeType.TEAM, teamId, request, getCurrentUserId()));
+                .body(todoService.createTodo(TodoScopeType.TEAM, teamId, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -130,7 +127,7 @@ public class TeamTodoController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody TodoStatusChangeRequest request) {
-        return ResponseEntity.ok(todoService.changeStatus(id, request, getCurrentUserId()));
+        return ResponseEntity.ok(todoService.changeStatus(id, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -143,7 +140,7 @@ public class TeamTodoController {
             @PathVariable Long teamId,
             @Valid @RequestBody BulkStatusChangeRequest request) {
         return ResponseEntity.ok(todoService.bulkChangeStatus(
-                TodoScopeType.TEAM, teamId, request, getCurrentUserId()));
+                TodoScopeType.TEAM, teamId, request, SecurityUtils.getCurrentUserId()));
     }
 
     // --- 担当者 ---
@@ -159,7 +156,7 @@ public class TeamTodoController {
             @PathVariable Long id,
             @Valid @RequestBody AddAssigneeRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(todoService.addAssignee(id, request, getCurrentUserId()));
+                .body(todoService.addAssignee(id, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -203,7 +200,7 @@ public class TeamTodoController {
             @PathVariable Long id,
             @Valid @RequestBody CreateCommentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(commentService.addComment(id, request, getCurrentUserId()));
+                .body(commentService.addComment(id, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -217,7 +214,7 @@ public class TeamTodoController {
             @PathVariable Long id,
             @PathVariable Long commentId,
             @Valid @RequestBody UpdateCommentRequest request) {
-        return ResponseEntity.ok(commentService.updateComment(id, commentId, request, getCurrentUserId()));
+        return ResponseEntity.ok(commentService.updateComment(id, commentId, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -230,7 +227,7 @@ public class TeamTodoController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @PathVariable Long commentId) {
-        commentService.deleteComment(id, commentId, getCurrentUserId());
+        commentService.deleteComment(id, commentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

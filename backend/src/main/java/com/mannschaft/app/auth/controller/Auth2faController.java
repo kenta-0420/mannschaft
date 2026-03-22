@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 二要素認証（TOTP）コントローラー。
@@ -40,8 +41,7 @@ public class Auth2faController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "TOTP設定開始成功")
     public ResponseEntity<ApiResponse<TotpSetupResponse>> setupTotp() {
 
-        // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-        Long userId = 1L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED).body(auth2faService.setupTotp(userId));
     }
 
@@ -54,8 +54,7 @@ public class Auth2faController {
     public ResponseEntity<ApiResponse<BackupCodesResponse>> verifyTotpSetup(
             @Valid @RequestBody VerifyTotpRequest req) {
 
-        // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-        Long userId = 1L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(auth2faService.verifyTotpSetup(userId, req.getTotpCode()));
     }
 
@@ -80,8 +79,7 @@ public class Auth2faController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再生成成功")
     public ResponseEntity<ApiResponse<BackupCodesResponse>> regenerateBackupCodes() {
 
-        // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-        Long userId = 1L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(auth2faService.regenerateBackupCodes(userId));
     }
 

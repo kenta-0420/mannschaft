@@ -11,6 +11,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum CommonErrorCode implements ErrorCode {
 
+    /** 未認証エラー */
+    COMMON_000("COMMON_000", "認証が必要です", Severity.WARN),
+
     /** バリデーションエラー */
     COMMON_001("COMMON_001", "入力内容に不備があります", Severity.WARN),
 

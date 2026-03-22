@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 活動テンプレートコントローラー。テンプレートのCRUD・複製・インポートAPIを提供する。
@@ -37,10 +38,6 @@ public class ActivityTemplateController {
 
     private final ActivityTemplateService templateService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * テンプレート一覧を取得する。
@@ -76,7 +73,7 @@ public class ActivityTemplateController {
             @RequestParam("scope_id") Long scopeId,
             @Valid @RequestBody CreateTemplateRequest request) {
         ActivityTemplateResponse response = templateService.createTemplate(
-                getCurrentUserId(), ActivityScopeType.valueOf(scopeType), scopeId, request);
+                SecurityUtils.getCurrentUserId(), ActivityScopeType.valueOf(scopeType), scopeId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -112,7 +109,7 @@ public class ActivityTemplateController {
     public ResponseEntity<ApiResponse<ActivityTemplateResponse>> duplicateTemplate(
             @PathVariable Long id,
             @Valid @RequestBody DuplicateTemplateRequest request) {
-        ActivityTemplateResponse response = templateService.duplicateTemplate(id, getCurrentUserId(), request);
+        ActivityTemplateResponse response = templateService.duplicateTemplate(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -124,7 +121,7 @@ public class ActivityTemplateController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "インポート成功")
     public ResponseEntity<ApiResponse<ActivityTemplateResponse>> importPreset(
             @Valid @RequestBody ImportTemplateRequest request) {
-        ActivityTemplateResponse response = templateService.importPreset(getCurrentUserId(), request);
+        ActivityTemplateResponse response = templateService.importPreset(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

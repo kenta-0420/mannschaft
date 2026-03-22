@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 当番ローテーションコントローラー。当番管理APIを提供する。
@@ -33,10 +34,6 @@ public class DutyRotationController {
 
     private final DutyRotationService dutyRotationService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 当番ローテーション一覧を取得する（今日の担当者付き）。
@@ -58,7 +55,7 @@ public class DutyRotationController {
             @PathVariable Long teamId,
             @Valid @RequestBody DutyRotationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(dutyRotationService.createDuty(teamId, getCurrentUserId(), request));
+                .body(dutyRotationService.createDuty(teamId, SecurityUtils.getCurrentUserId(), request));
     }
 
     /**

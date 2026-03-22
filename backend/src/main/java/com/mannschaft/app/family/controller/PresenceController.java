@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * プレゼンスコントローラー。帰ったよ通知・お出かけ連絡APIを提供する。
@@ -34,10 +35,6 @@ public class PresenceController {
 
     private final PresenceService presenceService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 帰ったよ通知を送信する（チーム指定）。
@@ -49,7 +46,7 @@ public class PresenceController {
             @PathVariable Long teamId,
             @Valid @RequestBody(required = false) PresenceHomeRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(presenceService.sendHome(teamId, getCurrentUserId(), request));
+                .body(presenceService.sendHome(teamId, SecurityUtils.getCurrentUserId(), request));
     }
 
     /**
@@ -60,7 +57,7 @@ public class PresenceController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "送信成功")
     public ResponseEntity<ApiResponse<PresenceBulkResponse>> sendHomeBulk() {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(presenceService.sendHomeBulk(getCurrentUserId()));
+                .body(presenceService.sendHomeBulk(SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -73,7 +70,7 @@ public class PresenceController {
             @PathVariable Long teamId,
             @Valid @RequestBody PresenceGoingOutRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(presenceService.sendGoingOut(teamId, getCurrentUserId(), request));
+                .body(presenceService.sendGoingOut(teamId, SecurityUtils.getCurrentUserId(), request));
     }
 
     /**
@@ -85,7 +82,7 @@ public class PresenceController {
     public ResponseEntity<ApiResponse<PresenceBulkResponse>> sendGoingOutBulk(
             @Valid @RequestBody PresenceGoingOutRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(presenceService.sendGoingOutBulk(getCurrentUserId(), request));
+                .body(presenceService.sendGoingOutBulk(SecurityUtils.getCurrentUserId(), request));
     }
 
     /**

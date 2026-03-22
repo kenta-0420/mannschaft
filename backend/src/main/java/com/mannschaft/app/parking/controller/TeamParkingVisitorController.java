@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム来場者予約+定期テンプレートコントローラー（9+4=13 EP）。
@@ -36,10 +37,6 @@ public class TeamParkingVisitorController {
     private final ParkingSpaceService spaceService;
 
     private static final String SCOPE_TYPE = ParkingScopeType.TEAM.name();
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     // ===================== 来場者予約 =====================
 
@@ -63,7 +60,7 @@ public class TeamParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> createReservation(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateVisitorReservationRequest request) {
-        VisitorReservationResponse result = reservationService.create(SCOPE_TYPE, teamId, getCurrentUserId(), request);
+        VisitorReservationResponse result = reservationService.create(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
@@ -88,7 +85,7 @@ public class TeamParkingVisitorController {
     @Operation(summary = "チーム来場者予約承認")
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> approveReservation(
             @PathVariable Long teamId, @PathVariable Long id) {
-        VisitorReservationResponse result = reservationService.approve(id, getCurrentUserId());
+        VisitorReservationResponse result = reservationService.approve(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -97,7 +94,7 @@ public class TeamParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorReservationResponse>> rejectReservation(
             @PathVariable Long teamId, @PathVariable Long id,
             @RequestParam(required = false) String adminComment) {
-        VisitorReservationResponse result = reservationService.reject(id, getCurrentUserId(), adminComment);
+        VisitorReservationResponse result = reservationService.reject(id, SecurityUtils.getCurrentUserId(), adminComment);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -129,7 +126,7 @@ public class TeamParkingVisitorController {
     @GetMapping("/visitor-recurring")
     @Operation(summary = "チーム定期予約テンプレート一覧")
     public ResponseEntity<ApiResponse<List<VisitorRecurringResponse>>> listRecurring(@PathVariable Long teamId) {
-        List<VisitorRecurringResponse> result = recurringService.list(getCurrentUserId(), SCOPE_TYPE, teamId);
+        List<VisitorRecurringResponse> result = recurringService.list(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, teamId);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -138,7 +135,7 @@ public class TeamParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorRecurringResponse>> createRecurring(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateVisitorRecurringRequest request) {
-        VisitorRecurringResponse result = recurringService.create(getCurrentUserId(), SCOPE_TYPE, teamId, request);
+        VisitorRecurringResponse result = recurringService.create(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, teamId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
@@ -147,14 +144,14 @@ public class TeamParkingVisitorController {
     public ResponseEntity<ApiResponse<VisitorRecurringResponse>> updateRecurring(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody UpdateVisitorRecurringRequest request) {
-        VisitorRecurringResponse result = recurringService.update(getCurrentUserId(), SCOPE_TYPE, teamId, id, request);
+        VisitorRecurringResponse result = recurringService.update(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, teamId, id, request);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
     @DeleteMapping("/visitor-recurring/{id}")
     @Operation(summary = "チーム定期予約テンプレート削除")
     public ResponseEntity<Void> deleteRecurring(@PathVariable Long teamId, @PathVariable Long id) {
-        recurringService.delete(getCurrentUserId(), SCOPE_TYPE, teamId, id);
+        recurringService.delete(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, teamId, id);
         return ResponseEntity.noContent().build();
     }
 }

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * コンテンツ通報コントローラー（ユーザー用）。コンテンツ通報APIを提供する。
@@ -26,10 +27,6 @@ public class ContentReportController {
 
     private final ContentReportService reportService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * コンテンツを通報する。
@@ -39,7 +36,7 @@ public class ContentReportController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "通報成功")
     public ResponseEntity<ApiResponse<ReportResponse>> createReport(
             @Valid @RequestBody CreateReportRequest request) {
-        ReportResponse response = reportService.createReport(request, getCurrentUserId());
+        ReportResponse response = reportService.createReport(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

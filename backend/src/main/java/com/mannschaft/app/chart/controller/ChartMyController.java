@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * マイカルテコントローラー。自分に共有されたカルテを全チーム横断で取得する。
@@ -25,10 +26,6 @@ public class ChartMyController {
 
     private final ChartRecordService chartRecordService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 19. 自分のカルテ（共有されたもの）
@@ -42,7 +39,7 @@ public class ChartMyController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<ChartRecordSummaryResponse> result = chartRecordService.listMyCharts(
-                getCurrentUserId(), teamId, PageRequest.of(page, Math.min(size, 100)));
+                SecurityUtils.getCurrentUserId(), teamId, PageRequest.of(page, Math.min(size, 100)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));

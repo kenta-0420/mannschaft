@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * レビューコントローラー。レビューの投稿・取得APIを提供する。
@@ -29,10 +30,6 @@ public class MatchReviewController {
 
     private final MatchReviewService reviewService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * レビュー投稿。
@@ -42,7 +39,7 @@ public class MatchReviewController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ReviewCreateResponse>> createReview(
             @Valid @RequestBody CreateReviewRequest request) {
-        Long currentTeamId = getCurrentUserId();
+        Long currentTeamId = SecurityUtils.getCurrentUserId();
         ReviewCreateResponse response = reviewService.createReview(currentTeamId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * パフォーマンス個人・テンプレートコントローラー。
@@ -31,10 +32,6 @@ public class PerformancePersonalController {
     private final PerformanceStatsService statsService;
     private final PerformanceMetricService metricService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 自分のパフォーマンスを全チーム横断で取得する。
@@ -49,7 +46,7 @@ public class PerformancePersonalController {
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "20") int limit) {
         List<MyPerformanceResponse> response = statsService.getMyPerformance(
-                getCurrentUserId(), teamId, dateFrom, dateTo);
+                SecurityUtils.getCurrentUserId(), teamId, dateFrom, dateTo);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

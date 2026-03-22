@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * アンケート回答コントローラー。回答の送信・取得APIを提供する。
@@ -30,10 +31,6 @@ public class SurveyResponseController {
 
     private final SurveyResponseService responseService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * アンケートに回答を送信する。
@@ -45,7 +42,7 @@ public class SurveyResponseController {
             @PathVariable Long surveyId,
             @Valid @RequestBody SubmitResponseRequest request) {
         List<SurveyResponseEntry> responses = responseService.submitResponse(
-                surveyId, getCurrentUserId(), request);
+                surveyId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(responses));
     }
 
@@ -58,7 +55,7 @@ public class SurveyResponseController {
     public ResponseEntity<ApiResponse<List<SurveyResponseEntry>>> getMyResponses(
             @PathVariable Long surveyId) {
         List<SurveyResponseEntry> responses = responseService.getMyResponses(
-                surveyId, getCurrentUserId());
+                surveyId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 }

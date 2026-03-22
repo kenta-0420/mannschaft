@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * パフォーマンス指標コントローラー。指標定義のCRUD・テンプレート・並び順管理APIを提供する。
@@ -39,10 +40,6 @@ public class PerformanceMetricController {
 
     private final PerformanceMetricService metricService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 指標定義一覧を取得する。

@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 領収書プリセットコントローラー。プリセットのCRUD APIを提供する。
@@ -43,10 +44,6 @@ public class ReceiptPresetController {
 
     private final ReceiptPresetService presetService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * プリセット一覧を取得する。
@@ -73,7 +70,7 @@ public class ReceiptPresetController {
             @RequestParam Long scopeId,
             @Valid @RequestBody CreatePresetRequest request) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        PresetResponse response = presetService.createPreset(type, scopeId, getCurrentUserId(), request);
+        PresetResponse response = presetService.createPreset(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

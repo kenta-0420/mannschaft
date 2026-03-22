@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 個人ブログコントローラー。個人ブログ記事CRUD・共有・セルフレビュー設定APIを提供する。
@@ -43,10 +44,6 @@ public class PersonalBlogController {
     private final BlogPostService postService;
     private final UserBlogSettingsService settingsService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 個人ブログ記事一覧を取得する。
@@ -85,7 +82,7 @@ public class PersonalBlogController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<BlogPostResponse>> createPost(
             @Valid @RequestBody CreateBlogPostRequest request) {
-        BlogPostResponse response = postService.createPost(getCurrentUserId(), request);
+        BlogPostResponse response = postService.createPost(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -98,7 +95,7 @@ public class PersonalBlogController {
     public ResponseEntity<ApiResponse<BlogPostResponse>> updatePost(
             @PathVariable Long id,
             @Valid @RequestBody com.mannschaft.app.cms.dto.UpdateBlogPostRequest request) {
-        BlogPostResponse response = postService.updatePost(id, getCurrentUserId(), request);
+        BlogPostResponse response = postService.updatePost(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -135,7 +132,7 @@ public class PersonalBlogController {
     public ResponseEntity<ApiResponse<SharePostResponse>> sharePost(
             @PathVariable Long id,
             @Valid @RequestBody SharePostRequest request) {
-        SharePostResponse response = postService.sharePost(id, getCurrentUserId(), request);
+        SharePostResponse response = postService.sharePost(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -161,7 +158,7 @@ public class PersonalBlogController {
     public ResponseEntity<ApiResponse<BlogPostResponse>> selfReview(
             @PathVariable Long id,
             @Valid @RequestBody SelfReviewRequest request) {
-        BlogPostResponse response = postService.selfReview(id, getCurrentUserId(), request);
+        BlogPostResponse response = postService.selfReview(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -172,7 +169,7 @@ public class PersonalBlogController {
     @Operation(summary = "セルフレビュー設定取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<BlogSettingsResponse>> getSettings() {
-        return ResponseEntity.ok(ApiResponse.of(settingsService.getOrCreateSettings(getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.of(settingsService.getOrCreateSettings(SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -183,6 +180,6 @@ public class PersonalBlogController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<BlogSettingsResponse>> updateSettings(
             @Valid @RequestBody UpdateBlogSettingsRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(settingsService.updateSettings(getCurrentUserId(), request)));
+        return ResponseEntity.ok(ApiResponse.of(settingsService.updateSettings(SecurityUtils.getCurrentUserId(), request)));
     }
 }

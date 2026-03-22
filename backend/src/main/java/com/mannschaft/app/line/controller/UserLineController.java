@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ユーザーLINE連携コントローラー。
@@ -30,8 +31,7 @@ public class UserLineController {
      */
     @GetMapping("/status")
     public ApiResponse<UserLineStatusResponse> getStatus() {
-        // TODO: 認証情報からuserIdを取得
-        Long userId = 0L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(userLineConnectionService.getStatus(userId));
     }
 
@@ -42,7 +42,7 @@ public class UserLineController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<UserLineStatusResponse> link(
             @Valid @RequestBody LinkLineRequest request) {
-        Long userId = 0L;
+        Long userId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(userLineConnectionService.link(userId, request));
     }
 
@@ -52,7 +52,7 @@ public class UserLineController {
     @DeleteMapping("/link")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unlink() {
-        Long userId = 0L;
+        Long userId = SecurityUtils.getCurrentUserId();
         userLineConnectionService.unlink(userId);
     }
 }

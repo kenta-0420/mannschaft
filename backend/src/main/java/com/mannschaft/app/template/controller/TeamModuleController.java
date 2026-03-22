@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームモジュール管理コントローラー。チーム単位のモジュール有効化・テンプレート適用を提供する。
@@ -31,10 +32,6 @@ public class TeamModuleController {
 
     private final ModuleService moduleService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チームの有効モジュール一覧を取得する。
@@ -57,7 +54,7 @@ public class TeamModuleController {
             @PathVariable Long teamId,
             @PathVariable Long moduleId,
             @Valid @RequestBody ToggleModuleRequest request) {
-        moduleService.toggleTeamModule(teamId, request, getCurrentUserId());
+        moduleService.toggleTeamModule(teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 
@@ -70,7 +67,7 @@ public class TeamModuleController {
     public ResponseEntity<Void> applyTemplate(
             @PathVariable Long teamId,
             @RequestParam Long templateId) {
-        moduleService.applyTemplate(teamId, templateId, getCurrentUserId());
+        moduleService.applyTemplate(teamId, templateId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 }

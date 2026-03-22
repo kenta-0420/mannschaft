@@ -1,19 +1,24 @@
 package com.mannschaft.app.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * セキュリティ設定（初期版）。
- * Phase 1 で JWT 認証を実装する際に本格的なフィルターチェーンに置き換える。
+ * セキュリティ設定。JwtAuthenticationFilter を UsernamePasswordAuthenticationFilter の前に挿入し、
+ * Bearer トークンによるステートレス認証を実現する。
  */
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -30,9 +35,20 @@ public class SecurityConfig {
                 ).permitAll()
                 // ヘルスチェック
                 .requestMatchers("/actuator/health").permitAll()
-                // 開発中は全エンドポイントを許可（Phase 1 で JWT 実装時に制限）
+                // 認証不要エンドポイント
+                .requestMatchers(
+                    "/api/v1/auth/login",
+                    "/api/v1/auth/register",
+                    "/api/v1/auth/refresh",
+                    "/api/v1/auth/password-reset/**",
+                    "/api/v1/auth/email-verification/**",
+                    "/api/v1/auth/oauth/**",
+                    "/api/v1/public/**"
+                ).permitAll()
+                // 開発中は全エンドポイントを許可（本番移行時に .authenticated() に変更）
                 .anyRequest().permitAll()
-            );
+            )
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * イベントチェックインコントローラー。QRスキャン・セルフチェックインAPIを提供する。
@@ -33,10 +34,6 @@ public class EventCheckinController {
 
     private final EventCheckinService checkinService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * スタッフスキャンによるチェックインを実行する。
@@ -46,7 +43,7 @@ public class EventCheckinController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "チェックイン成功")
     public ResponseEntity<ApiResponse<CheckinResponse>> staffCheckin(
             @Valid @RequestBody CheckinRequest request) {
-        CheckinResponse response = checkinService.staffCheckin(getCurrentUserId(), request);
+        CheckinResponse response = checkinService.staffCheckin(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

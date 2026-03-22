@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * タイムラインフィードコントローラー。フィード取得・検索APIを提供する。
@@ -26,10 +27,6 @@ public class TimelineFeedController {
 
     private final TimelinePostService postService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * スコープ別フィードを取得する。

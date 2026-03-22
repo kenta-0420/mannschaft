@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ワークフローテンプレートコントローラー。テンプレートのCRUD・有効化/無効化APIを提供する。
@@ -35,10 +36,6 @@ public class WorkflowTemplateController {
 
     private final WorkflowTemplateService templateService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * テンプレート一覧を取得する。
@@ -83,7 +80,7 @@ public class WorkflowTemplateController {
             @PathVariable Long scopeId,
             @Valid @RequestBody CreateWorkflowTemplateRequest request) {
         WorkflowTemplateResponse response = templateService.createTemplate(
-                scopeType, scopeId, getCurrentUserId(), request);
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

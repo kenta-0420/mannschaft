@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム物件掲示板コントローラー。
@@ -36,10 +37,6 @@ import java.util.List;
 public class TeamPropertyListingController {
 
     private final PropertyListingService listingService;
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/api/v1/teams/{teamId}/property-listings")
     @Operation(summary = "物件一覧")
@@ -61,7 +58,7 @@ public class TeamPropertyListingController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreatePropertyListingRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.of(listingService.createForTeam(teamId, getCurrentUserId(), request)));
+                ApiResponse.of(listingService.createForTeam(teamId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @GetMapping("/api/v1/teams/{teamId}/property-listings/{id}")
@@ -92,7 +89,7 @@ public class TeamPropertyListingController {
             @PathVariable Long teamId, @PathVariable Long id,
             @RequestBody CreateInquiryRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.of(listingService.createInquiry(id, getCurrentUserId(), request)));
+                ApiResponse.of(listingService.createInquiry(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @GetMapping("/api/v1/teams/{teamId}/property-listings/{id}/inquiries")

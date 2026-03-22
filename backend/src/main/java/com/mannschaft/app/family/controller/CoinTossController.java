@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * コイントスコントローラー。ランダム決定機能のAPIを提供する。
@@ -29,10 +30,6 @@ public class CoinTossController {
 
     private final CoinTossService coinTossService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * コイントスを実行する。
@@ -43,7 +40,7 @@ public class CoinTossController {
     public ResponseEntity<ApiResponse<CoinTossResponse>> toss(
             @PathVariable Long teamId,
             @Valid @RequestBody CoinTossRequest request) {
-        return ResponseEntity.ok(coinTossService.toss(teamId, getCurrentUserId(), request));
+        return ResponseEntity.ok(coinTossService.toss(teamId, SecurityUtils.getCurrentUserId(), request));
     }
 
     /**
@@ -55,7 +52,7 @@ public class CoinTossController {
     public ResponseEntity<ApiResponse<CoinTossResponse>> share(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        return ResponseEntity.ok(coinTossService.share(teamId, id, getCurrentUserId()));
+        return ResponseEntity.ok(coinTossService.share(teamId, id, SecurityUtils.getCurrentUserId()));
     }
 
     /**

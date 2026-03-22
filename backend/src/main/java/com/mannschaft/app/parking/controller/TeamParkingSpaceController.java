@@ -43,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム駐車区画コントローラー。区画管理+設定+統計（17 EP）。
@@ -58,10 +59,6 @@ public class TeamParkingSpaceController {
     private final ParkingSettingsService settingsService;
 
     private static final String SCOPE_TYPE = ParkingScopeType.TEAM.name();
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/spaces")
     @Operation(summary = "チーム区画一覧")
@@ -84,7 +81,7 @@ public class TeamParkingSpaceController {
     public ResponseEntity<ApiResponse<SpaceResponse>> createSpace(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateSpaceRequest request) {
-        SpaceResponse result = spaceService.create(SCOPE_TYPE, teamId, request, getCurrentUserId());
+        SpaceResponse result = spaceService.create(SCOPE_TYPE, teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
@@ -93,7 +90,7 @@ public class TeamParkingSpaceController {
     public ResponseEntity<ApiResponse<List<SpaceResponse>>> bulkCreateSpaces(
             @PathVariable Long teamId,
             @Valid @RequestBody BulkCreateSpaceRequest request) {
-        List<SpaceResponse> result = spaceService.bulkCreate(SCOPE_TYPE, teamId, request, getCurrentUserId());
+        List<SpaceResponse> result = spaceService.bulkCreate(SCOPE_TYPE, teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
@@ -110,7 +107,7 @@ public class TeamParkingSpaceController {
     public ResponseEntity<ApiResponse<SpaceResponse>> updateSpace(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody UpdateSpaceRequest request) {
-        SpaceResponse result = spaceService.update(SCOPE_TYPE, teamId, id, request, getCurrentUserId());
+        SpaceResponse result = spaceService.update(SCOPE_TYPE, teamId, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -126,7 +123,7 @@ public class TeamParkingSpaceController {
     public ResponseEntity<ApiResponse<List<AssignmentResponse>>> bulkAssign(
             @PathVariable Long teamId,
             @Valid @RequestBody BulkAssignRequest request) {
-        List<AssignmentResponse> result = assignmentService.bulkAssign(SCOPE_TYPE, teamId, request, getCurrentUserId());
+        List<AssignmentResponse> result = assignmentService.bulkAssign(SCOPE_TYPE, teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -142,7 +139,7 @@ public class TeamParkingSpaceController {
     public ResponseEntity<ApiResponse<AssignmentResponse>> assign(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody AssignRequest request) {
-        AssignmentResponse result = assignmentService.assign(SCOPE_TYPE, teamId, id, request, getCurrentUserId());
+        AssignmentResponse result = assignmentService.assign(SCOPE_TYPE, teamId, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -151,7 +148,7 @@ public class TeamParkingSpaceController {
     public ResponseEntity<Void> release(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody ReleaseRequest request) {
-        assignmentService.release(SCOPE_TYPE, teamId, id, request, getCurrentUserId());
+        assignmentService.release(SCOPE_TYPE, teamId, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -191,7 +188,7 @@ public class TeamParkingSpaceController {
     public ResponseEntity<Void> swap(
             @PathVariable Long teamId,
             @Valid @RequestBody SwapRequest request) {
-        spaceService.swap(SCOPE_TYPE, teamId, request, getCurrentUserId());
+        spaceService.swap(SCOPE_TYPE, teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

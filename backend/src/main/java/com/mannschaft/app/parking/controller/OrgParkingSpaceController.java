@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織駐車区画コントローラー。区画管理+設定+統計（17 EP）。
@@ -34,10 +35,6 @@ public class OrgParkingSpaceController {
     private final ParkingSettingsService settingsService;
 
     private static final String SCOPE_TYPE = ParkingScopeType.ORGANIZATION.name();
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/spaces")
     @Operation(summary = "組織区画一覧")
@@ -60,7 +57,7 @@ public class OrgParkingSpaceController {
     public ResponseEntity<ApiResponse<SpaceResponse>> createSpace(
             @PathVariable Long organizationId,
             @Valid @RequestBody CreateSpaceRequest request) {
-        SpaceResponse result = spaceService.create(SCOPE_TYPE, organizationId, request, getCurrentUserId());
+        SpaceResponse result = spaceService.create(SCOPE_TYPE, organizationId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
@@ -69,7 +66,7 @@ public class OrgParkingSpaceController {
     public ResponseEntity<ApiResponse<List<SpaceResponse>>> bulkCreateSpaces(
             @PathVariable Long organizationId,
             @Valid @RequestBody BulkCreateSpaceRequest request) {
-        List<SpaceResponse> result = spaceService.bulkCreate(SCOPE_TYPE, organizationId, request, getCurrentUserId());
+        List<SpaceResponse> result = spaceService.bulkCreate(SCOPE_TYPE, organizationId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
@@ -86,7 +83,7 @@ public class OrgParkingSpaceController {
     public ResponseEntity<ApiResponse<SpaceResponse>> updateSpace(
             @PathVariable Long organizationId, @PathVariable Long id,
             @Valid @RequestBody UpdateSpaceRequest request) {
-        SpaceResponse result = spaceService.update(SCOPE_TYPE, organizationId, id, request, getCurrentUserId());
+        SpaceResponse result = spaceService.update(SCOPE_TYPE, organizationId, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -102,7 +99,7 @@ public class OrgParkingSpaceController {
     public ResponseEntity<ApiResponse<List<AssignmentResponse>>> bulkAssign(
             @PathVariable Long organizationId,
             @Valid @RequestBody BulkAssignRequest request) {
-        List<AssignmentResponse> result = assignmentService.bulkAssign(SCOPE_TYPE, organizationId, request, getCurrentUserId());
+        List<AssignmentResponse> result = assignmentService.bulkAssign(SCOPE_TYPE, organizationId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -118,7 +115,7 @@ public class OrgParkingSpaceController {
     public ResponseEntity<ApiResponse<AssignmentResponse>> assign(
             @PathVariable Long organizationId, @PathVariable Long id,
             @Valid @RequestBody AssignRequest request) {
-        AssignmentResponse result = assignmentService.assign(SCOPE_TYPE, organizationId, id, request, getCurrentUserId());
+        AssignmentResponse result = assignmentService.assign(SCOPE_TYPE, organizationId, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -127,7 +124,7 @@ public class OrgParkingSpaceController {
     public ResponseEntity<Void> release(
             @PathVariable Long organizationId, @PathVariable Long id,
             @Valid @RequestBody ReleaseRequest request) {
-        assignmentService.release(SCOPE_TYPE, organizationId, id, request, getCurrentUserId());
+        assignmentService.release(SCOPE_TYPE, organizationId, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -167,7 +164,7 @@ public class OrgParkingSpaceController {
     public ResponseEntity<Void> swap(
             @PathVariable Long organizationId,
             @Valid @RequestBody SwapRequest request) {
-        spaceService.swap(SCOPE_TYPE, organizationId, request, getCurrentUserId());
+        spaceService.swap(SCOPE_TYPE, organizationId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

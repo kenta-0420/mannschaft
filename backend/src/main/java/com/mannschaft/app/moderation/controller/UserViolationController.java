@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ユーザー違反コントローラー。自分の違反履歴・自主修正・再レビュー依頼APIを提供する。
@@ -34,10 +35,6 @@ public class UserViolationController {
     private final UserViolationService violationService;
     private final WarningReReviewService reReviewService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 自分の違反履歴を取得する。
@@ -46,7 +43,7 @@ public class UserViolationController {
     @Operation(summary = "自分の違反履歴取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<UserViolationHistoryResponse>> getMyViolations() {
-        UserViolationHistoryResponse response = violationService.getViolationHistory(getCurrentUserId());
+        UserViolationHistoryResponse response = violationService.getViolationHistory(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -60,7 +57,7 @@ public class UserViolationController {
             @PathVariable Long actionId,
             @Valid @RequestBody(required = false) SelfCorrectRequest request) {
         String note = request != null ? request.getCorrectionNote() : null;
-        ViolationResponse response = violationService.selfCorrect(actionId, getCurrentUserId(), note);
+        ViolationResponse response = violationService.selfCorrect(actionId, SecurityUtils.getCurrentUserId(), note);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -74,7 +71,7 @@ public class UserViolationController {
             @PathVariable Long actionId,
             @Valid @RequestBody CreateReReviewRequest request) {
         WarningReReviewResponse response = reReviewService.createReReview(
-                getCurrentUserId(), actionId, request.getReportId(), request.getReason());
+                SecurityUtils.getCurrentUserId(), actionId, request.getReportId(), request.getReason());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 順番待ちチケットコントローラー。チケットの発行・操作・一覧APIを提供する。
@@ -35,10 +36,6 @@ public class QueueTicketController {
 
     private final QueueTicketService ticketService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チケットを発行する。
@@ -51,7 +48,7 @@ public class QueueTicketController {
             @PathVariable Long counterId,
             @Valid @RequestBody CreateTicketRequest request) {
         TicketResponse ticket = ticketService.issueTicket(
-                counterId, request, getCurrentUserId(), QueueScopeType.TEAM, teamId);
+                counterId, request, SecurityUtils.getCurrentUserId(), QueueScopeType.TEAM, teamId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(ticket));
     }
 
@@ -102,7 +99,7 @@ public class QueueTicketController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TicketResponse>>> listMyTickets(
             @PathVariable Long teamId) {
-        List<TicketResponse> tickets = ticketService.listMyTickets(getCurrentUserId());
+        List<TicketResponse> tickets = ticketService.listMyTickets(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(tickets));
     }
 
@@ -115,7 +112,7 @@ public class QueueTicketController {
     public ResponseEntity<Void> cancelMyTicket(
             @PathVariable Long teamId,
             @PathVariable Long ticketId) {
-        ticketService.cancelMyTicket(ticketId, getCurrentUserId());
+        ticketService.cancelMyTicket(ticketId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -129,7 +126,7 @@ public class QueueTicketController {
             @PathVariable Long teamId,
             @PathVariable Long ticketId,
             @Valid @RequestBody AdminTicketRequest request) {
-        TicketResponse ticket = ticketService.adminAction(ticketId, request, getCurrentUserId());
+        TicketResponse ticket = ticketService.adminAction(ticketId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(ticket));
     }
 
@@ -142,7 +139,7 @@ public class QueueTicketController {
     public ResponseEntity<ApiResponse<TicketResponse>> callNext(
             @PathVariable Long teamId,
             @PathVariable Long counterId) {
-        TicketResponse ticket = ticketService.callNext(counterId, getCurrentUserId());
+        TicketResponse ticket = ticketService.callNext(counterId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(ticket));
     }
 
@@ -187,7 +184,7 @@ public class QueueTicketController {
             @RequestParam String qrToken) {
         // QRトークン検証はQrCodeServiceで実施済みの前提
         TicketResponse ticket = ticketService.issueTicket(
-                counterId, request, getCurrentUserId(), QueueScopeType.TEAM, teamId);
+                counterId, request, SecurityUtils.getCurrentUserId(), QueueScopeType.TEAM, teamId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(ticket));
     }
 }

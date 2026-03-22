@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チャットリアクションコントローラー。リアクションの追加・削除APIを提供する。
@@ -29,10 +30,6 @@ public class ChatReactionController {
 
     private final ChatReactionService reactionService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * リアクションを追加する。
@@ -43,7 +40,7 @@ public class ChatReactionController {
     public ResponseEntity<ApiResponse<ReactionResponse>> addReaction(
             @PathVariable Long messageId,
             @Valid @RequestBody AddReactionRequest request) {
-        ReactionResponse response = reactionService.addReaction(messageId, request, getCurrentUserId());
+        ReactionResponse response = reactionService.addReaction(messageId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -56,7 +53,7 @@ public class ChatReactionController {
     public ResponseEntity<Void> removeReaction(
             @PathVariable Long messageId,
             @RequestParam String emoji) {
-        reactionService.removeReaction(messageId, emoji, getCurrentUserId());
+        reactionService.removeReaction(messageId, emoji, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

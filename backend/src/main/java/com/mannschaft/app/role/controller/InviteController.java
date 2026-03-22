@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 招待リンクコントローラー。
@@ -25,10 +26,6 @@ public class InviteController {
 
     private final InviteService inviteService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 招待トークンをプレビューする（未認証可）。
@@ -48,7 +45,7 @@ public class InviteController {
     @Operation(summary = "招待による参加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "参加成功")
     public ResponseEntity<Void> joinByInvite(@PathVariable String token) {
-        inviteService.joinByInvite(token, getCurrentUserId());
+        inviteService.joinByInvite(token, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 }

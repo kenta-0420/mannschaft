@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チャット既読コントローラー。既読処理APIを提供する。
@@ -21,10 +22,6 @@ public class ChatReadController {
 
     private final ChatMemberService memberService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チャンネルを既読にする。
@@ -33,7 +30,7 @@ public class ChatReadController {
     @Operation(summary = "既読にする")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "既読成功")
     public ResponseEntity<Void> markAsRead(@PathVariable Long channelId) {
-        memberService.markAsRead(channelId, getCurrentUserId());
+        memberService.markAsRead(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

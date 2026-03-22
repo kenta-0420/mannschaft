@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 通報対応コントローラー。レビュー・対応・却下・差し戻し・エスカレーション等のAPIを提供する。
@@ -39,10 +40,6 @@ public class ModerationResolveController {
     private final ReportActionService reportActionService;
     private final UserViolationService userViolationService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 通報のレビューを開始する。
@@ -51,7 +48,7 @@ public class ModerationResolveController {
     @Operation(summary = "レビュー開始")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "レビュー開始成功")
     public ResponseEntity<ApiResponse<Void>> startReview(@PathVariable Long id) {
-        reportActionService.startReview(id, getCurrentUserId());
+        reportActionService.startReview(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(null));
     }
 
@@ -64,7 +61,7 @@ public class ModerationResolveController {
     public ResponseEntity<ApiResponse<ReportActionResponse>> resolveReport(
             @PathVariable Long id,
             @Valid @RequestBody ResolveReportRequest request) {
-        ReportActionResponse response = reportActionService.resolveReport(id, request, getCurrentUserId());
+        ReportActionResponse response = reportActionService.resolveReport(id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -77,7 +74,7 @@ public class ModerationResolveController {
     public ResponseEntity<ApiResponse<ReportActionResponse>> dismissReport(
             @PathVariable Long id,
             @RequestParam(required = false) @Size(max = 2000) String note) {
-        ReportActionResponse response = reportActionService.dismissReport(id, note, getCurrentUserId());
+        ReportActionResponse response = reportActionService.dismissReport(id, note, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -89,7 +86,7 @@ public class ModerationResolveController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "一括対応成功")
     public ResponseEntity<ApiResponse<Map<String, Integer>>> bulkResolve(
             @Valid @RequestBody BulkResolveRequest request) {
-        int count = reportActionService.bulkResolve(request, getCurrentUserId());
+        int count = reportActionService.bulkResolve(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(Map.of("resolvedCount", count)));
     }
 
@@ -124,7 +121,7 @@ public class ModerationResolveController {
     public ResponseEntity<ApiResponse<ReportActionResponse>> reopenReport(
             @PathVariable Long id,
             @RequestParam(required = false) @Size(max = 2000) String note) {
-        ReportActionResponse response = reportActionService.reopenReport(id, note, getCurrentUserId());
+        ReportActionResponse response = reportActionService.reopenReport(id, note, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -137,7 +134,7 @@ public class ModerationResolveController {
     public ResponseEntity<ApiResponse<ReportActionResponse>> escalateReport(
             @PathVariable Long id,
             @Valid @RequestBody EscalateRequest request) {
-        ReportActionResponse response = reportActionService.escalateReport(id, request, getCurrentUserId());
+        ReportActionResponse response = reportActionService.escalateReport(id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -150,7 +147,7 @@ public class ModerationResolveController {
     public ResponseEntity<ApiResponse<ReportActionResponse>> restoreContent(
             @PathVariable Long id,
             @RequestParam(required = false) @Size(max = 2000) String note) {
-        ReportActionResponse response = reportActionService.restoreContent(id, note, getCurrentUserId());
+        ReportActionResponse response = reportActionService.restoreContent(id, note, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

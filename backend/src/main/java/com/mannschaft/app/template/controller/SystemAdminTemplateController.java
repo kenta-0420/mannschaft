@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * SYSTEM_ADMIN向けテンプレート管理コントローラー。テンプレートのCRUDを提供する。
@@ -30,10 +31,6 @@ public class SystemAdminTemplateController {
 
     private final SystemAdminTemplateService systemAdminTemplateService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * テンプレートを作成する。
@@ -44,7 +41,7 @@ public class SystemAdminTemplateController {
     public ResponseEntity<ApiResponse<TemplateResponse>> createTemplate(
             @Valid @RequestBody CreateTemplateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(systemAdminTemplateService.createTemplate(request, getCurrentUserId()));
+                .body(systemAdminTemplateService.createTemplate(request, SecurityUtils.getCurrentUserId()));
     }
 
     /**

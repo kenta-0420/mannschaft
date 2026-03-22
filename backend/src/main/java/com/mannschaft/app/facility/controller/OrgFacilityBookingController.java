@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織施設予約コントローラー。予約CRUD・承認・チェックイン・支払い・カレンダー・PDFを提供する。
@@ -48,10 +49,6 @@ public class OrgFacilityBookingController {
 
     private final FacilityBookingService bookingService;
     private final FacilityPaymentService paymentService;
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping
     @Operation(summary = "予約一覧")
@@ -73,7 +70,7 @@ public class OrgFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingResponse>> createBooking(
             @PathVariable Long organizationId,
             @Valid @RequestBody CreateBookingRequest request) {
-        BookingResponse response = bookingService.createBooking(SCOPE_TYPE, organizationId, getCurrentUserId(), request);
+        BookingResponse response = bookingService.createBooking(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -105,7 +102,7 @@ public class OrgFacilityBookingController {
             @PathVariable Long organizationId,
             @PathVariable Long bookingId,
             @Valid @RequestBody CancelBookingRequest request) {
-        BookingDetailResponse response = bookingService.cancelBooking(bookingId, getCurrentUserId(), request);
+        BookingDetailResponse response = bookingService.cancelBooking(bookingId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -116,7 +113,7 @@ public class OrgFacilityBookingController {
             @PathVariable Long organizationId,
             @PathVariable Long bookingId,
             @Valid @RequestBody ApproveBookingRequest request) {
-        BookingDetailResponse response = bookingService.approveBooking(bookingId, getCurrentUserId(), request);
+        BookingDetailResponse response = bookingService.approveBooking(bookingId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -127,7 +124,7 @@ public class OrgFacilityBookingController {
             @PathVariable Long organizationId,
             @PathVariable Long bookingId,
             @Valid @RequestBody RejectBookingRequest request) {
-        BookingDetailResponse response = bookingService.rejectBooking(bookingId, getCurrentUserId(), request);
+        BookingDetailResponse response = bookingService.rejectBooking(bookingId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -167,7 +164,7 @@ public class OrgFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingPaymentResponse>> confirmPayment(
             @PathVariable Long organizationId,
             @PathVariable Long bookingId) {
-        BookingPaymentResponse response = paymentService.confirmDirectPayment(bookingId, getCurrentUserId());
+        BookingPaymentResponse response = paymentService.confirmDirectPayment(bookingId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

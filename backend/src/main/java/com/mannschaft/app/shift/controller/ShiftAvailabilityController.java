@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * シフト勤務可能時間・時給コントローラー。デフォルト勤務可能時間と時給設定APIを提供する。
@@ -39,10 +40,6 @@ public class ShiftAvailabilityController {
     private final ShiftAvailabilityService availabilityService;
     private final ShiftHourlyRateService hourlyRateService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * デフォルト勤務可能時間を取得する。
@@ -53,7 +50,7 @@ public class ShiftAvailabilityController {
     public ResponseEntity<ApiResponse<List<AvailabilityDefaultResponse>>> getAvailabilityDefaults(
             @RequestParam Long teamId) {
         List<AvailabilityDefaultResponse> responses = availabilityService
-                .getAvailabilityDefaults(getCurrentUserId(), teamId);
+                .getAvailabilityDefaults(SecurityUtils.getCurrentUserId(), teamId);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -67,7 +64,7 @@ public class ShiftAvailabilityController {
             @RequestParam Long teamId,
             @Valid @RequestBody BulkAvailabilityDefaultRequest request) {
         List<AvailabilityDefaultResponse> responses = availabilityService
-                .setAvailabilityDefaults(getCurrentUserId(), teamId, request);
+                .setAvailabilityDefaults(SecurityUtils.getCurrentUserId(), teamId, request);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -79,7 +76,7 @@ public class ShiftAvailabilityController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteAvailabilityDefaults(
             @RequestParam Long teamId) {
-        availabilityService.deleteAvailabilityDefaults(getCurrentUserId(), teamId);
+        availabilityService.deleteAvailabilityDefaults(SecurityUtils.getCurrentUserId(), teamId);
         return ResponseEntity.noContent().build();
     }
 

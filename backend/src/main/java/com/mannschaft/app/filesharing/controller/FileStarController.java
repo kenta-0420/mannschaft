@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ファイルスターコントローラー。ファイルのお気に入り管理APIを提供する。
@@ -28,10 +29,6 @@ public class FileStarController {
 
     private final SharedFileStarService starService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * スターを追加する。
@@ -41,7 +38,7 @@ public class FileStarController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<StarResponse>> addStar(
             @PathVariable Long fileId) {
-        StarResponse response = starService.addStar(fileId, getCurrentUserId());
+        StarResponse response = starService.addStar(fileId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -53,7 +50,7 @@ public class FileStarController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> removeStar(
             @PathVariable Long fileId) {
-        starService.removeStar(fileId, getCurrentUserId());
+        starService.removeStar(fileId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -65,7 +62,7 @@ public class FileStarController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<StarResponse>>> listMyStars(
             @PathVariable Long fileId) {
-        List<StarResponse> response = starService.listStarsByUser(getCurrentUserId());
+        List<StarResponse> response = starService.listStarsByUser(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

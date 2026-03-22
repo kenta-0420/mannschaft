@@ -39,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織施設管理コントローラー。施設CRUD・ルール・料金・備品・空き状況APIを提供する。
@@ -54,10 +55,6 @@ public class OrgFacilityController {
     private final FacilityService facilityService;
     private final FacilityRuleService ruleService;
     private final FacilityEquipmentService equipmentService;
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping
     @Operation(summary = "施設一覧")
@@ -78,7 +75,7 @@ public class OrgFacilityController {
     public ResponseEntity<ApiResponse<FacilityResponse>> createFacility(
             @PathVariable Long organizationId,
             @Valid @RequestBody CreateFacilityRequest request) {
-        FacilityResponse response = facilityService.createFacility(SCOPE_TYPE, organizationId, getCurrentUserId(), request);
+        FacilityResponse response = facilityService.createFacility(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -89,7 +86,7 @@ public class OrgFacilityController {
             @PathVariable Long organizationId,
             @Valid @RequestBody BulkCreateFacilityRequest request) {
         List<FacilityResponse> responses = facilityService.bulkCreateFacilities(
-                SCOPE_TYPE, organizationId, getCurrentUserId(), request.getFacilities());
+                SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId(), request.getFacilities());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(responses));
     }
 

@@ -41,6 +41,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織備品コントローラー。組織スコープの備品CRUD・貸出・返却・消費・画像管理・QRコードAPIを提供する。
@@ -54,10 +55,6 @@ public class OrganizationEquipmentController {
     private final EquipmentItemService itemService;
     private final EquipmentAssignmentService assignmentService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     // ===================== 備品CRUD =====================
 
@@ -148,7 +145,7 @@ public class OrganizationEquipmentController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody AssignEquipmentRequest request) {
-        AssignmentResponse response = assignmentService.assignForOrganization(orgId, id, getCurrentUserId(), request);
+        AssignmentResponse response = assignmentService.assignForOrganization(orgId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -162,7 +159,7 @@ public class OrganizationEquipmentController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody ReturnEquipmentRequest request) {
-        ReturnResponse response = assignmentService.returnForOrganization(orgId, id, getCurrentUserId(), request);
+        ReturnResponse response = assignmentService.returnForOrganization(orgId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -227,7 +224,7 @@ public class OrganizationEquipmentController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody ConsumeEquipmentRequest request) {
-        ConsumeResponse response = assignmentService.consumeForOrganization(orgId, id, getCurrentUserId(), request);
+        ConsumeResponse response = assignmentService.consumeForOrganization(orgId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -272,7 +269,7 @@ public class OrganizationEquipmentController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody BulkAssignRequest request) {
-        BulkAssignResponse response = assignmentService.bulkAssignForOrganization(orgId, id, getCurrentUserId(), request);
+        BulkAssignResponse response = assignmentService.bulkAssignForOrganization(orgId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -286,7 +283,7 @@ public class OrganizationEquipmentController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody BulkReturnRequest request) {
-        BulkReturnResponse response = assignmentService.bulkReturnForOrganization(orgId, id, getCurrentUserId(), request);
+        BulkReturnResponse response = assignmentService.bulkReturnForOrganization(orgId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

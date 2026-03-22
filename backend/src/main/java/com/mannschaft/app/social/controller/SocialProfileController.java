@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ソーシャルプロフィールコントローラー。プロフィールのCRUD APIを提供する。
@@ -31,10 +32,6 @@ public class SocialProfileController {
 
     private final SocialProfileService profileService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * ソーシャルプロフィールを作成する。
@@ -44,7 +41,7 @@ public class SocialProfileController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ProfileResponse>> createProfile(
             @Valid @RequestBody CreateProfileRequest request) {
-        ProfileResponse response = profileService.createProfile(request, getCurrentUserId());
+        ProfileResponse response = profileService.createProfile(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -55,7 +52,7 @@ public class SocialProfileController {
     @Operation(summary = "自分のプロフィール取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ProfileResponse>> getMyProfile() {
-        ProfileResponse response = profileService.getMyProfile(getCurrentUserId());
+        ProfileResponse response = profileService.getMyProfile(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -67,7 +64,7 @@ public class SocialProfileController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ProfileResponse>> updateProfile(
             @Valid @RequestBody UpdateProfileRequest request) {
-        ProfileResponse response = profileService.updateProfile(request, getCurrentUserId());
+        ProfileResponse response = profileService.updateProfile(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -102,7 +99,7 @@ public class SocialProfileController {
     @Operation(summary = "プロフィール無効化")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "無効化成功")
     public ResponseEntity<Void> deactivateProfile() {
-        profileService.deactivateProfile(getCurrentUserId());
+        profileService.deactivateProfile(SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

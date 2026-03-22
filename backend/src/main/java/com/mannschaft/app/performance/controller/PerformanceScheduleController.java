@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * スケジュール連携パフォーマンスコントローラー。
@@ -28,10 +29,6 @@ public class PerformanceScheduleController {
 
     private final PerformanceRecordService recordService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * スケジュールからの一括記録入力する。
@@ -44,7 +41,7 @@ public class PerformanceScheduleController {
             @PathVariable Long scheduleId,
             @Valid @RequestBody ScheduleBulkRecordRequest request) {
         BulkRecordResponse response = recordService.createScheduleBulkRecords(
-                teamId, scheduleId, getCurrentUserId(), request);
+                teamId, scheduleId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

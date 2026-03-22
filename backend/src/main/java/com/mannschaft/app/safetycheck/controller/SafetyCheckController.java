@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 安否確認コントローラー。安否確認の発信・回答・結果取得APIを提供する。
@@ -43,10 +44,6 @@ public class SafetyCheckController {
     private final SafetyResponseService responseService;
     private final SafetyPresetService presetService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 安否確認を発信する。
@@ -56,7 +53,7 @@ public class SafetyCheckController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "発信成功")
     public ResponseEntity<ApiResponse<SafetyCheckResponse>> createSafetyCheck(
             @Valid @RequestBody CreateSafetyCheckRequest request) {
-        SafetyCheckResponse response = safetyCheckService.createSafetyCheck(request, getCurrentUserId());
+        SafetyCheckResponse response = safetyCheckService.createSafetyCheck(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -99,7 +96,7 @@ public class SafetyCheckController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "クローズ成功")
     public ResponseEntity<ApiResponse<SafetyCheckResponse>> closeSafetyCheck(
             @PathVariable Long safetyCheckId) {
-        SafetyCheckResponse response = safetyCheckService.closeSafetyCheck(safetyCheckId, getCurrentUserId());
+        SafetyCheckResponse response = safetyCheckService.closeSafetyCheck(safetyCheckId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -113,7 +110,7 @@ public class SafetyCheckController {
             @PathVariable Long safetyCheckId,
             @Valid @RequestBody RespondRequest request) {
         SafetyResponseResponse response = responseService.respond(
-                safetyCheckId, request, getCurrentUserId());
+                safetyCheckId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -189,7 +186,7 @@ public class SafetyCheckController {
     @Operation(summary = "リマインド送信")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "送信成功")
     public ResponseEntity<Void> sendReminder(@PathVariable Long safetyCheckId) {
-        safetyCheckService.sendReminder(safetyCheckId, getCurrentUserId());
+        safetyCheckService.sendReminder(safetyCheckId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

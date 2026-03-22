@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * システム管理者向けお知らせコントローラー。
@@ -35,10 +36,6 @@ public class SystemAdminAnnouncementController {
 
     private final PlatformAnnouncementService announcementService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * お知らせ一覧を取得する。
@@ -61,7 +58,7 @@ public class SystemAdminAnnouncementController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<AnnouncementResponse>> createAnnouncement(
             @Valid @RequestBody CreateAnnouncementRequest request) {
-        AnnouncementResponse response = announcementService.createAnnouncement(request, getCurrentUserId());
+        AnnouncementResponse response = announcementService.createAnnouncement(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

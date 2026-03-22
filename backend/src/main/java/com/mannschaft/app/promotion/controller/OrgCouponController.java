@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織クーポン管理コントローラー。
@@ -32,10 +33,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class OrgCouponController {
 
     private final CouponService couponService;
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     @GetMapping("/api/v1/organizations/{orgId}/coupons")
     @Operation(summary = "クーポン一覧")
@@ -55,7 +52,7 @@ public class OrgCouponController {
             @PathVariable Long orgId,
             @Valid @RequestBody CreateCouponRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.of(couponService.create("ORGANIZATION", orgId, getCurrentUserId(), request)));
+                ApiResponse.of(couponService.create("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @GetMapping("/api/v1/organizations/{orgId}/coupons/{id}")

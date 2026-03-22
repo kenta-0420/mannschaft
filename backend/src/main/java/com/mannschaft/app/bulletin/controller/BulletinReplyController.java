@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 掲示板返信コントローラー。返信のCRUD APIを提供する。
@@ -36,10 +37,6 @@ public class BulletinReplyController {
 
     private final BulletinReplyService replyService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 返信一覧を取得する。
@@ -72,7 +69,7 @@ public class BulletinReplyController {
             @PathVariable Long threadId,
             @Valid @RequestBody CreateReplyRequest request) {
         ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
-        ReplyResponse response = replyService.createReply(type, scopeId, threadId, getCurrentUserId(), request);
+        ReplyResponse response = replyService.createReply(type, scopeId, threadId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -89,7 +86,7 @@ public class BulletinReplyController {
             @PathVariable Long replyId,
             @Valid @RequestBody UpdateReplyRequest request) {
         ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
-        ReplyResponse response = replyService.updateReply(type, scopeId, threadId, replyId, getCurrentUserId(), request);
+        ReplyResponse response = replyService.updateReply(type, scopeId, threadId, replyId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

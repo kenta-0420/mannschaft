@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 決済チェックアウトコントローラー。Stripe Checkout セッション作成を提供する。
@@ -25,9 +26,6 @@ public class PaymentCheckoutController {
 
     private final MemberPaymentService memberPaymentService;
 
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * Stripe Checkout セッションを作成する（自己支払い・寄付）。
@@ -36,7 +34,7 @@ public class PaymentCheckoutController {
     @Operation(summary = "Stripe Checkout セッション作成")
     public ResponseEntity<ApiResponse<CheckoutResponse>> createCheckout(
             @PathVariable Long itemId) {
-        CheckoutResponse response = memberPaymentService.createCheckout(itemId, getCurrentUserId());
+        CheckoutResponse response = memberPaymentService.createCheckout(itemId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

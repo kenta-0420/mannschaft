@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 領収書キューコントローラー。発行待ちキューの管理APIを提供する。
@@ -44,10 +45,6 @@ public class ReceiptQueueController {
 
     private final ReceiptQueueService queueService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 発行待ちキュー一覧を取得する。
@@ -80,7 +77,7 @@ public class ReceiptQueueController {
             @PathVariable Long id,
             @Valid @RequestBody ApproveQueueRequest request) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        ReceiptResponse response = queueService.approveQueueItem(type, scopeId, id, getCurrentUserId(), request);
+        ReceiptResponse response = queueService.approveQueueItem(type, scopeId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -95,7 +92,7 @@ public class ReceiptQueueController {
             @RequestParam Long scopeId,
             @Valid @RequestBody BulkApproveQueueRequest request) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        BulkResultResponse response = queueService.bulkApproveQueue(type, scopeId, getCurrentUserId(), request);
+        BulkResultResponse response = queueService.bulkApproveQueue(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

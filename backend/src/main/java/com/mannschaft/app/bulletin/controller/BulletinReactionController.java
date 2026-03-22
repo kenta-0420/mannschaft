@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 掲示板リアクションコントローラー。リアクションの追加・削除・取得APIを提供する。
@@ -32,10 +33,6 @@ public class BulletinReactionController {
 
     private final BulletinReactionService reactionService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * リアクションを追加する。
@@ -45,7 +42,7 @@ public class BulletinReactionController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "追加成功")
     public ResponseEntity<ApiResponse<ReactionResponse>> addReaction(
             @Valid @RequestBody CreateReactionRequest request) {
-        ReactionResponse response = reactionService.addReaction(getCurrentUserId(), request);
+        ReactionResponse response = reactionService.addReaction(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -59,7 +56,7 @@ public class BulletinReactionController {
             @RequestParam String targetType,
             @RequestParam Long targetId,
             @RequestParam String emoji) {
-        reactionService.removeReaction(getCurrentUserId(), targetType, targetId, emoji);
+        reactionService.removeReaction(SecurityUtils.getCurrentUserId(), targetType, targetId, emoji);
         return ResponseEntity.noContent().build();
     }
 

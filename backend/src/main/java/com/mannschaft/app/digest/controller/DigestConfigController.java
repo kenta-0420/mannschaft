@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * タイムラインダイジェスト自動生成設定コントローラー。
@@ -49,8 +50,7 @@ public class DigestConfigController {
     @Operation(summary = "自動生成設定の作成・更新")
     public ResponseEntity<ApiResponse<DigestConfigResponse>> createOrUpdateConfig(
             @Valid @RequestBody DigestConfigRequest request) {
-        // TODO: SecurityContext からユーザー ID を取得
-        Long userId = 0L;
+        Long userId = SecurityUtils.getCurrentUserId();
         DigestConfigService.ConfigSaveResult result = digestConfigService.createOrUpdateConfig(request, userId);
         HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(ApiResponse.of(result.response()));
