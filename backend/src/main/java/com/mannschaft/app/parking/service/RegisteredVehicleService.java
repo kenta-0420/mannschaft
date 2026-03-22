@@ -36,7 +36,7 @@ public class RegisteredVehicleService {
      */
     public List<VehicleResponse> listByUser(Long userId) {
         List<RegisteredVehicleEntity> vehicles = vehicleRepository.findByUserId(userId);
-        return parkingMapper.toVehicleResponseList(vehicles);
+        return vehicles.stream().map(this::toResponseWithDecrypt).toList();
     }
 
     /**
@@ -59,7 +59,7 @@ public class RegisteredVehicleService {
                 .build();
         RegisteredVehicleEntity saved = vehicleRepository.save(entity);
         log.info("車両登録: userId={}, vehicleType={}", userId, request.getVehicleType());
-        return parkingMapper.toVehicleResponse(saved);
+        return toResponseWithDecrypt(saved);
     }
 
     /**
@@ -82,7 +82,7 @@ public class RegisteredVehicleService {
                 hash, request.getNickname());
         RegisteredVehicleEntity saved = vehicleRepository.save(entity);
         log.info("車両更新: id={}", id);
-        return parkingMapper.toVehicleResponse(saved);
+        return toResponseWithDecrypt(saved);
     }
 
     /**
@@ -102,5 +102,20 @@ public class RegisteredVehicleService {
      */
     private String hashPlateNumber(String plateNumber) {
         return encryptionService.hmac(plateNumber);
+    }
+
+    /**
+     * エンティティをレスポンスに変換し、ナンバープレートを復号する。
+     */
+    private VehicleResponse toResponseWithDecrypt(RegisteredVehicleEntity entity) {
+        String decryptedPlate = null;
+        if (entity.getPlateNumber() != null) {
+            byte[] decrypted = encryptionService.decryptBytes(entity.getPlateNumber());
+            decryptedPlate = new String(decrypted, StandardCharsets.UTF_8);
+        }
+        return new VehicleResponse(
+                entity.getId(), entity.getUserId(),
+                entity.getVehicleType().name(), decryptedPlate,
+                entity.getNickname(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }

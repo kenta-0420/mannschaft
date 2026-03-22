@@ -63,7 +63,7 @@ public class MaintenanceScheduleService {
         validatePeriod(req.getStartsAt(), req.getEndsAt());
 
         MaintenanceMode mode = req.getMode() != null
-                ? MaintenanceMode.valueOf(req.getMode())
+                ? parseMaintenanceMode(req.getMode())
                 : MaintenanceMode.MAINTENANCE;
 
         MaintenanceScheduleEntity entity = MaintenanceScheduleEntity.builder()
@@ -98,7 +98,7 @@ public class MaintenanceScheduleService {
         validatePeriod(req.getStartsAt(), req.getEndsAt());
 
         MaintenanceMode mode = req.getMode() != null
-                ? MaintenanceMode.valueOf(req.getMode())
+                ? parseMaintenanceMode(req.getMode())
                 : entity.getMode();
 
         entity.update(req.getTitle(), req.getMessage(), mode, req.getStartsAt(), req.getEndsAt());
@@ -117,7 +117,7 @@ public class MaintenanceScheduleService {
     public void deleteSchedule(Long id) {
         MaintenanceScheduleEntity entity = findOrThrow(id);
 
-        if (entity.getStatus() == MaintenanceStatus.ACTIVE) {
+        if (entity.getStatus() != MaintenanceStatus.SCHEDULED) {
             throw new BusinessException(AdminErrorCode.INVALID_MAINTENANCE_STATUS);
         }
 
@@ -173,6 +173,14 @@ public class MaintenanceScheduleService {
     private MaintenanceScheduleEntity findOrThrow(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new BusinessException(AdminErrorCode.MAINTENANCE_NOT_FOUND));
+    }
+
+    private MaintenanceMode parseMaintenanceMode(String mode) {
+        try {
+            return MaintenanceMode.valueOf(mode);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(AdminErrorCode.INVALID_MAINTENANCE_STATUS);
+        }
     }
 
     private void validatePeriod(java.time.LocalDateTime startsAt, java.time.LocalDateTime endsAt) {

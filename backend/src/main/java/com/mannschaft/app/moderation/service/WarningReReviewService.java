@@ -72,7 +72,16 @@ public class WarningReReviewService {
             throw new BusinessException(ModerationExtErrorCode.RE_REVIEW_INVALID_STATUS);
         }
 
-        ReReviewStatus newStatus = ReReviewStatus.valueOf(status);
+        ReReviewStatus newStatus;
+        try {
+            newStatus = ReReviewStatus.valueOf(status);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ModerationExtErrorCode.RE_REVIEW_INVALID_STATUS);
+        }
+        if (newStatus != ReReviewStatus.OVERTURNED && newStatus != ReReviewStatus.UPHELD
+                && newStatus != ReReviewStatus.ESCALATED) {
+            throw new BusinessException(ModerationExtErrorCode.RE_REVIEW_INVALID_STATUS);
+        }
         entity.adminReview(reviewerId, reviewNote, newStatus);
         reReviewRepository.save(entity);
 

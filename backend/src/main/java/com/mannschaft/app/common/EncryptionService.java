@@ -87,6 +87,8 @@ public class EncryptionService {
             byte[] plainBytes = cipher.doFinal(combined, GCM_IV_LENGTH, combined.length - GCM_IV_LENGTH);
 
             return new String(plainBytes, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (EncryptionException e) {
+            throw e;
         } catch (Exception e) {
             throw new EncryptionException("Decryption failed", e);
         }

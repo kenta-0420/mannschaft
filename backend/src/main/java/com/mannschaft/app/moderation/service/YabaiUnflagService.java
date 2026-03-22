@@ -29,6 +29,7 @@ public class YabaiUnflagService {
 
     private final YabaiUnflagRequestRepository unflagRepository;
     private final ModerationSettingsRepository settingsRepository;
+    private final UserViolationService violationService;
     private final ModerationExtMapper mapper;
 
     /**
@@ -40,6 +41,10 @@ public class YabaiUnflagService {
      */
     @Transactional
     public YabaiUnflagResponse createUnflagRequest(Long userId, String reason) {
+        // ヤバいやつフラグ状態を確認
+        if (!violationService.isYabaiUser(userId)) {
+            throw new BusinessException(ModerationExtErrorCode.UNFLAG_NOT_ELIGIBLE);
+        }
         // 保留中の申請がないか確認
         Optional<YabaiUnflagRequestEntity> latest =
                 unflagRepository.findFirstByUserIdOrderByCreatedAtDesc(userId);

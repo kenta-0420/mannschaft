@@ -116,7 +116,15 @@ public class ModerationAppealService {
             throw new BusinessException(ModerationExtErrorCode.APPEAL_INVALID_STATUS);
         }
 
-        AppealStatus newStatus = AppealStatus.valueOf(status);
+        AppealStatus newStatus;
+        try {
+            newStatus = AppealStatus.valueOf(status);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ModerationExtErrorCode.APPEAL_INVALID_STATUS);
+        }
+        if (newStatus != AppealStatus.ACCEPTED && newStatus != AppealStatus.REJECTED) {
+            throw new BusinessException(ModerationExtErrorCode.APPEAL_INVALID_STATUS);
+        }
         appeal.review(reviewerId, reviewNote, newStatus);
         appealRepository.save(appeal);
 

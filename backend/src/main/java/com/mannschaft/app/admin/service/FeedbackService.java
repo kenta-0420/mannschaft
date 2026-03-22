@@ -19,6 +19,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 /**
  * フィードバック（目安箱）サービス。投稿・回答・投票を担当する。
  */
@@ -69,12 +73,12 @@ public class FeedbackService {
         Page<FeedbackSubmissionEntity> page;
         if (status != null && !status.isBlank()) {
             page = feedbackRepository.findByScopeTypeAndScopeIdAndStatusOrderByCreatedAtDesc(
-                    scopeType, scopeId, FeedbackStatus.valueOf(status), pageable);
+                    scopeType, scopeId, parseFeedbackStatus(status), pageable);
         } else {
             page = feedbackRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
                     scopeType, scopeId, pageable);
         }
-        return page.map(this::toResponseWithVoteCount);
+        return toResponsePageWithVoteCounts(page);
     }
 
     /**
@@ -85,8 +89,8 @@ public class FeedbackService {
      * @return フィードバックページ
      */
     public Page<FeedbackResponse> getMyFeedbacks(Long userId, Pageable pageable) {
-        return feedbackRepository.findBySubmittedByOrderByCreatedAtDesc(userId, pageable)
-                .map(this::toResponseWithVoteCount);
+        return toResponsePageWithVoteCounts(
+                feedbackRepository.findBySubmittedByOrderByCreatedAtDesc(userId, pageable));
     }
 
     /**
@@ -101,6 +105,10 @@ public class FeedbackService {
     public FeedbackResponse respondToFeedback(Long id, FeedbackRespondRequest req, Long adminId) {
         FeedbackSubmissionEntity entity = feedbackRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(AdminFeedbackErrorCode.FEEDBACK_NOT_FOUND));
+
+        if (entity.getStatus() == FeedbackStatus.RESPONDED) {
+            throw new BusinessException(AdminFeedbackErrorCode.FEEDBACK_ALREADY_RESPONDED);
+        }
 
         entity.respond(
                 req.getAdminResponse(),
@@ -124,7 +132,7 @@ public class FeedbackService {
         FeedbackSubmissionEntity entity = feedbackRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(AdminFeedbackErrorCode.FEEDBACK_NOT_FOUND));
 
-        entity.changeStatus(FeedbackStatus.valueOf(req.getStatus()));
+        entity.changeStatus(parseFeedbackStatus(req.getStatus()));
         entity = feedbackRepository.save(entity);
         log.info("フィードバックステータス変更: id={}, status={}", id, req.getStatus());
         return toResponseWithVoteCount(entity);
@@ -168,11 +176,38 @@ public class FeedbackService {
         log.info("フィードバック投票取消: feedbackId={}, userId={}", feedbackId, userId);
     }
 
+    private FeedbackStatus parseFeedbackStatus(String status) {
+        try {
+            return FeedbackStatus.valueOf(status);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(AdminFeedbackErrorCode.INVALID_FEEDBACK_STATUS);
+        }
+    }
+
+    /**
+     * ページ内の全エンティティの投票数を一括取得してレスポンスに変換する。
+     */
+    private Page<FeedbackResponse> toResponsePageWithVoteCounts(Page<FeedbackSubmissionEntity> page) {
+        List<Long> ids = page.getContent().stream()
+                .map(FeedbackSubmissionEntity::getId).toList();
+        Map<Long, Long> voteCounts = ids.isEmpty()
+                ? Map.of()
+                : voteRepository.countByFeedbackIds(ids).stream()
+                        .collect(Collectors.toMap(
+                                row -> (Long) row[0],
+                                row -> (Long) row[1]));
+        return page.map(entity -> toResponse(entity, voteCounts.getOrDefault(entity.getId(), 0L)));
+    }
+
     /**
      * エンティティに投票数を付与してレスポンスを生成する。
      */
     private FeedbackResponse toResponseWithVoteCount(FeedbackSubmissionEntity entity) {
         long voteCount = voteRepository.countByFeedbackId(entity.getId());
+        return toResponse(entity, voteCount);
+    }
+
+    private FeedbackResponse toResponse(FeedbackSubmissionEntity entity, long voteCount) {
         return new FeedbackResponse(
                 entity.getId(),
                 entity.getScopeType(),

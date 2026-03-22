@@ -2,7 +2,10 @@ package com.mannschaft.app.admin.repository;
 
 import com.mannschaft.app.admin.entity.FeedbackVoteEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -29,4 +32,10 @@ public interface FeedbackVoteRepository extends JpaRepository<FeedbackVoteEntity
      * ユーザーが既に投票済みか確認する。
      */
     boolean existsByFeedbackIdAndUserId(Long feedbackId, Long userId);
+
+    /**
+     * 複数フィードバックの投票数を一括取得する。
+     */
+    @Query("SELECT v.feedbackId, COUNT(v) FROM FeedbackVoteEntity v WHERE v.feedbackId IN :feedbackIds GROUP BY v.feedbackId")
+    List<Object[]> countByFeedbackIds(@Param("feedbackIds") List<Long> feedbackIds);
 }

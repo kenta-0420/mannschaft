@@ -19,4 +19,5 @@ public class VehicleResponse {
     private final String nickname;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+
 }
