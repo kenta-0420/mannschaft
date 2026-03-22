@@ -1,9 +1,11 @@
 package com.mannschaft.app.receipt.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.common.EncryptedStringConverter;
 import com.mannschaft.app.receipt.ReceiptScopeType;
 import com.mannschaft.app.receipt.ReceiptStatus;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -20,6 +22,7 @@ import java.time.LocalDateTime;
 
 /**
  * 発行済み領収書エンティティ。法的文書のため論理削除不可。取り消しは voided_at で管理。
+ * 個人情報フィールドはAES-256-GCMで暗号化して保存する。PDF原本（S3）が法的正本。
  */
 @Entity
 @Table(name = "receipts")
@@ -48,25 +51,32 @@ public class ReceiptEntity extends BaseEntity {
 
     private Long recipientUserId;
 
-    @Column(nullable = false, length = 200)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String recipientName;
 
-    @Column(length = 10)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String recipientPostalCode;
 
-    @Column(length = 500)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String recipientAddress;
 
-    @Column(nullable = false, length = 200)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String issuerName;
 
-    @Column(length = 10)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String issuerPostalCode;
 
-    @Column(length = 500)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String issuerAddress;
 
-    @Column(length = 20)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String issuerPhone;
 
     @Column(nullable = false)
@@ -118,6 +128,10 @@ public class ReceiptEntity extends BaseEntity {
 
     @Column(length = 500)
     private String voidedReason;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer encryptionKeyVersion = 1;
 
     /**
      * 領収書を無効化する。

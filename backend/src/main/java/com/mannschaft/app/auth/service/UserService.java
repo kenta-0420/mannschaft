@@ -25,6 +25,7 @@ import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EncryptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -54,6 +55,7 @@ public class UserService {
     private final AuthTokenService authTokenService;
     private final PasswordEncoder passwordEncoder;
     private final DomainEventPublisher eventPublisher;
+    private final EncryptionService encryptionService;
 
     /**
      * パスワードポリシー: 8文字以上、大文字・小文字・数字・記号をそれぞれ1文字以上含む
@@ -118,16 +120,23 @@ public class UserService {
         UserEntity user = findUserOrThrow(userId);
 
         // Builder パターンで更新（Entityに@Setterは使わない）
+        String newLastName = req.getLastName() != null ? req.getLastName() : user.getLastName();
+        String newFirstName = req.getFirstName() != null ? req.getFirstName() : user.getFirstName();
+        String newPhoneNumber = req.getPhoneNumber() != null ? req.getPhoneNumber() : user.getPhoneNumber();
         UserEntity updated = user.toBuilder()
-                .lastName(req.getLastName() != null ? req.getLastName() : user.getLastName())
-                .firstName(req.getFirstName() != null ? req.getFirstName() : user.getFirstName())
+                .lastName(newLastName)
+                .firstName(newFirstName)
                 .lastNameKana(req.getLastNameKana() != null ? req.getLastNameKana() : user.getLastNameKana())
                 .firstNameKana(req.getFirstNameKana() != null ? req.getFirstNameKana() : user.getFirstNameKana())
                 .displayName(req.getDisplayName() != null ? req.getDisplayName() : user.getDisplayName())
                 .nickname2(req.getNickname2() != null ? req.getNickname2() : user.getNickname2())
                 .isSearchable(req.getIsSearchable() != null ? req.getIsSearchable() : user.getIsSearchable())
                 .avatarUrl(req.getAvatarUrl() != null ? req.getAvatarUrl() : user.getAvatarUrl())
-                .phoneNumber(req.getPhoneNumber() != null ? req.getPhoneNumber() : user.getPhoneNumber())
+                .phoneNumber(newPhoneNumber)
+                .postalCode(req.getPostalCode() != null ? req.getPostalCode() : user.getPostalCode())
+                .lastNameHash(encryptionService.hmac(newLastName))
+                .firstNameHash(encryptionService.hmac(newFirstName))
+                .phoneNumberHash(encryptionService.hmac(newPhoneNumber))
                 .locale(req.getLocale() != null ? req.getLocale() : user.getLocale())
                 .timezone(req.getTimezone() != null ? req.getTimezone() : user.getTimezone())
                 .build();

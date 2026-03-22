@@ -16,6 +16,7 @@ CREATE TABLE feedback_submissions (
     created_at         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
+    CONSTRAINT fk_fs_submitted_by FOREIGN KEY (submitted_by) REFERENCES users (id) ON DELETE CASCADE,
     INDEX idx_fs_scope (scope_type, scope_id, status, created_at DESC),
     INDEX idx_fs_submitted_by (submitted_by),
     INDEX idx_fs_category (scope_type, scope_id, category)

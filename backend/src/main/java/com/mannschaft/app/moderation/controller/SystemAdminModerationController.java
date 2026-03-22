@@ -16,7 +16,8 @@ import com.mannschaft.app.moderation.dto.UpdateSettingRequest;
 import com.mannschaft.app.moderation.dto.UserViolationHistoryResponse;
 import com.mannschaft.app.moderation.dto.WarningReReviewResponse;
 import com.mannschaft.app.moderation.dto.YabaiUnflagResponse;
-import com.mannschaft.app.moderation.entity.ModerationSettingsHistoryEntity;
+import com.mannschaft.app.moderation.dto.SettingsHistoryResponse;
+import com.mannschaft.app.moderation.ModerationExtMapper;
 import com.mannschaft.app.moderation.service.ModerationAppealService;
 import com.mannschaft.app.moderation.service.ModerationSettingsService;
 import com.mannschaft.app.moderation.service.ModerationTemplateService;
@@ -60,6 +61,7 @@ public class SystemAdminModerationController {
     private final WarningReReviewService reReviewService;
     private final ModerationTemplateService templateService;
     private final ModerationSettingsService settingsService;
+    private final ModerationExtMapper moderationExtMapper;
 
     // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
     private Long getCurrentUserId() {
@@ -297,10 +299,13 @@ public class SystemAdminModerationController {
     @GetMapping("/moderation/settings/history")
     @Operation(summary = "設定変更履歴取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<Page<ModerationSettingsHistoryEntity>> getSettingsHistory(
+    public ResponseEntity<PagedResponse<SettingsHistoryResponse>> getSettingsHistory(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<ModerationSettingsHistoryEntity> history = settingsService.getSettingsHistory(PageRequest.of(page, size));
-        return ResponseEntity.ok(history);
+        Page<SettingsHistoryResponse> history = settingsService.getSettingsHistory(PageRequest.of(page, size))
+                .map(moderationExtMapper::toSettingsHistoryResponse);
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                history.getTotalElements(), history.getNumber(), history.getSize(), history.getTotalPages());
+        return ResponseEntity.ok(PagedResponse.of(history.getContent(), meta));
     }
 }

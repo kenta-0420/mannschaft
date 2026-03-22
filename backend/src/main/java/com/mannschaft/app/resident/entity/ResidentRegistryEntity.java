@@ -1,7 +1,9 @@
 package com.mannschaft.app.resident.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.common.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -17,6 +19,7 @@ import java.time.LocalDateTime;
 
 /**
  * 居住者台帳エンティティ。
+ * 氏名・連絡先はAES-256-GCMで暗号化して保存する。
  */
 @Entity
 @Table(name = "resident_registry")
@@ -35,26 +38,43 @@ public class ResidentRegistryEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String residentType;
 
-    @Column(nullable = false, length = 50)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String lastName;
 
-    @Column(nullable = false, length = 50)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String firstName;
 
-    @Column(length = 100)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String lastNameKana;
 
-    @Column(length = 100)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String firstNameKana;
 
-    @Column(length = 20)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String phone;
 
-    @Column(length = 255)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String email;
 
-    @Column(length = 200)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String emergencyContact;
+
+    @Column(length = 64)
+    private String lastNameHash;
+
+    @Column(length = 64)
+    private String firstNameHash;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer encryptionKeyVersion = 1;
 
     @Column(nullable = false)
     private LocalDate moveInDate;
@@ -100,6 +120,14 @@ public class ResidentRegistryEntity extends BaseEntity {
         this.ownershipRatio = ownershipRatio;
         this.isPrimary = isPrimary;
         this.notes = notes;
+    }
+
+    /**
+     * ブラインドインデックスを更新する。
+     */
+    public void updateHashes(String lastNameHash, String firstNameHash) {
+        this.lastNameHash = lastNameHash;
+        this.firstNameHash = firstNameHash;
     }
 
     /**

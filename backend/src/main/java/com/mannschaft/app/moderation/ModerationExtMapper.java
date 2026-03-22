@@ -4,12 +4,14 @@ import com.mannschaft.app.moderation.dto.AppealResponse;
 import com.mannschaft.app.moderation.dto.InternalNoteResponse;
 import com.mannschaft.app.moderation.dto.ModerationSettingsResponse;
 import com.mannschaft.app.moderation.dto.ModerationTemplateResponse;
+import com.mannschaft.app.moderation.dto.SettingsHistoryResponse;
 import com.mannschaft.app.moderation.dto.ViolationResponse;
 import com.mannschaft.app.moderation.dto.WarningReReviewResponse;
 import com.mannschaft.app.moderation.dto.YabaiUnflagResponse;
 import com.mannschaft.app.moderation.entity.ModerationActionTemplateEntity;
 import com.mannschaft.app.moderation.entity.ModerationAppealEntity;
 import com.mannschaft.app.moderation.entity.ModerationSettingsEntity;
+import com.mannschaft.app.moderation.entity.ModerationSettingsHistoryEntity;
 import com.mannschaft.app.moderation.entity.ReportInternalNoteEntity;
 import com.mannschaft.app.moderation.entity.UserViolationEntity;
 import com.mannschaft.app.moderation.entity.WarningReReviewEntity;
@@ -57,4 +59,6 @@ public interface ModerationExtMapper {
     InternalNoteResponse toInternalNoteResponse(ReportInternalNoteEntity entity);
 
     List<InternalNoteResponse> toInternalNoteResponseList(List<ReportInternalNoteEntity> entities);
+
+    SettingsHistoryResponse toSettingsHistoryResponse(ModerationSettingsHistoryEntity entity);
 }

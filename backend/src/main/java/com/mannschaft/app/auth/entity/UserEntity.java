@@ -1,7 +1,9 @@
 package com.mannschaft.app.auth.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.common.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -17,6 +19,7 @@ import java.time.LocalDateTime;
 
 /**
  * ユーザーマスターエンティティ。認証・プロフィール情報を管理する。
+ * 氏名・電話番号・郵便番号はAES-256-GCMで暗号化して保存する。
  */
 @Entity
 @Table(name = "users")
@@ -32,16 +35,20 @@ public class UserEntity extends BaseEntity {
 
     private String passwordHash;
 
-    @Column(nullable = false, length = 50)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String lastName;
 
-    @Column(nullable = false, length = 50)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String firstName;
 
-    @Column(length = 50)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String lastNameKana;
 
-    @Column(length = 50)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String firstNameKana;
 
     @Column(nullable = false, length = 50)
@@ -56,8 +63,26 @@ public class UserEntity extends BaseEntity {
     @Column(length = 500)
     private String avatarUrl;
 
-    @Column(length = 20)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String phoneNumber;
+
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
+    private String postalCode;
+
+    @Column(length = 64)
+    private String lastNameHash;
+
+    @Column(length = 64)
+    private String firstNameHash;
+
+    @Column(length = 64)
+    private String phoneNumberHash;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer encryptionKeyVersion = 1;
 
     @Column(nullable = false, length = 10)
     private String locale;

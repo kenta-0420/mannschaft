@@ -1,9 +1,11 @@
 package com.mannschaft.app.receipt.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.common.EncryptedStringConverter;
 import com.mannschaft.app.receipt.ReceiptScopeType;
 import com.mannschaft.app.receipt.SealVariant;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -16,6 +18,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 領収書発行者設定エンティティ。チーム/組織ごとに1レコード。
+ * 発行者名・住所・電話番号はAES-256-GCMで暗号化して保存する。
  */
 @Entity
 @Table(name = "receipt_issuer_settings")
@@ -32,16 +35,20 @@ public class ReceiptIssuerSettingsEntity extends BaseEntity {
     @Column(nullable = false)
     private Long scopeId;
 
-    @Column(nullable = false, length = 200)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String issuerName;
 
-    @Column(length = 10)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String postalCode;
 
-    @Column(length = 500)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String address;
 
-    @Column(length = 20)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String phone;
 
     @Column(nullable = false)
@@ -80,6 +87,10 @@ public class ReceiptIssuerSettingsEntity extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Boolean autoResetNumber = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer encryptionKeyVersion = 1;
 
     /**
      * 発行者設定を更新する。

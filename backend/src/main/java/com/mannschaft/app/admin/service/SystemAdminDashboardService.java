@@ -1,5 +1,6 @@
 package com.mannschaft.app.admin.service;
 
+import com.mannschaft.app.admin.FeedbackStatus;
 import com.mannschaft.app.admin.dto.SystemAdminDashboardResponse;
 import com.mannschaft.app.admin.repository.FeedbackSubmissionRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +25,8 @@ public class SystemAdminDashboardService {
      * @return ダッシュボード情報
      */
     public SystemAdminDashboardResponse getDashboard() {
-        long openFeedbacks = feedbackRepository.countByScopeTypeAndScopeIdAndStatus(
-                "PLATFORM", null, "OPEN");
+        long openFeedbacks = feedbackRepository.countByScopeTypeAndScopeIdIsNullAndStatus(
+                "PLATFORM", FeedbackStatus.OPEN);
 
         // TODO: 組織数・チーム数・ユーザー数・通報数・メンテナンス数は各機能のリポジトリ実装後に連携
         return new SystemAdminDashboardResponse(

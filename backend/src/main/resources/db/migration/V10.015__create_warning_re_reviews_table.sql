@@ -2,8 +2,8 @@
 CREATE TABLE warning_re_reviews (
     id                          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id                     BIGINT UNSIGNED NOT NULL,
-    report_id                   BIGINT UNSIGNED NOT NULL,
-    action_id                   BIGINT UNSIGNED NOT NULL,
+    report_id                   BIGINT          NOT NULL,
+    action_id                   BIGINT          NOT NULL,
     reason                      TEXT            NOT NULL,
     status                      VARCHAR(20)     NOT NULL DEFAULT 'PENDING',
     admin_reviewed_by           BIGINT UNSIGNED NULL,

@@ -21,6 +21,7 @@ import com.mannschaft.app.auth.event.OAuthUnlinkedEvent;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EncryptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -54,6 +55,7 @@ public class AuthOAuthService {
     private final AuthTokenService authTokenService;
     private final PasswordEncoder passwordEncoder;
     private final DomainEventPublisher eventPublisher;
+    private final EncryptionService encryptionService;
 
     /**
      * OAuthプロバイダを使用してログインする。
@@ -134,11 +136,15 @@ public class AuthOAuthService {
         }
 
         // 新規ユーザー → UserEntity作成(password_hash=NULL) + OAuthAccount作成 → TokenResponse
+        String oauthLastName = oauthUserInfo.lastName() != null ? oauthUserInfo.lastName() : "";
+        String oauthFirstName = oauthUserInfo.firstName() != null ? oauthUserInfo.firstName() : "";
         UserEntity newUser = UserEntity.builder()
                 .email(oauthUserInfo.email())
                 .passwordHash(null)
-                .lastName(oauthUserInfo.lastName() != null ? oauthUserInfo.lastName() : "")
-                .firstName(oauthUserInfo.firstName() != null ? oauthUserInfo.firstName() : "")
+                .lastName(oauthLastName)
+                .firstName(oauthFirstName)
+                .lastNameHash(encryptionService.hmac(oauthLastName))
+                .firstNameHash(encryptionService.hmac(oauthFirstName))
                 .displayName(oauthUserInfo.displayName() != null ? oauthUserInfo.displayName() : oauthUserInfo.email())
                 .isSearchable(true)
                 .locale("ja")

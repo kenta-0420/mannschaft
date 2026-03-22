@@ -40,3 +40,6 @@ mannschaft:
     secret: ${MANNSCHAFT_JWT_SECRET:dev-secret-key-change-in-production-minimum-256-bits-long}
     access-token-expiration: ${MANNSCHAFT_JWT_ACCESS_EXPIRATION:900}
     refresh-token-expiration: ${MANNSCHAFT_JWT_REFRESH_EXPIRATION:604800}
+  encryption:
+    key: ${MANNSCHAFT_ENCRYPTION_KEY:}
+    hmac-key: ${MANNSCHAFT_HMAC_KEY:}

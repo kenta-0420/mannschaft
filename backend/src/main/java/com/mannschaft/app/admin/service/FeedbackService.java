@@ -2,6 +2,7 @@ package com.mannschaft.app.admin.service;
 
 import com.mannschaft.app.admin.AdminFeedbackErrorCode;
 import com.mannschaft.app.admin.AnnouncementFeedbackMapper;
+import com.mannschaft.app.admin.FeedbackStatus;
 import com.mannschaft.app.admin.dto.CreateFeedbackRequest;
 import com.mannschaft.app.admin.dto.FeedbackRespondRequest;
 import com.mannschaft.app.admin.dto.FeedbackResponse;
@@ -68,7 +69,7 @@ public class FeedbackService {
         Page<FeedbackSubmissionEntity> page;
         if (status != null && !status.isBlank()) {
             page = feedbackRepository.findByScopeTypeAndScopeIdAndStatusOrderByCreatedAtDesc(
-                    scopeType, scopeId, status, pageable);
+                    scopeType, scopeId, FeedbackStatus.valueOf(status), pageable);
         } else {
             page = feedbackRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
                     scopeType, scopeId, pageable);
@@ -123,7 +124,7 @@ public class FeedbackService {
         FeedbackSubmissionEntity entity = feedbackRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(AdminFeedbackErrorCode.FEEDBACK_NOT_FOUND));
 
-        entity.changeStatus(req.getStatus());
+        entity.changeStatus(FeedbackStatus.valueOf(req.getStatus()));
         entity = feedbackRepository.save(entity);
         log.info("フィードバックステータス変更: id={}, status={}", id, req.getStatus());
         return toResponseWithVoteCount(entity);
@@ -181,7 +182,7 @@ public class FeedbackService {
                 entity.getBody(),
                 entity.getIsAnonymous(),
                 entity.getSubmittedBy(),
-                entity.getStatus(),
+                entity.getStatus().name(),
                 entity.getAdminResponse(),
                 entity.getRespondedBy(),
                 entity.getRespondedAt(),

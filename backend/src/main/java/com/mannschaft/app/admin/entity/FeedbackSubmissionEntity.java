@@ -1,8 +1,11 @@
 package com.mannschaft.app.admin.entity;
 
+import com.mannschaft.app.admin.FeedbackStatus;
 import com.mannschaft.app.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -44,9 +47,10 @@ public class FeedbackSubmissionEntity extends BaseEntity {
     @Column(nullable = false)
     private Long submittedBy;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private String status = "OPEN";
+    private FeedbackStatus status = FeedbackStatus.OPEN;
 
     @Column(columnDefinition = "TEXT")
     private String adminResponse;
@@ -71,7 +75,7 @@ public class FeedbackSubmissionEntity extends BaseEntity {
         this.respondedBy = respondedBy;
         this.respondedAt = LocalDateTime.now();
         this.isPublicResponse = isPublicResponse;
-        this.status = "RESPONDED";
+        this.status = FeedbackStatus.RESPONDED;
     }
 
     /**
@@ -79,7 +83,7 @@ public class FeedbackSubmissionEntity extends BaseEntity {
      *
      * @param newStatus 新しいステータス
      */
-    public void changeStatus(String newStatus) {
+    public void changeStatus(FeedbackStatus newStatus) {
         this.status = newStatus;
     }
 }

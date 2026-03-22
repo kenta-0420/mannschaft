@@ -1,5 +1,6 @@
 package com.mannschaft.app.admin.service;
 
+import com.mannschaft.app.admin.FeedbackStatus;
 import com.mannschaft.app.admin.dto.AdminDashboardResponse;
 import com.mannschaft.app.admin.repository.FeedbackSubmissionRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ public class AdminDashboardService {
      */
     public AdminDashboardResponse getDashboard(String scopeType, Long scopeId) {
         long pendingFeedbacks = feedbackRepository.countByScopeTypeAndScopeIdAndStatus(
-                scopeType, scopeId, "OPEN");
+                scopeType, scopeId, FeedbackStatus.OPEN);
 
         // TODO: メンバー数・アクティブメンバー数・通報数・スケジュール数は各機能のリポジトリ実装後に連携
         return new AdminDashboardResponse(

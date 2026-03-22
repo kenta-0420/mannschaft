@@ -21,4 +21,5 @@ public class UpdateProfileRequest {
     private final Boolean isSearchable;
     private final String avatarUrl;
     private final String phoneNumber;
+    private final String postalCode;
 }

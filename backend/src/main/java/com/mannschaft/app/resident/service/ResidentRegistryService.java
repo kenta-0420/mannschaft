@@ -1,6 +1,7 @@
 package com.mannschaft.app.resident.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.resident.ResidentErrorCode;
 import com.mannschaft.app.resident.dto.CreateResidentRequest;
 import com.mannschaft.app.resident.dto.DwellingUnitResponse;
@@ -31,6 +32,7 @@ public class ResidentRegistryService {
     private final ResidentRegistryRepository residentRepository;
     private final DwellingUnitRepository dwellingUnitRepository;
     private final ResidentMapper residentMapper;
+    private final EncryptionService encryptionService;
 
     /**
      * 居室の居住者一覧を取得する。
@@ -60,6 +62,8 @@ public class ResidentRegistryService {
                 .phone(request.getPhone())
                 .email(request.getEmail())
                 .emergencyContact(request.getEmergencyContact())
+                .lastNameHash(encryptionService.hmac(request.getLastName()))
+                .firstNameHash(encryptionService.hmac(request.getFirstName()))
                 .moveInDate(request.getMoveInDate())
                 .ownershipRatio(request.getOwnershipRatio())
                 .isPrimary(request.getIsPrimary() != null ? request.getIsPrimary() : false)
@@ -87,6 +91,9 @@ public class ResidentRegistryService {
                 request.getMoveInDate(), request.getOwnershipRatio(),
                 request.getIsPrimary() != null ? request.getIsPrimary() : false,
                 request.getNotes());
+        entity.updateHashes(
+                encryptionService.hmac(request.getLastName()),
+                encryptionService.hmac(request.getFirstName()));
         ResidentRegistryEntity saved = residentRepository.save(entity);
         log.info("居住者更新: residentId={}", id);
         return residentMapper.toResidentResponse(saved);

@@ -6,7 +6,9 @@ import com.mannschaft.app.moderation.dto.EscalateRequest;
 import com.mannschaft.app.moderation.dto.ReportActionResponse;
 import com.mannschaft.app.moderation.dto.ReportStatsResponse;
 import com.mannschaft.app.moderation.dto.ResolveReportRequest;
+import com.mannschaft.app.moderation.dto.UserViolationHistoryResponse;
 import com.mannschaft.app.moderation.service.ReportActionService;
+import com.mannschaft.app.moderation.service.UserViolationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -35,6 +37,7 @@ import java.util.Map;
 public class ModerationResolveController {
 
     private final ReportActionService reportActionService;
+    private final UserViolationService userViolationService;
 
     // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
     private Long getCurrentUserId() {
@@ -170,11 +173,9 @@ public class ModerationResolveController {
     @GetMapping("/users/{userId}/violation-history")
     @Operation(summary = "違反履歴取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<ReportActionResponse>>> getViolationHistory(
+    public ResponseEntity<ApiResponse<UserViolationHistoryResponse>> getViolationHistory(
             @PathVariable Long userId) {
-        // 対応者として記録されたアクション履歴ではなく、違反対象のユーザーに関連する通報のアクションを返す
-        // ここではactionByベースでの簡易実装
-        List<ReportActionResponse> actions = reportActionService.getActions(userId);
-        return ResponseEntity.ok(ApiResponse.of(actions));
+        UserViolationHistoryResponse history = userViolationService.getViolationHistory(userId);
+        return ResponseEntity.ok(ApiResponse.of(history));
     }
 }

@@ -34,6 +34,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EncryptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -69,6 +70,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final DomainEventPublisher eventPublisher;
     private final StringRedisTemplate redisTemplate;
+    private final EncryptionService encryptionService;
 
     // レートリミット設定
     private static final int REGISTER_MAX_ATTEMPTS = 10;
@@ -131,6 +133,8 @@ public class AuthService {
                 .passwordHash(passwordEncoder.encode(req.getPassword()))
                 .lastName(req.getLastName())
                 .firstName(req.getFirstName())
+                .lastNameHash(encryptionService.hmac(req.getLastName()))
+                .firstNameHash(encryptionService.hmac(req.getFirstName()))
                 .displayName(req.getDisplayName())
                 .locale(req.getLocale() != null ? req.getLocale() : "ja")
                 .timezone(req.getTimezone() != null ? req.getTimezone() : "Asia/Tokyo")

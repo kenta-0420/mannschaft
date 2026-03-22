@@ -1,6 +1,7 @@
 package com.mannschaft.app.parking.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.parking.ParkingErrorCode;
 import com.mannschaft.app.parking.ParkingMapper;
 import com.mannschaft.app.parking.VehicleType;
@@ -15,9 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.List;
 
 /**
@@ -31,6 +29,7 @@ public class RegisteredVehicleService {
 
     private final RegisteredVehicleRepository vehicleRepository;
     private final ParkingMapper parkingMapper;
+    private final EncryptionService encryptionService;
 
     /**
      * ユーザーの車両一覧を取得する。
@@ -53,7 +52,8 @@ public class RegisteredVehicleService {
         RegisteredVehicleEntity entity = RegisteredVehicleEntity.builder()
                 .userId(userId)
                 .vehicleType(VehicleType.valueOf(request.getVehicleType()))
-                .plateNumber(request.getPlateNumber().getBytes(StandardCharsets.UTF_8))
+                .plateNumber(encryptionService.encryptBytes(
+                        request.getPlateNumber().getBytes(StandardCharsets.UTF_8)))
                 .plateNumberHash(hash)
                 .nickname(request.getNickname())
                 .build();
@@ -77,7 +77,8 @@ public class RegisteredVehicleService {
         });
 
         entity.update(VehicleType.valueOf(request.getVehicleType()),
-                request.getPlateNumber().getBytes(StandardCharsets.UTF_8),
+                encryptionService.encryptBytes(
+                        request.getPlateNumber().getBytes(StandardCharsets.UTF_8)),
                 hash, request.getNickname());
         RegisteredVehicleEntity saved = vehicleRepository.save(entity);
         log.info("車両更新: id={}", id);
@@ -97,15 +98,9 @@ public class RegisteredVehicleService {
     }
 
     /**
-     * ナンバープレートのSHA-256ハッシュを生成する。
+     * ナンバープレートのHMACハッシュを生成する。
      */
     private String hashPlateNumber(String plateNumber) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(plateNumber.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 not available", e);
-        }
+        return encryptionService.hmac(plateNumber);
     }
 }

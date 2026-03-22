@@ -1,6 +1,7 @@
 package com.mannschaft.app.line.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.line.LineErrorCode;
 import com.mannschaft.app.line.LineMapper;
 import com.mannschaft.app.line.LineMessageType;
@@ -32,6 +33,7 @@ public class LineBotConfigService {
     private final LineBotConfigRepository lineBotConfigRepository;
     private final LineMessageLogRepository lineMessageLogRepository;
     private final LineMapper lineMapper;
+    private final EncryptionService encryptionService;
 
     /**
      * BOT設定を取得する。
@@ -133,10 +135,13 @@ public class LineBotConfigService {
     }
 
     /**
-     * 暗号化処理（将来AES-256-GCM実装予定、現時点ではプレースホルダー）。
+     * 文字列をAES-256-GCMで暗号化し、バイト列を返す。
      */
     private byte[] encrypt(String plainText) {
-        // TODO: AES-256-GCM 暗号化実装
-        return plainText != null ? plainText.getBytes() : new byte[0];
+        if (plainText == null) {
+            return null;
+        }
+        return encryptionService.encryptBytes(
+                plainText.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }
