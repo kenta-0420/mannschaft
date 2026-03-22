@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * スケジュール共通コントローラー。スコープ横断の出欠回答・集計・カレンダー・統計APIを提供する。
@@ -42,10 +43,6 @@ public class ScheduleCommonController {
     private final ScheduleAttendanceService attendanceService;
     private final ScheduleReminderService reminderService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 出欠回答を行う。
@@ -57,7 +54,7 @@ public class ScheduleCommonController {
             @PathVariable Long scheduleId,
             @Valid @RequestBody AttendanceRequest request) {
         AttendanceResponse response = attendanceService.respondAttendance(
-                scheduleId, getCurrentUserId(), request);
+                scheduleId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -95,7 +92,7 @@ public class ScheduleCommonController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
         List<CalendarEntryResponse> responses = scheduleService.getMyCalendar(
-                getCurrentUserId(), from, to);
+                SecurityUtils.getCurrentUserId(), from, to);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -179,7 +176,7 @@ public class ScheduleCommonController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
         AttendanceStatsResponse response = attendanceService.getMyAttendanceStats(
-                getCurrentUserId(), from, to);
+                SecurityUtils.getCurrentUserId(), from, to);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

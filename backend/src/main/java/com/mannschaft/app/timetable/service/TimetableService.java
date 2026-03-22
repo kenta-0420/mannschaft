@@ -51,10 +51,18 @@ public class TimetableService {
     }
 
     /**
+     * 時間割をIDのみで取得する。チーム検証なし（内部API用）。
+     */
+    public TimetableEntity getByIdWithoutTeam(Long timetableId) {
+        return timetableRepository.findById(timetableId)
+                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TIMETABLE_NOT_FOUND));
+    }
+
+    /**
      * 指定日に有効な時間割を取得する。
      */
     public Optional<TimetableEntity> getEffective(Long teamId, LocalDate date) {
-        return timetableRepository.findEffective(teamId, date);
+        return timetableRepository.findEffective(teamId, date).stream().findFirst();
     }
 
     /**
@@ -67,19 +75,20 @@ public class TimetableService {
                 .orElseThrow(() -> new BusinessException(TimetableErrorCode.TERM_NOT_FOUND));
         validateEffectiveDateRange(data.effectiveFrom(), data.effectiveUntil(), term);
 
-        var entity = new TimetableEntity();
-        entity.setTeamId(teamId);
-        entity.setTermId(data.termId());
-        entity.setName(data.name());
-        entity.setStatus(TimetableStatus.DRAFT);
-        entity.setVisibility(data.visibility());
-        entity.setEffectiveFrom(data.effectiveFrom());
-        entity.setEffectiveUntil(data.effectiveUntil());
-        entity.setWeekPatternEnabled(data.weekPatternEnabled());
-        entity.setWeekPatternBaseDate(data.weekPatternBaseDate());
-        entity.setPeriodOverride(data.periodOverride());
-        entity.setNotes(data.notes());
-        entity.setCreatedBy(data.createdBy());
+        TimetableEntity entity = TimetableEntity.builder()
+                .teamId(teamId)
+                .termId(data.termId())
+                .name(data.name())
+                .status(TimetableStatus.DRAFT)
+                .visibility(data.visibility())
+                .effectiveFrom(data.effectiveFrom())
+                .effectiveUntil(data.effectiveUntil())
+                .weekPatternEnabled(data.weekPatternEnabled())
+                .weekPatternBaseDate(data.weekPatternBaseDate())
+                .periodOverride(data.periodOverride())
+                .notes(data.notes())
+                .createdBy(data.createdBy())
+                .build();
 
         return timetableRepository.save(entity);
     }
@@ -102,16 +111,17 @@ public class TimetableService {
         LocalDate effectiveUntil = data.effectiveUntil() != null ? data.effectiveUntil() : entity.getEffectiveUntil();
         validateEffectiveDateRange(effectiveFrom, effectiveUntil, term);
 
-        if (data.name() != null) entity.setName(data.name());
-        if (data.visibility() != null) entity.setVisibility(data.visibility());
-        if (data.effectiveFrom() != null) entity.setEffectiveFrom(data.effectiveFrom());
-        if (data.effectiveUntil() != null) entity.setEffectiveUntil(data.effectiveUntil());
-        if (data.weekPatternEnabled() != null) entity.setWeekPatternEnabled(data.weekPatternEnabled());
-        if (data.weekPatternBaseDate() != null) entity.setWeekPatternBaseDate(data.weekPatternBaseDate());
-        if (data.periodOverride() != null) entity.setPeriodOverride(data.periodOverride());
-        if (data.notes() != null) entity.setNotes(data.notes());
+        var builder = entity.toBuilder();
+        if (data.name() != null) builder.name(data.name());
+        if (data.visibility() != null) builder.visibility(data.visibility());
+        if (data.effectiveFrom() != null) builder.effectiveFrom(data.effectiveFrom());
+        if (data.effectiveUntil() != null) builder.effectiveUntil(data.effectiveUntil());
+        if (data.weekPatternEnabled() != null) builder.weekPatternEnabled(data.weekPatternEnabled());
+        if (data.weekPatternBaseDate() != null) builder.weekPatternBaseDate(data.weekPatternBaseDate());
+        if (data.periodOverride() != null) builder.periodOverride(data.periodOverride());
+        if (data.notes() != null) builder.notes(data.notes());
 
-        return timetableRepository.save(entity);
+        return timetableRepository.save(builder.build());
     }
 
     /**
@@ -197,19 +207,20 @@ public class TimetableService {
         validateEffectiveDateRange(effectiveFrom, effectiveUntil, term);
 
         // 時間割本体をコピー
-        var newEntity = new TimetableEntity();
-        newEntity.setTeamId(teamId);
-        newEntity.setTermId(newTermId);
-        newEntity.setName(data.name() != null ? data.name() : source.getName() + " (コピー)");
-        newEntity.setStatus(TimetableStatus.DRAFT);
-        newEntity.setVisibility(source.getVisibility());
-        newEntity.setEffectiveFrom(effectiveFrom);
-        newEntity.setEffectiveUntil(effectiveUntil);
-        newEntity.setWeekPatternEnabled(source.getWeekPatternEnabled());
-        newEntity.setWeekPatternBaseDate(source.getWeekPatternBaseDate());
-        newEntity.setPeriodOverride(source.getPeriodOverride());
-        newEntity.setNotes(source.getNotes());
-        newEntity.setCreatedBy(data.createdBy());
+        TimetableEntity newEntity = TimetableEntity.builder()
+                .teamId(teamId)
+                .termId(newTermId)
+                .name(data.name() != null ? data.name() : source.getName() + " (コピー)")
+                .status(TimetableStatus.DRAFT)
+                .visibility(source.getVisibility())
+                .effectiveFrom(effectiveFrom)
+                .effectiveUntil(effectiveUntil)
+                .weekPatternEnabled(source.getWeekPatternEnabled())
+                .weekPatternBaseDate(source.getWeekPatternBaseDate())
+                .periodOverride(source.getPeriodOverride())
+                .notes(source.getNotes())
+                .createdBy(data.createdBy())
+                .build();
 
         TimetableEntity saved = timetableRepository.save(newEntity);
 
@@ -217,19 +228,17 @@ public class TimetableService {
         List<TimetableSlotEntity> sourceSlots =
                 slotRepository.findByTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(timetableId);
         List<TimetableSlotEntity> newSlots = sourceSlots.stream()
-                .map(slot -> {
-                    var newSlot = new TimetableSlotEntity();
-                    newSlot.setTimetableId(saved.getId());
-                    newSlot.setDayOfWeek(slot.getDayOfWeek());
-                    newSlot.setPeriodNumber(slot.getPeriodNumber());
-                    newSlot.setWeekPattern(slot.getWeekPattern());
-                    newSlot.setSubjectName(slot.getSubjectName());
-                    newSlot.setTeacherName(slot.getTeacherName());
-                    newSlot.setRoomName(slot.getRoomName());
-                    newSlot.setColor(slot.getColor());
-                    newSlot.setNotes(slot.getNotes());
-                    return newSlot;
-                })
+                .map(slot -> TimetableSlotEntity.builder()
+                        .timetableId(saved.getId())
+                        .dayOfWeek(slot.getDayOfWeek())
+                        .periodNumber(slot.getPeriodNumber())
+                        .weekPattern(slot.getWeekPattern())
+                        .subjectName(slot.getSubjectName())
+                        .teacherName(slot.getTeacherName())
+                        .roomName(slot.getRoomName())
+                        .color(slot.getColor())
+                        .notes(slot.getNotes())
+                        .build())
                 .toList();
         slotRepository.saveAll(newSlots);
 

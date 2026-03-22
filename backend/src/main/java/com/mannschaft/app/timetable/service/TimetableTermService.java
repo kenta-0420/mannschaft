@@ -75,17 +75,15 @@ public class TimetableTermService {
         validateTermUniqueness(scopeId, isTeam, data.academicYear(), data.name(), null);
         validateTermDateRange(scopeId, isTeam, data.academicYear(), data.startDate(), data.endDate(), null);
 
-        var entity = new TimetableTermEntity();
-        if (isTeam) {
-            entity.setTeamId(scopeId);
-        } else {
-            entity.setOrganizationId(scopeId);
-        }
-        entity.setAcademicYear(data.academicYear());
-        entity.setName(data.name());
-        entity.setStartDate(data.startDate());
-        entity.setEndDate(data.endDate());
-        entity.setSortOrder(data.sortOrder());
+        TimetableTermEntity entity = TimetableTermEntity.builder()
+                .teamId(isTeam ? scopeId : null)
+                .organizationId(isTeam ? null : scopeId)
+                .academicYear(data.academicYear())
+                .name(data.name())
+                .startDate(data.startDate())
+                .endDate(data.endDate())
+                .sortOrder(data.sortOrder())
+                .build();
 
         return termRepository.save(entity);
     }
@@ -104,12 +102,14 @@ public class TimetableTermService {
         validateTermDateRange(scopeId, isTeam, entity.getAcademicYear(),
                 data.startDate(), data.endDate(), termId);
 
-        entity.setName(data.name());
-        entity.setStartDate(data.startDate());
-        entity.setEndDate(data.endDate());
-        entity.setSortOrder(data.sortOrder());
+        TimetableTermEntity updated = entity.toBuilder()
+                .name(data.name())
+                .startDate(data.startDate())
+                .endDate(data.endDate())
+                .sortOrder(data.sortOrder())
+                .build();
 
-        return termRepository.save(entity);
+        return termRepository.save(updated);
     }
 
     /**

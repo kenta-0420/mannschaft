@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * iCal購読コントローラー。iCalトークン管理・iCalフィード配信APIを提供する。
@@ -32,10 +33,6 @@ public class IcalController {
 
     private final IcalService icalService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * iCalトークンを取得する。未発行の場合は自動生成する。
@@ -44,7 +41,7 @@ public class IcalController {
     @Operation(summary = "iCalトークン取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<IcalTokenResponse>> getToken() {
-        IcalTokenResponse response = icalService.getOrCreateToken(getCurrentUserId());
+        IcalTokenResponse response = icalService.getOrCreateToken(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -55,7 +52,7 @@ public class IcalController {
     @Operation(summary = "iCalトークン再生成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再生成成功")
     public ResponseEntity<ApiResponse<IcalTokenResponse>> regenerateToken() {
-        IcalTokenResponse response = icalService.regenerateToken(getCurrentUserId());
+        IcalTokenResponse response = icalService.regenerateToken(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -66,7 +63,7 @@ public class IcalController {
     @Operation(summary = "iCalトークン削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteToken() {
-        icalService.deleteToken(getCurrentUserId());
+        icalService.deleteToken(SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

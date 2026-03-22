@@ -70,19 +70,17 @@ public class TimetableSlotService {
         }
 
         List<TimetableSlotEntity> entities = slots.stream()
-                .map(s -> {
-                    var entity = new TimetableSlotEntity();
-                    entity.setTimetableId(timetableId);
-                    entity.setDayOfWeek(s.dayOfWeek());
-                    entity.setPeriodNumber(s.periodNumber());
-                    entity.setWeekPattern(s.weekPattern());
-                    entity.setSubjectName(s.subjectName());
-                    entity.setTeacherName(s.teacherName());
-                    entity.setRoomName(s.roomName());
-                    entity.setColor(s.color());
-                    entity.setNotes(s.notes());
-                    return entity;
-                })
+                .map(s -> TimetableSlotEntity.builder()
+                        .timetableId(timetableId)
+                        .dayOfWeek(s.dayOfWeek())
+                        .periodNumber(s.periodNumber())
+                        .weekPattern(s.weekPattern())
+                        .subjectName(s.subjectName())
+                        .teacherName(s.teacherName())
+                        .roomName(s.roomName())
+                        .color(s.color())
+                        .notes(s.notes())
+                        .build())
                 .toList();
 
         return slotRepository.saveAll(entities);
@@ -91,24 +89,16 @@ public class TimetableSlotService {
     /**
      * 今日のスロット（臨時変更反映済み）を取得する。
      */
-    public List<ResolvedSlot> getTodaySlots(Long timetableId) {
+    public List<ResolvedSlot> getTodaySlots(Long timetableId, TimetableEntity timetable) {
         LocalDate today = LocalDate.now();
-        TimetableEntity timetable = timetableService.getByTeamId(0L).stream()
-                .filter(t -> t.getId().equals(timetableId))
-                .findFirst()
-                .orElse(null);
-
-        // timetable情報を直接取得
-        String todayDow = today.getDayOfWeek().name();
+        String todayDow = today.getDayOfWeek().name().substring(0, 3); // MONDAY → MON
 
         List<TimetableSlotEntity> allSlots =
                 slotRepository.findByTimetableIdAndDayOfWeek(timetableId, todayDow);
 
         // A/B週フィルタリング
-        if (timetable != null) {
-            WeekPattern currentPattern = resolveWeekPattern(timetable, today);
-            allSlots = filterByWeekPattern(allSlots, currentPattern);
-        }
+        WeekPattern currentPattern = resolveWeekPattern(timetable, today);
+        allSlots = filterByWeekPattern(allSlots, currentPattern);
 
         List<TimetableChangeEntity> changes =
                 changeRepository.findByTimetableIdAndTargetDateOrderByPeriodNumber(timetableId, today);
@@ -119,42 +109,33 @@ public class TimetableSlotService {
     /**
      * 週次ビューを取得する。月曜から日曜までの7日分のスロットと臨時変更を含む。
      */
-    public WeeklyViewData getWeeklyView(Long timetableId, LocalDate weekOf) {
+    public WeeklyViewData getWeeklyView(Long timetableId, TimetableEntity timetable, LocalDate weekOf) {
         LocalDate weekStart = weekOf.with(DayOfWeek.MONDAY);
         LocalDate weekEnd = weekStart.plusDays(6);
 
-        // timetable情報取得
         List<TimetableSlotEntity> allSlots = getSlots(timetableId);
         List<TimetableChangeEntity> weekChanges =
                 changeRepository.findByTimetableIdAndTargetDateBetweenOrderByTargetDateAscPeriodNumberAsc(
                         timetableId, weekStart, weekEnd);
 
-        // timetable取得（週パターン判定用）
-        // NOTE: getByTeamIdを使わず、allSlotsが空でなければtimetableIdから推定
-        TimetableEntity timetable = null;
-        WeekPattern currentWeekPattern = WeekPattern.EVERY;
-        boolean weekPatternEnabled = false;
+        WeekPattern currentWeekPattern = resolveWeekPattern(timetable, weekStart);
 
-        // 日ごとにスロット+変更を組み立て
         Map<LocalDate, List<TimetableChangeEntity>> changesByDate = weekChanges.stream()
                 .collect(Collectors.groupingBy(TimetableChangeEntity::getTargetDate));
 
         Map<String, List<ResolvedSlot>> days = new java.util.LinkedHashMap<>();
-        List<String> periodLabels = List.of(); // Controller層で別途取得する想定
 
+        String[] dowNames = {"MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"};
         for (int i = 0; i < 7; i++) {
             LocalDate date = weekStart.plusDays(i);
-            String dow = date.getDayOfWeek().name();
+            String dow = dowNames[i];
 
             List<TimetableSlotEntity> daySlots = allSlots.stream()
                     .filter(s -> s.getDayOfWeek().equals(dow))
                     .toList();
 
-            // A/B週フィルタリング
-            if (timetable != null) {
-                WeekPattern pattern = resolveWeekPattern(timetable, date);
-                daySlots = filterByWeekPattern(daySlots, pattern);
-            }
+            WeekPattern pattern = resolveWeekPattern(timetable, date);
+            daySlots = filterByWeekPattern(daySlots, pattern);
 
             List<TimetableChangeEntity> dayChanges =
                     changesByDate.getOrDefault(date, List.of());
@@ -164,12 +145,12 @@ public class TimetableSlotService {
 
         return new WeeklyViewData(
                 timetableId,
-                null, // timetableName は Controller 層で補完
+                timetable.getName(),
                 weekStart,
                 weekEnd,
-                weekPatternEnabled,
+                timetable.getWeekPatternEnabled(),
                 currentWeekPattern,
-                periodLabels,
+                List.of(), // periods は Controller 層で補完
                 days
         );
     }
@@ -178,7 +159,7 @@ public class TimetableSlotService {
      * チームの教科名候補を取得する。
      */
     public List<String> getSubjectSuggestions(Long teamId) {
-        return slotRepository.findDistinctSubjectNames(teamId);
+        return slotRepository.findDistinctSubjectNamesByTeamId(teamId);
     }
 
     /**

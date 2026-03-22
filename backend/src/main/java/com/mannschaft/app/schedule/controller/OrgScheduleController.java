@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織スケジュールコントローラー。組織スコープのスケジュールCRUD・出欠管理APIを提供する。
@@ -43,10 +44,6 @@ public class OrgScheduleController {
     private final ScheduleService scheduleService;
     private final ScheduleAttendanceService attendanceService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 組織スケジュール一覧を取得する。
@@ -75,7 +72,7 @@ public class OrgScheduleController {
             @PathVariable Long orgId,
             @Valid @RequestBody CreateScheduleRequest request) {
         ScheduleResponse response = scheduleService.createSchedule(
-                request, orgId, SCOPE_TYPE_ORGANIZATION, getCurrentUserId());
+                request, orgId, SCOPE_TYPE_ORGANIZATION, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -88,7 +85,7 @@ public class OrgScheduleController {
     public ResponseEntity<ApiResponse<ScheduleResponse>> getSchedule(
             @PathVariable Long orgId,
             @PathVariable Long scheduleId) {
-        scheduleService.getScheduleWithAccessCheck(scheduleId, getCurrentUserId());
+        scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
         // TODO: ScheduleDetailResponse への変換はMapper実装後に対応
         List<ScheduleResponse> list = scheduleService.listOrgSchedules(orgId,
                 LocalDateTime.of(1970, 1, 1, 0, 0), LocalDateTime.of(9999, 12, 31, 23, 59));
@@ -111,7 +108,7 @@ public class OrgScheduleController {
             @Valid @RequestBody UpdateScheduleRequest request,
             @RequestParam(defaultValue = "THIS_ONLY") String updateScope) {
         ScheduleResponse response = scheduleService.updateSchedule(
-                scheduleId, request, updateScope, getCurrentUserId());
+                scheduleId, request, updateScope, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -138,7 +135,7 @@ public class OrgScheduleController {
     public ResponseEntity<Void> cancelSchedule(
             @PathVariable Long orgId,
             @PathVariable Long scheduleId) {
-        scheduleService.cancelSchedule(scheduleId, getCurrentUserId());
+        scheduleService.cancelSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -181,7 +178,7 @@ public class OrgScheduleController {
     public ResponseEntity<ApiResponse<ScheduleResponse>> duplicateSchedule(
             @PathVariable Long orgId,
             @PathVariable Long scheduleId) {
-        ScheduleResponse response = scheduleService.duplicateSchedule(scheduleId, getCurrentUserId());
+        ScheduleResponse response = scheduleService.duplicateSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

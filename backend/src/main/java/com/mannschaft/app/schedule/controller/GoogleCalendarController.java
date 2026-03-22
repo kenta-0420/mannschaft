@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * Google Calendar同期コントローラー。OAuth連携・同期設定・手動再同期APIを提供する。
@@ -36,10 +37,6 @@ public class GoogleCalendarController {
 
     private final GoogleCalendarService googleCalendarService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * Google Calendar連携状態を取得する。
@@ -48,7 +45,7 @@ public class GoogleCalendarController {
     @Operation(summary = "Google Calendar連携状態取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<GoogleCalendarStatusResponse>> getConnectionStatus() {
-        GoogleCalendarStatusResponse response = googleCalendarService.getConnectionStatus(getCurrentUserId());
+        GoogleCalendarStatusResponse response = googleCalendarService.getConnectionStatus(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -60,7 +57,7 @@ public class GoogleCalendarController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "連携成功")
     public ResponseEntity<ApiResponse<GoogleCalendarConnectResponse>> connect(
             @Valid @RequestBody GoogleCalendarConnectRequest request) {
-        GoogleCalendarConnectResponse response = googleCalendarService.connect(request, getCurrentUserId());
+        GoogleCalendarConnectResponse response = googleCalendarService.connect(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -71,7 +68,7 @@ public class GoogleCalendarController {
     @Operation(summary = "Google Calendar連携解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "解除成功")
     public ResponseEntity<Void> disconnect() {
-        googleCalendarService.disconnect(getCurrentUserId());
+        googleCalendarService.disconnect(SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -82,7 +79,7 @@ public class GoogleCalendarController {
     @Operation(summary = "カレンダー同期設定一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<CalendarSyncSettingsResponse>> getSyncSettings() {
-        CalendarSyncSettingsResponse response = googleCalendarService.getSyncSettings(getCurrentUserId());
+        CalendarSyncSettingsResponse response = googleCalendarService.getSyncSettings(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -96,7 +93,7 @@ public class GoogleCalendarController {
             @PathVariable Long teamId,
             @Valid @RequestBody CalendarSyncToggleRequest request) {
         CalendarSyncToggleResponse response = googleCalendarService.toggleTeamSync(
-                teamId, request.getIsEnabled(), getCurrentUserId());
+                teamId, request.getIsEnabled(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -110,7 +107,7 @@ public class GoogleCalendarController {
             @PathVariable Long orgId,
             @Valid @RequestBody CalendarSyncToggleRequest request) {
         CalendarSyncToggleResponse response = googleCalendarService.toggleOrgSync(
-                orgId, request.getIsEnabled(), getCurrentUserId());
+                orgId, request.getIsEnabled(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -123,7 +120,7 @@ public class GoogleCalendarController {
     public ResponseEntity<ApiResponse<PersonalSyncToggleResponse>> togglePersonalSync(
             @Valid @RequestBody CalendarSyncToggleRequest request) {
         PersonalSyncToggleResponse response = googleCalendarService.togglePersonalSync(
-                request.getIsEnabled(), getCurrentUserId());
+                request.getIsEnabled(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -134,7 +131,7 @@ public class GoogleCalendarController {
     @Operation(summary = "手動再同期")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "再同期開始")
     public ResponseEntity<ApiResponse<ManualSyncResponse>> manualSync() {
-        ManualSyncResponse response = googleCalendarService.manualSync(getCurrentUserId());
+        ManualSyncResponse response = googleCalendarService.manualSync(SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(response));
     }
 }

@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 個人スケジュールコントローラー。個人スコープのスケジュールCRUD・一括削除APIを提供する。
@@ -38,10 +39,6 @@ public class PersonalScheduleController {
 
     private final PersonalScheduleService personalScheduleService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * 個人スケジュールを作成する。
@@ -52,7 +49,7 @@ public class PersonalScheduleController {
     public ResponseEntity<ApiResponse<PersonalScheduleResponse>> createSchedule(
             @Valid @RequestBody CreatePersonalScheduleRequest request) {
         PersonalScheduleResponse response = personalScheduleService.createPersonalSchedule(
-                request, getCurrentUserId());
+                request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -70,7 +67,7 @@ public class PersonalScheduleController {
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "50") int size) {
         List<PersonalScheduleResponse> schedules = personalScheduleService.listPersonalSchedules(
-                getCurrentUserId(), from, to, q, eventType, cursor, size);
+                SecurityUtils.getCurrentUserId(), from, to, q, eventType, cursor, size);
         return ResponseEntity.ok(ApiResponse.of(schedules));
     }
 
@@ -83,7 +80,7 @@ public class PersonalScheduleController {
     public ResponseEntity<ApiResponse<PersonalScheduleResponse>> getSchedule(
             @PathVariable Long id) {
         PersonalScheduleResponse response = personalScheduleService.getPersonalSchedule(
-                id, getCurrentUserId());
+                id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -97,7 +94,7 @@ public class PersonalScheduleController {
             @PathVariable Long id,
             @Valid @RequestBody UpdatePersonalScheduleRequest request) {
         PersonalScheduleResponse response = personalScheduleService.updatePersonalSchedule(
-                id, request, getCurrentUserId());
+                id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -110,7 +107,7 @@ public class PersonalScheduleController {
     public ResponseEntity<Void> deleteSchedule(
             @PathVariable Long id,
             @RequestParam(defaultValue = "THIS_ONLY") String updateScope) {
-        personalScheduleService.deletePersonalSchedule(id, updateScope, getCurrentUserId());
+        personalScheduleService.deletePersonalSchedule(id, updateScope, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -123,7 +120,7 @@ public class PersonalScheduleController {
     public ResponseEntity<ApiResponse<BatchDeleteResponse>> batchDeleteSchedules(
             @Valid @RequestBody BatchDeleteRequest request) {
         BatchDeleteResponse response = personalScheduleService.batchDeletePersonalSchedules(
-                request.getIds(), getCurrentUserId());
+                request.getIds(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

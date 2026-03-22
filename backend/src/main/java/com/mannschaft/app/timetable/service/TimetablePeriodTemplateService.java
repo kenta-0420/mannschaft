@@ -45,16 +45,14 @@ public class TimetablePeriodTemplateService {
         periodTemplateRepository.deleteByOrganizationId(orgId);
 
         List<TimetablePeriodTemplateEntity> entities = periods.stream()
-                .map(p -> {
-                    var entity = new TimetablePeriodTemplateEntity();
-                    entity.setOrganizationId(orgId);
-                    entity.setPeriodNumber(p.periodNumber());
-                    entity.setLabel(p.label());
-                    entity.setStartTime(p.startTime());
-                    entity.setEndTime(p.endTime());
-                    entity.setIsBreak(p.isBreak());
-                    return entity;
-                })
+                .map(p -> TimetablePeriodTemplateEntity.builder()
+                        .organizationId(orgId)
+                        .periodNumber(p.periodNumber())
+                        .label(p.label())
+                        .startTime(p.startTime())
+                        .endTime(p.endTime())
+                        .isBreak(p.isBreak())
+                        .build())
                 .toList();
 
         return periodTemplateRepository.saveAll(entities);

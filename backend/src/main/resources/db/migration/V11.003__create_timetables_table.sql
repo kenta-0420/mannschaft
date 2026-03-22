@@ -1,0 +1,26 @@
+-- F03.9: 時間割管理 - 時間割マスター
+CREATE TABLE timetables (
+    id                       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    team_id                  BIGINT UNSIGNED NOT NULL,
+    term_id                  BIGINT UNSIGNED NOT NULL,
+    name                     VARCHAR(200)    NOT NULL COMMENT '時間割名',
+    status                   VARCHAR(20)     NOT NULL DEFAULT 'DRAFT' COMMENT 'DRAFT / ACTIVE / ARCHIVED',
+    visibility               VARCHAR(20)     NOT NULL DEFAULT 'MEMBERS_ONLY' COMMENT 'MEMBERS_ONLY / PUBLIC',
+    effective_from           DATE            NOT NULL COMMENT '適用開始日',
+    effective_until          DATE            NULL     COMMENT '適用終了日（NULL=学期終了まで）',
+    week_pattern_enabled     BOOLEAN         NOT NULL DEFAULT FALSE COMMENT 'A/B週パターン有効化フラグ',
+    week_pattern_base_date   DATE            NULL     COMMENT 'A週の起点日（week_pattern_enabled=TRUE時は必須）',
+    period_override          JSON            NULL     COMMENT 'チーム独自の時限定義（NULL=組織テンプレート継承）',
+    notes                    TEXT            NULL     COMMENT '管理者向けメモ',
+    created_by               BIGINT UNSIGNED NULL,
+    created_at               DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at               DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at               DATETIME        NULL     COMMENT '論理削除',
+    PRIMARY KEY (id),
+    INDEX idx_tm_team_term (team_id, term_id),
+    INDEX idx_tm_team_status (team_id, status),
+    INDEX idx_tm_effective (team_id, effective_from, effective_until),
+    CONSTRAINT fk_tm_team FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
+    CONSTRAINT fk_tm_term FOREIGN KEY (term_id) REFERENCES timetable_terms (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_tm_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

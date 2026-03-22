@@ -36,7 +36,7 @@ public class TimetableEntity extends BaseEntity {
     @Column(nullable = false)
     private Long termId;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 200)
     private String name;
 
     @Enumerated(EnumType.STRING)

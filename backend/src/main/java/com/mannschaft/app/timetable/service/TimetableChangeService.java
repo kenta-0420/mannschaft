@@ -13,6 +13,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -61,17 +63,18 @@ public class TimetableChangeService {
         // ここではtimetableIdのみで操作し、チーム検証はController層に委譲
         validateChangeData(timetableId, data);
 
-        var entity = new TimetableChangeEntity();
-        entity.setTimetableId(timetableId);
-        entity.setTargetDate(data.targetDate());
-        entity.setPeriodNumber(data.periodNumber());
-        entity.setChangeType(data.changeType());
-        entity.setSubjectName(data.subjectName());
-        entity.setTeacherName(data.teacherName());
-        entity.setRoomName(data.roomName());
-        entity.setReason(data.reason());
-        entity.setNotifyMembers(data.notifyMembers());
-        entity.setCreatedBy(data.createdBy());
+        TimetableChangeEntity entity = TimetableChangeEntity.builder()
+                .timetableId(timetableId)
+                .targetDate(data.targetDate())
+                .periodNumber(data.periodNumber())
+                .changeType(data.changeType())
+                .subjectName(data.subjectName())
+                .teacherName(data.teacherName())
+                .roomName(data.roomName())
+                .reason(data.reason())
+                .notifyMembers(data.notifyMembers())
+                .createdBy(data.createdBy())
+                .build();
 
         TimetableChangeEntity saved = changeRepository.save(entity);
 
@@ -102,13 +105,14 @@ public class TimetableChangeService {
         TimetableChangeEntity entity = changeRepository.findByIdAndTimetableId(changeId, timetableId)
                 .orElseThrow(() -> new BusinessException(TimetableErrorCode.CHANGE_NOT_FOUND));
 
-        if (data.subjectName() != null) entity.setSubjectName(data.subjectName());
-        if (data.teacherName() != null) entity.setTeacherName(data.teacherName());
-        if (data.roomName() != null) entity.setRoomName(data.roomName());
-        if (data.reason() != null) entity.setReason(data.reason());
-        if (data.notifyMembers() != null) entity.setNotifyMembers(data.notifyMembers());
+        var builder = entity.toBuilder();
+        if (data.subjectName() != null) builder.subjectName(data.subjectName());
+        if (data.teacherName() != null) builder.teacherName(data.teacherName());
+        if (data.roomName() != null) builder.roomName(data.roomName());
+        if (data.reason() != null) builder.reason(data.reason());
+        if (data.notifyMembers() != null) builder.notifyMembers(data.notifyMembers());
 
-        TimetableChangeEntity saved = changeRepository.save(entity);
+        TimetableChangeEntity saved = changeRepository.save(builder.build());
 
         if (Boolean.TRUE.equals(data.notifyMembers())) {
             eventPublisher.publishEvent(new TimetableChangeCreatedEvent(
@@ -144,12 +148,10 @@ public class TimetableChangeService {
                 throw new BusinessException(TimetableErrorCode.INVALID_PERIOD_OVERRIDE);
             }
             // 同日の既存 DAY_OFF 重複チェック
-            List<TimetableChangeEntity> existing =
+            Optional<TimetableChangeEntity> existing =
                     changeRepository.findByTimetableIdAndTargetDateAndPeriodNumberIsNull(
                             timetableId, data.targetDate());
-            boolean hasDayOff = existing.stream()
-                    .anyMatch(c -> c.getChangeType() == TimetableChangeType.DAY_OFF);
-            if (hasDayOff) {
+            if (existing.isPresent() && existing.get().getChangeType() == TimetableChangeType.DAY_OFF) {
                 throw new BusinessException(TimetableErrorCode.DAY_OFF_ALREADY_EXISTS);
             }
         }

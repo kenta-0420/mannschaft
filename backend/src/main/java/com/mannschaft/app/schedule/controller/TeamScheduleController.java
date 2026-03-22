@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームスケジュールコントローラー。チームスコープのスケジュールCRUD・出欠管理・クロス招待APIを提供する。
@@ -49,10 +50,6 @@ public class TeamScheduleController {
     private final ScheduleAttendanceService attendanceService;
     private final ScheduleCrossRefService crossRefService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
 
     /**
      * チームスケジュール一覧を取得する。
@@ -81,7 +78,7 @@ public class TeamScheduleController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreateScheduleRequest request) {
         ScheduleResponse response = scheduleService.createSchedule(
-                request, teamId, SCOPE_TYPE_TEAM, getCurrentUserId());
+                request, teamId, SCOPE_TYPE_TEAM, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -96,7 +93,7 @@ public class TeamScheduleController {
             @PathVariable Long scheduleId) {
         // getScheduleWithAccessCheck は ScheduleEntity を返すため、Controller で ScheduleResponse に変換せず
         // Service 側の返却型に合わせて呼び出す。詳細表示は将来的に ScheduleDetailResponse に拡張予定。
-        scheduleService.getScheduleWithAccessCheck(scheduleId, getCurrentUserId());
+        scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
         // TODO: ScheduleDetailResponse への変換はMapper実装後に対応
         List<ScheduleResponse> list = scheduleService.listTeamSchedules(teamId,
                 LocalDateTime.of(1970, 1, 1, 0, 0), LocalDateTime.of(9999, 12, 31, 23, 59));
@@ -119,7 +116,7 @@ public class TeamScheduleController {
             @Valid @RequestBody UpdateScheduleRequest request,
             @RequestParam(defaultValue = "THIS_ONLY") String updateScope) {
         ScheduleResponse response = scheduleService.updateSchedule(
-                scheduleId, request, updateScope, getCurrentUserId());
+                scheduleId, request, updateScope, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -146,7 +143,7 @@ public class TeamScheduleController {
     public ResponseEntity<Void> cancelSchedule(
             @PathVariable Long teamId,
             @PathVariable Long scheduleId) {
-        scheduleService.cancelSchedule(scheduleId, getCurrentUserId());
+        scheduleService.cancelSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -203,7 +200,7 @@ public class TeamScheduleController {
     public ResponseEntity<ApiResponse<ScheduleResponse>> duplicateSchedule(
             @PathVariable Long teamId,
             @PathVariable Long scheduleId) {
-        ScheduleResponse response = scheduleService.duplicateSchedule(scheduleId, getCurrentUserId());
+        ScheduleResponse response = scheduleService.duplicateSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -218,7 +215,7 @@ public class TeamScheduleController {
             @PathVariable Long scheduleId,
             @Valid @RequestBody CrossInviteRequest request) {
         CrossRefResponse response = crossRefService.sendCrossInvite(
-                scheduleId, request, getCurrentUserId());
+                scheduleId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -232,7 +229,7 @@ public class TeamScheduleController {
             @PathVariable Long teamId,
             @PathVariable Long scheduleId,
             @PathVariable Long invitationId) {
-        crossRefService.cancelCrossInvite(invitationId, getCurrentUserId());
+        crossRefService.cancelCrossInvite(invitationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }
