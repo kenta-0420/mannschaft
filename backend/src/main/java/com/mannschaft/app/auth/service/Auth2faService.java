@@ -20,6 +20,7 @@ import com.mannschaft.app.auth.event.MfaRecoveryRequestedEvent;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EncryptionService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +57,7 @@ public class Auth2faService {
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate redisTemplate;
     private final DomainEventPublisher eventPublisher;
+    private final EncryptionService encryptionService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String TOTP_USED_KEY_PREFIX = "mannschaft:auth:totp_used:";
@@ -67,7 +69,7 @@ public class Auth2faService {
     /**
      * TOTP設定を開始する。秘密鍵を生成し、QRコードURLを返す。
      * <p>
-     * ※ 実際のAES-256暗号化は将来対応。現時点ではBase64エンコードで保存。
+     * TOTP秘密鍵はAES-256-GCMで暗号化して保存する。
      * </p>
      *
      * @param userId ユーザーID
@@ -89,8 +91,8 @@ public class Auth2faService {
         // 1. TOTP秘密鍵生成（Base32エンコード）
         String secret = generateBase32Secret();
 
-        // TODO: AES-256暗号化で保存する（現時点ではBase64エンコード）
-        String encodedSecret = Base64.getEncoder().encodeToString(secret.getBytes());
+        // AES-256-GCM で秘密鍵を暗号化して保存
+        String encodedSecret = encryptionService.encrypt(secret);
 
         // 2. TwoFactorAuthEntity作成（is_enabled=false）
         TwoFactorAuthEntity twoFactorAuth = TwoFactorAuthEntity.builder()
@@ -131,9 +133,8 @@ public class Auth2faService {
         TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_016));
 
-        // 秘密鍵をデコード
-        // TODO: AES-256復号化に変更する
-        String secret = new String(Base64.getDecoder().decode(twoFactorAuth.getTotpSecret()));
+        // AES-256-GCM で秘密鍵を復号化
+        String secret = encryptionService.decrypt(twoFactorAuth.getTotpSecret());
 
         // 1. TOTP検証
         if (!verifyTotpCode(secret, totpCode)) {
@@ -192,9 +193,8 @@ public class Auth2faService {
         TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_016));
 
-        // 秘密鍵をデコード
-        // TODO: AES-256復号化に変更する
-        String secret = new String(Base64.getDecoder().decode(twoFactorAuth.getTotpSecret()));
+        // AES-256-GCM で秘密鍵を復号化
+        String secret = encryptionService.decrypt(twoFactorAuth.getTotpSecret());
 
         // 2. TOTP検証 + 使用済みチェック
         if (!verifyTotpCode(secret, totpCode)) {

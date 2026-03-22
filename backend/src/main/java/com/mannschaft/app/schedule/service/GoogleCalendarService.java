@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.schedule.GoogleCalendarErrorCode;
 import com.mannschaft.app.schedule.dto.CalendarSyncSettingsResponse;
@@ -43,6 +44,7 @@ public class GoogleCalendarService {
     private final ScheduleRepository scheduleRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final NameResolverService nameResolverService;
+    private final EncryptionService encryptionService;
 
     /**
      * Google Calendar連携状態を取得する。
@@ -89,9 +91,8 @@ public class GoogleCalendarService {
         String googleAccountEmail = "TODO_EMAIL@gmail.com";
         String googleCalendarId = "primary";
 
-        // TODO: AES-256-GCM暗号化でrefresh_tokenを暗号化
-        // - 暗号化ユーティリティクラスで実装予定
-        String encryptedRefreshToken = refreshToken;
+        // AES-256-GCM で refresh_token を暗号化して保存
+        String encryptedRefreshToken = encryptionService.encrypt(refreshToken);
 
         // 既存接続の確認（アカウント変更チェック）
         connectionRepository.findByUserId(userId).ifPresent(existing -> {

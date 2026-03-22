@@ -1,9 +1,11 @@
 package com.mannschaft.app.queue.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.common.EncryptedStringConverter;
 import com.mannschaft.app.queue.TicketSource;
 import com.mannschaft.app.queue.TicketStatus;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -41,6 +43,10 @@ public class QueueTicketEntity extends BaseEntity {
 
     @Column(length = 50)
     private String guestName;
+
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
+    private String guestPhone;
 
     @Column(nullable = false)
     @Builder.Default

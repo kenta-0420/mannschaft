@@ -14,8 +14,8 @@ public class CreateTicketRequest {
     @Size(max = 50)
     private final String guestName;
 
-    // TODO: ゲスト電話番号 — 暗号化実装後に追加
-    // private final String guestPhone;
+    @Size(max = 20)
+    private final String guestPhone;
 
     private final Short partySize;
 
