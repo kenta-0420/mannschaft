@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * 昇格・降格管理サービス。
  */
 @Slf4j
-@Service
+@Service("tournamentPromotionService")
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PromotionService {

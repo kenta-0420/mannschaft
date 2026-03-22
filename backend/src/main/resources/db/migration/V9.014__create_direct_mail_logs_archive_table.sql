@@ -1,0 +1,25 @@
+-- F09.6: ダイレクトメール配信ログアーカイブ
+CREATE TABLE direct_mail_logs_archive (
+    id                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    scope_type            VARCHAR(20)     NOT NULL,
+    scope_id              BIGINT UNSIGNED NOT NULL,
+    sender_id             BIGINT UNSIGNED NOT NULL,
+    subject               VARCHAR(200)    NOT NULL,
+    body_markdown         TEXT            NOT NULL,
+    body_html             TEXT            NOT NULL,
+    recipient_type        VARCHAR(20)     NOT NULL,
+    recipient_filter      JSON            NULL,
+    estimated_recipients  INTEGER         NULL,
+    total_recipients      INTEGER         NOT NULL DEFAULT 0,
+    sent_count            INTEGER         NOT NULL DEFAULT 0,
+    opened_count          INTEGER         NOT NULL DEFAULT 0,
+    bounced_count         INTEGER         NOT NULL DEFAULT 0,
+    status                VARCHAR(20)     NOT NULL DEFAULT 'DRAFT',
+    scheduled_at          DATETIME        NULL,
+    error_message         TEXT            NULL,
+    sent_at               DATETIME        NULL,
+    created_at            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    archived_at           DATETIME        NOT NULL,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

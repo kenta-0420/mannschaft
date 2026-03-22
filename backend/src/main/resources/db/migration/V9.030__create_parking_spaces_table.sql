@@ -1,0 +1,25 @@
+-- F09.3 駐車場区画マスター
+CREATE TABLE parking_spaces (
+    id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    scope_type      VARCHAR(20)     NOT NULL,
+    scope_id        BIGINT UNSIGNED NOT NULL,
+    space_number    VARCHAR(20)     NOT NULL,
+    space_type      ENUM('INDOOR','OUTDOOR','ACCESSIBLE','MOTORCYCLE','BICYCLE','VISITOR','OTHER') NOT NULL,
+    space_type_label VARCHAR(50)    NULL,
+    price_per_month DECIMAL(10,0)   NULL,
+    status          ENUM('VACANT','OCCUPIED','MAINTENANCE') NOT NULL DEFAULT 'VACANT',
+    floor           VARCHAR(10)     NULL,
+    notes           VARCHAR(500)    NULL,
+    application_status ENUM('NOT_ACCEPTING','ACCEPTING','LOTTERY_CLOSED') NOT NULL DEFAULT 'NOT_ACCEPTING',
+    allocation_method  ENUM('FIRST_COME','LOTTERY') NULL,
+    application_deadline DATETIME   NULL,
+    created_by      BIGINT UNSIGNED NOT NULL,
+    created_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at      DATETIME        NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_ps_scope_number (scope_type, scope_id, space_number, deleted_at),
+    INDEX idx_ps_scope_status (scope_type, scope_id, status),
+    INDEX idx_ps_scope_type (scope_type, scope_id, space_type),
+    INDEX idx_ps_scope_floor (scope_type, scope_id, floor)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
