@@ -1,0 +1,21 @@
+-- モデレーション設定初期データ
+INSERT INTO moderation_settings (setting_key, setting_value, description) VALUES
+('escalation_report_threshold', '3', '同一コンテンツの通報閾値'),
+('escalation_user_warning_threshold', '3', 'WARNING累積の閾値'),
+('warning_expiry_months', '6', 'WARNING時効（月数）'),
+('content_delete_expiry_months', '12', 'CONTENT_DELETE時効（月数）'),
+('auto_freeze_content_delete_count', '5', 'CONTENT_DELETE自動凍結推奨閾値'),
+('appeal_window_days', '30', '異議申立て可能日数'),
+('frozen_user_appeal_enabled', 'true', '凍結中異議申立て許可'),
+('temporary_freeze_default_days', '7', '期限付き凍結デフォルト日数'),
+('daily_report_limit', '20', '1日通報上限'),
+('daily_report_alert_threshold', '10', '通報スパムアラート閾値'),
+('yabai_violation_threshold', '3', 'ヤバいやつ認定閾値'),
+('yabai_display_scope', 'SCOPE', '実名公開範囲'),
+('yabai_unflag_eligible_months', '3', '解除申請可能最低月数'),
+('yabai_unflag_clean_required', 'true', '解除申請の新規違反ゼロ条件'),
+('self_correct_window_days', '7', 'WARNING自主修正期間'),
+('monthly_report_enabled', 'true', '月次レポート有効'),
+('report_priority_weights', '{"HARASSMENT":100,"COPYRIGHT":80,"INAPPROPRIATE":60,"MISINFORMATION":50,"SPAM":40,"OTHER":20}', '通報理由別の優先度スコア'),
+('report_bundle_window_hours', '24', '同一target_user+同一reasonの自動バンドル時間窓'),
+('content_hide_on_review', 'false', 'REVIEWING遷移時にコンテンツを自動隠蔽するか');

@@ -1,5 +1,6 @@
 package com.mannschaft.app.moderation.entity;
 
+import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.moderation.ReportReason;
 import com.mannschaft.app.moderation.ReportStatus;
 import com.mannschaft.app.moderation.ReportTargetType;
@@ -7,10 +8,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -29,11 +26,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(toBuilder = true)
-public class ContentReportEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class ContentReportEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
@@ -42,18 +35,26 @@ public class ContentReportEntity {
     @Column(nullable = false)
     private Long targetId;
 
+    @Column(nullable = false)
+    private Long reportedBy;
+
     @Column(nullable = false, length = 20)
-    private String reporterType;
+    private String scopeType;
 
     @Column(nullable = false)
-    private Long reporterId;
+    private Long scopeId;
+
+    private Long targetUserId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ReportReason reason;
 
-    @Column(length = 1000)
+    @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(columnDefinition = "JSON")
+    private String contentSnapshot;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -62,35 +63,48 @@ public class ContentReportEntity {
 
     private Long reviewedBy;
 
-    @Column(length = 1000)
-    private String reviewNote;
+    private LocalDateTime reviewedAt;
 
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean identityDisclosed = false;
-
-    private LocalDateTime resolvedAt;
-
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+    /**
+     * レビューを開始する（PENDING → REVIEWING）。
+     */
+    public void startReview(Long reviewerId) {
+        this.reviewedBy = reviewerId;
+        this.reviewedAt = LocalDateTime.now();
+        this.status = ReportStatus.REVIEWING;
     }
 
     /**
-     * 通報をレビュー済みに更新する。
-     *
-     * @param reviewerId レビュアーのユーザーID
-     * @param note       レビューメモ
-     * @param newStatus  新しいステータス
+     * 通報を対応済みにする。
      */
-    public void review(Long reviewerId, String note, ReportStatus newStatus) {
+    public void resolve(Long reviewerId) {
         this.reviewedBy = reviewerId;
-        this.reviewNote = note;
-        this.status = newStatus;
-        if (newStatus == ReportStatus.RESOLVED || newStatus == ReportStatus.DISMISSED) {
-            this.resolvedAt = LocalDateTime.now();
-        }
+        this.reviewedAt = LocalDateTime.now();
+        this.status = ReportStatus.RESOLVED;
+    }
+
+    /**
+     * 通報を却下する。
+     */
+    public void dismiss(Long reviewerId) {
+        this.reviewedBy = reviewerId;
+        this.reviewedAt = LocalDateTime.now();
+        this.status = ReportStatus.DISMISSED;
+    }
+
+    /**
+     * エスカレーションする。
+     */
+    public void escalate() {
+        this.status = ReportStatus.ESCALATED;
+    }
+
+    /**
+     * 差し戻す（DISMISSED → REVIEWING）。
+     */
+    public void reopen(Long reviewerId) {
+        this.reviewedBy = reviewerId;
+        this.reviewedAt = LocalDateTime.now();
+        this.status = ReportStatus.REVIEWING;
     }
 }

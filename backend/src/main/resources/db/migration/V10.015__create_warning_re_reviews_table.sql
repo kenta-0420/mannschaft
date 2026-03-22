@@ -1,0 +1,25 @@
+-- WARNING再レビューテーブル
+CREATE TABLE warning_re_reviews (
+    id                          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id                     BIGINT UNSIGNED NOT NULL,
+    report_id                   BIGINT UNSIGNED NOT NULL,
+    action_id                   BIGINT UNSIGNED NOT NULL,
+    reason                      TEXT            NOT NULL,
+    status                      VARCHAR(20)     NOT NULL DEFAULT 'PENDING',
+    admin_reviewed_by           BIGINT UNSIGNED NULL,
+    admin_review_note           TEXT            NULL,
+    admin_reviewed_at           DATETIME        NULL,
+    escalation_reason           TEXT            NULL,
+    system_admin_reviewed_by    BIGINT UNSIGNED NULL,
+    system_admin_review_note    TEXT            NULL,
+    system_admin_reviewed_at    DATETIME        NULL,
+    created_at                  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_wrr_user    FOREIGN KEY (user_id)   REFERENCES users (id),
+    CONSTRAINT fk_wrr_report  FOREIGN KEY (report_id) REFERENCES content_reports (id),
+    CONSTRAINT fk_wrr_action  FOREIGN KEY (action_id) REFERENCES report_actions (id),
+    UNIQUE KEY uq_wrr_user_action (user_id, action_id),
+    INDEX idx_wrr_status (status, created_at DESC),
+    INDEX idx_wrr_report (report_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

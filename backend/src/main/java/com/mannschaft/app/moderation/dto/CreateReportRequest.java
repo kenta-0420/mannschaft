@@ -24,4 +24,8 @@ public class CreateReportRequest {
 
     @Size(max = 1000)
     private final String description;
+
+    private final String scopeType;
+
+    private final Long scopeId;
 }

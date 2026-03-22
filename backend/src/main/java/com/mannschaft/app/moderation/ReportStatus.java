@@ -10,6 +10,8 @@ public enum ReportStatus {
     REVIEWING,
     /** 承認（対応済み） */
     RESOLVED,
+    /** エスカレーション中 */
+    ESCALATED,
     /** 却下 */
     DISMISSED
 }
