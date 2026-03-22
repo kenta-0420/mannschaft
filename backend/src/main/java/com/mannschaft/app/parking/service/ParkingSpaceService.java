@@ -4,7 +4,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.parking.AllocationMethod;
 import com.mannschaft.app.parking.ParkingErrorCode;
 import com.mannschaft.app.parking.ParkingMapper;
-import com.mannschaft.app.parking.ParkingScopeType;
 import com.mannschaft.app.parking.SpaceStatus;
 import com.mannschaft.app.parking.SpaceType;
 import com.mannschaft.app.parking.dto.AcceptApplicationsRequest;

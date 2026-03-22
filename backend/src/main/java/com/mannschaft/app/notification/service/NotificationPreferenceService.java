@@ -1,7 +1,5 @@
 package com.mannschaft.app.notification.service;
 
-import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.notification.NotificationErrorCode;
 import com.mannschaft.app.notification.NotificationMapper;
 import com.mannschaft.app.notification.dto.PreferenceResponse;
 import com.mannschaft.app.notification.dto.PreferenceUpdateRequest;

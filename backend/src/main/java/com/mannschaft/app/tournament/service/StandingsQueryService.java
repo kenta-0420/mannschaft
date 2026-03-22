@@ -1,14 +1,10 @@
 package com.mannschaft.app.tournament.service;
 
-import com.mannschaft.app.tournament.MatchResult;
-import com.mannschaft.app.tournament.MatchStatus;
 import com.mannschaft.app.tournament.TournamentMapper;
 import com.mannschaft.app.tournament.dto.MatrixResponse;
 import com.mannschaft.app.tournament.dto.StandingResponse;
 import com.mannschaft.app.tournament.dto.TeamTournamentHistoryResponse;
 import com.mannschaft.app.tournament.dto.TeamTournamentStatsResponse;
-import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
-import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entity.TournamentStandingEntity;

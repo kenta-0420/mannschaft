@@ -1,7 +1,6 @@
 package com.mannschaft.app.schedule;
 
 import com.mannschaft.app.schedule.dto.PersonalScheduleResponse;
-import com.mannschaft.app.schedule.dto.RecurrenceRuleDto;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

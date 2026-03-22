@@ -2,7 +2,6 @@ package com.mannschaft.app.activity.controller;
 
 import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.dto.ActivityParticipantResponse;
-import com.mannschaft.app.activity.dto.ActivityResultResponse;
 import com.mannschaft.app.activity.dto.AddParticipantsRequest;
 import com.mannschaft.app.activity.dto.CreateActivityRequest;
 import com.mannschaft.app.activity.dto.DuplicateActivityRequest;
@@ -11,7 +10,6 @@ import com.mannschaft.app.activity.dto.UpdateActivityRequest;
 import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.service.ActivityResultService;
 import com.mannschaft.app.common.ApiResponse;
-import com.mannschaft.app.common.PagedResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

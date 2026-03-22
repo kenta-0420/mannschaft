@@ -2,7 +2,6 @@ package com.mannschaft.app.tournament.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.tournament.PromotionType;
-import com.mannschaft.app.tournament.PromotionZone;
 import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.TournamentMapper;
 import com.mannschaft.app.tournament.dto.CreatePromotionRequest;
@@ -24,8 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 昇格・降格管理サービス。

@@ -1,6 +1,5 @@
 package com.mannschaft.app.matching.repository;
 
-import com.mannschaft.app.matching.CancellationType;
 import com.mannschaft.app.matching.MatchProposalStatus;
 import com.mannschaft.app.matching.entity.MatchProposalEntity;
 import org.springframework.data.domain.Page;

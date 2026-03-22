@@ -10,7 +10,6 @@ import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
-import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.OAuthConflictResponse;
 import com.mannschaft.app.auth.dto.OAuthProviderResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;

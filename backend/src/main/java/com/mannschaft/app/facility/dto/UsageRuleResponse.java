@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.List;
 
 /**
  * 利用ルールレスポンスDTO。

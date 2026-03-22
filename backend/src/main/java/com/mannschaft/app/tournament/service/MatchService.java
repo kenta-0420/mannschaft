@@ -5,18 +5,15 @@ import com.mannschaft.app.tournament.LeagueRoundType;
 import com.mannschaft.app.tournament.MatchResult;
 import com.mannschaft.app.tournament.MatchSlot;
 import com.mannschaft.app.tournament.MatchStatus;
-import com.mannschaft.app.tournament.MatchdayStatus;
 import com.mannschaft.app.tournament.RankingsRecalculationEvent;
 import com.mannschaft.app.tournament.StandingsRecalculationEvent;
 import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.TournamentFormat;
 import com.mannschaft.app.tournament.TournamentMapper;
-import com.mannschaft.app.tournament.TournamentStatus;
 import com.mannschaft.app.tournament.dto.BatchScoreRequest;
 import com.mannschaft.app.tournament.dto.CreateMatchdayRequest;
 import com.mannschaft.app.tournament.dto.CreateRosterRequest;
 import com.mannschaft.app.tournament.dto.MatchResponse;
-import com.mannschaft.app.tournament.dto.MatchSetRequest;
 import com.mannschaft.app.tournament.dto.MatchSetResponse;
 import com.mannschaft.app.tournament.dto.MatchdayResponse;
 import com.mannschaft.app.tournament.dto.PlayerStatBatchRequest;
@@ -24,7 +21,6 @@ import com.mannschaft.app.tournament.dto.PlayerStatRequest;
 import com.mannschaft.app.tournament.dto.PlayerStatResponse;
 import com.mannschaft.app.tournament.dto.RosterResponse;
 import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
-import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchPlayerStatEntity;
@@ -47,10 +43,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**

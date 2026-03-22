@@ -2,7 +2,6 @@ package com.mannschaft.app.payment.service;
 
 import com.mannschaft.app.payment.dto.MyPaymentResponse;
 import com.mannschaft.app.payment.dto.PaymentRequirementResponse;
-import com.mannschaft.app.payment.entity.OrganizationAccessRequirementEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.entity.TeamAccessRequirementEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;

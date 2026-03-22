@@ -4,7 +4,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
-import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.dto.AttendanceRequest;
 import com.mannschaft.app.schedule.dto.AttendanceResponse;
 import com.mannschaft.app.schedule.dto.AttendanceStatsResponse;

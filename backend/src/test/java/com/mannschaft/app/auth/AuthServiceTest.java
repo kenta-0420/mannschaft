@@ -1,8 +1,6 @@
 package com.mannschaft.app.auth;
 
-import com.mannschaft.app.auth.entity.AuditLogEntity;
 import com.mannschaft.app.auth.entity.EmailVerificationTokenEntity;
-import com.mannschaft.app.auth.entity.PasswordResetTokenEntity;
 import com.mannschaft.app.auth.entity.RefreshTokenEntity;
 import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
 import com.mannschaft.app.auth.entity.UserEntity;

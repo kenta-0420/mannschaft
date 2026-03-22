@@ -2,7 +2,6 @@ package com.mannschaft.app.payment.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.PaymentErrorCode;
-import com.mannschaft.app.payment.PaymentItemType;
 import com.mannschaft.app.payment.PaymentStatus;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;

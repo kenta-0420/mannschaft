@@ -1,7 +1,6 @@
 package com.mannschaft.app.activity.controller;
 
 import com.mannschaft.app.activity.ActivityScopeType;
-import com.mannschaft.app.activity.ActivityVisibility;
 import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.service.ActivityResultService;
 import com.mannschaft.app.common.ApiResponse;

@@ -22,8 +22,6 @@ import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entity.TournamentStatDefEntity;
 import com.mannschaft.app.tournament.entity.TournamentTemplateEntity;
-import com.mannschaft.app.tournament.entity.TournamentTemplateStatDefEntity;
-import com.mannschaft.app.tournament.entity.TournamentTemplateTiebreakerEntity;
 import com.mannschaft.app.tournament.entity.TournamentTiebreakerEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;

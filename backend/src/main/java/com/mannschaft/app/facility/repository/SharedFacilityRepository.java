@@ -1,6 +1,5 @@
 package com.mannschaft.app.facility.repository;
 
-import com.mannschaft.app.facility.FacilityType;
 import com.mannschaft.app.facility.entity.SharedFacilityEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

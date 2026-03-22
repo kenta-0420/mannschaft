@@ -1,7 +1,6 @@
 package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.AuthErrorCode;
-import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.entity.MfaRecoveryTokenEntity;
 import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
 import com.mannschaft.app.auth.entity.RefreshTokenEntity;
@@ -22,7 +21,6 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -3,7 +3,6 @@ package com.mannschaft.app.parking.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.parking.ApplicationSourceType;
 import com.mannschaft.app.parking.ListingStatus;
-import com.mannschaft.app.parking.ParkingApplicationStatus;
 import com.mannschaft.app.parking.ParkingErrorCode;
 import com.mannschaft.app.parking.ParkingMapper;
 import com.mannschaft.app.parking.dto.ApplicationResponse;

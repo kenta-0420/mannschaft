@@ -9,9 +9,7 @@ import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
-import com.mannschaft.app.schedule.dto.CreateReminderRequest;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
-import com.mannschaft.app.schedule.dto.CreateSurveyRequest;
 import com.mannschaft.app.schedule.dto.RecurrenceRuleDto;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
@@ -28,7 +26,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;

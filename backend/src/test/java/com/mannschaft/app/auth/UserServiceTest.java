@@ -1,11 +1,7 @@
 package com.mannschaft.app.auth;
 
 import com.mannschaft.app.auth.entity.EmailChangeTokenEntity;
-import com.mannschaft.app.auth.entity.OAuthAccountEntity;
-import com.mannschaft.app.auth.entity.RefreshTokenEntity;
-import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.entity.WebAuthnCredentialEntity;
 import com.mannschaft.app.auth.repository.EmailChangeTokenRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
@@ -31,7 +27,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
