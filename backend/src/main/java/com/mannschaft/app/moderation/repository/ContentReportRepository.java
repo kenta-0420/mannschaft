@@ -56,4 +56,9 @@ public interface ContentReportRepository extends JpaRepository<ContentReportEnti
      * 同一コンテンツの全通報を取得する（グルーピング解決用）。
      */
     List<ContentReportEntity> findByTargetTypeAndTargetId(ReportTargetType targetType, Long targetId);
+
+    /**
+     * スコープ別・ステータス別の通報数を取得する。
+     */
+    long countByScopeTypeAndScopeIdAndStatus(String scopeType, Long scopeId, ReportStatus status);
 }

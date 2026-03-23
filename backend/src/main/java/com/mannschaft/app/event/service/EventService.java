@@ -297,8 +297,24 @@ public class EventService {
         long cancelled = eventRepository.countByScopeTypeAndScopeIdAndStatus(scopeType, scopeId, EventStatus.CANCELLED);
         long total = draft + published + completed + cancelled;
 
-        // TODO: 統計の登録・チェックイン数はスコープ配下全イベント分の集計が必要
-        return new EventStatsResponse(total, draft, published, completed, cancelled, 0, 0, 0);
+        // スコープ配下全イベントの登録・チェックイン数を集計
+        Page<EventEntity> allEvents = eventRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+                scopeType, scopeId, org.springframework.data.domain.PageRequest.of(0, 10000));
+        long totalRegistrations = 0;
+        long approvedRegistrations = 0;
+        long totalCheckins = 0;
+        for (EventEntity event : allEvents.getContent()) {
+            totalRegistrations += registrationRepository.countByEventIdAndStatus(
+                    event.getId(), RegistrationStatus.PENDING)
+                    + registrationRepository.countByEventIdAndStatus(
+                    event.getId(), RegistrationStatus.APPROVED);
+            approvedRegistrations += registrationRepository.countByEventIdAndStatus(
+                    event.getId(), RegistrationStatus.APPROVED);
+            totalCheckins += checkinRepository.countByEventId(event.getId());
+        }
+
+        return new EventStatsResponse(total, draft, published, completed, cancelled,
+                totalRegistrations, approvedRegistrations, totalCheckins);
     }
 
     /**

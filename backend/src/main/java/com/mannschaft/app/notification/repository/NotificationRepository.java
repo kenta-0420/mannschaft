@@ -48,6 +48,11 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
     int markAllAsReadByUserId(@Param("userId") Long userId);
 
     /**
+     * 全ユーザーの未読通知件数を取得する（管理者統計用）。
+     */
+    long countByIsReadFalse();
+
+    /**
      * ソースタイプとソースIDで通知件数を取得する。
      */
     long countBySourceTypeAndSourceId(String sourceType, Long sourceId);
@@ -56,9 +61,4 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
      * スコープタイプとスコープIDで通知件数を取得する。
      */
     long countByScopeTypeAndScopeId(String scopeType, Long scopeId);
-
-    /**
-     * 全ユーザー横断の未読通知件数を取得する（管理者統計用）。
-     */
-    long countByIsReadFalse();
 }

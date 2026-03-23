@@ -14,13 +14,19 @@ import com.mannschaft.app.schedule.entity.ScheduleAttendanceEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.event.AttendanceRespondedEvent;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
+import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,8 +44,10 @@ public class ScheduleAttendanceService {
     private static final String CSV_HEADER = "ユーザーID,ステータス,コメント,回答日時";
 
     private final ScheduleAttendanceRepository attendanceRepository;
+    private final ScheduleRepository scheduleRepository;
     private final ScheduleService scheduleService;
     private final EventSurveyService eventSurveyService;
+    private final UserRoleRepository userRoleRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -205,9 +213,22 @@ public class ScheduleAttendanceService {
      */
     public List<AttendanceStatsResponse> getTeamAttendanceStats(Long teamId,
                                                                   LocalDateTime from, LocalDateTime to) {
-        // TODO: チームメンバー一覧取得 → 各メンバーの出欠集計
-        // team_memberships と schedule_attendances をJOINして集計
-        return List.of();
+        // チームメンバーのユーザーIDリストを取得
+        Page<UserRoleEntity> memberPage = userRoleRepository.findByTeamId(teamId, PageRequest.of(0, 10000));
+        List<Long> memberUserIds = memberPage.getContent().stream()
+                .map(UserRoleEntity::getUserId)
+                .distinct()
+                .toList();
+
+        // チームスコープのスケジュールを期間指定で取得
+        List<ScheduleEntity> schedules = scheduleRepository
+                .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to);
+        List<Long> scheduleIds = schedules.stream()
+                .map(ScheduleEntity::getId)
+                .toList();
+
+        // 各メンバーの出欠を集計
+        return buildAttendanceStats(memberUserIds, scheduleIds);
     }
 
     /**
@@ -220,8 +241,22 @@ public class ScheduleAttendanceService {
      */
     public List<AttendanceStatsResponse> getOrgAttendanceStats(Long orgId,
                                                                  LocalDateTime from, LocalDateTime to) {
-        // TODO: 組織メンバー一覧取得 → 各メンバーの出欠集計
-        return List.of();
+        // 組織メンバーのユーザーIDリストを取得
+        Page<UserRoleEntity> memberPage = userRoleRepository.findByOrganizationId(orgId, PageRequest.of(0, 10000));
+        List<Long> memberUserIds = memberPage.getContent().stream()
+                .map(UserRoleEntity::getUserId)
+                .distinct()
+                .toList();
+
+        // 組織スコープのスケジュールを期間指定で取得
+        List<ScheduleEntity> schedules = scheduleRepository
+                .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to);
+        List<Long> scheduleIds = schedules.stream()
+                .map(ScheduleEntity::getId)
+                .toList();
+
+        // 各メンバーの出欠を集計
+        return buildAttendanceStats(memberUserIds, scheduleIds);
     }
 
     /**
@@ -233,11 +268,80 @@ public class ScheduleAttendanceService {
      * @return 出席率統計
      */
     public AttendanceStatsResponse getMyAttendanceStats(Long userId, LocalDateTime from, LocalDateTime to) {
-        // TODO: ユーザーが所属するチーム・組織のスケジュール出欠を集計
-        return new AttendanceStatsResponse(userId, 0, 0, 0, 0, 0.0);
+        // ユーザーが所属するチームのスケジュールIDを収集
+        List<Long> allScheduleIds = new ArrayList<>();
+
+        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
+        for (UserRoleEntity role : teamRoles) {
+            List<ScheduleEntity> teamSchedules = scheduleRepository
+                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, to);
+            allScheduleIds.addAll(teamSchedules.stream().map(ScheduleEntity::getId).toList());
+        }
+
+        // ユーザーが所属する組織のスケジュールIDを収集
+        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
+        for (UserRoleEntity role : orgRoles) {
+            List<ScheduleEntity> orgSchedules = scheduleRepository
+                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, to);
+            allScheduleIds.addAll(orgSchedules.stream().map(ScheduleEntity::getId).toList());
+        }
+
+        // 重複排除
+        List<Long> uniqueScheduleIds = allScheduleIds.stream().distinct().toList();
+
+        // 該当スケジュールに対するユーザーの出欠を集計
+        List<ScheduleAttendanceEntity> userAttendances = uniqueScheduleIds.stream()
+                .map(scheduleId -> attendanceRepository.findByScheduleIdAndUserId(scheduleId, userId))
+                .filter(java.util.Optional::isPresent)
+                .map(java.util.Optional::get)
+                .toList();
+
+        int totalSchedules = userAttendances.size();
+        int attended = (int) userAttendances.stream()
+                .filter(a -> a.getStatus() == AttendanceStatus.ATTENDING).count();
+        int absent = (int) userAttendances.stream()
+                .filter(a -> a.getStatus() == AttendanceStatus.ABSENT).count();
+        int partial = (int) userAttendances.stream()
+                .filter(a -> a.getStatus() == AttendanceStatus.PARTIAL).count();
+        double rate = totalSchedules > 0 ? (double) attended / totalSchedules * 100.0 : 0.0;
+
+        return new AttendanceStatsResponse(userId, totalSchedules, attended, absent, partial, rate);
     }
 
     // --- プライベートメソッド ---
+
+    /**
+     * メンバーリストとスケジュールリストから出欠統計を構築する。
+     */
+    private List<AttendanceStatsResponse> buildAttendanceStats(List<Long> memberUserIds, List<Long> scheduleIds) {
+        List<AttendanceStatsResponse> result = new ArrayList<>();
+
+        for (Long userId : memberUserIds) {
+            int attended = 0;
+            int absent = 0;
+            int partial = 0;
+
+            for (Long scheduleId : scheduleIds) {
+                java.util.Optional<ScheduleAttendanceEntity> opt =
+                        attendanceRepository.findByScheduleIdAndUserId(scheduleId, userId);
+                if (opt.isPresent()) {
+                    AttendanceStatus status = opt.get().getStatus();
+                    switch (status) {
+                        case ATTENDING -> attended++;
+                        case ABSENT -> absent++;
+                        case PARTIAL -> partial++;
+                        default -> { /* UNDECIDED: 未回答のためカウントしない */ }
+                    }
+                }
+            }
+
+            int totalSchedules = scheduleIds.size();
+            double rate = totalSchedules > 0 ? (double) attended / totalSchedules * 100.0 : 0.0;
+            result.add(new AttendanceStatsResponse(userId, totalSchedules, attended, absent, partial, rate));
+        }
+
+        return result;
+    }
 
     /**
      * 出欠管理が有効なスケジュールかどうかを検証する。

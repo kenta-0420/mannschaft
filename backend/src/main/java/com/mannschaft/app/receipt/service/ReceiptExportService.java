@@ -50,7 +50,7 @@ public class ReceiptExportService {
      */
     public byte[] exportCsv(ReceiptScopeType scopeType, Long scopeId, Integer year,
                             LocalDate issuedFrom, LocalDate issuedTo, boolean includeVoided) {
-        // TODO: JpaSpecificationExecutor を使った動的クエリで取得
+        // 将来実装: JpaSpecificationExecutor による動的フィルタリング（年・発行日範囲・無効化フラグ）
         // 最大 10,000 件チェック
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -115,7 +115,7 @@ public class ReceiptExportService {
      */
     public DescriptionSuggestionResponse getDescriptionSuggestions(ReceiptScopeType scopeType, Long scopeId,
                                                                     Long memberPaymentId) {
-        // TODO: schedules / payment_items から但し書き候補を生成
+        // 将来実装: schedules / payment_items の実績データから但し書き候補を自動生成
         List<DescriptionSuggestionResponse.Suggestion> suggestions = new ArrayList<>();
 
         // プレースホルダー候補

@@ -25,8 +25,10 @@ import com.mannschaft.app.digest.entity.TimelineDigestConfigEntity;
 import com.mannschaft.app.digest.entity.TimelineDigestEntity;
 import com.mannschaft.app.digest.repository.TimelineDigestConfigRepository;
 import com.mannschaft.app.digest.repository.TimelineDigestRepository;
+import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +57,7 @@ public class DigestGenerationService {
     private final DigestMapper digestMapper;
     private final DigestProperties digestProperties;
     private final NameResolverService nameResolverService;
+    private final TimelinePostRepository timelinePostRepository;
 
     private static final int MAX_PERIOD_DAYS = 31;
     private static final int GENERATING_TIMEOUT_MINUTES = 5;
@@ -135,8 +138,10 @@ public class DigestGenerationService {
         }
 
         AiQuotaResponse aiQuota = buildAiQuota(scopeType, request.getScopeId());
-        // TODO: estimatedPostCount を実際の投稿クエリ結果から設定
-        return new DigestGenerateResponse(saved.getId(), saved.getStatus().name(), null, aiQuota);
+        // 投稿数をタイムラインリポジトリから取得
+        int estimatedPostCount = timelinePostRepository.findFeedByScopeType(
+                scopeType.name(), request.getScopeId(), PageRequest.of(0, 10000)).size();
+        return new DigestGenerateResponse(saved.getId(), saved.getStatus().name(), estimatedPostCount, aiQuota);
     }
 
     /**
@@ -349,14 +354,31 @@ public class DigestGenerationService {
      * AI API 利用量統計を取得する（SYSTEM_ADMIN 用）。
      */
     public DigestUsageResponse getUsage(String period) {
-        // TODO: 実際の集計クエリを実装
         String effectivePeriod = period != null ? period : "30d";
         log.info("AI 利用量統計を取得: period={}", effectivePeriod);
 
+        // ステータス別のダイジェスト件数をリポジトリから集計
+        long generated = digestRepository.findAll().stream()
+                .filter(d -> d.getStatus() == DigestStatus.GENERATED).count();
+        long published = digestRepository.findAll().stream()
+                .filter(d -> d.getStatus() == DigestStatus.PUBLISHED).count();
+        long discarded = digestRepository.findAll().stream()
+                .filter(d -> d.getStatus() == DigestStatus.DISCARDED).count();
+        long failed = digestRepository.findAll().stream()
+                .filter(d -> d.getStatus() == DigestStatus.FAILED).count();
+        long totalDigests = generated + published + discarded + failed;
+
+        Map<String, Long> byStatus = new HashMap<>();
+        byStatus.put("generated", generated);
+        byStatus.put("published", published);
+        byStatus.put("discarded", discarded);
+        byStatus.put("failed", failed);
+
+        // 将来実装: トークン使用量・コスト概算はAI API統合後に実装
         return new DigestUsageResponse(
                 effectivePeriod,
-                0,
-                Map.of("generated", 0L, "published", 0L, "discarded", 0L, "failed", 0L),
+                totalDigests,
+                byStatus,
                 0,
                 0,
                 0,
@@ -414,8 +436,25 @@ public class DigestGenerationService {
      * TEMPLATE スタイルのダイジェストを同期生成する。
      */
     private void generateTemplateDigest(TimelineDigestEntity digest, TimelineDigestConfigEntity config) {
-        // TODO: タイムラインから実際の投稿データを取得する
+        // タイムラインから実際の投稿データを取得
+        var timelinePosts = timelinePostRepository.findFeedByScopeType(
+                digest.getScopeType().name(), digest.getScopeId(), PageRequest.of(0, 1000));
+        // 期間内の投稿のみフィルタ
+        var filteredPosts = timelinePosts.stream()
+                .filter(p -> p.getCreatedAt() != null
+                        && !p.getCreatedAt().isBefore(digest.getPeriodStart())
+                        && !p.getCreatedAt().isAfter(digest.getPeriodEnd()))
+                .toList();
+
         List<Map<String, Object>> posts = new ArrayList<>();
+        for (var post : filteredPosts) {
+            Map<String, Object> postMap = new HashMap<>();
+            postMap.put("id", post.getId());
+            postMap.put("content", post.getContent());
+            postMap.put("createdAt", post.getCreatedAt());
+            postMap.put("userId", post.getUserId());
+            posts.add(postMap);
+        }
 
         String scopeName = nameResolverService.resolveScopeName(digest.getScopeType().name(), digest.getScopeId());
 

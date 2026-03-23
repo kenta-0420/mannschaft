@@ -20,4 +20,9 @@ public interface MaintenanceScheduleRepository extends JpaRepository<Maintenance
      * ステータスが指定値のいずれかのスケジュールを取得する。
      */
     List<MaintenanceScheduleEntity> findByStatusInOrderByStartsAtDesc(List<MaintenanceStatus> statuses);
+
+    /**
+     * ステータス別のメンテナンス数を取得する。
+     */
+    long countByStatus(MaintenanceStatus status);
 }

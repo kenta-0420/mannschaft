@@ -3,10 +3,16 @@ package com.mannschaft.app.admin.service;
 import com.mannschaft.app.admin.FeedbackStatus;
 import com.mannschaft.app.admin.dto.AdminDashboardResponse;
 import com.mannschaft.app.admin.repository.FeedbackSubmissionRepository;
+import com.mannschaft.app.moderation.ReportStatus;
+import com.mannschaft.app.moderation.repository.ContentReportRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 /**
  * 管理者ダッシュボードサービス（チーム/組織管理者向け）。
@@ -18,6 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminDashboardService {
 
     private final FeedbackSubmissionRepository feedbackRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final ContentReportRepository contentReportRepository;
+    private final ScheduleRepository scheduleRepository;
 
     /**
      * チーム/組織の管理者ダッシュボード情報を取得する。
@@ -30,13 +39,40 @@ public class AdminDashboardService {
         long pendingFeedbacks = feedbackRepository.countByScopeTypeAndScopeIdAndStatus(
                 scopeType, scopeId, FeedbackStatus.OPEN);
 
-        // TODO: メンバー数・アクティブメンバー数・通報数・スケジュール数は各機能のリポジトリ実装後に連携
+        long totalMembers = countMembers(scopeType, scopeId);
+        long openReports = contentReportRepository.countByScopeTypeAndScopeIdAndStatus(
+                scopeType, scopeId, ReportStatus.PENDING);
+        long upcomingSchedules = countUpcomingSchedules(scopeType, scopeId);
+
         return new AdminDashboardResponse(
-                0L,  // totalMembers
-                0L,  // activeMembers
+                totalMembers,
+                totalMembers,  // activeMembers: ログイン履歴未実装のため totalMembers と同値
                 pendingFeedbacks,
-                0L,  // openReports
-                0L   // upcomingSchedules
+                openReports,
+                upcomingSchedules
         );
+    }
+
+    /**
+     * スコープ別のメンバー数を取得する。
+     */
+    private long countMembers(String scopeType, Long scopeId) {
+        return switch (scopeType.toUpperCase()) {
+            case "TEAM" -> userRoleRepository.countByTeamId(scopeId);
+            case "ORGANIZATION" -> userRoleRepository.countByOrganizationId(scopeId);
+            default -> 0L;
+        };
+    }
+
+    /**
+     * スコープ別の今後のスケジュール数を取得する。
+     */
+    private long countUpcomingSchedules(String scopeType, Long scopeId) {
+        LocalDateTime now = LocalDateTime.now();
+        return switch (scopeType.toUpperCase()) {
+            case "TEAM" -> scheduleRepository.countByTeamIdAndStartAtAfter(scopeId, now);
+            case "ORGANIZATION" -> scheduleRepository.countByOrganizationIdAndStartAtAfter(scopeId, now);
+            default -> 0L;
+        };
     }
 }

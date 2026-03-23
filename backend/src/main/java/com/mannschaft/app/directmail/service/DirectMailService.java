@@ -18,6 +18,7 @@ import com.mannschaft.app.directmail.entity.DirectMailLogEntity;
 import com.mannschaft.app.directmail.entity.DirectMailRecipientEntity;
 import com.mannschaft.app.directmail.repository.DirectMailLogRepository;
 import com.mannschaft.app.directmail.repository.DirectMailRecipientRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -39,6 +40,7 @@ public class DirectMailService {
     private final DirectMailLogRepository mailLogRepository;
     private final DirectMailRecipientRepository recipientRepository;
     private final DirectMailMapper directMailMapper;
+    private final UserRoleRepository userRoleRepository;
 
     /**
      * メールを作成する（下書き保存）。
@@ -208,9 +210,17 @@ public class DirectMailService {
      */
     public EstimateRecipientsResponse estimateRecipients(String scopeType, Long scopeId,
                                                           EstimateRecipientsRequest request) {
-        // TODO: recipientType と recipientFilter に基づいて対象メンバー数を算出
-        int estimated = 0;
-        log.info("配信対象数見積: scopeType={}, scopeId={}, type={}", scopeType, scopeId, request.getRecipientType());
+        // 簡易実装: scopeType に基づくスコープ内全メンバー数を返却
+        // 将来実装: recipientType と recipientFilter に基づく詳細なフィルタリング
+        int estimated;
+        if ("TEAM".equals(scopeType)) {
+            estimated = (int) userRoleRepository.countByTeamId(scopeId);
+        } else if ("ORGANIZATION".equals(scopeType)) {
+            estimated = (int) userRoleRepository.countByOrganizationId(scopeId);
+        } else {
+            estimated = 0;
+        }
+        log.info("配信対象数見積: scopeType={}, scopeId={}, type={}, estimated={}", scopeType, scopeId, request.getRecipientType(), estimated);
         return new EstimateRecipientsResponse(estimated);
     }
 

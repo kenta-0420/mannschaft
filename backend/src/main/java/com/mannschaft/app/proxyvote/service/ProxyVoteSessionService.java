@@ -39,6 +39,7 @@ import com.mannschaft.app.proxyvote.repository.ProxyVoteAttachmentRepository;
 import com.mannschaft.app.proxyvote.repository.ProxyVoteMotionRepository;
 import com.mannschaft.app.proxyvote.repository.ProxyVoteRepository;
 import com.mannschaft.app.proxyvote.repository.ProxyVoteSessionRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -67,6 +68,7 @@ public class ProxyVoteSessionService {
     private final ProxyVoteRepository voteRepository;
     private final ProxyDelegationRepository delegationRepository;
     private final ProxyVoteMapper mapper;
+    private final UserRoleRepository userRoleRepository;
 
     /**
      * 投票セッション一覧を取得する。
@@ -112,8 +114,7 @@ public class ProxyVoteSessionService {
                 ? QuorumType.valueOf(request.getQuorumType()) : QuorumType.MAJORITY;
         validateQuorumThreshold(quorumType, request.getQuorumThreshold());
 
-        // eligible_count はスコープ内メンバー数のスナップショット（TODO: 実際のメンバー数取得）
-        int eligibleCount = 0;
+        int eligibleCount = (int) resolveEligibleCount(scopeType, request.getTeamId(), request.getOrganizationId());
 
         ProxyVoteSessionEntity session = ProxyVoteSessionEntity.builder()
                 .scopeType(scopeType)
@@ -210,8 +211,8 @@ public class ProxyVoteSessionService {
             throw new BusinessException(ProxyVoteErrorCode.NO_MOTIONS);
         }
 
-        // eligible_count を再スナップショット（TODO: 実際のメンバー数取得）
-        session.updateEligibleCount(session.getEligibleCount());
+        int eligibleCount = (int) resolveEligibleCount(session.getScopeType(), session.getTeamId(), session.getOrganizationId());
+        session.updateEligibleCount(eligibleCount);
         session.changeStatus(SessionStatus.OPEN);
 
         // WRITTEN モードの場合、全議案を VOTING に
@@ -842,6 +843,19 @@ public class ProxyVoteSessionService {
                 .createdBy(session.getCreatedBy())
                 .createdAt(session.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * スコープに応じたメンバー数を取得する。
+     */
+    private long resolveEligibleCount(ProxyVoteScopeType scopeType, Long teamId, Long organizationId) {
+        if (scopeType == ProxyVoteScopeType.TEAM && teamId != null) {
+            return userRoleRepository.countByTeamId(teamId);
+        }
+        if (scopeType == ProxyVoteScopeType.ORGANIZATION && organizationId != null) {
+            return userRoleRepository.countByOrganizationId(organizationId);
+        }
+        return 0;
     }
 
     private SessionListResponse toSessionListResponse(ProxyVoteSessionEntity session, Long currentUserId) {

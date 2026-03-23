@@ -74,6 +74,11 @@ public interface TicketBookRepository extends JpaRepository<TicketBookEntity, Lo
     long countByUserIdAndStatus(Long userId, TicketBookStatus status);
 
     /**
+     * チームのステータス別チケット数を取得する（統計用）。
+     */
+    long countByTeamIdAndStatus(Long teamId, TicketBookStatus status);
+
+    /**
      * 顧客のチケット横断サマリ: 特定ユーザーの ACTIVE なチケットを取得する。
      */
     List<TicketBookEntity> findByUserIdAndTeamIdAndStatusOrderByExpiresAtAsc(Long userId, Long teamId, TicketBookStatus status);

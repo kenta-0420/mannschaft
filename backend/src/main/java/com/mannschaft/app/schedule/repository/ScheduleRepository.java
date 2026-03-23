@@ -57,4 +57,14 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
      */
     @Query("SELECT s FROM ScheduleEntity s WHERE s.status = 'SCHEDULED' AND s.endAt < :now AND s.endAt IS NOT NULL")
     List<ScheduleEntity> findCompletableSchedules(@Param("now") LocalDateTime now);
+
+    /**
+     * チームスコープの今後のスケジュール数を取得する。
+     */
+    long countByTeamIdAndStartAtAfter(Long teamId, LocalDateTime after);
+
+    /**
+     * 組織スコープの今後のスケジュール数を取得する。
+     */
+    long countByOrganizationIdAndStartAtAfter(Long orgId, LocalDateTime after);
 }

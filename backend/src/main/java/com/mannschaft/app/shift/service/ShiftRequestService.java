@@ -12,6 +12,7 @@ import com.mannschaft.app.shift.dto.UpdateShiftRequestRequest;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ public class ShiftRequestService {
     private final ShiftRequestRepository requestRepository;
     private final ShiftScheduleService scheduleService;
     private final ShiftMapper shiftMapper;
+    private final UserRoleRepository userRoleRepository;
 
     /**
      * スケジュールのシフト希望一覧を取得する。
@@ -131,9 +133,9 @@ public class ShiftRequestService {
      */
     public ShiftRequestSummaryResponse getRequestSummary(Long scheduleId) {
         long submittedCount = requestRepository.countDistinctUserIdByScheduleId(scheduleId);
-        // TODO: チームメンバー数はチーム管理Serviceから取得する
-        long totalMembers = 0;
-        long pendingCount = totalMembers - submittedCount;
+        ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(scheduleId);
+        long totalMembers = userRoleRepository.countByTeamId(schedule.getTeamId());
+        long pendingCount = Math.max(0, totalMembers - submittedCount);
 
         return new ShiftRequestSummaryResponse(scheduleId, totalMembers, submittedCount, pendingCount);
     }

@@ -599,15 +599,14 @@ public class TicketBookService {
      * @return 統計レスポンス
      */
     public TicketStatsResponse getStats(Long teamId, String period) {
-        // TODO: 集計クエリの最適化（現在はプレースホルダー）
-        int activeBooks = bookRepository.findByTeamIdAndStatusOrderByCreatedAtDesc(
-                teamId, TicketBookStatus.ACTIVE, PageRequest.of(0, 1)).getTotalPages() > 0
-                ? (int) bookRepository.findByTeamIdAndStatusOrderByCreatedAtDesc(
-                        teamId, TicketBookStatus.ACTIVE, PageRequest.of(0, 1)).getTotalElements()
-                : 0;
+        long activeBooks = bookRepository.countByTeamIdAndStatus(teamId, TicketBookStatus.ACTIVE);
+        long exhaustedBooks = bookRepository.countByTeamIdAndStatus(teamId, TicketBookStatus.EXHAUSTED);
+        long expiredBooks = bookRepository.countByTeamIdAndStatus(teamId, TicketBookStatus.EXPIRED);
+        long cancelledBooks = bookRepository.countByTeamIdAndStatus(teamId, TicketBookStatus.CANCELLED);
 
+        // 将来実装: period パラメータに基づく期間別集計・消化数推移の計算
         return new TicketStatsResponse(
-                activeBooks, 0L, 0, 0, List.of());
+                (int) activeBooks, exhaustedBooks + expiredBooks, (int) cancelledBooks, 0, List.of());
     }
 
     // ==================== 領収書 ====================

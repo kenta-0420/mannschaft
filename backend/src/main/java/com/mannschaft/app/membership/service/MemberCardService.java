@@ -103,7 +103,7 @@ public class MemberCardService {
                 card.getIssuedAt(),
                 card.getLastCheckinAt(),
                 card.getCheckinCount(),
-                0 // TODO: QR再生成回数（audit_logsから集計）
+                0 // 将来実装: 監査ログからQR再生成回数を集計（AuditLogRepositoryにカウントメソッド追加が必要）
         );
 
         return ApiResponse.of(response);

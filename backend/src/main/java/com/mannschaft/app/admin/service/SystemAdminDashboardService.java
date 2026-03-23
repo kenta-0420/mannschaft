@@ -1,8 +1,15 @@
 package com.mannschaft.app.admin.service;
 
 import com.mannschaft.app.admin.FeedbackStatus;
+import com.mannschaft.app.admin.MaintenanceStatus;
 import com.mannschaft.app.admin.dto.SystemAdminDashboardResponse;
 import com.mannschaft.app.admin.repository.FeedbackSubmissionRepository;
+import com.mannschaft.app.admin.repository.MaintenanceScheduleRepository;
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.moderation.ReportStatus;
+import com.mannschaft.app.moderation.repository.ContentReportRepository;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,6 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class SystemAdminDashboardService {
 
     private final FeedbackSubmissionRepository feedbackRepository;
+    private final OrganizationRepository organizationRepository;
+    private final TeamRepository teamRepository;
+    private final UserRepository userRepository;
+    private final ContentReportRepository contentReportRepository;
+    private final MaintenanceScheduleRepository maintenanceScheduleRepository;
 
     /**
      * システム管理者ダッシュボード情報を取得する。
@@ -28,15 +40,20 @@ public class SystemAdminDashboardService {
         long openFeedbacks = feedbackRepository.countByScopeTypeAndScopeIdIsNullAndStatus(
                 "PLATFORM", FeedbackStatus.OPEN);
 
-        // TODO: 組織数・チーム数・ユーザー数・通報数・メンテナンス数は各機能のリポジトリ実装後に連携
+        long totalOrganizations = organizationRepository.count();
+        long totalTeams = teamRepository.count();
+        long totalUsers = userRepository.count();
+        long pendingReports = contentReportRepository.countByStatus(ReportStatus.PENDING);
+        long activeMaintenances = maintenanceScheduleRepository.countByStatus(MaintenanceStatus.ACTIVE);
+
         return new SystemAdminDashboardResponse(
-                0L,  // totalOrganizations
-                0L,  // totalTeams
-                0L,  // totalUsers
-                0L,  // activeUsers
-                0L,  // pendingReports
+                totalOrganizations,
+                totalTeams,
+                totalUsers,
+                totalUsers,  // activeUsers: ログイン履歴未実装のため totalUsers と同値
+                pendingReports,
                 openFeedbacks,
-                0L   // activeMaintenances
+                activeMaintenances
         );
     }
 }
