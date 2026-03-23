@@ -17,6 +17,9 @@ import java.util.Optional;
  */
 public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> {
 
+    String SEARCH_BY_TEAM = "SELECT * FROM blog_posts WHERE team_id = :teamId AND MATCH(title, body) AGAINST(:keyword IN BOOLEAN MODE) AND deleted_at IS NULL";
+    String SEARCH_BY_ORG = "SELECT * FROM blog_posts WHERE organization_id = :orgId AND MATCH(title, body) AGAINST(:keyword IN BOOLEAN MODE) AND deleted_at IS NULL";
+
     Page<BlogPostEntity> findByTeamIdAndStatusOrderByPinnedDescPublishedAtDesc(
             Long teamId, PostStatus status, Pageable pageable);
 
@@ -38,12 +41,10 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
 
     Optional<BlogPostEntity> findByUserIdAndSlug(Long userId, String slug);
 
-    @Query(value = "SELECT * FROM blog_posts WHERE team_id = :teamId AND MATCH(title, body) AGAINST(:keyword IN BOOLEAN MODE) AND deleted_at IS NULL",
-            nativeQuery = true)
+    @Query(value = SEARCH_BY_TEAM, nativeQuery = true)
     Page<BlogPostEntity> searchByTeam(@Param("teamId") Long teamId, @Param("keyword") String keyword, Pageable pageable);
 
-    @Query(value = "SELECT * FROM blog_posts WHERE organization_id = :orgId AND MATCH(title, body) AGAINST(:keyword IN BOOLEAN MODE) AND deleted_at IS NULL",
-            nativeQuery = true)
+    @Query(value = SEARCH_BY_ORG, nativeQuery = true)
     Page<BlogPostEntity> searchByOrganization(@Param("orgId") Long orgId, @Param("keyword") String keyword, Pageable pageable);
 
     long countBySeriesId(Long seriesId);

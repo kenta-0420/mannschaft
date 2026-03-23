@@ -14,6 +14,9 @@ import java.util.Optional;
  */
 public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, Long> {
 
+    String SEARCH_BY_CHANNEL = "SELECT * FROM chat_messages WHERE channel_id = :channelId AND deleted_at IS NULL AND MATCH(body) AGAINST(:keyword IN BOOLEAN MODE) ORDER BY created_at DESC";
+    String SEARCH_BY_CHANNELS = "SELECT * FROM chat_messages WHERE channel_id IN (:channelIds) AND deleted_at IS NULL AND MATCH(body) AGAINST(:keyword IN BOOLEAN MODE) ORDER BY created_at DESC";
+
     /**
      * チャンネルのメッセージ一覧を新しい順に取得する。
      */
@@ -45,18 +48,14 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
     /**
      * チャンネル内のメッセージを全文検索する。
      */
-    @Query(value = "SELECT * FROM chat_messages WHERE channel_id = :channelId AND deleted_at IS NULL " +
-            "AND MATCH(body) AGAINST(:keyword IN BOOLEAN MODE) ORDER BY created_at DESC",
-            nativeQuery = true)
+    @Query(value = SEARCH_BY_CHANNEL, nativeQuery = true)
     List<ChatMessageEntity> searchByKeyword(
             @Param("channelId") Long channelId, @Param("keyword") String keyword, Pageable pageable);
 
     /**
      * 複数チャンネル横断でメッセージを全文検索する。
      */
-    @Query(value = "SELECT * FROM chat_messages WHERE channel_id IN (:channelIds) AND deleted_at IS NULL " +
-            "AND MATCH(body) AGAINST(:keyword IN BOOLEAN MODE) ORDER BY created_at DESC",
-            nativeQuery = true)
+    @Query(value = SEARCH_BY_CHANNELS, nativeQuery = true)
     List<ChatMessageEntity> searchByKeywordInChannels(
             @Param("channelIds") List<Long> channelIds, @Param("keyword") String keyword, Pageable pageable);
 }

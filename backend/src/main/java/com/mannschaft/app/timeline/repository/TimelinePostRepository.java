@@ -13,6 +13,8 @@ import java.util.List;
  */
 public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity, Long> {
 
+    String SEARCH_QUERY = "SELECT * FROM timeline_posts WHERE MATCH(content) AGAINST(:keyword IN BOOLEAN MODE) AND deleted_at IS NULL AND status = 'PUBLISHED' ORDER BY created_at DESC LIMIT :limit";
+
     /**
      * スコープ別フィード（新着順）を取得する。
      */
@@ -50,9 +52,7 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
     /**
      * 全文検索で投稿を取得する。
      */
-    @Query(value = "SELECT * FROM timeline_posts WHERE MATCH(content) AGAINST(:keyword IN BOOLEAN MODE) "
-            + "AND deleted_at IS NULL AND status = 'PUBLISHED' ORDER BY created_at DESC LIMIT :limit",
-            nativeQuery = true)
+    @Query(value = SEARCH_QUERY, nativeQuery = true)
     List<TimelinePostEntity> searchByKeyword(
             @Param("keyword") String keyword, @Param("limit") int limit);
 }

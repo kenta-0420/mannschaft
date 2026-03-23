@@ -19,6 +19,16 @@ import java.util.Optional;
  */
 public interface MatchRequestRepository extends JpaRepository<MatchRequestEntity, Long> {
 
+    String SEARCH_BY_KEYWORD = """
+            SELECT mr.* FROM match_requests mr
+            WHERE mr.status = :status
+              AND mr.deleted_at IS NULL
+              AND mr.team_id NOT IN (:excludedTeamIds)
+              AND (mr.expires_at IS NULL OR mr.expires_at > :now)
+              AND MATCH(mr.title, mr.activity_detail) AGAINST(:keyword IN BOOLEAN MODE)
+            ORDER BY mr.created_at DESC
+            """;
+
     /**
      * チームの募集一覧をページング取得する。
      */
@@ -62,15 +72,7 @@ public interface MatchRequestRepository extends JpaRepository<MatchRequestEntity
     /**
      * キーワード検索（FULLTEXT）。
      */
-    @Query(value = """
-            SELECT mr.* FROM match_requests mr
-            WHERE mr.status = :status
-              AND mr.deleted_at IS NULL
-              AND mr.team_id NOT IN (:excludedTeamIds)
-              AND (mr.expires_at IS NULL OR mr.expires_at > :now)
-              AND MATCH(mr.title, mr.activity_detail) AGAINST(:keyword IN BOOLEAN MODE)
-            ORDER BY mr.created_at DESC
-            """, nativeQuery = true)
+    @Query(value = SEARCH_BY_KEYWORD, nativeQuery = true)
     Page<MatchRequestEntity> searchByKeyword(
             @Param("status") String status,
             @Param("excludedTeamIds") List<Long> excludedTeamIds,
