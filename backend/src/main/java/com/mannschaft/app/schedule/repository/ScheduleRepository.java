@@ -67,4 +67,31 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
      * 組織スコープの今後のスケジュール数を取得する。
      */
     long countByOrganizationIdAndStartAtAfter(Long orgId, LocalDateTime after);
+
+    /**
+     * 未同期のスコープ指定スケジュールを取得する（Google Calendar同期用）。
+     */
+    @Query(value = "SELECT s.* FROM schedules s " +
+            "WHERE CASE WHEN :scopeType = 'TEAM' THEN s.team_id = :scopeId " +
+            "           WHEN :scopeType = 'ORGANIZATION' THEN s.organization_id = :scopeId END " +
+            "AND s.deleted_at IS NULL " +
+            "AND s.id NOT IN (SELECT ge.schedule_id FROM user_schedule_google_events ge WHERE ge.user_id = :userId)",
+            nativeQuery = true)
+    List<ScheduleEntity> findUnsyncedByUserAndScope(
+            @Param("userId") Long userId,
+            @Param("scopeType") String scopeType,
+            @Param("scopeId") Long scopeId);
+
+    /**
+     * 未同期の個人スケジュールを取得する（Google Calendar同期用）。
+     */
+    @Query(value = "SELECT s.* FROM schedules s " +
+            "WHERE s.user_id = :userId AND s.team_id IS NULL AND s.organization_id IS NULL " +
+            "AND s.deleted_at IS NULL " +
+            "AND s.id NOT IN (SELECT ge.schedule_id FROM user_schedule_google_events ge WHERE ge.user_id = :userId)",
+            nativeQuery = true)
+    List<ScheduleEntity> findUnsyncedPersonalSchedules(@Param("userId") Long userId);
+
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.title LIKE %:keyword% OR s.description LIKE %:keyword% OR s.location LIKE %:keyword%")
+    List<ScheduleEntity> searchByKeyword(@Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
 }

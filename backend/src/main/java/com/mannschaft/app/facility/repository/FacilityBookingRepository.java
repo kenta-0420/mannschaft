@@ -71,4 +71,7 @@ public interface FacilityBookingRepository extends JpaRepository<FacilityBooking
     long countByScopeAndStatus(
             @Param("scopeType") String scopeType, @Param("scopeId") Long scopeId,
             @Param("status") BookingStatus status);
+
+    @Query("SELECT b FROM FacilityBookingEntity b WHERE b.purpose LIKE %:keyword%")
+    List<FacilityBookingEntity> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 }

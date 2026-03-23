@@ -42,4 +42,7 @@ public interface SafetyCheckRepository extends JpaRepository<SafetyCheckEntity, 
             @Param("scopeType") SafetyCheckScopeType scopeType,
             @Param("scopeId") Long scopeId,
             Pageable pageable);
+
+    @Query("SELECT sc FROM SafetyCheckEntity sc WHERE sc.title LIKE %:keyword% OR sc.message LIKE %:keyword%")
+    java.util.List<SafetyCheckEntity> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 }

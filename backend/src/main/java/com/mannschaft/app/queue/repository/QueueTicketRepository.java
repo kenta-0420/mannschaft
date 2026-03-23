@@ -87,4 +87,7 @@ public interface QueueTicketRepository extends JpaRepository<QueueTicketEntity, 
      * IDとカウンターIDでチケットを取得する。
      */
     Optional<QueueTicketEntity> findByIdAndCounterId(Long id, Long counterId);
+
+    @Query("SELECT t FROM QueueTicketEntity t WHERE t.ticketNumber LIKE %:keyword% OR t.guestName LIKE %:keyword%")
+    List<QueueTicketEntity> searchByKeyword(@Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
 }

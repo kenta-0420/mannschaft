@@ -46,4 +46,7 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
      * スコープ別のイベント件数を取得する。
      */
     long countByScopeTypeAndScopeIdAndStatus(EventScopeType scopeType, Long scopeId, EventStatus status);
+
+    @org.springframework.data.jpa.repository.Query("SELECT e FROM EventEntity e WHERE e.subtitle LIKE %:keyword% OR e.summary LIKE %:keyword% OR e.venueName LIKE %:keyword%")
+    java.util.List<EventEntity> searchByKeyword(@org.springframework.data.repository.query.Param("keyword") String keyword, Pageable pageable);
 }

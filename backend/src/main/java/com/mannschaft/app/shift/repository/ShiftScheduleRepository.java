@@ -38,4 +38,7 @@ public interface ShiftScheduleRepository extends JpaRepository<ShiftScheduleEnti
      * 特定ステータスのスケジュール一覧を取得する（自動遷移用）。
      */
     List<ShiftScheduleEntity> findByStatus(ShiftScheduleStatus status);
+
+    @org.springframework.data.jpa.repository.Query("SELECT s FROM ShiftScheduleEntity s WHERE s.title LIKE %:keyword% OR s.note LIKE %:keyword%")
+    List<ShiftScheduleEntity> searchByKeyword(@org.springframework.data.repository.query.Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
 }
