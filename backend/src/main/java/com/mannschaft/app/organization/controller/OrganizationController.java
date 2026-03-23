@@ -308,7 +308,7 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "譲渡成功")
     public ResponseEntity<Void> transferOwnership(
             @PathVariable Long id, @RequestParam Long targetUserId) {
-        // TODO: オーナー譲渡ロジック実装
+        roleService.transferOwnership(id, SCOPE_TYPE, SecurityUtils.getCurrentUserId(), targetUserId);
         return ResponseEntity.ok().build();
     }
 

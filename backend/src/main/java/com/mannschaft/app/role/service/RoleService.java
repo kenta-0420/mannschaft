@@ -182,6 +182,60 @@ public class RoleService {
         return resolveEffectivePermissions(userId, scopeId, scopeType).contains(permissionName);
     }
 
+    /**
+     * オーナー（ADMIN）権限を譲渡する。
+     * 現オーナーは MEMBER にダウングレードされ、対象ユーザーが ADMIN に昇格する。
+     *
+     * @param scopeId      スコープID（チームID or 組織ID）
+     * @param scopeType    スコープ種別（TEAM or ORGANIZATION）
+     * @param currentUserId 現オーナーのユーザーID
+     * @param targetUserId  譲渡先ユーザーID
+     */
+    @Transactional
+    public void transferOwnership(Long scopeId, String scopeType, Long currentUserId, Long targetUserId) {
+        if (currentUserId.equals(targetUserId)) {
+            throw new BusinessException(RoleErrorCode.ROLE_001);
+        }
+
+        // 現ユーザーが ADMIN であることを確認
+        UserRoleEntity currentUserRole = findUserRole(currentUserId, scopeId, scopeType)
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
+        RoleEntity currentRole = roleRepository.findById(currentUserRole.getRoleId())
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
+        if (!"ADMIN".equals(currentRole.getName())) {
+            throw new BusinessException(RoleErrorCode.ROLE_001);
+        }
+
+        // 対象ユーザーがスコープに所属していることを確認
+        UserRoleEntity targetUserRole = findUserRole(targetUserId, scopeId, scopeType)
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
+
+        // ADMIN ロールと MEMBER ロールを取得
+        RoleEntity adminRole = currentRole;
+        RoleEntity memberRole = roleRepository.findByName("MEMBER")
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
+
+        // 対象ユーザーを ADMIN に昇格
+        userRoleRepository.delete(targetUserRole);
+        UserRoleEntity.UserRoleEntityBuilder newAdminBuilder = UserRoleEntity.builder()
+                .userId(targetUserId)
+                .roleId(adminRole.getId())
+                .grantedBy(currentUserId);
+        setScopeField(newAdminBuilder, scopeId, scopeType);
+        userRoleRepository.save(newAdminBuilder.build());
+
+        // 現オーナーを MEMBER にダウングレード
+        userRoleRepository.delete(currentUserRole);
+        UserRoleEntity.UserRoleEntityBuilder demotedBuilder = UserRoleEntity.builder()
+                .userId(currentUserId)
+                .roleId(memberRole.getId());
+        setScopeField(demotedBuilder, scopeId, scopeType);
+        userRoleRepository.save(demotedBuilder.build());
+
+        log.info("オーナー譲渡完了: scopeType={}, scopeId={}, from={}, to={}",
+                scopeType, scopeId, currentUserId, targetUserId);
+    }
+
     // ========================================
     // ヘルパー（private）
     // ========================================
