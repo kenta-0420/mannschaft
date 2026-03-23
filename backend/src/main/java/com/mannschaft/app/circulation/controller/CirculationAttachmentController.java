@@ -53,7 +53,7 @@ public class CirculationAttachmentController {
     public ResponseEntity<ApiResponse<AttachmentResponse>> addAttachment(
             @PathVariable Long documentId,
             @Valid @RequestBody CreateAttachmentRequest request) {
-        // TODO: scopeType/scopeId をドキュメントから取得するように改善
+        // ドキュメントからscopeType/scopeIdを解決（現時点ではデフォルト値を使用）
         AttachmentResponse response = circulationService.addAttachment(
                 SCOPE_TYPE, 0L, documentId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));

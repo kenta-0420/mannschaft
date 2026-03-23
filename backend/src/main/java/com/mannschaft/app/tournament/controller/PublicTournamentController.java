@@ -84,8 +84,8 @@ public class PublicTournamentController {
     public ResponseEntity<ApiResponse<List<MatchResponse>>> getPublicBracket(
             @PathVariable Long orgId, @PathVariable Long tId) {
         tournamentService.verifyPublicAccess(orgId, tId);
-        // TODO: ブラケット専用レスポンス構築
-        return ResponseEntity.ok(ApiResponse.of(List.of()));
+        List<MatchResponse> bracket = matchService.getBracket(tId);
+        return ResponseEntity.ok(ApiResponse.of(bracket));
     }
 
     @GetMapping("/{tId}/divisions/{divId}/matrix")

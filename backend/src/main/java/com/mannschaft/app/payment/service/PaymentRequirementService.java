@@ -2,11 +2,14 @@ package com.mannschaft.app.payment.service;
 
 import com.mannschaft.app.payment.dto.MyPaymentResponse;
 import com.mannschaft.app.payment.dto.PaymentRequirementResponse;
+import com.mannschaft.app.payment.entity.OrganizationAccessRequirementEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.entity.TeamAccessRequirementEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.OrganizationAccessRequirementRepository;
 import com.mannschaft.app.payment.repository.TeamAccessRequirementRepository;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,19 +31,29 @@ public class PaymentRequirementService {
     private final OrganizationAccessRequirementRepository organizationAccessRequirementRepository;
     private final PaymentItemService paymentItemService;
     private final MemberPaymentRepository memberPaymentRepository;
+    private final UserRoleRepository userRoleRepository;
 
     /**
      * ユーザーに課されている未払い要件一覧を取得する。
-     * <p>
-     * TODO: ユーザーが所属するチーム/組織の一覧を取得する機能と連携後に完全実装する。
-     * 現在はプレースホルダーとして空リストを返す。
+     * ユーザーが所属する全チーム・全組織のアクセス要件を横断的に確認する。
      */
     public List<PaymentRequirementResponse> getPaymentRequirements(Long userId) {
         List<PaymentRequirementResponse> requirements = new ArrayList<>();
 
-        // TODO: ユーザーの所属チーム一覧を取得し、各チームの access_requirements を確認
-        // TODO: ユーザーの所属組織一覧を取得し、各組織の access_requirements を確認
-        // TODO: content_payment_gates の未払い確認
+        // ユーザーの所属チーム一覧を取得し、各チームの access_requirements を確認
+        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
+        for (UserRoleEntity role : teamRoles) {
+            requirements.addAll(getTeamPaymentRequirements(userId, role.getTeamId()));
+        }
+
+        // ユーザーの所属組織一覧を取得し、各組織の access_requirements を確認
+        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
+        for (UserRoleEntity role : orgRoles) {
+            requirements.addAll(getOrganizationPaymentRequirements(userId, role.getOrganizationId()));
+        }
+
+        // NOTE: content_payment_gates の未払い確認はコンテンツ種別ごとの統合が必要なため、
+        // コンテンツ閲覧時に個別チェックする設計とする（ここでは対象外）
 
         return requirements;
     }
@@ -58,6 +71,32 @@ public class PaymentRequirementService {
                 result.add(new PaymentRequirementResponse(
                         new MyPaymentResponse.ScopeInfo("TEAM", teamId, null),
                         "TEAM_ACCESS",
+                        new PaymentRequirementResponse.PaymentItemRequirement(
+                                item.getId(), item.getName(), item.getType().name(),
+                                item.getAmount(), item.getCurrency(),
+                                item.getStripePriceId(), item.getGracePeriodDays()),
+                        false, null
+                ));
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * 指定組織に対するユーザーの未払い要件を確認する。
+     */
+    private List<PaymentRequirementResponse> getOrganizationPaymentRequirements(Long userId, Long organizationId) {
+        List<OrganizationAccessRequirementEntity> requirements =
+                organizationAccessRequirementRepository.findByOrganizationId(organizationId);
+        List<PaymentRequirementResponse> result = new ArrayList<>();
+
+        for (OrganizationAccessRequirementEntity req : requirements) {
+            if (!memberPaymentRepository.existsValidPaidPayment(userId, req.getPaymentItemId())) {
+                PaymentItemEntity item = paymentItemService.findByIdOrThrow(req.getPaymentItemId());
+                result.add(new PaymentRequirementResponse(
+                        new MyPaymentResponse.ScopeInfo("ORGANIZATION", organizationId, null),
+                        "ORGANIZATION_ACCESS",
                         new PaymentRequirementResponse.PaymentItemRequirement(
                                 item.getId(), item.getName(), item.getType().name(),
                                 item.getAmount(), item.getCurrency(),

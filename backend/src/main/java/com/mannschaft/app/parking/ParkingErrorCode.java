@@ -111,7 +111,10 @@ public enum ParkingErrorCode implements ErrorCode {
     NO_LOTTERY_CANDIDATES("PARKING_033", "抽選対象の申請がありません", Severity.WARN),
 
     /** 時刻指定が30分単位でない */
-    INVALID_TIME_SLOT("PARKING_034", "時刻は30分単位で指定してください", Severity.WARN);
+    INVALID_TIME_SLOT("PARKING_034", "時刻は30分単位で指定してください", Severity.WARN),
+
+    /** Stripe Connect セットアップ失敗 */
+    STRIPE_CONNECT_SETUP_FAILED("PARKING_035", "Stripe Connectのセットアップに失敗しました", Severity.ERROR);
 
     private final String code;
     private final String message;

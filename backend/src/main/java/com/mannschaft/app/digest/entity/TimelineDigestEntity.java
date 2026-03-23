@@ -120,6 +120,20 @@ public class TimelineDigestEntity {
     }
 
     /**
+     * ソース投稿 ID リスト（JSON 文字列）を設定する。
+     */
+    public void setSourcePostIds(String sourcePostIds) {
+        this.sourcePostIds = sourcePostIds;
+    }
+
+    /**
+     * ブログ記事 ID を紐付ける。
+     */
+    public void setBlogPostId(Long blogPostId) {
+        this.blogPostId = blogPostId;
+    }
+
+    /**
      * ダイジェスト生成失敗に遷移する。
      */
     public void markFailed(String errorMessage) {

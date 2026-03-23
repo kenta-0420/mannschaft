@@ -7,6 +7,7 @@ import com.mannschaft.app.cms.dto.BulkActionResponse;
 import com.mannschaft.app.cms.dto.CreateBlogPostRequest;
 import com.mannschaft.app.cms.dto.PublishRequest;
 import com.mannschaft.app.cms.dto.UpdateBlogPostRequest;
+import com.mannschaft.app.cms.service.BlogFeedService;
 import com.mannschaft.app.cms.service.BlogPostService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
@@ -43,6 +44,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class BlogPostController {
 
     private final BlogPostService postService;
+    private final BlogFeedService feedService;
 
 
     /**
@@ -62,7 +64,7 @@ public class BlogPostController {
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        // TODO: postType, tagIds, status, authorId, visibility, q フィルタの実装
+        // フィルタパラメータは BlogPostRepository のクエリ拡張時に対応予定
         Page<BlogPostResponse> result;
         if (teamId != null) {
             result = postService.listByTeam(teamId, PageRequest.of(page, size));
@@ -175,15 +177,21 @@ public class BlogPostController {
     @GetMapping(value = "/feed", produces = {MediaType.APPLICATION_XML_VALUE, "application/rss+xml", "application/atom+xml"})
     @Operation(summary = "RSS/Atomフィード取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<BlogPostResponse>>> getFeed(
+    public ResponseEntity<String> getFeed(
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) Long organizationId,
             @RequestParam(defaultValue = "rss") String format) {
         List<BlogPostResponse> posts = postService.listPublicPostsForFeed(teamId, organizationId);
-        // TODO: RSS/Atom XML形式への変換は将来実装。現時点ではJSON形式で返却
+        String xml = feedService.generateFeedXml(posts, format, teamId, organizationId);
+
+        String contentType = "atom".equalsIgnoreCase(format)
+                ? "application/atom+xml; charset=UTF-8"
+                : "application/rss+xml; charset=UTF-8";
+
         return ResponseEntity.ok()
+                .header("Content-Type", contentType)
                 .header("Cache-Control", "public, max-age=600")
-                .body(ApiResponse.of(posts));
+                .body(xml);
     }
 
     /**

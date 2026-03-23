@@ -1,5 +1,6 @@
 package com.mannschaft.app.facility.service;
 
+import com.mannschaft.app.common.HolidayService;
 import com.mannschaft.app.facility.DayType;
 import com.mannschaft.app.facility.entity.FacilityBookingEquipmentEntity;
 import com.mannschaft.app.facility.entity.FacilityTimeRateEntity;
@@ -27,6 +28,7 @@ public class FacilityFeeCalculator {
     private static final int SLOT_MINUTES = 30;
 
     private final FacilityTimeRateRepository timeRateRepository;
+    private final HolidayService holidayService;
 
     /**
      * 利用料金を計算する。
@@ -115,11 +117,13 @@ public class FacilityFeeCalculator {
     }
 
     private DayType toDayType(LocalDate date) {
+        if (holidayService.isSystemHoliday(date)) {
+            return DayType.HOLIDAY;
+        }
         DayOfWeek dow = date.getDayOfWeek();
         if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) {
             return DayType.WEEKEND;
         }
-        // TODO: 祝日判定は将来的に祝日マスタを参照
         return DayType.WEEKDAY;
     }
 }

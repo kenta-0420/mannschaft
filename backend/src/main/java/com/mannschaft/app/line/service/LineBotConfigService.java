@@ -34,6 +34,7 @@ public class LineBotConfigService {
     private final LineMessageLogRepository lineMessageLogRepository;
     private final LineMapper lineMapper;
     private final EncryptionService encryptionService;
+    private final LineMessagingApiClient lineMessagingApiClient;
 
     /**
      * BOT設定を取得する。
@@ -113,8 +114,11 @@ public class LineBotConfigService {
                 .contentSummary(request.getMessage())
                 .build();
 
-        // TODO: LINE Messaging API 呼び出し実装
-        log.markSent(null);
+        String channelAccessToken = new String(
+                encryptionService.decryptBytes(config.getChannelAccessTokenEnc()));
+        String requestId = lineMessagingApiClient.pushMessage(
+                channelAccessToken, request.getLineUserId(), request.getMessage());
+        log.markSent(requestId);
         lineMessageLogRepository.save(log);
     }
 

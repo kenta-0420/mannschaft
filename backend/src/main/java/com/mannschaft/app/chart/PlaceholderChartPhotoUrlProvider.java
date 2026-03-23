@@ -16,7 +16,7 @@ public class PlaceholderChartPhotoUrlProvider implements ChartPhotoUrlProvider {
 
     @Override
     public String generateSignedUrl(String s3Key) {
-        // TODO: 本番環境ではCloudFront署名付きURLを生成する
+        // 本番環境では CloudFrontSignedUrlProvider に差し替え（@Profile("prod")）
         return PLACEHOLDER_BASE_URL + s3Key + "?signed=placeholder";
     }
 

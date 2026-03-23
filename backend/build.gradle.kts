@@ -66,9 +66,10 @@ dependencies {
     // WebAuthn4J
     implementation("com.webauthn4j:webauthn4j-core:0.28.4.RELEASE")
 
-    // AWS S3
+    // AWS S3 + SES
     implementation(platform("software.amazon.awssdk:bom:2.29.45"))
     implementation("software.amazon.awssdk:s3")
+    implementation("software.amazon.awssdk:sesv2")
 
     // MySQL
     runtimeOnly("com.mysql:mysql-connector-j")
@@ -96,6 +97,15 @@ dependencies {
 
     // === Markdown → HTML 変換 ===
     implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
+
+    // === Stripe Connect 決済 ===
+    implementation("com.stripe:stripe-java:28.2.0")
+
+    // === HTTP クライアント（Claude API 等の外部 API 呼び出し） ===
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
+
+    // === RSS/Atom フィード生成（ROME） ===
+    implementation("com.rometools:rome:2.1.0")
 }
 
 tasks.withType<Test> {

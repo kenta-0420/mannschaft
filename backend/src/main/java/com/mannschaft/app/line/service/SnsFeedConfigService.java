@@ -29,6 +29,7 @@ public class SnsFeedConfigService {
     private final SnsFeedConfigRepository snsFeedConfigRepository;
     private final LineMapper lineMapper;
     private final EncryptionService encryptionService;
+    private final SnsFeedApiClient snsFeedApiClient;
 
     /**
      * フィード設定一覧を取得する。
@@ -96,11 +97,19 @@ public class SnsFeedConfigService {
      */
     public SnsFeedPreviewResponse preview(Long id, ScopeType scopeType, Long scopeId) {
         SnsFeedConfigEntity entity = findByIdAndScope(id, scopeType, scopeId);
-        // TODO: 外部SNS API呼び出し実装
+
+        List<SnsFeedPreviewResponse.FeedItem> items;
+        if (entity.getProvider() == SnsProvider.INSTAGRAM && entity.getAccessTokenEnc() != null) {
+            String accessToken = new String(encryptionService.decryptBytes(entity.getAccessTokenEnc()));
+            items = snsFeedApiClient.fetchInstagramFeed(accessToken, entity.getDisplayCount());
+        } else {
+            items = List.of();
+        }
+
         return new SnsFeedPreviewResponse(
                 entity.getProvider().name(),
                 entity.getAccountUsername(),
-                List.of()
+                items
         );
     }
 

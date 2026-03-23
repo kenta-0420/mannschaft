@@ -98,6 +98,10 @@ public class UserEntity extends BaseEntity {
 
     private LocalDateTime reminderSentAt;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean reportingRestricted = false;
+
     private LocalDateTime archivedAt;
 
     private LocalDateTime deletedAt;
@@ -168,5 +172,12 @@ public class UserEntity extends BaseEntity {
      */
     public void updateLastLoginAt() {
         this.lastLoginAt = LocalDateTime.now();
+    }
+
+    /**
+     * 通報権限の制限状態を更新する。
+     */
+    public void setReportingRestricted(boolean restricted) {
+        this.reportingRestricted = restricted;
     }
 }

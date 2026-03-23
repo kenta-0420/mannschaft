@@ -33,6 +33,7 @@ public class SealService {
     private final ElectronicSealRepository sealRepository;
     private final SealScopeDefaultRepository scopeDefaultRepository;
     private final SealMapper sealMapper;
+    private final SealGenerator sealGenerator;
 
     /**
      * ユーザーの印鑑一覧を取得する。
@@ -72,10 +73,8 @@ public class SealService {
             throw new BusinessException(SealErrorCode.DUPLICATE_VARIANT);
         }
 
-        // TODO: SVG生成ロジックを実装する（現在は仮のSVGデータ）
-        String svgData = generateSvgPlaceholder(request.getDisplayText());
-        // TODO: SHA-256ハッシュ生成を実装する（現在は仮のハッシュ値）
-        String sealHash = generateHashPlaceholder(svgData);
+        String svgData = sealGenerator.generateSvg(request.getDisplayText(), variant);
+        String sealHash = sealGenerator.computeHash(svgData);
 
         ElectronicSealEntity entity = ElectronicSealEntity.builder()
                 .userId(userId)
@@ -104,10 +103,8 @@ public class SealService {
 
         entity.updateDisplayText(request.getDisplayText());
 
-        // TODO: SVG再生成ロジックを実装する
-        String newSvgData = generateSvgPlaceholder(request.getDisplayText());
-        // TODO: SHA-256ハッシュ再生成を実装する
-        String newSealHash = generateHashPlaceholder(newSvgData);
+        String newSvgData = sealGenerator.generateSvg(request.getDisplayText(), entity.getVariant());
+        String newSealHash = sealGenerator.computeHash(newSvgData);
         entity.regenerate(newSvgData, newSealHash);
 
         ElectronicSealEntity saved = sealRepository.save(entity);
@@ -196,22 +193,4 @@ public class SealService {
                 .orElseThrow(() -> new BusinessException(SealErrorCode.SEAL_NOT_FOUND));
     }
 
-    /**
-     * SVG生成のプレースホルダー。
-     * TODO: 実際のSVG生成ロジックに置き換える
-     */
-    private String generateSvgPlaceholder(String displayText) {
-        return "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"100\">"
-                + "<circle cx=\"50\" cy=\"50\" r=\"45\" fill=\"none\" stroke=\"red\" stroke-width=\"3\"/>"
-                + "<text x=\"50\" y=\"55\" text-anchor=\"middle\" fill=\"red\" font-size=\"14\">"
-                + displayText + "</text></svg>";
-    }
-
-    /**
-     * SHA-256ハッシュ生成のプレースホルダー。
-     * TODO: 実際のSHA-256ハッシュ生成に置き換える
-     */
-    private String generateHashPlaceholder(String data) {
-        return String.format("%064x", data.hashCode());
-    }
 }

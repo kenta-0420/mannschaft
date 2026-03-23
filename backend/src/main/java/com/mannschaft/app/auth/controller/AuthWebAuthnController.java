@@ -90,8 +90,7 @@ public class AuthWebAuthnController {
             @Valid @RequestBody WebAuthnLoginCompleteRequest req,
             HttpServletRequest request) {
 
-        // TODO: X-Forwarded-For対応
-        String ipAddress = request.getRemoteAddr();
+        String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
         String userAgent = request.getHeader("User-Agent");
         return ResponseEntity.ok(authWebAuthnService.completeLogin(req, ipAddress, userAgent));
     }

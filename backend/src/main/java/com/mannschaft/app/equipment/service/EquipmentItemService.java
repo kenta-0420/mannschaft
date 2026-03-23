@@ -1,6 +1,8 @@
 package com.mannschaft.app.equipment.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.equipment.EquipmentErrorCode;
 import com.mannschaft.app.equipment.EquipmentMapper;
 import com.mannschaft.app.equipment.EquipmentScopeType;
@@ -10,6 +12,8 @@ import com.mannschaft.app.equipment.dto.EquipmentItemResponse;
 import com.mannschaft.app.equipment.dto.PresignedUrlRequest;
 import com.mannschaft.app.equipment.dto.PresignedUrlResponse;
 import com.mannschaft.app.equipment.dto.QrCodeResponse;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.equipment.dto.UpdateEquipmentItemRequest;
 import com.mannschaft.app.equipment.entity.EquipmentItemEntity;
 import com.mannschaft.app.equipment.repository.EquipmentAssignmentRepository;
@@ -23,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -40,6 +45,8 @@ public class EquipmentItemService {
     private final EquipmentAssignmentRepository assignmentRepository;
     private final EquipmentMapper equipmentMapper;
     private final QrCodeGenerator qrCodeGenerator;
+    private final StorageService storageService;
+    private final DomainEventPublisher eventPublisher;
 
     @Value("${app.domain-base:https://app.mannschaft.example}")
     private String domainBase;
@@ -205,10 +212,13 @@ public class EquipmentItemService {
     @Transactional
     public void deleteImageForTeam(Long teamId, Long id) {
         EquipmentItemEntity entity = findTeamItemOrThrow(teamId, id);
+        String oldS3Key = entity.getS3Key();
         entity.updateS3Key(null);
         itemRepository.save(entity);
         log.info("備品画像削除（チーム）: teamId={}, itemId={}", teamId, id);
-        // TODO: ApplicationEvent で旧 S3 オブジェクトを非同期削除
+        if (oldS3Key != null) {
+            eventPublisher.publish(new S3ObjectDeleteEvent(oldS3Key));
+        }
     }
 
     /**
@@ -217,10 +227,13 @@ public class EquipmentItemService {
     @Transactional
     public void deleteImageForOrganization(Long orgId, Long id) {
         EquipmentItemEntity entity = findOrgItemOrThrow(orgId, id);
+        String oldS3Key = entity.getS3Key();
         entity.updateS3Key(null);
         itemRepository.save(entity);
         log.info("備品画像削除（組織）: orgId={}, itemId={}", orgId, id);
-        // TODO: ApplicationEvent で旧 S3 オブジェクトを非同期削除
+        if (oldS3Key != null) {
+            eventPublisher.publish(new S3ObjectDeleteEvent(oldS3Key));
+        }
     }
 
     // ===================== QRコード一覧 =====================
@@ -361,9 +374,9 @@ public class EquipmentItemService {
         entity.updateS3Key(s3Key);
         itemRepository.save(entity);
 
-        // TODO: 実際の S3 Pre-signed URL 生成に置き換え
-        String uploadUrl = "https://s3.amazonaws.com/mannschaft-bucket/" + s3Key + "?presigned=placeholder";
-        return new PresignedUrlResponse(uploadUrl, s3Key, 600);
+        PresignedUploadResult result = storageService.generateUploadUrl(
+                s3Key, request.getContentType(), Duration.ofSeconds(600));
+        return new PresignedUrlResponse(result.uploadUrl(), result.s3Key(), (int) result.expiresInSeconds());
     }
 
     private QrCodeResponse toQrCodeResponse(EquipmentItemEntity entity) {

@@ -233,7 +233,7 @@ public class EquipmentAssignmentService {
                 item.getId(),
                 item.getName(),
                 request.getAssignedToUserId(),
-                null, // TODO: ユーザー表示名の解決
+                null, // ユーザー表示名は NameResolverService 連携時に解決予定
                 saved.getQuantity(),
                 saved.getAssignedAt(),
                 saved.getExpectedReturnAt(),

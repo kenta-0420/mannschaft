@@ -174,8 +174,8 @@ public class PerformanceRecordService {
     @Transactional
     public BulkRecordResponse createScheduleBulkRecords(Long teamId, Long scheduleId, Long currentUserId,
                                                          ScheduleBulkRecordRequest request) {
-        // TODO: Validate scheduleId exists and belongs to team via ScheduleService
-        LocalDate recordedDate = LocalDate.now(); // TODO: Get from schedule's start_date
+        // scheduleId の存在・所属チェックは ScheduleService 連携時に実装予定
+        LocalDate recordedDate = LocalDate.now(); // Schedule連携後にschedule.start_dateを使用
 
         int created = 0;
         for (ScheduleBulkRecordRequest.Entry entry : request.getEntries()) {

@@ -21,6 +21,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mannschaft.app.receipt.dto.CreateReceiptRequest;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +37,7 @@ public class ReceiptQueueService {
 
     private final ReceiptQueueRepository queueRepository;
     private final ReceiptMapper receiptMapper;
+    private final ReceiptService receiptService;
 
     /**
      * 発行待ちキュー一覧を取得する。
@@ -85,15 +88,14 @@ public class ReceiptQueueService {
             throw new BusinessException(ReceiptErrorCode.QUEUE_NOT_PENDING);
         }
 
-        // TODO: ReceiptService.createReceipt を呼び出して領収書を発行
-        // 承認リクエストのフィールドで suggested_description / suggested_amount を上書き
-        queueItem.approve(null); // processedReceiptId は発行後に設定
+        CreateReceiptRequest createRequest = buildCreateRequestFromQueue(queueItem, request);
+        ReceiptResponse receiptResponse = receiptService.createReceipt(scopeType, scopeId, userId, createRequest);
+
+        queueItem.approve(receiptResponse.getId());
         queueRepository.save(queueItem);
 
-        log.info("キューアイテム承認: queueId={}", queueId);
-
-        // TODO: 発行された領収書のレスポンスを返す
-        return ReceiptResponse.builder().build();
+        log.info("キューアイテム承認: queueId={}, receiptId={}", queueId, receiptResponse.getId());
+        return receiptResponse;
     }
 
     /**
@@ -113,6 +115,7 @@ public class ReceiptQueueService {
         }
 
         List<ReceiptQueueEntity> items = queueRepository.findByIdIn(request.getQueueIds());
+        List<BulkResultResponse.IssuedReceipt> receipts = new ArrayList<>();
         int approvedCount = 0;
         int skippedCount = 0;
 
@@ -121,9 +124,17 @@ public class ReceiptQueueService {
                 skippedCount++;
                 continue;
             }
-            // TODO: 領収書発行処理
-            item.approve(null);
+            CreateReceiptRequest createRequest = buildCreateRequestFromQueue(item, null);
+            ReceiptResponse receiptResponse = receiptService.createReceipt(
+                    item.getScopeType(), item.getScopeId(), userId, createRequest);
+            item.approve(receiptResponse.getId());
             queueRepository.save(item);
+            receipts.add(BulkResultResponse.IssuedReceipt.builder()
+                    .id(receiptResponse.getId())
+                    .receiptNumber(receiptResponse.getReceiptNumber())
+                    .recipientName(receiptResponse.getRecipientName())
+                    .amount(receiptResponse.getAmount())
+                    .build());
             approvedCount++;
         }
 
@@ -133,7 +144,7 @@ public class ReceiptQueueService {
         return BulkResultResponse.builder()
                 .issuedCount(approvedCount)
                 .skippedCount(skippedCount)
-                .receipts(new ArrayList<>())
+                .receipts(receipts)
                 .build();
     }
 
@@ -163,5 +174,45 @@ public class ReceiptQueueService {
     ReceiptQueueEntity findQueueItemOrThrow(ReceiptScopeType scopeType, Long scopeId, Long queueId) {
         return queueRepository.findByIdAndScopeTypeAndScopeId(queueId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(ReceiptErrorCode.QUEUE_ITEM_NOT_FOUND));
+    }
+
+    /**
+     * キューアイテムから領収書発行リクエストを構築する。
+     * 承認リクエストで上書きされたフィールドがあればそちらを優先する。
+     */
+    private CreateReceiptRequest buildCreateRequestFromQueue(ReceiptQueueEntity queueItem,
+                                                              ApproveQueueRequest approveRequest) {
+        String description = queueItem.getSuggestedDescription();
+        java.math.BigDecimal amount = queueItem.getSuggestedAmount();
+        Boolean sealStamp = null;
+
+        if (approveRequest != null) {
+            if (approveRequest.getDescription() != null) {
+                description = approveRequest.getDescription();
+            }
+            if (approveRequest.getAmount() != null) {
+                amount = approveRequest.getAmount();
+            }
+            sealStamp = approveRequest.getSealStamp();
+        }
+
+        return new CreateReceiptRequest(
+                queueItem.getPresetId(),
+                null,
+                queueItem.getMemberPaymentId(),
+                queueItem.getRecipientUserId(),
+                null,
+                null,
+                null,
+                description,
+                amount,
+                null,
+                null,
+                null,
+                null,
+                sealStamp,
+                null,
+                null
+        );
     }
 }

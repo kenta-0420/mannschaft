@@ -1,8 +1,10 @@
 package com.mannschaft.app.gallery.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.gallery.dto.RegenerateThumbnailsRequest;
 import com.mannschaft.app.gallery.dto.RegenerateThumbnailsResponse;
+import com.mannschaft.app.gallery.event.ThumbnailRegenerateEvent;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,6 +27,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class GalleryAdminController {
 
+    private final DomainEventPublisher eventPublisher;
+
     /**
      * サムネイルを一括再生成する（非同期ジョブ）。
      */
@@ -33,8 +37,12 @@ public class GalleryAdminController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "ジョブ受付成功")
     public ResponseEntity<ApiResponse<RegenerateThumbnailsResponse>> regenerateThumbnails(
             @Valid @RequestBody(required = false) RegenerateThumbnailsRequest request) {
-        // TODO: 非同期バッチジョブをディスパッチ
         String jobId = "regen-thumb-" + UUID.randomUUID().toString().substring(0, 8);
+
+        Long teamId = request != null ? request.getTeamId() : null;
+        Long orgId = request != null ? request.getOrganizationId() : null;
+        eventPublisher.publish(new ThumbnailRegenerateEvent(jobId, teamId, orgId));
+
         RegenerateThumbnailsResponse response = new RegenerateThumbnailsResponse(jobId, "PROCESSING");
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(response));
     }

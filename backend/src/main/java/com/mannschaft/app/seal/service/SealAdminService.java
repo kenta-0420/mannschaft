@@ -23,6 +23,7 @@ public class SealAdminService {
 
     private final ElectronicSealRepository sealRepository;
     private final SealMapper sealMapper;
+    private final SealGenerator sealGenerator;
 
     /**
      * 全印鑑一覧を取得する（管理者用）。
@@ -48,10 +49,8 @@ public class SealAdminService {
 
         for (ElectronicSealEntity seal : seals) {
             try {
-                // TODO: 実際のSVG再生成ロジックに置き換える
-                String newSvgData = generateSvgPlaceholder(seal.getDisplayText());
-                // TODO: 実際のSHA-256ハッシュ再生成に置き換える
-                String newSealHash = generateHashPlaceholder(newSvgData);
+                String newSvgData = sealGenerator.generateSvg(seal.getDisplayText(), seal.getVariant());
+                String newSealHash = sealGenerator.computeHash(newSvgData);
                 seal.regenerate(newSvgData, newSealHash);
                 sealRepository.save(seal);
                 successCount++;
@@ -65,22 +64,4 @@ public class SealAdminService {
         return new AdminRegenerateResponse((long) seals.size(), successCount, failureCount);
     }
 
-    /**
-     * SVG生成のプレースホルダー。
-     * TODO: SealServiceと共通化し、実際のSVG生成ロジックに置き換える
-     */
-    private String generateSvgPlaceholder(String displayText) {
-        return "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"100\">"
-                + "<circle cx=\"50\" cy=\"50\" r=\"45\" fill=\"none\" stroke=\"red\" stroke-width=\"3\"/>"
-                + "<text x=\"50\" y=\"55\" text-anchor=\"middle\" fill=\"red\" font-size=\"14\">"
-                + displayText + "</text></svg>";
-    }
-
-    /**
-     * SHA-256ハッシュ生成のプレースホルダー。
-     * TODO: SealServiceと共通化し、実際のSHA-256ハッシュ生成に置き換える
-     */
-    private String generateHashPlaceholder(String data) {
-        return String.format("%064x", data.hashCode());
-    }
 }

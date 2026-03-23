@@ -6,7 +6,6 @@ import com.mannschaft.app.schedule.dto.BulkAttendanceRequest;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.CrossInviteRequest;
 import com.mannschaft.app.schedule.dto.CrossRefResponse;
-import com.mannschaft.app.schedule.dto.ScheduleDetailResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
@@ -91,17 +90,12 @@ public class TeamScheduleController {
     public ResponseEntity<ApiResponse<ScheduleResponse>> getSchedule(
             @PathVariable Long teamId,
             @PathVariable Long scheduleId) {
-        // getScheduleWithAccessCheck は ScheduleEntity を返すため、Controller で ScheduleResponse に変換せず
-        // Service 側の返却型に合わせて呼び出す。詳細表示は将来的に ScheduleDetailResponse に拡張予定。
-        scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
-        // TODO: ScheduleDetailResponse への変換はMapper実装後に対応
-        List<ScheduleResponse> list = scheduleService.listTeamSchedules(teamId,
-                LocalDateTime.of(1970, 1, 1, 0, 0), LocalDateTime.of(9999, 12, 31, 23, 59));
-        ScheduleResponse found = list.stream()
-                .filter(s -> s.getId().equals(scheduleId))
-                .findFirst()
-                .orElse(null);
-        return ResponseEntity.ok(ApiResponse.of(found));
+        var entity = scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
+        ScheduleResponse response = new ScheduleResponse(
+                entity.getId(), entity.getTitle(), entity.getStartAt(), entity.getEndAt(),
+                entity.getAllDay(), entity.getEventType().name(), entity.getStatus().name(),
+                entity.getAttendanceRequired(), entity.getLocation(), entity.getCreatedAt());
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**

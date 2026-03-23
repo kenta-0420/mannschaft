@@ -2,6 +2,7 @@ package com.mannschaft.app.template.service;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.payment.service.TeamPlanService;
 import com.mannschaft.app.template.TemplateErrorCode;
 import com.mannschaft.app.template.dto.LevelAvailabilityResponse;
 import com.mannschaft.app.template.dto.ModuleResponse;
@@ -45,6 +46,7 @@ public class ModuleService {
     private final TeamEnabledModuleRepository teamEnabledModuleRepository;
     private final TemplateModuleRepository templateModuleRepository;
     private final TeamTemplateRepository teamTemplateRepository;
+    private final TeamPlanService teamPlanService;
 
     /**
      * 選択式モジュールカタログを取得する（OPTIONAL + is_active のみ）。
@@ -123,8 +125,7 @@ public class ModuleService {
 
         if (request.isEnabled()) {
             // 有料プランチェック
-            if (module.getRequiresPaidPlan()) {
-                // TODO: チームのプラン状態を確認する実装
+            if (module.getRequiresPaidPlan() && !teamPlanService.hasPaidPlan(teamId)) {
                 throw new BusinessException(TemplateErrorCode.TMPL_004);
             }
 
@@ -206,6 +207,52 @@ public class ModuleService {
         }
 
         log.info("テンプレート適用完了: teamId={}, templateId={}", teamId, templateId);
+    }
+
+    /**
+     * 指定スコープでモジュールが有効かどうかを判定する。
+     * DEFAULT モジュールは常に有効。OPTIONAL モジュールはチーム単位で有効化状態を確認する。
+     *
+     * @param moduleSlug モジュールスラッグ
+     * @param teamId     チームID（OPTIONALモジュールの判定に使用）
+     * @return 有効な場合 true
+     */
+    public boolean isModuleEnabledForTeam(String moduleSlug, Long teamId) {
+        ModuleDefinitionEntity module = moduleDefinitionRepository.findBySlug(moduleSlug).orElse(null);
+        if (module == null || !module.getIsActive()) {
+            return false;
+        }
+        // デフォルト機能は常に有効
+        if (module.getModuleType() == ModuleDefinitionEntity.ModuleType.DEFAULT) {
+            return true;
+        }
+        // 選択式モジュールはチーム有効化状態を確認
+        return teamEnabledModuleRepository.findByTeamIdAndModuleId(teamId, module.getId())
+                .map(TeamEnabledModuleEntity::getIsEnabled)
+                .orElse(false);
+    }
+
+    /**
+     * モジュール無効理由を返す。有効な場合は null。
+     *
+     * @param moduleSlug モジュールスラッグ
+     * @param teamId     チームID
+     * @return 無効理由（null = 有効）
+     */
+    public String getModuleDisabledReason(String moduleSlug, Long teamId) {
+        ModuleDefinitionEntity module = moduleDefinitionRepository.findBySlug(moduleSlug).orElse(null);
+        if (module == null) {
+            return "モジュールが存在しません";
+        }
+        if (!module.getIsActive()) {
+            return "モジュールが無効化されています";
+        }
+        if (module.getModuleType() == ModuleDefinitionEntity.ModuleType.DEFAULT) {
+            return null;
+        }
+        return teamEnabledModuleRepository.findByTeamIdAndModuleId(teamId, module.getId())
+                .map(tem -> tem.getIsEnabled() ? null : "このチームでは未有効化です")
+                .orElse("このチームでは未有効化です");
     }
 
     // ========================================

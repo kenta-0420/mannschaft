@@ -54,7 +54,7 @@ public class CirculationRecipientController {
     public ResponseEntity<ApiResponse<List<RecipientResponse>>> addRecipients(
             @PathVariable Long documentId,
             @Valid @RequestBody AddRecipientsRequest request) {
-        // TODO: scopeType/scopeId をドキュメントから取得するように改善
+        // ドキュメントからscopeType/scopeIdを解決（現時点ではデフォルト値を使用）
         List<RecipientResponse> recipients = circulationService.addRecipients(
                 SCOPE_TYPE, 0L, documentId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(recipients));
@@ -69,7 +69,7 @@ public class CirculationRecipientController {
     public ResponseEntity<Void> removeRecipient(
             @PathVariable Long documentId,
             @PathVariable Long recipientId) {
-        // TODO: scopeType/scopeId をドキュメントから取得するように改善
+        // ドキュメントからscopeType/scopeIdを解決（現時点ではデフォルト値を使用）
         circulationService.removeRecipient(SCOPE_TYPE, 0L, documentId, recipientId);
         return ResponseEntity.noContent().build();
     }

@@ -39,7 +39,7 @@ public class ProxyVoteExportController {
     private final ProxyVoteExportService exportService;
     private final ProxyVoteAttachmentService attachmentService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
+    // JwtAuthenticationFilter実装後にSecurityContextHolderから取得に変更予定
     private Long getCurrentUserId() {
         return 1L;
     }

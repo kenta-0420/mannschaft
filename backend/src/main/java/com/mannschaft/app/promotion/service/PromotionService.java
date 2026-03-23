@@ -10,6 +10,8 @@ import com.mannschaft.app.promotion.dto.PromotionStatsResponse;
 import com.mannschaft.app.promotion.dto.SchedulePromotionRequest;
 import com.mannschaft.app.promotion.dto.SegmentCondition;
 import com.mannschaft.app.promotion.dto.UpdatePromotionRequest;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.promotion.entity.PromotionDeliverySummaryEntity;
 import com.mannschaft.app.promotion.entity.PromotionEntity;
 import com.mannschaft.app.promotion.entity.PromotionSegmentEntity;
@@ -36,9 +38,12 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class PromotionService {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private final PromotionRepository promotionRepository;
     private final PromotionSegmentRepository segmentRepository;
     private final PromotionDeliverySummaryRepository summaryRepository;
+    private final com.mannschaft.app.role.repository.UserRoleRepository userRoleRepository;
 
     /**
      * プロモーション一覧を取得する。
@@ -123,11 +128,10 @@ public class PromotionService {
         if (!entity.isPublishable()) {
             throw new BusinessException(PromotionErrorCode.PROMOTION_NOT_PUBLISHABLE);
         }
-        // TODO: セグメントに基づいて対象ユーザー数を算出
-        int targetCount = 0;
+        int targetCount = calculateTargetCount(scopeType, scopeId, id);
         entity.publish(targetCount);
         PromotionEntity saved = promotionRepository.save(entity);
-        log.info("プロモーション即時配信: id={}", id);
+        log.info("プロモーション即時配信: id={}, targetCount={}", id, targetCount);
         return toResponse(saved);
     }
 
@@ -140,11 +144,10 @@ public class PromotionService {
         if (!entity.isPublishable()) {
             throw new BusinessException(PromotionErrorCode.PROMOTION_NOT_PUBLISHABLE);
         }
-        // TODO: セグメントに基づいて対象ユーザー数を算出
-        int targetCount = 0;
+        int targetCount = calculateTargetCount(scopeType, scopeId, id);
         entity.schedule(request.getScheduledAt(), targetCount);
         PromotionEntity saved = promotionRepository.save(entity);
-        log.info("プロモーション予約配信: id={}, scheduledAt={}", id, request.getScheduledAt());
+        log.info("プロモーション予約配信: id={}, scheduledAt={}, targetCount={}", id, request.getScheduledAt(), targetCount);
         return toResponse(saved);
     }
 
@@ -208,9 +211,72 @@ public class PromotionService {
      * 配信対象を見積もる。
      */
     public AudienceEstimateResponse estimateAudience(String scopeType, Long scopeId, EstimateAudienceRequest request) {
-        // TODO: セグメント条件に基づいて対象ユーザー数を計算
-        int estimatedCount = 0;
-        return new AudienceEstimateResponse(estimatedCount);
+        if (request.getSegments() == null || request.getSegments().isEmpty()) {
+            int totalMembers = userRoleRepository.countMembersByScope(scopeType, scopeId);
+            return new AudienceEstimateResponse(totalMembers);
+        }
+
+        int estimated = resolveSegmentCount(scopeType, scopeId, request.getSegments());
+        return new AudienceEstimateResponse(estimated);
+    }
+
+    /**
+     * プロモーションに紐づくセグメント条件から対象ユーザー数を算出する。
+     */
+    private int calculateTargetCount(String scopeType, Long scopeId, Long promotionId) {
+        List<PromotionSegmentEntity> segments = segmentRepository.findByPromotionId(promotionId);
+        if (segments.isEmpty()) {
+            return userRoleRepository.countMembersByScope(scopeType, scopeId);
+        }
+
+        List<SegmentCondition> conditions = segments.stream()
+                .map(s -> new SegmentCondition(s.getSegmentType(), s.getSegmentValue()))
+                .collect(Collectors.toList());
+        return resolveSegmentCount(scopeType, scopeId, conditions);
+    }
+
+    /**
+     * セグメント条件リストに基づいて対象ユーザー数を算出する。
+     * 複数セグメントは最小値（AND的な絞り込み）として扱う。
+     */
+    private int resolveSegmentCount(String scopeType, Long scopeId, List<SegmentCondition> segments) {
+        int baseCount = userRoleRepository.countMembersByScope(scopeType, scopeId);
+        int minCount = baseCount;
+
+        for (SegmentCondition seg : segments) {
+            int count = resolveOneSegmentCount(scopeType, scopeId, seg, baseCount);
+            minCount = Math.min(minCount, count);
+        }
+        return minCount;
+    }
+
+    /**
+     * 単一セグメント条件の対象ユーザー数を算出する。
+     */
+    private int resolveOneSegmentCount(String scopeType, Long scopeId,
+                                        SegmentCondition seg, int baseCount) {
+        return switch (seg.getSegmentType()) {
+            case "ROLE" -> {
+                String roleName = extractJsonValue(seg.getSegmentValue(), "role");
+                if (roleName != null) {
+                    yield userRoleRepository.countMembersByScopeAndRole(scopeType, scopeId, roleName);
+                }
+                yield baseCount;
+            }
+            case "ALL" -> baseCount;
+            default -> baseCount;
+        };
+    }
+
+    private String extractJsonValue(String json, String key) {
+        try {
+            JsonNode node = OBJECT_MAPPER.readTree(json);
+            JsonNode valueNode = node.get(key);
+            return valueNode != null ? valueNode.asText() : null;
+        } catch (Exception e) {
+            log.warn("セグメント値のパース失敗: {}", json, e);
+            return null;
+        }
     }
 
     private PromotionEntity findOrThrow(String scopeType, Long scopeId, Long id) {

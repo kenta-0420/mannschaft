@@ -3,6 +3,8 @@ package com.mannschaft.app.receipt.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.payment.entity.MemberPaymentEntity;
+import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.receipt.ReceiptErrorCode;
 import com.mannschaft.app.receipt.ReceiptMapper;
 import com.mannschaft.app.receipt.ReceiptPdfGenerator;
@@ -57,6 +59,7 @@ public class ReceiptService {
     private final ReceiptMapper receiptMapper;
     private final ReceiptPdfGenerator pdfGenerator;
     private final NameResolverService nameResolverService;
+    private final MemberPaymentRepository memberPaymentRepository;
 
     /**
      * 領収書を発行する。
@@ -191,14 +194,25 @@ public class ReceiptService {
         for (Long paymentId : request.getMemberPaymentIds()) {
             String receiptNumber = formatReceiptNumber(settings.getReceiptNumberPrefix(), currentNum++);
 
-            // TODO: member_payments から支払い情報を取得
+            // member_payments から支払い情報を取得
+            MemberPaymentEntity memberPayment = memberPaymentRepository.findById(paymentId)
+                    .orElseThrow(() -> new BusinessException(ReceiptErrorCode.RECEIPT_NOT_FOUND));
+
+            String recipientName = nameResolverService.resolveUserDisplayName(memberPayment.getUserId());
+            BigDecimal amount = memberPayment.getAmountPaid();
+            BigDecimal taxRate = new BigDecimal("10.00");
+            BigDecimal taxAmount = amount.multiply(taxRate).divide(new BigDecimal("110"), 0, java.math.RoundingMode.HALF_UP);
+            BigDecimal amountExclTax = amount.subtract(taxAmount);
+            LocalDate paymentDate = memberPayment.getPaidAt() != null
+                    ? memberPayment.getPaidAt().toLocalDate() : LocalDate.now();
+
             ReceiptEntity receipt = ReceiptEntity.builder()
                     .scopeType(scopeType)
                     .scopeId(scopeId)
                     .status(ReceiptStatus.ISSUED)
                     .receiptNumber(receiptNumber)
                     .memberPaymentId(paymentId)
-                    .recipientName("支払者#" + paymentId)
+                    .recipientName(recipientName)
                     .issuerName(settings.getIssuerName())
                     .issuerPostalCode(settings.getPostalCode())
                     .issuerAddress(settings.getAddress())
@@ -208,11 +222,11 @@ public class ReceiptService {
                             Boolean.TRUE.equals(settings.getIsQualifiedInvoicer())
                                     ? settings.getInvoiceRegistrationNumber() : null)
                     .description(request.getDescription() != null ? request.getDescription() : "")
-                    .amount(BigDecimal.ZERO)
-                    .taxRate(new BigDecimal("10.00"))
-                    .taxAmount(BigDecimal.ZERO)
-                    .amountExclTax(BigDecimal.ZERO)
-                    .paymentDate(LocalDate.now())
+                    .amount(amount)
+                    .taxRate(taxRate)
+                    .taxAmount(taxAmount)
+                    .amountExclTax(amountExclTax)
+                    .paymentDate(paymentDate)
                     .issuedAt(LocalDateTime.now())
                     .issuedBy(userId)
                     .build();

@@ -85,15 +85,12 @@ public class OrgScheduleController {
     public ResponseEntity<ApiResponse<ScheduleResponse>> getSchedule(
             @PathVariable Long orgId,
             @PathVariable Long scheduleId) {
-        scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
-        // TODO: ScheduleDetailResponse への変換はMapper実装後に対応
-        List<ScheduleResponse> list = scheduleService.listOrgSchedules(orgId,
-                LocalDateTime.of(1970, 1, 1, 0, 0), LocalDateTime.of(9999, 12, 31, 23, 59));
-        ScheduleResponse found = list.stream()
-                .filter(s -> s.getId().equals(scheduleId))
-                .findFirst()
-                .orElse(null);
-        return ResponseEntity.ok(ApiResponse.of(found));
+        var entity = scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
+        ScheduleResponse response = new ScheduleResponse(
+                entity.getId(), entity.getTitle(), entity.getStartAt(), entity.getEndAt(),
+                entity.getAllDay(), entity.getEventType().name(), entity.getStatus().name(),
+                entity.getAttendanceRequired(), entity.getLocation(), entity.getCreatedAt());
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**

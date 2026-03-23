@@ -13,17 +13,20 @@ import com.mannschaft.app.schedule.dto.GoogleCalendarStatusResponse;
 import com.mannschaft.app.schedule.dto.ManualSyncResponse;
 import com.mannschaft.app.schedule.dto.PersonalSyncToggleResponse;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.entity.UserGoogleCalendarConnectionEntity;
+import com.mannschaft.app.schedule.entity.UserScheduleGoogleEventEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.UserCalendarSyncSettingRepository;
 import com.mannschaft.app.schedule.repository.UserGoogleCalendarConnectionRepository;
 import com.mannschaft.app.schedule.repository.UserScheduleGoogleEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -37,14 +40,17 @@ public class GoogleCalendarService {
 
     private static final String SCOPE_TYPE_TEAM = "TEAM";
     private static final String SCOPE_TYPE_ORGANIZATION = "ORGANIZATION";
+    private static final String OAUTH_STATE_KEY_PREFIX = "mannschaft:google:oauth_state:";
+    private static final String DEFAULT_TIMEZONE = "Asia/Tokyo";
 
     private final UserGoogleCalendarConnectionRepository connectionRepository;
     private final UserCalendarSyncSettingRepository syncSettingRepository;
     private final UserScheduleGoogleEventRepository googleEventRepository;
     private final ScheduleRepository scheduleRepository;
-    private final ApplicationEventPublisher eventPublisher;
     private final NameResolverService nameResolverService;
     private final EncryptionService encryptionService;
+    private final GoogleApiClient googleApiClient;
+    private final StringRedisTemplate redisTemplate;
 
     /**
      * Google Calendar連携状態を取得する。
@@ -79,19 +85,30 @@ public class GoogleCalendarService {
      */
     @Transactional
     public GoogleCalendarConnectResponse connect(GoogleCalendarConnectRequest req, Long userId) {
-        // TODO: stateパラメータのCSRF検証（セッションまたはRedisに保存したstateとの照合）
+        // state パラメータの CSRF 検証
+        String stateKey = OAUTH_STATE_KEY_PREFIX + userId;
+        String storedState = redisTemplate.opsForValue().get(stateKey);
+        if (storedState == null || !storedState.equals(req.getState())) {
+            throw new BusinessException(GoogleCalendarErrorCode.GOOGLE_OAUTH_FAILED);
+        }
+        redisTemplate.delete(stateKey);
+
         log.info("Google Calendar連携開始: userId={}", userId);
 
-        // TODO: Google OAuth token endpoint呼び出し
-        // - POST https://oauth2.googleapis.com/token
-        // - code, client_id, client_secret, redirect_uri, grant_type=authorization_code
-        // - レスポンスから access_token, refresh_token, expires_in, id_token を取得
-        String accessToken = "TODO_ACCESS_TOKEN";
-        String refreshToken = "TODO_REFRESH_TOKEN";
-        String googleAccountEmail = "TODO_EMAIL@gmail.com";
+        // Google OAuth token endpoint 呼び出し
+        GoogleApiClient.TokenResponse tokenResponse =
+                googleApiClient.exchangeCode(req.getCode(), req.getRedirectUri());
+
+        String accessToken = tokenResponse.getAccessToken();
+        String refreshToken = tokenResponse.getRefreshToken();
+
+        // ユーザー情報（メールアドレス）を取得
+        GoogleApiClient.UserInfoResponse userInfo = googleApiClient.getUserInfo(accessToken);
+        String googleAccountEmail = userInfo.getEmail();
         String googleCalendarId = "primary";
 
         // AES-256-GCM で refresh_token を暗号化して保存
+        String encryptedAccessToken = encryptionService.encrypt(accessToken);
         String encryptedRefreshToken = encryptionService.encrypt(refreshToken);
 
         // 既存接続の確認（アカウント変更チェック）
@@ -108,6 +125,13 @@ public class GoogleCalendarService {
         connectionRepository.upsert(userId, googleAccountEmail, googleCalendarId,
                 encryptedRefreshToken, true);
 
+        // アクセストークンとトークン有効期限も保存
+        connectionRepository.findByUserId(userId).ifPresent(conn -> {
+            conn.updateTokens(encryptedAccessToken, encryptedRefreshToken,
+                    LocalDateTime.now().plusSeconds(tokenResponse.getExpiresIn()));
+            connectionRepository.save(conn);
+        });
+
         log.info("Google Calendar連携完了: userId={}, email={}", userId, googleAccountEmail);
         return new GoogleCalendarConnectResponse(googleAccountEmail, googleCalendarId, true);
     }
@@ -119,12 +143,12 @@ public class GoogleCalendarService {
      */
     @Transactional
     public void disconnect(Long userId) {
-        connectionRepository.findByUserId(userId)
+        UserGoogleCalendarConnectionEntity connection = connectionRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException(GoogleCalendarErrorCode.GOOGLE_CALENDAR_NOT_CONNECTED));
 
-        // TODO: Google Token Revoke
-        // - POST https://oauth2.googleapis.com/revoke?token={refresh_token}
-        log.info("Google Token Revoke実行（仮実装）: userId={}", userId);
+        // Google Token Revoke
+        String refreshToken = encryptionService.decrypt(connection.getRefreshToken());
+        googleApiClient.revokeToken(refreshToken);
 
         // Googleイベントマッピングを全件削除
         googleEventRepository.deleteAllByUserId(userId);
@@ -148,8 +172,6 @@ public class GoogleCalendarService {
         String email = connectionOpt.map(c -> c.getGoogleAccountEmail()).orElse(null);
         boolean personalSync = connectionOpt.map(c -> c.getPersonalSyncEnabled()).orElse(false);
 
-        // TODO: ユーザーの所属チーム・組織を取得し、各スコープの同期設定を構築
-        // 現時点ではsyncSettingRepositoryから既存設定のみ返す
         List<SyncSettingItem> settings = syncSettingRepository.findByUserId(userId).stream()
                 .map(s -> new SyncSettingItem(
                         s.getScopeType(),
@@ -163,24 +185,15 @@ public class GoogleCalendarService {
 
     /**
      * チームスコープのカレンダー同期をON/OFFする。
-     *
-     * @param teamId    チームID
-     * @param isEnabled 有効化フラグ
-     * @param userId    ユーザーID
-     * @return 同期トグルレスポンス
      */
     @Transactional
     public CalendarSyncToggleResponse toggleTeamSync(Long teamId, boolean isEnabled, Long userId) {
         validateConnectionActive(userId);
-
-        // UPSERT user_calendar_sync_settings
         syncSettingRepository.upsert(userId, SCOPE_TYPE_TEAM, teamId, isEnabled);
 
         int backfillCount = 0;
         if (isEnabled) {
-            // バックフィル対象件数を算出（未同期のスケジュール数）
             backfillCount = googleEventRepository.countUnsyncedSchedules(userId, SCOPE_TYPE_TEAM, teamId);
-            // 非同期でバックフィル同期を開始
             startBackfillSync(userId, SCOPE_TYPE_TEAM, teamId);
         }
 
@@ -191,17 +204,10 @@ public class GoogleCalendarService {
 
     /**
      * 組織スコープのカレンダー同期をON/OFFする。
-     *
-     * @param orgId     組織ID
-     * @param isEnabled 有効化フラグ
-     * @param userId    ユーザーID
-     * @return 同期トグルレスポンス
      */
     @Transactional
     public CalendarSyncToggleResponse toggleOrgSync(Long orgId, boolean isEnabled, Long userId) {
         validateConnectionActive(userId);
-
-        // UPSERT user_calendar_sync_settings
         syncSettingRepository.upsert(userId, SCOPE_TYPE_ORGANIZATION, orgId, isEnabled);
 
         int backfillCount = 0;
@@ -217,21 +223,14 @@ public class GoogleCalendarService {
 
     /**
      * 個人スケジュールのカレンダー同期をON/OFFする。
-     *
-     * @param isEnabled 有効化フラグ
-     * @param userId    ユーザーID
-     * @return 個人同期トグルレスポンス
      */
     @Transactional
     public PersonalSyncToggleResponse togglePersonalSync(boolean isEnabled, Long userId) {
         validateConnectionActive(userId);
-
-        // personalSyncEnabled更新
         connectionRepository.updatePersonalSyncEnabled(userId, isEnabled);
 
         int backfillCount = 0;
         if (isEnabled) {
-            // 個人スケジュールの未同期件数
             backfillCount = googleEventRepository.countUnsyncedPersonalSchedules(userId);
             startPersonalBackfillSync(userId);
         }
@@ -242,18 +241,12 @@ public class GoogleCalendarService {
     }
 
     /**
-     * 手動再同期を実行する。未同期スケジュールを対象に再同期を開始する。
-     *
-     * @param userId ユーザーID
-     * @return 手動同期レスポンス
+     * 手動再同期を実行する。
      */
     @Transactional
     public ManualSyncResponse manualSync(Long userId) {
         validateConnectionActive(userId);
-
         int unsyncedCount = googleEventRepository.countAllUnsyncedSchedules(userId);
-
-        // 非同期で再同期を開始
         startFullResync(userId);
 
         log.info("手動再同期開始: userId={}, unsyncedCount={}", userId, unsyncedCount);
@@ -262,26 +255,62 @@ public class GoogleCalendarService {
 
     /**
      * 単一スケジュールをGoogleカレンダーに同期する（内部用）。
-     *
-     * @param schedule スケジュールエンティティ
-     * @param userId   ユーザーID
      */
     public void syncScheduleToGoogle(ScheduleEntity schedule, Long userId) {
-        // TODO: Google Calendar API呼び出し
-        // - POST https://www.googleapis.com/calendar/v3/calendars/{calendarId}/events
-        // - または PATCH（既存イベント更新時）
-        // - リクエストボディ: summary, description, start, end, location
-        log.info("Google Calendar同期（仮実装）: scheduleId={}, userId={}", schedule.getId(), userId);
+        UserGoogleCalendarConnectionEntity connection = connectionRepository.findByUserId(userId)
+                .filter(UserGoogleCalendarConnectionEntity::getIsActive)
+                .orElse(null);
+        if (connection == null) {
+            return;
+        }
 
-        // TODO: user_schedule_google_events INSERT/UPDATE
-        // - schedule_id, user_id, google_event_id, sync_status, last_synced_at
+        String accessToken = getValidAccessToken(connection);
+        String calendarId = connection.getGoogleCalendarId();
+
+        // Calendar Event リクエスト構築
+        GoogleApiClient.CalendarEventRequest eventRequest = new GoogleApiClient.CalendarEventRequest(
+                schedule.getTitle(),
+                schedule.getDescription(),
+                schedule.getLocation(),
+                GoogleApiClient.CalendarEventRequest.DateTimeValue.of(schedule.getStartAt(), DEFAULT_TIMEZONE),
+                GoogleApiClient.CalendarEventRequest.DateTimeValue.of(schedule.getEndAt(), DEFAULT_TIMEZONE)
+        );
+
+        // 既存マッピング確認（UPDATE or INSERT）
+        var existingMapping = googleEventRepository
+                .findByUserIdAndScheduleId(userId, schedule.getId());
+
+        try {
+            if (existingMapping.isPresent()) {
+                // 既存イベントを更新
+                String googleEventId = existingMapping.get().getGoogleEventId();
+                googleApiClient.updateEvent(accessToken, calendarId, googleEventId, eventRequest);
+                existingMapping.get().updateSyncedAt();
+                googleEventRepository.save(existingMapping.get());
+            } else {
+                // 新規イベント作成
+                String googleEventId = googleApiClient.createEvent(accessToken, calendarId, eventRequest);
+                UserScheduleGoogleEventEntity mapping = UserScheduleGoogleEventEntity.builder()
+                        .userId(userId)
+                        .scheduleId(schedule.getId())
+                        .googleEventId(googleEventId)
+                        .lastSyncedAt(LocalDateTime.now())
+                        .build();
+                googleEventRepository.save(mapping);
+            }
+
+            connection.clearSyncError();
+            connectionRepository.save(connection);
+            log.debug("Google Calendar同期完了: scheduleId={}, userId={}", schedule.getId(), userId);
+        } catch (BusinessException e) {
+            connection.recordSyncError("API_ERROR", e.getMessage());
+            connectionRepository.save(connection);
+            log.warn("Google Calendar同期失敗: scheduleId={}, userId={}", schedule.getId(), userId, e);
+        }
     }
 
     // --- プライベートメソッド ---
 
-    /**
-     * Google Calendar連携がアクティブであることを検証する。
-     */
     private void validateConnectionActive(Long userId) {
         connectionRepository.findByUserId(userId)
                 .filter(conn -> conn.getIsActive())
@@ -289,29 +318,86 @@ public class GoogleCalendarService {
     }
 
     /**
+     * 有効なアクセストークンを取得する。期限切れの場合はリフレッシュする。
+     */
+    private String getValidAccessToken(UserGoogleCalendarConnectionEntity connection) {
+        if (connection.getTokenExpiresAt().isAfter(LocalDateTime.now().plusMinutes(1))) {
+            return encryptionService.decrypt(connection.getAccessToken());
+        }
+
+        // トークンリフレッシュ
+        String refreshToken = encryptionService.decrypt(connection.getRefreshToken());
+        GoogleApiClient.TokenResponse tokenResponse = googleApiClient.refreshAccessToken(refreshToken);
+
+        String newAccessToken = tokenResponse.getAccessToken();
+        String encryptedAccessToken = encryptionService.encrypt(newAccessToken);
+        String encryptedRefreshToken = tokenResponse.getRefreshToken() != null
+                ? encryptionService.encrypt(tokenResponse.getRefreshToken())
+                : connection.getRefreshToken();
+
+        connection.updateTokens(encryptedAccessToken, encryptedRefreshToken,
+                LocalDateTime.now().plusSeconds(tokenResponse.getExpiresIn()));
+        connectionRepository.save(connection);
+
+        return newAccessToken;
+    }
+
+    /**
      * スコープ指定のバックフィル同期を非同期で開始する。
      */
-    @Async
+    @Async("event-pool")
     void startBackfillSync(Long userId, String scopeType, Long scopeId) {
-        // TODO: 未同期スケジュールを取得し、順次Google Calendarに同期
-        log.info("バックフィル同期開始（仮実装）: userId={}, scope={}:{}", userId, scopeType, scopeId);
+        log.info("バックフィル同期開始: userId={}, scope={}:{}", userId, scopeType, scopeId);
+        List<ScheduleEntity> schedules = scheduleRepository
+                .findUnsyncedByUserAndScope(userId, scopeType, scopeId);
+        for (ScheduleEntity schedule : schedules) {
+            syncScheduleToGoogle(schedule, userId);
+        }
+        log.info("バックフィル同期完了: userId={}, scope={}:{}, count={}",
+                userId, scopeType, scopeId, schedules.size());
     }
 
     /**
      * 個人スケジュールのバックフィル同期を非同期で開始する。
      */
-    @Async
+    @Async("event-pool")
     void startPersonalBackfillSync(Long userId) {
-        // TODO: 未同期の個人スケジュールを取得し、順次Google Calendarに同期
-        log.info("個人バックフィル同期開始（仮実装）: userId={}", userId);
+        log.info("個人バックフィル同期開始: userId={}", userId);
+        List<ScheduleEntity> schedules = scheduleRepository
+                .findUnsyncedPersonalSchedules(userId);
+        for (ScheduleEntity schedule : schedules) {
+            syncScheduleToGoogle(schedule, userId);
+        }
+        log.info("個人バックフィル同期完了: userId={}, count={}", userId, schedules.size());
     }
 
     /**
      * 全スコープの再同期を非同期で開始する。
      */
-    @Async
+    @Async("event-pool")
     void startFullResync(Long userId) {
-        // TODO: 全同期設定を取得し、各スコープの未同期スケジュールを順次同期
-        log.info("フル再同期開始（仮実装）: userId={}", userId);
+        log.info("フル再同期開始: userId={}", userId);
+        // 有効な同期設定の全スコープ
+        var syncSettings = syncSettingRepository.findByUserIdAndIsEnabledTrue(userId);
+        for (var setting : syncSettings) {
+            List<ScheduleEntity> schedules = scheduleRepository
+                    .findUnsyncedByUserAndScope(userId, setting.getScopeType(), setting.getScopeId());
+            for (ScheduleEntity schedule : schedules) {
+                syncScheduleToGoogle(schedule, userId);
+            }
+        }
+
+        // 個人同期が有効な場合
+        connectionRepository.findByUserId(userId)
+                .filter(conn -> conn.getPersonalSyncEnabled())
+                .ifPresent(conn -> {
+                    List<ScheduleEntity> personalSchedules = scheduleRepository
+                            .findUnsyncedPersonalSchedules(userId);
+                    for (ScheduleEntity schedule : personalSchedules) {
+                        syncScheduleToGoogle(schedule, userId);
+                    }
+                });
+
+        log.info("フル再同期完了: userId={}", userId);
     }
 }

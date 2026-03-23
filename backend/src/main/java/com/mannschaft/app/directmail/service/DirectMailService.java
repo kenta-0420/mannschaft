@@ -1,10 +1,12 @@
 package com.mannschaft.app.directmail.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.MarkdownConverter;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.directmail.DirectMailErrorCode;
 import com.mannschaft.app.directmail.DirectMailMapper;
+import com.mannschaft.app.directmail.event.DirectMailSendEvent;
 import com.mannschaft.app.directmail.dto.CreateDirectMailRequest;
 import com.mannschaft.app.directmail.dto.DirectMailRecipientResponse;
 import com.mannschaft.app.directmail.dto.DirectMailResponse;
@@ -42,6 +44,7 @@ public class DirectMailService {
     private final DirectMailRecipientRepository recipientRepository;
     private final DirectMailMapper directMailMapper;
     private final UserRoleRepository userRoleRepository;
+    private final DomainEventPublisher eventPublisher;
 
     /**
      * メールを作成する（下書き保存）。
@@ -125,7 +128,7 @@ public class DirectMailService {
         DirectMailLogEntity saved = mailLogRepository.save(entity);
         log.info("ダイレクトメール送信開始: mailId={}", mailId);
 
-        // TODO: 非同期で実際のSES送信処理を実行（ApplicationEvent発行）
+        eventPublisher.publish(new DirectMailSendEvent(saved.getId(), scopeType, scopeId));
         return directMailMapper.toMailResponse(saved);
     }
 
@@ -207,21 +210,46 @@ public class DirectMailService {
 
     /**
      * 配信対象数を見積もる。
+     * recipientType: ALL（全メンバー）, ROLE（ロール指定）
+     * recipientFilter: ROLE の場合 {"role":"MEMBER"} 等のJSON
      */
     public EstimateRecipientsResponse estimateRecipients(String scopeType, Long scopeId,
                                                           EstimateRecipientsRequest request) {
-        // 簡易実装: scopeType に基づくスコープ内全メンバー数を返却
-        // 将来実装: recipientType と recipientFilter に基づく詳細なフィルタリング
-        int estimated;
-        if ("TEAM".equals(scopeType)) {
-            estimated = (int) userRoleRepository.countByTeamId(scopeId);
-        } else if ("ORGANIZATION".equals(scopeType)) {
-            estimated = (int) userRoleRepository.countByOrganizationId(scopeId);
-        } else {
-            estimated = 0;
-        }
-        log.info("配信対象数見積: scopeType={}, scopeId={}, type={}, estimated={}", scopeType, scopeId, request.getRecipientType(), estimated);
+        int estimated = resolveRecipientCount(scopeType, scopeId,
+                request.getRecipientType(), request.getRecipientFilter());
+        log.info("配信対象数見積: scopeType={}, scopeId={}, type={}, estimated={}",
+                scopeType, scopeId, request.getRecipientType(), estimated);
         return new EstimateRecipientsResponse(estimated);
+    }
+
+    /**
+     * recipientType/recipientFilter に基づいて対象メンバー数を算出する。
+     */
+    int resolveRecipientCount(String scopeType, Long scopeId,
+                               String recipientType, String recipientFilter) {
+        if ("ROLE".equals(recipientType) && recipientFilter != null) {
+            String roleName = extractRoleFromFilter(recipientFilter);
+            if (roleName != null) {
+                return userRoleRepository.countMembersByScopeAndRole(scopeType, scopeId, roleName);
+            }
+        }
+        return userRoleRepository.countMembersByScope(scopeType, scopeId);
+    }
+
+    /**
+     * recipientFilter JSON から role 値を抽出する。
+     * 期待形式: {"role":"MEMBER"}
+     */
+    private String extractRoleFromFilter(String recipientFilter) {
+        try {
+            com.fasterxml.jackson.databind.JsonNode node =
+                    new com.fasterxml.jackson.databind.ObjectMapper().readTree(recipientFilter);
+            com.fasterxml.jackson.databind.JsonNode roleNode = node.get("role");
+            return roleNode != null ? roleNode.asText() : null;
+        } catch (Exception e) {
+            log.warn("recipientFilter のパース失敗: {}", recipientFilter, e);
+            return null;
+        }
     }
 
     private DirectMailLogEntity findMailOrThrow(String scopeType, Long scopeId, Long mailId) {

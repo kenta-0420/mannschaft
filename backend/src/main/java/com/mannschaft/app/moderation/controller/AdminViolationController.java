@@ -7,6 +7,7 @@ import com.mannschaft.app.moderation.dto.ModerationTemplateResponse;
 import com.mannschaft.app.moderation.dto.ReviewReReviewRequest;
 import com.mannschaft.app.moderation.dto.UserViolationHistoryResponse;
 import com.mannschaft.app.moderation.dto.WarningReReviewResponse;
+import com.mannschaft.app.moderation.service.ContentReportService;
 import com.mannschaft.app.moderation.service.ModerationTemplateService;
 import com.mannschaft.app.moderation.service.ReportInternalNoteService;
 import com.mannschaft.app.moderation.service.UserViolationService;
@@ -38,6 +39,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class AdminViolationController {
 
     private final UserViolationService violationService;
+    private final ContentReportService contentReportService;
     private final ReportInternalNoteService noteService;
     private final WarningReReviewService reReviewService;
     private final ModerationTemplateService templateService;
@@ -61,7 +63,7 @@ public class AdminViolationController {
     @Operation(summary = "コンテンツ一時非表示")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "非表示成功")
     public ResponseEntity<ApiResponse<Void>> hideContent(@PathVariable Long id) {
-        // TODO: ContentReportService経由でコンテンツの非表示フラグを更新
+        contentReportService.hideContent(id);
         return ResponseEntity.ok(ApiResponse.of(null));
     }
 
@@ -72,7 +74,7 @@ public class AdminViolationController {
     @Operation(summary = "非表示解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "解除成功")
     public ResponseEntity<ApiResponse<Void>> unhideContent(@PathVariable Long id) {
-        // TODO: ContentReportService経由でコンテンツの非表示フラグを解除
+        contentReportService.unhideContent(id);
         return ResponseEntity.ok(ApiResponse.of(null));
     }
 

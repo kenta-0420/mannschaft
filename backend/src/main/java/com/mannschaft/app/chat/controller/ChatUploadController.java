@@ -4,6 +4,8 @@ import com.mannschaft.app.chat.dto.DownloadUrlResponse;
 import com.mannschaft.app.chat.dto.UploadUrlRequest;
 import com.mannschaft.app.chat.dto.UploadUrlResponse;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
 import java.util.UUID;
 
 /**
@@ -27,6 +30,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ChatUploadController {
 
+    private final StorageService storageService;
+
     private static final long DEFAULT_EXPIRY_SECONDS = 3600L;
 
     /**
@@ -37,12 +42,13 @@ public class ChatUploadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "発行成功")
     public ResponseEntity<ApiResponse<UploadUrlResponse>> generateUploadUrl(
             @Valid @RequestBody UploadUrlRequest request) {
-        // TODO: S3 Pre-signed URL生成の実装
         String fileKey = "chat/" + UUID.randomUUID() + "/" + request.getFileName();
+        PresignedUploadResult result = storageService.generateUploadUrl(
+                fileKey, request.getContentType(), Duration.ofSeconds(DEFAULT_EXPIRY_SECONDS));
         UploadUrlResponse response = new UploadUrlResponse(
-                "https://s3.example.com/presigned-upload/" + fileKey,
-                fileKey,
-                DEFAULT_EXPIRY_SECONDS
+                result.uploadUrl(),
+                result.s3Key(),
+                result.expiresInSeconds()
         );
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -55,9 +61,10 @@ public class ChatUploadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "発行成功")
     public ResponseEntity<ApiResponse<DownloadUrlResponse>> generateDownloadUrl(
             @PathVariable String fileKey) {
-        // TODO: S3 Pre-signed URL生成の実装
+        String downloadUrl = storageService.generateDownloadUrl(
+                fileKey, Duration.ofSeconds(DEFAULT_EXPIRY_SECONDS));
         DownloadUrlResponse response = new DownloadUrlResponse(
-                "https://s3.example.com/presigned-download/" + fileKey,
+                downloadUrl,
                 DEFAULT_EXPIRY_SECONDS
         );
         return ResponseEntity.ok(ApiResponse.of(response));

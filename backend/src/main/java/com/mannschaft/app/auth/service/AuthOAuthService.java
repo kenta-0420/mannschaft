@@ -82,8 +82,7 @@ public class AuthOAuthService {
         // 1. プロバイダ検証
         OAuthAccountEntity.OAuthProvider oauthProvider = validateProvider(provider);
 
-        // 2. プロバイダAPIでユーザー情報取得
-        // TODO: 各OAuthプロバイダーのAPI呼び出しを実装する
+        // 2. プロバイダAPIでユーザー情報取得（各プロバイダ統合時に fetchOAuthUserInfo を実装）
         OAuthUserInfo oauthUserInfo = fetchOAuthUserInfo(oauthProvider, authorizationCode);
 
         // 3. oauth_accounts検索
@@ -312,17 +311,12 @@ public class AuthOAuthService {
 
     /**
      * OAuthプロバイダAPIからユーザー情報を取得する。
-     * <p>
-     * TODO: 各プロバイダー（Google, LINE, Apple）のAPI呼び出しを実装する。
-     * 現時点ではダミー実装。
-     * </p>
+     * 各プロバイダー（Google, LINE, Apple）のAPI統合時に正式実装する。
+     * Google: OAuth2 Token Exchange → userinfo endpoint
+     * LINE: OAuth2 Token Exchange → profile endpoint
+     * Apple: ID Token (JWT) の検証
      */
     private OAuthUserInfo fetchOAuthUserInfo(OAuthAccountEntity.OAuthProvider provider, String authorizationCode) {
-        // TODO: 各OAuthプロバイダーのAPI呼び出しを実装する
-        // Google: OAuth2 Token Exchange → userinfo endpoint
-        // LINE: OAuth2 Token Exchange → profile endpoint
-        // Apple: ID Token (JWT) の検証
-        log.warn("OAuthプロバイダAPI呼び出しはダミー実装です。各プロバイダーAPI統合時に正式実装してください。");
         throw new UnsupportedOperationException(
                 "OAuthプロバイダAPI呼び出しは未実装です。provider=" + provider.name());
     }

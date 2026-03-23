@@ -10,6 +10,7 @@ import com.mannschaft.app.dashboard.dto.UpdateWidgetSettingsRequest;
 import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
 import com.mannschaft.app.dashboard.entity.DashboardWidgetSettingEntity;
 import com.mannschaft.app.dashboard.repository.DashboardWidgetSettingRepository;
+import com.mannschaft.app.template.service.ModuleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class DashboardWidgetService {
     private final DashboardWidgetSettingRepository widgetSettingRepository;
     private final DashboardMapper dashboardMapper;
     private final AccessControlService accessControlService;
+    private final ModuleService moduleService;
 
     /** ウィジェット名のマッピング（将来的にはi18n対応） */
     private static final Map<String, String> WIDGET_NAMES = Map.ofEntries(
@@ -94,9 +96,17 @@ public class DashboardWidgetService {
             }
 
             String name = WIDGET_NAMES.getOrDefault(wk.name(), wk.name());
-            // 将来実装: F01.3テンプレートモジュールシステムと連携してモジュール有効/無効を判定
+
+            // モジュール有効/無効判定: F01.3テンプレートモジュールシステムと連携
             boolean moduleEnabled = true;
             String disabledReason = null;
+            String requiredSlug = wk.getRequiredModuleSlug();
+            if (requiredSlug != null && scopeId != null && scopeId > 0) {
+                moduleEnabled = moduleService.isModuleEnabledForTeam(requiredSlug, scopeId);
+                if (!moduleEnabled) {
+                    disabledReason = moduleService.getModuleDisabledReason(requiredSlug, scopeId);
+                }
+            }
 
             DashboardWidgetSettingEntity entity = savedMap.get(wk.name());
             if (entity != null) {

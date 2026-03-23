@@ -36,8 +36,7 @@ public class AuthOAuthController {
             @RequestParam String code,
             HttpServletRequest request) {
 
-        // TODO: X-Forwarded-For対応
-        String ipAddress = request.getRemoteAddr();
+        String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
         String userAgent = request.getHeader("User-Agent");
         return ResponseEntity.ok(authOAuthService.loginWithOAuth(
                 provider, code, ipAddress, userAgent));

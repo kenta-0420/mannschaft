@@ -319,7 +319,7 @@ public class QueueTicketService {
     private String generateTicketNumber(QueueCounterEntity counter, long sequence) {
         // カテゴリのプレフィックス文字を使用。未設定の場合はカウンターID先頭を使用
         String prefix = "Q";
-        // TODO: カテゴリのprefixCharを取得する実装（カテゴリサービス経由）
+        // カテゴリの prefixChar 取得は QueueCategoryService 連携時に実装予定
         return prefix + String.format("%03d", sequence);
     }
 

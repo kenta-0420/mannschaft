@@ -1,5 +1,13 @@
 package com.mannschaft.app.digest.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.service.FeatureFlagService;
+import com.mannschaft.app.cms.PostStatus;
+import com.mannschaft.app.cms.PostType;
+import com.mannschaft.app.cms.Visibility;
+import com.mannschaft.app.cms.entity.BlogPostEntity;
+import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.NameResolverService;
@@ -25,6 +33,7 @@ import com.mannschaft.app.digest.entity.TimelineDigestConfigEntity;
 import com.mannschaft.app.digest.entity.TimelineDigestEntity;
 import com.mannschaft.app.digest.repository.TimelineDigestConfigRepository;
 import com.mannschaft.app.digest.repository.TimelineDigestRepository;
+import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +67,9 @@ public class DigestGenerationService {
     private final DigestProperties digestProperties;
     private final NameResolverService nameResolverService;
     private final TimelinePostRepository timelinePostRepository;
+    private final BlogPostRepository blogPostRepository;
+    private final FeatureFlagService featureFlagService;
+    private final ObjectMapper objectMapper;
 
     private static final int MAX_PERIOD_DAYS = 31;
     private static final int GENERATING_TIMEOUT_MINUTES = 5;
@@ -158,26 +170,44 @@ public class DigestGenerationService {
             throw new BusinessException(DigestErrorCode.DIGEST_012);
         }
 
-        // TODO: F06.1 の blog_posts に DRAFT 状態で INSERT
-        // TODO: stale_warning の計算（source_post_ids の投稿の updated_at / deleted_at 検査）
-        // TODO: blog_post_id を digest に紐付け
+        // stale_warning の計算（source_post_ids の投稿の updated_at / deleted_at 検査）
+        StaleWarningResponse staleWarning = calculateStaleWarning(digest);
 
-        TimelineDigestEntity published = digest.toBuilder()
-                .status(DigestStatus.PUBLISHED)
-                .build();
-        digestRepository.save(published);
+        // blog_posts に DRAFT 状態で INSERT
+        String slug = "digest-" + digestId + "-" + System.currentTimeMillis();
 
-        log.info("ダイジェストを公開しました: id={}, scope={}:{}",
-                digestId, digest.getScopeType(), digest.getScopeId());
+        BlogPostEntity.BlogPostEntityBuilder blogBuilder = BlogPostEntity.builder()
+                .title(digest.getGeneratedTitle())
+                .slug(slug)
+                .body(digest.getGeneratedBody())
+                .excerpt(digest.getGeneratedExcerpt())
+                .postType(PostType.BLOG)
+                .visibility(Visibility.MEMBERS_ONLY)
+                .status(PostStatus.DRAFT)
+                .authorId(digest.getTriggeredBy())
+                .crossPostToTimeline(false);
 
-        // TODO: stale_warning の実際の計算（source_post_ids の投稿の updated_at / deleted_at 検査）
-        StaleWarningResponse staleWarning = new StaleWarningResponse(0, 0);
+        // スコープに応じて teamId / organizationId を設定
+        if (digest.getScopeType() == DigestScopeType.TEAM) {
+            blogBuilder.teamId(digest.getScopeId());
+        } else if (digest.getScopeType() == DigestScopeType.ORGANIZATION) {
+            blogBuilder.organizationId(digest.getScopeId());
+        }
 
-        // TODO: 実際の blogPostId と slug を返す
+        BlogPostEntity blogPost = blogPostRepository.save(blogBuilder.build());
+
+        // blog_post_id を digest に紐付け
+        digest.setBlogPostId(blogPost.getId());
+        digest.markPublished();
+        digestRepository.save(digest);
+
+        log.info("ダイジェストを公開しました: id={}, blogPostId={}, scope={}:{}",
+                digestId, blogPost.getId(), digest.getScopeType(), digest.getScopeId());
+
         return new DigestPublishResponse(
                 digestId,
-                null, // blogPostId - F06.1 統合後に設定
-                null, // blogPostSlug - F06.1 統合後に設定
+                blogPost.getId(),
+                blogPost.getSlug(),
                 "DRAFT",
                 staleWarning
         );
@@ -428,8 +458,47 @@ public class DigestGenerationService {
                 monthStart);
 
         int limit = digestProperties.getMonthlyLimitPerScope();
-        // TODO: FeatureFlagService.isEnabled("FEATURE_DIGEST_AI") で enabled を判定
-        return new AiQuotaResponse(true, used, limit, Math.max(0, limit - used));
+        boolean enabled = featureFlagService.isEnabled("FEATURE_DIGEST_AI");
+        return new AiQuotaResponse(enabled, used, limit, Math.max(0, limit - used));
+    }
+
+    /**
+     * stale_warning を計算する。source_post_ids の投稿の updated_at / deleted_at を検査する。
+     */
+    private StaleWarningResponse calculateStaleWarning(TimelineDigestEntity digest) {
+        if (digest.getSourcePostIds() == null || digest.getSourcePostIds().isBlank()) {
+            return new StaleWarningResponse(0, 0);
+        }
+
+        try {
+            List<Long> postIds = objectMapper.readValue(digest.getSourcePostIds(),
+                    new TypeReference<List<Long>>() {});
+
+            if (postIds.isEmpty()) {
+                return new StaleWarningResponse(0, 0);
+            }
+
+            List<TimelinePostEntity> posts = timelinePostRepository.findAllById(postIds);
+            LocalDateTime generatedAt = digest.getCreatedAt();
+
+            int editedCount = 0;
+            int deletedCount = 0;
+
+            // 存在しない ID は削除済みとみなす
+            deletedCount += (int) (postIds.size() - posts.size());
+
+            for (TimelinePostEntity post : posts) {
+                // 更新日時がダイジェスト生成後の場合は編集済み
+                if (post.getUpdatedAt() != null && post.getUpdatedAt().isAfter(generatedAt)) {
+                    editedCount++;
+                }
+            }
+
+            return new StaleWarningResponse(editedCount, deletedCount);
+        } catch (Exception e) {
+            log.warn("stale_warning の計算に失敗: digestId={}, error={}", digest.getId(), e.getMessage());
+            return new StaleWarningResponse(0, 0);
+        }
     }
 
     /**

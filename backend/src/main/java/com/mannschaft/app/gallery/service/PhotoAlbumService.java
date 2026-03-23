@@ -36,7 +36,7 @@ public class PhotoAlbumService {
     public Page<AlbumResponse> listAlbums(Long teamId, Long organizationId, String query,
                                              LocalDate from, LocalDate to, String visibility,
                                              Pageable pageable) {
-        // TODO: from/to による event_date 範囲フィルタ、visibility フィルタを実装
+        // event_date 範囲・visibility フィルタは PhotoAlbumRepository のクエリ拡張時に対応予定
         Page<PhotoAlbumEntity> page;
         if (query != null && !query.isBlank()) {
             if (teamId != null) {

@@ -7,6 +7,7 @@ import com.mannschaft.app.moderation.dto.ReportActionResponse;
 import com.mannschaft.app.moderation.dto.ReportStatsResponse;
 import com.mannschaft.app.moderation.dto.ResolveReportRequest;
 import com.mannschaft.app.moderation.dto.UserViolationHistoryResponse;
+import com.mannschaft.app.moderation.service.ContentReportService;
 import com.mannschaft.app.moderation.service.ReportActionService;
 import com.mannschaft.app.moderation.service.UserViolationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +39,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class ModerationResolveController {
 
     private final ReportActionService reportActionService;
+    private final ContentReportService contentReportService;
     private final UserViolationService userViolationService;
 
 
@@ -160,7 +162,7 @@ public class ModerationResolveController {
     public ResponseEntity<ApiResponse<Void>> restrictReporting(
             @PathVariable Long userId,
             @RequestParam(defaultValue = "true") boolean restricted) {
-        // TODO: ユーザーの通報権限フラグを更新する実装
+        contentReportService.restrictReporting(userId, restricted);
         return ResponseEntity.ok(ApiResponse.of(null));
     }
 

@@ -1,6 +1,7 @@
 package com.mannschaft.app.directmail.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.directmail.DirectMailErrorCode;
 import com.mannschaft.app.directmail.dto.DirectMailImageUploadResponse;
 import com.mannschaft.app.directmail.entity.DirectMailImageUploadEntity;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.time.Duration;
 import java.util.Set;
 import java.util.UUID;
 
@@ -29,6 +32,7 @@ public class DirectMailImageService {
     );
 
     private final DirectMailImageUploadRepository imageUploadRepository;
+    private final StorageService storageService;
 
     /**
      * 画像をアップロードする。
@@ -48,7 +52,11 @@ public class DirectMailImageService {
         String s3Key = String.format("direct-mail/%s/%d/images/%s_%s",
                 scopeType.toLowerCase(), scopeId, UUID.randomUUID(), file.getOriginalFilename());
 
-        // TODO: S3にアップロード（Pre-signed URLまたはPutObject）
+        try {
+            storageService.upload(s3Key, file.getBytes(), file.getContentType());
+        } catch (IOException e) {
+            throw new BusinessException(DirectMailErrorCode.IMAGE_SIZE_EXCEEDED, e);
+        }
 
         DirectMailImageUploadEntity entity = DirectMailImageUploadEntity.builder()
                 .s3Key(s3Key)
@@ -61,8 +69,7 @@ public class DirectMailImageService {
         DirectMailImageUploadEntity saved = imageUploadRepository.save(entity);
         log.info("DM画像アップロード: imageId={}, fileName={}", saved.getId(), file.getOriginalFilename());
 
-        // TODO: Pre-signed URL生成
-        String imageUrl = "https://s3.example.com/" + s3Key;
+        String imageUrl = storageService.generateDownloadUrl(s3Key, Duration.ofHours(1));
 
         return new DirectMailImageUploadResponse(
                 saved.getId(),

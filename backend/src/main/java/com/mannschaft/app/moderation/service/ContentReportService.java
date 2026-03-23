@@ -1,5 +1,7 @@
 package com.mannschaft.app.moderation.service;
 
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.moderation.ModerationErrorCode;
 import com.mannschaft.app.moderation.ModerationMapper;
@@ -32,6 +34,7 @@ public class ContentReportService {
     private static final int DEFAULT_REPORT_SIZE = 20;
 
     private final ContentReportRepository reportRepository;
+    private final UserRepository userRepository;
     private final ModerationMapper moderationMapper;
 
     /**
@@ -96,5 +99,43 @@ public class ContentReportService {
         ContentReportEntity report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new BusinessException(ModerationErrorCode.REPORT_NOT_FOUND));
         return moderationMapper.toReportResponse(report);
+    }
+
+    /**
+     * コンテンツを非表示にする。
+     */
+    @Transactional
+    public void hideContent(Long reportId) {
+        ContentReportEntity report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new BusinessException(ModerationErrorCode.REPORT_NOT_FOUND));
+        report.hideContent();
+        reportRepository.save(report);
+        log.info("コンテンツ非表示: reportId={}, targetType={}, targetId={}",
+                reportId, report.getTargetType(), report.getTargetId());
+    }
+
+    /**
+     * コンテンツの非表示を解除する。
+     */
+    @Transactional
+    public void unhideContent(Long reportId) {
+        ContentReportEntity report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new BusinessException(ModerationErrorCode.REPORT_NOT_FOUND));
+        report.unhideContent();
+        reportRepository.save(report);
+        log.info("コンテンツ非表示解除: reportId={}, targetType={}, targetId={}",
+                reportId, report.getTargetType(), report.getTargetId());
+    }
+
+    /**
+     * ユーザーの通報権限を制限/解除する。
+     */
+    @Transactional
+    public void restrictReporting(Long userId, boolean restricted) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ModerationErrorCode.REPORT_NOT_FOUND));
+        user.setReportingRestricted(restricted);
+        userRepository.save(user);
+        log.info("通報権限更新: userId={}, restricted={}", userId, restricted);
     }
 }

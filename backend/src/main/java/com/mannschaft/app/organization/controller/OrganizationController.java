@@ -166,8 +166,7 @@ public class OrganizationController {
     @Operation(summary = "組織フォロー")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "フォロー成功")
     public ResponseEntity<Void> followOrganization(@PathVariable Long id) {
-        // NOTE: 組織フォローはTeamServiceのfollowTeamと対称だが、OrganizationService側にはまだ未実装
-        // TODO: OrganizationServiceにfollowOrganization追加
+        organizationService.followOrganization(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok().build();
     }
 
@@ -175,7 +174,7 @@ public class OrganizationController {
     @Operation(summary = "組織フォロー解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "フォロー解除成功")
     public ResponseEntity<Void> unfollowOrganization(@PathVariable Long id) {
-        // TODO: OrganizationServiceにunfollowOrganization追加
+        organizationService.unfollowOrganization(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.noContent().build();
     }
 

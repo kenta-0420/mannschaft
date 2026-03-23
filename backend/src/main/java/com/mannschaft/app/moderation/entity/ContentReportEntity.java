@@ -65,6 +65,10 @@ public class ContentReportEntity extends BaseEntity {
 
     private LocalDateTime reviewedAt;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean contentHidden = false;
+
     /**
      * レビューを開始する（PENDING → REVIEWING）。
      */
@@ -106,5 +110,19 @@ public class ContentReportEntity extends BaseEntity {
         this.reviewedBy = reviewerId;
         this.reviewedAt = LocalDateTime.now();
         this.status = ReportStatus.REVIEWING;
+    }
+
+    /**
+     * コンテンツを非表示にする。
+     */
+    public void hideContent() {
+        this.contentHidden = true;
+    }
+
+    /**
+     * コンテンツの非表示を解除する。
+     */
+    public void unhideContent() {
+        this.contentHidden = false;
     }
 }

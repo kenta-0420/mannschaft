@@ -50,8 +50,7 @@ public class AuthLoginController {
             @Valid @RequestBody RegisterRequest req,
             HttpServletRequest request) {
 
-        // TODO: X-Forwarded-For対応
-        String ipAddress = request.getRemoteAddr();
+        String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
         ApiResponse<MessageResponse> response = authService.register(req, ipAddress);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -90,8 +89,7 @@ public class AuthLoginController {
             @Valid @RequestBody LoginRequest req,
             HttpServletRequest request) {
 
-        // TODO: X-Forwarded-For対応
-        String ipAddress = request.getRemoteAddr();
+        String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
         String userAgent = request.getHeader("User-Agent");
         return ResponseEntity.ok(authService.login(req, ipAddress, userAgent));
     }
@@ -172,8 +170,7 @@ public class AuthLoginController {
             @RequestParam String email,
             HttpServletRequest request) {
 
-        // TODO: X-Forwarded-For対応
-        String ipAddress = request.getRemoteAddr();
+        String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
         return ResponseEntity.ok(authService.requestPasswordReset(email, ipAddress));
     }
 

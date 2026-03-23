@@ -30,6 +30,11 @@ public interface UserCalendarSyncSettingRepository extends JpaRepository<UserCal
     List<UserCalendarSyncSettingEntity> findByScopeTypeAndScopeIdAndIsEnabledTrue(String scopeType, Long scopeId);
 
     /**
+     * ユーザーIDで有効な同期設定一覧を取得する。
+     */
+    List<UserCalendarSyncSettingEntity> findByUserIdAndIsEnabledTrue(Long userId);
+
+    /**
      * スコープ種別・スコープIDで同期設定を削除する。
      */
     void deleteByScopeTypeAndScopeId(String scopeType, Long scopeId);

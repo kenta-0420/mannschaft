@@ -1,6 +1,9 @@
 package com.mannschaft.app.proxyvote.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
+import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.proxyvote.AttachmentTargetType;
 import com.mannschaft.app.proxyvote.AttachmentType;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
 
@@ -42,6 +46,8 @@ public class ProxyVoteAttachmentService {
     private final ProxyVoteSessionService sessionService;
     private final ProxyVoteAttachmentRepository attachmentRepository;
     private final ProxyVoteMapper mapper;
+    private final StorageService storageService;
+    private final DomainEventPublisher eventPublisher;
 
     /**
      * セッションに添付ファイルを追加する。
@@ -99,9 +105,10 @@ public class ProxyVoteAttachmentService {
         ProxyVoteAttachmentEntity attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new BusinessException(ProxyVoteErrorCode.ATTACHMENT_NOT_FOUND));
 
-        // TODO: S3 からファイル削除
+        String fileKeyToDelete = attachment.getFileKey();
         attachmentRepository.delete(attachment);
         log.info("添付ファイル削除: attachmentId={}", attachmentId);
+        eventPublisher.publish(new S3ObjectDeleteEvent(fileKeyToDelete));
     }
 
     private void validateFile(MultipartFile file, AttachmentTargetType targetType) {
@@ -130,8 +137,12 @@ public class ProxyVoteAttachmentService {
 
     private AttachmentResponse saveAttachment(AttachmentTargetType targetType, Long targetId,
                                                MultipartFile file, AttachmentType attachmentType, Long currentUserId) {
-        // TODO: S3 へアップロード
         String fileKey = "proxy-votes/" + targetType.name().toLowerCase() + "/" + targetId + "/" + UUID.randomUUID();
+        try {
+            storageService.upload(fileKey, file.getBytes(), file.getContentType());
+        } catch (IOException e) {
+            throw new BusinessException(ProxyVoteErrorCode.UNSUPPORTED_FILE_TYPE, e);
+        }
 
         long currentCount = attachmentRepository.countByTargetTypeAndTargetId(targetType, targetId);
 

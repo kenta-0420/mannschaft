@@ -82,8 +82,7 @@ public class SystemAdminModerationController {
         long escalatedReReviews = reReviewService.countEscalatedReReviews();
         long pendingUnflagRequests = unflagService.countPendingRequests();
         long activeViolations = violationService.countActiveViolations();
-        // TODO: yabaiUsersCountは別途集計クエリが必要
-        long yabaiUsers = 0;
+        long yabaiUsers = violationService.countYabaiUsers();
 
         ModerationDashboardResponse response = new ModerationDashboardResponse(
                 pendingReports, pendingAppeals, pendingReReviews,
@@ -173,7 +172,7 @@ public class SystemAdminModerationController {
     @Operation(summary = "ヤバいやつ手動解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "解除成功")
     public ResponseEntity<ApiResponse<Void>> manualUnflag(@PathVariable Long id) {
-        // TODO: ユーザーの有効違反を一括無効化してヤバいやつ認定を解除する
+        violationService.unflagYabaiUser(id);
         return ResponseEntity.ok(ApiResponse.of(null));
     }
 

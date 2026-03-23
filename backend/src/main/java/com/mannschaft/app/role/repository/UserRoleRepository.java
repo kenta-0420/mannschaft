@@ -4,6 +4,8 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -42,4 +44,85 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     boolean existsByUserIdAndOrganizationId(Long userId, Long organizationId);
 
     void deleteByUserIdAndTeamId(Long userId, Long teamId);
+
+    void deleteByUserIdAndOrganizationId(Long userId, Long organizationId);
+
+    /**
+     * スコープに所属するメンバーのメールアドレス一覧を取得する。
+     */
+    @Query(value = "SELECT DISTINCT u.email FROM users u " +
+            "JOIN user_roles ur ON u.id = ur.user_id " +
+            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<String> findEmailsByScope(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
+
+    /**
+     * スコープに所属するメンバー数を取得する。
+     */
+    @Query(value = "SELECT COUNT(DISTINCT ur.user_id) FROM user_roles ur " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    int countMembersByScope(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
+
+    /**
+     * スコープ内の指定ロールのメンバー数を取得する。
+     */
+    @Query(value = "SELECT COUNT(DISTINCT ur.user_id) FROM user_roles ur " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "AND r.name = :roleName " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    int countMembersByScopeAndRole(@Param("scopeType") String scopeType,
+                                   @Param("scopeId") Long scopeId,
+                                   @Param("roleName") String roleName);
+
+    /**
+     * スコープ内の指定ロールのメールアドレス一覧を取得する。
+     */
+    @Query(value = "SELECT DISTINCT u.email FROM users u " +
+            "JOIN user_roles ur ON u.id = ur.user_id " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "AND r.name = :roleName " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<String> findEmailsByScopeAndRole(@Param("scopeType") String scopeType,
+                                          @Param("scopeId") Long scopeId,
+                                          @Param("roleName") String roleName);
+
+    /**
+     * スコープ内のユーザーID・メールアドレスのペアを取得する。
+     */
+    @Query(value = "SELECT DISTINCT ur.user_id, u.email FROM users u " +
+            "JOIN user_roles ur ON u.id = ur.user_id " +
+            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Object[]> findUserIdAndEmailByScope(@Param("scopeType") String scopeType,
+                                              @Param("scopeId") Long scopeId);
+
+    /**
+     * スコープ内の指定ロールのユーザーID・メールアドレスのペアを取得する。
+     */
+    @Query(value = "SELECT DISTINCT ur.user_id, u.email FROM users u " +
+            "JOIN user_roles ur ON u.id = ur.user_id " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "AND r.name = :roleName " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Object[]> findUserIdAndEmailByScopeAndRole(@Param("scopeType") String scopeType,
+                                                     @Param("scopeId") Long scopeId,
+                                                     @Param("roleName") String roleName);
 }

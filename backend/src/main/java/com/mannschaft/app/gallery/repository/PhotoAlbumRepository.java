@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 /**
  * 写真アルバムリポジトリ。
  */
@@ -33,6 +35,16 @@ public interface PhotoAlbumRepository extends JpaRepository<PhotoAlbumEntity, Lo
      */
     Page<PhotoAlbumEntity> findByOrganizationIdAndTitleContainingOrderByEventDateDesc(
             Long organizationId, String title, Pageable pageable);
+
+    /**
+     * チーム別の全アルバムを取得する（バッチ処理用）。
+     */
+    List<PhotoAlbumEntity> findByTeamIdOrderByCreatedAtDesc(Long teamId);
+
+    /**
+     * 組織別の全アルバムを取得する（バッチ処理用）。
+     */
+    List<PhotoAlbumEntity> findByOrganizationIdOrderByCreatedAtDesc(Long organizationId);
 
     /**
      * チーム/組織の合計写真数を取得する（ストレージクォータ確認用）。

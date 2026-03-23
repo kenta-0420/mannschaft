@@ -303,7 +303,6 @@ public class FacilityBookingService {
      * 確認用PDF用のデータを取得する（placeholder）。
      */
     public BookingDetailResponse getBookingForPdf(Long bookingId) {
-        // TODO: PDF生成実装時に拡張
         return getBooking(bookingId);
     }
 

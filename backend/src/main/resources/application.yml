@@ -43,3 +43,24 @@ mannschaft:
   encryption:
     key: ${MANNSCHAFT_ENCRYPTION_KEY:}
     hmac-key: ${MANNSCHAFT_HMAC_KEY:}
+  storage:
+    bucket: ${MANNSCHAFT_S3_BUCKET:mannschaft-dev}
+    region: ${MANNSCHAFT_S3_REGION:ap-northeast-1}
+    endpoint: ${MANNSCHAFT_S3_ENDPOINT:}
+    presigned-upload-ttl: ${MANNSCHAFT_S3_UPLOAD_TTL:600}
+    presigned-download-ttl: ${MANNSCHAFT_S3_DOWNLOAD_TTL:3600}
+    tmp-bucket: ${MANNSCHAFT_S3_TMP_BUCKET:mannschaft-tmp}
+  webauthn:
+    origin: ${MANNSCHAFT_WEBAUTHN_ORIGIN:https://mannschaft.app}
+  google:
+    client-id: ${MANNSCHAFT_GOOGLE_CLIENT_ID:}
+    client-secret: ${MANNSCHAFT_GOOGLE_CLIENT_SECRET:}
+    token-uri: https://oauth2.googleapis.com/token
+    revoke-uri: https://oauth2.googleapis.com/revoke
+    calendar-api-base: https://www.googleapis.com/calendar/v3
+    userinfo-uri: https://www.googleapis.com/oauth2/v3/userinfo
+  stripe:
+    secret-key: ${MANNSCHAFT_STRIPE_SECRET_KEY:}
+    connect:
+      return-url: ${MANNSCHAFT_STRIPE_CONNECT_RETURN_URL:https://app.mannschaft.com/settings/stripe/return}
+      refresh-url: ${MANNSCHAFT_STRIPE_CONNECT_REFRESH_URL:https://app.mannschaft.com/settings/stripe/refresh}

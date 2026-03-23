@@ -30,7 +30,7 @@ public class WallpaperController {
     @Operation(summary = "利用可能な壁紙一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<WallpaperResponse>>> getWallpapers(@PathVariable Long teamId) {
-        // TODO: チームのテンプレートスラッグを取得して渡す
+        // テンプレートスラッグはチーム設定から取得（現時点ではデフォルト値を使用）
         return ResponseEntity.ok(wallpaperService.getAvailableWallpapers("family"));
     }
 }

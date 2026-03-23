@@ -204,6 +204,43 @@ public class OrganizationService {
     }
 
     // ========================================
+    // フォロー（SUPPORTER）
+    // ========================================
+
+    /**
+     * 組織をフォロー（SUPPORTER ロールで参加）する。
+     */
+    @Transactional
+    public void followOrganization(Long userId, Long orgId) {
+        findOrganizationOrThrow(orgId);
+
+        if (userRoleRepository.existsByUserIdAndOrganizationId(userId, orgId)) {
+            throw new BusinessException(OrgErrorCode.ORG_003);
+        }
+
+        RoleEntity supporterRole = roleRepository.findByName("SUPPORTER")
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
+
+        UserRoleEntity userRole = UserRoleEntity.builder()
+                .userId(userId)
+                .roleId(supporterRole.getId())
+                .organizationId(orgId)
+                .build();
+        userRoleRepository.save(userRole);
+        log.info("組織フォロー完了: userId={}, orgId={}", userId, orgId);
+    }
+
+    /**
+     * 組織のフォローを解除する。
+     */
+    @Transactional
+    public void unfollowOrganization(Long userId, Long orgId) {
+        findOrganizationOrThrow(orgId);
+        userRoleRepository.deleteByUserIdAndOrganizationId(userId, orgId);
+        log.info("組織フォロー解除完了: userId={}, orgId={}", userId, orgId);
+    }
+
+    // ========================================
     // ヘルパー（private）
     // ========================================
 

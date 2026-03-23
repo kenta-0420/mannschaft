@@ -68,6 +68,25 @@ public enum WidgetKey {
         return defaultSortOrder;
     }
 
+    /**
+     * ウィジェットが依存する選択式モジュールのスラッグ。
+     * null の場合はデフォルト機能に属し、常に有効。
+     */
+    private static final Map<WidgetKey, String> MODULE_SLUG_MAP = Map.ofEntries(
+            Map.entry(PERFORMANCE_SUMMARY, "performance"),
+            Map.entry(PERSONAL_PROJECT_PROGRESS, "project"),
+            Map.entry(CHAT_HUB, "chat"),
+            Map.entry(TEAM_PROJECT_PROGRESS, "project"),
+            Map.entry(TEAM_PAGE_VIEWS, "analytics")
+    );
+
+    /**
+     * このウィジェットが依存するモジュールスラッグを返す。null ならデフォルト機能。
+     */
+    public String getRequiredModuleSlug() {
+        return MODULE_SLUG_MAP.get(this);
+    }
+
     /** ロール制限ウィジェット（ADMIN / DEPUTY_ADMIN のみ） */
     private static final Set<WidgetKey> ROLE_RESTRICTED = Set.of(
             TEAM_BILLING, TEAM_PAGE_VIEWS, ORG_BILLING

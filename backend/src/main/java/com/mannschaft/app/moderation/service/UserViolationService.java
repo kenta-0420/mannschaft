@@ -124,6 +124,29 @@ public class UserViolationService {
     }
 
     /**
+     * ユーザーの有効違反を一括無効化してヤバいやつ認定を解除する。
+     *
+     * @param userId ユーザーID
+     * @return 無効化した違反数
+     */
+    @Transactional
+    public int unflagYabaiUser(Long userId) {
+        int deactivated = violationRepository.deactivateAllByUserId(userId);
+        log.info("ヤバいやつ手動解除: userId={}, deactivatedViolations={}", userId, deactivated);
+        return deactivated;
+    }
+
+    /**
+     * ヤバいやつ認定ユーザー数を取得する。
+     *
+     * @return ユーザー数
+     */
+    public long countYabaiUsers() {
+        int threshold = getIntSetting("yabai_violation_threshold", 3);
+        return violationRepository.findYabaiUserIds(threshold).size();
+    }
+
+    /**
      * 設定値を整数として取得する。
      */
     private int getIntSetting(String key, int defaultValue) {
