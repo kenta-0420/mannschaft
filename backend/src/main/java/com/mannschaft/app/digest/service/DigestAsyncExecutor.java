@@ -1,6 +1,9 @@
 package com.mannschaft.app.digest.service;
 
 import com.mannschaft.app.digest.DigestStatus;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.digest.entity.TimelineDigestConfigEntity;
 import com.mannschaft.app.digest.entity.TimelineDigestEntity;
 import com.mannschaft.app.digest.repository.TimelineDigestRepository;
@@ -26,6 +29,7 @@ public class DigestAsyncExecutor {
     private final TimelineDigestRepository digestRepository;
     private final DigestAiProvider aiProvider;
     private final TemplateDigestGenerator templateGenerator;
+    private final NotificationHelper notificationHelper;
 
     /**
      * AI スタイルのダイジェストを非同期生成する。
@@ -66,8 +70,13 @@ public class DigestAsyncExecutor {
                     result.aiModel(), result.inputTokens(), result.outputTokens(), posts.size());
             digestRepository.save(digest);
 
-            // TODO: プッシュ通知（「ダイジェストの生成が完了しました」）
-            // TODO: WebSocket ステータス通知
+            // ダイジェスト生成完了通知（作成者に送信）
+            NotificationScopeType notifScope = "TEAM".equals(scopeType)
+                    ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
+            notificationHelper.notify(digest.getTriggeredBy(), "DIGEST_COMPLETED",
+                    "ダイジェスト生成完了", "AIダイジェストの生成が完了しました。",
+                    "DIGEST", digestId, notifScope, scopeId,
+                    "/digests/" + digestId, null);
 
             log.info("AI ダイジェスト生成完了: id={}, model={}", digestId, result.aiModel());
 
@@ -83,7 +92,17 @@ public class DigestAsyncExecutor {
                 log.error("ダイジェスト失敗ステータスの保存にも失敗: id={}", digestId, saveEx);
             }
 
-            // TODO: ADMIN にプッシュ通知（「ダイジェスト生成に失敗しました」）
+            // ダイジェスト生成失敗を作成者に通知
+            TimelineDigestEntity failedDigest = digestRepository.findById(digestId).orElse(null);
+            if (failedDigest != null && failedDigest.getTriggeredBy() != null) {
+                NotificationScopeType notifScope = "TEAM".equals(scopeType)
+                        ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
+                notificationHelper.notify(failedDigest.getTriggeredBy(), "DIGEST_FAILED",
+                        NotificationPriority.HIGH,
+                        "ダイジェスト生成失敗", "AIダイジェストの生成に失敗しました。再試行してください。",
+                        "DIGEST", digestId, notifScope, scopeId,
+                        "/digests/" + digestId, null);
+            }
         }
     }
 }

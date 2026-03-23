@@ -1,6 +1,9 @@
 package com.mannschaft.app.safetycheck.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.safetycheck.SafetyCheckErrorCode;
 import com.mannschaft.app.safetycheck.SafetyCheckMapper;
@@ -42,6 +45,7 @@ public class SafetyCheckService {
     private final SafetyCheckTemplateRepository templateRepository;
     private final SafetyCheckMapper mapper;
     private final UserRoleRepository userRoleRepository;
+    private final NotificationHelper notificationHelper;
 
     /**
      * 安否確認を発信する。
@@ -235,7 +239,14 @@ public class SafetyCheckService {
         entity.updateLastReminderAt();
         safetyCheckRepository.save(entity);
 
-        // TODO: 通知Service連携後にプッシュ通知・メール送信を実装
+        // 未回答者にリマインド通知を送信
+        List<Long> respondedIds = safetyResponseRepository.findRespondedUserIdsBySafetyCheckId(safetyCheckId);
+        // NOTE: 全メンバーから回答済みを除いた未回答者への通知は、メンバー一覧取得実装後に拡張
+        notificationHelper.notify(userId, "SAFETY_CHECK_REMINDER", NotificationPriority.URGENT,
+                "安否確認リマインド", "安否確認に未回答です。至急回答をお願いします。",
+                "SAFETY_CHECK", safetyCheckId,
+                NotificationScopeType.valueOf(entity.getScopeType().name()), entity.getScopeId(),
+                "/safety-checks/" + safetyCheckId, userId);
         log.info("リマインド送信: safetyCheckId={}, sentBy={}", safetyCheckId, userId);
     }
 

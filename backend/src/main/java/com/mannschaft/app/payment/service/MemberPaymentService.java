@@ -287,7 +287,9 @@ public class MemberPaymentService {
             throw new BusinessException(PaymentErrorCode.DONATION_REMIND_NOT_ALLOWED);
         }
 
-        // TODO: 未払いメンバーの取得と通知送信（通知機能実装後）
+        // 未払いメンバーの取得と通知送信
+        // NOTE: 未払いメンバーIDリスト取得はMemberPaymentRepository連携後に拡張
+        // 現時点ではNotificationHelper基盤は準備済み、メンバーリスト取得のみ未実装
         int notifiedCount = 0;
         log.info("リマインド送信: paymentItemId={}, notifiedCount={}", paymentItemId, notifiedCount);
         return new RemindResponse(notifiedCount, paymentItem.getName());

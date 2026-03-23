@@ -182,13 +182,11 @@ public class NotificationService {
      */
     public NotificationStatsResponse getStats() {
         long total = notificationRepository.count();
-        long unread = notificationRepository.count() - notificationRepository.count(); // 簡易実装
-        // 正確な統計はカスタムクエリが必要だが、現時点では概算で対応
+        long unread = notificationRepository.countByIsReadFalse();
+        long read = total - unread;
         long totalSubscriptions = pushSubscriptionRepository.count();
 
-        // 全ユーザーの合計未読数はパフォーマンス上の理由から概算
-        // TODO: 管理者統計の正確なクエリを実装
-        return new NotificationStatsResponse(total, 0, total, totalSubscriptions);
+        return new NotificationStatsResponse(total, unread, read, totalSubscriptions);
     }
 
     /**

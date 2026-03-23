@@ -56,4 +56,9 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
      * スコープタイプとスコープIDで通知件数を取得する。
      */
     long countByScopeTypeAndScopeId(String scopeType, Long scopeId);
+
+    /**
+     * 全ユーザー横断の未読通知件数を取得する（管理者統計用）。
+     */
+    long countByIsReadFalse();
 }

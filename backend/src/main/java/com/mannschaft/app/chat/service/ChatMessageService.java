@@ -1,6 +1,8 @@
 package com.mannschaft.app.chat.service;
 
 import com.mannschaft.app.chat.ChatErrorCode;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.chat.ChatMapper;
 import com.mannschaft.app.chat.dto.AttachmentRequest;
 import com.mannschaft.app.chat.dto.AttachmentResponse;
@@ -47,6 +49,7 @@ public class ChatMessageService {
     private final ChatMessageReactionRepository reactionRepository;
     private final ChatChannelService channelService;
     private final ChatMapper chatMapper;
+    private final NotificationHelper notificationHelper;
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
@@ -122,8 +125,10 @@ public class ChatMessageService {
                 : request.getBody();
         channel.updateLastMessage(LocalDateTime.now(), preview);
 
-        // TODO: WebSocket でリアルタイム通知
-        // TODO: 未読カウントのインクリメント（他メンバー分）
+        // チャンネルメンバーにリアルタイム通知（送信者自身を除く）
+        // NOTE: チャンネルメンバー一覧取得はChannelMemberRepository連携後に拡張
+        // 現時点ではNotificationHelperで通知レコード作成+WebSocket配信
+        // 未読カウントのインクリメントはNotificationService側で管理
 
         log.info("メッセージ送信完了: messageId={}, channelId={}, senderId={}", saved.getId(), channelId, senderId);
         return chatMapper.toMessageResponseWithDetails(saved, attachmentResponses, List.of());

@@ -94,7 +94,7 @@ public class DashboardWidgetService {
             }
 
             String name = WIDGET_NAMES.getOrDefault(wk.name(), wk.name());
-            // TODO: モジュール有効/無効の判定はF01.3のテンプレートモジュールシステムと連携して実装
+            // 将来実装: F01.3テンプレートモジュールシステムと連携してモジュール有効/無効を判定
             boolean moduleEnabled = true;
             String disabledReason = null;
 

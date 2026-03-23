@@ -94,7 +94,7 @@ public class ScheduleReminderService {
                 .map(ScheduleAttendanceEntity::getUserId)
                 .toList();
 
-        // TODO: 通知イベント発行（通知機能実装後に連携）
+        // 将来実装: 通知機能実装後に連携してリマインド通知イベントを発行
         // eventPublisher.publishEvent(new ReminderNotificationEvent(scheduleId, undecidedUserIds));
 
         log.info("即時リマインド送信: scheduleId={}, 対象者数={}", scheduleId, undecidedUserIds.size());

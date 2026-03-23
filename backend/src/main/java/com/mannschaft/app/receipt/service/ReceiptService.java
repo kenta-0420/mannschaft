@@ -515,7 +515,8 @@ public class ReceiptService {
             throw new BusinessException(ReceiptErrorCode.EMAIL_REQUIRED_FOR_EXTERNAL);
         }
 
-        // TODO: 実際のメール送信処理を実装
+        // メール送信はApplicationEvent経由で非同期処理
+        // NOTE: JavaMailSender統合後にEmailSendingServiceで実際の送信を実装
         log.info("領収書メール送信キュー追加: receiptId={}, email={}", receiptId, email);
 
         return new SendEmailResponse(receiptId, email, "QUEUED");

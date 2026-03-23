@@ -1,5 +1,7 @@
 package com.mannschaft.app.ticket.service;
 
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.ticket.entity.TicketBookEntity;
 import com.mannschaft.app.ticket.repository.TicketBookRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import java.util.List;
 public class TicketExpiryBatchService {
 
     private final TicketBookRepository bookRepository;
+    private final NotificationHelper notificationHelper;
 
     /**
      * 期限切れチケットを EXPIRED に遷移する。毎日 00:30 JST に実行。
@@ -40,7 +43,10 @@ public class TicketExpiryBatchService {
         for (TicketBookEntity book : expiredBooks) {
             book.expire();
             bookRepository.save(book);
-            // TODO: プッシュ通知送信（F04.3 連携）
+            notificationHelper.notify(book.getUserId(), "TICKET_EXPIRED",
+                    "チケット期限切れ", "お持ちのチケットが期限切れになりました。",
+                    "TICKET_BOOK", book.getId(), NotificationScopeType.PERSONAL, null,
+                    "/tickets/my", null);
         }
 
         log.info("期限切れチケット処理完了: {}件", expiredBooks.size());
@@ -80,7 +86,11 @@ public class TicketExpiryBatchService {
         for (int days : notificationDays) {
             List<TicketBookEntity> books = bookRepository.findBooksExpiringInDays(now, days);
             for (TicketBookEntity book : books) {
-                // TODO: プッシュ通知送信（F04.3 連携）
+                notificationHelper.notify(book.getUserId(), "TICKET_EXPIRY_WARNING",
+                        "チケット期限切れ予告",
+                        String.format("お持ちのチケットが%d日後に期限切れになります。", days),
+                        "TICKET_BOOK", book.getId(), NotificationScopeType.PERSONAL, null,
+                        "/tickets/my", null);
                 log.debug("期限切れ事前通知: bookId={}, days={}", book.getId(), days);
             }
             if (!books.isEmpty()) {
