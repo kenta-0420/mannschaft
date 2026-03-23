@@ -1,5 +1,8 @@
 package com.mannschaft.app.performance.service;
 
+import com.mannschaft.app.activity.FieldType;
+import com.mannschaft.app.activity.entity.ActivityTemplateFieldEntity;
+import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.performance.AggregationType;
 import com.mannschaft.app.performance.MetricDataType;
@@ -43,6 +46,7 @@ public class PerformanceMetricService {
 
     private final PerformanceMetricRepository metricRepository;
     private final PerformanceMetricTemplateRepository templateRepository;
+    private final ActivityTemplateFieldRepository activityTemplateFieldRepository;
     private final PerformanceMapper performanceMapper;
 
     /**
@@ -249,15 +253,28 @@ public class PerformanceMetricService {
 
     /**
      * 活動記録連携可能なカスタムフィールド一覧を取得する。
-     * TODO: F06.4 activity_custom_fields テーブルからPARTICIPANT/NUMBERフィールドを取得する
+     * チームの活動テンプレートから NUMBER 型フィールドを取得し、既に連携済みのフィールドを除外する。
      *
      * @param teamId チームID
      * @return 連携可能フィールドリスト
      */
     public List<LinkableFieldResponse> listLinkableFields(Long teamId) {
-        // TODO: F06.4 integration - query activity_custom_fields for PARTICIPANT scope + NUMBER type
-        // For now, return empty list as placeholder
-        return Collections.emptyList();
+        // チームの活動テンプレートから NUMBER 型フィールドを取得
+        List<ActivityTemplateFieldEntity> numberFields =
+                activityTemplateFieldRepository.findByTeamIdAndFieldType(teamId, FieldType.NUMBER);
+
+        // 既に連携済みのフィールドIDを収集
+        Set<Long> linkedFieldIds = metricRepository.findByTeamIdAndIsActiveTrueOrderBySortOrderAsc(teamId)
+                .stream()
+                .map(PerformanceMetricEntity::getLinkedActivityFieldId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        // 未連携のフィールドのみ返却
+        return numberFields.stream()
+                .filter(f -> !linkedFieldIds.contains(f.getId()))
+                .map(f -> new LinkableFieldResponse(f.getId(), f.getFieldLabel(), f.getUnit()))
+                .toList();
     }
 
     /**
