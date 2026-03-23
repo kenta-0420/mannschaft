@@ -9,6 +9,8 @@ import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,7 +18,8 @@ import java.util.List;
 
 /**
  * フィーチャーフラグサービス。フラグの取得・更新を担当する。
- * Valkeyキャッシュ連携は将来実装時に追加予定。
+ * isEnabled() はValkey（Redis）キャッシュを参照し、キャッシュミス時にDB参照する。
+ * updateFlag() 時にキャッシュを自動無効化する。
  */
 @Slf4j
 @Service
@@ -29,8 +32,6 @@ public class FeatureFlagService {
 
     /**
      * 全フィーチャーフラグ一覧を取得する。
-     *
-     * @return フラグ一覧
      */
     public List<FeatureFlagResponse> getAllFlags() {
         return adminMapper.toFeatureFlagResponseList(featureFlagRepository.findAll());
@@ -38,9 +39,6 @@ public class FeatureFlagService {
 
     /**
      * フラグキーでフィーチャーフラグを取得する。
-     *
-     * @param flagKey フラグキー
-     * @return フラグ情報
      */
     public FeatureFlagResponse getByKey(String flagKey) {
         FeatureFlagEntity entity = featureFlagRepository.findByFlagKey(flagKey)
@@ -49,14 +47,10 @@ public class FeatureFlagService {
     }
 
     /**
-     * フィーチャーフラグを更新する。
-     *
-     * @param flagKey フラグキー
-     * @param req     更新リクエスト
-     * @param userId  更新者ID
-     * @return 更新後のフラグ情報
+     * フィーチャーフラグを更新する。Valkeyキャッシュを自動無効化する。
      */
     @Transactional
+    @CacheEvict(value = "featureFlags", key = "#flagKey")
     public FeatureFlagResponse updateFlag(String flagKey, UpdateFeatureFlagRequest req, Long userId) {
         FeatureFlagEntity entity = featureFlagRepository.findByFlagKey(flagKey)
                 .orElseThrow(() -> new BusinessException(AdminErrorCode.FEATURE_FLAG_NOT_FOUND));
@@ -68,18 +62,15 @@ public class FeatureFlagService {
         entity = featureFlagRepository.save(entity);
 
         log.info("フィーチャーフラグ更新: key={}, enabled={}, userId={}", flagKey, req.getIsEnabled(), userId);
-        // TODO: Valkeyキャッシュ更新
         return adminMapper.toFeatureFlagResponse(entity);
     }
 
     /**
-     * フラグが有効かどうかを確認する。キャッシュ参照用。
-     *
-     * @param flagKey フラグキー
-     * @return 有効ならtrue
+     * フラグが有効かどうかを確認する。
+     * Valkeyキャッシュを参照し、キャッシュミス時にDB参照する（TTL: RedisConfig既定の30分）。
      */
+    @Cacheable(value = "featureFlags", key = "#flagKey")
     public boolean isEnabled(String flagKey) {
-        // TODO: Valkeyキャッシュ参照を優先し、キャッシュミス時にDB参照
         return featureFlagRepository.findByFlagKey(flagKey)
                 .map(FeatureFlagEntity::getIsEnabled)
                 .orElse(false);
