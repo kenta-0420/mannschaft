@@ -60,6 +60,16 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 
+    // TOTP (RFC 6238)
+    implementation("com.eatthepath:java-otp:0.4.0")
+
+    // WebAuthn4J
+    implementation("com.webauthn4j:webauthn4j-core:0.28.4.RELEASE")
+
+    // AWS S3
+    implementation(platform("software.amazon.awssdk:bom:2.29.45"))
+    implementation("software.amazon.awssdk:s3")
+
     // MySQL
     runtimeOnly("com.mysql:mysql-connector-j")
 
@@ -83,6 +93,9 @@ dependencies {
 
     // PDF内容検証用（テストスコープのみ）
     testImplementation("org.apache.pdfbox:pdfbox:3.0.3")
+
+    // === Markdown → HTML 変換 ===
+    implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
 }
 
 tasks.withType<Test> {

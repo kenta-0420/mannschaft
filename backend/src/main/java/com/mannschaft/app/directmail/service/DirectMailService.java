@@ -1,6 +1,7 @@
 package com.mannschaft.app.directmail.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.MarkdownConverter;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.directmail.DirectMailErrorCode;
 import com.mannschaft.app.directmail.DirectMailMapper;
@@ -200,8 +201,7 @@ public class DirectMailService {
      * メールプレビューを生成する。
      */
     public PreviewMailResponse preview(PreviewMailRequest request) {
-        // TODO: Markdown → HTML変換処理を実装
-        String html = "<div>" + request.getBodyMarkdown() + "</div>";
+        String html = MarkdownConverter.toHtml(request.getBodyMarkdown());
         return new PreviewMailResponse(html);
     }
 
