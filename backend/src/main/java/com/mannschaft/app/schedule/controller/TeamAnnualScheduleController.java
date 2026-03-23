@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
+import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.schedule.DateShiftMode;
 import com.mannschaft.app.schedule.dto.AnnualEventViewResponse;
 import com.mannschaft.app.schedule.dto.CopyLogResponse;
@@ -44,6 +46,7 @@ public class TeamAnnualScheduleController {
     private final ScheduleAnnualViewService annualViewService;
     private final ScheduleAnnualCopyService annualCopyService;
     private final ScheduleEventCategoryService categoryService;
+    private final TeamOrgMembershipRepository teamOrgMembershipRepository;
 
     /**
      * チーム年間行事ビューを取得する。
@@ -64,8 +67,10 @@ public class TeamAnnualScheduleController {
         ScheduleAnnualViewService.AnnualViewData viewData = annualViewService.getAnnualView(
                 teamId, true, academicYear, categoryIds, eventType, termStartDate, termEndDate);
 
-        // TODO: teamId から organizationId を取得するロジックを実装
-        Long organizationId = null;
+        Long organizationId = teamOrgMembershipRepository
+                .findFirstByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE)
+                .map(TeamOrgMembershipEntity::getOrganizationId)
+                .orElse(null);
         List<ScheduleEventCategoryEntity> categoryEntities =
                 categoryService.getCategoriesForTeam(teamId, organizationId);
 

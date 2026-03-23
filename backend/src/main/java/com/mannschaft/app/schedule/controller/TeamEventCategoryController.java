@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
+import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.schedule.dto.CreateEventCategoryRequest;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
 import com.mannschaft.app.schedule.entity.ScheduleEventCategoryEntity;
@@ -30,6 +32,7 @@ import java.util.List;
 public class TeamEventCategoryController {
 
     private final ScheduleEventCategoryService categoryService;
+    private final TeamOrgMembershipRepository teamOrgMembershipRepository;
 
     /**
      * チーム行事カテゴリ一覧を取得する（チーム固有 + 親組織カテゴリのマージ結果）。
@@ -39,8 +42,10 @@ public class TeamEventCategoryController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<EventCategoryResponse>>> listCategories(
             @PathVariable Long teamId) {
-        // TODO: teamId から organizationId を取得するロジックを実装
-        Long organizationId = null;
+        Long organizationId = teamOrgMembershipRepository
+                .findFirstByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE)
+                .map(TeamOrgMembershipEntity::getOrganizationId)
+                .orElse(null);
         List<ScheduleEventCategoryEntity> entities =
                 categoryService.getCategoriesForTeam(teamId, organizationId);
         List<EventCategoryResponse> responses = entities.stream()

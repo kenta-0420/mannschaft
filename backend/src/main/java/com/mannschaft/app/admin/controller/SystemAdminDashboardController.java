@@ -2,10 +2,19 @@ package com.mannschaft.app.admin.controller;
 
 import com.mannschaft.app.admin.dto.SystemAdminDashboardResponse;
 import com.mannschaft.app.admin.service.SystemAdminDashboardService;
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -23,6 +32,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class SystemAdminDashboardController {
 
     private final SystemAdminDashboardService dashboardService;
+    private final OrganizationRepository organizationRepository;
+    private final TeamRepository teamRepository;
+    private final UserRepository userRepository;
+    private final OrganizationService organizationService;
 
     /**
      * システム管理者ダッシュボード情報を取得する。
@@ -41,9 +54,9 @@ public class SystemAdminDashboardController {
     @GetMapping("/organizations")
     @Operation(summary = "全組織一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<String>> getOrganizations() {
-        // TODO: 組織機能のリポジトリ実装後に連携
-        return ResponseEntity.ok(ApiResponse.of("TODO: 組織一覧を返す"));
+    public ResponseEntity<ApiResponse<Page<OrganizationEntity>>> getOrganizations(Pageable pageable) {
+        Page<OrganizationEntity> page = organizationRepository.findAll(pageable);
+        return ResponseEntity.ok(ApiResponse.of(page));
     }
 
     /**
@@ -52,9 +65,9 @@ public class SystemAdminDashboardController {
     @GetMapping("/teams")
     @Operation(summary = "全チーム一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<String>> getTeams() {
-        // TODO: チーム機能のリポジトリ実装後に連携
-        return ResponseEntity.ok(ApiResponse.of("TODO: チーム一覧を返す"));
+    public ResponseEntity<ApiResponse<Page<TeamEntity>>> getTeams(Pageable pageable) {
+        Page<TeamEntity> page = teamRepository.findAll(pageable);
+        return ResponseEntity.ok(ApiResponse.of(page));
     }
 
     /**
@@ -63,9 +76,9 @@ public class SystemAdminDashboardController {
     @GetMapping("/users")
     @Operation(summary = "全ユーザー一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<String>> getUsers() {
-        // TODO: ユーザー機能のリポジトリ実装後に連携
-        return ResponseEntity.ok(ApiResponse.of("TODO: ユーザー一覧を返す"));
+    public ResponseEntity<ApiResponse<Page<UserEntity>>> getUsers(Pageable pageable) {
+        Page<UserEntity> page = userRepository.findAll(pageable);
+        return ResponseEntity.ok(ApiResponse.of(page));
     }
 
     /**
@@ -74,9 +87,9 @@ public class SystemAdminDashboardController {
     @PatchMapping("/organizations/{organizationId}/freeze")
     @Operation(summary = "組織凍結")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "凍結成功")
-    public ResponseEntity<ApiResponse<String>> freezeOrganization(@PathVariable Long organizationId) {
-        // TODO: 組織機能のサービス実装後に連携
-        return ResponseEntity.ok(ApiResponse.of("TODO: 組織凍結を実行"));
+    public ResponseEntity<Void> freezeOrganization(@PathVariable Long organizationId) {
+        organizationService.archiveOrganization(organizationId);
+        return ResponseEntity.ok().build();
     }
 
     /**
@@ -85,8 +98,8 @@ public class SystemAdminDashboardController {
     @PatchMapping("/organizations/{organizationId}/unfreeze")
     @Operation(summary = "組織凍結解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "解除成功")
-    public ResponseEntity<ApiResponse<String>> unfreezeOrganization(@PathVariable Long organizationId) {
-        // TODO: 組織機能のサービス実装後に連携
-        return ResponseEntity.ok(ApiResponse.of("TODO: 組織凍結解除を実行"));
+    public ResponseEntity<Void> unfreezeOrganization(@PathVariable Long organizationId) {
+        organizationService.unarchiveOrganization(organizationId);
+        return ResponseEntity.ok().build();
     }
 }

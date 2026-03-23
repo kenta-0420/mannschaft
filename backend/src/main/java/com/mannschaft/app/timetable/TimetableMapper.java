@@ -1,20 +1,26 @@
 package com.mannschaft.app.timetable;
 
+import com.mannschaft.app.timetable.dto.PeriodTemplateResponse;
+import com.mannschaft.app.timetable.dto.TimetableChangeResponse;
+import com.mannschaft.app.timetable.dto.TimetableSlotResponse;
+import com.mannschaft.app.timetable.entity.TimetableChangeEntity;
+import com.mannschaft.app.timetable.entity.TimetablePeriodTemplateEntity;
+import com.mannschaft.app.timetable.entity.TimetableSlotEntity;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 /**
- * 時間割関連の Entity ↔ DTO 変換マッパー。
- * <p>
- * 後続DTO作成後に変換メソッドを実装する。
- * </p>
+ * 時間割関連の Entity → DTO 変換マッパー。
  */
 @Mapper(componentModel = "spring")
 public interface TimetableMapper {
 
-    // TODO: 後続部隊でDTOを作成後、以下のような変換メソッドを実装する
-    // TimetableResponse toResponse(TimetableEntity entity);
-    // TimetableSlotResponse toSlotResponse(TimetableSlotEntity entity);
-    // TimetableChangeResponse toChangeResponse(TimetableChangeEntity entity);
-    // TimetableTermResponse toTermResponse(TimetableTermEntity entity);
-    // TimetablePeriodTemplateResponse toTemplateResponse(TimetablePeriodTemplateEntity entity);
+    @Mapping(target = "weekPattern", expression = "java(entity.getWeekPattern() != null ? entity.getWeekPattern().name() : null)")
+    TimetableSlotResponse toSlotResponse(TimetableSlotEntity entity);
+
+    @Mapping(target = "changeType", expression = "java(entity.getChangeType() != null ? entity.getChangeType().name() : null)")
+    @Mapping(target = "notified", source = "notifyMembers")
+    TimetableChangeResponse toChangeResponse(TimetableChangeEntity entity);
+
+    PeriodTemplateResponse toTemplateResponse(TimetablePeriodTemplateEntity entity);
 }
