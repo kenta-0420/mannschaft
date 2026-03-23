@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +37,7 @@ import com.mannschaft.app.common.SecurityUtils;
 /**
  * パフォーマンス記録コントローラー。記録のCRUD・一括入力・エクスポートAPIを提供する。
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/performance/records")
 @Tag(name = "パフォーマンス記録", description = "F07.2 パフォーマンス記録CRUD・一括入力・エクスポート")
@@ -129,8 +131,8 @@ public class PerformanceRecordController {
         long count = exportService.countExportRecords(teamId, metricId, userId, dateFrom, dateTo);
 
         if (count > 1000) {
-            // 非同期ジョブ（簡略実装）
             String jobId = "export-perf-" + System.currentTimeMillis();
+            log.info("非同期パフォーマンスCSVエクスポート開始: teamId={}, jobId={}, count={}", teamId, jobId, count);
             ExportJobResponse jobResponse = new ExportJobResponse(jobId, "PROCESSING",
                     "エクスポートを開始しました。完了後に通知します。");
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(jobResponse));

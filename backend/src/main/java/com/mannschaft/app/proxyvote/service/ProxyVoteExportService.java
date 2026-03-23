@@ -4,9 +4,11 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.SessionStatus;
+import com.mannschaft.app.proxyvote.entity.ProxyVoteEntity;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteMotionEntity;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteSessionEntity;
 import com.mannschaft.app.proxyvote.repository.ProxyVoteMotionRepository;
+import com.mannschaft.app.proxyvote.repository.ProxyVoteRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ public class ProxyVoteExportService {
 
     private final ProxyVoteSessionService sessionService;
     private final ProxyVoteMotionRepository motionRepository;
+    private final ProxyVoteRepository voteRepository;
     private final PdfGeneratorService pdfGeneratorService;
 
     /**
@@ -63,7 +66,7 @@ public class ProxyVoteExportService {
                             m.getResult() != null ? m.getResult().name() : "");
                 }
             } else {
-                // 記名: 議案別集計
+                // 記名: 議案別集計 + メンバー別詳細
                 writer.println("motion_number,title,approve_count,reject_count,abstain_count,result");
                 for (ProxyVoteMotionEntity m : motions) {
                     writer.printf("%d,\"%s\",%d,%d,%d,%s%n",
@@ -71,7 +74,21 @@ public class ProxyVoteExportService {
                             m.getApproveCount(), m.getRejectCount(), m.getAbstainCount(),
                             m.getResult() != null ? m.getResult().name() : "");
                 }
-                // TODO: 記名セッションの場合はメンバー別詳細行を追加
+
+                // メンバー別詳細行
+                writer.println();
+                writer.println("motion_number,user_id,vote_type,is_proxy_vote,voted_at");
+                for (ProxyVoteMotionEntity m : motions) {
+                    List<ProxyVoteEntity> votes = voteRepository.findByMotionId(m.getId());
+                    for (ProxyVoteEntity v : votes) {
+                        writer.printf("%d,%d,%s,%s,%s%n",
+                                m.getMotionNumber(),
+                                v.getUserId(),
+                                v.getVoteType().name(),
+                                v.getIsProxyVote() ? "委任" : "本人",
+                                v.getVotedAt());
+                    }
+                }
             }
         }
 

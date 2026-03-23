@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.scheduling.annotation.Async;
+
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -65,10 +67,9 @@ public class ServiceRecordExportService {
         }
 
         if (records.size() > STREAMING_THRESHOLD) {
-            // 非同期ジョブとして処理
             String jobId = "export_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
             log.info("非同期CSVエクスポート開始: teamId={}, jobId={}, count={}", teamId, jobId, records.size());
-            // TODO: 非同期ジョブを起動
+            generateCsvAsync(jobId, teamId, memberUserId, serviceDateFrom, serviceDateTo);
             return ExportResponse.builder()
                     .jobId(jobId)
                     .status("PROCESSING")
@@ -150,6 +151,23 @@ public class ServiceRecordExportService {
             writer.flush();
         } catch (Exception e) {
             log.error("CSV書き出しエラー: teamId={}", teamId, e);
+        }
+    }
+
+    /**
+     * 非同期でCSVを生成する（大量データ向け）。
+     * NOTE: 本番ではS3にアップロードしダウンロードURLを通知する。
+     */
+    @Async
+    protected void generateCsvAsync(String jobId, Long teamId, Long memberUserId,
+                                     LocalDate serviceDateFrom, LocalDate serviceDateTo) {
+        try {
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            writeCsv(teamId, memberUserId, serviceDateFrom, serviceDateTo, baos);
+            log.info("非同期CSVエクスポート完了: jobId={}, bytes={}", jobId, baos.size());
+            // NOTE: 本番ではS3アップロード + 通知送信
+        } catch (Exception e) {
+            log.error("非同期CSVエクスポート失敗: jobId={}", jobId, e);
         }
     }
 

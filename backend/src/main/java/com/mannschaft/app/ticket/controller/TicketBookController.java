@@ -36,6 +36,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -212,8 +216,7 @@ public class TicketBookController {
         if ("pdf".equalsIgnoreCase(format)) {
             return exportStatsPdf(teamId, period);
         } else if ("csv".equalsIgnoreCase(format)) {
-            // TODO: CSV エクスポート実装（F12.1 後続対応）
-            return ResponseEntity.ok(ApiResponse.of("CSVエクスポートは未実装です"));
+            return exportStatsCsv(teamId, period);
         }
 
         return ResponseEntity.badRequest()
@@ -221,12 +224,46 @@ public class TicketBookController {
     }
 
     /**
+     * 売上レポートをCSVでエクスポートする。
+     */
+    private ResponseEntity<?> exportStatsCsv(Long teamId, String period) {
+        TicketStatsResponse stats = bookService.getStats(teamId, period);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            baos.write(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
+            PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
+            writer.println("商品ID,商品名,有効数,累計販売数,売上,平均消化率,平均消化日数,期限切れ率");
+
+            if (stats.getByProduct() != null) {
+                for (TicketStatsResponse.ProductStats ps : stats.getByProduct()) {
+                    writer.printf("%d,%s,%d,%d,%d,%s,%s,%s%n",
+                            ps.getProductId(),
+                            escapeCsv(ps.getProductName()),
+                            ps.getActiveBooks(),
+                            ps.getTotalSold(),
+                            ps.getRevenue(),
+                            ps.getAvgConsumptionRate() != null ? ps.getAvgConsumptionRate().toPlainString() : "",
+                            ps.getAvgDaysToExhaust() != null ? ps.getAvgDaysToExhaust().toPlainString() : "",
+                            ps.getExpiryRate() != null ? ps.getExpiryRate().toPlainString() : "");
+                }
+            }
+            writer.flush();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"ticket_stats_" + teamId + ".csv\"")
+                .contentType(org.springframework.http.MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(baos.toByteArray());
+    }
+
+    /**
      * 売上レポートをPDFでエクスポートする。
      */
     private ResponseEntity<?> exportStatsPdf(Long teamId, String period) {
-        // TODO: 売上データ集計サービスとの連携（現在は空データで骨格のみ生成）
-        // TODO: period パラメータの解析・バリデーション（30d, 90d, 1y 等）
-        // TODO: TeamService からチーム名を取得（現在は teamId で代替）
+        TicketStatsResponse stats = bookService.getStats(teamId, period);
         String teamIdentifier = String.valueOf(teamId);
 
         Map<String, Object> variables = new HashMap<>();
@@ -234,9 +271,9 @@ public class TicketBookController {
         variables.put("teamName", teamIdentifier);
         variables.put("periodStart", LocalDate.now().minusDays(30).toString());
         variables.put("periodEnd", LocalDate.now().toString());
-        variables.put("salesItems", List.of());
-        variables.put("totalSoldCount", 0);
-        variables.put("totalAmount", 0);
+        variables.put("salesItems", stats.getByProduct() != null ? stats.getByProduct() : List.of());
+        variables.put("totalSoldCount", stats.getActiveBooks() != null ? stats.getActiveBooks() : 0);
+        variables.put("totalAmount", stats.getTotalRevenue() != null ? stats.getTotalRevenue() : 0);
 
         byte[] pdfBytes = pdfGeneratorService.generateFromTemplate(
                 "pdf/ticket-sales-report", variables);
@@ -247,5 +284,13 @@ public class TicketBookController {
                 .build();
 
         return PdfResponseHelper.toResponse(pdfBytes, fileName);
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 }

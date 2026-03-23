@@ -25,8 +25,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -118,9 +124,48 @@ public class MatchController {
     @Operation(summary = "CSVアップロードによるスコア一括インポート")
     public ResponseEntity<Void> importScores(
             @PathVariable Long orgId, @PathVariable Long tId,
-            @PathVariable Long divId, @PathVariable Long mdId) {
-        // TODO: CSVインポート実装
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+            @PathVariable Long divId, @PathVariable Long mdId,
+            @RequestParam("file") MultipartFile file) {
+        List<BatchScoreRequest.MatchScoreEntry> entries = new ArrayList<>();
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+            // BOM をスキップ
+            reader.mark(1);
+            int firstChar = reader.read();
+            if (firstChar != '\uFEFF' && firstChar != -1) {
+                reader.reset();
+            }
+
+            String line = reader.readLine(); // ヘッダー行をスキップ
+            while ((line = reader.readLine()) != null) {
+                if (line.isBlank()) continue;
+                String[] cols = line.split(",", -1);
+                if (cols.length < 3) continue;
+
+                Long matchId = Long.parseLong(cols[0].trim());
+                Integer homeScore = cols[1].trim().isEmpty() ? null : Integer.parseInt(cols[1].trim());
+                Integer awayScore = cols[2].trim().isEmpty() ? null : Integer.parseInt(cols[2].trim());
+                Integer homeExtra = cols.length > 3 && !cols[3].trim().isEmpty() ? Integer.parseInt(cols[3].trim()) : null;
+                Integer awayExtra = cols.length > 4 && !cols[4].trim().isEmpty() ? Integer.parseInt(cols[4].trim()) : null;
+                Integer homePk = cols.length > 5 && !cols[5].trim().isEmpty() ? Integer.parseInt(cols[5].trim()) : null;
+                Integer awayPk = cols.length > 6 && !cols[6].trim().isEmpty() ? Integer.parseInt(cols[6].trim()) : null;
+                String notes = cols.length > 7 ? cols[7].trim() : null;
+
+                entries.add(new BatchScoreRequest.MatchScoreEntry(
+                        matchId, homeScore, awayScore, homeExtra, awayExtra,
+                        homePk, awayPk, notes, 0L, null));
+            }
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+
+        if (!entries.isEmpty()) {
+            matchService.batchUpdateScores(tId, divId, mdId, new BatchScoreRequest(entries));
+        }
+        return ResponseEntity.noContent().build();
     }
 
     // ===== Roster =====
