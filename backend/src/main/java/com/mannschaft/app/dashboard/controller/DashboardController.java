@@ -1,7 +1,14 @@
 package com.mannschaft.app.dashboard.controller;
 
+import com.mannschaft.app.admin.entity.PlatformAnnouncementEntity;
+import com.mannschaft.app.admin.repository.PlatformAnnouncementRepository;
+import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
+import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
+import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
+import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
@@ -12,11 +19,21 @@ import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
 import com.mannschaft.app.dashboard.service.ActivityFeedService;
 import com.mannschaft.app.dashboard.service.DashboardService;
 import com.mannschaft.app.dashboard.service.DashboardWidgetService;
+import com.mannschaft.app.notification.entity.NotificationEntity;
+import com.mannschaft.app.notification.repository.NotificationRepository;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.timeline.entity.TimelinePostEntity;
+import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,9 +44,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * ダッシュボードコントローラー。
@@ -46,6 +67,13 @@ public class DashboardController {
     private final DashboardWidgetService widgetService;
     private final ActivityFeedService activityFeedService;
     private final AccessControlService accessControlService;
+    private final NotificationRepository notificationRepository;
+    private final TimelinePostRepository timelinePostRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final BulletinThreadRepository bulletinThreadRepository;
+    private final BulletinReadStatusRepository bulletinReadStatusRepository;
+    private final ChatChannelMemberRepository chatChannelMemberRepository;
 
     // ============================================
     // 個人ダッシュボード
@@ -73,10 +101,39 @@ public class DashboardController {
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "20") Integer limit,
             @RequestParam(required = false) Boolean isRead) {
-        // TODO: notifications テーブル連携
+        Long userId = SecurityUtils.getCurrentUserId();
+        int resolvedLimit = Math.min(limit, 50);
+
+        Page<NotificationEntity> page;
+        if (Boolean.FALSE.equals(isRead)) {
+            page = notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(
+                    userId, PageRequest.of(0, resolvedLimit));
+        } else {
+            page = notificationRepository.findByUserIdOrderByCreatedAtDesc(
+                    userId, PageRequest.of(0, resolvedLimit));
+        }
+        long totalCount = page.getTotalElements();
+        boolean hasNext = page.hasNext();
+
+        List<Map<String, Object>> items = page.getContent().stream()
+                .map(n -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", n.getId());
+                    map.put("type", n.getNotificationType());
+                    map.put("title", n.getTitle());
+                    map.put("body", n.getBody());
+                    map.put("is_read", n.getIsRead());
+                    map.put("action_url", n.getActionUrl());
+                    map.put("created_at", n.getCreatedAt());
+                    return map;
+                })
+                .toList();
+
+        long nextCursor = items.isEmpty() ? 0 : page.getContent().getLast().getId();
+
         return ResponseEntity.ok(ApiResponse.of(Map.of(
-                "items", List.of(),
-                "meta", Map.of("next_cursor", 0, "limit", limit, "total_count", 0, "has_next", false)
+                "items", items,
+                "meta", Map.of("next_cursor", nextCursor, "limit", resolvedLimit, "total_count", totalCount, "has_next", hasNext)
         )));
     }
 
@@ -88,10 +145,29 @@ public class DashboardController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getMyPosts(
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "10") Integer limit) {
-        // TODO: timeline_posts 連携
+        Long userId = SecurityUtils.getCurrentUserId();
+        int resolvedLimit = Math.min(limit, 50);
+
+        List<TimelinePostEntity> posts = timelinePostRepository
+                .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, resolvedLimit));
+
+        List<Map<String, Object>> items = posts.stream()
+                .map(p -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", p.getId());
+                    map.put("content", p.getContent());
+                    map.put("created_at", p.getCreatedAt());
+                    map.put("reaction_count", p.getReactionCount());
+                    map.put("reply_count", p.getReplyCount());
+                    return map;
+                })
+                .toList();
+
+        long nextCursor = items.isEmpty() ? 0 : posts.getLast().getId();
+
         return ResponseEntity.ok(ApiResponse.of(Map.of(
-                "items", List.of(),
-                "meta", Map.of("next_cursor", 0, "limit", limit, "total_count", 0, "has_next", false)
+                "items", items,
+                "meta", Map.of("next_cursor", nextCursor, "limit", resolvedLimit, "total_count", items.size(), "has_next", items.size() >= resolvedLimit)
         )));
     }
 
@@ -102,8 +178,26 @@ public class DashboardController {
     @Operation(summary = "直近イベント", description = "今後N日間のイベント + 出欠状況を横断取得")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getUpcomingEvents(
             @RequestParam(defaultValue = "7") Integer days) {
-        // TODO: schedules + schedule_attendances 連携
-        return ResponseEntity.ok(ApiResponse.of(List.of()));
+        Long userId = SecurityUtils.getCurrentUserId();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime until = now.plusDays(days);
+
+        // 個人スケジュール
+        List<ScheduleEntity> personalSchedules = scheduleRepository
+                .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, now, until);
+        // 所属チームのスケジュール
+        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
+        List<ScheduleEntity> teamSchedules = teamRoles.stream()
+                .flatMap(role -> scheduleRepository
+                        .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), now, until).stream())
+                .toList();
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        personalSchedules.stream().map(this::toScheduleMap).forEach(items::add);
+        teamSchedules.stream().map(this::toScheduleMap).forEach(items::add);
+        items.sort((a, b) -> ((LocalDateTime) a.get("start_at")).compareTo((LocalDateTime) b.get("start_at")));
+
+        return ResponseEntity.ok(ApiResponse.of(items));
     }
 
     /**
@@ -113,12 +207,33 @@ public class DashboardController {
     @Operation(summary = "未読スレッド一覧", description = "未読の掲示板スレッド + チャットチャネルを横断取得")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getUnreadThreads(
             @RequestParam(defaultValue = "10") Integer limit) {
-        // TODO: bulletin_threads + chat_channel_members 連携
+        Long userId = SecurityUtils.getCurrentUserId();
+
+        // 掲示板: 所属チームのスレッドで未読のもの
+        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
+        long totalUnreadBulletin = 0;
+        for (UserRoleEntity role : teamRoles) {
+            Page<com.mannschaft.app.bulletin.entity.BulletinThreadEntity> threads =
+                    bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
+                            com.mannschaft.app.bulletin.ScopeType.TEAM, role.getTeamId(), PageRequest.of(0, 100));
+            for (var thread : threads.getContent()) {
+                if (!bulletinReadStatusRepository.existsByThreadIdAndUserId(thread.getId(), userId)) {
+                    totalUnreadBulletin++;
+                }
+            }
+        }
+
+        // チャット: 未読数合計
+        List<ChatChannelMemberEntity> chatMemberships = chatChannelMemberRepository.findByUserId(userId);
+        long totalUnreadChat = chatMemberships.stream()
+                .mapToInt(ChatChannelMemberEntity::getUnreadCount)
+                .sum();
+
         return ResponseEntity.ok(ApiResponse.of(Map.of(
                 "bulletin_threads", List.of(),
                 "chat_channels", List.of(),
-                "total_unread_bulletin", 0,
-                "total_unread_chat", 0
+                "total_unread_bulletin", totalUnreadBulletin,
+                "total_unread_chat", totalUnreadChat
         )));
     }
 
@@ -131,8 +246,9 @@ public class DashboardController {
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "10") Integer limit) {
         Long userId = SecurityUtils.getCurrentUserId();
-        // TODO: team_memberships から所属スコープIDを取得
-        List<Long> scopeIds = List.of();
+        // 所属チームIDを取得してスコープとする
+        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
+        List<Long> scopeIds = teamRoles.stream().map(UserRoleEntity::getTeamId).toList();
         List<ActivityFeedResponse> response = activityFeedService.getActivityFeed(userId, cursor, limit, scopeIds);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -144,11 +260,29 @@ public class DashboardController {
     @Operation(summary = "個人カレンダーサマリー", description = "個人スケジュール + 所属チームの公開イベントを集約")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCalendar(
             @RequestParam(required = false) String month) {
-        // TODO: schedules 連携
+        Long userId = SecurityUtils.getCurrentUserId();
+
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime todayEnd = LocalDate.now().atTime(LocalTime.MAX);
+        LocalDateTime weekEnd = todayStart.plusDays(7);
+        LocalDateTime monthEnd = todayStart.plusMonths(1);
+
+        long eventsToday = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, todayEnd).size();
+        long eventsThisWeek = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, weekEnd).size();
+        long eventsThisMonth = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, monthEnd).size();
+
+        // チーム公開イベントも加算
+        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
+        for (UserRoleEntity role : teamRoles) {
+            eventsToday += scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), todayStart, todayEnd).size();
+            eventsThisWeek += scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), todayStart, weekEnd).size();
+            eventsThisMonth += scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), todayStart, monthEnd).size();
+        }
+
         return ResponseEntity.ok(ApiResponse.of(Map.of(
-                "events_today", 0,
-                "events_this_week", 0,
-                "events_this_month", 0,
+                "events_today", eventsToday,
+                "events_this_week", eventsThisWeek,
+                "events_this_month", eventsThisMonth,
                 "days_with_events", List.of()
         )));
     }
@@ -159,7 +293,7 @@ public class DashboardController {
     @GetMapping("/performance")
     @Operation(summary = "パフォーマンスサマリー", description = "所属チーム/組織ごとの個人パフォーマンス概要")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPerformance() {
-        // TODO: パフォーマンス管理モジュール連携
+        // 将来実装: パフォーマンス管理モジュールが完成後に連携
         return ResponseEntity.ok(ApiResponse.of(Map.of("teams", List.of())));
     }
 
@@ -170,7 +304,7 @@ public class DashboardController {
     @Operation(summary = "チャットハブ", description = "チーム別自動グルーピング + カスタムフォルダ別のチャット一覧")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getChatHub(
             @RequestParam(defaultValue = "false") Boolean allTeams) {
-        // TODO: chat_channels + chat_contact_folders 連携
+        // 将来実装: チャットハブモジュールが完成後に連携
         return ResponseEntity.ok(ApiResponse.of(Map.of(
                 "team_groups", List.of(),
                 "custom_folders", List.of(),
@@ -254,5 +388,19 @@ public class DashboardController {
         Long resolvedScopeId = widgetService.resolveScopeId(parsed, scopeId);
         widgetService.resetWidgetSettings(userId, parsed, resolvedScopeId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * スケジュールエンティティをMap表現に変換する。
+     */
+    private Map<String, Object> toScheduleMap(ScheduleEntity entity) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", entity.getId());
+        map.put("title", entity.getTitle());
+        map.put("start_at", entity.getStartAt());
+        map.put("end_at", entity.getEndAt());
+        map.put("location", entity.getLocation());
+        map.put("all_day", entity.getAllDay());
+        return map;
     }
 }
