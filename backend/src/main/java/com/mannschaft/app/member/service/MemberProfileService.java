@@ -170,7 +170,7 @@ public class MemberProfileService {
         pageService.findPageOrThrow(targetPageId);
 
         // コピー元ページ存在確認
-        TeamPageEntity sourcePage = pageService.findPageOrThrow(request.getSourcePageId());
+        pageService.findPageOrThrow(request.getSourcePageId());
 
         if (targetPageId.equals(request.getSourcePageId())) {
             throw new BusinessException(MemberErrorCode.INVALID_SOURCE_PAGE);

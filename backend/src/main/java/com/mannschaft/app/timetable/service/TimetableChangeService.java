@@ -4,7 +4,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.TimetableChangeType;
 import com.mannschaft.app.timetable.TimetableErrorCode;
 import com.mannschaft.app.timetable.entity.TimetableChangeEntity;
-import com.mannschaft.app.timetable.entity.TimetableEntity;
 import com.mannschaft.app.timetable.event.TimetableChangeCreatedEvent;
 import com.mannschaft.app.timetable.repository.TimetableChangeRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +27,6 @@ import java.util.List;
 public class TimetableChangeService {
 
     private final TimetableChangeRepository changeRepository;
-    private final TimetableService timetableService;
     private final ApplicationEventPublisher eventPublisher;
 
     /**

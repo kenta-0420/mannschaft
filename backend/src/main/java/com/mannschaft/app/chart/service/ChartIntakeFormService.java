@@ -46,7 +46,7 @@ public class ChartIntakeFormService {
      */
     @Transactional
     public IntakeFormResponse updateIntakeForm(Long teamId, Long chartId, UpdateIntakeFormRequest request) {
-        ChartRecordEntity record = recordRepository.findByIdAndTeamId(chartId, teamId)
+        recordRepository.findByIdAndTeamId(chartId, teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CHART_NOT_FOUND));
 
         Optional<ChartIntakeFormEntity> existing = intakeFormRepository.findByChartRecordIdAndFormType(

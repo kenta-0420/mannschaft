@@ -39,7 +39,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -533,7 +532,7 @@ public class TicketBookService {
      * @return QR コードレスポンス
      */
     public QrCodeResponse generateQrCode(Long teamId, Long bookId, Long userId) {
-        TicketBookEntity book = findBookOrThrow(teamId, bookId);
+        findBookOrThrow(teamId, bookId);
         // 所有者チェックは Controller 層で実施
         TicketQrService.QrGenerateResult result = ticketQrService.generateToken(bookId);
         return new QrCodeResponse(result.qrPayload(), result.expiresAt());

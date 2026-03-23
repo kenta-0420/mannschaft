@@ -132,7 +132,6 @@ public class ScheduleCrossRefService {
         ScheduleEntity sourceSchedule = scheduleService.getSchedule(crossRef.getSourceScheduleId());
 
         // 招待元スケジュールを複製して招待先スコープに作成
-        String scopeType = crossRef.getTargetType() == CrossRefTargetType.TEAM ? "TEAM" : "ORGANIZATION";
         ScheduleEntity duplicate = sourceSchedule.toBuilder()
                 .teamId(crossRef.getTargetType() == CrossRefTargetType.TEAM ? crossRef.getTargetId() : null)
                 .organizationId(crossRef.getTargetType() == CrossRefTargetType.ORGANIZATION ? crossRef.getTargetId() : null)

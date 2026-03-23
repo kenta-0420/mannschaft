@@ -13,7 +13,6 @@ import com.mannschaft.app.cms.entity.UserBlogSettingsEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import java.util.Collections;
 import java.util.List;
 
 /**

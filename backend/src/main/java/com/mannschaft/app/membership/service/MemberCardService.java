@@ -33,13 +33,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * 会員証サービス。会員証のCRUD・QR認証・チェックイン管理を担当する。
@@ -51,7 +48,6 @@ import java.util.UUID;
 public class MemberCardService {
 
     private static final int CHECKIN_COOLDOWN_MINUTES = 5;
-    private static final String DEFAULT_CARD_PREFIX = "M";
 
     private final MemberCardRepository memberCardRepository;
     private final MemberCardCheckinRepository checkinRepository;
@@ -88,10 +84,9 @@ public class MemberCardService {
     public ApiResponse<MemberCardDetailResponse> getCardDetail(Long cardId, Long userId) {
         MemberCardEntity card = findCardOrThrow(cardId);
 
-        // 本人チェック（TODO: ADMIN権限チェックを実装時に追加）
-        if (!card.getUserId().equals(userId)) {
-            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_002);
-        }
+        // 本人 or ADMIN/DEPUTY_ADMIN なら閲覧可
+        accessControlService.checkOwnerOrAdmin(
+                userId, card.getUserId(), card.getScopeId(), card.getScopeType().name());
 
         MemberCardDetailResponse response = new MemberCardDetailResponse(
                 card.getId(),
@@ -219,7 +214,9 @@ public class MemberCardService {
                     "QRコードの署名が不正です。再生成された可能性があります。"));
         }
 
-        // 5. スコープ権限チェック（TODO: ADMINのスコープ所属チェック実装）
+        // 5. スキャンしたユーザーがスコープの ADMIN/DEPUTY_ADMIN であることを検証
+        accessControlService.checkAdminOrAbove(
+                adminUserId, card.getScopeId(), card.getScopeType().name());
 
         // 6. ステータスチェック
         if (card.getStatus() == CardStatus.SUSPENDED) {
@@ -473,10 +470,9 @@ public class MemberCardService {
             Long cardId, Long userId, LocalDateTime from, LocalDateTime to) {
         MemberCardEntity card = findCardOrThrow(cardId);
 
-        // 本人チェック（TODO: ADMIN権限チェック追加）
-        if (!card.getUserId().equals(userId)) {
-            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_002);
-        }
+        // 本人 or ADMIN/DEPUTY_ADMIN なら閲覧可
+        accessControlService.checkOwnerOrAdmin(
+                userId, card.getUserId(), card.getScopeId(), card.getScopeType().name());
 
         if (from == null) {
             from = LocalDateTime.now().minusDays(30);

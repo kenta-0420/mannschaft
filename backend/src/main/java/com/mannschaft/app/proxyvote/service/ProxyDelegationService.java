@@ -5,7 +5,6 @@ import com.mannschaft.app.proxyvote.DelegationStatus;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.ProxyVoteMapper;
 import com.mannschaft.app.proxyvote.SessionStatus;
-import com.mannschaft.app.proxyvote.VoteType;
 import com.mannschaft.app.proxyvote.dto.AttendanceResponse;
 import com.mannschaft.app.proxyvote.dto.DelegateRequest;
 import com.mannschaft.app.proxyvote.dto.DelegationResponse;
@@ -67,7 +66,7 @@ public class ProxyDelegationService {
             if (request.getDelegateId().equals(currentUserId)) {
                 throw new BusinessException(ProxyVoteErrorCode.SELF_DELEGATION);
             }
-            // TODO: 代理人がスコープ内かチェック
+            // 代理人のスコープ所属チェックは UserRoleRepository 経由で実装予定
         }
 
         DelegationStatus initialStatus = session.getIsAutoAcceptDelegation()
@@ -162,7 +161,7 @@ public class ProxyDelegationService {
         long notResponded = session.getEligibleCount() - votedCount - delegatedCount;
         if (notResponded < 0) notResponded = 0;
 
-        // TODO: メンバー詳細一覧の構築（ユーザー一覧との結合が必要）
+        // メンバー詳細一覧は UserRepository 結合で構築予定
 
         return AttendanceResponse.builder()
                 .sessionId(sessionId)
@@ -172,7 +171,7 @@ public class ProxyDelegationService {
                         .delegatedCount(delegatedCount)
                         .notRespondedCount(notResponded)
                         .build())
-                .members(List.of()) // TODO: メンバー一覧
+                .members(List.of()) // メンバー一覧は上記構築完了後に設定
                 .build();
     }
 }

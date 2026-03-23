@@ -10,7 +10,6 @@ import com.mannschaft.app.payment.dto.ContentPaymentGateResponse;
 import com.mannschaft.app.payment.entity.ContentPaymentGateEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.ContentPaymentGateRepository;
-import com.mannschaft.app.payment.repository.PaymentItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,7 +29,6 @@ import java.util.List;
 public class ContentPaymentGateService {
 
     private final ContentPaymentGateRepository contentPaymentGateRepository;
-    private final PaymentItemRepository paymentItemRepository;
     private final PaymentItemService paymentItemService;
 
     /**

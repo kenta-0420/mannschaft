@@ -2,7 +2,6 @@ package com.mannschaft.app.membership.controller;
 
 import com.mannschaft.app.membership.CardStatus;
 import com.mannschaft.app.membership.ScopeType;
-import com.mannschaft.app.membership.dto.MemberCardListResponse;
 import com.mannschaft.app.membership.service.MemberCardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

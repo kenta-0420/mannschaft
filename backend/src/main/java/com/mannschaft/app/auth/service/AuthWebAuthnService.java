@@ -20,8 +20,22 @@ import com.mannschaft.app.auth.event.WebAuthnRegisteredEvent;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.webauthn4j.WebAuthnManager;
+import com.webauthn4j.converter.exception.DataConversionException;
+import com.webauthn4j.data.AuthenticationData;
+import com.webauthn4j.data.AuthenticationParameters;
+import com.webauthn4j.data.AuthenticationRequest;
+import com.webauthn4j.data.RegistrationData;
+import com.webauthn4j.data.RegistrationParameters;
+import com.webauthn4j.data.RegistrationRequest;
+import com.webauthn4j.data.attestation.authenticator.AttestedCredentialData;
+import com.webauthn4j.data.client.Origin;
+import com.webauthn4j.data.client.challenge.DefaultChallenge;
+import com.webauthn4j.server.ServerProperty;
+import com.webauthn4j.verifier.exception.VerificationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +72,11 @@ public class AuthWebAuthnService {
     private static final int CHALLENGE_TTL_MINUTES = 5;
     private static final String RP_ID = "mannschaft.app";
     private static final String RP_NAME = "Mannschaft";
+
+    private final WebAuthnManager webAuthnManager = WebAuthnManager.createNonStrictWebAuthnManager();
+
+    @Value("${mannschaft.webauthn.origin:https://mannschaft.app}")
+    private String rpOrigin;
 
     /**
      * WebAuthn登録を開始する。チャレンジを生成してValkeyに保存する。
@@ -98,6 +117,7 @@ public class AuthWebAuthnService {
      * @param req    登録完了リクエスト
      * @return メッセージレスポンス
      */
+    @SuppressWarnings("deprecation")
     @Transactional
     public ApiResponse<MessageResponse> completeRegister(Long userId, WebAuthnRegisterCompleteRequest req) {
         // 1. チャレンジ検証
@@ -108,8 +128,28 @@ public class AuthWebAuthnService {
         }
         redisTemplate.delete(challengeKey);
 
-        // TODO: WebAuthn4J統合時にattestation検証を実装する
-        log.warn("WebAuthn attestation検証はダミー実装です。WebAuthn4J統合時に正式実装してください。");
+        // WebAuthn4J attestation 検証
+        try {
+            byte[] attestationObject = Base64.getUrlDecoder().decode(req.getAttestationObject());
+            byte[] clientDataJson = Base64.getUrlDecoder().decode(req.getClientDataJson());
+
+            RegistrationRequest registrationRequest = new RegistrationRequest(attestationObject, clientDataJson);
+
+            ServerProperty serverProperty = new ServerProperty(
+                    new Origin(rpOrigin),
+                    RP_ID,
+                    new DefaultChallenge(storedChallenge.getBytes()),
+                    null
+            );
+            RegistrationParameters registrationParameters = new RegistrationParameters(
+                    serverProperty, null, false, false);
+
+            RegistrationData registrationData = webAuthnManager.parse(registrationRequest);
+            webAuthnManager.validate(registrationData, registrationParameters);
+        } catch (DataConversionException | VerificationException e) {
+            log.warn("WebAuthn attestation検証失敗: userId={}", userId, e);
+            throw new BusinessException(AuthErrorCode.AUTH_024, e);
+        }
 
         // 2. credential_id重複チェック
         if (webAuthnCredentialRepository.findByCredentialId(req.getCredentialId()).isPresent()) {
@@ -183,6 +223,7 @@ public class AuthWebAuthnService {
      * @param userAgent ユーザーエージェント
      * @return トークンレスポンス
      */
+    @SuppressWarnings("deprecation")
     @Transactional
     public ApiResponse<TokenResponse> completeLogin(
             WebAuthnLoginCompleteRequest req, String ipAddress, String userAgent) {
@@ -202,8 +243,44 @@ public class AuthWebAuthnService {
         }
         redisTemplate.delete(challengeKey);
 
-        // TODO: WebAuthn4J統合時に署名検証を実装する
-        log.warn("WebAuthn署名検証はダミー実装です。WebAuthn4J統合時に正式実装してください。");
+        // WebAuthn4J 署名検証
+        try {
+            byte[] credentialIdBytes = Base64.getUrlDecoder().decode(req.getCredentialId());
+            byte[] authenticatorData = Base64.getUrlDecoder().decode(req.getAuthenticatorData());
+            byte[] clientDataJson = Base64.getUrlDecoder().decode(req.getClientDataJson());
+            byte[] signature = Base64.getUrlDecoder().decode(req.getSignature());
+
+            AuthenticationRequest authenticationRequest = new AuthenticationRequest(
+                    credentialIdBytes, authenticatorData, clientDataJson, signature);
+
+            ServerProperty serverProperty = new ServerProperty(
+                    new Origin(rpOrigin),
+                    RP_ID,
+                    new DefaultChallenge(storedChallenge.getBytes()),
+                    null
+            );
+
+            // 保存済み公開鍵からAuthenticatorを構築
+            com.webauthn4j.converter.util.ObjectConverter objectConverter =
+                    new com.webauthn4j.converter.util.ObjectConverter();
+            com.webauthn4j.data.attestation.authenticator.COSEKey coseKey =
+                    objectConverter.getCborConverter().readValue(
+                            Base64.getUrlDecoder().decode(credential.getPublicKey()),
+                            com.webauthn4j.data.attestation.authenticator.COSEKey.class);
+            com.webauthn4j.authenticator.Authenticator authenticator =
+                    new com.webauthn4j.authenticator.AuthenticatorImpl(
+                            new AttestedCredentialData(null, credentialIdBytes, coseKey),
+                            null, credential.getSignCount());
+
+            AuthenticationParameters authenticationParameters = new AuthenticationParameters(
+                    serverProperty, authenticator, null, false, false);
+
+            AuthenticationData authenticationData = webAuthnManager.parse(authenticationRequest);
+            webAuthnManager.validate(authenticationData, authenticationParameters);
+        } catch (DataConversionException | VerificationException e) {
+            log.warn("WebAuthn署名検証失敗: credentialId={}", req.getCredentialId(), e);
+            throw new BusinessException(AuthErrorCode.AUTH_024, e);
+        }
 
         // 3. sign_count検証（リプレイ攻撃防止）
         if (req.getSignCount() <= credential.getSignCount()) {

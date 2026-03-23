@@ -9,7 +9,6 @@ import com.mannschaft.app.event.dto.CheckinRequest;
 import com.mannschaft.app.event.dto.CheckinResponse;
 import com.mannschaft.app.event.dto.SelfCheckinRequest;
 import com.mannschaft.app.event.entity.EventCheckinEntity;
-import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventTicketEntity;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRepository;

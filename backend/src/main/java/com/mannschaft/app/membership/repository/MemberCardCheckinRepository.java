@@ -1,6 +1,5 @@
 package com.mannschaft.app.membership.repository;
 
-import com.mannschaft.app.membership.CheckinType;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.membership.entity.MemberCardCheckinEntity;
 import org.springframework.data.jpa.repository.JpaRepository;

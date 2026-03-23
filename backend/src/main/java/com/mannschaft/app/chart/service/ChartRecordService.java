@@ -40,7 +40,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -319,7 +318,7 @@ public class ChartRecordService {
 
     /**
      * PDF エクスポート用にカルテデータを取得する。
-     * 実際の PDF 生成はコントローラー層で行う（TODO: PDF 生成ライブラリ統合）。
+     * 実際の PDF 生成はコントローラー層で {@link PdfGeneratorService} を使って行う。
      */
     public ChartRecordResponse getChartForPdf(Long teamId, Long chartId) {
         return getChart(teamId, chartId);

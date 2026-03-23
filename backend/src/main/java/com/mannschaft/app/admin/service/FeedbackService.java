@@ -1,7 +1,6 @@
 package com.mannschaft.app.admin.service;
 
 import com.mannschaft.app.admin.AdminFeedbackErrorCode;
-import com.mannschaft.app.admin.AnnouncementFeedbackMapper;
 import com.mannschaft.app.admin.FeedbackStatus;
 import com.mannschaft.app.admin.dto.CreateFeedbackRequest;
 import com.mannschaft.app.admin.dto.FeedbackRespondRequest;
@@ -34,7 +33,6 @@ public class FeedbackService {
 
     private final FeedbackSubmissionRepository feedbackRepository;
     private final FeedbackVoteRepository voteRepository;
-    private final AnnouncementFeedbackMapper mapper;
 
     /**
      * フィードバックを投稿する。

@@ -1,15 +1,12 @@
 package com.mannschaft.app.chat.service;
 
 import com.mannschaft.app.chat.ChatErrorCode;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.chat.ChatMapper;
 import com.mannschaft.app.chat.dto.AttachmentRequest;
 import com.mannschaft.app.chat.dto.AttachmentResponse;
 import com.mannschaft.app.chat.dto.EditMessageRequest;
 import com.mannschaft.app.chat.dto.ForwardMessageRequest;
 import com.mannschaft.app.chat.dto.MessageResponse;
-import com.mannschaft.app.chat.dto.ReactionResponse;
 import com.mannschaft.app.chat.dto.SendMessageRequest;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
@@ -49,7 +46,6 @@ public class ChatMessageService {
     private final ChatMessageReactionRepository reactionRepository;
     private final ChatChannelService channelService;
     private final ChatMapper chatMapper;
-    private final NotificationHelper notificationHelper;
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。

@@ -6,7 +6,6 @@ import com.mannschaft.app.event.EventScopeType;
 import com.mannschaft.app.event.dto.CreateEventRequest;
 import com.mannschaft.app.event.dto.EventDetailResponse;
 import com.mannschaft.app.event.dto.EventResponse;
-import com.mannschaft.app.event.dto.EventStatsResponse;
 import com.mannschaft.app.event.dto.UpdateEventRequest;
 import com.mannschaft.app.event.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,7 +37,6 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TeamEventController {
 
     private final EventService eventService;
-
 
     /**
      * チームのイベント一覧を取得する。

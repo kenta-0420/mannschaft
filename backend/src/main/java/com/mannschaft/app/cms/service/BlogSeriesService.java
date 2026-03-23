@@ -1,7 +1,6 @@
 package com.mannschaft.app.cms.service;
 
 import com.mannschaft.app.cms.CmsErrorCode;
-import com.mannschaft.app.cms.CmsMapper;
 import com.mannschaft.app.cms.dto.BlogSeriesResponse;
 import com.mannschaft.app.cms.dto.CreateSeriesRequest;
 import com.mannschaft.app.cms.dto.UpdateSeriesRequest;
@@ -28,7 +27,6 @@ public class BlogSeriesService {
 
     private final BlogPostSeriesRepository seriesRepository;
     private final BlogPostRepository postRepository;
-    private final CmsMapper cmsMapper;
 
     /**
      * シリーズ一覧を取得する。

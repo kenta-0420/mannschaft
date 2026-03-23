@@ -3,7 +3,6 @@ package com.mannschaft.app.workflow.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.workflow.ApprovalType;
 import com.mannschaft.app.workflow.ApproverDecision;
-import com.mannschaft.app.workflow.StepStatus;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
 import com.mannschaft.app.workflow.WorkflowMapper;
 import com.mannschaft.app.workflow.WorkflowStatus;

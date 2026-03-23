@@ -4,7 +4,6 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.membership.dto.CardStatusResponse;
 import com.mannschaft.app.membership.dto.CheckinHistoryResponse;
 import com.mannschaft.app.membership.dto.MemberCardDetailResponse;
-import com.mannschaft.app.membership.dto.MemberCardListResponse;
 import com.mannschaft.app.membership.dto.MemberCardResponse;
 import com.mannschaft.app.membership.dto.QrTokenResponse;
 import com.mannschaft.app.membership.dto.RegenerateResponse;
@@ -31,7 +30,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -44,7 +42,6 @@ import com.mannschaft.app.common.SecurityUtils;
 public class MemberCardController {
 
     private final MemberCardService memberCardService;
-
 
     /**
      * 自分の会員証一覧を取得する。

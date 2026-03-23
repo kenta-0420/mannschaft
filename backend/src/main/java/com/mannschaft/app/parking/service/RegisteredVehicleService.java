@@ -3,7 +3,6 @@ package com.mannschaft.app.parking.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.parking.ParkingErrorCode;
-import com.mannschaft.app.parking.ParkingMapper;
 import com.mannschaft.app.parking.VehicleType;
 import com.mannschaft.app.parking.dto.CreateVehicleRequest;
 import com.mannschaft.app.parking.dto.UpdateVehicleRequest;
@@ -28,7 +27,6 @@ import java.util.List;
 public class RegisteredVehicleService {
 
     private final RegisteredVehicleRepository vehicleRepository;
-    private final ParkingMapper parkingMapper;
     private final EncryptionService encryptionService;
 
     /**

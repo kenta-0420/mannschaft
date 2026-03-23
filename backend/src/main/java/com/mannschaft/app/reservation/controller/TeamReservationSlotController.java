@@ -3,10 +3,8 @@ package com.mannschaft.app.reservation.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.reservation.dto.CloseSlotRequest;
 import com.mannschaft.app.reservation.dto.CreateSlotRequest;
-import com.mannschaft.app.reservation.dto.ReservationResponse;
 import com.mannschaft.app.reservation.dto.ReservationSlotResponse;
 import com.mannschaft.app.reservation.dto.UpdateSlotRequest;
-import com.mannschaft.app.reservation.service.ReservationService;
 import com.mannschaft.app.reservation.service.ReservationSlotService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,8 +37,6 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TeamReservationSlotController {
 
     private final ReservationSlotService slotService;
-    private final ReservationService reservationService;
-
 
     /**
      * スロット一覧を取得する。

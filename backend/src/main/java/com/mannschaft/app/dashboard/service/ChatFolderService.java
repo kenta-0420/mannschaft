@@ -165,7 +165,7 @@ public class ChatFolderService {
      */
     @Transactional
     public BulkAssignResultResponse bulkAssignItems(Long userId, Long folderId, BulkAssignFolderItemsRequest request) {
-        ChatContactFolderEntity folder = findOwnedFolder(userId, folderId);
+        findOwnedFolder(userId, folderId);
 
         int assignedCount = 0;
         int skippedCount = 0;

@@ -5,7 +5,6 @@ import com.mannschaft.app.chart.ChartErrorCode;
 import com.mannschaft.app.chart.ChartMapper;
 import com.mannschaft.app.chart.MarkType;
 import com.mannschaft.app.chart.dto.BodyMarksResponse;
-import com.mannschaft.app.chart.dto.ChartBodyMarkRequest;
 import com.mannschaft.app.chart.dto.ChartBodyMarkResponse;
 import com.mannschaft.app.chart.dto.UpdateBodyMarksRequest;
 import com.mannschaft.app.chart.entity.ChartBodyMarkEntity;

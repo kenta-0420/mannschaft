@@ -1,7 +1,5 @@
 package com.mannschaft.app.dashboard.controller;
 
-import com.mannschaft.app.admin.entity.PlatformAnnouncementEntity;
-import com.mannschaft.app.admin.repository.PlatformAnnouncementRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
@@ -293,7 +291,7 @@ public class DashboardController {
     @GetMapping("/performance")
     @Operation(summary = "パフォーマンスサマリー", description = "所属チーム/組織ごとの個人パフォーマンス概要")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPerformance() {
-        // 将来実装: パフォーマンス管理モジュールが完成後に連携
+        // パフォーマンス管理モジュール実装完了後にデータ取得を連携予定
         return ResponseEntity.ok(ApiResponse.of(Map.of("teams", List.of())));
     }
 
@@ -304,7 +302,7 @@ public class DashboardController {
     @Operation(summary = "チャットハブ", description = "チーム別自動グルーピング + カスタムフォルダ別のチャット一覧")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getChatHub(
             @RequestParam(defaultValue = "false") Boolean allTeams) {
-        // 将来実装: チャットハブモジュールが完成後に連携
+        // チャットハブモジュール実装完了後にデータ取得を連携予定
         return ResponseEntity.ok(ApiResponse.of(Map.of(
                 "team_groups", List.of(),
                 "custom_folders", List.of(),

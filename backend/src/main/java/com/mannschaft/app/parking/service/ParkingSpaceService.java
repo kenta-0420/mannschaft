@@ -233,8 +233,8 @@ public class ParkingSpaceService {
      */
     @Transactional
     public void swap(String scopeType, Long scopeId, SwapRequest request, Long currentUserId) {
-        ParkingSpaceEntity spaceA = findScopeSpaceOrThrow(scopeType, scopeId, request.getSpaceIdA());
-        ParkingSpaceEntity spaceB = findScopeSpaceOrThrow(scopeType, scopeId, request.getSpaceIdB());
+        findScopeSpaceOrThrow(scopeType, scopeId, request.getSpaceIdA());
+        findScopeSpaceOrThrow(scopeType, scopeId, request.getSpaceIdB());
 
         ParkingAssignmentEntity assignA = assignmentRepository.findBySpaceIdAndReleasedAtIsNull(request.getSpaceIdA())
                 .orElseThrow(() -> new BusinessException(ParkingErrorCode.INVALID_SWAP_TARGET));

@@ -2,9 +2,7 @@ package com.mannschaft.app.role.service;
 
 import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.PermissionGroupEntity;
-import com.mannschaft.app.role.entity.PermissionGroupPermissionEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
-import com.mannschaft.app.role.entity.RolePermissionEntity;
 import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;

@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.PaymentItemType;
 import com.mannschaft.app.payment.PaymentMethod;
@@ -31,6 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 支払い記録サービス。手動記録・Stripe 決済・返金・CSV エクスポート等を担当する。
@@ -46,6 +50,7 @@ public class MemberPaymentService {
     private final PaymentItemService paymentItemService;
     private final StripePaymentProvider stripePaymentProvider;
     private final PaymentMapper paymentMapper;
+    private final NameResolverService nameResolverService;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
@@ -299,8 +304,14 @@ public class MemberPaymentService {
      * 支払い状況を CSV バイト列で取得する。
      */
     public byte[] exportPaymentsCsv(Long paymentItemId) {
-        PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(paymentItemId);
+        paymentItemService.findByIdOrThrow(paymentItemId);
         List<MemberPaymentEntity> payments = memberPaymentRepository.findByPaymentItemId(paymentItemId);
+
+        // メンバー名をバッチ解決
+        Set<Long> userIds = payments.stream()
+                .map(MemberPaymentEntity::getUserId)
+                .collect(Collectors.toSet());
+        Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(userIds);
 
         StringBuilder sb = new StringBuilder();
         // BOM 付き UTF-8
@@ -309,7 +320,7 @@ public class MemberPaymentService {
 
         for (MemberPaymentEntity payment : payments) {
             sb.append(payment.getUserId()).append(',');
-            sb.append(','); // メンバー名は別テーブルのため TODO
+            sb.append(escapeCsv(nameMap.getOrDefault(payment.getUserId(), "不明"))).append(',');
             sb.append(payment.getStatus().name()).append(',');
             sb.append(payment.getAmountPaid()).append(',');
             sb.append(payment.getCurrency()).append(',');
@@ -370,6 +381,16 @@ public class MemberPaymentService {
         log.info("Stripe 再同期: paymentId={}, reconciled={}", paymentId, reconciled);
         return new ReconcileResponse(paymentId, previousStatus, entity.getStatus().name(),
                 statusInfo.paymentIntentStatus(), reconciled);
+    }
+
+    /**
+     * CSV 出力用のエスケープ処理。カンマを全角カンマに置換する。
+     */
+    private String escapeCsv(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace(",", "，");
     }
 
     /**

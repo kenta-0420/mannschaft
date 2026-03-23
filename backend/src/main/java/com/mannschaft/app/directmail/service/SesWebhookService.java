@@ -1,7 +1,6 @@
 package com.mannschaft.app.directmail.service;
 
 import com.mannschaft.app.directmail.dto.SesNotificationRequest;
-import com.mannschaft.app.directmail.entity.DirectMailLogEntity;
 import com.mannschaft.app.directmail.entity.DirectMailRecipientEntity;
 import com.mannschaft.app.directmail.repository.DirectMailLogRepository;
 import com.mannschaft.app.directmail.repository.DirectMailRecipientRepository;
@@ -9,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
 
 import java.util.Optional;
 
@@ -31,7 +31,7 @@ public class SesWebhookService {
     public void handleNotification(SesNotificationRequest request) {
         if ("SubscriptionConfirmation".equals(request.getType())) {
             log.info("SES SubscriptionConfirmation 受信: topicArn={}", request.getTopicArn());
-            // TODO: subscribeURL にアクセスして確認
+            confirmSubscription(request.getSubscribeURL());
             return;
         }
 
@@ -81,6 +81,22 @@ public class SesWebhookService {
             });
 
             log.info("SES開封記録: recipientId={}", recipient.getId());
+        }
+    }
+
+    /**
+     * SNS SubscriptionConfirmation の subscribeURL にGETアクセスしてサブスクリプションを確認する。
+     */
+    private void confirmSubscription(String subscribeUrl) {
+        if (subscribeUrl == null || subscribeUrl.isBlank()) {
+            log.warn("subscribeURL が空のため確認をスキップ");
+            return;
+        }
+        try {
+            RestClient.create().get().uri(subscribeUrl).retrieve().toBodilessEntity();
+            log.info("SNS SubscriptionConfirmation 確認完了: url={}", subscribeUrl);
+        } catch (Exception e) {
+            log.error("SNS SubscriptionConfirmation 確認失敗: url={}", subscribeUrl, e);
         }
     }
 }

@@ -30,11 +30,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.eatthepath.otp.TimeBasedOneTimePasswordGenerator;
+
+import javax.crypto.spec.SecretKeySpec;
+import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -344,14 +349,28 @@ public class Auth2faService {
      * @return 検証成功の場合true
      */
     boolean verifyTotpCode(String secret, String code) {
-        // TODO: TOTPライブラリを統合して正式実装する
-        // ±1ウィンドウ（30秒刻み）で検証する想定
-        // 現時点ではコードが6桁数字であることのみ検証
         if (code == null || !code.matches("\\d{6}")) {
             return false;
         }
-        log.warn("TOTP検証はダミー実装です。TOTPライブラリ統合後に正式実装してください。");
-        return true;
+        try {
+            TimeBasedOneTimePasswordGenerator totp = new TimeBasedOneTimePasswordGenerator(
+                    Duration.ofSeconds(30), 6);
+            Key key = new SecretKeySpec(base32Decode(secret), totp.getAlgorithm());
+            Instant now = Instant.now();
+
+            // ±1ウィンドウ（前30秒〜後30秒）で検証
+            for (int window = -1; window <= 1; window++) {
+                Instant timestamp = now.plusSeconds(window * 30L);
+                String expected = String.format("%06d", totp.generateOneTimePassword(key, timestamp));
+                if (expected.equals(code)) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (InvalidKeyException e) {
+            log.error("TOTP検証でキーエラー", e);
+            return false;
+        }
     }
 
     /**
@@ -401,6 +420,31 @@ public class Auth2faService {
             result.append(base32Chars.charAt((buffer << (5 - bitsLeft)) & 0x1F));
         }
         return result.toString();
+    }
+
+    /**
+     * Base32デコード。
+     */
+    private byte[] base32Decode(String encoded) {
+        String base32Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        encoded = encoded.toUpperCase().replaceAll("[=\\s]", "");
+        int buffer = 0;
+        int bitsLeft = 0;
+        byte[] result = new byte[encoded.length() * 5 / 8];
+        int index = 0;
+        for (char c : encoded.toCharArray()) {
+            int val = base32Chars.indexOf(c);
+            if (val < 0) {
+                throw new IllegalArgumentException("Invalid Base32 character: " + c);
+            }
+            buffer = (buffer << 5) | val;
+            bitsLeft += 5;
+            if (bitsLeft >= 8) {
+                result[index++] = (byte) (buffer >> (bitsLeft - 8));
+                bitsLeft -= 8;
+            }
+        }
+        return result;
     }
 
     /**

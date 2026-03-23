@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 領収書発行者設定コントローラー。発行者設定のCRUD APIを提供する。
@@ -38,7 +37,6 @@ import com.mannschaft.app.common.SecurityUtils;
 public class ReceiptIssuerSettingsController {
 
     private final ReceiptIssuerSettingsService issuerSettingsService;
-
 
     /**
      * 発行者設定を取得する。
@@ -79,7 +77,6 @@ public class ReceiptIssuerSettingsController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        // TODO: MultipartFile のアップロード処理 + S3 へのアップロード + リサイズ
         String logoStorageKey = "receipt-logos/" + scopeType + "/" + scopeId + "/logo.png";
         IssuerSettingsResponse response = issuerSettingsService.updateLogo(type, scopeId, logoStorageKey);
         return ResponseEntity.ok(ApiResponse.of(response));

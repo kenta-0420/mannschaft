@@ -23,8 +23,6 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class PerformanceExportService {
 
-    private static final int SYNC_EXPORT_LIMIT = 1000;
-
     private final PerformanceRecordRepository recordRepository;
     private final PerformanceMetricService metricService;
 

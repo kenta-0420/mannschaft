@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * タイムラインフィードコントローラー。フィード取得・検索APIを提供する。
@@ -26,7 +25,6 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TimelineFeedController {
 
     private final TimelinePostService postService;
-
 
     /**
      * スコープ別フィードを取得する。

@@ -8,10 +8,8 @@ import com.mannschaft.app.tournament.dto.TeamTournamentStatsResponse;
 import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entity.TournamentStandingEntity;
-import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
 import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
-import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.tournament.repository.TournamentStandingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,9 +32,7 @@ public class StandingsQueryService {
 
     private final TournamentStandingRepository standingRepository;
     private final TournamentParticipantRepository participantRepository;
-    private final TournamentDivisionRepository divisionRepository;
     private final TournamentMatchRepository matchRepository;
-    private final TournamentRepository tournamentRepository;
     private final TournamentMapper mapper;
 
     /**
@@ -84,9 +80,6 @@ public class StandingsQueryService {
      * チームの大会参加履歴を取得する。
      */
     public TeamTournamentHistoryResponse getTeamHistory(Long teamId) {
-        List<TournamentParticipantEntity> participations =
-                participantRepository.findByTournamentIdAndTeamId(null, teamId);
-
         // 全大会から参加履歴を構築（簡易実装）
         List<TeamTournamentHistoryResponse.TournamentHistoryEntry> entries = new ArrayList<>();
 

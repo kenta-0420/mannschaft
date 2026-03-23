@@ -28,7 +28,6 @@ import com.mannschaft.app.tournament.entity.TournamentMatchRosterEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchSetEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
-import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
 import com.mannschaft.app.tournament.repository.TournamentMatchPlayerStatRepository;
 import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
 import com.mannschaft.app.tournament.repository.TournamentMatchRosterRepository;
@@ -57,7 +56,6 @@ import java.util.List;
 public class MatchService {
 
     private final TournamentRepository tournamentRepository;
-    private final TournamentDivisionRepository divisionRepository;
     private final TournamentMatchdayRepository matchdayRepository;
     private final TournamentMatchRepository matchRepository;
     private final TournamentMatchSetRepository matchSetRepository;
@@ -417,7 +415,7 @@ public class MatchService {
     @Transactional
     public MatchResponse updatePlayerStats(Long tournamentId, Long matchId,
                                            PlayerStatBatchRequest request) {
-        TournamentMatchEntity match = findMatchOrThrow(matchId);
+        findMatchOrThrow(matchId);
 
         for (PlayerStatRequest stat : request.getStats()) {
             // stat_key のバリデーション
@@ -476,6 +474,24 @@ public class MatchService {
         }
 
         return MatchResult.DRAW;
+    }
+
+    /**
+     * 大会のブラケット（トーナメント表）データを取得する。
+     * 全試合をラウンド順（matchNumber昇順）で返し、nextMatchId/nextMatchSlot でツリー構造を表現する。
+     */
+    public List<MatchResponse> getBracket(Long tournamentId) {
+        List<TournamentMatchEntity> matches = matchRepository.findByTournamentId(tournamentId);
+        return matches.stream()
+                .sorted((a, b) -> {
+                    int cmp = Integer.compare(
+                            a.getMatchNumber() != null ? a.getMatchNumber() : 0,
+                            b.getMatchNumber() != null ? b.getMatchNumber() : 0);
+                    if (cmp != 0) return cmp;
+                    return Long.compare(a.getId(), b.getId());
+                })
+                .map(m -> mapper.toMatchResponse(m, List.of(), List.of()))
+                .toList();
     }
 
     private TournamentMatchEntity findMatchOrThrow(Long matchId) {

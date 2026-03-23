@@ -3,7 +3,6 @@ package com.mannschaft.app.auth;
 import com.mannschaft.app.auth.controller.AuthLoginController;
 import com.mannschaft.app.auth.service.AuthService;
 import com.mannschaft.app.auth.service.AuthTokenService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.dto.ConfirmPasswordResetRequest;
 import com.mannschaft.app.auth.dto.LoginRequest;
 import com.mannschaft.app.auth.dto.LoginResponse;
@@ -40,9 +39,6 @@ class AuthLoginControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @MockitoBean
     private AuthService authService;

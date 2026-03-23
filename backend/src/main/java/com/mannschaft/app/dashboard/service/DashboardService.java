@@ -21,7 +21,6 @@ import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
-import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
@@ -32,7 +31,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,7 +59,6 @@ public class DashboardService {
     private final ActivityFeedService activityFeedService;
     private final NotificationRepository notificationRepository;
     private final ScheduleRepository scheduleRepository;
-    private final ScheduleAttendanceRepository scheduleAttendanceRepository;
     private final TodoRepository todoRepository;
     private final TimelinePostRepository timelinePostRepository;
     private final BulletinThreadRepository bulletinThreadRepository;
@@ -221,11 +218,10 @@ public class DashboardService {
                     "events_this_month", eventsThisMonth
             ));
 
-            // 将来実装: パフォーマンス管理モジュールが完成後に連携
+            // パフォーマンス管理・プロジェクト進捗・チャットハブはウィジェット設定のモジュール有効判定で制御
+            // データ取得は各モジュール実装完了後に連携予定
             builder.performanceSummary(null);
-            // 将来実装: プロジェクト進捗モジュールが完成後に連携
             builder.personalProjectProgress(null);
-            // 将来実装: チャットハブモジュールが完成後に連携
             builder.chatHub(null);
         }
 

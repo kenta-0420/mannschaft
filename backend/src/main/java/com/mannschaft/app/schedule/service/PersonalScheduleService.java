@@ -6,7 +6,6 @@ import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.EventType;
 import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.MinViewRole;
-import com.mannschaft.app.schedule.PersonalScheduleMapper;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.ScheduleVisibility;
@@ -19,6 +18,8 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.event.ScheduleCancelledEvent;
 import com.mannschaft.app.schedule.event.ScheduleCreatedEvent;
 import com.mannschaft.app.schedule.event.ScheduleUpdatedEvent;
+import com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity;
+import com.mannschaft.app.schedule.repository.PersonalScheduleReminderRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,8 +53,7 @@ public class PersonalScheduleService {
     private static final String UPDATE_SCOPE_ALL = "ALL";
 
     private final ScheduleRepository scheduleRepository;
-    private final ScheduleService scheduleService;
-    private final PersonalScheduleMapper personalScheduleMapper;
+    private final PersonalScheduleReminderRepository reminderRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
 
@@ -105,8 +105,7 @@ public class PersonalScheduleService {
         //   createSchedule を呼ぶか、展開ロジックをここで再実装する）
         // 現時点では親スケジュールの recurrenceRule を保持し、子展開は ScheduleService に委譲
 
-        // リマインダーの保存（remind_before_minutes のリストとして保持）
-        List<Integer> savedReminders = saveReminders(req.getReminders());
+        List<Integer> savedReminders = saveReminders(schedule.getId(), req.getReminders());
 
         // イベント発行
         eventPublisher.publishEvent(new ScheduleCreatedEvent(
@@ -214,10 +213,9 @@ public class PersonalScheduleService {
 
         schedule = scheduleRepository.save(schedule);
 
-        // リマインダー差分更新
         List<Integer> updatedReminders = req.getReminders() != null
-                ? saveReminders(req.getReminders())
-                : Collections.emptyList();
+                ? saveReminders(schedule.getId(), req.getReminders())
+                : loadReminders(schedule.getId());
 
         // イベント発行
         eventPublisher.publishEvent(new ScheduleUpdatedEvent(schedule.getId(), userId));
@@ -353,20 +351,29 @@ public class PersonalScheduleService {
         return titleMatch || locationMatch;
     }
 
-    /**
-     * リマインダーリストを保存する。最大3件まで。
-     * 現時点では remind_before_minutes 値のリストとして返す。
-     * PersonalScheduleReminderEntity/Repository 実装後に永続化ロジックを追加する。
-     */
-    private List<Integer> saveReminders(List<Integer> reminders) {
+    private List<Integer> saveReminders(Long scheduleId, List<Integer> reminders) {
+        reminderRepository.deleteByScheduleId(scheduleId);
         if (reminders == null || reminders.isEmpty()) {
             return Collections.emptyList();
         }
         if (reminders.size() > MAX_PERSONAL_REMINDERS) {
             throw new BusinessException(ScheduleErrorCode.PERSONAL_REMINDER_LIMIT_EXCEEDED);
         }
-        // TODO: PersonalScheduleReminderRepository 実装後に永続化
+        List<PersonalScheduleReminderEntity> entities = reminders.stream()
+                .map(minutes -> PersonalScheduleReminderEntity.builder()
+                        .scheduleId(scheduleId)
+                        .remindBeforeMinutes(minutes)
+                        .build())
+                .toList();
+        reminderRepository.saveAll(entities);
         return new ArrayList<>(reminders);
+    }
+
+    private List<Integer> loadReminders(Long scheduleId) {
+        return reminderRepository.findByScheduleIdOrderByRemindBeforeMinutesAsc(scheduleId)
+                .stream()
+                .map(PersonalScheduleReminderEntity::getRemindBeforeMinutes)
+                .toList();
     }
 
     /**

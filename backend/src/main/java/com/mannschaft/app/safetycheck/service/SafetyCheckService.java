@@ -85,7 +85,7 @@ public class SafetyCheckService {
         SafetyCheckEntity entity = safetyCheckRepository.save(builder.build());
 
         // スコープのメンバー総数を設定
-        long memberCount = "TEAM".equals(scopeType)
+        long memberCount = scopeType == SafetyCheckScopeType.TEAM
                 ? userRoleRepository.countByTeamId(req.getScopeId())
                 : userRoleRepository.countByOrganizationId(req.getScopeId());
         entity.updateTotalTargetCount((int) memberCount);
@@ -240,7 +240,6 @@ public class SafetyCheckService {
         safetyCheckRepository.save(entity);
 
         // 未回答者にリマインド通知を送信
-        List<Long> respondedIds = safetyResponseRepository.findRespondedUserIdsBySafetyCheckId(safetyCheckId);
         // NOTE: 全メンバーから回答済みを除いた未回答者への通知は、メンバー一覧取得実装後に拡張
         notificationHelper.notify(userId, "SAFETY_CHECK_REMINDER", NotificationPriority.URGENT,
                 "安否確認リマインド", "安否確認に未回答です。至急回答をお願いします。",

@@ -4,7 +4,6 @@ import com.mannschaft.app.admin.dto.AdminDashboardResponse;
 import com.mannschaft.app.admin.service.AdminDashboardService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;

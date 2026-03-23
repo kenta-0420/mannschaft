@@ -2,9 +2,7 @@ package com.mannschaft.app.seal.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.seal.dto.CreateSealRequest;
-import com.mannschaft.app.seal.dto.ScopeDefaultResponse;
 import com.mannschaft.app.seal.dto.SealResponse;
-import com.mannschaft.app.seal.dto.SetScopeDefaultRequest;
 import com.mannschaft.app.seal.dto.UpdateSealRequest;
 import com.mannschaft.app.seal.service.SealService;
 import io.swagger.v3.oas.annotations.Operation;

@@ -1,7 +1,5 @@
 package com.mannschaft.app.queue.service;
 
-import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.queue.QueueErrorCode;
 import com.mannschaft.app.queue.QueueMapper;
 import com.mannschaft.app.queue.QueueScopeType;
 import com.mannschaft.app.queue.dto.QueueSettingsRequest;

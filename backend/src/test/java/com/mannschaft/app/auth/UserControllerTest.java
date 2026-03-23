@@ -4,7 +4,6 @@ import com.mannschaft.app.auth.controller.UserController;
 import com.mannschaft.app.auth.service.AuthOAuthService;
 import com.mannschaft.app.auth.service.AuthService;
 import com.mannschaft.app.auth.service.UserService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.dto.ChangePasswordRequest;
 import com.mannschaft.app.auth.dto.LoginHistoryResponse;
 import com.mannschaft.app.auth.dto.MessageResponse;
@@ -50,9 +49,6 @@ class UserControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @MockitoBean
     private UserService userService;

@@ -8,6 +8,9 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.UserIcalTokenEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.UserIcalTokenRepository;
+import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,8 +22,12 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * iCal配信サービス。iCalトークン管理・VCALENDARフィード生成を担当する。
@@ -41,6 +48,8 @@ public class IcalService {
 
     private final UserIcalTokenRepository icalTokenRepository;
     private final ScheduleRepository scheduleRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final NameResolverService nameResolverService;
 
     /**
      * iCalトークンを取得する。未発行の場合は自動生成する。
@@ -194,10 +203,25 @@ public class IcalService {
                     .stream().limit(ICAL_MAX_EVENTS).toList();
         }
 
-        // 全スコープ: 個人スケジュール（TODO: チーム・組織はメンバーシップ連携後に追加）
-        return scheduleRepository
-                .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to)
-                .stream().limit(ICAL_MAX_EVENTS).toList();
+        List<ScheduleEntity> allSchedules = new ArrayList<>(
+                scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to));
+
+        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
+        for (UserRoleEntity role : teamRoles) {
+            allSchedules.addAll(scheduleRepository
+                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, to));
+        }
+
+        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
+        for (UserRoleEntity role : orgRoles) {
+            allSchedules.addAll(scheduleRepository
+                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, to));
+        }
+
+        return allSchedules.stream()
+                .sorted((a, b) -> a.getStartAt().compareTo(b.getStartAt()))
+                .limit(ICAL_MAX_EVENTS)
+                .toList();
     }
 
     /**
@@ -295,8 +319,36 @@ public class IcalService {
         String baseUrl = ICAL_BASE_URL + token + ".ics";
         String webcalUrl = "webcal://localhost" + baseUrl;
 
-        // TODO: ユーザーの所属チーム・組織からスコープ別URLを構築
-        List<ScopedUrlItem> scopedUrls = List.of();
+        Long userId = entity.getUserId();
+        List<ScopedUrlItem> scopedUrls = new ArrayList<>();
+
+        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
+        if (!teamRoles.isEmpty()) {
+            Set<Long> teamIds = teamRoles.stream().map(UserRoleEntity::getTeamId).collect(Collectors.toSet());
+            Map<Long, String> teamNames = nameResolverService.resolveTeamNames(teamIds);
+            for (Long teamId : teamIds) {
+                String scopedUrl = baseUrl + "?scope=team&scopeId=" + teamId;
+                scopedUrls.add(new ScopedUrlItem("TEAM", teamId,
+                        teamNames.getOrDefault(teamId, "チーム " + teamId),
+                        scopedUrl, scopedUrl + "&action=subscribe"));
+            }
+        }
+
+        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
+        if (!orgRoles.isEmpty()) {
+            Set<Long> orgIds = orgRoles.stream().map(UserRoleEntity::getOrganizationId).collect(Collectors.toSet());
+            Map<Long, String> orgNames = nameResolverService.resolveOrganizationNames(orgIds);
+            for (Long orgId : orgIds) {
+                String scopedUrl = baseUrl + "?scope=organization&scopeId=" + orgId;
+                scopedUrls.add(new ScopedUrlItem("ORGANIZATION", orgId,
+                        orgNames.getOrDefault(orgId, "組織 " + orgId),
+                        scopedUrl, scopedUrl + "&action=subscribe"));
+            }
+        }
+
+        String personalUrl = baseUrl + "?scope=personal";
+        scopedUrls.add(new ScopedUrlItem("PERSONAL", userId, "個人",
+                personalUrl, personalUrl + "&action=subscribe"));
 
         return new IcalTokenResponse(
                 token,

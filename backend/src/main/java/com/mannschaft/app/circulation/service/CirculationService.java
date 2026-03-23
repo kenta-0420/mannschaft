@@ -5,7 +5,6 @@ import com.mannschaft.app.circulation.CirculationMapper;
 import com.mannschaft.app.circulation.CirculationMode;
 import com.mannschaft.app.circulation.CirculationPriority;
 import com.mannschaft.app.circulation.CirculationStatus;
-import com.mannschaft.app.circulation.RecipientStatus;
 import com.mannschaft.app.circulation.StampDisplayStyle;
 import com.mannschaft.app.circulation.dto.AddRecipientsRequest;
 import com.mannschaft.app.circulation.dto.AttachmentResponse;

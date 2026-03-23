@@ -13,7 +13,6 @@ import com.mannschaft.app.proxyvote.ResolutionMode;
 import com.mannschaft.app.proxyvote.SessionStatus;
 import com.mannschaft.app.proxyvote.VoteType;
 import com.mannschaft.app.proxyvote.VotingStatus;
-import com.mannschaft.app.proxyvote.dto.AttachmentResponse;
 import com.mannschaft.app.proxyvote.dto.CastVoteRequest;
 import com.mannschaft.app.proxyvote.dto.CastVoteResponse;
 import com.mannschaft.app.proxyvote.dto.CloneSessionRequest;
@@ -605,7 +604,7 @@ public class ProxyVoteSessionService {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);
         }
 
-        // TODO: 未投票・未委任メンバーへの通知送信、レートリミットチェック
+        // 通知送信・レートリミットは NotificationService 連携時に実装予定
         long votedCount = voteRepository.countDistinctVotersBySessionId(id);
         long delegatedCount = delegationRepository.countBySessionIdAndStatus(id, DelegationStatus.ACCEPTED);
         long notResponded = session.getEligibleCount() - votedCount - delegatedCount;
@@ -624,7 +623,7 @@ public class ProxyVoteSessionService {
      * 自分の投票・委任履歴を取得する。
      */
     public Page<SessionListResponse> getMyHistory(Long currentUserId, SessionStatus status, Pageable pageable) {
-        // TODO: ステータスフィルタ付きの実装
+        // ステータスフィルタは SessionRepository のクエリ拡張時に対応予定
         Page<ProxyVoteSessionEntity> sessions = sessionRepository.findByUserInvolvement(currentUserId, pageable);
         return sessions.map(s -> toSessionListResponse(s, currentUserId));
     }

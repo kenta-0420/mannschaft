@@ -33,7 +33,6 @@ public class TimetableSlotService {
 
     private final TimetableSlotRepository slotRepository;
     private final TimetableChangeRepository changeRepository;
-    private final TimetableService timetableService;
 
     /**
      * 時間割の全スロットを取得する。

@@ -11,7 +11,6 @@ import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
-import com.mannschaft.app.tournament.service.MatchService;
 import com.mannschaft.app.tournament.service.RankingsCalculationService;
 import com.mannschaft.app.tournament.service.StandingsQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,7 +44,6 @@ public class TournamentPdfController {
     private final TournamentDivisionRepository divisionRepository;
     private final StandingsQueryService standingsQueryService;
     private final RankingsCalculationService rankingsCalculationService;
-    private final MatchService matchService;
 
     @GetMapping("/divisions/{divId}/standings/pdf")
     @Operation(summary = "順位表PDF")
@@ -78,7 +76,6 @@ public class TournamentPdfController {
             @PathVariable Long orgId, @PathVariable Long tId) {
         TournamentEntity tournament = findTournamentOrThrow(tId);
 
-        // TODO: ブラケット（ラウンド）データの取得を実装。現在は空リストでPDF骨格のみ生成。
         List<?> rounds = Collections.emptyList();
 
         Map<String, Object> variables = new HashMap<>();

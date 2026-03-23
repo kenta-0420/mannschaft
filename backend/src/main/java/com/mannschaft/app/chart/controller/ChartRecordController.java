@@ -54,11 +54,6 @@ public class ChartRecordController {
     private final ChartSettingsService chartSettingsService;
     private final PdfGeneratorService pdfGeneratorService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
-    private Long getCurrentUserId() {
-        return 1L;
-    }
-
     /**
      * 1. カルテ一覧取得
      * GET /api/v1/teams/{teamId}/charts

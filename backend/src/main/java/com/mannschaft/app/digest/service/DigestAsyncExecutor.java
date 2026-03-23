@@ -1,21 +1,27 @@
 package com.mannschaft.app.digest.service;
 
-import com.mannschaft.app.digest.DigestStatus;
+import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.digest.DigestProperties;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.digest.entity.TimelineDigestConfigEntity;
 import com.mannschaft.app.digest.entity.TimelineDigestEntity;
 import com.mannschaft.app.digest.repository.TimelineDigestRepository;
+import com.mannschaft.app.timeline.entity.TimelinePostEntity;
+import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * ダイジェスト非同期生成の実行サービス。
@@ -27,9 +33,11 @@ import java.util.Map;
 public class DigestAsyncExecutor {
 
     private final TimelineDigestRepository digestRepository;
+    private final TimelinePostRepository timelinePostRepository;
     private final DigestAiProvider aiProvider;
-    private final TemplateDigestGenerator templateGenerator;
     private final NotificationHelper notificationHelper;
+    private final NameResolverService nameResolverService;
+    private final DigestProperties digestProperties;
 
     /**
      * AI スタイルのダイジェストを非同期生成する。
@@ -45,8 +53,37 @@ public class DigestAsyncExecutor {
             TimelineDigestEntity digest = digestRepository.findById(digestId)
                     .orElseThrow(() -> new IllegalStateException("Digest not found: " + digestId));
 
-            // TODO: タイムラインから実際の投稿データを取得する
+            // タイムラインから投稿データを取得し、期間内でフィルタ
+            int maxPosts = digestProperties.getDefaults().getMaxPostsPerDigest();
+            List<TimelinePostEntity> timelinePosts = timelinePostRepository.findFeedByScopeType(
+                    scopeType, scopeId, PageRequest.of(0, maxPosts));
+            List<TimelinePostEntity> filteredPosts = timelinePosts.stream()
+                    .filter(p -> p.getCreatedAt() != null
+                            && !p.getCreatedAt().isBefore(digest.getPeriodStart())
+                            && !p.getCreatedAt().isAfter(digest.getPeriodEnd()))
+                    .toList();
+
+            // ユーザー名をバッチ解決
+            Set<Long> userIds = filteredPosts.stream()
+                    .map(TimelinePostEntity::getUserId)
+                    .collect(Collectors.toSet());
+            Map<Long, String> userNames = nameResolverService.resolveUserDisplayNames(userIds);
+
+            // 投稿データを Map に変換（AI プロバイダーへの入力）
             List<Map<String, Object>> posts = new ArrayList<>();
+            List<Long> sourcePostIds = new ArrayList<>();
+            for (TimelinePostEntity post : filteredPosts) {
+                Map<String, Object> postMap = new HashMap<>();
+                postMap.put("id", post.getId());
+                postMap.put("content", post.getContent());
+                postMap.put("createdAt", post.getCreatedAt());
+                postMap.put("userId", post.getUserId());
+                postMap.put("authorName", userNames.getOrDefault(post.getUserId(), "不明"));
+                postMap.put("reactionCount", post.getReactionCount());
+                postMap.put("replyCount", post.getReplyCount());
+                posts.add(postMap);
+                sourcePostIds.add(post.getId());
+            }
 
             boolean reactions = includeReactions != null ? includeReactions : true;
             boolean polls = includePolls != null ? includePolls : true;
@@ -68,6 +105,13 @@ public class DigestAsyncExecutor {
 
             digest.markGenerated(result.title(), result.body(), result.excerpt(),
                     result.aiModel(), result.inputTokens(), result.outputTokens(), posts.size());
+            // ソース投稿 ID を JSON 文字列として保存
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
+                digest.setSourcePostIds(om.writeValueAsString(sourcePostIds));
+            } catch (Exception e) {
+                log.warn("sourcePostIds のシリアライズに失敗: {}", e.getMessage());
+            }
             digestRepository.save(digest);
 
             // ダイジェスト生成完了通知（作成者に送信）

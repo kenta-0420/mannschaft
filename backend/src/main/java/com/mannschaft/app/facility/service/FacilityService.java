@@ -46,7 +46,6 @@ public class FacilityService {
     private final FacilityUsageRuleRepository usageRuleRepository;
     private final FacilityBookingRepository bookingRepository;
     private final FacilityMapper facilityMapper;
-    private final FacilityFeeCalculator feeCalculator;
     private final ObjectMapper objectMapper;
 
     /**

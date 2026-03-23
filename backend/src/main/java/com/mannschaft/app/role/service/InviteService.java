@@ -9,7 +9,6 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;

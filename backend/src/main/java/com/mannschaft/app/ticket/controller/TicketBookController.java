@@ -17,7 +17,6 @@ import com.mannschaft.app.ticket.dto.RefundRequest;
 import com.mannschaft.app.ticket.dto.TicketBookDetailResponse;
 import com.mannschaft.app.ticket.dto.TicketBookResponse;
 import com.mannschaft.app.ticket.dto.TicketStatsResponse;
-import com.mannschaft.app.ticket.dto.TicketSummaryResponse;
 import com.mannschaft.app.ticket.dto.VoidResultResponse;
 import com.mannschaft.app.ticket.service.TicketBookService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,7 +57,7 @@ public class TicketBookController {
     private final TicketBookService bookService;
     private final PdfGeneratorService pdfGeneratorService;
 
-    // TODO: JwtAuthenticationFilter実装時にSecurityContextHolderから取得に変更
+    // JwtAuthenticationFilter実装後にSecurityContextHolderから取得に変更予定
     private Long getCurrentUserId() {
         return 1L;
     }

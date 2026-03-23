@@ -6,9 +6,7 @@ import com.mannschaft.app.performance.dto.MyPerformanceResponse;
 import com.mannschaft.app.performance.dto.SchedulePerformanceResponse;
 import com.mannschaft.app.performance.dto.TeamStatsResponse;
 import com.mannschaft.app.performance.entity.PerformanceMetricEntity;
-import com.mannschaft.app.performance.entity.PerformanceMonthlySummaryEntity;
 import com.mannschaft.app.performance.entity.PerformanceRecordEntity;
-import com.mannschaft.app.performance.repository.PerformanceMonthlySummaryRepository;
 import com.mannschaft.app.performance.repository.PerformanceRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +36,6 @@ public class PerformanceStatsService {
     private static final DateTimeFormatter YEAR_MONTH_FMT = DateTimeFormatter.ofPattern("yyyy-MM");
 
     private final PerformanceRecordRepository recordRepository;
-    private final PerformanceMonthlySummaryRepository summaryRepository;
     private final PerformanceMetricService metricService;
 
     /**
@@ -206,7 +203,7 @@ public class PerformanceStatsService {
      */
     public List<MyPerformanceResponse> getMyPerformance(Long currentUserId, Long teamId,
                                                          LocalDate dateFrom, LocalDate dateTo) {
-        // TODO: Query user's teams from team_members table
+        // ユーザーの所属チーム一覧は UserRoleRepository 経由で取得予定
         // For now, if teamId is specified, return that team only
         if (teamId != null) {
             List<PerformanceMetricEntity> metrics = metricService.getActiveMetrics(teamId);

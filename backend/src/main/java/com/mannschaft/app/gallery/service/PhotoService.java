@@ -1,6 +1,9 @@
 package com.mannschaft.app.gallery.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
+import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.gallery.GalleryErrorCode;
 import com.mannschaft.app.gallery.GalleryMapper;
 import com.mannschaft.app.gallery.dto.DownloadResponse;
@@ -19,10 +22,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
  * 写真サービス。写真のアップロード・削除・更新・ダウンロードを担当する。
@@ -37,11 +46,12 @@ public class PhotoService {
     private final PhotoAlbumRepository albumRepository;
     private final PhotoAlbumService albumService;
     private final GalleryMapper galleryMapper;
+    private final StorageService storageService;
+    private final DomainEventPublisher eventPublisher;
 
     private static final int MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
     private static final int MAX_BATCH_SIZE = 20;
     private static final int MAX_PHOTO_COUNT = 5000;
-    private static final long MAX_STORAGE_SIZE = 10L * 1024 * 1024 * 1024; // 10GB
 
     /**
      * アルバム内写真をページング取得する。
@@ -147,7 +157,7 @@ public class PhotoService {
         photoRepository.delete(entity);
         log.info("写真削除: photoId={}, albumId={}", photoId, entity.getAlbumId());
 
-        // TODO: ApplicationEvent で S3 ファイル削除を非同期実行
+        eventPublisher.publish(new S3ObjectDeleteEvent(entity.getS3Key()));
     }
 
     /**
@@ -162,8 +172,7 @@ public class PhotoService {
             throw new BusinessException(GalleryErrorCode.DOWNLOAD_NOT_ALLOWED);
         }
 
-        // TODO: S3 Pre-signed URL 生成
-        String downloadUrl = "https://s3.example.com/" + entity.getS3Key();
+        String downloadUrl = storageService.generateDownloadUrl(entity.getS3Key(), Duration.ofMinutes(30));
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(30);
 
         return new DownloadResponse(downloadUrl, entity.getOriginalFilename(), null, expiresAt);
@@ -192,9 +201,25 @@ public class PhotoService {
             photos = photos.subList(0, limit);
         }
 
-        // TODO: S3 から ZIP 生成 → 一時バケットに保存 → Pre-signed URL 返却
         String jobId = UUID.randomUUID().toString();
-        String downloadUrl = "https://s3.example.com/tmp/download-" + jobId + ".zip";
+
+        ByteArrayOutputStream zipOut = new ByteArrayOutputStream();
+        try (ZipOutputStream zos = new ZipOutputStream(zipOut)) {
+            for (int i = 0; i < photos.size(); i++) {
+                PhotoEntity photo = photos.get(i);
+                byte[] data = storageService.download(photo.getS3Key());
+                String entryName = (i + 1) + "_" + photo.getOriginalFilename();
+                zos.putNextEntry(new ZipEntry(entryName));
+                zos.write(data);
+                zos.closeEntry();
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("ZIP 生成に失敗しました", e);
+        }
+
+        String zipKey = "tmp/album-" + albumId + "/" + jobId + ".zip";
+        storageService.upload(zipKey, zipOut.toByteArray(), "application/zip");
+        String downloadUrl = storageService.generateDownloadUrl(zipKey, Duration.ofHours(1));
         LocalDateTime expiresAt = LocalDateTime.now().plusHours(1);
 
         return new DownloadResponse(downloadUrl, null, photos.size(), expiresAt);

@@ -2,7 +2,6 @@ package com.mannschaft.app.role.controller;
 
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
-import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
@@ -33,7 +32,6 @@ public class MeController {
     private final UserRoleRepository userRoleRepository;
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
-
 
     /**
      * 自分が所属するチーム一覧を取得する。

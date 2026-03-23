@@ -2,7 +2,6 @@ package com.mannschaft.app.social;
 
 import com.mannschaft.app.social.dto.FollowResponse;
 import com.mannschaft.app.social.entity.FollowEntity;
-import com.mannschaft.app.social.entity.UserSocialProfileEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

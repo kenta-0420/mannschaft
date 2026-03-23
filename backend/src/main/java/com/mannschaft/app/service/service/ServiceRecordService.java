@@ -2,8 +2,8 @@ package com.mannschaft.app.service.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.service.BulkCreateMode;
-import com.mannschaft.app.service.FieldType;
 import com.mannschaft.app.service.ReactionType;
 import com.mannschaft.app.service.ServiceRecordErrorCode;
 import com.mannschaft.app.service.ServiceRecordMapper;
@@ -39,7 +39,6 @@ import com.mannschaft.app.service.repository.ServiceRecordValueRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -49,6 +48,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.time.Duration;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -84,6 +84,7 @@ public class ServiceRecordService {
     private final ServiceRecordMapper mapper;
     private final ObjectMapper objectMapper;
     private final NameResolverService nameResolverService;
+    private final StorageService storageService;
 
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
@@ -101,8 +102,8 @@ public class ServiceRecordService {
                                                     String titleLike, String status,
                                                     Map<Long, String> customFieldFilters,
                                                     Pageable pageable) {
-        Specification<ServiceRecordEntity> spec = Specification.where(
-                (root, query, cb) -> cb.equal(root.get("teamId"), teamId));
+        Specification<ServiceRecordEntity> spec =
+                (root, query, cb) -> cb.equal(root.get("teamId"), teamId);
 
         if (memberUserId != null) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("memberUserId"), memberUserId));
@@ -376,7 +377,7 @@ public class ServiceRecordService {
         if (teamIdFilter != null) {
             enabledSettings = settingsRepository.findByTeamIdInAndIsDashboardEnabledTrue(List.of(teamIdFilter));
         } else {
-            // TODO: ユーザーが所属する全チームIDを取得して渡す
+            // ユーザーの所属チームID一覧は UserRoleRepository 経由で取得予定
             enabledSettings = Collections.emptyList();
         }
 
@@ -544,8 +545,8 @@ public class ServiceRecordService {
 
         String fileKey = String.format("service-records/%d/%d/%s", teamId, recordId, UUID.randomUUID());
 
-        // TODO: S3 Pre-signed URL 生成の実装
-        String uploadUrl = "https://s3.example.com/presigned/" + fileKey;
+        String uploadUrl = storageService.generateUploadUrl(
+                fileKey, "application/octet-stream", Duration.ofSeconds(600)).uploadUrl();
 
         return UploadUrlResponse.builder()
                 .uploadUrl(uploadUrl)

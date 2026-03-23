@@ -11,7 +11,6 @@ import com.mannschaft.app.schedule.repository.ScheduleAttendanceReminderReposito
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +30,6 @@ public class ScheduleReminderService {
 
     private final ScheduleAttendanceReminderRepository reminderRepository;
     private final ScheduleAttendanceRepository attendanceRepository;
-    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * リマインダーを作成する。最大5件まで。
