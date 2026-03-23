@@ -6,16 +6,17 @@ import com.mannschaft.app.chart.ChartPhotoUrlProvider;
 import com.mannschaft.app.chart.PhotoType;
 import com.mannschaft.app.chart.dto.ChartPhotoResponse;
 import com.mannschaft.app.chart.entity.ChartPhotoEntity;
-import com.mannschaft.app.chart.entity.ChartRecordEntity;
 import com.mannschaft.app.chart.repository.ChartPhotoRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
@@ -40,6 +41,7 @@ public class ChartPhotoService {
     private final ChartRecordRepository recordRepository;
     private final ChartMapper chartMapper;
     private final ChartPhotoUrlProvider photoUrlProvider;
+    private final StorageService storageService;
 
     /**
      * 写真をアップロードする。
@@ -48,7 +50,7 @@ public class ChartPhotoService {
     public ChartPhotoResponse uploadPhoto(Long teamId, Long chartId, MultipartFile file,
                                           String photoType, String note, Boolean isSharedToCustomer) {
         // カルテ存在確認
-        ChartRecordEntity record = recordRepository.findByIdAndTeamId(chartId, teamId)
+        recordRepository.findByIdAndTeamId(chartId, teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CHART_NOT_FOUND));
 
         // ファイルバリデーション
@@ -69,7 +71,11 @@ public class ChartPhotoService {
         String s3Key = String.format("charts/%d/%s/%d/%s.%s",
                 teamId, yearMonth, chartId, UUID.randomUUID(), extension);
 
-        // TODO: 実際のS3アップロード処理 + EXIFのGPS情報ストリップ
+        try {
+            storageService.upload(s3Key, file.getBytes(), file.getContentType());
+        } catch (IOException e) {
+            throw new BusinessException(ChartErrorCode.INVALID_FILE_TYPE, e);
+        }
 
         ChartPhotoEntity entity = ChartPhotoEntity.builder()
                 .chartRecordId(chartId)
@@ -103,7 +109,6 @@ public class ChartPhotoService {
         recordRepository.findByIdAndTeamId(photo.getChartRecordId(), teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CHART_NOT_FOUND));
 
-        // TODO: S3オブジェクトは論理削除時には削除しない（物理削除バッチで処理）
         photoRepository.delete(photo);
         log.info("写真削除: photoId={}", photoId);
     }
