@@ -6,6 +6,7 @@ import com.mannschaft.app.admin.dto.NotificationStatsResponse;
 import com.mannschaft.app.admin.repository.NotificationDeliveryStatsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ public class NotificationStatsService {
      * @param to   終了日
      * @return 統計一覧
      */
+    @Cacheable(value = "notificationStats", key = "#from + ':' + #to")
     public List<NotificationStatsResponse> getStats(LocalDate from, LocalDate to) {
         return adminMapper.toNotificationStatsResponseList(
                 statsRepository.findByDateBetweenOrderByDateDescChannelAsc(from, to));
@@ -44,6 +46,7 @@ public class NotificationStatsService {
      * @param to      終了日
      * @return 統計一覧
      */
+    @Cacheable(value = "notificationStats", key = "#channel + ':' + #from + ':' + #to")
     public List<NotificationStatsResponse> getStatsByChannel(String channel, LocalDate from, LocalDate to) {
         NotificationChannel ch = NotificationChannel.valueOf(channel);
         return adminMapper.toNotificationStatsResponseList(

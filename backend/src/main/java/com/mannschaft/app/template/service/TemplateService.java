@@ -12,6 +12,7 @@ import com.mannschaft.app.template.repository.TeamTemplateRepository;
 import com.mannschaft.app.template.repository.TemplateModuleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,7 @@ public class TemplateService {
      *
      * @return テンプレートサマリーリスト
      */
+    @Cacheable(value = "templates")
     public List<TemplateSummaryResponse> getTemplates() {
         return teamTemplateRepository.findByIsActiveTrue().stream()
                 .map(template -> {
@@ -55,6 +57,7 @@ public class TemplateService {
      * @param id テンプレートID
      * @return テンプレート詳細レスポンス
      */
+    @Cacheable(value = "templateDetail", key = "#id")
     public ApiResponse<TemplateResponse> getTemplate(Long id) {
         TeamTemplateEntity template = findTemplateOrThrow(id);
         List<ModuleSummaryResponse> modules = getModuleSummaries(id);
@@ -67,6 +70,7 @@ public class TemplateService {
      * @param id テンプレートID
      * @return モジュールサマリーリスト
      */
+    @Cacheable(value = "templateModules", key = "#id")
     public List<ModuleSummaryResponse> getTemplateModules(Long id) {
         findTemplateOrThrow(id);
         return getModuleSummaries(id);

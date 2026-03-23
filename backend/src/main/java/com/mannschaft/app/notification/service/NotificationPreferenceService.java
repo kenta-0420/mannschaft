@@ -11,6 +11,9 @@ import com.mannschaft.app.notification.repository.NotificationPreferenceReposito
 import com.mannschaft.app.notification.repository.NotificationTypePreferenceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +39,7 @@ public class NotificationPreferenceService {
      * @param userId ユーザーID
      * @return 通知設定レスポンスリスト
      */
+    @Cacheable(value = "notificationPreferences", key = "#userId")
     public List<PreferenceResponse> listPreferences(Long userId) {
         List<NotificationPreferenceEntity> entities = preferenceRepository.findByUserId(userId);
         return notificationMapper.toPreferenceResponseList(entities);
@@ -49,6 +53,10 @@ public class NotificationPreferenceService {
      * @return 更新された通知設定レスポンス
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "notificationPreferences", key = "#userId"),
+            @CacheEvict(value = "notificationEnabled", key = "#userId + ':' + #request.scopeType + ':' + #request.scopeId")
+    })
     public PreferenceResponse updatePreference(Long userId, PreferenceUpdateRequest request) {
         NotificationPreferenceEntity entity = preferenceRepository
                 .findByUserIdAndScopeTypeAndScopeId(userId, request.getScopeType(), request.getScopeId())
@@ -77,6 +85,7 @@ public class NotificationPreferenceService {
      * @param userId ユーザーID
      * @return 通知種別設定レスポンスリスト
      */
+    @Cacheable(value = "notificationTypePreferences", key = "#userId")
     public List<TypePreferenceResponse> listTypePreferences(Long userId) {
         List<NotificationTypePreferenceEntity> entities = typePreferenceRepository.findByUserId(userId);
         return notificationMapper.toTypePreferenceResponseList(entities);
@@ -90,6 +99,7 @@ public class NotificationPreferenceService {
      * @return 更新された通知種別設定レスポンスリスト
      */
     @Transactional
+    @CacheEvict(value = "notificationTypePreferences", key = "#userId")
     public List<TypePreferenceResponse> bulkUpdateTypePreferences(Long userId,
                                                                    TypePreferenceBulkUpdateRequest request) {
         List<NotificationTypePreferenceEntity> results = new ArrayList<>();
@@ -124,6 +134,7 @@ public class NotificationPreferenceService {
      * @param scopeId   スコープID
      * @return 有効な場合 true
      */
+    @Cacheable(value = "notificationEnabled", key = "#userId + ':' + #scopeType + ':' + #scopeId")
     public boolean isNotificationEnabled(Long userId, String scopeType, Long scopeId) {
         return preferenceRepository.findByUserIdAndScopeTypeAndScopeId(userId, scopeType, scopeId)
                 .map(NotificationPreferenceEntity::getIsEnabled)
@@ -137,6 +148,7 @@ public class NotificationPreferenceService {
      * @param notificationType 通知種別
      * @return 有効な場合 true
      */
+    @Cacheable(value = "notificationTypeEnabled", key = "#userId + ':' + #notificationType")
     public boolean isTypeEnabled(Long userId, String notificationType) {
         return typePreferenceRepository.findByUserIdAndNotificationType(userId, notificationType)
                 .map(NotificationTypePreferenceEntity::getIsEnabled)

@@ -12,6 +12,8 @@ import com.mannschaft.app.admin.repository.MaintenanceScheduleRepository;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,7 @@ public class MaintenanceScheduleService {
      *
      * @return スケジュール一覧
      */
+    @Cacheable(value = "maintenanceSchedules")
     public List<MaintenanceScheduleResponse> getAllSchedules() {
         List<MaintenanceScheduleEntity> entities = repository.findByStatusInOrderByStartsAtDesc(
                 List.of(MaintenanceStatus.SCHEDULED, MaintenanceStatus.ACTIVE, MaintenanceStatus.COMPLETED));
@@ -59,6 +62,7 @@ public class MaintenanceScheduleService {
      * @return 作成されたスケジュール
      */
     @Transactional
+    @CacheEvict(value = "maintenanceSchedules", allEntries = true)
     public MaintenanceScheduleResponse createSchedule(CreateMaintenanceScheduleRequest req, Long userId) {
         validatePeriod(req.getStartsAt(), req.getEndsAt());
 
@@ -88,6 +92,7 @@ public class MaintenanceScheduleService {
      * @return 更新後のスケジュール
      */
     @Transactional
+    @CacheEvict(value = "maintenanceSchedules", allEntries = true)
     public MaintenanceScheduleResponse updateSchedule(Long id, UpdateMaintenanceScheduleRequest req) {
         MaintenanceScheduleEntity entity = findOrThrow(id);
 
@@ -114,6 +119,7 @@ public class MaintenanceScheduleService {
      * @param id スケジュールID
      */
     @Transactional
+    @CacheEvict(value = "maintenanceSchedules", allEntries = true)
     public void deleteSchedule(Long id) {
         MaintenanceScheduleEntity entity = findOrThrow(id);
 
@@ -133,6 +139,7 @@ public class MaintenanceScheduleService {
      * @return 更新後のスケジュール
      */
     @Transactional
+    @CacheEvict(value = "maintenanceSchedules", allEntries = true)
     public MaintenanceScheduleResponse activate(Long id) {
         MaintenanceScheduleEntity entity = findOrThrow(id);
 
@@ -154,6 +161,7 @@ public class MaintenanceScheduleService {
      * @return 更新後のスケジュール
      */
     @Transactional
+    @CacheEvict(value = "maintenanceSchedules", allEntries = true)
     public MaintenanceScheduleResponse complete(Long id) {
         MaintenanceScheduleEntity entity = findOrThrow(id);
 

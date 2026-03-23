@@ -20,6 +20,8 @@ import com.mannschaft.app.template.repository.TeamTemplateRepository;
 import com.mannschaft.app.template.repository.TemplateModuleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +51,7 @@ public class ModuleService {
      *
      * @return モジュール詳細リスト
      */
+    @Cacheable(value = "moduleCatalog")
     public List<ModuleResponse> getModuleCatalog() {
         return moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
                 .stream()
@@ -63,6 +66,7 @@ public class ModuleService {
      * @param id モジュールID
      * @return モジュール詳細レスポンス
      */
+    @Cacheable(value = "moduleDetail", key = "#id")
     public ApiResponse<ModuleResponse> getModule(Long id) {
         ModuleDefinitionEntity module = findModuleOrThrow(id);
         return ApiResponse.of(toModuleResponse(module));
@@ -74,6 +78,7 @@ public class ModuleService {
      * @param teamId チームID
      * @return チームモジュールレスポンスリスト
      */
+    @Cacheable(value = "teamModules", key = "#teamId")
     public List<TeamModuleResponse> getTeamModules(Long teamId) {
         return teamEnabledModuleRepository.findByTeamId(teamId).stream()
                 .map(tem -> {
@@ -103,6 +108,7 @@ public class ModuleService {
      * @param userId  操作ユーザーID
      */
     @Transactional
+    @CacheEvict(value = "teamModules", key = "#teamId")
     public void toggleTeamModule(Long teamId, ToggleModuleRequest request, Long userId) {
         ModuleDefinitionEntity module = findModuleOrThrow(request.getModuleId());
 
@@ -170,6 +176,7 @@ public class ModuleService {
      * @param userId     操作ユーザーID
      */
     @Transactional
+    @CacheEvict(value = "teamModules", key = "#teamId")
     public void applyTemplate(Long teamId, Long templateId, Long userId) {
         teamTemplateRepository.findById(templateId)
                 .orElseThrow(() -> new BusinessException(TemplateErrorCode.TMPL_001));

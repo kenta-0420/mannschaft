@@ -17,6 +17,8 @@ import com.mannschaft.app.template.repository.TeamTemplateRepository;
 import com.mannschaft.app.template.repository.TemplateModuleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +47,11 @@ public class SystemAdminTemplateService {
      * @return テンプレート詳細レスポンス
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "templates", allEntries = true),
+            @CacheEvict(value = "templateDetail", allEntries = true),
+            @CacheEvict(value = "templateModules", allEntries = true)
+    })
     public ApiResponse<TemplateResponse> createTemplate(CreateTemplateRequest request, Long userId) {
         TeamTemplateEntity template = TeamTemplateEntity.builder()
                 .name(request.getName())
@@ -79,6 +86,11 @@ public class SystemAdminTemplateService {
      * @return テンプレート詳細レスポンス
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "templates", allEntries = true),
+            @CacheEvict(value = "templateDetail", key = "#id"),
+            @CacheEvict(value = "templateModules", key = "#id")
+    })
     public ApiResponse<TemplateResponse> updateTemplate(Long id, UpdateTemplateRequest request) {
         TeamTemplateEntity template = findTemplateOrThrow(id);
 
@@ -115,6 +127,11 @@ public class SystemAdminTemplateService {
      * @param id テンプレートID
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "templates", allEntries = true),
+            @CacheEvict(value = "templateDetail", key = "#id"),
+            @CacheEvict(value = "templateModules", key = "#id")
+    })
     public void deleteTemplate(Long id) {
         TeamTemplateEntity template = findTemplateOrThrow(id);
         template.softDelete();
@@ -128,6 +145,10 @@ public class SystemAdminTemplateService {
      * @param request  更新リクエスト
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "moduleCatalog", allEntries = true),
+            @CacheEvict(value = "moduleDetail", key = "#moduleId")
+    })
     public void updateLevelAvailability(Long moduleId, UpdateLevelAvailabilityRequest request) {
         moduleDefinitionRepository.findById(moduleId)
                 .orElseThrow(() -> new BusinessException(TemplateErrorCode.TMPL_002));
