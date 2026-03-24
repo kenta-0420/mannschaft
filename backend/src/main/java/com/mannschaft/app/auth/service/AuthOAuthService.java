@@ -22,7 +22,6 @@ import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,7 +49,6 @@ public class AuthOAuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final WebAuthnCredentialRepository webAuthnCredentialRepository;
     private final AuthTokenService authTokenService;
-    private final PasswordEncoder passwordEncoder;
     private final DomainEventPublisher eventPublisher;
     private final EncryptionService encryptionService;
 
@@ -58,7 +56,7 @@ public class AuthOAuthService {
      * OAuthプロバイダを使用してログインする。
      * <ol>
      *   <li>プロバイダ検証</li>
-     *   <li>プロバイダAPIでユーザー情報取得（TODO）</li>
+     *   <li>プロバイダAPIでユーザー情報取得</li>
      *   <li>既存連携の確認と処理分岐:
      *     <ul>
      *       <li>連携あり → トークン発行</li>
@@ -75,7 +73,6 @@ public class AuthOAuthService {
      * @return トークンレスポンスまたはOAuth競合レスポンス
      */
     @Transactional
-    @SuppressWarnings("unchecked")
     public ApiResponse<?> loginWithOAuth(
             String provider, String authorizationCode, String ipAddress, String userAgent) {
 
