@@ -18,7 +18,7 @@ public interface TodoCommentRepository extends JpaRepository<TodoCommentEntity, 
     Page<TodoCommentEntity> findByTodoIdOrderByCreatedAtAsc(Long todoId, Pageable pageable);
 
     /**
-     * コメントIDとTODO IDで取得する。
+     * コメントIDとTodo IDで取得する。
      */
     Optional<TodoCommentEntity> findByIdAndTodoId(Long id, Long todoId);
 }

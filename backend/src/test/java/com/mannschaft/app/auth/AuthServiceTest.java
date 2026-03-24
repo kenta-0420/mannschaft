@@ -424,9 +424,7 @@ class AuthServiceTest {
                     .build();
             given(refreshTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(existingToken));
 
-            UserEntity user = createActiveUser();
-            given(userRepository.findById(1L)).willReturn(Optional.of(user));
-
+            given(userRepository.existsById(1L)).willReturn(true);
             given(authTokenService.issueAccessToken(any(), any())).willReturn("new-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("new-raw-refresh-token");
             given(authTokenService.hashToken("new-raw-refresh-token")).willReturn("new-hashed-refresh-token");

@@ -13,12 +13,15 @@ import com.mannschaft.app.auth.dto.UpdateProfileRequest;
 import com.mannschaft.app.auth.dto.UserProfileResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -58,6 +61,17 @@ class UserControllerTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private com.mannschaft.app.auth.service.AuthTokenService authTokenService;
+
+    @BeforeEach
+    void setUpSecurityContext() {
+        // SecurityUtils.getCurrentUserId() が userId=1 を返すよう認証情報をセット
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken("1", null, List.of());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
 
     // ──────────────────────────────────────────────
     // GET /api/v1/users/me

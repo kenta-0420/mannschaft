@@ -106,7 +106,7 @@ public class TodoService {
     /**
      * TODO詳細を取得する。
      *
-     * @param todoId TODO ID
+     * @param todoId Todo ID
      * @return TODO詳細
      */
     public ApiResponse<TodoResponse> getTodo(Long todoId) {
@@ -189,7 +189,7 @@ public class TodoService {
     /**
      * TODOを更新する。
      *
-     * @param todoId  TODO ID
+     * @param todoId  Todo ID
      * @param request 更新リクエスト
      * @return 更新されたTODO
      */
@@ -255,7 +255,7 @@ public class TodoService {
     /**
      * TODOを論理削除する。
      *
-     * @param todoId TODO ID
+     * @param todoId Todo ID
      */
     @Transactional
     public void deleteTodo(Long todoId) {
@@ -274,7 +274,7 @@ public class TodoService {
     /**
      * TODOステータスを変更する。
      *
-     * @param todoId  TODO ID
+     * @param todoId  Todo ID
      * @param request ステータス変更リクエスト
      * @param userId  操作ユーザーID
      * @return ステータス変更レスポンス
@@ -380,7 +380,7 @@ public class TodoService {
     /**
      * 担当者を追加する。
      *
-     * @param todoId  TODO ID
+     * @param todoId  Todo ID
      * @param request 担当者追加リクエスト
      * @param userId  操作ユーザーID
      * @return 追加された担当者
@@ -406,7 +406,7 @@ public class TodoService {
     /**
      * 担当者を削除する。
      *
-     * @param todoId TODO ID
+     * @param todoId Todo ID
      * @param targetUserId 削除対象のユーザーID
      */
     @Transactional

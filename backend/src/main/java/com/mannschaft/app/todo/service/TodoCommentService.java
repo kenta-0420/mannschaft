@@ -37,7 +37,7 @@ public class TodoCommentService {
     /**
      * コメント一覧を取得する。
      *
-     * @param todoId TODO ID
+     * @param todoId Todo ID
      * @param page   ページ番号（1始まり）
      * @param size   ページサイズ
      * @return コメント一覧
@@ -59,7 +59,7 @@ public class TodoCommentService {
     /**
      * コメントを追加する。
      *
-     * @param todoId  TODO ID
+     * @param todoId  Todo ID
      * @param request 作成リクエスト
      * @param userId  投稿者ID
      * @return 作成されたコメント
@@ -82,7 +82,7 @@ public class TodoCommentService {
     /**
      * コメントを更新する。本人のみ編集可能。
      *
-     * @param todoId    TODO ID
+     * @param todoId    Todo ID
      * @param commentId コメントID
      * @param request   更新リクエスト
      * @param userId    操作ユーザーID
@@ -106,7 +106,7 @@ public class TodoCommentService {
     /**
      * コメントを削除する。本人またはADMINが削除可能。
      *
-     * @param todoId    TODO ID
+     * @param todoId    Todo ID
      * @param commentId コメントID
      * @param userId    操作ユーザーID
      */
