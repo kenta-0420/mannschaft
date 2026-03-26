@@ -24,8 +24,6 @@ import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
 import com.mannschaft.app.todo.repository.ProjectRepository;
 import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
-import com.mannschaft.app.todo.service.ProjectService;
-import com.mannschaft.app.todo.service.TodoService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

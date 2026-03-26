@@ -27,7 +27,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.net.URL;
+import java.net.URI;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
@@ -83,7 +83,7 @@ class S3StorageServiceTest {
             // Given
             given(storageProperties.getBucket()).willReturn(TEST_BUCKET);
             PresignedPutObjectRequest presignedRequest = mock(PresignedPutObjectRequest.class);
-            given(presignedRequest.url()).willReturn(new URL("https://s3.example.com/upload"));
+            given(presignedRequest.url()).willReturn(new URI("https://s3.example.com/upload").toURL());
             given(s3Presigner.presignPutObject(any(PutObjectPresignRequest.class))).willReturn(presignedRequest);
 
             // When
@@ -125,7 +125,7 @@ class S3StorageServiceTest {
             // Given
             given(storageProperties.getBucket()).willReturn(TEST_BUCKET);
             PresignedGetObjectRequest presignedRequest = mock(PresignedGetObjectRequest.class);
-            given(presignedRequest.url()).willReturn(new URL("https://s3.example.com/download"));
+            given(presignedRequest.url()).willReturn(new URI("https://s3.example.com/download").toURL());
             given(s3Presigner.presignGetObject(any(GetObjectPresignRequest.class))).willReturn(presignedRequest);
 
             // When

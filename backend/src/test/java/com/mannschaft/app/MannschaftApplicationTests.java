@@ -24,6 +24,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class MannschaftApplicationTests {
 
     @Container
+    @SuppressWarnings("resource")
     static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
             .withDatabaseName("mannschaft_test")
             .withUsername("test")

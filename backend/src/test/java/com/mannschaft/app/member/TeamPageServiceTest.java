@@ -3,7 +3,6 @@ package com.mannschaft.app.member;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.member.dto.CreateTeamPageRequest;
 import com.mannschaft.app.member.dto.TeamPageResponse;
-import com.mannschaft.app.member.PageType;
 import com.mannschaft.app.member.entity.TeamPageEntity;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
 import com.mannschaft.app.member.repository.TeamPageRepository;

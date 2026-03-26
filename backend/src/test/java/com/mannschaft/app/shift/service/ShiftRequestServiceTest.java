@@ -12,8 +12,6 @@ import com.mannschaft.app.shift.dto.UpdateShiftRequestRequest;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
-import com.mannschaft.app.shift.service.ShiftRequestService;
-import com.mannschaft.app.shift.service.ShiftScheduleService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

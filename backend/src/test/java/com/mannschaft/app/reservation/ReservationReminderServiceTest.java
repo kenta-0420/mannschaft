@@ -62,18 +62,6 @@ class ReservationReminderServiceTest {
      * @PrePersist の onCreate() をリフレクションで呼び出す。
      * ReservationReminderEntity は BaseEntity を継承しないため独自の onCreate を持つ。
      */
-    private ReservationReminderEntity createReminderEntityWithCreatedAt() {
-        ReservationReminderEntity entity = createReminderEntity();
-        try {
-            Method onCreate = ReservationReminderEntity.class.getDeclaredMethod("onCreate");
-            onCreate.setAccessible(true);
-            onCreate.invoke(entity);
-        } catch (Exception e) {
-            throw new RuntimeException("リフレクションによるonCreate呼び出しに失敗", e);
-        }
-        return entity;
-    }
-
     private ReminderResponse createReminderResponse() {
         return new ReminderResponse(
                 REMINDER_ID, RESERVATION_ID, REMIND_AT, "PENDING", null, null);
