@@ -1,11 +1,11 @@
 -- F05.3 電子印鑑: seal_stamp_logs テーブル
 CREATE TABLE seal_stamp_logs (
-    id                   BIGINT       NOT NULL AUTO_INCREMENT,
-    user_id              BIGINT       NOT NULL,
-    seal_id              BIGINT       NOT NULL,
+    id                   BIGINT UNSIGNED       NOT NULL AUTO_INCREMENT,
+    user_id              BIGINT UNSIGNED NOT NULL,
+    seal_id              BIGINT UNSIGNED       NOT NULL,
     seal_hash_at_stamp   CHAR(64)     NOT NULL,
     target_type          VARCHAR(30)  NOT NULL,
-    target_id            BIGINT       NOT NULL,
+    target_id            BIGINT UNSIGNED       NOT NULL,
     stamp_document_hash  CHAR(64)     NULL,
     is_revoked           BOOLEAN      NOT NULL DEFAULT FALSE,
     revoked_at           DATETIME     NULL,

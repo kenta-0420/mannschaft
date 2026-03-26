@@ -1,8 +1,8 @@
 -- F05.6 汎用ワークフロー・承認エンジン: workflow_templates テーブル
 CREATE TABLE workflow_templates (
-    id                BIGINT        NOT NULL AUTO_INCREMENT,
+    id                BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
     scope_type        VARCHAR(20)   NOT NULL,
-    scope_id          BIGINT        NOT NULL,
+    scope_id          BIGINT UNSIGNED        NOT NULL,
     name              VARCHAR(100)  NOT NULL,
     description       VARCHAR(500)  NULL,
     icon              VARCHAR(50)   NULL,
@@ -10,8 +10,8 @@ CREATE TABLE workflow_templates (
     is_seal_required  BOOLEAN       NOT NULL DEFAULT FALSE,
     is_active         BOOLEAN       NOT NULL DEFAULT TRUE,
     sort_order        INT           NOT NULL DEFAULT 0,
-    created_by        BIGINT        NULL,
-    version           BIGINT        NOT NULL DEFAULT 0,
+    created_by        BIGINT UNSIGNED NULL,
+    version           BIGINT UNSIGNED        NOT NULL DEFAULT 0,
     created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at        DATETIME      NULL,

@@ -1,9 +1,9 @@
 -- F05.2 回覧板: circulation_documents テーブル
 CREATE TABLE circulation_documents (
-    id                      BIGINT        NOT NULL AUTO_INCREMENT,
+    id                      BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
     scope_type              VARCHAR(20)   NOT NULL,
-    scope_id                BIGINT        NOT NULL,
-    created_by              BIGINT        NOT NULL,
+    scope_id                BIGINT UNSIGNED        NOT NULL,
+    created_by              BIGINT UNSIGNED NOT NULL,
     title                   VARCHAR(200)  NOT NULL,
     body                    TEXT          NOT NULL,
     circulation_mode        VARCHAR(20)   NOT NULL DEFAULT 'SIMULTANEOUS',

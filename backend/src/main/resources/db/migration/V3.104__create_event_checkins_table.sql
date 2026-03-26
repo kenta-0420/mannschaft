@@ -1,10 +1,10 @@
 -- F03.8 イベント管理: チェックインテーブル
 CREATE TABLE event_checkins (
-    id                  BIGINT          NOT NULL AUTO_INCREMENT,
-    event_id            BIGINT          NOT NULL,
-    ticket_id           BIGINT          NOT NULL,
+    id                  BIGINT UNSIGNED          NOT NULL AUTO_INCREMENT,
+    event_id            BIGINT UNSIGNED          NOT NULL,
+    ticket_id           BIGINT UNSIGNED          NOT NULL,
     checkin_type        VARCHAR(20)     NOT NULL DEFAULT 'STAFF_SCAN',
-    checked_in_by       BIGINT,
+    checked_in_by       BIGINT UNSIGNED,
     checked_in_at       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     note                VARCHAR(300),
     created_at          DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,

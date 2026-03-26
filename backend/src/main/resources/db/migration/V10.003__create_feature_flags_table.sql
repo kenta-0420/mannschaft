@@ -1,6 +1,6 @@
 -- F10.1 フィーチャーフラグテーブル
 CREATE TABLE feature_flags (
-    id          BIGINT        NOT NULL AUTO_INCREMENT,
+    id          BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
     flag_key    VARCHAR(100)  NOT NULL,
     is_enabled  BOOLEAN       NOT NULL DEFAULT FALSE,
     description VARCHAR(500)  NULL,

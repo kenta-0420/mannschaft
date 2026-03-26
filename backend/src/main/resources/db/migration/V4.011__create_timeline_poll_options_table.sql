@@ -1,7 +1,7 @@
 -- F04.1 タイムライン投票選択肢テーブル
 CREATE TABLE timeline_poll_options (
-    id               BIGINT       NOT NULL AUTO_INCREMENT,
-    timeline_poll_id BIGINT       NOT NULL,
+    id               BIGINT UNSIGNED       NOT NULL AUTO_INCREMENT,
+    timeline_poll_id BIGINT UNSIGNED       NOT NULL,
     option_text      VARCHAR(100) NOT NULL,
     vote_count       INT          NOT NULL DEFAULT 0,
     sort_order       SMALLINT     NOT NULL DEFAULT 0,

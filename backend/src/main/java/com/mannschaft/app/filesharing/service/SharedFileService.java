@@ -144,7 +144,7 @@ public class SharedFileService {
     /**
      * ファイルを取得する。存在しない場合は例外をスローする。
      */
-    SharedFileEntity findFileOrThrow(Long fileId) {
+    public SharedFileEntity findFileOrThrow(Long fileId) {
         return fileRepository.findById(fileId)
                 .orElseThrow(() -> new BusinessException(FileSharingErrorCode.FILE_NOT_FOUND));
     }

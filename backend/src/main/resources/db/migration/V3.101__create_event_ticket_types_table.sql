@@ -1,7 +1,7 @@
 -- F03.8 イベント管理: チケット種別テーブル
 CREATE TABLE event_ticket_types (
-    id                      BIGINT          NOT NULL AUTO_INCREMENT,
-    event_id                BIGINT          NOT NULL,
+    id                      BIGINT UNSIGNED          NOT NULL AUTO_INCREMENT,
+    event_id                BIGINT UNSIGNED          NOT NULL,
     name                    VARCHAR(100)    NOT NULL,
     description             VARCHAR(500),
     price                   DECIMAL(12,0)   NOT NULL DEFAULT 0,

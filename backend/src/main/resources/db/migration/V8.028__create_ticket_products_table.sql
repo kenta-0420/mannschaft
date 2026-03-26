@@ -20,6 +20,6 @@ CREATE TABLE ticket_products (
     updated_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     INDEX idx_tp_team (team_id, deleted_at, is_active, sort_order),
-    CONSTRAINT fk_tp_team FOREIGN KEY (team_id) REFERENCES teams(id),
-    CONSTRAINT fk_tp_created_by FOREIGN KEY (created_by) REFERENCES users(id)
+    CONSTRAINT fk_ticket_prod_team FOREIGN KEY (team_id) REFERENCES teams(id),
+    CONSTRAINT fk_ticket_prod_created_by FOREIGN KEY (created_by) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

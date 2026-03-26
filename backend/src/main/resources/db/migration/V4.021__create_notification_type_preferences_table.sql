@@ -1,7 +1,7 @@
 -- F04.3 プッシュ通知: 通知種別設定テーブル
 CREATE TABLE notification_type_preferences (
-    id                  BIGINT          NOT NULL AUTO_INCREMENT,
-    user_id             BIGINT          NOT NULL,
+    id                  BIGINT UNSIGNED          NOT NULL AUTO_INCREMENT,
+    user_id             BIGINT UNSIGNED NOT NULL,
     notification_type   VARCHAR(50),
     is_enabled          BOOLEAN         NOT NULL DEFAULT TRUE,
     created_at          DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,

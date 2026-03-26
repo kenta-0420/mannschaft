@@ -1,7 +1,7 @@
 -- F03.8 イベント管理: タイムテーブル項目テーブル
 CREATE TABLE event_timetable_items (
-    id                  BIGINT          NOT NULL AUTO_INCREMENT,
-    event_id            BIGINT          NOT NULL,
+    id                  BIGINT UNSIGNED          NOT NULL AUTO_INCREMENT,
+    event_id            BIGINT UNSIGNED          NOT NULL,
     title               VARCHAR(200)    NOT NULL,
     description         VARCHAR(500),
     speaker             VARCHAR(100),

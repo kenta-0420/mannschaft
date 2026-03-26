@@ -27,7 +27,7 @@ CREATE TABLE member_payments (
     UNIQUE KEY uq_mp_checkout_session (stripe_checkout_session_id),
     UNIQUE KEY uq_mp_payment_intent (stripe_payment_intent_id),
     UNIQUE KEY uq_mp_refund (stripe_refund_id),
-    CONSTRAINT fk_mp_user         FOREIGN KEY (user_id)         REFERENCES users (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_member_pay_user  FOREIGN KEY (user_id)         REFERENCES users (id) ON DELETE RESTRICT,
     CONSTRAINT fk_mp_payment_item FOREIGN KEY (payment_item_id) REFERENCES payment_items (id) ON DELETE RESTRICT,
     CONSTRAINT fk_mp_recorded_by  FOREIGN KEY (recorded_by)     REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

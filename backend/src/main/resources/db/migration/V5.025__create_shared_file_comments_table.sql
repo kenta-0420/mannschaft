@@ -1,7 +1,7 @@
 CREATE TABLE shared_file_comments (
-    id         BIGINT        NOT NULL AUTO_INCREMENT,
-    file_id    BIGINT        NOT NULL,
-    user_id    BIGINT        NULL,
+    id         BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    file_id    BIGINT UNSIGNED        NOT NULL,
+    user_id    BIGINT UNSIGNED NULL,
     body       VARCHAR(2000) NOT NULL,
     created_at DATETIME(6)   NOT NULL,
     updated_at DATETIME(6)   NOT NULL,

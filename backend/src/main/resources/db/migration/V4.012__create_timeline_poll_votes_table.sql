@@ -1,9 +1,9 @@
 -- F04.1 タイムライン投票投票テーブル
 CREATE TABLE timeline_poll_votes (
-    id                     BIGINT   NOT NULL AUTO_INCREMENT,
-    timeline_poll_id       BIGINT   NOT NULL,
-    timeline_poll_option_id BIGINT  NOT NULL,
-    user_id                BIGINT   NOT NULL,
+    id                     BIGINT UNSIGNED   NOT NULL AUTO_INCREMENT,
+    timeline_poll_id       BIGINT UNSIGNED   NOT NULL,
+    timeline_poll_option_id BIGINT UNSIGNED  NOT NULL,
+    user_id                BIGINT UNSIGNED NOT NULL,
     created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT fk_poll_votes_poll FOREIGN KEY (timeline_poll_id) REFERENCES timeline_polls(id) ON DELETE CASCADE,

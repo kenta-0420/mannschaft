@@ -1,10 +1,10 @@
 -- F05.1 掲示板: スレッドテーブル
 CREATE TABLE bulletin_threads (
-    id                 BIGINT        NOT NULL AUTO_INCREMENT,
-    category_id        BIGINT        NOT NULL,
+    id                 BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    category_id        BIGINT UNSIGNED        NOT NULL,
     scope_type         VARCHAR(20)   NOT NULL,
-    scope_id           BIGINT        NOT NULL,
-    author_id          BIGINT,
+    scope_id           BIGINT UNSIGNED        NOT NULL,
+    author_id          BIGINT UNSIGNED,
     title              VARCHAR(200)  NOT NULL,
     body               TEXT          NOT NULL,
     priority           VARCHAR(20)   NOT NULL DEFAULT 'INFO',
@@ -16,7 +16,7 @@ CREATE TABLE bulletin_threads (
     read_count         INT           NOT NULL DEFAULT 0,
     last_replied_at    DATETIME(6),
     source_type        VARCHAR(30),
-    source_id          BIGINT,
+    source_id          BIGINT UNSIGNED,
     created_at         DATETIME(6)   NOT NULL,
     updated_at         DATETIME(6)   NOT NULL,
     deleted_at         DATETIME(6),

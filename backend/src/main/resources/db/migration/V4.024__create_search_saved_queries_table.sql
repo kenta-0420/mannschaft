@@ -1,7 +1,7 @@
 -- F04.6 グローバル検索: 保存済み検索クエリテーブル
 CREATE TABLE search_saved_queries (
-    id           BIGINT      NOT NULL AUTO_INCREMENT,
-    user_id      BIGINT      NOT NULL,
+    id           BIGINT UNSIGNED      NOT NULL AUTO_INCREMENT,
+    user_id      BIGINT UNSIGNED NOT NULL,
     name         VARCHAR(50) NOT NULL,
     query_params JSON        NOT NULL,
     created_at   DATETIME    NOT NULL DEFAULT NOW(),

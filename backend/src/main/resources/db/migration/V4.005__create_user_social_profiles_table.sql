@@ -1,7 +1,7 @@
 -- F04.4 ソーシャルプロフィールテーブル
 CREATE TABLE user_social_profiles (
-    id           BIGINT       NOT NULL AUTO_INCREMENT,
-    user_id      BIGINT       NOT NULL,
+    id           BIGINT UNSIGNED       NOT NULL AUTO_INCREMENT,
+    user_id      BIGINT UNSIGNED NOT NULL,
     handle       VARCHAR(30)  NOT NULL,
     display_name VARCHAR(50)  NULL,
     avatar_url   VARCHAR(500) NULL,

@@ -1,7 +1,7 @@
 -- F05.7 書類テンプレート・フォームビルダー: フォームテンプレートフィールドテーブル
 CREATE TABLE form_template_fields (
-    id              BIGINT          NOT NULL AUTO_INCREMENT,
-    template_id     BIGINT          NOT NULL,
+    id              BIGINT UNSIGNED          NOT NULL AUTO_INCREMENT,
+    template_id     BIGINT UNSIGNED          NOT NULL,
     field_key       VARCHAR(50)     NOT NULL,
     field_label     VARCHAR(100)    NOT NULL,
     field_type      VARCHAR(20)     NOT NULL,

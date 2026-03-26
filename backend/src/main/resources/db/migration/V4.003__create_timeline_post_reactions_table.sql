@@ -1,8 +1,8 @@
 -- F04.1 タイムラインリアクションテーブル
 CREATE TABLE timeline_post_reactions (
-    id               BIGINT      NOT NULL AUTO_INCREMENT,
-    timeline_post_id BIGINT      NOT NULL,
-    user_id          BIGINT      NOT NULL,
+    id               BIGINT UNSIGNED      NOT NULL AUTO_INCREMENT,
+    timeline_post_id BIGINT UNSIGNED      NOT NULL,
+    user_id          BIGINT UNSIGNED NOT NULL,
     emoji            VARCHAR(10) NOT NULL,
     created_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),

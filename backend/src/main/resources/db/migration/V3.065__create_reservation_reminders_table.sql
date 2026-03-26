@@ -1,7 +1,7 @@
 -- F03.4 予約管理: リマインダーテーブル
 CREATE TABLE reservation_reminders (
-    id             BIGINT      NOT NULL AUTO_INCREMENT,
-    reservation_id BIGINT      NOT NULL,
+    id             BIGINT UNSIGNED      NOT NULL AUTO_INCREMENT,
+    reservation_id BIGINT UNSIGNED      NOT NULL,
     remind_at      DATETIME    NOT NULL,
     status         VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     sent_at        DATETIME,

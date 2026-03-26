@@ -1,9 +1,9 @@
 -- F05.1 掲示板: 返信テーブル
 CREATE TABLE bulletin_replies (
-    id          BIGINT      NOT NULL AUTO_INCREMENT,
-    thread_id   BIGINT      NOT NULL,
-    parent_id   BIGINT,
-    author_id   BIGINT,
+    id          BIGINT UNSIGNED      NOT NULL AUTO_INCREMENT,
+    thread_id   BIGINT UNSIGNED      NOT NULL,
+    parent_id   BIGINT UNSIGNED,
+    author_id   BIGINT UNSIGNED,
     body        TEXT        NOT NULL,
     is_edited   BOOLEAN     NOT NULL DEFAULT FALSE,
     reply_count INT         NOT NULL DEFAULT 0,

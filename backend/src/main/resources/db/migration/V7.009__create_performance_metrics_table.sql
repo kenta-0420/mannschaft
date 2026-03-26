@@ -21,7 +21,7 @@ CREATE TABLE performance_metrics (
     updated_at                DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT fk_pm_team      FOREIGN KEY (team_id) REFERENCES teams (id),
-    CONSTRAINT fk_pm_linked_field FOREIGN KEY (linked_activity_field_id) REFERENCES activity_custom_fields (id) ON DELETE SET NULL,
+    CONSTRAINT fk_pm_linked_field FOREIGN KEY (linked_activity_field_id) REFERENCES activity_template_fields (id) ON DELETE SET NULL,
     INDEX idx_pm_team_sort (team_id, sort_order),
     INDEX idx_pm_team_group (team_id, group_name),
     INDEX idx_pm_linked_field (linked_activity_field_id)

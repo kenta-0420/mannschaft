@@ -1,7 +1,7 @@
 -- F04.6 グローバル検索: 検索履歴テーブル
 CREATE TABLE search_histories (
-    id         BIGINT       NOT NULL AUTO_INCREMENT,
-    user_id    BIGINT       NOT NULL,
+    id         BIGINT UNSIGNED       NOT NULL AUTO_INCREMENT,
+    user_id    BIGINT UNSIGNED NOT NULL,
     query      VARCHAR(100) NOT NULL,
     searched_at DATETIME    NOT NULL DEFAULT NOW(),
     PRIMARY KEY (id),

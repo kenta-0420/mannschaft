@@ -1,8 +1,8 @@
 -- F05.6 汎用ワークフロー・承認エンジン: workflow_request_comments テーブル
 CREATE TABLE workflow_request_comments (
-    id                BIGINT        NOT NULL AUTO_INCREMENT,
-    request_id        BIGINT        NOT NULL,
-    user_id           BIGINT        NULL,
+    id                BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    request_id        BIGINT UNSIGNED        NOT NULL,
+    user_id           BIGINT UNSIGNED NULL,
     body              VARCHAR(2000) NOT NULL,
     created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

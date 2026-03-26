@@ -1,7 +1,7 @@
 -- F04.1 タイムライン投稿添付ファイルテーブル
 CREATE TABLE timeline_post_attachments (
-    id                  BIGINT        NOT NULL AUTO_INCREMENT,
-    timeline_post_id    BIGINT        NOT NULL,
+    id                  BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    timeline_post_id    BIGINT UNSIGNED        NOT NULL,
     attachment_type     VARCHAR(20)   NOT NULL,
     file_key            VARCHAR(500)  NULL,
     original_filename   VARCHAR(255)  NULL,

@@ -1,7 +1,7 @@
 -- F05.7 書類テンプレート・フォームビルダー: フォーム提出値テーブル
 CREATE TABLE form_submission_values (
-    id              BIGINT          NOT NULL AUTO_INCREMENT,
-    submission_id   BIGINT          NOT NULL,
+    id              BIGINT UNSIGNED          NOT NULL AUTO_INCREMENT,
+    submission_id   BIGINT UNSIGNED          NOT NULL,
     field_key       VARCHAR(50)     NOT NULL,
     field_type      VARCHAR(20)     NOT NULL,
     text_value      TEXT,

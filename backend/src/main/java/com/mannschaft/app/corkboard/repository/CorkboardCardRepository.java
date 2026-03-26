@@ -2,6 +2,7 @@ package com.mannschaft.app.corkboard.repository;
 
 import com.mannschaft.app.corkboard.entity.CorkboardCardEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,11 +16,13 @@ public interface CorkboardCardRepository extends JpaRepository<CorkboardCardEnti
     /**
      * ボード内のアクティブなカード一覧を取得する。
      */
+    @Query("SELECT c FROM CorkboardCardEntity c WHERE c.corkboardId = :corkboardId AND c.isArchived = false ORDER BY c.zIndex DESC")
     List<CorkboardCardEntity> findByCorkboardIdAndIsArchivedFalseOrderByZIndexDesc(Long corkboardId);
 
     /**
      * ボード内の全カード一覧を取得する（アーカイブ含む）。
      */
+    @Query("SELECT c FROM CorkboardCardEntity c WHERE c.corkboardId = :corkboardId ORDER BY c.zIndex DESC")
     List<CorkboardCardEntity> findByCorkboardIdOrderByZIndexDesc(Long corkboardId);
 
     /**

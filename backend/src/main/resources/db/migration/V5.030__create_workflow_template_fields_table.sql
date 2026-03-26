@@ -1,7 +1,7 @@
 -- F05.6 汎用ワークフロー・承認エンジン: workflow_template_fields テーブル
 CREATE TABLE workflow_template_fields (
-    id                BIGINT        NOT NULL AUTO_INCREMENT,
-    template_id       BIGINT        NOT NULL,
+    id                BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    template_id       BIGINT UNSIGNED        NOT NULL,
     field_key         VARCHAR(50)   NOT NULL,
     field_label       VARCHAR(100)  NOT NULL,
     field_type        VARCHAR(20)   NOT NULL,

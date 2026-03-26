@@ -2,8 +2,8 @@
 CREATE TABLE moderation_appeals (
     id                       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id                  BIGINT UNSIGNED NOT NULL,
-    report_id                BIGINT          NOT NULL,
-    action_id                BIGINT          NOT NULL,
+    report_id                BIGINT UNSIGNED          NOT NULL,
+    action_id                BIGINT UNSIGNED          NOT NULL,
     appeal_token             VARCHAR(64)     NOT NULL,
     appeal_token_expires_at  DATETIME        NOT NULL,
     appeal_reason            TEXT            NULL,

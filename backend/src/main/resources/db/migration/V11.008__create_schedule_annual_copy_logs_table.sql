@@ -15,9 +15,6 @@ CREATE TABLE schedule_annual_copy_logs (
     INDEX idx_sacl_org (organization_id, target_academic_year),
     CONSTRAINT fk_sacl_team FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE SET NULL,
     CONSTRAINT fk_sacl_organization FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE SET NULL,
-    CONSTRAINT fk_sacl_executed_by FOREIGN KEY (executed_by) REFERENCES users (id) ON DELETE SET NULL,
-    CONSTRAINT chk_sacl_scope CHECK (
-        (team_id IS NOT NULL AND organization_id IS NULL) OR
-        (team_id IS NULL AND organization_id IS NOT NULL)
-    )
+    CONSTRAINT fk_sacl_executed_by FOREIGN KEY (executed_by) REFERENCES users (id) ON DELETE SET NULL
+    -- XOR制約はアプリ層で検証（MySQL 8.0ではON DELETE SET NULLのFKカラムにCHECK制約不可）
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

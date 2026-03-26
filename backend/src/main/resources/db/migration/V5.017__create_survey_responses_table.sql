@@ -1,10 +1,10 @@
 -- F05.4 アンケート・投票: survey_responses テーブル
 CREATE TABLE survey_responses (
-    id              BIGINT   NOT NULL AUTO_INCREMENT,
-    survey_id       BIGINT   NOT NULL,
-    question_id     BIGINT   NOT NULL,
-    user_id         BIGINT   NOT NULL,
-    option_id       BIGINT   NULL,
+    id              BIGINT UNSIGNED   NOT NULL AUTO_INCREMENT,
+    survey_id       BIGINT UNSIGNED   NOT NULL,
+    question_id     BIGINT UNSIGNED   NOT NULL,
+    user_id         BIGINT UNSIGNED NOT NULL,
+    option_id       BIGINT UNSIGNED   NULL,
     text_response   TEXT     NULL,
     created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

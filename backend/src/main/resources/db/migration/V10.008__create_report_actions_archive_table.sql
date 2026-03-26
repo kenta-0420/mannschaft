@@ -1,7 +1,7 @@
 -- F10.1 通報対応アクションアーカイブテーブル
 CREATE TABLE report_actions_archive (
-    id                 BIGINT        NOT NULL,
-    report_id          BIGINT        NOT NULL,
+    id                 BIGINT UNSIGNED        NOT NULL,
+    report_id          BIGINT UNSIGNED        NOT NULL,
     action_type        VARCHAR(20)   NOT NULL,
     action_by          BIGINT UNSIGNED NOT NULL,
     note               TEXT          NULL,

@@ -1,7 +1,7 @@
 -- F05.3 電子印鑑: electronic_seals テーブル
 CREATE TABLE electronic_seals (
-    id          BIGINT       NOT NULL AUTO_INCREMENT,
-    user_id     BIGINT       NOT NULL,
+    id          BIGINT UNSIGNED       NOT NULL AUTO_INCREMENT,
+    user_id     BIGINT UNSIGNED NOT NULL,
     variant     VARCHAR(20)  NOT NULL,
     display_text VARCHAR(20) NOT NULL,
     svg_data    TEXT         NOT NULL,

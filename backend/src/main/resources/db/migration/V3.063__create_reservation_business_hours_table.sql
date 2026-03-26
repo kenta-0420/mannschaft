@@ -1,7 +1,7 @@
 -- F03.4 予約管理: 営業時間テーブル
 CREATE TABLE reservation_business_hours (
-    id          BIGINT      NOT NULL AUTO_INCREMENT,
-    team_id     BIGINT      NOT NULL,
+    id          BIGINT UNSIGNED      NOT NULL AUTO_INCREMENT,
+    team_id     BIGINT UNSIGNED NOT NULL,
     day_of_week VARCHAR(3)  NOT NULL,
     is_open     BOOLEAN     NOT NULL DEFAULT TRUE,
     open_time   TIME,

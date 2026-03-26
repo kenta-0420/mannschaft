@@ -340,7 +340,7 @@ public class Auth2faService {
     /**
      * TOTPコードを検証する。
      * <p>
-     * ※ TODO: TOTPライブラリ（例: com.eatthepath:java-otp）統合時に正式実装する。
+     * TOTPライブラリ（例: com.eatthepath:java-otp）統合時に正式実装予定。
      * 現時点では±1ウィンドウ（30秒刻み）の検証ロジックのダミー実装。
      * </p>
      *

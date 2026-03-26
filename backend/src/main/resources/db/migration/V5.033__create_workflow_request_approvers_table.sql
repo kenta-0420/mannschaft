@@ -1,12 +1,12 @@
 -- F05.6 汎用ワークフロー・承認エンジン: workflow_request_approvers テーブル
 CREATE TABLE workflow_request_approvers (
-    id                  BIGINT        NOT NULL AUTO_INCREMENT,
-    request_step_id     BIGINT        NOT NULL,
-    approver_user_id    BIGINT        NOT NULL,
+    id                  BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    request_step_id     BIGINT UNSIGNED        NOT NULL,
+    approver_user_id    BIGINT UNSIGNED NOT NULL,
     decision            VARCHAR(20)   NOT NULL DEFAULT 'PENDING',
     decision_at         DATETIME      NULL,
     decision_comment    VARCHAR(1000) NULL,
-    seal_id             BIGINT        NULL,
+    seal_id             BIGINT UNSIGNED        NULL,
     created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     INDEX idx_wf_request_approvers_step (request_step_id),

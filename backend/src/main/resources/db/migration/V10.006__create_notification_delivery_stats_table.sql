@@ -1,6 +1,6 @@
 -- F10.1 通知配信統計テーブル
 CREATE TABLE notification_delivery_stats (
-    id              BIGINT         NOT NULL AUTO_INCREMENT,
+    id              BIGINT UNSIGNED         NOT NULL AUTO_INCREMENT,
     date            DATE           NOT NULL,
     channel         VARCHAR(20)    NOT NULL,
     sent_count      INT UNSIGNED   NOT NULL DEFAULT 0,

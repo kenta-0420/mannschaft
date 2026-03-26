@@ -1,12 +1,12 @@
 -- F03.4 予約管理: ブロック時間テーブル
 CREATE TABLE reservation_blocked_times (
-    id           BIGINT       NOT NULL AUTO_INCREMENT,
-    team_id      BIGINT       NOT NULL,
+    id           BIGINT UNSIGNED       NOT NULL AUTO_INCREMENT,
+    team_id      BIGINT UNSIGNED NOT NULL,
     blocked_date DATE         NOT NULL,
     start_time   TIME,
     end_time     TIME,
     reason       VARCHAR(200),
-    created_by   BIGINT,
+    created_by   BIGINT UNSIGNED,
     created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),

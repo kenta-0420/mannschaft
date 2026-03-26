@@ -1,9 +1,9 @@
 -- F05.1 掲示板: リアクションテーブル
 CREATE TABLE bulletin_reactions (
-    id          BIGINT      NOT NULL AUTO_INCREMENT,
+    id          BIGINT UNSIGNED      NOT NULL AUTO_INCREMENT,
     target_type VARCHAR(10) NOT NULL,
-    target_id   BIGINT      NOT NULL,
-    user_id     BIGINT      NOT NULL,
+    target_id   BIGINT UNSIGNED      NOT NULL,
+    user_id     BIGINT UNSIGNED NOT NULL,
     emoji       VARCHAR(10) NOT NULL,
     created_at  DATETIME(6) NOT NULL,
     PRIMARY KEY (id),

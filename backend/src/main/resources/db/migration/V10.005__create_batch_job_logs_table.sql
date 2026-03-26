@@ -1,6 +1,6 @@
 -- F10.1 バッチジョブログテーブル
 CREATE TABLE batch_job_logs (
-    id               BIGINT       NOT NULL AUTO_INCREMENT,
+    id               BIGINT UNSIGNED       NOT NULL AUTO_INCREMENT,
     job_name         VARCHAR(100) NOT NULL,
     status           VARCHAR(20)  NOT NULL,
     started_at       DATETIME     NOT NULL,

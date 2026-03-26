@@ -1,7 +1,7 @@
 CREATE TABLE shared_file_stars (
-    id         BIGINT      NOT NULL AUTO_INCREMENT,
-    file_id    BIGINT      NOT NULL,
-    user_id    BIGINT      NOT NULL,
+    id         BIGINT UNSIGNED      NOT NULL AUTO_INCREMENT,
+    file_id    BIGINT UNSIGNED      NOT NULL,
+    user_id    BIGINT UNSIGNED NOT NULL,
     created_at DATETIME(6) NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_file_stars_file_user (file_id, user_id),

@@ -1,7 +1,7 @@
 -- F05.4 アンケート・投票: survey_questions テーブル
 CREATE TABLE survey_questions (
-    id               BIGINT       NOT NULL AUTO_INCREMENT,
-    survey_id        BIGINT       NOT NULL,
+    id               BIGINT UNSIGNED       NOT NULL AUTO_INCREMENT,
+    survey_id        BIGINT UNSIGNED       NOT NULL,
     question_type    VARCHAR(20)  NOT NULL,
     question_text    VARCHAR(500) NOT NULL,
     is_required      BOOLEAN      NOT NULL DEFAULT TRUE,

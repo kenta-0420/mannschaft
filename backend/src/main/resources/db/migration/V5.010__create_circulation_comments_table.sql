@@ -1,8 +1,8 @@
 -- F05.2 回覧板: circulation_comments テーブル
 CREATE TABLE circulation_comments (
-    id          BIGINT        NOT NULL AUTO_INCREMENT,
-    document_id BIGINT        NOT NULL,
-    user_id     BIGINT        NOT NULL,
+    id          BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    document_id BIGINT UNSIGNED        NOT NULL,
+    user_id     BIGINT UNSIGNED NOT NULL,
     body        VARCHAR(1000) NOT NULL,
     created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

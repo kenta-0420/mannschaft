@@ -1,12 +1,12 @@
 -- F05.2 回覧板: circulation_recipients テーブル
 CREATE TABLE circulation_recipients (
-    id            BIGINT      NOT NULL AUTO_INCREMENT,
-    document_id   BIGINT      NOT NULL,
-    user_id       BIGINT      NOT NULL,
+    id            BIGINT UNSIGNED      NOT NULL AUTO_INCREMENT,
+    document_id   BIGINT UNSIGNED      NOT NULL,
+    user_id       BIGINT UNSIGNED NOT NULL,
     sort_order    INT         NOT NULL DEFAULT 0,
     status        VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     stamped_at    DATETIME    NULL,
-    seal_id       BIGINT      NULL,
+    seal_id       BIGINT UNSIGNED      NULL,
     seal_variant  VARCHAR(20) NULL,
     tilt_angle    SMALLINT    NOT NULL DEFAULT 0,
     is_flipped    BOOLEAN     NOT NULL DEFAULT FALSE,

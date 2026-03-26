@@ -1,7 +1,7 @@
 -- F05.4 アンケート・投票: survey_options テーブル
 CREATE TABLE survey_options (
-    id             BIGINT       NOT NULL AUTO_INCREMENT,
-    question_id    BIGINT       NOT NULL,
+    id             BIGINT UNSIGNED       NOT NULL AUTO_INCREMENT,
+    question_id    BIGINT UNSIGNED       NOT NULL,
     option_text    VARCHAR(200) NOT NULL,
     display_order  INT          NOT NULL DEFAULT 0,
     PRIMARY KEY (id),

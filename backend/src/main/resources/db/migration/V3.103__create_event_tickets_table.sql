@@ -1,9 +1,9 @@
 -- F03.8 イベント管理: チケットテーブル
 CREATE TABLE event_tickets (
-    id                  BIGINT          NOT NULL AUTO_INCREMENT,
-    registration_id     BIGINT          NOT NULL,
-    event_id            BIGINT          NOT NULL,
-    ticket_type_id      BIGINT          NOT NULL,
+    id                  BIGINT UNSIGNED          NOT NULL AUTO_INCREMENT,
+    registration_id     BIGINT UNSIGNED          NOT NULL,
+    event_id            BIGINT UNSIGNED          NOT NULL,
+    ticket_type_id      BIGINT UNSIGNED          NOT NULL,
     qr_token            CHAR(36)        NOT NULL,
     ticket_number       VARCHAR(30)     NOT NULL,
     status              VARCHAR(20)     NOT NULL DEFAULT 'VALID',

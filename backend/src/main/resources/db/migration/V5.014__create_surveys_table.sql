@@ -1,8 +1,8 @@
 -- F05.4 アンケート・投票: surveys テーブル
 CREATE TABLE surveys (
-    id                          BIGINT        NOT NULL AUTO_INCREMENT,
+    id                          BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
     scope_type                  VARCHAR(20)   NOT NULL,
-    scope_id                    BIGINT        NOT NULL,
+    scope_id                    BIGINT UNSIGNED        NOT NULL,
     title                       VARCHAR(200)  NOT NULL,
     description                 TEXT          NULL,
     status                      VARCHAR(20)   NOT NULL DEFAULT 'DRAFT',
@@ -18,10 +18,10 @@ CREATE TABLE surveys (
     expires_at                  DATETIME      NULL,
     response_count              INT           NOT NULL DEFAULT 0,
     target_count                INT           NOT NULL DEFAULT 0,
-    created_by                  BIGINT        NULL,
+    created_by                  BIGINT UNSIGNED NULL,
     published_at                DATETIME      NULL,
     closed_at                   DATETIME      NULL,
-    version                     BIGINT        NOT NULL DEFAULT 0,
+    version                     BIGINT UNSIGNED        NOT NULL DEFAULT 0,
     created_at                  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at                  DATETIME      NULL,

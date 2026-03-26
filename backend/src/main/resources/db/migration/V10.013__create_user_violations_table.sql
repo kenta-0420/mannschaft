@@ -2,8 +2,8 @@
 CREATE TABLE user_violations (
     id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id         BIGINT UNSIGNED NOT NULL,
-    report_id       BIGINT          NOT NULL,
-    action_id       BIGINT          NOT NULL,
+    report_id       BIGINT UNSIGNED          NOT NULL,
+    action_id       BIGINT UNSIGNED          NOT NULL,
     violation_type  VARCHAR(20)     NOT NULL,
     reason          VARCHAR(30)     NOT NULL,
     expires_at      DATETIME        NULL,

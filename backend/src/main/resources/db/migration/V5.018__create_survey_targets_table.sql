@@ -1,8 +1,8 @@
 -- F05.4 アンケート・投票: survey_targets テーブル
 CREATE TABLE survey_targets (
-    id          BIGINT   NOT NULL AUTO_INCREMENT,
-    survey_id   BIGINT   NOT NULL,
-    user_id     BIGINT   NOT NULL,
+    id          BIGINT UNSIGNED   NOT NULL AUTO_INCREMENT,
+    survey_id   BIGINT UNSIGNED   NOT NULL,
+    user_id     BIGINT UNSIGNED NOT NULL,
     created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uk_survey_targets_survey_user (survey_id, user_id),

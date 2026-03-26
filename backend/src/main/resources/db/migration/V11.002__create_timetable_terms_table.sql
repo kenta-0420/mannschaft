@@ -14,7 +14,7 @@ CREATE TABLE timetable_terms (
     INDEX idx_tt_team_year (team_id, academic_year),
     INDEX idx_tt_org_year (organization_id, academic_year),
     CONSTRAINT fk_tt_team FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
-    CONSTRAINT fk_tt_organization FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+    CONSTRAINT fk_timetable_term_org FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
     CONSTRAINT chk_term_scope CHECK (
         (team_id IS NOT NULL AND organization_id IS NULL) OR
         (team_id IS NULL AND organization_id IS NOT NULL)

@@ -1,6 +1,6 @@
 -- F05.7 書類テンプレート・フォームビルダー: システムフォームプリセットテーブル
 CREATE TABLE system_form_presets (
-    id              BIGINT          NOT NULL AUTO_INCREMENT,
+    id              BIGINT UNSIGNED          NOT NULL AUTO_INCREMENT,
     name            VARCHAR(100)    NOT NULL,
     description     VARCHAR(500),
     category        VARCHAR(50),
@@ -8,7 +8,7 @@ CREATE TABLE system_form_presets (
     icon            VARCHAR(50),
     color           VARCHAR(7),
     is_active       BOOLEAN         NOT NULL DEFAULT TRUE,
-    created_by      BIGINT          NULL,
+    created_by      BIGINT UNSIGNED NULL,
     created_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at      DATETIME,

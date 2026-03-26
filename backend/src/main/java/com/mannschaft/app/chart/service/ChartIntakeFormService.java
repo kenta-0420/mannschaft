@@ -5,7 +5,6 @@ import com.mannschaft.app.chart.ChartMapper;
 import com.mannschaft.app.chart.dto.IntakeFormResponse;
 import com.mannschaft.app.chart.dto.UpdateIntakeFormRequest;
 import com.mannschaft.app.chart.entity.ChartIntakeFormEntity;
-import com.mannschaft.app.chart.entity.ChartRecordEntity;
 import com.mannschaft.app.chart.repository.ChartIntakeFormRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.BusinessException;

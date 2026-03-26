@@ -1,7 +1,7 @@
 -- F04.1 タイムライン投票テーブル
 CREATE TABLE timeline_polls (
-    id               BIGINT       NOT NULL AUTO_INCREMENT,
-    timeline_post_id BIGINT       NOT NULL,
+    id               BIGINT UNSIGNED       NOT NULL AUTO_INCREMENT,
+    timeline_post_id BIGINT UNSIGNED       NOT NULL,
     question         VARCHAR(200) NOT NULL,
     total_vote_count INT          NOT NULL DEFAULT 0,
     expires_at       DATETIME     NULL,

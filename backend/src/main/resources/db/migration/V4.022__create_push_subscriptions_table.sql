@@ -1,7 +1,7 @@
 -- F04.3 プッシュ通知: プッシュ購読テーブル
 CREATE TABLE push_subscriptions (
-    id                  BIGINT          NOT NULL AUTO_INCREMENT,
-    user_id             BIGINT          NOT NULL,
+    id                  BIGINT UNSIGNED          NOT NULL AUTO_INCREMENT,
+    user_id             BIGINT UNSIGNED NOT NULL,
     endpoint            VARCHAR(2000)   NOT NULL,
     p256dh_key          VARCHAR(500)    NOT NULL,
     auth_key            VARCHAR(500)    NOT NULL,

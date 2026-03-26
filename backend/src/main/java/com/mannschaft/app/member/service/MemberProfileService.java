@@ -14,7 +14,6 @@ import com.mannschaft.app.member.dto.ReorderRequest;
 import com.mannschaft.app.member.dto.ReorderResponse;
 import com.mannschaft.app.member.dto.UpdateMemberProfileRequest;
 import com.mannschaft.app.member.entity.MemberProfileEntity;
-import com.mannschaft.app.member.entity.TeamPageEntity;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

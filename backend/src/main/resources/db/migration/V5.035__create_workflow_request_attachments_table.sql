@@ -1,11 +1,11 @@
 -- F05.6 汎用ワークフロー・承認エンジン: workflow_request_attachments テーブル
 CREATE TABLE workflow_request_attachments (
-    id                  BIGINT        NOT NULL AUTO_INCREMENT,
-    request_id          BIGINT        NOT NULL,
+    id                  BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    request_id          BIGINT UNSIGNED        NOT NULL,
     file_key            VARCHAR(500)  NOT NULL,
     original_filename   VARCHAR(255)  NOT NULL,
-    file_size           BIGINT        NOT NULL,
-    uploaded_by         BIGINT        NULL,
+    file_size           BIGINT UNSIGNED        NOT NULL,
+    uploaded_by         BIGINT UNSIGNED NULL,
     created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     INDEX idx_wf_request_attachments_request (request_id),

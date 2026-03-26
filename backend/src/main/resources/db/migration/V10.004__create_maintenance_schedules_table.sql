@@ -1,6 +1,6 @@
 -- F10.1 メンテナンススケジュールテーブル
 CREATE TABLE maintenance_schedules (
-    id          BIGINT        NOT NULL AUTO_INCREMENT,
+    id          BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
     title       VARCHAR(200)  NOT NULL,
     message     TEXT          NULL,
     mode        VARCHAR(20)   NOT NULL DEFAULT 'MAINTENANCE',

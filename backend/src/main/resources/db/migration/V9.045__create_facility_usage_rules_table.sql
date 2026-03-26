@@ -12,7 +12,7 @@ CREATE TABLE facility_usage_rules (
     cancellation_deadline_hours SMALLINT UNSIGNED NULL,
     available_time_from         TIME            NOT NULL DEFAULT '09:00:00',
     available_time_to           TIME            NOT NULL DEFAULT '22:00:00',
-    available_days_of_week      JSON            NOT NULL DEFAULT '[0,1,2,3,4,5,6]',
+    available_days_of_week      JSON            NOT NULL DEFAULT (JSON_ARRAY(0,1,2,3,4,5,6)),
     blackout_dates              JSON            NULL,
     notes                       VARCHAR(500)    NULL,
     created_at                  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,

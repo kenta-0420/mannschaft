@@ -1,8 +1,8 @@
 -- F04.1 タイムラインブックマークテーブル
 CREATE TABLE timeline_bookmarks (
-    id               BIGINT   NOT NULL AUTO_INCREMENT,
-    user_id          BIGINT   NOT NULL,
-    timeline_post_id BIGINT   NOT NULL,
+    id               BIGINT UNSIGNED   NOT NULL AUTO_INCREMENT,
+    user_id          BIGINT UNSIGNED NOT NULL,
+    timeline_post_id BIGINT UNSIGNED   NOT NULL,
     created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT fk_bookmarks_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

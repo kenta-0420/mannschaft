@@ -1,7 +1,7 @@
 -- F05.6 汎用ワークフロー・承認エンジン: workflow_request_steps テーブル
 CREATE TABLE workflow_request_steps (
-    id                BIGINT        NOT NULL AUTO_INCREMENT,
-    request_id        BIGINT        NOT NULL,
+    id                BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    request_id        BIGINT UNSIGNED        NOT NULL,
     step_order        TINYINT       NOT NULL,
     status            VARCHAR(20)   NOT NULL DEFAULT 'WAITING',
     completed_at      DATETIME      NULL,

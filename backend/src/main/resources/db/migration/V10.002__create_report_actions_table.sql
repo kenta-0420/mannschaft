@@ -1,7 +1,7 @@
 -- F10.1 通報対応アクション履歴テーブル
 CREATE TABLE report_actions (
-    id                 BIGINT        NOT NULL AUTO_INCREMENT,
-    report_id          BIGINT        NOT NULL,
+    id                 BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    report_id          BIGINT UNSIGNED        NOT NULL,
     action_type        VARCHAR(20)   NOT NULL,
     action_by          BIGINT UNSIGNED NOT NULL,
     note               TEXT          NULL,

@@ -1,7 +1,7 @@
 -- F05.6 汎用ワークフロー・承認エンジン: workflow_template_steps テーブル
 CREATE TABLE workflow_template_steps (
-    id                BIGINT        NOT NULL AUTO_INCREMENT,
-    template_id       BIGINT        NOT NULL,
+    id                BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    template_id       BIGINT UNSIGNED        NOT NULL,
     step_order        TINYINT       NOT NULL,
     name              VARCHAR(100)  NOT NULL,
     approval_type     VARCHAR(10)   NOT NULL DEFAULT 'ALL',

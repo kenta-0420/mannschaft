@@ -11,5 +11,5 @@ CREATE TABLE tournament_participants (
     UNIQUE INDEX uq_tp_div_team (division_id, team_id),
     INDEX idx_tp_team (team_id),
     CONSTRAINT fk_tp_division FOREIGN KEY (division_id) REFERENCES tournament_divisions (id) ON DELETE CASCADE,
-    CONSTRAINT fk_tp_team FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE
+    CONSTRAINT fk_tourn_part_team FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -15,6 +15,6 @@ CREATE TABLE safety_responses (
     PRIMARY KEY (id),
     UNIQUE KEY uq_sr_check_user (safety_check_id, user_id),
 
-    CONSTRAINT fk_sr_safety_check FOREIGN KEY (safety_check_id) REFERENCES safety_checks (id) ON DELETE CASCADE,
-    CONSTRAINT fk_sr_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    CONSTRAINT fk_safety_resp_check FOREIGN KEY (safety_check_id) REFERENCES safety_checks (id) ON DELETE CASCADE,
+    CONSTRAINT fk_safety_resp_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='安否確認回答';

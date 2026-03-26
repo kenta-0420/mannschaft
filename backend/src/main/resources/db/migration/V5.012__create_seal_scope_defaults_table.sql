@@ -1,10 +1,10 @@
 -- F05.3 電子印鑑: seal_scope_defaults テーブル
 CREATE TABLE seal_scope_defaults (
-    id          BIGINT       NOT NULL AUTO_INCREMENT,
-    user_id     BIGINT       NOT NULL,
+    id          BIGINT UNSIGNED       NOT NULL AUTO_INCREMENT,
+    user_id     BIGINT UNSIGNED NOT NULL,
     scope_type  VARCHAR(20)  NOT NULL DEFAULT 'DEFAULT',
-    scope_id    BIGINT       NULL,
-    seal_id     BIGINT       NOT NULL,
+    scope_id    BIGINT UNSIGNED       NULL,
+    seal_id     BIGINT UNSIGNED       NOT NULL,
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),

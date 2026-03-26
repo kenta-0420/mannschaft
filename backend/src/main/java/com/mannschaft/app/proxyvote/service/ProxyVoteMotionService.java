@@ -140,7 +140,7 @@ public class ProxyVoteMotionService {
             }
         }
 
-        // 未投票の出席者は棄権扱い（TODO: eligible メンバー一覧からの差分計算）
+        // 未投票の出席者は棄権扱い（eligible メンバー一覧からの差分計算は将来対応）
 
         motion.changeVotingStatus(VotingStatus.VOTED);
         MotionResult result = sessionService.judgeMotionResult(motion);

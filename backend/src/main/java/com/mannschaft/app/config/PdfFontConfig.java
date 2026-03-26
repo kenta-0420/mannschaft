@@ -21,7 +21,7 @@ public class PdfFontConfig {
 
     @PostConstruct
     public void init() {
-        registerFont("fonts/NotoSansJP-Regular.ttf", "NotoSansJP", false);
+        registerFont("fonts/NotoSansJP-Regular.ttf", "NotoSansJP", true);
         registerFont("fonts/NotoSerifJP-Regular.ttf", "NotoSerifJP", true);
     }
 

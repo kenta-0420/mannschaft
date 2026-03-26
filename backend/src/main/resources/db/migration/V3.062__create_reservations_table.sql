@@ -1,10 +1,10 @@
 -- F03.4 予約管理: 予約テーブル
 CREATE TABLE reservations (
-    id                  BIGINT       NOT NULL AUTO_INCREMENT,
-    reservation_slot_id BIGINT       NOT NULL,
-    line_id             BIGINT       NOT NULL,
-    team_id             BIGINT       NOT NULL,
-    user_id             BIGINT       NOT NULL,
+    id                  BIGINT UNSIGNED       NOT NULL AUTO_INCREMENT,
+    reservation_slot_id BIGINT UNSIGNED       NOT NULL,
+    line_id             BIGINT UNSIGNED       NOT NULL,
+    team_id             BIGINT UNSIGNED NOT NULL,
+    user_id             BIGINT UNSIGNED NOT NULL,
     status              VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
     booked_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     confirmed_at        DATETIME,

@@ -13,7 +13,7 @@ CREATE TABLE platform_announcements (
     updated_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at    DATETIME        NULL,
     PRIMARY KEY (id),
-    CONSTRAINT fk_pa_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_platform_ann_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE RESTRICT,
     INDEX idx_pa_published (published_at DESC, expires_at),
     INDEX idx_pa_priority (priority, published_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
