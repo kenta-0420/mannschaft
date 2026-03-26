@@ -52,7 +52,7 @@ import static org.mockito.Mockito.verify;
 
 /**
  * {@link TodoService} の単体テスト。
- * TODO CRUD・ステータス管理・担当者割り当てを検証する。
+ * Todo CRUD・ステータス管理・担当者割り当てを検証する。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TodoService 単体テスト")
