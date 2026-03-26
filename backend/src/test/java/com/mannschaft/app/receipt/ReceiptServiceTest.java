@@ -6,7 +6,6 @@ import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.receipt.dto.BulkCreateReceiptRequest;
 import com.mannschaft.app.receipt.dto.BulkVoidReceiptRequest;
 import com.mannschaft.app.receipt.dto.CreateReceiptRequest;
-import com.mannschaft.app.receipt.dto.ReceiptResponse;
 import com.mannschaft.app.receipt.dto.VoidReceiptRequest;
 import com.mannschaft.app.receipt.entity.ReceiptEntity;
 import com.mannschaft.app.receipt.entity.ReceiptIssuerSettingsEntity;
@@ -27,9 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
 /**

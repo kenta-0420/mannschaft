@@ -3,15 +3,11 @@ package com.mannschaft.app.matching;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.matching.dto.AcceptProposalRequest;
 import com.mannschaft.app.matching.dto.AcceptProposalResponse;
-import com.mannschaft.app.matching.dto.CancelProposalRequest;
 import com.mannschaft.app.matching.dto.CreateProposalRequest;
 import com.mannschaft.app.matching.dto.ProposalCreateResponse;
 import com.mannschaft.app.matching.dto.ProposalStatusResponse;
-import com.mannschaft.app.matching.entity.MatchProposalDateEntity;
 import com.mannschaft.app.matching.entity.MatchProposalEntity;
 import com.mannschaft.app.matching.entity.MatchRequestEntity;
-import com.mannschaft.app.matching.mapper.MatchingMapper;
-import com.mannschaft.app.matching.repository.MatchProposalDateRepository;
 import com.mannschaft.app.matching.repository.MatchProposalRepository;
 import com.mannschaft.app.matching.repository.MatchRequestRepository;
 import com.mannschaft.app.matching.repository.NgTeamRepository;
@@ -24,7 +20,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,13 +39,9 @@ class MatchProposalServiceTest {
     @Mock
     private MatchProposalRepository proposalRepository;
     @Mock
-    private MatchProposalDateRepository proposalDateRepository;
-    @Mock
     private MatchRequestRepository requestRepository;
     @Mock
     private NgTeamRepository ngTeamRepository;
-    @Mock
-    private MatchingMapper matchingMapper;
 
     @InjectMocks
     private MatchProposalService service;
@@ -65,14 +56,6 @@ class MatchProposalServiceTest {
                 .teamId(OTHER_TEAM_ID)
                 .title("テスト募集")
                 .status(MatchRequestStatus.OPEN)
-                .build();
-    }
-
-    private MatchProposalEntity createPendingProposal() {
-        return MatchProposalEntity.builder()
-                .requestId(REQUEST_ID)
-                .proposingTeamId(TEAM_ID)
-                .message("テスト応募")
                 .build();
     }
 

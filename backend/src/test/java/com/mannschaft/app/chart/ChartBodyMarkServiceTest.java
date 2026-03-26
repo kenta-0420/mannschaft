@@ -1,6 +1,5 @@
 package com.mannschaft.app.chart;
 
-import com.mannschaft.app.chart.dto.BodyMarksResponse;
 import com.mannschaft.app.chart.dto.ChartBodyMarkRequest;
 import com.mannschaft.app.chart.dto.UpdateBodyMarksRequest;
 import com.mannschaft.app.chart.entity.ChartRecordEntity;

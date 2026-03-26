@@ -4,9 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.corkboard.dto.CorkboardCardResponse;
 import com.mannschaft.app.corkboard.dto.CreateCardRequest;
 import com.mannschaft.app.corkboard.entity.CorkboardCardEntity;
-import com.mannschaft.app.corkboard.entity.CorkboardEntity;
 import com.mannschaft.app.corkboard.repository.CorkboardCardRepository;
-import com.mannschaft.app.corkboard.repository.CorkboardRepository;
 import com.mannschaft.app.corkboard.service.CorkboardCardService;
 import com.mannschaft.app.corkboard.service.CorkboardService;
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +20,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 

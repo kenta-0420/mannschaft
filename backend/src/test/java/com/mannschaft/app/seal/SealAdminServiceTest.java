@@ -1,7 +1,6 @@
 package com.mannschaft.app.seal;
 
 import com.mannschaft.app.seal.dto.AdminRegenerateResponse;
-import com.mannschaft.app.seal.dto.SealResponse;
 import com.mannschaft.app.seal.entity.ElectronicSealEntity;
 import com.mannschaft.app.seal.repository.ElectronicSealRepository;
 import com.mannschaft.app.seal.service.SealAdminService;

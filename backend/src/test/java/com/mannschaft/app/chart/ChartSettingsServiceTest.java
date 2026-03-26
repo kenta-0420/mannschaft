@@ -3,7 +3,6 @@ package com.mannschaft.app.chart;
 import com.mannschaft.app.chart.dto.CreateCustomFieldRequest;
 import com.mannschaft.app.chart.dto.CreateRecordTemplateRequest;
 import com.mannschaft.app.chart.dto.CustomFieldResponse;
-import com.mannschaft.app.chart.dto.RecordTemplateResponse;
 import com.mannschaft.app.chart.entity.ChartCustomFieldEntity;
 import com.mannschaft.app.chart.entity.ChartRecordTemplateEntity;
 import com.mannschaft.app.chart.repository.ChartCustomFieldRepository;

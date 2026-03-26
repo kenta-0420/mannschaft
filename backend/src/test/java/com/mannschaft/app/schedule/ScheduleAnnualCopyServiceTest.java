@@ -3,7 +3,6 @@ package com.mannschaft.app.schedule;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.entity.ScheduleAnnualCopyLogEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
-import com.mannschaft.app.schedule.entity.ScheduleEventCategoryEntity;
 import com.mannschaft.app.schedule.repository.ScheduleAnnualCopyLogRepository;
 import com.mannschaft.app.schedule.repository.ScheduleEventCategoryRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;

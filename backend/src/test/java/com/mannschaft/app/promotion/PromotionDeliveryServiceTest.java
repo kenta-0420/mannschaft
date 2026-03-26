@@ -2,7 +2,6 @@ package com.mannschaft.app.promotion;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.promotion.entity.PromotionDeliveryEntity;
-import com.mannschaft.app.promotion.entity.PromotionEntity;
 import com.mannschaft.app.promotion.repository.PromotionDeliveryRepository;
 import com.mannschaft.app.promotion.repository.PromotionRepository;
 import com.mannschaft.app.promotion.service.PromotionDeliveryService;

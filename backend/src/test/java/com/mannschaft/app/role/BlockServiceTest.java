@@ -23,7 +23,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -332,7 +331,6 @@ class BlockServiceTest {
         @DisplayName("正常系: チームスコープのブロック一覧を取得する")
         void getBlocks_チームスコープ_一覧取得() {
             // Given
-            LocalDateTime now = LocalDateTime.of(2026, 3, 25, 10, 0, 0);
             TeamBlockEntity block1 = TeamBlockEntity.builder()
                     .teamId(TEAM_ID)
                     .userId(TARGET_USER_ID)

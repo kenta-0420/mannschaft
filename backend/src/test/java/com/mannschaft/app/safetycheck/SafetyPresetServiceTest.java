@@ -192,7 +192,7 @@ class SafetyPresetServiceTest {
             given(mapper.toPresetResponse(entity)).willReturn(response);
 
             // When
-            SafetyPresetResponse result = safetyPresetService.updatePreset(PRESET_ID, req);
+            safetyPresetService.updatePreset(PRESET_ID, req);
 
             // Then
             assertThat(entity.getBody()).isEqualTo("更新メッセージ");

@@ -1,7 +1,6 @@
 package com.mannschaft.app.schedule;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.dto.AttendanceRequest;
 import com.mannschaft.app.schedule.dto.AttendanceResponse;
@@ -23,8 +22,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,7 +30,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 

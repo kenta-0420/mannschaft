@@ -2,7 +2,6 @@ package com.mannschaft.app.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.service.dto.CreateTemplateRequest;
-import com.mannschaft.app.service.dto.TemplateResponse;
 import com.mannschaft.app.service.entity.ServiceRecordTemplateEntity;
 import com.mannschaft.app.service.repository.ServiceRecordFieldRepository;
 import com.mannschaft.app.service.repository.ServiceRecordTemplateRepository;
@@ -16,12 +15,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 

@@ -133,7 +133,6 @@ class ReservationReminderServiceTest {
         void リマインダー作成_正常() {
             // Given
             CreateReminderRequest request = new CreateReminderRequest(REMIND_AT);
-            ReservationReminderEntity savedEntity = createReminderEntityWithCreatedAt();
             ReminderResponse response = createReminderResponse();
 
             given(reminderRepository.countByReservationId(RESERVATION_ID)).willReturn(0L);

@@ -4,7 +4,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.SessionStatus;
-import com.mannschaft.app.proxyvote.entity.ProxyVoteMotionEntity;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteSessionEntity;
 import com.mannschaft.app.proxyvote.repository.ProxyVoteMotionRepository;
 import com.mannschaft.app.proxyvote.repository.ProxyVoteRepository;

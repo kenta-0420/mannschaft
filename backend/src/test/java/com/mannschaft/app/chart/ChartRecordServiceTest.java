@@ -1,10 +1,7 @@
 package com.mannschaft.app.chart;
 
 import com.mannschaft.app.chart.dto.ChartRecordResponse;
-import com.mannschaft.app.chart.dto.CopyChartRequest;
 import com.mannschaft.app.chart.dto.CreateChartRecordRequest;
-import com.mannschaft.app.chart.dto.PinResponse;
-import com.mannschaft.app.chart.dto.ShareResponse;
 import com.mannschaft.app.chart.entity.ChartRecordEntity;
 import com.mannschaft.app.chart.entity.ChartRecordTemplateEntity;
 import com.mannschaft.app.chart.repository.ChartBodyMarkRepository;
@@ -33,7 +30,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 

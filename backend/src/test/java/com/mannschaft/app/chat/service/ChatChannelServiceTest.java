@@ -1,6 +1,5 @@
 package com.mannschaft.app.chat.service;
 
-import com.mannschaft.app.chat.ChannelMemberRole;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.ChatMapper;

@@ -203,7 +203,7 @@ class SafetyTemplateServiceTest {
             given(mapper.toTemplateResponse(entity)).willReturn(response);
 
             // When
-            SafetyTemplateResponse result = safetyTemplateService.updateTemplate(TEMPLATE_ID, req);
+            safetyTemplateService.updateTemplate(TEMPLATE_ID, req);
 
             // Then
             assertThat(entity.getTemplateName()).isEqualTo("更新テンプレ");

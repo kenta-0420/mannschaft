@@ -2,9 +2,7 @@ package com.mannschaft.app.filesharing;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.filesharing.dto.AccessLinkRequest;
-import com.mannschaft.app.filesharing.dto.CreateLinkRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
-import com.mannschaft.app.filesharing.dto.LinkResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileLinkEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileLinkRepository;
 import com.mannschaft.app.filesharing.service.SharedFileLinkService;
@@ -23,7 +21,6 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
 /**

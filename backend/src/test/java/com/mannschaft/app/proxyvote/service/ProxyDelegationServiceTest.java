@@ -6,7 +6,6 @@ import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.ProxyVoteMapper;
 import com.mannschaft.app.proxyvote.SessionStatus;
 import com.mannschaft.app.proxyvote.dto.DelegateRequest;
-import com.mannschaft.app.proxyvote.dto.DelegationResponse;
 import com.mannschaft.app.proxyvote.dto.ReviewDelegationRequest;
 import com.mannschaft.app.proxyvote.entity.ProxyDelegationEntity;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteSessionEntity;
@@ -24,7 +23,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
 /**

@@ -22,8 +22,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TimetableSlotService 単体テスト")

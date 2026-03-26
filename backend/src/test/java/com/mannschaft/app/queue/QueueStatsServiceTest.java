@@ -2,7 +2,6 @@ package com.mannschaft.app.queue;
 
 import com.mannschaft.app.queue.dto.DailyStatsResponse;
 import com.mannschaft.app.queue.dto.QueueStatusResponse;
-import com.mannschaft.app.queue.dto.TicketResponse;
 import com.mannschaft.app.queue.entity.QueueCounterEntity;
 import com.mannschaft.app.queue.entity.QueueDailyStatsEntity;
 import com.mannschaft.app.queue.entity.QueueTicketEntity;

@@ -2,7 +2,6 @@ package com.mannschaft.app.payment;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.dto.ContentPaymentGateRequest;
-import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.ContentPaymentGateRepository;
 import com.mannschaft.app.payment.service.ContentPaymentGateService;
 import com.mannschaft.app.payment.service.PaymentItemService;
@@ -14,11 +13,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
 
 /**
  * {@link ContentPaymentGateService} の単体テスト。

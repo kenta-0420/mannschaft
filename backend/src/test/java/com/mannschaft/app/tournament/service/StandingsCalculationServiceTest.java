@@ -2,7 +2,6 @@ package com.mannschaft.app.tournament.service;
 
 import com.mannschaft.app.tournament.MatchResult;
 import com.mannschaft.app.tournament.MatchStatus;
-import com.mannschaft.app.tournament.PromotionZone;
 import com.mannschaft.app.tournament.StandingsRecalculationEvent;
 import com.mannschaft.app.tournament.TiebreakerCriteria;
 import com.mannschaft.app.tournament.TiebreakerDirection;
@@ -34,7 +33,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;

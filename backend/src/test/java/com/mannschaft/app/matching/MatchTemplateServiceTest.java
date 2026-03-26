@@ -3,7 +3,6 @@ package com.mannschaft.app.matching;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.matching.dto.CreateTemplateRequest;
 import com.mannschaft.app.matching.dto.TemplateCreateResponse;
-import com.mannschaft.app.matching.dto.TemplateResponse;
 import com.mannschaft.app.matching.entity.MatchRequestTemplateEntity;
 import com.mannschaft.app.matching.mapper.MatchingMapper;
 import com.mannschaft.app.matching.repository.MatchRequestTemplateRepository;

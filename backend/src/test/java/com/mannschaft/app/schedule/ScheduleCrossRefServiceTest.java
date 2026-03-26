@@ -3,7 +3,6 @@ package com.mannschaft.app.schedule;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.dto.CrossInviteRequest;
 import com.mannschaft.app.schedule.dto.CrossRefResponse;
-import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.entity.ScheduleCrossRefEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleCrossRefRepository;

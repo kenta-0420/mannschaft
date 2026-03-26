@@ -1,6 +1,5 @@
 package com.mannschaft.app.cms;
 
-import com.mannschaft.app.cms.dto.AutoSaveRequest;
 import com.mannschaft.app.cms.dto.BlogPostResponse;
 import com.mannschaft.app.cms.dto.BulkActionRequest;
 import com.mannschaft.app.cms.dto.BulkActionResponse;
@@ -9,7 +8,6 @@ import com.mannschaft.app.cms.dto.PublishRequest;
 import com.mannschaft.app.cms.dto.RevisionResponse;
 import com.mannschaft.app.cms.dto.SelfReviewRequest;
 import com.mannschaft.app.cms.dto.SharePostRequest;
-import com.mannschaft.app.cms.dto.SharePostResponse;
 import com.mannschaft.app.cms.dto.UpdateBlogPostRequest;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.entity.BlogPostRevisionEntity;
@@ -33,14 +31,12 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 

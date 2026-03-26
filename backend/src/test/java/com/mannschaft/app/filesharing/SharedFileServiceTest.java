@@ -3,7 +3,6 @@ package com.mannschaft.app.filesharing;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.filesharing.dto.CreateFileRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
-import com.mannschaft.app.filesharing.dto.UpdateFileRequest;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
 import com.mannschaft.app.filesharing.entity.SharedFileVersionEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileRepository;

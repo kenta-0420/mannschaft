@@ -3,12 +3,10 @@ package com.mannschaft.app.ticket;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.ticket.dto.ConsumeTicketRequest;
-import com.mannschaft.app.ticket.dto.ConsumeResultResponse;
 import com.mannschaft.app.ticket.dto.ExtendRequest;
 import com.mannschaft.app.ticket.dto.RefundRequest;
 import com.mannschaft.app.ticket.entity.TicketBookEntity;
 import com.mannschaft.app.ticket.entity.TicketConsumptionEntity;
-import com.mannschaft.app.ticket.entity.TicketPaymentEntity;
 import com.mannschaft.app.ticket.entity.TicketProductEntity;
 import com.mannschaft.app.ticket.repository.TicketBookRepository;
 import com.mannschaft.app.ticket.repository.TicketConsumptionRepository;
@@ -29,11 +27,8 @@ import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 
 /**
  * {@link TicketBookService} の単体テスト。

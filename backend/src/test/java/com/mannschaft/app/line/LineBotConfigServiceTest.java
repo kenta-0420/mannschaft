@@ -5,7 +5,6 @@ import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.line.dto.CreateLineBotConfigRequest;
 import com.mannschaft.app.line.dto.LineBotConfigResponse;
 import com.mannschaft.app.line.dto.TestMessageRequest;
-import com.mannschaft.app.line.dto.UpdateLineBotConfigRequest;
 import com.mannschaft.app.line.entity.LineBotConfigEntity;
 import com.mannschaft.app.line.entity.LineMessageLogEntity;
 import com.mannschaft.app.line.repository.LineBotConfigRepository;
@@ -19,19 +18,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 

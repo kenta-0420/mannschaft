@@ -1,10 +1,7 @@
 package com.mannschaft.app.tournament;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.tournament.dto.CreateDivisionRequest;
 import com.mannschaft.app.tournament.dto.CreateParticipantRequest;
-import com.mannschaft.app.tournament.dto.DivisionResponse;
-import com.mannschaft.app.tournament.dto.ParticipantResponse;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;

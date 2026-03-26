@@ -2,16 +2,13 @@ package com.mannschaft.app.workflow;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.workflow.dto.ApprovalDecisionRequest;
-import com.mannschaft.app.workflow.dto.WorkflowRequestResponse;
 import com.mannschaft.app.workflow.entity.WorkflowRequestApproverEntity;
 import com.mannschaft.app.workflow.entity.WorkflowRequestEntity;
 import com.mannschaft.app.workflow.entity.WorkflowRequestStepEntity;
 import com.mannschaft.app.workflow.entity.WorkflowTemplateEntity;
-import com.mannschaft.app.workflow.entity.WorkflowTemplateStepEntity;
 import com.mannschaft.app.workflow.repository.WorkflowRequestApproverRepository;
 import com.mannschaft.app.workflow.repository.WorkflowRequestRepository;
 import com.mannschaft.app.workflow.repository.WorkflowRequestStepRepository;
-import com.mannschaft.app.workflow.repository.WorkflowTemplateStepRepository;
 import com.mannschaft.app.workflow.service.WorkflowApprovalService;
 import com.mannschaft.app.workflow.service.WorkflowTemplateService;
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +19,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,13 +44,7 @@ class WorkflowApprovalServiceTest {
     private WorkflowRequestApproverRepository approverRepository;
 
     @Mock
-    private WorkflowTemplateStepRepository templateStepRepository;
-
-    @Mock
     private WorkflowTemplateService templateService;
-
-    @Mock
-    private WorkflowMapper workflowMapper;
 
     @InjectMocks
     private WorkflowApprovalService workflowApprovalService;
@@ -63,7 +53,6 @@ class WorkflowApprovalServiceTest {
     private static final Long TEMPLATE_ID = 100L;
     private static final Long STEP_ID = 300L;
     private static final Long USER_ID = 10L;
-    private static final Long SEAL_ID = 50L;
 
     private WorkflowRequestEntity createInProgressRequest() {
         WorkflowRequestEntity entity = WorkflowRequestEntity.builder()

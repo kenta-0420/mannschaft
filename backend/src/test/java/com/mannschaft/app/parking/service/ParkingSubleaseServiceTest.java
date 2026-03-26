@@ -7,8 +7,6 @@ import com.mannschaft.app.parking.SubleaseStatus;
 import com.mannschaft.app.parking.dto.ApplySubleaseRequest;
 import com.mannschaft.app.parking.dto.ApproveSubleaseRequest;
 import com.mannschaft.app.parking.dto.CreateSubleaseRequest;
-import com.mannschaft.app.parking.dto.SubleaseApplicationResponse;
-import com.mannschaft.app.parking.dto.SubleaseDetailResponse;
 import com.mannschaft.app.parking.dto.SubleasePaymentResponse;
 import com.mannschaft.app.parking.dto.SubleaseResponse;
 import com.mannschaft.app.parking.dto.UpdateSubleaseRequest;

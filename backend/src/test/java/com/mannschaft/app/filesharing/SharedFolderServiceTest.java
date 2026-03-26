@@ -3,7 +3,6 @@ package com.mannschaft.app.filesharing;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.filesharing.dto.CreateFolderRequest;
 import com.mannschaft.app.filesharing.dto.FolderResponse;
-import com.mannschaft.app.filesharing.dto.UpdateFolderRequest;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFolderRepository;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
@@ -15,7 +14,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;

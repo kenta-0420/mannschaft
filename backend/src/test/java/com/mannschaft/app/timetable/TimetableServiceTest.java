@@ -2,7 +2,6 @@ package com.mannschaft.app.timetable;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.entity.TimetableEntity;
-import com.mannschaft.app.timetable.entity.TimetableSlotEntity;
 import com.mannschaft.app.timetable.entity.TimetableTermEntity;
 import com.mannschaft.app.timetable.repository.TimetableRepository;
 import com.mannschaft.app.timetable.repository.TimetableSlotRepository;
@@ -19,7 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;

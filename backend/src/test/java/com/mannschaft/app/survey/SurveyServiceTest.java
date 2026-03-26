@@ -1,19 +1,13 @@
 package com.mannschaft.app.survey;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.survey.dto.CreateSurveyRequest;
-import com.mannschaft.app.survey.dto.SurveyDetailResponse;
 import com.mannschaft.app.survey.dto.SurveyResponse;
 import com.mannschaft.app.survey.dto.SurveyStatsResponse;
-import com.mannschaft.app.survey.dto.UpdateSurveyRequest;
 import com.mannschaft.app.survey.entity.SurveyEntity;
 import com.mannschaft.app.survey.entity.SurveyQuestionEntity;
 import com.mannschaft.app.survey.repository.SurveyOptionRepository;
 import com.mannschaft.app.survey.repository.SurveyQuestionRepository;
 import com.mannschaft.app.survey.repository.SurveyRepository;
-import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
-import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import com.mannschaft.app.survey.service.SurveyService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,13 +17,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -51,16 +42,7 @@ class SurveyServiceTest {
     private SurveyOptionRepository optionRepository;
 
     @Mock
-    private SurveyTargetRepository targetRepository;
-
-    @Mock
-    private SurveyResultViewerRepository resultViewerRepository;
-
-    @Mock
     private SurveyMapper surveyMapper;
-
-    @Mock
-    private ObjectMapper objectMapper;
 
     @InjectMocks
     private SurveyService surveyService;
@@ -109,7 +91,7 @@ class SurveyServiceTest {
             given(surveyMapper.toSurveyResponse(entity)).willReturn(response);
 
             // When
-            SurveyResponse result = surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID);
+            surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SurveyStatus.PUBLISHED);

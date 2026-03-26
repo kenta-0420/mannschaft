@@ -1,6 +1,5 @@
 package com.mannschaft.app.family;
 
-import com.mannschaft.app.family.entity.PresenceEventEntity;
 import com.mannschaft.app.family.repository.CoinTossResultRepository;
 import com.mannschaft.app.family.repository.PresenceEventRepository;
 import com.mannschaft.app.family.service.FamilyBatchService;

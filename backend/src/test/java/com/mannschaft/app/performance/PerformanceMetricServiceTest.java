@@ -1,13 +1,11 @@
 package com.mannschaft.app.performance;
 
-import com.mannschaft.app.activity.FieldType;
 import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.performance.dto.CreateMetricRequest;
 import com.mannschaft.app.performance.dto.FromTemplateRequest;
 import com.mannschaft.app.performance.dto.MetricResponse;
 import com.mannschaft.app.performance.entity.PerformanceMetricEntity;
-import com.mannschaft.app.performance.entity.PerformanceMetricTemplateEntity;
 import com.mannschaft.app.performance.repository.PerformanceMetricRepository;
 import com.mannschaft.app.performance.repository.PerformanceMetricTemplateRepository;
 import com.mannschaft.app.performance.service.PerformanceMetricService;

@@ -2,7 +2,6 @@ package com.mannschaft.app.payment;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
-import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.service.PaymentItemService;
 import com.mannschaft.app.payment.service.StripeWebhookService;

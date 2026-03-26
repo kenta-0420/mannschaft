@@ -3,7 +3,6 @@ package com.mannschaft.app.forms;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.forms.dto.CreateFormPresetRequest;
 import com.mannschaft.app.forms.dto.FormPresetResponse;
-import com.mannschaft.app.forms.dto.UpdateFormPresetRequest;
 import com.mannschaft.app.forms.entity.SystemFormPresetEntity;
 import com.mannschaft.app.forms.repository.SystemFormPresetRepository;
 import com.mannschaft.app.forms.service.FormPresetService;

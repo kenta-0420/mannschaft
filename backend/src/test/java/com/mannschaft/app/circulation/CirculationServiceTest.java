@@ -1,16 +1,9 @@
 package com.mannschaft.app.circulation;
 
-import com.mannschaft.app.circulation.dto.AddRecipientsRequest;
-import com.mannschaft.app.circulation.dto.AttachmentResponse;
-import com.mannschaft.app.circulation.dto.CreateAttachmentRequest;
-import com.mannschaft.app.circulation.dto.CreateDocumentRequest;
 import com.mannschaft.app.circulation.dto.DocumentResponse;
 import com.mannschaft.app.circulation.dto.DocumentStatsResponse;
-import com.mannschaft.app.circulation.dto.RecipientEntry;
 import com.mannschaft.app.circulation.dto.UpdateDocumentRequest;
-import com.mannschaft.app.circulation.entity.CirculationAttachmentEntity;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
-import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
 import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
@@ -23,18 +16,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 

@@ -3,11 +3,9 @@ package com.mannschaft.app.family;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.family.dto.ShoppingItemRequest;
-import com.mannschaft.app.family.dto.ShoppingItemResponse;
 import com.mannschaft.app.family.dto.ShoppingListRequest;
 import com.mannschaft.app.family.dto.ShoppingListResponse;
 import com.mannschaft.app.family.entity.ShoppingListEntity;
-import com.mannschaft.app.family.entity.ShoppingListItemEntity;
 import com.mannschaft.app.family.repository.ShoppingListItemRepository;
 import com.mannschaft.app.family.repository.ShoppingListRepository;
 import com.mannschaft.app.family.service.ShoppingListService;
@@ -25,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ShoppingListService 単体テスト")

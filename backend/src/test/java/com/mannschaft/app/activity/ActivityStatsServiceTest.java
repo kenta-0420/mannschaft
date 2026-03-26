@@ -1,10 +1,6 @@
 package com.mannschaft.app.activity;
 
-import com.mannschaft.app.activity.dto.ActivityFieldStatsResponse;
 import com.mannschaft.app.activity.dto.ActivityStatsResponse;
-import com.mannschaft.app.activity.entity.ActivityResultEntity;
-import com.mannschaft.app.activity.entity.ActivityTemplateEntity;
-import com.mannschaft.app.activity.entity.ActivityTemplateFieldEntity;
 import com.mannschaft.app.activity.repository.ActivityParticipantRepository;
 import com.mannschaft.app.activity.repository.ActivityResultRepository;
 import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
@@ -25,7 +21,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)

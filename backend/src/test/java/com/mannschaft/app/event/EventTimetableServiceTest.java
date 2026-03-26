@@ -2,7 +2,6 @@ package com.mannschaft.app.event;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.event.dto.CreateTimetableItemRequest;
-import com.mannschaft.app.event.dto.ReorderTimetableRequest;
 import com.mannschaft.app.event.dto.TimetableItemResponse;
 import com.mannschaft.app.event.dto.UpdateTimetableItemRequest;
 import com.mannschaft.app.event.entity.EventTimetableItemEntity;
@@ -49,7 +48,6 @@ class EventTimetableServiceTest {
 
     private static final Long EVENT_ID = 1L;
     private static final Long ITEM_ID = 10L;
-    private static final Long ITEM_ID_2 = 11L;
 
     private EventTimetableItemEntity createTimetableItem() {
         return EventTimetableItemEntity.builder()

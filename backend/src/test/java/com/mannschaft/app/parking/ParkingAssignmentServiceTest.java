@@ -2,10 +2,7 @@ package com.mannschaft.app.parking;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.parking.dto.AssignRequest;
-import com.mannschaft.app.parking.dto.AssignmentResponse;
 import com.mannschaft.app.parking.dto.BulkAssignRequest;
-import com.mannschaft.app.parking.entity.ParkingAssignmentEntity;
-import com.mannschaft.app.parking.entity.ParkingSettingsEntity;
 import com.mannschaft.app.parking.entity.ParkingSpaceEntity;
 import com.mannschaft.app.parking.repository.ParkingAssignmentRepository;
 import com.mannschaft.app.parking.repository.ParkingSettingsRepository;
@@ -25,10 +22,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ParkingAssignmentService 単体テスト")

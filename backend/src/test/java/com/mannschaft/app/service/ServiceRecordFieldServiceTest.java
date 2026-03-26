@@ -4,7 +4,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.service.dto.CreateFieldRequest;
 import com.mannschaft.app.service.dto.FieldResponse;
 import com.mannschaft.app.service.entity.ServiceRecordFieldEntity;
-import com.mannschaft.app.service.entity.ServiceRecordSettingsEntity;
 import com.mannschaft.app.service.repository.ServiceRecordFieldRepository;
 import com.mannschaft.app.service.repository.ServiceRecordSettingsRepository;
 import com.mannschaft.app.service.service.ServiceRecordFieldService;
@@ -23,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ServiceRecordFieldService 単体テスト")

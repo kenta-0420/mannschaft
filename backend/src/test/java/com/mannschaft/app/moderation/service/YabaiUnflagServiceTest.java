@@ -5,7 +5,6 @@ import com.mannschaft.app.moderation.ModerationExtErrorCode;
 import com.mannschaft.app.moderation.ModerationExtMapper;
 import com.mannschaft.app.moderation.UnflagRequestStatus;
 import com.mannschaft.app.moderation.dto.YabaiUnflagResponse;
-import com.mannschaft.app.moderation.entity.ModerationSettingsEntity;
 import com.mannschaft.app.moderation.entity.YabaiUnflagRequestEntity;
 import com.mannschaft.app.moderation.repository.ModerationSettingsRepository;
 import com.mannschaft.app.moderation.repository.YabaiUnflagRequestRepository;

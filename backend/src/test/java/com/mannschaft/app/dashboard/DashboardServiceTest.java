@@ -1,6 +1,5 @@
 package com.mannschaft.app.dashboard;
 
-import com.mannschaft.app.admin.entity.PlatformAnnouncementEntity;
 import com.mannschaft.app.admin.repository.PlatformAnnouncementRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
@@ -11,15 +10,11 @@ import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
 import com.mannschaft.app.dashboard.dto.PersonalDashboardResponse;
 import com.mannschaft.app.dashboard.dto.TeamDashboardResponse;
-import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
 import com.mannschaft.app.dashboard.service.ActivityFeedService;
 import com.mannschaft.app.dashboard.service.DashboardService;
 import com.mannschaft.app.dashboard.service.DashboardWidgetService;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
-import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.todo.TodoStatus;
@@ -32,12 +27,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;

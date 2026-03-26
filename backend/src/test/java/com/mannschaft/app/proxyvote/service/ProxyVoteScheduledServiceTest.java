@@ -2,8 +2,6 @@ package com.mannschaft.app.proxyvote.service;
 
 import com.mannschaft.app.proxyvote.ResolutionMode;
 import com.mannschaft.app.proxyvote.SessionStatus;
-import com.mannschaft.app.proxyvote.VotingStatus;
-import com.mannschaft.app.proxyvote.entity.ProxyVoteMotionEntity;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteSessionEntity;
 import com.mannschaft.app.proxyvote.repository.ProxyVoteMotionRepository;
 import com.mannschaft.app.proxyvote.repository.ProxyVoteSessionRepository;

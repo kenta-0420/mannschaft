@@ -1,8 +1,6 @@
 package com.mannschaft.app.schedule;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.UserIcalTokenEntity;
@@ -44,9 +42,6 @@ class IcalServiceTest {
 
     @Mock
     private UserRoleRepository userRoleRepository;
-
-    @Mock
-    private NameResolverService nameResolverService;
 
     @InjectMocks
     private IcalService icalService;
@@ -147,7 +142,7 @@ class IcalServiceTest {
             given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
 
             // when
-            var result = icalService.regenerateToken(USER_ID);
+            icalService.regenerateToken(USER_ID);
 
             // then
             verify(icalTokenRepository).updateToken(eq(USER_ID), any(String.class));

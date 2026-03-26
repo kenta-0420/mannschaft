@@ -5,7 +5,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.ProxyVoteMapper;
 import com.mannschaft.app.proxyvote.SessionStatus;
-import com.mannschaft.app.proxyvote.dto.CommentResponse;
 import com.mannschaft.app.proxyvote.dto.CreateCommentRequest;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteMotionCommentEntity;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteMotionEntity;

@@ -2,7 +2,6 @@ package com.mannschaft.app.activity;
 
 import com.mannschaft.app.activity.dto.AddParticipantsRequest;
 import com.mannschaft.app.activity.dto.CreateActivityRequest;
-import com.mannschaft.app.activity.dto.UpdateActivityRequest;
 import com.mannschaft.app.activity.entity.ActivityParticipantEntity;
 import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.repository.ActivityParticipantRepository;

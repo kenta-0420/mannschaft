@@ -3,8 +3,6 @@ package com.mannschaft.app.proxyvote.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.StorageService;
-import com.mannschaft.app.proxyvote.AttachmentTargetType;
-import com.mannschaft.app.proxyvote.AttachmentType;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.ProxyVoteMapper;
 import com.mannschaft.app.proxyvote.SessionStatus;

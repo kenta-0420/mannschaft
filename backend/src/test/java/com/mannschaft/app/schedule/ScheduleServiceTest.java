@@ -3,21 +3,14 @@ package com.mannschaft.app.schedule;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
-import com.mannschaft.app.schedule.event.ScheduleCancelledEvent;
-import com.mannschaft.app.schedule.event.ScheduleCreatedEvent;
-import com.mannschaft.app.schedule.event.ScheduleUpdatedEvent;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
-import com.mannschaft.app.schedule.service.EventSurveyService;
-import com.mannschaft.app.schedule.service.ScheduleReminderService;
 import com.mannschaft.app.schedule.service.ScheduleService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -49,16 +42,7 @@ class ScheduleServiceTest {
     private ScheduleRepository scheduleRepository;
 
     @Mock
-    private EventSurveyService eventSurveyService;
-
-    @Mock
-    private ScheduleReminderService reminderService;
-
-    @Mock
     private ApplicationEventPublisher eventPublisher;
-
-    @Mock
-    private ObjectMapper objectMapper;
 
     @Mock
     private NameResolverService nameResolverService;
@@ -78,7 +62,6 @@ class ScheduleServiceTest {
 
     private static final Long SCHEDULE_ID = 1L;
     private static final Long TEAM_ID = 10L;
-    private static final Long ORG_ID = 20L;
     private static final Long USER_ID = 100L;
     private static final LocalDateTime START = LocalDateTime.of(2026, 4, 1, 10, 0);
     private static final LocalDateTime END = LocalDateTime.of(2026, 4, 1, 12, 0);
@@ -302,7 +285,7 @@ class ScheduleServiceTest {
                     null, null, null, null);
 
             // when
-            ScheduleResponse result = scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID);
+            scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID);
 
             // then
             verify(eventPublisher).publishEvent(any(Object.class));

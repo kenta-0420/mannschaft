@@ -5,11 +5,9 @@ import com.mannschaft.app.admin.service.FeatureFlagService;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.digest.dto.DigestDetailResponse;
 import com.mannschaft.app.digest.dto.DigestEditRequest;
 import com.mannschaft.app.digest.dto.DigestGenerateRequest;
 import com.mannschaft.app.digest.dto.DigestRegenerateRequest;
-import com.mannschaft.app.digest.entity.TimelineDigestConfigEntity;
 import com.mannschaft.app.digest.entity.TimelineDigestEntity;
 import com.mannschaft.app.digest.repository.TimelineDigestConfigRepository;
 import com.mannschaft.app.digest.repository.TimelineDigestRepository;
@@ -26,13 +24,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)

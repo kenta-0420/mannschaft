@@ -2,13 +2,10 @@ package com.mannschaft.app.member;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.member.dto.BulkCreateMemberRequest;
-import com.mannschaft.app.member.dto.BulkCreateMemberResponse;
 import com.mannschaft.app.member.dto.CopyMembersRequest;
-import com.mannschaft.app.member.dto.CopyMembersResponse;
 import com.mannschaft.app.member.dto.CreateMemberProfileRequest;
 import com.mannschaft.app.member.dto.MemberProfileResponse;
 import com.mannschaft.app.member.dto.ReorderRequest;
-import com.mannschaft.app.member.dto.ReorderResponse;
 import com.mannschaft.app.member.entity.MemberProfileEntity;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
 import com.mannschaft.app.member.service.MemberProfileService;
@@ -39,7 +36,6 @@ class MemberProfileServiceTest {
     @Mock private TeamPageService pageService;
     @Mock private MemberMapper memberMapper;
     @InjectMocks private MemberProfileService service;
-
 
     @Nested
     @DisplayName("createProfile")

@@ -1,12 +1,10 @@
 package com.mannschaft.app.auth.service;
 
-import com.mannschaft.app.auth.entity.RefreshTokenEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.entity.WebAuthnCredentialEntity;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
-import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.UpdateWebAuthnCredentialRequest;
 import com.mannschaft.app.auth.dto.WebAuthnCredentialResponse;
 import com.mannschaft.app.auth.dto.WebAuthnLoginBeginResponse;
@@ -26,7 +24,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 

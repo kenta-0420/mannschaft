@@ -2,7 +2,6 @@ package com.mannschaft.app.payment;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.dto.AccessRequirementsRequest;
-import com.mannschaft.app.payment.dto.AccessRequirementsResponse;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.OrganizationAccessRequirementRepository;
 import com.mannschaft.app.payment.repository.TeamAccessRequirementRepository;
@@ -19,7 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 

@@ -180,7 +180,6 @@ class NotificationDispatchServiceTest {
         void 配信_WebSocket送信失敗_例外を握りつぶして継続() {
             // Given
             NotificationEntity notification = createNotification();
-            NotificationResponse response = createNotificationResponse();
 
             given(preferenceService.isNotificationEnabled(USER_ID, "TEAM", 5L)).willReturn(true);
             given(preferenceService.isTypeEnabled(USER_ID, "SCHEDULE_REMINDER")).willReturn(true);

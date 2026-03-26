@@ -3,7 +3,6 @@ package com.mannschaft.app.gallery;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.gallery.dto.AlbumResponse;
 import com.mannschaft.app.gallery.dto.CreateAlbumRequest;
-import com.mannschaft.app.gallery.dto.UpdateAlbumRequest;
 import com.mannschaft.app.gallery.entity.PhotoAlbumEntity;
 import com.mannschaft.app.gallery.repository.PhotoAlbumRepository;
 import com.mannschaft.app.gallery.service.PhotoAlbumService;
@@ -14,12 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;

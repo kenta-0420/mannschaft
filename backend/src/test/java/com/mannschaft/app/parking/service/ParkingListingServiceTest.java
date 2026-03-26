@@ -6,7 +6,6 @@ import com.mannschaft.app.parking.ParkingMapper;
 import com.mannschaft.app.parking.dto.ApplicationResponse;
 import com.mannschaft.app.parking.dto.CreateListingRequest;
 import com.mannschaft.app.parking.dto.ListingApplyRequest;
-import com.mannschaft.app.parking.dto.ListingDetailResponse;
 import com.mannschaft.app.parking.dto.ListingResponse;
 import com.mannschaft.app.parking.dto.UpdateListingRequest;
 import com.mannschaft.app.parking.entity.ParkingApplicationEntity;

@@ -3,7 +3,6 @@ package com.mannschaft.app.payment;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.payment.dto.CreateManualPaymentRequest;
-import com.mannschaft.app.payment.dto.MemberPaymentResponse;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;

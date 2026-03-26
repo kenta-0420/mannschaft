@@ -8,7 +8,6 @@ import com.mannschaft.app.payment.repository.OrganizationAccessRequirementReposi
 import com.mannschaft.app.payment.repository.TeamAccessRequirementRepository;
 import com.mannschaft.app.payment.service.PaymentItemService;
 import com.mannschaft.app.payment.service.PaymentRequirementService;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

@@ -4,7 +4,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timeline.TimelineErrorCode;
 import com.mannschaft.app.timeline.TimelineMapper;
 import com.mannschaft.app.timeline.dto.CreatePollRequest;
-import com.mannschaft.app.timeline.dto.PollOptionResponse;
 import com.mannschaft.app.timeline.dto.PollResponse;
 import com.mannschaft.app.timeline.entity.TimelinePollEntity;
 import com.mannschaft.app.timeline.entity.TimelinePollOptionEntity;

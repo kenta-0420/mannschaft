@@ -5,7 +5,6 @@ import com.mannschaft.app.forms.dto.CreateFormTemplateRequest;
 import com.mannschaft.app.forms.dto.FormFieldRequest;
 import com.mannschaft.app.forms.dto.FormTemplateResponse;
 import com.mannschaft.app.forms.entity.FormTemplateEntity;
-import com.mannschaft.app.forms.entity.FormTemplateFieldEntity;
 import com.mannschaft.app.forms.repository.FormTemplateFieldRepository;
 import com.mannschaft.app.forms.repository.FormTemplateRepository;
 import com.mannschaft.app.forms.service.FormTemplateService;
@@ -84,7 +83,7 @@ class FormTemplateServiceTest {
             given(formMapper.toTemplateResponseWithFields(entity, List.of())).willReturn(response);
 
             // When
-            FormTemplateResponse result = formTemplateService.publishTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID);
+            formTemplateService.publishTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(FormStatus.PUBLISHED);

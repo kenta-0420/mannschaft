@@ -4,10 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.survey.dto.SubmitResponseRequest;
 import com.mannschaft.app.survey.dto.SurveyResponseEntry;
 import com.mannschaft.app.survey.entity.SurveyEntity;
-import com.mannschaft.app.survey.entity.SurveyQuestionEntity;
 import com.mannschaft.app.survey.entity.SurveyResponseEntity;
-import com.mannschaft.app.survey.repository.SurveyQuestionRepository;
-import com.mannschaft.app.survey.repository.SurveyRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import com.mannschaft.app.survey.service.SurveyResponseService;
@@ -24,7 +21,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
 /**
@@ -34,12 +30,6 @@ import static org.mockito.BDDMockito.given;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SurveyResponseService 単体テスト")
 class SurveyResponseServiceTest {
-
-    @Mock
-    private SurveyRepository surveyRepository;
-
-    @Mock
-    private SurveyQuestionRepository questionRepository;
 
     @Mock
     private SurveyResponseRepository responseRepository;
@@ -58,7 +48,6 @@ class SurveyResponseServiceTest {
 
     private static final Long SURVEY_ID = 100L;
     private static final Long USER_ID = 10L;
-    private static final Long QUESTION_ID = 50L;
 
     private SurveyEntity createPublishedSurvey() {
         SurveyEntity entity = SurveyEntity.builder()

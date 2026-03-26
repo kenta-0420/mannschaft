@@ -1,7 +1,6 @@
 package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.entity.MfaRecoveryTokenEntity;
-import com.mannschaft.app.auth.entity.RefreshTokenEntity;
 import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;

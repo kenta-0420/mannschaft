@@ -1,15 +1,11 @@
 package com.mannschaft.app.proxyvote.service;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.proxyvote.DelegationStatus;
-import com.mannschaft.app.proxyvote.MotionResult;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.ProxyVoteMapper;
 import com.mannschaft.app.proxyvote.ResolutionMode;
 import com.mannschaft.app.proxyvote.SessionStatus;
 import com.mannschaft.app.proxyvote.VotingStatus;
-import com.mannschaft.app.proxyvote.dto.MotionResponse;
-import com.mannschaft.app.proxyvote.dto.StartVoteRequest;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteMotionEntity;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteSessionEntity;
 import com.mannschaft.app.proxyvote.repository.ProxyDelegationRepository;
@@ -23,12 +19,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 
 /**
  * {@link ProxyVoteMotionService} の単体テスト。

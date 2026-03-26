@@ -22,7 +22,6 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -136,7 +135,7 @@ class FormSubmissionServiceTest {
             given(formMapper.toSubmissionResponseWithValues(entity, List.of())).willReturn(response);
 
             // When
-            FormSubmissionResponse result = formSubmissionService.approveSubmission(SUBMISSION_ID);
+            formSubmissionService.approveSubmission(SUBMISSION_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SubmissionStatus.APPROVED);

@@ -2,9 +2,6 @@ package com.mannschaft.app.role;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.organization.repository.OrganizationBlockRepository;
-import com.mannschaft.app.organization.repository.OrganizationRepository;
-import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.role.dto.InviteTokenResponse;
@@ -15,7 +12,6 @@ import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.InviteService;
-import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -55,16 +51,10 @@ class InviteServiceTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
-    private OrganizationRepository organizationRepository;
-
-    @Mock
     private TeamRepository teamRepository;
 
     @Mock
     private TeamBlockRepository teamBlockRepository;
-
-    @Mock
-    private OrganizationBlockRepository organizationBlockRepository;
 
     @InjectMocks
     private InviteService inviteService;
@@ -129,12 +119,6 @@ class InviteServiceTest {
                 .usedCount(5)
                 .createdBy(CREATED_BY)
                 .build();
-    }
-
-    private InviteTokenEntity createRevokedToken() {
-        InviteTokenEntity token = createTeamInviteToken();
-        token.revoke();
-        return token;
     }
 
     // ========================================

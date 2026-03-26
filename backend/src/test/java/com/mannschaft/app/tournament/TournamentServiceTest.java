@@ -1,12 +1,9 @@
 package com.mannschaft.app.tournament;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.tournament.dto.CreateTournamentRequest;
-import com.mannschaft.app.tournament.dto.TournamentResponse;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
-import com.mannschaft.app.tournament.entity.TournamentTemplateEntity;
 import com.mannschaft.app.tournament.repository.*;
 import com.mannschaft.app.tournament.service.TournamentService;
 import org.junit.jupiter.api.DisplayName;

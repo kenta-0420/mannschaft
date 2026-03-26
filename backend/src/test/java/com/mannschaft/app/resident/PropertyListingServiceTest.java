@@ -2,10 +2,7 @@ package com.mannschaft.app.resident;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.resident.dto.CreateInquiryRequest;
-import com.mannschaft.app.resident.dto.CreatePropertyListingRequest;
 import com.mannschaft.app.resident.dto.InquiryResponse;
-import com.mannschaft.app.resident.dto.PropertyListingResponse;
-import com.mannschaft.app.resident.entity.PropertyListingEntity;
 import com.mannschaft.app.resident.entity.PropertyListingInquiryEntity;
 import com.mannschaft.app.resident.mapper.ResidentMapper;
 import com.mannschaft.app.resident.repository.PropertyListingInquiryRepository;

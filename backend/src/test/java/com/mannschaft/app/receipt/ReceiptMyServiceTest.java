@@ -1,7 +1,6 @@
 package com.mannschaft.app.receipt;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.receipt.entity.ReceiptEntity;
 import com.mannschaft.app.receipt.repository.ReceiptLineItemRepository;
 import com.mannschaft.app.receipt.repository.ReceiptRepository;
 import com.mannschaft.app.receipt.service.ReceiptMyService;

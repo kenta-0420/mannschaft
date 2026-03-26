@@ -5,12 +5,10 @@ import com.mannschaft.app.schedule.dto.BatchDeleteResponse;
 import com.mannschaft.app.schedule.dto.CreatePersonalScheduleRequest;
 import com.mannschaft.app.schedule.dto.PersonalScheduleResponse;
 import com.mannschaft.app.schedule.dto.UpdatePersonalScheduleRequest;
-import com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.PersonalScheduleReminderRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.service.PersonalScheduleService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -21,7 +19,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,9 +45,6 @@ class PersonalScheduleServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
-
-    @Mock
-    private ObjectMapper objectMapper;
 
     @InjectMocks
     private PersonalScheduleService personalScheduleService;
@@ -191,7 +185,7 @@ class PersonalScheduleServiceTest {
                     List.of(10, 30), null);
 
             // when
-            PersonalScheduleResponse result = personalScheduleService.createPersonalSchedule(req, USER_ID);
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
 
             // then
             verify(reminderRepository).deleteByScheduleId(any());
@@ -330,8 +324,7 @@ class PersonalScheduleServiceTest {
                     "更新タイトル", null, null, null, null, null, null, null, null, null, null);
 
             // when
-            PersonalScheduleResponse result =
-                    personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
+            personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
 
             // then
             verify(eventPublisher).publishEvent(any(Object.class));

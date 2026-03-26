@@ -348,7 +348,7 @@ class ShiftScheduleServiceTest {
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
 
             // When
-            ShiftScheduleResponse result = shiftScheduleService.transitionStatus(SCHEDULE_ID, "COLLECTING", USER_ID);
+            shiftScheduleService.transitionStatus(SCHEDULE_ID, "COLLECTING", USER_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(ShiftScheduleStatus.COLLECTING);

@@ -11,7 +11,6 @@ import com.mannschaft.app.timeline.dto.CreatePollRequest;
 import com.mannschaft.app.timeline.dto.CreatePostRequest;
 import com.mannschaft.app.timeline.dto.PostResponse;
 import com.mannschaft.app.timeline.dto.UpdatePostRequest;
-import com.mannschaft.app.timeline.entity.TimelinePostAttachmentEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostEditEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostAttachmentRepository;
@@ -35,7 +34,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**

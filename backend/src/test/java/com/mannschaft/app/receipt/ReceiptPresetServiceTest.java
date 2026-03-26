@@ -2,7 +2,6 @@ package com.mannschaft.app.receipt;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.receipt.dto.CreatePresetRequest;
-import com.mannschaft.app.receipt.dto.PresetResponse;
 import com.mannschaft.app.receipt.entity.ReceiptPresetEntity;
 import com.mannschaft.app.receipt.repository.ReceiptPresetRepository;
 import com.mannschaft.app.receipt.service.ReceiptPresetService;

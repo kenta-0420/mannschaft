@@ -14,7 +14,6 @@ import com.mannschaft.app.facility.dto.UpdateBookingRequest;
 import com.mannschaft.app.facility.entity.FacilityBookingEntity;
 import com.mannschaft.app.facility.entity.FacilityEquipmentEntity;
 import com.mannschaft.app.facility.entity.FacilitySettingsEntity;
-import com.mannschaft.app.facility.entity.FacilityUsageRuleEntity;
 import com.mannschaft.app.facility.entity.SharedFacilityEntity;
 import com.mannschaft.app.facility.repository.FacilityBookingEquipmentRepository;
 import com.mannschaft.app.facility.repository.FacilityBookingRepository;

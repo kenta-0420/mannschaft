@@ -2,7 +2,6 @@ package com.mannschaft.app.ticket;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.ticket.dto.CreateTicketProductRequest;
-import com.mannschaft.app.ticket.dto.TicketProductResponse;
 import com.mannschaft.app.ticket.entity.TicketProductEntity;
 import com.mannschaft.app.ticket.repository.TicketProductRepository;
 import com.mannschaft.app.ticket.service.StripeTicketService;

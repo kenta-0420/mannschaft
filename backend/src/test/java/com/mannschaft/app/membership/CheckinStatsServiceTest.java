@@ -63,8 +63,6 @@ class CheckinStatsServiceTest {
             // Given
             LocalDate from = LocalDate.of(2026, 3, 1);
             LocalDate to = LocalDate.of(2026, 3, 10);
-            LocalDateTime fromDt = from.atStartOfDay();
-            LocalDateTime toDt = to.atTime(23, 59, 59, 999999999);
 
             given(checkinRepository.countByScopeAndPeriod(
                     eq(ScopeType.TEAM), eq(SCOPE_ID), any(LocalDateTime.class), any(LocalDateTime.class)))

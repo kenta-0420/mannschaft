@@ -188,7 +188,7 @@ class ShiftPositionServiceTest {
             given(shiftMapper.toPositionResponse(entity)).willReturn(response);
 
             // When
-            ShiftPositionResponse result = shiftPositionService.updatePosition(POSITION_ID, req);
+            shiftPositionService.updatePosition(POSITION_ID, req);
 
             // Then
             assertThat(entity.getName()).isEqualTo("ホール");

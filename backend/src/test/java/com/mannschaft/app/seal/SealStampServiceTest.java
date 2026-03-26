@@ -121,7 +121,7 @@ class SealStampServiceTest {
             given(sealMapper.toStampLogResponse(entity)).willReturn(response);
 
             // When
-            StampLogResponse result = sealStampService.revokeStamp(USER_ID, STAMP_LOG_ID);
+            sealStampService.revokeStamp(USER_ID, STAMP_LOG_ID);
 
             // Then
             assertThat(entity.getIsRevoked()).isTrue();

@@ -4,7 +4,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.corkboard.dto.CorkboardGroupResponse;
 import com.mannschaft.app.corkboard.dto.CreateGroupRequest;
 import com.mannschaft.app.corkboard.entity.CorkboardCardGroupEntity;
-import com.mannschaft.app.corkboard.entity.CorkboardEntity;
 import com.mannschaft.app.corkboard.entity.CorkboardGroupEntity;
 import com.mannschaft.app.corkboard.repository.CorkboardCardGroupRepository;
 import com.mannschaft.app.corkboard.repository.CorkboardCardRepository;

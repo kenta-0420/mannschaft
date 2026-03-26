@@ -4,8 +4,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.directmail.dto.CreateDirectMailRequest;
 import com.mannschaft.app.directmail.dto.DirectMailResponse;
-import com.mannschaft.app.directmail.dto.PreviewMailRequest;
-import com.mannschaft.app.directmail.dto.PreviewMailResponse;
 import com.mannschaft.app.directmail.dto.UpdateDirectMailRequest;
 import com.mannschaft.app.directmail.entity.DirectMailLogEntity;
 import com.mannschaft.app.directmail.repository.DirectMailLogRepository;

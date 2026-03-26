@@ -292,7 +292,7 @@ class ShiftRequestServiceTest {
             given(shiftMapper.toRequestResponse(entity)).willReturn(response);
 
             // When
-            ShiftRequestResponse result = shiftRequestService.updateRequest(REQUEST_ID, req, USER_ID);
+            shiftRequestService.updateRequest(REQUEST_ID, req, USER_ID);
 
             // Then
             assertThat(entity.getPreference()).isEqualTo(ShiftPreference.AVAILABLE);

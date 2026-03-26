@@ -4,7 +4,6 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.survey.dto.SurveyResultResponse;
 import com.mannschaft.app.survey.entity.SurveyEntity;
-import com.mannschaft.app.survey.entity.SurveyQuestionEntity;
 import com.mannschaft.app.survey.repository.SurveyOptionRepository;
 import com.mannschaft.app.survey.repository.SurveyQuestionRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;

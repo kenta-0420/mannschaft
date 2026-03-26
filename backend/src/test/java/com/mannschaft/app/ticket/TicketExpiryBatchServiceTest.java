@@ -1,6 +1,5 @@
 package com.mannschaft.app.ticket;
 
-import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.ticket.entity.TicketBookEntity;
 import com.mannschaft.app.ticket.repository.TicketBookRepository;

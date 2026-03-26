@@ -37,7 +37,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -350,7 +349,6 @@ class OrganizationServiceTest {
             OrganizationEntity org = createOrganization();
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
 
-            LocalDateTime now = LocalDateTime.now();
             UserRoleEntity ur = UserRoleEntity.builder()
                     .id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(ORG_ID).build();
 

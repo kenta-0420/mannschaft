@@ -4,8 +4,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.workflow.dto.CreateWorkflowTemplateRequest;
 import com.mannschaft.app.workflow.dto.WorkflowTemplateResponse;
 import com.mannschaft.app.workflow.entity.WorkflowTemplateEntity;
-import com.mannschaft.app.workflow.entity.WorkflowTemplateFieldEntity;
-import com.mannschaft.app.workflow.entity.WorkflowTemplateStepEntity;
 import com.mannschaft.app.workflow.repository.WorkflowTemplateFieldRepository;
 import com.mannschaft.app.workflow.repository.WorkflowTemplateRepository;
 import com.mannschaft.app.workflow.repository.WorkflowTemplateStepRepository;

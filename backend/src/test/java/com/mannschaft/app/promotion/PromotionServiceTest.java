@@ -2,9 +2,7 @@ package com.mannschaft.app.promotion;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.promotion.dto.CreatePromotionRequest;
-import com.mannschaft.app.promotion.dto.SegmentCondition;
 import com.mannschaft.app.promotion.entity.PromotionEntity;
-import com.mannschaft.app.promotion.entity.PromotionSegmentEntity;
 import com.mannschaft.app.promotion.repository.PromotionDeliverySummaryRepository;
 import com.mannschaft.app.promotion.repository.PromotionRepository;
 import com.mannschaft.app.promotion.repository.PromotionSegmentRepository;
@@ -24,7 +22,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 

@@ -1,6 +1,5 @@
 package com.mannschaft.app.tournament;
 
-import com.mannschaft.app.tournament.entity.TournamentIndividualRankingEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchPlayerStatEntity;
 import com.mannschaft.app.tournament.entity.TournamentStatDefEntity;
 import com.mannschaft.app.tournament.repository.TournamentIndividualRankingRepository;
