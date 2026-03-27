@@ -1,181 +1,102 @@
 <script setup lang="ts">
 definePageMeta({
   middleware: 'auth',
-  layout: 'default',
 })
 
+const authStore = useAuthStore()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
+const dashboardStore = useDashboardStore()
+const greeting = useGreeting()
 
-const showCreateTeamDialog = ref(false)
-const showCreateOrgDialog = ref(false)
+const loading = ref(true)
 
 onMounted(async () => {
+  loading.value = true
   await Promise.all([
     teamStore.fetchMyTeams(),
     orgStore.fetchMyOrganizations(),
+    dashboardStore.fetchPersonalDashboard(),
   ])
+  loading.value = false
 })
-
-function onTeamCreated(entity: { id: number; name: string }) {
-  teamStore.fetchMyTeams()
-  navigateTo(`/teams/${entity.id}`)
-}
-
-function onOrgCreated(entity: { id: number; name: string }) {
-  orgStore.fetchMyOrganizations()
-  navigateTo(`/organizations/${entity.id}`)
-}
-
-const templateLabel: Record<string, string> = {
-  SPORTS: 'スポーツ',
-  CLINIC: 'クリニック',
-  SCHOOL: '学校',
-  COMMUNITY: 'コミュニティ',
-  COMPANY: '企業',
-  OTHER: 'その他',
-}
-
-const orgTypeLabel: Record<string, string> = {
-  NONPROFIT: '非営利',
-  FORPROFIT: '営利',
-}
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl p-6">
-    <h1 class="mb-8 text-2xl font-bold">
-      ダッシュボード
-    </h1>
+  <div>
+    <!-- 挨拶ヘッダー -->
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-surface-800 dark:text-surface-100">
+        {{ greeting }}、{{ authStore.currentUser?.displayName ?? 'ユーザー' }}さん
+      </h1>
+      <p class="mt-1 text-sm text-surface-500">
+        今日も良い一日を過ごしましょう
+      </p>
+    </div>
 
-    <!-- マイチーム セクション -->
-    <section class="mb-10">
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-xl font-semibold">
-          <i class="pi pi-users mr-2" />マイチーム
-        </h2>
-        <Button
-          label="チームを作成"
-          icon="pi pi-plus"
-          size="small"
-          @click="showCreateTeamDialog = true"
-        />
-      </div>
+    <!-- ウィジェットグリッド -->
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <WidgetPlatformAnnouncements />
+      <WidgetNotices />
+      <WidgetUpcomingEvents />
+      <WidgetPersonalTodo />
+      <WidgetUnreadThreads />
+      <WidgetRecentActivity />
+    </div>
 
-      <div v-if="teamStore.loading" class="flex justify-center py-8">
-        <ProgressSpinner style="width: 40px; height: 40px" />
-      </div>
-
-      <div v-else-if="teamStore.myTeams.length === 0" class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500">
-        <i class="pi pi-inbox mb-2 text-3xl" />
-        <p>まだチームに参加していません</p>
-        <Button
-          label="チームを作成"
-          icon="pi pi-plus"
-          text
-          class="mt-3"
-          @click="showCreateTeamDialog = true"
-        />
-      </div>
-
-      <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div
-          v-for="team in teamStore.myTeams"
-          :key="team.id"
-          class="cursor-pointer rounded-lg border p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/teams/${team.id}`)"
-        >
-          <div class="mb-2 flex items-center gap-3">
-            <Avatar
-              :image="team.iconUrl ?? undefined"
-              :label="team.iconUrl ? undefined : team.name.charAt(0)"
-              shape="circle"
-              size="large"
-            />
-            <div class="min-w-0 flex-1">
-              <h3 class="truncate font-semibold">
-                {{ team.nickname1 || team.name }}
-              </h3>
-              <Tag :value="templateLabel[team.template] ?? team.template" severity="info" class="text-xs" />
+    <!-- マイチーム & マイ組織セクション -->
+    <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <!-- マイチーム -->
+      <div>
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-lg font-semibold">マイチーム</h2>
+          <NuxtLink to="/teams" class="text-sm text-primary hover:underline">すべて表示</NuxtLink>
+        </div>
+        <div v-if="teamStore.myTeams.length > 0" class="space-y-2">
+          <NuxtLink
+            v-for="team in teamStore.myTeams.slice(0, 5)"
+            :key="team.id"
+            :to="`/teams/${team.id}`"
+            class="flex items-center gap-3 rounded-lg border border-surface-200 bg-surface-0 p-3 transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-800"
+          >
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <i class="pi pi-users" />
             </div>
-          </div>
-          <div class="flex items-center justify-between text-sm text-gray-500">
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium">{{ team.nickname1 || team.name }}</p>
+              <p class="text-xs text-surface-500">{{ team.template }}</p>
+            </div>
             <RoleBadge :role="team.role" />
-          </div>
+          </NuxtLink>
         </div>
-      </div>
-    </section>
-
-    <!-- マイ組織 セクション -->
-    <section>
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-xl font-semibold">
-          <i class="pi pi-building mr-2" />マイ組織
-        </h2>
-        <Button
-          label="組織を作成"
-          icon="pi pi-plus"
-          size="small"
-          @click="showCreateOrgDialog = true"
-        />
+        <DashboardEmptyState v-else icon="pi pi-users" message="まだチームに参加していません" />
       </div>
 
-      <div v-if="orgStore.loading" class="flex justify-center py-8">
-        <ProgressSpinner style="width: 40px; height: 40px" />
-      </div>
-
-      <div v-else-if="orgStore.myOrganizations.length === 0" class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500">
-        <i class="pi pi-inbox mb-2 text-3xl" />
-        <p>まだ組織に参加していません</p>
-        <Button
-          label="組織を作成"
-          icon="pi pi-plus"
-          text
-          class="mt-3"
-          @click="showCreateOrgDialog = true"
-        />
-      </div>
-
-      <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div
-          v-for="org in orgStore.myOrganizations"
-          :key="org.id"
-          class="cursor-pointer rounded-lg border p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/organizations/${org.id}`)"
-        >
-          <div class="mb-2 flex items-center gap-3">
-            <Avatar
-              :image="org.iconUrl ?? undefined"
-              :label="org.iconUrl ? undefined : org.name.charAt(0)"
-              shape="circle"
-              size="large"
-            />
-            <div class="min-w-0 flex-1">
-              <h3 class="truncate font-semibold">
-                {{ org.nickname1 || org.name }}
-              </h3>
-              <Tag :value="orgTypeLabel[org.orgType] ?? org.orgType" severity="secondary" class="text-xs" />
+      <!-- マイ組織 -->
+      <div>
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-lg font-semibold">マイ組織</h2>
+          <NuxtLink to="/organizations" class="text-sm text-primary hover:underline">すべて表示</NuxtLink>
+        </div>
+        <div v-if="orgStore.myOrganizations.length > 0" class="space-y-2">
+          <NuxtLink
+            v-for="org in orgStore.myOrganizations.slice(0, 5)"
+            :key="org.id"
+            :to="`/organizations/${org.id}`"
+            class="flex items-center gap-3 rounded-lg border border-surface-200 bg-surface-0 p-3 transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-800"
+          >
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <i class="pi pi-building" />
             </div>
-          </div>
-          <div class="flex items-center justify-between text-sm text-gray-500">
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium">{{ org.nickname1 || org.name }}</p>
+              <p class="text-xs text-surface-500">{{ org.orgType === 'NONPROFIT' ? '非営利' : '営利' }}</p>
+            </div>
             <RoleBadge :role="org.role" />
-          </div>
+          </NuxtLink>
         </div>
+        <DashboardEmptyState v-else icon="pi pi-building" message="まだ組織に参加していません" />
       </div>
-    </section>
-
-    <!-- 作成ダイアログ -->
-    <EntityCreateDialog
-      entity-type="team"
-      :visible="showCreateTeamDialog"
-      @update:visible="showCreateTeamDialog = $event"
-      @created="onTeamCreated"
-    />
-    <EntityCreateDialog
-      entity-type="organization"
-      :visible="showCreateOrgDialog"
-      @update:visible="showCreateOrgDialog = $event"
-      @created="onOrgCreated"
-    />
+    </div>
   </div>
 </template>
