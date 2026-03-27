@@ -1,5 +1,9 @@
 <template>
-  <div>
-    <NuxtWelcome />
-  </div>
+  <NuxtLayout>
+    <NuxtPage />
+  </NuxtLayout>
+  <Toast />
+  <ConfirmDialog />
+  <DynamicDialog />
+  <ErrorReportModal />
 </template>
