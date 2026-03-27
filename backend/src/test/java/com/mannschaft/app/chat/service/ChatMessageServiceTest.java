@@ -306,5 +306,272 @@ class ChatMessageServiceTest {
             assertThat(result).isNotNull();
             assertThat(result.getMeta().isHasNext()).isFalse();
         }
+
+        @Test
+        @DisplayName("正常系: カーソルありでメッセージを取得できる")
+        void カーソルありでメッセージを取得できる() {
+            // given
+            Long cursor = 100L;
+            ChatMessageEntity message = createMessage();
+            given(messageRepository.findByChannelIdAndIdLessThan(eq(CHANNEL_ID), eq(cursor), any(Pageable.class)))
+                    .willReturn(List.of(message));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any()))
+                    .willReturn(createMessageResponse());
+            given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
+
+            // when
+            CursorPagedResponse<MessageResponse> result =
+                    chatMessageService.listMessages(CHANNEL_ID, cursor, 10);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.getData()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("正常系: 取得件数+1件返った場合はhasNextがtrueになる")
+        void 次ページがある場合はhasNextがtrue() {
+            // given
+            // limit=2で3件返ってきた場合はhasNext=true
+            ChatMessageEntity msg1 = createMessage();
+            ChatMessageEntity msg2 = createMessage();
+            ChatMessageEntity msg3 = createMessage();
+            given(messageRepository.findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID), any(Pageable.class)))
+                    .willReturn(List.of(msg1, msg2, msg3));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any()))
+                    .willReturn(createMessageResponse());
+            given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
+
+            // when
+            CursorPagedResponse<MessageResponse> result =
+                    chatMessageService.listMessages(CHANNEL_ID, null, 2);
+
+            // then
+            assertThat(result.getMeta().isHasNext()).isTrue();
+            assertThat(result.getData()).hasSize(2); // limit件数のみ返る
+        }
+
+        @Test
+        @DisplayName("正常系: limitがnullの場合はデフォルト50件で取得する")
+        void limitがnullの場合はデフォルト50件で取得する() {
+            // given
+            given(messageRepository.findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID), any(Pageable.class)))
+                    .willReturn(List.of());
+
+            // when
+            CursorPagedResponse<MessageResponse> result =
+                    chatMessageService.listMessages(CHANNEL_ID, null, null);
+
+            // then
+            assertThat(result).isNotNull();
+            verify(messageRepository).findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID),
+                    eq(org.springframework.data.domain.PageRequest.of(0, 51))); // 50+1
+        }
+
+        @Test
+        @DisplayName("正常系: limitが100を超える場合は100件にクリップされる")
+        void limitが上限を超える場合は上限にクリップされる() {
+            // given
+            given(messageRepository.findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID), any(Pageable.class)))
+                    .willReturn(List.of());
+
+            // when
+            chatMessageService.listMessages(CHANNEL_ID, null, 200);
+
+            // then
+            verify(messageRepository).findByChannelIdOrderByCreatedAtDesc(eq(CHANNEL_ID),
+                    eq(org.springframework.data.domain.PageRequest.of(0, 101))); // 100+1
+        }
+    }
+
+    // ========================================
+    // listThreadReplies
+    // ========================================
+    @Nested
+    @DisplayName("listThreadReplies")
+    class ListThreadReplies {
+
+        @Test
+        @DisplayName("正常系: スレッド返信一覧を取得できる")
+        void スレッド返信一覧を取得できる() {
+            // given
+            Long parentId = MESSAGE_ID;
+            ChatMessageEntity parent = createMessage();
+            ChatMessageEntity reply = createMessage();
+            MessageResponse expected = createMessageResponse();
+
+            given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(messageRepository.findByParentIdOrderByCreatedAtAsc(parentId)).willReturn(List.of(reply));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
+
+            // when
+            List<MessageResponse> result = chatMessageService.listThreadReplies(parentId);
+
+            // then
+            assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("異常系: 親メッセージが存在しない場合はエラー")
+        void 親メッセージが存在しない場合はエラー() {
+            // given
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> chatMessageService.listThreadReplies(MESSAGE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ChatErrorCode.MESSAGE_NOT_FOUND));
+        }
+    }
+
+    // ========================================
+    // searchMessages
+    // ========================================
+    @Nested
+    @DisplayName("searchMessages")
+    class SearchMessages {
+
+        @Test
+        @DisplayName("正常系: メッセージを検索できる")
+        void メッセージを検索できる() {
+            // given
+            ChatMessageEntity message = createMessage();
+            MessageResponse expected = createMessageResponse();
+
+            given(messageRepository.searchByKeyword(eq(CHANNEL_ID), eq("テスト"), any(Pageable.class)))
+                    .willReturn(List.of(message));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
+
+            // when
+            List<MessageResponse> result = chatMessageService.searchMessages(CHANNEL_ID, "テスト", 10);
+
+            // then
+            assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("正常系: limitがnullの場合はデフォルト50件で検索する")
+        void limitがnullの場合はデフォルト50件で検索する() {
+            // given
+            given(messageRepository.searchByKeyword(eq(CHANNEL_ID), eq("テスト"), any(Pageable.class)))
+                    .willReturn(List.of());
+
+            // when
+            chatMessageService.searchMessages(CHANNEL_ID, "テスト", null);
+
+            // then
+            verify(messageRepository).searchByKeyword(eq(CHANNEL_ID), eq("テスト"),
+                    eq(org.springframework.data.domain.PageRequest.of(0, 50)));
+        }
+    }
+
+    // ========================================
+    // forwardMessage 追加パターン
+    // ========================================
+    @Nested
+    @DisplayName("forwardMessage 追加パターン")
+    class ForwardMessageAdditional {
+
+        @Test
+        @DisplayName("正常系: additionalCommentなしでそのまま転送できる")
+        void additionalCommentなしで転送できる() {
+            // given
+            Long targetChannelId = 20L;
+            ChatMessageEntity original = createMessage();
+            ChatChannelEntity targetChannel = createChannel();
+            ForwardMessageRequest req = new ForwardMessageRequest(targetChannelId, null); // null comment
+            MessageResponse expected = createMessageResponse();
+
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(original));
+            given(channelService.findChannelOrThrow(targetChannelId)).willReturn(targetChannel);
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(original);
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
+
+            // when
+            MessageResponse result = chatMessageService.forwardMessage(MESSAGE_ID, req, SENDER_ID);
+
+            // then
+            assertThat(result).isNotNull();
+        }
+    }
+
+    // ========================================
+    // togglePin 追加パターン
+    // ========================================
+    @Nested
+    @DisplayName("togglePin 追加パターン")
+    class TogglePinAdditional {
+
+        @Test
+        @DisplayName("正常系: メッセージのピン留めを解除できる")
+        void メッセージのピン留めを解除できる() {
+            // given
+            ChatMessageEntity message = createMessage();
+            message.pin(); // 先にピン留め
+            MessageResponse expected = createMessageResponse();
+
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
+
+            // when
+            MessageResponse result = chatMessageService.togglePin(MESSAGE_ID, false);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(message.getIsPinned()).isFalse();
+        }
+    }
+
+    // ========================================
+    // sendMessage 追加パターン
+    // ========================================
+    @Nested
+    @DisplayName("sendMessage 追加パターン")
+    class SendMessageAdditional {
+
+        @Test
+        @DisplayName("正常系: 100文字超のメッセージはプレビューが100文字に切り詰められる")
+        void 長いメッセージはプレビューが切り詰められる() {
+            // given
+            String longBody = "a".repeat(150);
+            SendMessageRequest req = new SendMessageRequest(longBody, null, null, null);
+            ChatChannelEntity channel = createChannel();
+            ChatMessageEntity saved = createMessage();
+            MessageResponse expected = createMessageResponse();
+
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(saved);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+
+            // when
+            MessageResponse result = chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
+
+            // then
+            assertThat(result).isNotNull();
+        }
     }
 }

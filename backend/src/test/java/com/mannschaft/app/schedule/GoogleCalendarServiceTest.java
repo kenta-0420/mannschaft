@@ -3,7 +3,11 @@ package com.mannschaft.app.schedule;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.schedule.dto.CalendarSyncSettingsResponse;
+import com.mannschaft.app.schedule.dto.CalendarSyncToggleResponse;
 import com.mannschaft.app.schedule.dto.GoogleCalendarStatusResponse;
+import com.mannschaft.app.schedule.dto.ManualSyncResponse;
+import com.mannschaft.app.schedule.entity.UserCalendarSyncSettingEntity;
 import com.mannschaft.app.schedule.entity.UserGoogleCalendarConnectionEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.UserCalendarSyncSettingRepository;
@@ -21,7 +25,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -228,6 +234,201 @@ class GoogleCalendarServiceTest {
             assertThat(result.isPersonalSyncEnabled()).isTrue();
             assertThat(result.getBackfillCount()).isEqualTo(3);
             verify(connectionRepository).updatePersonalSyncEnabled(USER_ID, true);
+        }
+
+        @Test
+        @DisplayName("個人同期OFF_未連携_例外スロー")
+        void 個人同期OFF_未連携_例外スロー() {
+            // given
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> googleCalendarService.togglePersonalSync(false, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(GoogleCalendarErrorCode.GOOGLE_CALENDAR_NOT_CONNECTED);
+        }
+    }
+
+    @Nested
+    @DisplayName("getSyncSettings")
+    class GetSyncSettings {
+
+        @Test
+        @DisplayName("同期設定取得_連携済みで設定あり_設定一覧を返す")
+        void 同期設定取得_連携済みで設定あり_設定一覧を返す() {
+            // given
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            UserCalendarSyncSettingEntity setting = UserCalendarSyncSettingEntity.builder()
+                    .userId(USER_ID).scopeType("TEAM").scopeId(10L).isEnabled(true).build();
+
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            given(syncSettingRepository.findByUserId(USER_ID)).willReturn(List.of(setting));
+            given(nameResolverService.resolveScopeName("TEAM", 10L)).willReturn("テストチーム");
+
+            // when
+            CalendarSyncSettingsResponse result = googleCalendarService.getSyncSettings(USER_ID);
+
+            // then
+            assertThat(result.isConnected()).isTrue();
+            assertThat(result.getGoogleAccountEmail()).isEqualTo("test@gmail.com");
+            assertThat(result.getSyncSettings()).hasSize(1);
+            assertThat(result.getSyncSettings().get(0).scopeName()).isEqualTo("テストチーム");
+            assertThat(result.getSyncSettings().get(0).isEnabled()).isTrue();
+        }
+
+        @Test
+        @DisplayName("同期設定取得_未連携_設定なしを返す")
+        void 同期設定取得_未連携_設定なしを返す() {
+            // given
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(syncSettingRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            // when
+            CalendarSyncSettingsResponse result = googleCalendarService.getSyncSettings(USER_ID);
+
+            // then
+            assertThat(result.isConnected()).isFalse();
+            assertThat(result.getGoogleAccountEmail()).isNull();
+            assertThat(result.getSyncSettings()).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("toggleOrgSync")
+    class ToggleOrgSync {
+
+        @Test
+        @DisplayName("組織同期ON_正常_設定が更新される")
+        void 組織同期ON_正常_設定が更新される() {
+            // given
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            given(googleEventRepository.countUnsyncedSchedules(USER_ID, "ORGANIZATION", 20L)).willReturn(10);
+
+            // when
+            CalendarSyncToggleResponse result = googleCalendarService.toggleOrgSync(20L, true, USER_ID);
+
+            // then
+            assertThat(result.isEnabled()).isTrue();
+            assertThat(result.getBackfillCount()).isEqualTo(10);
+            verify(syncSettingRepository).upsert(USER_ID, "ORGANIZATION", 20L, true);
+        }
+
+        @Test
+        @DisplayName("組織同期OFF_正常_設定が無効化される")
+        void 組織同期OFF_正常_設定が無効化される() {
+            // given
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+
+            // when
+            CalendarSyncToggleResponse result = googleCalendarService.toggleOrgSync(20L, false, USER_ID);
+
+            // then
+            assertThat(result.isEnabled()).isFalse();
+            assertThat(result.getBackfillCount()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("組織同期_未連携_例外スロー")
+        void 組織同期_未連携_例外スロー() {
+            // given
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> googleCalendarService.toggleOrgSync(20L, true, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(GoogleCalendarErrorCode.GOOGLE_CALENDAR_NOT_CONNECTED);
+        }
+    }
+
+    @Nested
+    @DisplayName("manualSync")
+    class ManualSync {
+
+        @Test
+        @DisplayName("手動再同期_連携済み_同期開始される")
+        void 手動再同期_連携済み_同期開始される() {
+            // given
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            given(googleEventRepository.countAllUnsyncedSchedules(USER_ID)).willReturn(7);
+
+            // when
+            ManualSyncResponse result = googleCalendarService.manualSync(USER_ID);
+
+            // then
+            assertThat(result.getBackfillCount()).isEqualTo(7);
+            assertThat(result.getMessage()).isNotBlank();
+        }
+
+        @Test
+        @DisplayName("手動再同期_未連携_例外スロー")
+        void 手動再同期_未連携_例外スロー() {
+            // given
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> googleCalendarService.manualSync(USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(GoogleCalendarErrorCode.GOOGLE_CALENDAR_NOT_CONNECTED);
+        }
+    }
+
+    @Nested
+    @DisplayName("getConnectionStatus with error detail")
+    class GetConnectionStatusWithErrorDetail {
+
+        @Test
+        @DisplayName("連携状態取得_同期エラーあり_エラー詳細が含まれる")
+        void 連携状態取得_同期エラーあり_エラー詳細が含まれる() throws Exception {
+            // given: lastSyncErrorType を設定したConnection
+            UserGoogleCalendarConnectionEntity conn = UserGoogleCalendarConnectionEntity.builder()
+                    .userId(USER_ID)
+                    .googleAccountEmail("error@gmail.com")
+                    .googleCalendarId("primary")
+                    .accessToken("enc_access")
+                    .refreshToken("enc_refresh")
+                    .tokenExpiresAt(LocalDateTime.now().plusHours(1))
+                    .isActive(true)
+                    .personalSyncEnabled(false)
+                    .lastSyncErrorType("TOKEN_EXPIRED")
+                    .lastSyncErrorMessage("アクセストークンが期限切れです")
+                    .lastSyncErrorAt(LocalDateTime.of(2026, 1, 1, 10, 0))
+                    .build();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+
+            // when
+            GoogleCalendarStatusResponse result = googleCalendarService.getConnectionStatus(USER_ID);
+
+            // then
+            assertThat(result.isConnected()).isTrue();
+            assertThat(result.getLastSyncError()).isNotNull();
+            assertThat(result.getLastSyncError().type()).isEqualTo("TOKEN_EXPIRED");
+        }
+    }
+
+    @Nested
+    @DisplayName("chームSync OFF (backfillCount=0)")
+    class TeamSyncOff {
+
+        @Test
+        @DisplayName("チーム同期OFF_バックフィルなし_0が返る")
+        void チーム同期OFF_バックフィルなし_0が返る() {
+            // given
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+
+            // when
+            CalendarSyncToggleResponse result = googleCalendarService.toggleTeamSync(10L, false, USER_ID);
+
+            // then
+            assertThat(result.isEnabled()).isFalse();
+            assertThat(result.getBackfillCount()).isEqualTo(0);
+            verify(syncSettingRepository).upsert(USER_ID, "TEAM", 10L, false);
         }
     }
 }

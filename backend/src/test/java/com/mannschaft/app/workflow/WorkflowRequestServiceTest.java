@@ -4,8 +4,11 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.workflow.dto.CreateWorkflowRequestRequest;
 import com.mannschaft.app.workflow.dto.UpdateWorkflowRequestRequest;
 import com.mannschaft.app.workflow.dto.WorkflowRequestResponse;
+import com.mannschaft.app.workflow.entity.WorkflowRequestApproverEntity;
 import com.mannschaft.app.workflow.entity.WorkflowRequestEntity;
+import com.mannschaft.app.workflow.entity.WorkflowRequestStepEntity;
 import com.mannschaft.app.workflow.entity.WorkflowTemplateEntity;
+import com.mannschaft.app.workflow.entity.WorkflowTemplateStepEntity;
 import com.mannschaft.app.workflow.repository.WorkflowRequestApproverRepository;
 import com.mannschaft.app.workflow.repository.WorkflowRequestRepository;
 import com.mannschaft.app.workflow.repository.WorkflowRequestStepRepository;
@@ -19,6 +22,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.Optional;
@@ -241,6 +247,209 @@ class WorkflowRequestServiceTest {
             // Then
             assertThat(entity.getDeletedAt()).isNotNull();
             verify(requestRepository).save(entity);
+        }
+    }
+
+    @Nested
+    @DisplayName("listRequests")
+    class ListRequests {
+
+        @Test
+        @DisplayName("申請一覧取得_ステータスあり_フィルタされる")
+        void 申請一覧取得_ステータスあり_フィルタされる() {
+            // Given
+            WorkflowRequestEntity entity = createDraftRequest();
+            PageRequest pageable = PageRequest.of(0, 10);
+            Page<WorkflowRequestEntity> page = new PageImpl<>(List.of(entity));
+            WorkflowRequestResponse response = new WorkflowRequestResponse(REQUEST_ID, TEMPLATE_ID,
+                    SCOPE_TYPE, SCOPE_ID, "休暇申請", "DRAFT", USER_ID, null, null,
+                    null, null, null, null, null, null, List.of());
+
+            given(requestRepository.findByScopeTypeAndScopeIdAndStatusOrderByCreatedAtDesc(
+                    SCOPE_TYPE, SCOPE_ID, WorkflowStatus.DRAFT, pageable)).willReturn(page);
+            given(requestStepRepository.findByRequestIdOrderByStepOrderAsc(any())).willReturn(List.of());
+            given(workflowMapper.toRequestDetailResponse(any(), any())).willReturn(response);
+
+            // When
+            Page<WorkflowRequestResponse> result = workflowRequestService.listRequests(
+                    SCOPE_TYPE, SCOPE_ID, "DRAFT", pageable);
+
+            // Then
+            assertThat(result.getTotalElements()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("申請一覧取得_ステータスなし_全件取得")
+        void 申請一覧取得_ステータスなし_全件取得() {
+            // Given
+            PageRequest pageable = PageRequest.of(0, 10);
+            Page<WorkflowRequestEntity> page = new PageImpl<>(List.of());
+            given(requestRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(SCOPE_TYPE, SCOPE_ID, pageable))
+                    .willReturn(page);
+
+            // When
+            Page<WorkflowRequestResponse> result = workflowRequestService.listRequests(
+                    SCOPE_TYPE, SCOPE_ID, null, pageable);
+
+            // Then
+            assertThat(result.getTotalElements()).isEqualTo(0);
+        }
+    }
+
+    @Nested
+    @DisplayName("getRequest")
+    class GetRequest {
+
+        @Test
+        @DisplayName("申請詳細取得_正常_レスポンス返却")
+        void 申請詳細取得_正常_レスポンス返却() {
+            // Given
+            WorkflowRequestEntity entity = createDraftRequest();
+            WorkflowRequestResponse response = new WorkflowRequestResponse(REQUEST_ID, TEMPLATE_ID,
+                    SCOPE_TYPE, SCOPE_ID, "休暇申請", "DRAFT", USER_ID, null, null,
+                    null, null, null, null, null, null, List.of());
+
+            given(requestRepository.findByIdAndScopeTypeAndScopeId(REQUEST_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(requestStepRepository.findByRequestIdOrderByStepOrderAsc(any())).willReturn(List.of());
+            given(workflowMapper.toRequestDetailResponse(any(), any())).willReturn(response);
+
+            // When
+            WorkflowRequestResponse result = workflowRequestService.getRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID);
+
+            // Then
+            assertThat(result.getTitle()).isEqualTo("休暇申請");
+        }
+
+        @Test
+        @DisplayName("申請詳細取得_存在しない_BusinessException")
+        void 申請詳細取得_存在しない_BusinessException() {
+            // Given
+            given(requestRepository.findByIdAndScopeTypeAndScopeId(REQUEST_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> workflowRequestService.getRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(WorkflowErrorCode.REQUEST_NOT_FOUND));
+        }
+    }
+
+    @Nested
+    @DisplayName("submitRequest")
+    class SubmitRequest {
+
+        @Test
+        @DisplayName("申請提出_ステップなし_PENDINGになる")
+        void 申請提出_ステップなし_PENDINGになる() {
+            // Given
+            WorkflowRequestEntity entity = createDraftRequest();
+            WorkflowRequestResponse response = new WorkflowRequestResponse(REQUEST_ID, TEMPLATE_ID,
+                    SCOPE_TYPE, SCOPE_ID, "休暇申請", "PENDING", USER_ID, null, 1,
+                    null, null, null, null, null, null, List.of());
+
+            given(requestRepository.findByIdAndScopeTypeAndScopeId(REQUEST_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(templateStepRepository.findByTemplateIdOrderByStepOrderAsc(TEMPLATE_ID))
+                    .willReturn(List.of());
+            given(requestRepository.save(entity)).willReturn(entity);
+            given(requestStepRepository.findByRequestIdOrderByStepOrderAsc(any())).willReturn(List.of());
+            given(workflowMapper.toRequestDetailResponse(any(), any())).willReturn(response);
+
+            // When
+            WorkflowRequestResponse result = workflowRequestService.submitRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID);
+
+            // Then
+            assertThat(result.getStatus()).isEqualTo("PENDING");
+        }
+
+        @Test
+        @DisplayName("申請提出_ステップあり_IN_PROGRESSになる")
+        void 申請提出_ステップあり_IN_PROGRESSになる() {
+            // Given
+            WorkflowRequestEntity entity = createDraftRequest();
+            WorkflowTemplateStepEntity templateStep = WorkflowTemplateStepEntity.builder()
+                    .templateId(TEMPLATE_ID).stepOrder(1).name("部長承認")
+                    .approvalType(ApprovalType.ALL).approverType(ApproverType.USER)
+                    .approverUserIds("[10]").build();
+            WorkflowRequestStepEntity savedStep = WorkflowRequestStepEntity.builder()
+                    .requestId(REQUEST_ID).stepOrder(1).build();
+            savedStep.startProgress();
+
+            WorkflowRequestResponse response = new WorkflowRequestResponse(REQUEST_ID, TEMPLATE_ID,
+                    SCOPE_TYPE, SCOPE_ID, "休暇申請", "IN_PROGRESS", USER_ID, null, 1,
+                    null, null, null, null, null, null, List.of());
+
+            given(requestRepository.findByIdAndScopeTypeAndScopeId(REQUEST_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(templateStepRepository.findByTemplateIdOrderByStepOrderAsc(TEMPLATE_ID))
+                    .willReturn(List.of(templateStep));
+            given(requestStepRepository.save(any(WorkflowRequestStepEntity.class))).willReturn(savedStep);
+            given(approverRepository.save(any(WorkflowRequestApproverEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(requestStepRepository.findByRequestIdAndStepOrder(any(), any()))
+                    .willReturn(Optional.of(savedStep));
+            given(requestRepository.save(entity)).willReturn(entity);
+            given(requestStepRepository.findByRequestIdOrderByStepOrderAsc(any())).willReturn(List.of(savedStep));
+            given(approverRepository.findByRequestStepId(any())).willReturn(List.of());
+            given(workflowMapper.toApproverResponseList(any())).willReturn(List.of());
+            given(workflowMapper.toRequestDetailResponse(any(), any())).willReturn(response);
+
+            // When
+            WorkflowRequestResponse result = workflowRequestService.submitRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID);
+
+            // Then
+            assertThat(result).isNotNull();
+        }
+
+        @Test
+        @DisplayName("申請提出_PENDING状態_BusinessException")
+        void 申請提出_PENDING状態_BusinessException() {
+            // Given
+            WorkflowRequestEntity entity = createDraftRequest();
+            entity.submit();
+
+            given(requestRepository.findByIdAndScopeTypeAndScopeId(REQUEST_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            // When & Then
+            assertThatThrownBy(() -> workflowRequestService.submitRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(WorkflowErrorCode.INVALID_STATUS_TRANSITION));
+        }
+    }
+
+    @Nested
+    @DisplayName("getRequestEntity")
+    class GetRequestEntity {
+
+        @Test
+        @DisplayName("申請エンティティ取得_正常_エンティティ返却")
+        void 申請エンティティ取得_正常_エンティティ返却() {
+            // Given
+            WorkflowRequestEntity entity = createDraftRequest();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+
+            // When
+            WorkflowRequestEntity result = workflowRequestService.getRequestEntity(REQUEST_ID);
+
+            // Then
+            assertThat(result.getTitle()).isEqualTo("休暇申請");
+        }
+
+        @Test
+        @DisplayName("申請エンティティ取得_存在しない_BusinessException")
+        void 申請エンティティ取得_存在しない_BusinessException() {
+            // Given
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> workflowRequestService.getRequestEntity(REQUEST_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(WorkflowErrorCode.REQUEST_NOT_FOUND));
         }
     }
 }

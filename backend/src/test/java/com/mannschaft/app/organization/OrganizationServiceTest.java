@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -154,6 +155,31 @@ class OrganizationServiceTest {
 
             assertThat(response.getData().getVisibility()).isEqualTo("PRIVATE");
         }
+
+        @Test
+        @DisplayName("正常系: parentOrganizationId付きで作成される")
+        void parentOrganizationId付き_正常作成() {
+            CreateOrganizationRequest req = new CreateOrganizationRequest(
+                    "子組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", 5L);
+
+            given(organizationRepository.existsByName("子組織")).willReturn(false);
+
+            RoleEntity adminRole = RoleEntity.builder()
+                    .id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者").priority(2).isSystem(true).build();
+            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(adminRole));
+
+            given(organizationRepository.save(any(OrganizationEntity.class)))
+                    .willAnswer(inv -> {
+                        OrganizationEntity saved = inv.getArgument(0);
+                        assertThat(saved.getParentOrganizationId()).isEqualTo(5L);
+                        return saved;
+                    });
+
+            ApiResponse<OrganizationResponse> response =
+                    organizationService.createOrganization(USER_ID, req);
+
+            assertThat(response.getData().getName()).isEqualTo("子組織");
+        }
     }
 
     // ========================================
@@ -233,6 +259,45 @@ class OrganizationServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ORG_003"));
         }
+
+        @Test
+        @DisplayName("正常系: 組織不在でORG_001例外")
+        void 組織不在_ORG_001例外() {
+            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+
+            UpdateOrganizationRequest req = new UpdateOrganizationRequest(
+                    "更新", null, null, null, null, null, null, null, null, 0L);
+
+            assertThatThrownBy(() -> organizationService.updateOrganization(999L, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ORG_001"));
+        }
+
+        @Test
+        @DisplayName("正常系: 全フィールド更新")
+        void 全フィールド更新() {
+            OrganizationEntity org = createOrganization();
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.save(any(OrganizationEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(3L);
+
+            UpdateOrganizationRequest req = new UpdateOrganizationRequest(
+                    "新名前", "しんなまえ", "ニックネーム1", "ニックネーム2",
+                    "大阪府", "大阪市", "PUBLIC", "FULL", true, 0L);
+
+            ApiResponse<OrganizationResponse> response =
+                    organizationService.updateOrganization(ORG_ID, req);
+
+            assertThat(response.getData().getName()).isEqualTo("新名前");
+            assertThat(response.getData().getNameKana()).isEqualTo("しんなまえ");
+            assertThat(response.getData().getNickname1()).isEqualTo("ニックネーム1");
+            assertThat(response.getData().getNickname2()).isEqualTo("ニックネーム2");
+            assertThat(response.getData().getPrefecture()).isEqualTo("大阪府");
+            assertThat(response.getData().getCity()).isEqualTo("大阪市");
+            assertThat(response.getData().getSupporterEnabled()).isTrue();
+        }
     }
 
     // ========================================
@@ -258,6 +323,30 @@ class OrganizationServiceTest {
 
             assertThat(org.getDeletedAt()).isNotNull();
             assertThat(token.getRevokedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("組織不在_ORG_001例外")
+        void 組織不在_ORG_001例外() {
+            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> organizationService.deleteOrganization(999L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ORG_001"));
+        }
+
+        @Test
+        @DisplayName("正常系: 招待トークンなしでも正常に削除される")
+        void 招待トークンなし_正常削除() {
+            OrganizationEntity org = createOrganization();
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(inviteTokenRepository.findByOrganizationIdAndRevokedAtIsNull(ORG_ID))
+                    .willReturn(List.of());
+
+            organizationService.deleteOrganization(ORG_ID);
+
+            assertThat(org.getDeletedAt()).isNotNull();
         }
     }
 
@@ -291,6 +380,17 @@ class OrganizationServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ORG_003"));
         }
+
+        @Test
+        @DisplayName("組織不在_ORG_001例外")
+        void 組織不在_ORG_001例外() {
+            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> organizationService.archiveOrganization(999L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ORG_001"));
+        }
     }
 
     @Nested
@@ -306,6 +406,17 @@ class OrganizationServiceTest {
             organizationService.unarchiveOrganization(ORG_ID);
 
             assertThat(org.getArchivedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("組織不在_ORG_001例外")
+        void 組織不在_ORG_001例外() {
+            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> organizationService.unarchiveOrganization(999L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ORG_001"));
         }
     }
 
@@ -332,6 +443,33 @@ class OrganizationServiceTest {
             assertThat(response.getData()).hasSize(1);
             assertThat(response.getData().get(0).getName()).isEqualTo("テスト組織");
             assertThat(response.getMeta().getTotal()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("キーワードnullの場合_空文字で検索される")
+        void キーワードnull_空文字で検索() {
+            Pageable pageable = PageRequest.of(0, 10);
+            given(organizationRepository.searchByKeyword("", pageable))
+                    .willReturn(new PageImpl<>(List.of(), pageable, 0));
+
+            PagedResponse<OrganizationSummaryResponse> response =
+                    organizationService.searchOrganizations(null, pageable);
+
+            assertThat(response.getData()).isEmpty();
+            assertThat(response.getMeta().getTotal()).isZero();
+        }
+
+        @Test
+        @DisplayName("検索結果なし_空リストが返される")
+        void 検索結果なし_空リスト() {
+            Pageable pageable = PageRequest.of(0, 10);
+            given(organizationRepository.searchByKeyword("存在しない", pageable))
+                    .willReturn(new PageImpl<>(List.of(), pageable, 0));
+
+            PagedResponse<OrganizationSummaryResponse> response =
+                    organizationService.searchOrganizations("存在しない", pageable);
+
+            assertThat(response.getData()).isEmpty();
         }
     }
 
@@ -371,6 +509,41 @@ class OrganizationServiceTest {
             assertThat(response.getData().get(0).getDisplayName()).isEqualTo("yamada");
             assertThat(response.getData().get(0).getRoleName()).isEqualTo("ADMIN");
         }
+
+        @Test
+        @DisplayName("メンバー一覧取得_ユーザー/ロール不在でもnullで返される")
+        void メンバー一覧取得_ユーザーロール不在_null返却() {
+            OrganizationEntity org = createOrganization();
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+
+            UserRoleEntity ur = UserRoleEntity.builder()
+                    .id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(ORG_ID).build();
+
+            Pageable pageable = PageRequest.of(0, 10);
+            given(userRoleRepository.findByOrganizationId(ORG_ID, pageable))
+                    .willReturn(new PageImpl<>(List.of(ur), pageable, 1));
+
+            given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.empty());
+
+            PagedResponse<MemberResponse> response =
+                    organizationService.getMembers(ORG_ID, pageable);
+
+            assertThat(response.getData()).hasSize(1);
+            assertThat(response.getData().get(0).getDisplayName()).isNull();
+            assertThat(response.getData().get(0).getRoleName()).isNull();
+        }
+
+        @Test
+        @DisplayName("組織不在_ORG_001例外")
+        void 組織不在_ORG_001例外() {
+            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> organizationService.getMembers(999L, PageRequest.of(0, 10)))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ORG_001"));
+        }
     }
 
     // ========================================
@@ -409,6 +582,31 @@ class OrganizationServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ORG_003"));
         }
+
+        @Test
+        @DisplayName("SUPPORTERロール未定義_ORG_001例外")
+        void SUPPORTERロール未定義_ORG_001例外() {
+            OrganizationEntity org = createOrganization();
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(userRoleRepository.existsByUserIdAndOrganizationId(USER_ID, ORG_ID)).willReturn(false);
+            given(roleRepository.findByName("SUPPORTER")).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> organizationService.followOrganization(USER_ID, ORG_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ORG_001"));
+        }
+
+        @Test
+        @DisplayName("組織不在_ORG_001例外")
+        void 組織不在_ORG_001例外() {
+            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> organizationService.followOrganization(USER_ID, 999L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ORG_001"));
+        }
     }
 
     @Nested
@@ -424,6 +622,17 @@ class OrganizationServiceTest {
             organizationService.unfollowOrganization(USER_ID, ORG_ID);
 
             verify(userRoleRepository).deleteByUserIdAndOrganizationId(USER_ID, ORG_ID);
+        }
+
+        @Test
+        @DisplayName("組織不在_ORG_001例外")
+        void 組織不在_ORG_001例外() {
+            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> organizationService.unfollowOrganization(USER_ID, 999L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ORG_001"));
         }
     }
 

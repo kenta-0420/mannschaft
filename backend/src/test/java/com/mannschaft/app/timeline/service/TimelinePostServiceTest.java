@@ -1,16 +1,22 @@
 package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.timeline.AttachmentType;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.PostedAsType;
 import com.mannschaft.app.timeline.TimelineErrorCode;
 import com.mannschaft.app.timeline.TimelineMapper;
+import com.mannschaft.app.timeline.dto.AttachmentResponse;
 import com.mannschaft.app.timeline.dto.CreateAttachmentRequest;
 import com.mannschaft.app.timeline.dto.CreatePollRequest;
 import com.mannschaft.app.timeline.dto.CreatePostRequest;
+import com.mannschaft.app.timeline.dto.PollResponse;
+import com.mannschaft.app.timeline.dto.PostDetailResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
+import com.mannschaft.app.timeline.dto.ReactionSummaryResponse;
 import com.mannschaft.app.timeline.dto.UpdatePostRequest;
+import com.mannschaft.app.timeline.entity.TimelinePostAttachmentEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostEditEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostAttachmentRepository;
@@ -431,6 +437,279 @@ class TimelinePostServiceTest {
 
             // then
             assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("正常系: limitが0以下の場合はデフォルトサイズ20で検索する")
+        void limitが0以下の場合はデフォルトサイズで検索する() {
+            // given
+            given(postRepository.searchByKeyword(eq("テスト"), eq(20))).willReturn(List.of());
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
+
+            // when
+            timelinePostService.searchPosts("テスト", 0);
+
+            // then
+            verify(postRepository).searchByKeyword("テスト", 20);
+        }
+    }
+
+    // ========================================
+    // getPostDetail
+    // ========================================
+    @Nested
+    @DisplayName("getPostDetail")
+    class GetPostDetail {
+
+        @Test
+        @DisplayName("正常系: 投稿詳細を取得できる")
+        void 投稿詳細を取得できる() {
+            // given
+            TimelinePostEntity post = createPost();
+            List<TimelinePostAttachmentEntity> attachments = List.of();
+            List<AttachmentResponse> attachmentResponses = List.of();
+            List<ReactionSummaryResponse> reactionResponses = List.of();
+
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(attachments);
+            given(timelineMapper.toAttachmentResponseList(attachments)).willReturn(attachmentResponses);
+            given(reactionRepository.countByPostIdGroupByEmoji(POST_ID)).willReturn(List.of());
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            // when
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.getContent()).isEqualTo("テスト投稿");
+            assertThat(result.getUserId()).isEqualTo(USER_ID);
+        }
+
+        @Test
+        @DisplayName("正常系: リアクションサマリーが含まれる")
+        void リアクションサマリーが含まれる() {
+            // given
+            TimelinePostEntity post = createPost();
+
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of());
+            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            // リアクション行を返す
+            List<Object[]> reactionRows = new java.util.ArrayList<>();
+            reactionRows.add(new Object[]{"👍", 5L});
+            given(reactionRepository.countByPostIdGroupByEmoji(POST_ID))
+                    .willReturn(reactionRows);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            // when
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            // then
+            assertThat(result.getReactions()).hasSize(1);
+            assertThat(result.getReactions().get(0).getEmoji()).isEqualTo("👍");
+            assertThat(result.getReactions().get(0).getCount()).isEqualTo(5L);
+        }
+
+        @Test
+        @DisplayName("異常系: 投稿が存在しない場合はエラー")
+        void 投稿が存在しない場合はエラー() {
+            // given
+            given(postRepository.findById(POST_ID)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.getPostDetail(POST_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+        }
+    }
+
+    // ========================================
+    // getUserPosts
+    // ========================================
+    @Nested
+    @DisplayName("getUserPosts")
+    class GetUserPosts {
+
+        @Test
+        @DisplayName("正常系: ユーザー投稿一覧を取得できる")
+        void ユーザー投稿一覧を取得できる() {
+            // given
+            List<TimelinePostEntity> posts = List.of(createPost());
+            List<PostResponse> expected = List.of(createPostResponse());
+
+            given(postRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
+                    .willReturn(posts);
+            given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
+
+            // when
+            List<PostResponse> result = timelinePostService.getUserPosts(USER_ID, 10);
+
+            // then
+            assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("正常系: sizeが0以下の場合はデフォルトサイズで取得する")
+        void sizeが0以下の場合はデフォルトサイズで取得する() {
+            // given
+            given(postRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
+                    .willReturn(List.of());
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
+
+            // when
+            timelinePostService.getUserPosts(USER_ID, 0);
+
+            // then
+            verify(postRepository).findByUserIdOrderByCreatedAtDesc(eq(USER_ID), eq(PageRequest.of(0, 20)));
+        }
+    }
+
+    // ========================================
+    // getReplies
+    // ========================================
+    @Nested
+    @DisplayName("getReplies")
+    class GetReplies {
+
+        @Test
+        @DisplayName("正常系: リプライ一覧を取得できる")
+        void リプライ一覧を取得できる() {
+            // given
+            Long parentId = 5L;
+            List<TimelinePostEntity> replies = List.of(createPost());
+            List<PostResponse> expected = List.of(createPostResponse());
+
+            given(postRepository.findRepliesByParentId(eq(parentId), any(PageRequest.class)))
+                    .willReturn(replies);
+            given(timelineMapper.toPostResponseList(replies)).willReturn(expected);
+
+            // when
+            List<PostResponse> result = timelinePostService.getReplies(parentId, 10);
+
+            // then
+            assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("正常系: sizeが0以下の場合はデフォルトサイズで取得する")
+        void sizeが0以下_デフォルトサイズ() {
+            // given
+            Long parentId = 5L;
+            given(postRepository.findRepliesByParentId(eq(parentId), any(PageRequest.class)))
+                    .willReturn(List.of());
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
+
+            // when
+            timelinePostService.getReplies(parentId, -1);
+
+            // then
+            verify(postRepository).findRepliesByParentId(eq(parentId), eq(PageRequest.of(0, 20)));
+        }
+    }
+
+    // ========================================
+    // getPinnedPosts
+    // ========================================
+    @Nested
+    @DisplayName("getPinnedPosts")
+    class GetPinnedPosts {
+
+        @Test
+        @DisplayName("正常系: ピン留め投稿一覧を取得できる")
+        void ピン留め投稿一覧を取得できる() {
+            // given
+            List<TimelinePostEntity> posts = List.of(createPost());
+            List<PostResponse> expected = List.of(createPostResponse());
+
+            given(postRepository.findPinnedPosts("PUBLIC", 0L)).willReturn(posts);
+            given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
+
+            // when
+            List<PostResponse> result = timelinePostService.getPinnedPosts("PUBLIC", 0L);
+
+            // then
+            assertThat(result).hasSize(1);
+        }
+    }
+
+    // ========================================
+    // createPost 追加パターン
+    // ========================================
+    @Nested
+    @DisplayName("createPost 追加パターン")
+    class CreatePostAdditional {
+
+        @Test
+        @DisplayName("正常系: 添付ファイル付き投稿を作成できる")
+        void 添付ファイル付き投稿を作成できる() {
+            // given
+            List<CreateAttachmentRequest> attachments = List.of(
+                    new CreateAttachmentRequest("IMAGE", "key1", "file1.jpg",
+                            1024, "image/jpeg", (short) 800, (short) 600, null, null, null, null, null, null, null, null, null)
+            );
+            CreatePostRequest req = new CreatePostRequest("添付付き", "PUBLIC", 0L,
+                    "USER", null, null, null, null, null, attachments);
+            TimelinePostEntity savedPost = createPost();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(attachmentRepository.save(any(TimelinePostAttachmentEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            PostResponse result = timelinePostService.createPost(req, USER_ID);
+
+            // then
+            assertThat(result).isNotNull();
+            verify(attachmentRepository).save(any(TimelinePostAttachmentEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: contentがnullでもrepostOfIdがあれば作成できる")
+        void contentがnullでもrepostOfIdがあれば作成できる() {
+            // given
+            Long repostOfId = 20L;
+            CreatePostRequest req = new CreatePostRequest(null, "PUBLIC", 0L,
+                    "USER", null, null, repostOfId, null, null, null);
+            TimelinePostEntity savedPost = createPost();
+            TimelinePostEntity original = createPost();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(postRepository.findById(repostOfId)).willReturn(Optional.of(original));
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            PostResponse result = timelinePostService.createPost(req, USER_ID);
+
+            // then
+            assertThat(result).isNotNull();
+        }
+    }
+
+    // ========================================
+    // togglePin 追加パターン
+    // ========================================
+    @Nested
+    @DisplayName("togglePin 追加パターン")
+    class TogglePinAdditional {
+
+        @Test
+        @DisplayName("異常系: 他人の投稿のピン留めは変更不可")
+        void 他人の投稿のピン留めは変更不可() {
+            // given
+            TimelinePostEntity post = createPost();
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.togglePin(POST_ID, true, OTHER_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.NOT_POST_OWNER));
         }
     }
 }

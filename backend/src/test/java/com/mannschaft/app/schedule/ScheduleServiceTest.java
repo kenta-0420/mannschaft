@@ -418,6 +418,145 @@ class ScheduleServiceTest {
     }
 
     // ========================================
+    // listOrgSchedules
+    // ========================================
+
+    @Nested
+    @DisplayName("listOrgSchedules")
+    class ListOrgSchedules {
+
+        @Test
+        @DisplayName("組織スケジュール一覧_正常_レスポンス一覧を返す")
+        void 組織スケジュール一覧_正常_レスポンス一覧を返す() {
+            // given
+            Long ORG_ID = 20L;
+            ScheduleEntity entity = ScheduleEntity.builder()
+                    .organizationId(ORG_ID).title("全体集会")
+                    .startAt(START).endAt(END).allDay(false)
+                    .eventType(EventType.EVENT).visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS).status(ScheduleStatus.SCHEDULED)
+                    .isException(false).createdBy(USER_ID).build();
+            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, START, END))
+                    .willReturn(List.of(entity));
+
+            // when
+            List<ScheduleResponse> result = scheduleService.listOrgSchedules(ORG_ID, START, END);
+
+            // then
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getTitle()).isEqualTo("全体集会");
+        }
+    }
+
+    // ========================================
+    // deleteSchedule with THIS_AND_FOLLOWING
+    // ========================================
+
+    @Nested
+    @DisplayName("deleteSchedule_THIS_AND_FOLLOWING")
+    class DeleteScheduleThisAndFollowing {
+
+        @Test
+        @DisplayName("THIS_AND_FOLLOWING削除_繰り返し子スケジュール_以降が削除される")
+        void THIS_AND_FOLLOWING削除_繰り返し子スケジュール_以降が削除される() {
+            // given
+            ScheduleEntity child = ScheduleEntity.builder()
+                    .teamId(TEAM_ID).title("繰り返し練習")
+                    .startAt(START).endAt(END).allDay(false)
+                    .eventType(EventType.PRACTICE).visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS).status(ScheduleStatus.SCHEDULED)
+                    .parentScheduleId(99L) // 親IDあり
+                    .isException(false).createdBy(USER_ID).build();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
+            given(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(99L))
+                    .willReturn(List.of());
+
+            // when
+            scheduleService.deleteSchedule(SCHEDULE_ID, "THIS_AND_FOLLOWING");
+
+            // then
+            verify(scheduleRepository).findById(SCHEDULE_ID);
+        }
+
+        @Test
+        @DisplayName("ALL削除_繰り返し子から親含め全削除")
+        void ALL削除_繰り返し子から親含め全削除() {
+            // given
+            ScheduleEntity child = ScheduleEntity.builder()
+                    .teamId(TEAM_ID).title("繰り返し練習")
+                    .startAt(START).endAt(END).allDay(false)
+                    .eventType(EventType.PRACTICE).visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS).status(ScheduleStatus.SCHEDULED)
+                    .parentScheduleId(99L) // 親IDあり
+                    .isException(false).createdBy(USER_ID).build();
+            ScheduleEntity parent = ScheduleEntity.builder()
+                    .teamId(TEAM_ID).title("繰り返し練習（親）")
+                    .startAt(START.minusWeeks(1)).endAt(END.minusWeeks(1)).allDay(false)
+                    .eventType(EventType.PRACTICE).visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS).status(ScheduleStatus.SCHEDULED)
+                    .isException(false).createdBy(USER_ID).build();
+
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
+            given(scheduleRepository.findById(99L)).willReturn(Optional.of(parent));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(99L)).willReturn(List.of());
+
+            // when
+            scheduleService.deleteSchedule(SCHEDULE_ID, "ALL");
+
+            // then
+            assertThat(parent.getDeletedAt()).isNotNull();
+        }
+    }
+
+    // ========================================
+    // createSchedule - PERSONAL scope
+    // ========================================
+
+    @Nested
+    @DisplayName("createSchedule_PERSONAL")
+    class CreateSchedulePersonal {
+
+        @Test
+        @DisplayName("スケジュール作成_個人スコープ_正常作成")
+        void スケジュール作成_個人スコープ_正常作成() {
+            // given
+            CreateScheduleRequest req = new CreateScheduleRequest(
+                    "個人予定", null, null, START, END, false, "OTHER",
+                    null, null, null, false, null, null, null, null, null);
+
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            ScheduleResponse result = scheduleService.createSchedule(req, USER_ID, "PERSONAL", USER_ID);
+
+            // then
+            assertThat(result.getTitle()).isEqualTo("個人予定");
+        }
+
+        @Test
+        @DisplayName("スケジュール作成_組織スコープ_正常作成")
+        void スケジュール作成_組織スコープ_正常作成() {
+            // given
+            Long ORG_ID = 20L;
+            CreateScheduleRequest req = new CreateScheduleRequest(
+                    "組織イベント", null, null, START, END, false, "EVENT",
+                    null, null, null, false, null, null, null, null, null);
+
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            ScheduleResponse result = scheduleService.createSchedule(req, ORG_ID, "ORGANIZATION", USER_ID);
+
+            // then
+            assertThat(result.getTitle()).isEqualTo("組織イベント");
+        }
+    }
+
+    // ========================================
     // getMyCalendar
     // ========================================
 

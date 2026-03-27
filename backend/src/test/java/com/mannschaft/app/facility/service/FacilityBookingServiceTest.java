@@ -796,4 +796,343 @@ class FacilityBookingServiceTest {
             assertThat(result).isEqualTo(expected);
         }
     }
+
+    // ========================================
+    // createBooking + validateBookingAgainstRules
+    // ========================================
+
+    @Nested
+    @DisplayName("createBooking ルール検証パターン")
+    class CreateBookingWithRules {
+
+        private com.mannschaft.app.facility.entity.FacilityUsageRuleEntity createUsageRule() {
+            return com.mannschaft.app.facility.entity.FacilityUsageRuleEntity.builder()
+                    .facilityId(FACILITY_ID)
+                    .minAdvanceHours(1)
+                    .maxAdvanceDays(30)
+                    .availableTimeFrom(LocalTime.of(8, 0))
+                    .availableTimeTo(LocalTime.of(22, 0))
+                    .minHoursPerBooking(new BigDecimal("0.5"))
+                    .maxHoursPerBooking(new BigDecimal("4.0"))
+                    .maxBookingsPerMonthPerUser(4)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("正常系: ルールあり予約が作成される")
+        void 予約作成_ルールあり_正常() {
+            // Given
+            SharedFacilityEntity facility = createActiveFacility();
+            CreateBookingRequest request = createBookingRequest();
+            com.mannschaft.app.facility.entity.FacilityUsageRuleEntity rule = createUsageRule();
+
+            given(facilityService.findFacilityByIdOrThrow(FACILITY_ID)).willReturn(facility);
+            given(usageRuleRepository.findByFacilityId(any())).willReturn(Optional.of(rule));
+            given(bookingRepository.countMonthlyBookings(any(), any(), anyInt(), anyInt(), any()))
+                    .willReturn(0L);
+            given(settingsRepository.findByScopeTypeAndScopeId(SCOPE_TYPE, SCOPE_ID)).willReturn(Optional.empty());
+            given(bookingRepository.findOverlapping(any(), any(), any(), any(), any()))
+                    .willReturn(Collections.emptyList());
+            given(feeCalculator.calculateSlotCount(any(), any())).willReturn(4);
+            given(feeCalculator.calculateUsageFee(any(), any(), any(), any(), anyInt()))
+                    .willReturn(BigDecimal.valueOf(2000));
+            given(bookingRepository.save(any(FacilityBookingEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(facilityMapper.toBookingResponse(any(FacilityBookingEntity.class)))
+                    .willReturn(mock(BookingResponse.class));
+
+            // When
+            BookingResponse result = bookingService.createBooking(SCOPE_TYPE, SCOPE_ID, USER_ID, request);
+
+            // Then
+            assertThat(result).isNotNull();
+        }
+
+        @Test
+        @DisplayName("異常系: 最小事前予約時間不足でFACILITY_022例外")
+        void 予約作成_事前時間不足_FACILITY022例外() {
+            // Given
+            SharedFacilityEntity facility = createActiveFacility();
+            // 今日の予約 + minAdvanceHours=48（2日前必要なのに当日）
+            CreateBookingRequest request = new CreateBookingRequest(
+                    FACILITY_ID,
+                    LocalDate.now().plusDays(1), // 明日だが minAdvanceHours=48なので不足
+                    null, null,
+                    LocalTime.of(10, 0), LocalTime.of(12, 0),
+                    "打ち合わせ", 5, null
+            );
+            com.mannschaft.app.facility.entity.FacilityUsageRuleEntity rule =
+                    com.mannschaft.app.facility.entity.FacilityUsageRuleEntity.builder()
+                            .facilityId(FACILITY_ID)
+                            .minAdvanceHours(72) // 72時間前が必要
+                            .maxAdvanceDays(30)
+                            .availableTimeFrom(LocalTime.of(8, 0))
+                            .availableTimeTo(LocalTime.of(22, 0))
+                            .minHoursPerBooking(new BigDecimal("0.5"))
+                            .maxHoursPerBooking(new BigDecimal("4.0"))
+                            .maxBookingsPerMonthPerUser(4)
+                            .build();
+
+            given(facilityService.findFacilityByIdOrThrow(FACILITY_ID)).willReturn(facility);
+            given(usageRuleRepository.findByFacilityId(any())).willReturn(Optional.of(rule));
+
+            // When / Then
+            assertThatThrownBy(() -> bookingService.createBooking(SCOPE_TYPE, SCOPE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("FACILITY_015"));
+        }
+
+        @Test
+        @DisplayName("異常系: 最大事前予約日数超過でFACILITY_016例外")
+        void 予約作成_最大事前日数超過_FACILITY016例外() {
+            // Given
+            SharedFacilityEntity facility = createActiveFacility();
+            CreateBookingRequest request = new CreateBookingRequest(
+                    FACILITY_ID,
+                    LocalDate.now().plusDays(60), // 60日後 > maxAdvanceDays=30
+                    null, null,
+                    LocalTime.of(10, 0), LocalTime.of(12, 0),
+                    "打ち合わせ", 5, null
+            );
+            com.mannschaft.app.facility.entity.FacilityUsageRuleEntity rule =
+                    com.mannschaft.app.facility.entity.FacilityUsageRuleEntity.builder()
+                            .facilityId(FACILITY_ID)
+                            .minAdvanceHours(0)
+                            .maxAdvanceDays(30) // 30日以内のみ
+                            .availableTimeFrom(LocalTime.of(8, 0))
+                            .availableTimeTo(LocalTime.of(22, 0))
+                            .minHoursPerBooking(new BigDecimal("0.5"))
+                            .maxHoursPerBooking(new BigDecimal("4.0"))
+                            .maxBookingsPerMonthPerUser(4)
+                            .build();
+
+            given(facilityService.findFacilityByIdOrThrow(FACILITY_ID)).willReturn(facility);
+            given(usageRuleRepository.findByFacilityId(any())).willReturn(Optional.of(rule));
+
+            // When / Then
+            assertThatThrownBy(() -> bookingService.createBooking(SCOPE_TYPE, SCOPE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("FACILITY_016"));
+        }
+
+        @Test
+        @DisplayName("異常系: 利用可能時間外でFACILITY_011例外")
+        void 予約作成_利用時間外_FACILITY024例外() {
+            // Given
+            SharedFacilityEntity facility = createActiveFacility();
+            CreateBookingRequest request = new CreateBookingRequest(
+                    FACILITY_ID,
+                    LocalDate.now().plusDays(3),
+                    null, null,
+                    LocalTime.of(6, 0), // 6時は利用不可（9〜22時）
+                    LocalTime.of(8, 0),
+                    "打ち合わせ", 5, null
+            );
+            com.mannschaft.app.facility.entity.FacilityUsageRuleEntity rule =
+                    com.mannschaft.app.facility.entity.FacilityUsageRuleEntity.builder()
+                            .facilityId(FACILITY_ID)
+                            .minAdvanceHours(0)
+                            .maxAdvanceDays(60)
+                            .availableTimeFrom(LocalTime.of(9, 0))
+                            .availableTimeTo(LocalTime.of(22, 0))
+                            .minHoursPerBooking(new BigDecimal("0.5"))
+                            .maxHoursPerBooking(new BigDecimal("4.0"))
+                            .maxBookingsPerMonthPerUser(4)
+                            .build();
+
+            given(facilityService.findFacilityByIdOrThrow(FACILITY_ID)).willReturn(facility);
+            given(usageRuleRepository.findByFacilityId(any())).willReturn(Optional.of(rule));
+
+            // When / Then
+            assertThatThrownBy(() -> bookingService.createBooking(SCOPE_TYPE, SCOPE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("FACILITY_011"));
+        }
+
+        @Test
+        @DisplayName("異常系: 最小利用時間未満でFACILITY_012例外")
+        void 予約作成_最小時間未満_FACILITY025例外() {
+            // Given
+            SharedFacilityEntity facility = createActiveFacility();
+            CreateBookingRequest request = new CreateBookingRequest(
+                    FACILITY_ID,
+                    LocalDate.now().plusDays(3),
+                    null, null,
+                    LocalTime.of(10, 0),
+                    LocalTime.of(10, 15), // 15分 < minHoursPerBooking=1.0h
+                    "打ち合わせ", 5, null
+            );
+            com.mannschaft.app.facility.entity.FacilityUsageRuleEntity rule =
+                    com.mannschaft.app.facility.entity.FacilityUsageRuleEntity.builder()
+                            .facilityId(FACILITY_ID)
+                            .minAdvanceHours(0)
+                            .maxAdvanceDays(60)
+                            .availableTimeFrom(LocalTime.of(8, 0))
+                            .availableTimeTo(LocalTime.of(22, 0))
+                            .minHoursPerBooking(new BigDecimal("1.0"))
+                            .maxHoursPerBooking(new BigDecimal("4.0"))
+                            .maxBookingsPerMonthPerUser(4)
+                            .build();
+
+            given(facilityService.findFacilityByIdOrThrow(FACILITY_ID)).willReturn(facility);
+            given(usageRuleRepository.findByFacilityId(any())).willReturn(Optional.of(rule));
+
+            // When / Then
+            assertThatThrownBy(() -> bookingService.createBooking(SCOPE_TYPE, SCOPE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("FACILITY_012"));
+        }
+
+        @Test
+        @DisplayName("異常系: 最大利用時間超過でFACILITY_013例外")
+        void 予約作成_最大時間超過_FACILITY026例外() {
+            // Given
+            SharedFacilityEntity facility = createActiveFacility();
+            CreateBookingRequest request = new CreateBookingRequest(
+                    FACILITY_ID,
+                    LocalDate.now().plusDays(3),
+                    null, null,
+                    LocalTime.of(9, 0),
+                    LocalTime.of(17, 0), // 8時間 > maxHoursPerBooking=4.0h
+                    "打ち合わせ", 5, null
+            );
+            com.mannschaft.app.facility.entity.FacilityUsageRuleEntity rule =
+                    com.mannschaft.app.facility.entity.FacilityUsageRuleEntity.builder()
+                            .facilityId(FACILITY_ID)
+                            .minAdvanceHours(0)
+                            .maxAdvanceDays(60)
+                            .availableTimeFrom(LocalTime.of(8, 0))
+                            .availableTimeTo(LocalTime.of(22, 0))
+                            .minHoursPerBooking(new BigDecimal("0.5"))
+                            .maxHoursPerBooking(new BigDecimal("4.0"))
+                            .maxBookingsPerMonthPerUser(4)
+                            .build();
+
+            given(facilityService.findFacilityByIdOrThrow(FACILITY_ID)).willReturn(facility);
+            given(usageRuleRepository.findByFacilityId(any())).willReturn(Optional.of(rule));
+
+            // When / Then
+            assertThatThrownBy(() -> bookingService.createBooking(SCOPE_TYPE, SCOPE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("FACILITY_013"));
+        }
+
+        @Test
+        @DisplayName("異常系: 月間予約上限超過でFACILITY_009例外")
+        void 予約作成_月間上限超過_FACILITY011例外() {
+            // Given
+            SharedFacilityEntity facility = createActiveFacility();
+            CreateBookingRequest request = createBookingRequest();
+            com.mannschaft.app.facility.entity.FacilityUsageRuleEntity rule =
+                    com.mannschaft.app.facility.entity.FacilityUsageRuleEntity.builder()
+                            .facilityId(FACILITY_ID)
+                            .minAdvanceHours(0)
+                            .maxAdvanceDays(60)
+                            .availableTimeFrom(LocalTime.of(8, 0))
+                            .availableTimeTo(LocalTime.of(22, 0))
+                            .minHoursPerBooking(new BigDecimal("0.5"))
+                            .maxHoursPerBooking(new BigDecimal("8.0"))
+                            .maxBookingsPerMonthPerUser(2) // 月2回まで
+                            .build();
+
+            given(facilityService.findFacilityByIdOrThrow(FACILITY_ID)).willReturn(facility);
+            given(usageRuleRepository.findByFacilityId(any())).willReturn(Optional.of(rule));
+            given(bookingRepository.countMonthlyBookings(any(), any(), anyInt(), anyInt(), any()))
+                    .willReturn(2L); // 既に2回予約済み
+
+            // When / Then
+            assertThatThrownBy(() -> bookingService.createBooking(SCOPE_TYPE, SCOPE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("FACILITY_009"));
+        }
+
+        @Test
+        @DisplayName("正常系: requiresApproval=falseかつautoApprove=falseでCONFIRMEDになる")
+        void 予約作成_requiresApprovalfalse_CONFIRMEDになる() {
+            // Given
+            SharedFacilityEntity facility = createActiveFacility();
+            CreateBookingRequest request = createBookingRequest();
+            FacilitySettingsEntity settings = FacilitySettingsEntity.builder()
+                    .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID)
+                    .requiresApproval(false) // 承認不要
+                    .maxBookingsPerDayPerUser(10)
+                    .build();
+
+            given(facilityService.findFacilityByIdOrThrow(FACILITY_ID)).willReturn(facility);
+            given(usageRuleRepository.findByFacilityId(any())).willReturn(Optional.empty());
+            given(settingsRepository.findByScopeTypeAndScopeId(SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(settings));
+            given(bookingRepository.countByFacilityIdAndBookingDateAndBookedByAndStatusNotIn(
+                    any(), any(), any(), any())).willReturn(0L);
+            given(bookingRepository.findOverlapping(any(), any(), any(), any(), any()))
+                    .willReturn(Collections.emptyList());
+            given(feeCalculator.calculateSlotCount(any(), any())).willReturn(4);
+            given(feeCalculator.calculateUsageFee(any(), any(), any(), any(), anyInt()))
+                    .willReturn(BigDecimal.valueOf(2000));
+            given(bookingRepository.save(any(FacilityBookingEntity.class)))
+                    .willAnswer(invocation -> {
+                        FacilityBookingEntity saved = invocation.getArgument(0);
+                        assertThat(saved.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+                        return saved;
+                    });
+            given(facilityMapper.toBookingResponse(any(FacilityBookingEntity.class)))
+                    .willReturn(mock(BookingResponse.class));
+
+            // When
+            BookingResponse result = bookingService.createBooking(SCOPE_TYPE, SCOPE_ID, USER_ID, request);
+
+            // Then
+            assertThat(result).isNotNull();
+        }
+    }
+
+    // ========================================
+    // updateBooking 追加パターン
+    // ========================================
+
+    @Nested
+    @DisplayName("updateBooking 追加パターン")
+    class UpdateBookingAdditional {
+
+        @Test
+        @DisplayName("正常系: 備品再処理付きで予約が更新される")
+        void 予約更新_備品再処理あり_更新される() {
+            // Given
+            FacilityBookingEntity booking = createPendingBooking();
+            SharedFacilityEntity facility = createActiveFacility();
+            List<CreateBookingRequest.BookingEquipmentEntry> equipment =
+                    List.of(new CreateBookingRequest.BookingEquipmentEntry(1L, 1));
+            UpdateBookingRequest request = new UpdateBookingRequest(
+                    LocalDate.now().plusDays(5), null, null,
+                    LocalTime.of(14, 0), LocalTime.of(16, 0),
+                    "更新", 8, equipment
+            );
+            FacilityEquipmentEntity equipmentEntity = FacilityEquipmentEntity.builder()
+                    .facilityId(FACILITY_ID).name("プロジェクター")
+                    .pricePerUse(BigDecimal.valueOf(300)).totalQuantity(1).displayOrder(0).build();
+
+            given(bookingRepository.findById(BOOKING_ID)).willReturn(Optional.of(booking));
+            given(feeCalculator.calculateSlotCount(any(), any())).willReturn(4);
+            given(facilityService.findFacilityByIdOrThrow(FACILITY_ID)).willReturn(facility);
+            given(feeCalculator.calculateUsageFee(any(), any(), any(), any(), anyInt()))
+                    .willReturn(BigDecimal.valueOf(2000));
+            given(equipmentService.findEquipmentOrThrow(1L)).willReturn(equipmentEntity);
+            given(bookingEquipmentRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+            given(facilityMapper.toBookingDetailResponse(booking)).willReturn(mock(BookingDetailResponse.class));
+
+            // When
+            BookingDetailResponse result = bookingService.updateBooking(BOOKING_ID, request);
+
+            // Then
+            assertThat(result).isNotNull();
+            verify(bookingEquipmentRepository).deleteByBookingId(BOOKING_ID);
+            verify(bookingEquipmentRepository).save(any());
+        }
+    }
 }

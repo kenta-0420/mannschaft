@@ -83,6 +83,104 @@ class LineWebhookServiceTest {
             verify(lineMessageLogRepository, never()).save(any(LineMessageLogEntity.class));
         }
 
+        @Test
+        @DisplayName("正常系: eventsがnullのボディでもクラッシュしない")
+        void 処理_eventsなし_ログのみ保存() throws Exception {
+            // Given
+            LineBotConfigEntity config = LineBotConfigEntity.builder()
+                    .scopeType(ScopeType.TEAM).scopeId(1L)
+                    .channelId("ch1")
+                    .channelSecretEnc(new byte[]{1, 2})
+                    .channelAccessTokenEnc(new byte[]{3, 4})
+                    .webhookSecret("ws1")
+                    .notificationEnabled(true).isActive(true).configuredBy(1L).build();
+            given(lineBotConfigRepository.findByWebhookSecret("ws1"))
+                    .willReturn(Optional.of(config));
+            given(lineMessageLogRepository.save(any(LineMessageLogEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(encryptionService.decryptBytes(any())).willReturn("token".getBytes());
+
+            String body = "{\"destination\":\"U123\",\"events\":[]}";
+
+            // When
+            service.handleWebhook("ws1", body);
+
+            // Then — ログは保存される
+            verify(lineMessageLogRepository).save(any(LineMessageLogEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: messageイベントが含まれている場合は自動返信する")
+        void 処理_messageイベント_自動返信される() throws Exception {
+            // Given
+            LineBotConfigEntity config = LineBotConfigEntity.builder()
+                    .scopeType(ScopeType.TEAM).scopeId(1L)
+                    .channelId("ch1")
+                    .channelSecretEnc(new byte[]{})
+                    .channelAccessTokenEnc(new byte[]{})
+                    .webhookSecret("ws2")
+                    .notificationEnabled(true).isActive(true).configuredBy(1L).build();
+            given(lineBotConfigRepository.findByWebhookSecret("ws2"))
+                    .willReturn(Optional.of(config));
+            given(lineMessageLogRepository.save(any(LineMessageLogEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(encryptionService.decryptBytes(any())).willReturn("access_token".getBytes());
+
+            String body = """
+                    {
+                      "destination": "U123",
+                      "events": [
+                        {
+                          "type": "message",
+                          "replyToken": "reply123",
+                          "source": {"userId": "line-user-001"},
+                          "message": {"type": "text", "text": "こんにちは"}
+                        }
+                      ]
+                    }""";
+
+            // When
+            service.handleWebhook("ws2", body);
+
+            // Then
+            verify(lineMessagingApiClient).replyMessage(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("正常系: followイベントは例外なく処理される")
+        void 処理_followイベント_例外なし() throws Exception {
+            // Given
+            LineBotConfigEntity config = LineBotConfigEntity.builder()
+                    .scopeType(ScopeType.TEAM).scopeId(1L)
+                    .channelId("ch1")
+                    .channelSecretEnc(new byte[]{})
+                    .channelAccessTokenEnc(new byte[]{})
+                    .webhookSecret("ws3")
+                    .notificationEnabled(false).isActive(true).configuredBy(1L).build();
+            given(lineBotConfigRepository.findByWebhookSecret("ws3"))
+                    .willReturn(Optional.of(config));
+            given(lineMessageLogRepository.save(any(LineMessageLogEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(encryptionService.decryptBytes(any())).willReturn("token".getBytes());
+
+            String body = """
+                    {
+                      "destination": "U123",
+                      "events": [
+                        {
+                          "type": "follow",
+                          "source": {"userId": "line-user-002"}
+                        }
+                      ]
+                    }""";
+
+            // When (例外がスローされないことを確認)
+            service.handleWebhook("ws3", body);
+
+            // Then — 自動返信なし
+            verify(lineMessagingApiClient, never()).replyMessage(any(), any(), any());
+        }
+
         private static org.assertj.core.api.AbstractAssert<?, ?> assertThat(String code) {
             return org.assertj.core.api.Assertions.assertThat(code);
         }

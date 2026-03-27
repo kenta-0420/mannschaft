@@ -136,6 +136,29 @@ class NotificationServiceTest {
             assertThat(result.getContent()).isEmpty();
             assertThat(result.getTotalElements()).isZero();
         }
+
+        @Test
+        @DisplayName("通知一覧取得_複数件_マッピングされて返却")
+        void 通知一覧取得_複数件_マッピングされて返却() {
+            // Given
+            Pageable pageable = PageRequest.of(0, 10);
+            NotificationEntity entity1 = createUnreadNotification();
+            NotificationEntity entity2 = createReadNotification();
+            Page<NotificationEntity> page = new PageImpl<>(List.of(entity1, entity2), pageable, 2);
+            NotificationResponse response = createNotificationResponse();
+
+            given(notificationRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, pageable))
+                    .willReturn(page);
+            given(notificationMapper.toNotificationResponse(any(NotificationEntity.class)))
+                    .willReturn(response);
+
+            // When
+            Page<NotificationResponse> result = notificationService.listNotifications(USER_ID, pageable);
+
+            // Then
+            assertThat(result.getContent()).hasSize(2);
+            assertThat(result.getTotalElements()).isEqualTo(2);
+        }
     }
 
     // ========================================
@@ -423,6 +446,45 @@ class NotificationServiceTest {
             assertThat(result.getScopeType()).isEqualTo(NotificationScopeType.TEAM);
             verify(notificationRepository).save(any(NotificationEntity.class));
         }
+
+        @Test
+        @DisplayName("通知作成_HIGH優先度_エンティティ返却")
+        void 通知作成_HIGH優先度_エンティティ返却() {
+            // Given
+            given(notificationRepository.save(any(NotificationEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            NotificationEntity result = notificationService.createNotification(
+                    USER_ID, "SYSTEM_ALERT", NotificationPriority.HIGH,
+                    "緊急通知", "システムメンテナンス", "SYSTEM", null,
+                    NotificationScopeType.PERSONAL, null, null, null);
+
+            // Then
+            assertThat(result.getPriority()).isEqualTo(NotificationPriority.HIGH);
+            assertThat(result.getNotificationType()).isEqualTo("SYSTEM_ALERT");
+            assertThat(result.getSourceId()).isNull();
+            assertThat(result.getActorId()).isNull();
+        }
+
+        @Test
+        @DisplayName("通知作成_組織スコープ_エンティティ返却")
+        void 通知作成_組織スコープ_エンティティ返却() {
+            // Given
+            given(notificationRepository.save(any(NotificationEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            NotificationEntity result = notificationService.createNotification(
+                    USER_ID, "ORG_UPDATE", NotificationPriority.LOW,
+                    "組織更新", "組織情報が更新されました", "ORGANIZATION", 20L,
+                    NotificationScopeType.ORGANIZATION, 20L, "/orgs/20", 3L);
+
+            // Then
+            assertThat(result.getScopeType()).isEqualTo(NotificationScopeType.ORGANIZATION);
+            assertThat(result.getScopeId()).isEqualTo(20L);
+            assertThat(result.getActionUrl()).isEqualTo("/orgs/20");
+        }
     }
 
     // ========================================
@@ -467,6 +529,22 @@ class NotificationServiceTest {
             assertThat(result.getUnreadCount()).isZero();
             assertThat(result.getReadCount()).isZero();
             assertThat(result.getTotalSubscriptions()).isZero();
+        }
+
+        @Test
+        @DisplayName("統計取得_全件既読_readCountがtotalに一致")
+        void 統計取得_全件既読_readCountがtotalに一致() {
+            // Given
+            given(notificationRepository.count()).willReturn(50L);
+            given(notificationRepository.countByIsReadFalse()).willReturn(0L);
+            given(pushSubscriptionRepository.count()).willReturn(10L);
+
+            // When
+            NotificationStatsResponse result = notificationService.getStats();
+
+            // Then
+            assertThat(result.getReadCount()).isEqualTo(50L);
+            assertThat(result.getUnreadCount()).isZero();
         }
     }
 }
