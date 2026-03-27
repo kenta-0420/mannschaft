@@ -7,6 +7,7 @@ const navItems = computed(() => [
   { label: 'チーム', icon: 'pi pi-users', to: '/teams' },
   { label: '組織', icon: 'pi pi-building', to: '/organizations' },
   { label: 'TODO', icon: 'pi pi-check-square', to: '/todos' },
+  { label: 'カレンダー', icon: 'pi pi-calendar', to: '/calendar' },
   { label: '設定', icon: 'pi pi-cog', to: '/settings' },
 ])
 
