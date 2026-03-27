@@ -8,6 +8,8 @@ const navItems = computed(() => [
   { label: '組織', icon: 'pi pi-building', to: '/organizations' },
   { label: 'TODO', icon: 'pi pi-check-square', to: '/todos' },
   { label: 'カレンダー', icon: 'pi pi-calendar', to: '/calendar' },
+  { label: 'タイムライン', icon: 'pi pi-comments', to: '/timeline' },
+  { label: 'チャット', icon: 'pi pi-comment', to: '/chat' },
   { label: '設定', icon: 'pi pi-cog', to: '/settings' },
 ])
 
@@ -43,6 +45,7 @@ function isActive(path: string): boolean {
         <!-- 右: スコープセレクター + ユーザーメニュー -->
         <div class="flex items-center gap-3">
           <ScopeSelector v-if="authStore.isAuthenticated" />
+          <NotificationBell v-if="authStore.isAuthenticated" />
           <Button
             v-if="authStore.isAuthenticated"
             v-tooltip.bottom="'ログアウト'"
