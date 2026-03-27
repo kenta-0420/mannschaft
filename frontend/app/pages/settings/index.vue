@@ -7,6 +7,7 @@ const settingsItems = [
   { label: '外観', description: 'テーマ・背景色・表示設定', icon: 'pi pi-palette', to: '/settings/appearance' },
   { label: 'アカウント', description: 'メール・パスワード・2FA', icon: 'pi pi-user-edit', to: '/settings/account' },
   { label: '通知', description: '通知の受け取り設定', icon: 'pi pi-bell', to: '/settings/notifications' },
+  { label: 'Google Calendar', description: 'カレンダー同期・iCal連携', icon: 'pi pi-google', to: '/settings/calendar-sync' },
 ]
 </script>
 
