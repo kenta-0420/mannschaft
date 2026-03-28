@@ -1,7 +1,7 @@
 plugins {
     java
     jacoco
-    id("org.springframework.boot") version "3.5.0"
+    id("org.springframework.boot") version "3.5.13"
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -67,10 +67,14 @@ dependencies {
     // WebAuthn4J
     implementation("com.webauthn4j:webauthn4j-core:0.28.4.RELEASE")
 
-    // AWS S3 + SES
+    // WebP 画像変換（ImageIO SPI — サムネイル・アップロード画像のWebP出力用）
+    implementation("org.sejda.imageio:webp-imageio:0.1.6")
+
+    // AWS S3 + SES + CloudFront
     implementation(platform("software.amazon.awssdk:bom:2.29.45"))
     implementation("software.amazon.awssdk:s3")
     implementation("software.amazon.awssdk:sesv2")
+    implementation("software.amazon.awssdk:cloudfront")
 
     // MySQL
     runtimeOnly("com.mysql:mysql-connector-j")
