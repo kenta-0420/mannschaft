@@ -32,7 +32,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,9 +60,6 @@ class AnalyticsAggregationServiceTest {
         void testGetRevenueSummary_正常取得() {
             // Arrange
             LocalDate date = LocalDate.of(2026, 3, 15);
-            LocalDate monthStart = date.withDayOfMonth(1);
-            LocalDate monthEnd = LocalDate.of(2026, 3, 31);
-
             given(metricCalc.calculateMrr(any(), any())).willReturn(new BigDecimal("100000"));
             given(metricCalc.calculateArr(any())).willReturn(new BigDecimal("1200000"));
 
@@ -89,9 +85,6 @@ class AnalyticsAggregationServiceTest {
             // Arrange
             LocalDate latestDate = LocalDate.of(2026, 3, 14);
             given(revenueRepository.findLatestDate()).willReturn(Optional.of(latestDate));
-
-            LocalDate monthStart = latestDate.withDayOfMonth(1);
-            LocalDate monthEnd = LocalDate.of(2026, 3, 31);
 
             given(metricCalc.calculateMrr(any(), any())).willReturn(new BigDecimal("90000"));
             given(metricCalc.calculateArr(any())).willReturn(new BigDecimal("1080000"));

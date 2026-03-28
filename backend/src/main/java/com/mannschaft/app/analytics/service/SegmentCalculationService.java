@@ -3,8 +3,6 @@ package com.mannschaft.app.analytics.service;
 import com.mannschaft.app.analytics.DatePreset;
 import com.mannschaft.app.analytics.SegmentType;
 import com.mannschaft.app.analytics.dto.SegmentAnalysisResponse;
-import com.mannschaft.app.analytics.repository.AnalyticsDailyRevenueRepository;
-import com.mannschaft.app.analytics.repository.AnalyticsDailyUsersRepository;
 import com.mannschaft.app.analytics.service.DateRangeResolver.DateRange;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -33,8 +31,6 @@ import java.util.List;
 @Slf4j
 public class SegmentCalculationService {
 
-    private final AnalyticsDailyRevenueRepository revenueRepository;
-    private final AnalyticsDailyUsersRepository usersRepository;
     private final DateRangeResolver dateRangeResolver;
 
     @PersistenceContext
@@ -59,11 +55,6 @@ public class SegmentCalculationService {
             case ORG_SIZE -> analyzeByOrgSize(range);
             case REGION -> analyzeByRegion(range);
         };
-
-        // 合計を算出してシェア率を計算 — but SegmentItem is immutable, so we rebuild with proper values
-        BigDecimal totalRevenue = items.stream()
-                .map(SegmentAnalysisResponse.SegmentItem::getRevenue)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // SegmentItem fields: segment, orgCount, teamCount, userCount, revenue, arpu, churnRate
         List<SegmentAnalysisResponse.SegmentItem> enriched = items.stream()

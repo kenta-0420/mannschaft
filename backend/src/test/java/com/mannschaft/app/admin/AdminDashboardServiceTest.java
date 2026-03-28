@@ -71,6 +71,8 @@ class AdminDashboardServiceTest {
                     .willReturn(2L);
             given(scheduleRepository.countByTeamIdAndStartAtAfter(eq(SCOPE_ID), any(LocalDateTime.class)))
                     .willReturn(5L);
+            given(userRoleRepository.countActiveMembers(eq("TEAM"), eq(SCOPE_ID), any(LocalDateTime.class)))
+                    .willReturn(25);
 
             // When
             AdminDashboardResponse result = service.getDashboard("TEAM", SCOPE_ID);
@@ -94,6 +96,8 @@ class AdminDashboardServiceTest {
                     .willReturn(0L);
             given(scheduleRepository.countByOrganizationIdAndStartAtAfter(eq(SCOPE_ID), any(LocalDateTime.class)))
                     .willReturn(10L);
+            given(userRoleRepository.countActiveMembers(eq("ORGANIZATION"), eq(SCOPE_ID), any(LocalDateTime.class)))
+                    .willReturn(100);
 
             // When
             AdminDashboardResponse result = service.getDashboard("ORGANIZATION", SCOPE_ID);
@@ -114,6 +118,8 @@ class AdminDashboardServiceTest {
                     .willReturn(0L);
             given(contentReportRepository.countByScopeTypeAndScopeIdAndStatus("UNKNOWN", SCOPE_ID, ReportStatus.PENDING))
                     .willReturn(0L);
+            given(userRoleRepository.countActiveMembers(eq("UNKNOWN"), eq(SCOPE_ID), any(LocalDateTime.class)))
+                    .willReturn(0);
 
             // When
             AdminDashboardResponse result = service.getDashboard("UNKNOWN", SCOPE_ID);
@@ -134,6 +140,8 @@ class AdminDashboardServiceTest {
                     .willReturn(0L);
             given(scheduleRepository.countByTeamIdAndStartAtAfter(eq(SCOPE_ID), any(LocalDateTime.class)))
                     .willReturn(0L);
+            given(userRoleRepository.countActiveMembers(eq("TEAM"), eq(SCOPE_ID), any(LocalDateTime.class)))
+                    .willReturn(10);
 
             // When
             AdminDashboardResponse result = service.getDashboard("team", SCOPE_ID);

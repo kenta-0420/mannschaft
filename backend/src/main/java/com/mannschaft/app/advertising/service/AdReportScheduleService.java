@@ -109,7 +109,6 @@ public class AdReportScheduleService {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private <T> List<T> parseJsonList(String json, Class<T> elementType) {
         try {
             return objectMapper.readValue(json,

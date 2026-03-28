@@ -2,6 +2,7 @@ package com.mannschaft.app.todo.service;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.todo.dto.AddAssigneeRequest;
 import com.mannschaft.app.todo.dto.AssigneeResponse;
@@ -24,6 +25,7 @@ import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
 import com.mannschaft.app.todo.repository.ProjectRepository;
 import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -41,12 +43,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -74,10 +78,19 @@ class TodoServiceTest {
     private ProjectService projectService;
 
     @Mock
+    private NameResolverService nameResolverService;
+
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private TodoService todoService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(nameResolverService.resolveUserDisplayNames(anyCollection()))
+                .thenReturn(Map.of(USER_ID, "テストユーザー", ASSIGNEE_USER_ID, "担当者ユーザー"));
+    }
 
     // ========================================
     // テスト用定数・ヘルパー

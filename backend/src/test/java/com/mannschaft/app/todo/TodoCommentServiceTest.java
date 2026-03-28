@@ -3,6 +3,7 @@ package com.mannschaft.app.todo;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.todo.dto.CommentResponse;
 import com.mannschaft.app.todo.dto.CreateCommentRequest;
@@ -25,6 +26,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,6 +51,9 @@ class TodoCommentServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private NameResolverService nameResolverService;
 
     @InjectMocks
     private TodoCommentService todoCommentService;
@@ -105,6 +110,8 @@ class TodoCommentServiceTest {
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
             given(commentRepository.findByTodoIdOrderByCreatedAtAsc(eq(TODO_ID), any(Pageable.class)))
                     .willReturn(page);
+            given(nameResolverService.resolveUserDisplayNames(anySet()))
+                    .willReturn(Map.of(USER_ID, "テストユーザー"));
 
             // When
             PagedResponse<CommentResponse> response = todoCommentService.listComments(TODO_ID, 1, 20);
@@ -163,6 +170,8 @@ class TodoCommentServiceTest {
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
             given(commentRepository.save(any(TodoCommentEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
+            given(nameResolverService.resolveUserDisplayNames(anySet()))
+                    .willReturn(Map.of(USER_ID, "テストユーザー"));
 
             // When
             ApiResponse<CommentResponse> response = todoCommentService.addComment(TODO_ID, request, USER_ID);
@@ -205,6 +214,8 @@ class TodoCommentServiceTest {
                     .willReturn(Optional.of(comment));
             given(commentRepository.save(any(TodoCommentEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
+            given(nameResolverService.resolveUserDisplayNames(anySet()))
+                    .willReturn(Map.of(USER_ID, "テストユーザー"));
 
             // When
             ApiResponse<CommentResponse> response = todoCommentService.updateComment(

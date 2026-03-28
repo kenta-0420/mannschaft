@@ -5,8 +5,6 @@ import com.mannschaft.app.analytics.RevenueSource;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyRevenueEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyUsersEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsFunnelSnapshotEntity;
-import com.mannschaft.app.analytics.repository.AnalyticsDailyAdsRepository;
-import com.mannschaft.app.analytics.repository.AnalyticsDailyModulesRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyRevenueRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyUsersRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsFunnelSnapshotRepository;
@@ -30,8 +28,6 @@ public class DailyAggregationBatchService {
 
     private final AnalyticsDailyRevenueRepository revenueRepository;
     private final AnalyticsDailyUsersRepository usersRepository;
-    private final AnalyticsDailyModulesRepository modulesRepository;
-    private final AnalyticsDailyAdsRepository adsRepository;
     private final AnalyticsFunnelSnapshotRepository funnelRepository;
     private final AnalyticsAlertService alertService;
 

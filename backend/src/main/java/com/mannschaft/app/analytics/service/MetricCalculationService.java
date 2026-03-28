@@ -3,7 +3,6 @@ package com.mannschaft.app.analytics.service;
 import com.mannschaft.app.analytics.RevenueSource;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyRevenueEntity;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyRevenueRepository;
-import com.mannschaft.app.analytics.repository.AnalyticsDailyUsersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,7 +25,6 @@ import java.util.List;
 public class MetricCalculationService {
 
     private final AnalyticsDailyRevenueRepository revenueRepository;
-    private final AnalyticsDailyUsersRepository usersRepository;
 
     /**
      * 指定月のMRRを計算する。

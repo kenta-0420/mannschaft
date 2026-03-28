@@ -3,7 +3,6 @@ package com.mannschaft.app.analytics.service;
 import com.mannschaft.app.analytics.AnalyticsErrorCode;
 import com.mannschaft.app.analytics.dto.ForecastResponse;
 import com.mannschaft.app.analytics.entity.AnalyticsMonthlySnapshotEntity;
-import com.mannschaft.app.analytics.repository.AnalyticsDailyUsersRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlySnapshotRepository;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +37,6 @@ public class AnalyticsForecastService {
     private static final double GROWTH_CONFIDENCE_PCT = 0.15;
 
     private final AnalyticsMonthlySnapshotRepository snapshotRepository;
-    private final AnalyticsDailyUsersRepository usersRepository;
 
     /**
      * 収益予測を実行する。

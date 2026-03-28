@@ -5,7 +5,6 @@ import com.mannschaft.app.analytics.dto.CreateAlertRuleRequest;
 import com.mannschaft.app.analytics.dto.UpdateAlertRuleRequest;
 import com.mannschaft.app.analytics.entity.AnalyticsAlertHistoryEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsAlertRuleEntity;
-import com.mannschaft.app.analytics.entity.AnalyticsDailyRevenueEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyUsersEntity;
 import com.mannschaft.app.analytics.repository.AnalyticsAlertHistoryRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsAlertRuleRepository;
@@ -20,18 +19,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 

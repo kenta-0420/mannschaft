@@ -1,6 +1,5 @@
 package com.mannschaft.app.advertising.service;
 
-import com.mannschaft.app.advertising.AdvertisingMapper;
 import com.mannschaft.app.advertising.PricingModel;
 import com.mannschaft.app.advertising.dto.PublicRateCardResponse;
 import com.mannschaft.app.advertising.dto.RateCardInfo;
@@ -28,7 +27,6 @@ import java.util.List;
 public class RateSimulatorService {
 
     private final AdRateCardService adRateCardService;
-    private final AdvertisingMapper advertisingMapper;
 
     @Value("${mannschaft.advertising.tax-rate:10.00}")
     private BigDecimal taxRate;

@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -41,7 +40,6 @@ public class RecommendationService {
     private static final BigDecimal BUDGET_ALERT_THRESHOLD = new BigDecimal("0.80");
     private static final BigDecimal UNDER_PACING_THRESHOLD = new BigDecimal("0.70");
     private static final BigDecimal CTR_DECLINE_THRESHOLD = new BigDecimal("0.20");
-    private static final BigDecimal REGION_OPPORTUNITY_MULTIPLIER = new BigDecimal("1.30");
     private static final BigDecimal LOW_CTR_MULTIPLIER = new BigDecimal("0.50");
     private static final BigDecimal CREATIVE_DIFF_THRESHOLD = new BigDecimal("20");
 
