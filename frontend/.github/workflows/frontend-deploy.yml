@@ -1,0 +1,137 @@
+# =============================================================================
+# Frontend CI/CD — push to main
+# =============================================================================
+# Required GitHub Secrets (set in kenta-0420/mannschaft-frontend):
+#
+#   AWS_ACCESS_KEY_ID          — IAM access key  (see OIDC note below to avoid
+#   AWS_SECRET_ACCESS_KEY        long-lived keys entirely)
+#   AWS_ACCOUNT_ID             — 12-digit AWS account number (e.g. 123456789012)
+#   ECR_REPOSITORY             — ECR repo name (e.g. mannschaft-frontend)
+#   ECS_CLUSTER                — ECS cluster name (e.g. mannschaft-cluster)
+#   ECS_SERVICE                — ECS service name (e.g. mannschaft-frontend-service)
+#   ECS_TASK_DEFINITION        — ECS task definition family name
+#                                (e.g. mannschaft-frontend-task)
+#   ECS_CONTAINER_NAME         — Container name inside the task def
+#                                (e.g. mannschaft-frontend)
+#
+# ---------------------------------------------------------------------------
+# OIDC alternative (recommended for production — removes long-lived keys):
+#
+#   1. Create an IAM OIDC provider for token.actions.githubusercontent.com
+#   2. Create an IAM role with the following trust policy condition:
+#        "token.actions.githubusercontent.com:sub":
+#          "repo:kenta-0420/mannschaft-frontend:ref:refs/heads/main"
+#   3. Replace the "Configure AWS credentials" step below with:
+#
+#        - name: Configure AWS credentials (OIDC)
+#          uses: aws-actions/configure-aws-credentials@v4
+#          with:
+#            role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-deploy
+#            aws-region: ap-northeast-1
+#
+#   4. Delete the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets.
+# =============================================================================
+
+name: Frontend — Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+# Prevent concurrent deploys; cancel in-progress runs on the same branch
+concurrency:
+  group: frontend-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-northeast-1
+  NODE_VERSION: "22"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build Docker image, push to ECR, deploy to ECS
+  # ---------------------------------------------------------------------------
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          # Cache npm dependencies keyed on package-lock.json
+          cache: npm
+
+      # Install dependencies to validate the lockfile and run any type checks
+      # before building the Docker image. Fail fast without spending time on
+      # a full Docker build if node_modules can't be resolved.
+      - name: Install dependencies
+        run: npm ci
+
+      # Optional: add lint / type-check steps here, e.g.:
+      # - name: Lint
+      #   run: npm run lint
+      # - name: Type check
+      #   run: npx nuxi typecheck
+
+      # ---- AWS / ECR / ECS --------------------------------------------------
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker image to ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+          docker build \
+            --tag "${IMAGE_URI}" \
+            --tag "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest" \
+            --label "git-commit=${GITHUB_SHA}" \
+            --label "build-date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            .
+
+          docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+
+          echo "image=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
+
+      - name: Download current ECS task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ secrets.ECS_TASK_DEFINITION }} \
+            --query taskDefinition \
+            > task-definition.json
+
+      - name: Update ECS task definition with new image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ secrets.ECS_CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ secrets.ECS_SERVICE }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true
