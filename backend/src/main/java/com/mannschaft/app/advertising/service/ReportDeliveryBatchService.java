@@ -13,6 +13,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import software.amazon.awssdk.services.sesv2.SesV2Client;
+import software.amazon.awssdk.services.sesv2.model.Body;
+import software.amazon.awssdk.services.sesv2.model.Content;
+import software.amazon.awssdk.services.sesv2.model.Destination;
+import software.amazon.awssdk.services.sesv2.model.EmailContent;
+import software.amazon.awssdk.services.sesv2.model.Message;
+import software.amazon.awssdk.services.sesv2.model.SendEmailRequest;
+import software.amazon.awssdk.services.sesv2.model.SendEmailResponse;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -28,10 +36,13 @@ import java.util.List;
 @Slf4j
 public class ReportDeliveryBatchService {
 
+    private static final String FROM_ADDRESS = "noreply@mannschaft.app";
+
     private final AdReportScheduleRepository adReportScheduleRepository;
     private final AdCampaignRepository adCampaignRepository;
     private final AdDailyStatsRepository adDailyStatsRepository;
     private final ObjectMapper objectMapper;
+    private final SesV2Client sesV2Client;
 
     /**
      * 週次レポート配信バッチ。毎週月曜 AM 9:00 (JST)。
@@ -169,10 +180,23 @@ public class ReportDeliveryBatchService {
     }
 
     private void sendEmail(String recipient, String subject, String htmlBody) {
-        // TODO: SES 連携実装。現時点ではログ出力で代替。
-        // SesV2Client を inject して SendEmailRequest を送信する。
-        // F09.6 の SES 共通基盤が整い次第、共通メール送信サービスに差し替え。
-        log.info("メール送信（SES連携待ち）: to={}, subject={}", recipient, subject);
+        try {
+            SendEmailResponse response = sesV2Client.sendEmail(SendEmailRequest.builder()
+                    .fromEmailAddress(FROM_ADDRESS)
+                    .destination(Destination.builder().toAddresses(recipient).build())
+                    .content(EmailContent.builder()
+                            .simple(Message.builder()
+                                    .subject(Content.builder().data(subject).build())
+                                    .body(Body.builder()
+                                            .html(Content.builder().data(htmlBody).build())
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+            log.info("SES送信成功: to={}, messageId={}", recipient, response.messageId());
+        } catch (Exception e) {
+            log.error("SES送信失敗: to={}, subject={}", recipient, subject, e);
+        }
     }
 
     @SuppressWarnings("unchecked")
