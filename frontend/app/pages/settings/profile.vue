@@ -84,16 +84,21 @@ const passwordError = computed(() => {
   if (passwordForm.value.newPassword && passwordForm.value.newPassword.length < 8) {
     return 'パスワードは8文字以上で入力してください'
   }
-  if (passwordForm.value.confirmPassword && passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
+  if (
+    passwordForm.value.confirmPassword &&
+    passwordForm.value.newPassword !== passwordForm.value.confirmPassword
+  ) {
     return 'パスワードが一致しません'
   }
   return null
 })
 
 const canSubmitPassword = computed(() => {
-  return passwordForm.value.currentPassword
-    && passwordForm.value.newPassword.length >= 8
-    && passwordForm.value.newPassword === passwordForm.value.confirmPassword
+  return (
+    passwordForm.value.currentPassword &&
+    passwordForm.value.newPassword.length >= 8 &&
+    passwordForm.value.newPassword === passwordForm.value.confirmPassword
+  )
 })
 
 async function changePassword() {
@@ -136,7 +141,9 @@ async function deleteAccount() {
 
     <div v-else class="space-y-8">
       <!-- プロフィール情報 -->
-      <div class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+      <div
+        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+      >
         <h2 class="mb-4 text-lg font-semibold">プロフィール情報</h2>
         <div class="space-y-4">
           <div class="flex items-center gap-4">
@@ -147,14 +154,23 @@ async function deleteAccount() {
                 alt="アバター"
                 class="h-20 w-20 rounded-full object-cover"
               />
-              <div v-else class="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-2xl text-primary">
+              <div
+                v-else
+                class="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-2xl text-primary"
+              >
                 <i class="pi pi-user" />
               </div>
             </div>
             <div>
               <label class="cursor-pointer">
                 <input type="file" accept="image/*" class="hidden" @change="uploadAvatar" />
-                <Button label="画像を変更" icon="pi pi-upload" severity="secondary" size="small" as="span" />
+                <Button
+                  label="画像を変更"
+                  icon="pi pi-upload"
+                  severity="secondary"
+                  size="small"
+                  as="span"
+                />
               </label>
               <p class="mt-1 text-xs text-surface-500">5MB以下のJPG, PNG</p>
             </div>
@@ -168,7 +184,9 @@ async function deleteAccount() {
           <div>
             <label class="mb-1 block text-sm font-medium">メールアドレス</label>
             <InputText :model-value="profile.email" class="w-full" disabled />
-            <p class="mt-1 text-xs text-surface-500">メールアドレスの変更はサポートにお問い合わせください</p>
+            <p class="mt-1 text-xs text-surface-500">
+              メールアドレスの変更はサポートにお問い合わせください
+            </p>
           </div>
 
           <div>
@@ -183,39 +201,79 @@ async function deleteAccount() {
       </div>
 
       <!-- パスワード変更 -->
-      <div class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+      <div
+        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+      >
         <h2 class="mb-4 text-lg font-semibold">パスワード変更</h2>
         <div class="space-y-4">
           <div>
             <label class="mb-1 block text-sm font-medium">現在のパスワード</label>
-            <Password v-model="passwordForm.currentPassword" :feedback="false" toggle-mask class="w-full" input-class="w-full" />
+            <Password
+              v-model="passwordForm.currentPassword"
+              :feedback="false"
+              toggle-mask
+              class="w-full"
+              input-class="w-full"
+            />
           </div>
           <div>
             <label class="mb-1 block text-sm font-medium">新しいパスワード</label>
-            <Password v-model="passwordForm.newPassword" toggle-mask class="w-full" input-class="w-full" />
+            <Password
+              v-model="passwordForm.newPassword"
+              toggle-mask
+              class="w-full"
+              input-class="w-full"
+            />
           </div>
           <div>
             <label class="mb-1 block text-sm font-medium">新しいパスワード（確認）</label>
-            <Password v-model="passwordForm.confirmPassword" :feedback="false" toggle-mask class="w-full" input-class="w-full" />
+            <Password
+              v-model="passwordForm.confirmPassword"
+              :feedback="false"
+              toggle-mask
+              class="w-full"
+              input-class="w-full"
+            />
           </div>
           <p v-if="passwordError" class="text-sm text-red-500">{{ passwordError }}</p>
           <div class="flex justify-end">
-            <Button label="パスワードを変更" icon="pi pi-lock" :loading="changingPassword" :disabled="!canSubmitPassword" @click="changePassword" />
+            <Button
+              label="パスワードを変更"
+              icon="pi pi-lock"
+              :loading="changingPassword"
+              :disabled="!canSubmitPassword"
+              @click="changePassword"
+            />
           </div>
         </div>
       </div>
 
       <!-- アカウント削除 -->
-      <div class="rounded-xl border border-red-200 bg-surface-0 p-6 dark:border-red-900 dark:bg-surface-800">
+      <div
+        class="rounded-xl border border-red-200 bg-surface-0 p-6 dark:border-red-900 dark:bg-surface-800"
+      >
         <h2 class="mb-2 text-lg font-semibold text-red-600">アカウント削除</h2>
         <p class="mb-4 text-sm text-surface-500">
           アカウントを削除すると、全てのデータが完全に削除されます。この操作は取り消せません。
         </p>
-        <Button label="アカウントを削除" icon="pi pi-trash" severity="danger" outlined @click="showDeleteDialog = true" />
+        <Button
+          label="アカウントを削除"
+          icon="pi pi-trash"
+          severity="danger"
+          outlined
+          @click="showDeleteDialog = true"
+        />
       </div>
 
-      <Dialog v-model:visible="showDeleteDialog" header="アカウント削除の確認" :modal="true" class="w-full max-w-md">
-        <p class="mb-4">本当にアカウントを削除しますか？全てのデータが完全に削除され、復元できません。</p>
+      <Dialog
+        v-model:visible="showDeleteDialog"
+        header="アカウント削除の確認"
+        :modal="true"
+        class="w-full max-w-md"
+      >
+        <p class="mb-4">
+          本当にアカウントを削除しますか？全てのデータが完全に削除され、復元できません。
+        </p>
         <div class="flex justify-end gap-2">
           <Button label="キャンセル" severity="secondary" @click="showDeleteDialog = false" />
           <Button label="削除する" severity="danger" @click="deleteAccount" />

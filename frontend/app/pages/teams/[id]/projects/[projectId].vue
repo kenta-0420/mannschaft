@@ -1,0 +1,357 @@
+<script setup lang="ts">
+import type {
+  ProjectResponse,
+  UpdateProjectRequest,
+  MilestoneResponse,
+  CreateMilestoneRequest,
+} from '~/types/project'
+
+definePageMeta({ middleware: 'auth' })
+
+const route = useRoute()
+const router = useRouter()
+const teamId = Number(route.params.id)
+const projectId = Number(route.params.projectId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const projectApi = useProjectApi()
+const { showError } = useNotification()
+
+const project = ref<ProjectResponse | null>(null)
+const milestones = ref<MilestoneResponse[]>([])
+const todos = ref<unknown[]>([])
+const loading = ref(true)
+const showEditDialog = ref(false)
+const showMilestoneDialog = ref(false)
+const editingMilestone = ref<MilestoneResponse | null>(null)
+
+const editForm = reactive<UpdateProjectRequest>({
+  title: '',
+  description: '',
+  emoji: '',
+  color: '',
+  dueDate: '',
+})
+
+const milestoneForm = reactive<CreateMilestoneRequest>({
+  title: '',
+  dueDate: '',
+  sortOrder: 0,
+})
+
+async function load() {
+  loading.value = true
+  try {
+    const [pRes, mRes, tRes] = await Promise.all([
+      projectApi.getProject(teamId, projectId),
+      projectApi.listMilestones(teamId, projectId),
+      projectApi.getProjectTodos(teamId, projectId),
+    ])
+    project.value = pRes.data
+    milestones.value = mRes.data
+    todos.value = tRes.data
+  } catch {
+    showError('プロジェクト情報の取得に失敗しました')
+  } finally {
+    loading.value = false
+  }
+}
+
+function openEdit() {
+  if (!project.value) return
+  Object.assign(editForm, {
+    title: project.value.title,
+    emoji: project.value.emoji ?? '',
+    color: project.value.color ?? '#3B82F6',
+    dueDate: project.value.dueDate ?? '',
+  })
+  showEditDialog.value = true
+}
+
+async function saveProject() {
+  try {
+    await projectApi.updateProject(teamId, projectId, editForm)
+    showEditDialog.value = false
+    await load()
+  } catch {
+    showError('更新に失敗しました')
+  }
+}
+
+async function toggleComplete() {
+  if (!project.value) return
+  try {
+    if (project.value.status === 'COMPLETED') {
+      await projectApi.reopenProject(teamId, projectId)
+    } else {
+      await projectApi.completeProject(teamId, projectId)
+    }
+    await load()
+  } catch {
+    showError('ステータスの変更に失敗しました')
+  }
+}
+
+function openCreateMilestone() {
+  editingMilestone.value = null
+  Object.assign(milestoneForm, { title: '', dueDate: '', sortOrder: milestones.value.length })
+  showMilestoneDialog.value = true
+}
+
+function openEditMilestone(ms: MilestoneResponse) {
+  editingMilestone.value = ms
+  Object.assign(milestoneForm, {
+    title: ms.title,
+    dueDate: ms.dueDate ?? '',
+    sortOrder: ms.sortOrder,
+  })
+  showMilestoneDialog.value = true
+}
+
+async function saveMilestone() {
+  try {
+    if (editingMilestone.value) {
+      await projectApi.updateMilestone(teamId, projectId, editingMilestone.value.id, milestoneForm)
+    } else {
+      await projectApi.createMilestone(teamId, projectId, milestoneForm)
+    }
+    showMilestoneDialog.value = false
+    await load()
+  } catch {
+    showError('マイルストーンの保存に失敗しました')
+  }
+}
+
+async function toggleMilestoneComplete(ms: MilestoneResponse) {
+  try {
+    await projectApi.completeMilestone(teamId, projectId, ms.id)
+    await load()
+  } catch {
+    showError('更新に失敗しました')
+  }
+}
+
+async function removeMilestone(ms: MilestoneResponse) {
+  if (!confirm(`「${ms.title}」を削除しますか？`)) return
+  try {
+    await projectApi.deleteMilestone(teamId, projectId, ms.id)
+    await load()
+  } catch {
+    showError('削除に失敗しました')
+  }
+}
+
+onMounted(async () => {
+  await loadPermissions()
+  await load()
+})
+</script>
+
+<template>
+  <div>
+    <div v-if="loading" class="flex justify-center py-8">
+      <ProgressSpinner style="width: 40px; height: 40px" />
+    </div>
+
+    <div v-else-if="project">
+      <!-- ヘッダー -->
+      <div class="mb-6">
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          label="プロジェクト一覧"
+          class="mb-2"
+          @click="router.push(`/teams/${teamId}/projects`)"
+        />
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span v-if="project.emoji" class="text-3xl">{{ project.emoji }}</span>
+            <h1 class="text-2xl font-bold">{{ project.title }}</h1>
+            <Tag
+              :value="project.status === 'COMPLETED' ? '完了' : '進行中'"
+              :severity="project.status === 'COMPLETED' ? 'success' : 'info'"
+            />
+          </div>
+          <div v-if="isAdminOrDeputy" class="flex gap-2">
+            <Button icon="pi pi-pencil" label="編集" text @click="openEdit" />
+            <Button
+              :icon="project.status === 'COMPLETED' ? 'pi pi-refresh' : 'pi pi-check'"
+              :label="project.status === 'COMPLETED' ? '再開' : '完了にする'"
+              :severity="project.status === 'COMPLETED' ? 'info' : 'success'"
+              text
+              @click="toggleComplete"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- 進捗 -->
+      <div
+        class="mb-6 rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+      >
+        <div class="mb-2 grid gap-4 sm:grid-cols-4">
+          <div>
+            <p class="text-xs text-surface-400">進捗</p>
+            <p class="text-2xl font-bold">{{ Math.round(project.progressRate * 100) }}%</p>
+          </div>
+          <div>
+            <p class="text-xs text-surface-400">タスク</p>
+            <p class="text-2xl font-bold">{{ project.completedTodos }}/{{ project.totalTodos }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-surface-400">マイルストーン</p>
+            <p class="text-2xl font-bold">
+              {{ project.milestones.completed }}/{{ project.milestones.total }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-surface-400">期限</p>
+            <p
+              class="text-2xl font-bold"
+              :class="(project.daysRemaining ?? 0) < 0 ? 'text-red-500' : ''"
+            >
+              {{ project.dueDate ?? '未設定' }}
+            </p>
+          </div>
+        </div>
+        <ProgressBar
+          :value="Math.round(project.progressRate * 100)"
+          :show-value="false"
+          style="height: 8px"
+        />
+      </div>
+
+      <!-- マイルストーン -->
+      <div class="mb-6">
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-lg font-semibold">マイルストーン</h2>
+          <Button
+            v-if="isAdminOrDeputy"
+            icon="pi pi-plus"
+            label="追加"
+            text
+            size="small"
+            @click="openCreateMilestone"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <div
+            v-for="ms in milestones"
+            :key="ms.id"
+            class="flex items-center justify-between rounded-xl border border-surface-200 bg-surface-0 p-3 dark:border-surface-700 dark:bg-surface-800"
+          >
+            <div class="flex items-center gap-3">
+              <Checkbox
+                :model-value="ms.completed"
+                :binary="true"
+                @update:model-value="toggleMilestoneComplete(ms)"
+              />
+              <div>
+                <p :class="ms.completed ? 'text-surface-400 line-through' : 'font-medium'">
+                  {{ ms.title }}
+                </p>
+                <p v-if="ms.dueDate" class="text-xs text-surface-500">期限: {{ ms.dueDate }}</p>
+              </div>
+            </div>
+            <div v-if="isAdminOrDeputy" class="flex gap-1">
+              <Button
+                icon="pi pi-pencil"
+                text
+                rounded
+                size="small"
+                @click="openEditMilestone(ms)"
+              />
+              <Button
+                icon="pi pi-trash"
+                text
+                rounded
+                size="small"
+                severity="danger"
+                @click="removeMilestone(ms)"
+              />
+            </div>
+          </div>
+          <div v-if="milestones.length === 0" class="py-4 text-center text-surface-400">
+            マイルストーンがありません
+          </div>
+        </div>
+      </div>
+
+      <!-- タスク -->
+      <div>
+        <h2 class="mb-2 text-lg font-semibold">関連タスク</h2>
+        <div v-if="todos.length === 0" class="py-4 text-center text-surface-400">
+          このプロジェクトに関連するタスクはありません
+        </div>
+        <div v-else class="flex flex-col gap-1">
+          <div
+            v-for="(todo, idx) in todos"
+            :key="idx"
+            class="rounded-lg border border-surface-100 p-3 dark:border-surface-700"
+          >
+            <pre class="text-sm">{{ JSON.stringify(todo, null, 2) }}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- プロジェクト編集ダイアログ -->
+    <Dialog
+      v-model:visible="showEditDialog"
+      header="プロジェクト編集"
+      modal
+      class="w-full max-w-lg"
+    >
+      <div class="flex flex-col gap-4">
+        <div>
+          <label class="mb-1 block text-sm font-medium">タイトル</label>
+          <InputText v-model="editForm.title" class="w-full" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium">説明</label>
+          <Textarea v-model="editForm.description" class="w-full" rows="3" />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="mb-1 block text-sm font-medium">絵文字</label>
+            <InputText v-model="editForm.emoji" class="w-full" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium">カラー</label>
+            <InputText v-model="editForm.color" type="color" class="w-full" />
+          </div>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium">期限</label>
+          <InputText v-model="editForm.dueDate" type="date" class="w-full" />
+        </div>
+      </div>
+      <template #footer>
+        <Button label="キャンセル" text @click="showEditDialog = false" />
+        <Button label="更新" @click="saveProject" />
+      </template>
+    </Dialog>
+
+    <!-- マイルストーンダイアログ -->
+    <Dialog
+      v-model:visible="showMilestoneDialog"
+      :header="editingMilestone ? 'マイルストーン編集' : 'マイルストーン追加'"
+      modal
+      class="w-full max-w-md"
+    >
+      <div class="flex flex-col gap-4">
+        <div>
+          <label class="mb-1 block text-sm font-medium">タイトル</label>
+          <InputText v-model="milestoneForm.title" class="w-full" placeholder="マイルストーン名" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium">期限</label>
+          <InputText v-model="milestoneForm.dueDate" type="date" class="w-full" />
+        </div>
+      </div>
+      <template #footer>
+        <Button label="キャンセル" text @click="showMilestoneDialog = false" />
+        <Button :label="editingMilestone ? '更新' : '追加'" @click="saveMilestone" />
+      </template>
+    </Dialog>
+  </div>
+</template>
