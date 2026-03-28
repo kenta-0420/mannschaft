@@ -1,0 +1,63 @@
+# =============================================================================
+# Backend CI — pull_request to main
+# =============================================================================
+# Runs compile + test on every PR targeting main.
+# No AWS credentials required — build and deploy are intentionally omitted.
+# =============================================================================
+
+name: Backend — CI (PR Check)
+
+on:
+  pull_request:
+    branches:
+      - main
+
+# Cancel in-progress runs for the same PR when new commits are pushed
+concurrency:
+  group: backend-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "21"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Compile + test (Docker required for Testcontainers)
+  # ---------------------------------------------------------------------------
+  test:
+    name: Compile & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: gradle
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      # Compile all source sets first so compilation errors surface quickly
+      # before the slower test run starts.
+      - name: Compile
+        run: ./gradlew compileJava compileTestJava --no-daemon
+
+      # Run the full test suite.
+      # --continue ensures all test failures are collected (not just the first).
+      - name: Run tests
+        run: ./gradlew test --no-daemon --continue
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "false"
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-pr-${{ github.event.pull_request.number }}
+          path: build/reports/tests/
+          retention-days: 7

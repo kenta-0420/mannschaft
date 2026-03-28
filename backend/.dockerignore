@@ -1,0 +1,60 @@
+# =============================================================================
+# .dockerignore — exclude everything not needed for the Docker build context
+# =============================================================================
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE / editor metadata
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.editorconfig
+
+# Claude Code
+.claude/
+.claudecode.md
+
+# Gradle caches and local wrapper binaries (the wrapper scripts themselves ARE needed)
+.gradle/
+build/
+!build/libs/          # kept only when using pre-built JAR (not used in multi-stage)
+
+# OS artefacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and crash dumps
+*.log
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
+
+# Test outputs / coverage
+bin/
+
+# Documentation
+docs/
+README.md
+BACKEND_CODING_CONVENTION.md
+FRONTEND_CODING_CONVENTION.md
+FUTURE_CONSIDERATIONS.md
+TEST_CONVENTION.md
+
+# Scripts not needed inside the image
+scripts/
+
+# Python cache (shouldn't be here, but exclude defensively)
+__pycache__/
+*.pyc
+
+# Docker files themselves (no need to copy into context)
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose*.yml

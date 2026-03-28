@@ -1,0 +1,175 @@
+# =============================================================================
+# Backend CI/CD — push to main
+# =============================================================================
+# Required GitHub Secrets:
+#
+#   AWS_ACCESS_KEY_ID          — IAM access key  (see OIDC note below to avoid
+#   AWS_SECRET_ACCESS_KEY        long-lived keys entirely)
+#   AWS_ACCOUNT_ID             — 12-digit AWS account number (e.g. 123456789012)
+#   ECR_REPOSITORY             — ECR repo name (e.g. mannschaft-backend)
+#   ECS_CLUSTER                — ECS cluster name (e.g. mannschaft-cluster)
+#   ECS_SERVICE                — ECS service name (e.g. mannschaft-backend-service)
+#   ECS_TASK_DEFINITION        — ECS task definition family name
+#                                (e.g. mannschaft-backend-task)
+#   ECS_CONTAINER_NAME         — Container name inside the task def
+#                                (e.g. mannschaft-backend)
+#
+# ---------------------------------------------------------------------------
+# OIDC alternative (recommended for production — removes long-lived keys):
+#
+#   1. Create an IAM OIDC provider for token.actions.githubusercontent.com
+#   2. Create an IAM role with the following trust policy condition:
+#        "token.actions.githubusercontent.com:sub":
+#          "repo:kenta-0420/Mannschaft:ref:refs/heads/main"
+#   3. Replace the "Configure AWS credentials" step below with:
+#
+#        - name: Configure AWS credentials (OIDC)
+#          uses: aws-actions/configure-aws-credentials@v4
+#          with:
+#            role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-deploy
+#            aws-region: ap-northeast-1
+#
+#   4. Delete the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets.
+# =============================================================================
+
+name: Backend — Build, Test & Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+# Prevent concurrent deploys; cancel in-progress runs on the same branch
+concurrency:
+  group: backend-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-northeast-1
+  JAVA_VERSION: "21"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1 — Run all tests (Testcontainers requires Docker)
+  # ---------------------------------------------------------------------------
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    # Docker is available by default on ubuntu-latest — required for Testcontainers
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          # Cache Gradle wrapper + dependency files to speed up subsequent runs
+          cache: gradle
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      # Testcontainers pulls docker images on first run; the Docker daemon is
+      # already running on ubuntu-latest so no additional setup is needed.
+      - name: Run tests
+        run: ./gradlew test --no-daemon --continue
+        env:
+          # Testcontainers host resolution inside GitHub Actions
+          TESTCONTAINERS_RYUK_DISABLED: "false"
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: build/reports/tests/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Job 2 — Build Docker image, push to ECR, deploy to ECS
+  # ---------------------------------------------------------------------------
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    needs: test  # only runs when test job succeeds
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: gradle
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      # Build the fat JAR (skip tests — already run in the test job)
+      - name: Build JAR
+        run: ./gradlew bootJar --no-daemon -x test
+
+      # ---- AWS / ECR / ECS --------------------------------------------------
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker image to ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          # Tag with both the short SHA (immutable) and "latest" for convenience
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          docker build \
+            --tag "${IMAGE_URI}" \
+            --tag "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest" \
+            --label "git-commit=${GITHUB_SHA}" \
+            --label "build-date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            .
+          docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+          # Pass the full URI to subsequent steps
+          echo "image=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
+
+      # Download the current task definition, inject the new image URI, then
+      # register a new revision and update the ECS service.
+      - name: Download current ECS task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ secrets.ECS_TASK_DEFINITION }} \
+            --query taskDefinition \
+            > task-definition.json
+
+      - name: Update ECS task definition with new image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ secrets.ECS_CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ secrets.ECS_SERVICE }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          # Wait until the new task set is stable before marking the workflow
+          # as succeeded (surfacing deployment errors immediately)
+          wait-for-service-stability: true
