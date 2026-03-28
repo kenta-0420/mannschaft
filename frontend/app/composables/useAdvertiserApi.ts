@@ -100,10 +100,10 @@ export function useAdvertiserApi() {
   }
 
   async function exportCampaignCsv(campaignId: number, organizationId: number, from: string, to: string) {
-    return api<Blob>(`/api/v1/advertiser/campaigns/${campaignId}/export`, {
+    return api(`/api/v1/advertiser/campaigns/${campaignId}/export`, {
       params: { organizationId, from, to },
-      responseType: 'blob',
-    })
+      responseType: 'blob' as const,
+    }) as Promise<Blob>
   }
 
   // Invoices
@@ -120,10 +120,10 @@ export function useAdvertiserApi() {
   }
 
   async function downloadInvoicePdf(invoiceId: number, organizationId: number) {
-    return api<Blob>(`/api/v1/advertiser/invoices/${invoiceId}/pdf`, {
+    return api(`/api/v1/advertiser/invoices/${invoiceId}/pdf`, {
       params: { organizationId },
-      responseType: 'blob',
-    })
+      responseType: 'blob' as const,
+    }) as Promise<Blob>
   }
 
   // Report Schedules
@@ -142,7 +142,7 @@ export function useAdvertiserApi() {
   }
 
   async function deleteReportSchedule(id: number, organizationId: number) {
-    return api<void>(`/api/v1/advertiser/report-schedules/${id}`, {
+    return api(`/api/v1/advertiser/report-schedules/${id}`, {
       method: 'DELETE',
       params: { organizationId },
     })
@@ -179,7 +179,7 @@ export function useAdvertiserApi() {
   }
 
   async function adminDeleteRateCard(id: number) {
-    return api<void>(`/api/v1/system-admin/ad-rate-cards/${id}`, {
+    return api(`/api/v1/system-admin/ad-rate-cards/${id}`, {
       method: 'DELETE',
     })
   }

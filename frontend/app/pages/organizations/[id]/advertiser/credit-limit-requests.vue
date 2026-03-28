@@ -53,7 +53,7 @@ onMounted(load)
 
     <ProgressSpinner v-if="loading" class="flex justify-center py-10" />
 
-    <DataTable v-else :value="requests" stripedRows>
+    <DataTable v-else :value="requests" striped-rows>
       <Column field="requestedLimit" header="希望額">
         <template #body="{ data }">¥{{ data.requestedLimit.toLocaleString() }}</template>
       </Column>

@@ -22,7 +22,7 @@ const statusOptions = [
 async function load() {
   loading.value = true
   try {
-    const params: any = {}
+    const params: Record<string, string> = {}
     if (statusFilter.value) params.status = statusFilter.value
     const res = await advertiserApi.adminGetCreditLimitRequests(params)
     requests.value = res.data
@@ -70,12 +70,12 @@ onMounted(load)
   <div>
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-2xl font-bold">与信枠 増額申請管理</h1>
-      <Select v-model="statusFilter" :options="statusOptions" optionLabel="label" optionValue="value" class="w-40" />
+      <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="w-40" />
     </div>
 
     <ProgressSpinner v-if="loading" class="flex justify-center py-10" />
 
-    <DataTable v-else :value="requests" stripedRows>
+    <DataTable v-else :value="requests" striped-rows>
       <Column field="companyName" header="広告主" />
       <Column field="currentLimit" header="現在の限度額">
         <template #body="{ data }">¥{{ data.currentLimit.toLocaleString() }}</template>

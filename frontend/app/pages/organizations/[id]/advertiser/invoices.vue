@@ -23,7 +23,7 @@ const statusOptions = [
 async function loadInvoices() {
   loading.value = true
   try {
-    const params: any = {}
+    const params: Record<string, string> = {}
     if (statusFilter.value) params.status = statusFilter.value
     const res = await advertiserApi.getInvoices(orgId, params)
     invoices.value = res.data
@@ -67,12 +67,12 @@ onMounted(loadInvoices)
   <div>
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-2xl font-bold">請求書</h1>
-      <Select v-model="statusFilter" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="ステータス" class="w-40" />
+      <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" placeholder="ステータス" class="w-40" />
     </div>
 
     <ProgressSpinner v-if="loading" class="flex justify-center py-10" />
 
-    <DataTable v-else :value="invoices" stripedRows @row-click="(e: any) => viewDetail(e.data)">
+    <DataTable v-else :value="invoices" striped-rows @row-click="(e: any) => viewDetail(e.data)">
       <Column field="invoiceNumber" header="請求書番号" />
       <Column field="invoiceMonth" header="対象月" />
       <Column field="totalWithTax" header="税込合計">
@@ -100,7 +100,7 @@ onMounted(loadInvoices)
           <div><span class="text-surface-500">ステータス:</span> <Tag :value="selectedInvoice.status" :severity="statusSeverity(selectedInvoice.status)" /></div>
           <div><span class="text-surface-500">支払期限:</span> {{ selectedInvoice.dueDate || '-' }}</div>
         </div>
-        <DataTable :value="selectedInvoice.items" stripedRows class="mb-4">
+        <DataTable :value="selectedInvoice.items" striped-rows class="mb-4">
           <Column field="campaignName" header="キャンペーン" />
           <Column field="pricingModel" header="課金" />
           <Column field="impressions" header="imp">

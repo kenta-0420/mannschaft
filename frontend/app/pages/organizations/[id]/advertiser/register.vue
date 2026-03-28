@@ -47,7 +47,7 @@ async function submit() {
       </div>
       <div class="mb-6">
         <label class="mb-1 block text-sm font-medium">決済方法</label>
-        <Select v-model="form.billingMethod" :options="billingOptions" optionLabel="label" optionValue="value" class="w-full" />
+        <Select v-model="form.billingMethod" :options="billingOptions" option-label="label" option-value="value" class="w-full" />
       </div>
       <Button label="登録申請" icon="pi pi-check" :loading="submitting" class="w-full" @click="submit" />
     </div>

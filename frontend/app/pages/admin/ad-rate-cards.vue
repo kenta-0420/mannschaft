@@ -75,7 +75,7 @@ onMounted(load)
 
     <ProgressSpinner v-if="loading" class="flex justify-center py-10" />
 
-    <DataTable v-else :value="rateCards" stripedRows>
+    <DataTable v-else :value="rateCards" striped-rows>
       <Column field="targetPrefecture" header="都道府県">
         <template #body="{ data }">{{ data.targetPrefecture || '全国' }}</template>
       </Column>
@@ -110,11 +110,11 @@ onMounted(load)
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">課金モデル</label>
-          <Select v-model="form.pricingModel" :options="pricingOptions" optionLabel="label" optionValue="value" class="w-full" />
+          <Select v-model="form.pricingModel" :options="pricingOptions" option-label="label" option-value="value" class="w-full" />
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">単価</label>
-          <InputNumber v-model="form.unitPrice" :min="0.01" :maxFractionDigits="4" class="w-full" />
+          <InputNumber v-model="form.unitPrice" :min="0.01" :max-fraction-digits="4" class="w-full" />
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">最低日予算（円）</label>

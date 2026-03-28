@@ -5,8 +5,6 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const orgId = Number(route.params.id)
 const advertiserApi = useAdvertiserApi()
-const { success, error: showError } = useNotification()
-
 const account = ref<AdvertiserAccountResponse | null>(null)
 const overview = ref<AdvertiserOverviewResponse | null>(null)
 const loading = ref(true)
@@ -20,8 +18,8 @@ async function load() {
     const ovRes = await advertiserApi.getOverview(orgId)
     overview.value = ovRes.data
   }
-  catch (e: any) {
-    if (e?.response?.status === 404) {
+  catch (e: unknown) {
+    if ((e as { response?: { status?: number } })?.response?.status === 404) {
       notRegistered.value = true
     }
   }
@@ -95,7 +93,7 @@ onMounted(load)
       <!-- キャンペーン一覧 -->
       <div v-if="overview && overview.campaigns.length > 0" class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
         <h3 class="mb-3 font-semibold">キャンペーン</h3>
-        <DataTable :value="overview.campaigns" :rows="10" stripedRows>
+        <DataTable :value="overview.campaigns" :rows="10" striped-rows>
           <Column field="campaignName" header="キャンペーン名" />
           <Column field="status" header="ステータス">
             <template #body="{ data }">

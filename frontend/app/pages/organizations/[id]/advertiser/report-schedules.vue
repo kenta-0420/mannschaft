@@ -85,7 +85,7 @@ onMounted(load)
     <Dialog v-model:visible="showCreate" header="レポートスケジュール作成" :style="{ width: '500px' }" modal>
       <div class="mb-4">
         <label class="mb-1 block text-sm font-medium">配信頻度</label>
-        <Select v-model="form.frequency" :options="frequencyOptions" optionLabel="label" optionValue="value" class="w-full" />
+        <Select v-model="form.frequency" :options="frequencyOptions" option-label="label" option-value="value" class="w-full" />
       </div>
       <div class="mb-4">
         <label class="mb-1 block text-sm font-medium">配信先メール（カンマ区切り）</label>

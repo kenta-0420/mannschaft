@@ -24,7 +24,7 @@ const statusOptions = [
 async function load() {
   loading.value = true
   try {
-    const params: any = {}
+    const params: Record<string, string> = {}
     if (statusFilter.value) params.status = statusFilter.value
     const res = await advertiserApi.adminGetAdvertiserAccounts(params)
     accounts.value = res.data
@@ -86,12 +86,12 @@ onMounted(load)
   <div>
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-2xl font-bold">広告主アカウント管理</h1>
-      <Select v-model="statusFilter" :options="statusOptions" optionLabel="label" optionValue="value" class="w-40" />
+      <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="w-40" />
     </div>
 
     <ProgressSpinner v-if="loading" class="flex justify-center py-10" />
 
-    <DataTable v-else :value="accounts" stripedRows>
+    <DataTable v-else :value="accounts" striped-rows>
       <Column field="companyName" header="会社名" />
       <Column field="contactEmail" header="メール" />
       <Column field="billingMethod" header="決済" />

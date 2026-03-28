@@ -3,7 +3,7 @@ import type { PricingModel, RateSimulatorResponse } from '~/types/advertiser'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const orgId = Number(route.params.id)
+void route.params.id // organizationId はシミュレーターでは未使用（認証のみ）
 const advertiserApi = useAdvertiserApi()
 
 const form = ref({
@@ -26,12 +26,12 @@ async function simulate() {
   loading.value = true
   result.value = null
   try {
-    const params: any = { pricingModel: form.value.pricingModel, days: form.value.days }
+    const params: Record<string, string | number> = { pricingModel: form.value.pricingModel, days: form.value.days }
     if (form.value.prefecture) params.prefecture = form.value.prefecture
     if (form.value.template) params.template = form.value.template
     if (form.value.pricingModel === 'CPM') params.impressions = form.value.impressions
     else params.clicks = form.value.clicks
-    const res = await advertiserApi.simulateRate(params)
+    const res = await advertiserApi.simulateRate(params as Parameters<typeof advertiserApi.simulateRate>[0])
     result.value = res.data
   }
   catch { /* handled by global */ }
@@ -47,7 +47,7 @@ async function simulate() {
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label class="mb-1 block text-sm font-medium">課金モデル</label>
-          <Select v-model="form.pricingModel" :options="pricingOptions" optionLabel="label" optionValue="value" class="w-full" />
+          <Select v-model="form.pricingModel" :options="pricingOptions" option-label="label" option-value="value" class="w-full" />
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">掲載日数</label>
@@ -107,7 +107,7 @@ async function simulate() {
 
       <div v-if="result.comparison.length > 0" class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
         <h3 class="mb-4 font-semibold">他の料金との比較</h3>
-        <DataTable :value="result.comparison" stripedRows>
+        <DataTable :value="result.comparison" striped-rows>
           <Column field="label" header="条件" />
           <Column field="unitPrice" header="単価">
             <template #body="{ data }">{{ data.unitPrice }}</template>
