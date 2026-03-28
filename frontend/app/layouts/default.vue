@@ -10,6 +10,7 @@ const navItems = computed(() => [
   { label: 'カレンダー', icon: 'pi pi-calendar', to: '/calendar' },
   { label: 'タイムライン', icon: 'pi pi-comments', to: '/timeline' },
   { label: 'チャット', icon: 'pi pi-comment', to: '/chat' },
+  { label: 'マイページ', icon: 'pi pi-user', to: '/my/onboarding' },
   { label: '設定', icon: 'pi pi-cog', to: '/settings' },
 ])
 
@@ -44,6 +45,12 @@ function isActive(path: string): boolean {
 
         <!-- 右: スコープセレクター + ユーザーメニュー -->
         <div class="flex items-center gap-3">
+          <NuxtLink v-if="authStore.isAuthenticated" to="/search" v-tooltip.bottom="'検索'" class="flex items-center">
+            <Button icon="pi pi-search" text rounded severity="secondary" />
+          </NuxtLink>
+          <NuxtLink v-if="authStore.isAuthenticated" to="/mentions" v-tooltip.bottom="'メンション'" class="flex items-center">
+            <Button icon="pi pi-at" text rounded severity="secondary" />
+          </NuxtLink>
           <ScopeSelector v-if="authStore.isAuthenticated" />
           <NotificationBell v-if="authStore.isAuthenticated" />
           <Button
