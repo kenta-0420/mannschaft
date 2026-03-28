@@ -44,9 +44,11 @@ public class AdminDashboardService {
                 scopeType, scopeId, ReportStatus.PENDING);
         long upcomingSchedules = countUpcomingSchedules(scopeType, scopeId);
 
+        long activeMembers = countActiveMembers(scopeType, scopeId);
+
         return new AdminDashboardResponse(
                 totalMembers,
-                totalMembers,  // activeMembers: ログイン履歴未実装のため totalMembers と同値
+                activeMembers,
                 pendingFeedbacks,
                 openReports,
                 upcomingSchedules
@@ -67,6 +69,14 @@ public class AdminDashboardService {
     /**
      * スコープ別の今後のスケジュール数を取得する。
      */
+    /**
+     * スコープ別の直近30日以内にログインしたアクティブメンバー数を取得する。
+     */
+    private long countActiveMembers(String scopeType, Long scopeId) {
+        LocalDateTime since = LocalDateTime.now().minusDays(30);
+        return userRoleRepository.countActiveMembers(scopeType.toUpperCase(), scopeId, since);
+    }
+
     private long countUpcomingSchedules(String scopeType, Long scopeId) {
         LocalDateTime now = LocalDateTime.now();
         return switch (scopeType.toUpperCase()) {

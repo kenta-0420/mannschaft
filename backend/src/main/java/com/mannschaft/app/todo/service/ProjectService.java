@@ -2,6 +2,7 @@ package com.mannschaft.app.todo.service;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.todo.ProjectStatus;
 import com.mannschaft.app.todo.ProjectVisibility;
@@ -33,6 +34,8 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * プロジェクトサービス。プロジェクトのCRUD・マイルストーン管理・進捗計算を担当する。
@@ -49,6 +52,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectMilestoneRepository milestoneRepository;
     private final TodoRepository todoRepository;
+    private final NameResolverService nameResolverService;
 
     /**
      * プロジェクト一覧を取得する。
@@ -114,7 +118,7 @@ public class ProjectService {
                 project.getVisibility().name(),
                 milestoneDetails,
                 new ProjectDetailResponse.UnassignedTodos(unassignedTotal, unassignedCompleted),
-                new ProjectResponse.UserInfo(project.getCreatedBy(), "TODO:表示名取得"));
+                resolveUserInfo(project.getCreatedBy()));
 
         return ApiResponse.of(response);
     }
@@ -416,7 +420,7 @@ public class ProjectService {
                 entity.getStatus().name(), entity.getProgressRate(),
                 entity.getTotalTodos(), entity.getCompletedTodos(),
                 new ProjectResponse.MilestoneSummary(milestoneTotal, milestoneCompleted),
-                new ProjectResponse.UserInfo(entity.getCreatedBy(), "TODO:表示名取得"),
+                resolveUserInfo(entity.getCreatedBy()),
                 entity.getCreatedAt());
     }
 
@@ -428,5 +432,10 @@ public class ProjectService {
                 entity.getId(), entity.getProjectId(), entity.getTitle(),
                 entity.getDueDate(), entity.getSortOrder(), entity.getIsCompleted(),
                 entity.getCompletedAt(), entity.getCreatedAt(), entity.getUpdatedAt());
+    }
+
+    private ProjectResponse.UserInfo resolveUserInfo(Long userId) {
+        Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(Set.of(userId));
+        return new ProjectResponse.UserInfo(userId, nameMap.getOrDefault(userId, ""));
     }
 }

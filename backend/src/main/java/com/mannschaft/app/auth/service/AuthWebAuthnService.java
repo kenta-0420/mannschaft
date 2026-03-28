@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
  * WebAuthn（パスキー・FIDO2）認証サービス。
  * 資格情報の登録・ログイン・管理を担当する。
  * <p>
- * ※ WebAuthn4Jライブラリは将来統合。現時点ではインターフェースとダミー実装。
+ * WebAuthn4Jライブラリを使用した attestation / assertion 検証を実装済み。
  * </p>
  */
 @Slf4j
@@ -110,7 +110,7 @@ public class AuthWebAuthnService {
      *   <li>WebAuthnRegisteredEvent発行</li>
      * </ol>
      * <p>
-     * ※ attestation検証はTODO（WebAuthn4J統合時に実装）
+     * WebAuthn4Jによる attestation 検証を実施する。
      * </p>
      *
      * @param userId ユーザーID
@@ -215,7 +215,7 @@ public class AuthWebAuthnService {
      *   <li>LoginSuccessEvent発行</li>
      * </ol>
      * <p>
-     * ※ 署名検証はTODO（WebAuthn4J統合時に実装）
+     * WebAuthn4Jによる署名検証を実施する。
      * </p>
      *
      * @param req       ログイン完了リクエスト

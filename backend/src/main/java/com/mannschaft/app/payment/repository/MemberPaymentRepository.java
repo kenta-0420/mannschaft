@@ -78,6 +78,12 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
     List<MemberPaymentEntity> findByPaymentItemId(Long paymentItemId);
 
     /**
+     * 支払い項目の未払い（PENDING）ユーザーIDリストを取得する。
+     */
+    @Query("SELECT mp.userId FROM MemberPaymentEntity mp WHERE mp.paymentItemId = :paymentItemId AND mp.status = 'PENDING'")
+    List<Long> findUnpaidUserIdsByPaymentItemId(@Param("paymentItemId") Long paymentItemId);
+
+    /**
      * ID と支払い項目 ID で支払い記録を取得する（ロック付き）。
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

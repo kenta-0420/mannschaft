@@ -1,6 +1,7 @@
 package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.AuthErrorCode;
+import com.mannschaft.app.auth.OAuthProperties;
 import com.mannschaft.app.auth.entity.OAuthAccountEntity;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.entity.OAuthLinkTokenEntity;
@@ -20,13 +21,23 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -51,6 +62,17 @@ public class AuthOAuthService {
     private final AuthTokenService authTokenService;
     private final DomainEventPublisher eventPublisher;
     private final EncryptionService encryptionService;
+    private final OAuthProperties oAuthProperties;
+
+    /** OAuthプロバイダとのHTTP通信に使用するWebClient。@PostConstructで初期化する。 */
+    private WebClient webClient;
+
+    @PostConstruct
+    void initWebClient() {
+        this.webClient = WebClient.builder()
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(512 * 1024))
+                .build();
+    }
 
     /**
      * OAuthプロバイダを使用してログインする。
@@ -308,14 +330,256 @@ public class AuthOAuthService {
 
     /**
      * OAuthプロバイダAPIからユーザー情報を取得する。
-     * 各プロバイダー（Google, LINE, Apple）のAPI統合時に正式実装する。
-     * Google: OAuth2 Token Exchange → userinfo endpoint
-     * LINE: OAuth2 Token Exchange → profile endpoint
-     * Apple: ID Token (JWT) の検証
+     * <ul>
+     *   <li>Google: 認可コード → Token Exchange → userinfo endpoint</li>
+     *   <li>LINE: 認可コード → Token Exchange → ID Token (JWT) デコードまたはprofile API</li>
+     *   <li>Apple: 認可コード → Token Exchange → ID Token (JWT) デコード</li>
+     * </ul>
+     *
+     * @param provider          OAuthプロバイダ
+     * @param authorizationCode 認可コード
+     * @return OAuthユーザー情報
+     * @throws BusinessException AUTH_027 — Token Exchange失敗またはユーザー情報取得失敗
      */
     private OAuthUserInfo fetchOAuthUserInfo(OAuthAccountEntity.OAuthProvider provider, String authorizationCode) {
-        throw new UnsupportedOperationException(
-                "OAuthプロバイダAPI呼び出しは未実装です。provider=" + provider.name());
+        return switch (provider) {
+            case GOOGLE -> fetchGoogleUserInfo(authorizationCode);
+            case LINE   -> fetchLineUserInfo(authorizationCode);
+            case APPLE  -> fetchAppleUserInfo(authorizationCode);
+        };
+    }
+
+    // =========================================================
+    // Google OAuth
+    // =========================================================
+
+    /**
+     * Google OAuth: 認可コードをアクセストークンに交換し、userinfo エンドポイントからユーザー情報を取得する。
+     */
+    private OAuthUserInfo fetchGoogleUserInfo(String authorizationCode) {
+        // 1. Token Exchange
+        MultiValueMap<String, String> tokenParams = new LinkedMultiValueMap<>();
+        tokenParams.add("code", authorizationCode);
+        tokenParams.add("client_id", oAuthProperties.getGoogleClientId());
+        tokenParams.add("client_secret", oAuthProperties.getGoogleClientSecret());
+        tokenParams.add("redirect_uri", oAuthProperties.getGoogleRedirectUri());
+        tokenParams.add("grant_type", "authorization_code");
+
+        Map<?, ?> tokenResponse;
+        try {
+            tokenResponse = webClient.post()
+                    .uri(oAuthProperties.getGoogleTokenUri())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(BodyInserters.fromFormData(tokenParams))
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            log.warn("Google Token Exchange失敗: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        if (tokenResponse == null || tokenResponse.get("access_token") == null) {
+            log.warn("Google Token Exchangeレスポンスにaccess_tokenが含まれていません");
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+        String accessToken = (String) tokenResponse.get("access_token");
+
+        // 2. userinfo エンドポイントでユーザー情報取得
+        Map<?, ?> userInfo;
+        try {
+            userInfo = webClient.get()
+                    .uri(oAuthProperties.getGoogleUserinfoUri())
+                    .header("Authorization", "Bearer " + accessToken)
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            log.warn("Google userinfo取得失敗: status={}", e.getStatusCode());
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        if (userInfo == null || userInfo.get("sub") == null) {
+            log.warn("Google userinfoレスポンスにsubが含まれていません");
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        String sub         = (String) userInfo.get("sub");
+        String email       = (String) userInfo.get("email");
+        String givenName   = (String) userInfo.get("given_name");
+        String familyName  = (String) userInfo.get("family_name");
+        String displayName = (String) userInfo.get("name");
+
+        return new OAuthUserInfo(sub, email, familyName, givenName, displayName);
+    }
+
+    // =========================================================
+    // LINE OAuth
+    // =========================================================
+
+    /**
+     * LINE OAuth: 認可コードをトークンに交換し、IDトークン(JWT)をデコードしてユーザー情報を取得する。
+     * IDトークンにプロフィール情報が含まれない場合は profile API にフォールバックする。
+     */
+    private OAuthUserInfo fetchLineUserInfo(String authorizationCode) {
+        // 1. Token Exchange
+        MultiValueMap<String, String> tokenParams = new LinkedMultiValueMap<>();
+        tokenParams.add("grant_type", "authorization_code");
+        tokenParams.add("code", authorizationCode);
+        tokenParams.add("redirect_uri", oAuthProperties.getLineRedirectUri());
+        tokenParams.add("client_id", oAuthProperties.getLineClientId());
+        tokenParams.add("client_secret", oAuthProperties.getLineClientSecret());
+
+        Map<?, ?> tokenResponse;
+        try {
+            tokenResponse = webClient.post()
+                    .uri(oAuthProperties.getLineTokenUri())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(BodyInserters.fromFormData(tokenParams))
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            log.warn("LINE Token Exchange失敗: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        if (tokenResponse == null || tokenResponse.get("access_token") == null) {
+            log.warn("LINE Token Exchangeレスポンスにaccess_tokenが含まれていません");
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        String accessToken = (String) tokenResponse.get("access_token");
+        String idToken     = (String) tokenResponse.get("id_token");
+
+        // 2. IDトークンからユーザー情報を取得（ペイロードのbase64デコード）
+        if (idToken != null && !idToken.isBlank()) {
+            try {
+                Map<?, ?> claims = decodeJwtPayload(idToken);
+                String sub         = (String) claims.get("sub");
+                String email       = (String) claims.get("email");
+                String displayName = (String) claims.get("name");
+                if (sub != null) {
+                    return new OAuthUserInfo(sub, email, null, null, displayName);
+                }
+            } catch (Exception e) {
+                log.warn("LINE IDトークンのデコードに失敗しました。profile APIにフォールバックします: {}", e.getMessage());
+            }
+        }
+
+        // 3. IDトークンからサブが取れなかった場合は profile API にフォールバック
+        Map<?, ?> profile;
+        try {
+            profile = webClient.get()
+                    .uri(oAuthProperties.getLineProfileUri())
+                    .header("Authorization", "Bearer " + accessToken)
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            log.warn("LINE profile取得失敗: status={}", e.getStatusCode());
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        if (profile == null || profile.get("userId") == null) {
+            log.warn("LINE profileレスポンスにuserIdが含まれていません");
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        String userId      = (String) profile.get("userId");
+        String displayName = (String) profile.get("displayName");
+        // LINE profile API はメールアドレスを返さない（scope: email が必要でIDトークン経由のみ）
+        return new OAuthUserInfo(userId, null, null, null, displayName);
+    }
+
+    // =========================================================
+    // Apple Sign-In
+    // =========================================================
+
+    /**
+     * Apple Sign-In: 認可コードをトークンに交換し、IDトークン(JWT)をデコードしてユーザー情報を取得する。
+     * Apple はIDトークンにのみメールを含み、profile APIを持たない。
+     */
+    private OAuthUserInfo fetchAppleUserInfo(String authorizationCode) {
+        // 1. Token Exchange
+        MultiValueMap<String, String> tokenParams = new LinkedMultiValueMap<>();
+        tokenParams.add("grant_type", "authorization_code");
+        tokenParams.add("code", authorizationCode);
+        tokenParams.add("redirect_uri", oAuthProperties.getAppleRedirectUri());
+        tokenParams.add("client_id", oAuthProperties.getAppleClientId());
+        tokenParams.add("client_secret", oAuthProperties.getAppleClientSecret());
+
+        Map<?, ?> tokenResponse;
+        try {
+            tokenResponse = webClient.post()
+                    .uri(oAuthProperties.getAppleTokenUri())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(BodyInserters.fromFormData(tokenParams))
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            log.warn("Apple Token Exchange失敗: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        if (tokenResponse == null || tokenResponse.get("id_token") == null) {
+            log.warn("Apple Token ExchangeレスポンスにID tokenが含まれていません");
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        String idToken = (String) tokenResponse.get("id_token");
+
+        // 2. IDトークンのペイロードをデコードしてユーザー情報取得
+        Map<?, ?> claims;
+        try {
+            claims = decodeJwtPayload(idToken);
+        } catch (Exception e) {
+            log.warn("Apple IDトークンのデコードに失敗しました: {}", e.getMessage());
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        String sub   = (String) claims.get("sub");
+        String email = (String) claims.get("email");
+
+        if (sub == null) {
+            log.warn("Apple IDトークンにsubが含まれていません");
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        // Apple はフルネームを提供しない（初回認証時のみフロント経由で受け取る設計が一般的）
+        return new OAuthUserInfo(sub, email, null, null, null);
+    }
+
+    // =========================================================
+    // JWT ペイロードデコードユーティリティ
+    // =========================================================
+
+    /**
+     * JWTのペイロード部分（第2セクション）をBase64 URLデコードしてMapとして返す。
+     * 署名検証は行わない（プロバイダ側でtoken exchangeが完了しているため信頼する）。
+     *
+     * @param jwt JWT文字列
+     * @return ペイロードのクレームMap
+     * @throws IllegalArgumentException JWTフォーマットが不正な場合
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> decodeJwtPayload(String jwt) {
+        String[] parts = jwt.split("\\.");
+        if (parts.length < 2) {
+            throw new IllegalArgumentException("JWTフォーマットが不正です");
+        }
+        byte[] payloadBytes = Base64.getUrlDecoder().decode(parts[1]);
+        String payloadJson = new String(payloadBytes, StandardCharsets.UTF_8);
+
+        // ObjectMapperを使わず、手動JSON解析は複雑なため com.fasterxml.jackson が利用可能と想定
+        // Spring Boot はjacksonを標準搭載しているため安全に利用できる
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            return mapper.readValue(payloadJson, Map.class);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("JWTペイロードのJSON解析に失敗しました: " + e.getMessage(), e);
+        }
     }
 
     /**

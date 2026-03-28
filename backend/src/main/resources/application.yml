@@ -59,6 +59,18 @@ mannschaft:
     revoke-uri: https://oauth2.googleapis.com/revoke
     calendar-api-base: https://www.googleapis.com/calendar/v3
     userinfo-uri: https://www.googleapis.com/oauth2/v3/userinfo
+    redirect-uri: ${MANNSCHAFT_GOOGLE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/google}
+  line:
+    client-id: ${MANNSCHAFT_LINE_CLIENT_ID:}
+    client-secret: ${MANNSCHAFT_LINE_CLIENT_SECRET:}
+    token-uri: https://api.line.me/oauth2/v2.1/token
+    profile-uri: https://api.line.me/v2/profile
+    redirect-uri: ${MANNSCHAFT_LINE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/line}
+  apple:
+    client-id: ${MANNSCHAFT_APPLE_CLIENT_ID:}
+    client-secret: ${MANNSCHAFT_APPLE_CLIENT_SECRET:}
+    token-uri: https://appleid.apple.com/auth/token
+    redirect-uri: ${MANNSCHAFT_APPLE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/apple}
   stripe:
     secret-key: ${MANNSCHAFT_STRIPE_SECRET_KEY:}
     connect:

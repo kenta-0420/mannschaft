@@ -86,6 +86,35 @@ public class PermissionGroupService {
     }
 
     /**
+     * 権限グループを複製する。
+     */
+    @Transactional
+    public ApiResponse<PermissionGroupResponse> duplicatePermissionGroup(Long groupId, Long createdBy) {
+        PermissionGroupEntity original = permissionGroupRepository.findById(groupId)
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_006));
+
+        // 複製エンティティ作成
+        PermissionGroupEntity.PermissionGroupEntityBuilder builder = PermissionGroupEntity.builder()
+                .name(original.getName() + " (コピー)")
+                .targetRole(original.getTargetRole())
+                .teamId(original.getTeamId())
+                .organizationId(original.getOrganizationId())
+                .createdBy(createdBy);
+        PermissionGroupEntity copy = builder.build();
+        permissionGroupRepository.save(copy);
+
+        // パーミッション紐付けを複製
+        List<Long> permissionIds = permissionGroupPermissionRepository.findByGroupId(groupId)
+                .stream()
+                .map(PermissionGroupPermissionEntity::getPermissionId)
+                .toList();
+        savePermissionGroupPermissions(copy.getId(), permissionIds);
+
+        log.info("権限グループ複製完了: originalId={}, newId={}", groupId, copy.getId());
+        return ApiResponse.of(toResponse(copy));
+    }
+
+    /**
      * 権限グループを論理削除する。
      */
     @Transactional

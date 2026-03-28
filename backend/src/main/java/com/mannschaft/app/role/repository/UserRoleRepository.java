@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -125,4 +126,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     List<Object[]> findUserIdAndEmailByScopeAndRole(@Param("scopeType") String scopeType,
                                                      @Param("scopeId") Long scopeId,
                                                      @Param("roleName") String roleName);
+
+    /**
+     * スコープ内で指定日時以降にログインしたアクティブメンバー数を取得する。
+     */
+    @Query(value = "SELECT COUNT(DISTINCT ur.user_id) FROM user_roles ur " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "AND u.last_login_at >= :since",
+            nativeQuery = true)
+    int countActiveMembers(@Param("scopeType") String scopeType,
+                           @Param("scopeId") Long scopeId,
+                           @Param("since") LocalDateTime since);
 }

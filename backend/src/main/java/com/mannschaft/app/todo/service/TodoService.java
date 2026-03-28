@@ -2,6 +2,7 @@ package com.mannschaft.app.todo.service;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.todo.TodoErrorCode;
 import com.mannschaft.app.todo.TodoPriority;
@@ -36,6 +37,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * TODOサービス。TODOのCRUD・ステータス管理・担当者割り当てを担当する。
@@ -53,6 +58,7 @@ public class TodoService {
     private final ProjectRepository projectRepository;
     private final ProjectMilestoneRepository milestoneRepository;
     private final ProjectService projectService;
+    private final NameResolverService nameResolverService;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -303,9 +309,11 @@ public class TodoService {
         eventPublisher.publishEvent(new TodoStatusChangedEvent(
                 todoId, todo.getProjectId(), oldStatus, newStatus, userId));
 
-        ProjectResponse.UserInfo completedByInfo = todo.getCompletedBy() != null
-                ? new ProjectResponse.UserInfo(todo.getCompletedBy(), "TODO:表示名取得")
-                : null;
+        ProjectResponse.UserInfo completedByInfo = null;
+        if (todo.getCompletedBy() != null) {
+            Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(Set.of(todo.getCompletedBy()));
+            completedByInfo = new ProjectResponse.UserInfo(todo.getCompletedBy(), nameMap.getOrDefault(todo.getCompletedBy(), ""));
+        }
 
         TodoStatusChangeResponse response = new TodoStatusChangeResponse(
                 todo.getId(), todo.getStatus().name(), todo.getCompletedAt(),
@@ -350,9 +358,11 @@ public class TodoService {
             eventPublisher.publishEvent(new TodoStatusChangedEvent(
                     todo.getId(), todo.getProjectId(), oldStatus, newStatus, userId));
 
-            ProjectResponse.UserInfo completedByInfo = todo.getCompletedBy() != null
-                    ? new ProjectResponse.UserInfo(todo.getCompletedBy(), "TODO:表示名取得")
-                    : null;
+            ProjectResponse.UserInfo completedByInfo = null;
+            if (todo.getCompletedBy() != null) {
+                Map<Long, String> nm = nameResolverService.resolveUserDisplayNames(Set.of(todo.getCompletedBy()));
+                completedByInfo = new ProjectResponse.UserInfo(todo.getCompletedBy(), nm.getOrDefault(todo.getCompletedBy(), ""));
+            }
 
             return new TodoStatusChangeResponse(
                     todo.getId(), todo.getStatus().name(), todo.getCompletedAt(),
@@ -441,12 +451,23 @@ public class TodoService {
      * エンティティをレスポンスDTOに変換する。
      */
     private TodoResponse toTodoResponse(TodoEntity entity) {
-        List<AssigneeResponse> assignees = assigneeRepository.findByTodoId(entity.getId()).stream()
-                .map(this::toAssigneeResponse)
+        List<TodoAssigneeEntity> assigneeEntities = assigneeRepository.findByTodoId(entity.getId());
+
+        // 関連ユーザーIDを一括収集して名前解決
+        Set<Long> userIds = Stream.concat(
+                Stream.of(entity.getCreatedBy(), entity.getCompletedBy()),
+                assigneeEntities.stream().map(TodoAssigneeEntity::getUserId)
+        ).filter(id -> id != null).collect(Collectors.toSet());
+        Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(userIds);
+
+        List<AssigneeResponse> assignees = assigneeEntities.stream()
+                .map(a -> new AssigneeResponse(
+                        a.getId(), a.getUserId(), nameMap.getOrDefault(a.getUserId(), ""),
+                        a.getAssignedBy(), a.getCreatedAt()))
                 .toList();
 
         ProjectResponse.UserInfo completedByInfo = entity.getCompletedBy() != null
-                ? new ProjectResponse.UserInfo(entity.getCompletedBy(), "TODO:表示名取得")
+                ? new ProjectResponse.UserInfo(entity.getCompletedBy(), nameMap.getOrDefault(entity.getCompletedBy(), ""))
                 : null;
 
         return new TodoResponse(
@@ -457,7 +478,7 @@ public class TodoService {
                 entity.getDueDate(), entity.getDueTime(),
                 calculateDaysRemaining(entity.getDueDate()),
                 entity.getCompletedAt(), completedByInfo,
-                new ProjectResponse.UserInfo(entity.getCreatedBy(), "TODO:表示名取得"),
+                new ProjectResponse.UserInfo(entity.getCreatedBy(), nameMap.getOrDefault(entity.getCreatedBy(), "")),
                 entity.getSortOrder(), assignees,
                 entity.getCreatedAt(), entity.getUpdatedAt());
     }
@@ -466,8 +487,9 @@ public class TodoService {
      * 担当者エンティティをレスポンスDTOに変換する。
      */
     private AssigneeResponse toAssigneeResponse(TodoAssigneeEntity entity) {
+        Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(Set.of(entity.getUserId()));
         return new AssigneeResponse(
-                entity.getId(), entity.getUserId(), "TODO:表示名取得",
+                entity.getId(), entity.getUserId(), nameMap.getOrDefault(entity.getUserId(), ""),
                 entity.getAssignedBy(), entity.getCreatedAt());
     }
 }

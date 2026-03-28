@@ -10,10 +10,13 @@ import com.mannschaft.app.moderation.ReportStatus;
 import com.mannschaft.app.moderation.repository.ContentReportRepository;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.auth.entity.UserEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 /**
  * システム管理者ダッシュボードサービス。
@@ -50,7 +53,8 @@ public class SystemAdminDashboardService {
                 totalOrganizations,
                 totalTeams,
                 totalUsers,
-                totalUsers,  // activeUsers: ログイン履歴未実装のため totalUsers と同値
+                userRepository.countByLastLoginAtAfterAndStatusAndDeletedAtIsNull(
+                        LocalDateTime.now().minusDays(30), UserEntity.UserStatus.ACTIVE),
                 pendingReports,
                 openFeedbacks,
                 activeMaintenances

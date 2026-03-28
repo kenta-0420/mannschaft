@@ -3,6 +3,7 @@ package com.mannschaft.app.todo.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.todo.TodoErrorCode;
 import com.mannschaft.app.todo.dto.CommentResponse;
@@ -20,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * TODOコメントサービス。コメントのCRUDを担当する。
@@ -33,6 +36,7 @@ public class TodoCommentService {
     private final TodoCommentRepository commentRepository;
     private final TodoRepository todoRepository;
     private final AccessControlService accessControlService;
+    private final NameResolverService nameResolverService;
 
     /**
      * コメント一覧を取得する。
@@ -141,9 +145,10 @@ public class TodoCommentService {
      * エンティティをレスポンスDTOに変換する。
      */
     private CommentResponse toCommentResponse(TodoCommentEntity entity) {
+        Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(Set.of(entity.getUserId()));
         return new CommentResponse(
                 entity.getId(), entity.getTodoId(),
-                new ProjectResponse.UserInfo(entity.getUserId(), "TODO:表示名取得"),
+                new ProjectResponse.UserInfo(entity.getUserId(), nameMap.getOrDefault(entity.getUserId(), "")),
                 entity.getBody(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
 }

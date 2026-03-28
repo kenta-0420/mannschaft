@@ -2,6 +2,8 @@ package com.mannschaft.app.payment.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.PaymentItemType;
 import com.mannschaft.app.payment.PaymentMethod;
@@ -51,6 +53,7 @@ public class MemberPaymentService {
     private final StripePaymentProvider stripePaymentProvider;
     private final PaymentMapper paymentMapper;
     private final NameResolverService nameResolverService;
+    private final NotificationHelper notificationHelper;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
@@ -293,11 +296,21 @@ public class MemberPaymentService {
         }
 
         // 未払いメンバーの取得と通知送信
-        // NOTE: 未払いメンバーIDリスト取得はMemberPaymentRepository連携後に拡張
-        // 現時点ではNotificationHelper基盤は準備済み、メンバーリスト取得のみ未実装
-        int notifiedCount = 0;
-        log.info("リマインド送信: paymentItemId={}, notifiedCount={}", paymentItemId, notifiedCount);
-        return new RemindResponse(notifiedCount, paymentItem.getName());
+        List<Long> unpaidUserIds = memberPaymentRepository.findUnpaidUserIdsByPaymentItemId(paymentItemId);
+        NotificationScopeType scopeType = paymentItem.getTeamId() != null
+                ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
+        Long scopeId = paymentItem.getTeamId() != null
+                ? paymentItem.getTeamId() : paymentItem.getOrganizationId();
+        for (Long userId : unpaidUserIds) {
+            notificationHelper.notify(
+                    userId, "PAYMENT_REMIND",
+                    "支払いリマインド", paymentItem.getName() + "の支払いが未完了です",
+                    "PAYMENT", paymentItemId,
+                    scopeType, scopeId,
+                    "/payments/" + paymentItemId, null);
+        }
+        log.info("リマインド送信: paymentItemId={}, notifiedCount={}", paymentItemId, unpaidUserIds.size());
+        return new RemindResponse(unpaidUserIds.size(), paymentItem.getName());
     }
 
     /**

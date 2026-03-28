@@ -95,9 +95,10 @@ public class AdminPermissionGroupController {
     @PostMapping("/{id}/duplicate")
     @Operation(summary = "権限グループ複製")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
-    public ResponseEntity<ApiResponse<String>> duplicatePermissionGroup(@PathVariable Long id) {
-        // NOTE: 複製機能はPermissionGroupServiceに未実装。将来追加予定
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of("権限グループ複製は未実装"));
+    public ResponseEntity<ApiResponse<PermissionGroupResponse>> duplicatePermissionGroup(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        ApiResponse<PermissionGroupResponse> response = permissionGroupService.duplicatePermissionGroup(id, userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**
