@@ -25,16 +25,16 @@ function isActive(path: string): boolean {
     <header class="bg-surface-0 border-b border-surface shadow-sm">
       <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4">
         <!-- 左: ロゴ + ナビゲーション -->
-        <div class="flex items-center gap-6">
+        <div class="flex min-w-0 flex-1 items-center gap-6">
           <NuxtLink to="/dashboard" class="text-xl font-bold text-primary">
             Mannschaft
           </NuxtLink>
-          <nav v-if="authStore.isAuthenticated" class="hidden items-center gap-1 md:flex">
+          <nav v-if="authStore.isAuthenticated" class="flex items-center gap-1 overflow-x-auto scrollbar-hide">
             <NuxtLink
               v-for="item in navItems"
               :key="item.to"
               :to="item.to"
-              class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-surface-100"
+              class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
               :class="isActive(item.to) ? 'bg-primary/10 text-primary' : 'text-surface-600'"
             >
               <i :class="item.icon" />
