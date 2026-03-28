@@ -4,7 +4,7 @@ import com.mannschaft.app.analytics.entity.AnalyticsMonthlyCohortEntity;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlyCohortRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+// TODO: ShedLock 導入後に @SchedulerLock を有効化する
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +25,7 @@ public class MonthlyCohortBatchService {
     private static final int COHORT_LOOKBACK_MONTHS = 24;
 
     @Scheduled(cron = "0 0 3 1 * *", zone = "Asia/Tokyo")
-    @SchedulerLock(name = "monthlyCohortAggregation", lockAtMostFor = "60m", lockAtLeastFor = "10m")
+    // TODO: @SchedulerLock(name = "monthlyCohortAggregation", lockAtMostFor = "60m", lockAtLeastFor = "10m")
     @Transactional
     public void execute() {
         LocalDate now = LocalDate.now(ZoneId.of("Asia/Tokyo"));

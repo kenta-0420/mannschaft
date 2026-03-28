@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,23 +53,24 @@ public class AnalyticsForecastService {
 
         // 直近6ヶ月のスナップショットを取得
         YearMonth now = YearMonth.now();
-        String toMonth = now.toString();
-        String fromMonth = now.minusMonths(5).toString();
+        LocalDate toDate = now.atEndOfMonth();
+        LocalDate fromDate = now.minusMonths(5).atDay(1);
 
         List<AnalyticsMonthlySnapshotEntity> snapshots = snapshotRepository
-                .findByMonthBetweenOrderByMonthAsc(fromMonth, toMonth);
+                .findByMonthBetweenOrderByMonthAsc(fromDate, toDate);
 
         int dataPoints = snapshots.size();
         log.debug("予測実行: months={}, dataPoints={}", months, dataPoints);
 
         if (dataPoints < MIN_DATA_POINTS_GROWTH) {
             // データ不足: 空の予測を返す
-            return ForecastResponse.builder()
-                    .months(months)
-                    .method("INSUFFICIENT_DATA")
-                    .dataPoints(dataPoints)
-                    .forecasts(List.of())
-                    .build();
+            // ForecastResponse fields: baseDate, currentMrr, currentUserCount, forecast, assumptions
+            var assumptions = new ForecastResponse.ForecastAssumptions(
+                    BigDecimal.ZERO, BigDecimal.ZERO, "INSUFFICIENT_DATA"
+            );
+            return new ForecastResponse(
+                    LocalDate.now(), BigDecimal.ZERO, 0, List.of(), assumptions
+            );
         }
 
         List<BigDecimal> mrrValues = snapshots.stream()
@@ -94,8 +96,10 @@ public class AnalyticsForecastService {
         double confidence = CONFIDENCE_Z * stdDev;
 
         int baseIndex = mrrValues.size();
-        YearMonth lastMonth = YearMonth.parse(snapshots.get(snapshots.size() - 1).getMonth());
+        AnalyticsMonthlySnapshotEntity lastSnapshot = snapshots.get(snapshots.size() - 1);
+        YearMonth lastMonth = YearMonth.from(lastSnapshot.getMonth());
 
+        // ForecastPoint fields: month, projectedMrr, projectedUsers, confidenceLow, confidenceHigh
         List<ForecastResponse.ForecastPoint> points = new ArrayList<>();
         for (int i = 1; i <= months; i++) {
             double predicted = intercept + slope * (baseIndex + i - 1);
@@ -106,23 +110,23 @@ public class AnalyticsForecastService {
             BigDecimal upper = BigDecimal.valueOf(predicted + confidence)
                     .setScale(2, RoundingMode.HALF_UP);
 
-            points.add(ForecastResponse.ForecastPoint.builder()
-                    .month(lastMonth.plusMonths(i).toString())
-                    .predicted(value)
-                    .lowerBound(lower.max(BigDecimal.ZERO))
-                    .upperBound(upper)
-                    .build());
+            points.add(new ForecastResponse.ForecastPoint(
+                    lastMonth.plusMonths(i).toString(),
+                    value, 0, lower.max(BigDecimal.ZERO), upper
+            ));
         }
 
         log.debug("線形回帰予測完了: slope={}, intercept={}, stdDev={}",
                 slope, intercept, stdDev);
 
-        return ForecastResponse.builder()
-                .months(months)
-                .method("LINEAR_REGRESSION")
-                .dataPoints(mrrValues.size())
-                .forecasts(points)
-                .build();
+        BigDecimal currentMrr = mrrValues.get(mrrValues.size() - 1);
+        var assumptions = new ForecastResponse.ForecastAssumptions(
+                null, null, "LINEAR_REGRESSION"
+        );
+        return new ForecastResponse(
+                lastSnapshot.getMonth(), currentMrr, lastSnapshot.getActiveUsers(),
+                points, assumptions
+        );
     }
 
     /**
@@ -133,7 +137,8 @@ public class AnalyticsForecastService {
         // 直近3ヶ月の平均成長率
         BigDecimal avgGrowthRate = calculateAverageGrowthRate(mrrValues);
         BigDecimal current = mrrValues.get(mrrValues.size() - 1);
-        YearMonth lastMonth = YearMonth.parse(snapshots.get(snapshots.size() - 1).getMonth());
+        AnalyticsMonthlySnapshotEntity lastSnapshot = snapshots.get(snapshots.size() - 1);
+        YearMonth lastMonth = YearMonth.from(lastSnapshot.getMonth());
 
         List<ForecastResponse.ForecastPoint> points = new ArrayList<>();
         BigDecimal projected = current;
@@ -145,22 +150,23 @@ public class AnalyticsForecastService {
             BigDecimal margin = projected.multiply(BigDecimal.valueOf(GROWTH_CONFIDENCE_PCT))
                     .setScale(2, RoundingMode.HALF_UP);
 
-            points.add(ForecastResponse.ForecastPoint.builder()
-                    .month(lastMonth.plusMonths(i).toString())
-                    .predicted(projected)
-                    .lowerBound(projected.subtract(margin).max(BigDecimal.ZERO))
-                    .upperBound(projected.add(margin))
-                    .build());
+            points.add(new ForecastResponse.ForecastPoint(
+                    lastMonth.plusMonths(i).toString(),
+                    projected, 0,
+                    projected.subtract(margin).max(BigDecimal.ZERO),
+                    projected.add(margin)
+            ));
         }
 
         log.debug("成長率ベース予測完了: avgGrowthRate={}", avgGrowthRate);
 
-        return ForecastResponse.builder()
-                .months(months)
-                .method("GROWTH_RATE")
-                .dataPoints(mrrValues.size())
-                .forecasts(points)
-                .build();
+        var assumptions = new ForecastResponse.ForecastAssumptions(
+                avgGrowthRate, null, "GROWTH_RATE"
+        );
+        return new ForecastResponse(
+                lastSnapshot.getMonth(), current, lastSnapshot.getActiveUsers(),
+                points, assumptions
+        );
     }
 
     /**
@@ -206,9 +212,9 @@ public class AnalyticsForecastService {
 
         double denominator = n * sumX2 - sumX * sumX;
         double slope = (n * sumXY - sumX * sumY) / denominator;
-        double intercept = (sumY - slope * sumX) / n;
+        double interceptVal = (sumY - slope * sumX) / n;
 
-        return new double[]{slope, intercept};
+        return new double[]{slope, interceptVal};
     }
 
     /**

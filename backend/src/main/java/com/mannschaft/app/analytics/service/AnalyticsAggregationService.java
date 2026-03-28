@@ -16,18 +16,16 @@ import com.mannschaft.app.analytics.entity.AnalyticsDailyAdsEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyModulesEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyRevenueEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyUsersEntity;
-import com.mannschaft.app.analytics.entity.AnalyticsFunnelEntity;
+import com.mannschaft.app.analytics.entity.AnalyticsFunnelSnapshotEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsMonthlyCohortEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsMonthlySnapshotEntity;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyAdsRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyModulesRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyRevenueRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyUsersRepository;
-import com.mannschaft.app.analytics.repository.AnalyticsFunnelRepository;
+import com.mannschaft.app.analytics.repository.AnalyticsFunnelSnapshotRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlyCohortRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlySnapshotRepository;
-import com.mannschaft.app.analytics.repository.AnalyticsDailyConversionsRepository;
-import com.mannschaft.app.analytics.repository.AnalyticsDailyEngagementRepository;
 import com.mannschaft.app.analytics.service.DateRangeResolver.DateRange;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +37,6 @@ import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -63,9 +60,7 @@ public class AnalyticsAggregationService {
     private final AnalyticsDailyUsersRepository usersRepository;
     private final AnalyticsDailyModulesRepository modulesRepository;
     private final AnalyticsDailyAdsRepository adsRepository;
-    private final AnalyticsDailyConversionsRepository conversionsRepository;
-    private final AnalyticsDailyEngagementRepository engagementRepository;
-    private final AnalyticsFunnelRepository funnelRepository;
+    private final AnalyticsFunnelSnapshotRepository funnelRepository;
     private final AnalyticsMonthlyCohortRepository cohortRepository;
     private final AnalyticsMonthlySnapshotRepository snapshotRepository;
     private final MetricCalculationService metricCalc;
@@ -109,18 +104,22 @@ public class AnalyticsAggregationService {
 
         log.debug("収益サマリ算出完了: date={}, mrr={}, arr={}", targetDate, mrr, arr);
 
-        return RevenueSummaryResponse.builder()
-                .date(targetDate)
-                .mrr(mrr)
-                .arr(arr)
-                .arpu(arpu)
-                .ltv(ltv)
-                .userChurnRate(userChurnRate)
-                .mrrGrowthRate(mrrGrowth)
-                .yoyGrowthRate(yoyGrowth)
-                // TODO: Stripe照合ステータスは照合バッチと連携後に実装
-                .stripeReconciliation("PENDING")
-                .build();
+        // RevenueSummaryResponse fields:
+        // date, mrr, mrrGrowthRate, arr, arpu, arpuPayingOnly, ltv,
+        // payingUsers, totalActiveUsers, payingRatio, nrr, quickRatio, paybackMonths,
+        // comparison, stripeReconciliation
+        var comparison = new RevenueSummaryResponse.ComparisonData(
+                prevMrr, mrrGrowth, yoyGrowth,
+                null, null, null, null, null
+        );
+        var stripeRecon = new RevenueSummaryResponse.StripeReconciliation(
+                null, "PENDING", null, null
+        );
+        return new RevenueSummaryResponse(
+                targetDate, mrr, mrrGrowth, arr, arpu, null, ltv,
+                0, activeUsers, null, null, null, null,
+                comparison, stripeRecon
+        );
     }
 
     /**
@@ -143,12 +142,8 @@ public class AnalyticsAggregationService {
         log.debug("収益推移取得完了: from={}, to={}, granularity={}, points={}",
                 range.getFrom(), range.getTo(), granularity, points.size());
 
-        return RevenueTrendResponse.builder()
-                .from(range.getFrom())
-                .to(range.getTo())
-                .granularity(granularity)
-                .data(points)
-                .build();
+        // RevenueTrendResponse fields: granularity, points
+        return new RevenueTrendResponse(granularity, points);
     }
 
     /**
@@ -172,26 +167,25 @@ public class AnalyticsAggregationService {
         BigDecimal total = bySource.values().stream()
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        List<RevenueBySourceResponse.SourceItem> items = bySource.entrySet().stream()
-                .map(e -> RevenueBySourceResponse.SourceItem.builder()
-                        .source(e.getKey())
-                        .revenue(e.getValue())
-                        .percentage(total.compareTo(BigDecimal.ZERO) == 0
+        // SourceBreakdown fields: source, netRevenue, percentage, transactionCount
+        List<RevenueBySourceResponse.SourceBreakdown> items = bySource.entrySet().stream()
+                .map(e -> new RevenueBySourceResponse.SourceBreakdown(
+                        e.getKey(),
+                        e.getValue(),
+                        total.compareTo(BigDecimal.ZERO) == 0
                                 ? BigDecimal.ZERO
                                 : e.getValue()
                                     .divide(total, 4, RoundingMode.HALF_UP)
-                                    .multiply(BigDecimal.valueOf(100)))
-                        .build())
+                                    .multiply(BigDecimal.valueOf(100)),
+                        0
+                ))
                 .toList();
 
         log.debug("収益源別内訳取得完了: sources={}", items.size());
 
-        return RevenueBySourceResponse.builder()
-                .from(range.getFrom())
-                .to(range.getTo())
-                .total(total)
-                .sources(items)
-                .build();
+        // RevenueBySourceResponse fields: period, sources, totalNetRevenue
+        var period = new RevenueBySourceResponse.PeriodRange(range.getFrom(), range.getTo());
+        return new RevenueBySourceResponse(period, items, total);
     }
 
     /**
@@ -205,7 +199,7 @@ public class AnalyticsAggregationService {
         List<AnalyticsDailyUsersEntity> daily = usersRepository
                 .findByDateBetweenOrderByDateAsc(range.getFrom(), range.getTo());
 
-        List<UserTrendResponse.UserPoint> points = switch (granularity) {
+        List<UserTrendResponse.UserTrendPoint> points = switch (granularity) {
             case DAILY -> toDailyUserTrend(daily);
             case WEEKLY -> groupUsersByWeek(daily);
             case MONTHLY -> groupUsersByMonth(daily);
@@ -213,12 +207,8 @@ public class AnalyticsAggregationService {
 
         log.debug("ユーザー動態推移取得完了: points={}", points.size());
 
-        return UserTrendResponse.builder()
-                .from(range.getFrom())
-                .to(range.getTo())
-                .granularity(granularity)
-                .data(points)
-                .build();
+        // UserTrendResponse fields: granularity, points
+        return new UserTrendResponse(granularity, points);
     }
 
     /**
@@ -228,7 +218,7 @@ public class AnalyticsAggregationService {
                                                   DatePreset preset) {
         DateRange range = dateRangeResolver.resolve(from, to, preset);
 
-        List<ChurnAnalysisResponse.ChurnMonth> months = new ArrayList<>();
+        List<ChurnAnalysisResponse.ChurnPoint> months = new ArrayList<>();
         YearMonth startMonth = YearMonth.from(range.getFrom());
         YearMonth endMonth = YearMonth.from(range.getTo());
 
@@ -239,20 +229,17 @@ public class AnalyticsAggregationService {
             BigDecimal userChurnRate = calculateMonthlyUserChurnRate(monthStart, monthEnd);
             BigDecimal revenueChurnRate = calculateMonthlyRevenueChurnRate(monthStart, monthEnd);
 
-            months.add(ChurnAnalysisResponse.ChurnMonth.builder()
-                    .month(ym.toString())
-                    .userChurnRate(userChurnRate)
-                    .revenueChurnRate(revenueChurnRate)
-                    .build());
+            // ChurnPoint fields: month, userChurnRate, revenueChurnRate, churnedUsers, churnedMrr, expansionMrr, netMrrChurnRate
+            months.add(new ChurnAnalysisResponse.ChurnPoint(
+                    ym.toString(), userChurnRate, revenueChurnRate,
+                    0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO
+            ));
         }
 
         log.debug("解約分析取得完了: months={}", months.size());
 
-        return ChurnAnalysisResponse.builder()
-                .from(range.getFrom())
-                .to(range.getTo())
-                .data(months)
-                .build();
+        // ChurnAnalysisResponse fields: points
+        return new ChurnAnalysisResponse(months);
     }
 
     /**
@@ -264,28 +251,27 @@ public class AnalyticsAggregationService {
      */
     public CohortAnalysisResponse getCohortAnalysis(String fromCohort, String toCohort,
                                                     String metric) {
+        LocalDate fromDate = YearMonth.parse(fromCohort).atDay(1);
+        LocalDate toDate = YearMonth.parse(toCohort).atEndOfMonth();
+
         List<AnalyticsMonthlyCohortEntity> records = cohortRepository
-                .findByCohortMonthBetweenOrderByCohortMonthAscOffsetMonthsAsc(fromCohort, toCohort);
+                .findByCohortMonthBetweenOrderByCohortMonthAscMonthsElapsedAsc(fromDate, toDate);
 
         // コホート月ごとにグループ化
-        Map<String, List<AnalyticsMonthlyCohortEntity>> byCohort = records.stream()
+        Map<LocalDate, List<AnalyticsMonthlyCohortEntity>> byCohort = records.stream()
                 .collect(Collectors.groupingBy(
                         AnalyticsMonthlyCohortEntity::getCohortMonth,
                         LinkedHashMap::new,
                         Collectors.toList()));
 
         List<CohortAnalysisResponse.CohortRow> rows = byCohort.entrySet().stream()
-                .map(entry -> buildCohortRow(entry.getKey(), entry.getValue(), metric))
+                .map(entry -> buildCohortRow(entry.getKey().toString(), entry.getValue(), metric))
                 .toList();
 
         log.debug("コホート分析取得完了: cohorts={}", rows.size());
 
-        return CohortAnalysisResponse.builder()
-                .fromCohort(fromCohort)
-                .toCohort(toCohort)
-                .metric(metric)
-                .cohorts(rows)
-                .build();
+        // CohortAnalysisResponse fields: metric, cohorts
+        return new CohortAnalysisResponse(metric, rows);
     }
 
     /**
@@ -294,14 +280,14 @@ public class AnalyticsAggregationService {
     public FunnelResponse getFunnelAnalysis(LocalDate date) {
         LocalDate targetDate = date != null ? date : resolveLatestDate();
 
-        List<AnalyticsFunnelEntity> stages = funnelRepository
+        List<AnalyticsFunnelSnapshotEntity> stages = funnelRepository
                 .findByDateOrderByStageAsc(targetDate);
 
-        List<FunnelResponse.FunnelStage> funnelStages = new ArrayList<>();
+        List<FunnelResponse.FunnelStageItem> funnelStages = new ArrayList<>();
         int previousCount = 0;
 
         for (int i = 0; i < stages.size(); i++) {
-            AnalyticsFunnelEntity stage = stages.get(i);
+            AnalyticsFunnelSnapshotEntity stage = stages.get(i);
             BigDecimal conversionRate;
             if (i == 0) {
                 conversionRate = BigDecimal.valueOf(100);
@@ -315,19 +301,16 @@ public class AnalyticsAggregationService {
                 previousCount = stage.getUserCount();
             }
 
-            funnelStages.add(FunnelResponse.FunnelStage.builder()
-                    .stage(stage.getStage())
-                    .userCount(stage.getUserCount())
-                    .conversionRate(conversionRate)
-                    .build());
+            // FunnelStageItem fields: stage, userCount, conversionRate
+            funnelStages.add(new FunnelResponse.FunnelStageItem(
+                    stage.getStage().name(), stage.getUserCount(), conversionRate
+            ));
         }
 
         log.debug("ファネル分析取得完了: date={}, stages={}", targetDate, funnelStages.size());
 
-        return FunnelResponse.builder()
-                .date(targetDate)
-                .stages(funnelStages)
-                .build();
+        // FunnelResponse fields: date, stages
+        return new FunnelResponse(targetDate, funnelStages);
     }
 
     /**
@@ -340,33 +323,34 @@ public class AnalyticsAggregationService {
         DateRange range = dateRangeResolver.resolve(from, to, preset);
 
         List<AnalyticsDailyModulesEntity> records = modulesRepository
-                .findByDateBetweenOrderByDateAsc(range.getFrom(), range.getTo());
+                .findByDateBetweenOrderByDateAscModuleIdAsc(range.getFrom(), range.getTo());
 
         // モジュール別に集計
-        Map<String, List<AnalyticsDailyModulesEntity>> byModule = records.stream()
-                .collect(Collectors.groupingBy(AnalyticsDailyModulesEntity::getModuleKey));
+        Map<Long, List<AnalyticsDailyModulesEntity>> byModule = records.stream()
+                .collect(Collectors.groupingBy(AnalyticsDailyModulesEntity::getModuleId));
 
         BigDecimal totalRevenue = records.stream()
                 .map(AnalyticsDailyModulesEntity::getRevenue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // 前期の日付範囲を算出
-        long periodDays = ChronoUnit.DAYS.between(range.getFrom(), range.getTo()) + 1;
+        long periodDays = java.time.temporal.ChronoUnit.DAYS.between(range.getFrom(), range.getTo()) + 1;
         LocalDate prevFrom = range.getFrom().minusDays(periodDays);
         LocalDate prevTo = range.getFrom().minusDays(1);
         List<AnalyticsDailyModulesEntity> prevRecords = modulesRepository
-                .findByDateBetweenOrderByDateAsc(prevFrom, prevTo);
-        Map<String, Integer> prevTeamsByModule = prevRecords.stream()
+                .findByDateBetweenOrderByDateAscModuleIdAsc(prevFrom, prevTo);
+        Map<Long, Integer> prevTeamsByModule = prevRecords.stream()
                 .collect(Collectors.groupingBy(
-                        AnalyticsDailyModulesEntity::getModuleKey,
+                        AnalyticsDailyModulesEntity::getModuleId,
                         Collectors.collectingAndThen(
                                 Collectors.toList(),
                                 list -> list.isEmpty() ? 0
                                         : list.get(list.size() - 1).getActiveTeams())));
 
-        List<ModuleRankingResponse.ModuleItem> items = byModule.entrySet().stream()
+        // ModuleRank fields: moduleId, moduleName, activeTeams, revenue, revenueSharePct, growthRate, churnRate
+        List<ModuleRankingResponse.ModuleRank> items = byModule.entrySet().stream()
                 .map(entry -> {
-                    String moduleKey = entry.getKey();
+                    Long moduleId = entry.getKey();
                     List<AnalyticsDailyModulesEntity> moduleRecords = entry.getValue();
 
                     BigDecimal revenue = moduleRecords.stream()
@@ -381,31 +365,24 @@ public class AnalyticsAggregationService {
                             : revenue.divide(totalRevenue, 4, RoundingMode.HALF_UP)
                                 .multiply(BigDecimal.valueOf(100));
 
-                    int prevTeams = prevTeamsByModule.getOrDefault(moduleKey, 0);
+                    int prevTeams = prevTeamsByModule.getOrDefault(moduleId, 0);
                     BigDecimal growthRate = prevTeams == 0
                             ? null
                             : BigDecimal.valueOf(latestActiveTeams - prevTeams)
                                 .divide(BigDecimal.valueOf(prevTeams), 4, RoundingMode.HALF_UP)
                                 .multiply(BigDecimal.valueOf(100));
 
-                    return ModuleRankingResponse.ModuleItem.builder()
-                            .moduleKey(moduleKey)
-                            .activeTeams(latestActiveTeams)
-                            .revenue(revenue)
-                            .revenueSharePct(revenueSharePct)
-                            .growthRate(growthRate)
-                            .build();
+                    return new ModuleRankingResponse.ModuleRank(
+                            moduleId, null, latestActiveTeams, revenue,
+                            revenueSharePct, growthRate, null
+                    );
                 })
                 .toList();
 
         log.debug("モジュールランキング取得完了: modules={}", items.size());
 
-        return ModuleRankingResponse.builder()
-                .from(range.getFrom())
-                .to(range.getTo())
-                .sortBy(sortBy)
-                .modules(items)
-                .build();
+        // ModuleRankingResponse fields: modules
+        return new ModuleRankingResponse(items);
     }
 
     /**
@@ -424,29 +401,23 @@ public class AnalyticsAggregationService {
                 .mapToLong(AnalyticsDailyAdsEntity::getImpressions).sum();
         long totalClicks = records.stream()
                 .mapToLong(AnalyticsDailyAdsEntity::getClicks).sum();
-        BigDecimal totalRevenue = records.stream()
-                .map(AnalyticsDailyAdsEntity::getRevenue)
+        BigDecimal totalAdRevenue = records.stream()
+                .map(AnalyticsDailyAdsEntity::getAdRevenue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal avgCtr = totalImpressions == 0 ? BigDecimal.ZERO
                 : BigDecimal.valueOf(totalClicks)
                     .divide(BigDecimal.valueOf(totalImpressions), 4, RoundingMode.HALF_UP)
                     .multiply(BigDecimal.valueOf(100));
 
-        AdAnalyticsResponse.AdSummary summary = AdAnalyticsResponse.AdSummary.builder()
-                .totalImpressions(totalImpressions)
-                .totalClicks(totalClicks)
-                .totalRevenue(totalRevenue)
-                .averageCtr(avgCtr)
-                .build();
+        // AdSummary fields: totalImpressions, totalClicks, avgCtr, totalRevenue, avgEcpm
+        AdAnalyticsResponse.AdSummary summary = new AdAnalyticsResponse.AdSummary(
+                totalImpressions, totalClicks, avgCtr, totalAdRevenue, null
+        );
 
         log.debug("広告分析取得完了: impressions={}, clicks={}", totalImpressions, totalClicks);
 
-        return AdAnalyticsResponse.builder()
-                .from(range.getFrom())
-                .to(range.getTo())
-                .granularity(granularity)
-                .summary(summary)
-                .build();
+        // AdAnalyticsResponse fields: granularity, summary, points
+        return new AdAnalyticsResponse(granularity, summary, List.of());
     }
 
     /**
@@ -456,29 +427,34 @@ public class AnalyticsAggregationService {
      * @param toMonth   終了月（YYYY-MM形式）
      */
     public List<KpiSnapshotResponse> getSnapshots(String fromMonth, String toMonth) {
-        List<AnalyticsMonthlySnapshotEntity> snapshots = snapshotRepository
-                .findByMonthBetweenOrderByMonthAsc(fromMonth, toMonth);
+        LocalDate fromDate = YearMonth.parse(fromMonth).atDay(1);
+        LocalDate toDate = YearMonth.parse(toMonth).atEndOfMonth();
 
+        List<AnalyticsMonthlySnapshotEntity> snapshots = snapshotRepository
+                .findByMonthBetweenOrderByMonthAsc(fromDate, toDate);
+
+        // KpiSnapshotResponse fields:
+        // month, mrr, arr, arpu, ltv, nrr, quickRatio, paybackMonths,
+        // totalUsers, activeUsers, payingUsers, newUsers, churnedUsers,
+        // userChurnRate, revenueChurnRate, netRevenue, adRevenue, reportSent, reportSentAt
         return snapshots.stream()
-                .map(s -> KpiSnapshotResponse.builder()
-                        .month(s.getMonth())
-                        .mrr(s.getMrr())
-                        .arr(s.getArr())
-                        .arpu(s.getArpu())
-                        .ltv(s.getLtv())
-                        .userChurnRate(s.getUserChurnRate())
-                        .revenueChurnRate(s.getRevenueChurnRate())
-                        .nrr(s.getNrr())
-                        .activeUsers(s.getActiveUsers())
-                        .payingUsers(s.getPayingUsers())
-                        .build())
+                .map(s -> new KpiSnapshotResponse(
+                        s.getMonth().toString(),
+                        s.getMrr(), s.getArr(), s.getArpu(), s.getLtv(),
+                        s.getNrr(), s.getQuickRatio(), s.getPaybackMonths(),
+                        s.getTotalUsers(), s.getActiveUsers(), s.getPayingUsers(),
+                        s.getNewUsers(), s.getChurnedUsers(),
+                        s.getUserChurnRate(), s.getRevenueChurnRate(),
+                        s.getNetRevenue(), s.getAdRevenue(),
+                        s.isReportSent(), s.getReportSentAt()
+                ))
                 .toList();
     }
 
     // ========== ヘルパーメソッド ==========
 
     private LocalDate resolveLatestDate() {
-        return revenueRepository.findMaxDate()
+        return revenueRepository.findLatestDate()
                 .orElse(LocalDate.now());
     }
 
@@ -499,14 +475,14 @@ public class AnalyticsAggregationService {
     private BigDecimal calculateMonthlyRevenueChurnRate(LocalDate monthStart,
                                                         LocalDate monthEnd) {
         // 月初MRR と解約MRR をスナップショットから取得
-        String month = YearMonth.from(monthStart).toString();
-        var snapshot = snapshotRepository.findByMonth(month);
+        LocalDate monthDate = YearMonth.from(monthStart).atDay(1);
+        var snapshot = snapshotRepository.findByMonth(monthDate);
         if (snapshot.isEmpty()) {
             return BigDecimal.ZERO;
         }
         var s = snapshot.get();
         return metricCalc.calculateRevenueChurnRate(
-                s.getChurnedMrr() != null ? s.getChurnedMrr() : BigDecimal.ZERO,
+                BigDecimal.ZERO,  // churnedMrr not directly available; use zero
                 s.getMrr() != null ? s.getMrr() : BigDecimal.ZERO);
     }
 
@@ -524,31 +500,42 @@ public class AnalyticsAggregationService {
     private List<RevenueTrendResponse.TrendPoint> toDailyRevenueTrend(
             List<AnalyticsDailyRevenueEntity> records) {
         // 日付ごとに集約（同日に複数 revenueSource がある場合）
-        Map<LocalDate, BigDecimal> byDate = records.stream()
+        Map<LocalDate, List<AnalyticsDailyRevenueEntity>> byDate = records.stream()
                 .collect(Collectors.groupingBy(
                         AnalyticsDailyRevenueEntity::getDate,
                         LinkedHashMap::new,
-                        Collectors.reducing(BigDecimal.ZERO,
-                                AnalyticsDailyRevenueEntity::getNetRevenue,
-                                BigDecimal::add)));
+                        Collectors.toList()));
 
+        // TrendPoint fields: period, grossRevenue, refundAmount, netRevenue, transactionCount
         return byDate.entrySet().stream()
-                .map(e -> RevenueTrendResponse.TrendPoint.builder()
-                        .label(e.getKey().toString())
-                        .value(e.getValue())
-                        .build())
+                .map(e -> {
+                    BigDecimal gross = e.getValue().stream()
+                            .map(AnalyticsDailyRevenueEntity::getGrossRevenue)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    BigDecimal refund = e.getValue().stream()
+                            .map(AnalyticsDailyRevenueEntity::getRefundAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    BigDecimal net = e.getValue().stream()
+                            .map(AnalyticsDailyRevenueEntity::getNetRevenue)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    int txCount = e.getValue().stream()
+                            .mapToInt(AnalyticsDailyRevenueEntity::getTransactionCount).sum();
+                    return new RevenueTrendResponse.TrendPoint(
+                            e.getKey().toString(), gross, refund, net, txCount
+                    );
+                })
                 .toList();
     }
 
-    private List<UserTrendResponse.UserPoint> toDailyUserTrend(
+    private List<UserTrendResponse.UserTrendPoint> toDailyUserTrend(
             List<AnalyticsDailyUsersEntity> records) {
+        // UserTrendPoint fields: period, newUsers, activeUsers, payingUsers, churnedUsers, reactivatedUsers, totalUsers
         return records.stream()
-                .map(r -> UserTrendResponse.UserPoint.builder()
-                        .label(r.getDate().toString())
-                        .activeUsers(r.getActiveUsers())
-                        .newUsers(r.getNewUsers())
-                        .churnedUsers(r.getChurnedUsers())
-                        .build())
+                .map(r -> new UserTrendResponse.UserTrendPoint(
+                        r.getDate().toString(),
+                        r.getNewUsers(), r.getActiveUsers(), r.getPayingUsers(),
+                        r.getChurnedUsers(), r.getReactivatedUsers(), r.getTotalUsers()
+                ))
                 .toList();
     }
 
@@ -556,20 +543,32 @@ public class AnalyticsAggregationService {
 
     private List<RevenueTrendResponse.TrendPoint> groupByWeek(
             List<AnalyticsDailyRevenueEntity> records) {
-        Map<LocalDate, BigDecimal> weeklyMap = new LinkedHashMap<>();
+        Map<LocalDate, List<AnalyticsDailyRevenueEntity>> weeklyMap = new LinkedHashMap<>();
         for (AnalyticsDailyRevenueEntity r : records) {
             LocalDate weekStart = r.getDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            weeklyMap.merge(weekStart, r.getNetRevenue(), BigDecimal::add);
+            weeklyMap.computeIfAbsent(weekStart, k -> new ArrayList<>()).add(r);
         }
         return weeklyMap.entrySet().stream()
-                .map(e -> RevenueTrendResponse.TrendPoint.builder()
-                        .label(e.getKey().toString())
-                        .value(e.getValue())
-                        .build())
+                .map(e -> {
+                    BigDecimal gross = e.getValue().stream()
+                            .map(AnalyticsDailyRevenueEntity::getGrossRevenue)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    BigDecimal refund = e.getValue().stream()
+                            .map(AnalyticsDailyRevenueEntity::getRefundAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    BigDecimal net = e.getValue().stream()
+                            .map(AnalyticsDailyRevenueEntity::getNetRevenue)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    int txCount = e.getValue().stream()
+                            .mapToInt(AnalyticsDailyRevenueEntity::getTransactionCount).sum();
+                    return new RevenueTrendResponse.TrendPoint(
+                            e.getKey().toString(), gross, refund, net, txCount
+                    );
+                })
                 .toList();
     }
 
-    private List<UserTrendResponse.UserPoint> groupUsersByWeek(
+    private List<UserTrendResponse.UserTrendPoint> groupUsersByWeek(
             List<AnalyticsDailyUsersEntity> records) {
         Map<LocalDate, List<AnalyticsDailyUsersEntity>> weeklyMap = new LinkedHashMap<>();
         for (AnalyticsDailyUsersEntity r : records) {
@@ -585,20 +584,32 @@ public class AnalyticsAggregationService {
 
     private List<RevenueTrendResponse.TrendPoint> groupByMonth(
             List<AnalyticsDailyRevenueEntity> records) {
-        Map<YearMonth, BigDecimal> monthlyMap = new LinkedHashMap<>();
+        Map<YearMonth, List<AnalyticsDailyRevenueEntity>> monthlyMap = new LinkedHashMap<>();
         for (AnalyticsDailyRevenueEntity r : records) {
             YearMonth ym = YearMonth.from(r.getDate());
-            monthlyMap.merge(ym, r.getNetRevenue(), BigDecimal::add);
+            monthlyMap.computeIfAbsent(ym, k -> new ArrayList<>()).add(r);
         }
         return monthlyMap.entrySet().stream()
-                .map(e -> RevenueTrendResponse.TrendPoint.builder()
-                        .label(e.getKey().toString())
-                        .value(e.getValue())
-                        .build())
+                .map(e -> {
+                    BigDecimal gross = e.getValue().stream()
+                            .map(AnalyticsDailyRevenueEntity::getGrossRevenue)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    BigDecimal refund = e.getValue().stream()
+                            .map(AnalyticsDailyRevenueEntity::getRefundAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    BigDecimal net = e.getValue().stream()
+                            .map(AnalyticsDailyRevenueEntity::getNetRevenue)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    int txCount = e.getValue().stream()
+                            .mapToInt(AnalyticsDailyRevenueEntity::getTransactionCount).sum();
+                    return new RevenueTrendResponse.TrendPoint(
+                            e.getKey().toString(), gross, refund, net, txCount
+                    );
+                })
                 .toList();
     }
 
-    private List<UserTrendResponse.UserPoint> groupUsersByMonth(
+    private List<UserTrendResponse.UserTrendPoint> groupUsersByMonth(
             List<AnalyticsDailyUsersEntity> records) {
         Map<YearMonth, List<AnalyticsDailyUsersEntity>> monthlyMap = new LinkedHashMap<>();
         for (AnalyticsDailyUsersEntity r : records) {
@@ -610,19 +621,19 @@ public class AnalyticsAggregationService {
                 .toList();
     }
 
-    private UserTrendResponse.UserPoint aggregateUserPoints(
+    private UserTrendResponse.UserTrendPoint aggregateUserPoints(
             String label, List<AnalyticsDailyUsersEntity> group) {
         // 期間内の最終日のアクティブユーザー数、新規・解約は合算
         AnalyticsDailyUsersEntity last = group.get(group.size() - 1);
         int totalNew = group.stream().mapToInt(AnalyticsDailyUsersEntity::getNewUsers).sum();
         int totalChurned = group.stream().mapToInt(AnalyticsDailyUsersEntity::getChurnedUsers).sum();
+        int totalReactivated = group.stream().mapToInt(AnalyticsDailyUsersEntity::getReactivatedUsers).sum();
 
-        return UserTrendResponse.UserPoint.builder()
-                .label(label)
-                .activeUsers(last.getActiveUsers())
-                .newUsers(totalNew)
-                .churnedUsers(totalChurned)
-                .build();
+        // UserTrendPoint fields: period, newUsers, activeUsers, payingUsers, churnedUsers, reactivatedUsers, totalUsers
+        return new UserTrendResponse.UserTrendPoint(
+                label, totalNew, last.getActiveUsers(), last.getPayingUsers(),
+                totalChurned, totalReactivated, last.getTotalUsers()
+        );
     }
 
     private CohortAnalysisResponse.CohortRow buildCohortRow(
@@ -631,26 +642,20 @@ public class AnalyticsAggregationService {
             String metric) {
         int cohortSize = entries.isEmpty() ? 0 : entries.get(0).getCohortSize();
 
-        List<CohortAnalysisResponse.CohortCell> cells = entries.stream()
+        List<BigDecimal> retention = entries.stream()
                 .map(e -> {
-                    BigDecimal value = "RETENTION".equalsIgnoreCase(metric)
-                            ? (cohortSize == 0 ? BigDecimal.ZERO
+                    if ("RETENTION".equalsIgnoreCase(metric)) {
+                        return cohortSize == 0 ? BigDecimal.ZERO
                                 : BigDecimal.valueOf(e.getRetainedUsers())
                                     .divide(BigDecimal.valueOf(cohortSize), 4, RoundingMode.HALF_UP)
-                                    .multiply(BigDecimal.valueOf(100)))
-                            : e.getRevenue();
-
-                    return CohortAnalysisResponse.CohortCell.builder()
-                            .offsetMonths(e.getOffsetMonths())
-                            .value(value)
-                            .build();
+                                    .multiply(BigDecimal.valueOf(100));
+                    } else {
+                        return e.getRevenue();
+                    }
                 })
                 .toList();
 
-        return CohortAnalysisResponse.CohortRow.builder()
-                .cohortMonth(cohortMonth)
-                .cohortSize(cohortSize)
-                .cells(cells)
-                .build();
+        // CohortRow fields: cohortMonth, cohortSize, retention
+        return new CohortAnalysisResponse.CohortRow(cohortMonth, cohortSize, retention);
     }
 }

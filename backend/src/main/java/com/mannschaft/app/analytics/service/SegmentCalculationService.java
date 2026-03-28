@@ -60,32 +60,27 @@ public class SegmentCalculationService {
             case REGION -> analyzeByRegion(range);
         };
 
-        // 合計を算出してシェア率を計算
+        // 合計を算出してシェア率を計算 — but SegmentItem is immutable, so we rebuild with proper values
         BigDecimal totalRevenue = items.stream()
                 .map(SegmentAnalysisResponse.SegmentItem::getRevenue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // SegmentItem fields: segment, orgCount, teamCount, userCount, revenue, arpu, churnRate
         List<SegmentAnalysisResponse.SegmentItem> enriched = items.stream()
-                .map(item -> SegmentAnalysisResponse.SegmentItem.builder()
-                        .segment(item.getSegment())
-                        .revenue(item.getRevenue())
-                        .userCount(item.getUserCount())
-                        .share(totalRevenue.compareTo(BigDecimal.ZERO) == 0
-                                ? BigDecimal.ZERO
-                                : item.getRevenue()
-                                    .divide(totalRevenue, 4, RoundingMode.HALF_UP)
-                                    .multiply(BigDecimal.valueOf(100)))
-                        .build())
+                .map(item -> {
+                    BigDecimal arpu = item.getUserCount() == 0 ? BigDecimal.ZERO
+                            : item.getRevenue().divide(BigDecimal.valueOf(item.getUserCount()), 4, RoundingMode.HALF_UP);
+                    return new SegmentAnalysisResponse.SegmentItem(
+                            item.getSegment(), item.getOrgCount(), item.getTeamCount(),
+                            item.getUserCount(), item.getRevenue(), arpu, null
+                    );
+                })
                 .toList();
 
         log.debug("セグメント分析完了: segmentBy={}, items={}", segmentBy, enriched.size());
 
-        return SegmentAnalysisResponse.builder()
-                .from(range.getFrom())
-                .to(range.getTo())
-                .segmentBy(segmentBy)
-                .segments(enriched)
-                .build();
+        // SegmentAnalysisResponse fields: segmentBy, segments
+        return new SegmentAnalysisResponse(segmentBy.name(), enriched);
     }
 
     /**
@@ -199,12 +194,10 @@ public class SegmentCalculationService {
             int userCount = row[2] instanceof Number num
                     ? num.intValue() : Integer.parseInt(row[2].toString());
 
-            items.add(SegmentAnalysisResponse.SegmentItem.builder()
-                    .segment(segment)
-                    .revenue(revenue)
-                    .userCount(userCount)
-                    .share(BigDecimal.ZERO) // 後で上位メソッドで計算
-                    .build());
+            // SegmentItem fields: segment, orgCount, teamCount, userCount, revenue, arpu, churnRate
+            items.add(new SegmentAnalysisResponse.SegmentItem(
+                    segment, 0, 0, userCount, revenue, BigDecimal.ZERO, null
+            ));
         }
 
         return items;

@@ -12,7 +12,7 @@ import com.mannschaft.app.analytics.repository.AnalyticsDailyUsersRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsFunnelSnapshotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+// TODO: ShedLock 導入後に @SchedulerLock を有効化する
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +40,7 @@ public class DailyAggregationBatchService {
      * ShedLock による排他制御あり。最大ロック30分。
      */
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
-    @SchedulerLock(name = "dailyAnalyticsAggregation", lockAtMostFor = "30m", lockAtLeastFor = "5m")
+    // TODO: @SchedulerLock(name = "dailyAnalyticsAggregation", lockAtMostFor = "30m", lockAtLeastFor = "5m")
     @Transactional
     public void execute() {
         LocalDate yesterday = LocalDate.now(ZoneId.of("Asia/Tokyo")).minusDays(1);

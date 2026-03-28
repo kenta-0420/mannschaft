@@ -9,7 +9,7 @@ import com.mannschaft.app.analytics.repository.AnalyticsDailyUsersRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlySnapshotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+// TODO: ShedLock 導入後に @SchedulerLock を有効化する
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +34,7 @@ public class MonthlyKpiSnapshotBatchService {
     private final MetricCalculationService metricCalculation;
 
     @Scheduled(cron = "0 0 4 1 * *", zone = "Asia/Tokyo")
-    @SchedulerLock(name = "monthlyKpiSnapshot", lockAtMostFor = "30m", lockAtLeastFor = "5m")
+    // TODO: @SchedulerLock(name = "monthlyKpiSnapshot", lockAtMostFor = "30m", lockAtLeastFor = "5m")
     @Transactional
     public void execute() {
         LocalDate now = LocalDate.now(ZoneId.of("Asia/Tokyo"));

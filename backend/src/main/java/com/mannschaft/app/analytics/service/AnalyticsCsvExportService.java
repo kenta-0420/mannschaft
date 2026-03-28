@@ -6,13 +6,13 @@ import com.mannschaft.app.analytics.entity.AnalyticsDailyAdsEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyModulesEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyRevenueEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyUsersEntity;
-import com.mannschaft.app.analytics.entity.AnalyticsFunnelEntity;
+import com.mannschaft.app.analytics.entity.AnalyticsFunnelSnapshotEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsMonthlyCohortEntity;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyAdsRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyModulesRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyRevenueRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyUsersRepository;
-import com.mannschaft.app.analytics.repository.AnalyticsFunnelRepository;
+import com.mannschaft.app.analytics.repository.AnalyticsFunnelSnapshotRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlyCohortRepository;
 import com.mannschaft.app.analytics.service.DateRangeResolver.DateRange;
 import com.mannschaft.app.common.BusinessException;
@@ -44,7 +44,7 @@ public class AnalyticsCsvExportService {
     private final AnalyticsDailyUsersRepository usersRepository;
     private final AnalyticsDailyModulesRepository modulesRepository;
     private final AnalyticsDailyAdsRepository adsRepository;
-    private final AnalyticsFunnelRepository funnelRepository;
+    private final AnalyticsFunnelSnapshotRepository funnelRepository;
     private final AnalyticsMonthlyCohortRepository cohortRepository;
     private final DateRangeResolver dateRangeResolver;
 
@@ -94,7 +94,7 @@ public class AnalyticsCsvExportService {
             sb.append(r.getDate()).append(COL_SEP)
               .append(r.getRevenueSource()).append(COL_SEP)
               .append(r.getGrossRevenue()).append(COL_SEP)
-              .append(r.getRefunds()).append(COL_SEP)
+              .append(r.getRefundAmount()).append(COL_SEP)
               .append(r.getNetRevenue()).append(COL_SEP)
               .append(r.getTransactionCount())
               .append(LINE_SEP);
@@ -117,7 +117,8 @@ public class AnalyticsCsvExportService {
           .append("new_users").append(COL_SEP)
           .append("churned_users").append(COL_SEP)
           .append("paying_users").append(COL_SEP)
-          .append("free_users")
+          .append("reactivated_users").append(COL_SEP)
+          .append("total_users")
           .append(LINE_SEP);
 
         for (AnalyticsDailyUsersEntity r : records) {
@@ -126,7 +127,8 @@ public class AnalyticsCsvExportService {
               .append(r.getNewUsers()).append(COL_SEP)
               .append(r.getChurnedUsers()).append(COL_SEP)
               .append(r.getPayingUsers()).append(COL_SEP)
-              .append(r.getFreeUsers())
+              .append(r.getReactivatedUsers()).append(COL_SEP)
+              .append(r.getTotalUsers())
               .append(LINE_SEP);
         }
 
@@ -139,7 +141,7 @@ public class AnalyticsCsvExportService {
      */
     private String exportModules(DateRange range) {
         List<AnalyticsDailyModulesEntity> records = modulesRepository
-                .findByDateBetweenOrderByDateAsc(range.getFrom(), range.getTo());
+                .findByDateBetweenOrderByDateAscModuleIdAsc(range.getFrom(), range.getTo());
 
         StringBuilder sb = new StringBuilder();
         sb.append("date").append(COL_SEP)
@@ -150,7 +152,7 @@ public class AnalyticsCsvExportService {
 
         for (AnalyticsDailyModulesEntity r : records) {
             sb.append(r.getDate()).append(COL_SEP)
-              .append(escapeCsv(r.getModuleKey())).append(COL_SEP)
+              .append(r.getModuleId()).append(COL_SEP)
               .append(r.getActiveTeams()).append(COL_SEP)
               .append(r.getRevenue())
               .append(LINE_SEP);
@@ -168,7 +170,8 @@ public class AnalyticsCsvExportService {
         String toCohort = YearMonth.from(range.getTo()).toString();
 
         List<AnalyticsMonthlyCohortEntity> records = cohortRepository
-                .findByCohortMonthBetweenOrderByCohortMonthAscOffsetMonthsAsc(fromCohort, toCohort);
+                .findByCohortMonthBetweenOrderByCohortMonthAscMonthsElapsedAsc(
+                        YearMonth.parse(fromCohort).atDay(1), YearMonth.parse(toCohort).atEndOfMonth());
 
         StringBuilder sb = new StringBuilder();
         sb.append("cohort_month").append(COL_SEP)
@@ -181,7 +184,7 @@ public class AnalyticsCsvExportService {
         for (AnalyticsMonthlyCohortEntity r : records) {
             sb.append(r.getCohortMonth()).append(COL_SEP)
               .append(r.getCohortSize()).append(COL_SEP)
-              .append(r.getOffsetMonths()).append(COL_SEP)
+              .append(r.getMonthsElapsed()).append(COL_SEP)
               .append(r.getRetainedUsers()).append(COL_SEP)
               .append(r.getRevenue())
               .append(LINE_SEP);
@@ -204,11 +207,11 @@ public class AnalyticsCsvExportService {
 
         LocalDate current = range.getFrom();
         while (!current.isAfter(range.getTo())) {
-            List<AnalyticsFunnelEntity> stages = funnelRepository
+            List<AnalyticsFunnelSnapshotEntity> stages = funnelRepository
                     .findByDateOrderByStageAsc(current);
-            for (AnalyticsFunnelEntity stage : stages) {
+            for (AnalyticsFunnelSnapshotEntity stage : stages) {
                 sb.append(current).append(COL_SEP)
-                  .append(escapeCsv(stage.getStage())).append(COL_SEP)
+                  .append(escapeCsv(stage.getStage().name())).append(COL_SEP)
                   .append(stage.getUserCount())
                   .append(LINE_SEP);
             }
@@ -238,8 +241,8 @@ public class AnalyticsCsvExportService {
             sb.append(r.getDate()).append(COL_SEP)
               .append(r.getImpressions()).append(COL_SEP)
               .append(r.getClicks()).append(COL_SEP)
-              .append(r.getRevenue()).append(COL_SEP)
-              .append(r.getFillRate())
+              .append(r.getAdRevenue()).append(COL_SEP)
+              .append(r.getEcpm())
               .append(LINE_SEP);
         }
 
