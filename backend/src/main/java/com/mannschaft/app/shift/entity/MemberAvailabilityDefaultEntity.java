@@ -32,7 +32,7 @@ public class MemberAvailabilityDefaultEntity extends BaseEntity {
     @Column(nullable = false)
     private Long teamId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer dayOfWeek;
 
     @Column(nullable = false)

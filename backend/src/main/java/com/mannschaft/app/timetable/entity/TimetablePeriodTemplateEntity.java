@@ -26,7 +26,7 @@ public class TimetablePeriodTemplateEntity extends BaseEntity {
     @Column(nullable = false)
     private Long organizationId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer periodNumber;
 
     @Column(nullable = false, length = 50)

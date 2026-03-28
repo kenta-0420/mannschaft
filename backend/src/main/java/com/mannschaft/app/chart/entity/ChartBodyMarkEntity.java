@@ -38,7 +38,7 @@ public class ChartBodyMarkEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String markType;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer severity;
 
     @Column(length = 300)

@@ -27,19 +27,19 @@ public class TournamentDivisionEntity extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private Integer level = 1;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private Integer promotionSlots = 0;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private Integer relegationSlots = 0;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private Integer playoffPromotionSlots = 0;
 

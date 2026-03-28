@@ -45,7 +45,7 @@ public class AdConversionEntity extends BaseEntity {
     @Column(nullable = false)
     private LocalDateTime convertedAt;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private int attributionWindowDays = 7;
 }

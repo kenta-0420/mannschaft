@@ -39,6 +39,6 @@ public class TimetableTermEntity extends BaseEntity {
     @Column(nullable = false)
     private LocalDate endDate;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer sortOrder;
 }

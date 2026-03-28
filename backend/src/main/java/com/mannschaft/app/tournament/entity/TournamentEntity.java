@@ -57,15 +57,15 @@ public class TournamentEntity extends BaseEntity {
 
     private LocalDate endDate;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private Integer winPoints = 3;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private Integer drawPoints = 1;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private Integer lossPoints = 0;
 
@@ -77,6 +77,7 @@ public class TournamentEntity extends BaseEntity {
     @Builder.Default
     private Boolean hasSets = false;
 
+    @Column(columnDefinition = "TINYINT UNSIGNED")
     private Integer setsToWin;
 
     @Column(nullable = false)
@@ -99,7 +100,7 @@ public class TournamentEntity extends BaseEntity {
     @Builder.Default
     private LeagueRoundType leagueRoundType = LeagueRoundType.SINGLE;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private Integer knockoutLegs = 1;
 

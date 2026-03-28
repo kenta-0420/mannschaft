@@ -30,7 +30,7 @@ public class TournamentMatchSetEntity {
     @Column(nullable = false)
     private Long matchId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer setNumber;
 
     @Column(nullable = false)

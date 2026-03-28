@@ -32,7 +32,7 @@ public class PhotoUploadEventListener {
 
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handlePhotoUpload(PhotoUploadEvent event) {
         log.info("サムネイル自動生成開始: photoIds={}", event.photoIds());
 

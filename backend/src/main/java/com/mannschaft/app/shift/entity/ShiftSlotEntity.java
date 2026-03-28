@@ -39,7 +39,7 @@ public class ShiftSlotEntity extends BaseEntity {
 
     private Long positionId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private Integer requiredCount = 1;
 

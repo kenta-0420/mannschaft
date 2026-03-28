@@ -34,7 +34,7 @@ public class SystemTournamentPresetTiebreakerEntity {
     @Column(nullable = false)
     private Long presetId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer priority;
 
     @Enumerated(EnumType.STRING)

@@ -27,7 +27,7 @@ public class AnalyticsMonthlyCohortEntity extends BaseEntity {
     @Column(nullable = false)
     private LocalDate cohortMonth;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private int monthsElapsed;
 
     @Builder.Default

@@ -43,8 +43,10 @@ public class ParkingVisitorRecurringEntity extends BaseEntity {
     @Column(nullable = false)
     private RecurrenceType recurrenceType;
 
+    @Column(columnDefinition = "TINYINT UNSIGNED")
     private Integer dayOfWeek;
 
+    @Column(columnDefinition = "TINYINT UNSIGNED")
     private Integer dayOfMonth;
 
     @Column(nullable = false)

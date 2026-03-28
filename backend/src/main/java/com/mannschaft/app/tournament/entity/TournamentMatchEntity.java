@@ -62,7 +62,7 @@ public class TournamentMatchEntity extends BaseEntity {
     @Builder.Default
     private MatchResult result = MatchResult.PENDING;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private Integer leg = 1;
 

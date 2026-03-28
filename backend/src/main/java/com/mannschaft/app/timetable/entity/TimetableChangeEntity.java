@@ -32,6 +32,7 @@ public class TimetableChangeEntity extends BaseEntity {
     @Column(nullable = false)
     private LocalDate targetDate;
 
+    @Column(columnDefinition = "TINYINT UNSIGNED")
     private Integer periodNumber;
 
     @Enumerated(EnumType.STRING)

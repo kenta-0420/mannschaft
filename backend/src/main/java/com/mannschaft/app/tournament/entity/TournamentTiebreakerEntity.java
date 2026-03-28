@@ -34,7 +34,7 @@ public class TournamentTiebreakerEntity {
     @Column(nullable = false)
     private Long tournamentId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer priority;
 
     @Enumerated(EnumType.STRING)

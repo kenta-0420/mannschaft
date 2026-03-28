@@ -50,7 +50,7 @@ public class EventSurveyEntity {
     @Builder.Default
     private Boolean isRequired = false;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer sortOrder;
 
     @Column(nullable = false, updatable = false)

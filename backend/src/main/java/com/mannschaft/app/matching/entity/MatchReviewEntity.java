@@ -39,7 +39,7 @@ public class MatchReviewEntity {
     @Column(nullable = false)
     private Long revieweeTeamId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Short rating;
 
     @Column(length = 1000)

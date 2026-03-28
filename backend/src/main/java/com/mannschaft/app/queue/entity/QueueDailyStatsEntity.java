@@ -61,6 +61,7 @@ public class QueueDailyStatsEntity extends BaseEntity {
     @Column(precision = 5, scale = 1)
     private BigDecimal avgServiceMinutes;
 
+    @Column(columnDefinition = "TINYINT UNSIGNED")
     private Short peakHour;
 
     @Column(nullable = false)
