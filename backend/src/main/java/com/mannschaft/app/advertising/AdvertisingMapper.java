@@ -5,7 +5,13 @@ import com.mannschaft.app.advertising.dto.AdRateCardResponse;
 import com.mannschaft.app.advertising.dto.AdvertiserAccountResponse;
 import com.mannschaft.app.advertising.dto.AffiliateConfigResponse;
 import com.mannschaft.app.advertising.dto.CreateAffiliateConfigRequest;
+import com.mannschaft.app.advertising.dto.CreditLimitRequestResponse;
+import com.mannschaft.app.advertising.dto.InvoiceItemResponse;
+import com.mannschaft.app.advertising.dto.InvoiceSummaryResponse;
 import com.mannschaft.app.advertising.dto.PublicRateCardResponse;
+import com.mannschaft.app.advertising.entity.AdCreditLimitRequestEntity;
+import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
+import com.mannschaft.app.advertising.entity.AdInvoiceItemEntity;
 import com.mannschaft.app.advertising.entity.AdRateCardEntity;
 import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.entity.AffiliateConfigEntity;
@@ -56,6 +62,22 @@ public interface AdvertisingMapper {
      */
     @Mapping(target = "label", expression = "java(buildRateCardLabel(entity))")
     PublicRateCardResponse toPublicRateCardResponse(AdRateCardEntity entity);
+
+    /**
+     * 請求書エンティティからサマリレスポンスに変換する。
+     */
+    @Mapping(target = "invoiceMonth", expression = "java(entity.getInvoiceMonth().toString().substring(0, 7))")
+    InvoiceSummaryResponse toInvoiceSummary(AdInvoiceEntity entity);
+
+    /**
+     * 請求書明細エンティティからレスポンスに変換する。
+     */
+    InvoiceItemResponse toInvoiceItemResponse(AdInvoiceItemEntity entity);
+
+    /**
+     * 増額申請エンティティからレスポンスに変換する。
+     */
+    CreditLimitRequestResponse toCreditLimitRequestResponse(AdCreditLimitRequestEntity entity);
 
     /**
      * 料金カードのラベルを組み立てる。

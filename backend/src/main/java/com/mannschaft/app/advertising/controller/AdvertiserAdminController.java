@@ -1,13 +1,21 @@
 package com.mannschaft.app.advertising.controller;
 
 import com.mannschaft.app.advertising.AdvertiserAccountStatus;
+import com.mannschaft.app.advertising.CreditLimitRequestStatus;
 import com.mannschaft.app.advertising.PricingModel;
 import com.mannschaft.app.advertising.dto.AdRateCardResponse;
 import com.mannschaft.app.advertising.dto.AdvertiserAccountDetailResponse;
 import com.mannschaft.app.advertising.dto.AdvertiserAccountResponse;
 import com.mannschaft.app.advertising.dto.CreateAdRateCardRequest;
+import com.mannschaft.app.advertising.dto.CreditLimitRequestDetailResponse;
+import com.mannschaft.app.advertising.dto.CreditLimitRequestResponse;
+import com.mannschaft.app.advertising.dto.InvoiceSummaryResponse;
+import com.mannschaft.app.advertising.dto.MarkInvoicePaidRequest;
+import com.mannschaft.app.advertising.dto.RejectCreditLimitRequest;
 import com.mannschaft.app.advertising.dto.SuspendAdvertiserRequest;
 import com.mannschaft.app.advertising.dto.UpdateCreditLimitRequest;
+import com.mannschaft.app.advertising.service.AdCreditLimitRequestService;
+import com.mannschaft.app.advertising.service.AdInvoiceService;
 import com.mannschaft.app.advertising.service.AdRateCardService;
 import com.mannschaft.app.advertising.service.AdvertiserAccountService;
 import com.mannschaft.app.common.ApiResponse;
@@ -41,6 +49,8 @@ public class AdvertiserAdminController {
 
     private final AdRateCardService adRateCardService;
     private final AdvertiserAccountService advertiserAccountService;
+    private final AdInvoiceService adInvoiceService;
+    private final AdCreditLimitRequestService adCreditLimitRequestService;
 
     // ─────────────────────────────────────────────
     // 広告料金カード
@@ -137,5 +147,62 @@ public class AdvertiserAdminController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateCreditLimitRequest request) {
         return ApiResponse.of(advertiserAccountService.updateCreditLimit(id, request));
+    }
+
+    // ─────────────────────────────────────────────
+    // 請求書
+    // ─────────────────────────────────────────────
+
+    /**
+     * 請求書の手動入金確認を行う（請求書払い用）。
+     */
+    @PatchMapping("/ad-invoices/{id}/mark-paid")
+    public ApiResponse<InvoiceSummaryResponse> markInvoicePaid(
+            @PathVariable Long id,
+            @Valid @RequestBody MarkInvoicePaidRequest request) {
+        return ApiResponse.of(adInvoiceService.markPaid(id, request));
+    }
+
+    // ─────────────────────────────────────────────
+    // credit_limit 増額申請
+    // ─────────────────────────────────────────────
+
+    /**
+     * 全広告主の増額申請一覧を取得する。
+     */
+    @GetMapping("/ad-credit-limit-requests")
+    public PagedResponse<CreditLimitRequestDetailResponse> listCreditLimitRequests(
+            @RequestParam(required = false) CreditLimitRequestStatus status,
+            Pageable pageable) {
+        Page<CreditLimitRequestDetailResponse> page = adCreditLimitRequestService.findAll(status, pageable);
+        return PagedResponse.of(
+                page.getContent(),
+                new PagedResponse.PageMeta(
+                        page.getTotalElements(),
+                        page.getNumber(),
+                        page.getSize(),
+                        page.getTotalPages()
+                )
+        );
+    }
+
+    /**
+     * 増額申請を承認する。
+     */
+    @PatchMapping("/ad-credit-limit-requests/{id}/approve")
+    public ApiResponse<CreditLimitRequestResponse> approveCreditLimitRequest(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(adCreditLimitRequestService.approve(id, userId));
+    }
+
+    /**
+     * 増額申請を却下する。
+     */
+    @PatchMapping("/ad-credit-limit-requests/{id}/reject")
+    public ApiResponse<CreditLimitRequestResponse> rejectCreditLimitRequest(
+            @PathVariable Long id,
+            @Valid @RequestBody RejectCreditLimitRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(adCreditLimitRequestService.reject(id, userId, request));
     }
 }

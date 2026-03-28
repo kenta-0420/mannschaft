@@ -45,7 +45,31 @@ public enum AdvertisingErrorCode implements ErrorCode {
     AD_011("AD_011", "指定された条件に一致する料金が見つかりません", Severity.WARN),
 
     /** フィールド未指定 */
-    AD_012("AD_012", "少なくとも1つのフィールドを指定してください", Severity.WARN);
+    AD_012("AD_012", "少なくとも1つのフィールドを指定してください", Severity.WARN),
+
+    /** 請求書が見つからない */
+    AD_013("AD_013", "請求書が見つかりません", Severity.WARN),
+
+    /** 請求書のステータスが操作に適合しない */
+    AD_014("AD_014", "請求書のステータスが操作に適合しません", Severity.WARN),
+
+    /** レポートスケジュール上限超過 */
+    AD_015("AD_015", "レポートスケジュールは最大3件までです", Severity.WARN),
+
+    /** レポートスケジュールが見つからない */
+    AD_016("AD_016", "レポートスケジュールが見つかりません", Severity.WARN),
+
+    /** 増額申請が見つからない */
+    AD_017("AD_017", "増額申請が見つかりません", Severity.WARN),
+
+    /** 処理中の増額申請が既に存在 */
+    AD_018("AD_018", "処理中の増額申請が既にあります", Severity.WARN),
+
+    /** 増額申請のステータスが操作に適合しない */
+    AD_019("AD_019", "増額申請のステータスが操作に適合しません", Severity.WARN),
+
+    /** 希望額が現在の限度額以下 */
+    AD_020("AD_020", "希望額は現在の限度額より大きい値を指定してください", Severity.WARN);
 
     private final String code;
     private final String message;
