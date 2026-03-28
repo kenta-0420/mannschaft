@@ -4,8 +4,11 @@ import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.PricingModel;
 import com.mannschaft.app.advertising.dto.AdvertiserAccountResponse;
 import com.mannschaft.app.advertising.dto.AdvertiserOverviewResponse;
+import com.mannschaft.app.advertising.dto.BreakdownResponse;
+import com.mannschaft.app.advertising.dto.CampaignPerformanceResponse;
 import com.mannschaft.app.advertising.dto.CreateCreditLimitRequest;
 import com.mannschaft.app.advertising.dto.CreateReportScheduleRequest;
+import com.mannschaft.app.advertising.dto.CreativeComparisonResponse;
 import com.mannschaft.app.advertising.dto.CreditLimitRequestResponse;
 import com.mannschaft.app.advertising.dto.InvoiceDetailResponse;
 import com.mannschaft.app.advertising.dto.InvoiceSummaryResponse;
@@ -19,6 +22,9 @@ import com.mannschaft.app.advertising.service.AdInvoiceService;
 import com.mannschaft.app.advertising.service.AdRateCardService;
 import com.mannschaft.app.advertising.service.AdReportScheduleService;
 import com.mannschaft.app.advertising.service.AdvertiserAccountService;
+import com.mannschaft.app.advertising.service.CampaignPerformanceService;
+import com.mannschaft.app.advertising.service.CsvExportService;
+import com.mannschaft.app.advertising.service.InvoicePdfService;
 import com.mannschaft.app.advertising.service.RateSimulatorService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
@@ -27,7 +33,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -59,6 +68,9 @@ public class AdvertiserDashboardController {
     private final AdInvoiceService adInvoiceService;
     private final AdReportScheduleService adReportScheduleService;
     private final AdCreditLimitRequestService adCreditLimitRequestService;
+    private final CampaignPerformanceService campaignPerformanceService;
+    private final InvoicePdfService invoicePdfService;
+    private final CsvExportService csvExportService;
 
     /**
      * 広告主アカウントを新規登録する。
@@ -228,5 +240,85 @@ public class AdvertiserDashboardController {
     public ApiResponse<List<CreditLimitRequestResponse>> listCreditLimitRequests(
             @RequestParam Long organizationId) {
         return ApiResponse.of(adCreditLimitRequestService.findByOrganizationId(organizationId));
+    }
+
+    // ─────────────────────────────────────────────
+    // キャンペーンパフォーマンス
+    // ─────────────────────────────────────────────
+
+    /**
+     * キャンペーン別パフォーマンスを取得する。
+     */
+    @GetMapping("/campaigns/{campaignId}/performance")
+    public ApiResponse<CampaignPerformanceResponse> getCampaignPerformance(
+            @PathVariable Long campaignId,
+            @RequestParam Long organizationId,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to) {
+        return ApiResponse.of(campaignPerformanceService.getPerformance(campaignId, organizationId, from, to));
+    }
+
+    /**
+     * クリエイティブ別比較を取得する（A/B テスト支援）。
+     */
+    @GetMapping("/campaigns/{campaignId}/creatives")
+    public ApiResponse<CreativeComparisonResponse> getCreativeComparison(
+            @PathVariable Long campaignId,
+            @RequestParam Long organizationId,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to) {
+        return ApiResponse.of(campaignPerformanceService.getCreativeComparison(campaignId, organizationId, from, to));
+    }
+
+    /**
+     * 地域×テンプレート別内訳を取得する。
+     */
+    @GetMapping("/campaigns/{campaignId}/breakdown")
+    public ApiResponse<BreakdownResponse> getBreakdown(
+            @PathVariable Long campaignId,
+            @RequestParam Long organizationId,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to,
+            @RequestParam(required = false) String breakdownBy) {
+        return ApiResponse.of(campaignPerformanceService.getBreakdown(campaignId, organizationId, from, to, breakdownBy));
+    }
+
+    /**
+     * パフォーマンスデータを CSV エクスポートする。
+     */
+    @GetMapping("/campaigns/{campaignId}/export")
+    public ResponseEntity<byte[]> exportCampaignPerformance(
+            @PathVariable Long campaignId,
+            @RequestParam Long organizationId,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to) {
+        byte[] csv = csvExportService.exportCampaignPerformance(campaignId, organizationId, from, to);
+        String filename = csvExportService.getCsvFilename(campaignId, from, to);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(csv);
+    }
+
+    // ─────────────────────────────────────────────
+    // 請求書 PDF
+    // ─────────────────────────────────────────────
+
+    /**
+     * 請求書 PDF をダウンロードする。
+     */
+    @GetMapping("/invoices/{invoiceId}/pdf")
+    public ResponseEntity<byte[]> downloadInvoicePdf(
+            @PathVariable Long invoiceId,
+            @RequestParam Long organizationId) {
+        AdvertiserAccountResponse account = advertiserAccountService.getByOrganizationId(organizationId);
+        byte[] pdf = invoicePdfService.generateInvoicePdf(invoiceId, account.id());
+        String filename = invoicePdfService.getFilename(invoiceId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(pdf);
     }
 }

@@ -14,4 +14,9 @@ public interface AdInvoiceItemRepository extends JpaRepository<AdInvoiceItemEnti
      * 請求書IDで明細を取得する。
      */
     List<AdInvoiceItemEntity> findByInvoiceId(Long invoiceId);
+
+    /**
+     * 請求書IDで明細を削除する（DRAFT再生成時に使用）。
+     */
+    void deleteByInvoiceId(Long invoiceId);
 }

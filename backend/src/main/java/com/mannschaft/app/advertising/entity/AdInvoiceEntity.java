@@ -102,4 +102,20 @@ public class AdInvoiceEntity extends BaseEntity {
         }
         this.status = InvoiceStatus.OVERDUE;
     }
+
+    /**
+     * 合計額を更新する。
+     */
+    public void updateTotals(BigDecimal totalAmount, BigDecimal taxAmount, BigDecimal totalWithTax) {
+        this.totalAmount = totalAmount;
+        this.taxAmount = taxAmount;
+        this.totalWithTax = totalWithTax;
+    }
+
+    /**
+     * 支払期限を設定する。
+     */
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
+    }
 }
