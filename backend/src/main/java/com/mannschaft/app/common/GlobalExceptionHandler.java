@@ -28,7 +28,10 @@ public class GlobalExceptionHandler {
      */
     private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.of(
             CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN,
-            CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT
+            CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT,
+            "AD_006", HttpStatus.CONFLICT,
+            "AD_007", HttpStatus.CONFLICT,
+            "AD_010", HttpStatus.FORBIDDEN
     );
 
     /**
