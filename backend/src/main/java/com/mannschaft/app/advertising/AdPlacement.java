@@ -6,5 +6,6 @@ package com.mannschaft.app.advertising;
 public enum AdPlacement {
     SIDEBAR_RIGHT,
     BANNER_FOOTER,
-    BANNER_HEADER
+    BANNER_HEADER,
+    IN_FEED
 }

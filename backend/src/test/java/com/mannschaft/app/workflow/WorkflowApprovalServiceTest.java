@@ -2,7 +2,6 @@ package com.mannschaft.app.workflow;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.workflow.dto.ApprovalDecisionRequest;
-import com.mannschaft.app.workflow.dto.RequestStepResponse;
 import com.mannschaft.app.workflow.dto.WorkflowRequestResponse;
 import com.mannschaft.app.workflow.entity.WorkflowRequestApproverEntity;
 import com.mannschaft.app.workflow.entity.WorkflowRequestEntity;
@@ -29,6 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 /**
@@ -226,11 +226,11 @@ class WorkflowApprovalServiceTest {
             given(templateStepRepository.findByTemplateIdOrderByStepOrderAsc(TEMPLATE_ID))
                     .willReturn(List.of(templateStep));
             given(approverRepository.countByRequestStepId(any())).willReturn(1L);
-            given(approverRepository.countByRequestStepIdAndDecision(any(), any())).willReturn(1L);
+            given(approverRepository.countByRequestStepIdAndDecision(any(), eq(ApproverDecision.APPROVED))).willReturn(0L);
+            given(approverRepository.countByRequestStepIdAndDecision(any(), eq(ApproverDecision.REJECTED))).willReturn(1L);
             given(requestStepRepository.save(any())).willReturn(step);
             given(requestRepository.save(entity)).willReturn(entity);
             given(requestStepRepository.findByRequestIdOrderByStepOrderAsc(any())).willReturn(List.of());
-            given(workflowMapper.toApproverResponseList(any())).willReturn(List.of());
             given(workflowMapper.toRequestDetailResponse(any(), any())).willReturn(response);
 
             // When
@@ -279,13 +279,13 @@ class WorkflowApprovalServiceTest {
             given(templateStepRepository.findByTemplateIdOrderByStepOrderAsc(TEMPLATE_ID))
                     .willReturn(List.of(templateStep1, templateStep2));
             given(approverRepository.countByRequestStepId(any())).willReturn(1L);
-            given(approverRepository.countByRequestStepIdAndDecision(any(), any())).willReturn(1L);
+            given(approverRepository.countByRequestStepIdAndDecision(any(), eq(ApproverDecision.APPROVED))).willReturn(1L);
+            given(approverRepository.countByRequestStepIdAndDecision(any(), eq(ApproverDecision.REJECTED))).willReturn(0L);
             given(requestStepRepository.save(any())).willReturn(nextStep);
-            given(requestStepRepository.findByRequestIdAndStepOrder(any(), any()))
+            given(requestStepRepository.findByRequestIdAndStepOrder(any(), eq(2)))
                     .willReturn(Optional.of(nextStep));
             given(requestRepository.save(entity)).willReturn(entity);
             given(requestStepRepository.findByRequestIdOrderByStepOrderAsc(any())).willReturn(List.of());
-            given(workflowMapper.toApproverResponseList(any())).willReturn(List.of());
             given(workflowMapper.toRequestDetailResponse(any(), any())).willReturn(response);
 
             // When
@@ -329,15 +329,15 @@ class WorkflowApprovalServiceTest {
             given(templateStepRepository.findByTemplateIdOrderByStepOrderAsc(TEMPLATE_ID))
                     .willReturn(List.of(templateStep));
             given(approverRepository.countByRequestStepId(any())).willReturn(1L);
-            given(approverRepository.countByRequestStepIdAndDecision(any(), any())).willReturn(1L);
+            given(approverRepository.countByRequestStepIdAndDecision(any(), eq(ApproverDecision.APPROVED))).willReturn(1L);
+            given(approverRepository.countByRequestStepIdAndDecision(any(), eq(ApproverDecision.REJECTED))).willReturn(0L);
             given(requestStepRepository.save(any())).willReturn(currentStep);
             given(requestRepository.save(entity)).willReturn(entity);
             given(requestStepRepository.findByRequestIdOrderByStepOrderAsc(any())).willReturn(List.of());
-            given(workflowMapper.toApproverResponseList(any())).willReturn(List.of());
             given(workflowMapper.toRequestDetailResponse(any(), any())).willReturn(response);
 
             // When
-            WorkflowRequestResponse result = workflowApprovalService.decide(REQUEST_ID, USER_ID, request);
+            workflowApprovalService.decide(REQUEST_ID, USER_ID, request);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(WorkflowStatus.APPROVED);
@@ -377,14 +377,13 @@ class WorkflowApprovalServiceTest {
                     .willReturn(List.of(templateStep));
             given(approverRepository.countByRequestStepId(any())).willReturn(3L);
             // ANY mode: approvedCount > 0 → stepApproved
-            given(approverRepository.countByRequestStepIdAndDecision(any(), org.mockito.ArgumentMatchers.eq(ApproverDecision.APPROVED)))
+            given(approverRepository.countByRequestStepIdAndDecision(any(), eq(ApproverDecision.APPROVED)))
                     .willReturn(1L);
-            given(approverRepository.countByRequestStepIdAndDecision(any(), org.mockito.ArgumentMatchers.eq(ApproverDecision.REJECTED)))
+            given(approverRepository.countByRequestStepIdAndDecision(any(), eq(ApproverDecision.REJECTED)))
                     .willReturn(0L);
             given(requestStepRepository.save(any())).willReturn(currentStep);
             given(requestRepository.save(entity)).willReturn(entity);
             given(requestStepRepository.findByRequestIdOrderByStepOrderAsc(any())).willReturn(List.of());
-            given(workflowMapper.toApproverResponseList(any())).willReturn(List.of());
             given(workflowMapper.toRequestDetailResponse(any(), any())).willReturn(response);
 
             // When

@@ -94,4 +94,13 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
 
     @Query("SELECT s FROM ScheduleEntity s WHERE s.title LIKE %:keyword% OR s.description LIKE %:keyword% OR s.location LIKE %:keyword%")
     List<ScheduleEntity> searchByKeyword(@Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * チームの最頻利用施設（venue_id）を取得する（広告セグメント用）。
+     */
+    @Query(value = "SELECT s.venue_id, COUNT(*) AS cnt FROM schedules s " +
+            "WHERE s.team_id = :teamId AND s.venue_id IS NOT NULL AND s.deleted_at IS NULL " +
+            "GROUP BY s.venue_id ORDER BY cnt DESC LIMIT 1",
+            nativeQuery = true)
+    List<Object[]> findTopVenueByTeamId(@Param("teamId") Long teamId);
 }

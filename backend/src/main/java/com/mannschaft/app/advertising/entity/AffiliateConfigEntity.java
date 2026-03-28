@@ -65,6 +65,15 @@ public class AffiliateConfigEntity extends BaseEntity {
     @Builder.Default
     private Short displayPriority = 0;
 
+    @Column(length = 30)
+    private String targetTemplate;
+
+    @Column(length = 20)
+    private String targetPrefecture;
+
+    @Column(length = 10)
+    private String targetLocale;
+
     private LocalDateTime deletedAt;
 
     /**
@@ -73,7 +82,8 @@ public class AffiliateConfigEntity extends BaseEntity {
     public void update(AffiliateProvider provider, String tagId, AdPlacement placement,
                        String description, String bannerImageUrl, Short bannerWidth,
                        Short bannerHeight, String altText, LocalDateTime activeFrom,
-                       LocalDateTime activeUntil, Short displayPriority) {
+                       LocalDateTime activeUntil, Short displayPriority,
+                       String targetTemplate, String targetPrefecture, String targetLocale) {
         this.provider = provider;
         this.tagId = tagId;
         this.placement = placement;
@@ -85,6 +95,9 @@ public class AffiliateConfigEntity extends BaseEntity {
         this.activeFrom = activeFrom;
         this.activeUntil = activeUntil;
         this.displayPriority = displayPriority;
+        this.targetTemplate = targetTemplate;
+        this.targetPrefecture = targetPrefecture;
+        this.targetLocale = targetLocale;
     }
 
     /**

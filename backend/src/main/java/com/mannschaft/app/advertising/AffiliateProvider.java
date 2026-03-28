@@ -5,5 +5,8 @@ package com.mannschaft.app.advertising;
  */
 public enum AffiliateProvider {
     AMAZON,
-    RAKUTEN
+    RAKUTEN,
+    GOOGLE_ADSENSE,
+    GOOGLE_ADMOB,
+    DIRECT
 }

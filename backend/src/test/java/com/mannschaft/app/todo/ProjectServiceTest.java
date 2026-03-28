@@ -2,6 +2,7 @@ package com.mannschaft.app.todo;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.todo.dto.CreateMilestoneRequest;
 import com.mannschaft.app.todo.dto.CreateProjectRequest;
@@ -16,6 +17,7 @@ import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
 import com.mannschaft.app.todo.repository.ProjectRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import com.mannschaft.app.todo.service.ProjectService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -31,12 +33,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -56,8 +60,17 @@ class ProjectServiceTest {
     @Mock
     private TodoRepository todoRepository;
 
+    @Mock
+    private NameResolverService nameResolverService;
+
     @InjectMocks
     private ProjectService projectService;
+
+    @BeforeEach
+    void setUpNameResolver() {
+        lenient().when(nameResolverService.resolveUserDisplayNames(any()))
+                .thenReturn(Map.of(USER_ID, "テストユーザー"));
+    }
 
     // ========================================
     // テスト用定数・ヘルパー

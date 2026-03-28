@@ -49,6 +49,8 @@ public class ScheduleEntity extends BaseEntity {
     @Column(length = 300)
     private String location;
 
+    private Long venueId;
+
     @Column(nullable = false)
     private LocalDateTime startAt;
 

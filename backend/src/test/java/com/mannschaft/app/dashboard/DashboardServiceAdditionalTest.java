@@ -171,7 +171,6 @@ class DashboardServiceAdditionalTest {
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "CRITICAL");
 
             // Then
-            @SuppressWarnings("unchecked")
             List<Map<String, Object>> upcomingEvents = (List<Map<String, Object>>) result.getUpcomingEvents();
             assertThat(upcomingEvents).hasSize(1);
             assertThat(upcomingEvents.get(0).get("id")).isEqualTo(55L);
@@ -214,7 +213,6 @@ class DashboardServiceAdditionalTest {
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "ALL");
 
             // Then
-            @SuppressWarnings("unchecked")
             List<Map<String, Object>> myPosts = (List<Map<String, Object>>) result.getMyPosts();
             assertThat(myPosts).hasSize(1);
             assertThat(myPosts.get(0).get("id")).isEqualTo(77L);
@@ -260,7 +258,6 @@ class DashboardServiceAdditionalTest {
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "CRITICAL");
 
             // Then
-            @SuppressWarnings("unchecked")
             List<Map<String, Object>> upcomingEvents = (List<Map<String, Object>>) result.getUpcomingEvents();
             assertThat(upcomingEvents).hasSize(10);
         }
@@ -309,7 +306,6 @@ class DashboardServiceAdditionalTest {
             TeamDashboardResponse result = dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK");
 
             // Then
-            @SuppressWarnings("unchecked")
             List<Map<String, Object>> upcomingEvents =
                     (List<Map<String, Object>>) result.getTeamUpcomingEvents();
             assertThat(upcomingEvents).hasSize(1);

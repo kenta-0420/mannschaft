@@ -4,6 +4,7 @@ import com.mannschaft.app.admin.dto.SystemAdminDashboardResponse;
 import com.mannschaft.app.admin.repository.FeedbackSubmissionRepository;
 import com.mannschaft.app.admin.repository.MaintenanceScheduleRepository;
 import com.mannschaft.app.admin.service.SystemAdminDashboardService;
+import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.moderation.ReportStatus;
 import com.mannschaft.app.moderation.repository.ContentReportRepository;
@@ -17,7 +18,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -69,6 +74,8 @@ class SystemAdminDashboardServiceTest {
             given(userRepository.count()).willReturn(1000L);
             given(contentReportRepository.countByStatus(ReportStatus.PENDING)).willReturn(3L);
             given(maintenanceScheduleRepository.countByStatus(MaintenanceStatus.ACTIVE)).willReturn(1L);
+            given(userRepository.countByLastLoginAtAfterAndStatusAndDeletedAtIsNull(
+                    any(LocalDateTime.class), eq(UserEntity.UserStatus.ACTIVE))).willReturn(1000L);
 
             // When
             SystemAdminDashboardResponse result = service.getDashboard();
@@ -94,6 +101,8 @@ class SystemAdminDashboardServiceTest {
             given(userRepository.count()).willReturn(0L);
             given(contentReportRepository.countByStatus(ReportStatus.PENDING)).willReturn(0L);
             given(maintenanceScheduleRepository.countByStatus(MaintenanceStatus.ACTIVE)).willReturn(0L);
+            given(userRepository.countByLastLoginAtAfterAndStatusAndDeletedAtIsNull(
+                    any(LocalDateTime.class), eq(UserEntity.UserStatus.ACTIVE))).willReturn(0L);
 
             // When
             SystemAdminDashboardResponse result = service.getDashboard();

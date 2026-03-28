@@ -1,9 +1,7 @@
 package com.mannschaft.app.chat;
 
 import com.mannschaft.app.chat.dto.AttachmentResponse;
-import com.mannschaft.app.chat.dto.BookmarkResponse;
 import com.mannschaft.app.chat.dto.ChannelResponse;
-import com.mannschaft.app.chat.dto.MemberResponse;
 import com.mannschaft.app.chat.dto.MessageResponse;
 import com.mannschaft.app.chat.dto.ReactionResponse;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;

@@ -13,6 +13,7 @@ import com.mannschaft.app.auth.dto.OAuthProviderResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.auth.OAuthProperties;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
 import org.junit.jupiter.api.DisplayName;
@@ -64,6 +65,9 @@ class AuthOAuthServiceTest {
 
     @Mock
     private EncryptionService encryptionService;
+
+    @Mock
+    private OAuthProperties oAuthProperties;
 
     @InjectMocks
     private AuthOAuthService authOAuthService;
@@ -124,8 +128,10 @@ class AuthOAuthServiceTest {
     }
 
     // ========================================
-    // loginWithOAuth - プロバイダ検証のみテスト可能
-    // （fetchOAuthUserInfoはUnsupportedOperationExceptionをthrowする）
+    // loginWithOAuth
+    // ※ fetchOAuthUserInfoは実装済み（Google/LINE/Apple）だが
+    //   外部API呼び出し（WebClient）を伴うため、プロバイダ検証のみ単体テスト対象。
+    //   OAuth認証フローの結合テストは別途実施する。
     // ========================================
 
     @Nested
@@ -141,16 +147,6 @@ class AuthOAuthServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("AUTH_028"));
-        }
-
-        @Test
-        @DisplayName("異常系: 有効なプロバイダでもfetchOAuthUserInfoが未実装でUnsupportedOperationException")
-        void loginWithOAuth_有効プロバイダ_未実装例外() {
-            // Given / When / Then
-            // fetchOAuthUserInfoが未実装のためUnsupportedOperationExceptionがスローされる
-            assertThatThrownBy(() -> authOAuthService.loginWithOAuth(
-                    "GOOGLE", "auth-code", TEST_IP, TEST_USER_AGENT))
-                    .isInstanceOf(UnsupportedOperationException.class);
         }
     }
 

@@ -885,7 +885,7 @@
 | 7 | サービス記録、パフォーマンス、備品管理、カルテ | `/service-records/**`, `/performance/**`, `/equipment/**`, `/charts/**` | [F07.1](docs/features/F07.1_service_records.md), [F07.2](docs/features/F07.2_performance.md), [F07.3](docs/features/F07.3_equipment.md), [F07.4](docs/features/F07.4_chart.md) |
 | 8 | マッチング、大会・リーグ、決済・会費、議決権、領収書、回数券 | `/matching/**`, `/tournaments/**`, `/payments/**`, `/proxy-votes/**`, `/admin/receipts/**`, `/ticket-products/**` | [F08.1](docs/features/F08.1_matching.md), [F08.2](docs/features/F08.2_payments_access_control.md), [F08.3](docs/features/F08.3_voting_proxy.md), [F08.4](docs/features/F08.4_receipt.md), [F08.5](docs/features/F08.5_ticket_book.md), [F08.7](docs/features/F08.7_tournament_league.md) |
 | 9 | 住民台帳、プロモーション、駐車場、LINE/SNS、施設予約、DM、広告、コルクボード | `/dwelling-units/**`, `/promotions/**`, `/parking/**`, `/line/**`, `/facilities/**`, `/direct-mails/**`, `/ads/**`, `/corkboards/**` | [F09.1](docs/features/F09.1_resident_registry.md), [F09.2](docs/features/F09.2_promotion_targeting.md), [F09.3](docs/features/F09.3_parking.md), [F09.4](docs/features/F09.4_line_sns.md), [F09.5](docs/features/F09.5_facility_booking.md), [F09.6](docs/features/F09.6_direct_mail.md), [F09.7](docs/features/F09.7_advertising.md), [F09.8](docs/features/F09.8_corkboard.md) |
-| 10 | 管理者ダッシュボード、モデレーション、監査ログ | `/admin/dashboard/**`, `/admin/reports/**`, `/admin/audit-logs/**` | [F10.1](docs/features/F10.1_admin_dashboard.md), [F10.2](docs/features/F10.2_moderation.md), [F10.3](docs/features/F10.3_audit_logs.md) |
+| 10 | 管理者ダッシュボード、モデレーション、監査ログ、経営分析 | `/admin/dashboard/**`, `/admin/reports/**`, `/admin/audit-logs/**`, `/system-admin/analytics/**` | [F10.1](docs/features/F10.1_admin_dashboard.md), [F10.2](docs/features/F10.2_moderation.md), [F10.3](docs/features/F10.3_audit_logs.md), [F10.4](docs/features/F10.4_business_analytics.md) |
 | 11 | ワークフロー、予算会計、フォーム、ナレッジベース、イベント、スキル、Webhook、ゲーミフィケーション、時間割管理、年間行事計画等 | `/workflows/**`, `/budgets/**`, `/forms/**`, `/kb/**`, `/events/**`, `/skills/**`, `/webhooks/**`, `/badges/**`, `/timetables/**`, `/event-categories/**` | [F05.6](docs/features/F05.6_workflow_approval.md)〜[F11.2](docs/features/F11.2_multilingual_content.md), [F03.9](docs/features/F03.9_timetable.md), [F03.10](docs/features/F03.10_annual_event_plan.md) |
 
 ### データエクスポート
@@ -906,7 +906,7 @@
 | **7** | サービス履歴 + パフォーマンス管理 + 備品管理 + カルテ + スキル・資格管理 + インシデント管理 | サービス履歴API + パフォーマンスAPI + 備品API + カルテAPI + スキルAPI + インシデントAPI |
 | **8** | マッチング・対外交流 + 会費・決済 + 議決権行使・委任状 + 予算・会計管理 | マッチングAPI + 決済API + 議決権行使API + 予算API |
 | **9** | LINE連携・SNS・広告・スポンサー + プロモーション配信（郵便番号ターゲティング・クーポン） + 住民台帳 + 駐車場区画管理 + Webhook/外部API + デジタルサイネージ | 外部連携API群 + プロモーションAPI + 住民台帳API + 駐車場API + WebhookAPI + サイネージAPI |
-| **10** | 管理者ダッシュボード + システム管理者ダッシュボード + 通報・モデレーション + 監査ログ | 管理画面 + 運用ツール |
+| **10** | 管理者ダッシュボード + システム管理者ダッシュボード + 通報・モデレーション + 監査ログ + 経営分析ダッシュボード | 管理画面 + 運用ツール + 経営分析API |
 | **11** | オフライン対応/PWA + 多言語コンテンツ + 時間割管理 + 年間行事計画（スケジュール拡張） + ポリッシュ・テスト・Docker化 | PWA対応 + i18n + 時間割API + 年間行事API + 本番デプロイ可能 |
 
 ---

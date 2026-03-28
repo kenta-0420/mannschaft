@@ -47,12 +47,6 @@ class ScheduleMapperTest {
         field.set(entity, id);
     }
 
-    private void setBaseCreatedAt(Object entity, LocalDateTime dt) throws Exception {
-        Field field = entity.getClass().getSuperclass().getDeclaredField("createdAt");
-        field.setAccessible(true);
-        field.set(entity, dt);
-    }
-
     // EventSurveyEntity / ScheduleAttendanceReminderEntity / ScheduleCrossRefEntity は
     // BaseEntity を継承しないため getDeclaredField("id") を直接使う
     private void setDirectId(Object entity, Long id) throws Exception {

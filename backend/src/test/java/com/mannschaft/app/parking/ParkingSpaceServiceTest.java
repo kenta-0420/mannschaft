@@ -2,7 +2,6 @@ package com.mannschaft.app.parking;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.parking.dto.*;
-import com.mannschaft.app.parking.entity.ParkingAssignmentEntity;
 import com.mannschaft.app.parking.entity.ParkingSpaceEntity;
 import com.mannschaft.app.parking.entity.ParkingSpacePriceHistoryEntity;
 import com.mannschaft.app.parking.repository.*;
@@ -15,7 +14,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;

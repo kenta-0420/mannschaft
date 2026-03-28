@@ -45,15 +45,17 @@ public class ShoppingListItemEntity {
 
     private Long assignedTo;
 
+    @Builder.Default
     @Column(nullable = false)
-    private Boolean isChecked;
+    private Boolean isChecked = false;
 
     private Long checkedBy;
 
     private LocalDateTime checkedAt;
 
+    @Builder.Default
     @Column(nullable = false)
-    private Integer sortOrder;
+    private Integer sortOrder = 0;
 
     @Column(nullable = false)
     private Long createdBy;

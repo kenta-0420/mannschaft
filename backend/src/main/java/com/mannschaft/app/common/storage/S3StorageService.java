@@ -39,6 +39,7 @@ public class S3StorageService implements StorageService {
                     .bucket(storageProperties.getBucket())
                     .key(s3Key)
                     .contentType(contentType)
+                    .cacheControl(CachePolicy.resolve(s3Key))
                     .build();
 
             PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
@@ -84,6 +85,7 @@ public class S3StorageService implements StorageService {
                     .bucket(storageProperties.getBucket())
                     .key(s3Key)
                     .contentType(contentType)
+                    .cacheControl(CachePolicy.resolve(s3Key))
                     .build();
 
             s3Client.putObject(request, RequestBody.fromBytes(data));
@@ -102,6 +104,7 @@ public class S3StorageService implements StorageService {
                     .key(s3Key)
                     .contentType(contentType)
                     .contentLength(contentLength)
+                    .cacheControl(CachePolicy.resolve(s3Key))
                     .build();
 
             s3Client.putObject(request, RequestBody.fromInputStream(data, contentLength));

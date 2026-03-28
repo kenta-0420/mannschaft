@@ -3,14 +3,10 @@ package com.mannschaft.app.matching;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.matching.dto.AcceptProposalRequest;
 import com.mannschaft.app.matching.dto.AcceptProposalResponse;
-import com.mannschaft.app.matching.dto.AgreeCancelResponse;
 import com.mannschaft.app.matching.dto.CancelProposalRequest;
-import com.mannschaft.app.matching.dto.CancellationSummaryResponse;
 import com.mannschaft.app.matching.dto.CreateProposalRequest;
 import com.mannschaft.app.matching.dto.ProposalCreateResponse;
-import com.mannschaft.app.matching.dto.ProposalResponse;
 import com.mannschaft.app.matching.dto.ProposalStatusResponse;
-import com.mannschaft.app.matching.entity.MatchProposalDateEntity;
 import com.mannschaft.app.matching.entity.MatchProposalEntity;
 import com.mannschaft.app.matching.entity.MatchRequestEntity;
 import com.mannschaft.app.matching.mapper.MatchingMapper;
@@ -26,10 +22,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,8 +29,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -495,8 +485,6 @@ class MatchProposalServiceTest {
                     .expiresAt(java.time.LocalDateTime.now().minusDays(1))
                     .build();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
-            given(ngTeamRepository.findBidirectionalBlockedTeamIds(TEAM_ID)).willReturn(List.of());
-            given(proposalRepository.existsByRequestIdAndProposingTeamId(REQUEST_ID, TEAM_ID)).willReturn(false);
 
             CreateProposalRequest createRequest = new CreateProposalRequest("テスト", null, null);
 

@@ -2,7 +2,6 @@ package com.mannschaft.app.family;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.family.ShoppingListStatus;
 import com.mannschaft.app.family.dto.ShoppingItemRequest;
 import com.mannschaft.app.family.dto.ShoppingItemResponse;
 import com.mannschaft.app.family.dto.ShoppingListRequest;

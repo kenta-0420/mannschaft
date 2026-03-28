@@ -1,11 +1,7 @@
 package com.mannschaft.app.timeline;
 
-import com.mannschaft.app.timeline.dto.AttachmentResponse;
 import com.mannschaft.app.timeline.dto.BookmarkResponse;
-import com.mannschaft.app.timeline.dto.MuteResponse;
-import com.mannschaft.app.timeline.dto.PollOptionResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
-import com.mannschaft.app.timeline.dto.ReactionResponse;
 import com.mannschaft.app.timeline.entity.TimelineBookmarkEntity;
 import com.mannschaft.app.timeline.entity.TimelinePollOptionEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostAttachmentEntity;

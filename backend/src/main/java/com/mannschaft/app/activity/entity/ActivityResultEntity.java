@@ -51,6 +51,11 @@ public class ActivityResultEntity extends BaseEntity {
 
     private LocalTime activityTimeEnd;
 
+    @Column(length = 300)
+    private String location;
+
+    private Long venueId;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 

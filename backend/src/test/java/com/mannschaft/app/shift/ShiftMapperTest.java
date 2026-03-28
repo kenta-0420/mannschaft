@@ -1,11 +1,8 @@
 package com.mannschaft.app.shift;
 
-import com.mannschaft.app.shift.dto.AvailabilityDefaultResponse;
 import com.mannschaft.app.shift.dto.HourlyRateResponse;
 import com.mannschaft.app.shift.dto.ShiftPositionResponse;
-import com.mannschaft.app.shift.dto.ShiftRequestResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
-import com.mannschaft.app.shift.dto.SwapRequestResponse;
 import com.mannschaft.app.shift.entity.MemberAvailabilityDefaultEntity;
 import com.mannschaft.app.shift.entity.ShiftHourlyRateEntity;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;

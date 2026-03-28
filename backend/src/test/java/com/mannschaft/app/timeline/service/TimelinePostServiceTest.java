@@ -1,7 +1,6 @@
 package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.timeline.AttachmentType;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.PostedAsType;
@@ -11,10 +10,8 @@ import com.mannschaft.app.timeline.dto.AttachmentResponse;
 import com.mannschaft.app.timeline.dto.CreateAttachmentRequest;
 import com.mannschaft.app.timeline.dto.CreatePollRequest;
 import com.mannschaft.app.timeline.dto.CreatePostRequest;
-import com.mannschaft.app.timeline.dto.PollResponse;
 import com.mannschaft.app.timeline.dto.PostDetailResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
-import com.mannschaft.app.timeline.dto.ReactionSummaryResponse;
 import com.mannschaft.app.timeline.dto.UpdatePostRequest;
 import com.mannschaft.app.timeline.entity.TimelinePostAttachmentEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostEditEntity;
@@ -468,7 +465,6 @@ class TimelinePostServiceTest {
             TimelinePostEntity post = createPost();
             List<TimelinePostAttachmentEntity> attachments = List.of();
             List<AttachmentResponse> attachmentResponses = List.of();
-            List<ReactionSummaryResponse> reactionResponses = List.of();
 
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))

@@ -34,8 +34,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -263,7 +261,7 @@ class AuthControllerTest {
             TokenResponse token = new TokenResponse("webauthn-access", "refresh-token", 3600);
             WebAuthnLoginCompleteRequest req = new WebAuthnLoginCompleteRequest(
                     "cred-id", "auth-data", "client-data", "signature", 6L);
-            HttpServletRequest httpRequest = mock(HttpServletRequest.class, withSettings().lenient());
+            HttpServletRequest httpRequest = mock(HttpServletRequest.class, withSettings().strictness(org.mockito.quality.Strictness.LENIENT));
             given(httpRequest.getHeader("X-Forwarded-For")).willReturn(null);
             given(httpRequest.getHeader("X-Real-IP")).willReturn(null);
             given(httpRequest.getRemoteAddr()).willReturn("127.0.0.1");
@@ -349,7 +347,7 @@ class AuthControllerTest {
         void loginWithOAuth_正常_200() {
             // Given
             TokenResponse token = new TokenResponse("oauth-access", "refresh-token", 3600);
-            HttpServletRequest httpRequest = mock(HttpServletRequest.class, withSettings().lenient());
+            HttpServletRequest httpRequest = mock(HttpServletRequest.class, withSettings().strictness(org.mockito.quality.Strictness.LENIENT));
             given(httpRequest.getHeader("X-Forwarded-For")).willReturn(null);
             given(httpRequest.getHeader("X-Real-IP")).willReturn(null);
             given(httpRequest.getRemoteAddr()).willReturn("127.0.0.1");

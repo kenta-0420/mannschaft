@@ -74,7 +74,10 @@ public class AffiliateConfigService {
                 request.getAltText(),
                 request.getActiveFrom(),
                 request.getActiveUntil(),
-                request.getDisplayPriority()
+                request.getDisplayPriority(),
+                request.getTargetTemplate(),
+                request.getTargetPrefecture(),
+                request.getTargetLocale()
         );
         return advertisingMapper.toResponse(entity);
     }
@@ -103,6 +106,16 @@ public class AffiliateConfigService {
      */
     public List<ActiveAdResponse> findActiveAds() {
         return affiliateConfigRepository.findActiveAds(LocalDateTime.now()).stream()
+                .map(advertisingMapper::toActiveAdResponse)
+                .toList();
+    }
+
+    /**
+     * ユーザー属性に基づいてターゲティングされた広告一覧を取得する。
+     */
+    public List<ActiveAdResponse> findTargetedAds(String template, String prefecture, String locale) {
+        return affiliateConfigRepository.findTargetedAds(
+                        LocalDateTime.now(), template, prefecture, locale).stream()
                 .map(advertisingMapper::toActiveAdResponse)
                 .toList();
     }

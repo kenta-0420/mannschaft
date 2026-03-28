@@ -1,11 +1,5 @@
 package com.mannschaft.app.dashboard;
 
-import com.mannschaft.app.dashboard.DashboardMapper;
-import com.mannschaft.app.dashboard.DashboardMapperImpl;
-import com.mannschaft.app.dashboard.FolderItemType;
-import com.mannschaft.app.dashboard.ScopeType;
-import com.mannschaft.app.dashboard.TargetType;
-import com.mannschaft.app.dashboard.WidgetKey;
 import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
 import com.mannschaft.app.dashboard.dto.ChatFolderItemResponse;
 import com.mannschaft.app.dashboard.dto.ChatFolderResponse;

@@ -399,7 +399,6 @@ class FacilityMapperTest {
                     .status(PaymentStatus.SUCCEEDED)
                     .build();
             setId(entity, 50L);
-            LocalDateTime paidAt = LocalDateTime.of(2026, 4, 10, 12, 0);
             // paidAt は builder に含まれないので直接フィールドアクセスは不要 — status だけ検証
             LocalDateTime now = LocalDateTime.of(2026, 4, 10, 0, 0);
             setCreatedAt(entity, now);

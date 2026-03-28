@@ -50,6 +50,12 @@ mannschaft:
     presigned-upload-ttl: ${MANNSCHAFT_S3_UPLOAD_TTL:600}
     presigned-download-ttl: ${MANNSCHAFT_S3_DOWNLOAD_TTL:3600}
     tmp-bucket: ${MANNSCHAFT_S3_TMP_BUCKET:mannschaft-tmp}
+  cdn:
+    enabled: ${MANNSCHAFT_CDN_ENABLED:false}
+    domain: ${MANNSCHAFT_CDN_DOMAIN:}
+    key-pair-id: ${MANNSCHAFT_CDN_KEY_PAIR_ID:}
+    private-key-path: ${MANNSCHAFT_CDN_PRIVATE_KEY_PATH:}
+    signed-url-ttl: ${MANNSCHAFT_CDN_SIGNED_URL_TTL:900}
   webauthn:
     origin: ${MANNSCHAFT_WEBAUTHN_ORIGIN:https://mannschaft.app}
   google:
@@ -60,6 +66,8 @@ mannschaft:
     calendar-api-base: https://www.googleapis.com/calendar/v3
     userinfo-uri: https://www.googleapis.com/oauth2/v3/userinfo
     redirect-uri: ${MANNSCHAFT_GOOGLE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/google}
+    places-api-key: ${MANNSCHAFT_GOOGLE_PLACES_API_KEY:}
+    places-api-base: https://places.googleapis.com/v1
   line:
     client-id: ${MANNSCHAFT_LINE_CLIENT_ID:}
     client-secret: ${MANNSCHAFT_LINE_CLIENT_SECRET:}

@@ -25,6 +25,9 @@ public class AffiliateConfigResponse {
     private final LocalDateTime activeFrom;
     private final LocalDateTime activeUntil;
     private final Short displayPriority;
+    private final String targetTemplate;
+    private final String targetPrefecture;
+    private final String targetLocale;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 }

@@ -2,6 +2,7 @@ package com.mannschaft.app.gallery.event;
 
 import com.mannschaft.app.admin.entity.BatchJobLogEntity;
 import com.mannschaft.app.admin.service.BatchJobLogService;
+import com.mannschaft.app.common.storage.ImageConverter;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.gallery.entity.PhotoAlbumEntity;
 import com.mannschaft.app.gallery.entity.PhotoEntity;
@@ -15,10 +16,8 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 /**
@@ -86,20 +85,22 @@ public class ThumbnailRegenerateEventListener {
     private void regenerateThumbnail(PhotoEntity photo) {
         try {
             byte[] originalBytes = storageService.download(photo.getS3Key());
+
             BufferedImage original = ImageIO.read(new ByteArrayInputStream(originalBytes));
             if (original == null) {
                 log.warn("画像の読み込み失敗（非画像ファイル）: photoId={}", photo.getId());
                 return;
             }
 
-            BufferedImage thumbnail = createThumbnail(original);
+            // WebP形式でサムネイル生成（失敗時はJPEGフォールバック）
+            ImageConverter.ConversionResult result =
+                    ImageConverter.createThumbnailWebP(originalBytes, THUMBNAIL_MAX_SIZE);
 
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(thumbnail, "JPEG", baos);
-            byte[] thumbBytes = baos.toByteArray();
-
-            String thumbKey = photo.getS3Key().replaceFirst("photos/", "photos/thumbs/");
-            storageService.upload(thumbKey, thumbBytes, "image/jpeg");
+            String thumbExtension = result.converted() ? ".webp" : ".jpg";
+            String thumbKey = photo.getS3Key()
+                    .replaceFirst("photos/", "photos/thumbs/")
+                    .replaceFirst("\\.[^.]+$", thumbExtension);
+            storageService.upload(thumbKey, result.data(), result.contentType());
 
             photo.updateThumbnailAndExif(thumbKey, original.getWidth(), original.getHeight(),
                     photo.getTakenAt(), photo.getContentType());
@@ -108,27 +109,5 @@ public class ThumbnailRegenerateEventListener {
         } catch (Exception e) {
             throw new RuntimeException("サムネイル生成失敗: photoId=" + photo.getId(), e);
         }
-    }
-
-    private BufferedImage createThumbnail(BufferedImage original) {
-        int origWidth = original.getWidth();
-        int origHeight = original.getHeight();
-
-        double scale = Math.min((double) THUMBNAIL_MAX_SIZE / origWidth,
-                                (double) THUMBNAIL_MAX_SIZE / origHeight);
-        if (scale >= 1.0) {
-            scale = 1.0;
-        }
-
-        int thumbWidth = (int) (origWidth * scale);
-        int thumbHeight = (int) (origHeight * scale);
-
-        BufferedImage thumbnail = new BufferedImage(thumbWidth, thumbHeight, BufferedImage.TYPE_INT_RGB);
-        Graphics2D g2d = thumbnail.createGraphics();
-        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        g2d.drawImage(original, 0, 0, thumbWidth, thumbHeight, null);
-        g2d.dispose();
-
-        return thumbnail;
     }
 }

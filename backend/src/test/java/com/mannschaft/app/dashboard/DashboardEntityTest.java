@@ -1,6 +1,5 @@
 package com.mannschaft.app.dashboard;
 
-import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.entity.ActivityFeedEntity;
 import com.mannschaft.app.dashboard.entity.ChatContactFolderEntity;
 import com.mannschaft.app.dashboard.entity.ChatContactFolderItemEntity;

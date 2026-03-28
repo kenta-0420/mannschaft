@@ -13,6 +13,7 @@ import com.mannschaft.app.gallery.dto.UploadPhotosRequest;
 import com.mannschaft.app.gallery.dto.UploadPhotosResponse;
 import com.mannschaft.app.gallery.entity.PhotoAlbumEntity;
 import com.mannschaft.app.gallery.entity.PhotoEntity;
+import com.mannschaft.app.gallery.event.PhotoUploadEvent;
 import com.mannschaft.app.gallery.repository.PhotoAlbumRepository;
 import com.mannschaft.app.gallery.repository.PhotoRepository;
 import lombok.RequiredArgsConstructor;
@@ -97,6 +98,7 @@ public class PhotoService {
         }
 
         List<UploadPhotosResponse.UploadedPhotoInfo> uploadedPhotos = new ArrayList<>();
+        List<Long> savedPhotoIds = new ArrayList<>();
 
         for (UploadPhotosRequest.PhotoItem item : request.getPhotos()) {
             String contentType = item.getContentType() != null ? item.getContentType() : "image/jpeg";
@@ -112,6 +114,7 @@ public class PhotoService {
                     .build();
 
             PhotoEntity saved = photoRepository.save(entity);
+            savedPhotoIds.add(saved.getId());
             uploadedPhotos.add(new UploadPhotosResponse.UploadedPhotoInfo(
                     saved.getId(), null, "PROCESSING"));
         }
@@ -119,6 +122,9 @@ public class PhotoService {
         // 写真カウントを更新
         album.incrementPhotoCount(request.getPhotos().size());
         albumRepository.save(album);
+
+        // サムネイル自動生成イベント発行（トランザクションコミット後に非同期実行）
+        eventPublisher.publish(new PhotoUploadEvent(savedPhotoIds));
 
         log.info("写真アップロード: albumId={}, count={}", albumId, request.getPhotos().size());
 

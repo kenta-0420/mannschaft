@@ -1,14 +1,16 @@
 package com.mannschaft.app.chart;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 
 /**
  * 開発環境用のプレースホルダーURL生成実装。
- * 本番環境ではCloudFront署名付きURL生成実装に差し替える。
+ * 本番環境ではCloudFrontChartPhotoUrlProviderが使用される。
  */
 @Component
+@Profile("!prod")
 public class PlaceholderChartPhotoUrlProvider implements ChartPhotoUrlProvider {
 
     private static final String PLACEHOLDER_BASE_URL = "https://cdn.example.com/";

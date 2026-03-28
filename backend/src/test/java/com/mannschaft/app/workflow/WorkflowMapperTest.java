@@ -22,7 +22,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,18 +46,6 @@ class WorkflowMapperTest {
         Field f = entity.getClass().getSuperclass().getDeclaredField("id");
         f.setAccessible(true);
         f.set(entity, id);
-    }
-
-    private void setCreatedAt(Object entity, LocalDateTime dt) throws Exception {
-        Field f = entity.getClass().getSuperclass().getDeclaredField("createdAt");
-        f.setAccessible(true);
-        f.set(entity, dt);
-    }
-
-    private void setUpdatedAt(Object entity, LocalDateTime dt) throws Exception {
-        Field f = entity.getClass().getSuperclass().getDeclaredField("updatedAt");
-        f.setAccessible(true);
-        f.set(entity, dt);
     }
 
     // ── toTemplateResponse ──

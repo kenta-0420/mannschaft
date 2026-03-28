@@ -1,5 +1,6 @@
 package com.mannschaft.app.performance.service;
 
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.performance.AggregationType;
 import com.mannschaft.app.performance.dto.MemberPerformanceResponse;
 import com.mannschaft.app.performance.dto.MyPerformanceResponse;
@@ -8,6 +9,7 @@ import com.mannschaft.app.performance.dto.TeamStatsResponse;
 import com.mannschaft.app.performance.entity.PerformanceMetricEntity;
 import com.mannschaft.app.performance.entity.PerformanceRecordEntity;
 import com.mannschaft.app.performance.repository.PerformanceRecordRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -37,6 +40,12 @@ class PerformanceStatsServiceTest {
 
     @Mock
     private PerformanceMetricService metricService;
+
+    @Mock
+    private UserRoleRepository userRoleRepository;
+
+    @Mock
+    private NameResolverService nameResolverService;
 
     @InjectMocks
     private PerformanceStatsService performanceStatsService;
@@ -280,6 +289,7 @@ class PerformanceStatsServiceTest {
         @DisplayName("正常系: teamId指定で自分のパフォーマンスが返る")
         void getMyPerformance_teamId指定_パフォーマンスが返る() {
             // Given
+            given(nameResolverService.resolveTeamNames(any())).willReturn(Map.of(TEAM_ID, "TestTeam"));
             PerformanceMetricEntity metric = createMetric(METRIC_ID, "距離", AggregationType.SUM, new BigDecimal("100"));
             given(metricService.getActiveMetrics(TEAM_ID)).willReturn(List.of(metric));
 
@@ -304,6 +314,10 @@ class PerformanceStatsServiceTest {
         @Test
         @DisplayName("正常系: teamIdがnullで空リストが返る")
         void getMyPerformance_teamIdなし_空リスト() {
+            // Given
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID_1)).willReturn(List.of());
+            given(nameResolverService.resolveTeamNames(any())).willReturn(Map.of());
+
             // When
             List<MyPerformanceResponse> result = performanceStatsService.getMyPerformance(
                     USER_ID_1, null, DATE_FROM, DATE_TO);
@@ -316,6 +330,7 @@ class PerformanceStatsServiceTest {
         @DisplayName("正常系: metricIdsが空の場合は空リストが返る")
         void getMyPerformance_メトリクスなし_空リスト() {
             // Given
+            given(nameResolverService.resolveTeamNames(any())).willReturn(Map.of(TEAM_ID, "TestTeam"));
             given(metricService.getActiveMetrics(TEAM_ID)).willReturn(List.of());
 
             // When

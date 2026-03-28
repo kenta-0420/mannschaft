@@ -46,4 +46,13 @@ public class CreateAffiliateConfigRequest {
 
     @NotNull
     private final Short displayPriority;
+
+    @Size(max = 30)
+    private final String targetTemplate;
+
+    @Size(max = 20)
+    private final String targetPrefecture;
+
+    @Size(max = 10)
+    private final String targetLocale;
 }

@@ -132,7 +132,7 @@ class ParkingAssignmentServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 最大割り当て数超過でPARKING_031例外")
+        @DisplayName("異常系: 最大割り当て数超過でPARKING_012例外")
         void 割当_上限超過_例外() {
             // Given
             ParkingSpaceEntity space = ParkingSpaceEntity.builder()
@@ -152,7 +152,7 @@ class ParkingAssignmentServiceTest {
             assertThatThrownBy(() -> service.assign(SCOPE_TYPE, SCOPE_ID, 1L, req, 200L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("PARKING_031"));
+                            .isEqualTo("PARKING_012"));
         }
     }
 
@@ -185,7 +185,7 @@ class ParkingAssignmentServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 割り当てが存在しない場合PARKING_012例外")
+        @DisplayName("異常系: 割り当てが存在しない場合PARKING_003例外")
         void 解除_割当なし_例外() {
             // Given
             ParkingSpaceEntity space = ParkingSpaceEntity.builder()
@@ -200,7 +200,7 @@ class ParkingAssignmentServiceTest {
             assertThatThrownBy(() -> service.release(SCOPE_TYPE, SCOPE_ID, 1L, new ReleaseRequest("理由"), 200L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("PARKING_012"));
+                            .isEqualTo("PARKING_003"));
         }
     }
 }

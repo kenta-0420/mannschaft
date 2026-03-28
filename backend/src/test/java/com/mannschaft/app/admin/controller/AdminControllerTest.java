@@ -12,7 +12,6 @@ import com.mannschaft.app.admin.service.FeedbackService;
 import com.mannschaft.app.admin.service.MaintenanceScheduleService;
 import com.mannschaft.app.admin.service.PlatformAnnouncementService;
 import com.mannschaft.app.common.ApiResponse;
-import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.role.dto.PermissionGroupRequest;
 import com.mannschaft.app.role.dto.PermissionGroupResponse;
 import com.mannschaft.app.role.service.PermissionGroupService;
@@ -23,7 +22,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
@@ -543,10 +541,14 @@ public class AdminControllerTest {
         @Test
         @DisplayName("POST /permission-groups/{id}/duplicate — 正常系: 201 で複製メッセージを返却する")
         void duplicatePermissionGroup_success_returns201() throws Exception {
+            given(permissionGroupService.duplicatePermissionGroup(anyLong(), anyLong()))
+                    .willReturn(ApiResponse.of(buildGroupResponse(3L)));
+
             mockMvc.perform(post("/api/v1/admin/permission-groups/1/duplicate"))
                     .andExpect(status().isCreated())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.data").value("権限グループ複製は未実装"));
+                    .andExpect(jsonPath("$.data.id").value(3))
+                    .andExpect(jsonPath("$.data.name").value("管理者グループ"));
         }
 
         @Test

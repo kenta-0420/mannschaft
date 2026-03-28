@@ -2,7 +2,6 @@ package com.mannschaft.app.moderation.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.moderation.ModerationErrorCode;
-import com.mannschaft.app.moderation.ModerationExtErrorCode;
 import com.mannschaft.app.moderation.ReportActionType;
 import com.mannschaft.app.moderation.ReportReason;
 import com.mannschaft.app.moderation.ReportStatus;
