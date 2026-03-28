@@ -1,6 +1,9 @@
 package com.mannschaft.app.performance.service;
 
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.performance.AggregationType;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.performance.dto.MemberPerformanceResponse;
 import com.mannschaft.app.performance.dto.MyPerformanceResponse;
 import com.mannschaft.app.performance.dto.SchedulePerformanceResponse;
@@ -37,6 +40,8 @@ public class PerformanceStatsService {
 
     private final PerformanceRecordRepository recordRepository;
     private final PerformanceMetricService metricService;
+    private final UserRoleRepository userRoleRepository;
+    private final NameResolverService nameResolverService;
 
     /**
      * チーム統計ダッシュボードを取得する。
@@ -203,59 +208,89 @@ public class PerformanceStatsService {
      */
     public List<MyPerformanceResponse> getMyPerformance(Long currentUserId, Long teamId,
                                                          LocalDate dateFrom, LocalDate dateTo) {
-        // ユーザーの所属チーム一覧は UserRoleRepository 経由で取得予定
-        // For now, if teamId is specified, return that team only
+        // チームIDリストを決定（指定なしの場合はユーザーの全所属チーム）
+        List<Long> teamIds;
         if (teamId != null) {
-            List<PerformanceMetricEntity> metrics = metricService.getActiveMetrics(teamId);
-            List<Long> metricIds = metrics.stream().map(PerformanceMetricEntity::getId).toList();
-            if (metricIds.isEmpty()) {
-                return List.of();
-            }
-
-            List<PerformanceRecordEntity> records = recordRepository.findByUserIdAndMetricIdsAndDateRange(
-                    currentUserId, metricIds, dateFrom, dateTo);
-
-            Map<Long, List<PerformanceRecordEntity>> byMetric = records.stream()
-                    .collect(Collectors.groupingBy(PerformanceRecordEntity::getMetricId));
-
-            List<MyPerformanceResponse.MetricSummary> summaries = new ArrayList<>();
-            for (PerformanceMetricEntity metric : metrics) {
-                List<PerformanceRecordEntity> metricRecords = byMetric.getOrDefault(metric.getId(), List.of());
-                if (metricRecords.isEmpty()) continue;
-
-                BigDecimal total = metricRecords.stream().map(PerformanceRecordEntity::getValue)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-                BigDecimal achievementRate = null;
-                if (metric.getTargetValue() != null && metric.getTargetValue().compareTo(BigDecimal.ZERO) > 0) {
-                    BigDecimal aggregated = getAggregatedValue(metric.getAggregationType(), metricRecords);
-                    achievementRate = aggregated.divide(metric.getTargetValue(), 4, RoundingMode.HALF_UP);
-                }
-
-                List<PerformanceRecordEntity> sorted = metricRecords.stream()
-                        .sorted(Comparator.comparing(PerformanceRecordEntity::getRecordedDate).reversed())
-                        .toList();
-                BigDecimal latestValue = sorted.isEmpty() ? null : sorted.get(0).getValue();
-                BigDecimal previousValue = sorted.size() >= 2 ? sorted.get(1).getValue() : null;
-                BigDecimal changeRate = null;
-                if (previousValue != null && latestValue != null && previousValue.compareTo(BigDecimal.ZERO) != 0) {
-                    changeRate = latestValue.subtract(previousValue).divide(previousValue, 4, RoundingMode.HALF_UP);
-                }
-
-                MyPerformanceResponse.LatestRecord latestRecord = sorted.isEmpty() ? null
-                        : new MyPerformanceResponse.LatestRecord(sorted.get(0).getRecordedDate(),
-                        sorted.get(0).getValue(), sorted.get(0).getNote());
-
-                summaries.add(new MyPerformanceResponse.MetricSummary(
-                        metric.getId(), metric.getName(), metric.getUnit(), metric.getAggregationType().name(),
-                        total, metricRecords.size(), metric.getTargetValue(), achievementRate,
-                        previousValue, latestValue, changeRate, latestRecord));
-            }
-
-            return List.of(new MyPerformanceResponse(teamId, "Team#" + teamId, summaries));
+            teamIds = List.of(teamId);
+        } else {
+            teamIds = userRoleRepository.findByUserIdAndTeamIdIsNotNull(currentUserId).stream()
+                    .map(UserRoleEntity::getTeamId)
+                    .distinct()
+                    .toList();
         }
 
-        return List.of();
+        // チーム名を一括解決
+        Map<Long, String> teamNameMap = nameResolverService.resolveTeamNames(
+                teamIds.stream().collect(Collectors.toSet()));
+
+        List<MyPerformanceResponse> results = new ArrayList<>();
+        for (Long tid : teamIds) {
+            MyPerformanceResponse teamPerf = buildTeamPerformance(currentUserId, tid, dateFrom, dateTo, teamNameMap);
+            if (teamPerf != null) {
+                results.add(teamPerf);
+            }
+        }
+        return results;
+    }
+
+    /**
+     * 指定チームの自分のパフォーマンスを構築する。
+     */
+    private MyPerformanceResponse buildTeamPerformance(Long userId, Long tid,
+                                                        LocalDate dateFrom, LocalDate dateTo,
+                                                        Map<Long, String> teamNameMap) {
+        List<PerformanceMetricEntity> metrics = metricService.getActiveMetrics(tid);
+        List<Long> metricIds = metrics.stream().map(PerformanceMetricEntity::getId).toList();
+        if (metricIds.isEmpty()) {
+            return null;
+        }
+
+        List<PerformanceRecordEntity> records = recordRepository.findByUserIdAndMetricIdsAndDateRange(
+                userId, metricIds, dateFrom, dateTo);
+
+        Map<Long, List<PerformanceRecordEntity>> byMetric = records.stream()
+                .collect(Collectors.groupingBy(PerformanceRecordEntity::getMetricId));
+
+        List<MyPerformanceResponse.MetricSummary> summaries = new ArrayList<>();
+        for (PerformanceMetricEntity metric : metrics) {
+            List<PerformanceRecordEntity> metricRecords = byMetric.getOrDefault(metric.getId(), List.of());
+            if (metricRecords.isEmpty()) continue;
+
+            BigDecimal total = metricRecords.stream().map(PerformanceRecordEntity::getValue)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal achievementRate = null;
+            if (metric.getTargetValue() != null && metric.getTargetValue().compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal aggregated = getAggregatedValue(metric.getAggregationType(), metricRecords);
+                achievementRate = aggregated.divide(metric.getTargetValue(), 4, RoundingMode.HALF_UP);
+            }
+
+            List<PerformanceRecordEntity> sorted = metricRecords.stream()
+                    .sorted(Comparator.comparing(PerformanceRecordEntity::getRecordedDate).reversed())
+                    .toList();
+            BigDecimal latestValue = sorted.isEmpty() ? null : sorted.get(0).getValue();
+            BigDecimal previousValue = sorted.size() >= 2 ? sorted.get(1).getValue() : null;
+            BigDecimal changeRate = null;
+            if (previousValue != null && latestValue != null && previousValue.compareTo(BigDecimal.ZERO) != 0) {
+                changeRate = latestValue.subtract(previousValue).divide(previousValue, 4, RoundingMode.HALF_UP);
+            }
+
+            MyPerformanceResponse.LatestRecord latestRecord = sorted.isEmpty() ? null
+                    : new MyPerformanceResponse.LatestRecord(sorted.get(0).getRecordedDate(),
+                    sorted.get(0).getValue(), sorted.get(0).getNote());
+
+            summaries.add(new MyPerformanceResponse.MetricSummary(
+                    metric.getId(), metric.getName(), metric.getUnit(), metric.getAggregationType().name(),
+                    total, metricRecords.size(), metric.getTargetValue(), achievementRate,
+                    previousValue, latestValue, changeRate, latestRecord));
+        }
+
+        if (summaries.isEmpty()) {
+            return null;
+        }
+
+        String teamName = teamNameMap.getOrDefault(tid, "Team#" + tid);
+        return new MyPerformanceResponse(tid, teamName, summaries);
     }
 
     /**

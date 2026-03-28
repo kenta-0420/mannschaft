@@ -1,6 +1,7 @@
 package com.mannschaft.app.safetycheck.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -29,7 +30,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 安否確認サービス。安否確認の発信・クローズ・結果集計・リマインドを担当する。
@@ -45,6 +49,7 @@ public class SafetyCheckService {
     private final SafetyCheckTemplateRepository templateRepository;
     private final SafetyCheckMapper mapper;
     private final UserRoleRepository userRoleRepository;
+    private final NameResolverService nameResolverService;
     private final NotificationHelper notificationHelper;
 
     /**
@@ -188,15 +193,35 @@ public class SafetyCheckService {
      * @return 未回答ユーザー一覧
      */
     public List<UnrespondedUserResponse> getUnrespondedUsers(Long safetyCheckId) {
-        findSafetyCheckOrThrow(safetyCheckId);
+        SafetyCheckEntity safetyCheck = findSafetyCheckOrThrow(safetyCheckId);
 
         // 回答済みユーザーIDを取得
-        List<Long> respondedUserIds = safetyResponseRepository.findRespondedUserIdsBySafetyCheckId(safetyCheckId);
+        Set<Long> respondedUserIds = new HashSet<>(
+                safetyResponseRepository.findRespondedUserIdsBySafetyCheckId(safetyCheckId));
 
-        // NOTE: 未回答ユーザーの詳細情報取得にはUserServiceとの連携が必要
-        // 現時点ではスコープメンバー数 - 回答者数の差分のみ返却
-        log.debug("回答済みユーザー数: {}", respondedUserIds.size());
-        return List.of();
+        // スコープ内の全メンバーを取得
+        String scopeType = safetyCheck.getScopeType().name();
+        List<Object[]> scopeMembers = userRoleRepository.findUserIdAndEmailByScope(scopeType, safetyCheck.getScopeId());
+
+        // 未回答ユーザーIDを抽出
+        Set<Long> unrespondedUserIds = new HashSet<>();
+        for (Object[] row : scopeMembers) {
+            Long userId = ((Number) row[0]).longValue();
+            if (!respondedUserIds.contains(userId)) {
+                unrespondedUserIds.add(userId);
+            }
+        }
+
+        if (unrespondedUserIds.isEmpty()) {
+            return List.of();
+        }
+
+        // 表示名を一括解決
+        Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(unrespondedUserIds);
+
+        return unrespondedUserIds.stream()
+                .map(uid -> new UnrespondedUserResponse(uid, nameMap.getOrDefault(uid, "")))
+                .toList();
     }
 
     /**
