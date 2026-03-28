@@ -40,18 +40,21 @@ public class StripeAdInvoiceWebhookController {
             @RequestHeader(value = "Stripe-Signature", required = false) String stripeSignature,
             @RequestBody String payload) {
 
+        if (webhookSecret == null || webhookSecret.isBlank()) {
+            log.error("Webhook secret が未設定です。mannschaft.stripe.webhook-secret.ad-invoices を設定してください");
+            return ResponseEntity.internalServerError().body(Map.of("error", "Webhook secret not configured"));
+        }
+        if (stripeSignature == null || stripeSignature.isBlank()) {
+            log.warn("Stripe-Signature ヘッダーがありません");
+            return ResponseEntity.badRequest().body(Map.of("error", "Missing Stripe-Signature header"));
+        }
+
         Event event;
-        if (webhookSecret != null && !webhookSecret.isBlank() && stripeSignature != null) {
-            try {
-                event = Webhook.constructEvent(payload, stripeSignature, webhookSecret);
-            } catch (SignatureVerificationException e) {
-                log.warn("Stripe Webhook 署名検証失敗: {}", e.getMessage());
-                return ResponseEntity.badRequest().body(Map.of("error", "Invalid signature"));
-            }
-        } else {
-            log.warn("Webhook secret 未設定のため署名検証をスキップします");
-            // フォールバック: Stripe SDKなしでパース（開発環境用）
-            return handleWithoutSignatureVerification(payload);
+        try {
+            event = Webhook.constructEvent(payload, stripeSignature, webhookSecret);
+        } catch (SignatureVerificationException e) {
+            log.warn("Stripe Webhook 署名検証失敗: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid signature"));
         }
 
         String eventType = event.getType();
@@ -108,51 +111,4 @@ public class StripeAdInvoiceWebhookController {
         return ResponseEntity.ok(Map.of("status", "processed"));
     }
 
-    /**
-     * 署名検証なしのフォールバック処理（開発環境用）。
-     */
-    private ResponseEntity<Map<String, String>> handleWithoutSignatureVerification(String payload) {
-        try {
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            @SuppressWarnings("unchecked")
-            Map<String, Object> payloadMap = mapper.readValue(payload, Map.class);
-            String eventType = (String) payloadMap.get("type");
-            if (eventType == null) {
-                return ResponseEntity.ok(Map.of("status", "ignored"));
-            }
-
-            @SuppressWarnings("unchecked")
-            Map<String, Object> data = (Map<String, Object>) payloadMap.get("data");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> object = data != null ? (Map<String, Object>) data.get("object") : null;
-            String stripeInvoiceId = object != null ? (String) object.get("id") : null;
-
-            if (stripeInvoiceId == null) {
-                return ResponseEntity.ok(Map.of("status", "ignored"));
-            }
-
-            var invoiceOpt = adInvoiceRepository.findByStripeInvoiceId(stripeInvoiceId);
-            if (invoiceOpt.isEmpty()) {
-                return ResponseEntity.ok(Map.of("status", "not_found"));
-            }
-
-            AdInvoiceEntity invoice = invoiceOpt.get();
-            switch (eventType) {
-                case "invoice.paid" -> {
-                    if (invoice.getStatus() != InvoiceStatus.PAID) {
-                        invoice.markPaid(LocalDateTime.now(), null);
-                    }
-                }
-                case "invoice.payment_failed" -> {
-                    if (invoice.getStatus() != InvoiceStatus.OVERDUE) {
-                        invoice.markOverdue();
-                    }
-                }
-            }
-            return ResponseEntity.ok(Map.of("status", "processed"));
-        } catch (Exception e) {
-            log.error("Webhook フォールバック処理エラー", e);
-            return ResponseEntity.ok(Map.of("status", "error"));
-        }
-    }
 }

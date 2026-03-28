@@ -26,6 +26,7 @@ import com.mannschaft.app.advertising.service.CampaignPerformanceService;
 import com.mannschaft.app.advertising.service.CsvExportService;
 import com.mannschaft.app.advertising.service.InvoicePdfService;
 import com.mannschaft.app.advertising.service.RateSimulatorService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
@@ -71,6 +72,15 @@ public class AdvertiserDashboardController {
     private final CampaignPerformanceService campaignPerformanceService;
     private final InvoicePdfService invoicePdfService;
     private final CsvExportService csvExportService;
+    private final AccessControlService accessControlService;
+
+    /**
+     * 組織スコープの権限検証。現在のユーザーが指定された組織の ADMIN 以上であることを確認する。
+     */
+    private void verifyOrganizationAccess(Long organizationId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, organizationId, "ORGANIZATION");
+    }
 
     /**
      * 広告主アカウントを新規登録する。
@@ -80,6 +90,7 @@ public class AdvertiserDashboardController {
     public ApiResponse<AdvertiserAccountResponse> register(
             @RequestParam Long organizationId,
             @Valid @RequestBody RegisterAdvertiserRequest request) {
+        verifyOrganizationAccess(organizationId);
         return ApiResponse.of(advertiserAccountService.register(organizationId, request));
     }
 
@@ -88,6 +99,7 @@ public class AdvertiserDashboardController {
      */
     @GetMapping("/account")
     public ApiResponse<AdvertiserAccountResponse> getAccount(@RequestParam Long organizationId) {
+        verifyOrganizationAccess(organizationId);
         return ApiResponse.of(advertiserAccountService.getByOrganizationId(organizationId));
     }
 
@@ -98,6 +110,7 @@ public class AdvertiserDashboardController {
     public ApiResponse<AdvertiserAccountResponse> updateAccount(
             @RequestParam Long organizationId,
             @Valid @RequestBody UpdateAdvertiserAccountRequest request) {
+        verifyOrganizationAccess(organizationId);
         return ApiResponse.of(advertiserAccountService.updateProfile(organizationId, request));
     }
 
@@ -135,7 +148,8 @@ public class AdvertiserDashboardController {
      */
     @GetMapping("/overview")
     public ApiResponse<AdvertiserOverviewResponse> overview(@RequestParam Long organizationId) {
-        // TODO: Phase 2 で ad_daily_stats テーブルと連携し、実際の統計データを返す
+        verifyOrganizationAccess(organizationId);
+        // TODO: ad_daily_stats テーブルと連携し、実際の統計データを返す
         advertiserAccountService.getByOrganizationId(organizationId); // 存在チェック
         LocalDate now = LocalDate.now();
         return ApiResponse.of(new AdvertiserOverviewResponse(
@@ -158,6 +172,7 @@ public class AdvertiserDashboardController {
             @RequestParam Long organizationId,
             @RequestParam(required = false) InvoiceStatus status,
             Pageable pageable) {
+        verifyOrganizationAccess(organizationId);
         AdvertiserAccountResponse account = advertiserAccountService.getByOrganizationId(organizationId);
         Page<InvoiceSummaryResponse> page = adInvoiceService.findByAccountId(account.id(), status, pageable);
         return PagedResponse.of(
@@ -178,6 +193,7 @@ public class AdvertiserDashboardController {
     public ApiResponse<InvoiceDetailResponse> getInvoice(
             @PathVariable Long invoiceId,
             @RequestParam Long organizationId) {
+        verifyOrganizationAccess(organizationId);
         AdvertiserAccountResponse account = advertiserAccountService.getByOrganizationId(organizationId);
         return ApiResponse.of(adInvoiceService.getDetail(invoiceId, account.id()));
     }
@@ -192,6 +208,7 @@ public class AdvertiserDashboardController {
     @GetMapping("/report-schedules")
     public ApiResponse<List<ReportScheduleResponse>> listReportSchedules(
             @RequestParam Long organizationId) {
+        verifyOrganizationAccess(organizationId);
         return ApiResponse.of(adReportScheduleService.findByOrganizationId(organizationId));
     }
 
@@ -203,6 +220,7 @@ public class AdvertiserDashboardController {
     public ApiResponse<ReportScheduleResponse> createReportSchedule(
             @RequestParam Long organizationId,
             @Valid @RequestBody CreateReportScheduleRequest request) {
+        verifyOrganizationAccess(organizationId);
         Long userId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(adReportScheduleService.create(organizationId, userId, request));
     }
@@ -215,6 +233,7 @@ public class AdvertiserDashboardController {
     public void deleteReportSchedule(
             @PathVariable Long id,
             @RequestParam Long organizationId) {
+        verifyOrganizationAccess(organizationId);
         adReportScheduleService.delete(id, organizationId);
     }
 
@@ -230,6 +249,7 @@ public class AdvertiserDashboardController {
     public ApiResponse<CreditLimitRequestResponse> createCreditLimitRequest(
             @RequestParam Long organizationId,
             @Valid @RequestBody CreateCreditLimitRequest request) {
+        verifyOrganizationAccess(organizationId);
         return ApiResponse.of(adCreditLimitRequestService.create(organizationId, request));
     }
 
@@ -239,6 +259,7 @@ public class AdvertiserDashboardController {
     @GetMapping("/credit-limit-requests")
     public ApiResponse<List<CreditLimitRequestResponse>> listCreditLimitRequests(
             @RequestParam Long organizationId) {
+        verifyOrganizationAccess(organizationId);
         return ApiResponse.of(adCreditLimitRequestService.findByOrganizationId(organizationId));
     }
 
@@ -255,6 +276,7 @@ public class AdvertiserDashboardController {
             @RequestParam Long organizationId,
             @RequestParam LocalDate from,
             @RequestParam LocalDate to) {
+        verifyOrganizationAccess(organizationId);
         return ApiResponse.of(campaignPerformanceService.getPerformance(campaignId, organizationId, from, to));
     }
 
@@ -267,6 +289,7 @@ public class AdvertiserDashboardController {
             @RequestParam Long organizationId,
             @RequestParam LocalDate from,
             @RequestParam LocalDate to) {
+        verifyOrganizationAccess(organizationId);
         return ApiResponse.of(campaignPerformanceService.getCreativeComparison(campaignId, organizationId, from, to));
     }
 
@@ -280,6 +303,7 @@ public class AdvertiserDashboardController {
             @RequestParam LocalDate from,
             @RequestParam LocalDate to,
             @RequestParam(required = false) String breakdownBy) {
+        verifyOrganizationAccess(organizationId);
         return ApiResponse.of(campaignPerformanceService.getBreakdown(campaignId, organizationId, from, to, breakdownBy));
     }
 
@@ -292,6 +316,7 @@ public class AdvertiserDashboardController {
             @RequestParam Long organizationId,
             @RequestParam LocalDate from,
             @RequestParam LocalDate to) {
+        verifyOrganizationAccess(organizationId);
         byte[] csv = csvExportService.exportCampaignPerformance(campaignId, organizationId, from, to);
         String filename = csvExportService.getCsvFilename(campaignId, from, to);
         return ResponseEntity.ok()
@@ -312,6 +337,7 @@ public class AdvertiserDashboardController {
     public ResponseEntity<byte[]> downloadInvoicePdf(
             @PathVariable Long invoiceId,
             @RequestParam Long organizationId) {
+        verifyOrganizationAccess(organizationId);
         AdvertiserAccountResponse account = advertiserAccountService.getByOrganizationId(organizationId);
         byte[] pdf = invoicePdfService.generateInvoicePdf(invoiceId, account.id());
         String filename = invoicePdfService.getFilename(invoiceId);
