@@ -118,4 +118,11 @@ public class AdInvoiceEntity extends BaseEntity {
     public void setDueDate(LocalDate dueDate) {
         this.dueDate = dueDate;
     }
+
+    /**
+     * Stripe Invoice ID を設定する。
+     */
+    public void setStripeInvoiceId(String stripeInvoiceId) {
+        this.stripeInvoiceId = stripeInvoiceId;
+    }
 }

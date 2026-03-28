@@ -318,7 +318,7 @@ public class AdvertiserDashboardController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
     }
 }

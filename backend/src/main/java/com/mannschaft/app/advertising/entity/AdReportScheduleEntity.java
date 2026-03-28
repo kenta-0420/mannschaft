@@ -72,4 +72,11 @@ public class AdReportScheduleEntity extends BaseEntity {
     public void disable() {
         this.enabled = false;
     }
+
+    /**
+     * 最終送信日時を現在時刻に更新する。
+     */
+    public void updateLastSentAt() {
+        this.lastSentAt = LocalDateTime.now();
+    }
 }

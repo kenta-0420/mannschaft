@@ -34,4 +34,9 @@ public interface AdInvoiceRepository extends JpaRepository<AdInvoiceEntity, Long
      * ステータスと期日前の請求書を取得する（期限超過検出用）。
      */
     List<AdInvoiceEntity> findByStatusAndDueDateBefore(InvoiceStatus status, LocalDate date);
+
+    /**
+     * Stripe Invoice ID で請求書を検索する。
+     */
+    Optional<AdInvoiceEntity> findByStripeInvoiceId(String stripeInvoiceId);
 }

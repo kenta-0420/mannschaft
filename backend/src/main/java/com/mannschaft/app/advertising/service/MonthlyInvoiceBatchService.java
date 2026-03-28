@@ -163,7 +163,52 @@ public class MonthlyInvoiceBatchService {
             savedInvoice.issue();
             savedInvoice.setDueDate(dueDate);
         }
-        // STRIPE の場合は Stripe Invoice API 呼び出し（TODO: Stripe連携実装）
+        if (account.getBillingMethod() == BillingMethod.STRIPE && account.getStripeCustomerId() != null) {
+            try {
+                createStripeInvoice(account, savedInvoice, byCampaign);
+            } catch (Exception e) {
+                log.error("Stripe Invoice 作成エラー: accountId={}, error={}", account.getId(), e.getMessage(), e);
+                // status = DRAFT のまま保持、次回手動リトライで対応
+            }
+        }
+    }
+
+    private void createStripeInvoice(AdvertiserAccountEntity account, AdInvoiceEntity invoice,
+                                      Map<Long, List<AdDailyStatsEntity>> byCampaign) {
+        try {
+            com.stripe.param.InvoiceCreateParams.Builder invoiceParams = com.stripe.param.InvoiceCreateParams.builder()
+                    .setCustomer(account.getStripeCustomerId())
+                    .setAutoAdvance(true)
+                    .setCollectionMethod(com.stripe.param.InvoiceCreateParams.CollectionMethod.CHARGE_AUTOMATICALLY);
+
+            com.stripe.model.Invoice stripeInvoice = com.stripe.model.Invoice.create(invoiceParams.build());
+
+            // 明細行を追加
+            for (var entry : byCampaign.entrySet()) {
+                BigDecimal subtotal = entry.getValue().stream()
+                        .map(AdDailyStatsEntity::getCost)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                long amountInYen = subtotal.setScale(0, java.math.RoundingMode.HALF_UP).longValue();
+
+                com.stripe.param.InvoiceItemCreateParams itemParams = com.stripe.param.InvoiceItemCreateParams.builder()
+                        .setCustomer(account.getStripeCustomerId())
+                        .setInvoice(stripeInvoice.getId())
+                        .setAmount(amountInYen)
+                        .setCurrency("jpy")
+                        .setDescription("Campaign " + entry.getKey())
+                        .build();
+                com.stripe.model.InvoiceItem.create(itemParams);
+            }
+
+            // Stripe Invoice を確定（自動送信）
+            stripeInvoice.finalizeInvoice();
+
+            // stripe_invoice_id を保存
+            invoice.setStripeInvoiceId(stripeInvoice.getId());
+            log.info("Stripe Invoice 作成成功: stripeInvoiceId={}, invoiceId={}", stripeInvoice.getId(), invoice.getId());
+        } catch (com.stripe.exception.StripeException e) {
+            throw new RuntimeException("Stripe Invoice creation failed", e);
+        }
     }
 
     private String generateInvoiceNumber(LocalDate invoiceMonth) {
