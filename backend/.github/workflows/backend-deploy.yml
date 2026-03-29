@@ -95,13 +95,26 @@ jobs:
     name: Build & Deploy
     runs-on: ubuntu-latest
     needs: test  # only runs when test job succeeds
-    if: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
 
     steps:
+      - name: Check AWS credentials
+        id: aws-check
+        run: |
+          if [ -z "$AWS_KEY" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::AWS credentials not configured — skipping deploy"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
       - name: Checkout source
+        if: steps.aws-check.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
+        if: steps.aws-check.outputs.skip != 'true'
         uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
@@ -109,15 +122,18 @@ jobs:
           cache: gradle
 
       - name: Grant Gradle wrapper execute permission
+        if: steps.aws-check.outputs.skip != 'true'
         run: chmod +x gradlew
 
       # Build the fat JAR (skip tests — already run in the test job)
       - name: Build JAR
+        if: steps.aws-check.outputs.skip != 'true'
         run: ./gradlew bootJar --no-daemon -x test
 
       # ---- AWS / ECR / ECS --------------------------------------------------
 
       - name: Configure AWS credentials
+        if: steps.aws-check.outputs.skip != 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -125,15 +141,16 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Log in to Amazon ECR
+        if: steps.aws-check.outputs.skip != 'true'
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build, tag, and push Docker image to ECR
+        if: steps.aws-check.outputs.skip != 'true'
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          # Tag with both the short SHA (immutable) and "latest" for convenience
           IMAGE_TAG: ${{ github.sha }}
         run: |
           IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
@@ -145,12 +162,10 @@ jobs:
             .
           docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
           docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
-          # Pass the full URI to subsequent steps
           echo "image=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
 
-      # Download the current task definition, inject the new image URI, then
-      # register a new revision and update the ECS service.
       - name: Download current ECS task definition
+        if: steps.aws-check.outputs.skip != 'true'
         run: |
           aws ecs describe-task-definition \
             --task-definition ${{ secrets.ECS_TASK_DEFINITION }} \
@@ -158,6 +173,7 @@ jobs:
             > task-definition.json
 
       - name: Update ECS task definition with new image
+        if: steps.aws-check.outputs.skip != 'true'
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
@@ -166,11 +182,10 @@ jobs:
           image: ${{ steps.build-image.outputs.image }}
 
       - name: Deploy to Amazon ECS
+        if: steps.aws-check.outputs.skip != 'true'
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
           service: ${{ secrets.ECS_SERVICE }}
           cluster: ${{ secrets.ECS_CLUSTER }}
-          # Wait until the new task set is stable before marking the workflow
-          # as succeeded (surfacing deployment errors immediately)
           wait-for-service-stability: true
