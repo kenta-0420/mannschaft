@@ -263,10 +263,18 @@ public class BudgetTransactionService {
 
     /**
      * 決済完了時に収入を自動記帳する（F08.2 連携）。
+     * source_type + source_id による冪等性を保証する。
      */
     @Transactional
     public void autoRecordPaymentIncome(Long scopeId, String scopeType,
-                                         BigDecimal amount, String description, String paymentMethod) {
+                                         BigDecimal amount, String description, String paymentMethod,
+                                         Long paymentId) {
+        // 冪等性チェック: 同一決済からの重複記帳を防止
+        if (!transactionRepository.findBySourceTypeAndSourceId("MEMBER_PAYMENT", paymentId).isEmpty()) {
+            log.info("同一決済からの記帳済み、スキップ: paymentId={}", paymentId);
+            return;
+        }
+
         // スコープに紐づくOPENの会計年度を取得
         List<BudgetFiscalYearEntity> fiscalYears = fiscalYearService.listByScope(scopeType, scopeId).stream()
                 .map(fy -> fiscalYearService.findById(fy.id()))
@@ -305,11 +313,13 @@ public class BudgetTransactionService {
                 .approvalStatus(BudgetApprovalStatus.APPROVED)
                 .paymentMethod(paymentMethod)
                 .isAutoRecorded(true)
+                .sourceType("MEMBER_PAYMENT")
+                .sourceId(paymentId)
                 .recordedBy(0L)
                 .build();
 
         transactionRepository.save(entity);
-        log.info("決済収入を自動記帳しました: fiscalYearId={}, amount={}", fy.getId(), amount);
+        log.info("決済収入を自動記帳しました: fiscalYearId={}, paymentId={}, amount={}", fy.getId(), paymentId, amount);
     }
 
     /**

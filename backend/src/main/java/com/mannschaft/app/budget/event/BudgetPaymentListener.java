@@ -33,7 +33,8 @@ public class BudgetPaymentListener {
                     event.getScopeType(),
                     event.getAmount(),
                     event.getDescription(),
-                    event.getPaymentMethod());
+                    event.getPaymentMethod(),
+                    event.getPaymentId());
         } catch (Exception e) {
             log.error("決済完了の自動記帳に失敗しました: paymentId={}", event.getPaymentId(), e);
         }

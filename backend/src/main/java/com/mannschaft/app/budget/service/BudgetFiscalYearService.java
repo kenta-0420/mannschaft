@@ -32,6 +32,18 @@ public class BudgetFiscalYearService {
     private final AccessControlService accessControlService;
 
     /**
+     * スコープ指定で会計年度を作成する（Controller経由）。
+     * PathVariableのスコープ値を使用し、リクエストボディの値は無視する。
+     */
+    @Transactional
+    public FiscalYearResponse create(String scopeType, Long scopeId, CreateFiscalYearRequest request) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
+
+        return doCreate(scopeType, scopeId, request, currentUserId);
+    }
+
+    /**
      * 会計年度を作成する。
      */
     @Transactional
@@ -39,13 +51,19 @@ public class BudgetFiscalYearService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(currentUserId, request.scopeId(), request.scopeType());
 
+        return doCreate(request.scopeType(), request.scopeId(), request, currentUserId);
+    }
+
+    private FiscalYearResponse doCreate(String scopeType, Long scopeId,
+                                         CreateFiscalYearRequest request, Long currentUserId) {
+
         if (!request.startDate().isBefore(request.endDate())) {
             throw new BusinessException(BudgetErrorCode.BUDGET_001);
         }
 
         // 同一スコープ・期間の重複チェック
         List<BudgetFiscalYearEntity> overlapping = fiscalYearRepository
-                .findByScopeTypeAndScopeId(request.scopeType(), request.scopeId())
+                .findByScopeTypeAndScopeId(scopeType, scopeId)
                 .stream()
                 .filter(fy -> !fy.getEndDate().isBefore(request.startDate())
                         && !fy.getStartDate().isAfter(request.endDate()))
@@ -58,8 +76,8 @@ public class BudgetFiscalYearService {
                 .name(request.name())
                 .startDate(request.startDate())
                 .endDate(request.endDate())
-                .scopeId(request.scopeId())
-                .scopeType(request.scopeType())
+                .scopeId(scopeId)
+                .scopeType(scopeType)
                 .status(BudgetFiscalYearStatus.OPEN)
                 .createdBy(currentUserId)
                 .build();

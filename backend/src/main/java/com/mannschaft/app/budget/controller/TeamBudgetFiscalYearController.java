@@ -58,6 +58,6 @@ public class TeamBudgetFiscalYearController {
             @Valid @RequestBody CreateFiscalYearRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
-        return ApiResponse.of(budgetFiscalYearService.create(request));
+        return ApiResponse.of(budgetFiscalYearService.create("TEAM", teamId, request));
     }
 }
