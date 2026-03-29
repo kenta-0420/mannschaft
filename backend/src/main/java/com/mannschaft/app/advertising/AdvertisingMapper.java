@@ -1,6 +1,7 @@
 package com.mannschaft.app.advertising;
 
 import com.mannschaft.app.advertising.dto.ActiveAdResponse;
+import com.mannschaft.app.advertising.dto.AdConversionResponse;
 import com.mannschaft.app.advertising.dto.AdRateCardResponse;
 import com.mannschaft.app.advertising.dto.AdvertiserAccountResponse;
 import com.mannschaft.app.advertising.dto.AffiliateConfigResponse;
@@ -9,6 +10,7 @@ import com.mannschaft.app.advertising.dto.CreditLimitRequestResponse;
 import com.mannschaft.app.advertising.dto.InvoiceItemResponse;
 import com.mannschaft.app.advertising.dto.InvoiceSummaryResponse;
 import com.mannschaft.app.advertising.dto.PublicRateCardResponse;
+import com.mannschaft.app.advertising.entity.AdConversionEntity;
 import com.mannschaft.app.advertising.entity.AdCreditLimitRequestEntity;
 import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
 import com.mannschaft.app.advertising.entity.AdInvoiceItemEntity;
@@ -78,6 +80,12 @@ public interface AdvertisingMapper {
      * 増額申請エンティティからレスポンスに変換する。
      */
     CreditLimitRequestResponse toCreditLimitRequestResponse(AdCreditLimitRequestEntity entity);
+
+    /**
+     * コンバージョンエンティティからレスポンスに変換する。
+     */
+    @Mapping(target = "conversionType", expression = "java(entity.getConversionType().name())")
+    AdConversionResponse toAdConversionResponse(AdConversionEntity entity);
 
     /**
      * 料金カードのラベルを組み立てる。

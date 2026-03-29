@@ -111,6 +111,10 @@ dependencies {
 
     // === RSS/Atom フィード生成（ROME） ===
     implementation("com.rometools:rome:2.1.0")
+
+    // ShedLock
+    implementation("net.javacrumbs.shedlock:shedlock-spring:6.2.0")
+    implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:6.2.0")
 }
 
 tasks.withType<Test> {

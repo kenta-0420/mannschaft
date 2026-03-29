@@ -69,7 +69,16 @@ public enum AdvertisingErrorCode implements ErrorCode {
     AD_019("AD_019", "増額申請のステータスが操作に適合しません", Severity.WARN),
 
     /** 希望額が現在の限度額以下 */
-    AD_020("AD_020", "希望額は現在の限度額より大きい値を指定してください", Severity.WARN);
+    AD_020("AD_020", "希望額は現在の限度額より大きい値を指定してください", Severity.WARN),
+
+    /** キャンペーンが見つからない */
+    AD_021("AD_021", "指定されたキャンペーンが見つかりません", Severity.WARN),
+
+    /** コンバージョンが見つからない */
+    AD_022("AD_022", "指定されたコンバージョンが見つかりません", Severity.WARN),
+
+    /** コンバージョン期間が不正 */
+    AD_023("AD_023", "コンバージョン取得期間の指定が不正です", Severity.WARN);
 
     private final String code;
     private final String message;

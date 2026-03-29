@@ -17,4 +17,6 @@ public interface AnalyticsFunnelSnapshotRepository extends JpaRepository<Analyti
 
     @Query("SELECT MAX(a.date) FROM AnalyticsFunnelSnapshotEntity a")
     Optional<LocalDate> findLatestDate();
+
+    void deleteByDate(LocalDate date);
 }

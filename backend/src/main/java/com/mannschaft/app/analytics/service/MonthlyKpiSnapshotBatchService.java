@@ -9,12 +9,13 @@ import com.mannschaft.app.analytics.repository.AnalyticsDailyUsersRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlySnapshotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-// TODO: ShedLock 導入後に @SchedulerLock を有効化する
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
@@ -34,7 +35,7 @@ public class MonthlyKpiSnapshotBatchService {
     private final MetricCalculationService metricCalculation;
 
     @Scheduled(cron = "0 0 4 1 * *", zone = "Asia/Tokyo")
-    // TODO: @SchedulerLock(name = "monthlyKpiSnapshot", lockAtMostFor = "30m", lockAtLeastFor = "5m")
+    @SchedulerLock(name = "monthlyKpiSnapshot", lockAtMostFor = "30m", lockAtLeastFor = "5m")
     @Transactional
     public void execute() {
         LocalDate now = LocalDate.now(ZoneId.of("Asia/Tokyo"));
@@ -83,7 +84,9 @@ public class MonthlyKpiSnapshotBatchService {
         BigDecimal arpu = metricCalculation.calculateArpu(netRevenue, activeUsers);
         BigDecimal userChurnRate = metricCalculation.calculateUserChurnRate(churnedUsers, payingUsers);
         BigDecimal ltv = metricCalculation.calculateLtv(arpu, userChurnRate);
-        BigDecimal revenueChurnRate = BigDecimal.ZERO; // TODO: 前月MRRからの計算
+
+        // revenueChurnRate: 前月MRRを取得して (前月MRR - 当月MRR) / 前月MRR で計算
+        BigDecimal revenueChurnRate = calculateRevenueChurnRate(monthStart, mrr);
 
         AnalyticsMonthlySnapshotEntity snapshot = AnalyticsMonthlySnapshotEntity.builder()
                 .month(monthStart)
@@ -104,6 +107,27 @@ public class MonthlyKpiSnapshotBatchService {
 
         snapshotRepository.save(snapshot);
 
-        // TODO: SYSTEM_ADMIN へ月次レポートメール自動送信（F09.6 SES連携）
+        // TODO: EmailService 実装後に月次レポートメール送信
+    }
+
+    /**
+     * 前月MRRを取得して収益チャーンレートを計算する。
+     * revenueChurnRate = (前月MRR - 当月MRR) / 前月MRR * 100
+     */
+    private BigDecimal calculateRevenueChurnRate(LocalDate currentMonthStart, BigDecimal currentMrr) {
+        LocalDate prevMonthStart = currentMonthStart.minusMonths(1).withDayOfMonth(1);
+        LocalDate prevMonthEnd = prevMonthStart.with(TemporalAdjusters.lastDayOfMonth());
+
+        // 前月のスナップショットがあればそのMRRを使用、なければ再計算
+        BigDecimal previousMrr = snapshotRepository.findByMonth(prevMonthStart)
+                .map(AnalyticsMonthlySnapshotEntity::getMrr)
+                .orElseGet(() -> metricCalculation.calculateMrr(prevMonthStart, prevMonthEnd));
+
+        if (previousMrr == null || previousMrr.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal churnedMrr = previousMrr.subtract(currentMrr).max(BigDecimal.ZERO);
+        return metricCalculation.calculateRevenueChurnRate(churnedMrr, previousMrr);
     }
 }

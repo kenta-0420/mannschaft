@@ -1,6 +1,7 @@
 package com.mannschaft.app.advertising.service;
 
 import com.mannschaft.app.advertising.AdvertisingErrorCode;
+import com.mannschaft.app.advertising.dto.AdvertiserOverviewResponse;
 import com.mannschaft.app.advertising.dto.BreakdownResponse;
 import com.mannschaft.app.advertising.dto.CampaignPerformanceResponse;
 import com.mannschaft.app.advertising.dto.CreativeComparisonResponse;
@@ -8,11 +9,13 @@ import com.mannschaft.app.advertising.entity.AdCampaignEntity;
 import com.mannschaft.app.advertising.entity.AdDailyStatsEntity;
 import com.mannschaft.app.advertising.entity.AdEntity;
 import com.mannschaft.app.advertising.entity.AdTargetingRuleEntity;
+import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdCampaignRepository;
 import com.mannschaft.app.advertising.repository.AdDailyStatsRepository;
 import com.mannschaft.app.advertising.repository.AdEntityRepository;
 import com.mannschaft.app.advertising.repository.AdTargetingRuleRepository;
 import com.mannschaft.app.advertising.repository.AdConversionRepository;
+import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +41,87 @@ public class CampaignPerformanceService {
     private final AdEntityRepository adEntityRepository;
     private final AdTargetingRuleRepository adTargetingRuleRepository;
     private final AdConversionRepository adConversionRepository;
+    private final AdvertiserAccountRepository advertiserAccountRepository;
+
+    /**
+     * 広告主ダッシュボード概要を取得する。
+     * 当月分の全キャンペーンのad_daily_statsを集計して返す。
+     */
+    public AdvertiserOverviewResponse getOverview(Long organizationId) {
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByOrganizationId(organizationId)
+                .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
+
+        List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserOrganizationId(organizationId);
+
+        LocalDate now = LocalDate.now();
+        LocalDate monthStart = now.withDayOfMonth(1);
+        var period = new AdvertiserOverviewResponse.Period(monthStart, now);
+
+        if (campaigns.isEmpty()) {
+            return new AdvertiserOverviewResponse(
+                    period, 0, 0, 0, 0,
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, account.getCreditLimit(),
+                    List.of()
+            );
+        }
+
+        List<Long> campaignIds = campaigns.stream().map(AdCampaignEntity::getId).toList();
+        List<AdDailyStatsEntity> allStats = adDailyStatsRepository.findByCampaignIdsAndDateBetween(
+                campaignIds, monthStart, now);
+
+        // キャンペーンID別に統計を分類
+        Map<Long, List<AdDailyStatsEntity>> statsByCampaign = allStats.stream()
+                .collect(Collectors.groupingBy(AdDailyStatsEntity::getCampaignId));
+
+        // 全体集計
+        long totalImpressions = allStats.stream().mapToLong(AdDailyStatsEntity::getImpressions).sum();
+        long totalClicks = allStats.stream().mapToLong(AdDailyStatsEntity::getClicks).sum();
+        BigDecimal totalCost = allStats.stream()
+                .map(AdDailyStatsEntity::getCost)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal avgCtr = calcCtr(totalImpressions, totalClicks);
+
+        int totalCampaignCount = campaigns.size();
+        int activeCampaignCount = (int) campaigns.stream()
+                .filter(c -> c.getStatus() == AdCampaignEntity.CampaignStatus.ACTIVE)
+                .count();
+
+        // 月次予算消化率: totalCost / creditLimit * 100
+        BigDecimal creditLimit = account.getCreditLimit();
+        BigDecimal monthlyBudgetUsedPct = BigDecimal.ZERO;
+        if (creditLimit.compareTo(BigDecimal.ZERO) > 0) {
+            monthlyBudgetUsedPct = totalCost.multiply(BigDecimal.valueOf(100))
+                    .divide(creditLimit, 2, RoundingMode.HALF_UP);
+        }
+
+        // キャンペーン別サマリー
+        Map<Long, AdCampaignEntity> campaignMap = campaigns.stream()
+                .collect(Collectors.toMap(AdCampaignEntity::getId, c -> c));
+
+        List<AdvertiserOverviewResponse.CampaignSummary> campaignSummaries = campaignIds.stream()
+                .map(cid -> {
+                    AdCampaignEntity campaign = campaignMap.get(cid);
+                    List<AdDailyStatsEntity> cStats = statsByCampaign.getOrDefault(cid, List.of());
+                    long imp = cStats.stream().mapToLong(AdDailyStatsEntity::getImpressions).sum();
+                    long clk = cStats.stream().mapToLong(AdDailyStatsEntity::getClicks).sum();
+                    BigDecimal cost = cStats.stream()
+                            .map(AdDailyStatsEntity::getCost)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    BigDecimal ctr = calcCtr(imp, clk);
+                    return new AdvertiserOverviewResponse.CampaignSummary(
+                            cid, campaign.getName(), campaign.getStatus().name(),
+                            imp, clk, ctr, cost
+                    );
+                })
+                .toList();
+
+        return new AdvertiserOverviewResponse(
+                period, totalCampaignCount, activeCampaignCount,
+                totalImpressions, totalClicks,
+                avgCtr, totalCost, monthlyBudgetUsedPct, creditLimit,
+                campaignSummaries
+        );
+    }
 
     /**
      * キャンペーン別パフォーマンスを取得する。

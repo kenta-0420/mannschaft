@@ -14,4 +14,9 @@ public interface TeamEnabledModuleRepository extends JpaRepository<TeamEnabledMo
     List<TeamEnabledModuleEntity> findByTeamId(Long teamId);
 
     Optional<TeamEnabledModuleEntity> findByTeamIdAndModuleId(Long teamId, Long moduleId);
+
+    /**
+     * 有効なモジュール数を取得する（Analytics 集計用）。
+     */
+    long count();
 }

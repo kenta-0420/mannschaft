@@ -30,4 +30,11 @@ public interface TeamSubscriptionRepository extends JpaRepository<TeamSubscripti
      * チームの最新サブスクリプションを取得する。
      */
     Optional<TeamSubscriptionEntity> findFirstByTeamIdOrderByCreatedAtDesc(Long teamId);
+
+    /**
+     * ACTIVE かつ有料プランのサブスクリプション数を取得する（Analytics 集計用）。
+     */
+    @Query("SELECT COUNT(s) FROM TeamSubscriptionEntity s " +
+            "WHERE s.status = 'ACTIVE' AND s.planType <> 'FREE'")
+    int countActivePaidSubscriptions();
 }

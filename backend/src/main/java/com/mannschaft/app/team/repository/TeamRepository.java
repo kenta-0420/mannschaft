@@ -20,6 +20,13 @@ public interface TeamRepository extends JpaRepository<TeamEntity, Long> {
     Page<TeamEntity> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     /**
+     * 指定日時点のアクティブチーム数（未削除・未アーカイブ）を取得する（Analytics 集計用）。
+     */
+    @Query("SELECT COUNT(t) FROM TeamEntity t WHERE t.deletedAt IS NULL AND t.archivedAt IS NULL " +
+            "AND t.createdAt <= :endOfDay")
+    int countActiveTeamsAsOf(@Param("endOfDay") java.time.LocalDateTime endOfDay);
+
+    /**
      * 広告セグメント用: アクティブなチームをテンプレート・都道府県でフィルタリングする。
      */
     @Query("""

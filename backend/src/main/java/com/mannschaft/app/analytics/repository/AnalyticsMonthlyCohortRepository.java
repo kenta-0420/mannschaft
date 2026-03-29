@@ -15,4 +15,6 @@ public interface AnalyticsMonthlyCohortRepository extends JpaRepository<Analytic
             LocalDate from, LocalDate to);
 
     List<AnalyticsMonthlyCohortEntity> findByCohortMonth(LocalDate cohortMonth);
+
+    void deleteByCohortMonthAndMonthsElapsed(LocalDate cohortMonth, int monthsElapsed);
 }

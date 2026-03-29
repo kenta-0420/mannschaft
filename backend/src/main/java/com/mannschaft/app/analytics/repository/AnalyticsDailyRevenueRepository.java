@@ -25,4 +25,8 @@ public interface AnalyticsDailyRevenueRepository extends JpaRepository<Analytics
 
     @Query("SELECT MAX(a.date) FROM AnalyticsDailyRevenueEntity a")
     Optional<LocalDate> findLatestDate();
+
+    Optional<AnalyticsDailyRevenueEntity> findByDateAndRevenueSource(LocalDate date, RevenueSource revenueSource);
+
+    void deleteByDate(LocalDate date);
 }

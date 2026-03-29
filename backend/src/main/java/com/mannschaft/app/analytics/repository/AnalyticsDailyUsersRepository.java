@@ -19,4 +19,6 @@ public interface AnalyticsDailyUsersRepository extends JpaRepository<AnalyticsDa
 
     @Query("SELECT MAX(a.date) FROM AnalyticsDailyUsersEntity a")
     Optional<LocalDate> findLatestDate();
+
+    void deleteByDate(LocalDate date);
 }

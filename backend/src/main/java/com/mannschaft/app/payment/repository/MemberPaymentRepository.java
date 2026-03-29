@@ -88,4 +88,48 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<MemberPaymentEntity> findByIdAndPaymentItemId(Long id, Long paymentItemId);
+
+    // === Analytics 集計用クエリ ===
+
+    /**
+     * 指定日に支払われた PAID レコードの合計額を取得する。
+     */
+    @Query("SELECT COALESCE(SUM(mp.amountPaid), 0) FROM MemberPaymentEntity mp " +
+            "WHERE mp.status = 'PAID' AND CAST(mp.paidAt AS localdate) = :date")
+    java.math.BigDecimal sumPaidAmountByDate(@Param("date") java.time.LocalDate date);
+
+    /**
+     * 指定日に返金された REFUNDED レコードの合計額を取得する。
+     */
+    @Query("SELECT COALESCE(SUM(mp.amountPaid), 0) FROM MemberPaymentEntity mp " +
+            "WHERE mp.status = 'REFUNDED' AND CAST(mp.refundedAt AS localdate) = :date")
+    java.math.BigDecimal sumRefundedAmountByDate(@Param("date") java.time.LocalDate date);
+
+    /**
+     * 指定日に支払われた PAID レコードの件数を取得する。
+     */
+    @Query("SELECT COUNT(mp) FROM MemberPaymentEntity mp " +
+            "WHERE mp.status = 'PAID' AND CAST(mp.paidAt AS localdate) = :date")
+    int countPaidByDate(@Param("date") java.time.LocalDate date);
+
+    /**
+     * 指定日時点で有効な PAID レコードを持つユニークユーザー数を取得する。
+     */
+    @Query("SELECT COUNT(DISTINCT mp.userId) FROM MemberPaymentEntity mp " +
+            "WHERE mp.status = 'PAID' " +
+            "AND (mp.validUntil IS NULL OR mp.validUntil >= :date) " +
+            "AND (mp.validFrom IS NULL OR mp.validFrom <= :date)")
+    int countDistinctPayingUsersByDate(@Param("date") java.time.LocalDate date);
+
+    /**
+     * 指定月に支払われた PAID レコードの合計額をコホート用に取得する（ユーザーID群指定）。
+     */
+    @Query("SELECT COALESCE(SUM(mp.amountPaid), 0) FROM MemberPaymentEntity mp " +
+            "WHERE mp.status = 'PAID' " +
+            "AND mp.userId IN :userIds " +
+            "AND CAST(mp.paidAt AS localdate) BETWEEN :monthStart AND :monthEnd")
+    java.math.BigDecimal sumPaidAmountByUserIdsAndMonth(
+            @Param("userIds") List<Long> userIds,
+            @Param("monthStart") java.time.LocalDate monthStart,
+            @Param("monthEnd") java.time.LocalDate monthEnd);
 }

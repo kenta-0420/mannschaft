@@ -49,7 +49,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -149,15 +148,7 @@ public class AdvertiserDashboardController {
     @GetMapping("/overview")
     public ApiResponse<AdvertiserOverviewResponse> overview(@RequestParam Long organizationId) {
         verifyOrganizationAccess(organizationId);
-        // TODO: ad_daily_stats テーブルと連携し、実際の統計データを返す
-        advertiserAccountService.getByOrganizationId(organizationId); // 存在チェック
-        LocalDate now = LocalDate.now();
-        return ApiResponse.of(new AdvertiserOverviewResponse(
-                new AdvertiserOverviewResponse.Period(now.withDayOfMonth(1), now),
-                0, 0, 0, 0,
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                List.of()
-        ));
+        return ApiResponse.of(campaignPerformanceService.getOverview(organizationId));
     }
 
     // ─────────────────────────────────────────────

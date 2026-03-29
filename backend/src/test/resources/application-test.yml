@@ -22,5 +22,8 @@ mannschaft:
     secret: test-secret-key-that-is-at-least-256-bits-long-for-hmac-sha256-algorithm
     access-token-expiration: 900
     refresh-token-expiration: 604800
+  encryption:
+    key: dGVzdC1lbmNyeXB0aW9uLWtleS0xMjM0NTY3ODkwYWI=
+    hmac-key: dGVzdC1obWFjLWtleS0tLTEyMzQ1Njc4OTBhYmNkZWY=
   storage:
     type: local

@@ -79,8 +79,9 @@ public class AdCreditLimitRequestService {
                 ? adCreditLimitRequestRepository.findByStatus(status, pageable)
                 : adCreditLimitRequestRepository.findAll(pageable);
         return page.map(entity -> {
-            // TODO: Phase 2+ で advertiser_accounts → organizations JOIN して companyName を取得
-            String companyName = String.valueOf(entity.getAdvertiserAccountId());
+            String companyName = advertiserAccountRepository.findById(entity.getAdvertiserAccountId())
+                    .map(AdvertiserAccountEntity::getCompanyName)
+                    .orElse(String.valueOf(entity.getAdvertiserAccountId()));
             return new CreditLimitRequestDetailResponse(
                     entity.getId(),
                     entity.getAdvertiserAccountId(),

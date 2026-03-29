@@ -12,7 +12,10 @@ import com.mannschaft.app.advertising.dto.UpdateCreditLimitRequest;
 import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 広告主アカウントサービス。
  */
+@Slf4j
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -28,6 +32,8 @@ public class AdvertiserAccountService {
 
     private final AdvertiserAccountRepository advertiserAccountRepository;
     private final AdvertisingMapper advertisingMapper;
+    private final OrganizationRepository organizationRepository;
+    private final StripePaymentProvider stripePaymentProvider;
 
     /**
      * 広告主アカウントを登録する。
@@ -89,19 +95,23 @@ public class AdvertiserAccountService {
                 ? advertiserAccountRepository.findByStatus(status, pageable)
                 : advertiserAccountRepository.findAll(pageable);
 
-        return page.map(entity -> new AdvertiserAccountDetailResponse(
-                entity.getId(),
-                entity.getOrganizationId(),
-                // TODO: Phase 2 で organizations テーブルから組織名を取得する
-                String.valueOf(entity.getOrganizationId()),
-                entity.getStatus(),
-                entity.getCompanyName(),
-                entity.getContactEmail(),
-                entity.getBillingMethod(),
-                entity.getCreditLimit(),
-                entity.getApprovedAt(),
-                entity.getCreatedAt()
-        ));
+        return page.map(entity -> {
+            String organizationName = organizationRepository.findById(entity.getOrganizationId())
+                    .map(org -> org.getName())
+                    .orElse(String.valueOf(entity.getOrganizationId()));
+            return new AdvertiserAccountDetailResponse(
+                    entity.getId(),
+                    entity.getOrganizationId(),
+                    organizationName,
+                    entity.getStatus(),
+                    entity.getCompanyName(),
+                    entity.getContactEmail(),
+                    entity.getBillingMethod(),
+                    entity.getCreditLimit(),
+                    entity.getApprovedAt(),
+                    entity.getCreatedAt()
+            );
+        });
     }
 
     /**
@@ -115,7 +125,20 @@ public class AdvertiserAccountService {
         } catch (IllegalStateException e) {
             throw new BusinessException(AdvertisingErrorCode.AD_007, e);
         }
-        // TODO: Stripe Customer 作成処理を追加する
+        // Stripe Customer 作成
+        if (entity.getStripeCustomerId() == null) {
+            try {
+                String stripeCustomerId = stripePaymentProvider.createCustomer(
+                        entity.getContactEmail(), entity.getId());
+                log.info("Stripe Customer 作成完了: accountId={}, stripeCustomerId={}",
+                        entity.getId(), stripeCustomerId);
+                // TODO: AdvertiserAccountEntity に setStripeCustomerId() メソッドを追加後、
+                //       entity.setStripeCustomerId(stripeCustomerId) で永続化する
+            } catch (Exception e) {
+                log.error("Stripe Customer 作成失敗: accountId={}", entity.getId(), e);
+                // Stripe Customer 作成失敗は承認処理自体を止めない
+            }
+        }
         return advertisingMapper.toAccountResponse(entity);
     }
 
