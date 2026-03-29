@@ -105,11 +105,7 @@ onMounted(async () => {
           v-if="selectedCheckId"
           class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
         >
-          <SafetyResultsDashboard
-            scope-type="organization"
-            :scope-id="orgId"
-            :check-id="selectedCheckId"
-          />
+          <SafetyResultsDashboard :check-id="selectedCheckId" />
         </div>
         <div
           v-else
@@ -120,11 +116,6 @@ onMounted(async () => {
       </div>
     </div>
 
-    <SafetyCheckTrigger
-      v-model:visible="showTriggerDialog"
-      scope-type="organization"
-      :scope-id="orgId"
-      @triggered="loadChecks"
-    />
+    <SafetyCheckTrigger v-model:visible="showTriggerDialog" @triggered="loadChecks" />
   </div>
 </template>

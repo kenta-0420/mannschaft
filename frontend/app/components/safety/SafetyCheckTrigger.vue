@@ -1,7 +1,5 @@
 <script setup lang="ts">
 defineProps<{
-  scopeType: 'team' | 'organization'
-  scopeId: number
   visible: boolean
 }>()
 

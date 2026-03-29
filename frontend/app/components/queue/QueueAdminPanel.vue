@@ -1,7 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{
-  scopeType: 'team' | 'organization'
-  scopeId: number
+  teamId: number
 }>()
 
 const queueApi = useQueueApi()
@@ -20,7 +19,7 @@ const loading = ref(true)
 async function load() {
   loading.value = true
   try {
-    const res = await queueApi.getCounters(props.scopeId)
+    const res = await queueApi.getCounters(props.teamId)
     counters.value = res.data as Counter[]
   } catch {
     counters.value = []
@@ -31,7 +30,7 @@ async function load() {
 
 async function callNext(counterId: number) {
   try {
-    const res = await queueApi.callNextTicket(props.scopeId, counterId)
+    const res = await queueApi.callNextTicket(props.teamId, counterId)
     const ticket = res.data as { ticketNumber: string }
     notification.success(`${ticket.ticketNumber} を呼び出しました`)
     await load()

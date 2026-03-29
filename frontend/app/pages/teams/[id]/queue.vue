@@ -29,19 +29,14 @@ onMounted(() => loadPermissions())
       </TabList>
       <TabPanels>
         <TabPanel :value="0">
-          <QueueStatusBoard scope-type="team" :scope-id="teamId" />
+          <QueueStatusBoard :team-id="teamId" />
         </TabPanel>
         <TabPanel v-if="isAdminOrDeputy" :value="1">
-          <QueueAdminPanel scope-type="team" :scope-id="teamId" />
+          <QueueAdminPanel :team-id="teamId" />
         </TabPanel>
       </TabPanels>
     </Tabs>
 
-    <QueueTicketForm
-      v-model:visible="showTicketForm"
-      scope-type="team"
-      :scope-id="teamId"
-      @issued="onTicketIssued"
-    />
+    <QueueTicketForm v-model:visible="showTicketForm" :team-id="teamId" @issued="onTicketIssued" />
   </div>
 </template>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{
-  scopeType: 'team' | 'organization'
-  scopeId: number
+  teamId: number
   visible: boolean
 }>()
 
@@ -39,8 +38,8 @@ const filteredCounters = computed(() =>
 
 async function loadOptions() {
   const [catRes, cntRes] = await Promise.all([
-    queueApi.getCategories(props.scopeId),
-    queueApi.getCounters(props.scopeId),
+    queueApi.getCategories(props.teamId),
+    queueApi.getCounters(props.teamId),
   ])
   categories.value = catRes.data as Category[]
   counters.value = cntRes.data as Counter[]
@@ -50,7 +49,7 @@ async function submit() {
   if (!form.value.categoryId) return
   submitting.value = true
   try {
-    const res = await queueApi.createCounterTicket(props.scopeId, form.value.counterId!, {
+    const res = await queueApi.createCounterTicket(props.teamId, form.value.counterId!, {
       categoryId: form.value.categoryId,
       phoneNumber: form.value.phoneNumber.trim() || undefined,
     })

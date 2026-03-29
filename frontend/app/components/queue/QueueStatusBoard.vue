@@ -1,7 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{
-  scopeType: 'team' | 'organization'
-  scopeId: number
+  teamId: number
 }>()
 
 const queueApi = useQueueApi()
@@ -26,7 +25,7 @@ let pollInterval: ReturnType<typeof setInterval> | null = null
 
 async function load() {
   try {
-    const res = await queueApi.getQueueStatus(props.scopeId)
+    const res = await queueApi.getQueueStatus(props.teamId)
     status.value = res.data as Status
   } catch {
     /* silent */

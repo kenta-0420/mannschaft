@@ -1,7 +1,5 @@
 <script setup lang="ts">
 const props = defineProps<{
-  scopeType: 'team' | 'organization'
-  scopeId: number
   checkId: number
   title: string
   isDrill: boolean
