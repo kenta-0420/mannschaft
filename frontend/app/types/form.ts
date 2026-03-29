@@ -137,11 +137,3 @@ export interface UpdateFormSubmissionRequest {
   submitImmediately?: boolean
   values?: SubmissionValueRequest[]
 }
-
-// === Paged ===
-export interface PageMeta {
-  page: number
-  size: number
-  totalElements: number
-  totalPages: number
-}

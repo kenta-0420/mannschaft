@@ -59,12 +59,6 @@ export interface LoginHistoryResponse {
   createdAt: string
 }
 
-export interface CursorMeta {
-  nextCursor: string | null
-  hasNext: boolean
-  limit: number
-}
-
 // === Presence ===
 export interface PresenceGoingOutRequest {
   destination?: string
@@ -196,13 +190,6 @@ export interface UserPromotionResponse {
   deliveredAt: string
   openedAt: string | null
   createdAt: string
-}
-
-export interface PageMeta {
-  total: number
-  page: number
-  size: number
-  totalPages: number
 }
 
 // === Dwelling Unit ===

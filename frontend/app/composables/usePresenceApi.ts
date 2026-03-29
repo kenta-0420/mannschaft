@@ -7,7 +7,7 @@ import type {
   PresenceIconResponse,
   PresenceIconRequest,
 } from '~/types/presence'
-import type { CursorMeta } from '~/types/coin-toss'
+import type { CursorMeta } from '~/types/api'
 
 export function usePresenceApi() {
   const api = useApi()

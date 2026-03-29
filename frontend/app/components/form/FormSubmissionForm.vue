@@ -25,7 +25,7 @@ const submitImmediately = ref(false)
 
 // フィールド値
 const fieldValues = ref<
-  Record<string, { textValue?: string; numberValue?: number; dateValue?: string }>
+  Record<string, { textValue: string; numberValue: number | null; dateValue: Date | null }>
 >({})
 
 const isEdit = computed(() => !!props.submissionId)
@@ -48,9 +48,9 @@ watch(
           )
           for (const val of subRes.data.values) {
             fieldValues.value[val.fieldKey] = {
-              textValue: val.textValue ?? undefined,
-              numberValue: val.numberValue ?? undefined,
-              dateValue: val.dateValue ?? undefined,
+              textValue: val.textValue ?? '',
+              numberValue: val.numberValue ?? null,
+              dateValue: val.dateValue ? new Date(val.dateValue) : null,
             }
           }
         }
@@ -66,7 +66,7 @@ watch(
 function initFieldValues(fields: FormFieldResponse[]) {
   fieldValues.value = {}
   for (const field of fields) {
-    fieldValues.value[field.fieldKey] = {}
+    fieldValues.value[field.fieldKey] = { textValue: '', numberValue: null, dateValue: null }
   }
 }
 

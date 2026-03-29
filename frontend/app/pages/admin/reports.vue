@@ -43,7 +43,7 @@ async function load() {
       adminReportApi.getReportStats(),
     ])
     reports.value = reportsRes.data
-    totalRecords.value = reportsRes.meta?.total ?? reportsRes.data.length
+    totalRecords.value = reportsRes.meta?.totalElements ?? reportsRes.data.length
     stats.value = statsRes.data
   } catch {
     showError('レポートの取得に失敗しました')

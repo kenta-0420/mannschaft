@@ -168,11 +168,3 @@ export interface WorkflowAttachmentResponse {
   uploadedBy: number
   createdAt: string
 }
-
-// === Paged ===
-export interface PageMeta {
-  page: number
-  size: number
-  totalElements: number
-  totalPages: number
-}

@@ -1,4 +1,5 @@
-import type { CoinTossResponse, CoinTossRequest, CursorMeta } from '~/types/coin-toss'
+import type { CoinTossResponse, CoinTossRequest } from '~/types/coin-toss'
+import type { CursorMeta } from '~/types/api'
 
 export function useCoinTossApi() {
   const api = useApi()

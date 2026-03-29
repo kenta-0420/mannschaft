@@ -19,7 +19,7 @@ async function load() {
   try {
     const res = await systemAdminApi.getAnnouncements({ page: page.value, size: 20 })
     items.value = res.data
-    totalRecords.value = res.meta?.total ?? res.data.length
+    totalRecords.value = res.meta?.totalElements ?? res.data.length
   } catch {
     showError('お知らせ一覧の取得に失敗しました')
   } finally {

@@ -10,7 +10,7 @@ import type {
   DigestPublishResponse,
   DigestRegenerateRequest,
 } from '~/types/timeline-digest'
-import type { CursorMeta } from '~/types/coin-toss'
+import type { CursorMeta } from '~/types/api'
 
 export function useTimelineDigestApi() {
   const api = useApi()

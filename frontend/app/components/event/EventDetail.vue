@@ -305,114 +305,121 @@ onMounted(async () => {
       </Card>
 
       <!-- タブ -->
-      <TabView v-model:active-index="activeTab">
-        <!-- 参加者タブ -->
-        <TabPanel header="参加者">
-          <DataTable :value="registrations" data-key="id" row-hover>
-            <Column header="ID" field="id" style="width: 80px" />
-            <Column header="ユーザーID" style="width: 120px">
-              <template #body="{ data }">
-                {{ data.userId || data.guestName || '—' }}
-              </template>
-            </Column>
-            <Column header="ステータス" style="width: 120px">
-              <template #body="{ data }">
-                <Tag
-                  :value="regStatusLabel(data.status)"
-                  :severity="regStatusSeverity(data.status)"
-                />
-              </template>
-            </Column>
-            <Column header="数量" field="quantity" style="width: 80px" />
-            <Column header="メモ" field="note" style="min-width: 150px">
-              <template #body="{ data }">
-                {{ data.note || '—' }}
-              </template>
-            </Column>
-            <Column header="登録日" style="width: 160px">
-              <template #body="{ data }">
-                {{ formatDateTime(data.createdAt) }}
-              </template>
-            </Column>
-            <Column v-if="canEdit" header="操作" style="width: 120px">
-              <template #body="{ data }">
-                <div v-if="data.status === 'PENDING'" class="flex gap-1">
-                  <Button
-                    icon="pi pi-check"
-                    text
-                    rounded
-                    size="small"
-                    severity="success"
-                    @click="onApproveRegistration(data.id)"
+      <Tabs v-model:value="activeTab">
+        <TabList>
+          <Tab :value="0">参加者</Tab>
+          <Tab :value="1">チェックイン</Tab>
+          <Tab :value="2">タイムテーブル</Tab>
+        </TabList>
+        <TabPanels>
+          <!-- 参加者タブ -->
+          <TabPanel :value="0">
+            <DataTable :value="registrations" data-key="id" row-hover>
+              <Column header="ID" field="id" style="width: 80px" />
+              <Column header="ユーザーID" style="width: 120px">
+                <template #body="{ data }">
+                  {{ data.userId || data.guestName || '—' }}
+                </template>
+              </Column>
+              <Column header="ステータス" style="width: 120px">
+                <template #body="{ data }">
+                  <Tag
+                    :value="regStatusLabel(data.status)"
+                    :severity="regStatusSeverity(data.status)"
                   />
-                  <Button
-                    icon="pi pi-times"
-                    text
-                    rounded
-                    size="small"
-                    severity="danger"
-                    @click="onRejectRegistration(data.id)"
-                  />
-                </div>
+                </template>
+              </Column>
+              <Column header="数量" field="quantity" style="width: 80px" />
+              <Column header="メモ" field="note" style="min-width: 150px">
+                <template #body="{ data }">
+                  {{ data.note || '—' }}
+                </template>
+              </Column>
+              <Column header="登録日" style="width: 160px">
+                <template #body="{ data }">
+                  {{ formatDateTime(data.createdAt) }}
+                </template>
+              </Column>
+              <Column v-if="canEdit" header="操作" style="width: 120px">
+                <template #body="{ data }">
+                  <div v-if="data.status === 'PENDING'" class="flex gap-1">
+                    <Button
+                      icon="pi pi-check"
+                      text
+                      rounded
+                      size="small"
+                      severity="success"
+                      @click="onApproveRegistration(data.id)"
+                    />
+                    <Button
+                      icon="pi pi-times"
+                      text
+                      rounded
+                      size="small"
+                      severity="danger"
+                      @click="onRejectRegistration(data.id)"
+                    />
+                  </div>
+                </template>
+              </Column>
+              <template #empty>
+                <DashboardEmptyState icon="pi pi-users" message="参加者はいません" />
               </template>
-            </Column>
-            <template #empty>
-              <DashboardEmptyState icon="pi pi-users" message="参加者はいません" />
-            </template>
-          </DataTable>
-        </TabPanel>
+            </DataTable>
+          </TabPanel>
 
-        <!-- チェックインタブ -->
-        <TabPanel header="チェックイン">
-          <DataTable :value="checkins" data-key="id" row-hover>
-            <Column header="ID" field="id" style="width: 80px" />
-            <Column header="種別" field="checkinType" style="width: 120px" />
-            <Column header="チェックイン日時" style="width: 200px">
-              <template #body="{ data }">
-                {{ formatDateTime(data.checkedInAt) }}
+          <!-- チェックインタブ -->
+          <TabPanel :value="1">
+            <DataTable :value="checkins" data-key="id" row-hover>
+              <Column header="ID" field="id" style="width: 80px" />
+              <Column header="種別" field="checkinType" style="width: 120px" />
+              <Column header="チェックイン日時" style="width: 200px">
+                <template #body="{ data }">
+                  {{ formatDateTime(data.checkedInAt) }}
+                </template>
+              </Column>
+              <Column header="メモ" field="note" style="min-width: 150px">
+                <template #body="{ data }">
+                  {{ data.note || '—' }}
+                </template>
+              </Column>
+              <template #empty>
+                <DashboardEmptyState icon="pi pi-sign-in" message="チェックインはありません" />
               </template>
-            </Column>
-            <Column header="メモ" field="note" style="min-width: 150px">
-              <template #body="{ data }">
-                {{ data.note || '—' }}
-              </template>
-            </Column>
-            <template #empty>
-              <DashboardEmptyState icon="pi pi-sign-in" message="チェックインはありません" />
-            </template>
-          </DataTable>
-        </TabPanel>
+            </DataTable>
+          </TabPanel>
 
-        <!-- タイムテーブルタブ -->
-        <TabPanel header="タイムテーブル">
-          <DataTable :value="timetableItems" data-key="id" row-hover>
-            <Column header="タイトル" field="title" style="min-width: 200px" />
-            <Column header="登壇者" field="speaker" style="width: 150px">
-              <template #body="{ data }">
-                {{ data.speaker || '—' }}
+          <!-- タイムテーブルタブ -->
+          <TabPanel :value="2">
+            <DataTable :value="timetableItems" data-key="id" row-hover>
+              <Column header="タイトル" field="title" style="min-width: 200px" />
+              <Column header="登壇者" field="speaker" style="width: 150px">
+                <template #body="{ data }">
+                  {{ data.speaker || '—' }}
+                </template>
+              </Column>
+              <Column header="開始" style="width: 160px">
+                <template #body="{ data }">
+                  {{ formatDateTime(data.startAt) }}
+                </template>
+              </Column>
+              <Column header="終了" style="width: 160px">
+                <template #body="{ data }">
+                  {{ formatDateTime(data.endAt) }}
+                </template>
+              </Column>
+              <Column header="場所" field="location" style="width: 150px">
+                <template #body="{ data }">
+                  {{ data.location || '—' }}
+                </template>
+              </Column>
+              <template #empty>
+                <DashboardEmptyState icon="pi pi-clock" message="タイムテーブルはありません" />
               </template>
-            </Column>
-            <Column header="開始" style="width: 160px">
-              <template #body="{ data }">
-                {{ formatDateTime(data.startAt) }}
-              </template>
-            </Column>
-            <Column header="終了" style="width: 160px">
-              <template #body="{ data }">
-                {{ formatDateTime(data.endAt) }}
-              </template>
-            </Column>
-            <Column header="場所" field="location" style="width: 150px">
-              <template #body="{ data }">
-                {{ data.location || '—' }}
-              </template>
-            </Column>
-            <template #empty>
-              <DashboardEmptyState icon="pi pi-clock" message="タイムテーブルはありません" />
-            </template>
-          </DataTable>
-        </TabPanel>
-      </TabView>
+            </DataTable>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
 
       <!-- 編集ダイアログ -->
       <EventForm

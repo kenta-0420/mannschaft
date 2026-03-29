@@ -17,6 +17,13 @@ export interface PageMeta {
   totalPages: number
 }
 
+/** カーソルページネーション型 */
+export interface CursorMeta {
+  nextCursor: string | null
+  hasNext: boolean
+  limit: number
+}
+
 /** エラーレスポンス型 */
 export interface ErrorResponse {
   error: string

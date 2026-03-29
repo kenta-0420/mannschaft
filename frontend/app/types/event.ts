@@ -259,11 +259,3 @@ export interface EventCategoryResponse {
   sortOrder: number
   scope: string | null
 }
-
-// === Paged ===
-export interface PageMeta {
-  page: number
-  size: number
-  totalElements: number
-  totalPages: number
-}

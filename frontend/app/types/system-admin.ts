@@ -1,3 +1,5 @@
+import type { PageMeta } from '~/types/api'
+
 // ===== Announcements =====
 export interface AnnouncementResponse {
   id: number
@@ -383,14 +385,6 @@ export interface OrganizationEntity {
   version: number
   archivedAt: string | null
   deletedAt: string | null
-}
-
-// ===== Paged Response =====
-export interface PageMeta {
-  total: number
-  page: number
-  size: number
-  totalPages: number
 }
 
 export interface PagedResponse<T> {

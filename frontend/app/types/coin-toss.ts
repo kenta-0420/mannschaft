@@ -14,9 +14,3 @@ export interface CoinTossRequest {
   options?: string[]
   question?: string
 }
-
-export interface CursorMeta {
-  nextCursor: string | null
-  hasNext: boolean
-  limit: number
-}
