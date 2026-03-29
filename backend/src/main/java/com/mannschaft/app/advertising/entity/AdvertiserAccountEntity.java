@@ -105,6 +105,13 @@ public class AdvertiserAccountEntity extends BaseEntity {
     }
 
     /**
+     * Stripe Customer IDを設定する。
+     */
+    public void assignStripeCustomerId(String stripeCustomerId) {
+        this.stripeCustomerId = stripeCustomerId;
+    }
+
+    /**
      * 与信限度額を更新する。
      */
     public void updateCreditLimit(BigDecimal newLimit) {

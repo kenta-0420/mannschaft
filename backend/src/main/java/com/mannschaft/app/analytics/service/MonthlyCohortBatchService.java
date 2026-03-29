@@ -86,12 +86,6 @@ public class MonthlyCohortBatchService {
                     revenue = memberPaymentRepository.sumPaidAmountByUserIdsAndMonth(
                             cohortUserIds, targetMonthStart, targetMonthEnd);
 
-                    // 指定月に有効な支払いを持つユーザー数を簡易計算
-                    retainedPaying = (int) cohortUserIds.stream()
-                            .filter(uid -> memberPaymentRepository
-                                    .countDistinctPayingUsersByDate(targetMonthEnd) > 0)
-                            .limit(1) // 個別ユーザーの判定は重いため、全体の paying からの推定に切り替え
-                            .count();
                     // 簡易計算: コホートサイズに対する全体の paying 比率で推定
                     if (cohortSize > 0) {
                         int totalPaying = memberPaymentRepository.countDistinctPayingUsersByDate(targetMonthEnd);

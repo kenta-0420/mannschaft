@@ -130,10 +130,9 @@ public class AdvertiserAccountService {
             try {
                 String stripeCustomerId = stripePaymentProvider.createCustomer(
                         entity.getContactEmail(), entity.getId());
+                entity.assignStripeCustomerId(stripeCustomerId);
                 log.info("Stripe Customer 作成完了: accountId={}, stripeCustomerId={}",
                         entity.getId(), stripeCustomerId);
-                // TODO: AdvertiserAccountEntity に setStripeCustomerId() メソッドを追加後、
-                //       entity.setStripeCustomerId(stripeCustomerId) で永続化する
             } catch (Exception e) {
                 log.error("Stripe Customer 作成失敗: accountId={}", entity.getId(), e);
                 // Stripe Customer 作成失敗は承認処理自体を止めない
