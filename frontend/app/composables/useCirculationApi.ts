@@ -1,6 +1,12 @@
 import type {
   CirculationResponse,
   CirculationDetailResponse,
+  CirculationComment,
+  CirculationStampRequest,
+  CirculationStatsResponse,
+  CirculationAttachment,
+  AddRecipientsRequest,
+  CirculationRecipient,
 } from '~/types/circulation'
 
 interface CirculationListParams {
@@ -36,14 +42,21 @@ export function useCirculationApi() {
       page: params.page ?? 0,
       size: params.size ?? 20,
     })
-    return api<{ data: CirculationResponse[]; meta: { page: number; size: number; totalElements: number; totalPages: number } }>(`/api/v1/circulation?${qs}`)
+    return api<{
+      data: CirculationResponse[]
+      meta: { page: number; size: number; totalElements: number; totalPages: number }
+    }>(`/api/v1/circulation?${qs}`)
   }
 
   async function getCirculation(id: number) {
     return api<CirculationDetailResponse>(`/api/v1/circulation/${id}`)
   }
 
-  async function createCirculation(scopeType: string, scopeId: number, body: Record<string, unknown>) {
+  async function createCirculation(
+    scopeType: string,
+    scopeId: number,
+    body: Record<string, unknown>,
+  ) {
     return api<{ data: CirculationResponse }>('/api/v1/circulation', {
       method: 'POST',
       body: { ...body, scopeType, scopeId },
@@ -102,6 +115,136 @@ export function useCirculationApi() {
     return api<{ data: CirculationResponse[] }>(`/api/v1/circulation/my${qs}`)
   }
 
+  // === Scoped Circulation CRUD ===
+  async function listScopedCirculations(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    params?: { page?: number; size?: number },
+  ) {
+    const base =
+      scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
+    const query = new URLSearchParams()
+    query.set('page', String(params?.page ?? 0))
+    query.set('size', String(params?.size ?? 20))
+    return api<{
+      data: CirculationResponse[]
+      meta: { page: number; size: number; totalElements: number; totalPages: number }
+    }>(`${base}/circulations?${query}`)
+  }
+
+  async function createScopedCirculation(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    body: Record<string, unknown>,
+  ) {
+    const base =
+      scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
+    return api<{ data: CirculationResponse }>(`${base}/circulations`, { method: 'POST', body })
+  }
+
+  async function getScopedCirculation(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    documentId: number,
+  ) {
+    const base =
+      scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
+    return api<CirculationDetailResponse>(`${base}/circulations/${documentId}`)
+  }
+
+  async function updateScopedCirculation(
+    teamId: number,
+    documentId: number,
+    body: Record<string, unknown>,
+  ) {
+    return api<{ data: CirculationResponse }>(
+      `/api/v1/teams/${teamId}/circulations/${documentId}`,
+      { method: 'PATCH', body },
+    )
+  }
+
+  async function deleteScopedCirculation(teamId: number, documentId: number) {
+    return api(`/api/v1/teams/${teamId}/circulations/${documentId}`, { method: 'DELETE' })
+  }
+
+  async function activateCirculation(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    documentId: number,
+  ) {
+    const base =
+      scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
+    return api(`${base}/circulations/${documentId}/activate`, { method: 'POST' })
+  }
+
+  async function cancelScopedCirculation(teamId: number, documentId: number) {
+    return api(`/api/v1/teams/${teamId}/circulations/${documentId}/cancel`, { method: 'POST' })
+  }
+
+  async function getCirculationStats(teamId: number) {
+    return api<{ data: CirculationStatsResponse }>(`/api/v1/teams/${teamId}/circulations/stats`)
+  }
+
+  async function getMyCreatedCirculations(params?: { page?: number; size?: number }) {
+    const query = new URLSearchParams()
+    if (params?.page) query.set('page', String(params.page))
+    if (params?.size) query.set('size', String(params.size))
+    return api<{ data: CirculationResponse[] }>(`/api/v1/me/circulations/created?${query}`)
+  }
+
+  // === Global Circulation Sub-resources ===
+  async function getAttachments(documentId: number) {
+    return api<{ data: CirculationAttachment[] }>(`/api/v1/circulations/${documentId}/attachments`)
+  }
+
+  async function createAttachment(documentId: number, body: Record<string, unknown>) {
+    return api<{ data: CirculationAttachment }>(`/api/v1/circulations/${documentId}/attachments`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function getComments(documentId: number, params?: { page?: number; size?: number }) {
+    const query = new URLSearchParams()
+    if (params?.page) query.set('page', String(params.page))
+    if (params?.size) query.set('size', String(params.size))
+    return api<{
+      data: CirculationComment[]
+      meta: { page: number; size: number; totalElements: number; totalPages: number }
+    }>(`/api/v1/circulations/${documentId}/comments?${query}`)
+  }
+
+  async function createComment(documentId: number, body: string) {
+    return api<{ data: CirculationComment }>(`/api/v1/circulations/${documentId}/comments`, {
+      method: 'POST',
+      body: { body },
+    })
+  }
+
+  async function getRecipients(documentId: number) {
+    return api<{ data: CirculationRecipient[] }>(`/api/v1/circulations/${documentId}/recipients`)
+  }
+
+  async function addRecipients(documentId: number, body: AddRecipientsRequest) {
+    return api(`/api/v1/circulations/${documentId}/recipients`, { method: 'POST', body })
+  }
+
+  async function removeRecipient(documentId: number, recipientId: number) {
+    return api(`/api/v1/circulations/${documentId}/recipients/${recipientId}`, { method: 'DELETE' })
+  }
+
+  async function stampDocument(documentId: number, body: CirculationStampRequest) {
+    return api(`/api/v1/circulations/${documentId}/stamp`, { method: 'POST', body })
+  }
+
+  async function rejectStamp(documentId: number) {
+    return api(`/api/v1/circulations/${documentId}/stamp/reject`, { method: 'POST' })
+  }
+
+  async function skipStamp(documentId: number) {
+    return api(`/api/v1/circulations/${documentId}/stamp/skip`, { method: 'POST' })
+  }
+
   return {
     getCirculations,
     getCirculation,
@@ -118,5 +261,24 @@ export function useCirculationApi() {
     getStampStatus,
     exportPdf,
     getMyCirculations,
+    listScopedCirculations,
+    createScopedCirculation,
+    getScopedCirculation,
+    updateScopedCirculation,
+    deleteScopedCirculation,
+    activateCirculation,
+    cancelScopedCirculation,
+    getCirculationStats,
+    getMyCreatedCirculations,
+    getAttachments,
+    createAttachment,
+    getComments,
+    createComment,
+    getRecipients,
+    addRecipients,
+    removeRecipient,
+    stampDocument,
+    rejectStamp,
+    skipStamp,
   }
 }

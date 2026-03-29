@@ -7,9 +7,13 @@ const safetyApi = useSafetyCheckApi()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 
 interface SafetyCheck {
-  id: number; title: string; status: string; isDrill: boolean
+  id: number
+  title: string
+  status: string
+  isDrill: boolean
   responseStats: { total: number; responded: number; responseRate: number }
-  createdAt: string; closedAt: string | null
+  createdAt: string
+  closedAt: string | null
 }
 
 const checks = ref<SafetyCheck[]>([])
@@ -20,11 +24,13 @@ const selectedCheckId = ref<number | null>(null)
 async function loadChecks() {
   loading.value = true
   try {
-    const res = await safetyApi.listSafetyChecks('team', teamId, { size: 20 })
+    const res = await safetyApi.listSafetyChecks({ size: 20 })
     checks.value = res.data as SafetyCheck[]
+  } catch {
+    checks.value = []
+  } finally {
+    loading.value = false
   }
-  catch { checks.value = [] }
-  finally { loading.value = false }
 }
 
 function selectCheck(checkId: number) {
@@ -32,7 +38,12 @@ function selectCheck(checkId: number) {
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return new Date(dateStr).toLocaleString('ja-JP', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 onMounted(async () => {
@@ -45,7 +56,13 @@ onMounted(async () => {
   <div>
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-2xl font-bold">安否確認</h1>
-      <Button v-if="isAdminOrDeputy" label="安否確認を発動" icon="pi pi-exclamation-triangle" severity="danger" @click="showTriggerDialog = true" />
+      <Button
+        v-if="isAdminOrDeputy"
+        label="安否確認を発動"
+        icon="pi pi-exclamation-triangle"
+        severity="danger"
+        @click="showTriggerDialog = true"
+      />
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -84,10 +101,20 @@ onMounted(async () => {
 
       <!-- 詳細パネル -->
       <div class="lg:col-span-2">
-        <div v-if="selectedCheckId" class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
-          <SafetyResultsDashboard scope-type="team" :scope-id="teamId" :check-id="selectedCheckId" />
+        <div
+          v-if="selectedCheckId"
+          class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+        >
+          <SafetyResultsDashboard
+            scope-type="team"
+            :scope-id="teamId"
+            :check-id="selectedCheckId"
+          />
         </div>
-        <div v-else class="rounded-xl border border-surface-200 bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-800">
+        <div
+          v-else
+          class="rounded-xl border border-surface-200 bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-800"
+        >
           <DashboardEmptyState icon="pi pi-shield" message="安否確認を選択してください" />
         </div>
       </div>

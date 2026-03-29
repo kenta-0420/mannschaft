@@ -70,3 +70,30 @@ export interface BulletinReader {
   avatarUrl: string | null
   readAt: string
 }
+
+export interface BulletinReadStatus {
+  threadId: number
+  isRead: boolean
+  readAt: string | null
+  totalReaders: number
+  readCount: number
+}
+
+export interface BulletinReactionSummary {
+  targetType: string
+  targetId: number
+  reactions: Record<string, number>
+  myReactions: string[]
+}
+
+export interface CreateBulletinReactionRequest {
+  targetType: string
+  targetId: number
+  emoji: string
+}
+
+export interface BulletinThreadSearchParams {
+  keyword: string
+  page?: number
+  size?: number
+}

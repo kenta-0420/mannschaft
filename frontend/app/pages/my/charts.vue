@@ -27,7 +27,7 @@ async function loadData(page = 0) {
 
 async function handleSelect(chart: Chart) {
   try {
-    selectedChart.value = await chartApi.get(chart.id)
+    selectedChart.value = (await chartApi.get(chart.teamId, chart.id)).data
     showDetail.value = true
   } catch {
     notification.error('カルテの詳細取得に失敗しました')
@@ -51,11 +51,18 @@ onMounted(() => loadData())
         @click="handleSelect(chart)"
       >
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold">{{ new Date(chart.visitDate).toLocaleDateString('ja-JP') }}</h3>
-          <Badge :value="chart.status === 'DRAFT' ? '下書き' : '確定'" :severity="chart.status === 'DRAFT' ? 'warn' : 'success'" />
+          <h3 class="text-sm font-semibold">
+            {{ new Date(chart.visitDate).toLocaleDateString('ja-JP') }}
+          </h3>
+          <Badge
+            :value="chart.status === 'DRAFT' ? '下書き' : '確定'"
+            :severity="chart.status === 'DRAFT' ? 'warn' : 'success'"
+          />
         </div>
         <p class="mt-1 text-xs text-surface-500">担当: {{ chart.staffName }}</p>
-        <p v-if="chart.chiefComplaint" class="mt-1 text-sm text-surface-600 line-clamp-2">{{ chart.chiefComplaint }}</p>
+        <p v-if="chart.chiefComplaint" class="mt-1 text-sm text-surface-600 line-clamp-2">
+          {{ chart.chiefComplaint }}
+        </p>
       </div>
       <div v-if="charts.length === 0" class="py-12 text-center">
         <i class="pi pi-file-edit mb-3 text-4xl text-surface-300" />
@@ -67,8 +74,13 @@ onMounted(() => loadData())
       <template v-if="selectedChart">
         <div class="space-y-3">
           <div class="grid gap-3 md:grid-cols-2">
-            <div><span class="text-sm text-surface-500">来店日:</span> {{ new Date(selectedChart.visitDate).toLocaleDateString('ja-JP') }}</div>
-            <div><span class="text-sm text-surface-500">担当:</span> {{ selectedChart.staffName }}</div>
+            <div>
+              <span class="text-sm text-surface-500">来店日:</span>
+              {{ new Date(selectedChart.visitDate).toLocaleDateString('ja-JP') }}
+            </div>
+            <div>
+              <span class="text-sm text-surface-500">担当:</span> {{ selectedChart.staffName }}
+            </div>
           </div>
           <div v-if="selectedChart.chiefComplaint">
             <p class="text-sm text-surface-500">主訴・要望</p>
@@ -85,7 +97,13 @@ onMounted(() => loadData())
           <div v-if="selectedChart.photos.length > 0">
             <p class="text-sm text-surface-500">写真</p>
             <div class="mt-2 grid grid-cols-3 gap-2">
-              <img v-for="p in selectedChart.photos" :key="p.id" :src="p.photoUrl" :alt="p.caption ?? ''" class="h-24 w-full rounded-lg object-cover" />
+              <img
+                v-for="p in selectedChart.photos"
+                :key="p.id"
+                :src="p.photoUrl"
+                :alt="p.caption ?? ''"
+                class="h-24 w-full rounded-lg object-cover"
+              />
             </div>
           </div>
         </div>

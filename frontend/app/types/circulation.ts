@@ -53,3 +53,53 @@ export interface CreateCirculationRequest {
     userIds: number[]
   }>
 }
+
+export interface UpdateCirculationRequest {
+  title?: string
+  body?: string
+  priority?: string
+  dueDate?: string
+  reminderEnabled?: boolean
+  reminderIntervalHours?: number
+  stampDisplayStyle?: string
+}
+
+export interface CirculationComment {
+  id: number
+  documentId: number
+  userId: number
+  displayName: string
+  avatarUrl: string | null
+  body: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CirculationStampRequest {
+  sealId: number
+  targetType: string
+  targetId: number
+  stampDocumentHash?: string
+}
+
+export interface CirculationStatsResponse {
+  totalDocuments: number
+  inProgress: number
+  completed: number
+  overdueCount: number
+}
+
+export interface AddRecipientsRequest {
+  recipients: Array<{
+    userId: number
+    groupOrder?: number
+  }>
+}
+
+export interface CreateAttachmentRequest {
+  attachmentType: string
+  fileKey?: string
+  originalFilename?: string
+  fileSize?: number
+  mimeType?: string
+}

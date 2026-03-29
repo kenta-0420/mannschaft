@@ -19,10 +19,10 @@ async function toggleFollow() {
   loading.value = true
   try {
     if (props.isFollowing) {
-      await socialApi.unfollow(props.followedType, props.followedId)
+      await socialApi.unfollow({ followedType: props.followedType, followedId: props.followedId })
       emit('toggle', false)
     } else {
-      await socialApi.follow(props.followedType, props.followedId)
+      await socialApi.follow({ followedType: props.followedType, followedId: props.followedId })
       emit('toggle', true)
     }
   } catch {

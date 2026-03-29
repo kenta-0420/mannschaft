@@ -45,22 +45,22 @@ export function useNotificationApi() {
   }
 
   async function markAsRead(notificationId: number) {
-    return api(`/api/v1/notifications/${notificationId}/read`, { method: 'PATCH' })
+    return api(`/api/v1/notifications/${notificationId}/read`, { method: 'POST' })
   }
 
   async function markAsUnread(notificationId: number) {
-    return api(`/api/v1/notifications/${notificationId}/unread`, { method: 'PATCH' })
+    return api(`/api/v1/notifications/${notificationId}/unread`, { method: 'POST' })
   }
 
   async function snooze(notificationId: number, duration: string) {
     return api(`/api/v1/notifications/${notificationId}/snooze`, {
-      method: 'PATCH',
+      method: 'POST',
       body: { duration },
     })
   }
 
   async function markAllAsRead() {
-    return api('/api/v1/notifications/read-all', { method: 'PATCH' })
+    return api('/api/v1/notifications/read-all', { method: 'POST' })
   }
 
   // === Preferences (scope) ===
@@ -68,17 +68,25 @@ export function useNotificationApi() {
     return api<{ data: NotificationPreference[] }>('/api/v1/notification-preferences')
   }
 
-  async function updateTeamPreference(teamId: number, settings: Record<string, unknown>) {
-    return api(`/api/v1/notification-preferences/teams/${teamId}`, {
+  async function updatePreferences(body: Record<string, unknown>) {
+    return api('/api/v1/notification-preferences', {
       method: 'PUT',
-      body: settings,
+      body,
     })
   }
 
-  async function updateOrgPreference(orgId: number, settings: Record<string, unknown>) {
-    return api(`/api/v1/notification-preferences/organizations/${orgId}`, {
+  // === Matching notification preferences ===
+  async function getMatchingNotificationPreferences(teamId: number) {
+    return api(`/api/v1/teams/${teamId}/matching/notification-preferences`)
+  }
+
+  async function updateMatchingNotificationPreferences(
+    teamId: number,
+    body: Record<string, unknown>,
+  ) {
+    return api(`/api/v1/teams/${teamId}/matching/notification-preferences`, {
       method: 'PUT',
-      body: settings,
+      body,
     })
   }
 
@@ -87,7 +95,9 @@ export function useNotificationApi() {
     return api<{ data: NotificationTypePreference[] }>('/api/v1/notification-type-preferences')
   }
 
-  async function updateTypePreferences(preferences: Array<{ notificationType: string; inAppEnabled: boolean; pushEnabled: boolean }>) {
+  async function updateTypePreferences(
+    preferences: Array<{ notificationType: string; inAppEnabled: boolean; pushEnabled: boolean }>,
+  ) {
     return api('/api/v1/notification-type-preferences', {
       method: 'PUT',
       body: { preferences },
@@ -114,8 +124,9 @@ export function useNotificationApi() {
     snooze,
     markAllAsRead,
     getPreferences,
-    updateTeamPreference,
-    updateOrgPreference,
+    updatePreferences,
+    getMatchingNotificationPreferences,
+    updateMatchingNotificationPreferences,
     getTypePreferences,
     updateTypePreferences,
     registerPushSubscription,

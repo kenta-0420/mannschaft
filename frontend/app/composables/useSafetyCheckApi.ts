@@ -1,76 +1,111 @@
 export function useSafetyCheckApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
-    return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
-  }
+  const BASE = '/api/v1/safety-checks'
 
   // === Safety Check CRUD ===
-  async function triggerSafetyCheck(scopeType: 'team' | 'organization', scopeId: number, body: { title: string; description?: string; isDrill?: boolean }) {
-    return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/safety-checks`, { method: 'POST', body })
-  }
-
-  async function listSafetyChecks(scopeType: 'team' | 'organization', scopeId: number, params?: { status?: string; page?: number; size?: number }) {
+  async function listSafetyChecks(params?: { status?: string; page?: number; size?: number }) {
     const query = new URLSearchParams()
     if (params?.status) query.set('status', params.status)
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 20))
-    return api<{ data: unknown[]; meta: { page: number; size: number; totalElements: number; totalPages: number } }>(
-      `${buildBase(scopeType, scopeId)}/safety-checks?${query}`
-    )
+    return api<{
+      data: unknown[]
+      meta: { page: number; size: number; totalElements: number; totalPages: number }
+    }>(`${BASE}?${query}`)
   }
 
-  async function getSafetyCheck(scopeType: 'team' | 'organization', scopeId: number, checkId: number) {
-    return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/safety-checks/${checkId}`)
+  async function triggerSafetyCheck(body: {
+    title: string
+    description?: string
+    isDrill?: boolean
+  }) {
+    return api<{ data: unknown }>(`${BASE}`, { method: 'POST', body })
   }
 
-  async function getSafetyCheckResults(scopeType: 'team' | 'organization', scopeId: number, checkId: number) {
-    return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/safety-checks/${checkId}/results`)
+  async function getSafetyCheck(safetyCheckId: number) {
+    return api<{ data: unknown }>(`${BASE}/${safetyCheckId}`)
   }
 
-  async function closeSafetyCheck(scopeType: 'team' | 'organization', scopeId: number, checkId: number) {
-    return api(`${buildBase(scopeType, scopeId)}/safety-checks/${checkId}/close`, { method: 'PATCH' })
+  async function getSafetyCheckResults(safetyCheckId: number) {
+    return api<{ data: unknown }>(`${BASE}/${safetyCheckId}/results`)
+  }
+
+  async function getUnresponded(safetyCheckId: number) {
+    return api<{ data: unknown[] }>(`${BASE}/${safetyCheckId}/unresponded`)
+  }
+
+  async function closeSafetyCheck(safetyCheckId: number) {
+    return api(`${BASE}/${safetyCheckId}/close`, { method: 'POST' })
+  }
+
+  async function sendReminder(safetyCheckId: number) {
+    return api(`${BASE}/${safetyCheckId}/remind`, { method: 'POST' })
   }
 
   // === Response ===
-  async function respondToSafetyCheck(scopeType: 'team' | 'organization', scopeId: number, checkId: number, body: { status: string; message?: string; latitude?: number; longitude?: number }) {
-    return api(`${buildBase(scopeType, scopeId)}/safety-checks/${checkId}/respond`, { method: 'POST', body })
+  async function respondToSafetyCheck(
+    safetyCheckId: number,
+    body: { status: string; message?: string; latitude?: number; longitude?: number },
+  ) {
+    return api(`${BASE}/${safetyCheckId}/respond`, { method: 'POST', body })
   }
 
-  async function getMyActiveSafetyChecks() {
-    return api<{ data: unknown[] }>('/api/v1/safety-checks/me/active')
+  async function bulkRespond(safetyCheckId: number, body: Record<string, unknown>) {
+    return api(`${BASE}/${safetyCheckId}/respond/bulk`, { method: 'POST', body })
   }
 
   // === Followup ===
-  async function updateFollowup(scopeType: 'team' | 'organization', scopeId: number, checkId: number, followupId: number, body: { status: string; note?: string }) {
-    return api(`${buildBase(scopeType, scopeId)}/safety-checks/${checkId}/followups/${followupId}`, { method: 'PATCH', body })
+  async function updateFollowup(followupId: number, body: { status: string; note?: string }) {
+    return api(`${BASE}/followups/${followupId}`, { method: 'PATCH', body })
   }
 
   // === Templates ===
-  async function getTemplates(scopeType: 'team' | 'organization', scopeId: number) {
-    return api<{ data: unknown[] }>(`${buildBase(scopeType, scopeId)}/safety-checks/templates`)
+  async function getTemplates() {
+    return api<{ data: unknown[] }>(`${BASE}/templates`)
   }
 
-  async function createTemplate(scopeType: 'team' | 'organization', scopeId: number, body: { name: string; title: string; description?: string }) {
-    return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/safety-checks/templates`, { method: 'POST', body })
+  async function createTemplate(body: { name: string; title: string; description?: string }) {
+    return api<{ data: unknown }>(`${BASE}/templates`, { method: 'POST', body })
   }
 
-  // === Reminder ===
-  async function sendReminder(scopeType: 'team' | 'organization', scopeId: number, checkId: number) {
-    return api(`${buildBase(scopeType, scopeId)}/safety-checks/${checkId}/remind`, { method: 'POST' })
+  async function getTemplate(templateId: number) {
+    return api<{ data: unknown }>(`${BASE}/templates/${templateId}`)
+  }
+
+  async function updateTemplate(templateId: number, body: Record<string, unknown>) {
+    return api<{ data: unknown }>(`${BASE}/templates/${templateId}`, { method: 'PATCH', body })
+  }
+
+  // === History & Presets ===
+  async function getHistory(params?: { page?: number; size?: number }) {
+    const query = new URLSearchParams()
+    if (params?.page !== undefined) query.set('page', String(params.page))
+    if (params?.size !== undefined) query.set('size', String(params.size))
+    const qs = query.toString()
+    return api<{ data: unknown[] }>(`${BASE}/history${qs ? `?${qs}` : ''}`)
+  }
+
+  async function getPresets() {
+    return api<{ data: unknown[] }>(`${BASE}/presets`)
   }
 
   return {
-    triggerSafetyCheck,
     listSafetyChecks,
+    triggerSafetyCheck,
     getSafetyCheck,
     getSafetyCheckResults,
+    getUnresponded,
     closeSafetyCheck,
+    sendReminder,
     respondToSafetyCheck,
-    getMyActiveSafetyChecks,
+    bulkRespond,
     updateFollowup,
     getTemplates,
     createTemplate,
-    sendReminder,
+    getTemplate,
+    updateTemplate,
+    getHistory,
+    getPresets,
   }
 }

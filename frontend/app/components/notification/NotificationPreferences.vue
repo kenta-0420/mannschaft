@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { NotificationPreference, NotificationTypePreference } from '~/types/notification'
 
-const { getPreferences, updateTeamPreference, updateOrgPreference, getTypePreferences, updateTypePreferences } = useNotificationApi()
+const { getPreferences, updatePreferences, getTypePreferences, updateTypePreferences } =
+  useNotificationApi()
 const { showSuccess, showError } = useNotification()
 
 const scopePrefs = ref<NotificationPreference[]>([])
@@ -12,10 +13,7 @@ const saving = ref(false)
 async function load() {
   loading.value = true
   try {
-    const [scopeRes, typeRes] = await Promise.all([
-      getPreferences(),
-      getTypePreferences(),
-    ])
+    const [scopeRes, typeRes] = await Promise.all([getPreferences(), getTypePreferences()])
     scopePrefs.value = scopeRes.data
     typePrefs.value = typeRes.data
   } catch {
@@ -27,12 +25,8 @@ async function load() {
 
 async function onToggleScopeMute(pref: NotificationPreference) {
   try {
-    const update = { isMuted: !pref.isMuted }
-    if (pref.scopeType === 'TEAM') {
-      await updateTeamPreference(pref.scopeId, update)
-    } else {
-      await updateOrgPreference(pref.scopeId, update)
-    }
+    const update = { scopeType: pref.scopeType, scopeId: pref.scopeId, isMuted: !pref.isMuted }
+    await updatePreferences(update)
     pref.isMuted = !pref.isMuted
   } catch {
     showError('更新に失敗しました')
@@ -43,7 +37,7 @@ async function saveTypePreferences() {
   saving.value = true
   try {
     await updateTypePreferences(
-      typePrefs.value.map(tp => ({
+      typePrefs.value.map((tp) => ({
         notificationType: tp.notificationType,
         inAppEnabled: tp.inAppEnabled,
         pushEnabled: tp.pushEnabled,
@@ -88,10 +82,14 @@ onMounted(() => load())
         >
           <div>
             <p class="text-sm font-medium">{{ pref.scopeName }}</p>
-            <p class="text-xs text-surface-400">{{ pref.scopeType === 'TEAM' ? 'チーム' : '組織' }}</p>
+            <p class="text-xs text-surface-400">
+              {{ pref.scopeType === 'TEAM' ? 'チーム' : '組織' }}
+            </p>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-xs text-surface-400">{{ pref.isMuted ? 'ミュート中' : '受信中' }}</span>
+            <span class="text-xs text-surface-400">{{
+              pref.isMuted ? 'ミュート中' : '受信中'
+            }}</span>
             <ToggleSwitch v-model="pref.isMuted" @update:model-value="onToggleScopeMute(pref)" />
           </div>
         </div>

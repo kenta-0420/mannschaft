@@ -11,53 +11,139 @@ export function useSurveyApi() {
     return query.toString()
   }
 
-  async function getSurveys(scopeType: string, scopeId: number, status?: string, page = 0) {
-    const qs = buildQuery({ scope_type: scopeType, scope_id: scopeId, status, page, size: 20 })
-    return api<{ data: SurveyResponse[]; meta: { page: number; size: number; totalElements: number; totalPages: number } }>(`/api/v1/surveys?${qs}`)
+  /** Convert 'TEAM'/'ORGANIZATION' or 'teams'/'organizations' to path segment */
+  function toPathSegment(scopeType: string): string {
+    const s = scopeType.toLowerCase()
+    if (s === 'team' || s === 'teams') return 'teams'
+    if (s === 'organization' || s === 'organizations') return 'organizations'
+    return s
   }
 
-  async function getSurvey(surveyId: number) {
-    return api<SurveyDetailResponse>(`/api/v1/surveys/${surveyId}`)
+  // === Surveys CRUD ===
+  async function getSurveys(
+    scopeType: string,
+    scopeId: number,
+    params?: Record<string, unknown> | string,
+  ) {
+    const resolvedParams = typeof params === 'string' ? { status: params } : params || {}
+    const qs = buildQuery(resolvedParams)
+    return api<{
+      data: SurveyResponse[]
+      meta: { page: number; size: number; totalElements: number; totalPages: number }
+    }>(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys?${qs}`)
   }
 
-  async function createSurvey(body: Record<string, unknown>) {
-    return api<{ data: SurveyResponse }>('/api/v1/surveys', { method: 'POST', body })
+  async function getSurveyStats(scopeType: string, scopeId: number) {
+    return api(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/stats`)
   }
 
-  async function updateSurvey(surveyId: number, body: Record<string, unknown>) {
-    return api<{ data: SurveyResponse }>(`/api/v1/surveys/${surveyId}`, { method: 'PUT', body })
+  async function getSurvey(scopeType: string, scopeId: number, surveyId: number) {
+    return api<SurveyDetailResponse>(
+      `/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}`,
+    )
   }
 
-  async function deleteSurvey(surveyId: number) {
-    return api(`/api/v1/surveys/${surveyId}`, { method: 'DELETE' })
+  async function createSurvey(scopeType: string, scopeId: number, body: Record<string, unknown>) {
+    return api<{ data: SurveyResponse }>(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys`, {
+      method: 'POST',
+      body,
+    })
   }
 
-  async function publishSurvey(surveyId: number) {
-    return api(`/api/v1/surveys/${surveyId}/publish`, { method: 'PATCH' })
+  async function updateSurvey(
+    scopeType: string,
+    scopeId: number,
+    surveyId: number,
+    body: Record<string, unknown>,
+  ) {
+    return api<{ data: SurveyResponse }>(
+      `/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}`,
+      { method: 'PATCH', body },
+    )
   }
 
-  async function closeSurvey(surveyId: number) {
-    return api(`/api/v1/surveys/${surveyId}/close`, { method: 'PATCH' })
+  async function deleteSurvey(scopeType: string, scopeId: number, surveyId: number) {
+    return api(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}`, {
+      method: 'DELETE',
+    })
   }
 
-  async function submitResponse(surveyId: number, answers: Array<Record<string, unknown>>) {
-    return api(`/api/v1/surveys/${surveyId}/responses`, { method: 'POST', body: { answers } })
+  async function publishSurvey(scopeType: string, scopeId: number, surveyId: number) {
+    return api(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}/publish`, {
+      method: 'POST',
+    })
+  }
+
+  async function closeSurvey(scopeType: string, scopeId: number, surveyId: number) {
+    return api(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}/close`, {
+      method: 'POST',
+    })
+  }
+
+  // === Questions ===
+  async function addQuestion(
+    scopeType: string,
+    scopeId: number,
+    surveyId: number,
+    body: Record<string, unknown>,
+  ) {
+    return api(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}/questions`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function deleteQuestion(
+    scopeType: string,
+    scopeId: number,
+    surveyId: number,
+    questionId: number,
+  ) {
+    return api(
+      `/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}/questions/${questionId}`,
+      { method: 'DELETE' },
+    )
+  }
+
+  // === Responses ===
+  async function submitResponse(surveyId: number, body: Record<string, unknown>) {
+    return api(`/api/v1/surveys/${surveyId}/responses`, { method: 'POST', body })
   }
 
   async function getMyResponse(surveyId: number) {
-    return api(`/api/v1/surveys/${surveyId}/responses/my`)
+    return api(`/api/v1/surveys/${surveyId}/responses/me`)
   }
 
+  // === Targets ===
+  async function setTargets(surveyId: number, body: Record<string, unknown>) {
+    return api(`/api/v1/surveys/${surveyId}/targets`, { method: 'POST', body })
+  }
+
+  // === Result Viewers ===
+  async function setResultViewers(surveyId: number, body: Record<string, unknown>) {
+    return api(`/api/v1/surveys/${surveyId}/result-viewers`, { method: 'POST', body })
+  }
+
+  // === Results ===
   async function getResults(surveyId: number) {
     return api<{ data: SurveyResultSummary[] }>(`/api/v1/surveys/${surveyId}/results`)
   }
 
-  async function exportResults(surveyId: number) {
-    return api(`/api/v1/surveys/${surveyId}/results/export`)
-  }
-
   return {
-    getSurveys, getSurvey, createSurvey, updateSurvey, deleteSurvey,
-    publishSurvey, closeSurvey, submitResponse, getMyResponse, getResults, exportResults,
+    getSurveys,
+    getSurveyStats,
+    getSurvey,
+    createSurvey,
+    updateSurvey,
+    deleteSurvey,
+    publishSurvey,
+    closeSurvey,
+    addQuestion,
+    deleteQuestion,
+    submitResponse,
+    getMyResponse,
+    setTargets,
+    setResultViewers,
+    getResults,
   }
 }

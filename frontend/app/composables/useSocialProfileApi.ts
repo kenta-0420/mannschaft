@@ -1,47 +1,61 @@
-import type { SocialProfile, CreateSocialProfileRequest, FollowRecord, FollowCheckResponse, FollowTargetType } from '~/types/social-profile'
+import type {
+  SocialProfile,
+  CreateSocialProfileRequest,
+  FollowRecord,
+  FollowCheckResponse,
+  FollowTargetType,
+} from '~/types/social-profile'
 
 export function useSocialProfileApi() {
   const api = useApi()
 
-  async function listMy() {
-    const res = await api<{ data: SocialProfile[] }>('/api/v1/social-profiles/me')
+  const PROFILES = '/api/v1/social/profiles'
+  const FOLLOWS = '/api/v1/social/follows'
+
+  async function getMyProfile() {
+    const res = await api<{ data: SocialProfile }>(`${PROFILES}/me`)
     return res.data
   }
 
   async function getByHandle(handle: string) {
-    const res = await api<{ data: SocialProfile }>(`/api/v1/social-profiles/handle/${handle}`)
+    const res = await api<{ data: SocialProfile }>(`${PROFILES}/handle/${handle}`)
+    return res.data
+  }
+
+  async function getByUserId(userId: number) {
+    const res = await api<{ data: SocialProfile }>(`${PROFILES}/users/${userId}`)
     return res.data
   }
 
   async function create(body: CreateSocialProfileRequest) {
-    const res = await api<{ data: SocialProfile }>('/api/v1/social-profiles', {
+    const res = await api<{ data: SocialProfile }>(PROFILES, {
       method: 'POST',
       body,
     })
     return res.data
   }
 
-  async function update(id: number, body: Partial<CreateSocialProfileRequest>) {
-    const res = await api<{ data: SocialProfile }>(`/api/v1/social-profiles/${id}`, {
-      method: 'PUT',
+  async function updateMyProfile(body: Partial<CreateSocialProfileRequest>) {
+    const res = await api<{ data: SocialProfile }>(`${PROFILES}/me`, {
+      method: 'PATCH',
       body,
     })
     return res.data
   }
 
-  async function remove(id: number) {
-    await api(`/api/v1/social-profiles/${id}`, { method: 'DELETE' })
+  async function deleteMyProfile() {
+    await api(`${PROFILES}/me`, { method: 'DELETE' })
   }
 
-  async function follow(followedType: FollowTargetType, followedId: number) {
-    await api('/api/v1/follows', {
+  async function follow(body: { followedType: FollowTargetType; followedId: number }) {
+    await api(FOLLOWS, {
       method: 'POST',
-      body: { followedType, followedId },
+      body,
     })
   }
 
-  async function unfollow(followedType: FollowTargetType, followedId: number) {
-    await api(`/api/v1/follows/${followedType}/${followedId}`, { method: 'DELETE' })
+  async function unfollow(body: { followedType: FollowTargetType; followedId: number }) {
+    await api(FOLLOWS, { method: 'DELETE', body })
   }
 
   async function listFollowing(params?: { cursor?: string; size?: number }) {
@@ -50,7 +64,7 @@ export function useSocialProfileApi() {
     if (params?.size) query.set('size', String(params.size))
     const qs = query.toString()
     const res = await api<{ data: FollowRecord[]; meta: { nextCursor: string | null } }>(
-      `/api/v1/follows/following${qs ? `?${qs}` : ''}`,
+      `${FOLLOWS}/following${qs ? `?${qs}` : ''}`,
     )
     return res
   }
@@ -61,17 +75,29 @@ export function useSocialProfileApi() {
     if (params?.size) query.set('size', String(params.size))
     const qs = query.toString()
     const res = await api<{ data: FollowRecord[]; meta: { nextCursor: string | null } }>(
-      `/api/v1/follows/followers${qs ? `?${qs}` : ''}`,
+      `${FOLLOWS}/followers${qs ? `?${qs}` : ''}`,
     )
     return res
   }
 
   async function checkFollow(followedType: FollowTargetType, followedId: number) {
     const res = await api<{ data: FollowCheckResponse }>(
-      `/api/v1/follows/check?followedType=${followedType}&followedId=${followedId}`,
+      `${FOLLOWS}/check?followedType=${followedType}&followedId=${followedId}`,
     )
     return res.data
   }
 
-  return { listMy, getByHandle, create, update, remove, follow, unfollow, listFollowing, listFollowers, checkFollow }
+  return {
+    getMyProfile,
+    getByHandle,
+    getByUserId,
+    create,
+    updateMyProfile,
+    deleteMyProfile,
+    follow,
+    unfollow,
+    listFollowing,
+    listFollowers,
+    checkFollow,
+  }
 }

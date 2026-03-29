@@ -110,6 +110,42 @@ export function useDashboardApi() {
     return api('/api/v1/notifications/read-all', { method: 'PATCH' })
   }
 
+  // === Main Dashboard ===
+  async function getDashboard(priority?: string) {
+    const query = priority ? `?priority=${priority}` : ''
+    return api<{ data: unknown }>(`/api/v1/dashboard${query}`)
+  }
+
+  // === Chat Hub ===
+  async function getChatHub(allTeams?: boolean) {
+    const query = allTeams !== undefined ? `?allTeams=${allTeams}` : ''
+    return api<{ data: unknown }>(`/api/v1/dashboard/chat-hub${query}`)
+  }
+
+  // === My Posts ===
+  async function getMyPosts(params?: { cursor?: number; limit?: number }) {
+    const query = new URLSearchParams()
+    if (params?.cursor) query.set('cursor', String(params.cursor))
+    if (params?.limit) query.set('limit', String(params.limit))
+    return api<{ data: unknown[] }>(`/api/v1/dashboard/my-posts?${query}`)
+  }
+
+  // === Performance ===
+  async function getPerformance() {
+    return api<{ data: unknown }>('/api/v1/dashboard/performance')
+  }
+
+  // === Scoped Dashboard ===
+  async function getOrganizationDashboard(orgId: number, statsPeriod?: string) {
+    const query = statsPeriod ? `?statsPeriod=${statsPeriod}` : ''
+    return api<{ data: unknown }>(`/api/v1/dashboard/organization/${orgId}${query}`)
+  }
+
+  async function getTeamDashboard(teamId: number, statsPeriod?: string) {
+    const query = statsPeriod ? `?statsPeriod=${statsPeriod}` : ''
+    return api<{ data: unknown }>(`/api/v1/dashboard/team/${teamId}${query}`)
+  }
+
   // Widget settings
   async function getWidgetSettings(scopeType: string, scopeId: number | null) {
     const query = new URLSearchParams()
@@ -120,7 +156,11 @@ export function useDashboardApi() {
     )
   }
 
-  async function updateWidgetSettings(settings: Array<{ key: string; visible: boolean; order: number }>, scopeType: string, scopeId: number | null) {
+  async function updateWidgetSettings(
+    settings: Array<{ key: string; visible: boolean; order: number }>,
+    scopeType: string,
+    scopeId: number | null,
+  ) {
     return api('/api/v1/dashboard/widgets', {
       method: 'PUT',
       body: { scopeType, scopeId, widgets: settings },
@@ -135,6 +175,7 @@ export function useDashboardApi() {
   }
 
   return {
+    getDashboard,
     getNotices,
     getUpcomingEvents,
     getPersonalTodos,
@@ -142,6 +183,11 @@ export function useDashboardApi() {
     getUnreadThreads,
     getPlatformAnnouncements,
     getCalendarSummary,
+    getChatHub,
+    getMyPosts,
+    getPerformance,
+    getOrganizationDashboard,
+    getTeamDashboard,
     toggleTodoComplete,
     markNoticeRead,
     markAllNoticesRead,

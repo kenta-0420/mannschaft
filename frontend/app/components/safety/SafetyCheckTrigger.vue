@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: number
   visible: boolean
@@ -24,17 +24,21 @@ async function submit() {
   if (!form.value.title.trim()) return
   submitting.value = true
   try {
-    await safetyApi.triggerSafetyCheck(props.scopeType, props.scopeId, {
+    await safetyApi.triggerSafetyCheck({
       title: form.value.title.trim(),
       description: form.value.description.trim() || undefined,
       isDrill: form.value.isDrill,
     })
-    notification.success(form.value.isDrill ? '【訓練】安否確認を発動しました' : '安否確認を発動しました')
+    notification.success(
+      form.value.isDrill ? '【訓練】安否確認を発動しました' : '安否確認を発動しました',
+    )
     emit('triggered')
     close()
+  } catch {
+    notification.error('安否確認の発動に失敗しました')
+  } finally {
+    submitting.value = false
   }
-  catch { notification.error('安否確認の発動に失敗しました') }
-  finally { submitting.value = false }
 }
 
 function close() {
@@ -44,21 +48,36 @@ function close() {
 </script>
 
 <template>
-  <Dialog :visible="visible" header="安否確認を発動" :style="{ width: '450px' }" modal @update:visible="close">
+  <Dialog
+    :visible="visible"
+    header="安否確認を発動"
+    :style="{ width: '450px' }"
+    modal
+    @update:visible="close"
+  >
     <div class="flex flex-col gap-4">
-      <div class="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
+      <div
+        class="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20"
+      >
         <p class="text-sm font-medium text-red-700 dark:text-red-300">
           <i class="pi pi-exclamation-triangle mr-1" />
           この操作は全メンバーに通知が送信されます
         </p>
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">タイトル <span class="text-red-500">*</span></label>
+        <label class="mb-1 block text-sm font-medium"
+          >タイトル <span class="text-red-500">*</span></label
+        >
         <InputText v-model="form.title" class="w-full" placeholder="例: 地震発生に伴う安否確認" />
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">詳細説明</label>
-        <Textarea v-model="form.description" rows="3" class="w-full" placeholder="状況の説明（任意）" />
+        <Textarea
+          v-model="form.description"
+          rows="3"
+          class="w-full"
+          placeholder="状況の説明（任意）"
+        />
       </div>
       <div class="flex items-center gap-2">
         <ToggleSwitch v-model="form.isDrill" />

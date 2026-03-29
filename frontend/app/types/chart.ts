@@ -73,3 +73,69 @@ export interface ChartListParams {
   dateFrom?: string
   dateTo?: string
 }
+
+export interface ChartFormula {
+  id: number
+  chartId: number
+  name: string
+  description: string | null
+  ingredients: string | null
+  instructions: string | null
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ChartIntakeForm {
+  id: number
+  chartId: number
+  formData: Record<string, unknown>
+  submittedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ChartBodyMark {
+  markType: string
+  x: number
+  y: number
+  label: string | null
+}
+
+export interface ChartCustomField {
+  id: number
+  teamId: number
+  fieldName: string
+  fieldType: string
+  options: string[] | null
+  required: boolean
+  sortOrder: number
+  createdAt: string
+}
+
+export interface ChartRecordTemplate {
+  id: number
+  teamId: number
+  name: string
+  templateData: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ChartSectionSettings {
+  sections: Array<{
+    key: string
+    label: string
+    enabled: boolean
+    sortOrder: number
+  }>
+}
+
+export interface ChartCustomerProgress {
+  fieldId: number
+  fieldName: string
+  dataPoints: Array<{
+    visitDate: string
+    value: string | number | null
+  }>
+}

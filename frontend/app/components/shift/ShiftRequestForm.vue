@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
   teamId: number
   scheduleId: number
   visible: boolean
@@ -32,7 +32,7 @@ async function submit() {
   if (!form.value.date) return
   submitting.value = true
   try {
-    await shiftApi.submitShiftRequest(props.teamId, props.scheduleId, {
+    await shiftApi.submitShiftRequest({
       date: form.value.date.toISOString().split('T')[0],
       startTime: form.value.startTime,
       endTime: form.value.endTime,
@@ -42,9 +42,11 @@ async function submit() {
     notification.success('シフト希望を提出しました')
     emit('submitted')
     close()
+  } catch {
+    notification.error('提出に失敗しました')
+  } finally {
+    submitting.value = false
   }
-  catch { notification.error('提出に失敗しました') }
-  finally { submitting.value = false }
 }
 
 function close() {
@@ -54,7 +56,13 @@ function close() {
 </script>
 
 <template>
-  <Dialog :visible="visible" header="シフト希望を提出" :style="{ width: '420px' }" modal @update:visible="close">
+  <Dialog
+    :visible="visible"
+    header="シフト希望を提出"
+    :style="{ width: '420px' }"
+    modal
+    @update:visible="close"
+  >
     <div class="flex flex-col gap-4">
       <div>
         <label class="mb-1 block text-sm font-medium">日付</label>
@@ -77,7 +85,11 @@ function close() {
             v-for="opt in preferenceOptions"
             :key="opt.value"
             class="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 p-2 text-sm transition-all"
-            :class="form.preference === opt.value ? 'border-primary bg-primary/5' : 'border-surface-200 dark:border-surface-600'"
+            :class="
+              form.preference === opt.value
+                ? 'border-primary bg-primary/5'
+                : 'border-surface-200 dark:border-surface-600'
+            "
             @click="form.preference = opt.value"
           >
             <i :class="[opt.icon, opt.color]" />

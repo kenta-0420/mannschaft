@@ -6,8 +6,16 @@ const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
 const notification = useNotification()
 
-interface ConnectionStatus { isConnected: boolean; email: string | null; lastSyncedAt: string | null }
-interface SyncSettings { personalSync: boolean; teamSyncIds: number[]; orgSyncIds: number[] }
+interface ConnectionStatus {
+  isConnected: boolean
+  email: string | null
+  lastSyncedAt: string | null
+}
+interface SyncSettings {
+  personalSync: boolean
+  teamSyncIds: number[]
+  orgSyncIds: number[]
+}
 
 const status = ref<ConnectionStatus | null>(null)
 const syncSettings = ref<SyncSettings | null>(null)
@@ -19,14 +27,16 @@ async function load() {
   try {
     const [statusRes, settingsRes] = await Promise.all([
       gcalApi.getConnectionStatus(),
-      gcalApi.getSyncSettings(),
+      gcalApi.getPersonalSync(),
     ])
     status.value = statusRes.data as ConnectionStatus
-    syncSettings.value = settingsRes.data as SyncSettings
+    syncSettings.value = settingsRes as unknown as SyncSettings
     await Promise.all([teamStore.fetchMyTeams(), orgStore.fetchMyOrganizations()])
+  } catch {
+    /* silent */
+  } finally {
+    loading.value = false
   }
-  catch { /* silent */ }
-  finally { loading.value = false }
 }
 
 async function connectGoogle() {
@@ -34,8 +44,9 @@ async function connectGoogle() {
     const res = await gcalApi.connect()
     const { authUrl } = res.data as { authUrl: string }
     window.location.href = authUrl
+  } catch {
+    notification.error('接続に失敗しました')
   }
-  catch { notification.error('接続に失敗しました') }
 }
 
 async function disconnectGoogle() {
@@ -44,17 +55,19 @@ async function disconnectGoogle() {
     await gcalApi.disconnect()
     notification.success('連携を解除しました')
     await load()
+  } catch {
+    notification.error('解除に失敗しました')
   }
-  catch { notification.error('解除に失敗しました') }
 }
 
 async function saveSettings() {
   if (!syncSettings.value) return
   try {
-    await gcalApi.updateSyncSettings(syncSettings.value)
+    await gcalApi.updatePersonalSync(syncSettings.value as unknown as Record<string, unknown>)
     notification.success('同期設定を保存しました')
+  } catch {
+    notification.error('保存に失敗しました')
   }
-  catch { notification.error('保存に失敗しました') }
 }
 
 async function manualSync() {
@@ -63,9 +76,11 @@ async function manualSync() {
     await gcalApi.manualSync()
     notification.success('同期を実行しました')
     await load()
+  } catch {
+    notification.error('同期に失敗しました')
+  } finally {
+    syncing.value = false
   }
-  catch { notification.error('同期に失敗しました') }
-  finally { syncing.value = false }
 }
 
 function toggleTeamSync(teamId: number) {
@@ -101,11 +116,15 @@ onMounted(load)
 
     <div v-else class="space-y-6">
       <!-- 接続状態 -->
-      <div class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+      <div
+        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+      >
         <h2 class="mb-4 text-lg font-semibold">接続状態</h2>
         <div v-if="status?.isConnected" class="space-y-3">
           <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+            <div
+              class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
+            >
               <i class="pi pi-check text-green-600" />
             </div>
             <div>
@@ -115,22 +134,47 @@ onMounted(load)
           </div>
           <p class="text-xs text-surface-400">最終同期: {{ formatDate(status.lastSyncedAt) }}</p>
           <div class="flex gap-2">
-            <Button label="手動同期" icon="pi pi-refresh" size="small" outlined :loading="syncing" @click="manualSync" />
-            <Button label="連携解除" icon="pi pi-times" size="small" severity="danger" outlined @click="disconnectGoogle" />
+            <Button
+              label="手動同期"
+              icon="pi pi-refresh"
+              size="small"
+              outlined
+              :loading="syncing"
+              @click="manualSync"
+            />
+            <Button
+              label="連携解除"
+              icon="pi pi-times"
+              size="small"
+              severity="danger"
+              outlined
+              @click="disconnectGoogle"
+            />
           </div>
         </div>
         <div v-else>
-          <p class="mb-3 text-sm text-surface-500">Googleアカウントと連携して、カレンダーを同期できます</p>
-          <Button label="Googleアカウントに接続" icon="pi pi-external-link" @click="connectGoogle" />
+          <p class="mb-3 text-sm text-surface-500">
+            Googleアカウントと連携して、カレンダーを同期できます
+          </p>
+          <Button
+            label="Googleアカウントに接続"
+            icon="pi pi-external-link"
+            @click="connectGoogle"
+          />
         </div>
       </div>
 
       <!-- 同期設定 -->
-      <div v-if="status?.isConnected && syncSettings" class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+      <div
+        v-if="status?.isConnected && syncSettings"
+        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+      >
         <h2 class="mb-4 text-lg font-semibold">同期設定</h2>
 
         <!-- 個人カレンダー -->
-        <div class="mb-4 flex items-center justify-between border-b border-surface-100 pb-4 dark:border-surface-700">
+        <div
+          class="mb-4 flex items-center justify-between border-b border-surface-100 pb-4 dark:border-surface-700"
+        >
           <div>
             <p class="font-medium">個人カレンダー</p>
             <p class="text-xs text-surface-500">個人の予定をGoogleカレンダーに同期</p>
@@ -142,9 +186,16 @@ onMounted(load)
         <div v-if="teamStore.myTeams.length > 0" class="mb-4">
           <h3 class="mb-2 text-sm font-medium">チームカレンダー</h3>
           <div class="space-y-2">
-            <div v-for="team in teamStore.myTeams" :key="team.id" class="flex items-center justify-between rounded-lg bg-surface-50 px-3 py-2 dark:bg-surface-700/50">
+            <div
+              v-for="team in teamStore.myTeams"
+              :key="team.id"
+              class="flex items-center justify-between rounded-lg bg-surface-50 px-3 py-2 dark:bg-surface-700/50"
+            >
               <span class="text-sm">{{ team.nickname1 || team.name }}</span>
-              <ToggleSwitch :model-value="syncSettings.teamSyncIds.includes(team.id)" @update:model-value="toggleTeamSync(team.id)" />
+              <ToggleSwitch
+                :model-value="syncSettings.teamSyncIds.includes(team.id)"
+                @update:model-value="toggleTeamSync(team.id)"
+              />
             </div>
           </div>
         </div>
@@ -153,9 +204,16 @@ onMounted(load)
         <div v-if="orgStore.myOrganizations.length > 0" class="mb-4">
           <h3 class="mb-2 text-sm font-medium">組織カレンダー</h3>
           <div class="space-y-2">
-            <div v-for="org in orgStore.myOrganizations" :key="org.id" class="flex items-center justify-between rounded-lg bg-surface-50 px-3 py-2 dark:bg-surface-700/50">
+            <div
+              v-for="org in orgStore.myOrganizations"
+              :key="org.id"
+              class="flex items-center justify-between rounded-lg bg-surface-50 px-3 py-2 dark:bg-surface-700/50"
+            >
               <span class="text-sm">{{ org.nickname1 || org.name }}</span>
-              <ToggleSwitch :model-value="syncSettings.orgSyncIds.includes(org.id)" @update:model-value="toggleOrgSync(org.id)" />
+              <ToggleSwitch
+                :model-value="syncSettings.orgSyncIds.includes(org.id)"
+                @update:model-value="toggleOrgSync(org.id)"
+              />
             </div>
           </div>
         </div>

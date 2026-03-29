@@ -7,7 +7,7 @@ const route = useRoute()
 const teamId = computed(() => Number(route.params.id))
 const chartApi = useChartApi()
 const notification = useNotification()
-const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)
+const { loadPermissions } = useRoleAccess('team', teamId)
 
 const charts = ref<Chart[]>([])
 const totalRecords = ref(0)
@@ -38,7 +38,7 @@ function openCreate() {
 
 async function handleSelect(chart: Chart) {
   try {
-    selectedChart.value = await chartApi.get(chart.id)
+    selectedChart.value = (await chartApi.get(teamId.value, chart.id)).data
     showDetailDialog.value = true
   } catch {
     notification.error('カルテの詳細取得に失敗しました')
@@ -48,7 +48,10 @@ async function handleSelect(chart: Chart) {
 async function handleSave(data: CreateChartRequest) {
   try {
     if (editingChart.value) {
-      await chartApi.update(editingChart.value.id, { ...data, version: editingChart.value.version })
+      await chartApi.update(teamId.value, editingChart.value.id, {
+        ...data,
+        version: editingChart.value.version,
+      })
       notification.success('カルテを更新しました')
     } else {
       await chartApi.create(teamId.value, data)
@@ -63,7 +66,7 @@ async function handleSave(data: CreateChartRequest) {
 
 async function handlePin(chartId: number) {
   try {
-    await chartApi.togglePin(chartId)
+    await chartApi.togglePin(teamId.value, chartId)
     await loadData()
   } catch {
     notification.error('ピン留めに失敗しました')
@@ -73,8 +76,8 @@ async function handlePin(chartId: number) {
 async function handlePhotoUpload(file: File, type: string) {
   if (!selectedChart.value) return
   try {
-    await chartApi.uploadPhoto(selectedChart.value.id, file, type)
-    selectedChart.value = await chartApi.get(selectedChart.value.id)
+    await chartApi.uploadPhoto(teamId.value, selectedChart.value.id, file, type)
+    selectedChart.value = (await chartApi.get(teamId.value, selectedChart.value.id)).data
     notification.success('写真をアップロードしました')
   } catch {
     notification.error('アップロードに失敗しました')
@@ -102,18 +105,39 @@ onMounted(loadData)
       />
     </template>
 
-    <Dialog v-model:visible="showFormDialog" :header="editingChart ? 'カルテ編集' : '新規カルテ'" :modal="true" class="w-full max-w-2xl">
+    <Dialog
+      v-model:visible="showFormDialog"
+      :header="editingChart ? 'カルテ編集' : '新規カルテ'"
+      :modal="true"
+      class="w-full max-w-2xl"
+    >
       <ChartForm :chart="editingChart" @save="handleSave" @cancel="showFormDialog = false" />
     </Dialog>
 
-    <Dialog v-model:visible="showDetailDialog" header="カルテ詳細" :modal="true" class="w-full max-w-3xl">
+    <Dialog
+      v-model:visible="showDetailDialog"
+      header="カルテ詳細"
+      :modal="true"
+      class="w-full max-w-3xl"
+    >
       <template v-if="selectedChart">
         <div class="space-y-4">
           <div class="grid gap-4 md:grid-cols-2">
-            <div><span class="text-sm text-surface-500">顧客:</span> <strong>{{ selectedChart.clientName }}</strong></div>
-            <div><span class="text-sm text-surface-500">来店日:</span> {{ new Date(selectedChart.visitDate).toLocaleDateString('ja-JP') }}</div>
-            <div><span class="text-sm text-surface-500">担当:</span> {{ selectedChart.staffName }}</div>
-            <div><span class="text-sm text-surface-500">次回推奨:</span> {{ selectedChart.nextVisitRecommendation ?? '-' }}</div>
+            <div>
+              <span class="text-sm text-surface-500">顧客:</span>
+              <strong>{{ selectedChart.clientName }}</strong>
+            </div>
+            <div>
+              <span class="text-sm text-surface-500">来店日:</span>
+              {{ new Date(selectedChart.visitDate).toLocaleDateString('ja-JP') }}
+            </div>
+            <div>
+              <span class="text-sm text-surface-500">担当:</span> {{ selectedChart.staffName }}
+            </div>
+            <div>
+              <span class="text-sm text-surface-500">次回推奨:</span>
+              {{ selectedChart.nextVisitRecommendation ?? '-' }}
+            </div>
           </div>
           <div v-if="selectedChart.chiefComplaint">
             <p class="text-sm text-surface-500">主訴・要望</p>

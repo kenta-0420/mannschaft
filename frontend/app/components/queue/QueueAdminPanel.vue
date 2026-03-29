@@ -7,7 +7,12 @@ const props = defineProps<{
 const queueApi = useQueueApi()
 const notification = useNotification()
 
-interface Counter { id: number; name: string; isActive: boolean; currentTicket: string | null }
+interface Counter {
+  id: number
+  name: string
+  isActive: boolean
+  currentTicket: string | null
+}
 
 const counters = ref<Counter[]>([])
 const loading = ref(true)
@@ -15,21 +20,24 @@ const loading = ref(true)
 async function load() {
   loading.value = true
   try {
-    const res = await queueApi.getCounters(props.scopeType, props.scopeId)
+    const res = await queueApi.getCounters(props.scopeId)
     counters.value = res.data as Counter[]
+  } catch {
+    counters.value = []
+  } finally {
+    loading.value = false
   }
-  catch { counters.value = [] }
-  finally { loading.value = false }
 }
 
 async function callNext(counterId: number) {
   try {
-    const res = await queueApi.callNextTicket(props.scopeType, props.scopeId, counterId)
+    const res = await queueApi.callNextTicket(props.scopeId, counterId)
     const ticket = res.data as { ticketNumber: string }
     notification.success(`${ticket.ticketNumber} を呼び出しました`)
     await load()
+  } catch {
+    notification.error('呼び出しに失敗しました')
   }
-  catch { notification.error('呼び出しに失敗しました') }
 }
 
 onMounted(load)
@@ -47,10 +55,17 @@ onMounted(load)
       >
         <div class="min-w-0 flex-1">
           <p class="font-medium">{{ counter.name }}</p>
-          <p v-if="counter.currentTicket" class="text-sm text-primary">対応中: {{ counter.currentTicket }}</p>
+          <p v-if="counter.currentTicket" class="text-sm text-primary">
+            対応中: {{ counter.currentTicket }}
+          </p>
           <p v-else class="text-sm text-surface-400">待機中</p>
         </div>
-        <Button label="次を呼ぶ" icon="pi pi-megaphone" size="small" @click="callNext(counter.id)" />
+        <Button
+          label="次を呼ぶ"
+          icon="pi pi-megaphone"
+          size="small"
+          @click="callNext(counter.id)"
+        />
       </div>
     </div>
     <DashboardEmptyState v-else icon="pi pi-desktop" message="窓口はまだ設定されていません" />

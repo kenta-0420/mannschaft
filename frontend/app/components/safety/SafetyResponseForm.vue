@@ -25,7 +25,12 @@ const longitude = ref<number | null>(null)
 
 const responseOptions = [
   { status: 'SAFE', label: '無事です', icon: 'pi pi-check-circle', color: 'bg-green-500' },
-  { status: 'NEED_SUPPORT', label: '支援が必要', icon: 'pi pi-exclamation-circle', color: 'bg-red-500' },
+  {
+    status: 'NEED_SUPPORT',
+    label: '支援が必要',
+    icon: 'pi pi-exclamation-circle',
+    color: 'bg-red-500',
+  },
   { status: 'OTHER', label: 'その他', icon: 'pi pi-info-circle', color: 'bg-yellow-500' },
 ]
 
@@ -36,31 +41,38 @@ async function getCurrentLocation() {
       latitude.value = pos.coords.latitude
       longitude.value = pos.coords.longitude
     },
-    () => { shareLocation.value = false },
+    () => {
+      shareLocation.value = false
+    },
   )
 }
 
 watch(shareLocation, (val) => {
   if (val) getCurrentLocation()
-  else { latitude.value = null; longitude.value = null }
+  else {
+    latitude.value = null
+    longitude.value = null
+  }
 })
 
 async function submit() {
   if (!selectedStatus.value) return
   submitting.value = true
   try {
-    await safetyApi.respondToSafetyCheck(props.scopeType, props.scopeId, props.checkId, {
+    await safetyApi.respondToSafetyCheck(props.checkId, {
       status: selectedStatus.value,
       message: message.value.trim() || undefined,
-      latitude: shareLocation.value ? latitude.value ?? undefined : undefined,
-      longitude: shareLocation.value ? longitude.value ?? undefined : undefined,
+      latitude: shareLocation.value ? (latitude.value ?? undefined) : undefined,
+      longitude: shareLocation.value ? (longitude.value ?? undefined) : undefined,
     })
     notification.success('安否を回答しました')
     emit('responded')
     emit('update:visible', false)
+  } catch {
+    notification.error('回答に失敗しました')
+  } finally {
+    submitting.value = false
   }
-  catch { notification.error('回答に失敗しました') }
-  finally { submitting.value = false }
 }
 </script>
 
@@ -84,12 +96,17 @@ async function submit() {
           v-for="opt in responseOptions"
           :key="opt.status"
           class="flex w-full items-center gap-3 rounded-lg border-2 p-3 transition-all"
-          :class="selectedStatus === opt.status
-            ? 'border-primary bg-primary/5'
-            : 'border-surface-200 hover:border-surface-300 dark:border-surface-600'"
+          :class="
+            selectedStatus === opt.status
+              ? 'border-primary bg-primary/5'
+              : 'border-surface-200 hover:border-surface-300 dark:border-surface-600'
+          "
           @click="selectedStatus = opt.status"
         >
-          <div class="flex h-10 w-10 items-center justify-center rounded-full text-white" :class="opt.color">
+          <div
+            class="flex h-10 w-10 items-center justify-center rounded-full text-white"
+            :class="opt.color"
+          >
             <i :class="opt.icon" />
           </div>
           <span class="text-sm font-medium">{{ opt.label }}</span>

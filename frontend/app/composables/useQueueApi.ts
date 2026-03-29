@@ -1,96 +1,182 @@
 export function useQueueApi() {
   const api = useApi()
 
-  function base(scopeType: 'team' | 'organization', scopeId: number) {
-    return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
+  function base(teamId: number) {
+    return `/api/v1/teams/${teamId}/queue`
   }
 
   // === Categories ===
-  async function getCategories(scopeType: 'team' | 'organization', scopeId: number) {
-    return api<{ data: unknown[] }>(`${base(scopeType, scopeId)}/queue-categories`)
+  async function getCategories(teamId: number) {
+    return api<{ data: unknown[] }>(`${base(teamId)}/categories`)
   }
 
-  async function createCategory(scopeType: 'team' | 'organization', scopeId: number, body: { name: string; queueMode: string; prefix: string; maxQueueSize?: number }) {
-    return api<{ data: unknown }>(`${base(scopeType, scopeId)}/queue-categories`, { method: 'POST', body })
+  async function createCategory(
+    teamId: number,
+    body: { name: string; queueMode: string; prefix: string; maxQueueSize?: number },
+  ) {
+    return api<{ data: unknown }>(`${base(teamId)}/categories`, { method: 'POST', body })
   }
 
-  async function updateCategory(scopeType: 'team' | 'organization', scopeId: number, categoryId: number, body: Record<string, unknown>) {
-    return api<{ data: unknown }>(`${base(scopeType, scopeId)}/queue-categories/${categoryId}`, { method: 'PUT', body })
+  async function getCategory(teamId: number, categoryId: number) {
+    return api<{ data: unknown }>(`${base(teamId)}/categories/${categoryId}`)
   }
 
-  async function deleteCategory(scopeType: 'team' | 'organization', scopeId: number, categoryId: number) {
-    return api(`${base(scopeType, scopeId)}/queue-categories/${categoryId}`, { method: 'DELETE' })
+  async function updateCategory(teamId: number, categoryId: number, body: Record<string, unknown>) {
+    return api<{ data: unknown }>(`${base(teamId)}/categories/${categoryId}`, {
+      method: 'PATCH',
+      body,
+    })
+  }
+
+  async function getCategoryTickets(teamId: number, categoryId: number) {
+    return api<{ data: unknown[] }>(`${base(teamId)}/categories/${categoryId}/tickets`)
   }
 
   // === Counters ===
-  async function getCounters(scopeType: 'team' | 'organization', scopeId: number) {
-    return api<{ data: unknown[] }>(`${base(scopeType, scopeId)}/queue-counters`)
+  async function getCounters(teamId: number) {
+    return api<{ data: unknown[] }>(`${base(teamId)}/counters`)
   }
 
-  async function createCounter(scopeType: 'team' | 'organization', scopeId: number, body: { name: string; categoryId: number; receptionMethod: string; averageServiceMinutes?: number }) {
-    return api<{ data: unknown }>(`${base(scopeType, scopeId)}/queue-counters`, { method: 'POST', body })
+  async function createCounter(
+    teamId: number,
+    body: {
+      name: string
+      categoryId: number
+      receptionMethod: string
+      averageServiceMinutes?: number
+    },
+  ) {
+    return api<{ data: unknown }>(`${base(teamId)}/counters`, { method: 'POST', body })
   }
 
-  async function updateCounter(scopeType: 'team' | 'organization', scopeId: number, counterId: number, body: Record<string, unknown>) {
-    return api<{ data: unknown }>(`${base(scopeType, scopeId)}/queue-counters/${counterId}`, { method: 'PUT', body })
+  async function getCounter(teamId: number, counterId: number) {
+    return api<{ data: unknown }>(`${base(teamId)}/counters/${counterId}`)
   }
 
-  async function deleteCounter(scopeType: 'team' | 'organization', scopeId: number, counterId: number) {
-    return api(`${base(scopeType, scopeId)}/queue-counters/${counterId}`, { method: 'DELETE' })
+  async function updateCounter(teamId: number, counterId: number, body: Record<string, unknown>) {
+    return api<{ data: unknown }>(`${base(teamId)}/counters/${counterId}`, {
+      method: 'PATCH',
+      body,
+    })
   }
 
-  // === Tickets ===
-  async function createTicket(scopeType: 'team' | 'organization', scopeId: number, body: { categoryId: number; counterId?: number; phoneNumber?: string }) {
-    return api<{ data: unknown }>(`${base(scopeType, scopeId)}/queue-tickets`, { method: 'POST', body })
+  async function getCounterTickets(teamId: number, counterId: number) {
+    return api<{ data: unknown[] }>(`${base(teamId)}/counters/${counterId}/tickets`)
   }
 
-  async function getTicketStatus(scopeType: 'team' | 'organization', scopeId: number, ticketId: number) {
-    return api<{ data: unknown }>(`${base(scopeType, scopeId)}/queue-tickets/${ticketId}`)
+  async function createCounterTicket(
+    teamId: number,
+    counterId: number,
+    body: Record<string, unknown>,
+  ) {
+    return api<{ data: unknown }>(`${base(teamId)}/counters/${counterId}/tickets`, {
+      method: 'POST',
+      body,
+    })
   }
 
-  async function callNextTicket(scopeType: 'team' | 'organization', scopeId: number, counterId: number) {
-    return api<{ data: unknown }>(`${base(scopeType, scopeId)}/queue-counters/${counterId}/call-next`, { method: 'POST' })
+  async function getAllCounterTickets(teamId: number, counterId: number) {
+    return api<{ data: unknown[] }>(`${base(teamId)}/counters/${counterId}/tickets/all`)
   }
 
-  async function skipTicket(scopeType: 'team' | 'organization', scopeId: number, ticketId: number) {
-    return api(`${base(scopeType, scopeId)}/queue-tickets/${ticketId}/skip`, { method: 'PATCH' })
+  async function callNextTicket(teamId: number, counterId: number) {
+    return api<{ data: unknown }>(`${base(teamId)}/counters/${counterId}/tickets/call-next`, {
+      method: 'POST',
+    })
   }
 
-  async function markNoShow(scopeType: 'team' | 'organization', scopeId: number, ticketId: number) {
-    return api(`${base(scopeType, scopeId)}/queue-tickets/${ticketId}/no-show`, { method: 'PATCH' })
+  async function createGuestTicket(
+    teamId: number,
+    counterId: number,
+    body?: Record<string, unknown>,
+  ) {
+    return api<{ data: unknown }>(`${base(teamId)}/counters/${counterId}/tickets/guest`, {
+      method: 'POST',
+      body,
+    })
   }
 
-  async function completeTicket(scopeType: 'team' | 'organization', scopeId: number, ticketId: number) {
-    return api(`${base(scopeType, scopeId)}/queue-tickets/${ticketId}/complete`, { method: 'PATCH' })
+  async function createQrTicket(teamId: number, counterId: number, body?: Record<string, unknown>) {
+    return api<{ data: unknown }>(`${base(teamId)}/counters/${counterId}/tickets/qr`, {
+      method: 'POST',
+      body,
+    })
   }
 
-  async function cancelTicket(scopeType: 'team' | 'organization', scopeId: number, ticketId: number) {
-    return api(`${base(scopeType, scopeId)}/queue-tickets/${ticketId}/cancel`, { method: 'PATCH' })
+  // === QR Codes ===
+  async function getQrCodes(teamId: number) {
+    return api<{ data: unknown[] }>(`${base(teamId)}/qr-codes`)
   }
 
-  // === Status ===
-  async function getQueueStatus(scopeType: 'team' | 'organization', scopeId: number) {
-    return api<{ data: unknown }>(`${base(scopeType, scopeId)}/queue-status`)
+  async function createQrCode(teamId: number, body: Record<string, unknown>) {
+    return api<{ data: unknown }>(`${base(teamId)}/qr-codes`, { method: 'POST', body })
+  }
+
+  async function getQrCodeByToken(teamId: number, qrToken: string) {
+    return api<{ data: unknown }>(`${base(teamId)}/qr-codes/token/${qrToken}`)
+  }
+
+  async function deleteQrCode(teamId: number, qrCodeId: number) {
+    return api(`${base(teamId)}/qr-codes/${qrCodeId}`, { method: 'DELETE' })
   }
 
   // === Settings ===
-  async function getSettings(scopeType: 'team' | 'organization', scopeId: number) {
-    return api<{ data: unknown }>(`${base(scopeType, scopeId)}/queue-settings`)
+  async function getSettings(teamId: number) {
+    return api<{ data: unknown }>(`${base(teamId)}/settings`)
   }
 
-  async function updateSettings(scopeType: 'team' | 'organization', scopeId: number, body: Record<string, unknown>) {
-    return api(`${base(scopeType, scopeId)}/queue-settings`, { method: 'PUT', body })
+  async function updateSettings(teamId: number, body: Record<string, unknown>) {
+    return api(`${base(teamId)}/settings`, { method: 'PATCH', body })
   }
 
-  // === QR ===
-  async function generateQr(scopeType: 'team' | 'organization', scopeId: number, counterId: number) {
-    return api<{ data: { qrUrl: string } }>(`${base(scopeType, scopeId)}/queue-counters/${counterId}/qr`)
+  // === Status ===
+  async function getQueueStatus(teamId: number) {
+    return api<{ data: unknown }>(`${base(teamId)}/status`)
+  }
+
+  // === Tickets ===
+  async function getMyTickets(teamId: number) {
+    return api<{ data: unknown[] }>(`${base(teamId)}/tickets/me`)
+  }
+
+  async function getTicket(teamId: number, ticketId: number) {
+    return api<{ data: unknown }>(`${base(teamId)}/tickets/${ticketId}`)
+  }
+
+  async function deleteTicket(teamId: number, ticketId: number) {
+    return api(`${base(teamId)}/tickets/${ticketId}`, { method: 'DELETE' })
+  }
+
+  async function ticketAction(teamId: number, ticketId: number, body: Record<string, unknown>) {
+    return api(`${base(teamId)}/tickets/${ticketId}/action`, { method: 'PATCH', body })
   }
 
   return {
-    getCategories, createCategory, updateCategory, deleteCategory,
-    getCounters, createCounter, updateCounter, deleteCounter,
-    createTicket, getTicketStatus, callNextTicket, skipTicket, markNoShow, completeTicket, cancelTicket,
-    getQueueStatus, getSettings, updateSettings, generateQr,
+    getCategories,
+    createCategory,
+    getCategory,
+    updateCategory,
+    getCategoryTickets,
+    getCounters,
+    createCounter,
+    getCounter,
+    updateCounter,
+    getCounterTickets,
+    createCounterTicket,
+    getAllCounterTickets,
+    callNextTicket,
+    createGuestTicket,
+    createQrTicket,
+    getQrCodes,
+    createQrCode,
+    getQrCodeByToken,
+    deleteQrCode,
+    getSettings,
+    updateSettings,
+    getQueueStatus,
+    getMyTickets,
+    getTicket,
+    deleteTicket,
+    ticketAction,
   }
 }

@@ -120,3 +120,79 @@ export interface CalendarMonthView {
     isPersonal: boolean
   }>
 }
+
+// === Annual Schedule ===
+export interface AnnualScheduleParams {
+  academicYear?: number
+  categoryId?: number
+  eventType?: string
+  termStartDate?: string
+  termEndDate?: string
+}
+
+export interface AnnualCopyPreviewParams {
+  sourceYear: number
+  targetYear: number
+  dateShiftMode?: string
+  categoryId?: number
+}
+
+export interface ExecuteCopyRequest {
+  sourceYear: number
+  targetYear: number
+  dateShiftMode?: string
+  items?: Array<{ id: number; targetDate?: string }>
+}
+
+// === Bulk Attendance ===
+export interface BulkAttendanceItem {
+  userId: number
+  status: AttendanceStatus
+  comment?: string
+}
+
+export interface BulkAttendanceRequest {
+  attendances: BulkAttendanceItem[]
+}
+
+// === Cross Invite ===
+export interface CrossInviteRequest {
+  targetType: string
+  targetId: number
+  message?: string
+}
+
+// === Performance ===
+export interface PerformanceRecordEntry {
+  userId: number
+  value: string | number
+  note?: string
+}
+
+export interface ScheduleBulkRecordRequest {
+  template?: string
+  entries?: PerformanceRecordEntry[]
+}
+
+// === Schedule Invitation ===
+export interface ScheduleInvitationResponse {
+  id: number
+  scheduleId: number
+  scheduleTitle: string
+  inviterTeamId: number
+  inviterTeamName: string
+  message: string | null
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CONFIRMED'
+  createdAt: string
+}
+
+// === Schedule Stats ===
+export interface ScheduleStatsResponse {
+  scheduleId: number
+  totalInvited: number
+  responded: number
+  yes: number
+  no: number
+  maybe: number
+  pending: number
+}

@@ -16,7 +16,8 @@ const form = ref<CreateSocialProfileRequest>({ handle: '', displayName: '', bio:
 async function loadProfiles() {
   loading.value = true
   try {
-    profiles.value = await socialApi.listMy()
+    const profile = await socialApi.getMyProfile()
+    profiles.value = profile ? [profile] : []
   } catch {
     notification.error('プロフィールの取得に失敗しました')
   } finally {
@@ -39,7 +40,7 @@ function openEdit(profile: SocialProfile) {
 async function save() {
   try {
     if (editingProfile.value) {
-      await socialApi.update(editingProfile.value.id, form.value)
+      await socialApi.updateMyProfile(form.value)
       notification.success('プロフィールを更新しました')
     } else {
       await socialApi.create(form.value)
@@ -52,9 +53,9 @@ async function save() {
   }
 }
 
-async function handleDelete(id: number) {
+async function handleDelete(_id: number) {
   try {
-    await socialApi.remove(id)
+    await socialApi.deleteMyProfile()
     notification.success('プロフィールを削除しました')
     await loadProfiles()
   } catch {
@@ -72,7 +73,9 @@ onMounted(loadProfiles)
       <Button v-if="profiles.length < 3" label="新規作成" icon="pi pi-plus" @click="openCreate" />
     </div>
 
-    <p class="mb-4 text-sm text-surface-500">最大3つのプロフィールを作成できます（{{ profiles.length }}/3）</p>
+    <p class="mb-4 text-sm text-surface-500">
+      最大3つのプロフィールを作成できます（{{ profiles.length }}/3）
+    </p>
 
     <div v-if="loading" class="flex justify-center py-12"><ProgressSpinner /></div>
 
@@ -91,11 +94,21 @@ onMounted(loadProfiles)
       </div>
     </div>
 
-    <Dialog v-model:visible="showDialog" :header="editingProfile ? 'プロフィール編集' : 'プロフィール作成'" :modal="true" class="w-full max-w-md">
+    <Dialog
+      v-model:visible="showDialog"
+      :header="editingProfile ? 'プロフィール編集' : 'プロフィール作成'"
+      :modal="true"
+      class="w-full max-w-md"
+    >
       <div class="space-y-4">
         <div>
           <label class="mb-1 block text-sm font-medium">ハンドル名 *</label>
-          <InputText v-model="form.handle" class="w-full" placeholder="my_handle" :disabled="!!editingProfile" />
+          <InputText
+            v-model="form.handle"
+            class="w-full"
+            placeholder="my_handle"
+            :disabled="!!editingProfile"
+          />
           <p class="mt-1 text-xs text-surface-500">英数字とアンダースコアのみ（変更は30日に1回）</p>
         </div>
         <div>
@@ -105,12 +118,17 @@ onMounted(loadProfiles)
         <div>
           <label class="mb-1 block text-sm font-medium">自己紹介</label>
           <Textarea v-model="form.bio" class="w-full" rows="3" :maxlength="300" />
-          <p class="mt-1 text-right text-xs text-surface-400">{{ (form.bio?.length ?? 0) }}/300</p>
+          <p class="mt-1 text-right text-xs text-surface-400">{{ form.bio?.length ?? 0 }}/300</p>
         </div>
       </div>
       <template #footer>
         <Button label="キャンセル" severity="secondary" @click="showDialog = false" />
-        <Button :label="editingProfile ? '更新' : '作成'" icon="pi pi-check" :disabled="!form.handle || !form.displayName" @click="save" />
+        <Button
+          :label="editingProfile ? '更新' : '作成'"
+          icon="pi pi-check"
+          :disabled="!form.handle || !form.displayName"
+          @click="save"
+        />
       </template>
     </Dialog>
   </div>

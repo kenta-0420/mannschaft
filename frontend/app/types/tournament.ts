@@ -100,3 +100,66 @@ export interface TournamentTemplate {
   tiebreakers: string[]
   statDefs: Array<{ key: string; label: string; aggregationType: string }>
 }
+
+export interface TournamentPreset {
+  id: number
+  name: string
+  sportCategory: string
+  format: TournamentFormat
+  winPoints: number
+  drawPoints: number
+  lossPoints: number
+  tiebreakers: string[]
+  statDefs: Array<{ key: string; label: string; aggregationType: string }>
+}
+
+export interface TournamentMatrix {
+  divisionId: number
+  participants: Array<{ id: number; teamName: string }>
+  results: Array<
+    Array<{ homeScore: number | null; awayScore: number | null; matchId: number | null }>
+  >
+}
+
+export interface TournamentPromotion {
+  id: number
+  tournamentId: number
+  fromDivisionId: number
+  toDivisionId: number
+  participantId: number
+  teamName: string
+  type: 'PROMOTION' | 'RELEGATION'
+}
+
+export interface TournamentRoster {
+  id: number
+  matchId: number
+  teamId: number
+  userId: number
+  displayName: string
+  jerseyNumber: number | null
+  position: string | null
+}
+
+export interface TournamentHistory {
+  tournamentId: number
+  title: string
+  seasonYear: number
+  divisionName: string
+  finalRank: number | null
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  points: number
+}
+
+export interface TournamentTeamStats {
+  totalTournaments: number
+  totalMatches: number
+  wins: number
+  draws: number
+  losses: number
+  goalsFor: number
+  goalsAgainst: number
+}

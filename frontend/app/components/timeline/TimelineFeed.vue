@@ -12,7 +12,8 @@ const emit = defineEmits<{
   clickPost: [postId: number]
 }>()
 
-const { getFeed, addReaction, removeReaction, addBookmark, removeBookmark, togglePin, deletePost } = useTimelineApi()
+const { getFeed, addReaction, removeReaction, addBookmark, removeBookmark, pinPost, deletePost } =
+  useTimelineApi()
 const { showSuccess, showError } = useNotification()
 
 const pinnedPosts = ref<TimelinePostResponse[]>([])
@@ -53,14 +54,18 @@ function loadMore() {
 }
 
 async function onReaction(postId: number, emoji: string) {
-  const post = [...pinnedPosts.value, ...posts.value].find(p => p.id === postId)
+  const post = [...pinnedPosts.value, ...posts.value].find((p) => p.id === postId)
   if (!post) return
   try {
     if (post.myReactions.includes(emoji)) {
       await removeReaction(postId, emoji)
-      post.myReactions = post.myReactions.filter(e => e !== emoji)
+      post.myReactions = post.myReactions.filter((e) => e !== emoji)
       post.reactionSummary[emoji] = (post.reactionSummary[emoji] || 1) - 1
-      if (post.reactionSummary[emoji] <= 0) delete post.reactionSummary[emoji]
+      if (post.reactionSummary[emoji] <= 0) {
+        post.reactionSummary = Object.fromEntries(
+          Object.entries(post.reactionSummary).filter(([k]) => k !== emoji),
+        )
+      }
       post.reactionCount--
     } else {
       await addReaction(postId, emoji)
@@ -74,7 +79,7 @@ async function onReaction(postId: number, emoji: string) {
 }
 
 async function onBookmark(postId: number) {
-  const post = [...pinnedPosts.value, ...posts.value].find(p => p.id === postId)
+  const post = [...pinnedPosts.value, ...posts.value].find((p) => p.id === postId)
   if (!post) return
   try {
     if (post.isBookmarked) {
@@ -90,10 +95,10 @@ async function onBookmark(postId: number) {
 }
 
 async function onPin(postId: number) {
-  const post = [...pinnedPosts.value, ...posts.value].find(p => p.id === postId)
+  const post = [...pinnedPosts.value, ...posts.value].find((p) => p.id === postId)
   if (!post) return
   try {
-    await togglePin(postId, !post.isPinned)
+    await pinPost(postId)
     showSuccess(post.isPinned ? 'ピン解除しました' : 'ピン留めしました')
     refresh()
   } catch {
@@ -104,8 +109,8 @@ async function onPin(postId: number) {
 async function onDelete(postId: number) {
   try {
     await deletePost(postId)
-    posts.value = posts.value.filter(p => p.id !== postId)
-    pinnedPosts.value = pinnedPosts.value.filter(p => p.id !== postId)
+    posts.value = posts.value.filter((p) => p.id !== postId)
+    pinnedPosts.value = pinnedPosts.value.filter((p) => p.id !== postId)
     showSuccess('投稿を削除しました')
   } catch {
     showError('削除に失敗しました')
@@ -152,19 +157,17 @@ defineExpose({ refresh })
     />
 
     <!-- 空状態 -->
-    <div v-if="initialLoaded && posts.length === 0 && pinnedPosts.length === 0" class="py-12 text-center">
+    <div
+      v-if="initialLoaded && posts.length === 0 && pinnedPosts.length === 0"
+      class="py-12 text-center"
+    >
       <i class="pi pi-comments mb-3 text-4xl text-surface-300" />
       <p class="text-surface-400">まだ投稿がありません</p>
     </div>
 
     <!-- もっと読む -->
     <div v-if="hasNext" class="flex justify-center py-4">
-      <Button
-        label="もっと読む"
-        text
-        :loading="loading"
-        @click="loadMore"
-      />
+      <Button label="もっと読む" text :loading="loading" @click="loadMore" />
     </div>
 
     <!-- ローディング -->
