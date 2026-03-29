@@ -50,7 +50,7 @@ export function useChartApi() {
   }
 
   async function remove(teamId: number, chartId: number) {
-    await api(`/api/v1/teams/${teamId}/charts/${chartId}`, { method: 'DELETE' })
+    return api(`/api/v1/teams/${teamId}/charts/${chartId}`, { method: 'DELETE' })
   }
 
   // === My Charts ===
@@ -128,7 +128,7 @@ export function useChartApi() {
   }
 
   async function deleteFormula(teamId: number, formulaId: number) {
-    await api(`/api/v1/teams/${teamId}/charts/formulas/${formulaId}`, { method: 'DELETE' })
+    return api(`/api/v1/teams/${teamId}/charts/formulas/${formulaId}`, { method: 'DELETE' })
   }
 
   // === Intake Form ===
@@ -157,7 +157,7 @@ export function useChartApi() {
   }
 
   async function deletePhoto(teamId: number, photoId: number) {
-    await api(`/api/v1/teams/${teamId}/charts/photos/${photoId}`, { method: 'DELETE' })
+    return api(`/api/v1/teams/${teamId}/charts/photos/${photoId}`, { method: 'DELETE' })
   }
 
   // === Pin & Share ===
@@ -196,7 +196,7 @@ export function useChartApi() {
   }
 
   async function deleteCustomField(teamId: number, fieldId: number) {
-    await api(`/api/v1/teams/${teamId}/charts/settings/custom-fields/${fieldId}`, {
+    return api(`/api/v1/teams/${teamId}/charts/settings/custom-fields/${fieldId}`, {
       method: 'DELETE',
     })
   }
@@ -227,7 +227,7 @@ export function useChartApi() {
   }
 
   async function deleteRecordTemplate(teamId: number, templateId: number) {
-    await api(`/api/v1/teams/${teamId}/charts/settings/record-templates/${templateId}`, {
+    return api(`/api/v1/teams/${teamId}/charts/settings/record-templates/${templateId}`, {
       method: 'DELETE',
     })
   }

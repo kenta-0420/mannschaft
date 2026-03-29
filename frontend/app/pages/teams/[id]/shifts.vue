@@ -56,22 +56,29 @@ onMounted(() => loadPermissions())
   <div>
     <h1 class="mb-4 text-2xl font-bold">シフト管理</h1>
 
-    <TabView v-model:active-index="activeTab">
-      <TabPanel header="シフト表">
-        <ShiftScheduleList
-          :team-id="teamId"
-          :can-manage="isAdminOrDeputy"
-          @select="onScheduleSelect"
-          @create="showCreateDialog = true"
-        />
-      </TabPanel>
-      <TabPanel header="シフト交換">
-        <ShiftSwapList :team-id="teamId" />
-      </TabPanel>
-      <TabPanel v-if="isAdmin" header="ポジション管理">
-        <ShiftPositionManager :team-id="teamId" />
-      </TabPanel>
-    </TabView>
+    <Tabs v-model:value="activeTab">
+      <TabList>
+        <Tab :value="0">シフト表</Tab>
+        <Tab :value="1">シフト交換</Tab>
+        <Tab :value="2">ポジション管理</Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel :value="0">
+          <ShiftScheduleList
+            :team-id="teamId"
+            :can-manage="isAdminOrDeputy"
+            @select="onScheduleSelect"
+            @create="showCreateDialog = true"
+          />
+        </TabPanel>
+        <TabPanel :value="1">
+          <ShiftSwapList :team-id="teamId" />
+        </TabPanel>
+        <TabPanel v-if="isAdmin" :value="2">
+          <ShiftPositionManager :team-id="teamId" />
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
 
     <!-- シフト表作成ダイアログ -->
     <Dialog

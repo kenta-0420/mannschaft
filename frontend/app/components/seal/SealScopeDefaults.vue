@@ -26,9 +26,12 @@ function handleSave() {
   emit('save', localDefaults.value)
 }
 
-watch(() => props.defaults, (newVal) => {
-  localDefaults.value = [...newVal]
-})
+watch(
+  () => props.defaults,
+  (newVal) => {
+    localDefaults.value = [...newVal]
+  },
+)
 </script>
 
 <template>
@@ -41,7 +44,7 @@ watch(() => props.defaults, (newVal) => {
         class="flex items-center gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700"
       >
         <span class="min-w-24 text-sm">{{ scopeLabel(d) }}</span>
-        <Dropdown
+        <Select
           v-model="localDefaults[index].variant"
           :options="variantOptions"
           option-label="label"

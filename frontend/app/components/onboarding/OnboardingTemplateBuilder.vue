@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { OnboardingTemplate, OnboardingPreset, CreateStepRequest, OnboardingStepType } from '~/types/onboarding'
+import type {
+  OnboardingTemplate,
+  OnboardingPreset,
+  CreateStepRequest,
+  OnboardingStepType,
+} from '~/types/onboarding'
 
 const props = defineProps<{
   template?: OnboardingTemplate
@@ -7,32 +12,34 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  save: [data: {
-    name: string
-    description: string
-    deadlineDays: number | null
-    reminderDaysBefore: number | null
-    isOrderEnforced: boolean
-    isAdminNotifiedOnComplete: boolean
-    isTimelinePostedOnComplete: boolean
-    presetId?: number
-    steps: CreateStepRequest[]
-  }]
+  save: [
+    data: {
+      name: string
+      description: string
+      deadlineDays: number | null
+      reminderDaysBefore: number | null
+      isOrderEnforced: boolean
+      isAdminNotifiedOnComplete: boolean
+      isTimelinePostedOnComplete: boolean
+      presetId?: number
+      steps: CreateStepRequest[]
+    },
+  ]
   cancel: []
 }>()
 
 const form = ref({
   name: props.template?.name ?? '',
   description: props.template?.description ?? '',
-  deadlineDays: props.template?.deadlineDays ?? null as number | null,
-  reminderDaysBefore: props.template?.reminderDaysBefore ?? null as number | null,
+  deadlineDays: props.template?.deadlineDays ?? (null as number | null),
+  reminderDaysBefore: props.template?.reminderDaysBefore ?? (null as number | null),
   isOrderEnforced: props.template?.isOrderEnforced ?? false,
   isAdminNotifiedOnComplete: props.template?.isAdminNotifiedOnComplete ?? true,
   isTimelinePostedOnComplete: props.template?.isTimelinePostedOnComplete ?? false,
 })
 
 const steps = ref<CreateStepRequest[]>(
-  props.template?.steps.map(s => ({
+  props.template?.steps.map((s) => ({
     title: s.title,
     description: s.description ?? undefined,
     stepType: s.stepType,
@@ -68,7 +75,7 @@ function moveStep(index: number, direction: -1 | 1) {
 function loadPreset(preset: OnboardingPreset) {
   form.value.name = preset.name
   form.value.description = preset.description ?? ''
-  steps.value = preset.stepsJson.map(s => ({
+  steps.value = preset.stepsJson.map((s) => ({
     title: s.title,
     description: s.description ?? undefined,
     stepType: s.stepType,
@@ -83,13 +90,18 @@ function handleSave() {
   })
 }
 
-const canSave = computed(() => form.value.name && steps.value.length > 0 && steps.value.every(s => s.title))
+const canSave = computed(
+  () => form.value.name && steps.value.length > 0 && steps.value.every((s) => s.title),
+)
 </script>
 
 <template>
   <div class="space-y-6">
     <!-- プリセット選択 -->
-    <div v-if="presets && presets.length > 0 && !template" class="rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800">
+    <div
+      v-if="presets && presets.length > 0 && !template"
+      class="rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800"
+    >
       <p class="mb-2 text-sm font-medium">プリセットから作成</p>
       <div class="flex flex-wrap gap-2">
         <Button
@@ -108,7 +120,11 @@ const canSave = computed(() => form.value.name && steps.value.length > 0 && step
     <div class="space-y-3">
       <div>
         <label class="mb-1 block text-sm font-medium">テンプレート名 *</label>
-        <InputText v-model="form.name" class="w-full" placeholder="新メンバー向けオンボーディング" />
+        <InputText
+          v-model="form.name"
+          class="w-full"
+          placeholder="新メンバー向けオンボーディング"
+        />
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">説明</label>
@@ -121,7 +137,12 @@ const canSave = computed(() => form.value.name && steps.value.length > 0 && step
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">リマインダー（期限N日前）</label>
-          <InputNumber v-model="form.reminderDaysBefore" class="w-full" :min="1" placeholder="未設定" />
+          <InputNumber
+            v-model="form.reminderDaysBefore"
+            class="w-full"
+            :min="1"
+            placeholder="未設定"
+          />
         </div>
       </div>
       <div class="space-y-2">
@@ -144,7 +165,13 @@ const canSave = computed(() => form.value.name && steps.value.length > 0 && step
     <div>
       <div class="mb-2 flex items-center justify-between">
         <label class="text-sm font-medium">ステップ（{{ steps.length }}）</label>
-        <Button label="ステップ追加" icon="pi pi-plus" size="small" severity="secondary" @click="addStep" />
+        <Button
+          label="ステップ追加"
+          icon="pi pi-plus"
+          size="small"
+          severity="secondary"
+          @click="addStep"
+        />
       </div>
       <div class="space-y-3">
         <div
@@ -155,10 +182,36 @@ const canSave = computed(() => form.value.name && steps.value.length > 0 && step
           <div class="mb-2 flex items-center gap-2">
             <span class="text-xs text-surface-400">{{ index + 1 }}</span>
             <InputText v-model="step.title" class="flex-1" placeholder="ステップのタイトル" />
-            <Dropdown v-model="step.stepType" :options="stepTypeOptions" option-label="label" option-value="value" class="w-40" />
-            <Button icon="pi pi-arrow-up" size="small" text severity="secondary" :disabled="index === 0" @click="moveStep(index, -1)" />
-            <Button icon="pi pi-arrow-down" size="small" text severity="secondary" :disabled="index === steps.length - 1" @click="moveStep(index, 1)" />
-            <Button icon="pi pi-trash" size="small" text severity="danger" @click="removeStep(index)" />
+            <Select
+              v-model="step.stepType"
+              :options="stepTypeOptions"
+              option-label="label"
+              option-value="value"
+              class="w-40"
+            />
+            <Button
+              icon="pi pi-arrow-up"
+              size="small"
+              text
+              severity="secondary"
+              :disabled="index === 0"
+              @click="moveStep(index, -1)"
+            />
+            <Button
+              icon="pi pi-arrow-down"
+              size="small"
+              text
+              severity="secondary"
+              :disabled="index === steps.length - 1"
+              @click="moveStep(index, 1)"
+            />
+            <Button
+              icon="pi pi-trash"
+              size="small"
+              text
+              severity="danger"
+              @click="removeStep(index)"
+            />
           </div>
           <InputText
             v-if="step.stepType === 'URL'"
@@ -176,7 +229,12 @@ const canSave = computed(() => form.value.name && steps.value.length > 0 && step
     <!-- ボタン -->
     <div class="flex justify-end gap-2">
       <Button label="キャンセル" severity="secondary" @click="emit('cancel')" />
-      <Button :label="template ? '更新' : '作成'" icon="pi pi-check" :disabled="!canSave" @click="handleSave" />
+      <Button
+        :label="template ? '更新' : '作成'"
+        icon="pi pi-check"
+        :disabled="!canSave"
+        @click="handleSave"
+      />
     </div>
   </div>
 </template>

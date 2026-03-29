@@ -18,19 +18,21 @@ onMounted(() => loadPermissions())
       <Button label="受付する" icon="pi pi-ticket" @click="showTicketForm = true" />
     </div>
 
-    <TabView v-model:active-index="activeTab">
-      <TabPanel header="待ち状況">
-        <QueueStatusBoard scope-type="organization" :scope-id="orgId" />
-      </TabPanel>
-      <TabPanel v-if="isAdminOrDeputy" header="窓口操作">
-        <QueueAdminPanel scope-type="organization" :scope-id="orgId" />
-      </TabPanel>
-    </TabView>
+    <Tabs v-model:value="activeTab">
+      <TabList>
+        <Tab :value="0">待ち状況</Tab>
+        <Tab :value="1">窓口操作</Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel :value="0">
+          <QueueStatusBoard scope-type="organization" :scope-id="orgId" />
+        </TabPanel>
+        <TabPanel v-if="isAdminOrDeputy" :value="1">
+          <QueueAdminPanel scope-type="organization" :scope-id="orgId" />
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
 
-    <QueueTicketForm
-      v-model:visible="showTicketForm"
-      scope-type="organization"
-      :scope-id="orgId"
-    />
+    <QueueTicketForm v-model:visible="showTicketForm" scope-type="organization" :scope-id="orgId" />
   </div>
 </template>

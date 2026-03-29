@@ -63,7 +63,13 @@ onMounted(loadLogs)
     <div class="mb-4 flex flex-wrap items-end gap-3">
       <div>
         <label class="mb-1 block text-xs font-medium">カテゴリ</label>
-        <Dropdown v-model="filters.eventCategory" :options="categoryOptions" option-label="label" option-value="value" class="w-40" />
+        <Select
+          v-model="filters.eventCategory"
+          :options="categoryOptions"
+          option-label="label"
+          option-value="value"
+          class="w-40"
+        />
       </div>
       <div>
         <label class="mb-1 block text-xs font-medium">開始日</label>

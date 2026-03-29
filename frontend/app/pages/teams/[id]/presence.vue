@@ -132,115 +132,127 @@ watch(activeTab, (tab) => {
       </div>
     </div>
 
-    <TabView v-model:active-index="activeTab">
-      <TabPanel header="ステータス">
-        <div v-if="loading" class="flex justify-center py-8">
-          <ProgressSpinner style="width: 40px; height: 40px" />
-        </div>
-        <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div
-            v-for="s in statuses"
-            :key="s.user.id"
-            class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
-          >
-            <div class="flex items-center gap-3">
+    <Tabs v-model:value="activeTab">
+      <TabList>
+        <Tab :value="0">ステータス</Tab>
+        <Tab :value="1">履歴</Tab>
+        <Tab :value="2">統計</Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel :value="0">
+          <div v-if="loading" class="flex justify-center py-8">
+            <ProgressSpinner style="width: 40px; height: 40px" />
+          </div>
+          <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              v-for="s in statuses"
+              :key="s.user.id"
+              class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+            >
+              <div class="flex items-center gap-3">
+                <div
+                  class="flex size-10 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-700"
+                >
+                  <i class="pi pi-user text-surface-500" />
+                </div>
+                <div>
+                  <p class="font-semibold">{{ s.user.displayName }}</p>
+                  <p class="text-sm font-medium" :class="statusColor(s.status)">
+                    {{ statusLabel(s.status) }}
+                  </p>
+                </div>
+              </div>
+              <div v-if="s.destination" class="mt-2 text-sm text-surface-500">
+                <i class="pi pi-map-marker mr-1" />{{ s.destination }}
+              </div>
+              <div v-if="s.expectedReturnAt" class="mt-1 text-xs text-surface-400">
+                帰宅予定: {{ new Date(s.expectedReturnAt).toLocaleString('ja-JP') }}
+              </div>
+            </div>
+            <div
+              v-if="statuses.length === 0"
+              class="col-span-full py-8 text-center text-surface-400"
+            >
+              メンバーの在席情報がありません
+            </div>
+          </div>
+        </TabPanel>
+
+        <TabPanel :value="1">
+          <div class="flex flex-col gap-2">
+            <div
+              v-for="event in historyList"
+              :key="event.id"
+              class="flex items-center justify-between rounded-lg border border-surface-100 p-3 dark:border-surface-700"
+            >
+              <div class="flex items-center gap-3">
+                <Tag
+                  :value="event.eventType === 'GOING_OUT' ? '外出' : '帰宅'"
+                  :severity="event.eventType === 'GOING_OUT' ? 'warn' : 'success'"
+                />
+                <div>
+                  <p class="font-medium">{{ event.user.displayName }}</p>
+                  <p v-if="event.destination" class="text-sm text-surface-500">
+                    {{ event.destination }}
+                  </p>
+                  <p v-if="event.message" class="text-sm text-surface-400">{{ event.message }}</p>
+                </div>
+              </div>
+              <span class="text-xs text-surface-400">{{
+                new Date(event.createdAt).toLocaleString('ja-JP')
+              }}</span>
+            </div>
+            <div v-if="historyList.length === 0" class="py-8 text-center text-surface-400">
+              履歴がありません
+            </div>
+          </div>
+        </TabPanel>
+
+        <TabPanel :value="2">
+          <div v-if="stats" class="space-y-4">
+            <div class="grid gap-4 sm:grid-cols-4">
               <div
-                class="flex size-10 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-700"
+                class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
               >
-                <i class="pi pi-user text-surface-500" />
+                <p class="text-xs text-surface-400">合計イベント</p>
+                <p class="text-2xl font-bold">{{ stats.totalEvents }}</p>
               </div>
-              <div>
-                <p class="font-semibold">{{ s.user.displayName }}</p>
-                <p class="text-sm font-medium" :class="statusColor(s.status)">
-                  {{ statusLabel(s.status) }}
-                </p>
+              <div
+                class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+              >
+                <p class="text-xs text-surface-400">外出</p>
+                <p class="text-2xl font-bold text-orange-500">{{ stats.totalGoingOutEvents }}</p>
               </div>
-            </div>
-            <div v-if="s.destination" class="mt-2 text-sm text-surface-500">
-              <i class="pi pi-map-marker mr-1" />{{ s.destination }}
-            </div>
-            <div v-if="s.expectedReturnAt" class="mt-1 text-xs text-surface-400">
-              帰宅予定: {{ new Date(s.expectedReturnAt).toLocaleString('ja-JP') }}
-            </div>
-          </div>
-          <div v-if="statuses.length === 0" class="col-span-full py-8 text-center text-surface-400">
-            メンバーの在席情報がありません
-          </div>
-        </div>
-      </TabPanel>
-
-      <TabPanel header="履歴">
-        <div class="flex flex-col gap-2">
-          <div
-            v-for="event in historyList"
-            :key="event.id"
-            class="flex items-center justify-between rounded-lg border border-surface-100 p-3 dark:border-surface-700"
-          >
-            <div class="flex items-center gap-3">
-              <Tag
-                :value="event.eventType === 'GOING_OUT' ? '外出' : '帰宅'"
-                :severity="event.eventType === 'GOING_OUT' ? 'warn' : 'success'"
-              />
-              <div>
-                <p class="font-medium">{{ event.user.displayName }}</p>
-                <p v-if="event.destination" class="text-sm text-surface-500">
-                  {{ event.destination }}
-                </p>
-                <p v-if="event.message" class="text-sm text-surface-400">{{ event.message }}</p>
+              <div
+                class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+              >
+                <p class="text-xs text-surface-400">帰宅</p>
+                <p class="text-2xl font-bold text-green-500">{{ stats.totalHomeEvents }}</p>
+              </div>
+              <div
+                class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+              >
+                <p class="text-xs text-surface-400">超過</p>
+                <p class="text-2xl font-bold text-red-500">{{ stats.overdueCount }}</p>
               </div>
             </div>
-            <span class="text-xs text-surface-400">{{
-              new Date(event.createdAt).toLocaleString('ja-JP')
-            }}</span>
-          </div>
-          <div v-if="historyList.length === 0" class="py-8 text-center text-surface-400">
-            履歴がありません
-          </div>
-        </div>
-      </TabPanel>
 
-      <TabPanel header="統計">
-        <div v-if="stats" class="space-y-4">
-          <div class="grid gap-4 sm:grid-cols-4">
-            <div
-              class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
-            >
-              <p class="text-xs text-surface-400">合計イベント</p>
-              <p class="text-2xl font-bold">{{ stats.totalEvents }}</p>
-            </div>
-            <div
-              class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
-            >
-              <p class="text-xs text-surface-400">外出</p>
-              <p class="text-2xl font-bold text-orange-500">{{ stats.totalGoingOutEvents }}</p>
-            </div>
-            <div
-              class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
-            >
-              <p class="text-xs text-surface-400">帰宅</p>
-              <p class="text-2xl font-bold text-green-500">{{ stats.totalHomeEvents }}</p>
-            </div>
-            <div
-              class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
-            >
-              <p class="text-xs text-surface-400">超過</p>
-              <p class="text-2xl font-bold text-red-500">{{ stats.overdueCount }}</p>
+            <div v-if="stats.memberStats.length > 0">
+              <h3 class="mb-2 font-semibold">メンバー別統計</h3>
+              <DataTable :value="stats.memberStats" striped-rows>
+                <Column field="userId" header="ユーザーID" />
+                <Column field="goingOutCount" header="外出回数" />
+                <Column field="homeCount" header="帰宅回数" />
+                <Column field="overdueCount" header="超過回数" />
+              </DataTable>
             </div>
           </div>
-
-          <div v-if="stats.memberStats.length > 0">
-            <h3 class="mb-2 font-semibold">メンバー別統計</h3>
-            <DataTable :value="stats.memberStats" striped-rows>
-              <Column field="userId" header="ユーザーID" />
-              <Column field="goingOutCount" header="外出回数" />
-              <Column field="homeCount" header="帰宅回数" />
-              <Column field="overdueCount" header="超過回数" />
-            </DataTable>
+          <div v-else class="py-8 text-center text-surface-400">
+            統計データを読み込んでいます...
           </div>
-        </div>
-        <div v-else class="py-8 text-center text-surface-400">統計データを読み込んでいます...</div>
-      </TabPanel>
-    </TabView>
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
 
     <!-- 外出ダイアログ -->
     <Dialog v-model:visible="showGoingOutDialog" header="外出登録" modal class="w-full max-w-md">
