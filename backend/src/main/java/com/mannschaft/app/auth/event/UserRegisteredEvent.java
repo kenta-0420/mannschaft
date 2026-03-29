@@ -11,14 +11,14 @@ public class UserRegisteredEvent extends BaseEvent {
 
     private final Long userId;
     private final String email;
-    private final String locale;
-    private final String timezone;
+    private final String displayName;
+    private final String rawToken;
 
-    public UserRegisteredEvent(Long userId, String email, String locale, String timezone) {
+    public UserRegisteredEvent(Long userId, String email, String displayName, String rawToken) {
         super();
         this.userId = userId;
         this.email = email;
-        this.locale = locale;
-        this.timezone = timezone;
+        this.displayName = displayName;
+        this.rawToken = rawToken;
     }
 }

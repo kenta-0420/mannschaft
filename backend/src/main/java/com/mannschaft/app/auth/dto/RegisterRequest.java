@@ -1,16 +1,16 @@
 package com.mannschaft.app.auth.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 /**
  * ユーザー新規登録リクエスト。
  */
 @Getter
-@RequiredArgsConstructor
 public class RegisterRequest {
 
     @NotBlank
@@ -33,6 +33,27 @@ public class RegisterRequest {
     @Size(max = 50)
     private final String displayName;
 
+    private final String postalCode;
     private final String locale;
     private final String timezone;
+
+    @JsonCreator
+    public RegisterRequest(
+            @JsonProperty("email") String email,
+            @JsonProperty("password") String password,
+            @JsonProperty("lastName") String lastName,
+            @JsonProperty("firstName") String firstName,
+            @JsonProperty("displayName") String displayName,
+            @JsonProperty("postalCode") String postalCode,
+            @JsonProperty("locale") String locale,
+            @JsonProperty("timezone") String timezone) {
+        this.email = email;
+        this.password = password;
+        this.lastName = lastName;
+        this.firstName = firstName;
+        this.displayName = displayName;
+        this.postalCode = postalCode;
+        this.locale = locale;
+        this.timezone = timezone;
+    }
 }

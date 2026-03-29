@@ -133,6 +133,7 @@ public class AuthService {
                 .lastNameHash(encryptionService.hmac(req.getLastName()))
                 .firstNameHash(encryptionService.hmac(req.getFirstName()))
                 .displayName(req.getDisplayName())
+                .postalCode(req.getPostalCode())
                 .locale(req.getLocale() != null ? req.getLocale() : "ja")
                 .timezone(req.getTimezone() != null ? req.getTimezone() : "Asia/Tokyo")
                 .status(UserEntity.UserStatus.PENDING_VERIFICATION)
