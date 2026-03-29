@@ -61,7 +61,13 @@ export function useTeamApi() {
     return api<{ data: TeamResponse }>(`/api/v1/teams/${teamId}`)
   }
 
-  async function searchTeams(params: { keyword?: string; prefecture?: string; template?: string; page?: number; size?: number }) {
+  async function searchTeams(params: {
+    keyword?: string
+    prefecture?: string
+    template?: string
+    page?: number
+    size?: number
+  }) {
     const query = new URLSearchParams()
     if (params.keyword) query.set('keyword', params.keyword)
     if (params.prefecture) query.set('prefecture', params.prefecture)
@@ -92,7 +98,10 @@ export function useTeamApi() {
   }
 
   async function changeRole(teamId: number, userId: number, roleId: number) {
-    return api(`/api/v1/teams/${teamId}/members/${userId}/role`, { method: 'PATCH', body: { roleId } })
+    return api(`/api/v1/teams/${teamId}/members/${userId}/role`, {
+      method: 'PATCH',
+      body: { roleId },
+    })
   }
 
   async function removeMember(teamId: number, userId: number) {
@@ -104,8 +113,14 @@ export function useTeamApi() {
   }
 
   // === 招待トークン ===
-  async function createInviteToken(teamId: number, body: { roleId: number; expiresIn: string | null; maxUses: number | null }) {
-    return api<{ data: InviteTokenResponse }>(`/api/v1/teams/${teamId}/invite-tokens`, { method: 'POST', body })
+  async function createInviteToken(
+    teamId: number,
+    body: { roleId: number; expiresIn: string | null; maxUses: number | null },
+  ) {
+    return api<{ data: InviteTokenResponse }>(`/api/v1/teams/${teamId}/invite-tokens`, {
+      method: 'POST',
+      body,
+    })
   }
 
   async function getInviteTokens(teamId: number) {
@@ -134,6 +149,98 @@ export function useTeamApi() {
     return api(`/api/v1/teams/${teamId}/follow`, { method: 'DELETE' })
   }
 
+  // === アクセス要件 ===
+  async function getAccessRequirements(teamId: number) {
+    return api<{ data: Record<string, unknown> }>(`/api/v1/teams/${teamId}/access-requirements`)
+  }
+
+  async function updateAccessRequirements(teamId: number, body: Record<string, unknown>) {
+    return api<{ data: Record<string, unknown> }>(`/api/v1/teams/${teamId}/access-requirements`, {
+      method: 'PUT',
+      body,
+    })
+  }
+
+  // === ブロック管理 ===
+  async function getBlocks(teamId: number) {
+    return api<{
+      data: Array<{
+        id: number
+        blockedUserId: number
+        blockedDisplayName: string
+        reason: string | null
+        createdAt: string
+      }>
+    }>(`/api/v1/teams/${teamId}/blocks`)
+  }
+
+  async function createBlock(teamId: number, body: { userId: number; reason?: string }) {
+    return api(`/api/v1/teams/${teamId}/blocks`, { method: 'POST', body })
+  }
+
+  async function removeBlock(teamId: number, userId: number) {
+    return api(`/api/v1/teams/${teamId}/blocks/${userId}`, { method: 'DELETE' })
+  }
+
+  // === コンテンツ有料化設定 ===
+  async function getContentPaymentGates(teamId: number) {
+    return api<{
+      data: Record<string, unknown>[]
+      meta: { page: number; size: number; totalElements: number; totalPages: number }
+    }>(`/api/v1/teams/${teamId}/content-payment-gates`)
+  }
+
+  async function updateContentPaymentGates(teamId: number, body: Record<string, unknown>) {
+    return api(`/api/v1/teams/${teamId}/content-payment-gates`, { method: 'PUT', body })
+  }
+
+  // === 権限グループ管理 ===
+  async function getPermissionGroups(teamId: number) {
+    return api<{
+      data: Array<{
+        id: number
+        name: string
+        description: string | null
+        permissions: string[]
+        createdAt: string
+      }>
+    }>(`/api/v1/teams/${teamId}/permission-groups`)
+  }
+
+  async function createPermissionGroup(
+    teamId: number,
+    body: { name: string; description?: string; permissions: string[] },
+  ) {
+    return api(`/api/v1/teams/${teamId}/permission-groups`, { method: 'POST', body })
+  }
+
+  async function updatePermissionGroup(
+    teamId: number,
+    groupId: number,
+    body: { name?: string; description?: string; permissions?: string[] },
+  ) {
+    return api(`/api/v1/teams/${teamId}/permission-groups/${groupId}`, { method: 'PATCH', body })
+  }
+
+  async function deletePermissionGroup(teamId: number, groupId: number) {
+    return api(`/api/v1/teams/${teamId}/permission-groups/${groupId}`, { method: 'DELETE' })
+  }
+
+  async function assignPermissionGroups(teamId: number, userId: number, groupIds: number[]) {
+    return api(`/api/v1/teams/${teamId}/members/${userId}/permission-groups`, {
+      method: 'PUT',
+      body: { groupIds },
+    })
+  }
+
+  // === オーナー移譲 ===
+  async function transferOwnership(teamId: number, newAdminUserId: number) {
+    return api(`/api/v1/teams/${teamId}/transfer-ownership`, {
+      method: 'POST',
+      body: { newAdminUserId },
+    })
+  }
+
   return {
     getTeam,
     searchTeams,
@@ -151,6 +258,19 @@ export function useTeamApi() {
     unarchiveTeam,
     followTeam,
     unfollowTeam,
+    getAccessRequirements,
+    updateAccessRequirements,
+    getBlocks,
+    createBlock,
+    removeBlock,
+    getContentPaymentGates,
+    updateContentPaymentGates,
+    getPermissionGroups,
+    createPermissionGroup,
+    updatePermissionGroup,
+    deletePermissionGroup,
+    assignPermissionGroups,
+    transferOwnership,
     handleApiError,
   }
 }

@@ -109,7 +109,12 @@ export function useChatApi() {
     return api<ChatMessageListResponse>(`/api/v1/chat/channels/${channelId}/messages?${qs}`)
   }
 
-  async function sendMessage(channelId: number, body: string, parentId?: number, attachmentKeys?: string[]) {
+  async function sendMessage(
+    channelId: number,
+    body: string,
+    parentId?: number,
+    attachmentKeys?: string[],
+  ) {
     return api<{ data: ChatMessageResponse }>(`/api/v1/chat/channels/${channelId}/messages`, {
       method: 'POST',
       body: { body, parentId, attachmentKeys },
@@ -187,6 +192,17 @@ export function useChatApi() {
     return api<ChatMessageListResponse>(`/api/v1/chat/bookmarks?${qs}`)
   }
 
+  // === Channel Settings ===
+  async function updateChannelSettings(
+    channelId: number,
+    settings: { isMuted?: boolean; isPinned?: boolean; category?: string },
+  ) {
+    return api(`/api/v1/chat/channels/${channelId}/settings`, {
+      method: 'PATCH',
+      body: settings,
+    })
+  }
+
   // === Upload ===
   async function getUploadUrl(channelId: number, fileName: string, contentType: string) {
     return api<{ data: { uploadUrl: string; fileKey: string } }>(
@@ -231,5 +247,6 @@ export function useChatApi() {
     getBookmarks,
     getUploadUrl,
     forwardMessage,
+    updateChannelSettings,
   }
 }

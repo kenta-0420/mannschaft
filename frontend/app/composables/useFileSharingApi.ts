@@ -1,4 +1,9 @@
-import type { SharedFolder, SharedFile, FileVersion, FolderDetailResponse } from '~/types/filesharing'
+import type {
+  SharedFolder,
+  SharedFile,
+  FileVersion,
+  FolderDetailResponse,
+} from '~/types/filesharing'
 
 export function useFileSharingApi() {
   const api = useApi()
@@ -36,7 +41,10 @@ export function useFileSharingApi() {
   // === Files ===
   async function getFiles(params: Record<string, unknown>) {
     const qs = buildQuery(params)
-    return api<{ data: SharedFile[]; meta: { page: number; size: number; totalElements: number; totalPages: number } }>(`/api/v1/files?${qs}`)
+    return api<{
+      data: SharedFile[]
+      meta: { page: number; size: number; totalElements: number; totalPages: number }
+    }>(`/api/v1/files?${qs}`)
   }
 
   async function getFile(fileId: number) {
@@ -75,9 +83,117 @@ export function useFileSharingApi() {
     return api<{ data: FileVersion }>(`/api/v1/files/${fileId}/versions`, { method: 'POST', body })
   }
 
+  // === File Meta Update (PATCH) ===
+  async function patchFile(fileId: number, body: Record<string, unknown>) {
+    return api<{ data: SharedFile }>(`/api/v1/files/${fileId}`, { method: 'PATCH', body })
+  }
+
+  // === Comments ===
+  async function getFileComments(fileId: number) {
+    return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/files/${fileId}/comments`)
+  }
+
+  async function createFileComment(fileId: number, body: Record<string, unknown>) {
+    return api<{ data: Record<string, unknown> }>(`/api/v1/files/${fileId}/comments`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function deleteFileComment(fileId: number, commentId: number) {
+    return api(`/api/v1/files/${fileId}/comments/${commentId}`, { method: 'DELETE' })
+  }
+
+  async function updateFileComment(
+    fileId: number,
+    commentId: number,
+    body: Record<string, unknown>,
+  ) {
+    return api<{ data: Record<string, unknown> }>(`/api/v1/files/${fileId}/comments/${commentId}`, {
+      method: 'PATCH',
+      body,
+    })
+  }
+
+  // === Sharing Links ===
+  async function getFileLinks(fileId: number) {
+    return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/files/${fileId}/links`)
+  }
+
+  async function createFileLink(fileId: number, body: Record<string, unknown>) {
+    return api<{ data: Record<string, unknown> }>(`/api/v1/files/${fileId}/links`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function deleteFileLink(fileId: number, linkId: number) {
+    return api(`/api/v1/files/${fileId}/links/${linkId}`, { method: 'DELETE' })
+  }
+
+  // === Stars (Favorites) ===
+  async function getFileStar(fileId: number) {
+    return api<{ data: { starred: boolean } }>(`/api/v1/files/${fileId}/stars/me`)
+  }
+
+  async function addFileStar(fileId: number) {
+    return api(`/api/v1/files/${fileId}/stars`, { method: 'POST' })
+  }
+
+  async function removeFileStar(fileId: number) {
+    return api(`/api/v1/files/${fileId}/stars`, { method: 'DELETE' })
+  }
+
+  // === Tags ===
+  async function getFileTags(fileId: number) {
+    return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/files/${fileId}/tags`)
+  }
+
+  async function addFileTag(fileId: number, body: Record<string, unknown>) {
+    return api<{ data: Record<string, unknown> }>(`/api/v1/files/${fileId}/tags`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function removeFileTag(fileId: number, tagId: number) {
+    return api(`/api/v1/files/${fileId}/tags/${tagId}`, { method: 'DELETE' })
+  }
+
+  // === Version (single) ===
+  async function getFileVersion(fileId: number, versionNumber: number) {
+    return api<{ data: FileVersion }>(`/api/v1/files/${fileId}/versions/${versionNumber}`)
+  }
+
   return {
-    getFolders, getFolder, createFolder, updateFolder, deleteFolder,
-    getFiles, getFile, getUploadUrl, registerFile, updateFile, deleteFile, getDownloadUrl,
-    getVersions, uploadNewVersion,
+    getFolders,
+    getFolder,
+    createFolder,
+    updateFolder,
+    deleteFolder,
+    getFiles,
+    getFile,
+    getUploadUrl,
+    registerFile,
+    updateFile,
+    deleteFile,
+    getDownloadUrl,
+    getVersions,
+    uploadNewVersion,
+    patchFile,
+    getFileComments,
+    createFileComment,
+    deleteFileComment,
+    updateFileComment,
+    getFileLinks,
+    createFileLink,
+    deleteFileLink,
+    getFileStar,
+    addFileStar,
+    removeFileStar,
+    getFileTags,
+    addFileTag,
+    removeFileTag,
+    getFileVersion,
   }
 }

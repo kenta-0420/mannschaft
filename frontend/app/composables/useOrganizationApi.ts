@@ -84,7 +84,12 @@ export function useOrganizationApi() {
     return api<{ data: OrganizationResponse }>(`/api/v1/organizations/${orgId}`)
   }
 
-  async function searchOrganizations(params: { keyword?: string; prefecture?: string; page?: number; size?: number }) {
+  async function searchOrganizations(params: {
+    keyword?: string
+    prefecture?: string
+    page?: number
+    size?: number
+  }) {
     const query = new URLSearchParams()
     if (params.keyword) query.set('keyword', params.keyword)
     if (params.prefecture) query.set('prefecture', params.prefecture)
@@ -98,7 +103,10 @@ export function useOrganizationApi() {
   }
 
   async function updateOrganization(orgId: number, body: Record<string, unknown>) {
-    return api<{ data: OrganizationResponse }>(`/api/v1/organizations/${orgId}`, { method: 'PATCH', body })
+    return api<{ data: OrganizationResponse }>(`/api/v1/organizations/${orgId}`, {
+      method: 'PATCH',
+      body,
+    })
   }
 
   async function deleteOrganization(orgId: number) {
@@ -114,7 +122,10 @@ export function useOrganizationApi() {
   }
 
   async function changeRole(orgId: number, userId: number, roleId: number) {
-    return api(`/api/v1/organizations/${orgId}/members/${userId}/role`, { method: 'PATCH', body: { roleId } })
+    return api(`/api/v1/organizations/${orgId}/members/${userId}/role`, {
+      method: 'PATCH',
+      body: { roleId },
+    })
   }
 
   async function removeMember(orgId: number, userId: number) {
@@ -126,8 +137,14 @@ export function useOrganizationApi() {
   }
 
   // === 招待トークン ===
-  async function createInviteToken(orgId: number, body: { roleId: number; expiresIn: string | null; maxUses: number | null }) {
-    return api<{ data: InviteTokenResponse }>(`/api/v1/organizations/${orgId}/invite-tokens`, { method: 'POST', body })
+  async function createInviteToken(
+    orgId: number,
+    body: { roleId: number; expiresIn: string | null; maxUses: number | null },
+  ) {
+    return api<{ data: InviteTokenResponse }>(`/api/v1/organizations/${orgId}/invite-tokens`, {
+      method: 'POST',
+      body,
+    })
   }
 
   async function getInviteTokens(orgId: number) {
@@ -158,15 +175,30 @@ export function useOrganizationApi() {
 
   // === 権限グループ管理 ===
   async function getPermissionGroups(orgId: number) {
-    return api<{ data: PermissionGroupResponse[] }>(`/api/v1/organizations/${orgId}/permission-groups`)
+    return api<{ data: PermissionGroupResponse[] }>(
+      `/api/v1/organizations/${orgId}/permission-groups`,
+    )
   }
 
-  async function createPermissionGroup(orgId: number, body: { name: string; description?: string; permissions: string[] }) {
-    return api<{ data: PermissionGroupResponse }>(`/api/v1/organizations/${orgId}/permission-groups`, { method: 'POST', body })
+  async function createPermissionGroup(
+    orgId: number,
+    body: { name: string; description?: string; permissions: string[] },
+  ) {
+    return api<{ data: PermissionGroupResponse }>(
+      `/api/v1/organizations/${orgId}/permission-groups`,
+      { method: 'POST', body },
+    )
   }
 
-  async function updatePermissionGroup(orgId: number, groupId: number, body: { name?: string; description?: string; permissions?: string[] }) {
-    return api<{ data: PermissionGroupResponse }>(`/api/v1/organizations/${orgId}/permission-groups/${groupId}`, { method: 'PATCH', body })
+  async function updatePermissionGroup(
+    orgId: number,
+    groupId: number,
+    body: { name?: string; description?: string; permissions?: string[] },
+  ) {
+    return api<{ data: PermissionGroupResponse }>(
+      `/api/v1/organizations/${orgId}/permission-groups/${groupId}`,
+      { method: 'PATCH', body },
+    )
   }
 
   async function deletePermissionGroup(orgId: number, groupId: number) {
@@ -174,7 +206,10 @@ export function useOrganizationApi() {
   }
 
   async function assignPermissionGroups(orgId: number, userId: number, groupIds: number[]) {
-    return api(`/api/v1/organizations/${orgId}/members/${userId}/permission-groups`, { method: 'PUT', body: { groupIds } })
+    return api(`/api/v1/organizations/${orgId}/members/${userId}/permission-groups`, {
+      method: 'PUT',
+      body: { groupIds },
+    })
   }
 
   // === ブロック管理 ===
@@ -183,7 +218,10 @@ export function useOrganizationApi() {
   }
 
   async function createBlock(orgId: number, body: { userId: number; reason?: string }) {
-    return api<{ data: BlockResponse }>(`/api/v1/organizations/${orgId}/blocks`, { method: 'POST', body })
+    return api<{ data: BlockResponse }>(`/api/v1/organizations/${orgId}/blocks`, {
+      method: 'POST',
+      body,
+    })
   }
 
   async function removeBlock(orgId: number, blockId: number) {
@@ -192,7 +230,36 @@ export function useOrganizationApi() {
 
   // === オーナー移譲 ===
   async function transferOwnership(orgId: number, newAdminUserId: number) {
-    return api(`/api/v1/organizations/${orgId}/transfer-ownership`, { method: 'POST', body: { newAdminUserId } })
+    return api(`/api/v1/organizations/${orgId}/transfer-ownership`, {
+      method: 'POST',
+      body: { newAdminUserId },
+    })
+  }
+
+  // === アクセス要件 ===
+  async function getAccessRequirements(orgId: number) {
+    return api<{ data: Record<string, unknown> }>(
+      `/api/v1/organizations/${orgId}/access-requirements`,
+    )
+  }
+
+  async function updateAccessRequirements(orgId: number, body: Record<string, unknown>) {
+    return api<{ data: Record<string, unknown> }>(
+      `/api/v1/organizations/${orgId}/access-requirements`,
+      { method: 'PUT', body },
+    )
+  }
+
+  // === コンテンツ有料化設定 ===
+  async function getContentPaymentGates(orgId: number) {
+    return api<{
+      data: Record<string, unknown>[]
+      meta: { page: number; size: number; totalElements: number; totalPages: number }
+    }>(`/api/v1/organizations/${orgId}/content-payment-gates`)
+  }
+
+  async function updateContentPaymentGates(orgId: number, body: Record<string, unknown>) {
+    return api(`/api/v1/organizations/${orgId}/content-payment-gates`, { method: 'PUT', body })
   }
 
   // === 組織内チーム一覧 ===
@@ -226,6 +293,10 @@ export function useOrganizationApi() {
     createBlock,
     removeBlock,
     transferOwnership,
+    getAccessRequirements,
+    updateAccessRequirements,
+    getContentPaymentGates,
+    updateContentPaymentGates,
     getTeamsInOrg,
     handleApiError,
   }
