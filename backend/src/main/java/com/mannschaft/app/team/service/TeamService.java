@@ -14,10 +14,16 @@ import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.dto.MemberResponse;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
+import com.mannschaft.app.team.dto.TeamOrgSummaryResponse;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.TeamSummaryResponse;
 import com.mannschaft.app.team.dto.UpdateTeamRequest;
+import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
+import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -36,6 +42,8 @@ public class TeamService {
 
     private final TeamRepository teamRepository;
     private final TeamBlockRepository teamBlockRepository;
+    private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+    private final OrganizationRepository organizationRepository;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
@@ -226,6 +234,39 @@ public class TeamService {
         findTeamOrThrow(teamId);
         userRoleRepository.deleteByUserIdAndTeamId(userId, teamId);
         log.info("チームフォロー解除完了: userId={}, teamId={}", userId, teamId);
+    }
+
+    /**
+     * チームが所属する組織一覧を取得する。
+     */
+    public List<TeamOrgSummaryResponse> getOrganizations(Long teamId) {
+        findTeamOrThrow(teamId);
+        return teamOrgMembershipRepository.findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE)
+                .stream()
+                .map(m -> organizationRepository.findById(m.getOrganizationId()).orElse(null))
+                .filter(org -> org != null)
+                .map(org -> new TeamOrgSummaryResponse(
+                        org.getId(),
+                        org.getName(),
+                        null,
+                        org.getVisibility().name(),
+                        (int) userRoleRepository.countByOrganizationId(org.getId())))
+                .toList();
+    }
+
+    /**
+     * 論理削除済みチームを復元する（SYSTEM_ADMIN専用）。
+     */
+    @Transactional
+    public void restoreTeam(Long teamId) {
+        if (teamRepository.countByIdIncludingDeleted(teamId) == 0) {
+            throw new BusinessException(TeamErrorCode.TEAM_001);
+        }
+        int updated = teamRepository.restoreById(teamId);
+        if (updated == 0) {
+            throw new BusinessException(TeamErrorCode.TEAM_006);
+        }
+        log.info("チーム復元完了: teamId={}", teamId);
     }
 
     // ========================================
