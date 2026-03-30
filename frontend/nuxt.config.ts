@@ -28,12 +28,42 @@ export default defineNuxtConfig({
 
   i18n: {
     locales: [
-      { code: 'ja', language: 'ja', name: '日本語' },
-      { code: 'en', language: 'en', name: 'English' },
-      { code: 'zh', language: 'zh', name: '中文（简体）' },
-      { code: 'ko', language: 'ko', name: '한국어' },
-      { code: 'es', language: 'es', name: 'Español' },
-      { code: 'de', language: 'de', name: 'Deutsch' },
+      {
+        code: 'ja',
+        language: 'ja',
+        name: '日本語',
+        files: ['ja/common.json', 'ja/auth.json', 'ja/validation.json'],
+      },
+      {
+        code: 'en',
+        language: 'en',
+        name: 'English',
+        files: ['en/common.json', 'en/auth.json', 'en/validation.json'],
+      },
+      {
+        code: 'zh',
+        language: 'zh',
+        name: '中文（简体）',
+        files: ['zh/common.json', 'zh/auth.json', 'zh/validation.json'],
+      },
+      {
+        code: 'ko',
+        language: 'ko',
+        name: '한국어',
+        files: ['ko/common.json', 'ko/auth.json', 'ko/validation.json'],
+      },
+      {
+        code: 'es',
+        language: 'es',
+        name: 'Español',
+        files: ['es/common.json', 'es/auth.json', 'es/validation.json'],
+      },
+      {
+        code: 'de',
+        language: 'de',
+        name: 'Deutsch',
+        files: ['de/common.json', 'de/auth.json', 'de/validation.json'],
+      },
     ],
     defaultLocale: 'ja',
     strategy: 'no_prefix',

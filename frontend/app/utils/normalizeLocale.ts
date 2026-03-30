@@ -6,7 +6,7 @@ const SUPPORTED_LOCALES = ['ja', 'en', 'zh', 'ko', 'es', 'de'] as const
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
 export const normalizeLocale = (lang: string): SupportedLocale => {
-  const base = lang.split('-')[0].toLowerCase()
+  const base = (lang.split('-')[0] ?? lang).toLowerCase()
   return (SUPPORTED_LOCALES as readonly string[]).includes(base) ? (base as SupportedLocale) : 'ja'
 }
 
