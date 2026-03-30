@@ -41,6 +41,41 @@ public class ContentTranslationQueryRepository {
     }
 
     /**
+     * PUBLISHED ステータスかつ原文が更新されている翻訳コンテンツのIDリストを返す。
+     * バッチによる日次リカバリチェックで使用する。
+     * content_translations.source_updated_at と原文テーブルの updated_at を比較するために
+     * 原文種別ごとのテーブル（blog_posts / kb_pages）とJOINする。
+     *
+     * @return 要更新と判断される翻訳コンテンツIDのリスト
+     */
+    public java.util.List<Long> findPublishedTranslationsOlderThanSourceUpdatedAt() {
+        // blog_posts の更新分
+        String sqlBlog = """
+                SELECT ct.id
+                FROM content_translations ct
+                INNER JOIN blog_posts bp ON bp.id = ct.source_id
+                WHERE ct.status = 'PUBLISHED'
+                  AND ct.source_type IN ('BLOG_POST', 'ANNOUNCEMENT')
+                  AND ct.deleted_at IS NULL
+                  AND TIMESTAMPDIFF(SECOND, ct.source_updated_at, bp.updated_at) > 1
+                """;
+        // kb_pages の更新分
+        String sqlKb = """
+                SELECT ct.id
+                FROM content_translations ct
+                INNER JOIN kb_pages kp ON kp.id = ct.source_id
+                WHERE ct.status = 'PUBLISHED'
+                  AND ct.source_type = 'KNOWLEDGE_BASE'
+                  AND ct.deleted_at IS NULL
+                  AND TIMESTAMPDIFF(SECOND, ct.source_updated_at, kp.updated_at) > 1
+                """;
+        java.util.List<Long> result = new java.util.ArrayList<>();
+        result.addAll(jdbcTemplate.queryForList(sqlBlog, Long.class));
+        result.addAll(jdbcTemplate.queryForList(sqlKb, Long.class));
+        return result;
+    }
+
+    /**
      * スコープ内の翻訳コンテンツをステータス別に集計する（ダッシュボード用）。
      *
      * @param scopeType スコープ種別

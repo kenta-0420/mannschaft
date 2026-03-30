@@ -1,7 +1,9 @@
 package com.mannschaft.app.translation.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.common.StringListConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -38,11 +40,13 @@ public class TranslationConfigEntity extends BaseEntity {
     private String primaryLanguage = "ja";
 
     /**
-     * 有効な翻訳対象言語コードのJSON文字列（例: '["en","ko"]'）。
+     * 有効な翻訳対象言語コードのリスト（DBにはJSON形式で保存）。
+     * 例: ["en","ko"]
      */
+    @Convert(converter = StringListConverter.class)
     @Column(nullable = false, columnDefinition = "JSON")
     @Builder.Default
-    private String enabledLanguages = "[]";
+    private java.util.List<String> enabledLanguages = new java.util.ArrayList<>();
 
     @Column(nullable = false)
     @Builder.Default
@@ -54,10 +58,10 @@ public class TranslationConfigEntity extends BaseEntity {
     /**
      * 有効言語リストを更新する。
      *
-     * @param enabledLanguagesJson JSON文字列
+     * @param languages 言語コードのリスト
      */
-    public void updateEnabledLanguages(String enabledLanguagesJson) {
-        this.enabledLanguages = enabledLanguagesJson;
+    public void updateEnabledLanguages(java.util.List<String> languages) {
+        this.enabledLanguages = languages != null ? languages : new java.util.ArrayList<>();
     }
 
     /**
