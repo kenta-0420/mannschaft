@@ -13,8 +13,8 @@ CREATE TABLE skill_categories (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id),
-    INDEX idx_sc_scope (scope_type, scope_id, is_active),
-    INDEX idx_sc_created_by (created_by),
-    CONSTRAINT uq_sc_scope_name UNIQUE (scope_type, scope_id, name, deleted_at),
-    CONSTRAINT fk_sc_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT
+    INDEX idx_skcat_scope (scope_type, scope_id, is_active),
+    INDEX idx_skcat_created_by (created_by),
+    CONSTRAINT uq_skcat_scope_name UNIQUE (scope_type, scope_id, name, deleted_at),
+    CONSTRAINT fk_skcat_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
