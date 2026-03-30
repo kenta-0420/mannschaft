@@ -1,0 +1,20 @@
+CREATE TABLE skill_categories (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    scope_type VARCHAR(50) NOT NULL,
+    scope_id BIGINT UNSIGNED NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description VARCHAR(500) DEFAULT NULL,
+    icon VARCHAR(50) DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_by BIGINT UNSIGNED NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME DEFAULT NULL,
+    PRIMARY KEY (id),
+    INDEX idx_sc_scope (scope_type, scope_id, is_active),
+    INDEX idx_sc_created_by (created_by),
+    CONSTRAINT uq_sc_scope_name UNIQUE (scope_type, scope_id, name, deleted_at),
+    CONSTRAINT fk_sc_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
