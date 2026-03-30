@@ -30,6 +30,13 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+  # i18n メッセージソース（F11.3）
+  messages:
+    basename: messages,ValidationMessages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+    use-code-as-default-message: false
+
 # Server
 server:
   port: 8080

@@ -65,4 +65,10 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
             "SELECT COUNT(u) FROM UserEntity u WHERE u.id IN :userIds " +
             "AND u.status = 'ACTIVE' AND u.deletedAt IS NULL")
     int countActiveByUserIds(@org.springframework.data.repository.query.Param("userIds") java.util.List<Long> userIds);
+
+    /**
+     * userId に対応する locale 文字列のみを取得する（UserLocaleFilter 用軽量クエリ）。
+     */
+    @org.springframework.data.jpa.repository.Query("SELECT u.locale FROM UserEntity u WHERE u.id = :userId AND u.deletedAt IS NULL")
+    Optional<String> findLocaleById(@org.springframework.data.repository.query.Param("userId") Long userId);
 }
