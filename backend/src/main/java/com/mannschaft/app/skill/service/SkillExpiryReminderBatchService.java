@@ -104,12 +104,9 @@ public class SkillExpiryReminderBatchService {
      */
     private int processExpiry() {
         LocalDate today = LocalDate.now();
-        List<MemberSkillEntity> expiredSkills = memberSkillRepository.findAll().stream()
-                .filter(s -> s.getExpiresAt() != null
-                        && s.getExpiresAt().isBefore(today)
-                        && s.getStatus() == com.mannschaft.app.skill.SkillStatus.ACTIVE
-                        && s.getDeletedAt() == null)
-                .toList();
+        List<MemberSkillEntity> expiredSkills =
+                memberSkillRepository.findByExpiresAtBeforeAndStatusAndDeletedAtIsNull(
+                        today, com.mannschaft.app.skill.SkillStatus.ACTIVE);
 
         int count = 0;
         for (MemberSkillEntity skill : expiredSkills) {

@@ -5,6 +5,7 @@ import com.mannschaft.app.knowledgebase.entity.KbPageEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -75,6 +76,8 @@ public class KbPageQueryRepository {
      * @return 検索結果のページIDリスト（スコアの高い順）
      */
     public List<Long> searchFullText(String keyword, String scopeType, Long scopeId, PageAccessLevel accessLevel) {
+        List<Object> params = new ArrayList<>(List.of(scopeType, scopeId, keyword));
+
         StringBuilder sql = new StringBuilder("""
                 SELECT id FROM kb_pages
                 WHERE scope_type = ?
@@ -85,11 +88,13 @@ public class KbPageQueryRepository {
                 """);
 
         if (accessLevel != null) {
-            sql.append("  AND access_level = '").append(accessLevel.name()).append("'\n");
+            sql.append("  AND access_level = ?\n");
+            params.add(accessLevel.name());
         }
 
+        params.add(keyword);
         sql.append("ORDER BY MATCH(title, body) AGAINST(? IN BOOLEAN MODE) DESC\nLIMIT 100");
 
-        return jdbcTemplate.queryForList(sql.toString(), Long.class, scopeType, scopeId, keyword, keyword);
+        return jdbcTemplate.queryForList(sql.toString(), Long.class, params.toArray());
     }
 }
