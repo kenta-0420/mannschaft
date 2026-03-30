@@ -37,6 +37,6 @@ public class SupportedLocalesController {
                 ))
                 .toList();
 
-        return ApiResponse.success(locales);
+        return ApiResponse.of(locales);
     }
 }
