@@ -30,6 +30,7 @@ public interface WebhookMapper {
      */
     @Mapping(target = "eventTypes", ignore = true)
     @Mapping(target = "description", ignore = true)
+    @Mapping(target = "isActive", source = "active")
     WebhookEndpointResponse toEndpointResponse(WebhookEndpointEntity entity);
 
     /**
@@ -59,5 +60,6 @@ public interface WebhookMapper {
      * description はエンティティに保持されていないため null になる。
      */
     @Mapping(target = "description", ignore = true)
+    @Mapping(target = "isActive", source = "active")
     IncomingWebhookTokenResponse toIncomingTokenResponse(IncomingWebhookTokenEntity entity);
 }
