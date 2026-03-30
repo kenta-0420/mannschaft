@@ -115,6 +115,10 @@ dependencies {
     // ShedLock
     implementation("net.javacrumbs.shedlock:shedlock-spring:6.2.0")
     implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:6.2.0")
+
+    // === QRコード生成（ZXing） ===
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.zxing:javase:3.5.3")
 }
 
 tasks.withType<Test> {

@@ -24,7 +24,10 @@ public enum TeamErrorCode implements ErrorCode {
     TEAM_004("TEAM_004", "ブロックされているため参加できません", Severity.WARN),
 
     /** この操作を行う権限がありません */
-    TEAM_005("TEAM_005", "この操作を行う権限がありません", Severity.WARN);
+    TEAM_005("TEAM_005", "この操作を行う権限がありません", Severity.WARN),
+
+    /** チームは論理削除されていません */
+    TEAM_006("TEAM_006", "チームは削除されていないため復元できません", Severity.WARN);
 
     private final String code;
     private final String message;

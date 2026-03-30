@@ -4,10 +4,12 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * チームリポジトリ。
@@ -41,4 +43,24 @@ public interface TeamRepository extends JpaRepository<TeamEntity, Long> {
             @Param("template") String template,
             @Param("prefecture") String prefecture,
             Pageable pageable);
+
+    /**
+     * 論理削除済みを含めてIDで検索する（restore用）。
+     */
+    @Query(value = "SELECT * FROM teams WHERE id = :id", nativeQuery = true)
+    Optional<TeamEntity> findByIdIncludingDeleted(@Param("id") Long id);
+
+    /**
+     * 論理削除済みチームを復元する。deleted_at を NULL に戻す。
+     * @return 更新件数（0 = 対象なし or 削除済みでない）
+     */
+    @Modifying
+    @Query(value = "UPDATE teams SET deleted_at = NULL WHERE id = :id AND deleted_at IS NOT NULL", nativeQuery = true)
+    int restoreById(@Param("id") Long id);
+
+    /**
+     * 論理削除済みを含めた存在確認（restore前の 404 判定用）。
+     */
+    @Query(value = "SELECT COUNT(*) FROM teams WHERE id = :id", nativeQuery = true)
+    long countByIdIncludingDeleted(@Param("id") Long id);
 }

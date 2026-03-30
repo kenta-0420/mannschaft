@@ -9,6 +9,13 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
+import org.springframework.beans.factory.annotation.Value;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
@@ -24,8 +31,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -36,6 +47,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class InviteService {
+
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
+
+    private static final int QR_DEFAULT_SIZE = 300;
+    private static final int QR_MIN_SIZE = 64;
+    private static final int QR_MAX_SIZE = 1024;
 
     private final InviteTokenRepository inviteTokenRepository;
     private final RoleRepository roleRepository;
@@ -245,6 +263,41 @@ public class InviteService {
             builder.teamId(scopeId);
         } else {
             builder.organizationId(scopeId);
+        }
+    }
+
+    /**
+     * 招待QRコード画像（PNG）を生成して返す。
+     * ZXingを使用してフロントエンドの招待URLをエンコードする。
+     *
+     * @param tokenStr トークン文字列
+     * @param size     QR画像サイズ（px）。null の場合はデフォルト300
+     * @return PNG バイト配列
+     */
+    public byte[] generateInviteQrCode(String tokenStr, Integer size) {
+        inviteTokenRepository.findByToken(tokenStr)
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
+
+        int qrSize = (size != null) ? size : QR_DEFAULT_SIZE;
+        if (qrSize < QR_MIN_SIZE || qrSize > QR_MAX_SIZE) {
+            throw new BusinessException(RoleErrorCode.ROLE_008);
+        }
+
+        String inviteUrl = frontendUrl + "/invite/" + tokenStr;
+
+        try {
+            Map<EncodeHintType, Object> hints = new EnumMap<>(EncodeHintType.class);
+            hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+            hints.put(EncodeHintType.MARGIN, 1);
+
+            QRCodeWriter writer = new QRCodeWriter();
+            BitMatrix matrix = writer.encode(inviteUrl, BarcodeFormat.QR_CODE, qrSize, qrSize, hints);
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            MatrixToImageWriter.writeToStream(matrix, "PNG", out);
+            return out.toByteArray();
+        } catch (WriterException | IOException e) {
+            throw new IllegalStateException("QRコードの生成に失敗しました: " + tokenStr, e);
         }
     }
 

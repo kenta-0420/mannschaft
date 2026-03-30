@@ -24,7 +24,10 @@ public enum OrgErrorCode implements ErrorCode {
     ORG_004("ORG_004", "組織の最大階層深度を超えています", Severity.WARN),
 
     /** この操作を行う権限がありません */
-    ORG_005("ORG_005", "この操作を行う権限がありません", Severity.WARN);
+    ORG_005("ORG_005", "この操作を行う権限がありません", Severity.WARN),
+
+    /** 組織は論理削除されていません */
+    ORG_006("ORG_006", "組織は削除されていないため復元できません", Severity.WARN);
 
     private final String code;
     private final String message;

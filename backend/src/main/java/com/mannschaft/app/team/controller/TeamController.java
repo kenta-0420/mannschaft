@@ -19,6 +19,7 @@ import com.mannschaft.app.role.dto.PermissionGroupResponse;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.dto.UserPermissionGroupAssignRequest;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
+import com.mannschaft.app.team.dto.TeamOrgSummaryResponse;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.TeamSummaryResponse;
 import com.mannschaft.app.team.dto.UpdateTeamRequest;
@@ -316,6 +317,29 @@ public class TeamController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "退会成功")
     public ResponseEntity<Void> leaveTeam(@PathVariable Long id) {
         roleService.leaveScope(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ========================================
+    // チーム所属組織一覧
+    // ========================================
+
+    @GetMapping("/{id}/organizations")
+    @Operation(summary = "チーム所属組織一覧")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<TeamOrgSummaryResponse>>> getOrganizations(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.of(teamService.getOrganizations(id)));
+    }
+
+    // ========================================
+    // チームの復元（SYSTEM_ADMIN専用）
+    // ========================================
+
+    @PatchMapping("/{id}/restore")
+    @Operation(summary = "チーム復元（SYSTEM_ADMINのみ）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "復元成功")
+    public ResponseEntity<Void> restoreTeam(@PathVariable Long id) {
+        teamService.restoreTeam(id);
         return ResponseEntity.noContent().build();
     }
 }

@@ -3,8 +3,11 @@ package com.mannschaft.app.organization.controller;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
+import com.mannschaft.app.organization.dto.OrgAllMembersResponse;
+import com.mannschaft.app.organization.dto.OrgTeamSummaryResponse;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
 import com.mannschaft.app.organization.dto.UpdateOrganizationRequest;
@@ -316,6 +319,45 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "退会成功")
     public ResponseEntity<Void> leaveOrganization(@PathVariable Long id) {
         roleService.leaveScope(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ========================================
+    // 組織所属チーム一覧
+    // ========================================
+
+    @GetMapping("/{id}/teams")
+    @Operation(summary = "組織所属チーム一覧")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<OrgTeamSummaryResponse>>> getTeams(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.of(organizationService.getTeams(id)));
+    }
+
+    // ========================================
+    // 組織配下全メンバー一覧
+    // ========================================
+
+    @GetMapping("/{id}/members/all")
+    @Operation(summary = "組織配下全メンバー一覧（カスケード通知用）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<CursorPagedResponse<OrgAllMembersResponse>> getAllMembers(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "INDIVIDUAL") String scope,
+            @RequestParam(defaultValue = "50") int size) {
+        List<OrgAllMembersResponse> members = organizationService.getAllMembers(id, scope);
+        var meta = new CursorPagedResponse.CursorMeta(null, false, size);
+        return ResponseEntity.ok(CursorPagedResponse.of(members, meta));
+    }
+
+    // ========================================
+    // 組織の復元（SYSTEM_ADMIN専用）
+    // ========================================
+
+    @PatchMapping("/{id}/restore")
+    @Operation(summary = "組織復元（SYSTEM_ADMINのみ）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "復元成功")
+    public ResponseEntity<Void> restoreOrganization(@PathVariable Long id) {
+        organizationService.restoreOrganization(id);
         return ResponseEntity.noContent().build();
     }
 }

@@ -30,7 +30,10 @@ public enum RoleErrorCode implements ErrorCode {
     ROLE_006("ROLE_006", "権限グループが見つかりません", Severity.WARN),
 
     /** パーミッションが見つかりません */
-    ROLE_007("ROLE_007", "パーミッションが見つかりません", Severity.WARN);
+    ROLE_007("ROLE_007", "パーミッションが見つかりません", Severity.WARN),
+
+    /** QRコードサイズが範囲外です（64〜1024px） */
+    ROLE_008("ROLE_008", "QRコードサイズは64〜1024の範囲で指定してください", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -159,7 +159,7 @@ class AuthServiceTest {
 
     private RegisterRequest createRegisterRequest() {
         return new RegisterRequest(
-                TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", "ja", "Asia/Tokyo");
+                TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo");
     }
 
     private LoginRequest createLoginRequest() {
@@ -214,7 +214,7 @@ class AuthServiceTest {
         void register_パスワードポリシー違反_AUTH008例外() {
             // Given: 短すぎるパスワード
             RegisterRequest req = new RegisterRequest(
-                    TEST_EMAIL, "short", "山田", "太郎", "yamada", "ja", "Asia/Tokyo");
+                    TEST_EMAIL, "short", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo");
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
 
             // When / Then
@@ -229,7 +229,7 @@ class AuthServiceTest {
         void register_文字種不足_AUTH008例外() {
             // Given: 8文字以上だが小文字と数字の2種のみ
             RegisterRequest req = new RegisterRequest(
-                    TEST_EMAIL, "password123", "山田", "太郎", "yamada", "ja", "Asia/Tokyo");
+                    TEST_EMAIL, "password123", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo");
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
 
             // When / Then
@@ -244,7 +244,7 @@ class AuthServiceTest {
         void register_locale省略_デフォルト値() {
             // Given
             RegisterRequest req = new RegisterRequest(
-                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, null);
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, null, null);
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
             given(passwordEncoder.encode(TEST_PASSWORD)).willReturn(ENCODED_PASSWORD);
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> {

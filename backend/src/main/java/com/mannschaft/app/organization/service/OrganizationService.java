@@ -9,9 +9,15 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
+import com.mannschaft.app.organization.dto.OrgAllMembersResponse;
+import com.mannschaft.app.organization.dto.OrgTeamSummaryResponse;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
 import com.mannschaft.app.organization.dto.UpdateOrganizationRequest;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
+import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
+import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.entity.RoleEntity;
@@ -26,6 +32,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 組織管理サービス。組織のCRUD・アーカイブ・メンバー一覧を提供する。
  */
@@ -36,6 +45,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrganizationService {
 
     private final OrganizationRepository organizationRepository;
+    private final TeamRepository teamRepository;
+    private final TeamOrgMembershipRepository teamOrgMembershipRepository;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
@@ -238,6 +249,93 @@ public class OrganizationService {
         findOrganizationOrThrow(orgId);
         userRoleRepository.deleteByUserIdAndOrganizationId(userId, orgId);
         log.info("組織フォロー解除完了: userId={}, orgId={}", userId, orgId);
+    }
+
+    /**
+     * 組織に所属するチーム一覧を取得する（team_org_memberships.status = ACTIVE）。
+     */
+    public List<OrgTeamSummaryResponse> getTeams(Long orgId) {
+        findOrganizationOrThrow(orgId);
+        return teamOrgMembershipRepository.findByOrganizationIdAndStatus(orgId, TeamOrgMembershipEntity.Status.ACTIVE)
+                .stream()
+                .map(m -> teamRepository.findById(m.getTeamId()).orElse(null))
+                .filter(team -> team != null)
+                .map(team -> new OrgTeamSummaryResponse(
+                        team.getId(),
+                        team.getName(),
+                        null,
+                        team.getVisibility().name(),
+                        (int) userRoleRepository.countByTeamId(team.getId())))
+                .toList();
+    }
+
+    /**
+     * 組織配下の全メンバーを取得する。
+     * scope: ORGANIZATION=直属のみ / TEAM=チームメンバーのみ / INDIVIDUAL=全員
+     */
+    public List<OrgAllMembersResponse> getAllMembers(Long orgId, String scope) {
+        OrganizationEntity org = findOrganizationOrThrow(orgId);
+        List<OrgAllMembersResponse> result = new ArrayList<>();
+
+        if ("ORGANIZATION".equals(scope) || "INDIVIDUAL".equals(scope)) {
+            // 直属メンバー
+            userRoleRepository.findByOrganizationId(orgId, Pageable.unpaged())
+                    .getContent()
+                    .forEach(ur -> {
+                        UserEntity user = userRepository.findById(ur.getUserId()).orElse(null);
+                        String roleName = roleRepository.findById(ur.getRoleId())
+                                .map(RoleEntity::getName).orElse(null);
+                        if (user != null) {
+                            result.add(new OrgAllMembersResponse(
+                                    user.getId(),
+                                    user.getDisplayName(),
+                                    user.getAvatarUrl(),
+                                    new OrgAllMembersResponse.MemberOf("ORGANIZATION", org.getId(), org.getName()),
+                                    roleName));
+                        }
+                    });
+        }
+
+        if ("TEAM".equals(scope) || "INDIVIDUAL".equals(scope)) {
+            // 所属チームのメンバー
+            teamOrgMembershipRepository.findByOrganizationIdAndStatus(orgId, TeamOrgMembershipEntity.Status.ACTIVE)
+                    .forEach(membership -> {
+                        TeamEntity team = teamRepository.findById(membership.getTeamId()).orElse(null);
+                        if (team == null) return;
+                        userRoleRepository.findByTeamId(team.getId(), Pageable.unpaged())
+                                .getContent()
+                                .forEach(ur -> {
+                                    UserEntity user = userRepository.findById(ur.getUserId()).orElse(null);
+                                    String roleName = roleRepository.findById(ur.getRoleId())
+                                            .map(RoleEntity::getName).orElse(null);
+                                    if (user != null) {
+                                        result.add(new OrgAllMembersResponse(
+                                                user.getId(),
+                                                user.getDisplayName(),
+                                                user.getAvatarUrl(),
+                                                new OrgAllMembersResponse.MemberOf("TEAM", team.getId(), team.getName()),
+                                                roleName));
+                                    }
+                                });
+                    });
+        }
+
+        return result;
+    }
+
+    /**
+     * 論理削除済み組織を復元する（SYSTEM_ADMIN専用）。
+     */
+    @Transactional
+    public void restoreOrganization(Long orgId) {
+        if (organizationRepository.countByIdIncludingDeleted(orgId) == 0) {
+            throw new BusinessException(OrgErrorCode.ORG_001);
+        }
+        int updated = organizationRepository.restoreById(orgId);
+        if (updated == 0) {
+            throw new BusinessException(OrgErrorCode.ORG_006);
+        }
+        log.info("組織復元完了: orgId={}", orgId);
     }
 
     // ========================================
