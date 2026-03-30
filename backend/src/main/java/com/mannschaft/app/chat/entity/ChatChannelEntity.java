@@ -126,4 +126,12 @@ public class ChatChannelEntity extends BaseEntity {
     public boolean isDm() {
         return this.channelType == ChannelType.DM || this.channelType == ChannelType.GROUP_DM;
     }
+
+    /**
+     * DMチャンネルをグループDMに変換する。
+     * DM または GROUP_DM のみ変換可能。
+     */
+    public void convertToGroupDm() {
+        this.channelType = ChannelType.GROUP_DM;
+    }
 }

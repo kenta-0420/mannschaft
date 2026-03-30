@@ -1,7 +1,9 @@
 package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.timeline.AttachmentType;
+import com.mannschaft.app.timeline.event.TimelinePostCreatedEvent;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.PostedAsType;
@@ -48,6 +50,7 @@ public class TimelinePostService {
     private final TimelinePostReactionRepository reactionRepository;
     private final TimelinePollService pollService;
     private final TimelineMapper timelineMapper;
+    private final DomainEventPublisher domainEventPublisher;
 
     /**
      * 投稿を作成する。添付ファイル・投票も同時に作成する。
@@ -112,6 +115,16 @@ public class TimelinePostService {
         }
 
         log.info("タイムライン投稿作成: id={}, userId={}, scopeType={}", post.getId(), userId, req.getScopeTypeOrDefault());
+
+        // 即時公開投稿のみゲーミフィケーションイベントを発行（予約投稿はスキップ）
+        if (status == PostStatus.PUBLISHED) {
+            domainEventPublisher.publish(new TimelinePostCreatedEvent(
+                    post.getId(), userId,
+                    req.getScopeTypeOrDefault(),
+                    req.getScopeIdOrDefault()
+            ));
+        }
+
         return timelineMapper.toPostResponse(post);
     }
 

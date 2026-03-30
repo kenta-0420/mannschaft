@@ -162,6 +162,18 @@ public class ChatChannelController {
     }
 
     /**
+     * DMチャンネルをグループDMに変換する。
+     * 2者間DMをグループDMに拡張し、追加メンバーを招待可能にする。
+     */
+    @PostMapping("/{channelId}/convert-to-group")
+    @Operation(summary = "DMをグループDMに変換")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変換成功")
+    public ResponseEntity<ApiResponse<ChannelResponse>> convertToGroup(@PathVariable Long channelId) {
+        ChannelResponse response = channelService.convertToGroup(channelId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
      * チャンネルの個人設定を更新する。
      */
     @PatchMapping("/{channelId}/settings")

@@ -165,8 +165,8 @@ public class GamificationPointService {
      * @param referenceId   参照元ID（nullable）
      */
     @Transactional
-    void addPoint(Long userId, String scopeType, Long scopeId,
-                  ActionType actionType, String referenceType, Long referenceId) {
+    public void addPoint(Long userId, String scopeType, Long scopeId,
+                         ActionType actionType, String referenceType, Long referenceId) {
 
         // 1. ゲーミフィケーション設定チェック
         GamificationConfigEntity config = gamificationConfigRepository

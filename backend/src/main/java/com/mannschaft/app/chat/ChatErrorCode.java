@@ -54,7 +54,10 @@ public enum ChatErrorCode implements ErrorCode {
     OWNER_CANNOT_LEAVE("CHAT_014", "チャンネルオーナーは退出できません。先にオーナーを移譲してください", Severity.WARN),
 
     /** 添付ファイルサイズ超過 */
-    ATTACHMENT_SIZE_EXCEEDED("CHAT_015", "添付ファイルのサイズ上限を超えています", Severity.ERROR);
+    ATTACHMENT_SIZE_EXCEEDED("CHAT_015", "添付ファイルのサイズ上限を超えています", Severity.ERROR),
+
+    /** DM以外のチャンネルはグループDMに変換できない */
+    CHANNEL_NOT_DM("CHAT_016", "DMチャンネルのみグループDMに変換できます", Severity.WARN);
 
     private final String code;
     private final String message;

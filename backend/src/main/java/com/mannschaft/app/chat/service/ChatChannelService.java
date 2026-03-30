@@ -158,6 +158,28 @@ public class ChatChannelService {
     }
 
     /**
+     * DMチャンネルをグループDMに変換する。
+     * 2者間DMをグループDMに拡張し、追加メンバーを招待可能にする。
+     *
+     * @param channelId チャンネルID
+     * @return 変換後のチャンネルレスポンス
+     */
+    @Transactional
+    public ChannelResponse convertToGroup(Long channelId) {
+        ChatChannelEntity channel = findChannelOrThrow(channelId);
+
+        // DM・GROUP_DM以外は変換不可
+        if (!channel.isDm()) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_NOT_DM);
+        }
+
+        channel.convertToGroupDm();
+        ChatChannelEntity saved = channelRepository.save(channel);
+        log.info("DMをグループDMに変換: channelId={}", channelId);
+        return chatMapper.toChannelResponse(saved);
+    }
+
+    /**
      * チャンネルエンティティを取得する。見つからない場合は例外をスローする。
      *
      * @param channelId チャンネルID

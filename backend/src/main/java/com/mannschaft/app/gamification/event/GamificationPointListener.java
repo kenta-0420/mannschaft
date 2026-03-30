@@ -3,12 +3,16 @@ package com.mannschaft.app.gamification.event;
 import com.mannschaft.app.auth.event.LoginSuccessEvent;
 import com.mannschaft.app.gamification.ActionType;
 import com.mannschaft.app.gamification.service.GamificationPointService;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.timeline.event.TimelinePostCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.util.List;
 
 /**
  * ゲーミフィケーション・ポイント付与イベントリスナー。
@@ -20,47 +24,72 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class GamificationPointListener {
 
     private final GamificationPointService gamificationPointService;
+    private final UserRoleRepository userRoleRepository;
 
     /**
-     * TODO: TimelinePostCreatedEventを購読予定。
-     * タイムライン投稿時にACTION_TYPE=TIMELINE_POSTのポイントを付与する。
+     * タイムライン投稿作成イベントを受信し、TIMELINE_POSTポイントを付与する。
+     * スコープ（TEAM / ORGANIZATION）にポイントルールが設定されている場合のみ付与する。
      *
-     * <pre>
-     * {@code
-     * @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-     * @Async("event-pool")
-     * public void handleTimelinePostCreated(TimelinePostCreatedEvent event) {
-     *     gamificationPointService.addPoint(
-     *         event.getUserId(),
-     *         event.getScopeType(),
-     *         event.getScopeId(),
-     *         ActionType.TIMELINE_POST,
-     *         "TIMELINE_POST",
-     *         event.getPostId()
-     *     );
-     * }
-     * }
-     * </pre>
+     * @param event タイムライン投稿作成イベント
      */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Async("event-pool")
+    public void handleTimelinePostCreated(TimelinePostCreatedEvent event) {
+        log.debug("タイムライン投稿イベント受信: postId={}, userId={}, scopeType={}",
+                event.getPostId(), event.getUserId(), event.getScopeType());
+        gamificationPointService.addPoint(
+                event.getUserId(),
+                event.getScopeType(),
+                event.getScopeId(),
+                ActionType.TIMELINE_POST,
+                "TIMELINE_POST",
+                event.getPostId()
+        );
+    }
 
     /**
      * ログイン成功イベントを受信し、デイリーログインポイントを付与する。
      *
-     * <p>スコープ解決について: LoginSuccessEventはスコープ情報（scopeType/scopeId）を保持していないため、
-     * 現時点ではスコープを特定できない。後続実装でスコープ解決ロジックを追加する予定。</p>
+     * <p>ユーザーが所属する全チーム・全組織に対してポイントを付与する。
+     * ゲーミフィケーションが無効なスコープはポイントサービス内部でスキップされる。</p>
      *
      * @param event ログイン成功イベント
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("event-pool")
     public void handleDailyLogin(LoginSuccessEvent event) {
-        log.debug("デイリーログインイベント受信: userId={}", event.getUserId());
+        Long userId = event.getUserId();
+        log.debug("デイリーログインイベント受信: userId={}", userId);
 
-        // TODO: スコープ解決ロジックは後続実装。
-        // LoginSuccessEventはscopeType/scopeIdを持たないため、
-        // ユーザーの所属チームを取得してスコープを特定する必要がある。
-        // 例: userTeamRepository.findActiveTeamsByUserId(event.getUserId()) でスコープ一覧を取得し、
-        // 各スコープに対して gamificationPointService.addPoint() を呼び出す。
-        log.info("デイリーログインポイント付与: スコープ解決ロジック未実装のためスキップ: userId={}", event.getUserId());
+        // ユーザーが所属する全チームにポイント付与
+        List<Long> teamIds = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId)
+                .stream()
+                .map(r -> r.getTeamId())
+                .distinct()
+                .toList();
+
+        for (Long teamId : teamIds) {
+            gamificationPointService.addPoint(
+                    userId, "TEAM", teamId,
+                    ActionType.DAILY_LOGIN, "DAILY_LOGIN", userId
+            );
+        }
+
+        // ユーザーが所属する全組織にポイント付与
+        List<Long> orgIds = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId)
+                .stream()
+                .map(r -> r.getOrganizationId())
+                .distinct()
+                .toList();
+
+        for (Long orgId : orgIds) {
+            gamificationPointService.addPoint(
+                    userId, "ORGANIZATION", orgId,
+                    ActionType.DAILY_LOGIN, "DAILY_LOGIN", userId
+            );
+        }
+
+        log.info("デイリーログインポイント付与完了: userId={}, teams={}, orgs={}",
+                userId, teamIds.size(), orgIds.size());
     }
 }

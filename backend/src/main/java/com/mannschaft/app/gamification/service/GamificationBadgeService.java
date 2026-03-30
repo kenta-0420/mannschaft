@@ -3,6 +3,7 @@ package com.mannschaft.app.gamification.service;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.gamification.event.BadgeAwardedEvent;
 import com.mannschaft.app.gamification.AwardedBy;
 import com.mannschaft.app.gamification.BadgeConditionType;
 import com.mannschaft.app.gamification.BadgeType;
@@ -220,7 +221,7 @@ public class GamificationBadgeService {
 
         log.info("バッジ手動付与完了: badgeId={}, userId={}, adminId={}", badgeId, userId, adminId);
 
-        // TODO: バッジ獲得通知イベントを発行（通知連携は後続実装）
-        // domainEventPublisher.publish(new BadgeAwardedEvent(badgeId, userId, scopeType, scopeId));
+        // バッジ獲得通知イベントを発行（通知リスナーが後続処理を担当）
+        domainEventPublisher.publish(new BadgeAwardedEvent(badgeId, userId, scopeType, scopeId));
     }
 }

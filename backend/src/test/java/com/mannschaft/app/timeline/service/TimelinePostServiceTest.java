@@ -1,6 +1,7 @@
 package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.PostedAsType;
@@ -64,6 +65,9 @@ class TimelinePostServiceTest {
 
     @Mock
     private TimelineMapper timelineMapper;
+
+    @Mock
+    private DomainEventPublisher domainEventPublisher;
 
     @InjectMocks
     private TimelinePostService timelinePostService;
