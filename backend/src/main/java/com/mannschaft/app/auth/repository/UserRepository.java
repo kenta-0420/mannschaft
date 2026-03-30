@@ -1,9 +1,11 @@
 package com.mannschaft.app.auth.repository;
 
 import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -12,6 +14,8 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     Optional<UserEntity> findByEmail(String email);
+
+    List<UserEntity> findByStatusAndCreatedAtBefore(UserStatus status, LocalDateTime threshold);
 
     boolean existsByEmail(String email);
 
