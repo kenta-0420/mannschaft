@@ -1,0 +1,5 @@
+-- multilingual_content モジュール定義の追加
+-- module_definitions テーブルが存在する場合のみ有効
+-- INSERT INTO module_definitions (module_number, module_key, name, description, is_optional, created_at, updated_at)
+-- VALUES (45, 'multilingual_content', '多言語コンテンツ', 'ブログ・お知らせ・ナレッジベース等のコンテンツを複数言語に翻訳・管理する機能',
+--         1, NOW(), NOW());
