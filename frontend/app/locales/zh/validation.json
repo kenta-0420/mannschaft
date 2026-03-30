@@ -1,0 +1,8 @@
+{
+  "required": "此项为必填项",
+  "email": "请输入有效的电子邮件地址",
+  "min_length": "请输入至少{min}个字符",
+  "max_length": "请输入最多{max}个字符",
+  "password_mismatch": "两次输入的密码不一致",
+  "invalid_format": "格式不正确"
+}

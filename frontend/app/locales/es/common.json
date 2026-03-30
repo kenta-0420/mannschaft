@@ -1,0 +1,48 @@
+{
+  "button": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "submit": "Enviar",
+    "close": "Cerrar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "confirm": "Confirmar",
+    "logout": "Cerrar sesion"
+  },
+  "label": {
+    "required": "Obligatorio",
+    "optional": "Opcional",
+    "email": "Correo electronico",
+    "password": "Contrasena",
+    "name": "Nombre",
+    "created_at": "Creado el",
+    "updated_at": "Actualizado el",
+    "status": "Estado",
+    "actions": "Acciones"
+  },
+  "dialog": {
+    "confirm_delete": "Esta seguro de que desea eliminar esto? Esta accion no se puede deshacer.",
+    "confirm_title": "Confirmar",
+    "success": "Completado",
+    "error": "Se produjo un error"
+  },
+  "role": {
+    "SYSTEM_ADMIN": "Administrador del sistema",
+    "ADMIN": "Administrador",
+    "DEPUTY_ADMIN": "Subadministrador",
+    "MEMBER": "Miembro",
+    "SUPPORTER": "Colaborador",
+    "GUEST": "Invitado"
+  },
+  "error": {
+    "server": "Se produjo un error del servidor",
+    "server_retry": "Por favor, intentelo de nuevo mas tarde.",
+    "network": "Se produjo un error de red",
+    "unauthorized": "Por favor, inicie sesion"
+  }
+}

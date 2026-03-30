@@ -5,6 +5,7 @@ let refreshPromise: Promise<boolean> | null = null
 export function useApi() {
   const config = useRuntimeConfig()
   const authStore = useAuthStore()
+  const { t } = useI18n()
 
   const api = ofetch.create({
     baseURL: config.public.apiBase as string,
@@ -30,12 +31,14 @@ export function useApi() {
 
       // 5xx: トースト通知
       if (response.status >= 500) {
-        const toast = useNuxtApp().$toast as { add: (opts: Record<string, unknown>) => void } | undefined
+        const toast = useNuxtApp().$toast as
+          | { add: (opts: Record<string, unknown>) => void }
+          | undefined
         if (toast) {
           toast.add({
             severity: 'error',
-            summary: 'サーバーエラー',
-            detail: 'しばらく時間をおいて再度お試しください。',
+            summary: t('common.error.server'),
+            detail: t('common.error.server_retry'),
             life: 5000,
           })
         }
@@ -61,11 +64,9 @@ export function useApi() {
         )
         authStore.setTokens(data.data.accessToken, data.data.refreshToken)
         return true
-      }
-      catch {
+      } catch {
         return false
-      }
-      finally {
+      } finally {
         refreshPromise = null
       }
     })()

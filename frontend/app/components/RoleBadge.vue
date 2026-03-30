@@ -3,6 +3,8 @@ const props = defineProps<{
   role: string
 }>()
 
+const { t } = useI18n()
+
 const severityMap: Record<string, string> = {
   SYSTEM_ADMIN: 'danger',
   ADMIN: 'warn',
@@ -12,17 +14,12 @@ const severityMap: Record<string, string> = {
   GUEST: 'contrast',
 }
 
-const labelMap: Record<string, string> = {
-  SYSTEM_ADMIN: 'システム管理者',
-  ADMIN: '管理者',
-  DEPUTY_ADMIN: '副管理者',
-  MEMBER: 'メンバー',
-  SUPPORTER: 'サポーター',
-  GUEST: 'ゲスト',
+const getLabel = (role: string): string => {
+  return t(`common.role.${role}`, role)
 }
 
 const severity = computed(() => severityMap[props.role] ?? 'secondary')
-const label = computed(() => labelMap[props.role] ?? props.role)
+const label = computed(() => getLabel(props.role))
 </script>
 
 <template>

@@ -1,0 +1,48 @@
+{
+  "button": {
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "편집",
+    "create": "만들기",
+    "submit": "제출",
+    "close": "닫기",
+    "back": "뒤로",
+    "next": "다음",
+    "search": "검색",
+    "loading": "로딩 중...",
+    "confirm": "확인",
+    "logout": "로그아웃"
+  },
+  "label": {
+    "required": "필수",
+    "optional": "선택",
+    "email": "이메일 주소",
+    "password": "비밀번호",
+    "name": "이름",
+    "created_at": "생성일시",
+    "updated_at": "수정일시",
+    "status": "상태",
+    "actions": "작업"
+  },
+  "dialog": {
+    "confirm_delete": "정말로 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
+    "confirm_title": "확인",
+    "success": "완료되었습니다",
+    "error": "오류가 발생했습니다"
+  },
+  "role": {
+    "SYSTEM_ADMIN": "시스템 관리자",
+    "ADMIN": "관리자",
+    "DEPUTY_ADMIN": "부관리자",
+    "MEMBER": "멤버",
+    "SUPPORTER": "서포터",
+    "GUEST": "게스트"
+  },
+  "error": {
+    "server": "서버 오류가 발생했습니다",
+    "server_retry": "잠시 후 다시 시도해 주세요.",
+    "network": "네트워크 오류가 발생했습니다",
+    "unauthorized": "로그인이 필요합니다"
+  }
+}

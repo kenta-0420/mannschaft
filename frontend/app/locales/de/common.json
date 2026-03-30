@@ -1,0 +1,48 @@
+{
+  "button": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Loschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "submit": "Senden",
+    "close": "Schliessen",
+    "back": "Zuruck",
+    "next": "Weiter",
+    "search": "Suchen",
+    "loading": "Laden...",
+    "confirm": "Bestatigen",
+    "logout": "Abmelden"
+  },
+  "label": {
+    "required": "Pflichtfeld",
+    "optional": "Optional",
+    "email": "E-Mail-Adresse",
+    "password": "Passwort",
+    "name": "Name",
+    "created_at": "Erstellt am",
+    "updated_at": "Aktualisiert am",
+    "status": "Status",
+    "actions": "Aktionen"
+  },
+  "dialog": {
+    "confirm_delete": "Sind Sie sicher, dass Sie dies loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "confirm_title": "Bestatigen",
+    "success": "Abgeschlossen",
+    "error": "Ein Fehler ist aufgetreten"
+  },
+  "role": {
+    "SYSTEM_ADMIN": "Systemadministrator",
+    "ADMIN": "Administrator",
+    "DEPUTY_ADMIN": "Stellvertretender Administrator",
+    "MEMBER": "Mitglied",
+    "SUPPORTER": "Unterstuzer",
+    "GUEST": "Gast"
+  },
+  "error": {
+    "server": "Ein Serverfehler ist aufgetreten",
+    "server_retry": "Bitte versuchen Sie es spater erneut.",
+    "network": "Ein Netzwerkfehler ist aufgetreten",
+    "unauthorized": "Bitte melden Sie sich an"
+  }
+}
