@@ -163,6 +163,32 @@ public class GamificationBadgeService {
     }
 
     /**
+     * ユーザーが取得済みのバッジ一覧を返す。
+     * UserBadgeEntityからbadgeIdを取得し、対応するBadgeEntityを返す。
+     *
+     * @param userId    対象ユーザーID
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープID
+     * @return バッジ一覧
+     */
+    public ApiResponse<List<BadgeEntity>> getUserBadges(Long userId, String scopeType, Long scopeId) {
+        List<Long> badgeIds = userBadgeRepository.findByUserId(userId)
+                .stream()
+                .map(UserBadgeEntity::getBadgeId)
+                .distinct()
+                .toList();
+
+        List<BadgeEntity> badges = badgeIds.isEmpty()
+                ? List.of()
+                : badgeRepository.findAllById(badgeIds).stream()
+                        .filter(b -> b.getScopeType().equals(scopeType)
+                                && b.getScopeId().equals(scopeId))
+                        .toList();
+
+        return ApiResponse.of(badges);
+    }
+
+    /**
      * バッジを管理者が手動付与する。
      * UserBadgeEntityをINSERTし、バッジ獲得通知イベントを発行する。
      *

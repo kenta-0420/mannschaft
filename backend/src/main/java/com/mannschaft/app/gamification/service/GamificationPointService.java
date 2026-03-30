@@ -236,6 +236,49 @@ public class GamificationPointService {
     }
 
     /**
+     * 管理者によるスコープ全ユーザーのポイントリセット。
+     * 各ユーザーの現在ポイント累計に対してRESTETトランザクションをINSERTする。
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープID
+     * @param adminId   管理者ユーザーID
+     */
+    @Transactional
+    public void adminResetPoints(String scopeType, Long scopeId, Long adminId) {
+        LocalDate today = LocalDate.now();
+        LocalDate epoch = LocalDate.of(2000, 1, 1);
+
+        // スコープ内のユーザーIDを取得
+        List<PointTransactionEntity> allTransactions = pointTransactionRepository.findAll();
+        List<Long> userIds = allTransactions.stream()
+                .filter(t -> t.getScopeType().equals(scopeType) && t.getScopeId().equals(scopeId))
+                .map(PointTransactionEntity::getUserId)
+                .distinct()
+                .toList();
+
+        for (Long userId : userIds) {
+            int total = pointTransactionQueryRepository.sumPointsByUserAndPeriod(
+                    userId, scopeType, scopeId, epoch, today);
+            if (total == 0) {
+                continue;
+            }
+            PointTransactionEntity resetTx = PointTransactionEntity.builder()
+                    .userId(userId)
+                    .scopeType(scopeType)
+                    .scopeId(scopeId)
+                    .transactionType(TransactionType.RESET)
+                    .points(-total)
+                    .actionType(ActionType.ADMIN_ADJUST)
+                    .earnedOn(today)
+                    .build();
+            pointTransactionRepository.save(resetTx);
+        }
+
+        log.info("管理者ポイントリセット完了: scopeType={}, scopeId={}, adminId={}, 対象ユーザー数={}",
+                scopeType, scopeId, adminId, userIds.size());
+    }
+
+    /**
      * 管理者によるポイント手動調整。
      * ADMIN_ADJUST TypeのPointTransactionを直接INSERTする。
      *
