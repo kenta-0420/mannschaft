@@ -12,6 +12,7 @@ import com.mannschaft.app.admin.service.FeedbackService;
 import com.mannschaft.app.admin.service.MaintenanceScheduleService;
 import com.mannschaft.app.admin.service.PlatformAnnouncementService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.role.dto.PermissionGroupRequest;
 import com.mannschaft.app.role.dto.PermissionGroupResponse;
 import com.mannschaft.app.role.service.PermissionGroupService;
@@ -72,6 +73,10 @@ public class AdminControllerTest {
 
         @MockitoBean
         private com.mannschaft.app.auth.service.AuthTokenService authTokenService;
+
+        // F11.3: UserLocaleFilter の依存解決用（@WebMvcTest コンテキストで必要）
+        @MockitoBean
+        private UserLocaleCache userLocaleCache;
 
         private MaintenanceScheduleResponse buildResponse(Long id) {
             return new MaintenanceScheduleResponse(
@@ -227,6 +232,10 @@ public class AdminControllerTest {
         @MockitoBean
         private com.mannschaft.app.auth.service.AuthTokenService authTokenService;
 
+        // F11.3: UserLocaleFilter の依存解決用（@WebMvcTest コンテキストで必要）
+        @MockitoBean
+        private UserLocaleCache userLocaleCache;
+
         private AnnouncementResponse buildAnnouncementResponse(Long id) {
             return new AnnouncementResponse(
                     id, "重要なお知らせ", "システムメンテナンスがあります",
@@ -355,6 +364,10 @@ public class AdminControllerTest {
         @MockitoBean
         private com.mannschaft.app.auth.service.AuthTokenService authTokenService;
 
+        // F11.3: UserLocaleFilter の依存解決用（@WebMvcTest コンテキストで必要）
+        @MockitoBean
+        private UserLocaleCache userLocaleCache;
+
         private FeedbackResponse buildFeedbackResponse(Long id) {
             return new FeedbackResponse(
                     id, "TEAM", 10L, "BUG",
@@ -449,6 +462,10 @@ public class AdminControllerTest {
 
         @MockitoBean
         private com.mannschaft.app.auth.service.AuthTokenService authTokenService;
+
+        // F11.3: UserLocaleFilter の依存解決用（@WebMvcTest コンテキストで必要）
+        @MockitoBean
+        private UserLocaleCache userLocaleCache;
 
         private PermissionGroupResponse buildGroupResponse(Long id) {
             return new PermissionGroupResponse(

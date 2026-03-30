@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -29,6 +31,9 @@ import static org.mockito.Mockito.mock;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("GlobalExceptionHandler 単体テスト")
 class GlobalExceptionHandlerTest {
+
+    @Mock
+    private MessageSource messageSource;
 
     @InjectMocks
     private GlobalExceptionHandler globalExceptionHandler;

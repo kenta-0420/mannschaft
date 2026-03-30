@@ -13,6 +13,7 @@ import com.mannschaft.app.auth.dto.UpdateProfileRequest;
 import com.mannschaft.app.auth.dto.UserProfileResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,6 +65,10 @@ class UserControllerTest {
 
     @MockitoBean
     private com.mannschaft.app.auth.service.AuthTokenService authTokenService;
+
+    // F11.3: UserLocaleFilter の依存解決用（@WebMvcTest コンテキストで必要）
+    @MockitoBean
+    private UserLocaleCache userLocaleCache;
 
     @BeforeEach
     void setUpSecurityContext() {
