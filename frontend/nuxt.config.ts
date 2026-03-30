@@ -9,6 +9,7 @@ export default defineNuxtConfig({
   },
 
   modules: [
+    '@nuxtjs/i18n',
     '@primevue/nuxt-module',
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
@@ -22,6 +23,25 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: 'http://localhost:8080',
+    },
+  },
+
+  i18n: {
+    locales: [
+      { code: 'ja', language: 'ja', name: '日本語' },
+      { code: 'en', language: 'en', name: 'English' },
+      { code: 'zh', language: 'zh', name: '中文（简体）' },
+      { code: 'ko', language: 'ko', name: '한국어' },
+      { code: 'es', language: 'es', name: 'Español' },
+      { code: 'de', language: 'de', name: 'Deutsch' },
+    ],
+    defaultLocale: 'ja',
+    strategy: 'no_prefix',
+    lazy: true,
+    langDir: 'locales/',
+    detectBrowserLanguage: {
+      useCookie: false,
+      redirectOn: 'root',
     },
   },
 
