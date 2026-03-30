@@ -4,7 +4,7 @@ import com.mannschaft.app.admin.FeedbackStatus;
 import com.mannschaft.app.admin.MaintenanceStatus;
 import com.mannschaft.app.admin.dto.SystemAdminDashboardResponse;
 import com.mannschaft.app.admin.repository.FeedbackSubmissionRepository;
-import com.mannschaft.app.admin.repository.MaintenanceScheduleRepository;
+import com.mannschaft.app.admin.repository.AdminMaintenanceScheduleRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.moderation.ReportStatus;
 import com.mannschaft.app.moderation.repository.ContentReportRepository;
@@ -32,7 +32,7 @@ public class SystemAdminDashboardService {
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
     private final ContentReportRepository contentReportRepository;
-    private final MaintenanceScheduleRepository maintenanceScheduleRepository;
+    private final AdminMaintenanceScheduleRepository maintenanceScheduleRepository;
 
     /**
      * システム管理者ダッシュボード情報を取得する。

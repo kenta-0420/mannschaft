@@ -8,7 +8,7 @@ import com.mannschaft.app.admin.dto.CreateMaintenanceScheduleRequest;
 import com.mannschaft.app.admin.dto.MaintenanceScheduleResponse;
 import com.mannschaft.app.admin.dto.UpdateMaintenanceScheduleRequest;
 import com.mannschaft.app.admin.entity.MaintenanceScheduleEntity;
-import com.mannschaft.app.admin.repository.MaintenanceScheduleRepository;
+import com.mannschaft.app.admin.repository.AdminMaintenanceScheduleRepository;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,12 +23,12 @@ import java.util.List;
  * メンテナンススケジュールサービス。メンテナンスの登録・更新・削除・手動開始を担当する。
  */
 @Slf4j
-@Service
+@Service("adminMaintenanceScheduleService")
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MaintenanceScheduleService {
 
-    private final MaintenanceScheduleRepository repository;
+    private final AdminMaintenanceScheduleRepository repository;
     private final AdminMapper adminMapper;
 
     /**

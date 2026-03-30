@@ -226,11 +226,11 @@ public class OrganizationService {
         findOrganizationOrThrow(orgId);
 
         if (userRoleRepository.existsByUserIdAndOrganizationId(userId, orgId)) {
-            throw new BusinessException(OrgErrorCode.ORG_003);
+            throw new BusinessException(OrgErrorCode.ORG_007);
         }
 
         RoleEntity supporterRole = roleRepository.findByName("SUPPORTER")
-                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_005));
 
         UserRoleEntity userRole = UserRoleEntity.builder()
                 .userId(userId)
