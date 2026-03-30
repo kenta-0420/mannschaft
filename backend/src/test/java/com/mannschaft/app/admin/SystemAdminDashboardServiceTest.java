@@ -2,7 +2,7 @@ package com.mannschaft.app.admin;
 
 import com.mannschaft.app.admin.dto.SystemAdminDashboardResponse;
 import com.mannschaft.app.admin.repository.FeedbackSubmissionRepository;
-import com.mannschaft.app.admin.repository.MaintenanceScheduleRepository;
+import com.mannschaft.app.admin.repository.AdminMaintenanceScheduleRepository;
 import com.mannschaft.app.admin.service.SystemAdminDashboardService;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
@@ -50,7 +50,7 @@ class SystemAdminDashboardServiceTest {
     private ContentReportRepository contentReportRepository;
 
     @Mock
-    private MaintenanceScheduleRepository maintenanceScheduleRepository;
+    private AdminMaintenanceScheduleRepository maintenanceScheduleRepository;
 
     @InjectMocks
     private SystemAdminDashboardService service;

@@ -4,7 +4,7 @@ import com.mannschaft.app.admin.dto.CreateMaintenanceScheduleRequest;
 import com.mannschaft.app.admin.dto.MaintenanceScheduleResponse;
 import com.mannschaft.app.admin.dto.UpdateMaintenanceScheduleRequest;
 import com.mannschaft.app.admin.entity.MaintenanceScheduleEntity;
-import com.mannschaft.app.admin.repository.MaintenanceScheduleRepository;
+import com.mannschaft.app.admin.repository.AdminMaintenanceScheduleRepository;
 import com.mannschaft.app.admin.service.MaintenanceScheduleService;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
@@ -34,7 +34,7 @@ import static org.mockito.Mockito.verify;
 class MaintenanceScheduleServiceTest {
 
     @Mock
-    private MaintenanceScheduleRepository repository;
+    private AdminMaintenanceScheduleRepository repository;
 
     @Mock
     private AdminMapper adminMapper;

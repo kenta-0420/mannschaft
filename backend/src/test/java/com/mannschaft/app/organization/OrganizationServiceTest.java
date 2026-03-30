@@ -570,8 +570,8 @@ class OrganizationServiceTest {
         }
 
         @Test
-        @DisplayName("既にメンバー_ORG_003例外")
-        void 既にメンバー_ORG_003例外() {
+        @DisplayName("既にメンバー_ORG_007例外")
+        void 既にメンバー_ORG_007例外() {
             OrganizationEntity org = createOrganization();
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
             given(userRoleRepository.existsByUserIdAndOrganizationId(USER_ID, ORG_ID)).willReturn(true);
@@ -579,12 +579,12 @@ class OrganizationServiceTest {
             assertThatThrownBy(() -> organizationService.followOrganization(USER_ID, ORG_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ORG_003"));
+                            .isEqualTo("ORG_007"));
         }
 
         @Test
-        @DisplayName("SUPPORTERロール未定義_ORG_001例外")
-        void SUPPORTERロール未定義_ORG_001例外() {
+        @DisplayName("SUPPORTERロール未定義_ORG_005例外")
+        void SUPPORTERロール未定義_ORG_005例外() {
             OrganizationEntity org = createOrganization();
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
             given(userRoleRepository.existsByUserIdAndOrganizationId(USER_ID, ORG_ID)).willReturn(false);
@@ -593,7 +593,7 @@ class OrganizationServiceTest {
             assertThatThrownBy(() -> organizationService.followOrganization(USER_ID, ORG_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ORG_001"));
+                            .isEqualTo("ORG_005"));
         }
 
         @Test
