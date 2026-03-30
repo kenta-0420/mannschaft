@@ -45,6 +45,8 @@ public class SecurityConfig {
                     "/api/v1/auth/oauth/**",
                     "/api/v1/public/**"
                 ).permitAll()
+                // F11.3 UI i18n: 対応言語一覧（認証不要）
+                .requestMatchers("/api/i18n/**").permitAll()
                 // 開発中は全エンドポイントを許可（本番移行時に .authenticated() に変更）
                 .anyRequest().permitAll()
             )

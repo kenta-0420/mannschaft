@@ -12,6 +12,7 @@ public enum SupportedLanguage {
     KO("ko", "한국어"),
     ZH("zh", "中文"),
     PT("pt", "Português"),
+    ES("es", "Español"),
     DE("de", "Deutsch");
 
     private final String code;

@@ -1,6 +1,10 @@
 package com.mannschaft.app.common;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.NoSuchMessageException;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -20,7 +24,10 @@ import java.util.Map;
  */
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private final MessageSource messageSource;
 
     /**
      * ErrorCode ごとの HttpStatus 個別マッピング。
@@ -36,14 +43,22 @@ public class GlobalExceptionHandler {
 
     /**
      * 業務例外ハンドラー。
+     * F11.3: resolveMessage() でロケールに応じた多言語メッセージに解決する。
      */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex) {
         ErrorCode errorCode = ex.getErrorCode();
-        log.warn("BusinessException: code={}, message={}", errorCode.getCode(), errorCode.getMessage());
-        ErrorResponse body = ex.getFieldErrors().isEmpty()
-                ? ErrorResponse.of(errorCode)
-                : ErrorResponse.of(errorCode, ex.getFieldErrors());
+        String message = resolveMessage(errorCode);
+        log.warn("BusinessException: code={}, message={}", errorCode.getCode(), message);
+
+        ErrorResponse body;
+        if (ex.getFieldErrors().isEmpty()) {
+            body = new ErrorResponse(
+                    new ErrorResponse.ErrorDetail(errorCode.getCode(), message, List.of()));
+        } else {
+            body = new ErrorResponse(
+                    new ErrorResponse.ErrorDetail(errorCode.getCode(), message, ex.getFieldErrors()));
+        }
         return ResponseEntity
                 .status(resolveHttpStatus(errorCode))
                 .body(body);
@@ -124,6 +139,37 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_999));
+    }
+
+    /**
+     * ErrorCode から多言語メッセージを解決する。
+     * messages_{locale}.properties のキー形式: error.{ドメイン小文字}.{番号}
+     * 例: TEAM_001 → error.team.001, COMMON_001 → error.common.001
+     * キーが存在しない場合は ErrorCode.getMessage()（日本語）にフォールバック。
+     */
+    private String resolveMessage(ErrorCode errorCode) {
+        String code = errorCode.getCode();
+        // TEAM_001 → "error.team.001" に変換
+        int lastUnderscore = code.lastIndexOf('_');
+        String messageKey;
+        if (lastUnderscore > 0) {
+            String domain = code.substring(0, lastUnderscore).toLowerCase().replace('_', '.');
+            String number = code.substring(lastUnderscore + 1);
+            messageKey = "error." + domain + "." + number;
+        } else {
+            messageKey = "error." + code.toLowerCase();
+        }
+
+        try {
+            return messageSource.getMessage(
+                    messageKey,
+                    null,
+                    LocaleContextHolder.getLocale()
+            );
+        } catch (NoSuchMessageException e) {
+            // properties にキーがない場合は日本語の getMessage() にフォールバック
+            return errorCode.getMessage();
+        }
     }
 
     /**
