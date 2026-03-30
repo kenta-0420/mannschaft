@@ -369,6 +369,92 @@ public class KbPageService {
     }
 
     // ========================================
+    // ピン留め
+    // ========================================
+
+    /**
+     * スコープのピン留めページ一覧を取得する。
+     */
+    public ApiResponse<List<KbPageEntity>> getPinnedPages(String scopeType, Long scopeId) {
+        List<KbPagePinEntity> pins =
+                pagePinRepository.findByScopeTypeAndScopeIdOrderBySortOrderAsc(scopeType, scopeId);
+
+        List<Long> pageIds = pins.stream()
+                .map(KbPagePinEntity::getKbPageId)
+                .toList();
+
+        List<KbPageEntity> pages = pageRepository.findAllById(pageIds).stream()
+                .filter(p -> p.getDeletedAt() == null)
+                .toList();
+
+        return ApiResponse.of(pages);
+    }
+
+    /**
+     * ページをピン留めする。上限（10）を確認する。
+     */
+    @Transactional
+    public void pinPage(Long pageId, String scopeType, Long scopeId, Long userId) {
+        findPageByIdAndScope(pageId, scopeType, scopeId);
+
+        // 重複確認（冪等）
+        if (pagePinRepository.findByKbPageIdAndScopeTypeAndScopeId(pageId, scopeType, scopeId).isPresent()) {
+            return;
+        }
+
+        // 上限確認
+        int currentCount = pagePinRepository.findByScopeTypeAndScopeIdOrderBySortOrderAsc(scopeType, scopeId).size();
+        if (currentCount >= 10) {
+            throw new BusinessException(KnowledgeBaseErrorCode.KB_009);
+        }
+
+        KbPagePinEntity pin = KbPagePinEntity.builder()
+                .kbPageId(pageId)
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .sortOrder(currentCount)
+                .pinnedBy(userId)
+                .build();
+        pagePinRepository.save(pin);
+
+        log.info("ページをピン留めしました: pageId={}, scope={}/{}", pageId, scopeType, scopeId);
+    }
+
+    /**
+     * ページのピン留めを解除する（物理削除）。
+     */
+    @Transactional
+    public void unpinPage(Long pageId, String scopeType, Long scopeId) {
+        pagePinRepository.findByKbPageIdAndScopeTypeAndScopeId(pageId, scopeType, scopeId)
+                .ifPresent(pin -> {
+                    pagePinRepository.delete(pin);
+                    log.info("ページのピン留めを解除しました: pageId={}, scope={}/{}", pageId, scopeType, scopeId);
+                });
+    }
+
+    /**
+     * スコープの最近更新されたページ一覧を取得する（最大20件）。
+     */
+    public ApiResponse<List<KbPageEntity>> getRecentPages(String scopeType, Long scopeId,
+                                                           String userRole) {
+        boolean isAdmin = ADMIN_ROLES.contains(userRole);
+        List<KbPageEntity> pages = pageRepository
+                .findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByPathAsc(scopeType, scopeId)
+                .stream()
+                .filter(p -> isAdmin || p.getAccessLevel() != PageAccessLevel.ADMIN_ONLY)
+                .sorted((a, b) -> {
+                    if (a.getUpdatedAt() == null && b.getUpdatedAt() == null) return 0;
+                    if (a.getUpdatedAt() == null) return 1;
+                    if (b.getUpdatedAt() == null) return -1;
+                    return b.getUpdatedAt().compareTo(a.getUpdatedAt());
+                })
+                .limit(20)
+                .toList();
+
+        return ApiResponse.of(pages);
+    }
+
+    // ========================================
     // ヘルパー
     // ========================================
 
