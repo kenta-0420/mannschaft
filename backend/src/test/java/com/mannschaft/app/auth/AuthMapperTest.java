@@ -358,7 +358,7 @@ class AuthMapperTest {
             // Given
             AuditLogEntity entity = AuditLogEntity.builder()
                     .userId(1L)
-                    .eventType(AuditLogEntity.AuditEventType.LOGIN_SUCCESS)
+                    .eventType("LOGIN_SUCCESS")
                     .ipAddress("127.0.0.1")
                     .userAgent("Firefox/100")
                     .build();
@@ -380,7 +380,7 @@ class AuthMapperTest {
             // Given
             AuditLogEntity entity = AuditLogEntity.builder()
                     .userId(2L)
-                    .eventType(AuditLogEntity.AuditEventType.PASSWORD_CHANGED)
+                    .eventType("PASSWORD_CHANGED")
                     .ipAddress("10.0.0.1")
                     .userAgent(null)
                     .build();
@@ -399,7 +399,7 @@ class AuthMapperTest {
             // Given
             AuditLogEntity entity = AuditLogEntity.builder()
                     .userId(3L)
-                    .eventType(AuditLogEntity.AuditEventType.MFA_ENABLED)
+                    .eventType("MFA_ENABLED")
                     .ipAddress("192.168.0.1")
                     .userAgent("Safari/15")
                     .build();
@@ -434,7 +434,7 @@ class AuthMapperTest {
             // Given
             AuditLogEntity entity = AuditLogEntity.builder()
                     .userId(4L)
-                    .eventType(AuditLogEntity.AuditEventType.WITHDRAWAL_REQUESTED)
+                    .eventType("WITHDRAWAL_REQUESTED")
                     .ipAddress("1.2.3.4")
                     .build();
 

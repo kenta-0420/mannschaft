@@ -128,6 +128,29 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
                                                      @Param("roleName") String roleName);
 
     /**
+     * 全 SYSTEM_ADMIN ユーザーのIDリストを取得する（プラットフォーム通知用）。
+     * SYSTEM_ADMIN は team_id・organization_id がともに NULL のユーザー。
+     */
+    @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE r.name = 'SYSTEM_ADMIN' " +
+            "AND ur.team_id IS NULL AND ur.organization_id IS NULL " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findSystemAdminUserIds();
+
+    /**
+     * 指定ユーザーが SYSTEM_ADMIN かどうかを返す。
+     */
+    @Query(value = "SELECT COUNT(*) > 0 FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "WHERE ur.user_id = :userId AND r.name = 'SYSTEM_ADMIN' " +
+            "AND ur.team_id IS NULL AND ur.organization_id IS NULL",
+            nativeQuery = true)
+    boolean existsSystemAdminByUserId(@Param("userId") Long userId);
+
+    /**
      * スコープ内で指定日時以降にログインしたアクティブメンバー数を取得する。
      */
     @Query(value = "SELECT COUNT(DISTINCT ur.user_id) FROM user_roles ur " +

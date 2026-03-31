@@ -1,8 +1,8 @@
 -- インシデントコメントテーブル
 CREATE TABLE incident_comments (
-    id          BIGINT     NOT NULL AUTO_INCREMENT,
-    incident_id BIGINT     NOT NULL,
-    user_id     BIGINT     NOT NULL,
+    id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    incident_id BIGINT UNSIGNED NOT NULL,
+    user_id     BIGINT UNSIGNED NOT NULL,
     body        TEXT       NOT NULL,
     is_internal TINYINT(1) NOT NULL DEFAULT 0 COMMENT '内部コメント=ADMIN/担当者のみ可視',
     version     BIGINT     NOT NULL DEFAULT 0,

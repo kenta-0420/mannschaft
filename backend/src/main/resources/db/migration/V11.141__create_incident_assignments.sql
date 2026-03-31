@@ -1,9 +1,9 @@
 -- インシデント担当者テーブル
 CREATE TABLE incident_assignments (
-    id              BIGINT       NOT NULL AUTO_INCREMENT,
-    incident_id     BIGINT       NOT NULL,
+    id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    incident_id     BIGINT UNSIGNED NOT NULL,
     assignee_type   VARCHAR(20)  NOT NULL COMMENT 'USER/EXTERNAL',
-    user_id         BIGINT       NULL     COMMENT 'assignee_type=USERの場合',
+    user_id         BIGINT UNSIGNED NULL     COMMENT 'assignee_type=USERの場合',
     external_name   VARCHAR(100) NULL     COMMENT 'assignee_type=EXTERNALの場合',
     created_at      DATETIME     NOT NULL,
     PRIMARY KEY (id),

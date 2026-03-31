@@ -1,7 +1,7 @@
 -- Webhook配信ログテーブル
 CREATE TABLE webhook_delivery_logs (
-    id               BIGINT       NOT NULL AUTO_INCREMENT,
-    endpoint_id      BIGINT       NOT NULL,
+    id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    endpoint_id      BIGINT UNSIGNED NOT NULL,
     event_type       VARCHAR(100) NOT NULL,
     event_id         VARCHAR(36)  NOT NULL COMMENT 'UUID v4 冪等性キー',
     request_payload  MEDIUMTEXT   NULL,

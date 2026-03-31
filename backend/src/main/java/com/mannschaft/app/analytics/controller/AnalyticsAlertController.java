@@ -104,8 +104,7 @@ public class AnalyticsAlertController {
     public ApiResponse<Object> sendReport(
             @PathVariable String month,
             @Valid @RequestBody SendReportRequest request) {
-        // TODO: SnapshotService で月次レポートメール送信
-        // 暫定: 200 OK で sent_to + sent_at を返す
+        aggregationService.sendMonthlyReport(month, request.getRecipients());
         return ApiResponse.of(Map.of(
             "month", month,
             "sent_to", request.getRecipients(),

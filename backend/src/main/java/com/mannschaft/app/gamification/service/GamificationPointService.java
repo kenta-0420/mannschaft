@@ -1,8 +1,10 @@
 package com.mannschaft.app.gamification.service;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.gamification.ActionType;
+import com.mannschaft.app.gamification.GamificationErrorCode;
 import com.mannschaft.app.gamification.TransactionType;
 import com.mannschaft.app.gamification.entity.GamificationConfigEntity;
 import com.mannschaft.app.gamification.entity.PointRuleEntity;
@@ -292,7 +294,15 @@ public class GamificationPointService {
     public void adminAdjustPoint(
             Long userId, String scopeType, Long scopeId, int points, Long adminId) {
 
-        // TODO: @RateLimiter等は将来実装
+        // 1日あたりの管理者調整上限チェック（10件/ユーザー/スコープ/日）
+        LocalDate today = LocalDate.now();
+        int adjustCountToday = pointTransactionQueryRepository.countAdminAdjustsByUserAndDate(
+                userId, scopeType, scopeId, today);
+        if (adjustCountToday >= 10) {
+            log.warn("管理者ポイント調整が1日の上限に達しました: userId={}, scopeType={}, scopeId={}, count={}",
+                    userId, scopeType, scopeId, adjustCountToday);
+            throw new BusinessException(GamificationErrorCode.GAMIFICATION_010);
+        }
 
         PointTransactionEntity transaction = PointTransactionEntity.builder()
                 .userId(userId)

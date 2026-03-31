@@ -332,6 +332,28 @@ public class BudgetTransactionService {
     }
 
     /**
+     * 添付ファイルを削除する。S3オブジェクトとDBレコードを両方削除する。
+     *
+     * @param transactionId 取引ID
+     * @param attachmentId  添付ファイルID
+     */
+    @Transactional
+    public void deleteAttachment(Long transactionId, Long attachmentId) {
+        findById(transactionId); // 取引の存在確認
+
+        BudgetTransactionAttachmentEntity attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new BusinessException(BudgetErrorCode.BUDGET_021));
+
+        if (!attachment.getTransactionId().equals(transactionId)) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_021);
+        }
+
+        storageService.delete(attachment.getFileKey());
+        attachmentRepository.delete(attachment);
+        log.info("添付ファイルを削除しました: transactionId={}, attachmentId={}", transactionId, attachmentId);
+    }
+
+    /**
      * 添付ファイルメタデータを登録する。
      */
     @Transactional

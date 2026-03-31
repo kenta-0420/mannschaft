@@ -1,10 +1,10 @@
 -- インシデント添付ファイルテーブル
 CREATE TABLE incident_attachments (
-    id          BIGINT        NOT NULL AUTO_INCREMENT,
-    incident_id BIGINT        NOT NULL,
+    id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    incident_id BIGINT UNSIGNED NOT NULL,
     file_key    VARCHAR(500)  NOT NULL,
     mime_type   VARCHAR(50)   NOT NULL COMMENT 'JPEG/PNG/WebPのみ',
-    created_by  BIGINT        NOT NULL,
+    created_by  BIGINT UNSIGNED NOT NULL,
     created_at  DATETIME      NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT fk_ia_incident   FOREIGN KEY (incident_id) REFERENCES incidents (id),

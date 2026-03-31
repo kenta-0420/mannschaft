@@ -104,6 +104,26 @@ public class AccessControlService {
     }
 
     // ========================================
+    // SYSTEM_ADMIN 判定
+    // ========================================
+
+    /**
+     * ユーザーが SYSTEM_ADMIN かどうかを返す。
+     */
+    public boolean isSystemAdmin(Long userId) {
+        return userRoleRepository.existsSystemAdminByUserId(userId);
+    }
+
+    /**
+     * SYSTEM_ADMIN であることを要求する。違反時は403。
+     */
+    public void checkSystemAdmin(Long userId) {
+        if (!isSystemAdmin(userId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    // ========================================
     // 権限チェック
     // ========================================
 

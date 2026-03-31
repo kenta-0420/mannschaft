@@ -137,6 +137,6 @@ public class BudgetTransactionController {
     public void deleteAttachment(
             @PathVariable Long transactionId,
             @PathVariable Long attachmentId) {
-        // TODO: implement deleteAttachment in service
+        budgetTransactionService.deleteAttachment(transactionId, attachmentId);
     }
 }

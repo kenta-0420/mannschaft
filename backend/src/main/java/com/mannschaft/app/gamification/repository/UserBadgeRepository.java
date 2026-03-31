@@ -16,7 +16,12 @@ public interface UserBadgeRepository extends JpaRepository<UserBadgeEntity, Long
     List<UserBadgeEntity> findByUserId(Long userId);
 
     /**
-     * バッジとユーザーと期間ラベルで既存バッジを確認する（重複防止）。
+     * バッジとユーザーと期間ラベルで既存バッジを確認する（繰返し可バッジの重複防止）。
      */
     boolean existsByBadgeIdAndUserIdAndPeriodLabel(Long badgeId, Long userId, String periodLabel);
+
+    /**
+     * バッジとユーザーで既存バッジを確認する（非繰返しバッジの重複防止）。
+     */
+    boolean existsByBadgeIdAndUserId(Long badgeId, Long userId);
 }

@@ -1,7 +1,7 @@
 -- デジタルサイネージ スケジュールテーブル
 CREATE TABLE signage_schedules (
-    id          BIGINT       NOT NULL AUTO_INCREMENT,
-    screen_id   BIGINT       NOT NULL,
+    id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    screen_id   BIGINT UNSIGNED NOT NULL,
     name        VARCHAR(100) NOT NULL,
     day_of_week VARCHAR(20)  NOT NULL COMMENT 'WEEKDAY/WEEKEND/EVERYDAY/MON/TUE/WED/THU/FRI/SAT/SUN',
     start_time  TIME         NOT NULL,

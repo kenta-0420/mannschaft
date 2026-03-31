@@ -1,5 +1,7 @@
 package com.mannschaft.app.analytics.service;
 
+import com.mannschaft.app.analytics.AnalyticsErrorCode;
+import com.mannschaft.app.analytics.MonthlyReportHtmlBuilder;
 import com.mannschaft.app.analytics.DatePreset;
 import com.mannschaft.app.analytics.Granularity;
 import com.mannschaft.app.analytics.dto.AdAnalyticsResponse;
@@ -27,6 +29,8 @@ import com.mannschaft.app.analytics.repository.AnalyticsFunnelSnapshotRepository
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlyCohortRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlySnapshotRepository;
 import com.mannschaft.app.analytics.service.DateRangeResolver.DateRange;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -65,6 +69,7 @@ public class AnalyticsAggregationService {
     private final AnalyticsMonthlySnapshotRepository snapshotRepository;
     private final MetricCalculationService metricCalc;
     private final DateRangeResolver dateRangeResolver;
+    private final EmailService emailService;
 
     /**
      * 収益サマリ（MRR/ARR/ARPU/LTV等）を算出する。
@@ -449,6 +454,33 @@ public class AnalyticsAggregationService {
                         s.isReportSent(), s.getReportSentAt()
                 ))
                 .toList();
+    }
+
+    // ─────────────────────────────────────────────
+    // 月次レポートメール送信
+    // ─────────────────────────────────────────────
+
+    /**
+     * 指定月のKPIスナップショットをメールで送信し、reportSent フラグを更新する。
+     *
+     * @param month      対象月（YYYY-MM 形式）
+     * @param recipients 送信先メールアドレスリスト
+     */
+    @Transactional
+    public void sendMonthlyReport(String month, List<String> recipients) {
+        LocalDate monthDate = YearMonth.parse(month).atDay(1);
+        AnalyticsMonthlySnapshotEntity snapshot = snapshotRepository.findByMonth(monthDate)
+                .orElseThrow(() -> new BusinessException(AnalyticsErrorCode.ANALYTICS_002));
+
+        String subject = "[Mannschaft] 月次KPIレポート " + month;
+        String htmlBody = MonthlyReportHtmlBuilder.build(month, snapshot);
+
+        for (String recipient : recipients) {
+            emailService.sendEmail(recipient, subject, htmlBody);
+        }
+
+        snapshot.markReportSent();
+        snapshotRepository.save(snapshot);
     }
 
     // ========== ヘルパーメソッド ==========

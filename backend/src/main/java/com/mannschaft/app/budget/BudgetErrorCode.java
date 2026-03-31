@@ -69,7 +69,10 @@ public enum BudgetErrorCode implements ErrorCode {
     BUDGET_019("BUDGET_019", "費目の階層数が上限を超えています", Severity.WARN),
 
     /** トランザクション存在のため年度削除不可 */
-    BUDGET_020("BUDGET_020", "取引が存在するため年度を削除できません", Severity.WARN);
+    BUDGET_020("BUDGET_020", "取引が存在するため年度を削除できません", Severity.WARN),
+
+    /** 添付ファイルが見つからない */
+    BUDGET_021("BUDGET_021", "指定された添付ファイルが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

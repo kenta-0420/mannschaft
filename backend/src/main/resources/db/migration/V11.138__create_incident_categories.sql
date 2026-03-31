@@ -1,12 +1,12 @@
 -- インシデントカテゴリテーブル
 CREATE TABLE incident_categories (
-    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     scope_type  VARCHAR(50)  NOT NULL,
-    scope_id    BIGINT       NOT NULL,
+    scope_id    BIGINT UNSIGNED NOT NULL,
     name        VARCHAR(100) NOT NULL,
     sla_hours   INT          NOT NULL DEFAULT 72 COMMENT 'デフォルトSLA時間',
     is_active   TINYINT(1)   NOT NULL DEFAULT 1,
-    created_by  BIGINT       NOT NULL,
+    created_by  BIGINT UNSIGNED NOT NULL,
     version     BIGINT       NOT NULL DEFAULT 0,
     created_at  DATETIME     NOT NULL,
     updated_at  DATETIME     NOT NULL,

@@ -1,7 +1,7 @@
 -- Webhookイベントサブスクリプションテーブル
 CREATE TABLE webhook_event_subscriptions (
-    id          BIGINT       NOT NULL AUTO_INCREMENT,
-    endpoint_id BIGINT       NOT NULL,
+    id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    endpoint_id BIGINT UNSIGNED NOT NULL,
     event_type  VARCHAR(100) NOT NULL,
     created_at  DATETIME     NOT NULL,
     PRIMARY KEY (id),

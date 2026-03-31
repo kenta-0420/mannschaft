@@ -1,8 +1,8 @@
 -- Webhookエンドポイントテーブル
 CREATE TABLE webhook_endpoints (
-    id                       BIGINT        NOT NULL AUTO_INCREMENT,
+    id                       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     scope_type               VARCHAR(50)   NOT NULL,
-    scope_id                 BIGINT        NOT NULL,
+    scope_id                 BIGINT UNSIGNED NOT NULL,
     name                     VARCHAR(100)  NOT NULL,
     url                      VARCHAR(1000) NOT NULL COMMENT 'HTTPS必須',
     signing_secret           VARCHAR(64)   NOT NULL COMMENT 'HMAC-SHA256署名用シークレット',
@@ -10,7 +10,7 @@ CREATE TABLE webhook_endpoints (
     timeout_ms               INT           NOT NULL DEFAULT 5000,
     consecutive_failure_count INT          NOT NULL DEFAULT 0 COMMENT '連続失敗回数',
     last_failure_at          DATETIME      NULL,
-    created_by               BIGINT        NOT NULL,
+    created_by               BIGINT UNSIGNED NOT NULL,
     version                  BIGINT        NOT NULL DEFAULT 0,
     created_at               DATETIME      NOT NULL,
     updated_at               DATETIME      NOT NULL,

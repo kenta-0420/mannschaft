@@ -36,7 +36,10 @@ public enum GamificationErrorCode implements ErrorCode {
     GAMIFICATION_008("GAMIFICATION_008", "アクセス権限がありません", Severity.WARN),
 
     /** daily_limit到達 */
-    GAMIFICATION_009("GAMIFICATION_009", "本日のポイント付与上限に達しました", Severity.WARN);
+    GAMIFICATION_009("GAMIFICATION_009", "本日のポイント付与上限に達しました", Severity.WARN),
+
+    /** 管理者調整の1日上限超過 */
+    GAMIFICATION_010("GAMIFICATION_010", "1日の管理者ポイント調整上限に達しました", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 /**
  * メンテナンススケジュールエンティティ。計画メンテナンスの管理を行う。
  */
-@Entity
+@Entity(name = "AdminMaintenanceScheduleEntity")
 @Table(name = "maintenance_schedules")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

@@ -18,8 +18,8 @@ import java.time.LocalDateTime;
 /**
  * メンテナンススケジュールエンティティ。
  */
-@Entity
-@Table(name = "maintenance_schedules")
+@Entity(name = "IncidentMaintenanceScheduleEntity")
+@Table(name = "incident_maintenance_schedules")
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

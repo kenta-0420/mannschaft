@@ -5,6 +5,10 @@ import com.mannschaft.app.analytics.BackfillTarget;
 import com.mannschaft.app.analytics.dto.BackfillJobResponse;
 import com.mannschaft.app.analytics.dto.BackfillRequest;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -14,6 +18,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -26,6 +31,8 @@ public class AnalyticsBackfillService {
 
     private final DailyAggregationBatchService dailyBatch;
     private final MonthlyCohortBatchService cohortBatch;
+    private final NotificationService notificationService;
+    private final UserRoleRepository userRoleRepository;
     private static final long MAX_BACKFILL_DAYS = 183; // 6ヶ月
 
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -88,7 +95,21 @@ public class AnalyticsBackfillService {
             }
 
             log.info("バックフィル完了: jobId={}", jobId);
-            // TODO: SYSTEM_ADMIN プッシュ通知
+
+            // SYSTEM_ADMIN へのプッシュ通知
+            String title = "バックフィル完了";
+            String body = String.format("バックフィルジョブ %s が完了しました（期間: %s 〜 %s）。",
+                    jobId, request.getFrom(), request.getTo());
+            List<Long> systemAdmins = userRoleRepository.findSystemAdminUserIds();
+            for (Long adminUserId : systemAdmins) {
+                notificationService.createNotification(
+                        adminUserId, "BACKFILL_COMPLETED", NotificationPriority.LOW,
+                        title, body,
+                        "BACKFILL_JOB", null,
+                        NotificationScopeType.SYSTEM, null,
+                        "/system-admin/analytics", null
+                );
+            }
         } finally {
             running.set(false);
         }

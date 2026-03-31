@@ -1,8 +1,8 @@
 -- APIキーテーブル
 CREATE TABLE api_keys (
-    id                  BIGINT       NOT NULL AUTO_INCREMENT,
+    id                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     scope_type          VARCHAR(50)  NOT NULL,
-    scope_id            BIGINT       NOT NULL,
+    scope_id            BIGINT UNSIGNED NOT NULL,
     name                VARCHAR(100) NOT NULL,
     key_prefix          VARCHAR(8)   NOT NULL COMMENT '先頭8文字（プレフィックス検索用）',
     key_hash            VARCHAR(60)  NOT NULL COMMENT 'bcryptハッシュ',
@@ -11,7 +11,7 @@ CREATE TABLE api_keys (
     expires_at          DATETIME     NULL COMMENT 'NULL=無期限',
     last_used_at        DATETIME     NULL,
     is_active           TINYINT(1)   NOT NULL DEFAULT 1,
-    created_by          BIGINT       NOT NULL,
+    created_by          BIGINT UNSIGNED NOT NULL,
     version             BIGINT       NOT NULL DEFAULT 0,
     created_at          DATETIME     NOT NULL,
     updated_at          DATETIME     NOT NULL,

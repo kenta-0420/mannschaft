@@ -1,7 +1,7 @@
 -- デジタルサイネージ スロットテーブル
 CREATE TABLE signage_slots (
-    id             BIGINT       NOT NULL AUTO_INCREMENT,
-    screen_id      BIGINT       NOT NULL,
+    id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    screen_id      BIGINT UNSIGNED NOT NULL,
     slot_order     INT          NOT NULL,
     slot_type      VARCHAR(30)  NOT NULL COMMENT 'ANNOUNCEMENT/SCHEDULE/ACTIVITY_HIGHLIGHT/RANKING/FREE_TEXT/FREE_IMAGE/WEATHER/CLOCK',
     title          VARCHAR(200) NULL,

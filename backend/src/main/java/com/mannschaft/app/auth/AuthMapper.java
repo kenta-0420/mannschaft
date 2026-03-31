@@ -78,6 +78,5 @@ public interface AuthMapper {
      * eventType は enum から String へ変換する。
      */
     @Mapping(target = "method", ignore = true)
-    @Mapping(target = "eventType", expression = "java(auditLog.getEventType() != null ? auditLog.getEventType().name() : null)")
     LoginHistoryResponse toLoginHistoryResponse(AuditLogEntity auditLog);
 }

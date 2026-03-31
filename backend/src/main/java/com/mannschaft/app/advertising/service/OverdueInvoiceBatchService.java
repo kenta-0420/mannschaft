@@ -88,9 +88,17 @@ public class OverdueInvoiceBatchService {
                         // EmailService 実装後に追加: 広告主へのメール通知
                     });
 
-            // TODO: SYSTEM_ADMIN へのプッシュ通知
-            // UserRoleRepository に SYSTEM_ADMIN ユーザー検索メソッド追加後に実装する
-            log.debug("SYSTEM_ADMIN 通知は未実装: invoiceId={}", invoice.getId());
+            // SYSTEM_ADMIN へのプッシュ通知
+            List<Long> systemAdmins = userRoleRepository.findSystemAdminUserIds();
+            for (Long adminUserId : systemAdmins) {
+                notificationService.createNotification(
+                        adminUserId, "INVOICE_OVERDUE", NotificationPriority.HIGH,
+                        title, body,
+                        "AD_INVOICE", invoice.getId(),
+                        NotificationScopeType.SYSTEM, null,
+                        "/system-admin/invoices/" + invoice.getId(), null
+                );
+            }
         } catch (Exception e) {
             // 通知送信失敗はバッチ処理全体を止めない
             log.warn("延滞通知の送信に失敗しました: invoiceId={}", invoice.getId(), e);

@@ -74,6 +74,29 @@ public class PointTransactionQueryRepository {
     }
 
     /**
+     * 当日の管理者ポイント調整件数を取得する（adminAdjustPoint の上限チェック用）。
+     *
+     * @param userId    対象ユーザーID
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープID
+     * @param today     対象日
+     * @return 当日の調整件数
+     */
+    public int countAdminAdjustsByUserAndDate(Long userId, String scopeType, Long scopeId, LocalDate today) {
+        String sql = """
+                SELECT COUNT(*)
+                FROM point_transactions
+                WHERE user_id = ?
+                  AND scope_type = ?
+                  AND scope_id = ?
+                  AND action_type = 'ADMIN_ADJUST'
+                  AND earned_on = ?
+                """;
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, userId, scopeType, scopeId, today);
+        return count != null ? count : 0;
+    }
+
+    /**
      * 指定期間の上位ユーザーリストを取得する（ランキング計算用）。
      * 各Mapのキー: user_id (Long), total_points (Long)
      *

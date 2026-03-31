@@ -1,5 +1,6 @@
 package com.mannschaft.app.analytics.service;
 
+import com.mannschaft.app.analytics.MonthlyReportHtmlBuilder;
 import com.mannschaft.app.analytics.RevenueSource;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyRevenueEntity;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyUsersEntity;
@@ -7,6 +8,9 @@ import com.mannschaft.app.analytics.entity.AnalyticsMonthlySnapshotEntity;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyRevenueRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyUsersRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlySnapshotRepository;
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.EmailService;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -33,6 +37,9 @@ public class MonthlyKpiSnapshotBatchService {
     private final AnalyticsDailyRevenueRepository revenueRepository;
     private final AnalyticsDailyUsersRepository usersRepository;
     private final MetricCalculationService metricCalculation;
+    private final EmailService emailService;
+    private final UserRoleRepository userRoleRepository;
+    private final UserRepository userRepository;
 
     @Scheduled(cron = "0 0 4 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "monthlyKpiSnapshot", lockAtMostFor = "30m", lockAtLeastFor = "5m")
@@ -107,7 +114,31 @@ public class MonthlyKpiSnapshotBatchService {
 
         snapshotRepository.save(snapshot);
 
-        // TODO: EmailService 実装後に月次レポートメール送信
+        String monthStr = monthStart.toString().substring(0, 7); // YYYY-MM
+        sendReportToSystemAdmins(monthStr, snapshot);
+    }
+
+    private void sendReportToSystemAdmins(String month, AnalyticsMonthlySnapshotEntity snapshot) {
+        try {
+            List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
+            if (adminIds.isEmpty()) {
+                log.warn("月次レポートメール: SYSTEM_ADMIN ユーザーが見つかりません");
+                return;
+            }
+            List<String> emails = userRepository.findAllById(adminIds).stream()
+                    .map(u -> u.getEmail())
+                    .filter(e -> e != null && !e.isBlank())
+                    .toList();
+
+            String subject = "[Mannschaft] 月次KPIレポート " + month;
+            String htmlBody = MonthlyReportHtmlBuilder.build(month, snapshot);
+            for (String email : emails) {
+                emailService.sendEmail(email, subject, htmlBody);
+            }
+            log.info("月次レポートメール送信完了: month={}, recipients={}", month, emails.size());
+        } catch (Exception e) {
+            log.error("月次レポートメール送信失敗: month={}", month, e);
+        }
     }
 
     /**
