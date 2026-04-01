@@ -80,6 +80,23 @@ public class TranslationAssignmentController {
     }
 
     /**
+     * チームで自分にアサインされた翻訳タスク一覧を取得する。
+     * 認可: MEMBER以上
+     *
+     * @param teamId チームID
+     * @return 自分のアサインレスポンスリスト
+     */
+    @GetMapping("/api/v1/teams/{teamId}/translations/assignments/me")
+    public ApiResponse<List<TranslationAssignmentResponse>> listMyTeamAssignments(
+            @PathVariable Long teamId) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkMembership(userId, teamId, "TEAM");
+
+        return translationAssignmentService.listMyAssignments("TEAM", teamId, userId);
+    }
+
+    /**
      * チームの翻訳者アサインを物理削除する。
      * 認可: ADMIN以上
      *
@@ -144,6 +161,23 @@ public class TranslationAssignmentController {
         accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
 
         return translationAssignmentService.listAssignments(translationId);
+    }
+
+    /**
+     * 組織で自分にアサインされた翻訳タスク一覧を取得する。
+     * 認可: MEMBER以上
+     *
+     * @param orgId 組織ID
+     * @return 自分のアサインレスポンスリスト
+     */
+    @GetMapping("/api/v1/organizations/{orgId}/translations/assignments/me")
+    public ApiResponse<List<TranslationAssignmentResponse>> listMyOrgAssignments(
+            @PathVariable Long orgId) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
+
+        return translationAssignmentService.listMyAssignments("ORGANIZATION", orgId, userId);
     }
 
     /**

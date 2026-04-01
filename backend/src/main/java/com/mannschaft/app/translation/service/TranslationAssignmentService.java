@@ -59,18 +59,21 @@ public class TranslationAssignmentService {
     @Getter
     public static class TranslationAssignmentResponse {
         private final Long id;
-        private final Long translationId;
+        private final String scopeType;
+        private final Long scopeId;
         private final Long assigneeId;
-        private final String note;
-        private final java.time.LocalDateTime assignedAt;
+        private final String language;
+        private final boolean active;
+        private final java.time.LocalDateTime createdAt;
 
-        public TranslationAssignmentResponse(Long id, Long translationId, Long assigneeId,
-                                              String note, java.time.LocalDateTime assignedAt) {
-            this.id = id;
-            this.translationId = translationId;
-            this.assigneeId = assigneeId;
-            this.note = note;
-            this.assignedAt = assignedAt;
+        public TranslationAssignmentResponse(TranslationAssignmentEntity entity) {
+            this.id = entity.getId();
+            this.scopeType = entity.getScopeType();
+            this.scopeId = entity.getScopeId();
+            this.assigneeId = entity.getUserId();
+            this.language = entity.getLanguage();
+            this.active = entity.getIsActive();
+            this.createdAt = entity.getCreatedAt();
         }
     }
 
@@ -118,7 +121,7 @@ public class TranslationAssignmentService {
 
             log.debug("翻訳者アサイン既存返却: id={}, scope={}/{}, userId={}, language={}",
                     existing.getId(), scopeType, scopeId, req.getAssigneeId(), language);
-            return ApiResponse.of(toResponse(existing, req.getTranslationId()));
+            return ApiResponse.of(new TranslationAssignmentResponse(existing));
         }
 
         // 新規アサイン作成
@@ -134,7 +137,7 @@ public class TranslationAssignmentService {
         log.info("翻訳者アサイン作成: id={}, scope={}/{}, userId={}, language={}, assignedBy={}",
                 saved.getId(), scopeType, scopeId, req.getAssigneeId(), language, assignedBy);
 
-        return ApiResponse.of(toResponse(saved, req.getTranslationId()));
+        return ApiResponse.of(new TranslationAssignmentResponse(saved));
     }
 
     /**
@@ -154,7 +157,29 @@ public class TranslationAssignmentService {
                         translation.getScopeType(), translation.getScopeId());
 
         List<TranslationAssignmentResponse> responses = assignments.stream()
-                .map(a -> toResponse(a, translationId))
+                .map(TranslationAssignmentResponse::new)
+                .collect(Collectors.toList());
+
+        return ApiResponse.of(responses);
+    }
+
+    /**
+     * 指定スコープで自分にアサインされた翻訳タスク一覧を取得する。
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープID
+     * @param userId    ログインユーザーID
+     * @return アサインレスポンスのリスト
+     */
+    public ApiResponse<List<TranslationAssignmentResponse>> listMyAssignments(
+            String scopeType, Long scopeId, Long userId) {
+
+        List<TranslationAssignmentEntity> assignments =
+                translationAssignmentRepository.findByScopeTypeAndScopeIdAndUserIdAndIsActiveTrue(
+                        scopeType, scopeId, userId);
+
+        List<TranslationAssignmentResponse> responses = assignments.stream()
+                .map(TranslationAssignmentResponse::new)
                 .collect(Collectors.toList());
 
         return ApiResponse.of(responses);
@@ -175,24 +200,4 @@ public class TranslationAssignmentService {
         log.info("翻訳者アサイン物理削除: id={}", id);
     }
 
-    // ========================================
-    // 内部メソッド
-    // ========================================
-
-    /**
-     * エンティティをレスポンスDTOに変換する。
-     *
-     * @param entity        アサインエンティティ
-     * @param translationId アサイン元の翻訳コンテンツID
-     * @return アサインレスポンスDTO
-     */
-    private TranslationAssignmentResponse toResponse(TranslationAssignmentEntity entity, Long translationId) {
-        return new TranslationAssignmentResponse(
-                entity.getId(),
-                translationId,
-                entity.getUserId(),
-                null,   // noteフィールドは現バージョンのEntityに未実装（将来拡張用）
-                entity.getCreatedAt()
-        );
-    }
 }

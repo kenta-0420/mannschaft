@@ -2,10 +2,13 @@ package com.mannschaft.app.translation.controller;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.translation.service.ContentTranslationService;
+import com.mannschaft.app.translation.service.ContentTranslationService.ChangeStatusRequest;
 import com.mannschaft.app.translation.service.ContentTranslationService.ContentTranslationResponse;
 import com.mannschaft.app.translation.service.ContentTranslationService.CreateTranslationRequest;
+import com.mannschaft.app.translation.service.ContentTranslationService.TranslationDashboardResponse;
 import com.mannschaft.app.translation.service.ContentTranslationService.TranslationSummaryResponse;
 import com.mannschaft.app.translation.service.ContentTranslationService.UpdateTranslationRequest;
 import jakarta.validation.Valid;
@@ -27,7 +30,7 @@ import java.util.List;
 
 /**
  * 翻訳コンテンツ管理コントローラー。
- * 翻訳の作成・取得・更新・公開・削除、およびステータス一括更新（mark-stale）を提供する。
+ * 翻訳の作成・取得・更新・ステータス変更・公開・削除・一覧・ダッシュボードを提供する。
  * チーム・組織スコープに対応する。
  */
 @RestController
@@ -44,10 +47,6 @@ public class ContentTranslationController {
     /**
      * チームの翻訳コンテンツを新規作成する。
      * 認可: MEMBERでも WRITE_TRANSLATION 権限があれば作成可能。ここでは MEMBER以上を許可。
-     *
-     * @param teamId チームID
-     * @param req    翻訳作成リクエスト
-     * @return 作成した翻訳コンテンツ（201 Created）
      */
     @PostMapping("/api/v1/teams/{teamId}/translations")
     public ResponseEntity<ApiResponse<ContentTranslationResponse>> createTeamTranslation(
@@ -57,7 +56,6 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, teamId, "TEAM");
 
-        // スコープ情報をリクエストに補完する
         req.setScopeType("TEAM");
         req.setScopeId(teamId);
 
@@ -69,10 +67,6 @@ public class ContentTranslationController {
     /**
      * チームの翻訳コンテンツをIDで取得する。
      * 認可: MEMBERでも閲覧可能
-     *
-     * @param teamId チームID
-     * @param id     翻訳コンテンツID
-     * @return 翻訳コンテンツ詳細
      */
     @GetMapping("/api/v1/teams/{teamId}/translations/{id}")
     public ApiResponse<ContentTranslationResponse> getTeamTranslation(
@@ -88,12 +82,6 @@ public class ContentTranslationController {
     /**
      * チームの特定コンテンツ×言語の翻訳を取得する。
      * 認可: MEMBERでも閲覧可能
-     *
-     * @param teamId      チームID
-     * @param contentType コンテンツ種別（BLOG_POST / ANNOUNCEMENT / KNOWLEDGE_BASE）
-     * @param contentId   コンテンツID
-     * @param language    言語コード（ISO 639-1）
-     * @return 翻訳コンテンツ詳細
      */
     @GetMapping("/api/v1/teams/{teamId}/translations/content")
     public ApiResponse<ContentTranslationResponse> getTeamTranslationForContent(
@@ -111,11 +99,6 @@ public class ContentTranslationController {
     /**
      * チームの特定コンテンツの翻訳一覧を全言語分取得する。
      * 認可: MEMBERでも閲覧可能
-     *
-     * @param teamId      チームID
-     * @param contentType コンテンツ種別
-     * @param contentId   コンテンツID
-     * @return 翻訳サマリーリスト
      */
     @GetMapping("/api/v1/teams/{teamId}/translations/content/all")
     public ApiResponse<List<TranslationSummaryResponse>> listTeamTranslationsForContent(
@@ -130,13 +113,28 @@ public class ContentTranslationController {
     }
 
     /**
+     * チームの翻訳コンテンツ一覧を取得する（フィルタ+ページネーション対応）。
+     * 認可: MEMBERでも閲覧可能
+     */
+    @GetMapping("/api/v1/teams/{teamId}/translations")
+    public PagedResponse<TranslationSummaryResponse> listTeamTranslations(
+            @PathVariable Long teamId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String language,
+            @RequestParam(required = false) String sourceType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkMembership(userId, teamId, "TEAM");
+
+        return contentTranslationService.listTranslations(
+                "TEAM", teamId, status, language, sourceType, page, Math.min(size, 100));
+    }
+
+    /**
      * チームの翻訳コンテンツを更新する。
      * 認可: ADMIN以上、またはアサインされた翻訳者（ここではMEMBER以上を許可）
-     *
-     * @param teamId チームID
-     * @param id     翻訳コンテンツID
-     * @param req    翻訳更新リクエスト
-     * @return 更新後の翻訳コンテンツ
      */
     @PutMapping("/api/v1/teams/{teamId}/translations/{id}")
     public ApiResponse<ContentTranslationResponse> updateTeamTranslation(
@@ -151,12 +149,24 @@ public class ContentTranslationController {
     }
 
     /**
+     * チームの翻訳コンテンツのステータスを変更する。
+     * 認可: ADMIN以上（MEMBERはIN_REVIEWまで。PUBLISHEDへの遷移はADMIN以上）
+     */
+    @PatchMapping("/api/v1/teams/{teamId}/translations/{id}/status")
+    public ApiResponse<ContentTranslationResponse> changeTeamTranslationStatus(
+            @PathVariable Long teamId,
+            @PathVariable Long id,
+            @Valid @RequestBody ChangeStatusRequest req) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkMembership(userId, teamId, "TEAM");
+
+        return contentTranslationService.changeStatus(id, req);
+    }
+
+    /**
      * チームの翻訳コンテンツを公開状態（PUBLISHED）に更新する。
      * 認可: ADMIN以上
-     *
-     * @param teamId チームID
-     * @param id     翻訳コンテンツID
-     * @return 更新後の翻訳コンテンツ
      */
     @PatchMapping("/api/v1/teams/{teamId}/translations/{id}/publish")
     public ApiResponse<ContentTranslationResponse> publishTeamTranslation(
@@ -171,13 +181,7 @@ public class ContentTranslationController {
 
     /**
      * チームの特定コンテンツのPUBLISHED翻訳を全てNEEDS_UPDATEに更新する（内部/管理用）。
-     * 原文が更新された場合に呼び出す。
-     * 認可: ADMIN以上（管理操作のため）
-     *
-     * @param teamId      チームID
-     * @param contentType コンテンツ種別
-     * @param contentId   コンテンツID
-     * @return 更新件数を含むレスポンス
+     * 認可: ADMIN以上
      */
     @PostMapping("/api/v1/teams/{teamId}/translations/mark-stale")
     @PreAuthorize("hasRole('ADMIN')")
@@ -194,12 +198,22 @@ public class ContentTranslationController {
     }
 
     /**
+     * チームの翻訳ダッシュボード統計を取得する。
+     * 認可: ADMIN以上
+     */
+    @GetMapping("/api/v1/teams/{teamId}/translations/dashboard")
+    public ApiResponse<TranslationDashboardResponse> getTeamTranslationDashboard(
+            @PathVariable Long teamId) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+
+        return contentTranslationService.getDashboard("TEAM", teamId);
+    }
+
+    /**
      * チームの翻訳コンテンツを論理削除する。
      * 認可: ADMIN以上
-     *
-     * @param teamId チームID
-     * @param id     翻訳コンテンツID
-     * @return 204 No Content
      */
     @DeleteMapping("/api/v1/teams/{teamId}/translations/{id}")
     public ResponseEntity<Void> deleteTeamTranslation(
@@ -217,14 +231,6 @@ public class ContentTranslationController {
     // 組織スコープ
     // ========================================
 
-    /**
-     * 組織の翻訳コンテンツを新規作成する。
-     * 認可: MEMBERでも WRITE_TRANSLATION 権限があれば作成可能。ここでは MEMBER以上を許可。
-     *
-     * @param orgId 組織ID
-     * @param req   翻訳作成リクエスト
-     * @return 作成した翻訳コンテンツ（201 Created）
-     */
     @PostMapping("/api/v1/organizations/{orgId}/translations")
     public ResponseEntity<ApiResponse<ContentTranslationResponse>> createOrgTranslation(
             @PathVariable Long orgId,
@@ -233,7 +239,6 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
 
-        // スコープ情報をリクエストに補完する
         req.setScopeType("ORGANIZATION");
         req.setScopeId(orgId);
 
@@ -242,14 +247,6 @@ public class ContentTranslationController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /**
-     * 組織の翻訳コンテンツをIDで取得する。
-     * 認可: MEMBERでも閲覧可能
-     *
-     * @param orgId 組織ID
-     * @param id    翻訳コンテンツID
-     * @return 翻訳コンテンツ詳細
-     */
     @GetMapping("/api/v1/organizations/{orgId}/translations/{id}")
     public ApiResponse<ContentTranslationResponse> getOrgTranslation(
             @PathVariable Long orgId,
@@ -261,16 +258,6 @@ public class ContentTranslationController {
         return contentTranslationService.getTranslation(id);
     }
 
-    /**
-     * 組織の特定コンテンツ×言語の翻訳を取得する。
-     * 認可: MEMBERでも閲覧可能
-     *
-     * @param orgId       組織ID
-     * @param contentType コンテンツ種別
-     * @param contentId   コンテンツID
-     * @param language    言語コード
-     * @return 翻訳コンテンツ詳細
-     */
     @GetMapping("/api/v1/organizations/{orgId}/translations/content")
     public ApiResponse<ContentTranslationResponse> getOrgTranslationForContent(
             @PathVariable Long orgId,
@@ -284,15 +271,6 @@ public class ContentTranslationController {
         return contentTranslationService.getTranslationForContent(contentType, contentId, language);
     }
 
-    /**
-     * 組織の特定コンテンツの翻訳一覧を全言語分取得する。
-     * 認可: MEMBERでも閲覧可能
-     *
-     * @param orgId       組織ID
-     * @param contentType コンテンツ種別
-     * @param contentId   コンテンツID
-     * @return 翻訳サマリーリスト
-     */
     @GetMapping("/api/v1/organizations/{orgId}/translations/content/all")
     public ApiResponse<List<TranslationSummaryResponse>> listOrgTranslationsForContent(
             @PathVariable Long orgId,
@@ -305,15 +283,22 @@ public class ContentTranslationController {
         return contentTranslationService.listTranslationsForContent(contentType, contentId);
     }
 
-    /**
-     * 組織の翻訳コンテンツを更新する。
-     * 認可: ADMIN以上、またはアサインされた翻訳者（ここではMEMBER以上を許可）
-     *
-     * @param orgId 組織ID
-     * @param id    翻訳コンテンツID
-     * @param req   翻訳更新リクエスト
-     * @return 更新後の翻訳コンテンツ
-     */
+    @GetMapping("/api/v1/organizations/{orgId}/translations")
+    public PagedResponse<TranslationSummaryResponse> listOrgTranslations(
+            @PathVariable Long orgId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String language,
+            @RequestParam(required = false) String sourceType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
+
+        return contentTranslationService.listTranslations(
+                "ORGANIZATION", orgId, status, language, sourceType, page, Math.min(size, 100));
+    }
+
     @PutMapping("/api/v1/organizations/{orgId}/translations/{id}")
     public ApiResponse<ContentTranslationResponse> updateOrgTranslation(
             @PathVariable Long orgId,
@@ -326,14 +311,18 @@ public class ContentTranslationController {
         return contentTranslationService.updateTranslation(id, userId, req);
     }
 
-    /**
-     * 組織の翻訳コンテンツを公開状態（PUBLISHED）に更新する。
-     * 認可: ADMIN以上
-     *
-     * @param orgId 組織ID
-     * @param id    翻訳コンテンツID
-     * @return 更新後の翻訳コンテンツ
-     */
+    @PatchMapping("/api/v1/organizations/{orgId}/translations/{id}/status")
+    public ApiResponse<ContentTranslationResponse> changeOrgTranslationStatus(
+            @PathVariable Long orgId,
+            @PathVariable Long id,
+            @Valid @RequestBody ChangeStatusRequest req) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
+
+        return contentTranslationService.changeStatus(id, req);
+    }
+
     @PatchMapping("/api/v1/organizations/{orgId}/translations/{id}/publish")
     public ApiResponse<ContentTranslationResponse> publishOrgTranslation(
             @PathVariable Long orgId,
@@ -345,15 +334,6 @@ public class ContentTranslationController {
         return contentTranslationService.publishTranslation(id);
     }
 
-    /**
-     * 組織の特定コンテンツのPUBLISHED翻訳を全てNEEDS_UPDATEに更新する（内部/管理用）。
-     * 認可: ADMIN以上（管理操作のため）
-     *
-     * @param orgId       組織ID
-     * @param contentType コンテンツ種別
-     * @param contentId   コンテンツID
-     * @return 更新件数を含むレスポンス
-     */
     @PostMapping("/api/v1/organizations/{orgId}/translations/mark-stale")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Integer> markOrgTranslationsAsStale(
@@ -368,14 +348,16 @@ public class ContentTranslationController {
         return ApiResponse.of(count);
     }
 
-    /**
-     * 組織の翻訳コンテンツを論理削除する。
-     * 認可: ADMIN以上
-     *
-     * @param orgId 組織ID
-     * @param id    翻訳コンテンツID
-     * @return 204 No Content
-     */
+    @GetMapping("/api/v1/organizations/{orgId}/translations/dashboard")
+    public ApiResponse<TranslationDashboardResponse> getOrgTranslationDashboard(
+            @PathVariable Long orgId) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
+
+        return contentTranslationService.getDashboard("ORGANIZATION", orgId);
+    }
+
     @DeleteMapping("/api/v1/organizations/{orgId}/translations/{id}")
     public ResponseEntity<Void> deleteOrgTranslation(
             @PathVariable Long orgId,

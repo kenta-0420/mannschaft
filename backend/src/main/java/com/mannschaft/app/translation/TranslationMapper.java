@@ -29,21 +29,7 @@ public class TranslationMapper {
      * @return 翻訳コンテンツ詳細レスポンス
      */
     public ContentTranslationResponse toContentTranslationResponse(ContentTranslationEntity entity) {
-        return new ContentTranslationResponse(
-                entity.getId(),
-                entity.getSourceType(),
-                entity.getSourceId(),
-                entity.getLanguage(),
-                entity.getTranslatedTitle(),
-                entity.getTranslatedBody(),
-                entity.getTranslatedExcerpt(),
-                entity.getStatus(),
-                entity.getTranslatorId(),
-                entity.getPublishedAt(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt(),
-                entity.getVersion()
-        );
+        return new ContentTranslationResponse(entity);
     }
 
     /**
@@ -53,13 +39,7 @@ public class TranslationMapper {
      * @return 翻訳サマリーレスポンス
      */
     public TranslationSummaryResponse toTranslationSummaryResponse(ContentTranslationEntity entity) {
-        return new TranslationSummaryResponse(
-                entity.getId(),
-                entity.getLanguage(),
-                entity.getStatus(),
-                entity.getTranslatorId(),
-                entity.getUpdatedAt()
-        );
+        return new TranslationSummaryResponse(entity);
     }
 
     /**
@@ -102,34 +82,25 @@ public class TranslationMapper {
 
     /**
      * TranslationAssignmentEntity を TranslationAssignmentResponse に変換する。
-     * translationId はアサインエンティティに直接保持されないため、呼び出し元から渡す。
      *
-     * @param entity        アサインエンティティ
-     * @param translationId アサイン元の翻訳コンテンツID
+     * @param entity アサインエンティティ
      * @return アサインレスポンス
      */
     public TranslationAssignmentResponse toTranslationAssignmentResponse(
-            TranslationAssignmentEntity entity, Long translationId) {
-        return new TranslationAssignmentResponse(
-                entity.getId(),
-                translationId,
-                entity.getUserId(),
-                null,   // noteフィールドは現バージョンのEntityに未実装（将来拡張用）
-                entity.getCreatedAt()
-        );
+            TranslationAssignmentEntity entity) {
+        return new TranslationAssignmentResponse(entity);
     }
 
     /**
      * TranslationAssignmentEntity リストを TranslationAssignmentResponse リストに変換する。
      *
-     * @param entities      アサインエンティティリスト
-     * @param translationId アサイン元の翻訳コンテンツID
+     * @param entities アサインエンティティリスト
      * @return アサインレスポンスリスト
      */
     public List<TranslationAssignmentResponse> toTranslationAssignmentResponseList(
-            List<TranslationAssignmentEntity> entities, Long translationId) {
+            List<TranslationAssignmentEntity> entities) {
         return entities.stream()
-                .map(e -> toTranslationAssignmentResponse(e, translationId))
+                .map(TranslationAssignmentResponse::new)
                 .toList();
     }
 }
