@@ -20,11 +20,13 @@ import com.mannschaft.app.auth.dto.MfaRequiredResponse;
 import com.mannschaft.app.auth.dto.RegisterRequest;
 import com.mannschaft.app.auth.dto.SessionResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;
+import com.mannschaft.app.auth.event.AccountLockedEvent;
 import com.mannschaft.app.auth.event.EmailVerificationResentEvent;
 import com.mannschaft.app.auth.event.EmailVerifiedEvent;
 import com.mannschaft.app.auth.event.LoginFailedEvent;
 import com.mannschaft.app.auth.event.LoginSuccessEvent;
 import com.mannschaft.app.auth.event.LogoutEvent;
+import com.mannschaft.app.auth.event.LogoutEvent.LogoutType;
 import com.mannschaft.app.auth.event.PasswordResetCompletedEvent;
 import com.mannschaft.app.auth.event.PasswordResetRequestedEvent;
 import com.mannschaft.app.auth.event.UserRegisteredEvent;
@@ -353,7 +355,7 @@ public class AuthService {
                     authTokenService.addJtiToBlacklist(jti, remainingTtl);
 
                     // 3. イベント発行
-                    eventPublisher.publish(new LogoutEvent(userId, 1));
+                    eventPublisher.publish(new LogoutEvent(userId, 1, LogoutType.SESSION));
                 });
     }
 
@@ -375,7 +377,7 @@ public class AuthService {
         authTokenService.setUserInvalidationTimestamp(userId);
 
         // 3. イベント発行
-        eventPublisher.publish(new LogoutEvent(userId, deviceCount));
+        eventPublisher.publish(new LogoutEvent(userId, deviceCount, LogoutType.ALL_SESSIONS));
     }
 
     /**
@@ -390,7 +392,7 @@ public class AuthService {
                 .filter(token -> token.getUserId().equals(userId))
                 .ifPresent(token -> {
                     token.revoke();
-                    eventPublisher.publish(new LogoutEvent(userId, 1));
+                    eventPublisher.publish(new LogoutEvent(userId, 1, LogoutType.SESSION));
                 });
     }
 
@@ -644,6 +646,8 @@ public class AuthService {
             redisTemplate.opsForValue().set(lockKey, "1",
                     ACCOUNT_LOCK_DURATION.getSeconds(), TimeUnit.SECONDS);
             log.warn("アカウントロック発動: userId={}, failCount={}", userId, failCount);
+            LocalDateTime unlockAt = LocalDateTime.now().plus(ACCOUNT_LOCK_DURATION);
+            eventPublisher.publish(new AccountLockedEvent(userId, "BRUTE_FORCE", unlockAt));
         }
 
         // ログイン失敗イベント発行
