@@ -32,6 +32,7 @@ import com.mannschaft.app.chart.repository.ChartRecordTemplateRepository;
 import com.mannschaft.app.chart.repository.ChartSectionSettingRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -40,6 +41,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +68,7 @@ public class ChartRecordService {
     private final ChartMapper chartMapper;
     private final ChartPhotoUrlProvider photoUrlProvider;
     private final NameResolverService nameResolverService;
+    private final StorageService storageService;
 
     /**
      * カルテ一覧をフィルタ付きでページング取得する。
@@ -322,6 +325,33 @@ public class ChartRecordService {
      */
     public ChartRecordResponse getChartForPdf(Long teamId, Long chartId) {
         return getChart(teamId, chartId);
+    }
+
+    /**
+     * PDF埋め込み用に写真をS3からダウンロードしBase64変換したリストを返す。
+     * 各要素は contentType, base64Data, originalFilename, photoType, note を持つMapである。
+     */
+    public List<Map<String, String>> getPhotoBase64List(Long chartId) {
+        List<ChartPhotoEntity> photos = photoRepository.findByChartRecordIdOrderBySortOrder(chartId);
+        return photos.stream()
+                .map(photo -> {
+                    try {
+                        byte[] data = storageService.download(photo.getS3Key());
+                        String base64 = Base64.getEncoder().encodeToString(data);
+                        Map<String, String> map = new HashMap<>();
+                        map.put("contentType", photo.getContentType());
+                        map.put("base64Data", base64);
+                        map.put("originalFilename", photo.getOriginalFilename());
+                        map.put("photoType", photo.getPhotoType());
+                        map.put("note", photo.getNote());
+                        return map;
+                    } catch (Exception e) {
+                        log.warn("写真のダウンロードに失敗しました（PDF生成続行）: s3Key={}", photo.getS3Key(), e);
+                        return null;
+                    }
+                })
+                .filter(m -> m != null)
+                .collect(Collectors.toList());
     }
 
     /**

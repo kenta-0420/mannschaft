@@ -2,6 +2,7 @@ package com.mannschaft.app.chart;
 
 import com.mannschaft.app.chart.dto.ChartRecordResponse;
 import com.mannschaft.app.chart.dto.CreateChartRecordRequest;
+import com.mannschaft.app.chart.entity.ChartPhotoEntity;
 import com.mannschaft.app.chart.entity.ChartRecordEntity;
 import com.mannschaft.app.chart.entity.ChartRecordTemplateEntity;
 import com.mannschaft.app.chart.repository.ChartBodyMarkRepository;
@@ -15,6 +16,7 @@ import com.mannschaft.app.chart.repository.ChartSectionSettingRepository;
 import com.mannschaft.app.chart.service.ChartRecordService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.storage.StorageService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -24,7 +26,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,6 +52,7 @@ class ChartRecordServiceTest {
     @Mock private ChartMapper chartMapper;
     @Mock private ChartPhotoUrlProvider photoUrlProvider;
     @Mock private NameResolverService nameResolverService;
+    @Mock private StorageService storageService;
 
     @InjectMocks
     private ChartRecordService service;
@@ -109,6 +114,61 @@ class ChartRecordServiceTest {
             given(recordRepository.findByIdAndTeamId(CHART_ID, TEAM_ID)).willReturn(Optional.of(entity));
             service.deleteChart(TEAM_ID, CHART_ID);
             verify(recordRepository).save(entity);
+        }
+    }
+
+    @Nested
+    @DisplayName("getPhotoBase64List")
+    class GetPhotoBase64List {
+        @Test
+        @DisplayName("正常系: 写真がBase64変換されたリストで返る")
+        void 写真あり_Base64リスト返却() {
+            ChartPhotoEntity photo = ChartPhotoEntity.builder()
+                    .chartRecordId(CHART_ID).photoType("BEFORE")
+                    .s3Key("photos/test.jpg").originalFilename("test.jpg")
+                    .fileSizeBytes(1024).contentType("image/jpeg")
+                    .note("施術前").build();
+            given(photoRepository.findByChartRecordIdOrderBySortOrder(CHART_ID))
+                    .willReturn(List.of(photo));
+            given(storageService.download("photos/test.jpg"))
+                    .willReturn(new byte[]{1, 2, 3});
+
+            List<Map<String, String>> result = service.getPhotoBase64List(CHART_ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).get("contentType")).isEqualTo("image/jpeg");
+            assertThat(result.get(0).get("base64Data")).isEqualTo(Base64.getEncoder().encodeToString(new byte[]{1, 2, 3}));
+            assertThat(result.get(0).get("originalFilename")).isEqualTo("test.jpg");
+            assertThat(result.get(0).get("photoType")).isEqualTo("BEFORE");
+            assertThat(result.get(0).get("note")).isEqualTo("施術前");
+        }
+
+        @Test
+        @DisplayName("正常系: 写真なしで空リスト")
+        void 写真なし_空リスト() {
+            given(photoRepository.findByChartRecordIdOrderBySortOrder(CHART_ID))
+                    .willReturn(List.of());
+
+            List<Map<String, String>> result = service.getPhotoBase64List(CHART_ID);
+
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("異常系: S3ダウンロード失敗時はスキップされる")
+        void ダウンロード失敗_スキップ() {
+            ChartPhotoEntity photo = ChartPhotoEntity.builder()
+                    .chartRecordId(CHART_ID).photoType("AFTER")
+                    .s3Key("photos/broken.jpg").originalFilename("broken.jpg")
+                    .fileSizeBytes(500).contentType("image/jpeg").build();
+            given(photoRepository.findByChartRecordIdOrderBySortOrder(CHART_ID))
+                    .willReturn(List.of(photo));
+            given(storageService.download("photos/broken.jpg"))
+                    .willThrow(new RuntimeException("S3 error"));
+
+            List<Map<String, String>> result = service.getPhotoBase64List(CHART_ID);
+
+            assertThat(result).isEmpty();
         }
     }
 

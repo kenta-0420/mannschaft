@@ -27,21 +27,17 @@
             <p th:text="${chart.notes}">備考</p>
         </div>
 
-        <!-- 写真はS3のPre-signed URLで提供されるため、PDFへの直接埋め込みには
-             サーバー側でバイト取得→Base64変換が必要。現段階ではファイル名リストのみ表示。
-             TODO: PDF用に写真をBase64変換してテンプレート変数に渡す処理をServiceに追加 -->
         <div class="mt-10" th:if="${not #lists.isEmpty(photos)}">
             <h3>写真記録</h3>
-            <table>
-                <thead><tr><th>ファイル名</th><th>種別</th><th>メモ</th></tr></thead>
-                <tbody>
-                    <tr th:each="photo : ${photos}">
-                        <td th:text="${photo.originalFilename}">photo.jpg</td>
-                        <td th:text="${photo.photoType}">BEFORE</td>
-                        <td th:text="${photo.note}">-</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div th:each="photo : ${photos}" style="display: inline-block; margin: 5px; text-align: center; vertical-align: top;">
+                <img th:src="'data:' + ${photo.contentType} + ';base64,' + ${photo.base64Data}"
+                     style="max-width: 200px; max-height: 200px;" />
+                <div style="font-size: 9px; margin-top: 3px;">
+                    <span th:text="${photo.photoType}">BEFORE</span>
+                    <span th:if="${photo.originalFilename}" th:text="' / ' + ${photo.originalFilename}">/ photo.jpg</span>
+                </div>
+                <div th:if="${photo.note}" style="font-size: 8px; color: #666;" th:text="${photo.note}">メモ</div>
+            </div>
         </div>
     </div>
     <div class="pdf-footer">

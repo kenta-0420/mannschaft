@@ -39,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -162,11 +163,12 @@ public class ChartRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id) {
         ChartRecordResponse chart = chartRecordService.getChartForPdf(teamId, id);
+        List<Map<String, String>> photoBase64List = chartRecordService.getPhotoBase64List(id);
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("chart", chart);
         variables.put("title", "カルテ");
-        variables.put("photos", chart.getPhotos() != null ? chart.getPhotos() : Collections.emptyList());
+        variables.put("photos", photoBase64List);
 
         byte[] pdfBytes = pdfGeneratorService.generateFromTemplate("pdf/chart-record", variables);
 
