@@ -392,7 +392,7 @@ public class AuthService {
                 .filter(token -> token.getUserId().equals(userId))
                 .ifPresent(token -> {
                     token.revoke();
-                    eventPublisher.publish(new LogoutEvent(userId, 1, LogoutType.SESSION));
+                    eventPublisher.publish(new LogoutEvent(userId, 1, LogoutType.SESSION, refreshTokenId));
                 });
     }
 

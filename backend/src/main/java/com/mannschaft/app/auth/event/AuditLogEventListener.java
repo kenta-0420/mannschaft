@@ -63,9 +63,16 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleLogout(LogoutEvent event) {
-        AuditEventType type = event.getLogoutType() == LogoutEvent.LogoutType.ALL_SESSIONS
-            ? AuditEventType.LOGOUT_ALL_SESSIONS
-            : AuditEventType.LOGOUT;
+        AuditEventType type;
+        String metadata = null;
+        if (event.getLogoutType() == LogoutEvent.LogoutType.ALL_SESSIONS) {
+            type = AuditEventType.LOGOUT_ALL_SESSIONS;
+        } else {
+            type = AuditEventType.LOGOUT_SESSION;
+            if (event.getSessionId() != null) {
+                metadata = toJson(Map.of("session_id", event.getSessionId()));
+            }
+        }
         auditLogService.record(
             type.name(),
             event.getUserId(),
@@ -75,7 +82,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null
+            metadata
         );
     }
 
@@ -402,7 +409,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null
+            toJson(Map.of("reason", "ADMIN_ACTION"))
         );
     }
 
