@@ -11,24 +11,26 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * データエクスポートリポジトリ。
+ * GDPRデータエクスポートリポジトリ。
  */
 public interface DataExportRepository extends JpaRepository<DataExportEntity, Long> {
 
     /**
-     * 最新のエクスポートジョブを取得する。
+     * ユーザーの最新エクスポートを取得する。
      */
     Optional<DataExportEntity> findTopByUserIdOrderByCreatedAtDesc(Long userId);
 
     /**
-     * 有効期限切れかつS3キーありのレコードを取得する（期限切れファイルの削除用）。
+     * 有効期限切れかつS3キーが存在するエクスポートを取得する。
      */
-    List<DataExportEntity> findByExpiresAtBeforeAndS3KeyIsNotNull(LocalDateTime now);
+    List<DataExportEntity> findByExpiresAtBeforeAndS3KeyIsNotNull(LocalDateTime threshold);
 
     /**
-     * スタックしたPROCESSINGジョブをFAILEDにリセットする。
+     * スタックしたPROCESSINGをFAILEDにリセットする。
      */
     @Modifying
-    @Query("UPDATE DataExportEntity d SET d.status = 'FAILED', d.errorMessage = :message WHERE d.status = 'PROCESSING' AND d.createdAt < :threshold")
-    int resetStuckProcessing(@Param("threshold") LocalDateTime threshold, @Param("message") String message);
+    @Query("UPDATE DataExportEntity e SET e.status = 'FAILED', e.errorMessage = :errorMessage " +
+            "WHERE e.status = 'PROCESSING' AND e.updatedAt < :threshold")
+    int resetStuckProcessing(@Param("threshold") LocalDateTime threshold,
+                             @Param("errorMessage") String errorMessage);
 }
