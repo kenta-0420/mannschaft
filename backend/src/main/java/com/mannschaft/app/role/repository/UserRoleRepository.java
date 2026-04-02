@@ -4,6 +4,7 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -47,6 +48,20 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     void deleteByUserIdAndTeamId(Long userId, Long teamId);
 
     void deleteByUserIdAndOrganizationId(Long userId, Long organizationId);
+
+    /**
+     * 物理削除バッチ用: 指定ユーザーを付与者とするロール割当のgrantedByをNULL化する。
+     */
+    @Modifying
+    @Query("UPDATE UserRoleEntity ur SET ur.grantedBy = NULL WHERE ur.grantedBy = :userId")
+    int nullifyGrantedBy(@Param("userId") Long userId);
+
+    /**
+     * 物理削除バッチ用: 指定ユーザーのロール割当を全削除する。
+     */
+    @Modifying
+    @Query("DELETE FROM UserRoleEntity ur WHERE ur.userId = :userId")
+    int deleteAllByUserId(@Param("userId") Long userId);
 
     /**
      * スコープに所属するメンバーのメールアドレス一覧を取得する。
