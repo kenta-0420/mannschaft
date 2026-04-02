@@ -1,5 +1,6 @@
 package com.mannschaft.app.auth.entity;
 
+import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
 /**
  * OAuth連携アカウントエンティティ。外部プロバイダとの連携情報を管理する。
  */
+@PersonalData(category = "oauthAccounts")
 @Entity
 @Table(name = "oauth_accounts")
 @Getter

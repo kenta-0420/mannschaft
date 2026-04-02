@@ -1,6 +1,7 @@
 package com.mannschaft.app.chart.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 /**
  * カルテ本体エンティティ。来店ごとの施術記録を管理する。
  */
+@PersonalData(category = "charts")
 @Entity
 @Table(name = "chart_records")
 @SQLRestriction("deleted_at IS NULL")

@@ -91,6 +91,11 @@ public interface ChartRecordRepository extends JpaRepository<ChartRecordEntity, 
     int anonymizeCustomerUserId(@Param("userId") Long userId);
 
     /**
+     * 特定顧客のカルテ総件数を取得する（GDPR削除プレビュー用）。
+     */
+    long countByCustomerUserId(Long customerUserId);
+
+    /**
      * 経過グラフ用に特定顧客のカルテIDと来店日を取得する。
      */
     @Query("SELECT c FROM ChartRecordEntity c WHERE c.teamId = :teamId AND c.customerUserId = :customerUserId " +

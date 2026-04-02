@@ -1,5 +1,6 @@
 package com.mannschaft.app.auth.entity;
 
+import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 /**
  * 監査ログエンティティ。ユーザー操作の監査証跡を記録する（イミュータブル）。
  */
+@PersonalData(category = "auditLogs")
 @Entity
 @Table(name = "audit_logs")
 @Getter
