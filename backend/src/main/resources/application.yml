@@ -24,6 +24,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    out-of-order: true
 
   # Jackson — ISO 8601 文字列で出力（.claudecode.md §20）
   jackson:
