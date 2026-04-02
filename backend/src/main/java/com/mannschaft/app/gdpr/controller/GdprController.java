@@ -53,8 +53,8 @@ public class GdprController {
     public ResponseEntity<ApiResponse<DataExportResponse>> requestExport(
             @Valid @RequestBody DataExportRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        DataExportEntity entity = dataExportService.requestExport(userId, request);
-        dataExportService.processExportAsync(entity.getId());
+        DataExportEntity entity = dataExportService.requestExport(userId, request.getCategories());
+        dataExportService.processExportAsync(entity.getId(), userId, request.getCategories());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(toResponse(entity)));
     }
 
@@ -110,8 +110,8 @@ public class GdprController {
                 .exportId(entity.getId())
                 .status(entity.getStatus())
                 .progressPercent(entity.getProgressPercent())
-                .currentStep(entity.getCurrentStep())
-                .fileSizeBytes("COMPLETED".equals(entity.getStatus()) ? entity.getFileSizeBytes() : null)
+                .currentStep(entity.getProgressStep())
+                .fileSizeBytes("COMPLETED".equals(entity.getStatus()) ? entity.getFileSize() : null)
                 .expiresAt("COMPLETED".equals(entity.getStatus()) ? entity.getExpiresAt() : null)
                 .createdAt(entity.getCreatedAt())
                 .completedAt(entity.getCompletedAt())

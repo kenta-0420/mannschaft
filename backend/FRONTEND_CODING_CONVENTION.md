@@ -384,6 +384,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 ### 注意事項
 - エラーレポートの送信エンドポイントは認証不要（`POST /api/v1/error-reports` は公開）。ただしレート制限をバックエンドで実施する。
 - 開発環境（`NODE_ENV === 'development'`）では `console.error` へのフォールスルーのみとし、モーダルを表示しないオプションを設ける（開発中の誤送信防止）。
+- **バックエンド設計書**: `docs/features/F12.5_frontend_error_tracking.md` を参照。レート制限（IP単位10回/分）、エラーメッセージ正規化による重複集約、リグレッション検知（RESOLVED→REOPENED）、既知の不具合バナーAPI（`GET /api/v1/active-incidents`）、X-Request-Id 相関などの仕様が定義されている。
 
 ## 14. メール送信フィードバック (Email Send Feedback)
 

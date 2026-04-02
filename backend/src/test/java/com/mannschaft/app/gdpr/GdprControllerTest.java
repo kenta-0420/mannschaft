@@ -1,11 +1,14 @@
 package com.mannschaft.app.gdpr;
 
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.chart.repository.ChartRecordRepository;
+import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.gdpr.controller.GdprController;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.service.DataExportService;
+import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -48,6 +51,16 @@ class GdprControllerTest {
     @MockitoBean
     private UserLocaleCache userLocaleCache;
 
+    // GdprController の依存解決用
+    @MockitoBean
+    private ChartRecordRepository chartRecordRepository;
+
+    @MockitoBean
+    private ChatMessageRepository chatMessageRepository;
+
+    @MockitoBean
+    private MemberPaymentRepository memberPaymentRepository;
+
     @BeforeEach
     void setUpSecurityContext() {
         UsernamePasswordAuthenticationToken auth =
@@ -56,7 +69,7 @@ class GdprControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/v1/gdpr/data-export")
+    @DisplayName("POST /api/v1/account/data-export")
     class RequestExport {
 
         @Test
@@ -68,10 +81,11 @@ class GdprControllerTest {
                     .build();
             given(dataExportService.requestExport(anyLong(), any())).willReturn(entity);
 
-            mockMvc.perform(post("/api/v1/gdpr/data-export")
-                            .contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.status").value("PENDING"));
+            mockMvc.perform(post("/api/v1/account/data-export")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isAccepted())
+                    .andExpect(jsonPath("$.data.status").value("PENDING"));
         }
 
         @Test
@@ -80,15 +94,16 @@ class GdprControllerTest {
             given(dataExportService.requestExport(anyLong(), any()))
                     .willThrow(new BusinessException(GdprErrorCode.GDPR_001));
 
-            mockMvc.perform(post("/api/v1/gdpr/data-export")
-                            .contentType(MediaType.APPLICATION_JSON))
+            mockMvc.perform(post("/api/v1/account/data-export")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error.code").value("GDPR_001"));
         }
     }
 
     @Nested
-    @DisplayName("GET /api/v1/gdpr/data-export/status")
+    @DisplayName("GET /api/v1/account/data-export/status")
     class GetExportStatus {
 
         @Test
@@ -100,10 +115,10 @@ class GdprControllerTest {
                     .build();
             given(dataExportService.getExportStatus(anyLong())).willReturn(entity);
 
-            mockMvc.perform(get("/api/v1/gdpr/data-export/status"))
+            mockMvc.perform(get("/api/v1/account/data-export/status"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.status").value("COMPLETED"))
-                    .andExpect(jsonPath("$.progressPercent").value(0));
+                    .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                    .andExpect(jsonPath("$.data.progressPercent").value(0));
         }
 
         @Test
@@ -112,7 +127,7 @@ class GdprControllerTest {
             given(dataExportService.getExportStatus(anyLong()))
                     .willThrow(new BusinessException(GdprErrorCode.GDPR_003));
 
-            mockMvc.perform(get("/api/v1/gdpr/data-export/status"))
+            mockMvc.perform(get("/api/v1/account/data-export/status"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error.code").value("GDPR_003"));
         }

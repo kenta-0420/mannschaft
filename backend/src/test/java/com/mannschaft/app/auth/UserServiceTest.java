@@ -11,6 +11,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.service.UserService;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.auth.dto.ChangePasswordRequest;
 import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.RequestEmailChangeRequest;
@@ -77,6 +78,9 @@ class UserServiceTest {
 
     @Mock
     private EncryptionService encryptionService;
+
+    @Mock
+    private UserRoleRepository userRoleRepository;
 
     @InjectMocks
     private UserService userService;
@@ -289,6 +293,8 @@ class UserServiceTest {
             given(passwordEncoder.matches("Password1!", ENCODED_PASSWORD)).willReturn(true);
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
             given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+            // SYSTEM_ADMINチェック: 唯一の管理者ではない
+            given(userRoleRepository.countSystemAdmins()).willReturn(2L);
 
             // When
             userService.requestWithdrawal(USER_ID, req);
@@ -645,6 +651,7 @@ class UserServiceTest {
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(oauthUser));
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
             given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.countSystemAdmins()).willReturn(2L);
 
             // When
             userService.requestWithdrawal(USER_ID, req);
@@ -661,6 +668,7 @@ class UserServiceTest {
             RequestWithdrawalRequest req = new RequestWithdrawalRequest("WrongPassword!");
             UserEntity user = createActiveUser();
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(userRoleRepository.countSystemAdmins()).willReturn(2L);
             given(passwordEncoder.matches("WrongPassword!", ENCODED_PASSWORD)).willReturn(false);
 
             // When / Then

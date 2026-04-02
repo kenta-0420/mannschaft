@@ -12,6 +12,7 @@ import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthService;
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.auth.service.NewDeviceDetectionService;
 import com.mannschaft.app.auth.dto.ConfirmPasswordResetRequest;
 import com.mannschaft.app.auth.dto.LoginRequest;
 import com.mannschaft.app.auth.dto.LoginResponse;
@@ -87,6 +88,9 @@ class AuthServiceTest {
 
     @Mock
     private EncryptionService encryptionService;
+
+    @Mock
+    private NewDeviceDetectionService newDeviceDetectionService;
 
     @InjectMocks
     private AuthService authService;

@@ -61,6 +61,9 @@ public class DataExportEntity extends BaseEntity {
     @Column(length = 500)
     private String errorMessage;
 
+    /** 完了日時 */
+    private LocalDateTime completedAt;
+
     /**
      * 処理中に遷移する。
      */
@@ -87,6 +90,7 @@ public class DataExportEntity extends BaseEntity {
         this.fileSize = fileSize;
         this.zipPasswordHash = zipPasswordHash;
         this.expiresAt = expiresAt;
+        this.completedAt = LocalDateTime.now();
     }
 
     /**
