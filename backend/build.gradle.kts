@@ -122,6 +122,9 @@ dependencies {
     // === QRコード生成（ZXing） ===
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.google.zxing:javase:3.5.3")
+
+    // === Bucket4j レート制限（F12.5 エラーレポート） ===
+    implementation("com.bucket4j:bucket4j-core:8.10.1")
 }
 
 tasks.withType<Test> {

@@ -3,6 +3,7 @@ package com.mannschaft.app.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -47,6 +48,9 @@ public class SecurityConfig {
                 ).permitAll()
                 // F11.3 UI i18n: 対応言語一覧（認証不要）
                 .requestMatchers("/api/i18n/**").permitAll()
+                // F12.5 フロントエンドエラー追跡（認証不要）
+                .requestMatchers(HttpMethod.POST, "/api/v1/error-reports").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/active-incidents").permitAll()
                 // 開発中は全エンドポイントを許可（本番移行時に .authenticated() に変更）
                 .anyRequest().permitAll()
             )
