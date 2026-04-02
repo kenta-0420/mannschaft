@@ -11,6 +11,7 @@ const api = useApi()
 const authStore = useAuthStore()
 const notification = useNotification()
 const route = useRoute()
+const { applyUserLocale } = useLocale()
 
 async function handleLogin() {
   loading.value = true
@@ -29,19 +30,30 @@ async function handleLogin() {
     })
     if (data.data.mfaRequired) {
       navigateTo(`/2fa-verify?session=${data.data.mfaSessionToken}`)
-    }
-    else {
+    } else {
       authStore.setTokens(data.data.accessToken, data.data.refreshToken)
       authStore.setUser(data.data.user)
+
+      // F11.3: ユーザー保存済みロケールを適用
+      try {
+        const profile = await api<{ data: { locale?: string } }>('/api/v1/users/me')
+        if (profile.data.locale) {
+          await applyUserLocale(profile.data.locale)
+        }
+      } catch {
+        // ロケール取得失敗時はデフォルトで続行
+      }
+
       notification.success('ログイン成功')
       const redirect = (route.query.redirect as string) || '/'
       navigateTo(redirect)
     }
-  }
-  catch {
-    notification.error('ログインに失敗しました', 'メールアドレスまたはパスワードが正しくありません。')
-  }
-  finally {
+  } catch {
+    notification.error(
+      'ログインに失敗しました',
+      'メールアドレスまたはパスワードが正しくありません。',
+    )
+  } finally {
     loading.value = false
   }
 }
@@ -62,22 +74,9 @@ async function handleLogin() {
       </div>
       <div class="flex flex-col gap-2">
         <label for="password">パスワード</label>
-        <Password
-          id="password"
-          v-model="password"
-          :feedback="false"
-          toggle-mask
-          fluid
-          required
-        />
+        <Password id="password" v-model="password" :feedback="false" toggle-mask fluid required />
       </div>
-      <Button
-        type="submit"
-        label="ログイン"
-        icon="pi pi-sign-in"
-        :loading="loading"
-        class="mt-2"
-      />
+      <Button type="submit" label="ログイン" icon="pi pi-sign-in" :loading="loading" class="mt-2" />
       <div class="flex flex-col items-center gap-2">
         <NuxtLink to="/forgot-password" class="text-sm text-primary hover:underline">
           パスワードをお忘れですか？

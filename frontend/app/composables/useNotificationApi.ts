@@ -116,6 +116,11 @@ export function useNotificationApi() {
     return api('/api/v1/push-subscriptions', { method: 'DELETE' })
   }
 
+  // === Admin Stats ===
+  async function getAdminNotificationStats() {
+    return api<{ data: unknown }>('/api/v1/admin/notifications/stats')
+  }
+
   return {
     getNotifications,
     getUnreadCount,
@@ -131,5 +136,6 @@ export function useNotificationApi() {
     updateTypePreferences,
     registerPushSubscription,
     unregisterPushSubscription,
+    getAdminNotificationStats,
   }
 }

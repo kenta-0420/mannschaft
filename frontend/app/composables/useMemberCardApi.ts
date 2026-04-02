@@ -3,6 +3,7 @@ import type {
   MemberCardQr,
   CheckinRecord,
   CheckinStats,
+  CheckinHistoryRecord,
   CheckinLocation,
   VerifyResponse,
   CreateCheckinLocationRequest,
@@ -78,23 +79,32 @@ export function useMemberCardApi() {
     return res.data
   }
 
+  async function getTeamCheckins(teamId: number, params?: { from?: string; to?: string }) {
+    const query = new URLSearchParams()
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
+    const qs = query.toString()
+    const res = await api<{ data: CheckinHistoryRecord[] }>(
+      `/api/v1/teams/${teamId}/checkins${qs ? `?${qs}` : ''}`,
+    )
+    return res.data
+  }
+
   async function getTeamCheckinStats(teamId: number) {
     const res = await api<{ data: CheckinStats }>(`/api/v1/teams/${teamId}/checkins/stats`)
     return res.data
   }
 
   async function listLocations(teamId: number) {
-    const res = await api<{ data: CheckinLocation[] }>(
-      `/api/v1/teams/${teamId}/checkin-locations`,
-    )
+    const res = await api<{ data: CheckinLocation[] }>(`/api/v1/teams/${teamId}/checkin-locations`)
     return res.data
   }
 
   async function createLocation(teamId: number, body: CreateCheckinLocationRequest) {
-    const res = await api<{ data: CheckinLocation }>(
-      `/api/v1/teams/${teamId}/checkin-locations`,
-      { method: 'POST', body },
-    )
+    const res = await api<{ data: CheckinLocation }>(`/api/v1/teams/${teamId}/checkin-locations`, {
+      method: 'POST',
+      body,
+    })
     return res.data
   }
 
@@ -129,6 +139,7 @@ export function useMemberCardApi() {
     reactivate,
     listByTeam,
     listByOrg,
+    getTeamCheckins,
     getTeamCheckinStats,
     listLocations,
     createLocation,

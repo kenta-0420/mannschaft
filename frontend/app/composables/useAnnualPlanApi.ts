@@ -69,5 +69,26 @@ export function useAnnualPlanApi() {
     return api(`${base}/schedules/annual/copy-logs`)
   }
 
-  return { listCategories, createCategory, getAnnualView, getCopyPreview, executeCopy, getCopyLogs }
+  async function updateCategory(categoryId: number, body: { name?: string; color?: string }) {
+    const res = await api<{ data: EventCategory }>(`/api/v1/event-categories/${categoryId}`, {
+      method: 'PATCH',
+      body,
+    })
+    return res.data
+  }
+
+  async function deleteCategory(categoryId: number) {
+    await api(`/api/v1/event-categories/${categoryId}`, { method: 'DELETE' })
+  }
+
+  return {
+    listCategories,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    getAnnualView,
+    getCopyPreview,
+    executeCopy,
+    getCopyLogs,
+  }
 }

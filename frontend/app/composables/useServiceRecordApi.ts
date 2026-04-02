@@ -221,6 +221,24 @@ export function useServiceRecordApi() {
     })
   }
 
+  // === Member History ===
+  async function getMemberHistory(
+    teamId: number,
+    userId: number,
+    params?: Record<string, unknown>,
+  ) {
+    const qs = buildQuery(params)
+    return api<{ data: ServiceRecordResponse[] }>(
+      `/api/v1/teams/${teamId}/members/${userId}/service-history${qs ? `?${qs}` : ''}`,
+    )
+  }
+
+  async function getMemberSummary(teamId: number, userId: number) {
+    return api<{ data: Record<string, unknown> }>(
+      `/api/v1/teams/${teamId}/members/${userId}/service-history/summary`,
+    )
+  }
+
   // === My History ===
   async function getMyHistory() {
     return api<{ data: ServiceRecordResponse[] }>('/api/v1/service-records/me')
@@ -257,6 +275,8 @@ export function useServiceRecordApi() {
     createOrgTemplate,
     updateOrgTemplate,
     deleteOrgTemplate,
+    getMemberHistory,
+    getMemberSummary,
     getMyHistory,
   }
 }

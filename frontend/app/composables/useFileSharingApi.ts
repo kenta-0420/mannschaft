@@ -63,7 +63,7 @@ export function useFileSharingApi() {
   }
 
   async function updateFile(fileId: number, body: Record<string, unknown>) {
-    return api<{ data: SharedFile }>(`/api/v1/files/${fileId}`, { method: 'PUT', body })
+    return api<{ data: SharedFile }>(`/api/v1/files/${fileId}`, { method: 'PATCH', body })
   }
 
   async function deleteFile(fileId: number) {
@@ -165,6 +165,55 @@ export function useFileSharingApi() {
     return api<{ data: FileVersion }>(`/api/v1/files/${fileId}/versions/${versionNumber}`)
   }
 
+  // === Scoped Folders (Team) ===
+  async function getTeamFolders(teamId: number) {
+    return api<{ data: SharedFolder[] }>(`/api/v1/teams/${teamId}/folders`)
+  }
+
+  async function createTeamFolder(teamId: number, body: Record<string, unknown>) {
+    return api<{ data: SharedFolder }>(`/api/v1/teams/${teamId}/folders`, { method: 'POST', body })
+  }
+
+  async function getTeamFolder(teamId: number, folderId: number) {
+    return api<FolderDetailResponse>(`/api/v1/teams/${teamId}/folders/${folderId}`)
+  }
+
+  async function updateTeamFolder(teamId: number, folderId: number, body: Record<string, unknown>) {
+    return api<{ data: SharedFolder }>(`/api/v1/teams/${teamId}/folders/${folderId}`, {
+      method: 'PATCH',
+      body,
+    })
+  }
+
+  async function deleteTeamFolder(teamId: number, folderId: number) {
+    return api(`/api/v1/teams/${teamId}/folders/${folderId}`, { method: 'DELETE' })
+  }
+
+  async function getTeamFolderChildren(teamId: number, folderId: number) {
+    return api<{ data: SharedFolder[] }>(`/api/v1/teams/${teamId}/folders/${folderId}/children`)
+  }
+
+  // === Scoped Folders (Organization) ===
+  async function getOrgFolders(organizationId: number) {
+    return api<{ data: SharedFolder[] }>(`/api/v1/organizations/${organizationId}/folders`)
+  }
+
+  async function createOrgFolder(organizationId: number, body: Record<string, unknown>) {
+    return api<{ data: SharedFolder }>(`/api/v1/organizations/${organizationId}/folders`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  // === Scoped Folders (Me) ===
+  async function getMyFolders() {
+    return api<{ data: SharedFolder[] }>('/api/v1/me/folders')
+  }
+
+  async function createMyFolder(body: Record<string, unknown>) {
+    return api<{ data: SharedFolder }>('/api/v1/me/folders', { method: 'POST', body })
+  }
+
   return {
     getFolders,
     getFolder,
@@ -195,5 +244,15 @@ export function useFileSharingApi() {
     addFileTag,
     removeFileTag,
     getFileVersion,
+    getTeamFolders,
+    createTeamFolder,
+    getTeamFolder,
+    updateTeamFolder,
+    deleteTeamFolder,
+    getTeamFolderChildren,
+    getOrgFolders,
+    createOrgFolder,
+    getMyFolders,
+    createMyFolder,
   }
 }

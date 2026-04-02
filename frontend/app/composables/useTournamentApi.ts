@@ -291,6 +291,36 @@ export function useTournamentApi() {
     return api<{ data: TournamentPreset[] }>('/api/v1/tournament-presets')
   }
 
+  // === Public (no auth) ===
+  async function getPublicTournaments(orgId: number) {
+    return api<{ data: TournamentResponse[] }>(`/api/v1/public/organizations/${orgId}/tournaments`)
+  }
+  async function getPublicTournament(orgId: number, tId: number) {
+    return api<{ data: TournamentResponse }>(
+      `/api/v1/public/organizations/${orgId}/tournaments/${tId}`,
+    )
+  }
+  async function getPublicStandings(orgId: number, tId: number, divId: number) {
+    return api<{ data: TournamentStanding[] }>(
+      `/api/v1/public/organizations/${orgId}/tournaments/${tId}/divisions/${divId}/standings`,
+    )
+  }
+  async function getPublicMatrix(orgId: number, tId: number, divId: number) {
+    return api<{ data: TournamentMatrix }>(
+      `/api/v1/public/organizations/${orgId}/tournaments/${tId}/divisions/${divId}/matrix`,
+    )
+  }
+  async function getPublicRankings(orgId: number, tId: number, statKey: string) {
+    return api<{ data: IndividualRanking[] }>(
+      `/api/v1/public/organizations/${orgId}/tournaments/${tId}/rankings/${statKey}`,
+    )
+  }
+  async function getPublicBracket(orgId: number, tId: number) {
+    return api<{ data: Record<string, unknown> }>(
+      `/api/v1/public/organizations/${orgId}/tournaments/${tId}/bracket`,
+    )
+  }
+
   // === Team-scoped ===
   async function getTeamTournamentHistory(teamId: number) {
     return api<{ data: TournamentHistory[] }>(`/api/v1/teams/${teamId}/tournament-history`)
@@ -346,6 +376,12 @@ export function useTournamentApi() {
     deleteTemplate,
     cloneTemplate,
     getPresets,
+    getPublicTournaments,
+    getPublicTournament,
+    getPublicStandings,
+    getPublicMatrix,
+    getPublicRankings,
+    getPublicBracket,
     getTeamTournamentHistory,
     getTeamTournamentStats,
   }

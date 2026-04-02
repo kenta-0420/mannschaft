@@ -209,6 +209,33 @@ export function useFormApi() {
     )
   }
 
+  // === Admin Form Presets ===
+  async function listFormPresets() {
+    return api<{ data: Array<Record<string, unknown>> }>('/api/v1/admin/form-presets')
+  }
+
+  async function createFormPreset(body: Record<string, unknown>) {
+    return api<{ data: Record<string, unknown> }>('/api/v1/admin/form-presets', {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function getFormPreset(presetId: number) {
+    return api<{ data: Record<string, unknown> }>(`/api/v1/admin/form-presets/${presetId}`)
+  }
+
+  async function updateFormPreset(presetId: number, body: Record<string, unknown>) {
+    return api<{ data: Record<string, unknown> }>(`/api/v1/admin/form-presets/${presetId}`, {
+      method: 'PUT',
+      body,
+    })
+  }
+
+  async function deleteFormPreset(presetId: number) {
+    return api(`/api/v1/admin/form-presets/${presetId}`, { method: 'DELETE' })
+  }
+
   return {
     listTemplates,
     getTemplate,
@@ -226,5 +253,10 @@ export function useFormApi() {
     updateSubmission,
     deleteSubmission,
     listMySubmissions,
+    listFormPresets,
+    createFormPreset,
+    getFormPreset,
+    updateFormPreset,
+    deleteFormPreset,
   }
 }

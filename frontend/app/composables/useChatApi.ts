@@ -55,7 +55,7 @@ export function useChatApi() {
 
   async function updateChannel(channelId: number, body: Record<string, unknown>) {
     return api<{ data: ChatChannelResponse }>(`/api/v1/chat/channels/${channelId}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body,
     })
   }
@@ -66,7 +66,7 @@ export function useChatApi() {
 
   async function archiveChannel(channelId: number, archived: boolean) {
     return api(`/api/v1/chat/channels/${channelId}/archive`, {
-      method: 'PATCH',
+      method: 'POST',
       body: { archived },
     })
   }
@@ -123,7 +123,7 @@ export function useChatApi() {
 
   async function editMessage(messageId: number, body: string) {
     return api<{ data: ChatMessageResponse }>(`/api/v1/chat/messages/${messageId}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: { body },
     })
   }
@@ -154,7 +154,7 @@ export function useChatApi() {
   // === Pin ===
   async function togglePin(messageId: number, pinned: boolean) {
     return api(`/api/v1/chat/messages/${messageId}/pin`, {
-      method: 'PATCH',
+      method: 'POST',
       body: { pinned },
     })
   }
@@ -180,11 +180,11 @@ export function useChatApi() {
 
   // === Bookmark ===
   async function bookmarkMessage(messageId: number) {
-    return api(`/api/v1/chat/messages/${messageId}/bookmark`, { method: 'POST' })
+    return api('/api/v1/chat/bookmarks', { method: 'POST', body: { messageId } })
   }
 
   async function removeBookmark(messageId: number) {
-    return api(`/api/v1/chat/messages/${messageId}/bookmark`, { method: 'DELETE' })
+    return api(`/api/v1/chat/bookmarks/${messageId}`, { method: 'DELETE' })
   }
 
   async function getBookmarks(cursor?: string) {
@@ -203,11 +203,17 @@ export function useChatApi() {
     })
   }
 
-  // === Upload ===
-  async function getUploadUrl(channelId: number, fileName: string, contentType: string) {
-    return api<{ data: { uploadUrl: string; fileKey: string } }>(
-      `/api/v1/chat/channels/${channelId}/messages/upload-url`,
-      { method: 'POST', body: { fileName, contentType } },
+  // === Upload / Download ===
+  async function getUploadUrl(fileName: string, contentType: string) {
+    return api<{ data: { uploadUrl: string; fileKey: string } }>('/api/v1/chat/files/upload-url', {
+      method: 'POST',
+      body: { fileName, contentType },
+    })
+  }
+
+  async function getDownloadUrl(fileKey: string) {
+    return api<{ data: { downloadUrl: string } }>(
+      `/api/v1/chat/files/${encodeURIComponent(fileKey)}/download-url`,
     )
   }
 
@@ -246,6 +252,7 @@ export function useChatApi() {
     removeBookmark,
     getBookmarks,
     getUploadUrl,
+    getDownloadUrl,
     forwardMessage,
     updateChannelSettings,
   }

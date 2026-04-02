@@ -95,20 +95,37 @@ export function usePaymentApi() {
   }
 
   // === Stripe Checkout ===
-  async function createCheckoutSession(
+  async function createCheckoutSession(itemId: number) {
+    return api<{ data: CheckoutSessionResponse }>(`/api/v1/payment-items/${itemId}/checkout`, {
+      method: 'POST',
+    })
+  }
+
+  // === Update Payment ===
+  async function updatePayment(
     scopeType: 'team' | 'organization',
     scopeId: number,
     itemId: number,
+    paymentId: number,
+    body: Record<string, unknown>,
   ) {
-    return api<{ data: CheckoutSessionResponse }>(
-      `${base(scopeType, scopeId)}/payment-items/${itemId}/checkout`,
-      { method: 'POST' },
-    )
+    return api(`${base(scopeType, scopeId)}/payment-items/${itemId}/payments/${paymentId}`, {
+      method: 'PATCH',
+      body,
+    })
   }
 
   // === My Payments ===
   async function getMyPayments() {
-    return api<{ data: MyPaymentResponse[] }>('/api/v1/payments/me')
+    return api<{ data: MyPaymentResponse[] }>('/api/v1/me/payments')
+  }
+
+  async function getMySubscriptions() {
+    return api<{ data: Record<string, unknown>[] }>('/api/v1/me/subscriptions')
+  }
+
+  async function getPaymentRequirements() {
+    return api<{ data: Record<string, unknown>[] }>('/api/v1/me/payment-requirements')
   }
 
   // === Export ===
@@ -159,6 +176,9 @@ export function usePaymentApi() {
     getPaymentSummary,
     createCheckoutSession,
     getMyPayments,
+    getMySubscriptions,
+    getPaymentRequirements,
+    updatePayment,
     exportPayments,
     refundPayment,
     cancelSubscription,

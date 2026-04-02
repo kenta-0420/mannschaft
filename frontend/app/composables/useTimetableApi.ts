@@ -129,6 +129,75 @@ export function useTimetableApi() {
     })
   }
 
+  async function update(
+    teamId: number,
+    timetableId: number,
+    body: Partial<{ name: string; termId: number; weekPatternEnabled: boolean }>,
+  ) {
+    const res = await api<{ data: Timetable }>(
+      `/api/v1/teams/${teamId}/timetables/${timetableId}`,
+      { method: 'PATCH', body },
+    )
+    return res.data
+  }
+
+  async function remove(teamId: number, timetableId: number) {
+    await api(`/api/v1/teams/${teamId}/timetables/${timetableId}`, { method: 'DELETE' })
+  }
+
+  async function updateChange(
+    timetableId: number,
+    changeId: number,
+    body: Partial<TimetableChange>,
+  ) {
+    const res = await api<{ data: TimetableChange }>(
+      `/api/v1/timetables/${timetableId}/changes/${changeId}`,
+      { method: 'PATCH', body },
+    )
+    return res.data
+  }
+
+  async function deleteChange(timetableId: number, changeId: number) {
+    await api(`/api/v1/timetables/${timetableId}/changes/${changeId}`, { method: 'DELETE' })
+  }
+
+  // === Terms ===
+  async function createTeamTerm(teamId: number, body: Partial<TimetableTerm>) {
+    const res = await api<{ data: TimetableTerm }>(`/api/v1/teams/${teamId}/timetable-terms`, {
+      method: 'POST',
+      body,
+    })
+    return res.data
+  }
+
+  async function createOrgTerm(orgId: number, body: Partial<TimetableTerm>) {
+    const res = await api<{ data: TimetableTerm }>(
+      `/api/v1/organizations/${orgId}/timetable-terms`,
+      { method: 'POST', body },
+    )
+    return res.data
+  }
+
+  async function updateTerm(termId: number, body: Partial<TimetableTerm>) {
+    const res = await api<{ data: TimetableTerm }>(`/api/v1/timetable-terms/${termId}`, {
+      method: 'PATCH',
+      body,
+    })
+    return res.data
+  }
+
+  async function deleteTerm(termId: number) {
+    await api(`/api/v1/timetable-terms/${termId}`, { method: 'DELETE' })
+  }
+
+  // === Period Templates ===
+  async function updatePeriodTemplates(orgId: number, body: Partial<TimetablePeriod>[]) {
+    await api(`/api/v1/organizations/${orgId}/timetable-periods`, {
+      method: 'PUT',
+      body: { periods: body },
+    })
+  }
+
   return {
     listTerms,
     listPeriods,
@@ -136,6 +205,8 @@ export function useTimetableApi() {
     getCurrent,
     get,
     create,
+    update,
+    remove,
     activate,
     archive,
     duplicate,
@@ -144,9 +215,16 @@ export function useTimetableApi() {
     getWeekly,
     listChanges,
     createChange,
+    updateChange,
+    deleteChange,
     exportPdf,
     getTodaySlots,
     getSubjectSuggestions,
     revertToDraft,
+    createTeamTerm,
+    createOrgTerm,
+    updateTerm,
+    deleteTerm,
+    updatePeriodTemplates,
   }
 }

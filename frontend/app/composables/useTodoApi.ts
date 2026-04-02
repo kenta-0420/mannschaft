@@ -80,7 +80,11 @@ export function useTodoApi() {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
-  async function listTodos(scopeType: 'team' | 'organization', scopeId: number, params?: TodoListParams) {
+  async function listTodos(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    params?: TodoListParams,
+  ) {
     const query = new URLSearchParams()
     if (params?.status) query.set('status', params.status)
     if (params?.priority) query.set('priority', params.priority)
@@ -96,12 +100,24 @@ export function useTodoApi() {
     return api<TodoDetail>(`${buildBase(scopeType, scopeId)}/todos/${todoId}`)
   }
 
-  async function createTodo(scopeType: 'team' | 'organization', scopeId: number, body: Record<string, unknown>) {
+  async function createTodo(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    body: Record<string, unknown>,
+  ) {
     return api<TodoDetail>(`${buildBase(scopeType, scopeId)}/todos`, { method: 'POST', body })
   }
 
-  async function updateTodo(scopeType: 'team' | 'organization', scopeId: number, todoId: number, body: Record<string, unknown>) {
-    return api<TodoDetail>(`${buildBase(scopeType, scopeId)}/todos/${todoId}`, { method: 'PUT', body })
+  async function updateTodo(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoId: number,
+    body: Record<string, unknown>,
+  ) {
+    return api<TodoDetail>(`${buildBase(scopeType, scopeId)}/todos/${todoId}`, {
+      method: 'PUT',
+      body,
+    })
   }
 
   async function deleteTodo(scopeType: 'team' | 'organization', scopeId: number, todoId: number) {
@@ -109,38 +125,100 @@ export function useTodoApi() {
   }
 
   // === Status ===
-  async function changeTodoStatus(scopeType: 'team' | 'organization', scopeId: number, todoId: number, status: string) {
-    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/status`, { method: 'PATCH', body: { status } })
+  async function changeTodoStatus(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoId: number,
+    status: string,
+  ) {
+    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/status`, {
+      method: 'PATCH',
+      body: { status },
+    })
   }
 
-  async function bulkChangeTodoStatus(scopeType: 'team' | 'organization', scopeId: number, todoIds: number[], status: string) {
-    return api(`${buildBase(scopeType, scopeId)}/todos/bulk-status`, { method: 'PATCH', body: { todoIds, status } })
+  async function bulkChangeTodoStatus(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoIds: number[],
+    status: string,
+  ) {
+    return api(`${buildBase(scopeType, scopeId)}/todos/bulk-status`, {
+      method: 'PATCH',
+      body: { todoIds, status },
+    })
   }
 
   // === Assignees ===
-  async function addAssignee(scopeType: 'team' | 'organization', scopeId: number, todoId: number, userId: number) {
-    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/assignees/${userId}`, { method: 'POST' })
+  async function addAssignee(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoId: number,
+    userId: number,
+  ) {
+    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/assignees`, {
+      method: 'POST',
+      body: { userId },
+    })
   }
 
-  async function removeAssignee(scopeType: 'team' | 'organization', scopeId: number, todoId: number, userId: number) {
-    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/assignees/${userId}`, { method: 'DELETE' })
+  async function removeAssignee(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoId: number,
+    userId: number,
+  ) {
+    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/assignees/${userId}`, {
+      method: 'DELETE',
+    })
   }
 
   // === Comments ===
-  async function getComments(scopeType: 'team' | 'organization', scopeId: number, todoId: number, page: number = 0) {
-    return api<CommentList>(`${buildBase(scopeType, scopeId)}/todos/${todoId}/comments?page=${page}&size=20`)
+  async function getComments(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoId: number,
+    page: number = 0,
+  ) {
+    return api<CommentList>(
+      `${buildBase(scopeType, scopeId)}/todos/${todoId}/comments?page=${page}&size=20`,
+    )
   }
 
-  async function addComment(scopeType: 'team' | 'organization', scopeId: number, todoId: number, body: string) {
-    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/comments`, { method: 'POST', body: { body } })
+  async function addComment(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoId: number,
+    body: string,
+  ) {
+    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/comments`, {
+      method: 'POST',
+      body: { body },
+    })
   }
 
-  async function updateComment(scopeType: 'team' | 'organization', scopeId: number, todoId: number, commentId: number, body: string) {
-    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/comments/${commentId}`, { method: 'PUT', body: { body } })
+  async function updateComment(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoId: number,
+    commentId: number,
+    body: string,
+  ) {
+    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/comments/${commentId}`, {
+      method: 'PUT',
+      body: { body },
+    })
   }
 
-  async function deleteComment(scopeType: 'team' | 'organization', scopeId: number, todoId: number, commentId: number) {
-    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/comments/${commentId}`, { method: 'DELETE' })
+  async function deleteComment(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoId: number,
+    commentId: number,
+  ) {
+    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/comments/${commentId}`, {
+      method: 'DELETE',
+    })
   }
 
   return {

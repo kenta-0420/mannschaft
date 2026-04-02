@@ -437,6 +437,11 @@ export function useSystemAdminApi() {
     })
   }
 
+  // === Stripe Admin ===
+  async function reconcileStripePayment(paymentId: number) {
+    return api(`/api/v1/admin/stripe/reconcile/${paymentId}`, { method: 'POST' })
+  }
+
   return {
     // Announcements
     getAnnouncements,
@@ -529,5 +534,7 @@ export function useSystemAdminApi() {
     // Yabai Unflag Requests
     getUnflagRequests,
     reviewUnflagRequest,
+    // Stripe Admin
+    reconcileStripePayment,
   }
 }

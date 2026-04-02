@@ -327,6 +327,55 @@ export function useScheduleApi() {
     })
   }
 
+  // === Attendance Stats ===
+  async function getTeamAttendanceStats(teamId: number, params?: { from?: string; to?: string }) {
+    const query = new URLSearchParams()
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
+    return api<{ data: unknown }>(`/api/v1/teams/${teamId}/attendance-stats?${query}`)
+  }
+
+  async function exportTeamAttendanceStats(
+    teamId: number,
+    params?: { from?: string; to?: string },
+  ) {
+    const query = new URLSearchParams()
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
+    return api(`/api/v1/teams/${teamId}/attendance-stats/export?${query}`, { responseType: 'blob' })
+  }
+
+  async function getOrgAttendanceStats(orgId: number, params?: { from?: string; to?: string }) {
+    const query = new URLSearchParams()
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
+    return api<{ data: unknown }>(`/api/v1/organizations/${orgId}/attendance-stats?${query}`)
+  }
+
+  async function exportOrgAttendanceStats(orgId: number, params?: { from?: string; to?: string }) {
+    const query = new URLSearchParams()
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
+    return api(`/api/v1/organizations/${orgId}/attendance-stats/export?${query}`, {
+      responseType: 'blob',
+    })
+  }
+
+  async function getMyAttendanceStats(params?: { from?: string; to?: string }) {
+    const query = new URLSearchParams()
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
+    return api<{ data: unknown }>(`/api/v1/me/attendance-stats?${query}`)
+  }
+
+  // === My Calendar ===
+  async function getMyCalendar(params?: { from?: string; to?: string }) {
+    const query = new URLSearchParams()
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
+    return api<{ data: unknown[] }>(`/api/v1/my/calendar?${query}`)
+  }
+
   // === Me Schedules ===
   async function getMySchedules(params?: {
     from?: string
@@ -401,6 +450,12 @@ export function useScheduleApi() {
     acceptScheduleInvitation,
     rejectScheduleInvitation,
     confirmScheduleInvitation,
+    getTeamAttendanceStats,
+    exportTeamAttendanceStats,
+    getOrgAttendanceStats,
+    exportOrgAttendanceStats,
+    getMyAttendanceStats,
+    getMyCalendar,
     getMySchedules,
     getMyScheduleDetail,
     createMySchedule,

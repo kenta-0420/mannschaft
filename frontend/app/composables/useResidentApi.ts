@@ -49,6 +49,17 @@ export function useResidentApi() {
     return api(`${buildBase(scopeType, scopeId)}/dwelling-units/${unitId}`, { method: 'DELETE' })
   }
 
+  async function batchCreateUnits(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    body: Array<Record<string, unknown>>,
+  ) {
+    return api<{ data: DwellingUnit[] }>(`${buildBase(scopeType, scopeId)}/dwelling-units/batch`, {
+      method: 'POST',
+      body,
+    })
+  }
+
   // === Residents ===
   async function getResidents(scopeType: 'team' | 'organization', scopeId: number, unitId: number) {
     return api<{ data: ResidentResponse[] }>(
@@ -143,11 +154,63 @@ export function useResidentApi() {
   }
 
   // === Property Listings ===
-  async function getListings(teamId: number) {
-    return api<{ data: PropertyListing[] }>(`/api/v1/teams/${teamId}/property-listings`)
+  async function getListings(scopeType: 'team' | 'organization', scopeId: number) {
+    return api<{ data: PropertyListing[] }>(`${buildBase(scopeType, scopeId)}/property-listings`)
   }
-  async function createListing(teamId: number, body: Record<string, unknown>) {
-    return api(`/api/v1/teams/${teamId}/property-listings`, { method: 'POST', body })
+
+  async function createListing(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    body: Record<string, unknown>,
+  ) {
+    return api<{ data: PropertyListing }>(`${buildBase(scopeType, scopeId)}/property-listings`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function getListing(scopeType: 'team' | 'organization', scopeId: number, id: number) {
+    return api<{ data: PropertyListing }>(
+      `${buildBase(scopeType, scopeId)}/property-listings/${id}`,
+    )
+  }
+
+  async function updateListing(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    id: number,
+    body: Record<string, unknown>,
+  ) {
+    return api<{ data: PropertyListing }>(
+      `${buildBase(scopeType, scopeId)}/property-listings/${id}`,
+      { method: 'PUT', body },
+    )
+  }
+
+  async function deleteListing(scopeType: 'team' | 'organization', scopeId: number, id: number) {
+    return api(`${buildBase(scopeType, scopeId)}/property-listings/${id}`, { method: 'DELETE' })
+  }
+
+  async function getListingInquiries(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    id: number,
+  ) {
+    return api<{ data: Array<Record<string, unknown>> }>(
+      `${buildBase(scopeType, scopeId)}/property-listings/${id}/inquiries`,
+    )
+  }
+
+  async function createListingInquiry(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    id: number,
+    body: Record<string, unknown>,
+  ) {
+    return api(`${buildBase(scopeType, scopeId)}/property-listings/${id}/inquiries`, {
+      method: 'POST',
+      body,
+    })
   }
 
   return {
@@ -156,6 +219,7 @@ export function useResidentApi() {
     createUnit,
     updateUnit,
     deleteUnit,
+    batchCreateUnits,
     getResidents,
     addResident,
     updateResident,
@@ -168,5 +232,10 @@ export function useResidentApi() {
     getMyResidentInfo,
     getListings,
     createListing,
+    getListing,
+    updateListing,
+    deleteListing,
+    getListingInquiries,
+    createListingInquiry,
   }
 }

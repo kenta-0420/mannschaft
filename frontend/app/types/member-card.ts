@@ -56,6 +56,16 @@ export interface VerifyResponse {
   checkinId: number
 }
 
+export interface CheckinHistoryRecord {
+  id: number
+  checkinType: string
+  checkedInAt: string
+  checkedInByName: string
+  location: string
+  cardNumber: string
+  displayName: string
+}
+
 export interface CreateCheckinLocationRequest {
   name: string
   autoCompleteReservation: boolean
