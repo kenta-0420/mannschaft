@@ -1,10 +1,25 @@
 package com.mannschaft.app.gdpr;
 
 import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.EmailChangeTokenRepository;
+import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
+import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
+import com.mannschaft.app.auth.repository.OAuthAccountRepository;
+import com.mannschaft.app.auth.repository.OAuthLinkTokenRepository;
+import com.mannschaft.app.auth.repository.PasswordResetTokenRepository;
+import com.mannschaft.app.auth.repository.RefreshTokenRepository;
+import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
+import com.mannschaft.app.chart.repository.ChartRecordRepository;
+import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.gdpr.entity.DataExportEntity;
+import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.gdpr.service.AccountPurgeService;
-import com.mannschaft.app.gdpr.service.ChartAnonymizationService;
-import com.mannschaft.app.gdpr.service.PaymentAnonymizationService;
+import com.mannschaft.app.payment.repository.MemberPaymentRepository;
+import com.mannschaft.app.payment.repository.StripeCustomerRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,14 +31,13 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AccountPurgeService 単体テスト")
@@ -31,12 +45,38 @@ class AccountPurgeServiceTest {
 
     @Mock
     private UserRepository userRepository;
-
     @Mock
-    private ChartAnonymizationService chartAnonymizationService;
-
+    private ChartRecordRepository chartRecordRepository;
     @Mock
-    private PaymentAnonymizationService paymentAnonymizationService;
+    private UserRoleRepository userRoleRepository;
+    @Mock
+    private TeamOrgMembershipRepository teamOrgMembershipRepository;
+    @Mock
+    private MemberPaymentRepository memberPaymentRepository;
+    @Mock
+    private StripeCustomerRepository stripeCustomerRepository;
+    @Mock
+    private DataExportRepository dataExportRepository;
+    @Mock
+    private StorageService storageService;
+    @Mock
+    private RefreshTokenRepository refreshTokenRepository;
+    @Mock
+    private EmailVerificationTokenRepository emailVerificationTokenRepository;
+    @Mock
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+    @Mock
+    private EmailChangeTokenRepository emailChangeTokenRepository;
+    @Mock
+    private MfaRecoveryTokenRepository mfaRecoveryTokenRepository;
+    @Mock
+    private OAuthLinkTokenRepository oAuthLinkTokenRepository;
+    @Mock
+    private OAuthAccountRepository oAuthAccountRepository;
+    @Mock
+    private TwoFactorAuthRepository twoFactorAuthRepository;
+    @Mock
+    private WebAuthnCredentialRepository webAuthnCredentialRepository;
 
     @InjectMocks
     private AccountPurgeService service;
@@ -67,20 +107,18 @@ class AccountPurgeServiceTest {
     }
 
     @Nested
-    @DisplayName("runPurge")
-    class RunPurge {
+    @DisplayName("purgeExpiredAccounts")
+    class PurgeExpiredAccounts {
 
         @Test
-        @DisplayName("正常系: dry-runモードでは実際の削除が実行されない")
-        void 正常_dryRun_削除されない() {
+        @DisplayName("正常系: 対象ユーザーなしの場合、削除が実行されない")
+        void 正常_対象なし_削除されない() {
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
                     .willReturn(List.of());
 
-            service.runPurge(true);
+            assertThatCode(() -> service.purgeExpiredAccounts())
+                    .doesNotThrowAnyException();
 
-            // 削除・匿名化が呼ばれないことを確認
-            verifyNoInteractions(chartAnonymizationService);
-            verifyNoInteractions(paymentAnonymizationService);
             verify(userRepository, never()).delete(any(UserEntity.class));
         }
 
@@ -90,8 +128,16 @@ class AccountPurgeServiceTest {
             UserEntity user = buildUser(USER_ID);
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
                     .willReturn(List.of(user));
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+            given(oAuthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webAuthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(chartRecordRepository.anonymizeCustomerUserId(USER_ID)).willReturn(0);
+            given(memberPaymentRepository.anonymizeUserId(any(), any())).willReturn(0);
+            given(stripeCustomerRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any())).willReturn(List.of());
 
-            service.runPurge(false);
+            service.purgeExpiredAccounts();
 
             verify(userRepository).delete(user);
         }
@@ -102,10 +148,18 @@ class AccountPurgeServiceTest {
             UserEntity user = buildUser(USER_ID);
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
                     .willReturn(List.of(user));
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+            given(oAuthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webAuthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(chartRecordRepository.anonymizeCustomerUserId(USER_ID)).willReturn(1);
+            given(memberPaymentRepository.anonymizeUserId(any(), any())).willReturn(0);
+            given(stripeCustomerRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any())).willReturn(List.of());
 
-            service.runPurge(false);
+            service.purgeExpiredAccounts();
 
-            verify(chartAnonymizationService).anonymizeCustomerUserId(USER_ID);
+            verify(chartRecordRepository).anonymizeCustomerUserId(USER_ID);
         }
 
         @Test
@@ -114,10 +168,18 @@ class AccountPurgeServiceTest {
             UserEntity user = buildUser(USER_ID);
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
                     .willReturn(List.of(user));
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+            given(oAuthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webAuthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(chartRecordRepository.anonymizeCustomerUserId(USER_ID)).willReturn(0);
+            given(memberPaymentRepository.anonymizeUserId(any(), any())).willReturn(1);
+            given(stripeCustomerRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any())).willReturn(List.of());
 
-            service.runPurge(false);
+            service.purgeExpiredAccounts();
 
-            verify(paymentAnonymizationService).anonymizeUserId(USER_ID, 0L);
+            verify(memberPaymentRepository).anonymizeUserId(any(), any());
         }
 
         @Test
@@ -129,16 +191,26 @@ class AccountPurgeServiceTest {
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
                     .willReturn(List.of(user1, user2));
 
-            // user1の匿名化で例外をスロー
-            willThrow(new RuntimeException("DB error"))
-                    .given(chartAnonymizationService).anonymizeCustomerUserId(USER_ID);
+            // user1の処理で例外をスロー
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID))
+                    .willThrow(new RuntimeException("DB error"));
+
+            // user2の処理は正常
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID + 1)).willReturn(List.of());
+            given(oAuthAccountRepository.findByUserId(USER_ID + 1)).willReturn(List.of());
+            given(twoFactorAuthRepository.findByUserId(USER_ID + 1)).willReturn(Optional.empty());
+            given(webAuthnCredentialRepository.findByUserId(USER_ID + 1)).willReturn(List.of());
+            given(chartRecordRepository.anonymizeCustomerUserId(USER_ID + 1)).willReturn(0);
+            given(memberPaymentRepository.anonymizeUserId(any(), any())).willReturn(0);
+            given(stripeCustomerRepository.findByUserId(USER_ID + 1)).willReturn(Optional.empty());
+            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any())).willReturn(List.of());
 
             // 例外がスローされずに全体が完了する
-            assertThatCode(() -> service.runPurge(false))
+            assertThatCode(() -> service.purgeExpiredAccounts())
                     .doesNotThrowAnyException();
 
             // user2は処理される
-            verify(chartAnonymizationService).anonymizeCustomerUserId(USER_ID + 1);
+            verify(userRepository).delete(user2);
         }
     }
 }

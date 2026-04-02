@@ -72,6 +72,7 @@ public class AuthService {
     private final DomainEventPublisher eventPublisher;
     private final StringRedisTemplate redisTemplate;
     private final EncryptionService encryptionService;
+    private final NewDeviceDetectionService newDeviceDetectionService;
 
     // レートリミット設定
     private static final int REGISTER_MAX_ATTEMPTS = 10;
@@ -588,7 +589,7 @@ public class AuthService {
         refreshTokenRepository.save(newToken);
 
         return ApiResponse.of(new TokenResponse(
-                newAccessToken, newRawRefreshToken, authTokenService.getAccessTokenExpirationSeconds()));
+                newAccessToken, newRawRefreshToken, newToken.getId(), authTokenService.getAccessTokenExpirationSeconds()));
     }
 
     // ========================================
@@ -835,7 +836,18 @@ public class AuthService {
                 .userAgent(userAgent)
                 .expiresAt(LocalDateTime.now().plusSeconds(authTokenService.getRefreshTokenExpirationSeconds()))
                 .build();
-        refreshTokenRepository.save(refreshToken);
+        RefreshTokenEntity savedToken = refreshTokenRepository.save(refreshToken);
+
+        // セッション上限チェック（F12.4 §5.7）
+        enforceMaxActiveSessions(user.getId());
+
+        // 新規デバイスログイン検知（F12.4 §5.5、非同期実行）
+        String deviceFingerprint = req.getDeviceFingerprint() != null
+                ? req.getDeviceFingerprint()
+                : authTokenService.hashToken(userAgent != null ? userAgent : "");
+        String deviceName = UserAgentParser.parse(userAgent).deviceName();
+        String locale = user.getLocale() != null ? user.getLocale() : "ja";
+        newDeviceDetectionService.checkAndNotify(user.getId(), ipAddress, deviceFingerprint, deviceName, locale);
 
         // 最終ログイン日時更新
         user.updateLastLoginAt();

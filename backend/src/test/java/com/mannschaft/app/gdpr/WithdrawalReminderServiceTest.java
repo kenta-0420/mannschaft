@@ -1,8 +1,8 @@
 package com.mannschaft.app.gdpr;
 
 import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.EmailService;
-import com.mannschaft.app.gdpr.repository.WithdrawalReminderRepository;
 import com.mannschaft.app.gdpr.service.WithdrawalReminderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -29,7 +29,7 @@ import static org.mockito.Mockito.verify;
 class WithdrawalReminderServiceTest {
 
     @Mock
-    private WithdrawalReminderRepository withdrawalReminderRepository;
+    private UserRepository userRepository;
 
     @Mock
     private EmailService emailService;
@@ -52,8 +52,8 @@ class WithdrawalReminderServiceTest {
     }
 
     @Nested
-    @DisplayName("sendReminders")
-    class SendReminders {
+    @DisplayName("sendWithdrawalReminders")
+    class SendWithdrawalReminders {
 
         @Test
         @DisplayName("正常系: 7日目ユーザーにメール送信される")
@@ -61,16 +61,16 @@ class WithdrawalReminderServiceTest {
             UserEntity user = buildUser(1L, "day7@example.com");
 
             // 7日目ユーザーは返すが25日目は空
-            given(withdrawalReminderRepository.findUsersForReminder(
-                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class)))
+            given(userRepository.findPendingDeletionUsers(
+                    any(LocalDateTime.class), any(LocalDateTime.class)))
                     .willReturn(List.of(user))  // 1回目（7日目）
                     .willReturn(List.of());      // 2回目（25日目）
 
-            service.sendReminders();
+            service.sendWithdrawalReminders();
 
             verify(emailService, times(1)).sendEmail(
                     eq("day7@example.com"),
-                    contains("7日"),
+                    contains("23日"),
                     anyString()
             );
         }
@@ -81,30 +81,33 @@ class WithdrawalReminderServiceTest {
             UserEntity user = buildUser(2L, "day25@example.com");
 
             // 7日目は空、25日目ユーザーは返す
-            given(withdrawalReminderRepository.findUsersForReminder(
-                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class)))
+            given(userRepository.findPendingDeletionUsers(
+                    any(LocalDateTime.class), any(LocalDateTime.class)))
                     .willReturn(List.of())       // 1回目（7日目）
                     .willReturn(List.of(user));  // 2回目（25日目）
 
-            service.sendReminders();
+            service.sendWithdrawalReminders();
 
             verify(emailService, times(1)).sendEmail(
                     eq("day25@example.com"),
-                    contains("25日"),
+                    contains("5日"),
                     anyString()
             );
         }
 
         @Test
-        @DisplayName("正常系: 送信済みユーザーはリポジトリが除外するためsendEmailが呼ばれない")
+        @DisplayName("正常系: 送信済みユーザー（reminderSentAtが1日以内）はsendEmailが呼ばれない")
         void 正常_送信済みユーザースキップ() {
-            // reminderSentAtが1日以内のユーザーはリポジトリ側でフィルタリングされる
-            // → findUsersForReminderが空リストを返す
-            given(withdrawalReminderRepository.findUsersForReminder(
-                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class)))
+            // reminderSentAtが1日以内のユーザーはサービス内でスキップされる
+            UserEntity user = buildUser(1L, "sent@example.com");
+            user.setReminderSentAt(LocalDateTime.now().minusHours(1));
+
+            given(userRepository.findPendingDeletionUsers(
+                    any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of(user))
                     .willReturn(List.of());
 
-            service.sendReminders();
+            service.sendWithdrawalReminders();
 
             verify(emailService, never()).sendEmail(anyString(), anyString(), anyString());
         }
@@ -115,12 +118,12 @@ class WithdrawalReminderServiceTest {
             UserEntity user7 = buildUser(1L, "day7@example.com");
             UserEntity user25 = buildUser(2L, "day25@example.com");
 
-            given(withdrawalReminderRepository.findUsersForReminder(
-                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class)))
+            given(userRepository.findPendingDeletionUsers(
+                    any(LocalDateTime.class), any(LocalDateTime.class)))
                     .willReturn(List.of(user7))   // 1回目（7日目）
                     .willReturn(List.of(user25)); // 2回目（25日目）
 
-            service.sendReminders();
+            service.sendWithdrawalReminders();
 
             verify(emailService, times(2)).sendEmail(anyString(), anyString(), anyString());
         }

@@ -323,9 +323,9 @@ public class AuthOAuthService {
                 .userAgent(userAgent)
                 .expiresAt(LocalDateTime.now().plusDays(7))
                 .build();
-        refreshTokenRepository.save(refreshTokenEntity);
+        RefreshTokenEntity saved = refreshTokenRepository.save(refreshTokenEntity);
 
-        return new TokenResponse(accessToken, refreshToken, 3600);
+        return new TokenResponse(accessToken, refreshToken, saved.getId(), 3600);
     }
 
     /**

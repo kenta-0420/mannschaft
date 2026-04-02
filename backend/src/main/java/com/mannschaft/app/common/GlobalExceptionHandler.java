@@ -38,7 +38,9 @@ public class GlobalExceptionHandler {
             CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT,
             "AD_006", HttpStatus.CONFLICT,
             "AD_007", HttpStatus.CONFLICT,
-            "AD_010", HttpStatus.FORBIDDEN
+            "AD_010", HttpStatus.FORBIDDEN,
+            "AUTH_033", HttpStatus.NOT_FOUND,
+            "AUTH_034", HttpStatus.CONFLICT
     );
 
     /**

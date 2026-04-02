@@ -1,10 +1,13 @@
 package com.mannschaft.app.gdpr;
 
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.gdpr.service.DataExportService;
+import com.mannschaft.app.gdpr.service.PersonalDataCollector;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -22,7 +25,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DataExportService 単体テスト")
@@ -32,7 +34,16 @@ class DataExportServiceTest {
     private DataExportRepository dataExportRepository;
 
     @Mock
+    private PersonalDataCollector personalDataCollector;
+
+    @Mock
     private StorageService storageService;
+
+    @Mock
+    private EmailService emailService;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private DataExportService service;
@@ -46,14 +57,6 @@ class DataExportServiceTest {
         @Test
         @DisplayName("正常系: COMPLETED後24時間以上経過している場合、新規エクスポートが作成される")
         void 正常_COMPLETED後24時間超_新規作成() {
-            DataExportEntity completed = DataExportEntity.builder()
-                    .userId(USER_ID)
-                    .status("COMPLETED")
-                    .build();
-            // completedAtを25時間前に設定するためtoBuilderで上書き
-            DataExportEntity completedOld = completed.toBuilder()
-                    .build();
-            // リフレクションでcompletedAtを設定（builderで直接設定できないため）
             given(dataExportRepository.findTopByUserIdOrderByCreatedAtDesc(USER_ID))
                     .willReturn(Optional.empty());
 
@@ -73,8 +76,8 @@ class DataExportServiceTest {
         @Test
         @DisplayName("異常系: 24時間以内にCOMPLETEDが存在する → GDPR_001例外")
         void 異常_24時間以内COMPLETED_GDPR001() {
-            // completedAtが30分前のCOMPLETEDエンティティを作成（リフレクションで設定）
-            DataExportEntity recent = buildEntityWithCompletedAt("COMPLETED", LocalDateTime.now().minusMinutes(30));
+            // createdAtが30分前のCOMPLETEDエンティティを作成（リフレクションで設定）
+            DataExportEntity recent = buildEntityWithCreatedAt("COMPLETED", LocalDateTime.now().minusMinutes(30));
 
             given(dataExportRepository.findTopByUserIdOrderByCreatedAtDesc(USER_ID))
                     .willReturn(Optional.of(recent));
@@ -160,9 +163,9 @@ class DataExportServiceTest {
         void 正常_スタックリセット() {
             given(dataExportRepository.resetStuckProcessing(any(), any())).willReturn(2);
 
-            int count = service.recoverStuckExports();
+            // recoverStuckExports()はvoidを返す
+            service.recoverStuckExports();
 
-            assertThat(count).isEqualTo(2);
             verify(dataExportRepository).resetStuckProcessing(any(LocalDateTime.class), any(String.class));
         }
     }
@@ -194,18 +197,19 @@ class DataExportServiceTest {
     // ===== ヘルパーメソッド =====
 
     /**
-     * completedAtをリフレクションで設定したDataExportEntityを生成する。
+     * createdAtをリフレクションで設定したDataExportEntityを生成する。
+     * requestExportではcreatedAtで24時間判定しているため。
      */
-    private DataExportEntity buildEntityWithCompletedAt(String status, LocalDateTime completedAt) {
+    private DataExportEntity buildEntityWithCreatedAt(String status, LocalDateTime createdAt) {
         DataExportEntity entity = DataExportEntity.builder()
                 .userId(USER_ID)
                 .status(status)
                 .build();
-        // completedAtはprivateフィールドなのでリフレクションで設定
         try {
-            var field = DataExportEntity.class.getDeclaredField("completedAt");
+            var baseEntityClass = com.mannschaft.app.common.BaseEntity.class;
+            var field = baseEntityClass.getDeclaredField("createdAt");
             field.setAccessible(true);
-            field.set(entity, completedAt);
+            field.set(entity, createdAt);
         } catch (Exception e) {
             throw new RuntimeException("テスト用エンティティ構築失敗", e);
         }
