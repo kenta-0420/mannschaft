@@ -140,6 +140,15 @@ export function useTeamApi() {
     return api(`/api/v1/teams/${teamId}/unarchive`, { method: 'PATCH' })
   }
 
+  async function restoreTeam(teamId: number) {
+    return api(`/api/v1/teams/${teamId}/restore`, { method: 'PATCH' })
+  }
+
+  // === 組織一覧 ===
+  async function getOrganizations(teamId: number) {
+    return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/teams/${teamId}/organizations`)
+  }
+
   // === フォロー（SUPPORTER） ===
   async function followTeam(teamId: number) {
     return api(`/api/v1/teams/${teamId}/follow`, { method: 'POST' })
@@ -256,6 +265,8 @@ export function useTeamApi() {
     deleteInviteToken,
     archiveTeam,
     unarchiveTeam,
+    restoreTeam,
+    getOrganizations,
     followTeam,
     unfollowTeam,
     getAccessRequirements,

@@ -30,6 +30,8 @@ import type {
   UserViolationHistoryResponse,
   OrganizationEntity,
   PageMeta,
+  ErrorReportResponse,
+  ErrorReportStatsResponse,
 } from '~/types/system-admin'
 
 const BASE = '/api/v1/system-admin'
@@ -442,6 +444,51 @@ export function useSystemAdminApi() {
     return api(`/api/v1/admin/stripe/reconcile/${paymentId}`, { method: 'POST' })
   }
 
+  // === Error Reports (F12.5) ===
+  async function getErrorReports(params?: {
+    status?: string
+    severity?: string
+    from?: string
+    to?: string
+    page?: number
+    size?: number
+    sort?: string
+  }) {
+    const query = new URLSearchParams()
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined && v !== null) query.set(k, String(v))
+      }
+    }
+    const qs = query.toString()
+    return api<{
+      data: ErrorReportResponse[]
+      meta: { page: number; size: number; totalElements: number; totalPages: number }
+    }>(`${BASE}/error-reports${qs ? `?${qs}` : ''}`)
+  }
+
+  async function getErrorReport(id: number) {
+    return api<{ data: ErrorReportResponse }>(`${BASE}/error-reports/${id}`)
+  }
+
+  async function updateErrorReport(
+    id: number,
+    body: { status?: string; severity?: string; adminNote?: string },
+  ) {
+    return api<{ data: ErrorReportResponse }>(`${BASE}/error-reports/${id}`, {
+      method: 'PATCH',
+      body,
+    })
+  }
+
+  async function bulkUpdateErrorReports(ids: number[], status: string) {
+    return api(`${BASE}/error-reports/bulk`, { method: 'PATCH', body: { ids, status } })
+  }
+
+  async function getErrorReportStats() {
+    return api<{ data: ErrorReportStatsResponse }>(`${BASE}/error-reports/stats`)
+  }
+
   return {
     // Announcements
     getAnnouncements,
@@ -536,5 +583,11 @@ export function useSystemAdminApi() {
     reviewUnflagRequest,
     // Stripe Admin
     reconcileStripePayment,
+    // Error Reports (F12.5)
+    getErrorReports,
+    getErrorReport,
+    updateErrorReport,
+    bulkUpdateErrorReports,
+    getErrorReportStats,
   }
 }

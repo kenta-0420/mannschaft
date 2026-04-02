@@ -164,6 +164,15 @@ export function useOrganizationApi() {
     return api(`/api/v1/organizations/${orgId}/unarchive`, { method: 'PATCH' })
   }
 
+  async function restoreOrganization(orgId: number) {
+    return api(`/api/v1/organizations/${orgId}/restore`, { method: 'PATCH' })
+  }
+
+  // === 全メンバー一覧 ===
+  async function getAllMembers(orgId: number) {
+    return api<{ data: MemberResponse[] }>(`/api/v1/organizations/${orgId}/members/all`)
+  }
+
   // === フォロー（SUPPORTER） ===
   async function followOrganization(orgId: number) {
     return api(`/api/v1/organizations/${orgId}/follow`, { method: 'POST' })
@@ -282,6 +291,8 @@ export function useOrganizationApi() {
     deleteInviteToken,
     archiveOrganization,
     unarchiveOrganization,
+    restoreOrganization,
+    getAllMembers,
     followOrganization,
     unfollowOrganization,
     getPermissionGroups,

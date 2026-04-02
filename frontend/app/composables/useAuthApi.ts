@@ -101,11 +101,31 @@ export function useAuthApi() {
     })
   }
 
+  // === 2FA Setup Verify ===
+  async function verifyTotpSetup(code: string) {
+    return api<{ data: MessageResponse }>('/api/v1/auth/2fa/verify', {
+      method: 'POST',
+      body: { code },
+    })
+  }
+
   // === OAuth ===
+  async function loginWithOAuth(provider: string, body: Record<string, unknown>) {
+    return api<{ data: TokenResponse }>(`/api/v1/auth/oauth/${provider}`, {
+      method: 'POST',
+      body,
+    })
+  }
+
   async function confirmOAuthLink(token: string) {
     return api(`/api/v1/auth/oauth/link/confirm?token=${encodeURIComponent(token)}`, {
       method: 'POST',
     })
+  }
+
+  // === Invite QR ===
+  async function getInviteQrCode(token: string) {
+    return api<Blob>(`/api/v1/invite/${token}/qr`)
   }
 
   // === Email Verification ===
@@ -133,7 +153,10 @@ export function useAuthApi() {
     completeWebAuthnRegister,
     beginWebAuthnLogin,
     completeWebAuthnLogin,
+    verifyTotpSetup,
+    loginWithOAuth,
     confirmOAuthLink,
+    getInviteQrCode,
     resendVerificationEmail,
   }
 }

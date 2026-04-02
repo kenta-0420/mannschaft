@@ -52,13 +52,13 @@ export const useErrorReport = () => {
       await $fetch(`${config.public.apiBase}/api/v1/error-reports`, {
         method: 'POST',
         body: {
-          error_message: state.value.errorMessage,
-          stack_trace: state.value.stackTrace,
-          page_url: state.value.pageUrl,
-          user_agent: state.value.userAgent,
-          user_comment: userComment ?? null,
-          user_id: authStore.currentUser?.id ?? null,
-          occurred_at: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' }).replace(' ', 'T'),
+          errorMessage: state.value.errorMessage,
+          stackTrace: state.value.stackTrace,
+          pageUrl: state.value.pageUrl,
+          userAgent: state.value.userAgent,
+          userComment: userComment ?? null,
+          userId: authStore.currentUser?.id ?? null,
+          occurredAt: new Date().toISOString(),
         },
       })
 

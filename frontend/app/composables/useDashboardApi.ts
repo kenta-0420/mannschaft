@@ -103,11 +103,11 @@ export function useDashboardApi() {
   }
 
   async function markNoticeRead(noticeId: number) {
-    return api(`/api/v1/notifications/${noticeId}/read`, { method: 'PATCH' })
+    return api(`/api/v1/notifications/${noticeId}/read`, { method: 'POST' })
   }
 
   async function markAllNoticesRead() {
-    return api('/api/v1/notifications/read-all', { method: 'PATCH' })
+    return api('/api/v1/notifications/read-all', { method: 'POST' })
   }
 
   // === Main Dashboard ===

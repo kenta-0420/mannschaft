@@ -391,3 +391,39 @@ export interface PagedResponse<T> {
   data: T[]
   meta: PageMeta
 }
+
+// ===== Error Reports (F12.5) =====
+export interface ErrorReportResponse {
+  id: number
+  errorMessage: string
+  stackTrace: string
+  pageUrl: string
+  userAgent: string
+  userComment: string
+  userId: number | null
+  organizationId: number | null
+  requestId: string
+  ipAddress: string
+  occurredAt: string
+  status: string
+  severity: string
+  resolvedBy: number | null
+  resolvedAt: string | null
+  adminNote: string
+  latestUserComment: string
+  errorHash: string
+  occurrenceCount: number
+  affectedUserCount: number
+  firstOccurredAt: string
+  lastOccurredAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ErrorReportStatsResponse {
+  totalNew: number
+  totalInvestigating: number
+  totalReopened: number
+  totalToday: number
+  topErrors: Array<{ errorHash: string; errorMessage: string; count: number }>
+}
