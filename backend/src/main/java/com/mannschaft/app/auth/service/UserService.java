@@ -25,6 +25,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.gdpr.GdprErrorCode;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -55,6 +57,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final DomainEventPublisher eventPublisher;
     private final EncryptionService encryptionService;
+    private final UserRoleRepository userRoleRepository;
 
     /**
      * パスワードポリシー: 8文字以上、大文字・小文字・数字・記号をそれぞれ1文字以上含む
@@ -364,6 +367,9 @@ public class UserService {
      */
     @Transactional
     public void requestWithdrawal(Long userId, RequestWithdrawalRequest req) {
+        // 唯一の SYSTEM_ADMIN であれば退会をブロック
+        checkNotLastSystemAdmin(userId);
+
         // 1. レートリミット
         authTokenService.checkRateLimit(
                 "mannschaft:auth:withdrawal_attempt:" + userId,
@@ -414,6 +420,17 @@ public class UserService {
     }
 
     // === ヘルパーメソッド ===
+
+    /**
+     * 対象ユーザーがプラットフォームレベルの唯一のSYSTEM_ADMINである場合、退会をブロックする。
+     * ロールは user_roles JOIN roles で管理（team_id・organization_id が NULL のプラットフォームスコープ）。
+     */
+    private void checkNotLastSystemAdmin(Long userId) {
+        long systemAdminCount = userRoleRepository.countSystemAdmins();
+        if (systemAdminCount <= 1 && userRoleRepository.isSystemAdmin(userId)) {
+            throw new BusinessException(GdprErrorCode.GDPR_006);
+        }
+    }
 
     /**
      * ユーザーを取得する。見つからない場合は AUTH_015 をスロー。
