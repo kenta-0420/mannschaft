@@ -39,15 +39,16 @@ public class DataExportEntity extends BaseEntity {
     @Builder.Default
     private Integer progressPercent = 0;
 
-    /** 処理ステップ */
-    @Column(length = 100)
+    /** 処理ステップ（DBカラム名: current_step） */
+    @Column(name = "current_step", length = 100)
     private String progressStep;
 
     /** S3オブジェクトキー（COMPLETED後に設定） */
     @Column(length = 500)
     private String s3Key;
 
-    /** ZIPファイルサイズ（バイト） */
+    /** ZIPファイルサイズ（バイト）（DBカラム名: file_size_bytes） */
+    @Column(name = "file_size_bytes")
     private Long fileSize;
 
     /** ZIPパスワードのbcryptハッシュ（平文は保存しない） */
