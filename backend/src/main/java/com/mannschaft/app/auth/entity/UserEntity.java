@@ -184,4 +184,18 @@ public class UserEntity extends BaseEntity {
     public void setReportingRestricted(boolean restricted) {
         this.reportingRestricted = restricted;
     }
+
+    /**
+     * 物理削除完了日時を記録する（AccountPurgeService用）。
+     */
+    public void setPurgedAt(LocalDateTime purgedAt) {
+        this.purgedAt = purgedAt;
+    }
+
+    /**
+     * リマインドメール送信日時を記録する（WithdrawalReminderService用）。
+     */
+    public void setReminderSentAt(LocalDateTime reminderSentAt) {
+        this.reminderSentAt = reminderSentAt;
+    }
 }

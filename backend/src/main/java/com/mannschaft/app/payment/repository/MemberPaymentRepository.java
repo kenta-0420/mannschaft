@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -71,6 +72,13 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
      * ユーザーの全支払い記録を取得する（チーム/組織横断）。
      */
     List<MemberPaymentEntity> findByUserId(Long userId);
+
+    /**
+     * 物理削除バッチ用: 退会ユーザーのuserIdをSENTINEL_USER_IDに差し替える（匿名化）。
+     */
+    @Modifying
+    @Query("UPDATE MemberPaymentEntity mp SET mp.userId = :sentinelId WHERE mp.userId = :userId")
+    int anonymizeUserId(@Param("userId") Long userId, @Param("sentinelId") Long sentinelId);
 
     /**
      * 支払い項目に対する全支払い記録を取得する。

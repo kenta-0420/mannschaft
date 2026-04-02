@@ -89,4 +89,19 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     List<UserEntity> findPurgeTargets(
             @Param("cutoff") LocalDateTime cutoff,
             Pageable pageable);
+
+    /**
+     * 退会済み（deleted_atが指定範囲内）かつ未purgeのユーザーを取得する。
+     * @SQLRestriction をバイパスするためネイティブSQL使用。
+     */
+    @Query(value = """
+        SELECT * FROM users
+        WHERE deleted_at >= :from
+          AND deleted_at < :to
+          AND purged_at IS NULL
+        ORDER BY deleted_at ASC
+        """, nativeQuery = true)
+    List<UserEntity> findPendingDeletionUsers(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
 }

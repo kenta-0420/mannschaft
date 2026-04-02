@@ -84,6 +84,13 @@ public interface ChartRecordRepository extends JpaRepository<ChartRecordEntity, 
     long countByTeamIdAndCustomerUserIdAndIsPinnedTrue(Long teamId, Long customerUserId);
 
     /**
+     * 物理削除バッチ用: customer_user_id をNULLに更新する（退会ユーザーの匿名化）。
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE ChartRecordEntity c SET c.customerUserId = NULL WHERE c.customerUserId = :userId")
+    int anonymizeCustomerUserId(@Param("userId") Long userId);
+
+    /**
      * 経過グラフ用に特定顧客のカルテIDと来店日を取得する。
      */
     @Query("SELECT c FROM ChartRecordEntity c WHERE c.teamId = :teamId AND c.customerUserId = :customerUserId " +
