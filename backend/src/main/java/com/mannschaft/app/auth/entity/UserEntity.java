@@ -106,6 +106,10 @@ public class UserEntity extends BaseEntity {
 
     private LocalDateTime deletedAt;
 
+    /** 物理削除完了日時。NULLの場合は未実行。 */
+    @Column(name = "purged_at")
+    private LocalDateTime purgedAt;
+
     /**
      * ユーザーステータス
      */

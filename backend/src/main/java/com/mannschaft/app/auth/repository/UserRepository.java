@@ -2,7 +2,10 @@ package com.mannschaft.app.auth.repository;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -71,4 +74,19 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      */
     @org.springframework.data.jpa.repository.Query("SELECT u.locale FROM UserEntity u WHERE u.id = :userId AND u.deletedAt IS NULL")
     Optional<String> findLocaleById(@org.springframework.data.repository.query.Param("userId") Long userId);
+
+    /**
+     * 物理削除対象ユーザーを取得する。
+     * @SQLRestriction("deleted_at IS NULL") をバイパスするためネイティブSQLを使用。
+     */
+    @Query(value = """
+        SELECT * FROM users
+        WHERE deleted_at < :cutoff
+          AND purged_at IS NULL
+          AND id != 0
+        ORDER BY deleted_at ASC
+        """, nativeQuery = true)
+    List<UserEntity> findPurgeTargets(
+            @Param("cutoff") LocalDateTime cutoff,
+            Pageable pageable);
 }
