@@ -5,6 +5,7 @@ import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
 import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
+import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
@@ -25,6 +26,7 @@ public class OverdueInvoiceBatchService {
 
     private final AdInvoiceRepository adInvoiceRepository;
     private final AdvertiserAccountRepository advertiserAccountRepository;
+    private final EmailService emailService;
     private final NotificationService notificationService;
     private final UserRoleRepository userRoleRepository;
 
@@ -84,8 +86,12 @@ public class OverdueInvoiceBatchService {
                                     NotificationScopeType.ORGANIZATION, orgId,
                                     "/advertiser/invoices/" + invoice.getId(), null
                             );
+                            String email = (String) row[1];
+                            if (email != null && !email.isBlank()) {
+                                String htmlBody = buildOverdueEmailHtml(invoice);
+                                emailService.sendEmail(email, title, htmlBody);
+                            }
                         }
-                        // EmailService 実装後に追加: 広告主へのメール通知
                     });
 
             // SYSTEM_ADMIN へのプッシュ通知
@@ -103,5 +109,18 @@ public class OverdueInvoiceBatchService {
             // 通知送信失敗はバッチ処理全体を止めない
             log.warn("延滞通知の送信に失敗しました: invoiceId={}", invoice.getId(), e);
         }
+    }
+
+    private String buildOverdueEmailHtml(AdInvoiceEntity invoice) {
+        return String.format("""
+                <html><body>
+                <p>請求書 <strong>%s</strong>（支払期限: %s）が延滞状態になりました。</p>
+                <p>お早めにお支払い手続きをお願いいたします。</p>
+                <p><a href="/advertiser/invoices/%d">請求書を確認する</a></p>
+                </body></html>
+                """,
+                invoice.getInvoiceNumber(),
+                invoice.getDueDate(),
+                invoice.getId());
     }
 }
