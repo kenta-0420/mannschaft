@@ -46,6 +46,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
     Optional<ChatMessageEntity> findByIdAndChannelId(Long id, Long channelId);
 
     /**
+     * 特定送信者のメッセージ総件数を取得する（GDPR削除プレビュー用）。
+     */
+    long countBySenderId(Long senderId);
+
+    /**
      * チャンネル内のメッセージを全文検索する。
      */
     @Query(value = SEARCH_BY_CHANNEL, nativeQuery = true)

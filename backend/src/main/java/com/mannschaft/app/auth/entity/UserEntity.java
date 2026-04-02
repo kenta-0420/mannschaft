@@ -2,6 +2,7 @@ package com.mannschaft.app.auth.entity;
 
 import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.common.EncryptedStringConverter;
+import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
  * ユーザーマスターエンティティ。認証・プロフィール情報を管理する。
  * 氏名・電話番号・郵便番号はAES-256-GCMで暗号化して保存する。
  */
+@PersonalData(category = "account")
 @Entity
 @Table(name = "users")
 @SQLRestriction("deleted_at IS NULL")

@@ -1,6 +1,7 @@
 package com.mannschaft.app.chat.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 /**
  * チャットメッセージエンティティ。チャンネル内のメッセージ・スレッド返信を管理する。
  */
+@PersonalData(category = "chatMessages")
 @Entity
 @Table(name = "chat_messages")
 @SQLRestriction("deleted_at IS NULL")

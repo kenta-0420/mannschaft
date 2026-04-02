@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.gdpr.PersonalData;
 import com.mannschaft.app.payment.PaymentMethod;
 import com.mannschaft.app.payment.PaymentStatus;
 import jakarta.persistence.Column;
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
 /**
  * 支払い記録エンティティ。Stripe 自動決済または ADMIN 手動記録による支払い情報を管理する。
  */
+@PersonalData(category = "payments")
 @Entity
 @Table(name = "member_payments")
 @Getter

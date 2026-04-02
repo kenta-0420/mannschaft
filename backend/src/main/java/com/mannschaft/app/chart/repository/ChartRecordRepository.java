@@ -84,6 +84,11 @@ public interface ChartRecordRepository extends JpaRepository<ChartRecordEntity, 
     long countByTeamIdAndCustomerUserIdAndIsPinnedTrue(Long teamId, Long customerUserId);
 
     /**
+     * 特定顧客のカルテ総件数を取得する（GDPR削除プレビュー用）。
+     */
+    long countByCustomerUserId(Long customerUserId);
+
+    /**
      * 経過グラフ用に特定顧客のカルテIDと来店日を取得する。
      */
     @Query("SELECT c FROM ChartRecordEntity c WHERE c.teamId = :teamId AND c.customerUserId = :customerUserId " +
