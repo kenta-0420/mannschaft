@@ -44,6 +44,8 @@ public interface AuthMapper {
      * RefreshTokenEntity から SessionResponse へのマッピング。
      * isCurrent は Service 側でリクエスト中のトークンと比較して判定するため ignore とする。
      */
+    @Mapping(target = "deviceName", ignore = true)
+    @Mapping(target = "deviceType", ignore = true)
     @Mapping(target = "isCurrent", ignore = true)
     SessionResponse toSessionResponse(RefreshTokenEntity refreshToken);
 

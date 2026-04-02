@@ -16,7 +16,9 @@ public class LogoutEvent extends BaseEvent {
         /** 単一セッションのログアウト */
         SESSION,
         /** 全セッションのログアウト */
-        ALL_SESSIONS
+        ALL_SESSIONS,
+        /** パスワード変更に伴う他セッション一括ログアウト（F12.4 §5.6） */
+        PASSWORD_CHANGE
     }
 
     private final Long userId;

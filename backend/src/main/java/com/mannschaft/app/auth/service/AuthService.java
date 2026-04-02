@@ -35,6 +35,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.auth.util.UserAgentParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -44,6 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -78,6 +80,9 @@ public class AuthService {
     private static final Duration LOGIN_WINDOW = Duration.ofMinutes(1);
     private static final int PASSWORD_RESET_MAX_ATTEMPTS = 3;
     private static final Duration PASSWORD_RESET_WINDOW = Duration.ofMinutes(1);
+
+    // セッション上限
+    private static final int MAX_ACTIVE_SESSIONS = 10;
 
     // アカウントロック設定
     private static final int ACCOUNT_LOCK_THRESHOLD = 5;
@@ -360,16 +365,56 @@ public class AuthService {
     }
 
     /**
-     * 全デバイスからのログアウトを行う。
+     * 全デバイスからのログアウトを行う（後方互換）。
      * 全RefreshToken失効 + Valkeyにuser_invalidated_at設定。
      *
      * @param userId ユーザーID
      */
     @Transactional
     public void logoutAllDevices(Long userId) {
-        // 1. 全RefreshToken失効
+        logoutAllDevices(userId, null, null, false);
+    }
+
+    /**
+     * 全デバイスからのログアウトを行う。
+     * keepCurrent=true の場合は現セッションを除外して無効化する。
+     *
+     * @param userId           ユーザーID
+     * @param currentTokenHash 現セッションのトークンハッシュ（nullable）
+     * @param currentSessionId 現セッションのID（nullable）
+     * @param keepCurrent      true の場合、現セッションを維持する
+     */
+    @Transactional
+    public void logoutAllDevices(Long userId, String currentTokenHash, Long currentSessionId, boolean keepCurrent) {
+        // 1. 全アクティブRefreshToken取得
         List<RefreshTokenEntity> activeTokens = refreshTokenRepository
                 .findByUserIdAndRevokedAtIsNull(userId);
+
+        if (keepCurrent) {
+            // 現セッションを特定
+            RefreshTokenEntity currentToken = activeTokens.stream()
+                    .filter(t -> isCurrentSession(t, currentTokenHash, currentSessionId))
+                    .findFirst()
+                    .orElse(null);
+
+            if (currentToken != null) {
+                // 現セッション以外を revoke
+                int deviceCount = 0;
+                for (RefreshTokenEntity token : activeTokens) {
+                    if (!token.getId().equals(currentToken.getId())) {
+                        token.revoke();
+                        deviceCount++;
+                    }
+                }
+                // user_invalidated_at設定（Valkey）
+                authTokenService.setUserInvalidationTimestamp(userId);
+                eventPublisher.publish(new LogoutEvent(userId, deviceCount, LogoutType.ALL_SESSIONS));
+                return;
+            }
+            // 現セッション特定不可 → keepCurrent=false にフォールバック（全無効化）
+        }
+
+        // 全無効化
         int deviceCount = activeTokens.size();
         activeTokens.forEach(RefreshTokenEntity::revoke);
 
@@ -383,17 +428,29 @@ public class AuthService {
     /**
      * 特定デバイスからのログアウトを行う。
      *
-     * @param userId         ユーザーID
-     * @param refreshTokenId Refresh TokenのID
+     * @param userId           ユーザーID
+     * @param refreshTokenId   Refresh TokenのID
+     * @param currentTokenHash 現セッションのトークンハッシュ（nullable）
+     * @param currentSessionId 現セッションのID（nullable）
      */
     @Transactional
-    public void logoutDevice(Long userId, Long refreshTokenId) {
-        refreshTokenRepository.findById(refreshTokenId)
-                .filter(token -> token.getUserId().equals(userId))
-                .ifPresent(token -> {
-                    token.revoke();
-                    eventPublisher.publish(new LogoutEvent(userId, 1, LogoutType.SESSION, refreshTokenId));
-                });
+    public void logoutDevice(Long userId, Long refreshTokenId, String currentTokenHash, Long currentSessionId) {
+        RefreshTokenEntity token = refreshTokenRepository.findById(refreshTokenId)
+                .filter(t -> t.getUserId().equals(userId))
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_033));
+
+        // 既に無効化済み or 期限切れのトークンは対象外
+        if (token.getRevokedAt() != null || token.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new BusinessException(AuthErrorCode.AUTH_033);
+        }
+
+        // 現セッションの無効化は禁止
+        if (isCurrentSession(token, currentTokenHash, currentSessionId)) {
+            throw new BusinessException(AuthErrorCode.AUTH_034);
+        }
+
+        token.revoke();
+        eventPublisher.publish(new LogoutEvent(userId, 1, LogoutType.SESSION, refreshTokenId));
     }
 
     // ========================================
@@ -403,26 +460,52 @@ public class AuthService {
     /**
      * ユーザーのアクティブセッション一覧を取得する。
      *
-     * @param userId ユーザーID
-     * @return セッション一覧
+     * @param userId           ユーザーID
+     * @param currentTokenHash 現セッションのトークンハッシュ（nullable）
+     * @param currentSessionId 現セッションのID（nullable）
+     * @return セッション一覧（isCurrent=true が先頭、以降 lastUsedAt 降順）
      */
-    public ApiResponse<List<SessionResponse>> getSessions(Long userId) {
+    public ApiResponse<List<SessionResponse>> getSessions(Long userId, String currentTokenHash, Long currentSessionId) {
         List<RefreshTokenEntity> activeTokens = refreshTokenRepository
                 .findByUserIdAndRevokedAtIsNull(userId);
 
         List<SessionResponse> sessions = activeTokens.stream()
                 .filter(token -> token.getExpiresAt().isAfter(LocalDateTime.now()))
-                .map(token -> new SessionResponse(
-                        token.getId(),
-                        token.getIpAddress(),
-                        token.getUserAgent(),
-                        false,
-                        token.getCreatedAt(),
-                        token.getLastUsedAt(),
-                        false))
+                .map(token -> mapToSessionResponse(token, currentTokenHash, currentSessionId))
+                .sorted(Comparator
+                        .comparing(SessionResponse::isCurrent, Comparator.reverseOrder())
+                        .thenComparing(SessionResponse::getLastUsedAt,
+                                Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
 
         return ApiResponse.of(sessions);
+    }
+
+    /**
+     * セッションのデバイス名を更新する。
+     *
+     * @param userId        ユーザーID
+     * @param sessionId     セッションID
+     * @param newDeviceName 新しいデバイス名
+     * @return 更新後のセッション情報
+     */
+    @Transactional
+    public ApiResponse<SessionResponse> updateSessionDeviceName(Long userId, Long sessionId, String newDeviceName) {
+        RefreshTokenEntity token = refreshTokenRepository.findById(sessionId)
+                .filter(t -> t.getUserId().equals(userId))
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_033));
+
+        // 無効化済み or 期限切れチェック
+        if (token.getRevokedAt() != null || token.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new BusinessException(AuthErrorCode.AUTH_033);
+        }
+
+        token.updateDeviceName(newDeviceName);
+        refreshTokenRepository.save(token);
+
+        // Controller側で判定情報がないため isCurrent=false で返す
+        SessionResponse response = mapToSessionResponse(token, null, null);
+        return ApiResponse.of(response);
     }
 
     /**
@@ -600,6 +683,82 @@ public class AuthService {
     // ========================================
     // ヘルパー（private）
     // ========================================
+
+    /**
+     * アクティブセッション数が上限を超過している場合、古いセッションから順に無効化する。
+     *
+     * @param userId ユーザーID
+     */
+    private void enforceMaxActiveSessions(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        long activeCount = refreshTokenRepository
+                .countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(userId, now);
+
+        if (activeCount <= MAX_ACTIVE_SESSIONS) {
+            return;
+        }
+
+        List<RefreshTokenEntity> activeTokens = refreshTokenRepository
+                .findByUserIdAndRevokedAtIsNull(userId);
+
+        // lastUsedAt ASC（null は最後尾）でソートし、上限 - 1 以下になるまで古い順に revoke
+        activeTokens.stream()
+                .filter(t -> t.getExpiresAt().isAfter(now))
+                .sorted(Comparator.comparing(RefreshTokenEntity::getLastUsedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .limit(activeCount - MAX_ACTIVE_SESSIONS + 1)
+                .forEach(RefreshTokenEntity::revoke);
+    }
+
+    /**
+     * RefreshTokenEntity から SessionResponse を生成する共通ヘルパー。
+     */
+    private SessionResponse mapToSessionResponse(RefreshTokenEntity token,
+                                                  String currentTokenHash,
+                                                  Long currentSessionId) {
+        return new SessionResponse(
+                token.getId(),
+                resolveDeviceName(token),
+                resolveDeviceType(token),
+                token.getIpAddress(),
+                token.getUserAgent(),
+                token.getRememberMe(),
+                token.getCreatedAt(),
+                token.getLastUsedAt(),
+                token.getExpiresAt(),
+                isCurrentSession(token, currentTokenHash, currentSessionId));
+    }
+
+    /**
+     * デバイス名を解決する。token に deviceName が設定されていればそれを使い、
+     * なければ UserAgent をパースして取得する。
+     */
+    private String resolveDeviceName(RefreshTokenEntity token) {
+        if (token.getDeviceName() != null) {
+            return token.getDeviceName();
+        }
+        return UserAgentParser.parse(token.getUserAgent()).deviceName();
+    }
+
+    /**
+     * デバイス種別を解決する。UserAgent をパースして取得する。
+     */
+    private String resolveDeviceType(RefreshTokenEntity token) {
+        return UserAgentParser.parse(token.getUserAgent()).deviceType().name();
+    }
+
+    /**
+     * 指定されたトークンが現セッションかどうかを判定する。
+     */
+    private boolean isCurrentSession(RefreshTokenEntity token, String currentTokenHash, Long currentSessionId) {
+        if (currentTokenHash != null) {
+            return token.getTokenHash().equals(currentTokenHash);
+        }
+        if (currentSessionId != null) {
+            return token.getId().equals(currentSessionId);
+        }
+        return false;
+    }
 
     /**
      * パスワードポリシーを検証する。

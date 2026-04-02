@@ -779,7 +779,7 @@ class AuthServiceTest {
             given(refreshTokenRepository.findById(tokenId)).willReturn(Optional.of(token));
 
             // When
-            authService.logoutDevice(userId, tokenId);
+            authService.logoutDevice(userId, tokenId, null, null);
 
             // Then
             assertThat(token.getRevokedAt()).isNotNull();
@@ -787,8 +787,8 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: 他ユーザーのトークンの場合は何もしない")
-        void logoutDevice_他ユーザーのトークン_何もしない() {
+        @DisplayName("異常系: 他ユーザーのトークンの場合はAUTH_033")
+        void logoutDevice_他ユーザーのトークン_例外() {
             // Given
             Long userId = 1L;
             Long tokenId = 100L;
@@ -798,25 +798,20 @@ class AuthServiceTest {
                     .expiresAt(LocalDateTime.now().plusDays(7)).build();
             given(refreshTokenRepository.findById(tokenId)).willReturn(Optional.of(token));
 
-            // When
-            authService.logoutDevice(userId, tokenId);
-
-            // Then
-            assertThat(token.getRevokedAt()).isNull();
-            verify(eventPublisher, never()).publish(any());
+            // When/Then
+            assertThatThrownBy(() -> authService.logoutDevice(userId, tokenId, null, null))
+                    .isInstanceOf(BusinessException.class);
         }
 
         @Test
-        @DisplayName("正常系: 存在しないトークンIDの場合は何もしない")
-        void logoutDevice_トークン不在_何もしない() {
+        @DisplayName("異常系: 存在しないトークンIDの場合はAUTH_033")
+        void logoutDevice_トークン不在_例外() {
             // Given
             given(refreshTokenRepository.findById(999L)).willReturn(Optional.empty());
 
-            // When
-            authService.logoutDevice(1L, 999L);
-
-            // Then
-            verify(eventPublisher, never()).publish(any());
+            // When/Then
+            assertThatThrownBy(() -> authService.logoutDevice(1L, 999L, null, null))
+                    .isInstanceOf(BusinessException.class);
         }
     }
 
@@ -841,7 +836,7 @@ class AuthServiceTest {
                     .willReturn(List.of(activeToken));
 
             // When
-            ApiResponse<List<SessionResponse>> response = authService.getSessions(userId);
+            ApiResponse<List<SessionResponse>> response = authService.getSessions(userId, null, null);
 
             // Then
             assertThat(response.getData()).hasSize(1);
@@ -860,7 +855,7 @@ class AuthServiceTest {
                     .willReturn(List.of(expiredToken));
 
             // When
-            ApiResponse<List<SessionResponse>> response = authService.getSessions(userId);
+            ApiResponse<List<SessionResponse>> response = authService.getSessions(userId, null, null);
 
             // Then
             assertThat(response.getData()).isEmpty();

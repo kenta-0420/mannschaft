@@ -18,12 +18,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.auth.dto.UpdateSessionDeviceNameRequest;
+import com.mannschaft.app.auth.service.AuthTokenService;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
@@ -39,6 +42,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class AuthLoginController {
 
     private final AuthService authService;
+    private final AuthTokenService authTokenService;
 
     /**
      * ユーザー登録。
@@ -110,41 +114,79 @@ public class AuthLoginController {
     }
 
     /**
-     * 全デバイスからログアウト。
+     * 全デバイスからログアウト（F12.4）。
+     * keepCurrent=true で現セッションを保持して他を一括無効化。デフォルト false（後方互換）。
      */
     @DeleteMapping("/sessions")
     @Operation(summary = "全デバイスからログアウト")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "全デバイスログアウト成功")
-    public ResponseEntity<Void> logoutAllDevices() {
+    public ResponseEntity<Void> logoutAllDevices(
+            @CookieValue(name = "refresh_token", required = false) String rawRefreshToken,
+            @RequestParam(required = false) Long currentSessionId,
+            @RequestParam(required = false, defaultValue = "false") boolean keepCurrent) {
 
         Long userId = SecurityUtils.getCurrentUserId();
-        authService.logoutAllDevices(userId);
+        String currentTokenHash = hashRefreshToken(rawRefreshToken);
+        authService.logoutAllDevices(userId, currentTokenHash, currentSessionId, keepCurrent);
         return ResponseEntity.noContent().build();
     }
 
     /**
-     * 特定デバイスからログアウト。
+     * 特定デバイスからログアウト（F12.4）。
+     * 現セッションの無効化は 409 Conflict で拒否する。
      */
     @DeleteMapping("/sessions/{id}")
     @Operation(summary = "特定デバイスからログアウト")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "デバイスログアウト成功")
-    public ResponseEntity<Void> logoutDevice(@PathVariable Long id) {
+    public ResponseEntity<Void> logoutDevice(
+            @PathVariable Long id,
+            @CookieValue(name = "refresh_token", required = false) String rawRefreshToken,
+            @RequestParam(required = false) Long currentSessionId) {
 
         Long userId = SecurityUtils.getCurrentUserId();
-        authService.logoutDevice(userId, id);
+        String currentTokenHash = hashRefreshToken(rawRefreshToken);
+        authService.logoutDevice(userId, id, currentTokenHash, currentSessionId);
         return ResponseEntity.noContent().build();
     }
 
     /**
-     * アクティブセッション一覧取得。
+     * アクティブセッション一覧取得（F12.4）。
+     * isCurrent=true を先頭、以降 lastUsedAt 降順でソートして返却する。
      */
     @GetMapping("/sessions")
     @Operation(summary = "アクティブセッション一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<SessionResponse>>> getSessions() {
+    public ResponseEntity<ApiResponse<List<SessionResponse>>> getSessions(
+            @CookieValue(name = "refresh_token", required = false) String rawRefreshToken,
+            @RequestParam(required = false) Long currentSessionId) {
 
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(authService.getSessions(userId));
+        String currentTokenHash = hashRefreshToken(rawRefreshToken);
+        return ResponseEntity.ok(authService.getSessions(userId, currentTokenHash, currentSessionId));
+    }
+
+    /**
+     * セッションのデバイス名変更（F12.4）。
+     */
+    @PatchMapping("/sessions/{id}")
+    @Operation(summary = "セッションのデバイス名変更")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "デバイス名変更成功")
+    public ResponseEntity<ApiResponse<SessionResponse>> updateSessionDeviceName(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateSessionDeviceNameRequest request) {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(authService.updateSessionDeviceName(userId, id, request.getDeviceName()));
+    }
+
+    /**
+     * Refresh Token の SHA-256 ハッシュを計算する。null の場合は null を返す。
+     */
+    private String hashRefreshToken(String rawRefreshToken) {
+        if (rawRefreshToken == null) {
+            return null;
+        }
+        return authTokenService.hashToken(rawRefreshToken);
     }
 
     /**

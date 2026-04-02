@@ -106,7 +106,16 @@ public enum AuthErrorCode implements ErrorCode {
     AUTH_031("AUTH_031", "OAuth連携トークンが無効または期限切れです", Severity.WARN),
 
     /** 退会申請不存在 */
-    AUTH_032("AUTH_032", "退会申請が存在しません", Severity.WARN);
+    AUTH_032("AUTH_032", "退会申請が存在しません", Severity.WARN),
+
+    /** セッション不存在 */
+    AUTH_033("AUTH_033", "セッションが見つかりません", Severity.WARN),
+
+    /** 現在のセッションは無効化不可 */
+    AUTH_034("AUTH_034", "現在のセッションは無効化できません", Severity.WARN),
+
+    /** デバイス名バリデーションエラー */
+    AUTH_035("AUTH_035", "デバイス名が無効です（1〜100文字、制御文字不可）", Severity.WARN);
 
     private final String code;
     private final String message;

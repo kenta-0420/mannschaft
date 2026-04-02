@@ -76,6 +76,9 @@ dependencies {
     implementation("software.amazon.awssdk:sesv2")
     implementation("software.amazon.awssdk:cloudfront")
 
+    // User-Agent パース（F12.4 セッション管理）
+    implementation("com.github.ua-parser:uap-java:1.6.1")
+
     // MySQL
     runtimeOnly("com.mysql:mysql-connector-j")
 

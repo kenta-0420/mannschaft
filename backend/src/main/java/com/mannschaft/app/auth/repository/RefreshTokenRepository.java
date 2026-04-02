@@ -17,4 +17,21 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshTokenEntity
     List<RefreshTokenEntity> findByUserIdAndRevokedAtIsNull(Long userId);
 
     void deleteByExpiresAtBefore(LocalDateTime dateTime);
+
+    /**
+     * 指定ユーザーの直近N日以内に同一IP+デバイスフィンガープリントのトークンが存在するか確認する。
+     * 新規デバイスログイン検知に使用（F12.4 §5.5）。
+     */
+    boolean existsByUserIdAndIpAddressAndDeviceFingerprintAndCreatedAtAfter(
+            Long userId, String ipAddress, String deviceFingerprint, LocalDateTime since);
+
+    /**
+     * 指定ユーザーのアクティブセッション数を返す（セッション上限チェック用、F12.4 §5.7）。
+     */
+    long countByUserIdAndRevokedAtIsNullAndExpiresAtAfter(Long userId, LocalDateTime now);
+
+    /**
+     * 指定ユーザーのトークン総数を返す（初回ログイン判定用、F12.4 §5.5）。
+     */
+    long countByUserId(Long userId);
 }

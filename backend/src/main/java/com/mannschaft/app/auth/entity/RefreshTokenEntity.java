@@ -48,6 +48,9 @@ public class RefreshTokenEntity {
     @Column(length = 500)
     private String userAgent;
 
+    @Column(length = 100)
+    private String deviceName;
+
     @Column(nullable = false)
     private LocalDateTime expiresAt;
 
@@ -75,5 +78,12 @@ public class RefreshTokenEntity {
      */
     public void updateLastUsedAt() {
         this.lastUsedAt = LocalDateTime.now();
+    }
+
+    /**
+     * デバイス名を更新する。
+     */
+    public void updateDeviceName(String deviceName) {
+        this.deviceName = deviceName;
     }
 }
