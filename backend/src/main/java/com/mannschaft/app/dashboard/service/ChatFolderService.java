@@ -9,7 +9,9 @@ import com.mannschaft.app.dashboard.dto.BulkAssignFolderItemsRequest;
 import com.mannschaft.app.dashboard.dto.BulkAssignResultResponse;
 import com.mannschaft.app.dashboard.dto.ChatFolderResponse;
 import com.mannschaft.app.dashboard.dto.CreateChatFolderRequest;
+import com.mannschaft.app.dashboard.dto.FolderItemResponse;
 import com.mannschaft.app.dashboard.dto.UpdateChatFolderRequest;
+import com.mannschaft.app.dashboard.dto.UpdateFolderItemRequest;
 import com.mannschaft.app.dashboard.entity.ChatContactFolderEntity;
 import com.mannschaft.app.dashboard.entity.ChatContactFolderItemEntity;
 import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
@@ -196,6 +198,37 @@ public class ChatFolderService {
                 userId, folderId, assignedCount, skippedCount);
 
         return new BulkAssignResultResponse(assignedCount, skippedCount);
+    }
+
+    /**
+     * フォルダアイテムの属性（カスタム表示名・ピン留め・メモ）を更新する。
+     * CONTACT タイプのみ対象。itemType と itemId でアイテムを特定する。
+     *
+     * @throws BusinessException アイテム不存在 / フォルダ所有者不一致 / CONTACT 以外のアイテム種別時
+     */
+    @Transactional
+    public FolderItemResponse updateItemAttributes(Long userId, String itemTypeStr, Long itemId, UpdateFolderItemRequest request) {
+        FolderItemType itemType = parseFolderItemType(itemTypeStr);
+
+        // CONTACT 以外のアイテム種別は属性更新不可
+        if (itemType != FolderItemType.CONTACT) {
+            throw new BusinessException(DashboardErrorCode.DASHBOARD_010);
+        }
+
+        // アイテムを取得
+        ChatContactFolderItemEntity item = folderItemRepository.findByItemTypeAndItemId(itemType, itemId)
+                .orElseThrow(() -> new BusinessException(DashboardErrorCode.DASHBOARD_016));
+
+        // アイテムが属するフォルダの所有者確認
+        findOwnedFolder(userId, item.getFolderId());
+
+        // 属性を更新
+        item.updateAttributes(request.getCustomName(), request.getIsPinned(), request.getPrivateNote());
+
+        log.info("フォルダアイテム属性更新 userId={}, itemType={}, itemId={}, customName={}, isPinned={}",
+                userId, itemType, itemId, request.getCustomName(), request.getIsPinned());
+
+        return dashboardMapper.toFolderItemDetailResponse(item);
     }
 
     /**

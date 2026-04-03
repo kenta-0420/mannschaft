@@ -6,7 +6,9 @@ import com.mannschaft.app.dashboard.dto.BulkAssignFolderItemsRequest;
 import com.mannschaft.app.dashboard.dto.BulkAssignResultResponse;
 import com.mannschaft.app.dashboard.dto.ChatFolderResponse;
 import com.mannschaft.app.dashboard.dto.CreateChatFolderRequest;
+import com.mannschaft.app.dashboard.dto.FolderItemResponse;
 import com.mannschaft.app.dashboard.dto.UpdateChatFolderRequest;
+import com.mannschaft.app.dashboard.dto.UpdateFolderItemRequest;
 import com.mannschaft.app.dashboard.service.ChatFolderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -109,6 +112,21 @@ public class ChatFolderController {
         Long userId = SecurityUtils.getCurrentUserId();
         chatFolderService.removeItem(userId, itemType, itemId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * フォルダアイテムの属性（カスタム表示名・ピン留め・メモ）を更新する。
+     * CONTACT タイプのみ対象。
+     */
+    @PatchMapping("/items/{itemType}/{itemId}")
+    @Operation(summary = "アイテム属性更新", description = "連絡先のカスタム表示名・ピン留め・プライベートメモを更新する（CONTACT のみ）")
+    public ResponseEntity<ApiResponse<FolderItemResponse>> updateItemAttributes(
+            @PathVariable String itemType,
+            @PathVariable Long itemId,
+            @Valid @RequestBody UpdateFolderItemRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        FolderItemResponse response = chatFolderService.updateItemAttributes(userId, itemType, itemId, request);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
