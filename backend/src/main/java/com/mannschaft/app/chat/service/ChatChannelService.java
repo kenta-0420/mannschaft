@@ -79,7 +79,7 @@ public class ChatChannelService {
         validateChannelNameUniqueness(request, channelType);
 
         // DMチャンネル作成時: ブロック・DM受信制限チェック
-        if (channelType == ChannelType.DIRECT) {
+        if (channelType == ChannelType.DM) {
             validateDmCreation(request, createdBy);
         }
 

@@ -6,12 +6,14 @@ import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.dashboard.controller.DashboardController;
+import com.mannschaft.app.dashboard.dto.ChatHubResponse;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
 import com.mannschaft.app.dashboard.dto.PersonalDashboardResponse;
 import com.mannschaft.app.dashboard.dto.TeamDashboardResponse;
 import com.mannschaft.app.dashboard.dto.UpdateWidgetSettingsRequest;
 import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
 import com.mannschaft.app.dashboard.service.ActivityFeedService;
+import com.mannschaft.app.dashboard.service.ChatHubService;
 import com.mannschaft.app.dashboard.service.DashboardService;
 import com.mannschaft.app.dashboard.service.DashboardWidgetService;
 import com.mannschaft.app.notification.repository.NotificationRepository;
@@ -57,6 +59,7 @@ class DashboardControllerTest {
     @Mock private DashboardService dashboardService;
     @Mock private DashboardWidgetService widgetService;
     @Mock private ActivityFeedService activityFeedService;
+    @Mock private ChatHubService chatHubService;
     @Mock private AccessControlService accessControlService;
     @Mock private NotificationRepository notificationRepository;
     @Mock private TimelinePostRepository timelinePostRepository;
@@ -204,13 +207,16 @@ class DashboardControllerTest {
         @Test
         @DisplayName("正常系: チャットハブが200で返る")
         void getChatHub_正常_200() {
+            // Given
+            ChatHubResponse hubResponse = new ChatHubResponse(List.of(), List.of(), List.of(), null);
+            given(chatHubService.getChatHub(USER_ID)).willReturn(hubResponse);
+
             // When
-            ResponseEntity<ApiResponse<Map<String, Object>>> response = dashboardController.getChatHub(false);
+            ResponseEntity<ApiResponse<ChatHubResponse>> response = dashboardController.getChatHub();
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody().getData()).containsKey("team_groups");
-            assertThat(response.getBody().getData()).containsKey("custom_folders");
+            assertThat(response.getBody().getData()).isNotNull();
         }
     }
 
