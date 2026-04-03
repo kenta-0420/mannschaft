@@ -127,6 +127,16 @@ dependencies {
     implementation("com.bucket4j:bucket4j-core:8.10.1")
 }
 
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    // Windows での JVM クラッシュ（0xC0000005）対策: 十分なヒープを確保し G1GC を明示指定
+    jvmArgs(
+        "-Xmx1g",
+        "-XX:+UseG1GC",
+        "-XX:+HeapDumpOnOutOfMemoryError",
+        "-XX:HeapDumpPath=logs/heap-dump.hprof"
+    )
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
     finalizedBy(tasks.jacocoTestReport)

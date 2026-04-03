@@ -270,7 +270,29 @@
       "Bash(echo \"EXIT:$?\")",
       "Bash(xargs -I {} basename {})",
       "Bash(find D:/mannshaft/src/test/java/com/mannschaft/app/auth -name *Session* -o -name *Device* -o -name *NewDevice*)",
-      "Bash(./gradlew compileTestJava --no-daemon -q)"
+      "Bash(./gradlew compileTestJava --no-daemon -q)",
+      "Bash(mvn clean:*)",
+      "Bash(echo \"swagger.json → C:\\\\\\\\mannschaft-frontend\\\\\\\\swagger.json\")",
+      "Bash(pkill -f \"gradlew.*bootRun\")",
+      "Bash(pkill -f \"org.springframework.boot\")",
+      "Bash(./gradlew bootRun)",
+      "Bash(node:*)",
+      "Bash(mv:*)",
+      "Bash(powershell.exe -Command \"Write-Host '=== MySQL \\(3306\\) ==='; \\(Test-NetConnection -ComputerName localhost -Port 3306 -WarningAction SilentlyContinue\\).TcpTestSucceeded; Write-Host '=== Valkey \\(6379\\) ==='; \\(Test-NetConnection -ComputerName localhost -Port 6379 -WarningAction SilentlyContinue\\).TcpTestSucceeded\")",
+      "Bash(mkdir -p logs)",
+      "Bash(./gradlew flywayRepair)",
+      "Bash(mysql:*)",
+      "Bash(powershell.exe -Command \"& 'C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe' -h 127.0.0.1 -P 3306 -u mannschaft -pmannschaft mannschaft -e 'SELECT version, description, success FROM flyway_schema_history WHERE version LIKE \\\\\"12%\\\\\" ORDER BY installed_rank;'\")",
+      "Bash(npm install:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(wc -l D:/mannshaft/src/main/resources/messages*.properties)",
+      "Bash(wc -l D:/mannshaft/src/main/resources/ValidationMessages*.properties)",
+      "Read(//d/mannschaft-frontend/**)",
+      "Bash(nohup java:*)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(kill %1)",
+      "Bash(cat build/test-results/test/*.xml)",
+      "Bash(bc)"
     ]
   }
 }

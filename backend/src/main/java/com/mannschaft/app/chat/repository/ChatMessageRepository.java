@@ -46,6 +46,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
     Optional<ChatMessageEntity> findByIdAndChannelId(Long id, Long channelId);
 
     /**
+     * チャンネルのメッセージを古い順に全件取得する（履歴コピー用）。
+     */
+    List<ChatMessageEntity> findByChannelIdOrderByCreatedAtAsc(Long channelId);
+
+    /**
      * 特定送信者のメッセージ総件数を取得する（GDPR削除プレビュー用）。
      */
     long countBySenderId(Long senderId);

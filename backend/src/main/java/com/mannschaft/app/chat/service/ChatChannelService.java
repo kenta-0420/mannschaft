@@ -9,9 +9,12 @@ import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.ChatMapper;
 import com.mannschaft.app.chat.dto.ChannelResponse;
 import com.mannschaft.app.chat.dto.CreateChannelRequest;
+import com.mannschaft.app.chat.dto.InviteToZimmerRequest;
 import com.mannschaft.app.chat.dto.UpdateChannelRequest;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
+import com.mannschaft.app.chat.entity.ChatMessageEntity;
+import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.common.BusinessException;
@@ -37,6 +40,7 @@ public class ChatChannelService {
 
     private final ChatChannelRepository channelRepository;
     private final ChatChannelMemberRepository memberRepository;
+    private final ChatMessageRepository messageRepository;
     private final ChatMapper chatMapper;
     private final UserRepository userRepository;
     private final UserBlockRepository userBlockRepository;
@@ -171,6 +175,198 @@ public class ChatChannelService {
         ChatChannelEntity saved = channelRepository.save(channel);
         log.info("チャンネルアーカイブ完了: channelId={}", channelId);
         return chatMapper.toChannelResponse(saved);
+    }
+
+    /**
+     * 会話を開始する。参加者数に応じて Kabine（DM）/ Zimmer（GROUP_DM）を自動振り分け。
+     * <ul>
+     *   <li>userIds.size == 1 → Kabine: 既存 DM があれば返却（200）、なければ新規作成（201）</li>
+     *   <li>userIds.size >= 2 → Zimmer: 常に新規 GROUP_DM を作成（201）</li>
+     * </ul>
+     *
+     * @param callerId 会話開始者のユーザーID
+     * @param userIds  会話相手のユーザーIDリスト（1〜9名、自分自身を含まない）
+     * @return 会話チャンネルレスポンスと新規作成フラグ
+     */
+    @Transactional
+    public ConversationResult startConversation(Long callerId, List<Long> userIds) {
+        // 自分自身が含まれていないか検証
+        if (userIds.contains(callerId)) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_SELF_DM);
+        }
+
+        if (userIds.size() == 1) {
+            return startKabine(callerId, userIds.get(0));
+        } else {
+            return startZimmer(callerId, userIds);
+        }
+    }
+
+    /**
+     * Kabine（1対1 DM）を開始する。既存があれば返却、なければ新規作成。
+     */
+    private ConversationResult startKabine(Long callerId, Long partnerId) {
+        // ブロック・DM受信制限チェック
+        if (userBlockRepository.existsByBlockerIdAndBlockedId(partnerId, callerId)) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        }
+        UserEntity partner = userRepository.findById(partnerId)
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
+        checkDmReceiveRestriction(callerId, partner);
+
+        // 既存 DM を検索
+        return channelRepository.findExistingDm(callerId, partnerId)
+                .map(existing -> new ConversationResult(chatMapper.toChannelResponse(existing), false))
+                .orElseGet(() -> {
+                    // 新規 DM 作成
+                    ChatChannelEntity channel = ChatChannelEntity.builder()
+                            .channelType(ChannelType.DM)
+                            .createdBy(callerId)
+                            .build();
+                    ChatChannelEntity saved = channelRepository.save(channel);
+                    memberRepository.save(ChatChannelMemberEntity.builder()
+                            .channelId(saved.getId()).userId(callerId).role(ChannelMemberRole.OWNER).build());
+                    memberRepository.save(ChatChannelMemberEntity.builder()
+                            .channelId(saved.getId()).userId(partnerId).role(ChannelMemberRole.MEMBER).build());
+                    log.info("Kabine作成: channelId={}, callerId={}, partnerId={}", saved.getId(), callerId, partnerId);
+                    return new ConversationResult(chatMapper.toChannelResponse(saved), true);
+                });
+    }
+
+    /**
+     * Zimmer（グループDM）を開始する。常に新規作成。
+     */
+    private ConversationResult startZimmer(Long callerId, List<Long> partnerIds) {
+        // 全参加者のブロックチェック（自分がブロックされている相手がいないか確認）
+        for (Long partnerId : partnerIds) {
+            if (userBlockRepository.existsByBlockerIdAndBlockedId(partnerId, callerId)) {
+                throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+            }
+        }
+
+        ChatChannelEntity channel = ChatChannelEntity.builder()
+                .channelType(ChannelType.GROUP_DM)
+                .createdBy(callerId)
+                .build();
+        ChatChannelEntity saved = channelRepository.save(channel);
+
+        // 作成者をOWNERとして追加
+        memberRepository.save(ChatChannelMemberEntity.builder()
+                .channelId(saved.getId()).userId(callerId).role(ChannelMemberRole.OWNER).build());
+
+        // 参加者をMEMBERとして追加
+        for (Long partnerId : partnerIds) {
+            memberRepository.save(ChatChannelMemberEntity.builder()
+                    .channelId(saved.getId()).userId(partnerId).role(ChannelMemberRole.MEMBER).build());
+        }
+
+        log.info("Zimmer作成: channelId={}, callerId={}, members={}", saved.getId(), callerId, partnerIds.size() + 1);
+        return new ConversationResult(chatMapper.toChannelResponse(saved), true);
+    }
+
+    /**
+     * DM受信制限チェック（相手の設定に基づいて DM を受け入れるか判定）。
+     */
+    private void checkDmReceiveRestriction(Long senderId, UserEntity receiver) {
+        DmReceiveFrom setting = receiver.getDmReceiveFrom();
+        if (setting == DmReceiveFrom.TEAM_MEMBERS_ONLY) {
+            if (!userRoleRepository.existsSharedTeam(senderId, receiver.getId())) {
+                throw new BusinessException(ChatErrorCode.DM_RECEIVE_RESTRICTED);
+            }
+        } else if (setting == DmReceiveFrom.CONTACTS_ONLY) {
+            if (!chatContactFolderItemRepository.existsByFolderOwnerAndItemTypeAndItemId(
+                    receiver.getId(), FolderItemType.CONTACT, senderId)) {
+                throw new BusinessException(ChatErrorCode.DM_RECEIVE_RESTRICTED);
+            }
+        }
+    }
+
+    /**
+     * 会話開始結果。チャンネルレスポンスと新規作成フラグを保持する。
+     */
+    public record ConversationResult(ChannelResponse channel, boolean created) {}
+
+    /**
+     * KabineからZimmerへの招待。既存のKabine（DM）を維持したまま新しいZimmer（GROUP_DM）を作成する。
+     * <ol>
+     *   <li>channelId は ChannelType.DM のチャンネルであること</li>
+     *   <li>callerId はそのKabineのメンバーであること</li>
+     *   <li>Kabineの既存メンバー全員 + inviteeIds で新Zimmerを作成</li>
+     *   <li>shareHistory=true の場合、Kabineのトップレベルメッセージを転送コピー</li>
+     * </ol>
+     *
+     * @param channelId Kabine（DM）のチャンネルID
+     * @param callerId  招待操作を行うユーザーID
+     * @param request   招待リクエスト
+     * @return 新しく作成されたZimmerのチャンネルレスポンス
+     */
+    @Transactional
+    public ChannelResponse inviteToZimmer(Long channelId, Long callerId, InviteToZimmerRequest request) {
+        ChatChannelEntity kabine = findChannelOrThrow(channelId);
+
+        if (kabine.getChannelType() != ChannelType.DM) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_NOT_DM);
+        }
+        if (!memberRepository.existsByChannelIdAndUserId(channelId, callerId)) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        }
+
+        // 新しいZimmer（GROUP_DM）を作成
+        ChatChannelEntity zimmer = ChatChannelEntity.builder()
+                .channelType(ChannelType.GROUP_DM)
+                .createdBy(callerId)
+                .build();
+        ChatChannelEntity savedZimmer = channelRepository.save(zimmer);
+
+        // Kabineの既存メンバーを移行（callerIdはOWNER、他はMEMBER）
+        List<ChatChannelMemberEntity> kabineMembers =
+                memberRepository.findByChannelIdOrderByJoinedAtAsc(channelId);
+        for (ChatChannelMemberEntity m : kabineMembers) {
+            ChannelMemberRole role = m.getUserId().equals(callerId)
+                    ? ChannelMemberRole.OWNER : ChannelMemberRole.MEMBER;
+            memberRepository.save(ChatChannelMemberEntity.builder()
+                    .channelId(savedZimmer.getId())
+                    .userId(m.getUserId())
+                    .role(role)
+                    .build());
+        }
+
+        // 新たに招待するメンバーを追加（ブロックチェック込み）
+        for (Long inviteeId : request.getUserIds()) {
+            // 招待対象が呼び出しユーザーをブロックしている場合は拒否
+            if (userBlockRepository.existsByBlockerIdAndBlockedId(inviteeId, callerId)) {
+                throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+            }
+            if (!memberRepository.existsByChannelIdAndUserId(savedZimmer.getId(), inviteeId)) {
+                memberRepository.save(ChatChannelMemberEntity.builder()
+                        .channelId(savedZimmer.getId())
+                        .userId(inviteeId)
+                        .role(ChannelMemberRole.MEMBER)
+                        .build());
+            }
+        }
+
+        // 履歴共有: Kabineのトップレベルメッセージを転送コピー
+        if (request.isShareHistory()) {
+            List<ChatMessageEntity> history =
+                    messageRepository.findByChannelIdOrderByCreatedAtAsc(channelId);
+            for (ChatMessageEntity original : history) {
+                if (original.getParentId() != null) {
+                    // スレッド返信はスキップ
+                    continue;
+                }
+                messageRepository.save(ChatMessageEntity.builder()
+                        .channelId(savedZimmer.getId())
+                        .senderId(original.getSenderId())
+                        .body(original.getBody())
+                        .forwardedFromId(original.getId())
+                        .build());
+            }
+        }
+
+        log.info("Zimmer作成（Kabineから招待）: kabineId={}, zimmerId={}, callerId={}, shareHistory={}",
+                channelId, savedZimmer.getId(), callerId, request.isShareHistory());
+        return chatMapper.toChannelResponse(savedZimmer);
     }
 
     /**

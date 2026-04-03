@@ -5,8 +5,11 @@ import com.mannschaft.app.chat.dto.ChangeRoleRequest;
 import com.mannschaft.app.chat.dto.ChannelResponse;
 import com.mannschaft.app.chat.dto.ChannelSettingsRequest;
 import com.mannschaft.app.chat.dto.CreateChannelRequest;
+import com.mannschaft.app.chat.dto.InviteToZimmerRequest;
 import com.mannschaft.app.chat.dto.MemberResponse;
+import com.mannschaft.app.chat.dto.StartConversationRequest;
 import com.mannschaft.app.chat.dto.UpdateChannelRequest;
+import com.mannschaft.app.chat.service.ChatChannelService.ConversationResult;
 import com.mannschaft.app.chat.service.ChatChannelService;
 import com.mannschaft.app.chat.service.ChatMemberService;
 import com.mannschaft.app.common.ApiResponse;
@@ -159,6 +162,41 @@ public class ChatChannelController {
             @Valid @RequestBody ChangeRoleRequest request) {
         MemberResponse response = memberService.changeRole(channelId, userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 会話を開始する。参加者数に応じて Kabine（DM）/ Zimmer（GROUP_DM）を自動振り分け。
+     * <ul>
+     *   <li>1名 → Kabine: 既存DMがあれば200、なければ201</li>
+     *   <li>2名以上 → Zimmer: 常に新規作成201</li>
+     * </ul>
+     */
+    @PostMapping("/conversations")
+    @Operation(summary = "会話開始（Kabine/Zimmer自動振り分け）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "既存チャンネル返却")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "新規チャンネル作成")
+    public ResponseEntity<ApiResponse<ChannelResponse>> startConversation(
+            @Valid @RequestBody StartConversationRequest request) {
+        ConversationResult result = channelService.startConversation(
+                SecurityUtils.getCurrentUserId(), request.getUserIds());
+        HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(status).body(ApiResponse.of(result.channel()));
+    }
+
+    /**
+     * KabineからZimmerへの招待。
+     * 既存のKabine（DM）はそのまま残し、Kabineメンバー全員＋招待ユーザーで新Zimmer（GROUP_DM）を作成する。
+     * shareHistory=true の場合、Kabineの会話履歴が新Zimmerに転送コピーされる。
+     */
+    @PostMapping("/{channelId}/invite-to-zimmer")
+    @Operation(summary = "KabineからZimmerへの招待")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Zimmer作成成功")
+    public ResponseEntity<ApiResponse<ChannelResponse>> inviteToZimmer(
+            @PathVariable Long channelId,
+            @Valid @RequestBody InviteToZimmerRequest request) {
+        ChannelResponse response = channelService.inviteToZimmer(
+                channelId, SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     /**

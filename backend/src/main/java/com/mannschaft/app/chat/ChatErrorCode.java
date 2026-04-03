@@ -60,7 +60,10 @@ public enum ChatErrorCode implements ErrorCode {
     CHANNEL_NOT_DM("CHAT_016", "DMチャンネルのみグループDMに変換できます", Severity.WARN),
 
     /** DM受信制限により送信不可 */
-    DM_RECEIVE_RESTRICTED("CHAT_017", "相手ユーザーのDM受信設定により送信できません", Severity.WARN);
+    DM_RECEIVE_RESTRICTED("CHAT_017", "相手ユーザーのDM受信設定により送信できません", Severity.WARN),
+
+    /** 自分自身への DM / 会話開始 */
+    CHANNEL_SELF_DM("CHAT_018", "自分自身との会話は開始できません", Severity.WARN);
 
     private final String code;
     private final String message;
