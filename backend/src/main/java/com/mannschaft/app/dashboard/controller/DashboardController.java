@@ -9,12 +9,14 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
+import com.mannschaft.app.dashboard.dto.ChatHubResponse;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
 import com.mannschaft.app.dashboard.dto.PersonalDashboardResponse;
 import com.mannschaft.app.dashboard.dto.TeamDashboardResponse;
 import com.mannschaft.app.dashboard.dto.UpdateWidgetSettingsRequest;
 import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
 import com.mannschaft.app.dashboard.service.ActivityFeedService;
+import com.mannschaft.app.dashboard.service.ChatHubService;
 import com.mannschaft.app.dashboard.service.DashboardService;
 import com.mannschaft.app.dashboard.service.DashboardWidgetService;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -64,6 +66,7 @@ public class DashboardController {
     private final DashboardService dashboardService;
     private final DashboardWidgetService widgetService;
     private final ActivityFeedService activityFeedService;
+    private final ChatHubService chatHubService;
     private final AccessControlService accessControlService;
     private final NotificationRepository notificationRepository;
     private final TimelinePostRepository timelinePostRepository;
@@ -299,16 +302,11 @@ public class DashboardController {
      * チャットハブデータ取得。
      */
     @GetMapping("/chat-hub")
-    @Operation(summary = "チャットハブ", description = "チーム別自動グルーピング + カスタムフォルダ別のチャット一覧")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getChatHub(
-            @RequestParam(defaultValue = "false") Boolean allTeams) {
-        // チャットハブモジュール実装完了後にデータ取得を連携予定
-        return ResponseEntity.ok(ApiResponse.of(Map.of(
-                "team_groups", List.of(),
-                "custom_folders", List.of(),
-                "uncategorized_dms", List.of(),
-                "summary", Map.of("total_unread", 0, "total_dms", 0, "total_contacts", 0)
-        )));
+    @Operation(summary = "チャットハブ", description = "グループチャンネル・DM・フォルダ別連絡先の一覧を返す")
+    public ResponseEntity<ApiResponse<ChatHubResponse>> getChatHub() {
+        Long userId = SecurityUtils.getCurrentUserId();
+        ChatHubResponse response = chatHubService.getChatHub(userId);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     // ============================================
