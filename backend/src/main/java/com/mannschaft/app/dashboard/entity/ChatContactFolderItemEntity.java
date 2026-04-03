@@ -47,8 +47,30 @@ public class ChatContactFolderItemEntity {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /** 連絡先の任意表示名（未設定時はユーザーの display_name を使用） */
+    @Column(length = 50)
+    private String customName;
+
+    /** お気に入り（ピン留め）フラグ */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isPinned = false;
+
+    /** プライベートメモ（他ユーザーには非公開） */
+    @Column(length = 500)
+    private String privateNote;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    /**
+     * 連絡先属性（カスタム表示名・ピン留め・メモ）を更新する。
+     */
+    public void updateAttributes(String customName, Boolean isPinned, String privateNote) {
+        this.customName = customName;
+        if (isPinned != null) this.isPinned = isPinned;
+        this.privateNote = privateNote;
     }
 }

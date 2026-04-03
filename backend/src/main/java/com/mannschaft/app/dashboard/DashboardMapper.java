@@ -3,6 +3,7 @@ package com.mannschaft.app.dashboard;
 import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
 import com.mannschaft.app.dashboard.dto.ChatFolderItemResponse;
 import com.mannschaft.app.dashboard.dto.ChatFolderResponse;
+import com.mannschaft.app.dashboard.dto.FolderItemResponse;
 import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
 import com.mannschaft.app.dashboard.entity.ActivityFeedEntity;
 import com.mannschaft.app.dashboard.entity.ChatContactFolderEntity;
@@ -80,6 +81,12 @@ public interface DashboardMapper {
 
     @Mapping(target = "itemType", expression = "java(entity.getItemType().name())")
     ChatFolderItemResponse toFolderItemResponse(ChatContactFolderItemEntity entity);
+
+    /**
+     * フォルダアイテムエンティティを詳細レスポンス（属性付き）に変換する。
+     */
+    @Mapping(target = "itemType", expression = "java(entity.getItemType().name())")
+    FolderItemResponse toFolderItemDetailResponse(ChatContactFolderItemEntity entity);
 
     List<ChatFolderItemResponse> toFolderItemResponseList(List<ChatContactFolderItemEntity> entities);
 

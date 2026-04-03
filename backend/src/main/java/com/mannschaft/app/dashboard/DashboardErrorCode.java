@@ -55,7 +55,10 @@ public enum DashboardErrorCode implements ErrorCode {
     DASHBOARD_014("DASHBOARD_014", "無効なスコープタイプです", Severity.WARN),
 
     /** sortOrderが負数 */
-    DASHBOARD_015("DASHBOARD_015", "並び順は0以上の整数を指定してください", Severity.WARN);
+    DASHBOARD_015("DASHBOARD_015", "並び順は0以上の整数を指定してください", Severity.WARN),
+
+    /** フォルダアイテムが存在しない */
+    DASHBOARD_016("DASHBOARD_016", "指定されたフォルダアイテムが存在しません", Severity.WARN);
 
     private final String code;
     private final String message;
