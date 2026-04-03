@@ -52,6 +52,28 @@ public class ChatFolderService {
     }
 
     /**
+     * フォルダ内のアイテム一覧を取得する。
+     *
+     * @param userId   リクエストユーザーID（フォルダ所有者確認に使用）
+     * @param folderId 対象フォルダID
+     * @param sort     "LAST_MESSAGE" の場合は最終DM日時降順、それ以外はデフォルト順（作成日時昇順）
+     * @return フォルダアイテムのレスポンスリスト
+     * @throws BusinessException フォルダ不存在 / 所有者不一致時
+     */
+    public List<FolderItemResponse> getFolderItems(Long userId, Long folderId, String sort) {
+        findOwnedFolder(userId, folderId);
+        List<ChatContactFolderItemEntity> items;
+        if ("LAST_MESSAGE".equalsIgnoreCase(sort)) {
+            items = folderItemRepository.findByFolderIdOrderByLastMessageAt(folderId, userId);
+        } else {
+            items = folderItemRepository.findByFolderId(folderId);
+        }
+        return items.stream()
+                .map(dashboardMapper::toFolderItemDetailResponse)
+                .toList();
+    }
+
+    /**
      * カスタムフォルダを作成する。
      *
      * @throws BusinessException フォルダ数上限到達 / 同名フォルダ重複時

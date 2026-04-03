@@ -26,6 +26,33 @@ public interface ChatContactFolderItemRepository extends JpaRepository<ChatConta
     Optional<ChatContactFolderItemEntity> findByItemTypeAndItemId(FolderItemType itemType, Long itemId);
 
     /**
+     * フォルダ内アイテムを最終DM日時の降順で取得する。
+     * DM_CHANNEL タイプは直接チャネルの last_message_at を参照。
+     * CONTACT タイプは対応するDMチャネルの last_message_at を参照。
+     * DMチャネルが存在しない（まだDMしていない）場合は末尾に配置。
+     */
+    @Query("""
+        SELECT i FROM ChatContactFolderItemEntity i
+        LEFT JOIN ChatChannelEntity ch
+            ON ch.channelType IN (com.mannschaft.app.chat.ChannelType.DM, com.mannschaft.app.chat.ChannelType.GROUP_DM)
+            AND (
+                (i.itemType = com.mannschaft.app.dashboard.FolderItemType.DM_CHANNEL AND ch.id = i.itemId)
+                OR (i.itemType = com.mannschaft.app.dashboard.FolderItemType.CONTACT AND EXISTS (
+                    SELECT 1 FROM ChatChannelMemberEntity m1
+                    JOIN ChatChannelMemberEntity m2 ON m1.channelId = m2.channelId
+                    WHERE m1.channelId = ch.id
+                      AND m1.userId = :ownerId
+                      AND m2.userId = i.itemId
+                ))
+            )
+        WHERE i.folderId = :folderId
+        ORDER BY ch.lastMessageAt DESC NULLS LAST, i.createdAt DESC
+        """)
+    List<ChatContactFolderItemEntity> findByFolderIdOrderByLastMessageAt(
+            @Param("folderId") Long folderId,
+            @Param("ownerId") Long ownerId);
+
+    /**
      * アイテムをフォルダから外す。
      */
     @Modifying

@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -86,6 +87,20 @@ public class ChatFolderController {
         Long userId = SecurityUtils.getCurrentUserId();
         chatFolderService.deleteFolder(userId, id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * フォルダ内のアイテム一覧を取得する。
+     */
+    @GetMapping("/{id}/items")
+    @Operation(summary = "フォルダアイテム一覧",
+            description = "フォルダ内のアイテム一覧を取得する。sort=LAST_MESSAGE で最終DM日時降順")
+    public ResponseEntity<ApiResponse<List<FolderItemResponse>>> getFolderItems(
+            @PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "") String sort) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<FolderItemResponse> response = chatFolderService.getFolderItems(userId, id, sort);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
