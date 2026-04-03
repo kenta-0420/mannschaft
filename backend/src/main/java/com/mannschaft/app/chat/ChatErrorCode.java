@@ -57,7 +57,10 @@ public enum ChatErrorCode implements ErrorCode {
     ATTACHMENT_SIZE_EXCEEDED("CHAT_015", "添付ファイルのサイズ上限を超えています", Severity.ERROR),
 
     /** DM以外のチャンネルはグループDMに変換できない */
-    CHANNEL_NOT_DM("CHAT_016", "DMチャンネルのみグループDMに変換できます", Severity.WARN);
+    CHANNEL_NOT_DM("CHAT_016", "DMチャンネルのみグループDMに変換できます", Severity.WARN),
+
+    /** DM受信制限により送信不可 */
+    DM_RECEIVE_RESTRICTED("CHAT_017", "相手ユーザーのDM受信設定により送信できません", Severity.WARN);
 
     private final String code;
     private final String message;

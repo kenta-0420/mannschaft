@@ -1,5 +1,6 @@
 package com.mannschaft.app.auth.dto;
 
+import com.mannschaft.app.auth.DmReceiveFrom;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -22,4 +23,6 @@ public class UpdateProfileRequest {
     private final String avatarUrl;
     private final String phoneNumber;
     private final String postalCode;
+    /** DM受信制限設定。null の場合は更新しない。 */
+    private final DmReceiveFrom dmReceiveFrom;
 }
