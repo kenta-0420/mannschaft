@@ -33,4 +33,15 @@ public interface ChatContactFolderItemRepository extends JpaRepository<ChatConta
     void deleteByItemTypeAndItemId(
             @Param("itemType") FolderItemType itemType,
             @Param("itemId") Long itemId);
+
+    /**
+     * 指定ユーザーの連絡先フォルダに対象アイテムが登録されているか確認する（DM受信制限チェック用）。
+     */
+    @Query("SELECT COUNT(i) > 0 FROM ChatContactFolderItemEntity i " +
+            "JOIN ChatContactFolderEntity f ON i.folderId = f.id " +
+            "WHERE f.userId = :userId AND i.itemType = :itemType AND i.itemId = :itemId")
+    boolean existsByFolderOwnerAndItemTypeAndItemId(
+            @Param("userId") Long userId,
+            @Param("itemType") FolderItemType itemType,
+            @Param("itemId") Long itemId);
 }

@@ -1,5 +1,8 @@
 package com.mannschaft.app.chat.service;
 
+import com.mannschaft.app.auth.DmReceiveFrom;
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chat.ChannelMemberRole;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
@@ -12,6 +15,10 @@ import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.dashboard.FolderItemType;
+import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +38,10 @@ public class ChatChannelService {
     private final ChatChannelRepository channelRepository;
     private final ChatChannelMemberRepository memberRepository;
     private final ChatMapper chatMapper;
+    private final UserRepository userRepository;
+    private final UserBlockRepository userBlockRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final ChatContactFolderItemRepository chatContactFolderItemRepository;
 
     /**
      * ユーザーが参加しているチャンネル一覧を取得する。
@@ -66,6 +77,11 @@ public class ChatChannelService {
         ChannelType channelType = ChannelType.valueOf(request.getChannelType());
 
         validateChannelNameUniqueness(request, channelType);
+
+        // DMチャンネル作成時: ブロック・DM受信制限チェック
+        if (channelType == ChannelType.DIRECT) {
+            validateDmCreation(request, createdBy);
+        }
 
         ChatChannelEntity channel = ChatChannelEntity.builder()
                 .channelType(channelType)
@@ -194,6 +210,54 @@ public class ChatChannelService {
         if (channel.getIsArchived()) {
             throw new BusinessException(ChatErrorCode.CHANNEL_ARCHIVED);
         }
+    }
+
+    /**
+     * DM作成時のブロック・受信制限チェック。
+     * memberUserIds の最初の要素（送信者以外）を受信者とみなしてチェックする。
+     *
+     * @param request   チャンネル作成リクエスト
+     * @param senderId  送信者ユーザーID（DM開始者）
+     */
+    private void validateDmCreation(CreateChannelRequest request, Long senderId) {
+        if (request.getMemberUserIds() == null || request.getMemberUserIds().isEmpty()) {
+            return;
+        }
+
+        // 送信者以外の最初のメンバーを受信者とみなす
+        Long receiverId = request.getMemberUserIds().stream()
+                .filter(id -> !id.equals(senderId))
+                .findFirst()
+                .orElse(null);
+
+        if (receiverId == null) {
+            return;
+        }
+
+        // 1. ブロックチェック: 受信者が送信者をブロックしている場合は拒否
+        if (userBlockRepository.existsByBlockerIdAndBlockedId(receiverId, senderId)) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        }
+
+        // 2. DM受信制限チェック
+        UserEntity receiver = userRepository.findById(receiverId)
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
+
+        DmReceiveFrom dmReceiveFrom = receiver.getDmReceiveFrom();
+
+        if (dmReceiveFrom == DmReceiveFrom.TEAM_MEMBERS_ONLY) {
+            // 送信者と受信者がいずれかの共通チームに所属していなければ拒否
+            if (!userRoleRepository.existsSharedTeam(senderId, receiverId)) {
+                throw new BusinessException(ChatErrorCode.DM_RECEIVE_RESTRICTED);
+            }
+        } else if (dmReceiveFrom == DmReceiveFrom.CONTACTS_ONLY) {
+            // 受信者の連絡先フォルダに送信者が CONTACT として登録されていなければ拒否
+            if (!chatContactFolderItemRepository.existsByFolderOwnerAndItemTypeAndItemId(
+                    receiverId, FolderItemType.CONTACT, senderId)) {
+                throw new BusinessException(ChatErrorCode.DM_RECEIVE_RESTRICTED);
+            }
+        }
+        // ANYONE の場合はスルー
     }
 
     private void validateChannelNameUniqueness(CreateChannelRequest request, ChannelType channelType) {

@@ -190,6 +190,16 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     boolean isSystemAdmin(@Param("userId") Long userId);
 
     /**
+     * 2ユーザーが共通チームに所属しているか確認する（DM受信制限チェック用）。
+     */
+    @Query(value = "SELECT COUNT(*) > 0 FROM user_roles ur1 " +
+            "JOIN user_roles ur2 ON ur1.team_id = ur2.team_id " +
+            "WHERE ur1.user_id = :userId1 AND ur2.user_id = :userId2 " +
+            "AND ur1.team_id IS NOT NULL",
+            nativeQuery = true)
+    boolean existsSharedTeam(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
+
+    /**
      * スコープ内で指定日時以降にログインしたアクティブメンバー数を取得する。
      */
     @Query(value = "SELECT COUNT(DISTINCT ur.user_id) FROM user_roles ur " +

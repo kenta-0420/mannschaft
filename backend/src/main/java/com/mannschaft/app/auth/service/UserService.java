@@ -1,6 +1,7 @@
 package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.AuthErrorCode;
+import com.mannschaft.app.auth.DmReceiveFrom;
 import com.mannschaft.app.auth.entity.EmailChangeTokenEntity;
 import com.mannschaft.app.auth.repository.EmailChangeTokenRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
@@ -125,6 +126,7 @@ public class UserService {
         String newLastName = req.getLastName() != null ? req.getLastName() : user.getLastName();
         String newFirstName = req.getFirstName() != null ? req.getFirstName() : user.getFirstName();
         String newPhoneNumber = req.getPhoneNumber() != null ? req.getPhoneNumber() : user.getPhoneNumber();
+        DmReceiveFrom newDmReceiveFrom = req.getDmReceiveFrom() != null ? req.getDmReceiveFrom() : user.getDmReceiveFrom();
         UserEntity updated = user.toBuilder()
                 .lastName(newLastName)
                 .firstName(newFirstName)
@@ -141,6 +143,7 @@ public class UserService {
                 .phoneNumberHash(encryptionService.hmac(newPhoneNumber))
                 .locale(req.getLocale() != null ? req.getLocale() : user.getLocale())
                 .timezone(req.getTimezone() != null ? req.getTimezone() : user.getTimezone())
+                .dmReceiveFrom(newDmReceiveFrom)
                 .build();
         userRepository.save(updated);
 

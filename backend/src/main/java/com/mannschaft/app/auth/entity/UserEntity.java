@@ -1,5 +1,6 @@
 package com.mannschaft.app.auth.entity;
 
+import com.mannschaft.app.auth.DmReceiveFrom;
 import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.common.EncryptedStringConverter;
 import com.mannschaft.app.gdpr.PersonalData;
@@ -61,6 +62,12 @@ public class UserEntity extends BaseEntity {
 
     @Column(nullable = false)
     private Boolean isSearchable;
+
+    /** DM受信制限設定。誰からのDMを受け取るかを制御する。 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private DmReceiveFrom dmReceiveFrom = DmReceiveFrom.ANYONE;
 
     @Column(length = 500)
     private String avatarUrl;
@@ -199,5 +206,12 @@ public class UserEntity extends BaseEntity {
      */
     public void setReminderSentAt(LocalDateTime reminderSentAt) {
         this.reminderSentAt = reminderSentAt;
+    }
+
+    /**
+     * DM受信制限設定を更新する。
+     */
+    public void updateDmReceiveFrom(DmReceiveFrom dmReceiveFrom) {
+        this.dmReceiveFrom = dmReceiveFrom;
     }
 }
