@@ -11,8 +11,8 @@ interface AdCopy {
 }
 
 const TEMPLATE_COPY: Record<string, AdCopy> = {
-  SPORTS: {
-    title: 'スポーツ用品を楽天で',
+  CLUB: {
+    title: 'クラブ・サークル用品を楽天で',
     description: '練習着・トレーニング器具・チームウェアがポイントでお得に揃います。',
     tags: 'ユニフォーム / 備品 / 器具',
   },
@@ -45,6 +45,21 @@ const TEMPLATE_COPY: Record<string, AdCopy> = {
     title: '家族用品を楽天で',
     description: '家族の日常に役立つアイテム・イベント用品をポイントでお得に揃えましょう。',
     tags: '日用品 / 育児用品 / イベント用品',
+  },
+  RESTAURANT: {
+    title: '飲食店備品を楽天で',
+    description: '調理器具・食器・厨房備品をポイントを貯めながらお得に調達できます。',
+    tags: '調理器具 / 食器 / 厨房備品',
+  },
+  VOLUNTEER: {
+    title: 'ボランティア用品を楽天で',
+    description: '活動に必要な備品・イベント用品・防災グッズをポイントでお得に揃えましょう。',
+    tags: '備品 / イベント用品 / 防災グッズ',
+  },
+  HOBBY: {
+    title: '趣味・同好会用品を楽天で',
+    description: '趣味の道具・イベント備品・消耗品をポイントを活かしてお得にまとめ買いできます。',
+    tags: '趣味用品 / 備品 / 消耗品',
   },
 }
 

@@ -89,12 +89,15 @@ const activeTab = ref(0)
 const showLeaveConfirm = ref(false)
 
 const templateLabel: Record<string, string> = {
-  SPORTS: 'スポーツ',
+  CLUB: 'クラブ・サークル',
   CLINIC: 'クリニック',
   CLASS: 'クラス',
   COMMUNITY: 'コミュニティ',
   COMPANY: '企業',
   FAMILY: '家族',
+  RESTAURANT: '飲食店',
+  VOLUNTEER: 'ボランティア・NPO',
+  HOBBY: '趣味・同好会',
   OTHER: 'その他',
 }
 

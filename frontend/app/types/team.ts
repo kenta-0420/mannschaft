@@ -1,10 +1,13 @@
 export type TeamTemplate =
-  | 'SPORTS'
+  | 'CLUB'
   | 'CLINIC'
   | 'CLASS'
   | 'COMMUNITY'
   | 'COMPANY'
   | 'FAMILY'
+  | 'RESTAURANT'
+  | 'VOLUNTEER'
+  | 'HOBBY'
   | 'OTHER'
 export type TeamVisibility = 'PUBLIC' | 'ORGANIZATION_ONLY' | 'PRIVATE'
 

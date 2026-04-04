@@ -16,12 +16,15 @@ const orgType = ref('')
 
 const templateOptions = [
   { label: '全て', value: '' },
-  { label: 'スポーツ', value: 'SPORTS' },
+  { label: 'クラブ・サークル', value: 'CLUB' },
   { label: 'クリニック', value: 'CLINIC' },
   { label: 'クラス', value: 'CLASS' },
   { label: 'コミュニティ', value: 'COMMUNITY' },
   { label: '企業', value: 'COMPANY' },
   { label: '家族', value: 'FAMILY' },
+  { label: '飲食店', value: 'RESTAURANT' },
+  { label: 'ボランティア・NPO', value: 'VOLUNTEER' },
+  { label: '趣味・同好会', value: 'HOBBY' },
   { label: 'その他', value: 'OTHER' },
 ]
 
