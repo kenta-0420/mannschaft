@@ -6,6 +6,7 @@ export type TeamTemplate =
   | 'COMPANY'
   | 'FAMILY'
   | 'RESTAURANT'
+  | 'BEAUTY'
   | 'VOLUNTEER'
   | 'NEIGHBORHOOD'
   | 'CONDO'

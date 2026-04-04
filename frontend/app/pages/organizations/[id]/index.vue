@@ -120,6 +120,7 @@ const templateLabel: Record<string, string> = {
   COMPANY: '企業',
   FAMILY: '家族',
   RESTAURANT: '飲食店',
+  BEAUTY: '美容院・サロン',
   VOLUNTEER: 'ボランティア・NPO',
   NEIGHBORHOOD: '自治会',
   CONDO: 'マンション管理組合',
@@ -255,6 +256,7 @@ onMounted(async () => {
           <Tab v-if="isAdminOrDeputy" :value="4"> 招待 </Tab>
           <Tab v-if="isAdmin" :value="5"> 権限グループ </Tab>
           <Tab v-if="isAdmin && org.supporterEnabled" :value="6"> サポーター管理 </Tab>
+          <Tab v-if="isAdmin" :value="7"> 機能設定 </Tab>
         </TabList>
 
         <TabPanels>
@@ -440,6 +442,13 @@ onMounted(async () => {
           <TabPanel v-if="isAdmin && org.supporterEnabled" :value="6">
             <div class="mt-4">
               <SupporterManagementPanel scope-type="organization" :scope-id="orgId" />
+            </div>
+          </TabPanel>
+
+          <!-- 機能設定タブ -->
+          <TabPanel v-if="isAdmin" :value="7">
+            <div class="mt-4">
+              <ModuleSettingsPanel scope-type="organization" :scope-id="orgId" />
             </div>
           </TabPanel>
         </TabPanels>

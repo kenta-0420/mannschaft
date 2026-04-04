@@ -23,6 +23,7 @@ const templateOptions = [
   { label: '企業', value: 'COMPANY' },
   { label: '家族', value: 'FAMILY' },
   { label: '飲食店', value: 'RESTAURANT' },
+  { label: '美容院・サロン', value: 'BEAUTY' },
   { label: 'ボランティア・NPO', value: 'VOLUNTEER' },
   { label: '自治会', value: 'NEIGHBORHOOD' },
   { label: 'マンション管理組合', value: 'CONDO' },

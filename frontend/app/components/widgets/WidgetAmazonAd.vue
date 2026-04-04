@@ -51,6 +51,11 @@ const TEMPLATE_COPY: Record<string, AdCopy> = {
     description: '調理器具・食器・厨房備品をまとめてお得に調達できます。',
     tags: '調理器具 / 食器 / 厨房備品',
   },
+  BEAUTY: {
+    title: '美容・サロン用品をAmazonで',
+    description: 'ケア用品・施術備品・消耗品をまとめてお得に揃えられます。',
+    tags: 'ケア用品 / 施術備品 / 消耗品',
+  },
   VOLUNTEER: {
     title: 'ボランティア用品をAmazonで',
     description: '活動に必要な備品・イベント用品・防災グッズが揃います。',
