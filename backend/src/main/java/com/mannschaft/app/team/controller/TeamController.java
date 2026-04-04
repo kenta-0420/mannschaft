@@ -23,6 +23,13 @@ import com.mannschaft.app.team.dto.TeamOrgSummaryResponse;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.TeamSummaryResponse;
 import com.mannschaft.app.team.dto.UpdateTeamRequest;
+import com.mannschaft.app.supporter.dto.BulkApproveRequest;
+import com.mannschaft.app.supporter.dto.FollowStatusResponse;
+import com.mannschaft.app.supporter.dto.SupporterApplicationResponse;
+import com.mannschaft.app.supporter.dto.SupporterResponse;
+import com.mannschaft.app.supporter.dto.SupporterSettingsResponse;
+import com.mannschaft.app.supporter.dto.UpdateSupporterSettingsRequest;
+import com.mannschaft.app.supporter.service.SupporterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -62,6 +69,7 @@ public class TeamController {
     private final InviteService inviteService;
     private final PermissionGroupService permissionGroupService;
     private final BlockService blockService;
+    private final SupporterService supporterService;
 
 
     // ========================================
@@ -164,19 +172,89 @@ public class TeamController {
     // ========================================
 
     @PostMapping("/{id}/follow")
-    @Operation(summary = "チームフォロー")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "フォロー成功")
-    public ResponseEntity<Void> followTeam(@PathVariable Long id) {
-        teamService.followTeam(SecurityUtils.getCurrentUserId(), id);
-        return ResponseEntity.ok().build();
+    @Operation(summary = "チームサポーター申請（自動承認ON→即時承認、OFF→PENDING申請作成）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "申請/承認成功")
+    public ResponseEntity<ApiResponse<FollowStatusResponse>> followTeam(@PathVariable Long id) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(supporterService.follow(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id));
     }
 
     @DeleteMapping("/{id}/follow")
-    @Operation(summary = "チームフォロー解除")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "フォロー解除成功")
+    @Operation(summary = "チームサポーター解除・申請取消（APPROVED/PENDING どちらも取消可）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "解除成功")
     public ResponseEntity<Void> unfollowTeam(@PathVariable Long id) {
-        teamService.unfollowTeam(SecurityUtils.getCurrentUserId(), id);
+        supporterService.unfollow(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/follow/status")
+    @Operation(summary = "チームサポーター申請状態取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<FollowStatusResponse>> getFollowStatus(@PathVariable Long id) {
+        return ResponseEntity.ok(
+                supporterService.getFollowStatus(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id));
+    }
+
+    // ========================================
+    // サポーター管理（管理者向け）
+    // ========================================
+
+    @GetMapping("/{id}/supporters")
+    @Operation(summary = "承認済みサポーター一覧")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<PagedResponse<SupporterResponse>> getSupporters(
+            @PathVariable Long id, Pageable pageable) {
+        return ResponseEntity.ok(supporterService.getSupporters(SCOPE_TYPE, id, pageable));
+    }
+
+    @GetMapping("/{id}/supporter-applications")
+    @Operation(summary = "サポーター申請一覧（全ステータス）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<PagedResponse<SupporterApplicationResponse>> getSupporterApplications(
+            @PathVariable Long id, Pageable pageable) {
+        return ResponseEntity.ok(supporterService.getApplications(SCOPE_TYPE, id, pageable));
+    }
+
+    @PostMapping("/{id}/supporter-applications/{applicationId}/approve")
+    @Operation(summary = "サポーター申請を個別承認")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "承認成功")
+    public ResponseEntity<Void> approveSupporterApplication(
+            @PathVariable Long id, @PathVariable Long applicationId) {
+        supporterService.approve(applicationId, SCOPE_TYPE, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/supporter-applications/{applicationId}/reject")
+    @Operation(summary = "サポーター申請を個別却下")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "却下成功")
+    public ResponseEntity<Void> rejectSupporterApplication(
+            @PathVariable Long id, @PathVariable Long applicationId) {
+        supporterService.reject(applicationId, SCOPE_TYPE, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/supporter-applications/bulk-approve")
+    @Operation(summary = "サポーター申請を一括承認")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "一括承認成功")
+    public ResponseEntity<Void> bulkApproveSupporterApplications(
+            @PathVariable Long id, @Valid @RequestBody BulkApproveRequest request) {
+        supporterService.bulkApprove(request, SCOPE_TYPE, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/supporter-settings")
+    @Operation(summary = "サポーター設定取得（自動承認ON/OFF）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<SupporterSettingsResponse>> getSupporterSettings(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.of(supporterService.getSettings(SCOPE_TYPE, id)));
+    }
+
+    @PutMapping("/{id}/supporter-settings")
+    @Operation(summary = "サポーター設定更新（自動承認ON/OFF）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<SupporterSettingsResponse>> updateSupporterSettings(
+            @PathVariable Long id, @RequestBody UpdateSupporterSettingsRequest request) {
+        return ResponseEntity.ok(ApiResponse.of(supporterService.updateSettings(SCOPE_TYPE, id, request)));
     }
 
     // ========================================

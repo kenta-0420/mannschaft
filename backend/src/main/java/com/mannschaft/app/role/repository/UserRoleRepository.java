@@ -45,6 +45,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     boolean existsByUserIdAndOrganizationId(Long userId, Long organizationId);
 
+    boolean existsByUserIdAndTeamIdAndRoleId(Long userId, Long teamId, Long roleId);
+
+    boolean existsByUserIdAndOrganizationIdAndRoleId(Long userId, Long organizationId, Long roleId);
+
+    Optional<UserRoleEntity> findByUserIdAndTeamIdAndRoleId(Long userId, Long teamId, Long roleId);
+
+    Optional<UserRoleEntity> findByUserIdAndOrganizationIdAndRoleId(Long userId, Long organizationId, Long roleId);
+
+    Page<UserRoleEntity> findByTeamIdAndRoleIdOrderByCreatedAtDesc(Long teamId, Long roleId, Pageable pageable);
+
+    Page<UserRoleEntity> findByOrganizationIdAndRoleIdOrderByCreatedAtDesc(Long organizationId, Long roleId, Pageable pageable);
+
     void deleteByUserIdAndTeamId(Long userId, Long teamId);
 
     void deleteByUserIdAndOrganizationId(Long userId, Long organizationId);

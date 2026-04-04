@@ -23,6 +23,8 @@ import com.mannschaft.app.role.service.BlockService;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.role.service.PermissionGroupService;
 import com.mannschaft.app.role.service.RoleService;
+import com.mannschaft.app.supporter.dto.FollowStatusResponse;
+import com.mannschaft.app.supporter.service.SupporterService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -61,6 +63,7 @@ class OrganizationControllerTest {
     @Mock private InviteService inviteService;
     @Mock private PermissionGroupService permissionGroupService;
     @Mock private BlockService blockService;
+    @Mock private SupporterService supporterService;
 
     @InjectMocks
     private OrganizationController controller;
@@ -167,17 +170,19 @@ class OrganizationControllerTest {
     }
 
     @Test
-    @DisplayName("followOrganization: 200 OK")
-    void followOrganization_200() {
-        assertThat(controller.followOrganization(ORG_ID).getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(organizationService).followOrganization(USER_ID, ORG_ID);
+    @DisplayName("followOrganization: 201 Created（申請/即時承認）")
+    void followOrganization_201() {
+        given(supporterService.follow(USER_ID, "ORGANIZATION", ORG_ID))
+                .willReturn(ApiResponse.of(FollowStatusResponse.approved()));
+        assertThat(controller.followOrganization(ORG_ID).getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        verify(supporterService).follow(USER_ID, "ORGANIZATION", ORG_ID);
     }
 
     @Test
     @DisplayName("unfollowOrganization: 204 No Content")
     void unfollowOrganization_204() {
         assertThat(controller.unfollowOrganization(ORG_ID).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(organizationService).unfollowOrganization(USER_ID, ORG_ID);
+        verify(supporterService).unfollow(USER_ID, "ORGANIZATION", ORG_ID);
     }
 
     @Test
