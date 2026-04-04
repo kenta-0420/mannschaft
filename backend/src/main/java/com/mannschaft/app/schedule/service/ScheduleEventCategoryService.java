@@ -32,7 +32,7 @@ public class ScheduleEventCategoryService {
      * プリセット定義: テンプレート種別 → カテゴリリスト (name, color, isDayOff)
      */
     private static final Map<String, List<PresetCategory>> PRESET_DEFINITIONS = Map.of(
-            "学校", List.of(
+            "クラス", List.of(
                     new PresetCategory("式典", "#EF4444", false),
                     new PresetCategory("テスト・試験", "#F59E0B", false),
                     new PresetCategory("スポーツ行事", "#10B981", false),
@@ -58,6 +58,13 @@ public class ScheduleEventCategoryService {
                     new PresetCategory("点検・工事", "#F59E0B", false),
                     new PresetCategory("清掃", "#10B981", false),
                     new PresetCategory("お祭り・イベント", "#8B5CF6", false)
+            ),
+            "家族", List.of(
+                    new PresetCategory("家族旅行", "#06B6D4", false),
+                    new PresetCategory("記念日", "#EC4899", false),
+                    new PresetCategory("誕生日", "#F59E0B", false),
+                    new PresetCategory("家族行事", "#8B5CF6", false),
+                    new PresetCategory("お休み", "#6B7280", true)
             )
     );
 
@@ -202,7 +209,7 @@ public class ScheduleEventCategoryService {
      *
      * @param scopeId      チームIDまたは組織ID
      * @param isTeam       true ならチームスコープ、false なら組織スコープ
-     * @param templateType テンプレート種別（"学校", "スポーツ", "会社", "マンション"）
+     * @param templateType テンプレート種別（"クラス", "スポーツ", "会社", "マンション", "家族"）
      */
     @Transactional
     public void initializePresets(Long scopeId, boolean isTeam, String templateType) {

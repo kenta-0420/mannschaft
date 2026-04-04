@@ -5,8 +5,9 @@ package com.mannschaft.app.activity;
  */
 public enum PresetCategory {
     SPORTS,
-    SCHOOL,
+    CLASS,
     COMMUNITY,
     BUSINESS,
-    MANAGEMENT_ASSOCIATION
+    MANAGEMENT_ASSOCIATION,
+    FAMILY
 }
