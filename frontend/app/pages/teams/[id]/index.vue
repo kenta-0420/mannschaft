@@ -79,6 +79,7 @@ interface TeamDetail {
   supporterEnabled: boolean
   version: number
   memberCount: number
+  supporterCount?: number
   archivedAt: string | null
   createdAt: string
 }
@@ -158,6 +159,18 @@ onMounted(async () => {
             <div class="mt-1 flex items-center gap-2">
               <Tag :value="templateLabel[team.template] ?? team.template" severity="info" />
               <RoleBadge v-if="roleName" :role="roleName" />
+            </div>
+            <div class="mt-2 flex items-center gap-4 text-sm text-surface-500">
+              <span class="flex items-center gap-1">
+                <i class="pi pi-users text-xs" />
+                メンバー <strong class="text-surface-700">{{ team.memberCount }}</strong
+                >人
+              </span>
+              <span v-if="team.supporterEnabled" class="flex items-center gap-1">
+                <i class="pi pi-heart text-xs" />
+                サポーター <strong class="text-surface-700">{{ team.supporterCount ?? '—' }}</strong
+                >人
+              </span>
             </div>
           </div>
         </div>

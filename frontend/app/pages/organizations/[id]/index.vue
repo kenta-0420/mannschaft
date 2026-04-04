@@ -79,6 +79,7 @@ interface OrgDetail {
   supporterEnabled: boolean
   version: number
   memberCount: number
+  supporterCount?: number
   archivedAt: string | null
   createdAt: string
 }
@@ -196,6 +197,18 @@ onMounted(async () => {
             </h1>
             <div class="mt-1 flex items-center gap-2">
               <RoleBadge v-if="roleName" :role="roleName" />
+            </div>
+            <div class="mt-2 flex items-center gap-4 text-sm text-surface-500">
+              <span class="flex items-center gap-1">
+                <i class="pi pi-users text-xs" />
+                メンバー <strong class="text-surface-700">{{ org.memberCount }}</strong
+                >人
+              </span>
+              <span v-if="org.supporterEnabled" class="flex items-center gap-1">
+                <i class="pi pi-heart text-xs" />
+                サポーター <strong class="text-surface-700">{{ org.supporterCount ?? '—' }}</strong
+                >人
+              </span>
             </div>
           </div>
         </div>
