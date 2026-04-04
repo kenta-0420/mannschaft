@@ -111,7 +111,7 @@ public class AccessControlService {
      * ユーザーが SYSTEM_ADMIN かどうかを返す。
      */
     public boolean isSystemAdmin(Long userId) {
-        return userRoleRepository.existsSystemAdminByUserId(userId);
+        return userRoleRepository.existsSystemAdminByUserId(userId) > 0;
     }
 
     /**

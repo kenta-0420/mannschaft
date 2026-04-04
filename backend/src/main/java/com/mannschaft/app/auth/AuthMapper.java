@@ -33,6 +33,7 @@ public interface AuthMapper {
     @Mapping(target = "is2faEnabled", ignore = true)
     @Mapping(target = "webauthnCount", ignore = true)
     @Mapping(target = "oauthProviders", ignore = true)
+    @Mapping(target = "systemRole", ignore = true)
     @Mapping(target = "status", expression = "java(user.getStatus() != null ? user.getStatus().name() : null)")
     UserProfileResponse toUserProfileResponse(UserEntity user);
 

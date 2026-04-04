@@ -33,4 +33,5 @@ public class UserProfileResponse {
     private final List<String> oauthProviders;
     private final LocalDateTime lastLoginAt;
     private final LocalDateTime createdAt;
+    private final String systemRole;
 }

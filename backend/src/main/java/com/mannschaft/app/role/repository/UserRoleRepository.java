@@ -170,12 +170,12 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     /**
      * 指定ユーザーが SYSTEM_ADMIN かどうかを返す。
      */
-    @Query(value = "SELECT COUNT(*) > 0 FROM user_roles ur " +
+    @Query(value = "SELECT COUNT(*) FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +
             "WHERE ur.user_id = :userId AND r.name = 'SYSTEM_ADMIN' " +
             "AND ur.team_id IS NULL AND ur.organization_id IS NULL",
             nativeQuery = true)
-    boolean existsSystemAdminByUserId(@Param("userId") Long userId);
+    long existsSystemAdminByUserId(@Param("userId") Long userId);
 
     /**
      * プラットフォームレベルの SYSTEM_ADMIN 総数を取得する（退会ブロック判定用）。
@@ -192,14 +192,14 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     /**
      * 指定ユーザーがプラットフォームレベルの SYSTEM_ADMIN かどうかを返す（退会ブロック判定用）。
      */
-    @Query(value = "SELECT COUNT(*) > 0 FROM user_roles ur " +
+    @Query(value = "SELECT COUNT(*) FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +
             "JOIN users u ON u.id = ur.user_id " +
             "WHERE ur.user_id = :userId AND r.name = 'SYSTEM_ADMIN' " +
             "AND ur.team_id IS NULL AND ur.organization_id IS NULL " +
             "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
             nativeQuery = true)
-    boolean isSystemAdmin(@Param("userId") Long userId);
+    long isSystemAdmin(@Param("userId") Long userId);
 
     /**
      * 2ユーザーが共通チームに所属しているか確認する（DM受信制限チェック用）。

@@ -86,6 +86,8 @@ public class UserService {
                 .map(oa -> oa.getProvider().name())
                 .collect(Collectors.toList());
 
+        String systemRole = userRoleRepository.isSystemAdmin(userId) > 0 ? "SYSTEM_ADMIN" : null;
+
         UserProfileResponse response = new UserProfileResponse(
                 user.getId(),
                 user.getEmail(),
@@ -106,7 +108,8 @@ public class UserService {
                 webauthnCount,
                 oauthProviders,
                 user.getLastLoginAt(),
-                user.getCreatedAt());
+                user.getCreatedAt(),
+                systemRole);
 
         return ApiResponse.of(response);
     }
@@ -430,7 +433,7 @@ public class UserService {
      */
     private void checkNotLastSystemAdmin(Long userId) {
         long systemAdminCount = userRoleRepository.countSystemAdmins();
-        if (systemAdminCount <= 1 && userRoleRepository.isSystemAdmin(userId)) {
+        if (systemAdminCount <= 1 && userRoleRepository.isSystemAdmin(userId) > 0) {
             throw new BusinessException(GdprErrorCode.GDPR_006);
         }
     }
