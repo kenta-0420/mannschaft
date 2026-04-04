@@ -12,5 +12,6 @@ public enum PresetCategory {
     FAMILY,
     RESTAURANT,
     VOLUNTEER,
-    HOBBY
+    NEIGHBORHOOD,
+    CONDO
 }

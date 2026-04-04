@@ -60,23 +60,25 @@ public class ScheduleEventCategoryService {
                     new PresetCategory("募金・募集活動", "#06B6D4", false),
                     new PresetCategory("休止日", "#6B7280", true)
             ),
-            "趣味・同好会", List.of(
-                    new PresetCategory("定例活動", "#10B981", false),
-                    new PresetCategory("イベント・発表会", "#EF4444", false),
-                    new PresetCategory("オフ会", "#06B6D4", false),
-                    new PresetCategory("お休み", "#6B7280", true)
+            "自治会", List.of(
+                    new PresetCategory("定例会・総会", "#EF4444", false),
+                    new PresetCategory("清掃・美化活動", "#10B981", false),
+                    new PresetCategory("防犯・防災活動", "#F59E0B", false),
+                    new PresetCategory("お祭り・イベント", "#8B5CF6", false),
+                    new PresetCategory("休止日", "#6B7280", true)
+            ),
+            "マンション管理組合", List.of(
+                    new PresetCategory("総会", "#EF4444", false),
+                    new PresetCategory("点検・工事", "#F59E0B", false),
+                    new PresetCategory("清掃", "#10B981", false),
+                    new PresetCategory("お祭り・イベント", "#8B5CF6", false),
+                    new PresetCategory("休止日", "#6B7280", true)
             ),
             "会社", List.of(
                     new PresetCategory("全社行事", "#3B82F6", false),
                     new PresetCategory("研修", "#8B5CF6", false),
                     new PresetCategory("休業日", "#6B7280", true),
                     new PresetCategory("株主総会", "#EF4444", false)
-            ),
-            "マンション", List.of(
-                    new PresetCategory("総会", "#EF4444", false),
-                    new PresetCategory("点検・工事", "#F59E0B", false),
-                    new PresetCategory("清掃", "#10B981", false),
-                    new PresetCategory("お祭り・イベント", "#8B5CF6", false)
             ),
             "家族", List.of(
                     new PresetCategory("家族旅行", "#06B6D4", false),
@@ -228,7 +230,7 @@ public class ScheduleEventCategoryService {
      *
      * @param scopeId      チームIDまたは組織ID
      * @param isTeam       true ならチームスコープ、false なら組織スコープ
-     * @param templateType テンプレート種別（"クラス", "クラブ・サークル", "会社", "マンション", "家族", "飲食店", "ボランティア・NPO", "趣味・同好会"）
+     * @param templateType テンプレート種別（"クラス", "クラブ・サークル", "会社", "家族", "飲食店", "ボランティア・NPO", "自治会", "マンション管理組合"）
      */
     @Transactional
     public void initializePresets(Long scopeId, boolean isTeam, String templateType) {
