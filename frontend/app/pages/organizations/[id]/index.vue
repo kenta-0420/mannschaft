@@ -121,6 +121,7 @@ const templateLabel: Record<string, string> = {
   FAMILY: '家族',
   RESTAURANT: '飲食店',
   BEAUTY: '美容院・サロン',
+  STORE: '店舗・小売',
   VOLUNTEER: 'ボランティア・NPO',
   NEIGHBORHOOD: '自治会',
   CONDO: 'マンション管理組合',
