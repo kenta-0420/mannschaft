@@ -7,7 +7,8 @@ export type TeamTemplate =
   | 'FAMILY'
   | 'RESTAURANT'
   | 'VOLUNTEER'
-  | 'HOBBY'
+  | 'NEIGHBORHOOD'
+  | 'CONDO'
   | 'OTHER'
 export type TeamVisibility = 'PUBLIC' | 'ORGANIZATION_ONLY' | 'PRIVATE'
 

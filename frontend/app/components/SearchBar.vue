@@ -24,7 +24,8 @@ const templateOptions = [
   { label: '家族', value: 'FAMILY' },
   { label: '飲食店', value: 'RESTAURANT' },
   { label: 'ボランティア・NPO', value: 'VOLUNTEER' },
-  { label: '趣味・同好会', value: 'HOBBY' },
+  { label: '自治会', value: 'NEIGHBORHOOD' },
+  { label: 'マンション管理組合', value: 'CONDO' },
   { label: 'その他', value: 'OTHER' },
 ]
 

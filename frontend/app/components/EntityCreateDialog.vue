@@ -70,7 +70,7 @@ const visibilityOptions = computed(() => {
   if (isTeam.value) {
     return [
       { label: '公開', value: 'PUBLIC' },
-      { label: '組織内のみ', value: 'ORGANIZATION_ONLY' },
+      { label: 'チーム内のみ', value: 'ORGANIZATION_ONLY' },
       { label: '非公開', value: 'PRIVATE' },
     ]
   }
@@ -89,7 +89,8 @@ const templateOptions = [
   { label: '家族', value: 'FAMILY' },
   { label: '飲食店', value: 'RESTAURANT' },
   { label: 'ボランティア・NPO', value: 'VOLUNTEER' },
-  { label: '趣味・同好会', value: 'HOBBY' },
+  { label: '自治会', value: 'NEIGHBORHOOD' },
+  { label: 'マンション管理組合', value: 'CONDO' },
   { label: 'その他', value: 'OTHER' },
 ]
 

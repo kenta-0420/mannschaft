@@ -56,10 +56,15 @@ const TEMPLATE_COPY: Record<string, AdCopy> = {
     description: '活動に必要な備品・イベント用品・防災グッズが揃います。',
     tags: '備品 / イベント用品 / 防災グッズ',
   },
-  HOBBY: {
-    title: '趣味・同好会用品をAmazonで',
-    description: '趣味の道具・イベント備品・消耗品をお得にまとめ買いできます。',
-    tags: '趣味用品 / 備品 / 消耗品',
+  NEIGHBORHOOD: {
+    title: '自治会・町内会用品をAmazonで',
+    description: '回覧板・掲示物・防犯グッズ・イベント備品をお得に調達できます。',
+    tags: '防犯グッズ / 掲示用品 / イベント備品',
+  },
+  CONDO: {
+    title: 'マンション管理組合用品をAmazonで',
+    description: '共用部備品・掲示物・点検用品・清掃用具をまとめて調達できます。',
+    tags: '共用部備品 / 清掃用具 / 掲示用品',
   },
 }
 
