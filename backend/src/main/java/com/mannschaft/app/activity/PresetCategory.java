@@ -11,6 +11,7 @@ public enum PresetCategory {
     MANAGEMENT_ASSOCIATION,
     FAMILY,
     RESTAURANT,
+    BEAUTY,
     VOLUNTEER,
     NEIGHBORHOOD,
     CONDO
