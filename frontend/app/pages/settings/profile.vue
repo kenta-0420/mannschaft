@@ -6,10 +6,42 @@ definePageMeta({
 const api = useApi()
 const authStore = useAuthStore()
 const notification = useNotification()
+const contactApi = useContactApi()
+const { captureQuiet } = useErrorReport()
 
 const loading = ref(true)
 const saving = ref(false)
 const changingPassword = ref(false)
+
+const handle = ref('')
+const handleAvailable = ref<boolean | null>(null)
+const savingHandle = ref(false)
+const currentHandle = ref<string | null>(null)
+
+async function fetchHandle() {
+  try {
+    const result = await contactApi.getMyHandle()
+    currentHandle.value = result.data.contactHandle
+    handle.value = result.data.contactHandle ?? ''
+  } catch (e) {
+    captureQuiet(e, { context: 'ProfileSettings: ハンドル取得' })
+  }
+}
+
+async function saveHandle() {
+  if (!handle.value || handleAvailable.value === false) return
+  savingHandle.value = true
+  try {
+    const result = await contactApi.updateMyHandle(handle.value)
+    currentHandle.value = result.data.contactHandle
+    notification.success('@ハンドルを設定しました')
+  } catch (e) {
+    captureQuiet(e, { context: 'ProfileSettings: ハンドル保存' })
+    notification.error('ハンドルの設定に失敗しました')
+  } finally {
+    savingHandle.value = false
+  }
+}
 
 const profile = ref({
   displayName: '',
@@ -35,6 +67,7 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  await fetchHandle()
 })
 
 async function saveProfile() {
@@ -133,18 +166,16 @@ async function deleteAccount() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <h1 class="mb-6 text-2xl font-bold">プロフィール設定</h1>
-
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner />
+    <div class="mb-6 flex items-center gap-2">
+      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
+      <h1 class="text-2xl font-bold">プロフィール設定</h1>
     </div>
 
-    <div v-else class="space-y-8">
+    <PageLoading v-if="loading" />
+
+    <div v-else class="fade-in space-y-8">
       <!-- プロフィール情報 -->
-      <div
-        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
-      >
-        <h2 class="mb-4 text-lg font-semibold">プロフィール情報</h2>
+      <SectionCard title="プロフィール情報">
         <div class="space-y-4">
           <div class="flex items-center gap-4">
             <div class="relative">
@@ -198,13 +229,29 @@ async function deleteAccount() {
             <Button label="保存" icon="pi pi-check" :loading="saving" @click="saveProfile" />
           </div>
         </div>
-      </div>
+      </SectionCard>
+
+      <!-- @ハンドル -->
+      <SectionCard title="@ハンドル">
+        <div class="space-y-3">
+          <p class="text-sm text-gray-500">
+            @ハンドルを設定すると、他のユーザーがあなたを検索して連絡先に追加できます。
+          </p>
+          <UserHandleInput v-model="handle" @availability-change="handleAvailable = $event" />
+          <div class="flex justify-end">
+            <Button
+              label="保存"
+              icon="pi pi-check"
+              :loading="savingHandle"
+              :disabled="!handle || handleAvailable === false"
+              @click="saveHandle"
+            />
+          </div>
+        </div>
+      </SectionCard>
 
       <!-- パスワード変更 -->
-      <div
-        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
-      >
-        <h2 class="mb-4 text-lg font-semibold">パスワード変更</h2>
+      <SectionCard title="パスワード変更">
         <div class="space-y-4">
           <div>
             <label class="mb-1 block text-sm font-medium">現在のパスワード</label>
@@ -246,7 +293,7 @@ async function deleteAccount() {
             />
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- アカウント削除 -->
       <div

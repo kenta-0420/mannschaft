@@ -20,6 +20,11 @@ export interface UserProfileResponse {
   lastLoginAt: string | null
   createdAt: string
   is2faEnabled: boolean
+  contactHandle: string | null
+  handleSearchable: boolean
+  contactApprovalRequired: boolean
+  dmReceiveFrom: 'ANYONE' | 'TEAM_MEMBERS_ONLY' | 'CONTACTS_ONLY'
+  onlineVisibility: 'NOBODY' | 'CONTACTS_ONLY' | 'EVERYONE'
 }
 
 export interface UpdateProfileRequest {

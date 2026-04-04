@@ -11,6 +11,9 @@ export interface ChatFolderItemResponse {
   id: number
   itemType: string
   itemId: number
+  customName: string | null
+  isPinned: boolean
+  privateNote: string | null
 }
 
 export interface CreateChatFolderRequest {
