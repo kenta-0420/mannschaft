@@ -59,6 +59,12 @@ public class ScheduleEventCategoryService {
                     new PresetCategory("店舗イベント", "#EF4444", false),
                     new PresetCategory("臨時休業", "#6B7280", true)
             ),
+            "店舗・小売", List.of(
+                    new PresetCategory("セール・イベント", "#EF4444", false),
+                    new PresetCategory("仕入れ・棚卸", "#F59E0B", false),
+                    new PresetCategory("スタッフ研修", "#8B5CF6", false),
+                    new PresetCategory("臨時休業", "#6B7280", true)
+            ),
             "ボランティア・NPO", List.of(
                     new PresetCategory("活動日", "#10B981", false),
                     new PresetCategory("イベント", "#EF4444", false),
