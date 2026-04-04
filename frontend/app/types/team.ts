@@ -1,4 +1,11 @@
-export type TeamTemplate = 'SPORTS' | 'CLINIC' | 'SCHOOL' | 'COMMUNITY' | 'COMPANY' | 'OTHER'
+export type TeamTemplate =
+  | 'SPORTS'
+  | 'CLINIC'
+  | 'CLASS'
+  | 'COMMUNITY'
+  | 'COMPANY'
+  | 'FAMILY'
+  | 'OTHER'
 export type TeamVisibility = 'PUBLIC' | 'ORGANIZATION_ONLY' | 'PRIVATE'
 
 export interface TeamResponse {

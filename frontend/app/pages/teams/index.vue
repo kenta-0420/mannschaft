@@ -56,9 +56,10 @@ const searchParams = ref({
 const templateLabel: Record<string, string> = {
   SPORTS: 'スポーツ',
   CLINIC: 'クリニック',
-  SCHOOL: '学校',
+  CLASS: 'クラス',
   COMMUNITY: 'コミュニティ',
   COMPANY: '企業',
+  FAMILY: '家族',
   OTHER: 'その他',
 }
 

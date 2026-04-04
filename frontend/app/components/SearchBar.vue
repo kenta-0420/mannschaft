@@ -18,9 +18,10 @@ const templateOptions = [
   { label: '全て', value: '' },
   { label: 'スポーツ', value: 'SPORTS' },
   { label: 'クリニック', value: 'CLINIC' },
-  { label: '学校', value: 'SCHOOL' },
+  { label: 'クラス', value: 'CLASS' },
   { label: 'コミュニティ', value: 'COMMUNITY' },
   { label: '企業', value: 'COMPANY' },
+  { label: '家族', value: 'FAMILY' },
   { label: 'その他', value: 'OTHER' },
 ]
 

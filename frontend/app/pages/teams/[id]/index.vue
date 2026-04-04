@@ -21,6 +21,7 @@ const {
 // サポーター申請状態
 const followStatus = ref<'NONE' | 'PENDING' | 'APPROVED'>('NONE')
 const followLoading = ref(false)
+const showCancelSupporterConfirm = ref(false)
 
 async function fetchFollowStatus() {
   if (roleName.value) return // メンバーは不要
@@ -55,7 +56,8 @@ async function cancelSupporter() {
   try {
     await teamApi.unfollowTeam(teamId.value)
     followStatus.value = 'NONE'
-    notification.success('サポーター登録を解除しました')
+    showCancelSupporterConfirm.value = false
+    notification.success('サポーターをやめました')
   } catch (error) {
     handleApiError(error, 'サポーター解除')
   } finally {
@@ -89,9 +91,10 @@ const showLeaveConfirm = ref(false)
 const templateLabel: Record<string, string> = {
   SPORTS: 'スポーツ',
   CLINIC: 'クリニック',
-  SCHOOL: '学校',
+  CLASS: 'クラス',
   COMMUNITY: 'コミュニティ',
   COMPANY: '企業',
+  FAMILY: '家族',
   OTHER: 'その他',
 }
 
@@ -154,20 +157,16 @@ onMounted(async () => {
         </div>
         <!-- サポーター申請ボタン（非メンバー向け） -->
         <template v-if="team.supporterEnabled && !roleName">
-          <span
+          <Button
             v-if="followStatus === 'APPROVED'"
-            class="flex items-center gap-2 text-sm text-primary"
-          >
-            <i class="pi pi-heart-fill" />サポーター登録済み
-            <Button
-              label="解除"
-              size="small"
-              severity="secondary"
-              text
-              :loading="followLoading"
-              @click="cancelSupporter"
-            />
-          </span>
+            icon="pi pi-heart-fill"
+            label="サポーターです"
+            size="small"
+            :loading="followLoading"
+            class="border-red-400 bg-red-50 text-red-500 hover:bg-red-100"
+            outlined
+            @click="showCancelSupporterConfirm = true"
+          />
           <span
             v-else-if="followStatus === 'PENDING'"
             class="flex items-center gap-2 text-sm text-orange-500"
@@ -327,6 +326,25 @@ onMounted(async () => {
       </Tabs>
 
       <!-- 退出確認ダイアログ -->
+      <!-- サポーターをやめる確認ダイアログ -->
+      <Dialog
+        v-model:visible="showCancelSupporterConfirm"
+        header="サポーターをやめますか？"
+        :style="{ width: '400px' }"
+        modal
+      >
+        <p>{{ team.nickname1 || team.name }}のサポーターをやめます。よろしいですか？</p>
+        <template #footer>
+          <Button label="キャンセル" text @click="showCancelSupporterConfirm = false" />
+          <Button
+            label="やめる"
+            severity="danger"
+            :loading="followLoading"
+            @click="cancelSupporter"
+          />
+        </template>
+      </Dialog>
+
       <Dialog
         v-model:visible="showLeaveConfirm"
         header="チームから退出"
