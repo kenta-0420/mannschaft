@@ -15,6 +15,14 @@ const showConfig = ref(false)
 const dragIndex = ref<number | null>(null)
 const dropTargetIndex = ref<number | null>(null)
 const collapsedKeys = ref<Set<string>>(new Set())
+// 初期表示時に localStorage の保存順が適用される際にアニメーションしないよう、
+// mount + nextTick 後にのみ move-class を有効にする
+const isReady = ref(false)
+onMounted(() => {
+  nextTick(() => {
+    isReady.value = true
+  })
+})
 
 function toggleCollapse(key: string) {
   if (collapsedKeys.value.has(key)) {
@@ -112,7 +120,7 @@ function onDragEnd() {
     <TransitionGroup
       tag="div"
       class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
-      move-class="transition-all duration-[350ms] ease-in-out"
+      :move-class="isReady ? 'transition-all duration-[350ms] ease-in-out' : ''"
     >
       <!-- 空状態 -->
       <div
