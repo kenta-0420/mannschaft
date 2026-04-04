@@ -229,6 +229,28 @@ public class DashboardService {
     }
 
     /**
+     * 個人TODOウィジェット用データを取得する。
+     * 自分がアサインされた未完了TODOの一覧と期限切れ件数を返す。
+     *
+     * @param userId ユーザーID
+     * @return items / overdue_count / total_incomplete を含む Map
+     */
+    public Map<String, Object> getPersonalTodos(Long userId) {
+        List<TodoEntity> myTodos = todoRepository.findMyTodos(userId);
+        List<TodoEntity> incompleteTodos = myTodos.stream()
+                .filter(t -> t.getStatus() != TodoStatus.COMPLETED)
+                .toList();
+        long overdueCount = incompleteTodos.stream()
+                .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()))
+                .count();
+        List<Map<String, Object>> todoItems = incompleteTodos.stream()
+                .limit(DASHBOARD_ITEM_LIMIT)
+                .map(this::toTodoMap)
+                .toList();
+        return Map.of("items", todoItems, "overdue_count", overdueCount, "total_incomplete", (long) incompleteTodos.size());
+    }
+
+    /**
      * チームダッシュボードを一括取得する。
      *
      * @param userId     ユーザーID

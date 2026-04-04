@@ -41,11 +41,30 @@ public class ScheduleEventCategoryService {
                     new PresetCategory("休業日", "#6B7280", true),
                     new PresetCategory("遠足・校外学習", "#06B6D4", false)
             ),
-            "スポーツ", List.of(
-                    new PresetCategory("大会", "#EF4444", false),
+            "クラブ・サークル", List.of(
+                    new PresetCategory("大会・試合", "#EF4444", false),
                     new PresetCategory("合宿", "#F59E0B", false),
-                    new PresetCategory("練習試合", "#10B981", false),
+                    new PresetCategory("練習・活動日", "#10B981", false),
                     new PresetCategory("オフ日", "#6B7280", true)
+            ),
+            "飲食店", List.of(
+                    new PresetCategory("店舗イベント", "#EF4444", false),
+                    new PresetCategory("研修・勉強会", "#8B5CF6", false),
+                    new PresetCategory("臨時休業", "#6B7280", true),
+                    new PresetCategory("仕込み・準備日", "#F59E0B", false)
+            ),
+            "ボランティア・NPO", List.of(
+                    new PresetCategory("活動日", "#10B981", false),
+                    new PresetCategory("イベント", "#EF4444", false),
+                    new PresetCategory("研修・勉強会", "#8B5CF6", false),
+                    new PresetCategory("募金・募集活動", "#06B6D4", false),
+                    new PresetCategory("休止日", "#6B7280", true)
+            ),
+            "趣味・同好会", List.of(
+                    new PresetCategory("定例活動", "#10B981", false),
+                    new PresetCategory("イベント・発表会", "#EF4444", false),
+                    new PresetCategory("オフ会", "#06B6D4", false),
+                    new PresetCategory("お休み", "#6B7280", true)
             ),
             "会社", List.of(
                     new PresetCategory("全社行事", "#3B82F6", false),
@@ -209,7 +228,7 @@ public class ScheduleEventCategoryService {
      *
      * @param scopeId      チームIDまたは組織ID
      * @param isTeam       true ならチームスコープ、false なら組織スコープ
-     * @param templateType テンプレート種別（"クラス", "スポーツ", "会社", "マンション", "家族"）
+     * @param templateType テンプレート種別（"クラス", "クラブ・サークル", "会社", "マンション", "家族", "飲食店", "ボランティア・NPO", "趣味・同好会"）
      */
     @Transactional
     public void initializePresets(Long scopeId, boolean isTeam, String templateType) {

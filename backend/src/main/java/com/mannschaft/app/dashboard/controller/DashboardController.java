@@ -173,6 +173,17 @@ public class DashboardController {
     }
 
     /**
+     * 個人TODOウィジェット用データ取得。
+     */
+    @GetMapping("/todos")
+    @Operation(summary = "個人TODO一覧", description = "自分がアサインされた未完了TODOの一覧と期限切れ件数を取得")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getPersonalTodos() {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Map<String, Object> response = dashboardService.getPersonalTodos(userId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
      * 直近イベント + 出欠状況。
      */
     @GetMapping("/upcoming-events")

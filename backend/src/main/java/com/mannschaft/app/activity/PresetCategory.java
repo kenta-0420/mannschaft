@@ -4,10 +4,13 @@ package com.mannschaft.app.activity;
  * プリセットテンプレートのカテゴリ。
  */
 public enum PresetCategory {
-    SPORTS,
+    CLUB,
     CLASS,
     COMMUNITY,
     BUSINESS,
     MANAGEMENT_ASSOCIATION,
-    FAMILY
+    FAMILY,
+    RESTAURANT,
+    VOLUNTEER,
+    HOBBY
 }
