@@ -1,20 +1,18 @@
 export function useGreeting() {
-  const greeting = ref('')
+  const { t } = useI18n()
 
-  function update() {
-    const hour = new Date().getHours()
-    if (hour >= 5 && hour < 12) {
-      greeting.value = 'おはようございます'
-    }
-    else if (hour >= 12 && hour < 18) {
-      greeting.value = 'こんにちは'
-    }
-    else {
-      greeting.value = 'こんばんは'
-    }
-  }
+  const hour = new Date().getHours()
+  const key =
+    hour >= 5 && hour < 9
+      ? 'greeting.earlyMorning'
+      : hour >= 9 && hour < 12
+        ? 'greeting.morning'
+        : hour >= 12 && hour < 17
+          ? 'greeting.afternoon'
+          : hour >= 17 && hour < 21
+            ? 'greeting.evening'
+            : 'greeting.night'
 
-  onMounted(update)
-
-  return greeting
+  // computed にすることで i18n の lazy load 完了後に自動で再評価される
+  return computed(() => t(key))
 }

@@ -107,14 +107,17 @@ onMounted(load)
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <h1 class="mb-6 text-2xl font-bold">Google Calendar 連携</h1>
+    <div class="mb-6 flex items-center gap-2">
+      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
+      <h1 class="text-2xl font-bold">Google Calendar 連携</h1>
+    </div>
 
     <div v-if="loading" class="space-y-4">
       <Skeleton height="6rem" />
       <Skeleton height="10rem" />
     </div>
 
-    <div v-else class="space-y-6">
+    <div v-else class="fade-in space-y-6">
       <!-- 接続状態 -->
       <div
         class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"

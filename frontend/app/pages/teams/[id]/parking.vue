@@ -35,9 +35,7 @@ onMounted(() => load())
       <h1 class="text-2xl font-bold">駐車場管理</h1>
       <Button label="区画を追加" icon="pi pi-plus" />
     </div>
-    <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
-    </div>
+    <PageLoading v-if="loading" size="40px" />
     <div v-else class="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
       <div
         v-for="s in spaces"

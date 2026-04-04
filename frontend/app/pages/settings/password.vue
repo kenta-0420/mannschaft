@@ -78,17 +78,16 @@ async function handleSubmit() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <h1 class="mb-6 text-2xl font-bold">
-      {{ hasPassword ? 'パスワード変更' : 'パスワード設定' }}
-    </h1>
-
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner />
+    <div class="mb-6 flex items-center gap-2">
+      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
+      <h1 class="text-2xl font-bold">{{ hasPassword ? 'パスワード変更' : 'パスワード設定' }}</h1>
     </div>
+
+    <PageLoading v-if="loading" />
 
     <div
       v-else
-      class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+      class="fade-in rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
     >
       <div class="space-y-4">
         <div v-if="hasPassword">

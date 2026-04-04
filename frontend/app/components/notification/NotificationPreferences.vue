@@ -70,63 +70,74 @@ onMounted(() => load())
     <ProgressSpinner style="width: 40px; height: 40px" />
   </div>
 
-  <div v-else class="flex flex-col gap-6">
+  <div v-else class="space-y-8">
     <!-- スコープ別設定 -->
-    <div>
-      <h3 class="mb-3 text-lg font-semibold">チーム・組織別の通知</h3>
-      <div class="flex flex-col gap-2">
+    <SectionCard title="チーム・組織別の通知">
+      <p class="mb-4 text-sm text-surface-500">
+        所属するチーム・組織ごとに通知のミュートを設定できます。
+      </p>
+      <div class="space-y-3">
         <div
           v-for="pref in scopePrefs"
           :key="`${pref.scopeType}-${pref.scopeId}`"
-          class="flex items-center justify-between rounded-lg border border-surface-200 px-4 py-3"
+          class="flex items-center justify-between rounded-lg border border-surface-100 p-3 dark:border-surface-700"
         >
           <div>
             <p class="text-sm font-medium">{{ pref.scopeName }}</p>
-            <p class="text-xs text-surface-400">
+            <p class="text-xs text-surface-500">
               {{ pref.scopeType === 'TEAM' ? 'チーム' : '組織' }}
             </p>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-surface-400">{{
-              pref.isMuted ? 'ミュート中' : '受信中'
-            }}</span>
+          <div class="flex items-center gap-3">
+            <Tag
+              :value="pref.isMuted ? 'ミュート中' : '受信中'"
+              :severity="pref.isMuted ? 'warn' : 'success'"
+              class="text-xs"
+            />
             <ToggleSwitch v-model="pref.isMuted" @update:model-value="onToggleScopeMute(pref)" />
           </div>
         </div>
-        <p v-if="scopePrefs.length === 0" class="text-sm text-surface-400">
+        <p v-if="scopePrefs.length === 0" class="py-4 text-center text-surface-400">
           所属するチーム・組織がありません
         </p>
       </div>
-    </div>
+    </SectionCard>
 
     <!-- 種別別設定 -->
-    <div>
-      <h3 class="mb-3 text-lg font-semibold">通知種別ごとの設定</h3>
-      <div v-for="(prefs, category) in groupedTypePrefs" :key="category" class="mb-4">
-        <p class="mb-2 text-sm font-medium text-surface-500">{{ category }}</p>
-        <div class="flex flex-col gap-1 rounded-lg border border-surface-200">
-          <div
-            v-for="tp in prefs"
-            :key="tp.notificationType"
-            class="flex items-center justify-between border-b border-surface-100 px-4 py-2 last:border-b-0"
-          >
-            <span class="text-sm">{{ tp.label }}</span>
-            <div class="flex items-center gap-4">
-              <label class="flex items-center gap-1 text-xs text-surface-400">
-                <Checkbox v-model="tp.inAppEnabled" :binary="true" />
-                アプリ内
-              </label>
-              <label class="flex items-center gap-1 text-xs text-surface-400">
-                <Checkbox v-model="tp.pushEnabled" :binary="true" />
-                プッシュ
-              </label>
-            </div>
+    <SectionCard
+      v-for="(prefs, category) in groupedTypePrefs"
+      :key="category"
+      :title="String(category)"
+    >
+      <div class="space-y-1">
+        <div
+          v-for="tp in prefs"
+          :key="tp.notificationType"
+          class="flex items-center justify-between rounded-lg border border-surface-100 px-4 py-3 dark:border-surface-700"
+        >
+          <span class="text-sm font-medium">{{ tp.label }}</span>
+          <div class="flex items-center gap-5">
+            <label class="flex items-center gap-2 text-sm text-surface-500">
+              <Checkbox v-model="tp.inAppEnabled" :binary="true" />
+              アプリ内
+            </label>
+            <label class="flex items-center gap-2 text-sm text-surface-500">
+              <Checkbox v-model="tp.pushEnabled" :binary="true" />
+              プッシュ
+            </label>
           </div>
         </div>
       </div>
-      <div class="flex justify-end">
-        <Button label="保存" :loading="saving" @click="saveTypePreferences" />
-      </div>
+    </SectionCard>
+
+    <!-- 保存ボタン -->
+    <div class="flex justify-end">
+      <Button
+        label="設定を保存"
+        icon="pi pi-check"
+        :loading="saving"
+        @click="saveTypePreferences"
+      />
     </div>
   </div>
 </template>

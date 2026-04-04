@@ -110,11 +110,25 @@ export const useErrorReport = () => {
   }
 
   /**
-   * ダイアログを開かずにエラーをバックエンドへ送信する（handleApiError用）
+   * ダイアログを開かずにエラーをバックエンドへ送信する（ウィジェット用）
+   * ネットワーク障害（サーバー停止・接続拒否）の場合は送信しない
    */
   const captureQuiet = (error: unknown, meta?: { context?: string; requestId?: string }): void => {
     if (import.meta.server) return
     const err = error instanceof Error ? error : new Error(String(error))
+
+    // ネットワーク障害はサーバーも落ちているため送信不要
+    const msg = err.message.toLowerCase()
+    if (
+      msg.includes('failed to fetch') ||
+      msg.includes('network error') ||
+      msg.includes('err_connection_refused') ||
+      msg.includes('<no response>')
+    ) {
+      console.warn('[ErrorReport:quiet] network error (skipped)', meta?.context)
+      return
+    }
+
     const authStore = useAuthStore()
     console.error('[ErrorReport:quiet]', { context: meta?.context }, err)
     $fetch(`${config.public.apiBase}/api/v1/error-reports`, {

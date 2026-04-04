@@ -18,9 +18,11 @@ async function load() {
   try {
     const res = await getPlatformAnnouncements()
     announcements.value = res.data
+  } catch {
+    announcements.value = []
+  } finally {
+    loading.value = false
   }
-  catch { announcements.value = [] }
-  finally { loading.value = false }
 }
 
 const severityIcon: Record<string, string> = {
@@ -40,9 +42,12 @@ onMounted(load)
         :key="ann.id"
         class="rounded-lg border p-3"
         :class="{
-          'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20': ann.severity === 'INFO',
-          'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20': ann.severity === 'WARNING',
-          'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20': ann.severity === 'URGENT',
+          'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20':
+            ann.severity === 'INFO',
+          'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20':
+            ann.severity === 'WARNING',
+          'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20':
+            ann.severity === 'URGENT',
         }"
       >
         <div class="flex items-start gap-2">
@@ -57,6 +62,6 @@ onMounted(load)
         </div>
       </div>
     </div>
-    <DashboardEmptyState v-else icon="pi pi-megaphone" message="プラットフォームお知らせはありません" />
+    <DashboardEmptyState v-else icon="pi pi-megaphone" message="運営からのお知らせはありません" />
   </DashboardWidgetCard>
 </template>

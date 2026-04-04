@@ -6,12 +6,13 @@ definePageMeta({
 })
 
 const route = useRoute()
+const router = useRouter()
 const teamId = Number(route.params.id)
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 
 const selectedChannel = ref<ChatChannelResponse | null>(null)
 const showCreateDialog = ref(false)
-const listRef = ref<{ refresh: () => void } | null>(null)
+const listRef = ref<{ refresh: () => void; refreshAndSelect: (id: number) => void } | null>(null)
 
 function onSelectChannel(ch: ChatChannelResponse) {
   selectedChannel.value = ch
@@ -21,12 +22,18 @@ function onCreated() {
   listRef.value?.refresh()
 }
 
+async function onChannelCreated(ch: ChatChannelResponse) {
+  await listRef.value?.refreshAndSelect(ch.id)
+  selectedChannel.value = ch
+}
+
 onMounted(() => loadPermissions())
 </script>
 
 <template>
   <div>
-    <div class="mb-4">
+    <div class="mb-4 flex items-center gap-3">
+      <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
       <h1 class="text-2xl font-bold">チャット</h1>
     </div>
 
@@ -48,6 +55,8 @@ onMounted(() => loadPermissions())
           :channel="selectedChannel"
           :can-pin="isAdminOrDeputy"
           :can-delete="isAdmin"
+          :team-id="teamId"
+          @channel-created="onChannelCreated"
         />
         <div v-else class="flex h-full flex-col items-center justify-center text-surface-400">
           <i class="pi pi-comments mb-3 text-4xl" />
@@ -56,10 +65,6 @@ onMounted(() => loadPermissions())
       </div>
     </div>
 
-    <ChatCreateDialog
-      v-model:visible="showCreateDialog"
-      :team-id="teamId"
-      @created="onCreated"
-    />
+    <ChatCreateDialog v-model:visible="showCreateDialog" :team-id="teamId" @created="onCreated" />
   </div>
 </template>

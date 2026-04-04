@@ -5,6 +5,7 @@ interface AuthUser {
   email: string
   displayName: string
   profileImageUrl: string | null
+  systemRole?: string
 }
 
 interface AuthState {
@@ -23,6 +24,7 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isAuthenticated: (state): boolean => !!state.accessToken,
     currentUser: (state): AuthUser | null => state.user,
+    isSystemAdmin: (state): boolean => state.user?.systemRole === 'SYSTEM_ADMIN',
   },
 
   actions: {
@@ -64,11 +66,9 @@ export const useAuthStore = defineStore('auth', {
           method: 'POST',
           body: { refreshToken: this.refreshToken },
         })
-      }
-      catch {
+      } catch {
         // ignore errors - we're logging out anyway
-      }
-      finally {
+      } finally {
         this.logout()
       }
     },

@@ -45,28 +45,51 @@ onMounted(loadData)
   <div class="mx-auto max-w-2xl">
     <h1 class="mb-6 text-2xl font-bold">ゲーミフィケーション設定</h1>
 
-    <div v-if="loading" class="flex justify-center py-12"><ProgressSpinner /></div>
+    <PageLoading v-if="loading" />
 
     <template v-else-if="config">
       <div class="space-y-6">
-        <div class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+        <div
+          class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+        >
           <h2 class="mb-4 text-lg font-semibold">機能の有効/無効</h2>
           <div class="space-y-3">
             <div class="flex items-center justify-between">
-              <div><p class="font-medium">ゲーミフィケーション全体</p><p class="text-xs text-surface-500">ポイント・バッジ・ランキング機能を有効にする</p></div>
+              <div>
+                <p class="font-medium">ゲーミフィケーション全体</p>
+                <p class="text-xs text-surface-500">ポイント・バッジ・ランキング機能を有効にする</p>
+              </div>
               <ToggleSwitch v-model="config.enabled" :disabled="!isAdmin" />
             </div>
             <div class="flex items-center justify-between">
-              <div><p class="font-medium">ポイント機能</p><p class="text-xs text-surface-500">アクションに応じたポイント付与</p></div>
-              <ToggleSwitch v-model="config.pointsEnabled" :disabled="!isAdmin || !config.enabled" />
+              <div>
+                <p class="font-medium">ポイント機能</p>
+                <p class="text-xs text-surface-500">アクションに応じたポイント付与</p>
+              </div>
+              <ToggleSwitch
+                v-model="config.pointsEnabled"
+                :disabled="!isAdmin || !config.enabled"
+              />
             </div>
             <div class="flex items-center justify-between">
-              <div><p class="font-medium">バッジ機能</p><p class="text-xs text-surface-500">条件達成時のバッジ自動付与</p></div>
-              <ToggleSwitch v-model="config.badgesEnabled" :disabled="!isAdmin || !config.enabled" />
+              <div>
+                <p class="font-medium">バッジ機能</p>
+                <p class="text-xs text-surface-500">条件達成時のバッジ自動付与</p>
+              </div>
+              <ToggleSwitch
+                v-model="config.badgesEnabled"
+                :disabled="!isAdmin || !config.enabled"
+              />
             </div>
             <div class="flex items-center justify-between">
-              <div><p class="font-medium">ランキング機能</p><p class="text-xs text-surface-500">ポイントランキングの表示</p></div>
-              <ToggleSwitch v-model="config.rankingEnabled" :disabled="!isAdmin || !config.enabled" />
+              <div>
+                <p class="font-medium">ランキング機能</p>
+                <p class="text-xs text-surface-500">ポイントランキングの表示</p>
+              </div>
+              <ToggleSwitch
+                v-model="config.rankingEnabled"
+                :disabled="!isAdmin || !config.enabled"
+              />
             </div>
           </div>
         </div>

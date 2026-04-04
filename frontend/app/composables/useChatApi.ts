@@ -178,6 +178,19 @@ export function useChatApi() {
     })
   }
 
+  async function inviteToZimmer(
+    channelId: number,
+    body: { userIds: number[]; shareHistory: boolean },
+  ) {
+    return api<{ data: ChatChannelResponse }>(
+      `/api/v1/chat/channels/${channelId}/invite-to-zimmer`,
+      {
+        method: 'POST',
+        body,
+      },
+    )
+  }
+
   // === Bookmark ===
   async function bookmarkMessage(messageId: number) {
     return api('/api/v1/chat/bookmarks', { method: 'POST', body: { messageId } })
@@ -248,6 +261,7 @@ export function useChatApi() {
     markAsRead,
     searchMessages,
     getOrCreateDm,
+    inviteToZimmer,
     bookmarkMessage,
     removeBookmark,
     getBookmarks,

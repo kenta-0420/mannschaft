@@ -75,6 +75,30 @@ export function useTodoApi() {
     return api<{ data: PagedTodos['data'] }>('/api/v1/todos/my')
   }
 
+  async function createPersonalTodo(body: Record<string, unknown>) {
+    return api<TodoDetail>('/api/v1/todos', {
+      method: 'POST',
+      body: { ...body, scopeType: 'PERSONAL' },
+    })
+  }
+
+  // スコープを問わず使える汎用ステータス変更
+  async function changeTodoStatusById(
+    scopeType: string,
+    scopeId: number | null,
+    todoId: number,
+    status: string,
+  ) {
+    if (scopeType === 'PERSONAL' || !scopeId) {
+      return api(`/api/v1/todos/${todoId}/status`, { method: 'PATCH', body: { status } })
+    }
+    const type = scopeType === 'TEAM' ? ('team' as const) : ('organization' as const)
+    return api(`${buildBase(type, scopeId)}/todos/${todoId}/status`, {
+      method: 'PATCH',
+      body: { status },
+    })
+  }
+
   // === Team TODO CRUD ===
   function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
@@ -223,6 +247,8 @@ export function useTodoApi() {
 
   return {
     getMyTodos,
+    createPersonalTodo,
+    changeTodoStatusById,
     listTodos,
     getTodo,
     createTodo,

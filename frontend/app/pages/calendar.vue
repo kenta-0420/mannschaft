@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
 
+const router = useRouter()
 const scheduleApi = useScheduleApi()
 
 const now = new Date()
@@ -81,7 +82,10 @@ onMounted(loadEvents)
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">マイカレンダー</h1>
+      <div class="flex items-center gap-3">
+        <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
+        <h1 class="text-2xl font-bold">マイカレンダー</h1>
+      </div>
       <Button label="予定を追加" icon="pi pi-plus" @click="showCreateDialog = true" />
     </div>
 

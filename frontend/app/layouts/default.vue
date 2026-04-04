@@ -2,6 +2,12 @@
 const authStore = useAuthStore()
 const route = useRoute()
 
+const isMounted = ref(false)
+const showBlogCreate = ref(false)
+onMounted(() => {
+  isMounted.value = true
+})
+
 const navItems = computed(() => [
   { label: 'ダッシュボード', icon: 'pi pi-home', to: '/dashboard' },
   { label: 'チーム', icon: 'pi pi-users', to: '/teams' },
@@ -14,65 +20,78 @@ const navItems = computed(() => [
   { label: '設定', icon: 'pi pi-cog', to: '/settings' },
 ])
 
+const systemAdminItem = { label: 'SYSTEM', icon: 'pi pi-shield', to: '/system-admin' }
+
 function isActive(path: string): boolean {
   return route.path.startsWith(path)
 }
 </script>
 
 <template>
-  <div class="min-h-screen bg-surface-ground">
+  <!-- マウント前（SSR含む）はスピナーのみ表示してフラッシュを防ぐ -->
+  <div v-if="!isMounted" class="flex min-h-screen items-center justify-center bg-surface-ground">
+    <ProgressSpinner style="width: 48px; height: 48px" />
+  </div>
+
+  <div v-else class="min-h-screen bg-surface-ground">
     <!-- ヘッダー -->
     <header class="bg-surface-0 border-b border-surface shadow-sm">
       <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4">
         <!-- 左: ロゴ + ナビゲーション -->
         <div class="flex min-w-0 flex-1 items-center gap-6">
           <NuxtLink to="/dashboard" class="text-3xl font-bold text-primary"> Mannschaft </NuxtLink>
-          <nav
-            v-if="authStore.isAuthenticated"
-            class="flex items-center gap-1 overflow-x-auto scrollbar-hide"
-          >
-            <NuxtLink
-              v-for="item in navItems"
-              :key="item.to"
-              :to="item.to"
-              class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
-              :class="isActive(item.to) ? 'bg-primary/10 text-primary' : 'text-surface-600'"
+          <ClientOnly>
+            <nav
+              v-if="authStore.isAuthenticated"
+              class="flex items-center gap-1 overflow-x-auto scrollbar-hide"
             >
-              <i :class="item.icon" />
-              {{ item.label }}
-            </NuxtLink>
-          </nav>
+              <NuxtLink
+                v-for="item in navItems"
+                :key="item.to"
+                :to="item.to"
+                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
+                :class="isActive(item.to) ? 'bg-primary/10 text-primary' : 'text-surface-600'"
+              >
+                <i :class="item.icon" />
+                {{ item.label }}
+              </NuxtLink>
+              <NuxtLink
+                v-if="authStore.isSystemAdmin"
+                :to="systemAdminItem.to"
+                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-red-50"
+                :class="isActive(systemAdminItem.to) ? 'bg-red-100 text-red-600' : 'text-red-500'"
+              >
+                <i :class="systemAdminItem.icon" />
+                {{ systemAdminItem.label }}
+              </NuxtLink>
+              <!-- ブログはモーダル起動 -->
+              <button
+                v-if="authStore.isAuthenticated"
+                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100 text-surface-600"
+                @click="showBlogCreate = true"
+              >
+                <i class="pi pi-book" />
+                ブログ
+              </button>
+            </nav>
+          </ClientOnly>
         </div>
 
-        <!-- 右: スコープセレクター + ユーザーメニュー -->
+        <!-- 右: ユーザーメニュー -->
         <div class="flex items-center gap-3">
-          <NuxtLink
-            v-if="authStore.isAuthenticated"
-            v-tooltip.bottom="'検索'"
-            to="/search"
-            class="flex items-center"
-          >
-            <Button icon="pi pi-search" text rounded severity="secondary" />
-          </NuxtLink>
-          <NuxtLink
-            v-if="authStore.isAuthenticated"
-            v-tooltip.bottom="'メンション'"
-            to="/mentions"
-            class="flex items-center"
-          >
-            <Button icon="pi pi-at" text rounded severity="secondary" />
-          </NuxtLink>
-          <ScopeSelector v-if="authStore.isAuthenticated" />
-          <NotificationBell v-if="authStore.isAuthenticated" />
-          <Button
-            v-if="authStore.isAuthenticated"
-            v-tooltip.bottom="'ログアウト'"
-            icon="pi pi-sign-out"
-            text
-            rounded
-            severity="secondary"
-            @click="authStore.serverLogout()"
-          />
+          <ClientOnly>
+            <template v-if="authStore.isAuthenticated">
+              <NotificationBell />
+              <Button
+                v-tooltip.bottom="'ログアウト'"
+                icon="pi pi-sign-out"
+                text
+                rounded
+                severity="secondary"
+                @click="authStore.serverLogout()"
+              />
+            </template>
+          </ClientOnly>
           <slot name="header-actions" />
         </div>
       </div>
@@ -82,5 +101,10 @@ function isActive(path: string): boolean {
     <main class="mx-auto max-w-screen-2xl p-4">
       <slot />
     </main>
+
+    <ClientOnly>
+      <ErrorReportDialog />
+      <BlogCreateDialog v-model:visible="showBlogCreate" />
+    </ClientOnly>
   </div>
 </template>

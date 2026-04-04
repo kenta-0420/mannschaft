@@ -25,9 +25,7 @@ onMounted(() => load())
       <h1 class="text-2xl font-bold">共用施設</h1>
       <Button label="施設を追加" icon="pi pi-plus" />
     </div>
-    <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
-    </div>
+    <PageLoading v-if="loading" size="40px" />
     <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div
         v-for="f in facilities"

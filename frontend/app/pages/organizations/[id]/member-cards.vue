@@ -9,7 +9,7 @@ const route = useRoute()
 const orgId = computed(() => Number(route.params.id))
 const memberCardApi = useMemberCardApi()
 const notification = useNotification()
-const { isAdmin, loadPermissions } = useRoleAccess('organization', orgId)
+const { loadPermissions } = useRoleAccess('organization', orgId)
 
 const cards = ref<MemberCard[]>([])
 const loading = ref(true)
@@ -60,9 +60,7 @@ onMounted(loadData)
   <div class="mx-auto max-w-6xl">
     <h1 class="mb-6 text-2xl font-bold">QR会員証管理</h1>
 
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner />
-    </div>
+    <PageLoading v-if="loading" />
 
     <template v-else>
       <Tabs v-model:value="activeTab">

@@ -2,10 +2,16 @@ import { ofetch } from 'ofetch'
 
 let refreshPromise: Promise<boolean> | null = null
 
+// 短時間に複数の 5xx が発生した場合のトースト集約
+let _errorBatchTimer: ReturnType<typeof setTimeout> | null = null
+let _errorBatchCount = 0
+let _errorBatchFirst: { status: number; statusText: string; url: string } | null = null
+
 export function useApi() {
   const config = useRuntimeConfig()
   const authStore = useAuthStore()
   const { t } = useI18n()
+  const errorReport = useErrorReport()
 
   const api = ofetch.create({
     baseURL: config.public.apiBase as string,
@@ -18,7 +24,7 @@ export function useApi() {
       }
     },
 
-    async onResponseError({ response }) {
+    async onResponseError({ request, response }) {
       // 401: Refresh Token ローテーション
       if (response.status === 401 && authStore.refreshToken) {
         const success = await refreshAccessToken()
@@ -29,18 +35,47 @@ export function useApi() {
         return
       }
 
-      // 5xx: トースト通知
+      // 5xx: トースト集約 + エラー報告
       if (response.status >= 500) {
-        const toast = useNuxtApp().$toast as
-          | { add: (opts: Record<string, unknown>) => void }
-          | undefined
-        if (toast) {
-          toast.add({
-            severity: 'error',
-            summary: t('common.error.server'),
-            detail: t('common.error.server_retry'),
-            life: 5000,
-          })
+        const requestId = response.headers.get('X-Request-ID') ?? undefined
+        const apiUrl = typeof request === 'string' ? request : (request?.toString() ?? '')
+
+        // エラー報告は毎回送信
+        errorReport.capture(new Error(`HTTP ${response.status} ${response.statusText}`), {
+          apiUrl,
+          statusCode: response.status,
+          requestId,
+        })
+
+        // トーストは 500ms 以内の複数エラーをまとめて1件に集約
+        _errorBatchCount++
+        if (_errorBatchFirst === null) {
+          _errorBatchFirst = {
+            status: response.status,
+            statusText: response.statusText,
+            url: apiUrl,
+          }
+        }
+        if (_errorBatchTimer === null) {
+          _errorBatchTimer = setTimeout(() => {
+            const toast = useNuxtApp().$toast as
+              | { add: (opts: Record<string, unknown>) => void }
+              | undefined
+            if (toast) {
+              toast.add({
+                severity: 'error',
+                summary: t('error.server'),
+                detail:
+                  _errorBatchCount > 1
+                    ? `${_errorBatchCount}件のサーバーエラーが発生しました`
+                    : t('error.server_retry'),
+                life: 5000,
+              })
+            }
+            _errorBatchCount = 0
+            _errorBatchFirst = null
+            _errorBatchTimer = null
+          }, 500)
         }
       }
     },

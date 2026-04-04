@@ -57,9 +57,7 @@ onMounted(async () => {
     </div>
 
     <!-- 公開中フォーム一覧 -->
-    <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner />
-    </div>
+    <PageLoading v-if="loading" size="40px" />
 
     <div
       v-else-if="templates.length > 0"

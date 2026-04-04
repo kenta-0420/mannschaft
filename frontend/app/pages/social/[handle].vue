@@ -39,7 +39,7 @@ watch(handle, loadProfile)
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <div v-if="loading" class="flex justify-center py-12"><ProgressSpinner /></div>
+    <PageLoading v-if="loading" />
 
     <template v-else-if="profile">
       <div class="mb-6 flex items-center gap-6">
@@ -49,7 +49,10 @@ watch(handle, loadProfile)
           alt=""
           class="h-24 w-24 rounded-full object-cover"
         />
-        <div v-else class="flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-3xl text-primary">
+        <div
+          v-else
+          class="flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-3xl text-primary"
+        >
           <i class="pi pi-user" />
         </div>
         <div class="flex-1">
@@ -57,8 +60,12 @@ watch(handle, loadProfile)
           <p class="text-surface-500">@{{ profile.handle }}</p>
           <p v-if="profile.bio" class="mt-2 text-sm">{{ profile.bio }}</p>
           <div class="mt-3 flex items-center gap-4">
-            <span class="text-sm"><strong>{{ profile.followerCount }}</strong> フォロワー</span>
-            <span class="text-sm"><strong>{{ profile.followingCount }}</strong> フォロー中</span>
+            <span class="text-sm"
+              ><strong>{{ profile.followerCount }}</strong> フォロワー</span
+            >
+            <span class="text-sm"
+              ><strong>{{ profile.followingCount }}</strong> フォロー中</span
+            >
             <FollowButton
               followed-type="SOCIAL_PROFILE"
               :followed-id="profile.id"

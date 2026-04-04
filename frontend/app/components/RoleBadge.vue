@@ -15,7 +15,7 @@ const severityMap: Record<string, string> = {
 }
 
 const getLabel = (role: string): string => {
-  return t(`common.role.${role}`, role)
+  return t(`role.${role}`, role)
 }
 
 const severity = computed(() => severityMap[props.role] ?? 'secondary')

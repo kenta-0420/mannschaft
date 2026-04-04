@@ -4,6 +4,7 @@ definePageMeta({
 })
 
 const route = useRoute()
+const router = useRouter()
 const orgId = Number(route.params.id)
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
 
@@ -27,7 +28,10 @@ onMounted(() => loadPermissions())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">TODO</h1>
+      <div class="flex items-center gap-3">
+        <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
+        <h1 class="text-2xl font-bold">TODO</h1>
+      </div>
       <Button label="TODO作成" icon="pi pi-plus" @click="showCreateDialog = true" />
     </div>
 

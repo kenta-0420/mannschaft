@@ -14,7 +14,7 @@ const emit = defineEmits<{
 
 <template>
   <div
-    class="rounded-xl border border-surface-200 bg-surface-0 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-800"
+    class="rounded-xl border border-surface-300 bg-surface-0 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-800"
     :class="{
       'col-span-1': !colSpan || colSpan === 1,
       'md:col-span-2': colSpan === 2,
@@ -25,7 +25,9 @@ const emit = defineEmits<{
     <div class="mb-3 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <i v-if="icon" :class="icon" class="text-primary" />
-        <h3 class="text-sm font-semibold text-surface-700 dark:text-surface-200">{{ title }}</h3>
+        <h3 class="text-[22px] font-semibold text-surface-700 dark:text-surface-200">
+          {{ title }}
+        </h3>
       </div>
       <Button
         v-if="refreshable"

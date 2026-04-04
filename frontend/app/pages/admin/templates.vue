@@ -60,9 +60,7 @@ onMounted(load)
       <Button label="新規作成" icon="pi pi-plus" @click="openCreate" />
     </div>
 
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner />
-    </div>
+    <PageLoading v-if="loading" />
 
     <DataTable v-else :value="items" striped-rows data-key="id">
       <template #empty>

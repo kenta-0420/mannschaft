@@ -9,7 +9,15 @@ const route = useRoute()
 const router = useRouter()
 const postId = Number(route.params.postId)
 
-const { getPost, createReply, getReplies, addReaction, removeReaction, addBookmark, removeBookmark } = useTimelineApi()
+const {
+  getPost,
+  createReply,
+  getReplies,
+  addReaction,
+  removeReaction,
+  addBookmark,
+  removeBookmark,
+} = useTimelineApi()
 const { showSuccess, showError } = useNotification()
 
 const post = ref<(TimelinePostResponse & { recentReplies: TimelinePostResponse[] }) | null>(null)
@@ -60,16 +68,18 @@ async function onReply() {
 }
 
 async function onReaction(targetId: number, emoji: string) {
-  const target = targetId === postId
-    ? post.value
-    : replies.value.find(r => r.id === targetId)
+  const target = targetId === postId ? post.value : replies.value.find((r) => r.id === targetId)
   if (!target) return
   try {
     if (target.myReactions.includes(emoji)) {
       await removeReaction(targetId, emoji)
-      target.myReactions = target.myReactions.filter(e => e !== emoji)
+      target.myReactions = target.myReactions.filter((e) => e !== emoji)
       target.reactionSummary[emoji] = (target.reactionSummary[emoji] || 1) - 1
-      if (target.reactionSummary[emoji] <= 0) delete target.reactionSummary[emoji]
+      if (target.reactionSummary[emoji] <= 0) {
+        target.reactionSummary = Object.fromEntries(
+          Object.entries(target.reactionSummary).filter(([k]) => k !== emoji),
+        )
+      }
       target.reactionCount--
     } else {
       await addReaction(targetId, emoji)
@@ -83,9 +93,7 @@ async function onReaction(targetId: number, emoji: string) {
 }
 
 async function onBookmark(targetId: number) {
-  const target = targetId === postId
-    ? post.value
-    : replies.value.find(r => r.id === targetId)
+  const target = targetId === postId ? post.value : replies.value.find((r) => r.id === targetId)
   if (!target) return
   try {
     if (target.isBookmarked) {
@@ -110,14 +118,7 @@ onMounted(() => loadPost())
 <template>
   <div class="mx-auto max-w-2xl">
     <!-- 戻るボタン -->
-    <Button
-      icon="pi pi-arrow-left"
-      label="戻る"
-      text
-      size="small"
-      class="mb-4"
-      @click="goBack"
-    />
+    <Button icon="pi pi-arrow-left" label="戻る" text size="small" class="mb-4" @click="goBack" />
 
     <div v-if="post">
       <!-- メイン投稿 -->
@@ -172,8 +173,6 @@ onMounted(() => loadPost())
     </div>
 
     <!-- ローディング -->
-    <div v-else class="flex justify-center py-12">
-      <ProgressSpinner style="width: 40px; height: 40px" />
-    </div>
+    <PageLoading v-else size="40px" />
   </div>
 </template>

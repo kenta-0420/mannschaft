@@ -69,7 +69,10 @@ onMounted(loadProfiles)
 <template>
   <div class="mx-auto max-w-2xl">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">ソーシャルプロフィール</h1>
+      <div class="flex items-center gap-2">
+        <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
+        <h1 class="text-2xl font-bold">ソーシャルプロフィール</h1>
+      </div>
       <Button v-if="profiles.length < 3" label="新規作成" icon="pi pi-plus" @click="openCreate" />
     </div>
 
@@ -77,9 +80,9 @@ onMounted(loadProfiles)
       最大3つのプロフィールを作成できます（{{ profiles.length }}/3）
     </p>
 
-    <div v-if="loading" class="flex justify-center py-12"><ProgressSpinner /></div>
+    <PageLoading v-if="loading" />
 
-    <div v-else class="space-y-4">
+    <div v-else class="fade-in space-y-4">
       <SocialProfileCard
         v-for="profile in profiles"
         :key="profile.id"

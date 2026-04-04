@@ -42,7 +42,7 @@ function onKeydown(event: KeyboardEvent) {
     <div class="flex items-end gap-2">
       <Textarea
         v-model="body"
-        :placeholder="disabled ? 'このチャンネルには投稿できません' : 'メッセージを入力...'"
+        :placeholder="disabled ? 'このZimmer(部屋)には投稿できません' : 'メッセージを入力...'"
         auto-resize
         rows="1"
         class="flex-1"

@@ -32,8 +32,13 @@ async function loadData() {
 
 async function toggleModule(moduleId: string, enabled: boolean) {
   try {
-    await adminApi.toggleModule(scopeType.value as 'team' | 'organization', scopeId.value, moduleId, enabled)
-    const mod = modules.value.find(m => m.moduleId === moduleId)
+    await adminApi.toggleModule(
+      scopeType.value as 'team' | 'organization',
+      scopeId.value,
+      moduleId,
+      enabled,
+    )
+    const mod = modules.value.find((m) => m.moduleId === moduleId)
     if (mod) mod.enabled = enabled
     notification.success(`モジュールを${enabled ? '有効' : '無効'}にしました`)
   } catch {
@@ -48,7 +53,7 @@ onMounted(loadData)
   <div class="mx-auto max-w-6xl">
     <h1 class="mb-6 text-2xl font-bold">管理者ダッシュボード</h1>
 
-    <div v-if="loading" class="flex justify-center py-12"><ProgressSpinner /></div>
+    <PageLoading v-if="loading" />
 
     <template v-else>
       <Tabs v-model:value="activeTab">
@@ -80,7 +85,10 @@ onMounted(loadData)
                   <p class="font-medium">{{ mod.name }}</p>
                   <p class="text-xs text-surface-500">{{ mod.moduleId }}</p>
                 </div>
-                <ToggleSwitch :model-value="mod.enabled" @update:model-value="(v: boolean) => toggleModule(mod.moduleId, v)" />
+                <ToggleSwitch
+                  :model-value="mod.enabled"
+                  @update:model-value="(v: boolean) => toggleModule(mod.moduleId, v)"
+                />
               </div>
             </div>
           </TabPanel>

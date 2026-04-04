@@ -32,17 +32,21 @@ onMounted(() => load())
       <h1 class="text-2xl font-bold">パフォーマンス</h1>
     </div>
 
-    <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
-    </div>
+    <PageLoading v-if="loading" size="40px" />
 
     <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div v-for="stat in stats" :key="stat.metricId" class="rounded-xl border border-surface-200 bg-surface-0 p-4">
+      <div
+        v-for="stat in stats"
+        :key="stat.metricId"
+        class="rounded-xl border border-surface-200 bg-surface-0 p-4"
+      >
         <h3 class="mb-2 text-sm font-semibold">{{ stat.metricName }}</h3>
         <div class="flex items-end gap-4">
           <div>
             <p class="text-2xl font-bold text-primary">{{ stat.teamAverage.toFixed(1) }}</p>
-            <p class="text-xs text-surface-400">チーム平均{{ stat.unit ? ` (${stat.unit})` : '' }}</p>
+            <p class="text-xs text-surface-400">
+              チーム平均{{ stat.unit ? ` (${stat.unit})` : '' }}
+            </p>
           </div>
           <div>
             <p class="text-lg font-semibold text-green-600">{{ stat.teamBest.toFixed(1) }}</p>

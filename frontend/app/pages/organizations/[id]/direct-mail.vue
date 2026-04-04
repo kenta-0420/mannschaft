@@ -39,9 +39,7 @@ onMounted(() => load())
       <h1 class="text-2xl font-bold">ダイレクトメール</h1>
       <Button label="メール作成" icon="pi pi-plus" />
     </div>
-    <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
-    </div>
+    <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-2">
       <div
         v-for="m in mails"

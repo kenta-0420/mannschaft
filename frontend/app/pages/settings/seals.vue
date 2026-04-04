@@ -50,7 +50,7 @@ async function handleSaveDefaults(defaults: ScopeDefault[]) {
   try {
     scopeDefaults.value = await sealApi.updateScopeDefaults(
       userId.value,
-      defaults.map(d => ({ scopeType: d.scopeType, scopeId: d.scopeId, variant: d.variant })),
+      defaults.map((d) => ({ scopeType: d.scopeType, scopeId: d.scopeId, variant: d.variant })),
     )
     notification.success('デフォルト設定を保存しました')
   } catch {
@@ -63,12 +63,15 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <h1 class="mb-6 text-2xl font-bold">電子印鑑</h1>
+    <div class="mb-6 flex items-center gap-2">
+      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
+      <h1 class="text-2xl font-bold">電子印鑑</h1>
+    </div>
 
-    <div v-if="loading" class="flex justify-center py-12"><ProgressSpinner /></div>
+    <PageLoading v-if="loading" />
 
     <template v-else>
-      <Tabs v-model:value="activeTab">
+      <Tabs v-model:value="activeTab" class="fade-in">
         <TabList>
           <Tab value="0">印鑑プレビュー</Tab>
           <Tab value="1">デフォルト設定</Tab>
@@ -87,7 +90,9 @@ onMounted(loadData)
                   @click="handleRegenerate"
                 />
               </div>
-              <p class="text-center text-xs text-surface-500">印鑑は登録姓名から自動生成されます（1時間に3回まで）</p>
+              <p class="text-center text-xs text-surface-500">
+                印鑑は登録姓名から自動生成されます（1時間に3回まで）
+              </p>
             </div>
           </TabPanel>
           <TabPanel value="1">

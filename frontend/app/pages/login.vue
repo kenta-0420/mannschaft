@@ -34,19 +34,30 @@ async function handleLogin() {
       authStore.setTokens(data.data.accessToken, data.data.refreshToken)
       authStore.setUser(data.data.user)
 
-      // F11.3: ユーザー保存済みロケールを適用
+      // F11.3: ユーザー保存済みロケール + systemRole を取得
       try {
-        const profile = await api<{ data: { locale?: string } }>('/api/v1/users/me')
+        const profile = await api<{ data: { locale?: string; systemRole?: string } }>(
+          '/api/v1/users/me',
+        )
         if (profile.data.locale) {
           await applyUserLocale(profile.data.locale)
         }
+        if (profile.data.systemRole) {
+          authStore.setUser({ ...data.data.user, systemRole: profile.data.systemRole })
+        }
       } catch {
-        // ロケール取得失敗時はデフォルトで続行
+        // 取得失敗時はデフォルトで続行
       }
 
       notification.success('ログイン成功')
-      const redirect = (route.query.redirect as string) || '/'
-      navigateTo(redirect)
+      const redirect = route.query.redirect as string
+      if (redirect) {
+        navigateTo(redirect)
+      } else if (authStore.isSystemAdmin) {
+        navigateTo('/system-admin')
+      } else {
+        navigateTo('/')
+      }
     }
   } catch {
     notification.error(

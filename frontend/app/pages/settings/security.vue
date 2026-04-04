@@ -138,19 +138,16 @@ function formatDate(dateStr: string | null) {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <h1 class="mb-6 text-2xl font-bold">セキュリティ</h1>
-
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner />
+    <div class="mb-6 flex items-center gap-2">
+      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
+      <h1 class="text-2xl font-bold">セキュリティ</h1>
     </div>
 
-    <div v-else class="space-y-8">
-      <!-- 2FA設定 -->
-      <div
-        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
-      >
-        <h2 class="mb-4 text-lg font-semibold">二要素認証（2FA）</h2>
+    <PageLoading v-if="loading" />
 
+    <div v-else class="fade-in space-y-8">
+      <!-- 2FA設定 -->
+      <SectionCard title="二要素認証（2FA）">
         <div v-if="!totpSetup" class="space-y-4">
           <p class="text-sm text-surface-500">
             認証アプリ（Google Authenticatorなど）を使用して、アカウントのセキュリティを強化します。
@@ -184,12 +181,10 @@ function formatDate(dateStr: string | null) {
             }}</code>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- アクティブセッション -->
-      <div
-        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
-      >
+      <SectionCard>
         <div class="mb-4 flex items-center justify-between">
           <h2 class="text-lg font-semibold">アクティブセッション</h2>
           <Button
@@ -232,13 +227,10 @@ function formatDate(dateStr: string | null) {
             />
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- WebAuthn -->
-      <div
-        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
-      >
-        <h2 class="mb-4 text-lg font-semibold">セキュリティキー（WebAuthn）</h2>
+      <SectionCard title="セキュリティキー（WebAuthn）">
         <p class="mb-4 text-sm text-surface-500">
           FIDO2/WebAuthn対応のセキュリティキーや生体認証を登録できます。
         </p>
@@ -281,7 +273,7 @@ function formatDate(dateStr: string | null) {
             </div>
           </div>
         </div>
-      </div>
+      </SectionCard>
     </div>
 
     <!-- バックアップコードダイアログ -->

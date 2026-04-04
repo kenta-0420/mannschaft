@@ -133,6 +133,17 @@ export function useBlogApi() {
   }
 
   // === User Blog (me) ===
+  async function getMyPosts(params?: Record<string, unknown>) {
+    const qs = buildQuery(params || {})
+    return api<{ data: BlogPostResponse[]; meta: Record<string, unknown> }>(
+      `/api/v1/users/me/blog/posts?${qs}`,
+    )
+  }
+
+  async function getMyPost(postId: number) {
+    return api<{ data: BlogPostResponse }>(`/api/v1/users/me/blog/posts/${postId}`)
+  }
+
   async function createMyPost(body: Record<string, unknown>) {
     return api<{ data: BlogPostResponse }>('/api/v1/users/me/blog/posts', { method: 'POST', body })
   }
@@ -211,6 +222,8 @@ export function useBlogApi() {
     createSeries,
     updateSeries,
     deleteSeries,
+    getMyPosts,
+    getMyPost,
     createMyPost,
     updateMyPost,
     deleteMyPost,

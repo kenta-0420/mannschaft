@@ -6,11 +6,13 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   app: {
-    pageTransition: { name: 'page-fade', mode: 'out-in' },
+    pageTransition: { name: 'page-fade' },
   },
   future: {
     compatibilityVersion: 4,
   },
+
+  components: [{ path: '~/components', pathPrefix: false }],
 
   devServer: {
     host: '0.0.0.0',
@@ -26,7 +28,7 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
   ],
 
-  css: ['primeicons/primeicons.css', '~/assets/css/main.css'],
+  css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
     public: {

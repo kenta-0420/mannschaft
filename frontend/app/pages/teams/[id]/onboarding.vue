@@ -94,8 +94,10 @@ async function handleRemind() {
   }
 }
 
-const statusLabel = (s: string) => ({ DRAFT: '下書き', ACTIVE: '有効', ARCHIVED: 'アーカイブ' })[s] ?? s
-const statusSeverity = (s: string) => ({ DRAFT: 'warn', ACTIVE: 'success', ARCHIVED: 'secondary' })[s] ?? 'info'
+const statusLabel = (s: string) =>
+  ({ DRAFT: '下書き', ACTIVE: '有効', ARCHIVED: 'アーカイブ' })[s] ?? s
+const statusSeverity = (s: string) =>
+  ({ DRAFT: 'warn', ACTIVE: 'success', ARCHIVED: 'secondary' })[s] ?? 'info'
 
 onMounted(loadData)
 </script>
@@ -104,9 +106,7 @@ onMounted(loadData)
   <div class="mx-auto max-w-6xl">
     <h1 class="mb-6 text-2xl font-bold">オンボーディング管理</h1>
 
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner />
-    </div>
+    <PageLoading v-if="loading" />
 
     <template v-else>
       <Tabs v-model:value="activeTab">
@@ -117,7 +117,12 @@ onMounted(loadData)
         <TabPanels>
           <TabPanel value="0">
             <div class="mb-4 flex justify-end">
-              <Button v-if="isAdmin" label="テンプレート作成" icon="pi pi-plus" @click="openCreate" />
+              <Button
+                v-if="isAdmin"
+                label="テンプレート作成"
+                icon="pi pi-plus"
+                @click="openCreate"
+              />
             </div>
             <DataTable :value="templates" data-key="id" striped-rows>
               <template #empty>
@@ -126,7 +131,10 @@ onMounted(loadData)
               <Column field="name" header="テンプレート名" />
               <Column header="ステータス">
                 <template #body="{ data }">
-                  <Badge :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" />
+                  <Badge
+                    :value="statusLabel(data.status)"
+                    :severity="statusSeverity(data.status)"
+                  />
                 </template>
               </Column>
               <Column header="ステップ数">
@@ -135,9 +143,29 @@ onMounted(loadData)
               <Column v-if="isAdmin" header="操作" style="width: 200px">
                 <template #body="{ data }">
                   <div class="flex gap-1">
-                    <Button v-if="data.status === 'DRAFT'" icon="pi pi-pencil" size="small" text @click="openEdit(data)" />
-                    <Button v-if="data.status === 'DRAFT'" icon="pi pi-check" size="small" text severity="success" @click="activateTemplate(data.id)" />
-                    <Button v-if="data.status === 'ACTIVE'" icon="pi pi-inbox" size="small" text severity="warn" @click="archiveTemplate(data.id)" />
+                    <Button
+                      v-if="data.status === 'DRAFT'"
+                      icon="pi pi-pencil"
+                      size="small"
+                      text
+                      @click="openEdit(data)"
+                    />
+                    <Button
+                      v-if="data.status === 'DRAFT'"
+                      icon="pi pi-check"
+                      size="small"
+                      text
+                      severity="success"
+                      @click="activateTemplate(data.id)"
+                    />
+                    <Button
+                      v-if="data.status === 'ACTIVE'"
+                      icon="pi pi-inbox"
+                      size="small"
+                      text
+                      severity="warn"
+                      @click="archiveTemplate(data.id)"
+                    />
                   </div>
                 </template>
               </Column>
@@ -149,7 +177,12 @@ onMounted(loadData)
         </TabPanels>
       </Tabs>
 
-      <Dialog v-model:visible="showTemplateDialog" :header="editingTemplate ? 'テンプレート編集' : 'テンプレート作成'" :modal="true" class="w-full max-w-2xl">
+      <Dialog
+        v-model:visible="showTemplateDialog"
+        :header="editingTemplate ? 'テンプレート編集' : 'テンプレート作成'"
+        :modal="true"
+        class="w-full max-w-2xl"
+      >
         <OnboardingTemplateBuilder
           :template="editingTemplate"
           :presets="presets"

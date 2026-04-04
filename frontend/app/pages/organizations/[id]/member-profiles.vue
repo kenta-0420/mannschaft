@@ -4,6 +4,7 @@ import type { MemberProfile, CreateMemberProfileRequest } from '~/types/member-p
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
+const router = useRouter()
 const orgId = computed(() => Number(route.params.id))
 const memberProfileApi = useMemberProfileApi()
 const notification = useNotification()
@@ -53,7 +54,12 @@ function openEdit(profile: MemberProfile) {
 async function save() {
   try {
     if (editingProfile.value) {
-      await memberProfileApi.updateMember('organization', orgId.value, editingProfile.value.id, form.value)
+      await memberProfileApi.updateMember(
+        'organization',
+        orgId.value,
+        editingProfile.value.id,
+        form.value,
+      )
       notification.success('メンバーを更新しました')
     } else {
       await memberProfileApi.createMember('organization', orgId.value, form.value)
@@ -81,9 +87,12 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <h1 class="mb-6 text-2xl font-bold">メンバー紹介</h1>
+    <div class="mb-6 flex items-center gap-3">
+      <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
+      <h1 class="text-2xl font-bold">メンバー紹介</h1>
+    </div>
 
-    <div v-if="loading" class="flex justify-center py-12"><ProgressSpinner /></div>
+    <PageLoading v-if="loading" />
 
     <template v-else>
       <MemberProfileList
@@ -95,7 +104,12 @@ onMounted(loadData)
       />
     </template>
 
-    <Dialog v-model:visible="showDialog" :header="editingProfile ? 'メンバー編集' : 'メンバー追加'" :modal="true" class="w-full max-w-md">
+    <Dialog
+      v-model:visible="showDialog"
+      :header="editingProfile ? 'メンバー編集' : 'メンバー追加'"
+      :modal="true"
+      class="w-full max-w-md"
+    >
       <div class="space-y-4">
         <div>
           <label class="mb-1 block text-sm font-medium">名前 *</label>
@@ -116,7 +130,12 @@ onMounted(loadData)
       </div>
       <template #footer>
         <Button label="キャンセル" severity="secondary" @click="showDialog = false" />
-        <Button :label="editingProfile ? '更新' : '追加'" icon="pi pi-check" :disabled="!form.displayName" @click="save" />
+        <Button
+          :label="editingProfile ? '更新' : '追加'"
+          icon="pi pi-check"
+          :disabled="!form.displayName"
+          @click="save"
+        />
       </template>
     </Dialog>
   </div>

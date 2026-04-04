@@ -2,6 +2,7 @@
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
+const router = useRouter()
 const orgId = Number(route.params.id)
 const scheduleApi = useScheduleApi()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
@@ -111,7 +112,10 @@ onMounted(async () => {
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">スケジュール</h1>
+      <div class="flex items-center gap-3">
+        <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
+        <h1 class="text-2xl font-bold">スケジュール</h1>
+      </div>
       <Button
         v-if="isAdminOrDeputy"
         label="イベント作成"

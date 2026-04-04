@@ -73,15 +73,22 @@ onMounted(() => {
     </div>
 
     <div v-if="Object.keys(typeCounts).length > 0" class="mb-4">
-      <SearchFilterTabs :type-counts="typeCounts" :active-type="activeType" @select="handleTypeSelect" />
+      <SearchFilterTabs
+        :type-counts="typeCounts"
+        :active-type="activeType"
+        @select="handleTypeSelect"
+      />
     </div>
 
-    <div v-if="timedOutTypes.length > 0" class="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200">
+    <div
+      v-if="timedOutTypes.length > 0"
+      class="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200"
+    >
       <i class="pi pi-exclamation-triangle mr-1" />
       一部の検索がタイムアウトしました: {{ timedOutTypes.join(', ') }}
     </div>
 
-    <div v-if="loading" class="flex justify-center py-12"><ProgressSpinner /></div>
+    <PageLoading v-if="loading" />
 
     <div v-else-if="results.length === 0 && query.length >= 2" class="py-12 text-center">
       <i class="pi pi-search mb-2 text-4xl text-surface-400" />
@@ -89,13 +96,19 @@ onMounted(() => {
       <div v-if="zeroHelp" class="mt-4 space-y-2">
         <p v-if="zeroHelp.didYouMean" class="text-sm">
           もしかして:
-          <button class="text-primary hover:underline" @click="useSuggestion(zeroHelp!.didYouMean!)">
+          <button
+            class="text-primary hover:underline"
+            @click="useSuggestion(zeroHelp!.didYouMean!)"
+          >
             {{ zeroHelp.didYouMean }}
           </button>
         </p>
         <p v-if="zeroHelp.broaderQuery" class="text-sm">
           より広い検索:
-          <button class="text-primary hover:underline" @click="useSuggestion(zeroHelp!.broaderQuery!)">
+          <button
+            class="text-primary hover:underline"
+            @click="useSuggestion(zeroHelp!.broaderQuery!)"
+          >
             {{ zeroHelp.broaderQuery }}
           </button>
         </p>
@@ -103,11 +116,20 @@ onMounted(() => {
     </div>
 
     <div v-else class="space-y-3">
-      <SearchResultCard v-for="result in results" :key="`${result.type}-${result.id}`" :result="result" />
+      <SearchResultCard
+        v-for="result in results"
+        :key="`${result.type}-${result.id}`"
+        :result="result"
+      />
     </div>
 
     <div v-if="totalPages > 1" class="mt-6 flex justify-center">
-      <Paginator :rows="20" :total-records="totalPages * 20" :first="currentPage * 20" @page="handlePageChange" />
+      <Paginator
+        :rows="20"
+        :total-records="totalPages * 20"
+        :first="currentPage * 20"
+        @page="handlePageChange"
+      />
     </div>
   </div>
 </template>

@@ -72,13 +72,14 @@ function eventSeverity(eventType: string) {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <h1 class="mb-6 text-2xl font-bold">ログイン履歴</h1>
-
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner />
+    <div class="mb-6 flex items-center gap-2">
+      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
+      <h1 class="text-2xl font-bold">ログイン履歴</h1>
     </div>
 
-    <div v-else>
+    <PageLoading v-if="loading" />
+
+    <div v-else class="fade-in">
       <div v-if="history.length === 0" class="py-12 text-center text-surface-400">
         <i class="pi pi-history mb-3 text-4xl" />
         <p>ログイン履歴がありません</p>

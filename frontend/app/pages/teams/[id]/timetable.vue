@@ -16,15 +16,17 @@ const loading = ref(true)
 const activeTab = ref('0')
 
 const dayLabels = ['月', '火', '水', '木', '金', '土', '日']
-const statusLabel = (s: string) => ({ DRAFT: '下書き', ACTIVE: '運用中', ARCHIVED: 'アーカイブ' })[s] ?? s
-const statusSeverity = (s: string) => ({ DRAFT: 'warn', ACTIVE: 'success', ARCHIVED: 'secondary' })[s] ?? 'info'
+const statusLabel = (s: string) =>
+  ({ DRAFT: '下書き', ACTIVE: '運用中', ARCHIVED: 'アーカイブ' })[s] ?? s
+const statusSeverity = (s: string) =>
+  ({ DRAFT: 'warn', ACTIVE: 'success', ARCHIVED: 'secondary' })[s] ?? 'info'
 
 async function loadData() {
   loading.value = true
   try {
     await loadPermissions()
     timetables.value = await timetableApi.list(teamId.value)
-    const active = timetables.value.find(t => t.status === 'ACTIVE')
+    const active = timetables.value.find((t) => t.status === 'ACTIVE')
     if (active) await selectTimetable(active)
   } catch {
     notification.error('時間割の取得に失敗しました')
@@ -70,11 +72,18 @@ onMounted(loadData)
     <div class="mb-6 flex items-center justify-between">
       <h1 class="text-2xl font-bold">時間割管理</h1>
       <div class="flex gap-2">
-        <Button v-if="selectedTimetable" label="PDF出力" icon="pi pi-file-pdf" severity="secondary" size="small" @click="handleExportPdf" />
+        <Button
+          v-if="selectedTimetable"
+          label="PDF出力"
+          icon="pi pi-file-pdf"
+          severity="secondary"
+          size="small"
+          @click="handleExportPdf"
+        />
       </div>
     </div>
 
-    <div v-if="loading" class="flex justify-center py-12"><ProgressSpinner /></div>
+    <PageLoading v-if="loading" />
 
     <template v-else>
       <Tabs v-model:value="activeTab">
@@ -88,28 +97,69 @@ onMounted(loadData)
               <table class="w-full border-collapse text-sm">
                 <thead>
                   <tr>
-                    <th class="border border-surface-200 bg-surface-50 p-2 dark:border-surface-700 dark:bg-surface-800">時限</th>
-                    <th v-for="day in weeklyView.days" :key="day.dayOfWeek" class="border border-surface-200 bg-surface-50 p-2 dark:border-surface-700 dark:bg-surface-800">
+                    <th
+                      class="border border-surface-200 bg-surface-50 p-2 dark:border-surface-700 dark:bg-surface-800"
+                    >
+                      時限
+                    </th>
+                    <th
+                      v-for="day in weeklyView.days"
+                      :key="day.dayOfWeek"
+                      class="border border-surface-200 bg-surface-50 p-2 dark:border-surface-700 dark:bg-surface-800"
+                    >
                       {{ dayLabels[day.dayOfWeek - 1] }}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="period in weeklyView.periods" :key="period.periodNumber">
-                    <td class="border border-surface-200 bg-surface-50 p-2 text-center dark:border-surface-700 dark:bg-surface-800">
+                    <td
+                      class="border border-surface-200 bg-surface-50 p-2 text-center dark:border-surface-700 dark:bg-surface-800"
+                    >
                       <div class="font-medium">{{ period.label }}</div>
-                      <div class="text-xs text-surface-400">{{ period.startTime }}-{{ period.endTime }}</div>
+                      <div class="text-xs text-surface-400">
+                        {{ period.startTime }}-{{ period.endTime }}
+                      </div>
                     </td>
-                    <td v-for="day in weeklyView.days" :key="day.dayOfWeek" class="border border-surface-200 p-2 dark:border-surface-700">
-                      <template v-for="slot in day.slots.filter(s => s.periodNumber === period.periodNumber)" :key="slot.id">
-                        <div class="rounded p-1" :style="slot.color ? { backgroundColor: slot.color + '20' } : {}">
-                          <p class="font-medium" :class="slot.change?.changeType === 'CANCEL' ? 'line-through text-surface-400' : ''">
-                            {{ slot.change?.changeType === 'CANCEL' ? '休講' : (slot.change?.newSubject ?? slot.subject) }}
+                    <td
+                      v-for="day in weeklyView.days"
+                      :key="day.dayOfWeek"
+                      class="border border-surface-200 p-2 dark:border-surface-700"
+                    >
+                      <template
+                        v-for="slot in day.slots.filter(
+                          (s) => s.periodNumber === period.periodNumber,
+                        )"
+                        :key="slot.id"
+                      >
+                        <div
+                          class="rounded p-1"
+                          :style="slot.color ? { backgroundColor: slot.color + '20' } : {}"
+                        >
+                          <p
+                            class="font-medium"
+                            :class="
+                              slot.change?.changeType === 'CANCEL'
+                                ? 'line-through text-surface-400'
+                                : ''
+                            "
+                          >
+                            {{
+                              slot.change?.changeType === 'CANCEL'
+                                ? '休講'
+                                : (slot.change?.newSubject ?? slot.subject)
+                            }}
                           </p>
-                          <p v-if="slot.teacher || slot.change?.newTeacher" class="text-xs text-surface-500">
+                          <p
+                            v-if="slot.teacher || slot.change?.newTeacher"
+                            class="text-xs text-surface-500"
+                          >
                             {{ slot.change?.newTeacher ?? slot.teacher }}
                           </p>
-                          <p v-if="slot.room || slot.change?.newRoom" class="text-xs text-surface-400">
+                          <p
+                            v-if="slot.room || slot.change?.newRoom"
+                            class="text-xs text-surface-400"
+                          >
                             {{ slot.change?.newRoom ?? slot.room }}
                           </p>
                         </div>
@@ -125,16 +175,32 @@ onMounted(loadData)
             </div>
           </TabPanel>
           <TabPanel value="1">
-            <DataTable :value="timetables" data-key="id" striped-rows @row-click="(e: { data: Timetable }) => selectTimetable(e.data)">
-              <template #empty><div class="py-8 text-center text-surface-500">時間割がありません</div></template>
+            <DataTable
+              :value="timetables"
+              data-key="id"
+              striped-rows
+              @row-click="(e: { data: Timetable }) => selectTimetable(e.data)"
+            >
+              <template #empty
+                ><div class="py-8 text-center text-surface-500">時間割がありません</div></template
+              >
               <Column field="name" header="時間割名" />
               <Column field="termName" header="学期" />
               <Column header="ステータス">
-                <template #body="{ data }"><Badge :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" /></template>
+                <template #body="{ data }"
+                  ><Badge :value="statusLabel(data.status)" :severity="statusSeverity(data.status)"
+                /></template>
               </Column>
               <Column v-if="isAdmin" header="操作" style="width: 150px">
                 <template #body="{ data }">
-                  <Button v-if="data.status === 'DRAFT'" icon="pi pi-check" size="small" text severity="success" @click.stop="handleActivate(data.id)" />
+                  <Button
+                    v-if="data.status === 'DRAFT'"
+                    icon="pi pi-check"
+                    size="small"
+                    text
+                    severity="success"
+                    @click.stop="handleActivate(data.id)"
+                  />
                 </template>
               </Column>
             </DataTable>

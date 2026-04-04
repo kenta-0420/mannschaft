@@ -495,8 +495,8 @@ const PRIMEVUE_LOCALES: Record<string, Record<string, unknown>> = {
   },
 }
 
-export default defineNuxtPlugin(() => {
-  const { locale } = useI18n()
+export default defineNuxtPlugin((nuxtApp) => {
+  const i18n = nuxtApp.$i18n as { locale: Ref<string> }
   const primeVue = usePrimeVue()
 
   const applyLocale = (code: string) => {
@@ -504,6 +504,6 @@ export default defineNuxtPlugin(() => {
     primeVue.config.locale = { ...primeVue.config.locale, ...localeData }
   }
 
-  applyLocale(locale.value)
-  watch(locale, applyLocale)
+  applyLocale(i18n.locale.value)
+  watch(i18n.locale, applyLocale)
 })

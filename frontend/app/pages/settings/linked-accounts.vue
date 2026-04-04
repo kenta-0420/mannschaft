@@ -84,19 +84,16 @@ function formatDate(dateStr: string | null) {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <h1 class="mb-6 text-2xl font-bold">アカウント連携</h1>
-
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner />
+    <div class="mb-6 flex items-center gap-2">
+      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
+      <h1 class="text-2xl font-bold">アカウント連携</h1>
     </div>
 
-    <div v-else class="space-y-8">
-      <!-- OAuth連携 -->
-      <div
-        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
-      >
-        <h2 class="mb-4 text-lg font-semibold">OAuth連携</h2>
+    <PageLoading v-if="loading" />
 
+    <div v-else class="fade-in space-y-8">
+      <!-- OAuth連携 -->
+      <SectionCard title="OAuth連携">
         <div v-if="oauthProviders.length === 0" class="py-4 text-center text-surface-400">
           連携されたアカウントはありません
         </div>
@@ -125,14 +122,10 @@ function formatDate(dateStr: string | null) {
             />
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- LINE連携 -->
-      <div
-        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
-      >
-        <h2 class="mb-4 text-lg font-semibold">LINE連携</h2>
-
+      <SectionCard title="LINE連携">
         <div v-if="lineStatus?.isLinked" class="space-y-4">
           <div class="flex items-center gap-4">
             <img
@@ -167,7 +160,7 @@ function formatDate(dateStr: string | null) {
           <p class="mb-4 text-surface-400">LINEアカウントは連携されていません</p>
           <p class="text-sm text-surface-500">LINE連携はLINEアプリから行ってください</p>
         </div>
-      </div>
+      </SectionCard>
     </div>
   </div>
 </template>

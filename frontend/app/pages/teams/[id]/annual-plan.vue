@@ -77,7 +77,7 @@ onMounted(loadData)
       </div>
     </div>
 
-    <div v-if="loading" class="flex justify-center py-12"><ProgressSpinner /></div>
+    <PageLoading v-if="loading" />
 
     <div v-else class="space-y-6">
       <div

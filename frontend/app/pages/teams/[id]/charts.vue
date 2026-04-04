@@ -91,7 +91,7 @@ onMounted(loadData)
   <div class="mx-auto max-w-6xl">
     <h1 class="mb-6 text-2xl font-bold">カルテ管理</h1>
 
-    <div v-if="loading" class="flex justify-center py-12"><ProgressSpinner /></div>
+    <PageLoading v-if="loading" />
 
     <template v-else>
       <ChartList

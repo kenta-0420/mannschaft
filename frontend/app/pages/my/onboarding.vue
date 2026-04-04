@@ -32,8 +32,10 @@ async function handleComplete(progressId: number, stepId: number) {
   }
 }
 
-const activeProgresses = computed(() => progresses.value.filter(p => p.status === 'IN_PROGRESS'))
-const completedProgresses = computed(() => progresses.value.filter(p => p.status !== 'IN_PROGRESS'))
+const activeProgresses = computed(() => progresses.value.filter((p) => p.status === 'IN_PROGRESS'))
+const completedProgresses = computed(() =>
+  progresses.value.filter((p) => p.status !== 'IN_PROGRESS'),
+)
 
 onMounted(loadProgresses)
 </script>
@@ -42,9 +44,7 @@ onMounted(loadProgresses)
   <div class="mx-auto max-w-3xl">
     <h1 class="mb-6 text-2xl font-bold">オンボーディング</h1>
 
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner />
-    </div>
+    <PageLoading v-if="loading" />
 
     <template v-else-if="progresses.length === 0">
       <div class="py-12 text-center text-surface-500">

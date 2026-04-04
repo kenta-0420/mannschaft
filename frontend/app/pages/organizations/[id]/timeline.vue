@@ -31,7 +31,8 @@ onMounted(async () => {
 <template>
   <PageLoading v-if="loading" />
   <div v-else>
-    <div class="mb-4">
+    <div class="mb-4 flex items-center gap-3">
+      <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
       <h1 class="text-2xl font-bold">タイムライン</h1>
     </div>
 

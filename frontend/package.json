@@ -8,7 +8,13 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test": "vitest run && playwright test",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "lint-staged": {
     "*.{ts,vue}": [
@@ -31,6 +37,7 @@
     "@vueuse/nuxt": "^14.2.1",
     "chart.js": "^4.5.1",
     "dayjs": "^1.11.20",
+    "marked": "^17.0.5",
     "nuxt": "^3.21.2",
     "ofetch": "^1.5.1",
     "pinia": "^3.0.4",
@@ -44,11 +51,16 @@
   "devDependencies": {
     "@nuxt/eslint": "^1.15.2",
     "@nuxt/test-utils": "^4.0.0",
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.5.0",
     "@vue/test-utils": "^2.4.6",
+    "dotenv": "^17.4.0",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
+    "happy-dom": "^20.8.9",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
+    "otplib": "^13.4.0",
     "prettier": "^3.8.1",
     "vitest": "^4.1.0"
   }

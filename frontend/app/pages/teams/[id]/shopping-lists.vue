@@ -150,9 +150,7 @@ onMounted(async () => {
       <Button label="リスト作成" icon="pi pi-plus" @click="openCreateList" />
     </div>
 
-    <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
-    </div>
+    <PageLoading v-if="loading" size="40px" />
 
     <div v-else class="grid gap-6 lg:grid-cols-3">
       <!-- リスト一覧 -->
@@ -239,9 +237,7 @@ onMounted(async () => {
             <Button icon="pi pi-plus" @click="addItem" />
           </div>
 
-          <div v-if="loadingItems" class="flex justify-center py-4">
-            <ProgressSpinner style="width: 30px; height: 30px" />
-          </div>
+          <PageLoading v-if="loadingItems" size="30px" />
 
           <div v-else class="flex flex-col gap-1">
             <div

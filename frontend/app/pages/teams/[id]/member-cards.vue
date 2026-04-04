@@ -20,7 +20,7 @@ const selectedCard = ref<MemberCard | null>(null)
 async function loadData() {
   loading.value = true
   try {
-    const [cardsRes, perms] = await Promise.all([
+    const [cardsRes] = await Promise.all([
       memberCardApi.listByTeam(teamId.value),
       loadPermissions(),
     ])
@@ -67,9 +67,7 @@ onMounted(loadData)
   <div class="mx-auto max-w-6xl">
     <h1 class="mb-6 text-2xl font-bold">QR会員証管理</h1>
 
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner />
-    </div>
+    <PageLoading v-if="loading" />
 
     <template v-else>
       <Tabs v-model:value="activeTab">
@@ -102,7 +100,11 @@ onMounted(loadData)
               <Card>
                 <template #title>曜日別</template>
                 <template #content>
-                  <div v-for="(count, day) in stats.byDayOfWeek" :key="day" class="flex justify-between text-sm">
+                  <div
+                    v-for="(count, day) in stats.byDayOfWeek"
+                    :key="day"
+                    class="flex justify-between text-sm"
+                  >
                     <span>{{ day }}</span>
                     <span class="font-medium">{{ count }}</span>
                   </div>
@@ -111,7 +113,11 @@ onMounted(loadData)
               <Card>
                 <template #title>月間推移</template>
                 <template #content>
-                  <div v-for="item in stats.monthlyTrend" :key="item.month" class="flex justify-between text-sm">
+                  <div
+                    v-for="item in stats.monthlyTrend"
+                    :key="item.month"
+                    class="flex justify-between text-sm"
+                  >
                     <span>{{ item.month }}</span>
                     <span class="font-medium">{{ item.count }}</span>
                   </div>

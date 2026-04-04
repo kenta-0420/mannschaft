@@ -10,6 +10,7 @@
     },
     { "name": "ページセクション", "description": "F06.2 ページセクションCRUD" },
     { "name": "テンプレート壁紙", "description": "F01.4 テンプレート壁紙" },
+    { "name": "エラーレポート", "description": "F12.5 フロントエンドエラー追跡API" },
     { "name": "領収書発行者設定", "description": "F08.4 領収書発行者設定CRUD" },
     { "name": "プレゼンスアイコン", "description": "F01.4 カスタムプレゼンスアイコン" },
     { "name": "写真アルバム", "description": "F06.2 ギャラリーアルバムCRUD・写真管理" },
@@ -60,6 +61,10 @@
     { "name": "居室管理（組織）", "description": "F09.1 組織居室CRUD" },
     { "name": "通知管理(管理者)", "description": "F04.3 管理者向け通知統計" },
     { "name": "組織アクセス要件", "description": "F08.2 組織全体ロック設定" },
+    {
+      "name": "システム管理 - エラーレポート",
+      "description": "F12.5 エラーレポート管理API（システム管理者向け）"
+    },
     { "name": "チーム施設予約", "description": "F09.5 チーム施設予約CRUD・承認・チェックイン" },
     { "name": "アンケート回答管理", "description": "F05.4 アンケート回答の送信・取得" },
     { "name": "安否確認フォローアップ管理", "description": "F03.6 フォローアップ更新" },
@@ -179,6 +184,7 @@
     { "name": "チーム譲渡希望", "description": "F09.3 チーム譲渡希望管理" },
     { "name": "組織年間行事管理", "description": "F03.10 組織スコープの年間行事ビュー・コピー" },
     { "name": "コルクボードセクション", "description": "F09.8 コルクボードセクションCRUD" },
+    { "name": "監査ログ", "description": "F10.3 監査ログ参照" },
     { "name": "領収書マイページ", "description": "F08.4 自分宛の領収書取得" },
     { "name": "タイムライン投票", "description": "F04.1 投稿付属の投票機能" },
     { "name": "居住者管理（チーム）", "description": "F09.1 チーム居住者CRUD" },
@@ -276,6 +282,7 @@
     { "name": "フォームテンプレート", "description": "F05.7 書類テンプレート・フォームビルダー" },
     { "name": "議決権行使・委任状", "description": "F08.3 委任状管理" },
     { "name": "ワークフローテンプレート", "description": "F05.6 ワークフローテンプレート管理" },
+    { "name": "GDPR/個人情報管理", "description": "F12.3 データエクスポート・削除プレビュー" },
     { "name": "Stripe Webhook", "description": "F08.2 Stripe Webhook 受信" },
     { "name": "ワークフロー申請", "description": "F05.6 ワークフロー申請管理" },
     { "name": "アンケート管理", "description": "F05.4 アンケート・投票CRUD・ライフサイクル管理" },
@@ -9063,6 +9070,36 @@
       }
     },
     "/api/v1/chat-folders/{id}/items": {
+      "get": {
+        "tags": ["チャットフォルダ"],
+        "summary": "フォルダアイテム一覧",
+        "description": "フォルダ内のアイテム一覧を取得する。sort=LAST_MESSAGE で最終DM日時降順",
+        "operationId": "getFolderItems",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "default": "" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseListFolderItemResponse" }
+              }
+            }
+          }
+        }
+      },
       "put": {
         "tags": ["チャットフォルダ"],
         "summary": "アイテム割り当て",
@@ -12039,6 +12076,35 @@
         }
       }
     },
+    "/api/v1/users/blocks": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "ブロック一覧取得",
+        "operationId": "listBlocks",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseListUserBlockResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "ユーザーブロック",
+        "operationId": "block",
+        "requestBody": {
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/BlockRequest" } }
+          },
+          "required": true
+        },
+        "responses": { "201": { "description": "ブロック成功" } }
+      }
+    },
     "/api/v1/timetables/{timetableId}/changes": {
       "get": {
         "tags": ["時間割臨時変更管理"],
@@ -12446,6 +12512,48 @@
       }
     },
     "/api/v1/teams/{teamId}/translations": {
+      "get": {
+        "tags": ["content-translation-controller"],
+        "operationId": "listTeamTranslations",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          { "name": "status", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "language", "in": "query", "required": false, "schema": { "type": "string" } },
+          {
+            "name": "sourceType",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 0 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/PagedResponseTranslationSummaryResponse" }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": ["content-translation-controller"],
         "operationId": "createTeamTranslation",
@@ -23240,6 +23348,48 @@
       }
     },
     "/api/v1/organizations/{orgId}/translations": {
+      "get": {
+        "tags": ["content-translation-controller"],
+        "operationId": "listOrgTranslations",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          { "name": "status", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "language", "in": "query", "required": false, "schema": { "type": "string" } },
+          {
+            "name": "sourceType",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 0 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/PagedResponseTranslationSummaryResponse" }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": ["content-translation-controller"],
         "operationId": "createOrgTranslation",
@@ -28266,6 +28416,37 @@
         }
       }
     },
+    "/api/v1/error-reports": {
+      "post": {
+        "tags": ["エラーレポート"],
+        "summary": "エラーレポート送信",
+        "operationId": "create_28",
+        "requestBody": {
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/ErrorReportRequest" } }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "新規作成",
+            "content": {
+              "*/*": {
+                "schema": { "type": "object", "additionalProperties": { "type": "object" } }
+              }
+            }
+          },
+          "200": {
+            "description": "既存レポートに集約",
+            "content": {
+              "*/*": {
+                "schema": { "type": "object", "additionalProperties": { "type": "object" } }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/corkboards/{boardId}/groups": {
       "post": {
         "tags": ["コルクボードセクション"],
@@ -28919,6 +29100,60 @@
         }
       }
     },
+    "/api/v1/chat/channels/{channelId}/invite-to-zimmer": {
+      "post": {
+        "tags": ["チャットチャンネル"],
+        "summary": "KabineからZimmerへの招待",
+        "operationId": "inviteToZimmer",
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InviteToZimmerRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Zimmer作成成功",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseChannelResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/channels/{channelId}/convert-to-group": {
+      "post": {
+        "tags": ["チャットチャンネル"],
+        "summary": "DMをグループDMに変換",
+        "operationId": "convertToGroup",
+        "parameters": [
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "変換成功",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseChannelResponse" } }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/chat/channels/{channelId}/archive": {
       "post": {
         "tags": ["チャットチャンネル"],
@@ -28935,6 +29170,35 @@
         "responses": {
           "200": {
             "description": "アーカイブ成功",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseChannelResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/channels/conversations": {
+      "post": {
+        "tags": ["チャットチャンネル"],
+        "summary": "会話開始（Kabine/Zimmer自動振り分け）",
+        "operationId": "startConversation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StartConversationRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "既存チャンネル返却",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseChannelResponse" } }
+            }
+          },
+          "201": {
+            "description": "新規チャンネル作成",
             "content": {
               "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseChannelResponse" } }
             }
@@ -29168,7 +29432,7 @@
     "/api/v1/budget/fiscal-years/{fiscalYearId}/transactions": {
       "post": {
         "tags": ["budget-transaction-controller"],
-        "operationId": "create_28",
+        "operationId": "create_29",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -29379,7 +29643,7 @@
       },
       "post": {
         "tags": ["budget-category-controller"],
-        "operationId": "create_29",
+        "operationId": "create_30",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -30956,7 +31220,7 @@
       },
       "post": {
         "tags": ["onboarding-preset-admin-controller"],
-        "operationId": "create_30",
+        "operationId": "create_31",
         "requestBody": {
           "content": {
             "application/json": { "schema": { "$ref": "#/components/schemas/CreatePresetRequest" } }
@@ -31394,6 +31658,27 @@
               "*/*": {
                 "schema": { "$ref": "#/components/schemas/ApiResponseActivityCommentResponse" }
               }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/data-export": {
+      "post": {
+        "tags": ["GDPR/個人情報管理"],
+        "summary": "データエクスポートリクエスト",
+        "operationId": "requestExport",
+        "requestBody": {
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/DataExportRequest" } }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "エクスポートリクエスト受付",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseDataExportResponse" } }
             }
           }
         }
@@ -32331,6 +32616,42 @@
             "content": {
               "*/*": {
                 "schema": { "$ref": "#/components/schemas/ApiResponseDigestDetailResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/translations/{id}/status": {
+      "patch": {
+        "tags": ["content-translation-controller"],
+        "operationId": "changeTeamTranslationStatus",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/ChangeStatusRequest" } }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseContentTranslationResponse" }
               }
             }
           }
@@ -35609,6 +35930,86 @@
         }
       }
     },
+    "/api/v1/system-admin/error-reports/{id}": {
+      "get": {
+        "tags": ["システム管理 - エラーレポート"],
+        "summary": "エラーレポート詳細取得",
+        "operationId": "get_10",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseErrorReportResponse" } }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["システム管理 - エラーレポート"],
+        "summary": "エラーレポート更新",
+        "operationId": "update_24",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ErrorReportUpdateRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseErrorReportResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/error-reports/bulk": {
+      "patch": {
+        "tags": ["システム管理 - エラーレポート"],
+        "summary": "エラーレポート一括更新",
+        "operationId": "bulkUpdate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ErrorReportBulkUpdateRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": { "type": "integer", "format": "int32" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/dashboard/organizations/{organizationId}/unfreeze": {
       "patch": {
         "tags": ["システム管理 - ダッシュボード"],
@@ -37120,6 +37521,42 @@
         }
       }
     },
+    "/api/v1/organizations/{orgId}/translations/{id}/status": {
+      "patch": {
+        "tags": ["content-translation-controller"],
+        "operationId": "changeOrgTranslationStatus",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/ChangeStatusRequest" } }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseContentTranslationResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/translations/{id}/publish": {
       "patch": {
         "tags": ["content-translation-controller"],
@@ -37961,7 +38398,7 @@
     "/api/v1/organizations/{orgId}/budget/config": {
       "get": {
         "tags": ["org-budget-config-controller"],
-        "operationId": "get_10",
+        "operationId": "get_11",
         "parameters": [
           {
             "name": "orgId",
@@ -37983,7 +38420,7 @@
       },
       "patch": {
         "tags": ["org-budget-config-controller"],
-        "operationId": "update_24",
+        "operationId": "update_25",
         "parameters": [
           {
             "name": "orgId",
@@ -39156,6 +39593,55 @@
         }
       }
     },
+    "/api/v1/chat-folders/items/{itemType}/{itemId}": {
+      "delete": {
+        "tags": ["チャットフォルダ"],
+        "summary": "アイテム解除",
+        "description": "フォルダからアイテムを外して未分類に戻す",
+        "operationId": "removeItem",
+        "parameters": [
+          { "name": "itemType", "in": "path", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "patch": {
+        "tags": ["チャットフォルダ"],
+        "summary": "アイテム属性更新",
+        "description": "連絡先のカスタム表示名・ピン留め・プライベートメモを更新する（CONTACT のみ）",
+        "operationId": "updateItemAttributes",
+        "parameters": [
+          { "name": "itemType", "in": "path", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateFolderItemRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseFolderItemResponse" } }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/budget/fiscal-years/{fiscalYearId}": {
       "get": {
         "tags": ["budget-fiscal-year-controller"],
@@ -39192,7 +39678,7 @@
       },
       "patch": {
         "tags": ["budget-fiscal-year-controller"],
-        "operationId": "update_25",
+        "operationId": "update_26",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -39242,7 +39728,7 @@
       },
       "patch": {
         "tags": ["budget-category-controller"],
-        "operationId": "update_26",
+        "operationId": "update_27",
         "parameters": [
           {
             "name": "categoryId",
@@ -39397,6 +39883,63 @@
               "*/*": {
                 "schema": { "$ref": "#/components/schemas/ApiResponseWebAuthnCredentialResponse" }
               }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/sessions/{id}": {
+      "delete": {
+        "tags": ["認証"],
+        "summary": "特定デバイスからログアウト",
+        "operationId": "logoutDevice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "refresh_token",
+            "in": "cookie",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "currentSessionId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": { "204": { "description": "デバイスログアウト成功" } }
+      },
+      "patch": {
+        "tags": ["認証"],
+        "summary": "セッションのデバイス名変更",
+        "operationId": "updateSessionDeviceName",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateSessionDeviceNameRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "デバイス名変更成功",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseSessionResponse" } }
             }
           }
         }
@@ -40579,6 +41122,45 @@
         }
       }
     },
+    "/api/v1/users/me/audit-logs": {
+      "get": {
+        "tags": ["監査ログ"],
+        "summary": "自分の監査ログ一覧",
+        "operationId": "getMyLogs",
+        "parameters": [
+          { "name": "eventType", "in": "query", "required": false, "schema": { "type": "string" } },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          { "name": "cursor", "in": "query", "required": false, "schema": { "type": "string" } },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseListAuditLogResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/tournament-presets": {
       "get": {
         "tags": ["大会テンプレート管理"],
@@ -41048,6 +41630,30 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/translations/dashboard": {
+      "get": {
+        "tags": ["content-translation-controller"],
+        "operationId": "getTeamTranslationDashboard",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseTranslationDashboardResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/translations/content": {
       "get": {
         "tags": ["content-translation-controller"],
@@ -41116,6 +41722,32 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListTranslationSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/translations/assignments/me": {
+      "get": {
+        "tags": ["translation-assignment-controller"],
+        "operationId": "listMyTeamAssignments",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListTranslationAssignmentResponse"
                 }
               }
             }
@@ -44788,6 +45420,72 @@
         }
       }
     },
+    "/api/v1/system-admin/error-reports": {
+      "get": {
+        "tags": ["システム管理 - エラーレポート"],
+        "summary": "エラーレポート一覧取得",
+        "operationId": "list_32",
+        "parameters": [
+          { "name": "status", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "severity", "in": "query", "required": false, "schema": { "type": "string" } },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 0 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 20 }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "default": "lastOccurredAt,desc" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/PagedResponseErrorReportResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/error-reports/stats": {
+      "get": {
+        "tags": ["システム管理 - エラーレポート"],
+        "summary": "エラーレポート統計取得",
+        "operationId": "stats",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ErrorReportStatsResponse" } }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/dashboard": {
       "get": {
         "tags": ["システム管理 - ダッシュボード"],
@@ -47097,6 +47795,30 @@
         }
       }
     },
+    "/api/v1/organizations/{orgId}/translations/dashboard": {
+      "get": {
+        "tags": ["content-translation-controller"],
+        "operationId": "getOrgTranslationDashboard",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseTranslationDashboardResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/translations/content": {
       "get": {
         "tags": ["content-translation-controller"],
@@ -47165,6 +47887,32 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListTranslationSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/translations/assignments/me": {
+      "get": {
+        "tags": ["translation-assignment-controller"],
+        "operationId": "listMyOrgAssignments",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListTranslationAssignmentResponse"
                 }
               }
             }
@@ -47747,7 +48495,7 @@
     "/api/v1/organizations/{orgId}/onboarding/progresses": {
       "get": {
         "tags": ["org-onboarding-progress-controller"],
-        "operationId": "list_32",
+        "operationId": "list_33",
         "parameters": [
           {
             "name": "orgId",
@@ -48074,7 +48822,7 @@
     "/api/v1/organizations/{orgId}/budget/transactions": {
       "get": {
         "tags": ["org-budget-transaction-controller"],
-        "operationId": "list_33",
+        "operationId": "list_34",
         "parameters": [
           {
             "name": "orgId",
@@ -48404,7 +49152,7 @@
     "/api/v1/onboarding/progresses/me": {
       "get": {
         "tags": ["onboarding-me-controller"],
-        "operationId": "list_34",
+        "operationId": "list_35",
         "parameters": [
           {
             "name": "status",
@@ -49878,21 +50626,13 @@
       "get": {
         "tags": ["ダッシュボード"],
         "summary": "チャットハブ",
-        "description": "チーム別自動グルーピング + カスタムフォルダ別のチャット一覧",
+        "description": "グループチャンネル・DM・フォルダ別連絡先の一覧を返す",
         "operationId": "getChatHub",
-        "parameters": [
-          {
-            "name": "allTeams",
-            "in": "query",
-            "required": false,
-            "schema": { "type": "boolean", "default": false }
-          }
-        ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
-              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseMapStringObject" } }
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseChatHubResponse" } }
             }
           }
         }
@@ -50364,6 +51104,20 @@
         "tags": ["認証"],
         "summary": "アクティブセッション一覧取得",
         "operationId": "getSessions",
+        "parameters": [
+          {
+            "name": "refresh_token",
+            "in": "cookie",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "currentSessionId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
         "responses": {
           "200": {
             "description": "取得成功",
@@ -50377,6 +51131,26 @@
         "tags": ["認証"],
         "summary": "全デバイスからログアウト",
         "operationId": "logoutAllDevices",
+        "parameters": [
+          {
+            "name": "refresh_token",
+            "in": "cookie",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "currentSessionId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "keepCurrent",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
         "responses": { "204": { "description": "全デバイスログアウト成功" } }
       }
     },
@@ -51355,6 +52129,78 @@
         }
       }
     },
+    "/api/v1/admin/audit-logs": {
+      "get": {
+        "tags": ["監査ログ"],
+        "summary": "監査ログ一覧（SYSTEM_ADMIN）",
+        "operationId": "getAdminLogs",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "targetUserId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "organizationId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          { "name": "eventType", "in": "query", "required": false, "schema": { "type": "string" } },
+          {
+            "name": "sessionHash",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 0 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/PagedResponseAuditLogResponse" } }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/activities/stats": {
       "get": {
         "tags": ["活動統計"],
@@ -51477,6 +52323,68 @@
           }
         ],
         "responses": { "200": { "description": "エクスポート成功" } }
+      }
+    },
+    "/api/v1/active-incidents": {
+      "get": {
+        "tags": ["エラーレポート"],
+        "summary": "アクティブインシデント一覧取得",
+        "operationId": "getActiveIncidents",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ActiveIncidentResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/deletion-preview": {
+      "get": {
+        "tags": ["GDPR/個人情報管理"],
+        "summary": "退会時削除データプレビュー",
+        "operationId": "getDeletionPreview",
+        "responses": {
+          "200": {
+            "description": "プレビュー取得成功",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseDeletionPreviewResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/data-export/status": {
+      "get": {
+        "tags": ["GDPR/個人情報管理"],
+        "summary": "エクスポートステータス取得",
+        "operationId": "getExportStatus",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseDataExportResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/data-export/download": {
+      "get": {
+        "tags": ["GDPR/個人情報管理"],
+        "summary": "エクスポートダウンロードURL取得",
+        "operationId": "getDownloadUrl_1",
+        "responses": {
+          "200": {
+            "description": "URL取得成功",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseMapStringString" } }
+            }
+          }
+        }
       }
     },
     "/api/incidents/{id}/comments": {
@@ -51604,6 +52512,22 @@
           }
         ],
         "responses": { "204": { "description": "取消成功" } }
+      }
+    },
+    "/api/v1/users/blocks/{blockedId}": {
+      "delete": {
+        "tags": ["Users"],
+        "summary": "ユーザーブロック解除",
+        "operationId": "unblock",
+        "parameters": [
+          {
+            "name": "blockedId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": { "204": { "description": "ブロック解除成功" } }
       }
     },
     "/api/v1/teams/{teamId}/translations/assignments/{id}": {
@@ -52476,24 +53400,6 @@
         "responses": { "204": { "description": "除外成功" } }
       }
     },
-    "/api/v1/chat-folders/items/{itemType}/{itemId}": {
-      "delete": {
-        "tags": ["チャットフォルダ"],
-        "summary": "アイテム解除",
-        "description": "フォルダからアイテムを外して未分類に戻す",
-        "operationId": "removeItem",
-        "parameters": [
-          { "name": "itemType", "in": "path", "required": true, "schema": { "type": "string" } },
-          {
-            "name": "itemId",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer", "format": "int64" }
-          }
-        ],
-        "responses": { "200": { "description": "OK" } }
-      }
-    },
     "/api/v1/budget/transactions/{transactionId}/attachments/{attachmentId}": {
       "delete": {
         "tags": ["budget-transaction-controller"],
@@ -52513,22 +53419,6 @@
           }
         ],
         "responses": { "204": { "description": "No Content" } }
-      }
-    },
-    "/api/v1/auth/sessions/{id}": {
-      "delete": {
-        "tags": ["認証"],
-        "summary": "特定デバイスからログアウト",
-        "operationId": "logoutDevice",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer", "format": "int64" }
-          }
-        ],
-        "responses": { "204": { "description": "デバイスログアウト成功" } }
       }
     },
     "/api/v1/advertiser/report-schedules/{id}": {
@@ -53078,7 +53968,11 @@
           "isSearchable": { "type": "boolean" },
           "avatarUrl": { "type": "string" },
           "phoneNumber": { "type": "string" },
-          "postalCode": { "type": "string" }
+          "postalCode": { "type": "string" },
+          "dmReceiveFrom": {
+            "type": "string",
+            "enum": ["ANYONE", "TEAM_MEMBERS_ONLY", "CONTACTS_ONLY"]
+          }
         }
       },
       "ApiResponseUserProfileResponse": {
@@ -53336,8 +54230,10 @@
         "properties": {
           "title": { "type": "string" },
           "body": { "type": "string" },
-          "summary": { "type": "string" }
-        }
+          "summary": { "type": "string" },
+          "version": { "type": "integer", "format": "int64" }
+        },
+        "required": ["version"]
       },
       "ApiResponseContentTranslationResponse": {
         "type": "object",
@@ -53347,6 +54243,8 @@
         "type": "object",
         "properties": {
           "id": { "type": "integer", "format": "int64" },
+          "scopeType": { "type": "string" },
+          "scopeId": { "type": "integer", "format": "int64" },
           "contentType": { "type": "string" },
           "contentId": { "type": "integer", "format": "int64" },
           "language": { "type": "string" },
@@ -53354,7 +54252,9 @@
           "body": { "type": "string" },
           "summary": { "type": "string" },
           "status": { "type": "string" },
-          "translatedBy": { "type": "integer", "format": "int64" },
+          "translatorId": { "type": "integer", "format": "int64" },
+          "reviewerId": { "type": "integer", "format": "int64" },
+          "sourceUpdatedAt": { "type": "string", "format": "date-time" },
           "publishedAt": { "type": "string", "format": "date-time" },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" },
@@ -55033,8 +55933,8 @@
           "markType": { "type": "string" },
           "severity": { "type": "integer", "format": "int32" },
           "note": { "type": "string" },
-          "yposition": { "type": "number" },
-          "xposition": { "type": "number" }
+          "xposition": { "type": "number" },
+          "yposition": { "type": "number" }
         }
       },
       "ChartFormulaResponse": {
@@ -55137,8 +56037,8 @@
           "markType": { "type": "string", "maxLength": 20, "minLength": 0 },
           "severity": { "type": "integer", "format": "int32", "maximum": 5, "minimum": 1 },
           "note": { "type": "string", "maxLength": 300, "minLength": 0 },
-          "yposition": { "type": "number" },
-          "xposition": { "type": "number" }
+          "xposition": { "type": "number" },
+          "yposition": { "type": "number" }
         },
         "required": ["severity"]
       },
@@ -56325,8 +57225,8 @@
           "name": { "type": "string" },
           "sortOrder": { "type": "integer", "format": "int32" },
           "disabledReason": { "type": "string" },
-          "visible": { "type": "boolean" },
-          "moduleEnabled": { "type": "boolean" }
+          "moduleEnabled": { "type": "boolean" },
+          "visible": { "type": "boolean" }
         }
       },
       "UpdateGroupRequest": {
@@ -57528,6 +58428,11 @@
           "organizationId": { "type": "integer", "format": "int64" }
         }
       },
+      "BlockRequest": {
+        "type": "object",
+        "properties": { "blocked_id": { "type": "integer", "format": "int64" } },
+        "required": ["blocked_id"]
+      },
       "CreateChangeRequest": {
         "type": "object",
         "properties": {
@@ -57614,9 +58519,9 @@
             "maxItems": 10,
             "minItems": 0
           },
+          "scopeIdOrDefault": { "type": "integer", "format": "int64" },
           "scopeTypeOrDefault": { "type": "string" },
-          "postedAsTypeOrDefault": { "type": "string" },
-          "scopeIdOrDefault": { "type": "integer", "format": "int64" }
+          "postedAsTypeOrDefault": { "type": "string" }
         }
       },
       "ApiResponsePostResponse": {
@@ -57845,14 +58750,15 @@
         "properties": {
           "scopeType": { "type": "string" },
           "scopeId": { "type": "integer", "format": "int64" },
-          "contentType": { "type": "string" },
+          "contentType": { "type": "string", "minLength": 1 },
           "contentId": { "type": "integer", "format": "int64" },
-          "language": { "type": "string" },
+          "language": { "type": "string", "minLength": 1 },
           "title": { "type": "string" },
           "body": { "type": "string" },
           "summary": { "type": "string" },
           "sourceUpdatedAt": { "type": "string", "format": "date-time" }
-        }
+        },
+        "required": ["contentId"]
       },
       "ApiResponseInteger": {
         "type": "object",
@@ -57874,10 +58780,12 @@
         "type": "object",
         "properties": {
           "id": { "type": "integer", "format": "int64" },
-          "translationId": { "type": "integer", "format": "int64" },
+          "scopeType": { "type": "string" },
+          "scopeId": { "type": "integer", "format": "int64" },
           "assigneeId": { "type": "integer", "format": "int64" },
-          "note": { "type": "string" },
-          "assignedAt": { "type": "string", "format": "date-time" }
+          "language": { "type": "string" },
+          "active": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
         }
       },
       "CreateTodoRequest": {
@@ -60288,14 +61196,6 @@
           "createdAt": { "type": "string", "format": "date-time" }
         }
       },
-      "BlockRequest": {
-        "type": "object",
-        "properties": {
-          "userId": { "type": "integer", "format": "int64" },
-          "reason": { "type": "string" }
-        },
-        "required": ["userId"]
-      },
       "ApiResponseBlockResponse": {
         "type": "object",
         "properties": { "data": { "$ref": "#/components/schemas/BlockResponse" } }
@@ -62296,6 +63196,20 @@
           "createdAt": { "type": "string", "format": "date-time" }
         }
       },
+      "ErrorReportRequest": {
+        "type": "object",
+        "properties": {
+          "errorMessage": { "type": "string", "maxLength": 1000, "minLength": 0 },
+          "stackTrace": { "type": "string" },
+          "pageUrl": { "type": "string", "maxLength": 2048, "minLength": 0 },
+          "userAgent": { "type": "string", "maxLength": 500, "minLength": 0 },
+          "userComment": { "type": "string", "maxLength": 1000, "minLength": 0 },
+          "userId": { "type": "integer", "format": "int64" },
+          "occurredAt": { "type": "string", "format": "date-time" },
+          "requestId": { "type": "string", "maxLength": 36, "minLength": 0 }
+        },
+        "required": ["occurredAt"]
+      },
       "CreateGroupRequest": {
         "type": "object",
         "properties": {
@@ -62474,6 +63388,29 @@
         "type": "object",
         "properties": { "data": { "$ref": "#/components/schemas/MemberResponse" } }
       },
+      "InviteToZimmerRequest": {
+        "type": "object",
+        "properties": {
+          "userIds": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int64" },
+            "maxItems": 8,
+            "minItems": 1
+          },
+          "shareHistory": { "type": "boolean" }
+        }
+      },
+      "StartConversationRequest": {
+        "type": "object",
+        "properties": {
+          "userIds": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int64" },
+            "maxItems": 9,
+            "minItems": 1
+          }
+        }
+      },
       "AddBookmarkRequest": {
         "type": "object",
         "properties": {
@@ -62642,6 +63579,7 @@
         "properties": {
           "accessToken": { "type": "string" },
           "refreshToken": { "type": "string" },
+          "sessionId": { "type": "integer", "format": "int64" },
           "tokenType": { "type": "string" },
           "expiresIn": { "type": "integer", "format": "int64" }
         }
@@ -63255,6 +64193,31 @@
           "title": { "type": "string", "maxLength": 200, "minLength": 0 }
         }
       },
+      "DataExportRequest": {
+        "type": "object",
+        "properties": {
+          "categories": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+          "password": { "type": "string" },
+          "otp": { "type": "string" }
+        }
+      },
+      "ApiResponseDataExportResponse": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/DataExportResponse" } }
+      },
+      "DataExportResponse": {
+        "type": "object",
+        "properties": {
+          "exportId": { "type": "integer", "format": "int64" },
+          "status": { "type": "string" },
+          "progressPercent": { "type": "integer", "format": "int32" },
+          "currentStep": { "type": "string" },
+          "fileSizeBytes": { "type": "integer", "format": "int64" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "completedAt": { "type": "string", "format": "date-time" }
+        }
+      },
       "CreateSignageScreenRequest": {
         "type": "object",
         "properties": {
@@ -63528,6 +64491,14 @@
           "id": { "type": "integer", "format": "int64" },
           "displayName": { "type": "string" }
         }
+      },
+      "ChangeStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "minLength": 1 },
+          "version": { "type": "integer", "format": "int64" }
+        },
+        "required": ["version"]
       },
       "TodoStatusChangeRequest": {
         "type": "object",
@@ -64196,6 +65167,60 @@
           "available": { "type": "boolean" }
         }
       },
+      "ErrorReportUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" },
+          "severity": { "type": "string" },
+          "adminNote": { "type": "string", "maxLength": 2000, "minLength": 0 }
+        }
+      },
+      "ApiResponseErrorReportResponse": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/ErrorReportResponse" } }
+      },
+      "ErrorReportResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "errorMessage": { "type": "string" },
+          "stackTrace": { "type": "string" },
+          "pageUrl": { "type": "string" },
+          "userAgent": { "type": "string" },
+          "userComment": { "type": "string" },
+          "userId": { "type": "integer", "format": "int64" },
+          "organizationId": { "type": "integer", "format": "int64" },
+          "requestId": { "type": "string" },
+          "ipAddress": { "type": "string" },
+          "occurredAt": { "type": "string", "format": "date-time" },
+          "status": { "type": "string" },
+          "severity": { "type": "string" },
+          "resolvedBy": { "type": "integer", "format": "int64" },
+          "resolvedAt": { "type": "string", "format": "date-time" },
+          "adminNote": { "type": "string" },
+          "latestUserComment": { "type": "string" },
+          "errorHash": { "type": "string" },
+          "occurrenceCount": { "type": "integer", "format": "int32" },
+          "affectedUserCount": { "type": "integer", "format": "int32" },
+          "firstOccurredAt": { "type": "string", "format": "date-time" },
+          "lastOccurredAt": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ErrorReportBulkUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int64" },
+            "maxItems": 100,
+            "minItems": 0
+          },
+          "status": { "type": "string" }
+        },
+        "required": ["status"]
+      },
       "ReviewAppealRequest": {
         "type": "object",
         "properties": {
@@ -64720,6 +65745,31 @@
         "properties": { "role": { "type": "string" } },
         "required": ["role"]
       },
+      "UpdateFolderItemRequest": {
+        "type": "object",
+        "properties": {
+          "customName": { "type": "string", "maxLength": 50, "minLength": 0 },
+          "isPinned": { "type": "boolean" },
+          "privateNote": { "type": "string", "maxLength": 500, "minLength": 0 }
+        }
+      },
+      "ApiResponseFolderItemResponse": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/FolderItemResponse" } }
+      },
+      "FolderItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "folderId": { "type": "integer", "format": "int64" },
+          "itemType": { "type": "string" },
+          "itemId": { "type": "integer", "format": "int64" },
+          "customName": { "type": "string" },
+          "isPinned": { "type": "boolean" },
+          "privateNote": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
       "AutoSaveRequest": {
         "type": "object",
         "properties": {
@@ -64771,6 +65821,17 @@
           "createdAt": { "type": "string", "format": "date-time" }
         }
       },
+      "UpdateSessionDeviceNameRequest": {
+        "type": "object",
+        "properties": {
+          "deviceName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[^\\p{Cc}]+$"
+          }
+        }
+      },
       "SubmitAppealRequest": {
         "type": "object",
         "properties": {
@@ -64805,7 +65866,6 @@
           "isPublicResponse": { "type": "boolean" }
         }
       },
-      "ChangeStatusRequest": { "type": "object", "properties": { "status": { "type": "string" } } },
       "ApiResponseSignageDisplayResponse": {
         "type": "object",
         "properties": { "data": { "$ref": "#/components/schemas/SignageDisplayResponse" } }
@@ -65209,6 +66269,43 @@
           "updatedAt": { "type": "string", "format": "date-time" }
         }
       },
+      "ApiResponseListAuditLogResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/AuditLogResponse" } }
+        }
+      },
+      "AuditLogResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "userId": { "type": "integer", "format": "int64" },
+          "targetUserId": { "type": "integer", "format": "int64" },
+          "teamId": { "type": "integer", "format": "int64" },
+          "organizationId": { "type": "integer", "format": "int64" },
+          "eventType": { "type": "string" },
+          "ipAddress": { "type": "string" },
+          "userAgent": { "type": "string" },
+          "sessionHash": { "type": "string" },
+          "metadata": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseListUserBlockResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserBlockResponse" } }
+        }
+      },
+      "UserBlockResponse": {
+        "type": "object",
+        "properties": {
+          "blockedId": { "type": "integer", "format": "int64" },
+          "blockedDisplayName": { "type": "string" },
+          "blockedAvatarUrl": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
       "PagedResponsePresetResponse": {
         "type": "object",
         "properties": {
@@ -65420,6 +66517,45 @@
           "totalRemaining": { "type": "integer", "format": "int32" }
         }
       },
+      "PagedResponseTranslationSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TranslationSummaryResponse" }
+          },
+          "meta": { "$ref": "#/components/schemas/PageMeta" }
+        }
+      },
+      "TranslationSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "contentType": { "type": "string" },
+          "contentId": { "type": "integer", "format": "int64" },
+          "language": { "type": "string" },
+          "translatedTitle": { "type": "string" },
+          "status": { "type": "string" },
+          "translatorId": { "type": "integer", "format": "int64" },
+          "sourceUpdatedAt": { "type": "string", "format": "date-time" },
+          "publishedAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseTranslationDashboardResponse": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/TranslationDashboardResponse" } }
+      },
+      "TranslationDashboardResponse": {
+        "type": "object",
+        "properties": {
+          "totalTranslations": { "type": "integer", "format": "int64" },
+          "draft": { "type": "integer", "format": "int64" },
+          "inReview": { "type": "integer", "format": "int64" },
+          "published": { "type": "integer", "format": "int64" },
+          "needsUpdate": { "type": "integer", "format": "int64" }
+        }
+      },
       "ApiResponseListTranslationSummaryResponse": {
         "type": "object",
         "properties": {
@@ -65427,16 +66563,6 @@
             "type": "array",
             "items": { "$ref": "#/components/schemas/TranslationSummaryResponse" }
           }
-        }
-      },
-      "TranslationSummaryResponse": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "language": { "type": "string" },
-          "status": { "type": "string" },
-          "translatedBy": { "type": "integer", "format": "int64" },
-          "updatedAt": { "type": "string", "format": "date-time" }
         }
       },
       "ApiResponseListTranslationAssignmentResponse": {
@@ -67789,6 +68915,37 @@
           }
         }
       },
+      "PagedResponseErrorReportResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ErrorReportResponse" }
+          },
+          "meta": { "$ref": "#/components/schemas/PageMeta" }
+        }
+      },
+      "ErrorReportStatsResponse": {
+        "type": "object",
+        "properties": {
+          "totalNew": { "type": "integer", "format": "int64" },
+          "totalInvestigating": { "type": "integer", "format": "int64" },
+          "totalReopened": { "type": "integer", "format": "int64" },
+          "totalToday": { "type": "integer", "format": "int64" },
+          "topErrors": { "type": "array", "items": { "$ref": "#/components/schemas/TopError" } }
+        }
+      },
+      "TopError": {
+        "type": "object",
+        "properties": {
+          "errorHash": { "type": "string" },
+          "errorMessage": { "type": "string" },
+          "pageUrl": { "type": "string" },
+          "occurrenceCount": { "type": "integer", "format": "int32" },
+          "affectedUserCount": { "type": "integer", "format": "int32" },
+          "lastOccurredAt": { "type": "string", "format": "date-time" }
+        }
+      },
       "ApiResponseSystemAdminDashboardResponse": {
         "type": "object",
         "properties": { "data": { "$ref": "#/components/schemas/SystemAdminDashboardResponse" } }
@@ -67812,8 +68969,8 @@
       "PageUserEntity": {
         "type": "object",
         "properties": {
-          "totalElements": { "type": "integer", "format": "int64" },
           "totalPages": { "type": "integer", "format": "int32" },
+          "totalElements": { "type": "integer", "format": "int64" },
           "size": { "type": "integer", "format": "int32" },
           "content": { "type": "array", "items": { "$ref": "#/components/schemas/UserEntity" } },
           "number": { "type": "integer", "format": "int32" },
@@ -67859,6 +69016,10 @@
           "displayName": { "type": "string" },
           "nickname2": { "type": "string" },
           "isSearchable": { "type": "boolean" },
+          "dmReceiveFrom": {
+            "type": "string",
+            "enum": ["ANYONE", "TEAM_MEMBERS_ONLY", "CONTACTS_ONLY"]
+          },
           "avatarUrl": { "type": "string" },
           "phoneNumber": { "type": "string" },
           "postalCode": { "type": "string" },
@@ -67876,7 +69037,8 @@
           "reminderSentAt": { "type": "string", "format": "date-time" },
           "reportingRestricted": { "type": "boolean" },
           "archivedAt": { "type": "string", "format": "date-time" },
-          "deletedAt": { "type": "string", "format": "date-time" }
+          "deletedAt": { "type": "string", "format": "date-time" },
+          "purgedAt": { "type": "string", "format": "date-time" }
         }
       },
       "ApiResponsePageTeamEntity": {
@@ -67886,8 +69048,8 @@
       "PageTeamEntity": {
         "type": "object",
         "properties": {
-          "totalElements": { "type": "integer", "format": "int64" },
           "totalPages": { "type": "integer", "format": "int32" },
+          "totalElements": { "type": "integer", "format": "int64" },
           "size": { "type": "integer", "format": "int32" },
           "content": { "type": "array", "items": { "$ref": "#/components/schemas/TeamEntity" } },
           "number": { "type": "integer", "format": "int32" },
@@ -67951,8 +69113,8 @@
       "PageOrganizationEntity": {
         "type": "object",
         "properties": {
-          "totalElements": { "type": "integer", "format": "int64" },
           "totalPages": { "type": "integer", "format": "int32" },
+          "totalElements": { "type": "integer", "format": "int64" },
           "size": { "type": "integer", "format": "int32" },
           "content": {
             "type": "array",
@@ -69780,6 +70942,86 @@
           }
         }
       },
+      "ApiResponseChatHubResponse": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/ChatHubResponse" } }
+      },
+      "ChatHubResponse": {
+        "type": "object",
+        "properties": {
+          "teamChannels": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TeamChannelItemDto" }
+          },
+          "directMessages": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DirectMessageItemDto" }
+          },
+          "contacts": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ContactFolderDto" }
+          },
+          "summary": { "$ref": "#/components/schemas/ChatHubSummaryDto" }
+        }
+      },
+      "ChatHubSummaryDto": {
+        "type": "object",
+        "properties": {
+          "totalUnread": { "type": "integer", "format": "int32" },
+          "totalDmCount": { "type": "integer", "format": "int32" },
+          "totalContactCount": { "type": "integer", "format": "int32" }
+        }
+      },
+      "ContactFolderDto": {
+        "type": "object",
+        "properties": {
+          "folderId": { "type": "integer", "format": "int64" },
+          "folderName": { "type": "string" },
+          "folderIcon": { "type": "string" },
+          "folderColor": { "type": "string" },
+          "sortOrder": { "type": "integer", "format": "int32" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/ContactItemDto" } }
+        }
+      },
+      "ContactItemDto": {
+        "type": "object",
+        "properties": {
+          "itemId": { "type": "integer", "format": "int64" },
+          "displayName": { "type": "string" },
+          "avatarUrl": { "type": "string" },
+          "isPinned": { "type": "boolean" },
+          "hasActiveDm": { "type": "boolean" },
+          "lastMessageAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DirectMessageItemDto": {
+        "type": "object",
+        "properties": {
+          "channelId": { "type": "integer", "format": "int64" },
+          "partnerId": { "type": "integer", "format": "int64" },
+          "partnerDisplayName": { "type": "string" },
+          "partnerAvatarUrl": { "type": "string" },
+          "unreadCount": { "type": "integer", "format": "int32" },
+          "isPinned": { "type": "boolean" },
+          "isMuted": { "type": "boolean" },
+          "lastMessageAt": { "type": "string", "format": "date-time" },
+          "lastMessagePreview": { "type": "string" }
+        }
+      },
+      "TeamChannelItemDto": {
+        "type": "object",
+        "properties": {
+          "channelId": { "type": "integer", "format": "int64" },
+          "channelName": { "type": "string" },
+          "channelType": { "type": "string" },
+          "teamId": { "type": "integer", "format": "int64" },
+          "organizationId": { "type": "integer", "format": "int64" },
+          "unreadCount": { "type": "integer", "format": "int32" },
+          "isPinned": { "type": "boolean" },
+          "isMuted": { "type": "boolean" },
+          "lastMessageAt": { "type": "string", "format": "date-time" }
+        }
+      },
       "ActivityFeedResponse": {
         "type": "object",
         "properties": {
@@ -69857,6 +71099,15 @@
           "data": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/ChatFolderResponse" }
+          }
+        }
+      },
+      "ApiResponseListFolderItemResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/FolderItemResponse" }
           }
         }
       },
@@ -70517,8 +71768,8 @@
       "PageUserRoleEntity": {
         "type": "object",
         "properties": {
-          "totalElements": { "type": "integer", "format": "int64" },
           "totalPages": { "type": "integer", "format": "int32" },
+          "totalElements": { "type": "integer", "format": "int64" },
           "size": { "type": "integer", "format": "int32" },
           "content": {
             "type": "array",
@@ -70545,6 +71796,13 @@
           "grantedBy": { "type": "integer", "format": "int64" },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PagedResponseAuditLogResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/AuditLogResponse" } },
+          "meta": { "$ref": "#/components/schemas/PageMeta" }
         }
       },
       "ApiResponseListActionTemplateResponse": {
@@ -70643,6 +71901,48 @@
       "TrendEntry": {
         "type": "object",
         "properties": { "month": { "type": "string" }, "avg": { "type": "number" } }
+      },
+      "ActiveIncidentResponse": {
+        "type": "object",
+        "properties": {
+          "incidents": { "type": "array", "items": { "$ref": "#/components/schemas/Incident" } }
+        }
+      },
+      "Incident": {
+        "type": "object",
+        "properties": {
+          "pagePattern": { "type": "string" },
+          "message": { "type": "string" },
+          "severity": { "type": "string" },
+          "since": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AnonymizedItem": {
+        "type": "object",
+        "properties": {
+          "category": { "type": "string" },
+          "count": { "type": "integer", "format": "int64" },
+          "note": { "type": "string" }
+        }
+      },
+      "ApiResponseDeletionPreviewResponse": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/DeletionPreviewResponse" } }
+      },
+      "DeletionPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "retentionDays": { "type": "integer", "format": "int32" },
+          "dataSummary": {
+            "type": "object",
+            "additionalProperties": { "type": "integer", "format": "int64" }
+          },
+          "anonymized": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AnonymizedItem" }
+          },
+          "warnings": { "type": "array", "items": { "type": "string" } }
+        }
       },
       "ApiResponseListSignageScreenResponse": {
         "type": "object",

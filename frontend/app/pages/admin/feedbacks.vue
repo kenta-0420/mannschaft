@@ -109,9 +109,7 @@ onMounted(load)
       />
     </div>
 
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner />
-    </div>
+    <PageLoading v-if="loading" />
 
     <DataTable v-else :value="feedbacks" striped-rows data-key="id">
       <template #empty>

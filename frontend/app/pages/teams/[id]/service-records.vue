@@ -5,9 +5,8 @@ const teamId = Number(route.params.id)
 
 const { getRecords } = useServiceRecordApi()
 const { showError } = useNotification()
-const { relativeTime } = useRelativeTime()
 
-const records = ref<any[]>([])
+const records = ref<Record<string, unknown>[]>([])
 const loading = ref(false)
 
 async function load() {
@@ -32,19 +31,29 @@ onMounted(() => load())
       <Button label="記録を追加" icon="pi pi-plus" />
     </div>
 
-    <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
-    </div>
+    <PageLoading v-if="loading" size="40px" />
 
     <div v-else class="flex flex-col gap-2">
-      <div v-for="rec in records" :key="rec.id" class="flex items-center gap-4 rounded-xl border border-surface-200 bg-surface-0 p-4">
+      <div
+        v-for="rec in records"
+        :key="rec.id"
+        class="flex items-center gap-4 rounded-xl border border-surface-200 bg-surface-0 p-4"
+      >
         <Avatar :label="rec.targetUser?.displayName?.charAt(0) || '?'" shape="circle" />
         <div class="min-w-0 flex-1">
           <h3 class="text-sm font-semibold">{{ rec.title }}</h3>
           <div class="flex items-center gap-2 text-xs text-surface-400">
             <span>{{ rec.targetUser?.displayName }}</span>
             <span>{{ rec.serviceDate }}</span>
-            <span class="rounded px-1.5 py-0.5" :class="rec.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : 'bg-surface-100 text-surface-600'">{{ rec.status === 'CONFIRMED' ? '確定' : '下書き' }}</span>
+            <span
+              class="rounded px-1.5 py-0.5"
+              :class="
+                rec.status === 'CONFIRMED'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-surface-100 text-surface-600'
+              "
+              >{{ rec.status === 'CONFIRMED' ? '確定' : '下書き' }}</span
+            >
           </div>
         </div>
       </div>

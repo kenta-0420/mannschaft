@@ -75,6 +75,31 @@ interface PagedData<T> {
   meta: { page: number; size: number; totalElements: number; totalPages: number }
 }
 
+interface SupporterResponse {
+  userId: number
+  displayName: string
+  avatarUrl: string | null
+  followedAt: string
+}
+
+interface SupporterApplicationResponse {
+  id: number
+  userId: number
+  displayName: string
+  avatarUrl: string | null
+  message: string | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  createdAt: string
+}
+
+interface SupporterSettings {
+  autoApprove: boolean
+}
+
+interface FollowStatusResponse {
+  status: 'NONE' | 'PENDING' | 'APPROVED'
+}
+
 export function useOrganizationApi() {
   const api = useApi()
   const { handleApiError } = useErrorHandler()
@@ -180,6 +205,60 @@ export function useOrganizationApi() {
 
   async function unfollowOrganization(orgId: number) {
     return api(`/api/v1/organizations/${orgId}/follow`, { method: 'DELETE' })
+  }
+
+  async function getFollowStatus(orgId: number) {
+    return api<{ data: FollowStatusResponse }>(`/api/v1/organizations/${orgId}/follow/status`)
+  }
+
+  // === サポーター管理（管理者） ===
+  async function getSupporters(orgId: number, params?: { page?: number; size?: number }) {
+    const query = new URLSearchParams()
+    query.set('page', String(params?.page ?? 0))
+    query.set('size', String(params?.size ?? 50))
+    return api<PagedData<SupporterResponse>>(`/api/v1/organizations/${orgId}/supporters?${query}`)
+  }
+
+  async function getSupporterApplications(
+    orgId: number,
+    params?: { page?: number; size?: number },
+  ) {
+    const query = new URLSearchParams()
+    query.set('page', String(params?.page ?? 0))
+    query.set('size', String(params?.size ?? 50))
+    return api<PagedData<SupporterApplicationResponse>>(
+      `/api/v1/organizations/${orgId}/supporter-applications?${query}`,
+    )
+  }
+
+  async function approveSupporterApplication(orgId: number, applicationId: number) {
+    return api(`/api/v1/organizations/${orgId}/supporter-applications/${applicationId}/approve`, {
+      method: 'POST',
+    })
+  }
+
+  async function rejectSupporterApplication(orgId: number, applicationId: number) {
+    return api(`/api/v1/organizations/${orgId}/supporter-applications/${applicationId}/reject`, {
+      method: 'POST',
+    })
+  }
+
+  async function bulkApproveSupporterApplications(orgId: number, applicationIds: number[]) {
+    return api(`/api/v1/organizations/${orgId}/supporter-applications/bulk-approve`, {
+      method: 'POST',
+      body: { applicationIds },
+    })
+  }
+
+  async function getSupporterSettings(orgId: number) {
+    return api<{ data: SupporterSettings }>(`/api/v1/organizations/${orgId}/supporter-settings`)
+  }
+
+  async function updateSupporterSettings(orgId: number, body: Partial<SupporterSettings>) {
+    return api<{ data: SupporterSettings }>(`/api/v1/organizations/${orgId}/supporter-settings`, {
+      method: 'PUT',
+      body,
+    })
   }
 
   // === 権限グループ管理 ===
@@ -295,6 +374,14 @@ export function useOrganizationApi() {
     getAllMembers,
     followOrganization,
     unfollowOrganization,
+    getFollowStatus,
+    getSupporters,
+    getSupporterApplications,
+    approveSupporterApplication,
+    rejectSupporterApplication,
+    bulkApproveSupporterApplications,
+    getSupporterSettings,
+    updateSupporterSettings,
     getPermissionGroups,
     createPermissionGroup,
     updatePermissionGroup,

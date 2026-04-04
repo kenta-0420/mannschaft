@@ -106,9 +106,7 @@ onMounted(async () => {
       <Button v-if="isAdminOrDeputy" label="当番を追加" icon="pi pi-plus" @click="openCreate" />
     </div>
 
-    <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
-    </div>
+    <PageLoading v-if="loading" size="40px" />
 
     <!-- 今日の当番 -->
     <div v-if="todayDuties.length > 0" class="mb-6">
