@@ -52,11 +52,10 @@ export const useDashboardStore = defineStore('dashboard', {
         const response = await api<{ data: PersonalDashboardData }>('/api/v1/dashboard')
         this.personalDashboard = response.data
         this.lastFetchedAt = Date.now()
-      }
-      catch {
-        // keep existing data on error
-      }
-      finally {
+      } catch (error) {
+        const { captureQuiet } = useErrorReport()
+        captureQuiet(error, { context: 'DashboardStore: 個人ダッシュボード取得' })
+      } finally {
         this.loading = false
       }
     },
@@ -69,11 +68,12 @@ export const useDashboardStore = defineStore('dashboard', {
           `/api/v1/dashboard/team/${teamId}?statsPeriod=${statsPeriod}`,
         )
         this.teamDashboards[teamId] = response.data
-      }
-      catch {
-        // keep existing
-      }
-      finally {
+      } catch (error) {
+        const { captureQuiet } = useErrorReport()
+        captureQuiet(error, {
+          context: `DashboardStore: チームダッシュボード取得 teamId=${teamId}`,
+        })
+      } finally {
         this.loading = false
       }
     },
@@ -86,11 +86,10 @@ export const useDashboardStore = defineStore('dashboard', {
           `/api/v1/dashboard/organization/${orgId}?statsPeriod=${statsPeriod}`,
         )
         this.orgDashboards[orgId] = response.data
-      }
-      catch {
-        // keep existing
-      }
-      finally {
+      } catch (error) {
+        const { captureQuiet } = useErrorReport()
+        captureQuiet(error, { context: `DashboardStore: 組織ダッシュボード取得 orgId=${orgId}` })
+      } finally {
         this.loading = false
       }
     },

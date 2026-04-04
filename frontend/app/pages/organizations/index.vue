@@ -5,7 +5,28 @@ definePageMeta({
 })
 
 const orgApi = useOrganizationApi()
+const orgStore = useOrganizationStore()
 const { handleApiError } = useErrorHandler()
+const notification = useNotification()
+
+const followedOrgIds = ref<number[]>([])
+const followingOrgIds = ref<number[]>([])
+
+const myOrgIds = computed(() => new Set(orgStore.myOrganizations.map((o) => o.id)))
+
+async function followOrg(orgId: number, event: Event) {
+  event.stopPropagation()
+  followingOrgIds.value.push(orgId)
+  try {
+    await orgApi.followOrganization(orgId)
+    followedOrgIds.value.push(orgId)
+    notification.success('サポーターとして登録しました')
+  } catch {
+    notification.error('フォローに失敗しました')
+  } finally {
+    followingOrgIds.value = followingOrgIds.value.filter((id) => id !== orgId)
+  }
+}
 
 interface OrgSummary {
   id: number
@@ -41,11 +62,9 @@ async function fetchOrganizations() {
     })
     organizations.value = result.data
     totalRecords.value = result.meta.totalElements
-  }
-  catch (error) {
-    handleApiError(error)
-  }
-  finally {
+  } catch (error) {
+    handleApiError(error, '組織検索')
+  } finally {
     loading.value = false
   }
 }
@@ -77,29 +96,20 @@ onMounted(() => {
 <template>
   <div class="mx-auto max-w-6xl p-6">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">
-        組織検索
-      </h1>
-      <Button
-        label="組織を作成"
-        icon="pi pi-plus"
-        @click="showCreateDialog = true"
-      />
+      <h1 class="text-2xl font-bold">組織検索</h1>
+      <Button label="組織を作成" icon="pi pi-plus" @click="showCreateDialog = true" />
     </div>
 
     <div class="mb-6">
-      <SearchBar
-        placeholder="組織名で検索"
-        :show-org-type-filter="true"
-        @search="onSearch"
-      />
+      <SearchBar placeholder="組織名で検索" :show-org-type-filter="true" @search="onSearch" />
     </div>
 
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner style="width: 48px; height: 48px" />
-    </div>
+    <PageLoading v-if="loading" />
 
-    <div v-else-if="organizations.length === 0" class="rounded-lg border border-dashed border-gray-300 p-12 text-center text-gray-500">
+    <div
+      v-else-if="organizations.length === 0"
+      class="rounded-lg border border-dashed border-gray-300 p-12 text-center text-gray-500"
+    >
       <i class="pi pi-search mb-2 text-4xl" />
       <p>該当する組織が見つかりませんでした</p>
     </div>
@@ -126,8 +136,34 @@ onMounted(() => {
             </div>
           </div>
           <div class="flex items-center justify-between text-sm text-gray-500">
-            <span><i class="pi pi-map-marker mr-1" />{{ formatLocation(org.prefecture, org.city) }}</span>
+            <span
+              ><i class="pi pi-map-marker mr-1" />{{
+                formatLocation(org.prefecture, org.city)
+              }}</span
+            >
             <span><i class="pi pi-users mr-1" />{{ org.memberCount }}人</span>
+          </div>
+          <div
+            v-if="org.supporterEnabled && !myOrgIds.has(org.id)"
+            class="mt-3 border-t border-surface-100 pt-3"
+          >
+            <span
+              v-if="followedOrgIds.includes(org.id)"
+              class="flex items-center gap-1 text-sm text-primary"
+            >
+              <i class="pi pi-heart-fill" />サポーター登録済み
+            </span>
+            <Button
+              v-else
+              label="サポーターになる"
+              icon="pi pi-heart"
+              size="small"
+              severity="secondary"
+              outlined
+              class="w-full"
+              :loading="followingOrgIds.includes(org.id)"
+              @click="followOrg(org.id, $event)"
+            />
           </div>
         </div>
       </div>

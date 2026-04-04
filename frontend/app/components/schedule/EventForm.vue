@@ -33,38 +33,41 @@ const form = ref({
   color: '#6366f1',
 })
 
-watch(() => [props.visible, props.scheduleId], async ([visible, scheduleId]) => {
-  if (visible && scheduleId) {
-    try {
-      const res = props.isPersonal
-        ? await scheduleApi.listPersonalSchedules()
-        : await scheduleApi.getSchedule(props.scopeType, props.scopeId, scheduleId as number)
-      const data = (res as { data: Record<string, unknown> }).data as Record<string, unknown>
-      form.value.title = (data.title as string) ?? ''
-      form.value.description = (data.description as string) ?? ''
-      form.value.location = (data.location as string) ?? ''
-      form.value.allDay = (data.allDay as boolean) ?? false
-      if (data.startAt) {
-        const start = new Date(data.startAt as string)
-        form.value.startDate = start
-        form.value.startTime = start.toTimeString().slice(0, 5)
+watch(
+  () => [props.visible, props.scheduleId],
+  async ([visible, scheduleId]) => {
+    if (visible && scheduleId) {
+      try {
+        const res = props.isPersonal
+          ? await scheduleApi.listPersonalSchedules()
+          : await scheduleApi.getSchedule(props.scopeType, props.scopeId, scheduleId as number)
+        const data = (res as { data: Record<string, unknown> }).data as Record<string, unknown>
+        form.value.title = (data.title as string) ?? ''
+        form.value.description = (data.description as string) ?? ''
+        form.value.location = (data.location as string) ?? ''
+        form.value.allDay = (data.allDay as boolean) ?? false
+        if (data.startAt) {
+          const start = new Date(data.startAt as string)
+          form.value.startDate = start
+          form.value.startTime = start.toTimeString().slice(0, 5)
+        }
+        if (data.endAt) {
+          const end = new Date(data.endAt as string)
+          form.value.endDate = end
+          form.value.endTime = end.toTimeString().slice(0, 5)
+        }
+      } catch {
+        notification.error('イベント情報の取得に失敗しました')
       }
-      if (data.endAt) {
-        const end = new Date(data.endAt as string)
-        form.value.endDate = end
-        form.value.endTime = end.toTimeString().slice(0, 5)
+    } else if (visible && !scheduleId) {
+      resetForm()
+      if (props.initialDate) {
+        form.value.startDate = new Date(props.initialDate)
+        form.value.endDate = new Date(props.initialDate)
       }
     }
-    catch { notification.error('イベント情報の取得に失敗しました') }
-  }
-  else if (visible && !scheduleId) {
-    resetForm()
-    if (props.initialDate) {
-      form.value.startDate = new Date(props.initialDate)
-      form.value.endDate = new Date(props.initialDate)
-    }
-  }
-})
+  },
+)
 
 function buildDateTimeStr(date: Date | null, time: string): string {
   if (!date) return ''
@@ -96,32 +99,40 @@ async function submit() {
     if (props.isPersonal) {
       if (isEdit.value && props.scheduleId) {
         await scheduleApi.updatePersonalSchedule(props.scheduleId, body)
-      }
-      else {
+      } else {
         await scheduleApi.createPersonalSchedule(body)
       }
-    }
-    else {
+    } else {
       if (isEdit.value && props.scheduleId) {
         await scheduleApi.updateSchedule(props.scopeType, props.scopeId, props.scheduleId, body)
-      }
-      else {
+      } else {
         await scheduleApi.createSchedule(props.scopeType, props.scopeId, body)
       }
     }
     notification.success(isEdit.value ? 'イベントを更新しました' : 'イベントを作成しました')
     emit('saved')
     close()
-  }
-  catch (error) {
+  } catch (error) {
     fieldErrors.value = getFieldErrors(error)
-    if (Object.keys(fieldErrors.value).length === 0) handleApiError(error)
+    if (Object.keys(fieldErrors.value).length === 0)
+      handleApiError(error, isEdit.value ? 'スケジュール更新' : 'スケジュール作成')
+  } finally {
+    submitting.value = false
   }
-  finally { submitting.value = false }
 }
 
 function resetForm() {
-  form.value = { title: '', description: '', location: '', startDate: null, startTime: '09:00', endDate: null, endTime: '10:00', allDay: false, color: '#6366f1' }
+  form.value = {
+    title: '',
+    description: '',
+    location: '',
+    startDate: null,
+    startTime: '09:00',
+    endDate: null,
+    endTime: '10:00',
+    allDay: false,
+    color: '#6366f1',
+  }
   fieldErrors.value = {}
 }
 
@@ -132,11 +143,23 @@ function close() {
 </script>
 
 <template>
-  <Dialog :visible="visible" :header="isEdit ? 'イベントを編集' : 'イベントを作成'" :style="{ width: '500px' }" modal @update:visible="close">
+  <Dialog
+    :visible="visible"
+    :header="isEdit ? 'イベントを編集' : 'イベントを作成'"
+    :style="{ width: '500px' }"
+    modal
+    @update:visible="close"
+  >
     <div class="flex flex-col gap-4">
       <div>
-        <label class="mb-1 block text-sm font-medium">タイトル <span class="text-red-500">*</span></label>
-        <InputText v-model="form.title" class="w-full" :class="{ 'p-invalid': fieldErrors.title }" />
+        <label class="mb-1 block text-sm font-medium"
+          >タイトル <span class="text-red-500">*</span></label
+        >
+        <InputText
+          v-model="form.title"
+          class="w-full"
+          :class="{ 'p-invalid': fieldErrors.title }"
+        />
         <small v-if="fieldErrors.title" class="text-red-500">{{ fieldErrors.title }}</small>
       </div>
       <div class="flex items-center gap-2">
@@ -178,7 +201,9 @@ function close() {
             v-for="c in ['#6366f1', '#ef4444', '#22c55e', '#f59e0b', '#3b82f6', '#ec4899']"
             :key="c"
             class="h-8 w-8 rounded-full border-2"
-            :class="form.color === c ? 'border-primary ring-2 ring-primary/30' : 'border-surface-300'"
+            :class="
+              form.color === c ? 'border-primary ring-2 ring-primary/30' : 'border-surface-300'
+            "
             :style="{ backgroundColor: c }"
             @click="form.color = c"
           />
@@ -187,7 +212,12 @@ function close() {
     </div>
     <template #footer>
       <Button label="キャンセル" text @click="close" />
-      <Button :label="isEdit ? '更新' : '作成'" icon="pi pi-check" :loading="submitting" @click="submit" />
+      <Button
+        :label="isEdit ? '更新' : '作成'"
+        icon="pi pi-check"
+        :loading="submitting"
+        @click="submit"
+      />
     </template>
   </Dialog>
 </template>

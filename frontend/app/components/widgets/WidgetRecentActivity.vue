@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { getActivity } = useDashboardApi()
+const { captureQuiet } = useErrorReport()
 
 interface Activity {
   id: number
@@ -20,17 +21,37 @@ async function load() {
   loading.value = true
   try {
     const res = await getActivity({ limit: 8 })
-    activities.value = res.data
+    activities.value = res.data.map((a) => ({
+      id: a.id,
+      activityType: a.type,
+      actorName: a.actor?.displayName ?? '',
+      actorAvatarUrl: a.actor?.avatarUrl ?? null,
+      targetType: a.targetType,
+      targetId: a.targetId,
+      targetTitle: a.summary,
+      scopeName: a.scopeName,
+      createdAt: a.createdAt,
+    }))
+  } catch (error) {
+    captureQuiet(error, { context: 'WidgetRecentActivity: アクティビティ取得' })
+    activities.value = []
+  } finally {
+    loading.value = false
   }
-  catch { activities.value = [] }
-  finally { loading.value = false }
 }
 
 onMounted(load)
 </script>
 
 <template>
-  <DashboardWidgetCard title="最近のアクティビティ" icon="pi pi-history" :loading="loading" :col-span="2" refreshable @refresh="load">
+  <DashboardWidgetCard
+    title="最近のアクティビティ"
+    icon="pi pi-history"
+    :loading="loading"
+    :col-span="2"
+    refreshable
+    @refresh="load"
+  >
     <div v-if="activities.length > 0" class="divide-y divide-surface-100 dark:divide-surface-700">
       <ActivityItem
         v-for="activity in activities"

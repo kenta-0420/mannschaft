@@ -99,7 +99,7 @@ async function submit() {
   } catch (error) {
     fieldErrors.value = getFieldErrors(error)
     if (Object.keys(fieldErrors.value).length === 0) {
-      handleApiError(error)
+      handleApiError(error, isEdit.value ? 'イベント更新' : 'イベント作成')
     }
   } finally {
     submitting.value = false

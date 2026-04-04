@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { PrefectureResponse, CityResponse } from '~/types/matching'
+
 const props = defineProps<{
   entityType: 'team' | 'organization'
   visible: boolean
@@ -12,11 +14,42 @@ const emit = defineEmits<{
 const api = useApi()
 const notification = useNotification()
 const { handleApiError, getFieldErrors } = useErrorHandler()
+const { getPrefectures, getCities } = useMatchingApi()
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 
+const prefectures = ref<PrefectureResponse[]>([])
+const cities = ref<CityResponse[]>([])
+const selectedPref = ref<PrefectureResponse | null>(null)
+const citiesLoading = ref(false)
+
+onMounted(async () => {
+  try {
+    const res = await getPrefectures()
+    prefectures.value = res.data
+  } catch {
+    /* マスターデータ取得失敗は無視 */
+  }
+})
+
+watch(selectedPref, async (pref) => {
+  form.value.prefecture = pref?.name ?? ''
+  form.value.city = ''
+  cities.value = []
+  if (!pref) return
+  citiesLoading.value = true
+  try {
+    const res = await getCities(pref.code)
+    cities.value = res.data
+  } catch {
+    cities.value = []
+  } finally {
+    citiesLoading.value = false
+  }
+})
+
 const isTeam = computed(() => props.entityType === 'team')
-const title = computed(() => isTeam.value ? 'チームを作成' : '組織を作成')
+const title = computed(() => (isTeam.value ? 'チームを作成' : '組織を作成'))
 
 const form = ref({
   name: '',
@@ -90,14 +123,12 @@ async function submit() {
     emit('created', response.data)
     emit('update:visible', false)
     resetForm()
-  }
-  catch (error) {
+  } catch (error) {
     fieldErrors.value = getFieldErrors(error)
     if (Object.keys(fieldErrors.value).length === 0) {
-      handleApiError(error)
+      handleApiError(error, isTeam.value ? 'チーム作成' : '組織作成')
     }
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -115,6 +146,8 @@ function resetForm() {
     template: 'OTHER',
     orgType: 'NONPROFIT',
   }
+  selectedPref.value = null
+  cities.value = []
   fieldErrors.value = {}
 }
 
@@ -135,7 +168,9 @@ function close() {
     <div class="flex flex-col gap-4">
       <!-- 名前 -->
       <div>
-        <label class="mb-1 block text-sm font-medium">名前 <span class="text-red-500">*</span></label>
+        <label class="mb-1 block text-sm font-medium"
+          >名前 <span class="text-red-500">*</span></label
+        >
         <InputText v-model="form.name" class="w-full" :class="{ 'p-invalid': fieldErrors.name }" />
         <small v-if="fieldErrors.name" class="text-red-500">{{ fieldErrors.name }}</small>
       </div>
@@ -192,11 +227,32 @@ function close() {
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="mb-1 block text-sm font-medium">都道府県</label>
-          <InputText v-model="form.prefecture" class="w-full" />
+          <Select
+            v-model="selectedPref"
+            :options="prefectures"
+            option-label="name"
+            placeholder="選択してください"
+            filter
+            filter-placeholder="都道府県を検索"
+            show-clear
+            class="w-full"
+          />
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">市区町村</label>
-          <InputText v-model="form.city" class="w-full" />
+          <Select
+            v-model="form.city"
+            :options="cities"
+            option-label="name"
+            option-value="name"
+            placeholder="都道府県を先に選択"
+            filter
+            filter-placeholder="市区町村を検索"
+            show-clear
+            :disabled="!selectedPref || citiesLoading"
+            :loading="citiesLoading"
+            class="w-full"
+          />
         </div>
       </div>
 

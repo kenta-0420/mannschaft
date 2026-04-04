@@ -1,54 +1,3 @@
-interface NoticeItem {
-  id: number
-  type: string
-  title: string
-  message: string | null
-  isRead: boolean
-  createdAt: string
-  linkUrl: string | null
-}
-
-interface UpcomingEvent {
-  id: number
-  title: string
-  startAt: string
-  endAt: string
-  scopeType: string
-  scopeName: string
-  attendanceStatus: string | null
-}
-
-interface TodoItem {
-  id: number
-  title: string
-  completed: boolean
-  dueDate: string | null
-  priority: string
-  scopeType: string
-  scopeName: string
-}
-
-interface ActivityItem {
-  id: number
-  activityType: string
-  actorName: string
-  actorAvatarUrl: string | null
-  targetType: string
-  targetId: number
-  targetTitle: string
-  scopeName: string
-  createdAt: string
-}
-
-interface UnreadThread {
-  id: number
-  title: string
-  type: 'BULLETIN' | 'CHAT'
-  unreadCount: number
-  lastMessageAt: string
-  scopeName: string
-}
-
 interface PlatformAnnouncement {
   id: number
   title: string
@@ -66,26 +15,78 @@ export function useDashboardApi() {
     if (params?.cursor) query.set('cursor', params.cursor)
     if (params?.limit) query.set('limit', String(params.limit))
     if (params?.isRead !== undefined) query.set('is_read', String(params.isRead))
-    return api<{ data: NoticeItem[] }>(`/api/v1/dashboard/notices?${query}`)
+    return api<{
+      data: {
+        items: Array<{
+          id: number
+          type: string
+          title: string
+          body: string | null
+          is_read: boolean
+          action_url: string | null
+          created_at: string
+        }>
+        meta: { next_cursor: number; limit: number; total_count: number; has_next: boolean }
+      }
+    }>(`/api/v1/dashboard/notices?${query}`)
   }
 
   async function getUpcomingEvents(days: number = 7) {
-    return api<{ data: UpcomingEvent[] }>(`/api/v1/dashboard/upcoming-events?days=${days}`)
+    return api<{
+      data: Array<{
+        id: number
+        title: string
+        start_at: string
+        end_at: string
+        location: string | null
+        all_day: boolean
+      }>
+    }>(`/api/v1/dashboard/upcoming-events?days=${days}`)
   }
 
   async function getPersonalTodos() {
-    return api<{ data: { items: TodoItem[]; overdueCount: number } }>('/api/v1/dashboard/todos')
+    return api<{
+      data: Array<{
+        id: number
+        title: string
+        status: string
+        priority: string
+        dueDate: string | null
+        scopeType: string
+        scopeId: number | null
+      }>
+    }>('/api/v1/todos/my')
   }
 
   async function getActivity(params?: { cursor?: string; limit?: number }) {
     const query = new URLSearchParams()
     if (params?.cursor) query.set('cursor', params.cursor)
     query.set('limit', String(params?.limit ?? 10))
-    return api<{ data: ActivityItem[] }>(`/api/v1/dashboard/activity?${query}`)
+    return api<{
+      data: Array<{
+        id: number
+        type: string
+        actor: { id: number; displayName: string; avatarUrl: string | null }
+        scopeType: string
+        scopeId: number
+        scopeName: string
+        targetType: string
+        targetId: number
+        summary: string
+        createdAt: string
+      }>
+    }>(`/api/v1/dashboard/activity?${query}`)
   }
 
   async function getUnreadThreads(limit: number = 10) {
-    return api<{ data: UnreadThread[] }>(`/api/v1/dashboard/unread-threads?limit=${limit}`)
+    return api<{
+      data: {
+        bulletin_threads: unknown[]
+        chat_channels: unknown[]
+        total_unread_bulletin: number
+        total_unread_chat: number
+      }
+    }>(`/api/v1/dashboard/unread-threads?limit=${limit}`)
   }
 
   async function getPlatformAnnouncements() {

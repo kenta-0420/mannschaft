@@ -129,7 +129,7 @@ async function submit() {
   } catch (error) {
     fieldErrors.value = getFieldErrors(error)
     if (Object.keys(fieldErrors.value).length === 0) {
-      handleApiError(error)
+      handleApiError(error, isEdit.value ? 'フォームテンプレート更新' : 'フォームテンプレート作成')
     }
   } finally {
     submitting.value = false

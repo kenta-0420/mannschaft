@@ -103,7 +103,7 @@ async function submit() {
     emit('saved')
     close()
   } catch (error) {
-    handleApiError(error)
+    handleApiError(error, isEdit.value ? 'フォーム回答更新' : 'フォーム回答送信')
   } finally {
     submitting.value = false
   }

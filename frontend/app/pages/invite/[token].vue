@@ -46,11 +46,9 @@ async function fetchPreview() {
   try {
     const result = await api<{ data: InvitePreview }>(`/api/v1/invite/${token.value}`)
     preview.value = result.data
-  }
-  catch {
+  } catch {
     error.value = true
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -61,11 +59,9 @@ async function joinWithToken() {
     await api(`/api/v1/invite/${token.value}/join`, { method: 'POST' })
     notification.success(`${typeLabel[preview.value!.type]}に参加しました`)
     navigateTo('/dashboard')
-  }
-  catch (err) {
-    handleApiError(err)
-  }
-  finally {
+  } catch (err) {
+    handleApiError(err, '招待参加')
+  } finally {
     joining.value = false
   }
 }
@@ -87,18 +83,12 @@ onMounted(() => {
 
 <template>
   <div class="flex min-h-screen items-center justify-center p-4">
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner style="width: 48px; height: 48px" />
-    </div>
+    <PageLoading v-if="loading" />
 
     <div v-else-if="error" class="w-full max-w-md rounded-lg border p-8 text-center">
       <i class="pi pi-exclamation-triangle mb-4 text-5xl text-yellow-500" />
-      <h2 class="mb-2 text-xl font-bold">
-        招待リンクが無効です
-      </h2>
-      <p class="mb-6 text-gray-500">
-        このリンクは無効か、既に期限切れです。
-      </p>
+      <h2 class="mb-2 text-xl font-bold">招待リンクが無効です</h2>
+      <p class="mb-6 text-gray-500">このリンクは無効か、既に期限切れです。</p>
       <Button label="ホームに戻る" icon="pi pi-home" @click="navigateTo('/')" />
     </div>
 
@@ -107,12 +97,8 @@ onMounted(() => {
       <template v-if="!preview.isValid">
         <div class="text-center">
           <i class="pi pi-times-circle mb-4 text-5xl text-red-500" />
-          <h2 class="mb-2 text-xl font-bold">
-            この招待リンクは無効です
-          </h2>
-          <p class="mb-6 text-gray-500">
-            招待リンクが期限切れか、既に無効化されています。
-          </p>
+          <h2 class="mb-2 text-xl font-bold">この招待リンクは無効です</h2>
+          <p class="mb-6 text-gray-500">招待リンクが期限切れか、既に無効化されています。</p>
           <Button label="ホームに戻る" icon="pi pi-home" @click="navigateTo('/')" />
         </div>
       </template>

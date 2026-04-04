@@ -5,7 +5,28 @@ definePageMeta({
 })
 
 const teamApi = useTeamApi()
+const teamStore = useTeamStore()
 const { handleApiError } = useErrorHandler()
+const notification = useNotification()
+
+const followedTeamIds = ref<number[]>([])
+const followingTeamIds = ref<number[]>([])
+
+const myTeamIds = computed(() => new Set(teamStore.myTeams.map((t) => t.id)))
+
+async function followTeam(teamId: number, event: Event) {
+  event.stopPropagation()
+  followingTeamIds.value.push(teamId)
+  try {
+    await teamApi.followTeam(teamId)
+    followedTeamIds.value.push(teamId)
+    notification.success('サポーターとして登録しました')
+  } catch {
+    notification.error('フォローに失敗しました')
+  } finally {
+    followingTeamIds.value = followingTeamIds.value.filter((id) => id !== teamId)
+  }
+}
 
 interface TeamSummary {
   id: number
@@ -53,17 +74,19 @@ async function fetchTeams() {
     })
     teams.value = result.data
     totalRecords.value = result.meta.totalElements
-  }
-  catch (error) {
-    handleApiError(error)
-  }
-  finally {
+  } catch (error) {
+    handleApiError(error, 'チーム検索')
+  } finally {
     loading.value = false
   }
 }
 
 function onSearch(params: { keyword: string; prefecture: string; template: string }) {
-  searchParams.value = { keyword: params.keyword, prefecture: params.prefecture, template: params.template }
+  searchParams.value = {
+    keyword: params.keyword,
+    prefecture: params.prefecture,
+    template: params.template,
+  }
   currentPage.value = 0
   fetchTeams()
 }
@@ -89,29 +112,20 @@ onMounted(() => {
 <template>
   <div class="mx-auto max-w-6xl p-6">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">
-        チーム検索
-      </h1>
-      <Button
-        label="チームを作成"
-        icon="pi pi-plus"
-        @click="showCreateDialog = true"
-      />
+      <h1 class="text-2xl font-bold">チーム検索</h1>
+      <Button label="チームを作成" icon="pi pi-plus" @click="showCreateDialog = true" />
     </div>
 
     <div class="mb-6">
-      <SearchBar
-        placeholder="チーム名で検索"
-        :show-template-filter="true"
-        @search="onSearch"
-      />
+      <SearchBar placeholder="チーム名で検索" :show-template-filter="true" @search="onSearch" />
     </div>
 
-    <div v-if="loading" class="flex justify-center py-12">
-      <ProgressSpinner style="width: 48px; height: 48px" />
-    </div>
+    <PageLoading v-if="loading" />
 
-    <div v-else-if="teams.length === 0" class="rounded-lg border border-dashed border-gray-300 p-12 text-center text-gray-500">
+    <div
+      v-else-if="teams.length === 0"
+      class="rounded-lg border border-dashed border-gray-300 p-12 text-center text-gray-500"
+    >
       <i class="pi pi-search mb-2 text-4xl" />
       <p>該当するチームが見つかりませんでした</p>
     </div>
@@ -135,12 +149,42 @@ onMounted(() => {
               <h3 class="truncate font-semibold">
                 {{ team.nickname1 || team.name }}
               </h3>
-              <Tag :value="templateLabel[team.template] ?? team.template" severity="info" class="text-xs" />
+              <Tag
+                :value="templateLabel[team.template] ?? team.template"
+                severity="info"
+                class="text-xs"
+              />
             </div>
           </div>
           <div class="flex items-center justify-between text-sm text-gray-500">
-            <span><i class="pi pi-map-marker mr-1" />{{ formatLocation(team.prefecture, team.city) }}</span>
+            <span
+              ><i class="pi pi-map-marker mr-1" />{{
+                formatLocation(team.prefecture, team.city)
+              }}</span
+            >
             <span><i class="pi pi-users mr-1" />{{ team.memberCount }}人</span>
+          </div>
+          <div
+            v-if="team.supporterEnabled && !myTeamIds.has(team.id)"
+            class="mt-3 border-t border-surface-100 pt-3"
+          >
+            <span
+              v-if="followedTeamIds.includes(team.id)"
+              class="flex items-center gap-1 text-sm text-primary"
+            >
+              <i class="pi pi-heart-fill" />サポーター登録済み
+            </span>
+            <Button
+              v-else
+              label="サポーターになる"
+              icon="pi pi-heart"
+              size="small"
+              severity="secondary"
+              outlined
+              class="w-full"
+              :loading="followingTeamIds.includes(team.id)"
+              @click="followTeam(team.id, $event)"
+            />
           </div>
         </div>
       </div>

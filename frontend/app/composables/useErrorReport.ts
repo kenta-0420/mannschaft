@@ -2,46 +2,74 @@ interface ErrorReportState {
   visible: boolean
   submitting: boolean
   submitted: boolean
+  commentSent: boolean
   errorMessage: string
   stackTrace: string
   pageUrl: string
   userAgent: string
+  requestId: string
+  context: string
 }
+
+// ダイアログを一定時間内に何度も開かないためのクールダウン (ms)
+const ERROR_REPORT_COOLDOWN_MS = 60_000
+let _lastReportShownAt = 0
 
 export const useErrorReport = () => {
   const state = useState<ErrorReportState>('errorReport', () => ({
     visible: false,
     submitting: false,
     submitted: false,
+    commentSent: false,
     errorMessage: '',
     stackTrace: '',
     pageUrl: '',
     userAgent: '',
+    requestId: '',
+    context: '',
   }))
 
   const config = useRuntimeConfig()
 
-  const capture = (error: unknown, meta?: { context?: string }): void => {
-    // Prevent recursive error reporting
+  const capture = (
+    error: unknown,
+    meta?: { context?: string; apiUrl?: string; statusCode?: number; requestId?: string },
+  ): void => {
+    // 既に表示中、またはクールダウン中は無視
     if (state.value.visible) return
+    if (Date.now() - _lastReportShownAt < ERROR_REPORT_COOLDOWN_MS) {
+      console.error('[ErrorReport] (suppressed by cooldown)', error, meta)
+      return
+    }
 
     const err = error instanceof Error ? error : new Error(String(error))
 
+    let errorMessage = err.message.slice(0, 1000)
+    if (meta?.statusCode && meta?.apiUrl) {
+      errorMessage = `[${meta.statusCode}] ${meta.apiUrl}: ${errorMessage}`.slice(0, 1000)
+    }
+
+    _lastReportShownAt = Date.now()
     state.value = {
       visible: true,
       submitting: false,
       submitted: false,
-      errorMessage: err.message,
+      commentSent: false,
+      errorMessage,
       stackTrace: (err.stack ?? '').slice(0, 2000),
       pageUrl: typeof window !== 'undefined' ? window.location.href : '',
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+      requestId: meta?.requestId ?? '',
+      context: meta?.context ?? '',
     }
 
-    // Always log to console
     console.error('[ErrorReport]', err, meta)
+
+    // Auto-submit immediately (fire & forget)
+    _sendReport()
   }
 
-  const submit = async (userComment?: string): Promise<void> => {
+  const _sendReport = async (userComment?: string): Promise<void> => {
     if (state.value.submitting) return
 
     state.value.submitting = true
@@ -51,40 +79,78 @@ export const useErrorReport = () => {
 
       await $fetch(`${config.public.apiBase}/api/v1/error-reports`, {
         method: 'POST',
+        headers: authStore.accessToken ? { Authorization: `Bearer ${authStore.accessToken}` } : {},
         body: {
           errorMessage: state.value.errorMessage,
-          stackTrace: state.value.stackTrace,
+          stackTrace: state.value.stackTrace || undefined,
           pageUrl: state.value.pageUrl,
-          userAgent: state.value.userAgent,
-          userComment: userComment ?? null,
-          userId: authStore.currentUser?.id ?? null,
+          userAgent: state.value.userAgent || undefined,
+          userComment: userComment || undefined,
+          userId: authStore.currentUser?.id ?? undefined,
           occurredAt: new Date().toISOString(),
+          requestId: state.value.requestId || undefined,
+          context: state.value.context || undefined,
         },
       })
 
-      state.value.submitted = true
-
-      // Auto-close after 3 seconds
-      setTimeout(() => {
-        close()
-      }, 3000)
+      if (userComment) {
+        state.value.commentSent = true
+      } else {
+        state.value.submitted = true
+      }
     } catch {
       // Don't let error reporting cause more errors
       console.error('[ErrorReport] Failed to submit error report')
-      close()
+      if (!userComment) {
+        state.value.submitted = true // hide submitting state even on failure
+      }
+    } finally {
+      state.value.submitting = false
     }
+  }
+
+  /**
+   * ダイアログを開かずにエラーをバックエンドへ送信する（handleApiError用）
+   */
+  const captureQuiet = (error: unknown, meta?: { context?: string; requestId?: string }): void => {
+    if (import.meta.server) return
+    const err = error instanceof Error ? error : new Error(String(error))
+    const authStore = useAuthStore()
+    console.error('[ErrorReport:quiet]', { context: meta?.context }, err)
+    $fetch(`${config.public.apiBase}/api/v1/error-reports`, {
+      method: 'POST',
+      headers: authStore.accessToken ? { Authorization: `Bearer ${authStore.accessToken}` } : {},
+      body: {
+        errorMessage: err.message.slice(0, 1000),
+        stackTrace: err.stack?.slice(0, 2000) || undefined,
+        pageUrl: typeof window !== 'undefined' ? window.location.href : '',
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+        userId: authStore.currentUser?.id ?? undefined,
+        occurredAt: new Date().toISOString(),
+        context: meta?.context || undefined,
+        requestId: meta?.requestId || undefined,
+      },
+    }).catch(() => {
+      /* ログ送信失敗は無視 */
+    })
+  }
+
+  const submitComment = (userComment: string): Promise<void> => {
+    return _sendReport(userComment)
   }
 
   const close = (): void => {
     state.value.visible = false
     state.value.submitting = false
     state.value.submitted = false
+    state.value.commentSent = false
   }
 
   return {
     state: readonly(state),
     capture,
-    submit,
+    captureQuiet,
+    submitComment,
     close,
   }
 }

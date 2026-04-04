@@ -1,17 +1,17 @@
 <script setup lang="ts">
 const { getUpcomingEvents } = useDashboardApi()
+const { captureQuiet } = useErrorReport()
 
-interface Event {
+interface UpcomingEvent {
   id: number
   title: string
-  startAt: string
-  endAt: string
-  scopeType: string
-  scopeName: string
-  attendanceStatus: string | null
+  start_at: string
+  end_at: string
+  location: string | null
+  all_day: boolean
 }
 
-const events = ref<Event[]>([])
+const events = ref<UpcomingEvent[]>([])
 const loading = ref(true)
 
 async function load() {
@@ -19,28 +19,34 @@ async function load() {
   try {
     const res = await getUpcomingEvents(7)
     events.value = res.data
+  } catch (error) {
+    captureQuiet(error, { context: 'WidgetUpcomingEvents: 直近イベント取得' })
+    events.value = []
+  } finally {
+    loading.value = false
   }
-  catch { events.value = [] }
-  finally { loading.value = false }
 }
 
 function formatTime(dateStr: string): string {
   const d = new Date(dateStr)
-  return d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }) + ' ' +
+  return (
+    d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }) +
+    ' ' +
     d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-}
-
-const attendanceColor: Record<string, string> = {
-  ATTEND: 'success',
-  ABSENT: 'danger',
-  UNDECIDED: 'warn',
+  )
 }
 
 onMounted(load)
 </script>
 
 <template>
-  <DashboardWidgetCard title="今週の予定" icon="pi pi-calendar" :loading="loading" refreshable @refresh="load">
+  <DashboardWidgetCard
+    title="今週の予定"
+    icon="pi pi-calendar"
+    :loading="loading"
+    refreshable
+    @refresh="load"
+  >
     <div v-if="events.length > 0" class="space-y-3">
       <div
         v-for="event in events"
@@ -50,16 +56,20 @@ onMounted(load)
         <div class="flex-1">
           <p class="text-sm font-medium">{{ event.title }}</p>
           <p class="text-xs text-surface-500">
-            <i class="pi pi-clock mr-1" />{{ formatTime(event.startAt) }}
+            <i class="pi pi-clock mr-1" />{{
+              event.all_day
+                ? new Date(event.start_at).toLocaleDateString('ja-JP', {
+                    month: 'short',
+                    day: 'numeric',
+                  })
+                : formatTime(event.start_at)
+            }}
           </p>
-          <p class="text-xs text-surface-400">{{ event.scopeName }}</p>
+          <p v-if="event.location" class="text-xs text-surface-400">
+            <i class="pi pi-map-marker mr-1" />{{ event.location }}
+          </p>
         </div>
-        <Tag
-          v-if="event.attendanceStatus"
-          :value="event.attendanceStatus === 'ATTEND' ? '出席' : event.attendanceStatus === 'ABSENT' ? '欠席' : '未定'"
-          :severity="attendanceColor[event.attendanceStatus] ?? 'secondary'"
-          rounded
-        />
+        <Tag v-if="event.all_day" value="終日" severity="secondary" rounded />
       </div>
     </div>
     <DashboardEmptyState v-else icon="pi pi-calendar" message="今週の予定はありません" />
