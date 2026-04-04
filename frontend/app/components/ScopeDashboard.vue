@@ -14,6 +14,17 @@ const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder } = useD
 const showConfig = ref(false)
 const dragIndex = ref<number | null>(null)
 const dropTargetIndex = ref<number | null>(null)
+const collapsedKeys = ref<Set<string>>(new Set())
+
+function toggleCollapse(key: string) {
+  if (collapsedKeys.value.has(key)) {
+    collapsedKeys.value.delete(key)
+  } else {
+    collapsedKeys.value.add(key)
+  }
+  // trigger reactivity
+  collapsedKeys.value = new Set(collapsedKeys.value)
+}
 
 const basePath = computed(() => {
   if (props.scopeType === 'personal' || !props.scopeId) return undefined
@@ -130,7 +141,7 @@ function onDragEnd() {
           dragIndex === index ? 'opacity-40 shadow-none' : '',
           dropTargetIndex === index && dragIndex !== index
             ? 'border-primary border-t-[3px]'
-            : 'border-surface-200 dark:border-surface-700',
+            : 'border-surface-200 dark:border-surface-600',
         ]"
         @dragstart="onDragStart(index, $event)"
         @dragover="onDragOver(index, $event)"
@@ -150,20 +161,35 @@ function onDragEnd() {
           class="pi pi-grip-vertical absolute right-3 top-3 cursor-grab text-sm text-surface-300 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing dark:text-surface-600"
         />
 
-        <div class="mb-3 flex items-center gap-3">
+        <div class="flex items-center gap-3" :class="collapsedKeys.has(w.key) ? '' : 'mb-3'">
           <div
-            class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/20"
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/20"
           >
             <i :class="w.icon" class="text-xl" />
           </div>
-          <h3 class="text-[20px] font-semibold text-surface-700 dark:text-surface-200">
+          <h3 class="flex-1 text-[20px] font-semibold text-surface-700 dark:text-surface-200">
             {{ w.label }}
           </h3>
+          <!-- 折り畳みボタン (モバイルのみ) -->
+          <button
+            class="md:hidden flex items-center justify-center rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100"
+            @click.stop="toggleCollapse(w.key)"
+          >
+            <i
+              class="pi text-sm transition-transform duration-200"
+              :class="collapsedKeys.has(w.key) ? 'pi-chevron-down' : 'pi-chevron-up'"
+            />
+          </button>
           <i
-            class="pi pi-chevron-right ml-auto text-xs text-surface-400 opacity-0 transition-opacity group-hover:opacity-100"
+            class="pi pi-chevron-right hidden md:block text-xs text-surface-400 opacity-0 transition-opacity group-hover:opacity-100"
           />
         </div>
-        <p class="text-xs text-surface-500">{{ w.description }}</p>
+        <p
+          class="text-xs text-surface-500"
+          :class="collapsedKeys.has(w.key) ? 'hidden md:block' : ''"
+        >
+          {{ w.description }}
+        </p>
       </div>
 
       <!-- Amazon広告タイル (非表示不可・常に最後) -->

@@ -4,9 +4,18 @@ const route = useRoute()
 
 const isMounted = ref(false)
 const showBlogCreate = ref(false)
+const showMobileMenu = ref(false)
+
 onMounted(() => {
   isMounted.value = true
 })
+
+watch(
+  () => route.path,
+  () => {
+    showMobileMenu.value = false
+  },
+)
 
 const navItems = computed(() => [
   { label: 'ダッシュボード', icon: 'pi pi-home', to: '/dashboard' },
@@ -43,7 +52,7 @@ function isActive(path: string): boolean {
           <ClientOnly>
             <nav
               v-if="authStore.isAuthenticated"
-              class="flex items-center gap-1 overflow-x-auto scrollbar-hide"
+              class="hidden md:flex items-center gap-1 overflow-x-auto scrollbar-hide"
             >
               <NuxtLink
                 v-for="item in navItems"
@@ -66,7 +75,6 @@ function isActive(path: string): boolean {
               </NuxtLink>
               <!-- ブログはモーダル起動 -->
               <button
-                v-if="authStore.isAuthenticated"
                 class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100 text-surface-600"
                 @click="showBlogCreate = true"
               >
@@ -88,7 +96,17 @@ function isActive(path: string): boolean {
                 text
                 rounded
                 severity="secondary"
+                class="hidden md:inline-flex"
                 @click="authStore.serverLogout()"
+              />
+              <!-- ハンバーガーボタン (モバイルのみ) -->
+              <Button
+                icon="pi pi-bars"
+                text
+                rounded
+                severity="secondary"
+                class="md:hidden"
+                @click="showMobileMenu = true"
               />
             </template>
           </ClientOnly>
@@ -105,6 +123,56 @@ function isActive(path: string): boolean {
     <ClientOnly>
       <ErrorReportDialog />
       <BlogCreateDialog v-model:visible="showBlogCreate" />
+
+      <!-- モバイルメニュー Drawer -->
+      <Drawer v-model:visible="showMobileMenu" position="left" class="w-72">
+        <template #header>
+          <span class="text-xl font-bold text-primary">Mannschaft</span>
+        </template>
+        <nav class="flex flex-col gap-1 pt-2">
+          <NuxtLink
+            v-for="item in navItems"
+            :key="item.to"
+            :to="item.to"
+            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100"
+            :class="isActive(item.to) ? 'bg-primary/10 text-primary' : 'text-surface-700'"
+          >
+            <i :class="[item.icon, 'text-base']" />
+            {{ item.label }}
+          </NuxtLink>
+          <!-- ブログ -->
+          <button
+            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-surface-700 transition-colors hover:bg-surface-100 text-left"
+            @click="
+              showMobileMenu = false
+              showBlogCreate = true
+            "
+          >
+            <i class="pi pi-book text-base" />
+            ブログ
+          </button>
+          <!-- システム管理 -->
+          <NuxtLink
+            v-if="authStore.isSystemAdmin"
+            :to="systemAdminItem.to"
+            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-red-50"
+            :class="isActive(systemAdminItem.to) ? 'bg-red-100 text-red-600' : 'text-red-500'"
+          >
+            <i :class="[systemAdminItem.icon, 'text-base']" />
+            {{ systemAdminItem.label }}
+          </NuxtLink>
+        </nav>
+        <div class="mt-4 border-t border-surface-200 pt-4">
+          <Button
+            label="ログアウト"
+            icon="pi pi-sign-out"
+            text
+            severity="secondary"
+            class="w-full justify-start"
+            @click="authStore.serverLogout()"
+          />
+        </div>
+      </Drawer>
     </ClientOnly>
   </div>
 </template>
