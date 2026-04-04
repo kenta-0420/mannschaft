@@ -92,6 +92,18 @@ public class TeamTodoController {
     }
 
     /**
+     * チームTODOの直接の子TODO一覧を取得する。
+     */
+    @GetMapping("/{id}/children")
+    @Operation(summary = "TODO子一覧")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<TodoResponse>>> getChildTodos(
+            @PathVariable Long teamId,
+            @PathVariable Long id) {
+        return ResponseEntity.ok(todoService.getChildTodos(TodoScopeType.TEAM, teamId, id));
+    }
+
+    /**
      * TODOを更新する。
      */
     @PutMapping("/{id}")

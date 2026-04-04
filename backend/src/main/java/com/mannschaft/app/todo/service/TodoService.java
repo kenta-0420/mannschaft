@@ -52,6 +52,7 @@ import java.util.stream.Stream;
 public class TodoService {
 
     private static final int MAX_BULK_SIZE = 50;
+    private static final int MAX_CHILD_SIZE = 50;
 
     private final TodoRepository todoRepository;
     private final TodoAssigneeRepository assigneeRepository;
@@ -117,7 +118,7 @@ public class TodoService {
      */
     public ApiResponse<TodoResponse> getTodo(Long todoId) {
         TodoEntity todo = findTodoOrThrow(todoId);
-        return ApiResponse.of(toTodoResponse(todo));
+        return ApiResponse.of(toTodoResponseWithStats(todo));
     }
 
     /**
@@ -132,6 +133,34 @@ public class TodoService {
     @Transactional
     public ApiResponse<TodoResponse> createTodo(TodoScopeType scopeType, Long scopeId,
                                                  CreateTodoRequest request, Long userId) {
+        // 親TODO処理
+        Integer depth = 0;
+        Long parentId = request.getParentId();
+        if (parentId != null) {
+            // IDOR対策: スコープフィルタ付きで検索し、他スコープのID存在を推測させない
+            TodoEntity parent = todoRepository.findByIdAndDeletedAtIsNull(parentId)
+                    .filter(p -> p.getScopeType() == scopeType && p.getScopeId().equals(scopeId))
+                    .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
+
+            // 深度チェック（最大3階層: depth 0,1,2）
+            if (parent.getDepth() >= 2) {
+                throw new BusinessException(TodoErrorCode.MAX_DEPTH_EXCEEDED);
+            }
+
+            // プロジェクト一致チェック
+            if (!java.util.Objects.equals(parent.getProjectId(), request.getProjectId())) {
+                throw new BusinessException(TodoErrorCode.SCOPE_MISMATCH);
+            }
+
+            // 子TODO上限チェック
+            long childCount = todoRepository.countByParentIdAndDeletedAtIsNull(parentId);
+            if (childCount >= MAX_CHILD_SIZE) {
+                throw new BusinessException(TodoErrorCode.CHILD_LIMIT_EXCEEDED);
+            }
+
+            depth = parent.getDepth() + 1;
+        }
+
         // プロジェクト整合性チェック
         Long projectId = request.getProjectId();
         if (projectId != null) {
@@ -167,6 +196,8 @@ public class TodoService {
                 .dueTime(request.getDueTime())
                 .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0)
                 .createdBy(userId)
+                .parentId(parentId)
+                .depth(depth)
                 .build();
 
         todo = todoRepository.save(todo);
@@ -204,6 +235,14 @@ public class TodoService {
         TodoEntity todo = findTodoOrThrow(todoId);
         Long oldProjectId = todo.getProjectId();
         Long newProjectId = request.getProjectId();
+
+        // 子TODOがある場合はプロジェクト変更を拒否
+        if (!java.util.Objects.equals(todo.getProjectId(), request.getProjectId())) {
+            long childCount = todoRepository.countByParentIdAndDeletedAtIsNull(todoId);
+            if (childCount > 0) {
+                throw new BusinessException(TodoErrorCode.SCOPE_MISMATCH);
+            }
+        }
 
         // プロジェクト変更時の整合性チェック
         if (newProjectId != null) {
@@ -385,6 +424,26 @@ public class TodoService {
         return ApiResponse.of(responses);
     }
 
+    /**
+     * 指定TODOの直接の子TODO一覧を取得する。スコープ認可チェック付き。
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープID
+     * @param todoId    親TODO ID
+     * @return 子TODO一覧
+     */
+    public ApiResponse<List<TodoResponse>> getChildTodos(
+            TodoScopeType scopeType, Long scopeId, Long todoId) {
+        // スコープ認可: 他スコープのIDを推測させないため TODO_NOT_FOUND で統一
+        TodoEntity parent = todoRepository.findByIdAndDeletedAtIsNull(todoId)
+                .filter(p -> p.getScopeType() == scopeType && p.getScopeId().equals(scopeId))
+                .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
+
+        List<TodoEntity> children = todoRepository
+                .findByParentIdAndDeletedAtIsNullOrderBySortOrderAsc(parent.getId());
+        return ApiResponse.of(children.stream().map(this::toTodoResponse).toList());
+    }
+
     // --- 担当者管理 ---
 
     /**
@@ -448,7 +507,7 @@ public class TodoService {
     }
 
     /**
-     * エンティティをレスポンスDTOに変換する。
+     * エンティティをレスポンスDTOに変換する（一覧用、N+1防止のため統計なし）。
      */
     private TodoResponse toTodoResponse(TodoEntity entity) {
         List<TodoAssigneeEntity> assigneeEntities = assigneeRepository.findByTodoId(entity.getId());
@@ -480,7 +539,56 @@ public class TodoService {
                 entity.getCompletedAt(), completedByInfo,
                 new ProjectResponse.UserInfo(entity.getCreatedBy(), nameMap.getOrDefault(entity.getCreatedBy(), "")),
                 entity.getSortOrder(), assignees,
-                entity.getCreatedAt(), entity.getUpdatedAt());
+                entity.getCreatedAt(), entity.getUpdatedAt(),
+                // 親子情報
+                entity.getParentId(), entity.getDepth(),
+                java.util.List.of(), 0, 0, 0);  // 一覧では統計なし
+    }
+
+    /**
+     * エンティティをレスポンスDTOに変換する（詳細用、子TODO統計含む）。
+     */
+    private TodoResponse toTodoResponseWithStats(TodoEntity entity) {
+        long childCount = todoRepository.countByParentIdAndDeletedAtIsNull(entity.getId());
+        long descendantTotal = todoRepository.countDescendants(entity.getId());
+        long descendantCompleted = todoRepository.countCompletedDescendants(entity.getId());
+        List<TodoEntity> childEntities = todoRepository
+                .findByParentIdAndDeletedAtIsNullOrderBySortOrderAsc(entity.getId());
+        List<TodoResponse> children = childEntities.stream()
+                .map(this::toTodoResponse)
+                .toList();
+
+        List<TodoAssigneeEntity> assigneeEntities = assigneeRepository.findByTodoId(entity.getId());
+        Set<Long> userIds = Stream.concat(
+                Stream.of(entity.getCreatedBy(), entity.getCompletedBy()),
+                assigneeEntities.stream().map(TodoAssigneeEntity::getUserId)
+        ).filter(id -> id != null).collect(Collectors.toSet());
+        Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(userIds);
+
+        List<AssigneeResponse> assignees = assigneeEntities.stream()
+                .map(a -> new AssigneeResponse(
+                        a.getId(), a.getUserId(), nameMap.getOrDefault(a.getUserId(), ""),
+                        a.getAssignedBy(), a.getCreatedAt()))
+                .toList();
+
+        ProjectResponse.UserInfo completedByInfo = entity.getCompletedBy() != null
+                ? new ProjectResponse.UserInfo(entity.getCompletedBy(), nameMap.getOrDefault(entity.getCompletedBy(), ""))
+                : null;
+
+        return new TodoResponse(
+                entity.getId(), entity.getScopeType().name(), entity.getScopeId(),
+                entity.getProjectId(), entity.getMilestoneId(),
+                entity.getTitle(), entity.getDescription(),
+                entity.getStatus().name(), entity.getPriority().name(),
+                entity.getDueDate(), entity.getDueTime(),
+                calculateDaysRemaining(entity.getDueDate()),
+                entity.getCompletedAt(), completedByInfo,
+                new ProjectResponse.UserInfo(entity.getCreatedBy(), nameMap.getOrDefault(entity.getCreatedBy(), "")),
+                entity.getSortOrder(), assignees,
+                entity.getCreatedAt(), entity.getUpdatedAt(),
+                entity.getParentId(), entity.getDepth(),
+                children, (int) childCount,
+                (int) descendantCompleted, (int) descendantTotal);
     }
 
     /**

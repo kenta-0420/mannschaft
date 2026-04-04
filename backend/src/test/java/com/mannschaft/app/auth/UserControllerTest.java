@@ -92,7 +92,7 @@ class UserControllerTest {
                 "ja", "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of("GOOGLE"),
                 LocalDateTime.of(2026, 3, 1, 10, 0),
-                LocalDateTime.of(2026, 1, 1, 0, 0));
+                LocalDateTime.of(2026, 1, 1, 0, 0), null);
         given(userService.getUserProfile(anyLong()))
                 .willReturn(ApiResponse.of(profile));
 
@@ -118,7 +118,7 @@ class UserControllerTest {
                 "ja", "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of(),
                 LocalDateTime.of(2026, 3, 1, 10, 0),
-                LocalDateTime.of(2026, 1, 1, 0, 0));
+                LocalDateTime.of(2026, 1, 1, 0, 0), null);
         given(userService.updateProfile(anyLong(), any(UpdateProfileRequest.class)))
                 .willReturn(ApiResponse.of(updatedProfile));
 
@@ -251,7 +251,7 @@ class UserControllerTest {
                 null, null, null,
                 "ja", "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of(),
-                null, LocalDateTime.of(2026, 1, 1, 0, 0));
+                null, LocalDateTime.of(2026, 1, 1, 0, 0), null);
         given(userService.updateProfile(anyLong(), any(UpdateProfileRequest.class)))
                 .willReturn(ApiResponse.of(profile));
 

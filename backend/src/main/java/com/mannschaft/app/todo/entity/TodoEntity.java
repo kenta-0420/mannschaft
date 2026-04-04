@@ -49,6 +49,12 @@ public class TodoEntity {
 
     private Long milestoneId;
 
+    private Long parentId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer depth = 0;
+
     @Column(nullable = false, length = 300)
     private String title;
 

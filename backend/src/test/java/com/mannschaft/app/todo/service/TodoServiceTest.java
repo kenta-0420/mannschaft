@@ -291,7 +291,7 @@ class TodoServiceTest {
             // Given
             CreateTodoRequest request = new CreateTodoRequest(
                     "新規TODO", "説明", null, null, "HIGH",
-                    LocalDate.now().plusDays(5), null, null, null);
+                    LocalDate.now().plusDays(5), null, null, null, null);
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> {
                         TodoEntity e = invocation.getArgument(0);
@@ -320,7 +320,7 @@ class TodoServiceTest {
             ProjectEntity project = createProject();
             CreateTodoRequest request = new CreateTodoRequest(
                     "プロジェクトTODO", null, PROJECT_ID, null, null,
-                    null, null, null, null);
+                    null, null, null, null, null);
             given(projectService.findProjectOrThrow(PROJECT_ID)).willReturn(project);
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> {
@@ -347,7 +347,7 @@ class TodoServiceTest {
             // Given
             CreateTodoRequest request = new CreateTodoRequest(
                     "担当者付きTODO", null, null, null, null,
-                    null, null, null, List.of(ASSIGNEE_USER_ID));
+                    null, null, null, List.of(ASSIGNEE_USER_ID), null);
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> {
                         TodoEntity e = invocation.getArgument(0);
@@ -386,7 +386,7 @@ class TodoServiceTest {
                     .build();
             CreateTodoRequest request = new CreateTodoRequest(
                     "TODO", null, PROJECT_ID, null, null,
-                    null, null, null, null);
+                    null, null, null, null, null);
             given(projectService.findProjectOrThrow(PROJECT_ID)).willReturn(project);
 
             // When / Then
@@ -402,7 +402,7 @@ class TodoServiceTest {
             // Given
             CreateTodoRequest request = new CreateTodoRequest(
                     "TODO", null, null, MILESTONE_ID, null,
-                    null, null, null, null);
+                    null, null, null, null, null);
 
             // When / Then
             assertThatThrownBy(() -> todoService.createTodo(SCOPE_TYPE, SCOPE_ID, request, USER_ID))
@@ -418,7 +418,7 @@ class TodoServiceTest {
             ProjectEntity project = createProject();
             CreateTodoRequest request = new CreateTodoRequest(
                     "TODO", null, PROJECT_ID, MILESTONE_ID, null,
-                    null, null, null, null);
+                    null, null, null, null, null);
             given(projectService.findProjectOrThrow(PROJECT_ID)).willReturn(project);
             given(milestoneRepository.findByIdAndProjectId(MILESTONE_ID, PROJECT_ID))
                     .willReturn(Optional.empty());
@@ -436,7 +436,7 @@ class TodoServiceTest {
             // Given
             CreateTodoRequest request = new CreateTodoRequest(
                     "デフォルト優先度TODO", null, null, null, null,
-                    null, null, null, null);
+                    null, null, null, null, null);
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> {
                         TodoEntity e = invocation.getArgument(0);
@@ -862,6 +862,253 @@ class TodoServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_015"));
+        }
+    }
+
+    // ========================================
+    // 親子TODO（SubTodo）
+    // ========================================
+
+    @Nested
+    @DisplayName("親子TODO（SubTodo）")
+    class SubTodo {
+
+        private static final Long PARENT_TODO_ID = 999L;
+        private static final Long CHILD_TODO_ID = 998L;
+
+        private TodoEntity createParentTodo() {
+            return TodoEntity.builder()
+                    .scopeType(SCOPE_TYPE)
+                    .scopeId(SCOPE_ID)
+                    .projectId(null)
+                    .milestoneId(null)
+                    .title("親課題")
+                    .status(TodoStatus.OPEN)
+                    .priority(TodoPriority.MEDIUM)
+                    .depth(0)
+                    .parentId(null)
+                    .sortOrder(0)
+                    .createdBy(USER_ID)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+        }
+
+        private TodoEntity createChildTodo(Long parentId, int depth) {
+            return TodoEntity.builder()
+                    .scopeType(SCOPE_TYPE)
+                    .scopeId(SCOPE_ID)
+                    .projectId(null)
+                    .milestoneId(null)
+                    .title("子課題")
+                    .status(TodoStatus.OPEN)
+                    .priority(TodoPriority.MEDIUM)
+                    .depth(depth)
+                    .parentId(parentId)
+                    .sortOrder(0)
+                    .createdBy(USER_ID)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+        }
+
+        @Test
+        @DisplayName("子TODO作成_親のdepthが0の場合_depth1で作成される")
+        void 子TODO作成_親のdepthが0の場合_depth1で作成される() {
+            // given
+            CreateTodoRequest request = new CreateTodoRequest(
+                    "子課題", null, null, null, null, null, null, null, null, PARENT_TODO_ID);
+            TodoEntity parent = createParentTodo();
+            given(todoRepository.findByIdAndDeletedAtIsNull(PARENT_TODO_ID))
+                    .willReturn(Optional.of(parent));
+            given(todoRepository.countByParentIdAndDeletedAtIsNull(PARENT_TODO_ID)).willReturn(0L);
+            given(todoRepository.save(any(TodoEntity.class))).willAnswer(invocation -> {
+                TodoEntity e = invocation.getArgument(0);
+                java.lang.reflect.Method m = TodoEntity.class.getDeclaredMethod("onCreate");
+                m.setAccessible(true);
+                m.invoke(e);
+                return e;
+            });
+            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
+
+            // when
+            ApiResponse<TodoResponse> result = todoService.createTodo(
+                    SCOPE_TYPE, SCOPE_ID, request, USER_ID);
+
+            // then
+            assertThat(result.getData().getDepth()).isEqualTo(1);
+            assertThat(result.getData().getParentId()).isEqualTo(PARENT_TODO_ID);
+        }
+
+        @Test
+        @DisplayName("孫TODO作成_親のdepthが1の場合_depth2で作成される")
+        void 孫TODO作成_親のdepthが1の場合_depth2で作成される() {
+            // given
+            CreateTodoRequest request = new CreateTodoRequest(
+                    "孫課題", null, null, null, null, null, null, null, null, CHILD_TODO_ID);
+            TodoEntity child = createChildTodo(PARENT_TODO_ID, 1);
+            given(todoRepository.findByIdAndDeletedAtIsNull(CHILD_TODO_ID))
+                    .willReturn(Optional.of(child));
+            given(todoRepository.countByParentIdAndDeletedAtIsNull(CHILD_TODO_ID)).willReturn(0L);
+            given(todoRepository.save(any(TodoEntity.class))).willAnswer(invocation -> {
+                TodoEntity e = invocation.getArgument(0);
+                java.lang.reflect.Method m = TodoEntity.class.getDeclaredMethod("onCreate");
+                m.setAccessible(true);
+                m.invoke(e);
+                return e;
+            });
+            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
+
+            // when
+            ApiResponse<TodoResponse> result = todoService.createTodo(
+                    SCOPE_TYPE, SCOPE_ID, request, USER_ID);
+
+            // then
+            assertThat(result.getData().getDepth()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("4階層目作成_depth2の親に子を追加するとMAX_DEPTH_EXCEEDED")
+        void 階層目作成_depth2の親に子を追加するとMAX_DEPTH_EXCEEDED() {
+            // given
+            CreateTodoRequest request = new CreateTodoRequest(
+                    "4階層目", null, null, null, null, null, null, null, null, CHILD_TODO_ID);
+            TodoEntity grandChild = createChildTodo(CHILD_TODO_ID, 2);
+            given(todoRepository.findByIdAndDeletedAtIsNull(CHILD_TODO_ID))
+                    .willReturn(Optional.of(grandChild));
+
+            // when / then
+            assertThatThrownBy(() -> todoService.createTodo(SCOPE_TYPE, SCOPE_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_020"));
+        }
+
+        @Test
+        @DisplayName("スコープ不一致_別スコープの親を指定するとTODO_NOT_FOUND")
+        void スコープ不一致_別スコープの親を指定するとTODO_NOT_FOUND() {
+            // given: 親は別スコープ（scopeId が異なる）
+            CreateTodoRequest request = new CreateTodoRequest(
+                    "子課題", null, null, null, null, null, null, null, null, PARENT_TODO_ID);
+            TodoEntity otherScopeParent = TodoEntity.builder()
+                    .scopeType(SCOPE_TYPE)
+                    .scopeId(SCOPE_ID + 999L)  // 別のscope_id
+                    .title("別スコープ親")
+                    .status(TodoStatus.OPEN)
+                    .priority(TodoPriority.MEDIUM)
+                    .depth(0)
+                    .sortOrder(0)
+                    .createdBy(USER_ID)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+            given(todoRepository.findByIdAndDeletedAtIsNull(PARENT_TODO_ID))
+                    .willReturn(Optional.of(otherScopeParent));
+
+            // when / then
+            assertThatThrownBy(() -> todoService.createTodo(SCOPE_TYPE, SCOPE_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_010"));
+        }
+
+        @Test
+        @DisplayName("子TODO上限超過_50件を超えるとCHILD_LIMIT_EXCEEDED")
+        void 子TODO上限超過_50件を超えるとCHILD_LIMIT_EXCEEDED() {
+            // given
+            CreateTodoRequest request = new CreateTodoRequest(
+                    "子課題51件目", null, null, null, null, null, null, null, null, PARENT_TODO_ID);
+            TodoEntity parent = createParentTodo();
+            given(todoRepository.findByIdAndDeletedAtIsNull(PARENT_TODO_ID))
+                    .willReturn(Optional.of(parent));
+            given(todoRepository.countByParentIdAndDeletedAtIsNull(PARENT_TODO_ID)).willReturn(50L);
+
+            // when / then
+            assertThatThrownBy(() -> todoService.createTodo(SCOPE_TYPE, SCOPE_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_022"));
+        }
+
+        @Test
+        @DisplayName("削除済み親への追加_논理削除された親に子を追加するとTODO_NOT_FOUND")
+        void 削除済み親への追加_論理削除された親に子を追加するとTODO_NOT_FOUND() {
+            // given: findByIdAndDeletedAtIsNull は削除済みを返さない
+            CreateTodoRequest request = new CreateTodoRequest(
+                    "子課題", null, null, null, null, null, null, null, null, PARENT_TODO_ID);
+            given(todoRepository.findByIdAndDeletedAtIsNull(PARENT_TODO_ID))
+                    .willReturn(Optional.empty());
+
+            // when / then
+            assertThatThrownBy(() -> todoService.createTodo(SCOPE_TYPE, SCOPE_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_010"));
+        }
+
+        @Test
+        @DisplayName("子持ちTODOのプロジェクト変更_子がある場合は拒否される")
+        void 子持ちTODOのプロジェクト変更_子がある場合は拒否される() {
+            // given
+            TodoEntity todo = createParentTodo();
+            UpdateTodoRequest request = new UpdateTodoRequest(
+                    "更新タイトル", null, PROJECT_ID, null, null, null, null, null);
+            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
+            given(todoRepository.countByParentIdAndDeletedAtIsNull(TODO_ID)).willReturn(3L);
+
+            // when / then
+            assertThatThrownBy(() -> todoService.updateTodo(TODO_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_011"));
+        }
+
+        @Test
+        @DisplayName("getChildTodos_他スコープのTODOを指定するとTODO_NOT_FOUND")
+        void getChildTodos_他スコープのTODOを指定するとTODO_NOT_FOUND() {
+            // given: 親は別スコープ
+            TodoEntity otherScopeTodo = TodoEntity.builder()
+                    .scopeType(TodoScopeType.TEAM)
+                    .scopeId(SCOPE_ID + 999L)
+                    .title("別スコープTODO")
+                    .status(TodoStatus.OPEN)
+                    .priority(TodoPriority.MEDIUM)
+                    .depth(0)
+                    .sortOrder(0)
+                    .createdBy(USER_ID)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID))
+                    .willReturn(Optional.of(otherScopeTodo));
+
+            // when / then
+            assertThatThrownBy(() -> todoService.getChildTodos(SCOPE_TYPE, SCOPE_ID, TODO_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_010"));
+        }
+
+        @Test
+        @DisplayName("getChildTodos_正常_直接の子TODO一覧が返る")
+        void getChildTodos_正常_直接の子TODO一覧が返る() {
+            // given
+            TodoEntity parent = createParentTodo();
+            TodoEntity child1 = createChildTodo(TODO_ID, 1);
+            TodoEntity child2 = createChildTodo(TODO_ID, 1);
+            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID))
+                    .willReturn(Optional.of(parent));
+            // parent.getId() は null（ビルドしたエンティティにIDなし）なので null で stub
+            given(todoRepository.findByParentIdAndDeletedAtIsNullOrderBySortOrderAsc(null))
+                    .willReturn(List.of(child1, child2));
+            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
+
+            // when
+            ApiResponse<List<TodoResponse>> result = todoService.getChildTodos(
+                    SCOPE_TYPE, SCOPE_ID, TODO_ID);
+
+            // then
+            assertThat(result.getData()).hasSize(2);
         }
     }
 }

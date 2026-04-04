@@ -34,4 +34,10 @@ public class TodoResponse {
     private final List<AssigneeResponse> assignees;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+    private final Long parentId;
+    private final Integer depth;
+    private final List<TodoResponse> children;
+    private final int childCount;
+    private final int descendantCompletedCount;
+    private final int descendantTotalCount;
 }

@@ -35,4 +35,6 @@ public class CreateTodoRequest {
     private final Integer sortOrder;
 
     private final List<Long> assigneeIds;
+
+    private final Long parentId;  // nullable。指定時は子TODOとして作成
 }

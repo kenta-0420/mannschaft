@@ -66,7 +66,16 @@ public enum TodoErrorCode implements ErrorCode {
     BULK_SIZE_EXCEEDED("TODO_018", "一括操作は最大50件までです", Severity.WARN),
 
     /** マイルストーンは既に完了している */
-    MILESTONE_ALREADY_COMPLETED("TODO_019", "マイルストーンは既に完了しています", Severity.WARN);
+    MILESTONE_ALREADY_COMPLETED("TODO_019", "マイルストーンは既に完了しています", Severity.WARN),
+
+    /** 子TODO階層の上限（3階層）を超過 */
+    MAX_DEPTH_EXCEEDED("TODO_020", "これ以上子課題を追加できません（最大3階層）", Severity.WARN),
+
+    /** 親TODOとスコープが不一致 */
+    PARENT_SCOPE_MISMATCH("TODO_021", "親課題と同じスコープ内でのみ子課題を作成できます", Severity.WARN),
+
+    /** 子TODO数が上限（50件）に達している */
+    CHILD_LIMIT_EXCEEDED("TODO_022", "子課題の上限（50件）に達しています", Severity.WARN);
 
     private final String code;
     private final String message;

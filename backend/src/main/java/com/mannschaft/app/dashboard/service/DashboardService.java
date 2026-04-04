@@ -509,6 +509,8 @@ public class DashboardService {
         map.put("status", entity.getStatus().name());
         map.put("priority", entity.getPriority().name());
         map.put("due_date", entity.getDueDate());
+        map.put("parent_id", entity.getParentId());
+        map.put("depth", entity.getDepth());
         return map;
     }
 

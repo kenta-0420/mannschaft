@@ -74,4 +74,53 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
             ORDER BY t.dueDate ASC NULLS LAST, t.priority DESC
             """)
     List<TodoEntity> findMyTodos(@Param("userId") Long userId);
+
+    /**
+     * 子TODO一覧を取得する（sortOrder昇順、論理削除除外）。
+     */
+    List<TodoEntity> findByParentIdAndDeletedAtIsNullOrderBySortOrderAsc(Long parentId);
+
+    /**
+     * 直接の子TODO件数を取得する（論理削除除外）。
+     */
+    long countByParentIdAndDeletedAtIsNull(Long parentId);
+
+    /**
+     * 子孫TODO合計件数を取得する（2階層分、論理削除除外）。
+     */
+    @Query("""
+            SELECT COUNT(t) FROM TodoEntity t
+            WHERE t.deletedAt IS NULL
+              AND (t.parentId = :parentId
+                   OR t.parentId IN (
+                       SELECT c.id FROM TodoEntity c
+                       WHERE c.parentId = :parentId AND c.deletedAt IS NULL))
+            """)
+    long countDescendants(@Param("parentId") Long parentId);
+
+    /**
+     * 子孫TODO完了件数を取得する（2階層分、論理削除除外）。
+     */
+    @Query("""
+            SELECT COUNT(t) FROM TodoEntity t
+            WHERE t.deletedAt IS NULL
+              AND t.status = com.mannschaft.app.todo.TodoStatus.COMPLETED
+              AND (t.parentId = :parentId
+                   OR t.parentId IN (
+                       SELECT c.id FROM TodoEntity c
+                       WHERE c.parentId = :parentId AND c.deletedAt IS NULL))
+            """)
+    long countCompletedDescendants(@Param("parentId") Long parentId);
+
+    /**
+     * ルートTODOのみ（親なし）のページネーション取得（論理削除除外）。
+     */
+    Page<TodoEntity> findByScopeTypeAndScopeIdAndDeletedAtIsNullAndParentIdIsNull(
+            TodoScopeType scopeType, Long scopeId, Pageable pageable);
+
+    /**
+     * ルートTODOのみ（親なし）ステータスフィルタ付きページネーション取得（論理削除除外）。
+     */
+    Page<TodoEntity> findByScopeTypeAndScopeIdAndStatusAndDeletedAtIsNullAndParentIdIsNull(
+            TodoScopeType scopeType, Long scopeId, TodoStatus status, Pageable pageable);
 }
