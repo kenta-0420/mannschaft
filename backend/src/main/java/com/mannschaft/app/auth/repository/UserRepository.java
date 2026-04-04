@@ -18,6 +18,15 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     Optional<UserEntity> findByEmail(String email);
 
+    /** @ハンドルでユーザーを取得する（F04.8 連絡先機能）。 */
+    Optional<UserEntity> findByContactHandle(String contactHandle);
+
+    /** @ハンドルの使用有無を確認する（自分以外）。 */
+    boolean existsByContactHandleAndIdNot(String contactHandle, Long excludeId);
+
+    /** @ハンドルの使用有無を確認する（全ユーザー）。 */
+    boolean existsByContactHandle(String contactHandle);
+
     List<UserEntity> findByStatusAndCreatedAtBefore(UserStatus status, LocalDateTime threshold);
 
     boolean existsByEmail(String email);

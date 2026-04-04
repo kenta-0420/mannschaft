@@ -45,6 +45,18 @@ public interface ChatChannelRepository extends JpaRepository<ChatChannelEntity, 
     Optional<ChatChannelEntity> findExistingDm(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
 
     /**
+     * 2人の間のDMチャンネルを取得する（アーカイブ済みも含む）。ブロック時のアーカイブ処理用。
+     */
+    @Query("""
+            SELECT c FROM ChatChannelEntity c
+            WHERE c.channelType = 'DM'
+              AND c.deletedAt IS NULL
+              AND EXISTS (SELECT 1 FROM ChatChannelMemberEntity m1 WHERE m1.channelId = c.id AND m1.userId = :userId1)
+              AND EXISTS (SELECT 1 FROM ChatChannelMemberEntity m2 WHERE m2.channelId = c.id AND m2.userId = :userId2)
+            """)
+    Optional<ChatChannelEntity> findDmChannelBetween(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
+
+    /**
      * ソースタイプとソースIDでチャンネルを取得する。
      */
     Optional<ChatChannelEntity> findBySourceTypeAndSourceId(String sourceType, Long sourceId);

@@ -358,7 +358,7 @@ class ScheduleEventCategoryServiceTest {
                     .willAnswer(invocation -> invocation.getArgument(0));
 
             // when
-            categoryService.initializePresets(TEAM_ID, true, "学校");
+            categoryService.initializePresets(TEAM_ID, true, "クラス");
 
             // then
             verify(categoryRepository, org.mockito.Mockito.times(7))
@@ -384,7 +384,7 @@ class ScheduleEventCategoryServiceTest {
                     .willAnswer(invocation -> invocation.getArgument(0));
 
             // when
-            categoryService.initializePresets(ORG_ID, false, "スポーツ");
+            categoryService.initializePresets(ORG_ID, false, "クラブ・サークル");
 
             // then
             verify(categoryRepository, org.mockito.Mockito.times(4))

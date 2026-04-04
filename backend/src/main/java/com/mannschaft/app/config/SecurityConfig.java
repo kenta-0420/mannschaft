@@ -51,6 +51,8 @@ public class SecurityConfig {
                 // F12.5 フロントエンドエラー追跡（認証不要）
                 .requestMatchers(HttpMethod.POST, "/api/v1/error-reports").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/active-incidents").permitAll()
+                // F04.8 連絡先招待プレビュー（認証不要）
+                .requestMatchers(HttpMethod.GET, "/api/v1/contact-invite/*").permitAll()
                 // 開発中は全エンドポイントを許可（本番移行時に .authenticated() に変更）
                 .anyRequest().permitAll()
             )

@@ -2,6 +2,7 @@ package com.mannschaft.app.auth.entity;
 
 import com.mannschaft.app.auth.DmReceiveFrom;
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.contact.OnlineVisibility;
 import com.mannschaft.app.common.EncryptedStringConverter;
 import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
@@ -56,6 +57,26 @@ public class UserEntity extends BaseEntity {
 
     @Column(nullable = false, length = 50)
     private String displayName;
+
+    /** アプリ内@ハンドル。英数字・アンダースコア・ハイフン3〜30文字。 */
+    @Column(length = 30, unique = true)
+    private String contactHandle;
+
+    /** ハンドル検索許可フラグ。true=検索可能（デフォルト）。 */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean handleSearchable = true;
+
+    /** 連絡先申請に承認が必要かどうか。true=承認制（デフォルト）。 */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean contactApprovalRequired = true;
+
+    /** オンライン状態の公開範囲。デフォルト: NOBODY。 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private OnlineVisibility onlineVisibility = OnlineVisibility.NOBODY;
 
     @Column(length = 50)
     private String nickname2;
@@ -213,5 +234,23 @@ public class UserEntity extends BaseEntity {
      */
     public void updateDmReceiveFrom(DmReceiveFrom dmReceiveFrom) {
         this.dmReceiveFrom = dmReceiveFrom;
+    }
+
+    /**
+     * @ハンドルを設定・変更する。
+     */
+    public void updateContactHandle(String contactHandle) {
+        this.contactHandle = contactHandle;
+    }
+
+    /**
+     * プライバシー設定を更新する。
+     */
+    public void updateContactPrivacy(Boolean handleSearchable, Boolean contactApprovalRequired,
+                                     DmReceiveFrom dmReceiveFrom, OnlineVisibility onlineVisibility) {
+        if (handleSearchable != null) this.handleSearchable = handleSearchable;
+        if (contactApprovalRequired != null) this.contactApprovalRequired = contactApprovalRequired;
+        if (dmReceiveFrom != null) this.dmReceiveFrom = dmReceiveFrom;
+        if (onlineVisibility != null) this.onlineVisibility = onlineVisibility;
     }
 }

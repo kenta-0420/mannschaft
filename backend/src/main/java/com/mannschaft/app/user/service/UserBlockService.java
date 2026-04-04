@@ -2,7 +2,12 @@ package com.mannschaft.app.user.service;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.chat.entity.ChatChannelEntity;
+import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.contact.repository.ContactRequestBlockRepository;
+import com.mannschaft.app.contact.repository.ContactRequestRepository;
+import com.mannschaft.app.contact.service.ContactService;
 import com.mannschaft.app.user.UserErrorCode;
 import com.mannschaft.app.user.dto.UserBlockResponse;
 import com.mannschaft.app.user.entity.UserBlockEntity;
@@ -25,6 +30,10 @@ public class UserBlockService {
 
     private final UserBlockRepository userBlockRepository;
     private final UserRepository userRepository;
+    private final ContactRequestRepository contactRequestRepository;
+    private final ContactRequestBlockRepository contactRequestBlockRepository;
+    private final ContactService contactService;
+    private final ChatChannelRepository chatChannelRepository;
 
     /**
      * 指定ユーザーをブロックする。
@@ -48,6 +57,28 @@ public class UserBlockService {
                 .blockedId(targetId)
                 .build();
         userBlockRepository.save(entity);
+
+        // F04.8 ブロック副作用処理
+        // 1. 双方の連絡先フォルダから相手を削除
+        contactService.removeContactFromFolder(blockerId, targetId);
+        contactService.removeContactFromFolder(targetId, blockerId);
+
+        // 2. PENDING 申請をキャンセル
+        contactRequestRepository.findByRequesterIdAndTargetIdAndStatus(blockerId, targetId, "PENDING")
+                .ifPresent(r -> r.cancel());
+        contactRequestRepository.findByRequesterIdAndTargetIdAndStatus(targetId, blockerId, "PENDING")
+                .ifPresent(r -> r.cancel());
+
+        // 3. 申請事前拒否リストに追加（ブロック解除まで申請も受けない）
+        if (!contactRequestBlockRepository.existsByUserIdAndBlockedId(blockerId, targetId)) {
+            contactRequestBlockRepository.save(
+                    com.mannschaft.app.contact.entity.ContactRequestBlockEntity.builder()
+                            .userId(blockerId).blockedId(targetId).build());
+        }
+
+        // 4. DM チャンネルをアーカイブ
+        chatChannelRepository.findDmChannelBetween(blockerId, targetId)
+                .ifPresent(ChatChannelEntity::archive);
     }
 
     /**
@@ -64,6 +95,12 @@ public class UserBlockService {
             throw new BusinessException(UserErrorCode.USER_002);
         }
         userBlockRepository.deleteByBlockerIdAndBlockedId(blockerId, targetId);
+
+        // F04.8 ブロック解除副作用: contact_request_blocks も解除
+        if (contactRequestBlockRepository.existsByUserIdAndBlockedId(blockerId, targetId)) {
+            contactRequestBlockRepository.deleteByUserIdAndBlockedId(blockerId, targetId);
+        }
+        // 連絡先関係・DMチャンネルは復元しない（再申請が必要）
     }
 
     /**

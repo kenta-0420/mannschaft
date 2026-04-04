@@ -42,12 +42,12 @@ class SystemActivityPresetServiceTest {
         @DisplayName("正常系: プリセットが作成される")
         void 作成_正常_保存() {
             CreatePresetRequest request = new CreatePresetRequest(
-                    "SPORTS", "練習メニュー", null, null, null, null, null, null);
+                    "CLUB", "練習メニュー", null, null, null, null, null, null);
             SystemActivityTemplatePresetEntity saved = SystemActivityTemplatePresetEntity.builder()
-                    .category(PresetCategory.SPORTS).name("練習メニュー").build();
+                    .category(PresetCategory.CLUB).name("練習メニュー").build();
             given(presetRepository.save(any())).willReturn(saved);
             given(activityMapper.toPresetResponse(saved))
-                    .willReturn(new PresetResponse(1L, "SPORTS", "練習メニュー", null, null, null, null, null, null, true, null, null));
+                    .willReturn(new PresetResponse(1L, "CLUB", "練習メニュー", null, null, null, null, null, null, true, null, null));
 
             PresetResponse result = service.createPreset(request);
             assertThat(result).isNotNull();
@@ -76,7 +76,7 @@ class SystemActivityPresetServiceTest {
         @DisplayName("正常系: プリセットが論理削除される")
         void 削除_正常_論理削除() {
             SystemActivityTemplatePresetEntity entity = SystemActivityTemplatePresetEntity.builder()
-                    .category(PresetCategory.SPORTS).name("テスト").build();
+                    .category(PresetCategory.CLUB).name("テスト").build();
             given(presetRepository.findById(PRESET_ID)).willReturn(Optional.of(entity));
             service.deletePreset(PRESET_ID);
             verify(presetRepository).save(entity);
