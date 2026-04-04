@@ -3,13 +3,22 @@ definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const teamId = Number(route.params.id)
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 
-onMounted(() => loadPermissions())
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    await loadPermissions()
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
-  <div>
+  <PageLoading v-if="loading" />
+  <div v-else>
     <div class="mb-4"><h1 class="text-2xl font-bold">回覧板</h1></div>
     <CirculationList scope-type="TEAM" :scope-id="teamId" :can-manage="isAdminOrDeputy" />
   </div>

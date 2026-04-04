@@ -26,10 +26,11 @@ function isActive(path: string): boolean {
       <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4">
         <!-- 左: ロゴ + ナビゲーション -->
         <div class="flex min-w-0 flex-1 items-center gap-6">
-          <NuxtLink to="/dashboard" class="text-xl font-bold text-primary">
-            Mannschaft
-          </NuxtLink>
-          <nav v-if="authStore.isAuthenticated" class="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+          <NuxtLink to="/dashboard" class="text-3xl font-bold text-primary"> Mannschaft </NuxtLink>
+          <nav
+            v-if="authStore.isAuthenticated"
+            class="flex items-center gap-1 overflow-x-auto scrollbar-hide"
+          >
             <NuxtLink
               v-for="item in navItems"
               :key="item.to"
@@ -45,10 +46,20 @@ function isActive(path: string): boolean {
 
         <!-- 右: スコープセレクター + ユーザーメニュー -->
         <div class="flex items-center gap-3">
-          <NuxtLink v-if="authStore.isAuthenticated" to="/search" v-tooltip.bottom="'検索'" class="flex items-center">
+          <NuxtLink
+            v-if="authStore.isAuthenticated"
+            v-tooltip.bottom="'検索'"
+            to="/search"
+            class="flex items-center"
+          >
             <Button icon="pi pi-search" text rounded severity="secondary" />
           </NuxtLink>
-          <NuxtLink v-if="authStore.isAuthenticated" to="/mentions" v-tooltip.bottom="'メンション'" class="flex items-center">
+          <NuxtLink
+            v-if="authStore.isAuthenticated"
+            v-tooltip.bottom="'メンション'"
+            to="/mentions"
+            class="flex items-center"
+          >
             <Button icon="pi pi-at" text rounded severity="secondary" />
           </NuxtLink>
           <ScopeSelector v-if="authStore.isAuthenticated" />

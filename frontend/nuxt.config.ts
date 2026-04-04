@@ -4,8 +4,16 @@ import Aura from '@primeuix/themes/aura'
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
+
+  app: {
+    pageTransition: { name: 'page-fade', mode: 'out-in' },
+  },
   future: {
     compatibilityVersion: 4,
+  },
+
+  devServer: {
+    host: '0.0.0.0',
   },
 
   modules: [
@@ -68,6 +76,10 @@ export default defineNuxtConfig({
     defaultLocale: 'ja',
     strategy: 'no_prefix',
     lazy: true,
+    restructureDir: false,
+    bundle: {
+      optimizeTranslationDirective: false,
+    },
     langDir: 'locales/',
     detectBrowserLanguage: {
       useCookie: false,

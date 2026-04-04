@@ -6,9 +6,15 @@ definePageMeta({
 const appearanceStore = useAppearanceStore()
 const notification = useNotification()
 
+const loading = ref(true)
+
 // サーバーから初期読み込み
 onMounted(async () => {
-  await appearanceStore.loadFromServer()
+  try {
+    await appearanceStore.loadFromServer()
+  } finally {
+    loading.value = false
+  }
 })
 
 async function save() {
@@ -18,22 +24,26 @@ async function save() {
 </script>
 
 <template>
-  <div class="mx-auto max-w-2xl">
-    <h1 class="mb-6 text-2xl font-bold">外観設定</h1>
+  <PageLoading v-if="loading" />
+  <div v-else class="mx-auto max-w-2xl">
+    <div class="mb-6 flex items-center gap-2">
+      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
+      <h1 class="text-2xl font-bold">外観設定</h1>
+    </div>
 
     <div class="space-y-8">
       <!-- テーマ選択 -->
-      <div class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+      <SectionCard>
         <ThemeSelector />
-      </div>
+      </SectionCard>
 
       <!-- 背景色 -->
-      <div class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+      <SectionCard>
         <BackgroundColorPicker />
-      </div>
+      </SectionCard>
 
       <!-- チャットプレビュー設定 -->
-      <div class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+      <SectionCard>
         <div class="flex items-center justify-between">
           <div>
             <label class="text-sm font-medium">チャットプレビュー非表示</label>
@@ -44,16 +54,15 @@ async function save() {
             @update:model-value="(val: boolean) => appearanceStore.setHideChatPreview(val)"
           />
         </div>
-      </div>
+      </SectionCard>
 
       <!-- プレビュー -->
-      <div class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+      <SectionCard>
         <h3 class="mb-4 text-sm font-medium">プレビュー</h3>
-        <div
-          class="rounded-lg p-4"
-          :style="{ backgroundColor: appearanceStore.bgColor }"
-        >
-          <div class="rounded-lg border border-surface-200 bg-surface-0 p-4 shadow-sm dark:border-surface-700 dark:bg-surface-800">
+        <div class="rounded-lg p-4" :style="{ backgroundColor: appearanceStore.bgColor }">
+          <div
+            class="rounded-lg border border-surface-200 bg-surface-0 p-4 shadow-sm dark:border-surface-700 dark:bg-surface-800"
+          >
             <p class="text-sm font-medium">カードプレビュー</p>
             <p class="text-xs text-surface-500">選択した背景色とテーマが適用されます</p>
             <div class="mt-3 flex gap-2">
@@ -63,7 +72,7 @@ async function save() {
             </div>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- 保存ボタン -->
       <div class="flex justify-end">

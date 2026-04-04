@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.12s ease;
+}
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from {
+  opacity: 0;
+}
+
+.fade-in {
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;

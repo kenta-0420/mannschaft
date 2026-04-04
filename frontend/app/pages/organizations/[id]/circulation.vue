@@ -5,11 +5,20 @@ const route = useRoute()
 const orgId = Number(route.params.id)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
 
-onMounted(() => loadPermissions())
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    await loadPermissions()
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
-  <div>
+  <PageLoading v-if="loading" />
+  <div v-else>
     <div class="mb-4"><h1 class="text-2xl font-bold">回覧板</h1></div>
     <CirculationList scope-type="ORGANIZATION" :scope-id="orgId" :can-manage="isAdminOrDeputy" />
   </div>

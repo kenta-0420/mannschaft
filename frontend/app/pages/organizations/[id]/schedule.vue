@@ -11,8 +11,14 @@ const currentYear = ref(now.getFullYear())
 const currentMonth = ref(now.getMonth() + 1)
 
 interface CalEvent {
-  id: number; title: string; startAt: string; endAt: string; allDay: boolean
-  color: string | null; scopeType: string; isPersonal: boolean
+  id: number
+  title: string
+  startAt: string
+  endAt: string
+  allDay: boolean
+  color: string | null
+  scopeType: string
+  isPersonal: boolean
 }
 
 const events = ref<CalEvent[]>([])
@@ -31,10 +37,16 @@ async function loadEvents() {
     const lastDay = new Date(currentYear.value, currentMonth.value, 0).getDate()
     const to = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${lastDay}`
     const res = await scheduleApi.listSchedules('organization', orgId, { from, to, size: 100 })
-    events.value = (res.data as CalEvent[]).map(e => ({ ...e, isPersonal: false, scopeType: 'ORGANIZATION' }))
+    events.value = (res.data as CalEvent[]).map((e) => ({
+      ...e,
+      isPersonal: false,
+      scopeType: 'ORGANIZATION',
+    }))
+  } catch {
+    events.value = []
+  } finally {
+    loading.value = false
   }
-  catch { events.value = [] }
-  finally { loading.value = false }
 }
 
 function onDateClick(date: string) {
@@ -48,19 +60,28 @@ async function onEventClick(eventId: number) {
     selectedEvent.value = res.data as Record<string, unknown>
     selectedEventId.value = eventId
     showDetailPanel.value = true
+  } catch {
+    /* ignore */
   }
-  catch { /* ignore */ }
 }
 
 function onPrevMonth() {
-  if (currentMonth.value === 1) { currentMonth.value = 12; currentYear.value-- }
-  else { currentMonth.value-- }
+  if (currentMonth.value === 1) {
+    currentMonth.value = 12
+    currentYear.value--
+  } else {
+    currentMonth.value--
+  }
   loadEvents()
 }
 
 function onNextMonth() {
-  if (currentMonth.value === 12) { currentMonth.value = 1; currentYear.value++ }
-  else { currentMonth.value++ }
+  if (currentMonth.value === 12) {
+    currentMonth.value = 1
+    currentYear.value++
+  } else {
+    currentMonth.value++
+  }
   loadEvents()
 }
 
@@ -75,8 +96,9 @@ async function onDeleteEvent() {
     await scheduleApi.deleteSchedule('organization', orgId, selectedEventId.value)
     showDetailPanel.value = false
     await loadEvents()
+  } catch {
+    /* handled by api */
   }
-  catch { /* handled by api */ }
 }
 
 onMounted(async () => {
@@ -86,15 +108,23 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
+  <PageLoading v-if="loading" />
+  <div v-else>
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-2xl font-bold">スケジュール</h1>
-      <Button v-if="isAdminOrDeputy" label="イベント作成" icon="pi pi-plus" @click="showCreateDialog = true" />
+      <Button
+        v-if="isAdminOrDeputy"
+        label="イベント作成"
+        icon="pi pi-plus"
+        @click="showCreateDialog = true"
+      />
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div class="lg:col-span-2">
-        <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+        <div
+          class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+        >
           <CalendarGrid
             :year="currentYear"
             :month="currentMonth"
@@ -108,7 +138,10 @@ onMounted(async () => {
       </div>
 
       <div>
-        <div v-if="showDetailPanel && selectedEvent" class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+        <div
+          v-if="showDetailPanel && selectedEvent"
+          class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+        >
           <EventDetailPanel
             :event="selectedEvent as any"
             scope-type="organization"
@@ -119,7 +152,10 @@ onMounted(async () => {
             @responded="loadEvents"
           />
         </div>
-        <div v-else class="rounded-xl border border-surface-200 bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-800">
+        <div
+          v-else
+          class="rounded-xl border border-surface-200 bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-800"
+        >
           <DashboardEmptyState icon="pi pi-calendar" message="イベントを選択してください" />
         </div>
       </div>

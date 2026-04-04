@@ -13,25 +13,27 @@ const loading = ref(true)
 
 onMounted(async () => {
   loading.value = true
-  await Promise.all([
-    teamStore.fetchMyTeams(),
-    orgStore.fetchMyOrganizations(),
-    dashboardStore.fetchPersonalDashboard(),
-  ])
-  loading.value = false
+  try {
+    await Promise.all([
+      teamStore.fetchMyTeams(),
+      orgStore.fetchMyOrganizations(),
+      dashboardStore.fetchPersonalDashboard(),
+    ])
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
 <template>
-  <div>
+  <PageLoading v-if="loading" />
+  <div v-else>
     <!-- 挨拶ヘッダー -->
     <div class="mb-6">
       <h1 class="text-2xl font-bold text-surface-800 dark:text-surface-100">
         {{ greeting }}、{{ authStore.currentUser?.displayName ?? 'ユーザー' }}さん
       </h1>
-      <p class="mt-1 text-sm text-surface-500">
-        今日も良い一日を過ごしましょう
-      </p>
+      <p class="mt-1 text-sm text-surface-500">今日も良い一日を過ごしましょう</p>
     </div>
 
     <!-- ウィジェットグリッド -->
@@ -59,7 +61,9 @@ onMounted(async () => {
             :to="`/teams/${team.id}`"
             class="flex items-center gap-3 rounded-lg border border-surface-200 bg-surface-0 p-3 transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-800"
           >
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div
+              class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"
+            >
               <i class="pi pi-users" />
             </div>
             <div class="min-w-0 flex-1">
@@ -76,7 +80,9 @@ onMounted(async () => {
       <div>
         <div class="mb-3 flex items-center justify-between">
           <h2 class="text-lg font-semibold">マイ組織</h2>
-          <NuxtLink to="/organizations" class="text-sm text-primary hover:underline">すべて表示</NuxtLink>
+          <NuxtLink to="/organizations" class="text-sm text-primary hover:underline"
+            >すべて表示</NuxtLink
+          >
         </div>
         <div v-if="orgStore.myOrganizations.length > 0" class="space-y-2">
           <NuxtLink
@@ -85,12 +91,16 @@ onMounted(async () => {
             :to="`/organizations/${org.id}`"
             class="flex items-center gap-3 rounded-lg border border-surface-200 bg-surface-0 p-3 transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-800"
           >
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div
+              class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"
+            >
               <i class="pi pi-building" />
             </div>
             <div class="min-w-0 flex-1">
               <p class="truncate text-sm font-medium">{{ org.nickname1 || org.name }}</p>
-              <p class="text-xs text-surface-500">{{ org.orgType === 'NONPROFIT' ? '非営利' : '営利' }}</p>
+              <p class="text-xs text-surface-500">
+                {{ org.orgType === 'NONPROFIT' ? '非営利' : '営利' }}
+              </p>
             </div>
             <RoleBadge :role="org.role" />
           </NuxtLink>

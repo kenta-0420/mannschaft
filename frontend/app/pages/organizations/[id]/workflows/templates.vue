@@ -7,11 +7,20 @@ const route = useRoute()
 const orgId = Number(route.params.id)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
 
-onMounted(() => loadPermissions())
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    await loadPermissions()
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
-  <div>
+  <PageLoading v-if="loading" />
+  <div v-else>
     <div class="mb-4">
       <NuxtLink
         :to="`/organizations/${orgId}/workflows`"

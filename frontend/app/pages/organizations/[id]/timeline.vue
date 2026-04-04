@@ -9,6 +9,7 @@ const orgId = Number(route.params.id)
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
 
 const feedRef = ref<{ refresh: () => void } | null>(null)
+const loading = ref(true)
 
 function onPosted() {
   feedRef.value?.refresh()
@@ -18,11 +19,18 @@ function onClickPost(postId: number) {
   router.push(`/timeline/${postId}`)
 }
 
-onMounted(() => loadPermissions())
+onMounted(async () => {
+  try {
+    await loadPermissions()
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
-  <div>
+  <PageLoading v-if="loading" />
+  <div v-else>
     <div class="mb-4">
       <h1 class="text-2xl font-bold">タイムライン</h1>
     </div>

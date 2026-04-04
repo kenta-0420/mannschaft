@@ -7,11 +7,20 @@ const route = useRoute()
 const teamId = Number(route.params.id)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 
-onMounted(() => loadPermissions())
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    await loadPermissions()
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
-  <div>
+  <PageLoading v-if="loading" />
+  <div v-else>
     <div class="mb-4">
       <NuxtLink :to="`/teams/${teamId}/workflows`" class="text-sm text-primary hover:underline">
         <i class="pi pi-arrow-left mr-1" />申請一覧に戻る

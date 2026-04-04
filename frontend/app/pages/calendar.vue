@@ -8,8 +8,14 @@ const currentYear = ref(now.getFullYear())
 const currentMonth = ref(now.getMonth() + 1)
 
 interface CalEvent {
-  id: number; title: string; startAt: string; endAt: string; allDay: boolean
-  color: string | null; scopeType: string; isPersonal: boolean
+  id: number
+  title: string
+  startAt: string
+  endAt: string
+  allDay: boolean
+  color: string | null
+  scopeType: string
+  isPersonal: boolean
 }
 
 const events = ref<CalEvent[]>([])
@@ -26,12 +32,21 @@ async function loadEvents() {
       scheduleApi.listPersonalSchedules({ from, to }),
       scheduleApi.getCalendarMonth(currentYear.value, currentMonth.value),
     ])
-    const personalEvents = ((personal.data ?? []) as CalEvent[]).map(e => ({ ...e, isPersonal: true, scopeType: 'PERSONAL', color: (e as Record<string, unknown>).color as string ?? '#22c55e' }))
-    const sharedEvents = (((shared.data as Record<string, unknown>)?.events as CalEvent[]) ?? []).map(e => ({ ...e, isPersonal: false }))
+    const personalEvents = ((personal.data ?? []) as CalEvent[]).map((e) => ({
+      ...e,
+      isPersonal: true,
+      scopeType: 'PERSONAL',
+      color: ((e as Record<string, unknown>).color as string) ?? '#22c55e',
+    }))
+    const sharedEvents = (
+      ((shared.data as Record<string, unknown>)?.events as CalEvent[]) ?? []
+    ).map((e) => ({ ...e, isPersonal: false }))
     events.value = [...personalEvents, ...sharedEvents]
+  } catch {
+    events.value = []
+  } finally {
+    loading.value = false
   }
-  catch { events.value = [] }
-  finally { loading.value = false }
 }
 
 function onDateClick(date: string) {
@@ -40,14 +55,22 @@ function onDateClick(date: string) {
 }
 
 function onPrevMonth() {
-  if (currentMonth.value === 1) { currentMonth.value = 12; currentYear.value-- }
-  else { currentMonth.value-- }
+  if (currentMonth.value === 1) {
+    currentMonth.value = 12
+    currentYear.value--
+  } else {
+    currentMonth.value--
+  }
   loadEvents()
 }
 
 function onNextMonth() {
-  if (currentMonth.value === 12) { currentMonth.value = 1; currentYear.value++ }
-  else { currentMonth.value++ }
+  if (currentMonth.value === 12) {
+    currentMonth.value = 1
+    currentYear.value++
+  } else {
+    currentMonth.value++
+  }
   loadEvents()
 }
 
@@ -55,13 +78,16 @@ onMounted(loadEvents)
 </script>
 
 <template>
-  <div>
+  <PageLoading v-if="loading" />
+  <div v-else>
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-2xl font-bold">マイカレンダー</h1>
       <Button label="予定を追加" icon="pi pi-plus" @click="showCreateDialog = true" />
     </div>
 
-    <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+    <div
+      class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+    >
       <CalendarGrid
         :year="currentYear"
         :month="currentMonth"
