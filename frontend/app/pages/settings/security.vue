@@ -6,6 +6,7 @@ definePageMeta({
 })
 
 const notification = useNotification()
+const authStore = useAuthStore()
 const {
   getSessions,
   revokeSession,
@@ -49,8 +50,8 @@ async function handleRevokeSession(id: number) {
 async function handleRevokeAllSessions() {
   try {
     await revokeAllSessions()
-    sessions.value = []
     notification.success('全デバイスからログアウトしました')
+    authStore.logout()
   } catch {
     notification.error('全デバイスログアウトに失敗しました')
   }

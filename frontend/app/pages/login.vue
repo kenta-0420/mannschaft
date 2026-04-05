@@ -21,7 +21,9 @@ async function handleLogin() {
       data: {
         accessToken: string
         refreshToken: string
-        user: { id: number; email: string; displayName: string; profileImageUrl: string | null }
+        userId: number
+        displayName: string
+        email: string
         mfaRequired?: boolean
         mfaSessionToken?: string
       }
@@ -33,21 +35,37 @@ async function handleLogin() {
       navigateTo(`/2fa-verify?session=${data.data.mfaSessionToken}`)
     } else {
       authStore.setTokens(data.data.accessToken, data.data.refreshToken)
-      authStore.setUser(data.data.user)
 
-      // F11.3: ユーザー保存済みロケール + systemRole を取得
+      // /api/v1/users/me でフルプロフィール（systemRole・locale・avatarUrl 等）を一括取得
       try {
-        const profile = await api<{ data: { locale?: string; systemRole?: string } }>(
-          '/api/v1/users/me',
-        )
+        const profile = await api<{
+          data: {
+            id: number
+            email: string
+            displayName: string
+            avatarUrl: string | null
+            systemRole: string | null
+            locale: string
+          }
+        }>('/api/v1/users/me')
+        authStore.setUser({
+          id: profile.data.id,
+          email: profile.data.email,
+          displayName: profile.data.displayName,
+          profileImageUrl: profile.data.avatarUrl,
+          systemRole: profile.data.systemRole ?? undefined,
+        })
         if (profile.data.locale) {
           await applyUserLocale(profile.data.locale)
         }
-        if (profile.data.systemRole) {
-          authStore.setUser({ ...data.data.user, systemRole: profile.data.systemRole })
-        }
       } catch {
-        // 取得失敗時はデフォルトで続行
+        // プロフィール取得失敗時はログインレスポンスの基本情報で続行
+        authStore.setUser({
+          id: data.data.userId,
+          email: data.data.email,
+          displayName: data.data.displayName,
+          profileImageUrl: null,
+        })
       }
 
       notification.success('ログイン成功')

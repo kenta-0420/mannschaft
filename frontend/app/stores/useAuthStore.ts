@@ -39,12 +39,23 @@ export const useAuthStore = defineStore('auth', {
 
     setUser(user: AuthUser) {
       this.user = user
+      if (import.meta.client) {
+        localStorage.setItem('currentUser', JSON.stringify(user))
+      }
     },
 
     loadFromStorage() {
       if (import.meta.client) {
         this.accessToken = localStorage.getItem('accessToken')
         this.refreshToken = localStorage.getItem('refreshToken')
+        const savedUser = localStorage.getItem('currentUser')
+        if (savedUser) {
+          try {
+            this.user = JSON.parse(savedUser)
+          } catch {
+            // ignore parse errors
+          }
+        }
       }
     },
 
@@ -55,6 +66,7 @@ export const useAuthStore = defineStore('auth', {
       if (import.meta.client) {
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
+        localStorage.removeItem('currentUser')
       }
       navigateTo('/login')
     },
