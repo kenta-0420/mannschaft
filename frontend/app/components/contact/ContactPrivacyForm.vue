@@ -110,9 +110,7 @@ onMounted(fetchSettings)
               v-for="opt in visibilityOptions"
               :key="opt.value"
               class="flex cursor-pointer items-center gap-2"
-              @click="
-                settings.onlineVisibility = opt.value as ContactPrivacySettings['onlineVisibility']
-              "
+              @click="settings.onlineVisibility = opt.value as ContactPrivacySettings['onlineVisibility']"
             >
               <RadioButton
                 v-model="settings.onlineVisibility"

@@ -76,10 +76,7 @@ const onSubmit = handleSubmit(async (values) => {
 
 <template>
   <form
-    @submit.prevent="
-      submitted = true
-      onSubmit()
-    "
+    @submit.prevent="submitted = true; onSubmit()"
   >
     <div class="flex flex-col gap-4">
       <div class="flex flex-col gap-2">

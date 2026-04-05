@@ -115,10 +115,7 @@ defineExpose({ refresh: loadPosts })
         v-for="post in posts"
         :key="post.id"
         class="overflow-hidden rounded-xl border border-surface-300 bg-surface-0 text-left transition-shadow hover:shadow-md"
-        @click="
-          emit('select', post)
-          navigateTo(`/blog/posts/${post.id}/edit`)
-        "
+        @click="emit('select', post); navigateTo(`/blog/posts/${post.id}/edit`)"
       >
         <img v-if="post.coverImageUrl" :src="post.coverImageUrl" class="h-40 w-full object-cover" />
         <div class="p-4">

@@ -143,10 +143,7 @@ function isActive(path: string): boolean {
           <!-- ブログ -->
           <button
             class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-surface-700 transition-colors hover:bg-surface-100 text-left"
-            @click="
-              showMobileMenu = false
-              showBlogCreate = true
-            "
+            @click="showMobileMenu = false; showBlogCreate = true"
           >
             <i class="pi pi-book text-base" />
             ブログ
