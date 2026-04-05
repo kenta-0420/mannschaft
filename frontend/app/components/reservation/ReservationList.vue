@@ -6,6 +6,7 @@ const props = defineProps<{
 
 const reservationApi = useReservationApi()
 const notification = useNotification()
+const confirm = useConfirm()
 
 interface Reservation {
   id: number; lineName: string; date: string; startTime: string; endTime: string
@@ -44,7 +45,10 @@ async function loadReservations() {
     reservations.value = res.data as Reservation[]
     totalRecords.value = res.meta.totalElements
   }
-  catch { reservations.value = [] }
+  catch (e) {
+    console.error('予約一覧の取得に失敗しました', e)
+    reservations.value = []
+  }
   finally { loading.value = false }
 }
 
@@ -61,10 +65,19 @@ async function reject(id: number) {
 }
 
 async function cancel(id: number) {
-  if (!confirm('この予約をキャンセルしますか？')) return
-  await reservationApi.cancelReservation(props.teamId, id)
-  notification.success('予約をキャンセルしました')
-  await loadReservations()
+  confirm.require({
+    message: 'この予約をキャンセルしますか？',
+    header: '確認',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'キャンセルする',
+    rejectLabel: '戻る',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      await reservationApi.cancelReservation(props.teamId, id)
+      notification.success('予約をキャンセルしました')
+      await loadReservations()
+    },
+  })
 }
 
 watch(statusFilter, () => { page.value = 0; loadReservations() })
@@ -73,6 +86,7 @@ onMounted(loadReservations)
 
 <template>
   <div>
+    <ConfirmDialog />
     <div class="mb-4">
       <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="w-40" />
     </div>
