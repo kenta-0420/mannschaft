@@ -1,0 +1,41 @@
+package com.mannschaft.app.ticket.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+import java.math.BigDecimal;
+
+/**
+ * 回数券商品更新リクエストDTO。
+ */
+@Getter
+@RequiredArgsConstructor
+public class UpdateTicketProductRequest {
+
+    @NotBlank
+    @Size(max = 200)
+    private final String name;
+
+    @Size(max = 1000)
+    private final String description;
+
+    @Positive
+    private final Integer price;
+
+    private final BigDecimal taxRate;
+
+    @Positive
+    private final Integer validityDays;
+
+    private final Boolean isOnlinePurchasable;
+
+    private final Boolean isActive;
+
+    private final Integer sortOrder;
+
+    @Size(max = 500)
+    private final String imageUrl;
+}

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+</head>
+<body>
+    <div class="pdf-header">
+        <img th:if="${logoBase64}" th:src="'data:image/png;base64,' + ${logoBase64}" class="logo"/>
+        <h1 th:text="${title}">チケット売上レポート</h1>
+    </div>
+    <div class="pdf-body">
+        <table class="no-border">
+            <tr><td><strong>チーム:</strong> <span th:text="${teamName}">チーム名</span></td></tr>
+            <tr><td><strong>集計期間:</strong> <span th:text="${periodStart}">開始日</span> 〜 <span th:text="${periodEnd}">終了日</span></td></tr>
+        </table>
+
+        <div class="mt-20">
+            <table>
+                <thead>
+                    <tr>
+                        <th>イベント名</th>
+                        <th class="text-center">販売枚数</th>
+                        <th class="text-right">売上金額</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="item : ${salesItems}">
+                        <td th:text="${item.eventName}">イベント名</td>
+                        <td class="text-center" th:text="${item.soldCount}">0</td>
+                        <td class="amount" th:text="'¥' + ${#numbers.formatInteger(item.totalAmount, 1, 'COMMA')}">¥0</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>合計</th>
+                        <th class="text-center" th:text="${totalSoldCount}">0</th>
+                        <th class="amount" th:text="'¥' + ${#numbers.formatInteger(totalAmount, 1, 'COMMA')}">¥0</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    <div class="pdf-footer">
+        <span th:if="${customFooter}" th:text="${customFooter}"></span>
+    </div>
+</body>
+</html>

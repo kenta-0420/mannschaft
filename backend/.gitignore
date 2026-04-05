@@ -1,0 +1,48 @@
+# --- Java ---
+*.class
+*.jar
+*.war
+*.ear
+*.logs
+hs_err_pid*
+
+# --- Gradle ---
+.gradle/
+build/
+bin/
+!gradle/wrapper/gradle-wrapper.jar
+
+# --- Heap dumps ---
+*.hprof
+
+# --- IDE ---
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Environment ---
+.env
+*.env.local
+application-local.yml
+
+# --- Uploads ---
+uploads/
+
+# --- Logs ---
+logs/
+*.log
+.claude/worktrees/
+
+node_modules/

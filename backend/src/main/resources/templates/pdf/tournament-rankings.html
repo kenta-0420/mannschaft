@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+</head>
+<body>
+    <div class="pdf-header">
+        <img th:if="${logoBase64}" th:src="'data:image/png;base64,' + ${logoBase64}" class="logo"/>
+        <h1 th:text="${title}">個人ランキング</h1>
+    </div>
+    <div class="pdf-body">
+        <p class="mb-10">統計項目: <strong th:text="${statKeyLabel}">得点</strong></p>
+        <table>
+            <thead>
+                <tr>
+                    <th class="text-center">順位</th>
+                    <th>選手名</th>
+                    <th>所属チーム</th>
+                    <th class="text-center" th:text="${statKeyLabel}">値</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="entry : ${rankings}">
+                    <td class="text-center" th:text="${entry.rank}">1</td>
+                    <td th:text="${entry.playerName}">選手名</td>
+                    <td th:text="${entry.teamName}">チーム名</td>
+                    <td class="text-center" th:text="${entry.value}">0</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="pdf-footer">
+        <span th:if="${customFooter}" th:text="${customFooter}"></span>
+    </div>
+</body>
+</html>

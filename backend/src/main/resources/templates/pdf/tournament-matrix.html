@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+</head>
+<body style="page: landscape;">
+    <div class="pdf-header">
+        <img th:if="${logoBase64}" th:src="'data:image/png;base64,' + ${logoBase64}" class="logo"/>
+        <h1 th:text="${title}">対戦マトリクス</h1>
+    </div>
+    <div class="pdf-body">
+        <table>
+            <thead>
+                <tr>
+                    <th></th>
+                    <th th:each="team : ${teams}" class="text-center" th:text="${team.shortName}">チーム</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="row : ${matrix}">
+                    <th th:text="${row.teamName}">チーム名</th>
+                    <td th:each="cell : ${row.cells}" class="text-center" th:text="${cell.result}" th:style="${cell.isSelf} ? 'background-color: #ddd;' : ''">-</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="pdf-footer">
+        <span th:if="${customFooter}" th:text="${customFooter}"></span>
+    </div>
+</body>
+</html>

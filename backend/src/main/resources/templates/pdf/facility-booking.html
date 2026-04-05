@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+</head>
+<body>
+    <div class="pdf-header">
+        <img th:if="${logoBase64}" th:src="'data:image/png;base64,' + ${logoBase64}" class="logo"/>
+        <h1 th:text="${title}">施設予約確認書</h1>
+    </div>
+    <div class="pdf-body">
+        <table>
+            <tr><th style="width: 30%;">施設名</th><td th:text="${booking.facilityName}">施設名</td></tr>
+            <tr><th>予約者</th><td th:text="${booking.bookedByName}">予約者名</td></tr>
+            <tr><th>利用日</th><td th:text="${#temporals.format(booking.bookingDate, 'yyyy年MM月dd日')}">日付</td></tr>
+            <tr><th>利用時間</th><td th:text="${booking.startTime} + ' 〜 ' + ${booking.endTime}">時間</td></tr>
+            <tr><th>利用目的</th><td th:text="${booking.purpose}">目的</td></tr>
+            <tr><th>ステータス</th><td th:text="${booking.status}">ステータス</td></tr>
+        </table>
+
+        <div class="mt-10" th:if="${not #lists.isEmpty(booking.equipment)}">
+            <h3>使用備品</h3>
+            <table>
+                <thead><tr><th>備品名</th><th class="text-right">数量</th></tr></thead>
+                <tbody>
+                    <tr th:each="eq : ${booking.equipment}">
+                        <td th:text="${eq.equipmentName}">備品名</td>
+                        <td class="text-right" th:text="${eq.quantity}">1</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="pdf-footer">
+        <span th:if="${customFooter}" th:text="${customFooter}"></span>
+    </div>
+</body>
+</html>

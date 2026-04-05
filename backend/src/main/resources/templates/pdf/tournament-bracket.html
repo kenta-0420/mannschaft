@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+</head>
+<body>
+    <div class="pdf-header">
+        <img th:if="${logoBase64}" th:src="'data:image/png;base64,' + ${logoBase64}" class="logo"/>
+        <h1 th:text="${title}">トーナメント表</h1>
+    </div>
+    <div class="pdf-body">
+        <div th:each="round : ${rounds}" class="mb-20 no-page-break">
+            <h3 th:text="${round.roundName}">ラウンド名</h3>
+            <table>
+                <thead><tr><th>対戦</th><th>チームA</th><th class="text-center">スコア</th><th>チームB</th><th class="text-center">スコア</th></tr></thead>
+                <tbody>
+                    <tr th:each="match : ${round.matches}">
+                        <td class="text-center" th:text="${match.matchNumber}">1</td>
+                        <td th:text="${match.teamAName}">チームA</td>
+                        <td class="text-center" th:text="${match.teamAScore}">-</td>
+                        <td th:text="${match.teamBName}">チームB</td>
+                        <td class="text-center" th:text="${match.teamBScore}">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="pdf-footer">
+        <span th:if="${customFooter}" th:text="${customFooter}"></span>
+    </div>
+</body>
+</html>

@@ -1,0 +1,33 @@
+-- F09.5 共用施設予約: 施設マスタ
+CREATE TABLE shared_facilities (
+    id              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    scope_type      VARCHAR(20)     NOT NULL,
+    scope_id        BIGINT UNSIGNED NOT NULL,
+    name            VARCHAR(100)    NOT NULL,
+    facility_type   ENUM('GUEST_ROOM','MEETING_ROOM','PARTY_ROOM','BBQ_AREA',
+                         'MULTIPURPOSE_HALL','KIDS_ROOM','FITNESS_ROOM',
+                         'LAUNDRY_ROOM','STUDY_ROOM','MUSIC_ROOM','ROOFTOP','OTHER') NOT NULL,
+    facility_type_label VARCHAR(50) NULL,
+    capacity        SMALLINT UNSIGNED NOT NULL,
+    floor           VARCHAR(10)     NULL,
+    location_detail VARCHAR(200)    NULL,
+    description     TEXT            NULL,
+    image_urls      JSON            NULL,
+    rate_per_slot   DECIMAL(10,0)   NULL,
+    rate_per_night  DECIMAL(10,0)   NULL,
+    check_in_time   TIME            NULL,
+    check_out_time  TIME            NULL,
+    cleaning_buffer_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    auto_approve    BOOLEAN         NOT NULL DEFAULT FALSE,
+    is_active       BOOLEAN         NOT NULL DEFAULT TRUE,
+    display_order   SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    created_by      BIGINT UNSIGNED NOT NULL,
+    created_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at      DATETIME        NULL,
+
+    UNIQUE KEY uq_sf_scope_name (scope_type, scope_id, name, deleted_at),
+    INDEX idx_sf_scope_active (scope_type, scope_id, is_active),
+    INDEX idx_sf_scope_type (scope_type, scope_id, facility_type),
+    CONSTRAINT fk_sf_created_by FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

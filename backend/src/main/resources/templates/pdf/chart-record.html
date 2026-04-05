@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+</head>
+<body>
+    <div class="pdf-header">
+        <img th:if="${logoBase64}" th:src="'data:image/png;base64,' + ${logoBase64}" class="logo"/>
+        <h1 th:text="${title}">カルテ</h1>
+    </div>
+    <div class="pdf-body">
+        <table class="no-border">
+            <tr>
+                <td><strong>顧客名:</strong> <span th:text="${chart.customerName}">名前</span> 様</td>
+                <td><strong>来院日:</strong> <span th:text="${#temporals.format(chart.visitDate, 'yyyy年MM月dd日')}">日付</span></td>
+            </tr>
+        </table>
+
+        <div class="mt-10">
+            <h3>施術内容</h3>
+            <p th:text="${chart.treatmentContent}">施術内容</p>
+        </div>
+
+        <div class="mt-10" th:if="${chart.notes}">
+            <h3>備考</h3>
+            <p th:text="${chart.notes}">備考</p>
+        </div>
+
+        <div class="mt-10" th:if="${not #lists.isEmpty(photos)}">
+            <h3>写真記録</h3>
+            <div th:each="photo : ${photos}" style="display: inline-block; margin: 5px; text-align: center; vertical-align: top;">
+                <img th:src="'data:' + ${photo.contentType} + ';base64,' + ${photo.base64Data}"
+                     style="max-width: 200px; max-height: 200px;" />
+                <div style="font-size: 9px; margin-top: 3px;">
+                    <span th:text="${photo.photoType}">BEFORE</span>
+                    <span th:if="${photo.originalFilename}" th:text="' / ' + ${photo.originalFilename}">/ photo.jpg</span>
+                </div>
+                <div th:if="${photo.note}" style="font-size: 8px; color: #666;" th:text="${photo.note}">メモ</div>
+            </div>
+        </div>
+    </div>
+    <div class="pdf-footer">
+        <span th:if="${customFooter}" th:text="${customFooter}"></span>
+    </div>
+</body>
+</html>

@@ -1,0 +1,26 @@
+-- インシデント用メンテナンススケジュールテーブル
+CREATE TABLE incident_maintenance_schedules (
+    id                           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    scope_type                   VARCHAR(50)  NOT NULL,
+    scope_id                     BIGINT UNSIGNED NOT NULL,
+    category_id                  BIGINT UNSIGNED NULL,
+    name                         VARCHAR(200) NOT NULL,
+    description                  TEXT         NULL,
+    cron_expression              VARCHAR(100) NOT NULL,
+    next_execution_date          DATE         NOT NULL,
+    default_assignee_type        VARCHAR(20)  NULL COMMENT 'USER/EXTERNAL',
+    default_assignee_user_id     BIGINT UNSIGNED NULL,
+    default_assignee_external_name VARCHAR(100) NULL,
+    is_active                    TINYINT(1)   NOT NULL DEFAULT 1,
+    version                      BIGINT       NOT NULL DEFAULT 0,
+    created_by                   BIGINT UNSIGNED NOT NULL,
+    created_at                   DATETIME     NOT NULL,
+    updated_at                   DATETIME     NOT NULL,
+    deleted_at                   DATETIME     NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_ims_category              FOREIGN KEY (category_id)              REFERENCES incident_categories (id),
+    CONSTRAINT fk_ims_default_assignee_user FOREIGN KEY (default_assignee_user_id) REFERENCES users (id),
+    CONSTRAINT fk_ims_created_by            FOREIGN KEY (created_by)               REFERENCES users (id),
+    INDEX idx_ims_scope     (scope_type, scope_id),
+    INDEX idx_ims_next_exec (next_execution_date, is_active)
+);

@@ -1,0 +1,25 @@
+-- F08.5: 回数券商品テーブル
+CREATE TABLE ticket_products (
+    id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    team_id         BIGINT UNSIGNED NOT NULL,
+    name            VARCHAR(200)    NOT NULL,
+    description     TEXT            NULL,
+    total_tickets   INTEGER         NOT NULL,
+    price           INTEGER         NOT NULL,
+    tax_rate        DECIMAL(5,2)    NOT NULL DEFAULT 10.00,
+    validity_days   INTEGER         NULL,
+    stripe_product_id VARCHAR(100)  NULL,
+    stripe_price_id VARCHAR(100)    NULL,
+    image_url       VARCHAR(500)    NULL,
+    is_online_purchasable BOOLEAN   NOT NULL DEFAULT TRUE,
+    is_active       BOOLEAN         NOT NULL DEFAULT TRUE,
+    sort_order      INTEGER         NOT NULL DEFAULT 0,
+    created_by      BIGINT UNSIGNED NOT NULL,
+    deleted_at      DATETIME        NULL,
+    created_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    INDEX idx_tp_team (team_id, deleted_at, is_active, sort_order),
+    CONSTRAINT fk_ticket_prod_team FOREIGN KEY (team_id) REFERENCES teams(id),
+    CONSTRAINT fk_ticket_prod_created_by FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

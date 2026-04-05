@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+</head>
+<body class="font-serif">
+    <div class="pdf-header">
+        <img th:if="${logoBase64}" th:src="'data:image/png;base64,' + ${logoBase64}" class="logo"/>
+        <h1 th:text="${title}">チケット領収書</h1>
+    </div>
+    <div class="pdf-body">
+        <table class="no-border">
+            <tr>
+                <td style="width: 60%;">
+                    <p class="font-large" th:text="${payment.buyerName} + ' 様'">購入者 様</p>
+                </td>
+                <td style="width: 40%; text-align: right;">
+                    <p>購入日: <span th:text="${#temporals.format(payment.purchaseDate, 'yyyy年MM月dd日')}">日付</span></p>
+                </td>
+            </tr>
+        </table>
+
+        <div class="mt-20">
+            <table>
+                <tr>
+                    <td style="text-align: center; font-size: 20pt; padding: 15px;">
+                        <span>金額　¥</span>
+                        <span class="amount" th:text="${#numbers.formatInteger(payment.amount, 1, 'COMMA')}">0</span>
+                        <span>-</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="mt-10">
+            <table>
+                <tr><th style="width: 30%;">イベント名</th><td th:text="${payment.eventName}">イベント名</td></tr>
+                <tr><th>座席/チケット種別</th><td th:text="${payment.ticketType}">種別</td></tr>
+                <tr><th>枚数</th><td th:text="${payment.quantity}">1</td></tr>
+                <tr><th>決済方法</th><td th:text="${payment.paymentMethod}">現地決済</td></tr>
+            </table>
+        </div>
+    </div>
+    <div class="pdf-footer">
+        <span th:if="${customFooter}" th:text="${customFooter}"></span>
+    </div>
+</body>
+</html>

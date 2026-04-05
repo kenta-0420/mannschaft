@@ -1,0 +1,19 @@
+CREATE TABLE analytics_alert_rules (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    metric ENUM('MRR', 'CHURN_RATE', 'NEW_USERS', 'ACTIVE_USERS', 'ARPU', 'NRR', 'QUICK_RATIO', 'AD_REVENUE') NOT NULL,
+    `condition` ENUM('ABOVE', 'BELOW', 'CHANGE_ABOVE', 'CHANGE_BELOW') NOT NULL,
+    threshold DECIMAL(12,4) NOT NULL,
+    comparison_period ENUM('PREV_DAY', 'PREV_WEEK', 'PREV_MONTH', 'AVG_30D') NOT NULL DEFAULT 'PREV_MONTH',
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    notify_channels JSON NOT NULL DEFAULT ('["PUSH"]'),
+    consecutive_triggers TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    cooldown_hours SMALLINT UNSIGNED NOT NULL DEFAULT 24,
+    created_by BIGINT UNSIGNED NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME DEFAULT NULL,
+    PRIMARY KEY (id),
+    INDEX idx_enabled (enabled, deleted_at),
+    CONSTRAINT fk_analytics_alert_rules_user FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

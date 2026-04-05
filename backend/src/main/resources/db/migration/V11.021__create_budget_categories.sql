@@ -1,0 +1,20 @@
+CREATE TABLE budget_categories (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    fiscal_year_id BIGINT UNSIGNED NOT NULL,
+    parent_id BIGINT UNSIGNED DEFAULT NULL,
+    name VARCHAR(100) NOT NULL,
+    category_type VARCHAR(20) NOT NULL,
+    description VARCHAR(500) DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME DEFAULT NULL,
+    PRIMARY KEY (id),
+    INDEX idx_bc_fiscal_year (fiscal_year_id),
+    INDEX idx_bc_parent (parent_id),
+    CONSTRAINT uq_bc_name UNIQUE (fiscal_year_id, parent_id, name),
+    CONSTRAINT chk_bc_category_type CHECK (category_type IN ('INCOME', 'EXPENSE')),
+    CONSTRAINT fk_bc_fiscal_year FOREIGN KEY (fiscal_year_id) REFERENCES budget_fiscal_years(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_bc_parent FOREIGN KEY (parent_id) REFERENCES budget_categories(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

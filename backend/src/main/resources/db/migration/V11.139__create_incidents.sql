@@ -1,0 +1,25 @@
+-- インシデントテーブル
+CREATE TABLE incidents (
+    id                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    scope_type            VARCHAR(50)  NOT NULL,
+    scope_id              BIGINT UNSIGNED NOT NULL,
+    category_id           BIGINT UNSIGNED NULL,
+    title                 VARCHAR(200) NOT NULL,
+    description           TEXT         NULL,
+    status                VARCHAR(30)  NOT NULL DEFAULT 'REPORTED',
+    priority              VARCHAR(20)  NOT NULL DEFAULT 'MEDIUM',
+    sla_deadline          DATETIME     NULL,
+    is_sla_breached       TINYINT(1)   NOT NULL DEFAULT 0,
+    reported_by           BIGINT UNSIGNED NOT NULL,
+    workflow_request_id   BIGINT UNSIGNED NULL     COMMENT 'F05.6費用承認申請ID',
+    version               BIGINT       NOT NULL DEFAULT 0,
+    created_at            DATETIME     NOT NULL,
+    updated_at            DATETIME     NOT NULL,
+    deleted_at            DATETIME     NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_inc_category    FOREIGN KEY (category_id)  REFERENCES incident_categories (id),
+    CONSTRAINT fk_inc_reported_by FOREIGN KEY (reported_by)  REFERENCES users (id),
+    INDEX idx_inc_scope_status  (scope_type, scope_id, status),
+    INDEX idx_inc_sla           (is_sla_breached, sla_deadline, status),
+    INDEX idx_inc_reported_by   (reported_by)
+);

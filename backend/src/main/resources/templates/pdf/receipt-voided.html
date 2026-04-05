@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+</head>
+<body class="font-serif">
+    <div class="pdf-header">
+        <img th:if="${logoBase64}" th:src="'data:image/png;base64,' + ${logoBase64}" class="logo"/>
+        <h1 th:text="${title}">領収書（無効）</h1>
+    </div>
+    <div class="pdf-body">
+        <!-- 無効スタンプ: 方式Aの場合はOpenPDF後処理で描画するためこのdivは不要 -->
+        <div class="voided-stamp" style="text-align: center;">
+            <span style="font-size: 72pt; color: #ff0000; font-weight: bold; opacity: 0.3;">無効</span>
+        </div>
+
+        <table class="no-border">
+            <tr>
+                <td style="width: 60%;">
+                    <p class="font-large" th:text="${receipt.recipientName} + ' 様'">宛名 様</p>
+                </td>
+                <td style="width: 40%; text-align: right;">
+                    <p>発行日: <span th:text="${#temporals.format(receipt.issuedDate, 'yyyy年MM月dd日')}">2026年03月22日</span></p>
+                    <p th:text="'No. ' + ${receipt.receiptNumber}">No. R-00001</p>
+                </td>
+            </tr>
+        </table>
+
+        <div class="mt-20">
+            <table>
+                <tr>
+                    <td colspan="2" style="text-align: center; font-size: 20pt; padding: 15px;">
+                        <span>金額　¥</span>
+                        <span class="amount" th:text="${#numbers.formatInteger(receipt.totalAmount, 1, 'COMMA')}">10,000</span>
+                        <span>-</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="mt-10" th:if="${not #lists.isEmpty(lineItems)}">
+            <table>
+                <thead>
+                    <tr>
+                        <th>品名</th>
+                        <th class="text-right">数量</th>
+                        <th class="text-right">単価</th>
+                        <th class="text-right">金額</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="item : ${lineItems}">
+                        <td th:text="${item.description}">品名</td>
+                        <td class="text-right" th:text="${item.quantity}">1</td>
+                        <td class="amount" th:text="'¥' + ${#numbers.formatInteger(item.unitPrice, 1, 'COMMA')}">¥1,000</td>
+                        <td class="amount" th:text="'¥' + ${#numbers.formatInteger(item.amount, 1, 'COMMA')}">¥1,000</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-20" th:if="${receipt.description}">
+            <p>但し: <span th:text="${receipt.description}">但書</span></p>
+        </div>
+
+        <div class="mt-20" style="text-align: right;">
+            <img th:if="${sealBase64}" th:src="'data:image/png;base64,' + ${sealBase64}" class="seal-image"/>
+        </div>
+    </div>
+    <div class="pdf-footer">
+        <span th:if="${customFooter}" th:text="${customFooter}"></span>
+    </div>
+</body>
+</html>

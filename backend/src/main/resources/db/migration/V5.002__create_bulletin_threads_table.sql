@@ -1,0 +1,27 @@
+-- F05.1 掲示板: スレッドテーブル
+CREATE TABLE bulletin_threads (
+    id                 BIGINT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    category_id        BIGINT UNSIGNED        NOT NULL,
+    scope_type         VARCHAR(20)   NOT NULL,
+    scope_id           BIGINT UNSIGNED        NOT NULL,
+    author_id          BIGINT UNSIGNED,
+    title              VARCHAR(200)  NOT NULL,
+    body               TEXT          NOT NULL,
+    priority           VARCHAR(20)   NOT NULL DEFAULT 'INFO',
+    read_tracking_mode VARCHAR(20)   NOT NULL DEFAULT 'COUNT_ONLY',
+    is_pinned          BOOLEAN       NOT NULL DEFAULT FALSE,
+    is_locked          BOOLEAN       NOT NULL DEFAULT FALSE,
+    is_archived        BOOLEAN       NOT NULL DEFAULT FALSE,
+    reply_count        INT           NOT NULL DEFAULT 0,
+    read_count         INT           NOT NULL DEFAULT 0,
+    last_replied_at    DATETIME(6),
+    source_type        VARCHAR(30),
+    source_id          BIGINT UNSIGNED,
+    created_at         DATETIME(6)   NOT NULL,
+    updated_at         DATETIME(6)   NOT NULL,
+    deleted_at         DATETIME(6),
+    PRIMARY KEY (id),
+    CONSTRAINT fk_bulletin_threads_category FOREIGN KEY (category_id) REFERENCES bulletin_categories(id) ON DELETE CASCADE,
+    CONSTRAINT fk_bulletin_threads_author FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL,
+    FULLTEXT INDEX ft_bulletin_threads_title_body (title, body) WITH PARSER ngram
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1,0 +1,61 @@
+INSERT INTO system_onboarding_presets (name, description, category, welcome_message, is_order_enforced, deadline_days, steps_json, is_active, sort_order, created_by) VALUES
+(
+    'スポーツチーム新メンバー向け',
+    'スポーツチームに新しく加入するメンバー向けの標準オンボーディングプリセットです。',
+    'SPORTS',
+    'チームへようこそ！以下のステップを完了して、チーム活動にスムーズに参加しましょう。',
+    TRUE,
+    14,
+    '[{"title":"プロフィールを完成させる","description":"氏名・写真・ポジション等を登録してください","stepType":"PROFILE_COMPLETION","sortOrder":0},{"title":"チームルールを確認する","description":"チームの活動ルール・マナーを確認してください","stepType":"URL","sortOrder":1},{"title":"練習スケジュールを確認する","description":"直近の練習・試合スケジュールを確認してください","stepType":"URL","sortOrder":2},{"title":"自己紹介を投稿する","description":"タイムラインに自己紹介を投稿しましょう","stepType":"MANUAL","sortOrder":3},{"title":"初回練習に参加する","description":"最初の練習に参加して、チームメンバーと顔合わせしましょう","stepType":"MANUAL","sortOrder":4}]',
+    TRUE,
+    0,
+    1
+),
+(
+    'マンション管理組合新住民向け',
+    'マンション管理組合に新しく加入する住民向けの標準オンボーディングプリセットです。',
+    'RESIDENTIAL',
+    'ようこそ！快適な住環境のために、以下のステップを完了してください。',
+    TRUE,
+    30,
+    '[{"title":"プロフィールを完成させる","description":"氏名・部屋番号等の基本情報を登録してください","stepType":"PROFILE_COMPLETION","sortOrder":0},{"title":"管理規約を確認する","description":"マンション管理規約をお読みください","stepType":"KNOWLEDGE_BASE","sortOrder":1},{"title":"ゴミ出しルールを確認する","description":"ゴミの分別・収集日を確認してください","stepType":"KNOWLEDGE_BASE","sortOrder":2},{"title":"共用施設の利用方法を確認する","description":"共用施設の予約方法・利用ルールを確認してください","stepType":"URL","sortOrder":3},{"title":"緊急連絡先を確認する","description":"管理会社・緊急時の連絡先を確認してください","stepType":"URL","sortOrder":4}]',
+    TRUE,
+    1,
+    1
+),
+(
+    'ビジネスチーム新メンバー向け',
+    'ビジネスチームに新しく参加するメンバー向けの標準オンボーディングプリセットです。',
+    'BUSINESS',
+    'チームへようこそ！以下のステップを完了して、業務にスムーズに取り掛かりましょう。',
+    TRUE,
+    7,
+    '[{"title":"プロフィールを完成させる","description":"氏名・役職・連絡先を登録してください","stepType":"PROFILE_COMPLETION","sortOrder":0},{"title":"チーム方針を確認する","description":"チームの目標・方針を確認してください","stepType":"KNOWLEDGE_BASE","sortOrder":1},{"title":"業務フローを確認する","description":"日常業務の進め方を確認してください","stepType":"URL","sortOrder":2},{"title":"自己紹介を投稿する","description":"タイムラインに自己紹介を投稿しましょう","stepType":"MANUAL","sortOrder":3}]',
+    TRUE,
+    2,
+    1
+),
+(
+    '医療チーム新スタッフ向け',
+    '医療チームに新しく加入するスタッフ向けの標準オンボーディングプリセットです。',
+    'MEDICAL',
+    'チームへようこそ！安全で質の高い医療を提供するため、以下のステップを完了してください。',
+    TRUE,
+    14,
+    '[{"title":"プロフィールを完成させる","description":"氏名・資格・専門分野を登録してください","stepType":"PROFILE_COMPLETION","sortOrder":0},{"title":"院内規則を確認する","description":"院内ルール・感染対策マニュアルを確認してください","stepType":"KNOWLEDGE_BASE","sortOrder":1},{"title":"電子カルテの使い方を確認する","description":"電子カルテシステムの操作方法を確認してください","stepType":"URL","sortOrder":2},{"title":"緊急時対応マニュアルを確認する","description":"緊急時の対応手順を確認してください","stepType":"KNOWLEDGE_BASE","sortOrder":3},{"title":"オリエンテーション完了報告","description":"オリエンテーションを受けたら完了にしてください","stepType":"MANUAL","sortOrder":4}]',
+    TRUE,
+    3,
+    1
+),
+(
+    '教育機関新メンバー向け',
+    '教育機関に新しく加入するメンバー向けの標準オンボーディングプリセットです。',
+    'EDUCATION',
+    'ようこそ！以下のステップを完了して、円滑に活動を開始しましょう。',
+    TRUE,
+    21,
+    '[{"title":"プロフィールを完成させる","description":"氏名・所属・担当科目等を登録してください","stepType":"PROFILE_COMPLETION","sortOrder":0},{"title":"教育方針を確認する","description":"組織の教育方針・カリキュラムを確認してください","stepType":"KNOWLEDGE_BASE","sortOrder":1},{"title":"施設案内を確認する","description":"校舎・教室の配置を確認してください","stepType":"URL","sortOrder":2},{"title":"年間スケジュールを確認する","description":"年間行事予定を確認してください","stepType":"URL","sortOrder":3},{"title":"自己紹介を投稿する","description":"タイムラインに自己紹介を投稿しましょう","stepType":"MANUAL","sortOrder":4}]',
+    TRUE,
+    4,
+    1
+);

@@ -1,0 +1,94 @@
+spring:
+  application:
+    name: mannschaft
+
+  # デフォルトプロファイル（明示指定がない場合は local）
+  profiles:
+    default: local
+
+  # Virtual Threads（Java 21）
+  threads:
+    virtual:
+      enabled: true
+
+  # JPA / Hibernate（共通設定。環境依存は各プロファイルで上書き）
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # Flyway
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    out-of-order: true
+
+  # Jackson — ISO 8601 文字列で出力（.claudecode.md §20）
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  # i18n メッセージソース（F11.3）
+  messages:
+    basename: messages,ValidationMessages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+    use-code-as-default-message: false
+
+# Server
+server:
+  port: 8080
+
+# JWT（アプリ固有設定。本番は環境変数で上書き）
+mannschaft:
+  jwt:
+    secret: ${MANNSCHAFT_JWT_SECRET:dev-secret-key-change-in-production-minimum-256-bits-long}
+    access-token-expiration: ${MANNSCHAFT_JWT_ACCESS_EXPIRATION:900}
+    refresh-token-expiration: ${MANNSCHAFT_JWT_REFRESH_EXPIRATION:604800}
+  encryption:
+    key: ${MANNSCHAFT_ENCRYPTION_KEY:}
+    hmac-key: ${MANNSCHAFT_HMAC_KEY:}
+  storage:
+    bucket: ${MANNSCHAFT_S3_BUCKET:mannschaft-dev}
+    region: ${MANNSCHAFT_S3_REGION:ap-northeast-1}
+    endpoint: ${MANNSCHAFT_S3_ENDPOINT:}
+    presigned-upload-ttl: ${MANNSCHAFT_S3_UPLOAD_TTL:600}
+    presigned-download-ttl: ${MANNSCHAFT_S3_DOWNLOAD_TTL:3600}
+    tmp-bucket: ${MANNSCHAFT_S3_TMP_BUCKET:mannschaft-tmp}
+  cdn:
+    enabled: ${MANNSCHAFT_CDN_ENABLED:false}
+    domain: ${MANNSCHAFT_CDN_DOMAIN:}
+    key-pair-id: ${MANNSCHAFT_CDN_KEY_PAIR_ID:}
+    private-key-path: ${MANNSCHAFT_CDN_PRIVATE_KEY_PATH:}
+    signed-url-ttl: ${MANNSCHAFT_CDN_SIGNED_URL_TTL:900}
+  webauthn:
+    origin: ${MANNSCHAFT_WEBAUTHN_ORIGIN:https://mannschaft.app}
+  google:
+    client-id: ${MANNSCHAFT_GOOGLE_CLIENT_ID:}
+    client-secret: ${MANNSCHAFT_GOOGLE_CLIENT_SECRET:}
+    token-uri: https://oauth2.googleapis.com/token
+    revoke-uri: https://oauth2.googleapis.com/revoke
+    calendar-api-base: https://www.googleapis.com/calendar/v3
+    userinfo-uri: https://www.googleapis.com/oauth2/v3/userinfo
+    redirect-uri: ${MANNSCHAFT_GOOGLE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/google}
+    places-api-key: ${MANNSCHAFT_GOOGLE_PLACES_API_KEY:}
+    places-api-base: https://places.googleapis.com/v1
+  line:
+    client-id: ${MANNSCHAFT_LINE_CLIENT_ID:}
+    client-secret: ${MANNSCHAFT_LINE_CLIENT_SECRET:}
+    token-uri: https://api.line.me/oauth2/v2.1/token
+    profile-uri: https://api.line.me/v2/profile
+    redirect-uri: ${MANNSCHAFT_LINE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/line}
+  apple:
+    client-id: ${MANNSCHAFT_APPLE_CLIENT_ID:}
+    client-secret: ${MANNSCHAFT_APPLE_CLIENT_SECRET:}
+    token-uri: https://appleid.apple.com/auth/token
+    redirect-uri: ${MANNSCHAFT_APPLE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/apple}
+  stripe:
+    secret-key: ${MANNSCHAFT_STRIPE_SECRET_KEY:}
+    connect:
+      return-url: ${MANNSCHAFT_STRIPE_CONNECT_RETURN_URL:https://app.mannschaft.com/settings/stripe/return}
+      refresh-url: ${MANNSCHAFT_STRIPE_CONNECT_REFRESH_URL:https://app.mannschaft.com/settings/stripe/refresh}

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+</head>
+<body>
+    <div class="pdf-header">
+        <img th:if="${logoBase64}" th:src="'data:image/png;base64,' + ${logoBase64}" class="logo"/>
+        <h1 th:text="${title}">議事録</h1>
+    </div>
+    <div class="pdf-body">
+        <table class="no-border">
+            <tr><td><strong>会議名:</strong> <span th:text="${session.title}">会議名</span></td></tr>
+            <tr><td><strong>開催日:</strong> <span th:text="${#temporals.format(session.sessionDate, 'yyyy年MM月dd日')}">日付</span></td></tr>
+            <tr><td><strong>出席者数:</strong> <span th:text="${session.attendeeCount}">0</span> 名</td></tr>
+        </table>
+
+        <div class="mt-20" th:each="agenda : ${agendas}">
+            <h3 th:text="'議案 ' + ${agenda.motionNumber} + ': ' + ${agenda.title}">議案</h3>
+            <p th:if="${agenda.description}" th:text="${agenda.description}">説明</p>
+            <table class="mt-10" th:if="${agenda.result}">
+                <tr><th style="width: 25%;">賛成</th><td th:text="${agenda.approveCount} + ' 票'">0 票</td></tr>
+                <tr><th>反対</th><td th:text="${agenda.rejectCount} + ' 票'">0 票</td></tr>
+                <tr><th>棄権</th><td th:text="${agenda.abstainCount} + ' 票'">0 票</td></tr>
+                <tr><th>結果</th><td th:text="${agenda.result}">可決</td></tr>
+            </table>
+        </div>
+    </div>
+    <div class="pdf-footer">
+        <span th:if="${customFooter}" th:text="${customFooter}"></span>
+    </div>
+</body>
+</html>
