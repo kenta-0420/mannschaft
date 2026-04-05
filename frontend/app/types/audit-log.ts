@@ -1,4 +1,18 @@
-export type EventCategory = 'AUTH' | 'MEMBER' | 'CONTENT' | 'ADMIN' | 'SYSTEM'
+export type EventCategory =
+  | 'AUTH'
+  | 'ACCOUNT'
+  | 'OAUTH'
+  | 'MFA'
+  | 'ADMIN_ACTION'
+  | 'LIFECYCLE'
+  | 'TEAM'
+  | 'ORGANIZATION'
+  | 'PAYMENT'
+  | 'SCHEDULE'
+  | 'MEMBER'
+  | 'CONTENT'
+  | 'ADMIN'
+  | 'SYSTEM'
 
 export interface AuditLog {
   id: number

@@ -51,6 +51,13 @@ const quickLinks: QuickLink[] = [
     bg: 'bg-red-50 dark:bg-red-900/20',
   },
   {
+    label: '異議申立て',
+    icon: 'pi pi-flag',
+    to: '/admin/appeals',
+    color: 'text-rose-500',
+    bg: 'bg-rose-50 dark:bg-rose-900/20',
+  },
+  {
     label: 'ユーザー管理',
     icon: 'pi pi-users',
     to: '/admin/users',
@@ -91,6 +98,13 @@ const quickLinks: QuickLink[] = [
     to: '/admin/audit-logs',
     color: 'text-slate-500',
     bg: 'bg-slate-50 dark:bg-slate-900/20',
+  },
+  {
+    label: 'ビジネス分析',
+    icon: 'pi pi-chart-bar',
+    to: '/system-admin/analytics',
+    color: 'text-violet-500',
+    bg: 'bg-violet-50 dark:bg-violet-900/20',
   },
 ]
 </script>

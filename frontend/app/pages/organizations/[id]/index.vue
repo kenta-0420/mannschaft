@@ -142,6 +142,9 @@ onMounted(async () => {
                 :scope-template="org.template"
               />
             </div>
+            <div class="mt-8">
+              <SnsFeedDisplay scope-type="organization" :scope-id="orgId" />
+            </div>
           </TabPanel>
 
           <TabPanel :value="1">
