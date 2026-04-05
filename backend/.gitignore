@@ -44,3 +44,5 @@ uploads/
 logs/
 *.log
 .claude/worktrees/
+
+node_modules/

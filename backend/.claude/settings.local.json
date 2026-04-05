@@ -292,7 +292,30 @@
       "Bash(echo \"PID: $!\")",
       "Bash(kill %1)",
       "Bash(cat build/test-results/test/*.xml)",
-      "Bash(bc)"
+      "Bash(bc)",
+      "Bash(docker.exe ps:*)",
+      "Bash([ -s \"D:/mannschaft-frontend/swagger.json\" ])",
+      "Bash(find D:/mannshaft/build/test-results -name \"*.xml\" -exec grep -l 'failures=\"[1-9]\\\\|errors=\"[1-9]' {} \\\\;)",
+      "Bash(./gradlew compileJava -x test --rerun-tasks)",
+      "Bash(pkill -f \"app-0.0.1-SNAPSHOT.jar\")",
+      "Bash(taskkill /F /IM java.exe)",
+      "Bash(cat D:/mannschaft-frontend/tests/e2e/setup/*.ts)",
+      "Bash(echo \"started pid=$!\")",
+      "Bash(lsof -ti:3000)",
+      "Read(//mnt/c/Users/けんた/**)",
+      "Bash(ls /mnt/)",
+      "Bash(sed 's/.*void handle//')",
+      "Bash(sed 's/\\(.*$//')",
+      "Bash(sed 's/^    //')",
+      "Bash(docker version:*)",
+      "Bash(docker compose:*)",
+      "Bash(xargs -I {} grep -l \"@Index\" {})",
+      "Bash(pip install:*)",
+      "Bash(python -c \"import git_filter_repo; print\\('ok'\\)\")",
+      "Bash(python -m git_filter_repo --version)",
+      "Read(//c/python39/**)",
+      "Bash(python -m git_filter_repo --help)",
+      "Bash(cp:*)"
     ]
   }
 }
