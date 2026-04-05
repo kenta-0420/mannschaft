@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import type { MemberPerformance } from '~/types/performance'
+
 definePageMeta({ middleware: 'auth' })
 
 const { getMyPerformance } = usePerformanceApi()
-const { showError } = useNotification()
+const notification = useNotification()
 
-const data = ref<Record<string, unknown> | null>(null)
+const data = ref<MemberPerformance | null>(null)
 const loading = ref(false)
 
 async function load() {
@@ -13,9 +15,25 @@ async function load() {
     const res = await getMyPerformance()
     data.value = res.data
   } catch {
-    showError('パフォーマンスデータの取得に失敗しました')
+    notification.error('パフォーマンスデータの取得に失敗しました')
   } finally {
     loading.value = false
+  }
+}
+
+function getTrendIcon(trend: 'UP' | 'DOWN' | 'STABLE'): string {
+  switch (trend) {
+    case 'UP': return 'pi pi-arrow-up'
+    case 'DOWN': return 'pi pi-arrow-down'
+    default: return 'pi pi-minus'
+  }
+}
+
+function getTrendClass(trend: 'UP' | 'DOWN' | 'STABLE'): string {
+  switch (trend) {
+    case 'UP': return 'text-green-500'
+    case 'DOWN': return 'text-red-500'
+    default: return 'text-surface-400'
   }
 }
 
@@ -27,31 +45,25 @@ onMounted(() => load())
     <h1 class="mb-6 text-2xl font-bold">マイパフォーマンス</h1>
     <PageLoading v-if="loading" size="40px" />
     <template v-else-if="data">
-      <div class="grid gap-4 md:grid-cols-3">
+      <p class="mb-4 text-sm text-surface-400">{{ data.displayName }}</p>
+      <div v-if="data.metrics.length > 0" class="grid gap-4 md:grid-cols-3">
         <div
-          v-for="(value, key) in data.metrics"
-          :key="key"
+          v-for="m in data.metrics"
+          :key="m.metricId"
           class="rounded-xl border border-surface-300 bg-surface-0 p-4 text-center"
         >
-          <p class="text-sm text-surface-500">{{ key }}</p>
-          <p class="text-2xl font-bold text-primary">{{ value }}</p>
-        </div>
-      </div>
-      <div v-if="data.records?.length" class="mt-6">
-        <h2 class="mb-3 text-lg font-semibold">記録一覧</h2>
-        <div class="flex flex-col gap-2">
-          <div
-            v-for="r in data.records"
-            :key="r.id"
-            class="rounded-xl border border-surface-300 bg-surface-0 p-4"
-          >
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-medium">{{ r.metricName }}</span>
-              <span class="text-sm font-bold text-primary">{{ r.value }}</span>
-            </div>
-            <p class="text-xs text-surface-400">{{ r.recordedAt }} - {{ r.teamName }}</p>
+          <p class="mb-1 text-sm text-surface-500">{{ m.metricName }}</p>
+          <p class="text-2xl font-bold text-primary">{{ m.value }}</p>
+          <div class="mt-2 flex items-center justify-center gap-2 text-xs">
+            <i :class="[getTrendIcon(m.trend), getTrendClass(m.trend)]" />
+            <span class="text-surface-400">{{ m.percentile }}%ile</span>
+            <span class="text-surface-400">ランク {{ m.rank }}</span>
           </div>
         </div>
+      </div>
+      <div v-else class="py-8 text-center">
+        <i class="pi pi-chart-bar mb-3 text-4xl text-surface-300" />
+        <p class="text-surface-400">記録されたメトリクスがありません</p>
       </div>
     </template>
     <div v-else class="py-12 text-center">
