@@ -210,7 +210,7 @@ dependencies {
 CI/CD パイプラインの詳細設定（ワークフロー YAML、JaCoCo 集計、ブランチ保護ルール等）は `TEST_CONVENTION.md` §8 に定義する。ここでは方針のみ記載する。
 * **トリガー**: `main` ブランチへのプルリクエスト作成時、および `main` へのマージ時に自動実行する。
 * **バックエンド**: Build → Checkstyle → SpotBugs → Unit Tests → Integration Tests → JaCoCo（80%未満で失敗）。
-* **フロントエンド**（別リポジトリ）: ESLint + Prettier → Type Check → Vitest。
+* **フロントエンド**（同リポジトリ `frontend/` 配下）: ESLint + Prettier → Type Check → Vitest。
 * **マージ条件**: すべてのチェックが「Pass」かつ、1名以上の承認（Approve）がある場合のみマージ可能とする。
 
 ## 7. ログと運用監視
@@ -414,7 +414,7 @@ if [ $? -ne 0 ]; then
 fi
 ```
 
-#### フロントエンド セットアップ手順（別リポジトリ）
+#### フロントエンド セットアップ手順（`frontend/` ディレクトリ）
 **Husky** + **lint-staged** を導入する。
 
 1. **依存インストールとHusky初期化**:

@@ -1,5 +1,8 @@
 # モノレポ移行手順書
 
+> **このドキュメントは移行手順書です。移行は完了済みのため、記載のSTEPは実行不要です。**
+> 開発環境の起動方法は `.claude/commands/` 配下のスキルを参照してください。
+
 ## 前提条件
 - 現状: `D:/mannshaft/`（バックエンド）, `D:/mannschaft-frontend/`（フロントエンド）の2リポジトリ
 - GitHub: `kenta-0420/Mannschaft`（バック）, `kenta-0420/mannschaft-frontend`（フロント）

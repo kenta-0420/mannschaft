@@ -1,7 +1,7 @@
 # =============================================================================
 # Frontend CI/CD — push to main
 # =============================================================================
-# Required GitHub Secrets (set in kenta-0420/mannschaft-frontend):
+# Required GitHub Secrets (set in kenta-0420/mannschaft):
 #
 #   AWS_ACCESS_KEY_ID          — IAM access key  (see OIDC note below to avoid
 #   AWS_SECRET_ACCESS_KEY        long-lived keys entirely)
@@ -20,7 +20,7 @@
 #   1. Create an IAM OIDC provider for token.actions.githubusercontent.com
 #   2. Create an IAM role with the following trust policy condition:
 #        "token.actions.githubusercontent.com:sub":
-#          "repo:kenta-0420/mannschaft-frontend:ref:refs/heads/main"
+#          "repo:kenta-0420/mannschaft:ref:refs/heads/main"
 #   3. Replace the "Configure AWS credentials" step below with:
 #
 #        - name: Configure AWS credentials (OIDC)
@@ -38,6 +38,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-deploy.yml"
 
 # Prevent concurrent deploys; cancel in-progress runs on the same branch
 concurrency:
@@ -55,6 +58,9 @@ jobs:
   build-and-deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
 
     steps:
       - name: Checkout source

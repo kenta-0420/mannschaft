@@ -6,12 +6,12 @@
 ### 関連ドキュメント（既存の記載箇所）
 | 内容 | 参照先 |
 |------|--------|
-| JUnit 5 / Mockito / JaCoCo 80% / テスト容易性 | `BACKEND_CODING_CONVENTION.md` §4 |
-| TestFixture 方式（テストデータ作成パターン） | `BACKEND_CODING_CONVENTION.md` テストデータ作成パターン |
-| テスト実行環境（Testcontainers / CI / テスト分離） | `BACKEND_CODING_CONVENTION.md` テスト実行環境 |
-| Vitest / Vue Test Utils / テスト対象優先順位 / 配置ルール | `FRONTEND_CODING_CONVENTION.md` §11 |
-| 新モジュール追加時のテスト要件 | `.claudecode.md` §7 |
-| pre-commit フック（Checkstyle / SpotBugs / ESLint） | `BACKEND_CODING_CONVENTION.md` pre-commit フック |
+| JUnit 5 / Mockito / JaCoCo 80% / テスト容易性 | `backend/BACKEND_CODING_CONVENTION.md` §4 |
+| TestFixture 方式（テストデータ作成パターン） | `backend/BACKEND_CODING_CONVENTION.md` テストデータ作成パターン |
+| テスト実行環境（Testcontainers / CI / テスト分離） | `backend/BACKEND_CODING_CONVENTION.md` テスト実行環境 |
+| Vitest / Vue Test Utils / テスト対象優先順位 / 配置ルール | `frontend/FRONTEND_CODING_CONVENTION.md` §11 |
+| 新モジュール追加時のテスト要件 | `backend/.claudecode.md` §7 |
+| pre-commit フック（Checkstyle / SpotBugs / ESLint） | `backend/BACKEND_CODING_CONVENTION.md` pre-commit フック |
 
 ---
 
@@ -281,12 +281,12 @@ src/test/java/com/mannschaft/app/
     └── [Feature]TestFixture.java             # 機能固有テストデータ
 ```
 
-- 配置は `BACKEND_CODING_CONVENTION.md` テストデータ作成パターンのルールに従う
+- 配置は `backend/BACKEND_CODING_CONVENTION.md` テストデータ作成パターンのルールに従う
 - 単体テストと結合テストは同一パッケージに配置し、クラス名のサフィックスで区別する
 
 ### 6.2 フロントエンド
 
-`FRONTEND_CODING_CONVENTION.md` §11 の配置ルールに従う（対象ファイルと同一ディレクトリに `.spec.ts` を配置）。
+`frontend/FRONTEND_CODING_CONVENTION.md` §11 の配置ルールに従う（対象ファイルと同一ディレクトリに `.spec.ts` を配置）。
 
 ---
 
@@ -341,7 +341,7 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTest {
 
 ### 8.1 基本方針
 
-`BACKEND_CODING_CONVENTION.md` CI/CD パイプライン規約をベースに、テスト実行を中心とした詳細フローを定義する。
+`backend/BACKEND_CODING_CONVENTION.md` CI/CD パイプライン規約をベースに、テスト実行を中心とした詳細フローを定義する。
 
 ### 8.2 GitHub Actions ワークフロー（バックエンド）
 
@@ -561,7 +561,7 @@ void cleanup() {
 
 ### 9.2 フロントエンド E2E（Playwright）
 
-- `FRONTEND_CODING_CONVENTION.md` §11 の方針に従い、Phase 11 で着手する
+- `frontend/FRONTEND_CODING_CONVENTION.md` §11 の方針に従い、Phase 11 で着手する
 - テスト対象は主要なユーザーシナリオに絞る:
     - 会員登録 → メール確認 → ログイン
     - チーム作成 → メンバー招待 → 権限変更
@@ -587,4 +587,4 @@ frontend/e2e/                              # フロントエンド E2E（Playwri
 | 本番 DB や外部 API に直接接続するテスト | Testcontainers またはモックを使用する |
 | テスト専用の `if (isTest)` 分岐をプロダクションコードに入れる | DI やプロファイルで切り替える |
 | `@Disabled` を理由なく放置する | 一時的な無効化は許容するが、理由をコメントに記載し、1スプリント以内に解決する |
-| 手書きの INSERT SQL でテストデータを作成する | TestFixture 経由で作成する（`BACKEND_CODING_CONVENTION.md` テストデータ作成パターン参照） |
+| 手書きの INSERT SQL でテストデータを作成する | TestFixture 経由で作成する（`backend/BACKEND_CODING_CONVENTION.md` テストデータ作成パターン参照） |
