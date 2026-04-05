@@ -100,6 +100,7 @@ export interface WorkflowRequestResponse {
   sourceId: number | null
   createdAt: string
   updatedAt: string
+  isSealRequired: boolean
   steps: RequestStepResponse[]
 }
 

@@ -77,7 +77,21 @@ export function useBulletinApi() {
     )
   }
 
-  async function createThread(scopeType: string, scopeId: number, body: Record<string, unknown>) {
+  async function createThread(
+    scopeType: string,
+    scopeId: number,
+    body: Record<string, unknown>,
+    files?: File[],
+  ) {
+    if (files && files.length > 0) {
+      const formData = new FormData()
+      formData.append('data', JSON.stringify({ ...body, scopeType, scopeId }))
+      files.forEach((file) => formData.append('files[]', file))
+      return api<{ data: BulletinThreadResponse }>('/api/v1/bulletin/threads', {
+        method: 'POST',
+        body: formData,
+      })
+    }
     return api<{ data: BulletinThreadResponse }>('/api/v1/bulletin/threads', {
       method: 'POST',
       body: { ...body, scopeType, scopeId },

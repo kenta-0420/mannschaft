@@ -10,6 +10,7 @@ const props = defineProps<{
 const workflowApi = useWorkflowApi()
 const notification = useNotification()
 const { statusLabel, statusSeverity, formatDateTime } = useWorkflowStatus()
+const authStore = useAuthStore()
 
 const request = ref<WorkflowRequestResponse | null>(null)
 const comments = ref<WorkflowCommentResponse[]>([])
@@ -68,12 +69,13 @@ function openDecide(type: 'APPROVED' | 'REJECTED') {
   showDecideDialog.value = true
 }
 
-async function submitDecision(comment: string) {
+async function submitDecision(comment: string, sealId: number | undefined) {
   submittingDecision.value = true
   try {
     await workflowApi.decideRequest(props.requestId, {
       decision: decisionType.value,
       comment: comment || undefined,
+      sealId: sealId,
     })
     notification.success(decisionType.value === 'APPROVED' ? '承認しました' : '却下しました')
     showDecideDialog.value = false
@@ -189,6 +191,8 @@ onMounted(async () => {
         v-model:visible="showDecideDialog"
         :decision-type="decisionType"
         :submitting="submittingDecision"
+        :is-seal-required="request?.isSealRequired"
+        :user-id="authStore.user?.id"
         @submit="submitDecision"
       />
     </div>

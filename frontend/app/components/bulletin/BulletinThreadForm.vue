@@ -22,6 +22,58 @@ const priority = ref<BulletinPriority>('INFO')
 const categories = ref<BulletinCategory[]>([])
 const submitting = ref(false)
 
+// 添付ファイル
+const attachedFiles = ref<File[]>([])
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// 下書き自動保存
+const draftKey = computed(() => `bulletin-draft-${props.scopeType}-${props.scopeId}`)
+
+function saveDraft() {
+  localStorage.setItem(draftKey.value, JSON.stringify({
+    title: title.value,
+    body: body.value,
+    categoryId: categoryId.value,
+    priority: priority.value,
+  }))
+}
+
+function restoreDraft() {
+  const saved = localStorage.getItem(draftKey.value)
+  if (!saved) return
+  try {
+    const draft = JSON.parse(saved)
+    title.value = draft.title ?? ''
+    body.value = draft.body ?? ''
+    categoryId.value = draft.categoryId
+    priority.value = draft.priority ?? 'INFO'
+  } catch { /* ignore */ }
+}
+
+function clearDraft() {
+  localStorage.removeItem(draftKey.value)
+}
+
+// title・body が変化したら下書き保存（200ms debounce）
+watch([title, body, categoryId, priority], () => {
+  if (!title.value && !body.value) return
+  saveDraft()
+})
+
+function onFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  if (!input.files) return
+  const newFiles = Array.from(input.files)
+  // 合計5ファイル以下
+  const remaining = 5 - attachedFiles.value.length
+  attachedFiles.value.push(...newFiles.slice(0, remaining))
+  input.value = '' // リセット
+}
+
+function removeFile(index: number) {
+  attachedFiles.value.splice(index, 1)
+}
+
 const priorityOptions = [
   { label: '緊急', value: 'CRITICAL' },
   { label: '重要', value: 'IMPORTANT' },
@@ -46,8 +98,10 @@ async function onSubmit() {
       body: body.value.trim(),
       categoryId: categoryId.value,
       priority: priority.value,
-    })
+    }, attachedFiles.value)
     showSuccess('スレッドを作成しました')
+    clearDraft()
+    attachedFiles.value = []
     visible.value = false
     title.value = ''
     body.value = ''
@@ -61,7 +115,12 @@ async function onSubmit() {
   }
 }
 
-watch(visible, (v) => { if (v) loadCategories() })
+watch(visible, (v) => {
+  if (v) {
+    loadCategories()
+    restoreDraft()
+  }
+})
 </script>
 
 <template>
@@ -84,6 +143,40 @@ watch(visible, (v) => { if (v) loadCategories() })
       <div>
         <label class="mb-1 block text-sm font-medium">本文</label>
         <Textarea v-model="body" auto-resize rows="8" class="w-full" placeholder="本文を入力..." />
+      </div>
+
+      <!-- 添付ファイル -->
+      <div>
+        <label class="mb-1 block text-sm font-medium">添付ファイル（最大5件・各6MB以下）</label>
+        <div class="flex flex-col gap-2">
+          <div v-for="(file, i) in attachedFiles" :key="i" class="flex items-center gap-2 rounded border border-surface-200 px-3 py-2 text-sm dark:border-surface-700">
+            <i class="pi pi-file text-surface-400" />
+            <span class="flex-1 truncate">{{ file.name }}</span>
+            <span class="text-surface-400">{{ (file.size / 1024 / 1024).toFixed(1) }}MB</span>
+            <Button icon="pi pi-times" text rounded severity="danger" size="small" @click="removeFile(i)" />
+          </div>
+          <Button
+            v-if="attachedFiles.length < 5"
+            label="ファイルを追加"
+            icon="pi pi-paperclip"
+            text
+            size="small"
+            @click="fileInputRef?.click()"
+          />
+          <input
+            ref="fileInputRef"
+            type="file"
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+            class="hidden"
+            @change="onFileChange"
+          />
+        </div>
+      </div>
+
+      <!-- 下書き保存インジケーター -->
+      <div v-if="title || body" class="text-right text-xs text-surface-400">
+        <i class="pi pi-save" /> 下書き自動保存中
       </div>
     </div>
     <template #footer>
