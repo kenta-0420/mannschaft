@@ -75,7 +75,7 @@ onMounted(async () => {
           <div
             v-for="check in checks"
             :key="check.id"
-            class="cursor-pointer rounded-lg border border-surface-200 p-3 transition-all hover:shadow-md dark:border-surface-700"
+            class="cursor-pointer rounded-lg border border-surface-300 p-3 transition-all hover:shadow-md dark:border-surface-600"
             :class="{ 'border-primary bg-primary/5': selectedCheckId === check.id }"
             @click="selectCheck(check.id)"
           >
@@ -103,13 +103,13 @@ onMounted(async () => {
       <div class="lg:col-span-2">
         <div
           v-if="selectedCheckId"
-          class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+          class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
         >
           <SafetyResultsDashboard :check-id="selectedCheckId" />
         </div>
         <div
           v-else
-          class="rounded-xl border border-surface-200 bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-800"
+          class="rounded-xl border border-surface-300 bg-surface-0 p-8 dark:border-surface-600 dark:bg-surface-800"
         >
           <DashboardEmptyState icon="pi pi-shield" message="安否確認を選択してください" />
         </div>

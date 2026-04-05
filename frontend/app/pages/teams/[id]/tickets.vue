@@ -63,7 +63,7 @@ onMounted(() => load())
       <div
         v-for="p in products"
         :key="p.id"
-        class="rounded-xl border border-surface-200 bg-surface-0 p-4"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <h3 class="text-sm font-semibold">{{ p.name }}</h3>
         <p class="mt-1 text-xs text-surface-400">{{ p.description }}</p>
@@ -80,7 +80,7 @@ onMounted(() => load())
       <div
         v-for="b in books"
         :key="b.id"
-        class="flex items-center gap-4 rounded-xl border border-surface-200 bg-surface-0 p-4"
+        class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <Avatar :label="b.displayName.charAt(0)" shape="circle" />
         <div class="flex-1">

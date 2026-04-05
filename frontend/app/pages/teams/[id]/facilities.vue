@@ -30,7 +30,7 @@ onMounted(() => load())
       <div
         v-for="f in facilities"
         :key="f.id"
-        class="rounded-xl border border-surface-200 bg-surface-0 p-4"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <h3 class="text-sm font-semibold">{{ f.name }}</h3>
         <p v-if="f.location" class="text-xs text-surface-400">

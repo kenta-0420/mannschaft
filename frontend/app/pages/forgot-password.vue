@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 definePageMeta({
   layout: 'auth',
+  middleware: 'guest',
 })
 
 const schema = toTypedSchema(z.object({

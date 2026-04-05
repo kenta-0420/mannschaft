@@ -118,7 +118,7 @@ watch(visible, (v) => {
 
       <!-- メンバー一覧 -->
       <div
-        class="max-h-52 overflow-y-auto rounded-lg border border-surface-200 dark:border-surface-700"
+        class="max-h-52 overflow-y-auto rounded-lg border border-surface-300 dark:border-surface-600"
       >
         <div v-if="membersLoading" class="flex justify-center py-6">
           <ProgressSpinner style="width: 30px; height: 30px" />
@@ -148,7 +148,7 @@ watch(visible, (v) => {
       </div>
 
       <!-- 履歴共有の選択 -->
-      <div class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
+      <div class="rounded-lg border border-surface-300 p-4 dark:border-surface-600">
         <p class="mb-3 text-sm font-medium">既存のチャット内容を共有しますか？</p>
         <div class="flex flex-col gap-2">
           <div class="flex items-start gap-3 cursor-pointer" @click="shareHistory = true">

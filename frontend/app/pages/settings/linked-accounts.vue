@@ -101,7 +101,7 @@ function formatDate(dateStr: string | null) {
           <div
             v-for="provider in oauthProviders"
             :key="provider.provider"
-            class="flex items-center justify-between rounded-lg border border-surface-100 p-4 dark:border-surface-700"
+            class="flex items-center justify-between rounded-lg border border-surface-100 p-4 dark:border-surface-600"
           >
             <div class="flex items-center gap-3">
               <i :class="providerIcon(provider.provider)" class="text-xl" />

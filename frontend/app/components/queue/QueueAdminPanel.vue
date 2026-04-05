@@ -50,7 +50,7 @@ onMounted(load)
       <div
         v-for="counter in counters"
         :key="counter.id"
-        class="flex items-center gap-4 rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+        class="flex items-center gap-4 rounded-lg border border-surface-300 p-4 dark:border-surface-600"
       >
         <div class="min-w-0 flex-1">
           <p class="font-medium">{{ counter.name }}</p>

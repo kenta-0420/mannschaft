@@ -75,13 +75,13 @@ onMounted(loadData)
       </div>
 
       <div
-        class="mb-6 rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+        class="mb-6 rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
       >
         <PageViewChart :daily="data.daily" :monthly="data.monthly" />
       </div>
 
       <div
-        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
       >
         <ContentRanking :rankings="data.topContent" />
       </div>

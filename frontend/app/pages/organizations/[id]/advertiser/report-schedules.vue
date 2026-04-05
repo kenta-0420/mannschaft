@@ -72,7 +72,7 @@ onMounted(load)
     </div>
 
     <div v-else class="space-y-3">
-      <div v-for="s in schedules" :key="s.id" class="flex items-center justify-between rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+      <div v-for="s in schedules" :key="s.id" class="flex items-center justify-between rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
         <div>
           <Tag :value="s.frequency" :severity="s.frequency === 'WEEKLY' ? 'info' : 'warn'" class="mr-2" />
           <span class="text-sm">{{ s.recipients.join(', ') }}</span>

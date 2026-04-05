@@ -43,7 +43,7 @@ async function simulate() {
   <div class="mx-auto max-w-3xl">
     <h1 class="mb-6 text-2xl font-bold">料金シミュレーター</h1>
 
-    <div class="mb-6 rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+    <div class="mb-6 rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800">
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label class="mb-1 block text-sm font-medium">課金モデル</label>
@@ -75,7 +75,7 @@ async function simulate() {
 
     <!-- 結果 -->
     <div v-if="result" class="space-y-4">
-      <div class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+      <div class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800">
         <h3 class="mb-4 font-semibold">見積もり結果</h3>
         <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <div>
@@ -105,7 +105,7 @@ async function simulate() {
         </div>
       </div>
 
-      <div v-if="result.comparison.length > 0" class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+      <div v-if="result.comparison.length > 0" class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800">
         <h3 class="mb-4 font-semibold">他の料金との比較</h3>
         <DataTable :value="result.comparison" striped-rows>
           <Column field="label" header="条件" />

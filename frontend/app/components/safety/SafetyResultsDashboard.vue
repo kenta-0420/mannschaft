@@ -123,29 +123,29 @@ onMounted(loadResults)
 
     <!-- 回答率 -->
     <div class="grid grid-cols-2 gap-4 md:grid-cols-5">
-      <div class="rounded-lg border border-surface-200 p-3 text-center dark:border-surface-700">
+      <div class="rounded-lg border border-surface-300 p-3 text-center dark:border-surface-600">
         <p class="text-2xl font-bold text-primary">{{ Math.round(responseRate) }}%</p>
         <p class="text-xs text-surface-500">回答率</p>
       </div>
-      <div class="rounded-lg border border-surface-200 p-3 text-center dark:border-surface-700">
+      <div class="rounded-lg border border-surface-300 p-3 text-center dark:border-surface-600">
         <p class="text-2xl font-bold text-green-600">
           {{ results.safetyCheck.responseStats.safe }}
         </p>
         <p class="text-xs text-surface-500">無事</p>
       </div>
-      <div class="rounded-lg border border-surface-200 p-3 text-center dark:border-surface-700">
+      <div class="rounded-lg border border-surface-300 p-3 text-center dark:border-surface-600">
         <p class="text-2xl font-bold text-red-600">
           {{ results.safetyCheck.responseStats.needSupport }}
         </p>
         <p class="text-xs text-surface-500">支援必要</p>
       </div>
-      <div class="rounded-lg border border-surface-200 p-3 text-center dark:border-surface-700">
+      <div class="rounded-lg border border-surface-300 p-3 text-center dark:border-surface-600">
         <p class="text-2xl font-bold text-yellow-600">
           {{ results.safetyCheck.responseStats.other }}
         </p>
         <p class="text-xs text-surface-500">その他</p>
       </div>
-      <div class="rounded-lg border border-surface-200 p-3 text-center dark:border-surface-700">
+      <div class="rounded-lg border border-surface-300 p-3 text-center dark:border-surface-600">
         <p class="text-2xl font-bold text-surface-400">{{ results.unrespondedMembers.length }}</p>
         <p class="text-xs text-surface-500">未回答</p>
       </div>
@@ -158,7 +158,7 @@ onMounted(loadResults)
         <div
           v-for="res in results.responses"
           :key="res.id"
-          class="flex items-center gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700"
+          class="flex items-center gap-3 rounded-lg border border-surface-300 p-3 dark:border-surface-600"
         >
           <Avatar
             :image="res.avatarUrl"

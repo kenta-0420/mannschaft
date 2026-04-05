@@ -100,7 +100,7 @@ const canSave = computed(
     <!-- プリセット選択 -->
     <div
       v-if="presets && presets.length > 0 && !template"
-      class="rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800"
+      class="rounded-lg border border-surface-300 bg-surface-50 p-4 dark:border-surface-600 dark:bg-surface-800"
     >
       <p class="mb-2 text-sm font-medium">プリセットから作成</p>
       <div class="flex flex-wrap gap-2">
@@ -177,7 +177,7 @@ const canSave = computed(
         <div
           v-for="(step, index) in steps"
           :key="index"
-          class="rounded-lg border border-surface-200 p-3 dark:border-surface-700"
+          class="rounded-lg border border-surface-300 p-3 dark:border-surface-600"
         >
           <div class="mb-2 flex items-center gap-2">
             <span class="text-xs text-surface-400">{{ index + 1 }}</span>

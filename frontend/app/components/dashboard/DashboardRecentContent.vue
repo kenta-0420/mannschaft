@@ -85,7 +85,7 @@ onMounted(() => {
   <div class="space-y-4">
     <!-- ブログ・お知らせセクション -->
     <div
-      class="rounded-xl border border-surface-200 bg-surface-0 p-5 dark:border-surface-700 dark:bg-surface-800"
+      class="rounded-xl border border-surface-300 bg-surface-0 p-5 dark:border-surface-600 dark:bg-surface-800"
     >
       <div class="mb-4 flex items-center justify-between">
         <h2
@@ -115,7 +115,7 @@ onMounted(() => {
           v-for="post in recentPosts"
           :key="post.id"
           :to="blogAllLink ?? '#'"
-          class="group overflow-hidden rounded-lg border border-surface-200 bg-surface-50 transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-900"
+          class="group overflow-hidden rounded-lg border border-surface-300 bg-surface-50 transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-900"
         >
           <img
             v-if="post.coverImageUrl"
@@ -143,7 +143,7 @@ onMounted(() => {
     <!-- 掲示板・お知らせセクション (team / org のみ) -->
     <div
       v-if="isScopedContent"
-      class="rounded-xl border border-surface-200 bg-surface-0 p-5 dark:border-surface-700 dark:bg-surface-800"
+      class="rounded-xl border border-surface-300 bg-surface-0 p-5 dark:border-surface-600 dark:bg-surface-800"
     >
       <div class="mb-4 flex items-center justify-between">
         <h2

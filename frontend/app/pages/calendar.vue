@@ -90,7 +90,7 @@ onMounted(loadEvents)
     </div>
 
     <div
-      class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+      class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
     >
       <CalendarGrid
         :year="currentYear"

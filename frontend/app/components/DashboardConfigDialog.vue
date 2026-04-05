@@ -71,7 +71,7 @@ function onDragEnd() {
             ? 'border-primary/40 bg-primary/5 opacity-50'
             : dropTargetIndex === index
               ? 'border-primary bg-primary/10'
-              : 'border-surface-200 dark:border-surface-700',
+              : 'border-surface-200 dark:border-surface-600',
         ]"
         @dragstart="onDragStart(index, $event)"
         @dragover="onDragOver(index, $event)"

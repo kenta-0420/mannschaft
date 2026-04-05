@@ -77,7 +77,7 @@ async function share(item: CoinTossResponse) {
 
     <div class="mx-auto max-w-lg">
       <div
-        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
       >
         <!-- モード選択 -->
         <div class="mb-4">
@@ -163,7 +163,7 @@ async function share(item: CoinTossResponse) {
         <div
           v-for="item in history"
           :key="item.id"
-          class="flex items-center justify-between rounded-lg border border-surface-100 p-3 dark:border-surface-700"
+          class="flex items-center justify-between rounded-lg border border-surface-100 p-3 dark:border-surface-600"
         >
           <div>
             <p v-if="item.question" class="text-sm text-surface-500">{{ item.question }}</p>

@@ -42,7 +42,7 @@ const attendanceButtons = [
 </script>
 
 <template>
-  <div class="rounded-lg border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+  <div class="rounded-lg border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
     <h3 class="mb-3 text-sm font-semibold">出欠回答</h3>
 
     <!-- 回答ボタン -->

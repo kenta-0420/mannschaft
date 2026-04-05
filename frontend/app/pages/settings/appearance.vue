@@ -61,7 +61,7 @@ async function save() {
         <h3 class="mb-4 text-sm font-medium">プレビュー</h3>
         <div class="rounded-lg p-4" :style="{ backgroundColor: appearanceStore.bgColor }">
           <div
-            class="rounded-lg border border-surface-200 bg-surface-0 p-4 shadow-sm dark:border-surface-700 dark:bg-surface-800"
+            class="rounded-lg border border-surface-300 bg-surface-0 p-4 shadow-sm dark:border-surface-600 dark:bg-surface-800"
           >
             <p class="text-sm font-medium">カードプレビュー</p>
             <p class="text-xs text-surface-500">選択した背景色とテーマが適用されます</p>

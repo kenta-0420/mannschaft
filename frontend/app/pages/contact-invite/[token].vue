@@ -96,7 +96,7 @@ onMounted(fetchPreview)
 
     <template v-else-if="preview">
       <div
-        class="flex flex-col items-center gap-6 rounded-xl border border-surface-200 p-8 text-center"
+        class="flex flex-col items-center gap-6 rounded-xl border border-surface-300 p-8 text-center"
       >
         <div>
           <div class="mb-1 text-sm text-gray-400">連絡先追加の招待</div>

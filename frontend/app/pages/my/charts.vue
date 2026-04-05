@@ -47,7 +47,7 @@ onMounted(() => loadData())
       <div
         v-for="chart in charts"
         :key="chart.id"
-        class="cursor-pointer rounded-xl border border-surface-200 bg-surface-0 p-4 transition-shadow hover:shadow-md"
+        class="cursor-pointer rounded-xl border border-surface-300 bg-surface-0 p-4 transition-shadow hover:shadow-md"
         @click="handleSelect(chart)"
       >
         <div class="flex items-center justify-between">

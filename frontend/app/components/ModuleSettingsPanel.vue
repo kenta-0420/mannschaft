@@ -87,7 +87,7 @@ onMounted(fetchModules)
         :class="
           mod.enabled
             ? 'border-primary-200 bg-primary-50/40 dark:border-primary-800 dark:bg-primary-950/30'
-            : 'border-surface-200 bg-surface-0 dark:border-surface-700 dark:bg-surface-800'
+            : 'border-surface-200 bg-surface-0 dark:border-surface-600 dark:bg-surface-800'
         "
       >
         <div class="flex items-center gap-3">

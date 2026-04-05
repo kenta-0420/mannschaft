@@ -61,7 +61,7 @@ onMounted(fetchSettings)
 
     <template v-else>
       <div class="flex flex-col gap-4">
-        <div class="flex items-center justify-between rounded-lg border border-surface-200 p-4">
+        <div class="flex items-center justify-between rounded-lg border border-surface-300 p-4">
           <div>
             <div class="font-medium">@ハンドルで検索を許可</div>
             <div class="mt-0.5 text-sm text-gray-500">
@@ -71,7 +71,7 @@ onMounted(fetchSettings)
           <ToggleSwitch v-model="settings.handleSearchable" />
         </div>
 
-        <div class="flex items-center justify-between rounded-lg border border-surface-200 p-4">
+        <div class="flex items-center justify-between rounded-lg border border-surface-300 p-4">
           <div>
             <div class="font-medium">連絡先追加に承認が必要</div>
             <div class="mt-0.5 text-sm text-gray-500">
@@ -81,7 +81,7 @@ onMounted(fetchSettings)
           <ToggleSwitch v-model="settings.contactApprovalRequired" />
         </div>
 
-        <div class="rounded-lg border border-surface-200 p-4">
+        <div class="rounded-lg border border-surface-300 p-4">
           <div class="mb-3 font-medium">DMを受信できる相手</div>
           <div class="flex flex-col gap-2">
             <div
@@ -100,7 +100,7 @@ onMounted(fetchSettings)
           </div>
         </div>
 
-        <div class="rounded-lg border border-surface-200 p-4">
+        <div class="rounded-lg border border-surface-300 p-4">
           <div class="mb-1 font-medium">オンライン状態の公開範囲</div>
           <div class="mb-3 text-sm text-gray-500">
             最終オンライン時刻や現在のオンライン状態を誰に見せるかを設定します

@@ -38,7 +38,7 @@ onMounted(() => load())
       <div
         v-for="stat in stats"
         :key="stat.metricId"
-        class="rounded-xl border border-surface-200 bg-surface-0 p-4"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <h3 class="mb-2 text-sm font-semibold">{{ stat.metricName }}</h3>
         <div class="flex items-end gap-4">

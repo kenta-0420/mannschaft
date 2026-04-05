@@ -61,15 +61,15 @@ onMounted(() => load())
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else-if="summary" class="grid gap-4 sm:grid-cols-3">
-      <div class="rounded-xl border border-surface-200 bg-surface-0 p-4">
+      <div class="rounded-xl border border-surface-300 bg-surface-0 p-4">
         <p class="text-xs text-surface-400">収入</p>
         <p class="text-2xl font-bold text-green-600">¥{{ summary.totalIncome.toLocaleString() }}</p>
       </div>
-      <div class="rounded-xl border border-surface-200 bg-surface-0 p-4">
+      <div class="rounded-xl border border-surface-300 bg-surface-0 p-4">
         <p class="text-xs text-surface-400">支出</p>
         <p class="text-2xl font-bold text-red-500">¥{{ summary.totalExpense.toLocaleString() }}</p>
       </div>
-      <div class="rounded-xl border border-surface-200 bg-surface-0 p-4">
+      <div class="rounded-xl border border-surface-300 bg-surface-0 p-4">
         <p class="text-xs text-surface-400">残高</p>
         <p
           class="text-2xl font-bold"

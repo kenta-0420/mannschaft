@@ -64,7 +64,7 @@ defineExpose({ refresh: loadItems })
       <button
         v-for="item in items"
         :key="item.id"
-        class="flex items-center gap-3 rounded-xl border border-surface-200 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm"
+        class="flex items-center gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm"
         @click="emit('select', item)"
       >
         <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-100">

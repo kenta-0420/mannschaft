@@ -30,7 +30,7 @@ onMounted(() => load())
       <div
         v-for="r in records"
         :key="r.id"
-        class="rounded-xl border border-surface-200 bg-surface-0 p-4"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold">{{ r.serviceName }}</h3>

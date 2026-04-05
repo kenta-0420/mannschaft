@@ -93,7 +93,7 @@ watch(() => props.threadId, () => loadThread())
     </div>
 
     <!-- スレッド本体 -->
-    <div class="rounded-xl border border-surface-200 bg-surface-0 p-6">
+    <div class="rounded-xl border border-surface-300 bg-surface-0 p-6">
       <h2 class="mb-2 text-xl font-bold">{{ thread.title }}</h2>
       <div class="mb-4 flex items-center gap-3 text-sm text-surface-400">
         <Avatar :label="thread.author.displayName.charAt(0)" shape="circle" size="small" />
@@ -101,7 +101,8 @@ watch(() => props.threadId, () => loadThread())
         <span>{{ relativeTime(thread.createdAt) }}</span>
         <span v-if="thread.readTrackingMode !== 'NONE'"><i class="pi pi-eye" /> {{ thread.readCount }}人既読</span>
       </div>
-      <div class="prose max-w-none text-sm leading-relaxed" v-html="thread.body" />
+      <!-- eslint-disable-next-line vue/no-v-html -->
+      <div class="prose max-w-none text-sm leading-relaxed" v-html="sanitizeHtml(thread.body)" />
     </div>
 
     <!-- 返信一覧 -->
@@ -124,7 +125,7 @@ watch(() => props.threadId, () => loadThread())
     </div>
 
     <!-- 返信フォーム -->
-    <div v-if="!thread.isLocked" class="mt-4 rounded-xl border border-surface-200 bg-surface-0 p-4">
+    <div v-if="!thread.isLocked" class="mt-4 rounded-xl border border-surface-300 bg-surface-0 p-4">
       <Textarea v-model="replyBody" placeholder="返信を入力..." auto-resize rows="2" class="mb-2 w-full" />
       <div class="flex justify-end">
         <Button label="返信" size="small" :loading="submitting" :disabled="!replyBody.trim()" @click="onReply" />

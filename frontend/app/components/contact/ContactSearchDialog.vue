@@ -105,7 +105,7 @@ function onHide() {
       </div>
 
       <template v-if="result">
-        <div class="flex items-center gap-3 rounded-lg border border-surface-200 p-3">
+        <div class="flex items-center gap-3 rounded-lg border border-surface-300 p-3">
           <Avatar
             :image="result.avatarUrl ?? undefined"
             :label="result.avatarUrl ? undefined : result.displayName.charAt(0)"

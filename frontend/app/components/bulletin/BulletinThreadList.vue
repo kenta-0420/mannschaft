@@ -111,7 +111,7 @@ defineExpose({ refresh: () => loadThreads() })
       <button
         v-for="thread in threads"
         :key="thread.id"
-        class="flex items-start gap-3 rounded-xl border border-surface-200 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm"
+        class="flex items-start gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm"
         :class="!thread.isRead ? 'border-l-4 border-l-primary' : ''"
         @click="emit('select', thread)"
       >
@@ -150,7 +150,7 @@ defineExpose({ refresh: () => loadThreads() })
 
     <!-- ページネーション -->
     <div v-if="totalPages > 1" class="mt-4 flex justify-center">
-      <Paginator :rows="20" :total-records="totalPages * 20" :first="currentPage * 20" @page="(e: any) => loadThreads(e.page)" />
+      <Paginator :rows="20" :total-records="totalPages * 20" :first="currentPage * 20" @page="(e: { page: number }) => loadThreads(e.page)" />
     </div>
   </div>
 </template>

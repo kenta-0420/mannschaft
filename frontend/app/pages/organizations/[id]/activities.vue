@@ -39,7 +39,7 @@ onMounted(() => load())
       <div
         v-for="act in activities"
         :key="act.id"
-        class="rounded-xl border border-surface-200 bg-surface-0 p-4"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold">{{ act.title }}</h3>

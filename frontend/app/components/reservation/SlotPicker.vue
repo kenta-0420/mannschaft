@@ -82,7 +82,7 @@ onMounted(async () => { await loadLines(); await loadSlots() })
         class="rounded-lg border p-3 text-center transition-all"
         :class="isAvailable(slot)
           ? 'cursor-pointer border-surface-200 hover:border-primary hover:bg-primary/5 dark:border-surface-600'
-          : 'cursor-not-allowed border-surface-100 bg-surface-50 opacity-50 dark:border-surface-700'"
+          : 'cursor-not-allowed border-surface-100 bg-surface-50 opacity-50 dark:border-surface-600'"
         @click="selectSlot(slot)"
       >
         <p class="text-sm font-medium">{{ slot.startTime }} - {{ slot.endTime }}</p>

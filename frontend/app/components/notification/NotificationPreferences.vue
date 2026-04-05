@@ -80,7 +80,7 @@ onMounted(() => load())
         <div
           v-for="pref in scopePrefs"
           :key="`${pref.scopeType}-${pref.scopeId}`"
-          class="flex items-center justify-between rounded-lg border border-surface-100 p-3 dark:border-surface-700"
+          class="flex items-center justify-between rounded-lg border border-surface-100 p-3 dark:border-surface-600"
         >
           <div>
             <p class="text-sm font-medium">{{ pref.scopeName }}</p>
@@ -113,7 +113,7 @@ onMounted(() => load())
         <div
           v-for="tp in prefs"
           :key="tp.notificationType"
-          class="flex items-center justify-between rounded-lg border border-surface-100 px-4 py-3 dark:border-surface-700"
+          class="flex items-center justify-between rounded-lg border border-surface-100 px-4 py-3 dark:border-surface-600"
         >
           <span class="text-sm font-medium">{{ tp.label }}</span>
           <div class="flex items-center gap-5">

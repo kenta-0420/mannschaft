@@ -145,7 +145,7 @@ watch(activeTab, (tab) => {
             <div
               v-for="s in statuses"
               :key="s.user.id"
-              class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+              class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
             >
               <div class="flex items-center gap-3">
                 <div
@@ -181,7 +181,7 @@ watch(activeTab, (tab) => {
             <div
               v-for="event in historyList"
               :key="event.id"
-              class="flex items-center justify-between rounded-lg border border-surface-100 p-3 dark:border-surface-700"
+              class="flex items-center justify-between rounded-lg border border-surface-100 p-3 dark:border-surface-600"
             >
               <div class="flex items-center gap-3">
                 <Tag
@@ -210,25 +210,25 @@ watch(activeTab, (tab) => {
           <div v-if="stats" class="space-y-4">
             <div class="grid gap-4 sm:grid-cols-4">
               <div
-                class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+                class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
               >
                 <p class="text-xs text-surface-400">合計イベント</p>
                 <p class="text-2xl font-bold">{{ stats.totalEvents }}</p>
               </div>
               <div
-                class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+                class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
               >
                 <p class="text-xs text-surface-400">外出</p>
                 <p class="text-2xl font-bold text-orange-500">{{ stats.totalGoingOutEvents }}</p>
               </div>
               <div
-                class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+                class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
               >
                 <p class="text-xs text-surface-400">帰宅</p>
                 <p class="text-2xl font-bold text-green-500">{{ stats.totalHomeEvents }}</p>
               </div>
               <div
-                class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+                class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
               >
                 <p class="text-xs text-surface-400">超過</p>
                 <p class="text-2xl font-bold text-red-500">{{ stats.overdueCount }}</p>

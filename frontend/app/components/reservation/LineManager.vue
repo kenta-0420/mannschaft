@@ -70,7 +70,7 @@ onMounted(loadLines)
     </div>
     <div v-if="loading"><Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" /></div>
     <div v-else-if="lines.length > 0" class="space-y-2">
-      <div v-for="line in lines" :key="line.id" class="flex items-center gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+      <div v-for="line in lines" :key="line.id" class="flex items-center gap-3 rounded-lg border border-surface-300 p-3 dark:border-surface-600">
         <div class="min-w-0 flex-1">
           <p class="font-medium">{{ line.name }}</p>
           <p class="text-xs text-surface-500">定員: {{ line.capacity }} | {{ line.isActive ? '有効' : '無効' }}</p>

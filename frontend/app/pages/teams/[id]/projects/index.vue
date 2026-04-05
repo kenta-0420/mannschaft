@@ -113,7 +113,7 @@ onMounted(async () => {
       <div
         v-for="project in projects"
         :key="project.id"
-        class="cursor-pointer rounded-xl border border-surface-200 bg-surface-0 p-4 transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-800"
+        class="cursor-pointer rounded-xl border border-surface-300 bg-surface-0 p-4 transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-800"
         @click="openProject(project)"
       >
         <div class="mb-2 flex items-center justify-between">

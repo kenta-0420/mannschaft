@@ -30,7 +30,7 @@ onMounted(() => load())
       <div
         v-for="u in units"
         :key="u.id"
-        class="flex items-center gap-4 rounded-xl border border-surface-200 bg-surface-0 p-4"
+        class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <div
           class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-100 text-sm font-bold"

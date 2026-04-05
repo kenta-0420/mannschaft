@@ -37,7 +37,7 @@ const typeLabel = (type: string) => {
 </script>
 
 <template>
-  <NuxtLink :to="result.url" class="block rounded-lg border border-surface-200 p-4 transition-shadow hover:shadow-md dark:border-surface-700">
+  <NuxtLink :to="result.url" class="block rounded-lg border border-surface-300 p-4 transition-shadow hover:shadow-md dark:border-surface-600">
     <div class="flex items-start gap-3">
       <div class="mt-1 flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
         <i :class="typeIcon(result.type)" />
@@ -49,7 +49,7 @@ const typeLabel = (type: string) => {
         </div>
         <p v-if="result.title" class="mt-1 font-medium truncate">{{ result.title }}</p>
         <!-- eslint-disable-next-line vue/no-v-html -->
-        <p class="mt-1 text-sm text-surface-600 dark:text-surface-400 line-clamp-2" v-html="result.snippet" />
+        <p class="mt-1 text-sm text-surface-600 dark:text-surface-400 line-clamp-2" v-html="sanitizeHtml(result.snippet)" />
         <div class="mt-2 flex items-center gap-3 text-xs text-surface-400">
           <span v-if="result.author">
             <i class="pi pi-user mr-1" />{{ result.author.displayName }}

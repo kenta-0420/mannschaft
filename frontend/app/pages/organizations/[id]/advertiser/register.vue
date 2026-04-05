@@ -36,7 +36,7 @@ async function submit() {
 <template>
   <div class="mx-auto max-w-lg">
     <h1 class="mb-6 text-2xl font-bold">広告主登録</h1>
-    <div class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+    <div class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800">
       <div class="mb-4">
         <label class="mb-1 block text-sm font-medium">会社名 / 広告主名</label>
         <InputText v-model="form.companyName" class="w-full" placeholder="株式会社サンプル" />

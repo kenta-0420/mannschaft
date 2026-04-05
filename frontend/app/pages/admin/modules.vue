@@ -122,7 +122,7 @@ onMounted(load)
             <div
               v-for="la in selectedModule.levelAvailability"
               :key="la.level"
-              class="flex items-center justify-between rounded-lg border border-surface-200 p-3"
+              class="flex items-center justify-between rounded-lg border border-surface-300 p-3"
             >
               <div>
                 <span class="font-medium">{{ la.level }}</span>

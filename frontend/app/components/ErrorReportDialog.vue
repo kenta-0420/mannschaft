@@ -34,11 +34,11 @@ watch(
     <Transition name="error-report">
       <div
         v-if="state.visible"
-        class="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-surface-200 bg-surface-0 shadow-xl dark:border-surface-700 dark:bg-surface-800"
+        class="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-surface-300 bg-surface-0 shadow-xl dark:border-surface-600 dark:bg-surface-800"
       >
         <!-- Header -->
         <div
-          class="flex items-center justify-between border-b border-surface-200 px-4 py-3 dark:border-surface-700"
+          class="flex items-center justify-between border-b border-surface-200 px-4 py-3 dark:border-surface-600"
         >
           <div class="flex items-center gap-2">
             <i class="pi pi-shield text-primary" />

@@ -98,7 +98,7 @@ onMounted(load)
       <div
         v-for="pos in positions"
         :key="pos.id"
-        class="flex items-center gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700"
+        class="flex items-center gap-3 rounded-lg border border-surface-300 p-3 dark:border-surface-600"
       >
         <div class="h-4 w-4 rounded-full" :style="{ backgroundColor: pos.color ?? '#6366f1' }" />
         <div class="min-w-0 flex-1">

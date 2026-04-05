@@ -78,7 +78,7 @@ onMounted(load)
       <div
         v-for="s in schedules"
         :key="s.id"
-        class="cursor-pointer rounded-lg border border-surface-200 p-4 transition-shadow hover:shadow-md dark:border-surface-700"
+        class="cursor-pointer rounded-lg border border-surface-300 p-4 transition-shadow hover:shadow-md dark:border-surface-600"
         @click="emit('select', s.id)"
       >
         <div class="flex items-center justify-between">

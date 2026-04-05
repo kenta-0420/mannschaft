@@ -34,6 +34,12 @@ function toggleCollapse(key: string) {
   collapsedKeys.value = new Set(collapsedKeys.value)
 }
 
+const DATA_WIDGET_KEYS = new Set(['survey-results', 'attendance-results'])
+
+function isDataWidget(key: string): boolean {
+  return DATA_WIDGET_KEYS.has(key)
+}
+
 const basePath = computed(() => {
   if (props.scopeType === 'personal' || !props.scopeId) return undefined
   return props.scopeType === 'team' ? `/teams/${props.scopeId}` : `/organizations/${props.scopeId}`
@@ -65,6 +71,8 @@ function linkTo(widgetKey: string): string | undefined {
     gallery: `${base}/gallery`,
     circulation: `${base}/circulation`,
     surveys: `${base}/surveys`,
+    'survey-results': `${base}/surveys`,
+    'attendance-results': `${base}/schedule`,
   }
   return scopeLinks[widgetKey]
 }
@@ -150,13 +158,14 @@ function onDragEnd() {
           dropTargetIndex === index && dragIndex !== index
             ? 'border-primary border-t-[3px]'
             : 'border-surface-200 dark:border-surface-600',
+          isDataWidget(w.key) ? 'md:col-span-2' : '',
         ]"
         @dragstart="onDragStart(index, $event)"
         @dragover="onDragOver(index, $event)"
         @dragleave="onDragLeave($event)"
         @drop.prevent="onDrop(index)"
         @dragend="onDragEnd"
-        @click="dragIndex === null && navigateTo(linkTo(w.key) ?? '#')"
+        @click="!isDataWidget(w.key) && dragIndex === null && navigateTo(linkTo(w.key) ?? '#')"
       >
         <!-- ドロップインジケーター線 -->
         <div
@@ -169,7 +178,7 @@ function onDragEnd() {
           class="pi pi-grip-vertical absolute right-3 top-3 cursor-grab text-sm text-surface-300 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing dark:text-surface-600"
         />
 
-        <div class="flex items-center gap-3" :class="collapsedKeys.has(w.key) ? '' : 'mb-3'">
+        <div class="flex items-center gap-3" :class="collapsedKeys.has(w.key) || isDataWidget(w.key) ? '' : 'mb-3'">
           <div
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/20"
           >
@@ -178,8 +187,9 @@ function onDragEnd() {
           <h3 class="flex-1 text-[20px] font-semibold text-surface-700 dark:text-surface-200">
             {{ w.label }}
           </h3>
-          <!-- 折り畳みボタン (モバイルのみ) -->
+          <!-- 折り畳みボタン (モバイルのみ・ナビゲーションウィジェットのみ) -->
           <button
+            v-if="!isDataWidget(w.key)"
             class="md:hidden flex items-center justify-center rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100"
             @click.stop="toggleCollapse(w.key)"
           >
@@ -188,16 +198,46 @@ function onDragEnd() {
               :class="collapsedKeys.has(w.key) ? 'pi-chevron-down' : 'pi-chevron-up'"
             />
           </button>
+          <!-- ナビゲーション矢印 (ナビゲーションウィジェットのみ) -->
           <i
+            v-if="!isDataWidget(w.key)"
             class="pi pi-chevron-right hidden md:block text-xs text-surface-400 opacity-0 transition-opacity group-hover:opacity-100"
           />
+          <!-- データウィジェット: ページリンク -->
+          <NuxtLink
+            v-else
+            :to="linkTo(w.key)"
+            class="shrink-0 text-xs text-surface-400 hover:text-primary"
+            @click.stop
+          >
+            詳細 <i class="pi pi-external-link text-[10px]" />
+          </NuxtLink>
         </div>
+
+        <!-- ナビゲーションウィジェット: 説明文 -->
         <p
+          v-if="!isDataWidget(w.key)"
           class="text-xs text-surface-500"
           :class="collapsedKeys.has(w.key) ? 'hidden md:block' : ''"
         >
           {{ w.description }}
         </p>
+
+        <!-- データウィジェット: 実コンテンツ -->
+        <template v-else>
+          <div class="mt-3">
+            <WidgetSurveyResults
+              v-if="w.key === 'survey-results' && scopeId"
+              :scope-type="(scopeType as 'team' | 'organization')"
+              :scope-id="scopeId"
+            />
+            <WidgetAttendanceResults
+              v-else-if="w.key === 'attendance-results' && scopeId"
+              :scope-type="(scopeType as 'team' | 'organization')"
+              :scope-id="scopeId"
+            />
+          </div>
+        </template>
       </div>
 
       <!-- Amazon広告タイル (非表示不可・常に最後) -->

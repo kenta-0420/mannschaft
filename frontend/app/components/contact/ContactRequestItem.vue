@@ -18,7 +18,7 @@ function formatDate(iso: string) {
 </script>
 
 <template>
-  <div class="flex items-start gap-3 rounded-lg border border-surface-200 p-3">
+  <div class="flex items-start gap-3 rounded-lg border border-surface-300 p-3">
     <Avatar
       :image="(type === 'received' ? request.requester : request.target).avatarUrl ?? undefined"
       :label="

@@ -56,6 +56,11 @@ const TEMPLATE_COPY: Record<string, AdCopy> = {
     description: 'ケア用品・施術備品・消耗品をまとめてお得に揃えられます。',
     tags: 'ケア用品 / 施術備品 / 消耗品',
   },
+  STORE: {
+    title: '店舗・小売用品をAmazonで',
+    description: '陳列用品・包装資材・POPなど店舗運営に必要なアイテムが揃います。',
+    tags: '陳列用品 / 包装資材 / 店舗備品',
+  },
   VOLUNTEER: {
     title: 'ボランティア用品をAmazonで',
     description: '活動に必要な備品・イベント用品・防災グッズが揃います。',
@@ -102,7 +107,7 @@ const copy = computed<AdCopy>(() => {
     href="https://amzn.to/47IUOcC"
     target="_blank"
     rel="noopener sponsored"
-    class="group relative flex flex-col overflow-hidden rounded-xl border border-surface-200 bg-surface-0 p-3 shadow-sm transition-all hover:shadow-md dark:border-surface-700 dark:bg-surface-800"
+    class="group relative flex flex-col overflow-hidden rounded-xl border border-surface-300 bg-surface-0 p-3 shadow-sm transition-all hover:shadow-md dark:border-surface-600 dark:bg-surface-800"
   >
     <!-- PRバッジ -->
     <span

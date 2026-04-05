@@ -1,192 +1,36 @@
 <script setup lang="ts">
-import type {
-  ReportResponse,
-  ReportStatsResponse,
-  InternalNoteResponse,
-} from '~/types/admin-report'
-
 definePageMeta({ middleware: 'auth' })
 
-const adminReportApi = useAdminReportApi()
-const { success, error: showError } = useNotification()
-
-const reports = ref<ReportResponse[]>([])
-const stats = ref<ReportStatsResponse | null>(null)
-const loading = ref(true)
-const totalRecords = ref(0)
-const page = ref(0)
-const statusFilter = ref<string | undefined>(undefined)
-const selectedReport = ref<ReportResponse | null>(null)
-const showDetailDialog = ref(false)
-const notes = ref<InternalNoteResponse[]>([])
-const newNote = ref('')
-const showResolveDialog = ref(false)
-const resolveForm = ref({ actionType: 'WARNING', note: '', guidelineSection: '' })
-const showEscalateDialog = ref(false)
-const escalateForm = ref({ reason: '', guidelineSection: '' })
-// const selectedIds = ref<number[]>([])
-
-const statusOptions = [
-  { label: 'すべて', value: undefined },
-  { label: '未対応', value: 'PENDING' },
-  { label: '対応中', value: 'REVIEWING' },
-  { label: 'エスカレーション', value: 'ESCALATED' },
-  { label: '解決済み', value: 'RESOLVED' },
-  { label: '却下', value: 'DISMISSED' },
-]
-
-async function load() {
-  loading.value = true
-  try {
-    const [reportsRes, statsRes] = await Promise.all([
-      adminReportApi.getReports({ page: page.value, size: 20, status: statusFilter.value }),
-      adminReportApi.getReportStats(),
-    ])
-    reports.value = reportsRes.data
-    totalRecords.value = reportsRes.meta?.totalElements ?? reportsRes.data.length
-    stats.value = statsRes.data
-  } catch {
-    showError('レポートの取得に失敗しました')
-  } finally {
-    loading.value = false
-  }
-}
-
-async function openDetail(report: ReportResponse) {
-  selectedReport.value = report
-  showDetailDialog.value = true
-  try {
-    const res = await adminReportApi.getReportNotes(report.id)
-    notes.value = res.data
-  } catch {
-    notes.value = []
-  }
-}
-
-async function addNote() {
-  if (!selectedReport.value || !newNote.value.trim()) return
-  try {
-    await adminReportApi.createReportNote(selectedReport.value.id, { note: newNote.value })
-    success('メモを追加しました')
-    newNote.value = ''
-    const res = await adminReportApi.getReportNotes(selectedReport.value.id)
-    notes.value = res.data
-  } catch {
-    showError('メモの追加に失敗しました')
-  }
-}
-
-async function review(id: number) {
-  try {
-    await adminReportApi.reviewReport(id)
-    success('レビューを開始しました')
-    await load()
-  } catch {
-    showError('レビュー開始に失敗しました')
-  }
-}
-
-function openResolve(report: ReportResponse) {
-  selectedReport.value = report
-  resolveForm.value = { actionType: 'WARNING', note: '', guidelineSection: '' }
-  showResolveDialog.value = true
-}
-
-async function resolve() {
-  if (!selectedReport.value) return
-  try {
-    await adminReportApi.resolveReport(selectedReport.value.id, resolveForm.value)
-    success('レポートを解決しました')
-    showResolveDialog.value = false
-    await load()
-  } catch {
-    showError('解決に失敗しました')
-  }
-}
-
-async function dismiss(id: number) {
-  try {
-    await adminReportApi.dismissReport(id)
-    success('レポートを却下しました')
-    await load()
-  } catch {
-    showError('却下に失敗しました')
-  }
-}
-
-function openEscalate(report: ReportResponse) {
-  selectedReport.value = report
-  escalateForm.value = { reason: '', guidelineSection: '' }
-  showEscalateDialog.value = true
-}
-
-async function escalate() {
-  if (!selectedReport.value) return
-  try {
-    await adminReportApi.escalateReport(selectedReport.value.id, escalateForm.value)
-    success('エスカレーションしました')
-    showEscalateDialog.value = false
-    await load()
-  } catch {
-    showError('エスカレーションに失敗しました')
-  }
-}
-
-async function reopen(id: number) {
-  try {
-    await adminReportApi.reopenReport(id)
-    success('レポートを再開しました')
-    await load()
-  } catch {
-    showError('再開に失敗しました')
-  }
-}
-
-async function hideContent(id: number) {
-  try {
-    await adminReportApi.hideContent(id)
-    success('コンテンツを非表示にしました')
-  } catch {
-    showError('非表示に失敗しました')
-  }
-}
-
-async function restoreContent(id: number) {
-  try {
-    await adminReportApi.restoreContent(id)
-    success('コンテンツを復元しました')
-  } catch {
-    showError('復元に失敗しました')
-  }
-}
-
-function statusSeverity(status: string) {
-  switch (status) {
-    case 'PENDING':
-      return 'danger'
-    case 'REVIEWING':
-      return 'warn'
-    case 'ESCALATED':
-      return 'warn'
-    case 'RESOLVED':
-      return 'success'
-    case 'DISMISSED':
-      return 'secondary'
-    default:
-      return 'secondary'
-  }
-}
-
-function onPage(event: { page: number }) {
-  page.value = event.page
-  load()
-}
-
-watch(statusFilter, () => {
-  page.value = 0
-  load()
-})
-onMounted(load)
+const {
+  reports,
+  stats,
+  loading,
+  totalRecords,
+  page,
+  statusFilter,
+  selectedReport,
+  showDetailDialog,
+  notes,
+  newNote,
+  showResolveDialog,
+  resolveForm,
+  showEscalateDialog,
+  escalateForm,
+  statusOptions,
+  openDetail,
+  addNote,
+  review,
+  openResolve,
+  dismiss,
+  openEscalate,
+  escalate,
+  reopen,
+  hideContent,
+  restoreContent,
+  statusSeverity,
+  onPage,
+  resolve,
+} = useAdminReports()
 </script>
 
 <template>
@@ -203,45 +47,7 @@ onMounted(load)
       />
     </div>
 
-    <!-- 統計 -->
-    <div v-if="stats" class="mb-4 grid grid-cols-3 gap-3 md:grid-cols-6">
-      <Card>
-        <template #content>
-          <p class="text-xs text-surface-500">未対応</p>
-          <p class="text-xl font-bold text-red-500">{{ stats.pendingCount }}</p>
-        </template>
-      </Card>
-      <Card>
-        <template #content>
-          <p class="text-xs text-surface-500">対応中</p>
-          <p class="text-xl font-bold text-yellow-500">{{ stats.reviewingCount }}</p>
-        </template>
-      </Card>
-      <Card>
-        <template #content>
-          <p class="text-xs text-surface-500">エスカレ</p>
-          <p class="text-xl font-bold text-orange-500">{{ stats.escalatedCount }}</p>
-        </template>
-      </Card>
-      <Card>
-        <template #content>
-          <p class="text-xs text-surface-500">解決済</p>
-          <p class="text-xl font-bold text-green-500">{{ stats.resolvedCount }}</p>
-        </template>
-      </Card>
-      <Card>
-        <template #content>
-          <p class="text-xs text-surface-500">却下</p>
-          <p class="text-xl font-bold text-surface-400">{{ stats.dismissedCount }}</p>
-        </template>
-      </Card>
-      <Card>
-        <template #content>
-          <p class="text-xs text-surface-500">合計</p>
-          <p class="text-xl font-bold text-primary">{{ stats.totalCount }}</p>
-        </template>
-      </Card>
-    </div>
+    <AdminReportStatsCards v-if="stats" :stats="stats" />
 
     <DataTable
       :value="reports"
@@ -318,131 +124,27 @@ onMounted(load)
       </Column>
     </DataTable>
 
-    <!-- 詳細ダイアログ -->
-    <Dialog
+    <AdminReportDetailDialog
       v-model:visible="showDetailDialog"
-      header="レポート詳細"
-      :style="{ width: '700px' }"
-      modal
-    >
-      <div v-if="selectedReport" class="flex flex-col gap-4">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <p class="text-xs text-surface-500">対象種別</p>
-            <p>{{ selectedReport.targetType }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-surface-500">ステータス</p>
-            <Tag :value="selectedReport.status" :severity="statusSeverity(selectedReport.status)" />
-          </div>
-          <div>
-            <p class="text-xs text-surface-500">理由</p>
-            <p>{{ selectedReport.reason }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-surface-500">報告日</p>
-            <p class="text-sm">{{ new Date(selectedReport.createdAt).toLocaleString('ja-JP') }}</p>
-          </div>
-        </div>
-        <div v-if="selectedReport.description">
-          <p class="text-xs text-surface-500">詳細</p>
-          <p class="text-sm">{{ selectedReport.description }}</p>
-        </div>
-        <div class="flex gap-2">
-          <Button
-            label="コンテンツ非表示"
-            size="small"
-            severity="warn"
-            @click="hideContent(selectedReport.id)"
-          />
-          <Button
-            label="コンテンツ復元"
-            size="small"
-            severity="info"
-            @click="restoreContent(selectedReport.id)"
-          />
-        </div>
+      v-model:new-note="newNote"
+      :report="selectedReport"
+      :notes="notes"
+      :status-severity="statusSeverity"
+      @add-note="addNote"
+      @hide-content="hideContent"
+      @restore-content="restoreContent"
+    />
 
-        <Divider />
-        <h3 class="text-sm font-semibold">内部メモ</h3>
-        <div class="max-h-40 space-y-2 overflow-y-auto">
-          <div v-for="note in notes" :key="note.id" class="rounded border border-surface-200 p-2">
-            <p class="text-sm">{{ note.note }}</p>
-            <p class="text-xs text-surface-400">
-              {{ new Date(note.createdAt).toLocaleString('ja-JP') }}
-            </p>
-          </div>
-          <p v-if="notes.length === 0" class="text-sm text-surface-400">メモがありません</p>
-        </div>
-        <div class="flex gap-2">
-          <InputText v-model="newNote" placeholder="メモを入力..." class="flex-1" />
-          <Button label="追加" size="small" @click="addNote" />
-        </div>
-      </div>
-    </Dialog>
-
-    <!-- 解決ダイアログ -->
-    <Dialog
+    <AdminReportResolveDialog
       v-model:visible="showResolveDialog"
-      header="レポート解決"
-      :style="{ width: '500px' }"
-      modal
-    >
-      <div class="flex flex-col gap-4">
-        <div>
-          <label class="mb-1 block text-sm font-medium">アクション種別</label>
-          <Select
-            v-model="resolveForm.actionType"
-            :options="[
-              { label: '警告', value: 'WARNING' },
-              { label: 'コンテンツ削除', value: 'CONTENT_DELETE' },
-              { label: 'アカウント凍結', value: 'ACCOUNT_FREEZE' },
-            ]"
-            option-label="label"
-            option-value="value"
-            class="w-full"
-          />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-medium">メモ</label>
-          <Textarea v-model="resolveForm.note" rows="3" class="w-full" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-medium">ガイドラインセクション</label>
-          <InputText v-model="resolveForm.guidelineSection" class="w-full" />
-        </div>
-      </div>
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <Button label="キャンセル" severity="secondary" @click="showResolveDialog = false" />
-          <Button label="解決する" severity="success" @click="resolve" />
-        </div>
-      </template>
-    </Dialog>
+      v-model:form="resolveForm"
+      @resolve="resolve"
+    />
 
-    <!-- エスカレーションダイアログ -->
-    <Dialog
+    <AdminReportEscalateDialog
       v-model:visible="showEscalateDialog"
-      header="エスカレーション"
-      :style="{ width: '500px' }"
-      modal
-    >
-      <div class="flex flex-col gap-4">
-        <div>
-          <label class="mb-1 block text-sm font-medium">理由</label>
-          <Textarea v-model="escalateForm.reason" rows="3" class="w-full" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-medium">ガイドラインセクション</label>
-          <InputText v-model="escalateForm.guidelineSection" class="w-full" />
-        </div>
-      </div>
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <Button label="キャンセル" severity="secondary" @click="showEscalateDialog = false" />
-          <Button label="エスカレーションする" severity="warn" @click="escalate" />
-        </div>
-      </template>
-    </Dialog>
+      v-model:form="escalateForm"
+      @escalate="escalate"
+    />
   </div>
 </template>

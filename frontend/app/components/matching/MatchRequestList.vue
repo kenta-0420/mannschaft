@@ -42,7 +42,7 @@ defineExpose({ refresh: load })
     </div>
     <div v-if="loading" class="flex justify-center py-8"><ProgressSpinner style="width: 40px; height: 40px" /></div>
     <div v-else class="flex flex-col gap-3">
-      <button v-for="req in requests" :key="req.id" class="rounded-xl border border-surface-200 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm" @click="emit('select', req)">
+      <button v-for="req in requests" :key="req.id" class="rounded-xl border border-surface-300 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm" @click="emit('select', req)">
         <div class="mb-2 flex items-center gap-2">
           <span :class="getStatusClass(req.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{ req.status }}</span>
           <span class="rounded bg-surface-100 px-1.5 py-0.5 text-xs">{{ req.activity_type }}</span>

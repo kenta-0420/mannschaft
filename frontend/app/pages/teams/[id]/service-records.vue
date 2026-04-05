@@ -37,7 +37,7 @@ onMounted(() => load())
       <div
         v-for="rec in records"
         :key="rec.id"
-        class="flex items-center gap-4 rounded-xl border border-surface-200 bg-surface-0 p-4"
+        class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <Avatar :label="rec.targetUser?.displayName?.charAt(0) || '?'" shape="circle" />
         <div class="min-w-0 flex-1">

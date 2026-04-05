@@ -77,7 +77,7 @@ function toggleReaction(emoji: string) {
               :href="att.url"
               target="_blank"
               rel="noopener"
-              class="inline-flex items-center gap-1 rounded border border-surface-200 px-2 py-1 text-xs text-primary hover:bg-surface-50"
+              class="inline-flex items-center gap-1 rounded border border-surface-300 px-2 py-1 text-xs text-primary hover:bg-surface-50"
             >
               <i class="pi pi-file" />
               {{ att.fileName }}
@@ -113,7 +113,7 @@ function toggleReaction(emoji: string) {
       <!-- ホバーアクション -->
       <div
         v-if="showActions"
-        class="absolute -top-3 right-4 flex items-center gap-0.5 rounded-md border border-surface-200 bg-surface-0 shadow-sm"
+        class="absolute -top-3 right-4 flex items-center gap-0.5 rounded-md border border-surface-300 bg-surface-0 shadow-sm"
       >
         <button
           class="p-1.5 text-surface-400 hover:text-surface-600"
@@ -158,7 +158,7 @@ function toggleReaction(emoji: string) {
       <!-- 絵文字ピッカー -->
       <div
         v-if="showEmojiPicker"
-        class="absolute -top-10 right-4 z-20 flex gap-1 rounded-lg border border-surface-200 bg-surface-0 p-2 shadow-lg"
+        class="absolute -top-10 right-4 z-20 flex gap-1 rounded-lg border border-surface-300 bg-surface-0 p-2 shadow-lg"
       >
         <button
           v-for="emoji in PRESET_EMOJIS"

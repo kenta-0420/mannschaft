@@ -16,9 +16,10 @@ const variantLabel = (variant: string) => {
     <div
       v-for="seal in seals"
       :key="seal.sealId"
-      class="flex flex-col items-center rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+      class="flex flex-col items-center rounded-lg border border-surface-300 p-4 dark:border-surface-600"
     >
-      <div class="mb-2 h-24 w-24" v-html="seal.svgData" />
+      <!-- eslint-disable-next-line vue/no-v-html -->
+      <div class="mb-2 h-24 w-24" v-html="sanitizeHtml(seal.svgData, { allowSvg: true })" />
       <p class="text-sm font-medium">{{ seal.displayText }}</p>
       <Badge :value="variantLabel(seal.variant)" severity="secondary" class="mt-1" />
     </div>

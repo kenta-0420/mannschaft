@@ -41,7 +41,7 @@ function onToggle(emoji: string) {
     <!-- 追加ボタン -->
     <div class="relative">
       <button
-        class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-surface-200 text-xs text-surface-400 transition-colors hover:border-surface-300 hover:text-surface-600"
+        class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-surface-300 text-xs text-surface-400 transition-colors hover:border-surface-300 hover:text-surface-600"
         @click="showPicker = !showPicker"
       >
         <i class="pi pi-plus text-[10px]" />
@@ -50,7 +50,7 @@ function onToggle(emoji: string) {
       <!-- ピッカー -->
       <div
         v-if="showPicker"
-        class="absolute bottom-full left-0 z-10 mb-1 flex gap-1 rounded-lg border border-surface-200 bg-surface-0 p-2 shadow-lg"
+        class="absolute bottom-full left-0 z-10 mb-1 flex gap-1 rounded-lg border border-surface-300 bg-surface-0 p-2 shadow-lg"
       >
         <button
           v-for="emoji in PRESET_EMOJIS"

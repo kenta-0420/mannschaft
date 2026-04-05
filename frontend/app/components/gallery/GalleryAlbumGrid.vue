@@ -48,7 +48,7 @@ defineExpose({ refresh: loadAlbums })
       <button
         v-for="album in albums"
         :key="album.id"
-        class="overflow-hidden rounded-xl border border-surface-200 bg-surface-0 text-left transition-shadow hover:shadow-md"
+        class="overflow-hidden rounded-xl border border-surface-300 bg-surface-0 text-left transition-shadow hover:shadow-md"
         @click="emit('select', album)"
       >
         <div class="aspect-video bg-surface-100">

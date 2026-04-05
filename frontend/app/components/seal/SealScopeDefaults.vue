@@ -41,7 +41,7 @@ watch(
       <div
         v-for="(d, index) in localDefaults"
         :key="index"
-        class="flex items-center gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700"
+        class="flex items-center gap-3 rounded-lg border border-surface-300 p-3 dark:border-surface-600"
       >
         <span class="min-w-24 text-sm">{{ scopeLabel(d) }}</span>
         <Select

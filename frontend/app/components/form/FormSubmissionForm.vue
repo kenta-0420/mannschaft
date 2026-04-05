@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { z } from 'zod'
 import type { FormFieldResponse, FormTemplateResponse, SubmissionValueRequest } from '~/types/form'
 
 const props = defineProps<{
@@ -22,6 +23,7 @@ const template = ref<FormTemplateResponse | null>(null)
 const submitting = ref(false)
 const loading = ref(false)
 const submitImmediately = ref(false)
+const fieldErrors = ref<Record<string, string>>({})
 
 // フィールド値
 const fieldValues = ref<
@@ -29,6 +31,57 @@ const fieldValues = ref<
 >({})
 
 const isEdit = computed(() => !!props.submissionId)
+
+function buildValidationSchema(fields: FormFieldResponse[]) {
+  const shape: Record<string, z.ZodTypeAny> = {}
+  for (const field of fields) {
+    const label = field.fieldLabel || field.fieldKey
+    if (field.fieldType === 'NUMBER') {
+      shape[field.fieldKey] = field.isRequired
+        ? z.number({ required_error: `${label}は必須です` }).min(0, `${label}は必須です`)
+        : z.number().nullable()
+    } else if (field.fieldType === 'DATE') {
+      shape[field.fieldKey] = field.isRequired
+        ? z.date({ required_error: `${label}は必須です` })
+        : z.date().nullable()
+    } else {
+      shape[field.fieldKey] = field.isRequired
+        ? z.string().min(1, `${label}は必須です`)
+        : z.string()
+    }
+  }
+  return z.object(shape)
+}
+
+function validateFields(): boolean {
+  if (!template.value) return false
+  fieldErrors.value = {}
+
+  const schema = buildValidationSchema(template.value.fields)
+  const data: Record<string, string | number | Date | null> = {}
+  for (const field of template.value.fields) {
+    const val = fieldValues.value[field.fieldKey]
+    if (field.fieldType === 'NUMBER') {
+      data[field.fieldKey] = val?.numberValue ?? null
+    } else if (field.fieldType === 'DATE') {
+      data[field.fieldKey] = val?.dateValue ?? null
+    } else {
+      data[field.fieldKey] = val?.textValue ?? ''
+    }
+  }
+
+  const result = schema.safeParse(data)
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      const key = issue.path[0]
+      if (typeof key === 'string') {
+        fieldErrors.value[key] = issue.message
+      }
+    }
+    return false
+  }
+  return true
+}
 
 watch(
   () => [props.visible, props.templateId],
@@ -65,6 +118,7 @@ watch(
 
 function initFieldValues(fields: FormFieldResponse[]) {
   fieldValues.value = {}
+  fieldErrors.value = {}
   for (const field of fields) {
     fieldValues.value[field.fieldKey] = { textValue: '', numberValue: null, dateValue: null }
   }
@@ -72,6 +126,8 @@ function initFieldValues(fields: FormFieldResponse[]) {
 
 async function submit() {
   if (!template.value) return
+  if (!validateFields()) return
+
   submitting.value = true
 
   const values: SubmissionValueRequest[] = template.value.fields.map((field) => {
@@ -112,6 +168,7 @@ async function submit() {
 function close() {
   emit('update:visible', false)
   fieldValues.value = {}
+  fieldErrors.value = {}
   submitImmediately.value = false
 }
 </script>
@@ -147,6 +204,7 @@ function close() {
           v-if="field.fieldType === 'TEXT'"
           v-model="fieldValues[field.fieldKey].textValue"
           class="w-full"
+          :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
           :placeholder="field.placeholder || ''"
         />
 
@@ -156,6 +214,7 @@ function close() {
           v-model="fieldValues[field.fieldKey].textValue"
           rows="3"
           class="w-full"
+          :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
           :placeholder="field.placeholder || ''"
         />
 
@@ -164,6 +223,7 @@ function close() {
           v-else-if="field.fieldType === 'NUMBER'"
           v-model="fieldValues[field.fieldKey].numberValue"
           class="w-full"
+          :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
           :placeholder="field.placeholder || ''"
         />
 
@@ -173,6 +233,7 @@ function close() {
           v-model="fieldValues[field.fieldKey].dateValue"
           date-format="yy-mm-dd"
           class="w-full"
+          :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
           show-icon
         />
 
@@ -182,6 +243,7 @@ function close() {
           v-model="fieldValues[field.fieldKey].textValue"
           :options="field.optionsJson ? JSON.parse(field.optionsJson) : []"
           class="w-full"
+          :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
           :placeholder="field.placeholder || '選択してください'"
         />
 
@@ -200,8 +262,11 @@ function close() {
           v-else
           v-model="fieldValues[field.fieldKey].textValue"
           class="w-full"
+          :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
           :placeholder="field.placeholder || ''"
         />
+
+        <small v-if="fieldErrors[field.fieldKey]" class="text-red-500">{{ fieldErrors[field.fieldKey] }}</small>
       </div>
 
       <div class="flex items-center gap-2">

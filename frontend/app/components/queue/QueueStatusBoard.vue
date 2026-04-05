@@ -56,13 +56,13 @@ onUnmounted(() => {
       <!-- サマリー -->
       <div class="mb-6 grid grid-cols-2 gap-4">
         <div
-          class="rounded-xl border border-surface-200 bg-surface-0 p-4 text-center dark:border-surface-700 dark:bg-surface-800"
+          class="rounded-xl border border-surface-300 bg-surface-0 p-4 text-center dark:border-surface-600 dark:bg-surface-800"
         >
           <p class="text-3xl font-bold text-primary">{{ status.totalWaiting }}</p>
           <p class="text-sm text-surface-500">待ち人数</p>
         </div>
         <div
-          class="rounded-xl border border-surface-200 bg-surface-0 p-4 text-center dark:border-surface-700 dark:bg-surface-800"
+          class="rounded-xl border border-surface-300 bg-surface-0 p-4 text-center dark:border-surface-600 dark:bg-surface-800"
         >
           <p class="text-3xl font-bold text-primary">{{ status.averageWaitMinutes }}分</p>
           <p class="text-sm text-surface-500">平均待ち時間</p>
@@ -78,7 +78,7 @@ onUnmounted(() => {
           :class="
             counter.isActive
               ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
-              : 'border-surface-200 bg-surface-50 dark:border-surface-700 dark:bg-surface-800'
+              : 'border-surface-200 bg-surface-50 dark:border-surface-600 dark:bg-surface-800'
           "
         >
           <div class="mb-2 flex items-center justify-between">

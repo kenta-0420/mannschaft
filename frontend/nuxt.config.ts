@@ -6,6 +6,11 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   app: {
+    head: {
+      charset: 'utf-8',
+      viewport: 'width=device-width, initial-scale=1',
+      link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
+    },
     pageTransition: { name: 'page-fade' },
   },
   future: {
@@ -42,37 +47,37 @@ export default defineNuxtConfig({
         code: 'ja',
         language: 'ja',
         name: '日本語',
-        files: ['ja/common.json', 'ja/auth.json', 'ja/validation.json'],
+        files: ['ja/common.json', 'ja/auth.json', 'ja/validation.json', 'ja/landing.json'],
       },
       {
         code: 'en',
         language: 'en',
         name: 'English',
-        files: ['en/common.json', 'en/auth.json', 'en/validation.json'],
+        files: ['en/common.json', 'en/auth.json', 'en/validation.json', 'en/landing.json'],
       },
       {
         code: 'zh',
         language: 'zh',
         name: '中文（简体）',
-        files: ['zh/common.json', 'zh/auth.json', 'zh/validation.json'],
+        files: ['zh/common.json', 'zh/auth.json', 'zh/validation.json', 'zh/landing.json'],
       },
       {
         code: 'ko',
         language: 'ko',
         name: '한국어',
-        files: ['ko/common.json', 'ko/auth.json', 'ko/validation.json'],
+        files: ['ko/common.json', 'ko/auth.json', 'ko/validation.json', 'ko/landing.json'],
       },
       {
         code: 'es',
         language: 'es',
         name: 'Español',
-        files: ['es/common.json', 'es/auth.json', 'es/validation.json'],
+        files: ['es/common.json', 'es/auth.json', 'es/validation.json', 'es/landing.json'],
       },
       {
         code: 'de',
         language: 'de',
         name: 'Deutsch',
-        files: ['de/common.json', 'de/auth.json', 'de/validation.json'],
+        files: ['de/common.json', 'de/auth.json', 'de/validation.json', 'de/landing.json'],
       },
     ],
     defaultLocale: 'ja',

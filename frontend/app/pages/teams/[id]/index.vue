@@ -8,6 +8,7 @@ const route = useRoute()
 const teamApi = useTeamApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
+const { templateLabel, visibilityLabel } = useScopeLabels()
 
 const teamId = computed(() => Number(route.params.id))
 const {
@@ -18,13 +19,12 @@ const {
   isAdminOrDeputy,
 } = useRoleAccess('team', teamId)
 
-// サポーター申請状態
 const followStatus = ref<'NONE' | 'PENDING' | 'APPROVED'>('NONE')
 const followLoading = ref(false)
 const showCancelSupporterConfirm = ref(false)
 
 async function fetchFollowStatus() {
-  if (roleName.value) return // メンバーは不要
+  if (roleName.value) return
   try {
     const res = await teamApi.getFollowStatus(teamId.value)
     followStatus.value = res.data.status
@@ -89,27 +89,7 @@ const loading = ref(false)
 const activeTab = ref(0)
 const showLeaveConfirm = ref(false)
 
-const templateLabel: Record<string, string> = {
-  CLUB: 'クラブ・サークル',
-  CLINIC: 'クリニック',
-  CLASS: 'クラス',
-  COMMUNITY: 'コミュニティ',
-  COMPANY: '企業',
-  FAMILY: '家族',
-  RESTAURANT: '飲食店',
-  BEAUTY: '美容院・サロン',
-  STORE: '店舗・小売',
-  VOLUNTEER: 'ボランティア・NPO',
-  NEIGHBORHOOD: '自治会',
-  CONDO: 'マンション管理組合',
-  OTHER: 'その他',
-}
-
-const visibilityLabel: Record<string, string> = {
-  PUBLIC: '公開',
-  ORGANIZATION_ONLY: 'チーム内のみ',
-  PRIVATE: '非公開',
-}
+const displayName = computed(() => team.value?.nickname1 || team.value?.name || '')
 
 async function fetchTeam() {
   loading.value = true
@@ -148,81 +128,24 @@ onMounted(async () => {
     </div>
 
     <template v-else-if="team">
-      <!-- ヘッダー -->
-      <div class="mb-6 flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/dashboard')" />
-          <div>
-            <h1 class="text-2xl font-bold">
-              {{ team.nickname1 || team.name }}
-            </h1>
-            <div class="mt-1 flex items-center gap-2">
-              <Tag :value="templateLabel[team.template] ?? team.template" severity="info" />
-              <RoleBadge v-if="roleName" :role="roleName" />
-            </div>
-            <div class="mt-2 flex items-center gap-4 text-sm text-surface-500">
-              <span class="flex items-center gap-1">
-                <i class="pi pi-users text-xs" />
-                メンバー <strong class="text-surface-700">{{ team.memberCount }}</strong
-                >人
-              </span>
-              <span v-if="team.supporterEnabled" class="flex items-center gap-1">
-                <i class="pi pi-heart text-xs" />
-                サポーター <strong class="text-surface-700">{{ team.supporterCount ?? '—' }}</strong
-                >人
-              </span>
-            </div>
-          </div>
-        </div>
-        <!-- サポーター申請ボタン（非メンバー向け） -->
-        <template v-if="team.supporterEnabled && !roleName">
-          <Button
-            v-if="followStatus === 'APPROVED'"
-            icon="pi pi-heart-fill"
-            label="サポーターです"
-            size="small"
-            :loading="followLoading"
-            class="border-red-400 bg-red-50 text-red-500 hover:bg-red-100"
-            outlined
-            @click="showCancelSupporterConfirm = true"
-          />
-          <span
-            v-else-if="followStatus === 'PENDING'"
-            class="flex items-center gap-2 text-sm text-orange-500"
-          >
-            <i class="pi pi-clock" />申請中（承認待ち）
-            <Button
-              label="取消"
-              size="small"
-              severity="secondary"
-              text
-              :loading="followLoading"
-              @click="cancelSupporter"
-            />
-          </span>
-          <Button
-            v-else
-            label="サポーターになる"
-            icon="pi pi-heart"
-            severity="secondary"
-            outlined
-            size="small"
-            :loading="followLoading"
-            @click="applySupporter"
-          />
-        </template>
-        <Button
-          v-if="!isAdmin && roleName"
-          label="チームから退出"
-          icon="pi pi-sign-out"
-          severity="danger"
-          outlined
-          size="small"
-          @click="showLeaveConfirm = true"
-        />
-      </div>
+      <TeamHeaderBar
+        :team-name="displayName"
+        :template="team.template"
+        :template-label="templateLabel[team.template] ?? team.template"
+        :role-name="roleName"
+        :is-admin="isAdmin"
+        :member-count="team.memberCount"
+        :supporter-enabled="team.supporterEnabled"
+        :supporter-count="team.supporterCount"
+        :follow-status="followStatus"
+        :follow-loading="followLoading"
+        @back="navigateTo('/dashboard')"
+        @apply-supporter="applySupporter"
+        @cancel-supporter="cancelSupporter"
+        @show-cancel-confirm="showCancelSupporterConfirm = true"
+        @show-leave-confirm="showLeaveConfirm = true"
+      />
 
-      <!-- タブ -->
       <Tabs v-model:value="activeTab">
         <TabList>
           <Tab :value="0"> ダッシュボード </Tab>
@@ -234,90 +157,36 @@ onMounted(async () => {
         </TabList>
 
         <TabPanels>
-          <!-- ダッシュボードタブ -->
           <TabPanel :value="0">
             <div class="mt-4">
               <ScopeDashboard
                 scope-type="team"
                 :scope-id="teamId"
-                :scope-name="team.nickname1 || team.name"
+                :scope-name="displayName"
                 :scope-template="team.template"
               />
             </div>
           </TabPanel>
 
-          <!-- 基本情報タブ -->
           <TabPanel :value="1">
-            <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div class="space-y-4">
-                <div>
-                  <label class="text-sm font-medium text-gray-500">チーム名</label>
-                  <p class="mt-1">
-                    {{ team.name }}
-                  </p>
-                </div>
-                <div v-if="team.nameKana">
-                  <label class="text-sm font-medium text-gray-500">チーム名（カナ）</label>
-                  <p class="mt-1">
-                    {{ team.nameKana }}
-                  </p>
-                </div>
-                <div v-if="team.nickname1">
-                  <label class="text-sm font-medium text-gray-500">ニックネーム1</label>
-                  <p class="mt-1">
-                    {{ team.nickname1 }}
-                  </p>
-                </div>
-                <div v-if="team.nickname2">
-                  <label class="text-sm font-medium text-gray-500">ニックネーム2</label>
-                  <p class="mt-1">
-                    {{ team.nickname2 }}
-                  </p>
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-gray-500">テンプレート</label>
-                  <p class="mt-1">
-                    {{ templateLabel[team.template] ?? team.template }}
-                  </p>
-                </div>
-              </div>
-              <div class="space-y-4">
-                <div>
-                  <label class="text-sm font-medium text-gray-500">所在地</label>
-                  <p class="mt-1">
-                    {{ [team.prefecture, team.city].filter(Boolean).join(' ') || '未設定' }}
-                  </p>
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-gray-500">公開設定</label>
-                  <p class="mt-1">
-                    {{ visibilityLabel[team.visibility] ?? team.visibility }}
-                  </p>
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-gray-500">メンバー数</label>
-                  <p class="mt-1">{{ team.memberCount }}人</p>
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-gray-500">サポーター機能</label>
-                  <p class="mt-1">
-                    {{ team.supporterEnabled ? '有効' : '無効' }}
-                  </p>
-                </div>
-                <div v-if="team.description">
-                  <label class="text-sm font-medium text-gray-500">説明</label>
-                  <p class="mt-1 whitespace-pre-wrap">
-                    {{ team.description }}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div v-if="isAdmin" class="mt-6">
-              <Button label="設定を編集" icon="pi pi-pencil" outlined />
-            </div>
+            <TeamDetailInfo
+              :name="team.name"
+              :name-kana="team.nameKana"
+              :nickname1="team.nickname1"
+              :nickname2="team.nickname2"
+              :template="team.template"
+              :template-label="templateLabel[team.template] ?? team.template"
+              :prefecture="team.prefecture"
+              :city="team.city"
+              :visibility="team.visibility"
+              :visibility-label="visibilityLabel[team.visibility] ?? team.visibility"
+              :member-count="team.memberCount"
+              :supporter-enabled="team.supporterEnabled"
+              :description="team.description"
+              :is-admin="isAdmin"
+            />
           </TabPanel>
 
-          <!-- メンバータブ -->
           <TabPanel :value="2">
             <div class="mt-4">
               <MemberTable
@@ -329,21 +198,18 @@ onMounted(async () => {
             </div>
           </TabPanel>
 
-          <!-- 招待タブ -->
           <TabPanel v-if="isAdminOrDeputy" :value="3">
             <div class="mt-4">
               <InviteTokenList scope-type="team" :scope-id="teamId" />
             </div>
           </TabPanel>
 
-          <!-- サポーター管理タブ -->
           <TabPanel v-if="isAdmin && team.supporterEnabled" :value="4">
             <div class="mt-4">
               <SupporterManagementPanel scope-type="team" :scope-id="teamId" />
             </div>
           </TabPanel>
 
-          <!-- 機能設定タブ -->
           <TabPanel v-if="isAdmin" :value="5">
             <div class="mt-4">
               <ModuleSettingsPanel scope-type="team" :scope-id="teamId" />
@@ -352,15 +218,13 @@ onMounted(async () => {
         </TabPanels>
       </Tabs>
 
-      <!-- 退出確認ダイアログ -->
-      <!-- サポーターをやめる確認ダイアログ -->
       <Dialog
         v-model:visible="showCancelSupporterConfirm"
         header="サポーターをやめますか？"
         :style="{ width: '400px' }"
         modal
       >
-        <p>{{ team.nickname1 || team.name }}のサポーターをやめます。よろしいですか？</p>
+        <p>{{ displayName }}のサポーターをやめます。よろしいですか？</p>
         <template #footer>
           <Button label="キャンセル" text @click="showCancelSupporterConfirm = false" />
           <Button

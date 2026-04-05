@@ -115,7 +115,7 @@ onMounted(async () => {
         <div
           v-for="td in todayDuties"
           :key="td.dutyId"
-          class="flex items-center gap-3 rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+          class="flex items-center gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
         >
           <span class="text-2xl">{{ td.icon }}</span>
           <div>
@@ -131,7 +131,7 @@ onMounted(async () => {
       <div
         v-for="duty in duties"
         :key="duty.id"
-        class="flex items-center justify-between rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+        class="flex items-center justify-between rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
       >
         <div class="flex items-center gap-3">
           <span class="text-2xl">{{ duty.icon }}</span>

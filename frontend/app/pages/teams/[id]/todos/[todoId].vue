@@ -95,25 +95,25 @@ onMounted(async () => {
 
     <!-- メタ情報 -->
     <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-      <div class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+      <div class="rounded-lg border border-surface-300 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">ステータス</p>
         <div class="mt-1">
           <TodoStatusBadge :status="todo.status" />
         </div>
       </div>
-      <div class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+      <div class="rounded-lg border border-surface-300 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">優先度</p>
         <div class="mt-1">
           <TodoPriorityBadge :priority="todo.priority" />
         </div>
       </div>
-      <div class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+      <div class="rounded-lg border border-surface-300 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">期限</p>
         <p class="mt-1 text-sm font-medium" :class="{ 'text-red-500': todo.daysRemaining !== null && todo.daysRemaining < 0 && todo.status !== 'COMPLETED' }">
           {{ formatDate(todo.dueDate) }}
         </p>
       </div>
-      <div class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+      <div class="rounded-lg border border-surface-300 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">作成者</p>
         <p class="mt-1 text-sm font-medium">{{ todo.createdBy.displayName }}</p>
       </div>
@@ -127,13 +127,13 @@ onMounted(async () => {
     </div>
 
     <!-- 説明 -->
-    <div v-if="todo.description" class="mb-6 rounded-lg border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+    <div v-if="todo.description" class="mb-6 rounded-lg border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
       <h3 class="mb-2 text-sm font-semibold">説明</h3>
       <p class="whitespace-pre-wrap text-sm text-surface-700 dark:text-surface-300">{{ todo.description }}</p>
     </div>
 
     <!-- 担当者 -->
-    <div class="mb-6 rounded-lg border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+    <div class="mb-6 rounded-lg border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
       <h3 class="mb-2 text-sm font-semibold">担当者</h3>
       <div v-if="todo.assignees.length > 0" class="flex flex-wrap gap-2">
         <div v-for="a in todo.assignees" :key="a.userId" class="flex items-center gap-2 rounded-full bg-surface-100 px-3 py-1 dark:bg-surface-700">
@@ -158,7 +158,7 @@ onMounted(async () => {
     </div>
 
     <!-- コメント -->
-    <div class="rounded-lg border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+    <div class="rounded-lg border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
       <TodoComments scope-type="team" :scope-id="teamId" :todo-id="todoId" />
     </div>
 

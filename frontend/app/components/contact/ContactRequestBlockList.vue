@@ -59,7 +59,7 @@ onMounted(fetchBlocks)
       <div
         v-for="block in blocks"
         :key="block.id"
-        class="flex items-center gap-3 rounded-lg border border-surface-200 p-3"
+        class="flex items-center gap-3 rounded-lg border border-surface-300 p-3"
       >
         <Avatar
           :image="block.blockedUser.avatarUrl ?? undefined"

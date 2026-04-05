@@ -151,7 +151,6 @@ onMounted(async () => {
     <PageLoading v-if="loading" size="40px" />
 
     <div v-else-if="project">
-      <!-- ヘッダー -->
       <div class="mb-6">
         <Button
           icon="pi pi-arrow-left"
@@ -182,9 +181,8 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- 進捗 -->
       <div
-        class="mb-6 rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+        class="mb-6 rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
       >
         <div class="mb-2 grid gap-4 sm:grid-cols-4">
           <div>
@@ -218,63 +216,15 @@ onMounted(async () => {
         />
       </div>
 
-      <!-- マイルストーン -->
-      <div class="mb-6">
-        <div class="mb-2 flex items-center justify-between">
-          <h2 class="text-lg font-semibold">マイルストーン</h2>
-          <Button
-            v-if="isAdminOrDeputy"
-            icon="pi pi-plus"
-            label="追加"
-            text
-            size="small"
-            @click="openCreateMilestone"
-          />
-        </div>
-        <div class="flex flex-col gap-2">
-          <div
-            v-for="ms in milestones"
-            :key="ms.id"
-            class="flex items-center justify-between rounded-xl border border-surface-200 bg-surface-0 p-3 dark:border-surface-700 dark:bg-surface-800"
-          >
-            <div class="flex items-center gap-3">
-              <Checkbox
-                :model-value="ms.completed"
-                :binary="true"
-                @update:model-value="toggleMilestoneComplete(ms)"
-              />
-              <div>
-                <p :class="ms.completed ? 'text-surface-400 line-through' : 'font-medium'">
-                  {{ ms.title }}
-                </p>
-                <p v-if="ms.dueDate" class="text-xs text-surface-500">期限: {{ ms.dueDate }}</p>
-              </div>
-            </div>
-            <div v-if="isAdminOrDeputy" class="flex gap-1">
-              <Button
-                icon="pi pi-pencil"
-                text
-                rounded
-                size="small"
-                @click="openEditMilestone(ms)"
-              />
-              <Button
-                icon="pi pi-trash"
-                text
-                rounded
-                size="small"
-                severity="danger"
-                @click="removeMilestone(ms)"
-              />
-            </div>
-          </div>
-          <div v-if="milestones.length === 0" class="py-4 text-center text-surface-400">
-            マイルストーンがありません
-          </div>
-        </div>
-      </div>
+      <ProjectMilestoneList
+        :milestones="milestones"
+        :can-edit="isAdminOrDeputy"
+        @create="openCreateMilestone"
+        @edit="openEditMilestone"
+        @toggle-complete="toggleMilestoneComplete"
+        @remove="removeMilestone"
+      />
 
-      <!-- タスク -->
       <div>
         <h2 class="mb-2 text-lg font-semibold">関連タスク</h2>
         <div v-if="todos.length === 0" class="py-4 text-center text-surface-400">
@@ -284,7 +234,7 @@ onMounted(async () => {
           <div
             v-for="(todo, idx) in todos"
             :key="idx"
-            class="rounded-lg border border-surface-100 p-3 dark:border-surface-700"
+            class="rounded-lg border border-surface-100 p-3 dark:border-surface-600"
           >
             <pre class="text-sm">{{ JSON.stringify(todo, null, 2) }}</pre>
           </div>
@@ -292,64 +242,17 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- プロジェクト編集ダイアログ -->
-    <Dialog
+    <ProjectEditDialog
       v-model:visible="showEditDialog"
-      header="プロジェクト編集"
-      modal
-      class="w-full max-w-lg"
-    >
-      <div class="flex flex-col gap-4">
-        <div>
-          <label class="mb-1 block text-sm font-medium">タイトル</label>
-          <InputText v-model="editForm.title" class="w-full" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-medium">説明</label>
-          <Textarea v-model="editForm.description" class="w-full" rows="3" />
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="mb-1 block text-sm font-medium">絵文字</label>
-            <InputText v-model="editForm.emoji" class="w-full" />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm font-medium">カラー</label>
-            <InputText v-model="editForm.color" type="color" class="w-full" />
-          </div>
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-medium">期限</label>
-          <InputText v-model="editForm.dueDate" type="date" class="w-full" />
-        </div>
-      </div>
-      <template #footer>
-        <Button label="キャンセル" text @click="showEditDialog = false" />
-        <Button label="更新" @click="saveProject" />
-      </template>
-    </Dialog>
+      :form="editForm"
+      @save="saveProject"
+    />
 
-    <!-- マイルストーンダイアログ -->
-    <Dialog
+    <ProjectMilestoneDialog
       v-model:visible="showMilestoneDialog"
-      :header="editingMilestone ? 'マイルストーン編集' : 'マイルストーン追加'"
-      modal
-      class="w-full max-w-md"
-    >
-      <div class="flex flex-col gap-4">
-        <div>
-          <label class="mb-1 block text-sm font-medium">タイトル</label>
-          <InputText v-model="milestoneForm.title" class="w-full" placeholder="マイルストーン名" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-medium">期限</label>
-          <InputText v-model="milestoneForm.dueDate" type="date" class="w-full" />
-        </div>
-      </div>
-      <template #footer>
-        <Button label="キャンセル" text @click="showMilestoneDialog = false" />
-        <Button :label="editingMilestone ? '更新' : '追加'" @click="saveMilestone" />
-      </template>
-    </Dialog>
+      :form="milestoneForm"
+      :editing="editingMilestone"
+      @save="saveMilestone"
+    />
   </div>
 </template>

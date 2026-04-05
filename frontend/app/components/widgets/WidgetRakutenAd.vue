@@ -56,6 +56,11 @@ const TEMPLATE_COPY: Record<string, AdCopy> = {
     description: 'ケア用品・施術備品・消耗品をポイントでお得に揃えられます。',
     tags: 'ケア用品 / 施術備品 / 消耗品',
   },
+  STORE: {
+    title: '店舗・小売用品を楽天で',
+    description: '陳列用品・包装資材・POPなど店舗運営に必要なアイテムをポイントでお得に揃えましょう。',
+    tags: '陳列用品 / 包装資材 / 店舗備品',
+  },
   VOLUNTEER: {
     title: 'ボランティア用品を楽天で',
     description: '活動に必要な備品・イベント用品・防災グッズをポイントでお得に揃えましょう。',
@@ -102,7 +107,7 @@ const copy = computed<AdCopy>(() => {
     href="https://hb.afl.rakuten.co.jp/hsc/52836912.6a09824b.52835f89.0cf8649c/?link_type=hybrid_url&ut=eyJwYWdlIjoic2hvcCIsInR5cGUiOiJoeWJyaWRfdXJsIiwiY29sIjoxLCJjYXQiOiIxMDIiLCJiYW4iOjE1MjQxNTEsImFtcCI6ZmFsc2V9"
     target="_blank"
     rel="noopener sponsored"
-    class="group relative flex flex-col overflow-hidden rounded-xl border border-surface-200 bg-surface-0 p-3 shadow-sm transition-all hover:shadow-md dark:border-surface-700 dark:bg-surface-800"
+    class="group relative flex flex-col overflow-hidden rounded-xl border border-surface-300 bg-surface-0 p-3 shadow-sm transition-all hover:shadow-md dark:border-surface-600 dark:bg-surface-800"
   >
     <!-- PRバッジ -->
     <span

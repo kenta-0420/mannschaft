@@ -40,7 +40,7 @@ onMounted(() => load())
       <div
         v-for="s in spaces"
         :key="s.id"
-        class="rounded-xl border border-surface-200 bg-surface-0 p-4 text-center"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-4 text-center"
       >
         <p class="text-lg font-bold">{{ s.spaceNumber }}</p>
         <span

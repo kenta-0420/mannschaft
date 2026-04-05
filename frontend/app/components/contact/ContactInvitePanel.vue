@@ -104,7 +104,7 @@ onMounted(fetchTokens)
       />
     </div>
 
-    <div v-if="showCreateForm" class="rounded-lg border border-surface-200 p-4">
+    <div v-if="showCreateForm" class="rounded-lg border border-surface-300 p-4">
       <div class="flex flex-col gap-3">
         <div>
           <label class="mb-1 block text-sm font-medium">ラベル（任意）</label>
@@ -157,7 +157,7 @@ onMounted(fetchTokens)
     </div>
 
     <div v-else class="flex flex-col gap-2">
-      <div v-for="token in tokens" :key="token.id" class="rounded-lg border border-surface-200 p-3">
+      <div v-for="token in tokens" :key="token.id" class="rounded-lg border border-surface-300 p-3">
         <div class="mb-2 flex items-center justify-between">
           <span class="text-sm font-medium">{{ token.label || '（ラベルなし）' }}</span>
           <Button
@@ -184,7 +184,7 @@ onMounted(fetchTokens)
           <img
             :src="token.qrCodeUrl"
             alt="QRコード"
-            class="h-16 w-16 rounded border border-surface-200"
+            class="h-16 w-16 rounded border border-surface-300"
           />
           <span class="text-xs text-gray-400">QRコードをスキャンして追加</span>
         </div>

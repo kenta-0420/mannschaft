@@ -31,7 +31,7 @@ onMounted(() => load())
         <div
           v-for="(value, key) in data.metrics"
           :key="key"
-          class="rounded-xl border border-surface-200 bg-surface-0 p-4 text-center"
+          class="rounded-xl border border-surface-300 bg-surface-0 p-4 text-center"
         >
           <p class="text-sm text-surface-500">{{ key }}</p>
           <p class="text-2xl font-bold text-primary">{{ value }}</p>
@@ -43,7 +43,7 @@ onMounted(() => load())
           <div
             v-for="r in data.records"
             :key="r.id"
-            class="rounded-xl border border-surface-200 bg-surface-0 p-4"
+            class="rounded-xl border border-surface-300 bg-surface-0 p-4"
           >
             <div class="flex items-center justify-between">
               <span class="text-sm font-medium">{{ r.metricName }}</span>

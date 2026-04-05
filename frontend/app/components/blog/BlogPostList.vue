@@ -114,7 +114,7 @@ defineExpose({ refresh: loadPosts })
       <button
         v-for="post in posts"
         :key="post.id"
-        class="overflow-hidden rounded-xl border border-surface-200 bg-surface-0 text-left transition-shadow hover:shadow-md"
+        class="overflow-hidden rounded-xl border border-surface-300 bg-surface-0 text-left transition-shadow hover:shadow-md"
         @click="
           emit('select', post)
           navigateTo(`/blog/posts/${post.id}/edit`)

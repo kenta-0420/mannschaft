@@ -37,7 +37,7 @@ onMounted(() => loadPermissions())
       <h1 class="text-2xl font-bold">チャット</h1>
     </div>
 
-    <div class="flex h-[calc(100vh-12rem)] overflow-hidden rounded-xl border border-surface-200">
+    <div class="flex h-[calc(100vh-12rem)] overflow-hidden rounded-xl border border-surface-300">
       <div class="w-64 shrink-0 border-r border-surface-200 bg-surface-50">
         <ChatChannelList
           ref="listRef"

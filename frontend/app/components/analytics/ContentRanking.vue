@@ -27,7 +27,7 @@ const typeIcon = (type: string) => {
         v-for="(item, index) in rankings"
         :key="item.contentId"
         :to="item.url"
-        class="flex items-center gap-3 rounded-lg border border-surface-200 p-3 transition-shadow hover:shadow-sm dark:border-surface-700"
+        class="flex items-center gap-3 rounded-lg border border-surface-300 p-3 transition-shadow hover:shadow-sm dark:border-surface-600"
       >
         <span class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
           {{ index + 1 }}

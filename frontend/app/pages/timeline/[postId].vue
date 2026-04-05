@@ -130,7 +130,7 @@ onMounted(() => loadPost())
       />
 
       <!-- リプライフォーム -->
-      <div class="mt-4 rounded-xl border border-surface-200 bg-surface-0 p-4">
+      <div class="mt-4 rounded-xl border border-surface-300 bg-surface-0 p-4">
         <Textarea
           v-model="replyContent"
           placeholder="返信を入力..."

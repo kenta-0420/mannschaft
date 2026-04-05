@@ -65,7 +65,7 @@ onMounted(load)
       <div
         v-for="swap in swaps"
         :key="swap.id"
-        class="flex items-center gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700"
+        class="flex items-center gap-3 rounded-lg border border-surface-300 p-3 dark:border-surface-600"
       >
         <div class="min-w-0 flex-1">
           <p class="text-sm">

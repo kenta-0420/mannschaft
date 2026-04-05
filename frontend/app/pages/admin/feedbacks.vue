@@ -164,7 +164,7 @@ onMounted(load)
       modal
     >
       <div v-if="selectedFeedback" class="flex flex-col gap-4">
-        <div class="rounded border border-surface-200 bg-surface-50 p-3">
+        <div class="rounded border border-surface-300 bg-surface-50 p-3">
           <p class="text-xs text-surface-500">{{ selectedFeedback.category }}</p>
           <p class="font-medium">{{ selectedFeedback.title }}</p>
           <p class="mt-1 text-sm">{{ selectedFeedback.body }}</p>

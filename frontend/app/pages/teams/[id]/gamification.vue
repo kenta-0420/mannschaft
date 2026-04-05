@@ -89,7 +89,7 @@ onMounted(loadData)
               <div
                 v-for="ub in badges"
                 :key="ub.id"
-                class="flex flex-col items-center rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+                class="flex flex-col items-center rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
               >
                 <img
                   v-if="ub.badge.iconUrl"
@@ -131,7 +131,7 @@ onMounted(loadData)
               <div
                 v-for="entry in rankings"
                 :key="entry.userId"
-                class="flex items-center gap-4 rounded-xl border border-surface-200 bg-surface-0 p-3 dark:border-surface-700 dark:bg-surface-800"
+                class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-3 dark:border-surface-600 dark:bg-surface-800"
               >
                 <span
                   class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold"

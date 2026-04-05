@@ -47,27 +47,13 @@ const currentPage = ref(0)
 const pageSize = 20
 const showCreateDialog = ref(false)
 
+const { templateLabel } = useScopeLabels()
+
 const searchParams = ref({
   keyword: '',
   prefecture: '',
   template: '',
 })
-
-const templateLabel: Record<string, string> = {
-  CLUB: 'クラブ・サークル',
-  CLINIC: 'クリニック',
-  CLASS: 'クラス',
-  COMMUNITY: 'コミュニティ',
-  COMPANY: '企業',
-  FAMILY: '家族',
-  RESTAURANT: '飲食店',
-  BEAUTY: '美容院・サロン',
-  STORE: '店舗・小売',
-  VOLUNTEER: 'ボランティア・NPO',
-  NEIGHBORHOOD: '自治会',
-  CONDO: 'マンション管理組合',
-  OTHER: 'その他',
-}
 
 async function fetchTeams() {
   loading.value = true

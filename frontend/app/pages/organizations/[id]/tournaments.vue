@@ -65,7 +65,7 @@ onMounted(() => load())
       <div
         v-for="t in tournaments"
         :key="t.id"
-        class="rounded-xl border border-surface-200 bg-surface-0 p-4"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <div class="mb-2 flex items-center gap-2">
           <span :class="getStatusClass(t.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{

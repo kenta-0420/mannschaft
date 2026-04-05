@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import { z } from 'zod'
 import type { FormFieldRequest } from '~/types/form'
 
 const props = defineProps<{
@@ -18,19 +21,43 @@ const notification = useNotification()
 const { handleApiError, getFieldErrors } = useErrorHandler()
 
 const submitting = ref(false)
-const fieldErrors = ref<Record<string, string>>({})
+const serverErrors = ref<Record<string, string>>({})
 const isEdit = computed(() => !!props.templateId)
 
-const form = ref({
-  name: '',
-  description: '',
-  requiresApproval: false,
-  allowEditAfterSubmit: false,
-  maxSubmissionsPerUser: null as number | null,
-  deadline: null as Date | null,
-  targetCount: null as number | null,
-  fields: [] as FormFieldRequest[],
+const schema = toTypedSchema(
+  z.object({
+    name: z.string().min(1, 'フォーム名は必須です'),
+    description: z.string().default(''),
+    requiresApproval: z.boolean().default(false),
+    allowEditAfterSubmit: z.boolean().default(false),
+    maxSubmissionsPerUser: z.number().min(1, '1以上の値を入力してください').nullable().default(null),
+    deadline: z.date().nullable().default(null),
+    targetCount: z.number().min(1, '1以上の値を入力してください').nullable().default(null),
+  }),
+)
+
+const { defineField, handleSubmit, errors, resetForm: resetValidation, setValues } = useForm({
+  validationSchema: schema,
+  initialValues: {
+    name: '',
+    description: '',
+    requiresApproval: false,
+    allowEditAfterSubmit: false,
+    maxSubmissionsPerUser: null,
+    deadline: null,
+    targetCount: null,
+  },
 })
+
+const [name] = defineField('name')
+const [description] = defineField('description')
+const [requiresApproval] = defineField('requiresApproval')
+const [allowEditAfterSubmit] = defineField('allowEditAfterSubmit')
+const [maxSubmissionsPerUser] = defineField('maxSubmissionsPerUser')
+const [deadline] = defineField('deadline')
+const [targetCount] = defineField('targetCount')
+
+const fields = ref<FormFieldRequest[]>([])
 
 const fieldTypeOptions = [
   { label: 'テキスト', value: 'TEXT' },
@@ -49,14 +76,16 @@ watch(
       try {
         const res = await formApi.getTemplate(props.scopeType, props.scopeId, templateId as number)
         const d = res.data
-        form.value.name = d.name
-        form.value.description = d.description ?? ''
-        form.value.requiresApproval = d.requiresApproval
-        form.value.allowEditAfterSubmit = d.allowEditAfterSubmit
-        form.value.maxSubmissionsPerUser = d.maxSubmissionsPerUser
-        form.value.deadline = d.deadline ? new Date(d.deadline) : null
-        form.value.targetCount = d.targetCount
-        form.value.fields = d.fields.map((f) => ({
+        setValues({
+          name: d.name,
+          description: d.description ?? '',
+          requiresApproval: d.requiresApproval,
+          allowEditAfterSubmit: d.allowEditAfterSubmit,
+          maxSubmissionsPerUser: d.maxSubmissionsPerUser,
+          deadline: d.deadline ? new Date(d.deadline) : null,
+          targetCount: d.targetCount,
+        })
+        fields.value = d.fields.map((f) => ({
           fieldKey: f.fieldKey,
           fieldLabel: f.fieldLabel ?? '',
           fieldType: f.fieldType ?? 'TEXT',
@@ -75,41 +104,36 @@ watch(
 )
 
 function addField() {
-  form.value.fields.push({
-    fieldKey: `field_${form.value.fields.length + 1}`,
+  fields.value.push({
+    fieldKey: `field_${fields.value.length + 1}`,
     fieldLabel: '',
     fieldType: 'TEXT',
     isRequired: false,
-    sortOrder: form.value.fields.length,
+    sortOrder: fields.value.length,
     placeholder: '',
   })
 }
 
 function removeField(index: number) {
-  form.value.fields.splice(index, 1)
-  form.value.fields.forEach((f, i) => {
+  fields.value.splice(index, 1)
+  fields.value.forEach((f, i) => {
     f.sortOrder = i
   })
 }
 
-async function submit() {
-  if (!form.value.name.trim()) {
-    fieldErrors.value = { name: 'フォーム名は必須です' }
-    return
-  }
-
+const submit = handleSubmit(async (values) => {
   submitting.value = true
-  fieldErrors.value = {}
+  serverErrors.value = {}
 
   const body = {
-    name: form.value.name.trim(),
-    description: form.value.description.trim() || undefined,
-    requiresApproval: form.value.requiresApproval,
-    allowEditAfterSubmit: form.value.allowEditAfterSubmit,
-    maxSubmissionsPerUser: form.value.maxSubmissionsPerUser || undefined,
-    deadline: form.value.deadline ? form.value.deadline.toISOString() : undefined,
-    targetCount: form.value.targetCount || undefined,
-    fields: form.value.fields.map((f) => ({
+    name: values.name.trim(),
+    description: values.description.trim() || undefined,
+    requiresApproval: values.requiresApproval,
+    allowEditAfterSubmit: values.allowEditAfterSubmit,
+    maxSubmissionsPerUser: values.maxSubmissionsPerUser || undefined,
+    deadline: values.deadline ? values.deadline.toISOString() : undefined,
+    targetCount: values.targetCount || undefined,
+    fields: fields.value.map((f) => ({
       ...f,
       optionsJson: f.optionsJson || undefined,
       placeholder: f.placeholder || undefined,
@@ -127,27 +151,29 @@ async function submit() {
     emit('saved')
     close()
   } catch (error) {
-    fieldErrors.value = getFieldErrors(error)
-    if (Object.keys(fieldErrors.value).length === 0) {
+    serverErrors.value = getFieldErrors(error)
+    if (Object.keys(serverErrors.value).length === 0) {
       handleApiError(error, isEdit.value ? 'フォームテンプレート更新' : 'フォームテンプレート作成')
     }
   } finally {
     submitting.value = false
   }
-}
+})
 
 function resetForm() {
-  form.value = {
-    name: '',
-    description: '',
-    requiresApproval: false,
-    allowEditAfterSubmit: false,
-    maxSubmissionsPerUser: null,
-    deadline: null,
-    targetCount: null,
-    fields: [],
-  }
-  fieldErrors.value = {}
+  resetValidation({
+    values: {
+      name: '',
+      description: '',
+      requiresApproval: false,
+      allowEditAfterSubmit: false,
+      maxSubmissionsPerUser: null,
+      deadline: null,
+      targetCount: null,
+    },
+  })
+  fields.value = []
+  serverErrors.value = {}
 }
 
 function close() {
@@ -170,24 +196,24 @@ function close() {
           >フォーム名 <span class="text-red-500">*</span></label
         >
         <InputText
-          v-model="form.name"
+          v-model="name"
           class="w-full"
-          :class="{ 'p-invalid': fieldErrors.name }"
+          :class="{ 'p-invalid': errors.name || serverErrors.name }"
           placeholder="フォーム名"
         />
-        <small v-if="fieldErrors.name" class="text-red-500">{{ fieldErrors.name }}</small>
+        <small v-if="errors.name || serverErrors.name" class="text-red-500">{{ errors.name || serverErrors.name }}</small>
       </div>
 
       <div>
         <label class="mb-1 block text-sm font-medium">説明</label>
-        <Textarea v-model="form.description" rows="2" class="w-full" placeholder="フォームの説明" />
+        <Textarea v-model="description" rows="2" class="w-full" placeholder="フォームの説明" />
       </div>
 
       <div class="grid grid-cols-3 gap-3">
         <div>
           <label class="mb-1 block text-sm font-medium">期限</label>
           <DatePicker
-            v-model="form.deadline"
+            v-model="deadline"
             show-time
             date-format="yy/mm/dd"
             class="w-full"
@@ -196,21 +222,21 @@ function close() {
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">目標提出数</label>
-          <InputNumber v-model="form.targetCount" class="w-full" :min="1" />
+          <InputNumber v-model="targetCount" class="w-full" :min="1" />
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">最大提出回数/人</label>
-          <InputNumber v-model="form.maxSubmissionsPerUser" class="w-full" :min="1" />
+          <InputNumber v-model="maxSubmissionsPerUser" class="w-full" :min="1" />
         </div>
       </div>
 
       <div class="flex gap-4">
         <div class="flex items-center gap-2">
-          <Checkbox v-model="form.requiresApproval" :binary="true" input-id="reqApproval" />
+          <Checkbox v-model="requiresApproval" :binary="true" input-id="reqApproval" />
           <label for="reqApproval" class="text-sm">承認制</label>
         </div>
         <div class="flex items-center gap-2">
-          <Checkbox v-model="form.allowEditAfterSubmit" :binary="true" input-id="allowEdit" />
+          <Checkbox v-model="allowEditAfterSubmit" :binary="true" input-id="allowEdit" />
           <label for="allowEdit" class="text-sm">提出後の編集を許可</label>
         </div>
       </div>
@@ -227,7 +253,7 @@ function close() {
             @click="addField"
           />
         </div>
-        <div v-for="(field, index) in form.fields" :key="index" class="mb-2 rounded border p-3">
+        <div v-for="(field, index) in fields" :key="index" class="mb-2 rounded border p-3">
           <div class="mb-2 flex items-center justify-between">
             <span class="text-sm font-medium">フィールド {{ index + 1 }}</span>
             <Button
@@ -264,7 +290,7 @@ function close() {
             <InputText v-model="field.placeholder" class="flex-1" placeholder="プレースホルダー" />
           </div>
         </div>
-        <p v-if="form.fields.length === 0" class="text-sm text-surface-400">
+        <p v-if="fields.length === 0" class="text-sm text-surface-400">
           フィールドが追加されていません
         </p>
       </div>

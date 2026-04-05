@@ -72,7 +72,7 @@ onMounted(loadInvoices)
 
     <ProgressSpinner v-if="loading" class="flex justify-center py-10" />
 
-    <DataTable v-else :value="invoices" striped-rows @row-click="(e: any) => viewDetail(e.data)">
+    <DataTable v-else :value="invoices" striped-rows @row-click="(e: { data: InvoiceSummaryResponse }) => viewDetail(e.data)">
       <Column field="invoiceNumber" header="請求書番号" />
       <Column field="invoiceMonth" header="対象月" />
       <Column field="totalWithTax" header="税込合計">

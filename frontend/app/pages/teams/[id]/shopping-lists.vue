@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ShoppingListResponse, ShoppingItemResponse } from '~/types/shopping-list'
+import type { ShoppingListResponse } from '~/types/shopping-list'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -11,14 +11,14 @@ const { showError } = useNotification()
 
 const lists = ref<ShoppingListResponse[]>([])
 const selectedList = ref<ShoppingListResponse | null>(null)
-const items = ref<ShoppingItemResponse[]>([])
 const loading = ref(true)
-const loadingItems = ref(false)
 const showListDialog = ref(false)
 const listName = ref('')
 const isTemplate = ref(false)
 const editingList = ref<ShoppingListResponse | null>(null)
-const newItemName = ref('')
+
+const { items, loadingItems, newItemName, loadItems, addItem, toggleItem, removeItem, clearChecked } =
+  useShoppingItems(teamId, selectedList)
 
 async function loadLists() {
   loading.value = true
@@ -37,15 +37,7 @@ async function loadLists() {
 
 async function selectList(list: ShoppingListResponse) {
   selectedList.value = list
-  loadingItems.value = true
-  try {
-    const res = await shoppingApi.listItems(teamId, list.id)
-    items.value = res.data
-  } catch {
-    showError('アイテムの取得に失敗しました')
-  } finally {
-    loadingItems.value = false
-  }
+  await loadItems()
 }
 
 function openCreateList() {
@@ -96,47 +88,6 @@ async function removeList(list: ShoppingListResponse) {
   }
 }
 
-async function addItem() {
-  if (!selectedList.value || !newItemName.value.trim()) return
-  try {
-    await shoppingApi.createItem(teamId, selectedList.value.id, { name: newItemName.value.trim() })
-    newItemName.value = ''
-    await selectList(selectedList.value)
-  } catch {
-    showError('アイテムの追加に失敗しました')
-  }
-}
-
-async function toggleItem(item: ShoppingItemResponse) {
-  if (!selectedList.value) return
-  try {
-    await shoppingApi.checkItem(teamId, selectedList.value.id, item.id)
-    await selectList(selectedList.value)
-  } catch {
-    showError('更新に失敗しました')
-  }
-}
-
-async function removeItem(item: ShoppingItemResponse) {
-  if (!selectedList.value) return
-  try {
-    await shoppingApi.deleteItem(teamId, selectedList.value.id, item.id)
-    await selectList(selectedList.value)
-  } catch {
-    showError('削除に失敗しました')
-  }
-}
-
-async function clearChecked() {
-  if (!selectedList.value || !confirm('チェック済みのアイテムを削除しますか？')) return
-  try {
-    await shoppingApi.deleteCheckedItems(teamId, selectedList.value.id)
-    await selectList(selectedList.value)
-  } catch {
-    showError('削除に失敗しました')
-  }
-}
-
 onMounted(async () => {
   await loadPermissions()
   await loadLists()
@@ -163,7 +114,7 @@ onMounted(async () => {
             :class="
               selectedList?.id === list.id
                 ? 'border-primary bg-primary/5'
-                : 'border-surface-200 bg-surface-0 hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-800'
+                : 'border-surface-200 bg-surface-0 hover:bg-surface-50 dark:border-surface-600 dark:bg-surface-800'
             "
             @click="selectList(list)"
           >
@@ -212,7 +163,7 @@ onMounted(async () => {
       <div class="lg:col-span-2">
         <div
           v-if="selectedList"
-          class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+          class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
         >
           <div class="mb-4 flex items-center justify-between">
             <h2 class="text-lg font-semibold">{{ selectedList.name }}</h2>
@@ -273,7 +224,7 @@ onMounted(async () => {
         </div>
         <div
           v-else
-          class="rounded-xl border border-surface-200 bg-surface-0 p-8 text-center text-surface-400 dark:border-surface-700 dark:bg-surface-800"
+          class="rounded-xl border border-surface-300 bg-surface-0 p-8 text-center text-surface-400 dark:border-surface-600 dark:bg-surface-800"
         >
           リストを選択してください
         </div>

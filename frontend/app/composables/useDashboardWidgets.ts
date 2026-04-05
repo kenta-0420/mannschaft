@@ -126,6 +126,20 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     description: '回答待ちのアンケート',
     scope: ['team', 'organization'],
   },
+  {
+    key: 'survey-results',
+    label: 'アンケート結果',
+    icon: 'pi pi-chart-pie',
+    description: 'アンケートの集計結果をグラフで表示',
+    scope: ['team', 'organization'],
+  },
+  {
+    key: 'attendance-results',
+    label: '出席確認状況',
+    icon: 'pi pi-calendar-check',
+    description: 'イベントごとの出欠状況と個人別回答',
+    scope: ['team', 'organization'],
+  },
 ]
 
 function hiddenStorageKey(scopeType: string, scopeId?: number): string {

@@ -79,7 +79,7 @@ onMounted(loadData)
               <div
                 v-for="mod in modules"
                 :key="mod.moduleId"
-                class="flex items-center justify-between rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+                class="flex items-center justify-between rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
               >
                 <div>
                   <p class="font-medium">{{ mod.name }}</p>

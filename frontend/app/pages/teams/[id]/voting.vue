@@ -53,7 +53,7 @@ onMounted(() => load())
       <div
         v-for="s in sessions"
         :key="s.id"
-        class="rounded-xl border border-surface-200 bg-surface-0 p-4"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <div class="mb-2 flex items-center gap-2">
           <span :class="getStatusClass(s.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{

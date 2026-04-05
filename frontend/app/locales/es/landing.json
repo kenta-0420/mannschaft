@@ -1,0 +1,96 @@
+{
+  "landing": {
+    "hero": {
+      "badge": "Gestión todo en uno para deportes, comunidades y trabajo",
+      "title_pre": "La plataforma que ",
+      "title_accent": "maximiza",
+      "title_post": " el potencial de tu equipo",
+      "subtitle": "Mannschaft es una plataforma de gestión todo en uno que reúne todo lo que tu equipo u organización necesita para funcionar sin problemas.",
+      "cta_register": "Empieza gratis",
+      "cta_login": "Iniciar sesión",
+      "note": "Sin tarjeta de crédito · Regístrate en 1 minuto"
+    },
+    "stats": {
+      "heading": "Registros actuales",
+      "users": "Usuarios registrados",
+      "teams": "Equipos registrados",
+      "organizations": "Organizaciones registradas"
+    },
+    "features": {
+      "heading": "Todo lo que necesitas",
+      "subheading": "Todas las funciones para tu equipo, en una sola plataforma",
+      "items": {
+        "0": { "title": "Gestión de equipos y orgs", "desc": "Invita miembros, asigna roles y gestiona permisos fácilmente" },
+        "1": { "title": "Eventos y calendario", "desc": "Comparte agendas, confirma asistencia y configura recordatorios" },
+        "2": { "title": "Chat y tablón de anuncios", "desc": "Chat grupal, circulares y timeline para una comunicación fluida" },
+        "3": { "title": "Gestión de turnos", "desc": "Crea turnos, recoge preferencias y gestiona intercambios" },
+        "4": { "title": "Formularios y encuestas", "desc": "Crea formularios, recoge respuestas y analiza resultados" },
+        "5": { "title": "Galería y archivos", "desc": "Comparte fotos, vídeos y documentos de forma segura con tu equipo" },
+        "6": { "title": "Cuotas y pagos", "desc": "Digitaliza la facturación de cuotas y el seguimiento de pagos" },
+        "7": { "title": "Emparejamientos y torneos", "desc": "Organiza enfrentamientos, torneos y registra resultados" }
+      }
+    },
+    "steps": {
+      "heading": "Empieza en 3 pasos",
+      "cta": "Regístrate gratis ahora",
+      "items": {
+        "0": { "title": "Regístrate gratis", "desc": "Empieza al instante solo con tu correo electrónico. Sin tarjeta de crédito." },
+        "1": { "title": "Crea un equipo u org", "desc": "Elige una plantilla, crea tu equipo u organización e invita a los miembros." },
+        "2": { "title": "Usa las funciones", "desc": "Activa solo las funciones que necesites: agenda, chat, turnos y más." }
+      }
+    },
+    "useCases": {
+      "heading": "Usado en muchos entornos",
+      "subheading": "Adaptable a equipos y organizaciones de cualquier sector o tamaño",
+      "items": {
+        "0": { "title": "Equipos deportivos", "desc": "Gestión de entrenamientos y partidos, coordinación de turnos, asistencia y clasificaciones." },
+        "1": { "title": "Comunidades locales", "desc": "Centraliza anuncios de eventos, circulares y gestión de cuotas en línea." },
+        "2": { "title": "Empresas y oficinas", "desc": "Gestión de proyectos interdepartamentales, flujos de aprobación y comunicación interna." },
+        "3": { "title": "Educación y escuelas", "desc": "Comunicación con padres, gestión de clubes, registro de actividades, fotos y encuestas." }
+      }
+    },
+    "faq": {
+      "heading": "Preguntas frecuentes",
+      "items": {
+        "0": { "q": "¿Es gratis?", "a": "Las funciones básicas son gratuitas. También ofrecemos planes de pago para equipos más grandes." },
+        "1": { "q": "¿Cuántos miembros puedo invitar?", "a": "Incluso en el plan gratuito puedes invitar a varios miembros. Para equipos grandes, considera nuestros planes dedicados." },
+        "2": { "q": "¿Puedo usarlo en mi smartphone?", "a": "Sí. Mannschaft es totalmente responsive y funciona en smartphones y tablets a través del navegador." },
+        "3": { "q": "¿Mis datos están seguros?", "a": "Usamos cifrado SSL/TLS y realizamos copias de seguridad periódicas para proteger tus datos." },
+        "4": { "q": "¿Puedo gestionar varios equipos u organizaciones?", "a": "Sí. Una sola cuenta puede pertenecer a múltiples equipos y organizaciones, cada uno gestionado de forma independiente." }
+      }
+    },
+    "cta": {
+      "heading": "Pruébalo gratis hoy",
+      "subheading": "Sin tarjeta de crédito. Regístrate ahora y empieza a gestionar tu equipo.",
+      "register": "Crear cuenta gratuita",
+      "login": "Iniciar sesión con cuenta existente"
+    },
+    "layout": {
+      "login": "Iniciar sesión",
+      "register": "Registrarse",
+      "footer_tagline": "La plataforma todo en uno que une a tu equipo",
+      "footer_product": "Producto",
+      "footer_start_free": "Empieza gratis",
+      "footer_features": "Funciones",
+      "footer_faq": "Preguntas frecuentes",
+      "footer_use_cases": "Casos de uso",
+      "footer_sports": "Equipos deportivos",
+      "footer_community": "Comunidades locales",
+      "footer_enterprise": "Empresas y oficinas",
+      "footer_education": "Educación",
+      "footer_legal": "Información legal",
+      "footer_terms": "Términos de servicio",
+      "footer_privacy": "Política de privacidad",
+      "footer_contact": "Contacto",
+      "skip_to_content": "Ir al contenido principal",
+      "open_menu": "Abrir menú",
+      "nav_label": "Navegación principal"
+    },
+    "seo": {
+      "title": "Mannschaft - Plataforma de gestión de equipos todo en uno",
+      "description": "Mannschaft es una plataforma de gestión todo en uno para equipos deportivos, comunidades y empresas: gestión de miembros, agenda, chat, pagos y más.",
+      "og_title": "Mannschaft - Maximiza el potencial de tu equipo",
+      "og_description": "Todo para la gestión de equipos en un solo lugar. Miembros, agenda, chat y pagos."
+    }
+  }
+}

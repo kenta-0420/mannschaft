@@ -4,6 +4,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scroll-behavior: smooth;
+}
+
 .page-fade-enter-active,
 .page-fade-leave-active {
   transition: opacity 0.12s ease;

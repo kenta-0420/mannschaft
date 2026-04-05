@@ -59,7 +59,7 @@ onMounted(loadInitial)
       <div
         v-for="record in records"
         :key="record.id"
-        class="flex items-center gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700"
+        class="flex items-center gap-3 rounded-lg border border-surface-300 p-3 dark:border-surface-600"
       >
         <img
           v-if="record.avatarUrl"

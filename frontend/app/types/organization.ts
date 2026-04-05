@@ -57,3 +57,20 @@ export interface UpdateOrganizationRequest {
   hierarchyVisibility?: 'NONE' | 'BASIC' | 'FULL'
   supporterEnabled?: boolean
 }
+
+export interface OrgTeam {
+  id: number
+  name: string
+  nickname1: string | null
+  iconUrl: string | null
+  template: string
+  memberCount: number
+}
+
+export interface OrgPermissionGroup {
+  id: number
+  name: string
+  description: string | null
+  permissions: string[]
+  createdAt: string
+}

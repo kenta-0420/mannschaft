@@ -1,10 +1,3 @@
-<template>
-  <!-- translate="no" を自動付与し Chrome の二重翻訳を防ぐ -->
-  <component :is="as" translate="no" v-bind="$attrs">
-    {{ $t(i18nKey) }}
-  </component>
-</template>
-
 <script setup lang="ts">
 /**
  * i18n テキストを表示する共通コンポーネント。
@@ -26,3 +19,10 @@ withDefaults(
   { as: 'span' },
 )
 </script>
+
+<template>
+  <!-- translate="no" を自動付与し Chrome の二重翻訳を防ぐ -->
+  <component :is="as" translate="no" v-bind="$attrs">
+    {{ $t(i18nKey) }}
+  </component>
+</template>

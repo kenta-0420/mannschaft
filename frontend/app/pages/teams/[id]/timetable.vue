@@ -98,14 +98,14 @@ onMounted(loadData)
                 <thead>
                   <tr>
                     <th
-                      class="border border-surface-200 bg-surface-50 p-2 dark:border-surface-700 dark:bg-surface-800"
+                      class="border border-surface-300 bg-surface-50 p-2 dark:border-surface-600 dark:bg-surface-800"
                     >
                       時限
                     </th>
                     <th
                       v-for="day in weeklyView.days"
                       :key="day.dayOfWeek"
-                      class="border border-surface-200 bg-surface-50 p-2 dark:border-surface-700 dark:bg-surface-800"
+                      class="border border-surface-300 bg-surface-50 p-2 dark:border-surface-600 dark:bg-surface-800"
                     >
                       {{ dayLabels[day.dayOfWeek - 1] }}
                     </th>
@@ -114,7 +114,7 @@ onMounted(loadData)
                 <tbody>
                   <tr v-for="period in weeklyView.periods" :key="period.periodNumber">
                     <td
-                      class="border border-surface-200 bg-surface-50 p-2 text-center dark:border-surface-700 dark:bg-surface-800"
+                      class="border border-surface-300 bg-surface-50 p-2 text-center dark:border-surface-600 dark:bg-surface-800"
                     >
                       <div class="font-medium">{{ period.label }}</div>
                       <div class="text-xs text-surface-400">
@@ -124,7 +124,7 @@ onMounted(loadData)
                     <td
                       v-for="day in weeklyView.days"
                       :key="day.dayOfWeek"
-                      class="border border-surface-200 p-2 dark:border-surface-700"
+                      class="border border-surface-300 p-2 dark:border-surface-600"
                     >
                       <template
                         v-for="slot in day.slots.filter(

@@ -120,7 +120,7 @@ onMounted(load)
     <div v-else class="fade-in space-y-6">
       <!-- 接続状態 -->
       <div
-        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
       >
         <h2 class="mb-4 text-lg font-semibold">接続状態</h2>
         <div v-if="status?.isConnected" class="space-y-3">
@@ -170,13 +170,13 @@ onMounted(load)
       <!-- 同期設定 -->
       <div
         v-if="status?.isConnected && syncSettings"
-        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
       >
         <h2 class="mb-4 text-lg font-semibold">同期設定</h2>
 
         <!-- 個人カレンダー -->
         <div
-          class="mb-4 flex items-center justify-between border-b border-surface-100 pb-4 dark:border-surface-700"
+          class="mb-4 flex items-center justify-between border-b border-surface-100 pb-4 dark:border-surface-600"
         >
           <div>
             <p class="font-medium">個人カレンダー</p>

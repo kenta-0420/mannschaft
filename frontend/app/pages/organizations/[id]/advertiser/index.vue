@@ -70,19 +70,19 @@ onMounted(load)
 
       <!-- KPI カード -->
       <div v-if="overview" class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+        <div class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
           <p class="text-sm text-surface-500">キャンペーン</p>
           <p class="text-2xl font-bold">{{ overview.activeCampaigns }} <span class="text-sm font-normal text-surface-400">/ {{ overview.totalCampaigns }}</span></p>
         </div>
-        <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+        <div class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
           <p class="text-sm text-surface-500">インプレッション</p>
           <p class="text-2xl font-bold">{{ overview.totalImpressions.toLocaleString() }}</p>
         </div>
-        <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+        <div class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
           <p class="text-sm text-surface-500">クリック / CTR</p>
           <p class="text-2xl font-bold">{{ overview.totalClicks.toLocaleString() }} <span class="text-sm font-normal text-surface-400">{{ overview.avgCtr }}%</span></p>
         </div>
-        <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+        <div class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
           <p class="text-sm text-surface-500">広告費（税抜）</p>
           <p class="text-2xl font-bold">¥{{ overview.totalCost.toLocaleString() }}</p>
           <ProgressBar :value="overview.monthlyBudgetUsedPct" class="mt-2" style="height: 6px" />
@@ -91,7 +91,7 @@ onMounted(load)
       </div>
 
       <!-- キャンペーン一覧 -->
-      <div v-if="overview && overview.campaigns.length > 0" class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+      <div v-if="overview && overview.campaigns.length > 0" class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
         <h3 class="mb-3 font-semibold">キャンペーン</h3>
         <DataTable :value="overview.campaigns" :rows="10" striped-rows>
           <Column field="campaignName" header="キャンペーン名" />
@@ -125,25 +125,25 @@ onMounted(load)
       <!-- ナビゲーション -->
       <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <NuxtLink :to="`/organizations/${orgId}/advertiser/invoices`">
-          <div class="cursor-pointer rounded-lg border border-surface-200 p-3 text-center transition hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700">
+          <div class="cursor-pointer rounded-lg border border-surface-300 p-3 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700">
             <i class="pi pi-file-edit mb-2 text-2xl text-primary" />
             <p class="text-sm">請求書</p>
           </div>
         </NuxtLink>
         <NuxtLink :to="`/organizations/${orgId}/advertiser/rate-simulator`">
-          <div class="cursor-pointer rounded-lg border border-surface-200 p-3 text-center transition hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700">
+          <div class="cursor-pointer rounded-lg border border-surface-300 p-3 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700">
             <i class="pi pi-calculator mb-2 text-2xl text-primary" />
             <p class="text-sm">料金シミュレーター</p>
           </div>
         </NuxtLink>
         <NuxtLink :to="`/organizations/${orgId}/advertiser/report-schedules`">
-          <div class="cursor-pointer rounded-lg border border-surface-200 p-3 text-center transition hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700">
+          <div class="cursor-pointer rounded-lg border border-surface-300 p-3 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700">
             <i class="pi pi-calendar-clock mb-2 text-2xl text-primary" />
             <p class="text-sm">定期レポート</p>
           </div>
         </NuxtLink>
         <NuxtLink :to="`/organizations/${orgId}/advertiser/credit-limit-requests`">
-          <div class="cursor-pointer rounded-lg border border-surface-200 p-3 text-center transition hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700">
+          <div class="cursor-pointer rounded-lg border border-surface-300 p-3 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700">
             <i class="pi pi-wallet mb-2 text-2xl text-primary" />
             <p class="text-sm">与信枠申請</p>
           </div>

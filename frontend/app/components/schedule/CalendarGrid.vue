@@ -80,7 +80,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
     </div>
 
     <!-- 曜日ヘッダー -->
-    <div class="grid grid-cols-7 border-b border-surface-200 dark:border-surface-700">
+    <div class="grid grid-cols-7 border-b border-surface-200 dark:border-surface-600">
       <div
         v-for="day in daysOfWeek"
         :key="day"
@@ -96,7 +96,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
       <div
         v-for="(day, idx) in calendarDays"
         :key="idx"
-        class="min-h-24 cursor-pointer border-b border-r border-surface-100 p-1 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800"
+        class="min-h-24 cursor-pointer border-b border-r border-surface-100 p-1 transition-colors hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-800"
         :class="{ 'bg-surface-50/50 dark:bg-surface-800/30': !day.isCurrentMonth }"
         @click="emit('dateClick', day.dateStr)"
       >

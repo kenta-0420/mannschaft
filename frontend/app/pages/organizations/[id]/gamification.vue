@@ -50,7 +50,7 @@ onMounted(loadData)
     <template v-else-if="config">
       <div class="space-y-6">
         <div
-          class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+          class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
         >
           <h2 class="mb-4 text-lg font-semibold">機能の有効/無効</h2>
           <div class="space-y-3">

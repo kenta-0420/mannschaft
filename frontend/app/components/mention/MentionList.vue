@@ -68,7 +68,7 @@ onMounted(loadMentions)
         :to="mention.url"
         class="flex items-start gap-3 rounded-lg border p-4 transition-shadow hover:shadow-md"
         :class="mention.isRead
-          ? 'border-surface-200 dark:border-surface-700'
+          ? 'border-surface-200 dark:border-surface-600'
           : 'border-primary/30 bg-primary/5'"
         @click="markAsRead(mention.id)"
       >

@@ -83,7 +83,7 @@ onMounted(loadData)
       <div
         v-for="month in months"
         :key="month.month"
-        class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+        class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
       >
         <h2 class="mb-3 text-lg font-semibold">{{ month.month }}</h2>
         <div v-if="month.events.length === 0" class="text-sm text-surface-400">行事なし</div>

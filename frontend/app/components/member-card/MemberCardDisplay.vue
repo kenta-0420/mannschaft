@@ -83,7 +83,7 @@ onUnmounted(() => {
           <div v-if="loadingQr" class="flex justify-center py-8">
             <ProgressSpinner style="width: 40px; height: 40px" />
           </div>
-          <div v-else-if="qrData" class="inline-block rounded-lg border border-surface-200 bg-white p-4 dark:border-surface-600">
+          <div v-else-if="qrData" class="inline-block rounded-lg border border-surface-300 bg-white p-4 dark:border-surface-600">
             <img
               :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData.token)}`"
               alt="QRコード"

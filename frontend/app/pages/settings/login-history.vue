@@ -89,7 +89,7 @@ function eventSeverity(eventType: string) {
         <div
           v-for="item in history"
           :key="item.id"
-          class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+          class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
         >
           <div class="flex items-start justify-between">
             <div>

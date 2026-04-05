@@ -44,7 +44,7 @@ onMounted(() => load())
       <div
         v-for="m in mails"
         :key="m.id"
-        class="flex items-center gap-4 rounded-xl border border-surface-200 bg-surface-0 p-4"
+        class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <div class="flex-1">
           <h3 class="text-sm font-semibold">{{ m.title }}</h3>

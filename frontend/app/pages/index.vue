@@ -1,13 +1,50 @@
 <script setup lang="ts">
+const { t, locale } = useI18n()
+
 definePageMeta({
-  middleware: ['auth'],
+  layout: 'landing',
+  middleware: 'guest',
 })
 
-onMounted(() => {
-  navigateTo('/dashboard', { replace: true })
+useSeoMeta({
+  title: () => t('landing.seo.title'),
+  ogTitle: () => t('landing.seo.og_title'),
+  description: () => t('landing.seo.description'),
+  ogDescription: () => t('landing.seo.og_description'),
+  ogType: 'website',
+  ogLocale: () => locale.value,
+  twitterCard: 'summary_large_image',
+})
+
+useHead({
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        'name': 'Mannschaft',
+        'applicationCategory': 'BusinessApplication',
+        'operatingSystem': 'Web',
+        'offers': {
+          '@type': 'Offer',
+          'price': '0',
+          'priceCurrency': 'JPY',
+        },
+      }),
+    },
+  ],
 })
 </script>
 
 <template>
-  <div />
+  <div>
+    <LandingHero />
+    <LandingStats />
+    <LandingFeatures />
+    <LandingSteps />
+    <LandingUseCases />
+    <LandingFaq />
+    <LandingCta />
+  </div>
 </template>

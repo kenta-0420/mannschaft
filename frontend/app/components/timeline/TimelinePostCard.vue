@@ -68,7 +68,7 @@ function toggleMenu(event: Event) {
 
 <template>
   <div
-    class="cursor-pointer rounded-xl border border-surface-200 bg-surface-0 p-4 transition-shadow hover:shadow-sm"
+    class="cursor-pointer rounded-xl border border-surface-300 bg-surface-0 p-4 transition-shadow hover:shadow-sm"
     @click="emit('clickPost', post.id)"
   >
     <!-- ピン表示 -->
@@ -162,7 +162,7 @@ function toggleMenu(event: Event) {
           :href="att.videoUrl"
           target="_blank"
           rel="noopener"
-          class="flex items-center gap-2 rounded-lg border border-surface-200 p-3"
+          class="flex items-center gap-2 rounded-lg border border-surface-300 p-3"
           @click.stop
         >
           <img v-if="att.videoThumbnailUrl" :src="att.videoThumbnailUrl" class="h-16 w-24 rounded object-cover" />
@@ -173,7 +173,7 @@ function toggleMenu(event: Event) {
           :href="att.linkUrl"
           target="_blank"
           rel="noopener"
-          class="flex gap-3 rounded-lg border border-surface-200 p-3"
+          class="flex gap-3 rounded-lg border border-surface-300 p-3"
           @click.stop
         >
           <img v-if="att.ogImageUrl" :src="att.ogImageUrl" class="h-16 w-16 rounded object-cover" />
@@ -186,7 +186,7 @@ function toggleMenu(event: Event) {
     </div>
 
     <!-- 投票 -->
-    <div v-if="post.poll" class="mb-3 rounded-lg border border-surface-200 p-3">
+    <div v-if="post.poll" class="mb-3 rounded-lg border border-surface-300 p-3">
       <p class="mb-2 text-sm font-medium">{{ post.poll.question }}</p>
       <div class="flex flex-col gap-2">
         <div

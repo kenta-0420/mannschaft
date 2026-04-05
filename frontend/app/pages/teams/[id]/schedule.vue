@@ -22,12 +22,28 @@ interface CalEvent {
   isPersonal: boolean
 }
 
+interface ScheduleEventDetail {
+  id: number
+  title: string
+  description: string | null
+  location: string | null
+  startAt: string
+  endAt: string
+  allDay: boolean
+  status: string
+  categoryName: string | null
+  categoryColor: string | null
+  createdBy: { displayName: string }
+  myAttendance: string | null
+  attendanceStats: { yes: number; no: number; maybe: number; pending: number; total: number } | null
+}
+
 const events = ref<CalEvent[]>([])
 const loading = ref(true)
 const showCreateDialog = ref(false)
 const selectedDate = ref<string | undefined>(undefined)
 const selectedEventId = ref<number | undefined>(undefined)
-const selectedEvent = ref<Record<string, unknown> | null>(null)
+const selectedEvent = ref<ScheduleEventDetail | null>(null)
 const showDetailPanel = ref(false)
 const showEditDialog = ref(false)
 
@@ -58,7 +74,7 @@ function onDateClick(date: string) {
 async function onEventClick(eventId: number) {
   try {
     const res = await scheduleApi.getSchedule('team', teamId, eventId)
-    selectedEvent.value = res.data as Record<string, unknown>
+    selectedEvent.value = res.data as ScheduleEventDetail
     selectedEventId.value = eventId
     showDetailPanel.value = true
   } catch {
@@ -132,7 +148,7 @@ onMounted(async () => {
       <!-- カレンダー -->
       <div class="lg:col-span-2">
         <div
-          class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+          class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
         >
           <CalendarGrid
             :year="currentYear"
@@ -150,10 +166,10 @@ onMounted(async () => {
       <div>
         <div
           v-if="showDetailPanel && selectedEvent"
-          class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+          class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
         >
           <EventDetailPanel
-            :event="selectedEvent as any"
+            :event="selectedEvent!"
             scope-type="team"
             :scope-id="teamId"
             :can-edit="isAdminOrDeputy"
@@ -164,7 +180,7 @@ onMounted(async () => {
         </div>
         <div
           v-else
-          class="rounded-xl border border-surface-200 bg-surface-0 p-8 dark:border-surface-700 dark:bg-surface-800"
+          class="rounded-xl border border-surface-300 bg-surface-0 p-8 dark:border-surface-600 dark:bg-surface-800"
         >
           <DashboardEmptyState icon="pi pi-calendar" message="イベントを選択してください" />
         </div>

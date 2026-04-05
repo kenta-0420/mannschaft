@@ -97,7 +97,7 @@ async function save() {
 
     <div
       v-else
-      class="fade-in rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800"
+      class="fade-in rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
     >
       <div class="space-y-4">
         <div>

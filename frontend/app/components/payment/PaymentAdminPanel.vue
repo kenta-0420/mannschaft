@@ -46,7 +46,7 @@ onMounted(() => loadItems())
 <template>
   <div class="flex gap-4">
     <!-- 項目一覧 -->
-    <div class="w-64 shrink-0 rounded-xl border border-surface-200 bg-surface-0 p-3">
+    <div class="w-64 shrink-0 rounded-xl border border-surface-300 bg-surface-0 p-3">
       <h3 class="mb-3 text-sm font-semibold">支払い項目</h3>
       <button v-for="item in items" :key="item.id" class="mb-1 w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface-100" :class="selectedItem?.id === item.id ? 'bg-primary/10 text-primary' : ''" @click="loadPayments(item)">
         <div class="font-medium">{{ item.name }}</div>

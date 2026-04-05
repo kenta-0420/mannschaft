@@ -1,1 +1,9 @@
-
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /teams/
+Disallow: /organizations/
+Disallow: /settings/
+Disallow: /admin/
+Disallow: /chat/
+Disallow: /my/
