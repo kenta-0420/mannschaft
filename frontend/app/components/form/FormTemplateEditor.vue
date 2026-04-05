@@ -61,13 +61,42 @@ const fields = ref<FormFieldRequest[]>([])
 
 const fieldTypeOptions = [
   { label: 'テキスト', value: 'TEXT' },
-  { label: 'テキストエリア', value: 'TEXTAREA' },
   { label: '数値', value: 'NUMBER' },
   { label: '日付', value: 'DATE' },
-  { label: '選択', value: 'SELECT' },
+  { label: 'メール', value: 'EMAIL' },
+  { label: '電話番号', value: 'PHONE' },
+  { label: 'ドロップダウン', value: 'DROPDOWN' },
+  { label: 'ラジオボタン', value: 'RADIO' },
   { label: 'チェックボックス', value: 'CHECKBOX' },
-  { label: 'ファイル', value: 'FILE' },
+  { label: '複数行テキスト', value: 'TEXTAREA' },
+  { label: 'ファイル添付', value: 'FILE' },
+  { label: '手書き署名', value: 'SIGNATURE' },
+  { label: 'セクション見出し', value: 'SECTION' },
+  { label: '説明文', value: 'DESCRIPTION' },
 ]
+
+const autoFillKeyOptions = [
+  { label: 'なし', value: '' },
+  { label: '氏名', value: 'member_name' },
+  { label: 'メールアドレス', value: 'member_email' },
+  { label: '会員番号', value: 'member_number' },
+  { label: '電話番号', value: 'member_phone' },
+  { label: 'チーム名', value: 'team_name' },
+  { label: '組織名', value: 'org_name' },
+  { label: '今日の日付', value: 'current_date' },
+]
+
+function supportsAutoFill(fieldType: string) {
+  return ['TEXT', 'EMAIL', 'PHONE'].includes(fieldType)
+}
+
+function supportsOptions(fieldType: string) {
+  return ['DROPDOWN', 'RADIO', 'CHECKBOX'].includes(fieldType)
+}
+
+function supportsRequired(fieldType: string) {
+  return !['SECTION', 'DESCRIPTION'].includes(fieldType)
+}
 
 watch(
   () => [props.visible, props.templateId],
@@ -104,6 +133,10 @@ watch(
 )
 
 function addField() {
+  if (fields.value.length >= 30) {
+    notification.warn('フィールドは最大30件まで追加できます')
+    return
+  }
   fields.value.push({
     fieldKey: `field_${fields.value.length + 1}`,
     fieldLabel: '',
@@ -111,6 +144,8 @@ function addField() {
     isRequired: false,
     sortOrder: fields.value.length,
     placeholder: '',
+    autoFillKey: '',
+    optionsJson: '',
   })
 }
 
@@ -282,12 +317,33 @@ function close() {
               />
             </div>
           </div>
-          <div class="mt-2 flex items-center gap-4">
+          <div v-if="supportsRequired(field.fieldType ?? '')" class="mt-2 flex items-center gap-4">
             <div class="flex items-center gap-2">
               <Checkbox v-model="field.isRequired" :binary="true" :input-id="`reqField${index}`" />
               <label :for="`reqField${index}`" class="text-xs">必須</label>
             </div>
             <InputText v-model="field.placeholder" class="flex-1" placeholder="プレースホルダー" />
+          </div>
+          <!-- autoFillKey: TEXT/EMAIL/PHONEのみ表示 -->
+          <div v-if="supportsAutoFill(field.fieldType ?? '')" class="mt-2">
+            <label class="mb-1 block text-xs font-medium">自動入力キー（任意）</label>
+            <Select
+              v-model="field.autoFillKey"
+              :options="autoFillKeyOptions"
+              option-label="label"
+              option-value="value"
+              class="w-full"
+              placeholder="なし"
+            />
+          </div>
+          <!-- optionsJson: DROPDOWN/RADIO/CHECKBOXのみ表示 -->
+          <div v-if="supportsOptions(field.fieldType ?? '')" class="mt-2">
+            <label class="mb-1 block text-xs font-medium">選択肢（JSON配列 例: ["A","B","C"]）</label>
+            <InputText
+              v-model="field.optionsJson"
+              class="w-full"
+              placeholder='["選択肢1","選択肢2","選択肢3"]'
+            />
           </div>
         </div>
         <p v-if="fields.length === 0" class="text-sm text-surface-400">

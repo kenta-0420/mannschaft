@@ -8,6 +8,7 @@ const props = defineProps<{
   templateId: number
   submissionId?: number
   visible: boolean
+  autoFillData?: Record<string, string>
 }>()
 
 const emit = defineEmits<{
@@ -32,9 +33,12 @@ const fieldValues = ref<
 
 const isEdit = computed(() => !!props.submissionId)
 
+const SKIP_VALIDATION_TYPES = ['SECTION', 'DESCRIPTION']
+
 function buildValidationSchema(fields: FormFieldResponse[]) {
   const shape: Record<string, z.ZodTypeAny> = {}
   for (const field of fields) {
+    if (SKIP_VALIDATION_TYPES.includes(field.fieldType ?? '')) continue
     const label = field.fieldLabel || field.fieldKey
     if (field.fieldType === 'NUMBER') {
       shape[field.fieldKey] = field.isRequired
@@ -44,6 +48,10 @@ function buildValidationSchema(fields: FormFieldResponse[]) {
       shape[field.fieldKey] = field.isRequired
         ? z.date({ required_error: `${label}は必須です` })
         : z.date().nullable()
+    } else if (field.fieldType === 'SIGNATURE') {
+      shape[field.fieldKey] = field.isRequired
+        ? z.string().min(1, '署名は必須です')
+        : z.string()
     } else {
       shape[field.fieldKey] = field.isRequired
         ? z.string().min(1, `${label}は必須です`)
@@ -53,6 +61,16 @@ function buildValidationSchema(fields: FormFieldResponse[]) {
   return z.object(shape)
 }
 
+function parseOptions(optionsJson: string | null): string[] {
+  if (!optionsJson) return []
+  try {
+    const parsed = JSON.parse(optionsJson)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
 function validateFields(): boolean {
   if (!template.value) return false
   fieldErrors.value = {}
@@ -60,6 +78,7 @@ function validateFields(): boolean {
   const schema = buildValidationSchema(template.value.fields)
   const data: Record<string, string | number | Date | null> = {}
   for (const field of template.value.fields) {
+    if (SKIP_VALIDATION_TYPES.includes(field.fieldType ?? '')) continue
     const val = fieldValues.value[field.fieldKey]
     if (field.fieldType === 'NUMBER') {
       data[field.fieldKey] = val?.numberValue ?? null
@@ -122,7 +141,29 @@ function initFieldValues(fields: FormFieldResponse[]) {
   for (const field of fields) {
     fieldValues.value[field.fieldKey] = { textValue: '', numberValue: null, dateValue: null }
   }
+  applyAutoFill(fields)
 }
+
+function applyAutoFill(fields: FormFieldResponse[]) {
+  if (!props.autoFillData) return
+  for (const field of fields) {
+    if (field.autoFillKey && props.autoFillData[field.autoFillKey]) {
+      if (!fieldValues.value[field.fieldKey]) {
+        fieldValues.value[field.fieldKey] = { textValue: '', numberValue: null, dateValue: null }
+      }
+      fieldValues.value[field.fieldKey].textValue = props.autoFillData[field.autoFillKey]
+    }
+  }
+}
+
+watch(
+  () => props.autoFillData,
+  (newData) => {
+    if (!newData || !template.value) return
+    applyAutoFill(template.value.fields)
+  },
+  { deep: true },
+)
 
 async function submit() {
   if (!template.value) return
@@ -194,79 +235,152 @@ function close() {
       </div>
 
       <div v-for="field in template.fields" :key="field.id">
-        <label class="mb-1 block text-sm font-medium">
-          {{ field.fieldLabel || field.fieldKey }}
-          <span v-if="field.isRequired" class="text-red-500">*</span>
-        </label>
+        <!-- SECTION: 入力なし、見出し表示のみ -->
+        <template v-if="field.fieldType === 'SECTION'">
+          <h3 class="text-lg font-semibold">{{ field.fieldLabel || field.fieldKey }}</h3>
+        </template>
 
-        <!-- テキスト -->
-        <InputText
-          v-if="field.fieldType === 'TEXT'"
-          v-model="fieldValues[field.fieldKey].textValue"
-          class="w-full"
-          :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
-          :placeholder="field.placeholder || ''"
-        />
+        <!-- DESCRIPTION: 入力なし、説明文表示のみ -->
+        <template v-else-if="field.fieldType === 'DESCRIPTION'">
+          <p class="text-sm text-gray-600">{{ field.fieldLabel || field.fieldKey }}</p>
+        </template>
 
-        <!-- テキストエリア -->
-        <Textarea
-          v-else-if="field.fieldType === 'TEXTAREA'"
-          v-model="fieldValues[field.fieldKey].textValue"
-          rows="3"
-          class="w-full"
-          :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
-          :placeholder="field.placeholder || ''"
-        />
+        <template v-else>
+          <label class="mb-1 block text-sm font-medium">
+            {{ field.fieldLabel || field.fieldKey }}
+            <span v-if="field.isRequired" class="text-red-500">*</span>
+          </label>
 
-        <!-- 数値 -->
-        <InputNumber
-          v-else-if="field.fieldType === 'NUMBER'"
-          v-model="fieldValues[field.fieldKey].numberValue"
-          class="w-full"
-          :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
-          :placeholder="field.placeholder || ''"
-        />
-
-        <!-- 日付 -->
-        <DatePicker
-          v-else-if="field.fieldType === 'DATE'"
-          v-model="fieldValues[field.fieldKey].dateValue"
-          date-format="yy-mm-dd"
-          class="w-full"
-          :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
-          show-icon
-        />
-
-        <!-- 選択 -->
-        <Select
-          v-else-if="field.fieldType === 'SELECT'"
-          v-model="fieldValues[field.fieldKey].textValue"
-          :options="field.optionsJson ? JSON.parse(field.optionsJson) : []"
-          class="w-full"
-          :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
-          :placeholder="field.placeholder || '選択してください'"
-        />
-
-        <!-- チェックボックス -->
-        <div v-else-if="field.fieldType === 'CHECKBOX'" class="flex items-center gap-2">
-          <Checkbox
+          <!-- テキスト -->
+          <InputText
+            v-if="field.fieldType === 'TEXT'"
             v-model="fieldValues[field.fieldKey].textValue"
-            true-value="true"
-            false-value="false"
-            :binary="false"
+            class="w-full"
+            :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
+            :placeholder="field.placeholder || ''"
           />
-        </div>
 
-        <!-- デフォルト (テキスト) -->
-        <InputText
-          v-else
-          v-model="fieldValues[field.fieldKey].textValue"
-          class="w-full"
-          :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
-          :placeholder="field.placeholder || ''"
-        />
+          <!-- メール -->
+          <InputText
+            v-else-if="field.fieldType === 'EMAIL'"
+            v-model="fieldValues[field.fieldKey].textValue"
+            type="email"
+            class="w-full"
+            :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
+            :placeholder="field.placeholder || ''"
+          />
 
-        <small v-if="fieldErrors[field.fieldKey]" class="text-red-500">{{ fieldErrors[field.fieldKey] }}</small>
+          <!-- 電話番号 -->
+          <InputText
+            v-else-if="field.fieldType === 'PHONE'"
+            v-model="fieldValues[field.fieldKey].textValue"
+            type="tel"
+            class="w-full"
+            :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
+            :placeholder="field.placeholder || ''"
+          />
+
+          <!-- テキストエリア -->
+          <Textarea
+            v-else-if="field.fieldType === 'TEXTAREA'"
+            v-model="fieldValues[field.fieldKey].textValue"
+            rows="3"
+            class="w-full"
+            :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
+            :placeholder="field.placeholder || ''"
+          />
+
+          <!-- 数値 -->
+          <InputNumber
+            v-else-if="field.fieldType === 'NUMBER'"
+            v-model="fieldValues[field.fieldKey].numberValue"
+            class="w-full"
+            :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
+            :placeholder="field.placeholder || ''"
+          />
+
+          <!-- 日付 -->
+          <DatePicker
+            v-else-if="field.fieldType === 'DATE'"
+            v-model="fieldValues[field.fieldKey].dateValue"
+            date-format="yy-mm-dd"
+            class="w-full"
+            :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
+            show-icon
+          />
+
+          <!-- ドロップダウン (DROPDOWN) -->
+          <Select
+            v-else-if="field.fieldType === 'DROPDOWN'"
+            v-model="fieldValues[field.fieldKey].textValue"
+            :options="parseOptions(field.optionsJson)"
+            class="w-full"
+            :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
+            :placeholder="field.placeholder || '選択してください'"
+          />
+
+          <!-- 選択 (旧SELECT互換) -->
+          <Select
+            v-else-if="field.fieldType === 'SELECT'"
+            v-model="fieldValues[field.fieldKey].textValue"
+            :options="parseOptions(field.optionsJson)"
+            class="w-full"
+            :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
+            :placeholder="field.placeholder || '選択してください'"
+          />
+
+          <!-- ラジオボタン -->
+          <div v-else-if="field.fieldType === 'RADIO'" class="flex flex-col gap-2">
+            <div
+              v-for="opt in parseOptions(field.optionsJson)"
+              :key="opt"
+              class="flex items-center gap-2"
+            >
+              <RadioButton
+                v-model="fieldValues[field.fieldKey].textValue"
+                :input-id="`radio_${field.fieldKey}_${opt}`"
+                :value="opt"
+              />
+              <label :for="`radio_${field.fieldKey}_${opt}`" class="text-sm">{{ opt }}</label>
+            </div>
+          </div>
+
+          <!-- チェックボックス -->
+          <div v-else-if="field.fieldType === 'CHECKBOX'" class="flex items-center gap-2">
+            <Checkbox
+              v-model="fieldValues[field.fieldKey].textValue"
+              true-value="true"
+              false-value="false"
+              :binary="false"
+            />
+          </div>
+
+          <!-- ファイル添付 -->
+          <InputText
+            v-else-if="field.fieldType === 'FILE'"
+            v-model="fieldValues[field.fieldKey].textValue"
+            type="file"
+            class="w-full"
+            :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
+          />
+
+          <!-- 手書き署名 -->
+          <FormSignatureCanvas
+            v-else-if="field.fieldType === 'SIGNATURE'"
+            v-model="fieldValues[field.fieldKey].textValue"
+          />
+
+          <!-- デフォルト (テキスト) -->
+          <InputText
+            v-else
+            v-model="fieldValues[field.fieldKey].textValue"
+            class="w-full"
+            :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
+            :placeholder="field.placeholder || ''"
+          />
+
+          <small v-if="fieldErrors[field.fieldKey]" class="text-red-500">{{ fieldErrors[field.fieldKey] }}</small>
+        </template>
       </div>
 
       <div class="flex items-center gap-2">
