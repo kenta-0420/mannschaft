@@ -5,8 +5,8 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const teamId = Number(route.params.id)
 
-const { getSessions } = useVotingApi()
-const { showError } = useNotification()
+const { getSessions, createSession } = useVotingApi()
+const notification = useNotification()
 const { relativeTime } = useRelativeTime()
 
 const sessions = ref<VoteSessionResponse[]>([])
@@ -18,7 +18,7 @@ async function load() {
     const res = await getSessions({ scope_type: 'TEAM', scope_id: teamId })
     sessions.value = res.data
   } catch {
-    showError('投票セッションの取得に失敗しました')
+    notification.error('投票セッションの取得に失敗しました')
   } finally {
     loading.value = false
   }
@@ -39,6 +39,42 @@ function getStatusClass(s: string): string {
   }
 }
 
+const showCreateDialog = ref(false)
+const saving = ref(false)
+const form = ref({
+  title: '',
+  description: '',
+  votingMode: 'MEETING' as 'MEETING' | 'WRITTEN',
+  isAnonymous: false,
+})
+
+function openCreateDialog() {
+  form.value = { title: '', description: '', votingMode: 'MEETING', isAnonymous: false }
+  showCreateDialog.value = true
+}
+
+async function handleCreate() {
+  if (!form.value.title.trim()) return
+  saving.value = true
+  try {
+    await createSession({
+      scopeType: 'TEAM',
+      scopeId: teamId,
+      title: form.value.title,
+      description: form.value.description || undefined,
+      votingMode: form.value.votingMode,
+      isAnonymous: form.value.isAnonymous,
+    })
+    notification.success('投票セッションを作成しました')
+    showCreateDialog.value = false
+    await load()
+  } catch {
+    notification.error('投票セッションの作成に失敗しました')
+  } finally {
+    saving.value = false
+  }
+}
+
 onMounted(() => load())
 </script>
 
@@ -46,7 +82,7 @@ onMounted(() => load())
   <div>
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-2xl font-bold">議決権行使</h1>
-      <Button label="セッション作成" icon="pi pi-plus" />
+      <Button label="セッション作成" icon="pi pi-plus" @click="openCreateDialog" />
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-3">
@@ -77,5 +113,39 @@ onMounted(() => load())
         <p class="text-surface-400">投票セッションがありません</p>
       </div>
     </div>
+
+    <Dialog v-model:visible="showCreateDialog" modal header="投票セッション作成" :style="{ width: '28rem' }">
+      <div class="flex flex-col gap-4 py-2">
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium">タイトル <span class="text-red-500">*</span></label>
+          <InputText v-model="form.title" placeholder="例: 2026年度総会" class="w-full" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium">説明</label>
+          <Textarea v-model="form.description" rows="3" class="w-full" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium">投票方式</label>
+          <Select
+            v-model="form.votingMode"
+            :options="[
+              { label: '書面投票', value: 'WRITTEN' },
+              { label: '総会（対面）', value: 'MEETING' },
+            ]"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+          />
+        </div>
+        <div class="flex items-center gap-2">
+          <Checkbox v-model="form.isAnonymous" :binary="true" input-id="anon" />
+          <label for="anon" class="text-sm">無記名投票</label>
+        </div>
+      </div>
+      <template #footer>
+        <Button label="キャンセル" text @click="showCreateDialog = false" :disabled="saving" />
+        <Button label="作成" icon="pi pi-check" :loading="saving" @click="handleCreate" />
+      </template>
+    </Dialog>
   </div>
 </template>

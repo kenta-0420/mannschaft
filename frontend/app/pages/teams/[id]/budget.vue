@@ -5,13 +5,52 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const teamId = Number(route.params.id)
 
-const { getFiscalYears, getSummary } = useBudgetApi()
-const { showError } = useNotification()
+const notification = useNotification()
+const { getFiscalYears, getSummary, createFiscalYear } = useBudgetApi()
 
 const fiscalYears = ref<FiscalYearResponse[]>([])
 const selectedFy = ref<FiscalYearResponse | null>(null)
 const summary = ref<BudgetSummary | null>(null)
 const loading = ref(false)
+
+const showCreateDialog = ref(false)
+const saving = ref(false)
+
+const currentYear = new Date().getFullYear()
+const form = ref({
+  name: `${currentYear}年度`,
+  startDate: `${currentYear}-04-01`,
+  endDate: `${currentYear + 1}-03-31`,
+})
+
+function openCreateDialog() {
+  const y = new Date().getFullYear()
+  form.value = {
+    name: `${y}年度`,
+    startDate: `${y}-04-01`,
+    endDate: `${y + 1}-03-31`,
+  }
+  showCreateDialog.value = true
+}
+
+async function handleCreate() {
+  if (!form.value.name.trim() || !form.value.startDate || !form.value.endDate) return
+  saving.value = true
+  try {
+    await createFiscalYear('team', teamId, {
+      name: form.value.name,
+      startDate: form.value.startDate,
+      endDate: form.value.endDate,
+    })
+    notification.success('年度を追加しました')
+    showCreateDialog.value = false
+    await load()
+  } catch {
+    notification.error('年度の追加に失敗しました')
+  } finally {
+    saving.value = false
+  }
+}
 
 async function load() {
   try {
@@ -19,7 +58,7 @@ async function load() {
     fiscalYears.value = res.data
     if (res.data.length > 0) selectFy(res.data[0])
   } catch {
-    showError('予算情報の取得に失敗しました')
+    notification.error('予算情報の取得に失敗しました')
   }
 }
 
@@ -30,7 +69,7 @@ async function selectFy(fy: FiscalYearResponse) {
     const res = await getSummary('team', teamId, fy.id)
     summary.value = res.data
   } catch {
-    showError('予算サマリーの取得に失敗しました')
+    notification.error('予算サマリーの取得に失敗しました')
   } finally {
     loading.value = false
   }
@@ -43,7 +82,7 @@ onMounted(() => load())
   <div>
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-2xl font-bold">予算・会計</h1>
-      <Button label="年度を追加" icon="pi pi-plus" />
+      <Button label="年度を追加" icon="pi pi-plus" @click="openCreateDialog" />
     </div>
     <div v-if="fiscalYears.length > 0" class="mb-4">
       <SelectButton
@@ -99,5 +138,25 @@ onMounted(() => load())
         </div>
       </div>
     </div>
+    <Dialog v-model:visible="showCreateDialog" modal header="年度を追加" :style="{ width: '26rem' }">
+      <div class="flex flex-col gap-4 py-2">
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium">年度名 <span class="text-red-500">*</span></label>
+          <InputText v-model="form.name" placeholder="例: 2026年度" class="w-full" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium">開始日 <span class="text-red-500">*</span></label>
+          <InputText v-model="form.startDate" type="date" class="w-full" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium">終了日 <span class="text-red-500">*</span></label>
+          <InputText v-model="form.endDate" type="date" class="w-full" />
+        </div>
+      </div>
+      <template #footer>
+        <Button label="キャンセル" text @click="showCreateDialog = false" :disabled="saving" />
+        <Button label="追加" icon="pi pi-check" :loading="saving" @click="handleCreate" />
+      </template>
+    </Dialog>
   </div>
 </template>
