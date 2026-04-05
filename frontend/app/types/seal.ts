@@ -41,3 +41,22 @@ export interface VerifyResult {
   isRevoked: boolean
   invalidReason?: 'SEAL_NOT_FOUND' | 'SEAL_REGENERATED'
 }
+
+export interface SealPreview {
+  variant: SealVariant
+  displayText: string
+  svgData: string
+}
+
+export type RegenerateAllJobStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED'
+
+export interface RegenerateAllStatus {
+  jobId: string
+  status: RegenerateAllJobStatus
+  totalCount: number
+  processedCount: number
+  failedCount: number
+  progressPercent: number
+  startedAt: string
+  completedAt: string | null
+}

@@ -1,8 +1,10 @@
 import type {
   ElectronicSeal,
   ScopeDefault,
+  SealPreview,
   StampLog,
   VerifyResult,
+  RegenerateAllStatus,
   SealVariant,
   SealScopeType,
 } from '~/types/seal'
@@ -42,17 +44,21 @@ export function useSealApi() {
     await api(`/api/v1/users/${userId}/seals/${sealId}`, { method: 'DELETE' })
   }
 
-  // === 管理者向け印鑑管理 ===
-  async function listAllSeals() {
-    const res = await api<{ data: ElectronicSeal[] }>('/api/v1/admin/seals')
-    return res.data
+  // === 印鑑プレビュー・再生成 ===
+  async function previewSeal(
+    userId: number,
+    params?: { overrideLastName?: string; overrideFirstName?: string },
+  ) {
+    const query = new URLSearchParams()
+    if (params?.overrideLastName) query.set('override_last_name', params.overrideLastName)
+    if (params?.overrideFirstName) query.set('override_first_name', params.overrideFirstName)
+    const qs = query.toString()
+    const res = await api<{ data: { previews: SealPreview[] } }>(
+      `/api/v1/users/${userId}/seals/preview${qs ? `?${qs}` : ''}`,
+    )
+    return res.data.previews
   }
 
-  async function regenerateAll() {
-    await api('/api/v1/admin/seals/regenerate', { method: 'POST' })
-  }
-
-  // === ユーザー印鑑再生成・デフォルト (UI既存利用) ===
   async function regenerateSeals(userId: number) {
     const res = await api<{ data: ElectronicSeal[] }>(`/api/v1/users/${userId}/seals/regenerate`, {
       method: 'POST',
@@ -60,6 +66,7 @@ export function useSealApi() {
     return res.data
   }
 
+  // === スコープ別デフォルト ===
   async function getScopeDefaults(userId: number) {
     const res = await api<{ data: ScopeDefault[] }>(`/api/v1/users/${userId}/seals/scope-defaults`)
     return res.data
@@ -70,15 +77,16 @@ export function useSealApi() {
     defaults: { scopeType: SealScopeType; scopeId: number | null; variant: SealVariant }[],
   ) {
     const res = await api<{ data: ScopeDefault[] }>(
-      `/api/v1/users/${userId}/stamps/scope-defaults`,
+      `/api/v1/users/${userId}/seals/scope-defaults`,
       {
-        method: 'POST',
+        method: 'PUT',
         body: { defaults },
       },
     )
     return res.data
   }
 
+  // === 押印ログ ===
   async function getStampLogs(userId: number, params?: { cursor?: string; size?: number }) {
     const query = new URLSearchParams()
     if (params?.cursor) query.set('cursor', params.cursor)
@@ -109,11 +117,21 @@ export function useSealApi() {
     return res.data
   }
 
-  async function setScopeDefault(userId: number, body: Record<string, unknown>) {
-    await api(`/api/v1/users/${userId}/stamps/scope-defaults`, {
-      method: 'POST',
-      body,
-    })
+  // === 管理者向け印鑑管理 ===
+  async function listAllSeals() {
+    const res = await api<{ data: ElectronicSeal[] }>('/api/v1/admin/seals')
+    return res.data
+  }
+
+  async function regenerateAll() {
+    await api('/api/v1/admin/seals/regenerate-all', { method: 'POST' })
+  }
+
+  async function regenerateAllStatus(jobId: string) {
+    const res = await api<{ data: RegenerateAllStatus }>(
+      `/api/v1/admin/seals/regenerate-all/${jobId}/status`,
+    )
+    return res.data
   }
 
   return {
@@ -122,8 +140,7 @@ export function useSealApi() {
     getSeal,
     updateSeal,
     deleteSeal,
-    listAllSeals,
-    regenerateAll,
+    previewSeal,
     regenerateSeals,
     getScopeDefaults,
     updateScopeDefaults,
@@ -131,6 +148,8 @@ export function useSealApi() {
     stamp,
     revokeStamp,
     verifyStamp,
-    setScopeDefault,
+    listAllSeals,
+    regenerateAll,
+    regenerateAllStatus,
   }
 }
