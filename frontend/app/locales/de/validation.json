@@ -1,0 +1,8 @@
+{
+  "required": "Dieses Feld ist erforderlich",
+  "email": "Bitte geben Sie eine gultige E-Mail-Adresse ein",
+  "min_length": "Muss mindestens {min} Zeichen lang sein",
+  "max_length": "Darf hochstens {max} Zeichen lang sein",
+  "password_mismatch": "Die Passworter stimmen nicht uberein",
+  "invalid_format": "Ungultiges Format"
+}

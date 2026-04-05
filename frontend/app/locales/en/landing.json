@@ -1,0 +1,96 @@
+{
+  "landing": {
+    "hero": {
+      "badge": "All-in-one management for sports, community & workplace",
+      "title_pre": "The platform that ",
+      "title_accent": "maximizes",
+      "title_post": " your team's potential",
+      "subtitle": "Mannschaft is an all-in-one management platform that brings together everything your team or organization needs to operate smoothly.",
+      "cta_register": "Get started free",
+      "cta_login": "Log in",
+      "note": "No credit card required · Sign up in 1 minute"
+    },
+    "stats": {
+      "heading": "Current registrations",
+      "users": "Registered users",
+      "teams": "Registered teams",
+      "organizations": "Registered organizations"
+    },
+    "features": {
+      "heading": "Everything you need",
+      "subheading": "All the features your team needs, in one platform",
+      "items": {
+        "0": { "title": "Team & Org Management", "desc": "Invite members, assign roles, and manage permissions with ease" },
+        "1": { "title": "Events & Calendar", "desc": "Share schedules, track attendance, and set reminders in one place" },
+        "2": { "title": "Chat & Bulletin Board", "desc": "Group chat, circulars, and timeline for seamless communication" },
+        "3": { "title": "Shift Management", "desc": "Create shifts, collect preferences, and handle swap requests" },
+        "4": { "title": "Forms & Surveys", "desc": "Build forms, collect responses, and view analytics in one stop" },
+        "5": { "title": "Gallery & Files", "desc": "Share photos, videos, and documents securely with your team" },
+        "6": { "title": "Dues & Payments", "desc": "Digitize membership fee invoicing and payment tracking" },
+        "7": { "title": "Matching & Tournaments", "desc": "Organize team matchups, tournaments, and record results" }
+      }
+    },
+    "steps": {
+      "heading": "Get started in 3 steps",
+      "cta": "Sign up for free now",
+      "items": {
+        "0": { "title": "Sign up for free", "desc": "Get started instantly with just your email address. No credit card required." },
+        "1": { "title": "Create a team or org", "desc": "Pick a template, create your team or organization, and invite members." },
+        "2": { "title": "Start using features", "desc": "Enable only the features you need — schedules, chat, shifts, and more." }
+      }
+    },
+    "useCases": {
+      "heading": "Used in many settings",
+      "subheading": "Adaptable to teams and organizations of any industry or size",
+      "items": {
+        "0": { "title": "Sports Teams", "desc": "Practice & game schedules, shift coordination, attendance tracking, and standings." },
+        "1": { "title": "Local Communities", "desc": "Centralize event announcements, circulars, and fee management online." },
+        "2": { "title": "Businesses & Workplaces", "desc": "Cross-department project management, approval workflows, and internal communication." },
+        "3": { "title": "Education & Schools", "desc": "Parent communication, club management, activity records, photo sharing, and surveys." }
+      }
+    },
+    "faq": {
+      "heading": "Frequently asked questions",
+      "items": {
+        "0": { "q": "Is it free to use?", "a": "Core features are free. We also offer paid plans for larger teams with advanced needs." },
+        "1": { "q": "How many members can I invite?", "a": "Even on the free plan, you can invite multiple members. For large-scale teams, consider our dedicated plans." },
+        "2": { "q": "Can I use it on my smartphone?", "a": "Yes. Mannschaft is fully responsive and works on smartphones and tablets via your web browser." },
+        "3": { "q": "Is my data safe?", "a": "We use SSL/TLS encryption and perform regular backups to keep your data secure." },
+        "4": { "q": "Can I manage multiple teams or organizations?", "a": "Yes. A single account can belong to multiple teams and organizations, each managed independently." }
+      }
+    },
+    "cta": {
+      "heading": "Try it free today",
+      "subheading": "No credit card required. Sign up now and start managing your team.",
+      "register": "Create a free account",
+      "login": "Log in with existing account"
+    },
+    "layout": {
+      "login": "Log in",
+      "register": "Sign up",
+      "footer_tagline": "The all-in-one platform that unites your team",
+      "footer_product": "Product",
+      "footer_start_free": "Get started free",
+      "footer_features": "Features",
+      "footer_faq": "FAQ",
+      "footer_use_cases": "Use cases",
+      "footer_sports": "Sports Teams",
+      "footer_community": "Local Communities",
+      "footer_enterprise": "Businesses & Workplaces",
+      "footer_education": "Education",
+      "footer_legal": "Legal",
+      "footer_terms": "Terms of Service",
+      "footer_privacy": "Privacy Policy",
+      "footer_contact": "Contact Us",
+      "skip_to_content": "Skip to main content",
+      "open_menu": "Open menu",
+      "nav_label": "Main navigation"
+    },
+    "seo": {
+      "title": "Mannschaft - All-in-One Team Management Platform",
+      "description": "Mannschaft is an all-in-one management platform for sports teams, communities, and businesses — member management, scheduling, chat, payments, and more.",
+      "og_title": "Mannschaft - Maximize your team's potential",
+      "og_description": "Everything for team management in one place. Members, schedules, chat, and payments."
+    }
+  }
+}

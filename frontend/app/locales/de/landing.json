@@ -1,0 +1,96 @@
+{
+  "landing": {
+    "hero": {
+      "badge": "All-in-One-Management für Sport, Community & Arbeitsplatz",
+      "title_pre": "Die Plattform, die das Potenzial deines Teams ",
+      "title_accent": "maximiert",
+      "title_post": "",
+      "subtitle": "Mannschaft ist eine All-in-One-Management-Plattform, die alles vereint, was dein Team oder deine Organisation für einen reibungslosen Betrieb braucht.",
+      "cta_register": "Kostenlos starten",
+      "cta_login": "Anmelden",
+      "note": "Keine Kreditkarte nötig · Registrierung in 1 Minute"
+    },
+    "stats": {
+      "heading": "Aktuelle Registrierungen",
+      "users": "Registrierte Nutzer",
+      "teams": "Registrierte Teams",
+      "organizations": "Registrierte Organisationen"
+    },
+    "features": {
+      "heading": "Alles, was du brauchst",
+      "subheading": "Alle Funktionen für dein Team – auf einer Plattform",
+      "items": {
+        "0": { "title": "Team- & Org-Verwaltung", "desc": "Mitglieder einladen, Rollen zuweisen und Berechtigungen einfach verwalten" },
+        "1": { "title": "Events & Kalender", "desc": "Termine teilen, Anwesenheit erfassen und Erinnerungen einrichten" },
+        "2": { "title": "Chat & Pinnwand", "desc": "Gruppenchat, Rundschreiben und Timeline für nahtlose Kommunikation" },
+        "3": { "title": "Schichtplanung", "desc": "Schichten erstellen, Wünsche sammeln und Tausch-Anfragen bearbeiten" },
+        "4": { "title": "Formulare & Umfragen", "desc": "Formulare erstellen, Antworten sammeln und Analysen anzeigen" },
+        "5": { "title": "Galerie & Dateien", "desc": "Fotos, Videos und Dokumente sicher mit dem Team teilen" },
+        "6": { "title": "Beiträge & Zahlungen", "desc": "Mitgliedsbeiträge und Zahlungsverfolgung digitalisieren" },
+        "7": { "title": "Matchmaking & Turniere", "desc": "Team-Duelle organisieren, Turniere verwalten und Ergebnisse erfassen" }
+      }
+    },
+    "steps": {
+      "heading": "In 3 Schritten heute starten",
+      "cta": "Jetzt kostenlos registrieren",
+      "items": {
+        "0": { "title": "Kostenlos registrieren", "desc": "Sofort loslegen – nur mit deiner E-Mail-Adresse. Keine Kreditkarte nötig." },
+        "1": { "title": "Team oder Org erstellen", "desc": "Vorlage wählen, Team oder Organisation erstellen und Mitglieder einladen." },
+        "2": { "title": "Funktionen nutzen", "desc": "Nur die Funktionen aktivieren, die du brauchst – Termine, Chat, Schichten und mehr." }
+      }
+    },
+    "useCases": {
+      "heading": "Vielfältig einsetzbar",
+      "subheading": "Anpassbar an Teams und Organisationen jeder Branche und Größe",
+      "items": {
+        "0": { "title": "Sportteams", "desc": "Training- & Spielpläne, Schichtkoordination, Anwesenheit und Ranglisten." },
+        "1": { "title": "Lokale Gemeinschaften", "desc": "Event-Ankündigungen, Rundschreiben und Beitragsverwaltung online zentralisieren." },
+        "2": { "title": "Unternehmen & Arbeitsplatz", "desc": "Abteilungsübergreifendes Projektmanagement, Genehmigungs-Workflows und interne Kommunikation." },
+        "3": { "title": "Bildung & Schulen", "desc": "Elternkommunikation, AG-Verwaltung, Aktivitätenprotokoll, Fotosharing und Umfragen." }
+      }
+    },
+    "faq": {
+      "heading": "Häufig gestellte Fragen",
+      "items": {
+        "0": { "q": "Ist es kostenlos?", "a": "Die Grundfunktionen sind kostenlos. Für größere Teams bieten wir auch kostenpflichtige Pläne an." },
+        "1": { "q": "Wie viele Mitglieder kann ich einladen?", "a": "Auch im kostenlosen Plan kannst du mehrere Mitglieder einladen. Für große Teams empfehlen wir unsere dedizierten Pläne." },
+        "2": { "q": "Kann ich es auf dem Smartphone nutzen?", "a": "Ja. Mannschaft ist vollständig responsive und funktioniert auf Smartphones und Tablets über den Browser." },
+        "3": { "q": "Sind meine Daten sicher?", "a": "Wir verwenden SSL/TLS-Verschlüsselung und führen regelmäßige Backups durch, um deine Daten zu schützen." },
+        "4": { "q": "Kann ich mehrere Teams oder Organisationen verwalten?", "a": "Ja. Ein einzelnes Konto kann mehreren Teams und Organisationen angehören, die jeweils unabhängig verwaltet werden." }
+      }
+    },
+    "cta": {
+      "heading": "Heute kostenlos ausprobieren",
+      "subheading": "Keine Kreditkarte nötig. Registriere dich jetzt und beginne dein Team zu verwalten.",
+      "register": "Kostenloses Konto erstellen",
+      "login": "Mit bestehendem Konto anmelden"
+    },
+    "layout": {
+      "login": "Anmelden",
+      "register": "Registrieren",
+      "footer_tagline": "Die All-in-One-Plattform, die dein Team vereint",
+      "footer_product": "Produkt",
+      "footer_start_free": "Kostenlos starten",
+      "footer_features": "Funktionen",
+      "footer_faq": "FAQ",
+      "footer_use_cases": "Anwendungsfälle",
+      "footer_sports": "Sportteams",
+      "footer_community": "Lokale Gemeinschaften",
+      "footer_enterprise": "Unternehmen & Arbeitsplatz",
+      "footer_education": "Bildung",
+      "footer_legal": "Rechtliches",
+      "footer_terms": "Nutzungsbedingungen",
+      "footer_privacy": "Datenschutzerklärung",
+      "footer_contact": "Kontakt",
+      "skip_to_content": "Zum Hauptinhalt springen",
+      "open_menu": "Menü öffnen",
+      "nav_label": "Hauptnavigation"
+    },
+    "seo": {
+      "title": "Mannschaft - All-in-One-Team-Management-Plattform",
+      "description": "Mannschaft ist eine All-in-One-Management-Plattform für Sportteams, Gemeinschaften und Unternehmen – Mitgliederverwaltung, Termine, Chat, Zahlungen und mehr.",
+      "og_title": "Mannschaft - Maximiere das Potenzial deines Teams",
+      "og_description": "Alles für die Teamverwaltung an einem Ort. Mitglieder, Termine, Chat und Zahlungen."
+    }
+  }
+}

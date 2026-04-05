@@ -1,0 +1,8 @@
+{
+  "required": "필수 항목입니다",
+  "email": "올바른 이메일 주소를 입력해 주세요",
+  "min_length": "{min}자 이상으로 입력해 주세요",
+  "max_length": "{max}자 이하로 입력해 주세요",
+  "password_mismatch": "비밀번호가 일치하지 않습니다",
+  "invalid_format": "입력 형식이 올바르지 않습니다"
+}

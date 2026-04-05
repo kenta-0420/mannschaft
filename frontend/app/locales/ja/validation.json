@@ -1,0 +1,8 @@
+{
+  "required": "必須項目です",
+  "email": "メールアドレスの形式が正しくありません",
+  "min_length": "{min}文字以上で入力してください",
+  "max_length": "{max}文字以下で入力してください",
+  "password_mismatch": "パスワードが一致しません",
+  "invalid_format": "入力形式が正しくありません"
+}
