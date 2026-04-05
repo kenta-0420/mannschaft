@@ -13,6 +13,7 @@ const categories = ref<EventCategory[]>([])
 const loading = ref(true)
 const selectedYear = ref(new Date().getFullYear())
 const selectedCategory = ref<number | undefined>()
+const showCopyDialog = ref(false)
 
 async function loadData() {
   loading.value = true
@@ -30,6 +31,17 @@ async function loadData() {
     notification.error('年間行事計画の取得に失敗しました')
   } finally {
     loading.value = false
+  }
+}
+
+async function handleCopy() {
+  try {
+    await annualPlanApi.executeCopy('organization', orgId.value, selectedYear.value - 1)
+    notification.success('前年度の行事をコピーしました')
+    showCopyDialog.value = false
+    await loadData()
+  } catch {
+    notification.error('コピーに失敗しました')
   }
 }
 
@@ -54,6 +66,13 @@ onMounted(loadData)
           option-value="id"
           placeholder="カテゴリ"
           class="w-40"
+        />
+        <Button
+          label="前年度コピー"
+          icon="pi pi-copy"
+          severity="secondary"
+          size="small"
+          @click="showCopyDialog = true"
         />
       </div>
     </div>
@@ -95,5 +114,19 @@ onMounted(loadData)
         </div>
       </div>
     </div>
+    <Dialog
+      v-model:visible="showCopyDialog"
+      header="前年度トレース"
+      :modal="true"
+      class="w-full max-w-md"
+    >
+      <p class="mb-4">
+        {{ selectedYear - 1 }}年度の行事を{{ selectedYear }}年度にコピーしますか？日程は自動調整されます。
+      </p>
+      <template #footer>
+        <Button label="キャンセル" severity="secondary" @click="showCopyDialog = false" />
+        <Button label="コピー実行" icon="pi pi-copy" @click="handleCopy" />
+      </template>
+    </Dialog>
   </div>
 </template>

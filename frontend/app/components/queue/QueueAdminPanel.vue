@@ -21,7 +21,8 @@ async function load() {
   try {
     const res = await queueApi.getCounters(props.teamId)
     counters.value = res.data as Counter[]
-  } catch {
+  } catch (e) {
+    console.error('窓口一覧の取得に失敗しました', e)
     counters.value = []
   } finally {
     loading.value = false
@@ -36,6 +37,16 @@ async function callNext(counterId: number) {
     await load()
   } catch {
     notification.error('呼び出しに失敗しました')
+  }
+}
+
+async function cancelTicket(counterId: number, ticketNumber: string) {
+  try {
+    await queueApi.cancelTicket(props.teamId, counterId)
+    notification.success(`${ticketNumber} をキャンセルしました`)
+    await load()
+  } catch {
+    notification.error('キャンセルに失敗しました')
   }
 }
 
@@ -59,12 +70,23 @@ onMounted(load)
           </p>
           <p v-else class="text-sm text-surface-400">待機中</p>
         </div>
-        <Button
-          label="次を呼ぶ"
-          icon="pi pi-megaphone"
-          size="small"
-          @click="callNext(counter.id)"
-        />
+        <div class="flex gap-2">
+          <Button
+            label="次を呼ぶ"
+            icon="pi pi-megaphone"
+            size="small"
+            @click="callNext(counter.id)"
+          />
+          <Button
+            v-if="counter.currentTicket"
+            label="キャンセル"
+            icon="pi pi-times"
+            severity="danger"
+            size="small"
+            outlined
+            @click="cancelTicket(counter.id, counter.currentTicket)"
+          />
+        </div>
       </div>
     </div>
     <DashboardEmptyState v-else icon="pi pi-desktop" message="窓口はまだ設定されていません" />

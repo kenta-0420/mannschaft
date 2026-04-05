@@ -43,7 +43,8 @@ async function loadEvents() {
       ((shared.data as Record<string, unknown>)?.events as CalEvent[]) ?? []
     ).map((e) => ({ ...e, isPersonal: false }))
     events.value = [...personalEvents, ...sharedEvents]
-  } catch {
+  } catch (e) {
+    console.error('カレンダーイベントの取得に失敗しました', e)
     events.value = []
   } finally {
     loading.value = false

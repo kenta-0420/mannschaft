@@ -160,7 +160,32 @@ export function useAdminReportApi() {
     return api(`/api/v1/admin/reports/${reportId}/restore-content`, { method: 'PATCH' })
   }
 
-  async function startReview(reportId: number) {
+  // --- useAdminReports から参照されるメソッド ---
+  async function getReports(params?: { page?: number; size?: number; status?: string }) {
+    const q = new URLSearchParams()
+    if (params?.page != null) q.set('page', String(params.page))
+    if (params?.size != null) q.set('size', String(params.size))
+    if (params?.status) q.set('status', params.status)
+    return api<{ data: Array<Record<string, unknown>>; meta?: { totalElements: number } }>()
+  }
+
+  async function getReportNotes(reportId: number) {
+    return api<{ data: Array<Record<string, unknown>> }>()
+  }
+
+  async function createReportNote(reportId: number, body: { note: string }) {
+    return api<{ data: Record<string, unknown> }>(, { method: 'POST', body })
+  }
+
+  async function reviewReport(reportId: number) {
+    return api(, { method: 'PATCH' })
+  }
+
+  async function hideContent(reportId: number) {
+    return api(, { method: 'PATCH' })
+  }
+
+    async function startReview(reportId: number) {
     return api(`/api/v1/admin/reports/${reportId}/review`, { method: 'PATCH' })
   }
 
@@ -193,5 +218,10 @@ export function useAdminReportApi() {
     resolveReport,
     restoreContent,
     startReview,
+    getReports,
+    getReportNotes,
+    createReportNote,
+    reviewReport,
+    hideContent,
   }
 }
