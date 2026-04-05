@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import type { ServiceRecordResponse } from '~/types/service'
+
 definePageMeta({ middleware: 'auth' })
 
 const { getMyHistory: getMyRecords } = useServiceRecordApi()
 const { showError } = useNotification()
 
-const records = ref<Record<string, unknown>[]>([])
+const records = ref<ServiceRecordResponse[]>([])
 const loading = ref(false)
 
 async function load() {

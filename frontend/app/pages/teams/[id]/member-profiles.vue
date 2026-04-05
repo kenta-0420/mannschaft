@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MemberProfile, CreateMemberProfileRequest } from '~/types/member-profile'
+import type { MemberProfile, MemberProfileField, CreateMemberProfileRequest } from '~/types/member-profile'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -10,22 +10,29 @@ const notification = useNotification()
 const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)
 
 const profiles = ref<MemberProfile[]>([])
+const fields = ref<MemberProfileField[]>([])
 const loading = ref(true)
 const showDialog = ref(false)
 const editingProfile = ref<MemberProfile | null>(null)
 
-const form = ref<CreateMemberProfileRequest>({
+const form = ref<CreateMemberProfileRequest & { customFieldValues: Record<string, string> }>({
   displayName: '',
   memberNumber: '',
   bio: '',
   position: '',
+  customFieldValues: {},
 })
 
 async function loadData() {
   loading.value = true
   try {
     await loadPermissions()
-    profiles.value = await memberProfileApi.listMembers('team', teamId.value)
+    const [profilesResult, fieldsResult] = await Promise.all([
+      memberProfileApi.listMembers('team', teamId.value),
+      memberProfileApi.listFields('team', teamId.value),
+    ])
+    profiles.value = profilesResult
+    fields.value = fieldsResult
   } catch {
     notification.error('メンバー情報の取得に失敗しました')
   } finally {
@@ -35,7 +42,7 @@ async function loadData() {
 
 function openCreate() {
   editingProfile.value = null
-  form.value = { displayName: '', memberNumber: '', bio: '', position: '' }
+  form.value = { displayName: '', memberNumber: '', bio: '', position: '', customFieldValues: {} }
   showDialog.value = true
 }
 
@@ -46,17 +53,23 @@ function openEdit(profile: MemberProfile) {
     memberNumber: profile.memberNumber ?? '',
     bio: profile.bio ?? '',
     position: profile.position ?? '',
+    customFieldValues: { ...(profile.customFields ?? {}) },
   }
   showDialog.value = true
 }
 
 async function save() {
   try {
+    const { customFieldValues, ...baseFields } = form.value
+    const body: CreateMemberProfileRequest = {
+      ...baseFields,
+      customFields: customFieldValues,
+    }
     if (editingProfile.value) {
-      await memberProfileApi.updateMember('team', teamId.value, editingProfile.value.id, form.value)
+      await memberProfileApi.updateMember('team', teamId.value, editingProfile.value.id, body)
       notification.success('メンバーを更新しました')
     } else {
-      await memberProfileApi.createMember('team', teamId.value, form.value)
+      await memberProfileApi.createMember('team', teamId.value, body)
       notification.success('メンバーを追加しました')
     }
     showDialog.value = false
@@ -96,6 +109,14 @@ onMounted(loadData)
         @edit="openEdit"
         @delete="handleDelete"
       />
+
+      <!-- 拡張フィールド列（DataTable での表示用） -->
+      <DataTable v-if="fields.length > 0" :value="profiles" class="mt-6 w-full">
+        <Column field="displayName" header="名前" />
+        <Column v-for="field in fields" :key="field.id" :header="field.fieldName">
+          <template #body="{ data }">{{ data.customFields?.[String(field.id)] ?? '-' }}</template>
+        </Column>
+      </DataTable>
     </template>
 
     <Dialog
@@ -121,6 +142,49 @@ onMounted(loadData)
           <label class="mb-1 block text-sm font-medium">自己紹介</label>
           <Textarea v-model="form.bio" class="w-full" rows="3" />
         </div>
+
+        <!-- 拡張フィールド -->
+        <template v-for="field in fields" :key="field.id">
+          <div class="flex flex-col gap-1">
+            <label class="text-sm font-medium">
+              {{ field.fieldName }}<span v-if="field.isRequired" class="text-red-500">*</span>
+            </label>
+            <InputText
+              v-if="field.fieldType === 'TEXT'"
+              v-model="form.customFieldValues[String(field.id)]"
+              class="w-full"
+            />
+            <InputText
+              v-else-if="field.fieldType === 'NUMBER'"
+              type="number"
+              v-model="form.customFieldValues[String(field.id)]"
+              class="w-full"
+            />
+            <DatePicker
+              v-else-if="field.fieldType === 'DATE'"
+              v-model="form.customFieldValues[String(field.id)]"
+              date-format="yy/mm/dd"
+              class="w-full"
+            />
+            <Textarea
+              v-else-if="field.fieldType === 'TEXTAREA'"
+              v-model="form.customFieldValues[String(field.id)]"
+              class="w-full"
+              rows="3"
+            />
+            <Select
+              v-else-if="field.fieldType === 'SELECT'"
+              :options="field.options ?? []"
+              v-model="form.customFieldValues[String(field.id)]"
+              class="w-full"
+            />
+            <Checkbox
+              v-else-if="field.fieldType === 'CHECKBOX'"
+              v-model="form.customFieldValues[String(field.id)]"
+              :binary="true"
+            />
+          </div>
+        </template>
       </div>
       <template #footer>
         <Button label="キャンセル" severity="secondary" @click="showDialog = false" />
