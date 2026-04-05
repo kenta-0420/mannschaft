@@ -21,7 +21,8 @@ const { showError } = useNotification()
 
 // デフォルト: 過去6ヶ月〜今日
 const today = new Date()
-const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate())
+const sixMonthsAgo = new Date(today)
+sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
 const periodStart = ref<Date>(sixMonthsAgo)
 const periodEnd = ref<Date>(today)
@@ -53,6 +54,7 @@ async function fetchStats() {
 watch(stats, (newStats) => {
   if (!newStats || !chartRef.value) return
   if (chartInstance) chartInstance.destroy()
+  // 前のChartインスタンスを確実に破棄してから新規生成（メモリリーク防止）
   chartInstance = new Chart(chartRef.value, {
     type: 'bar',
     data: {

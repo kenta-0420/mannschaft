@@ -77,8 +77,10 @@ const pageTree = computed<TreeNode[]>(() => {
 
 function highlightText(text: string, query: string): string {
   if (!query.trim()) return text
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>')
+  // XSS対策: テキストをHTMLエスケープしてから<mark>タグのみ挿入
+  const safeText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return safeText.replace(new RegExp(`(${escapedQuery})`, 'gi'), '<mark>$1</mark>')
 }
 
 async function loadPages() {
