@@ -237,8 +237,7 @@
     },
     "convert_modal": {
       "title": "In TODO umwandeln",
-      "todo_title": "TODO-Titel",
-      "description": "Beschreibung (optional)",
+      "priority": "Priorität",
       "due_date": "Fälligkeitsdatum (optional)",
       "submit": "Umwandeln",
       "success": "In TODO umgewandelt",

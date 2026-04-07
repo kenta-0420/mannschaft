@@ -41,7 +41,7 @@ export interface PagedQuickMemos {
   meta: {
     page: number
     size: number
-    totalElements: number
+    total: number
     totalPages: number
     unsortedCount?: number
   }
@@ -61,7 +61,7 @@ export interface TagResponse {
 
 export interface PagedTags {
   data: TagResponse[]
-  meta: { page: number; size: number; totalElements: number; totalPages: number }
+  meta: { page: number; size: number; total: number; totalPages: number }
 }
 
 export interface ReminderOffset {
@@ -86,9 +86,9 @@ export interface UpdateQuickMemoRequest {
 }
 
 export interface ConvertToTodoRequest {
-  title: string
-  description?: string
+  priority?: string
   dueDate?: string
+  projectId?: number
 }
 
 export interface ConvertToTodoResponse {

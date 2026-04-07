@@ -41,7 +41,7 @@ public class QuickMemoAttachmentController {
             @Valid @RequestBody PresignRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(attachmentService.presignUrl(memoId, userId, request)));
+                .body(ApiResponse.of(attachmentService.presignUrl(memoId, userId, request)));
     }
 
     @PostMapping("/confirm")
@@ -52,7 +52,7 @@ public class QuickMemoAttachmentController {
             @Valid @RequestBody ConfirmUploadRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(attachmentService.confirmUpload(memoId, userId, request)));
+                .body(ApiResponse.of(attachmentService.confirmUpload(memoId, userId, request)));
     }
 
     @DeleteMapping("/{attachmentId}")

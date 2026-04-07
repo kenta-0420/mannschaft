@@ -45,12 +45,12 @@ public class QuickMemoController {
 
     @GetMapping
     @Operation(summary = "メモ一覧取得")
-    public ResponseEntity<ApiResponse<PagedResponse<QuickMemoResponse>>> listMemos(
+    public ResponseEntity<PagedResponse<QuickMemoResponse>> listMemos(
             @RequestParam(defaultValue = "UNSORTED") String status,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(quickMemoService.listMemos(userId, status, page, size)));
+        return ResponseEntity.ok(quickMemoService.listMemos(userId, status, page, size));
     }
 
     @PostMapping
@@ -60,7 +60,7 @@ public class QuickMemoController {
             @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
         Long userId = SecurityUtils.getCurrentUserId();
         QuickMemoResponse response = quickMemoService.createMemo(userId, request, acceptLanguage);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     @GetMapping("/{id}")
@@ -68,7 +68,7 @@ public class QuickMemoController {
     @PreAuthorize("@quickMemoAccessGuard.canAccess(#id, authentication)")
     public ResponseEntity<ApiResponse<QuickMemoResponse>> getMemo(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(quickMemoService.getMemoDetail(id, userId)));
+        return ResponseEntity.ok(ApiResponse.of(quickMemoService.getMemoDetail(id, userId)));
     }
 
     @PutMapping("/{id}")
@@ -78,7 +78,7 @@ public class QuickMemoController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateQuickMemoRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(quickMemoService.updateMemo(id, userId, request)));
+        return ResponseEntity.ok(ApiResponse.of(quickMemoService.updateMemo(id, userId, request)));
     }
 
     @DeleteMapping("/{id}")
@@ -95,7 +95,7 @@ public class QuickMemoController {
     @PreAuthorize("@quickMemoAccessGuard.canAccess(#id, authentication)")
     public ResponseEntity<ApiResponse<QuickMemoResponse>> archiveMemo(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(quickMemoService.archiveMemo(id, userId)));
+        return ResponseEntity.ok(ApiResponse.of(quickMemoService.archiveMemo(id, userId)));
     }
 
     @PatchMapping("/{id}/restore")
@@ -103,7 +103,7 @@ public class QuickMemoController {
     @PreAuthorize("@quickMemoAccessGuard.canAccess(#id, authentication)")
     public ResponseEntity<ApiResponse<QuickMemoResponse>> restoreMemo(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(quickMemoService.restoreMemo(id, userId)));
+        return ResponseEntity.ok(ApiResponse.of(quickMemoService.restoreMemo(id, userId)));
     }
 
     @PostMapping("/{id}/convert-to-todo")
@@ -114,23 +114,23 @@ public class QuickMemoController {
             @Valid @RequestBody ConvertToTodoRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(convertService.convertToTodo(id, userId, request)));
+                .body(ApiResponse.of(convertService.convertToTodo(id, userId, request)));
     }
 
     @PostMapping("/{id}/undelete")
     @Operation(summary = "ゴミ箱から復元")
     public ResponseEntity<ApiResponse<QuickMemoResponse>> undeleteMemo(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(quickMemoService.undeleteMemo(id, userId)));
+        return ResponseEntity.ok(ApiResponse.of(quickMemoService.undeleteMemo(id, userId)));
     }
 
     @GetMapping("/trash")
     @Operation(summary = "ゴミ箱一覧")
-    public ResponseEntity<ApiResponse<PagedResponse<QuickMemoResponse>>> listTrash(
+    public ResponseEntity<PagedResponse<QuickMemoResponse>> listTrash(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(quickMemoService.listTrash(userId, page, size)));
+        return ResponseEntity.ok(quickMemoService.listTrash(userId, page, size));
     }
 
     @GetMapping("/search")
@@ -138,6 +138,6 @@ public class QuickMemoController {
     public ResponseEntity<ApiResponse<List<QuickMemoResponse>>> searchMemos(
             @RequestParam String q) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(quickMemoService.searchMemos(userId, q)));
+        return ResponseEntity.ok(ApiResponse.of(quickMemoService.searchMemos(userId, q)));
     }
 }

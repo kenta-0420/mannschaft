@@ -22,8 +22,8 @@ public final class LikeEscapeUtils {
         }
         return input
                 .replace("\\", "\\\\")
-                .replace("%", "\%")
-                .replace("_", "\_");
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     /**

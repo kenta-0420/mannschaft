@@ -88,7 +88,7 @@ public class QuickMemoAttachmentService {
         // 既存の未確認URLを削除（1メモ1URL制限）
         LocalDateTime now = LocalDateTime.now();
         pendingUploadRepository.findActivePendingByMemoId(memoId, now).ifPresent(existing -> {
-            s3StorageService.deleteObject(existing.getS3Key());
+            s3StorageService.delete(existing.getS3Key());
             pendingUploadRepository.deleteByS3Key(existing.getS3Key());
         });
 
@@ -98,8 +98,8 @@ public class QuickMemoAttachmentService {
                 + "/" + UUID.randomUUID() + "." + ext;
 
         LocalDateTime expiresAt = now.plusMinutes(PRESIGN_EXPIRE_MINUTES);
-        String presignedUrl = s3StorageService.generatePresignedPutUrl(s3Key, req.contentType(),
-                req.declaredSize(), expiresAt);
+        java.time.Duration ttl = java.time.Duration.ofMinutes(PRESIGN_EXPIRE_MINUTES);
+        String presignedUrl = s3StorageService.generateUploadUrl(s3Key, req.contentType(), ttl).uploadUrl();
 
         // pending_uploads に記録
         PendingUploadEntity pending = PendingUploadEntity.builder()
@@ -132,16 +132,18 @@ public class QuickMemoAttachmentService {
         // S3 HEAD でサイズ検証（真の防御層）
         long actualSize = s3StorageService.getObjectSize(req.s3Key());
         long declared = pending.getDeclaredSizeBytes();
-        double deviation = Math.abs((double)(actualSize - declared) / declared);
-        if (deviation > SIZE_MISMATCH_TOLERANCE) {
-            throw new BusinessException(QuickMemoErrorCode.ATTACHMENT_SIZE_MISMATCH);
+        if (declared > 0) {
+            double deviation = Math.abs((double)(actualSize - declared) / declared);
+            if (deviation > SIZE_MISMATCH_TOLERANCE) {
+                throw new BusinessException(QuickMemoErrorCode.ATTACHMENT_SIZE_MISMATCH);
+            }
         }
 
-        // マジックバイト検証
+        // マジックバイト検証（先頭16バイトのレンジGETで取得）
         byte[] magicBytes = s3StorageService.readFirstBytes(req.s3Key(), 16);
         validateMagicBytes(magicBytes, pending.getContentType());
 
-        // EXIF 削除・画像メタデータ取得
+        // 画像メタデータ取得（縦横サイズ）
         int[] dimensions = s3StorageService.getImageDimensions(req.s3Key());
 
         // quick_memo_attachments に登録
@@ -181,7 +183,7 @@ public class QuickMemoAttachmentService {
                 .orElseThrow(() -> new BusinessException(QuickMemoErrorCode.ATTACHMENT_NOT_FOUND));
 
         // S3オブジェクト同期削除（非同期不可: データ漏洩防止）
-        s3StorageService.deleteObject(attachment.getS3Key());
+        s3StorageService.delete(attachment.getS3Key());
         attachmentRepository.delete(attachment);
 
         auditLogService.record("QUICK_MEMO_ATTACHMENT_DELETED", userId, null, null, null, null, null, null,

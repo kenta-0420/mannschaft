@@ -37,7 +37,7 @@ public class PendingUploadCleanupBatchService {
         int deletedCount = 0;
         for (PendingUploadEntity pending : expired) {
             try {
-                s3StorageService.deleteObject(pending.getS3Key());
+                s3StorageService.delete(pending.getS3Key());
                 pendingUploadRepository.deleteByS3Key(pending.getS3Key());
                 deletedCount++;
             } catch (Exception e) {

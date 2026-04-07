@@ -36,11 +36,11 @@ public class TagController {
 
     @GetMapping("/api/v1/me/tags")
     @Operation(summary = "個人タグ一覧")
-    public ResponseEntity<ApiResponse<PagedResponse<TagResponse>>> listPersonalTags(
+    public ResponseEntity<PagedResponse<TagResponse>> listPersonalTags(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int size) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(tagService.listTags("PERSONAL", userId, page, size)));
+        return ResponseEntity.ok(tagService.listTags("PERSONAL", userId, page, size));
     }
 
     @PostMapping("/api/v1/me/tags")
@@ -49,7 +49,7 @@ public class TagController {
             @Valid @RequestBody CreateTagRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(tagService.createTag("PERSONAL", userId, request)));
+                .body(ApiResponse.of(tagService.createTag("PERSONAL", userId, request)));
     }
 
     @PutMapping("/api/v1/me/tags/{tagId}")
@@ -58,7 +58,7 @@ public class TagController {
             @PathVariable Long tagId,
             @Valid @RequestBody UpdateTagRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(tagService.updateTag("PERSONAL", userId, tagId, request)));
+        return ResponseEntity.ok(ApiResponse.of(tagService.updateTag("PERSONAL", userId, tagId, request)));
     }
 
     @DeleteMapping("/api/v1/me/tags/{tagId}")
@@ -73,11 +73,11 @@ public class TagController {
 
     @GetMapping("/api/v1/teams/{teamId}/tags")
     @Operation(summary = "チームタグ一覧")
-    public ResponseEntity<ApiResponse<PagedResponse<TagResponse>>> listTeamTags(
+    public ResponseEntity<PagedResponse<TagResponse>> listTeamTags(
             @PathVariable Long teamId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int size) {
-        return ResponseEntity.ok(ApiResponse.success(tagService.listTags("TEAM", teamId, page, size)));
+        return ResponseEntity.ok(tagService.listTags("TEAM", teamId, page, size));
     }
 
     @PostMapping("/api/v1/teams/{teamId}/tags")
@@ -86,7 +86,7 @@ public class TagController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreateTagRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(tagService.createTag("TEAM", teamId, request)));
+                .body(ApiResponse.of(tagService.createTag("TEAM", teamId, request)));
     }
 
     @PutMapping("/api/v1/teams/{teamId}/tags/{tagId}")
@@ -95,7 +95,7 @@ public class TagController {
             @PathVariable Long teamId,
             @PathVariable Long tagId,
             @Valid @RequestBody UpdateTagRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(tagService.updateTag("TEAM", teamId, tagId, request)));
+        return ResponseEntity.ok(ApiResponse.of(tagService.updateTag("TEAM", teamId, tagId, request)));
     }
 
     @DeleteMapping("/api/v1/teams/{teamId}/tags/{tagId}")
@@ -111,11 +111,11 @@ public class TagController {
 
     @GetMapping("/api/v1/organizations/{orgId}/tags")
     @Operation(summary = "組織タグ一覧")
-    public ResponseEntity<ApiResponse<PagedResponse<TagResponse>>> listOrgTags(
+    public ResponseEntity<PagedResponse<TagResponse>> listOrgTags(
             @PathVariable Long orgId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int size) {
-        return ResponseEntity.ok(ApiResponse.success(tagService.listTags("ORGANIZATION", orgId, page, size)));
+        return ResponseEntity.ok(tagService.listTags("ORGANIZATION", orgId, page, size));
     }
 
     @PostMapping("/api/v1/organizations/{orgId}/tags")
@@ -124,7 +124,7 @@ public class TagController {
             @PathVariable Long orgId,
             @Valid @RequestBody CreateTagRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(tagService.createTag("ORGANIZATION", orgId, request)));
+                .body(ApiResponse.of(tagService.createTag("ORGANIZATION", orgId, request)));
     }
 
     @PutMapping("/api/v1/organizations/{orgId}/tags/{tagId}")
@@ -133,7 +133,7 @@ public class TagController {
             @PathVariable Long orgId,
             @PathVariable Long tagId,
             @Valid @RequestBody UpdateTagRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(tagService.updateTag("ORGANIZATION", orgId, tagId, request)));
+        return ResponseEntity.ok(ApiResponse.of(tagService.updateTag("ORGANIZATION", orgId, tagId, request)));
     }
 
     @DeleteMapping("/api/v1/organizations/{orgId}/tags/{tagId}")

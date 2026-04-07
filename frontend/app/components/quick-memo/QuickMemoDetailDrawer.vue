@@ -20,7 +20,7 @@ const editing = ref(false)
 const saving = ref(false)
 const showConvertDialog = ref(false)
 
-const editForm = ref<UpdateQuickMemoRequest>({ title: '', body: '' })
+const editForm = ref<UpdateQuickMemoRequest>({ title: '', body: '', tagIds: [] })
 
 watch(
   () => [visible.value, props.memoId],
@@ -196,7 +196,7 @@ async function handleDelete() {
         <div class="space-y-3">
           <InputText v-model="editForm.title" class="w-full" maxlength="200" />
           <Textarea v-model="editForm.body" class="w-full" rows="8" maxlength="10000" />
-          <QuickMemoTagPicker v-model="editForm.tagIds!" :tags="personalTags" />
+          <QuickMemoTagPicker v-model="editForm.tagIds" :tags="personalTags" />
         </div>
         <div class="flex gap-2 pt-2">
           <Button :label="t('button.cancel')" severity="secondary" @click="editing = false" />

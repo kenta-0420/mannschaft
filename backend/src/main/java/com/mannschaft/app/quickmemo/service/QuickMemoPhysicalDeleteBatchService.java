@@ -58,7 +58,7 @@ public class QuickMemoPhysicalDeleteBatchService {
         List<String> s3Keys = attachmentRepository.findS3KeysByMemoIdIn(memoIds);
         for (String s3Key : s3Keys) {
             try {
-                s3StorageService.deleteObject(s3Key);
+                s3StorageService.delete(s3Key);
             } catch (Exception e) {
                 log.error("S3削除失敗: s3Key={}, error={}", s3Key, e.getMessage());
             }

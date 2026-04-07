@@ -237,8 +237,7 @@
     },
     "convert_modal": {
       "title": "Convert to TODO",
-      "todo_title": "TODO Title",
-      "description": "Description (optional)",
+      "priority": "Priority",
       "due_date": "Due date (optional)",
       "submit": "Convert",
       "success": "Converted to TODO",

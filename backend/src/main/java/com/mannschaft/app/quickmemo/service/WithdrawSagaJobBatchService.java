@@ -114,7 +114,7 @@ public class WithdrawSagaJobBatchService {
                 if (!memoIds.isEmpty()) {
                     List<String> s3Keys = attachmentRepository.findS3KeysByMemoIdIn(memoIds);
                     for (String s3Key : s3Keys) {
-                        s3StorageService.deleteObject(s3Key);
+                        s3StorageService.delete(s3Key);
                     }
                     // usage_count 集計デクリメント
                     Map<Long, Long> tagDecrements = tagLinkRepository.findByMemoIdIn(memoIds).stream()
