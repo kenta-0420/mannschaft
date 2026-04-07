@@ -76,6 +76,7 @@ function getPriorityColor(priority: string): string {
 
 function getIcon(sourceType: string): string {
   switch (sourceType) {
+    case 'EMERGENCY_CLOSURE': return 'pi pi-exclamation-triangle'
     case 'SCHEDULE': return 'pi pi-calendar'
     case 'CHAT_MESSAGE': return 'pi pi-comment'
     case 'TIMELINE_POST': return 'pi pi-comments'
@@ -83,6 +84,35 @@ function getIcon(sourceType: string): string {
     case 'SYSTEM': return 'pi pi-info-circle'
     default: return 'pi pi-bell'
   }
+}
+
+function isEmergency(sourceType: string): boolean {
+  return sourceType === 'EMERGENCY_CLOSURE'
+}
+
+// 臨時休業確認追跡
+const closureApi = useEmergencyClosureApi()
+const confirmedClosureIds = ref(new Set<number>())
+const confirmingId = ref<number | null>(null)
+
+async function confirmEmergency(notif: NotificationResponse) {
+  if (!notif.sourceId || !notif.scopeId) return
+  confirmingId.value = notif.sourceId
+  try {
+    await closureApi.confirmClosure(notif.scopeId, notif.sourceId)
+    confirmedClosureIds.value.add(notif.sourceId)
+  }
+  catch {
+    // 既に確認済みの場合も成功扱い（サーバー側で冪等処理）
+    confirmedClosureIds.value.add(notif.sourceId!)
+  }
+  finally {
+    confirmingId.value = null
+  }
+}
+
+function isEmergencyConfirmed(notif: NotificationResponse): boolean {
+  return notif.sourceId != null && confirmedClosureIds.value.has(notif.sourceId)
 }
 
 watch(filter, () => loadNotifications())
@@ -114,22 +144,35 @@ defineExpose({ refresh: () => loadNotifications() })
       <button
         v-for="notif in notifications"
         :key="notif.id"
-        class="flex items-start gap-3 border-b border-surface-100 px-4 py-3 text-left transition-colors hover:bg-surface-50"
-        :class="notif.isRead ? 'opacity-60' : ''"
+        class="flex items-start gap-3 border-b px-4 py-3 text-left transition-colors"
+        :class="[
+          notif.isRead ? 'opacity-60' : '',
+          isEmergency(notif.sourceType)
+            ? 'border-l-4 border-l-red-500 border-b-surface-100 bg-red-50 hover:bg-red-100'
+            : 'border-b-surface-100 hover:bg-surface-50',
+        ]"
         @click="onClickNotification(notif)"
       >
         <!-- 未読ドット -->
         <div class="mt-2 flex shrink-0 items-center">
           <div
             v-if="!notif.isRead"
-            class="h-2 w-2 rounded-full bg-primary"
+            class="h-2 w-2 rounded-full"
+            :class="isEmergency(notif.sourceType) ? 'bg-red-500' : 'bg-primary'"
           />
           <div v-else class="h-2 w-2" />
         </div>
 
         <!-- アイコン -->
-        <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-100">
-          <i :class="getIcon(notif.sourceType)" class="text-sm text-surface-500" />
+        <div
+          class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+          :class="isEmergency(notif.sourceType) ? 'bg-red-100' : 'bg-surface-100'"
+        >
+          <i
+            :class="getIcon(notif.sourceType)"
+            class="text-sm"
+            :style="isEmergency(notif.sourceType) ? 'color: #dc2626' : ''"
+          />
         </div>
 
         <!-- 内容 -->
@@ -145,6 +188,25 @@ defineExpose({ refresh: () => loadNotifications() })
           <p v-if="notif.body" class="mt-0.5 truncate text-xs text-surface-400">
             {{ notif.body }}
           </p>
+          <!-- 臨時休業: 確認ボタン / 確認済みバッジ -->
+          <div v-if="isEmergency(notif.sourceType)" class="mt-2">
+            <button
+              v-if="!isEmergencyConfirmed(notif)"
+              class="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-50"
+              :disabled="confirmingId === notif.sourceId"
+              @click.stop="confirmEmergency(notif)"
+            >
+              <i class="pi pi-check text-xs" />
+              {{ confirmingId === notif.sourceId ? '送信中...' : '確認しました' }}
+            </button>
+            <span
+              v-else
+              class="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400"
+            >
+              <i class="pi pi-check-circle text-xs" />
+              確認済み
+            </span>
+          </div>
           <div class="mt-1 flex items-center gap-2 text-xs text-surface-400">
             <span v-if="notif.actor">{{ notif.actor.displayName }}</span>
             <span>{{ relativeTime(notif.createdAt) }}</span>

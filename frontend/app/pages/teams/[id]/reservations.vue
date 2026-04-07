@@ -32,6 +32,7 @@ onMounted(() => loadPermissions())
         <Tab :value="0">予約する</Tab>
         <Tab :value="1">予約一覧</Tab>
         <Tab :value="2">ライン管理</Tab>
+        <Tab v-if="isAdmin" :value="3">臨時休業通知</Tab>
       </TabList>
       <TabPanels>
         <TabPanel :value="0">
@@ -42,6 +43,9 @@ onMounted(() => loadPermissions())
         </TabPanel>
         <TabPanel v-if="isAdmin" :value="2">
           <LineManager :team-id="teamId" />
+        </TabPanel>
+        <TabPanel v-if="isAdmin" :value="3">
+          <ReservationEmergencyClosureForm :team-id="teamId" />
         </TabPanel>
       </TabPanels>
     </Tabs>
