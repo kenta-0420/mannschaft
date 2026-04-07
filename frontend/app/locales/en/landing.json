@@ -109,6 +109,14 @@
         "save_dialog": "このぼうけんを　セーブしますか？",
         "yes": "はい",
         "no": "いいえ"
+      },
+      "y1998": {
+        "under_construction": "🚧 Under Construction 🚧",
+        "visitor_count": "You are visitor #",
+        "visitor_count_suffix": " — Welcome!",
+        "best_viewed": "Best viewed in Netscape Navigator 4.0 at 800×600 resolution",
+        "made_with": "♦ Made with Notepad ♦",
+        "welcome_message": "★ Welcome to Mannschaft! The all-in-one platform to maximize your team's power ★"
       }
     }
   }
