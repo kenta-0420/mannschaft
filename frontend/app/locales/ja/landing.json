@@ -91,6 +91,16 @@
       "description": "Mannschaftは、スポーツチーム・地域コミュニティ・企業の運営に必要なすべての機能をひとつにまとめたオールインワン管理プラットフォームです。",
       "og_title": "Mannschaft - チームの力を最大化する",
       "og_description": "チーム管理のすべてをひとつに。メンバー管理・スケジュール・チャット・決済まで。"
+    },
+    "era_themes": {
+      "y1998": {
+        "under_construction": "🚧 工事中 🚧",
+        "visitor_count": "あなたは ",
+        "visitor_count_suffix": " 人目のお客様です！",
+        "best_viewed": "※ このページは Netscape Navigator 4.0、画面解像度 800×600 での閲覧を推奨します",
+        "made_with": "♦ Made with Notepad ♦",
+        "welcome_message": "★ Mannschaft へようこそ！ チームの力を最大化するプラットフォームです ★"
+      }
     }
   }
 }

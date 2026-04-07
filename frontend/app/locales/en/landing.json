@@ -91,6 +91,16 @@
       "description": "Mannschaft is an all-in-one management platform for sports teams, communities, and businesses — member management, scheduling, chat, payments, and more.",
       "og_title": "Mannschaft - Maximize your team's potential",
       "og_description": "Everything for team management in one place. Members, schedules, chat, and payments."
+    },
+    "era_themes": {
+      "y1998": {
+        "under_construction": "🚧 Under Construction 🚧",
+        "visitor_count": "You are visitor #",
+        "visitor_count_suffix": " — Welcome!",
+        "best_viewed": "Best viewed in Netscape Navigator 4.0 at 800×600 resolution",
+        "made_with": "♦ Made with Notepad ♦",
+        "welcome_message": "★ Welcome to Mannschaft! The all-in-one platform to maximize your team's power ★"
+      }
     }
   }
 }
