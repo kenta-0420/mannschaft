@@ -91,6 +91,13 @@
       "description": "Mannschaft es una plataforma de gestión todo en uno para equipos deportivos, comunidades y empresas: gestión de miembros, agenda, chat, pagos y más.",
       "og_title": "Mannschaft - Maximiza el potencial de tu equipo",
       "og_description": "Todo para la gestión de equipos en un solo lugar. Miembros, agenda, chat y pagos."
+    },
+    "era_themes": {
+      "switcher": {
+        "label": "🎨 Volver a la versión moderna",
+        "aria_label": "Volver a la versión moderna de la página",
+        "tooltip": "Este es un tema oculto de Mannschaft (probabilidad de 1 en 100)"
+      }
     }
   }
 }

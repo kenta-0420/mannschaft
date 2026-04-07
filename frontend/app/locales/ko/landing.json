@@ -91,6 +91,13 @@
       "description": "Mannschaft는 스포츠 팀, 커뮤니티, 기업을 위한 올인원 관리 플랫폼입니다. 멤버 관리, 일정, 채팅, 결제까지.",
       "og_title": "Mannschaft - 팀의 잠재력을 극대화",
       "og_description": "팀 관리의 모든 것을 하나로. 멤버, 일정, 채팅, 결제까지."
+    },
+    "era_themes": {
+      "switcher": {
+        "label": "🎨 모던 버전으로 돌아가기",
+        "aria_label": "페이지의 현대적인 버전으로 돌아가기",
+        "tooltip": "이것은 Mannschaft의 숨겨진 테마입니다 (1/100 확률로 발동)"
+      }
     }
   }
 }

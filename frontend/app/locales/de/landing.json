@@ -91,6 +91,13 @@
       "description": "Mannschaft ist eine All-in-One-Management-Plattform für Sportteams, Gemeinschaften und Unternehmen – Mitgliederverwaltung, Termine, Chat, Zahlungen und mehr.",
       "og_title": "Mannschaft - Maximiere das Potenzial deines Teams",
       "og_description": "Alles für die Teamverwaltung an einem Ort. Mitglieder, Termine, Chat und Zahlungen."
+    },
+    "era_themes": {
+      "switcher": {
+        "label": "🎨 Zur modernen Version zurück",
+        "aria_label": "Zur modernen Version der Seite zurückkehren",
+        "tooltip": "Dies ist ein verstecktes Mannschaft-Theme (1 von 100 Chance)"
+      }
     }
   }
 }
