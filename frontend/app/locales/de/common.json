@@ -173,5 +173,104 @@
       "Schlaf heute Nacht gut, um morgen fruh erfrischt aufzuwachen.",
       "Du hast das heute wirklich toll gemacht. Gute Nacht."
     ]
+  },
+  "quick_memo": {
+    "title": "Schnellnotiz",
+    "detail": "Notizdetail",
+    "no_memos": "Noch keine Notizen. Probiere den 🪶-Button aus",
+    "no_body": "(kein Inhalt)",
+    "saved": "Gespeichert!",
+    "save_error": "Speichern fehlgeschlagen",
+    "updated": "Aktualisiert",
+    "update_error": "Aktualisierung fehlgeschlagen",
+    "load_error": "Laden fehlgeschlagen",
+    "limit_warning": "Viele unsortierte Notizen 🌱 Zeit zum Organisieren? ({count})",
+    "limit_exceeded": "Limit (500) unsortierter Notizen erreicht. Bitte archivieren oder in TODO umwandeln",
+    "settings": "Einstellungen",
+    "status": {
+      "UNSORTED": "Unsortiert",
+      "ARCHIVED": "Archiviert",
+      "CONVERTED": "In TODO umgewandelt"
+    },
+    "action": {
+      "convert": "In TODO umwandeln",
+      "archive": "Archivieren",
+      "archived": "Archiviert",
+      "archive_error": "Archivierung fehlgeschlagen",
+      "restore": "Wiederherstellen",
+      "restored": "Wiederhergestellt",
+      "restore_error": "Wiederherstellung fehlgeschlagen",
+      "deleted": "Geloscht",
+      "delete_error": "Loschen fehlgeschlagen"
+    },
+    "capture_modal": {
+      "title": "Schnellnotiz",
+      "title_placeholder": "Was beschäftigt dich?",
+      "add_body": "Details hinzufügen",
+      "body_placeholder": "Details (optional)",
+      "submit": "Speichern!"
+    },
+    "form": {
+      "add_tag": "+ Tag",
+      "add_reminder": "⏰ Erinnerung"
+    },
+    "tag": {
+      "create": "Neuer Tag",
+      "name_placeholder": "Tag-Name",
+      "color": "Farbe",
+      "create_error": "Tag erstellen fehlgeschlagen"
+    },
+    "reminder": {
+      "label": "Erinnerung",
+      "slot1": "1.",
+      "slot2": "2.",
+      "slot3": "3."
+    },
+    "voice": {
+      "start": "Spracheingabe starten",
+      "stop": "Spracheingabe stoppen",
+      "listening": "Aufnahme...",
+      "consent_title": "Spracheingabe",
+      "consent_body": "Spracheingabe sendet Audiodaten an einen externen Dienst. Bitte mit persönlichen Informationen vorsichtig sein.",
+      "agree": "Zustimmen und verwenden",
+      "consent_error": "Zustimmung konnte nicht gespeichert werden"
+    },
+    "convert_modal": {
+      "title": "In TODO umwandeln",
+      "todo_title": "TODO-Titel",
+      "description": "Beschreibung (optional)",
+      "due_date": "Fälligkeitsdatum (optional)",
+      "submit": "Umwandeln",
+      "success": "In TODO umgewandelt",
+      "error": "Umwandlung fehlgeschlagen"
+    },
+    "trash": {
+      "title": "Papierkorb",
+      "no_memos": "Papierkorb ist leer",
+      "restore": "Wiederherstellen",
+      "restored": "Aus Papierkorb wiederhergestellt",
+      "restore_error": "Wiederherstellung fehlgeschlagen",
+      "auto_delete_notice": "Notizen im Papierkorb werden nach 90 Tagen endgültig gelöscht"
+    },
+    "search": {
+      "placeholder": "Notizen suchen..."
+    },
+    "settings": {
+      "title": "Erinnerungseinstellungen",
+      "enable_reminder": "Erinnerungen aktivieren",
+      "enable_reminder_desc": "Benachrichtigung zur eingestellten Zeit nach dem Erstellen einer Notiz",
+      "days_after": "Tage danach um",
+      "days_suffix": " Tage",
+      "preview": "Du wirst nach dem Erstellen einer Notiz um {slots} benachrichtigt",
+      "preview_none": "Erinnerungen sind deaktiviert",
+      "apply_dialog_title": "Anwendungsbereich",
+      "apply_dialog_body": "Auf welche Notizen soll diese Einstellung angewendet werden?",
+      "apply_new_only": "Nur neue Notizen (empfohlen)",
+      "apply_unsent": "Auch ungesendete Erinnerungen aktualisieren",
+      "apply_all": "Alle Notiz-Erinnerungen neu berechnen",
+      "saved": "Einstellungen gespeichert",
+      "load_error": "Einstellungen konnten nicht geladen werden",
+      "save_error": "Einstellungen konnten nicht gespeichert werden"
+    }
   }
 }
