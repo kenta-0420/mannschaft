@@ -97,6 +97,18 @@
         "label": "🎨 Volver a la versión moderna",
         "aria_label": "Volver a la versión moderna de la página",
         "tooltip": "Este es un tema oculto de Mannschaft (probabilidad de 1 en 100)"
+      },
+      "fc": {
+        "push_start": "PUSH START",
+        "copyright": "© 2026 MANNSCHAFT"
+      },
+      "sfc": {
+        "menu_start": "▶ はじめる",
+        "menu_continue": "　つづきから",
+        "menu_features": "　きのう一覧",
+        "save_dialog": "このぼうけんを　セーブしますか？",
+        "yes": "はい",
+        "no": "いいえ"
       }
     }
   }

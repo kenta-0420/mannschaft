@@ -97,6 +97,18 @@
         "label": "🎨 모던 버전으로 돌아가기",
         "aria_label": "페이지의 현대적인 버전으로 돌아가기",
         "tooltip": "이것은 Mannschaft의 숨겨진 테마입니다 (1/100 확률로 발동)"
+      },
+      "fc": {
+        "push_start": "PUSH START",
+        "copyright": "© 2026 MANNSCHAFT"
+      },
+      "sfc": {
+        "menu_start": "▶ はじめる",
+        "menu_continue": "　つづきから",
+        "menu_features": "　きのう一覧",
+        "save_dialog": "このぼうけんを　セーブしますか？",
+        "yes": "はい",
+        "no": "いいえ"
       }
     }
   }

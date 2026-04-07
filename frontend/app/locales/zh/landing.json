@@ -97,6 +97,18 @@
         "label": "🎨 返回现代版",
         "aria_label": "返回页面的现代版本",
         "tooltip": "这是 Mannschaft 的隐藏主题（1/100 的概率触发）"
+      },
+      "fc": {
+        "push_start": "PUSH START",
+        "copyright": "© 2026 MANNSCHAFT"
+      },
+      "sfc": {
+        "menu_start": "▶ はじめる",
+        "menu_continue": "　つづきから",
+        "menu_features": "　きのう一覧",
+        "save_dialog": "このぼうけんを　セーブしますか？",
+        "yes": "はい",
+        "no": "いいえ"
       }
     }
   }
