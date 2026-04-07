@@ -44,6 +44,11 @@ public interface TodoTagLinkRepository extends JpaRepository<TodoTagLinkEntity, 
     long countByTodoId(Long todoId);
 
     /**
+     * タグに紐付くTODOリンク件数を取得する（整合性バッチ用）。
+     */
+    long countByTagId(Long tagId);
+
+    /**
      * 複数TODOのタグリンク一覧を取得する（usage_count 集計用）。
      */
     List<TodoTagLinkEntity> findByTodoIdIn(List<Long> todoIds);
