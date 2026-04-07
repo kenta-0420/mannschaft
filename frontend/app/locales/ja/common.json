@@ -355,8 +355,7 @@
     },
     "convert_modal": {
       "title": "TODOに変換",
-      "todo_title": "TODOタイトル",
-      "description": "説明（任意）",
+      "priority": "優先度",
       "due_date": "期限（任意）",
       "submit": "変換する",
       "success": "TODOに変換しました",

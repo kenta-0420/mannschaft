@@ -36,7 +36,6 @@ export function useVoiceRecognition() {
         }
       }
       if (final) transcript.value += final
-      // interim はリアクティブに上書き表示するためオフセット付きで返す
     }
 
     recognition.onerror = () => {

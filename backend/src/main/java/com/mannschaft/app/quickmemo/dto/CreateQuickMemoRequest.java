@@ -1,7 +1,6 @@
 package com.mannschaft.app.quickmemo.dto;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -11,7 +10,6 @@ import java.util.List;
  */
 public record CreateQuickMemoRequest(
 
-        @NotBlank
         @Size(max = 200)
         String title,
 

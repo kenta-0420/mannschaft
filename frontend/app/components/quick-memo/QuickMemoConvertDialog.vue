@@ -13,29 +13,25 @@ const notification = useNotification()
 const memoApi = useQuickMemoApi()
 
 const form = ref<ConvertToTodoRequest>({
-  title: '',
-  description: '',
+  priority: 'MEDIUM',
   dueDate: undefined,
+  projectId: undefined,
 })
 const loading = ref(false)
 const dueDateObj = ref<Date | null>(null)
 
-watch(
-  () => props.memo,
-  (memo) => {
-    form.value.title = memo.title
-    form.value.description = memo.body ?? ''
-  },
-  { immediate: true },
-)
+const priorityOptions = [
+  { label: t('todo.priority.LOW'), value: 'LOW' },
+  { label: t('todo.priority.MEDIUM'), value: 'MEDIUM' },
+  { label: t('todo.priority.HIGH'), value: 'HIGH' },
+  { label: t('todo.priority.URGENT'), value: 'URGENT' },
+]
 
 async function submit() {
-  if (!form.value.title.trim()) return
   loading.value = true
   try {
     const body: ConvertToTodoRequest = {
-      title: form.value.title.trim(),
-      description: form.value.description?.trim() || undefined,
+      priority: form.value.priority,
       dueDate: dueDateObj.value ? dueDateObj.value.toISOString().slice(0, 10) : undefined,
     }
     const res = await memoApi.convertToTodo(props.memo.id, body)
@@ -50,7 +46,7 @@ async function submit() {
 }
 
 function resetForm() {
-  form.value = { title: props.memo.title, description: props.memo.body ?? '', dueDate: undefined }
+  form.value = { priority: 'MEDIUM', dueDate: undefined, projectId: undefined }
   dueDateObj.value = null
 }
 </script>
@@ -63,27 +59,32 @@ function resetForm() {
     class="w-full max-w-lg"
     @hide="resetForm"
   >
+    <!-- メモ内容プレビュー（タイトル・本文はそのまま継承） -->
+    <div class="mb-4 rounded-lg bg-surface-100 p-3 text-sm dark:bg-surface-700">
+      <p class="font-medium">{{ memo.title }}</p>
+      <p v-if="memo.body" class="mt-1 line-clamp-2 text-surface-500">{{ memo.body }}</p>
+    </div>
+
     <div class="space-y-4">
       <div>
-        <label class="mb-1 block text-sm font-medium">
-          {{ t('quick_memo.convert_modal.todo_title') }}
-          <span class="ml-1 text-red-500">*</span>
-        </label>
-        <InputText v-model="form.title" class="w-full" maxlength="200" />
+        <label class="mb-1 block text-sm font-medium">{{ t('quick_memo.convert_modal.priority') }}</label>
+        <Select
+          v-model="form.priority"
+          :options="priorityOptions"
+          option-label="label"
+          option-value="value"
+          class="w-full"
+        />
       </div>
 
       <div>
-        <label class="mb-1 block text-sm font-medium">
-          {{ t('quick_memo.convert_modal.description') }}
-        </label>
-        <Textarea v-model="form.description" class="w-full" rows="4" maxlength="5000" />
-      </div>
-
-      <div>
-        <label class="mb-1 block text-sm font-medium">
-          {{ t('quick_memo.convert_modal.due_date') }}
-        </label>
-        <DatePicker v-model="dueDateObj" :min-date="new Date()" date-format="yy-mm-dd" class="w-full" />
+        <label class="mb-1 block text-sm font-medium">{{ t('quick_memo.convert_modal.due_date') }}</label>
+        <DatePicker
+          v-model="dueDateObj"
+          :min-date="new Date()"
+          date-format="yy-mm-dd"
+          class="w-full"
+        />
       </div>
     </div>
 
@@ -92,7 +93,6 @@ function resetForm() {
       <Button
         :label="t('quick_memo.convert_modal.submit')"
         :loading="loading"
-        :disabled="!form.title.trim()"
         @click="submit"
       />
     </template>

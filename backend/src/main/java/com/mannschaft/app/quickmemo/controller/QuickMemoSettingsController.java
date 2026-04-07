@@ -33,7 +33,7 @@ public class QuickMemoSettingsController {
     @Operation(summary = "リマインド設定取得")
     public ResponseEntity<ApiResponse<UserQuickMemoSettingsResponse>> getSettings() {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(settingsService.getSettings(userId)));
+        return ResponseEntity.ok(ApiResponse.of(settingsService.getSettings(userId)));
     }
 
     @PutMapping
@@ -43,6 +43,6 @@ public class QuickMemoSettingsController {
             @Valid @RequestBody UpdateSettingsRequest request,
             @RequestParam(defaultValue = "NEW_ONLY") String apply_to) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(settingsService.updateSettings(userId, request, apply_to)));
+        return ResponseEntity.ok(ApiResponse.of(settingsService.updateSettings(userId, request, apply_to)));
     }
 }

@@ -70,6 +70,7 @@ async function submit() {
     // 1.5秒後にモーダルを閉じる（連投しやすく）
     setTimeout(() => {
       visible.value = false
+      submitting.value = false
       emit('created')
     }, 1500)
   } catch {

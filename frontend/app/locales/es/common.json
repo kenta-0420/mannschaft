@@ -355,8 +355,7 @@
     },
     "convert_modal": {
       "title": "Convertir a TODO",
-      "todo_title": "Título del TODO",
-      "description": "Descripción (opcional)",
+      "priority": "Prioridad",
       "due_date": "Fecha límite (opcional)",
       "submit": "Convertir",
       "success": "Convertido a TODO",

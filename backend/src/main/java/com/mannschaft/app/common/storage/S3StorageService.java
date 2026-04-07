@@ -10,14 +10,19 @@ import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -168,6 +173,70 @@ public class S3StorageService implements StorageService {
         } catch (Exception e) {
             log.error("S3ダウンロード失敗: key={}", s3Key, e);
             throw new BusinessException(StorageErrorCode.DOWNLOAD_FAILED, e);
+        }
+    }
+
+    /**
+     * S3 オブジェクトのサイズをバイト単位で返す（HEAD リクエスト）。
+     *
+     * @param s3Key オブジェクトキー
+     * @return ファイルサイズ（バイト）
+     */
+    public long getObjectSize(String s3Key) {
+        try {
+            HeadObjectRequest request = HeadObjectRequest.builder()
+                    .bucket(storageProperties.getBucket())
+                    .key(s3Key)
+                    .build();
+            long size = s3Client.headObject(request).contentLength();
+            log.debug("S3オブジェクトサイズ取得: key={}, size={}", s3Key, size);
+            return size;
+        } catch (Exception e) {
+            log.error("S3オブジェクトサイズ取得失敗: key={}", s3Key, e);
+            throw new BusinessException(StorageErrorCode.DOWNLOAD_FAILED, e);
+        }
+    }
+
+    /**
+     * S3 オブジェクトの先頭 n バイトを返す（レンジ GET）。
+     * マジックバイト検証に使用する。
+     *
+     * @param s3Key    オブジェクトキー
+     * @param numBytes 取得バイト数
+     * @return 先頭バイト列
+     */
+    public byte[] readFirstBytes(String s3Key, int numBytes) {
+        try {
+            GetObjectRequest request = GetObjectRequest.builder()
+                    .bucket(storageProperties.getBucket())
+                    .key(s3Key)
+                    .range("bytes=0-" + (numBytes - 1))
+                    .build();
+            byte[] data = s3Client.getObjectAsBytes(request).asByteArray();
+            log.debug("S3先頭バイト取得: key={}, bytes={}", s3Key, data.length);
+            return Arrays.copyOf(data, numBytes);
+        } catch (Exception e) {
+            log.error("S3先頭バイト取得失敗: key={}", s3Key, e);
+            throw new BusinessException(StorageErrorCode.DOWNLOAD_FAILED, e);
+        }
+    }
+
+    /**
+     * S3 画像の縦横サイズを返す（フルダウンロード + ImageIO）。
+     * 添付ファイル登録時のメタデータ取得に使用する。
+     *
+     * @param s3Key オブジェクトキー
+     * @return [width, height]。取得失敗時は空配列
+     */
+    public int[] getImageDimensions(String s3Key) {
+        try {
+            byte[] data = download(s3Key);
+            BufferedImage image = ImageIO.read(new ByteArrayInputStream(data));
+            if (image == null) return new int[0];
+            return new int[]{image.getWidth(), image.getHeight()};
+        } catch (Exception e) {
+            log.warn("S3画像サイズ取得失敗（ピクセル値はNULLで保存）: key={}", s3Key, e);
+            return new int[0];
         }
     }
 }

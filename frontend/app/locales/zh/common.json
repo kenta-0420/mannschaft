@@ -355,8 +355,7 @@
     },
     "convert_modal": {
       "title": "转为TODO",
-      "todo_title": "TODO标题",
-      "description": "描述（可选）",
+      "priority": "优先级",
       "due_date": "截止日期（可选）",
       "submit": "转换",
       "success": "已转为TODO",

@@ -37,7 +37,7 @@ public class UserVoiceInputConsentController {
     public ResponseEntity<ApiResponse<VoiceInputConsentResponse>> getActiveConsent(
             @RequestParam(defaultValue = "1") int version) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(consentService.getActiveConsent(userId, version)));
+        return ResponseEntity.ok(ApiResponse.of(consentService.getActiveConsent(userId, version)));
     }
 
     @PostMapping
@@ -50,7 +50,7 @@ public class UserVoiceInputConsentController {
         String ip = getClientIp(httpRequest);
         String ua = httpRequest.getHeader("User-Agent");
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(consentService.grantConsent(userId, request, ip, ua)));
+                .body(ApiResponse.of(consentService.grantConsent(userId, request, ip, ua)));
     }
 
     @DeleteMapping("/active")
@@ -63,6 +63,7 @@ public class UserVoiceInputConsentController {
 
     /**
      * X-Forwarded-For → Remote-Addr の順でクライアント IP を取得する。
+     * GDPR 同意証跡の記録用（監査目的のみ）。
      */
     private String getClientIp(HttpServletRequest request) {
         String xff = request.getHeader("X-Forwarded-For");
