@@ -282,25 +282,6 @@
       "Hoy lo hiciste de verdad muy bien. Buenas noches."
     ]
   },
-  "annual_plan": {
-    "title": "Plan de Eventos Anual",
-    "no_events": "Sin eventos",
-    "no_data": "No hay datos de eventos",
-    "all_categories": "Todas",
-    "category_placeholder": "Categoria",
-    "copy_prev_year": "Copiar Ano Anterior",
-    "copy_dialog_title": "Trazar Ano Anterior",
-    "copy_dialog_message": "Copiar eventos del {sourceYear} al {targetYear}? Las fechas se ajustaran automaticamente.",
-    "copy_execute": "Ejecutar Copia",
-    "copy_success": "Eventos del ano anterior copiados",
-    "copy_error": "Error al copiar eventos",
-    "load_error": "Error al cargar el plan de eventos anual",
-    "copied_badge": "Copiado",
-    "date_shift_mode": {
-      "SAME_WEEKDAY": "Mismo dia de la semana (N.a semana)",
-      "EXACT_DAYS": "Desplazamiento exacto de dias"
-    }
-  },
   "settings": {
     "language": {
       "title": "Idioma y zona horaria",
@@ -309,6 +290,105 @@
       "load_error": "Error al cargar la configuracion",
       "save_success": "Idioma y zona horaria actualizados",
       "save_error": "Error al actualizar la configuracion"
+    }
+  },
+  "quick_memo": {
+    "title": "Nota rápida",
+    "detail": "Detalle de nota",
+    "no_memos": "Aún no hay notas. Prueba el botón 🪶",
+    "no_body": "(sin contenido)",
+    "saved": "¡Guardado!",
+    "save_error": "Error al guardar",
+    "updated": "Actualizado",
+    "update_error": "Error al actualizar",
+    "load_error": "Error al cargar",
+    "limit_warning": "Tienes muchas notas sin clasificar 🌱 ¿Es hora de organizar? ({count})",
+    "limit_exceeded": "Límite de notas sin clasificar (500) alcanzado. Archiva o convierte a TODO",
+    "settings": "Configuración",
+    "status": {
+      "UNSORTED": "Sin clasificar",
+      "ARCHIVED": "Archivado",
+      "CONVERTED": "Convertido a TODO"
+    },
+    "action": {
+      "convert": "Convertir a TODO",
+      "archive": "Archivar",
+      "archived": "Archivado",
+      "archive_error": "Error al archivar",
+      "restore": "Restaurar",
+      "restored": "Restaurado",
+      "restore_error": "Error al restaurar",
+      "deleted": "Eliminado",
+      "delete_error": "Error al eliminar"
+    },
+    "capture_modal": {
+      "title": "Nota rápida",
+      "title_placeholder": "¿Qué tienes en mente?",
+      "add_body": "Agregar detalles",
+      "body_placeholder": "Detalles (opcional)",
+      "submit": "¡Guardar!"
+    },
+    "form": {
+      "add_tag": "+ Etiqueta",
+      "add_reminder": "⏰ Recordatorio"
+    },
+    "tag": {
+      "create": "Nueva etiqueta",
+      "name_placeholder": "Nombre de etiqueta",
+      "color": "Color",
+      "create_error": "Error al crear etiqueta"
+    },
+    "reminder": {
+      "label": "Recordatorio",
+      "slot1": "1°",
+      "slot2": "2°",
+      "slot3": "3°"
+    },
+    "voice": {
+      "start": "Iniciar entrada de voz",
+      "stop": "Detener entrada de voz",
+      "listening": "Grabando...",
+      "consent_title": "Entrada de voz",
+      "consent_body": "La entrada de voz envía datos de audio a un servicio externo. Ten cuidado con la información personal.",
+      "agree": "Aceptar y usar",
+      "consent_error": "Error al registrar consentimiento"
+    },
+    "convert_modal": {
+      "title": "Convertir a TODO",
+      "todo_title": "Título del TODO",
+      "description": "Descripción (opcional)",
+      "due_date": "Fecha límite (opcional)",
+      "submit": "Convertir",
+      "success": "Convertido a TODO",
+      "error": "Error al convertir"
+    },
+    "trash": {
+      "title": "Papelera",
+      "no_memos": "La papelera está vacía",
+      "restore": "Restaurar",
+      "restored": "Restaurado de la papelera",
+      "restore_error": "Error al restaurar",
+      "auto_delete_notice": "Las notas en la papelera se eliminan permanentemente después de 90 días"
+    },
+    "search": {
+      "placeholder": "Buscar notas..."
+    },
+    "reminder_settings": {
+      "title": "Configuración de recordatorios",
+      "enable_reminder": "Activar recordatorios",
+      "enable_reminder_desc": "Recibe notificación en el horario establecido al crear una nota",
+      "days_after": "días después a las",
+      "days_suffix": " días",
+      "preview": "Recibirás notificación a {slots} después de crear una nota",
+      "preview_none": "Los recordatorios están desactivados",
+      "apply_dialog_title": "Rango de aplicación",
+      "apply_dialog_body": "¿A qué notas se aplicará esta configuración?",
+      "apply_new_only": "Solo notas nuevas (recomendado)",
+      "apply_unsent": "También actualizar recordatorios no enviados",
+      "apply_all": "Recalcular todos los recordatorios",
+      "saved": "Configuración guardada",
+      "load_error": "Error al cargar configuración",
+      "save_error": "Error al guardar configuración"
     }
   }
 }

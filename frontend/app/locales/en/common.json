@@ -282,25 +282,6 @@
       "You truly did great today. Goodnight."
     ]
   },
-  "annual_plan": {
-    "title": "Annual Event Plan",
-    "no_events": "No events",
-    "no_data": "No event data available",
-    "all_categories": "All",
-    "category_placeholder": "Category",
-    "copy_prev_year": "Copy Previous Year",
-    "copy_dialog_title": "Copy Previous Year",
-    "copy_dialog_message": "Copy events from {sourceYear} to {targetYear}? Dates will be automatically adjusted.",
-    "copy_execute": "Execute Copy",
-    "copy_success": "Events copied from previous year",
-    "copy_error": "Failed to copy events",
-    "load_error": "Failed to load annual event plan",
-    "copied_badge": "Copied",
-    "date_shift_mode": {
-      "SAME_WEEKDAY": "Same weekday (Nth week)",
-      "EXACT_DAYS": "Exact day shift"
-    }
-  },
   "settings": {
     "language": {
       "title": "Language & Timezone",
@@ -309,6 +290,105 @@
       "load_error": "Failed to load settings",
       "save_success": "Language and timezone updated",
       "save_error": "Failed to update settings"
+    }
+  },
+  "quick_memo": {
+    "title": "Quick Memo",
+    "detail": "Memo Detail",
+    "no_memos": "No memos yet. Try the 🪶 button to jot something down",
+    "no_body": "(no content)",
+    "saved": "Saved!",
+    "save_error": "Failed to save",
+    "updated": "Updated",
+    "update_error": "Failed to update",
+    "load_error": "Failed to load",
+    "limit_warning": "You have many unsorted memos 🌱 Time to organize? ({count})",
+    "limit_exceeded": "Unsorted memo limit (500) reached. Please archive or convert to TODO",
+    "settings": "Settings",
+    "status": {
+      "UNSORTED": "Unsorted",
+      "ARCHIVED": "Archived",
+      "CONVERTED": "Converted to TODO"
+    },
+    "action": {
+      "convert": "Convert to TODO",
+      "archive": "Archive",
+      "archived": "Archived",
+      "archive_error": "Failed to archive",
+      "restore": "Restore",
+      "restored": "Restored",
+      "restore_error": "Failed to restore",
+      "deleted": "Deleted",
+      "delete_error": "Failed to delete"
+    },
+    "capture_modal": {
+      "title": "Quick Memo",
+      "title_placeholder": "What's on your mind?",
+      "add_body": "Add details",
+      "body_placeholder": "Details (optional)",
+      "submit": "Save!"
+    },
+    "form": {
+      "add_tag": "+ Tag",
+      "add_reminder": "⏰ Reminder"
+    },
+    "tag": {
+      "create": "New tag",
+      "name_placeholder": "Tag name",
+      "color": "Color",
+      "create_error": "Failed to create tag"
+    },
+    "reminder": {
+      "label": "Reminder",
+      "slot1": "1st",
+      "slot2": "2nd",
+      "slot3": "3rd"
+    },
+    "voice": {
+      "start": "Start voice input",
+      "stop": "Stop voice input",
+      "listening": "Recording...",
+      "consent_title": "About Voice Input",
+      "consent_body": "Voice input sends audio data to an external service (e.g. Google) via your browser. Please be careful with personal information.",
+      "agree": "Agree and use",
+      "consent_error": "Failed to record consent"
+    },
+    "convert_modal": {
+      "title": "Convert to TODO",
+      "todo_title": "TODO Title",
+      "description": "Description (optional)",
+      "due_date": "Due date (optional)",
+      "submit": "Convert",
+      "success": "Converted to TODO",
+      "error": "Failed to convert"
+    },
+    "trash": {
+      "title": "Trash",
+      "no_memos": "Trash is empty",
+      "restore": "Restore",
+      "restored": "Restored from trash",
+      "restore_error": "Failed to restore",
+      "auto_delete_notice": "Memos in trash are permanently deleted after 90 days"
+    },
+    "search": {
+      "placeholder": "Search memos..."
+    },
+    "reminder_settings": {
+      "title": "Reminder Settings",
+      "enable_reminder": "Enable reminders",
+      "enable_reminder_desc": "Get notified at the set time after creating a memo",
+      "days_after": "days after at",
+      "days_suffix": " days",
+      "preview": "You will be notified at {slots} after creating a memo",
+      "preview_none": "Reminders are disabled",
+      "apply_dialog_title": "Apply Range",
+      "apply_dialog_body": "Which memos should this setting apply to?",
+      "apply_new_only": "New memos only (recommended)",
+      "apply_unsent": "Also update unsent reminders",
+      "apply_all": "Recalculate all memo reminders",
+      "saved": "Settings saved",
+      "load_error": "Failed to load settings",
+      "save_error": "Failed to save settings"
     }
   }
 }
