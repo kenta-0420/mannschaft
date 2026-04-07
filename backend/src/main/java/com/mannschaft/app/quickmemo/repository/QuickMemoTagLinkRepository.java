@@ -47,4 +47,9 @@ public interface QuickMemoTagLinkRepository extends JpaRepository<QuickMemoTagLi
      * メモに紐付くタグリンク件数を取得する（10個上限チェック用）。
      */
     long countByMemoId(Long memoId);
+
+    /**
+     * タグに紐付くメモリンク件数を取得する（整合性バッチ用）。
+     */
+    long countByTagId(Long tagId);
 }
