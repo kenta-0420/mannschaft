@@ -2,6 +2,7 @@ package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.notification.service.MentionService;
 import com.mannschaft.app.timeline.AttachmentType;
 import com.mannschaft.app.timeline.event.TimelinePostCreatedEvent;
 import com.mannschaft.app.timeline.PostScopeType;
@@ -51,6 +52,7 @@ public class TimelinePostService {
     private final TimelinePollService pollService;
     private final TimelineMapper timelineMapper;
     private final DomainEventPublisher domainEventPublisher;
+    private final MentionService mentionService;
 
     /**
      * 投稿を作成する。添付ファイル・投票も同時に作成する。
@@ -123,6 +125,17 @@ public class TimelinePostService {
                     req.getScopeTypeOrDefault(),
                     req.getScopeIdOrDefault()
             ));
+
+            // 本文中の @contactHandle からメンションレコードを作成
+            if (req.getContent() != null && !req.getContent().isBlank()) {
+                mentionService.createMentionsFromText(
+                        userId,
+                        "POST",
+                        post.getId(),
+                        null,
+                        req.getContent(),
+                        "/timeline/posts/" + post.getId());
+            }
         }
 
         return timelineMapper.toPostResponse(post);

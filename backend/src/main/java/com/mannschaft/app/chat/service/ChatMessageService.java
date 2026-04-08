@@ -17,6 +17,7 @@ import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.notification.service.MentionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -46,6 +47,7 @@ public class ChatMessageService {
     private final ChatMessageReactionRepository reactionRepository;
     private final ChatChannelService channelService;
     private final ChatMapper chatMapper;
+    private final MentionService mentionService;
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
@@ -125,6 +127,17 @@ public class ChatMessageService {
         // NOTE: チャンネルメンバー一覧取得はChannelMemberRepository連携後に拡張
         // 現時点ではNotificationHelperで通知レコード作成+WebSocket配信
         // 未読カウントのインクリメントはNotificationService側で管理
+
+        // 本文中の @contactHandle からメンションレコードを作成
+        if (request.getBody() != null && !request.getBody().isBlank()) {
+            mentionService.createMentionsFromText(
+                    senderId,
+                    "MESSAGE",
+                    saved.getId(),
+                    null,
+                    request.getBody(),
+                    "/chat/" + channelId + "?messageId=" + saved.getId());
+        }
 
         log.info("メッセージ送信完了: messageId={}, channelId={}, senderId={}", saved.getId(), channelId, senderId);
         return chatMapper.toMessageResponseWithDetails(saved, attachmentResponses, List.of());
