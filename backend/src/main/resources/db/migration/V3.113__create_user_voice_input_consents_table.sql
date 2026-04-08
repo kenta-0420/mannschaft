@@ -1,7 +1,7 @@
 -- 音声入力同意履歴（GDPR 同意証跡）
 CREATE TABLE user_voice_input_consents (
     id           BIGINT       NOT NULL AUTO_INCREMENT,
-    user_id      BIGINT       NOT NULL COMMENT 'FK -> users.id (ON DELETE CASCADE)',
+    user_id      BIGINT UNSIGNED NOT NULL COMMENT 'FK -> users.id (ON DELETE CASCADE)',
     version      INT          NOT NULL COMMENT '同意した音声ポリシーのバージョン番号',
     consented_at DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     revoked_at   DATETIME(6)  NULL     COMMENT 'NULL = 有効、非NULL = 取消済み',

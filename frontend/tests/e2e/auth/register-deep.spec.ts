@@ -104,7 +104,7 @@ test.describe('AUTH-DEEP register: 新規登録フォーム深掘り', () => {
     await expect(page.getByText('パスワードは8文字以上で入力してください')).toBeVisible()
     await expect(page.getByText('郵便番号は必須です')).toBeVisible()
     await expect(page.getByText('姓は必須です')).toBeVisible()
-    await expect(page.getByText('名は必須です')).toBeVisible()
+    await expect(page.getByText('名は必須です', { exact: true })).toBeVisible()
     await expect(page.getByText('表示名は必須です')).toBeVisible()
     await expect(page).toHaveURL(/\/register/)
   })

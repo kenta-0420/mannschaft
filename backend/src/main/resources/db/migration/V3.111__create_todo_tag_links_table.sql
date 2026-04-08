@@ -1,8 +1,8 @@
 -- TODO とタグの中間テーブル（F02.3 拡張）
 CREATE TABLE todo_tag_links (
     id         BIGINT      NOT NULL AUTO_INCREMENT,
-    todo_id    BIGINT      NOT NULL COMMENT 'FK -> todos.id (ON DELETE CASCADE)',
-    tag_id     BIGINT      NOT NULL COMMENT 'FK -> tags.id (ON DELETE CASCADE)',
+    todo_id    BIGINT UNSIGNED NOT NULL COMMENT 'FK -> todos.id (ON DELETE CASCADE)',
+    tag_id     BIGINT          NOT NULL COMMENT 'FK -> tags.id (ON DELETE CASCADE)',
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     UNIQUE KEY uq_todo_tag_links (todo_id, tag_id),

@@ -6,7 +6,7 @@ CREATE TABLE tags (
     name              VARCHAR(30)  NOT NULL,
     color             VARCHAR(7)   NULL     COMMENT 'HEX カラーコード (#RRGGBB)',
     usage_count       INT          NOT NULL DEFAULT 0,
-    created_by        BIGINT       NOT NULL COMMENT 'FK -> users.id (ON DELETE RESTRICT)',
+    created_by        BIGINT UNSIGNED NOT NULL COMMENT 'FK -> users.id (ON DELETE RESTRICT)',
     created_at        DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at        DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),

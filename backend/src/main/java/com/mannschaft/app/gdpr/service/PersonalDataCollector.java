@@ -45,18 +45,19 @@ public class PersonalDataCollector {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .registerModule(new JavaTimeModule());
 
-    /** カテゴリキー → JSONファイル名のマッピング（変更不可） */
+    /** カテゴリキー → JSONファイル名のマッピング（@PersonalData のカテゴリ値と一致させること） */
     private static final Map<String, String> CATEGORY_FILES = Map.ofEntries(
             Map.entry("account", "account.json"),
-            Map.entry("oauth", "oauth_accounts.json"),
+            Map.entry("oauthAccounts", "oauth_accounts.json"),
             Map.entry("memberships", "memberships.json"),
             Map.entry("profiles", "profiles.json"),
             Map.entry("payments", "payments.json"),
             Map.entry("charts", "charts.json"),
-            Map.entry("chat_messages", "chat_messages.json"),
+            Map.entry("chatMessages", "chat_messages.json"),
             Map.entry("timeline", "timeline_posts.json"),
-            Map.entry("audit_logs", "audit_logs.json"),
-            Map.entry("notifications", "notifications.json")
+            Map.entry("auditLogs", "audit_logs.json"),
+            Map.entry("notifications", "notifications.json"),
+            Map.entry("error_reports", "error_reports.json")
     );
 
     /**
@@ -96,15 +97,16 @@ public class PersonalDataCollector {
     private String collectByCategory(Long userId, String category) throws Exception {
         return switch (category) {
             case "account" -> collectAccount(userId);
-            case "oauth" -> collectOAuth(userId);
+            case "oauthAccounts" -> collectOAuth(userId);
             case "memberships" -> collectMemberships(userId);
             case "profiles" -> collectProfiles(userId);
             case "payments" -> collectPayments(userId);
             case "charts" -> collectCharts(userId);
-            case "chat_messages" -> collectChatMessages(userId);
+            case "chatMessages" -> collectChatMessages(userId);
             case "timeline" -> collectTimeline(userId);
-            case "audit_logs" -> collectAuditLogs(userId);
+            case "auditLogs" -> collectAuditLogs(userId);
             case "notifications" -> collectNotifications(userId);
+            case "error_reports" -> "[]";
             default -> "[]";
         };
     }

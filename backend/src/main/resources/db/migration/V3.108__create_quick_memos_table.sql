@@ -1,7 +1,7 @@
 -- ポイっとメモ本体
 CREATE TABLE quick_memos (
     id                          BIGINT        NOT NULL AUTO_INCREMENT,
-    user_id                     BIGINT        NOT NULL COMMENT 'FK -> users.id (ON DELETE CASCADE)',
+    user_id                     BIGINT UNSIGNED NOT NULL COMMENT 'FK -> users.id (ON DELETE CASCADE)',
     title                       VARCHAR(200)  NOT NULL,
     body                        TEXT          NULL,
     status                      VARCHAR(20)   NOT NULL DEFAULT 'UNSORTED' COMMENT 'UNSORTED / ARCHIVED / CONVERTED',

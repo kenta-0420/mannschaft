@@ -104,7 +104,14 @@ async function handleLogin() {
       </div>
       <div class="flex flex-col gap-2">
         <label for="password">パスワード</label>
-        <Password id="password" v-model="password" :feedback="false" toggle-mask fluid required />
+        <Password
+          input-id="password"
+          v-model="password"
+          :feedback="false"
+          toggle-mask
+          fluid
+          required
+        />
       </div>
       <Button type="submit" label="ログイン" icon="pi pi-sign-in" :loading="loading" class="mt-2" />
       <div class="flex flex-col items-center gap-2">

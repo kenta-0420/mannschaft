@@ -2,7 +2,7 @@
 CREATE TABLE pending_uploads (
     id                        BIGINT        NOT NULL AUTO_INCREMENT,
     memo_id                   BIGINT        NOT NULL COMMENT 'FK -> quick_memos.id (ON DELETE CASCADE)',
-    user_id                   BIGINT        NOT NULL COMMENT 'FK -> users.id (ON DELETE CASCADE)',
+    user_id                   BIGINT UNSIGNED NOT NULL COMMENT 'FK -> users.id (ON DELETE CASCADE)',
     s3_key                    VARCHAR(512)  NOT NULL UNIQUE,
     declared_size_bytes       INT           NOT NULL,
     content_type              VARCHAR(100)  NOT NULL,
