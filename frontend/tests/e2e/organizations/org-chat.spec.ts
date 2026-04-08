@@ -43,8 +43,7 @@ test.describe('ORG-FEAT-010〜013: 組織チャット', () => {
     await page.goto(`/organizations/${ORG_ID}/chat`)
     await waitForHydration(page)
     const btn = page.getByRole('button', { name: /チャンネル|作成|追加/ })
-    const count = await btn.count()
-    expect(count).toBeGreaterThan(0)
+    await expect(btn.first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('ORG-FEAT-013: メッセージ入力エリアが表示される', async ({ page }) => {

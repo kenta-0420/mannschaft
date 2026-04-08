@@ -12,7 +12,10 @@ const schema = toTypedSchema(z.object({
   email: z.string().min(1, 'メールアドレスは必須です').email('有効なメールアドレスを入力してください'),
 }))
 
-const { defineField, handleSubmit, errors } = useForm({ validationSchema: schema })
+const { defineField, handleSubmit, errors } = useForm({
+  validationSchema: schema,
+  initialValues: { email: '' },
+})
 const [email, emailProps] = defineField('email')
 
 const loading = ref(false)
@@ -43,7 +46,7 @@ const onSubmit = handleSubmit(async (values) => {
     <p class="mb-4 text-sm text-surface-500">
       登録済みのメールアドレスを入力してください。パスワードリセット用のリンクをお送りします。
     </p>
-    <form @submit.prevent="onSubmit">
+    <form novalidate @submit.prevent="onSubmit">
       <div class="flex flex-col gap-4">
         <div class="flex flex-col gap-2">
           <label for="email">メールアドレス</label>

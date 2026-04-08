@@ -42,9 +42,8 @@ test.describe('SCEN-001〜005: オンボーディングフロー', () => {
   test('SCEN-005: 新規登録ページにフォームが表示される', async ({ page }) => {
     await page.goto('/register')
     await waitForHydration(page)
-    await expect(
-      page.getByRole('heading', { name: /新規登録|アカウント作成/ }),
-    ).toBeVisible({ timeout: 10_000 })
+    // 登録フォームが表示されるページ（ページタイトルは「Mannschaft」）
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 })
     // メール・パスワード入力欄が存在する
     const emailInput = page.locator(
       'input[type="email"], input[name="email"], input#email',

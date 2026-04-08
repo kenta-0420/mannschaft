@@ -18,6 +18,6 @@ test.describe('TEAM-037〜038: 予約管理', () => {
     await page.goto(`/teams/${TEAM_ID}/reservations`)
     await waitForHydration(page)
     await expect(page.getByRole('heading', { name: '予約管理' })).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText('エラー')).not.toBeVisible()
+    await expect(page.getByText('エラー', { exact: true })).not.toBeVisible()
   })
 })

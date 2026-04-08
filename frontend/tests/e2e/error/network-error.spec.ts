@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 
+test.use({ storageState: { cookies: [], origins: [] } })
+
 test.describe('ERR-001: ネットワークエラー処理', () => {
   test('ERR-001: APIエラー時にエラーメッセージが表示される', async ({ page }) => {
     // ログインAPIを認証エラー(422)で返す

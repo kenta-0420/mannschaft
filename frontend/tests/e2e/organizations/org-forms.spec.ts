@@ -31,11 +31,11 @@ test.describe('ORG-FEAT-022〜025: 組織フォーム', () => {
   })
 
   test('ORG-FEAT-024: フォーム作成ボタンが表示される', async ({ page }) => {
-    await page.goto(`/organizations/${ORG_ID}/forms`)
+    // テンプレート作成ボタンはテンプレート管理ページに存在する
+    await page.goto(`/organizations/${ORG_ID}/forms/templates`)
     await waitForHydration(page)
     const btn = page.getByRole('button', { name: /作成|追加|新規/ })
-    const count = await btn.count()
-    expect(count).toBeGreaterThan(0)
+    await expect(btn.first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('ORG-FEAT-025: フォームテンプレートページが表示される', async ({ page }) => {

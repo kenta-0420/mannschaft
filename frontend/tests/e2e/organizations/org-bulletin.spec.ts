@@ -36,8 +36,7 @@ test.describe('ORG-FEAT-006〜009: 組織掲示板', () => {
     await page.goto(`/organizations/${ORG_ID}/bulletin`)
     await waitForHydration(page)
     const btn = page.getByRole('button', { name: /作成|投稿|新規/ })
-    const count = await btn.count()
-    expect(count).toBeGreaterThan(0)
+    await expect(btn.first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('ORG-FEAT-009: 投稿作成ダイアログが開く', async ({ page }) => {

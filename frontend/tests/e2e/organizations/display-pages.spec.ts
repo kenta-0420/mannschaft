@@ -121,7 +121,7 @@ test.describe('ORG-DISP-001〜039: 組織各ページ表示確認', () => {
   test('ORG-DISP-017: ギャラリーページが表示される', async ({ page }) => {
     await page.goto(`/organizations/${ORG_ID}/gallery`)
     await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'ギャラリー' })).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('heading', { name: 'ギャラリー', level: 1 })).toBeVisible({ timeout: 10_000 })
   })
 
   test('ORG-DISP-018: ゲーミフィケーション設定ページが表示される', async ({ page }) => {
@@ -135,7 +135,7 @@ test.describe('ORG-DISP-001〜039: 組織各ページ表示確認', () => {
   test('ORG-DISP-019: インシデント管理ページが表示される', async ({ page }) => {
     await page.goto(`/organizations/${ORG_ID}/incidents`)
     await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'インシデント管理' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'インシデント管理', level: 1 })).toBeVisible({
       timeout: 10_000,
     })
   })

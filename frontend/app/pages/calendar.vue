@@ -108,7 +108,7 @@ onMounted(loadEvents)
       <span><span class="mr-1 inline-block h-3 w-3 rounded-full bg-indigo-500" />チーム/組織</span>
     </div>
 
-    <EventForm
+    <ScheduleEventForm
       v-model:visible="showCreateDialog"
       scope-type="team"
       :scope-id="0"

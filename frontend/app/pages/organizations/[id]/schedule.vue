@@ -181,7 +181,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <EventForm
+    <ScheduleEventForm
       v-model:visible="showCreateDialog"
       scope-type="organization"
       :scope-id="orgId"
@@ -189,7 +189,7 @@ onMounted(async () => {
       @saved="loadEvents"
     />
 
-    <EventForm
+    <ScheduleEventForm
       v-model:visible="showEditDialog"
       scope-type="organization"
       :scope-id="orgId"
