@@ -168,8 +168,8 @@ function close() {
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="mb-1 block text-sm font-medium">開始日</label>
-          <DatePicker v-model="form.startDate" date-format="yy/mm/dd" class="w-full" show-icon />
+          <label for="schedule-start-date" class="mb-1 block text-sm font-medium">開始日</label>
+          <DatePicker v-model="form.startDate" input-id="schedule-start-date" date-format="yy/mm/dd" class="w-full" show-icon />
         </div>
         <div v-if="!form.allDay">
           <label class="mb-1 block text-sm font-medium">開始時刻</label>
@@ -178,8 +178,8 @@ function close() {
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="mb-1 block text-sm font-medium">終了日</label>
-          <DatePicker v-model="form.endDate" date-format="yy/mm/dd" class="w-full" show-icon />
+          <label for="schedule-end-date" class="mb-1 block text-sm font-medium">終了日</label>
+          <DatePicker v-model="form.endDate" input-id="schedule-end-date" date-format="yy/mm/dd" class="w-full" show-icon />
         </div>
         <div v-if="!form.allDay">
           <label class="mb-1 block text-sm font-medium">終了時刻</label>

@@ -173,9 +173,10 @@ function close() {
 
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="mb-1 block text-sm font-medium">受付開始日時</label>
+          <label for="event-registration-starts-at" class="mb-1 block text-sm font-medium">受付開始日時</label>
           <DatePicker
             v-model="form.registrationStartsAt"
+            input-id="event-registration-starts-at"
             show-time
             date-format="yy/mm/dd"
             class="w-full"
@@ -183,9 +184,10 @@ function close() {
           />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">受付終了日時</label>
+          <label for="event-registration-ends-at" class="mb-1 block text-sm font-medium">受付終了日時</label>
           <DatePicker
             v-model="form.registrationEndsAt"
+            input-id="event-registration-ends-at"
             show-time
             date-format="yy/mm/dd"
             class="w-full"

@@ -154,8 +154,10 @@ test.describe('ORG-DEEP-events: 組織イベント作成ダイアログ深掘り
     await page.getByRole('button', { name: 'イベント作成' }).click()
     const dialog = await waitForDialog(page)
 
-    // 受付開始日時（show-time のため "yyyy/mm/dd hh:mm" 形式）
-    const startInput = dialog.locator('label', { hasText: '受付開始日時' }).locator('xpath=following-sibling::*[1]//input')
+    // 受付開始日時（show-time のため "yyyy/mm/dd hh:mm" 形式、input-id="event-registration-starts-at"）
+    // dialog.locator() は .last() の遅延評価でカレンダーパネル開放後に誤ダイアログを参照するため
+    // page レベルで ID 直指定することでカレンダーダイアログの影響を回避する
+    const startInput = page.locator('#event-registration-starts-at')
     await pickDate(startInput, '2026/06/01 09:00')
     await expect(startInput).toHaveValue(/2026\/06\/01/)
 
