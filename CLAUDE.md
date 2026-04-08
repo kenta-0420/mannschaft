@@ -171,20 +171,54 @@ cd frontend && npm run lint
 
 ---
 
-## worktree クリーンアップ
+## worktree クリーンアップ **【定期実施】**
 
-大名システム（Agent）使用後にworktreeが残存する場合がある。定期的に掃除すること。
+大名システム（Agent）の worktree は **作業完了後に必ず掃除する**。放置すると以下の問題が起きる:
+
+- ディスク容量の圧迫（worktree 1 つあたり数十 MB〜数百 MB、`.gradle`/`node_modules` キャッシュを含むとさらに膨らむ）
+- `git worktree list` の出力が肥大化して状況把握が困難になる
+- IDE のファイルウォッチャー / インデクサが大量のファイルを舐めて遅くなる
+- `worktree-agent-*` という孤立ブランチが大量に積もる
+
+### Claude が守るべきタイミング
+
+| タイミング | 何をするか |
+|---|---|
+| **大名 (Agent) 起動完了直後** | その agent の commit を本リポに統合 (cherry-pick / merge) → 直ちに対応する worktree を `git worktree remove --force` で削除 |
+| **セッション開始時** | `git worktree list` を確認し、自分が作ったものでない `agent-*` worktree が残っていれば原因を確認のうえ削除を提案する |
+| **セッション終了時** | 自分が起動した agent の worktree がすべて消えていることを確認 |
+| **週次** | 全 `worktree-agent-*` ブランチと残骸ディレクトリを一括削除 |
+
+### コマンド集
 
 ```bash
 # 残存worktreeの確認
 git worktree list
 
-# 不要なworktreeの削除（ブランチ名を確認してから実行）
-git worktree remove .claude/worktrees/[agent-xxxxx]
+# 個別削除（コミットを取り込み済みであることを確認してから）
+git worktree remove --force .claude/worktrees/agent-xxxxx
+git branch -D worktree-agent-xxxxx
 
-# 全worktreeを一括削除（注意: 作業中のものがないか確認してから）
+# 全 agent worktree を一括削除（変更が残っていても強制削除する）
+for wt in $(git worktree list --porcelain | grep "^worktree" | grep "agent-" | awk '{print $2}'); do
+  git worktree remove --force "$wt"
+done
+
+# 孤立した worktree-agent-* ブランチを一括削除
+git branch -D $(git branch | grep "worktree-agent-" | tr -d ' ')
+
+# stale entries（既にディレクトリが消えた worktree のメタ情報）を削除
 git worktree prune
+
+# .claude/worktrees/ 配下に空ディレクトリが残っていれば削除
+rmdir .claude/worktrees/agent-* 2>/dev/null || true
 ```
+
+### 注意事項
+
+- **進行中の agent の worktree は絶対に削除しない**。`git worktree list` の出力で他に動いている agent がないか確認してから削除すること
+- 削除前に **当該 worktree の変更がメインリポに統合されているか** を必ず確認する。未マージの commit を消すと作業が失われる
+- メインリポ (`D:\mannschaft`) を間違って削除しないこと（`grep "agent-"` で必ず agent の worktree のみに絞る）
 
 ---
 
