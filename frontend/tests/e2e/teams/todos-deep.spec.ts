@@ -144,8 +144,10 @@ test.describe('TEAM-DEEP-todos: TODO作成ダイアログ深掘り', () => {
     await page.getByRole('button', { name: 'TODO作成' }).click()
     const dialog = await waitForDialog(page)
 
-    // 期限 DatePicker の input を取得（date-format="yy/mm/dd"）
-    const dueDateInput = dialog.locator('label', { hasText: '期限' }).locator('xpath=following-sibling::*[1]//input')
+    // 期限 DatePicker の input を取得（input-id="todo-due-date" で直接指定）
+    // dialog.locator() の .last() 遅延評価でカレンダーパネル開放後に誤ダイアログを参照するため
+    // page レベルで ID 直指定することでカレンダーダイアログの影響を回避する
+    const dueDateInput = page.locator('#todo-due-date')
     await pickDate(dueDateInput, '2026/12/31')
 
     // 入力値が反映されていること

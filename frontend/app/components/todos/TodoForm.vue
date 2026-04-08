@@ -147,8 +147,14 @@ function close() {
           />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">期限</label>
-          <DatePicker v-model="form.dueDate" date-format="yy/mm/dd" class="w-full" show-icon />
+          <label for="todo-due-date" class="mb-1 block text-sm font-medium">期限</label>
+          <DatePicker
+            v-model="form.dueDate"
+            input-id="todo-due-date"
+            date-format="yy/mm/dd"
+            class="w-full"
+            show-icon
+          />
         </div>
       </div>
     </div>

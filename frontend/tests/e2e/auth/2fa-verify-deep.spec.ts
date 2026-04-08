@@ -75,12 +75,18 @@ test.describe('AUTH-DEEP 2fa-verify: 二要素認証フォーム深掘り', () =
       timeout: 10_000,
     })
 
+    // PrimeVue InputOtp は 1 文字入力すると自動で次 input にフォーカスを移動する。
+    // 全桁同じ数字を使うと Vue の reactivity が差分なしと判断してトークンを更新しない場合があるため
+    // 各桁に異なる数字（111111 ではなく 123456 を使用）し、各 input を順番にクリックして入力する。
     const otpInputs = page.locator('.p-inputotp input')
-    const code = '999999'
+    const code = '123456'
     for (let i = 0; i < 6; i++) {
       await otpInputs.nth(i).click()
-      await otpInputs.nth(i).pressSequentially(code[i]!, { delay: 10 })
+      await otpInputs.nth(i).pressSequentially(code[i]!, { delay: 30 })
+      await page.waitForTimeout(50)
     }
+    // 6 桁揃ったことを確認してからボタンをクリック
+    await expect(page.getByRole('button', { name: '認証する' })).toBeEnabled({ timeout: 5_000 })
 
     await page.getByRole('button', { name: '認証する' }).click()
 
