@@ -14,6 +14,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ public class GlobalExceptionHandler {
      * Severity ベースのデフォルトマッピングを上書きしたい場合にここへ追加する。
      */
     private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.of(
+            CommonErrorCode.COMMON_000.getCode(), HttpStatus.UNAUTHORIZED,
             CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN,
             CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT,
             "AD_006", HttpStatus.CONFLICT,
@@ -130,6 +132,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_003));
+    }
+
+    /**
+     * 存在しないURLへのアクセス（Spring 6 ではデフォルトで NoResourceFoundException が発生）。
+     * 共通の Exception ハンドラに落ちると 500 になってしまうので、明示的に 404 を返す。
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex) {
+        log.warn("No resource found: {}", ex.getResourcePath());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
     }
 
     /**

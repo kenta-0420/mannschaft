@@ -39,7 +39,7 @@ export function useChatApi() {
       cursor: params?.cursor,
       limit: params?.limit,
     })
-    return api<ChatChannelListResponse>(`/api/v1/chat/channels?${qs}`)
+    return api<ChatChannelListResponse>(`/api/v1/chat/channels${qs ? `?${qs}` : ''}`)
   }
 
   async function getChannel(channelId: number) {
