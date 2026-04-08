@@ -113,6 +113,29 @@ async function mockChatBase(page: Page) {
   await page.route(`**/api/v1/chat/channels/${MOCK_CHANNEL_ID}/read`, async (route) => {
     await route.fulfill({ status: 204, body: '' })
   })
+  // グローバルAPIをモック: バックエンドが起動していない場合にエラーレポートダイアログが
+  // 表示されてボタンクリックを遮らないように空レスポンスで返す
+  await page.route('**/api/v1/active-incidents', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ incidents: [] }),
+    })
+  })
+  await page.route('**/api/v1/notifications/unread-count', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { total: 0 } }),
+    })
+  })
+  await page.route('**/api/v1/mentions', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    })
+  })
 }
 
 /** チャンネルを選択してメッセージパネルを表示状態にする */
