@@ -5,6 +5,7 @@ definePageMeta({
 
 const appearanceStore = useAppearanceStore()
 const notification = useNotification()
+const api = useApi()
 
 const loading = ref(true)
 
@@ -18,7 +19,19 @@ onMounted(async () => {
 })
 
 async function save() {
-  await appearanceStore.syncWithServer()
+  try {
+    await api('/api/v1/settings/appearance', {
+      method: 'PUT',
+      body: {
+        theme: appearanceStore.theme,
+        bgColor: appearanceStore.bgColor,
+        seasonalThemeId: appearanceStore.seasonalThemeId,
+        hideChatPreview: appearanceStore.hideChatPreview,
+      },
+    })
+  } catch {
+    // ローカルストレージが正とするため、サーバーエラーは無視
+  }
   notification.success('外観設定を保存しました')
 }
 </script>

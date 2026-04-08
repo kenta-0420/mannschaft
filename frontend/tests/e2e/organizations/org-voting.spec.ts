@@ -34,8 +34,7 @@ test.describe('ORG-FEAT-038〜041: 組織議決権行使', () => {
     await page.goto(`/organizations/${ORG_ID}/voting`)
     await waitForHydration(page)
     const btn = page.getByRole('button', { name: /作成|追加|新規/ })
-    const count = await btn.count()
-    expect(count).toBeGreaterThan(0)
+    await expect(btn.first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('ORG-FEAT-041: 議案作成ダイアログが開く', async ({ page }) => {

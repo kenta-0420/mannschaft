@@ -50,6 +50,7 @@ function onKeydown(event: KeyboardEvent) {
         @keydown="onKeydown"
       />
       <Button
+        data-testid="chat-send-btn"
         icon="pi pi-send"
         :loading="sending"
         :disabled="!body.trim() || disabled"

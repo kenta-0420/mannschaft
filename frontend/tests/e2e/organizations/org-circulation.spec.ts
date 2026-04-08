@@ -34,8 +34,7 @@ test.describe('ORG-FEAT-034〜037: 組織回覧板', () => {
     await page.goto(`/organizations/${ORG_ID}/circulation`)
     await waitForHydration(page)
     const btn = page.getByRole('button', { name: /作成|追加|新規/ })
-    const count = await btn.count()
-    expect(count).toBeGreaterThan(0)
+    await expect(btn.first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('ORG-FEAT-037: 回覧作成ダイアログが開く', async ({ page }) => {

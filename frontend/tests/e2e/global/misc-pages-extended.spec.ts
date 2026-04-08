@@ -18,7 +18,7 @@ test.describe('GLOBAL-012〜013: グローバルページ 追加表示テスト'
   test('GLOBAL-012: マッチングページが表示される', async ({ page }) => {
     await page.goto('/matching')
     await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: /対戦・交流|マッチング/ })).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('heading', { name: /対戦・交流|マッチング/ }).first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('GLOBAL-013: タイムライン投稿詳細ページが表示される', async ({ page }) => {

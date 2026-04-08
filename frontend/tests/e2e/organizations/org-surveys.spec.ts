@@ -34,8 +34,7 @@ test.describe('ORG-FEAT-030〜033: 組織アンケート', () => {
     await page.goto(`/organizations/${ORG_ID}/surveys`)
     await waitForHydration(page)
     const btn = page.getByRole('button', { name: /作成|追加|新規/ })
-    const count = await btn.count()
-    expect(count).toBeGreaterThan(0)
+    await expect(btn.first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('ORG-FEAT-033: アンケート作成ダイアログが開く', async ({ page }) => {

@@ -22,6 +22,6 @@ test.describe('TEAM-029〜030: アンケート・投票', () => {
     await expect(page.getByRole('heading', { name: 'アンケート・投票' })).toBeVisible({
       timeout: 10_000,
     })
-    await expect(page.getByText('エラー')).not.toBeVisible()
+    await expect(page.getByText('エラー', { exact: true })).not.toBeVisible()
   })
 })

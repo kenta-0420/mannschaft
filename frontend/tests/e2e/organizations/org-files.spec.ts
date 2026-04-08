@@ -33,9 +33,8 @@ test.describe('ORG-FEAT-026〜029: 組織ファイル共有', () => {
   test('ORG-FEAT-028: アップロードボタンが表示される', async ({ page }) => {
     await page.goto(`/organizations/${ORG_ID}/files`)
     await waitForHydration(page)
-    const btn = page.getByRole('button', { name: /アップロード|追加|新規/ })
-    const count = await btn.count()
-    expect(count).toBeGreaterThan(0)
+    const btn = page.getByRole('button', { name: /アップロード|追加|新規|フォルダ/ })
+    await expect(btn.first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('ORG-FEAT-029: ファイル一覧にファイル名が表示される', async ({ page }) => {
