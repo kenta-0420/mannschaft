@@ -91,10 +91,12 @@ test.describe('TEAM-DEEP-schedule: スケジュール作成フォーム深掘り
     const titleInput = dialog.locator('label:has-text("タイトル") + input')
     await fillInput(titleInput, 'チーム合同練習')
 
-    // 開始日・終了日を入力
-    const startDateInput = dialog.locator('label', { hasText: '開始日' }).locator('xpath=following-sibling::*[1]//input')
+    // 開始日・終了日を入力（input-id="schedule-start-date" / "schedule-end-date"）
+    // dialog.locator() は .last() の遅延評価でカレンダーパネル開放後に誤ダイアログを参照するため
+    // page レベルで ID 直指定することでカレンダーダイアログの影響を回避する
+    const startDateInput = page.locator('#schedule-start-date')
     await pickDate(startDateInput, '2026/05/01')
-    const endDateInput = dialog.locator('label', { hasText: '終了日' }).locator('xpath=following-sibling::*[1]//input')
+    const endDateInput = page.locator('#schedule-end-date')
     await pickDate(endDateInput, '2026/05/01')
 
     const respPromise = page.waitForResponse(

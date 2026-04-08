@@ -57,13 +57,18 @@ export async function selectDropdown(
 
 /**
  * PrimeVue DatePicker 用の選択ヘルパー。
- * カレンダーUI操作よりも input への直接入力の方が安定する。
- * showTime のときは "yyyy-MM-dd HH:mm" 形式で渡すこと。
+ * show-icon 付きの DatePicker はクリックするとカレンダーパネルが開くため、
+ * Escape でパネルを閉じた後に fill() で直接入力する。
+ * showTime のときは "yyyy/mm/dd hh:mm" 形式で渡すこと。
  */
 export async function pickDate(locator: Locator, dateString: string): Promise<void> {
+  // クリックしてフォーカスを当てる（カレンダーパネルが開く場合あり）
   await locator.click()
-  await locator.pressSequentially(dateString, { delay: 10 })
+  // Escape でカレンダーパネルを閉じてから直接入力する
   await locator.press('Escape')
+  await locator.fill(dateString)
+  // Tab で確定（v-model にバインド）
+  await locator.press('Tab')
 }
 
 /**
