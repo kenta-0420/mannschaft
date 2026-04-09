@@ -188,7 +188,7 @@ onMounted(async () => {
     </div>
 
     <!-- 作成ダイアログ -->
-    <EventForm
+    <ScheduleForm
       v-model:visible="showCreateDialog"
       scope-type="team"
       :scope-id="teamId"
@@ -197,7 +197,7 @@ onMounted(async () => {
     />
 
     <!-- 編集ダイアログ -->
-    <EventForm
+    <ScheduleForm
       v-model:visible="showEditDialog"
       scope-type="team"
       :scope-id="teamId"
