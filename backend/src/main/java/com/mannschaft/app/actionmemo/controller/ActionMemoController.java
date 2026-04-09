@@ -1,0 +1,124 @@
+package com.mannschaft.app.actionmemo.controller;
+
+import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
+import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
+import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
+import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
+import com.mannschaft.app.actionmemo.dto.UpdateActionMemoRequest;
+import com.mannschaft.app.actionmemo.service.ActionMemoService;
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
+
+/**
+ * F02.5 行動メモコントローラー。
+ *
+ * <p>すべてのエンドポイントは認証ユーザー自身のデータのみを操作対象とする。
+ * 所有者不一致・存在しない・論理削除済みは全て 404 を返す（IDOR 対策）。</p>
+ *
+ * <p><b>Phase 1 スコープ</b>: CRUD + link-todo。
+ * {@code publish-daily} エンドポイントは Phase 2、タグ系 API は Phase 4 で実装する。</p>
+ */
+@RestController
+@RequestMapping("/api/v1/action-memos")
+@Tag(name = "行動メモ", description = "F02.5 行動メモ CRUD")
+@RequiredArgsConstructor
+public class ActionMemoController {
+
+    private final ActionMemoService actionMemoService;
+
+    /**
+     * 行動メモを1件作成する。
+     */
+    @PostMapping
+    @Operation(summary = "行動メモ作成")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    public ResponseEntity<ApiResponse<ActionMemoResponse>> createMemo(
+            @Valid @RequestBody CreateActionMemoRequest request) {
+        ActionMemoResponse response = actionMemoService.createMemo(request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * 自分の行動メモ一覧を取得する。
+     */
+    @GetMapping
+    @Operation(summary = "行動メモ一覧取得")
+    public ResponseEntity<ActionMemoListResponse> listMemos(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(name = "tag_id", required = false) Long tagId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit) {
+        ActionMemoListResponse response = actionMemoService.listMemos(
+                SecurityUtils.getCurrentUserId(), date, from, to, tagId, cursor, limit);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 行動メモ1件を取得する。他人の id は 404。
+     */
+    @GetMapping("/{id}")
+    @Operation(summary = "行動メモ詳細取得")
+    public ResponseEntity<ApiResponse<ActionMemoResponse>> getMemo(@PathVariable Long id) {
+        ActionMemoResponse response = actionMemoService.getMemo(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 行動メモを更新する。他人の id は 404。
+     */
+    @PatchMapping("/{id}")
+    @Operation(summary = "行動メモ更新")
+    public ResponseEntity<ApiResponse<ActionMemoResponse>> updateMemo(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateActionMemoRequest request) {
+        ActionMemoResponse response = actionMemoService.updateMemo(id, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 行動メモを論理削除する。他人の id は 404。
+     */
+    @DeleteMapping("/{id}")
+    @Operation(summary = "行動メモ削除（論理削除）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    public ResponseEntity<Void> deleteMemo(@PathVariable Long id) {
+        actionMemoService.deleteMemo(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 行動メモに TODO を紐付ける。他人の TODO / PERSONAL 以外は 404。
+     */
+    @PostMapping("/{id}/link-todo")
+    @Operation(summary = "行動メモに TODO を紐付け")
+    public ResponseEntity<ApiResponse<ActionMemoResponse>> linkTodo(
+            @PathVariable Long id,
+            @Valid @RequestBody LinkTodoRequest request) {
+        ActionMemoResponse response = actionMemoService.linkTodo(
+                id, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+}
