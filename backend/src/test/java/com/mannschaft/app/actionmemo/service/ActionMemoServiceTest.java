@@ -102,7 +102,6 @@ class ActionMemoServiceTest {
 
             given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
                     .willReturn(0L);
-            given(settingsService.getMoodEnabled(USER_ID)).willReturn(false);
             given(memoRepository.save(any(ActionMemoEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -186,7 +185,6 @@ class ActionMemoServiceTest {
 
             given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
                     .willReturn(0L);
-            given(settingsService.getMoodEnabled(USER_ID)).willReturn(false);
 
             // 他人所有の PERSONAL TODO
             TodoEntity otherUsersTodo = TodoEntity.builder()
@@ -216,7 +214,6 @@ class ActionMemoServiceTest {
 
             given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
                     .willReturn(0L);
-            given(settingsService.getMoodEnabled(USER_ID)).willReturn(false);
 
             TodoEntity teamTodo = TodoEntity.builder()
                     .scopeType(TodoScopeType.TEAM)
