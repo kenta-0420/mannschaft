@@ -4,6 +4,8 @@ import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
 import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
+import com.mannschaft.app.actionmemo.dto.PublishDailyRequest;
+import com.mannschaft.app.actionmemo.dto.PublishDailyResponse;
 import com.mannschaft.app.actionmemo.dto.UpdateActionMemoRequest;
 import com.mannschaft.app.actionmemo.service.ActionMemoService;
 import com.mannschaft.app.common.ApiResponse;
@@ -33,8 +35,8 @@ import java.time.LocalDate;
  * <p>すべてのエンドポイントは認証ユーザー自身のデータのみを操作対象とする。
  * 所有者不一致・存在しない・論理削除済みは全て 404 を返す（IDOR 対策）。</p>
  *
- * <p><b>Phase 1 スコープ</b>: CRUD + link-todo。
- * {@code publish-daily} エンドポイントは Phase 2、タグ系 API は Phase 4 で実装する。</p>
+ * <p><b>Phase 2 スコープ</b>: CRUD + link-todo + {@code publish-daily}。
+ * タグ系 API は Phase 4 で実装する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/action-memos")
@@ -120,5 +122,21 @@ public class ActionMemoController {
         ActionMemoResponse response = actionMemoService.linkTodo(
                 id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 当日分（または指定日分）のメモをまとめて PERSONAL タイムラインに投稿する。
+     *
+     * <p>設計書 §4 §5.4: 「今日を締める」儀式。0件の日は 400、冪等再実行は旧投稿を
+     * 論理削除して差し替える。レートリミット 5 req/分（{@code ActionMemoRateLimitFilter}）。</p>
+     */
+    @PostMapping("/publish-daily")
+    @Operation(summary = "行動メモ 当日分まとめ投稿（publish-daily）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "投稿成功")
+    public ResponseEntity<ApiResponse<PublishDailyResponse>> publishDaily(
+            @Valid @RequestBody PublishDailyRequest request) {
+        PublishDailyResponse response = actionMemoService.publishDaily(
+                request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

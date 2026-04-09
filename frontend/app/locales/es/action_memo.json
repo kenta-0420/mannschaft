@@ -4,7 +4,8 @@
     "today_memos": "Notas de hoy",
     "empty": "Aún no hay notas. Escribe la primera.",
     "settings_link": "Ajustes",
-    "back_to_memo": "Volver a notas de acción"
+    "back_to_memo": "Volver a notas de acción",
+    "closing_link": "Cerrar el día"
   },
   "mood": {
     "great": "Excelente",
@@ -55,5 +56,36 @@
     "todo_not_found": "No se encontró el TODO que intentas vincular.",
     "load_failed": "Error al cargar las notas.",
     "save_failed": "Error al guardar la nota."
+  },
+  "dialog": {
+    "title": "Editar nota",
+    "save": "Guardar",
+    "cancel": "Cancelar"
+  },
+  "closing": {
+    "title": "Reflexión al cierre del día",
+    "today_memos": "Notas de hoy",
+    "todos_completed": "TODOs completados",
+    "todos_pending": "TODOs pendientes",
+    "no_completed_todos": "Aún no hay TODOs completados hoy.",
+    "no_pending_todos": "No hay TODOs pendientes hoy.",
+    "tomorrow_todos": "TODOs para mañana",
+    "tomorrow_input_placeholder": "Escribe algo para mañana",
+    "tomorrow_added": "Añadido a los TODOs de mañana",
+    "tomorrow_add_failed": "Error al añadir el TODO",
+    "extra_comment_label": "Comentario de cierre",
+    "extra_comment_placeholder": "Unas palabras sobre hoy (opcional)",
+    "publish_button": "Cerrar el día",
+    "publish_success": "Resumen del día publicado ({count} notas)",
+    "publish_error": "Error al publicar el resumen",
+    "move_to_tomorrow": "Pasar a mañana",
+    "moved_to_tomorrow": "Pasado a mañana",
+    "move_failed": "No se pudo pasar a mañana",
+    "no_memos_hint": "No hay notas hoy, nada que publicar."
+  },
+  "offline": {
+    "banner": "Estás sin conexión. Se sincronizará al volver en línea.",
+    "sync_button": "Sincronizar ahora",
+    "queued": "{count} notas en cola"
   }
 }

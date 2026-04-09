@@ -8,6 +8,8 @@ import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoTagSummary;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
 import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
+import com.mannschaft.app.actionmemo.dto.PublishDailyRequest;
+import com.mannschaft.app.actionmemo.dto.PublishDailyResponse;
 import com.mannschaft.app.actionmemo.dto.UpdateActionMemoRequest;
 import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
 import com.mannschaft.app.actionmemo.entity.ActionMemoTagEntity;
@@ -16,6 +18,10 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.security.HtmlSanitizer;
+import com.mannschaft.app.timeline.PostScopeType;
+import com.mannschaft.app.timeline.entity.TimelinePostEntity;
+import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
@@ -27,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -77,6 +84,7 @@ public class ActionMemoService {
     private final ActionMemoTagRepository tagRepository;
     private final ActionMemoTagLinkRepository tagLinkRepository;
     private final TodoRepository todoRepository;
+    private final TimelinePostRepository timelinePostRepository;
     private final ActionMemoSettingsService settingsService;
     private final ActionMemoMetrics metrics;
 
@@ -328,22 +336,180 @@ public class ActionMemoService {
     }
 
     // ==================================================================
-    // publishDaily（Phase 2 スタブ）
+    // publishDaily（Phase 2 本実装）
     // ==================================================================
 
+    /** publish-daily 本文日付ヘッダー */
+    private static final DateTimeFormatter MEMO_DATE_HEADER_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    /** publish-daily 本文各行の時刻フォーマット（HH:MM） */
+    private static final DateTimeFormatter MEMO_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("HH:mm");
+
     /**
-     * 当日分のメモをまとめて PERSONAL タイムラインに投稿する。
+     * 当日分（または指定日分）のメモをまとめて PERSONAL タイムラインに投稿する。
      *
-     * <p><b>Phase 2 スコープ</b>: 本任務（Phase 1 + Phase 1.5）では実装しない。
-     * 旧投稿への返信は PERSONAL スコープのため理論上発生しないが、将来スコープ仕様が
-     * 変わった場合は孤立リプライ対策を別途設計する必要がある旨、実装時に留意すること
-     * （設計書 §5）。</p>
+     * <p>設計書 §4 §5 §5.4 に従い以下の処理を行う:</p>
+     * <ol>
+     *   <li>{@code memo_date} 省略時は JST の今日に自動セット</li>
+     *   <li>対象日のメモを時系列順に取得（{@code @SQLRestriction} により論理削除済みは除外）</li>
+     *   <li>0件なら {@link ActionMemoErrorCode#ACTION_MEMO_NO_MEMOS_FOR_DATE}（400）</li>
+     *   <li><b>冪等性</b>: 既に {@code timeline_post_id} が埋まっているメモが存在する場合は
+     *       対応する {@link TimelinePostEntity} を論理削除し、新規投稿で差し替える
+     *       （設計書 §5 重要な判定ロジック「上書き再投稿」）</li>
+     *   <li>本文を {@code ## YYYY-MM-DD の行動ログ} ヘッダー + {@code - HH:MM content} の
+     *       リスト形式で組み立てる。{@code mood_enabled = true} のユーザーは各行頭に絵文字付与</li>
+     *   <li>{@code extra_comment} が指定されていれば末尾に {@code \n\n---\n} 区切りで追記する。
+     *       XSS 対策として {@link HtmlSanitizer#sanitizePlainText(String)} を通す</li>
+     *   <li>{@code scope_type=PERSONAL, scope_id=userId, user_id=userId} で
+     *       {@link TimelinePostEntity} を INSERT</li>
+     *   <li>各 {@link ActionMemoEntity#setTimelinePostId(Long)} を新 ID で更新</li>
+     * </ol>
+     *
+     * <p><b>将来仕様変更の留意点</b>: 旧投稿への返信は PERSONAL スコープのため理論上発生しないが、
+     * 将来スコープ仕様が変わった場合は「旧投稿を論理削除したときに孤立するリプライ」への
+     * 対策を別途設計する必要がある（設計書 §5）。</p>
+     *
+     * <p><b>ログ方針</b>: 設計書 §6 運用・監視に従い、本文そのもの（content）は出力しない。
+     * {@code timelinePostId / memoCount / userId / memoDate} のみ INFO で記録する。</p>
      */
-    public void publishDaily(Long userId, LocalDate memoDate, String extraComment) {
-        // TODO(Phase 2): timeline_posts への INSERT / action_memos.timeline_post_id 更新 /
-        //               冪等性（旧投稿の論理削除 → 新投稿） / 0件日の 400 / 失敗カウンター
-        throw new UnsupportedOperationException("publishDaily は Phase 2 で実装予定");
+    @Transactional
+    public PublishDailyResponse publishDaily(PublishDailyRequest request, Long userId) {
+        try {
+            // 1. memo_date デフォルト設定（JST 今日）
+            LocalDate memoDate = request.getMemoDate() != null
+                    ? request.getMemoDate()
+                    : LocalDate.now(ZONE_JST);
+
+            // 2. 対象日のメモを時系列順に取得
+            List<ActionMemoEntity> memos = memoRepository.findByUserIdAndMemoDate(userId, memoDate);
+
+            // 3. 0件チェック → 400
+            if (memos.isEmpty()) {
+                throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_NO_MEMOS_FOR_DATE);
+            }
+
+            // 4. 冪等性: 既存投稿の論理削除（同日に publish-daily が呼ばれた場合の上書き再投稿）
+            Set<Long> oldTimelinePostIds = memos.stream()
+                    .map(ActionMemoEntity::getTimelinePostId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            for (Long oldPostId : oldTimelinePostIds) {
+                timelinePostRepository.findById(oldPostId).ifPresent(old -> {
+                    old.softDelete();
+                    timelinePostRepository.save(old);
+                });
+            }
+
+            // 5. mood 表示可否（ユーザー設定）
+            boolean moodEnabled = settingsService.getMoodEnabled(userId);
+
+            // 6. 本文組み立て
+            String content = buildPublishDailyContent(
+                    memoDate, memos, moodEnabled, request.getExtraComment());
+
+            // 7. TimelinePost 新規作成（PERSONAL スコープ）
+            TimelinePostEntity post = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.PERSONAL)
+                    .scopeId(userId)
+                    .userId(userId)
+                    .content(content)
+                    .build();
+            TimelinePostEntity savedPost = timelinePostRepository.save(post);
+
+            // 8. 各メモの timelinePostId を更新
+            for (ActionMemoEntity memo : memos) {
+                memo.setTimelinePostId(savedPost.getId());
+                memoRepository.save(memo);
+            }
+
+            // 9. メトリクス + ログ（content 本文は出力しない）
+            metrics.incrementPublishDailySuccess();
+            log.info("行動メモ 終業投稿成功: timelinePostId={}, memoCount={}, userId={}, memoDate={}",
+                    savedPost.getId(), memos.size(), userId, memoDate);
+
+            return PublishDailyResponse.builder()
+                    .timelinePostId(savedPost.getId())
+                    .memoCount(memos.size())
+                    .memoDate(memoDate)
+                    .build();
+        } catch (BusinessException ex) {
+            metrics.incrementPublishDailyError();
+            throw ex;
+        } catch (RuntimeException ex) {
+            metrics.incrementPublishDailyError();
+            throw ex;
+        }
     }
+
+    /**
+     * publish-daily の本文を組み立てる。
+     *
+     * <pre>
+     * ## 2026-04-09 の行動ログ
+     *
+     * - 09:15 朝散歩 30分
+     * - 🙂 10:42 会議の準備完了
+     * - ...
+     *
+     * ---
+     * 今日はよく動けた。明日も頑張る
+     * </pre>
+     *
+     * @param memoDate     対象日
+     * @param memos        時系列順の当日メモ（非空）
+     * @param moodEnabled  mood 表示可否
+     * @param extraComment 末尾追記コメント（null/空なら追記なし。タグ類は HtmlSanitizer で除去）
+     */
+    private String buildPublishDailyContent(
+            LocalDate memoDate,
+            List<ActionMemoEntity> memos,
+            boolean moodEnabled,
+            String extraComment) {
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("## ").append(memoDate.format(MEMO_DATE_HEADER_FORMATTER))
+                .append(" の行動ログ\n\n");
+
+        for (ActionMemoEntity memo : memos) {
+            sb.append("- ");
+            if (moodEnabled && memo.getMood() != null) {
+                sb.append(moodEmoji(memo.getMood())).append(" ");
+            }
+            // createdAt は JST に変換して HH:mm を取り出す
+            String hhmm = memo.getCreatedAt() != null
+                    ? memo.getCreatedAt().atZone(ZoneId.systemDefault())
+                        .withZoneSameInstant(ZONE_JST)
+                        .format(MEMO_TIME_FORMATTER)
+                    : "";
+            if (!hhmm.isEmpty()) {
+                sb.append(hhmm).append(" ");
+            }
+            sb.append(memo.getContent()).append("\n");
+        }
+
+        if (extraComment != null && !extraComment.isBlank()) {
+            String sanitized = HtmlSanitizer.sanitizePlainText(extraComment);
+            sb.append("\n---\n").append(sanitized);
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * mood から絵文字を解決する。
+     */
+    private String moodEmoji(ActionMemoMood mood) {
+        return switch (mood) {
+            case GREAT -> "😄";
+            case GOOD -> "🙂";
+            case OK -> "😐";
+            case TIRED -> "😩";
+            case BAD -> "😞";
+        };
+    }
+
 
     // ==================================================================
     // プライベートヘルパー

@@ -4,7 +4,8 @@
     "today_memos": "Heutige Notizen",
     "empty": "Noch keine Notizen. Schreibe deine erste.",
     "settings_link": "Einstellungen",
-    "back_to_memo": "Zurück zu Aktionsnotizen"
+    "back_to_memo": "Zurück zu Aktionsnotizen",
+    "closing_link": "Tag abschließen"
   },
   "mood": {
     "great": "Großartig",
@@ -55,5 +56,36 @@
     "todo_not_found": "Das verknüpfte TODO wurde nicht gefunden.",
     "load_failed": "Notizen konnten nicht geladen werden.",
     "save_failed": "Notiz konnte nicht gespeichert werden."
+  },
+  "dialog": {
+    "title": "Notiz bearbeiten",
+    "save": "Speichern",
+    "cancel": "Abbrechen"
+  },
+  "closing": {
+    "title": "Tagesabschluss-Reflexion",
+    "today_memos": "Heutige Notizen",
+    "todos_completed": "Erledigte TODOs",
+    "todos_pending": "Offene TODOs",
+    "no_completed_todos": "Heute noch keine erledigten TODOs.",
+    "no_pending_todos": "Heute keine offenen TODOs.",
+    "tomorrow_todos": "TODOs für morgen",
+    "tomorrow_input_placeholder": "Etwas für morgen eintragen",
+    "tomorrow_added": "Zu morgens TODOs hinzugefügt",
+    "tomorrow_add_failed": "TODO konnte nicht hinzugefügt werden",
+    "extra_comment_label": "Schlussbemerkung",
+    "extra_comment_placeholder": "Ein paar Worte zum Tag (optional)",
+    "publish_button": "Tag abschließen",
+    "publish_success": "Tageszusammenfassung veröffentlicht ({count} Notizen)",
+    "publish_error": "Veröffentlichung fehlgeschlagen",
+    "move_to_tomorrow": "Auf morgen verschieben",
+    "moved_to_tomorrow": "Auf morgen verschoben",
+    "move_failed": "Verschieben fehlgeschlagen",
+    "no_memos_hint": "Heute gibt es keine Notizen zum Veröffentlichen."
+  },
+  "offline": {
+    "banner": "Du bist offline. Synchronisierung erfolgt bei Wiederverbindung.",
+    "sync_button": "Jetzt synchronisieren",
+    "queued": "{count} in Warteschlange"
   }
 }

@@ -4,7 +4,8 @@
     "today_memos": "今日备忘",
     "empty": "还没有备忘。写下第一条吧。",
     "settings_link": "设置",
-    "back_to_memo": "返回行动备忘"
+    "back_to_memo": "返回行动备忘",
+    "closing_link": "结束今天"
   },
   "mood": {
     "great": "极好",
@@ -55,5 +56,36 @@
     "todo_not_found": "找不到要关联的待办事项。",
     "load_failed": "加载备忘失败。",
     "save_failed": "保存备忘失败。"
+  },
+  "dialog": {
+    "title": "编辑备忘",
+    "save": "保存",
+    "cancel": "取消"
+  },
+  "closing": {
+    "title": "下班时的回顾",
+    "today_memos": "今日备忘",
+    "todos_completed": "已完成的待办",
+    "todos_pending": "未完成的待办",
+    "no_completed_todos": "今日还没有已完成的待办。",
+    "no_pending_todos": "今日没有未完成的待办。",
+    "tomorrow_todos": "明日待办",
+    "tomorrow_input_placeholder": "输入明日要做的事",
+    "tomorrow_added": "已添加到明日待办",
+    "tomorrow_add_failed": "添加待办失败",
+    "extra_comment_label": "今日感想",
+    "extra_comment_placeholder": "今日总结（可选）",
+    "publish_button": "结束今天",
+    "publish_success": "今日总结已发布（{count}条）",
+    "publish_error": "总结发布失败",
+    "move_to_tomorrow": "顺延至明日",
+    "moved_to_tomorrow": "已顺延至明日",
+    "move_failed": "无法顺延至明日",
+    "no_memos_hint": "今日没有备忘无法发布。"
+  },
+  "offline": {
+    "banner": "当前离线，恢复联网时将自动同步。",
+    "sync_button": "立即同步",
+    "queued": "队列中 {count} 条"
   }
 }

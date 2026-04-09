@@ -7,6 +7,8 @@ import type {
   CreateActionMemoPayload,
   ListActionMemoParams,
   Mood,
+  PublishDailyPayload,
+  PublishDailyResponse,
   UpdateActionMemoPayload,
 } from '~/types/actionMemo'
 
@@ -21,8 +23,8 @@ import type {
  * <p>レートリミット 429 応答は {@link ActionMemoRateLimitError} に再ラップして
  * {@code Retry-After} ヘッダーの秒数を呼び出し側へ伝える。</p>
  *
- * <p><b>Phase 1 スコープ</b>: CRUD + link-todo + 設定。
- * publish-daily / Tag CRUD は Phase 2-4 で別途追加する。</p>
+ * <p><b>Phase 2 スコープ</b>: CRUD + link-todo + 設定 + publish-daily（終業まとめ投稿）。
+ * Tag CRUD は Phase 4 で別途追加する。</p>
  */
 export function useActionMemoApi() {
   const api = useApi()
@@ -52,6 +54,12 @@ export function useActionMemoApi() {
 
   type RawSettings = {
     mood_enabled: boolean
+  }
+
+  type RawPublishDailyResponse = {
+    timeline_post_id: number
+    memo_count: number
+    memo_date: string
   }
 
   type RawListResponse = {
@@ -227,6 +235,34 @@ export function useActionMemoApi() {
     }
   }
 
+  // === Publish daily (Phase 2) ===
+
+  /**
+   * 当日分（または指定日分）のメモをまとめて PERSONAL タイムラインに投稿する。
+   *
+   * <p>設計書 §4 §5.4 に基づく「今日を締める」儀式。サーバー側は 0 件の日は 400、
+   * 1 分 5 回超の連打は 429、それ以外は 201 Created で {@code timeline_post_id} 等を返す。
+   * 同日内の再実行は旧投稿を論理削除してから新規投稿を作り直す（冪等再実行）。</p>
+   */
+  async function publishDaily(payload: PublishDailyPayload = {}): Promise<PublishDailyResponse> {
+    const body: Record<string, unknown> = {}
+    if (payload.memoDate !== undefined) body.memo_date = payload.memoDate
+    if (payload.extraComment !== undefined) body.extra_comment = payload.extraComment
+    try {
+      const res = await api<{ data: RawPublishDailyResponse }>(`${BASE}/publish-daily`, {
+        method: 'POST',
+        body,
+      })
+      return {
+        timelinePostId: res.data.timeline_post_id,
+        memoCount: res.data.memo_count,
+        memoDate: res.data.memo_date,
+      }
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
   return {
     createMemo,
     fetchMemos,
@@ -236,5 +272,6 @@ export function useActionMemoApi() {
     linkTodo,
     getSettings,
     updateSettings,
+    publishDaily,
   }
 }

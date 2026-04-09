@@ -4,7 +4,8 @@
     "today_memos": "Today's memos",
     "empty": "No memos yet. Write your first one.",
     "settings_link": "Settings",
-    "back_to_memo": "Back to Action Memo"
+    "back_to_memo": "Back to Action Memo",
+    "closing_link": "Close out today"
   },
   "mood": {
     "great": "Great",
@@ -55,5 +56,36 @@
     "todo_not_found": "The TODO you tried to link was not found.",
     "load_failed": "Failed to load memos.",
     "save_failed": "Failed to save memo."
+  },
+  "dialog": {
+    "title": "Edit memo",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "closing": {
+    "title": "End-of-day reflection",
+    "today_memos": "Today's memos",
+    "todos_completed": "Completed TODOs",
+    "todos_pending": "Pending TODOs",
+    "no_completed_todos": "No completed TODOs today yet.",
+    "no_pending_todos": "No pending TODOs today.",
+    "tomorrow_todos": "Tomorrow's TODOs",
+    "tomorrow_input_placeholder": "Type something to do tomorrow",
+    "tomorrow_added": "Added to tomorrow's TODO",
+    "tomorrow_add_failed": "Failed to add TODO",
+    "extra_comment_label": "Closing remark",
+    "extra_comment_placeholder": "A few words about today (optional)",
+    "publish_button": "Close out today",
+    "publish_success": "Posted today's summary ({count} memos)",
+    "publish_error": "Failed to publish summary",
+    "move_to_tomorrow": "Move to tomorrow",
+    "moved_to_tomorrow": "Moved to tomorrow",
+    "move_failed": "Failed to move to tomorrow",
+    "no_memos_hint": "Nothing to publish because there are no memos today."
+  },
+  "offline": {
+    "banner": "You are offline. Your memos will sync when you're back online.",
+    "sync_button": "Sync now",
+    "queued": "{count} memos queued"
   }
 }

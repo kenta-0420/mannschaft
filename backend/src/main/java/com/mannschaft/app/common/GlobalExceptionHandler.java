@@ -44,7 +44,9 @@ public class GlobalExceptionHandler {
             // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す
             Map.entry("ACTION_MEMO_001", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_006", HttpStatus.NOT_FOUND),
-            Map.entry("ACTION_MEMO_008", HttpStatus.NOT_FOUND)
+            Map.entry("ACTION_MEMO_008", HttpStatus.NOT_FOUND),
+            // F02.5 publish-daily: 対象日0件は 400 を明示（Severity.WARN 既定と同じだが宣言的に）
+            Map.entry("ACTION_MEMO_007", HttpStatus.BAD_REQUEST)
     );
 
     /**

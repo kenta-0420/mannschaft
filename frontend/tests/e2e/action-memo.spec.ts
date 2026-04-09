@@ -2,18 +2,21 @@ import { test, expect, type Page } from '@playwright/test'
 import { waitForHydration } from './helpers/wait'
 
 /**
- * F02.5 行動メモ機能 E2E テスト（Phase 1 スコープ）。
+ * F02.5 行動メモ機能 E2E テスト（Phase 1 + Phase 2 スコープ）。
  *
  * - シナリオ1: ワンショット入力 → リスト追加 → 入力欄クリア
  * - シナリオ2: mood_enabled の ON/OFF で MoodSelector の表示が切り替わる
  * - シナリオ3: 他人の memoId を URL 直打ち → 404 時の振る舞い（リスト空 / エラー）
+ * - シナリオ4 (Phase 2): 編集ダイアログで content を更新 → 一覧に反映
+ * - シナリオ5 (Phase 2): /action-memo/closing → 今日を締める → publish-daily 成功
  *
  * 認証は chromium プロジェクトの storageState に依存。Backend API は page.route で
- * モックする（Phase 1 では publish-daily などは未実装のため除外）。
+ * モックする。
  */
 
 const ACTION_MEMO_API = '**/api/v1/action-memos**'
 const ACTION_MEMO_SETTINGS_API = '**/api/v1/action-memo-settings'
+const TODO_MY_API = '**/api/v1/todos/my'
 
 interface MockState {
   memos: Array<{
@@ -62,6 +65,39 @@ async function setupActionMemoMocks(page: Page, state: MockState) {
   await page.route(ACTION_MEMO_API, async (route) => {
     const method = route.request().method()
     const url = route.request().url()
+    // POST /publish-daily は先にハンドルする
+    if (method === 'POST' && /\/action-memos\/publish-daily/.test(url)) {
+      const body = JSON.parse(route.request().postData() ?? '{}') as {
+        memo_date?: string
+      }
+      const memoDate = body.memo_date ?? todayJst()
+      const count = state.memos.filter((m) => m.memo_date === memoDate).length
+      if (count === 0) {
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ message: 'no memos' }),
+        })
+        return
+      }
+      // 各メモの timeline_post_id を埋める
+      const postId = 88231
+      state.memos = state.memos.map((m) =>
+        m.memo_date === memoDate ? { ...m, timeline_post_id: postId } : m,
+      )
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            timeline_post_id: postId,
+            memo_count: count,
+            memo_date: memoDate,
+          },
+        }),
+      })
+      return
+    }
     if (method === 'GET') {
       await route.fulfill({
         status: 200,
@@ -91,6 +127,40 @@ async function setupActionMemoMocks(page: Page, state: MockState) {
         contentType: 'application/json',
         body: JSON.stringify({ data: memo }),
       })
+    } else if (method === 'PATCH' && /\/action-memos\/\d+/.test(url)) {
+      const idMatch = url.match(/\/action-memos\/(\d+)/)
+      const id = idMatch ? Number(idMatch[1]) : 0
+      const body = JSON.parse(route.request().postData() ?? '{}') as {
+        content?: string
+        mood?: string | null
+      }
+      const idx = state.memos.findIndex((m) => m.id === id)
+      if (idx < 0) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ message: 'not found' }),
+        })
+        return
+      }
+      const target = state.memos[idx]!
+      const updated = {
+        ...target,
+        content: body.content ?? target.content,
+        mood:
+          body.mood !== undefined
+            ? state.moodEnabled
+              ? body.mood
+              : null
+            : target.mood,
+        updated_at: new Date().toISOString().replace('Z', '').slice(0, 19),
+      }
+      state.memos[idx] = updated
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: updated }),
+      })
     } else if (method === 'DELETE' && /\/action-memos\/\d+/.test(url)) {
       const idMatch = url.match(/\/action-memos\/(\d+)/)
       const id = idMatch ? Number(idMatch[1]) : 0
@@ -102,6 +172,19 @@ async function setupActionMemoMocks(page: Page, state: MockState) {
         contentType: 'application/json',
         body: JSON.stringify({ message: 'not found' }),
       })
+    }
+  })
+
+  // closing 画面で /api/v1/todos/my が叩かれるため最小モック
+  await page.route(TODO_MY_API, async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [] }),
+      })
+    } else {
+      await route.fulfill({ status: 404, body: '' })
     }
   })
 }
@@ -176,5 +259,72 @@ test.describe('F02.5: 行動メモ', () => {
     await expect(page.locator('[data-testid="action-memo-list-empty"]')).toBeVisible({
       timeout: 10_000,
     })
+  })
+
+  test('AM-004 (Phase 2): カードの編集ボタン → 編集ダイアログ → 保存 → 一覧に反映', async ({
+    page,
+  }) => {
+    const state: MockState = { memos: [], moodEnabled: false, nextId: 4521 }
+    await setupActionMemoMocks(page, state)
+
+    await page.goto('/action-memo')
+    await waitForHydration(page)
+
+    // 1件メモを作成
+    const textarea = page.locator('[data-testid="action-memo-input-textarea"]')
+    await expect(textarea).toBeVisible({ timeout: 10_000 })
+    await textarea.fill('編集前の本文')
+    await textarea.press('Enter')
+    await expect(page.getByText('編集前の本文')).toBeVisible({ timeout: 5_000 })
+
+    // カードにホバーして編集ボタンを押下（opacity-0 グループホバー対策に force: true）
+    const editBtn = page.locator('[data-testid="action-memo-card-edit"]').first()
+    await editBtn.click({ force: true })
+
+    // ダイアログが開く
+    const dialog = page.locator('[data-testid="action-memo-edit-dialog"]')
+    await expect(dialog).toBeVisible({ timeout: 5_000 })
+
+    // 本文を書き換えて保存
+    const dialogTextarea = page.locator('[data-testid="action-memo-edit-dialog-textarea"]')
+    await dialogTextarea.fill('編集後の本文')
+    await page.locator('[data-testid="action-memo-edit-dialog-save"]').click()
+
+    // ダイアログが閉じ、一覧に編集後の本文が表示される
+    await expect(dialog).toBeHidden({ timeout: 5_000 })
+    await expect(page.getByText('編集後の本文')).toBeVisible({ timeout: 5_000 })
+  })
+
+  test('AM-005 (Phase 2): 終業画面で「今日を締める」→ publish-daily 成功', async ({ page }) => {
+    const state: MockState = { memos: [], moodEnabled: false, nextId: 4521 }
+    await setupActionMemoMocks(page, state)
+
+    // まずメモを 1 件作成
+    await page.goto('/action-memo')
+    await waitForHydration(page)
+    const textarea = page.locator('[data-testid="action-memo-input-textarea"]')
+    await expect(textarea).toBeVisible({ timeout: 10_000 })
+    await textarea.fill('朝散歩した')
+    await textarea.press('Enter')
+    await expect(page.getByText('朝散歩した')).toBeVisible({ timeout: 5_000 })
+
+    // 終業画面に移動
+    await page.locator('[data-testid="action-memo-closing-link"]').click()
+    await waitForHydration(page)
+
+    await expect(page.locator('[data-testid="action-memo-closing-title"]')).toBeVisible({
+      timeout: 10_000,
+    })
+
+    // 今日を締めるボタンを押下
+    const publishBtn = page.locator('[data-testid="action-memo-closing-publish"]')
+    await expect(publishBtn).toBeVisible({ timeout: 5_000 })
+    await expect(publishBtn).toBeEnabled()
+    await publishBtn.click()
+
+    // 成功後は /action-memo にリダイレクトされる
+    await page.waitForURL('**/action-memo', { timeout: 10_000 })
+    // リダイレクト先に戻ったことを確認（メモ一覧が見える）
+    await expect(page.getByText('朝散歩した')).toBeVisible({ timeout: 5_000 })
   })
 })
