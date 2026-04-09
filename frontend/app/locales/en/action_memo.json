@@ -1,0 +1,59 @@
+{
+  "title": "Action Memo",
+  "page": {
+    "today_memos": "Today's memos",
+    "empty": "No memos yet. Write your first one.",
+    "settings_link": "Settings",
+    "back_to_memo": "Back to Action Memo"
+  },
+  "mood": {
+    "great": "Great",
+    "good": "Good",
+    "ok": "OK",
+    "tired": "Tired",
+    "bad": "Tough",
+    "none": "Not selected",
+    "label": "Mood"
+  },
+  "input": {
+    "placeholder": "What are you doing right now?",
+    "submit": "Save",
+    "draft_saved": "Draft saved automatically",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enter to submit / Shift+Enter for newline"
+  },
+  "card": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "linked_todo": "Related TODO"
+  },
+  "weekly": {
+    "title": "Weekly Reflection",
+    "summary": "This Week's Summary",
+    "memo_count": "Memo count",
+    "posted_days": "Posting days",
+    "avg_mood": "Average mood",
+    "mood_trend": "Mood Trend",
+    "top_tags": "Top Tags",
+    "featured_memos": "Featured Memos",
+    "featured_random_note": "(random pick)",
+    "related_todos": "Related TODOs",
+    "todos_completed": "Completed",
+    "todos_pending": "Pending → carried over"
+  },
+  "settings": {
+    "title": "Action Memo Settings",
+    "mood_enabled": {
+      "label": "Enable mood input",
+      "description": "Choose your mood from 5 levels when adding a memo. Off by default."
+    }
+  },
+  "error": {
+    "rate_limit": "Too many requests. Please wait a moment and try again.",
+    "daily_limit": "You've reached today's limit (200 memos). Please continue tomorrow.",
+    "future_date": "You can't write to a future date.",
+    "todo_not_found": "The TODO you tried to link was not found.",
+    "load_failed": "Failed to load memos.",
+    "save_failed": "Failed to save memo."
+  }
+}

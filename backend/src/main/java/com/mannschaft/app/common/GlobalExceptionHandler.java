@@ -33,14 +33,18 @@ public class GlobalExceptionHandler {
      * ErrorCode ごとの HttpStatus 個別マッピング。
      * Severity ベースのデフォルトマッピングを上書きしたい場合にここへ追加する。
      */
-    private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.of(
-            CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN,
-            CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT,
-            "AD_006", HttpStatus.CONFLICT,
-            "AD_007", HttpStatus.CONFLICT,
-            "AD_010", HttpStatus.FORBIDDEN,
-            "AUTH_033", HttpStatus.NOT_FOUND,
-            "AUTH_034", HttpStatus.CONFLICT
+    private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.ofEntries(
+            Map.entry(CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN),
+            Map.entry(CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT),
+            Map.entry("AD_006", HttpStatus.CONFLICT),
+            Map.entry("AD_007", HttpStatus.CONFLICT),
+            Map.entry("AD_010", HttpStatus.FORBIDDEN),
+            Map.entry("AUTH_033", HttpStatus.NOT_FOUND),
+            Map.entry("AUTH_034", HttpStatus.CONFLICT),
+            // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す
+            Map.entry("ACTION_MEMO_001", HttpStatus.NOT_FOUND),
+            Map.entry("ACTION_MEMO_006", HttpStatus.NOT_FOUND),
+            Map.entry("ACTION_MEMO_008", HttpStatus.NOT_FOUND)
     );
 
     /**

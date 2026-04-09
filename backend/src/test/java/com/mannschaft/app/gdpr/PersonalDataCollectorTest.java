@@ -1,5 +1,9 @@
 package com.mannschaft.app.gdpr;
 
+import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
+import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
+import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
+import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
 import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
@@ -49,6 +53,14 @@ class PersonalDataCollectorTest {
     @Mock
     private NotificationRepository notificationRepository;
     @Mock
+    private ActionMemoRepository actionMemoRepository;
+    @Mock
+    private ActionMemoTagRepository actionMemoTagRepository;
+    @Mock
+    private ActionMemoTagLinkRepository actionMemoTagLinkRepository;
+    @Mock
+    private UserActionMemoSettingsRepository userActionMemoSettingsRepository;
+    @Mock
     private EncryptionService encryptionService;
 
     @InjectMocks
@@ -59,7 +71,7 @@ class PersonalDataCollectorTest {
     class Collect {
 
         @Test
-        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（10カテゴリ）")
+        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（11カテゴリ）")
         void 正常_nullカテゴリ_全カテゴリ収集() {
             given(userRepository.findById(anyLong())).willReturn(Optional.empty());
             given(oAuthAccountRepository.findByUserId(anyLong())).willReturn(List.of());
@@ -71,14 +83,22 @@ class PersonalDataCollectorTest {
                     .willReturn(List.of());
             given(notificationRepository.findByUserIdOrderByCreatedAtDesc(anyLong(), any()))
                     .willReturn(org.springframework.data.domain.Page.empty());
+            given(actionMemoRepository.findByUserIdOrderByMemoDateDescCreatedAtDesc(anyLong()))
+                    .willReturn(List.of());
+            given(actionMemoTagRepository.findByUserIdOrderBySortOrderAsc(anyLong()))
+                    .willReturn(List.of());
+            given(actionMemoTagLinkRepository.findByUserId(anyLong()))
+                    .willReturn(List.of());
+            given(userActionMemoSettingsRepository.findById(anyLong()))
+                    .willReturn(Optional.empty());
 
             Map<String, String> result = collector.collect(1L, null);
 
-            assertThat(result).hasSize(10);
+            assertThat(result).hasSize(11);
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     "account.json", "oauth_accounts.json", "memberships.json", "profiles.json",
                     "payments.json", "charts.json", "chat_messages.json", "timeline_posts.json",
-                    "audit_logs.json", "notifications.json"
+                    "audit_logs.json", "notifications.json", "action_memos.json"
             );
         }
 
@@ -111,15 +131,56 @@ class PersonalDataCollectorTest {
     class GetCategoryKeys {
 
         @Test
-        @DisplayName("正常系: 10カテゴリキーが返る")
-        void 正常_10カテゴリキー返却() {
+        @DisplayName("正常系: 11カテゴリキーが返る")
+        void 正常_11カテゴリキー返却() {
             Set<String> keys = collector.getCategoryKeys();
 
-            assertThat(keys).hasSize(10);
+            assertThat(keys).hasSize(11);
             assertThat(keys).containsExactlyInAnyOrder(
                     "account", "oauth", "memberships", "profiles", "payments",
-                    "charts", "chat_messages", "timeline", "audit_logs", "notifications"
+                    "charts", "chat_messages", "timeline", "audit_logs", "notifications",
+                    "action_memos"
             );
+        }
+    }
+
+    @Nested
+    @DisplayName("action_memos カテゴリ（F02.5 Phase 1.5）")
+    class ActionMemosCategory {
+
+        @Test
+        @DisplayName("正常系: action_memos 指定で4テーブルの内容が1ファイルにまとめて返る")
+        void 正常_action_memos_4テーブル収集() {
+            given(actionMemoRepository.findByUserIdOrderByMemoDateDescCreatedAtDesc(anyLong()))
+                    .willReturn(List.of());
+            given(actionMemoTagRepository.findByUserIdOrderBySortOrderAsc(anyLong()))
+                    .willReturn(List.of());
+            given(actionMemoTagLinkRepository.findByUserId(anyLong()))
+                    .willReturn(List.of());
+            given(userActionMemoSettingsRepository.findById(anyLong()))
+                    .willReturn(Optional.empty());
+
+            Map<String, String> result = collector.collect(1L, Set.of("action_memos"));
+
+            assertThat(result).hasSize(1);
+            assertThat(result).containsKey("action_memos.json");
+            String json = result.get("action_memos.json");
+            assertThat(json).contains("action_memos");
+            assertThat(json).contains("action_memo_tags");
+            assertThat(json).contains("action_memo_tag_links");
+            assertThat(json).contains("user_action_memo_settings");
+        }
+
+        @Test
+        @DisplayName("異常系: リポジトリ例外は[]でスキップされる")
+        void 異常_action_memos_例外_スキップ() {
+            given(actionMemoRepository.findByUserIdOrderByMemoDateDescCreatedAtDesc(anyLong()))
+                    .willThrow(new RuntimeException("DB error"));
+
+            Map<String, String> result = collector.collect(1L, Set.of("action_memos"));
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get("action_memos.json")).isEqualTo("[]");
         }
     }
 }

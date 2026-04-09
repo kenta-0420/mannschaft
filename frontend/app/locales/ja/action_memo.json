@@ -1,0 +1,59 @@
+{
+  "title": "行動メモ",
+  "page": {
+    "today_memos": "今日のメモ",
+    "empty": "まだメモがありません。最初の1件を書きましょう。",
+    "settings_link": "設定",
+    "back_to_memo": "行動メモへ戻る"
+  },
+  "mood": {
+    "great": "絶好調",
+    "good": "いい感じ",
+    "ok": "普通",
+    "tired": "疲れ",
+    "bad": "しんどい",
+    "none": "選択しない",
+    "label": "気分"
+  },
+  "input": {
+    "placeholder": "いま、何してた？",
+    "submit": "記録する",
+    "draft_saved": "下書きを自動保存しました",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enterで送信 / Shift+Enterで改行"
+  },
+  "card": {
+    "edit": "編集",
+    "delete": "削除",
+    "linked_todo": "関連TODO"
+  },
+  "weekly": {
+    "title": "週次ふりかえり",
+    "summary": "今週のサマリー",
+    "memo_count": "メモ件数",
+    "posted_days": "投稿日数",
+    "avg_mood": "平均気分",
+    "mood_trend": "気分の推移",
+    "top_tags": "よく使ったタグ",
+    "featured_memos": "今週の代表的なメモ",
+    "featured_random_note": "（ランダム抽出）",
+    "related_todos": "関連 TODO",
+    "todos_completed": "完了",
+    "todos_pending": "未完 → 来週へ繰越"
+  },
+  "settings": {
+    "title": "行動メモ設定",
+    "mood_enabled": {
+      "label": "気分入力を有効にする",
+      "description": "メモ入力時に5段階の気分を選べます。デフォルトは無効です。"
+    }
+  },
+  "error": {
+    "rate_limit": "操作が早すぎます。少し時間をおいて再度お試しください",
+    "daily_limit": "本日の上限（200件）に達しました。明日以降にお書きください",
+    "future_date": "未来の日付には書けません",
+    "todo_not_found": "紐付けようとした TODO が見つかりません",
+    "load_failed": "メモの取得に失敗しました",
+    "save_failed": "メモの保存に失敗しました"
+  }
+}

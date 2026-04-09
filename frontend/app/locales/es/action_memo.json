@@ -1,0 +1,59 @@
+{
+  "title": "Notas de acción",
+  "page": {
+    "today_memos": "Notas de hoy",
+    "empty": "Aún no hay notas. Escribe la primera.",
+    "settings_link": "Ajustes",
+    "back_to_memo": "Volver a notas de acción"
+  },
+  "mood": {
+    "great": "Excelente",
+    "good": "Bien",
+    "ok": "Normal",
+    "tired": "Cansado",
+    "bad": "Difícil",
+    "none": "Sin seleccionar",
+    "label": "Ánimo"
+  },
+  "input": {
+    "placeholder": "¿Qué estás haciendo ahora?",
+    "submit": "Guardar",
+    "draft_saved": "Borrador guardado",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enter para enviar / Shift+Enter para nueva línea"
+  },
+  "card": {
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "linked_todo": "TODO relacionado"
+  },
+  "weekly": {
+    "title": "Reflexión semanal",
+    "summary": "Resumen de la semana",
+    "memo_count": "Notas",
+    "posted_days": "Días con notas",
+    "avg_mood": "Ánimo medio",
+    "mood_trend": "Tendencia de ánimo",
+    "top_tags": "Etiquetas frecuentes",
+    "featured_memos": "Notas destacadas",
+    "featured_random_note": "(selección aleatoria)",
+    "related_todos": "TODOs relacionados",
+    "todos_completed": "Completadas",
+    "todos_pending": "Pendientes → próxima semana"
+  },
+  "settings": {
+    "title": "Ajustes de notas",
+    "mood_enabled": {
+      "label": "Activar entrada de ánimo",
+      "description": "Selecciona tu ánimo entre 5 niveles al añadir una nota. Desactivado por defecto."
+    }
+  },
+  "error": {
+    "rate_limit": "Demasiadas acciones. Espera un momento e inténtalo de nuevo.",
+    "daily_limit": "Has alcanzado el límite diario (200 notas). Continúa mañana.",
+    "future_date": "No puedes escribir en una fecha futura.",
+    "todo_not_found": "No se encontró el TODO que intentas vincular.",
+    "load_failed": "Error al cargar las notas.",
+    "save_failed": "Error al guardar la nota."
+  }
+}
