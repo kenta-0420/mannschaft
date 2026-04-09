@@ -94,6 +94,26 @@ class ActionMemoControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/v1/action-memos/publish-daily: 5 回まで成功、6 回目で 429")
+    void publishDaily_rateLimit5PerMinute() throws Exception {
+        FilterChain chain = mock(FilterChain.class);
+
+        for (int i = 0; i < 5; i++) {
+            MockHttpServletRequest request = buildRequest("/api/v1/action-memos/publish-daily", "POST");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+
+        // 6 回目: 429
+        MockHttpServletRequest request = buildRequest("/api/v1/action-memos/publish-daily", "POST");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(429);
+        assertThat(response.getHeader("Retry-After")).isEqualTo("60");
+    }
+
+    @Test
     @DisplayName("対象外エンドポイント: Filter は透過する（GET /action-memos など）")
     void shouldNotFilter_forNonTrackedEndpoints() throws Exception {
         FilterChain chain = mock(FilterChain.class);
