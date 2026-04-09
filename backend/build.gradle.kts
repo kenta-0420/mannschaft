@@ -125,6 +125,9 @@ dependencies {
 
     // === Bucket4j レート制限（F12.5 エラーレポート） ===
     implementation("com.bucket4j:bucket4j-core:8.10.1")
+
+    // === HTML サニタイズ（F02.5 publish-daily extra_comment 用。将来 F04.1 統合検討） ===
+    implementation("org.jsoup:jsoup:1.18.1")
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
