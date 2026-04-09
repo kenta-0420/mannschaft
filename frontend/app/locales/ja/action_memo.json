@@ -4,7 +4,8 @@
     "today_memos": "今日のメモ",
     "empty": "まだメモがありません。最初の1件を書きましょう。",
     "settings_link": "設定",
-    "back_to_memo": "行動メモへ戻る"
+    "back_to_memo": "行動メモへ戻る",
+    "closing_link": "今日を締める"
   },
   "mood": {
     "great": "絶好調",
@@ -55,5 +56,36 @@
     "todo_not_found": "紐付けようとした TODO が見つかりません",
     "load_failed": "メモの取得に失敗しました",
     "save_failed": "メモの保存に失敗しました"
+  },
+  "dialog": {
+    "title": "メモを編集",
+    "save": "保存",
+    "cancel": "キャンセル"
+  },
+  "closing": {
+    "title": "終業時の振り返り",
+    "today_memos": "今日のメモ",
+    "todos_completed": "完了したTODO",
+    "todos_pending": "残ったTODO",
+    "no_completed_todos": "今日の完了TODOはまだありません",
+    "no_pending_todos": "今日の未完TODOはありません",
+    "tomorrow_todos": "明日やること",
+    "tomorrow_input_placeholder": "明日やることを入力",
+    "tomorrow_added": "明日のTODOに追加しました",
+    "tomorrow_add_failed": "TODOの追加に失敗しました",
+    "extra_comment_label": "今日のひと言",
+    "extra_comment_placeholder": "今日の総括（任意）",
+    "publish_button": "今日を締める",
+    "publish_success": "本日のまとめを投稿しました（{count}件）",
+    "publish_error": "まとめ投稿に失敗しました",
+    "move_to_tomorrow": "明日に回す",
+    "moved_to_tomorrow": "明日に回しました",
+    "move_failed": "明日に回せませんでした",
+    "no_memos_hint": "今日のメモが0件のため投稿できません"
+  },
+  "offline": {
+    "banner": "オフライン中です。オンライン復帰時に同期されます",
+    "sync_button": "いま同期する",
+    "queued": "{count}件キュー中"
   }
 }

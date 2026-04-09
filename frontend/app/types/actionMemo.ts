@@ -100,6 +100,58 @@ export interface ListActionMemoParams {
   limit?: number
 }
 
+// === Publish daily (Phase 2) ===
+
+/**
+ * {@code POST /api/v1/action-memos/publish-daily} のリクエストペイロード。
+ *
+ * <p>設計書 §4: 両フィールドとも任意。{@code memoDate} 省略時はサーバー側で
+ * JST の今日が採用される。{@code extraComment} は最大 1,000 文字でまとめ本文末尾に
+ * 追記される任意のひと言。</p>
+ */
+export interface PublishDailyPayload {
+  /** ISO 日付（YYYY-MM-DD）。省略時はサーバー側で JST 今日 */
+  memoDate?: string
+  /** まとめ本文末尾に追記される任意のひと言（最大 1,000 文字） */
+  extraComment?: string
+}
+
+/**
+ * {@code POST /api/v1/action-memos/publish-daily} の成功レスポンス。
+ */
+export interface PublishDailyResponse {
+  /** 新規作成された timeline_posts.id */
+  timelinePostId: number
+  /** 本文に含めたメモの件数 */
+  memoCount: number
+  /** 集計対象日（YYYY-MM-DD） */
+  memoDate: string
+}
+
+// === Offline queue (Phase 2) ===
+
+/**
+ * IndexedDB に退避されるオフラインキュー項目。
+ *
+ * <p>設計書 §4.x「オフライン対応」に基づき、{@code navigator.onLine === false} の状態で
+ * 発行された createMemo をローカルに保存し、オンライン復帰時または手動同期ボタン操作時に
+ * 順次送信する。{@code tempId} は楽観的 UI で一覧に挿入した仮 ID と対応し、同期成功後の
+ * 本物の ID への置き換えに利用する。</p>
+ *
+ * <p>Phase 2 では {@code @vite-pwa/nuxt} 等の Service Worker 機構が導入されていないため、
+ * {@code online} イベント + 手動同期ボタンで縮退運用する（F11.1 PWA 連携は将来実装）。</p>
+ */
+export interface OfflineQueuedMemo {
+  /** 自動採番のキュー項目 ID（IndexedDB 側の primary key） */
+  queueId?: number
+  /** store で楽観的 UI に使っている仮 ID（負数） */
+  tempId: number
+  /** 送信予定のペイロード */
+  payload: CreateActionMemoPayload
+  /** キューに積んだ時刻（ISO） */
+  enqueuedAt: string
+}
+
 // === Error helpers ===
 
 /**
