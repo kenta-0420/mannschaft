@@ -2,6 +2,14 @@ package com.mannschaft.app.gdpr.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
+import com.mannschaft.app.actionmemo.entity.ActionMemoTagEntity;
+import com.mannschaft.app.actionmemo.entity.ActionMemoTagLinkEntity;
+import com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity;
+import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
+import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
+import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
+import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
 import com.mannschaft.app.auth.entity.OAuthAccountEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.AuditLogRepository;
@@ -21,6 +29,7 @@ import org.springframework.stereotype.Service;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -40,6 +49,10 @@ public class PersonalDataCollector {
     private final TimelinePostRepository timelinePostRepository;
     private final AuditLogRepository auditLogRepository;
     private final NotificationRepository notificationRepository;
+    private final ActionMemoRepository actionMemoRepository;
+    private final ActionMemoTagRepository actionMemoTagRepository;
+    private final ActionMemoTagLinkRepository actionMemoTagLinkRepository;
+    private final UserActionMemoSettingsRepository userActionMemoSettingsRepository;
     private final EncryptionService encryptionService;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
@@ -56,7 +69,9 @@ public class PersonalDataCollector {
             Map.entry("chat_messages", "chat_messages.json"),
             Map.entry("timeline", "timeline_posts.json"),
             Map.entry("audit_logs", "audit_logs.json"),
-            Map.entry("notifications", "notifications.json")
+            Map.entry("notifications", "notifications.json"),
+            // F02.5 行動メモ（Phase 1.5 で追加）
+            Map.entry("action_memos", "action_memos.json")
     );
 
     /**
@@ -105,6 +120,7 @@ public class PersonalDataCollector {
             case "timeline" -> collectTimeline(userId);
             case "audit_logs" -> collectAuditLogs(userId);
             case "notifications" -> collectNotifications(userId);
+            case "action_memos" -> collectActionMemos(userId);
             default -> "[]";
         };
     }
@@ -195,6 +211,35 @@ public class PersonalDataCollector {
         return OBJECT_MAPPER.writeValueAsString(
                 notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, Pageable.unpaged())
                         .getContent());
+    }
+
+    /**
+     * F02.5 行動メモ4テーブルを1つの JSON 文字列にまとめて返す。
+     * 論理削除済みメモ/タグは除外する（ユーザーが「削除した」と認識しているデータは
+     * エクスポートに含めない）。
+     *
+     * <p>返される JSON の構造:</p>
+     * <pre>
+     * {
+     *   "action_memos": [ ... ],
+     *   "action_memo_tags": [ ... ],
+     *   "action_memo_tag_links": [ ... ],
+     *   "user_action_memo_settings": { ... } | null
+     * }
+     * </pre>
+     */
+    private String collectActionMemos(Long userId) throws Exception {
+        List<ActionMemoEntity> memos = actionMemoRepository.findByUserIdOrderByMemoDateDescCreatedAtDesc(userId);
+        List<ActionMemoTagEntity> tags = actionMemoTagRepository.findByUserIdOrderBySortOrderAsc(userId);
+        List<ActionMemoTagLinkEntity> links = actionMemoTagLinkRepository.findByUserId(userId);
+        Optional<UserActionMemoSettingsEntity> settings = userActionMemoSettingsRepository.findById(userId);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("action_memos", memos);
+        payload.put("action_memo_tags", tags);
+        payload.put("action_memo_tag_links", links);
+        payload.put("user_action_memo_settings", settings.orElse(null));
+        return OBJECT_MAPPER.writeValueAsString(payload);
     }
 
     private String decryptSafe(String cipherText) {
