@@ -1,0 +1,59 @@
+{
+  "title": "행동 메모",
+  "page": {
+    "today_memos": "오늘의 메모",
+    "empty": "아직 메모가 없습니다. 첫 메모를 작성하세요.",
+    "settings_link": "설정",
+    "back_to_memo": "행동 메모로 돌아가기"
+  },
+  "mood": {
+    "great": "최고",
+    "good": "좋음",
+    "ok": "보통",
+    "tired": "피곤",
+    "bad": "힘듦",
+    "none": "선택하지 않음",
+    "label": "기분"
+  },
+  "input": {
+    "placeholder": "지금 뭐 하고 있어?",
+    "submit": "기록하기",
+    "draft_saved": "임시 저장됨",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enter로 전송 / Shift+Enter로 줄바꿈"
+  },
+  "card": {
+    "edit": "편집",
+    "delete": "삭제",
+    "linked_todo": "관련 할 일"
+  },
+  "weekly": {
+    "title": "주간 회고",
+    "summary": "이번 주 요약",
+    "memo_count": "메모 수",
+    "posted_days": "작성한 날",
+    "avg_mood": "평균 기분",
+    "mood_trend": "기분 추이",
+    "top_tags": "자주 사용한 태그",
+    "featured_memos": "이번 주 주요 메모",
+    "featured_random_note": "(무작위 선정)",
+    "related_todos": "관련 할 일",
+    "todos_completed": "완료",
+    "todos_pending": "미완료 → 다음 주로 이월"
+  },
+  "settings": {
+    "title": "행동 메모 설정",
+    "mood_enabled": {
+      "label": "기분 입력 사용",
+      "description": "메모 입력 시 5단계로 기분을 선택할 수 있습니다. 기본값은 비활성입니다."
+    }
+  },
+  "error": {
+    "rate_limit": "너무 빠릅니다. 잠시 후 다시 시도해 주세요.",
+    "daily_limit": "오늘의 한도(200개)에 도달했습니다. 내일 다시 시도해 주세요.",
+    "future_date": "미래 날짜에는 기록할 수 없습니다.",
+    "todo_not_found": "연결하려는 할 일을 찾을 수 없습니다.",
+    "load_failed": "메모 불러오기에 실패했습니다.",
+    "save_failed": "메모 저장에 실패했습니다."
+  }
+}

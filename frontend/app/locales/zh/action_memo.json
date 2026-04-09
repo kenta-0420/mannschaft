@@ -1,0 +1,59 @@
+{
+  "title": "行动备忘",
+  "page": {
+    "today_memos": "今日备忘",
+    "empty": "还没有备忘。写下第一条吧。",
+    "settings_link": "设置",
+    "back_to_memo": "返回行动备忘"
+  },
+  "mood": {
+    "great": "极好",
+    "good": "良好",
+    "ok": "一般",
+    "tired": "疲倦",
+    "bad": "不佳",
+    "none": "不选择",
+    "label": "心情"
+  },
+  "input": {
+    "placeholder": "你现在在做什么？",
+    "submit": "记录",
+    "draft_saved": "已自动保存草稿",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enter 提交 / Shift+Enter 换行"
+  },
+  "card": {
+    "edit": "编辑",
+    "delete": "删除",
+    "linked_todo": "相关待办"
+  },
+  "weekly": {
+    "title": "本周回顾",
+    "summary": "本周摘要",
+    "memo_count": "备忘条数",
+    "posted_days": "记录天数",
+    "avg_mood": "平均心情",
+    "mood_trend": "心情趋势",
+    "top_tags": "常用标签",
+    "featured_memos": "本周精选笔记",
+    "featured_random_note": "（随机选取）",
+    "related_todos": "相关待办",
+    "todos_completed": "已完成",
+    "todos_pending": "未完成 → 顺延至下周"
+  },
+  "settings": {
+    "title": "行动备忘设置",
+    "mood_enabled": {
+      "label": "启用心情输入",
+      "description": "添加备忘录时可从5个等级中选择心情。默认关闭。"
+    }
+  },
+  "error": {
+    "rate_limit": "操作过于频繁，请稍后再试。",
+    "daily_limit": "已达到今日上限（200条）。请明日继续。",
+    "future_date": "不能记录到未来的日期。",
+    "todo_not_found": "找不到要关联的待办事项。",
+    "load_failed": "加载备忘失败。",
+    "save_failed": "保存备忘失败。"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "title": "Aktionsnotizen",
+  "page": {
+    "today_memos": "Heutige Notizen",
+    "empty": "Noch keine Notizen. Schreibe deine erste.",
+    "settings_link": "Einstellungen",
+    "back_to_memo": "Zurück zu Aktionsnotizen"
+  },
+  "mood": {
+    "great": "Großartig",
+    "good": "Gut",
+    "ok": "Okay",
+    "tired": "Müde",
+    "bad": "Hart",
+    "none": "Keine Auswahl",
+    "label": "Stimmung"
+  },
+  "input": {
+    "placeholder": "Was machst du gerade?",
+    "submit": "Speichern",
+    "draft_saved": "Entwurf gespeichert",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enter zum Senden / Shift+Enter für Zeilenumbruch"
+  },
+  "card": {
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "linked_todo": "Zugehöriges TODO"
+  },
+  "weekly": {
+    "title": "Wochenrückblick",
+    "summary": "Wochenzusammenfassung",
+    "memo_count": "Notizen",
+    "posted_days": "Aktive Tage",
+    "avg_mood": "Durchschnittsstimmung",
+    "mood_trend": "Stimmungsverlauf",
+    "top_tags": "Häufige Tags",
+    "featured_memos": "Wichtige Notizen",
+    "featured_random_note": "(zufällige Auswahl)",
+    "related_todos": "Zugehörige TODOs",
+    "todos_completed": "Erledigt",
+    "todos_pending": "Offen → nächste Woche"
+  },
+  "settings": {
+    "title": "Aktionsnotizen-Einstellungen",
+    "mood_enabled": {
+      "label": "Stimmungseingabe aktivieren",
+      "description": "Wähle beim Hinzufügen einer Notiz deine Stimmung aus 5 Stufen. Standardmäßig deaktiviert."
+    }
+  },
+  "error": {
+    "rate_limit": "Zu viele Aktionen. Bitte warte einen Moment und versuche es erneut.",
+    "daily_limit": "Heutiges Limit (200 Notizen) erreicht. Bitte morgen fortfahren.",
+    "future_date": "Zukünftige Daten sind nicht erlaubt.",
+    "todo_not_found": "Das verknüpfte TODO wurde nicht gefunden.",
+    "load_failed": "Notizen konnten nicht geladen werden.",
+    "save_failed": "Notiz konnte nicht gespeichert werden."
+  }
+}
