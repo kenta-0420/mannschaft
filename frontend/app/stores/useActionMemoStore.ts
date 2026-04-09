@@ -5,6 +5,8 @@ import type {
   ActionMemoTag,
   CreateActionMemoPayload,
   Mood,
+  PublishDailyPayload,
+  PublishDailyResponse,
   UpdateActionMemoPayload,
 } from '~/types/actionMemo'
 
@@ -33,6 +35,10 @@ interface ActionMemoStoreState {
    * - "RATE_LIMIT" / "DAILY_LIMIT" / "FUTURE_DATE" / "TODO_NOT_FOUND" / "UNKNOWN" のいずれか
    */
   lastError: ActionMemoErrorCode | null
+  /** オフラインキュー件数（UI バナー表示用）。online イベントや手動 flush で変動 */
+  offlineQueueCount: number
+  /** 現在オフラインかどうか（{@code navigator.onLine === false}）。SSR 時は false */
+  isOffline: boolean
 }
 
 export type ActionMemoErrorCode =
@@ -80,6 +86,8 @@ export const useActionMemoStore = defineStore('actionMemo', {
     loading: false,
     error: null,
     lastError: null,
+    offlineQueueCount: 0,
+    isOffline: false,
   }),
 
   getters: {
@@ -98,9 +106,13 @@ export const useActionMemoStore = defineStore('actionMemo', {
      *
      * <ol>
      *   <li>一時 ID で memos の先頭に追加</li>
-     *   <li>API 呼び出し → 成功時に本物の ID で置換</li>
-     *   <li>失敗時は一時 ID を削除し error を設定</li>
+     *   <li>オンライン時: API 呼び出し → 成功時に本物の ID で置換 / 失敗時はロールバック</li>
+     *   <li>オフライン時 ({@code navigator.onLine === false}): IndexedDB にキューイングし、
+     *       楽観的 UI のまま維持。online イベントで自動 flush を試みる</li>
      * </ol>
+     *
+     * <p>オフライン時でも {@link ActionMemo#id} は負数の仮 ID が設定され、同期完了時に
+     * {@link useOfflineQueue#flushQueue} 経由で本物の ID に置き換わる。</p>
      */
     async createMemo(payload: CreateActionMemoPayload): Promise<ActionMemo | null> {
       const tempId = nextTempId()
@@ -119,6 +131,26 @@ export const useActionMemoStore = defineStore('actionMemo', {
       this.memos.unshift(optimistic)
       this.error = null
       this.lastError = null
+
+      // オフラインキュー判定: navigator.onLine が false ならキューに積む
+      if (this._isOffline()) {
+        try {
+          const queue = useOfflineQueue()
+          await queue.enqueue(payload, tempId)
+          this.offlineQueueCount = await queue.count()
+          this.isOffline = true
+          // 下書きはクリアする（キューに積んだ時点で「ユーザーの入力」は成立）
+          this.clearDraft(this._currentUserIdOrAnon())
+          // 仮 ID のまま楽観的 UI を返す
+          return optimistic
+        } catch (error) {
+          // キューイングにも失敗したらロールバック
+          const idx = this.memos.findIndex((m) => m.id === tempId)
+          if (idx >= 0) this.memos.splice(idx, 1)
+          this._handleError(error)
+          return null
+        }
+      }
 
       try {
         const api = useActionMemoApi()
@@ -140,6 +172,47 @@ export const useActionMemoStore = defineStore('actionMemo', {
         this._handleError(error)
         return null
       }
+    },
+
+    /**
+     * オフラインキューを順次送信する。
+     *
+     * <p>成功した項目ごとに仮 ID を本物の ID に置き換える。{@code navigator.onLine} が
+     * {@code true} の場合にのみ呼ばれる想定（online イベントや手動同期ボタン）。</p>
+     *
+     * @returns 成功件数
+     */
+    async flushOfflineQueue(): Promise<number> {
+      const queue = useOfflineQueue()
+      const api = useActionMemoApi()
+      const results = await queue.flushQueue(async (payload) => {
+        try {
+          const created = await api.createMemo(payload)
+          return created
+        } catch (error) {
+          this._handleError(error)
+          return null
+        }
+      })
+      // 仮 ID を本物の ID に置換するため、一度だけ fetchMemos で再取得する
+      // （flushQueue の返す createdId だけでは、並列送信された別デバイスのメモや
+      //  同日の並び順を正しく反映できないため）
+      if (results.length > 0) {
+        const targetDate = results[0]?.queued.payload.memoDate ?? todayJst()
+        await this.fetchMemosForDate(targetDate)
+      }
+      this.offlineQueueCount = await queue.count()
+      this.isOffline = this._isOffline()
+      return results.length
+    },
+
+    /**
+     * オフラインキュー件数を再計算する（UI バナー更新用）。
+     */
+    async refreshOfflineQueueCount(): Promise<void> {
+      const queue = useOfflineQueue()
+      this.offlineQueueCount = await queue.count()
+      this.isOffline = this._isOffline()
     },
 
     /**
@@ -226,6 +299,31 @@ export const useActionMemoStore = defineStore('actionMemo', {
       }
     },
 
+    /**
+     * 終業時まとめ投稿を実行する。
+     *
+     * <p>設計書 §5.4 の「今日を締める」儀式。成功時は対象日のメモ一覧を再取得し、
+     * {@code timelinePostId} を反映する。失敗時は呼び出し側（closing.vue）で
+     * トースト表示できるようエラーを再 throw する。</p>
+     *
+     * @param payload {@code memoDate} / {@code extraComment} 任意
+     */
+    async publishDaily(payload: PublishDailyPayload = {}): Promise<PublishDailyResponse> {
+      this.error = null
+      this.lastError = null
+      try {
+        const api = useActionMemoApi()
+        const response = await api.publishDaily(payload)
+        // 各メモの timeline_post_id を反映するため対象日を再取得する
+        const targetDate = payload.memoDate ?? response.memoDate ?? todayJst()
+        await this.fetchMemosForDate(targetDate)
+        return response
+      } catch (error) {
+        this._handleError(error)
+        throw error
+      }
+    },
+
     // === Draft ===
 
     /** localStorage から下書きを復元 */
@@ -271,6 +369,14 @@ export const useActionMemoStore = defineStore('actionMemo', {
       } catch {
         return 'anon'
       }
+    },
+
+    /**
+     * {@code navigator.onLine === false} の判定。SSR 時は false（オンライン扱い）。
+     */
+    _isOffline(): boolean {
+      if (typeof navigator === 'undefined') return false
+      return navigator.onLine === false
     },
 
     /**
