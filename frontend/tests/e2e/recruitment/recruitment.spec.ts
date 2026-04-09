@@ -364,6 +364,30 @@ async function mockMyParticipations(
 // ---------------------------------------------------------------------------
 
 test.describe('RECRUIT-001〜009: F03.11 募集型予約', () => {
+  /**
+   * 認証済み状態をシミュレート。
+   * tests/e2e/.auth/user.json は .gitignore 対象のため、
+   * storageState の origin に依存せず addInitScript で localStorage を直接設定する。
+   */
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'accessToken',
+        'eyJhbGciOiJIUzM4NCJ9.e2UyZV90ZXN0X3VzZXJ9.placeholder_for_e2e',
+      )
+      localStorage.setItem('refreshToken', 'e2e-refresh-token-placeholder')
+      localStorage.setItem(
+        'currentUser',
+        JSON.stringify({
+          id: 59,
+          email: 'e2e-user@example.com',
+          displayName: 'e2e_user',
+          profileImageUrl: null,
+        }),
+      )
+    })
+  })
+
   test('RECRUIT-001: チーム募集一覧ページが表示される', async ({ page }) => {
     await mockRecruitmentApis(page)
     await mockMyParticipations(page, MOCK_MY_PARTICIPATIONS_EMPTY)
@@ -467,8 +491,9 @@ test.describe('RECRUIT-001〜009: F03.11 募集型予約', () => {
     // i18n recruitment.action.cancelMyApplication = "申込をキャンセル"
     await page.getByRole('button', { name: '申込をキャンセル' }).click()
 
-    // 確認モーダル見出し: i18n recruitment.confirmModal.cancellationFee.title = "キャンセル料の確認"
-    await expect(page.getByRole('heading', { name: 'キャンセル料の確認' })).toBeVisible({
+    // 確認モーダル見出し: PrimeVue Dialog の header は span でレンダリングされるため getByText を使用
+    // i18n recruitment.confirmModal.cancellationFee.title = "キャンセル料の確認"
+    await expect(page.getByText('キャンセル料の確認')).toBeVisible({
       timeout: 10_000,
     })
 
