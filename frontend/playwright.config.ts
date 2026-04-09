@@ -41,7 +41,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: 'tests/e2e/.auth/user.json',
       },
-      dependencies: ['setup-user'],
+      // dependencies: ['setup-user'], // 既存 storageState を使うため一時的にコメントアウト
     },
     // 管理者権限テスト（admin/ 配下のみ実行）
     {
