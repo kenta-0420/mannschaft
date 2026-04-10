@@ -108,6 +108,7 @@ async function save() {
             option-label="name"
             option-value="code"
             class="w-full"
+            translate="no"
           />
         </div>
 
@@ -119,6 +120,7 @@ async function save() {
             option-label="label"
             option-value="value"
             class="w-full"
+            translate="no"
           />
         </div>
 
