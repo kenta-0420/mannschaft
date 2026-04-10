@@ -5,6 +5,7 @@ definePageMeta({
   middleware: 'auth',
 })
 
+const { t } = useI18n()
 const notification = useNotification()
 const { changeLocale } = useLocale()
 const { getProfile, updateProfile } = useUserSettingsApi()
@@ -62,7 +63,7 @@ onMounted(async () => {
     form.value.locale = res.data.locale || 'ja'
     form.value.timezone = res.data.timezone || 'Asia/Tokyo'
   } catch {
-    notification.error('設定の取得に失敗しました')
+    notification.error(t('settings.language.load_error'))
   } finally {
     loading.value = false
   }
@@ -77,9 +78,9 @@ async function save() {
       timezone: form.value.timezone,
     })
     await changeLocale(form.value.locale)
-    notification.success('言語・タイムゾーンを更新しました')
+    notification.success(t('settings.language.save_success'))
   } catch {
-    notification.error('更新に失敗しました')
+    notification.error(t('settings.language.save_error'))
   } finally {
     saving.value = false
   }
@@ -90,7 +91,7 @@ async function save() {
   <div class="mx-auto max-w-2xl">
     <div class="mb-6 flex items-center gap-2">
       <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
-      <h1 class="text-2xl font-bold">言語・タイムゾーン</h1>
+      <h1 translate="no" class="text-2xl font-bold">{{ $t('settings.language.title') }}</h1>
     </div>
 
     <PageLoading v-if="loading" />
@@ -101,7 +102,7 @@ async function save() {
     >
       <div class="space-y-4">
         <div>
-          <label class="mb-1 block text-sm font-medium">表示言語</label>
+          <label translate="no" class="mb-1 block text-sm font-medium">{{ $t('settings.language.display_language') }}</label>
           <Select
             v-model="form.locale"
             :options="localeOptions"
@@ -112,7 +113,7 @@ async function save() {
         </div>
 
         <div>
-          <label class="mb-1 block text-sm font-medium">タイムゾーン</label>
+          <label translate="no" class="mb-1 block text-sm font-medium">{{ $t('settings.language.timezone') }}</label>
           <Select
             v-model="form.timezone"
             :options="timezoneOptions"
@@ -123,7 +124,7 @@ async function save() {
         </div>
 
         <div class="flex justify-end">
-          <Button label="保存" icon="pi pi-check" :loading="saving" @click="save" />
+          <Button translate="no" :label="$t('button.save')" icon="pi pi-check" :loading="saving" @click="save" />
         </div>
       </div>
     </div>

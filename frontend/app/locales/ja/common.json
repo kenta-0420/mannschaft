@@ -192,5 +192,15 @@
       "SAME_WEEKDAY": "同じ曜日（第N週）",
       "EXACT_DAYS": "同じ日数シフト"
     }
+  },
+  "settings": {
+    "language": {
+      "title": "言語・タイムゾーン",
+      "display_language": "表示言語",
+      "timezone": "タイムゾーン",
+      "load_error": "設定の取得に失敗しました",
+      "save_success": "言語・タイムゾーンを更新しました",
+      "save_error": "更新に失敗しました"
+    }
   }
 }

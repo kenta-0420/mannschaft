@@ -192,5 +192,15 @@
       "SAME_WEEKDAY": "相同星期（第N周）",
       "EXACT_DAYS": "精确天数偏移"
     }
+  },
+  "settings": {
+    "language": {
+      "title": "语言与时区",
+      "display_language": "显示语言",
+      "timezone": "时区",
+      "load_error": "设置加载失败",
+      "save_success": "语言和时区已更新",
+      "save_error": "更新失败"
+    }
   }
 }

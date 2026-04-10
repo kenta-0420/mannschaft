@@ -192,5 +192,15 @@
       "SAME_WEEKDAY": "Same weekday (Nth week)",
       "EXACT_DAYS": "Exact day shift"
     }
+  },
+  "settings": {
+    "language": {
+      "title": "Language & Timezone",
+      "display_language": "Display Language",
+      "timezone": "Timezone",
+      "load_error": "Failed to load settings",
+      "save_success": "Language and timezone updated",
+      "save_error": "Failed to update settings"
+    }
   }
 }

@@ -192,5 +192,15 @@
       "SAME_WEEKDAY": "Mismo dia de la semana (N.a semana)",
       "EXACT_DAYS": "Desplazamiento exacto de dias"
     }
+  },
+  "settings": {
+    "language": {
+      "title": "Idioma y zona horaria",
+      "display_language": "Idioma de visualizacion",
+      "timezone": "Zona horaria",
+      "load_error": "Error al cargar la configuracion",
+      "save_success": "Idioma y zona horaria actualizados",
+      "save_error": "Error al actualizar la configuracion"
+    }
   }
 }

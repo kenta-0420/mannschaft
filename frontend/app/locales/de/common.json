@@ -192,5 +192,15 @@
       "SAME_WEEKDAY": "Gleicher Wochentag (N. Woche)",
       "EXACT_DAYS": "Genauer Tagesversatz"
     }
+  },
+  "settings": {
+    "language": {
+      "title": "Sprache und Zeitzone",
+      "display_language": "Anzeigesprache",
+      "timezone": "Zeitzone",
+      "load_error": "Einstellungen konnten nicht geladen werden",
+      "save_success": "Sprache und Zeitzone wurden aktualisiert",
+      "save_error": "Aktualisierung fehlgeschlagen"
+    }
   }
 }
