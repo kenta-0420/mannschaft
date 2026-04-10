@@ -15,11 +15,9 @@ import type { ActionMemo } from '~/types/actionMemo'
  *       {@code extra_comment} 入力欄 + 「今日を締める」ボタン（publishDaily 発火）</li>
  * </ul>
  *
- * <p><b>「明日に回す」実装注記</b>: 設計書 §5.4 では {@code PATCH /api/v1/todos/{id}} で
- * {@code dueDate} を更新することになっているが、Backend Phase 2 時点で
- * {@link PersonalTodoController} にはこのエンドポイントが実装されていない。
- * 本画面では設計書通り直接 fetch で PATCH を送り、Backend 未実装の場合はエラートーストで
- * ユーザーに通知する（F02.3 側の API 拡張として将来対応する申し送り事項）。</p>
+ * <p><b>「明日に回す」実装注記</b>: 設計書 §5.4 に基づき {@code PATCH /api/v1/todos/{id}} で
+ * {@code dueDate} を更新する。Backend エンドポイントは F02.3 で実装済み
+ * （{@link PersonalTodoController#patchTodo}）。</p>
  */
 
 definePageMeta({ middleware: 'auth' })

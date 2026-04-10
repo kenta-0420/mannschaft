@@ -16,6 +16,7 @@ import com.mannschaft.app.todo.dto.ProjectResponse;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
+import com.mannschaft.app.todo.dto.PatchTodoRequest;
 import com.mannschaft.app.todo.dto.UpdateTodoRequest;
 import com.mannschaft.app.todo.entity.ProjectEntity;
 import com.mannschaft.app.todo.entity.TodoAssigneeEntity;
@@ -409,6 +410,37 @@ public class TodoService {
         }).toList();
 
         return ApiResponse.of(responses);
+    }
+
+    /**
+     * TODOを部分更新する（PATCH）。
+     * 個人TODOの担当者本人のみ更新可能。IDOR対策としてTODO_NOT_FOUNDで統一する。
+     *
+     * @param todoId  Todo ID
+     * @param userId  操作ユーザーID
+     * @param request 部分更新リクエスト
+     * @return 更新されたTODO
+     */
+    @Transactional
+    public ApiResponse<TodoResponse> patchTodo(Long todoId, Long userId, PatchTodoRequest request) {
+        TodoEntity todo = todoRepository.findByIdAndDeletedAtIsNull(todoId)
+                .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
+
+        // 担当者であることを検証（IDOR対策: 他人のTODOはNOT_FOUNDで返す）
+        boolean isAssignee = assigneeRepository.existsByTodoIdAndUserId(todoId, userId);
+        if (!isAssignee) {
+            throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
+        }
+
+        // dueDate の部分更新
+        if (request.getDueDate() != null) {
+            todo.updateDueDate(request.getDueDate());
+        }
+
+        todo = todoRepository.save(todo);
+
+        log.info("TODO部分更新: id={}, userId={}", todoId, userId);
+        return ApiResponse.of(toTodoResponse(todo));
     }
 
     /**
