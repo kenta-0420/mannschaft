@@ -3,6 +3,7 @@ package com.mannschaft.app.todo.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.dto.CreateTodoRequest;
+import com.mannschaft.app.todo.dto.PatchTodoRequest;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.service.TodoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -58,6 +60,19 @@ public class PersonalTodoController {
                 request.getParentId());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(todoService.createTodo(TodoScopeType.PERSONAL, userId, enriched, userId));
+    }
+
+    /**
+     * 個人TODOを部分更新する（dueDate等）。
+     */
+    @PatchMapping("/{id}")
+    @Operation(summary = "個人TODO部分更新（PATCH）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<TodoResponse>> patchTodo(
+            @PathVariable Long id,
+            @Valid @RequestBody PatchTodoRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(todoService.patchTodo(id, userId, request));
     }
 
     /**
