@@ -1,0 +1,32 @@
+{
+  "offline": {
+    "status_banner": "离线模式 — 数据已保存在本地",
+    "back_online": "已恢复在线",
+    "saved_locally": "已离线保存。恢复在线后将自动发送"
+  },
+  "sync": {
+    "in_progress": "同步中...",
+    "complete": "同步完成",
+    "failed": "同步失败",
+    "result_summary": "已同步 {total} 中的 {success} 项",
+    "conflict_found": "发现 {count} 个冲突",
+    "pending_badge": "未发送 {count} 项",
+    "retry": "重试"
+  },
+  "conflict": {
+    "title": "数据冲突",
+    "client_data": "你的数据",
+    "server_data": "服务器数据",
+    "use_mine": "使用我的数据",
+    "use_server": "使用服务器数据",
+    "manual_merge": "手动合并",
+    "discard": "丢弃",
+    "resolved": "冲突已解决"
+  },
+  "pwa": {
+    "install_prompt": "添加到主屏幕，像应用一样使用",
+    "install_button": "安装",
+    "update_available": "有新版本可用",
+    "update_button": "更新"
+  }
+}

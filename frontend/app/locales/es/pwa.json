@@ -1,0 +1,32 @@
+{
+  "offline": {
+    "status_banner": "Modo sin conexion — Los datos se guardan localmente",
+    "back_online": "De vuelta en linea",
+    "saved_locally": "Guardado sin conexion. Se enviara automaticamente cuando vuelvas a estar en linea"
+  },
+  "sync": {
+    "in_progress": "Sincronizando...",
+    "complete": "Sincronizacion completa",
+    "failed": "Error de sincronizacion",
+    "result_summary": "Se sincronizaron {success} de {total} elementos",
+    "conflict_found": "Se encontraron {count} conflicto(s)",
+    "pending_badge": "{count} sin enviar",
+    "retry": "Reintentar"
+  },
+  "conflict": {
+    "title": "Conflicto de datos",
+    "client_data": "Tus datos",
+    "server_data": "Datos del servidor",
+    "use_mine": "Usar mis datos",
+    "use_server": "Usar datos del servidor",
+    "manual_merge": "Combinar manualmente",
+    "discard": "Descartar",
+    "resolved": "Conflicto resuelto"
+  },
+  "pwa": {
+    "install_prompt": "Agrega a la pantalla de inicio para usarlo como una aplicacion",
+    "install_button": "Instalar",
+    "update_available": "Hay una nueva version disponible",
+    "update_button": "Actualizar"
+  }
+}
