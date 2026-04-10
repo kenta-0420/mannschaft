@@ -1,18 +1,23 @@
 <script setup lang="ts">
 /**
- * F11.1 PWA: 未送信件数バッジ + 同期進捗インジケーター。
+ * F11.1 PWA: 未送信件数バッジ + 同期進捗インジケーター + コンフリクトバッジ。
  *
  * ヘッダーのナビゲーション領域に配置し、オフラインキューに
  * PENDING / FAILED の項目がある場合にバッジを表示する。
+ * 未解決コンフリクトがある場合は赤いバッジを表示する。
  */
 const { t } = useI18n()
 const syncStore = useSyncStore()
 
 const hasPending = computed(() => syncStore.pendingCount > 0)
+const hasConflicts = computed(() => syncStore.hasConflicts)
+const showIndicator = computed(
+  () => hasPending.value || syncStore.syncInProgress || hasConflicts.value,
+)
 </script>
 
 <template>
-  <div v-if="hasPending || syncStore.syncInProgress" class="relative inline-flex items-center">
+  <div v-if="showIndicator" class="relative inline-flex items-center gap-2">
     <!-- 同期中のスピナー -->
     <template v-if="syncStore.syncInProgress">
       <span class="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
@@ -30,5 +35,15 @@ const hasPending = computed(() => syncStore.pendingCount > 0)
         {{ t('sync.pending_badge', { count: syncStore.pendingCount }) }}
       </span>
     </template>
+
+    <!-- コンフリクトバッジ -->
+    <NuxtLink
+      v-if="hasConflicts"
+      to="/sync/conflicts"
+      class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
+    >
+      <i class="pi pi-exclamation-triangle text-xs" />
+      {{ t('sync.conflict_found', { count: syncStore.conflictCount }) }}
+    </NuxtLink>
   </div>
 </template>
