@@ -50,6 +50,12 @@ public class CreateScheduleRequest {
 
     private final String commentOption;
 
+    /** 行事カテゴリID（任意。F03.10 拡張フィールド）。 */
+    private final Long eventCategoryId;
+
+    /** 年度（任意。F03.10 拡張フィールド。例: 2026）。 */
+    private final Integer academicYear;
+
     private final RecurrenceRuleDto recurrenceRule;
 
     @Size(max = 10)

@@ -22,4 +22,13 @@ public class ScheduleResponse {
     private final Boolean attendanceRequired;
     private final String location;
     private final LocalDateTime createdAt;
+
+    /** 行事カテゴリ（F03.10 拡張フィールド。未設定の場合 null）。 */
+    private final EventCategoryResponse eventCategory;
+
+    /** 年度（F03.10 拡張フィールド。未設定の場合 null）。 */
+    private final Integer academicYear;
+
+    /** コピー元スケジュールID（F03.10 拡張フィールド。前年度トレース時のみ設定）。 */
+    private final Long sourceScheduleId;
 }

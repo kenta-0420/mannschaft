@@ -173,5 +173,24 @@
       "Schlaf heute Nacht gut, um morgen fruh erfrischt aufzuwachen.",
       "Du hast das heute wirklich toll gemacht. Gute Nacht."
     ]
+  },
+  "annual_plan": {
+    "title": "Jahresveranstaltungsplan",
+    "no_events": "Keine Veranstaltungen",
+    "no_data": "Keine Veranstaltungsdaten vorhanden",
+    "all_categories": "Alle",
+    "category_placeholder": "Kategorie",
+    "copy_prev_year": "Vorjahr kopieren",
+    "copy_dialog_title": "Vorjahr ubertragen",
+    "copy_dialog_message": "Veranstaltungen von {sourceYear} nach {targetYear} kopieren? Daten werden automatisch angepasst.",
+    "copy_execute": "Kopie ausfuhren",
+    "copy_success": "Veranstaltungen aus dem Vorjahr kopiert",
+    "copy_error": "Kopieren fehlgeschlagen",
+    "load_error": "Jahresveranstaltungsplan konnte nicht geladen werden",
+    "copied_badge": "Kopiert",
+    "date_shift_mode": {
+      "SAME_WEEKDAY": "Gleicher Wochentag (N. Woche)",
+      "EXACT_DAYS": "Genauer Tagesversatz"
+    }
   }
 }

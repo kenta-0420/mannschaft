@@ -165,7 +165,10 @@ public class ScheduleCrossRefService {
                 duplicate.getStatus().name(),
                 duplicate.getAttendanceRequired(),
                 duplicate.getLocation(),
-                duplicate.getCreatedAt());
+                duplicate.getCreatedAt(),
+                null,
+                duplicate.getAcademicYear() != null ? duplicate.getAcademicYear().intValue() : null,
+                duplicate.getSourceScheduleId());
     }
 
     /**
