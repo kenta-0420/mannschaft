@@ -1,117 +1,89 @@
+import { offlineDb } from '~/composables/useOfflineDb'
 import type { CreateActionMemoPayload, OfflineQueuedMemo } from '~/types/actionMemo'
 
 /**
  * F02.5 行動メモのオフラインキュー composable。
  *
- * <p>設計書 §4.x「オフライン対応」に基づき、{@code navigator.onLine === false} の状態で
- * 発行された {@code createMemo} のペイロードを IndexedDB に退避し、オンライン復帰時または
- * 手動同期ボタン操作時に順次送信する。</p>
+ * F11.1 PWA 対応により Dexie.js (useOfflineDb) + Background Sync に移行。
+ * 既存の公開 API（enqueue / getAll / remove / count / flushQueue / hasQueuedItems / clearAll）
+ * は互換性を維持し、内部実装のみを Dexie ベースに差し替えている。
  *
- * <p><b>Phase 2 の縮退運用</b>: 本プロジェクトは {@code @vite-pwa/nuxt} 等の Service Worker
- * 機構が未導入のため、バックグラウンド同期は行わず、{@code window.addEventListener('online')}
- * と手動同期ボタンで代替する。Service Worker 連携は将来の F11.1 PWA 実装時に追加する
- * 未解決事項として設計書 §12 に残る。</p>
- *
- * <p>IndexedDB の使用可否が環境に左右されるため、ストレージが使えない場合はインメモリ
- * フォールバックに切り替わる（タブを閉じるとキューが失われるが、オフライン書きかけを
- * 完全に失わせないよりは優先度が低い）。</p>
+ * 旧実装: IndexedDB 直叩き + インメモリフォールバック
+ * 新実装: Dexie.js (mannschaft-offline DB の offlineQueue テーブル) を使用。
+ *          行動メモ固有のペイロードは汎用キューのフォーマットに変換して保存する。
  */
 
-const DB_NAME = 'mannschaft-action-memo'
-const DB_VERSION = 1
-const STORE_NAME = 'actionMemoQueue'
-
-type DbRecord = Omit<OfflineQueuedMemo, 'queueId'>
-
-/** インメモリフォールバック（IndexedDB が使えない環境用） */
+/** インメモリフォールバック（Dexie が使えない環境用） */
 interface InMemoryFallback {
   items: OfflineQueuedMemo[]
   nextId: number
 }
 
 const _inMemory: InMemoryFallback = { items: [], nextId: 1 }
-let _dbAvailable: boolean | null = null
+let _dexieAvailable: boolean | null = null
 
-function hasIndexedDb(): boolean {
-  if (_dbAvailable !== null) return _dbAvailable
+async function isDexieAvailable(): Promise<boolean> {
+  if (_dexieAvailable !== null) return _dexieAvailable
   try {
-    _dbAvailable = typeof indexedDB !== 'undefined' && indexedDB !== null
+    // Dexie の接続テスト
+    await offlineDb.offlineQueue.count()
+    _dexieAvailable = true
   } catch {
-    _dbAvailable = false
+    _dexieAvailable = false
   }
-  return _dbAvailable
-}
-
-/**
- * IndexedDB への接続。初回のみ ObjectStore を作成する。
- * 失敗時は {@code null} を返し、呼び出し側はインメモリにフォールバックする。
- */
-function openDb(): Promise<IDBDatabase | null> {
-  if (!hasIndexedDb()) return Promise.resolve(null)
-  return new Promise((resolve) => {
-    try {
-      const req = indexedDB.open(DB_NAME, DB_VERSION)
-      req.onerror = () => {
-        // エラー時はフォールバックを優先
-        resolve(null)
-      }
-      req.onupgradeneeded = () => {
-        const db = req.result
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: 'queueId', autoIncrement: true })
-        }
-      }
-      req.onsuccess = () => resolve(req.result)
-    } catch {
-      resolve(null)
-    }
-  })
+  return _dexieAvailable
 }
 
 function nowIso(): string {
   return new Date().toISOString().replace('Z', '').slice(0, 19)
 }
 
+/**
+ * 行動メモペイロードから汎用キュー用の clientId を生成する。
+ */
+function generateClientId(tempId: number): string {
+  return `action-memo-${tempId}-${Date.now()}`
+}
+
 export function useOfflineQueue() {
   /**
-   * キューにペイロードを積む。IDB 書き込みに失敗したらインメモリに退避する。
+   * キューにペイロードを積む。Dexie 書き込みに失敗したらインメモリに退避する。
    */
   async function enqueue(
     payload: CreateActionMemoPayload,
     tempId: number,
   ): Promise<OfflineQueuedMemo> {
-    const record: DbRecord = {
-      tempId,
-      payload,
-      enqueuedAt: nowIso(),
-    }
+    const enqueuedAt = nowIso()
 
-    const db = await openDb()
-    if (db) {
-      return new Promise<OfflineQueuedMemo>((resolve) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite')
-        const store = tx.objectStore(STORE_NAME)
-        const addReq = store.add(record)
-        addReq.onsuccess = () => {
-          const queueId = addReq.result as number
-          resolve({ queueId, ...record })
-        }
-        addReq.onerror = () => {
-          // フォールバック
-          const fallback: OfflineQueuedMemo = {
-            queueId: _inMemory.nextId++,
-            ...record,
-          }
-          _inMemory.items.push(fallback)
-          resolve(fallback)
-        }
-      })
+    if (await isDexieAvailable()) {
+      try {
+        const id = await offlineDb.offlineQueue.add({
+          clientId: generateClientId(tempId),
+          method: 'POST',
+          path: '/api/v1/action-memos',
+          body: {
+            ...payload,
+            _tempId: tempId,
+          } as unknown as Record<string, unknown>,
+          version: null,
+          status: 'PENDING',
+          retryCount: 0,
+          errorMessage: null,
+          createdAt: enqueuedAt,
+          syncedAt: null,
+        })
+        return { queueId: id as number, tempId, payload, enqueuedAt }
+      } catch {
+        // Dexie 失敗時はフォールバック
+      }
     }
 
     // インメモリフォールバック
     const fallback: OfflineQueuedMemo = {
       queueId: _inMemory.nextId++,
-      ...record,
+      tempId,
+      payload,
+      enqueuedAt,
     }
     _inMemory.items.push(fallback)
     return fallback
@@ -121,19 +93,24 @@ export function useOfflineQueue() {
    * キュー内の全項目を enqueuedAt 昇順で取得する。
    */
   async function getAll(): Promise<OfflineQueuedMemo[]> {
-    const db = await openDb()
-    if (db) {
-      return new Promise<OfflineQueuedMemo[]>((resolve) => {
-        const tx = db.transaction(STORE_NAME, 'readonly')
-        const store = tx.objectStore(STORE_NAME)
-        const req = store.getAll()
-        req.onsuccess = () => {
-          const items = (req.result as OfflineQueuedMemo[]) ?? []
-          items.sort((a, b) => (a.enqueuedAt < b.enqueuedAt ? -1 : 1))
-          resolve(items)
-        }
-        req.onerror = () => resolve([..._inMemory.items])
-      })
+    if (await isDexieAvailable()) {
+      try {
+        const items = await offlineDb.offlineQueue
+          .where('status')
+          .anyOf(['PENDING', 'FAILED'])
+          .sortBy('createdAt')
+
+        return items
+          .filter((item) => item.path === '/api/v1/action-memos' && item.method === 'POST')
+          .map((item) => ({
+            queueId: item.id,
+            tempId: (item.body as Record<string, unknown>)?._tempId as number ?? 0,
+            payload: extractPayload(item.body),
+            enqueuedAt: item.createdAt,
+          }))
+      } catch {
+        // Dexie 失敗時はフォールバック
+      }
     }
     return [..._inMemory.items].sort((a, b) => (a.enqueuedAt < b.enqueuedAt ? -1 : 1))
   }
@@ -142,14 +119,12 @@ export function useOfflineQueue() {
    * 指定 ID の項目を削除する。
    */
   async function remove(queueId: number): Promise<void> {
-    const db = await openDb()
-    if (db) {
-      await new Promise<void>((resolve) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite')
-        tx.objectStore(STORE_NAME).delete(queueId)
-        tx.oncomplete = () => resolve()
-        tx.onerror = () => resolve()
-      })
+    if (await isDexieAvailable()) {
+      try {
+        await offlineDb.offlineQueue.delete(queueId)
+      } catch {
+        // Dexie 失敗時はフォールバック
+      }
     }
     _inMemory.items = _inMemory.items.filter((i) => i.queueId !== queueId)
   }
@@ -173,12 +148,11 @@ export function useOfflineQueue() {
   /**
    * キュー内の項目を順次送信する。
    *
-   * <p>1 件ずつ try しながら送信し、成功した項目だけキューから消す。途中で失敗した
-   * 項目は次回の flush で再試行される（429 レートリミットなどは即エラーとしてループを
-   * 抜けることで Retry-After を尊重する）。</p>
+   * 1 件ずつ try しながら送信し、成功した項目だけキューから消す。途中で失敗した
+   * 項目は次回の flush で再試行される。
    *
-   * @param sender 送信関数。{@link useActionMemoApi#createMemo} を渡す想定
-   * @returns 成功した項目の {@link OfflineQueuedMemo}（tempId を含む）配列
+   * @param sender 送信関数。useActionMemoApi#createMemo を渡す想定
+   * @returns 成功した項目の OfflineQueuedMemo（tempId を含む）配列
    */
   async function flushQueue(
     sender: (
@@ -196,7 +170,7 @@ export function useOfflineQueue() {
             await remove(item.queueId)
           }
         } else {
-          // null = 送信失敗（store レイヤーが握りつぶしたケース）。次回に持ち越し
+          // null = 送信失敗。次回に持ち越し
           break
         }
       } catch {
@@ -211,14 +185,12 @@ export function useOfflineQueue() {
    * テスト用: 全キューを削除する。本番コードからは通常呼ばない。
    */
   async function clearAll(): Promise<void> {
-    const db = await openDb()
-    if (db) {
-      await new Promise<void>((resolve) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite')
-        tx.objectStore(STORE_NAME).clear()
-        tx.oncomplete = () => resolve()
-        tx.onerror = () => resolve()
-      })
+    if (await isDexieAvailable()) {
+      try {
+        await offlineDb.offlineQueue.clear()
+      } catch {
+        // Dexie 失敗時はフォールバック
+      }
     }
     _inMemory.items = []
     _inMemory.nextId = 1
@@ -233,4 +205,13 @@ export function useOfflineQueue() {
     flushQueue,
     clearAll,
   }
+}
+
+/**
+ * 汎用 body から CreateActionMemoPayload を抽出するヘルパー。
+ */
+function extractPayload(body: Record<string, unknown>): CreateActionMemoPayload {
+  const cleaned = { ...body }
+  delete cleaned._tempId
+  return cleaned as unknown as CreateActionMemoPayload
 }
