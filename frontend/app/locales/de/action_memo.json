@@ -6,7 +6,8 @@
     "settings_link": "Einstellungen",
     "back_to_memo": "Zurück zu Aktionsnotizen",
     "closing_link": "Tag abschließen",
-    "weekly_link": "Wochenübersicht"
+    "weekly_link": "Wochenübersicht",
+    "tags_link": "Tag-Verwaltung"
   },
   "mood": {
     "great": "Großartig",
@@ -98,5 +99,24 @@
     "banner": "Du bist offline. Synchronisierung erfolgt bei Wiederverbindung.",
     "sync_button": "Jetzt synchronisieren",
     "queued": "{count} in Warteschlange"
+  },
+  "tag": {
+    "list_title": "Tag-Verwaltung",
+    "create_button": "Neuen Tag erstellen",
+    "name_placeholder": "Tagname",
+    "color_label": "Farbe",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "delete_confirm": "Diesen Tag löschen? Dies kann nicht rückgängig gemacht werden.",
+    "search_placeholder": "Tags durchsuchen...",
+    "max_reached": "Maximal 10 Tags pro Notiz",
+    "limit_reached": "Sie können bis zu 100 Tags erstellen",
+    "no_tags": "Noch keine Tags vorhanden",
+    "save": "Speichern",
+    "cancel": "Abbrechen"
+  },
+  "mood_stats": {
+    "title": "Stimmungsverteilung",
+    "total": "Gesamt"
   }
 }

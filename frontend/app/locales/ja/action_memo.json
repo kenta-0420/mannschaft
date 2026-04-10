@@ -6,7 +6,8 @@
     "settings_link": "設定",
     "back_to_memo": "行動メモへ戻る",
     "closing_link": "今日を締める",
-    "weekly_link": "週次まとめ"
+    "weekly_link": "週次まとめ",
+    "tags_link": "タグ管理"
   },
   "mood": {
     "great": "絶好調",
@@ -98,5 +99,24 @@
     "banner": "オフライン中です。オンライン復帰時に同期されます",
     "sync_button": "いま同期する",
     "queued": "{count}件キュー中"
+  },
+  "tag": {
+    "list_title": "タグ管理",
+    "create_button": "新しいタグを作成",
+    "name_placeholder": "タグ名",
+    "color_label": "色",
+    "edit": "編集",
+    "delete": "削除",
+    "delete_confirm": "このタグを削除しますか？（復活できません）",
+    "search_placeholder": "タグを検索...",
+    "max_reached": "1メモあたり10個まで",
+    "limit_reached": "タグは100個まで作成できます",
+    "no_tags": "タグがまだありません",
+    "save": "保存",
+    "cancel": "キャンセル"
+  },
+  "mood_stats": {
+    "title": "気分の分布",
+    "total": "合計"
   }
 }

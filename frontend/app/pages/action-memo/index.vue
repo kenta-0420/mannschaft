@@ -25,6 +25,16 @@ const today = ref(todayJst())
 
 const todaysMemos = computed(() => store.currentDayMemos(today.value))
 
+/**
+ * 直近7日間の日付範囲（mood-stats 取得用）。
+ */
+function sevenDaysAgo(): string {
+  const now = new Date()
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+  jst.setDate(jst.getDate() - 6)
+  return jst.toISOString().slice(0, 10)
+}
+
 // === 編集ダイアログ ===
 const editDialogOpen = ref(false)
 const editingMemo = ref<ActionMemo | null>(null)
@@ -38,6 +48,10 @@ function handleOnline() {
 onMounted(async () => {
   await Promise.all([store.fetchSettings(), store.fetchMemosForDate(today.value)])
   await store.refreshOfflineQueueCount()
+  // mood_enabled = true の場合のみ mood-stats を取得
+  if (store.isMoodEnabled) {
+    await store.fetchMoodStats(sevenDaysAgo(), today.value)
+  }
   if (typeof window !== 'undefined') {
     window.addEventListener('online', handleOnline)
   }
@@ -79,6 +93,10 @@ function goClosing() {
 function goWeekly() {
   router.push('/action-memo/weekly')
 }
+
+function goTags() {
+  router.push('/action-memo/tags')
+}
 </script>
 
 <template>
@@ -86,6 +104,15 @@ function goWeekly() {
     <header class="flex items-center justify-between">
       <h1 class="text-xl font-bold">{{ t('action_memo.title') }}</h1>
       <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="rounded-lg px-3 py-1 text-sm text-primary hover:bg-primary/10"
+          data-testid="action-memo-tags-link"
+          @click="goTags"
+        >
+          <i class="pi pi-tag mr-1 text-xs" />
+          {{ t('action_memo.page.tags_link') }}
+        </button>
         <button
           type="button"
           class="rounded-lg px-3 py-1 text-sm text-primary hover:bg-primary/10"
@@ -148,6 +175,12 @@ function goWeekly() {
     </div>
 
     <ActionMemoInput />
+
+    <!-- 気分集計（mood_enabled = true の場合のみ表示） -->
+    <MoodChart
+      v-if="store.isMoodEnabled && store.moodStats && store.moodStats.total > 0"
+      :stats="store.moodStats"
+    />
 
     <section class="flex flex-col gap-2">
       <h2 class="px-1 text-sm font-semibold text-surface-700 dark:text-surface-200">

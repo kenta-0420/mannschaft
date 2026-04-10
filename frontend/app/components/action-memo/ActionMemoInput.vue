@@ -23,6 +23,7 @@ const DRAFT_DEBOUNCE_MS = 1000
 
 const content = ref<string>('')
 const mood = ref<Mood | null>(null)
+const selectedTagIds = ref<number[]>([])
 const submitting = ref(false)
 const draftSaveTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const draftSavedFlash = ref(false)
@@ -67,11 +68,13 @@ async function submit() {
     const created = await store.createMemo({
       content: content.value,
       mood: store.isMoodEnabled ? mood.value : null,
+      tagIds: selectedTagIds.value.length > 0 ? selectedTagIds.value : undefined,
     })
     if (created) {
-      // 成功 → 入力欄クリア + mood リセット
+      // 成功 → 入力欄クリア + mood + タグ リセット
       content.value = ''
       mood.value = null
+      selectedTagIds.value = []
       store.clearDraft(userId.value)
     }
     // 失敗時は入力欄を保持（下書きとしてそのまま）
@@ -106,6 +109,10 @@ function onKeydown(event: KeyboardEvent) {
 
     <div v-if="store.isMoodEnabled" class="px-1">
       <MoodSelector v-model="mood" />
+    </div>
+
+    <div class="px-1">
+      <TagPicker v-model="selectedTagIds" />
     </div>
 
     <div class="flex flex-wrap items-center justify-between gap-2 px-1 text-xs">
