@@ -16,8 +16,17 @@ import { waitForHydration } from './helpers/wait'
 
 const ACTION_MEMO_API = '**/api/v1/action-memos**'
 const ACTION_MEMO_SETTINGS_API = '**/api/v1/action-memo-settings'
+const ACTION_MEMO_TAGS_API = '**/api/v1/action-memo-tags**'
 const TODO_MY_API = '**/api/v1/todos/my'
 const BLOG_POSTS_API = '**/api/v1/blog/posts**'
+
+interface MockTag {
+  id: number
+  name: string
+  color: string | null
+  sort_order: number
+  deleted: boolean
+}
 
 interface MockState {
   memos: Array<{
@@ -27,12 +36,14 @@ interface MockState {
     mood: string | null
     related_todo_id: number | null
     timeline_post_id: number | null
-    tags: unknown[]
+    tags: MockTag[]
     created_at: string
     updated_at: string
   }>
   moodEnabled: boolean
   nextId: number
+  tags: MockTag[]
+  nextTagId: number
 }
 
 function todayJst(): string {
@@ -110,7 +121,11 @@ async function setupActionMemoMocks(page: Page, state: MockState) {
         content: string
         memo_date?: string
         mood?: string | null
+        tag_ids?: number[]
       }
+      const memoTags: MockTag[] = (body.tag_ids ?? [])
+        .map((id: number) => state.tags.find((t) => t.id === id))
+        .filter((t): t is MockTag => t !== undefined && !t.deleted)
       const memo = {
         id: state.nextId++,
         memo_date: body.memo_date ?? todayJst(),
@@ -118,7 +133,7 @@ async function setupActionMemoMocks(page: Page, state: MockState) {
         mood: state.moodEnabled ? (body.mood ?? null) : null,
         related_todo_id: null,
         timeline_post_id: null,
-        tags: [],
+        tags: memoTags,
         created_at: new Date().toISOString().replace('Z', '').slice(0, 19),
         updated_at: new Date().toISOString().replace('Z', '').slice(0, 19),
       }
@@ -176,6 +191,64 @@ async function setupActionMemoMocks(page: Page, state: MockState) {
     }
   })
 
+  // タグ API モック
+  await page.route(ACTION_MEMO_TAGS_API, async (route) => {
+    const method = route.request().method()
+    const url = route.request().url()
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: state.tags.filter((t) => !t.deleted) }),
+      })
+    } else if (method === 'POST') {
+      const body = JSON.parse(route.request().postData() ?? '{}') as {
+        name: string
+        color?: string
+      }
+      const newTag: MockTag = {
+        id: state.nextTagId++,
+        name: body.name,
+        color: body.color ?? null,
+        sort_order: state.tags.length,
+        deleted: false,
+      }
+      state.tags.push(newTag)
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: newTag }),
+      })
+    } else if (method === 'PATCH' && /\/action-memo-tags\/\d+/.test(url)) {
+      const idMatch = url.match(/\/action-memo-tags\/(\d+)/)
+      const id = idMatch ? Number(idMatch[1]) : 0
+      const body = JSON.parse(route.request().postData() ?? '{}') as {
+        name?: string
+        color?: string
+      }
+      const idx = state.tags.findIndex((t) => t.id === id)
+      if (idx >= 0) {
+        if (body.name !== undefined) state.tags[idx]!.name = body.name
+        if (body.color !== undefined) state.tags[idx]!.color = body.color
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: state.tags[idx] }),
+        })
+      } else {
+        await route.fulfill({ status: 404, body: '' })
+      }
+    } else if (method === 'DELETE' && /\/action-memo-tags\/\d+/.test(url)) {
+      const idMatch = url.match(/\/action-memo-tags\/(\d+)/)
+      const id = idMatch ? Number(idMatch[1]) : 0
+      const idx = state.tags.findIndex((t) => t.id === id)
+      if (idx >= 0) state.tags[idx]!.deleted = true
+      await route.fulfill({ status: 204, body: '' })
+    } else {
+      await route.fulfill({ status: 404, body: '' })
+    }
+  })
+
   // closing 画面で /api/v1/todos/my が叩かれるため最小モック
   await page.route(TODO_MY_API, async (route) => {
     if (route.request().method() === 'GET') {
@@ -192,7 +265,7 @@ async function setupActionMemoMocks(page: Page, state: MockState) {
 
 test.describe('F02.5: 行動メモ', () => {
   test('AM-001: ワンショット入力 → リスト追加 → 入力欄クリア', async ({ page }) => {
-    const state: MockState = { memos: [], moodEnabled: false, nextId: 4521 }
+    const state: MockState = { memos: [], moodEnabled: false, nextId: 4521, tags: [], nextTagId: 1 }
     await setupActionMemoMocks(page, state)
 
     await page.goto('/action-memo')
@@ -216,7 +289,7 @@ test.describe('F02.5: 行動メモ', () => {
   })
 
   test('AM-002: mood 設定 ON で MoodSelector が表示される / OFF で消える', async ({ page }) => {
-    const state: MockState = { memos: [], moodEnabled: false, nextId: 1 }
+    const state: MockState = { memos: [], moodEnabled: false, nextId: 1, tags: [], nextTagId: 1 }
     await setupActionMemoMocks(page, state)
 
     // 1. /action-memo を開く → mood OFF なので MoodSelector は出ない
@@ -249,7 +322,7 @@ test.describe('F02.5: 行動メモ', () => {
     // Backend は他人の memoId に対しては GET /action-memos?date=... では含めず、
     // 直接の /api/v1/action-memos/{id} は 404 を返す。
     // Phase 1 のページは詳細画面を持たないため、index 画面でも 404 経路をテストする。
-    const state: MockState = { memos: [], moodEnabled: false, nextId: 1 }
+    const state: MockState = { memos: [], moodEnabled: false, nextId: 1, tags: [], nextTagId: 1 }
     await setupActionMemoMocks(page, state)
 
     // 認可違反のメモ取得を直接呼ぶケースとして、他人の id でリストが空になることを確認
@@ -265,7 +338,7 @@ test.describe('F02.5: 行動メモ', () => {
   test('AM-004 (Phase 2): カードの編集ボタン → 編集ダイアログ → 保存 → 一覧に反映', async ({
     page,
   }) => {
-    const state: MockState = { memos: [], moodEnabled: false, nextId: 4521 }
+    const state: MockState = { memos: [], moodEnabled: false, nextId: 4521, tags: [], nextTagId: 1 }
     await setupActionMemoMocks(page, state)
 
     await page.goto('/action-memo')
@@ -297,7 +370,7 @@ test.describe('F02.5: 行動メモ', () => {
   })
 
   test('AM-005 (Phase 2): 終業画面で「今日を締める」→ publish-daily 成功', async ({ page }) => {
-    const state: MockState = { memos: [], moodEnabled: false, nextId: 4521 }
+    const state: MockState = { memos: [], moodEnabled: false, nextId: 4521, tags: [], nextTagId: 1 }
     await setupActionMemoMocks(page, state)
 
     // まずメモを 1 件作成
@@ -332,7 +405,7 @@ test.describe('F02.5: 行動メモ', () => {
   test('AM-006 (Phase 3): メインページ → 週次まとめリンク → /action-memo/weekly に遷移 → 一覧表示', async ({
     page,
   }) => {
-    const state: MockState = { memos: [], moodEnabled: false, nextId: 1 }
+    const state: MockState = { memos: [], moodEnabled: false, nextId: 1, tags: [], nextTagId: 1 }
     await setupActionMemoMocks(page, state)
 
     // BlogPost API のモック（週次まとめ用）
@@ -415,5 +488,60 @@ test.describe('F02.5: 行動メモ', () => {
     // モーダルを閉じる
     await page.locator('[data-testid="action-memo-weekly-detail-close"]').click()
     await expect(page.locator('[data-testid="action-memo-weekly-detail-modal"]')).toHaveCount(0)
+  })
+
+  test('AM-007 (Phase 4): タグ管理画面でタグ作成 → メモ入力画面で TagPicker からタグ選択 → 送信 → リストにタグ表示', async ({
+    page,
+  }) => {
+    const state: MockState = { memos: [], moodEnabled: false, nextId: 4521, tags: [], nextTagId: 1 }
+    await setupActionMemoMocks(page, state)
+
+    // 1. タグ管理画面を開く
+    await page.goto('/action-memo/tags')
+    await waitForHydration(page)
+
+    // タイトルが表示される
+    await expect(page.locator('[data-testid="tag-management-title"]')).toBeVisible({
+      timeout: 10_000,
+    })
+
+    // 空状態メッセージ
+    await expect(page.locator('[data-testid="tag-list-empty"]')).toBeVisible()
+
+    // 2. 新規タグを作成
+    await page.locator('[data-testid="tag-create-button"]').click()
+    await expect(page.locator('[data-testid="tag-create-form"]')).toBeVisible()
+
+    await page.locator('[data-testid="tag-create-name"]').fill('運動')
+    await page.locator('[data-testid="tag-create-submit"]').click()
+
+    // タグが一覧に表示される
+    await expect(page.locator('[data-testid="tag-item-1"]')).toBeVisible({ timeout: 5_000 })
+
+    // 3. メモ入力画面に移動
+    await page.locator('[data-testid="tag-management-back"]').click()
+    await page.waitForURL('**/action-memo', { timeout: 10_000 })
+    await waitForHydration(page)
+
+    // 4. TagPicker が表示される
+    await expect(page.locator('[data-testid="tag-picker"]')).toBeVisible({ timeout: 10_000 })
+
+    // 5. 検索入力にフォーカスしてタグを選択
+    const searchInput = page.locator('[data-testid="tag-picker-search"]')
+    await searchInput.focus()
+    await expect(page.locator('[data-testid="tag-picker-dropdown"]')).toBeVisible({ timeout: 5_000 })
+    await page.locator('[data-testid="tag-option-1"]').click()
+
+    // 6. 選択済みタグのチップが表示される
+    await expect(page.locator('[data-testid="tag-chip-1"]')).toBeVisible()
+
+    // 7. メモを入力して送信
+    const textarea = page.locator('[data-testid="action-memo-input-textarea"]')
+    await textarea.fill('朝ジョギング 30分')
+    await textarea.press('Enter')
+
+    // 8. リストにメモが表示され、タグも表示される
+    await expect(page.getByText('朝ジョギング 30分')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('#運動')).toBeVisible()
   })
 })
