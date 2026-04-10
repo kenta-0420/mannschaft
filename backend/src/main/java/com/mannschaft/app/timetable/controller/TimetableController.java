@@ -177,30 +177,38 @@ public class TimetableController {
         TimetableSlotService.WeeklyViewData viewData = slotService.getWeeklyView(timetableId, timetable, targetDate);
 
         // WeeklyViewData → WeeklyViewResponse に変換
-        Map<String, List<WeeklyViewResponse.SlotInfo>> days = viewData.days().entrySet().stream()
+        Map<String, WeeklyViewResponse.DayInfo> days = viewData.days().entrySet().stream()
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
-                        entry -> entry.getValue().stream()
-                                .map(slot -> new WeeklyViewResponse.SlotInfo(
-                                        slot.periodNumber(),
-                                        slot.subjectName(),
-                                        slot.teacherName(),
-                                        slot.roomName(),
-                                        slot.color(),
-                                        slot.notes(),
-                                        slot.isChanged(),
-                                        slot.originalSubject(),
-                                        slot.changeType() != null ? slot.changeType().name() : null,
-                                        slot.changeReason()))
-                                .toList(),
+                        entry -> {
+                            TimetableSlotService.DayViewData dayData = entry.getValue();
+                            List<WeeklyViewResponse.SlotInfo> slotInfos = dayData.slots().stream()
+                                    .map(slot -> new WeeklyViewResponse.SlotInfo(
+                                            slot.periodNumber(),
+                                            slot.subjectName(),
+                                            slot.teacherName(),
+                                            slot.roomName(),
+                                            slot.color(),
+                                            slot.notes(),
+                                            slot.isChanged(),
+                                            slot.originalSubject(),
+                                            slot.changeType() != null ? slot.changeType().name() : null,
+                                            slot.changeReason()))
+                                    .toList();
+                            return new WeeklyViewResponse.DayInfo(
+                                    dayData.date(),
+                                    dayData.isDayOff(),
+                                    dayData.dayOffReason(),
+                                    slotInfos);
+                        },
                         (a, b) -> a,
                         java.util.LinkedHashMap::new
                 ));
 
-        // periods文字列リストをPeriodInfo構造体に変換（Service層拡張時にstartTime等を追加可能）
-        List<WeeklyViewResponse.PeriodInfo> periodInfos = viewData.periods().stream()
-                .map(label -> new WeeklyViewResponse.PeriodInfo(null, label, null, null, false))
-                .toList();
+        // periods は現時点では空リスト（時限定義はTimetablePeriodTemplateServiceから取得可能だが
+        // timetableId→teamId→orgId のルックアップが必要なためControllerでは省略し、
+        // フロントエンドは別途 GET /organizations/{id}/timetable-periods で取得する）
+        List<WeeklyViewResponse.PeriodInfo> periodInfos = List.of();
 
         var response = new WeeklyViewResponse(
                 viewData.timetableId(),

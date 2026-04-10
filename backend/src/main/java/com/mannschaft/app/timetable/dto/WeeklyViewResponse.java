@@ -21,7 +21,8 @@ public class WeeklyViewResponse {
     private final Boolean weekPatternEnabled;
     private final String currentWeekPattern;
     private final List<PeriodInfo> periods;
-    private final Map<String, List<SlotInfo>> days;
+    /** キー: MON/TUE/WED/THU/FRI/SAT/SUN */
+    private final Map<String, DayInfo> days;
 
     /**
      * コマ情報（時限番号・ラベル・開始終了時刻・休み時間フラグ）。
@@ -36,6 +37,21 @@ public class WeeklyViewResponse {
         private final Boolean isBreak;
     }
 
+    /**
+     * 曜日ごとの日次情報。日付・休校フラグ・スロット一覧を保持する。
+     */
+    @Getter
+    @RequiredArgsConstructor
+    public static class DayInfo {
+        private final LocalDate date;
+        private final Boolean isDayOff;
+        private final String dayOffReason;
+        private final List<SlotInfo> slots;
+    }
+
+    /**
+     * 時限ごとのスロット情報（臨時変更情報を含む）。
+     */
     @Getter
     @RequiredArgsConstructor
     public static class SlotInfo {
