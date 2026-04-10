@@ -2,7 +2,9 @@ package com.mannschaft.app.timetable;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.entity.TimetableChangeEntity;
+import com.mannschaft.app.timetable.entity.TimetableEntity;
 import com.mannschaft.app.timetable.repository.TimetableChangeRepository;
+import com.mannschaft.app.timetable.repository.TimetableRepository;
 import com.mannschaft.app.timetable.service.TimetableChangeService;
 import com.mannschaft.app.timetable.service.TimetableChangeService.CreateChangeData;
 import org.junit.jupiter.api.DisplayName;
@@ -28,6 +30,7 @@ import static org.mockito.Mockito.verify;
 class TimetableChangeServiceTest {
 
     @Mock private TimetableChangeRepository changeRepository;
+    @Mock private TimetableRepository timetableRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private TimetableChangeService service;
 
@@ -39,6 +42,12 @@ class TimetableChangeServiceTest {
         @DisplayName("正常系: 臨時変更が作成される")
         void 作成_正常_保存() {
             // Given
+            TimetableEntity activeTimetable = TimetableEntity.builder()
+                    .teamId(1L).termId(1L).name("テスト")
+                    .status(TimetableStatus.ACTIVE)
+                    .visibility(TimetableVisibility.MEMBERS_ONLY)
+                    .weekPatternEnabled(false).build();
+            given(timetableRepository.findById(1L)).willReturn(Optional.of(activeTimetable));
             given(changeRepository.save(any(TimetableChangeEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -58,6 +67,12 @@ class TimetableChangeServiceTest {
         @DisplayName("異常系: DAY_OFFでperiodNumberが指定されている場合TIMETABLE_031例外")
         void 作成_休日_時限指定_例外() {
             // Given
+            TimetableEntity activeTimetable = TimetableEntity.builder()
+                    .teamId(1L).termId(1L).name("テスト")
+                    .status(TimetableStatus.ACTIVE)
+                    .visibility(TimetableVisibility.MEMBERS_ONLY)
+                    .weekPatternEnabled(false).build();
+            given(timetableRepository.findById(1L)).willReturn(Optional.of(activeTimetable));
             CreateChangeData data = new CreateChangeData(
                     LocalDate.of(2025, 5, 1), 1, TimetableChangeType.DAY_OFF,
                     null, null, null, "祝日", false, false, 100L);
@@ -70,9 +85,15 @@ class TimetableChangeServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: REPLACEで科目名なしの場合TIMETABLE_032例外")
+        @DisplayName("異常系: REPLACEで科目名なしの場合TIMETABLE_033例外")
         void 作成_差替_科目名なし_例外() {
             // Given
+            TimetableEntity activeTimetable = TimetableEntity.builder()
+                    .teamId(1L).termId(1L).name("テスト")
+                    .status(TimetableStatus.ACTIVE)
+                    .visibility(TimetableVisibility.MEMBERS_ONLY)
+                    .weekPatternEnabled(false).build();
+            given(timetableRepository.findById(1L)).willReturn(Optional.of(activeTimetable));
             CreateChangeData data = new CreateChangeData(
                     LocalDate.of(2025, 5, 1), 1, TimetableChangeType.REPLACE,
                     null, null, null, "理由", false, false, 100L);
@@ -81,7 +102,7 @@ class TimetableChangeServiceTest {
             assertThatThrownBy(() -> service.createChange(1L, data))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("TIMETABLE_032"));
+                            .isEqualTo("TIMETABLE_033"));
         }
     }
 

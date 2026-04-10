@@ -123,7 +123,13 @@
     "week_label": "{start} 〜 {end}",
     "week_pattern_a": "A주",
     "week_pattern_b": "B주",
-    "week_pattern_every": "매주"
+    "week_pattern_every": "매주",
+    "no_change": "임시 변경 없음",
+    "visibility_label": "공개 범위",
+    "period_all": "전체 교시",
+    "period_number_placeholder": "교시 번호",
+    "period_suffix": "교시",
+    "term_name_placeholder": "예: 1학기"
   },
   "error": {
     "server": "서버 오류가 발생했습니다",

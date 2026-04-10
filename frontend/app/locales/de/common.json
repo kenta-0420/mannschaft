@@ -123,7 +123,13 @@
     "week_label": "{start} – {end}",
     "week_pattern_a": "Woche A",
     "week_pattern_b": "Woche B",
-    "week_pattern_every": "Jede Woche"
+    "week_pattern_every": "Jede Woche",
+    "no_change": "Keine temporären Änderungen",
+    "visibility_label": "Sichtbarkeit",
+    "period_all": "Alle Stunden",
+    "period_number_placeholder": "Stundennummer",
+    "period_suffix": ". Stunde",
+    "term_name_placeholder": "z.B. 1. Quartal"
   },
   "error": {
     "server": "Ein Serverfehler ist aufgetreten",
