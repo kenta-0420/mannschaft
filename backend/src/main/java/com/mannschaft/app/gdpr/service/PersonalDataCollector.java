@@ -17,6 +17,7 @@ import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
@@ -53,6 +54,7 @@ public class PersonalDataCollector {
     private final ActionMemoTagRepository actionMemoTagRepository;
     private final ActionMemoTagLinkRepository actionMemoTagLinkRepository;
     private final UserActionMemoSettingsRepository userActionMemoSettingsRepository;
+    private final ErrorReportRepository errorReportRepository;
     private final EncryptionService encryptionService;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
@@ -71,7 +73,9 @@ public class PersonalDataCollector {
             Map.entry("audit_logs", "audit_logs.json"),
             Map.entry("notifications", "notifications.json"),
             // F02.5 行動メモ（Phase 1.5 で追加）
-            Map.entry("action_memos", "action_memos.json")
+            Map.entry("action_memos", "action_memos.json"),
+            // F12.5 エラーレポート
+            Map.entry("error_reports", "error_reports.json")
     );
 
     /**
@@ -121,6 +125,7 @@ public class PersonalDataCollector {
             case "audit_logs" -> collectAuditLogs(userId);
             case "notifications" -> collectNotifications(userId);
             case "action_memos" -> collectActionMemos(userId);
+            case "error_reports" -> collectErrorReports(userId);
             default -> "[]";
         };
     }
@@ -211,6 +216,26 @@ public class PersonalDataCollector {
         return OBJECT_MAPPER.writeValueAsString(
                 notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, Pageable.unpaged())
                         .getContent());
+    }
+
+    /**
+     * F12.5 エラーレポートを収集する。
+     * stackTrace, ipAddress, requestId 等の内部情報は含めず、ユーザーが知り得る情報のみ返す。
+     */
+    private String collectErrorReports(Long userId) throws Exception {
+        return OBJECT_MAPPER.writeValueAsString(
+                errorReportRepository.findByUserIdOrderByCreatedAtDesc(userId).stream().map(er -> {
+                    Map<String, Object> entry = new LinkedHashMap<>();
+                    entry.put("id", er.getId());
+                    entry.put("errorMessage", er.getErrorMessage());
+                    entry.put("pageUrl", er.getPageUrl());
+                    entry.put("userComment", er.getUserComment());
+                    entry.put("occurredAt", er.getOccurredAt());
+                    entry.put("status", er.getStatus());
+                    entry.put("severity", er.getSeverity());
+                    entry.put("createdAt", er.getCreatedAt());
+                    return entry;
+                }).toList());
     }
 
     /**

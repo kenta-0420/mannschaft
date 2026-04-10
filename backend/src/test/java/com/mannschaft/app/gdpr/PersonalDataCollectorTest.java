@@ -9,6 +9,7 @@ import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import com.mannschaft.app.gdpr.service.PersonalDataCollector;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
@@ -61,6 +62,8 @@ class PersonalDataCollectorTest {
     @Mock
     private UserActionMemoSettingsRepository userActionMemoSettingsRepository;
     @Mock
+    private ErrorReportRepository errorReportRepository;
+    @Mock
     private EncryptionService encryptionService;
 
     @InjectMocks
@@ -71,7 +74,7 @@ class PersonalDataCollectorTest {
     class Collect {
 
         @Test
-        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（11カテゴリ）")
+        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（12カテゴリ）")
         void 正常_nullカテゴリ_全カテゴリ収集() {
             given(userRepository.findById(anyLong())).willReturn(Optional.empty());
             given(oAuthAccountRepository.findByUserId(anyLong())).willReturn(List.of());
@@ -91,14 +94,17 @@ class PersonalDataCollectorTest {
                     .willReturn(List.of());
             given(userActionMemoSettingsRepository.findById(anyLong()))
                     .willReturn(Optional.empty());
+            given(errorReportRepository.findByUserIdOrderByCreatedAtDesc(anyLong()))
+                    .willReturn(List.of());
 
             Map<String, String> result = collector.collect(1L, null);
 
-            assertThat(result).hasSize(11);
+            assertThat(result).hasSize(12);
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     "account.json", "oauth_accounts.json", "memberships.json", "profiles.json",
                     "payments.json", "charts.json", "chat_messages.json", "timeline_posts.json",
-                    "audit_logs.json", "notifications.json", "action_memos.json"
+                    "audit_logs.json", "notifications.json", "action_memos.json",
+                    "error_reports.json"
             );
         }
 
@@ -131,15 +137,15 @@ class PersonalDataCollectorTest {
     class GetCategoryKeys {
 
         @Test
-        @DisplayName("正常系: 11カテゴリキーが返る")
-        void 正常_11カテゴリキー返却() {
+        @DisplayName("正常系: 12カテゴリキーが返る")
+        void 正常_12カテゴリキー返却() {
             Set<String> keys = collector.getCategoryKeys();
 
-            assertThat(keys).hasSize(11);
+            assertThat(keys).hasSize(12);
             assertThat(keys).containsExactlyInAnyOrder(
                     "account", "oauth", "memberships", "profiles", "payments",
                     "charts", "chat_messages", "timeline", "audit_logs", "notifications",
-                    "action_memos"
+                    "action_memos", "error_reports"
             );
         }
     }
@@ -181,6 +187,36 @@ class PersonalDataCollectorTest {
 
             assertThat(result).hasSize(1);
             assertThat(result.get("action_memos.json")).isEqualTo("[]");
+        }
+    }
+
+    @Nested
+    @DisplayName("error_reports カテゴリ（F12.5）")
+    class ErrorReportsCategory {
+
+        @Test
+        @DisplayName("正常系: error_reports 指定でエラーレポートが収集される")
+        void 正常_error_reports_収集() {
+            given(errorReportRepository.findByUserIdOrderByCreatedAtDesc(anyLong()))
+                    .willReturn(List.of());
+
+            Map<String, String> result = collector.collect(1L, Set.of("error_reports"));
+
+            assertThat(result).hasSize(1);
+            assertThat(result).containsKey("error_reports.json");
+            assertThat(result.get("error_reports.json")).isEqualTo("[]");
+        }
+
+        @Test
+        @DisplayName("異常系: リポジトリ例外は[]でスキップされる")
+        void 異常_error_reports_例外_スキップ() {
+            given(errorReportRepository.findByUserIdOrderByCreatedAtDesc(anyLong()))
+                    .willThrow(new RuntimeException("DB error"));
+
+            Map<String, String> result = collector.collect(1L, Set.of("error_reports"));
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get("error_reports.json")).isEqualTo("[]");
         }
     }
 }

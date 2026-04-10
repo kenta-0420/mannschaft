@@ -124,6 +124,12 @@ public interface ErrorReportRepository extends JpaRepository<ErrorReportEntity, 
     List<ErrorReportEntity> findByStatusAndUpdatedAtBefore(ErrorReportStatus status, LocalDateTime dateTime);
 
     /**
+     * GDPR個人データエクスポート用: ユーザーIDでエラーレポートを検索する。
+     * userId が null のレコードは Spring Data の仕様により含まれない。
+     */
+    List<ErrorReportEntity> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    /**
      * 管理者一覧用: ステータスでフィルタしてページング取得する。
      */
     Page<ErrorReportEntity> findByStatus(ErrorReportStatus status, Pageable pageable);
