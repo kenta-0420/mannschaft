@@ -5,7 +5,8 @@
     "empty": "Aún no hay notas. Escribe la primera.",
     "settings_link": "Ajustes",
     "back_to_memo": "Volver a notas de acción",
-    "closing_link": "Cerrar el día"
+    "closing_link": "Cerrar el día",
+    "weekly_link": "Resumen semanal"
   },
   "mood": {
     "great": "Excelente",
@@ -40,7 +41,17 @@
     "featured_random_note": "(selección aleatoria)",
     "related_todos": "TODOs relacionados",
     "todos_completed": "Completadas",
-    "todos_pending": "Pendientes → próxima semana"
+    "todos_pending": "Pendientes → próxima semana",
+    "page_title": "Resumen semanal",
+    "empty_state": "Aún no hay resúmenes semanales. Se generan automáticamente los domingos por la noche.",
+    "view_detail": "Ver detalle",
+    "loading": "Cargando...",
+    "error": "Error al cargar los resúmenes semanales",
+    "retry": "Reintentar",
+    "next_summary": "El próximo resumen semanal se generará el domingo por la noche",
+    "body_preview_more": "...leer más",
+    "period_label": "Período",
+    "load_more": "Cargar más"
   },
   "settings": {
     "title": "Ajustes de notas",

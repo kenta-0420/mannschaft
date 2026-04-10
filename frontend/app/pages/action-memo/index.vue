@@ -75,6 +75,10 @@ function goSettings() {
 function goClosing() {
   router.push('/action-memo/closing')
 }
+
+function goWeekly() {
+  router.push('/action-memo/weekly')
+}
 </script>
 
 <template>
@@ -82,6 +86,15 @@ function goClosing() {
     <header class="flex items-center justify-between">
       <h1 class="text-xl font-bold">{{ t('action_memo.title') }}</h1>
       <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="rounded-lg px-3 py-1 text-sm text-primary hover:bg-primary/10"
+          data-testid="action-memo-weekly-link"
+          @click="goWeekly"
+        >
+          <i class="pi pi-calendar mr-1 text-xs" />
+          {{ t('action_memo.page.weekly_link') }}
+        </button>
         <button
           type="button"
           class="rounded-lg px-3 py-1 text-sm text-primary hover:bg-primary/10"
