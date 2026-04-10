@@ -55,6 +55,22 @@
     "AUTH_004": "La cuenta esta desactivada",
     "AUTH_005": "Codigo de verificacion incorrecto"
   },
+  "annual_plan": {
+    "title": "Plan anual de eventos",
+    "all_categories": "Todos",
+    "category_placeholder": "Categoria",
+    "copy_prev_year": "Copiar ano anterior",
+    "no_events": "Sin eventos",
+    "no_data": "No hay datos de eventos",
+    "copy_dialog_title": "Copiar ano anterior",
+    "copy_dialog_message": "Copiar eventos de {sourceYear} a {targetYear}? Las fechas se ajustaran automaticamente.",
+    "copy_preview": "Vista previa",
+    "copy_execute": "Ejecutar copia",
+    "conflict_with": "Conflicto con {title}",
+    "load_error": "Error al cargar el plan anual de eventos",
+    "copy_error": "Error al copiar eventos",
+    "copy_success": "Se han copiado los eventos del ano anterior"
+  },
   "greeting": {
     "earlyMorning": "Buenos dias",
     "morning": "Buenos dias",

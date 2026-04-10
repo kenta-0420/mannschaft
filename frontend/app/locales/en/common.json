@@ -55,6 +55,22 @@
     "AUTH_004": "This account is disabled",
     "AUTH_005": "Invalid verification code"
   },
+  "annual_plan": {
+    "title": "Annual Event Plan",
+    "all_categories": "All",
+    "category_placeholder": "Category",
+    "copy_prev_year": "Copy Previous Year",
+    "no_events": "No events",
+    "no_data": "No event data available",
+    "copy_dialog_title": "Copy Previous Year",
+    "copy_dialog_message": "Copy events from {sourceYear} to {targetYear}? Dates will be automatically adjusted.",
+    "copy_preview": "Preview",
+    "copy_execute": "Execute Copy",
+    "conflict_with": "Conflicts with {title}",
+    "load_error": "Failed to load annual event plan",
+    "copy_error": "Failed to copy events",
+    "copy_success": "Events from the previous year have been copied"
+  },
   "greeting": {
     "earlyMorning": "Good morning",
     "morning": "Good morning",
