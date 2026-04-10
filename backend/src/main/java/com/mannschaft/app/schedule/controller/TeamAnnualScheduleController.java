@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
@@ -47,6 +48,7 @@ public class TeamAnnualScheduleController {
     private final ScheduleAnnualCopyService annualCopyService;
     private final ScheduleEventCategoryService categoryService;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * チーム年間行事ビューを取得する。
@@ -100,7 +102,7 @@ public class TeamAnnualScheduleController {
     }
 
     /**
-     * チーム年間行事コピーを実行する。
+     * チーム年間行事コピーを実行する。ADMIN/DEPUTY_ADMIN のみ実行可能。
      */
     @PostMapping("/copy")
     @Operation(summary = "チーム年間行事コピー実行")
@@ -108,6 +110,8 @@ public class TeamAnnualScheduleController {
     public ResponseEntity<ApiResponse<ExecuteCopyResponse>> executeCopy(
             @PathVariable Long teamId,
             @Valid @RequestBody ExecuteCopyRequest request) {
+
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
 
         DateShiftMode mode = request.getDateShiftMode() != null
                 ? DateShiftMode.valueOf(request.getDateShiftMode())

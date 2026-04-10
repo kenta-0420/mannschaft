@@ -55,6 +55,22 @@
     "AUTH_004": "계정이 비활성화되어 있습니다",
     "AUTH_005": "인증 코드가 올바르지 않습니다"
   },
+  "annual_plan": {
+    "title": "연간 행사 계획",
+    "all_categories": "전체",
+    "category_placeholder": "카테고리",
+    "copy_prev_year": "전년도 복사",
+    "no_events": "행사 없음",
+    "no_data": "행사 데이터가 없습니다",
+    "copy_dialog_title": "전년도 복사",
+    "copy_dialog_message": "{sourceYear}년도 행사를 {targetYear}년도에 복사하시겠습니까? 일정이 자동으로 조정됩니다.",
+    "copy_preview": "미리보기",
+    "copy_execute": "복사 실행",
+    "conflict_with": "{title}과(와) 중복",
+    "load_error": "연간 행사 계획을 불러오지 못했습니다",
+    "copy_error": "복사에 실패했습니다",
+    "copy_success": "전년도 행사를 복사했습니다"
+  },
   "greeting": {
     "earlyMorning": "안녕하세요",
     "morning": "안녕하세요",

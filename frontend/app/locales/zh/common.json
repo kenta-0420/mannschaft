@@ -55,6 +55,22 @@
     "AUTH_004": "账户已被禁用",
     "AUTH_005": "验证码不正确"
   },
+  "annual_plan": {
+    "title": "年度行事计划",
+    "all_categories": "全部",
+    "category_placeholder": "类别",
+    "copy_prev_year": "复制上一年度",
+    "no_events": "无行事",
+    "no_data": "暂无行事数据",
+    "copy_dialog_title": "复制上一年度",
+    "copy_dialog_message": "将{sourceYear}年度的行事复制到{targetYear}年度？日程将自动调整。",
+    "copy_preview": "预览",
+    "copy_execute": "执行复制",
+    "conflict_with": "与{title}冲突",
+    "load_error": "获取年度行事计划失败",
+    "copy_error": "复制失败",
+    "copy_success": "已复制上一年度的行事"
+  },
   "greeting": {
     "earlyMorning": "早上好",
     "morning": "早上好",

@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.schedule.dto.CreateEventCategoryRequest;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
 import com.mannschaft.app.schedule.entity.ScheduleEventCategoryEntity;
@@ -30,6 +32,7 @@ import java.util.List;
 public class OrgEventCategoryController {
 
     private final ScheduleEventCategoryService categoryService;
+    private final AccessControlService accessControlService;
 
     /**
      * 組織行事カテゴリ一覧を取得する。
@@ -48,7 +51,7 @@ public class OrgEventCategoryController {
     }
 
     /**
-     * 組織スコープの行事カテゴリを作成する。
+     * 組織スコープの行事カテゴリを作成する。ADMIN/DEPUTY_ADMIN のみ実行可能。
      */
     @PostMapping
     @Operation(summary = "組織行事カテゴリ作成")
@@ -56,6 +59,7 @@ public class OrgEventCategoryController {
     public ResponseEntity<ApiResponse<EventCategoryResponse>> createCategory(
             @PathVariable Long orgId,
             @Valid @RequestBody CreateEventCategoryRequest request) {
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), orgId, "ORGANIZATION");
         ScheduleEventCategoryService.CreateCategoryData data =
                 new ScheduleEventCategoryService.CreateCategoryData(
                         request.getName(),

@@ -43,4 +43,10 @@ public class UpdateScheduleRequest {
     private final String commentOption;
 
     private final String updateScope;
+
+    /** 行事カテゴリID（F03.10 年間行事計画用）。任意項目。 */
+    private final Long eventCategoryId;
+
+    /** 年度（F03.10 年間行事計画用）。例: 2025（2025年度）。任意項目。 */
+    private final Integer academicYear;
 }

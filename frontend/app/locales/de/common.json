@@ -55,6 +55,22 @@
     "AUTH_004": "Das Konto ist deaktiviert",
     "AUTH_005": "Der Verifizierungscode ist falsch"
   },
+  "annual_plan": {
+    "title": "Jahresveranstaltungsplan",
+    "all_categories": "Alle",
+    "category_placeholder": "Kategorie",
+    "copy_prev_year": "Vorjahr kopieren",
+    "no_events": "Keine Veranstaltungen",
+    "no_data": "Keine Veranstaltungsdaten vorhanden",
+    "copy_dialog_title": "Vorjahr kopieren",
+    "copy_dialog_message": "Veranstaltungen von {sourceYear} nach {targetYear} kopieren? Termine werden automatisch angepasst.",
+    "copy_preview": "Vorschau",
+    "copy_execute": "Kopieren ausfuhren",
+    "conflict_with": "Konflikt mit {title}",
+    "load_error": "Jahresveranstaltungsplan konnte nicht geladen werden",
+    "copy_error": "Kopieren fehlgeschlagen",
+    "copy_success": "Veranstaltungen des Vorjahres wurden kopiert"
+  },
   "greeting": {
     "earlyMorning": "Guten Morgen",
     "morning": "Guten Morgen",
