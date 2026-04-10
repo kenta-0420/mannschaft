@@ -5,7 +5,8 @@
     "empty": "Noch keine Notizen. Schreibe deine erste.",
     "settings_link": "Einstellungen",
     "back_to_memo": "Zurück zu Aktionsnotizen",
-    "closing_link": "Tag abschließen"
+    "closing_link": "Tag abschließen",
+    "weekly_link": "Wochenübersicht"
   },
   "mood": {
     "great": "Großartig",
@@ -40,7 +41,17 @@
     "featured_random_note": "(zufällige Auswahl)",
     "related_todos": "Zugehörige TODOs",
     "todos_completed": "Erledigt",
-    "todos_pending": "Offen → nächste Woche"
+    "todos_pending": "Offen → nächste Woche",
+    "page_title": "Wochenübersicht",
+    "empty_state": "Noch keine Wochenzusammenfassungen. Sie werden automatisch am Sonntagabend erstellt.",
+    "view_detail": "Details ansehen",
+    "loading": "Laden...",
+    "error": "Wochenzusammenfassungen konnten nicht geladen werden",
+    "retry": "Erneut versuchen",
+    "next_summary": "Die nächste Wochenzusammenfassung wird am Sonntagabend erstellt",
+    "body_preview_more": "...weiterlesen",
+    "period_label": "Zeitraum",
+    "load_more": "Mehr laden"
   },
   "settings": {
     "title": "Aktionsnotizen-Einstellungen",

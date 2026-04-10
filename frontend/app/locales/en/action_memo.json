@@ -5,7 +5,8 @@
     "empty": "No memos yet. Write your first one.",
     "settings_link": "Settings",
     "back_to_memo": "Back to Action Memo",
-    "closing_link": "Close out today"
+    "closing_link": "Close out today",
+    "weekly_link": "Weekly summary"
   },
   "mood": {
     "great": "Great",
@@ -40,7 +41,17 @@
     "featured_random_note": "(random pick)",
     "related_todos": "Related TODOs",
     "todos_completed": "Completed",
-    "todos_pending": "Pending → carried over"
+    "todos_pending": "Pending → carried over",
+    "page_title": "Weekly Summary",
+    "empty_state": "No weekly summaries yet. They are automatically generated on Sunday evenings.",
+    "view_detail": "View detail",
+    "loading": "Loading...",
+    "error": "Failed to load weekly summaries",
+    "retry": "Retry",
+    "next_summary": "The next weekly summary will be generated on Sunday evening",
+    "body_preview_more": "...read more",
+    "period_label": "Period",
+    "load_more": "Load more"
   },
   "settings": {
     "title": "Action Memo Settings",

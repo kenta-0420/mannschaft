@@ -8,6 +8,7 @@ import type {
   PublishDailyPayload,
   PublishDailyResponse,
   UpdateActionMemoPayload,
+  WeeklySummary,
 } from '~/types/actionMemo'
 
 /**
@@ -39,6 +40,16 @@ interface ActionMemoStoreState {
   offlineQueueCount: number
   /** 現在オフラインかどうか（{@code navigator.onLine === false}）。SSR 時は false */
   isOffline: boolean
+  /** Phase 3: 週次まとめ一覧 */
+  weeklySummaries: WeeklySummary[]
+  /** Phase 3: 週次まとめ一覧の読み込み中フラグ */
+  weeklyLoading: boolean
+  /** Phase 3: 週次まとめ一覧のエラー（i18n キー） */
+  weeklyError: string | null
+  /** Phase 3: 週次まとめの現在ページ（0始まり） */
+  weeklyPage: number
+  /** Phase 3: 週次まとめの総ページ数 */
+  weeklyTotalPages: number
 }
 
 export type ActionMemoErrorCode =
@@ -88,6 +99,11 @@ export const useActionMemoStore = defineStore('actionMemo', {
     lastError: null,
     offlineQueueCount: 0,
     isOffline: false,
+    weeklySummaries: [],
+    weeklyLoading: false,
+    weeklyError: null,
+    weeklyPage: 0,
+    weeklyTotalPages: 0,
   }),
 
   getters: {
@@ -321,6 +337,36 @@ export const useActionMemoStore = defineStore('actionMemo', {
       } catch (error) {
         this._handleError(error)
         throw error
+      }
+    },
+
+    // === Weekly Summary (Phase 3) ===
+
+    /**
+     * 週次まとめ一覧を取得する。
+     *
+     * <p>F06.1 BlogPost API を流用し、タイトルプレフィックス「週次ふりかえり: 」で
+     * クライアント側フィルタする（設計書 §11 #11）。</p>
+     *
+     * @param page ページ番号（0始まり）。省略時は 0
+     */
+    async fetchWeeklySummaries(page = 0): Promise<void> {
+      this.weeklyLoading = true
+      this.weeklyError = null
+      try {
+        const api = useActionMemoApi()
+        const res = await api.fetchWeeklySummaries({ page, size: 20 })
+        if (page === 0) {
+          this.weeklySummaries = res.data
+        } else {
+          this.weeklySummaries = [...this.weeklySummaries, ...res.data]
+        }
+        this.weeklyPage = res.page
+        this.weeklyTotalPages = res.totalPages
+      } catch {
+        this.weeklyError = 'action_memo.weekly.error'
+      } finally {
+        this.weeklyLoading = false
       }
     },
 

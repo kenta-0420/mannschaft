@@ -5,7 +5,8 @@
     "empty": "まだメモがありません。最初の1件を書きましょう。",
     "settings_link": "設定",
     "back_to_memo": "行動メモへ戻る",
-    "closing_link": "今日を締める"
+    "closing_link": "今日を締める",
+    "weekly_link": "週次まとめ"
   },
   "mood": {
     "great": "絶好調",
@@ -40,7 +41,17 @@
     "featured_random_note": "（ランダム抽出）",
     "related_todos": "関連 TODO",
     "todos_completed": "完了",
-    "todos_pending": "未完 → 来週へ繰越"
+    "todos_pending": "未完 → 来週へ繰越",
+    "page_title": "週次まとめ",
+    "empty_state": "まだ週次まとめがありません。日曜の夜に自動で生成されます。",
+    "view_detail": "詳細を見る",
+    "loading": "読み込み中...",
+    "error": "週次まとめの取得に失敗しました",
+    "retry": "再読み込み",
+    "next_summary": "次の週次まとめは日曜の夜に生成されます",
+    "body_preview_more": "...続きを読む",
+    "period_label": "対象期間",
+    "load_more": "もっと読み込む"
   },
   "settings": {
     "title": "行動メモ設定",

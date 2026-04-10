@@ -152,6 +152,41 @@ export interface OfflineQueuedMemo {
   enqueuedAt: string
 }
 
+// === Weekly Summary (Phase 3) ===
+
+/**
+ * 週次まとめの要約型。
+ *
+ * <p>Backend Phase 3 の {@code ActionMemoWeeklySummaryService} が毎週日曜 21:00 JST に
+ * 生成する非公開ブログ記事を、F06.1 BlogPost API から取得しフロント用に正規化したもの。
+ * 設計書 §11 #11 の確定判断「新規 API は作らない」に従い、{@code GET /api/v1/blog/posts}
+ * の {@code visibility=PRIVATE} フィルタ + タイトルプレフィックス「週次ふりかえり: 」の
+ * クライアント側フィルタで抽出する。</p>
+ */
+export interface WeeklySummary {
+  id: number
+  title: string
+  body: string
+  publishedAt: string | null
+  /** タイトルから抽出した対象期間 */
+  period: {
+    from: string
+    to: string
+  }
+}
+
+/**
+ * 週次まとめ一覧レスポンス。
+ *
+ * <p>F06.1 BlogPost API の {@code PagedResponse} をフロント向けに変換した型。
+ * ページベースのページネーション（page / totalPages）を採用する。</p>
+ */
+export interface WeeklySummaryListResponse {
+  data: WeeklySummary[]
+  page: number
+  totalPages: number
+}
+
 // === Error helpers ===
 
 /**

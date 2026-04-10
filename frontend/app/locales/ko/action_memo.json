@@ -5,7 +5,8 @@
     "empty": "아직 메모가 없습니다. 첫 메모를 작성하세요.",
     "settings_link": "설정",
     "back_to_memo": "행동 메모로 돌아가기",
-    "closing_link": "오늘 마치기"
+    "closing_link": "오늘 마치기",
+    "weekly_link": "주간 요약"
   },
   "mood": {
     "great": "최고",
@@ -40,7 +41,17 @@
     "featured_random_note": "(무작위 선정)",
     "related_todos": "관련 할 일",
     "todos_completed": "완료",
-    "todos_pending": "미완료 → 다음 주로 이월"
+    "todos_pending": "미완료 → 다음 주로 이월",
+    "page_title": "주간 요약",
+    "empty_state": "아직 주간 요약이 없습니다. 매주 일요일 저녁에 자동으로 생성됩니다.",
+    "view_detail": "자세히 보기",
+    "loading": "불러오는 중...",
+    "error": "주간 요약을 불러오지 못했습니다",
+    "retry": "다시 시도",
+    "next_summary": "다음 주간 요약은 일요일 저녁에 생성됩니다",
+    "body_preview_more": "...더 보기",
+    "period_label": "대상 기간",
+    "load_more": "더 불러오기"
   },
   "settings": {
     "title": "행동 메모 설정",

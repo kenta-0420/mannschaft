@@ -5,7 +5,8 @@
     "empty": "还没有备忘。写下第一条吧。",
     "settings_link": "设置",
     "back_to_memo": "返回行动备忘",
-    "closing_link": "结束今天"
+    "closing_link": "结束今天",
+    "weekly_link": "每周总结"
   },
   "mood": {
     "great": "极好",
@@ -40,7 +41,17 @@
     "featured_random_note": "（随机选取）",
     "related_todos": "相关待办",
     "todos_completed": "已完成",
-    "todos_pending": "未完成 → 顺延至下周"
+    "todos_pending": "未完成 → 顺延至下周",
+    "page_title": "每周总结",
+    "empty_state": "还没有每周总结。每周日晚间将自动生成。",
+    "view_detail": "查看详情",
+    "loading": "加载中...",
+    "error": "每周总结加载失败",
+    "retry": "重新加载",
+    "next_summary": "下一份每周总结将在周日晚间生成",
+    "body_preview_more": "...继续阅读",
+    "period_label": "对象期间",
+    "load_more": "加载更多"
   },
   "settings": {
     "title": "行动备忘设置",
