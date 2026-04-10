@@ -6,7 +6,8 @@
     "settings_link": "Settings",
     "back_to_memo": "Back to Action Memo",
     "closing_link": "Close out today",
-    "weekly_link": "Weekly summary"
+    "weekly_link": "Weekly summary",
+    "tags_link": "Tag management"
   },
   "mood": {
     "great": "Great",
@@ -98,5 +99,24 @@
     "banner": "You are offline. Your memos will sync when you're back online.",
     "sync_button": "Sync now",
     "queued": "{count} memos queued"
+  },
+  "tag": {
+    "list_title": "Tag Management",
+    "create_button": "Create new tag",
+    "name_placeholder": "Tag name",
+    "color_label": "Color",
+    "edit": "Edit",
+    "delete": "Delete",
+    "delete_confirm": "Delete this tag? This cannot be undone.",
+    "search_placeholder": "Search tags...",
+    "max_reached": "Up to 10 tags per memo",
+    "limit_reached": "You can create up to 100 tags",
+    "no_tags": "No tags yet",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "mood_stats": {
+    "title": "Mood Distribution",
+    "total": "Total"
   }
 }

@@ -31,4 +31,19 @@ public interface ActionMemoTagLinkRepository extends JpaRepository<ActionMemoTag
                     + "WHERE l.memoId IN (SELECT m.id FROM ActionMemoEntity m WHERE m.userId = :userId)")
     List<ActionMemoTagLinkEntity> findByUserId(
             @org.springframework.data.repository.query.Param("userId") Long userId);
+
+    /**
+     * 指定メモに紐付くタグ件数を取得する（1メモ10個上限チェック用。Phase 4）。
+     */
+    long countByMemoId(Long memoId);
+
+    /**
+     * 指定メモ × 指定タグの紐付けが存在するか確認する（重複追加防止用。Phase 4）。
+     */
+    boolean existsByMemoIdAndTagId(Long memoId, Long tagId);
+
+    /**
+     * 指定メモ × 指定タグの中間レコードを取得する（タグ除去用。Phase 4）。
+     */
+    java.util.Optional<ActionMemoTagLinkEntity> findByMemoIdAndTagId(Long memoId, Long tagId);
 }

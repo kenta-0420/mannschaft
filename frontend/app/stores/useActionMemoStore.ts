@@ -4,10 +4,13 @@ import type {
   ActionMemoSettings,
   ActionMemoTag,
   CreateActionMemoPayload,
+  CreateTagPayload,
   Mood,
+  MoodStatsResponse,
   PublishDailyPayload,
   PublishDailyResponse,
   UpdateActionMemoPayload,
+  UpdateTagPayload,
   WeeklySummary,
 } from '~/types/actionMemo'
 
@@ -26,8 +29,10 @@ interface ActionMemoStoreState {
   /** 表示中のメモ一覧（通常は当日分）。新しいものが配列の先頭 */
   memos: ActionMemo[]
   settings: ActionMemoSettings
-  /** Phase 4 でタグ管理を実装する際に利用。Phase 1 では空配列のまま */
+  /** Phase 4: ユーザー所有のタグ一覧 */
   tags: ActionMemoTag[]
+  /** Phase 4: 気分集計データ */
+  moodStats: MoodStatsResponse | null
   loading: boolean
   /** 直近のエラー（429 / 400 等）。i18n キーまたはメッセージ */
   error: string | null
@@ -94,6 +99,7 @@ export const useActionMemoStore = defineStore('actionMemo', {
     memos: [],
     settings: { moodEnabled: false },
     tags: [],
+    moodStats: null,
     loading: false,
     error: null,
     lastError: null,
@@ -337,6 +343,122 @@ export const useActionMemoStore = defineStore('actionMemo', {
       } catch (error) {
         this._handleError(error)
         throw error
+      }
+    },
+
+    // === Tag CRUD (Phase 4) ===
+
+    /**
+     * 自分のタグ一覧を取得する（論理削除済みは含まない）。
+     */
+    async fetchTags(): Promise<void> {
+      this.error = null
+      this.lastError = null
+      try {
+        const api = useActionMemoApi()
+        this.tags = await api.getTags()
+      } catch (error) {
+        this._handleError(error)
+      }
+    },
+
+    /**
+     * タグを作成する。
+     */
+    async createTag(payload: CreateTagPayload): Promise<ActionMemoTag | null> {
+      this.error = null
+      this.lastError = null
+      try {
+        const api = useActionMemoApi()
+        const created = await api.createTag(payload)
+        this.tags.push(created)
+        return created
+      } catch (error) {
+        this._handleError(error)
+        return null
+      }
+    },
+
+    /**
+     * タグを更新する（名前・色）。
+     */
+    async updateTag(tagId: number, payload: UpdateTagPayload): Promise<ActionMemoTag | null> {
+      this.error = null
+      this.lastError = null
+      try {
+        const api = useActionMemoApi()
+        const updated = await api.updateTag(tagId, payload)
+        const idx = this.tags.findIndex((t) => t.id === tagId)
+        if (idx >= 0) this.tags.splice(idx, 1, updated)
+        return updated
+      } catch (error) {
+        this._handleError(error)
+        return null
+      }
+    },
+
+    /**
+     * タグを論理削除する。復活機能なし（§11 #9）。
+     */
+    async deleteTag(tagId: number): Promise<boolean> {
+      this.error = null
+      this.lastError = null
+      try {
+        const api = useActionMemoApi()
+        await api.deleteTag(tagId)
+        this.tags = this.tags.filter((t) => t.id !== tagId)
+        return true
+      } catch (error) {
+        this._handleError(error)
+        return false
+      }
+    },
+
+    /**
+     * メモにタグを追加する（複数可）。
+     */
+    async addTagsToMemo(memoId: number, tagIds: number[]): Promise<boolean> {
+      this.error = null
+      this.lastError = null
+      try {
+        const api = useActionMemoApi()
+        await api.addTagsToMemo(memoId, tagIds)
+        return true
+      } catch (error) {
+        this._handleError(error)
+        return false
+      }
+    },
+
+    /**
+     * メモからタグを除去する。
+     */
+    async removeTagFromMemo(memoId: number, tagId: number): Promise<boolean> {
+      this.error = null
+      this.lastError = null
+      try {
+        const api = useActionMemoApi()
+        await api.removeTagFromMemo(memoId, tagId)
+        return true
+      } catch (error) {
+        this._handleError(error)
+        return false
+      }
+    },
+
+    // === Mood stats (Phase 4) ===
+
+    /**
+     * 期間内の気分分布を取得する。
+     */
+    async fetchMoodStats(from: string, to: string): Promise<void> {
+      this.error = null
+      this.lastError = null
+      try {
+        const api = useActionMemoApi()
+        this.moodStats = await api.getMoodStats({ from, to })
+      } catch (error) {
+        this._handleError(error)
       }
     },
 

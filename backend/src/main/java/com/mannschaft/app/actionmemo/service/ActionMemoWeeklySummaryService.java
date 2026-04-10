@@ -3,7 +3,11 @@ package com.mannschaft.app.actionmemo.service;
 import com.mannschaft.app.actionmemo.ActionMemoMetrics;
 import com.mannschaft.app.actionmemo.ActionMemoMood;
 import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
+import com.mannschaft.app.actionmemo.entity.ActionMemoTagEntity;
+import com.mannschaft.app.actionmemo.entity.ActionMemoTagLinkEntity;
 import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
+import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
+import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.cms.PostStatus;
 import com.mannschaft.app.cms.PostType;
 import com.mannschaft.app.cms.Visibility;
@@ -24,8 +28,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * F02.5 行動メモ 週次まとめブログ自動生成サービス（Phase 3）。
@@ -80,6 +88,8 @@ public class ActionMemoWeeklySummaryService {
             DateTimeFormatter.ofPattern("MM/dd");
 
     private final ActionMemoRepository memoRepository;
+    private final ActionMemoTagLinkRepository tagLinkRepository;
+    private final ActionMemoTagRepository tagRepository;
     private final BlogPostRepository blogPostRepository;
     private final ActionMemoMetrics actionMemoMetrics;
 
@@ -323,9 +333,10 @@ public class ActionMemoWeeklySummaryService {
             sb.append("\n");
         }
 
-        // タグ集計
+        // タグ集計（Phase 4 で有効化）
         sb.append("## 🏷️ よく使ったタグ\n");
-        sb.append("[準備中] タグ集計は Phase 4 で有効化されます。\n\n");
+        appendTagSection(sb, memos);
+        sb.append("\n");
 
         // 代表的なメモ（ランダム抽出3件）
         sb.append("## 📝 今週の代表的なメモ（ランダム抽出）\n");
@@ -366,6 +377,54 @@ public class ActionMemoWeeklySummaryService {
                     moods.stream().map(Enum::name).toList());
             sb.append("- ").append(dayLabel).append(": ")
                     .append(emoji).append(" ").append(moodNames).append("\n");
+        }
+    }
+
+    /**
+     * タグ集計セクションを追記する（Phase 4 で有効化）。
+     *
+     * <p>その週のメモに付いたタグをグルーピング + 件数集計し、上位5件を出力する。
+     * タグが0件の場合は「（タグなし）」と表示する。
+     * 設計書 §5.5 のテンプレートに準拠。</p>
+     */
+    private void appendTagSection(StringBuilder sb, List<ActionMemoEntity> memos) {
+        List<Long> memoIds = memos.stream()
+                .map(ActionMemoEntity::getId)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        if (memoIds.isEmpty()) {
+            sb.append("（タグなし）\n");
+            return;
+        }
+
+        List<ActionMemoTagLinkEntity> links = tagLinkRepository.findByMemoIdIn(memoIds);
+        if (links == null || links.isEmpty()) {
+            sb.append("（タグなし）\n");
+            return;
+        }
+
+        // タグ ID ごとの件数集計
+        Map<Long, Long> tagCounts = links.stream()
+                .collect(Collectors.groupingBy(ActionMemoTagLinkEntity::getTagId, Collectors.counting()));
+
+        // タグ ID → タグ名のマッピング取得（論理削除済みも含む）
+        Set<Long> tagIdSet = tagCounts.keySet();
+        List<ActionMemoTagEntity> tags = tagRepository.findByIdInIncludingDeleted(new ArrayList<>(tagIdSet));
+        Map<Long, String> tagNameById = tags.stream()
+                .collect(Collectors.toMap(ActionMemoTagEntity::getId, ActionMemoTagEntity::getName));
+
+        // 件数降順にソートして上位5件を出力
+        List<Map.Entry<Long, Long>> sorted = tagCounts.entrySet().stream()
+                .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
+                .limit(5)
+                .toList();
+
+        int rank = 1;
+        for (Map.Entry<Long, Long> entry : sorted) {
+            String tagName = tagNameById.getOrDefault(entry.getKey(), "不明");
+            sb.append(rank).append(". #").append(tagName)
+                    .append(" (").append(entry.getValue()).append("件)\n");
+            rank++;
         }
     }
 

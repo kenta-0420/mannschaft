@@ -4,6 +4,8 @@ import com.mannschaft.app.actionmemo.ActionMemoMetrics;
 import com.mannschaft.app.actionmemo.ActionMemoMood;
 import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
 import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
+import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
+import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.cms.Visibility;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
@@ -52,6 +54,12 @@ class ActionMemoWeeklySummaryServiceTest {
 
     @Mock
     private ActionMemoRepository memoRepository;
+
+    @Mock
+    private ActionMemoTagLinkRepository tagLinkRepository;
+
+    @Mock
+    private ActionMemoTagRepository tagRepository;
 
     @Mock
     private BlogPostRepository blogPostRepository;

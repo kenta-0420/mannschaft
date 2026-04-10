@@ -187,6 +187,31 @@ export interface WeeklySummaryListResponse {
   totalPages: number
 }
 
+// === Tag payloads (Phase 4) ===
+
+export interface CreateTagPayload {
+  name: string
+  color?: string
+}
+
+export interface UpdateTagPayload {
+  name?: string
+  color?: string
+}
+
+// === Mood stats (Phase 4) ===
+
+/**
+ * 気分集計レスポンス。
+ *
+ * <p>Backend の {@code MoodStatsResponse} に対応。
+ * {@code distribution} は {@code Mood} をキーとした件数マップ。</p>
+ */
+export interface MoodStatsResponse {
+  total: number
+  distribution: Partial<Record<Mood, number>>
+}
+
 // === Error helpers ===
 
 /**

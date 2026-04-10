@@ -6,7 +6,8 @@
     "settings_link": "Ajustes",
     "back_to_memo": "Volver a notas de acción",
     "closing_link": "Cerrar el día",
-    "weekly_link": "Resumen semanal"
+    "weekly_link": "Resumen semanal",
+    "tags_link": "Gestión de etiquetas"
   },
   "mood": {
     "great": "Excelente",
@@ -98,5 +99,24 @@
     "banner": "Estás sin conexión. Se sincronizará al volver en línea.",
     "sync_button": "Sincronizar ahora",
     "queued": "{count} notas en cola"
+  },
+  "tag": {
+    "list_title": "Gestión de etiquetas",
+    "create_button": "Crear nueva etiqueta",
+    "name_placeholder": "Nombre de etiqueta",
+    "color_label": "Color",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "delete_confirm": "¿Eliminar esta etiqueta? No se puede recuperar.",
+    "search_placeholder": "Buscar etiquetas...",
+    "max_reached": "Máximo 10 etiquetas por nota",
+    "limit_reached": "Puedes crear hasta 100 etiquetas",
+    "no_tags": "Aún no hay etiquetas",
+    "save": "Guardar",
+    "cancel": "Cancelar"
+  },
+  "mood_stats": {
+    "title": "Distribución del ánimo",
+    "total": "Total"
   }
 }

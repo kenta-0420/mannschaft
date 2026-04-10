@@ -5,11 +5,14 @@ import type {
   ActionMemoSettings,
   ActionMemoTag,
   CreateActionMemoPayload,
+  CreateTagPayload,
   ListActionMemoParams,
   Mood,
+  MoodStatsResponse,
   PublishDailyPayload,
   PublishDailyResponse,
   UpdateActionMemoPayload,
+  UpdateTagPayload,
   WeeklySummary,
   WeeklySummaryListResponse,
 } from '~/types/actionMemo'
@@ -31,6 +34,7 @@ import type {
 export function useActionMemoApi() {
   const api = useApi()
   const BASE = '/api/v1/action-memos'
+  const TAGS_BASE = '/api/v1/action-memo-tags'
   const SETTINGS_BASE = '/api/v1/action-memo-settings'
 
   // === 内部ヘルパー: スネーク → キャメル変換 ===
@@ -367,6 +371,115 @@ export function useActionMemoApi() {
     }
   }
 
+  // === Tag CRUD (Phase 4) ===
+
+  type RawTagResponse = {
+    id: number
+    name: string
+    color: string | null
+    sort_order: number
+    deleted: boolean
+  }
+
+  function normalizeTagResponse(raw: RawTagResponse): ActionMemoTag {
+    return {
+      id: raw.id,
+      name: raw.name,
+      color: raw.color ?? null,
+      deleted: raw.deleted === true,
+    }
+  }
+
+  async function getTags(): Promise<ActionMemoTag[]> {
+    try {
+      const res = await api<{ data: RawTagResponse[] }>(TAGS_BASE)
+      return (res.data ?? []).map(normalizeTagResponse)
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
+  async function createTag(payload: CreateTagPayload): Promise<ActionMemoTag> {
+    try {
+      const res = await api<{ data: RawTagResponse }>(TAGS_BASE, {
+        method: 'POST',
+        body: {
+          name: payload.name,
+          color: payload.color ?? undefined,
+        },
+      })
+      return normalizeTagResponse(res.data)
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
+  async function updateTag(id: number, payload: UpdateTagPayload): Promise<ActionMemoTag> {
+    try {
+      const body: Record<string, unknown> = {}
+      if (payload.name !== undefined) body.name = payload.name
+      if (payload.color !== undefined) body.color = payload.color
+      const res = await api<{ data: RawTagResponse }>(`${TAGS_BASE}/${id}`, {
+        method: 'PATCH',
+        body,
+      })
+      return normalizeTagResponse(res.data)
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
+  async function deleteTag(id: number): Promise<void> {
+    try {
+      await api(`${TAGS_BASE}/${id}`, { method: 'DELETE' })
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
+  // === Memo ↔ Tag operations (Phase 4) ===
+
+  async function addTagsToMemo(memoId: number, tagIds: number[]): Promise<void> {
+    try {
+      await api(`${BASE}/${memoId}/tags`, {
+        method: 'POST',
+        body: { tag_ids: tagIds },
+      })
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
+  async function removeTagFromMemo(memoId: number, tagId: number): Promise<void> {
+    try {
+      await api(`${BASE}/${memoId}/tags/${tagId}`, { method: 'DELETE' })
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
+  // === Mood stats (Phase 4) ===
+
+  type RawMoodStatsResponse = {
+    total: number
+    distribution: Record<string, number>
+  }
+
+  async function getMoodStats(params: { from: string; to: string }): Promise<MoodStatsResponse> {
+    const query = new URLSearchParams()
+    query.set('from', params.from)
+    query.set('to', params.to)
+    try {
+      const res = await api<{ data: RawMoodStatsResponse }>(`${BASE}/mood-stats?${query.toString()}`)
+      return {
+        total: res.data.total,
+        distribution: (res.data.distribution ?? {}) as Partial<Record<Mood, number>>,
+      }
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
   return {
     createMemo,
     fetchMemos,
@@ -379,5 +492,12 @@ export function useActionMemoApi() {
     publishDaily,
     fetchWeeklySummaries,
     getWeeklySummary,
+    getTags,
+    createTag,
+    updateTag,
+    deleteTag,
+    addTagsToMemo,
+    removeTagFromMemo,
+    getMoodStats,
   }
 }

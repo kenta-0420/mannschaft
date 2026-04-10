@@ -6,7 +6,8 @@
     "settings_link": "설정",
     "back_to_memo": "행동 메모로 돌아가기",
     "closing_link": "오늘 마치기",
-    "weekly_link": "주간 요약"
+    "weekly_link": "주간 요약",
+    "tags_link": "태그 관리"
   },
   "mood": {
     "great": "최고",
@@ -98,5 +99,24 @@
     "banner": "오프라인 상태입니다. 온라인 복귀 시 동기화됩니다.",
     "sync_button": "지금 동기화",
     "queued": "{count}개 대기 중"
+  },
+  "tag": {
+    "list_title": "태그 관리",
+    "create_button": "새 태그 만들기",
+    "name_placeholder": "태그 이름",
+    "color_label": "색상",
+    "edit": "편집",
+    "delete": "삭제",
+    "delete_confirm": "이 태그를 삭제하시겠습니까? (복원 불가)",
+    "search_placeholder": "태그 검색...",
+    "max_reached": "메모당 최대 10개",
+    "limit_reached": "태그는 최대 100개까지 만들 수 있습니다",
+    "no_tags": "아직 태그가 없습니다",
+    "save": "저장",
+    "cancel": "취소"
+  },
+  "mood_stats": {
+    "title": "기분 분포",
+    "total": "합계"
   }
 }

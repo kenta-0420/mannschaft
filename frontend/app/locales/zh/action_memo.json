@@ -6,7 +6,8 @@
     "settings_link": "设置",
     "back_to_memo": "返回行动备忘",
     "closing_link": "结束今天",
-    "weekly_link": "每周总结"
+    "weekly_link": "每周总结",
+    "tags_link": "标签管理"
   },
   "mood": {
     "great": "极好",
@@ -98,5 +99,24 @@
     "banner": "当前离线，恢复联网时将自动同步。",
     "sync_button": "立即同步",
     "queued": "队列中 {count} 条"
+  },
+  "tag": {
+    "list_title": "标签管理",
+    "create_button": "创建新标签",
+    "name_placeholder": "标签名称",
+    "color_label": "颜色",
+    "edit": "编辑",
+    "delete": "删除",
+    "delete_confirm": "确定要删除此标签吗？（无法恢复）",
+    "search_placeholder": "搜索标签...",
+    "max_reached": "每条备忘最多10个标签",
+    "limit_reached": "最多可创建100个标签",
+    "no_tags": "还没有标签",
+    "save": "保存",
+    "cancel": "取消"
+  },
+  "mood_stats": {
+    "title": "心情分布",
+    "total": "合计"
   }
 }

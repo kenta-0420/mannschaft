@@ -41,8 +41,15 @@ public enum ActionMemoErrorCode implements ErrorCode {
             "該当日のメモがありません", Severity.WARN),
 
     /** 行動メモタグが見つからない（所有者不一致含む。Phase 4 で使用） */
-    ACTION_MEMO_TAG_NOT_FOUND("ACTION_MEMO_008", "タグが見つかりません", Severity.WARN);
+    ACTION_MEMO_TAG_NOT_FOUND("ACTION_MEMO_008", "タグが見つかりません", Severity.WARN),
 
+    /** 1ユーザーあたりのタグ上限（100件）超過（Phase 4） */
+    ACTION_MEMO_TAG_LIMIT_EXCEEDED("ACTION_MEMO_009",
+            "タグの上限（100件）に達しました。不要なタグを削除してから作成してください", Severity.WARN),
+
+    /** 1メモあたりのタグ数上限（10個）超過（Phase 4） */
+    ACTION_MEMO_TAG_PER_MEMO_LIMIT_EXCEEDED("ACTION_MEMO_010",
+            "1メモあたりのタグは10個までです", Severity.WARN);
     private final String code;
     private final String message;
     private final Severity severity;
