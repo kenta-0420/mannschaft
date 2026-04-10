@@ -8,6 +8,7 @@ import com.mannschaft.app.timetable.entity.TimetableChangeEntity;
 import com.mannschaft.app.timetable.entity.TimetableEntity;
 import com.mannschaft.app.timetable.entity.TimetableSlotEntity;
 import com.mannschaft.app.timetable.repository.TimetableChangeRepository;
+import com.mannschaft.app.timetable.repository.TimetableRepository;
 import com.mannschaft.app.timetable.repository.TimetableSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class TimetableSlotService {
 
     private final TimetableSlotRepository slotRepository;
     private final TimetableChangeRepository changeRepository;
+    private final TimetableRepository timetableRepository;
 
     /**
      * 時間割の全スロットを取得する。
@@ -55,8 +57,12 @@ public class TimetableSlotService {
     @Transactional
     public List<TimetableSlotEntity> replaceSlots(Long timetableId, List<SlotData> slots,
                                                    String dayOfWeek) {
-        // DRAFT状態チェック（teamIdが必要なため、slotからtimetableを引く）
-        // timetableIdでスロットを操作するため、timetable自体の存在確認はslotRepository経由で暗黙的に行う
+        // DRAFT状態チェック（設計書要件: スロット編集はDRAFT状態の時間割のみ可能）
+        TimetableEntity timetable = timetableRepository.findById(timetableId)
+                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TIMETABLE_NOT_FOUND));
+        if (!timetable.isDraft()) {
+            throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_DRAFT);
+        }
         validateSlotWeekPatterns(slots);
 
         if (dayOfWeek != null) {
@@ -122,7 +128,7 @@ public class TimetableSlotService {
         Map<LocalDate, List<TimetableChangeEntity>> changesByDate = weekChanges.stream()
                 .collect(Collectors.groupingBy(TimetableChangeEntity::getTargetDate));
 
-        Map<String, List<ResolvedSlot>> days = new java.util.LinkedHashMap<>();
+        Map<String, DayViewData> days = new java.util.LinkedHashMap<>();
 
         String[] dowNames = {"MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"};
         for (int i = 0; i < 7; i++) {
@@ -139,7 +145,16 @@ public class TimetableSlotService {
             List<TimetableChangeEntity> dayChanges =
                     changesByDate.getOrDefault(date, List.of());
 
-            days.put(dow, applyChanges(daySlots, dayChanges));
+            // DAY_OFF チェック
+            TimetableChangeEntity dayOff = dayChanges.stream()
+                    .filter(TimetableChangeEntity::isDayOff)
+                    .findFirst()
+                    .orElse(null);
+            boolean isDayOff = dayOff != null;
+            String dayOffReason = isDayOff ? dayOff.getReason() : null;
+
+            List<ResolvedSlot> slots = isDayOff ? List.of() : applyChanges(daySlots, dayChanges);
+            days.put(dow, new DayViewData(date, isDayOff, dayOffReason, slots));
         }
 
         return new WeeklyViewData(
@@ -358,6 +373,16 @@ public class TimetableSlotService {
     ) {}
 
     /**
+     * 曜日ごとの日次ビューデータ（日付・DAY_OFF情報・スロット一覧）。
+     */
+    public record DayViewData(
+            LocalDate date,
+            boolean isDayOff,
+            String dayOffReason,
+            List<ResolvedSlot> slots
+    ) {}
+
+    /**
      * 週次ビューデータ。
      */
     public record WeeklyViewData(
@@ -368,6 +393,6 @@ public class TimetableSlotService {
             boolean weekPatternEnabled,
             WeekPattern currentWeekPattern,
             List<String> periods,
-            Map<String, List<ResolvedSlot>> days
+            Map<String, DayViewData> days
     ) {}
 }
