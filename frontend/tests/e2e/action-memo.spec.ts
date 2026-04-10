@@ -17,6 +17,7 @@ import { waitForHydration } from './helpers/wait'
 const ACTION_MEMO_API = '**/api/v1/action-memos**'
 const ACTION_MEMO_SETTINGS_API = '**/api/v1/action-memo-settings'
 const TODO_MY_API = '**/api/v1/todos/my'
+const BLOG_POSTS_API = '**/api/v1/blog/posts**'
 
 interface MockState {
   memos: Array<{
@@ -326,5 +327,93 @@ test.describe('F02.5: 行動メモ', () => {
     await page.waitForURL('**/action-memo', { timeout: 10_000 })
     // リダイレクト先に戻ったことを確認（メモ一覧が見える）
     await expect(page.getByText('朝散歩した')).toBeVisible({ timeout: 5_000 })
+  })
+
+  test('AM-006 (Phase 3): メインページ → 週次まとめリンク → /action-memo/weekly に遷移 → 一覧表示', async ({
+    page,
+  }) => {
+    const state: MockState = { memos: [], moodEnabled: false, nextId: 1 }
+    await setupActionMemoMocks(page, state)
+
+    // BlogPost API のモック（週次まとめ用）
+    await page.route(BLOG_POSTS_API, async (route) => {
+      const method = route.request().method()
+      if (method === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: [
+              {
+                id: 101,
+                title: '週次ふりかえり: 2026-03-30 〜 2026-04-05',
+                body: '# 週次ふりかえり: 2026-03-30 〜 2026-04-05\n\n## 今週のサマリー\n- メモ件数: 15件\n- 投稿日数: 6/7日\n- 平均気分: GOOD',
+                publishedAt: '2026-04-05T21:00:00',
+                visibility: 'PRIVATE',
+              },
+              {
+                id: 102,
+                title: '週次ふりかえり: 2026-04-06 〜 2026-04-12',
+                body: '# 週次ふりかえり: 2026-04-06 〜 2026-04-12\n\n## 今週のサマリー\n- メモ件数: 20件\n- 投稿日数: 7/7日',
+                publishedAt: '2026-04-12T21:00:00',
+                visibility: 'PRIVATE',
+              },
+              {
+                id: 200,
+                title: '通常のブログ記事',
+                body: 'これは週次まとめではない普通の非公開記事です',
+                publishedAt: '2026-04-10T12:00:00',
+                visibility: 'PRIVATE',
+              },
+            ],
+            meta: { page: 0, size: 20, totalElements: 3, totalPages: 1 },
+          }),
+        })
+      } else {
+        await route.fulfill({ status: 404, body: '' })
+      }
+    })
+
+    // メインページを開く
+    await page.goto('/action-memo')
+    await waitForHydration(page)
+
+    // 「週次まとめ」リンクが表示される
+    const weeklyLink = page.locator('[data-testid="action-memo-weekly-link"]')
+    await expect(weeklyLink).toBeVisible({ timeout: 10_000 })
+
+    // クリックして週次まとめページに遷移
+    await weeklyLink.click()
+    await page.waitForURL('**/action-memo/weekly', { timeout: 10_000 })
+    await waitForHydration(page)
+
+    // ページタイトルが表示される
+    await expect(page.locator('[data-testid="action-memo-weekly-title"]')).toBeVisible({
+      timeout: 10_000,
+    })
+
+    // 週次まとめカードが表示される（「週次ふりかえり: 」で始まるもののみ = 2件）
+    const weeklyList = page.locator('[data-testid="action-memo-weekly-list"]')
+    await expect(weeklyList).toBeVisible({ timeout: 10_000 })
+
+    // タイトルに「週次ふりかえり」が含まれるカードが2件表示される
+    await expect(page.locator('[data-testid="action-memo-weekly-card-101"]')).toBeVisible()
+    await expect(page.locator('[data-testid="action-memo-weekly-card-102"]')).toBeVisible()
+
+    // 通常のブログ記事（id=200）は表示されない
+    await expect(page.locator('[data-testid="action-memo-weekly-card-200"]')).toHaveCount(0)
+
+    // 「詳細を見る」ボタンでモーダルが開く
+    await page.locator('[data-testid="action-memo-weekly-view-detail-102"]').click()
+    await expect(page.locator('[data-testid="action-memo-weekly-detail-modal"]')).toBeVisible({
+      timeout: 5_000,
+    })
+
+    // モーダル内にタイトルが表示される
+    await expect(page.getByText('週次ふりかえり: 2026-04-06 〜 2026-04-12')).toBeVisible()
+
+    // モーダルを閉じる
+    await page.locator('[data-testid="action-memo-weekly-detail-close"]').click()
+    await expect(page.locator('[data-testid="action-memo-weekly-detail-modal"]')).toHaveCount(0)
   })
 })
