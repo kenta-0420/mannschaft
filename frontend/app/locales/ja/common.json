@@ -123,7 +123,13 @@
     "week_label": "{start} 〜 {end}",
     "week_pattern_a": "A週",
     "week_pattern_b": "B週",
-    "week_pattern_every": "毎週"
+    "week_pattern_every": "毎週",
+    "no_change": "臨時変更がありません",
+    "visibility_label": "公開範囲",
+    "period_all": "全コマ",
+    "period_number_placeholder": "時限番号",
+    "period_suffix": "限",
+    "term_name_placeholder": "例: 1学期"
   },
   "error": {
     "server": "サーバーエラーが発生しました",

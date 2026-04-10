@@ -196,7 +196,7 @@ onMounted(loadData)
             <InputText
               v-model="termForm.name"
               class="w-full"
-              placeholder="例: 1学期"
+              :placeholder="$t('timetable.term_name_placeholder')"
             />
           </div>
           <div>

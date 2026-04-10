@@ -297,10 +297,10 @@ const changeTypeOptions = computed(() => [
   { label: t('timetable.change_type_day_off'), value: 'DAY_OFF' },
 ])
 
-const visibilityOptions = [
-  { label: 'メンバーのみ', value: 'MEMBERS_ONLY' },
-  { label: '公開', value: 'PUBLIC' },
-]
+const visibilityOptions = computed(() => [
+  { label: t('timetable.visibility_members_only'), value: 'MEMBERS_ONLY' },
+  { label: t('timetable.visibility_public'), value: 'PUBLIC' },
+])
 
 onMounted(loadData)
 
@@ -513,7 +513,7 @@ watch(activeTab, (tab) => {
                             :style="slot.color ? { backgroundColor: slot.color + '20' } : {}"
                           >
                             <p class="text-xs font-semibold text-surface-400">
-                              {{ slot.periodNumber }}限
+                              {{ slot.periodNumber }}{{ $t('timetable.period_suffix') }}
                             </p>
                             <p
                               class="font-medium"
@@ -636,12 +636,12 @@ watch(activeTab, (tab) => {
             </div>
             <DataTable :value="changes" data-key="id" striped-rows>
               <template #empty>
-                <div class="py-8 text-center text-surface-500">臨時変更がありません</div>
+                <div class="py-8 text-center text-surface-500">{{ $t('timetable.no_change') }}</div>
               </template>
               <Column field="targetDate" :header="$t('timetable.change_date')" />
               <Column :header="$t('timetable.period_number')">
                 <template #body="{ data }">
-                  {{ data.periodNumber != null ? data.periodNumber + '限' : '全コマ' }}
+                  {{ data.periodNumber != null ? data.periodNumber + $t('timetable.period_suffix') : $t('timetable.period_all') }}
                 </template>
               </Column>
               <Column :header="$t('timetable.change_type')">
@@ -727,7 +727,7 @@ watch(activeTab, (tab) => {
           </div>
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">公開範囲</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('timetable.visibility_label') }}</label>
           <Select
             v-model="createForm.visibility"
             :options="visibilityOptions"
@@ -780,7 +780,7 @@ watch(activeTab, (tab) => {
               :min="1"
               :max="15"
               :disabled="changeForm.changeType === 'DAY_OFF'"
-              :placeholder="changeForm.changeType === 'DAY_OFF' ? '全コマ' : '時限番号'"
+              :placeholder="changeForm.changeType === 'DAY_OFF' ? $t('timetable.period_all') : $t('timetable.period_number_placeholder')"
             />
           </div>
         </div>

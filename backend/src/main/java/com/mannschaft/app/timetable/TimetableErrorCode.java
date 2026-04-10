@@ -32,6 +32,7 @@ public enum TimetableErrorCode implements ErrorCode {
     PERIOD_OVERRIDE_REQUIRED("TIMETABLE_030", "時限設定が必要です", Severity.WARN),
     INVALID_PERIOD_OVERRIDE("TIMETABLE_031", "時限設定が不正です", Severity.WARN),
     BREAK_PERIOD_ASSIGNED("TIMETABLE_032", "休憩時限にはスロットを割り当てられません", Severity.WARN),
+    SUBJECT_NAME_REQUIRED("TIMETABLE_033", "科目名は必須です", Severity.WARN),
 
     // ---- Effective Date Validation ----
     EFFECTIVE_DATE_OUT_OF_TERM("TIMETABLE_040", "有効期間が学期の範囲外です", Severity.WARN),

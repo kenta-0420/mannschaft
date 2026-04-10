@@ -164,7 +164,7 @@ public class TimetableChangeService {
         if ((data.changeType() == TimetableChangeType.REPLACE
                 || data.changeType() == TimetableChangeType.ADD)
                 && (data.subjectName() == null || data.subjectName().isBlank())) {
-            throw new BusinessException(TimetableErrorCode.BREAK_PERIOD_ASSIGNED);
+            throw new BusinessException(TimetableErrorCode.SUBJECT_NAME_REQUIRED);
         }
     }
 

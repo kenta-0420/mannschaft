@@ -123,7 +123,13 @@
     "week_label": "{start} – {end}",
     "week_pattern_a": "Week A",
     "week_pattern_b": "Week B",
-    "week_pattern_every": "Every Week"
+    "week_pattern_every": "Every Week",
+    "no_change": "No temporary changes",
+    "visibility_label": "Visibility",
+    "period_all": "All Periods",
+    "period_number_placeholder": "Period Number",
+    "period_suffix": "",
+    "term_name_placeholder": "e.g. 1st Term"
   },
   "error": {
     "server": "A server error occurred",

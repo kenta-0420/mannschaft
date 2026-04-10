@@ -91,7 +91,7 @@ export function useTimetableApi() {
   }
 
   async function getWeekly(teamId: number, timetableId: number, weekOf?: string) {
-    const qs = weekOf ? `?week_of=${weekOf}` : ''
+    const qs = weekOf ? `?weekOf=${weekOf}` : ''
     const res = await api<{ data: WeeklyView }>(
       `/api/v1/teams/${teamId}/timetables/${timetableId}/weekly${qs}`,
     )
