@@ -46,7 +46,13 @@ public class GlobalExceptionHandler {
             Map.entry("ACTION_MEMO_006", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_008", HttpStatus.NOT_FOUND),
             // F02.5 publish-daily: 対象日0件は 400 を明示（Severity.WARN 既定と同じだが宣言的に）
-            Map.entry("ACTION_MEMO_007", HttpStatus.BAD_REQUEST)
+            Map.entry("ACTION_MEMO_007", HttpStatus.BAD_REQUEST),
+            // F11.1 オフライン同期
+            Map.entry("SYNC_002", HttpStatus.PAYLOAD_TOO_LARGE),
+            Map.entry("SYNC_003", HttpStatus.TOO_MANY_REQUESTS),
+            Map.entry("SYNC_004", HttpStatus.NOT_FOUND),
+            Map.entry("SYNC_005", HttpStatus.FORBIDDEN),
+            Map.entry("SYNC_006", HttpStatus.CONFLICT)
     );
 
     /**
