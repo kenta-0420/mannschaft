@@ -9,19 +9,36 @@
     "complete": "Sincronizacion completa",
     "failed": "Error de sincronizacion",
     "result_summary": "Se sincronizaron {success} de {total} elementos",
+    "result_with_conflict": "Se sincronizaron {success} de {total}. Se encontraron {conflicts} conflicto(s)",
     "conflict_found": "Se encontraron {count} conflicto(s)",
     "pending_badge": "{count} sin enviar",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "nav_label": "Sincronizacion",
+    "view_conflicts": "Ver conflictos"
   },
   "conflict": {
     "title": "Conflicto de datos",
+    "page_title": "Conflictos sin resolver",
     "client_data": "Tus datos",
     "server_data": "Datos del servidor",
     "use_mine": "Usar mis datos",
     "use_server": "Usar datos del servidor",
     "manual_merge": "Combinar manualmente",
     "discard": "Descartar",
-    "resolved": "Conflicto resuelto"
+    "discard_confirm": "Estas seguro de que quieres descartar este conflicto?",
+    "resolved": "Conflicto resuelto",
+    "discarded": "Conflicto descartado",
+    "empty": "No hay conflictos sin resolver",
+    "resource_type": "Tipo de recurso",
+    "resource_id": "ID de recurso",
+    "created_at": "Fecha de ocurrencia",
+    "resolve_button": "Resolver",
+    "loading": "Cargando...",
+    "error_load": "Error al cargar el conflicto",
+    "error_resolve": "Error al resolver el conflicto",
+    "client_version": "Version del cliente",
+    "server_version": "Version del servidor",
+    "diff_highlight": "Diferencia"
   },
   "pwa": {
     "install_prompt": "Agrega a la pantalla de inicio para usarlo como una aplicacion",

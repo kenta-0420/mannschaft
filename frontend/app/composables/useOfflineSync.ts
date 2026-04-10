@@ -48,6 +48,7 @@ export function useOfflineSync() {
   /**
    * PENDING + FAILED のアイテムを createdAt 昇順で取得し、
    * 50 件ずつバッチで POST /api/v1/sync に送信する。
+   * 完了後はトースト通知で結果サマリーを表示する。
    */
   async function syncAll(): Promise<{ success: number; failed: number; conflicts: number }> {
     if (syncStore.syncInProgress) return { success: 0, failed: 0, conflicts: 0 }
@@ -70,11 +71,58 @@ export function useOfflineSync() {
 
       syncStore.finishSync()
       await updatePendingCount()
+      showSyncResultToast(result)
       return result
     } catch {
       syncStore.finishSync()
       await updatePendingCount()
       return { success: 0, failed: 0, conflicts: 0 }
+    }
+  }
+
+  /**
+   * 同期結果をトースト通知する。
+   */
+  function showSyncResultToast(result: { success: number; failed: number; conflicts: number }) {
+    const total = result.success + result.failed + result.conflicts
+    if (total === 0) return
+
+    try {
+      const toast = useNuxtApp().$toast as
+        | { add: (opts: Record<string, unknown>) => void }
+        | undefined
+      if (!toast) return
+
+      const { t } = useI18n()
+
+      if (result.conflicts > 0) {
+        toast.add({
+          severity: 'warn',
+          summary: t('sync.complete'),
+          detail: t('sync.result_with_conflict', {
+            total,
+            success: result.success,
+            conflicts: result.conflicts,
+          }),
+          life: 8000,
+        })
+      } else if (result.failed > 0) {
+        toast.add({
+          severity: 'error',
+          summary: t('sync.failed'),
+          detail: t('sync.result_summary', { total, success: result.success }),
+          life: 5000,
+        })
+      } else {
+        toast.add({
+          severity: 'success',
+          summary: t('sync.complete'),
+          detail: t('sync.result_summary', { total, success: result.success }),
+          life: 3000,
+        })
+      }
+    } catch {
+      // トースト通知に失敗しても同期処理自体は続行する
     }
   }
 
