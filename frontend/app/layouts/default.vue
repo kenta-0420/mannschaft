@@ -89,6 +89,7 @@ function isActive(path: string): boolean {
         <div class="flex items-center gap-3">
           <ClientOnly>
             <template v-if="authStore.isAuthenticated">
+              <SyncProgressIndicator />
               <NotificationBell />
               <Button
                 v-tooltip.bottom="'ログアウト'"
@@ -114,6 +115,11 @@ function isActive(path: string): boolean {
         </div>
       </div>
     </header>
+
+    <!-- PWA: オフラインバナー -->
+    <ClientOnly>
+      <OfflineStatusBanner />
+    </ClientOnly>
 
     <!-- メインコンテンツ -->
     <main class="mx-auto max-w-screen-2xl p-4">

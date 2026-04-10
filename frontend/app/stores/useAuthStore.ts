@@ -59,7 +59,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    logout() {
+    async logout() {
       this.accessToken = null
       this.refreshToken = null
       this.user = null
@@ -67,6 +67,24 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('currentUser')
+
+        // PWA: Cache Storage をクリア
+        if ('caches' in window) {
+          try {
+            const names = await caches.keys()
+            await Promise.all(names.map((name) => caches.delete(name)))
+          } catch {
+            // キャッシュ削除失敗は握りつぶす（ログアウト自体は継続）
+          }
+        }
+
+        // PWA: IndexedDB (Dexie) のオフライン DB をクリア
+        try {
+          const { offlineDb } = await import('~/composables/useOfflineDb')
+          await offlineDb.delete()
+        } catch {
+          // DB 削除失敗は握りつぶす
+        }
       }
       navigateTo('/login')
     },

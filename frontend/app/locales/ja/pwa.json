@@ -1,0 +1,32 @@
+{
+  "offline": {
+    "status_banner": "オフラインモード — データはローカルに保存されます",
+    "back_online": "オンラインに復帰しました",
+    "saved_locally": "オフラインで保存しました。オンラインに戻ると自動送信されます"
+  },
+  "sync": {
+    "in_progress": "同期中...",
+    "complete": "同期完了",
+    "failed": "同期に失敗しました",
+    "result_summary": "{success}件中{total}件を同期しました",
+    "conflict_found": "{count}件のコンフリクトがあります",
+    "pending_badge": "未送信 {count}件",
+    "retry": "再試行"
+  },
+  "conflict": {
+    "title": "データの競合",
+    "client_data": "あなたのデータ",
+    "server_data": "サーバーのデータ",
+    "use_mine": "自分のデータを採用",
+    "use_server": "サーバーのデータを採用",
+    "manual_merge": "手動でマージ",
+    "discard": "破棄する",
+    "resolved": "コンフリクトを解決しました"
+  },
+  "pwa": {
+    "install_prompt": "ホーム画面に追加すると、アプリのように使えます",
+    "install_button": "インストール",
+    "update_available": "新しいバージョンが利用可能です",
+    "update_button": "更新する"
+  }
+}
