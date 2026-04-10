@@ -126,6 +126,11 @@ dependencies {
     // === Bucket4j レート制限（F12.5 エラーレポート） ===
     implementation("com.bucket4j:bucket4j-core:8.10.1")
 
+    // === Caffeine キャッシュ（F11.1 SyncRateLimitFilter の TTL 付きバケット保持） ===
+    // ConcurrentHashMap は Eviction がなく長期稼働で OOM を招くため、
+    // expireAfterAccess + maximumSize で自動淘汰されるキャッシュに差し替える。
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+
     // === HTML サニタイズ（F02.5 publish-daily extra_comment 用。将来 F04.1 統合検討） ===
     implementation("org.jsoup:jsoup:1.18.1")
 }
