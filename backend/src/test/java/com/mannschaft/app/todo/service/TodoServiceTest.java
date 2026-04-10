@@ -11,6 +11,7 @@ import com.mannschaft.app.todo.dto.CreateTodoRequest;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
+import com.mannschaft.app.todo.dto.PatchTodoRequest;
 import com.mannschaft.app.todo.dto.UpdateTodoRequest;
 import com.mannschaft.app.todo.ProjectStatus;
 import com.mannschaft.app.todo.ProjectVisibility;
@@ -1109,6 +1110,90 @@ class TodoServiceTest {
 
             // then
             assertThat(result.getData()).hasSize(2);
+        }
+    }
+
+    // ========================================
+    // patchTodo
+    // ========================================
+
+    @Nested
+    @DisplayName("patchTodo")
+    class PatchTodo {
+
+        @Test
+        @DisplayName("正常系: dueDate が更新される")
+        void patchTodo_dueDate更新_成功() {
+            // Given
+            TodoEntity todo = createOpenTodo();
+            LocalDate newDueDate = LocalDate.now().plusDays(1);
+            PatchTodoRequest request = new PatchTodoRequest(newDueDate);
+
+            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
+            given(assigneeRepository.existsByTodoIdAndUserId(TODO_ID, USER_ID)).willReturn(true);
+            given(todoRepository.save(any(TodoEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
+
+            // When
+            ApiResponse<TodoResponse> response = todoService.patchTodo(TODO_ID, USER_ID, request);
+
+            // Then
+            assertThat(response.getData().getDueDate()).isEqualTo(newDueDate);
+            verify(todoRepository).save(any(TodoEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: dueDate が null の場合は変更されない")
+        void patchTodo_dueDateNull_変更なし() {
+            // Given
+            TodoEntity todo = createOpenTodo();
+            LocalDate originalDueDate = todo.getDueDate();
+            PatchTodoRequest request = new PatchTodoRequest(null);
+
+            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
+            given(assigneeRepository.existsByTodoIdAndUserId(TODO_ID, USER_ID)).willReturn(true);
+            given(todoRepository.save(any(TodoEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
+
+            // When
+            ApiResponse<TodoResponse> response = todoService.patchTodo(TODO_ID, USER_ID, request);
+
+            // Then
+            assertThat(response.getData().getDueDate()).isEqualTo(originalDueDate);
+        }
+
+        @Test
+        @DisplayName("異常系: TODO不在でTODO_010例外")
+        void patchTodo_不在_TODO010例外() {
+            // Given
+            PatchTodoRequest request = new PatchTodoRequest(LocalDate.now().plusDays(1));
+            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.empty());
+
+            // When / Then
+            assertThatThrownBy(() -> todoService.patchTodo(TODO_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_010"));
+        }
+
+        @Test
+        @DisplayName("異常系: 他人のTODOを更新しようとするとTODO_010例外")
+        void patchTodo_他人のTODO_TODO010例外() {
+            // Given
+            TodoEntity todo = createOpenTodo();
+            Long otherUserId = 999L;
+            PatchTodoRequest request = new PatchTodoRequest(LocalDate.now().plusDays(1));
+
+            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
+            given(assigneeRepository.existsByTodoIdAndUserId(TODO_ID, otherUserId)).willReturn(false);
+
+            // When / Then
+            assertThatThrownBy(() -> todoService.patchTodo(TODO_ID, otherUserId, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_010"));
         }
     }
 }
