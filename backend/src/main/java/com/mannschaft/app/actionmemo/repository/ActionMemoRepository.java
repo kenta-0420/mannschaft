@@ -47,6 +47,29 @@ public interface ActionMemoRepository extends JpaRepository<ActionMemoEntity, Lo
             Long userId, LocalDate from, LocalDate to);
 
     /**
+     * 指定期間にメモを1件以上書いたユーザーの ID リストを distinct で取得する（週次バッチ用。Phase 3）。
+     * {@code @SQLRestriction} により論理削除済みは自動除外される。
+     */
+    @Query("SELECT DISTINCT m.userId FROM ActionMemoEntity m "
+            + "WHERE m.memoDate >= :fromDate AND m.memoDate <= :toDate")
+    List<Long> findDistinctUserIdsByMemoDateBetween(
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate);
+
+    /**
+     * 指定ユーザーの指定期間のメモを時系列昇順で取得する（週次バッチ用。Phase 3）。
+     * {@code @SQLRestriction} により論理削除済みは自動除外される。
+     */
+    @Query("SELECT m FROM ActionMemoEntity m "
+            + "WHERE m.userId = :userId "
+            + "AND m.memoDate >= :fromDate AND m.memoDate <= :toDate "
+            + "ORDER BY m.memoDate ASC, m.createdAt ASC")
+    List<ActionMemoEntity> findByUserIdAndMemoDateBetweenOrderByMemoDateAscCreatedAtAsc(
+            @Param("userId") Long userId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate);
+
+    /**
      * 自分のメモを memoDate 降順・createdAt 降順で取得する（一覧 API 用）。
      * カーソルページネーション: {@code cursorId} 以降（= より古い）を取得する。
      */
