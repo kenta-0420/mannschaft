@@ -8,6 +8,7 @@ import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoTagSummary;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
 import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
+import com.mannschaft.app.actionmemo.dto.MoodStatsResponse;
 import com.mannschaft.app.actionmemo.dto.PublishDailyRequest;
 import com.mannschaft.app.actionmemo.dto.PublishDailyResponse;
 import com.mannschaft.app.actionmemo.dto.UpdateActionMemoRequest;
@@ -36,7 +37,9 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -512,6 +515,47 @@ public class ActionMemoService {
 
 
     // ==================================================================
+    // 気分集計（Phase 4）
+    // ==================================================================
+
+    /**
+     * 期間内の気分（mood）分布を取得する。
+     *
+     * <p>設計書 §9 Phase 4「気分集計表示」。
+     * {@code mood_enabled = true} のユーザーのみ意味があるが、
+     * API 自体は全ユーザーに開放（0件なら {@code total: 0} で返す）。</p>
+     *
+     * @param userId 現在のユーザー
+     * @param from   期間開始日（含む）
+     * @param to     期間終了日（含む）
+     * @return 気分分布レスポンス
+     */
+    public MoodStatsResponse getMoodStats(Long userId, LocalDate from, LocalDate to) {
+        List<ActionMemoEntity> memos = memoRepository
+                .findByUserIdAndMemoDateBetweenOrderByMemoDateAscCreatedAtAsc(userId, from, to);
+
+        Map<ActionMemoMood, Integer> counts = new EnumMap<>(ActionMemoMood.class);
+        for (ActionMemoEntity memo : memos) {
+            if (memo.getMood() != null) {
+                counts.merge(memo.getMood(), 1, Integer::sum);
+            }
+        }
+
+        int total = counts.values().stream().mapToInt(Integer::intValue).sum();
+
+        // EnumMap → String キーの LinkedHashMap に変換（JSON の順序保持）
+        Map<String, Integer> distribution = new LinkedHashMap<>();
+        for (ActionMemoMood mood : ActionMemoMood.values()) {
+            distribution.put(mood.name(), counts.getOrDefault(mood, 0));
+        }
+
+        return MoodStatsResponse.builder()
+                .total(total)
+                .distribution(distribution)
+                .build();
+    }
+
+    // ==================================================================
     // プライベートヘルパー
     // ==================================================================
 
@@ -568,6 +612,8 @@ public class ActionMemoService {
 
     /**
      * 1メモ分のタグ一覧を取得する。
+     *
+     * <p>Phase 4: 論理削除済みタグも含めて取得する（設計書 §3「削除済みタグの API レスポンス表現」）。</p>
      */
     private List<ActionMemoTagEntity> fetchTagsForMemo(Long memoId) {
         List<ActionMemoTagLinkEntity> links = tagLinkRepository.findByMemoId(memoId);
@@ -575,13 +621,15 @@ public class ActionMemoService {
             return List.of();
         }
         List<Long> tagIds = links.stream().map(ActionMemoTagLinkEntity::getTagId).toList();
-        return tagRepository.findAllById(tagIds);
+        return tagRepository.findByIdInIncludingDeleted(tagIds);
     }
 
     /**
      * 一括: 複数メモ分のタグ一覧を一度に取得する（N+1 対策）。
-     * 論理削除済みタグも含むため注意（@SQLRestriction で除外される実装ではあるが、
-     * 本来は削除済みタグも表示する必要があるため findAllById を直接使わない選択肢もある）。
+     *
+     * <p>Phase 4: 論理削除済みタグも含めて取得する。設計書 §3「削除済みタグの API レスポンス表現」に従い、
+     * {@code @SQLRestriction} を回避するネイティブクエリ {@code findByIdInIncludingDeleted} を使用する。
+     * メモ取得時には削除済みタグも {@code deleted: true} フラグ付きで返す。</p>
      */
     private Map<Long, List<ActionMemoTagEntity>> fetchTagsForMemos(List<Long> memoIds) {
         if (memoIds == null || memoIds.isEmpty()) {
@@ -592,7 +640,8 @@ public class ActionMemoService {
             return Collections.emptyMap();
         }
         Set<Long> tagIdSet = links.stream().map(ActionMemoTagLinkEntity::getTagId).collect(Collectors.toSet());
-        List<ActionMemoTagEntity> tags = tagRepository.findAllById(tagIdSet);
+        // Phase 4: 論理削除済みタグも含めて取得（@SQLRestriction を回避）
+        List<ActionMemoTagEntity> tags = tagRepository.findByIdInIncludingDeleted(new ArrayList<>(tagIdSet));
         Map<Long, ActionMemoTagEntity> tagById = tags.stream()
                 .collect(Collectors.toMap(ActionMemoTagEntity::getId, t -> t));
 
@@ -608,11 +657,16 @@ public class ActionMemoService {
 
     /**
      * Entity → Response マッピング。
+     *
+     * <p>Phase 4: 論理削除済みタグも含まれるため {@code deletedAt != null} で
+     * {@code deleted} フラグを判定する（設計書 §3「削除済みタグの API レスポンス表現」）。</p>
      */
     private ActionMemoResponse toResponse(ActionMemoEntity memo, List<ActionMemoTagEntity> tags) {
         List<ActionMemoTagSummary> tagSummaries = tags == null ? List.of()
                 : tags.stream()
-                        .map(t -> new ActionMemoTagSummary(t.getId(), t.getName(), t.getColor(), false))
+                        .map(t -> new ActionMemoTagSummary(
+                                t.getId(), t.getName(), t.getColor(),
+                                t.getDeletedAt() != null))
                         .toList();
 
         return ActionMemoResponse.builder()

@@ -2,12 +2,15 @@ package com.mannschaft.app.actionmemo.controller;
 
 import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
+import com.mannschaft.app.actionmemo.dto.AddTagsToMemoRequest;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
 import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
+import com.mannschaft.app.actionmemo.dto.MoodStatsResponse;
 import com.mannschaft.app.actionmemo.dto.PublishDailyRequest;
 import com.mannschaft.app.actionmemo.dto.PublishDailyResponse;
 import com.mannschaft.app.actionmemo.dto.UpdateActionMemoRequest;
 import com.mannschaft.app.actionmemo.service.ActionMemoService;
+import com.mannschaft.app.actionmemo.service.ActionMemoTagService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,8 +38,7 @@ import java.time.LocalDate;
  * <p>すべてのエンドポイントは認証ユーザー自身のデータのみを操作対象とする。
  * 所有者不一致・存在しない・論理削除済みは全て 404 を返す（IDOR 対策）。</p>
  *
- * <p><b>Phase 2 スコープ</b>: CRUD + link-todo + {@code publish-daily}。
- * タグ系 API は Phase 4 で実装する。</p>
+ * <p><b>Phase 4 スコープ</b>: CRUD + link-todo + {@code publish-daily} + タグ追加/除去 + 気分集計。</p>
  */
 @RestController
 @RequestMapping("/api/v1/action-memos")
@@ -45,6 +47,7 @@ import java.time.LocalDate;
 public class ActionMemoController {
 
     private final ActionMemoService actionMemoService;
+    private final ActionMemoTagService actionMemoTagService;
 
     /**
      * 行動メモを1件作成する。
@@ -138,5 +141,60 @@ public class ActionMemoController {
         PublishDailyResponse response = actionMemoService.publishDaily(
                 request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    // ==================================================================
+    // メモへのタグ追加/除去（Phase 4）
+    // ==================================================================
+
+    /**
+     * メモにタグを追加する（複数可）。1メモ10個上限。
+     *
+     * <p>設計書 §4: {@code POST /api/v1/action-memos/{id}/tags}。
+     * URL パスが {@code /action-memos/{id}/tags} のため RESTful に本コントローラーに配置。</p>
+     */
+    @PostMapping("/{id}/tags")
+    @Operation(summary = "メモにタグを追加")
+    public ResponseEntity<Void> addTagsToMemo(
+            @PathVariable Long id,
+            @Valid @RequestBody AddTagsToMemoRequest request) {
+        actionMemoTagService.addTagsToMemo(id, request.getTagIds(), SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * メモからタグを除去する。
+     *
+     * <p>設計書 §4: {@code DELETE /api/v1/action-memos/{id}/tags/{tagId}}。</p>
+     */
+    @DeleteMapping("/{id}/tags/{tagId}")
+    @Operation(summary = "メモからタグを除去")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "除去成功")
+    public ResponseEntity<Void> removeTagFromMemo(
+            @PathVariable Long id,
+            @PathVariable Long tagId) {
+        actionMemoTagService.removeTagFromMemo(id, tagId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    // ==================================================================
+    // 気分集計（Phase 4）
+    // ==================================================================
+
+    /**
+     * 期間内の気分（mood）分布を取得する。
+     *
+     * <p>設計書 §9 Phase 4「気分集計表示」。
+     * {@code mood_enabled = true} のユーザーのみ意味があるが、
+     * API 自体は全ユーザーに開放（0件なら {@code total: 0} で返す）。</p>
+     */
+    @GetMapping("/mood-stats")
+    @Operation(summary = "気分集計取得")
+    public ResponseEntity<ApiResponse<MoodStatsResponse>> getMoodStats(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        MoodStatsResponse response = actionMemoService.getMoodStats(
+                SecurityUtils.getCurrentUserId(), from, to);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }
