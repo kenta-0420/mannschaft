@@ -31,7 +31,64 @@ export default defineNuxtConfig({
     '@vueuse/nuxt',
     '@nuxt/image',
     '@nuxt/eslint',
+    '@vite-pwa/nuxt',
   ],
+
+  pwa: {
+    registerType: 'autoUpdate',
+    manifest: {
+      name: 'Mannschaft',
+      short_name: 'Mannschaft',
+      description: '汎用組織管理プラットフォーム',
+      theme_color: '#3B82F6',
+      background_color: '#ffffff',
+      display: 'standalone',
+      start_url: '/',
+      icons: [
+        { src: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+        {
+          src: '/icons/icon-512x512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable',
+        },
+      ],
+    },
+    workbox: {
+      navigateFallback: '/',
+      globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+      runtimeCaching: [
+        {
+          urlPattern: /^https?:\/\/.*\/api\/v1\/.*$/,
+          handler: 'StaleWhileRevalidate' as const,
+          method: 'GET',
+          options: {
+            cacheName: 'api-cache',
+            expiration: { maxEntries: 200, maxAgeSeconds: 86400 },
+            cacheableResponse: { statuses: [0, 200] },
+          },
+        },
+        {
+          urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
+          handler: 'CacheFirst' as const,
+          options: {
+            cacheName: 'image-cache',
+            expiration: { maxEntries: 300, maxAgeSeconds: 604800 },
+            cacheableResponse: { statuses: [0, 200] },
+          },
+        },
+        {
+          urlPattern: /\.(?:woff|woff2|ttf|eot)$/,
+          handler: 'CacheFirst' as const,
+          options: {
+            cacheName: 'font-cache',
+            expiration: { maxEntries: 20, maxAgeSeconds: 2592000 },
+          },
+        },
+      ],
+    },
+  },
 
   css: ['~/assets/css/main.css'],
 
@@ -53,6 +110,7 @@ export default defineNuxtConfig({
           'ja/validation.json',
           'ja/landing.json',
           'ja/action_memo.json',
+          'ja/pwa.json',
         ],
       },
       {
@@ -65,6 +123,7 @@ export default defineNuxtConfig({
           'en/validation.json',
           'en/landing.json',
           'en/action_memo.json',
+          'en/pwa.json',
         ],
       },
       {
@@ -77,6 +136,7 @@ export default defineNuxtConfig({
           'zh/validation.json',
           'zh/landing.json',
           'zh/action_memo.json',
+          'zh/pwa.json',
         ],
       },
       {
@@ -89,6 +149,7 @@ export default defineNuxtConfig({
           'ko/validation.json',
           'ko/landing.json',
           'ko/action_memo.json',
+          'ko/pwa.json',
         ],
       },
       {
@@ -101,6 +162,7 @@ export default defineNuxtConfig({
           'es/validation.json',
           'es/landing.json',
           'es/action_memo.json',
+          'es/pwa.json',
         ],
       },
       {
@@ -113,6 +175,7 @@ export default defineNuxtConfig({
           'de/validation.json',
           'de/landing.json',
           'de/action_memo.json',
+          'de/pwa.json',
         ],
       },
     ],
