@@ -282,25 +282,6 @@
       "You truly did great today. Goodnight."
     ]
   },
-  "annual_plan": {
-    "title": "Annual Event Plan",
-    "no_events": "No events",
-    "no_data": "No event data available",
-    "all_categories": "All",
-    "category_placeholder": "Category",
-    "copy_prev_year": "Copy Previous Year",
-    "copy_dialog_title": "Copy Previous Year",
-    "copy_dialog_message": "Copy events from {sourceYear} to {targetYear}? Dates will be automatically adjusted.",
-    "copy_execute": "Execute Copy",
-    "copy_success": "Events copied from previous year",
-    "copy_error": "Failed to copy events",
-    "load_error": "Failed to load annual event plan",
-    "copied_badge": "Copied",
-    "date_shift_mode": {
-      "SAME_WEEKDAY": "Same weekday (Nth week)",
-      "EXACT_DAYS": "Exact day shift"
-    }
-  },
   "settings": {
     "language": {
       "title": "Language & Timezone",

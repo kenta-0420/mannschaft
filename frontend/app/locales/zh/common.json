@@ -282,25 +282,6 @@
       "今天你真的很努力了。晚安。"
     ]
   },
-  "annual_plan": {
-    "title": "年度行事计划",
-    "no_events": "无行事",
-    "no_data": "暂无行事数据",
-    "all_categories": "全部",
-    "category_placeholder": "类别",
-    "copy_prev_year": "复制上年度",
-    "copy_dialog_title": "复制上年度",
-    "copy_dialog_message": "将{sourceYear}年度的行事复制到{targetYear}年度？日期将自动调整。",
-    "copy_execute": "执行复制",
-    "copy_success": "已复制上年度的行事",
-    "copy_error": "复制失败",
-    "load_error": "年度行事计划加载失败",
-    "copied_badge": "已复制",
-    "date_shift_mode": {
-      "SAME_WEEKDAY": "相同星期（第N周）",
-      "EXACT_DAYS": "精确天数偏移"
-    }
-  },
   "settings": {
     "language": {
       "title": "语言与时区",
