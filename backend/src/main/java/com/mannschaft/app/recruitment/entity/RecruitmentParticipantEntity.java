@@ -140,6 +140,12 @@ public class RecruitmentParticipantEntity {
         this.status = RecruitmentParticipantStatus.ATTENDED;
     }
 
+    /** §Phase5b NO_SHOWとして記録する。管理者または自動検出バッチが呼ぶ。 */
+    public void markNoShow() {
+        this.status = RecruitmentParticipantStatus.NO_SHOW;
+        this.statusChangedAt = LocalDateTime.now();
+    }
+
     /** 論理削除を行う。 */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
