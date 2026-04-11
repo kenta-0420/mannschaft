@@ -11,6 +11,7 @@ import type {
   RecruitmentListingResponse,
   RecruitmentListingSummaryResponse,
   RecruitmentParticipantResponse,
+  RecruitmentSearchParams,
   RecruitmentSubcategoryResponse,
   UpdateCancellationPolicyRequest,
   UpdateRecruitmentListingRequest,
@@ -217,6 +218,26 @@ export function useRecruitmentApi() {
     return api(`/api/v1/cancellation-policies/${policyId}/archive`, { method: 'POST' })
   }
 
+  // ===========================================
+  // 全体検索 (§Phase4)
+  // ===========================================
+
+  async function searchListings(params: RecruitmentSearchParams) {
+    const q = new URLSearchParams()
+    if (params.categoryId != null) q.set('categoryId', String(params.categoryId))
+    if (params.subcategoryId != null) q.set('subcategoryId', String(params.subcategoryId))
+    if (params.startFrom) q.set('startFrom', params.startFrom)
+    if (params.startTo) q.set('startTo', params.startTo)
+    if (params.participationType) q.set('participationType', params.participationType)
+    if (params.keyword) q.set('keyword', params.keyword)
+    if (params.location) q.set('location', params.location)
+    if (params.page != null) q.set('page', String(params.page))
+    if (params.size != null) q.set('size', String(params.size))
+    return api<PagedResponse<RecruitmentListingSummaryResponse>>(
+      `/api/v1/recruitment-listings/search?${q.toString()}`,
+    )
+  }
+
   return {
     listCategories,
     listTeamSubcategories,
@@ -240,5 +261,6 @@ export function useRecruitmentApi() {
     getCancellationPolicy,
     updateCancellationPolicy,
     archiveCancellationPolicy,
+    searchListings,
   }
 }

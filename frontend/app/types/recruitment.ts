@@ -242,3 +242,19 @@ export interface UpdateCancellationPolicyRequest {
   freeUntilHoursBefore?: number
   tiers?: CancellationPolicyTierRequest[]
 }
+
+// ===========================================
+// 全体検索 (§Phase4)
+// ===========================================
+
+export interface RecruitmentSearchParams {
+  categoryId?: number
+  subcategoryId?: number
+  startFrom?: string
+  startTo?: string
+  participationType?: string
+  keyword?: string
+  location?: string
+  page?: number
+  size?: number
+}
