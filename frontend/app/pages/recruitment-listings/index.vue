@@ -62,7 +62,7 @@ async function search(page = 0) {
     }
     const res = await api.searchListings(params)
     listings.value = res.data
-    totalCount.value = res.meta.totalElements
+    totalCount.value = res.meta.total
     totalPages.value = res.meta.totalPages
   }
   catch {

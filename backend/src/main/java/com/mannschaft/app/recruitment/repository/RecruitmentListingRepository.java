@@ -117,35 +117,6 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
     int incrementWaitlistAtomic(@Param("id") Long id);
 
     /**
-     * Phase 4 全体検索: 公開中（OPEN/FULL）の募集枠を条件付きで取得する。
-     * 各パラメータが null の場合は該当条件を無視する（全件）。
-     */
-    @Query("""
-            SELECT r FROM RecruitmentListingEntity r
-            WHERE r.status IN (
-                com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
-                com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL
-            )
-              AND (:categoryId IS NULL OR r.categoryId = :categoryId)
-              AND (:subcategoryId IS NULL OR r.subcategoryId = :subcategoryId)
-              AND (:startFrom IS NULL OR r.startAt >= :startFrom)
-              AND (:startTo IS NULL OR r.startAt <= :startTo)
-              AND (:participationType IS NULL OR CAST(r.participationType AS string) = :participationType)
-              AND (:keyword IS NULL OR r.title LIKE %:keyword% OR r.description LIKE %:keyword%)
-              AND (:location IS NULL OR r.location LIKE %:location%)
-            ORDER BY r.startAt ASC
-            """)
-    Page<RecruitmentListingEntity> searchPublicListings(
-            @Param("categoryId") Long categoryId,
-            @Param("subcategoryId") Long subcategoryId,
-            @Param("startFrom") LocalDateTime startFrom,
-            @Param("startTo") LocalDateTime startTo,
-            @Param("participationType") String participationType,
-            @Param("keyword") String keyword,
-            @Param("location") String location,
-            Pageable pageable);
-
-    /**
      * §5.6 予約ライン衝突チェック。
      * 同じ予約ライン上で時間帯が重複するキャンセル以外の募集を数える。
      * 重複条件: NOT (endAt <= :startAt OR startAt >= :endAt)
