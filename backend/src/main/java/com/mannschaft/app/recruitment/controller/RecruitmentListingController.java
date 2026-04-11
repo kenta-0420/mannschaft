@@ -4,7 +4,10 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CancellationFeeEstimateResponse;
+import com.mannschaft.app.recruitment.dto.RecruitmentDistributionTargetResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
+import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
+import com.mannschaft.app.recruitment.dto.SetDistributionTargetsRequest;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.service.RecruitmentCancellationPolicyService;
@@ -19,12 +22,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * F03.11 募集型予約: 募集枠 個別操作 Controller (§9.1, §9.9)。
@@ -88,5 +93,39 @@ public class RecruitmentListingController {
         RecruitmentListingEntity listing = listingService.findOrThrow(id);
         CancellationFeeEstimateResponse estimate = cancellationPolicyService.estimateFee(listing, at);
         return ResponseEntity.ok(ApiResponse.of(estimate));
+    }
+
+    // ===========================================
+    // Phase 2: 配信対象設定 (§9.3)
+    // ===========================================
+
+    @GetMapping("/{id}/distribution-targets")
+    @Operation(summary = "配信対象取得 (Phase 2)")
+    public ResponseEntity<ApiResponse<List<RecruitmentDistributionTargetResponse>>> getDistributionTargets(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.of(
+                listingService.getDistributionTargets(id, SecurityUtils.getCurrentUserId())));
+    }
+
+    @PutMapping("/{id}/distribution-targets")
+    @Operation(summary = "配信対象設定 (Phase 2)", description = "全削除 → 再設定。publish 前に必ず呼ぶこと")
+    public ResponseEntity<ApiResponse<List<RecruitmentDistributionTargetResponse>>> setDistributionTargets(
+            @PathVariable Long id,
+            @Valid @RequestBody SetDistributionTargetsRequest request) {
+        return ResponseEntity.ok(ApiResponse.of(
+                listingService.setDistributionTargets(id, SecurityUtils.getCurrentUserId(), request.getTargetTypes())));
+    }
+
+    // ===========================================
+    // Phase 2: 申込確定 (§9.2)
+    // ===========================================
+
+    @PostMapping("/{listingId}/participants/{participantId}/confirm")
+    @Operation(summary = "申込確定 (APPLIED → CONFIRMED, Phase 2)", description = "確定 + RECRUITMENT_CONFIRMED 通知 + リマインダー作成")
+    public ResponseEntity<ApiResponse<RecruitmentParticipantResponse>> confirmApplication(
+            @PathVariable Long listingId,
+            @PathVariable Long participantId) {
+        return ResponseEntity.ok(ApiResponse.of(
+                listingService.confirmApplication(participantId, SecurityUtils.getCurrentUserId())));
     }
 }

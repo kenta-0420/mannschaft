@@ -112,14 +112,6 @@ export default {
       "createListing": "募集を作成",
       "cancellationPolicies": "キャンセルポリシー"
     },
-    "page": {
-      "myRecruitmentListings": "自分の参加予定",
-      "teamRecruitmentListings": "募集枠管理",
-      "newListing": "募集枠を作成",
-      "editListing": "募集枠を編集",
-      "listingDetail": "募集詳細",
-      "cancellationPolicies": "キャンセルポリシー管理"
-    },
     "label": {
       "participants": "参加者",
       "remainingCapacity": "残り枠",
@@ -127,7 +119,41 @@ export default {
       "noListings": "募集はありません",
       "noParticipants": "参加者はいません",
       "myApplication": "あなたの申込",
-      "freeOfCharge": "無料"
+      "freeOfCharge": "無料",
+      "feedDescription": "フォロー先・サポーター先チームの新着募集を表示します",
+      "noFeedItems": "新着募集はありません",
+      "listing": "募集",
+      "waitlistPosition": "キャンセル待ち #{n}位",
+      "postedAt": "投稿日"
+    },
+    "page": {
+      "myRecruitmentListings": "自分の参加予定",
+      "teamRecruitmentListings": "募集枠管理",
+      "newListing": "募集枠を作成",
+      "editListing": "募集枠を編集",
+      "listingDetail": "募集詳細",
+      "cancellationPolicies": "キャンセルポリシー管理",
+      "myFeed": "新着募集フィード"
+    },
+    "distribution": {
+      "title": "配信対象",
+      "members": "メンバー",
+      "membersDesc": "スコープ内のメンバー全員に通知",
+      "supporters": "サポーター",
+      "supportersDesc": "サポーター申請が承認されたユーザーに通知",
+      "followers": "フォロワー",
+      "followersDesc": "フォロワーのユーザーに通知",
+      "publicFeed": "パブリックフィード",
+      "publicFeedDesc": "全体公開フィードに掲載",
+      "warnPublicNeedsFeed": "公開範囲が「全体公開」の場合は「パブリックフィード」を含める必要があります",
+      "warnSupportersOnlyNeedsSupporter": "公開範囲が「サポーターのみ」の場合は「サポーター」を含める必要があります"
+    },
+    "widget": {
+      "feedTitle": "新着募集",
+      "feedEmpty": "新着募集はありません",
+      "myRecruitmentsTitle": "参加予定",
+      "myRecruitmentsEmpty": "参加予定の募集はありません",
+      "viewAll": "すべて表示"
     },
     "error": {
       "RECRUITMENT_001": "募集が見つかりません",

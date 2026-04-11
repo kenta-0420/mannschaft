@@ -158,6 +158,58 @@ export interface CancellationFeeEstimateResponse {
   calculatedAt: string
 }
 
+// Phase 2 追加型
+
+export type RecruitmentDistributionTargetType = 'MEMBERS' | 'SUPPORTERS' | 'FOLLOWERS' | 'PUBLIC_FEED'
+
+export interface RecruitmentDistributionTargetResponse {
+  id: number
+  listingId: number
+  targetType: RecruitmentDistributionTargetType
+  createdAt: string
+}
+
+export interface RecruitmentMyListingItem {
+  id: number
+  listingId: number
+  participantType: RecruitmentParticipantType
+  userId: number | null
+  teamId: number | null
+  appliedBy: number
+  status: RecruitmentParticipantStatus
+  waitlistPosition: number | null
+  note: string | null
+  appliedAt: string
+  statusChangedAt: string
+}
+
+export interface RecruitmentFeedItem {
+  id: number
+  categoryId: number
+  categoryNameI18nKey: string | null
+  scopeId: number
+  scopeType: RecruitmentScopeType
+  title: string
+  description: string | null
+  participationType: RecruitmentParticipationType
+  startAt: string
+  endAt: string
+  applicationDeadline: string
+  capacity: number
+  confirmedCount: number
+  status: RecruitmentListingStatus
+  visibility: RecruitmentVisibility
+  location: string | null
+  imageUrl: string | null
+  paymentEnabled: boolean
+  price: number | null
+  createdAt: string
+}
+
+export interface SetDistributionTargetsRequest {
+  targetTypes: RecruitmentDistributionTargetType[]
+}
+
 // ===========================================
 // Request (Frontend → Backend)
 // ===========================================
