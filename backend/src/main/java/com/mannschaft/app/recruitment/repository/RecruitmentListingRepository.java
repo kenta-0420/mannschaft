@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -134,4 +135,20 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             @Param("startAt") LocalDateTime startAt,
             @Param("endAt") LocalDateTime endAt,
             @Param("excludeId") Long excludeId);
+
+    /**
+     * Phase 2 getMyFeed: フォロー先・サポーター先スコープの最新 OPEN 募集を取得する。
+     * scope_id が :scopeIds に含まれ、visibility = 'PUBLIC' または 'SCOPE_ONLY' / 'SUPPORTERS_ONLY' のものを返す。
+     *
+     * @param scopeIds  フォロー・サポーター先の scopeId リスト
+     * @param pageable  ページング (通常 size=20)
+     */
+    @Query("""
+            SELECT l FROM RecruitmentListingEntity l
+            WHERE l.scopeId IN :scopeIds
+              AND l.status = 'OPEN'
+            ORDER BY l.createdAt DESC
+            """)
+    List<RecruitmentListingEntity> findOpenByScopeIds(
+            @Param("scopeIds") List<Long> scopeIds, Pageable pageable);
 }
