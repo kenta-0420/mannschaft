@@ -68,6 +68,12 @@ public class RecruitmentParticipantService {
 
     @Transactional
     public RecruitmentParticipantResponse apply(Long listingId, Long userId, ApplyToRecruitmentRequest request) {
+        // §Phase4 レート制限: 1分間に5件以上の申込は拒否
+        long recentCount = participantRepository.countRecentApplicationsByUser(userId, LocalDateTime.now().minusMinutes(1));
+        if (recentCount >= 5) {
+            throw new BusinessException(RecruitmentErrorCode.APPLY_RATE_LIMIT_EXCEEDED);
+        }
+
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
 

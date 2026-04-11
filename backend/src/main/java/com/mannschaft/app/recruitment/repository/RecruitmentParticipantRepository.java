@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,4 +55,14 @@ public interface RecruitmentParticipantRepository extends JpaRepository<Recruitm
             ORDER BY p.appliedAt DESC
             """)
     List<RecruitmentParticipantEntity> findMyActiveParticipations(@Param("userId") Long userId);
+
+    /**
+     * Phase 4 レート制限: 指定ユーザーの最近の申込件数をカウント。
+     */
+    @Query("""
+            SELECT COUNT(p) FROM RecruitmentParticipantEntity p
+            WHERE p.userId = :userId
+              AND p.appliedAt >= :since
+            """)
+    long countRecentApplicationsByUser(@Param("userId") Long userId, @Param("since") LocalDateTime since);
 }

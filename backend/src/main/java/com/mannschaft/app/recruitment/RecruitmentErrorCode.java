@@ -87,6 +87,9 @@ public enum RecruitmentErrorCode implements ErrorCode {
     /** visibility と distribution_targets の整合性違反 */
     VISIBILITY_TARGETS_INCONSISTENT("RECRUITMENT_207", "公開範囲と配信対象の組合せが不正です", Severity.ERROR),
 
+    /** 短時間の申込多すぎ（レート制限） */
+    APPLY_RATE_LIMIT_EXCEEDED("RECRUITMENT_208", "短時間に多くの申込を行いました。しばらく経ってから再試行してください", Severity.WARN),
+
     // ========================================
     // 15.4 ペナルティ・キャンセル料エラー (300〜399)
     // ========================================
