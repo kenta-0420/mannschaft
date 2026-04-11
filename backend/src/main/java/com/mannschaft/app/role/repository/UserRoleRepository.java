@@ -202,6 +202,17 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     long isSystemAdmin(@Param("userId") Long userId);
 
     /**
+     * スコープ内メンバーのユーザーIDリストを取得する (通知一斉送信用)。
+     */
+    @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "           WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findUserIdsByScope(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
+
+    /**
      * 2ユーザーが共通チームに所属しているか確認する（DM受信制限チェック用）。
      */
     @Query(value = "SELECT COUNT(*) > 0 FROM user_roles ur1 " +

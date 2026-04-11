@@ -38,6 +38,26 @@ public interface FollowRepository extends JpaRepository<FollowEntity, Long> {
             FollowerType followedType, Long followedId, Pageable pageable);
 
     /**
+     * ユーザーがフォローしている対象を FollowedType・FollowedId で絞り込んで取得する。
+     * Phase 2 getMyFeed: ユーザーがフォローしているチーム/組織の ID を取得するために使用する。
+     *
+     * @param followerType フォロワー種別 (USER)
+     * @param followerId   ユーザーID
+     * @param followedType フォロー対象種別 (TEAM / ORGANIZATION)
+     * @return フォロー対象の ID リスト
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT f.followedId FROM FollowEntity f
+            WHERE f.followerType = :followerType
+              AND f.followerId = :followerId
+              AND f.followedType = :followedType
+            """)
+    java.util.List<Long> findFollowedIdsByFollowerAndType(
+            @org.springframework.data.repository.query.Param("followerType") FollowerType followerType,
+            @org.springframework.data.repository.query.Param("followerId") Long followerId,
+            @org.springframework.data.repository.query.Param("followedType") FollowerType followedType);
+
+    /**
      * フォロー数を取得する。
      */
     long countByFollowerTypeAndFollowerId(FollowerType followerType, Long followerId);

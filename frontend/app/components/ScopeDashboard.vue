@@ -34,7 +34,7 @@ function toggleCollapse(key: string) {
   collapsedKeys.value = new Set(collapsedKeys.value)
 }
 
-const DATA_WIDGET_KEYS = new Set(['survey-results', 'attendance-results'])
+const DATA_WIDGET_KEYS = new Set(['survey-results', 'attendance-results', 'recruitment-feed', 'my-recruitments'])
 
 function isDataWidget(key: string): boolean {
   return DATA_WIDGET_KEYS.has(key)
@@ -54,6 +54,8 @@ function linkTo(widgetKey: string): string | undefined {
       chat: '/chat',
       notifications: '/notifications',
       blog: '/my/blog',
+      'recruitment-feed': '/me/recruitment-feed',
+      'my-recruitments': '/me/recruitment-listings',
     }
     return personalLinks[widgetKey]
   }
@@ -236,6 +238,9 @@ function onDragEnd() {
               :scope-type="(scopeType as 'team' | 'organization')"
               :scope-id="scopeId"
             />
+            <!-- Phase 2: F03.11 募集型予約ウィジェット -->
+            <WidgetRecruitmentFeed v-else-if="w.key === 'recruitment-feed'" />
+            <WidgetMyRecruitments v-else-if="w.key === 'my-recruitments'" />
           </div>
         </template>
       </div>
