@@ -28,7 +28,7 @@ public class RecruitmentCategoryEntity extends BaseEntity {
     @Column(nullable = false, length = 50, unique = true)
     private String code;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "name_i18n_key", nullable = false, length = 100)
     private String nameI18nKey;
 
     @Column(length = 50)
