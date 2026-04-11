@@ -119,6 +119,7 @@ public class QuickMemoController {
 
     @PostMapping("/{id}/undelete")
     @Operation(summary = "ゴミ箱から復元")
+    @PreAuthorize("@quickMemoAccessGuard.canAccess(#id, authentication)")
     public ResponseEntity<ApiResponse<QuickMemoResponse>> undeleteMemo(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.of(quickMemoService.undeleteMemo(id, userId)));

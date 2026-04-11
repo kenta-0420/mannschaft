@@ -37,8 +37,8 @@ async function loadTags() {
   try {
     const res = await tagApi.listTags('personal')
     personalTags.value = res.data
-  } catch {
-    // silent
+  } catch (e) {
+    console.error('タグ読み込み失敗', e)
   }
 }
 

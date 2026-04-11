@@ -98,9 +98,8 @@ export interface ConvertToTodoResponse {
 }
 
 export interface PresignRequest {
-  filename: string
+  declaredSize: number
   contentType: string
-  sizeBytes: number
 }
 
 export interface PresignResponse {

@@ -90,10 +90,10 @@ export function useQuickMemoApi() {
     })
   }
 
-  async function confirmUpload(memoId: number, uploadId: string) {
+  async function confirmUpload(memoId: number, s3Key: string, originalFilename?: string | null) {
     return api<{ data: AttachmentSummary }>(
       `/api/v1/quick-memos/${memoId}/attachments/confirm`,
-      { method: 'POST', body: { uploadId } },
+      { method: 'POST', body: { s3Key, originalFilename: originalFilename ?? null } },
     )
   }
 
