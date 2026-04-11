@@ -40,6 +40,7 @@ export default defineNuxtConfig({
       name: 'Mannschaft',
       short_name: 'Mannschaft',
       description: '汎用組織管理プラットフォーム',
+      lang: 'ja',
       theme_color: '#3B82F6',
       background_color: '#ffffff',
       display: 'standalone',
