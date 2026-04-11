@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment;
 import com.mannschaft.app.recruitment.dto.CancellationPolicyResponse;
 import com.mannschaft.app.recruitment.dto.CancellationPolicyTierResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentCategoryResponse;
+import com.mannschaft.app.recruitment.dto.RecruitmentFeedItemResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
@@ -49,6 +50,15 @@ public interface RecruitmentMapper {
     RecruitmentListingSummaryResponse toListingSummaryResponse(RecruitmentListingEntity entity);
 
     List<RecruitmentListingSummaryResponse> toListingSummaryResponseList(List<RecruitmentListingEntity> entities);
+
+    @Mapping(target = "scopeType", expression = "java(entity.getScopeType().name())")
+    @Mapping(target = "participationType", expression = "java(entity.getParticipationType().name())")
+    @Mapping(target = "visibility", expression = "java(entity.getVisibility().name())")
+    @Mapping(target = "status", expression = "java(entity.getStatus().name())")
+    @Mapping(target = "categoryNameI18nKey", ignore = true)
+    RecruitmentFeedItemResponse toFeedItemResponse(RecruitmentListingEntity entity);
+
+    List<RecruitmentFeedItemResponse> toFeedItemResponseList(List<RecruitmentListingEntity> entities);
 
     @Mapping(target = "participantType", expression = "java(entity.getParticipantType().name())")
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")

@@ -118,7 +118,8 @@ export default {
       "newListing": "모집 작성",
       "editListing": "모집 편집",
       "listingDetail": "모집 상세",
-      "cancellationPolicies": "취소 정책 관리"
+      "cancellationPolicies": "취소 정책 관리",
+      "myFeed": "모집 피드"
     },
     "label": {
       "participants": "참가자",
@@ -127,7 +128,32 @@ export default {
       "noListings": "모집이 없습니다",
       "noParticipants": "참가자가 없습니다",
       "myApplication": "내 신청",
-      "freeOfCharge": "무료"
+      "freeOfCharge": "무료",
+      "feedDescription": "팔로우/서포터 팀의 새 모집",
+      "noFeedItems": "새 모집이 없습니다",
+      "listing": "모집",
+      "waitlistPosition": "대기 #{n}번",
+      "postedAt": "게시일"
+    },
+    "distribution": {
+      "title": "배포 대상",
+      "members": "멤버",
+      "membersDesc": "스코프 내 모든 멤버에게 알림",
+      "supporters": "서포터",
+      "supportersDesc": "승인된 서포터에게 알림",
+      "followers": "팔로워",
+      "followersDesc": "팔로워에게 알림",
+      "publicFeed": "공개 피드",
+      "publicFeedDesc": "공개 피드에 게시",
+      "warnPublicNeedsFeed": "공개 범위가 '전체 공개'인 경우 '공개 피드'를 포함해야 합니다",
+      "warnSupportersOnlyNeedsSupporter": "공개 범위가 '서포터만'인 경우 '서포터'를 포함해야 합니다"
+    },
+    "widget": {
+      "feedTitle": "새 모집",
+      "feedEmpty": "새 모집이 없습니다",
+      "myRecruitmentsTitle": "참가 예정",
+      "myRecruitmentsEmpty": "참가 예정이 없습니다",
+      "viewAll": "전체 보기"
     },
     "error": {
       "RECRUITMENT_001": "모집을 찾을 수 없습니다",

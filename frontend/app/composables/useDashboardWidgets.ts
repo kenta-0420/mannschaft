@@ -140,6 +140,21 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     description: 'イベントごとの出欠状況と個人別回答',
     scope: ['team', 'organization'],
   },
+  // Phase 2: F03.11 募集型予約ウィジェット
+  {
+    key: 'recruitment-feed',
+    label: '新着募集',
+    icon: 'pi pi-megaphone',
+    description: 'フォロー先・サポーター先の新着募集',
+    scope: ['personal'],
+  },
+  {
+    key: 'my-recruitments',
+    label: '参加予定',
+    icon: 'pi pi-ticket',
+    description: '自分の確定・キャンセル待ち参加予定',
+    scope: ['personal'],
+  },
 ]
 
 function hiddenStorageKey(scopeType: string, scopeId?: number): string {
