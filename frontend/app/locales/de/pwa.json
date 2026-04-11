@@ -1,0 +1,49 @@
+{
+  "offline": {
+    "status_banner": "Offline-Modus — Daten werden lokal gespeichert",
+    "back_online": "Wieder online",
+    "saved_locally": "Offline gespeichert. Wird automatisch gesendet, wenn Sie wieder online sind"
+  },
+  "sync": {
+    "in_progress": "Synchronisierung...",
+    "complete": "Synchronisierung abgeschlossen",
+    "failed": "Synchronisierung fehlgeschlagen",
+    "result_summary": "{success} von {total} Elementen synchronisiert",
+    "result_with_conflict": "{success} von {total} synchronisiert. {conflicts} Konflikt(e) gefunden",
+    "conflict_found": "{count} Konflikt(e) gefunden",
+    "pending_badge": "{count} nicht gesendet",
+    "retry": "Erneut versuchen",
+    "nav_label": "Synchronisierung",
+    "view_conflicts": "Konflikte anzeigen"
+  },
+  "conflict": {
+    "title": "Datenkonflikt",
+    "page_title": "Ungeloeste Konflikte",
+    "client_data": "Ihre Daten",
+    "server_data": "Serverdaten",
+    "use_mine": "Meine Daten verwenden",
+    "use_server": "Serverdaten verwenden",
+    "manual_merge": "Manuell zusammenfuehren",
+    "discard": "Verwerfen",
+    "discard_confirm": "Moechten Sie diesen Konflikt wirklich verwerfen?",
+    "resolved": "Konflikt geloest",
+    "discarded": "Konflikt verworfen",
+    "empty": "Keine ungeloesten Konflikte",
+    "resource_type": "Ressourcentyp",
+    "resource_id": "Ressourcen-ID",
+    "created_at": "Aufgetreten am",
+    "resolve_button": "Loesen",
+    "loading": "Laden...",
+    "error_load": "Konflikt konnte nicht geladen werden",
+    "error_resolve": "Konflikt konnte nicht geloest werden",
+    "client_version": "Client-Version",
+    "server_version": "Server-Version",
+    "diff_highlight": "Unterschied"
+  },
+  "pwa": {
+    "install_prompt": "Zum Startbildschirm hinzufuegen, um es wie eine App zu verwenden",
+    "install_button": "Installieren",
+    "update_available": "Eine neue Version ist verfuegbar",
+    "update_button": "Aktualisieren"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "offline": {
+    "status_banner": "오프라인 모드 — 데이터가 로컬에 저장됩니다",
+    "back_online": "온라인으로 복귀했습니다",
+    "saved_locally": "오프라인으로 저장되었습니다. 온라인으로 돌아오면 자동 전송됩니다"
+  },
+  "sync": {
+    "in_progress": "동기화 중...",
+    "complete": "동기화 완료",
+    "failed": "동기화 실패",
+    "result_summary": "{total}건 중 {success}건 동기화됨",
+    "result_with_conflict": "{total}건 중 {success}건 동기화됨. {conflicts}건의 충돌이 있습니다",
+    "conflict_found": "{count}건의 충돌이 있습니다",
+    "pending_badge": "미전송 {count}건",
+    "retry": "재시도",
+    "nav_label": "동기화",
+    "view_conflicts": "충돌 확인"
+  },
+  "conflict": {
+    "title": "데이터 충돌",
+    "page_title": "미해결 충돌",
+    "client_data": "내 데이터",
+    "server_data": "서버 데이터",
+    "use_mine": "내 데이터 사용",
+    "use_server": "서버 데이터 사용",
+    "manual_merge": "수동 병합",
+    "discard": "삭제",
+    "discard_confirm": "이 충돌을 삭제하시겠습니까?",
+    "resolved": "충돌이 해결되었습니다",
+    "discarded": "충돌이 삭제되었습니다",
+    "empty": "미해결 충돌이 없습니다",
+    "resource_type": "리소스 유형",
+    "resource_id": "리소스 ID",
+    "created_at": "발생 일시",
+    "resolve_button": "해결",
+    "loading": "로딩 중...",
+    "error_load": "충돌을 불러오지 못했습니다",
+    "error_resolve": "충돌을 해결하지 못했습니다",
+    "client_version": "클라이언트 버전",
+    "server_version": "서버 버전",
+    "diff_highlight": "차이"
+  },
+  "pwa": {
+    "install_prompt": "홈 화면에 추가하면 앱처럼 사용할 수 있습니다",
+    "install_button": "설치",
+    "update_available": "새 버전을 사용할 수 있습니다",
+    "update_button": "업데이트"
+  }
+}

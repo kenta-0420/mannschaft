@@ -159,6 +159,15 @@ public class TodoEntity {
     }
 
     /**
+     * 期限日を変更する。
+     *
+     * @param dueDate 新しい期限日（nullで期限なしに変更）
+     */
+    public void updateDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    /**
      * 論理削除を行う。
      */
     public void softDelete() {

@@ -1,0 +1,122 @@
+{
+  "title": "Action Memo",
+  "page": {
+    "today_memos": "Today's memos",
+    "empty": "No memos yet. Write your first one.",
+    "settings_link": "Settings",
+    "back_to_memo": "Back to Action Memo",
+    "closing_link": "Close out today",
+    "weekly_link": "Weekly summary",
+    "tags_link": "Tag management"
+  },
+  "mood": {
+    "great": "Great",
+    "good": "Good",
+    "ok": "OK",
+    "tired": "Tired",
+    "bad": "Tough",
+    "none": "Not selected",
+    "label": "Mood"
+  },
+  "input": {
+    "placeholder": "What are you doing right now?",
+    "submit": "Save",
+    "draft_saved": "Draft saved automatically",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enter to submit / Shift+Enter for newline"
+  },
+  "card": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "linked_todo": "Related TODO"
+  },
+  "weekly": {
+    "title": "Weekly Reflection",
+    "summary": "This Week's Summary",
+    "memo_count": "Memo count",
+    "posted_days": "Posting days",
+    "avg_mood": "Average mood",
+    "mood_trend": "Mood Trend",
+    "top_tags": "Top Tags",
+    "featured_memos": "Featured Memos",
+    "featured_random_note": "(random pick)",
+    "related_todos": "Related TODOs",
+    "todos_completed": "Completed",
+    "todos_pending": "Pending → carried over",
+    "page_title": "Weekly Summary",
+    "empty_state": "No weekly summaries yet. They are automatically generated on Sunday evenings.",
+    "view_detail": "View detail",
+    "loading": "Loading...",
+    "error": "Failed to load weekly summaries",
+    "retry": "Retry",
+    "next_summary": "The next weekly summary will be generated on Sunday evening",
+    "body_preview_more": "...read more",
+    "period_label": "Period",
+    "load_more": "Load more"
+  },
+  "settings": {
+    "title": "Action Memo Settings",
+    "mood_enabled": {
+      "label": "Enable mood input",
+      "description": "Choose your mood from 5 levels when adding a memo. Off by default."
+    }
+  },
+  "error": {
+    "rate_limit": "Too many requests. Please wait a moment and try again.",
+    "daily_limit": "You've reached today's limit (200 memos). Please continue tomorrow.",
+    "future_date": "You can't write to a future date.",
+    "todo_not_found": "The TODO you tried to link was not found.",
+    "load_failed": "Failed to load memos.",
+    "save_failed": "Failed to save memo."
+  },
+  "dialog": {
+    "title": "Edit memo",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "closing": {
+    "title": "End-of-day reflection",
+    "today_memos": "Today's memos",
+    "todos_completed": "Completed TODOs",
+    "todos_pending": "Pending TODOs",
+    "no_completed_todos": "No completed TODOs today yet.",
+    "no_pending_todos": "No pending TODOs today.",
+    "tomorrow_todos": "Tomorrow's TODOs",
+    "tomorrow_input_placeholder": "Type something to do tomorrow",
+    "tomorrow_added": "Added to tomorrow's TODO",
+    "tomorrow_add_failed": "Failed to add TODO",
+    "extra_comment_label": "Closing remark",
+    "extra_comment_placeholder": "A few words about today (optional)",
+    "publish_button": "Close out today",
+    "publish_success": "Posted today's summary ({count} memos)",
+    "publish_error": "Failed to publish summary",
+    "move_to_tomorrow": "Move to tomorrow",
+    "moved_to_tomorrow": "Moved to tomorrow",
+    "move_failed": "Failed to move to tomorrow",
+    "no_memos_hint": "Nothing to publish because there are no memos today."
+  },
+  "offline": {
+    "banner": "You are offline. Your memos will sync when you're back online.",
+    "sync_button": "Sync now",
+    "queued": "{count} memos queued"
+  },
+  "tag": {
+    "list_title": "Tag Management",
+    "create_button": "Create new tag",
+    "name_placeholder": "Tag name",
+    "color_label": "Color",
+    "edit": "Edit",
+    "delete": "Delete",
+    "delete_confirm": "Delete this tag? This cannot be undone.",
+    "search_placeholder": "Search tags...",
+    "max_reached": "Up to 10 tags per memo",
+    "limit_reached": "You can create up to 100 tags",
+    "no_tags": "No tags yet",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "mood_stats": {
+    "title": "Mood Distribution",
+    "total": "Total"
+  }
+}

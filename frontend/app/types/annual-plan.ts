@@ -1,22 +1,18 @@
 export type EventCategoryColor = string
 
+/** バックエンド EventCategoryResponse に対応 */
 export interface EventCategory {
   id: number
   name: string
   color: EventCategoryColor
   icon: string | null
-  isDayOffCategory: boolean
+  isDayOffCategory: boolean | null
   sortOrder: number | null
+  /** "TEAM" または "ORGANIZATION" */
   scope: 'TEAM' | 'ORGANIZATION'
 }
 
-export interface AnnualEventCategory {
-  id: number
-  name: string
-  color: EventCategoryColor
-  icon: string | null
-}
-
+/** バックエンド AnnualEventItem に対応 */
 export interface AnnualEvent {
   id: number
   title: string
@@ -24,16 +20,18 @@ export interface AnnualEvent {
   endAt: string | null
   allDay: boolean
   eventType: 'PRACTICE' | 'MATCH' | 'EVENT' | 'MEETING' | 'OTHER'
-  eventCategory: AnnualEventCategory | null
+  eventCategory: EventCategory | null
   status: string
   sourceScheduleId: number | null
 }
 
+/** バックエンド MonthEvents に対応 */
 export interface AnnualViewMonth {
   month: string
   events: AnnualEvent[]
 }
 
+/** バックエンド AnnualEventViewResponse に対応 */
 export interface AnnualEventViewResponse {
   academicYear: number
   yearStart: string
@@ -43,12 +41,14 @@ export interface AnnualEventViewResponse {
   totalEvents: number
 }
 
+/** バックエンド CopyConflict に対応 */
 export interface CopyConflict {
   type: string
   existingScheduleId: number
   existingTitle: string
 }
 
+/** バックエンド CopyPreviewItem に対応 */
 export interface CopyPreviewItem {
   sourceScheduleId: number
   title: string
@@ -56,12 +56,13 @@ export interface CopyPreviewItem {
   sourceEndAt: string | null
   suggestedStartAt: string
   suggestedEndAt: string | null
-  dateShiftNote: string
-  eventCategory: AnnualEventCategory | null
+  dateShiftNote: string | null
+  eventCategory: EventCategory | null
   allDay: boolean
   conflict: CopyConflict | null
 }
 
+/** バックエンド CopyPreviewResponse に対応 */
 export interface CopyPreview {
   sourceYear: number
   targetYear: number
@@ -101,4 +102,12 @@ export interface CopyLog {
   dateShiftMode: string
   executedBy: number | null
   createdAt: string
+}
+
+/** バックエンド ExecuteCopyRequest.CopyItem に対応 */
+export interface ExecuteCopyItem {
+  sourceScheduleId: number
+  targetStartAt: string | null
+  targetEndAt: string | null
+  include: boolean
 }

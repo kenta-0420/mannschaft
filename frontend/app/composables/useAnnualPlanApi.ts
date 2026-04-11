@@ -5,6 +5,7 @@ import type {
   CopyExecuteRequest,
   CopyExecuteResponse,
   CopyLog,
+  ExecuteCopyItem,
 } from '~/types/annual-plan'
 
 export function useAnnualPlanApi() {
@@ -36,12 +37,19 @@ export function useAnnualPlanApi() {
   async function getAnnualView(
     scopeType: 'team' | 'organization',
     scopeId: number,
-    params?: { academicYear?: number; categoryIds?: number[]; eventType?: string; termStartDate?: string; termEndDate?: string },
+    params?: {
+      academicYear?: number
+      categoryIds?: number[]
+      eventType?: string
+      termStartDate?: string
+      termEndDate?: string
+    },
   ) {
     const base = buildBase(scopeType, scopeId)
     const query = new URLSearchParams()
-    const currentYear = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1
-    query.set('academic_year', String(params?.academicYear ?? currentYear))
+    const currentAcademicYear =
+      new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1
+    query.set('academic_year', String(params?.academicYear ?? currentAcademicYear))
     if (params?.categoryIds && params.categoryIds.length > 0) {
       params.categoryIds.forEach((id) => query.append('category_id', String(id)))
     }

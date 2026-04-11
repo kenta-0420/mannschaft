@@ -1,0 +1,122 @@
+{
+  "title": "행동 메모",
+  "page": {
+    "today_memos": "오늘의 메모",
+    "empty": "아직 메모가 없습니다. 첫 메모를 작성하세요.",
+    "settings_link": "설정",
+    "back_to_memo": "행동 메모로 돌아가기",
+    "closing_link": "오늘 마치기",
+    "weekly_link": "주간 요약",
+    "tags_link": "태그 관리"
+  },
+  "mood": {
+    "great": "최고",
+    "good": "좋음",
+    "ok": "보통",
+    "tired": "피곤",
+    "bad": "힘듦",
+    "none": "선택하지 않음",
+    "label": "기분"
+  },
+  "input": {
+    "placeholder": "지금 뭐 하고 있어?",
+    "submit": "기록하기",
+    "draft_saved": "임시 저장됨",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enter로 전송 / Shift+Enter로 줄바꿈"
+  },
+  "card": {
+    "edit": "편집",
+    "delete": "삭제",
+    "linked_todo": "관련 할 일"
+  },
+  "weekly": {
+    "title": "주간 회고",
+    "summary": "이번 주 요약",
+    "memo_count": "메모 수",
+    "posted_days": "작성한 날",
+    "avg_mood": "평균 기분",
+    "mood_trend": "기분 추이",
+    "top_tags": "자주 사용한 태그",
+    "featured_memos": "이번 주 주요 메모",
+    "featured_random_note": "(무작위 선정)",
+    "related_todos": "관련 할 일",
+    "todos_completed": "완료",
+    "todos_pending": "미완료 → 다음 주로 이월",
+    "page_title": "주간 요약",
+    "empty_state": "아직 주간 요약이 없습니다. 매주 일요일 저녁에 자동으로 생성됩니다.",
+    "view_detail": "자세히 보기",
+    "loading": "불러오는 중...",
+    "error": "주간 요약을 불러오지 못했습니다",
+    "retry": "다시 시도",
+    "next_summary": "다음 주간 요약은 일요일 저녁에 생성됩니다",
+    "body_preview_more": "...더 보기",
+    "period_label": "대상 기간",
+    "load_more": "더 불러오기"
+  },
+  "settings": {
+    "title": "행동 메모 설정",
+    "mood_enabled": {
+      "label": "기분 입력 사용",
+      "description": "메모 입력 시 5단계로 기분을 선택할 수 있습니다. 기본값은 비활성입니다."
+    }
+  },
+  "error": {
+    "rate_limit": "너무 빠릅니다. 잠시 후 다시 시도해 주세요.",
+    "daily_limit": "오늘의 한도(200개)에 도달했습니다. 내일 다시 시도해 주세요.",
+    "future_date": "미래 날짜에는 기록할 수 없습니다.",
+    "todo_not_found": "연결하려는 할 일을 찾을 수 없습니다.",
+    "load_failed": "메모 불러오기에 실패했습니다.",
+    "save_failed": "메모 저장에 실패했습니다."
+  },
+  "dialog": {
+    "title": "메모 편집",
+    "save": "저장",
+    "cancel": "취소"
+  },
+  "closing": {
+    "title": "퇴근 시 회고",
+    "today_memos": "오늘의 메모",
+    "todos_completed": "완료한 할 일",
+    "todos_pending": "남은 할 일",
+    "no_completed_todos": "오늘 완료된 할 일이 아직 없습니다.",
+    "no_pending_todos": "오늘 미완료 할 일이 없습니다.",
+    "tomorrow_todos": "내일 할 일",
+    "tomorrow_input_placeholder": "내일 할 일을 입력",
+    "tomorrow_added": "내일 할 일에 추가했습니다",
+    "tomorrow_add_failed": "할 일 추가에 실패했습니다",
+    "extra_comment_label": "오늘 한마디",
+    "extra_comment_placeholder": "오늘 총평 (선택 사항)",
+    "publish_button": "오늘 마치기",
+    "publish_success": "오늘의 요약을 게시했습니다 ({count}개)",
+    "publish_error": "요약 게시에 실패했습니다",
+    "move_to_tomorrow": "내일로 미루기",
+    "moved_to_tomorrow": "내일로 미뤘습니다",
+    "move_failed": "내일로 미룰 수 없습니다",
+    "no_memos_hint": "오늘 메모가 없어 게시할 수 없습니다."
+  },
+  "offline": {
+    "banner": "오프라인 상태입니다. 온라인 복귀 시 동기화됩니다.",
+    "sync_button": "지금 동기화",
+    "queued": "{count}개 대기 중"
+  },
+  "tag": {
+    "list_title": "태그 관리",
+    "create_button": "새 태그 만들기",
+    "name_placeholder": "태그 이름",
+    "color_label": "색상",
+    "edit": "편집",
+    "delete": "삭제",
+    "delete_confirm": "이 태그를 삭제하시겠습니까? (복원 불가)",
+    "search_placeholder": "태그 검색...",
+    "max_reached": "메모당 최대 10개",
+    "limit_reached": "태그는 최대 100개까지 만들 수 있습니다",
+    "no_tags": "아직 태그가 없습니다",
+    "save": "저장",
+    "cancel": "취소"
+  },
+  "mood_stats": {
+    "title": "기분 분포",
+    "total": "합계"
+  }
+}

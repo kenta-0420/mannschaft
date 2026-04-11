@@ -33,14 +33,26 @@ public class GlobalExceptionHandler {
      * ErrorCode ごとの HttpStatus 個別マッピング。
      * Severity ベースのデフォルトマッピングを上書きしたい場合にここへ追加する。
      */
-    private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.of(
-            CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN,
-            CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT,
-            "AD_006", HttpStatus.CONFLICT,
-            "AD_007", HttpStatus.CONFLICT,
-            "AD_010", HttpStatus.FORBIDDEN,
-            "AUTH_033", HttpStatus.NOT_FOUND,
-            "AUTH_034", HttpStatus.CONFLICT
+    private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.ofEntries(
+            Map.entry(CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN),
+            Map.entry(CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT),
+            Map.entry("AD_006", HttpStatus.CONFLICT),
+            Map.entry("AD_007", HttpStatus.CONFLICT),
+            Map.entry("AD_010", HttpStatus.FORBIDDEN),
+            Map.entry("AUTH_033", HttpStatus.NOT_FOUND),
+            Map.entry("AUTH_034", HttpStatus.CONFLICT),
+            // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す
+            Map.entry("ACTION_MEMO_001", HttpStatus.NOT_FOUND),
+            Map.entry("ACTION_MEMO_006", HttpStatus.NOT_FOUND),
+            Map.entry("ACTION_MEMO_008", HttpStatus.NOT_FOUND),
+            // F02.5 publish-daily: 対象日0件は 400 を明示（Severity.WARN 既定と同じだが宣言的に）
+            Map.entry("ACTION_MEMO_007", HttpStatus.BAD_REQUEST),
+            // F11.1 オフライン同期
+            Map.entry("SYNC_002", HttpStatus.PAYLOAD_TOO_LARGE),
+            Map.entry("SYNC_003", HttpStatus.TOO_MANY_REQUESTS),
+            Map.entry("SYNC_004", HttpStatus.NOT_FOUND),
+            Map.entry("SYNC_005", HttpStatus.FORBIDDEN),
+            Map.entry("SYNC_006", HttpStatus.CONFLICT)
     );
 
     /**

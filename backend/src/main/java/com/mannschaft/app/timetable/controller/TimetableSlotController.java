@@ -82,12 +82,13 @@ public class TimetableSlotController {
     }
 
     @GetMapping("/subject-suggestions")
-    @Operation(summary = "教科名サジェスト")
+    @Operation(summary = "教科名サジェスト（チームの全時間割から過去使用教科名を取得）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<String>>> getSubjectSuggestions(
             @PathVariable Long timetableId) {
-        // NOTE: サービスはteamIdを受け取るが、timetableIdからの教科名取得として委譲
-        List<String> suggestions = slotService.getSubjectSuggestions(timetableId);
+        // timetableId → teamId を解決し、チーム単位で教科名を取得する
+        var timetable = timetableService.getByIdWithoutTeam(timetableId);
+        List<String> suggestions = slotService.getSubjectSuggestions(timetable.getTeamId());
         return ResponseEntity.ok(ApiResponse.of(suggestions));
     }
 

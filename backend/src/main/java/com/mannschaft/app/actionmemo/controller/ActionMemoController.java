@@ -1,0 +1,200 @@
+package com.mannschaft.app.actionmemo.controller;
+
+import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
+import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
+import com.mannschaft.app.actionmemo.dto.AddTagsToMemoRequest;
+import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
+import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
+import com.mannschaft.app.actionmemo.dto.MoodStatsResponse;
+import com.mannschaft.app.actionmemo.dto.PublishDailyRequest;
+import com.mannschaft.app.actionmemo.dto.PublishDailyResponse;
+import com.mannschaft.app.actionmemo.dto.UpdateActionMemoRequest;
+import com.mannschaft.app.actionmemo.service.ActionMemoService;
+import com.mannschaft.app.actionmemo.service.ActionMemoTagService;
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
+
+/**
+ * F02.5 行動メモコントローラー。
+ *
+ * <p>すべてのエンドポイントは認証ユーザー自身のデータのみを操作対象とする。
+ * 所有者不一致・存在しない・論理削除済みは全て 404 を返す（IDOR 対策）。</p>
+ *
+ * <p><b>Phase 4 スコープ</b>: CRUD + link-todo + {@code publish-daily} + タグ追加/除去 + 気分集計。</p>
+ */
+@RestController
+@RequestMapping("/api/v1/action-memos")
+@Tag(name = "行動メモ", description = "F02.5 行動メモ CRUD")
+@RequiredArgsConstructor
+public class ActionMemoController {
+
+    private final ActionMemoService actionMemoService;
+    private final ActionMemoTagService actionMemoTagService;
+
+    /**
+     * 行動メモを1件作成する。
+     */
+    @PostMapping
+    @Operation(summary = "行動メモ作成")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    public ResponseEntity<ApiResponse<ActionMemoResponse>> createMemo(
+            @Valid @RequestBody CreateActionMemoRequest request) {
+        ActionMemoResponse response = actionMemoService.createMemo(request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * 自分の行動メモ一覧を取得する。
+     */
+    @GetMapping
+    @Operation(summary = "行動メモ一覧取得")
+    public ResponseEntity<ActionMemoListResponse> listMemos(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(name = "tag_id", required = false) Long tagId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit) {
+        ActionMemoListResponse response = actionMemoService.listMemos(
+                SecurityUtils.getCurrentUserId(), date, from, to, tagId, cursor, limit);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 行動メモ1件を取得する。他人の id は 404。
+     */
+    @GetMapping("/{id}")
+    @Operation(summary = "行動メモ詳細取得")
+    public ResponseEntity<ApiResponse<ActionMemoResponse>> getMemo(@PathVariable Long id) {
+        ActionMemoResponse response = actionMemoService.getMemo(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 行動メモを更新する。他人の id は 404。
+     */
+    @PatchMapping("/{id}")
+    @Operation(summary = "行動メモ更新")
+    public ResponseEntity<ApiResponse<ActionMemoResponse>> updateMemo(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateActionMemoRequest request) {
+        ActionMemoResponse response = actionMemoService.updateMemo(id, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 行動メモを論理削除する。他人の id は 404。
+     */
+    @DeleteMapping("/{id}")
+    @Operation(summary = "行動メモ削除（論理削除）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    public ResponseEntity<Void> deleteMemo(@PathVariable Long id) {
+        actionMemoService.deleteMemo(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 行動メモに TODO を紐付ける。他人の TODO / PERSONAL 以外は 404。
+     */
+    @PostMapping("/{id}/link-todo")
+    @Operation(summary = "行動メモに TODO を紐付け")
+    public ResponseEntity<ApiResponse<ActionMemoResponse>> linkTodo(
+            @PathVariable Long id,
+            @Valid @RequestBody LinkTodoRequest request) {
+        ActionMemoResponse response = actionMemoService.linkTodo(
+                id, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 当日分（または指定日分）のメモをまとめて PERSONAL タイムラインに投稿する。
+     *
+     * <p>設計書 §4 §5.4: 「今日を締める」儀式。0件の日は 400、冪等再実行は旧投稿を
+     * 論理削除して差し替える。レートリミット 5 req/分（{@code ActionMemoRateLimitFilter}）。</p>
+     */
+    @PostMapping("/publish-daily")
+    @Operation(summary = "行動メモ 当日分まとめ投稿（publish-daily）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "投稿成功")
+    public ResponseEntity<ApiResponse<PublishDailyResponse>> publishDaily(
+            @Valid @RequestBody PublishDailyRequest request) {
+        PublishDailyResponse response = actionMemoService.publishDaily(
+                request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    // ==================================================================
+    // メモへのタグ追加/除去（Phase 4）
+    // ==================================================================
+
+    /**
+     * メモにタグを追加する（複数可）。1メモ10個上限。
+     *
+     * <p>設計書 §4: {@code POST /api/v1/action-memos/{id}/tags}。
+     * URL パスが {@code /action-memos/{id}/tags} のため RESTful に本コントローラーに配置。</p>
+     */
+    @PostMapping("/{id}/tags")
+    @Operation(summary = "メモにタグを追加")
+    public ResponseEntity<Void> addTagsToMemo(
+            @PathVariable Long id,
+            @Valid @RequestBody AddTagsToMemoRequest request) {
+        actionMemoTagService.addTagsToMemo(id, request.getTagIds(), SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * メモからタグを除去する。
+     *
+     * <p>設計書 §4: {@code DELETE /api/v1/action-memos/{id}/tags/{tagId}}。</p>
+     */
+    @DeleteMapping("/{id}/tags/{tagId}")
+    @Operation(summary = "メモからタグを除去")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "除去成功")
+    public ResponseEntity<Void> removeTagFromMemo(
+            @PathVariable Long id,
+            @PathVariable Long tagId) {
+        actionMemoTagService.removeTagFromMemo(id, tagId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    // ==================================================================
+    // 気分集計（Phase 4）
+    // ==================================================================
+
+    /**
+     * 期間内の気分（mood）分布を取得する。
+     *
+     * <p>設計書 §9 Phase 4「気分集計表示」。
+     * {@code mood_enabled = true} のユーザーのみ意味があるが、
+     * API 自体は全ユーザーに開放（0件なら {@code total: 0} で返す）。</p>
+     */
+    @GetMapping("/mood-stats")
+    @Operation(summary = "気分集計取得")
+    public ResponseEntity<ApiResponse<MoodStatsResponse>> getMoodStats(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        MoodStatsResponse response = actionMemoService.getMoodStats(
+                SecurityUtils.getCurrentUserId(), from, to);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+}

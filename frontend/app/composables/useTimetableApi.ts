@@ -5,6 +5,7 @@ import type {
   TimetableTerm,
   TimetablePeriod,
   WeeklyView,
+  TimetableVisibility,
 } from '~/types/timetable'
 
 export function useTimetableApi() {
@@ -41,7 +42,17 @@ export function useTimetableApi() {
 
   async function create(
     teamId: number,
-    body: { name: string; termId: number; weekPatternEnabled?: boolean },
+    body: {
+      name: string
+      termId: number
+      effectiveFrom: string
+      effectiveUntil?: string | null
+      visibility?: TimetableVisibility
+      weekPatternEnabled?: boolean
+      weekPatternBaseDate?: string | null
+      periodOverride?: string | null
+      notes?: string | null
+    },
   ) {
     const res = await api<{ data: Timetable }>(`/api/v1/teams/${teamId}/timetables`, {
       method: 'POST',
@@ -58,10 +69,14 @@ export function useTimetableApi() {
     await api(`/api/v1/teams/${teamId}/timetables/${timetableId}/archive`, { method: 'POST' })
   }
 
-  async function duplicate(teamId: number, timetableId: number) {
+  async function duplicate(
+    teamId: number,
+    timetableId: number,
+    body?: { name?: string; targetTermId?: number; effectiveFrom?: string; effectiveUntil?: string | null },
+  ) {
     const res = await api<{ data: Timetable }>(
       `/api/v1/teams/${teamId}/timetables/${timetableId}/duplicate`,
-      { method: 'POST' },
+      { method: 'POST', body },
     )
     return res.data
   }
@@ -75,8 +90,8 @@ export function useTimetableApi() {
     await api(`/api/v1/timetables/${timetableId}/slots`, { method: 'PUT', body: { slots } })
   }
 
-  async function getWeekly(teamId: number, timetableId: number, date?: string) {
-    const qs = date ? `?date=${date}` : ''
+  async function getWeekly(teamId: number, timetableId: number, weekOf?: string) {
+    const qs = weekOf ? `?weekOf=${weekOf}` : ''
     const res = await api<{ data: WeeklyView }>(
       `/api/v1/teams/${teamId}/timetables/${timetableId}/weekly${qs}`,
     )
@@ -94,7 +109,20 @@ export function useTimetableApi() {
     return res.data
   }
 
-  async function createChange(timetableId: number, body: Partial<TimetableChange>) {
+  async function createChange(
+    timetableId: number,
+    body: {
+      targetDate: string
+      periodNumber?: number | null
+      changeType: string
+      subjectName?: string | null
+      teacherName?: string | null
+      roomName?: string | null
+      reason?: string | null
+      notifyMembers?: boolean
+      createSchedule?: boolean
+    },
+  ) {
     const res = await api<{ data: TimetableChange }>(`/api/v1/timetables/${timetableId}/changes`, {
       method: 'POST',
       body,

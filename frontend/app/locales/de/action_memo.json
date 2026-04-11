@@ -1,0 +1,122 @@
+{
+  "title": "Aktionsnotizen",
+  "page": {
+    "today_memos": "Heutige Notizen",
+    "empty": "Noch keine Notizen. Schreibe deine erste.",
+    "settings_link": "Einstellungen",
+    "back_to_memo": "Zurück zu Aktionsnotizen",
+    "closing_link": "Tag abschließen",
+    "weekly_link": "Wochenübersicht",
+    "tags_link": "Tag-Verwaltung"
+  },
+  "mood": {
+    "great": "Großartig",
+    "good": "Gut",
+    "ok": "Okay",
+    "tired": "Müde",
+    "bad": "Hart",
+    "none": "Keine Auswahl",
+    "label": "Stimmung"
+  },
+  "input": {
+    "placeholder": "Was machst du gerade?",
+    "submit": "Speichern",
+    "draft_saved": "Entwurf gespeichert",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enter zum Senden / Shift+Enter für Zeilenumbruch"
+  },
+  "card": {
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "linked_todo": "Zugehöriges TODO"
+  },
+  "weekly": {
+    "title": "Wochenrückblick",
+    "summary": "Wochenzusammenfassung",
+    "memo_count": "Notizen",
+    "posted_days": "Aktive Tage",
+    "avg_mood": "Durchschnittsstimmung",
+    "mood_trend": "Stimmungsverlauf",
+    "top_tags": "Häufige Tags",
+    "featured_memos": "Wichtige Notizen",
+    "featured_random_note": "(zufällige Auswahl)",
+    "related_todos": "Zugehörige TODOs",
+    "todos_completed": "Erledigt",
+    "todos_pending": "Offen → nächste Woche",
+    "page_title": "Wochenübersicht",
+    "empty_state": "Noch keine Wochenzusammenfassungen. Sie werden automatisch am Sonntagabend erstellt.",
+    "view_detail": "Details ansehen",
+    "loading": "Laden...",
+    "error": "Wochenzusammenfassungen konnten nicht geladen werden",
+    "retry": "Erneut versuchen",
+    "next_summary": "Die nächste Wochenzusammenfassung wird am Sonntagabend erstellt",
+    "body_preview_more": "...weiterlesen",
+    "period_label": "Zeitraum",
+    "load_more": "Mehr laden"
+  },
+  "settings": {
+    "title": "Aktionsnotizen-Einstellungen",
+    "mood_enabled": {
+      "label": "Stimmungseingabe aktivieren",
+      "description": "Wähle beim Hinzufügen einer Notiz deine Stimmung aus 5 Stufen. Standardmäßig deaktiviert."
+    }
+  },
+  "error": {
+    "rate_limit": "Zu viele Aktionen. Bitte warte einen Moment und versuche es erneut.",
+    "daily_limit": "Heutiges Limit (200 Notizen) erreicht. Bitte morgen fortfahren.",
+    "future_date": "Zukünftige Daten sind nicht erlaubt.",
+    "todo_not_found": "Das verknüpfte TODO wurde nicht gefunden.",
+    "load_failed": "Notizen konnten nicht geladen werden.",
+    "save_failed": "Notiz konnte nicht gespeichert werden."
+  },
+  "dialog": {
+    "title": "Notiz bearbeiten",
+    "save": "Speichern",
+    "cancel": "Abbrechen"
+  },
+  "closing": {
+    "title": "Tagesabschluss-Reflexion",
+    "today_memos": "Heutige Notizen",
+    "todos_completed": "Erledigte TODOs",
+    "todos_pending": "Offene TODOs",
+    "no_completed_todos": "Heute noch keine erledigten TODOs.",
+    "no_pending_todos": "Heute keine offenen TODOs.",
+    "tomorrow_todos": "TODOs für morgen",
+    "tomorrow_input_placeholder": "Etwas für morgen eintragen",
+    "tomorrow_added": "Zu morgens TODOs hinzugefügt",
+    "tomorrow_add_failed": "TODO konnte nicht hinzugefügt werden",
+    "extra_comment_label": "Schlussbemerkung",
+    "extra_comment_placeholder": "Ein paar Worte zum Tag (optional)",
+    "publish_button": "Tag abschließen",
+    "publish_success": "Tageszusammenfassung veröffentlicht ({count} Notizen)",
+    "publish_error": "Veröffentlichung fehlgeschlagen",
+    "move_to_tomorrow": "Auf morgen verschieben",
+    "moved_to_tomorrow": "Auf morgen verschoben",
+    "move_failed": "Verschieben fehlgeschlagen",
+    "no_memos_hint": "Heute gibt es keine Notizen zum Veröffentlichen."
+  },
+  "offline": {
+    "banner": "Du bist offline. Synchronisierung erfolgt bei Wiederverbindung.",
+    "sync_button": "Jetzt synchronisieren",
+    "queued": "{count} in Warteschlange"
+  },
+  "tag": {
+    "list_title": "Tag-Verwaltung",
+    "create_button": "Neuen Tag erstellen",
+    "name_placeholder": "Tagname",
+    "color_label": "Farbe",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "delete_confirm": "Diesen Tag löschen? Dies kann nicht rückgängig gemacht werden.",
+    "search_placeholder": "Tags durchsuchen...",
+    "max_reached": "Maximal 10 Tags pro Notiz",
+    "limit_reached": "Sie können bis zu 100 Tags erstellen",
+    "no_tags": "Noch keine Tags vorhanden",
+    "save": "Speichern",
+    "cancel": "Abbrechen"
+  },
+  "mood_stats": {
+    "title": "Stimmungsverteilung",
+    "total": "Gesamt"
+  }
+}

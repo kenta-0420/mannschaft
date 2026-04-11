@@ -1,0 +1,122 @@
+{
+  "title": "行动备忘",
+  "page": {
+    "today_memos": "今日备忘",
+    "empty": "还没有备忘。写下第一条吧。",
+    "settings_link": "设置",
+    "back_to_memo": "返回行动备忘",
+    "closing_link": "结束今天",
+    "weekly_link": "每周总结",
+    "tags_link": "标签管理"
+  },
+  "mood": {
+    "great": "极好",
+    "good": "良好",
+    "ok": "一般",
+    "tired": "疲倦",
+    "bad": "不佳",
+    "none": "不选择",
+    "label": "心情"
+  },
+  "input": {
+    "placeholder": "你现在在做什么？",
+    "submit": "记录",
+    "draft_saved": "已自动保存草稿",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enter 提交 / Shift+Enter 换行"
+  },
+  "card": {
+    "edit": "编辑",
+    "delete": "删除",
+    "linked_todo": "相关待办"
+  },
+  "weekly": {
+    "title": "本周回顾",
+    "summary": "本周摘要",
+    "memo_count": "备忘条数",
+    "posted_days": "记录天数",
+    "avg_mood": "平均心情",
+    "mood_trend": "心情趋势",
+    "top_tags": "常用标签",
+    "featured_memos": "本周精选笔记",
+    "featured_random_note": "（随机选取）",
+    "related_todos": "相关待办",
+    "todos_completed": "已完成",
+    "todos_pending": "未完成 → 顺延至下周",
+    "page_title": "每周总结",
+    "empty_state": "还没有每周总结。每周日晚间将自动生成。",
+    "view_detail": "查看详情",
+    "loading": "加载中...",
+    "error": "每周总结加载失败",
+    "retry": "重新加载",
+    "next_summary": "下一份每周总结将在周日晚间生成",
+    "body_preview_more": "...继续阅读",
+    "period_label": "对象期间",
+    "load_more": "加载更多"
+  },
+  "settings": {
+    "title": "行动备忘设置",
+    "mood_enabled": {
+      "label": "启用心情输入",
+      "description": "添加备忘录时可从5个等级中选择心情。默认关闭。"
+    }
+  },
+  "error": {
+    "rate_limit": "操作过于频繁，请稍后再试。",
+    "daily_limit": "已达到今日上限（200条）。请明日继续。",
+    "future_date": "不能记录到未来的日期。",
+    "todo_not_found": "找不到要关联的待办事项。",
+    "load_failed": "加载备忘失败。",
+    "save_failed": "保存备忘失败。"
+  },
+  "dialog": {
+    "title": "编辑备忘",
+    "save": "保存",
+    "cancel": "取消"
+  },
+  "closing": {
+    "title": "下班时的回顾",
+    "today_memos": "今日备忘",
+    "todos_completed": "已完成的待办",
+    "todos_pending": "未完成的待办",
+    "no_completed_todos": "今日还没有已完成的待办。",
+    "no_pending_todos": "今日没有未完成的待办。",
+    "tomorrow_todos": "明日待办",
+    "tomorrow_input_placeholder": "输入明日要做的事",
+    "tomorrow_added": "已添加到明日待办",
+    "tomorrow_add_failed": "添加待办失败",
+    "extra_comment_label": "今日感想",
+    "extra_comment_placeholder": "今日总结（可选）",
+    "publish_button": "结束今天",
+    "publish_success": "今日总结已发布（{count}条）",
+    "publish_error": "总结发布失败",
+    "move_to_tomorrow": "顺延至明日",
+    "moved_to_tomorrow": "已顺延至明日",
+    "move_failed": "无法顺延至明日",
+    "no_memos_hint": "今日没有备忘无法发布。"
+  },
+  "offline": {
+    "banner": "当前离线，恢复联网时将自动同步。",
+    "sync_button": "立即同步",
+    "queued": "队列中 {count} 条"
+  },
+  "tag": {
+    "list_title": "标签管理",
+    "create_button": "创建新标签",
+    "name_placeholder": "标签名称",
+    "color_label": "颜色",
+    "edit": "编辑",
+    "delete": "删除",
+    "delete_confirm": "确定要删除此标签吗？（无法恢复）",
+    "search_placeholder": "搜索标签...",
+    "max_reached": "每条备忘最多10个标签",
+    "limit_reached": "最多可创建100个标签",
+    "no_tags": "还没有标签",
+    "save": "保存",
+    "cancel": "取消"
+  },
+  "mood_stats": {
+    "title": "心情分布",
+    "total": "合计"
+  }
+}

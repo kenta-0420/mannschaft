@@ -89,10 +89,15 @@ APP_BASE_NAME=${0##*/}
 APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s\n' "$PWD" ) || exit
 
 # Windowsで日本語ユーザー名パスがGradle argfileのMS932エンコーディング問題を引き起こすため、
-# GRADLE_USER_HOMEが未設定または日本語文字を含む場合は安全なパスに上書きする
-if [ -z "${GRADLE_USER_HOME:-}" ] || echo "${GRADLE_USER_HOME}" | grep -qP '[^\x00-\x7F]'; then
-    export GRADLE_USER_HOME="D:/gradle-home"
-fi
+# Windows 環境（Git Bash / MSYS / Cygwin）に限り、GRADLE_USER_HOMEが未設定または
+# 日本語文字を含む場合は安全なパスに上書きする。Linux/Mac/CI では既定の ~/.gradle を使う
+case "$(uname 2>/dev/null)" in
+    MINGW*|MSYS*|CYGWIN*)
+        if [ -z "${GRADLE_USER_HOME:-}" ] || echo "${GRADLE_USER_HOME}" | grep -qP '[^\x00-\x7F]'; then
+            export GRADLE_USER_HOME="D:/gradle-home"
+        fi
+        ;;
+esac
 
 # Use the maximum available, or set MAX_FD != -1 to use that value.
 MAX_FD=maximum

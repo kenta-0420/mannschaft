@@ -1,0 +1,49 @@
+{
+  "offline": {
+    "status_banner": "Offline mode — Data is saved locally",
+    "back_online": "Back online",
+    "saved_locally": "Saved offline. It will be sent automatically when you're back online"
+  },
+  "sync": {
+    "in_progress": "Syncing...",
+    "complete": "Sync complete",
+    "failed": "Sync failed",
+    "result_summary": "Synced {success} of {total} items",
+    "result_with_conflict": "Synced {success} of {total} items. {conflicts} conflict(s) found",
+    "conflict_found": "{count} conflict(s) found",
+    "pending_badge": "{count} unsent",
+    "retry": "Retry",
+    "nav_label": "Sync",
+    "view_conflicts": "View conflicts"
+  },
+  "conflict": {
+    "title": "Data conflict",
+    "page_title": "Unresolved conflicts",
+    "client_data": "Your data",
+    "server_data": "Server data",
+    "use_mine": "Use my data",
+    "use_server": "Use server data",
+    "manual_merge": "Merge manually",
+    "discard": "Discard",
+    "discard_confirm": "Are you sure you want to discard this conflict?",
+    "resolved": "Conflict resolved",
+    "discarded": "Conflict discarded",
+    "empty": "No unresolved conflicts",
+    "resource_type": "Resource type",
+    "resource_id": "Resource ID",
+    "created_at": "Occurred at",
+    "resolve_button": "Resolve",
+    "loading": "Loading...",
+    "error_load": "Failed to load conflict",
+    "error_resolve": "Failed to resolve conflict",
+    "client_version": "Client version",
+    "server_version": "Server version",
+    "diff_highlight": "Diff"
+  },
+  "pwa": {
+    "install_prompt": "Add to home screen to use like an app",
+    "install_button": "Install",
+    "update_available": "A new version is available",
+    "update_button": "Update"
+  }
+}

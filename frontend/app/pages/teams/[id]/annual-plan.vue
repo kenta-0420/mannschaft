@@ -197,7 +197,7 @@ onMounted(loadData)
           @click="showCopyDialog = false"
         />
         <Button
-          :label="$t('annual_plan.copy_execute')"
+          :label="$t('annual_plan.copy_preview')"
           icon="pi pi-eye"
           :loading="previewLoading"
           @click="loadPreview"
@@ -231,7 +231,7 @@ onMounted(loadData)
               <span v-if="item.dateShiftNote" class="ml-1 text-surface-300">（{{ item.dateShiftNote }}）</span>
             </p>
             <p v-if="item.conflict" class="text-xs text-red-500">
-              {{ item.conflict.existingTitle }} と重複
+              {{ $t('annual_plan.conflict_with', { title: item.conflict.existingTitle }) }}
             </p>
           </div>
         </div>

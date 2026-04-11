@@ -1,0 +1,49 @@
+{
+  "offline": {
+    "status_banner": "离线模式 — 数据已保存在本地",
+    "back_online": "已恢复在线",
+    "saved_locally": "已离线保存。恢复在线后将自动发送"
+  },
+  "sync": {
+    "in_progress": "同步中...",
+    "complete": "同步完成",
+    "failed": "同步失败",
+    "result_summary": "已同步 {total} 中的 {success} 项",
+    "result_with_conflict": "已同步 {total} 中的 {success} 项。发现 {conflicts} 个冲突",
+    "conflict_found": "发现 {count} 个冲突",
+    "pending_badge": "未发送 {count} 项",
+    "retry": "重试",
+    "nav_label": "同步",
+    "view_conflicts": "查看冲突"
+  },
+  "conflict": {
+    "title": "数据冲突",
+    "page_title": "未解决的冲突",
+    "client_data": "你的数据",
+    "server_data": "服务器数据",
+    "use_mine": "使用我的数据",
+    "use_server": "使用服务器数据",
+    "manual_merge": "手动合并",
+    "discard": "丢弃",
+    "discard_confirm": "确定要丢弃此冲突吗？",
+    "resolved": "冲突已解决",
+    "discarded": "冲突已丢弃",
+    "empty": "没有未解决的冲突",
+    "resource_type": "资源类型",
+    "resource_id": "资源ID",
+    "created_at": "发生时间",
+    "resolve_button": "解决",
+    "loading": "加载中...",
+    "error_load": "加载冲突失败",
+    "error_resolve": "解决冲突失败",
+    "client_version": "客户端版本",
+    "server_version": "服务器版本",
+    "diff_highlight": "差异"
+  },
+  "pwa": {
+    "install_prompt": "添加到主屏幕，像应用一样使用",
+    "install_button": "安装",
+    "update_available": "有新版本可用",
+    "update_button": "更新"
+  }
+}

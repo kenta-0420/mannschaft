@@ -1,6 +1,8 @@
 <script setup lang="ts">
 const authStore = useAuthStore()
+const syncStore = useSyncStore()
 const route = useRoute()
+const { t } = useI18n()
 
 const isMounted = ref(false)
 const showBlogCreate = ref(false)
@@ -28,6 +30,9 @@ const navItems = computed(() => [
   { label: 'マイページ', icon: 'pi pi-user', to: '/my/onboarding' },
   { label: '設定', icon: 'pi pi-cog', to: '/settings' },
 ])
+
+/** 未解決コンフリクトがある場合のみ「同期」ナビを表示 */
+const showSyncNav = computed(() => syncStore.hasConflicts)
 
 const systemAdminItem = { label: 'SYSTEM', icon: 'pi pi-shield', to: '/system-admin' }
 
@@ -81,6 +86,22 @@ function isActive(path: string): boolean {
                 <i class="pi pi-book" />
                 ブログ
               </button>
+              <!-- 同期（コンフリクトがある場合のみ表示） -->
+              <NuxtLink
+                v-if="showSyncNav"
+                to="/sync/conflicts"
+                class="relative flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
+                :class="isActive('/sync') ? 'bg-primary/10 text-primary' : 'text-surface-600'"
+              >
+                <i class="pi pi-sync" />
+                {{ t('sync.nav_label') }}
+                <span
+                  v-if="syncStore.conflictCount > 0"
+                  class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
+                >
+                  {{ syncStore.conflictCount }}
+                </span>
+              </NuxtLink>
             </nav>
           </ClientOnly>
         </div>
@@ -89,6 +110,7 @@ function isActive(path: string): boolean {
         <div class="flex items-center gap-3">
           <ClientOnly>
             <template v-if="authStore.isAuthenticated">
+              <SyncProgressIndicator />
               <NotificationBell />
               <Button
                 v-tooltip.bottom="'ログアウト'"
@@ -114,6 +136,11 @@ function isActive(path: string): boolean {
         </div>
       </div>
     </header>
+
+    <!-- PWA: オフラインバナー -->
+    <ClientOnly>
+      <OfflineStatusBanner />
+    </ClientOnly>
 
     <!-- メインコンテンツ -->
     <main class="mx-auto max-w-screen-2xl p-4">
@@ -148,6 +175,22 @@ function isActive(path: string): boolean {
             <i class="pi pi-book text-base" />
             ブログ
           </button>
+          <!-- 同期（コンフリクトがある場合のみ） -->
+          <NuxtLink
+            v-if="showSyncNav"
+            to="/sync/conflicts"
+            class="relative flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100"
+            :class="isActive('/sync') ? 'bg-primary/10 text-primary' : 'text-surface-700'"
+          >
+            <i class="pi pi-sync text-base" />
+            {{ t('sync.nav_label') }}
+            <span
+              v-if="syncStore.conflictCount > 0"
+              class="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
+            >
+              {{ syncStore.conflictCount }}
+            </span>
+          </NuxtLink>
           <!-- システム管理 -->
           <NuxtLink
             v-if="authStore.isSystemAdmin"

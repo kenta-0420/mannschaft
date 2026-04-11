@@ -90,6 +90,7 @@ async function handleCopy() {
   }
 }
 
+
 function formatDate(isoString: string): string {
   return isoString.substring(0, 10)
 }

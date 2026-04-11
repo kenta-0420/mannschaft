@@ -216,6 +216,8 @@ class ScheduleServiceTest {
                     null, null,
                     null,
                     null,
+                    null,
+                    null,
                     null);
 
             given(scheduleRepository.save(any(ScheduleEntity.class)))

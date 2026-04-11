@@ -4,8 +4,10 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.TimetableChangeType;
 import com.mannschaft.app.timetable.TimetableErrorCode;
 import com.mannschaft.app.timetable.entity.TimetableChangeEntity;
+import com.mannschaft.app.timetable.entity.TimetableEntity;
 import com.mannschaft.app.timetable.event.TimetableChangeCreatedEvent;
 import com.mannschaft.app.timetable.repository.TimetableChangeRepository;
+import com.mannschaft.app.timetable.repository.TimetableRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -27,6 +29,7 @@ import java.util.List;
 public class TimetableChangeService {
 
     private final TimetableChangeRepository changeRepository;
+    private final TimetableRepository timetableRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -52,13 +55,16 @@ public class TimetableChangeService {
     }
 
     /**
-     * 臨時変更を作成する。
+     * 臨時変更を作成する。時間割が ACTIVE 状態の場合のみ登録可能。
      */
     @Transactional
     public TimetableChangeEntity createChange(Long timetableId, CreateChangeData data) {
-        // ACTIVE状態チェック
-        // timetableServiceから取得するにはteamIdが必要だが、timetableIdから逆引きする
-        // ここではtimetableIdのみで操作し、チーム検証はController層に委譲
+        // ACTIVE状態チェック（設計書要件: 臨時変更はACTIVEの時間割のみ）
+        TimetableEntity timetable = timetableRepository.findById(timetableId)
+                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TIMETABLE_NOT_FOUND));
+        if (!timetable.isActive()) {
+            throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_ACTIVE);
+        }
         validateChangeData(timetableId, data);
 
         TimetableChangeEntity entity = TimetableChangeEntity.builder()
@@ -158,7 +164,7 @@ public class TimetableChangeService {
         if ((data.changeType() == TimetableChangeType.REPLACE
                 || data.changeType() == TimetableChangeType.ADD)
                 && (data.subjectName() == null || data.subjectName().isBlank())) {
-            throw new BusinessException(TimetableErrorCode.BREAK_PERIOD_ASSIGNED);
+            throw new BusinessException(TimetableErrorCode.SUBJECT_NAME_REQUIRED);
         }
     }
 

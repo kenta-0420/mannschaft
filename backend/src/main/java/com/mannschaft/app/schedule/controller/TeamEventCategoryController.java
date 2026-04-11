@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.schedule.dto.CreateEventCategoryRequest;
@@ -33,6 +35,7 @@ public class TeamEventCategoryController {
 
     private final ScheduleEventCategoryService categoryService;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * チーム行事カテゴリ一覧を取得する（チーム固有 + 親組織カテゴリのマージ結果）。
@@ -55,7 +58,7 @@ public class TeamEventCategoryController {
     }
 
     /**
-     * チームスコープの行事カテゴリを作成する。
+     * チームスコープの行事カテゴリを作成する。ADMIN/DEPUTY_ADMIN のみ実行可能。
      */
     @PostMapping
     @Operation(summary = "チーム行事カテゴリ作成")
@@ -63,6 +66,7 @@ public class TeamEventCategoryController {
     public ResponseEntity<ApiResponse<EventCategoryResponse>> createCategory(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateEventCategoryRequest request) {
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
         ScheduleEventCategoryService.CreateCategoryData data =
                 new ScheduleEventCategoryService.CreateCategoryData(
                         request.getName(),

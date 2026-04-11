@@ -1,0 +1,122 @@
+{
+  "title": "行動メモ",
+  "page": {
+    "today_memos": "今日のメモ",
+    "empty": "まだメモがありません。最初の1件を書きましょう。",
+    "settings_link": "設定",
+    "back_to_memo": "行動メモへ戻る",
+    "closing_link": "今日を締める",
+    "weekly_link": "週次まとめ",
+    "tags_link": "タグ管理"
+  },
+  "mood": {
+    "great": "絶好調",
+    "good": "いい感じ",
+    "ok": "普通",
+    "tired": "疲れ",
+    "bad": "しんどい",
+    "none": "選択しない",
+    "label": "気分"
+  },
+  "input": {
+    "placeholder": "いま、何してた？",
+    "submit": "記録する",
+    "draft_saved": "下書きを自動保存しました",
+    "char_count": "{count} / 5000",
+    "shift_enter_hint": "Enterで送信 / Shift+Enterで改行"
+  },
+  "card": {
+    "edit": "編集",
+    "delete": "削除",
+    "linked_todo": "関連TODO"
+  },
+  "weekly": {
+    "title": "週次ふりかえり",
+    "summary": "今週のサマリー",
+    "memo_count": "メモ件数",
+    "posted_days": "投稿日数",
+    "avg_mood": "平均気分",
+    "mood_trend": "気分の推移",
+    "top_tags": "よく使ったタグ",
+    "featured_memos": "今週の代表的なメモ",
+    "featured_random_note": "（ランダム抽出）",
+    "related_todos": "関連 TODO",
+    "todos_completed": "完了",
+    "todos_pending": "未完 → 来週へ繰越",
+    "page_title": "週次まとめ",
+    "empty_state": "まだ週次まとめがありません。日曜の夜に自動で生成されます。",
+    "view_detail": "詳細を見る",
+    "loading": "読み込み中...",
+    "error": "週次まとめの取得に失敗しました",
+    "retry": "再読み込み",
+    "next_summary": "次の週次まとめは日曜の夜に生成されます",
+    "body_preview_more": "...続きを読む",
+    "period_label": "対象期間",
+    "load_more": "もっと読み込む"
+  },
+  "settings": {
+    "title": "行動メモ設定",
+    "mood_enabled": {
+      "label": "気分入力を有効にする",
+      "description": "メモ入力時に5段階の気分を選べます。デフォルトは無効です。"
+    }
+  },
+  "error": {
+    "rate_limit": "操作が早すぎます。少し時間をおいて再度お試しください",
+    "daily_limit": "本日の上限（200件）に達しました。明日以降にお書きください",
+    "future_date": "未来の日付には書けません",
+    "todo_not_found": "紐付けようとした TODO が見つかりません",
+    "load_failed": "メモの取得に失敗しました",
+    "save_failed": "メモの保存に失敗しました"
+  },
+  "dialog": {
+    "title": "メモを編集",
+    "save": "保存",
+    "cancel": "キャンセル"
+  },
+  "closing": {
+    "title": "終業時の振り返り",
+    "today_memos": "今日のメモ",
+    "todos_completed": "完了したTODO",
+    "todos_pending": "残ったTODO",
+    "no_completed_todos": "今日の完了TODOはまだありません",
+    "no_pending_todos": "今日の未完TODOはありません",
+    "tomorrow_todos": "明日やること",
+    "tomorrow_input_placeholder": "明日やることを入力",
+    "tomorrow_added": "明日のTODOに追加しました",
+    "tomorrow_add_failed": "TODOの追加に失敗しました",
+    "extra_comment_label": "今日のひと言",
+    "extra_comment_placeholder": "今日の総括（任意）",
+    "publish_button": "今日を締める",
+    "publish_success": "本日のまとめを投稿しました（{count}件）",
+    "publish_error": "まとめ投稿に失敗しました",
+    "move_to_tomorrow": "明日に回す",
+    "moved_to_tomorrow": "明日に回しました",
+    "move_failed": "明日に回せませんでした",
+    "no_memos_hint": "今日のメモが0件のため投稿できません"
+  },
+  "offline": {
+    "banner": "オフライン中です。オンライン復帰時に同期されます",
+    "sync_button": "いま同期する",
+    "queued": "{count}件キュー中"
+  },
+  "tag": {
+    "list_title": "タグ管理",
+    "create_button": "新しいタグを作成",
+    "name_placeholder": "タグ名",
+    "color_label": "色",
+    "edit": "編集",
+    "delete": "削除",
+    "delete_confirm": "このタグを削除しますか？（復活できません）",
+    "search_placeholder": "タグを検索...",
+    "max_reached": "1メモあたり10個まで",
+    "limit_reached": "タグは100個まで作成できます",
+    "no_tags": "タグがまだありません",
+    "save": "保存",
+    "cancel": "キャンセル"
+  },
+  "mood_stats": {
+    "title": "気分の分布",
+    "total": "合計"
+  }
+}
