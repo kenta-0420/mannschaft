@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 /**
  * F11.1 Phase 5: ConflictResolverModal のユニットテスト。
@@ -146,6 +146,138 @@ describe('ConflictResolverModal ロジック', () => {
       const body = buildResolveBody('MANUAL_MERGE', { status: 'MERGED' })
       expect(body.resolution).toBe('MANUAL_MERGE')
       expect(body.merged_data).toBe('{"status":"MERGED"}')
+    })
+  })
+
+  /**
+   * confirmDiscard は PrimeVue の useConfirm に require 呼び出しを委譲する。
+   * ここでは require に渡す options オブジェクトの構築と、
+   * accept/reject コールバックによる handleDiscard の発火挙動を検証する。
+   *
+   * ConflictResolverModal.vue の confirmDiscard と同じ形を再現している。
+   */
+  describe('破棄確認ダイアログ (confirmDiscard)', () => {
+    interface ConfirmRequireOptions {
+      message: string
+      header: string
+      icon: string
+      acceptClass: string
+      acceptLabel: string
+      rejectLabel: string
+      accept: () => void
+      reject?: () => void
+    }
+
+    interface ConfirmMock {
+      require: (options: ConfirmRequireOptions) => void
+    }
+
+    function buildConfirmDiscard(
+      confirm: ConfirmMock,
+      handleDiscard: () => void,
+      t: (key: string) => string,
+      detail: { id: number } | null,
+    ) {
+      return () => {
+        if (!detail) return
+        confirm.require({
+          message: t('conflict.discard_confirm'),
+          header: t('conflict.discard'),
+          icon: 'pi pi-exclamation-triangle',
+          acceptClass: 'p-button-danger',
+          acceptLabel: t('button.confirm'),
+          rejectLabel: t('button.cancel'),
+          accept: () => {
+            handleDiscard()
+          },
+        })
+      }
+    }
+
+    it('detail が null の場合は confirm.require を呼ばない', () => {
+      const requireSpy = vi.fn()
+      const handleDiscard = vi.fn()
+      const t = (key: string) => key
+      const confirmDiscard = buildConfirmDiscard(
+        { require: requireSpy },
+        handleDiscard,
+        t,
+        null,
+      )
+
+      confirmDiscard()
+
+      expect(requireSpy).not.toHaveBeenCalled()
+      expect(handleDiscard).not.toHaveBeenCalled()
+    })
+
+    it('require に渡す options が i18n キーとアイコンを正しく含む', () => {
+      const requireSpy = vi.fn()
+      const handleDiscard = vi.fn()
+      const t = (key: string) => `translated:${key}`
+      const confirmDiscard = buildConfirmDiscard(
+        { require: requireSpy },
+        handleDiscard,
+        t,
+        { id: 42 },
+      )
+
+      confirmDiscard()
+
+      expect(requireSpy).toHaveBeenCalledTimes(1)
+      const options = requireSpy.mock.calls[0]?.[0] as ConfirmRequireOptions
+      expect(options.message).toBe('translated:conflict.discard_confirm')
+      expect(options.header).toBe('translated:conflict.discard')
+      expect(options.icon).toBe('pi pi-exclamation-triangle')
+      expect(options.acceptClass).toBe('p-button-danger')
+      expect(options.acceptLabel).toBe('translated:button.confirm')
+      expect(options.rejectLabel).toBe('translated:button.cancel')
+      expect(typeof options.accept).toBe('function')
+    })
+
+    it('accept コールバック実行時に handleDiscard が呼ばれる', () => {
+      const handleDiscard = vi.fn()
+      // require はコールバックを即座に実行せず、保持する
+      let captured: ConfirmRequireOptions | null = null
+      const confirm: ConfirmMock = {
+        require: (options) => {
+          captured = options
+        },
+      }
+      const confirmDiscard = buildConfirmDiscard(
+        confirm,
+        handleDiscard,
+        (key) => key,
+        { id: 1 },
+      )
+
+      confirmDiscard()
+      expect(handleDiscard).not.toHaveBeenCalled()
+
+      // ユーザーが「確認」を押したと仮定して accept を発火
+      captured!.accept()
+      expect(handleDiscard).toHaveBeenCalledTimes(1)
+    })
+
+    it('reject 相当の操作では handleDiscard が呼ばれない', () => {
+      const handleDiscard = vi.fn()
+      let captured: ConfirmRequireOptions | null = null
+      const confirm: ConfirmMock = {
+        require: (options) => {
+          captured = options
+        },
+      }
+      const confirmDiscard = buildConfirmDiscard(
+        confirm,
+        handleDiscard,
+        (key) => key,
+        { id: 1 },
+      )
+
+      confirmDiscard()
+      // accept を呼ばず、ダイアログを閉じたシナリオ
+      expect(captured).not.toBeNull()
+      expect(handleDiscard).not.toHaveBeenCalled()
     })
   })
 })

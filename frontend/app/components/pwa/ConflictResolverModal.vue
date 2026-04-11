@@ -20,6 +20,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const { getConflictDetail, resolveConflict, discardConflict } = useConflictResolver()
 const toast = useToast()
+const confirm = useConfirm()
 
 const loading = ref(false)
 const resolving = ref(false)
@@ -96,6 +97,25 @@ async function handleDiscard() {
   } finally {
     resolving.value = false
   }
+}
+
+/**
+ * 破棄は不可逆操作のため、ConfirmDialog で確認を挟む。
+ * accept された場合のみ handleDiscard を実行する。
+ */
+function confirmDiscard() {
+  if (!detail.value) return
+  confirm.require({
+    message: t('conflict.discard_confirm'),
+    header: t('conflict.discard'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    acceptLabel: t('button.confirm'),
+    rejectLabel: t('button.cancel'),
+    accept: () => {
+      void handleDiscard()
+    },
+  })
 }
 
 /**
@@ -251,7 +271,7 @@ function formatValue(value: unknown): string {
           text
           :loading="resolving"
           :disabled="!detail || loading"
-          @click="handleDiscard"
+          @click="confirmDiscard"
         />
       </div>
     </template>
