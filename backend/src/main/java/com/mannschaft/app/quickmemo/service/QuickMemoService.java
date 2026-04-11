@@ -10,8 +10,10 @@ import com.mannschaft.app.quickmemo.entity.*;
 import com.mannschaft.app.quickmemo.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -90,6 +92,7 @@ public class QuickMemoService {
         return toResponse(memo, false);
     }
 
+    @Retryable(retryFor = {DataAccessException.class}, maxAttempts = 3)
     @Transactional
     public QuickMemoResponse updateMemo(Long memoId, Long userId, UpdateQuickMemoRequest req) {
         QuickMemoEntity memo = memoRepository.findByIdAndUserIdForUpdate(memoId, userId)

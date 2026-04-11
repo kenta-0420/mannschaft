@@ -12,8 +12,10 @@ import com.mannschaft.app.quickmemo.entity.TagEntity;
 import com.mannschaft.app.quickmemo.repository.TagRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -85,6 +87,7 @@ public class TagService {
     /**
      * タグを更新する。
      */
+    @Retryable(retryFor = {DataAccessException.class}, maxAttempts = 3)
     @Transactional
     public TagResponse updateTag(String scopeType, Long scopeId, Long tagId, UpdateTagRequest req) {
         TagEntity tag = tagRepository.findByIdAndScopeTypeAndScopeId(tagId, scopeType, scopeId)
