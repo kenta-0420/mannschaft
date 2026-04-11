@@ -1,5 +1,7 @@
 package com.mannschaft.app.actionmemo;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import jakarta.servlet.FilterChain;
@@ -14,7 +16,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * F02.5 行動メモ機能のユーザー別レートリミットフィルタ。
@@ -31,8 +34,20 @@ import java.util.concurrent.ConcurrentHashMap;
  * ADHD ユーザーの「思いついた瞬間に書く」摩擦ゼロ原則に矛盾しないよう、
  * ボット・スクリプト・連打バグの防御のみを目的とする。</p>
  *
- * <p><b>実装</b>: {@code ErrorReportRateLimitFilter} を雛形に ConcurrentHashMap ベースの
- * インメモリ実装。単一インスタンス環境で十分機能し、将来的に Bucket4j-Redis に差し替え可能。</p>
+ * <p><b>キャッシュ戦略</b>: Caffeine の {@code expireAfterAccess=10分} + {@code maximumSize=10000}。
+ * 旧実装の {@code ConcurrentHashMap} は Eviction ポリシーが無く、ユーザー/IP ごとにバケットが
+ * 永続化されるため長期稼働で OOM を引き起こす懸念があった。
+ * {@link com.mannschaft.app.sync.SyncRateLimitFilter} と同一パターンで統一している。</p>
+ * <ul>
+ *   <li>10 分間アクセスが無いバケットは自動削除される（非アクティブなキーはメモリから消える）</li>
+ *   <li>最大 10000 エントリを超えると LRU で淘汰される（想定外のキー爆発を防ぐ）</li>
+ *   <li>レートリミット窓は Bucket4j の Bandwidth（1分）側が管理するため、
+ *       10 分の TTL はメモリ保持期間に関する上限であって仕様に影響しない</li>
+ * </ul>
+ *
+ * <p>エンドポイントごとに Cache を分離しているのは、片方のトラフィックが
+ * もう片方のエントリを LRU で押し出すのを避けるため
+ * （{@link com.mannschaft.app.sync.SyncRateLimitFilter} と同じ方針）。</p>
  */
 @Component
 public class ActionMemoRateLimitFilter extends OncePerRequestFilter {
@@ -60,7 +75,27 @@ public class ActionMemoRateLimitFilter extends OncePerRequestFilter {
         }
     }
 
-    private final ConcurrentHashMap<String, Bucket> buckets = new ConcurrentHashMap<>();
+    /** バケット保持期間（非アクセス時）。レート窓（1分）より十分長く、OOM は防ぐ。 */
+    private static final Duration BUCKET_TTL = Duration.ofMinutes(10);
+
+    /** キャッシュ最大エントリ数。想定外のキー爆発時に LRU で古いものから淘汰する。 */
+    private static final long MAX_BUCKETS = 10_000L;
+
+    /**
+     * エンドポイント別のバケットキャッシュ。エンドポイント間で LRU 淘汰が干渉しないよう
+     * それぞれ独立した Cache として保持する。
+     */
+    private final Map<Endpoint, Cache<String, Bucket>> bucketsByEndpoint;
+
+    public ActionMemoRateLimitFilter() {
+        this.bucketsByEndpoint = new EnumMap<>(Endpoint.class);
+        for (Endpoint ep : Endpoint.values()) {
+            this.bucketsByEndpoint.put(ep, Caffeine.<String, Bucket>newBuilder()
+                    .expireAfterAccess(BUCKET_TTL)
+                    .maximumSize(MAX_BUCKETS)
+                    .build());
+        }
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -83,8 +118,8 @@ public class ActionMemoRateLimitFilter extends OncePerRequestFilter {
         }
 
         String userKey = resolveUserKey(request);
-        String bucketKey = endpoint.name() + ":" + userKey;
-        Bucket bucket = buckets.computeIfAbsent(bucketKey, k -> newBucket(endpoint.capacityPerMinute));
+        Cache<String, Bucket> cache = bucketsByEndpoint.get(endpoint);
+        Bucket bucket = cache.get(userKey, k -> newBucket(endpoint.capacityPerMinute));
 
         if (bucket.tryConsume(1)) {
             chain.doFilter(request, response);
