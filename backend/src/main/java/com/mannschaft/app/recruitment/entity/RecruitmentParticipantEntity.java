@@ -52,7 +52,7 @@ public class RecruitmentParticipantEntity {
 
     private Long teamId;
 
-    @Column(nullable = false)
+    // FK: users(id) ON DELETE SET NULL に対応。申込者のアカウントが削除された後も申込記録は残す。
     private Long appliedBy;
 
     @Enumerated(EnumType.STRING)

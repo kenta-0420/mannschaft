@@ -6,7 +6,7 @@ CREATE TABLE recruitment_participants (
     participant_type    VARCHAR(20)     NOT NULL,
     user_id             BIGINT UNSIGNED,
     team_id             BIGINT UNSIGNED,
-    applied_by          BIGINT UNSIGNED NOT NULL,
+    applied_by          BIGINT UNSIGNED,
     status              VARCHAR(20)     NOT NULL DEFAULT 'APPLIED',
     waitlist_position   INT UNSIGNED,
     note                VARCHAR(500),

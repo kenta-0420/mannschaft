@@ -40,7 +40,7 @@ public class BulletinReadStatusController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         readStatusService.markAsRead(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
@@ -55,7 +55,7 @@ public class BulletinReadStatusController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         List<ReadStatusResponse> responses = readStatusService.listReadUsers(type, scopeId, threadId);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }

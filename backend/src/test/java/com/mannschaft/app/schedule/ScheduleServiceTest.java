@@ -10,6 +10,7 @@ import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.service.ScheduleEventCategoryService;
 import com.mannschaft.app.schedule.service.ScheduleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -52,6 +53,9 @@ class ScheduleServiceTest {
 
     @Mock
     private UserRoleRepository userRoleRepository;
+
+    @Mock
+    private ScheduleEventCategoryService eventCategoryService;
 
     @InjectMocks
     private ScheduleService scheduleService;
@@ -209,6 +213,7 @@ class ScheduleServiceTest {
                     true,
                     null,
                     null,
+                    null, null,
                     null,
                     null,
                     null);
@@ -234,7 +239,7 @@ class ScheduleServiceTest {
                     END, START, // start > end
                     false, "PRACTICE",
                     null, null, null,
-                    false, null, null, null, null, null);
+                    false, null, null, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> scheduleService.createSchedule(req, TEAM_ID, "TEAM", USER_ID))
@@ -252,7 +257,7 @@ class ScheduleServiceTest {
                     START, END,
                     false, "PRACTICE",
                     null, null, null,
-                    false, null, null, null, null, null);
+                    false, null, null, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> scheduleService.createSchedule(req, TEAM_ID, "INVALID", USER_ID))
@@ -282,7 +287,7 @@ class ScheduleServiceTest {
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新後タイトル", null, null,
                     null, null, null, null, null, null, null,
-                    null, null, null, null);
+                    null, null, null, null, null, null);
 
             // when
             scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID);
@@ -301,7 +306,7 @@ class ScheduleServiceTest {
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新", null, null,
                     null, null, null, null, null, null, null,
-                    null, null, null, null);
+                    null, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID))
@@ -524,7 +529,7 @@ class ScheduleServiceTest {
             // given
             CreateScheduleRequest req = new CreateScheduleRequest(
                     "個人予定", null, null, START, END, false, "OTHER",
-                    null, null, null, false, null, null, null, null, null);
+                    null, null, null, false, null, null, null, null, null, null, null);
 
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
@@ -543,7 +548,7 @@ class ScheduleServiceTest {
             Long ORG_ID = 20L;
             CreateScheduleRequest req = new CreateScheduleRequest(
                     "組織イベント", null, null, START, END, false, "EVENT",
-                    null, null, null, false, null, null, null, null, null);
+                    null, null, null, false, null, null, null, null, null, null, null);
 
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));

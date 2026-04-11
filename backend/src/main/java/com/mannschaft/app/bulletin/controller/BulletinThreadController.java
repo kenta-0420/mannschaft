@@ -50,7 +50,7 @@ public class BulletinThreadController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         Page<ThreadResponse> result;
         if (categoryId != null) {
             result = threadService.listThreadsByCategory(categoryId, PageRequest.of(page, size));
@@ -72,7 +72,7 @@ public class BulletinThreadController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         ThreadResponse response = threadService.getThread(type, scopeId, threadId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -89,7 +89,7 @@ public class BulletinThreadController {
             @RequestParam String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         Page<ThreadResponse> result = threadService.searchThreads(type, scopeId, keyword, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -106,7 +106,7 @@ public class BulletinThreadController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @Valid @RequestBody CreateThreadRequest request) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         ThreadResponse response = threadService.createThread(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -122,7 +122,7 @@ public class BulletinThreadController {
             @PathVariable Long scopeId,
             @PathVariable Long threadId,
             @Valid @RequestBody UpdateThreadRequest request) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         ThreadResponse response = threadService.updateThread(type, scopeId, threadId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -137,7 +137,7 @@ public class BulletinThreadController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         threadService.deleteThread(type, scopeId, threadId);
         return ResponseEntity.noContent().build();
     }
@@ -152,7 +152,7 @@ public class BulletinThreadController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         ThreadResponse response = threadService.togglePin(type, scopeId, threadId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -167,7 +167,7 @@ public class BulletinThreadController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         ThreadResponse response = threadService.toggleLock(type, scopeId, threadId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -182,7 +182,7 @@ public class BulletinThreadController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         ThreadResponse response = threadService.archive(type, scopeId, threadId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

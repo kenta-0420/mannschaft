@@ -185,10 +185,11 @@ public class DashboardWidgetService {
 
     /**
      * スコープタイプ文字列をEnumにパースする。
+     * 複数形（organizations, teams）・単数形（organization, team, personal）両対応。
      */
     public ScopeType parseScopeType(String scopeTypeStr) {
         try {
-            return ScopeType.valueOf(scopeTypeStr.toUpperCase());
+            return ScopeType.fromPathSegment(scopeTypeStr);
         } catch (IllegalArgumentException e) {
             throw new BusinessException(DashboardErrorCode.DASHBOARD_014);
         }
