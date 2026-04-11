@@ -2,6 +2,9 @@ import type {
   EventCategory,
   AnnualEventViewResponse,
   CopyPreview,
+  CopyExecuteRequest,
+  CopyExecuteResponse,
+  CopyLog,
   ExecuteCopyItem,
 } from '~/types/annual-plan'
 
@@ -85,21 +88,20 @@ export function useAnnualPlanApi() {
   async function executeCopy(
     scopeType: 'team' | 'organization',
     scopeId: number,
-    sourceYear: number,
-    targetYear: number,
-    dateShiftMode: string = 'SAME_WEEKDAY',
-    items: ExecuteCopyItem[],
+    body: CopyExecuteRequest,
   ) {
     const base = buildBase(scopeType, scopeId)
-    await api(`${base}/schedules/annual/copy`, {
+    const res = await api<{ data: CopyExecuteResponse }>(`${base}/schedules/annual/copy`, {
       method: 'POST',
-      body: { sourceYear, targetYear, dateShiftMode, items },
+      body,
     })
+    return res.data
   }
 
   async function getCopyLogs(scopeType: 'team' | 'organization', scopeId: number) {
     const base = buildBase(scopeType, scopeId)
-    return api(`${base}/schedules/annual/copy-logs`)
+    const res = await api<{ data: CopyLog[] }>(`${base}/schedules/annual/copy-logs`)
+    return res.data
   }
 
   async function updateCategory(

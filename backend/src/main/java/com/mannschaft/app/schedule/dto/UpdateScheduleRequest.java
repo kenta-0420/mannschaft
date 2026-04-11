@@ -42,6 +42,12 @@ public class UpdateScheduleRequest {
 
     private final String commentOption;
 
+    /** 行事カテゴリID（任意。null 指定で解除。F03.10 拡張フィールド）。 */
+    private final Long eventCategoryId;
+
+    /** 年度（任意。null 指定で解除。F03.10 拡張フィールド）。 */
+    private final Integer academicYear;
+
     private final String updateScope;
 
     /** 行事カテゴリID（F03.10 年間行事計画用）。任意項目。 */

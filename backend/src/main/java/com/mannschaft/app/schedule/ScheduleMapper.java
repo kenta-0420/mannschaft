@@ -26,6 +26,8 @@ public interface ScheduleMapper {
 
     @Mapping(target = "eventType", expression = "java(entity.getEventType().name())")
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
+    @Mapping(target = "eventCategory", ignore = true)
+    @Mapping(target = "academicYear", expression = "java(entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null)")
     ScheduleResponse toResponse(ScheduleEntity entity);
 
     List<ScheduleResponse> toResponseList(List<ScheduleEntity> entities);
@@ -42,6 +44,8 @@ public interface ScheduleMapper {
     @Mapping(target = "attendanceSummary", ignore = true)
     @Mapping(target = "crossInvitations", ignore = true)
     @Mapping(target = "recurrenceRule", ignore = true)
+    @Mapping(target = "eventCategory", ignore = true)
+    @Mapping(target = "academicYear", expression = "java(entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null)")
     ScheduleDetailResponse toDetailResponse(ScheduleEntity entity);
 
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")

@@ -10,6 +10,7 @@ import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.service.ScheduleEventCategoryService;
 import com.mannschaft.app.schedule.service.ScheduleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -52,6 +53,9 @@ class ScheduleServiceTest {
 
     @Mock
     private UserRoleRepository userRoleRepository;
+
+    @Mock
+    private ScheduleEventCategoryService eventCategoryService;
 
     @InjectMocks
     private ScheduleService scheduleService;
@@ -209,6 +213,7 @@ class ScheduleServiceTest {
                     true,
                     null,
                     null,
+                    null, null,
                     null,
                     null,
                     null,

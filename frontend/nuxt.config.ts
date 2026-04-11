@@ -112,6 +112,7 @@ export default defineNuxtConfig({
           'ja/landing.json',
           'ja/action_memo.json',
           'ja/pwa.json',
+          'ja/recruitment.ts',
         ],
       },
       {
@@ -125,6 +126,7 @@ export default defineNuxtConfig({
           'en/landing.json',
           'en/action_memo.json',
           'en/pwa.json',
+          'en/recruitment.ts',
         ],
       },
       {
@@ -138,6 +140,7 @@ export default defineNuxtConfig({
           'zh/landing.json',
           'zh/action_memo.json',
           'zh/pwa.json',
+          'zh/recruitment.ts',
         ],
       },
       {
@@ -151,6 +154,7 @@ export default defineNuxtConfig({
           'ko/landing.json',
           'ko/action_memo.json',
           'ko/pwa.json',
+          'ko/recruitment.ts',
         ],
       },
       {
@@ -164,6 +168,7 @@ export default defineNuxtConfig({
           'es/landing.json',
           'es/action_memo.json',
           'es/pwa.json',
+          'es/recruitment.ts',
         ],
       },
       {
@@ -177,6 +182,7 @@ export default defineNuxtConfig({
           'de/landing.json',
           'de/action_memo.json',
           'de/pwa.json',
+          'de/recruitment.ts',
         ],
       },
     ],

@@ -75,6 +75,22 @@ public class PersonalBlogController {
     }
 
     /**
+     * 認証ユーザー自身のブログ記事一覧を取得する。
+     */
+    @GetMapping("/me/blog/posts")
+    @Operation(summary = "自分のブログ記事一覧")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<PagedResponse<BlogPostResponse>> listMyPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Page<BlogPostResponse> result = postService.listByUser(userId, PageRequest.of(page, size));
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
+        return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
+    }
+
+    /**
      * 個人ブログ記事を作成する。
      */
     @PostMapping("/me/blog/posts")

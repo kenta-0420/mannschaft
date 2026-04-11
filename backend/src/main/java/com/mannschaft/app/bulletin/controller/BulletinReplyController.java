@@ -50,7 +50,7 @@ public class BulletinReplyController {
             @PathVariable Long threadId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         Page<ReplyResponse> result = replyService.listReplies(type, scopeId, threadId, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -68,7 +68,7 @@ public class BulletinReplyController {
             @PathVariable Long scopeId,
             @PathVariable Long threadId,
             @Valid @RequestBody CreateReplyRequest request) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         ReplyResponse response = replyService.createReply(type, scopeId, threadId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -85,7 +85,7 @@ public class BulletinReplyController {
             @PathVariable Long threadId,
             @PathVariable Long replyId,
             @Valid @RequestBody UpdateReplyRequest request) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         ReplyResponse response = replyService.updateReply(type, scopeId, threadId, replyId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -101,7 +101,7 @@ public class BulletinReplyController {
             @PathVariable Long scopeId,
             @PathVariable Long threadId,
             @PathVariable Long replyId) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         replyService.deleteReply(type, scopeId, threadId, replyId);
         return ResponseEntity.noContent().build();
     }

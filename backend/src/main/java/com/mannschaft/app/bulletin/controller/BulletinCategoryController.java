@@ -45,7 +45,7 @@ public class BulletinCategoryController {
     public ResponseEntity<ApiResponse<List<CategoryResponse>>> listCategories(
             @PathVariable String scopeType,
             @PathVariable Long scopeId) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         List<CategoryResponse> categories = categoryService.listCategories(type, scopeId);
         return ResponseEntity.ok(ApiResponse.of(categories));
     }
@@ -60,7 +60,7 @@ public class BulletinCategoryController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long categoryId) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         CategoryResponse response = categoryService.getCategory(type, scopeId, categoryId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -75,7 +75,7 @@ public class BulletinCategoryController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @Valid @RequestBody CreateCategoryRequest request) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         CategoryResponse response = categoryService.createCategory(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -91,7 +91,7 @@ public class BulletinCategoryController {
             @PathVariable Long scopeId,
             @PathVariable Long categoryId,
             @Valid @RequestBody UpdateCategoryRequest request) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         CategoryResponse response = categoryService.updateCategory(type, scopeId, categoryId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -106,7 +106,7 @@ public class BulletinCategoryController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long categoryId) {
-        ScopeType type = ScopeType.valueOf(scopeType.toUpperCase());
+        ScopeType type = ScopeType.fromPathSegment(scopeType);
         categoryService.deleteCategory(type, scopeId, categoryId);
         return ResponseEntity.noContent().build();
     }

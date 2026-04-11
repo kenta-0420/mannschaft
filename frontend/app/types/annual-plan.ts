@@ -72,6 +72,38 @@ export interface CopyPreview {
   totalWithConflicts: number
 }
 
+export interface CopyExecuteItem {
+  sourceScheduleId: number
+  targetStartAt: string
+  targetEndAt: string | null
+  include: boolean
+}
+
+export interface CopyExecuteRequest {
+  sourceYear: number
+  targetYear: number
+  dateShiftMode?: string
+  items: CopyExecuteItem[]
+}
+
+export interface CopyExecuteResponse {
+  copyLogId: number
+  totalCopied: number
+  totalSkipped: number
+  createdScheduleIds: number[]
+}
+
+export interface CopyLog {
+  id: number
+  sourceAcademicYear: number
+  targetAcademicYear: number
+  totalCopied: number
+  totalSkipped: number
+  dateShiftMode: string
+  executedBy: number | null
+  createdAt: string
+}
+
 /** バックエンド ExecuteCopyRequest.CopyItem に対応 */
 export interface ExecuteCopyItem {
   sourceScheduleId: number

@@ -281,5 +281,34 @@
       "오늘 밤 푹 자서 내일 아침 개운하게 일어나봐요.",
       "오늘도 정말 고생 많으셨어요. 잘 자요."
     ]
+  },
+  "annual_plan": {
+    "title": "연간 행사 계획",
+    "no_events": "행사 없음",
+    "no_data": "행사 데이터가 없습니다",
+    "all_categories": "전체",
+    "category_placeholder": "카테고리",
+    "copy_prev_year": "전년도 복사",
+    "copy_dialog_title": "전년도 트레이스",
+    "copy_dialog_message": "{sourceYear}년도 행사를 {targetYear}년도로 복사할까요? 날짜가 자동으로 조정됩니다.",
+    "copy_execute": "복사 실행",
+    "copy_success": "전년도 행사를 복사했습니다",
+    "copy_error": "복사에 실패했습니다",
+    "load_error": "연간 행사 계획을 불러오지 못했습니다",
+    "copied_badge": "복사됨",
+    "date_shift_mode": {
+      "SAME_WEEKDAY": "같은 요일 (N번째 주)",
+      "EXACT_DAYS": "정확한 일수 이동"
+    }
+  },
+  "settings": {
+    "language": {
+      "title": "언어 및 시간대",
+      "display_language": "표시 언어",
+      "timezone": "시간대",
+      "load_error": "설정을 불러오지 못했습니다",
+      "save_success": "언어 및 시간대를 업데이트했습니다",
+      "save_error": "업데이트에 실패했습니다"
+    }
   }
 }

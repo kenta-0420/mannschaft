@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AnnualViewMonth, EventCategory, CopyPreviewItem, ExecuteCopyItem } from '~/types/annual-plan'
+import type { AnnualViewMonth, EventCategory, CopyPreviewItem } from '~/types/annual-plan'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -71,22 +71,19 @@ async function loadPreview() {
 async function handleCopy() {
   copyLoading.value = true
   try {
-    const items: ExecuteCopyItem[] = previewItems.value
-      .filter((item) => item.conflict === null)
-      .map((item) => ({
-        sourceScheduleId: item.sourceScheduleId,
-        targetStartAt: item.suggestedStartAt,
-        targetEndAt: item.suggestedEndAt,
-        include: true,
-      }))
-    await annualPlanApi.executeCopy(
-      'team',
-      teamId.value,
-      selectedYear.value - 1,
-      selectedYear.value,
-      'SAME_WEEKDAY',
-      items,
-    )
+    await annualPlanApi.executeCopy('team', teamId.value, {
+      sourceYear: selectedYear.value - 1,
+      targetYear: selectedYear.value,
+      dateShiftMode: 'SAME_WEEKDAY',
+      items: previewItems.value
+        .filter((item) => item.conflict === null)
+        .map((item) => ({
+          sourceScheduleId: item.sourceScheduleId,
+          targetStartAt: item.suggestedStartAt,
+          targetEndAt: item.suggestedEndAt,
+          include: true,
+        })),
+    })
     notification.success(t('annual_plan.copy_success'))
     showPreviewDialog.value = false
     await loadData()
@@ -168,7 +165,12 @@ onMounted(loadData)
               severity="secondary"
               class="text-xs"
             />
-            <Badge :value="event.eventType" severity="info" class="text-xs" />
+            <Badge
+              v-if="event.sourceScheduleId"
+              :value="$t('annual_plan.copied_badge')"
+              severity="info"
+              class="text-xs"
+            />
           </div>
         </div>
       </div>

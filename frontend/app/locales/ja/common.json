@@ -281,5 +281,34 @@
       "明日の朝、すっきり目覚められるよう、今夜はよく眠りましょう。",
       "今日も一日、本当によく頑張りました。おやすみなさい。"
     ]
+  },
+  "annual_plan": {
+    "title": "年間行事計画",
+    "no_events": "行事なし",
+    "no_data": "行事データがありません",
+    "all_categories": "すべて",
+    "category_placeholder": "カテゴリ",
+    "copy_prev_year": "前年度コピー",
+    "copy_dialog_title": "前年度トレース",
+    "copy_dialog_message": "{sourceYear}年度の行事を{targetYear}年度にコピーしますか？日程は自動調整されます。",
+    "copy_execute": "コピー実行",
+    "copy_success": "前年度の行事をコピーしました",
+    "copy_error": "コピーに失敗しました",
+    "load_error": "年間行事計画の取得に失敗しました",
+    "copied_badge": "コピー済",
+    "date_shift_mode": {
+      "SAME_WEEKDAY": "同じ曜日（第N週）",
+      "EXACT_DAYS": "同じ日数シフト"
+    }
+  },
+  "settings": {
+    "language": {
+      "title": "言語・タイムゾーン",
+      "display_language": "表示言語",
+      "timezone": "タイムゾーン",
+      "load_error": "設定の取得に失敗しました",
+      "save_success": "言語・タイムゾーンを更新しました",
+      "save_error": "更新に失敗しました"
+    }
   }
 }

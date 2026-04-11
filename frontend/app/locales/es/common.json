@@ -281,5 +281,34 @@
       "Duerme bien esta noche para despertar fresco manana.",
       "Hoy lo hiciste de verdad muy bien. Buenas noches."
     ]
+  },
+  "annual_plan": {
+    "title": "Plan de Eventos Anual",
+    "no_events": "Sin eventos",
+    "no_data": "No hay datos de eventos",
+    "all_categories": "Todas",
+    "category_placeholder": "Categoria",
+    "copy_prev_year": "Copiar Ano Anterior",
+    "copy_dialog_title": "Trazar Ano Anterior",
+    "copy_dialog_message": "Copiar eventos del {sourceYear} al {targetYear}? Las fechas se ajustaran automaticamente.",
+    "copy_execute": "Ejecutar Copia",
+    "copy_success": "Eventos del ano anterior copiados",
+    "copy_error": "Error al copiar eventos",
+    "load_error": "Error al cargar el plan de eventos anual",
+    "copied_badge": "Copiado",
+    "date_shift_mode": {
+      "SAME_WEEKDAY": "Mismo dia de la semana (N.a semana)",
+      "EXACT_DAYS": "Desplazamiento exacto de dias"
+    }
+  },
+  "settings": {
+    "language": {
+      "title": "Idioma y zona horaria",
+      "display_language": "Idioma de visualizacion",
+      "timezone": "Zona horaria",
+      "load_error": "Error al cargar la configuracion",
+      "save_success": "Idioma y zona horaria actualizados",
+      "save_error": "Error al actualizar la configuracion"
+    }
   }
 }

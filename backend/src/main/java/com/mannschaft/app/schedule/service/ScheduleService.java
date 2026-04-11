@@ -10,10 +10,12 @@ import com.mannschaft.app.schedule.EventType;
 import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
+import com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode;
 import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
+import com.mannschaft.app.schedule.dto.EventCategoryResponse;
 import com.mannschaft.app.schedule.dto.RecurrenceRuleDto;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
@@ -61,6 +63,7 @@ public class ScheduleService {
     private final NameResolverService nameResolverService;
     private final AccessControlService accessControlService;
     private final UserRoleRepository userRoleRepository;
+    private final ScheduleEventCategoryService eventCategoryService;
 
     /**
      * スケジュールを単体取得する。存在しない場合は例外をスローする。
@@ -343,6 +346,16 @@ public class ScheduleService {
             recurrenceRuleJson = serializeRecurrenceRule(req.getRecurrenceRule());
         }
 
+        // カテゴリスコープ整合性チェック（F03.10）
+        Long teamId = SCOPE_TYPE_TEAM.equals(scopeType) ? scopeId : null;
+        Long orgId = SCOPE_TYPE_ORGANIZATION.equals(scopeType) ? scopeId : null;
+        eventCategoryService.validateCategoryScope(teamId, orgId, req.getEventCategoryId());
+
+        // academic_year が指定されている場合の日付整合性チェック（F03.10）
+        if (req.getAcademicYear() != null) {
+            validateAcademicYearRange(req.getStartAt(), req.getAcademicYear());
+        }
+
         ScheduleEntity.ScheduleEntityBuilder builder = ScheduleEntity.builder()
                 .title(req.getTitle())
                 .description(req.getDescription())
@@ -362,6 +375,8 @@ public class ScheduleService {
                 .attendanceDeadline(req.getAttendanceDeadline())
                 .commentOption(req.getCommentOption() != null
                         ? CommentOption.valueOf(req.getCommentOption()) : CommentOption.OPTIONAL)
+                .eventCategoryId(req.getEventCategoryId())
+                .academicYear(req.getAcademicYear() != null ? req.getAcademicYear().shortValue() : null)
                 .recurrenceRule(recurrenceRuleJson)
                 .createdBy(userId);
 
@@ -555,8 +570,39 @@ public class ScheduleService {
         if (req.getAttendanceDeadline() != null) builder.attendanceDeadline(req.getAttendanceDeadline());
         if (req.getCommentOption() != null) builder.commentOption(CommentOption.valueOf(req.getCommentOption()));
 
+        // F03.10 行事カテゴリ・年度の更新
+        // eventCategoryId が指定されている（値あり）場合のみ更新する。null は「未指定」として扱い更新しない。
+        // カテゴリを解除したい場合は PATCH に "event_category_id": null を送信し、
+        // ScheduleCommonController 側で別途 clearEventCategory エンドポイントを提供する。
+        if (req.getEventCategoryId() != null) {
+            eventCategoryService.validateCategoryScope(
+                    schedule.getTeamId(), schedule.getOrganizationId(), req.getEventCategoryId());
+            builder.eventCategoryId(req.getEventCategoryId());
+        }
+        if (req.getAcademicYear() != null) {
+            LocalDateTime effectiveStartAt = req.getStartAt() != null ? req.getStartAt() : schedule.getStartAt();
+            validateAcademicYearRange(effectiveStartAt, req.getAcademicYear());
+            builder.academicYear(req.getAcademicYear().shortValue());
+        }
+
         ScheduleEntity updated = builder.build();
         scheduleRepository.save(updated);
+    }
+
+    /**
+     * start_at が指定された年度の範囲内かを検証する（F03.10）。
+     *
+     * @param startAt      開始日時
+     * @param academicYear 年度
+     * @throws BusinessException 範囲外の場合
+     */
+    private void validateAcademicYearRange(LocalDateTime startAt, int academicYear) {
+        LocalDate yearStart = LocalDate.of(academicYear, 4, 1);
+        LocalDate yearEnd = LocalDate.of(academicYear + 1, 3, 31);
+        LocalDate startDate = startAt.toLocalDate();
+        if (startDate.isBefore(yearStart) || startDate.isAfter(yearEnd)) {
+            throw new BusinessException(ScheduleEventCategoryErrorCode.ACADEMIC_YEAR_DATE_MISMATCH);
+        }
     }
 
     /**
@@ -650,6 +696,7 @@ public class ScheduleService {
      * エンティティをスケジュール一覧用レスポンスDTOに変換する。
      */
     private ScheduleResponse toScheduleResponse(ScheduleEntity entity) {
+        EventCategoryResponse categoryResponse = resolveEventCategoryResponse(entity.getEventCategoryId());
         return new ScheduleResponse(
                 entity.getId(),
                 entity.getTitle(),
@@ -660,7 +707,29 @@ public class ScheduleService {
                 entity.getStatus().name(),
                 entity.getAttendanceRequired(),
                 entity.getLocation(),
-                entity.getCreatedAt());
+                entity.getCreatedAt(),
+                categoryResponse,
+                entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null,
+                entity.getSourceScheduleId());
+    }
+
+    /**
+     * eventCategoryId から EventCategoryResponse を生成する。null の場合は null を返す。
+     */
+    private EventCategoryResponse resolveEventCategoryResponse(Long eventCategoryId) {
+        if (eventCategoryId == null) {
+            return null;
+        }
+        try {
+            var cat = eventCategoryService.getById(eventCategoryId);
+            String scope = cat.isTeamScope() ? "TEAM" : "ORGANIZATION";
+            return new EventCategoryResponse(
+                    cat.getId(), cat.getName(), cat.getColor(), cat.getIcon(),
+                    cat.getIsDayOffCategory(), cat.getSortOrder(), scope);
+        } catch (Exception e) {
+            // カテゴリが削除済みの場合は null を返す
+            return null;
+        }
     }
 
     /**

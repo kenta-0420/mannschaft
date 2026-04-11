@@ -94,7 +94,10 @@ public class TeamScheduleController {
         ScheduleResponse response = new ScheduleResponse(
                 entity.getId(), entity.getTitle(), entity.getStartAt(), entity.getEndAt(),
                 entity.getAllDay(), entity.getEventType().name(), entity.getStatus().name(),
-                entity.getAttendanceRequired(), entity.getLocation(), entity.getCreatedAt());
+                entity.getAttendanceRequired(), entity.getLocation(), entity.getCreatedAt(),
+                null,
+                entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null,
+                entity.getSourceScheduleId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

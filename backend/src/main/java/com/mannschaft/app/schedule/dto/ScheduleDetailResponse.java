@@ -39,6 +39,9 @@ public class ScheduleDetailResponse extends ScheduleResponse {
             Boolean attendanceRequired,
             String location,
             LocalDateTime createdAt,
+            EventCategoryResponse eventCategory,
+            Integer academicYear,
+            Long sourceScheduleId,
             String description,
             String visibility,
             String minViewRole,
@@ -56,7 +59,7 @@ public class ScheduleDetailResponse extends ScheduleResponse {
             AttendanceSummaryResponse attendanceSummary,
             List<CrossRefResponse> crossInvitations) {
         super(id, title, startAt, endAt, allDay, eventType, status,
-                attendanceRequired, location, createdAt);
+                attendanceRequired, location, createdAt, eventCategory, academicYear, sourceScheduleId);
         this.description = description;
         this.visibility = visibility;
         this.minViewRole = minViewRole;
