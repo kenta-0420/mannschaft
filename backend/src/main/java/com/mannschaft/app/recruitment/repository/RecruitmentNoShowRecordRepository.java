@@ -35,4 +35,16 @@ public interface RecruitmentNoShowRecordRepository extends JpaRepository<Recruit
               AND r.recordedAt <= :before
             """)
     List<RecruitmentNoShowRecordEntity> findUnconfirmedBefore(@Param("before") LocalDateTime before);
+
+    /** スコープ内の NO_SHOW 記録一覧（管理者用）。 */
+    @Query("""
+            SELECT r FROM RecruitmentNoShowRecordEntity r
+            JOIN RecruitmentListingEntity l ON l.id = r.listingId
+            WHERE l.scopeType = :scopeType
+              AND l.scopeId = :scopeId
+            ORDER BY r.recordedAt DESC
+            """)
+    List<RecruitmentNoShowRecordEntity> findByScopeTypeAndScopeId(
+            @Param("scopeType") com.mannschaft.app.recruitment.RecruitmentScopeType scopeType,
+            @Param("scopeId") Long scopeId);
 }

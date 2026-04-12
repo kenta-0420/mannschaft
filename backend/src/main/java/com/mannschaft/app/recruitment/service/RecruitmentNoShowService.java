@@ -148,4 +148,11 @@ public class RecruitmentNoShowService {
     public List<RecruitmentNoShowRecordEntity> getMyHistory(Long userId) {
         return noShowRepository.findByUserId(userId);
     }
+
+    /** スコープの NO_SHOW 記録一覧（管理者用）。 */
+    public List<RecruitmentNoShowRecordEntity> getNoShowsByScope(
+            com.mannschaft.app.recruitment.RecruitmentScopeType scopeType, Long scopeId, Long adminUserId) {
+        accessControlService.checkAdminOrAbove(adminUserId, scopeId, scopeType.name());
+        return noShowRepository.findByScopeTypeAndScopeId(scopeType, scopeId);
+    }
 }
