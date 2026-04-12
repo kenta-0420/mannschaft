@@ -159,7 +159,9 @@ tasks.jacocoTestReport {
 }
 
 // MapStruct: componentModel = "spring" をデフォルトに
+// encoding: Javadoc コメント内の日本語文字（全角句点等）を正しく処理するため UTF-8 を明示指定
 tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
     options.compilerArgs.addAll(listOf(
         "-Amapstruct.defaultComponentModel=spring",
         "-Amapstruct.unmappedTargetPolicy=ERROR",

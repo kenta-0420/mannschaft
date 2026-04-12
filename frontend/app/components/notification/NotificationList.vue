@@ -2,6 +2,7 @@
 import type { NotificationResponse } from '~/types/notification'
 
 const { getNotifications, markAsRead, markAsUnread, markAllAsRead } = useNotificationApi()
+const { confirmNotification } = useConfirmableNotificationApi()
 const { showError } = useNotification()
 const router = useRouter()
 const { relativeTime } = useRelativeTime()
@@ -81,7 +82,47 @@ function getIcon(sourceType: string): string {
     case 'TIMELINE_POST': return 'pi pi-comments'
     case 'BLOG_POST': return 'pi pi-book'
     case 'SYSTEM': return 'pi pi-info-circle'
+    case 'CONFIRMABLE_NOTIFICATION': return 'pi pi-check-circle'
     default: return 'pi pi-bell'
+  }
+}
+
+/** 確認通知かどうか判定する */
+function isConfirmableNotification(notif: NotificationResponse): boolean {
+  return notif.sourceType === 'CONFIRMABLE_NOTIFICATION'
+}
+
+/** 確認通知の期限日を取得する（sourceIdを使って別途取得する場合のプレースホルダ。現状はbodyから判断） */
+function getConfirmableDeadlineFromBody(notif: NotificationResponse): string | null {
+  // NotificationResponseにdeadlineAtは含まれないため、
+  // actionUrlや本文に期限情報がある場合は表示する
+  // 将来的にAPIレスポンスに追加されたら更新すること
+  return null
+}
+
+/** 確認通知の「確認する」ボタンをクリックした時の処理 */
+async function onConfirmNotification(notif: NotificationResponse) {
+  if (!notif.scopeType || !notif.scopeId || !notif.sourceId) {
+    showError('確認通知の情報が不足しています')
+    return
+  }
+  // scopeTypeをTEAM/ORGANIZATIONに変換（PersonalやSystemには来ない想定）
+  const scopeType = notif.scopeType as 'TEAM' | 'ORGANIZATION'
+  if (scopeType !== 'TEAM' && scopeType !== 'ORGANIZATION') {
+    showError('スコープが不正です')
+    return
+  }
+  try {
+    await confirmNotification(scopeType, notif.scopeId, notif.sourceId)
+    await markAsRead(notif.id)
+    notif.isRead = true
+    const toast = useToast()
+    toast.add({ severity: 'success', summary: '確認しました', life: 3000 })
+    // 一覧を再取得
+    await loadNotifications()
+  } catch (err) {
+    console.error('確認通知の確認処理に失敗しました', err)
+    showError('確認処理に失敗しました')
   }
 }
 
@@ -115,7 +156,10 @@ defineExpose({ refresh: () => loadNotifications() })
         v-for="notif in notifications"
         :key="notif.id"
         class="flex items-start gap-3 border-b border-surface-100 px-4 py-3 text-left transition-colors hover:bg-surface-50"
-        :class="notif.isRead ? 'opacity-60' : ''"
+        :class="[
+          notif.isRead ? 'opacity-60' : '',
+          isConfirmableNotification(notif) ? 'bg-amber-50 hover:bg-amber-100' : '',
+        ]"
         @click="onClickNotification(notif)"
       >
         <!-- 未読ドット -->
@@ -128,8 +172,15 @@ defineExpose({ refresh: () => loadNotifications() })
         </div>
 
         <!-- アイコン -->
-        <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-100">
-          <i :class="getIcon(notif.sourceType)" class="text-sm text-surface-500" />
+        <div
+          class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+          :class="isConfirmableNotification(notif) ? 'bg-amber-200' : 'bg-surface-100'"
+        >
+          <i
+            :class="getIcon(notif.sourceType)"
+            class="text-sm"
+            :style="isConfirmableNotification(notif) ? 'color: #d97706' : ''"
+          />
         </div>
 
         <!-- 内容 -->
@@ -141,6 +192,13 @@ defineExpose({ refresh: () => loadNotifications() })
             <span v-if="notif.scopeName" class="rounded bg-surface-100 px-1.5 py-0.5 text-xs text-surface-500">
               {{ notif.scopeName }}
             </span>
+            <!-- 確認通知バッジ -->
+            <span
+              v-if="isConfirmableNotification(notif)"
+              class="rounded bg-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-800"
+            >
+              {{ $t('confirmable.title') }}
+            </span>
           </div>
           <p v-if="notif.body" class="mt-0.5 truncate text-xs text-surface-400">
             {{ notif.body }}
@@ -148,6 +206,39 @@ defineExpose({ refresh: () => loadNotifications() })
           <div class="mt-1 flex items-center gap-2 text-xs text-surface-400">
             <span v-if="notif.actor">{{ notif.actor.displayName }}</span>
             <span>{{ relativeTime(notif.createdAt) }}</span>
+            <!-- 期限カウントダウン（将来的にAPIにdeadlineAtが追加された場合に対応） -->
+            <span
+              v-if="isConfirmableNotification(notif) && getConfirmableDeadlineFromBody(notif)"
+              class="font-medium text-amber-600"
+            >
+              <i class="pi pi-clock mr-0.5" />
+              {{ $t('confirmable.deadline') }}: {{ getConfirmableDeadlineFromBody(notif) }}
+            </span>
+          </div>
+
+          <!-- 「確認する」ボタン（CONFIRMABLE_NOTIFICATION かつ未確認の場合） -->
+          <div
+            v-if="isConfirmableNotification(notif) && !notif.isRead"
+            class="mt-2"
+          >
+            <Button
+              :label="$t('confirmable.confirm_button')"
+              size="small"
+              severity="warn"
+              icon="pi pi-check"
+              @click.stop="onConfirmNotification(notif)"
+            />
+          </div>
+
+          <!-- 確認済みラベル -->
+          <div
+            v-else-if="isConfirmableNotification(notif) && notif.isRead"
+            class="mt-1"
+          >
+            <span class="text-xs text-surface-400">
+              <i class="pi pi-check mr-1 text-green-500" />
+              {{ $t('confirmable.already_confirmed') }}
+            </span>
           </div>
         </div>
 

@@ -291,5 +291,53 @@
       "save_success": "Language and timezone updated",
       "save_error": "Failed to update settings"
     }
+  },
+  "confirmable": {
+    "title": "Confirmation Notice",
+    "settings": "Confirmation Notice Settings",
+    "send": "Send Confirmation Notice",
+    "history": "History",
+    "recipients": "Recipients",
+    "status": {
+      "ACTIVE": "Active",
+      "COMPLETED": "Completed",
+      "EXPIRED": "Expired",
+      "CANCELLED": "Cancelled"
+    },
+    "priority": {
+      "NORMAL": "Normal",
+      "HIGH": "High",
+      "URGENT": "Urgent"
+    },
+    "confirmed_via": {
+      "APP": "App",
+      "TOKEN": "URL Link",
+      "BULK": "Bulk"
+    },
+    "pending_count": "Pending confirmations: {count}",
+    "confirmation_rate": "Confirmation Rate",
+    "deadline": "Deadline",
+    "confirm_button": "Confirm",
+    "already_confirmed": "Confirmed",
+    "confirmed": "Status",
+    "confirmed_at": "Confirmed At",
+    "confirmed_via_label": "Confirmed Via",
+    "first_reminder_sent": "1st Reminder",
+    "second_reminder_sent": "2nd Reminder",
+    "reminder_minutes": "Reminder interval (minutes)",
+    "first_reminder": "1st Reminder",
+    "second_reminder": "2nd Reminder",
+    "alert_threshold": "Unconfirmed Alert Threshold",
+    "resend_reminder": "Resend Reminder",
+    "no_history": "No history found",
+    "load_error": "Failed to load confirmation notices",
+    "load_settings_error": "Failed to load settings",
+    "load_recipients_error": "Failed to load recipients",
+    "save_settings_error": "Failed to save settings",
+    "send_error": "Failed to send confirmation notice",
+    "cancel_error": "Failed to cancel",
+    "resend_error": "Failed to resend reminder",
+    "title_required": "Please enter a title",
+    "recipients_required": "Please specify at least one recipient"
   }
 }

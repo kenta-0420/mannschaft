@@ -1,0 +1,26 @@
+-- F04.9: 確認通知受信者テーブル
+CREATE TABLE confirmable_notification_recipients (
+    id                              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    confirmable_notification_id     BIGINT UNSIGNED NOT NULL,
+    user_id                         BIGINT UNSIGNED NOT NULL,
+    confirm_token                   VARCHAR(36) NOT NULL   COMMENT 'URLトークン確認用UUID',
+    is_confirmed                    BOOLEAN NOT NULL DEFAULT FALSE,
+    confirmed_at                    DATETIME NULL,
+    confirmed_via                   ENUM('APP', 'TOKEN', 'BULK') NULL COMMENT '確認経路',
+    resolved_first_reminder_minutes  INT NULL COMMENT '実際に適用された1回目リマインド（分）',
+    resolved_second_reminder_minutes INT NULL COMMENT '実際に適用された2回目リマインド（分）',
+    first_reminder_sent_at          DATETIME NULL,
+    second_reminder_sent_at         DATETIME NULL,
+    excluded_at                     DATETIME NULL  COMMENT '除外日時（管理者による確認免除）',
+    excluded_by                     BIGINT UNSIGNED NULL,
+    created_at                      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_cnr_notification_user (confirmable_notification_id, user_id),
+    UNIQUE KEY uq_cnr_token             (confirm_token),
+    INDEX idx_cnr_user_unconfirmed      (user_id, is_confirmed, created_at DESC),
+    INDEX idx_cnr_reminder              (confirmable_notification_id, is_confirmed, first_reminder_sent_at, second_reminder_sent_at),
+    INDEX idx_cnr_excluded              (excluded_at),
+    CONSTRAINT fk_cnr_notification FOREIGN KEY (confirmable_notification_id) REFERENCES confirmable_notifications(id) ON DELETE CASCADE,
+    CONSTRAINT fk_cnr_user         FOREIGN KEY (user_id)                     REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_cnr_excluded_by  FOREIGN KEY (excluded_by)                 REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='確認通知受信者';
