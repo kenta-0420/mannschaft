@@ -6,6 +6,7 @@ import com.mannschaft.app.recruitment.DisputeResolution;
 import com.mannschaft.app.recruitment.NoShowReason;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
+import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
@@ -124,7 +125,12 @@ public class RecruitmentNoShowService {
      */
     @Transactional
     public RecruitmentNoShowRecordEntity resolveDispute(
-            Long recordId, Long adminUserId, DisputeResolution resolution) {
+            Long recordId, Long adminUserId,
+            RecruitmentScopeType scopeType, Long scopeId,
+            DisputeResolution resolution) {
+        // §13 認可: 当該スコープの管理者権限を確認
+        accessControlService.checkAdminOrAbove(adminUserId, scopeId, scopeType.name());
+
         RecruitmentNoShowRecordEntity record = noShowRepository.findById(recordId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND));
 

@@ -117,7 +117,9 @@ public class RecruitmentNoShowController {
             @PathVariable Long noShowId,
             @Valid @RequestBody ResolveDisputeRequest request) {
         RecruitmentNoShowRecordEntity record = noShowService.resolveDispute(
-                noShowId, SecurityUtils.getCurrentUserId(), request.getResolution());
+                noShowId, SecurityUtils.getCurrentUserId(),
+                RecruitmentScopeType.valueOf(scopeType), scopeId,
+                request.getResolution());
         return ResponseEntity.ok(ApiResponse.of(toResponse(record)));
     }
 
