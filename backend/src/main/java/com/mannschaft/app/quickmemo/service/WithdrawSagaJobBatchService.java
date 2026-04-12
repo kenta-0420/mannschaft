@@ -1,7 +1,7 @@
 package com.mannschaft.app.quickmemo.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.common.storage.S3StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.quickmemo.entity.QuickMemoEntity;
 import com.mannschaft.app.quickmemo.entity.WithdrawJobEntity;
 import com.mannschaft.app.quickmemo.repository.QuickMemoAttachmentRepository;
@@ -39,7 +39,7 @@ public class WithdrawSagaJobBatchService {
     private final QuickMemoAttachmentRepository attachmentRepository;
     private final QuickMemoTagLinkRepository tagLinkRepository;
     private final UserQuickMemoSettingsRepository settingsRepository;
-    private final S3StorageService s3StorageService;
+    private final R2StorageService s3StorageService;
     private final AuditLogService auditLogService;
 
     @Scheduled(cron = "0 */10 * * * *")

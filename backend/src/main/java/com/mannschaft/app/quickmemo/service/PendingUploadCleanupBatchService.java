@@ -1,7 +1,7 @@
 package com.mannschaft.app.quickmemo.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.common.storage.S3StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.quickmemo.entity.PendingUploadEntity;
 import com.mannschaft.app.quickmemo.repository.PendingUploadRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ import java.util.List;
 public class PendingUploadCleanupBatchService {
 
     private final PendingUploadRepository pendingUploadRepository;
-    private final S3StorageService s3StorageService;
+    private final R2StorageService s3StorageService;
     private final AuditLogService auditLogService;
 
     @Scheduled(cron = "0 */5 * * * *")

@@ -1,8 +1,8 @@
 package com.mannschaft.app.common.storage;
 
 /**
- * S3オブジェクトのCache-Controlポリシーを判定するユーティリティ。
- * S3キーのパスパターンからCloudFrontキャッシュ戦略を自動決定する。
+ * R2 オブジェクトの Cache-Control ポリシーを判定するユーティリティ。
+ * R2 キーのパスパターンから Cloudflare Workers / R2 キャッシュ戦略を自動決定する。
  */
 public final class CachePolicy {
 
@@ -19,27 +19,27 @@ public final class CachePolicy {
     }
 
     /**
-     * S3キーのパスパターンからCache-Control値を決定する。
+     * R2 キーのパスパターンから Cache-Control 値を決定する。
      *
-     * @param s3Key S3オブジェクトキー
-     * @return Cache-Controlヘッダー値
+     * @param r2Key R2 オブジェクトキー
+     * @return Cache-Control ヘッダー値
      */
-    public static String resolve(String s3Key) {
-        if (s3Key == null) {
+    public static String resolve(String r2Key) {
+        if (r2Key == null) {
             return LONG;
         }
 
         // 一時ファイル（tmp/、export/）はキャッシュ無効
-        if (s3Key.startsWith("tmp/") || s3Key.startsWith("export/")) {
+        if (r2Key.startsWith("tmp/") || r2Key.startsWith("export/")) {
             return NO_CACHE;
         }
 
         // サムネイル・アバター・ロゴはUUID付きで不変
-        if (s3Key.contains("/thumbs/")
-                || s3Key.startsWith("avatars/")
-                || s3Key.startsWith("logos/")
-                || s3Key.startsWith("badges/")
-                || s3Key.startsWith("icons/")) {
+        if (r2Key.contains("/thumbs/")
+                || r2Key.startsWith("avatars/")
+                || r2Key.startsWith("logos/")
+                || r2Key.startsWith("badges/")
+                || r2Key.startsWith("icons/")) {
             return IMMUTABLE;
         }
 

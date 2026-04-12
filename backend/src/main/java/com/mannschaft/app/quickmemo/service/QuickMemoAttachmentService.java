@@ -2,7 +2,7 @@ package com.mannschaft.app.quickmemo.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.storage.S3StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.quickmemo.QuickMemoErrorCode;
 import com.mannschaft.app.quickmemo.dto.AttachmentSummary;
 import com.mannschaft.app.quickmemo.dto.ConfirmUploadRequest;
@@ -47,7 +47,7 @@ public class QuickMemoAttachmentService {
     private final QuickMemoRepository memoRepository;
     private final QuickMemoAttachmentRepository attachmentRepository;
     private final PendingUploadRepository pendingUploadRepository;
-    private final S3StorageService s3StorageService;
+    private final R2StorageService s3StorageService;
     private final AuditLogService auditLogService;
 
     /**

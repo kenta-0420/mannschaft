@@ -1,7 +1,7 @@
 package com.mannschaft.app.quickmemo.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.common.storage.S3StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.quickmemo.entity.QuickMemoEntity;
 import com.mannschaft.app.quickmemo.repository.QuickMemoAttachmentRepository;
 import com.mannschaft.app.quickmemo.repository.QuickMemoRepository;
@@ -37,7 +37,7 @@ public class QuickMemoPhysicalDeleteBatchService {
     private final QuickMemoAttachmentRepository attachmentRepository;
     private final QuickMemoTagLinkRepository tagLinkRepository;
     private final TagRepository tagRepository;
-    private final S3StorageService s3StorageService;
+    private final R2StorageService s3StorageService;
     private final AuditLogService auditLogService;
 
     @Scheduled(cron = "0 0 3 * * *")
