@@ -25,19 +25,19 @@ onMounted(() => load())
     <PageLoading v-if="loading" size="40px" />
     <template v-else-if="summary">
       <div class="mb-6 grid gap-4 md:grid-cols-3">
-        <div class="rounded-xl border border-surface-300 bg-surface-0 p-4">
+        <div class="rounded-xl border border-surface-400 bg-surface-0 p-4">
           <p class="text-sm text-surface-500">予算額</p>
           <p class="text-2xl font-bold text-primary">
             ¥{{ summary.budgetAmount?.toLocaleString() ?? 0 }}
           </p>
         </div>
-        <div class="rounded-xl border border-surface-300 bg-surface-0 p-4">
+        <div class="rounded-xl border border-surface-400 bg-surface-0 p-4">
           <p class="text-sm text-surface-500">支出額</p>
           <p class="text-2xl font-bold text-red-600">
             ¥{{ summary.spentAmount?.toLocaleString() ?? 0 }}
           </p>
         </div>
-        <div class="rounded-xl border border-surface-300 bg-surface-0 p-4">
+        <div class="rounded-xl border border-surface-400 bg-surface-0 p-4">
           <p class="text-sm text-surface-500">残額</p>
           <p class="text-2xl font-bold text-green-600">
             ¥{{ summary.remainingAmount?.toLocaleString() ?? 0 }}
