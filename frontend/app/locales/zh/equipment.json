@@ -1,0 +1,24 @@
+{
+  "trending": {
+    "title": "同类团队趋势",
+    "disclaimer": "基于同类{count}个团队使用数据的匿名排名。如不想包含本团队数据，请在设置中更改。",
+    "last_updated": "最后更新: {date}",
+    "settings": "数据共享设置",
+    "all_categories": "全部",
+    "team_count": "{count}个团队使用",
+    "consume_count": "90天内补充{count}次",
+    "amazon_link_label": "在Amazon购买（广告）",
+    "amazon_associate_footer": "本页面参与Amazon Associates计划。",
+    "no_data": "同类团队数量不足，暂无排名显示。",
+    "preparing": "排名正在准备中，请明天再查看。",
+    "opt_out_title": "停止数据共享",
+    "opt_out_message": "本团队的设备数据将不再包含在匿名排名中。您仍可查看排名，更改将从次日计算起生效。",
+    "opt_out_confirm": "停止数据共享",
+    "opt_out_success": "已停止数据共享。",
+    "opt_in_title": "恢复数据共享",
+    "opt_in_message": "本团队的设备数据将再次包含在排名中，更改将从次日计算起生效。",
+    "opt_in_confirm": "恢复数据共享",
+    "opt_in_success": "已恢复数据共享。",
+    "opt_out_error": "设置更新失败。"
+  }
+}

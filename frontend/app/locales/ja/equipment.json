@@ -1,0 +1,24 @@
+{
+  "trending": {
+    "title": "同類チームのトレンド",
+    "disclaimer": "同じカテゴリの{count}チームの使用状況を匿名で集計したランキングです。データをランキングに含めたくない場合は設定から変更できます。",
+    "last_updated": "最終更新: {date}",
+    "settings": "データ提供設定",
+    "all_categories": "すべて",
+    "team_count": "{count}チームが使用",
+    "consume_count": "過去90日で{count}回補充",
+    "amazon_link_label": "Amazon で購入（広告）",
+    "amazon_associate_footer": "このページはAmazon.co.jpアソシエイトプログラムに参加しています",
+    "no_data": "同じカテゴリのチームがまだ少ないため、ランキングを表示できません。より多くのチームが備品を登録すると表示されます。",
+    "preparing": "ランキングは現在準備中です。明日以降に表示されます。",
+    "opt_out_title": "データ提供を停止する",
+    "opt_out_message": "このチームの備品データを匿名ランキングに含めなくなります。ランキングの閲覧は引き続き可能です。変更は翌日の集計から反映されます。",
+    "opt_out_confirm": "データ提供を停止する",
+    "opt_out_success": "データ提供を停止しました",
+    "opt_in_title": "データ提供を再開する",
+    "opt_in_message": "このチームの備品データを匿名ランキングに再び含めます。翌日の集計から反映されます。",
+    "opt_in_confirm": "データ提供を再開する",
+    "opt_in_success": "データ提供を再開しました",
+    "opt_out_error": "設定の更新に失敗しました"
+  }
+}

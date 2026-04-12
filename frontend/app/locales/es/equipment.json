@@ -1,0 +1,24 @@
+{
+  "trending": {
+    "title": "Tendencias en equipos similares",
+    "disclaimer": "Ranking anónimo basado en datos de uso de {count} equipos de la misma categoría. Puedes desactivar esto en la configuración.",
+    "last_updated": "Última actualización: {date}",
+    "settings": "Configuración de compartir datos",
+    "all_categories": "Todo",
+    "team_count": "Usado por {count} equipos",
+    "consume_count": "{count} reposiciones en 90 días",
+    "amazon_link_label": "Comprar en Amazon (Publicidad)",
+    "amazon_associate_footer": "Esta página participa en el Programa de Afiliados de Amazon.",
+    "no_data": "No hay suficientes equipos en la misma categoría para mostrar rankings.",
+    "preparing": "Los rankings se están preparando. Vuelve mañana.",
+    "opt_out_title": "Dejar de compartir datos",
+    "opt_out_message": "Los datos de equipamiento de tu equipo ya no se incluirán en los rankings anónimos. Los cambios se aplican desde el cálculo diario siguiente.",
+    "opt_out_confirm": "Dejar de compartir datos",
+    "opt_out_success": "Se dejó de compartir datos.",
+    "opt_in_title": "Reanudar compartir datos",
+    "opt_in_message": "Los datos de equipamiento de tu equipo se incluirán de nuevo en los rankings. Los cambios se aplican desde el cálculo diario siguiente.",
+    "opt_in_confirm": "Reanudar compartir datos",
+    "opt_in_success": "Se reanudó el compartir datos.",
+    "opt_out_error": "Error al actualizar la configuración."
+  }
+}
