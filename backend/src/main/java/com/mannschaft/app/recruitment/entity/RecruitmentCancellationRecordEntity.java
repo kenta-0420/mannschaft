@@ -74,6 +74,10 @@ public class RecruitmentCancellationRecordEntity {
     @Column(length = 100)
     private String paymentId;
 
+    /** §Phase5a 決済リトライ回数（最大3回）。 */
+    @Builder.Default
+    private Integer paymentRetryCount = 0;
+
     @Column(length = 500)
     private String notes;
 
@@ -110,5 +114,10 @@ public class RecruitmentCancellationRecordEntity {
     /** 論理削除を行う (GDPR 削除要求時)。 */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /** §Phase5a 決済リトライ回数をインクリメントする。 */
+    public void incrementRetryCount() {
+        this.paymentRetryCount = (this.paymentRetryCount == null ? 0 : this.paymentRetryCount) + 1;
     }
 }
