@@ -107,10 +107,8 @@ onMounted(load)
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <div class="mb-6 flex items-center gap-2">
-      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
-      <h1 class="text-2xl font-bold">Google Calendar 連携</h1>
-    </div>
+    <BackButton to="/settings" />
+    <PageHeader title="Google Calendar 連携" />
 
     <div v-if="loading" class="space-y-4">
       <Skeleton height="6rem" />
@@ -119,10 +117,7 @@ onMounted(load)
 
     <div v-else class="fade-in space-y-6">
       <!-- 接続状態 -->
-      <div
-        class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
-      >
-        <h2 class="mb-4 text-lg font-semibold">接続状態</h2>
+      <SectionCard title="接続状態">
         <div v-if="status?.isConnected" class="space-y-3">
           <div class="flex items-center gap-3">
             <div
@@ -165,14 +160,13 @@ onMounted(load)
             @click="connectGoogle"
           />
         </div>
-      </div>
+      </SectionCard>
 
       <!-- 同期設定 -->
-      <div
+      <SectionCard
         v-if="status?.isConnected && syncSettings"
-        class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
+        title="同期設定"
       >
-        <h2 class="mb-4 text-lg font-semibold">同期設定</h2>
 
         <!-- 個人カレンダー -->
         <div
@@ -222,7 +216,7 @@ onMounted(load)
         </div>
 
         <Button label="設定を保存" icon="pi pi-check" @click="saveSettings" />
-      </div>
+      </SectionCard>
     </div>
   </div>
 </template>

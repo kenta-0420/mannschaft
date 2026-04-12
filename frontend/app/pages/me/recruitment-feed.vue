@@ -44,9 +44,7 @@ onMounted(() => load())
 
 <template>
   <div class="container mx-auto max-w-3xl p-4">
-    <h1 class="mb-4 text-2xl font-bold">
-      {{ $t('recruitment.page.myFeed') }}
-    </h1>
+    <PageHeader :title="$t('recruitment.page.myFeed')" />
     <p class="mb-6 text-sm text-surface-500">
       {{ $t('recruitment.label.feedDescription') }}
     </p>

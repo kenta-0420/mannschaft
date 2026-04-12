@@ -42,15 +42,12 @@ onMounted(loadProgresses)
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <h1 class="mb-6 text-2xl font-bold">オンボーディング</h1>
+    <PageHeader title="オンボーディング" />
 
     <PageLoading v-if="loading" />
 
     <template v-else-if="progresses.length === 0">
-      <div class="py-12 text-center text-surface-500">
-        <i class="pi pi-check-circle mb-2 text-4xl text-green-500" />
-        <p>現在オンボーディングはありません</p>
-      </div>
+      <DashboardEmptyState icon="pi-check-circle" message="現在オンボーディングはありません" />
     </template>
 
     <template v-else>
