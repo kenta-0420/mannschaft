@@ -14,7 +14,7 @@ const emit = defineEmits<{
 
 <template>
   <div
-    class="rounded-xl border border-surface-300 bg-surface-0 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-800"
+    class="rounded-xl border border-surface-400 bg-surface-0 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
     :class="{
       'col-span-1': !colSpan || colSpan === 1,
       'md:col-span-2': colSpan === 2,
