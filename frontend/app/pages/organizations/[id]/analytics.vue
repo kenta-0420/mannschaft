@@ -74,17 +74,13 @@ onMounted(loadData)
         </Card>
       </div>
 
-      <div
-        class="mb-6 rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
-      >
+      <SectionCard class="mb-6">
         <PageViewChart :daily="data.daily" :monthly="data.monthly" />
-      </div>
+      </SectionCard>
 
-      <div
-        class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
-      >
+      <SectionCard>
         <ContentRanking :rankings="data.topContent" />
-      </div>
+      </SectionCard>
     </template>
 
     <ExportDialog v-model:visible="showExport" scope-type="organization" :scope-id="orgId" />

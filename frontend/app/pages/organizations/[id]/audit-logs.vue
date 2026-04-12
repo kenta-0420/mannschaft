@@ -31,7 +31,7 @@ onMounted(loadLogs)
 
 <template>
   <div>
-    <h1 class="mb-6 text-2xl font-bold">監査ログ</h1>
+    <PageHeader title="監査ログ" />
     <DataTable :value="logs" :loading="loading" :lazy="true" :paginator="true" :rows="30" :total-records="totalRecords" :first="page * 30" data-key="id" striped-rows @page="(e: { page: number }) => { page = e.page; loadLogs() }">
       <template #empty><div class="py-8 text-center text-surface-500">ログがありません</div></template>
       <Column header="日時" style="width: 160px"><template #body="{ data }">{{ new Date(data.createdAt).toLocaleString('ja-JP') }}</template></Column>

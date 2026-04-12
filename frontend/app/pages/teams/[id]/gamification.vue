@@ -47,7 +47,7 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-4xl">
-    <h1 class="mb-6 text-2xl font-bold">ポイント・バッジ</h1>
+    <PageHeader title="ポイント・バッジ" class="mb-6" />
 
     <PageLoading v-if="loading" />
 
@@ -82,14 +82,16 @@ onMounted(loadData)
         </TabList>
         <TabPanels>
           <TabPanel value="0">
-            <div v-if="badges.length === 0" class="py-8 text-center text-surface-500">
-              まだバッジを獲得していません
-            </div>
+            <DashboardEmptyState
+              v-if="badges.length === 0"
+              icon="pi pi-star"
+              message="まだバッジを獲得していません"
+            />
             <div v-else class="grid gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              <div
+              <SectionCard
                 v-for="ub in badges"
                 :key="ub.id"
-                class="flex flex-col items-center rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
+                class="flex flex-col items-center"
               >
                 <img
                   v-if="ub.badge.iconUrl"
@@ -108,7 +110,7 @@ onMounted(loadData)
                 <p class="mt-1 text-xs text-surface-400">
                   {{ new Date(ub.awardedAt).toLocaleDateString('ja-JP') }}
                 </p>
-              </div>
+              </SectionCard>
             </div>
           </TabPanel>
           <TabPanel value="1">
@@ -124,14 +126,16 @@ onMounted(loadData)
                 option-value="value"
               />
             </div>
-            <div v-if="rankings.length === 0" class="py-8 text-center text-surface-500">
-              ランキングデータがありません
-            </div>
+            <DashboardEmptyState
+              v-if="rankings.length === 0"
+              icon="pi pi-chart-bar"
+              message="ランキングデータがありません"
+            />
             <div v-else class="space-y-2">
-              <div
+              <SectionCard
                 v-for="entry in rankings"
                 :key="entry.userId"
-                class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-3 dark:border-surface-600 dark:bg-surface-800"
+                class="flex items-center gap-4"
               >
                 <span
                   class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold"
@@ -159,7 +163,7 @@ onMounted(loadData)
                   <p class="font-medium">{{ entry.displayName }}</p>
                 </div>
                 <p class="text-lg font-bold text-primary">{{ entry.points.toLocaleString() }} pt</p>
-              </div>
+              </SectionCard>
             </div>
           </TabPanel>
         </TabPanels>

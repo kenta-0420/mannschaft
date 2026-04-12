@@ -57,7 +57,7 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">大会・リーグ</h1>
+      <PageHeader title="大会・リーグ" />
       <Button label="大会を作成" icon="pi pi-plus" />
     </div>
     <PageLoading v-if="loading" size="40px" />
@@ -83,10 +83,7 @@ onMounted(() => load())
           <span>勝{{ t.winPoints }} 分{{ t.drawPoints }} 負{{ t.lossPoints }}</span>
         </div>
       </div>
-      <div v-if="tournaments.length === 0" class="col-span-full py-12 text-center">
-        <i class="pi pi-trophy mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">大会がありません</p>
-      </div>
+      <DashboardEmptyState v-if="tournaments.length === 0" class="col-span-full" icon="pi pi-trophy" message="大会がありません" />
     </div>
   </div>
 </template>

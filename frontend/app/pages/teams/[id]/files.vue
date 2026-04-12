@@ -6,7 +6,7 @@ const teamId = Number(route.params.id)
 
 <template>
   <div>
-    <div class="mb-4"><h1 class="text-2xl font-bold">ファイル共有</h1></div>
+    <div class="mb-4"><PageHeader title="ファイル共有" /></div>
     <FileBrowser scope-type="TEAM" :scope-id="teamId" />
   </div>
 </template>

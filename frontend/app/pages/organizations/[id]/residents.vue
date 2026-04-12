@@ -22,7 +22,7 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">住民台帳</h1>
+      <PageHeader title="住民台帳" />
       <Button label="住戸を追加" icon="pi pi-plus" />
     </div>
     <PageLoading v-if="loading" size="40px" />
@@ -51,10 +51,7 @@ onMounted(() => load())
           >{{ u.status === 'OCCUPIED' ? '入居中' : '空室' }}</span
         >
       </div>
-      <div v-if="units.length === 0" class="py-12 text-center">
-        <i class="pi pi-building mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">住戸情報がありません</p>
-      </div>
+      <DashboardEmptyState v-if="units.length === 0" icon="pi pi-building" message="住戸情報がありません" />
     </div>
   </div>
 </template>

@@ -47,7 +47,7 @@ onMounted(load)
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">与信枠 増額申請</h1>
+      <PageHeader title="与信枠 増額申請" />
       <Button label="新規申請" icon="pi pi-plus" @click="showCreate = true" />
     </div>
 

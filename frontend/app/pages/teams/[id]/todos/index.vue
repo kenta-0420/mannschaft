@@ -4,7 +4,6 @@ definePageMeta({
 })
 
 const route = useRoute()
-const router = useRouter()
 const teamId = Number(route.params.id)
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 
@@ -29,8 +28,8 @@ onMounted(() => loadPermissions())
   <div>
     <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
-        <h1 class="text-2xl font-bold">TODO</h1>
+        <BackButton />
+        <PageHeader title="TODO" />
       </div>
       <Button label="TODO作成" icon="pi pi-plus" @click="showCreateDialog = true" />
     </div>

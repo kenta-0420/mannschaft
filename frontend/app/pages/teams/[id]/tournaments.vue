@@ -3,7 +3,6 @@ import type { TournamentHistory, TournamentTeamStats, IndividualRanking } from '
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const router = useRouter()
 const teamId = Number(route.params.id)
 
 const {
@@ -78,8 +77,8 @@ onMounted(() => load())
 <template>
   <div class="mx-auto max-w-5xl">
     <div class="mb-4 flex items-center gap-3">
-      <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
-      <h1 class="text-2xl font-bold">参加大会・リーグ</h1>
+      <BackButton />
+      <PageHeader title="参加大会・リーグ" />
     </div>
 
     <PageLoading v-if="loading" size="40px" />
@@ -87,22 +86,22 @@ onMounted(() => load())
     <template v-else>
       <!-- 統計サマリー -->
       <div v-if="stats" class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 text-center">
+        <SectionCard class="text-center">
           <p class="text-2xl font-bold text-primary-600">{{ stats.totalTournaments }}</p>
           <p class="text-xs text-surface-400">参加大会数</p>
-        </div>
-        <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 text-center">
+        </SectionCard>
+        <SectionCard class="text-center">
           <p class="text-2xl font-bold text-green-600">{{ stats.wins }}</p>
           <p class="text-xs text-surface-400">勝利</p>
-        </div>
-        <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 text-center">
+        </SectionCard>
+        <SectionCard class="text-center">
           <p class="text-2xl font-bold text-surface-500">{{ stats.draws }}</p>
           <p class="text-xs text-surface-400">引き分け</p>
-        </div>
-        <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 text-center">
+        </SectionCard>
+        <SectionCard class="text-center">
           <p class="text-2xl font-bold text-red-500">{{ stats.losses }}</p>
           <p class="text-xs text-surface-400">敗北</p>
-        </div>
+        </SectionCard>
       </div>
 
       <!-- タブ -->
@@ -145,10 +144,9 @@ onMounted(() => load())
       <!-- 参加履歴タブ -->
       <template v-if="activeTab === 'history'">
         <div v-if="history.length > 0" class="grid gap-4 sm:grid-cols-2">
-          <div
+          <SectionCard
             v-for="t in history"
             :key="`${t.tournamentId}-${t.divisionName}`"
-            class="rounded-xl border border-surface-300 bg-surface-0 p-4"
           >
             <div class="mb-2 flex items-center justify-between gap-2">
               <span class="rounded bg-surface-100 px-2 py-0.5 text-xs text-surface-600">
@@ -167,19 +165,19 @@ onMounted(() => load())
               <span class="text-red-500">{{ t.lost }}敗</span>
               <span class="ml-auto font-medium">{{ t.points }}pt</span>
             </div>
-          </div>
+          </SectionCard>
         </div>
 
-        <div v-else class="py-12 text-center">
-          <i class="pi pi-trophy mb-3 text-4xl text-surface-300" />
-          <p class="text-surface-400">参加した大会がありません</p>
-        </div>
+        <DashboardEmptyState
+          v-else
+          icon="pi pi-trophy"
+          message="参加した大会がありません"
+        />
       </template>
 
       <!-- 通算成績タブ -->
       <template v-if="activeTab === 'stats' && stats">
-        <div class="rounded-xl border border-surface-200 bg-surface-0 p-6">
-          <h2 class="mb-4 text-lg font-semibold">通算成績</h2>
+        <SectionCard title="通算成績">
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div class="rounded-lg bg-surface-50 p-4">
               <p class="text-xs text-surface-400">参加大会数</p>
@@ -227,8 +225,7 @@ onMounted(() => load())
                 :style="{ width: `${winRate}%` }"
               />
             </div>
-          </div>
-        </div>
+          </SectionCard>
       </template>
 
       <!-- 得点ランキングタブ -->
@@ -276,10 +273,11 @@ onMounted(() => load())
               </table>
             </div>
           </div>
-          <div v-else class="py-12 text-center">
-            <i class="pi pi-star mb-3 text-4xl text-surface-300" />
-            <p class="text-surface-400">得点ランキングを表示するには履歴から大会を選択してください</p>
-          </div>
+          <DashboardEmptyState
+            v-else
+            icon="pi pi-star"
+            message="得点ランキングを表示するには履歴から大会を選択してください"
+          />
         </template>
       </template>
     </template>

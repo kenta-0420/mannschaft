@@ -98,7 +98,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">プロジェクト</h1>
+      <PageHeader title="プロジェクト" />
       <Button
         v-if="isAdminOrDeputy"
         label="プロジェクト作成"
@@ -110,10 +110,10 @@ onMounted(async () => {
     <PageLoading v-if="loading" size="40px" />
 
     <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div
+      <SectionCard
         v-for="project in projects"
         :key="project.id"
-        class="cursor-pointer rounded-xl border border-surface-300 bg-surface-0 p-4 transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-800"
+        class="cursor-pointer transition-shadow hover:shadow-md"
         @click="openProject(project)"
       >
         <div class="mb-2 flex items-center justify-between">
@@ -165,11 +165,14 @@ onMounted(async () => {
             @click.stop="remove(project)"
           />
         </div>
-      </div>
+      </SectionCard>
 
-      <div v-if="projects.length === 0" class="col-span-full py-8 text-center text-surface-400">
-        プロジェクトがありません
-      </div>
+      <DashboardEmptyState
+        v-if="projects.length === 0"
+        icon="pi pi-briefcase"
+        message="プロジェクトがありません"
+        class="col-span-full"
+      />
     </div>
 
     <!-- 作成ダイアログ -->

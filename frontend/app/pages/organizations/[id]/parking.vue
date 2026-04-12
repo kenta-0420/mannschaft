@@ -32,7 +32,7 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">駐車場管理</h1>
+      <PageHeader title="駐車場管理" />
       <Button label="区画を追加" icon="pi pi-plus" />
     </div>
     <PageLoading v-if="loading" size="40px" />
@@ -52,10 +52,7 @@ onMounted(() => load())
           {{ s.assignedTo.displayName }}<br />{{ s.assignedTo.vehiclePlate }}
         </p>
       </div>
-      <div v-if="spaces.length === 0" class="col-span-full py-12 text-center">
-        <i class="pi pi-car mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">駐車区画がありません</p>
-      </div>
+      <DashboardEmptyState v-if="spaces.length === 0" class="col-span-full" icon="pi pi-car" message="駐車区画がありません" />
     </div>
   </div>
 </template>

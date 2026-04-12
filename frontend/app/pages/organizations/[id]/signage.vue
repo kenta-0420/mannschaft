@@ -14,7 +14,6 @@ import type {
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const router = useRouter()
 const orgId = Number(route.params.id)
 
 const {
@@ -373,8 +372,8 @@ onMounted(loadScreens)
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
-      <h1 class="text-2xl font-bold">デジタルサイネージ</h1>
+      <BackButton />
+      <PageHeader title="デジタルサイネージ" />
     </div>
 
     <!-- Screen list -->
@@ -387,10 +386,7 @@ onMounted(loadScreens)
         <Button label="画面を追加" icon="pi pi-plus" @click="openCreateScreen" />
       </div>
 
-      <div v-if="screens.length === 0" class="py-12 text-center">
-        <i class="pi pi-desktop mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">サイネージ画面がありません</p>
-      </div>
+      <DashboardEmptyState v-if="screens.length === 0" icon="pi pi-desktop" message="サイネージ画面がありません" />
 
       <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div

@@ -54,7 +54,7 @@ onMounted(load)
     <div v-else-if="account">
       <div class="mb-6 flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold">広告主ダッシュボード</h1>
+          <PageHeader title="広告主ダッシュボード" />
           <p class="text-surface-500">{{ account.companyName }}</p>
         </div>
         <Tag :value="account.status" :severity="account.status === 'ACTIVE' ? 'success' : account.status === 'PENDING' ? 'warn' : 'danger'" />
@@ -70,29 +70,28 @@ onMounted(load)
 
       <!-- KPI カード -->
       <div v-if="overview" class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
+        <SectionCard>
           <p class="text-sm text-surface-500">キャンペーン</p>
           <p class="text-2xl font-bold">{{ overview.activeCampaigns }} <span class="text-sm font-normal text-surface-400">/ {{ overview.totalCampaigns }}</span></p>
-        </div>
-        <div class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
+        </SectionCard>
+        <SectionCard>
           <p class="text-sm text-surface-500">インプレッション</p>
           <p class="text-2xl font-bold">{{ overview.totalImpressions.toLocaleString() }}</p>
-        </div>
-        <div class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
+        </SectionCard>
+        <SectionCard>
           <p class="text-sm text-surface-500">クリック / CTR</p>
           <p class="text-2xl font-bold">{{ overview.totalClicks.toLocaleString() }} <span class="text-sm font-normal text-surface-400">{{ overview.avgCtr }}%</span></p>
-        </div>
-        <div class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
+        </SectionCard>
+        <SectionCard>
           <p class="text-sm text-surface-500">広告費（税抜）</p>
           <p class="text-2xl font-bold">¥{{ overview.totalCost.toLocaleString() }}</p>
           <ProgressBar :value="overview.monthlyBudgetUsedPct" class="mt-2" style="height: 6px" />
           <p class="mt-1 text-xs text-surface-400">予算消化 {{ overview.monthlyBudgetUsedPct }}%</p>
-        </div>
+        </SectionCard>
       </div>
 
       <!-- キャンペーン一覧 -->
-      <div v-if="overview && overview.campaigns.length > 0" class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
-        <h3 class="mb-3 font-semibold">キャンペーン</h3>
+      <SectionCard v-if="overview && overview.campaigns.length > 0" title="キャンペーン">
         <DataTable :value="overview.campaigns" :rows="10" striped-rows>
           <Column field="campaignName" header="キャンペーン名" />
           <Column field="status" header="ステータス">
@@ -120,7 +119,7 @@ onMounted(load)
             </template>
           </Column>
         </DataTable>
-      </div>
+      </SectionCard>
 
       <!-- ナビゲーション -->
       <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
