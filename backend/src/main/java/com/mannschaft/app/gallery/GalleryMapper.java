@@ -20,6 +20,8 @@ public interface GalleryMapper {
 
     List<AlbumResponse> toAlbumResponseList(List<PhotoAlbumEntity> entities);
 
+    @Mapping(target = "mediaType", expression = "java(entity.getMediaType() != null ? entity.getMediaType().name() : \"PHOTO\")")
+    @Mapping(target = "processingStatus", expression = "java(entity.getProcessingStatus() != null ? entity.getProcessingStatus().name() : \"READY\")")
     PhotoResponse toPhotoResponse(PhotoEntity entity);
 
     List<PhotoResponse> toPhotoResponseList(List<PhotoEntity> entities);

@@ -3,9 +3,11 @@ package com.mannschaft.app.gallery.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
-import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.gallery.GalleryErrorCode;
 import com.mannschaft.app.gallery.GalleryMapper;
+import com.mannschaft.app.gallery.GalleryMediaType;
+import com.mannschaft.app.gallery.GalleryProcessingStatus;
 import com.mannschaft.app.gallery.dto.DownloadResponse;
 import com.mannschaft.app.gallery.dto.PhotoResponse;
 import com.mannschaft.app.gallery.dto.UpdatePhotoRequest;
@@ -35,7 +37,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /**
- * 写真サービス。写真のアップロード・削除・更新・ダウンロードを担当する。
+ * 写真・動画サービス。メディアのアップロード・削除・更新・ダウンロードを担当する。
  */
 @Slf4j
 @Service
@@ -47,15 +49,15 @@ public class PhotoService {
     private final PhotoAlbumRepository albumRepository;
     private final PhotoAlbumService albumService;
     private final GalleryMapper galleryMapper;
-    private final StorageService storageService;
+    private final R2StorageService r2StorageService;
     private final DomainEventPublisher eventPublisher;
 
-    private static final int MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+    private static final long MAX_FILE_SIZE = 100L * 1024 * 1024; // 100MB（動画対応）
     private static final int MAX_BATCH_SIZE = 20;
     private static final int MAX_PHOTO_COUNT = 5000;
 
     /**
-     * アルバム内写真をページング取得する。
+     * アルバム内メディアをページング取得する。
      */
     public Page<PhotoResponse> listPhotos(Long albumId, String sort, Pageable pageable) {
         Page<PhotoEntity> page;
@@ -68,7 +70,7 @@ public class PhotoService {
     }
 
     /**
-     * 写真をアップロードする（メタデータ登録）。
+     * メディアをアップロードする（メタデータ登録）。
      */
     @Transactional
     public UploadPhotosResponse uploadPhotos(Long albumId, Long userId, UploadPhotosRequest request) {
@@ -103,20 +105,43 @@ public class PhotoService {
         for (UploadPhotosRequest.PhotoItem item : request.getPhotos()) {
             String contentType = item.getContentType() != null ? item.getContentType() : "image/jpeg";
 
+            // メディアタイプを決定
+            GalleryMediaType mediaType = item.getMediaType() != null
+                    ? GalleryMediaType.valueOf(item.getMediaType())
+                    : GalleryMediaType.PHOTO;
+
+            // VIDEO の場合はストレージ存在確認
+            if (mediaType == GalleryMediaType.VIDEO && !r2StorageService.objectExists(item.getR2Key())) {
+                throw new BusinessException(GalleryErrorCode.MEDIA_NOT_FOUND_IN_STORAGE);
+            }
+
+            // processingStatus を決定
+            GalleryProcessingStatus processingStatus;
+            if (mediaType == GalleryMediaType.PHOTO) {
+                processingStatus = GalleryProcessingStatus.READY;
+            } else if (item.getThumbnailR2Key() != null && !item.getThumbnailR2Key().isBlank()) {
+                processingStatus = GalleryProcessingStatus.READY;
+            } else {
+                processingStatus = GalleryProcessingStatus.PENDING;
+            }
+
             PhotoEntity entity = PhotoEntity.builder()
                     .albumId(albumId)
-                    .s3Key(item.getS3Key())
+                    .r2Key(item.getR2Key())
+                    .thumbnailR2Key(item.getThumbnailR2Key())
                     .originalFilename(item.getOriginalFilename())
                     .contentType(contentType)
                     .fileSize(item.getFileSize())
                     .caption(item.getCaption())
                     .uploadedBy(userId)
+                    .mediaType(mediaType)
+                    .processingStatus(processingStatus)
                     .build();
 
             PhotoEntity saved = photoRepository.save(entity);
             savedPhotoIds.add(saved.getId());
             uploadedPhotos.add(new UploadPhotosResponse.UploadedPhotoInfo(
-                    saved.getId(), null, "PROCESSING"));
+                    saved.getId(), null, processingStatus.name()));
         }
 
         // 写真カウントを更新
@@ -126,7 +151,7 @@ public class PhotoService {
         // サムネイル自動生成イベント発行（トランザクションコミット後に非同期実行）
         eventPublisher.publish(new PhotoUploadEvent(savedPhotoIds));
 
-        log.info("写真アップロード: albumId={}, count={}", albumId, request.getPhotos().size());
+        log.info("メディアアップロード: albumId={}, count={}", albumId, request.getPhotos().size());
 
         return new UploadPhotosResponse(
                 uploadedPhotos.size(), album.getPhotoCount(), uploadedPhotos);
@@ -148,7 +173,7 @@ public class PhotoService {
     }
 
     /**
-     * 写真を削除する。
+     * 写真・動画を削除する。
      */
     @Transactional
     public void deletePhoto(Long photoId) {
@@ -161,9 +186,9 @@ public class PhotoService {
         });
 
         photoRepository.delete(entity);
-        log.info("写真削除: photoId={}, albumId={}", photoId, entity.getAlbumId());
+        log.info("メディア削除: photoId={}, albumId={}", photoId, entity.getAlbumId());
 
-        eventPublisher.publish(new S3ObjectDeleteEvent(entity.getS3Key()));
+        eventPublisher.publish(new S3ObjectDeleteEvent(entity.getR2Key()));
     }
 
     /**
@@ -178,7 +203,7 @@ public class PhotoService {
             throw new BusinessException(GalleryErrorCode.DOWNLOAD_NOT_ALLOWED);
         }
 
-        String downloadUrl = storageService.generateDownloadUrl(entity.getS3Key(), Duration.ofMinutes(30));
+        String downloadUrl = r2StorageService.generateDownloadUrl(entity.getR2Key(), Duration.ofMinutes(30));
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(30);
 
         return new DownloadResponse(downloadUrl, entity.getOriginalFilename(), null, expiresAt);
@@ -213,7 +238,11 @@ public class PhotoService {
         try (ZipOutputStream zos = new ZipOutputStream(zipOut)) {
             for (int i = 0; i < photos.size(); i++) {
                 PhotoEntity photo = photos.get(i);
-                byte[] data = storageService.download(photo.getS3Key());
+                // 動画ファイルはZIPダウンロード対象から除外（サイズが大きいため）
+                if (photo.getMediaType() == GalleryMediaType.VIDEO) {
+                    continue;
+                }
+                byte[] data = r2StorageService.download(photo.getR2Key());
                 String entryName = (i + 1) + "_" + photo.getOriginalFilename();
                 zos.putNextEntry(new ZipEntry(entryName));
                 zos.write(data);
@@ -224,8 +253,8 @@ public class PhotoService {
         }
 
         String zipKey = "tmp/album-" + albumId + "/" + jobId + ".zip";
-        storageService.upload(zipKey, zipOut.toByteArray(), "application/zip");
-        String downloadUrl = storageService.generateDownloadUrl(zipKey, Duration.ofHours(1));
+        r2StorageService.upload(zipKey, zipOut.toByteArray(), "application/zip");
+        String downloadUrl = r2StorageService.generateDownloadUrl(zipKey, Duration.ofHours(1));
         LocalDateTime expiresAt = LocalDateTime.now().plusHours(1);
 
         return new DownloadResponse(downloadUrl, null, photos.size(), expiresAt);

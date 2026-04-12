@@ -5,10 +5,13 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.gallery.dto.AlbumResponse;
 import com.mannschaft.app.gallery.dto.CreateAlbumRequest;
 import com.mannschaft.app.gallery.dto.DownloadResponse;
+import com.mannschaft.app.gallery.dto.MediaUploadUrlRequest;
+import com.mannschaft.app.gallery.dto.MediaUploadUrlResponse;
 import com.mannschaft.app.gallery.dto.PhotoResponse;
 import com.mannschaft.app.gallery.dto.UpdateAlbumRequest;
 import com.mannschaft.app.gallery.dto.UploadPhotosRequest;
 import com.mannschaft.app.gallery.dto.UploadPhotosResponse;
+import com.mannschaft.app.gallery.service.GalleryMediaUploadService;
 import com.mannschaft.app.gallery.service.PhotoAlbumService;
 import com.mannschaft.app.gallery.service.PhotoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,6 +47,7 @@ public class PhotoAlbumController {
 
     private final PhotoAlbumService albumService;
     private final PhotoService photoService;
+    private final GalleryMediaUploadService mediaUploadService;
 
 
     /**
@@ -142,6 +146,20 @@ public class PhotoAlbumController {
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
+    }
+
+    /**
+     * メディアアップロード用 Presigned URL を発行する。
+     */
+    @PostMapping("/{id}/media/upload-url")
+    @Operation(summary = "メディアアップロード Presigned URL 発行")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "URL発行成功")
+    public ResponseEntity<ApiResponse<MediaUploadUrlResponse>> getMediaUploadUrl(
+            @PathVariable Long id,
+            @Valid @RequestBody MediaUploadUrlRequest request) {
+        MediaUploadUrlResponse response = mediaUploadService.generateUploadUrl(
+                id, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**

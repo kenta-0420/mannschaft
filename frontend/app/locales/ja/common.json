@@ -348,5 +348,16 @@
     "videoUploadSuccess": "動画をアップロードしました",
     "videoUploadError": "動画のアップロードに失敗しました",
     "videoRemove": "動画を削除"
+  },
+  "gallery": {
+    "title": "ギャラリー",
+    "createAlbum": "アルバム作成",
+    "photoCount": "枚",
+    "empty": "アルバムがありません",
+    "albumLoadError": "アルバム一覧の取得に失敗しました",
+    "videoProcessing": "動画を処理中...",
+    "videoFailed": "動画を再生できません",
+    "videoPlay": "動画を再生",
+    "uploadVideo": "動画をアップロード"
   }
 }

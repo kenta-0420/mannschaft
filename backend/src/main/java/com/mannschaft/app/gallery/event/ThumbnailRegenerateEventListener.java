@@ -3,7 +3,8 @@ package com.mannschaft.app.gallery.event;
 import com.mannschaft.app.admin.entity.BatchJobLogEntity;
 import com.mannschaft.app.admin.service.BatchJobLogService;
 import com.mannschaft.app.common.storage.ImageConverter;
-import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.gallery.GalleryMediaType;
 import com.mannschaft.app.gallery.entity.PhotoAlbumEntity;
 import com.mannschaft.app.gallery.entity.PhotoEntity;
 import com.mannschaft.app.gallery.repository.PhotoAlbumRepository;
@@ -23,6 +24,7 @@ import java.util.List;
 /**
  * サムネイル一括再生成イベントリスナー。
  * トランザクションコミット後に非同期でサムネイルを再生成する。
+ * 動画ファイルはサムネイル再生成をスキップする。
  */
 @Slf4j
 @Component
@@ -33,7 +35,7 @@ public class ThumbnailRegenerateEventListener {
 
     private final PhotoRepository photoRepository;
     private final PhotoAlbumRepository albumRepository;
-    private final StorageService storageService;
+    private final R2StorageService r2StorageService;
     private final BatchJobLogService batchJobLogService;
 
     @Async("event-pool")
@@ -83,8 +85,14 @@ public class ThumbnailRegenerateEventListener {
     }
 
     private void regenerateThumbnail(PhotoEntity photo) {
+        // 動画ファイルはサムネイル再生成をスキップ
+        if (photo.getMediaType() == GalleryMediaType.VIDEO) {
+            log.debug("動画ファイルのためサムネイル再生成をスキップ: photoId={}", photo.getId());
+            return;
+        }
+
         try {
-            byte[] originalBytes = storageService.download(photo.getS3Key());
+            byte[] originalBytes = r2StorageService.download(photo.getR2Key());
 
             BufferedImage original = ImageIO.read(new ByteArrayInputStream(originalBytes));
             if (original == null) {
@@ -97,10 +105,10 @@ public class ThumbnailRegenerateEventListener {
                     ImageConverter.createThumbnailWebP(originalBytes, THUMBNAIL_MAX_SIZE);
 
             String thumbExtension = result.converted() ? ".webp" : ".jpg";
-            String thumbKey = photo.getS3Key()
-                    .replaceFirst("photos/", "photos/thumbs/")
+            String thumbKey = photo.getR2Key()
+                    .replaceFirst("gallery/", "gallery/thumbs/")
                     .replaceFirst("\\.[^.]+$", thumbExtension);
-            storageService.upload(thumbKey, result.data(), result.contentType());
+            r2StorageService.upload(thumbKey, result.data(), result.contentType());
 
             photo.updateThumbnailAndExif(thumbKey, original.getWidth(), original.getHeight(),
                     photo.getTakenAt(), photo.getContentType());
