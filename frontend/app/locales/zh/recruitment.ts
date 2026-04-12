@@ -118,7 +118,8 @@ export default {
       "newListing": "创建招募",
       "editListing": "编辑招募",
       "listingDetail": "招募详情",
-      "cancellationPolicies": "取消政策管理"
+      "cancellationPolicies": "取消政策管理",
+      "myFeed": "招募动态"
     },
     "label": {
       "participants": "参加者",
@@ -127,7 +128,32 @@ export default {
       "noListings": "暂无招募",
       "noParticipants": "暂无参加者",
       "myApplication": "您的申请",
-      "freeOfCharge": "免费"
+      "freeOfCharge": "免费",
+      "feedDescription": "关注/支持的团队的最新招募",
+      "noFeedItems": "暂无最新招募",
+      "listing": "招募",
+      "waitlistPosition": "候补 #{n}",
+      "postedAt": "发布于"
+    },
+    "distribution": {
+      "title": "配信对象",
+      "members": "成员",
+      "membersDesc": "通知范围内的所有成员",
+      "supporters": "支持者",
+      "supportersDesc": "通知已批准的支持者",
+      "followers": "关注者",
+      "followersDesc": "通知关注者",
+      "publicFeed": "公开动态",
+      "publicFeedDesc": "发布到公开动态",
+      "warnPublicNeedsFeed": "公开范围为"全体公开"时需要包含"公开动态"",
+      "warnSupportersOnlyNeedsSupporter": "公开范围为"仅支持者"时需要包含"支持者""
+    },
+    "widget": {
+      "feedTitle": "最新招募",
+      "feedEmpty": "暂无最新招募",
+      "myRecruitmentsTitle": "我的参加预定",
+      "myRecruitmentsEmpty": "暂无参加预定",
+      "viewAll": "查看全部"
     },
     "search": {
       "pageTitle": "查找招募",

@@ -10,8 +10,11 @@ import type {
   DisputeNoShowRequest,
   LiftPenaltyRequest,
   RecruitmentCategoryResponse,
+  RecruitmentDistributionTargetResponse,
+  RecruitmentFeedItem,
   RecruitmentListingResponse,
   RecruitmentListingSummaryResponse,
+  RecruitmentMyListingItem,
   RecruitmentNoShowRecordResponse,
   RecruitmentParticipantResponse,
   RecruitmentPenaltySettingResponse,
@@ -19,6 +22,7 @@ import type {
   RecruitmentSubcategoryResponse,
   RecruitmentUserPenaltyResponse,
   ResolveDisputeRequest,
+  SetDistributionTargetsRequest,
   UpdateCancellationPolicyRequest,
   UpdateRecruitmentListingRequest,
   UpsertPenaltySettingRequest,
@@ -181,11 +185,46 @@ export function useRecruitmentApi() {
   }
 
   // ===========================================
-  // 個人マイページ (§9.4)
+  // 個人マイページ (§9.4) + Phase 2 フィード
   // ===========================================
 
   async function listMyActiveParticipations() {
     return api<ApiResponse<RecruitmentParticipantResponse[]>>('/api/v1/me/recruitment-listings')
+  }
+
+  /** Phase 2: 自分の参加予定一覧 */
+  async function getMyListings() {
+    return api<ApiResponse<RecruitmentMyListingItem[]>>('/api/v1/me/recruitment-listings')
+  }
+
+  /** Phase 2: フォロー先・サポーター先の新着募集フィード */
+  async function getMyFeed() {
+    return api<ApiResponse<RecruitmentFeedItem[]>>('/api/v1/me/recruitment-feed')
+  }
+
+  // ===========================================
+  // Phase 2: 配信対象設定 (§9.3)
+  // ===========================================
+
+  async function getDistributionTargets(listingId: number) {
+    return api<ApiResponse<RecruitmentDistributionTargetResponse[]>>(
+      `/api/v1/recruitment-listings/${listingId}/distribution-targets`,
+    )
+  }
+
+  async function setDistributionTargets(listingId: number, body: SetDistributionTargetsRequest) {
+    return api<ApiResponse<RecruitmentDistributionTargetResponse[]>>(
+      `/api/v1/recruitment-listings/${listingId}/distribution-targets`,
+      { method: 'PUT', body },
+    )
+  }
+
+  /** Phase 2: 申込確定 (APPLIED → CONFIRMED) */
+  async function confirmApplication(listingId: number, participantId: number) {
+    return api<ApiResponse<RecruitmentParticipantResponse>>(
+      `/api/v1/recruitment-listings/${listingId}/participants/${participantId}/confirm`,
+      { method: 'POST' },
+    )
   }
 
   // ===========================================
@@ -332,6 +371,12 @@ export function useRecruitmentApi() {
     listListingParticipants,
     markParticipantAttended,
     listMyActiveParticipations,
+    // Phase 2
+    getMyListings,
+    getMyFeed,
+    getDistributionTargets,
+    setDistributionTargets,
+    confirmApplication,
     listTeamCancellationPolicies,
     createCancellationPolicy,
     getCancellationPolicy,

@@ -118,7 +118,8 @@ export default {
       "newListing": "Ausschreibung erstellen",
       "editListing": "Ausschreibung bearbeiten",
       "listingDetail": "Ausschreibungsdetails",
-      "cancellationPolicies": "Verwaltung der Stornierungsbedingungen"
+      "cancellationPolicies": "Verwaltung der Stornierungsbedingungen",
+      "myFeed": "Ausschreibungs-Feed"
     },
     "label": {
       "participants": "Teilnehmer",
@@ -127,7 +128,32 @@ export default {
       "noListings": "Keine Ausschreibungen",
       "noParticipants": "Keine Teilnehmer",
       "myApplication": "Ihre Bewerbung",
-      "freeOfCharge": "Kostenlos"
+      "freeOfCharge": "Kostenlos",
+      "feedDescription": "Neue Ausschreibungen von gefolgten/unterstützten Teams",
+      "noFeedItems": "Keine neuen Ausschreibungen",
+      "listing": "Ausschreibung",
+      "waitlistPosition": "Warteliste #{n}",
+      "postedAt": "Veröffentlicht"
+    },
+    "distribution": {
+      "title": "Empfänger",
+      "members": "Mitglieder",
+      "membersDesc": "Alle Mitglieder im Bereich benachrichtigen",
+      "supporters": "Unterstützer",
+      "supportersDesc": "Genehmigte Unterstützer benachrichtigen",
+      "followers": "Follower",
+      "followersDesc": "Follower benachrichtigen",
+      "publicFeed": "Öffentlicher Feed",
+      "publicFeedDesc": "Im öffentlichen Feed veröffentlichen",
+      "warnPublicNeedsFeed": "Öffentliche Sichtbarkeit erfordert den Empfänger 'Öffentlicher Feed'",
+      "warnSupportersOnlyNeedsSupporter": "Nur-Unterstützer-Sichtbarkeit erfordert den Empfänger 'Unterstützer'"
+    },
+    "widget": {
+      "feedTitle": "Neue Ausschreibungen",
+      "feedEmpty": "Keine neuen Ausschreibungen",
+      "myRecruitmentsTitle": "Meine Teilnahmen",
+      "myRecruitmentsEmpty": "Keine kommenden Teilnahmen",
+      "viewAll": "Alle anzeigen"
     },
     "search": {
       "pageTitle": "Ausschreibungen suchen",

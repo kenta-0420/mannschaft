@@ -51,7 +51,6 @@ public interface RecruitmentMapper {
 
     List<RecruitmentListingSummaryResponse> toListingSummaryResponseList(List<RecruitmentListingEntity> entities);
 
-
     @Mapping(target = "scopeType", expression = "java(entity.getScopeType().name())")
     @Mapping(target = "participationType", expression = "java(entity.getParticipationType().name())")
     @Mapping(target = "visibility", expression = "java(entity.getVisibility().name())")

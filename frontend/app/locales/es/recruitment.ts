@@ -118,7 +118,8 @@ export default {
       "newListing": "Crear convocatoria",
       "editListing": "Editar convocatoria",
       "listingDetail": "Detalle de la convocatoria",
-      "cancellationPolicies": "Gestión de políticas de cancelación"
+      "cancellationPolicies": "Gestión de políticas de cancelación",
+      "myFeed": "Feed de convocatorias"
     },
     "label": {
       "participants": "Participantes",
@@ -127,7 +128,32 @@ export default {
       "noListings": "No hay convocatorias",
       "noParticipants": "No hay participantes",
       "myApplication": "Tu inscripción",
-      "freeOfCharge": "Gratis"
+      "freeOfCharge": "Gratis",
+      "feedDescription": "Nuevas convocatorias de equipos seguidos/apoyados",
+      "noFeedItems": "No hay nuevas convocatorias",
+      "listing": "Convocatoria",
+      "waitlistPosition": "Lista de espera #{n}",
+      "postedAt": "Publicado"
+    },
+    "distribution": {
+      "title": "Destinatarios",
+      "members": "Miembros",
+      "membersDesc": "Notificar a todos los miembros del ámbito",
+      "supporters": "Patrocinadores",
+      "supportersDesc": "Notificar a patrocinadores aprobados",
+      "followers": "Seguidores",
+      "followersDesc": "Notificar a seguidores",
+      "publicFeed": "Feed público",
+      "publicFeedDesc": "Publicar en el feed público",
+      "warnPublicNeedsFeed": "La visibilidad pública requiere el destinatario 'Feed público'",
+      "warnSupportersOnlyNeedsSupporter": "La visibilidad solo para patrocinadores requiere el destinatario 'Patrocinadores'"
+    },
+    "widget": {
+      "feedTitle": "Nuevas convocatorias",
+      "feedEmpty": "No hay nuevas convocatorias",
+      "myRecruitmentsTitle": "Mis participaciones",
+      "myRecruitmentsEmpty": "No hay participaciones próximas",
+      "viewAll": "Ver todo"
     },
     "search": {
       "pageTitle": "Buscar Convocatorias",

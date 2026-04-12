@@ -118,7 +118,8 @@ export default {
       "newListing": "Create recruitment",
       "editListing": "Edit recruitment",
       "listingDetail": "Recruitment detail",
-      "cancellationPolicies": "Cancellation policy management"
+      "cancellationPolicies": "Cancellation policy management",
+      "myFeed": "Recruitment Feed"
     },
     "label": {
       "participants": "Participants",
@@ -127,7 +128,32 @@ export default {
       "noListings": "No recruitment listings",
       "noParticipants": "No participants",
       "myApplication": "Your application",
-      "freeOfCharge": "Free"
+      "freeOfCharge": "Free",
+      "feedDescription": "New recruitments from followed/supported teams",
+      "noFeedItems": "No new recruitments",
+      "listing": "Listing",
+      "waitlistPosition": "Waitlist #{n}",
+      "postedAt": "Posted"
+    },
+    "distribution": {
+      "title": "Distribution targets",
+      "members": "Members",
+      "membersDesc": "Notify all members in scope",
+      "supporters": "Supporters",
+      "supportersDesc": "Notify approved supporters",
+      "followers": "Followers",
+      "followersDesc": "Notify followers",
+      "publicFeed": "Public feed",
+      "publicFeedDesc": "Post to public feed",
+      "warnPublicNeedsFeed": "Public visibility requires PUBLIC_FEED target",
+      "warnSupportersOnlyNeedsSupporter": "Supporters-only visibility requires SUPPORTERS target"
+    },
+    "widget": {
+      "feedTitle": "New Recruitments",
+      "feedEmpty": "No new recruitments",
+      "myRecruitmentsTitle": "My Participations",
+      "myRecruitmentsEmpty": "No upcoming participations",
+      "viewAll": "View all"
     },
     "search": {
       "pageTitle": "Find Recruitments",

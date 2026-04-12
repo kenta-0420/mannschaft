@@ -1,0 +1,100 @@
+{
+  "quick_memo": {
+    "title": "ポイっとメモ",
+    "detail": "メモ詳細",
+    "no_memos": "メモがありません。🪶 ボタンから投げ込んでみてください",
+    "no_body": "（本文なし）",
+    "saved": "ポイっと保存しました",
+    "save_error": "保存に失敗しました",
+    "updated": "更新しました",
+    "update_error": "更新に失敗しました",
+    "load_error": "読み込みに失敗しました",
+    "limit_warning": "未整理メモが多くなっています 🌱 整理してみませんか？（{count}件）",
+    "limit_exceeded": "未整理メモが上限（500件）に達しています。アーカイブか TODO 変換してください",
+    "settings": "設定",
+    "status": {
+      "UNSORTED": "未整理",
+      "ARCHIVED": "アーカイブ",
+      "CONVERTED": "TODO昇格済み"
+    },
+    "action": {
+      "convert": "TODOに変換",
+      "archive": "アーカイブ",
+      "archived": "アーカイブしました",
+      "archive_error": "アーカイブに失敗しました",
+      "restore": "復元",
+      "restored": "復元しました",
+      "restore_error": "復元に失敗しました",
+      "deleted": "削除しました",
+      "delete_error": "削除に失敗しました"
+    },
+    "capture_modal": {
+      "title": "ポイっとメモ",
+      "title_placeholder": "気になったことを書いておこう…",
+      "add_body": "内容を追加",
+      "body_placeholder": "内容（任意）",
+      "submit": "ポイっ！"
+    },
+    "form": {
+      "add_tag": "+ タグ",
+      "add_reminder": "⏰ リマインド設定"
+    },
+    "tag": {
+      "create": "新しいタグ",
+      "name_placeholder": "タグ名を入力",
+      "color": "色",
+      "create_error": "タグの作成に失敗しました"
+    },
+    "reminder": {
+      "label": "リマインダー",
+      "slot1": "1回目",
+      "slot2": "2回目",
+      "slot3": "3回目"
+    },
+    "voice": {
+      "start": "音声入力を開始",
+      "stop": "音声入力を停止",
+      "listening": "録音中...",
+      "consent_title": "音声入力の使用について",
+      "consent_body": "音声入力を使用すると、音声データがブラウザを通じて外部サービス（Google等）に送信されます。個人情報を含む音声の取り扱いにご注意ください。",
+      "agree": "同意して使用する",
+      "consent_error": "同意の登録に失敗しました"
+    },
+    "convert_modal": {
+      "title": "TODOに変換",
+      "priority": "優先度",
+      "due_date": "期限（任意）",
+      "submit": "変換する",
+      "success": "TODOに変換しました",
+      "error": "変換に失敗しました"
+    },
+    "trash": {
+      "title": "ゴミ箱",
+      "no_memos": "ゴミ箱は空です",
+      "restore": "復元",
+      "restored": "ゴミ箱から復元しました",
+      "restore_error": "復元に失敗しました",
+      "auto_delete_notice": "ゴミ箱のメモは90日後に自動的に完全削除されます"
+    },
+    "search": {
+      "placeholder": "メモを検索..."
+    },
+    "reminder_settings": {
+      "title": "リマインド設定",
+      "enable_reminder": "リマインドを有効にする",
+      "enable_reminder_desc": "メモ作成後、設定した日時に通知を送ります",
+      "days_after": "日後の",
+      "days_suffix": "日",
+      "preview": "メモを作成すると、{slots} に通知されます",
+      "preview_none": "リマインドは無効です",
+      "apply_dialog_title": "設定の適用範囲",
+      "apply_dialog_body": "変更したリマインド設定をどのメモに適用しますか？",
+      "apply_new_only": "今後のメモのみ適用（推奨）",
+      "apply_unsent": "未送信のリマインドにも反映する",
+      "apply_all": "すべてのメモのリマインドを再計算する",
+      "saved": "設定を保存しました",
+      "load_error": "設定の読み込みに失敗しました",
+      "save_error": "設定の保存に失敗しました"
+    }
+  }
+}
