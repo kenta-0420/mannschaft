@@ -163,6 +163,14 @@ public class RecruitmentListingEntity extends BaseEntity {
         this.deletedAt = LocalDateTime.now();
     }
 
+    /**
+     * テンプレートIDを紐付ける。
+     * createFromTemplate() 時に、作成後にテンプレートIDを設定するために使用する。
+     */
+    public void assignTemplate(Long templateId) {
+        this.templateId = templateId;
+    }
+
     // ===========================================
     // 参加者カウント管理 (Service 層と連携)
     // ===========================================

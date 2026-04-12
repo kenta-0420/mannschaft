@@ -129,7 +129,14 @@ public enum RecruitmentErrorCode implements ErrorCode {
     ALREADY_DISPUTED("RECRUITMENT_311", "既に異議申立済みです", Severity.WARN),
 
     /** ペナルティ設定が見つからない */
-    PENALTY_SETTING_NOT_FOUND("RECRUITMENT_312", "ペナルティ設定が見つかりません", Severity.WARN);
+    PENALTY_SETTING_NOT_FOUND("RECRUITMENT_312", "ペナルティ設定が見つかりません", Severity.WARN),
+
+    // ========================================
+    // Phase 3: テンプレート系 (313〜)
+    // ========================================
+
+    /** テンプレートが見つからない */
+    TEMPLATE_NOT_FOUND("RECRUITMENT_313", "テンプレートが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;
