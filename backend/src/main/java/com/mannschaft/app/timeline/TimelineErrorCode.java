@@ -54,7 +54,10 @@ public enum TimelineErrorCode implements ErrorCode {
     MUTE_ALREADY_EXISTS("TIMELINE_014", "既にミュート済みです", Severity.WARN),
 
     /** ミュートが見つからない */
-    MUTE_NOT_FOUND("TIMELINE_015", "ミュートが見つかりません", Severity.WARN);
+    MUTE_NOT_FOUND("TIMELINE_015", "ミュートが見つかりません", Severity.WARN),
+
+    /** R2 に動画ファイルが見つからない（Presigned URL 発行後にアップロードされていない） */
+    ATTACHMENT_NOT_FOUND_IN_STORAGE("TIMELINE_016", "添付ファイルがストレージに存在しません", Severity.ERROR);
 
     private final String code;
     private final String message;

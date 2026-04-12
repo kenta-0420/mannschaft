@@ -22,9 +22,7 @@ onMounted(async () => {
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4">
-      <NuxtLink :to="`/teams/${teamId}/workflows`" class="text-sm text-primary hover:underline">
-        <i class="pi pi-arrow-left mr-1" />申請一覧に戻る
-      </NuxtLink>
+      <BackButton :to="`/teams/${teamId}/workflows`" label="申請一覧に戻る" />
     </div>
 
     <WorkflowTemplateList scope-type="team" :scope-id="teamId" :can-edit="isAdminOrDeputy" />
