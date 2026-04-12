@@ -95,13 +95,11 @@ onMounted(() => { if (scopeId.value) load() })
 <template>
   <div class="mx-auto max-w-4xl">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">スケジュール設定</h1>
+      <PageHeader title="スケジュール設定" />
       <Button label="カテゴリを追加" icon="pi pi-plus" @click="openCreate" />
     </div>
 
-    <div class="rounded-xl border border-surface-200 bg-white p-5 dark:border-surface-700 dark:bg-surface-800">
-      <h2 class="mb-4 text-sm font-semibold text-surface-700 dark:text-surface-300">カテゴリ管理</h2>
-
+    <SectionCard title="カテゴリ管理">
       <PageLoading v-if="loading" />
 
       <DataTable v-else :value="categories" striped-rows data-key="id">
@@ -140,7 +138,7 @@ onMounted(() => { if (scopeId.value) load() })
           </template>
         </Column>
       </DataTable>
-    </div>
+    </SectionCard>
 
     <Dialog
       v-model:visible="showDialog"

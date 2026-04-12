@@ -135,7 +135,7 @@ onMounted(loadCampaigns)
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <h1 class="mb-6 text-2xl font-bold">割引キャンペーン・クーポン管理</h1>
+    <PageHeader title="割引キャンペーン・クーポン管理" />
     <PageLoading v-if="loading" />
     <template v-else>
       <Tabs v-model:value="activeTab">

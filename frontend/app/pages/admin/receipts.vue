@@ -145,7 +145,7 @@ onMounted(() => load())
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">領収書管理</h1>
+      <PageHeader title="領収書管理" />
       <Button label="新規発行" icon="pi pi-plus" @click="openIssueDialog" />
     </div>
 
@@ -162,10 +162,7 @@ onMounted(() => load())
       @page="onPage"
     >
       <template #empty>
-        <div class="py-12 text-center">
-          <i class="pi pi-file mb-3 text-4xl text-surface-300" />
-          <p class="text-surface-400">領収書がありません</p>
-        </div>
+        <DashboardEmptyState icon="pi pi-file" message="領収書がありません" />
       </template>
 
       <Column header="発行日" style="width: 140px">

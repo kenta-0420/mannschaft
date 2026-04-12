@@ -133,7 +133,7 @@ onMounted(() => load())
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-4 flex flex-wrap items-center gap-3">
-      <h1 class="text-2xl font-bold">プロモーション管理</h1>
+      <PageHeader title="プロモーション管理" />
       <div class="ml-auto flex flex-wrap items-center gap-2">
         <!-- スコープ選択 -->
         <Select
@@ -164,10 +164,7 @@ onMounted(() => load())
       striped-rows
     >
       <template #empty>
-        <div class="py-12 text-center">
-          <i class="pi pi-megaphone mb-3 text-4xl text-surface-300" />
-          <p class="text-surface-400">プロモーションがありません</p>
-        </div>
+        <DashboardEmptyState icon="pi pi-megaphone" message="プロモーションがありません" />
       </template>
 
       <Column field="title" header="タイトル" />

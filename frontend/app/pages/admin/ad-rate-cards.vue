@@ -69,7 +69,7 @@ onMounted(load)
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">広告料金カード管理</h1>
+      <PageHeader title="広告料金カード管理" />
       <Button label="新規作成" icon="pi pi-plus" @click="showCreate = true" />
     </div>
 
