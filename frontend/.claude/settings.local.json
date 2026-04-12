@@ -161,7 +161,9 @@
       "Bash(wc -l /d/mannschaft-frontend/app/pages/**/*.vue /d/mannschaft-frontend/app/composables/*.ts /d/mannschaft-frontend/app/types/*.ts)",
       "Bash(cat:*)",
       "Write(D:/mannschaft-frontend/app/**)",
-      "Write(D:/mannschaft-frontend/.claude/worktrees/**/app/**)"
+      "Write(D:/mannschaft-frontend/.claude/worktrees/**/app/**)",
+      "Bash(wsl:*)",
+      "Bash(wsl.exe:*)"
     ]
   }
 }
