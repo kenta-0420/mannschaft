@@ -315,7 +315,30 @@
       "Bash(python -m git_filter_repo --version)",
       "Read(//c/python39/**)",
       "Bash(python -m git_filter_repo --help)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(sed -n '1,15p' frontend/app/pages/teams/\\\\[id\\\\]/annual-plan.vue)",
+      "Bash(sed -n '75,115p' frontend/app/pages/teams/\\\\[id\\\\]/annual-plan.vue)",
+      "Bash(sed -n '220,270p' frontend/app/pages/teams/\\\\[id\\\\]/annual-plan.vue)",
+      "Bash(sed -n '17,30p' frontend/app/pages/organizations/\\\\[id\\\\]/annual-plan.vue)",
+      "Bash(sed -n '49,100p' frontend/app/pages/organizations/\\\\[id\\\\]/annual-plan.vue)",
+      "Bash(gh pr:*)",
+      "Bash(echo \"Nuxt 起動中... \\(PID: $!\\)\")",
+      "Bash(pkill -f \"nuxt\")",
+      "Bash(GIT_EDITOR=true git cherry-pick --continue)",
+      "Bash(mkdir:*)",
+      "Bash(find \"C:/Users/けんた/AppData/Roaming/Code/User/History\" -name \"entries.json\" -exec grep -l \"ActivityItem\" {} \\\\;)",
+      "Bash(find \"C:/Users/けんた/AppData/Roaming/Code/User/History\" -name \"entries.json\" -exec grep -l \"mannschaft\" {} \\\\;)",
+      "Bash(sed 's/.*V//')",
+      "Bash(sed 's/_.*//')",
+      "Bash(find:*)",
+      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && head -40 {}')",
+      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && head -50 {}')",
+      "Bash(JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot\" ./gradlew compileJava)",
+      "Bash(mkdir -p 'D:/mannschaft/frontend/app/pages/scopes/[scopeType]/[scopeId]')",
+      "Bash(cp 'D:/mannschaft/.claude/worktrees/agent-add595a8/frontend/app/pages/scopes/[scopeType]/[scopeId]/no-shows.vue' 'D:/mannschaft/frontend/app/pages/scopes/[scopeType]/[scopeId]/no-shows.vue')",
+      "Bash(cp 'D:/mannschaft/.claude/worktrees/agent-add595a8/frontend/app/pages/scopes/[scopeType]/[scopeId]/penalty-settings.vue' 'D:/mannschaft/frontend/app/pages/scopes/[scopeType]/[scopeId]/penalty-settings.vue')",
+      "Bash(JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot\" ./gradlew --stop)",
+      "Bash(JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot\" ./gradlew --no-daemon compileJava)"
     ]
   }
 }
