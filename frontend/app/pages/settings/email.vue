@@ -52,17 +52,12 @@ async function handleSubmit() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <div class="mb-6 flex items-center gap-2">
-      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
-      <h1 class="text-2xl font-bold">メールアドレス変更</h1>
-    </div>
+    <BackButton to="/settings" />
+    <PageHeader title="メールアドレス変更" />
 
     <PageLoading v-if="loading" />
 
-    <div
-      v-else
-      class="fade-in rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
-    >
+    <SectionCard v-else class="fade-in">
       <template v-if="!sent">
         <div class="space-y-4">
           <div>
@@ -113,6 +108,6 @@ async function handleSubmit() {
           </p>
         </div>
       </template>
-    </div>
+    </SectionCard>
   </div>
 </template>

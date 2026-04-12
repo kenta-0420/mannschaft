@@ -72,24 +72,18 @@ function eventSeverity(eventType: string) {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <div class="mb-6 flex items-center gap-2">
-      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
-      <h1 class="text-2xl font-bold">ログイン履歴</h1>
-    </div>
+    <BackButton to="/settings" />
+    <PageHeader title="ログイン履歴" />
 
     <PageLoading v-if="loading" />
 
     <div v-else class="fade-in">
-      <div v-if="history.length === 0" class="py-12 text-center text-surface-400">
-        <i class="pi pi-history mb-3 text-4xl" />
-        <p>ログイン履歴がありません</p>
-      </div>
+      <DashboardEmptyState v-if="history.length === 0" icon="pi-history" message="ログイン履歴がありません" />
 
       <div v-else class="space-y-3">
-        <div
+        <SectionCard
           v-for="item in history"
           :key="item.id"
-          class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
         >
           <div class="flex items-start justify-between">
             <div>
@@ -109,7 +103,7 @@ function eventSeverity(eventType: string) {
             </div>
             <span class="text-xs text-surface-400">{{ formatDate(item.createdAt) }}</span>
           </div>
-        </div>
+        </SectionCard>
       </div>
 
       <div v-if="hasNext" class="flex justify-center py-4">
