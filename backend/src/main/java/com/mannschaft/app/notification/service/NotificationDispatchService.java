@@ -27,10 +27,20 @@ public class NotificationDispatchService {
 
     /**
      * 通知を配信する。ユーザーの設定を確認し、有効なチャネルに送信する。
+     * 確認通知（CONFIRMABLE_NOTIFICATION*）は opt-out 設定を無視して強制配信する。
      */
     @Async
     public void dispatch(NotificationEntity notification) {
         Long userId = notification.getUserId();
+
+        // 確認通知（CONFIRMABLE_NOTIFICATION*）は強制配信のため opt-out チェックをスキップ
+        if (isConfirmableNotification(notification.getNotificationType())) {
+            log.debug("確認通知は強制配信（opt-out スキップ）: userId={}, type={}",
+                    userId, notification.getNotificationType());
+            sendViaWebSocket(notification);
+            sendViaPush(notification);
+            return;
+        }
 
         // スコープ別の通知設定を確認
         boolean scopeEnabled = preferenceService.isNotificationEnabled(
@@ -53,6 +63,15 @@ public class NotificationDispatchService {
 
         // PWA Push送信
         sendViaPush(notification);
+    }
+
+    /**
+     * 確認通知種別かどうかを判定する（opt-out 無視の強制配信対象）。
+     * CONFIRMABLE_NOTIFICATION / CONFIRMABLE_NOTIFICATION_REMINDER_1 / CONFIRMABLE_NOTIFICATION_REMINDER_2
+     * のすべてに対応するよう前方一致で判定する。
+     */
+    private boolean isConfirmableNotification(String notificationType) {
+        return notificationType != null && notificationType.startsWith("CONFIRMABLE_NOTIFICATION");
     }
 
     /**

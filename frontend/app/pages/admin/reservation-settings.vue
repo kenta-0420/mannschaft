@@ -3,6 +3,9 @@ definePageMeta({ middleware: 'auth' })
 
 const scopeStore = useScopeStore()
 const scopeId = computed(() => scopeStore.current.id ?? 0)
+const scopeType = computed((): 'TEAM' | 'ORGANIZATION' =>
+  scopeStore.current.type === 'organization' ? 'ORGANIZATION' : 'TEAM',
+)
 const { success, error: showError } = useNotification()
 const { getLines, createLine, updateLine, deleteLine } = useReservationApi()
 
@@ -131,6 +134,15 @@ onMounted(() => { if (scopeId.value) load() })
         </template>
       </Column>
     </DataTable>
+
+    <!-- 確認通知設定セクション -->
+    <section class="mt-8">
+      <h2 class="text-lg font-semibold mb-4">{{ $t('confirmable.settings') }}</h2>
+      <ConfirmableNotificationSettings
+        :scope-type="scopeType"
+        :scope-id="scopeId"
+      />
+    </section>
 
     <Dialog
       v-model:visible="showDialog"
