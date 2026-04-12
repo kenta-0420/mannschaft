@@ -178,8 +178,7 @@ onMounted(() => load())
 
       <!-- 通算成績タブ -->
       <template v-if="activeTab === 'stats' && stats">
-        <div class="rounded-xl border border-surface-200 bg-surface-0 p-6">
-          <h2 class="mb-4 text-lg font-semibold">通算成績</h2>
+        <SectionCard title="通算成績">
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div class="rounded-lg bg-surface-50 p-4">
               <p class="text-xs text-surface-400">参加大会数</p>
@@ -228,7 +227,7 @@ onMounted(() => load())
               />
             </div>
           </div>
-        </div>
+        </SectionCard>
       </template>
 
       <!-- 得点ランキングタブ -->
