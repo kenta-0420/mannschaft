@@ -41,12 +41,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link S3StorageService} の単体テスト。
- * S3 Pre-signed URL生成、アップロード、ダウンロード、削除操作を検証する。
+ * {@link R2StorageService} の単体テスト。
+ * R2 Pre-signed URL 生成、アップロード、ダウンロード、削除操作を検証する。
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("S3StorageService 単体テスト")
-class S3StorageServiceTest {
+@DisplayName("R2StorageService 単体テスト")
+class R2StorageServiceTest {
 
     @Mock
     private S3Client s3Client;
@@ -58,14 +58,14 @@ class S3StorageServiceTest {
     private StorageProperties storageProperties;
 
     @InjectMocks
-    private S3StorageService s3StorageService;
+    private R2StorageService r2StorageService;
 
     // ========================================
     // テスト用定数
     // ========================================
 
-    private static final String TEST_BUCKET = "test-bucket";
-    private static final String TEST_S3_KEY = "test/path/file.pdf";
+    private static final String TEST_BUCKET = "mannschaft-storage";
+    private static final String TEST_R2_KEY = "test/path/file.pdf";
     private static final String TEST_CONTENT_TYPE = "application/pdf";
     private static final Duration TEST_TTL = Duration.ofMinutes(15);
 
@@ -83,15 +83,15 @@ class S3StorageServiceTest {
             // Given
             given(storageProperties.getBucket()).willReturn(TEST_BUCKET);
             PresignedPutObjectRequest presignedRequest = mock(PresignedPutObjectRequest.class);
-            given(presignedRequest.url()).willReturn(new URI("https://s3.example.com/upload").toURL());
+            given(presignedRequest.url()).willReturn(new URI("https://r2.example.com/upload").toURL());
             given(s3Presigner.presignPutObject(any(PutObjectPresignRequest.class))).willReturn(presignedRequest);
 
             // When
-            PresignedUploadResult result = s3StorageService.generateUploadUrl(TEST_S3_KEY, TEST_CONTENT_TYPE, TEST_TTL);
+            PresignedUploadResult result = r2StorageService.generateUploadUrl(TEST_R2_KEY, TEST_CONTENT_TYPE, TEST_TTL);
 
             // Then
-            assertThat(result.uploadUrl()).isEqualTo("https://s3.example.com/upload");
-            assertThat(result.s3Key()).isEqualTo(TEST_S3_KEY);
+            assertThat(result.uploadUrl()).isEqualTo("https://r2.example.com/upload");
+            assertThat(result.s3Key()).isEqualTo(TEST_R2_KEY);
             assertThat(result.expiresInSeconds()).isEqualTo(TEST_TTL.toSeconds());
         }
 
@@ -104,7 +104,7 @@ class S3StorageServiceTest {
                     .willThrow(new RuntimeException("presign error"));
 
             // When / Then
-            assertThatThrownBy(() -> s3StorageService.generateUploadUrl(TEST_S3_KEY, TEST_CONTENT_TYPE, TEST_TTL))
+            assertThatThrownBy(() -> r2StorageService.generateUploadUrl(TEST_R2_KEY, TEST_CONTENT_TYPE, TEST_TTL))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("STORAGE_004"));
@@ -125,14 +125,14 @@ class S3StorageServiceTest {
             // Given
             given(storageProperties.getBucket()).willReturn(TEST_BUCKET);
             PresignedGetObjectRequest presignedRequest = mock(PresignedGetObjectRequest.class);
-            given(presignedRequest.url()).willReturn(new URI("https://s3.example.com/download").toURL());
+            given(presignedRequest.url()).willReturn(new URI("https://r2.example.com/download").toURL());
             given(s3Presigner.presignGetObject(any(GetObjectPresignRequest.class))).willReturn(presignedRequest);
 
             // When
-            String url = s3StorageService.generateDownloadUrl(TEST_S3_KEY, TEST_TTL);
+            String url = r2StorageService.generateDownloadUrl(TEST_R2_KEY, TEST_TTL);
 
             // Then
-            assertThat(url).isEqualTo("https://s3.example.com/download");
+            assertThat(url).isEqualTo("https://r2.example.com/download");
         }
 
         @Test
@@ -144,7 +144,7 @@ class S3StorageServiceTest {
                     .willThrow(new RuntimeException("presign error"));
 
             // When / Then
-            assertThatThrownBy(() -> s3StorageService.generateDownloadUrl(TEST_S3_KEY, TEST_TTL))
+            assertThatThrownBy(() -> r2StorageService.generateDownloadUrl(TEST_R2_KEY, TEST_TTL))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("STORAGE_004"));
@@ -169,14 +169,14 @@ class S3StorageServiceTest {
                     .willReturn(PutObjectResponse.builder().build());
 
             // When
-            s3StorageService.upload(TEST_S3_KEY, data, TEST_CONTENT_TYPE);
+            r2StorageService.upload(TEST_R2_KEY, data, TEST_CONTENT_TYPE);
 
             // Then
             verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
         }
 
         @Test
-        @DisplayName("異常系: S3例外でSTORAGE_001例外")
+        @DisplayName("異常系: R2例外でSTORAGE_001例外")
         void アップロード_例外発生_STORAGE001例外() {
             // Given
             byte[] data = "test content".getBytes();
@@ -185,7 +185,7 @@ class S3StorageServiceTest {
                     .willThrow(new RuntimeException("upload error"));
 
             // When / Then
-            assertThatThrownBy(() -> s3StorageService.upload(TEST_S3_KEY, data, TEST_CONTENT_TYPE))
+            assertThatThrownBy(() -> r2StorageService.upload(TEST_R2_KEY, data, TEST_CONTENT_TYPE))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("STORAGE_001"));
@@ -211,14 +211,14 @@ class S3StorageServiceTest {
                     .willReturn(PutObjectResponse.builder().build());
 
             // When
-            s3StorageService.upload(TEST_S3_KEY, data, contentLength, TEST_CONTENT_TYPE);
+            r2StorageService.upload(TEST_R2_KEY, data, contentLength, TEST_CONTENT_TYPE);
 
             // Then
             verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
         }
 
         @Test
-        @DisplayName("異常系: S3例外でSTORAGE_001例外")
+        @DisplayName("異常系: R2例外でSTORAGE_001例外")
         void ストリームアップロード_例外発生_STORAGE001例外() {
             // Given
             InputStream data = new ByteArrayInputStream("test content".getBytes());
@@ -228,7 +228,7 @@ class S3StorageServiceTest {
                     .willThrow(new RuntimeException("upload error"));
 
             // When / Then
-            assertThatThrownBy(() -> s3StorageService.upload(TEST_S3_KEY, data, contentLength, TEST_CONTENT_TYPE))
+            assertThatThrownBy(() -> r2StorageService.upload(TEST_R2_KEY, data, contentLength, TEST_CONTENT_TYPE))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("STORAGE_001"));
@@ -252,14 +252,14 @@ class S3StorageServiceTest {
                     .willReturn(DeleteObjectResponse.builder().build());
 
             // When
-            s3StorageService.delete(TEST_S3_KEY);
+            r2StorageService.delete(TEST_R2_KEY);
 
             // Then
             verify(s3Client).deleteObject(any(DeleteObjectRequest.class));
         }
 
         @Test
-        @DisplayName("異常系: S3例外でSTORAGE_003例外")
+        @DisplayName("異常系: R2例外でSTORAGE_003例外")
         void 削除_例外発生_STORAGE003例外() {
             // Given
             given(storageProperties.getBucket()).willReturn(TEST_BUCKET);
@@ -267,7 +267,7 @@ class S3StorageServiceTest {
                     .willThrow(new RuntimeException("delete error"));
 
             // When / Then
-            assertThatThrownBy(() -> s3StorageService.delete(TEST_S3_KEY))
+            assertThatThrownBy(() -> r2StorageService.delete(TEST_R2_KEY))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("STORAGE_003"));
@@ -292,7 +292,7 @@ class S3StorageServiceTest {
                     .willReturn(DeleteObjectsResponse.builder().build());
 
             // When
-            s3StorageService.deleteAll(keys);
+            r2StorageService.deleteAll(keys);
 
             // Then
             verify(s3Client).deleteObjects(any(DeleteObjectsRequest.class));
@@ -302,7 +302,7 @@ class S3StorageServiceTest {
         @DisplayName("境界値: nullリストで何もしない")
         void 一括削除_nullリスト_何もしない() {
             // When
-            s3StorageService.deleteAll(null);
+            r2StorageService.deleteAll(null);
 
             // Then
             verify(s3Client, never()).deleteObjects(any(DeleteObjectsRequest.class));
@@ -312,14 +312,14 @@ class S3StorageServiceTest {
         @DisplayName("境界値: 空リストで何もしない")
         void 一括削除_空リスト_何もしない() {
             // When
-            s3StorageService.deleteAll(Collections.emptyList());
+            r2StorageService.deleteAll(Collections.emptyList());
 
             // Then
             verify(s3Client, never()).deleteObjects(any(DeleteObjectsRequest.class));
         }
 
         @Test
-        @DisplayName("異常系: S3例外でSTORAGE_003例外")
+        @DisplayName("異常系: R2例外でSTORAGE_003例外")
         void 一括削除_例外発生_STORAGE003例外() {
             // Given
             List<String> keys = List.of("key1", "key2");
@@ -328,7 +328,7 @@ class S3StorageServiceTest {
                     .willThrow(new RuntimeException("batch delete error"));
 
             // When / Then
-            assertThatThrownBy(() -> s3StorageService.deleteAll(keys))
+            assertThatThrownBy(() -> r2StorageService.deleteAll(keys))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("STORAGE_003"));
@@ -355,14 +355,14 @@ class S3StorageServiceTest {
             given(s3Client.getObjectAsBytes(any(GetObjectRequest.class))).willReturn(responseBytes);
 
             // When
-            byte[] result = s3StorageService.download(TEST_S3_KEY);
+            byte[] result = r2StorageService.download(TEST_R2_KEY);
 
             // Then
             assertThat(result).isEqualTo(expectedData);
         }
 
         @Test
-        @DisplayName("異常系: S3例外でSTORAGE_002例外")
+        @DisplayName("異常系: R2例外でSTORAGE_002例外")
         void ダウンロード_例外発生_STORAGE002例外() {
             // Given
             given(storageProperties.getBucket()).willReturn(TEST_BUCKET);
@@ -370,7 +370,7 @@ class S3StorageServiceTest {
                     .willThrow(new RuntimeException("download error"));
 
             // When / Then
-            assertThatThrownBy(() -> s3StorageService.download(TEST_S3_KEY))
+            assertThatThrownBy(() -> r2StorageService.download(TEST_R2_KEY))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("STORAGE_002"));

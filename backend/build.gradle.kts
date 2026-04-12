@@ -72,11 +72,11 @@ dependencies {
     // WebP 画像変換（ImageIO SPI — サムネイル・アップロード画像のWebP出力用）
     implementation("org.sejda.imageio:webp-imageio:0.1.6")
 
-    // AWS S3 + SES + CloudFront
+    // Cloudflare R2（S3互換 API）+ AWS SES
+    // R2 は S3 SDK でアクセスするため cloudfront 依存は不要
     implementation(platform("software.amazon.awssdk:bom:2.29.45"))
     implementation("software.amazon.awssdk:s3")
     implementation("software.amazon.awssdk:sesv2")
-    implementation("software.amazon.awssdk:cloudfront")
 
     // User-Agent パース（F12.4 セッション管理）
     implementation("com.github.ua-parser:uap-java:1.6.1")
