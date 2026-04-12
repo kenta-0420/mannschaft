@@ -77,14 +77,13 @@ onMounted(load)
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <h1 class="mb-6 text-2xl font-bold">Googleカレンダー設定</h1>
+    <PageHeader title="Googleカレンダー設定" />
 
     <PageLoading v-if="loading" />
 
     <div v-else class="flex flex-col gap-4">
       <!-- 接続状態 -->
-      <div class="rounded-xl border border-surface-200 bg-white p-5 dark:border-surface-700 dark:bg-surface-800">
-        <h2 class="mb-4 text-sm font-semibold text-surface-700 dark:text-surface-300">接続状態</h2>
+      <SectionCard title="接続状態">
         <div v-if="status?.isConnected" class="flex items-center justify-between">
           <div>
             <div class="flex items-center gap-2">
@@ -112,14 +111,10 @@ onMounted(load)
           </div>
           <Button label="Googleアカウントで接続" icon="pi pi-external-link" @click="handleConnect" />
         </div>
-      </div>
+      </SectionCard>
 
       <!-- 同期設定 -->
-      <div
-        v-if="status?.isConnected"
-        class="rounded-xl border border-surface-200 bg-white p-5 dark:border-surface-700 dark:bg-surface-800"
-      >
-        <h2 class="mb-4 text-sm font-semibold text-surface-700 dark:text-surface-300">同期設定</h2>
+      <SectionCard v-if="status?.isConnected" title="同期設定">
         <div class="flex items-center justify-between">
           <div>
             <div class="font-medium">スケジュール同期</div>
@@ -134,7 +129,7 @@ onMounted(load)
         <div v-if="status?.lastSyncedAt" class="mt-4 text-xs text-surface-400">
           最終同期: {{ new Date(status.lastSyncedAt).toLocaleString('ja-JP') }}
         </div>
-      </div>
+      </SectionCard>
     </div>
   </div>
 </template>

@@ -76,8 +76,7 @@ onMounted(() => { if (scopeId.value) load() })
   <div class="mx-auto max-w-4xl">
     <div class="mb-6 flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold">メンバー紹介管理</h1>
-        <p class="mt-1 text-sm text-surface-500">メンバープロフィールのカスタム項目を管理します</p>
+        <PageHeader title="メンバー紹介管理"><p class="text-sm text-surface-500">メンバープロフィールのカスタム項目を管理します</p></PageHeader>
       </div>
       <Button label="項目を追加" icon="pi pi-plus" @click="showDialog = true" />
     </div>
@@ -86,10 +85,7 @@ onMounted(() => { if (scopeId.value) load() })
 
     <DataTable v-else :value="fields" striped-rows data-key="id">
       <template #empty>
-        <div class="py-12 text-center">
-          <i class="pi pi-id-card mb-3 text-4xl text-surface-300" />
-          <p class="text-surface-400">カスタム項目がありません</p>
-        </div>
+        <DashboardEmptyState icon="pi pi-id-card" message="カスタム項目がありません" />
       </template>
       <Column field="fieldName" header="項目名" />
       <Column header="種類" style="width: 120px">

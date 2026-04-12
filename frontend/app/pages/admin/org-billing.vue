@@ -113,7 +113,7 @@ onMounted(loadAll)
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <h1 class="mb-6 text-2xl font-bold">組織数課金設定</h1>
+    <PageHeader title="組織数課金設定" />
 
     <Message severity="warn" :closable="false" class="mb-6">
       変更は翌月反映されます
@@ -124,14 +124,11 @@ onMounted(loadAll)
     <template v-else>
       <!-- 組織種別ごとの設定カード -->
       <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div
+        <SectionCard
           v-for="orgType in (['NONPROFIT', 'FORPROFIT'] as const)"
           :key="orgType"
-          class="rounded-lg border border-surface-300 p-6"
+          :title="`${orgTypeLabel(orgType)}組織`"
         >
-          <h2 class="mb-4 text-lg font-semibold">
-            {{ orgTypeLabel(orgType) }}組織
-          </h2>
           <div class="flex flex-col gap-4">
             <div>
               <label class="mb-1 block text-sm font-medium">
@@ -164,7 +161,7 @@ onMounted(loadAll)
               />
             </div>
           </div>
-        </div>
+        </SectionCard>
       </div>
 
       <!-- 組織一覧テーブル -->
@@ -181,10 +178,7 @@ onMounted(loadAll)
         @page="onPage"
       >
         <template #empty>
-          <div class="py-12 text-center">
-            <i class="pi pi-building mb-3 text-4xl text-surface-300" />
-            <p class="text-surface-400">組織がありません</p>
-          </div>
+          <DashboardEmptyState icon="pi pi-building" message="組織がありません" />
         </template>
 
         <Column field="name" header="組織名" />

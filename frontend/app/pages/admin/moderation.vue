@@ -35,7 +35,7 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">通報・モデレーション</h1>
+      <PageHeader title="通報・モデレーション" />
       <Select
         v-model="statusFilter"
         :options="[
@@ -71,10 +71,7 @@ onMounted(() => load())
           </p>
         </div>
       </div>
-      <div v-if="reports.length === 0" class="py-12 text-center">
-        <i class="pi pi-shield mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">通報はありません</p>
-      </div>
+      <DashboardEmptyState v-if="reports.length === 0" icon="pi pi-shield" message="通報はありません" />
     </div>
   </div>
 </template>

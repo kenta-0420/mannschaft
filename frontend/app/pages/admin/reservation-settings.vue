@@ -98,8 +98,7 @@ onMounted(() => { if (scopeId.value) load() })
   <div class="mx-auto max-w-4xl">
     <div class="mb-6 flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold">予約管理設定</h1>
-        <p class="mt-1 text-sm text-surface-500">予約ライン（スタッフ・窓口）を管理します</p>
+        <PageHeader title="予約管理設定"><p class="text-sm text-surface-500">予約ライン（スタッフ・窓口）を管理します</p></PageHeader>
       </div>
       <Button label="ラインを追加" icon="pi pi-plus" @click="openCreate" />
     </div>
@@ -108,10 +107,7 @@ onMounted(() => { if (scopeId.value) load() })
 
     <DataTable v-else :value="lines" striped-rows data-key="id">
       <template #empty>
-        <div class="py-12 text-center">
-          <i class="pi pi-calendar mb-3 text-4xl text-surface-300" />
-          <p class="text-surface-400">予約ラインがありません</p>
-        </div>
+        <DashboardEmptyState icon="pi pi-calendar" message="予約ラインがありません" />
       </template>
       <Column field="name" header="ライン名" />
       <Column header="定員" style="width: 80px">

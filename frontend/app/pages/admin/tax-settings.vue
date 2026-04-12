@@ -98,7 +98,7 @@ onMounted(load)
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">消費税設定</h1>
+      <PageHeader title="消費税設定" />
       <Button label="税率を追加" icon="pi pi-plus" @click="openCreate" />
     </div>
 
@@ -111,10 +111,7 @@ onMounted(load)
       striped-rows
     >
       <template #empty>
-        <div class="py-12 text-center">
-          <i class="pi pi-percentage mb-3 text-4xl text-surface-300" />
-          <p class="text-surface-400">税率が登録されていません</p>
-        </div>
+        <DashboardEmptyState icon="pi pi-percentage" message="税率が登録されていません" />
       </template>
 
       <Column field="name" header="税名称" />

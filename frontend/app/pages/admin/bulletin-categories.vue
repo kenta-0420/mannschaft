@@ -90,7 +90,7 @@ onMounted(() => { if (scopeId.value) load() })
 <template>
   <div class="mx-auto max-w-4xl">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">掲示板カテゴリ管理</h1>
+      <PageHeader title="掲示板カテゴリ管理" />
       <Button label="カテゴリを追加" icon="pi pi-plus" @click="openCreate" />
     </div>
 
@@ -98,10 +98,7 @@ onMounted(() => { if (scopeId.value) load() })
 
     <DataTable v-else :value="categories" striped-rows data-key="id">
       <template #empty>
-        <div class="py-12 text-center">
-          <i class="pi pi-list mb-3 text-4xl text-surface-300" />
-          <p class="text-surface-400">カテゴリがありません</p>
-        </div>
+        <DashboardEmptyState icon="pi pi-list" message="カテゴリがありません" />
       </template>
       <Column header="色" style="width: 60px">
         <template #body="{ data }">

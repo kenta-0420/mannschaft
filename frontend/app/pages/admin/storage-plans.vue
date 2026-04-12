@@ -119,7 +119,7 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">ストレージプラン管理</h1>
+      <PageHeader title="ストレージプラン管理" />
       <Button label="新規作成" icon="pi pi-plus" @click="openCreate" />
     </div>
 
@@ -130,10 +130,7 @@ onMounted(async () => {
 
         <DataTable v-else :value="plans" data-key="id" striped-rows>
           <template #empty>
-            <div class="py-12 text-center">
-              <i class="pi pi-database mb-3 text-4xl text-surface-300" />
-              <p class="text-surface-400">プランがありません</p>
-            </div>
+            <DashboardEmptyState icon="pi pi-database" message="プランがありません" />
           </template>
 
           <Column field="name" header="プラン名" />
@@ -206,10 +203,7 @@ onMounted(async () => {
       <TabPanel header="チーム使用状況">
         <DataTable :value="usageList" data-key="teamId" striped-rows>
           <template #empty>
-            <div class="py-12 text-center">
-              <i class="pi pi-chart-bar mb-3 text-4xl text-surface-300" />
-              <p class="text-surface-400">使用状況データがありません</p>
-            </div>
+            <DashboardEmptyState icon="pi pi-chart-bar" message="使用状況データがありません" />
           </template>
 
           <Column field="teamName" header="チーム名" />

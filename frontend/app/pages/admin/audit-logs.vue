@@ -58,7 +58,7 @@ onMounted(loadLogs)
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <h1 class="mb-6 text-2xl font-bold">監査ログ</h1>
+    <PageHeader title="監査ログ" />
 
     <div class="mb-4 flex flex-wrap items-end gap-3">
       <div>
