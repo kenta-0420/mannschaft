@@ -20,6 +20,12 @@ const showPollDialog = ref(false)
 const poll = ref<{ question: string; options: string[]; expiresAt?: string } | null>(null)
 const submitting = ref(false)
 
+// 動画ファイル添付状態
+const videoFileKey = ref<string | null>(null)
+const videoFileName = ref<string | null>(null)
+const videoFileSize = ref<number | null>(null)
+const videoContentType = ref<string | null>(null)
+
 const maxLength = computed(() => props.scopeType === 'PUBLIC' ? 280 : 5000)
 
 const canSubmit = computed(() => {
@@ -53,6 +59,25 @@ function removePoll() {
   poll.value = null
 }
 
+function onVideoUploaded(payload: { fileKey: string; fileName: string; fileSize: number; contentType: string }) {
+  videoFileKey.value = payload.fileKey
+  videoFileName.value = payload.fileName
+  videoFileSize.value = payload.fileSize
+  videoContentType.value = payload.contentType
+  showSuccess('動画をアップロードしました')
+}
+
+function onVideoUploadError(message: string) {
+  showError(message || '動画のアップロードに失敗しました')
+}
+
+function removeVideo() {
+  videoFileKey.value = null
+  videoFileName.value = null
+  videoFileSize.value = null
+  videoContentType.value = null
+}
+
 async function onSubmit() {
   if (!canSubmit.value) return
   submitting.value = true
@@ -65,6 +90,16 @@ async function onSubmit() {
     if (videoUrl.value.trim()) {
       formData.append('video_urls', videoUrl.value.trim())
     }
+    if (videoFileKey.value) {
+      formData.append('attachments', JSON.stringify({
+        attachmentType: 'VIDEO_FILE',
+        fileKey: videoFileKey.value,
+        originalFilename: videoFileName.value,
+        fileSize: videoFileSize.value,
+        mimeType: videoContentType.value,
+        videoProcessingStatus: 'PENDING',
+      }))
+    }
     if (poll.value) {
       formData.append('poll', JSON.stringify(poll.value))
     }
@@ -74,6 +109,10 @@ async function onSubmit() {
     content.value = ''
     images.value = []
     videoUrl.value = ''
+    videoFileKey.value = null
+    videoFileName.value = null
+    videoFileSize.value = null
+    videoContentType.value = null
     poll.value = null
     emit('posted')
   } catch {
@@ -117,6 +156,26 @@ async function onSubmit() {
       </div>
     </div>
 
+    <!-- 動画プレビュー -->
+    <div v-if="videoFileKey" class="mb-3 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <i class="pi pi-video text-primary" />
+      <div class="flex-1 min-w-0">
+        <p class="truncate text-sm font-medium">{{ videoFileName }}</p>
+        <p class="text-xs text-surface-400">
+          {{ videoFileSize ? `${Math.round(videoFileSize / 1024)} KB` : '' }}
+        </p>
+      </div>
+      <Button
+        icon="pi pi-times"
+        text
+        rounded
+        severity="danger"
+        size="small"
+        :title="$t('timeline.videoRemove')"
+        @click="removeVideo"
+      />
+    </div>
+
     <!-- 投票プレビュー -->
     <div v-if="poll" class="mb-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div class="flex items-center justify-between">
@@ -135,6 +194,15 @@ async function onSubmit() {
           <input type="file" accept="image/*" multiple class="hidden" @change="onFileSelect" />
           <Button icon="pi pi-image" text rounded severity="secondary" size="small" as="span" />
         </label>
+        <!-- 動画アップロードボタン（VIDEO_FILE が未添付の場合のみ表示） -->
+        <VideoUploadInput
+          v-if="!videoFileKey"
+          :scope-type="scopeType"
+          :scope-id="scopeId"
+          :disabled="submitting"
+          @uploaded="onVideoUploaded"
+          @error="onVideoUploadError"
+        />
         <Button
           v-if="scopeType !== 'PUBLIC'"
           icon="pi pi-chart-bar"

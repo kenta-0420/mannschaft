@@ -157,6 +157,17 @@ function toggleMenu(event: Event) {
           loading="lazy"
           @click.stop
         />
+        <div
+          v-else-if="att.attachmentType === 'VIDEO_FILE' && att.fileKey"
+          @click.stop
+        >
+          <VideoPlayer
+            :file-key="att.fileKey"
+            :thumbnail-url="att.videoThumbnailUrl"
+            :processing-status="att.videoProcessingStatus"
+            :mime-type="att.mimeType"
+          />
+        </div>
         <a
           v-else-if="att.attachmentType === 'VIDEO_LINK'"
           :href="att.videoUrl"

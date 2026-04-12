@@ -224,6 +224,28 @@ public class R2StorageService implements StorageService {
     }
 
     /**
+     * R2 オブジェクトの存在確認。
+     *
+     * @param r2Key オブジェクトキー
+     * @return 存在する場合 true
+     */
+    public boolean objectExists(String r2Key) {
+        try {
+            HeadObjectRequest request = HeadObjectRequest.builder()
+                    .bucket(storageProperties.getBucket())
+                    .key(r2Key)
+                    .build();
+            s3Client.headObject(request);
+            return true;
+        } catch (software.amazon.awssdk.services.s3.model.NoSuchKeyException e) {
+            return false;
+        } catch (Exception e) {
+            log.error("R2オブジェクト存在確認失敗: key={}", r2Key, e);
+            throw new BusinessException(StorageErrorCode.DOWNLOAD_FAILED, e);
+        }
+    }
+
+    /**
      * R2 画像の縦横サイズを返す（フルダウンロード + ImageIO）。
      * 添付ファイル登録時のメタデータ取得に使用する。
      *

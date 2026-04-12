@@ -2,7 +2,9 @@ package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.timeline.AttachmentType;
+import com.mannschaft.app.timeline.VideoProcessingStatus;
 import com.mannschaft.app.timeline.event.TimelinePostCreatedEvent;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostStatus;
@@ -51,6 +53,7 @@ public class TimelinePostService {
     private final TimelinePollService pollService;
     private final TimelineMapper timelineMapper;
     private final DomainEventPublisher domainEventPublisher;
+    private final R2StorageService r2StorageService;
 
     /**
      * 投稿を作成する。添付ファイル・投票も同時に作成する。
@@ -331,13 +334,33 @@ public class TimelinePostService {
 
     /**
      * 添付ファイルを保存する。
+     * VIDEO_FILE 型の場合は R2 に対象オブジェクトが存在することを確認する。
      */
     private void saveAttachments(Long postId, List<CreateAttachmentRequest> attachments) {
         short order = 0;
         for (CreateAttachmentRequest att : attachments) {
+            AttachmentType attachmentType = AttachmentType.valueOf(att.getAttachmentType());
+
+            // VIDEO_FILE の場合、R2 にオブジェクトが存在することを確認
+            if (attachmentType == AttachmentType.VIDEO_FILE && att.getFileKey() != null) {
+                if (!r2StorageService.objectExists(att.getFileKey())) {
+                    log.warn("VIDEO_FILE の R2 オブジェクトが見つからない: key={}", att.getFileKey());
+                    throw new BusinessException(TimelineErrorCode.ATTACHMENT_NOT_FOUND_IN_STORAGE);
+                }
+            }
+
+            // VIDEO_FILE の場合は videoProcessingStatus を PENDING に設定
+            VideoProcessingStatus processingStatus = null;
+            if (attachmentType == AttachmentType.VIDEO_FILE) {
+                String statusStr = att.getVideoProcessingStatus();
+                processingStatus = (statusStr != null)
+                        ? VideoProcessingStatus.valueOf(statusStr)
+                        : VideoProcessingStatus.PENDING;
+            }
+
             TimelinePostAttachmentEntity entity = TimelinePostAttachmentEntity.builder()
                     .timelinePostId(postId)
-                    .attachmentType(AttachmentType.valueOf(att.getAttachmentType()))
+                    .attachmentType(attachmentType)
                     .fileKey(att.getFileKey())
                     .originalFilename(att.getOriginalFilename())
                     .fileSize(att.getFileSize())
@@ -353,6 +376,12 @@ public class TimelinePostService {
                     .ogImageUrl(att.getOgImageUrl())
                     .ogSiteName(att.getOgSiteName())
                     .sortOrder(att.getSortOrder() != null ? att.getSortOrder() : order)
+                    .videoThumbnailKey(att.getVideoThumbnailKey())
+                    .videoDurationSeconds(att.getVideoDurationSeconds())
+                    .videoCodec(att.getVideoCodec())
+                    .videoWidth(att.getVideoWidth())
+                    .videoHeight(att.getVideoHeight())
+                    .videoProcessingStatus(processingStatus)
                     .build();
             attachmentRepository.save(entity);
             order++;
