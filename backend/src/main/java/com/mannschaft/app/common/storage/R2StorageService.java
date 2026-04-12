@@ -26,25 +26,27 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * AWS S3 を使用したストレージサービス実装。
+ * Cloudflare R2 を使用したストレージサービス実装。
+ * R2 は S3 互換 API を使用するため、AWS S3 SDK でアクセスする。
+ * 一時ファイルは "tmp/" プレフィックスで単一バケット内に配置する。
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class S3StorageService implements StorageService {
+public class R2StorageService implements StorageService {
 
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
     private final StorageProperties storageProperties;
 
     @Override
-    public PresignedUploadResult generateUploadUrl(String s3Key, String contentType, Duration ttl) {
+    public PresignedUploadResult generateUploadUrl(String r2Key, String contentType, Duration ttl) {
         try {
             PutObjectRequest objectRequest = PutObjectRequest.builder()
                     .bucket(storageProperties.getBucket())
-                    .key(s3Key)
+                    .key(r2Key)
                     .contentType(contentType)
-                    .cacheControl(CachePolicy.resolve(s3Key))
+                    .cacheControl(CachePolicy.resolve(r2Key))
                     .build();
 
             PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
@@ -53,20 +55,20 @@ public class S3StorageService implements StorageService {
                     .build();
 
             String url = s3Presigner.presignPutObject(presignRequest).url().toString();
-            log.debug("Pre-signed upload URL生成: key={}", s3Key);
-            return new PresignedUploadResult(url, s3Key, ttl.toSeconds());
+            log.debug("R2 Pre-signed upload URL生成: key={}", r2Key);
+            return new PresignedUploadResult(url, r2Key, ttl.toSeconds());
         } catch (Exception e) {
-            log.error("Pre-signed upload URL生成失敗: key={}", s3Key, e);
+            log.error("R2 Pre-signed upload URL生成失敗: key={}", r2Key, e);
             throw new BusinessException(StorageErrorCode.PRESIGNED_URL_FAILED, e);
         }
     }
 
     @Override
-    public String generateDownloadUrl(String s3Key, Duration ttl) {
+    public String generateDownloadUrl(String r2Key, Duration ttl) {
         try {
             GetObjectRequest objectRequest = GetObjectRequest.builder()
                     .bucket(storageProperties.getBucket())
-                    .key(s3Key)
+                    .key(r2Key)
                     .build();
 
             GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
@@ -75,74 +77,74 @@ public class S3StorageService implements StorageService {
                     .build();
 
             String url = s3Presigner.presignGetObject(presignRequest).url().toString();
-            log.debug("Pre-signed download URL生成: key={}", s3Key);
+            log.debug("R2 Pre-signed download URL生成: key={}", r2Key);
             return url;
         } catch (Exception e) {
-            log.error("Pre-signed download URL生成失敗: key={}", s3Key, e);
+            log.error("R2 Pre-signed download URL生成失敗: key={}", r2Key, e);
             throw new BusinessException(StorageErrorCode.PRESIGNED_URL_FAILED, e);
         }
     }
 
     @Override
-    public void upload(String s3Key, byte[] data, String contentType) {
+    public void upload(String r2Key, byte[] data, String contentType) {
         try {
             PutObjectRequest request = PutObjectRequest.builder()
                     .bucket(storageProperties.getBucket())
-                    .key(s3Key)
+                    .key(r2Key)
                     .contentType(contentType)
-                    .cacheControl(CachePolicy.resolve(s3Key))
+                    .cacheControl(CachePolicy.resolve(r2Key))
                     .build();
 
             s3Client.putObject(request, RequestBody.fromBytes(data));
-            log.debug("S3アップロード完了: key={}, size={}", s3Key, data.length);
+            log.debug("R2アップロード完了: key={}, size={}", r2Key, data.length);
         } catch (Exception e) {
-            log.error("S3アップロード失敗: key={}", s3Key, e);
+            log.error("R2アップロード失敗: key={}", r2Key, e);
             throw new BusinessException(StorageErrorCode.UPLOAD_FAILED, e);
         }
     }
 
     @Override
-    public void upload(String s3Key, InputStream data, long contentLength, String contentType) {
+    public void upload(String r2Key, InputStream data, long contentLength, String contentType) {
         try {
             PutObjectRequest request = PutObjectRequest.builder()
                     .bucket(storageProperties.getBucket())
-                    .key(s3Key)
+                    .key(r2Key)
                     .contentType(contentType)
                     .contentLength(contentLength)
-                    .cacheControl(CachePolicy.resolve(s3Key))
+                    .cacheControl(CachePolicy.resolve(r2Key))
                     .build();
 
             s3Client.putObject(request, RequestBody.fromInputStream(data, contentLength));
-            log.debug("S3ストリームアップロード完了: key={}, size={}", s3Key, contentLength);
+            log.debug("R2ストリームアップロード完了: key={}, size={}", r2Key, contentLength);
         } catch (Exception e) {
-            log.error("S3ストリームアップロード失敗: key={}", s3Key, e);
+            log.error("R2ストリームアップロード失敗: key={}", r2Key, e);
             throw new BusinessException(StorageErrorCode.UPLOAD_FAILED, e);
         }
     }
 
     @Override
-    public void delete(String s3Key) {
+    public void delete(String r2Key) {
         try {
             DeleteObjectRequest request = DeleteObjectRequest.builder()
                     .bucket(storageProperties.getBucket())
-                    .key(s3Key)
+                    .key(r2Key)
                     .build();
 
             s3Client.deleteObject(request);
-            log.debug("S3オブジェクト削除: key={}", s3Key);
+            log.debug("R2オブジェクト削除: key={}", r2Key);
         } catch (Exception e) {
-            log.error("S3オブジェクト削除失敗: key={}", s3Key, e);
+            log.error("R2オブジェクト削除失敗: key={}", r2Key, e);
             throw new BusinessException(StorageErrorCode.DELETE_FAILED, e);
         }
     }
 
     @Override
-    public void deleteAll(List<String> s3Keys) {
-        if (s3Keys == null || s3Keys.isEmpty()) {
+    public void deleteAll(List<String> r2Keys) {
+        if (r2Keys == null || r2Keys.isEmpty()) {
             return;
         }
         try {
-            List<ObjectIdentifier> identifiers = s3Keys.stream()
+            List<ObjectIdentifier> identifiers = r2Keys.stream()
                     .map(key -> ObjectIdentifier.builder().key(key).build())
                     .toList();
 
@@ -152,90 +154,90 @@ public class S3StorageService implements StorageService {
                     .build();
 
             s3Client.deleteObjects(request);
-            log.debug("S3オブジェクト一括削除: count={}", s3Keys.size());
+            log.debug("R2オブジェクト一括削除: count={}", r2Keys.size());
         } catch (Exception e) {
-            log.error("S3オブジェクト一括削除失敗: keys={}", s3Keys, e);
+            log.error("R2オブジェクト一括削除失敗: keys={}", r2Keys, e);
             throw new BusinessException(StorageErrorCode.DELETE_FAILED, e);
         }
     }
 
     @Override
-    public byte[] download(String s3Key) {
+    public byte[] download(String r2Key) {
         try {
             GetObjectRequest request = GetObjectRequest.builder()
                     .bucket(storageProperties.getBucket())
-                    .key(s3Key)
+                    .key(r2Key)
                     .build();
 
             byte[] data = s3Client.getObjectAsBytes(request).asByteArray();
-            log.debug("S3ダウンロード完了: key={}, size={}", s3Key, data.length);
+            log.debug("R2ダウンロード完了: key={}, size={}", r2Key, data.length);
             return data;
         } catch (Exception e) {
-            log.error("S3ダウンロード失敗: key={}", s3Key, e);
+            log.error("R2ダウンロード失敗: key={}", r2Key, e);
             throw new BusinessException(StorageErrorCode.DOWNLOAD_FAILED, e);
         }
     }
 
     /**
-     * S3 オブジェクトのサイズをバイト単位で返す（HEAD リクエスト）。
+     * R2 オブジェクトのサイズをバイト単位で返す（HEAD リクエスト）。
      *
-     * @param s3Key オブジェクトキー
+     * @param r2Key オブジェクトキー
      * @return ファイルサイズ（バイト）
      */
-    public long getObjectSize(String s3Key) {
+    public long getObjectSize(String r2Key) {
         try {
             HeadObjectRequest request = HeadObjectRequest.builder()
                     .bucket(storageProperties.getBucket())
-                    .key(s3Key)
+                    .key(r2Key)
                     .build();
             long size = s3Client.headObject(request).contentLength();
-            log.debug("S3オブジェクトサイズ取得: key={}, size={}", s3Key, size);
+            log.debug("R2オブジェクトサイズ取得: key={}, size={}", r2Key, size);
             return size;
         } catch (Exception e) {
-            log.error("S3オブジェクトサイズ取得失敗: key={}", s3Key, e);
+            log.error("R2オブジェクトサイズ取得失敗: key={}", r2Key, e);
             throw new BusinessException(StorageErrorCode.DOWNLOAD_FAILED, e);
         }
     }
 
     /**
-     * S3 オブジェクトの先頭 n バイトを返す（レンジ GET）。
+     * R2 オブジェクトの先頭 n バイトを返す（レンジ GET）。
      * マジックバイト検証に使用する。
      *
-     * @param s3Key    オブジェクトキー
+     * @param r2Key    オブジェクトキー
      * @param numBytes 取得バイト数
      * @return 先頭バイト列
      */
-    public byte[] readFirstBytes(String s3Key, int numBytes) {
+    public byte[] readFirstBytes(String r2Key, int numBytes) {
         try {
             GetObjectRequest request = GetObjectRequest.builder()
                     .bucket(storageProperties.getBucket())
-                    .key(s3Key)
+                    .key(r2Key)
                     .range("bytes=0-" + (numBytes - 1))
                     .build();
             byte[] data = s3Client.getObjectAsBytes(request).asByteArray();
-            log.debug("S3先頭バイト取得: key={}, bytes={}", s3Key, data.length);
+            log.debug("R2先頭バイト取得: key={}, bytes={}", r2Key, data.length);
             return Arrays.copyOf(data, numBytes);
         } catch (Exception e) {
-            log.error("S3先頭バイト取得失敗: key={}", s3Key, e);
+            log.error("R2先頭バイト取得失敗: key={}", r2Key, e);
             throw new BusinessException(StorageErrorCode.DOWNLOAD_FAILED, e);
         }
     }
 
     /**
-     * S3 画像の縦横サイズを返す（フルダウンロード + ImageIO）。
+     * R2 画像の縦横サイズを返す（フルダウンロード + ImageIO）。
      * 添付ファイル登録時のメタデータ取得に使用する。
      *
-     * @param s3Key オブジェクトキー
+     * @param r2Key オブジェクトキー
      * @return [width, height]。取得失敗時は空配列
      */
-    public int[] getImageDimensions(String s3Key) {
+    public int[] getImageDimensions(String r2Key) {
         try {
-            byte[] data = download(s3Key);
+            byte[] data = download(r2Key);
             BufferedImage image = ImageIO.read(new ByteArrayInputStream(data));
             if (image == null) return new int[0];
             return new int[]{image.getWidth(), image.getHeight()};
         } catch (Exception e) {
-            log.warn("S3画像サイズ取得失敗（ピクセル値はNULLで保存）: key={}", s3Key, e);
+            log.warn("R2画像サイズ取得失敗（ピクセル値はNULLで保存）: key={}", r2Key, e);
             return new int[0];
         }
     }

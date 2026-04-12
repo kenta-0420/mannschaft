@@ -52,18 +52,18 @@ mannschaft:
     key: ${MANNSCHAFT_ENCRYPTION_KEY:}
     hmac-key: ${MANNSCHAFT_HMAC_KEY:}
   storage:
-    bucket: ${MANNSCHAFT_S3_BUCKET:mannschaft-dev}
-    region: ${MANNSCHAFT_S3_REGION:ap-northeast-1}
-    endpoint: ${MANNSCHAFT_S3_ENDPOINT:}
-    presigned-upload-ttl: ${MANNSCHAFT_S3_UPLOAD_TTL:600}
-    presigned-download-ttl: ${MANNSCHAFT_S3_DOWNLOAD_TTL:3600}
-    tmp-bucket: ${MANNSCHAFT_S3_TMP_BUCKET:mannschaft-tmp}
+    bucket: ${MANNSCHAFT_R2_BUCKET:mannschaft-storage}
+    endpoint: ${MANNSCHAFT_R2_ENDPOINT:}        # https://{accountId}.r2.cloudflarestorage.com
+    access-key: ${MANNSCHAFT_R2_ACCESS_KEY:}
+    secret-key: ${MANNSCHAFT_R2_SECRET_KEY:}
+    presigned-upload-ttl: ${MANNSCHAFT_R2_UPLOAD_TTL:600}
+    presigned-download-ttl: ${MANNSCHAFT_R2_DOWNLOAD_TTL:3600}
   cdn:
+    workers-domain: ${MANNSCHAFT_CDN_WORKERS_DOMAIN:}  # 例: cdn.example.workers.dev
     enabled: ${MANNSCHAFT_CDN_ENABLED:false}
-    domain: ${MANNSCHAFT_CDN_DOMAIN:}
-    key-pair-id: ${MANNSCHAFT_CDN_KEY_PAIR_ID:}
-    private-key-path: ${MANNSCHAFT_CDN_PRIVATE_KEY_PATH:}
-    signed-url-ttl: ${MANNSCHAFT_CDN_SIGNED_URL_TTL:900}
+  ses:
+    region: ${MANNSCHAFT_SES_REGION:ap-northeast-1}
+    endpoint: ${MANNSCHAFT_SES_ENDPOINT:}
   webauthn:
     origin: ${MANNSCHAFT_WEBAUTHN_ORIGIN:https://mannschaft.app}
   google:
