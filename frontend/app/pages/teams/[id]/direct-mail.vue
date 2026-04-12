@@ -36,15 +36,15 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">ダイレクトメール</h1>
+      <PageHeader title="ダイレクトメール" />
       <Button label="メール作成" icon="pi pi-plus" />
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-2">
-      <div
+      <SectionCard
         v-for="m in mails"
         :key="m.id"
-        class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-4"
+        class="flex items-center gap-4"
       >
         <div class="flex-1">
           <h3 class="text-sm font-semibold">{{ m.title }}</h3>
@@ -59,7 +59,7 @@ onMounted(() => load())
           <p>{{ m.sentCount }}/{{ m.recipientCount }}送信</p>
           <p>開封{{ m.openCount }}</p>
         </div>
-      </div>
+      </SectionCard>
     </div>
   </div>
 </template>

@@ -24,13 +24,12 @@ onMounted(() => load())
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <h1 class="mb-6 text-2xl font-bold">マイサービス履歴</h1>
+    <PageHeader title="マイサービス履歴" />
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-3">
-      <div
+      <SectionCard
         v-for="r in records"
         :key="r.id"
-        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold">{{ r.serviceName }}</h3>
@@ -39,11 +38,8 @@ onMounted(() => load())
         <p v-if="r.staffName" class="mt-1 text-xs text-surface-500">担当: {{ r.staffName }}</p>
         <p v-if="r.notes" class="mt-1 text-sm text-surface-600">{{ r.notes }}</p>
         <p v-if="r.teamName" class="mt-1 text-xs text-surface-400">{{ r.teamName }}</p>
-      </div>
-      <div v-if="records.length === 0" class="py-12 text-center">
-        <i class="pi pi-list mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">サービス履歴がありません</p>
-      </div>
+      </SectionCard>
+      <DashboardEmptyState v-if="records.length === 0" icon="pi-list" message="サービス履歴がありません" />
     </div>
   </div>
 </template>

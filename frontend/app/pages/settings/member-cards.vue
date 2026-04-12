@@ -54,10 +54,8 @@ onMounted(loadCards)
 
 <template>
   <div class="mx-auto max-w-4xl">
-    <div class="mb-6 flex items-center gap-2">
-      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
-      <h1 class="text-2xl font-bold">QR会員証</h1>
-    </div>
+    <BackButton to="/settings" />
+    <PageHeader title="QR会員証" />
 
     <PageLoading v-if="loading" />
 

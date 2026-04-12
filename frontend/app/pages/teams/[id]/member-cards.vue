@@ -65,7 +65,7 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <h1 class="mb-6 text-2xl font-bold">QR会員証管理</h1>
+    <PageHeader title="QR会員証管理" class="mb-6" />
 
     <PageLoading v-if="loading" />
 

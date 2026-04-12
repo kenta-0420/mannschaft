@@ -98,7 +98,7 @@ onMounted(load)
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <h1 class="mb-6 text-2xl font-bold">モジュール価格管理</h1>
+    <PageHeader title="モジュール価格管理" />
 
     <PageLoading v-if="loading" />
 

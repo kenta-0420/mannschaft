@@ -70,8 +70,8 @@ onMounted(loadProfiles)
   <div class="mx-auto max-w-2xl">
     <div class="mb-6 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
-        <h1 class="text-2xl font-bold">ソーシャルプロフィール</h1>
+        <BackButton to="/settings" />
+        <PageHeader title="ソーシャルプロフィール" />
       </div>
       <Button v-if="profiles.length < 3" label="新規作成" icon="pi pi-plus" @click="openCreate" />
     </div>
@@ -91,10 +91,7 @@ onMounted(loadProfiles)
         @edit="openEdit"
         @delete="handleDelete"
       />
-      <div v-if="profiles.length === 0" class="py-12 text-center text-surface-500">
-        <i class="pi pi-user-plus mb-2 text-4xl" />
-        <p>まだプロフィールがありません</p>
-      </div>
+      <DashboardEmptyState v-if="profiles.length === 0" icon="pi-user-plus" message="まだプロフィールがありません" />
     </div>
 
     <Dialog

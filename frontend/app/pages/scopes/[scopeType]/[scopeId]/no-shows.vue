@@ -111,9 +111,7 @@ onMounted(() => load())
 
 <template>
   <div class="container mx-auto max-w-4xl p-4">
-    <h1 class="mb-4 text-2xl font-bold">
-      {{ t('recruitment.noShow.adminPageTitle') }}
-    </h1>
+    <PageHeader :title="t('recruitment.noShow.adminPageTitle')" />
 
     <div v-if="loading" class="flex justify-center p-8">
       <ProgressSpinner />

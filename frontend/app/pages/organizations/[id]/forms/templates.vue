@@ -21,13 +21,8 @@ onMounted(() => loadPermissions())
   <div>
     <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <NuxtLink
-          :to="`/organizations/${orgId}/forms`"
-          class="text-sm text-primary hover:underline"
-        >
-          <i class="pi pi-arrow-left mr-1" />フォームに戻る
-        </NuxtLink>
-        <h1 class="text-2xl font-bold">フォームテンプレート</h1>
+        <BackButton :to="`/organizations/${orgId}/forms`" label="フォームに戻る" />
+        <PageHeader title="フォームテンプレート" />
       </div>
       <Button
         v-if="isAdminOrDeputy"

@@ -4,7 +4,6 @@ import type { MemberProfile, CreateMemberProfileRequest } from '~/types/member-p
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const router = useRouter()
 const teamId = computed(() => Number(route.params.id))
 const memberProfileApi = useMemberProfileApi()
 const notification = useNotification()
@@ -83,8 +82,8 @@ onMounted(loadData)
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex items-center gap-3">
-      <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
-      <h1 class="text-2xl font-bold">メンバー紹介</h1>
+      <BackButton />
+      <PageHeader title="メンバー紹介" />
     </div>
 
     <PageLoading v-if="loading" />

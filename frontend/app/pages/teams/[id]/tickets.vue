@@ -45,7 +45,7 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">回数券</h1>
+      <PageHeader title="回数券" />
       <Button label="商品を追加" icon="pi pi-plus" />
     </div>
     <SelectButton
@@ -60,12 +60,11 @@ onMounted(() => load())
     />
     <PageLoading v-if="loading" size="40px" />
     <div v-else-if="tab === 'products'" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <div
+      <SectionCard
         v-for="p in products"
         :key="p.id"
-        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
+        :title="p.name"
       >
-        <h3 class="text-sm font-semibold">{{ p.name }}</h3>
         <p class="mt-1 text-xs text-surface-400">{{ p.description }}</p>
         <div class="mt-3 flex items-end justify-between">
           <div>
@@ -74,13 +73,13 @@ onMounted(() => load())
           </div>
           <span class="text-xs text-surface-400">有効{{ p.validityDays }}日</span>
         </div>
-      </div>
+      </SectionCard>
     </div>
     <div v-else class="flex flex-col gap-2">
-      <div
+      <SectionCard
         v-for="b in books"
         :key="b.id"
-        class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-4"
+        class="flex items-center gap-4"
       >
         <Avatar :label="b.displayName.charAt(0)" shape="circle" />
         <div class="flex-1">
@@ -95,7 +94,7 @@ onMounted(() => load())
           >
           <p class="mt-1 text-sm font-bold">残 {{ b.remainingTickets }}/{{ b.totalTickets }}</p>
         </div>
-      </div>
+      </SectionCard>
     </div>
   </div>
 </template>

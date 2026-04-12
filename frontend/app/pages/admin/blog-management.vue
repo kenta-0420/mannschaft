@@ -114,7 +114,7 @@ onMounted(() => { if (scopeId.value) loadPosts() })
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <h1 class="mb-6 text-2xl font-bold">ブログ管理</h1>
+    <PageHeader title="ブログ管理" />
 
     <Tabs :value="activeTab" @update:value="onTabChange">
       <TabList>

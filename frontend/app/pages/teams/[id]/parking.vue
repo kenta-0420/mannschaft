@@ -32,15 +32,15 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">駐車場管理</h1>
+      <PageHeader title="駐車場管理" />
       <Button label="区画を追加" icon="pi pi-plus" />
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-      <div
+      <SectionCard
         v-for="s in spaces"
         :key="s.id"
-        class="rounded-xl border border-surface-300 bg-surface-0 p-4 text-center"
+        class="text-center"
       >
         <p class="text-lg font-bold">{{ s.spaceNumber }}</p>
         <span
@@ -51,7 +51,7 @@ onMounted(() => load())
         <p v-if="s.assignedTo" class="mt-2 text-xs text-surface-400">
           {{ s.assignedTo.displayName }}<br />{{ s.assignedTo.vehiclePlate }}
         </p>
-      </div>
+      </SectionCard>
     </div>
   </div>
 </template>

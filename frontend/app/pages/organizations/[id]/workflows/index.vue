@@ -24,7 +24,7 @@ onMounted(() => loadPermissions())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">ワークフロー申請</h1>
+      <PageHeader title="ワークフロー申請" />
       <div class="flex gap-2">
         <NuxtLink :to="`/organizations/${orgId}/workflows/templates`">
           <Button label="テンプレート管理" icon="pi pi-cog" outlined />

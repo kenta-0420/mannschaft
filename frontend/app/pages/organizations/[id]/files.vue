@@ -6,7 +6,7 @@ const orgId = Number(route.params.id)
 
 <template>
   <div>
-    <div class="mb-4"><h1 class="text-2xl font-bold">ファイル共有</h1></div>
+    <PageHeader title="ファイル共有" />
     <FileBrowser scope-type="ORGANIZATION" :scope-id="orgId" />
   </div>
 </template>

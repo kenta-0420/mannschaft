@@ -4,7 +4,6 @@ definePageMeta({
 })
 
 const route = useRoute()
-const router = useRouter()
 const orgId = Number(route.params.id)
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
 
@@ -32,8 +31,8 @@ onMounted(async () => {
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4 flex items-center gap-3">
-      <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
-      <h1 class="text-2xl font-bold">タイムライン</h1>
+      <BackButton />
+      <PageHeader title="タイムライン" />
     </div>
 
     <div class="mx-auto max-w-2xl">

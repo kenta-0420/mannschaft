@@ -104,7 +104,7 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <h1 class="mb-6 text-2xl font-bold">オンボーディング管理</h1>
+    <PageHeader title="オンボーディング管理" />
 
     <PageLoading v-if="loading" />
 

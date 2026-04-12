@@ -98,9 +98,7 @@ watch([dateFrom, dateTo], load)
   <div>
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div class="flex items-center gap-3">
-        <NuxtLink :to="`/organizations/${orgId}/advertiser`">
-          <Button icon="pi pi-arrow-left" text rounded />
-        </NuxtLink>
+        <BackButton :to="`/organizations/${orgId}/advertiser`" />
         <div>
           <h1 class="text-2xl font-bold">
             {{ performance?.campaignName ?? 'キャンペーン詳細' }}

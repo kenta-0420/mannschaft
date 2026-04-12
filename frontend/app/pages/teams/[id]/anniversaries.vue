@@ -101,7 +101,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">記念日</h1>
+      <PageHeader title="記念日" />
       <Button v-if="isAdminOrDeputy" label="記念日を追加" icon="pi pi-plus" @click="openCreate" />
     </div>
 
@@ -127,27 +127,30 @@ onMounted(async () => {
 
     <!-- 全記念日一覧 -->
     <div v-if="!loading" class="flex flex-col gap-2">
-      <div
+      <SectionCard
         v-for="item in anniversaries"
         :key="item.id"
-        class="flex items-center justify-between rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
       >
-        <div>
-          <p class="font-semibold">{{ item.name }}</p>
-          <div class="flex items-center gap-2 text-sm text-surface-500">
-            <span>{{ item.date }}</span>
-            <Tag v-if="item.repeatAnnually" value="毎年" severity="info" class="text-xs" />
-            <span v-if="item.notifyDaysBefore">{{ item.notifyDaysBefore }}日前に通知</span>
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="font-semibold">{{ item.name }}</p>
+            <div class="flex items-center gap-2 text-sm text-surface-500">
+              <span>{{ item.date }}</span>
+              <Tag v-if="item.repeatAnnually" value="毎年" severity="info" class="text-xs" />
+              <span v-if="item.notifyDaysBefore">{{ item.notifyDaysBefore }}日前に通知</span>
+            </div>
+          </div>
+          <div v-if="isAdminOrDeputy" class="flex gap-2">
+            <Button icon="pi pi-pencil" text rounded @click="openEdit(item)" />
+            <Button icon="pi pi-trash" text rounded severity="danger" @click="remove(item)" />
           </div>
         </div>
-        <div v-if="isAdminOrDeputy" class="flex gap-2">
-          <Button icon="pi pi-pencil" text rounded @click="openEdit(item)" />
-          <Button icon="pi pi-trash" text rounded severity="danger" @click="remove(item)" />
-        </div>
-      </div>
-      <div v-if="anniversaries.length === 0 && !loading" class="py-8 text-center text-surface-400">
-        記念日が登録されていません
-      </div>
+      </SectionCard>
+      <DashboardEmptyState
+        v-if="anniversaries.length === 0 && !loading"
+        icon="pi pi-gift"
+        message="記念日が登録されていません"
+      />
     </div>
 
     <!-- 作成/編集ダイアログ -->

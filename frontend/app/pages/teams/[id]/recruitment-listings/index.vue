@@ -41,9 +41,7 @@ onMounted(() => load())
 <template>
   <div class="container mx-auto max-w-4xl p-4">
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">
-        {{ t('recruitment.page.teamRecruitmentListings') }}
-      </h1>
+      <PageHeader :title="t('recruitment.page.teamRecruitmentListings')" />
       <Button
         :label="t('recruitment.action.create')"
         icon="pi pi-plus"
@@ -55,9 +53,11 @@ onMounted(() => load())
       <ProgressSpinner />
     </div>
 
-    <div v-else-if="listings.length === 0" class="rounded border border-dashed p-8 text-center text-gray-500">
-      {{ t('recruitment.label.noListings') }}
-    </div>
+    <DashboardEmptyState
+      v-else-if="listings.length === 0"
+      icon="pi pi-users"
+      :message="t('recruitment.label.noListings')"
+    />
 
     <div v-else class="flex flex-col gap-3">
       <div

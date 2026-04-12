@@ -13,7 +13,6 @@ import type { WebhookEndpointResponse } from '~/composables/useWebhookApi'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const router = useRouter()
 const teamId = Number(route.params.id)
 const webhookApi = useWebhookApi()
 const { success, error: showError } = useNotification()
@@ -425,8 +424,8 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
-      <h1 class="text-2xl font-bold">Webhook / 外部API管理</h1>
+      <BackButton />
+      <PageHeader title="Webhook / 外部API管理" />
     </div>
 
     <Tabs v-model:value="activeTab">

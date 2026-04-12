@@ -42,7 +42,7 @@ const attendanceButtons = [
 </script>
 
 <template>
-  <div class="rounded-lg border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
+  <SectionCard>
     <h3 class="mb-3 text-sm font-semibold">出欠回答</h3>
 
     <!-- 回答ボタン -->
@@ -82,5 +82,5 @@ const attendanceButtons = [
       <span class="text-surface-400"><i class="pi pi-clock mr-1" />{{ stats.pending }}</span>
       <span class="text-surface-500">/ {{ stats.total }}名</span>
     </div>
-  </div>
+  </SectionCard>
 </template>

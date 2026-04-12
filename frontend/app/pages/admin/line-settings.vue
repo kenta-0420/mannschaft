@@ -98,8 +98,7 @@ onMounted(() => { if (scopeId.value) load() })
   <div class="mx-auto max-w-2xl">
     <div class="mb-6 flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold">LINE設定</h1>
-        <p class="mt-1 text-sm text-surface-500">LINE Messaging API との連携設定</p>
+        <PageHeader title="LINE設定"><p class="text-sm text-surface-500">LINE Messaging API との連携設定</p></PageHeader>
       </div>
       <div class="flex gap-2">
         <Button v-if="config" label="削除" severity="danger" outlined size="small" @click="remove" />
@@ -120,8 +119,7 @@ onMounted(() => { if (scopeId.value) load() })
       </div>
 
       <!-- API設定 -->
-      <div class="rounded-xl border border-surface-200 bg-white p-5 dark:border-surface-700 dark:bg-surface-800">
-        <h2 class="mb-4 text-sm font-semibold text-surface-700 dark:text-surface-300">API設定</h2>
+      <SectionCard title="API設定">
         <div class="flex flex-col gap-3">
           <div>
             <label class="mb-1 block text-sm font-medium">Channel ID <span class="text-red-500">*</span></label>
@@ -151,16 +149,15 @@ onMounted(() => { if (scopeId.value) load() })
             <InputText v-model="form.webhookSecret" type="password" class="w-full" />
           </div>
         </div>
-      </div>
+      </SectionCard>
 
       <!-- 通知設定 -->
-      <div class="rounded-xl border border-surface-200 bg-white p-5 dark:border-surface-700 dark:bg-surface-800">
-        <h2 class="mb-4 text-sm font-semibold text-surface-700 dark:text-surface-300">通知設定</h2>
+      <SectionCard title="通知設定">
         <div class="flex items-center justify-between">
           <span class="text-sm">通知を有効にする</span>
           <ToggleSwitch v-model="form.notificationEnabled" />
         </div>
-      </div>
+      </SectionCard>
     </div>
   </div>
 </template>

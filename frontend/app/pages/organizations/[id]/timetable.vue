@@ -92,7 +92,7 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-4xl">
-    <h1 class="mb-6 text-2xl font-bold">{{ $t('timetable.org_title') }}</h1>
+    <PageHeader :title="$t('timetable.org_title')" />
 
     <PageLoading v-if="loading" />
 

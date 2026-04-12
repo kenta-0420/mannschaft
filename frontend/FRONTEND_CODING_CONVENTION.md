@@ -21,9 +21,36 @@
 ## 3. スタイリング
 - **Tailwind CSS**: スタイリングには **Tailwind CSS** を使用してください。
 - **ユーティリティ優先**: インラインの `<style>` は最小限にし、可能な限り Tailwind のユーティリティクラスで完結させること。
-- **共通化**: 繰り返し利用されるデザインパターンは、コンポーネント化して再利用性を高めること。
 - **ダークモード**: Tailwind の `dark:` バリアントで実装する。`tailwind.config` の `darkMode: 'class'` を使用し、`<html>` 要素へのクラス付与で切替を制御する。ユーザー設定（`user_appearance_settings`）に応じて `useAppearance` composable が自動付与する。OS設定追従（SYSTEM）には `window.matchMedia('(prefers-color-scheme: dark)')` を使用する。
 - **背景色プリセット・シーズナル壁紙**: CSS カスタムプロパティ（`--bg-color`, `--bg-image`）を `<html>` または `<body>` に付与し、Tailwind の任意値（`bg-[var(--bg-color)]`）で参照する。シーズナル壁紙はAPIから取得した `image_url` を設定する。
+
+## 3a. 共通化ルール **【必須】**
+
+> **なぜ共通化するのか**: 同じUIパターンを各ファイルに直書きすると、デザイン変更・バグ修正のたびに数十〜百以上のファイルを修正する羽目になる。共通コンポーネント・composable に一元化することで、1箇所直せば全体に反映される。
+
+### 共通コンポーネント（既存）— 新規実装時は必ずこれを使うこと
+
+| 用途 | 使うコンポーネント | 直書き禁止パターン |
+|---|---|---|
+| ダッシュボードウィジェット | `<DashboardWidgetCard>` | `rounded-xl border border-surface-* bg-surface-0 ...` の直書き |
+| ページ内セクション・カード | `<SectionCard>` | 同上 |
+| ページヘッダー（タイトル+説明） | `<PageHeader>` | `<h1 class="text-2xl font-bold ...">` の直書き |
+| ローディング表示 | `<PageLoading>` | `<ProgressSpinner>` や独自スピナーの直書き |
+| 空状態表示 | `<DashboardEmptyState>` | `flex flex-col items-center text-center ...` の直書き |
+| 削除・操作確認 | `<ConfirmDialog>`（PrimeVue）または `useConfirm()` | ネイティブ `confirm()` の使用禁止 |
+
+### 共通 Composable（既存）— 新規実装時は必ずこれを使うこと
+
+| 用途 | 使う Composable | 直書き禁止パターン |
+|---|---|---|
+| API エラー処理 | `useErrorHandler()` | `try/catch` + `console.error` の直書き |
+| フィールドバリデーションエラー表示 | `useErrorHandler().getFieldErrors()` | `fieldErrors.value = {}` の独自管理 |
+| トースト通知 | `useNotification()` | `useToast()` の直接呼び出し |
+| ページネーション状態 | `usePagination()`（未実装なら作って共通化） | `page`, `rows`, `totalRecords` を各ページで個別管理 |
+
+### 判断基準
+- **同じコードが2箇所以上に出現したら共通化する**。コピペで済ませない。
+- 共通コンポーネントが要件に合わない場合は、直書きせずコンポーネント自体を拡張する（props を追加するなど）。
 
 ## 4. ディレクトリ構成と責務 (Directory Structure)
 | ディレクトリ | 役割・責務 |

@@ -6,7 +6,7 @@ const teamId = Number(route.params.id)
 
 <template>
   <div>
-    <div class="mb-4"><h1 class="text-2xl font-bold">マッチング</h1></div>
+    <div class="mb-4"><PageHeader title="マッチング" /></div>
     <MatchRequestList :team-id="teamId" />
   </div>
 </template>

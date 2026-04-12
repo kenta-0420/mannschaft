@@ -21,7 +21,7 @@ onMounted(() => loadPermissions())
 <template>
   <div>
     <div class="mb-4">
-      <h1 class="text-2xl font-bold">掲示板</h1>
+      <PageHeader title="掲示板" />
     </div>
 
     <div v-if="selectedThread" class="mx-auto max-w-3xl">

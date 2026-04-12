@@ -61,7 +61,7 @@ onMounted(load)
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">定期レポート</h1>
+      <PageHeader title="定期レポート" />
       <Button label="新規作成" icon="pi pi-plus" :disabled="schedules.length >= 3" @click="showCreate = true" />
     </div>
 

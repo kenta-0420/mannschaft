@@ -80,8 +80,7 @@ onMounted(() => { if (scopeId.value) load() })
   <div class="mx-auto max-w-3xl">
     <div class="mb-6 flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold">MEMBER権限設定</h1>
-        <p class="mt-1 text-sm text-surface-500">MEMBERロールのデフォルト操作をON/OFFで調整します</p>
+        <PageHeader title="MEMBER権限設定"><p class="text-sm text-surface-500">MEMBERロールのデフォルト操作をON/OFFで調整します</p></PageHeader>
       </div>
       <Button label="保存" icon="pi pi-check" :loading="saving" @click="save" />
     </div>
@@ -89,12 +88,11 @@ onMounted(() => { if (scopeId.value) load() })
     <PageLoading v-if="loading" />
 
     <div v-else class="flex flex-col gap-6">
-      <div
+      <SectionCard
         v-for="cat in categories"
         :key="cat"
-        class="rounded-xl border border-surface-200 bg-white p-5 dark:border-surface-700 dark:bg-surface-800"
+        :title="cat"
       >
-        <h2 class="mb-4 text-sm font-semibold text-surface-700 dark:text-surface-300">{{ cat }}</h2>
         <div class="grid gap-3 sm:grid-cols-2">
           <div
             v-for="perm in permsByCategory(cat)"
@@ -105,7 +103,7 @@ onMounted(() => { if (scopeId.value) load() })
             <ToggleSwitch v-model="perm.enabled" />
           </div>
         </div>
-      </div>
+      </SectionCard>
     </div>
   </div>
 </template>

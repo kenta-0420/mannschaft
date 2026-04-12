@@ -162,15 +162,13 @@ onMounted(async () => {
   <div class="container mx-auto max-w-3xl p-4">
     <!-- ペナルティ設定フォーム -->
     <section class="mb-8">
-      <h1 class="mb-4 text-2xl font-bold">
-        {{ t('recruitment.penalty.pageTitle') }}
-      </h1>
+      <PageHeader :title="t('recruitment.penalty.pageTitle')" />
 
       <div v-if="settingLoading" class="flex justify-center p-8">
         <ProgressSpinner />
       </div>
 
-      <div v-else class="flex flex-col gap-4 rounded border border-gray-200 p-4">
+      <SectionCard v-else class="flex flex-col gap-4">
         <!-- 有効/無効 -->
         <div class="flex items-center gap-3">
           <InputSwitch v-model="formIsEnabled" input-id="isEnabled" />
@@ -249,7 +247,7 @@ onMounted(async () => {
             @click="saveSetting"
           />
         </div>
-      </div>
+      </SectionCard>
     </section>
 
     <!-- ペナルティ一覧 -->

@@ -121,7 +121,7 @@ onMounted(load)
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">パッケージ管理</h1>
+      <PageHeader title="パッケージ管理" />
       <Button label="新規作成" icon="pi pi-plus" @click="openCreate" />
     </div>
 

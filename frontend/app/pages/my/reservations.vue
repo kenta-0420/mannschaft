@@ -39,13 +39,12 @@ onMounted(() => load())
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <h1 class="mb-6 text-2xl font-bold">マイ予約</h1>
+    <PageHeader title="マイ予約" />
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-3">
-      <div
+      <SectionCard
         v-for="r in reservations"
         :key="r.id"
-        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold">{{ r.slotTitle ?? r.serviceName }}</h3>
@@ -55,11 +54,8 @@ onMounted(() => load())
         </div>
         <p class="mt-1 text-xs text-surface-400">{{ r.startAt }} - {{ r.endAt }}</p>
         <p v-if="r.teamName" class="mt-1 text-xs text-surface-500">{{ r.teamName }}</p>
-      </div>
-      <div v-if="reservations.length === 0" class="py-12 text-center">
-        <i class="pi pi-calendar mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">予約がありません</p>
-      </div>
+      </SectionCard>
+      <DashboardEmptyState v-if="reservations.length === 0" icon="pi-calendar" message="予約がありません" />
     </div>
   </div>
 </template>

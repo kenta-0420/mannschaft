@@ -42,7 +42,7 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">予算・会計</h1>
+      <PageHeader title="予算・会計" />
       <Button label="年度を追加" icon="pi pi-plus" />
     </div>
     <div v-if="fiscalYears.length > 0" class="mb-4">
@@ -61,15 +61,15 @@ onMounted(() => load())
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else-if="summary" class="grid gap-4 sm:grid-cols-3">
-      <div class="rounded-xl border border-surface-300 bg-surface-0 p-4">
+      <SectionCard>
         <p class="text-xs text-surface-400">収入</p>
         <p class="text-2xl font-bold text-green-600">¥{{ summary.totalIncome.toLocaleString() }}</p>
-      </div>
-      <div class="rounded-xl border border-surface-300 bg-surface-0 p-4">
+      </SectionCard>
+      <SectionCard>
         <p class="text-xs text-surface-400">支出</p>
         <p class="text-2xl font-bold text-red-500">¥{{ summary.totalExpense.toLocaleString() }}</p>
-      </div>
-      <div class="rounded-xl border border-surface-300 bg-surface-0 p-4">
+      </SectionCard>
+      <SectionCard>
         <p class="text-xs text-surface-400">残高</p>
         <p
           class="text-2xl font-bold"
@@ -77,7 +77,7 @@ onMounted(() => load())
         >
           ¥{{ summary.balance.toLocaleString() }}
         </p>
-      </div>
+      </SectionCard>
     </div>
     <div v-if="!loading && summary" class="mt-4 flex flex-col gap-2">
       <div

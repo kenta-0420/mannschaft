@@ -14,7 +14,7 @@ onMounted(() => loadPermissions())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">順番待ち</h1>
+      <PageHeader title="順番待ち" />
       <Button label="受付する" icon="pi pi-ticket" @click="showTicketForm = true" />
     </div>
 
