@@ -158,9 +158,25 @@ public class RecruitmentListingEntity extends BaseEntity {
         this.cancelledReason = reason;
     }
 
+    /** §5.4 バッチによる自動キャンセル（最小定員未達）。 */
+    public void autoCancel() {
+        if (this.status != RecruitmentListingStatus.OPEN && this.status != RecruitmentListingStatus.FULL) {
+            throw new IllegalStateException("OPEN/FULL 以外は autoCancel できません: status=" + this.status);
+        }
+        this.status = RecruitmentListingStatus.AUTO_CANCELLED;
+    }
+
     /** 論理削除を行う。 */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * テンプレートIDを紐付ける。
+     * createFromTemplate() 時に、作成後にテンプレートIDを設定するために使用する。
+     */
+    public void assignTemplate(Long templateId) {
+        this.templateId = templateId;
     }
 
     // ===========================================

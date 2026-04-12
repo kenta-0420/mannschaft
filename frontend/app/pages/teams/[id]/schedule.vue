@@ -148,7 +148,7 @@ onMounted(async () => {
       <!-- カレンダー -->
       <div class="lg:col-span-2">
         <div
-          class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
+          class="rounded-xl border border-surface-400 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
         >
           <CalendarGrid
             :year="currentYear"
@@ -166,7 +166,7 @@ onMounted(async () => {
       <div>
         <div
           v-if="showDetailPanel && selectedEvent"
-          class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
+          class="rounded-xl border border-surface-400 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
         >
           <EventDetailPanel
             :event="selectedEvent!"
@@ -180,7 +180,7 @@ onMounted(async () => {
         </div>
         <div
           v-else
-          class="rounded-xl border border-surface-300 bg-surface-0 p-8 dark:border-surface-600 dark:bg-surface-800"
+          class="rounded-xl border border-surface-400 bg-surface-0 p-8 dark:border-surface-600 dark:bg-surface-800"
         >
           <DashboardEmptyState icon="pi pi-calendar" message="イベントを選択してください" />
         </div>

@@ -252,7 +252,12 @@ public class RecruitmentParticipantService {
             listingRepository.save(reloaded);
         }
 
-        // Phase 3 で実装: promoteFromWaitlistIfPossible()
+        // §5.3 CONFIRMED だったならキャンセル待ちを昇格する
+        if (wasConfirmed) {
+            RecruitmentListingEntity reloadedForPromotion = listingRepository.findByIdForUpdate(listingId).orElseThrow();
+            promoteFromWaitlistIfPossible(reloadedForPromotion);
+        }
+
         log.info("F03.11 本人キャンセル: listingId={}, userId={}, fee={}",
                 listingId, userId, fee.feeAmount());
         return mapper.toParticipantResponse(participant);
@@ -300,5 +305,42 @@ public class RecruitmentParticipantService {
 
     public List<RecruitmentParticipantResponse> listMyActiveParticipations(Long userId) {
         return mapper.toParticipantResponseList(participantRepository.findMyActiveParticipations(userId));
+    }
+
+    // ===========================================
+    // §5.3 キャンセル待ち昇格
+    // ===========================================
+
+    /**
+     * §5.3 キャンセル確定後にキャンセル待ちがいれば先頭1件を CONFIRMED に昇格する。
+     * PESSIMISTIC_WRITE ロック取得済みのトランザクション内で呼ぶこと。
+     *
+     * @param listing 対象の募集枠（findByIdForUpdate で取得済みであること）
+     */
+    private void promoteFromWaitlistIfPossible(RecruitmentListingEntity listing) {
+        if (listing.getConfirmedCount() >= listing.getCapacity()) {
+            // まだ満員なら昇格不要
+            return;
+        }
+        participantRepository.findFirstWaitlistedForUpdate(listing.getId()).ifPresent(candidate -> {
+            RecruitmentParticipantStatus oldStatus = candidate.getStatus();
+            candidate.promoteToConfirmed();
+            listing.decrementWaitlist();
+            listing.incrementConfirmed();
+            participantRepository.save(candidate);
+            listingRepository.save(listing);
+
+            historyRepository.save(RecruitmentParticipantHistoryEntity.builder()
+                    .participantId(candidate.getId())
+                    .listingId(listing.getId())
+                    .oldStatus(oldStatus)
+                    .newStatus(RecruitmentParticipantStatus.CONFIRMED)
+                    .changedBy(null)
+                    .changeReason(ParticipantHistoryReason.AUTO_PROMOTE)
+                    .build());
+
+            log.info("F03.11 Phase3 キャンセル待ち昇格: listingId={}, userId={}",
+                    listing.getId(), candidate.getUserId());
+        });
     }
 }

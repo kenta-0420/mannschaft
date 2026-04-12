@@ -67,6 +67,29 @@ public interface RecruitmentParticipantRepository extends JpaRepository<Recruitm
     long countRecentApplicationsByUser(@Param("userId") Long userId, @Param("since") LocalDateTime since);
 
     /**
+     * §5.4 自動キャンセルバッチ: 指定募集の指定ステータスの参加者をページング取得。
+     * 100件/チャンクで処理するために Pageable を使う。
+     */
+    Page<RecruitmentParticipantEntity> findByListingIdAndStatusIn(
+            Long listingId,
+            List<RecruitmentParticipantStatus> statuses,
+            Pageable pageable);
+
+    /**
+     * §5.3 キャンセル待ちの先頭1件をロック取得（昇格用）。
+     * PESSIMISTIC_WRITE を使い、同一トランザクション内で重複昇格を防ぐ。
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT p FROM RecruitmentParticipantEntity p
+            WHERE p.listingId = :listingId
+              AND p.status = com.mannschaft.app.recruitment.RecruitmentParticipantStatus.WAITLISTED
+            ORDER BY p.waitlistPosition ASC
+            LIMIT 1
+            """)
+    Optional<RecruitmentParticipantEntity> findFirstWaitlistedForUpdate(@Param("listingId") Long listingId);
+
+    /**
      * Phase 5b 自動検出バッチ用: 指定スコープの終了済み募集でまだ CONFIRMED の参加者を取得。
      * 募集の endAt が :threshold 以前のものが対象。
      */

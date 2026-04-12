@@ -12,23 +12,27 @@ import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
+import com.mannschaft.app.recruitment.dto.CreateFromTemplateRequest;
 import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentFeedItemResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
+import com.mannschaft.app.recruitment.entity.RecruitmentCancellationPolicyEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentDistributionTargetEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantHistoryEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentReminderEntity;
+import com.mannschaft.app.recruitment.entity.RecruitmentTemplateEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentDistributionTargetRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentReminderRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentTemplateRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.FollowerType;
 import com.mannschaft.app.social.repository.FollowRepository;
@@ -79,6 +83,8 @@ public class RecruitmentListingService {
     private final NotificationHelper notificationHelper;
     private final AccessControlService accessControlService;
     private final RecruitmentMapper mapper;
+    private final RecruitmentTemplateService templateService;
+    private final RecruitmentTemplateRepository templateRepository;
 
     // ===========================================
     // 取得系
@@ -178,6 +184,76 @@ public class RecruitmentListingService {
         RecruitmentListingEntity saved = listingRepository.save(entity);
         log.info("F03.11 募集枠作成: id={}, scope={}/{}, status=DRAFT", saved.getId(), scopeType, scopeId);
         return mapper.toListingResponse(saved);
+    }
+
+    /**
+     * §5.1.2 テンプレートから募集枠を作成する。
+     * テンプレートの default_* フィールドをベースに、リクエストの値で上書きする。
+     */
+    @Transactional
+    public RecruitmentListingResponse createFromTemplate(
+            RecruitmentScopeType scopeType, Long scopeId, Long userId,
+            CreateFromTemplateRequest request) {
+        Long templateId = request.getTemplateId();
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
+
+        RecruitmentTemplateEntity template = templateRepository.findActiveById(templateId)
+                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.TEMPLATE_NOT_FOUND));
+
+        // テンプレートのスコープと一致することを確認
+        if (template.getScopeType() != scopeType || !template.getScopeId().equals(scopeId)) {
+            throw new BusinessException(RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH);
+        }
+
+        // キャンセルポリシーが設定されていれば DEEP COPY
+        RecruitmentCancellationPolicyEntity copiedPolicy =
+                templateService.deepCopyPolicyIfNeeded(template, userId);
+        Long policyId = copiedPolicy != null ? copiedPolicy.getId() : null;
+
+        // テンプレートのデフォルト値とリクエストの値をマージ
+        LocalDateTime startAt = request.getStartAt();
+        // endAt: 指定がなければ startAt + durationMinutes
+        LocalDateTime endAt = request.getEndAt() != null
+                ? request.getEndAt()
+                : startAt.plusMinutes(template.getDefaultDurationMinutes());
+        LocalDateTime deadline = request.getApplicationDeadline() != null
+                ? request.getApplicationDeadline()
+                : startAt.minusHours(template.getDefaultApplicationDeadlineHours());
+        LocalDateTime autoCancelAt = request.getAutoCancelAt() != null
+                ? request.getAutoCancelAt()
+                : deadline.minusHours(template.getDefaultAutoCancelHours());
+
+        CreateRecruitmentListingRequest createReq = new CreateRecruitmentListingRequest(
+                template.getCategoryId(),
+                template.getSubcategoryId(),
+                template.getTitle(),
+                template.getDescription(),
+                template.getParticipationType(),
+                startAt,
+                endAt,
+                deadline,
+                autoCancelAt,
+                request.getCapacity() != null ? request.getCapacity() : template.getDefaultCapacity(),
+                request.getMinCapacity() != null ? request.getMinCapacity() : template.getDefaultMinCapacity(),
+                template.getDefaultPaymentEnabled(),
+                template.getDefaultPrice(),
+                template.getDefaultVisibility(),
+                template.getDefaultLocation(),
+                template.getDefaultReservationLineId(),
+                template.getDefaultImageUrl(),
+                policyId
+        );
+
+        RecruitmentListingResponse response = create(scopeType, scopeId, userId, createReq);
+
+        // templateId をセット（create()後にエンティティを更新）
+        listingRepository.findByIdForUpdate(response.getId()).ifPresent(entity -> {
+            entity.assignTemplate(templateId);
+            listingRepository.save(entity);
+        });
+
+        log.info("F03.11 テンプレートから募集枠作成: templateId={}, listingId={}", templateId, response.getId());
+        return response;
     }
 
     @Transactional

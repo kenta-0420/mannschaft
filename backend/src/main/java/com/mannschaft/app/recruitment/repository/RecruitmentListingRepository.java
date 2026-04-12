@@ -137,6 +137,22 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             @Param("excludeId") Long excludeId);
 
     /**
+     * §5.4 自動キャンセルバッチ用: autoCancelAt が現在時刻以前かつ OPEN/FULL 状態の募集を取得。
+     * confirmed_count < min_capacity のものが自動キャンセル対象。
+     */
+    @Query("""
+            SELECT l FROM RecruitmentListingEntity l
+            WHERE l.autoCancelAt <= :now
+              AND l.status IN (
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL
+              )
+              AND l.confirmedCount < l.minCapacity
+            ORDER BY l.autoCancelAt ASC
+            """)
+    List<RecruitmentListingEntity> findAutoCancelTargets(@Param("now") LocalDateTime now);
+
+    /**
      * Phase 2 getMyFeed: フォロー先・サポーター先スコープの最新 OPEN 募集を取得する。
      * scope_id が :scopeIds に含まれ、visibility = 'PUBLIC' または 'SCOPE_ONLY' / 'SUPPORTERS_ONLY' のものを返す。
      *
