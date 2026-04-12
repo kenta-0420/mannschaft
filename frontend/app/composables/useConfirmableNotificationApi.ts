@@ -13,7 +13,7 @@ export function useConfirmableNotificationApi() {
   const api = useApi()
 
   /**
-   * スコープタイプに応じたベースURLを生成する
+   * スコープタイプに応じた通知ベースURLを生成する
    * TEAM: /api/v1/teams/{scopeId}/confirmable-notifications
    * ORGANIZATION: /api/v1/organizations/{scopeId}/confirmable-notifications
    */
@@ -22,13 +22,31 @@ export function useConfirmableNotificationApi() {
     return `/api/v1/${prefix}/${scopeId}/confirmable-notifications`
   }
 
+  /**
+   * スコープタイプに応じた設定URLを生成する
+   * TEAM: /api/v1/teams/{scopeId}/confirmable-notification-settings
+   * ORGANIZATION: /api/v1/organizations/{scopeId}/confirmable-notification-settings
+   */
+  function buildSettingsUrl(scopeType: 'TEAM' | 'ORGANIZATION', scopeId: number): string {
+    const prefix = scopeType === 'TEAM' ? 'teams' : 'organizations'
+    return `/api/v1/${prefix}/${scopeId}/confirmable-notification-settings`
+  }
+
+  /**
+   * スコープタイプに応じたテンプレートURLを生成する
+   * TEAM: /api/v1/teams/{scopeId}/confirmable-notification-templates
+   * ORGANIZATION: /api/v1/organizations/{scopeId}/confirmable-notification-templates
+   */
+  function buildTemplateBaseUrl(scopeType: 'TEAM' | 'ORGANIZATION', scopeId: number): string {
+    const prefix = scopeType === 'TEAM' ? 'teams' : 'organizations'
+    return `/api/v1/${prefix}/${scopeId}/confirmable-notification-templates`
+  }
+
   // === Settings ===
 
   /** 確認通知設定を取得する（存在しない場合はデフォルト値で作成） */
   async function getSettings(scopeType: 'TEAM' | 'ORGANIZATION', scopeId: number) {
-    return api<{ data: ConfirmableNotificationSettings }>(
-      `${buildBaseUrl(scopeType, scopeId)}/settings`,
-    )
+    return api<{ data: ConfirmableNotificationSettings }>(buildSettingsUrl(scopeType, scopeId))
   }
 
   /** 確認通知設定を更新する */
@@ -37,10 +55,10 @@ export function useConfirmableNotificationApi() {
     scopeId: number,
     data: UpdateConfirmableNotificationSettingsRequest,
   ) {
-    return api<{ data: ConfirmableNotificationSettings }>(
-      `${buildBaseUrl(scopeType, scopeId)}/settings`,
-      { method: 'PUT', body: data },
-    )
+    return api<{ data: ConfirmableNotificationSettings }>(buildSettingsUrl(scopeType, scopeId), {
+      method: 'PUT',
+      body: data,
+    })
   }
 
   // === Notifications ===
@@ -80,7 +98,7 @@ export function useConfirmableNotificationApi() {
     notificationId: number,
   ) {
     return api(`${buildBaseUrl(scopeType, scopeId)}/${notificationId}/cancel`, {
-      method: 'POST',
+      method: 'PATCH',
     })
   }
 
@@ -122,7 +140,7 @@ export function useConfirmableNotificationApi() {
   /** 自分宛の未確認の確認通知一覧を取得する */
   async function getPendingNotifications() {
     return api<{ data: ConfirmableNotificationSummary[] }>(
-      '/api/v1/confirmable-notifications/pending',
+      '/api/v1/me/confirmable-notifications/pending',
     )
   }
 
@@ -130,9 +148,7 @@ export function useConfirmableNotificationApi() {
 
   /** テンプレート一覧を取得する */
   async function listTemplates(scopeType: 'TEAM' | 'ORGANIZATION', scopeId: number) {
-    return api<{ data: ConfirmableNotificationTemplate[] }>(
-      `${buildBaseUrl(scopeType, scopeId)}/templates`,
-    )
+    return api<{ data: ConfirmableNotificationTemplate[] }>(buildTemplateBaseUrl(scopeType, scopeId))
   }
 
   /** テンプレートを作成する */
@@ -141,10 +157,10 @@ export function useConfirmableNotificationApi() {
     scopeId: number,
     data: CreateConfirmableNotificationTemplateRequest,
   ) {
-    return api<{ data: ConfirmableNotificationTemplate }>(
-      `${buildBaseUrl(scopeType, scopeId)}/templates`,
-      { method: 'POST', body: data },
-    )
+    return api<{ data: ConfirmableNotificationTemplate }>(buildTemplateBaseUrl(scopeType, scopeId), {
+      method: 'POST',
+      body: data,
+    })
   }
 
   /** テンプレートを更新する */
@@ -155,7 +171,7 @@ export function useConfirmableNotificationApi() {
     data: CreateConfirmableNotificationTemplateRequest,
   ) {
     return api<{ data: ConfirmableNotificationTemplate }>(
-      `${buildBaseUrl(scopeType, scopeId)}/templates/${templateId}`,
+      `${buildTemplateBaseUrl(scopeType, scopeId)}/${templateId}`,
       { method: 'PUT', body: data },
     )
   }
@@ -166,7 +182,7 @@ export function useConfirmableNotificationApi() {
     scopeId: number,
     templateId: number,
   ) {
-    return api(`${buildBaseUrl(scopeType, scopeId)}/templates/${templateId}`, {
+    return api(`${buildTemplateBaseUrl(scopeType, scopeId)}/${templateId}`, {
       method: 'DELETE',
     })
   }
