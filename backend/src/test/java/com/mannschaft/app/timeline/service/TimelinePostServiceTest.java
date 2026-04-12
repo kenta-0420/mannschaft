@@ -2,6 +2,7 @@ package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.PostedAsType;
@@ -68,6 +69,9 @@ class TimelinePostServiceTest {
 
     @Mock
     private DomainEventPublisher domainEventPublisher;
+
+    @Mock
+    private R2StorageService r2StorageService;
 
     @InjectMocks
     private TimelinePostService timelinePostService;
@@ -225,7 +229,8 @@ class TimelinePostServiceTest {
             // given
             List<CreateAttachmentRequest> attachments = java.util.stream.IntStream.range(0, 11)
                     .mapToObj(i -> new CreateAttachmentRequest("IMAGE", "key" + i, "file" + i + ".jpg",
-                            1024, "image/jpeg", null, null, null, null, null, null, null, null, null, null, null))
+                            1024L, "image/jpeg", null, null, null, null, null, null, null, null, null, null, null,
+                            null, null, null, null, null, null))
                     .toList();
             CreatePostRequest req = new CreatePostRequest("テスト", "PUBLIC", 0L,
                     "USER", null, null, null, null, null, attachments);
@@ -648,7 +653,8 @@ class TimelinePostServiceTest {
             // given
             List<CreateAttachmentRequest> attachments = List.of(
                     new CreateAttachmentRequest("IMAGE", "key1", "file1.jpg",
-                            1024, "image/jpeg", (short) 800, (short) 600, null, null, null, null, null, null, null, null, null)
+                            1024L, "image/jpeg", (short) 800, (short) 600, null, null, null, null, null, null, null, null, null,
+                            null, null, null, null, null, null)
             );
             CreatePostRequest req = new CreatePostRequest("添付付き", "PUBLIC", 0L,
                     "USER", null, null, null, null, null, attachments);

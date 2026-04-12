@@ -1,6 +1,7 @@
 package com.mannschaft.app.timeline.entity;
 
 import com.mannschaft.app.timeline.AttachmentType;
+import com.mannschaft.app.timeline.VideoProcessingStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -19,7 +20,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * タイムライン投稿添付ファイルエンティティ。画像・動画・ファイル・リンクOGPを管理する。
+ * タイムライン投稿添付ファイルエンティティ。画像・動画ファイル・動画リンク・リンクOGPを管理する。
  */
 @Entity
 @Table(name = "timeline_post_attachments")
@@ -46,7 +47,7 @@ public class TimelinePostAttachmentEntity {
     @Column(length = 255)
     private String originalFilename;
 
-    private Integer fileSize;
+    private Long fileSize;
 
     @Column(length = 100)
     private String mimeType;
@@ -82,6 +83,24 @@ public class TimelinePostAttachmentEntity {
     @Column(nullable = false)
     @Builder.Default
     private Short sortOrder = 0;
+
+    // --- VIDEO_FILE 用フィールド（V9.067 追加） ---
+
+    @Column(length = 500)
+    private String videoThumbnailKey;
+
+    private Integer videoDurationSeconds;
+
+    @Column(length = 30)
+    private String videoCodec;
+
+    private Short videoWidth;
+
+    private Short videoHeight;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private VideoProcessingStatus videoProcessingStatus;
 
     private LocalDateTime createdAt;
 

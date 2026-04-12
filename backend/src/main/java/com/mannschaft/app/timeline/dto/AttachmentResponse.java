@@ -14,7 +14,7 @@ public class AttachmentResponse {
     private final String attachmentType;
     private final String fileKey;
     private final String originalFilename;
-    private final Integer fileSize;
+    private final Long fileSize;
     private final String mimeType;
     private final Short imageWidth;
     private final Short imageHeight;
@@ -27,4 +27,12 @@ public class AttachmentResponse {
     private final String ogImageUrl;
     private final String ogSiteName;
     private final Short sortOrder;
+
+    // --- VIDEO_FILE 用フィールド ---
+    private final String videoThumbnailKey;
+    private final Integer videoDurationSeconds;
+    private final String videoCodec;
+    private final Short videoWidth;
+    private final Short videoHeight;
+    private final String videoProcessingStatus;
 }

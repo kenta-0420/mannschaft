@@ -18,7 +18,7 @@ public class CreateAttachmentRequest {
 
     private final String originalFilename;
 
-    private final Integer fileSize;
+    private final Long fileSize;
 
     private final String mimeType;
 
@@ -43,4 +43,17 @@ public class CreateAttachmentRequest {
     private final String ogSiteName;
 
     private final Short sortOrder;
+
+    // --- VIDEO_FILE 用フィールド ---
+    private final String videoThumbnailKey;
+
+    private final Integer videoDurationSeconds;
+
+    private final String videoCodec;
+
+    private final Short videoWidth;
+
+    private final Short videoHeight;
+
+    private final String videoProcessingStatus;
 }

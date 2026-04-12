@@ -1,6 +1,7 @@
 export type TimelineScopeType = 'TEAM' | 'ORGANIZATION' | 'PUBLIC'
 export type TimelinePostStatus = 'PUBLISHED' | 'DRAFT' | 'SCHEDULED'
-export type TimelineAttachmentType = 'IMAGE' | 'VIDEO_LINK' | 'LINK_PREVIEW'
+export type TimelineAttachmentType = 'IMAGE' | 'VIDEO_FILE' | 'VIDEO_LINK' | 'LINK_PREVIEW'
+export type VideoProcessingStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED'
 export type PostedAsType = 'USER' | 'TEAM' | 'ORGANIZATION' | 'SOCIAL_PROFILE'
 
 export const PRESET_EMOJIS = ['👍', '👏', '🙏', '😊', '❤️', '🔥', '🙇'] as const
@@ -27,13 +28,22 @@ export interface PostedAs {
 export interface TimelineAttachment {
   id: number
   attachmentType: TimelineAttachmentType
+  fileKey?: string
+  fileSize?: number
+  mimeType?: string
   url?: string
   thumbnailUrl?: string
   imageWidth?: number
   imageHeight?: number
   videoUrl?: string
   videoThumbnailUrl?: string
+  videoThumbnailKey?: string
   videoTitle?: string
+  videoDurationSeconds?: number
+  videoCodec?: string
+  videoWidth?: number
+  videoHeight?: number
+  videoProcessingStatus?: VideoProcessingStatus
   linkUrl?: string
   ogTitle?: string
   ogDescription?: string

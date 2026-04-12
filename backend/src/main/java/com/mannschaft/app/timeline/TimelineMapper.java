@@ -31,6 +31,7 @@ public interface TimelineMapper {
     List<PostResponse> toPostResponseList(List<TimelinePostEntity> entities);
 
     @Mapping(target = "attachmentType", expression = "java(entity.getAttachmentType().name())")
+    @Mapping(target = "videoProcessingStatus", expression = "java(entity.getVideoProcessingStatus() != null ? entity.getVideoProcessingStatus().name() : null)")
     AttachmentResponse toAttachmentResponse(TimelinePostAttachmentEntity entity);
 
     List<AttachmentResponse> toAttachmentResponseList(List<TimelinePostAttachmentEntity> entities);

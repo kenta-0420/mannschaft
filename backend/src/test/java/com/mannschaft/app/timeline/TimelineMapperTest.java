@@ -116,7 +116,7 @@ class TimelineMapperTest {
         @DisplayName("添付ファイルリスト変換_正常_全要素変換")
         void 添付ファイルリスト変換_正常_全要素変換() {
             TimelinePostAttachmentEntity e = TimelinePostAttachmentEntity.builder()
-                    .timelinePostId(1L).attachmentType(AttachmentType.FILE).fileKey("doc.pdf").build();
+                    .timelinePostId(1L).attachmentType(AttachmentType.VIDEO_FILE).fileKey("video.mp4").build();
             assertThat(mapper.toAttachmentResponseList(List.of(e))).hasSize(1);
         }
     }
