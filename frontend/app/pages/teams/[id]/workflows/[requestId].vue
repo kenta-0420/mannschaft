@@ -11,9 +11,7 @@ const requestId = Number(route.params.requestId)
 <template>
   <div>
     <div class="mb-4">
-      <NuxtLink :to="`/teams/${teamId}/workflows`" class="text-sm text-primary hover:underline">
-        <i class="pi pi-arrow-left mr-1" />申請一覧に戻る
-      </NuxtLink>
+      <BackButton :to="`/teams/${teamId}/workflows`" label="申請一覧に戻る" />
     </div>
 
     <WorkflowRequestDetail scope-type="team" :scope-id="teamId" :request-id="requestId" />

@@ -206,13 +206,7 @@ onMounted(() => loadMessages())
         @delete="onDelete"
         @bookmark="onBookmark"
       />
-      <div
-        v-if="messages.length === 0 && !loading"
-        class="flex flex-col items-center justify-center py-12 text-surface-400"
-      >
-        <i class="pi pi-comments mb-2 text-3xl" />
-        <p class="text-sm">まだメッセージがありません</p>
-      </div>
+      <DashboardEmptyState v-if="messages.length === 0 && !loading" icon="pi pi-comments" message="まだメッセージがありません" />
     </div>
 
     <!-- 入力 -->

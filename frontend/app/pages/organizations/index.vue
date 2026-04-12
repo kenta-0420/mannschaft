@@ -96,7 +96,7 @@ onMounted(() => {
 <template>
   <div class="mx-auto max-w-6xl p-6">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">組織検索</h1>
+      <PageHeader title="組織検索" />
       <Button label="組織を作成" icon="pi pi-plus" @click="showCreateDialog = true" />
     </div>
 
@@ -106,13 +106,11 @@ onMounted(() => {
 
     <PageLoading v-if="loading" />
 
-    <div
+    <DashboardEmptyState
       v-else-if="organizations.length === 0"
-      class="rounded-lg border border-dashed border-gray-300 p-12 text-center text-gray-500"
-    >
-      <i class="pi pi-search mb-2 text-4xl" />
-      <p>該当する組織が見つかりませんでした</p>
-    </div>
+      icon="pi pi-search"
+      message="該当する組織が見つかりませんでした"
+    />
 
     <template v-else>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -24,7 +24,7 @@ onMounted(() => loadPermissions())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">イベント</h1>
+      <PageHeader title="イベント" />
       <Button label="イベント作成" icon="pi pi-plus" @click="showCreateDialog = true" />
     </div>
 

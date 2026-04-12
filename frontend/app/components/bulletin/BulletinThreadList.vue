@@ -142,10 +142,7 @@ defineExpose({ refresh: () => loadThreads() })
         </div>
       </button>
 
-      <div v-if="threads.length === 0" class="py-12 text-center">
-        <i class="pi pi-clipboard mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">スレッドがありません</p>
-      </div>
+      <DashboardEmptyState v-if="threads.length === 0" icon="pi pi-clipboard" message="スレッドがありません" />
     </div>
 
     <!-- ページネーション -->

@@ -166,7 +166,7 @@ const searchResults = computed(() => {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <h1 class="mb-6 text-2xl font-bold">設定</h1>
+    <PageHeader title="設定" />
 
     <IconField class="mb-6">
       <InputIcon class="pi pi-search" />

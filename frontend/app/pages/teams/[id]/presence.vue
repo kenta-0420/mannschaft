@@ -125,7 +125,7 @@ watch(activeTab, (tab) => {
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">在席管理</h1>
+      <PageHeader title="在席管理" />
       <div class="flex gap-2">
         <Button label="外出する" icon="pi pi-sign-out" severity="warn" @click="openGoingOut" />
         <Button label="帰宅する" icon="pi pi-home" severity="success" @click="submitHome" />
@@ -142,10 +142,9 @@ watch(activeTab, (tab) => {
         <TabPanel :value="0">
           <PageLoading v-if="loading" size="40px" />
           <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div
+            <SectionCard
               v-for="s in statuses"
               :key="s.user.id"
-              class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
             >
               <div class="flex items-center gap-3">
                 <div
@@ -166,13 +165,13 @@ watch(activeTab, (tab) => {
               <div v-if="s.expectedReturnAt" class="mt-1 text-xs text-surface-400">
                 帰宅予定: {{ new Date(s.expectedReturnAt).toLocaleString('ja-JP') }}
               </div>
-            </div>
-            <div
+            </SectionCard>
+            <DashboardEmptyState
               v-if="statuses.length === 0"
-              class="col-span-full py-8 text-center text-surface-400"
-            >
-              メンバーの在席情報がありません
-            </div>
+              icon="pi pi-users"
+              message="メンバーの在席情報がありません"
+              class="col-span-full"
+            />
           </div>
         </TabPanel>
 
@@ -209,30 +208,22 @@ watch(activeTab, (tab) => {
         <TabPanel :value="2">
           <div v-if="stats" class="space-y-4">
             <div class="grid gap-4 sm:grid-cols-4">
-              <div
-                class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
-              >
+              <SectionCard>
                 <p class="text-xs text-surface-400">合計イベント</p>
                 <p class="text-2xl font-bold">{{ stats.totalEvents }}</p>
-              </div>
-              <div
-                class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
-              >
+              </SectionCard>
+              <SectionCard>
                 <p class="text-xs text-surface-400">外出</p>
                 <p class="text-2xl font-bold text-orange-500">{{ stats.totalGoingOutEvents }}</p>
-              </div>
-              <div
-                class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
-              >
+              </SectionCard>
+              <SectionCard>
                 <p class="text-xs text-surface-400">帰宅</p>
                 <p class="text-2xl font-bold text-green-500">{{ stats.totalHomeEvents }}</p>
-              </div>
-              <div
-                class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
-              >
+              </SectionCard>
+              <SectionCard>
                 <p class="text-xs text-surface-400">超過</p>
                 <p class="text-2xl font-bold text-red-500">{{ stats.overdueCount }}</p>
-              </div>
+              </SectionCard>
             </div>
 
             <div v-if="stats.memberStats.length > 0">

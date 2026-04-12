@@ -39,7 +39,7 @@ onMounted(() => loadData())
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <h1 class="mb-6 text-2xl font-bold">マイカルテ</h1>
+    <PageHeader title="マイカルテ" />
 
     <PageLoading v-if="loading" />
 
@@ -64,10 +64,7 @@ onMounted(() => loadData())
           {{ chart.chiefComplaint }}
         </p>
       </div>
-      <div v-if="charts.length === 0" class="py-12 text-center">
-        <i class="pi pi-file-edit mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">カルテがありません</p>
-      </div>
+      <DashboardEmptyState v-if="charts.length === 0" icon="pi-file-edit" message="カルテがありません" />
     </div>
 
     <Dialog v-model:visible="showDetail" header="カルテ詳細" :modal="true" class="w-full max-w-2xl">

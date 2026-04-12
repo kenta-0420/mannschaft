@@ -129,10 +129,8 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <div class="mb-6 flex items-center gap-2">
-      <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/settings')" />
-      <h1 class="text-2xl font-bold">アカウント設定</h1>
-    </div>
+    <BackButton to="/settings" />
+    <PageHeader title="アカウント設定" />
 
     <PageLoading v-if="loading" />
 

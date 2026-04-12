@@ -45,15 +45,14 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">議決権行使</h1>
+      <PageHeader title="議決権行使" />
       <Button label="セッション作成" icon="pi pi-plus" />
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-3">
-      <div
+      <SectionCard
         v-for="s in sessions"
         :key="s.id"
-        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <div class="mb-2 flex items-center gap-2">
           <span :class="getStatusClass(s.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{
@@ -71,11 +70,12 @@ onMounted(() => load())
           <span>委任 {{ s.delegatedCount }}</span>
           <span>{{ relativeTime(s.createdAt) }}</span>
         </div>
-      </div>
-      <div v-if="sessions.length === 0" class="py-12 text-center">
-        <i class="pi pi-check-square mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">投票セッションがありません</p>
-      </div>
+      </SectionCard>
+      <DashboardEmptyState
+        v-if="sessions.length === 0"
+        icon="pi pi-check-square"
+        message="投票セッションがありません"
+      />
     </div>
   </div>
 </template>

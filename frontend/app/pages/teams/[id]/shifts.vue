@@ -54,7 +54,7 @@ onMounted(() => loadPermissions())
 
 <template>
   <div>
-    <h1 class="mb-4 text-2xl font-bold">シフト管理</h1>
+    <PageHeader title="シフト管理" class="mb-4" />
 
     <Tabs v-model:value="activeTab">
       <TabList>

@@ -102,7 +102,7 @@ onMounted(loadData)
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">{{ $t('annual_plan.title') }}</h1>
+      <PageHeader :title="$t('annual_plan.title')" />
       <div class="flex items-center gap-3">
         <Select
           v-model="selectedYear"
@@ -130,12 +130,11 @@ onMounted(loadData)
     <PageLoading v-if="loading" />
 
     <div v-else class="space-y-6">
-      <div
+      <SectionCard
         v-for="month in months"
         :key="month.month"
-        class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
+        :title="month.month"
       >
-        <h2 class="mb-3 text-lg font-semibold">{{ month.month }}</h2>
         <div v-if="month.events.length === 0" class="text-sm text-surface-400">
           {{ $t('annual_plan.no_events') }}
         </div>
@@ -170,11 +169,8 @@ onMounted(loadData)
             />
           </div>
         </div>
-      </div>
-      <div v-if="months.length === 0" class="py-12 text-center text-surface-500">
-        <i class="pi pi-calendar mb-2 text-4xl" />
-        <p>{{ $t('annual_plan.no_data') }}</p>
-      </div>
+      </SectionCard>
+      <DashboardEmptyState v-if="months.length === 0" icon="pi pi-calendar" :message="$t('annual_plan.no_data')" />
     </div>
 
     <!-- 前年度コピー確認ダイアログ -->

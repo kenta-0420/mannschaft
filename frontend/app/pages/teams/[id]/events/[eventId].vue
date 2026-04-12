@@ -23,9 +23,7 @@ onMounted(async () => {
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4">
-      <NuxtLink :to="`/teams/${teamId}/events`" class="text-sm text-primary hover:underline">
-        <i class="pi pi-arrow-left mr-1" />イベント一覧に戻る
-      </NuxtLink>
+      <BackButton :to="`/teams/${teamId}/events`" label="イベント一覧に戻る" />
     </div>
 
     <EventDetail

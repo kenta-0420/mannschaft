@@ -55,7 +55,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">安否確認</h1>
+      <PageHeader title="安否確認" />
       <Button
         v-if="isAdminOrDeputy"
         label="安否確認を発動"
@@ -101,18 +101,12 @@ onMounted(async () => {
 
       <!-- 詳細パネル -->
       <div class="lg:col-span-2">
-        <div
-          v-if="selectedCheckId"
-          class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
-        >
+        <SectionCard v-if="selectedCheckId">
           <SafetyResultsDashboard :check-id="selectedCheckId" />
-        </div>
-        <div
-          v-else
-          class="rounded-xl border border-surface-300 bg-surface-0 p-8 dark:border-surface-600 dark:bg-surface-800"
-        >
+        </SectionCard>
+        <SectionCard v-else>
           <DashboardEmptyState icon="pi pi-shield" message="安否確認を選択してください" />
-        </div>
+        </SectionCard>
       </div>
     </div>
 

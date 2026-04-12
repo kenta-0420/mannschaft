@@ -47,7 +47,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">フォーム</h1>
+      <PageHeader title="フォーム" />
       <NuxtLink :to="`/teams/${teamId}/forms/templates`">
         <Button label="テンプレート管理" icon="pi pi-cog" outlined />
       </NuxtLink>

@@ -51,7 +51,7 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <h1 class="mb-6 text-2xl font-bold">管理者ダッシュボード</h1>
+    <PageHeader title="管理者ダッシュボード" />
 
     <PageLoading v-if="loading" />
 
@@ -79,7 +79,7 @@ onMounted(loadData)
               <div
                 v-for="mod in modules"
                 :key="mod.moduleId"
-                class="flex items-center justify-between rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
+                class="flex items-center justify-between rounded-xl border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-800"
               >
                 <div>
                   <p class="font-medium">{{ mod.name }}</p>

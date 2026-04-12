@@ -116,8 +116,7 @@ onMounted(() => { if (scopeId.value) load() })
   <div class="mx-auto max-w-4xl">
     <div class="mb-6 flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold">SNS設定</h1>
-        <p class="mt-1 text-sm text-surface-500">Instagram・X のフィード連携を管理します</p>
+        <PageHeader title="SNS設定"><p class="text-sm text-surface-500">Instagram・X のフィード連携を管理します</p></PageHeader>
       </div>
       <Button label="アカウントを追加" icon="pi pi-plus" @click="openCreate" />
     </div>
@@ -126,10 +125,7 @@ onMounted(() => { if (scopeId.value) load() })
 
     <DataTable v-else :value="feeds" striped-rows data-key="id">
       <template #empty>
-        <div class="py-12 text-center">
-          <i class="pi pi-share-alt mb-3 text-4xl text-surface-300" />
-          <p class="text-surface-400">SNS連携がありません</p>
-        </div>
+        <DashboardEmptyState icon="pi pi-share-alt" message="SNS連携がありません" />
       </template>
       <Column header="プロバイダー" style="width: 140px">
         <template #body="{ data }">

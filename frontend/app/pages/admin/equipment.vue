@@ -108,7 +108,7 @@ onMounted(() => { if (scopeId.value) load() })
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">備品管理</h1>
+      <PageHeader title="備品管理" />
       <Button label="備品を追加" icon="pi pi-plus" @click="openCreate" />
     </div>
 
@@ -116,10 +116,7 @@ onMounted(() => { if (scopeId.value) load() })
 
     <DataTable v-else :value="items" striped-rows data-key="id">
       <template #empty>
-        <div class="py-12 text-center">
-          <i class="pi pi-box mb-3 text-4xl text-surface-300" />
-          <p class="text-surface-400">備品がありません</p>
-        </div>
+        <DashboardEmptyState icon="pi pi-box" message="備品がありません" />
       </template>
       <Column field="name" header="備品名" />
       <Column header="ステータス" style="width: 130px">

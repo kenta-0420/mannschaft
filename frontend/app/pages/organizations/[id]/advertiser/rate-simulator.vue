@@ -41,9 +41,9 @@ async function simulate() {
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <h1 class="mb-6 text-2xl font-bold">料金シミュレーター</h1>
+    <PageHeader title="料金シミュレーター" />
 
-    <div class="mb-6 rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800">
+    <SectionCard class="mb-6">
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label class="mb-1 block text-sm font-medium">課金モデル</label>
@@ -71,12 +71,11 @@ async function simulate() {
         </div>
       </div>
       <Button label="シミュレーション実行" icon="pi pi-calculator" :loading="loading" class="mt-4 w-full" @click="simulate" />
-    </div>
+    </SectionCard>
 
     <!-- 結果 -->
     <div v-if="result" class="space-y-4">
-      <div class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800">
-        <h3 class="mb-4 font-semibold">見積もり結果</h3>
+      <SectionCard title="見積もり結果">
         <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <div>
             <p class="text-sm text-surface-500">単価</p>
@@ -103,10 +102,9 @@ async function simulate() {
             <p class="font-semibold">¥{{ result.rateCard.minDailyBudget.toLocaleString() }}</p>
           </div>
         </div>
-      </div>
+      </SectionCard>
 
-      <div v-if="result.comparison.length > 0" class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800">
-        <h3 class="mb-4 font-semibold">他の料金との比較</h3>
+      <SectionCard v-if="result.comparison.length > 0" title="他の料金との比較">
         <DataTable :value="result.comparison" striped-rows>
           <Column field="label" header="条件" />
           <Column field="unitPrice" header="単価">
@@ -116,7 +114,7 @@ async function simulate() {
             <template #body="{ data }">¥{{ data.totalCost.toLocaleString() }}</template>
           </Column>
         </DataTable>
-      </div>
+      </SectionCard>
     </div>
   </div>
 </template>
