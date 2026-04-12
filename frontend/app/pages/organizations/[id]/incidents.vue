@@ -32,9 +32,7 @@ onMounted(() => loadPermissions())
 
 <template>
   <div>
-    <div class="mb-4">
-      <h1 class="text-2xl font-bold">インシデント管理</h1>
-    </div>
+    <PageHeader title="インシデント管理" />
 
     <div v-if="selectedIncident" class="mx-auto max-w-3xl">
       <IncidentDetail

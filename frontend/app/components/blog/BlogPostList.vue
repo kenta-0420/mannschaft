@@ -145,10 +145,7 @@ defineExpose({ refresh: loadPosts })
       </button>
     </div>
 
-    <div v-if="!loading && posts.length === 0" class="py-12 text-center">
-      <i class="pi pi-book mb-3 text-4xl text-surface-300" />
-      <p class="text-surface-400">記事がありません</p>
-    </div>
+    <DashboardEmptyState v-if="!loading && posts.length === 0" icon="pi pi-book" message="記事がありません" />
 
     <!-- 新規作成ダイアログ -->
     <Dialog

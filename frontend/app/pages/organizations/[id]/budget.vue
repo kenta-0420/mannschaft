@@ -21,33 +21,30 @@ onMounted(() => load())
 </script>
 <template>
   <div>
-    <h1 class="mb-6 text-2xl font-bold">予算・会計</h1>
+    <PageHeader title="予算・会計" />
     <PageLoading v-if="loading" size="40px" />
     <template v-else-if="summary">
       <div class="mb-6 grid gap-4 md:grid-cols-3">
-        <div class="rounded-xl border border-surface-400 bg-surface-0 p-4">
+        <SectionCard>
           <p class="text-sm text-surface-500">予算額</p>
           <p class="text-2xl font-bold text-primary">
             ¥{{ summary.budgetAmount?.toLocaleString() ?? 0 }}
           </p>
-        </div>
-        <div class="rounded-xl border border-surface-400 bg-surface-0 p-4">
+        </SectionCard>
+        <SectionCard>
           <p class="text-sm text-surface-500">支出額</p>
           <p class="text-2xl font-bold text-red-600">
             ¥{{ summary.spentAmount?.toLocaleString() ?? 0 }}
           </p>
-        </div>
-        <div class="rounded-xl border border-surface-400 bg-surface-0 p-4">
+        </SectionCard>
+        <SectionCard>
           <p class="text-sm text-surface-500">残額</p>
           <p class="text-2xl font-bold text-green-600">
             ¥{{ summary.remainingAmount?.toLocaleString() ?? 0 }}
           </p>
-        </div>
+        </SectionCard>
       </div>
     </template>
-    <div v-else class="py-12 text-center">
-      <i class="pi pi-wallet mb-3 text-4xl text-surface-300" />
-      <p class="text-surface-400">予算データがありません</p>
-    </div>
+    <DashboardEmptyState v-else icon="pi pi-wallet" message="予算データがありません" />
   </div>
 </template>

@@ -102,7 +102,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">当番管理</h1>
+      <PageHeader title="当番管理" />
       <Button v-if="isAdminOrDeputy" label="当番を追加" icon="pi pi-plus" @click="openCreate" />
     </div>
 
@@ -112,47 +112,50 @@ onMounted(async () => {
     <div v-if="todayDuties.length > 0" class="mb-6">
       <h2 class="mb-2 text-lg font-semibold">今日の当番</h2>
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <div
+        <SectionCard
           v-for="td in todayDuties"
           :key="td.dutyId"
-          class="flex items-center gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
+          class="flex items-center gap-3"
         >
           <span class="text-2xl">{{ td.icon }}</span>
           <div>
             <p class="font-semibold">{{ td.dutyName }}</p>
             <p class="text-sm text-surface-500">担当者ID: {{ td.assigneeUserId }}</p>
           </div>
-        </div>
+        </SectionCard>
       </div>
     </div>
 
     <!-- 当番一覧 -->
     <div v-if="!loading" class="flex flex-col gap-3">
-      <div
+      <SectionCard
         v-for="duty in duties"
         :key="duty.id"
-        class="flex items-center justify-between rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
       >
-        <div class="flex items-center gap-3">
-          <span class="text-2xl">{{ duty.icon }}</span>
-          <div>
-            <p class="font-semibold">{{ duty.dutyName }}</p>
-            <div class="flex items-center gap-2 text-sm text-surface-500">
-              <Tag :value="duty.rotationType" severity="info" />
-              <span>開始日: {{ duty.startDate }}</span>
-              <Tag v-if="!duty.enabled" value="無効" severity="warn" />
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">{{ duty.icon }}</span>
+            <div>
+              <p class="font-semibold">{{ duty.dutyName }}</p>
+              <div class="flex items-center gap-2 text-sm text-surface-500">
+                <Tag :value="duty.rotationType" severity="info" />
+                <span>開始日: {{ duty.startDate }}</span>
+                <Tag v-if="!duty.enabled" value="無効" severity="warn" />
+              </div>
             </div>
           </div>
+          <div v-if="isAdminOrDeputy" class="flex gap-2">
+            <Button icon="pi pi-pencil" text rounded @click="openEdit(duty)" />
+            <Button icon="pi pi-trash" text rounded severity="danger" @click="remove(duty)" />
+          </div>
         </div>
-        <div v-if="isAdminOrDeputy" class="flex gap-2">
-          <Button icon="pi pi-pencil" text rounded @click="openEdit(duty)" />
-          <Button icon="pi pi-trash" text rounded severity="danger" @click="remove(duty)" />
-        </div>
-      </div>
+      </SectionCard>
 
-      <div v-if="duties.length === 0 && !loading" class="py-8 text-center text-surface-400">
-        当番が登録されていません
-      </div>
+      <DashboardEmptyState
+        v-if="duties.length === 0 && !loading"
+        icon="pi pi-calendar-clock"
+        message="当番が登録されていません"
+      />
     </div>
 
     <!-- 作成/編集ダイアログ -->

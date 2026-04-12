@@ -10,15 +10,11 @@ defineProps<{
   creatives: CreativeComparisonResponse | null
   breakdown: BreakdownResponse | null
 }>()
-
-const sectionClass =
-  'mb-6 rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800'
 </script>
 
 <template>
   <div>
-    <div v-if="points.length" :class="sectionClass">
-      <h3 class="mb-3 font-semibold">日次推移</h3>
+    <SectionCard v-if="points.length" title="日次推移" class="mb-6">
       <DataTable :value="points" :rows="10" paginator striped-rows>
         <Column field="period" header="期間" />
         <Column field="impressions" header="imp" class="text-right">
@@ -34,10 +30,9 @@ const sectionClass =
           <template #body="{ data }">¥{{ data.cost.toLocaleString() }}</template>
         </Column>
       </DataTable>
-    </div>
+    </SectionCard>
 
-    <div v-if="creatives && creatives.creatives.length" :class="sectionClass">
-      <h3 class="mb-3 font-semibold">クリエイティブ比較</h3>
+    <SectionCard v-if="creatives && creatives.creatives.length" title="クリエイティブ比較" class="mb-6">
       <Message v-if="creatives.winner" severity="success" :closable="false" class="mb-3">
         勝者: Ad #{{ creatives.winner.adId }} — {{ creatives.winner.reason }}
       </Message>
@@ -56,10 +51,9 @@ const sectionClass =
           <template #body="{ data }">¥{{ data.cost.toLocaleString() }}</template>
         </Column>
       </DataTable>
-    </div>
+    </SectionCard>
 
-    <div v-if="breakdown && breakdown.items.length" :class="sectionClass">
-      <h3 class="mb-3 font-semibold">ブレイクダウン（{{ breakdown.breakdownBy }}）</h3>
+    <SectionCard v-if="breakdown && breakdown.items.length" :title="`ブレイクダウン（${breakdown.breakdownBy}）`" class="mb-6">
       <DataTable :value="breakdown.items" striped-rows>
         <Column header="セグメント">
           <template #body="{ data }">{{ data.prefecture || data.template || '-' }}</template>
@@ -77,6 +71,6 @@ const sectionClass =
           <template #body="{ data }">¥{{ data.cost.toLocaleString() }}</template>
         </Column>
       </DataTable>
-    </div>
+    </SectionCard>
   </div>
 </template>

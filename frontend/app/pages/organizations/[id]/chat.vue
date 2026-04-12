@@ -6,7 +6,6 @@ definePageMeta({
 })
 
 const route = useRoute()
-const router = useRouter()
 const orgId = Number(route.params.id)
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
 
@@ -33,8 +32,8 @@ onMounted(() => loadPermissions())
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
-      <h1 class="text-2xl font-bold">チャット</h1>
+      <BackButton />
+      <PageHeader title="チャット" />
     </div>
 
     <div class="flex h-[calc(100vh-12rem)] overflow-hidden rounded-xl border border-surface-300">
@@ -56,10 +55,7 @@ onMounted(() => loadPermissions())
           :organization-id="orgId"
           @channel-created="onChannelCreated"
         />
-        <div v-else class="flex h-full flex-col items-center justify-center text-surface-400">
-          <i class="pi pi-comments mb-3 text-4xl" />
-          <p>チャンネルを選択してください</p>
-        </div>
+        <DashboardEmptyState v-else icon="pi pi-comments" message="チャンネルを選択してください" />
       </div>
     </div>
 

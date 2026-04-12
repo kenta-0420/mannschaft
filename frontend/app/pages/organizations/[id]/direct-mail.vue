@@ -36,7 +36,7 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">ダイレクトメール</h1>
+      <PageHeader title="ダイレクトメール" />
       <Button label="メール作成" icon="pi pi-plus" />
     </div>
     <PageLoading v-if="loading" size="40px" />
@@ -60,10 +60,7 @@ onMounted(() => load())
           <p>開封{{ m.openCount }}</p>
         </div>
       </div>
-      <div v-if="mails.length === 0" class="py-12 text-center">
-        <i class="pi pi-envelope mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">メールがありません</p>
-      </div>
+      <DashboardEmptyState v-if="mails.length === 0" icon="pi pi-envelope" message="メールがありません" />
     </div>
   </div>
 </template>

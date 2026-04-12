@@ -27,17 +27,17 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">サービス履歴</h1>
+      <PageHeader title="サービス履歴" />
       <Button label="記録を追加" icon="pi pi-plus" />
     </div>
 
     <PageLoading v-if="loading" size="40px" />
 
     <div v-else class="flex flex-col gap-2">
-      <div
+      <SectionCard
         v-for="rec in records"
         :key="rec.id"
-        class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-4"
+        class="flex items-center gap-4"
       >
         <Avatar :label="rec.targetUser?.displayName?.charAt(0) || '?'" shape="circle" />
         <div class="min-w-0 flex-1">
@@ -56,11 +56,12 @@ onMounted(() => load())
             >
           </div>
         </div>
-      </div>
-      <div v-if="records.length === 0" class="py-12 text-center">
-        <i class="pi pi-list mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">サービス履歴がありません</p>
-      </div>
+      </SectionCard>
+      <DashboardEmptyState
+        v-if="records.length === 0"
+        icon="pi pi-list"
+        message="サービス履歴がありません"
+      />
     </div>
   </div>
 </template>

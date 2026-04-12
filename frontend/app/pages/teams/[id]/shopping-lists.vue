@@ -97,7 +97,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">買い物リスト</h1>
+      <PageHeader title="買い物リスト" />
       <Button label="リスト作成" icon="pi pi-plus" @click="openCreateList" />
     </div>
 
@@ -161,10 +161,7 @@ onMounted(async () => {
 
       <!-- アイテム一覧 -->
       <div class="lg:col-span-2">
-        <div
-          v-if="selectedList"
-          class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
-        >
+        <SectionCard v-if="selectedList">
           <div class="mb-4 flex items-center justify-between">
             <h2 class="text-lg font-semibold">{{ selectedList.name }}</h2>
             <Button
@@ -221,13 +218,10 @@ onMounted(async () => {
               アイテムがありません
             </div>
           </div>
-        </div>
-        <div
-          v-else
-          class="rounded-xl border border-surface-300 bg-surface-0 p-8 text-center text-surface-400 dark:border-surface-600 dark:bg-surface-800"
-        >
+        </SectionCard>
+        <SectionCard v-else class="p-8 text-center text-surface-400">
           リストを選択してください
-        </div>
+        </SectionCard>
       </div>
     </div>
 

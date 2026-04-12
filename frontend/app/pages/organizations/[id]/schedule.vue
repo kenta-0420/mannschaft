@@ -2,7 +2,6 @@
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const router = useRouter()
 const orgId = Number(route.params.id)
 const scheduleApi = useScheduleApi()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
@@ -129,8 +128,8 @@ onMounted(async () => {
   <div v-else>
     <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
-        <h1 class="text-2xl font-bold">スケジュール</h1>
+        <BackButton />
+        <PageHeader title="スケジュール" />
       </div>
       <Button
         v-if="isAdminOrDeputy"
@@ -142,9 +141,7 @@ onMounted(async () => {
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div class="lg:col-span-2">
-        <div
-          class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
-        >
+        <SectionCard>
           <CalendarGrid
             :year="currentYear"
             :month="currentMonth"
@@ -154,14 +151,11 @@ onMounted(async () => {
             @prev-month="onPrevMonth"
             @next-month="onNextMonth"
           />
-        </div>
+        </SectionCard>
       </div>
 
       <div>
-        <div
-          v-if="showDetailPanel && selectedEvent"
-          class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
-        >
+        <SectionCard v-if="showDetailPanel && selectedEvent">
           <EventDetailPanel
             :event="selectedEvent!"
             scope-type="organization"
@@ -171,13 +165,10 @@ onMounted(async () => {
             @delete="onDeleteEvent"
             @responded="loadEvents"
           />
-        </div>
-        <div
-          v-else
-          class="rounded-xl border border-surface-300 bg-surface-0 p-8 dark:border-surface-600 dark:bg-surface-800"
-        >
+        </SectionCard>
+        <SectionCard v-else>
           <DashboardEmptyState icon="pi pi-calendar" message="イベントを選択してください" />
-        </div>
+        </SectionCard>
       </div>
     </div>
 

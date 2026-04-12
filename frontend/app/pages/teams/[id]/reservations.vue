@@ -25,7 +25,7 @@ onMounted(() => loadPermissions())
 
 <template>
   <div>
-    <h1 class="mb-4 text-2xl font-bold">予約管理</h1>
+    <PageHeader title="予約管理" class="mb-4" />
 
     <Tabs v-model:value="activeTab">
       <TabList>

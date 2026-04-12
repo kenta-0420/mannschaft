@@ -29,18 +29,17 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4">
-      <h1 class="text-2xl font-bold">パフォーマンス</h1>
+      <PageHeader title="パフォーマンス" />
     </div>
 
     <PageLoading v-if="loading" size="40px" />
 
     <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div
+      <SectionCard
         v-for="stat in stats"
         :key="stat.metricId"
-        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
+        :title="stat.metricName"
       >
-        <h3 class="mb-2 text-sm font-semibold">{{ stat.metricName }}</h3>
         <div class="flex items-end gap-4">
           <div>
             <p class="text-2xl font-bold text-primary">{{ stat.teamAverage.toFixed(1) }}</p>
@@ -54,12 +53,13 @@ onMounted(() => load())
           </div>
         </div>
         <p class="mt-2 text-xs text-surface-400">{{ stat.totalRecords }}件のデータ</p>
-      </div>
+      </SectionCard>
     </div>
 
-    <div v-if="!loading && stats.length === 0" class="py-12 text-center">
-      <i class="pi pi-chart-line mb-3 text-4xl text-surface-300" />
-      <p class="text-surface-400">パフォーマンスデータがありません</p>
-    </div>
+    <DashboardEmptyState
+      v-if="!loading && stats.length === 0"
+      icon="pi pi-chart-line"
+      message="パフォーマンスデータがありません"
+    />
   </div>
 </template>

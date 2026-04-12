@@ -43,16 +43,13 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <h1 class="mb-6 text-2xl font-bold">ゲーミフィケーション設定</h1>
+    <PageHeader title="ゲーミフィケーション設定" />
 
     <PageLoading v-if="loading" />
 
     <template v-else-if="config">
       <div class="space-y-6">
-        <div
-          class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
-        >
-          <h2 class="mb-4 text-lg font-semibold">機能の有効/無効</h2>
+        <SectionCard title="機能の有効/無効">
           <div class="space-y-3">
             <div class="flex items-center justify-between">
               <div>
@@ -92,7 +89,7 @@ onMounted(loadData)
               />
             </div>
           </div>
-        </div>
+        </SectionCard>
 
         <div v-if="isAdmin" class="flex justify-end">
           <Button label="設定を保存" icon="pi pi-check" :loading="saving" @click="saveConfig" />

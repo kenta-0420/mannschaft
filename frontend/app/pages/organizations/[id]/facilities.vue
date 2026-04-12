@@ -22,15 +22,14 @@ onMounted(() => load())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">共用施設予約</h1>
+      <PageHeader title="共用施設予約" />
       <Button label="施設を追加" icon="pi pi-plus" />
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <div
+      <SectionCard
         v-for="f in facilities"
         :key="f.id"
-        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
       >
         <h3 class="text-sm font-semibold">{{ f.name }}</h3>
         <p v-if="f.description" class="mt-1 text-xs text-surface-500">{{ f.description }}</p>
@@ -38,11 +37,8 @@ onMounted(() => load())
           <span><i class="pi pi-users" /> 定員{{ f.capacity }}名</span>
           <span v-if="f.hourlyRate"><i class="pi pi-yen" /> {{ f.hourlyRate }}/時間</span>
         </div>
-      </div>
-      <div v-if="facilities.length === 0" class="col-span-full py-12 text-center">
-        <i class="pi pi-building mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">施設がありません</p>
-      </div>
+      </SectionCard>
+      <DashboardEmptyState v-if="facilities.length === 0" class="col-span-full" icon="pi pi-building" message="施設がありません" />
     </div>
   </div>
 </template>

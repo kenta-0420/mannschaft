@@ -93,7 +93,7 @@ watch(() => props.threadId, () => loadThread())
     </div>
 
     <!-- スレッド本体 -->
-    <div class="rounded-xl border border-surface-300 bg-surface-0 p-6">
+    <SectionCard>
       <h2 class="mb-2 text-xl font-bold">{{ thread.title }}</h2>
       <div class="mb-4 flex items-center gap-3 text-sm text-surface-400">
         <Avatar :label="thread.author.displayName.charAt(0)" shape="circle" size="small" />
@@ -103,7 +103,7 @@ watch(() => props.threadId, () => loadThread())
       </div>
       <!-- eslint-disable-next-line vue/no-v-html -->
       <div class="prose max-w-none text-sm leading-relaxed" v-html="sanitizeHtml(thread.body)" />
-    </div>
+    </SectionCard>
 
     <!-- 返信一覧 -->
     <div class="mt-6">
@@ -125,12 +125,12 @@ watch(() => props.threadId, () => loadThread())
     </div>
 
     <!-- 返信フォーム -->
-    <div v-if="!thread.isLocked" class="mt-4 rounded-xl border border-surface-300 bg-surface-0 p-4">
+    <SectionCard v-if="!thread.isLocked" class="mt-4">
       <Textarea v-model="replyBody" placeholder="返信を入力..." auto-resize rows="2" class="mb-2 w-full" />
       <div class="flex justify-end">
         <Button label="返信" size="small" :loading="submitting" :disabled="!replyBody.trim()" @click="onReply" />
       </div>
-    </div>
+    </SectionCard>
     <div v-else class="mt-4 rounded-lg bg-surface-100 p-3 text-center text-sm text-surface-400">
       <i class="pi pi-lock" /> このスレッドはロックされています
     </div>

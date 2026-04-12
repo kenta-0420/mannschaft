@@ -45,9 +45,7 @@ onMounted(() => loadPermissions())
 
 <template>
   <div>
-    <div class="mb-4">
-      <h1 class="text-2xl font-bold">ナレッジベース</h1>
-    </div>
+    <PageHeader title="ナレッジベース" />
 
     <div v-if="selectedPageId" class="mx-auto max-w-3xl">
       <KbPageDetail

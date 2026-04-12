@@ -312,7 +312,7 @@ watch(activeTab, (tab) => {
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">{{ $t('timetable.title') }}</h1>
+      <PageHeader :title="$t('timetable.title')" />
       <div class="flex gap-2">
         <Button
           v-if="canManage"
@@ -545,11 +545,11 @@ watch(activeTab, (tab) => {
                 />
               </div>
             </div>
-            <div v-else class="py-12 text-center text-surface-500">
-              <i class="pi pi-table mb-2 text-4xl" />
-              <p>{{ $t('timetable.no_timetable') }}</p>
-              <p class="mt-1 text-sm">{{ $t('timetable.no_timetable_hint') }}</p>
-            </div>
+            <DashboardEmptyState
+              v-else
+              icon="pi pi-table"
+              :message="$t('timetable.no_timetable')"
+            />
           </TabPanel>
 
           <!-- 時間割一覧 -->
