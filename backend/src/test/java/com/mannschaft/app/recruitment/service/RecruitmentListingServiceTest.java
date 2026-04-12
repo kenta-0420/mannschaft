@@ -106,13 +106,17 @@ class RecruitmentListingServiceTest {
         void create_paymentEnabledWithoutPrice_throws() {
             given(categoryRepository.existsById(CATEGORY_ID)).willReturn(true);
 
+            // now を一度だけ取得し、autoCancelAt が applicationDeadline と同値になるようにする
+            // （2回 LocalDateTime.now() を呼ぶと nanosec 差で autoCancelAt > applicationDeadline になり
+            //   INVALID_STATE_TRANSITION が先に投げられてしまう）
+            LocalDateTime now = LocalDateTime.now();
             CreateRecruitmentListingRequest request = new CreateRecruitmentListingRequest(
                     CATEGORY_ID, null, "test", null,
                     RecruitmentParticipationType.INDIVIDUAL,
-                    LocalDateTime.now().plusDays(2),
-                    LocalDateTime.now().plusDays(2).plusHours(2),
-                    LocalDateTime.now().plusDays(1),
-                    LocalDateTime.now().plusDays(1),
+                    now.plusDays(2),
+                    now.plusDays(2).plusHours(2),
+                    now.plusDays(1),               // applicationDeadline
+                    now.plusDays(1),               // autoCancelAt = applicationDeadline（同値）
                     10, 1,
                     true, null, // paymentEnabled=true, price=null
                     RecruitmentVisibility.SCOPE_ONLY,

@@ -155,6 +155,29 @@ export default {
       "myRecruitmentsEmpty": "No hay participaciones próximas",
       "viewAll": "Ver todo"
     },
+    "search": {
+      "pageTitle": "Buscar Convocatorias",
+      "keyword": "Palabras clave",
+      "keywordPlaceholder": "Buscar por título o descripción",
+      "location": "Ubicación",
+      "locationPlaceholder": "Filtrar por ubicación",
+      "participationType": "Tipo de participación",
+      "allTypes": "Todos los tipos",
+      "startFrom": "Fecha de inicio (Desde)",
+      "startTo": "Fecha de inicio (Hasta)",
+      "searchButton": "Buscar",
+      "resetButton": "Restablecer",
+      "allCategories": "Todas las categorías",
+      "noResults": "No se encontraron convocatorias con esos criterios",
+      "resultsCount": "{count} convocatorias",
+      "capacity": "Capacidad",
+      "remaining": "Quedan {count} plazas",
+      "free": "Gratis",
+      "priceLabel": "¥{price}",
+      "applying": "Solicitando",
+      "individual": "Individual",
+      "team": "Equipo"
+    },
     "error": {
       "RECRUITMENT_001": "Convocatoria no encontrada",
       "RECRUITMENT_002": "Sin permiso para crear convocatorias",
@@ -182,7 +205,63 @@ export default {
       "RECRUITMENT_303": "La política de cancelación tiene más de 4 niveles",
       "RECRUITMENT_304": "Es necesario confirmar la tarifa de cancelación",
       "RECRUITMENT_307": "Los rangos de tiempo de los niveles se solapan",
-      "RECRUITMENT_308": "La tarifa mostrada difiere de la real. Vuelva a calcular"
+      "RECRUITMENT_308": "La tarifa mostrada difiere de la real. Vuelva a calcular",
+      "RECRUITMENT_305": "El plazo para disputar ha expirado",
+      "RECRUITMENT_309": "Registro NO_SHOW no encontrado",
+      "RECRUITMENT_310": "Penalización no encontrada",
+      "RECRUITMENT_311": "Disputa ya presentada",
+      "RECRUITMENT_312": "Configuración de penalización no encontrada"
+    },
+    "noShow": {
+      "pageTitle": "Historial NO_SHOW",
+      "adminPageTitle": "Gestión NO_SHOW",
+      "status": {
+        "pending": "Pendiente",
+        "confirmed": "Confirmado",
+        "disputed": "En disputa",
+        "revoked": "Revocado",
+        "upheld": "Mantenido"
+      },
+      "reason": {
+        "adminMarked": "Marcado por admin",
+        "autoDetected": "Detectado automáticamente"
+      },
+      "disputeButton": "Disputar",
+      "disputeDialog": {
+        "title": "Presentar disputa",
+        "reasonLabel": "Razón",
+        "reasonPlaceholder": "Ingrese razón específica",
+        "submit": "Enviar"
+      },
+      "resolveDialog": {
+        "title": "Resolver disputa",
+        "revoke": "Revocar (REVOKED)",
+        "uphold": "Mantener (UPHELD)",
+        "adminNote": "Nota del admin",
+        "submit": "Resolver"
+      }
+    },
+    "penalty": {
+      "pageTitle": "Configuración de penalización",
+      "penaltiesPageTitle": "Lista de penalizaciones",
+      "enabled": "Habilitado",
+      "disabled": "Deshabilitado",
+      "thresholdCount": "Umbral de incidencias",
+      "thresholdPeriodDays": "Período (días)",
+      "penaltyDurationDays": "Duración (días)",
+      "autoDetection": "Detección automática",
+      "disputeAllowedDays": "Plazo de disputa (días)",
+      "liftButton": "Levantar penalización",
+      "saveButton": "Guardar configuración",
+      "liftDialog": {
+        "title": "Levantar penalización",
+        "adminManual": "Levantamiento manual por admin"
+      },
+      "status": {
+        "active": "Activo",
+        "expired": "Expirado",
+        "lifted": "Levantado"
+      }
     }
   }
 }

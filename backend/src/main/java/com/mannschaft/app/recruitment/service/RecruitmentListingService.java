@@ -536,8 +536,42 @@ public class RecruitmentListingService {
      * Phase 1 ではスタブ。常に false (衝突なし) を返す。
      * Phase 4 で reservation_lines / 既存 recruitment_listings との衝突を SQL で判定する予定。
      */
+    // ===========================================
+    // §Phase4 全体検索
+    // ===========================================
+
+    /**
+     * Phase 4 全体検索 — 認証不要。
+     * startFrom / startTo は ISO8601 文字列 or null。
+     * null の場合は条件を無視する（全期間）。
+     */
+    public Page<RecruitmentListingSummaryResponse> searchPublicListings(
+            Long categoryId, Long subcategoryId,
+            String startFrom, String startTo,
+            String participationType,
+            String keyword, String location,
+            Pageable pageable) {
+        LocalDateTime fromDt = startFrom != null ? LocalDateTime.parse(startFrom) : null;
+        LocalDateTime toDt = startTo != null ? LocalDateTime.parse(startTo) : null;
+        Page<RecruitmentListingEntity> page = listingRepository.searchPublicListings(
+                categoryId, subcategoryId, fromDt, toDt, participationType, keyword, location, pageable);
+        return page.map(mapper::toListingSummaryResponse);
+    }
+
+    // ===========================================
+    // §5.6 予約ライン衝突チェック (Phase 4 本実装)
+    // ===========================================
+
+    /**
+     * §5.6 予約ライン衝突チェック。
+     * 同じ予約ライン上の既存募集（キャンセル以外）と時間帯が重複するか確認する。
+     * excludeId は更新時に自分自身を除外するために使用。新規作成時は null を渡す。
+     */
     private boolean checkLineCollision(Long lineId, LocalDateTime startAt, LocalDateTime endAt) {
-        return false;
+        if (lineId == null || startAt == null || endAt == null) {
+            return false;
+        }
+        return listingRepository.countOverlappingByLine(lineId, startAt, endAt, null) > 0;
     }
 
     // ===========================================

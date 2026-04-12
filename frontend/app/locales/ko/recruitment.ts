@@ -155,6 +155,29 @@ export default {
       "myRecruitmentsEmpty": "참가 예정이 없습니다",
       "viewAll": "전체 보기"
     },
+    "search": {
+      "pageTitle": "모집 찾기",
+      "keyword": "키워드",
+      "keywordPlaceholder": "제목 또는 설명으로 검색",
+      "location": "장소",
+      "locationPlaceholder": "장소로 필터링",
+      "participationType": "참가 형식",
+      "allTypes": "모든 형식",
+      "startFrom": "시작일 (From)",
+      "startTo": "시작일 (To)",
+      "searchButton": "검색",
+      "resetButton": "초기화",
+      "allCategories": "모든 카테고리",
+      "noResults": "조건에 맞는 모집을 찾을 수 없습니다",
+      "resultsCount": "{count}건의 모집",
+      "capacity": "정원",
+      "remaining": "잔여 {count}자리",
+      "free": "무료",
+      "priceLabel": "¥{price}",
+      "applying": "신청 중",
+      "individual": "개인",
+      "team": "팀"
+    },
     "error": {
       "RECRUITMENT_001": "모집을 찾을 수 없습니다",
       "RECRUITMENT_002": "모집 작성 권한이 없습니다",
@@ -182,7 +205,63 @@ export default {
       "RECRUITMENT_303": "취소 정책 단계가 4개를 초과합니다",
       "RECRUITMENT_304": "취소 수수료 확인이 필요합니다",
       "RECRUITMENT_307": "취소 정책 단계의 시간 범위가 중복됩니다",
-      "RECRUITMENT_308": "표시된 취소 수수료가 실제와 다릅니다. 다시 계산하세요"
+      "RECRUITMENT_308": "표시된 취소 수수료가 실제와 다릅니다. 다시 계산하세요",
+      "RECRUITMENT_305": "이의 신청 기한이 지났습니다",
+      "RECRUITMENT_309": "NO_SHOW 기록을 찾을 수 없습니다",
+      "RECRUITMENT_310": "패널티를 찾을 수 없습니다",
+      "RECRUITMENT_311": "이미 이의 신청되었습니다",
+      "RECRUITMENT_312": "패널티 설정을 찾을 수 없습니다"
+    },
+    "noShow": {
+      "pageTitle": "NO_SHOW 이력",
+      "adminPageTitle": "NO_SHOW 관리",
+      "status": {
+        "pending": "확인 대기",
+        "confirmed": "확정",
+        "disputed": "이의 신청 중",
+        "revoked": "취소",
+        "upheld": "유지"
+      },
+      "reason": {
+        "adminMarked": "관리자 기록",
+        "autoDetected": "자동 감지"
+      },
+      "disputeButton": "이의 신청",
+      "disputeDialog": {
+        "title": "이의 신청",
+        "reasonLabel": "사유",
+        "reasonPlaceholder": "구체적인 사유를 입력하세요",
+        "submit": "신청"
+      },
+      "resolveDialog": {
+        "title": "이의 해결",
+        "revoke": "취소（REVOKED）",
+        "uphold": "유지（UPHELD）",
+        "adminNote": "관리자 메모",
+        "submit": "해결"
+      }
+    },
+    "penalty": {
+      "pageTitle": "패널티 설정",
+      "penaltiesPageTitle": "패널티 목록",
+      "enabled": "활성",
+      "disabled": "비활성",
+      "thresholdCount": "임계값 횟수",
+      "thresholdPeriodDays": "집계 기간（일）",
+      "penaltyDurationDays": "패널티 기간（일）",
+      "autoDetection": "자동 감지",
+      "disputeAllowedDays": "이의 신청 기한（일）",
+      "liftButton": "패널티 해제",
+      "saveButton": "설정 저장",
+      "liftDialog": {
+        "title": "패널티 해제",
+        "adminManual": "관리자 수동 해제"
+      },
+      "status": {
+        "active": "활성 중",
+        "expired": "만료",
+        "lifted": "해제됨"
+      }
     }
   }
 }

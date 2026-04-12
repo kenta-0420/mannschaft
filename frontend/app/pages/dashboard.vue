@@ -10,6 +10,19 @@ const dashboardStore = useDashboardStore()
 const greeting = useGreeting()
 const timedMessage = useTimedMessage()
 
+const hasFamilyTeam = computed(() => teamStore.myTeams.some((t) => t.template === 'FAMILY'))
+
+const showTeamCreateDialog = ref(false)
+const showOrgCreateDialog = ref(false)
+
+function onTeamCreated() {
+  teamStore.fetchMyTeams()
+}
+
+function onOrgCreated() {
+  orgStore.fetchMyOrganizations()
+}
+
 const loading = ref(true)
 
 onMounted(async () => {
@@ -40,7 +53,7 @@ onMounted(async () => {
 
       <!-- データウィジェット群 (広告込み) -->
       <div class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <WidgetFamilyHub />
+        <WidgetFamilyHub v-if="hasFamilyTeam" />
         <WidgetNotices />
         <WidgetUpcomingEvents />
         <WidgetPersonalTodo />
@@ -116,27 +129,72 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- 新しいチーム・組織を探す -->
-      <div
-        class="mt-8 rounded-xl border border-dashed border-surface-300 bg-surface-50 p-6 dark:border-surface-600 dark:bg-surface-800"
-      >
-        <div class="mb-3 flex items-center gap-2">
-          <i class="pi pi-search text-primary" />
-          <h2 class="text-lg font-semibold">新しいチーム・組織を見つける</h2>
+      <!-- チームを探す / チームを作る -->
+      <div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <!-- 探す -->
+        <div
+          class="rounded-xl border border-dashed border-surface-300 bg-surface-50 p-6 dark:border-surface-600 dark:bg-surface-800"
+        >
+          <div class="mb-3 flex items-center gap-2">
+            <i class="pi pi-search text-primary" />
+            <h2 class="text-lg font-semibold">新しいチーム・組織を見つける</h2>
+          </div>
+          <p class="mb-4 text-sm text-surface-500">
+            参加したいチームや組織を検索してサポーターとして申請できます。<br />
+            メンバーとして参加するには招待リンクが必要です。
+          </p>
+          <div class="flex flex-wrap gap-3">
+            <Button label="チームを探す" icon="pi pi-users" outlined @click="navigateTo('/teams')" />
+            <Button
+              label="組織を探す"
+              icon="pi pi-building"
+              outlined
+              @click="navigateTo('/organizations')"
+            />
+          </div>
         </div>
-        <p class="mb-4 text-sm text-surface-500">
-          参加したいチームや組織を検索して、サポーターとして申請できます。メンバーとして参加するには招待リンクが必要です。
-        </p>
-        <div class="flex flex-wrap gap-3">
-          <Button label="チームを探す" icon="pi pi-users" outlined @click="navigateTo('/teams')" />
-          <Button
-            label="組織を探す"
-            icon="pi pi-building"
-            outlined
-            @click="navigateTo('/organizations')"
-          />
+
+        <!-- 作る -->
+        <div
+          class="rounded-xl border border-dashed border-surface-300 bg-surface-50 p-6 dark:border-surface-600 dark:bg-surface-800"
+        >
+          <div class="mb-3 flex items-center gap-2">
+            <i class="pi pi-plus-circle text-primary" />
+            <h2 class="text-lg font-semibold">新しいチーム・組織を作る</h2>
+          </div>
+          <p class="mb-4 text-sm text-surface-500">
+            家族・スポーツ・地域・企業など新しいグループを作成できます。<br />
+            作成後すぐにメンバーを招待して利用できます。
+          </p>
+          <div class="flex flex-wrap gap-3">
+            <Button
+              label="チームを作る"
+              icon="pi pi-users"
+              outlined
+              @click="showTeamCreateDialog = true"
+            />
+            <Button
+              label="組織を作る"
+              icon="pi pi-building"
+              outlined
+              @click="showOrgCreateDialog = true"
+            />
+          </div>
         </div>
       </div>
+
+      <EntityCreateDialog
+        entity-type="team"
+        :visible="showTeamCreateDialog"
+        @update:visible="showTeamCreateDialog = $event"
+        @created="onTeamCreated"
+      />
+      <EntityCreateDialog
+        entity-type="organization"
+        :visible="showOrgCreateDialog"
+        @update:visible="showOrgCreateDialog = $event"
+        @created="onOrgCreated"
+      />
     </div>
   </div>
 </template>

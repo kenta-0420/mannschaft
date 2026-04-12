@@ -7,17 +7,25 @@ import type {
   CreateCancellationPolicyRequest,
   CreateRecruitmentListingRequest,
   CreateRecruitmentSubcategoryRequest,
+  DisputeNoShowRequest,
+  LiftPenaltyRequest,
   RecruitmentCategoryResponse,
   RecruitmentDistributionTargetResponse,
   RecruitmentFeedItem,
   RecruitmentListingResponse,
   RecruitmentListingSummaryResponse,
   RecruitmentMyListingItem,
+  RecruitmentNoShowRecordResponse,
   RecruitmentParticipantResponse,
+  RecruitmentPenaltySettingResponse,
+  RecruitmentSearchParams,
   RecruitmentSubcategoryResponse,
+  RecruitmentUserPenaltyResponse,
+  ResolveDisputeRequest,
   SetDistributionTargetsRequest,
   UpdateCancellationPolicyRequest,
   UpdateRecruitmentListingRequest,
+  UpsertPenaltySettingRequest,
 } from '~/types/recruitment'
 
 interface ApiResponse<T> {
@@ -256,6 +264,95 @@ export function useRecruitmentApi() {
     return api(`/api/v1/cancellation-policies/${policyId}/archive`, { method: 'POST' })
   }
 
+  // ===========================================
+  // 全体検索 (§Phase4)
+  // ===========================================
+
+  async function searchListings(params: RecruitmentSearchParams) {
+    const q = new URLSearchParams()
+    if (params.categoryId != null) q.set('categoryId', String(params.categoryId))
+    if (params.subcategoryId != null) q.set('subcategoryId', String(params.subcategoryId))
+    if (params.startFrom) q.set('startFrom', params.startFrom)
+    if (params.startTo) q.set('startTo', params.startTo)
+    if (params.participationType) q.set('participationType', params.participationType)
+    if (params.keyword) q.set('keyword', params.keyword)
+    if (params.location) q.set('location', params.location)
+    if (params.page != null) q.set('page', String(params.page))
+    if (params.size != null) q.set('size', String(params.size))
+    return api<PagedResponse<RecruitmentListingSummaryResponse>>(
+      `/api/v1/recruitment-listings/search?${q.toString()}`,
+    )
+  }
+
+  // ===========================================
+  // Phase 5b: NO_SHOW・ペナルティ
+  // ===========================================
+
+  async function markNoShow(scopeType: string, scopeId: number, listingId: number, participantId: number) {
+    return api<ApiResponse<RecruitmentNoShowRecordResponse>>(
+      `/api/v1/scopes/${scopeType}/${scopeId}/recruitment-listings/${listingId}/participants/${participantId}/no-show`,
+      { method: 'POST' },
+    )
+  }
+
+  async function getNoShowsByScope(scopeType: string, scopeId: number, page = 0, size = 20) {
+    return api<PagedResponse<RecruitmentNoShowRecordResponse>>(
+      `/api/v1/scopes/${scopeType}/${scopeId}/no-shows?page=${page}&size=${size}`,
+    )
+  }
+
+  async function getMyNoShows() {
+    return api<ApiResponse<RecruitmentNoShowRecordResponse[]>>(
+      '/api/v1/recruitment/no-shows/me',
+    )
+  }
+
+  async function disputeNoShow(noShowId: number, body: DisputeNoShowRequest) {
+    return api<ApiResponse<RecruitmentNoShowRecordResponse>>(
+      `/api/v1/recruitment/no-shows/${noShowId}/dispute`,
+      { method: 'POST', body },
+    )
+  }
+
+  async function resolveDispute(scopeType: string, scopeId: number, noShowId: number, body: ResolveDisputeRequest) {
+    return api<ApiResponse<RecruitmentNoShowRecordResponse>>(
+      `/api/v1/scopes/${scopeType}/${scopeId}/no-shows/${noShowId}/dispute`,
+      { method: 'PATCH', body },
+    )
+  }
+
+  async function getPenaltySetting(scopeType: string, scopeId: number) {
+    return api<ApiResponse<RecruitmentPenaltySettingResponse>>(
+      `/api/v1/scopes/${scopeType}/${scopeId}/penalty-settings`,
+    )
+  }
+
+  async function upsertPenaltySetting(scopeType: string, scopeId: number, body: UpsertPenaltySettingRequest) {
+    return api<ApiResponse<RecruitmentPenaltySettingResponse>>(
+      `/api/v1/scopes/${scopeType}/${scopeId}/penalty-settings`,
+      { method: 'PUT', body },
+    )
+  }
+
+  async function getScopePenalties(scopeType: string, scopeId: number, page = 0, size = 20) {
+    return api<PagedResponse<RecruitmentUserPenaltyResponse>>(
+      `/api/v1/scopes/${scopeType}/${scopeId}/penalties?page=${page}&size=${size}`,
+    )
+  }
+
+  async function liftPenalty(scopeType: string, scopeId: number, penaltyId: number, body: LiftPenaltyRequest) {
+    return api<ApiResponse<RecruitmentUserPenaltyResponse>>(
+      `/api/v1/scopes/${scopeType}/${scopeId}/penalties/${penaltyId}/lift`,
+      { method: 'POST', body },
+    )
+  }
+
+  async function getMyPenalties() {
+    return api<ApiResponse<RecruitmentUserPenaltyResponse[]>>(
+      '/api/v1/recruitment/penalties/me',
+    )
+  }
+
   return {
     listCategories,
     listTeamSubcategories,
@@ -285,5 +382,17 @@ export function useRecruitmentApi() {
     getCancellationPolicy,
     updateCancellationPolicy,
     archiveCancellationPolicy,
+    searchListings,
+    // Phase 5b: NO_SHOW・ペナルティ
+    markNoShow,
+    getNoShowsByScope,
+    getMyNoShows,
+    disputeNoShow,
+    resolveDispute,
+    getPenaltySetting,
+    upsertPenaltySetting,
+    getScopePenalties,
+    liftPenalty,
+    getMyPenalties,
   }
 }

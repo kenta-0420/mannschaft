@@ -1,11 +1,14 @@
 package com.mannschaft.app.recruitment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CancellationFeeEstimateResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentDistributionTargetResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
+import com.mannschaft.app.recruitment.dto.RecruitmentListingSearchRequest;
+import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
 import com.mannschaft.app.recruitment.dto.SetDistributionTargetsRequest;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
@@ -16,9 +19,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -43,6 +49,42 @@ public class RecruitmentListingController {
 
     private final RecruitmentListingService listingService;
     private final RecruitmentCancellationPolicyService cancellationPolicyService;
+
+    /**
+     * 全体検索エンドポイント — 認証不要 (PUBLIC アクセス可)。
+     *
+     * status = OPEN の募集を対象に、カテゴリ・日時・参加形式・キーワード・場所で絞り込む。
+     * visibility が SCOPE_ONLY / SUPPORTERS_ONLY の募集も検索結果に含める。
+     * 詳細閲覧時に権限チェックを行うため、一覧では visibility による除外は行わない。
+     * keyword / location は空文字列の場合 null 扱いとして LIKE 検索を省略する。
+     */
+    @GetMapping("/search")
+    @Operation(summary = "募集枠 全体検索 (§Phase4)")
+    public ResponseEntity<PagedResponse<RecruitmentListingSummaryResponse>> searchListings(
+            @Valid @ModelAttribute RecruitmentListingSearchRequest req) {
+        // XSS 対策: keyword・location をトリムし、空文字列は null に正規化
+        String keyword = req.getKeyword();
+        if (keyword != null) {
+            keyword = keyword.trim();
+            if (keyword.isEmpty()) keyword = null;
+            else if (keyword.length() > 100) keyword = keyword.substring(0, 100);
+        }
+        String location = req.getLocation();
+        if (location != null) {
+            location = location.trim();
+            if (location.isEmpty()) location = null;
+            else if (location.length() > 100) location = location.substring(0, 100);
+        }
+        Page<RecruitmentListingSummaryResponse> page = listingService.searchPublicListings(
+                req.getCategoryId(), req.getSubcategoryId(),
+                req.getStartFrom(), req.getStartTo(),
+                req.getParticipationType(),
+                keyword, location,
+                PageRequest.of(req.getPage(), req.getSize()));
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                page.getTotalElements(), page.getNumber(), page.getSize(), page.getTotalPages());
+        return ResponseEntity.ok(PagedResponse.of(page.getContent(), meta));
+    }
 
     @GetMapping("/{id}")
     @Operation(summary = "募集枠詳細取得")

@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,4 +55,32 @@ public interface RecruitmentParticipantRepository extends JpaRepository<Recruitm
             ORDER BY p.appliedAt DESC
             """)
     List<RecruitmentParticipantEntity> findMyActiveParticipations(@Param("userId") Long userId);
+
+    /**
+     * Phase 4 レート制限: 指定ユーザーの最近の申込件数をカウント。
+     */
+    @Query("""
+            SELECT COUNT(p) FROM RecruitmentParticipantEntity p
+            WHERE p.userId = :userId
+              AND p.appliedAt >= :since
+            """)
+    long countRecentApplicationsByUser(@Param("userId") Long userId, @Param("since") LocalDateTime since);
+
+    /**
+     * Phase 5b 自動検出バッチ用: 指定スコープの終了済み募集でまだ CONFIRMED の参加者を取得。
+     * 募集の endAt が :threshold 以前のものが対象。
+     */
+    @Query("""
+            SELECT p FROM RecruitmentParticipantEntity p
+            JOIN RecruitmentListingEntity l ON l.id = p.listingId
+            WHERE l.scopeType = :scopeType
+              AND l.scopeId = :scopeId
+              AND l.endAt <= :threshold
+              AND p.status = com.mannschaft.app.recruitment.RecruitmentParticipantStatus.CONFIRMED
+              AND p.userId IS NOT NULL
+            """)
+    List<RecruitmentParticipantEntity> findConfirmedInEndedListings(
+            @Param("scopeType") com.mannschaft.app.recruitment.RecruitmentScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("threshold") LocalDateTime threshold);
 }

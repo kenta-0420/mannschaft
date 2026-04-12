@@ -155,6 +155,29 @@ export default {
       "myRecruitmentsEmpty": "参加予定の募集はありません",
       "viewAll": "すべて表示"
     },
+    "search": {
+      "pageTitle": "募集を探す",
+      "keyword": "キーワード",
+      "keywordPlaceholder": "タイトル・説明で検索",
+      "location": "開催場所",
+      "locationPlaceholder": "場所で絞り込み",
+      "participationType": "参加形式",
+      "allTypes": "すべての形式",
+      "startFrom": "開催日（From）",
+      "startTo": "開催日（To）",
+      "searchButton": "検索",
+      "resetButton": "リセット",
+      "allCategories": "すべてのカテゴリ",
+      "noResults": "条件に合う募集が見つかりませんでした",
+      "resultsCount": "{count}件の募集",
+      "capacity": "定員",
+      "remaining": "残り{count}枠",
+      "free": "無料",
+      "priceLabel": "{price}円",
+      "applying": "申込中",
+      "individual": "個人",
+      "team": "チーム"
+    },
     "error": {
       "RECRUITMENT_001": "募集が見つかりません",
       "RECRUITMENT_002": "募集の作成権限がありません",
@@ -182,7 +205,63 @@ export default {
       "RECRUITMENT_303": "キャンセルポリシーの段階が4を超えています",
       "RECRUITMENT_304": "キャンセル料の確認が必要です",
       "RECRUITMENT_307": "キャンセルポリシー段階の時間範囲が重複しています",
-      "RECRUITMENT_308": "表示されたキャンセル料と実際の料金が異なります。再試算してください"
+      "RECRUITMENT_308": "表示されたキャンセル料と実際の料金が異なります。再試算してください",
+      "RECRUITMENT_305": "異議申立の期限を過ぎています",
+      "RECRUITMENT_309": "NO_SHOW記録が見つかりません",
+      "RECRUITMENT_310": "ペナルティが見つかりません",
+      "RECRUITMENT_311": "既に異議申立済みです",
+      "RECRUITMENT_312": "ペナルティ設定が見つかりません"
+    },
+    "noShow": {
+      "pageTitle": "NO_SHOW履歴",
+      "adminPageTitle": "NO_SHOW管理",
+      "status": {
+        "pending": "確認待ち",
+        "confirmed": "確定",
+        "disputed": "異議申立中",
+        "revoked": "取消",
+        "upheld": "確定維持"
+      },
+      "reason": {
+        "adminMarked": "管理者記録",
+        "autoDetected": "自動検出"
+      },
+      "disputeButton": "異議を申し立てる",
+      "disputeDialog": {
+        "title": "異議申立",
+        "reasonLabel": "申立理由",
+        "reasonPlaceholder": "具体的な理由を入力してください",
+        "submit": "申立"
+      },
+      "resolveDialog": {
+        "title": "異議解決",
+        "revoke": "取消（REVOKED）",
+        "uphold": "確定維持（UPHELD）",
+        "adminNote": "管理者メモ",
+        "submit": "解決"
+      }
+    },
+    "penalty": {
+      "pageTitle": "ペナルティ設定",
+      "penaltiesPageTitle": "ペナルティ一覧",
+      "enabled": "有効",
+      "disabled": "無効",
+      "thresholdCount": "閾値件数（N回）",
+      "thresholdPeriodDays": "集計期間（日）",
+      "penaltyDurationDays": "ペナルティ期間（日）",
+      "autoDetection": "自動検出",
+      "disputeAllowedDays": "異議申立期限（日）",
+      "liftButton": "ペナルティ解除",
+      "saveButton": "設定を保存",
+      "liftDialog": {
+        "title": "ペナルティ解除",
+        "adminManual": "管理者手動解除"
+      },
+      "status": {
+        "active": "有効中",
+        "expired": "期限切れ",
+        "lifted": "解除済み"
+      }
     }
   }
 }

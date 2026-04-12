@@ -87,6 +87,9 @@ public enum RecruitmentErrorCode implements ErrorCode {
     /** visibility と distribution_targets の整合性違反 */
     VISIBILITY_TARGETS_INCONSISTENT("RECRUITMENT_207", "公開範囲と配信対象の組合せが不正です", Severity.ERROR),
 
+    /** 短時間の申込多すぎ（レート制限） */
+    APPLY_RATE_LIMIT_EXCEEDED("RECRUITMENT_208", "短時間に多くの申込を行いました。しばらく経ってから再試行してください", Severity.WARN),
+
     // ========================================
     // 15.4 ペナルティ・キャンセル料エラー (300〜399)
     // ========================================
@@ -107,7 +110,26 @@ public enum RecruitmentErrorCode implements ErrorCode {
     TIER_RANGE_OVERLAP("RECRUITMENT_307", "キャンセルポリシー段階の時間範囲が重複しています", Severity.ERROR),
 
     /** 表示されたキャンセル料と実際の料金が乖離 (§9.10 409 用、新設) */
-    CANCELLATION_FEE_MISMATCH("RECRUITMENT_308", "表示されたキャンセル料と実際の料金が異なります。再試算してください", Severity.WARN);
+    CANCELLATION_FEE_MISMATCH("RECRUITMENT_308", "表示されたキャンセル料と実際の料金が異なります。再試算してください", Severity.WARN),
+
+    // ========================================
+    // Phase 5b: NO_SHOW・ペナルティ系 (305, 309〜312)
+    // ========================================
+
+    /** NO_SHOW 異議申立の期限超過 */
+    NO_SHOW_DISPUTE_DEADLINE_EXCEEDED("RECRUITMENT_305", "異議申立の期限を過ぎています", Severity.WARN),
+
+    /** NO_SHOW 記録が見つからない */
+    NO_SHOW_RECORD_NOT_FOUND("RECRUITMENT_309", "NO_SHOW記録が見つかりません", Severity.WARN),
+
+    /** ペナルティが見つからない */
+    PENALTY_NOT_FOUND("RECRUITMENT_310", "ペナルティが見つかりません", Severity.WARN),
+
+    /** 既に異議申立済み */
+    ALREADY_DISPUTED("RECRUITMENT_311", "既に異議申立済みです", Severity.WARN),
+
+    /** ペナルティ設定が見つからない */
+    PENALTY_SETTING_NOT_FOUND("RECRUITMENT_312", "ペナルティ設定が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

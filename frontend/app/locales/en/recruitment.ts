@@ -155,6 +155,29 @@ export default {
       "myRecruitmentsEmpty": "No upcoming participations",
       "viewAll": "View all"
     },
+    "search": {
+      "pageTitle": "Find Recruitments",
+      "keyword": "Keyword",
+      "keywordPlaceholder": "Search by title or description",
+      "location": "Location",
+      "locationPlaceholder": "Filter by location",
+      "participationType": "Participation Type",
+      "allTypes": "All Types",
+      "startFrom": "Start Date (From)",
+      "startTo": "Start Date (To)",
+      "searchButton": "Search",
+      "resetButton": "Reset",
+      "allCategories": "All Categories",
+      "noResults": "No recruitments found matching your criteria",
+      "resultsCount": "{count} recruitments",
+      "capacity": "Capacity",
+      "remaining": "{count} spots left",
+      "free": "Free",
+      "priceLabel": "¥{price}",
+      "applying": "Applying",
+      "individual": "Individual",
+      "team": "Team"
+    },
     "error": {
       "RECRUITMENT_001": "Recruitment not found",
       "RECRUITMENT_002": "No permission to create recruitment",
@@ -182,7 +205,63 @@ export default {
       "RECRUITMENT_303": "Cancellation policy has more than 4 tiers",
       "RECRUITMENT_304": "Cancellation fee acknowledgement required",
       "RECRUITMENT_307": "Cancellation policy tier ranges overlap",
-      "RECRUITMENT_308": "Displayed cancellation fee differs from actual. Please re-estimate"
+      "RECRUITMENT_308": "Displayed cancellation fee differs from actual. Please re-estimate",
+      "RECRUITMENT_305": "Dispute deadline has passed",
+      "RECRUITMENT_309": "NO_SHOW record not found",
+      "RECRUITMENT_310": "Penalty not found",
+      "RECRUITMENT_311": "Dispute already filed",
+      "RECRUITMENT_312": "Penalty settings not found"
+    },
+    "noShow": {
+      "pageTitle": "NO_SHOW History",
+      "adminPageTitle": "NO_SHOW Management",
+      "status": {
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "disputed": "Disputed",
+        "revoked": "Revoked",
+        "upheld": "Upheld"
+      },
+      "reason": {
+        "adminMarked": "Admin Marked",
+        "autoDetected": "Auto Detected"
+      },
+      "disputeButton": "File Dispute",
+      "disputeDialog": {
+        "title": "File Dispute",
+        "reasonLabel": "Reason",
+        "reasonPlaceholder": "Enter specific reason",
+        "submit": "Submit"
+      },
+      "resolveDialog": {
+        "title": "Resolve Dispute",
+        "revoke": "Revoke (REVOKED)",
+        "uphold": "Uphold (UPHELD)",
+        "adminNote": "Admin Note",
+        "submit": "Resolve"
+      }
+    },
+    "penalty": {
+      "pageTitle": "Penalty Settings",
+      "penaltiesPageTitle": "Penalty List",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "thresholdCount": "Threshold Count",
+      "thresholdPeriodDays": "Period (days)",
+      "penaltyDurationDays": "Penalty Duration (days)",
+      "autoDetection": "Auto Detection",
+      "disputeAllowedDays": "Dispute Allowed (days)",
+      "liftButton": "Lift Penalty",
+      "saveButton": "Save Settings",
+      "liftDialog": {
+        "title": "Lift Penalty",
+        "adminManual": "Admin Manual Lift"
+      },
+      "status": {
+        "active": "Active",
+        "expired": "Expired",
+        "lifted": "Lifted"
+      }
     }
   }
 }
