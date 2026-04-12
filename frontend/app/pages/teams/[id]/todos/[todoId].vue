@@ -80,13 +80,9 @@ onMounted(async () => {
   <div v-else-if="todo" class="mx-auto max-w-3xl">
     <!-- ヘッダー -->
     <div class="mb-6">
-      <div class="mb-2 flex items-center gap-2">
-        <NuxtLink :to="`/teams/${teamId}/todos`" class="text-sm text-primary hover:underline">
-          <i class="pi pi-arrow-left mr-1" />TODO一覧
-        </NuxtLink>
-      </div>
+      <BackButton :to="`/teams/${teamId}/todos`" label="TODO一覧" />
       <div class="flex items-start justify-between">
-        <h1 class="text-2xl font-bold">{{ todo.title }}</h1>
+        <PageHeader :title="todo.title" />
         <div class="flex gap-2">
           <Button v-if="isAdminOrDeputy" label="編集" icon="pi pi-pencil" outlined size="small" @click="showEditDialog = true" />
         </div>
@@ -127,14 +123,12 @@ onMounted(async () => {
     </div>
 
     <!-- 説明 -->
-    <div v-if="todo.description" class="mb-6 rounded-lg border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
-      <h3 class="mb-2 text-sm font-semibold">説明</h3>
+    <SectionCard v-if="todo.description" title="説明" class="mb-6">
       <p class="whitespace-pre-wrap text-sm text-surface-700 dark:text-surface-300">{{ todo.description }}</p>
-    </div>
+    </SectionCard>
 
     <!-- 担当者 -->
-    <div class="mb-6 rounded-lg border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
-      <h3 class="mb-2 text-sm font-semibold">担当者</h3>
+    <SectionCard title="担当者" class="mb-6">
       <div v-if="todo.assignees.length > 0" class="flex flex-wrap gap-2">
         <div v-for="a in todo.assignees" :key="a.userId" class="flex items-center gap-2 rounded-full bg-surface-100 px-3 py-1 dark:bg-surface-700">
           <Avatar
@@ -147,7 +141,7 @@ onMounted(async () => {
         </div>
       </div>
       <p v-else class="text-sm text-surface-400">担当者未割り当て</p>
-    </div>
+    </SectionCard>
 
     <!-- 完了情報 -->
     <div v-if="todo.completedAt" class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
@@ -158,9 +152,9 @@ onMounted(async () => {
     </div>
 
     <!-- コメント -->
-    <div class="rounded-lg border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800">
+    <SectionCard>
       <TodoComments scope-type="team" :scope-id="teamId" :todo-id="todoId" />
-    </div>
+    </SectionCard>
 
     <!-- 編集ダイアログ -->
     <TodoForm

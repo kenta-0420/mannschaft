@@ -71,14 +71,12 @@ async function share(item: CoinTossResponse) {
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">コイントス</h1>
+      <PageHeader title="コイントス" />
       <Button label="履歴" icon="pi pi-history" text @click="loadHistory" />
     </div>
 
     <div class="mx-auto max-w-lg">
-      <div
-        class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
-      >
+      <SectionCard>
         <!-- モード選択 -->
         <div class="mb-4">
           <label class="mb-2 block text-sm font-medium">モード</label>
@@ -154,7 +152,7 @@ async function share(item: CoinTossResponse) {
             @click="share(result)"
           />
         </div>
-      </div>
+      </SectionCard>
     </div>
 
     <!-- 履歴ダイアログ -->

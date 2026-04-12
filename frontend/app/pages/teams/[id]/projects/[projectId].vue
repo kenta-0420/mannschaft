@@ -9,7 +9,6 @@ import type {
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const router = useRouter()
 const teamId = Number(route.params.id)
 const projectId = Number(route.params.projectId)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
@@ -152,17 +151,11 @@ onMounted(async () => {
 
     <div v-else-if="project">
       <div class="mb-6">
-        <Button
-          icon="pi pi-arrow-left"
-          text
-          label="プロジェクト一覧"
-          class="mb-2"
-          @click="router.push(`/teams/${teamId}/projects`)"
-        />
+        <BackButton :to="`/teams/${teamId}/projects`" label="プロジェクト一覧" />
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <span v-if="project.emoji" class="text-3xl">{{ project.emoji }}</span>
-            <h1 class="text-2xl font-bold">{{ project.title }}</h1>
+            <PageHeader :title="project.title" />
             <Tag
               :value="project.status === 'COMPLETED' ? '完了' : '進行中'"
               :severity="project.status === 'COMPLETED' ? 'success' : 'info'"
@@ -181,9 +174,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div
-        class="mb-6 rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
-      >
+      <SectionCard class="mb-6">
         <div class="mb-2 grid gap-4 sm:grid-cols-4">
           <div>
             <p class="text-xs text-surface-400">進捗</p>
@@ -214,7 +205,7 @@ onMounted(async () => {
           :show-value="false"
           style="height: 8px"
         />
-      </div>
+      </SectionCard>
 
       <ProjectMilestoneList
         :milestones="milestones"
