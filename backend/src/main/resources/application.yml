@@ -92,3 +92,12 @@ mannschaft:
     connect:
       return-url: ${MANNSCHAFT_STRIPE_CONNECT_RETURN_URL:https://app.mannschaft.com/settings/stripe/return}
       refresh-url: ${MANNSCHAFT_STRIPE_CONNECT_REFRESH_URL:https://app.mannschaft.com/settings/stripe/refresh}
+
+# 備品ランキング集計バッチ設定（F09.12）
+equipment:
+  ranking:
+    cron: "0 0 3 * * *"
+    min-team-count: 5
+    score-weight-team: 3.0
+    score-weight-consume: 1.0
+    top-n-per-category: 20
