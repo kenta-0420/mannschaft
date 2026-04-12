@@ -98,7 +98,7 @@ onMounted(load)
       <div
         v-for="schedule in schedules"
         :key="schedule.id"
-        class="overflow-hidden rounded-lg border border-surface-200 dark:border-surface-600"
+        class="overflow-hidden rounded-lg border border-surface-300 dark:border-surface-600"
       >
         <!-- サマリー行 -->
         <button
@@ -161,7 +161,7 @@ onMounted(load)
         <!-- 展開: メンバー別出欠一覧 -->
         <div
           v-if="expandedId === schedule.id"
-          class="border-t border-surface-100 bg-surface-50 px-3 py-3 dark:border-surface-600 dark:bg-surface-700/20"
+          class="border-t border-surface-200 bg-surface-50 px-3 py-3 dark:border-surface-600 dark:bg-surface-700/20"
           @click.stop
         >
           <!-- ローディング -->

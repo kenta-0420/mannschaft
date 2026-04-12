@@ -95,25 +95,25 @@ onMounted(async () => {
 
     <!-- メタ情報 -->
     <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-      <div class="rounded-lg border border-surface-300 p-3 dark:border-surface-600">
+      <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">ステータス</p>
         <div class="mt-1">
           <TodoStatusBadge :status="todo.status" />
         </div>
       </div>
-      <div class="rounded-lg border border-surface-300 p-3 dark:border-surface-600">
+      <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">優先度</p>
         <div class="mt-1">
           <TodoPriorityBadge :priority="todo.priority" />
         </div>
       </div>
-      <div class="rounded-lg border border-surface-300 p-3 dark:border-surface-600">
+      <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">期限</p>
         <p class="mt-1 text-sm font-medium" :class="{ 'text-red-500': todo.daysRemaining !== null && todo.daysRemaining < 0 && todo.status !== 'COMPLETED' }">
           {{ formatDate(todo.dueDate) }}
         </p>
       </div>
-      <div class="rounded-lg border border-surface-300 p-3 dark:border-surface-600">
+      <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">作成者</p>
         <p class="mt-1 text-sm font-medium">{{ todo.createdBy.displayName }}</p>
       </div>

@@ -136,7 +136,7 @@ function onDragEnd() {
       <div
         v-if="visibleWidgets.length === 0"
         key="empty-state"
-        class="col-span-full rounded-xl border border-dashed border-surface-300 py-12 text-center dark:border-surface-600"
+        class="col-span-full rounded-xl border border-dashed border-surface-400 py-12 text-center dark:border-surface-600"
       >
         <i class="pi pi-th-large mb-3 text-4xl text-surface-300" />
         <p class="text-surface-400">表示するウィジェットがありません</p>
@@ -159,7 +159,7 @@ function onDragEnd() {
           dragIndex === index ? 'opacity-40 shadow-none' : '',
           dropTargetIndex === index && dragIndex !== index
             ? 'border-primary border-t-[3px]'
-            : 'border-surface-200 dark:border-surface-600',
+            : 'border-surface-300 dark:border-surface-600',
           isDataWidget(w.key) ? 'md:col-span-2' : '',
         ]"
         @dragstart="onDragStart(index, $event)"
