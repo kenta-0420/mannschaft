@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment.dto;
 import com.mannschaft.app.recruitment.RecruitmentParticipationType;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
+import com.mannschaft.app.recruitment.entity.RecruitmentTemplateEntity;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -40,4 +41,35 @@ public class RecruitmentTemplateResponse {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
     private final LocalDateTime deletedAt;
+
+    /** Entity からレスポンス DTO を生成するファクトリメソッド。 */
+    public static RecruitmentTemplateResponse from(RecruitmentTemplateEntity entity) {
+        return new RecruitmentTemplateResponse(
+                entity.getId(),
+                entity.getScopeType(),
+                entity.getScopeId(),
+                entity.getCategoryId(),
+                entity.getSubcategoryId(),
+                entity.getTemplateName(),
+                entity.getTitle(),
+                entity.getDescription(),
+                entity.getParticipationType(),
+                entity.getDefaultCapacity(),
+                entity.getDefaultMinCapacity(),
+                entity.getDefaultDurationMinutes(),
+                entity.getDefaultApplicationDeadlineHours(),
+                entity.getDefaultAutoCancelHours(),
+                entity.getDefaultPaymentEnabled(),
+                entity.getDefaultPrice(),
+                entity.getDefaultVisibility(),
+                entity.getDefaultLocation(),
+                entity.getDefaultReservationLineId(),
+                entity.getDefaultImageUrl(),
+                entity.getDefaultCancellationPolicyId(),
+                entity.getCreatedBy(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt(),
+                entity.getDeletedAt()
+        );
+    }
 }

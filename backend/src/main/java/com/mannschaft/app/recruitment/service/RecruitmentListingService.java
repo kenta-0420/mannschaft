@@ -193,7 +193,8 @@ public class RecruitmentListingService {
     @Transactional
     public RecruitmentListingResponse createFromTemplate(
             RecruitmentScopeType scopeType, Long scopeId, Long userId,
-            Long templateId, CreateFromTemplateRequest request) {
+            CreateFromTemplateRequest request) {
+        Long templateId = request.getTemplateId();
         accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
 
         RecruitmentTemplateEntity template = templateRepository.findActiveById(templateId)
@@ -201,7 +202,7 @@ public class RecruitmentListingService {
 
         // テンプレートのスコープと一致することを確認
         if (template.getScopeType() != scopeType || !template.getScopeId().equals(scopeId)) {
-            throw new BusinessException(RecruitmentErrorCode.TEMPLATE_NOT_FOUND);
+            throw new BusinessException(RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH);
         }
 
         // キャンセルポリシーが設定されていれば DEEP COPY
@@ -210,9 +211,11 @@ public class RecruitmentListingService {
         Long policyId = copiedPolicy != null ? copiedPolicy.getId() : null;
 
         // テンプレートのデフォルト値とリクエストの値をマージ
-        // request のフィールドが null の場合はテンプレートの default_* を使う
         LocalDateTime startAt = request.getStartAt();
-        LocalDateTime endAt = request.getEndAt();
+        // endAt: 指定がなければ startAt + durationMinutes
+        LocalDateTime endAt = request.getEndAt() != null
+                ? request.getEndAt()
+                : startAt.plusMinutes(template.getDefaultDurationMinutes());
         LocalDateTime deadline = request.getApplicationDeadline() != null
                 ? request.getApplicationDeadline()
                 : startAt.minusHours(template.getDefaultApplicationDeadlineHours());
@@ -223,8 +226,8 @@ public class RecruitmentListingService {
         CreateRecruitmentListingRequest createReq = new CreateRecruitmentListingRequest(
                 template.getCategoryId(),
                 template.getSubcategoryId(),
-                request.getTitle() != null ? request.getTitle() : template.getTitle(),
-                request.getDescription() != null ? request.getDescription() : template.getDescription(),
+                template.getTitle(),
+                template.getDescription(),
                 template.getParticipationType(),
                 startAt,
                 endAt,
@@ -235,9 +238,9 @@ public class RecruitmentListingService {
                 template.getDefaultPaymentEnabled(),
                 template.getDefaultPrice(),
                 template.getDefaultVisibility(),
-                request.getLocation() != null ? request.getLocation() : template.getDefaultLocation(),
+                template.getDefaultLocation(),
                 template.getDefaultReservationLineId(),
-                request.getImageUrl() != null ? request.getImageUrl() : template.getDefaultImageUrl(),
+                template.getDefaultImageUrl(),
                 policyId
         );
 

@@ -103,11 +103,61 @@ public class RecruitmentTemplateEntity extends BaseEntity {
     private LocalDateTime deletedAt;
 
     // ===========================================
-    // 論理削除
+    // ステータス操作
     // ===========================================
 
-    /** 論理削除を行う。 */
-    public void softDelete() {
+    /** テンプレートを論理削除（アーカイブ）する。 */
+    public void archive() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /** 論理削除を行う（後方互換用エイリアス）。 */
+    public void softDelete() {
+        archive();
+    }
+
+    // ===========================================
+    // 編集
+    // ===========================================
+
+    /** テンプレートの情報を更新する。null の場合は変更しない。 */
+    public void update(
+            String templateName,
+            String title,
+            String description,
+            Long categoryId,
+            Long subcategoryId,
+            RecruitmentParticipationType participationType,
+            Integer defaultCapacity,
+            Integer defaultMinCapacity,
+            Integer defaultDurationMinutes,
+            Integer defaultApplicationDeadlineHours,
+            Integer defaultAutoCancelHours,
+            Boolean defaultPaymentEnabled,
+            Integer defaultPrice,
+            RecruitmentVisibility defaultVisibility,
+            String defaultLocation,
+            Long defaultReservationLineId,
+            String defaultImageUrl,
+            Long defaultCancellationPolicyId
+    ) {
+        if (templateName != null) this.templateName = templateName;
+        if (title != null) this.title = title;
+        if (description != null) this.description = description;
+        if (categoryId != null) this.categoryId = categoryId;
+        if (subcategoryId != null) this.subcategoryId = subcategoryId;
+        if (participationType != null) this.participationType = participationType;
+        if (defaultCapacity != null) this.defaultCapacity = defaultCapacity;
+        if (defaultMinCapacity != null) this.defaultMinCapacity = defaultMinCapacity;
+        if (defaultDurationMinutes != null) this.defaultDurationMinutes = defaultDurationMinutes;
+        if (defaultApplicationDeadlineHours != null) this.defaultApplicationDeadlineHours = defaultApplicationDeadlineHours;
+        if (defaultAutoCancelHours != null) this.defaultAutoCancelHours = defaultAutoCancelHours;
+        if (defaultPaymentEnabled != null) this.defaultPaymentEnabled = defaultPaymentEnabled;
+        if (defaultPrice != null) this.defaultPrice = defaultPrice;
+        if (defaultVisibility != null) this.defaultVisibility = defaultVisibility;
+        if (defaultLocation != null) this.defaultLocation = defaultLocation;
+        if (defaultReservationLineId != null) this.defaultReservationLineId = defaultReservationLineId;
+        if (defaultImageUrl != null) this.defaultImageUrl = defaultImageUrl;
+        if (defaultCancellationPolicyId != null) this.defaultCancellationPolicyId = defaultCancellationPolicyId;
     }
 }

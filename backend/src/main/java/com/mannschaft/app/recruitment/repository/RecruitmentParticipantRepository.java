@@ -67,6 +67,15 @@ public interface RecruitmentParticipantRepository extends JpaRepository<Recruitm
     long countRecentApplicationsByUser(@Param("userId") Long userId, @Param("since") LocalDateTime since);
 
     /**
+     * §5.4 自動キャンセルバッチ: 指定募集の指定ステータスの参加者をページング取得。
+     * 100件/チャンクで処理するために Pageable を使う。
+     */
+    Page<RecruitmentParticipantEntity> findByListingIdAndStatusIn(
+            Long listingId,
+            List<RecruitmentParticipantStatus> statuses,
+            Pageable pageable);
+
+    /**
      * §5.3 キャンセル待ちの先頭1件をロック取得（昇格用）。
      * PESSIMISTIC_WRITE を使い、同一トランザクション内で重複昇格を防ぐ。
      */

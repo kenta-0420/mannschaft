@@ -132,6 +132,12 @@ public class RecruitmentParticipantEntity {
         this.cancelledBy = actorUserId;
     }
 
+    /** バッチによるシステム自動キャンセル（自動キャンセル）。 */
+    public void cancelBySystem() {
+        this.status = RecruitmentParticipantStatus.CANCELLED;
+        this.cancelledBy = null; // システム操作のため null
+    }
+
     /** 出席チェック (Phase 1 で実装する管理者操作)。 */
     public void markAttended() {
         if (this.status != RecruitmentParticipantStatus.CONFIRMED) {

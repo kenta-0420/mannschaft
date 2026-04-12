@@ -136,7 +136,10 @@ public enum RecruitmentErrorCode implements ErrorCode {
     // ========================================
 
     /** テンプレートが見つからない */
-    TEMPLATE_NOT_FOUND("RECRUITMENT_313", "テンプレートが見つかりません", Severity.WARN);
+    TEMPLATE_NOT_FOUND("RECRUITMENT_313", "テンプレートが見つかりません", Severity.WARN),
+
+    /** テンプレートのスコープが一致しない */
+    TEMPLATE_SCOPE_MISMATCH("RECRUITMENT_314", "テンプレートのスコープが一致しません", Severity.WARN);
 
     private final String code;
     private final String message;
