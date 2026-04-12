@@ -182,7 +182,8 @@ public class ConfirmableNotificationRecipientEntity {
      *   <li>除外されていない</li>
      *   <li>1回目リマインドが未送信</li>
      *   <li>{@code resolvedFirstReminderMinutes} が設定されている</li>
-     *   <li>deadline がある場合は期限前である（リマインドタイミング計算は Service 層で行う）</li>
+     *   <li>通知送信時刻 + resolvedFirstReminderMinutes &lt;= now（経過時間チェック）</li>
+     *   <li>deadline がある場合は期限前</li>
      * </ul>
      * </p>
      *
@@ -194,6 +195,12 @@ public class ConfirmableNotificationRecipientEntity {
         if (isExcluded()) return false;
         if (this.firstReminderSentAt != null) return false;
         if (this.resolvedFirstReminderMinutes == null) return false;
+
+        // 通知送信時刻（confirmable_notification.created_at）+ 設定分数を経過していなければスキップ
+        // これにより、送信直後のバッチ実行でリマインドが誤送信されることを防ぐ
+        LocalDateTime triggerTime = this.confirmableNotification.getCreatedAt()
+                .plusMinutes(this.resolvedFirstReminderMinutes);
+        if (now.isBefore(triggerTime)) return false;
 
         // deadline がある場合は期限前のみリマインド対象
         LocalDateTime deadline = this.confirmableNotification.getDeadlineAt();
@@ -212,6 +219,7 @@ public class ConfirmableNotificationRecipientEntity {
      *   <li>2回目リマインドが未送信</li>
      *   <li>1回目リマインドが送信済み</li>
      *   <li>{@code resolvedSecondReminderMinutes} が設定されている</li>
+     *   <li>1回目送信時刻 + resolvedSecondReminderMinutes &lt;= now（経過時間チェック）</li>
      *   <li>deadline がある場合は期限前</li>
      * </ul>
      * </p>
@@ -225,6 +233,11 @@ public class ConfirmableNotificationRecipientEntity {
         if (this.secondReminderSentAt != null) return false;
         if (this.firstReminderSentAt == null) return false;
         if (this.resolvedSecondReminderMinutes == null) return false;
+
+        // 1回目リマインド送信時刻 + 設定分数を経過していなければスキップ
+        LocalDateTime triggerTime = this.firstReminderSentAt
+                .plusMinutes(this.resolvedSecondReminderMinutes);
+        if (now.isBefore(triggerTime)) return false;
 
         // deadline がある場合は期限前のみリマインド対象
         LocalDateTime deadline = this.confirmableNotification.getDeadlineAt();
