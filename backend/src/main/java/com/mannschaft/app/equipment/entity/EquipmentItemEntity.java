@@ -74,6 +74,18 @@ public class EquipmentItemEntity extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String qrCode;
 
+    @Column(name = "amazon_url", length = 1000)
+    private String amazonUrl;
+
+    @Column(name = "amazon_asin", length = 10)
+    private String amazonAsin;
+
+    @Column(name = "rakuten_item_code", length = 200)
+    private String rakutenItemCode;
+
+    @Column(name = "reorder_threshold")
+    private Integer reorderThreshold;
+
     private LocalDateTime deletedAt;
 
     /**
