@@ -179,7 +179,63 @@ export default {
       "RECRUITMENT_303": "Stornierungsbedingungen haben mehr als 4 Stufen",
       "RECRUITMENT_304": "Bestätigung der Stornierungsgebühr erforderlich",
       "RECRUITMENT_307": "Zeitbereiche der Stornierungsstufen überlappen sich",
-      "RECRUITMENT_308": "Angezeigte Gebühr weicht ab. Bitte neu berechnen"
+      "RECRUITMENT_308": "Angezeigte Gebühr weicht ab. Bitte neu berechnen",
+      "RECRUITMENT_305": "Einspruchsfrist abgelaufen",
+      "RECRUITMENT_309": "NO_SHOW-Eintrag nicht gefunden",
+      "RECRUITMENT_310": "Strafe nicht gefunden",
+      "RECRUITMENT_311": "Einspruch bereits eingereicht",
+      "RECRUITMENT_312": "Strafeinstellungen nicht gefunden"
+    },
+    "noShow": {
+      "pageTitle": "NO_SHOW-Verlauf",
+      "adminPageTitle": "NO_SHOW-Verwaltung",
+      "status": {
+        "pending": "Ausstehend",
+        "confirmed": "Bestätigt",
+        "disputed": "Einspruch läuft",
+        "revoked": "Widerrufen",
+        "upheld": "Aufrechterhalten"
+      },
+      "reason": {
+        "adminMarked": "Von Admin markiert",
+        "autoDetected": "Automatisch erkannt"
+      },
+      "disputeButton": "Einspruch einlegen",
+      "disputeDialog": {
+        "title": "Einspruch einlegen",
+        "reasonLabel": "Begründung",
+        "reasonPlaceholder": "Konkrete Begründung eingeben",
+        "submit": "Einreichen"
+      },
+      "resolveDialog": {
+        "title": "Einspruch lösen",
+        "revoke": "Widerrufen (REVOKED)",
+        "uphold": "Aufrechterhalten (UPHELD)",
+        "adminNote": "Admin-Notiz",
+        "submit": "Lösen"
+      }
+    },
+    "penalty": {
+      "pageTitle": "Strafeinstellungen",
+      "penaltiesPageTitle": "Strafliste",
+      "enabled": "Aktiviert",
+      "disabled": "Deaktiviert",
+      "thresholdCount": "Schwellenwert",
+      "thresholdPeriodDays": "Zeitraum (Tage)",
+      "penaltyDurationDays": "Strafdauer (Tage)",
+      "autoDetection": "Automatische Erkennung",
+      "disputeAllowedDays": "Einspruchsfrist (Tage)",
+      "liftButton": "Strafe aufheben",
+      "saveButton": "Einstellungen speichern",
+      "liftDialog": {
+        "title": "Strafe aufheben",
+        "adminManual": "Manuell durch Admin"
+      },
+      "status": {
+        "active": "Aktiv",
+        "expired": "Abgelaufen",
+        "lifted": "Aufgehoben"
+      }
     }
   }
 }

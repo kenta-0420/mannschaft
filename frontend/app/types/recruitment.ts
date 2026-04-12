@@ -258,3 +258,74 @@ export interface RecruitmentSearchParams {
   page?: number
   size?: number
 }
+
+// ===========================================
+// Phase 5b: NO_SHOW・ペナルティ
+// ===========================================
+
+export interface RecruitmentNoShowRecordResponse {
+  id: number
+  participantId: number
+  listingId: number
+  userId: number | null
+  reason: string | null
+  confirmed: boolean
+  recordedAt: string | null
+  recordedBy: number | null
+  disputed: boolean
+  disputeResolution: string | null
+  createdAt: string
+}
+
+export interface RecruitmentPenaltySettingResponse {
+  id: number
+  scopeType: RecruitmentScopeType
+  scopeId: number
+  isEnabled: boolean
+  thresholdCount: number
+  thresholdPeriodDays: number
+  penaltyDurationDays: number
+  applyScope: string
+  autoNoShowDetection: boolean
+  disputeAllowedDays: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RecruitmentUserPenaltyResponse {
+  id: number
+  userId: number
+  scopeType: RecruitmentScopeType
+  scopeId: number
+  penaltyType: string
+  startedAt: string
+  expiresAt: string | null
+  liftedAt: string | null
+  liftReason: string | null
+  isActive: boolean
+  createdAt: string
+}
+
+export interface DisputeNoShowRequest {
+  reason: string
+}
+
+export interface ResolveDisputeRequest {
+  resolution: 'REVOKED' | 'UPHELD'
+  adminNote?: string
+}
+
+export interface UpsertPenaltySettingRequest {
+  isEnabled?: boolean
+  thresholdCount?: number
+  thresholdPeriodDays?: number
+  penaltyDurationDays?: number
+  applyScope?: string
+  autoNoShowDetection?: boolean
+  disputeAllowedDays?: number
+}
+
+export interface LiftPenaltyRequest {
+  liftReason: 'AUTO_EXPIRED' | 'ADMIN_MANUAL' | 'DISPUTE_REVOKED'
+  liftNote?: string
+}

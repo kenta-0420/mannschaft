@@ -179,7 +179,63 @@ export default {
       "RECRUITMENT_303": "キャンセルポリシーの段階が4を超えています",
       "RECRUITMENT_304": "キャンセル料の確認が必要です",
       "RECRUITMENT_307": "キャンセルポリシー段階の時間範囲が重複しています",
-      "RECRUITMENT_308": "表示されたキャンセル料と実際の料金が異なります。再試算してください"
+      "RECRUITMENT_308": "表示されたキャンセル料と実際の料金が異なります。再試算してください",
+      "RECRUITMENT_305": "異議申立の期限を過ぎています",
+      "RECRUITMENT_309": "NO_SHOW記録が見つかりません",
+      "RECRUITMENT_310": "ペナルティが見つかりません",
+      "RECRUITMENT_311": "既に異議申立済みです",
+      "RECRUITMENT_312": "ペナルティ設定が見つかりません"
+    },
+    "noShow": {
+      "pageTitle": "NO_SHOW履歴",
+      "adminPageTitle": "NO_SHOW管理",
+      "status": {
+        "pending": "確認待ち",
+        "confirmed": "確定",
+        "disputed": "異議申立中",
+        "revoked": "取消",
+        "upheld": "確定維持"
+      },
+      "reason": {
+        "adminMarked": "管理者記録",
+        "autoDetected": "自動検出"
+      },
+      "disputeButton": "異議を申し立てる",
+      "disputeDialog": {
+        "title": "異議申立",
+        "reasonLabel": "申立理由",
+        "reasonPlaceholder": "具体的な理由を入力してください",
+        "submit": "申立"
+      },
+      "resolveDialog": {
+        "title": "異議解決",
+        "revoke": "取消（REVOKED）",
+        "uphold": "確定維持（UPHELD）",
+        "adminNote": "管理者メモ",
+        "submit": "解決"
+      }
+    },
+    "penalty": {
+      "pageTitle": "ペナルティ設定",
+      "penaltiesPageTitle": "ペナルティ一覧",
+      "enabled": "有効",
+      "disabled": "無効",
+      "thresholdCount": "閾値件数（N回）",
+      "thresholdPeriodDays": "集計期間（日）",
+      "penaltyDurationDays": "ペナルティ期間（日）",
+      "autoDetection": "自動検出",
+      "disputeAllowedDays": "異議申立期限（日）",
+      "liftButton": "ペナルティ解除",
+      "saveButton": "設定を保存",
+      "liftDialog": {
+        "title": "ペナルティ解除",
+        "adminManual": "管理者手動解除"
+      },
+      "status": {
+        "active": "有効中",
+        "expired": "期限切れ",
+        "lifted": "解除済み"
+      }
     }
   }
 }

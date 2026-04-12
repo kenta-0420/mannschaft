@@ -179,7 +179,63 @@ export default {
       "RECRUITMENT_303": "取消政策阶段超过4个",
       "RECRUITMENT_304": "需要确认取消费用",
       "RECRUITMENT_307": "取消政策阶段时间范围重叠",
-      "RECRUITMENT_308": "显示的取消费用与实际不符。请重新计算"
+      "RECRUITMENT_308": "显示的取消费用与实际不符。请重新计算",
+      "RECRUITMENT_305": "异议申请期限已过",
+      "RECRUITMENT_309": "未找到NO_SHOW记录",
+      "RECRUITMENT_310": "未找到处罚",
+      "RECRUITMENT_311": "已提交异议",
+      "RECRUITMENT_312": "未找到处罚设置"
+    },
+    "noShow": {
+      "pageTitle": "NO_SHOW履歴",
+      "adminPageTitle": "NO_SHOW管理",
+      "status": {
+        "pending": "确认待ち",
+        "confirmed": "确定",
+        "disputed": "异议中",
+        "revoked": "撤销",
+        "upheld": "维持"
+      },
+      "reason": {
+        "adminMarked": "管理员记录",
+        "autoDetected": "自动检测"
+      },
+      "disputeButton": "提出异议",
+      "disputeDialog": {
+        "title": "提出异议",
+        "reasonLabel": "理由",
+        "reasonPlaceholder": "请输入具体理由",
+        "submit": "提交"
+      },
+      "resolveDialog": {
+        "title": "解决异议",
+        "revoke": "撤销（REVOKED）",
+        "uphold": "维持（UPHELD）",
+        "adminNote": "管理员备注",
+        "submit": "解决"
+      }
+    },
+    "penalty": {
+      "pageTitle": "处罚设置",
+      "penaltiesPageTitle": "处罚列表",
+      "enabled": "有效",
+      "disabled": "无效",
+      "thresholdCount": "阈值次数",
+      "thresholdPeriodDays": "统计周期（天）",
+      "penaltyDurationDays": "处罚期间（天）",
+      "autoDetection": "自动检测",
+      "disputeAllowedDays": "异议期限（天）",
+      "liftButton": "解除处罚",
+      "saveButton": "保存设置",
+      "liftDialog": {
+        "title": "解除处罚",
+        "adminManual": "管理员手动解除"
+      },
+      "status": {
+        "active": "有效中",
+        "expired": "已过期",
+        "lifted": "已解除"
+      }
     }
   }
 }

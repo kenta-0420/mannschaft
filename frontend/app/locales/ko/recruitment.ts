@@ -179,7 +179,63 @@ export default {
       "RECRUITMENT_303": "취소 정책 단계가 4개를 초과합니다",
       "RECRUITMENT_304": "취소 수수료 확인이 필요합니다",
       "RECRUITMENT_307": "취소 정책 단계의 시간 범위가 중복됩니다",
-      "RECRUITMENT_308": "표시된 취소 수수료가 실제와 다릅니다. 다시 계산하세요"
+      "RECRUITMENT_308": "표시된 취소 수수료가 실제와 다릅니다. 다시 계산하세요",
+      "RECRUITMENT_305": "이의 신청 기한이 지났습니다",
+      "RECRUITMENT_309": "NO_SHOW 기록을 찾을 수 없습니다",
+      "RECRUITMENT_310": "패널티를 찾을 수 없습니다",
+      "RECRUITMENT_311": "이미 이의 신청되었습니다",
+      "RECRUITMENT_312": "패널티 설정을 찾을 수 없습니다"
+    },
+    "noShow": {
+      "pageTitle": "NO_SHOW 이력",
+      "adminPageTitle": "NO_SHOW 관리",
+      "status": {
+        "pending": "확인 대기",
+        "confirmed": "확정",
+        "disputed": "이의 신청 중",
+        "revoked": "취소",
+        "upheld": "유지"
+      },
+      "reason": {
+        "adminMarked": "관리자 기록",
+        "autoDetected": "자동 감지"
+      },
+      "disputeButton": "이의 신청",
+      "disputeDialog": {
+        "title": "이의 신청",
+        "reasonLabel": "사유",
+        "reasonPlaceholder": "구체적인 사유를 입력하세요",
+        "submit": "신청"
+      },
+      "resolveDialog": {
+        "title": "이의 해결",
+        "revoke": "취소（REVOKED）",
+        "uphold": "유지（UPHELD）",
+        "adminNote": "관리자 메모",
+        "submit": "해결"
+      }
+    },
+    "penalty": {
+      "pageTitle": "패널티 설정",
+      "penaltiesPageTitle": "패널티 목록",
+      "enabled": "활성",
+      "disabled": "비활성",
+      "thresholdCount": "임계값 횟수",
+      "thresholdPeriodDays": "집계 기간（일）",
+      "penaltyDurationDays": "패널티 기간（일）",
+      "autoDetection": "자동 감지",
+      "disputeAllowedDays": "이의 신청 기한（일）",
+      "liftButton": "패널티 해제",
+      "saveButton": "설정 저장",
+      "liftDialog": {
+        "title": "패널티 해제",
+        "adminManual": "관리자 수동 해제"
+      },
+      "status": {
+        "active": "활성 중",
+        "expired": "만료",
+        "lifted": "해제됨"
+      }
     }
   }
 }
