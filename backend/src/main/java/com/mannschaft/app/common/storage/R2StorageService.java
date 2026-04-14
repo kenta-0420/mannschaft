@@ -6,6 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
+import software.amazon.awssdk.services.s3.model.CompletedPart;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
@@ -13,9 +18,11 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.UploadPartPresignRequest;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -24,6 +31,7 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Cloudflare R2 を使用したストレージサービス実装。
@@ -263,4 +271,119 @@ public class R2StorageService implements StorageService {
             return new int[0];
         }
     }
+
+    // ==================== Multipart Upload API ====================
+
+    /**
+     * Multipart Upload を開始し、R2 uploadId を返す。
+     * 大容量ファイル（100MB 超）のアップロード開始時に呼び出す。
+     *
+     * @param key         R2 オブジェクトキー
+     * @param contentType ファイルの MIME タイプ
+     * @return R2 Multipart Upload ID
+     */
+    public String createMultipartUpload(String key, String contentType) {
+        try {
+            CreateMultipartUploadRequest request = CreateMultipartUploadRequest.builder()
+                    .bucket(storageProperties.getBucket())
+                    .key(key)
+                    .contentType(contentType)
+                    .build();
+            String uploadId = s3Client.createMultipartUpload(request).uploadId();
+            log.info("R2 Multipart Upload 開始: key={}, uploadId={}", key, uploadId);
+            return uploadId;
+        } catch (Exception e) {
+            log.error("R2 Multipart Upload 開始失敗: key={}", key, e);
+            throw new BusinessException(StorageErrorCode.UPLOAD_FAILED, e);
+        }
+    }
+
+    /**
+     * 複数のパート番号に対する Presigned PUT URL を一括発行する。
+     * クライアントはこの URL に対して直接 PUT リクエストを送信してパートをアップロードする。
+     *
+     * @param key         R2 オブジェクトキー
+     * @param uploadId    R2 Multipart Upload ID
+     * @param partNumbers アップロードするパート番号のリスト（1〜10000）
+     * @param ttl         Presigned URL の有効期限
+     * @return パート番号と Presigned URL のペアのリスト
+     */
+    public List<PresignedPartUrl> createPresignedPartUrls(
+            String key, String uploadId, List<Integer> partNumbers, Duration ttl) {
+        try {
+            return partNumbers.stream()
+                    .map(partNumber -> {
+                        UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
+                                .bucket(storageProperties.getBucket())
+                                .key(key)
+                                .uploadId(uploadId)
+                                .partNumber(partNumber)
+                                .build();
+                        UploadPartPresignRequest presignRequest = UploadPartPresignRequest.builder()
+                                .signatureDuration(ttl)
+                                .uploadPartRequest(uploadPartRequest)
+                                .build();
+                        String url = s3Presigner.presignUploadPart(presignRequest).url().toString();
+                        return new PresignedPartUrl(partNumber, url);
+                    })
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("R2 Multipart Presigned URL 発行失敗: key={}, uploadId={}", key, uploadId, e);
+            throw new BusinessException(StorageErrorCode.PRESIGNED_URL_FAILED, e);
+        }
+    }
+
+    /**
+     * 全パートのアップロード完了後、R2 にオブジェクトを組み立てる。
+     * クライアントが全パートをアップロードし終えたら呼び出す。
+     *
+     * @param key      R2 オブジェクトキー
+     * @param uploadId R2 Multipart Upload ID
+     * @param parts    完了済みパート情報（パート番号と ETag のリスト）
+     */
+    public void completeMultipartUpload(String key, String uploadId, List<CompletedPart> parts) {
+        try {
+            CompleteMultipartUploadRequest request = CompleteMultipartUploadRequest.builder()
+                    .bucket(storageProperties.getBucket())
+                    .key(key)
+                    .uploadId(uploadId)
+                    .multipartUpload(CompletedMultipartUpload.builder().parts(parts).build())
+                    .build();
+            s3Client.completeMultipartUpload(request);
+            log.info("R2 Multipart Upload 完了: key={}, uploadId={}, parts={}", key, uploadId, parts.size());
+        } catch (Exception e) {
+            log.error("R2 Multipart Upload 完了失敗: key={}, uploadId={}", key, uploadId, e);
+            throw new BusinessException(StorageErrorCode.UPLOAD_FAILED, e);
+        }
+    }
+
+    /**
+     * Multipart Upload を中断し、アップロード済みパートを破棄する。
+     * タイムアウトやユーザーキャンセル時に呼び出す。
+     *
+     * @param key      R2 オブジェクトキー
+     * @param uploadId R2 Multipart Upload ID
+     */
+    public void abortMultipartUpload(String key, String uploadId) {
+        try {
+            AbortMultipartUploadRequest request = AbortMultipartUploadRequest.builder()
+                    .bucket(storageProperties.getBucket())
+                    .key(key)
+                    .uploadId(uploadId)
+                    .build();
+            s3Client.abortMultipartUpload(request);
+            log.info("R2 Multipart Upload 中断: key={}, uploadId={}", key, uploadId);
+        } catch (Exception e) {
+            log.error("R2 Multipart Upload 中断失敗: key={}, uploadId={}", key, uploadId, e);
+            throw new BusinessException(StorageErrorCode.DELETE_FAILED, e);
+        }
+    }
+
+    /**
+     * Presigned パート URL を表す値オブジェクト。
+     *
+     * @param partNumber パート番号（1〜10000）
+     * @param uploadUrl  Presigned PUT URL
+     */
+    public record PresignedPartUrl(int partNumber, String uploadUrl) {}
 }
