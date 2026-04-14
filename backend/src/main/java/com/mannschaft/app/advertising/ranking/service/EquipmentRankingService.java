@@ -52,7 +52,7 @@ public class EquipmentRankingService {
      * @param linkedOnly true の場合 ASIN あり（Amazon リンクあり）のみ返却
      * @return ランキングデータ
      */
-    @Cacheable(value = "equipment:trending", key = "#teamId + ':' + #category + ':' + #linkedOnly")
+    @Cacheable(value = "equipment:trending", key = "#teamId + ':' + (#category != null ? #category : '__ALL__') + ':' + #linkedOnly")
     public EquipmentTrendingResult getTrending(Long teamId, String category, int limit, boolean linkedOnly) {
         // フィーチャーフラグチェック
         if (!featureFlagService.isEnabled("FEATURE_V9_ENABLED")

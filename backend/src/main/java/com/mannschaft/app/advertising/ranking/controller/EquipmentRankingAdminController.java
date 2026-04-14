@@ -9,6 +9,7 @@ import com.mannschaft.app.advertising.ranking.service.EquipmentRankingBatchServi
 import com.mannschaft.app.advertising.ranking.service.EquipmentRankingService;
 import com.mannschaft.app.advertising.ranking.service.EquipmentRankingService.RankingStatsResult;
 import com.mannschaft.app.advertising.ranking.EquipmentRankingErrorCode;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
@@ -50,6 +51,7 @@ public class EquipmentRankingAdminController {
     private final EquipmentRankingBatchService batchService;
     private final TeamRepository teamRepository;
     private final StringRedisTemplate stringRedisTemplate;
+    private final AccessControlService accessControlService;
 
     /**
      * 備品ランキング集計統計を取得する。
@@ -58,6 +60,8 @@ public class EquipmentRankingAdminController {
     @Operation(summary = "備品ランキング統計取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<EquipmentRankingStatsResponse>> getStats() {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkSystemAdmin(currentUserId);
         RankingStatsResult result = rankingService.getStats();
         EquipmentRankingStatsResponse response = new EquipmentRankingStatsResponse(
                 result.lastCalculatedAt(),
@@ -79,6 +83,8 @@ public class EquipmentRankingAdminController {
     @Operation(summary = "備品ランキング再集計（手動起動）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "バックグラウンド処理開始")
     public ResponseEntity<ApiResponse<Map<String, Object>>> recalculate() {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkSystemAdmin(currentUserId);
         // 排他制御: 実行中チェック
         Boolean isLocked = stringRedisTemplate.hasKey(BATCH_LOCK_KEY);
         if (Boolean.TRUE.equals(isLocked)) {
@@ -101,6 +107,8 @@ public class EquipmentRankingAdminController {
     @Operation(summary = "備品ランキング除外設定一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<EquipmentRankingExclusionResponse>>> getExclusions() {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkSystemAdmin(currentUserId);
         List<EquipmentRankingExclusionEntity> exclusions = rankingService.getAllExclusions();
         List<EquipmentRankingExclusionResponse> responses = exclusions.stream()
                 .map(this::toExclusionResponse)
@@ -117,6 +125,7 @@ public class EquipmentRankingAdminController {
     public ResponseEntity<ApiResponse<EquipmentRankingExclusionResponse>> addExclusion(
             @Valid @RequestBody CreateItemExclusionRequest request) {
         Long adminUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkSystemAdmin(adminUserId);
         EquipmentRankingExclusionEntity entity = rankingService.addItemExclusion(
                 request.getNormalizedName(), request.getReason(), adminUserId);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -132,6 +141,8 @@ public class EquipmentRankingAdminController {
     @Operation(summary = "備品除外設定削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> removeExclusion(@PathVariable Long id) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkSystemAdmin(currentUserId);
         rankingService.removeItemExclusion(id);
         return ResponseEntity.noContent().build();
     }
