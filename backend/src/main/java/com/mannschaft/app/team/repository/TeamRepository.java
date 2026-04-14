@@ -63,4 +63,13 @@ public interface TeamRepository extends JpaRepository<TeamEntity, Long> {
      */
     @Query(value = "SELECT COUNT(*) FROM teams WHERE id = :id", nativeQuery = true)
     long countByIdIncludingDeleted(@Param("id") Long id);
+
+    /**
+     * 指定テンプレートのアクティブなチーム数を返す（備品ランキング統計用）。
+     *
+     * @param template チームテンプレート
+     * @return チーム数
+     */
+    @Query("SELECT COUNT(t) FROM TeamEntity t WHERE t.deletedAt IS NULL AND t.archivedAt IS NULL AND t.template = :template")
+    long countByTemplate(@Param("template") String template);
 }

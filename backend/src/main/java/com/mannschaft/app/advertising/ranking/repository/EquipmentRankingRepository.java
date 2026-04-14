@@ -56,4 +56,21 @@ public interface EquipmentRankingRepository extends JpaRepository<EquipmentRanki
      */
     @Query("SELECT COUNT(r) FROM EquipmentRankingEntity r WHERE r.teamCount >= :minCount")
     long countByTeamCountGreaterThanEqual(@Param("minCount") int minCount);
+
+    /**
+     * 指定チーム数未満の team_count を持つランキングアイテム数を返す（統計情報用）。
+     *
+     * @param threshold しきい値チーム数
+     * @return 件数
+     */
+    @Query("SELECT COUNT(r) FROM EquipmentRankingEntity r WHERE r.teamCount < :threshold")
+    long countByTeamCountLessThan(@Param("threshold") int threshold);
+
+    /**
+     * ASIN が設定されているランキングアイテム数を返す（統計情報用）。
+     *
+     * @return 件数
+     */
+    @Query("SELECT COUNT(r) FROM EquipmentRankingEntity r WHERE r.amazonAsin IS NOT NULL")
+    long countByAmazonAsinIsNotNull();
 }
