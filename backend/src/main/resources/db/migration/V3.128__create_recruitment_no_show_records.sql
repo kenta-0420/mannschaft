@@ -3,13 +3,13 @@
 -- confirmed=FALSE の間は24時間の仮マーク期間。
 CREATE TABLE recruitment_no_show_records (
     id                 BIGINT         NOT NULL AUTO_INCREMENT,
-    participant_id     BIGINT         NOT NULL COMMENT '対象の参加者レコードID',
-    listing_id         BIGINT         NOT NULL COMMENT '対象の募集枠ID',
-    user_id            BIGINT         NOT NULL COMMENT '対象ユーザーID',
+    participant_id     BIGINT UNSIGNED NOT NULL COMMENT '対象の参加者レコードID',
+    listing_id         BIGINT UNSIGNED NOT NULL COMMENT '対象の募集枠ID',
+    user_id            BIGINT UNSIGNED NOT NULL COMMENT '対象ユーザーID',
     reason             ENUM('ADMIN_MARKED', 'AUTO_DETECTED') NOT NULL COMMENT 'NO_SHOW検出理由',
     confirmed          BOOLEAN        NOT NULL DEFAULT FALSE COMMENT '24h仮マーク期間経過後にTRUE',
     recorded_at        DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT 'マーク日時',
-    recorded_by        BIGINT         NULL     COMMENT 'マーク実施者ユーザーID（自動検出時NULL）',
+    recorded_by        BIGINT UNSIGNED NULL     COMMENT 'マーク実施者ユーザーID（自動検出時NULL）',
     disputed           BOOLEAN        NOT NULL DEFAULT FALSE COMMENT '異議申立済みフラグ',
     dispute_resolution ENUM('UPHELD', 'REVOKED') NULL COMMENT '異議申立結果',
     created_at         DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
