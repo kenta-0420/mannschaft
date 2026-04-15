@@ -68,7 +68,8 @@ const { visibilityLabel } = useScopeLabels()
       </div>
     </div>
   </div>
-  <div v-if="isAdmin" class="mt-6">
-    <Button label="設定を編集" icon="pi pi-pencil" outlined />
-  </div>
+  <OrgExtendedProfileDisplay
+    :org-id="org.id"
+    :is-admin-or-deputy="isAdmin"
+  />
 </template>
