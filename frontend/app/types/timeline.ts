@@ -1,4 +1,4 @@
-export type TimelineScopeType = 'TEAM' | 'ORGANIZATION' | 'PUBLIC'
+export type TimelineScopeType = 'TEAM' | 'ORGANIZATION' | 'PUBLIC' | 'FRIEND_TEAM' | 'FRIEND_FORWARD'
 export type TimelinePostStatus = 'PUBLISHED' | 'DRAFT' | 'SCHEDULED'
 export type TimelineAttachmentType = 'IMAGE' | 'VIDEO_FILE' | 'VIDEO_LINK' | 'LINK_PREVIEW'
 export type VideoProcessingStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED'
