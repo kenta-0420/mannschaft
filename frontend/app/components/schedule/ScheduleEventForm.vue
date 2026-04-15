@@ -109,7 +109,14 @@ async function submit() {
         await scheduleApi.createSchedule(props.scopeType, props.scopeId, body)
       }
     }
-    notification.success(isEdit.value ? 'イベントを更新しました' : 'イベントを作成しました')
+    const successMsg = props.isPersonal
+      ? isEdit.value
+        ? '予定を更新しました'
+        : '予定を追加しました'
+      : isEdit.value
+        ? 'イベントを更新しました'
+        : 'イベントを作成しました'
+    notification.success(successMsg)
     emit('saved')
     close()
   } catch (error) {
@@ -145,7 +152,15 @@ function close() {
 <template>
   <Dialog
     :visible="visible"
-    :header="isEdit ? 'イベントを編集' : 'イベントを作成'"
+    :header="
+      isPersonal
+        ? isEdit
+          ? '予定を編集'
+          : '予定を追加'
+        : isEdit
+          ? 'イベントを編集'
+          : 'イベントを作成'
+    "
     :style="{ width: '500px' }"
     modal
     @update:visible="close"
