@@ -65,7 +65,7 @@ onMounted(() => loadSettings())
 
     <template v-else>
       <SectionCard class="mb-6">
-        <template #title>プロフィール設定</template>
+        <template #title>{{ $t('blog.post.profileSettings') }}</template>
 
         <div class="space-y-4">
           <!-- 表示名 -->
@@ -150,7 +150,7 @@ onMounted(() => loadSettings())
       <!-- 保存ボタン -->
       <div class="flex justify-end">
         <Button
-          label="設定を保存"
+          :label="$t('blog.post.saveSettings')"
           icon="pi pi-save"
           :loading="saving"
           @click="save"

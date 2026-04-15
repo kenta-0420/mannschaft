@@ -384,7 +384,19 @@
       "createFirst": "最初の記事を書く",
       "settings": "ブログ設定",
       "selfReview": "セルフレビュー",
-      "selfReviewDesc": "投稿前に見直し時間を設定します"
+      "selfReviewDesc": "投稿前に見直し時間を設定します",
+      "myBlog": "マイブログ",
+      "createNew": "新規記事",
+      "editPost": "編集",
+      "deletePost": "削除",
+      "togglePublish": "公開/非公開",
+      "profileSettings": "プロフィール設定",
+      "blogTitle": "ブログタイトル",
+      "blogDescription": "ブログ説明",
+      "selfReviewStart": "セルフレビュー開始時刻",
+      "selfReviewEnd": "セルフレビュー終了時刻",
+      "selfReviewHelp": "設定した時間帯は投稿前の見直し期間として扱われます",
+      "saveSettings": "設定を保存"
     }
   }
 }

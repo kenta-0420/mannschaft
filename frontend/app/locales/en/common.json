@@ -384,7 +384,19 @@
       "createFirst": "Write your first post",
       "settings": "Blog settings",
       "selfReview": "Self review",
-      "selfReviewDesc": "Set a review period before publishing"
+      "selfReviewDesc": "Set a review period before publishing",
+      "myBlog": "My Blog",
+      "createNew": "New Post",
+      "editPost": "Edit",
+      "deletePost": "Delete",
+      "togglePublish": "Publish/Unpublish",
+      "profileSettings": "Profile Settings",
+      "blogTitle": "Blog Title",
+      "blogDescription": "Blog Description",
+      "selfReviewStart": "Self-review start time",
+      "selfReviewEnd": "Self-review end time",
+      "selfReviewHelp": "The configured time period is treated as a review window before publishing",
+      "saveSettings": "Save Settings"
     }
   }
 }
