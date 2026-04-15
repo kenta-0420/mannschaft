@@ -39,7 +39,7 @@ const emit = defineEmits<{
         <div
           v-for="todo in group.todos"
           :key="todo.id"
-          class="flex items-center gap-3 rounded-xl border border-surface-300 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm dark:border-surface-600 dark:bg-surface-800"
+          class="flex items-center gap-3 rounded-xl border-2 border-surface-400 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm dark:border-surface-500 dark:bg-surface-800"
           :class="priorityBorder[todo.priority]"
         >
           <Checkbox
