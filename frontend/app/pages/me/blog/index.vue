@@ -107,7 +107,7 @@ onMounted(() => loadPosts())
   <div class="mx-auto max-w-4xl px-4 py-8">
     <!-- ヘッダー -->
     <div class="mb-6 flex items-center justify-between">
-      <PageHeader title="マイブログ" />
+      <PageHeader :title="$t('blog.post.myBlog')" />
       <div class="flex items-center gap-2">
         <NuxtLink to="/me/blog/settings">
           <Button
@@ -119,7 +119,7 @@ onMounted(() => loadPosts())
         </NuxtLink>
         <Button
           icon="pi pi-plus"
-          label="新規記事"
+          :label="$t('blog.post.createNew')"
           @click="showCreateDialog = true"
         />
       </div>
@@ -204,11 +204,11 @@ onMounted(() => loadPosts())
               text
               severity="secondary"
               size="small"
-              :title="post.status === 'PUBLISHED' ? '下書きに戻す' : '公開する'"
+              :title="$t('blog.post.togglePublish')"
               @click="handleTogglePublish(post)"
             />
             <NuxtLink :to="`/blog/posts/${post.id}/edit`">
-              <Button icon="pi pi-pencil" text severity="secondary" size="small" title="編集" />
+              <Button icon="pi pi-pencil" text severity="secondary" size="small" :title="$t('blog.post.editPost')" />
             </NuxtLink>
             <Button
               icon="pi pi-trash"
@@ -216,7 +216,7 @@ onMounted(() => loadPosts())
               severity="danger"
               size="small"
               :loading="deletingId === post.id"
-              title="削除"
+              :title="$t('blog.post.deletePost')"
               @click="handleDelete(post.id)"
             />
           </div>
