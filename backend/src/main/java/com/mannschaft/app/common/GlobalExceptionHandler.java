@@ -54,7 +54,15 @@ public class GlobalExceptionHandler {
             Map.entry("SYNC_003", HttpStatus.TOO_MANY_REQUESTS),
             Map.entry("SYNC_004", HttpStatus.NOT_FOUND),
             Map.entry("SYNC_005", HttpStatus.FORBIDDEN),
-            Map.entry("SYNC_006", HttpStatus.CONFLICT)
+            Map.entry("SYNC_006", HttpStatus.CONFLICT),
+            // F01.5 フレンドチーム
+            Map.entry("SOCIAL_102", HttpStatus.CONFLICT),          // FRIEND_ALREADY_FOLLOWING
+            Map.entry("SOCIAL_103", HttpStatus.NOT_FOUND),         // FRIEND_FOLLOW_NOT_FOUND
+            Map.entry("SOCIAL_104", HttpStatus.NOT_FOUND),         // FRIEND_TARGET_TEAM_NOT_FOUND
+            Map.entry("SOCIAL_105", HttpStatus.FORBIDDEN),         // FRIEND_INSUFFICIENT_PERMISSION
+            Map.entry("SOCIAL_106", HttpStatus.NOT_FOUND),         // FRIEND_RELATION_NOT_FOUND
+            Map.entry("SOCIAL_107", HttpStatus.FORBIDDEN),         // FRIEND_VISIBILITY_ADMIN_ONLY
+            Map.entry("SOCIAL_109", HttpStatus.FORBIDDEN)          // FRIEND_FEATURE_DISABLED
     );
 
     /**
