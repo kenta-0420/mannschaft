@@ -52,7 +52,7 @@ public class EquipmentRankingService {
      * @param linkedOnly true の場合 ASIN あり（Amazon リンクあり）のみ返却
      * @return ランキングデータ
      */
-    @Cacheable(value = "equipment:trending", key = "#teamId + ':' + #category + ':' + #linkedOnly")
+    @Cacheable(value = "equipment:trending", key = "#teamId + ':' + (#category != null ? #category : '__ALL__') + ':' + #linkedOnly")
     public EquipmentTrendingResult getTrending(Long teamId, String category, int limit, boolean linkedOnly) {
         // フィーチャーフラグチェック
         if (!featureFlagService.isEnabled("FEATURE_V9_ENABLED")
@@ -96,13 +96,18 @@ public class EquipmentRankingService {
                 .limit(limit)
                 .toList();
 
+        // 同テンプレートのチーム数（opt-out 数を引く）
+        long totalTemplateTeams = teamRepository.countByTemplate(template)
+                - exclusionRepository.countByExclusionType(ExclusionType.TEAM_OPT_OUT);
+
         return new EquipmentTrendingResult(
                 template,
                 category,
                 isOptOut,
                 filtered,
                 lastCalculated.orElse(null),
-                amazonTag);
+                amazonTag,
+                totalTemplateTeams);
     }
 
     /**
@@ -148,7 +153,19 @@ public class EquipmentRankingService {
         long totalItems = rankingRepository.countByTeamCountGreaterThanEqual(minTeamCount);
         Optional<LocalDateTime> lastCalculated = rankingRepository.findLastCalculatedAt();
         List<String> templates = rankingRepository.findDistinctTeamTemplates();
-        return new RankingStatsResult(totalItems, lastCalculated.orElse(null), templates);
+        int optOutTeamCount = exclusionRepository.countByExclusionType(ExclusionType.TEAM_OPT_OUT);
+        int excludedItemCount = exclusionRepository.countByExclusionType(ExclusionType.ITEM_EXCLUSION);
+        long itemsBelowThreshold = rankingRepository.countByTeamCountLessThan(minTeamCount);
+        long itemsWithAsin = rankingRepository.countByAmazonAsinIsNotNull();
+        return new RankingStatsResult(
+                totalItems,
+                lastCalculated.orElse(null),
+                templates,
+                optOutTeamCount,
+                excludedItemCount,
+                itemsBelowThreshold,
+                itemsWithAsin,
+                minTeamCount);
     }
 
     /**
@@ -206,15 +223,21 @@ public class EquipmentRankingService {
             boolean optOut,
             List<EquipmentRankingEntity> ranking,
             LocalDateTime calculatedAt,
-            String amazonTag) {
+            String amazonTag,
+            long totalTemplatesTeams) {
 
         static EquipmentTrendingResult empty() {
-            return new EquipmentTrendingResult(null, null, false, List.of(), null, null);
+            return new EquipmentTrendingResult(null, null, false, List.of(), null, null, 0L);
         }
     }
 
     public record RankingStatsResult(
             long totalVisibleItems,
             LocalDateTime lastCalculatedAt,
-            List<String> availableTemplates) {}
+            List<String> availableTemplates,
+            int optOutTeamCount,
+            int excludedItemCount,
+            long itemsBelowThreshold,
+            long itemsWithAsin,
+            int minTeamCountThreshold) {}
 }

@@ -55,4 +55,12 @@ public interface EquipmentRankingExclusionRepository
      * @return 除外設定リスト（作成日時降順）
      */
     List<EquipmentRankingExclusionEntity> findAllByOrderByCreatedAtDesc();
+
+    /**
+     * 指定種別の除外設定件数を返す（統計情報用）。
+     *
+     * @param exclusionType 除外種別
+     * @return 件数
+     */
+    int countByExclusionType(ExclusionType exclusionType);
 }
