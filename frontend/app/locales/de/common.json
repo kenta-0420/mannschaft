@@ -369,6 +369,22 @@
       "uploadError": "アップロードに失敗しました",
       "selectImage": "画像ファイルを選択",
       "selectVideo": "動画ファイルを選択"
+    },
+    "post": {
+      "readMore": "続きを読む",
+      "publishedAt": "公開日",
+      "draft": "下書き",
+      "published": "公開",
+      "scheduled": "予約",
+      "author": "著者",
+      "series": "シリーズ",
+      "tags": "タグ",
+      "relatedPosts": "関連記事",
+      "noPost": "記事がありません",
+      "createFirst": "最初の記事を書く",
+      "settings": "ブログ設定",
+      "selfReview": "セルフレビュー",
+      "selfReviewDesc": "投稿前に見直し時間を設定します"
     }
   }
 }
