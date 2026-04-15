@@ -133,7 +133,7 @@ export function useScheduleApi() {
     const query = new URLSearchParams()
     if (params?.from) query.set('from', params.from)
     if (params?.to) query.set('to', params.to)
-    return api<{ data: unknown[] }>(`/api/v1/schedules/personal?${query}`)
+    return api<{ data: unknown[] }>(`/api/v1/me/schedules?${query}`)
   }
 
   async function createPersonalSchedule(body: Record<string, unknown>) {
@@ -158,12 +158,18 @@ export function useScheduleApi() {
     scopeType?: string,
     scopeId?: number,
   ) {
+    const from = new Date(year, month - 1, 1, 0, 0, 0).toISOString().replace('Z', '')
+    const to = new Date(year, month, 0, 23, 59, 59).toISOString().replace('Z', '')
+    if (scopeType === 'TEAM' && scopeId) {
+      const query = new URLSearchParams()
+      query.set('from', from)
+      query.set('to', to)
+      return api<{ data: unknown }>(`/api/v1/teams/${scopeId}/schedules?${query}`)
+    }
     const query = new URLSearchParams()
-    query.set('year', String(year))
-    query.set('month', String(month))
-    if (scopeType) query.set('scopeType', scopeType)
-    if (scopeId) query.set('scopeId', String(scopeId))
-    return api<{ data: unknown }>(`/api/v1/schedules/calendar?${query}`)
+    query.set('from', from)
+    query.set('to', to)
+    return api<{ data: unknown }>(`/api/v1/my/calendar?${query}`)
   }
 
   // === Event Categories ===
