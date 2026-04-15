@@ -48,13 +48,13 @@ public interface ErrorReportRepository extends JpaRepository<ErrorReportEntity, 
 
     /**
      * user_id から organization_id をルックアップする。
-     * member → team → team_org_membership の結合で組織IDを取得する。
+     * user_roles → team_org_memberships の結合で組織IDを取得する。
      */
     @Query(value = """
         SELECT DISTINCT tom.organization_id
         FROM team_org_memberships tom
-        JOIN members m ON m.team_id = tom.team_id
-        WHERE m.user_id = :userId AND tom.status = 'ACTIVE'
+        JOIN user_roles ur ON ur.team_id = tom.team_id
+        WHERE ur.user_id = :userId AND tom.status = 'ACTIVE'
         LIMIT 1
         """, nativeQuery = true)
     Optional<Long> findOrganizationIdByUserId(@Param("userId") Long userId);
