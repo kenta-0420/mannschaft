@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -63,4 +64,26 @@ public interface EquipmentAssignmentRepository extends JpaRepository<EquipmentAs
      * 備品IDに未返却の貸出があるかどうかを判定する。
      */
     boolean existsByEquipmentItemIdAndReturnedAtIsNull(Long equipmentItemId);
+
+    /**
+     * ランキング集計用: 過去90日の消費イベント数を備品IDごとに返す（opt-outチーム除外）。
+     * 消費の判定: returnedAt IS NOT NULL（返却 = 消費として記録）かつ assignedAt が90日以内。
+     *
+     * @param since         集計開始日時（90日前）
+     * @param optOutTeamIds opt-outチームのteamIdリスト（空の場合は全件）
+     * @return [equipmentItemId, count] のリスト
+     */
+    @Query("""
+            SELECT a.equipmentItemId, COUNT(a.id)
+            FROM EquipmentAssignmentEntity a
+            JOIN EquipmentItemEntity e ON a.equipmentItemId = e.id
+            WHERE a.assignedAt >= :since
+              AND a.returnedAt IS NOT NULL
+              AND e.teamId IS NOT NULL
+              AND (:#{#optOutTeamIds.size()} = 0 OR e.teamId NOT IN :optOutTeamIds)
+            GROUP BY a.equipmentItemId
+            """)
+    List<Object[]> countConsumeEventsByItemId(
+            @Param("since") LocalDateTime since,
+            @Param("optOutTeamIds") List<Long> optOutTeamIds);
 }

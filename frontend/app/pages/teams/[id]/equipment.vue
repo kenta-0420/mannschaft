@@ -18,6 +18,19 @@ onMounted(async () => {
 <template>
   <PageLoading v-if="loading" />
   <div v-else>
-    <EquipmentList scope-type="team" :scope-id="teamId" :can-manage="isAdminOrDeputy" />
+    <!-- デスクトップ: サイドパネルレイアウト -->
+    <div class="flex gap-4">
+      <div class="min-w-0 flex-1">
+        <EquipmentList scope-type="team" :scope-id="teamId" :can-manage="isAdminOrDeputy" />
+      </div>
+      <!-- デスクトップのみサイドパネル表示 -->
+      <aside class="hidden w-80 shrink-0 lg:block">
+        <EquipmentTrending :team-id="teamId" />
+      </aside>
+    </div>
+    <!-- モバイル・タブレット: 下部表示 -->
+    <div class="mt-4 lg:hidden">
+      <EquipmentTrending :team-id="teamId" />
+    </div>
   </div>
 </template>

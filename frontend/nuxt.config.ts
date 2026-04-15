@@ -114,6 +114,7 @@ export default defineNuxtConfig({
           'ja/pwa.json',
           'ja/recruitment.ts',
           'ja/quick_memo.json',
+          'ja/equipment.json',
         ],
       },
       {
@@ -129,6 +130,7 @@ export default defineNuxtConfig({
           'en/pwa.json',
           'en/recruitment.ts',
           'en/quick_memo.json',
+          'en/equipment.json',
         ],
       },
       {
@@ -144,6 +146,7 @@ export default defineNuxtConfig({
           'zh/pwa.json',
           'zh/recruitment.ts',
           'zh/quick_memo.json',
+          'zh/equipment.json',
         ],
       },
       {
@@ -159,6 +162,7 @@ export default defineNuxtConfig({
           'ko/pwa.json',
           'ko/recruitment.ts',
           'ko/quick_memo.json',
+          'ko/equipment.json',
         ],
       },
       {
@@ -174,6 +178,7 @@ export default defineNuxtConfig({
           'es/pwa.json',
           'es/recruitment.ts',
           'es/quick_memo.json',
+          'es/equipment.json',
         ],
       },
       {
@@ -189,6 +194,7 @@ export default defineNuxtConfig({
           'de/pwa.json',
           'de/recruitment.ts',
           'de/quick_memo.json',
+          'de/equipment.json',
         ],
       },
     ],

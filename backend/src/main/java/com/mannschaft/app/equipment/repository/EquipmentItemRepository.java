@@ -112,4 +112,17 @@ public interface EquipmentItemRepository extends JpaRepository<EquipmentItemEnti
      * 組織IDと名前部分一致で備品を取得する（QRコード一覧用）。
      */
     List<EquipmentItemEntity> findByOrganizationIdAndNameContainingAndStatusNot(Long organizationId, String nameLike, EquipmentStatus status);
+
+    /**
+     * ランキング集計用: チーム所属かつ論理削除されていない全備品を返す（opt-outチーム除外）。
+     *
+     * @param optOutTeamIds opt-outチームIDリスト（空の場合は全件対象）
+     * @return 備品エンティティリスト
+     */
+    @Query("""
+            SELECT e FROM EquipmentItemEntity e
+            WHERE e.teamId IS NOT NULL
+              AND (:#{#optOutTeamIds.size()} = 0 OR e.teamId NOT IN :optOutTeamIds)
+            """)
+    List<EquipmentItemEntity> findAllForRankingBatch(@Param("optOutTeamIds") List<Long> optOutTeamIds);
 }
