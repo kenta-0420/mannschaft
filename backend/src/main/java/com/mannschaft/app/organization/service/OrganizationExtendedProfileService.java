@@ -63,6 +63,23 @@ public class OrganizationExtendedProfileService {
     // ========================================
 
     /**
+     * 組織の拡張プロフィールを取得する。
+     * GET /organizations/{id}/profile
+     *
+     * @param userId リクエストユーザーID（null 可: 非ログイン）
+     * @param orgId  組織ID
+     * @return 現在のプロフィール
+     */
+    public ApiResponse<OrganizationProfileResponse> getProfile(Long userId, Long orgId) {
+        OrganizationEntity org = findOrgOrThrow(orgId);
+        boolean isMember = accessControlService.isMember(userId, orgId, "ORGANIZATION");
+        if (org.getVisibility() == OrganizationEntity.Visibility.PRIVATE && !isMember) {
+            throw new BusinessException(OrgErrorCode.ORG_048);
+        }
+        return ApiResponse.of(toProfileResponse(org));
+    }
+
+    /**
      * 組織の拡張プロフィールを一括更新する。
      * PATCH /organizations/{id}/profile
      *

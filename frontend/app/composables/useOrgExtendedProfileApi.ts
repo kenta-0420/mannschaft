@@ -14,6 +14,10 @@ export function useOrgExtendedProfileApi() {
   const api = useApi()
 
   // 拡張プロフィール
+  async function getProfile(orgId: number) {
+    return api<{ data: OrganizationProfileResponse }>(`/api/v1/organizations/${orgId}/profile`)
+  }
+
   async function updateProfile(orgId: number, body: UpdateOrgProfileRequest) {
     return api<{ data: OrganizationProfileResponse }>(`/api/v1/organizations/${orgId}/profile`, {
       method: 'PATCH',
@@ -78,6 +82,7 @@ export function useOrgExtendedProfileApi() {
   }
 
   return {
+    getProfile,
     updateProfile,
     getOfficers,
     createOfficer,

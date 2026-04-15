@@ -48,6 +48,18 @@ public class OrganizationExtendedProfileController {
     // ========================================
 
     /**
+     * 組織の拡張プロフィールを取得する。
+     */
+    @GetMapping("/{id}/profile")
+    @Operation(summary = "組織拡張プロフィール取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<OrganizationProfileResponse>> getProfile(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(
+                extendedProfileService.getProfile(SecurityUtils.getCurrentUserId(), id));
+    }
+
+    /**
      * 組織の拡張プロフィールを更新する。
      */
     @PatchMapping("/{id}/profile")
