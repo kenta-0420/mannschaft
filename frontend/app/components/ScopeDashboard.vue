@@ -150,18 +150,15 @@ function onDragEnd() {
         />
       </div>
 
-      <div
+      <DashboardWidgetCard
         v-for="(w, index) in visibleWidgets"
         :key="w.key"
+        title=""
+        class="group cursor-default transition-all"
+        :col-span="isDataWidget(w.key) ? 2 : 1"
+        :is-dragging="dragIndex === index"
+        :is-drop-target="dropTargetIndex === index && dragIndex !== index"
         draggable="true"
-        class="group relative cursor-default rounded-xl border bg-surface-0 p-5 shadow-sm transition-all hover:shadow-md dark:bg-surface-800"
-        :class="[
-          dragIndex === index ? 'opacity-40 shadow-none' : '',
-          dropTargetIndex === index && dragIndex !== index
-            ? 'border-primary border-t-[3px]'
-            : 'border-surface-300 dark:border-surface-600',
-          isDataWidget(w.key) ? 'md:col-span-2' : '',
-        ]"
         @dragstart="onDragStart(index, $event)"
         @dragover="onDragOver(index, $event)"
         @dragleave="onDragLeave($event)"
@@ -169,12 +166,6 @@ function onDragEnd() {
         @dragend="onDragEnd"
         @click="!isDataWidget(w.key) && dragIndex === null && navigateTo(linkTo(w.key) ?? '#')"
       >
-        <!-- ドロップインジケーター線 -->
-        <div
-          v-if="dropTargetIndex === index && dragIndex !== index"
-          class="pointer-events-none absolute inset-x-0 top-0 h-[3px] rounded-t-xl bg-primary"
-        />
-
         <!-- ドラッグハンドル（hover時に表示） -->
         <i
           class="pi pi-grip-vertical absolute right-3 top-3 cursor-grab text-sm text-surface-300 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing dark:text-surface-600"
@@ -226,7 +217,7 @@ function onDragEnd() {
         </p>
 
         <!-- データウィジェット: 実コンテンツ -->
-        <template v-else>
+        <template v-if="isDataWidget(w.key)">
           <div class="mt-3">
             <WidgetSurveyResults
               v-if="w.key === 'survey-results' && scopeId"
@@ -243,7 +234,7 @@ function onDragEnd() {
             <WidgetMyRecruitments v-else-if="w.key === 'my-recruitments'" />
           </div>
         </template>
-      </div>
+      </DashboardWidgetCard>
 
       <!-- Amazon広告タイル (非表示不可・常に最後) -->
       <WidgetAmazonAd

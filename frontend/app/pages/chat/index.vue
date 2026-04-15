@@ -34,7 +34,7 @@ onMounted(() => {
       <h1 class="text-2xl font-bold">チャット</h1>
     </div>
 
-    <div class="flex h-[calc(100vh-12rem)] overflow-hidden rounded-xl border border-surface-300">
+    <div class="flex h-[calc(100vh-12rem)] overflow-hidden rounded-xl border-2 border-surface-400 dark:border-surface-500">
       <div class="w-64 shrink-0 border-r border-surface-200 bg-surface-50 flex flex-col">
         <div class="flex border-b border-surface-200">
           <button

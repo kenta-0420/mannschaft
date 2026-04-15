@@ -104,91 +104,93 @@ onMounted(() => {
 
 <template>
   <div class="mx-auto max-w-6xl p-6">
-    <div class="mb-6 flex items-center justify-between">
-      <PageHeader title="チーム検索" />
-      <Button label="チームを作成" icon="pi pi-plus" @click="showCreateDialog = true" />
-    </div>
+    <SectionCard>
+      <div class="mb-6 flex items-center justify-between">
+        <PageHeader title="チーム検索" />
+        <Button label="チームを作成" icon="pi pi-plus" @click="showCreateDialog = true" />
+      </div>
 
-    <div class="mb-6">
-      <SearchBar placeholder="チーム名で検索" :show-template-filter="true" @search="onSearch" />
-    </div>
+      <div class="mb-6">
+        <SearchBar placeholder="チーム名で検索" :show-template-filter="true" @search="onSearch" />
+      </div>
 
-    <PageLoading v-if="loading" />
+      <PageLoading v-if="loading" />
 
-    <DashboardEmptyState
-      v-else-if="teams.length === 0"
-      icon="pi pi-search"
-      message="該当するチームが見つかりませんでした"
-    />
+      <DashboardEmptyState
+        v-else-if="teams.length === 0"
+        icon="pi pi-search"
+        message="該当するチームが見つかりませんでした"
+      />
 
-    <template v-else>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div
-          v-for="team in teams"
-          :key="team.id"
-          class="cursor-pointer rounded-lg border p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/teams/${team.id}`)"
-        >
-          <div class="mb-3 flex items-center gap-3">
-            <Avatar
-              :image="team.iconUrl ?? undefined"
-              :label="team.iconUrl ? undefined : team.name.charAt(0)"
-              shape="circle"
-              size="large"
-            />
-            <div class="min-w-0 flex-1">
-              <h3 class="truncate font-semibold">
-                {{ team.nickname1 || team.name }}
-              </h3>
-              <Tag
-                :value="templateLabel[team.template] ?? team.template"
-                severity="info"
-                class="text-xs"
+      <template v-else>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            v-for="team in teams"
+            :key="team.id"
+            class="cursor-pointer rounded-lg border p-4 transition-shadow hover:shadow-md"
+            @click="navigateTo(`/teams/${team.id}`)"
+          >
+            <div class="mb-3 flex items-center gap-3">
+              <Avatar
+                :image="team.iconUrl ?? undefined"
+                :label="team.iconUrl ? undefined : team.name.charAt(0)"
+                shape="circle"
+                size="large"
+              />
+              <div class="min-w-0 flex-1">
+                <h3 class="truncate font-semibold">
+                  {{ team.nickname1 || team.name }}
+                </h3>
+                <Tag
+                  :value="templateLabel[team.template] ?? team.template"
+                  severity="info"
+                  class="text-xs"
+                />
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-sm text-gray-500">
+              <span
+                ><i class="pi pi-map-marker mr-1" />{{
+                  formatLocation(team.prefecture, team.city)
+                }}</span
+              >
+              <span><i class="pi pi-users mr-1" />{{ team.memberCount }}人</span>
+            </div>
+            <div
+              v-if="team.supporterEnabled && !myTeamIds.has(team.id)"
+              class="mt-3 border-t border-surface-100 pt-3"
+            >
+              <span
+                v-if="followedTeamIds.includes(team.id)"
+                class="flex items-center gap-1 text-sm text-primary"
+              >
+                <i class="pi pi-heart-fill" />サポーター登録済み
+              </span>
+              <Button
+                v-else
+                label="サポーターになる"
+                icon="pi pi-heart"
+                size="small"
+                severity="secondary"
+                outlined
+                class="w-full"
+                :loading="followingTeamIds.includes(team.id)"
+                @click="followTeam(team.id, $event)"
               />
             </div>
           </div>
-          <div class="flex items-center justify-between text-sm text-gray-500">
-            <span
-              ><i class="pi pi-map-marker mr-1" />{{
-                formatLocation(team.prefecture, team.city)
-              }}</span
-            >
-            <span><i class="pi pi-users mr-1" />{{ team.memberCount }}人</span>
-          </div>
-          <div
-            v-if="team.supporterEnabled && !myTeamIds.has(team.id)"
-            class="mt-3 border-t border-surface-100 pt-3"
-          >
-            <span
-              v-if="followedTeamIds.includes(team.id)"
-              class="flex items-center gap-1 text-sm text-primary"
-            >
-              <i class="pi pi-heart-fill" />サポーター登録済み
-            </span>
-            <Button
-              v-else
-              label="サポーターになる"
-              icon="pi pi-heart"
-              size="small"
-              severity="secondary"
-              outlined
-              class="w-full"
-              :loading="followingTeamIds.includes(team.id)"
-              @click="followTeam(team.id, $event)"
-            />
-          </div>
         </div>
-      </div>
 
-      <div class="mt-6">
-        <Paginator
-          :rows="pageSize"
-          :total-records="totalRecords"
-          :first="currentPage * pageSize"
-          @page="onPageChange"
-        />
-      </div>
-    </template>
+        <div class="mt-6">
+          <Paginator
+            :rows="pageSize"
+            :total-records="totalRecords"
+            :first="currentPage * pageSize"
+            @page="onPageChange"
+          />
+        </div>
+      </template>
+    </SectionCard>
 
     <EntityCreateDialog
       entity-type="team"

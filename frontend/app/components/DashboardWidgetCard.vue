@@ -1,10 +1,14 @@
 <script setup lang="ts">
+defineOptions({ inheritAttrs: false })
+
 defineProps<{
-  title: string
+  title?: string
   icon?: string
   loading?: boolean
   colSpan?: 1 | 2 | 3
   refreshable?: boolean
+  isDragging?: boolean
+  isDropTarget?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -14,15 +18,25 @@ const emit = defineEmits<{
 
 <template>
   <div
-    class="rounded-xl border border-surface-400 bg-surface-0 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
+    v-bind="$attrs"
+    class="relative rounded-xl border-2 bg-surface-0 p-4 shadow-sm transition-shadow hover:shadow-md dark:bg-surface-800"
     :class="{
       'col-span-1': !colSpan || colSpan === 1,
       'md:col-span-2': colSpan === 2,
       'md:col-span-3': colSpan === 3,
+      'opacity-40 shadow-none': isDragging,
+      'border-primary border-t-[3px]': isDropTarget,
+      'border-surface-400 dark:border-surface-500': !isDropTarget,
     }"
   >
+    <!-- ドロップインジケーター線 -->
+    <div
+      v-if="isDropTarget"
+      class="pointer-events-none absolute inset-x-0 top-0 h-[3px] rounded-t-xl bg-primary"
+    />
+
     <!-- ヘッダー -->
-    <div class="mb-3 flex items-center justify-between">
+    <div v-if="title" class="mb-3 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <i v-if="icon" :class="icon" class="text-primary" />
         <h3 class="text-[22px] font-semibold text-surface-700 dark:text-surface-200">

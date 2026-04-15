@@ -95,86 +95,88 @@ onMounted(() => {
 
 <template>
   <div class="mx-auto max-w-6xl p-6">
-    <div class="mb-6 flex items-center justify-between">
-      <PageHeader title="組織検索" />
-      <Button label="組織を作成" icon="pi pi-plus" @click="showCreateDialog = true" />
-    </div>
+    <SectionCard>
+      <div class="mb-6 flex items-center justify-between">
+        <PageHeader title="組織検索" />
+        <Button label="組織を作成" icon="pi pi-plus" @click="showCreateDialog = true" />
+      </div>
 
-    <div class="mb-6">
-      <SearchBar placeholder="組織名で検索" :show-org-type-filter="true" @search="onSearch" />
-    </div>
+      <div class="mb-6">
+        <SearchBar placeholder="組織名で検索" :show-org-type-filter="true" @search="onSearch" />
+      </div>
 
-    <PageLoading v-if="loading" />
+      <PageLoading v-if="loading" />
 
-    <DashboardEmptyState
-      v-else-if="organizations.length === 0"
-      icon="pi pi-search"
-      message="該当する組織が見つかりませんでした"
-    />
+      <DashboardEmptyState
+        v-else-if="organizations.length === 0"
+        icon="pi pi-search"
+        message="該当する組織が見つかりませんでした"
+      />
 
-    <template v-else>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div
-          v-for="org in organizations"
-          :key="org.id"
-          class="cursor-pointer rounded-lg border p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/organizations/${org.id}`)"
-        >
-          <div class="mb-3 flex items-center gap-3">
-            <Avatar
-              :image="org.iconUrl ?? undefined"
-              :label="org.iconUrl ? undefined : org.name.charAt(0)"
-              shape="circle"
-              size="large"
-            />
-            <div class="min-w-0 flex-1">
-              <h3 class="truncate font-semibold">
-                {{ org.nickname1 || org.name }}
-              </h3>
+      <template v-else>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            v-for="org in organizations"
+            :key="org.id"
+            class="cursor-pointer rounded-lg border p-4 transition-shadow hover:shadow-md"
+            @click="navigateTo(`/organizations/${org.id}`)"
+          >
+            <div class="mb-3 flex items-center gap-3">
+              <Avatar
+                :image="org.iconUrl ?? undefined"
+                :label="org.iconUrl ? undefined : org.name.charAt(0)"
+                shape="circle"
+                size="large"
+              />
+              <div class="min-w-0 flex-1">
+                <h3 class="truncate font-semibold">
+                  {{ org.nickname1 || org.name }}
+                </h3>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-sm text-gray-500">
+              <span
+                ><i class="pi pi-map-marker mr-1" />{{
+                  formatLocation(org.prefecture, org.city)
+                }}</span
+              >
+              <span><i class="pi pi-users mr-1" />{{ org.memberCount }}人</span>
+            </div>
+            <div
+              v-if="org.supporterEnabled && !myOrgIds.has(org.id)"
+              class="mt-3 border-t border-surface-100 pt-3"
+            >
+              <span
+                v-if="followedOrgIds.includes(org.id)"
+                class="flex items-center gap-1 text-sm text-primary"
+              >
+                <i class="pi pi-heart-fill" />サポーター登録済み
+              </span>
+              <Button
+                v-else
+                label="サポーターになる"
+                icon="pi pi-heart"
+                size="small"
+                severity="secondary"
+                outlined
+                class="w-full"
+                :loading="followingOrgIds.includes(org.id)"
+                @click="followOrg(org.id, $event)"
+              />
             </div>
           </div>
-          <div class="flex items-center justify-between text-sm text-gray-500">
-            <span
-              ><i class="pi pi-map-marker mr-1" />{{
-                formatLocation(org.prefecture, org.city)
-              }}</span
-            >
-            <span><i class="pi pi-users mr-1" />{{ org.memberCount }}人</span>
-          </div>
-          <div
-            v-if="org.supporterEnabled && !myOrgIds.has(org.id)"
-            class="mt-3 border-t border-surface-100 pt-3"
-          >
-            <span
-              v-if="followedOrgIds.includes(org.id)"
-              class="flex items-center gap-1 text-sm text-primary"
-            >
-              <i class="pi pi-heart-fill" />サポーター登録済み
-            </span>
-            <Button
-              v-else
-              label="サポーターになる"
-              icon="pi pi-heart"
-              size="small"
-              severity="secondary"
-              outlined
-              class="w-full"
-              :loading="followingOrgIds.includes(org.id)"
-              @click="followOrg(org.id, $event)"
-            />
-          </div>
         </div>
-      </div>
 
-      <div class="mt-6">
-        <Paginator
-          :rows="pageSize"
-          :total-records="totalRecords"
-          :first="currentPage * pageSize"
-          @page="onPageChange"
-        />
-      </div>
-    </template>
+        <div class="mt-6">
+          <Paginator
+            :rows="pageSize"
+            :total-records="totalRecords"
+            :first="currentPage * pageSize"
+            @page="onPageChange"
+          />
+        </div>
+      </template>
+    </SectionCard>
 
     <EntityCreateDialog
       entity-type="organization"

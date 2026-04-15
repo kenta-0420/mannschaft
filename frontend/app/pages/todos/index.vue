@@ -62,7 +62,7 @@ onMounted(load)
 
     <!-- 進捗バー -->
     <div
-      class="mb-5 rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
+      class="mb-5 rounded-xl border-2 border-surface-400 bg-surface-0 p-4 dark:border-surface-500 dark:bg-surface-800"
     >
       <div class="mb-2 flex items-center justify-between text-sm">
         <span class="font-medium text-surface-600 dark:text-surface-300">
