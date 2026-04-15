@@ -60,8 +60,12 @@ public class TeamFriendFolderMemberEntity {
     @Column(name = "team_friend_id", nullable = false)
     private Long teamFriendId;
 
+    /** 追加実行者のユーザー ID（任意。ユーザー削除時は NULL が設定される） */
+    @Column(name = "added_by")
+    private Long addedBy;
+
     /** フォルダへの追加日時 */
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "added_at", nullable = false, updatable = false)
     private LocalDateTime addedAt;
 
     /**
