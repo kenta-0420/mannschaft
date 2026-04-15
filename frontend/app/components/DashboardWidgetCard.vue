@@ -19,7 +19,7 @@ const emit = defineEmits<{
 <template>
   <div
     v-bind="$attrs"
-    class="relative rounded-xl border-2 bg-surface-0 p-4 shadow-sm transition-shadow hover:shadow-md dark:bg-surface-800"
+    class="relative rounded-xl border-[3px] bg-surface-0 p-4 shadow-sm transition-shadow hover:shadow-md dark:bg-surface-800"
     :class="{
       'col-span-1': !colSpan || colSpan === 1,
       'md:col-span-2': colSpan === 2,
