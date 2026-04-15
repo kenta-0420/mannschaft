@@ -64,7 +64,52 @@ public enum SocialErrorCode implements ErrorCode {
     FRIEND_NOWAIT_TIMEOUT("SOCIAL_108", "フレンド関係の処理が競合しました。再試行してください", Severity.WARN),
 
     /** プラットフォーム機能無効化中（403） */
-    FRIEND_FEATURE_DISABLED("SOCIAL_109", "フレンドチーム機能は現在無効化されています", Severity.WARN);
+    FRIEND_FEATURE_DISABLED("SOCIAL_109", "フレンドチーム機能は現在無効化されています", Severity.WARN),
+
+    // ─────────────────────────────────────────────
+    // F01.5 フレンドフォルダ
+    // ─────────────────────────────────────────────
+
+    /** フレンドフォルダが見つからない（404） */
+    FRIEND_FOLDER_NOT_FOUND("SOCIAL_110", "フレンドフォルダが見つかりません", Severity.WARN),
+
+    /** フレンドフォルダ上限超過（409） — 1チーム最大20個 */
+    FRIEND_FOLDER_LIMIT_EXCEEDED("SOCIAL_111",
+            "フレンドフォルダは1チームあたり最大20個までです", Severity.WARN),
+
+    /** フレンドフォルダメンバー重複（409） */
+    FRIEND_FOLDER_MEMBER_ALREADY_EXISTS("SOCIAL_112",
+            "このフレンドチームは既にフォルダに登録されています", Severity.WARN),
+
+    /** フレンドフォルダメンバーが見つからない（404） */
+    FRIEND_FOLDER_MEMBER_NOT_FOUND("SOCIAL_113",
+            "指定されたフレンドチームはこのフォルダに登録されていません", Severity.WARN),
+
+    // ─────────────────────────────────────────────
+    // F01.5 フレンドコンテンツ転送
+    // ─────────────────────────────────────────────
+
+    /** 転送履歴が見つからない（404） */
+    FRIEND_FORWARD_NOT_FOUND("SOCIAL_120", "転送履歴が見つかりません", Severity.WARN),
+
+    /** 既に転送済み（409） — 冪等性違反 */
+    FRIEND_FORWARD_ALREADY_EXISTS("SOCIAL_121", "この投稿は既に転送済みです", Severity.WARN),
+
+    /** 転送元投稿が見つからない（404） */
+    FRIEND_FORWARD_SOURCE_POST_NOT_FOUND("SOCIAL_122",
+            "転送元の投稿が見つかりません", Severity.WARN),
+
+    /** 転送元投稿がフレンド共有対象外（400） — share_with_friends=FALSE */
+    FRIEND_FORWARD_NOT_SHARABLE("SOCIAL_123",
+            "この投稿はフレンドチームへ共有されていません", Severity.WARN),
+
+    /** フレンド関係が成立していない（404） */
+    FRIEND_FORWARD_RELATION_NOT_FOUND("SOCIAL_124",
+            "転送元チームとのフレンド関係が成立していません", Severity.WARN),
+
+    /** Phase 1 で MEMBER_AND_SUPPORTER 指定は拒否（400） */
+    FRIEND_FORWARD_SUPPORTER_NOT_ALLOWED("SOCIAL_125",
+            "Phase 1 では SUPPORTER への転送配信は利用できません", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -1,6 +1,7 @@
 package com.mannschaft.app.social.repository;
 
 import com.mannschaft.app.social.entity.FriendContentForwardEntity;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -58,4 +59,15 @@ public interface FriendContentForwardRepository
      * @return 転送履歴一覧
      */
     List<FriendContentForwardEntity> findBySourcePostIdAndIsRevokedFalse(Long sourcePostId);
+
+    /**
+     * 自チーム投稿の逆転送履歴をページングで取得する（透明性確保用 API）。
+     * {@code source_team_id = teamId} かつ {@code is_revoked = FALSE} を対象とする。
+     *
+     * @param sourceTeamId 転送元チーム ID（自チーム）
+     * @param pageable     ページング
+     * @return 転送履歴ページ
+     */
+    Page<FriendContentForwardEntity> findBySourceTeamIdAndIsRevokedFalse(
+            Long sourceTeamId, Pageable pageable);
 }

@@ -88,6 +88,30 @@ public class TimelinePostEntity extends BaseEntity {
     @Builder.Default
     private Short editCount = 0;
 
+    /**
+     * F01.5 フレンドチームへの共有可否フラグ。
+     * 投稿作成時に ADMIN / DEPUTY_ADMIN が指定し、管理者フィードへの配信許可を表す。
+     * デフォルトは {@code false}。V9.076 で追加。
+     */
+    @Column(name = "share_with_friends", nullable = false)
+    @Builder.Default
+    private Boolean shareWithFriends = false;
+
+    /**
+     * F01.5 転送元投稿 ID（転送で生成された投稿のみ値を持つ）。
+     * {@link PostScopeType#FRIEND_FORWARD} 投稿の出典表示・逆引きに使用する。
+     * V9.076 で追加（FK 制約 fk_tp_forward_source: ON DELETE SET NULL）。
+     */
+    @Column(name = "forward_source_post_id")
+    private Long forwardSourcePostId;
+
+    /**
+     * F01.5 転送配信範囲メタデータ（{@code MEMBER} / {@code MEMBER_AND_SUPPORTER}）。
+     * Phase 1 は {@code MEMBER} のみ。V9.076 で追加。
+     */
+    @Column(name = "forward_target_range", length = 30)
+    private String forwardTargetRange;
+
     private LocalDateTime deletedAt;
 
     /**
