@@ -68,6 +68,11 @@ public class UserService {
     );
 
     /**
+     * ISO 3166-1 alpha-2 国コード: アルファベット大文字2文字
+     */
+    private static final Pattern COUNTRY_CODE_PATTERN = Pattern.compile("^[A-Z]{2}$");
+
+    /**
      * ユーザープロフィールを取得する。
      *
      * @param userId ユーザーID
@@ -101,6 +106,7 @@ public class UserService {
                 user.getAvatarUrl(),
                 user.getPhoneNumber(),
                 user.getLocale(),
+                user.getCountryCode(),
                 user.getTimezone(),
                 user.getStatus() != null ? user.getStatus().name() : null,
                 hasPassword,
@@ -125,6 +131,11 @@ public class UserService {
     public ApiResponse<UserProfileResponse> updateProfile(Long userId, UpdateProfileRequest req) {
         UserEntity user = findUserOrThrow(userId);
 
+        // countryCode バリデーション（ISO 3166-1 alpha-2: アルファベット大文字2文字）
+        if (req.getCountryCode() != null && !COUNTRY_CODE_PATTERN.matcher(req.getCountryCode()).matches()) {
+            throw new BusinessException(AuthErrorCode.AUTH_040);
+        }
+
         // Builder パターンで更新（Entityに@Setterは使わない）
         String newLastName = req.getLastName() != null ? req.getLastName() : user.getLastName();
         String newFirstName = req.getFirstName() != null ? req.getFirstName() : user.getFirstName();
@@ -145,6 +156,7 @@ public class UserService {
                 .firstNameHash(encryptionService.hmac(newFirstName))
                 .phoneNumberHash(encryptionService.hmac(newPhoneNumber))
                 .locale(req.getLocale() != null ? req.getLocale() : user.getLocale())
+                .countryCode(req.getCountryCode() != null ? req.getCountryCode() : user.getCountryCode())
                 .timezone(req.getTimezone() != null ? req.getTimezone() : user.getTimezone())
                 .dmReceiveFrom(newDmReceiveFrom)
                 .build();

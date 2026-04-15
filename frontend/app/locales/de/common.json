@@ -287,6 +287,8 @@
       "title": "Sprache und Zeitzone",
       "display_language": "Anzeigesprache",
       "timezone": "Zeitzone",
+      "country_code": "Land fur Feiertage",
+      "country_code_placeholder": "Land auswahlen (automatische Erkennung wenn nicht gesetzt)",
       "load_error": "Einstellungen konnten nicht geladen werden",
       "save_success": "Sprache und Zeitzone wurden aktualisiert",
       "save_error": "Aktualisierung fehlgeschlagen"

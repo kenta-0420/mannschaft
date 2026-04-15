@@ -20,6 +20,8 @@ const emit = defineEmits<{
   nextMonth: []
 }>()
 
+const { getHoliday } = useHolidays()
+
 const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土']
 
 const calendarDays = computed(() => {
@@ -67,6 +69,17 @@ function isToday(dateStr: string): boolean {
   return dateStr === new Date().toISOString().split('T')[0]
 }
 
+// 日付の文字色クラスを返す（祝日・日曜=赤、土曜=青、平日=デフォルト）
+function getDateColorClass(dateStr: string, isCurrentMonth: boolean, colIdx: number): string {
+  if (isToday(dateStr)) return ''
+  const isHoliday = !!getHoliday(dateStr)
+  const isSunday = colIdx % 7 === 0
+  const isSaturday = colIdx % 7 === 6
+  if (isHoliday || isSunday) return isCurrentMonth ? 'text-red-500' : 'text-red-300'
+  if (isSaturday) return isCurrentMonth ? 'text-blue-500' : 'text-blue-300'
+  return isCurrentMonth ? '' : 'text-surface-400'
+}
+
 const monthLabel = computed(() => `${props.year}年${props.month}月`)
 </script>
 
@@ -75,7 +88,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
     <!-- ヘッダー -->
     <div class="mb-4 flex items-center justify-between">
       <Button icon="pi pi-chevron-left" text rounded @click="emit('prevMonth')" />
-      <h2 class="text-lg font-bold">{{ monthLabel }}</h2>
+      <h2 class="text-lg font-extrabold">{{ monthLabel }}</h2>
       <Button icon="pi pi-chevron-right" text rounded @click="emit('nextMonth')" />
     </div>
 
@@ -97,20 +110,30 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
         v-for="(day, idx) in calendarDays"
         :key="idx"
         class="min-h-24 cursor-pointer border-b border-r border-surface-400 p-1 transition-colors hover:bg-primary/10 dark:border-surface-500 dark:hover:bg-primary/10"
-        :class="{ 'bg-surface-50/50 dark:bg-surface-800/30': !day.isCurrentMonth }"
+        :class="{
+          'bg-surface-50/50 dark:bg-surface-800/30': !day.isCurrentMonth,
+          'border-l': idx % 7 === 0,
+        }"
         @click="emit('dateClick', day.dateStr)"
       >
         <div
-          class="mb-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs"
-          :class="{
-            'bg-primary text-white': isToday(day.dateStr),
-            'text-surface-400': !day.isCurrentMonth,
-            'font-medium': day.isCurrentMonth,
-          }"
+          class="mb-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold"
+          :class="[
+            { 'bg-primary text-white': isToday(day.dateStr) },
+            getDateColorClass(day.dateStr, day.isCurrentMonth, idx),
+          ]"
         >
           {{ day.date }}
         </div>
         <div class="space-y-0.5">
+          <!-- 祝日名 -->
+          <div
+            v-if="getHoliday(day.dateStr)"
+            class="truncate text-[10px] font-medium text-red-400"
+          >
+            {{ getHoliday(day.dateStr) }}
+          </div>
+          <!-- イベント -->
           <div
             v-for="event in getEventsForDate(day.dateStr)"
             :key="event.id"

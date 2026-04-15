@@ -12,6 +12,8 @@ export interface UserProfileResponse {
   avatarUrl: string | null
   phoneNumber: string
   locale: string
+  /** ISO 3166-1 alpha-2 国コード（例: JP・US・DE）。未設定時は null。 */
+  countryCode: string | null
   timezone: string
   status: string
   hasPassword: boolean
@@ -35,6 +37,8 @@ export interface UpdateProfileRequest {
   displayName?: string
   nickname2?: string
   locale?: string
+  /** ISO 3166-1 alpha-2 国コード（例: JP・US・DE）。null 送信時はクリア。 */
+  countryCode?: string | null
   timezone?: string
   isSearchable?: boolean
   avatarUrl?: string

@@ -287,6 +287,8 @@
       "title": "Language & Timezone",
       "display_language": "Display Language",
       "timezone": "Timezone",
+      "country_code": "Country for Holidays",
+      "country_code_placeholder": "Select country (auto-detected from language if not set)",
       "load_error": "Failed to load settings",
       "save_success": "Language and timezone updated",
       "save_error": "Failed to update settings"

@@ -117,6 +117,9 @@ public enum AuthErrorCode implements ErrorCode {
     /** デバイス名バリデーションエラー */
     AUTH_035("AUTH_035", "デバイス名が無効です（1〜100文字、制御文字不可）", Severity.WARN),
 
+    /** 国コードバリデーションエラー */
+    AUTH_040("AUTH_040", "国コードが無効です（ISO 3166-1 alpha-2 形式 例: JP・US・DE）", Severity.WARN),
+
     /** アクセストークン期限切れ */
     AUTH_036("AUTH_036", "アクセストークンの有効期限が切れています", Severity.WARN),
 

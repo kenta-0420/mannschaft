@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import Holidays from 'date-holidays'
 import type { UpdateProfileRequest } from '~/types/user-settings'
 
 definePageMeta({
   middleware: 'auth',
 })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const notification = useNotification()
 const { changeLocale } = useLocale()
 const { getProfile, updateProfile } = useUserSettingsApi()
@@ -13,7 +14,7 @@ const { getProfile, updateProfile } = useUserSettingsApi()
 const loading = ref(true)
 const saving = ref(false)
 
-const form = ref({ locale: 'ja', timezone: 'Asia/Tokyo' })
+const form = ref({ locale: 'ja', timezone: 'Asia/Tokyo', countryCode: null as string | null })
 const fullProfile = ref<UpdateProfileRequest>({})
 
 const localeOptions = [
@@ -43,6 +44,18 @@ const timezoneOptions = [
   { label: 'UTC', value: 'UTC' },
 ]
 
+/** date-holidays から取得した国リスト（ロケールに応じた表示名付き） */
+const countryOptions = computed(() => {
+  const hd = new Holidays()
+  const countries = hd.getCountries(locale.value) ?? hd.getCountries('en') ?? {}
+  return [
+    { value: null, label: t('settings.language.country_code_placeholder') },
+    ...Object.entries(countries as Record<string, string>)
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  ]
+})
+
 onMounted(async () => {
   try {
     const res = await getProfile()
@@ -62,6 +75,7 @@ onMounted(async () => {
     }
     form.value.locale = res.data.locale || 'ja'
     form.value.timezone = res.data.timezone || 'Asia/Tokyo'
+    form.value.countryCode = res.data.countryCode ?? null
   } catch {
     notification.error(t('settings.language.load_error'))
   } finally {
@@ -76,6 +90,7 @@ async function save() {
       ...fullProfile.value,
       locale: form.value.locale,
       timezone: form.value.timezone,
+      countryCode: form.value.countryCode,
     })
     await changeLocale(form.value.locale)
     notification.success(t('settings.language.save_success'))
@@ -117,6 +132,19 @@ async function save() {
             option-value="value"
             class="w-full"
             translate="no"
+          />
+        </div>
+
+        <div>
+          <label class="mb-1 block text-sm font-medium">{{ $t('settings.language.country_code') }}</label>
+          <Select
+            v-model="form.countryCode"
+            :options="countryOptions"
+            option-label="label"
+            option-value="value"
+            filter
+            class="w-full"
+            :placeholder="$t('settings.language.country_code_placeholder')"
           />
         </div>
 

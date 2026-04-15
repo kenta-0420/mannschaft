@@ -287,6 +287,8 @@
       "title": "语言与时区",
       "display_language": "显示语言",
       "timezone": "时区",
+      "country_code": "节假日显示国家",
+      "country_code_placeholder": "选择国家（未选择时根据语言自动判断）",
       "load_error": "设置加载失败",
       "save_success": "语言和时区已更新",
       "save_error": "更新失败"

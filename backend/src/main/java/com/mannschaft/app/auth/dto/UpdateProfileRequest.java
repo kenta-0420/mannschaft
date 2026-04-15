@@ -18,6 +18,8 @@ public class UpdateProfileRequest {
     private final String displayName;
     private final String nickname2;
     private final String locale;
+    /** ISO 3166-1 alpha-2 国コード。null の場合は更新しない。 */
+    private final String countryCode;
     private final String timezone;
     private final Boolean isSearchable;
     private final String avatarUrl;

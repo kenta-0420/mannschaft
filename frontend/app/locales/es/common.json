@@ -287,6 +287,8 @@
       "title": "Idioma y zona horaria",
       "display_language": "Idioma de visualizacion",
       "timezone": "Zona horaria",
+      "country_code": "Pais para festivos",
+      "country_code_placeholder": "Seleccionar pais (deteccion automatica si no se selecciona)",
       "load_error": "Error al cargar la configuracion",
       "save_success": "Idioma y zona horaria actualizados",
       "save_error": "Error al actualizar la configuracion"

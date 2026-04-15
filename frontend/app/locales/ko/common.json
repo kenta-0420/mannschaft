@@ -287,6 +287,8 @@
       "title": "언어 및 시간대",
       "display_language": "표시 언어",
       "timezone": "시간대",
+      "country_code": "공휴일 표시 국가",
+      "country_code_placeholder": "국가 선택（미선택 시 언어에서 자동 판정）",
       "load_error": "설정을 불러오지 못했습니다",
       "save_success": "언어 및 시간대를 업데이트했습니다",
       "save_error": "업데이트에 실패했습니다"

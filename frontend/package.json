@@ -40,6 +40,7 @@
     "@vite-pwa/nuxt": "^1.1.1",
     "@vueuse/nuxt": "^14.2.1",
     "chart.js": "^4.5.1",
+    "date-holidays": "^3.27.0",
     "dayjs": "^1.11.20",
     "dexie": "^4.4.2",
     "dompurify": "^3.3.3",

@@ -25,6 +25,8 @@ public class UserProfileResponse {
     private final String avatarUrl;
     private final String phoneNumber;
     private final String locale;
+    /** ISO 3166-1 alpha-2 国コード。NULLの場合はlocaleから推定する。 */
+    private final String countryCode;
     private final String timezone;
     private final String status;
     private final boolean hasPassword;

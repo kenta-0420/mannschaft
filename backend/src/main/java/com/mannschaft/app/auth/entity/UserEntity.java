@@ -117,6 +117,10 @@ public class UserEntity extends BaseEntity {
     @Column(nullable = false, length = 10)
     private String locale;
 
+    /** ISO 3166-1 alpha-2 国コード（例: JP・US・DE）。カレンダー祝日表示用。NULLの場合はlocaleから推定する。 */
+    @Column(name = "country_code", length = 2)
+    private String countryCode;
+
     @Column(nullable = false, length = 50)
     private String timezone;
 

@@ -287,6 +287,8 @@
       "title": "言語・タイムゾーン",
       "display_language": "表示言語",
       "timezone": "タイムゾーン",
+      "country_code": "祝日表示の国",
+      "country_code_placeholder": "国を選択（未選択時は言語から自動判定）",
       "load_error": "設定の取得に失敗しました",
       "save_success": "言語・タイムゾーンを更新しました",
       "save_error": "更新に失敗しました"
