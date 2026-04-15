@@ -1,5 +1,6 @@
 <script setup lang="ts">
 interface Props {
+  teamId: number
   name: string
   nameKana: string | null
   nickname1: string | null
@@ -84,7 +85,8 @@ defineProps<Props>()
       </div>
     </div>
   </div>
-  <div v-if="isAdmin" class="mt-6">
-    <Button label="設定を編集" icon="pi pi-pencil" outlined />
-  </div>
+  <TeamExtendedProfileDisplay
+    :team-id="teamId"
+    :is-admin-or-deputy="isAdmin"
+  />
 </template>

@@ -170,6 +170,7 @@ onMounted(async () => {
 
           <TabPanel :value="1">
             <TeamDetailInfo
+              :team-id="teamId"
               :name="team.name"
               :name-kana="team.nameKana"
               :nickname1="team.nickname1"
