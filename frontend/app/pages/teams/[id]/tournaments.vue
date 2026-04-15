@@ -225,7 +225,8 @@ onMounted(() => load())
                 :style="{ width: `${winRate}%` }"
               />
             </div>
-          </SectionCard>
+          </div>
+        </SectionCard>
       </template>
 
       <!-- 得点ランキングタブ -->
