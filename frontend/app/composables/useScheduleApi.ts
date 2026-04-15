@@ -158,8 +158,10 @@ export function useScheduleApi() {
     scopeType?: string,
     scopeId?: number,
   ) {
-    const from = new Date(year, month - 1, 1, 0, 0, 0).toISOString().replace('Z', '')
-    const to = new Date(year, month, 0, 23, 59, 59).toISOString().replace('Z', '')
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const lastDay = new Date(year, month, 0).getDate()
+    const from = `${year}-${pad(month)}-01T00:00:00`
+    const to = `${year}-${pad(month)}-${pad(lastDay)}T23:59:59`
     if (scopeType === 'TEAM' && scopeId) {
       const query = new URLSearchParams()
       query.set('from', from)
