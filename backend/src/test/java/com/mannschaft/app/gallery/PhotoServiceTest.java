@@ -2,7 +2,7 @@ package com.mannschaft.app.gallery;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
-import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.gallery.dto.UploadPhotosRequest;
 import com.mannschaft.app.gallery.entity.PhotoAlbumEntity;
 import com.mannschaft.app.gallery.entity.PhotoEntity;
@@ -35,7 +35,7 @@ class PhotoServiceTest {
     @Mock private PhotoRepository photoRepository;
     @Mock private PhotoAlbumRepository albumRepository;
     @Mock private GalleryMapper galleryMapper;
-    @Mock private StorageService storageService;
+    @Mock private R2StorageService r2StorageService;
     @Mock private DomainEventPublisher eventPublisher;
 
     private PhotoAlbumService albumService;
@@ -45,7 +45,7 @@ class PhotoServiceTest {
     void setUp() {
         albumService = new PhotoAlbumService(albumRepository, galleryMapper);
         service = new PhotoService(photoRepository, albumRepository, albumService,
-                galleryMapper, storageService, eventPublisher);
+                galleryMapper, r2StorageService, eventPublisher);
     }
 
     private static final Long ALBUM_ID = 1L;
@@ -61,7 +61,8 @@ class PhotoServiceTest {
         void アップロード_バッチ上限超過_例外() {
             List<UploadPhotosRequest.PhotoItem> items = new ArrayList<>();
             for (int i = 0; i < 21; i++) {
-                items.add(new UploadPhotosRequest.PhotoItem("key" + i, "file" + i + ".jpg", 1000L, "image/jpeg", null));
+                items.add(new UploadPhotosRequest.PhotoItem(
+                        "key" + i, "file" + i + ".jpg", 1000L, "image/jpeg", null, null, null));
             }
             UploadPhotosRequest request = new UploadPhotosRequest(items);
 
@@ -78,13 +79,60 @@ class PhotoServiceTest {
             given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
 
             UploadPhotosRequest.PhotoItem item = new UploadPhotosRequest.PhotoItem(
-                    "key1", "file.jpg", 21 * 1024 * 1024L, "image/jpeg", null); // 21MB
+                    "key1", "file.jpg", 101L * 1024 * 1024, "image/jpeg", null, null, null); // 101MB
             UploadPhotosRequest request = new UploadPhotosRequest(List.of(item));
 
             assertThatThrownBy(() -> service.uploadPhotos(ALBUM_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("GALLERY_005"));
+        }
+
+        @Test
+        @DisplayName("正常系: PHOTO タイプでエンティティ保存される")
+        void アップロード_写真_正常() {
+            PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(0).build();
+            given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
+            given(albumRepository.sumPhotoCountByTeamId(1L)).willReturn(0);
+
+            PhotoEntity savedEntity = PhotoEntity.builder()
+                    .albumId(ALBUM_ID).r2Key("gallery/TEAM/1/album-1/photo-uuid.jpg")
+                    .originalFilename("test.jpg").mediaType(GalleryMediaType.PHOTO)
+                    .processingStatus(GalleryProcessingStatus.READY).build();
+            given(photoRepository.save(any(PhotoEntity.class))).willReturn(savedEntity);
+
+            UploadPhotosRequest.PhotoItem item = new UploadPhotosRequest.PhotoItem(
+                    "gallery/TEAM/1/album-1/photo-uuid.jpg", "test.jpg", 1024L, "image/jpeg",
+                    null, "PHOTO", null);
+            UploadPhotosRequest request = new UploadPhotosRequest(List.of(item));
+
+            var response = service.uploadPhotos(ALBUM_ID, USER_ID, request);
+
+            assertThat(response.getUploadedCount()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("正常系: VIDEO タイプでストレージ確認後保存される")
+        void アップロード_動画_正常() {
+            PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(0).build();
+            given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
+            given(albumRepository.sumPhotoCountByTeamId(1L)).willReturn(0);
+            given(r2StorageService.objectExists("gallery/TEAM/1/album-1/video-uuid.mp4")).willReturn(true);
+
+            PhotoEntity savedEntity = PhotoEntity.builder()
+                    .albumId(ALBUM_ID).r2Key("gallery/TEAM/1/album-1/video-uuid.mp4")
+                    .originalFilename("test.mp4").mediaType(GalleryMediaType.VIDEO)
+                    .processingStatus(GalleryProcessingStatus.PENDING).build();
+            given(photoRepository.save(any(PhotoEntity.class))).willReturn(savedEntity);
+
+            UploadPhotosRequest.PhotoItem item = new UploadPhotosRequest.PhotoItem(
+                    "gallery/TEAM/1/album-1/video-uuid.mp4", "test.mp4", 50 * 1024 * 1024L,
+                    "video/mp4", null, "VIDEO", null);
+            UploadPhotosRequest request = new UploadPhotosRequest(List.of(item));
+
+            var response = service.uploadPhotos(ALBUM_ID, USER_ID, request);
+
+            assertThat(response.getUploadedCount()).isEqualTo(1);
         }
     }
 
@@ -95,7 +143,8 @@ class PhotoServiceTest {
         @DisplayName("正常系: 写真が削除されイベントが発行される")
         void 削除_正常_イベント発行() {
             PhotoEntity entity = PhotoEntity.builder()
-                    .albumId(ALBUM_ID).s3Key("key").originalFilename("test.jpg").build();
+                    .albumId(ALBUM_ID).r2Key("gallery/TEAM/1/album-1/photo-uuid.jpg")
+                    .originalFilename("test.jpg").build();
             given(photoRepository.findById(PHOTO_ID)).willReturn(Optional.of(entity));
             given(albumRepository.findById(ALBUM_ID)).willReturn(
                     Optional.of(PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(1).build()));
@@ -123,7 +172,9 @@ class PhotoServiceTest {
         @Test
         @DisplayName("異常系: ダウンロード不許可でGALLERY_004例外")
         void ダウンロード_不許可_例外() {
-            PhotoEntity entity = PhotoEntity.builder().albumId(ALBUM_ID).s3Key("key").originalFilename("t.jpg").build();
+            PhotoEntity entity = PhotoEntity.builder()
+                    .albumId(ALBUM_ID).r2Key("gallery/TEAM/1/album-1/photo-uuid.jpg")
+                    .originalFilename("t.jpg").build();
             given(photoRepository.findById(PHOTO_ID)).willReturn(Optional.of(entity));
             PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a").allowDownload(false).build();
             given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));

@@ -348,5 +348,16 @@
     "videoUploadSuccess": "Video erfolgreich hochgeladen",
     "videoUploadError": "Video-Upload fehlgeschlagen",
     "videoRemove": "Video entfernen"
+  },
+  "gallery": {
+    "title": "Galerie",
+    "createAlbum": "Album erstellen",
+    "photoCount": " Fotos",
+    "empty": "Keine Alben vorhanden",
+    "albumLoadError": "Albumliste konnte nicht geladen werden",
+    "videoProcessing": "Video wird verarbeitet...",
+    "videoFailed": "Video nicht verfügbar",
+    "videoPlay": "Video abspielen",
+    "uploadVideo": "Video hochladen"
   }
 }

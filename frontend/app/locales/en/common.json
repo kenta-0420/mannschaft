@@ -348,5 +348,16 @@
     "videoUploadSuccess": "Video uploaded successfully",
     "videoUploadError": "Failed to upload video",
     "videoRemove": "Remove video"
+  },
+  "gallery": {
+    "title": "Gallery",
+    "createAlbum": "Create Album",
+    "photoCount": " items",
+    "empty": "No albums found",
+    "albumLoadError": "Failed to load albums",
+    "videoProcessing": "Processing video...",
+    "videoFailed": "Video unavailable",
+    "videoPlay": "Play video",
+    "uploadVideo": "Upload video"
   }
 }

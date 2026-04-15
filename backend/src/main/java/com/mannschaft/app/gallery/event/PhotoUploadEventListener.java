@@ -1,7 +1,8 @@
 package com.mannschaft.app.gallery.event;
 
 import com.mannschaft.app.common.storage.ImageConverter;
-import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.gallery.GalleryMediaType;
 import com.mannschaft.app.gallery.entity.PhotoEntity;
 import com.mannschaft.app.gallery.repository.PhotoRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import java.io.ByteArrayInputStream;
 /**
  * 写真アップロード後のサムネイル自動生成リスナー。
  * トランザクションコミット後に非同期でWebPサムネイルを生成し、PhotoEntityを更新する。
+ * 動画ファイルはサムネイル自動生成をスキップする。
  */
 @Slf4j
 @Component
@@ -28,7 +30,7 @@ public class PhotoUploadEventListener {
     private static final int THUMBNAIL_MAX_SIZE = 400;
 
     private final PhotoRepository photoRepository;
-    private final StorageService storageService;
+    private final R2StorageService r2StorageService;
 
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -53,7 +55,13 @@ public class PhotoUploadEventListener {
         PhotoEntity photo = photoRepository.findById(photoId)
                 .orElseThrow(() -> new IllegalStateException("写真が見つかりません: photoId=" + photoId));
 
-        byte[] originalBytes = storageService.download(photo.getS3Key());
+        // 動画ファイルはサムネイル自動生成をスキップ
+        if (photo.getMediaType() == GalleryMediaType.VIDEO) {
+            log.debug("動画ファイルのためサムネイル生成をスキップ: photoId={}", photoId);
+            return;
+        }
+
+        byte[] originalBytes = r2StorageService.download(photo.getR2Key());
 
         BufferedImage original;
         try {
@@ -73,11 +81,11 @@ public class PhotoUploadEventListener {
                     ImageConverter.createThumbnailWebP(originalBytes, THUMBNAIL_MAX_SIZE);
 
             String thumbExtension = result.converted() ? ".webp" : ".jpg";
-            String thumbKey = photo.getS3Key()
+            String thumbKey = photo.getR2Key()
                     .replaceFirst("photos/", "photos/thumbs/")
                     .replaceFirst("\\.[^.]+$", thumbExtension);
 
-            storageService.upload(thumbKey, result.data(), result.contentType());
+            r2StorageService.upload(thumbKey, result.data(), result.contentType());
 
             photo.updateThumbnailAndExif(thumbKey, original.getWidth(), original.getHeight(),
                     photo.getTakenAt(), photo.getContentType());

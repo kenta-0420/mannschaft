@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.List;
 
 /**
- * 写真アップロードリクエストDTO（Pre-signed URL 方式）。
+ * 写真・動画アップロードリクエストDTO（Pre-signed URL 方式）。
  */
 @Getter
 @RequiredArgsConstructor
@@ -23,7 +23,7 @@ public class UploadPhotosRequest {
     public static class PhotoItem {
 
         @NotNull
-        private final String s3Key;
+        private final String r2Key;
 
         @NotNull
         private final String originalFilename;
@@ -34,5 +34,11 @@ public class UploadPhotosRequest {
         private final String contentType;
 
         private final String caption;
+
+        /** メディア種別: PHOTO / VIDEO。null の場合は PHOTO 扱い。 */
+        private final String mediaType;
+
+        /** VIDEO の場合のサムネイル R2 キー（クライアント生成サムネイル）。 */
+        private final String thumbnailR2Key;
     }
 }

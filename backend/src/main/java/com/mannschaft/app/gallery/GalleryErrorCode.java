@@ -42,7 +42,13 @@ public enum GalleryErrorCode implements ErrorCode {
     BATCH_UPLOAD_LIMIT_EXCEEDED("GALLERY_010", "1リクエストあたり最大20枚です", Severity.WARN),
 
     /** ギャラリーモジュール未有効化 */
-    MODULE_NOT_ENABLED("GALLERY_011", "ギャラリーモジュールが有効化されていません", Severity.WARN);
+    MODULE_NOT_ENABLED("GALLERY_011", "ギャラリーモジュールが有効化されていません", Severity.WARN),
+
+    /** 非対応コンテンツタイプ */
+    UNSUPPORTED_CONTENT_TYPE("GALLERY_012", "対応していないコンテンツタイプです", Severity.WARN),
+
+    /** ストレージにオブジェクトが存在しない */
+    MEDIA_NOT_FOUND_IN_STORAGE("GALLERY_013", "指定されたメディアがストレージに存在しません", Severity.WARN);
 
     private final String code;
     private final String message;
