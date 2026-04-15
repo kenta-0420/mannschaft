@@ -436,5 +436,18 @@
     "custom_field_added": "カスタムフィールドを追加しました",
     "custom_field_updated": "カスタムフィールドを更新しました",
     "custom_field_deleted": "カスタムフィールドを削除しました"
+  },
+  "team": {
+    "friends": {
+      "title": "フレンドチーム",
+      "empty": "フレンドチームはまだありません",
+      "follow": "チームをフォロー",
+      "unfollow": "フォロー解除",
+      "followConfirm": "このチームのフォローを解除しますか？",
+      "targetTeamId": "対象チームID",
+      "public": "公開",
+      "private": "非公開",
+      "mutual": "相互フォロー"
+    }
   }
 }

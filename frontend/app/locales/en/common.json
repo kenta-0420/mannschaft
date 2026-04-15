@@ -436,5 +436,18 @@
     "custom_field_added": "Custom field added",
     "custom_field_updated": "Custom field updated",
     "custom_field_deleted": "Custom field deleted"
+  },
+  "team": {
+    "friends": {
+      "title": "Friend Teams",
+      "empty": "No friend teams yet",
+      "follow": "Follow a Team",
+      "unfollow": "Unfollow",
+      "followConfirm": "Are you sure you want to unfollow this team?",
+      "targetTeamId": "Target Team ID",
+      "public": "Public",
+      "private": "Private",
+      "mutual": "Mutual Follow"
+    }
   }
 }
