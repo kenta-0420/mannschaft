@@ -369,6 +369,22 @@
       "uploadError": "Upload failed",
       "selectImage": "Select image file",
       "selectVideo": "Select video file"
+    },
+    "post": {
+      "readMore": "Read more",
+      "publishedAt": "Published",
+      "draft": "Draft",
+      "published": "Published",
+      "scheduled": "Scheduled",
+      "author": "Author",
+      "series": "Series",
+      "tags": "Tags",
+      "relatedPosts": "Related posts",
+      "noPost": "No posts yet",
+      "createFirst": "Write your first post",
+      "settings": "Blog settings",
+      "selfReview": "Self review",
+      "selfReviewDesc": "Set a review period before publishing"
     }
   }
 }
