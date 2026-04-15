@@ -39,7 +39,9 @@ interface ScheduleEventDetail {
 
 const events = ref<CalEvent[]>([])
 const loading = ref(true)
+const showTypeSelector = ref(false)
 const showCreateDialog = ref(false)
+const createAsPersonal = ref(false)
 const selectedDate = ref<string | undefined>(undefined)
 const selectedEventId = ref<number | undefined>(undefined)
 const selectedEvent = ref<ScheduleEventDetail | null>(null)
@@ -67,6 +69,16 @@ async function loadEvents() {
 
 function onDateClick(date: string) {
   selectedDate.value = date
+  showTypeSelector.value = true
+}
+
+function onAddButtonClick() {
+  selectedDate.value = undefined
+  showTypeSelector.value = true
+}
+
+function onTypeSelected(type: 'personal' | 'event') {
+  createAsPersonal.value = type === 'personal'
   showCreateDialog.value = true
 }
 
@@ -131,12 +143,7 @@ onMounted(async () => {
         <BackButton />
         <PageHeader title="スケジュール" />
       </div>
-      <Button
-        v-if="isAdminOrDeputy"
-        label="イベント作成"
-        icon="pi pi-plus"
-        @click="showCreateDialog = true"
-      />
+      <Button label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -172,14 +179,23 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- タイプ選択ダイアログ -->
+    <ScheduleTypeSelector
+      v-model:visible="showTypeSelector"
+      @select="onTypeSelected"
+    />
+
+    <!-- 作成ダイアログ -->
     <EventForm
       v-model:visible="showCreateDialog"
       scope-type="organization"
-      :scope-id="orgId"
+      :scope-id="createAsPersonal ? 0 : orgId"
+      :is-personal="createAsPersonal"
       :initial-date="selectedDate"
       @saved="loadEvents"
     />
 
+    <!-- 編集ダイアログ -->
     <EventForm
       v-model:visible="showEditDialog"
       scope-type="organization"
