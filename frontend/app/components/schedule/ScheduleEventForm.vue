@@ -33,6 +33,40 @@ const form = ref({
   color: '#6366f1',
 })
 
+// 開始時刻が変わったら終了時刻を1時間後に自動設定
+watch(
+  () => form.value.startTime,
+  (newTime) => {
+    if (!newTime || form.value.allDay) return
+    const [h, m] = newTime.split(':').map(Number)
+    const endH = h + 1
+    if (endH >= 24) {
+      form.value.endTime = `${String(endH - 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      if (form.value.startDate) {
+        const d = new Date(form.value.startDate)
+        d.setDate(d.getDate() + 1)
+        form.value.endDate = d
+      }
+    } else {
+      form.value.endTime = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      if (form.value.startDate && !form.value.endDate) {
+        form.value.endDate = new Date(form.value.startDate)
+      }
+    }
+  },
+)
+
+// 開始日が変わったら終了日を開始日に合わせる（未設定 or 開始日より前の場合）
+watch(
+  () => form.value.startDate,
+  (newDate) => {
+    if (!newDate) return
+    if (!form.value.endDate || form.value.endDate < newDate) {
+      form.value.endDate = new Date(newDate)
+    }
+  },
+)
+
 watch(
   () => [props.visible, props.scheduleId],
   async ([visible, scheduleId]) => {
