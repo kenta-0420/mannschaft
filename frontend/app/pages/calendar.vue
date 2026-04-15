@@ -27,8 +27,12 @@ const selectedDate = ref<string | undefined>(undefined)
 async function loadEvents() {
   loading.value = true
   try {
-    const from = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-01`
-    const to = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-28`
+    const year = currentYear.value
+    const month = currentMonth.value
+    const lastDay = new Date(year, month, 0).getDate()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const from = `${year}-${pad(month)}-01T00:00:00`
+    const to = `${year}-${pad(month)}-${pad(lastDay)}T23:59:59`
     const [personal, shared] = await Promise.all([
       scheduleApi.listPersonalSchedules({ from, to }),
       scheduleApi.getCalendarMonth(currentYear.value, currentMonth.value),
