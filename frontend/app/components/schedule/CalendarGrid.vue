@@ -96,7 +96,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
       <div
         v-for="(day, idx) in calendarDays"
         :key="idx"
-        class="min-h-24 cursor-pointer border-b border-r border-surface-300 p-1 transition-colors hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-800"
+        class="min-h-24 cursor-pointer border-b border-r border-surface-400 p-1 transition-colors hover:bg-primary/10 dark:border-surface-500 dark:hover:bg-primary/10"
         :class="{ 'bg-surface-50/50 dark:bg-surface-800/30': !day.isCurrentMonth }"
         @click="emit('dateClick', day.dateStr)"
       >
