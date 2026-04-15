@@ -68,7 +68,7 @@ function toggleMenu(event: Event) {
 
 <template>
   <div
-    class="cursor-pointer rounded-xl border border-surface-300 bg-surface-0 p-4 transition-shadow hover:shadow-sm"
+    class="cursor-pointer rounded-xl border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-sm"
     @click="emit('clickPost', post.id)"
   >
     <!-- ピン表示 -->

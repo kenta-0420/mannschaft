@@ -21,7 +21,7 @@ const emit = defineEmits<{
     <div
       v-for="col in kanbanCols"
       :key="col.status"
-      class="rounded-xl border border-surface-300 dark:border-surface-600"
+      class="rounded-xl border-2 border-surface-400 dark:border-surface-500"
     >
       <div class="flex items-center justify-between rounded-t-xl px-4 py-3" :class="col.color">
         <span class="font-semibold" :class="col.headerColor">{{ col.label }}</span>
@@ -37,7 +37,7 @@ const emit = defineEmits<{
         <div
           v-for="todo in col.todos"
           :key="todo.id"
-          class="rounded-lg border border-surface-300 bg-surface-0 p-3 shadow-sm dark:border-surface-600 dark:bg-surface-800"
+          class="rounded-lg border-2 border-surface-400 bg-surface-0 p-3 shadow-sm dark:border-surface-500 dark:bg-surface-800"
           :class="priorityBorder[todo.priority]"
         >
           <p
