@@ -348,5 +348,16 @@
     "videoUploadSuccess": "동영상을 업로드했습니다",
     "videoUploadError": "동영상 업로드에 실패했습니다",
     "videoRemove": "동영상 삭제"
+  },
+  "gallery": {
+    "title": "갤러리",
+    "createAlbum": "앨범 만들기",
+    "photoCount": "장",
+    "empty": "앨범이 없습니다",
+    "albumLoadError": "앨범 목록을 불러오지 못했습니다",
+    "videoProcessing": "동영상 처리 중...",
+    "videoFailed": "동영상을 재생할 수 없습니다",
+    "videoPlay": "동영상 재생",
+    "uploadVideo": "동영상 업로드"
   }
 }

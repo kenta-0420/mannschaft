@@ -348,5 +348,16 @@
     "videoUploadSuccess": "视频上传成功",
     "videoUploadError": "视频上传失败",
     "videoRemove": "删除视频"
+  },
+  "gallery": {
+    "title": "相册",
+    "createAlbum": "创建相册",
+    "photoCount": "张",
+    "empty": "暂无相册",
+    "albumLoadError": "相册列表获取失败",
+    "videoProcessing": "视频处理中...",
+    "videoFailed": "视频无法播放",
+    "videoPlay": "播放视频",
+    "uploadVideo": "上传视频"
   }
 }
