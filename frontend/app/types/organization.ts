@@ -74,3 +74,85 @@ export interface OrgPermissionGroup {
   permissions: string[]
   createdAt: string
 }
+
+// === F01.2 拡張プロフィール ===
+
+export type EstablishedDatePrecision = 'YEAR' | 'YEAR_MONTH' | 'FULL'
+
+export interface ProfileVisibility {
+  homepage_url?: boolean
+  established_date?: boolean
+  philosophy?: boolean
+  officers?: boolean
+  custom_fields?: boolean
+}
+
+export interface OrganizationProfileResponse {
+  id: number
+  homepage_url: string | null
+  established_date: string | null
+  established_date_precision: EstablishedDatePrecision | null
+  philosophy: string | null
+  profile_visibility: ProfileVisibility | null
+}
+
+export interface UpdateOrgProfileRequest {
+  homepage_url?: string | null
+  established_date?: string | null
+  established_date_precision?: EstablishedDatePrecision | null
+  philosophy?: string | null
+  profile_visibility?: ProfileVisibility | null
+}
+
+export interface OfficerResponse {
+  id: number
+  organization_id: number
+  name: string
+  title: string
+  display_order: number
+  is_visible: boolean
+  is_publicly_visible: boolean | null
+}
+
+export interface CreateOfficerRequest {
+  name: string
+  title: string
+  is_visible?: boolean
+}
+
+export interface UpdateOfficerRequest {
+  name?: string
+  title?: string
+  is_visible?: boolean
+}
+
+export interface CustomFieldResponse {
+  id: number
+  organization_id: number
+  label: string
+  value: string
+  display_order: number
+  is_visible: boolean
+  is_publicly_visible: boolean | null
+}
+
+export interface CreateCustomFieldRequest {
+  label: string
+  value: string
+  is_visible?: boolean
+}
+
+export interface UpdateCustomFieldRequest {
+  label?: string
+  value?: string
+  is_visible?: boolean
+}
+
+export interface ReorderItem {
+  id: number
+  displayOrder: number
+}
+
+export interface ReorderRequest {
+  orders: ReorderItem[]
+}

@@ -68,3 +68,76 @@ export interface UpdateTeamRequest {
   visibility?: TeamVisibility
   supporterEnabled?: boolean
 }
+
+// === F01.2 拡張プロフィール ===
+
+export type EstablishedDatePrecision = 'YEAR' | 'YEAR_MONTH' | 'FULL'
+
+export interface ProfileVisibility {
+  homepage_url?: boolean
+  established_date?: boolean
+  philosophy?: boolean
+  officers?: boolean
+  custom_fields?: boolean
+}
+
+export interface TeamProfileResponse {
+  id: number
+  homepage_url: string | null
+  established_date: string | null
+  established_date_precision: EstablishedDatePrecision | null
+  philosophy: string | null
+  profile_visibility: ProfileVisibility | null
+}
+
+export interface UpdateTeamProfileRequest {
+  homepage_url?: string | null
+  established_date?: string | null
+  established_date_precision?: EstablishedDatePrecision | null
+  philosophy?: string | null
+  profile_visibility?: ProfileVisibility | null
+}
+
+export interface TeamOfficerResponse {
+  id: number
+  team_id: number
+  name: string
+  title: string
+  display_order: number
+  is_visible: boolean
+  is_publicly_visible: boolean | null
+}
+
+export interface CreateTeamOfficerRequest {
+  name: string
+  title: string
+  is_visible?: boolean
+}
+
+export interface UpdateTeamOfficerRequest {
+  name?: string
+  title?: string
+  is_visible?: boolean
+}
+
+export interface TeamCustomFieldResponse {
+  id: number
+  team_id: number
+  label: string
+  value: string
+  display_order: number
+  is_visible: boolean
+  is_publicly_visible: boolean | null
+}
+
+export interface CreateTeamCustomFieldRequest {
+  label: string
+  value: string
+  is_visible?: boolean
+}
+
+export interface UpdateTeamCustomFieldRequest {
+  label?: string
+  value?: string
+  is_visible?: boolean
+}
