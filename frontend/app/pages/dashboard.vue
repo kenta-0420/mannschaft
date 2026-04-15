@@ -79,7 +79,7 @@ onMounted(async () => {
               v-for="team in teamStore.myTeams.slice(0, 5)"
               :key="team.id"
               :to="`/teams/${team.id}`"
-              class="flex items-center gap-3 rounded-lg border border-surface-300 bg-surface-0 p-3 transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-800"
+              class="flex items-center gap-3 rounded-lg border-2 border-surface-400 bg-surface-0 p-3 transition-shadow hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
             >
               <div
                 class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"
@@ -109,7 +109,7 @@ onMounted(async () => {
               v-for="org in orgStore.myOrganizations.slice(0, 5)"
               :key="org.id"
               :to="`/organizations/${org.id}`"
-              class="flex items-center gap-3 rounded-lg border border-surface-300 bg-surface-0 p-3 transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-800"
+              class="flex items-center gap-3 rounded-lg border-2 border-surface-400 bg-surface-0 p-3 transition-shadow hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
             >
               <div
                 class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"

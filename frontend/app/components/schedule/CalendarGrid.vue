@@ -80,7 +80,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
     </div>
 
     <!-- 曜日ヘッダー -->
-    <div class="grid grid-cols-7 border-b border-surface-300 dark:border-surface-600">
+    <div class="grid grid-cols-7 border-b border-surface-400 dark:border-surface-500">
       <div
         v-for="day in daysOfWeek"
         :key="day"

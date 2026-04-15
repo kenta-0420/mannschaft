@@ -107,7 +107,7 @@ const copy = computed<AdCopy>(() => {
     href="https://amzn.to/47IUOcC"
     target="_blank"
     rel="noopener sponsored"
-    class="group relative flex flex-col overflow-hidden rounded-xl border border-surface-400 bg-surface-0 p-3 shadow-sm transition-all hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
+    class="group relative flex flex-col overflow-hidden rounded-xl border-2 border-surface-400 bg-surface-0 p-3 shadow-sm transition-all hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
   >
     <!-- PRバッジ -->
     <span

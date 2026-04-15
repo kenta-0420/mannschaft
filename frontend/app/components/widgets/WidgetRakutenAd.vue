@@ -107,7 +107,7 @@ const copy = computed<AdCopy>(() => {
     href="https://hb.afl.rakuten.co.jp/hsc/52836912.6a09824b.52835f89.0cf8649c/?link_type=hybrid_url&ut=eyJwYWdlIjoic2hvcCIsInR5cGUiOiJoeWJyaWRfdXJsIiwiY29sIjoxLCJjYXQiOiIxMDIiLCJiYW4iOjE1MjQxNTEsImFtcCI6ZmFsc2V9"
     target="_blank"
     rel="noopener sponsored"
-    class="group relative flex flex-col overflow-hidden rounded-xl border border-surface-400 bg-surface-0 p-3 shadow-sm transition-all hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
+    class="group relative flex flex-col overflow-hidden rounded-xl border-2 border-surface-400 bg-surface-0 p-3 shadow-sm transition-all hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
   >
     <!-- PRバッジ -->
     <span
