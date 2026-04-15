@@ -95,15 +95,7 @@ public class OrganizationExtendedProfileService {
         }
 
         // philosophy の HTML 検出・文字数チェック
-        if (req.getPhilosophy() != null) {
-            String trimmed = req.getPhilosophy().trim();
-            if (PlainTextValidator.containsHtml(trimmed)) {
-                throw new BusinessException(OrgErrorCode.ORG_046);
-            }
-            if (codePointLength(trimmed) > MAX_PHILOSOPHY_LENGTH) {
-                throw new BusinessException(OrgErrorCode.ORG_046);
-            }
-        }
+        validateTextLength(req.getPhilosophy(), MAX_PHILOSOPHY_LENGTH);
 
         // URL の正規化
         String normalizedUrl = req.getHomepageUrl() != null
@@ -600,7 +592,11 @@ public class OrganizationExtendedProfileService {
 
     private void validateTextLength(String text, int maxLength) {
         if (text == null) return;
-        if (codePointLength(text.trim()) > maxLength) {
+        String trimmed = text.trim();
+        if (PlainTextValidator.containsHtml(trimmed)) {
+            throw new BusinessException(OrgErrorCode.ORG_046);
+        }
+        if (codePointLength(trimmed) > maxLength) {
             throw new BusinessException(OrgErrorCode.ORG_046);
         }
     }

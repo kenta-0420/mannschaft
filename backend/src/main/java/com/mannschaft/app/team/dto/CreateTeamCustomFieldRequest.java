@@ -1,6 +1,7 @@
 package com.mannschaft.app.team.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,9 +16,11 @@ import lombok.Setter;
 public class CreateTeamCustomFieldRequest {
 
     /** ラベル（必須・最大100文字）*/
+    @NotBlank
     private String label;
 
     /** 値（必須・最大1000文字）*/
+    @NotBlank
     private String value;
 
     /** 表示フラグ（デフォルト true）*/

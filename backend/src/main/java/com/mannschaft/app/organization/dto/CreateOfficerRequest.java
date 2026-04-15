@@ -1,6 +1,7 @@
 package com.mannschaft.app.organization.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,9 +16,11 @@ import lombok.Setter;
 public class CreateOfficerRequest {
 
     /** 役員名（必須・最大100文字）*/
+    @NotBlank
     private String name;
 
     /** 役職名（必須・最大100文字）*/
+    @NotBlank
     private String title;
 
     /** 表示フラグ（デフォルト true）*/

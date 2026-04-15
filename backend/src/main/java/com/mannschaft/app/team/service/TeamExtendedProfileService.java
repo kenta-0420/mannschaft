@@ -95,15 +95,7 @@ public class TeamExtendedProfileService {
         }
 
         // philosophy の HTML 検出・文字数チェック
-        if (req.getPhilosophy() != null) {
-            String trimmed = req.getPhilosophy().trim();
-            if (PlainTextValidator.containsHtml(trimmed)) {
-                throw new BusinessException(TeamErrorCode.TEAM_046);
-            }
-            if (codePointLength(trimmed) > MAX_PHILOSOPHY_LENGTH) {
-                throw new BusinessException(TeamErrorCode.TEAM_046);
-            }
-        }
+        validateTextLength(req.getPhilosophy(), MAX_PHILOSOPHY_LENGTH, TeamErrorCode.TEAM_046);
 
         // URL の正規化
         String normalizedUrl = req.getHomepageUrl() != null
@@ -600,7 +592,11 @@ public class TeamExtendedProfileService {
 
     private void validateTextLength(String text, int maxLength, TeamErrorCode errorCode) {
         if (text == null) return;
-        if (codePointLength(text.trim()) > maxLength) {
+        String trimmed = text.trim();
+        if (PlainTextValidator.containsHtml(trimmed)) {
+            throw new BusinessException(errorCode);
+        }
+        if (codePointLength(trimmed) > maxLength) {
             throw new BusinessException(errorCode);
         }
     }
