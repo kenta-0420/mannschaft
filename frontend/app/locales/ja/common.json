@@ -359,5 +359,16 @@
     "videoFailed": "動画を再生できません",
     "videoPlay": "動画を再生",
     "uploadVideo": "動画をアップロード"
+  },
+  "blog": {
+    "media": {
+      "uploadImage": "画像を挿入",
+      "uploadVideo": "動画を挿入",
+      "uploading": "アップロード中...",
+      "uploadSuccess": "アップロード完了",
+      "uploadError": "アップロードに失敗しました",
+      "selectImage": "画像ファイルを選択",
+      "selectVideo": "動画ファイルを選択"
+    }
   }
 }
