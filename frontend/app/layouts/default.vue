@@ -57,7 +57,7 @@ function isActive(path: string): boolean {
           <ClientOnly>
             <nav
               v-if="authStore.isAuthenticated"
-              class="hidden md:flex items-center gap-1 overflow-x-auto"
+              class="hidden md:flex items-center gap-1 overflow-x-auto scrollbar-thin-nav"
             >
               <NuxtLink
                 v-for="item in navItems"

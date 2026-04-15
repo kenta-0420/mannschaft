@@ -44,4 +44,19 @@ html {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  .scrollbar-thin-nav {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(var(--p-surface-300)) transparent;
+  }
+  .scrollbar-thin-nav::-webkit-scrollbar {
+    height: 4px;
+  }
+  .scrollbar-thin-nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin-nav::-webkit-scrollbar-thumb {
+    background-color: var(--p-surface-300, #d1d5db);
+    border-radius: 2px;
+  }
 }
