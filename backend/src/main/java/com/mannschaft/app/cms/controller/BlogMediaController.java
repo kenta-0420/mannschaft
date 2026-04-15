@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/blog/media")
 @Tag(name = "ブログメディア", description = "F06.1 ブログ記事本文埋め込み用メディアのアップロード URL 発行")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class BlogMediaController {
 
     private final BlogMediaService blogMediaService;

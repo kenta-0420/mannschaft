@@ -138,6 +138,7 @@ public class MultipartUploadService {
     public PartUrlResponse getPartUrls(String uploadId, Long requesterId, PartUrlRequest req) {
         MultipartUploadSessionEntity session = findSessionOrThrow(uploadId);
         validateInProgress(session);
+        validateSessionOwner(session, requesterId);
 
         List<PresignedPartUrl> presignedUrls = r2StorageService.createPresignedPartUrls(
                 req.getFileKey(), uploadId, req.getPartNumbers(), PART_URL_TTL);
@@ -165,6 +166,7 @@ public class MultipartUploadService {
 
         MultipartUploadSessionEntity session = findSessionOrThrow(uploadId);
         validateInProgress(session);
+        validateSessionOwner(session, requesterId);
 
         // AWS SDK の CompletedPart に変換
         List<CompletedPart> completedParts = req.getParts().stream()
@@ -201,6 +203,7 @@ public class MultipartUploadService {
     public void abortUpload(String uploadId, Long requesterId) {
         MultipartUploadSessionEntity session = findSessionOrThrow(uploadId);
         validateInProgress(session);
+        validateSessionOwner(session, requesterId);
 
         // R2 で Multipart Upload を中断
         r2StorageService.abortMultipartUpload(session.getR2Key(), uploadId);
@@ -212,6 +215,21 @@ public class MultipartUploadService {
         sessionRepository.save(updated);
 
         log.info("Multipart Upload 中断: uploadId={}", uploadId);
+    }
+
+    /**
+     * セッションの所有者を検証する。
+     * リクエスト元ユーザーがセッションを開始したユーザーと一致しない場合は 403 を返す。
+     *
+     * @param session     セッションエンティティ
+     * @param requesterId リクエスト元ユーザー ID
+     */
+    private void validateSessionOwner(MultipartUploadSessionEntity session, Long requesterId) {
+        if (!session.getUploaderId().equals(requesterId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "このセッションの操作権限がありません");
+        }
     }
 
     /**
