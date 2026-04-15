@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <!--
+        Virtual Threads (Java 21) + SLF4JBridgeHandler の組み合わせで発生する
+        NoClassDefFoundError: ThrowableProxy を防ぐため、JUL の全ハンドラーをリセットする。
+        これにより Tomcat の JUL エラーが SLF4JBridgeHandler を経由しなくなる。
+        参照: https://logback.qos.ch/manual/configuration.html#LevelChangePropagator
+    -->
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+        <resetJUL>true</resetJUL>
+    </contextListener>
+
     <springProfile name="prod">
         <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">

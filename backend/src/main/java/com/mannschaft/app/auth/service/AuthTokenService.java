@@ -104,9 +104,9 @@ public class AuthTokenService {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (ExpiredJwtException e) {
-            throw new BusinessException(AuthErrorCode.AUTH_010, e);
+            throw new BusinessException(AuthErrorCode.AUTH_036, e);
         } catch (JwtException e) {
-            throw new BusinessException(AuthErrorCode.AUTH_010, e);
+            throw new BusinessException(AuthErrorCode.AUTH_037, e);
         }
 
         String jti = claims.getId();
@@ -115,12 +115,12 @@ public class AuthTokenService {
 
         // JTIブラックリスト確認（個別ログアウト対応）
         if (isJtiBlacklisted(jti)) {
-            throw new BusinessException(AuthErrorCode.AUTH_011);
+            throw new BusinessException(AuthErrorCode.AUTH_038);
         }
 
         // ユーザー全デバイス無効化確認
         if (isTokenInvalidated(userId, iat)) {
-            throw new BusinessException(AuthErrorCode.AUTH_012);
+            throw new BusinessException(AuthErrorCode.AUTH_039);
         }
 
         return claims;

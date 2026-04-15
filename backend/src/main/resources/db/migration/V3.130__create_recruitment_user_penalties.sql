@@ -2,7 +2,7 @@
 -- アクティブペナルティの重複はサービス層の PESSIMISTIC_WRITE で防止する。
 CREATE TABLE recruitment_user_penalties (
     id                       BIGINT      NOT NULL AUTO_INCREMENT,
-    user_id                  BIGINT      NOT NULL COMMENT '対象ユーザーID',
+    user_id                  BIGINT UNSIGNED NOT NULL COMMENT '対象ユーザーID',
     scope_type               ENUM('TEAM', 'ORGANIZATION') NOT NULL,
     scope_id                 BIGINT      NOT NULL,
     penalty_type             ENUM('NO_SHOW') NOT NULL DEFAULT 'NO_SHOW',

@@ -34,6 +34,8 @@ public class GlobalExceptionHandler {
      * Severity ベースのデフォルトマッピングを上書きしたい場合にここへ追加する。
      */
     private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.ofEntries(
+            // 未認証は 401 を返す（Severity.WARN のデフォルト 400 を上書き）
+            Map.entry(CommonErrorCode.COMMON_000.getCode(), HttpStatus.UNAUTHORIZED),
             Map.entry(CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN),
             Map.entry(CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT),
             Map.entry("AD_006", HttpStatus.CONFLICT),

@@ -138,7 +138,7 @@ class AuthTokenServiceTest {
             assertThatThrownBy(() -> authTokenService.parseAccessToken(expiredToken))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_010"));
+                            .isEqualTo("AUTH_036"));
         }
 
         @Test
@@ -155,7 +155,7 @@ class AuthTokenServiceTest {
             assertThatThrownBy(() -> authTokenService.parseAccessToken(token))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_011"));
+                            .isEqualTo("AUTH_038"));
         }
 
         @Test
@@ -168,7 +168,7 @@ class AuthTokenServiceTest {
             assertThatThrownBy(() -> authTokenService.parseAccessToken(invalidToken))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_010"));
+                            .isEqualTo("AUTH_037"));
         }
     }
 
