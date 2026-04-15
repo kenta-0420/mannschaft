@@ -14,6 +14,10 @@ export function useTeamExtendedProfileApi() {
   const api = useApi()
 
   // 拡張プロフィール
+  async function getProfile(teamId: number) {
+    return api<{ data: TeamProfileResponse }>(`/api/v1/teams/${teamId}/profile`)
+  }
+
   async function updateProfile(teamId: number, body: UpdateTeamProfileRequest) {
     return api<{ data: TeamProfileResponse }>(`/api/v1/teams/${teamId}/profile`, {
       method: 'PATCH',
@@ -78,6 +82,7 @@ export function useTeamExtendedProfileApi() {
   }
 
   return {
+    getProfile,
     updateProfile,
     getOfficers,
     createOfficer,

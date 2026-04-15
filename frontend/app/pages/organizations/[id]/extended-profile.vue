@@ -281,10 +281,12 @@ async function loadData() {
   profileLoading.value = true
   try {
     await loadPermissions()
-    const [officersRes, fieldsRes] = await Promise.all([
+    const [profileRes, officersRes, fieldsRes] = await Promise.all([
+      api.getProfile(orgId.value),
       api.getOfficers(orgId.value, true),
       api.getCustomFields(orgId.value, true),
     ])
+    applyProfile(profileRes.data)
     officers.value = officersRes.data.sort((a, b) => a.display_order - b.display_order)
     customFields.value = fieldsRes.data.sort((a, b) => a.display_order - b.display_order)
   } catch (e: unknown) {

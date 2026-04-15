@@ -48,6 +48,18 @@ public class TeamExtendedProfileController {
     // ========================================
 
     /**
+     * チームの拡張プロフィールを取得する。
+     */
+    @GetMapping("/{id}/profile")
+    @Operation(summary = "チーム拡張プロフィール取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<TeamProfileResponse>> getProfile(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(
+                extendedProfileService.getProfile(SecurityUtils.getCurrentUserId(), id));
+    }
+
+    /**
      * チームの拡張プロフィールを更新する。
      */
     @PatchMapping("/{id}/profile")

@@ -63,6 +63,23 @@ public class TeamExtendedProfileService {
     // ========================================
 
     /**
+     * チームの拡張プロフィールを取得する。
+     * GET /teams/{id}/profile
+     *
+     * @param userId リクエストユーザーID（null 可: 非ログイン）
+     * @param teamId チームID
+     * @return 現在のプロフィール
+     */
+    public ApiResponse<TeamProfileResponse> getProfile(Long userId, Long teamId) {
+        TeamEntity team = findTeamOrThrow(teamId);
+        boolean isMember = accessControlService.isMember(userId, teamId, "TEAM");
+        if (team.getVisibility() == TeamEntity.Visibility.PRIVATE && !isMember) {
+            throw new BusinessException(TeamErrorCode.TEAM_048);
+        }
+        return ApiResponse.of(toProfileResponse(team));
+    }
+
+    /**
      * チームの拡張プロフィールを一括更新する。
      * PATCH /teams/{id}/profile
      *
