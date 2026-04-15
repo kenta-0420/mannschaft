@@ -359,5 +359,16 @@
     "videoFailed": "Video unavailable",
     "videoPlay": "Play video",
     "uploadVideo": "Upload video"
+  },
+  "blog": {
+    "media": {
+      "uploadImage": "Insert Image",
+      "uploadVideo": "Insert Video",
+      "uploading": "Uploading...",
+      "uploadSuccess": "Upload complete",
+      "uploadError": "Upload failed",
+      "selectImage": "Select image file",
+      "selectVideo": "Select video file"
+    }
   }
 }

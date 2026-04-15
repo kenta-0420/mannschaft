@@ -17,6 +17,14 @@ const loading = ref(true)
 const saving = ref(false)
 const publishing = ref(false)
 
+/**
+ * BlogMediaUploader から送られてきたMarkdownテキストをエディタ末尾に挿入する。
+ * カーソル位置への挿入はtextareaへの直接アクセスが必要なため、ここでは末尾追記とする。
+ */
+function onMediaInserted(markdownText: string) {
+  body.value = body.value ? `${body.value}\n\n${markdownText}` : markdownText
+}
+
 function publishRedirectPath(): string {
   if (scopeType.value === 'TEAM' && scopeId.value) return `/teams/${scopeId.value}/blog`
   if (scopeType.value === 'ORGANIZATION' && scopeId.value) return `/organizations/${scopeId.value}`
@@ -130,6 +138,15 @@ onMounted(load)
         class="w-full border-0 border-b-2 border-surface-200 bg-transparent px-1 py-2 text-2xl font-bold shadow-none outline-none focus:border-primary focus:ring-0"
         :unstyled="true"
         style="box-shadow: none"
+      />
+
+      <!-- メディアアップロード（画像・動画挿入） -->
+      <BlogMediaUploader
+        v-if="scopeType && scopeId"
+        :scope-type="scopeType"
+        :scope-id="scopeId"
+        :blog-post-id="postId"
+        @inserted="onMediaInserted"
       />
 
       <!-- Markdownエディタ（ツールバー + 編集/プレビュー） -->
