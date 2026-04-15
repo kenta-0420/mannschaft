@@ -2,6 +2,7 @@ package com.mannschaft.app.organization.entity;
 
 import com.mannschaft.app.common.BaseEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -14,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -69,6 +71,24 @@ public class OrganizationEntity extends BaseEntity {
     private LocalDateTime archivedAt;
 
     private LocalDateTime deletedAt;
+
+    // --- F01.2 拡張プロフィールフィールド ---
+
+    @Column(length = 512)
+    private String homepageUrl;
+
+    private LocalDate establishedDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private com.mannschaft.app.organization.EstablishedDatePrecision establishedDatePrecision;
+
+    @Column(columnDefinition = "TEXT")
+    private String philosophy;
+
+    @Convert(converter = com.mannschaft.app.organization.ProfileVisibilityConverter.class)
+    @Column(columnDefinition = "JSON")
+    private com.mannschaft.app.organization.ProfileVisibility profileVisibility;
 
     /**
      * 組織種別
