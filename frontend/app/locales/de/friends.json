@@ -6,7 +6,10 @@
       "empty": "フレンドチームがありません",
       "established_at": "成立日",
       "visibility_public": "公開",
-      "visibility_private": "非公開"
+      "visibility_private": "非公開",
+      "supporter_notice": "公開されているフレンドチームのみ表示されています",
+      "target_team_id": "対象チーム ID",
+      "comment_label": "挨拶コメント（任意）"
     },
     "actions": {
       "follow": "フォロー",

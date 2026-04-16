@@ -6,7 +6,10 @@
       "empty": "No friend teams yet",
       "established_at": "Established",
       "visibility_public": "Public",
-      "visibility_private": "Private"
+      "visibility_private": "Private",
+      "supporter_notice": "Only public friend teams are shown",
+      "target_team_id": "Target team ID",
+      "comment_label": "Greeting message (optional)"
     },
     "actions": {
       "follow": "Follow",
