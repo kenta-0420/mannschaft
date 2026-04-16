@@ -128,5 +128,8 @@
       "prev": "Previous",
       "next": "Next"
     }
+  },
+  "nav": {
+    "tab": "Friend Teams"
   }
 }
