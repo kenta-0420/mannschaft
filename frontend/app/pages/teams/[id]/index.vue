@@ -154,6 +154,7 @@ onMounted(async () => {
           <Tab v-if="isAdminOrDeputy" :value="3"> 招待 </Tab>
           <Tab v-if="isAdmin && team.supporterEnabled" :value="4"> サポーター管理 </Tab>
           <Tab v-if="isAdmin" :value="5"> 機能設定 </Tab>
+          <Tab v-if="isAdmin" :value="6"> {{ $t('friends.nav.tab') }} </Tab>
         </TabList>
 
         <TabPanels>
@@ -214,6 +215,23 @@ onMounted(async () => {
           <TabPanel v-if="isAdmin" :value="5">
             <div class="mt-4">
               <ModuleSettingsPanel scope-type="team" :scope-id="teamId" />
+            </div>
+          </TabPanel>
+
+          <TabPanel v-if="isAdmin" :value="6">
+            <div class="mt-4 grid grid-cols-2 gap-3">
+              <NuxtLink :to="`/teams/${teamId}/friends`">
+                <Button :label="$t('friends.title')" icon="pi pi-users" class="w-full" outlined />
+              </NuxtLink>
+              <NuxtLink :to="`/teams/${teamId}/friend-folders`">
+                <Button :label="$t('folders.title')" icon="pi pi-folder-open" class="w-full" outlined />
+              </NuxtLink>
+              <NuxtLink :to="`/teams/${teamId}/friend-feed`">
+                <Button :label="$t('friend_feed.title')" icon="pi pi-inbox" class="w-full" outlined />
+              </NuxtLink>
+              <NuxtLink :to="`/teams/${teamId}/friend-forward-exports`">
+                <Button :label="$t('forward_exports.title')" icon="pi pi-history" class="w-full" outlined />
+              </NuxtLink>
             </div>
           </TabPanel>
         </TabPanels>

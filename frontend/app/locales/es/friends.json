@@ -128,5 +128,8 @@
       "prev": "前へ",
       "next": "次へ"
     }
+  },
+  "nav": {
+    "tab": "Equipos amigos"
   }
 }
