@@ -62,6 +62,9 @@
     "title": "Admin Feed",
     "subtitle": "Review and forward posts from friend teams",
     "badge": "From friend",
+    "forwarded_badge": "Forwarded",
+    "phase2_banner": "Automatic post retrieval will be available in Phase 2. Currently only layout preview is available.",
+    "permission_denied": "You do not have permission to view this page",
     "list": {
       "empty": "No posts from friends"
     },
@@ -71,28 +74,40 @@
       "target_label": "Audience",
       "target_member": "Members only",
       "target_supporter": "Members + supporters (Phase 3+)",
+      "target_supporter_tooltip": "Available from Phase 3 onwards",
       "comment_label": "Admin comment (optional)",
+      "comment_placeholder": "Add a comment to the forward (optional)",
       "submit": "Forward",
       "cancel": "Cancel",
       "success": "Post forwarded",
       "revoke": "Revoke forward",
       "revoke_success": "Forward revoked",
-      "revoke_confirm": "Revoke this forward?"
+      "revoke_confirm": "Revoke this forward?",
+      "error": "Failed to forward post"
     }
   },
   "forward_exports": {
     "title": "Forward History",
     "subtitle": "See where your team's posts have been forwarded",
+    "permission_denied": "You do not have permission to view this page",
     "list": {
       "empty": "No forward history yet",
       "anonymous_team": "Anonymous team",
-      "revoked": "Revoked"
+      "revoked": "Revoked",
+      "target_member": "Members",
+      "target_supporter": "Members + Supporters"
     },
     "columns": {
       "source_post": "Source post",
       "forwarding_team": "Forwarding team",
       "forwarded_at": "Forwarded at",
-      "target": "Audience"
+      "target": "Audience",
+      "status": "Status"
+    },
+    "pagination": {
+      "showing": "Showing {from}-{to} of {total}",
+      "prev": "Previous",
+      "next": "Next"
     }
   }
 }
