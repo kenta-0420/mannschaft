@@ -448,6 +448,20 @@
       "public": "Public",
       "private": "Private",
       "mutual": "Mutual Follow"
+    },
+    "forwardExports": {
+      "title": "転送エクスポート履歴",
+      "empty": "転送履歴はまだありません",
+      "fromTeam": "転送チーム",
+      "target": "配信範囲",
+      "comment": "コメント",
+      "forwardedAt": "転送日時",
+      "revoked": "取消済み",
+      "active": "有効",
+      "revoke": "転送取消",
+      "revokeConfirm": "この転送を取り消しますか？",
+      "targetMember": "メンバー向け",
+      "targetMemberAndSupporter": "メンバー＋サポーター向け"
     }
   }
 }
