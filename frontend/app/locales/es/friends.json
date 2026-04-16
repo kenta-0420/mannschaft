@@ -81,6 +81,9 @@
     "title": "管理者フィード",
     "subtitle": "フレンドチームの投稿を確認・転送",
     "badge": "フレンドから",
+    "forwarded_badge": "転送済み",
+    "phase2_banner": "投稿一覧の自動取得はPhase 2で実装予定です。現在はレイアウトのプレビューのみ利用できます。",
+    "permission_denied": "この画面を表示する権限がありません",
     "list": {
       "empty": "フレンドからの投稿はありません"
     },
@@ -90,28 +93,40 @@
       "target_label": "配信範囲",
       "target_member": "メンバーのみ",
       "target_supporter": "メンバー + サポーター（Phase 3以降）",
+      "target_supporter_tooltip": "Phase 3以降で利用可能になります",
       "comment_label": "管理者コメント（任意）",
+      "comment_placeholder": "転送時に添えるコメントを入力（任意）",
       "submit": "転送する",
       "cancel": "キャンセル",
       "success": "投稿を転送しました",
       "revoke": "転送を取消",
       "revoke_success": "転送を取消しました",
-      "revoke_confirm": "この転送を取り消しますか？"
+      "revoke_confirm": "この転送を取り消しますか？",
+      "error": "転送に失敗しました"
     }
   },
   "forward_exports": {
     "title": "逆転送履歴",
     "subtitle": "自チーム投稿がどのフレンドに転送されたか",
+    "permission_denied": "この画面を表示する権限がありません",
     "list": {
       "empty": "転送履歴はまだありません",
       "anonymous_team": "匿名チーム",
-      "revoked": "取消済"
+      "revoked": "取消済",
+      "target_member": "メンバー",
+      "target_supporter": "メンバー+サポーター"
     },
     "columns": {
       "source_post": "元投稿",
       "forwarding_team": "転送先チーム",
       "forwarded_at": "転送日時",
-      "target": "配信範囲"
+      "target": "配信範囲",
+      "status": "状態"
+    },
+    "pagination": {
+      "showing": "{total}件中 {from}〜{to}件を表示",
+      "prev": "前へ",
+      "next": "次へ"
     }
   }
 }
