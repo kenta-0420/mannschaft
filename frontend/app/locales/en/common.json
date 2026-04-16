@@ -448,6 +448,19 @@
       "public": "Public",
       "private": "Private",
       "mutual": "Mutual Follow"
+    },
+    "friendFolders": {
+      "title": "Friend Folders",
+      "empty": "No folders yet",
+      "create": "Create Folder",
+      "edit": "Edit Folder",
+      "delete": "Delete Folder",
+      "deleteConfirm": "Are you sure you want to delete this folder?",
+      "name": "Folder Name",
+      "description": "Description",
+      "color": "Color",
+      "memberCount": "Member Count",
+      "default": "Default"
     }
   }
 }

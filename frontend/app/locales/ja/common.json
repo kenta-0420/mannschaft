@@ -448,6 +448,19 @@
       "public": "公開",
       "private": "非公開",
       "mutual": "相互フォロー"
+    },
+    "friendFolders": {
+      "title": "フレンドフォルダ",
+      "empty": "フォルダはまだありません",
+      "create": "フォルダを作成",
+      "edit": "フォルダを編集",
+      "delete": "フォルダを削除",
+      "deleteConfirm": "このフォルダを削除しますか？",
+      "name": "フォルダ名",
+      "description": "説明",
+      "color": "カラー",
+      "memberCount": "メンバー数",
+      "default": "デフォルト"
     }
   }
 }
