@@ -460,7 +460,8 @@
       "description": "説明",
       "color": "カラー",
       "memberCount": "メンバー数",
-      "default": "デフォルト"
+      "default": "デフォルト",
+      "deleteSuccess": "フォルダを削除しました"
     }
   }
 }

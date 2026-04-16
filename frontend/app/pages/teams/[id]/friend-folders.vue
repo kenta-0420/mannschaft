@@ -8,7 +8,7 @@ const route = useRoute()
 const teamId = computed(() => Number(route.params.id))
 const api = useFriendFoldersApi()
 const notification = useNotification()
-const { can, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, can, loadPermissions } = useRoleAccess('team', teamId)
 
 // ----- 状態 -----
 const loading = ref(true)
@@ -32,7 +32,7 @@ const showDeleteDialog = ref(false)
 const deletingFolder = ref<TeamFriendFolderView | null>(null)
 
 // ----- 権限チェック -----
-const canManage = computed(() => can('MANAGE_FRIEND_TEAMS'))
+const canManage = computed(() => isAdmin.value || can('MANAGE_FRIEND_TEAMS'))
 
 // ----- フォルダ一覧取得 -----
 async function loadFolders() {
@@ -100,7 +100,7 @@ async function confirmDeleteFolder() {
   if (!deletingFolder.value) return
   try {
     await api.deleteFolder(teamId.value, deletingFolder.value.id)
-    notification.success('フォルダを削除しました')
+    notification.success(t('team.friendFolders.deleteSuccess'))
     showDeleteDialog.value = false
     deletingFolder.value = null
     await loadFolders()
@@ -140,7 +140,7 @@ watch(canManage, (val) => {
     <!-- 権限なし -->
     <div v-if="!loading && !canManage" class="py-16 text-center text-surface-500">
       <i class="pi pi-lock mb-4 text-4xl" />
-      <p>このページへのアクセス権限がありません。</p>
+      <p>{{ t('error.COMMON_002') }}</p>
     </div>
 
     <!-- ローディング -->

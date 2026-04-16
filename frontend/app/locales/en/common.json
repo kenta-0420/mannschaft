@@ -460,7 +460,8 @@
       "description": "Description",
       "color": "Color",
       "memberCount": "Member Count",
-      "default": "Default"
+      "default": "Default",
+      "deleteSuccess": "Folder deleted"
     }
   }
 }
