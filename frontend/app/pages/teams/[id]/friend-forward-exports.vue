@@ -58,7 +58,7 @@ async function submitRevoke() {
   revokeSubmitting.value = true
   try {
     await friendFeedApi.revokeForward(teamId.value, revokeTarget.value.forwardId)
-    notification.success('転送を取り消しました')
+    notification.success(t('team.forwardExports.revokeSuccess'))
     showRevokeDialog.value = false
     revokeTarget.value = null
     await loadExports(currentPage.value)
@@ -110,7 +110,7 @@ watch(canManage, (val) => {
     <!-- 権限なし -->
     <div v-if="!roleLoading && !canManage" class="py-16 text-center text-surface-500">
       <i class="pi pi-lock mb-4 text-4xl" />
-      <p>このページへのアクセス権限がありません。</p>
+      <p>{{ t('error.COMMON_002') }}</p>
     </div>
 
     <!-- ローディング -->

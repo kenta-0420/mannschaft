@@ -461,7 +461,8 @@
       "revoke": "転送取消",
       "revokeConfirm": "この転送を取り消しますか？",
       "targetMember": "メンバー向け",
-      "targetMemberAndSupporter": "メンバー＋サポーター向け"
+      "targetMemberAndSupporter": "メンバー＋サポーター向け",
+      "revokeSuccess": "転送を取り消しました"
     }
   }
 }
