@@ -1,0 +1,98 @@
+{
+  "friends": {
+    "title": "Friend Teams",
+    "subtitle": "Manage friend relationships with other teams",
+    "list": {
+      "empty": "No friend teams yet",
+      "established_at": "Established",
+      "visibility_public": "Public",
+      "visibility_private": "Private"
+    },
+    "actions": {
+      "follow": "Follow",
+      "unfollow": "Unfollow",
+      "toggle_visibility": "Toggle visibility"
+    },
+    "messages": {
+      "follow_success": "Followed",
+      "follow_mutual_success": "Mutual follow established — you are now friend teams",
+      "follow_retry": "Follow is being processed. Please try again in {seconds} seconds",
+      "unfollow_success": "Unfollowed",
+      "unfollow_confirm": "Unfollow this team?",
+      "visibility_changed": "Visibility updated"
+    },
+    "errors": {
+      "self_follow": "You cannot follow your own team",
+      "already_following": "Already following",
+      "target_not_found": "Target team not found",
+      "permission_denied": "Permission denied"
+    }
+  },
+  "folders": {
+    "title": "Friend Folders",
+    "create": "Create folder",
+    "list": {
+      "empty": "No folders",
+      "member_count": "{count} teams",
+      "remaining": "{remaining} more can be created (max 20)"
+    },
+    "fields": {
+      "name": "Folder name",
+      "description": "Description (optional)",
+      "color": "Color"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "add_member": "Add friend",
+      "remove_member": "Remove"
+    },
+    "messages": {
+      "created": "Folder created",
+      "updated": "Folder updated",
+      "deleted": "Folder deleted",
+      "delete_confirm": "Delete this folder?",
+      "max_exceeded": "Up to 20 folders can be created",
+      "member_added": "Friend added to folder",
+      "member_removed": "Friend removed from folder",
+      "duplicate_member": "This friend is already in the folder"
+    }
+  },
+  "friend_feed": {
+    "title": "Admin Feed",
+    "subtitle": "Review and forward posts from friend teams",
+    "badge": "From friend",
+    "list": {
+      "empty": "No posts from friends"
+    },
+    "forward": {
+      "button": "Forward to my team",
+      "modal_title": "Forward post",
+      "target_label": "Audience",
+      "target_member": "Members only",
+      "target_supporter": "Members + supporters (Phase 3+)",
+      "comment_label": "Admin comment (optional)",
+      "submit": "Forward",
+      "cancel": "Cancel",
+      "success": "Post forwarded",
+      "revoke": "Revoke forward",
+      "revoke_success": "Forward revoked",
+      "revoke_confirm": "Revoke this forward?"
+    }
+  },
+  "forward_exports": {
+    "title": "Forward History",
+    "subtitle": "See where your team's posts have been forwarded",
+    "list": {
+      "empty": "No forward history yet",
+      "anonymous_team": "Anonymous team",
+      "revoked": "Revoked"
+    },
+    "columns": {
+      "source_post": "Source post",
+      "forwarding_team": "Forwarding team",
+      "forwarded_at": "Forwarded at",
+      "target": "Audience"
+    }
+  }
+}

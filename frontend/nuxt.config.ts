@@ -115,6 +115,7 @@ export default defineNuxtConfig({
           'ja/recruitment.ts',
           'ja/quick_memo.json',
           'ja/equipment.json',
+          'ja/friends.json',
         ],
       },
       {
@@ -131,6 +132,7 @@ export default defineNuxtConfig({
           'en/recruitment.ts',
           'en/quick_memo.json',
           'en/equipment.json',
+          'en/friends.json',
         ],
       },
       {
@@ -147,6 +149,7 @@ export default defineNuxtConfig({
           'zh/recruitment.ts',
           'zh/quick_memo.json',
           'zh/equipment.json',
+          'zh/friends.json',
         ],
       },
       {
@@ -163,6 +166,7 @@ export default defineNuxtConfig({
           'ko/recruitment.ts',
           'ko/quick_memo.json',
           'ko/equipment.json',
+          'ko/friends.json',
         ],
       },
       {
@@ -179,6 +183,7 @@ export default defineNuxtConfig({
           'es/recruitment.ts',
           'es/quick_memo.json',
           'es/equipment.json',
+          'es/friends.json',
         ],
       },
       {
@@ -195,6 +200,7 @@ export default defineNuxtConfig({
           'de/recruitment.ts',
           'de/quick_memo.json',
           'de/equipment.json',
+          'de/friends.json',
         ],
       },
     ],
