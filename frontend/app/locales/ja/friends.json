@@ -47,8 +47,20 @@
     "actions": {
       "edit": "編集",
       "delete": "削除",
+      "manage_members": "メンバー管理",
       "add_member": "フレンドを追加",
       "remove_member": "削除"
+    },
+    "placeholders": {
+      "name": "例: 系列校",
+      "description": "このフォルダの用途・メモ（任意）"
+    },
+    "members": {
+      "title": "メンバー管理",
+      "current": "登録中のフレンド",
+      "available": "追加可能なフレンド",
+      "empty": "フォルダに登録されているフレンドはいません",
+      "no_friends": "追加可能なフレンドがいません"
     },
     "messages": {
       "created": "フォルダを作成しました",
@@ -56,6 +68,10 @@
       "deleted": "フォルダを削除しました",
       "delete_confirm": "このフォルダを削除しますか？",
       "max_exceeded": "フォルダは最大20個まで作成できます",
+      "name_required": "フォルダ名を入力してください",
+      "name_too_long": "フォルダ名は50文字以内で入力してください",
+      "description_too_long": "説明は300文字以内で入力してください",
+      "name_conflict": "同じ名前のフォルダが既に存在します",
       "member_added": "フォルダにフレンドを追加しました",
       "member_removed": "フォルダからフレンドを削除しました",
       "duplicate_member": "このフレンドは既にフォルダに登録されています"

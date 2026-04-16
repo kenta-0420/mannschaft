@@ -47,8 +47,20 @@
     "actions": {
       "edit": "Edit",
       "delete": "Delete",
+      "manage_members": "Manage members",
       "add_member": "Add friend",
       "remove_member": "Remove"
+    },
+    "placeholders": {
+      "name": "e.g., Partner schools",
+      "description": "Purpose or notes for this folder (optional)"
+    },
+    "members": {
+      "title": "Manage members",
+      "current": "Friends in folder",
+      "available": "Friends to add",
+      "empty": "No friends in this folder",
+      "no_friends": "No available friends to add"
     },
     "messages": {
       "created": "Folder created",
@@ -56,6 +68,10 @@
       "deleted": "Folder deleted",
       "delete_confirm": "Delete this folder?",
       "max_exceeded": "Up to 20 folders can be created",
+      "name_required": "Folder name is required",
+      "name_too_long": "Folder name must be 50 characters or fewer",
+      "description_too_long": "Description must be 300 characters or fewer",
+      "name_conflict": "A folder with the same name already exists",
       "member_added": "Friend added to folder",
       "member_removed": "Friend removed from folder",
       "duplicate_member": "This friend is already in the folder"
