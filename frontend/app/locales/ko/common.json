@@ -12,7 +12,8 @@
     "search": "검색",
     "loading": "로딩 중...",
     "confirm": "확인",
-    "logout": "로그아웃"
+    "logout": "로그아웃",
+    "loadMore": "더 보기"
   },
   "label": {
     "required": "필수",
@@ -447,7 +448,11 @@
       "targetTeamId": "対象チームID",
       "public": "公開",
       "private": "非公開",
-      "mutual": "相互フォロー"
+      "mutual": "相互フォロー",
+      "followSuccess": "チームをフォローしました",
+      "unfollowSuccess": "フォローを解除しました",
+      "setPublicSuccess": "公開に設定しました",
+      "setPrivateSuccess": "非公開に設定しました"
     }
   }
 }

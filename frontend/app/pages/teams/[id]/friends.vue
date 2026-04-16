@@ -63,7 +63,7 @@ async function submitFollow() {
   followSubmitting.value = true
   try {
     await friendTeamsApi.follow(teamId.value, { targetTeamId: followTargetId.value })
-    notification.success('チームをフォローしました')
+    notification.success(t('team.friends.followSuccess'))
     showFollowDialog.value = false
     await loadFriends(0)
   }
@@ -94,7 +94,7 @@ async function submitUnfollow() {
     await friendTeamsApi.unfollow(teamId.value, unfollowTarget.value.friendTeamId, {
       pastForwardHandling: 'KEEP',
     })
-    notification.success('フォローを解除しました')
+    notification.success(t('team.friends.unfollowSuccess'))
     showUnfollowDialog.value = false
     unfollowTarget.value = null
     await loadFriends(0)
@@ -120,7 +120,7 @@ async function toggleVisibility(friend: TeamFriendView) {
     })
     friend.isPublic = !friend.isPublic
     notification.success(
-      friend.isPublic ? '公開に設定しました' : '非公開に設定しました',
+      t(friend.isPublic ? 'team.friends.setPublicSuccess' : 'team.friends.setPrivateSuccess'),
     )
   }
   catch (error) {
@@ -164,7 +164,7 @@ watch(canManageFriends, (val) => {
     <!-- 権限なし -->
     <div v-if="!roleLoading && !canManageFriends" class="py-16 text-center text-surface-500">
       <i class="pi pi-lock mb-4 text-4xl" />
-      <p>このページへのアクセス権限がありません。</p>
+      <p>{{ t('error.COMMON_002') }}</p>
     </div>
 
     <!-- ローディング -->
@@ -240,7 +240,7 @@ watch(canManageFriends, (val) => {
       <!-- もっと見る -->
       <div v-if="hasNext" class="mt-6 flex justify-center">
         <Button
-          label="もっと見る"
+          :label="t('button.loadMore')"
           severity="secondary"
           outlined
           :loading="listLoading"

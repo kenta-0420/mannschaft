@@ -12,7 +12,8 @@
     "search": "Search",
     "loading": "Loading...",
     "confirm": "Confirm",
-    "logout": "Logout"
+    "logout": "Logout",
+    "loadMore": "Load More"
   },
   "label": {
     "required": "Required",
@@ -447,7 +448,11 @@
       "targetTeamId": "Target Team ID",
       "public": "Public",
       "private": "Private",
-      "mutual": "Mutual Follow"
+      "mutual": "Mutual Follow",
+      "followSuccess": "You are now following this team",
+      "unfollowSuccess": "Unfollowed successfully",
+      "setPublicSuccess": "Set to public",
+      "setPrivateSuccess": "Set to private"
     }
   }
 }

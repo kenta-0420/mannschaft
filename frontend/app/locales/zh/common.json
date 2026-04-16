@@ -12,7 +12,8 @@
     "search": "搜索",
     "loading": "加载中...",
     "confirm": "确认",
-    "logout": "退出登录"
+    "logout": "退出登录",
+    "loadMore": "加载更多"
   },
   "label": {
     "required": "必填",
@@ -447,7 +448,11 @@
       "targetTeamId": "対象チームID",
       "public": "公開",
       "private": "非公開",
-      "mutual": "相互フォロー"
+      "mutual": "相互フォロー",
+      "followSuccess": "チームをフォローしました",
+      "unfollowSuccess": "フォローを解除しました",
+      "setPublicSuccess": "公開に設定しました",
+      "setPrivateSuccess": "非公開に設定しました"
     }
   }
 }

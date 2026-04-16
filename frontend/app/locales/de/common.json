@@ -12,7 +12,8 @@
     "search": "Suchen",
     "loading": "Laden...",
     "confirm": "Bestatigen",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "loadMore": "Mehr laden"
   },
   "label": {
     "required": "Pflichtfeld",
@@ -447,7 +448,11 @@
       "targetTeamId": "対象チームID",
       "public": "公開",
       "private": "非公開",
-      "mutual": "相互フォロー"
+      "mutual": "相互フォロー",
+      "followSuccess": "チームをフォローしました",
+      "unfollowSuccess": "フォローを解除しました",
+      "setPublicSuccess": "公開に設定しました",
+      "setPrivateSuccess": "非公開に設定しました"
     }
   }
 }
