@@ -1,0 +1,98 @@
+{
+  "friends": {
+    "title": "フレンドチーム",
+    "subtitle": "他チームとのフレンド関係管理",
+    "list": {
+      "empty": "フレンドチームがありません",
+      "established_at": "成立日",
+      "visibility_public": "公開",
+      "visibility_private": "非公開"
+    },
+    "actions": {
+      "follow": "フォロー",
+      "unfollow": "フォロー解除",
+      "toggle_visibility": "公開設定を切替"
+    },
+    "messages": {
+      "follow_success": "フォローしました",
+      "follow_mutual_success": "相互フォロー成立 — フレンドチームになりました",
+      "follow_retry": "フォロー処理中です。{seconds}秒後に再度お試しください",
+      "unfollow_success": "フォローを解除しました",
+      "unfollow_confirm": "このチームへのフォローを解除しますか？",
+      "visibility_changed": "公開設定を変更しました"
+    },
+    "errors": {
+      "self_follow": "自チームはフォローできません",
+      "already_following": "既にフォロー済みです",
+      "target_not_found": "対象チームが見つかりません",
+      "permission_denied": "権限がありません"
+    }
+  },
+  "folders": {
+    "title": "フレンドフォルダ",
+    "create": "フォルダ作成",
+    "list": {
+      "empty": "フォルダがありません",
+      "member_count": "{count}チーム",
+      "remaining": "残り{remaining}個作成可能（最大20個）"
+    },
+    "fields": {
+      "name": "フォルダ名",
+      "description": "説明（任意）",
+      "color": "色"
+    },
+    "actions": {
+      "edit": "編集",
+      "delete": "削除",
+      "add_member": "フレンドを追加",
+      "remove_member": "削除"
+    },
+    "messages": {
+      "created": "フォルダを作成しました",
+      "updated": "フォルダを更新しました",
+      "deleted": "フォルダを削除しました",
+      "delete_confirm": "このフォルダを削除しますか？",
+      "max_exceeded": "フォルダは最大20個まで作成できます",
+      "member_added": "フォルダにフレンドを追加しました",
+      "member_removed": "フォルダからフレンドを削除しました",
+      "duplicate_member": "このフレンドは既にフォルダに登録されています"
+    }
+  },
+  "friend_feed": {
+    "title": "管理者フィード",
+    "subtitle": "フレンドチームの投稿を確認・転送",
+    "badge": "フレンドから",
+    "list": {
+      "empty": "フレンドからの投稿はありません"
+    },
+    "forward": {
+      "button": "自チームに転送",
+      "modal_title": "投稿を転送する",
+      "target_label": "配信範囲",
+      "target_member": "メンバーのみ",
+      "target_supporter": "メンバー + サポーター（Phase 3以降）",
+      "comment_label": "管理者コメント（任意）",
+      "submit": "転送する",
+      "cancel": "キャンセル",
+      "success": "投稿を転送しました",
+      "revoke": "転送を取消",
+      "revoke_success": "転送を取消しました",
+      "revoke_confirm": "この転送を取り消しますか？"
+    }
+  },
+  "forward_exports": {
+    "title": "逆転送履歴",
+    "subtitle": "自チーム投稿がどのフレンドに転送されたか",
+    "list": {
+      "empty": "転送履歴はまだありません",
+      "anonymous_team": "匿名チーム",
+      "revoked": "取消済"
+    },
+    "columns": {
+      "source_post": "元投稿",
+      "forwarding_team": "転送先チーム",
+      "forwarded_at": "転送日時",
+      "target": "配信範囲"
+    }
+  }
+}
