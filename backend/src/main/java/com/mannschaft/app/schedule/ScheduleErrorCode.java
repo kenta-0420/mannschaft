@@ -96,7 +96,13 @@ public enum ScheduleErrorCode implements ErrorCode {
     OAUTH_STATE_MISMATCH("SCHEDULE_043", "CSRF検証に失敗しました", Severity.ERROR),
 
     /** OAuthトークン取得失敗 */
-    OAUTH_TOKEN_EXCHANGE_FAILED("SCHEDULE_044", "OAuthトークン取得に失敗しました", Severity.ERROR);
+    OAUTH_TOKEN_EXCHANGE_FAILED("SCHEDULE_044", "OAuthトークン取得に失敗しました", Severity.ERROR),
+
+    /** 連携TODOとスケジュールのスコープが一致しない */
+    TODO_SCOPE_MISMATCH("SCHEDULE_050", "連携TODOとスケジュールのスコープが一致しません", Severity.WARN),
+
+    /** このTODOは既に別のスケジュールと連携されている */
+    TODO_ALREADY_LINKED("SCHEDULE_051", "このTODOは既に別のスケジュールと連携されています", Severity.WARN);
 
     private final String code;
     private final String message;

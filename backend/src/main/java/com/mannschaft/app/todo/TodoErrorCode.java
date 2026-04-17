@@ -75,7 +75,34 @@ public enum TodoErrorCode implements ErrorCode {
     PARENT_SCOPE_MISMATCH("TODO_021", "親課題と同じスコープ内でのみ子課題を作成できます", Severity.WARN),
 
     /** 子TODO数が上限（50件）に達している */
-    CHILD_LIMIT_EXCEEDED("TODO_022", "子課題の上限（50件）に達しています", Severity.WARN);
+    CHILD_LIMIT_EXCEEDED("TODO_022", "子課題の上限（50件）に達しています", Severity.WARN),
+
+    /** 開始日は終了日（期限日）以前でなければならない */
+    START_DATE_AFTER_DUE_DATE("TODO_030", "開始日は終了日（期限日）以前でなければなりません", Severity.WARN),
+
+    /** 連携スケジュールとTODOのスコープが一致しない */
+    SCHEDULE_SCOPE_MISMATCH("TODO_031", "連携スケジュールとTODOのスコープが一致しません", Severity.WARN),
+
+    /** スケジュールは既に別のTODOと連携されている */
+    SCHEDULE_ALREADY_LINKED("TODO_032", "このスケジュールは既に別のTODOと連携されています", Severity.WARN),
+
+    /** TODOは既に別のスケジュールと連携されている */
+    TODO_ALREADY_LINKED("TODO_033", "このTODOは既に別のスケジュールと連携されています", Severity.WARN),
+
+    /** 自動算出モードのTODOの進捗率は子から自動計算される */
+    AUTO_PROGRESS_MODE("TODO_040", "自動算出モードのTODOの進捗率は子から自動計算されます", Severity.WARN),
+
+    /** 共有メモが見つからない */
+    SHARED_MEMO_NOT_FOUND("TODO_050", "共有メモが見つかりません", Severity.WARN),
+
+    /** 共有メモは作成者のみ編集・削除可能 */
+    SHARED_MEMO_NOT_OWNER("TODO_051", "共有メモは作成者のみ編集・削除可能です", Severity.WARN),
+
+    /** 共有メモ件数が上限（500件）に達している */
+    SHARED_MEMO_LIMIT_EXCEEDED("TODO_052", "共有メモの上限（500件）に達しています", Severity.WARN),
+
+    /** 個人メモが見つからない */
+    PERSONAL_MEMO_NOT_FOUND("TODO_060", "個人メモが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

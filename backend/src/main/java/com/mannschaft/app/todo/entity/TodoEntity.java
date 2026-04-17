@@ -19,6 +19,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -72,6 +73,20 @@ public class TodoEntity {
     private LocalDate dueDate;
 
     private LocalTime dueTime;
+
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "linked_schedule_id")
+    private Long linkedScheduleId;
+
+    @Column(name = "progress_rate", nullable = false, precision = 5, scale = 2)
+    @Builder.Default
+    private BigDecimal progressRate = BigDecimal.ZERO;
+
+    @Column(name = "progress_manual", nullable = false)
+    @Builder.Default
+    private Boolean progressManual = false;
 
     private LocalDateTime completedAt;
 
@@ -172,5 +187,34 @@ public class TodoEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 開始日を変更する。
+     *
+     * @param startDate 新しい開始日（nullで開始日なしに変更）
+     */
+    public void updateStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    /**
+     * スケジュール連携IDを設定する（双方向リンク用）。
+     *
+     * @param linkedScheduleId 連携スケジュールID（nullで連携解除）
+     */
+    public void setLinkedScheduleId(Long linkedScheduleId) {
+        this.linkedScheduleId = linkedScheduleId;
+    }
+
+    /**
+     * 進捗率を手動設定する。
+     *
+     * @param progressRate   進捗率（0.00〜100.00）
+     * @param progressManual 手動設定フラグ
+     */
+    public void setProgressRate(java.math.BigDecimal progressRate, boolean progressManual) {
+        this.progressRate = progressRate;
+        this.progressManual = progressManual;
     }
 }

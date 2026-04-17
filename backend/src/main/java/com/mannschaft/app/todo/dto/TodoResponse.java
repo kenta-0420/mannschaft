@@ -3,6 +3,7 @@ package com.mannschaft.app.todo.dto;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -40,4 +41,17 @@ public class TodoResponse {
     private final int childCount;
     private final int descendantCompletedCount;
     private final int descendantTotalCount;
+
+    // Phase 2 追加フィールド
+    /** 開始日（ガントバー表示用）。 */
+    private final LocalDate startDate;
+
+    /** 連携スケジュールID。 */
+    private final Long linkedScheduleId;
+
+    /** 進捗率（0.00〜100.00）。 */
+    private final BigDecimal progressRate;
+
+    /** 進捗率が手動設定かどうか。falseの場合は子から自動計算される。 */
+    private final Boolean progressManual;
 }

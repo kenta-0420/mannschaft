@@ -62,6 +62,7 @@ public class TodoService {
     private final ProjectService projectService;
     private final NameResolverService nameResolverService;
     private final ApplicationEventPublisher eventPublisher;
+    private final TodoProgressService todoProgressService;
 
     /**
      * TODO一覧を取得する。
@@ -181,6 +182,12 @@ public class TodoService {
                     .orElseThrow(() -> new BusinessException(TodoErrorCode.MILESTONE_NOT_IN_PROJECT));
         }
 
+        // 開始日 ≤ 期限日チェック
+        if (request.getStartDate() != null && request.getDueDate() != null
+                && request.getStartDate().isAfter(request.getDueDate())) {
+            throw new BusinessException(TodoErrorCode.START_DATE_AFTER_DUE_DATE);
+        }
+
         TodoPriority priority = request.getPriority() != null
                 ? TodoPriority.valueOf(request.getPriority())
                 : TodoPriority.MEDIUM;
@@ -195,6 +202,7 @@ public class TodoService {
                 .priority(priority)
                 .dueDate(request.getDueDate())
                 .dueTime(request.getDueTime())
+                .startDate(request.getStartDate())
                 .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0)
                 .createdBy(userId)
                 .parentId(parentId)
@@ -218,6 +226,11 @@ public class TodoService {
         // プロジェクト進捗再計算
         if (projectId != null) {
             projectRepository.recalculateProgress(projectId);
+        }
+
+        // 親TODO（自動モード）の進捗率再計算
+        if (parentId != null) {
+            todoProgressService.recalculateAfterChildChange(parentId);
         }
 
         log.info("TODO作成: id={}, title={}, scope={}:{}", todo.getId(), todo.getTitle(), scopeType, scopeId);
@@ -306,12 +319,18 @@ public class TodoService {
     @Transactional
     public void deleteTodo(Long todoId) {
         TodoEntity todo = findTodoOrThrow(todoId);
+        Long parentId = todo.getParentId();
         todo.softDelete();
         todoRepository.save(todo);
 
         // プロジェクト進捗再計算
         if (todo.getProjectId() != null) {
             projectRepository.recalculateProgress(todo.getProjectId());
+        }
+
+        // 親TODO（自動モード）の進捗率再計算
+        if (parentId != null) {
+            todoProgressService.recalculateAfterChildChange(parentId);
         }
 
         log.info("TODO削除: id={}", todoId);
@@ -348,6 +367,9 @@ public class TodoService {
         // イベント発行
         eventPublisher.publishEvent(new TodoStatusChangedEvent(
                 todoId, todo.getProjectId(), oldStatus, newStatus, userId));
+
+        // COMPLETED遷移後の進捗率再計算（自動モード）
+        todoProgressService.recalculateAncestors(todo);
 
         ProjectResponse.UserInfo completedByInfo = null;
         if (todo.getCompletedBy() != null) {
@@ -476,6 +498,58 @@ public class TodoService {
         return ApiResponse.of(children.stream().map(this::toTodoResponse).toList());
     }
 
+    // --- 進捗率管理 ---
+
+    /**
+     * 進捗率を手動設定する（手動モード必須）。
+     * 自動算出モードのTODOには設定不可（TODO_040エラー）。
+     *
+     * @param todoId      Todo ID
+     * @param progressRate 設定する進捗率（0.00〜100.00）
+     * @return 更新されたTODO
+     */
+    @Transactional
+    public ApiResponse<TodoResponse> setProgressRate(Long todoId, java.math.BigDecimal progressRate) {
+        TodoEntity todo = findTodoOrThrow(todoId);
+
+        // 自動算出モードのTODOには設定不可
+        if (Boolean.FALSE.equals(todo.getProgressManual())) {
+            throw new BusinessException(TodoErrorCode.AUTO_PROGRESS_MODE);
+        }
+
+        todoProgressService.setManualProgressRate(todo, progressRate);
+
+        // 更新後のエンティティを再取得
+        TodoEntity updated = findTodoOrThrow(todoId);
+        return ApiResponse.of(toTodoResponse(updated));
+    }
+
+    /**
+     * 進捗モードを切り替える（手動 ↔ 自動）。
+     *
+     * @param todoId         Todo ID
+     * @param progressManual true: 手動モード / false: 自動算出モード
+     * @return 更新されたTODO
+     */
+    @Transactional
+    public ApiResponse<TodoResponse> setProgressMode(Long todoId, boolean progressManual) {
+        TodoEntity todo = findTodoOrThrow(todoId);
+
+        if (progressManual) {
+            // 手動モードへ切替（現在の進捗率はそのまま維持）
+            TodoEntity updated = todo.toBuilder()
+                    .progressManual(true)
+                    .build();
+            todoRepository.save(updated);
+            return ApiResponse.of(toTodoResponse(updated));
+        } else {
+            // 自動算出モードへ切替（子の平均から再計算）
+            todoProgressService.switchToAutoMode(todo);
+            TodoEntity updated = findTodoOrThrow(todoId);
+            return ApiResponse.of(toTodoResponse(updated));
+        }
+    }
+
     // --- 担当者管理 ---
 
     /**
@@ -574,7 +648,10 @@ public class TodoService {
                 entity.getCreatedAt(), entity.getUpdatedAt(),
                 // 親子情報
                 entity.getParentId(), entity.getDepth(),
-                java.util.List.of(), 0, 0, 0);  // 一覧では統計なし
+                java.util.List.of(), 0, 0, 0,  // 一覧では統計なし
+                // Phase 2 フィールド
+                entity.getStartDate(), entity.getLinkedScheduleId(),
+                entity.getProgressRate(), entity.getProgressManual());
     }
 
     /**
@@ -620,7 +697,10 @@ public class TodoService {
                 entity.getCreatedAt(), entity.getUpdatedAt(),
                 entity.getParentId(), entity.getDepth(),
                 children, (int) childCount,
-                (int) descendantCompleted, (int) descendantTotal);
+                (int) descendantCompleted, (int) descendantTotal,
+                // Phase 2 フィールド
+                entity.getStartDate(), entity.getLinkedScheduleId(),
+                entity.getProgressRate(), entity.getProgressManual());
     }
 
     /**
