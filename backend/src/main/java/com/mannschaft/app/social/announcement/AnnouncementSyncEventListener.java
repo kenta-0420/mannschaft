@@ -2,8 +2,8 @@ package com.mannschaft.app.social.announcement;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -17,7 +17,7 @@ import java.util.List;
  * 元コンテンツ（ブログ記事・掲示板スレッドなど）が削除・復元・visibility 変更された場合に
  * {@code announcement_feeds} テーブルを自動的に同期するためのイベントリスナー。
  * メインのトランザクションに影響させないよう、{@code AFTER_COMMIT} フェーズで
- * {@code @Async} 実行する。
+ * {@code REQUIRES_NEW} の新規トランザクションとして実行する。
  * </p>
  *
  * <p>
@@ -65,9 +65,8 @@ public class AnnouncementSyncEventListener {
      *
      * @param event 元コンテンツ削除イベント
      */
-    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleContentDeleted(ContentDeletedEvent event) {
         try {
             List<AnnouncementFeedEntity> feeds = feedRepository
@@ -97,9 +96,8 @@ public class AnnouncementSyncEventListener {
      *
      * @param event 元コンテンツ復元イベント
      */
-    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleContentRestored(ContentRestoredEvent event) {
         try {
             List<AnnouncementFeedEntity> feeds = feedRepository
@@ -134,9 +132,8 @@ public class AnnouncementSyncEventListener {
      *
      * @param event 元コンテンツ visibility 変更イベント
      */
-    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleContentVisibilityChanged(ContentVisibilityChangedEvent event) {
         try {
             List<AnnouncementFeedEntity> feeds = feedRepository
