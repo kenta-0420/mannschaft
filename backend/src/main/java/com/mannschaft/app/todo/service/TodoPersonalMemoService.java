@@ -59,12 +59,12 @@ public class TodoPersonalMemoService {
                 .orElseGet(() -> TodoPersonalMemoEntity.builder()
                         .todoId(todoId)
                         .userId(userId)
-                        .body(request.getBody())
+                        .memo(request.getMemo())
                         .build());
 
         // 既存の場合は本文を更新
         if (memo.getId() != null) {
-            memo.updateBody(request.getBody());
+            memo.updateMemo(request.getMemo());
         }
 
         memo = personalMemoRepository.save(memo);
@@ -106,7 +106,7 @@ public class TodoPersonalMemoService {
         return new PersonalMemoResponse(
                 entity.getId(),
                 entity.getTodoId(),
-                entity.getBody(),
+                entity.getMemo(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt());
     }

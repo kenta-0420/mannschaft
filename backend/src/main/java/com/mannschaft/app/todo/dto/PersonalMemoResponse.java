@@ -20,7 +20,7 @@ public class PersonalMemoResponse {
     private final Long todoId;
 
     /** メモ本文。 */
-    private final String body;
+    private final String memo;
 
     /** 作成日時。 */
     private final LocalDateTime createdAt;

@@ -17,10 +17,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.HtmlUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 public class TodoSharedMemoService {
 
     private static final int MAX_MEMO_COUNT = 500;
+    private static final int QUOTED_MEMO_PREVIEW_LENGTH = 100;
 
     private final TodoSharedMemoEntryRepository sharedMemoRepository;
     private final TodoRepository todoRepository;
@@ -44,12 +46,14 @@ public class TodoSharedMemoService {
     /**
      * 共有メモ一覧を取得する（時系列昇順、ページネーション）。
      *
-     * @param todoId  対象TODO ID
-     * @param page    ページ番号（1始まり）
-     * @param perPage ページサイズ
+     * @param todoId        対象TODO ID
+     * @param page          ページ番号（1始まり）
+     * @param perPage       ページサイズ
+     * @param currentUserId 現在のユーザーID
      * @return 共有メモ一覧
      */
-    public PagedResponse<SharedMemoEntryResponse> getSharedMemos(Long todoId, int page, int perPage) {
+    public PagedResponse<SharedMemoEntryResponse> getSharedMemos(Long todoId, int page, int perPage,
+                                                                   Long currentUserId) {
         verifyTodoExists(todoId);
         Page<TodoSharedMemoEntryEntity> pageResult = sharedMemoRepository
                 .findByTodoIdOrderByCreatedAtAsc(todoId, PageRequest.of(page - 1, perPage));
@@ -71,7 +75,7 @@ public class TodoSharedMemoService {
                         .collect(Collectors.toMap(TodoSharedMemoEntryEntity::getId, e -> e));
 
         List<SharedMemoEntryResponse> responses = pageResult.getContent().stream()
-                .map(entry -> toResponse(entry, nameMap, quotedMap))
+                .map(entry -> toResponse(entry, nameMap, quotedMap, currentUserId))
                 .toList();
 
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
@@ -85,11 +89,13 @@ public class TodoSharedMemoService {
      * @param todoId        対象TODO ID
      * @param userId        投稿者ユーザーID
      * @param request       作成リクエスト
+     * @param currentUserId 現在のユーザーID（isOwnMemo判定に使用）
      * @return 作成されたメモ
      */
     @Transactional
     public ApiResponse<SharedMemoEntryResponse> addSharedMemo(Long todoId, Long userId,
-                                                               SharedMemoEntryRequest request) {
+                                                               SharedMemoEntryRequest request,
+                                                               Long currentUserId) {
         verifyTodoExists(todoId);
 
         // 500件上限チェック
@@ -98,17 +104,24 @@ public class TodoSharedMemoService {
             throw new BusinessException(TodoErrorCode.SHARED_MEMO_LIMIT_EXCEEDED);
         }
 
-        // 引用元エントリの存在確認
+        // 引用元エントリの存在確認と同一TODOスコープチェック（IDOR防止）
         Long quotedEntryId = request.getQuotedEntryId();
         if (quotedEntryId != null) {
-            sharedMemoRepository.findById(quotedEntryId)
+            TodoSharedMemoEntryEntity quotedEntry = sharedMemoRepository.findById(quotedEntryId)
                     .orElseThrow(() -> new BusinessException(TodoErrorCode.SHARED_MEMO_NOT_FOUND));
+            // 引用元が同じTODOに属していることを確認（IDOR防止）
+            if (!quotedEntry.getTodoId().equals(todoId)) {
+                throw new BusinessException(TodoErrorCode.SHARED_MEMO_NOT_FOUND);
+            }
         }
+
+        // XSSエスケープ
+        String escapedMemo = HtmlUtils.htmlEscape(request.getMemo());
 
         TodoSharedMemoEntryEntity entry = TodoSharedMemoEntryEntity.builder()
                 .todoId(todoId)
                 .userId(userId)
-                .body(request.getBody())
+                .memo(escapedMemo)
                 .quotedEntryId(quotedEntryId)
                 .build();
 
@@ -121,7 +134,7 @@ public class TodoSharedMemoService {
                         .collect(Collectors.toMap(TodoSharedMemoEntryEntity::getId, e -> e))
                 : Map.of();
 
-        return ApiResponse.of(toResponse(entry, nameMap, quotedMap));
+        return ApiResponse.of(toResponse(entry, nameMap, quotedMap, currentUserId));
     }
 
     /**
@@ -143,14 +156,22 @@ public class TodoSharedMemoService {
             throw new BusinessException(TodoErrorCode.SHARED_MEMO_NOT_OWNER);
         }
 
-        entry.updateBody(request.getBody());
+        // 24時間以内のみ編集可能
+        if (entry.getCreatedAt().isBefore(LocalDateTime.now().minusHours(24))) {
+            throw new BusinessException(TodoErrorCode.SHARED_MEMO_EDIT_EXPIRED);
+        }
+
+        // XSSエスケープ
+        String escapedMemo = HtmlUtils.htmlEscape(request.getMemo());
+
+        entry.updateMemo(escapedMemo);
         entry = sharedMemoRepository.save(entry);
 
         Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(Set.of(entry.getUserId()));
         Map<Long, TodoSharedMemoEntryEntity> quotedMap = buildQuotedMap(entry);
 
         log.info("共有メモ更新: id={}, todoId={}", memoId, todoId);
-        return ApiResponse.of(toResponse(entry, nameMap, quotedMap));
+        return ApiResponse.of(toResponse(entry, nameMap, quotedMap, userId));
     }
 
     /**
@@ -209,33 +230,42 @@ public class TodoSharedMemoService {
 
     /**
      * エンティティをレスポンスDTOに変換する。
+     *
+     * @param entity        エンティティ
+     * @param nameMap       ユーザーID→表示名マップ
+     * @param quotedMap     引用元エントリマップ
+     * @param currentUserId 現在のユーザーID（isOwnMemo判定に使用）
+     * @return レスポンスDTO
      */
     private SharedMemoEntryResponse toResponse(TodoSharedMemoEntryEntity entity,
                                                 Map<Long, String> nameMap,
-                                                Map<Long, TodoSharedMemoEntryEntity> quotedMap) {
-        SharedMemoEntryResponse quotedResponse = null;
-        if (entity.getQuotedEntryId() != null) {
-            TodoSharedMemoEntryEntity quoted = quotedMap.get(entity.getQuotedEntryId());
-            if (quoted != null) {
-                Map<Long, String> quotedNameMap = nameResolverService.resolveUserDisplayNames(Set.of(quoted.getUserId()));
-                quotedResponse = new SharedMemoEntryResponse(
-                        quoted.getId(),
-                        quoted.getBody(),
-                        quoted.getUserId(),
-                        quotedNameMap.getOrDefault(quoted.getUserId(), ""),
-                        null,  // 引用の引用は展開しない（1段階のみ）
-                        quoted.getCreatedAt(),
-                        quoted.getUpdatedAt(),
-                        quoted.getDeletedAt());
+                                                Map<Long, TodoSharedMemoEntryEntity> quotedMap,
+                                                Long currentUserId) {
+        String quotedMemoPreview = null;
+        Long quotedEntryId = entity.getQuotedEntryId();
+        if (quotedEntryId != null) {
+            TodoSharedMemoEntryEntity quoted = quotedMap.get(quotedEntryId);
+            if (quoted != null && quoted.getMemo() != null) {
+                String raw = quoted.getMemo();
+                quotedMemoPreview = raw.length() > QUOTED_MEMO_PREVIEW_LENGTH
+                        ? raw.substring(0, QUOTED_MEMO_PREVIEW_LENGTH) + "..."
+                        : raw;
             }
         }
 
+        boolean isEditable = entity.getCreatedAt().isAfter(LocalDateTime.now().minusHours(24));
+        boolean isOwnMemo = entity.getUserId().equals(currentUserId);
+
         return new SharedMemoEntryResponse(
                 entity.getId(),
-                entity.getBody(),
+                entity.getTodoId(),
                 entity.getUserId(),
                 nameMap.getOrDefault(entity.getUserId(), ""),
-                quotedResponse,
+                entity.getMemo(),
+                quotedEntryId,
+                quotedMemoPreview,
+                isEditable,
+                isOwnMemo,
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 entity.getDeletedAt());

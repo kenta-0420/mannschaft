@@ -352,7 +352,8 @@ public class TeamTodoController {
             @PathVariable Long id,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int perPage) {
-        return ResponseEntity.ok(sharedMemoService.getSharedMemos(id, page, perPage));
+        return ResponseEntity.ok(sharedMemoService.getSharedMemos(id, page, perPage,
+                SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -365,8 +366,9 @@ public class TeamTodoController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody SharedMemoEntryRequest request) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(sharedMemoService.addSharedMemo(id, SecurityUtils.getCurrentUserId(), request));
+                .body(sharedMemoService.addSharedMemo(id, currentUserId, request, currentUserId));
     }
 
     /**
