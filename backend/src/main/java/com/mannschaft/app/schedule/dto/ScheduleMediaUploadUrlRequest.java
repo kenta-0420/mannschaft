@@ -1,35 +1,31 @@
 package com.mannschaft.app.schedule.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * スケジュールメディアアップロードURL発行リクエスト DTO。
+ * スケジュールメディアアップロード URL 発行リクエスト DTO。
+ * F03.12 カレンダー予定メディア管理。
  */
 @Getter
 @NoArgsConstructor
 public class ScheduleMediaUploadUrlRequest {
 
-    /** メディア種別（IMAGE または VIDEO） */
+    /** メディア種別（"IMAGE" または "VIDEO"） */
     @NotBlank
-    @JsonProperty("mediaType")
     private String mediaType;
 
-    /** MIME タイプ */
+    /** MIME タイプ（例: "image/jpeg", "video/mp4"） */
     @NotBlank
-    @JsonProperty("contentType")
     private String contentType;
 
-    /** ファイルサイズ（バイト） */
+    /** ファイルサイズ（バイト単位） */
     @Positive
-    @JsonProperty("fileSize")
     private long fileSize;
 
-    /** ファイル名（表示名） */
+    /** 元のファイル名（表示名として保存） */
     @NotBlank
-    @JsonProperty("fileName")
     private String fileName;
 }

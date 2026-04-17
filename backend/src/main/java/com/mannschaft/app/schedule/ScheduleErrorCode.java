@@ -102,7 +102,33 @@ public enum ScheduleErrorCode implements ErrorCode {
     TODO_SCOPE_MISMATCH("SCHEDULE_050", "連携TODOとスケジュールのスコープが一致しません", Severity.WARN),
 
     /** このTODOは既に別のスケジュールと連携されている */
-    TODO_ALREADY_LINKED("SCHEDULE_051", "このTODOは既に別のスケジュールと連携されています", Severity.WARN);
+    TODO_ALREADY_LINKED("SCHEDULE_051", "このTODOは既に別のスケジュールと連携されています", Severity.WARN),
+
+    // --- F03.12 スケジュールメディア ---
+
+    /** メディアが見つからない */
+    SCHEDULE_MEDIA_NOT_FOUND("SCHEDULE_060", "メディアが見つかりません", Severity.WARN),
+
+    /** アップロード権限なし */
+    SCHEDULE_MEDIA_UPLOAD_FORBIDDEN("SCHEDULE_061", "メディアのアップロード権限がありません", Severity.WARN),
+
+    /** メディア操作権限なし */
+    SCHEDULE_MEDIA_OPERATION_FORBIDDEN("SCHEDULE_062", "このメディアを操作する権限がありません", Severity.WARN),
+
+    /** 画像上限超過 */
+    SCHEDULE_MEDIA_IMAGE_LIMIT_EXCEEDED("SCHEDULE_063", "1スケジュールあたりの画像上限（50枚）を超えています", Severity.ERROR),
+
+    /** 動画上限超過 */
+    SCHEDULE_MEDIA_VIDEO_LIMIT_EXCEEDED("SCHEDULE_064", "1スケジュールあたりの動画上限（5本）を超えています", Severity.ERROR),
+
+    /** サポート外の MIME タイプ */
+    SCHEDULE_MEDIA_UNSUPPORTED_TYPE("SCHEDULE_065", "サポートされていないファイル形式です", Severity.ERROR),
+
+    /** ファイルサイズ超過 */
+    SCHEDULE_MEDIA_SIZE_EXCEEDED("SCHEDULE_066", "ファイルサイズが上限を超えています", Severity.ERROR),
+
+    /** is_cover 変更権限なし（MEMBER は変更不可） */
+    SCHEDULE_MEDIA_COVER_FORBIDDEN("SCHEDULE_067", "カバー写真の設定はADMIN/DEPUTY_ADMINのみ可能です", Severity.WARN);
 
     private final String code;
     private final String message;

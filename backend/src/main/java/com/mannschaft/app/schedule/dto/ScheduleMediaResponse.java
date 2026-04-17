@@ -1,68 +1,54 @@
 package com.mannschaft.app.schedule.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
 
 /**
- * スケジュールメディアレスポンス DTO。
- * GET /media 一覧の items 要素、PATCH 更新後レスポンスに使用する。
+ * スケジュールメディア単件レスポンス DTO。
+ * F03.12 カレンダー予定メディア管理。
  */
 @Getter
 @Builder
 public class ScheduleMediaResponse {
 
-    /** メディア ID */
-    @JsonProperty("id")
+    /** メディアID */
     private Long id;
 
-    /** メディア種別（IMAGE / VIDEO） */
-    @JsonProperty("mediaType")
+    /** メディア種別（"IMAGE" または "VIDEO"） */
     private String mediaType;
 
     /** R2 配信 URL */
-    @JsonProperty("url")
     private String url;
 
-    /** 動画サムネイル URL（IMAGE / 未生成時は null） */
-    @JsonProperty("thumbnailUrl")
+    /** サムネイル URL */
     private String thumbnailUrl;
 
-    /** ファイル名（元のファイル名） */
-    @JsonProperty("fileName")
+    /** ファイル名（表示名） */
     private String fileName;
 
-    /** ファイルサイズ（バイト） */
-    @JsonProperty("fileSize")
+    /** ファイルサイズ（バイト単位） */
     private Long fileSize;
 
-    /** キャプション・説明文 */
-    @JsonProperty("caption")
+    /** キャプション */
     private String caption;
 
     /** 撮影日時 */
-    @JsonProperty("takenAt")
     private LocalDateTime takenAt;
 
     /** カバー写真フラグ */
-    @JsonProperty("isCover")
     private Boolean isCover;
 
-    /** 経費証憑フラグ */
-    @JsonProperty("isExpenseReceipt")
+    /** 経費領収書フラグ */
     private Boolean isExpenseReceipt;
 
-    /** 後処理ステータス（PENDING / PROCESSING / READY / FAILED） */
-    @JsonProperty("processingStatus")
+    /** 処理ステータス（PENDING / PROCESSING / COMPLETED / FAILED） */
     private String processingStatus;
 
-    /** アップロードしたユーザー ID */
-    @JsonProperty("uploaderId")
+    /** アップロードしたユーザーID */
     private Long uploaderId;
 
-    /** レコード作成日時 */
-    @JsonProperty("createdAt")
+    /** 作成日時 */
     private LocalDateTime createdAt;
 }
