@@ -3,6 +3,9 @@ package com.mannschaft.app.social.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.FollowerType;
 import com.mannschaft.app.social.SocialErrorCode;
 import com.mannschaft.app.social.dto.FollowTeamResponse;
@@ -87,6 +90,8 @@ public class TeamFriendsService {
     private final TeamRepository teamRepository;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
+    private final NotificationHelper notificationHelper;
+    private final UserRoleRepository userRoleRepository;
 
     // ═════════════════════════════════════════════════════════════
     // 1. チーム間フォロー + 相互フォロー検知
@@ -190,11 +195,14 @@ public class TeamFriendsService {
         // 7. 相互フォロー成立 → team_friends に INSERT（正規化）
         TeamFriendEntity teamFriend = createTeamFriend(teamId, targetTeamId, follow, reverseFollow);
 
-        // 8. 監査ログ + TODO: 通知発火（Phase 2 で FRIEND_ESTABLISHED 通知実装）
+        // 8. 監査ログ + 通知発火（Phase 2: FRIEND_ESTABLISHED）
         recordFollowAudit(userId, teamId, targetTeamId, follow.getId());
         recordFriendEstablishedAudit(userId, teamFriend);
         log.info("相互フォロー確定・フレンド関係成立: teamFriendId={}, teamAId={}, teamBId={}",
                 teamFriend.getId(), teamFriend.getTeamAId(), teamFriend.getTeamBId());
+
+        // 9. 両チームの ADMIN に FRIEND_ESTABLISHED 通知を送信
+        sendFriendEstablishedNotification(teamId, targetTeamId, teamFriend.getId(), userId);
 
         return FollowTeamResponse.builder()
                 .followId(follow.getId())
@@ -323,9 +331,13 @@ public class TeamFriendsService {
         // 7. follows 削除
         followRepository.delete(follow);
 
-        // 8. 監査ログ + TODO: 通知発火（Phase 2 で FRIEND_DISSOLVED 通知実装）
+        // 8. 監査ログ + 通知発火（Phase 2: FRIEND_DISSOLVED）
         recordUnfollowAudit(userId, teamId, targetTeamId, effectiveMode);
-        friendOpt.ifPresent(friend -> recordFriendDissolvedAudit(userId, friend, effectiveMode));
+        friendOpt.ifPresent(friend -> {
+            recordFriendDissolvedAudit(userId, friend, effectiveMode);
+            // 両チームの ADMIN に FRIEND_DISSOLVED 通知を送信
+            sendFriendDissolvedNotification(teamId, targetTeamId, friend.getId(), userId);
+        });
     }
 
     /**
@@ -660,5 +672,119 @@ public class TeamFriendsService {
                 String.format(
                         "{\"team_friend_id\":%d,\"is_public_before\":%s,\"is_public_after\":%s}",
                         teamFriendId, before, after));
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // 通知発火ヘルパー（Phase 2）
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * フレンド関係成立時に両チームの ADMIN へ FRIEND_ESTABLISHED 通知を送信する。
+     *
+     * <p>
+     * teamId チームの ADMIN と targetTeamId チームの ADMIN の両方へ通知を送る。
+     * 送信失敗は {@link NotificationHelper#notifyAll} が個別に握り込み継続する。
+     * </p>
+     *
+     * @param teamId       自チーム ID
+     * @param targetTeamId 相手チーム ID
+     * @param teamFriendId フレンド関係 ID
+     * @param actorId      操作実行者ユーザー ID
+     */
+    private void sendFriendEstablishedNotification(Long teamId, Long targetTeamId,
+                                                   Long teamFriendId, Long actorId) {
+        // 自チームの ADMIN へ通知
+        String selfTeamName = teamRepository.findById(teamId)
+                .map(TeamEntity::getName).orElse("チーム");
+        String targetTeamName = teamRepository.findById(targetTeamId)
+                .map(TeamEntity::getName).orElse("チーム");
+
+        List<Long> selfAdminIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(teamId, ROLE_ADMIN);
+        if (!selfAdminIds.isEmpty()) {
+            notificationHelper.notifyAll(
+                    selfAdminIds,
+                    "FRIEND_ESTABLISHED",
+                    targetTeamName + "とフレンドチームになりました",
+                    targetTeamName + "との相互フォローが成立し、フレンドチームになりました",
+                    "TEAM_FRIEND",
+                    teamFriendId,
+                    NotificationScopeType.FRIEND_TEAM,
+                    teamId,
+                    "/teams/" + teamId + "/friends",
+                    actorId
+            );
+        }
+
+        // 相手チームの ADMIN へ通知
+        List<Long> targetAdminIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(targetTeamId, ROLE_ADMIN);
+        if (!targetAdminIds.isEmpty()) {
+            notificationHelper.notifyAll(
+                    targetAdminIds,
+                    "FRIEND_ESTABLISHED",
+                    selfTeamName + "とフレンドチームになりました",
+                    selfTeamName + "との相互フォローが成立し、フレンドチームになりました",
+                    "TEAM_FRIEND",
+                    teamFriendId,
+                    NotificationScopeType.FRIEND_TEAM,
+                    targetTeamId,
+                    "/teams/" + targetTeamId + "/friends",
+                    actorId
+            );
+        }
+    }
+
+    /**
+     * フレンド関係解除時に両チームの ADMIN へ FRIEND_DISSOLVED 通知を送信する。
+     *
+     * <p>
+     * teamId チームの ADMIN と targetTeamId チームの ADMIN の両方へ通知を送る。
+     * 送信失敗は {@link NotificationHelper#notifyAll} が個別に握り込み継続する。
+     * </p>
+     *
+     * @param teamId       自チーム ID（解除操作を行っている側）
+     * @param targetTeamId 相手チーム ID
+     * @param teamFriendId フレンド関係 ID
+     * @param actorId      操作実行者ユーザー ID
+     */
+    private void sendFriendDissolvedNotification(Long teamId, Long targetTeamId,
+                                                 Long teamFriendId, Long actorId) {
+        String selfTeamName = teamRepository.findById(teamId)
+                .map(TeamEntity::getName).orElse("チーム");
+        String targetTeamName = teamRepository.findById(targetTeamId)
+                .map(TeamEntity::getName).orElse("チーム");
+
+        // 自チームの ADMIN へ通知
+        List<Long> selfAdminIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(teamId, ROLE_ADMIN);
+        if (!selfAdminIds.isEmpty()) {
+            notificationHelper.notifyAll(
+                    selfAdminIds,
+                    "FRIEND_DISSOLVED",
+                    targetTeamName + "とのフレンドチーム関係が解除されました",
+                    targetTeamName + "とのフレンドチーム関係が解除されました",
+                    "TEAM_FRIEND",
+                    teamFriendId,
+                    NotificationScopeType.FRIEND_TEAM,
+                    teamId,
+                    "/teams/" + teamId + "/friends",
+                    actorId
+            );
+        }
+
+        // 相手チームの ADMIN へ通知
+        List<Long> targetAdminIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(targetTeamId, ROLE_ADMIN);
+        if (!targetAdminIds.isEmpty()) {
+            notificationHelper.notifyAll(
+                    targetAdminIds,
+                    "FRIEND_DISSOLVED",
+                    selfTeamName + "とのフレンドチーム関係が解除されました",
+                    selfTeamName + "とのフレンドチーム関係が解除されました",
+                    "TEAM_FRIEND",
+                    teamFriendId,
+                    NotificationScopeType.FRIEND_TEAM,
+                    targetTeamId,
+                    "/teams/" + targetTeamId + "/friends",
+                    actorId
+            );
+        }
     }
 }

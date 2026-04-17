@@ -89,7 +89,7 @@ class UserControllerTest {
                 1L, "test@example.com", "田中", "太郎",
                 "タナカ", "タロウ", "taro", null,
                 true, null, "090-1234-5678",
-                "ja", "Asia/Tokyo", "ACTIVE",
+                "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of("GOOGLE"),
                 LocalDateTime.of(2026, 3, 1, 10, 0),
                 LocalDateTime.of(2026, 1, 1, 0, 0), null);
@@ -115,7 +115,7 @@ class UserControllerTest {
                 1L, "test@example.com", "佐藤", "花子",
                 "サトウ", "ハナコ", "hanako", null,
                 true, null, "090-9876-5432",
-                "ja", "Asia/Tokyo", "ACTIVE",
+                "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of(),
                 LocalDateTime.of(2026, 3, 1, 10, 0),
                 LocalDateTime.of(2026, 1, 1, 0, 0), null);
@@ -249,7 +249,7 @@ class UserControllerTest {
                 1L, "test@example.com", "田中", "太郎",
                 null, null, "taro", null,
                 null, null, null,
-                "ja", "Asia/Tokyo", "ACTIVE",
+                "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of(),
                 null, LocalDateTime.of(2026, 1, 1, 0, 0), null);
         given(userService.updateProfile(anyLong(), any(UpdateProfileRequest.class)))
