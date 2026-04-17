@@ -1,5 +1,5 @@
 export type NotificationPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
-export type NotificationScopeType = 'TEAM' | 'ORGANIZATION' | 'PERSONAL' | 'SYSTEM'
+export type NotificationScopeType = 'TEAM' | 'ORGANIZATION' | 'PERSONAL' | 'SYSTEM' | 'FRIEND_TEAM' | 'FRIEND_FOLDER'
 
 export interface NotificationActor {
   id: number

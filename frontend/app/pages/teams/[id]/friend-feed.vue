@@ -6,9 +6,6 @@
  * 自チーム内タイムラインへ転送する操作を行う。
  *
  * 権限: ADMIN or MANAGE_FRIEND_TEAMS 保持 DEPUTY_ADMIN
- *
- * Phase 1 では投稿取得API（GET /friend-feed）が未実装のため、
- * レイアウトのプレビューとして空リスト + Phase 2 バナーを表示する。
  */
 definePageMeta({ middleware: 'auth' })
 
@@ -16,7 +13,7 @@ const { t } = useI18n()
 const route = useRoute()
 const teamId = Number(route.params.id)
 
-const { isAdmin, isAdminOrDeputy, can, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, can, loadPermissions } = useRoleAccess('team', teamId)
 
 const loading = ref(true)
 const permissionDenied = ref(false)
@@ -25,6 +22,9 @@ const permissionDenied = ref(false)
 const forwardModalVisible = ref(false)
 const forwardPostId = ref<number | null>(null)
 const forwardSourceTeamName = ref('')
+
+/** FriendFeedPostList への ref（markAsForwarded 呼び出し用） */
+const feedListRef = ref<{ markAsForwarded: (postId: number, forwardId: number) => void } | null>(null)
 
 /** 権限チェック */
 onMounted(async () => {
@@ -43,14 +43,16 @@ onMounted(async () => {
 /** 転送ボタン押下 → モーダル表示 */
 function onForward(postId: number) {
   forwardPostId.value = postId
-  // Phase 1: モック時はチーム名を空文字列で設定
   forwardSourceTeamName.value = ''
   forwardModalVisible.value = true
 }
 
-/** 転送成功時 */
-function onForwardSuccess(_forwardId: number) {
-  // Phase 2: 投稿リストの該当カードを「転送済み」に更新する処理を追加
+/** 転送成功時 — 該当カードを転送済みに更新する */
+function onForwardSuccess(forwardId: number) {
+  if (forwardPostId.value !== null) {
+    feedListRef.value?.markAsForwarded(forwardPostId.value, forwardId)
+  }
+  forwardModalVisible.value = false
 }
 </script>
 
@@ -74,18 +76,9 @@ function onForwardSuccess(_forwardId: number) {
     </div>
 
     <div class="mx-auto max-w-2xl">
-      <!-- Phase 2 実装予定バナー -->
-      <Message severity="info" class="mb-4" :closable="false">
-        <template #default>
-          <div class="flex items-center gap-2">
-            <i class="pi pi-info-circle" />
-            <span>{{ t('friend_feed.phase2_banner') }}</span>
-          </div>
-        </template>
-      </Message>
-
       <!-- 投稿一覧 -->
       <FriendsFriendFeedPostList
+        ref="feedListRef"
         :team-id="teamId"
         @forward="onForward"
       />
