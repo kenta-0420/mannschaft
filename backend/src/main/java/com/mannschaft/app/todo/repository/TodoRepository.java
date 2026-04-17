@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -123,4 +124,35 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
      */
     Page<TodoEntity> findByScopeTypeAndScopeIdAndStatusAndDeletedAtIsNullAndParentIdIsNull(
             TodoScopeType scopeType, Long scopeId, TodoStatus status, Pageable pageable);
+
+    /**
+     * ガントバー用: start_date・due_date の両方が非NULLで期間が交差するTODOを取得する（論理削除除外）。
+     */
+    @Query("""
+            SELECT t FROM TodoEntity t
+            WHERE t.scopeType = :scopeType
+              AND t.scopeId = :scopeId
+              AND t.startDate IS NOT NULL
+              AND t.dueDate IS NOT NULL
+              AND t.startDate <= :toDate
+              AND t.dueDate >= :fromDate
+              AND t.deletedAt IS NULL
+            ORDER BY t.startDate ASC, t.id ASC
+            """)
+    List<TodoEntity> findGanttTodos(
+            @Param("scopeType") TodoScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate
+    );
+
+    /**
+     * 進捗按分用: 直接の子TODOをID昇順で取得する（論理削除除外）。
+     */
+    List<TodoEntity> findByParentIdAndDeletedAtIsNullOrderByIdAsc(Long parentId);
+
+    /**
+     * linked_schedule_idによるTODO検索（連携解除・存在確認用）。論理削除除外。
+     */
+    Optional<TodoEntity> findByLinkedScheduleIdAndDeletedAtIsNull(Long linkedScheduleId);
 }

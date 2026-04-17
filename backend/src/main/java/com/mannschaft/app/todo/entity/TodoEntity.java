@@ -19,6 +19,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -72,6 +73,20 @@ public class TodoEntity {
     private LocalDate dueDate;
 
     private LocalTime dueTime;
+
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "linked_schedule_id")
+    private Long linkedScheduleId;
+
+    @Column(name = "progress_rate", nullable = false, precision = 5, scale = 2)
+    @Builder.Default
+    private BigDecimal progressRate = BigDecimal.ZERO;
+
+    @Column(name = "progress_manual", nullable = false)
+    @Builder.Default
+    private Boolean progressManual = false;
 
     private LocalDateTime completedAt;
 

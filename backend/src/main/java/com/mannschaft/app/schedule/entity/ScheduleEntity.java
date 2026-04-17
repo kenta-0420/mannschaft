@@ -105,6 +105,9 @@ public class ScheduleEntity extends BaseEntity {
     @Column(columnDefinition = "JSON")
     private String recurrenceRule;
 
+    @Column(name = "linked_todo_id")
+    private Long linkedTodoId;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean isException = false;
