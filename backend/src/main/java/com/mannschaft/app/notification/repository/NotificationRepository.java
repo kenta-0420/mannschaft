@@ -61,4 +61,16 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
      * スコープタイプとスコープIDで通知件数を取得する。
      */
     long countByScopeTypeAndScopeId(String scopeType, Long scopeId);
+
+    /**
+     * スコープタイプとスコープIDで通知一覧をページング取得する（フレンド通知一覧用）。
+     */
+    Page<NotificationEntity> findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+            String scopeType, Long scopeId, Pageable pageable);
+
+    /**
+     * スコープタイプとスコープIDで未読フィルタ付き通知一覧をページング取得する。
+     */
+    Page<NotificationEntity> findByScopeTypeAndScopeIdAndIsReadOrderByCreatedAtDesc(
+            String scopeType, Long scopeId, Boolean isRead, Pageable pageable);
 }
