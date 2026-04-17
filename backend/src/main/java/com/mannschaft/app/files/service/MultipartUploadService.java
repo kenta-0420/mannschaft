@@ -38,12 +38,13 @@ public class MultipartUploadService {
 
     /** 許可されるターゲットプレフィックス（機能別） */
     private static final Set<String> ALLOWED_PREFIXES = Set.of(
-            "timeline/", "gallery/", "blog/", "files/"
+            "timeline/", "gallery/", "blog/", "files/", "schedules/"
     );
 
-    /** 許可される Content-Type（動画・アーカイブ等） */
+    /** 許可される Content-Type（動画・画像・アーカイブ等） */
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
             "video/mp4", "video/webm", "video/quicktime",
+            "image/jpeg", "image/png", "image/webp", "image/gif", "image/heic",
             "application/zip", "application/x-tar", "application/gzip",
             "application/octet-stream"
     );
@@ -78,8 +79,10 @@ public class MultipartUploadService {
     @Transactional
     public StartMultipartUploadResponse startUpload(Long uploaderId, StartMultipartUploadRequest req) {
         // ターゲットプレフィックスの検証
+        // "schedules/{id}/" のようにサブパスを含む場合は、許可されたプレフィックスで始まるかをチェックする
         String prefix = req.getTargetPrefix() != null ? req.getTargetPrefix() : DEFAULT_PREFIX;
-        if (!ALLOWED_PREFIXES.contains(prefix)) {
+        boolean prefixAllowed = ALLOWED_PREFIXES.stream().anyMatch(prefix::startsWith);
+        if (!prefixAllowed) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "不正なターゲットプレフィックスです: " + prefix + "（許可: " + ALLOWED_PREFIXES + "）");
