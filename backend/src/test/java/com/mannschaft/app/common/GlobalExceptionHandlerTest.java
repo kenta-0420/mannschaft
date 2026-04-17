@@ -77,8 +77,8 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
-        @DisplayName("正常系: COMMON_000エラーコード（WARN severity）で400 BadRequestが返る")
-        void handleBusinessException_COMMON000_400BadRequest() {
+        @DisplayName("正常系: COMMON_000エラーコード（未認証）で401 Unauthorizedが返る")
+        void handleBusinessException_COMMON000_401Unauthorized() {
             // Given
             BusinessException ex = new BusinessException(CommonErrorCode.COMMON_000);
 
@@ -86,7 +86,8 @@ class GlobalExceptionHandlerTest {
             ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
 
             // Then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            // COMMON_000 は JWT 認証失敗エラーのため、個別マッピングで 401 UNAUTHORIZED が返る
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_000");
         }

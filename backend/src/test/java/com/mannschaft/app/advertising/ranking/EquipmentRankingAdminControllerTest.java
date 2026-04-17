@@ -9,6 +9,7 @@ import com.mannschaft.app.advertising.ranking.entity.ExclusionType;
 import com.mannschaft.app.advertising.ranking.service.EquipmentRankingBatchService;
 import com.mannschaft.app.advertising.ranking.service.EquipmentRankingService;
 import com.mannschaft.app.advertising.ranking.service.EquipmentRankingService.RankingStatsResult;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
@@ -28,15 +29,13 @@ import org.springframework.http.ResponseEntity;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -53,6 +52,7 @@ class EquipmentRankingAdminControllerTest {
     @Mock private EquipmentRankingBatchService batchService;
     @Mock private TeamRepository teamRepository;
     @Mock private StringRedisTemplate stringRedisTemplate;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private EquipmentRankingAdminController controller;
@@ -92,21 +92,25 @@ class EquipmentRankingAdminControllerTest {
         @Test
         @DisplayName("正常系: 200 OK と統計データが返る")
         void 正常系_200OKと統計データが返る() {
-            // Given
-            given(rankingService.getStats()).willReturn(createStatsResult());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                // Given
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(ADMIN_USER_ID);
+                doNothing().when(accessControlService).checkSystemAdmin(ADMIN_USER_ID);
+                given(rankingService.getStats()).willReturn(createStatsResult());
 
-            // When
-            ResponseEntity<ApiResponse<EquipmentRankingStatsResponse>> result =
-                    controller.getStats();
+                // When
+                ResponseEntity<ApiResponse<EquipmentRankingStatsResponse>> result =
+                        controller.getStats();
 
-            // Then
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody()).isNotNull();
-            EquipmentRankingStatsResponse stats = result.getBody().getData();
-            assertThat(stats.totalRankingItems()).isEqualTo(100L);
-            assertThat(stats.templatesCovered()).hasSize(2);
-            assertThat(stats.optOutTeamCount()).isEqualTo(2);
-            assertThat(stats.excludedItemCount()).isEqualTo(3);
+                // Then
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody()).isNotNull();
+                EquipmentRankingStatsResponse stats = result.getBody().getData();
+                assertThat(stats.totalRankingItems()).isEqualTo(100L);
+                assertThat(stats.templatesCovered()).hasSize(2);
+                assertThat(stats.optOutTeamCount()).isEqualTo(2);
+                assertThat(stats.excludedItemCount()).isEqualTo(3);
+            }
         }
     }
 
@@ -117,30 +121,40 @@ class EquipmentRankingAdminControllerTest {
         @Test
         @DisplayName("正常系: 202 Accepted とメッセージが返る")
         void 正常系_202Acceptedが返る() {
-            // Given: バッチロックキーが存在しない
-            given(stringRedisTemplate.hasKey(anyString())).willReturn(false);
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                // Given
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(ADMIN_USER_ID);
+                doNothing().when(accessControlService).checkSystemAdmin(ADMIN_USER_ID);
+                // バッチロックキーが存在しない
+                given(stringRedisTemplate.hasKey(anyString())).willReturn(false);
 
-            // When
-            ResponseEntity<ApiResponse<Map<String, Object>>> result =
-                    controller.recalculate();
+                // When
+                ResponseEntity<ApiResponse<Map<String, Object>>> result =
+                        controller.recalculate();
 
-            // Then
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-            assertThat(result.getBody()).isNotNull();
-            assertThat(result.getBody().getData()).containsKey("message");
+                // Then
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+                assertThat(result.getBody()).isNotNull();
+                assertThat(result.getBody().getData()).containsKey("message");
+            }
         }
 
         @Test
         @DisplayName("異常系: バッチ実行中（Redisキー存在）は BATCH_ALREADY_RUNNING 例外が発生する")
         void 異常系_バッチ実行中はBATCH_ALREADY_RUNNING例外() {
-            // Given: バッチロックキーが存在する（実行中）
-            given(stringRedisTemplate.hasKey(anyString())).willReturn(true);
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                // Given
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(ADMIN_USER_ID);
+                doNothing().when(accessControlService).checkSystemAdmin(ADMIN_USER_ID);
+                // バッチロックキーが存在する（実行中）
+                given(stringRedisTemplate.hasKey(anyString())).willReturn(true);
 
-            // When / Then
-            assertThatThrownBy(() -> controller.recalculate())
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ERANK_005"));
+                // When / Then
+                assertThatThrownBy(() -> controller.recalculate())
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo("ERANK_005"));
+            }
         }
     }
 
@@ -151,37 +165,45 @@ class EquipmentRankingAdminControllerTest {
         @Test
         @DisplayName("正常系: 200 OK と除外設定一覧が返る")
         void 正常系_200OKと除外設定一覧が返る() {
-            // Given
-            EquipmentRankingExclusionEntity entity = createItemExclusionEntity(100L);
-            given(rankingService.getAllExclusions()).willReturn(List.of(entity));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                // Given
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(ADMIN_USER_ID);
+                doNothing().when(accessControlService).checkSystemAdmin(ADMIN_USER_ID);
+                EquipmentRankingExclusionEntity entity = createItemExclusionEntity(100L);
+                given(rankingService.getAllExclusions()).willReturn(List.of(entity));
 
-            // When
-            ResponseEntity<ApiResponse<List<EquipmentRankingExclusionResponse>>> result =
-                    controller.getExclusions();
+                // When
+                ResponseEntity<ApiResponse<List<EquipmentRankingExclusionResponse>>> result =
+                        controller.getExclusions();
 
-            // Then
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody()).isNotNull();
-            assertThat(result.getBody().getData()).hasSize(1);
-            assertThat(result.getBody().getData().get(0).exclusionType())
-                    .isEqualTo("ITEM_EXCLUSION");
-            assertThat(result.getBody().getData().get(0).normalizedName())
-                    .isEqualTo("サッカーボール");
+                // Then
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody()).isNotNull();
+                assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getBody().getData().get(0).exclusionType())
+                        .isEqualTo("ITEM_EXCLUSION");
+                assertThat(result.getBody().getData().get(0).normalizedName())
+                        .isEqualTo("サッカーボール");
+            }
         }
 
         @Test
         @DisplayName("正常系: 除外設定が空の場合は空リストが返る")
         void 正常系_空の場合は空リストが返る() {
-            // Given
-            given(rankingService.getAllExclusions()).willReturn(List.of());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                // Given
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(ADMIN_USER_ID);
+                doNothing().when(accessControlService).checkSystemAdmin(ADMIN_USER_ID);
+                given(rankingService.getAllExclusions()).willReturn(List.of());
 
-            // When
-            ResponseEntity<ApiResponse<List<EquipmentRankingExclusionResponse>>> result =
-                    controller.getExclusions();
+                // When
+                ResponseEntity<ApiResponse<List<EquipmentRankingExclusionResponse>>> result =
+                        controller.getExclusions();
 
-            // Then
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).isEmpty();
+                // Then
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).isEmpty();
+            }
         }
     }
 
@@ -195,6 +217,7 @@ class EquipmentRankingAdminControllerTest {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(ADMIN_USER_ID);
+                doNothing().when(accessControlService).checkSystemAdmin(ADMIN_USER_ID);
 
                 CreateItemExclusionRequest request = mock(CreateItemExclusionRequest.class);
                 given(request.getNormalizedName()).willReturn("サッカーボール");
@@ -222,6 +245,7 @@ class EquipmentRankingAdminControllerTest {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(ADMIN_USER_ID);
+                doNothing().when(accessControlService).checkSystemAdmin(ADMIN_USER_ID);
 
                 CreateItemExclusionRequest request = mock(CreateItemExclusionRequest.class);
                 given(request.getNormalizedName()).willReturn("サッカーボール");
@@ -246,30 +270,38 @@ class EquipmentRankingAdminControllerTest {
         @Test
         @DisplayName("正常系: 204 No Content が返る")
         void 正常系_204NoContentが返る() {
-            // Given
-            Long exclusionId = 100L;
-            willDoNothing().given(rankingService).removeItemExclusion(exclusionId);
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                // Given
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(ADMIN_USER_ID);
+                doNothing().when(accessControlService).checkSystemAdmin(ADMIN_USER_ID);
+                Long exclusionId = 100L;
+                willDoNothing().given(rankingService).removeItemExclusion(exclusionId);
 
-            // When
-            ResponseEntity<Void> result = controller.removeExclusion(exclusionId);
+                // When
+                ResponseEntity<Void> result = controller.removeExclusion(exclusionId);
 
-            // Then
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+                // Then
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+            }
         }
 
         @Test
         @DisplayName("異常系: 存在しないIDの場合は EXCLUSION_NOT_FOUND 例外が発生する")
         void 異常系_存在しないIDはEXCLUSION_NOT_FOUND例外() {
-            // Given
-            Long exclusionId = 999L;
-            doThrow(new BusinessException(EquipmentRankingErrorCode.EXCLUSION_NOT_FOUND))
-                    .when(rankingService).removeItemExclusion(exclusionId);
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                // Given
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(ADMIN_USER_ID);
+                doNothing().when(accessControlService).checkSystemAdmin(ADMIN_USER_ID);
+                Long exclusionId = 999L;
+                doThrow(new BusinessException(EquipmentRankingErrorCode.EXCLUSION_NOT_FOUND))
+                        .when(rankingService).removeItemExclusion(exclusionId);
 
-            // When / Then
-            assertThatThrownBy(() -> controller.removeExclusion(exclusionId))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ERANK_004"));
+                // When / Then
+                assertThatThrownBy(() -> controller.removeExclusion(exclusionId))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo("ERANK_004"));
+            }
         }
     }
 }

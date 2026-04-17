@@ -156,10 +156,15 @@ class FriendNotificationServiceTest {
 
             doNothing().when(accessControlService)
                     .checkPermission(USER_ID, TEAM_ID, "TEAM", "MANAGE_FRIEND_TEAMS");
-            given(teamFriendRepository.findByTeamAIdAndTeamBId(TEAM_ID, TARGET_TEAM_ID))
-                    .willReturn(Optional.of(buildTeamFriend(TEAM_ID, TARGET_TEAM_ID, 1L)));
-            given(userRoleRepository.findAdminUserIdsByTeamIds(List.of(TARGET_TEAM_ID)))
-                    .willReturn(List.of(100L, 101L));
+            // サービスは countFriendsWithTeams で一括フレンド検証する
+            given(teamFriendRepository.countFriendsWithTeams(TEAM_ID, List.of(TARGET_TEAM_ID)))
+                    .willReturn(1L);
+            // Object[]{teamId, userId} 形式のモックデータ（サービスは findAdminsByTeamIds を使用）
+            java.util.ArrayList<Object[]> teamsAdminRows = new java.util.ArrayList<>();
+            teamsAdminRows.add(new Object[]{TARGET_TEAM_ID, 100L});
+            teamsAdminRows.add(new Object[]{TARGET_TEAM_ID, 101L});
+            given(userRoleRepository.findAdminsByTeamIds(List.of(TARGET_TEAM_ID)))
+                    .willReturn(teamsAdminRows);
             given(notificationService.createNotification(anyLong(), anyString(), any(), anyString(),
                     any(), anyString(), anyLong(), any(), anyLong(), any(), anyLong()))
                     .willReturn(null);
@@ -193,12 +198,17 @@ class FriendNotificationServiceTest {
                     .willReturn(Optional.of(folder));
             given(folderMemberRepository.findByFolderId(50L))
                     .willReturn(List.of(member));
-            given(teamFriendRepository.findById(1L))
-                    .willReturn(Optional.of(friend));
-            given(teamFriendRepository.findByTeamAIdAndTeamBId(TEAM_ID, TARGET_TEAM_ID))
-                    .willReturn(Optional.of(friend));
-            given(userRoleRepository.findAdminUserIdsByTeamIds(List.of(TARGET_TEAM_ID)))
-                    .willReturn(List.of(100L));
+            // フォルダメンバーの teamFriendId=1L でフレンドエンティティを取得
+            given(teamFriendRepository.findAllById(List.of(1L)))
+                    .willReturn(List.of(friend));
+            // フォルダ経由で解決した TARGET_TEAM_ID のフレンド数検証
+            given(teamFriendRepository.countFriendsWithTeams(TEAM_ID, List.of(TARGET_TEAM_ID)))
+                    .willReturn(1L);
+            // Object[]{teamId, userId} 形式。Java では Object[][] ではなく明示的に ArrayList を使う
+            java.util.ArrayList<Object[]> folderAdminRows = new java.util.ArrayList<>();
+            folderAdminRows.add(new Object[]{TARGET_TEAM_ID, 100L});
+            given(userRoleRepository.findAdminsByTeamIds(List.of(TARGET_TEAM_ID)))
+                    .willReturn(folderAdminRows);
             given(notificationService.createNotification(anyLong(), anyString(), any(), anyString(),
                     any(), anyString(), anyLong(), any(), anyLong(), any(), anyLong()))
                     .willReturn(null);
@@ -221,10 +231,9 @@ class FriendNotificationServiceTest {
 
             doNothing().when(accessControlService)
                     .checkPermission(USER_ID, TEAM_ID, "TEAM", "MANAGE_FRIEND_TEAMS");
-            given(teamFriendRepository.findByTeamAIdAndTeamBId(TEAM_ID, TARGET_TEAM_ID))
-                    .willReturn(Optional.empty());
-            given(teamFriendRepository.findByTeamAIdAndTeamBId(TARGET_TEAM_ID, TEAM_ID))
-                    .willReturn(Optional.empty());
+            // countFriendsWithTeams が 0 を返す → フレンド関係なし
+            given(teamFriendRepository.countFriendsWithTeams(TEAM_ID, List.of(TARGET_TEAM_ID)))
+                    .willReturn(0L);
 
             // when & then
             assertThatThrownBy(() ->

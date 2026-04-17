@@ -1,5 +1,6 @@
 package com.mannschaft.app.social.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -15,7 +16,12 @@ import lombok.Getter;
 @Builder
 public class FriendFeedForwardStatus {
 
-    /** 転送済みか否か */
+    /**
+     * 転送済みか否か。
+     * boolean フィールド名が "isXxx" の場合、Jackson はデフォルトで "xxx" にシリアライズする。
+     * フロントエンド・テストとの整合性のため @JsonProperty で "isForwarded" を明示する。
+     */
+    @JsonProperty("isForwarded")
     private final boolean isForwarded;
 
     /** 転送履歴 ID（未転送の場合 null） */
