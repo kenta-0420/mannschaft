@@ -116,6 +116,7 @@ export default defineNuxtConfig({
           'ja/quick_memo.json',
           'ja/equipment.json',
           'ja/friends.json',
+          'ja/announcement.json',
         ],
       },
       {
@@ -133,6 +134,7 @@ export default defineNuxtConfig({
           'en/quick_memo.json',
           'en/equipment.json',
           'en/friends.json',
+          'en/announcement.json',
         ],
       },
       {
@@ -150,6 +152,7 @@ export default defineNuxtConfig({
           'zh/quick_memo.json',
           'zh/equipment.json',
           'zh/friends.json',
+          'zh/announcement.json',
         ],
       },
       {
@@ -167,6 +170,7 @@ export default defineNuxtConfig({
           'ko/quick_memo.json',
           'ko/equipment.json',
           'ko/friends.json',
+          'ko/announcement.json',
         ],
       },
       {
@@ -184,6 +188,7 @@ export default defineNuxtConfig({
           'es/quick_memo.json',
           'es/equipment.json',
           'es/friends.json',
+          'es/announcement.json',
         ],
       },
       {
@@ -201,6 +206,7 @@ export default defineNuxtConfig({
           'de/quick_memo.json',
           'de/equipment.json',
           'de/friends.json',
+          'de/announcement.json',
         ],
       },
     ],

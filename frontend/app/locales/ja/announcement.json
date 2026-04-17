@@ -1,0 +1,29 @@
+{
+  "announcement": {
+    "widget_title": "お知らせ",
+    "all_announcements": "すべてのお知らせ",
+    "display_in_announcement": "お知らせウィジェットに表示する",
+    "display_in_announcement_hint": "ダッシュボード上部で目立つ位置に表示されます",
+    "pin": "ピン留めする",
+    "unpin": "ピン留め解除",
+    "priority": {
+      "URGENT": "緊急",
+      "IMPORTANT": "重要",
+      "NORMAL": "通常"
+    },
+    "source_type": {
+      "BLOG_POST": "ブログ",
+      "BULLETIN_THREAD": "掲示板",
+      "TIMELINE_POST": "タイムライン",
+      "CIRCULATION": "回覧板",
+      "SURVEY": "アンケート"
+    },
+    "mark_all_read": "すべて既読にする",
+    "remove_from_announcements": "お知らせから外す",
+    "expires_at": "表示期限",
+    "unread_count": "未読 {count} 件",
+    "empty": "新しいお知らせはありません",
+    "pin_limit_reached": "ピン留めは最大5件までです",
+    "already_registered": "このコンテンツは既にお知らせに登録されています"
+  }
+}
