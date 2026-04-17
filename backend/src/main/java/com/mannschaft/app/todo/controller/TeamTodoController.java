@@ -12,8 +12,12 @@ import com.mannschaft.app.todo.dto.CreateCommentRequest;
 import com.mannschaft.app.todo.dto.CreateTodoRequest;
 import com.mannschaft.app.todo.dto.GanttTodoResponse;
 import com.mannschaft.app.todo.dto.LinkScheduleRequest;
+import com.mannschaft.app.todo.dto.PersonalMemoRequest;
+import com.mannschaft.app.todo.dto.PersonalMemoResponse;
 import com.mannschaft.app.todo.dto.ProgressModeRequest;
 import com.mannschaft.app.todo.dto.ProgressRateRequest;
+import com.mannschaft.app.todo.dto.SharedMemoEntryRequest;
+import com.mannschaft.app.todo.dto.SharedMemoEntryResponse;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
@@ -21,8 +25,10 @@ import com.mannschaft.app.todo.dto.UpdateCommentRequest;
 import com.mannschaft.app.todo.dto.UpdateTodoRequest;
 import com.mannschaft.app.todo.service.TodoCommentService;
 import com.mannschaft.app.todo.service.TodoGanttService;
+import com.mannschaft.app.todo.service.TodoPersonalMemoService;
 import com.mannschaft.app.todo.service.TodoScheduleLinkService;
 import com.mannschaft.app.todo.service.TodoService;
+import com.mannschaft.app.todo.service.TodoSharedMemoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -58,6 +64,8 @@ public class TeamTodoController {
     private final TodoCommentService commentService;
     private final TodoGanttService ganttService;
     private final TodoScheduleLinkService scheduleLinkService;
+    private final TodoSharedMemoService sharedMemoService;
+    private final TodoPersonalMemoService personalMemoService;
 
 
     /**
@@ -329,5 +337,103 @@ public class TeamTodoController {
             @PathVariable Long id,
             @Valid @RequestBody ProgressModeRequest request) {
         return ResponseEntity.ok(todoService.setProgressMode(id, request.getProgressManual()));
+    }
+
+    // --- Phase 2: 共有メモ ---
+
+    /**
+     * 共有メモ一覧を取得する（時系列昇順）。
+     */
+    @GetMapping("/{id}/memos")
+    @Operation(summary = "共有メモ一覧")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<PagedResponse<SharedMemoEntryResponse>> listSharedMemos(
+            @PathVariable Long teamId,
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int perPage) {
+        return ResponseEntity.ok(sharedMemoService.getSharedMemos(id, page, perPage));
+    }
+
+    /**
+     * 共有メモを追加する。
+     */
+    @PostMapping("/{id}/memos")
+    @Operation(summary = "共有メモ追加")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "追加成功")
+    public ResponseEntity<ApiResponse<SharedMemoEntryResponse>> addSharedMemo(
+            @PathVariable Long teamId,
+            @PathVariable Long id,
+            @Valid @RequestBody SharedMemoEntryRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(sharedMemoService.addSharedMemo(id, SecurityUtils.getCurrentUserId(), request));
+    }
+
+    /**
+     * 共有メモを編集する（投稿者のみ）。
+     */
+    @PutMapping("/{id}/memos/{memoId}")
+    @Operation(summary = "共有メモ編集")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<SharedMemoEntryResponse>> updateSharedMemo(
+            @PathVariable Long teamId,
+            @PathVariable Long id,
+            @PathVariable Long memoId,
+            @Valid @RequestBody SharedMemoEntryRequest request) {
+        return ResponseEntity.ok(sharedMemoService.updateSharedMemo(id, memoId, SecurityUtils.getCurrentUserId(), request));
+    }
+
+    /**
+     * 共有メモを論理削除する（投稿者またはADMIN）。
+     */
+    @DeleteMapping("/{id}/memos/{memoId}")
+    @Operation(summary = "共有メモ削除")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    public ResponseEntity<Void> deleteSharedMemo(
+            @PathVariable Long teamId,
+            @PathVariable Long id,
+            @PathVariable Long memoId) {
+        sharedMemoService.deleteSharedMemo(id, memoId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    // --- Phase 2: 個人メモ（チームTODO用） ---
+
+    /**
+     * 個人メモを取得する（本人のみ）。
+     */
+    @GetMapping("/{id}/my-memo")
+    @Operation(summary = "個人メモ取得（チームTODO）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<PersonalMemoResponse>> getPersonalMemo(
+            @PathVariable Long teamId,
+            @PathVariable Long id) {
+        return ResponseEntity.ok(personalMemoService.getPersonalMemo(id, SecurityUtils.getCurrentUserId()));
+    }
+
+    /**
+     * 個人メモをUPSERTする（存在すれば更新、なければ作成）。
+     */
+    @PutMapping("/{id}/my-memo")
+    @Operation(summary = "個人メモUPSERT（チームTODO）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "保存成功")
+    public ResponseEntity<ApiResponse<PersonalMemoResponse>> upsertPersonalMemo(
+            @PathVariable Long teamId,
+            @PathVariable Long id,
+            @Valid @RequestBody PersonalMemoRequest request) {
+        return ResponseEntity.ok(personalMemoService.upsertPersonalMemo(id, SecurityUtils.getCurrentUserId(), request));
+    }
+
+    /**
+     * 個人メモを削除する（物理削除）。
+     */
+    @DeleteMapping("/{id}/my-memo")
+    @Operation(summary = "個人メモ削除（チームTODO）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    public ResponseEntity<Void> deletePersonalMemo(
+            @PathVariable Long teamId,
+            @PathVariable Long id) {
+        personalMemoService.deletePersonalMemo(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
     }
 }

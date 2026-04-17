@@ -90,7 +90,19 @@ public enum TodoErrorCode implements ErrorCode {
     TODO_ALREADY_LINKED("TODO_033", "このTODOは既に別のスケジュールと連携されています", Severity.WARN),
 
     /** 自動算出モードのTODOの進捗率は子から自動計算される */
-    AUTO_PROGRESS_MODE("TODO_040", "自動算出モードのTODOの進捗率は子から自動計算されます", Severity.WARN);
+    AUTO_PROGRESS_MODE("TODO_040", "自動算出モードのTODOの進捗率は子から自動計算されます", Severity.WARN),
+
+    /** 共有メモが見つからない */
+    SHARED_MEMO_NOT_FOUND("TODO_050", "共有メモが見つかりません", Severity.WARN),
+
+    /** 共有メモは作成者のみ編集・削除可能 */
+    SHARED_MEMO_NOT_OWNER("TODO_051", "共有メモは作成者のみ編集・削除可能です", Severity.WARN),
+
+    /** 共有メモ件数が上限（500件）に達している */
+    SHARED_MEMO_LIMIT_EXCEEDED("TODO_052", "共有メモの上限（500件）に達しています", Severity.WARN),
+
+    /** 個人メモが見つからない */
+    PERSONAL_MEMO_NOT_FOUND("TODO_060", "個人メモが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

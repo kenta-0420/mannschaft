@@ -6,10 +6,13 @@ import com.mannschaft.app.todo.dto.CreateTodoRequest;
 import com.mannschaft.app.todo.dto.GanttTodoResponse;
 import com.mannschaft.app.todo.dto.LinkScheduleRequest;
 import com.mannschaft.app.todo.dto.PatchTodoRequest;
+import com.mannschaft.app.todo.dto.PersonalMemoRequest;
+import com.mannschaft.app.todo.dto.PersonalMemoResponse;
 import com.mannschaft.app.todo.dto.ProgressModeRequest;
 import com.mannschaft.app.todo.dto.ProgressRateRequest;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.service.TodoGanttService;
+import com.mannschaft.app.todo.service.TodoPersonalMemoService;
 import com.mannschaft.app.todo.service.TodoScheduleLinkService;
 import com.mannschaft.app.todo.service.TodoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,6 +27,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -46,6 +50,7 @@ public class PersonalTodoController {
     private final TodoService todoService;
     private final TodoGanttService ganttService;
     private final TodoScheduleLinkService scheduleLinkService;
+    private final TodoPersonalMemoService personalMemoService;
 
 
     /**
@@ -180,5 +185,40 @@ public class PersonalTodoController {
             @PathVariable Long id,
             @Valid @RequestBody ProgressModeRequest request) {
         return ResponseEntity.ok(todoService.setProgressMode(id, request.getProgressManual()));
+    }
+
+    // --- Phase 2: 個人メモ ---
+
+    /**
+     * 個人メモを取得する（本人のみ）。
+     */
+    @GetMapping("/{id}/memo")
+    @Operation(summary = "個人TODO 個人メモ取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<PersonalMemoResponse>> getPersonalMemo(@PathVariable Long id) {
+        return ResponseEntity.ok(personalMemoService.getPersonalMemo(id, SecurityUtils.getCurrentUserId()));
+    }
+
+    /**
+     * 個人メモをUPSERTする（存在すれば更新、なければ作成）。
+     */
+    @PutMapping("/{id}/memo")
+    @Operation(summary = "個人TODO 個人メモUPSERT")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "保存成功")
+    public ResponseEntity<ApiResponse<PersonalMemoResponse>> upsertPersonalMemo(
+            @PathVariable Long id,
+            @Valid @RequestBody PersonalMemoRequest request) {
+        return ResponseEntity.ok(personalMemoService.upsertPersonalMemo(id, SecurityUtils.getCurrentUserId(), request));
+    }
+
+    /**
+     * 個人メモを削除する（物理削除）。
+     */
+    @DeleteMapping("/{id}/memo")
+    @Operation(summary = "個人TODO 個人メモ削除")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    public ResponseEntity<Void> deletePersonalMemo(@PathVariable Long id) {
+        personalMemoService.deletePersonalMemo(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
     }
 }
