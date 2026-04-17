@@ -3,23 +3,33 @@ package com.mannschaft.app.todo.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.dto.CreateTodoRequest;
+import com.mannschaft.app.todo.dto.GanttTodoResponse;
+import com.mannschaft.app.todo.dto.LinkScheduleRequest;
 import com.mannschaft.app.todo.dto.PatchTodoRequest;
+import com.mannschaft.app.todo.dto.ProgressModeRequest;
+import com.mannschaft.app.todo.dto.ProgressRateRequest;
 import com.mannschaft.app.todo.dto.TodoResponse;
+import com.mannschaft.app.todo.service.TodoGanttService;
+import com.mannschaft.app.todo.service.TodoScheduleLinkService;
 import com.mannschaft.app.todo.service.TodoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
 import com.mannschaft.app.common.SecurityUtils;
@@ -34,6 +44,8 @@ import com.mannschaft.app.common.SecurityUtils;
 public class PersonalTodoController {
 
     private final TodoService todoService;
+    private final TodoGanttService ganttService;
+    private final TodoScheduleLinkService scheduleLinkService;
 
 
     /**
@@ -57,7 +69,9 @@ public class PersonalTodoController {
                 request.getTitle(), request.getDescription(), request.getProjectId(),
                 request.getMilestoneId(), request.getPriority(), request.getDueDate(),
                 request.getDueTime(), request.getSortOrder(), assigneeIds,
-                request.getParentId());
+                request.getParentId(),
+                request.getStartDate(), request.getLinkedScheduleId(),
+                request.getProgressRate(), request.getCreateLinkedSchedule());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(todoService.createTodo(TodoScopeType.PERSONAL, userId, enriched, userId));
     }
@@ -94,5 +108,77 @@ public class PersonalTodoController {
     public ResponseEntity<ApiResponse<List<TodoResponse>>> getChildTodos(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(todoService.getChildTodos(TodoScopeType.PERSONAL, userId, id));
+    }
+
+    // --- Phase 2: スケジュール連携 ---
+
+    /**
+     * 既存スケジュールと個人TODOを連携する。
+     */
+    @PostMapping("/{id}/link-schedule")
+    @Operation(summary = "個人TODO スケジュール連携")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "連携成功")
+    public ResponseEntity<Void> linkSchedule(
+            @PathVariable Long id,
+            @Valid @RequestBody LinkScheduleRequest request) {
+        scheduleLinkService.linkScheduleToTodo(
+                request.getScheduleId(), id, request.getParentId(), SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 個人TODOのスケジュール連携を解除する。
+     */
+    @DeleteMapping("/{id}/link-schedule")
+    @Operation(summary = "個人TODO スケジュール連携解除")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "解除成功")
+    public ResponseEntity<Void> unlinkSchedule(@PathVariable Long id) {
+        scheduleLinkService.unlinkScheduleFromTodo(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    // --- Phase 2: ガントバー ---
+
+    /**
+     * 個人ガントバー用TODO一覧を取得する。
+     */
+    @GetMapping("/gantt")
+    @Operation(summary = "個人ガントバー用TODO一覧")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<GanttTodoResponse>>> getGanttTodos(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        if (from.isAfter(to)) {
+            return ResponseEntity.badRequest().build();
+        }
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<GanttTodoResponse> ganttTodos = ganttService.getGanttTodos(TodoScopeType.PERSONAL, userId, from, to);
+        return ResponseEntity.ok(ApiResponse.of(ganttTodos));
+    }
+
+    // --- Phase 2: 進捗率管理 ---
+
+    /**
+     * 個人TODOの進捗率を手動設定する（手動モード必須）。
+     */
+    @PatchMapping("/{id}/progress")
+    @Operation(summary = "個人TODO 進捗率更新（手動モード必須）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<TodoResponse>> setProgressRate(
+            @PathVariable Long id,
+            @Valid @RequestBody ProgressRateRequest request) {
+        return ResponseEntity.ok(todoService.setProgressRate(id, request.getProgressRate()));
+    }
+
+    /**
+     * 個人TODOの進捗モードを切り替える（手動 ↔ 自動）。
+     */
+    @PatchMapping("/{id}/progress-mode")
+    @Operation(summary = "個人TODO 進捗モード切替（手動/自動）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "切替成功")
+    public ResponseEntity<ApiResponse<TodoResponse>> setProgressMode(
+            @PathVariable Long id,
+            @Valid @RequestBody ProgressModeRequest request) {
+        return ResponseEntity.ok(todoService.setProgressMode(id, request.getProgressManual()));
     }
 }

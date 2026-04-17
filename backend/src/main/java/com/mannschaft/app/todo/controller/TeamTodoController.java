@@ -10,17 +10,24 @@ import com.mannschaft.app.todo.dto.BulkStatusChangeRequest;
 import com.mannschaft.app.todo.dto.CommentResponse;
 import com.mannschaft.app.todo.dto.CreateCommentRequest;
 import com.mannschaft.app.todo.dto.CreateTodoRequest;
+import com.mannschaft.app.todo.dto.GanttTodoResponse;
+import com.mannschaft.app.todo.dto.LinkScheduleRequest;
+import com.mannschaft.app.todo.dto.ProgressModeRequest;
+import com.mannschaft.app.todo.dto.ProgressRateRequest;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
 import com.mannschaft.app.todo.dto.UpdateCommentRequest;
 import com.mannschaft.app.todo.dto.UpdateTodoRequest;
 import com.mannschaft.app.todo.service.TodoCommentService;
+import com.mannschaft.app.todo.service.TodoGanttService;
+import com.mannschaft.app.todo.service.TodoScheduleLinkService;
 import com.mannschaft.app.todo.service.TodoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,6 +41,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
 
@@ -48,6 +56,8 @@ public class TeamTodoController {
 
     private final TodoService todoService;
     private final TodoCommentService commentService;
+    private final TodoGanttService ganttService;
+    private final TodoScheduleLinkService scheduleLinkService;
 
 
     /**
@@ -241,5 +251,83 @@ public class TeamTodoController {
             @PathVariable Long commentId) {
         commentService.deleteComment(id, commentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
+    }
+
+    // --- Phase 2: スケジュール連携 ---
+
+    /**
+     * 既存スケジュールとTODOを連携する。
+     */
+    @PostMapping("/{id}/link-schedule")
+    @Operation(summary = "スケジュール連携")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "連携成功")
+    public ResponseEntity<Void> linkSchedule(
+            @PathVariable Long teamId,
+            @PathVariable Long id,
+            @Valid @RequestBody LinkScheduleRequest request) {
+        scheduleLinkService.linkScheduleToTodo(
+                request.getScheduleId(), id, request.getParentId(), SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * スケジュール連携を解除する。
+     */
+    @DeleteMapping("/{id}/link-schedule")
+    @Operation(summary = "スケジュール連携解除")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "解除成功")
+    public ResponseEntity<Void> unlinkSchedule(
+            @PathVariable Long teamId,
+            @PathVariable Long id) {
+        scheduleLinkService.unlinkScheduleFromTodo(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    // --- Phase 2: ガントバー ---
+
+    /**
+     * ガントバー用TODO一覧を取得する。
+     * fromDate・toDate は必須（from > to の場合は400）。
+     */
+    @GetMapping("/gantt")
+    @Operation(summary = "ガントバー用TODO一覧")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<GanttTodoResponse>>> getGanttTodos(
+            @PathVariable Long teamId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        if (from.isAfter(to)) {
+            return ResponseEntity.badRequest().build();
+        }
+        List<GanttTodoResponse> ganttTodos = ganttService.getGanttTodos(TodoScopeType.TEAM, teamId, from, to);
+        return ResponseEntity.ok(ApiResponse.of(ganttTodos));
+    }
+
+    // --- Phase 2: 進捗率管理 ---
+
+    /**
+     * 進捗率を手動設定する（手動モード必須）。
+     */
+    @PatchMapping("/{id}/progress")
+    @Operation(summary = "進捗率更新（手動モード必須）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<TodoResponse>> setProgressRate(
+            @PathVariable Long teamId,
+            @PathVariable Long id,
+            @Valid @RequestBody ProgressRateRequest request) {
+        return ResponseEntity.ok(todoService.setProgressRate(id, request.getProgressRate()));
+    }
+
+    /**
+     * 進捗モードを切り替える（手動 ↔ 自動）。
+     */
+    @PatchMapping("/{id}/progress-mode")
+    @Operation(summary = "進捗モード切替（手動/自動）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "切替成功")
+    public ResponseEntity<ApiResponse<TodoResponse>> setProgressMode(
+            @PathVariable Long teamId,
+            @PathVariable Long id,
+            @Valid @RequestBody ProgressModeRequest request) {
+        return ResponseEntity.ok(todoService.setProgressMode(id, request.getProgressManual()));
     }
 }

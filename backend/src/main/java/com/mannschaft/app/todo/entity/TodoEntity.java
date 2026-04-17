@@ -188,4 +188,33 @@ public class TodoEntity {
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
+
+    /**
+     * 開始日を変更する。
+     *
+     * @param startDate 新しい開始日（nullで開始日なしに変更）
+     */
+    public void updateStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    /**
+     * スケジュール連携IDを設定する（双方向リンク用）。
+     *
+     * @param linkedScheduleId 連携スケジュールID（nullで連携解除）
+     */
+    public void setLinkedScheduleId(Long linkedScheduleId) {
+        this.linkedScheduleId = linkedScheduleId;
+    }
+
+    /**
+     * 進捗率を手動設定する。
+     *
+     * @param progressRate   進捗率（0.00〜100.00）
+     * @param progressManual 手動設定フラグ
+     */
+    public void setProgressRate(java.math.BigDecimal progressRate, boolean progressManual) {
+        this.progressRate = progressRate;
+        this.progressManual = progressManual;
+    }
 }

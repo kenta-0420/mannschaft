@@ -84,6 +84,9 @@ class TodoServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private TodoProgressService todoProgressService;
+
     @InjectMocks
     private TodoService todoService;
 
@@ -292,7 +295,8 @@ class TodoServiceTest {
             // Given
             CreateTodoRequest request = new CreateTodoRequest(
                     "新規TODO", "説明", null, null, "HIGH",
-                    LocalDate.now().plusDays(5), null, null, null, null);
+                    LocalDate.now().plusDays(5), null, null, null, null,
+                    null, null, null, null);
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> {
                         TodoEntity e = invocation.getArgument(0);
@@ -321,7 +325,8 @@ class TodoServiceTest {
             ProjectEntity project = createProject();
             CreateTodoRequest request = new CreateTodoRequest(
                     "プロジェクトTODO", null, PROJECT_ID, null, null,
-                    null, null, null, null, null);
+                    null, null, null, null, null,
+                    null, null, null, null);
             given(projectService.findProjectOrThrow(PROJECT_ID)).willReturn(project);
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> {
@@ -348,7 +353,8 @@ class TodoServiceTest {
             // Given
             CreateTodoRequest request = new CreateTodoRequest(
                     "担当者付きTODO", null, null, null, null,
-                    null, null, null, List.of(ASSIGNEE_USER_ID), null);
+                    null, null, null, List.of(ASSIGNEE_USER_ID), null,
+                    null, null, null, null);
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> {
                         TodoEntity e = invocation.getArgument(0);
@@ -387,7 +393,8 @@ class TodoServiceTest {
                     .build();
             CreateTodoRequest request = new CreateTodoRequest(
                     "TODO", null, PROJECT_ID, null, null,
-                    null, null, null, null, null);
+                    null, null, null, null, null,
+                    null, null, null, null);
             given(projectService.findProjectOrThrow(PROJECT_ID)).willReturn(project);
 
             // When / Then
@@ -403,7 +410,8 @@ class TodoServiceTest {
             // Given
             CreateTodoRequest request = new CreateTodoRequest(
                     "TODO", null, null, MILESTONE_ID, null,
-                    null, null, null, null, null);
+                    null, null, null, null, null,
+                    null, null, null, null);
 
             // When / Then
             assertThatThrownBy(() -> todoService.createTodo(SCOPE_TYPE, SCOPE_ID, request, USER_ID))
@@ -419,7 +427,8 @@ class TodoServiceTest {
             ProjectEntity project = createProject();
             CreateTodoRequest request = new CreateTodoRequest(
                     "TODO", null, PROJECT_ID, MILESTONE_ID, null,
-                    null, null, null, null, null);
+                    null, null, null, null, null,
+                    null, null, null, null);
             given(projectService.findProjectOrThrow(PROJECT_ID)).willReturn(project);
             given(milestoneRepository.findByIdAndProjectId(MILESTONE_ID, PROJECT_ID))
                     .willReturn(Optional.empty());
@@ -437,7 +446,8 @@ class TodoServiceTest {
             // Given
             CreateTodoRequest request = new CreateTodoRequest(
                     "デフォルト優先度TODO", null, null, null, null,
-                    null, null, null, null, null);
+                    null, null, null, null, null,
+                    null, null, null, null);
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> {
                         TodoEntity e = invocation.getArgument(0);
@@ -918,7 +928,8 @@ class TodoServiceTest {
         void 子TODO作成_親のdepthが0の場合_depth1で作成される() {
             // given
             CreateTodoRequest request = new CreateTodoRequest(
-                    "子課題", null, null, null, null, null, null, null, null, PARENT_TODO_ID);
+                    "子課題", null, null, null, null, null, null, null, null, PARENT_TODO_ID,
+                    null, null, null, null);
             TodoEntity parent = createParentTodo();
             given(todoRepository.findByIdAndDeletedAtIsNull(PARENT_TODO_ID))
                     .willReturn(Optional.of(parent));
@@ -946,7 +957,8 @@ class TodoServiceTest {
         void 孫TODO作成_親のdepthが1の場合_depth2で作成される() {
             // given
             CreateTodoRequest request = new CreateTodoRequest(
-                    "孫課題", null, null, null, null, null, null, null, null, CHILD_TODO_ID);
+                    "孫課題", null, null, null, null, null, null, null, null, CHILD_TODO_ID,
+                    null, null, null, null);
             TodoEntity child = createChildTodo(PARENT_TODO_ID, 1);
             given(todoRepository.findByIdAndDeletedAtIsNull(CHILD_TODO_ID))
                     .willReturn(Optional.of(child));
@@ -973,7 +985,8 @@ class TodoServiceTest {
         void 階層目作成_depth2の親に子を追加するとMAX_DEPTH_EXCEEDED() {
             // given
             CreateTodoRequest request = new CreateTodoRequest(
-                    "4階層目", null, null, null, null, null, null, null, null, CHILD_TODO_ID);
+                    "4階層目", null, null, null, null, null, null, null, null, CHILD_TODO_ID,
+                    null, null, null, null);
             TodoEntity grandChild = createChildTodo(CHILD_TODO_ID, 2);
             given(todoRepository.findByIdAndDeletedAtIsNull(CHILD_TODO_ID))
                     .willReturn(Optional.of(grandChild));
@@ -990,7 +1003,8 @@ class TodoServiceTest {
         void スコープ不一致_別スコープの親を指定するとTODO_NOT_FOUND() {
             // given: 親は別スコープ（scopeId が異なる）
             CreateTodoRequest request = new CreateTodoRequest(
-                    "子課題", null, null, null, null, null, null, null, null, PARENT_TODO_ID);
+                    "子課題", null, null, null, null, null, null, null, null, PARENT_TODO_ID,
+                    null, null, null, null);
             TodoEntity otherScopeParent = TodoEntity.builder()
                     .scopeType(SCOPE_TYPE)
                     .scopeId(SCOPE_ID + 999L)  // 別のscope_id
@@ -1018,7 +1032,8 @@ class TodoServiceTest {
         void 子TODO上限超過_50件を超えるとCHILD_LIMIT_EXCEEDED() {
             // given
             CreateTodoRequest request = new CreateTodoRequest(
-                    "子課題51件目", null, null, null, null, null, null, null, null, PARENT_TODO_ID);
+                    "子課題51件目", null, null, null, null, null, null, null, null, PARENT_TODO_ID,
+                    null, null, null, null);
             TodoEntity parent = createParentTodo();
             given(todoRepository.findByIdAndDeletedAtIsNull(PARENT_TODO_ID))
                     .willReturn(Optional.of(parent));
@@ -1036,7 +1051,8 @@ class TodoServiceTest {
         void 削除済み親への追加_論理削除された親に子を追加するとTODO_NOT_FOUND() {
             // given: findByIdAndDeletedAtIsNull は削除済みを返さない
             CreateTodoRequest request = new CreateTodoRequest(
-                    "子課題", null, null, null, null, null, null, null, null, PARENT_TODO_ID);
+                    "子課題", null, null, null, null, null, null, null, null, PARENT_TODO_ID,
+                    null, null, null, null);
             given(todoRepository.findByIdAndDeletedAtIsNull(PARENT_TODO_ID))
                     .willReturn(Optional.empty());
 
