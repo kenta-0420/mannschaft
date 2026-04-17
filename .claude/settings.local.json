@@ -375,7 +375,11 @@
       "Bash(echo \"EXIT: $?\")",
       "Bash(./gradlew compileTestJava --rerun-tasks)",
       "Bash(tasklist /fi \"imagename eq java.exe\")",
-      "Bash(echo \"GRADLE_EXIT=$?\")"
+      "Bash(echo \"GRADLE_EXIT=$?\")",
+      "Bash(./gradlew compileTestJava --tests \"com.mannschaft.app.schedule.ScheduleMediaServiceTest\" --tests \"com.mannschaft.app.schedule.ScheduleMediaControllerTest\" -x test)",
+      "Bash(\"D:/mannschaft/frontend/node_modules/.bin/nuxt.cmd\" typecheck *)",
+      "Bash(\"D:/mannschaft/frontend/node_modules/.bin/tsc.cmd\" --noEmit --project \"D:/mannschaft/.claude/worktrees/agent-aa4871ab/frontend/tsconfig.json\")",
+      "Bash(./gradlew compileJava compileTestJava --no-daemon)"
     ]
   }
 }
