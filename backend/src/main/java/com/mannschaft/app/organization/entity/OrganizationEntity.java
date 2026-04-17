@@ -74,6 +74,12 @@ public class OrganizationEntity extends BaseEntity {
 
     // --- F01.2 拡張プロフィールフィールド ---
 
+    @Column(name = "icon_url", length = 512)
+    private String iconUrl;
+
+    @Column(name = "banner_url", length = 512)
+    private String bannerUrl;
+
     @Column(length = 512)
     private String homepageUrl;
 
@@ -145,5 +151,19 @@ public class OrganizationEntity extends BaseEntity {
      */
     public void restore() {
         this.deletedAt = null;
+    }
+
+    /**
+     * アイコン画像URLを更新する。
+     */
+    public void updateIconUrl(String iconUrl) {
+        this.iconUrl = iconUrl;
+    }
+
+    /**
+     * バナー画像URLを更新する。
+     */
+    public void updateBannerUrl(String bannerUrl) {
+        this.bannerUrl = bannerUrl;
     }
 }
