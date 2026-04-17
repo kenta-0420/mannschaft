@@ -35,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -99,10 +100,10 @@ class TodoSharedMemoServiceTest {
 
     @BeforeEach
     void setUp() {
-        given(sharedMemoRepository.save(any(TodoSharedMemoEntryEntity.class)))
-                .willAnswer(inv -> inv.getArgument(0));
-        given(nameResolverService.resolveUserDisplayNames(anySet()))
-                .willReturn(Map.of(USER_ID, "テストユーザー", OTHER_USER_ID, "他ユーザー"));
+        lenient().when(sharedMemoRepository.save(any(TodoSharedMemoEntryEntity.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(nameResolverService.resolveUserDisplayNames(anySet()))
+                .thenReturn(Map.of(USER_ID, "テストユーザー", OTHER_USER_ID, "他ユーザー"));
     }
 
     // ========================================
