@@ -1,5 +1,6 @@
 package com.mannschaft.app.profile.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.profile.ProfileMediaRole;
@@ -43,6 +44,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class OrganizationProfileMediaController {
 
     private final ProfileMediaService profileMediaService;
+    private final AccessControlService accessControlService;
 
     /**
      * 組織プロフィールメディアのアップロード URL を発行する。
@@ -61,6 +63,8 @@ public class OrganizationProfileMediaController {
             @PathVariable String role,
             @RequestBody @Valid ProfileMediaUploadUrlRequest request) {
 
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
         ProfileMediaRole mediaRole = parseRole(role);
         ProfileMediaUploadUrlResponse response =
                 profileMediaService.generateUploadUrl(ProfileMediaScope.ORGANIZATION, orgId, mediaRole, request);
@@ -84,6 +88,8 @@ public class OrganizationProfileMediaController {
             @PathVariable String role,
             @RequestBody @Valid ProfileMediaCommitRequest request) {
 
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
         ProfileMediaRole mediaRole = parseRole(role);
         ProfileMediaResponse response =
                 profileMediaService.commit(ProfileMediaScope.ORGANIZATION, orgId, mediaRole, request);
@@ -106,6 +112,7 @@ public class OrganizationProfileMediaController {
             @PathVariable String role) {
 
         Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
         ProfileMediaRole mediaRole = parseRole(role);
         profileMediaService.delete(ProfileMediaScope.ORGANIZATION, orgId, mediaRole, userId);
         return ResponseEntity.noContent().build();
