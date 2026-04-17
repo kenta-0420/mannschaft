@@ -97,6 +97,9 @@ class EquipmentRankingServiceTest {
         @Test
         @DisplayName("正常系: ランキングデータが返る（minTeamCount 以上のみ）")
         void ランキングデータが返る_minTeamCount以上のみ() {
+            // @Value("${equipment.ranking.min-team-count:5}") は MockitoExtension では注入されないため手動設定
+            ReflectionTestUtils.setField(service, "minTeamCount", 5);
+
             // Given
             given(featureFlagService.isEnabled("FEATURE_V9_ENABLED")).willReturn(true);
             given(featureFlagService.isEnabled("FEATURE_EQUIPMENT_RANKING_ENABLED")).willReturn(true);
