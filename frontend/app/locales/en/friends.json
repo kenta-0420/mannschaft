@@ -82,7 +82,6 @@
     "subtitle": "Review and forward posts from friend teams",
     "badge": "From friend",
     "forwarded_badge": "Forwarded",
-    "phase2_banner": "Automatic post retrieval will be available in Phase 2. Currently only layout preview is available.",
     "permission_denied": "You do not have permission to view this page",
     "list": {
       "empty": "No posts from friends"
