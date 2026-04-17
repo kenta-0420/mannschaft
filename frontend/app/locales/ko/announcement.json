@@ -1,0 +1,29 @@
+{
+  "announcement": {
+    "widget_title": "공지사항",
+    "all_announcements": "모든 공지사항",
+    "display_in_announcement": "공지 위젯에 표시",
+    "display_in_announcement_hint": "대시보드 상단의 눈에 띄는 위치에 표시됩니다.",
+    "pin": "고정",
+    "unpin": "고정 해제",
+    "priority": {
+      "URGENT": "긴급",
+      "IMPORTANT": "중요",
+      "NORMAL": "일반"
+    },
+    "source_type": {
+      "BLOG_POST": "블로그",
+      "BULLETIN_THREAD": "게시판",
+      "TIMELINE_POST": "타임라인",
+      "CIRCULATION": "회람 문서",
+      "SURVEY": "설문"
+    },
+    "mark_all_read": "모두 읽음 처리",
+    "remove_from_announcements": "공지에서 제거",
+    "expires_at": "만료일",
+    "unread_count": "안 읽은 항목 {count}개",
+    "empty": "새로운 공지사항이 없습니다.",
+    "pin_limit_reached": "고정은 최대 5개까지 가능합니다.",
+    "already_registered": "이 콘텐츠는 이미 공지로 등록되어 있습니다."
+  }
+}

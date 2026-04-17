@@ -1,0 +1,29 @@
+{
+  "announcement": {
+    "widget_title": "公告",
+    "all_announcements": "所有公告",
+    "display_in_announcement": "显示在公告小部件中",
+    "display_in_announcement_hint": "将在仪表板顶部的显眼位置显示。",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "priority": {
+      "URGENT": "紧急",
+      "IMPORTANT": "重要",
+      "NORMAL": "普通"
+    },
+    "source_type": {
+      "BLOG_POST": "博客",
+      "BULLETIN_THREAD": "公告板",
+      "TIMELINE_POST": "时间线",
+      "CIRCULATION": "传阅文件",
+      "SURVEY": "问卷"
+    },
+    "mark_all_read": "全部标为已读",
+    "remove_from_announcements": "从公告中移除",
+    "expires_at": "到期时间",
+    "unread_count": "未读 {count} 条",
+    "empty": "暂无新公告。",
+    "pin_limit_reached": "最多可置顶5条公告。",
+    "already_registered": "该内容已注册为公告。"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "announcement": {
+    "widget_title": "Anuncios",
+    "all_announcements": "Todos los anuncios",
+    "display_in_announcement": "Mostrar en el widget de anuncios",
+    "display_in_announcement_hint": "Se mostrará en un lugar destacado en la parte superior del panel.",
+    "pin": "Fijar",
+    "unpin": "Desfijar",
+    "priority": {
+      "URGENT": "Urgente",
+      "IMPORTANT": "Importante",
+      "NORMAL": "Normal"
+    },
+    "source_type": {
+      "BLOG_POST": "Blog",
+      "BULLETIN_THREAD": "Tablón",
+      "TIMELINE_POST": "Línea de tiempo",
+      "CIRCULATION": "Circular",
+      "SURVEY": "Encuesta"
+    },
+    "mark_all_read": "Marcar todo como leído",
+    "remove_from_announcements": "Eliminar de anuncios",
+    "expires_at": "Expira",
+    "unread_count": "{count} sin leer",
+    "empty": "No hay anuncios nuevos.",
+    "pin_limit_reached": "Puede fijar hasta 5 anuncios.",
+    "already_registered": "Este contenido ya está registrado como anuncio."
+  }
+}

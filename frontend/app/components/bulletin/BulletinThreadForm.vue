@@ -14,6 +14,10 @@ const emit = defineEmits<{
 
 const { createThread, getCategories } = useBulletinApi()
 const { showSuccess, showError } = useNotification()
+const { createAnnouncement } = useAnnouncementFeed(
+  props.scopeType as 'TEAM' | 'ORGANIZATION',
+  props.scopeId,
+)
 
 const title = ref('')
 const body = ref('')
@@ -21,6 +25,8 @@ const categoryId = ref<number | undefined>(undefined)
 const priority = ref<BulletinPriority>('INFO')
 const categories = ref<BulletinCategory[]>([])
 const submitting = ref(false)
+// お知らせウィジェットに表示するフラグ
+const displayInAnnouncement = ref(false)
 
 // 添付ファイル
 const attachedFiles = ref<File[]>([])
@@ -93,12 +99,22 @@ async function onSubmit() {
   if (!title.value.trim() || !body.value.trim() || submitting.value) return
   submitting.value = true
   try {
-    await createThread(props.scopeType, props.scopeId, {
+    const res = await createThread(props.scopeType, props.scopeId, {
       title: title.value.trim(),
       body: body.value.trim(),
       categoryId: categoryId.value,
       priority: priority.value,
     }, attachedFiles.value)
+    // お知らせウィジェットに表示する場合、スレッド作成後に登録
+    if (displayInAnnouncement.value && res?.data?.id) {
+      await createAnnouncement({
+        sourceType: 'BULLETIN_THREAD',
+        sourceId: res.data.id,
+      }).catch(() => {
+        // お知らせ登録失敗は投稿自体には影響しない（silent fail）
+        showError('お知らせへの登録に失敗しました。後から手動で登録してください。')
+      })
+    }
     showSuccess('スレッドを作成しました')
     clearDraft()
     attachedFiles.value = []
@@ -107,6 +123,7 @@ async function onSubmit() {
     body.value = ''
     categoryId.value = undefined
     priority.value = 'INFO'
+    displayInAnnouncement.value = false
     emit('saved')
   } catch {
     showError('作成に失敗しました')
@@ -173,6 +190,9 @@ watch(visible, (v) => {
           />
         </div>
       </div>
+
+      <!-- お知らせウィジェット表示フラグ -->
+      <AnnouncementAnnouncementToggle v-model="displayInAnnouncement" />
 
       <!-- 下書き保存インジケーター -->
       <div v-if="title || body" class="text-right text-xs text-surface-400">

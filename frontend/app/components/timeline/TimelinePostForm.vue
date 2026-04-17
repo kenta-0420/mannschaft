@@ -13,6 +13,12 @@ const emit = defineEmits<{
 const { createPost } = useTimelineApi()
 const { showSuccess, showError } = useNotification()
 
+// お知らせウィジェット表示フラグ（チーム/組織スコープのみ有効）
+const displayInAnnouncement = ref(false)
+const isTeamOrOrgScope = computed(() =>
+  (props.scopeType === 'TEAM' || props.scopeType === 'ORGANIZATION') && !!props.scopeId,
+)
+
 const content = ref('')
 const images = ref<File[]>([])
 const videoUrl = ref('')
@@ -104,7 +110,20 @@ async function onSubmit() {
       formData.append('poll', JSON.stringify(poll.value))
     }
 
-    await createPost(formData)
+    const res = await createPost(formData)
+    // お知らせウィジェットに表示する場合、投稿後に登録
+    if (displayInAnnouncement.value && isTeamOrOrgScope.value && res?.data?.id && props.scopeId) {
+      const { createAnnouncement } = useAnnouncementFeed(
+        props.scopeType as 'TEAM' | 'ORGANIZATION',
+        props.scopeId,
+      )
+      await createAnnouncement({
+        sourceType: 'TIMELINE_POST',
+        sourceId: res.data.id,
+      }).catch(() => {
+        showError('お知らせへの登録に失敗しました。後から手動で登録してください。')
+      })
+    }
     showSuccess('投稿しました')
     content.value = ''
     images.value = []
@@ -114,6 +133,7 @@ async function onSubmit() {
     videoFileSize.value = null
     videoContentType.value = null
     poll.value = null
+    displayInAnnouncement.value = false
     emit('posted')
   } catch {
     showError('投稿に失敗しました')
@@ -221,6 +241,11 @@ async function onSubmit() {
         :disabled="!canSubmit"
         @click="onSubmit"
       />
+    </div>
+
+    <!-- お知らせウィジェット表示フラグ（チーム/組織スコープのみ） -->
+    <div v-if="isTeamOrOrgScope" class="mt-3 border-t border-surface-200 pt-3 dark:border-surface-700">
+      <AnnouncementAnnouncementToggle v-model="displayInAnnouncement" :disabled="submitting" />
     </div>
 
     <TimelinePollForm v-model:visible="showPollDialog" @created="onPollCreated" />

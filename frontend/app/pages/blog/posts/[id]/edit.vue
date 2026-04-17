@@ -16,6 +16,11 @@ const scopeId = ref<number | null>(route.query.scopeId ? Number(route.query.scop
 const loading = ref(true)
 const saving = ref(false)
 const publishing = ref(false)
+// お知らせウィジェット表示フラグ（チーム/組織スコープのみ有効）
+const displayInAnnouncement = ref(false)
+const isTeamOrOrgScope = computed(
+  () => (scopeType.value === 'TEAM' || scopeType.value === 'ORGANIZATION') && !!scopeId.value,
+)
 
 /**
  * BlogMediaUploader から送られてきたMarkdownテキストをエディタ末尾に挿入する。
@@ -71,6 +76,19 @@ async function publish() {
   try {
     await publishMyPost(postId)
     status.value = 'PUBLISHED'
+    // お知らせウィジェットに表示する場合、公開後に登録
+    if (displayInAnnouncement.value && isTeamOrOrgScope.value && scopeId.value) {
+      const { createAnnouncement } = useAnnouncementFeed(
+        scopeType.value as 'TEAM' | 'ORGANIZATION',
+        scopeId.value,
+      )
+      await createAnnouncement({
+        sourceType: 'BLOG_POST',
+        sourceId: postId,
+      }).catch(() => {
+        showError('お知らせへの登録に失敗しました。後から手動で登録してください。')
+      })
+    }
     success('記事を公開しました')
     await navigateTo(publishRedirectPath())
   } catch {
@@ -151,6 +169,14 @@ onMounted(load)
 
       <!-- Markdownエディタ（ツールバー + 編集/プレビュー） -->
       <MarkdownEditor v-model="body" />
+
+      <!-- お知らせウィジェット表示フラグ（チーム/組織スコープのみ） -->
+      <div v-if="isTeamOrOrgScope" class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+        <AnnouncementAnnouncementToggle v-model="displayInAnnouncement" />
+        <p class="ml-6 mt-1 text-xs text-surface-400">
+          ※「公開する」ボタン押下時に登録されます
+        </p>
+      </div>
     </div>
   </div>
 </template>

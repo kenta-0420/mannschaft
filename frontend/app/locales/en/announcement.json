@@ -1,0 +1,29 @@
+{
+  "announcement": {
+    "widget_title": "Announcements",
+    "all_announcements": "All Announcements",
+    "display_in_announcement": "Show in Announcement Widget",
+    "display_in_announcement_hint": "Will be displayed prominently at the top of the dashboard.",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "priority": {
+      "URGENT": "Urgent",
+      "IMPORTANT": "Important",
+      "NORMAL": "Normal"
+    },
+    "source_type": {
+      "BLOG_POST": "Blog",
+      "BULLETIN_THREAD": "Bulletin",
+      "TIMELINE_POST": "Timeline",
+      "CIRCULATION": "Circular",
+      "SURVEY": "Survey"
+    },
+    "mark_all_read": "Mark All as Read",
+    "remove_from_announcements": "Remove from Announcements",
+    "expires_at": "Expires",
+    "unread_count": "{count} unread",
+    "empty": "No new announcements.",
+    "pin_limit_reached": "You can pin up to 5 announcements.",
+    "already_registered": "This content is already registered as an announcement."
+  }
+}

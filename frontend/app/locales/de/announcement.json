@@ -1,0 +1,29 @@
+{
+  "announcement": {
+    "widget_title": "Ankündigungen",
+    "all_announcements": "Alle Ankündigungen",
+    "display_in_announcement": "Im Ankündigungs-Widget anzeigen",
+    "display_in_announcement_hint": "Wird oben auf dem Dashboard an prominenter Stelle angezeigt.",
+    "pin": "Anheften",
+    "unpin": "Lösen",
+    "priority": {
+      "URGENT": "Dringend",
+      "IMPORTANT": "Wichtig",
+      "NORMAL": "Normal"
+    },
+    "source_type": {
+      "BLOG_POST": "Blog",
+      "BULLETIN_THREAD": "Pinnwand",
+      "TIMELINE_POST": "Zeitleiste",
+      "CIRCULATION": "Rundschreiben",
+      "SURVEY": "Umfrage"
+    },
+    "mark_all_read": "Alle als gelesen markieren",
+    "remove_from_announcements": "Aus Ankündigungen entfernen",
+    "expires_at": "Läuft ab",
+    "unread_count": "{count} ungelesen",
+    "empty": "Keine neuen Ankündigungen.",
+    "pin_limit_reached": "Sie können maximal 5 Ankündigungen anheften.",
+    "already_registered": "Dieser Inhalt ist bereits als Ankündigung registriert."
+  }
+}
