@@ -1,8 +1,8 @@
 -- ポイっとメモとタグの中間テーブル（1メモあたり最大10個はアプリ層で制御）
 CREATE TABLE quick_memo_tag_links (
-    id         BIGINT      NOT NULL AUTO_INCREMENT,
-    memo_id    BIGINT      NOT NULL COMMENT 'FK -> quick_memos.id (ON DELETE CASCADE)',
-    tag_id     BIGINT      NOT NULL COMMENT 'FK -> tags.id (ON DELETE CASCADE)',
+    id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    memo_id    BIGINT UNSIGNED NOT NULL COMMENT 'FK -> quick_memos.id (ON DELETE CASCADE)',
+    tag_id     BIGINT UNSIGNED NOT NULL COMMENT 'FK -> tags.id (ON DELETE CASCADE)',
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     UNIQUE KEY uq_quick_memo_tag_links (memo_id, tag_id),

@@ -4,7 +4,7 @@
 CREATE TABLE supporter_settings (
     id           BIGINT      NOT NULL AUTO_INCREMENT,
     scope_type   VARCHAR(20) NOT NULL COMMENT 'TEAM または ORGANIZATION',
-    scope_id     BIGINT      NOT NULL COMMENT 'チームID または 組織ID',
+    scope_id     BIGINT UNSIGNED NOT NULL COMMENT 'チームID または 組織ID',
     auto_approve TINYINT(1)  NOT NULL DEFAULT 1 COMMENT '自動承認: 1=ON, 0=OFF',
     PRIMARY KEY (id),
     UNIQUE KEY uq_supporter_settings (scope_type, scope_id)

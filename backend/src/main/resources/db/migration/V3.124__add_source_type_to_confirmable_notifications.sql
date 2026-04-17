@@ -1,7 +1,4 @@
 -- F03.11 Phase 3 前提: confirmable_notifications に source_type を追加
--- V13.006 (テーブル作成) の後に実行されること
--- 既存レコードは 'EMERGENCY_CLOSURE' として扱われる
-ALTER TABLE confirmable_notifications
-    ADD COLUMN source_type VARCHAR(40) NOT NULL DEFAULT 'EMERGENCY_CLOSURE' AFTER id;
-
-CREATE INDEX idx_cn_source_status ON confirmable_notifications(source_type, status);
+-- 版序バグ修正: V3.124 < V13.006 のため、source_type カラムは V13.006 の CREATE TABLE 定義に直接組み込み済み
+-- このファイルは no-op として残す（Flyway チェックサム管理のため削除不可）
+SELECT 1;

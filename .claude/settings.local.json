@@ -379,7 +379,21 @@
       "Bash(./gradlew compileTestJava --tests \"com.mannschaft.app.schedule.ScheduleMediaServiceTest\" --tests \"com.mannschaft.app.schedule.ScheduleMediaControllerTest\" -x test)",
       "Bash(\"D:/mannschaft/frontend/node_modules/.bin/nuxt.cmd\" typecheck *)",
       "Bash(\"D:/mannschaft/frontend/node_modules/.bin/tsc.cmd\" --noEmit --project \"D:/mannschaft/.claude/worktrees/agent-aa4871ab/frontend/tsconfig.json\")",
-      "Bash(./gradlew compileJava compileTestJava --no-daemon)"
+      "Bash(./gradlew compileJava compileTestJava --no-daemon)",
+      "Bash(./gradlew cleanTest test --tests \"com.mannschaft.app.social.announcement.AnnouncementFeedControllerTest\")",
+      "Bash(node_modules/.bin/nuxt build *)",
+      "Bash(npx playwright *)",
+      "Bash(\"D:/mannschaft-main/frontend/node_modules/.bin/nuxt\" typecheck *)",
+      "Bash(node_modules/.bin/nuxt typecheck *)",
+      "Bash(cp -r \"D:/mannschaft/.claude/worktrees/agent-a7afdd1b/frontend/app/types/announcement.ts\" \"D:/mannschaft-main/frontend/app/types/announcement.ts\")",
+      "Bash(cp -r \"D:/mannschaft/.claude/worktrees/agent-a7afdd1b/frontend/app/composables/useAnnouncementFeed.ts\" \"D:/mannschaft-main/frontend/app/composables/useAnnouncementFeed.ts\")",
+      "Bash(./gradlew compileJava -q)",
+      "Bash(mkdir -p /d/mannschaft/backend/logs)",
+      "Bash(npx nuxi *)",
+      "Bash(node_modules/.bin/eslint app/composables/useInstallPrompt.ts app/components/pwa/PwaIosInstallGuide.vue app/components/pwa/PwaInstallButton.vue app/components/pwa/PwaInstallBanner.vue)",
+      "Bash(/d/mannschaft/frontend/node_modules/.bin/eslint app/composables/useInstallPrompt.ts app/components/pwa/PwaIosInstallGuide.vue app/components/pwa/PwaInstallButton.vue app/components/pwa/PwaInstallBanner.vue)",
+      "Bash(npx vue-tsc *)",
+      "Bash(pkill -f \"gradlew bootRun\")"
     ]
   }
 }
