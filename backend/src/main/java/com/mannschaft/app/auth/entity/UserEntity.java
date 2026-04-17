@@ -93,6 +93,9 @@ public class UserEntity extends BaseEntity {
     @Column(length = 500)
     private String avatarUrl;
 
+    @Column(name = "banner_url", length = 500)
+    private String bannerUrl;
+
     @Convert(converter = EncryptedStringConverter.class)
     @Column(columnDefinition = "TEXT")
     private String phoneNumber;
@@ -256,5 +259,19 @@ public class UserEntity extends BaseEntity {
         if (contactApprovalRequired != null) this.contactApprovalRequired = contactApprovalRequired;
         if (dmReceiveFrom != null) this.dmReceiveFrom = dmReceiveFrom;
         if (onlineVisibility != null) this.onlineVisibility = onlineVisibility;
+    }
+
+    /**
+     * アバター画像URLを更新する。
+     */
+    public void updateAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    /**
+     * バナー画像URLを更新する。
+     */
+    public void updateBannerUrl(String bannerUrl) {
+        this.bannerUrl = bannerUrl;
     }
 }
