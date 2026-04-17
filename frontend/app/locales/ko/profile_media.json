@@ -1,0 +1,25 @@
+{
+  "profile_media": {
+    "icon": "아이콘",
+    "banner": "배너",
+    "upload_icon": "아이콘 변경",
+    "upload_banner": "배너 변경",
+    "delete_icon": "아이콘 삭제",
+    "delete_banner": "배너 삭제",
+    "upload_success": "이미지를 업로드했습니다",
+    "delete_success": "이미지를 삭제했습니다",
+    "upload_error": "업로드에 실패했습니다",
+    "delete_error": "삭제에 실패했습니다",
+    "crop_title": "아이콘 자르기",
+    "crop_hint": "드래그하여 위치를 조정하세요",
+    "confirm_delete_icon": "아이콘 이미지를 삭제할까요？",
+    "confirm_delete_banner": "배너 이미지를 삭제할까요？",
+    "file_too_large_icon": "아이콘은 5MB 이하로 설정하세요",
+    "file_too_large_banner": "배너는 10MB 이하로 설정하세요",
+    "unsupported_type": "지원하지 않는 파일 형식입니다（JPEG・PNG・WebP・GIF）",
+    "banner_no_gif": "배너에는 GIF를 사용할 수 없습니다",
+    "select_file": "파일 선택",
+    "confirm_crop": "이 위치로 자르기",
+    "uploading": "업로드 중..."
+  }
+}

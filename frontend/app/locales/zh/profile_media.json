@@ -1,0 +1,25 @@
+{
+  "profile_media": {
+    "icon": "头像",
+    "banner": "横幅",
+    "upload_icon": "更换头像",
+    "upload_banner": "更换横幅",
+    "delete_icon": "删除头像",
+    "delete_banner": "删除横幅",
+    "upload_success": "图片上传成功",
+    "delete_success": "图片已删除",
+    "upload_error": "上传失败",
+    "delete_error": "删除失败",
+    "crop_title": "裁剪头像",
+    "crop_hint": "拖动以调整位置",
+    "confirm_delete_icon": "确认删除头像？",
+    "confirm_delete_banner": "确认删除横幅？",
+    "file_too_large_icon": "头像大小不超过5MB",
+    "file_too_large_banner": "横幅大小不超过10MB",
+    "unsupported_type": "不支持的文件格式（JPEG、PNG、WebP、GIF）",
+    "banner_no_gif": "横幅不支持GIF格式",
+    "select_file": "选择文件",
+    "confirm_crop": "确认裁剪",
+    "uploading": "上传中..."
+  }
+}
