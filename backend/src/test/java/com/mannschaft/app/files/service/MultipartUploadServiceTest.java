@@ -113,7 +113,7 @@ class MultipartUploadServiceTest {
         void 異常系_contentType不正_BAD_REQUEST() {
             // given
             StartMultipartUploadRequest req = new StartMultipartUploadRequest(
-                    null, "image.jpg", "image/jpeg",
+                    null, "document.pdf", "application/pdf",
                     10 * 1024 * 1024L, 1, 10 * 1024 * 1024L, "files/");
 
             // when / then
