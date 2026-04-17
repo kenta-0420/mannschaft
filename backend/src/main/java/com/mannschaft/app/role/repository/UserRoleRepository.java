@@ -226,6 +226,34 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
                                               @Param("roleName") String roleName);
 
     /**
+     * 複数チームに所属する ADMIN または DEPUTY_ADMIN の userId 一覧を返す（通知一斉送信用）。
+     * 退会・非アクティブユーザーは除外する。
+     */
+    @Query(value =
+            "SELECT DISTINCT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.team_id IN (:teamIds) " +
+            "AND r.name IN ('ADMIN', 'DEPUTY_ADMIN') " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findAdminUserIdsByTeamIds(@Param("teamIds") List<Long> teamIds);
+
+    /**
+     * 複数チームの ADMIN/DEPUTY_ADMIN を (team_id, user_id) ペアで返す（通知ループのN+1回避用）。
+     * 戻り値は Object[]{teamId, userId} の配列リスト。
+     */
+    @Query(value =
+            "SELECT ur.team_id, ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.team_id IN (:teamIds) " +
+            "AND r.name IN ('ADMIN', 'DEPUTY_ADMIN') " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Object[]> findAdminsByTeamIds(@Param("teamIds") List<Long> teamIds);
+
+    /**
      * 2ユーザーが共通チームに所属しているか確認する（DM受信制限チェック用）。
      */
     @Query(value = "SELECT COUNT(*) > 0 FROM user_roles ur1 " +

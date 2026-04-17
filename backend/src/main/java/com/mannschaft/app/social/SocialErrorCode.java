@@ -109,7 +109,31 @@ public enum SocialErrorCode implements ErrorCode {
 
     /** Phase 1 で MEMBER_AND_SUPPORTER 指定は拒否（400） */
     FRIEND_FORWARD_SUPPORTER_NOT_ALLOWED("SOCIAL_125",
-            "Phase 1 では SUPPORTER への転送配信は利用できません", Severity.WARN);
+            "Phase 1 では SUPPORTER への転送配信は利用できません", Severity.WARN),
+
+    // ─────────────────────────────────────────────
+    // F01.5 Phase 2 フレンド通知
+    // ─────────────────────────────────────────────
+
+    /** 通知送信先が存在しない（400） */
+    FRIEND_NOTIFICATION_NO_TARGETS("SOCIAL_130",
+            "フレンド通知の送信先が存在しません", Severity.WARN),
+
+    /** フォルダ指定時に target_folder_id が未指定（400） */
+    FRIEND_NOTIFICATION_FOLDER_ID_REQUIRED("SOCIAL_131",
+            "フォルダ指定時は target_folder_id が必須です", Severity.WARN),
+
+    /** TEAMS 指定時に target_team_ids が未指定（400） */
+    FRIEND_NOTIFICATION_TEAM_IDS_REQUIRED("SOCIAL_132",
+            "TEAMS 指定時は target_team_ids が必須です", Severity.WARN),
+
+    /** 不正な target_type（400） */
+    FRIEND_NOTIFICATION_INVALID_TARGET_TYPE("SOCIAL_133",
+            "target_type は FOLDER または TEAMS を指定してください", Severity.WARN),
+
+    /** 送信先チームがフレンド関係にない（400） */
+    FRIEND_NOTIFICATION_TARGET_NOT_FRIEND("SOCIAL_134",
+            "指定されたチームはフレンド関係にありません", Severity.WARN);
 
     private final String code;
     private final String message;

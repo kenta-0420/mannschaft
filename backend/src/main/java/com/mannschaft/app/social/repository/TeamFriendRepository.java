@@ -58,6 +58,22 @@ public interface TeamFriendRepository extends JpaRepository<TeamFriendEntity, Lo
     void deleteByTeamAIdAndTeamBId(Long teamAId, Long teamBId);
 
     /**
+     * sourceTeam とのフレンド関係が存在するチーム ID 数を返す（一括検証用）。
+     * team_friends は teamAId &lt; teamBId で正規化されているため両方向を OR で検索する。
+     *
+     * @param sourceTeamId 起点チーム ID
+     * @param targetTeamIds 検証対象チーム ID リスト
+     * @return sourceTeam とフレンド関係にあるチームの数
+     */
+    @Query("""
+            SELECT COUNT(tf) FROM TeamFriendEntity tf
+            WHERE (tf.teamAId = :sourceTeamId AND tf.teamBId IN :targetTeamIds)
+               OR (tf.teamBId = :sourceTeamId AND tf.teamAId IN :targetTeamIds)
+            """)
+    long countFriendsWithTeams(@Param("sourceTeamId") Long sourceTeamId,
+                               @Param("targetTeamIds") List<Long> targetTeamIds);
+
+    /**
      * 競合対策用に、指定ペアのフレンド関係を {@code SELECT ... FOR UPDATE NOWAIT} で
      * 取得する。相互フォロー成立・解除処理など、同時更新が発生しうるクリティカルセクション
      * から呼び出すこと。他トランザクションがロック中の場合は
