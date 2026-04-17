@@ -25,7 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 /**
  * フレンドチーム通知サービス（F01.5 Phase 2）。
@@ -112,11 +114,15 @@ public class FriendNotificationService {
             throw new BusinessException(SocialErrorCode.FRIEND_NOTIFICATION_NO_TARGETS);
         }
 
-        // 3. フレンド関係の検証
-        validateAllAreFriends(sourceTeamId, targetTeamIds);
+        // 3. フレンド関係の一括検証（N+1回避: 1クエリで全件確認）
+        long friendCount = teamFriendRepository.countFriendsWithTeams(sourceTeamId, targetTeamIds);
+        if (friendCount != targetTeamIds.size()) {
+            throw new BusinessException(SocialErrorCode.FRIEND_NOTIFICATION_TARGET_NOT_FRIEND);
+        }
 
-        // 4. ADMIN/DEPUTY_ADMIN ユーザー ID を取得（送信先全体の集計用）
-        List<Long> adminUserIds = userRoleRepository.findAdminUserIdsByTeamIds(targetTeamIds);
+        // 4. チームごとの ADMIN/DEPUTY_ADMIN を一括取得（N+1回避: 1クエリで全チーム分）
+        Map<Long, List<Long>> adminsByTeam = resolveAdminsByTeam(targetTeamIds);
+        int totalAdmins = adminsByTeam.values().stream().mapToInt(List::size).sum();
 
         // 5. 通知タイプと優先度の解決
         String notificationType = request.getNotificationType() != null
@@ -127,7 +133,7 @@ public class FriendNotificationService {
         // 6. 各ターゲットチームの管理者に通知を作成
         //    scope_id = ターゲットチーム ID（受信側チームの管理者フィード）
         for (Long targetTeamId : targetTeamIds) {
-            List<Long> teamAdminIds = userRoleRepository.findAdminUserIdsByTeamIds(List.of(targetTeamId));
+            List<Long> teamAdminIds = adminsByTeam.getOrDefault(targetTeamId, List.of());
             for (Long adminUserId : teamAdminIds) {
                 notificationService.createNotification(
                         adminUserId,
@@ -147,12 +153,12 @@ public class FriendNotificationService {
 
         String deliveryId = generateDeliveryId();
         log.info("フレンド通知送信完了: sourceTeam={}, targets={}, admins={}",
-                sourceTeamId, targetTeamIds.size(), adminUserIds.size());
+                sourceTeamId, targetTeamIds.size(), totalAdmins);
 
         return FriendNotificationDeliveryResponse.builder()
                 .deliveryId(deliveryId)
                 .queuedTeamsCount(targetTeamIds.size())
-                .queuedAdminsCount(adminUserIds.size())
+                .queuedAdminsCount(totalAdmins)
                 .queuedAt(LocalDateTime.now())
                 .build();
     }
@@ -169,9 +175,16 @@ public class FriendNotificationService {
                                 request.getTargetFolderId(), sourceTeamId)
                         .orElseThrow(() -> new BusinessException(SocialErrorCode.FRIEND_FOLDER_NOT_FOUND));
                 var members = folderMemberRepository.findByFolderId(folder.getId());
-                yield members.stream()
-                        .map(m -> resolvePartnerTeamId(sourceTeamId, m.getTeamFriendId()))
-                        .filter(id -> id != null)
+                // N+1回避: フォルダメンバーの team_friend_id を一括取得してから相手チーム ID に変換
+                List<Long> teamFriendIds = members.stream()
+                        .map(m -> m.getTeamFriendId())
+                        .toList();
+                var teamFriendMap = teamFriendRepository.findAllById(teamFriendIds).stream()
+                        .collect(Collectors.toMap(tf -> tf.getId(), tf -> tf));
+                yield teamFriendIds.stream()
+                        .map(teamFriendMap::get)
+                        .filter(tf -> tf != null)
+                        .map(tf -> tf.getTeamAId().equals(sourceTeamId) ? tf.getTeamBId() : tf.getTeamAId())
                         .distinct()
                         .toList();
             }
@@ -185,20 +198,15 @@ public class FriendNotificationService {
         };
     }
 
-    private Long resolvePartnerTeamId(Long sourceTeamId, Long teamFriendId) {
-        return teamFriendRepository.findById(teamFriendId)
-                .map(tf -> tf.getTeamAId().equals(sourceTeamId) ? tf.getTeamBId() : tf.getTeamAId())
-                .orElse(null);
-    }
-
-    private void validateAllAreFriends(Long sourceTeamId, List<Long> targetTeamIds) {
-        for (Long targetTeamId : targetTeamIds) {
-            boolean isFriend = teamFriendRepository.findByTeamAIdAndTeamBId(sourceTeamId, targetTeamId).isPresent()
-                    || teamFriendRepository.findByTeamAIdAndTeamBId(targetTeamId, sourceTeamId).isPresent();
-            if (!isFriend) {
-                throw new BusinessException(SocialErrorCode.FRIEND_NOTIFICATION_TARGET_NOT_FRIEND);
-            }
-        }
+    /**
+     * 複数チームの ADMIN/DEPUTY_ADMIN を {teamId → userIds} マップで返す（1クエリで解決）。
+     */
+    private Map<Long, List<Long>> resolveAdminsByTeam(List<Long> teamIds) {
+        List<Object[]> rows = userRoleRepository.findAdminsByTeamIds(teamIds);
+        return rows.stream().collect(Collectors.groupingBy(
+                row -> ((Number) row[0]).longValue(),
+                Collectors.mapping(row -> ((Number) row[1]).longValue(), Collectors.toList())
+        ));
     }
 
     private NotificationPriority resolvePriority(String priorityStr) {
