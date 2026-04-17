@@ -561,7 +561,7 @@ class UserServiceTest {
             // Given
             UpdateProfileRequest req = new UpdateProfileRequest(
                     "佐藤", "次郎", "サトウ", "ジロウ",
-                    "sato-jiro", null, "ja", "Asia/Tokyo",
+                    "sato-jiro", null, "ja", null, "Asia/Tokyo",
                     false, null, "090-1234-5678", null, null);
             UserEntity user = createActiveUser();
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));

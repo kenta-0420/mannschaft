@@ -3,6 +3,9 @@ package com.mannschaft.app.social.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.FollowerType;
 import com.mannschaft.app.social.SocialErrorCode;
 import com.mannschaft.app.social.dto.FollowTeamResponse;
@@ -67,6 +70,12 @@ class TeamFriendsServiceTest {
 
     @Mock
     private AuditLogService auditLogService;
+
+    @Mock
+    private NotificationHelper notificationHelper;
+
+    @Mock
+    private UserRoleRepository userRoleRepository;
 
     @InjectMocks
     private TeamFriendsService teamFriendsService;
@@ -151,15 +160,17 @@ class TeamFriendsServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: 相互フォロー成立 → team_friends に INSERT される")
+        @DisplayName("正常系: 相互フォロー成立 → team_friends に INSERT され FRIEND_ESTABLISHED 通知が両チームに送信される")
         void 相互フォロー成立_team_friendsが作成される() {
             // given
+            TeamEntity selfTeam = TeamEntity.builder().name("自チーム").build();
             TeamEntity targetTeam = TeamEntity.builder().name("相手チーム").build();
             FollowEntity savedFollow = buildFollow(TEAM_ID, TARGET_TEAM_ID, 100L);
             FollowEntity reverseFollow = buildFollow(TARGET_TEAM_ID, TEAM_ID, 200L);
             TeamFriendEntity savedFriend = buildTeamFriend(TEAM_ID, TARGET_TEAM_ID, 1L);
 
             given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(targetTeam));
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(selfTeam));
             given(followRepository.existsByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(
                     FollowerType.TEAM, TEAM_ID, FollowerType.TEAM, TARGET_TEAM_ID)).willReturn(false);
             given(followRepository.save(any(FollowEntity.class))).willReturn(savedFollow);
@@ -167,6 +178,10 @@ class TeamFriendsServiceTest {
                     FollowerType.TEAM, TARGET_TEAM_ID, FollowerType.TEAM, TEAM_ID))
                     .willReturn(Optional.of(reverseFollow));
             given(teamFriendRepository.save(any(TeamFriendEntity.class))).willReturn(savedFriend);
+            given(userRoleRepository.findUserIdsByTeamIdAndRoleName(TEAM_ID, "ADMIN"))
+                    .willReturn(List.of(USER_ID));
+            given(userRoleRepository.findUserIdsByTeamIdAndRoleName(TARGET_TEAM_ID, "ADMIN"))
+                    .willReturn(List.of(2L));
             doNothing().when(auditLogService).record(anyString(), anyLong(), isNull(),
                     anyLong(), isNull(), isNull(), isNull(), isNull(), anyString());
 
@@ -177,6 +192,19 @@ class TeamFriendsServiceTest {
             assertThat(result.isMutual()).isTrue();
             assertThat(result.getTeamFriendId()).isEqualTo(1L);
             verify(teamFriendRepository).save(any(TeamFriendEntity.class));
+            // 両チームの ADMIN へ FRIEND_ESTABLISHED 通知が 2 回送信される（自チーム + 相手チーム）
+            verify(notificationHelper, times(2)).notifyAll(
+                    anyList(),
+                    eq("FRIEND_ESTABLISHED"),
+                    anyString(),
+                    anyString(),
+                    eq("TEAM_FRIEND"),
+                    eq(1L),
+                    eq(NotificationScopeType.FRIEND_TEAM),
+                    anyLong(),
+                    anyString(),
+                    eq(USER_ID)
+            );
         }
     }
 
@@ -188,17 +216,25 @@ class TeamFriendsServiceTest {
     class Unfollow {
 
         @Test
-        @DisplayName("正常系(KEEP): フォロー解除・team_friends 削除・転送はそのまま")
+        @DisplayName("正常系(KEEP): フォロー解除・team_friends 削除・転送はそのまま・FRIEND_DISSOLVED 通知が両チームに送信される")
         void フォロー解除_KEEP() {
             // given
             FollowEntity follow = buildFollow(TEAM_ID, TARGET_TEAM_ID, 100L);
             TeamFriendEntity friend = buildTeamFriend(TEAM_ID, TARGET_TEAM_ID, 1L);
+            TeamEntity selfTeam = TeamEntity.builder().name("自チーム").build();
+            TeamEntity targetTeam = TeamEntity.builder().name("相手チーム").build();
 
             given(followRepository.findByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(
                     FollowerType.TEAM, TEAM_ID, FollowerType.TEAM, TARGET_TEAM_ID))
                     .willReturn(Optional.of(follow));
             given(teamFriendRepository.findByTeamAIdAndTeamBId(TEAM_ID, TARGET_TEAM_ID))
                     .willReturn(Optional.of(friend));
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(selfTeam));
+            given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(targetTeam));
+            given(userRoleRepository.findUserIdsByTeamIdAndRoleName(TEAM_ID, "ADMIN"))
+                    .willReturn(List.of(USER_ID));
+            given(userRoleRepository.findUserIdsByTeamIdAndRoleName(TARGET_TEAM_ID, "ADMIN"))
+                    .willReturn(List.of(2L));
             doNothing().when(auditLogService).record(anyString(), anyLong(), isNull(),
                     anyLong(), isNull(), isNull(), isNull(), isNull(), anyString());
 
@@ -211,6 +247,19 @@ class TeamFriendsServiceTest {
             // KEEP モードなので転送処理は呼ばれない
             verify(friendContentForwardRepository, never())
                     .findByForwardingTeamIdAndIsRevokedFalseOrderByForwardedAtDesc(anyLong(), any());
+            // 両チームの ADMIN へ FRIEND_DISSOLVED 通知が 2 回送信される（自チーム + 相手チーム）
+            verify(notificationHelper, times(2)).notifyAll(
+                    anyList(),
+                    eq("FRIEND_DISSOLVED"),
+                    anyString(),
+                    anyString(),
+                    eq("TEAM_FRIEND"),
+                    eq(friend.getId()),
+                    eq(NotificationScopeType.FRIEND_TEAM),
+                    anyLong(),
+                    anyString(),
+                    eq(USER_ID)
+            );
         }
 
         @Test
