@@ -15,13 +15,13 @@ public class SharedMemoEntryRequest {
     /** メモ本文（必須、最大2000文字）。 */
     @NotBlank
     @Size(max = 2000)
-    private String body;
+    private String memo;
 
     /** 引用元エントリID（任意、nullは引用なし）。 */
     private Long quotedEntryId;
 
-    public SharedMemoEntryRequest(String body, Long quotedEntryId) {
-        this.body = body;
+    public SharedMemoEntryRequest(String memo, Long quotedEntryId) {
+        this.memo = memo;
         this.quotedEntryId = quotedEntryId;
     }
 }

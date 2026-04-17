@@ -3,10 +3,12 @@ definePageMeta({
   middleware: 'auth',
 })
 
+const { t } = useI18n()
 const route = useRoute()
 const teamId = Number(route.params.id)
 const todoId = Number(route.params.todoId)
 const todoApi = useTodoApi()
+const progressApi = useTodoProgress()
 const notification = useNotification()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 
@@ -25,17 +27,29 @@ interface TodoDetail {
   assignees: Array<{ userId: number; displayName: string; avatarUrl: string | null }>
   createdAt: string
   updatedAt: string
+  progressRate: string
+  progressManual: boolean
 }
 
 const todo = ref<TodoDetail | null>(null)
 const loading = ref(true)
 const showEditDialog = ref(false)
 
+// 拡張タブ: 'progress' | 'shared_memo' | 'personal_memo'
+type DetailTab = 'progress' | 'shared_memo' | 'personal_memo'
+const activeDetailTab = ref<DetailTab>('progress')
+
 async function loadTodo() {
   loading.value = true
   try {
     const res = await todoApi.getTodo('team', teamId, todoId)
-    todo.value = res.data
+    // progressRate / progressManual が存在しない場合はデフォルト値を設定
+    const data = res.data as TodoDetail & { progressRate?: string; progressManual?: boolean }
+    todo.value = {
+      ...data,
+      progressRate: data.progressRate ?? '0.00',
+      progressManual: data.progressManual ?? false,
+    }
   }
   catch {
     notification.error('TODOの取得に失敗しました')
@@ -53,6 +67,30 @@ async function changeStatus(newStatus: string) {
   }
   catch {
     notification.error('ステータス変更に失敗しました')
+  }
+}
+
+async function onProgressRateUpdate(rate: string) {
+  if (!todo.value) return
+  try {
+    await progressApi.updateProgress('team', teamId, todoId, { progressRate: rate })
+    todo.value.progressRate = rate
+  } catch {
+    notification.error('進捗率の更新に失敗しました')
+  }
+}
+
+async function onProgressManualUpdate(manual: boolean) {
+  if (!todo.value) return
+  try {
+    await progressApi.updateProgressMode('team', teamId, todoId, { progressManual: manual })
+    todo.value.progressManual = manual
+    if (!manual) {
+      // 自動モードに切り替えた場合は最新値を再取得
+      await loadTodo()
+    }
+  } catch {
+    notification.error('進捗モードの切替に失敗しました')
   }
 }
 
@@ -150,6 +188,69 @@ onMounted(async () => {
         {{ todo.completedBy?.displayName ?? '不明' }} が {{ formatDateTime(todo.completedAt) }} に完了
       </p>
     </div>
+
+    <!-- 拡張タブ（進捗 / 共有メモ / 個人メモ） -->
+    <SectionCard class="mb-6">
+      <!-- タブヘッダー -->
+      <div class="mb-4 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700 w-fit">
+        <button
+          type="button"
+          class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+          :class="activeDetailTab === 'progress'
+            ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
+            : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
+          @click="activeDetailTab = 'progress'"
+        >
+          <i class="pi pi-chart-bar mr-1" />{{ t('todo.enhancement.progress.tab_label') }}
+        </button>
+        <button
+          type="button"
+          class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+          :class="activeDetailTab === 'shared_memo'
+            ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
+            : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
+          @click="activeDetailTab = 'shared_memo'"
+        >
+          <i class="pi pi-comments mr-1" />{{ t('todo.enhancement.shared_memo.title') }}
+        </button>
+        <button
+          type="button"
+          class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+          :class="activeDetailTab === 'personal_memo'
+            ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
+            : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
+          @click="activeDetailTab = 'personal_memo'"
+        >
+          <i class="pi pi-lock mr-1" />{{ t('todo.enhancement.personal_memo.title') }}
+        </button>
+      </div>
+
+      <!-- タブコンテンツ -->
+      <div v-if="activeDetailTab === 'progress'">
+        <TodoProgressControl
+          :progress-rate="todo.progressRate"
+          :progress-manual="todo.progressManual"
+          @update:progress-rate="onProgressRateUpdate"
+          @update:progress-manual="onProgressManualUpdate"
+        />
+      </div>
+
+      <div v-else-if="activeDetailTab === 'shared_memo'">
+        <TodoSharedMemo
+          scope-type="team"
+          :scope-id="teamId"
+          :todo-id="todoId"
+        />
+      </div>
+
+      <div v-else-if="activeDetailTab === 'personal_memo'">
+        <TodoPersonalMemo
+          scope-type="team"
+          :scope-id="teamId"
+          :todo-id="todoId"
+        />
+      </div>
+    </SectionCard>
 
     <!-- コメント -->
     <SectionCard>

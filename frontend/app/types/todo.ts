@@ -22,6 +22,11 @@ export interface TodoResponse {
   assignees: TodoAssigneeResponse[]
   createdAt: string
   updatedAt: string
+  // Phase 4 拡張フィールド
+  startDate: string | null
+  linkedScheduleId: number | null
+  progressRate: string
+  progressManual: boolean
 }
 
 export interface TodoAssigneeResponse {
@@ -74,4 +79,87 @@ export interface CreateTodoCommentRequest {
 export interface BulkStatusChangeRequest {
   todoIds: number[]
   status: TodoStatus
+}
+
+// ガントバー表示用
+export interface GanttTodo {
+  id: number
+  title: string
+  startDate: string
+  dueDate: string
+  progressRate: string
+  progressManual: boolean
+  status: TodoStatus
+  priority: TodoPriority
+  parentId: number | null
+  depth: number
+  childIds: number[]
+}
+
+// 共有メモエントリ
+export interface SharedMemoEntry {
+  id: number
+  todoId: number
+  userId: number
+  userDisplayName: string
+  memo: string
+  quotedEntryId: number | null
+  quotedMemoPreview: string | null
+  createdAt: string
+  updatedAt: string
+  isEditable: boolean
+  isOwnMemo: boolean
+}
+
+// 個人メモ
+export interface PersonalMemo {
+  userId: number
+  todoId: number
+  memo: string
+  createdAt: string
+  updatedAt: string
+}
+
+// ガント取得レスポンス
+export interface GanttResponse {
+  data: GanttTodo[]
+  fromDate: string
+  toDate: string
+}
+
+// 進捗率更新リクエスト
+export interface UpdateProgressRequest {
+  progressRate: string
+}
+
+// 進捗モード更新リクエスト
+export interface UpdateProgressModeRequest {
+  progressManual: boolean
+}
+
+// スケジュール連携リクエスト
+export interface LinkScheduleRequest {
+  scheduleId: number
+}
+
+// 共有メモ作成リクエスト
+export interface CreateSharedMemoRequest {
+  memo: string
+  quotedEntryId?: number
+}
+
+// 共有メモ更新リクエスト
+export interface UpdateSharedMemoRequest {
+  memo: string
+}
+
+// 個人メモ UPSERT リクエスト
+export interface UpsertPersonalMemoRequest {
+  memo: string
+}
+
+// 共有メモ一覧レスポンス
+export interface SharedMemoListResponse {
+  data: SharedMemoEntry[]
+  meta: { page: number; size: number; totalElements: number; totalPages: number }
 }

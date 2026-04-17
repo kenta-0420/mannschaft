@@ -401,6 +401,34 @@
       "saveSettings": "Save Settings"
     }
   },
+  "todo": {
+    "enhancement": {
+      "gantt": {
+        "title": "Gantt View",
+        "no_data": "No tasks with date ranges to display in the Gantt chart"
+      },
+      "progress": {
+        "tab_label": "Progress",
+        "manual_mode": "Manual Input Mode",
+        "auto_mode": "Auto Calculation Mode",
+        "switch_to_auto": "Switch to Auto",
+        "switch_to_manual": "Switch to Manual",
+        "overwrite_warning": "Child task manual values may be overwritten. Are you sure?"
+      },
+      "shared_memo": {
+        "title": "Shared Memo",
+        "placeholder": "Enter memo...",
+        "quote_reply": "Quote & Reply",
+        "no_data": "No shared memos yet"
+      },
+      "personal_memo": {
+        "title": "Personal Memo (visible only to you)",
+        "placeholder": "Enter personal memo... (auto-saved)",
+        "saving": "Saving...",
+        "saved": "Saved"
+      }
+    }
+  },
   "extended_profile": {
     "title": "Edit Extended Profile",
     "section_profile": "Basic Profile",

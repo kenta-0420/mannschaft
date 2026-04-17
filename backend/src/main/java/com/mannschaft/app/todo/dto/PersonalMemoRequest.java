@@ -16,9 +16,9 @@ public class PersonalMemoRequest {
     /** メモ本文（必須、最大5000文字）。 */
     @NotBlank
     @Size(max = 5000)
-    private String body;
+    private String memo;
 
-    public PersonalMemoRequest(String body) {
-        this.body = body;
+    public PersonalMemoRequest(String memo) {
+        this.memo = memo;
     }
 }

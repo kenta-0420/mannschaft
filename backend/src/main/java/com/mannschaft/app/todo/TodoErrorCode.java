@@ -101,6 +101,9 @@ public enum TodoErrorCode implements ErrorCode {
     /** 共有メモ件数が上限（500件）に達している */
     SHARED_MEMO_LIMIT_EXCEEDED("TODO_052", "共有メモの上限（500件）に達しています", Severity.WARN),
 
+    /** 共有メモの編集可能期間（24時間）を超過している */
+    SHARED_MEMO_EDIT_EXPIRED("TODO_053", "共有メモは投稿から24時間以内のみ編集可能です", Severity.WARN),
+
     /** 個人メモが見つからない */
     PERSONAL_MEMO_NOT_FOUND("TODO_060", "個人メモが見つかりません", Severity.WARN);
 

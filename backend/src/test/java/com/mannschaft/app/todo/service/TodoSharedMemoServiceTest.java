@@ -82,18 +82,28 @@ class TodoSharedMemoServiceTest {
     }
 
     private TodoSharedMemoEntryEntity createMemo(Long userId) {
+        return createMemoWithCreatedAt(userId, LocalDateTime.now());
+    }
+
+    private TodoSharedMemoEntryEntity createMemoWithCreatedAt(Long userId, LocalDateTime createdAt) {
         TodoSharedMemoEntryEntity entity = TodoSharedMemoEntryEntity.builder()
                 .todoId(TODO_ID)
                 .userId(userId)
-                .body("テスト共有メモ")
+                .memo("テスト共有メモ")
                 .build();
-        // IDをリフレクションでセット
+        // IDおよびcreatedAtをリフレクションでセット
         try {
-            java.lang.reflect.Field f = TodoSharedMemoEntryEntity.class.getDeclaredField("id");
-            f.setAccessible(true);
-            f.set(entity, MEMO_ID);
+            java.lang.reflect.Field idField = TodoSharedMemoEntryEntity.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(entity, MEMO_ID);
+            java.lang.reflect.Field createdAtField = TodoSharedMemoEntryEntity.class.getDeclaredField("createdAt");
+            createdAtField.setAccessible(true);
+            createdAtField.set(entity, createdAt);
+            java.lang.reflect.Field updatedAtField = TodoSharedMemoEntryEntity.class.getDeclaredField("updatedAt");
+            updatedAtField.setAccessible(true);
+            updatedAtField.set(entity, createdAt);
         } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException("IDフィールドのセットに失敗しました", e);
+            throw new RuntimeException("フィールドのセットに失敗しました", e);
         }
         return entity;
     }
@@ -101,7 +111,27 @@ class TodoSharedMemoServiceTest {
     @BeforeEach
     void setUp() {
         lenient().when(sharedMemoRepository.save(any(TodoSharedMemoEntryEntity.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
+                .thenAnswer(inv -> {
+                    TodoSharedMemoEntryEntity entity = inv.getArgument(0);
+                    // @PrePersistが呼ばれないため、テスト用にcreatedAt/updatedAtを設定する
+                    try {
+                        if (entity.getCreatedAt() == null) {
+                            java.lang.reflect.Field createdAtField =
+                                    TodoSharedMemoEntryEntity.class.getDeclaredField("createdAt");
+                            createdAtField.setAccessible(true);
+                            createdAtField.set(entity, LocalDateTime.now());
+                        }
+                        if (entity.getUpdatedAt() == null) {
+                            java.lang.reflect.Field updatedAtField =
+                                    TodoSharedMemoEntryEntity.class.getDeclaredField("updatedAt");
+                            updatedAtField.setAccessible(true);
+                            updatedAtField.set(entity, LocalDateTime.now());
+                        }
+                    } catch (NoSuchFieldException | IllegalAccessException e) {
+                        throw new RuntimeException("フィールドのセットに失敗しました", e);
+                    }
+                    return entity;
+                });
         lenient().when(nameResolverService.resolveUserDisplayNames(anySet()))
                 .thenReturn(Map.of(USER_ID, "テストユーザー", OTHER_USER_ID, "他ユーザー"));
     }
@@ -125,11 +155,11 @@ class TodoSharedMemoServiceTest {
 
             // When
             ApiResponse<SharedMemoEntryResponse> response =
-                    todoSharedMemoService.addSharedMemo(TODO_ID, USER_ID, request);
+                    todoSharedMemoService.addSharedMemo(TODO_ID, USER_ID, request, USER_ID);
 
             // Then
-            assertThat(response.getData().getBody()).isEqualTo("新規共有メモ");
-            assertThat(response.getData().getAuthorId()).isEqualTo(USER_ID);
+            assertThat(response.getData().getMemo()).isEqualTo("新規共有メモ");
+            assertThat(response.getData().getUserId()).isEqualTo(USER_ID);
             verify(sharedMemoRepository).save(any(TodoSharedMemoEntryEntity.class));
         }
 
@@ -141,7 +171,7 @@ class TodoSharedMemoServiceTest {
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> todoSharedMemoService.addSharedMemo(TODO_ID, USER_ID, request))
+            assertThatThrownBy(() -> todoSharedMemoService.addSharedMemo(TODO_ID, USER_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_010"));
@@ -157,7 +187,7 @@ class TodoSharedMemoServiceTest {
             given(sharedMemoRepository.countByTodoId(TODO_ID)).willReturn(500L);
 
             // When / Then
-            assertThatThrownBy(() -> todoSharedMemoService.addSharedMemo(TODO_ID, USER_ID, request))
+            assertThatThrownBy(() -> todoSharedMemoService.addSharedMemo(TODO_ID, USER_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_052"));
@@ -217,6 +247,23 @@ class TodoSharedMemoServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_050"));
+        }
+
+        @Test
+        @DisplayName("異常系: 投稿から24時間超過でTODO_053例外")
+        void updateSharedMemo_24時間超過_TODO053例外() {
+            // Given
+            LocalDateTime expiredCreatedAt = LocalDateTime.now().minusHours(25);
+            TodoSharedMemoEntryEntity memo = createMemoWithCreatedAt(USER_ID, expiredCreatedAt);
+            SharedMemoEntryRequest request = new SharedMemoEntryRequest("更新メモ", null);
+            given(sharedMemoRepository.findById(MEMO_ID)).willReturn(Optional.of(memo));
+
+            // When / Then
+            assertThatThrownBy(() ->
+                    todoSharedMemoService.updateSharedMemo(TODO_ID, MEMO_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_053"));
         }
     }
 

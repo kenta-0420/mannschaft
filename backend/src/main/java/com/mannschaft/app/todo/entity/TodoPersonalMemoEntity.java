@@ -43,8 +43,9 @@ public class TodoPersonalMemoEntity {
     @Column(nullable = false)
     private Long userId;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String body;
+    /** メモ本文（DBカラム名: body）。 */
+    @Column(name = "body", nullable = false, columnDefinition = "TEXT")
+    private String memo;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -67,9 +68,9 @@ public class TodoPersonalMemoEntity {
     /**
      * メモ本文を更新する。
      *
-     * @param newBody 新しい本文
+     * @param newMemo 新しい本文
      */
-    public void updateBody(String newBody) {
-        this.body = newBody;
+    public void updateMemo(String newMemo) {
+        this.memo = newMemo;
     }
 }

@@ -41,8 +41,9 @@ public class TodoSharedMemoEntryEntity {
     @Column(nullable = false)
     private Long userId;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String body;
+    /** メモ本文（DBカラム名: body）。 */
+    @Column(name = "body", nullable = false, columnDefinition = "TEXT")
+    private String memo;
 
     /** 引用元エントリID。NULLの場合は引用なし。自己参照だが単純なLongカラムとして保持する。 */
     @Column(name = "quoted_entry_id")
@@ -71,10 +72,10 @@ public class TodoSharedMemoEntryEntity {
     /**
      * メモ本文を更新する。
      *
-     * @param newBody 新しい本文
+     * @param newMemo 新しい本文
      */
-    public void updateBody(String newBody) {
-        this.body = newBody;
+    public void updateMemo(String newMemo) {
+        this.memo = newMemo;
     }
 
     /**

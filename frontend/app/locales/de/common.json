@@ -401,6 +401,34 @@
       "saveSettings": "設定を保存"
     }
   },
+  "todo": {
+    "enhancement": {
+      "gantt": {
+        "title": "ガントビュー",
+        "no_data": "ガントバーに表示できる期間のある課題がありません"
+      },
+      "progress": {
+        "tab_label": "進捗",
+        "manual_mode": "手動入力モード",
+        "auto_mode": "自動算出モード",
+        "switch_to_auto": "自動算出に切替",
+        "switch_to_manual": "手動入力に切替",
+        "overwrite_warning": "子課題の手動値が上書きされる場合があります。よろしいですか？"
+      },
+      "shared_memo": {
+        "title": "共有メモ",
+        "placeholder": "メモを入力...",
+        "quote_reply": "引用して返信",
+        "no_data": "共有メモがまだありません"
+      },
+      "personal_memo": {
+        "title": "個人メモ（自分だけ見えます）",
+        "placeholder": "個人メモを入力...（自動保存）",
+        "saving": "保存中...",
+        "saved": "保存しました"
+      }
+    }
+  },
   "extended_profile": {
     "title": "拡張プロフィール編集",
     "section_profile": "基本プロフィール",
