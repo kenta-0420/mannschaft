@@ -18,7 +18,7 @@ export function useEventRsvpApi() {
     body: SubmitRsvpRequest,
   ) {
     return api<{ data: EventRsvpResponseItem }>(
-      `${buildBase(scopeType, scopeId)}/events/${eventId}/rsvp`,
+      `${buildBase(scopeType, scopeId)}/events/${eventId}/rsvp-responses`,
       { method: 'POST', body },
     )
   }
@@ -30,7 +30,7 @@ export function useEventRsvpApi() {
     body: SubmitRsvpRequest,
   ) {
     return api<{ data: EventRsvpResponseItem }>(
-      `${buildBase(scopeType, scopeId)}/events/${eventId}/rsvp`,
+      `${buildBase(scopeType, scopeId)}/events/${eventId}/rsvp-responses/me`,
       { method: 'PUT', body },
     )
   }
@@ -41,7 +41,7 @@ export function useEventRsvpApi() {
     eventId: number,
   ) {
     return api<{ data: EventRsvpResponseItem[] }>(
-      `${buildBase(scopeType, scopeId)}/events/${eventId}/rsvp`,
+      `${buildBase(scopeType, scopeId)}/events/${eventId}/rsvp-responses`,
     )
   }
 
@@ -51,7 +51,7 @@ export function useEventRsvpApi() {
     eventId: number,
   ) {
     return api<{ data: EventRsvpSummary }>(
-      `${buildBase(scopeType, scopeId)}/events/${eventId}/rsvp/summary`,
+      `${buildBase(scopeType, scopeId)}/events/${eventId}/rsvp-responses/summary`,
     )
   }
 

@@ -1,5 +1,5 @@
 // === Event ===
-export type EventStatus = 'DRAFT' | 'PUBLISHED' | 'CANCELLED' | 'CLOSED'
+export type EventStatus = 'DRAFT' | 'PUBLISHED' | 'REGISTRATION_OPEN' | 'REGISTRATION_CLOSED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
 
 export type AttendanceMode = 'NONE' | 'RSVP' | 'REGISTRATION'
 
