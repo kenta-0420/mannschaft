@@ -36,7 +36,19 @@ public enum CommitteeErrorCode implements ErrorCode {
     DRAFT_CANNOT_DISTRIBUTE("COMMITTEE_DRAFT_CANNOT_DISTRIBUTE", "DRAFT 状態の委員会は伝達処理できません", Severity.WARN),
 
     /** 既に委員会のメンバーである */
-    ALREADY_MEMBER("COMMITTEE_ALREADY_MEMBER", "既に委員会のメンバーです", Severity.WARN);
+    ALREADY_MEMBER("COMMITTEE_ALREADY_MEMBER", "既に委員会のメンバーです", Severity.WARN),
+
+    /** 招集状が見つからない */
+    INVITATION_NOT_FOUND("COMMITTEE_INVITATION_NOT_FOUND", "招集状が見つかりません", Severity.WARN),
+
+    /** 招集状は既に解決済み */
+    INVITATION_ALREADY_RESOLVED("COMMITTEE_INVITATION_ALREADY_RESOLVED", "招集状は既に解決済みです", Severity.WARN),
+
+    /** 招集状の有効期限が切れている */
+    INVITATION_EXPIRED("COMMITTEE_INVITATION_EXPIRED", "招集状の有効期限が切れています", Severity.WARN),
+
+    /** 招集トークンが無効 */
+    INVITATION_TOKEN_INVALID("COMMITTEE_INVITATION_TOKEN_INVALID", "招集トークンが無効です", Severity.WARN);
 
     private final String code;
     private final String message;
