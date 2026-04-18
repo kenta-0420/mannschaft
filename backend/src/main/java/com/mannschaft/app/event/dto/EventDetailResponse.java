@@ -1,7 +1,9 @@
 package com.mannschaft.app.event.dto;
 
+import com.mannschaft.app.event.entity.EventAttendanceMode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -33,6 +35,8 @@ public class EventDetailResponse {
     private final LocalDateTime registrationEndsAt;
     private final Integer maxCapacity;
     private final Boolean isApprovalRequired;
+    private final EventAttendanceMode attendanceMode;
+    private final Long preSurveyId;
     private final Long postSurveyId;
     private final Long workflowRequestId;
     private final String ogpTitle;
@@ -44,4 +48,8 @@ public class EventDetailResponse {
     private final Long version;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+
+    /** attendance_mode=RSVP 時のみ非null。MapperはignoreするためSetterで後から設定する */
+    @Setter
+    private EventRsvpSummaryResponse rsvpSummary;
 }

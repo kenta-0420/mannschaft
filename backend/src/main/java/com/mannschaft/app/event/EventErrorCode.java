@@ -69,7 +69,16 @@ public enum EventErrorCode implements ErrorCode {
     INVITE_TOKEN_EXHAUSTED("EVENT_019", "招待トークンの使用回数上限に達しています", Severity.WARN),
 
     /** チケット種別の発行数上限 */
-    TICKET_TYPE_SOLD_OUT("EVENT_020", "このチケット種別は完売しています", Severity.WARN);
+    TICKET_TYPE_SOLD_OUT("EVENT_020", "このチケット種別は完売しています", Severity.WARN),
+
+    /** 既にRSVP済み */
+    ALREADY_RSVPED("EVENT_021", "既にこのイベントにRSVP済みです。更新APIを使用してください", Severity.WARN),
+
+    /** RSVP回答が見つからない */
+    RSVP_NOT_FOUND("EVENT_022", "RSVP回答が見つかりません", Severity.WARN),
+
+    /** RSVPモードのイベントではない */
+    RSVP_MODE_REQUIRED("EVENT_023", "このイベントはRSVP出欠確認モードではありません", Severity.WARN);
 
     private final String code;
     private final String message;
