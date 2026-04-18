@@ -1,6 +1,7 @@
 package com.mannschaft.app.actionmemo.repository;
 
 import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
+import com.mannschaft.app.actionmemo.enums.ActionMemoCategory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -114,4 +115,51 @@ public interface ActionMemoRepository extends JpaRepository<ActionMemoEntity, Lo
      * ユーザーのメモ全件を取得する（GDPR エクスポート用。論理削除済みは @SQLRestriction で除外）。
      */
     List<ActionMemoEntity> findByUserIdOrderByMemoDateDescCreatedAtDesc(Long userId);
+
+    // ==================================================================
+    // Phase 3: カテゴリフィルタ対応クエリ
+    // ==================================================================
+
+    /**
+     * 指定日の指定カテゴリのメモを時系列昇順で取得する。
+     * publish-daily-to-team で「当日の WORK メモ」を取得する際に使用。
+     */
+    @Query("SELECT m FROM ActionMemoEntity m "
+            + "WHERE m.userId = :userId "
+            + "AND m.memoDate = :memoDate "
+            + "AND m.category = :category "
+            + "ORDER BY m.createdAt ASC")
+    List<ActionMemoEntity> findByUserIdAndMemoDateAndCategory(
+            @Param("userId") Long userId,
+            @Param("memoDate") LocalDate memoDate,
+            @Param("category") ActionMemoCategory category);
+
+    /**
+     * 指定日の指定カテゴリのうち、まだチームに投稿されていないメモを取得する。
+     * publish-daily-to-team（重複投稿防止）で使用。
+     */
+    @Query("SELECT m FROM ActionMemoEntity m "
+            + "WHERE m.userId = :userId "
+            + "AND m.memoDate = :memoDate "
+            + "AND m.category = :category "
+            + "AND m.postedTeamId IS NULL "
+            + "ORDER BY m.createdAt ASC")
+    List<ActionMemoEntity> findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull(
+            @Param("userId") Long userId,
+            @Param("memoDate") LocalDate memoDate,
+            @Param("category") ActionMemoCategory category);
+
+    /**
+     * カテゴリフィルタ付きのカーソルページネーション一覧取得。
+     */
+    @Query("SELECT m FROM ActionMemoEntity m "
+            + "WHERE m.userId = :userId "
+            + "AND m.category = :category "
+            + "AND (:cursorId IS NULL OR m.id < :cursorId) "
+            + "ORDER BY m.memoDate DESC, m.createdAt DESC, m.id DESC")
+    List<ActionMemoEntity> findByUserIdAndCategoryWithCursor(
+            @Param("userId") Long userId,
+            @Param("category") ActionMemoCategory category,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable);
 }

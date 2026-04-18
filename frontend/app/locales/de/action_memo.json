@@ -118,5 +118,51 @@
   "mood_stats": {
     "title": "Stimmungsverteilung",
     "total": "Gesamt"
+  },
+  "phase3": {
+    "advanced_fields": "Erweiterte Felder (optional)",
+    "category": {
+      "label": "Kategorie",
+      "work": "Arbeit",
+      "private": "Privat",
+      "other": "Sonstiges"
+    },
+    "duration": {
+      "label": "Dauer (Minuten)",
+      "placeholder": "z.B. 30",
+      "unit": "Min.",
+      "quick_15": "15 Min.",
+      "quick_30": "30 Min.",
+      "quick_60": "1 Std.",
+      "quick_120": "2 Std."
+    },
+    "progress_rate": {
+      "label": "Fortschritt",
+      "requires_todo": "Zum Eingeben des Fortschritts muss ein TODO verknüpft sein"
+    },
+    "completes_todo": {
+      "label": "Dieses TODO als erledigt markieren",
+      "tooltip": "Bei Aktivierung wird das verknüpfte TODO beim Speichern der Notiz abgeschlossen"
+    },
+    "post_to_team": {
+      "button": "Im Team veröffentlichen",
+      "select_team": "Team auswählen",
+      "only_work": "Nur Arbeitsnotizen können im Team veröffentlicht werden",
+      "already_posted": "Diese Notiz wurde bereits veröffentlicht",
+      "no_teams": "Keine Teams verfügbar",
+      "publish_daily": "Heutige Arbeitsnotizen im Team veröffentlichen",
+      "no_work_memos_hint": "Keine Arbeitsnotizen heute, nichts zum Veröffentlichen.",
+      "publish_daily_success": "Heutige Arbeitsnotizen wurden im Team veröffentlicht",
+      "publish_daily_error": "Veröffentlichung im Team fehlgeschlagen"
+    },
+    "settings": {
+      "default_team": "Standard-Team",
+      "default_category": "Standardkategorie",
+      "default_team_help": "Team, das beim Erstellen einer Arbeitsnotiz automatisch ausgewählt wird"
+    },
+    "team_timeline": {
+      "empty": "Noch keine Arbeitsnotizen in diesem Team veröffentlicht",
+      "load_more": "Mehr laden"
+    }
   }
 }

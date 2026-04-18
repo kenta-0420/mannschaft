@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { ActionMemoCategory } from '~/types/actionMemo'
+
 /**
  * F02.5 行動メモ設定画面。
  *
  * <p>Phase 1 では {@code mood_enabled} トグルのみ。
- * 将来的に終業時刻リマインド・週次まとめ曜日カスタマイズ等が追加される想定（設計書 §3）。</p>
+ * Phase 3 でデフォルト投稿先チームとデフォルトカテゴリを追加。</p>
  */
 
 definePageMeta({ middleware: 'auth' })
@@ -13,17 +15,32 @@ const { t } = useI18n()
 const store = useActionMemoStore()
 
 const moodEnabled = ref<boolean>(false)
+const defaultPostTeamId = ref<number | null>(null)
+const defaultCategory = ref<ActionMemoCategory>('OTHER')
 
 onMounted(async () => {
-  await store.fetchSettings()
+  await Promise.all([store.fetchSettings(), store.fetchAvailableTeams()])
   moodEnabled.value = store.settings.moodEnabled
+  defaultPostTeamId.value = store.settings.defaultPostTeamId
+  defaultCategory.value = store.settings.defaultCategory ?? 'OTHER'
 })
 
 async function onToggle(value: boolean) {
   moodEnabled.value = value
   await store.updateSettings({ moodEnabled: value })
-  // store の更新が反映されたら値を同期
   moodEnabled.value = store.settings.moodEnabled
+}
+
+async function onDefaultTeamChange(teamId: number | null) {
+  defaultPostTeamId.value = teamId
+  await store.updateSettings({ defaultPostTeamId: teamId })
+  defaultPostTeamId.value = store.settings.defaultPostTeamId
+}
+
+async function onDefaultCategoryChange(category: ActionMemoCategory) {
+  defaultCategory.value = category
+  await store.updateSettings({ defaultCategory: category })
+  defaultCategory.value = store.settings.defaultCategory ?? 'OTHER'
 }
 
 function goBack() {
@@ -80,6 +97,32 @@ function goBack() {
           />
         </label>
       </div>
+    </section>
+
+    <!-- Phase 3: デフォルトカテゴリ -->
+    <section
+      class="flex flex-col gap-3 rounded-2xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+    >
+      <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">
+        {{ t('action_memo.phase3.settings.default_category') }}
+      </p>
+      <CategorySelector
+        :model-value="defaultCategory"
+        data-testid="settings-default-category"
+        @update:model-value="onDefaultCategoryChange"
+      />
+    </section>
+
+    <!-- Phase 3: デフォルト投稿先チーム -->
+    <section
+      class="flex flex-col gap-3 rounded-2xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+      data-testid="settings-default-team-section"
+    >
+      <DefaultTeamPicker
+        :available-teams="store.availableTeams"
+        :model-value="defaultPostTeamId"
+        @update:model-value="onDefaultTeamChange"
+      />
     </section>
   </div>
 </template>

@@ -1,8 +1,11 @@
 package com.mannschaft.app.actionmemo.entity;
 
+import com.mannschaft.app.actionmemo.enums.ActionMemoCategory;
 import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -23,6 +26,8 @@ import java.time.LocalDateTime;
  * 独自に createdAt / updatedAt を持つ（AUTO_INCREMENT の id は不要）。</p>
  *
  * <p>レコード未作成のユーザーは Service 層で「デフォルト値（mood_enabled = false）」と等価に扱う。</p>
+ *
+ * <p><b>Phase 3 追加フィールド</b>: default_post_team_id / default_category。</p>
  */
 @PersonalData(category = "action_memos")
 @Entity
@@ -41,6 +46,25 @@ public class UserActionMemoSettingsEntity {
     @Builder.Default
     private Boolean moodEnabled = false;
 
+    /**
+     * Phase 3: デフォルト投稿先チームID。NULL = 未設定。
+     * FK → teams.id（ON DELETE SET NULL）。
+     * チームから脱退した場合に自動 NULL 化される。
+     */
+    @Setter
+    @Column(name = "default_post_team_id")
+    private Long defaultPostTeamId;
+
+    /**
+     * Phase 3: メモ作成時のデフォルトカテゴリ。
+     * 未設定時は PRIVATE。
+     */
+    @Setter
+    @Enumerated(EnumType.STRING)
+    @Column(name = "default_category", nullable = false, length = 16)
+    @Builder.Default
+    private ActionMemoCategory defaultCategory = ActionMemoCategory.PRIVATE;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -54,6 +78,9 @@ public class UserActionMemoSettingsEntity {
         this.updatedAt = now;
         if (this.moodEnabled == null) {
             this.moodEnabled = false;
+        }
+        if (this.defaultCategory == null) {
+            this.defaultCategory = ActionMemoCategory.PRIVATE;
         }
     }
 

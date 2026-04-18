@@ -11,6 +11,11 @@
 /** 5択リテラルユニオン。NULL は「未選択」を表す */
 export type Mood = 'GREAT' | 'GOOD' | 'OK' | 'TIRED' | 'BAD'
 
+// === Category (Phase 3) ===
+
+/** メモカテゴリ。WORK のみチーム投稿対象となる */
+export type ActionMemoCategory = 'WORK' | 'PRIVATE' | 'OTHER'
+
 // === Tag ===
 
 /**
@@ -46,6 +51,16 @@ export interface ActionMemo {
   /** ISO LocalDateTime（例 "2026-04-09T08:32:14"） */
   createdAt: string
   updatedAt?: string
+  /** Phase 3: メモカテゴリ（デフォルト OTHER）*/
+  category: ActionMemoCategory
+  /** Phase 3: 実績時間（分単位）。未入力時は null */
+  durationMinutes: number | null
+  /** Phase 3: 進捗率（0.00〜100.00）。relatedTodoId が null の場合は null */
+  progressRate: number | null
+  /** Phase 3: 保存時に relatedTodo を完了にするか否か */
+  completesTodo: boolean
+  /** Phase 3: チーム投稿先の teamId。未投稿または WORK 以外は null */
+  postedTeamId: number | null
 }
 
 // === Settings ===
@@ -56,6 +71,23 @@ export interface ActionMemo {
  */
 export interface ActionMemoSettings {
   moodEnabled: boolean
+  /** Phase 3: WORKメモ作成時のデフォルト投稿先チーム ID */
+  defaultPostTeamId: number | null
+  /** Phase 3: デフォルトカテゴリ */
+  defaultCategory: ActionMemoCategory
+}
+
+// === Available teams (Phase 3) ===
+
+/**
+ * チーム投稿先候補。
+ * {@code GET /api/v1/action-memos/available-teams} で取得する。
+ */
+export interface AvailableTeam {
+  id: number
+  name: string
+  /** このチームがデフォルト投稿先として設定されているか */
+  isDefault: boolean
 }
 
 // === Request payloads ===
@@ -67,6 +99,11 @@ export interface CreateActionMemoPayload {
   mood?: Mood | null
   relatedTodoId?: number | null
   tagIds?: number[]
+  /** Phase 3 */
+  category?: ActionMemoCategory
+  durationMinutes?: number | null
+  progressRate?: number | null
+  completesTodo?: boolean
 }
 
 export interface UpdateActionMemoPayload {
@@ -75,6 +112,30 @@ export interface UpdateActionMemoPayload {
   mood?: Mood | null
   relatedTodoId?: number | null
   tagIds?: number[]
+  /** Phase 3 */
+  category?: ActionMemoCategory
+  durationMinutes?: number | null
+  progressRate?: number | null
+  completesTodo?: boolean
+}
+
+// === Publish to team (Phase 3) ===
+
+/**
+ * 個別メモをチームタイムラインに投稿するリクエストペイロード。
+ * {@code POST /api/v1/action-memos/{memoId}/publish-to-team}
+ */
+export interface PublishToTeamPayload {
+  teamId?: number | null
+  extraComment?: string | null
+}
+
+/**
+ * 今日の WORK メモを一括チーム投稿するリクエストペイロード。
+ * {@code POST /api/v1/action-memos/publish-daily-to-team}
+ */
+export interface PublishDailyToTeamPayload {
+  teamId?: number | null
 }
 
 // === List response ===

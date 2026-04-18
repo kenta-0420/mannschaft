@@ -49,6 +49,13 @@ public class GlobalExceptionHandler {
             Map.entry("ACTION_MEMO_008", HttpStatus.NOT_FOUND),
             // F02.5 publish-daily: 対象日0件は 400 を明示（Severity.WARN 既定と同じだが宣言的に）
             Map.entry("ACTION_MEMO_007", HttpStatus.BAD_REQUEST),
+            // F02.5 Phase 3: チーム投稿系エラー
+            Map.entry("ACTION_MEMO_015", HttpStatus.BAD_REQUEST),    // only_work_can_be_posted
+            Map.entry("ACTION_MEMO_016", HttpStatus.CONFLICT),        // already_posted
+            Map.entry("ACTION_MEMO_017", HttpStatus.BAD_REQUEST),    // team_id_required
+            Map.entry("ACTION_MEMO_018", HttpStatus.BAD_REQUEST),    // no_work_memo_today
+            Map.entry("ACTION_MEMO_019", HttpStatus.NOT_FOUND),      // team_not_found (IDOR対策)
+            Map.entry("ACTION_MEMO_020", HttpStatus.BAD_REQUEST),    // invalid_default_team
             // F11.1 オフライン同期
             Map.entry("SYNC_002", HttpStatus.PAYLOAD_TOO_LARGE),
             Map.entry("SYNC_003", HttpStatus.TOO_MANY_REQUESTS),

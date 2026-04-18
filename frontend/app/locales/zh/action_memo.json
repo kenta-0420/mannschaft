@@ -118,5 +118,51 @@
   "mood_stats": {
     "title": "心情分布",
     "total": "合计"
+  },
+  "phase3": {
+    "advanced_fields": "详细输入（可选）",
+    "category": {
+      "label": "分类",
+      "work": "工作",
+      "private": "个人",
+      "other": "其他"
+    },
+    "duration": {
+      "label": "实际时间（分钟）",
+      "placeholder": "例: 30",
+      "unit": "分钟",
+      "quick_15": "15分钟",
+      "quick_30": "30分钟",
+      "quick_60": "1小时",
+      "quick_120": "2小时"
+    },
+    "progress_rate": {
+      "label": "进度",
+      "requires_todo": "输入进度率需要关联待办事项"
+    },
+    "completes_todo": {
+      "label": "将此待办标记为完成",
+      "tooltip": "勾选后保存备忘录时将完成关联的待办"
+    },
+    "post_to_team": {
+      "button": "发布到团队",
+      "select_team": "选择团队",
+      "only_work": "只有工作类别的备忘录可以发布到团队",
+      "already_posted": "此备忘录已发布",
+      "no_teams": "暂无可用团队",
+      "publish_daily": "将今日工作备忘发布到团队",
+      "no_work_memos_hint": "今日没有工作类别备忘录，无法发布。",
+      "publish_daily_success": "今日工作备忘已发布到团队",
+      "publish_daily_error": "发布到团队失败"
+    },
+    "settings": {
+      "default_team": "默认发布团队",
+      "default_category": "默认分类",
+      "default_team_help": "创建工作类别备忘录时自动选择的发布团队"
+    },
+    "team_timeline": {
+      "empty": "此团队尚无工作备忘录",
+      "load_more": "加载更多"
+    }
   }
 }
