@@ -1,0 +1,25 @@
+{
+  "profile_media": {
+    "icon": "アイコン",
+    "banner": "バナー",
+    "upload_icon": "アイコン画像を変更",
+    "upload_banner": "バナー画像を変更",
+    "delete_icon": "アイコンを削除",
+    "delete_banner": "バナーを削除",
+    "upload_success": "画像をアップロードしました",
+    "delete_success": "画像を削除しました",
+    "upload_error": "アップロードに失敗しました",
+    "delete_error": "削除に失敗しました",
+    "crop_title": "アイコンをトリミング",
+    "crop_hint": "ドラッグして位置を調整してください",
+    "confirm_delete_icon": "アイコン画像を削除しますか？",
+    "confirm_delete_banner": "バナー画像を削除しますか？",
+    "file_too_large_icon": "アイコン画像は5MB以下にしてください",
+    "file_too_large_banner": "バナー画像は10MB以下にしてください",
+    "unsupported_type": "このファイル形式はサポートされていません（JPEG・PNG・WebP・GIF）",
+    "banner_no_gif": "バナー画像にGIFは使用できません",
+    "select_file": "ファイルを選択",
+    "confirm_crop": "この位置でトリミング",
+    "uploading": "アップロード中..."
+  }
+}

@@ -1,8 +1,8 @@
 -- F03.11 Phase 5b: チーム/組織ごとのペナルティ設定テーブル
 CREATE TABLE recruitment_penalty_settings (
-    id                       BIGINT      NOT NULL AUTO_INCREMENT,
+    id                       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     scope_type               ENUM('TEAM', 'ORGANIZATION') NOT NULL,
-    scope_id                 BIGINT      NOT NULL,
+    scope_id                 BIGINT UNSIGNED NOT NULL,
     is_enabled               BOOLEAN     NOT NULL DEFAULT FALSE COMMENT 'ペナルティ機能の有効/無効',
     threshold_count          INT         NOT NULL DEFAULT 3    COMMENT 'N回NO_SHOWでペナルティ発動',
     threshold_period_days    INT         NOT NULL DEFAULT 180  COMMENT '集計期間（日）',

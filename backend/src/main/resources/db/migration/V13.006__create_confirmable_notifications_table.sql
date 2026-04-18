@@ -1,6 +1,7 @@
 -- F04.9: 確認通知本体テーブル
 CREATE TABLE confirmable_notifications (
     id                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    source_type           VARCHAR(40) NOT NULL DEFAULT 'EMERGENCY_CLOSURE' COMMENT '通知発生元種別',
     scope_type            ENUM('TEAM', 'ORGANIZATION') NOT NULL,
     scope_id              BIGINT UNSIGNED NOT NULL,
     title                 VARCHAR(200) NOT NULL,
@@ -21,6 +22,7 @@ CREATE TABLE confirmable_notifications (
     created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
+    INDEX idx_cn_source_status (source_type, status),
     INDEX idx_cn_scope    (scope_type, scope_id, created_at DESC),
     INDEX idx_cn_status   (status, created_at DESC),
     INDEX idx_cn_deadline (status, deadline_at),

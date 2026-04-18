@@ -4,8 +4,8 @@
 CREATE TABLE supporter_applications (
     id             BIGINT       NOT NULL AUTO_INCREMENT,
     scope_type     VARCHAR(20)  NOT NULL COMMENT 'TEAM または ORGANIZATION',
-    scope_id       BIGINT       NOT NULL COMMENT 'チームID または 組織ID',
-    user_id        BIGINT       NOT NULL COMMENT '申請者ユーザーID',
+    scope_id       BIGINT UNSIGNED NOT NULL COMMENT 'チームID または 組織ID',
+    user_id        BIGINT UNSIGNED NOT NULL COMMENT '申請者ユーザーID',
     message        TEXT         NULL     COMMENT '申請メッセージ（任意）',
     status         VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING / APPROVED / REJECTED',
     created_at     DATETIME(6)  NOT NULL,

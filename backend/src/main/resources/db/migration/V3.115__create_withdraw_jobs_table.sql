@@ -1,7 +1,7 @@
 -- 退会 SAGA 進捗管理テーブル（チェックポイント方式・再開可能）
 CREATE TABLE withdraw_jobs (
     id                   BIGINT        NOT NULL AUTO_INCREMENT,
-    user_id              BIGINT        NOT NULL COMMENT 'users テーブルとは非FK（退会処理中に削除される）',
+    user_id              BIGINT UNSIGNED NOT NULL COMMENT 'users テーブルとは非FK（退会処理中に削除される）',
     status               VARCHAR(20)   NOT NULL DEFAULT 'PENDING'
                          COMMENT 'PENDING / IN_PROGRESS / COMPLETED / FAILED / BLOCKED_MANUAL',
     current_step         INT           NOT NULL DEFAULT 1 COMMENT '1-7',

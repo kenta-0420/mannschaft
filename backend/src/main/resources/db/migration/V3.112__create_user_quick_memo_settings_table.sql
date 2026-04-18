@@ -1,6 +1,6 @@
 -- ユーザーごとのポイっとメモ設定（リマインドデフォルト値）
 CREATE TABLE user_quick_memo_settings (
-    user_id              BIGINT       NOT NULL COMMENT 'PK / FK -> users.id (ON DELETE CASCADE)',
+    user_id              BIGINT UNSIGNED NOT NULL COMMENT 'PK / FK -> users.id (ON DELETE CASCADE)',
     reminder_enabled     TINYINT(1)   NOT NULL DEFAULT 0,
     default_offset_1_days INT         NULL     COMMENT '1枠目: 何日後か（1-90）',
     default_time_1       TIME         NULL     COMMENT '1枠目: 時刻（HH:00 or HH:30）',

@@ -13,7 +13,6 @@ CREATE TABLE recruitment_reminders (
     CONSTRAINT fk_rr_listing
         FOREIGN KEY (listing_id) REFERENCES recruitment_listings (id) ON DELETE CASCADE,
     CONSTRAINT fk_rr_participant
-        FOREIGN KEY (participant_id) REFERENCES recruitment_participants (id) ON DELETE CASCADE,
-    CONSTRAINT fk_rr_notification
-        FOREIGN KEY (notification_id) REFERENCES notifications (id) ON DELETE SET NULL
+        FOREIGN KEY (participant_id) REFERENCES recruitment_participants (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- fk_rr_notification は V4.019 で notifications テーブルが作成された後に追加する（版序の関係で V3.123 では追加不可）

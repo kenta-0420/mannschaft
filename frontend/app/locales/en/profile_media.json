@@ -1,0 +1,25 @@
+{
+  "profile_media": {
+    "icon": "Icon",
+    "banner": "Banner",
+    "upload_icon": "Change Icon",
+    "upload_banner": "Change Banner",
+    "delete_icon": "Delete Icon",
+    "delete_banner": "Delete Banner",
+    "upload_success": "Image uploaded successfully",
+    "delete_success": "Image deleted",
+    "upload_error": "Upload failed",
+    "delete_error": "Delete failed",
+    "crop_title": "Crop Icon",
+    "crop_hint": "Drag to reposition",
+    "confirm_delete_icon": "Delete icon image?",
+    "confirm_delete_banner": "Delete banner image?",
+    "file_too_large_icon": "Icon must be 5MB or less",
+    "file_too_large_banner": "Banner must be 10MB or less",
+    "unsupported_type": "Unsupported file type (JPEG, PNG, WebP, GIF)",
+    "banner_no_gif": "GIF is not allowed for banners",
+    "select_file": "Select File",
+    "confirm_crop": "Confirm Crop",
+    "uploading": "Uploading..."
+  }
+}

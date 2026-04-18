@@ -2,7 +2,7 @@
 -- 管理者マーク・自動検出された NO_SHOW を永続記録する。
 -- confirmed=FALSE の間は24時間の仮マーク期間。
 CREATE TABLE recruitment_no_show_records (
-    id                 BIGINT         NOT NULL AUTO_INCREMENT,
+    id                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     participant_id     BIGINT UNSIGNED NOT NULL COMMENT '対象の参加者レコードID',
     listing_id         BIGINT UNSIGNED NOT NULL COMMENT '対象の募集枠ID',
     user_id            BIGINT UNSIGNED NOT NULL COMMENT '対象ユーザーID',

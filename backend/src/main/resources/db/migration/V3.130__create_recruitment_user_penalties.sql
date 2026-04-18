@@ -1,17 +1,17 @@
 -- F03.11 Phase 5b: ユーザーごとのペナルティ状態テーブル
 -- アクティブペナルティの重複はサービス層の PESSIMISTIC_WRITE で防止する。
 CREATE TABLE recruitment_user_penalties (
-    id                       BIGINT      NOT NULL AUTO_INCREMENT,
+    id                       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id                  BIGINT UNSIGNED NOT NULL COMMENT '対象ユーザーID',
     scope_type               ENUM('TEAM', 'ORGANIZATION') NOT NULL,
-    scope_id                 BIGINT      NOT NULL,
+    scope_id                 BIGINT UNSIGNED NOT NULL,
     penalty_type             ENUM('NO_SHOW') NOT NULL DEFAULT 'NO_SHOW',
-    triggered_by_setting_id  BIGINT      NOT NULL COMMENT 'ペナルティ発動に使用した設定ID',
+    triggered_by_setting_id  BIGINT UNSIGNED NOT NULL COMMENT 'ペナルティ発動に使用した設定ID',
     triggered_no_show_count  INT         NOT NULL COMMENT '発動時のNO_SHOW件数',
     started_at               DATETIME(6) NOT NULL COMMENT 'ペナルティ開始日時',
     expires_at               DATETIME(6) NOT NULL COMMENT 'ペナルティ失効予定日時',
     lifted_at                DATETIME(6) NULL     COMMENT '実際の解除日時（失効ormanual）',
-    lifted_by                BIGINT      NULL     COMMENT '手動解除実施者ユーザーID',
+    lifted_by                BIGINT UNSIGNED NULL     COMMENT '手動解除実施者ユーザーID',
     lift_reason              ENUM('AUTO_EXPIRED', 'ADMIN_MANUAL', 'DISPUTE_REVOKED') NULL,
     created_at               DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),

@@ -1,7 +1,7 @@
 -- ポイっとメモ本体
 CREATE TABLE quick_memos (
-    id                          BIGINT        NOT NULL AUTO_INCREMENT,
-    user_id                     BIGINT        NOT NULL COMMENT 'FK -> users.id (ON DELETE CASCADE)',
+    id                          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id                     BIGINT UNSIGNED NOT NULL COMMENT 'FK -> users.id (ON DELETE CASCADE)',
     title                       VARCHAR(200)  NOT NULL,
     body                        TEXT          NULL,
     status                      VARCHAR(20)   NOT NULL DEFAULT 'UNSORTED' COMMENT 'UNSORTED / ARCHIVED / CONVERTED',
@@ -12,7 +12,7 @@ CREATE TABLE quick_memos (
     reminder_2_sent_at          DATETIME(6)   NULL,
     reminder_3_scheduled_at     DATETIME(6)   NULL,
     reminder_3_sent_at          DATETIME(6)   NULL,
-    converted_to_todo_id        BIGINT        NULL COMMENT 'TODO 昇格先の todos.id（非FK）',
+    converted_to_todo_id        BIGINT UNSIGNED NULL COMMENT 'TODO 昇格先の todos.id（非FK）',
     converted_at                DATETIME(6)   NULL,
     user_timezone_at_creation   VARCHAR(50)   NOT NULL DEFAULT 'Asia/Tokyo',
     deleted_at                  DATETIME(6)   NULL COMMENT '論理削除（90日後に物理削除バッチが実行）',

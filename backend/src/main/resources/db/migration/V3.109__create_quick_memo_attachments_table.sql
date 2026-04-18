@@ -1,7 +1,7 @@
 -- ポイっとメモの添付ファイル（画像）管理
 CREATE TABLE quick_memo_attachments (
-    id                BIGINT        NOT NULL AUTO_INCREMENT,
-    memo_id           BIGINT        NOT NULL COMMENT 'FK -> quick_memos.id (ON DELETE CASCADE)',
+    id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    memo_id           BIGINT UNSIGNED NOT NULL COMMENT 'FK -> quick_memos.id (ON DELETE CASCADE)',
     s3_key            VARCHAR(512)  NOT NULL UNIQUE COMMENT 'quick-memo/{yyyymm}/{uuid}.{ext}',
     original_filename VARCHAR(255)  NULL,
     content_type      VARCHAR(100)  NOT NULL COMMENT 'image/jpeg, image/png, image/webp, image/gif',
