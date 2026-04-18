@@ -1,0 +1,17 @@
+{
+  "appearance": {
+    "bgColorLabel": "背景色",
+    "color": {
+      "cream": "クリーム",
+      "white": "ホワイト",
+      "gray": "ライトグレー",
+      "lavender": "ラベンダー",
+      "mint": "ミント",
+      "sky": "スカイ",
+      "peach": "ピーチ",
+      "sand": "サンド",
+      "sage": "セージ",
+      "slate": "スレート"
+    }
+  }
+}

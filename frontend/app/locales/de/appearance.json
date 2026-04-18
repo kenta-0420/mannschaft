@@ -1,0 +1,17 @@
+{
+  "appearance": {
+    "bgColorLabel": "Hintergrundfarbe",
+    "color": {
+      "cream": "Creme",
+      "white": "Weiß",
+      "gray": "Hellgrau",
+      "lavender": "Lavendel",
+      "mint": "Minze",
+      "sky": "Himmel",
+      "peach": "Pfirsich",
+      "sand": "Sand",
+      "sage": "Salbei",
+      "slate": "Schiefer"
+    }
+  }
+}

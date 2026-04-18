@@ -1,0 +1,17 @@
+{
+  "appearance": {
+    "bgColorLabel": "背景颜色",
+    "color": {
+      "cream": "奶油色",
+      "white": "白色",
+      "gray": "浅灰色",
+      "lavender": "薰衣草",
+      "mint": "薄荷",
+      "sky": "天空",
+      "peach": "桃色",
+      "sand": "沙色",
+      "sage": "鼠尾草",
+      "slate": "石板"
+    }
+  }
+}

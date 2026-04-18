@@ -12,7 +12,7 @@ interface AppearanceState {
 export const useAppearanceStore = defineStore('appearance', {
   state: (): AppearanceState => ({
     theme: 'SYSTEM',
-    bgColor: '#ffffff',
+    bgColor: '#f3efe0',
     seasonalThemeId: null,
     hideChatPreview: false,
   }),
@@ -56,11 +56,19 @@ export const useAppearanceStore = defineStore('appearance', {
       else {
         html.classList.remove('p-dark')
       }
+      // テーマ切替時に背景色も再適用（ライトモード制御）
+      this.applyBgColor()
     },
 
     applyBgColor() {
       if (!import.meta.client) return
-      document.documentElement.style.setProperty('--bg-color', this.bgColor)
+      if (this.isDark) {
+        // ダークモード時は背景色選択を無効化し、bg-surface-ground に戻す
+        document.documentElement.style.removeProperty('--bg-color')
+      }
+      else {
+        document.documentElement.style.setProperty('--bg-color', this.bgColor)
+      }
     },
 
     loadFromStorage() {
@@ -70,7 +78,7 @@ export const useAppearanceStore = defineStore('appearance', {
         try {
           const parsed = JSON.parse(saved)
           this.theme = parsed.theme ?? 'SYSTEM'
-          this.bgColor = parsed.bgColor ?? '#ffffff'
+          this.bgColor = parsed.bgColor ?? '#f3efe0'
           this.seasonalThemeId = parsed.seasonalThemeId ?? null
           this.hideChatPreview = parsed.hideChatPreview ?? false
         }
