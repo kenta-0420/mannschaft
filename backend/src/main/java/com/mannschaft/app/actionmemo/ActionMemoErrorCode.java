@@ -49,7 +49,53 @@ public enum ActionMemoErrorCode implements ErrorCode {
 
     /** 1メモあたりのタグ数上限（10個）超過（Phase 4） */
     ACTION_MEMO_TAG_PER_MEMO_LIMIT_EXCEEDED("ACTION_MEMO_010",
-            "1メモあたりのタグは10個までです", Severity.WARN);
+            "1メモあたりのタグは10個までです", Severity.WARN),
+
+    // ==================================================================
+    // Phase 3 エラーコード
+    // ==================================================================
+
+    /** duration_minutes が範囲外（0〜1440 以外）*/
+    ACTION_MEMO_INVALID_DURATION("ACTION_MEMO_011",
+            "実績時間は0〜1440分（0〜24時間）で入力してください", Severity.WARN),
+
+    /** progress_rate が範囲外（0.00〜100.00 以外）*/
+    ACTION_MEMO_INVALID_PROGRESS_RATE("ACTION_MEMO_012",
+            "進捗率は0.00〜100.00の範囲で入力してください", Severity.WARN),
+
+    /** progress_rate 指定時に related_todo_id が未設定 */
+    ACTION_MEMO_PROGRESS_REQUIRES_TODO("ACTION_MEMO_013",
+            "進捗率を入力する場合は関連TODOを指定してください", Severity.WARN),
+
+    /** completes_todo = true 時に related_todo_id が未設定 */
+    ACTION_MEMO_COMPLETES_REQUIRES_TODO("ACTION_MEMO_014",
+            "TODO完了フラグを使う場合は関連TODOを指定してください", Severity.WARN),
+
+    /** WORK カテゴリ以外のメモをチーム投稿しようとした */
+    ACTION_MEMO_ONLY_WORK_CAN_BE_POSTED("ACTION_MEMO_015",
+            "仕事（WORK）カテゴリのメモのみチームタイムラインに投稿できます", Severity.WARN),
+
+    /** 既にチーム投稿済みのメモに再投稿しようとした */
+    ACTION_MEMO_ALREADY_POSTED("ACTION_MEMO_016",
+            "このメモはすでにチームタイムラインに投稿済みです", Severity.WARN),
+
+    /** publish-to-team で team_id も default_post_team_id も NULL */
+    ACTION_MEMO_TEAM_ID_REQUIRED("ACTION_MEMO_017",
+            "投稿先チームを指定してください（設定からデフォルトチームを設定することもできます）",
+            Severity.WARN),
+
+    /** publish-daily-to-team で当日の WORK メモが0件 */
+    ACTION_MEMO_NO_WORK_MEMO_TODAY("ACTION_MEMO_018",
+            "今日の仕事メモがありません", Severity.WARN),
+
+    /** publish-to-team で指定チームにメンバー登録がない（IDOR 対策で 404 扱い） */
+    ACTION_MEMO_TEAM_NOT_FOUND("ACTION_MEMO_019",
+            "投稿先チームが見つかりません", Severity.WARN),
+
+    /** settings.default_post_team_id に所属していないチームを指定しようとした */
+    ACTION_MEMO_INVALID_DEFAULT_TEAM("ACTION_MEMO_020",
+            "デフォルト投稿先チームに所属していません", Severity.WARN);
+
     private final String code;
     private final String message;
     private final Severity severity;

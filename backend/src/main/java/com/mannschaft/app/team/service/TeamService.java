@@ -1,6 +1,7 @@
 package com.mannschaft.app.team.service;
 
 import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.event.TeamMemberRemovedEvent;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.TeamErrorCode;
@@ -26,6 +27,7 @@ import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -47,6 +49,7 @@ public class TeamService {
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。
@@ -233,6 +236,8 @@ public class TeamService {
     public void unfollowTeam(Long userId, Long teamId) {
         findTeamOrThrow(teamId);
         userRoleRepository.deleteByUserIdAndTeamId(userId, teamId);
+        // Phase 3: チームメンバー脱退イベント発行（行動メモのデフォルト投稿先リセット用）
+        eventPublisher.publishEvent(new TeamMemberRemovedEvent(userId, teamId));
         log.info("チームフォロー解除完了: userId={}, teamId={}", userId, teamId);
     }
 

@@ -6,32 +6,47 @@ import com.mannschaft.app.actionmemo.ActionMemoMood;
 import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoTagSummary;
+import com.mannschaft.app.actionmemo.dto.AvailableTeamResponse;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
 import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
 import com.mannschaft.app.actionmemo.dto.MoodStatsResponse;
 import com.mannschaft.app.actionmemo.dto.PublishDailyRequest;
 import com.mannschaft.app.actionmemo.dto.PublishDailyResponse;
+import com.mannschaft.app.actionmemo.dto.PublishDailyToTeamRequest;
+import com.mannschaft.app.actionmemo.dto.PublishDailyToTeamResponse;
+import com.mannschaft.app.actionmemo.dto.PublishToTeamRequest;
+import com.mannschaft.app.actionmemo.dto.PublishToTeamResponse;
 import com.mannschaft.app.actionmemo.dto.UpdateActionMemoRequest;
 import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
 import com.mannschaft.app.actionmemo.entity.ActionMemoTagEntity;
 import com.mannschaft.app.actionmemo.entity.ActionMemoTagLinkEntity;
+import com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity;
+import com.mannschaft.app.actionmemo.enums.ActionMemoCategory;
 import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.security.HtmlSanitizer;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.todo.TodoScopeType;
+import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
+import com.mannschaft.app.todo.service.TodoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -87,8 +102,12 @@ public class ActionMemoService {
     private final ActionMemoTagRepository tagRepository;
     private final ActionMemoTagLinkRepository tagLinkRepository;
     private final TodoRepository todoRepository;
+    private final TodoService todoService;
     private final TimelinePostRepository timelinePostRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final TeamRepository teamRepository;
     private final ActionMemoSettingsService settingsService;
+    private final AuditLogService auditLogService;
     private final ActionMemoMetrics metrics;
 
     // ==================================================================
@@ -97,6 +116,8 @@ public class ActionMemoService {
 
     /**
      * 行動メモを1件作成する。
+     *
+     * <p>Phase 3 拡張: category / duration_minutes / progress_rate / completes_todo に対応。</p>
      */
     @Transactional
     public ActionMemoResponse createMemo(CreateActionMemoRequest request, Long userId) {
@@ -135,13 +156,24 @@ public class ActionMemoService {
         // 6. タグの所有権検証
         List<ActionMemoTagEntity> tagEntities = validateAndFetchTags(request.getTagIds(), userId);
 
+        // Phase 3: progress_rate / completes_todo バリデーション
+        validatePhase3Fields(request.getProgressRate(), request.isCompletesTodo(),
+                request.getRelatedTodoId());
+
+        // Phase 3: category 解決（省略時は設定の defaultCategory を適用）
+        ActionMemoCategory category = resolveCategory(request.getCategory(), userId);
+
         // 7. エンティティ保存
         ActionMemoEntity entity = ActionMemoEntity.builder()
                 .userId(userId)
                 .memoDate(memoDate)
                 .content(request.getContent())
+                .category(category)
+                .durationMinutes(request.getDurationMinutes())
+                .progressRate(request.getProgressRate())
                 .mood(mood)
                 .relatedTodoId(request.getRelatedTodoId())
+                .completesTodo(request.isCompletesTodo())
                 .build();
         ActionMemoEntity saved = memoRepository.save(entity);
 
@@ -155,10 +187,20 @@ public class ActionMemoService {
             }
         }
 
+        // Phase 3: progress_rate 伝播（同一トランザクション内）
+        if (request.getProgressRate() != null && request.getRelatedTodoId() != null) {
+            todoService.setProgressRate(request.getRelatedTodoId(), request.getProgressRate());
+        }
+
+        // Phase 3: completes_todo → TODO を COMPLETED に遷移（同一トランザクション内）
+        if (request.isCompletesTodo() && request.getRelatedTodoId() != null) {
+            completeTodoFromMemo(saved.getId(), request.getRelatedTodoId(), userId);
+        }
+
         // 9. メトリクス + ログ（content マスキング）
         metrics.incrementCreated();
-        log.info("行動メモ作成: memoId={}, userId={}, memoDate={}, length={}",
-                saved.getId(), userId, memoDate, saved.getContent().length());
+        log.info("行動メモ作成: memoId={}, userId={}, memoDate={}, length={}, category={}",
+                saved.getId(), userId, memoDate, saved.getContent().length(), category);
 
         return toResponse(saved, tagEntities);
     }
@@ -246,6 +288,8 @@ public class ActionMemoService {
 
     /**
      * 自分のメモを更新する。他人のメモは 404。
+     *
+     * <p>Phase 3 拡張: category / duration_minutes / progress_rate / completes_todo に対応。</p>
      */
     @Transactional
     public ActionMemoResponse updateMemo(Long memoId, UpdateActionMemoRequest request, Long userId) {
@@ -278,6 +322,31 @@ public class ActionMemoService {
             memo.setRelatedTodoId(request.getRelatedTodoId());
         }
 
+        // Phase 3: category 更新
+        if (request.getCategory() != null) {
+            memo.setCategory(request.getCategory());
+        }
+
+        // Phase 3: duration_minutes 更新
+        if (request.getDurationMinutes() != null) {
+            memo.setDurationMinutes(request.getDurationMinutes());
+        }
+
+        // Phase 3: progress_rate バリデーション（更新後の relatedTodoId を参照）
+        Long effectiveTodoId = request.getRelatedTodoId() != null
+                ? request.getRelatedTodoId() : memo.getRelatedTodoId();
+        boolean effectiveCompletesTodo = request.getCompletesTodo() != null
+                ? request.getCompletesTodo() : (memo.getCompletesTodo() != null && memo.getCompletesTodo());
+
+        validatePhase3Fields(request.getProgressRate(), effectiveCompletesTodo, effectiveTodoId);
+
+        if (request.getProgressRate() != null) {
+            memo.setProgressRate(request.getProgressRate());
+        }
+        if (request.getCompletesTodo() != null) {
+            memo.setCompletesTodo(request.getCompletesTodo());
+        }
+
         // タグの差し替え（送信された場合のみ）
         if (request.getTagIds() != null) {
             List<ActionMemoTagEntity> tagEntities = validateAndFetchTags(request.getTagIds(), userId);
@@ -294,8 +363,18 @@ public class ActionMemoService {
 
         ActionMemoEntity saved = memoRepository.save(memo);
 
-        log.info("行動メモ更新: memoId={}, userId={}, length={}",
-                saved.getId(), userId, saved.getContent().length());
+        // Phase 3: progress_rate 伝播（同一トランザクション内）
+        if (request.getProgressRate() != null && effectiveTodoId != null) {
+            todoService.setProgressRate(effectiveTodoId, request.getProgressRate());
+        }
+
+        // Phase 3: completes_todo → TODO を COMPLETED に遷移（同一トランザクション内）
+        if (Boolean.TRUE.equals(request.getCompletesTodo()) && effectiveTodoId != null) {
+            completeTodoFromMemo(saved.getId(), effectiveTodoId, userId);
+        }
+
+        log.info("行動メモ更新: memoId={}, userId={}, length={}, category={}",
+                saved.getId(), userId, saved.getContent().length(), saved.getCategory());
 
         List<ActionMemoTagEntity> tags = fetchTagsForMemo(memoId);
         return toResponse(saved, tags);
@@ -515,6 +594,287 @@ public class ActionMemoService {
 
 
     // ==================================================================
+    // Phase 3: チームタイムライン投稿
+    // ==================================================================
+
+    /**
+     * メモ1件をチームタイムラインに投稿する。
+     *
+     * <p>処理フロー:</p>
+     * <ol>
+     *   <li>メモ所有者検証</li>
+     *   <li>カテゴリ検証（WORK のみ）</li>
+     *   <li>既投稿チェック</li>
+     *   <li>team_id 解決（リクエスト → settings.defaultPostTeamId → 400）</li>
+     *   <li>チームメンバーシップ検証</li>
+     *   <li>本文フォーマット生成 + タイムライン投稿</li>
+     *   <li>memo.postedTeamId / timelinePostId 更新</li>
+     * </ol>
+     *
+     * @param memoId  投稿対象メモ ID
+     * @param request 投稿リクエスト
+     * @param userId  現在のユーザー ID
+     * @return 投稿レスポンス
+     */
+    @Transactional
+    public PublishToTeamResponse publishToTeam(Long memoId, PublishToTeamRequest request, Long userId) {
+        // 1. メモ所有者検証
+        ActionMemoEntity memo = findOwnMemoOrThrow(memoId, userId);
+
+        // 2. カテゴリ検証（WORK のみ）
+        if (memo.getCategory() != ActionMemoCategory.WORK) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_ONLY_WORK_CAN_BE_POSTED);
+        }
+
+        // 3. 既投稿チェック
+        if (memo.getPostedTeamId() != null) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_ALREADY_POSTED);
+        }
+
+        // 4. team_id 解決（リクエスト → settings.defaultPostTeamId → 400）
+        Long teamId = resolveTeamId(request.getTeamId(), userId);
+
+        // 5. チームメンバーシップ検証（IDOR 対策: 非メンバーは 404）
+        if (!userRoleRepository.existsByUserIdAndTeamId(userId, teamId)) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TEAM_NOT_FOUND);
+        }
+
+        // 6. 本文フォーマット生成
+        String content = buildPublishToTeamContent(memo, request.getExtraComment());
+
+        // 7. タイムライン投稿（scope_type=TEAM）
+        TimelinePostEntity post = TimelinePostEntity.builder()
+                .scopeType(PostScopeType.TEAM)
+                .scopeId(teamId)
+                .userId(userId)
+                .content(content)
+                .build();
+        TimelinePostEntity savedPost = timelinePostRepository.save(post);
+
+        // 8. memo.postedTeamId / timelinePostId 更新
+        memo.setPostedTeamId(teamId);
+        memo.setTimelinePostId(savedPost.getId());
+        memoRepository.save(memo);
+
+        log.info("行動メモ チーム投稿成功: memoId={}, teamId={}, timelinePostId={}",
+                memoId, teamId, savedPost.getId());
+
+        return PublishToTeamResponse.builder()
+                .timelinePostId(savedPost.getId())
+                .teamId(teamId)
+                .memoId(memoId)
+                .build();
+    }
+
+    /**
+     * 当日の WORK メモをまとめてチームタイムラインに投稿する（日次まとめ投稿）。
+     *
+     * <p>重複投稿防止: postedTeamId が null のメモのみ対象。</p>
+     *
+     * @param request 投稿リクエスト
+     * @param userId  現在のユーザー ID
+     * @return 投稿レスポンス
+     */
+    @Transactional
+    public PublishDailyToTeamResponse publishDailyToTeam(PublishDailyToTeamRequest request, Long userId) {
+        LocalDate today = LocalDate.now(ZONE_JST);
+
+        // team_id 解決
+        Long teamId = resolveTeamId(request.getTeamId(), userId);
+
+        // チームメンバーシップ検証
+        if (!userRoleRepository.existsByUserIdAndTeamId(userId, teamId)) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TEAM_NOT_FOUND);
+        }
+
+        // 当日の WORK かつ未投稿のメモを取得
+        List<ActionMemoEntity> workMemos = memoRepository
+                .findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull(
+                        userId, today, ActionMemoCategory.WORK);
+
+        if (workMemos.isEmpty()) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_NO_WORK_MEMO_TODAY);
+        }
+
+        // 各メモを個別にチーム投稿
+        int postedCount = 0;
+        for (ActionMemoEntity memo : workMemos) {
+            PublishToTeamRequest individualRequest = new PublishToTeamRequest(teamId, null);
+            publishToTeam(memo.getId(), individualRequest, userId);
+            postedCount++;
+        }
+
+        log.info("行動メモ 日次チームまとめ投稿: teamId={}, postedCount={}, userId={}, memoDate={}",
+                teamId, postedCount, userId, today);
+
+        return PublishDailyToTeamResponse.builder()
+                .teamId(teamId)
+                .postedCount(postedCount)
+                .build();
+    }
+
+    /**
+     * ユーザーの所属チーム一覧（投稿先選択候補）を返す。
+     *
+     * @param userId 現在のユーザー ID
+     * @return 所属チーム一覧
+     */
+    public List<AvailableTeamResponse> getAvailableTeams(Long userId) {
+        // ユーザーのチーム所属一覧を取得
+        List<UserRoleEntity> userRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
+
+        // デフォルト投稿先チームID
+        Long defaultPostTeamId = settingsService.findSettings(userId)
+                .map(UserActionMemoSettingsEntity::getDefaultPostTeamId)
+                .orElse(null);
+
+        return userRoles.stream()
+                .map(UserRoleEntity::getTeamId)
+                .distinct()
+                .map(teamId -> teamRepository.findById(teamId).orElse(null))
+                .filter(Objects::nonNull)
+                .map(team -> AvailableTeamResponse.builder()
+                        .id(team.getId())
+                        .name(team.getName())
+                        .isDefault(Objects.equals(team.getId(), defaultPostTeamId))
+                        .build())
+                .toList();
+    }
+
+    /**
+     * publish-to-team 本文を組み立てる。
+     *
+     * <pre>
+     * [HH:MM] {content}
+     * ⏱️ {duration_minutes}分 / 📊 進捗 {progress_rate}%
+     * 🔗 関連TODO: {todo.title}
+     *
+     * ---
+     * {extra_comment}
+     * </pre>
+     */
+    private String buildPublishToTeamContent(ActionMemoEntity memo, String extraComment) {
+        StringBuilder sb = new StringBuilder();
+
+        // [HH:MM] {content}
+        if (memo.getCreatedAt() != null) {
+            String hhmm = memo.getCreatedAt().atZone(ZoneId.systemDefault())
+                    .withZoneSameInstant(ZONE_JST)
+                    .format(MEMO_TIME_FORMATTER);
+            sb.append("[").append(hhmm).append("] ");
+        }
+        sb.append(memo.getContent()).append("\n");
+
+        // ⏱️ {duration_minutes}分 / 📊 進捗 {progress_rate}%
+        boolean hasStats = memo.getDurationMinutes() != null || memo.getProgressRate() != null;
+        if (hasStats) {
+            if (memo.getDurationMinutes() != null) {
+                sb.append("⏱️ ").append(memo.getDurationMinutes()).append("分");
+            }
+            if (memo.getProgressRate() != null) {
+                if (memo.getDurationMinutes() != null) {
+                    sb.append(" / ");
+                }
+                sb.append("📊 進捗 ").append(memo.getProgressRate().stripTrailingZeros().toPlainString()).append("%");
+            }
+            sb.append("\n");
+        }
+
+        // 🔗 関連TODO
+        if (memo.getRelatedTodoId() != null) {
+            todoRepository.findByIdAndDeletedAtIsNull(memo.getRelatedTodoId()).ifPresent(todo ->
+                    sb.append("🔗 関連TODO: ").append(todo.getTitle()).append("\n")
+            );
+        }
+
+        // extra_comment
+        if (extraComment != null && !extraComment.isBlank()) {
+            String sanitized = HtmlSanitizer.sanitizePlainText(extraComment);
+            sb.append("\n---\n").append(sanitized);
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * team_id を解決する。
+     * リクエストの team_id → settings.defaultPostTeamId → 400 の順で解決。
+     */
+    private Long resolveTeamId(Long requestTeamId, Long userId) {
+        if (requestTeamId != null) {
+            return requestTeamId;
+        }
+        Long defaultTeamId = settingsService.findSettings(userId)
+                .map(UserActionMemoSettingsEntity::getDefaultPostTeamId)
+                .orElse(null);
+        if (defaultTeamId == null) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TEAM_ID_REQUIRED);
+        }
+        return defaultTeamId;
+    }
+
+    /**
+     * メモ起因の TODO 完了遷移と監査ログ記録を行う。
+     *
+     * @param memoId   起因メモ ID（監査ログ用）
+     * @param todoId   完了させる TODO ID
+     * @param userId   操作ユーザー ID
+     */
+    private void completeTodoFromMemo(Long memoId, Long todoId, Long userId) {
+        TodoEntity todo = todoRepository.findByIdAndDeletedAtIsNull(todoId).orElse(null);
+        if (todo == null) {
+            return;
+        }
+        // 既に COMPLETED なら skip
+        if (com.mannschaft.app.todo.TodoStatus.COMPLETED == todo.getStatus()) {
+            return;
+        }
+        todoService.changeStatus(todoId, new TodoStatusChangeRequest("COMPLETED"), userId);
+
+        // 監査ログ: source = "ACTION_MEMO", source_id = memoId
+        auditLogService.record(
+                "AUDIT_LOG_TODO_STATUS_CHANGED",
+                userId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                String.format("{\"source\":\"ACTION_MEMO\",\"source_id\":%d,\"todo_id\":%d}", memoId, todoId)
+        );
+    }
+
+    /**
+     * Phase 3 バリデーション。
+     *
+     * @param progressRate   進捗率（null可）
+     * @param completesTodo  TODO完了フラグ
+     * @param relatedTodoId  関連TODO ID（null可）
+     */
+    private void validatePhase3Fields(BigDecimal progressRate, boolean completesTodo, Long relatedTodoId) {
+        if (progressRate != null && relatedTodoId == null) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_PROGRESS_REQUIRES_TODO);
+        }
+        if (completesTodo && relatedTodoId == null) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_COMPLETES_REQUIRES_TODO);
+        }
+    }
+
+    /**
+     * カテゴリを解決する。
+     * リクエストで指定されていれば そのまま使用。省略時は settings の defaultCategory を適用。
+     */
+    private ActionMemoCategory resolveCategory(ActionMemoCategory requestedCategory, Long userId) {
+        if (requestedCategory != null) {
+            return requestedCategory;
+        }
+        return settingsService.findSettings(userId)
+                .map(s -> s.getDefaultCategory() != null ? s.getDefaultCategory() : ActionMemoCategory.PRIVATE)
+                .orElse(ActionMemoCategory.PRIVATE);
+    }
+
+    // ==================================================================
     // 気分集計（Phase 4）
     // ==================================================================
 
@@ -660,6 +1020,8 @@ public class ActionMemoService {
      *
      * <p>Phase 4: 論理削除済みタグも含まれるため {@code deletedAt != null} で
      * {@code deleted} フラグを判定する（設計書 §3「削除済みタグの API レスポンス表現」）。</p>
+     *
+     * <p>Phase 3: category / durationMinutes / progressRate / completesTodo / postedTeamId を追加。</p>
      */
     private ActionMemoResponse toResponse(ActionMemoEntity memo, List<ActionMemoTagEntity> tags) {
         List<ActionMemoTagSummary> tagSummaries = tags == null ? List.of()
@@ -673,9 +1035,14 @@ public class ActionMemoService {
                 .id(memo.getId())
                 .memoDate(memo.getMemoDate())
                 .content(memo.getContent())
+                .category(memo.getCategory())
+                .durationMinutes(memo.getDurationMinutes())
+                .progressRate(memo.getProgressRate())
                 .mood(memo.getMood())
                 .relatedTodoId(memo.getRelatedTodoId())
+                .completesTodo(Boolean.TRUE.equals(memo.getCompletesTodo()))
                 .timelinePostId(memo.getTimelinePostId())
+                .postedTeamId(memo.getPostedTeamId())
                 .tags(tagSummaries)
                 .createdAt(memo.getCreatedAt())
                 .updatedAt(memo.getUpdatedAt())

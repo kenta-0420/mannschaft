@@ -3,11 +3,16 @@ package com.mannschaft.app.actionmemo.controller;
 import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
 import com.mannschaft.app.actionmemo.dto.AddTagsToMemoRequest;
+import com.mannschaft.app.actionmemo.dto.AvailableTeamResponse;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
 import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
 import com.mannschaft.app.actionmemo.dto.MoodStatsResponse;
 import com.mannschaft.app.actionmemo.dto.PublishDailyRequest;
 import com.mannschaft.app.actionmemo.dto.PublishDailyResponse;
+import com.mannschaft.app.actionmemo.dto.PublishDailyToTeamRequest;
+import com.mannschaft.app.actionmemo.dto.PublishDailyToTeamResponse;
+import com.mannschaft.app.actionmemo.dto.PublishToTeamRequest;
+import com.mannschaft.app.actionmemo.dto.PublishToTeamResponse;
 import com.mannschaft.app.actionmemo.dto.UpdateActionMemoRequest;
 import com.mannschaft.app.actionmemo.service.ActionMemoService;
 import com.mannschaft.app.actionmemo.service.ActionMemoTagService;
@@ -31,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * F02.5 行動メモコントローラー。
@@ -175,6 +181,56 @@ public class ActionMemoController {
             @PathVariable Long tagId) {
         actionMemoTagService.removeTagFromMemo(id, tagId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
+    }
+
+    // ==================================================================
+    // Phase 3: チームタイムライン投稿
+    // ==================================================================
+
+    /**
+     * メモ1件をチームタイムラインに投稿する。
+     *
+     * <p>category = WORK のメモのみ可。既投稿メモは 409。
+     * team_id 省略時は settings.default_post_team_id を使用。どちらも NULL なら 400。</p>
+     */
+    @PostMapping("/{id}/publish-to-team")
+    @Operation(summary = "メモをチームタイムラインに投稿（個別即時投稿）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "投稿成功")
+    public ResponseEntity<ApiResponse<PublishToTeamResponse>> publishToTeam(
+            @PathVariable Long id,
+            @Valid @RequestBody PublishToTeamRequest request) {
+        PublishToTeamResponse response = actionMemoService.publishToTeam(
+                id, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * 当日の WORK メモをまとめてチームタイムラインに投稿する（日次まとめ投稿）。
+     *
+     * <p>postedTeamId が null のメモのみ対象（重複投稿防止）。0件は 400。</p>
+     */
+    @PostMapping("/publish-daily-to-team")
+    @Operation(summary = "当日 WORK メモをチームタイムラインに一括投稿（日次まとめ）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "投稿成功")
+    public ResponseEntity<ApiResponse<PublishDailyToTeamResponse>> publishDailyToTeam(
+            @Valid @RequestBody PublishDailyToTeamRequest request) {
+        PublishDailyToTeamResponse response = actionMemoService.publishDailyToTeam(
+                request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * 投稿先として選択可能なチーム一覧を取得する。
+     *
+     * <p>ユーザーが所属するチームの一覧を返す。
+     * {@code is_default: true} はデフォルト投稿先として設定されているチーム。</p>
+     */
+    @GetMapping("/available-teams")
+    @Operation(summary = "投稿先チーム一覧取得")
+    public ResponseEntity<ApiResponse<List<AvailableTeamResponse>>> getAvailableTeams() {
+        List<AvailableTeamResponse> response = actionMemoService.getAvailableTeams(
+                SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     // ==================================================================
