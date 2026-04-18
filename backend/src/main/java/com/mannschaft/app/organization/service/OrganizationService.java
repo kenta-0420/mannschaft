@@ -359,6 +359,7 @@ public class OrganizationService {
                 org.getNickname1(), org.getNickname2(), org.getOrgType().name(),
                 org.getParentOrganizationId(), org.getPrefecture(), org.getCity(),
                 org.getVisibility().name(), org.getHierarchyVisibility().name(), org.getSupporterEnabled(),
-                org.getVersion(), memberCount, org.getArchivedAt(), org.getCreatedAt());
+                org.getVersion(), memberCount, org.getIconUrl(), org.getBannerUrl(),
+                org.getArchivedAt(), org.getCreatedAt());
     }
 }
