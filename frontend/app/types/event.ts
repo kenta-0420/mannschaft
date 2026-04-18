@@ -1,5 +1,32 @@
 // === Event ===
-export type EventStatus = 'DRAFT' | 'PUBLISHED' | 'CANCELLED' | 'CLOSED'
+export type EventStatus = 'DRAFT' | 'PUBLISHED' | 'REGISTRATION_OPEN' | 'REGISTRATION_CLOSED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+
+export type AttendanceMode = 'NONE' | 'RSVP' | 'REGISTRATION'
+
+export type RsvpResponse = 'ATTENDING' | 'NOT_ATTENDING' | 'MAYBE' | 'UNDECIDED'
+
+export interface EventRsvpResponseItem {
+  id: number
+  eventId: number
+  userId: number
+  userName: string
+  response: RsvpResponse
+  comment: string | null
+  respondedAt: string | null
+}
+
+export interface EventRsvpSummary {
+  attending: number
+  notAttending: number
+  maybe: number
+  undecided: number
+  total: number
+}
+
+export interface SubmitRsvpRequest {
+  response: RsvpResponse
+  comment?: string
+}
 
 export interface EventResponse {
   id: number
@@ -40,6 +67,8 @@ export interface EventDetailResponse {
   registrationEndsAt: string | null
   maxCapacity: number | null
   isApprovalRequired: boolean
+  attendanceMode: AttendanceMode | null
+  preSurveyId: number | null
   postSurveyId: number | null
   workflowRequestId: number | null
   ogpTitle: string | null
@@ -47,6 +76,7 @@ export interface EventDetailResponse {
   ogpImageKey: string | null
   registrationCount: number
   checkinCount: number
+  rsvpSummary: EventRsvpSummary | null
   createdBy: number
   version: number
   createdAt: string
@@ -70,6 +100,8 @@ export interface CreateEventRequest {
   registrationEndsAt?: string
   maxCapacity?: number
   isApprovalRequired?: boolean
+  attendanceMode?: AttendanceMode
+  preSurveyId?: number | null
   ogpTitle?: string
   ogpDescription?: string
   ogpImageKey?: string
@@ -91,6 +123,8 @@ export interface UpdateEventRequest {
   registrationEndsAt?: string
   maxCapacity?: number
   isApprovalRequired?: boolean
+  attendanceMode?: AttendanceMode
+  preSurveyId?: number | null
   ogpTitle?: string
   ogpDescription?: string
   ogpImageKey?: string

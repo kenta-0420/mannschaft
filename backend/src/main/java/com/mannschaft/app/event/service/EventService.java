@@ -8,12 +8,15 @@ import com.mannschaft.app.event.EventStatus;
 import com.mannschaft.app.event.dto.CreateEventRequest;
 import com.mannschaft.app.event.dto.EventDetailResponse;
 import com.mannschaft.app.event.dto.EventResponse;
+import com.mannschaft.app.event.dto.EventRsvpSummaryResponse;
 import com.mannschaft.app.event.dto.EventStatsResponse;
 import com.mannschaft.app.event.dto.UpdateEventRequest;
+import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRegistrationRepository;
 import com.mannschaft.app.event.repository.EventRepository;
+import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
 import com.mannschaft.app.event.RegistrationStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +37,7 @@ public class EventService {
     private final EventRepository eventRepository;
     private final EventRegistrationRepository registrationRepository;
     private final EventCheckinRepository checkinRepository;
+    private final EventRsvpResponseRepository rsvpResponseRepository;
     private final EventMapper eventMapper;
 
     /**
@@ -66,7 +70,7 @@ public class EventService {
      */
     public EventDetailResponse getEvent(Long eventId) {
         EventEntity entity = findEventOrThrow(eventId);
-        return eventMapper.toEventDetailResponse(entity);
+        return toDetailResponseWithRsvp(entity);
     }
 
     /**
@@ -78,7 +82,7 @@ public class EventService {
     public EventDetailResponse getEventBySlug(String slug) {
         EventEntity entity = eventRepository.findBySlug(slug)
                 .orElseThrow(() -> new BusinessException(EventErrorCode.EVENT_NOT_FOUND));
-        return eventMapper.toEventDetailResponse(entity);
+        return toDetailResponseWithRsvp(entity);
     }
 
     /**
@@ -118,6 +122,9 @@ public class EventService {
                 .maxCapacity(request.getMaxCapacity())
                 .isApprovalRequired(request.getIsApprovalRequired() != null
                         ? request.getIsApprovalRequired() : false)
+                .attendanceMode(request.getAttendanceMode() != null
+                        ? request.getAttendanceMode() : EventAttendanceMode.REGISTRATION)
+                .preSurveyId(request.getPreSurveyId())
                 .ogpTitle(request.getOgpTitle())
                 .ogpDescription(request.getOgpDescription())
                 .ogpImageKey(request.getOgpImageKey())
@@ -126,7 +133,7 @@ public class EventService {
 
         EventEntity saved = eventRepository.save(entity);
         log.info("イベント作成: scopeType={}, scopeId={}, eventId={}", scopeType, scopeId, saved.getId());
-        return eventMapper.toEventDetailResponse(saved);
+        return toDetailResponseWithRsvp(saved);
     }
 
     /**
@@ -166,6 +173,9 @@ public class EventService {
                 .maxCapacity(request.getMaxCapacity() != null ? request.getMaxCapacity() : entity.getMaxCapacity())
                 .isApprovalRequired(request.getIsApprovalRequired() != null
                         ? request.getIsApprovalRequired() : entity.getIsApprovalRequired())
+                .attendanceMode(request.getAttendanceMode() != null
+                        ? request.getAttendanceMode() : entity.getAttendanceMode())
+                .preSurveyId(request.getPreSurveyId() != null ? request.getPreSurveyId() : entity.getPreSurveyId())
                 .ogpTitle(request.getOgpTitle() != null ? request.getOgpTitle() : entity.getOgpTitle())
                 .ogpDescription(request.getOgpDescription() != null ? request.getOgpDescription() : entity.getOgpDescription())
                 .ogpImageKey(request.getOgpImageKey() != null ? request.getOgpImageKey() : entity.getOgpImageKey())
@@ -173,7 +183,7 @@ public class EventService {
 
         EventEntity saved = eventRepository.save(updated);
         log.info("イベント更新: eventId={}", eventId);
-        return eventMapper.toEventDetailResponse(saved);
+        return toDetailResponseWithRsvp(saved);
     }
 
     /**
@@ -191,7 +201,7 @@ public class EventService {
         entity.publish();
         EventEntity saved = eventRepository.save(entity);
         log.info("イベント公開: eventId={}", eventId);
-        return eventMapper.toEventDetailResponse(saved);
+        return toDetailResponseWithRsvp(saved);
     }
 
     /**
@@ -209,7 +219,7 @@ public class EventService {
         entity.openRegistration();
         EventEntity saved = eventRepository.save(entity);
         log.info("参加登録開始: eventId={}", eventId);
-        return eventMapper.toEventDetailResponse(saved);
+        return toDetailResponseWithRsvp(saved);
     }
 
     /**
@@ -227,7 +237,7 @@ public class EventService {
         entity.closeRegistration();
         EventEntity saved = eventRepository.save(entity);
         log.info("参加登録締切: eventId={}", eventId);
-        return eventMapper.toEventDetailResponse(saved);
+        return toDetailResponseWithRsvp(saved);
     }
 
     /**
@@ -245,7 +255,7 @@ public class EventService {
         entity.cancel();
         EventEntity saved = eventRepository.save(entity);
         log.info("イベントキャンセル: eventId={}", eventId);
-        return eventMapper.toEventDetailResponse(saved);
+        return toDetailResponseWithRsvp(saved);
     }
 
     /**
@@ -264,7 +274,7 @@ public class EventService {
         entity.complete();
         EventEntity saved = eventRepository.save(entity);
         log.info("イベント完了: eventId={}", eventId);
-        return eventMapper.toEventDetailResponse(saved);
+        return toDetailResponseWithRsvp(saved);
     }
 
     /**
@@ -326,5 +336,26 @@ public class EventService {
     public EventEntity findEventOrThrow(Long eventId) {
         return eventRepository.findById(eventId)
                 .orElseThrow(() -> new BusinessException(EventErrorCode.EVENT_NOT_FOUND));
+    }
+
+    /**
+     * EventEntity → EventDetailResponse 変換（RSVP集計付き）。
+     * attendance_mode=RSVP のときのみ rsvpSummary をセットする。
+     *
+     * @param entity イベントエンティティ
+     * @return イベント詳細レスポンス
+     */
+    private EventDetailResponse toDetailResponseWithRsvp(EventEntity entity) {
+        EventDetailResponse response = eventMapper.toEventDetailResponse(entity);
+        if (entity.getAttendanceMode() == EventAttendanceMode.RSVP) {
+            Long eventId = entity.getId();
+            long attending    = rsvpResponseRepository.countByEventIdAndResponse(eventId, "ATTENDING");
+            long notAttending = rsvpResponseRepository.countByEventIdAndResponse(eventId, "NOT_ATTENDING");
+            long maybe        = rsvpResponseRepository.countByEventIdAndResponse(eventId, "MAYBE");
+            long undecided    = rsvpResponseRepository.countByEventIdAndResponse(eventId, "UNDECIDED");
+            long total        = attending + notAttending + maybe + undecided;
+            response.setRsvpSummary(new EventRsvpSummaryResponse(attending, notAttending, maybe, undecided, total));
+        }
+        return response;
     }
 }

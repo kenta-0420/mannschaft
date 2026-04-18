@@ -1,5 +1,6 @@
 package com.mannschaft.app.event.dto;
 
+import com.mannschaft.app.event.entity.EventAttendanceMode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -53,6 +54,12 @@ public class CreateEventRequest {
     private final Integer maxCapacity;
 
     private final Boolean isApprovalRequired;
+
+    /** 出席管理モード（null時はServiceでREGISTRATIONをデフォルト設定） */
+    private final EventAttendanceMode attendanceMode;
+
+    /** 事前アンケートID（任意） */
+    private final Long preSurveyId;
 
     @Size(max = 200)
     private final String ogpTitle;

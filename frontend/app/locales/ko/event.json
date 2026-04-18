@@ -1,0 +1,66 @@
+{
+  "event": {
+    "attendanceMode": {
+      "label": "참석 방식",
+      "none": "자유 참석",
+      "noneDesc": "등록 없이 누구나 참가할 수 있습니다",
+      "rsvp": "참석 확인",
+      "rsvpDesc": "참석/불참 여부를 확인합니다",
+      "registration": "참가 등록",
+      "registrationDesc": "참가하려면 사전 등록이 필요합니다"
+    },
+    "rsvp": {
+      "title": "참석 확인",
+      "attending": "참석",
+      "notAttending": "불참",
+      "maybe": "미정",
+      "undecided": "미답변",
+      "comment": "댓글 (선택)",
+      "myResponse": "내 답변",
+      "submit": "답변 제출",
+      "update": "답변 업데이트",
+      "summary": {
+        "attending": "참석",
+        "notAttending": "불참",
+        "maybe": "미정",
+        "undecided": "미답변",
+        "total": "합계"
+      }
+    },
+    "survey": {
+      "preSurvey": "사전 설문",
+      "postSurvey": "사후 설문",
+      "none": "없음",
+      "select": "선택",
+      "surveyId": "설문 ID"
+    },
+    "status": {
+      "draft": "초안",
+      "published": "공개됨",
+      "registrationOpen": "등록 진행 중",
+      "registrationClosed": "등록 마감",
+      "inProgress": "진행 중",
+      "completed": "완료",
+      "cancelled": "취소됨"
+    },
+    "create": "이벤트 만들기",
+    "edit": "편집",
+    "publish": "공개",
+    "openRegistration": "등록 시작",
+    "closeRegistration": "등록 마감",
+    "complete": "완료로 표시",
+    "cancel": "이벤트 취소",
+    "list": "이벤트 목록",
+    "detail": "이벤트 상세",
+    "createTitle": "이벤트 만들기",
+    "step1": "기본 정보",
+    "step2": "참가 설정",
+    "backToList": "이벤트 목록으로",
+    "noEvents": "이벤트가 없습니다",
+    "filterByStatus": "상태로 필터",
+    "allStatuses": "전체",
+    "participants": "참가자",
+    "rsvpList": "참석 답변 목록",
+    "adminOnly": "관리자 전용"
+  }
+}

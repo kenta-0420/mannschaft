@@ -1,7 +1,10 @@
 import type {
   CheckinResponse,
   EventDetailResponse,
+  EventRsvpResponseItem,
+  EventRsvpSummary,
   RegistrationResponse,
+  RsvpResponse,
   TimetableItemResponse,
 } from '~/types/event'
 
@@ -13,12 +16,16 @@ interface UseEventDetailOptions {
 
 export function useEventDetail({ scopeType, scopeId, eventId }: UseEventDetailOptions) {
   const eventApi = useEventApi()
+  const rsvpApi = useEventRsvpApi()
   const notification = useNotification()
 
   const event = ref<EventDetailResponse | null>(null)
   const registrations = ref<RegistrationResponse[]>([])
   const checkins = ref<CheckinResponse[]>([])
   const timetableItems = ref<TimetableItemResponse[]>([])
+  const rsvpList = ref<EventRsvpResponseItem[]>([])
+  const rsvpSummary = ref<EventRsvpSummary | null>(null)
+  const myRsvpResponse = ref<RsvpResponse | null>(null)
   const loading = ref(true)
 
   async function loadEvent() {
@@ -57,6 +64,21 @@ export function useEventDetail({ scopeType, scopeId, eventId }: UseEventDetailOp
       timetableItems.value = res.data
     } catch {
       timetableItems.value = []
+    }
+  }
+
+  async function loadRsvp() {
+    if (!event.value || (event.value.attendanceMode ?? 'NONE') !== 'RSVP') return
+    try {
+      const [listRes, summaryRes] = await Promise.all([
+        rsvpApi.fetchRsvpList(scopeType.value, scopeId.value, eventId.value),
+        rsvpApi.fetchRsvpSummary(scopeType.value, scopeId.value, eventId.value),
+      ])
+      rsvpList.value = listRes.data
+      rsvpSummary.value = summaryRes.data
+    } catch {
+      rsvpList.value = []
+      rsvpSummary.value = null
     }
   }
 
@@ -124,7 +146,7 @@ export function useEventDetail({ scopeType, scopeId, eventId }: UseEventDetailOp
 
   async function init() {
     await loadEvent()
-    await Promise.all([loadRegistrations(), loadCheckins(), loadTimetable()])
+    await Promise.all([loadRegistrations(), loadCheckins(), loadTimetable(), loadRsvp()])
   }
 
   return {
@@ -132,8 +154,12 @@ export function useEventDetail({ scopeType, scopeId, eventId }: UseEventDetailOp
     registrations,
     checkins,
     timetableItems,
+    rsvpList,
+    rsvpSummary,
+    myRsvpResponse,
     loading,
     loadEvent,
+    loadRsvp,
     publishEvent,
     cancelEvent,
     closeRegistration,

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { AttendanceMode } from '~/types/event'
+
 const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: number
@@ -30,6 +32,9 @@ const form = ref({
   isApprovalRequired: false,
   registrationStartsAt: null as Date | null,
   registrationEndsAt: null as Date | null,
+  attendanceMode: 'NONE' as AttendanceMode,
+  preSurveyId: null as number | null,
+  postSurveyId: null as number | null,
 })
 
 watch(
@@ -51,6 +56,9 @@ watch(
           ? new Date(d.registrationStartsAt)
           : null
         form.value.registrationEndsAt = d.registrationEndsAt ? new Date(d.registrationEndsAt) : null
+        form.value.attendanceMode = (d.attendanceMode ?? 'NONE') as AttendanceMode
+        form.value.preSurveyId = d.preSurveyId ?? null
+        form.value.postSurveyId = d.postSurveyId ?? null
       } catch {
         notification.error('イベント情報の取得に失敗しました')
       }
@@ -84,6 +92,9 @@ async function submit() {
     registrationEndsAt: form.value.registrationEndsAt
       ? form.value.registrationEndsAt.toISOString()
       : undefined,
+    attendanceMode: form.value.attendanceMode,
+    preSurveyId: form.value.preSurveyId ?? undefined,
+    postSurveyId: form.value.postSurveyId ?? undefined,
   }
 
   try {
@@ -118,6 +129,9 @@ function resetForm() {
     isApprovalRequired: false,
     registrationStartsAt: null,
     registrationEndsAt: null,
+    attendanceMode: 'NONE',
+    preSurveyId: null,
+    postSurveyId: null,
   }
   fieldErrors.value = {}
 }
@@ -213,6 +227,21 @@ function close() {
             <label for="isApprovalRequired" class="text-sm">承認制</label>
           </div>
         </div>
+      </div>
+
+      <!-- 参加方式 -->
+      <AttendanceModeSelector v-model="form.attendanceMode" />
+
+      <!-- アンケート -->
+      <div class="grid grid-cols-2 gap-3">
+        <EventSurveyPicker
+          v-model="form.preSurveyId"
+          :label="$t('event.survey.preSurvey')"
+        />
+        <EventSurveyPicker
+          v-model="form.postSurveyId"
+          :label="$t('event.survey.postSurvey')"
+        />
       </div>
     </div>
 

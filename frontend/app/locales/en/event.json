@@ -1,0 +1,66 @@
+{
+  "event": {
+    "attendanceMode": {
+      "label": "Attendance Mode",
+      "none": "Open Attendance",
+      "noneDesc": "Anyone can join without registration",
+      "rsvp": "RSVP",
+      "rsvpDesc": "Collect attending/not attending responses",
+      "registration": "Registration Required",
+      "registrationDesc": "Pre-registration is required to join"
+    },
+    "rsvp": {
+      "title": "RSVP",
+      "attending": "Attending",
+      "notAttending": "Not Attending",
+      "maybe": "Maybe",
+      "undecided": "Undecided",
+      "comment": "Comment (optional)",
+      "myResponse": "My Response",
+      "submit": "Submit Response",
+      "update": "Update Response",
+      "summary": {
+        "attending": "Attending",
+        "notAttending": "Not Attending",
+        "maybe": "Maybe",
+        "undecided": "Undecided",
+        "total": "Total"
+      }
+    },
+    "survey": {
+      "preSurvey": "Pre-Event Survey",
+      "postSurvey": "Post-Event Survey",
+      "none": "None",
+      "select": "Select",
+      "surveyId": "Survey ID"
+    },
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "registrationOpen": "Registration Open",
+      "registrationClosed": "Registration Closed",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "create": "Create Event",
+    "edit": "Edit",
+    "publish": "Publish",
+    "openRegistration": "Open Registration",
+    "closeRegistration": "Close Registration",
+    "complete": "Mark as Complete",
+    "cancel": "Cancel Event",
+    "list": "Event List",
+    "detail": "Event Detail",
+    "createTitle": "Create Event",
+    "step1": "Basic Info",
+    "step2": "Attendance Settings",
+    "backToList": "Back to Events",
+    "noEvents": "No events found",
+    "filterByStatus": "Filter by Status",
+    "allStatuses": "All",
+    "participants": "Participants",
+    "rsvpList": "RSVP List",
+    "adminOnly": "Admin Only"
+  }
+}

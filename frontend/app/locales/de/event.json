@@ -1,0 +1,66 @@
+{
+  "event": {
+    "attendanceMode": {
+      "label": "Teilnahmemodus",
+      "none": "Freie Teilnahme",
+      "noneDesc": "Jeder kann ohne Anmeldung teilnehmen",
+      "rsvp": "Zu-/Absage",
+      "rsvpDesc": "Zu-/Absagen sammeln",
+      "registration": "Anmeldung erforderlich",
+      "registrationDesc": "Voranmeldung erforderlich"
+    },
+    "rsvp": {
+      "title": "Zu-/Absage",
+      "attending": "Ich nehme teil",
+      "notAttending": "Ich nehme nicht teil",
+      "maybe": "Vielleicht",
+      "undecided": "Keine Antwort",
+      "comment": "Kommentar (optional)",
+      "myResponse": "Meine Antwort",
+      "submit": "Antwort senden",
+      "update": "Antwort aktualisieren",
+      "summary": {
+        "attending": "Teilnehmend",
+        "notAttending": "Nicht teilnehmend",
+        "maybe": "Vielleicht",
+        "undecided": "Keine Antwort",
+        "total": "Gesamt"
+      }
+    },
+    "survey": {
+      "preSurvey": "Vor-Event-Umfrage",
+      "postSurvey": "Nach-Event-Umfrage",
+      "none": "Keine",
+      "select": "Auswählen",
+      "surveyId": "Umfrage-ID"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "published": "Veröffentlicht",
+      "registrationOpen": "Anmeldung offen",
+      "registrationClosed": "Anmeldung geschlossen",
+      "inProgress": "Laufend",
+      "completed": "Abgeschlossen",
+      "cancelled": "Abgesagt"
+    },
+    "create": "Event erstellen",
+    "edit": "Bearbeiten",
+    "publish": "Veröffentlichen",
+    "openRegistration": "Anmeldung öffnen",
+    "closeRegistration": "Anmeldung schließen",
+    "complete": "Als abgeschlossen markieren",
+    "cancel": "Event absagen",
+    "list": "Event-Liste",
+    "detail": "Event-Details",
+    "createTitle": "Event erstellen",
+    "step1": "Grundinformationen",
+    "step2": "Teilnahmeeinstellungen",
+    "backToList": "Zurück zur Event-Liste",
+    "noEvents": "Keine Events vorhanden",
+    "filterByStatus": "Nach Status filtern",
+    "allStatuses": "Alle",
+    "participants": "Teilnehmer",
+    "rsvpList": "Zu-/Absagen-Liste",
+    "adminOnly": "Nur Administratoren"
+  }
+}

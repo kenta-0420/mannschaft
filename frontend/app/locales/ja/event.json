@@ -1,0 +1,66 @@
+{
+  "event": {
+    "attendanceMode": {
+      "label": "参加方式",
+      "none": "自由参加",
+      "noneDesc": "参加登録なしで誰でも参加できます",
+      "rsvp": "出欠確認",
+      "rsvpDesc": "参加予定・不参加などの出欠確認を行います",
+      "registration": "参加登録",
+      "registrationDesc": "参加には事前登録が必要です"
+    },
+    "rsvp": {
+      "title": "出欠確認",
+      "attending": "参加する",
+      "notAttending": "参加しない",
+      "maybe": "未定",
+      "undecided": "未回答",
+      "comment": "コメント（任意）",
+      "myResponse": "あなたの回答",
+      "submit": "回答を送信",
+      "update": "回答を更新",
+      "summary": {
+        "attending": "参加",
+        "notAttending": "不参加",
+        "maybe": "未定",
+        "undecided": "未回答",
+        "total": "合計"
+      }
+    },
+    "survey": {
+      "preSurvey": "事前アンケート",
+      "postSurvey": "事後アンケート",
+      "none": "なし",
+      "select": "選択する",
+      "surveyId": "アンケートID"
+    },
+    "status": {
+      "draft": "下書き",
+      "published": "公開済み",
+      "registrationOpen": "登録受付中",
+      "registrationClosed": "登録締切",
+      "inProgress": "開催中",
+      "completed": "終了",
+      "cancelled": "中止"
+    },
+    "create": "イベントを作成",
+    "edit": "編集",
+    "publish": "公開する",
+    "openRegistration": "登録受付を開始",
+    "closeRegistration": "登録受付を締め切る",
+    "complete": "完了にする",
+    "cancel": "中止にする",
+    "list": "イベント一覧",
+    "detail": "イベント詳細",
+    "createTitle": "イベントを作成",
+    "step1": "基本情報",
+    "step2": "参加設定",
+    "backToList": "イベント一覧に戻る",
+    "noEvents": "イベントはありません",
+    "filterByStatus": "ステータスで絞り込む",
+    "allStatuses": "すべて",
+    "participants": "参加者",
+    "rsvpList": "出欠回答一覧",
+    "adminOnly": "管理者のみ"
+  }
+}
