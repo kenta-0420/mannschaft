@@ -17,6 +17,8 @@ export interface OrganizationResponse {
   memberCount: number
   archivedAt: string | null
   createdAt: string
+  iconUrl: string | null
+  bannerUrl: string | null
 }
 
 export interface OrganizationSummaryResponse {
