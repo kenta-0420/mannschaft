@@ -83,7 +83,7 @@ class OrganizationControllerTest {
         return new OrganizationResponse(
                 ORG_ID, "テスト組織", null, null, null, "SCHOOL",
                 null, "東京都", "渋谷区", "PUBLIC", "NONE", false,
-                0L, 3, null, LocalDateTime.now());
+                0L, 3, null, null, null, LocalDateTime.now());
     }
 
     @Test
