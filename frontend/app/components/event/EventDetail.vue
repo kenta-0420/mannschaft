@@ -16,8 +16,12 @@ const {
   registrations,
   checkins,
   timetableItems,
+  rsvpList,
+  rsvpSummary,
+  myRsvpResponse,
   loading,
   loadEvent,
+  loadRsvp,
   publishEvent,
   cancelEvent,
   closeRegistration,
@@ -111,14 +115,61 @@ onMounted(() => init())
         </template>
       </Card>
 
+      <!-- RSVP ウィジェット -->
+      <div v-if="(event.attendanceMode ?? 'NONE') === 'RSVP'" class="mb-4">
+        <RsvpWidget
+          :event-id="event.id"
+          :scope-type="props.scopeType"
+          :scope-id="props.scopeId"
+          :summary="rsvpSummary"
+          :my-response="myRsvpResponse"
+          @responded="loadRsvp"
+        />
+      </div>
+
       <Tabs v-model:value="activeTab">
         <TabList>
-          <Tab :value="0">参加者</Tab>
-          <Tab :value="1">チェックイン</Tab>
-          <Tab :value="2">タイムテーブル</Tab>
+          <Tab v-if="(event.attendanceMode ?? 'NONE') === 'RSVP'" :value="0">
+            {{ $t('event.rsvpList') }}
+          </Tab>
+          <Tab :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 1 : 0">
+            {{ $t('event.participants') }}
+          </Tab>
+          <Tab :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 2 : 1">チェックイン</Tab>
+          <Tab :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 3 : 2">タイムテーブル</Tab>
         </TabList>
         <TabPanels>
-          <TabPanel :value="0">
+          <TabPanel v-if="(event.attendanceMode ?? 'NONE') === 'RSVP'" :value="0">
+            <DataTable :value="rsvpList" data-key="id">
+              <Column field="userName" header="氏名" />
+              <Column field="response" header="回答">
+                <template #body="{ data }">
+                  <Tag
+                    :value="$t(`event.rsvp.${data.response === 'NOT_ATTENDING' ? 'notAttending' : data.response.toLowerCase()}`)"
+                    :severity="
+                      data.response === 'ATTENDING'
+                        ? 'success'
+                        : data.response === 'NOT_ATTENDING'
+                          ? 'danger'
+                          : data.response === 'MAYBE'
+                            ? 'warn'
+                            : 'secondary'
+                    "
+                  />
+                </template>
+              </Column>
+              <Column field="comment" header="コメント" />
+              <Column field="respondedAt" header="回答日時">
+                <template #body="{ data }">
+                  {{ data.respondedAt ? new Date(data.respondedAt).toLocaleString('ja-JP') : '—' }}
+                </template>
+              </Column>
+              <template #empty>
+                <DashboardEmptyState icon="pi pi-check-circle" message="まだ回答がありません" />
+              </template>
+            </DataTable>
+          </TabPanel>
+          <TabPanel :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 1 : 0">
             <EventRegistrationTable
               :registrations="registrations"
               :can-edit="canEdit"
@@ -126,10 +177,10 @@ onMounted(() => init())
               @reject="rejectRegistration"
             />
           </TabPanel>
-          <TabPanel :value="1">
+          <TabPanel :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 2 : 1">
             <EventCheckinTable :checkins="checkins" />
           </TabPanel>
-          <TabPanel :value="2">
+          <TabPanel :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 3 : 2">
             <EventTimetableTable :timetable-items="timetableItems" />
           </TabPanel>
         </TabPanels>

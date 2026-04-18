@@ -1,0 +1,66 @@
+{
+  "event": {
+    "attendanceMode": {
+      "label": "Modo de asistencia",
+      "none": "Asistencia libre",
+      "noneDesc": "Cualquiera puede participar sin registrarse",
+      "rsvp": "Confirmación de asistencia",
+      "rsvpDesc": "Recopilar respuestas de asistencia/no asistencia",
+      "registration": "Registro requerido",
+      "registrationDesc": "Se requiere registro previo para participar"
+    },
+    "rsvp": {
+      "title": "Confirmación de asistencia",
+      "attending": "Asistiré",
+      "notAttending": "No asistiré",
+      "maybe": "Quizás",
+      "undecided": "Sin respuesta",
+      "comment": "Comentario (opcional)",
+      "myResponse": "Mi respuesta",
+      "submit": "Enviar respuesta",
+      "update": "Actualizar respuesta",
+      "summary": {
+        "attending": "Asistirán",
+        "notAttending": "No asistirán",
+        "maybe": "Quizás",
+        "undecided": "Sin respuesta",
+        "total": "Total"
+      }
+    },
+    "survey": {
+      "preSurvey": "Encuesta previa",
+      "postSurvey": "Encuesta posterior",
+      "none": "Ninguno",
+      "select": "Seleccionar",
+      "surveyId": "ID de encuesta"
+    },
+    "status": {
+      "draft": "Borrador",
+      "published": "Publicado",
+      "registrationOpen": "Registro abierto",
+      "registrationClosed": "Registro cerrado",
+      "inProgress": "En progreso",
+      "completed": "Completado",
+      "cancelled": "Cancelado"
+    },
+    "create": "Crear evento",
+    "edit": "Editar",
+    "publish": "Publicar",
+    "openRegistration": "Abrir registro",
+    "closeRegistration": "Cerrar registro",
+    "complete": "Marcar como completado",
+    "cancel": "Cancelar evento",
+    "list": "Lista de eventos",
+    "detail": "Detalle del evento",
+    "createTitle": "Crear evento",
+    "step1": "Información básica",
+    "step2": "Configuración de asistencia",
+    "backToList": "Volver a eventos",
+    "noEvents": "No hay eventos",
+    "filterByStatus": "Filtrar por estado",
+    "allStatuses": "Todos",
+    "participants": "Participantes",
+    "rsvpList": "Lista de confirmaciones",
+    "adminOnly": "Solo administradores"
+  }
+}
