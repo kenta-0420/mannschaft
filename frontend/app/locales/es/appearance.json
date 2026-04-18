@@ -1,0 +1,17 @@
+{
+  "appearance": {
+    "bgColorLabel": "Color de fondo",
+    "color": {
+      "cream": "Crema",
+      "white": "Blanco",
+      "gray": "Gris claro",
+      "lavender": "Lavanda",
+      "mint": "Menta",
+      "sky": "Cielo",
+      "peach": "Melocotón",
+      "sand": "Arena",
+      "sage": "Salvia",
+      "slate": "Pizarra"
+    }
+  }
+}

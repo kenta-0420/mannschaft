@@ -43,11 +43,15 @@ function isActive(path: string): boolean {
 
 <template>
   <!-- マウント前（SSR含む）はスピナーのみ表示してフラッシュを防ぐ -->
-  <div v-if="!isMounted" class="flex min-h-screen items-center justify-center bg-surface-ground">
+  <div
+    v-if="!isMounted"
+    class="flex min-h-screen items-center justify-center dark:bg-surface-ground"
+    style="background-color: var(--bg-color, #f3efe0)"
+  >
     <ProgressSpinner style="width: 48px; height: 48px" />
   </div>
 
-  <div v-else class="min-h-screen bg-surface-ground">
+  <div v-else class="min-h-screen dark:bg-surface-ground" style="background-color: var(--bg-color, #f3efe0)">
     <!-- ヘッダー -->
     <header class="bg-surface-0 border-b border-surface shadow-sm">
       <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4">

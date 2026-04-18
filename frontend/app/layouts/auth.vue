@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-screen items-center justify-center" style="background-color: #f3efe0">
+  <div class="flex min-h-screen items-center justify-center" style="background-color: var(--bg-color, #f3efe0)">
     <div class="w-full max-w-md px-4">
       <div class="mb-8 text-center">
         <h1
