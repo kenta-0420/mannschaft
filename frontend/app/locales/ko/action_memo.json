@@ -118,5 +118,51 @@
   "mood_stats": {
     "title": "기분 분포",
     "total": "합계"
+  },
+  "phase3": {
+    "advanced_fields": "세부 입력 (선택)",
+    "category": {
+      "label": "카테고리",
+      "work": "업무",
+      "private": "개인",
+      "other": "기타"
+    },
+    "duration": {
+      "label": "실제 시간 (분)",
+      "placeholder": "예: 30",
+      "unit": "분",
+      "quick_15": "15분",
+      "quick_30": "30분",
+      "quick_60": "1시간",
+      "quick_120": "2시간"
+    },
+    "progress_rate": {
+      "label": "진행률",
+      "requires_todo": "진행률 입력에는 관련 할 일 지정이 필요합니다"
+    },
+    "completes_todo": {
+      "label": "이 할 일을 완료로 표시",
+      "tooltip": "체크하면 메모 저장 시 연결된 할 일이 완료 상태가 됩니다"
+    },
+    "post_to_team": {
+      "button": "팀에 게시",
+      "select_team": "팀 선택",
+      "only_work": "업무 카테고리 메모만 팀에 게시할 수 있습니다",
+      "already_posted": "이 메모는 이미 게시되었습니다",
+      "no_teams": "사용 가능한 팀이 없습니다",
+      "publish_daily": "오늘의 업무 메모를 팀에 게시",
+      "no_work_memos_hint": "오늘 업무 메모가 없어 게시할 수 없습니다.",
+      "publish_daily_success": "오늘의 업무 메모를 팀에 게시했습니다",
+      "publish_daily_error": "팀 게시에 실패했습니다"
+    },
+    "settings": {
+      "default_team": "기본 게시 팀",
+      "default_category": "기본 카테고리",
+      "default_team_help": "업무 카테고리 메모 작성 시 자동 선택되는 게시 팀"
+    },
+    "team_timeline": {
+      "empty": "이 팀에 게시된 업무 메모가 아직 없습니다",
+      "load_more": "더 불러오기"
+    }
   }
 }

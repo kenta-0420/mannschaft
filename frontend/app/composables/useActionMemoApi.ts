@@ -1,9 +1,11 @@
 import type {
   ActionMemo,
+  ActionMemoCategory,
   ActionMemoListResponse,
   ActionMemoRateLimitError,
   ActionMemoSettings,
   ActionMemoTag,
+  AvailableTeam,
   CreateActionMemoPayload,
   CreateTagPayload,
   ListActionMemoParams,
@@ -11,6 +13,8 @@ import type {
   MoodStatsResponse,
   PublishDailyPayload,
   PublishDailyResponse,
+  PublishDailyToTeamPayload,
+  PublishToTeamPayload,
   UpdateActionMemoPayload,
   UpdateTagPayload,
   WeeklySummary,
@@ -56,10 +60,25 @@ export function useActionMemoApi() {
     tags: RawTag[] | null
     created_at: string
     updated_at?: string
+    // Phase 3
+    category?: string | null
+    duration_minutes?: number | null
+    progress_rate?: number | null
+    completes_todo?: boolean | null
+    posted_team_id?: number | null
   }
 
   type RawSettings = {
     mood_enabled: boolean
+    // Phase 3
+    default_post_team_id?: number | null
+    default_category?: string | null
+  }
+
+  type RawAvailableTeam = {
+    id: number
+    name: string
+    is_default: boolean
   }
 
   type RawPublishDailyResponse = {
@@ -93,21 +112,46 @@ export function useActionMemoApi() {
       tags: (raw.tags ?? []).map(normalizeTag),
       createdAt: raw.created_at,
       updatedAt: raw.updated_at,
+      // Phase 3
+      category: (raw.category as ActionMemoCategory) ?? 'OTHER',
+      durationMinutes: raw.duration_minutes ?? null,
+      progressRate: raw.progress_rate ?? null,
+      completesTodo: raw.completes_todo ?? false,
+      postedTeamId: raw.posted_team_id ?? null,
     }
   }
 
   function normalizeSettings(raw: RawSettings): ActionMemoSettings {
-    return { moodEnabled: raw.mood_enabled }
+    return {
+      moodEnabled: raw.mood_enabled,
+      // Phase 3
+      defaultPostTeamId: raw.default_post_team_id ?? null,
+      defaultCategory: (raw.default_category as ActionMemoCategory) ?? 'OTHER',
+    }
+  }
+
+  function normalizeAvailableTeam(raw: RawAvailableTeam): AvailableTeam {
+    return {
+      id: raw.id,
+      name: raw.name,
+      isDefault: raw.is_default === true,
+    }
   }
 
   function buildCreateBody(payload: CreateActionMemoPayload) {
-    return {
+    const body: Record<string, unknown> = {
       content: payload.content,
-      memo_date: payload.memoDate ?? undefined,
-      mood: payload.mood ?? undefined,
-      related_todo_id: payload.relatedTodoId ?? undefined,
-      tag_ids: payload.tagIds ?? undefined,
     }
+    if (payload.memoDate !== undefined) body.memo_date = payload.memoDate
+    if (payload.mood !== undefined) body.mood = payload.mood
+    if (payload.relatedTodoId !== undefined) body.related_todo_id = payload.relatedTodoId
+    if (payload.tagIds !== undefined) body.tag_ids = payload.tagIds
+    // Phase 3
+    if (payload.category !== undefined) body.category = payload.category
+    if (payload.durationMinutes !== undefined) body.duration_minutes = payload.durationMinutes
+    if (payload.progressRate !== undefined) body.progress_rate = payload.progressRate
+    if (payload.completesTodo !== undefined) body.completes_todo = payload.completesTodo
+    return body
   }
 
   function buildUpdateBody(payload: UpdateActionMemoPayload) {
@@ -117,6 +161,11 @@ export function useActionMemoApi() {
     if (payload.mood !== undefined) body.mood = payload.mood
     if (payload.relatedTodoId !== undefined) body.related_todo_id = payload.relatedTodoId
     if (payload.tagIds !== undefined) body.tag_ids = payload.tagIds
+    // Phase 3
+    if (payload.category !== undefined) body.category = payload.category
+    if (payload.durationMinutes !== undefined) body.duration_minutes = payload.durationMinutes
+    if (payload.progressRate !== undefined) body.progress_rate = payload.progressRate
+    if (payload.completesTodo !== undefined) body.completes_todo = payload.completesTodo
     return body
   }
 
@@ -229,11 +278,16 @@ export function useActionMemoApi() {
     }
   }
 
-  async function updateSettings(payload: { moodEnabled: boolean }): Promise<ActionMemoSettings> {
+  async function updateSettings(payload: Partial<ActionMemoSettings>): Promise<ActionMemoSettings> {
+    const body: Record<string, unknown> = {}
+    if (payload.moodEnabled !== undefined) body.mood_enabled = payload.moodEnabled
+    // Phase 3
+    if (payload.defaultPostTeamId !== undefined) body.default_post_team_id = payload.defaultPostTeamId
+    if (payload.defaultCategory !== undefined) body.default_category = payload.defaultCategory
     try {
       const res = await api<{ data: RawSettings }>(SETTINGS_BASE, {
         method: 'PATCH',
-        body: { mood_enabled: payload.moodEnabled },
+        body,
       })
       return normalizeSettings(res.data)
     } catch (error) {
@@ -371,6 +425,58 @@ export function useActionMemoApi() {
     }
   }
 
+  // === Available Teams (Phase 3) ===
+
+  /**
+   * チーム投稿先候補一覧を取得する。
+   * {@code GET /api/v1/action-memos/available-teams}
+   */
+  async function fetchAvailableTeams(): Promise<AvailableTeam[]> {
+    try {
+      const res = await api<{ data: RawAvailableTeam[] }>(`${BASE}/available-teams`)
+      return (res.data ?? []).map(normalizeAvailableTeam)
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
+  // === Publish to team (Phase 3) ===
+
+  /**
+   * 個別メモをチームタイムラインに投稿する。
+   * {@code POST /api/v1/action-memos/{memoId}/publish-to-team}
+   */
+  async function publishToTeam(memoId: number, payload: PublishToTeamPayload): Promise<void> {
+    const body: Record<string, unknown> = {}
+    if (payload.teamId !== undefined) body.team_id = payload.teamId
+    if (payload.extraComment !== undefined) body.extra_comment = payload.extraComment
+    try {
+      await api(`${BASE}/${memoId}/publish-to-team`, {
+        method: 'POST',
+        body,
+      })
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
+  /**
+   * 今日の WORK メモを一括チーム投稿する。
+   * {@code POST /api/v1/action-memos/publish-daily-to-team}
+   */
+  async function publishDailyToTeam(payload: PublishDailyToTeamPayload = {}): Promise<void> {
+    const body: Record<string, unknown> = {}
+    if (payload.teamId !== undefined) body.team_id = payload.teamId
+    try {
+      await api(`${BASE}/publish-daily-to-team`, {
+        method: 'POST',
+        body,
+      })
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
   // === Tag CRUD (Phase 4) ===
 
   type RawTagResponse = {
@@ -499,5 +605,9 @@ export function useActionMemoApi() {
     addTagsToMemo,
     removeTagFromMemo,
     getMoodStats,
+    // Phase 3
+    fetchAvailableTeams,
+    publishToTeam,
+    publishDailyToTeam,
   }
 }

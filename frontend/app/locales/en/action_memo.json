@@ -118,5 +118,51 @@
   "mood_stats": {
     "title": "Mood Distribution",
     "total": "Total"
+  },
+  "phase3": {
+    "advanced_fields": "Advanced fields (optional)",
+    "category": {
+      "label": "Category",
+      "work": "Work",
+      "private": "Private",
+      "other": "Other"
+    },
+    "duration": {
+      "label": "Duration (minutes)",
+      "placeholder": "e.g. 30",
+      "unit": "min",
+      "quick_15": "15 min",
+      "quick_30": "30 min",
+      "quick_60": "1 hour",
+      "quick_120": "2 hours"
+    },
+    "progress_rate": {
+      "label": "Progress",
+      "requires_todo": "Linking a TODO is required to enter progress rate"
+    },
+    "completes_todo": {
+      "label": "Mark this TODO as completed",
+      "tooltip": "Checking this will complete the linked TODO when the memo is saved"
+    },
+    "post_to_team": {
+      "button": "Post to team",
+      "select_team": "Select team",
+      "only_work": "Only Work memos can be posted to a team",
+      "already_posted": "This memo has already been posted",
+      "no_teams": "No teams available",
+      "publish_daily": "Post today's Work memos to team",
+      "no_work_memos_hint": "Nothing to post because there are no Work memos today.",
+      "publish_daily_success": "Today's Work memos have been posted to team",
+      "publish_daily_error": "Failed to post to team"
+    },
+    "settings": {
+      "default_team": "Default post team",
+      "default_category": "Default category",
+      "default_team_help": "Team automatically selected when creating a Work memo"
+    },
+    "team_timeline": {
+      "empty": "No Work memos have been posted to this team yet",
+      "load_more": "Load more"
+    }
   }
 }

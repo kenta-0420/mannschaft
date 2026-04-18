@@ -118,5 +118,51 @@
   "mood_stats": {
     "title": "気分の分布",
     "total": "合計"
+  },
+  "phase3": {
+    "advanced_fields": "詳細入力（任意）",
+    "category": {
+      "label": "カテゴリ",
+      "work": "仕事",
+      "private": "プライベート",
+      "other": "その他"
+    },
+    "duration": {
+      "label": "実績時間（分）",
+      "placeholder": "例: 30",
+      "unit": "分",
+      "quick_15": "15分",
+      "quick_30": "30分",
+      "quick_60": "1時間",
+      "quick_120": "2時間"
+    },
+    "progress_rate": {
+      "label": "進捗率",
+      "requires_todo": "進捗率の入力には関連TODOの指定が必要です"
+    },
+    "completes_todo": {
+      "label": "この TODO を完了にする",
+      "tooltip": "チェックするとメモ保存時に TODO が完了状態になります"
+    },
+    "post_to_team": {
+      "button": "チームに投稿",
+      "select_team": "投稿先チームを選択",
+      "only_work": "仕事カテゴリのメモのみチーム投稿できます",
+      "already_posted": "このメモは既に投稿済みです",
+      "no_teams": "所属チームがありません",
+      "publish_daily": "今日のWORKメモをチームに投稿",
+      "no_work_memos_hint": "今日のWORKカテゴリのメモが0件のため投稿できません",
+      "publish_daily_success": "今日のWORKメモをチームに投稿しました",
+      "publish_daily_error": "チーム投稿に失敗しました"
+    },
+    "settings": {
+      "default_team": "デフォルト投稿先チーム",
+      "default_category": "デフォルトカテゴリ",
+      "default_team_help": "WORKカテゴリでメモを作成したとき、自動で選ばれる投稿先チーム"
+    },
+    "team_timeline": {
+      "empty": "このチームに投稿されたWORKメモはまだありません",
+      "load_more": "もっと読み込む"
+    }
   }
 }

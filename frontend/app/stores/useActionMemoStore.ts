@@ -3,12 +3,15 @@ import type {
   ActionMemo,
   ActionMemoSettings,
   ActionMemoTag,
+  AvailableTeam,
   CreateActionMemoPayload,
   CreateTagPayload,
   Mood,
   MoodStatsResponse,
   PublishDailyPayload,
   PublishDailyResponse,
+  PublishDailyToTeamPayload,
+  PublishToTeamPayload,
   UpdateActionMemoPayload,
   UpdateTagPayload,
   WeeklySummary,
@@ -55,6 +58,8 @@ interface ActionMemoStoreState {
   weeklyPage: number
   /** Phase 3: 週次まとめの総ページ数 */
   weeklyTotalPages: number
+  /** Phase 3: チーム投稿先候補一覧 */
+  availableTeams: AvailableTeam[]
 }
 
 export type ActionMemoErrorCode =
@@ -97,7 +102,7 @@ function todayJst(): string {
 export const useActionMemoStore = defineStore('actionMemo', {
   state: (): ActionMemoStoreState => ({
     memos: [],
-    settings: { moodEnabled: false },
+    settings: { moodEnabled: false, defaultPostTeamId: null, defaultCategory: 'OTHER' },
     tags: [],
     moodStats: null,
     loading: false,
@@ -110,6 +115,7 @@ export const useActionMemoStore = defineStore('actionMemo', {
     weeklyError: null,
     weeklyPage: 0,
     weeklyTotalPages: 0,
+    availableTeams: [],
   }),
 
   getters: {
@@ -149,6 +155,12 @@ export const useActionMemoStore = defineStore('actionMemo', {
         timelinePostId: null,
         tags: [],
         createdAt: nowIso(),
+        // Phase 3 フィールド
+        category: payload.category ?? 'OTHER',
+        durationMinutes: payload.durationMinutes ?? null,
+        progressRate: payload.progressRate ?? null,
+        completesTodo: payload.completesTodo ?? false,
+        postedTeamId: null,
       }
       this.memos.unshift(optimistic)
       this.error = null
@@ -310,7 +322,7 @@ export const useActionMemoStore = defineStore('actionMemo', {
     /**
      * 設定を更新する（UPSERT）。
      */
-    async updateSettings(patch: { moodEnabled: boolean }): Promise<void> {
+    async updateSettings(patch: Partial<ActionMemoSettings>): Promise<void> {
       this.error = null
       this.lastError = null
       try {
@@ -489,6 +501,68 @@ export const useActionMemoStore = defineStore('actionMemo', {
         this.weeklyError = 'action_memo.weekly.error'
       } finally {
         this.weeklyLoading = false
+      }
+    },
+
+    // === Phase 3: Available Teams ===
+
+    /**
+     * チーム投稿先候補を取得する。
+     * {@code GET /api/v1/action-memos/available-teams}
+     */
+    async fetchAvailableTeams(): Promise<void> {
+      this.error = null
+      this.lastError = null
+      try {
+        const api = useActionMemoApi()
+        this.availableTeams = await api.fetchAvailableTeams()
+      } catch (error) {
+        this._handleError(error)
+      }
+    },
+
+    // === Phase 3: Publish to team ===
+
+    /**
+     * 個別メモをチームタイムラインに投稿する。
+     * {@code POST /api/v1/action-memos/{memoId}/publish-to-team}
+     *
+     * <p>成功後: memos 配列内の該当メモの {@code postedTeamId} を楽観的に更新する。</p>
+     */
+    async publishToTeam(memoId: number, payload: PublishToTeamPayload): Promise<boolean> {
+      this.error = null
+      this.lastError = null
+      try {
+        const api = useActionMemoApi()
+        await api.publishToTeam(memoId, payload)
+        // 楽観的 UI: postedTeamId を更新
+        const idx = this.memos.findIndex((m) => m.id === memoId)
+        const existingMemo = idx >= 0 ? this.memos[idx] : undefined
+        if (existingMemo && payload.teamId) {
+          const updated = { ...existingMemo, postedTeamId: payload.teamId }
+          this.memos.splice(idx, 1, updated)
+        }
+        return true
+      } catch (error) {
+        this._handleError(error)
+        return false
+      }
+    },
+
+    /**
+     * 今日の WORK メモを一括チーム投稿する。
+     * {@code POST /api/v1/action-memos/publish-daily-to-team}
+     */
+    async publishDailyToTeam(payload: PublishDailyToTeamPayload = {}): Promise<boolean> {
+      this.error = null
+      this.lastError = null
+      try {
+        const api = useActionMemoApi()
+        await api.publishDailyToTeam(payload)
+        return true
+      } catch (error) {
+        this._handleError(error)
+        return false
       }
     },
 

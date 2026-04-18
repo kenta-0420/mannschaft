@@ -118,5 +118,51 @@
   "mood_stats": {
     "title": "Distribución del ánimo",
     "total": "Total"
+  },
+  "phase3": {
+    "advanced_fields": "Campos avanzados (opcional)",
+    "category": {
+      "label": "Categoría",
+      "work": "Trabajo",
+      "private": "Privado",
+      "other": "Otro"
+    },
+    "duration": {
+      "label": "Duración (minutos)",
+      "placeholder": "ej. 30",
+      "unit": "min",
+      "quick_15": "15 min",
+      "quick_30": "30 min",
+      "quick_60": "1 hora",
+      "quick_120": "2 horas"
+    },
+    "progress_rate": {
+      "label": "Progreso",
+      "requires_todo": "Se requiere vincular un TODO para ingresar el progreso"
+    },
+    "completes_todo": {
+      "label": "Marcar este TODO como completado",
+      "tooltip": "Al marcar esto se completará el TODO vinculado al guardar la nota"
+    },
+    "post_to_team": {
+      "button": "Publicar en equipo",
+      "select_team": "Seleccionar equipo",
+      "only_work": "Solo las notas de Trabajo pueden publicarse en un equipo",
+      "already_posted": "Esta nota ya ha sido publicada",
+      "no_teams": "No hay equipos disponibles",
+      "publish_daily": "Publicar notas de Trabajo de hoy en el equipo",
+      "no_work_memos_hint": "No hay notas de Trabajo hoy, nada que publicar.",
+      "publish_daily_success": "Las notas de Trabajo de hoy se han publicado en el equipo",
+      "publish_daily_error": "Error al publicar en el equipo"
+    },
+    "settings": {
+      "default_team": "Equipo de publicación predeterminado",
+      "default_category": "Categoría predeterminada",
+      "default_team_help": "Equipo seleccionado automáticamente al crear una nota de Trabajo"
+    },
+    "team_timeline": {
+      "empty": "Aún no hay notas de Trabajo publicadas en este equipo",
+      "load_more": "Cargar más"
+    }
   }
 }

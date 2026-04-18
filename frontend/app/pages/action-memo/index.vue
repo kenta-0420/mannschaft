@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { ActionMemo } from '~/types/actionMemo'
+import type { ActionMemo, ActionMemoCategory } from '~/types/actionMemo'
 
 /**
  * F02.5 行動メモ メイン画面（ワンショット入力 + 当日メモ一覧）。
  *
  * <p>設計書 §4.x の最頻アクセスページ。マウント時に当日メモと設定を取得する。
- * Phase 2 で編集ダイアログ・オフラインバナー・終業画面への導線を追加。</p>
+ * Phase 2 で編集ダイアログ・オフラインバナー・終業画面への導線を追加。
+ * Phase 3 でカテゴリ・実績時間・進捗率・チーム投稿フィールドを追加。</p>
  */
 
 definePageMeta({ middleware: 'auth' })
@@ -39,6 +40,29 @@ function sevenDaysAgo(): string {
 const editDialogOpen = ref(false)
 const editingMemo = ref<ActionMemo | null>(null)
 
+// === Phase 3: 追加フィールド（折りたたみパネル用）===
+const phase3PanelOpen = ref(false)
+const selectedCategory = ref<ActionMemoCategory>(store.settings.defaultCategory ?? 'OTHER')
+const selectedDuration = ref<number | null>(null)
+const selectedProgressRate = ref<number | null>(null)
+const selectedCompletesTodo = ref(false)
+const selectedTeamId = ref<number | null>(store.settings.defaultPostTeamId ?? null)
+
+// 設定のデフォルト値を反映
+watch(
+  () => store.settings,
+  (s) => {
+    selectedCategory.value = s.defaultCategory ?? 'OTHER'
+    if (selectedTeamId.value === null) {
+      selectedTeamId.value = s.defaultPostTeamId ?? null
+    }
+  },
+)
+
+// ActionMemoInput に渡す phase3 props（createMemo 呼び出し時に使用）
+// index.vue はシンプルな入力欄（ActionMemoInput）を流用しつつ、
+// phase3 フィールドは専用の折りたたみパネルで管理する。
+
 // === オフライン同期 ===
 function handleOnline() {
   // online 復帰時に自動 flush を試みる
@@ -46,7 +70,11 @@ function handleOnline() {
 }
 
 onMounted(async () => {
-  await Promise.all([store.fetchSettings(), store.fetchMemosForDate(today.value)])
+  await Promise.all([
+    store.fetchSettings(),
+    store.fetchMemosForDate(today.value),
+    store.fetchAvailableTeams(),
+  ])
   await store.refreshOfflineQueueCount()
   // mood_enabled = true の場合のみ mood-stats を取得
   if (store.isMoodEnabled) {
@@ -175,6 +203,55 @@ function goTags() {
     </div>
 
     <ActionMemoInput />
+
+    <!-- Phase 3: カテゴリ選択（常時表示） -->
+    <div class="flex items-center gap-2 px-1">
+      <span class="text-xs text-surface-500 dark:text-surface-400">
+        {{ t('action_memo.phase3.category.label') }}:
+      </span>
+      <CategorySelector
+        v-model="selectedCategory"
+        data-testid="index-category-selector"
+      />
+    </div>
+
+    <!-- Phase 3: 追加フィールド（折りたたみ） -->
+    <details
+      :open="phase3PanelOpen"
+      class="rounded-xl border border-surface-200 bg-surface-0 dark:border-surface-700 dark:bg-surface-800"
+      data-testid="phase3-details-panel"
+      @toggle="phase3PanelOpen = ($event.target as HTMLDetailsElement).open"
+    >
+      <summary
+        class="cursor-pointer select-none px-3 py-2 text-xs font-medium text-surface-500 hover:text-primary dark:text-surface-400"
+        data-testid="phase3-details-toggle"
+      >
+        <i class="pi pi-chevron-right mr-1 text-xs transition-transform" :class="phase3PanelOpen ? 'rotate-90' : ''" />
+        {{ t('action_memo.phase3.advanced_fields') }}
+      </summary>
+      <div class="flex flex-col gap-3 border-t border-surface-200 px-3 py-3 dark:border-surface-700">
+        <DurationInput
+          v-model="selectedDuration"
+          data-testid="index-duration-input"
+        />
+        <ProgressRateSlider
+          v-model="selectedProgressRate"
+          :related-todo-id="null"
+          data-testid="index-progress-rate-slider"
+        />
+        <TodoCompleteCheckbox
+          v-model="selectedCompletesTodo"
+          :related-todo-id="null"
+          data-testid="index-todo-complete-checkbox"
+        />
+        <TeamPostSwitch
+          v-model="selectedTeamId"
+          :category="selectedCategory"
+          :available-teams="store.availableTeams"
+          data-testid="index-team-post-switch"
+        />
+      </div>
+    </details>
 
     <!-- 気分集計（mood_enabled = true の場合のみ表示） -->
     <MoodChart

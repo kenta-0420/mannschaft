@@ -132,6 +132,33 @@ async function moveToTomorrow(todo: TodoItem) {
   }
 }
 
+// === Phase 3: チーム投稿 ===
+const publishingToTeam = ref(false)
+
+/** 今日の WORK メモが1件以上あるかチェック */
+const hasWorkMemos = computed(() =>
+  todaysMemos.value.some((m) => m.category === 'WORK'),
+)
+
+async function onPublishDailyToTeam() {
+  if (publishingToTeam.value) return
+  publishingToTeam.value = true
+  try {
+    const success = await store.publishDailyToTeam({
+      teamId: store.settings.defaultPostTeamId ?? undefined,
+    })
+    if (success) {
+      notification.success(t('action_memo.phase3.post_to_team.publish_daily_success'))
+    } else {
+      notification.error(t('action_memo.phase3.post_to_team.publish_daily_error'))
+    }
+  } catch {
+    notification.error(t('action_memo.phase3.post_to_team.publish_daily_error'))
+  } finally {
+    publishingToTeam.value = false
+  }
+}
+
 // === 終業投稿（publishDaily）===
 const extraComment = ref('')
 const publishing = ref(false)
@@ -164,6 +191,7 @@ onMounted(async () => {
   await Promise.all([
     store.fetchSettings(),
     store.fetchMemosForDate(today.value),
+    store.fetchAvailableTeams(),
     loadTodos(),
   ])
 })
@@ -293,6 +321,30 @@ onMounted(async () => {
           <i class="pi pi-plus text-xs" />
         </button>
       </div>
+    </section>
+
+    <!-- Phase 3: 今日のWORKメモをチーム投稿 -->
+    <section class="flex flex-col gap-2">
+      <h2 class="px-1 text-sm font-semibold text-surface-700 dark:text-surface-200">
+        {{ t('action_memo.phase3.post_to_team.publish_daily') }}
+      </h2>
+      <button
+        type="button"
+        class="w-full rounded-lg border border-primary px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+        :disabled="publishingToTeam || !hasWorkMemos"
+        data-testid="action-memo-closing-publish-to-team"
+        @click="onPublishDailyToTeam"
+      >
+        <i class="pi pi-users mr-2 text-xs" />
+        {{ t('action_memo.phase3.post_to_team.publish_daily') }}
+      </button>
+      <p
+        v-if="!hasWorkMemos"
+        class="px-1 text-xs text-surface-400 dark:text-surface-500"
+        data-testid="action-memo-closing-no-work-memos"
+      >
+        {{ t('action_memo.phase3.post_to_team.no_work_memos_hint') }}
+      </p>
     </section>
 
     <!-- 下部: extra_comment + 今日を締める -->
