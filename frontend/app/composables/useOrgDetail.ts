@@ -17,6 +17,8 @@ export interface OrgDetail {
   supporterCount?: number
   archivedAt: string | null
   createdAt: string
+  iconUrl: string | null
+  bannerUrl: string | null
 }
 
 export function useOrgDetail(orgId: Ref<number>) {

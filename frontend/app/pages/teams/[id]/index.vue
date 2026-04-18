@@ -82,6 +82,8 @@ interface TeamDetail {
   supporterCount?: number
   archivedAt: string | null
   createdAt: string
+  iconUrl: string | null
+  bannerUrl: string | null
 }
 
 const team = ref<TeamDetail | null>(null)
@@ -144,6 +146,17 @@ onMounted(async () => {
         @cancel-supporter="cancelSupporter"
         @show-cancel-confirm="showCancelSupporterConfirm = true"
         @show-leave-confirm="showLeaveConfirm = true"
+      />
+
+      <ProfileHeader
+        :icon-url="team.iconUrl"
+        :banner-url="team.bannerUrl"
+        :name="displayName"
+        scope="team"
+        :scope-id="teamId"
+        :editable="isAdminOrDeputy"
+        @icon-updated="(url) => { if (team) team.iconUrl = url }"
+        @banner-updated="(url) => { if (team) team.bannerUrl = url }"
       />
 
       <Tabs v-model:value="activeTab">

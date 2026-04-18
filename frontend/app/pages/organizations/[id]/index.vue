@@ -120,6 +120,17 @@ onMounted(async () => {
         />
       </div>
 
+      <ProfileHeader
+        :icon-url="org.iconUrl ?? null"
+        :banner-url="org.bannerUrl ?? null"
+        :name="org.nickname1 || org.name"
+        scope="organization"
+        :scope-id="orgId"
+        :editable="isAdminOrDeputy"
+        @icon-updated="(url) => { if (org) org.iconUrl = url }"
+        @banner-updated="(url) => { if (org) org.bannerUrl = url }"
+      />
+
       <Tabs v-model:value="activeTab">
         <TabList>
           <Tab :value="0"> ダッシュボード </Tab>
