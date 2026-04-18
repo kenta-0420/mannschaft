@@ -7,6 +7,7 @@ const authStore = useAuthStore()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
 const dashboardStore = useDashboardStore()
+const appearanceStore = useAppearanceStore()
 const greeting = useGreeting()
 const timedMessage = useTimedMessage()
 
@@ -44,11 +45,19 @@ onMounted(async () => {
     <PageLoading v-if="loading" />
     <div v-else>
       <!-- 挨拶ヘッダー -->
-      <div class="mb-6">
-        <h1 class="text-2xl font-bold text-surface-800 dark:text-surface-100">
-          {{ greeting }}、{{ authStore.currentUser?.displayName ?? 'ユーザー' }}さん
-        </h1>
-        <p class="mt-1 text-sm text-surface-500">{{ timedMessage }}</p>
+      <div class="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-surface-800 dark:text-surface-100">
+            {{ greeting }}、{{ authStore.currentUser?.displayName ?? 'ユーザー' }}さん
+          </h1>
+          <p class="mt-1 text-sm text-surface-500">{{ timedMessage }}</p>
+        </div>
+        <!-- 背景色クイック設定（ライトモード時のみ） -->
+        <ClientOnly>
+          <div v-if="!appearanceStore.isDark" class="flex shrink-0 items-center gap-2 pt-1">
+            <BackgroundColorPicker />
+          </div>
+        </ClientOnly>
       </div>
 
       <!-- データウィジェット群 (広告込み) -->

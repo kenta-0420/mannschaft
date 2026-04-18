@@ -1,0 +1,17 @@
+{
+  "appearance": {
+    "bgColorLabel": "Background Color",
+    "color": {
+      "cream": "Cream",
+      "white": "White",
+      "gray": "Light Gray",
+      "lavender": "Lavender",
+      "mint": "Mint",
+      "sky": "Sky",
+      "peach": "Peach",
+      "sand": "Sand",
+      "sage": "Sage",
+      "slate": "Slate"
+    }
+  }
+}

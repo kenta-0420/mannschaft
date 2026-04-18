@@ -118,6 +118,7 @@ export default defineNuxtConfig({
           'ja/friends.json',
           'ja/announcement.json',
           'ja/profile_media.json',
+          'ja/appearance.json',
         ],
       },
       {
@@ -137,6 +138,7 @@ export default defineNuxtConfig({
           'en/friends.json',
           'en/announcement.json',
           'en/profile_media.json',
+          'en/appearance.json',
         ],
       },
       {
@@ -156,6 +158,7 @@ export default defineNuxtConfig({
           'zh/friends.json',
           'zh/announcement.json',
           'zh/profile_media.json',
+          'zh/appearance.json',
         ],
       },
       {
@@ -175,6 +178,7 @@ export default defineNuxtConfig({
           'ko/friends.json',
           'ko/announcement.json',
           'ko/profile_media.json',
+          'ko/appearance.json',
         ],
       },
       {
@@ -194,6 +198,7 @@ export default defineNuxtConfig({
           'es/friends.json',
           'es/announcement.json',
           'es/profile_media.json',
+          'es/appearance.json',
         ],
       },
       {
@@ -213,6 +218,7 @@ export default defineNuxtConfig({
           'de/friends.json',
           'de/announcement.json',
           'de/profile_media.json',
+          'de/appearance.json',
         ],
       },
     ],
