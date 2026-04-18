@@ -290,6 +290,7 @@ public class TeamService {
                 team.getNickname1(), team.getNickname2(), team.getTemplate(),
                 team.getPrefecture(), team.getCity(), team.getVisibility().name(),
                 team.getSupporterEnabled(), team.getVersion(),
-                memberCount, team.getArchivedAt(), team.getCreatedAt());
+                memberCount, team.getIconUrl(), team.getBannerUrl(),
+                team.getArchivedAt(), team.getCreatedAt());
     }
 }

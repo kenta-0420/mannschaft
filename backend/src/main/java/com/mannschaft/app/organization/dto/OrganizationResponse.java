@@ -26,6 +26,8 @@ public class OrganizationResponse {
     private final Boolean supporterEnabled;
     private final Long version;
     private final int memberCount;
+    private final String iconUrl;
+    private final String bannerUrl;
     private final LocalDateTime archivedAt;
     private final LocalDateTime createdAt;
 }
