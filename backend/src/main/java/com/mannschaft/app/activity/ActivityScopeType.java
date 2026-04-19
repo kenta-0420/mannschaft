@@ -5,5 +5,7 @@ package com.mannschaft.app.activity;
  */
 public enum ActivityScopeType {
     TEAM,
-    ORGANIZATION
+    ORGANIZATION,
+    /** F04.10 組織委員会スコープ */
+    COMMITTEE
 }

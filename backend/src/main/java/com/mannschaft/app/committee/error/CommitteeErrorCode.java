@@ -48,7 +48,13 @@ public enum CommitteeErrorCode implements ErrorCode {
     INVITATION_EXPIRED("COMMITTEE_INVITATION_EXPIRED", "招集状の有効期限が切れています", Severity.WARN),
 
     /** 招集トークンが無効 */
-    INVITATION_TOKEN_INVALID("COMMITTEE_INVITATION_TOKEN_INVALID", "招集トークンが無効です", Severity.WARN);
+    INVITATION_TOKEN_INVALID("COMMITTEE_INVITATION_TOKEN_INVALID", "招集トークンが無効です", Severity.WARN),
+
+    /** 議事録は既にCONFIRMED済み */
+    MINUTES_ALREADY_CONFIRMED("COMMITTEE_MINUTES_ALREADY_CONFIRMED", "議事録は既に確定済みです", Severity.WARN),
+
+    /** 議事録が委員会スコープでない */
+    MINUTES_NOT_COMMITTEE_SCOPE("COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE", "指定された活動記録は委員会スコープではありません", Severity.WARN);
 
     private final String code;
     private final String message;
