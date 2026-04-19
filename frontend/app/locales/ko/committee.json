@@ -1,0 +1,71 @@
+{
+  "committee": {
+    "label": "위원회",
+    "list": {
+      "title": "위원회 목록",
+      "empty": "아직 위원회가 없습니다",
+      "create": "위원회 설립하기"
+    },
+    "status": {
+      "DRAFT": "준비 중",
+      "ACTIVE": "활동 중",
+      "CLOSED": "활동 종료",
+      "ARCHIVED": "아카이브",
+      "CANCELLED_DRAFT": "설립 취소"
+    },
+    "role": {
+      "CHAIR": "위원장",
+      "VICE_CHAIR": "부위원장",
+      "SECRETARY": "서기",
+      "MEMBER": "위원"
+    },
+    "field": {
+      "name": "위원회명",
+      "description": "설명",
+      "purpose_tag": "목적 태그",
+      "visibility_to_org": "조직 공개 설정",
+      "start_date": "시작일",
+      "end_date": "종료일",
+      "member_count": "멤버 수"
+    },
+    "visibility": {
+      "HIDDEN": "비공개",
+      "NAME_ONLY": "이름만 공개",
+      "NAME_AND_PURPOSE": "이름과 목적 공개"
+    },
+    "detail": {
+      "members": "멤버",
+      "invite": "멤버 초대하기",
+      "distributions": "전달 이력",
+      "activate": "활동 시작",
+      "close": "활동 종료",
+      "archive": "아카이브",
+      "leave": "위원회 탈퇴",
+      "remove_member": "멤버 해임"
+    },
+    "distributions": {
+      "title": "전달 이력",
+      "empty": "전달 이력이 없습니다",
+      "content_type": "콘텐츠 유형",
+      "target_scope": "대상 범위",
+      "created_at": "생성일시",
+      "confirmation_mode": "확인 모드",
+      "announced": "공지됨"
+    },
+    "invitation": {
+      "accept": "참여하기",
+      "decline": "거절하기",
+      "accepted": "위원회에 참여했습니다",
+      "declined": "초대를 거절했습니다",
+      "expired": "이 초대장은 만료되었습니다",
+      "invalid": "유효하지 않은 초대장입니다",
+      "send": "초대장 보내기",
+      "cancel": "초대 취소",
+      "proposed_role": "제안 역할",
+      "invitee": "초대 대상"
+    },
+    "create_dialog": {
+      "title": "위원회 설립하기"
+    }
+  }
+}

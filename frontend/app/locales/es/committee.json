@@ -1,0 +1,71 @@
+{
+  "committee": {
+    "label": "Comité",
+    "list": {
+      "title": "Lista de comités",
+      "empty": "Aún no hay comités",
+      "create": "Establecer un comité"
+    },
+    "status": {
+      "DRAFT": "Borrador",
+      "ACTIVE": "Activo",
+      "CLOSED": "Cerrado",
+      "ARCHIVED": "Archivado",
+      "CANCELLED_DRAFT": "Cancelado"
+    },
+    "role": {
+      "CHAIR": "Presidente",
+      "VICE_CHAIR": "Vicepresidente",
+      "SECRETARY": "Secretario",
+      "MEMBER": "Miembro"
+    },
+    "field": {
+      "name": "Nombre del comité",
+      "description": "Descripción",
+      "purpose_tag": "Etiqueta de propósito",
+      "visibility_to_org": "Visibilidad en la organización",
+      "start_date": "Fecha de inicio",
+      "end_date": "Fecha de fin",
+      "member_count": "Miembros"
+    },
+    "visibility": {
+      "HIDDEN": "Oculto",
+      "NAME_ONLY": "Solo nombre",
+      "NAME_AND_PURPOSE": "Nombre y propósito"
+    },
+    "detail": {
+      "members": "Miembros",
+      "invite": "Invitar miembros",
+      "distributions": "Historial de distribución",
+      "activate": "Activar",
+      "close": "Cerrar",
+      "archive": "Archivar",
+      "leave": "Abandonar el comité",
+      "remove_member": "Remover miembro"
+    },
+    "distributions": {
+      "title": "Historial de distribución",
+      "empty": "No hay historial de distribución",
+      "content_type": "Tipo de contenido",
+      "target_scope": "Alcance objetivo",
+      "created_at": "Creado el",
+      "confirmation_mode": "Modo de confirmación",
+      "announced": "Anunciado"
+    },
+    "invitation": {
+      "accept": "Unirse",
+      "decline": "Rechazar",
+      "accepted": "Te has unido al comité",
+      "declined": "Has rechazado la invitación",
+      "expired": "Esta invitación ha expirado",
+      "invalid": "Invitación inválida",
+      "send": "Enviar invitación",
+      "cancel": "Cancelar invitación",
+      "proposed_role": "Rol propuesto",
+      "invitee": "Invitado"
+    },
+    "create_dialog": {
+      "title": "Establecer un comité"
+    }
+  }
+}
