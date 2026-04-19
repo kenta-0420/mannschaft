@@ -11,7 +11,7 @@ export default defineNuxtConfig({
       viewport: 'width=device-width, initial-scale=1',
       link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
     },
-    pageTransition: { name: 'page-fade' },
+    pageTransition: { name: 'page-fade', mode: 'out-in' },
   },
   future: {
     compatibilityVersion: 4,
