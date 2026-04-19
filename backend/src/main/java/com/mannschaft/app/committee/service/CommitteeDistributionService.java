@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.committee.dto.CommitteeDistributeRequest;
 import com.mannschaft.app.committee.entity.CommitteeDistributionLogEntity;
 import com.mannschaft.app.committee.entity.CommitteeEntity;
+import com.mannschaft.app.committee.entity.CommitteeMemberEntity;
 import com.mannschaft.app.committee.entity.CommitteeRole;
 import com.mannschaft.app.committee.entity.CommitteeStatus;
 import com.mannschaft.app.committee.entity.ConfirmationMode;
@@ -15,6 +16,14 @@ import com.mannschaft.app.committee.repository.CommitteeRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.membership.ScopeType;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
+import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
+import com.mannschaft.app.social.announcement.AnnouncementFeedService;
+import com.mannschaft.app.social.announcement.AnnouncementScopeType;
+import com.mannschaft.app.social.announcement.AnnouncementSourceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -22,7 +31,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -50,6 +58,8 @@ public class CommitteeDistributionService {
     private final CommitteeDistributionLogRepository distributionLogRepository;
     private final AccessControlService accessControlService;
     private final ObjectMapper objectMapper;
+    private final AnnouncementFeedService announcementFeedService;
+    private final ConfirmableNotificationService confirmableNotificationService;
 
     // ========================================
     // 伝達処理
@@ -95,34 +105,81 @@ public class CommitteeDistributionService {
         }
 
         // 4. お知らせフィード生成
-        // TODO: Phase 14-5 で AnnouncementFeedService 連携を実装。
-        //       現時点では AnnouncementScopeType に COMMITTEE が存在しないため、
-        //       announcementEnabled = true でも空リストで処理を継続する。
-        List<Long> feedIds = Collections.emptyList();
-        if (request.getAnnouncementEnabled()) {
-            log.info("委員会伝達: お知らせ配信は Phase 14-5 で実装予定。committeeId={}, contentType={}",
-                    committeeId, request.getContentType());
-            // TODO: Phase 14-5 — AnnouncementScopeType.COMMITTEE 追加後に以下を実装
-            // AnnouncementFeedEntity feed = announcementFeedService.createFromSource(
-            //     AnnouncementSourceType.COMMITTEE_DISTRIBUTION, contentId,
-            //     AnnouncementScopeType.COMMITTEE, committeeId, currentUserId);
-            // feedIds = List.of(feed.getId());
+        Long savedDistributionLogId = null; // 先に保存してからフィード生成に使う（後で置き換え）
+        List<Long> feedIds;
+        if (Boolean.TRUE.equals(request.getAnnouncementEnabled())) {
+            // contentType に応じてソース種別を決定する
+            // CUSTOM_MESSAGE → COMMITTEE_MINUTES、それ以外（集計結果等）→ COMMITTEE_DECISION
+            AnnouncementSourceType sourceType = "CUSTOM_MESSAGE".equals(request.getContentType())
+                    ? AnnouncementSourceType.COMMITTEE_MINUTES
+                    : AnnouncementSourceType.COMMITTEE_DECISION;
+
+            // 伝達ログを先に保存してソース ID として使う
+            CommitteeDistributionLogEntity tempLog = CommitteeDistributionLogEntity.builder()
+                    .committeeId(committeeId)
+                    .contentType(request.getContentType())
+                    .contentId(request.getContentId())
+                    .customTitle(request.getCustomTitle())
+                    .customBody(request.getCustomBody())
+                    .targetScope(request.getTargetScope())
+                    .announcementEnabled(request.getAnnouncementEnabled())
+                    .confirmationMode(request.getConfirmationMode())
+                    .confirmableNotificationId(null)
+                    .announcementFeedIds(null)
+                    .createdBy(currentUserId)
+                    .build();
+            CommitteeDistributionLogEntity preSaved = distributionLogRepository.save(tempLog);
+            savedDistributionLogId = preSaved.getId();
+
+            AnnouncementFeedEntity feed = announcementFeedService.createFromSource(
+                    sourceType,
+                    savedDistributionLogId,
+                    AnnouncementScopeType.COMMITTEE,
+                    committeeId,
+                    currentUserId);
+            feedIds = List.of(feed.getId());
+            log.info("委員会伝達: お知らせフィード生成完了。committeeId={}, feedId={}, sourceType={}",
+                    committeeId, feed.getId(), sourceType);
+        } else {
+            feedIds = List.of();
         }
 
         // 5. 確認通知生成
-        // TODO: Phase 14-5 で ConfirmableNotificationService 連携を実装。
-        //       委員会メンバーを受信者として渡す処理（委員会 → 組織方向の配信も含む）が必要。
         Long confirmableNotificationId = null;
         if (!ConfirmationMode.NONE.equals(request.getConfirmationMode())) {
-            log.info("委員会伝達: 確認通知は Phase 14-5 で実装予定。committeeId={}, mode={}",
-                    committeeId, request.getConfirmationMode());
-            // TODO: Phase 14-5 — 配信先スコープに応じた受信者リストを取得してから実装
-            // ConfirmableNotificationEntity confirmable = confirmableNotificationService.send(
-            //     ScopeType.ORGANIZATION, committee.getOrganizationId(),
-            //     title, body, ConfirmableNotificationPriority.NORMAL,
-            //     request.getConfirmationDeadlineAt(), null, null, null, null,
-            //     currentUserId, recipientUserIds);
-            // confirmableNotificationId = confirmable.getId();
+            // 現役の委員会メンバー全員を受信者とする
+            List<Long> recipientUserIds = committeeMemberRepository
+                    .findByCommitteeIdAndLeftAtIsNull(committeeId)
+                    .stream()
+                    .map(CommitteeMemberEntity::getUserId)
+                    .toList();
+
+            if (!recipientUserIds.isEmpty()) {
+                // タイトル・本文はカスタムタイトル／本文を優先する
+                String notifTitle = request.getCustomTitle() != null && !request.getCustomTitle().isBlank()
+                        ? request.getCustomTitle()
+                        : committee.getName() + " より伝達があります";
+                String notifBody = request.getCustomBody();
+
+                ConfirmableNotificationEntity confirmable = confirmableNotificationService.send(
+                        ScopeType.COMMITTEE,
+                        committeeId,
+                        notifTitle,
+                        notifBody,
+                        ConfirmableNotificationPriority.NORMAL,
+                        request.getConfirmationDeadlineAt(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        currentUserId,
+                        recipientUserIds);
+                confirmableNotificationId = confirmable.getId();
+                log.info("委員会伝達: 確認通知生成完了。committeeId={}, notificationId={}, recipientCount={}",
+                        committeeId, confirmableNotificationId, recipientUserIds.size());
+            } else {
+                log.warn("委員会伝達: 確認通知の受信者が存在しません。committeeId={}", committeeId);
+            }
         }
 
         // 6. announcement_feed_ids を JSON 文字列に変換
@@ -136,22 +193,31 @@ public class CommitteeDistributionService {
             }
         }
 
-        // 7. 伝達処理ログを構築して保存
-        CommitteeDistributionLogEntity log_entity = CommitteeDistributionLogEntity.builder()
-                .committeeId(committeeId)
-                .contentType(request.getContentType())
-                .contentId(request.getContentId())
-                .customTitle(request.getCustomTitle())
-                .customBody(request.getCustomBody())
-                .targetScope(request.getTargetScope())
-                .announcementEnabled(request.getAnnouncementEnabled())
-                .confirmationMode(request.getConfirmationMode())
-                .confirmableNotificationId(confirmableNotificationId)
-                .announcementFeedIds(feedIdsJson)
-                .createdBy(currentUserId)
-                .build();
-
-        CommitteeDistributionLogEntity saved = distributionLogRepository.save(log_entity);
+        // 7. 伝達処理ログを保存（お知らせ有効時は pre-save 済みログを更新、無効時は新規保存）
+        CommitteeDistributionLogEntity saved;
+        if (savedDistributionLogId != null) {
+            // お知らせ有効: step 4 で事前保存したログに生成 ID を反映して更新する
+            CommitteeDistributionLogEntity preSavedLog = distributionLogRepository.findById(savedDistributionLogId)
+                    .orElseThrow(() -> new BusinessException(CommitteeErrorCode.NOT_FOUND));
+            preSavedLog.applyGeneratedIds(feedIdsJson, confirmableNotificationId);
+            saved = distributionLogRepository.save(preSavedLog);
+        } else {
+            // お知らせ無効: 新規保存
+            CommitteeDistributionLogEntity logEntity = CommitteeDistributionLogEntity.builder()
+                    .committeeId(committeeId)
+                    .contentType(request.getContentType())
+                    .contentId(request.getContentId())
+                    .customTitle(request.getCustomTitle())
+                    .customBody(request.getCustomBody())
+                    .targetScope(request.getTargetScope())
+                    .announcementEnabled(request.getAnnouncementEnabled())
+                    .confirmationMode(request.getConfirmationMode())
+                    .confirmableNotificationId(confirmableNotificationId)
+                    .announcementFeedIds(feedIdsJson)
+                    .createdBy(currentUserId)
+                    .build();
+            saved = distributionLogRepository.save(logEntity);
+        }
 
         log.info("委員会伝達処理完了: distributionLogId={}, committeeId={}, contentType={}, createdBy={}",
                 saved.getId(), committeeId, request.getContentType(), currentUserId);

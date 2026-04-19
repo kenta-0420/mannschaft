@@ -15,6 +15,8 @@ package com.mannschaft.app.social.announcement;
  *   <li>{@link #TIMELINE_POST} — タイムライン投稿（F04.1）</li>
  *   <li>{@link #CIRCULATION_DOCUMENT} — 回覧板（F05.2）</li>
  *   <li>{@link #SURVEY} — アンケート・投票（F05.4）</li>
+ *   <li>{@link #COMMITTEE_DECISION} — 委員会決議（F04.10）</li>
+ *   <li>{@link #COMMITTEE_MINUTES} — 委員会議事録（F04.10）</li>
  * </ul>
  */
 public enum AnnouncementSourceType {
@@ -32,5 +34,11 @@ public enum AnnouncementSourceType {
     CIRCULATION_DOCUMENT,
 
     /** アンケート・投票 */
-    SURVEY
+    SURVEY,
+
+    /** 委員会決議（委員会伝達コンテンツ） */
+    COMMITTEE_DECISION,
+
+    /** 委員会議事録（委員会伝達コンテンツ） */
+    COMMITTEE_MINUTES
 }

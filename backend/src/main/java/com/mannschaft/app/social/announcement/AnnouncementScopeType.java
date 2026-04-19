@@ -11,6 +11,7 @@ package com.mannschaft.app.social.announcement;
  * <ul>
  *   <li>{@link #TEAM} — チームスコープ（teams.id を scope_id として参照）</li>
  *   <li>{@link #ORGANIZATION} — 組織スコープ（organizations.id を scope_id として参照）</li>
+ *   <li>{@link #COMMITTEE} — 委員会スコープ（committees.id を scope_id として参照）</li>
  * </ul>
  */
 public enum AnnouncementScopeType {
@@ -19,5 +20,8 @@ public enum AnnouncementScopeType {
     TEAM,
 
     /** 組織スコープ */
-    ORGANIZATION
+    ORGANIZATION,
+
+    /** 委員会スコープ */
+    COMMITTEE
 }

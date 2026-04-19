@@ -82,4 +82,16 @@ public class CommitteeDistributionLogEntity extends BaseEntity {
     /** 伝達操作者（FK → users、ON DELETE SET NULL） */
     @Column
     private Long createdBy;
+
+    /**
+     * お知らせフィード ID リスト（JSON 文字列）と確認通知 ID を後付けで設定する。
+     * お知らせフィード生成後に呼び出す。
+     *
+     * @param announcementFeedIds お知らせフィード ID の JSON 文字列
+     * @param confirmableNotificationId 確認通知 ID
+     */
+    public void applyGeneratedIds(String announcementFeedIds, Long confirmableNotificationId) {
+        this.announcementFeedIds = announcementFeedIds;
+        this.confirmableNotificationId = confirmableNotificationId;
+    }
 }

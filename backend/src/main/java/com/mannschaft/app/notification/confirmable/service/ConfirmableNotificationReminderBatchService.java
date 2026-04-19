@@ -224,6 +224,7 @@ public class ConfirmableNotificationReminderBatchService {
             case TEAM -> NotificationScopeType.TEAM;
             case ORGANIZATION -> NotificationScopeType.ORGANIZATION;
             case PLATFORM -> NotificationScopeType.SYSTEM;
+            case COMMITTEE -> NotificationScopeType.COMMITTEE;
         };
     }
 

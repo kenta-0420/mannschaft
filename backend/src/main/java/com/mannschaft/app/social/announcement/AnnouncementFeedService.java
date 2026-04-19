@@ -10,6 +10,9 @@ import com.mannschaft.app.cms.PostPriority;
 import com.mannschaft.app.cms.Visibility;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
+import com.mannschaft.app.committee.entity.CommitteeDistributionLogEntity;
+import com.mannschaft.app.committee.repository.CommitteeDistributionLogRepository;
+import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.survey.entity.SurveyEntity;
@@ -85,6 +88,10 @@ public class AnnouncementFeedService {
     private final TimelinePostRepository timelinePostRepository;
     private final CirculationDocumentRepository circulationDocumentRepository;
     private final SurveyRepository surveyRepository;
+
+    // ── 委員会関連リポジトリ（COMMITTEE スコープサポート用） ──
+    private final CommitteeDistributionLogRepository committeeDistributionLogRepository;
+    private final CommitteeMemberRepository committeeMemberRepository;
 
     // ═════════════════════════════════════════════════════════════
     // 2.1 一覧取得
@@ -192,9 +199,11 @@ public class AnnouncementFeedService {
                     throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_003);
                 });
 
-        // ── 権限チェック: 著者本人または ADMIN+ ──
+        // ── 権限チェック: 著者本人または ADMIN+（COMMITTEE スコープはメンバーチェック） ──
         boolean isAuthor = requestUserId.equals(sourceInfo.authorId());
-        boolean isAdmin = accessControlService.isAdminOrAbove(requestUserId, scopeId, scopeType.name());
+        boolean isAdmin = AnnouncementScopeType.COMMITTEE.equals(scopeType)
+                ? committeeMemberRepository.existsByCommitteeIdAndUserIdAndLeftAtIsNull(scopeId, requestUserId)
+                : accessControlService.isAdminOrAbove(requestUserId, scopeId, scopeType.name());
         if (!isAuthor && !isAdmin) {
             throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_002);
         }
@@ -231,10 +240,13 @@ public class AnnouncementFeedService {
         AnnouncementFeedEntity entity = feedRepository.findById(announcementId)
                 .orElseThrow(() -> new BusinessException(AnnouncementErrorCode.ANNOUNCE_001));
 
-        // 著者本人または ADMIN+ のみ削除可
+        // 著者本人または ADMIN+（COMMITTEE スコープはメンバーチェック） のみ削除可
         boolean isAuthor = requestUserId.equals(entity.getAuthorId());
-        boolean isAdmin = accessControlService.isAdminOrAbove(
-                requestUserId, entity.getScopeId(), entity.getScopeType().name());
+        boolean isAdmin = AnnouncementScopeType.COMMITTEE.equals(entity.getScopeType())
+                ? committeeMemberRepository.existsByCommitteeIdAndUserIdAndLeftAtIsNull(
+                        entity.getScopeId(), requestUserId)
+                : accessControlService.isAdminOrAbove(
+                        requestUserId, entity.getScopeId(), entity.getScopeType().name());
         if (!isAuthor && !isAdmin) {
             throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_002);
         }
@@ -263,8 +275,13 @@ public class AnnouncementFeedService {
         AnnouncementFeedEntity entity = feedRepository.findById(announcementId)
                 .orElseThrow(() -> new BusinessException(AnnouncementErrorCode.ANNOUNCE_001));
 
-        // ADMIN+ のみピン留め操作可能
-        if (!accessControlService.isAdminOrAbove(requestUserId, entity.getScopeId(), entity.getScopeType().name())) {
+        // ADMIN+（COMMITTEE スコープはメンバーチェック） のみピン留め操作可能
+        boolean canPin = AnnouncementScopeType.COMMITTEE.equals(entity.getScopeType())
+                ? committeeMemberRepository.existsByCommitteeIdAndUserIdAndLeftAtIsNull(
+                        entity.getScopeId(), requestUserId)
+                : accessControlService.isAdminOrAbove(
+                        requestUserId, entity.getScopeId(), entity.getScopeType().name());
+        if (!canPin) {
             throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_002);
         }
 
@@ -457,6 +474,8 @@ public class AnnouncementFeedService {
             case TIMELINE_POST -> resolveTimelinePost(scopeType, scopeId, sourceId);
             case CIRCULATION_DOCUMENT -> resolveCirculationDocument(scopeType, scopeId, sourceId);
             case SURVEY -> resolveSurvey(scopeType, scopeId, sourceId);
+            case COMMITTEE_DECISION, COMMITTEE_MINUTES ->
+                    resolveCommitteeDistributionLog(scopeType, scopeId, sourceId, requestUserId);
         };
     }
 
@@ -490,10 +509,11 @@ public class AnnouncementFeedService {
             throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_007);
         }
 
-        // スコープ一致検証
+        // スコープ一致検証（ブログ記事は TEAM / ORGANIZATION スコープのみ対応）
         boolean scopeMatches = switch (scopeType) {
             case TEAM -> scopeId.equals(post.getTeamId());
             case ORGANIZATION -> scopeId.equals(post.getOrganizationId());
+            case COMMITTEE -> false; // ブログ記事は委員会スコープ不可
         };
         if (!scopeMatches) {
             throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_005);
@@ -563,12 +583,13 @@ public class AnnouncementFeedService {
         TimelinePostEntity post = timelinePostRepository.findById(sourceId)
                 .orElseThrow(() -> new BusinessException(AnnouncementErrorCode.ANNOUNCE_006));
 
-        // スコープ一致検証
+        // スコープ一致検証（タイムライン投稿は TEAM / ORGANIZATION スコープのみ対応）
         boolean scopeMatches = switch (scopeType) {
             case TEAM -> scopeId.equals(post.getScopeId())
                     && "TEAM".equals(post.getScopeType().name());
             case ORGANIZATION -> scopeId.equals(post.getScopeId())
                     && "ORGANIZATION".equals(post.getScopeType().name());
+            case COMMITTEE -> false; // タイムライン投稿は委員会スコープ不可
         };
         if (!scopeMatches) {
             throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_005);
@@ -651,6 +672,46 @@ public class AnnouncementFeedService {
         // アンケート: 常に NORMAL（設計書 §3）
         return new SourceInfo(survey.getCreatedBy(), titleCache, excerptCache, "NORMAL", "MEMBERS_ONLY",
                 survey.getExpiresAt());
+    }
+
+    /**
+     * 委員会配信ログのソース情報を解決する（COMMITTEE_DECISION / COMMITTEE_MINUTES）。
+     *
+     * <p>
+     * スコープは COMMITTEE 固定。sourceId = committee_distribution_logs.id を参照する。
+     * 委員会配信ログには deleted_at カラムが存在しないため、sourceDeletedAt は null 固定。
+     * priority は URGENT 固定（委員会からの伝達は常に重要と扱う）。
+     * </p>
+     *
+     * @param scopeType     リクエストスコープ種別（COMMITTEE 以外は ANNOUNCE_005）
+     * @param scopeId       委員会 ID
+     * @param sourceId      委員会配信ログ ID
+     * @param requestUserId リクエストユーザー ID
+     * @return ソース情報レコード
+     */
+    private SourceInfo resolveCommitteeDistributionLog(
+            AnnouncementScopeType scopeType,
+            Long scopeId,
+            Long sourceId,
+            Long requestUserId) {
+
+        CommitteeDistributionLogEntity log = committeeDistributionLogRepository.findById(sourceId)
+                .orElseThrow(() -> new BusinessException(AnnouncementErrorCode.ANNOUNCE_006));
+
+        // COMMITTEE スコープ以外からの参照は拒否
+        if (!AnnouncementScopeType.COMMITTEE.equals(scopeType) || !scopeId.equals(log.getCommitteeId())) {
+            throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_005);
+        }
+
+        // タイトル: customTitle → contentType で代替
+        String titleCache = log.getCustomTitle() != null && !log.getCustomTitle().isBlank()
+                ? truncate(log.getCustomTitle(), MAX_TITLE_CACHE_LENGTH)
+                : truncate(log.getContentType(), MAX_TITLE_CACHE_LENGTH);
+
+        String excerptCache = resolveExcerpt(null, log.getCustomBody());
+
+        // 委員会からの伝達は常に URGENT（重要連絡）
+        return new SourceInfo(log.getCreatedBy(), titleCache, excerptCache, "URGENT", "MEMBERS_ONLY", null);
     }
 
     // ═════════════════════════════════════════════════════════════

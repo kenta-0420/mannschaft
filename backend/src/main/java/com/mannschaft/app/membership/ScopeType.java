@@ -6,5 +6,6 @@ package com.mannschaft.app.membership;
 public enum ScopeType {
     PLATFORM,
     TEAM,
-    ORGANIZATION
+    ORGANIZATION,
+    COMMITTEE
 }
