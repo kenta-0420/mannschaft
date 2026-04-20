@@ -484,6 +484,18 @@
     "force_unlocked": "Force-unlocked",
     "force_unlock_title": "Force unlock",
     "force_unlock_reason_placeholder": "Reason (100 chars max)",
-    "locked_todo_count": "{count} locked"
+    "locked_todo_count": "{count} locked",
+    "force_unlock_description": "Force unlock the milestone '{title}'.",
+    "force_unlock_reason_label": "Reason",
+    "force_unlock_warning": "Force unlock is recorded in the audit log. Use only for operational emergencies.",
+    "force_unlock_submit": "Execute force unlock",
+    "completion_mode_label": "Completion mode",
+    "initialize_gate_button": "Initialize gate",
+    "initialize_gate_title": "Enable gate feature",
+    "initialize_gate_description": "Enable the gate feature for existing milestones. Subsequent milestones will be locked while their preceding milestone is incomplete.",
+    "initialize_gate_submit": "Enable",
+    "force_unlock_success": "Milestone force-unlocked",
+    "completion_mode_changed": "Completion mode updated",
+    "initialize_gate_success": "Gate initialized"
   }
 }
