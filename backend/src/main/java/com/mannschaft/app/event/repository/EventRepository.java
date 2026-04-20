@@ -3,6 +3,7 @@ package com.mannschaft.app.event.repository;
 import com.mannschaft.app.event.EventScopeType;
 import com.mannschaft.app.event.EventStatus;
 import com.mannschaft.app.event.entity.EventEntity;
+import com.mannschaft.app.event.entity.EventVisibility;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -27,10 +28,10 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
             EventScopeType scopeType, Long scopeId, EventStatus status, Pageable pageable);
 
     /**
-     * 公開イベント一覧をページング取得する。
+     * 公開範囲とステータスでイベント一覧をページング取得する。
      */
-    Page<EventEntity> findByIsPublicTrueAndStatusOrderByCreatedAtDesc(
-            EventStatus status, Pageable pageable);
+    Page<EventEntity> findByVisibilityAndStatusOrderByCreatedAtDesc(
+            EventVisibility visibility, EventStatus status, Pageable pageable);
 
     /**
      * スラグでイベントを取得する。
