@@ -496,6 +496,9 @@
     "initialize_gate_submit": "有効化する",
     "force_unlock_success": "強制アンロックしました",
     "completion_mode_changed": "完了モードを変更しました",
-    "initialize_gate_success": "ゲートを初期化しました"
+    "initialize_gate_success": "ゲートを初期化しました",
+    "drag_to_reorder": "ドラッグで並び替え",
+    "reorder_success": "並び替えました",
+    "reorder_failed": "並び替えに失敗しました"
   }
 }
