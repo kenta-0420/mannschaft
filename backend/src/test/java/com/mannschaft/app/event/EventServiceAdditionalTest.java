@@ -100,7 +100,7 @@ class EventServiceAdditionalTest {
             EventDetailResponse response = createDetailResponse();
             UpdateEventRequest request = new UpdateEventRequest(
                     null, "新しいサブタイトル", null, null, null, null,
-                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null,
                     null, null, null, null, null);
 
             given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(entity));
@@ -123,7 +123,7 @@ class EventServiceAdditionalTest {
             EventDetailResponse response = createDetailResponse();
             UpdateEventRequest request = new UpdateEventRequest(
                     "new-slug", null, null, null, null, null,
-                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null,
                     null, null, null, null, null);
 
             given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(entity));
@@ -146,7 +146,7 @@ class EventServiceAdditionalTest {
             EventEntity entity = createEventWithStatus(EventStatus.DRAFT);
             UpdateEventRequest request = new UpdateEventRequest(
                     "duplicate-slug", null, null, null, null, null,
-                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null,
                     null, null, null, null, null);
 
             given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(entity));
@@ -163,7 +163,7 @@ class EventServiceAdditionalTest {
             // Given
             UpdateEventRequest request = new UpdateEventRequest(
                     null, null, null, null, null, null,
-                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null,
                     null, null, null, null, null);
             given(eventRepository.findById(EVENT_ID)).willReturn(Optional.empty());
 

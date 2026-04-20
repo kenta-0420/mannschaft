@@ -156,11 +156,17 @@ defineExpose({ refresh: loadEvents })
           <Tag :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" />
         </template>
       </Column>
-      <Column header="公開" field="isPublic" style="width: 80px">
+      <Column header="公開範囲" style="width: 100px">
         <template #body="{ data }">
-          <i
-            :class="data.isPublic ? 'pi pi-eye text-green-500' : 'pi pi-eye-slash text-surface-400'"
-          />
+          <span v-if="data.visibility === 'PUBLIC'" class="text-sm text-green-600">
+            <i class="pi pi-eye mr-1" />{{ $t('event.visibility.PUBLIC') }}
+          </span>
+          <span v-else-if="data.visibility === 'SUPPORTERS_AND_ABOVE'" class="text-sm text-blue-500">
+            <i class="pi pi-eye mr-1" />{{ $t('event.visibility.SUPPORTERS_AND_ABOVE') }}
+          </span>
+          <span v-else class="text-sm text-surface-500">
+            <i class="pi pi-eye-slash mr-1" />{{ $t('event.visibility.MEMBERS_ONLY') }}
+          </span>
         </template>
       </Column>
       <Column header="参加者" style="width: 100px">
