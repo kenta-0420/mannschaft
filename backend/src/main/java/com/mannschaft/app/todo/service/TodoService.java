@@ -19,9 +19,11 @@ import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
 import com.mannschaft.app.todo.dto.PatchTodoRequest;
 import com.mannschaft.app.todo.dto.UpdateTodoRequest;
 import com.mannschaft.app.todo.entity.ProjectEntity;
+import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
 import com.mannschaft.app.todo.entity.TodoAssigneeEntity;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.event.TodoStatusChangedEvent;
+import com.mannschaft.app.todo.exception.MilestoneLockedException;
 import com.mannschaft.app.todo.repository.ProjectRepository;
 import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
 import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
@@ -63,6 +65,7 @@ public class TodoService {
     private final NameResolverService nameResolverService;
     private final ApplicationEventPublisher eventPublisher;
     private final TodoProgressService todoProgressService;
+    private final MilestoneGateService milestoneGateService;
 
     /**
      * TODO一覧を取得する。
@@ -247,6 +250,9 @@ public class TodoService {
     @Transactional
     public ApiResponse<TodoResponse> updateTodo(Long todoId, UpdateTodoRequest request) {
         TodoEntity todo = findTodoOrThrow(todoId);
+        // F02.7: ロック中 TODO の編集（タイトル・説明・期限・優先度）は 423 Locked
+        assertNotMilestoneLocked(todo);
+
         Long oldProjectId = todo.getProjectId();
         Long newProjectId = request.getProjectId();
 
@@ -348,6 +354,9 @@ public class TodoService {
     public ApiResponse<TodoStatusChangeResponse> changeStatus(Long todoId,
                                                                TodoStatusChangeRequest request, Long userId) {
         TodoEntity todo = findTodoOrThrow(todoId);
+        // F02.7: ロック中 TODO のステータス変更は 423 Locked
+        assertNotMilestoneLocked(todo);
+
         TodoStatus oldStatus = todo.getStatus();
         TodoStatus newStatus = TodoStatus.valueOf(request.getStatus());
 
@@ -370,6 +379,11 @@ public class TodoService {
 
         // COMPLETED遷移後の進捗率再計算（自動モード）
         todoProgressService.recalculateAncestors(todo);
+
+        // F02.7: マイルストーン進捗・自動完了・後続アンロックを評価
+        if (todo.getMilestoneId() != null) {
+            milestoneGateService.evaluateOnTodoStatusChanged(todoId, newStatus);
+        }
 
         ProjectResponse.UserInfo completedByInfo = null;
         if (todo.getCompletedBy() != null) {
@@ -403,7 +417,21 @@ public class TodoService {
         TodoStatus newStatus = TodoStatus.valueOf(request.getStatus());
         List<TodoEntity> todos = todoRepository.findByIdInAndDeletedAtIsNull(request.getTodoIds());
 
-        List<TodoStatusChangeResponse> responses = todos.stream().map(todo -> {
+        // F02.7: ロック中 TODO をスキップする（DTO 拡張（skipped_locked_ids）は Phase 15-3 で実装予定）
+        List<Long> skippedLockedIds = new java.util.ArrayList<>();
+        List<TodoEntity> processable = new java.util.ArrayList<>();
+        for (TodoEntity t : todos) {
+            if (Boolean.TRUE.equals(t.getMilestoneLocked())) {
+                skippedLockedIds.add(t.getId());
+            } else {
+                processable.add(t);
+            }
+        }
+        if (!skippedLockedIds.isEmpty()) {
+            log.warn("bulkChangeStatus: ロック中TODOをスキップ skippedIds={}", skippedLockedIds);
+        }
+
+        List<TodoStatusChangeResponse> responses = processable.stream().map(todo -> {
             TodoStatus oldStatus = todo.getStatus();
             todo.changeStatus(newStatus, userId);
             todoRepository.save(todo);
@@ -419,6 +447,11 @@ public class TodoService {
 
             eventPublisher.publishEvent(new TodoStatusChangedEvent(
                     todo.getId(), todo.getProjectId(), oldStatus, newStatus, userId));
+
+            // F02.7: マイルストーン進捗・自動完了・後続アンロックを評価
+            if (todo.getMilestoneId() != null) {
+                milestoneGateService.evaluateOnTodoStatusChanged(todo.getId(), newStatus);
+            }
 
             ProjectResponse.UserInfo completedByInfo = null;
             if (todo.getCompletedBy() != null) {
@@ -562,7 +595,9 @@ public class TodoService {
      */
     @Transactional
     public ApiResponse<AssigneeResponse> addAssignee(Long todoId, AddAssigneeRequest request, Long userId) {
-        findTodoOrThrow(todoId);
+        TodoEntity todo = findTodoOrThrow(todoId);
+        // F02.7: ロック中 TODO の担当者変更は 423 Locked
+        assertNotMilestoneLocked(todo);
 
         if (assigneeRepository.existsByTodoIdAndUserId(todoId, request.getUserId())) {
             throw new BusinessException(TodoErrorCode.ASSIGNEE_ALREADY_EXISTS);
@@ -586,7 +621,10 @@ public class TodoService {
      */
     @Transactional
     public void removeAssignee(Long todoId, Long targetUserId) {
-        findTodoOrThrow(todoId);
+        TodoEntity todo = findTodoOrThrow(todoId);
+        // F02.7: ロック中 TODO の担当者変更は 423 Locked
+        assertNotMilestoneLocked(todo);
+
         TodoAssigneeEntity assignee = assigneeRepository.findByTodoIdAndUserId(todoId, targetUserId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.ASSIGNEE_NOT_FOUND));
         assigneeRepository.delete(assignee);
@@ -600,6 +638,31 @@ public class TodoService {
     private TodoEntity findTodoOrThrow(Long todoId) {
         return todoRepository.findByIdAndDeletedAtIsNull(todoId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
+    }
+
+    /**
+     * マイルストーンロック中 TODO に対する操作を拒否する（F02.7）。
+     *
+     * <p>論理削除は分母を減らすだけで達成判定を不当に早めないため例外許可（呼び出し側で
+     * 本メソッドを呼ばないことで実現）。本メソッドはステータス変更・編集・担当者変更で使用する。</p>
+     *
+     * @param todo 対象 TODO
+     * @throws MilestoneLockedException ロック中の場合
+     */
+    private void assertNotMilestoneLocked(TodoEntity todo) {
+        if (!Boolean.TRUE.equals(todo.getMilestoneLocked())) {
+            return;
+        }
+        Long milestoneId = todo.getMilestoneId();
+        String blockingTitle = "";
+        if (milestoneId != null) {
+            ProjectMilestoneEntity milestone = milestoneRepository.findById(milestoneId).orElse(null);
+            if (milestone != null && milestone.getLockedByMilestoneId() != null) {
+                blockingTitle = milestoneRepository.findById(milestone.getLockedByMilestoneId())
+                        .map(ProjectMilestoneEntity::getTitle).orElse("");
+            }
+        }
+        throw new MilestoneLockedException(milestoneId, blockingTitle);
     }
 
     /**

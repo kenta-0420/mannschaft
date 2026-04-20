@@ -63,6 +63,9 @@ class ProjectServiceTest {
     @Mock
     private NameResolverService nameResolverService;
 
+    @Mock
+    private com.mannschaft.app.todo.service.MilestoneGateService milestoneGateService;
+
     @InjectMocks
     private ProjectService projectService;
 

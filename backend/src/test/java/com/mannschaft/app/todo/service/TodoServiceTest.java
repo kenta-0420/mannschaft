@@ -87,6 +87,9 @@ class TodoServiceTest {
     @Mock
     private TodoProgressService todoProgressService;
 
+    @Mock
+    private MilestoneGateService milestoneGateService;
+
     @InjectMocks
     private TodoService todoService;
 

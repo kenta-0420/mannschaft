@@ -40,4 +40,14 @@ public interface ProjectMilestoneRepository extends JpaRepository<ProjectMilesto
      * プロジェクト内の完了済みマイルストーン数を取得する。
      */
     long countByProjectIdAndIsCompletedTrue(Long projectId);
+
+    /**
+     * 指定マイルストーンを前マイルストーンとしてロックされている後続マイルストーンを取得する（F02.7）。
+     */
+    List<ProjectMilestoneEntity> findByLockedByMilestoneId(Long milestoneId);
+
+    /**
+     * プロジェクト内のロック中マイルストーンを取得する（F02.7）。
+     */
+    List<ProjectMilestoneEntity> findByProjectIdAndIsLockedTrue(Long projectId);
 }
