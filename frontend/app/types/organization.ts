@@ -5,7 +5,7 @@ export interface OrganizationResponse {
   nameKana: string | null
   nickname1: string | null
   nickname2: string | null
-  orgType: 'NONPROFIT' | 'FORPROFIT'
+  orgType: 'GOVERNMENT' | 'MUNICIPALITY' | 'COMPANY' | 'HOSPITAL' | 'ASSOCIATION' | 'SCHOOL' | 'NPO' | 'COMMUNITY' | 'OTHER'
   parentOrganizationId: number | null
   prefecture: string | null
   city: string | null
@@ -28,7 +28,7 @@ export interface OrganizationSummaryResponse {
   iconUrl: string | null
   prefecture: string | null
   city: string | null
-  orgType: 'NONPROFIT' | 'FORPROFIT'
+  orgType: 'GOVERNMENT' | 'MUNICIPALITY' | 'COMPANY' | 'HOSPITAL' | 'ASSOCIATION' | 'SCHOOL' | 'NPO' | 'COMMUNITY' | 'OTHER'
   memberCount: number
   supporterEnabled: boolean
 }
@@ -39,7 +39,7 @@ export interface CreateOrganizationRequest {
   nameKana?: string
   nickname1?: string
   nickname2?: string
-  orgType: 'NONPROFIT' | 'FORPROFIT'
+  orgType: 'GOVERNMENT' | 'MUNICIPALITY' | 'COMPANY' | 'HOSPITAL' | 'ASSOCIATION' | 'SCHOOL' | 'NPO' | 'COMMUNITY' | 'OTHER'
   prefecture?: string
   city?: string
   description?: string

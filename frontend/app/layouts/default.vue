@@ -5,7 +5,6 @@ const route = useRoute()
 const { t } = useI18n()
 
 const isMounted = ref(false)
-const showBlogCreate = ref(false)
 const showMobileMenu = ref(false)
 
 onMounted(() => {
@@ -82,14 +81,15 @@ function isActive(path: string): boolean {
                 <i :class="systemAdminItem.icon" />
                 {{ systemAdminItem.label }}
               </NuxtLink>
-              <!-- ブログはモーダル起動 -->
-              <button
-                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100 text-surface-600"
-                @click="showBlogCreate = true"
+              <!-- ブログ -->
+              <NuxtLink
+                to="/blog"
+                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
+                :class="isActive('/blog') ? 'bg-primary/10 text-primary' : 'text-surface-600'"
               >
                 <i class="pi pi-book" />
                 ブログ
-              </button>
+              </NuxtLink>
               <!-- 同期（コンフリクトがある場合のみ表示） -->
               <NuxtLink
                 v-if="showSyncNav"
@@ -153,7 +153,6 @@ function isActive(path: string): boolean {
 
     <ClientOnly>
       <ErrorReportDialog />
-      <BlogCreateDialog v-model:visible="showBlogCreate" />
 
       <!-- モバイルメニュー Drawer -->
       <Drawer v-model:visible="showMobileMenu" position="left" class="w-72">
@@ -172,13 +171,15 @@ function isActive(path: string): boolean {
             {{ item.label }}
           </NuxtLink>
           <!-- ブログ -->
-          <button
-            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-surface-700 transition-colors hover:bg-surface-100 text-left"
-            @click="showMobileMenu = false; showBlogCreate = true"
+          <NuxtLink
+            to="/blog"
+            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100"
+            :class="isActive('/blog') ? 'bg-primary/10 text-primary' : 'text-surface-700'"
+            @click="showMobileMenu = false"
           >
             <i class="pi pi-book text-base" />
             ブログ
-          </button>
+          </NuxtLink>
           <!-- 同期（コンフリクトがある場合のみ） -->
           <NuxtLink
             v-if="showSyncNav"
