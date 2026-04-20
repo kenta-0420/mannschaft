@@ -496,6 +496,12 @@
     "initialize_gate_submit": "Enable",
     "force_unlock_success": "Milestone force-unlocked",
     "completion_mode_changed": "Completion mode updated",
-    "initialize_gate_success": "Gate initialized"
+    "initialize_gate_success": "Gate initialized",
+    "drag_to_reorder": "Drag to reorder",
+    "reorder_success": "Reordered",
+    "reorder_failed": "Failed to reorder",
+    "my_projects": "My projects",
+    "my_projects_description": "Personal task management and goals",
+    "no_my_projects": "No personal projects yet"
   }
 }
