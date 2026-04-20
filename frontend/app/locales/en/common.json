@@ -466,5 +466,24 @@
     "custom_field_added": "Custom field added",
     "custom_field_updated": "Custom field updated",
     "custom_field_deleted": "Custom field deleted"
+  },
+  "project": {
+    "milestones": "Milestones",
+    "no_milestones": "No milestones",
+    "due_date": "Due date",
+    "gate_progress": "Gate progress",
+    "next_gate": "Next gate",
+    "next_gate_hint": "Unlocked when '{title}' is completed",
+    "total_milestones": "Total",
+    "completed_milestones": "Completed",
+    "locked_milestones": "Locked",
+    "locked": "Locked",
+    "locked_by": "Unlocked when '{title}' is completed",
+    "completion_mode_auto": "Auto-complete",
+    "completion_mode_manual": "Manual",
+    "force_unlocked": "Force-unlocked",
+    "force_unlock_title": "Force unlock",
+    "force_unlock_reason_placeholder": "Reason (100 chars max)",
+    "locked_todo_count": "{count} locked"
   }
 }

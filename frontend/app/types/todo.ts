@@ -27,6 +27,9 @@ export interface TodoResponse {
   linkedScheduleId: number | null
   progressRate: string
   progressManual: boolean
+  // F02.7 マイルストーンゲート関連
+  milestoneLocked: boolean
+  position: number
 }
 
 export interface TodoAssigneeResponse {
