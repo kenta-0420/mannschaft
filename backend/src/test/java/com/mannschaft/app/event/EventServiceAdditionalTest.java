@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.event.dto.EventDetailResponse;
 import com.mannschaft.app.event.dto.EventStatsResponse;
 import com.mannschaft.app.event.dto.UpdateEventRequest;
+import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRegistrationRepository;
@@ -76,6 +77,7 @@ class EventServiceAdditionalTest {
                 EVENT_ID, "TEAM", SCOPE_ID, null, "test-event", null,
                 null, null, null, null, null, null, null,
                 "DRAFT", false, "MEMBER_PLUS", null, null, null, false,
+                EventAttendanceMode.REGISTRATION, null,
                 null, null, null, null, null, 0, 0, USER_ID, 0L,
                 LocalDateTime.now(), LocalDateTime.now()
         );
@@ -98,7 +100,7 @@ class EventServiceAdditionalTest {
             UpdateEventRequest request = new UpdateEventRequest(
                     null, "新しいサブタイトル", null, null, null, null,
                     null, null, null, null, null, null, null, null, null,
-                    null, null, null);
+                    null, null, null, null, null);
 
             given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(entity));
             given(eventRepository.save(any(EventEntity.class))).willReturn(entity);
@@ -121,7 +123,7 @@ class EventServiceAdditionalTest {
             UpdateEventRequest request = new UpdateEventRequest(
                     "new-slug", null, null, null, null, null,
                     null, null, null, null, null, null, null, null, null,
-                    null, null, null);
+                    null, null, null, null, null);
 
             given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(entity));
             given(eventRepository.existsBySlug("new-slug")).willReturn(false);
@@ -144,7 +146,7 @@ class EventServiceAdditionalTest {
             UpdateEventRequest request = new UpdateEventRequest(
                     "duplicate-slug", null, null, null, null, null,
                     null, null, null, null, null, null, null, null, null,
-                    null, null, null);
+                    null, null, null, null, null);
 
             given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(entity));
             given(eventRepository.existsBySlug("duplicate-slug")).willReturn(true);
@@ -161,7 +163,7 @@ class EventServiceAdditionalTest {
             UpdateEventRequest request = new UpdateEventRequest(
                     null, null, null, null, null, null,
                     null, null, null, null, null, null, null, null, null,
-                    null, null, null);
+                    null, null, null, null, null);
             given(eventRepository.findById(EVENT_ID)).willReturn(Optional.empty());
 
             // When & Then

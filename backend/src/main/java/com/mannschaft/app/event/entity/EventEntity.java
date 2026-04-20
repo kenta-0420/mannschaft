@@ -90,6 +90,13 @@ public class EventEntity extends BaseEntity {
     @Builder.Default
     private Boolean isApprovalRequired = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private EventAttendanceMode attendanceMode = EventAttendanceMode.REGISTRATION;
+
+    private Long preSurveyId;
+
     private Long postSurveyId;
 
     private Long workflowRequestId;

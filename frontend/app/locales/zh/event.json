@@ -1,0 +1,66 @@
+{
+  "event": {
+    "attendanceMode": {
+      "label": "参与方式",
+      "none": "自由参与",
+      "noneDesc": "无需注册即可参加",
+      "rsvp": "出席确认",
+      "rsvpDesc": "收集参加/不参加的回复",
+      "registration": "需要注册",
+      "registrationDesc": "需要提前注册才能参加"
+    },
+    "rsvp": {
+      "title": "出席确认",
+      "attending": "参加",
+      "notAttending": "不参加",
+      "maybe": "未定",
+      "undecided": "未回答",
+      "comment": "评论（可选）",
+      "myResponse": "我的回答",
+      "submit": "提交回答",
+      "update": "更新回答",
+      "summary": {
+        "attending": "参加",
+        "notAttending": "不参加",
+        "maybe": "未定",
+        "undecided": "未回答",
+        "total": "合计"
+      }
+    },
+    "survey": {
+      "preSurvey": "活动前问卷",
+      "postSurvey": "活动后问卷",
+      "none": "无",
+      "select": "选择",
+      "surveyId": "问卷ID"
+    },
+    "status": {
+      "draft": "草稿",
+      "published": "已发布",
+      "registrationOpen": "注册开放中",
+      "registrationClosed": "注册已关闭",
+      "inProgress": "进行中",
+      "completed": "已完成",
+      "cancelled": "已取消"
+    },
+    "create": "创建活动",
+    "edit": "编辑",
+    "publish": "发布",
+    "openRegistration": "开放注册",
+    "closeRegistration": "关闭注册",
+    "complete": "标记为完成",
+    "cancel": "取消活动",
+    "list": "活动列表",
+    "detail": "活动详情",
+    "createTitle": "创建活动",
+    "step1": "基本信息",
+    "step2": "参与设置",
+    "backToList": "返回活动列表",
+    "noEvents": "暂无活动",
+    "filterByStatus": "按状态筛选",
+    "allStatuses": "全部",
+    "participants": "参与者",
+    "rsvpList": "出席回复列表",
+    "adminOnly": "仅管理员"
+  }
+}

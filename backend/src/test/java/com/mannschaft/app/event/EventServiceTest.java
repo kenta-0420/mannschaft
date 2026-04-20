@@ -5,6 +5,7 @@ import com.mannschaft.app.event.dto.CreateEventRequest;
 import com.mannschaft.app.event.dto.EventDetailResponse;
 import com.mannschaft.app.event.dto.EventResponse;
 import com.mannschaft.app.event.dto.EventStatsResponse;
+import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRegistrationRepository;
@@ -96,6 +97,7 @@ class EventServiceTest {
                 EVENT_ID, "TEAM", SCOPE_ID, null, "test-event", "テストイベント",
                 "テスト用イベントの説明", null, null, null, null, null, null,
                 "DRAFT", false, "MEMBER_PLUS", null, null, null, false,
+                EventAttendanceMode.REGISTRATION, null,
                 null, null, null, null, null, 0, 0, USER_ID, 0L,
                 LocalDateTime.now(), LocalDateTime.now()
         );
@@ -242,7 +244,7 @@ class EventServiceTest {
             CreateEventRequest request = new CreateEventRequest(
                     null, "test-event", "テストイベント", "説明", null,
                     null, null, null, null, null, false,
-                    null, null, null, null, false, null, null, null
+                    null, null, null, null, false, EventAttendanceMode.REGISTRATION, null, null, null, null
             );
             EventEntity savedEntity = createDraftEvent();
             EventDetailResponse response = createEventDetailResponse();
@@ -266,7 +268,7 @@ class EventServiceTest {
             CreateEventRequest request = new CreateEventRequest(
                     null, "duplicate-slug", null, null, null,
                     null, null, null, null, null, null,
-                    null, null, null, null, null, null, null, null
+                    null, null, null, null, null, null, null, null, null, null
             );
             given(eventRepository.existsBySlug("duplicate-slug")).willReturn(true);
 
