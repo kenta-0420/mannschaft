@@ -13,7 +13,10 @@ const orgStore = useOrganizationStore()
           class="flex items-center gap-2 rounded-lg border border-surface-400 bg-surface-50 px-3 py-2 text-sm transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-700"
         >
           <i class="pi pi-building text-xs text-primary" />
-          <span class="font-medium">{{ org.nickname1 || org.name }}</span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate font-medium">{{ org.nickname1 || org.name }}</p>
+            <p class="text-xs text-surface-500">{{ org.orgType === 'NONPROFIT' ? '非営利' : '営利' }}</p>
+          </div>
           <RoleBadge :role="org.role" />
         </NuxtLink>
       </div>
