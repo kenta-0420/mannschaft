@@ -63,6 +63,12 @@ class ProjectServiceTest {
     @Mock
     private NameResolverService nameResolverService;
 
+    @Mock
+    private com.mannschaft.app.todo.service.MilestoneGateService milestoneGateService;
+
+    @Mock
+    private com.mannschaft.app.auth.service.AuditLogService auditLogService;
+
     @InjectMocks
     private ProjectService projectService;
 
@@ -611,10 +617,14 @@ class ProjectServiceTest {
         @DisplayName("異常系: マイルストーン上限超過でTODO_009例外")
         void createMilestone_上限超過_TODO009例外() {
             // Given
+            // F02.7 設計書§6.5 に基づきマイルストーン上限は 50 件。
+            // コミット 60797e44（fix(F02.7): マイルストーン上限を設計書通り 50 件に修正）で
+            // ProjectService.MAX_MILESTONES_PER_PROJECT が 20 → 50 に変更済みのため、
+            // テストのモック戻り値も設計書に合わせて 50L に追従する。
             ProjectEntity project = createActiveProject();
             CreateMilestoneRequest request = new CreateMilestoneRequest("上限超過", null, null);
             given(projectRepository.findByIdAndDeletedAtIsNull(PROJECT_ID)).willReturn(Optional.of(project));
-            given(milestoneRepository.countByProjectId(PROJECT_ID)).willReturn(20L);
+            given(milestoneRepository.countByProjectId(PROJECT_ID)).willReturn(50L);
 
             // When / Then
             assertThatThrownBy(() -> projectService.createMilestone(PROJECT_ID, request))

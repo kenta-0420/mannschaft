@@ -1,5 +1,6 @@
 package com.mannschaft.app.todo.service;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
@@ -11,6 +12,7 @@ import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.dto.CreateMilestoneRequest;
 import com.mannschaft.app.todo.dto.CreateProjectRequest;
+import com.mannschaft.app.todo.dto.GatesSummaryResponse;
 import com.mannschaft.app.todo.dto.MilestoneResponse;
 import com.mannschaft.app.todo.dto.ProjectDetailResponse;
 import com.mannschaft.app.todo.dto.ProjectResponse;
@@ -47,12 +49,14 @@ import java.util.Set;
 public class ProjectService {
 
     private static final int MAX_ACTIVE_PROJECTS = 20;
-    private static final int MAX_MILESTONES_PER_PROJECT = 20;
+    private static final int MAX_MILESTONES_PER_PROJECT = 50;
 
     private final ProjectRepository projectRepository;
     private final ProjectMilestoneRepository milestoneRepository;
     private final TodoRepository todoRepository;
     private final NameResolverService nameResolverService;
+    private final MilestoneGateService milestoneGateService;
+    private final AuditLogService auditLogService;
 
     /**
      * プロジェクト一覧を取得する。
@@ -354,6 +358,48 @@ public class ProjectService {
         ProjectMilestoneEntity milestone = milestoneRepository.findByIdAndProjectId(milestoneId, projectId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.MILESTONE_NOT_FOUND));
         milestoneRepository.delete(milestone);
+
+        // F02.7: 削除後にロック連鎖を再構築（ON DELETE SET NULL で NULL 化された後続を再評価）
+        milestoneGateService.rebuildChain(projectId);
+    }
+
+    /**
+     * マイルストーンを並び替え、ロック状態を再計算する（F02.7）。
+     *
+     * <p>リクエストで指定された順序で sort_order を 0, 1, 2, ... に再割当し、
+     * 続いて {@link MilestoneGateService#rebuildChain(Long)} を呼んでロック連鎖を再構築する。</p>
+     *
+     * @param projectId             プロジェクト ID
+     * @param milestoneIdsInOrder   並び替え後のマイルストーン ID リスト
+     * @return 並び替え後のマイルストーンエンティティリスト（sort_order 昇順）
+     */
+    @Transactional
+    public List<ProjectMilestoneEntity> reorderMilestones(Long projectId, List<Long> milestoneIdsInOrder) {
+        findProjectOrThrow(projectId);
+
+        List<ProjectMilestoneEntity> existing = milestoneRepository
+                .findByProjectIdOrderBySortOrderAsc(projectId);
+        Map<Long, ProjectMilestoneEntity> byId = new java.util.HashMap<>();
+        for (ProjectMilestoneEntity m : existing) {
+            byId.put(m.getId(), m);
+        }
+
+        // 全件がプロジェクト内に存在し、件数一致することを検証
+        if (milestoneIdsInOrder.size() != existing.size()
+                || !byId.keySet().containsAll(milestoneIdsInOrder)) {
+            throw new BusinessException(TodoErrorCode.MILESTONE_NOT_FOUND);
+        }
+
+        for (int i = 0; i < milestoneIdsInOrder.size(); i++) {
+            Long mid = milestoneIdsInOrder.get(i);
+            ProjectMilestoneEntity m = byId.get(mid);
+            ProjectMilestoneEntity updated = m.toBuilder().sortOrder((short) i).build();
+            milestoneRepository.save(updated);
+        }
+
+        milestoneGateService.rebuildChain(projectId);
+        log.info("マイルストーン並び替え完了: projectId={}, count={}", projectId, milestoneIdsInOrder.size());
+        return milestoneRepository.findByProjectIdOrderBySortOrderAsc(projectId);
     }
 
     /**
@@ -375,7 +421,205 @@ public class ProjectService {
 
         milestone.complete();
         milestone = milestoneRepository.save(milestone);
+
+        // F02.7: マイルストーン手動完了時、後続マイルストーンを自動アンロック
+        milestoneGateService.unlockSuccessors(milestoneId);
+
         return ApiResponse.of(toMilestoneResponse(milestone));
+    }
+
+    // --- F02.7 ゲート関連 ---
+
+    /**
+     * プロジェクトのゲート状態サマリーを取得する（F02.7）。
+     *
+     * <p>{@code GET /api/v1/teams/{teamId}/projects/{id}/gates} のレスポンスを構築する。
+     * 全体進捗率・ゲート完了率・次の関所情報・マイルストーン別サマリーを返す。</p>
+     *
+     * @param projectId プロジェクト ID
+     * @return ゲートサマリー
+     */
+    public ApiResponse<GatesSummaryResponse> getGatesSummary(Long projectId) {
+        findProjectOrThrow(projectId);
+        List<ProjectMilestoneEntity> milestones = milestoneRepository
+                .findByProjectIdOrderBySortOrderAsc(projectId);
+
+        int totalMilestones = milestones.size();
+        int completedMilestones = (int) milestones.stream()
+                .filter(m -> Boolean.TRUE.equals(m.getIsCompleted()))
+                .count();
+        int lockedMilestones = (int) milestones.stream()
+                .filter(m -> Boolean.TRUE.equals(m.getIsLocked()))
+                .count();
+
+        // 全体進捗率: プロジェクト内全 TODO を対象に算出
+        long totalTodosAll = 0L;
+        long completedTodosAll = 0L;
+        java.util.Map<Long, long[]> todoCountsByMilestone = new java.util.HashMap<>();
+        for (ProjectMilestoneEntity m : milestones) {
+            long total = todoRepository.countByMilestoneIdAndDeletedAtIsNull(m.getId());
+            long completed = todoRepository.countByMilestoneIdAndStatusAndDeletedAtIsNull(
+                    m.getId(), TodoStatus.COMPLETED);
+            todoCountsByMilestone.put(m.getId(), new long[]{total, completed});
+            totalTodosAll += total;
+            completedTodosAll += completed;
+        }
+        // マイルストーン未割り当ての TODO も含める
+        totalTodosAll += todoRepository.countByProjectIdAndMilestoneIdIsNullAndDeletedAtIsNull(projectId);
+        completedTodosAll += todoRepository.countByProjectIdAndMilestoneIdIsNullAndStatusAndDeletedAtIsNull(
+                projectId, TodoStatus.COMPLETED);
+
+        BigDecimal overallProgressRate = totalTodosAll > 0
+                ? BigDecimal.valueOf(completedTodosAll * 100.0 / totalTodosAll)
+                        .setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        BigDecimal gateCompletionRate = totalMilestones > 0
+                ? BigDecimal.valueOf(completedMilestones * 100.0 / totalMilestones)
+                        .setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        // マイルストーン ID → Entity のマップ（lockedBy タイトル解決用）
+        java.util.Map<Long, ProjectMilestoneEntity> byId = new java.util.HashMap<>();
+        for (ProjectMilestoneEntity m : milestones) {
+            byId.put(m.getId(), m);
+        }
+
+        // 次のゲート（最初のロック中マイルストーン）を探す
+        GatesSummaryResponse.NextGate nextGate = null;
+        for (ProjectMilestoneEntity m : milestones) {
+            if (Boolean.TRUE.equals(m.getIsLocked())) {
+                ProjectMilestoneEntity lockedBy = m.getLockedByMilestoneId() != null
+                        ? byId.get(m.getLockedByMilestoneId()) : null;
+                nextGate = new GatesSummaryResponse.NextGate(
+                        m.getId(), m.getTitle(),
+                        m.getLockedByMilestoneId(),
+                        lockedBy != null ? lockedBy.getTitle() : null,
+                        lockedBy != null ? lockedBy.getProgressRate() : null);
+                break;
+            }
+        }
+
+        List<GatesSummaryResponse.MilestoneGateInfo> infos = milestones.stream()
+                .map(m -> {
+                    long[] counts = todoCountsByMilestone.getOrDefault(m.getId(), new long[]{0L, 0L});
+                    long lockedCount = todoRepository
+                            .countByMilestoneIdAndMilestoneLockedTrueAndDeletedAtIsNull(m.getId());
+                    String lockedByTitle = m.getLockedByMilestoneId() != null
+                            ? (byId.containsKey(m.getLockedByMilestoneId())
+                                    ? byId.get(m.getLockedByMilestoneId()).getTitle() : null)
+                            : null;
+                    return new GatesSummaryResponse.MilestoneGateInfo(
+                            m.getId(), m.getTitle(), m.getSortOrder(),
+                            Boolean.TRUE.equals(m.getIsCompleted()),
+                            Boolean.TRUE.equals(m.getIsLocked()),
+                            m.getLockedByMilestoneId(), lockedByTitle,
+                            m.getProgressRate(), m.getCompletionMode(),
+                            counts[0], counts[1], lockedCount,
+                            m.getLockedAt(), m.getCompletedAt());
+                })
+                .toList();
+
+        GatesSummaryResponse response = new GatesSummaryResponse(
+                projectId, overallProgressRate, gateCompletionRate,
+                totalMilestones, completedMilestones, lockedMilestones,
+                nextGate, infos);
+        return ApiResponse.of(response);
+    }
+
+    /**
+     * マイルストーンの完了判定モード（AUTO / MANUAL）を変更する（F02.7）。
+     *
+     * <p>AUTO → MANUAL は即時反映。MANUAL → AUTO は即座に現在の TODO 完了状況を評価し、
+     * 全完了なら自動完了 + 後続アンロックを実行する。</p>
+     *
+     * @param projectId      プロジェクト ID
+     * @param milestoneId    マイルストーン ID
+     * @param completionMode 新しい完了モード（AUTO / MANUAL）
+     * @return 更新後のマイルストーン
+     */
+    @Transactional
+    public ApiResponse<MilestoneResponse> changeMilestoneCompletionMode(
+            Long projectId, Long milestoneId, String completionMode) {
+        findProjectOrThrow(projectId);
+        ProjectMilestoneEntity milestone = milestoneRepository.findByIdAndProjectId(milestoneId, projectId)
+                .orElseThrow(() -> new BusinessException(TodoErrorCode.MILESTONE_NOT_FOUND));
+
+        String oldMode = milestone.getCompletionMode();
+        ProjectMilestoneEntity updated = milestone.toBuilder()
+                .completionMode(completionMode)
+                .build();
+        updated = milestoneRepository.save(updated);
+        log.info("マイルストーン完了モード変更: milestoneId={}, {} -> {}", milestoneId, oldMode, completionMode);
+
+        // 監査ログ: MILESTONE_COMPLETION_MODE_CHANGED（F10.3 連携）
+        auditLogService.record(
+                "MILESTONE_COMPLETION_MODE_CHANGED",
+                null, null, null, null, null, null, null,
+                String.format("{\"projectId\":%d,\"milestoneId\":%d,\"oldMode\":\"%s\",\"newMode\":\"%s\"}",
+                        projectId, milestoneId, oldMode, completionMode));
+
+        // MANUAL → AUTO の場合、即座に現在の TODO 完了状況を評価する
+        if ("AUTO".equals(completionMode) && !"AUTO".equals(oldMode)
+                && !Boolean.TRUE.equals(updated.getIsCompleted())) {
+            // マイルストーン配下の TODO が無ければ no-op。あれば 1 件拾って評価ルートに乗せる
+            Long anyTodoId = pickAnyTodoIdInMilestone(milestoneId);
+            if (anyTodoId != null) {
+                milestoneGateService.evaluateOnTodoStatusChanged(anyTodoId, null);
+            }
+        }
+
+        return ApiResponse.of(toMilestoneResponse(updated));
+    }
+
+    /**
+     * マイルストーン内 TODO を並び替える（F02.7）。
+     *
+     * <p>指定された todoIds の順序で position を 0, 1, 2, ... に再割当。
+     * 全 TODO が当該マイルストーンに属し、論理削除されていないことを検証する。</p>
+     *
+     * @param projectId   プロジェクト ID
+     * @param milestoneId マイルストーン ID
+     * @param todoIds     並び替え後の TODO ID リスト
+     */
+    @Transactional
+    public void reorderTodosInMilestone(Long projectId, Long milestoneId, List<Long> todoIds) {
+        findProjectOrThrow(projectId);
+        milestoneRepository.findByIdAndProjectId(milestoneId, projectId)
+                .orElseThrow(() -> new BusinessException(TodoErrorCode.MILESTONE_NOT_FOUND));
+
+        List<com.mannschaft.app.todo.entity.TodoEntity> todos =
+                todoRepository.findByMilestoneIdAndDeletedAtIsNull(milestoneId);
+        java.util.Set<Long> validIds = new java.util.HashSet<>();
+        for (com.mannschaft.app.todo.entity.TodoEntity t : todos) {
+            validIds.add(t.getId());
+        }
+        for (Long id : todoIds) {
+            if (!validIds.contains(id)) {
+                throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
+            }
+        }
+
+        java.util.Map<Long, com.mannschaft.app.todo.entity.TodoEntity> byId = new java.util.HashMap<>();
+        for (com.mannschaft.app.todo.entity.TodoEntity t : todos) {
+            byId.put(t.getId(), t);
+        }
+        for (int i = 0; i < todoIds.size(); i++) {
+            com.mannschaft.app.todo.entity.TodoEntity t = byId.get(todoIds.get(i));
+            t.setPosition(i);
+            todoRepository.save(t);
+        }
+        log.info("マイルストーン内 TODO 並び替え完了: milestoneId={}, count={}", milestoneId, todoIds.size());
+    }
+
+    /**
+     * 指定マイルストーン配下の TODO を 1 件拾う。存在しない場合は null。
+     *
+     * <p>MANUAL → AUTO モード変更時の進捗再評価トリガーとして使用。TODO が 0 件の場合は評価不要。</p>
+     */
+    private Long pickAnyTodoIdInMilestone(Long milestoneId) {
+        List<com.mannschaft.app.todo.entity.TodoEntity> todos =
+                todoRepository.findByMilestoneIdAndDeletedAtIsNull(milestoneId);
+        return todos.isEmpty() ? null : todos.get(0).getId();
     }
 
     // --- プライベートメソッド ---
@@ -425,13 +669,34 @@ public class ProjectService {
     }
 
     /**
-     * マイルストーンエンティティをレスポンスDTOに変換する。
+     * マイルストーンエンティティをレスポンスDTOに変換する（F02.7 ゲート関連フィールドを含む）。
+     *
+     * <p>locked_by_milestone_title は同一プロジェクト内のマイルストーンから ID 解決する。
+     * locked_todo_count は TodoRepository から取得する。</p>
      */
-    private MilestoneResponse toMilestoneResponse(ProjectMilestoneEntity entity) {
+    MilestoneResponse toMilestoneResponse(ProjectMilestoneEntity entity) {
+        String lockedByTitle = null;
+        if (entity.getLockedByMilestoneId() != null) {
+            lockedByTitle = milestoneRepository.findById(entity.getLockedByMilestoneId())
+                    .map(ProjectMilestoneEntity::getTitle)
+                    .orElse(null);
+        }
+        long lockedTodoCount = todoRepository
+                .countByMilestoneIdAndMilestoneLockedTrueAndDeletedAtIsNull(entity.getId());
+
         return new MilestoneResponse(
                 entity.getId(), entity.getProjectId(), entity.getTitle(),
                 entity.getDueDate(), entity.getSortOrder(), entity.getIsCompleted(),
-                entity.getCompletedAt(), entity.getCreatedAt(), entity.getUpdatedAt());
+                entity.getCompletedAt(), entity.getCreatedAt(), entity.getUpdatedAt(),
+                entity.getProgressRate(),
+                Boolean.TRUE.equals(entity.getIsLocked()),
+                entity.getLockedByMilestoneId(),
+                lockedByTitle,
+                entity.getCompletionMode(),
+                lockedTodoCount,
+                Boolean.TRUE.equals(entity.getForceUnlocked()),
+                entity.getLockedAt(),
+                entity.getUnlockedAt());
     }
 
     private ProjectResponse.UserInfo resolveUserInfo(Long userId) {

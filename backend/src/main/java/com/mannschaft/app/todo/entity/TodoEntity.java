@@ -50,6 +50,16 @@ public class TodoEntity {
 
     private Long milestoneId;
 
+    /** 所属マイルストーンがロック中の場合 TRUE。ステータス変更 API の事前チェックに使用（F02.7） */
+    @Column(name = "milestone_locked", nullable = false)
+    @Builder.Default
+    private Boolean milestoneLocked = false;
+
+    /** 同一マイルストーン内での表示順。ドラッグ＆ドロップ並び替え用（F02.7） */
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer position = 0;
+
     private Long parentId;
 
     @Column(nullable = false)
@@ -216,5 +226,28 @@ public class TodoEntity {
     public void setProgressRate(java.math.BigDecimal progressRate, boolean progressManual) {
         this.progressRate = progressRate;
         this.progressManual = progressManual;
+    }
+
+    /**
+     * マイルストーンロックを適用（F02.7）。
+     */
+    public void lockByMilestone() {
+        this.milestoneLocked = true;
+    }
+
+    /**
+     * マイルストーンロックを解除（F02.7）。
+     */
+    public void unlockByMilestone() {
+        this.milestoneLocked = false;
+    }
+
+    /**
+     * 表示順を設定（F02.7）。
+     *
+     * @param pos マイルストーン内での位置（0始まり）
+     */
+    public void setPosition(Integer pos) {
+        this.position = pos;
     }
 }

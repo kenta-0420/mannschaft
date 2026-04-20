@@ -466,5 +466,24 @@
     "custom_field_added": "カスタムフィールドを追加しました",
     "custom_field_updated": "カスタムフィールドを更新しました",
     "custom_field_deleted": "カスタムフィールドを削除しました"
+  },
+  "project": {
+    "milestones": "マイルストーン",
+    "no_milestones": "マイルストーンがありません",
+    "due_date": "期限",
+    "gate_progress": "ゲート進捗",
+    "next_gate": "次の関所",
+    "next_gate_hint": "『{title}』の達成で解放",
+    "total_milestones": "全関所",
+    "completed_milestones": "達成済",
+    "locked_milestones": "ロック中",
+    "locked": "ロック中",
+    "locked_by": "『{title}』の達成で解放",
+    "completion_mode_auto": "自動完了",
+    "completion_mode_manual": "手動完了",
+    "force_unlocked": "強制解放済",
+    "force_unlock_title": "強制アンロック",
+    "force_unlock_reason_placeholder": "理由（100文字以内）",
+    "locked_todo_count": "{count}件ロック中"
   }
 }

@@ -28,7 +28,7 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
             EventScopeType scopeType, Long scopeId, EventStatus status, Pageable pageable);
 
     /**
-     * 公開範囲とステータスでイベント一覧をページング取得する。
+     * 公開範囲・ステータス指定でイベント一覧をページング取得する。
      */
     Page<EventEntity> findByVisibilityAndStatusOrderByCreatedAtDesc(
             EventVisibility visibility, EventStatus status, Pageable pageable);
