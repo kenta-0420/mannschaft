@@ -1,5 +1,6 @@
 package com.mannschaft.app.todo.service;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
 import com.mannschaft.app.todo.entity.TodoEntity;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * マイルストーンゲート（関所）機能の中核サービス（F02.7）。
@@ -48,6 +50,7 @@ public class MilestoneGateService {
     private final TodoRepository todoRepository;
     private final MilestoneGateEvaluator evaluator;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditLogService auditLogService;
 
     /**
      * TODO のステータス変更を受けて所属マイルストーンの進捗率を更新し、AUTO モードの
@@ -82,6 +85,12 @@ public class MilestoneGateService {
                 milestoneRepository.save(milestone);
                 log.info("マイルストーン自動完了: milestoneId={}, projectId={}, total={}, completed={}",
                         milestone.getId(), milestone.getProjectId(), total, completed);
+                // 監査ログ: MILESTONE_AUTO_COMPLETED
+                auditLogService.record(
+                        "MILESTONE_AUTO_COMPLETED",
+                        null, null, null, null, null, null, null,
+                        String.format("{\"projectId\":%d,\"milestoneId\":%d,\"total\":%d,\"completed\":%d}",
+                                milestone.getProjectId(), milestone.getId(), total, completed));
                 unlockSuccessorsInternal(milestone.getId(), milestone.getProjectId());
             }
             return null;
@@ -136,6 +145,13 @@ public class MilestoneGateService {
             log.info("マイルストーン強制アンロック: milestoneId={}, projectId={}, userId={}, reason={}",
                     milestoneId, milestone.getProjectId(), userId, reason);
 
+            // 監査ログ: MILESTONE_FORCE_UNLOCKED（reason 必須、F10.3 保持期間に従って自動削除）
+            auditLogService.record(
+                    "MILESTONE_FORCE_UNLOCKED",
+                    userId, null, null, null, null, null, null,
+                    String.format("{\"projectId\":%d,\"milestoneId\":%d,\"reason\":\"%s\"}",
+                            milestone.getProjectId(), milestoneId, escapeJson(reason)));
+
             eventPublisher.publishEvent(new MilestoneUnlockedEvent(
                     milestone.getProjectId(), milestoneId, null, true));
             return null;
@@ -158,9 +174,29 @@ public class MilestoneGateService {
         List<ProjectMilestoneEntity> all = milestoneRepository
                 .findByProjectIdOrderBySortOrderAsc(target.getProjectId());
 
-        applyGateChain(all, target.getSortOrder(), target.getProjectId());
-        log.info("ゲート初期化完了: projectId={}, startSortOrder={}",
-                target.getProjectId(), target.getSortOrder());
+        ChainRebuildResult result = applyGateChain(all, target.getSortOrder(), target.getProjectId());
+        log.info("ゲート初期化完了: projectId={}, startSortOrder={}, locked={}, unlocked={}",
+                target.getProjectId(), target.getSortOrder(),
+                result.lockedIds.size(), result.unlockedIds.size());
+
+        // 監査ログ: 初期化で初回 LOCK された各マイルストーンに MILESTONE_LOCKED
+        for (Long lockedId : result.lockedIds) {
+            auditLogService.record(
+                    "MILESTONE_LOCKED",
+                    null, null, null, null, null, null, null,
+                    String.format("{\"projectId\":%d,\"milestoneId\":%d,\"trigger\":\"INITIALIZE_GATE\"}",
+                            target.getProjectId(), lockedId));
+        }
+        // 監査ログ: MILESTONE_CHAIN_REBUILT（影響を受けた全マイルストーン ID 一覧）
+        List<Long> affected = new ArrayList<>(result.lockedIds);
+        affected.addAll(result.unlockedIds);
+        if (!affected.isEmpty()) {
+            auditLogService.record(
+                    "MILESTONE_CHAIN_REBUILT",
+                    null, null, null, null, null, null, null,
+                    String.format("{\"projectId\":%d,\"trigger\":\"INITIALIZE_GATE\",\"affectedMilestoneIds\":[%s]}",
+                            target.getProjectId(), affected.stream().map(String::valueOf).collect(Collectors.joining(","))));
+        }
     }
 
     /**
@@ -172,20 +208,46 @@ public class MilestoneGateService {
     public void rebuildChain(Long projectId) {
         List<ProjectMilestoneEntity> all = milestoneRepository
                 .findByProjectIdOrderBySortOrderAsc(projectId);
-        applyGateChain(all, (short) 0, projectId);
-        log.info("ゲート連鎖再構築完了: projectId={}", projectId);
+        ChainRebuildResult result = applyGateChain(all, (short) 0, projectId);
+        log.info("ゲート連鎖再構築完了: projectId={}, locked={}, unlocked={}",
+                projectId, result.lockedIds.size(), result.unlockedIds.size());
+
+        // 監査ログ: MILESTONE_CHAIN_REBUILT
+        List<Long> affected = new ArrayList<>(result.lockedIds);
+        affected.addAll(result.unlockedIds);
+        if (!affected.isEmpty()) {
+            auditLogService.record(
+                    "MILESTONE_CHAIN_REBUILT",
+                    null, null, null, null, null, null, null,
+                    String.format("{\"projectId\":%d,\"trigger\":\"REBUILD_CHAIN\",\"affectedMilestoneIds\":[%s]}",
+                            projectId, affected.stream().map(String::valueOf).collect(Collectors.joining(","))));
+        }
     }
 
     // --- 内部処理 ---
 
     /**
-     * マイルストーン連鎖をインデックス startSortOrder 以降について再評価し、DB と TODO に反映する。
+     * ロック連鎖再評価の結果（監査ログ用の差分情報）。
+     *
+     * @param lockedIds   新たにロック状態になったマイルストーン ID 一覧
+     * @param unlockedIds 新たにアンロック状態になったマイルストーン ID 一覧
      */
-    private void applyGateChain(List<ProjectMilestoneEntity> allSorted, short startSortOrder, Long projectId) {
+    private record ChainRebuildResult(List<Long> lockedIds, List<Long> unlockedIds) {
+    }
+
+    /**
+     * マイルストーン連鎖をインデックス startSortOrder 以降について再評価し、DB と TODO に反映する。
+     *
+     * @return 変化があったマイルストーン ID の内訳
+     */
+    private ChainRebuildResult applyGateChain(List<ProjectMilestoneEntity> allSorted, short startSortOrder, Long projectId) {
         List<ProjectMilestoneEntity> sorted = new ArrayList<>(allSorted);
         sorted.sort(Comparator.comparing(ProjectMilestoneEntity::getSortOrder));
 
         List<MilestoneGateEvaluator.GateState> states = evaluator.evaluateChain(sorted);
+
+        List<Long> locked = new ArrayList<>();
+        List<Long> unlocked = new ArrayList<>();
 
         for (int i = 0; i < sorted.size(); i++) {
             ProjectMilestoneEntity m = sorted.get(i);
@@ -206,14 +268,24 @@ public class MilestoneGateService {
                 m.lockByMilestone(state.lockedByMilestoneId());
                 milestoneRepository.save(m);
                 syncTodosLockState(m.getId(), true);
+                locked.add(m.getId());
             } else if (!shouldBeLocked && wasLocked) {
                 m.unlock();
                 milestoneRepository.save(m);
                 syncTodosLockState(m.getId(), false);
                 eventPublisher.publishEvent(new MilestoneUnlockedEvent(
                         projectId, m.getId(), state.lockedByMilestoneId(), false));
+                unlocked.add(m.getId());
+                // 監査ログ: MILESTONE_UNLOCKED（連鎖再構築による自動アンロック）
+                auditLogService.record(
+                        "MILESTONE_UNLOCKED",
+                        null, null, null, null, null, null, null,
+                        String.format("{\"projectId\":%d,\"milestoneId\":%d,\"triggeredByMilestoneId\":%s,\"trigger\":\"CHAIN_REBUILD\"}",
+                                projectId, m.getId(),
+                                state.lockedByMilestoneId() == null ? "null" : state.lockedByMilestoneId().toString()));
             }
         }
+        return new ChainRebuildResult(locked, unlocked);
     }
 
     /**
@@ -254,6 +326,13 @@ public class MilestoneGateService {
 
             log.info("マイルストーン自動アンロック: milestoneId={}, triggeredBy={}, projectId={}",
                     n.getId(), completedMilestoneId, projectId);
+
+            // 監査ログ: MILESTONE_UNLOCKED（前マイルストーン達成による自動アンロック）
+            auditLogService.record(
+                    "MILESTONE_UNLOCKED",
+                    null, null, null, null, null, null, null,
+                    String.format("{\"projectId\":%d,\"milestoneId\":%d,\"triggeredByMilestoneId\":%d,\"trigger\":\"PREDECESSOR_COMPLETED\"}",
+                            projectId, n.getId(), completedMilestoneId));
         }
     }
 
@@ -287,5 +366,39 @@ public class MilestoneGateService {
     @FunctionalInterface
     private interface Runnable0 {
         Object run();
+    }
+
+    /**
+     * 監査ログ metadata JSON 文字列内に埋め込む文字列を JSON 仕様に沿ってエスケープする。
+     * reason 等のユーザー入力を安全に metadata 格納するため。
+     *
+     * @param raw エスケープ対象文字列（null 許容）
+     * @return JSON 文字列リテラル内に埋め込み可能な形式
+     */
+    private static String escapeJson(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(raw.length() + 16);
+        for (int i = 0; i < raw.length(); i++) {
+            char c = raw.charAt(i);
+            switch (c) {
+                case '\\' -> sb.append("\\\\");
+                case '"' -> sb.append("\\\"");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                case '\t' -> sb.append("\\t");
+                case '\b' -> sb.append("\\b");
+                case '\f' -> sb.append("\\f");
+                default -> {
+                    if (c < 0x20) {
+                        sb.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        sb.append(c);
+                    }
+                }
+            }
+        }
+        return sb.toString();
     }
 }

@@ -1,5 +1,6 @@
 package com.mannschaft.app.todo.service;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
@@ -55,6 +56,7 @@ public class ProjectService {
     private final TodoRepository todoRepository;
     private final NameResolverService nameResolverService;
     private final MilestoneGateService milestoneGateService;
+    private final AuditLogService auditLogService;
 
     /**
      * プロジェクト一覧を取得する。
@@ -548,6 +550,13 @@ public class ProjectService {
                 .build();
         updated = milestoneRepository.save(updated);
         log.info("マイルストーン完了モード変更: milestoneId={}, {} -> {}", milestoneId, oldMode, completionMode);
+
+        // 監査ログ: MILESTONE_COMPLETION_MODE_CHANGED（F10.3 連携）
+        auditLogService.record(
+                "MILESTONE_COMPLETION_MODE_CHANGED",
+                null, null, null, null, null, null, null,
+                String.format("{\"projectId\":%d,\"milestoneId\":%d,\"oldMode\":\"%s\",\"newMode\":\"%s\"}",
+                        projectId, milestoneId, oldMode, completionMode));
 
         // MANUAL → AUTO の場合、即座に現在の TODO 完了状況を評価する
         if ("AUTO".equals(completionMode) && !"AUTO".equals(oldMode)

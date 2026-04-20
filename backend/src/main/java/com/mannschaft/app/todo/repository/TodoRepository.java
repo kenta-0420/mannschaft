@@ -165,4 +165,45 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
      * マイルストーン内のロック中 TODO 数を取得する（F02.7 ゲートサマリー用、論理削除除外）。
      */
     long countByMilestoneIdAndMilestoneLockedTrueAndDeletedAtIsNull(Long milestoneId);
+
+    /**
+     * 明日期限の未完了かつ非ロック TODO を取得する（F04.3 期限リマインダーバッチ実装用）。
+     *
+     * <p>F02.7 設計書 §5.2「ロック中 TODO への通知抑制」に基づき
+     * {@code milestone_locked = FALSE} を条件に含める。これによりロック中タスクに対する
+     * {@code TODO_DUE_TOMORROW} / {@code TODO_OVERDUE} 通知を抑制する。</p>
+     *
+     * <p>F04.3 期限リマインダーバッチ本体は別 Phase で実装。本クエリは実装時にそのまま
+     * 使用できるよう先行提供する。</p>
+     *
+     * @param dueDate 対象日（明日）
+     * @return 明日期限かつ未完了・非ロックの TODO 一覧
+     */
+    @Query("""
+            SELECT t FROM TodoEntity t
+            WHERE t.deletedAt IS NULL
+              AND t.dueDate = :dueDate
+              AND t.status <> com.mannschaft.app.todo.TodoStatus.COMPLETED
+              AND t.milestoneLocked = false
+            ORDER BY t.id ASC
+            """)
+    List<TodoEntity> findDueTomorrowForReminder(@Param("dueDate") LocalDate dueDate);
+
+    /**
+     * 期限超過の未完了かつ非ロック TODO を取得する（F04.3 期限リマインダーバッチ実装用）。
+     *
+     * <p>F02.7 設計書 §5.2 に基づき {@code milestone_locked = FALSE} を条件に含める。</p>
+     *
+     * @param today 今日の日付（due_date &lt; today を超過とみなす）
+     * @return 期限超過かつ未完了・非ロックの TODO 一覧
+     */
+    @Query("""
+            SELECT t FROM TodoEntity t
+            WHERE t.deletedAt IS NULL
+              AND t.dueDate < :today
+              AND t.status <> com.mannschaft.app.todo.TodoStatus.COMPLETED
+              AND t.milestoneLocked = false
+            ORDER BY t.dueDate ASC, t.id ASC
+            """)
+    List<TodoEntity> findOverdueForReminder(@Param("today") LocalDate today);
 }
