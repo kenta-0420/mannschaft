@@ -19,7 +19,6 @@ const todos = ref<TodoItem[]>([])
 const overdueCount = ref(0)
 const loading = ref(true)
 
-// スコープ名マップ
 const teamNameMap = computed(() =>
   Object.fromEntries(teamStore.myTeams.map((t) => [t.id, t.nickname1 || t.name])),
 )
@@ -28,7 +27,7 @@ const orgNameMap = computed(() =>
 )
 
 function scopeLabel(todo: TodoItem): string | null {
-  if (todo.scopeType === 'PERSONAL') return null // 個人は表示不要
+  if (todo.scopeType === 'PERSONAL') return null
   if (todo.scopeType === 'TEAM' && todo.scopeId) return teamNameMap.value[todo.scopeId] ?? 'チーム'
   if (todo.scopeType === 'ORGANIZATION' && todo.scopeId)
     return orgNameMap.value[todo.scopeId] ?? '組織'
@@ -62,7 +61,7 @@ async function load() {
         scopeType: t.scopeType,
         scopeId: t.scopeId,
       }))
-      .slice(0, 10) // ウィジェットは最大10件
+      .slice(0, 15)
     overdueCount.value = todos.value.filter(
       (t) => t.dueDate !== null && new Date(t.dueDate) < today,
     ).length
@@ -85,16 +84,29 @@ async function onToggle(todo: TodoItem) {
   }
 }
 
+const priorityColor: Record<string, string> = {
+  HIGH: 'text-red-500',
+  MEDIUM: 'text-yellow-500',
+  LOW: 'text-green-500',
+  URGENT: 'text-red-600',
+}
+
 const priorityIcon: Record<string, string> = {
-  HIGH: 'pi pi-exclamation-triangle text-red-500',
-  MEDIUM: 'pi pi-minus text-yellow-500',
-  LOW: 'pi pi-chevron-down text-green-500',
+  HIGH: 'pi pi-exclamation-triangle',
+  MEDIUM: 'pi pi-minus',
+  LOW: 'pi pi-chevron-down',
+  URGENT: 'pi pi-exclamation-circle',
 }
 
 function isOverdue(dueDate: string | null): boolean {
   if (!dueDate) return false
   return new Date(dueDate) < new Date()
 }
+
+const todosWithDue = computed(() =>
+  todos.value.filter((t): t is TodoItem & { dueDate: string } => t.dueDate !== null),
+)
+const todosNoDue = computed(() => todos.value.filter((t) => t.dueDate === null))
 
 onMounted(load)
 </script>
@@ -111,45 +123,100 @@ onMounted(load)
       <NuxtLink to="/todos" class="text-xs text-primary hover:underline">すべて表示</NuxtLink>
     </template>
 
-    <div v-if="todos.length > 0">
-      <div v-if="overdueCount > 0" class="mb-2">
+    <div v-if="todos.length > 0" class="space-y-3">
+      <div v-if="overdueCount > 0">
         <Tag :value="`期限切れ: ${overdueCount}件`" severity="danger" rounded />
       </div>
-      <div class="space-y-1.5">
-        <div
-          v-for="todo in todos"
-          :key="todo.id"
-          class="flex items-start gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/50"
-        >
-          <Checkbox
-            :model-value="todo.completed"
-            binary
-            class="mt-0.5 shrink-0"
-            @update:model-value="onToggle(todo)"
-          />
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-1.5">
-              <p class="text-sm" :class="{ 'text-surface-400 line-through': todo.completed }">
-                {{ todo.title }}
-              </p>
-              <!-- チーム・組織から割り当てられたTODOにはバッジ表示 -->
-              <span
-                v-if="scopeLabel(todo)"
-                class="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-                :class="scopeColor(todo.scopeType)"
-              >
-                {{ scopeLabel(todo) }}
-              </span>
+
+      <!-- 期限あり -->
+      <div v-if="todosWithDue.length > 0">
+        <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-surface-400">
+          期限あり
+        </p>
+        <div class="grid grid-cols-3 gap-1.5 md:grid-cols-4 lg:grid-cols-5">
+          <div
+            v-for="todo in todosWithDue"
+            :key="todo.id"
+            class="flex cursor-pointer flex-col gap-1 rounded-lg border border-surface-200 p-2 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700/50"
+            @click="onToggle(todo)"
+          >
+            <div class="flex items-center justify-between gap-1">
+              <Checkbox
+                :model-value="todo.completed"
+                binary
+                class="shrink-0"
+                @click.stop
+                @update:model-value="onToggle(todo)"
+              />
+              <i
+                v-if="priorityIcon[todo.priority]"
+                :class="[priorityIcon[todo.priority], priorityColor[todo.priority]]"
+                class="shrink-0 text-[11px]"
+              />
             </div>
             <p
-              v-if="todo.dueDate"
-              class="text-xs"
-              :class="isOverdue(todo.dueDate) ? 'text-red-500 font-medium' : 'text-surface-400'"
+              class="line-clamp-2 text-xs leading-tight"
+              :class="{ 'text-surface-400 line-through': todo.completed }"
             >
-              期限: {{ new Date(todo.dueDate).toLocaleDateString('ja-JP') }}
+              {{ todo.title }}
             </p>
+            <p
+              class="text-[10px] font-medium"
+              :class="isOverdue(todo.dueDate) ? 'text-red-500' : 'text-surface-400'"
+            >
+              {{ new Date(todo.dueDate).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) }}
+            </p>
+            <span
+              v-if="scopeLabel(todo)"
+              class="w-fit rounded-full px-1 py-0.5 text-[9px] font-medium"
+              :class="scopeColor(todo.scopeType)"
+            >
+              {{ scopeLabel(todo) }}
+            </span>
           </div>
-          <i :class="priorityIcon[todo.priority] ?? ''" class="mt-0.5 shrink-0 text-xs" />
+        </div>
+      </div>
+
+      <!-- 期限なし -->
+      <div v-if="todosNoDue.length > 0">
+        <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-surface-400">
+          期限なし
+        </p>
+        <div class="grid grid-cols-3 gap-1.5 md:grid-cols-4 lg:grid-cols-5">
+          <div
+            v-for="todo in todosNoDue"
+            :key="todo.id"
+            class="flex cursor-pointer flex-col gap-1 rounded-lg border border-surface-200 p-2 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700/50"
+            @click="onToggle(todo)"
+          >
+            <div class="flex items-center justify-between gap-1">
+              <Checkbox
+                :model-value="todo.completed"
+                binary
+                class="shrink-0"
+                @click.stop
+                @update:model-value="onToggle(todo)"
+              />
+              <i
+                v-if="priorityIcon[todo.priority]"
+                :class="[priorityIcon[todo.priority], priorityColor[todo.priority]]"
+                class="shrink-0 text-[11px]"
+              />
+            </div>
+            <p
+              class="line-clamp-2 text-xs leading-tight"
+              :class="{ 'text-surface-400 line-through': todo.completed }"
+            >
+              {{ todo.title }}
+            </p>
+            <span
+              v-if="scopeLabel(todo)"
+              class="w-fit rounded-full px-1 py-0.5 text-[9px] font-medium"
+              :class="scopeColor(todo.scopeType)"
+            >
+              {{ scopeLabel(todo) }}
+            </span>
+          </div>
         </div>
       </div>
     </div>
