@@ -209,7 +209,7 @@ async function mockOrgApisAsAdmin(page: Page): Promise<void> {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        data: { roleName: 'ORG_ADMIN', permissions: ['MANAGE_COMMITTEES'] },
+        data: { roleName: 'ADMIN', permissions: ['MANAGE_COMMITTEES'] },
       }),
     })
   })
@@ -363,6 +363,6 @@ test.describe('COMMITTEE-001〜004: F04.10 組織委員会機能', () => {
     await acceptButton.click()
 
     // i18n committee.invitation.invalid = "無効な招集状です"
-    await expect(page.getByText('無効な招集状です')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('heading', { name: '無効な招集状です' })).toBeVisible({ timeout: 10_000 })
   })
 })

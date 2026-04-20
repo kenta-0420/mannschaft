@@ -64,7 +64,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: process.env.REUSE_SERVER === 'true' || !process.env.CI,
     timeout: 120_000,
   },
 })

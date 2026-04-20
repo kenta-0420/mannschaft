@@ -69,7 +69,6 @@ async function onDecline() {
     <div v-if="error" class="w-full max-w-md rounded-lg border p-8 text-center">
       <i class="pi pi-exclamation-triangle mb-4 text-5xl text-yellow-500" />
       <h2 class="mb-2 text-xl font-bold">{{ errorMessage }}</h2>
-      <p class="mb-6 text-gray-500">{{ $t('committee.invitation.invalid') }}</p>
       <Button :label="$t('button.back')" icon="pi pi-home" @click="navigateTo('/')" />
     </div>
 
