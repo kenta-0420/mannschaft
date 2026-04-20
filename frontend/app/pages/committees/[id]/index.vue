@@ -79,7 +79,7 @@ async function onTransitionStatus(to: string) {
 }
 
 async function onRemoveMember(userId: number, displayName: string) {
-  if (!confirm(`${displayName} を解任しますか？`)) return
+  if (!confirm(t('committee.detail.remove_member_confirm', { name: displayName }))) return
   try {
     await committeeApi.removeMember(committeeId, userId)
     notification.success(t('committee.detail.remove_member'))

@@ -41,7 +41,8 @@
       "close": "结束活动",
       "archive": "归档",
       "leave": "离开委员会",
-      "remove_member": "移除成员"
+      "remove_member": "移除成员",
+      "remove_member_confirm": "{name} を解任しますか？"
     },
     "distributions": {
       "title": "传达记录",

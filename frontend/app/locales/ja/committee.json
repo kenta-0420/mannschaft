@@ -41,7 +41,8 @@
       "close": "活動を終了する",
       "archive": "アーカイブする",
       "leave": "委員会を離脱する",
-      "remove_member": "メンバーを解任する"
+      "remove_member": "メンバーを解任する",
+      "remove_member_confirm": "{name} を解任しますか？"
     },
     "distributions": {
       "title": "伝達履歴",

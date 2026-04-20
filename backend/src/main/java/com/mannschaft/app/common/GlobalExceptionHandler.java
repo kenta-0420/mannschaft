@@ -82,11 +82,22 @@ public class GlobalExceptionHandler {
             Map.entry("SOCIAL_123", HttpStatus.BAD_REQUEST),       // FRIEND_FORWARD_NOT_SHARABLE
             Map.entry("SOCIAL_124", HttpStatus.NOT_FOUND),         // FRIEND_FORWARD_RELATION_NOT_FOUND
             Map.entry("SOCIAL_125", HttpStatus.BAD_REQUEST),       // FRIEND_FORWARD_SUPPORTER_NOT_ALLOWED
-            // F04.10 組織委員会 — 議事録確定
-            Map.entry("COMMITTEE_MINUTES_ALREADY_CONFIRMED", HttpStatus.CONFLICT),  // 既に確定済み(409)
-            Map.entry("COMMITTEE_NOT_FOUND", HttpStatus.NOT_FOUND),                  // 委員会/活動記録が見つからない(404)
-            Map.entry("COMMITTEE_INVITATION_NOT_FOUND", HttpStatus.NOT_FOUND),       // 招集状が見つからない(404)
-            Map.entry("COMMITTEE_INVITATION_EXPIRED", HttpStatus.GONE)               // 招集状の有効期限切れ(410)
+            // F04.10 組織委員会
+            Map.entry("COMMITTEE_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("COMMITTEE_MEMBER_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("COMMITTEE_NAME_DUPLICATE", HttpStatus.CONFLICT),
+            Map.entry("COMMITTEE_INVALID_STATUS_TRANSITION", HttpStatus.BAD_REQUEST),
+            Map.entry("COMMITTEE_CHAIR_REQUIRED", HttpStatus.BAD_REQUEST),
+            Map.entry("COMMITTEE_LAST_CHAIR_CANNOT_LEAVE", HttpStatus.BAD_REQUEST),
+            Map.entry("COMMITTEE_NOT_MEMBER", HttpStatus.FORBIDDEN),
+            Map.entry("COMMITTEE_DRAFT_CANNOT_DISTRIBUTE", HttpStatus.BAD_REQUEST),
+            Map.entry("COMMITTEE_ALREADY_MEMBER", HttpStatus.CONFLICT),
+            Map.entry("COMMITTEE_INVITATION_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("COMMITTEE_INVITATION_ALREADY_RESOLVED", HttpStatus.CONFLICT),
+            Map.entry("COMMITTEE_INVITATION_EXPIRED", HttpStatus.GONE),
+            Map.entry("COMMITTEE_INVITATION_TOKEN_INVALID", HttpStatus.BAD_REQUEST),
+            Map.entry("COMMITTEE_MINUTES_ALREADY_CONFIRMED", HttpStatus.CONFLICT),
+            Map.entry("COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE", HttpStatus.BAD_REQUEST)
     );
 
     /**

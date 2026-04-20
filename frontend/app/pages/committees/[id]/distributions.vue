@@ -62,8 +62,8 @@ onMounted(async () => {
                 <Tag :value="log.contentType" severity="info" class="text-xs" />
                 <Tag :value="log.targetScope" severity="secondary" class="text-xs" />
               </div>
-              <p v-if="log.customHeadline" class="mt-1 text-sm text-gray-600">
-                {{ log.customHeadline }}
+              <p v-if="log.customTitle" class="mt-1 text-sm text-gray-600">
+                {{ log.customTitle }}
               </p>
               <div class="mt-1 flex items-center gap-3 text-xs text-gray-500">
                 <span>

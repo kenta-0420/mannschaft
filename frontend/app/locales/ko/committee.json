@@ -41,7 +41,8 @@
       "close": "활동 종료",
       "archive": "아카이브",
       "leave": "위원회 탈퇴",
-      "remove_member": "멤버 해임"
+      "remove_member": "멤버 해임",
+      "remove_member_confirm": "{name} を解任しますか？"
     },
     "distributions": {
       "title": "전달 이력",

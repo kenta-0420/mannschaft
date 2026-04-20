@@ -52,6 +52,6 @@ export interface CommitteeDistributionLog {
   confirmableNotificationId: number | null
   announcementFeedIds: number[]
   customTitle: string | null
-  customHeadline: string | null
+  customBody: string | null
   createdAt: string
 }

@@ -73,8 +73,8 @@ public class CommitteeDistributionService {
      *   <li>委員会の存在確認</li>
      *   <li>認可チェック: CHAIR / VICE_CHAIR / SECRETARY のいずれか</li>
      *   <li>DRAFT 状態チェック（配信不可）</li>
-     *   <li>announcementEnabled = true の場合: AnnouncementFeed を生成（TODO: Phase 14-5）</li>
-     *   <li>confirmationMode != NONE の場合: ConfirmableNotification を生成（TODO: Phase 14-5）</li>
+     *   <li>announcementEnabled = true の場合: AnnouncementFeed を生成</li>
+     *   <li>confirmationMode != NONE の場合: ConfirmableNotification を生成</li>
      *   <li>CommitteeDistributionLogEntity を保存して返す</li>
      * </ol>
      * </p>

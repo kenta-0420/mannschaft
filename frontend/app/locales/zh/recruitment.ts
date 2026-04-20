@@ -145,8 +145,8 @@ export default {
       "followersDesc": "通知关注者",
       "publicFeed": "公开动态",
       "publicFeedDesc": "发布到公开动态",
-      "warnPublicNeedsFeed": "公开范围为"全体公开"时需要包含"公开动态"",
-      "warnSupportersOnlyNeedsSupporter": "公开范围为"仅支持者"时需要包含"支持者""
+      "warnPublicNeedsFeed": "公开范围为\"全体公开\"时需要包含\"公开动态\"",
+      "warnSupportersOnlyNeedsSupporter": "公开范围为\"仅支持者\"时需要包含\"支持者\""
     },
     "widget": {
       "feedTitle": "最新招募",

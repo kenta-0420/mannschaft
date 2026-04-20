@@ -41,7 +41,8 @@
       "close": "Cerrar",
       "archive": "Archivar",
       "leave": "Abandonar el comité",
-      "remove_member": "Remover miembro"
+      "remove_member": "Remover miembro",
+      "remove_member_confirm": "{name} を解任しますか？"
     },
     "distributions": {
       "title": "Historial de distribución",
