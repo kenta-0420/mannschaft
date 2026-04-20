@@ -160,4 +160,9 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
      * マイルストーン内のTODO一覧を取得する（論理削除除外、F02.7 ゲート連携用）。
      */
     List<TodoEntity> findByMilestoneIdAndDeletedAtIsNull(Long milestoneId);
+
+    /**
+     * マイルストーン内のロック中 TODO 数を取得する（F02.7 ゲートサマリー用、論理削除除外）。
+     */
+    long countByMilestoneIdAndMilestoneLockedTrueAndDeletedAtIsNull(Long milestoneId);
 }

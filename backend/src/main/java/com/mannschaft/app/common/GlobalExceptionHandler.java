@@ -1,5 +1,6 @@
 package com.mannschaft.app.common;
 
+import com.mannschaft.app.todo.exception.MilestoneLockedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -171,6 +172,49 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_003));
+    }
+
+    /**
+     * F02.7 マイルストーンロック例外 → 423 Locked にマッピング。
+     *
+     * <p>ロック中マイルストーン配下の TODO に対するステータス変更・編集等が試みられた際に
+     * {@link MilestoneLockedException} が送出される。レスポンスにはエラーコード
+     * {@code MILESTONE_LOCKED} とロック解除条件（前マイルストーンタイトル）を含める。</p>
+     */
+    @ExceptionHandler(MilestoneLockedException.class)
+    public ResponseEntity<ErrorResponse> handleMilestoneLocked(MilestoneLockedException ex) {
+        log.warn("MilestoneLockedException: milestoneId={}, lockedBy={}",
+                ex.getMilestoneId(), ex.getLockedByMilestoneTitle());
+        String unlockCondition = "前マイルストーン『" + ex.getLockedByMilestoneTitle() + "』を完了";
+        List<ErrorResponse.FieldError> details = List.of(
+                new ErrorResponse.FieldError("milestone_id", String.valueOf(ex.getMilestoneId())),
+                new ErrorResponse.FieldError("unlock_condition", unlockCondition)
+        );
+        ErrorResponse body = new ErrorResponse(
+                new ErrorResponse.ErrorDetail("MILESTONE_LOCKED", ex.getMessage(), details));
+        return ResponseEntity.status(HttpStatus.LOCKED).body(body);
+    }
+
+    /**
+     * F02.7 ゲート更新時の楽観的ロックリトライ失敗 → 409 Conflict。
+     *
+     * <p>{@link com.mannschaft.app.todo.service.MilestoneGateService} が
+     * リトライ 1 回でも競合を解消できなかった場合 {@link IllegalStateException} を送出する。
+     * メッセージに "競合" を含む場合のみ 409 として扱い、それ以外は上位の予期せぬ例外に委ねる。</p>
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
+        String msg = ex.getMessage() != null ? ex.getMessage() : "";
+        if (msg.contains("競合") || msg.contains("conflict")) {
+            log.warn("ゲート更新競合: {}", msg);
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(ErrorResponse.of(CommonErrorCode.COMMON_003));
+        }
+        log.error("IllegalStateException", ex);
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_999));
     }
 
     /**
