@@ -61,6 +61,12 @@
     "allStatuses": "全部",
     "participants": "参与者",
     "rsvpList": "出席回复列表",
-    "adminOnly": "仅管理员"
+    "adminOnly": "仅管理员",
+    "visibility": {
+      "label": "公开范围",
+      "PUBLIC": "公开（外部公开）",
+      "SUPPORTERS_AND_ABOVE": "支持者以上",
+      "MEMBERS_ONLY": "仅成员"
+    }
   }
 }

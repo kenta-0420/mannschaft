@@ -61,6 +61,12 @@
     "allStatuses": "전체",
     "participants": "참가자",
     "rsvpList": "참석 답변 목록",
-    "adminOnly": "관리자 전용"
+    "adminOnly": "관리자 전용",
+    "visibility": {
+      "label": "공개 범위",
+      "PUBLIC": "퍼블릭（외부 공개）",
+      "SUPPORTERS_AND_ABOVE": "서포터 이상",
+      "MEMBERS_ONLY": "멤버만"
+    }
   }
 }

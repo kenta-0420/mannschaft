@@ -61,6 +61,12 @@
     "allStatuses": "Todos",
     "participants": "Participantes",
     "rsvpList": "Lista de confirmaciones",
-    "adminOnly": "Solo administradores"
+    "adminOnly": "Solo administradores",
+    "visibility": {
+      "label": "Visibilidad",
+      "PUBLIC": "Público",
+      "SUPPORTERS_AND_ABOVE": "Seguidores o superior",
+      "MEMBERS_ONLY": "Solo miembros"
+    }
   }
 }

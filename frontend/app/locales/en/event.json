@@ -61,6 +61,12 @@
     "allStatuses": "All",
     "participants": "Participants",
     "rsvpList": "RSVP List",
-    "adminOnly": "Admin Only"
+    "adminOnly": "Admin Only",
+    "visibility": {
+      "label": "Visibility",
+      "PUBLIC": "Public",
+      "SUPPORTERS_AND_ABOVE": "Supporters & Above",
+      "MEMBERS_ONLY": "Members Only"
+    }
   }
 }
