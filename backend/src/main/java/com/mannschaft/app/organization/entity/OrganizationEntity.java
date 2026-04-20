@@ -100,12 +100,15 @@ public class OrganizationEntity extends BaseEntity {
      * 組織種別
      */
     public enum OrgType {
-        SCHOOL,
-        COMPANY,
-        NPO,
-        COMMUNITY,
-        GOVERNMENT,
-        OTHER
+        GOVERNMENT,    // 行政・官公庁
+        MUNICIPALITY,  // 自治体（市区町村）
+        COMPANY,       // 会社・企業
+        HOSPITAL,      // 病院・医療機関
+        ASSOCIATION,   // 協会・連盟
+        SCHOOL,        // 学校・教育機関
+        NPO,           // NPO・非営利団体
+        COMMUNITY,     // コミュニティ
+        OTHER          // その他
     }
 
     /**
