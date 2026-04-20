@@ -123,7 +123,7 @@ async function submitCreate() {
 
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="mb-1 block text-sm font-medium">スコープ</label>
+          <label class="mb-1 block text-sm font-medium">共有先</label>
           <Select
             v-model="selectedScopeOption"
             :options="scopeOptions"
