@@ -68,7 +68,7 @@ class EventRegistrationServiceAdditionalTest {
                 .scopeId(10L)
                 .slug("test-event")
                 .status(EventStatus.REGISTRATION_OPEN)
-                .isPublic(false)
+                .visibility(com.mannschaft.app.event.entity.EventVisibility.MEMBERS_ONLY)
                 .isApprovalRequired(false)
                 .maxCapacity(maxCapacity)
                 .build();
@@ -151,7 +151,8 @@ class EventRegistrationServiceAdditionalTest {
             EventEntity event = EventEntity.builder()
                     .scopeType(EventScopeType.TEAM).scopeId(10L).slug("full-event")
                     .status(EventStatus.REGISTRATION_OPEN)
-                    .isPublic(false).isApprovalRequired(false)
+                    .visibility(com.mannschaft.app.event.entity.EventVisibility.MEMBERS_ONLY)
+                    .isApprovalRequired(false)
                     .maxCapacity(5)
                     .build();
             // 5回インクリメントしてfull状態にする

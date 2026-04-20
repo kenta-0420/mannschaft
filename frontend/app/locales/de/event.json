@@ -61,6 +61,12 @@
     "allStatuses": "Alle",
     "participants": "Teilnehmer",
     "rsvpList": "Zu-/Absagen-Liste",
-    "adminOnly": "Nur Administratoren"
+    "adminOnly": "Nur Administratoren",
+    "visibility": {
+      "label": "Sichtbarkeit",
+      "PUBLIC": "Öffentlich",
+      "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
+      "MEMBERS_ONLY": "Nur Mitglieder"
+    }
   }
 }

@@ -10,6 +10,7 @@ import com.mannschaft.app.event.dto.TicketTypeResponse;
 import com.mannschaft.app.event.dto.TimetableItemResponse;
 import com.mannschaft.app.event.entity.EventCheckinEntity;
 import com.mannschaft.app.event.entity.EventEntity;
+import com.mannschaft.app.event.entity.EventVisibility;
 import com.mannschaft.app.event.entity.EventGuestInviteTokenEntity;
 import com.mannschaft.app.event.entity.EventRegistrationEntity;
 import com.mannschaft.app.event.entity.EventTicketEntity;
@@ -54,7 +55,7 @@ class EventMapperTest {
                     .scopeId(10L)
                     .slug("test-event")
                     .status(EventStatus.PUBLISHED)
-                    .isPublic(true)
+                    .visibility(EventVisibility.PUBLIC)
                     .isApprovalRequired(false)
                     .build();
 
@@ -77,7 +78,7 @@ class EventMapperTest {
                     .scopeId(5L)
                     .slug("event-1")
                     .status(EventStatus.DRAFT)
-                    .isPublic(false)
+                    .visibility(EventVisibility.MEMBERS_ONLY)
                     .isApprovalRequired(true)
                     .build();
             EventEntity entity2 = EventEntity.builder()
@@ -85,7 +86,7 @@ class EventMapperTest {
                     .scopeId(10L)
                     .slug("event-2")
                     .status(EventStatus.COMPLETED)
-                    .isPublic(true)
+                    .visibility(EventVisibility.PUBLIC)
                     .isApprovalRequired(false)
                     .build();
 
@@ -118,9 +119,8 @@ class EventMapperTest {
                     .scopeId(20L)
                     .slug("detail-event")
                     .status(EventStatus.REGISTRATION_OPEN)
-                    .isPublic(false)
+                    .visibility(EventVisibility.MEMBERS_ONLY)
                     .isApprovalRequired(true)
-                    .minRegistrationRole("MEMBER_PLUS")
                     .venueName("会場名")
                     .registrationStartsAt(NOW)
                     .registrationEndsAt(NOW.plusDays(7))

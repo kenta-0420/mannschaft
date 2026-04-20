@@ -72,13 +72,10 @@ public class EventEntity extends BaseEntity {
     @Builder.Default
     private EventStatus status = EventStatus.DRAFT;
 
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean isPublic = false;
-
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default
-    private String minRegistrationRole = "MEMBER_PLUS";
+    private EventVisibility visibility = EventVisibility.MEMBERS_ONLY;
 
     private LocalDateTime registrationStartsAt;
 

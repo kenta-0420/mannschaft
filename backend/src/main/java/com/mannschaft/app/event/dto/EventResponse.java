@@ -19,7 +19,7 @@ public class EventResponse {
     private final String subtitle;
     private final String coverImageKey;
     private final String status;
-    private final Boolean isPublic;
+    private final String visibility;
     private final LocalDateTime registrationStartsAt;
     private final LocalDateTime registrationEndsAt;
     private final Integer maxCapacity;
