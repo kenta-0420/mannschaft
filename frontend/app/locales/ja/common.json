@@ -496,6 +496,9 @@
     "initialize_gate_submit": "有効化する",
     "force_unlock_success": "強制アンロックしました",
     "completion_mode_changed": "完了モードを変更しました",
-    "initialize_gate_success": "ゲートを初期化しました"
+    "initialize_gate_success": "ゲートを初期化しました",
+    "my_projects": "個人プロジェクト",
+    "my_projects_description": "自分のタスク管理・目標",
+    "no_my_projects": "個人プロジェクトがまだありません"
   }
 }
