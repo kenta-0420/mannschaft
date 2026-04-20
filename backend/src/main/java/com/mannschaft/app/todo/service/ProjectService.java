@@ -47,7 +47,7 @@ import java.util.Set;
 public class ProjectService {
 
     private static final int MAX_ACTIVE_PROJECTS = 20;
-    private static final int MAX_MILESTONES_PER_PROJECT = 20;
+    private static final int MAX_MILESTONES_PER_PROJECT = 50;
 
     private final ProjectRepository projectRepository;
     private final ProjectMilestoneRepository milestoneRepository;
