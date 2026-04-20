@@ -417,7 +417,11 @@ public class TodoService {
         TodoStatus newStatus = TodoStatus.valueOf(request.getStatus());
         List<TodoEntity> todos = todoRepository.findByIdInAndDeletedAtIsNull(request.getTodoIds());
 
-        // F02.7: ロック中 TODO をスキップする（DTO 拡張（skipped_locked_ids）は Phase 15-3 で実装予定）
+        // F02.7: ロック中 TODO をスキップする。
+        // TODO(F02.7 Phase 15-3 残件): 現在は skippedLockedIds をログ出力のみで、APIレスポンスには含めていない。
+        //   レスポンス DTO（List<TodoStatusChangeResponse>）を BulkStatusChangeResponse（skippedLockedIds を含む）に
+        //   差し替えるには、既存の呼び出し側（TeamTodoController / PersonalTodoController）とシグネチャ変更を要する。
+        //   破壊的変更を避けるため Phase 15-4 以降で対応予定。
         List<Long> skippedLockedIds = new java.util.ArrayList<>();
         List<TodoEntity> processable = new java.util.ArrayList<>();
         for (TodoEntity t : todos) {
