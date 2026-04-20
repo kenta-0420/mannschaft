@@ -28,12 +28,14 @@ public interface EventMapper {
 
     @Mapping(target = "scopeType", expression = "java(entity.getScopeType().name())")
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
+    @Mapping(target = "visibility", expression = "java(entity.getVisibility().name())")
     EventResponse toEventResponse(EventEntity entity);
 
     List<EventResponse> toEventResponseList(List<EventEntity> entities);
 
     @Mapping(target = "scopeType", expression = "java(entity.getScopeType().name())")
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
+    @Mapping(target = "visibility", expression = "java(entity.getVisibility().name())")
     @Mapping(target = "rsvpSummary", ignore = true)
     EventDetailResponse toEventDetailResponse(EventEntity entity);
 

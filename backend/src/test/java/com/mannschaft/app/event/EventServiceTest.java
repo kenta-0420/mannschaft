@@ -7,6 +7,7 @@ import com.mannschaft.app.event.dto.EventResponse;
 import com.mannschaft.app.event.dto.EventStatsResponse;
 import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
+import com.mannschaft.app.event.entity.EventVisibility;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRegistrationRepository;
 import com.mannschaft.app.event.repository.EventRepository;
@@ -74,7 +75,7 @@ class EventServiceTest {
                 .subtitle("テストイベント")
                 .summary("テスト用イベントの説明")
                 .status(EventStatus.DRAFT)
-                .isPublic(false)
+                .visibility(EventVisibility.MEMBERS_ONLY)
                 .isApprovalRequired(false)
                 .createdBy(USER_ID)
                 .build();
@@ -86,7 +87,7 @@ class EventServiceTest {
                 .scopeId(SCOPE_ID)
                 .slug("test-event")
                 .status(status)
-                .isPublic(false)
+                .visibility(EventVisibility.MEMBERS_ONLY)
                 .isApprovalRequired(false)
                 .createdBy(USER_ID)
                 .build();
@@ -96,7 +97,7 @@ class EventServiceTest {
         return new EventDetailResponse(
                 EVENT_ID, "TEAM", SCOPE_ID, null, "test-event", "テストイベント",
                 "テスト用イベントの説明", null, null, null, null, null, null,
-                "DRAFT", false, "MEMBER_PLUS", null, null, null, false,
+                "DRAFT", "MEMBERS_ONLY", null, null, null, false,
                 EventAttendanceMode.REGISTRATION, null,
                 null, null, null, null, null, 0, 0, USER_ID, 0L,
                 LocalDateTime.now(), LocalDateTime.now()
@@ -120,7 +121,7 @@ class EventServiceTest {
             Page<EventEntity> page = new PageImpl<>(List.of(entity), pageable, 1);
             EventResponse response = new EventResponse(
                     EVENT_ID, "TEAM", SCOPE_ID, "test-event", "テストイベント",
-                    null, "DRAFT", false, null, null, null, 0, 0,
+                    null, "DRAFT", "MEMBERS_ONLY", null, null, null, 0, 0,
                     LocalDateTime.now(), LocalDateTime.now()
             );
 
@@ -243,8 +244,8 @@ class EventServiceTest {
             // Given
             CreateEventRequest request = new CreateEventRequest(
                     null, "test-event", "テストイベント", "説明", null,
-                    null, null, null, null, null, false,
-                    null, null, null, null, false, EventAttendanceMode.REGISTRATION, null, null, null, null
+                    null, null, null, null, null, "MEMBERS_ONLY",
+                    null, null, null, false, EventAttendanceMode.REGISTRATION, null, null, null, null
             );
             EventEntity savedEntity = createDraftEvent();
             EventDetailResponse response = createEventDetailResponse();
@@ -268,7 +269,7 @@ class EventServiceTest {
             CreateEventRequest request = new CreateEventRequest(
                     null, "duplicate-slug", null, null, null,
                     null, null, null, null, null, null,
-                    null, null, null, null, null, null, null, null, null, null
+                    null, null, null, null, null, null, null, null, null
             );
             given(eventRepository.existsBySlug("duplicate-slug")).willReturn(true);
 

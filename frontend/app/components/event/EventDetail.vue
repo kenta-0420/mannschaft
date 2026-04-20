@@ -52,11 +52,14 @@ onMounted(() => init())
           </h1>
           <div class="mt-2 flex items-center gap-3">
             <Tag :value="statusLabel(event.status)" :severity="statusSeverity(event.status)" />
-            <span v-if="event.isPublic" class="text-sm text-green-600">
-              <i class="pi pi-eye mr-1" />一般公開
+            <span v-if="event.visibility === 'PUBLIC'" class="text-sm text-green-600">
+              <i class="pi pi-eye mr-1" />{{ $t('event.visibility.PUBLIC') }}
+            </span>
+            <span v-else-if="event.visibility === 'SUPPORTERS_AND_ABOVE'" class="text-sm text-blue-500">
+              <i class="pi pi-eye mr-1" />{{ $t('event.visibility.SUPPORTERS_AND_ABOVE') }}
             </span>
             <span v-else class="text-sm text-surface-500">
-              <i class="pi pi-eye-slash mr-1" />非公開
+              <i class="pi pi-eye-slash mr-1" />{{ $t('event.visibility.MEMBERS_ONLY') }}
             </span>
           </div>
         </div>

@@ -13,6 +13,7 @@ import com.mannschaft.app.event.dto.EventStatsResponse;
 import com.mannschaft.app.event.dto.UpdateEventRequest;
 import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
+import com.mannschaft.app.event.entity.EventVisibility;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRegistrationRepository;
 import com.mannschaft.app.event.repository.EventRepository;
@@ -114,9 +115,9 @@ public class EventService {
                 .venueLatitude(request.getVenueLatitude())
                 .venueLongitude(request.getVenueLongitude())
                 .venueAccessInfo(request.getVenueAccessInfo())
-                .isPublic(request.getIsPublic() != null ? request.getIsPublic() : false)
-                .minRegistrationRole(request.getMinRegistrationRole() != null
-                        ? request.getMinRegistrationRole() : "MEMBER_PLUS")
+                .visibility(request.getVisibility() != null
+                        ? EventVisibility.valueOf(request.getVisibility())
+                        : EventVisibility.MEMBERS_ONLY)
                 .registrationStartsAt(request.getRegistrationStartsAt())
                 .registrationEndsAt(request.getRegistrationEndsAt())
                 .maxCapacity(request.getMaxCapacity())
@@ -163,9 +164,9 @@ public class EventService {
                 .venueLatitude(request.getVenueLatitude() != null ? request.getVenueLatitude() : entity.getVenueLatitude())
                 .venueLongitude(request.getVenueLongitude() != null ? request.getVenueLongitude() : entity.getVenueLongitude())
                 .venueAccessInfo(request.getVenueAccessInfo() != null ? request.getVenueAccessInfo() : entity.getVenueAccessInfo())
-                .isPublic(request.getIsPublic() != null ? request.getIsPublic() : entity.getIsPublic())
-                .minRegistrationRole(request.getMinRegistrationRole() != null
-                        ? request.getMinRegistrationRole() : entity.getMinRegistrationRole())
+                .visibility(request.getVisibility() != null
+                        ? EventVisibility.valueOf(request.getVisibility())
+                        : entity.getVisibility())
                 .registrationStartsAt(request.getRegistrationStartsAt() != null
                         ? request.getRegistrationStartsAt() : entity.getRegistrationStartsAt())
                 .registrationEndsAt(request.getRegistrationEndsAt() != null

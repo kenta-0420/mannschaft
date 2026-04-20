@@ -82,7 +82,7 @@ class EventRegistrationServiceTest {
                 .scopeId(10L)
                 .slug("test-event")
                 .status(EventStatus.REGISTRATION_OPEN)
-                .isPublic(false)
+                .visibility(com.mannschaft.app.event.entity.EventVisibility.MEMBERS_ONLY)
                 .isApprovalRequired(false)
                 .maxCapacity(100)
                 .build();
@@ -94,7 +94,7 @@ class EventRegistrationServiceTest {
                 .scopeId(10L)
                 .slug("approval-event")
                 .status(EventStatus.REGISTRATION_OPEN)
-                .isPublic(false)
+                .visibility(com.mannschaft.app.event.entity.EventVisibility.MEMBERS_ONLY)
                 .isApprovalRequired(true)
                 .maxCapacity(100)
                 .build();
@@ -265,7 +265,8 @@ class EventRegistrationServiceTest {
             EventEntity event = EventEntity.builder()
                     .scopeType(EventScopeType.TEAM).scopeId(10L).slug("closed")
                     .status(EventStatus.REGISTRATION_CLOSED)
-                    .isPublic(false).isApprovalRequired(false).build();
+                    .visibility(com.mannschaft.app.event.entity.EventVisibility.MEMBERS_ONLY)
+                    .isApprovalRequired(false).build();
 
             given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event);
 
