@@ -53,6 +53,7 @@ public class ProjectService {
     private final ProjectMilestoneRepository milestoneRepository;
     private final TodoRepository todoRepository;
     private final NameResolverService nameResolverService;
+    private final MilestoneGateService milestoneGateService;
 
     /**
      * プロジェクト一覧を取得する。
@@ -354,6 +355,48 @@ public class ProjectService {
         ProjectMilestoneEntity milestone = milestoneRepository.findByIdAndProjectId(milestoneId, projectId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.MILESTONE_NOT_FOUND));
         milestoneRepository.delete(milestone);
+
+        // F02.7: 削除後にロック連鎖を再構築（ON DELETE SET NULL で NULL 化された後続を再評価）
+        milestoneGateService.rebuildChain(projectId);
+    }
+
+    /**
+     * マイルストーンを並び替え、ロック状態を再計算する（F02.7）。
+     *
+     * <p>リクエストで指定された順序で sort_order を 0, 1, 2, ... に再割当し、
+     * 続いて {@link MilestoneGateService#rebuildChain(Long)} を呼んでロック連鎖を再構築する。</p>
+     *
+     * @param projectId             プロジェクト ID
+     * @param milestoneIdsInOrder   並び替え後のマイルストーン ID リスト
+     * @return 並び替え後のマイルストーンエンティティリスト（sort_order 昇順）
+     */
+    @Transactional
+    public List<ProjectMilestoneEntity> reorderMilestones(Long projectId, List<Long> milestoneIdsInOrder) {
+        findProjectOrThrow(projectId);
+
+        List<ProjectMilestoneEntity> existing = milestoneRepository
+                .findByProjectIdOrderBySortOrderAsc(projectId);
+        Map<Long, ProjectMilestoneEntity> byId = new java.util.HashMap<>();
+        for (ProjectMilestoneEntity m : existing) {
+            byId.put(m.getId(), m);
+        }
+
+        // 全件がプロジェクト内に存在し、件数一致することを検証
+        if (milestoneIdsInOrder.size() != existing.size()
+                || !byId.keySet().containsAll(milestoneIdsInOrder)) {
+            throw new BusinessException(TodoErrorCode.MILESTONE_NOT_FOUND);
+        }
+
+        for (int i = 0; i < milestoneIdsInOrder.size(); i++) {
+            Long mid = milestoneIdsInOrder.get(i);
+            ProjectMilestoneEntity m = byId.get(mid);
+            ProjectMilestoneEntity updated = m.toBuilder().sortOrder((short) i).build();
+            milestoneRepository.save(updated);
+        }
+
+        milestoneGateService.rebuildChain(projectId);
+        log.info("マイルストーン並び替え完了: projectId={}, count={}", projectId, milestoneIdsInOrder.size());
+        return milestoneRepository.findByProjectIdOrderBySortOrderAsc(projectId);
     }
 
     /**
@@ -375,6 +418,10 @@ public class ProjectService {
 
         milestone.complete();
         milestone = milestoneRepository.save(milestone);
+
+        // F02.7: マイルストーン手動完了時、後続マイルストーンを自動アンロック
+        milestoneGateService.unlockSuccessors(milestoneId);
+
         return ApiResponse.of(toMilestoneResponse(milestone));
     }
 

@@ -155,4 +155,9 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
      * linked_schedule_idによるTODO検索（連携解除・存在確認用）。論理削除除外。
      */
     Optional<TodoEntity> findByLinkedScheduleIdAndDeletedAtIsNull(Long linkedScheduleId);
+
+    /**
+     * マイルストーン内のTODO一覧を取得する（論理削除除外、F02.7 ゲート連携用）。
+     */
+    List<TodoEntity> findByMilestoneIdAndDeletedAtIsNull(Long milestoneId);
 }
