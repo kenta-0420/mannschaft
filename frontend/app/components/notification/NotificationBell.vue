@@ -47,7 +47,7 @@ function navigate(to: string) {
 let timer: ReturnType<typeof setInterval>
 onMounted(() => {
   fetchCounts()
-  timer = setInterval(fetchCounts, 30000)
+  timer = setInterval(fetchCounts, 60000)
 })
 onUnmounted(() => clearInterval(timer))
 

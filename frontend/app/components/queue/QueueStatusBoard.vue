@@ -36,7 +36,7 @@ async function load() {
 
 onMounted(() => {
   load()
-  pollInterval = setInterval(load, 10000) // 10秒ポーリング
+  pollInterval = setInterval(load, 30000) // 30秒ポーリング
 })
 
 onUnmounted(() => {
