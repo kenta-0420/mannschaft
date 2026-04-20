@@ -1,0 +1,72 @@
+{
+  "committee": {
+    "label": "委员会",
+    "list": {
+      "title": "委员会列表",
+      "empty": "暂无委员会",
+      "create": "成立委员会"
+    },
+    "status": {
+      "DRAFT": "草案",
+      "ACTIVE": "活动中",
+      "CLOSED": "已关闭",
+      "ARCHIVED": "已归档",
+      "CANCELLED_DRAFT": "已取消"
+    },
+    "role": {
+      "CHAIR": "主席",
+      "VICE_CHAIR": "副主席",
+      "SECRETARY": "秘书",
+      "MEMBER": "委员"
+    },
+    "field": {
+      "name": "委员会名称",
+      "description": "说明",
+      "purpose_tag": "目的标签",
+      "visibility_to_org": "对组织的公开设置",
+      "start_date": "开始日期",
+      "end_date": "结束日期",
+      "member_count": "成员数量"
+    },
+    "visibility": {
+      "HIDDEN": "隐藏",
+      "NAME_ONLY": "仅名称",
+      "NAME_AND_PURPOSE": "名称和目的"
+    },
+    "detail": {
+      "members": "成员",
+      "invite": "邀请成员",
+      "distributions": "传达记录",
+      "activate": "开始活动",
+      "close": "结束活动",
+      "archive": "归档",
+      "leave": "离开委员会",
+      "remove_member": "移除成员",
+      "remove_member_confirm": "{name} を解任しますか？"
+    },
+    "distributions": {
+      "title": "传达记录",
+      "empty": "暂无传达记录",
+      "content_type": "内容类型",
+      "target_scope": "目标范围",
+      "created_at": "创建时间",
+      "confirmation_mode": "确认模式",
+      "announced": "已公告"
+    },
+    "invitation": {
+      "accept": "加入",
+      "decline": "拒绝",
+      "accepted": "已加入委员会",
+      "declined": "已拒绝邀请",
+      "expired": "此邀请已过期",
+      "invalid": "无效邀请",
+      "send": "发送邀请",
+      "cancel": "取消邀请",
+      "proposed_role": "拟定角色",
+      "invitee": "受邀者"
+    },
+    "create_dialog": {
+      "title": "成立委员会"
+    }
+  }
+}

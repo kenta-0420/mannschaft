@@ -1,0 +1,72 @@
+{
+  "committee": {
+    "label": "Committee",
+    "list": {
+      "title": "Committee List",
+      "empty": "No committees yet",
+      "create": "Establish a committee"
+    },
+    "status": {
+      "DRAFT": "Draft",
+      "ACTIVE": "Active",
+      "CLOSED": "Closed",
+      "ARCHIVED": "Archived",
+      "CANCELLED_DRAFT": "Cancelled"
+    },
+    "role": {
+      "CHAIR": "Chairperson",
+      "VICE_CHAIR": "Vice Chairperson",
+      "SECRETARY": "Secretary",
+      "MEMBER": "Member"
+    },
+    "field": {
+      "name": "Committee Name",
+      "description": "Description",
+      "purpose_tag": "Purpose Tag",
+      "visibility_to_org": "Visibility to Organization",
+      "start_date": "Start Date",
+      "end_date": "End Date",
+      "member_count": "Members"
+    },
+    "visibility": {
+      "HIDDEN": "Hidden",
+      "NAME_ONLY": "Name Only",
+      "NAME_AND_PURPOSE": "Name and Purpose"
+    },
+    "detail": {
+      "members": "Members",
+      "invite": "Invite members",
+      "distributions": "Distribution History",
+      "activate": "Activate",
+      "close": "Close",
+      "archive": "Archive",
+      "leave": "Leave committee",
+      "remove_member": "Remove member",
+      "remove_member_confirm": "{name} を解任しますか？"
+    },
+    "distributions": {
+      "title": "Distribution History",
+      "empty": "No distribution history",
+      "content_type": "Content Type",
+      "target_scope": "Target Scope",
+      "created_at": "Created At",
+      "confirmation_mode": "Confirmation Mode",
+      "announced": "Announced"
+    },
+    "invitation": {
+      "accept": "Join",
+      "decline": "Decline",
+      "accepted": "You have joined the committee",
+      "declined": "You have declined the invitation",
+      "expired": "This invitation has expired",
+      "invalid": "Invalid invitation",
+      "send": "Send invitation",
+      "cancel": "Cancel invitation",
+      "proposed_role": "Proposed Role",
+      "invitee": "Invitee"
+    },
+    "create_dialog": {
+      "title": "Establish a committee"
+    }
+  }
+}

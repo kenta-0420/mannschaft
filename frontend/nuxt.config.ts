@@ -120,6 +120,7 @@ export default defineNuxtConfig({
           'ja/profile_media.json',
           'ja/appearance.json',
           'ja/event.json',
+          'ja/committee.json',
         ],
       },
       {
@@ -141,6 +142,7 @@ export default defineNuxtConfig({
           'en/profile_media.json',
           'en/appearance.json',
           'en/event.json',
+          'en/committee.json',
         ],
       },
       {
@@ -162,6 +164,7 @@ export default defineNuxtConfig({
           'zh/profile_media.json',
           'zh/appearance.json',
           'zh/event.json',
+          'zh/committee.json',
         ],
       },
       {
@@ -183,6 +186,7 @@ export default defineNuxtConfig({
           'ko/profile_media.json',
           'ko/appearance.json',
           'ko/event.json',
+          'ko/committee.json',
         ],
       },
       {
@@ -204,6 +208,7 @@ export default defineNuxtConfig({
           'es/profile_media.json',
           'es/appearance.json',
           'es/event.json',
+          'es/committee.json',
         ],
       },
       {
@@ -225,6 +230,7 @@ export default defineNuxtConfig({
           'de/profile_media.json',
           'de/appearance.json',
           'de/event.json',
+          'de/committee.json',
         ],
       },
     ],

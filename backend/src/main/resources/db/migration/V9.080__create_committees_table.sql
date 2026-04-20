@@ -1,0 +1,26 @@
+-- F04.10: 組織委員会テーブル
+CREATE TABLE committees (
+    id                              BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT,
+    organization_id                 BIGINT UNSIGNED     NOT NULL                    COMMENT 'FK → organizations（ON DELETE CASCADE）親組織',
+    name                            VARCHAR(100)        NOT NULL                    COMMENT '委員会名',
+    description                     TEXT                NULL                        COMMENT '委員会の目的・趣旨',
+    purpose_tag                     VARCHAR(30)         NULL                        COMMENT '分類タグ: TOURNAMENT / GOVERNANCE / ELECTION / PROJECT / OTHER',
+    start_date                      DATE                NULL                        COMMENT '設立日。NULL は未設定',
+    end_date                        DATE                NULL                        COMMENT '解散予定日。NULL は期限なし',
+    status                          VARCHAR(20)         NOT NULL DEFAULT 'DRAFT'    COMMENT 'ライフサイクル状態: DRAFT / ACTIVE / CLOSED / ARCHIVED / CANCELLED_DRAFT',
+    visibility_to_org               VARCHAR(20)         NOT NULL DEFAULT 'NAME_ONLY' COMMENT '組織内非メンバーからの可視性: HIDDEN / NAME_ONLY / NAME_AND_PURPOSE',
+    default_confirmation_mode       VARCHAR(10)         NOT NULL DEFAULT 'OPTIONAL' COMMENT '伝達時のデフォルト確認ボタン設定: NONE / OPTIONAL / REQUIRED',
+    default_announcement_enabled    BOOLEAN             NOT NULL DEFAULT TRUE        COMMENT '伝達時にお知らせ投下するかのデフォルト',
+    default_distribution_scope      VARCHAR(30)         NOT NULL DEFAULT 'COMMITTEE_ONLY' COMMENT '伝達時のデフォルト配信先: COMMITTEE_ONLY / PARENT_ORG / PARENT_ORG_AND_CHILDREN',
+    archived_at                     DATETIME            NULL                        COMMENT 'ARCHIVED に遷移した日時',
+    created_by                      BIGINT UNSIGNED     NULL                        COMMENT 'FK → users（ON DELETE SET NULL）設立者',
+    deleted_at                      DATETIME            NULL                        COMMENT '論理削除日時',
+    created_at                      DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                      DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    INDEX idx_committees_org (organization_id, status, deleted_at)  COMMENT '組織配下の委員会一覧',
+    INDEX idx_committees_status_end (status, end_date)              COMMENT '自動 CLOSED バッチ用',
+    UNIQUE KEY uq_committees_org_name (organization_id, name, deleted_at) COMMENT '同組織内で名前重複不可（論理削除後は再利用可）',
+    CONSTRAINT fk_committees_org FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+    CONSTRAINT fk_committees_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='F04.10: 組織委員会';

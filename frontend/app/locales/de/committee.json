@@ -1,0 +1,72 @@
+{
+  "committee": {
+    "label": "Komitee",
+    "list": {
+      "title": "Komiteeliste",
+      "empty": "Noch keine Komitees vorhanden",
+      "create": "Komitee gründen"
+    },
+    "status": {
+      "DRAFT": "Entwurf",
+      "ACTIVE": "Aktiv",
+      "CLOSED": "Geschlossen",
+      "ARCHIVED": "Archiviert",
+      "CANCELLED_DRAFT": "Abgebrochen"
+    },
+    "role": {
+      "CHAIR": "Vorsitzender",
+      "VICE_CHAIR": "Stellvertretender Vorsitzender",
+      "SECRETARY": "Schriftführer",
+      "MEMBER": "Mitglied"
+    },
+    "field": {
+      "name": "Komiteename",
+      "description": "Beschreibung",
+      "purpose_tag": "Zweck-Tag",
+      "visibility_to_org": "Sichtbarkeit in der Organisation",
+      "start_date": "Startdatum",
+      "end_date": "Enddatum",
+      "member_count": "Mitglieder"
+    },
+    "visibility": {
+      "HIDDEN": "Versteckt",
+      "NAME_ONLY": "Nur Name",
+      "NAME_AND_PURPOSE": "Name und Zweck"
+    },
+    "detail": {
+      "members": "Mitglieder",
+      "invite": "Mitglieder einladen",
+      "distributions": "Verteilungshistorie",
+      "activate": "Aktivieren",
+      "close": "Schließen",
+      "archive": "Archivieren",
+      "leave": "Komitee verlassen",
+      "remove_member": "Mitglied entfernen",
+      "remove_member_confirm": "{name} を解任しますか？"
+    },
+    "distributions": {
+      "title": "Verteilungshistorie",
+      "empty": "Keine Verteilungshistorie vorhanden",
+      "content_type": "Inhaltstyp",
+      "target_scope": "Zielbereich",
+      "created_at": "Erstellt am",
+      "confirmation_mode": "Bestätigungsmodus",
+      "announced": "Angekündigt"
+    },
+    "invitation": {
+      "accept": "Beitreten",
+      "decline": "Ablehnen",
+      "accepted": "Sie sind dem Komitee beigetreten",
+      "declined": "Sie haben die Einladung abgelehnt",
+      "expired": "Diese Einladung ist abgelaufen",
+      "invalid": "Ungültige Einladung",
+      "send": "Einladung senden",
+      "cancel": "Einladung stornieren",
+      "proposed_role": "Vorgeschlagene Rolle",
+      "invitee": "Eingeladener"
+    },
+    "create_dialog": {
+      "title": "Komitee gründen"
+    }
+  }
+}

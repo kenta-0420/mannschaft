@@ -94,6 +94,13 @@ public class ActivityResultEntity extends BaseEntity {
     }
 
     /**
+     * fieldValues のみを更新する（議事録確定など、メタ情報のみ変更する用途）。
+     */
+    public void updateFieldValues(String fieldValues) {
+        this.fieldValues = fieldValues;
+    }
+
+    /**
      * 論理削除を行う。
      */
     public void softDelete() {
