@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { PrefectureResponse } from '~/types/matching'
+
 defineProps<{
   placeholder?: string
   showTemplateFilter?: boolean
@@ -9,10 +11,25 @@ const emit = defineEmits<{
   search: [params: { keyword: string; prefecture: string; template: string; orgType: string }]
 }>()
 
+const { getPrefectures } = useMatchingApi()
+
 const keyword = ref('')
-const prefecture = ref('')
+const selectedPref = ref<PrefectureResponse | null>(null)
 const template = ref('')
 const orgType = ref('')
+
+const prefectures = ref<PrefectureResponse[]>([])
+
+onMounted(async () => {
+  try {
+    const res = await getPrefectures()
+    prefectures.value = res.data
+  } catch {
+    /* マスターデータ取得失敗は無視 */
+  }
+})
+
+const prefecture = computed(() => selectedPref.value?.name ?? '')
 
 const templateOptions = [
   { label: '全て', value: '' },
@@ -33,8 +50,15 @@ const templateOptions = [
 
 const orgTypeOptions = [
   { label: '全て', value: '' },
-  { label: '非営利', value: 'NONPROFIT' },
-  { label: '営利', value: 'FORPROFIT' },
+  { label: '行政・官公庁', value: 'GOVERNMENT' },
+  { label: '自治体（市区町村）', value: 'MUNICIPALITY' },
+  { label: '会社・企業', value: 'COMPANY' },
+  { label: '病院・医療機関', value: 'HOSPITAL' },
+  { label: '協会・連盟', value: 'ASSOCIATION' },
+  { label: '学校・教育機関', value: 'SCHOOL' },
+  { label: 'NPO・非営利団体', value: 'NPO' },
+  { label: 'コミュニティ', value: 'COMMUNITY' },
+  { label: 'その他', value: 'OTHER' },
 ]
 
 function onSearch() {
@@ -61,12 +85,21 @@ function onSearch() {
         />
       </IconField>
     </div>
-    <div class="w-36">
+    <div class="w-44">
       <label class="mb-1 block text-sm font-medium">都道府県</label>
-      <InputText v-model="prefecture" placeholder="例: 東京都" class="w-full" />
+      <Select
+        v-model="selectedPref"
+        :options="prefectures"
+        option-label="name"
+        placeholder="選択してください"
+        filter
+        filter-placeholder="都道府県を検索"
+        show-clear
+        class="w-full"
+      />
     </div>
     <div v-if="showTemplateFilter" class="w-40">
-      <label class="mb-1 block text-sm font-medium">テンプレート</label>
+      <label class="mb-1 block text-sm font-medium">ジャンル</label>
       <Select
         v-model="template"
         :options="templateOptions"
@@ -75,8 +108,8 @@ function onSearch() {
         class="w-full"
       />
     </div>
-    <div v-if="showOrgTypeFilter" class="w-36">
-      <label class="mb-1 block text-sm font-medium">組織タイプ</label>
+    <div v-if="showOrgTypeFilter" class="w-44">
+      <label class="mb-1 block text-sm font-medium">ジャンル</label>
       <Select
         v-model="orgType"
         :options="orgTypeOptions"

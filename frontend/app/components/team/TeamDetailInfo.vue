@@ -48,7 +48,7 @@ defineProps<Props>()
         </p>
       </div>
       <div>
-        <label class="text-sm font-medium text-gray-500">テンプレート</label>
+        <label class="text-sm font-medium text-gray-500">ジャンル</label>
         <p class="mt-1">
           {{ templateLabel }}
         </p>
