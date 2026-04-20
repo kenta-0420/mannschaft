@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AttendanceMode } from '~/types/event'
+import type { AttendanceMode, EventVisibility } from '~/types/event'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
@@ -16,10 +16,17 @@ const emit = defineEmits<{
 const eventApi = useEventApi()
 const notification = useNotification()
 const { handleApiError, getFieldErrors } = useErrorHandler()
+const { t } = useI18n()
 
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 const isEdit = computed(() => !!props.eventId)
+
+const visibilityOptions = computed(() => [
+  { label: t('event.visibility.MEMBERS_ONLY'), value: 'MEMBERS_ONLY' as EventVisibility },
+  { label: t('event.visibility.SUPPORTERS_AND_ABOVE'), value: 'SUPPORTERS_AND_ABOVE' as EventVisibility },
+  { label: t('event.visibility.PUBLIC'), value: 'PUBLIC' as EventVisibility },
+])
 
 const form = ref({
   subtitle: '',
@@ -27,7 +34,7 @@ const form = ref({
   summary: '',
   venueName: '',
   venueAddress: '',
-  isPublic: true,
+  visibility: 'MEMBERS_ONLY' as EventVisibility,
   maxCapacity: null as number | null,
   isApprovalRequired: false,
   registrationStartsAt: null as Date | null,
@@ -49,7 +56,7 @@ watch(
         form.value.summary = d.summary ?? ''
         form.value.venueName = d.venueName ?? ''
         form.value.venueAddress = d.venueAddress ?? ''
-        form.value.isPublic = d.isPublic
+        form.value.visibility = d.visibility ?? 'MEMBERS_ONLY'
         form.value.maxCapacity = d.maxCapacity
         form.value.isApprovalRequired = d.isApprovalRequired
         form.value.registrationStartsAt = d.registrationStartsAt
@@ -83,7 +90,7 @@ async function submit() {
     summary: form.value.summary.trim() || undefined,
     venueName: form.value.venueName.trim() || undefined,
     venueAddress: form.value.venueAddress.trim() || undefined,
-    isPublic: form.value.isPublic,
+    visibility: form.value.visibility,
     maxCapacity: form.value.maxCapacity || undefined,
     isApprovalRequired: form.value.isApprovalRequired,
     registrationStartsAt: form.value.registrationStartsAt
@@ -124,7 +131,7 @@ function resetForm() {
     summary: '',
     venueName: '',
     venueAddress: '',
-    isPublic: true,
+    visibility: 'MEMBERS_ONLY',
     maxCapacity: null,
     isApprovalRequired: false,
     registrationStartsAt: null,
@@ -215,10 +222,6 @@ function close() {
         </div>
         <div class="flex flex-col justify-end gap-2">
           <div class="flex items-center gap-2">
-            <Checkbox v-model="form.isPublic" :binary="true" input-id="isPublic" />
-            <label for="isPublic" class="text-sm">一般公開</label>
-          </div>
-          <div class="flex items-center gap-2">
             <Checkbox
               v-model="form.isApprovalRequired"
               :binary="true"
@@ -227,6 +230,17 @@ function close() {
             <label for="isApprovalRequired" class="text-sm">承認制</label>
           </div>
         </div>
+      </div>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium">{{ $t('event.visibility.label') }}</label>
+        <SelectButton
+          v-model="form.visibility"
+          :options="visibilityOptions"
+          option-label="label"
+          option-value="value"
+          class="w-full"
+        />
       </div>
 
       <!-- 参加方式 -->

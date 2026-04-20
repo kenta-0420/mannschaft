@@ -42,10 +42,8 @@ public class CreateEventRequest {
 
     private final String venueAccessInfo;
 
-    private final Boolean isPublic;
-
     @Size(max = 30)
-    private final String minRegistrationRole;
+    private final String visibility;
 
     private final LocalDateTime registrationStartsAt;
 

@@ -6,6 +6,7 @@ import com.mannschaft.app.event.dto.EventStatsResponse;
 import com.mannschaft.app.event.dto.UpdateEventRequest;
 import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
+import com.mannschaft.app.event.entity.EventVisibility;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRegistrationRepository;
 import com.mannschaft.app.event.repository.EventRepository;
@@ -66,7 +67,7 @@ class EventServiceAdditionalTest {
                 .scopeId(SCOPE_ID)
                 .slug("test-event")
                 .status(status)
-                .isPublic(false)
+                .visibility(EventVisibility.MEMBERS_ONLY)
                 .isApprovalRequired(false)
                 .createdBy(USER_ID)
                 .build();
@@ -76,7 +77,7 @@ class EventServiceAdditionalTest {
         return new EventDetailResponse(
                 EVENT_ID, "TEAM", SCOPE_ID, null, "test-event", null,
                 null, null, null, null, null, null, null,
-                "DRAFT", false, "MEMBER_PLUS", null, null, null, false,
+                "DRAFT", "MEMBERS_ONLY", null, null, null, false,
                 EventAttendanceMode.REGISTRATION, null,
                 null, null, null, null, null, 0, 0, USER_ID, 0L,
                 LocalDateTime.now(), LocalDateTime.now()

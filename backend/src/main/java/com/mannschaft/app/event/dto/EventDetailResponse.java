@@ -29,8 +29,7 @@ public class EventDetailResponse {
     private final BigDecimal venueLongitude;
     private final String venueAccessInfo;
     private final String status;
-    private final Boolean isPublic;
-    private final String minRegistrationRole;
+    private final String visibility;
     private final LocalDateTime registrationStartsAt;
     private final LocalDateTime registrationEndsAt;
     private final Integer maxCapacity;

@@ -1,6 +1,8 @@
 // === Event ===
 export type EventStatus = 'DRAFT' | 'PUBLISHED' | 'REGISTRATION_OPEN' | 'REGISTRATION_CLOSED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
 
+export type EventVisibility = 'PUBLIC' | 'SUPPORTERS_AND_ABOVE' | 'MEMBERS_ONLY'
+
 export type AttendanceMode = 'NONE' | 'RSVP' | 'REGISTRATION'
 
 export type RsvpResponse = 'ATTENDING' | 'NOT_ATTENDING' | 'MAYBE' | 'UNDECIDED'
@@ -36,7 +38,7 @@ export interface EventResponse {
   subtitle: string | null
   coverImageKey: string | null
   status: string
-  isPublic: boolean
+  visibility: EventVisibility
   registrationStartsAt: string | null
   registrationEndsAt: string | null
   maxCapacity: number | null
@@ -61,8 +63,7 @@ export interface EventDetailResponse {
   venueLongitude: number | null
   venueAccessInfo: string | null
   status: string
-  isPublic: boolean
-  minRegistrationRole: string | null
+  visibility: EventVisibility
   registrationStartsAt: string | null
   registrationEndsAt: string | null
   maxCapacity: number | null
@@ -94,8 +95,7 @@ export interface CreateEventRequest {
   venueLatitude?: number
   venueLongitude?: number
   venueAccessInfo?: string
-  isPublic?: boolean
-  minRegistrationRole?: string
+  visibility?: EventVisibility
   registrationStartsAt?: string
   registrationEndsAt?: string
   maxCapacity?: number
@@ -117,8 +117,7 @@ export interface UpdateEventRequest {
   venueLatitude?: number
   venueLongitude?: number
   venueAccessInfo?: string
-  isPublic?: boolean
-  minRegistrationRole?: string
+  visibility?: EventVisibility
   registrationStartsAt?: string
   registrationEndsAt?: string
   maxCapacity?: number

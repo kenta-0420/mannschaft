@@ -61,6 +61,12 @@
     "allStatuses": "すべて",
     "participants": "参加者",
     "rsvpList": "出欠回答一覧",
-    "adminOnly": "管理者のみ"
+    "adminOnly": "管理者のみ",
+    "visibility": {
+      "label": "公開範囲",
+      "PUBLIC": "パブリック（外部公開）",
+      "SUPPORTERS_AND_ABOVE": "サポーター以上",
+      "MEMBERS_ONLY": "メンバーのみ"
+    }
   }
 }

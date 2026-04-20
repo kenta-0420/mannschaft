@@ -168,7 +168,8 @@ class EventCheckinServiceTest {
             EventTicketEntity ticket = createValidTicket();
             EventEntity event = EventEntity.builder()
                     .scopeType(EventScopeType.TEAM).scopeId(10L).slug("ev")
-                    .status(EventStatus.REGISTRATION_OPEN).isPublic(false)
+                    .status(EventStatus.REGISTRATION_OPEN)
+                    .visibility(com.mannschaft.app.event.entity.EventVisibility.MEMBERS_ONLY)
                     .isApprovalRequired(false).build();
             CheckinResponse response = createCheckinResponse();
 
@@ -239,7 +240,8 @@ class EventCheckinServiceTest {
             EventTicketEntity ticket = createValidTicket();
             EventEntity event = EventEntity.builder()
                     .scopeType(EventScopeType.TEAM).scopeId(10L).slug("ev")
-                    .status(EventStatus.REGISTRATION_OPEN).isPublic(false)
+                    .status(EventStatus.REGISTRATION_OPEN)
+                    .visibility(com.mannschaft.app.event.entity.EventVisibility.MEMBERS_ONLY)
                     .isApprovalRequired(false).build();
             CheckinResponse response = new CheckinResponse(
                     2L, EVENT_ID, TICKET_ID, "SELF", null,
