@@ -4,6 +4,7 @@ import type {
   UpdateProjectRequest,
   MilestoneResponse,
   CreateMilestoneRequest,
+  GatesSummaryResponse,
 } from '~/types/project'
 
 definePageMeta({ middleware: 'auth' })
@@ -18,6 +19,7 @@ const { showError } = useNotification()
 const project = ref<ProjectResponse | null>(null)
 const milestones = ref<MilestoneResponse[]>([])
 const todos = ref<unknown[]>([])
+const gatesSummary = ref<GatesSummaryResponse | null>(null)
 const loading = ref(true)
 const showEditDialog = ref(false)
 const showMilestoneDialog = ref(false)
@@ -40,14 +42,16 @@ const milestoneForm = reactive<CreateMilestoneRequest>({
 async function load() {
   loading.value = true
   try {
-    const [pRes, mRes, tRes] = await Promise.all([
+    const [pRes, mRes, tRes, gRes] = await Promise.all([
       projectApi.getProject(teamId, projectId),
       projectApi.listMilestones(teamId, projectId),
       projectApi.getProjectTodos(teamId, projectId),
+      projectApi.getGatesSummary(teamId, projectId).catch(() => null),
     ])
     project.value = pRes.data
     milestones.value = mRes.data
     todos.value = tRes.data
+    gatesSummary.value = gRes?.data ?? null
   } catch {
     showError('プロジェクト情報の取得に失敗しました')
   } finally {
@@ -173,6 +177,8 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+
+      <GateProgressGauge v-if="gatesSummary" :summary="gatesSummary" class="mb-6" />
 
       <SectionCard class="mb-6">
         <div class="mb-2 grid gap-4 sm:grid-cols-4">
