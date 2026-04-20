@@ -7,7 +7,6 @@ const authStore = useAuthStore()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
 const dashboardStore = useDashboardStore()
-const appearanceStore = useAppearanceStore()
 const greeting = useGreeting()
 const timedMessage = useTimedMessage()
 
@@ -52,12 +51,6 @@ onMounted(async () => {
           </h1>
           <p class="mt-1 text-sm text-surface-500">{{ timedMessage }}</p>
         </div>
-        <!-- 背景色クイック設定（ライトモード時のみ） -->
-        <ClientOnly>
-          <div v-if="!appearanceStore.isDark" class="flex shrink-0 items-center gap-2 pt-1">
-            <BackgroundColorPicker />
-          </div>
-        </ClientOnly>
       </div>
 
       <!-- データウィジェット群 (広告込み) -->
