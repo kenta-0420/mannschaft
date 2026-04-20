@@ -803,3 +803,261 @@ test.describe('F02.7 GateProgressGauge 表示', () => {
     await expect(page.locator('strong', { hasText: 'リハーサル' })).toBeVisible()
   })
 })
+
+test.describe('F02.7 追加管理UI', () => {
+  test('GATE-009: ADMIN が ForceUnlockDialog で強制アンロックを実行できる', async ({ page }) => {
+    await mockAuth(page, 'ADMIN')
+    await mockTeam(page)
+    await mockRolePermissions(page, 'ADMIN')
+
+    const state: ScenarioState = {
+      project: buildBaseProject(),
+      milestones: buildInitialMilestones(),
+      summary: buildInitialSummary(),
+      todos: [],
+    }
+    await installGateMocks(page, state)
+
+    // 強制アンロック API のモック（PATCH のみ）
+    let forceUnlockCalled = false
+    let capturedReason = ''
+    const forceUnlockUrl = `**/api/v1/teams/${TEAM_ID}/projects/${PROJECT_ID}/milestones/${MILESTONE_B_ID}/force-unlock`
+    await page.route(forceUnlockUrl, async (route: Route) => {
+      if (route.request().method() !== 'PATCH') {
+        await route.continue()
+        return
+      }
+      forceUnlockCalled = true
+      const body = route.request().postDataJSON() as { reason?: string } | null
+      capturedReason = body?.reason ?? ''
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            milestoneId: MILESTONE_B_ID,
+            unlockedAt: '2026-04-20T14:30:00Z',
+            forcedByUserId: 1,
+            reason: capturedReason,
+          },
+        }),
+      })
+    })
+
+    await page.goto(`/teams/${TEAM_ID}/projects/${PROJECT_ID}`)
+    await waitForHydration(page)
+    await expect(page.getByRole('heading', { name: 'E2E テスト用プロジェクト' })).toBeVisible({
+      timeout: 15_000,
+    })
+
+    // ロック中マイルストーン B の強制アンロックボタンをクリック
+    await page
+      .locator(`[data-testid="force-unlock-trigger-${MILESTONE_B_ID}"]`)
+      .first()
+      .click()
+
+    // ダイアログ表示確認
+    const dialog = page.locator('[data-testid="force-unlock-dialog"]')
+    await expect(dialog).toBeVisible({ timeout: 5_000 })
+
+    // 未入力時は Submit ボタン disabled
+    const submitBtn = page.locator('[data-testid="force-unlock-submit"]')
+    await expect(submitBtn).toBeDisabled()
+
+    // reason 入力
+    const reasonInput = page.locator('[data-testid="force-unlock-reason-input"]')
+    await reasonInput.fill('緊急対応のため先行')
+
+    // Submit 有効化 → クリック
+    await expect(submitBtn).toBeEnabled()
+    await submitBtn.click()
+
+    // API 呼び出しが行われたことを検証
+    await expect.poll(() => forceUnlockCalled, { timeout: 10_000 }).toBe(true)
+    expect(capturedReason).toBe('緊急対応のため先行')
+  })
+
+  test('GATE-010: 強制アンロックダイアログで reason 100文字超過を防ぐ', async ({ page }) => {
+    await mockAuth(page, 'ADMIN')
+    await mockTeam(page)
+    await mockRolePermissions(page, 'ADMIN')
+
+    const state: ScenarioState = {
+      project: buildBaseProject(),
+      milestones: buildInitialMilestones(),
+      summary: buildInitialSummary(),
+      todos: [],
+    }
+    await installGateMocks(page, state)
+
+    await page.goto(`/teams/${TEAM_ID}/projects/${PROJECT_ID}`)
+    await waitForHydration(page)
+    await expect(page.getByRole('heading', { name: 'E2E テスト用プロジェクト' })).toBeVisible({
+      timeout: 15_000,
+    })
+
+    // 強制アンロックボタンをクリックしてダイアログを開く
+    await page
+      .locator(`[data-testid="force-unlock-trigger-${MILESTONE_B_ID}"]`)
+      .first()
+      .click()
+    await expect(page.locator('[data-testid="force-unlock-dialog"]')).toBeVisible({
+      timeout: 5_000,
+    })
+
+    // 101 文字の入力を試みる
+    const reasonInput = page.locator('[data-testid="force-unlock-reason-input"]')
+    const longInput = 'あ'.repeat(101)
+    await reasonInput.fill(longInput)
+
+    // maxlength="100" で入力は 100 文字までに切り詰められる
+    const value = await reasonInput.inputValue()
+    expect(value.length).toBeLessThanOrEqual(100)
+  })
+
+  test('GATE-011: ADMIN が CompletionModeToggle で AUTO/MANUAL を切り替えられる', async ({
+    page,
+  }) => {
+    await mockAuth(page, 'ADMIN')
+    await mockTeam(page)
+    await mockRolePermissions(page, 'ADMIN')
+
+    const state: ScenarioState = {
+      project: buildBaseProject(),
+      milestones: buildInitialMilestones(),
+      summary: buildInitialSummary(),
+      todos: [],
+    }
+    await installGateMocks(page, state)
+
+    // completion-mode 変更 API のモック
+    let changeModeCalled = false
+    let capturedMode = ''
+    const modeUrl = `**/api/v1/teams/${TEAM_ID}/projects/${PROJECT_ID}/milestones/${MILESTONE_A_ID}/completion-mode`
+    await page.route(modeUrl, async (route: Route) => {
+      if (route.request().method() !== 'PATCH') {
+        await route.continue()
+        return
+      }
+      changeModeCalled = true
+      const body = route.request().postDataJSON() as { completionMode?: string } | null
+      capturedMode = body?.completionMode ?? ''
+      const baseMs = buildInitialMilestones()[0]!
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            ...baseMs,
+            completionMode: capturedMode,
+          },
+        }),
+      })
+    })
+
+    await page.goto(`/teams/${TEAM_ID}/projects/${PROJECT_ID}`)
+    await waitForHydration(page)
+    await expect(page.getByRole('heading', { name: 'E2E テスト用プロジェクト' })).toBeVisible({
+      timeout: 15_000,
+    })
+
+    // マイルストーン A 用 CompletionModeToggle が表示される
+    const toggles = page.locator('[data-testid="completion-mode-toggle"]')
+    await expect(toggles.first()).toBeVisible({ timeout: 5_000 })
+
+    // 最初のトグル（マイルストーン A = AUTO）で MANUAL ボタンをクリック
+    // PrimeVue SelectButton は各オプションが role="button" として描画される
+    const firstToggle = toggles.first()
+    await firstToggle.getByRole('button', { name: '手動完了' }).click()
+
+    // API 呼び出しが行われたことを検証
+    await expect.poll(() => changeModeCalled, { timeout: 10_000 }).toBe(true)
+    expect(capturedMode).toBe('MANUAL')
+  })
+
+  test('GATE-012: MEMBER は CompletionModeToggle が表示されない（canEdit=false）', async ({
+    page,
+  }) => {
+    await mockAuth(page, 'MEMBER')
+    await mockTeam(page)
+    await mockRolePermissions(page, 'MEMBER')
+
+    const state: ScenarioState = {
+      project: buildBaseProject(),
+      milestones: buildInitialMilestones(),
+      summary: buildInitialSummary(),
+      todos: [],
+    }
+    await installGateMocks(page, state)
+
+    await page.goto(`/teams/${TEAM_ID}/projects/${PROJECT_ID}`)
+    await waitForHydration(page)
+    await expect(page.getByRole('heading', { name: 'E2E テスト用プロジェクト' })).toBeVisible({
+      timeout: 15_000,
+    })
+
+    // MEMBER は canEdit=false なので CompletionModeToggle は描画されない
+    const toggles = page.locator('[data-testid="completion-mode-toggle"]')
+    await expect(toggles).toHaveCount(0)
+  })
+
+  test('GATE-013: ADMIN が InitializeGateButton でゲート初期化を実行できる', async ({ page }) => {
+    await mockAuth(page, 'ADMIN')
+    await mockTeam(page)
+    await mockRolePermissions(page, 'ADMIN')
+
+    const state: ScenarioState = {
+      project: buildBaseProject(),
+      milestones: buildInitialMilestones(),
+      summary: buildInitialSummary(),
+      todos: [],
+    }
+    await installGateMocks(page, state)
+
+    // initialize-gate API のモック（全マイルストーン分呼ばれる）
+    let initializeCallCount = 0
+    const initializeUrl = `**/api/v1/teams/${TEAM_ID}/projects/${PROJECT_ID}/milestones/*/initialize-gate`
+    await page.route(initializeUrl, async (route: Route) => {
+      if (route.request().method() !== 'PATCH') {
+        await route.continue()
+        return
+      }
+      initializeCallCount += 1
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            initializedMilestoneCount: 3,
+            lockedMilestoneCount: 2,
+            unlockedMilestoneCount: 1,
+            lockedTodoCount: 0,
+            unlockedTodoCount: 0,
+            updatedAt: '2026-04-20T14:30:00Z',
+          },
+        }),
+      })
+    })
+
+    await page.goto(`/teams/${TEAM_ID}/projects/${PROJECT_ID}`)
+    await waitForHydration(page)
+    await expect(page.getByRole('heading', { name: 'E2E テスト用プロジェクト' })).toBeVisible({
+      timeout: 15_000,
+    })
+
+    // 初期化ボタン表示確認
+    const initBtn = page.locator('[data-testid="initialize-gate-button"]')
+    await expect(initBtn).toBeVisible({ timeout: 5_000 })
+    await initBtn.click()
+
+    // 確認ダイアログ表示
+    const confirmDialog = page.locator('[data-testid="initialize-gate-dialog"]')
+    await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
+
+    // 有効化ボタンをクリック
+    await page.locator('[data-testid="initialize-gate-submit"]').click()
+
+    // マイルストーン分の API 呼び出しが行われたことを検証
+    await expect.poll(() => initializeCallCount, { timeout: 10_000 }).toBeGreaterThanOrEqual(1)
+  })
+})

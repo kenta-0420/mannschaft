@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import type { MilestoneResponse } from '~/types/project'
+import type { MilestoneCompletionMode, MilestoneResponse } from '~/types/project'
 
-defineProps<{
-  milestones: MilestoneResponse[]
-  canEdit: boolean
-}>()
+withDefaults(
+  defineProps<{
+    milestones: MilestoneResponse[]
+    canEdit: boolean
+    canForceUnlock?: boolean
+  }>(),
+  {
+    canForceUnlock: false,
+  },
+)
 
 const emit = defineEmits<{
   create: []
   edit: [ms: MilestoneResponse]
   toggleComplete: [ms: MilestoneResponse]
   remove: [ms: MilestoneResponse]
+  'force-unlock': [milestone: MilestoneResponse]
+  'change-completion-mode': [milestoneId: number, mode: MilestoneCompletionMode]
 }>()
 </script>
 
@@ -80,9 +88,27 @@ const emit = defineEmits<{
                 <i class="pi pi-lock mr-1" />
                 {{ $t('project.locked_todo_count', { count: ms.lockedTodoCount }) }}
               </p>
+              <div v-if="canEdit" class="mt-2">
+                <CompletionModeToggle
+                  :mode="ms.completionMode"
+                  :disabled="!canEdit"
+                  @update:mode="emit('change-completion-mode', ms.id, $event)"
+                />
+              </div>
             </div>
           </div>
           <div v-if="canEdit" class="flex gap-1">
+            <Button
+              v-if="ms.isLocked && canForceUnlock"
+              icon="pi pi-unlock"
+              text
+              rounded
+              size="small"
+              severity="warning"
+              :aria-label="$t('project.force_unlock_title')"
+              :data-testid="`force-unlock-trigger-${ms.id}`"
+              @click="emit('force-unlock', ms)"
+            />
             <Button
               icon="pi pi-pencil"
               text

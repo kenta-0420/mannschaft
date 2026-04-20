@@ -3,6 +3,7 @@ import type {
   ProjectResponse,
   UpdateProjectRequest,
   MilestoneResponse,
+  MilestoneCompletionMode,
   CreateMilestoneRequest,
   GatesSummaryResponse,
 } from '~/types/project'
@@ -12,9 +13,11 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const teamId = Number(route.params.id)
 const projectId = Number(route.params.projectId)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 const projectApi = useProjectApi()
-const { showError } = useNotification()
+const notification = useNotification()
+const { success: showSuccess, error: showError, warn: showWarn } = notification
+const { t } = useI18n()
 
 const project = ref<ProjectResponse | null>(null)
 const milestones = ref<MilestoneResponse[]>([])
@@ -24,6 +27,10 @@ const loading = ref(true)
 const showEditDialog = ref(false)
 const showMilestoneDialog = ref(false)
 const editingMilestone = ref<MilestoneResponse | null>(null)
+const showForceUnlockDialog = ref(false)
+const forceUnlockTarget = ref<MilestoneResponse | null>(null)
+const forceUnlockSubmitting = ref(false)
+const initializeGateLoading = ref(false)
 
 const editForm = reactive<UpdateProjectRequest>({
   title: '',
@@ -143,6 +150,82 @@ async function removeMilestone(ms: MilestoneResponse) {
   }
 }
 
+function openForceUnlock(ms: MilestoneResponse) {
+  forceUnlockTarget.value = ms
+  showForceUnlockDialog.value = true
+}
+
+interface ApiErrorData {
+  errorCode?: string
+  unlockCondition?: string
+  message?: string
+}
+interface ApiError {
+  data?: ApiErrorData
+}
+
+function extractApiError(err: unknown): ApiErrorData | null {
+  if (typeof err === 'object' && err !== null && 'data' in err) {
+    const typed = err as ApiError
+    return typed.data ?? null
+  }
+  return null
+}
+
+async function handleForceUnlockConfirm(reason: string) {
+  if (!forceUnlockTarget.value) return
+  forceUnlockSubmitting.value = true
+  try {
+    await projectApi.forceUnlockMilestone(teamId, projectId, forceUnlockTarget.value.id, reason)
+    showSuccess(t('project.force_unlock_success'))
+    showForceUnlockDialog.value = false
+    forceUnlockTarget.value = null
+    await load()
+  } catch (err) {
+    const apiErr = extractApiError(err)
+    if (apiErr?.errorCode === 'MILESTONE_LOCKED' && apiErr.unlockCondition) {
+      showWarn(apiErr.unlockCondition)
+    } else {
+      showError(apiErr?.message ?? '強制アンロックに失敗しました')
+    }
+  } finally {
+    forceUnlockSubmitting.value = false
+  }
+}
+
+async function handleChangeCompletionMode(milestoneId: number, mode: MilestoneCompletionMode) {
+  try {
+    await projectApi.changeCompletionMode(teamId, projectId, milestoneId, mode)
+    showSuccess(t('project.completion_mode_changed'))
+    await load()
+  } catch (err) {
+    const apiErr = extractApiError(err)
+    showError(apiErr?.message ?? '完了モードの変更に失敗しました')
+  }
+}
+
+async function handleInitializeGate() {
+  if (milestones.value.length === 0) {
+    showWarn(t('project.no_milestones'))
+    return
+  }
+  initializeGateLoading.value = true
+  try {
+    // プロジェクト内の全マイルストーンを sort_order 昇順でゲート初期化
+    const ordered = [...milestones.value].sort((a, b) => a.sortOrder - b.sortOrder)
+    for (const ms of ordered) {
+      await projectApi.initializeGate(teamId, projectId, ms.id)
+    }
+    showSuccess(t('project.initialize_gate_success'))
+    await load()
+  } catch (err) {
+    const apiErr = extractApiError(err)
+    showError(apiErr?.message ?? 'ゲートの初期化に失敗しました')
+  } finally {
+    initializeGateLoading.value = false
+  }
+}
+
 onMounted(async () => {
   await loadPermissions()
   await load()
@@ -213,13 +296,23 @@ onMounted(async () => {
         />
       </SectionCard>
 
+      <div v-if="isAdmin && milestones.length > 0" class="mb-3 flex justify-end">
+        <InitializeGateButton
+          :loading="initializeGateLoading"
+          @confirm="handleInitializeGate"
+        />
+      </div>
+
       <ProjectMilestoneList
         :milestones="milestones"
         :can-edit="isAdminOrDeputy"
+        :can-force-unlock="isAdmin"
         @create="openCreateMilestone"
         @edit="openEditMilestone"
         @toggle-complete="toggleMilestoneComplete"
         @remove="removeMilestone"
+        @force-unlock="openForceUnlock"
+        @change-completion-mode="handleChangeCompletionMode"
       />
 
       <div>
@@ -250,6 +343,14 @@ onMounted(async () => {
       :form="milestoneForm"
       :editing="editingMilestone"
       @save="saveMilestone"
+    />
+
+    <ForceUnlockDialog
+      v-model:visible="showForceUnlockDialog"
+      :milestone="forceUnlockTarget"
+      :submitting="forceUnlockSubmitting"
+      @confirm="handleForceUnlockConfirm"
+      @cancel="forceUnlockTarget = null"
     />
   </div>
 </template>
