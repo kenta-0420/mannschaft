@@ -7,6 +7,7 @@ import type {
   CreateMilestoneRequest,
   GatesSummaryResponse,
 } from '~/types/project'
+import type { TodoResponse } from '~/types/todo'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -21,7 +22,7 @@ const { t } = useI18n()
 
 const project = ref<ProjectResponse | null>(null)
 const milestones = ref<MilestoneResponse[]>([])
-const todos = ref<unknown[]>([])
+const todos = ref<TodoResponse[]>([])
 const gatesSummary = ref<GatesSummaryResponse | null>(null)
 const loading = ref(true)
 const showEditDialog = ref(false)
@@ -57,7 +58,7 @@ async function load() {
     ])
     project.value = pRes.data
     milestones.value = mRes.data
-    todos.value = tRes.data
+    todos.value = (tRes.data ?? []) as TodoResponse[]
     gatesSummary.value = gRes?.data ?? null
   } catch {
     showError('プロジェクト情報の取得に失敗しました')
@@ -305,6 +306,9 @@ onMounted(async () => {
 
       <ProjectMilestoneList
         :milestones="milestones"
+        :todos="todos"
+        :team-id="teamId"
+        :project-id="projectId"
         :can-edit="isAdminOrDeputy"
         :can-force-unlock="isAdmin"
         @create="openCreateMilestone"
@@ -313,6 +317,7 @@ onMounted(async () => {
         @remove="removeMilestone"
         @force-unlock="openForceUnlock"
         @change-completion-mode="handleChangeCompletionMode"
+        @todos-reordered="load"
       />
 
       <div>

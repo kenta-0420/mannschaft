@@ -497,6 +497,9 @@
     "force_unlock_success": "強制アンロックしました",
     "completion_mode_changed": "完了モードを変更しました",
     "initialize_gate_success": "ゲートを初期化しました",
+    "drag_to_reorder": "ドラッグで並び替え",
+    "reorder_success": "並び替えました",
+    "reorder_failed": "並び替えに失敗しました",
     "my_projects": "個人プロジェクト",
     "my_projects_description": "自分のタスク管理・目標",
     "no_my_projects": "個人プロジェクトがまだありません"
