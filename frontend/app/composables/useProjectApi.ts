@@ -15,87 +15,98 @@ import type { TodoResponse } from '~/types/todo'
 export function useProjectApi() {
   const api = useApi()
 
-  function buildBase(teamId: number) {
+  // teamId === null で個人スコープ (`/api/v1/users/me/projects`)、
+  // 数値の場合はチーム/組織スコープ (`/api/v1/teams/{teamId}/projects`)
+  function buildBase(teamId: number | null) {
+    if (teamId === null) {
+      return '/api/v1/users/me/projects'
+    }
     return `/api/v1/teams/${teamId}/projects`
   }
 
-  // teamId === null で個人スコープ、そうでなければチーム/組織スコープ
   function buildScopedBase(teamId: number | null, projectId: number) {
-    if (teamId === null) {
-      return `/api/v1/users/me/projects/${projectId}`
-    }
     return `${buildBase(teamId)}/${projectId}`
   }
 
   // === Projects ===
-  async function listProjects(teamId: number) {
+  async function listProjects(teamId: number | null) {
     return api<{ data: ProjectResponse[] }>(buildBase(teamId))
   }
 
-  async function getProject(teamId: number, projectId: number) {
-    return api<{ data: ProjectResponse }>(`${buildBase(teamId)}/${projectId}`)
+  async function getProject(teamId: number | null, projectId: number) {
+    return api<{ data: ProjectResponse }>(buildScopedBase(teamId, projectId))
   }
 
-  async function createProject(teamId: number, body: CreateProjectRequest) {
+  async function createProject(teamId: number | null, body: CreateProjectRequest) {
     return api<{ data: ProjectResponse }>(buildBase(teamId), { method: 'POST', body })
   }
 
-  async function updateProject(teamId: number, projectId: number, body: UpdateProjectRequest) {
-    return api<{ data: ProjectResponse }>(`${buildBase(teamId)}/${projectId}`, {
+  async function updateProject(
+    teamId: number | null,
+    projectId: number,
+    body: UpdateProjectRequest,
+  ) {
+    return api<{ data: ProjectResponse }>(buildScopedBase(teamId, projectId), {
       method: 'PUT',
       body,
     })
   }
 
-  async function deleteProject(teamId: number, projectId: number) {
-    return api(`${buildBase(teamId)}/${projectId}`, { method: 'DELETE' })
+  async function deleteProject(teamId: number | null, projectId: number) {
+    return api(buildScopedBase(teamId, projectId), { method: 'DELETE' })
   }
 
-  async function completeProject(teamId: number, projectId: number) {
-    return api(`${buildBase(teamId)}/${projectId}/complete`, { method: 'PATCH' })
+  async function completeProject(teamId: number | null, projectId: number) {
+    return api(`${buildScopedBase(teamId, projectId)}/complete`, { method: 'PATCH' })
   }
 
-  async function reopenProject(teamId: number, projectId: number) {
-    return api(`${buildBase(teamId)}/${projectId}/reopen`, { method: 'PATCH' })
+  async function reopenProject(teamId: number | null, projectId: number) {
+    return api(`${buildScopedBase(teamId, projectId)}/reopen`, { method: 'PATCH' })
   }
 
   // === Milestones ===
-  async function listMilestones(teamId: number, projectId: number) {
-    return api<{ data: MilestoneResponse[] }>(`${buildBase(teamId)}/${projectId}/milestones`)
+  async function listMilestones(teamId: number | null, projectId: number) {
+    return api<{ data: MilestoneResponse[] }>(`${buildScopedBase(teamId, projectId)}/milestones`)
   }
 
-  async function createMilestone(teamId: number, projectId: number, body: CreateMilestoneRequest) {
-    return api<{ data: MilestoneResponse }>(`${buildBase(teamId)}/${projectId}/milestones`, {
+  async function createMilestone(
+    teamId: number | null,
+    projectId: number,
+    body: CreateMilestoneRequest,
+  ) {
+    return api<{ data: MilestoneResponse }>(`${buildScopedBase(teamId, projectId)}/milestones`, {
       method: 'POST',
       body,
     })
   }
 
   async function updateMilestone(
-    teamId: number,
+    teamId: number | null,
     projectId: number,
     milestoneId: number,
     body: UpdateMilestoneRequest,
   ) {
     return api<{ data: MilestoneResponse }>(
-      `${buildBase(teamId)}/${projectId}/milestones/${milestoneId}`,
+      `${buildScopedBase(teamId, projectId)}/milestones/${milestoneId}`,
       { method: 'PUT', body },
     )
   }
 
-  async function deleteMilestone(teamId: number, projectId: number, milestoneId: number) {
-    return api(`${buildBase(teamId)}/${projectId}/milestones/${milestoneId}`, { method: 'DELETE' })
+  async function deleteMilestone(teamId: number | null, projectId: number, milestoneId: number) {
+    return api(`${buildScopedBase(teamId, projectId)}/milestones/${milestoneId}`, {
+      method: 'DELETE',
+    })
   }
 
-  async function completeMilestone(teamId: number, projectId: number, milestoneId: number) {
-    return api(`${buildBase(teamId)}/${projectId}/milestones/${milestoneId}/complete`, {
+  async function completeMilestone(teamId: number | null, projectId: number, milestoneId: number) {
+    return api(`${buildScopedBase(teamId, projectId)}/milestones/${milestoneId}/complete`, {
       method: 'PATCH',
     })
   }
 
   // === Project Todos ===
-  async function getProjectTodos(teamId: number, projectId: number) {
-    return api<{ data: unknown[] }>(`${buildBase(teamId)}/${projectId}/todos`)
+  async function getProjectTodos(teamId: number | null, projectId: number) {
+    return api<{ data: unknown[] }>(`${buildScopedBase(teamId, projectId)}/todos`)
   }
 
   // === F02.7 マイルストーンゲート ===

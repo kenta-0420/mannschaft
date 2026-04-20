@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
@@ -73,4 +74,21 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
      */
     Page<NotificationEntity> findByScopeTypeAndScopeIdAndIsReadOrderByCreatedAtDesc(
             String scopeType, Long scopeId, Boolean isRead, Pageable pageable);
+
+    /**
+     * 指定ユーザー向けに、同一の notification_type / source_type / source_id の通知が
+     * 指定時刻以降に既に作成されているか判定する（F04.3 期限リマインダー重複送信防止用）。
+     *
+     * <p>TODO_OVERDUE の毎朝1回配信を実現するため、当日の 00:00 以降に既に
+     * 同一 TODO へ同種通知を送っていればスキップする、といった用途を想定する。</p>
+     *
+     * @param userId           送信先ユーザー ID
+     * @param notificationType 通知種別
+     * @param sourceType       ソース種別（例: "TODO"）
+     * @param sourceId         ソース ID
+     * @param since            判定起点時刻（これ以降に作成された通知を対象）
+     * @return 既に送信済みであれば true
+     */
+    boolean existsByUserIdAndNotificationTypeAndSourceTypeAndSourceIdAndCreatedAtGreaterThanEqual(
+            Long userId, String notificationType, String sourceType, Long sourceId, LocalDateTime since);
 }
