@@ -4,9 +4,6 @@ export type TimelineAttachmentType = 'IMAGE' | 'VIDEO_FILE' | 'VIDEO_LINK' | 'LI
 export type VideoProcessingStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED'
 export type PostedAsType = 'USER' | 'TEAM' | 'ORGANIZATION' | 'SOCIAL_PROFILE'
 
-export const PRESET_EMOJIS = ['👍', '👏', '🙏', '😊', '❤️', '🔥', '🙇'] as const
-export type PresetEmoji = (typeof PRESET_EMOJIS)[number]
-
 export const CONTENT_TRUNCATE_LENGTH = 500
 
 export interface TimelineUser {
@@ -93,8 +90,8 @@ export interface TimelinePostResponse {
   attachmentCount: number
   repostCount: number
   attachments: TimelineAttachment[]
-  myReactions: string[]
-  reactionSummary: Record<string, number>
+  mitayo: boolean
+  mitayoCount: number
   repostOf: RepostOf | null
   poll: TimelinePoll | null
   status: TimelinePostStatus
@@ -158,8 +155,3 @@ export interface TimelineEditHistory {
   editedAt: string
 }
 
-export interface ReactionDetail {
-  emoji: string
-  count: number
-  users: TimelineUser[]
-}

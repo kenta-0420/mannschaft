@@ -362,7 +362,8 @@
     "videoUploading": "Video wird hochgeladen...",
     "videoUploadSuccess": "Video erfolgreich hochgeladen",
     "videoUploadError": "Video-Upload fehlgeschlagen",
-    "videoRemove": "Video entfernen"
+    "videoRemove": "Video entfernen",
+    "mitayo": "Gesehen!"
   },
   "gallery": {
     "title": "Galerie",

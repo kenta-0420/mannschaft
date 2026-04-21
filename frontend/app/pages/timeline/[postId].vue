@@ -13,8 +13,6 @@ const {
   getPost,
   createReply,
   getReplies,
-  addReaction,
-  removeReaction,
   addBookmark,
   removeBookmark,
 } = useTimelineApi()
@@ -67,29 +65,12 @@ async function onReply() {
   }
 }
 
-async function onReaction(targetId: number, emoji: string) {
+function onMitayoToggled(targetId: number, mitayo: boolean, mitayoCount: number) {
   const target = targetId === postId ? post.value : replies.value.find((r) => r.id === targetId)
   if (!target) return
-  try {
-    if (target.myReactions.includes(emoji)) {
-      await removeReaction(targetId, emoji)
-      target.myReactions = target.myReactions.filter((e) => e !== emoji)
-      target.reactionSummary[emoji] = (target.reactionSummary[emoji] || 1) - 1
-      if (target.reactionSummary[emoji] <= 0) {
-        target.reactionSummary = Object.fromEntries(
-          Object.entries(target.reactionSummary).filter(([k]) => k !== emoji),
-        )
-      }
-      target.reactionCount--
-    } else {
-      await addReaction(targetId, emoji)
-      target.myReactions.push(emoji)
-      target.reactionSummary[emoji] = (target.reactionSummary[emoji] || 0) + 1
-      target.reactionCount++
-    }
-  } catch {
-    showError('リアクションに失敗しました')
-  }
+  target.mitayo = mitayo
+  target.mitayoCount = mitayoCount
+  target.reactionCount = mitayoCount
 }
 
 async function onBookmark(targetId: number) {
@@ -124,7 +105,7 @@ onMounted(() => loadPost())
       <!-- メイン投稿 -->
       <TimelinePostCard
         :post="post"
-        @reaction="onReaction"
+        @mitayo-toggled="onMitayoToggled"
         @bookmark="onBookmark"
         @click-post="() => {}"
       />
@@ -158,7 +139,7 @@ onMounted(() => loadPost())
           v-for="reply in replies"
           :key="reply.id"
           :post="reply"
-          @reaction="onReaction"
+          @mitayo-toggled="onMitayoToggled"
           @bookmark="onBookmark"
           @click-post="(id) => router.push(`/timeline/${id}`)"
         />

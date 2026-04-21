@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ChatMessageResponse } from '~/types/chat'
-import { PRESET_EMOJIS } from '~/types/timeline'
+
+/** チャット用プリセット絵文字（タイムラインとは独立して定義） */
+const CHAT_PRESET_EMOJIS = ['👍', '👏', '🙏', '😊', '❤️', '🔥', '🙇'] as const
 
 const props = defineProps<{
   message: ChatMessageResponse
@@ -161,7 +163,7 @@ function toggleReaction(emoji: string) {
         class="absolute -top-10 right-4 z-20 flex gap-1 rounded-lg border border-surface-300 bg-surface-0 p-2 shadow-lg"
       >
         <button
-          v-for="emoji in PRESET_EMOJIS"
+          v-for="emoji in CHAT_PRESET_EMOJIS"
           :key="emoji"
           class="flex h-7 w-7 items-center justify-center rounded text-base hover:bg-surface-100"
           @click="toggleReaction(emoji)"

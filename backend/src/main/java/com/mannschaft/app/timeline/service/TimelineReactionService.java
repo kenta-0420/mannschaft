@@ -2,9 +2,7 @@ package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timeline.TimelineErrorCode;
-import com.mannschaft.app.timeline.TimelineMapper;
 import com.mannschaft.app.timeline.dto.ReactionResponse;
-import com.mannschaft.app.timeline.dto.ReactionSummaryResponse;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostReactionEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostReactionRepository;
@@ -14,10 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 /**
- * タイムラインリアクションサービス。投稿への絵文字リアクションの追加・削除・集計を担当する。
+ * タイムラインリアクション（みたよ！）サービス。投稿への「みたよ！」の追加・削除を担当する。
  */
 @Slf4j
 @Service
@@ -27,52 +23,49 @@ public class TimelineReactionService {
 
     private final TimelinePostReactionRepository reactionRepository;
     private final TimelinePostRepository postRepository;
-    private final TimelineMapper timelineMapper;
 
     /**
-     * 投稿にリアクションを追加する。
+     * 投稿に「みたよ！」リアクションを追加する。
      *
      * @param postId 投稿ID
-     * @param emoji  絵文字
      * @param userId ユーザーID
-     * @return 作成されたリアクション
+     * @return レスポンスDTO（みたよ！状態・件数）
      */
     @Transactional
-    public ReactionResponse addReaction(Long postId, String emoji, Long userId) {
+    public ReactionResponse addReaction(Long postId, Long userId) {
         TimelinePostEntity post = findPostOrThrow(postId);
 
-        reactionRepository.findByTimelinePostIdAndUserIdAndEmoji(postId, userId, emoji)
-                .ifPresent(r -> {
-                    throw new BusinessException(TimelineErrorCode.REACTION_ALREADY_EXISTS);
-                });
+        if (reactionRepository.existsByTimelinePostIdAndUserId(postId, userId)) {
+            throw new BusinessException(TimelineErrorCode.REACTION_ALREADY_EXISTS);
+        }
 
         TimelinePostReactionEntity reaction = TimelinePostReactionEntity.builder()
                 .timelinePostId(postId)
                 .userId(userId)
-                .emoji(emoji)
                 .build();
-        reaction = reactionRepository.save(reaction);
+        reactionRepository.save(reaction);
 
         post.incrementReactionCount();
         postRepository.save(post);
 
-        log.info("リアクション追加: postId={}, emoji={}, userId={}", postId, emoji, userId);
-        return timelineMapper.toReactionResponse(reaction);
+        long mitayoCount = reactionRepository.countByTimelinePostId(postId);
+        log.info("みたよ！追加: postId={}, userId={}", postId, userId);
+        return new ReactionResponse(postId, true, (int) mitayoCount);
     }
 
     /**
-     * 投稿のリアクションを削除する。
+     * 投稿の「みたよ！」リアクションを削除する。
      *
      * @param postId 投稿ID
-     * @param emoji  絵文字
      * @param userId ユーザーID
+     * @return レスポンスDTO（みたよ！状態・件数）
      */
     @Transactional
-    public void removeReaction(Long postId, String emoji, Long userId) {
+    public ReactionResponse removeReaction(Long postId, Long userId) {
         TimelinePostEntity post = findPostOrThrow(postId);
 
         TimelinePostReactionEntity reaction = reactionRepository
-                .findByTimelinePostIdAndUserIdAndEmoji(postId, userId, emoji)
+                .findByTimelinePostIdAndUserId(postId, userId)
                 .orElseThrow(() -> new BusinessException(TimelineErrorCode.REACTION_NOT_FOUND));
 
         reactionRepository.delete(reaction);
@@ -80,31 +73,9 @@ public class TimelineReactionService {
         post.decrementReactionCount();
         postRepository.save(post);
 
-        log.info("リアクション削除: postId={}, emoji={}, userId={}", postId, emoji, userId);
-    }
-
-    /**
-     * 投稿のリアクション一覧を取得する。
-     *
-     * @param postId 投稿ID
-     * @return リアクション一覧
-     */
-    public List<ReactionResponse> getReactions(Long postId) {
-        return timelineMapper.toReactionResponseList(
-                reactionRepository.findByTimelinePostId(postId));
-    }
-
-    /**
-     * 投稿のリアクション集計を取得する。
-     *
-     * @param postId 投稿ID
-     * @return 絵文字別リアクション数
-     */
-    public List<ReactionSummaryResponse> getReactionSummary(Long postId) {
-        return reactionRepository.countByPostIdGroupByEmoji(postId)
-                .stream()
-                .map(row -> new ReactionSummaryResponse((String) row[0], (Long) row[1]))
-                .toList();
+        long mitayoCount = reactionRepository.countByTimelinePostId(postId);
+        log.info("みたよ！削除: postId={}, userId={}", postId, userId);
+        return new ReactionResponse(postId, false, (int) mitayoCount);
     }
 
     /**
