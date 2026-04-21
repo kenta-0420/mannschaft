@@ -6,7 +6,6 @@ import com.mannschaft.app.timeline.entity.TimelineBookmarkEntity;
 import com.mannschaft.app.timeline.entity.TimelinePollOptionEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostAttachmentEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
-import com.mannschaft.app.timeline.entity.TimelinePostReactionEntity;
 import com.mannschaft.app.timeline.entity.UserMuteEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -121,43 +120,8 @@ class TimelineMapperTest {
         }
     }
 
-    @Nested
-    @DisplayName("toReactionResponse")
-    class ToReactionResponse {
-
-        @Test
-        @DisplayName("リアクションエンティティ変換_正常_フィールドが正しくマップされる")
-        void リアクションエンティティ変換_正常_フィールドが正しくマップされる() {
-            TimelinePostReactionEntity entity = TimelinePostReactionEntity.builder()
-                    .timelinePostId(50L).userId(1L).emoji("👍").build();
-            assertThat(mapper.toReactionResponse(entity).getEmoji()).isEqualTo("👍");
-        }
-
-        @Test
-        @DisplayName("リアクションエンティティ変換_null_nullを返す")
-        void リアクションエンティティ変換_null_nullを返す() {
-            assertThat(mapper.toReactionResponse(null)).isNull();
-        }
-    }
-
-    @Nested
-    @DisplayName("toReactionResponseList")
-    class ToReactionResponseList {
-
-        @Test
-        @DisplayName("リアクションリスト変換_null_nullを返す")
-        void リアクションリスト変換_null_nullを返す() {
-            assertThat(mapper.toReactionResponseList(null)).isNull();
-        }
-
-        @Test
-        @DisplayName("リアクションリスト変換_正常_全要素変換")
-        void リアクションリスト変換_正常_全要素変換() {
-            TimelinePostReactionEntity e = TimelinePostReactionEntity.builder()
-                    .timelinePostId(1L).userId(1L).emoji("❤️").build();
-            assertThat(mapper.toReactionResponseList(List.of(e))).hasSize(1);
-        }
-    }
+    // toReactionResponse / toReactionResponseList は絵文字リアクション機能実装時に追加予定
+    // （TimelinePostReactionEntity に emoji フィールドが追加されたタイミングで復活させること）
 
     @Nested
     @DisplayName("toBookmarkResponse")
