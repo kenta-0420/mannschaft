@@ -535,6 +535,11 @@ public class RecruitmentListingService {
     private void validateVisibilityAndTargets(
             RecruitmentVisibility visibility,
             List<RecruitmentDistributionTargetEntity> targets) {
+        // CUSTOM_TEMPLATE は distribution_targets の制約なし（テンプレートが判定を担う）
+        if (visibility == RecruitmentVisibility.CUSTOM_TEMPLATE) {
+            return;
+        }
+
         Set<RecruitmentDistributionTargetType> typeSet = targets.stream()
                 .map(RecruitmentDistributionTargetEntity::getTargetType)
                 .collect(Collectors.toSet());
