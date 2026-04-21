@@ -73,7 +73,7 @@ class BlogPostControllerTest {
                 "テスト記事", "test-post", "本文", null, null,
                 "BLOG", "MEMBERS_ONLY", "NORMAL", "DRAFT",
                 null, false, false, 0, (short) 1, 1, null, null,
-                List.of(), null, null);
+                List.of(), null, null, false, 0);
     }
 
     // ========================================

@@ -74,7 +74,7 @@ class PersonalBlogControllerTest {
                 "個人記事", "my-post", "本文", null, null,
                 "BLOG", "PUBLIC", "NORMAL", "PUBLISHED",
                 null, false, false, 0, (short) 1, 1, null, null,
-                List.of(), null, null);
+                List.of(), null, null, false, 0);
     }
 
     // ========================================
