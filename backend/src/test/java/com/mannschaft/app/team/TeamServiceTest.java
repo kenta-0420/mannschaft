@@ -10,6 +10,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.social.repository.TeamFriendRepository;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
@@ -38,6 +39,7 @@ class TeamServiceTest {
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private RoleRepository roleRepository;
     @Mock private UserRepository userRepository;
+    @Mock private TeamFriendRepository teamFriendRepository;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;
@@ -60,6 +62,8 @@ class TeamServiceTest {
             } catch (Exception ignored) {}
             given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(adminRole));
             given(userRoleRepository.save(any(UserRoleEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(userRoleRepository.countMembersByScopeAndRole(any(), any(), any())).willReturn(0);
 
             // When
             ApiResponse<TeamResponse> result = service.createTeam(USER_ID, req);
