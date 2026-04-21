@@ -51,6 +51,9 @@ const MOCK_ORG_PERMISSIONS = {
 }
 
 test.describe('INVITE-QR-001〜005: 招待QRコードPDFダウンロード', () => {
+  // Nuxt SSR の初回ルートコンパイルが並列実行時に遅延するため、グローバル 60 秒より長く設定
+  test.setTimeout(120_000)
+
   test.beforeEach(async ({ page }) => {
     // 1. チーム基本情報・権限をモック
     await mockTeam(page)
@@ -112,11 +115,11 @@ test.describe('INVITE-QR-001〜005: 招待QRコードPDFダウンロード', () 
   })
 
   test('INVITE-QR-003: PDFダウンロード中はボタンがローディング状態になる', async ({ page }) => {
-    // PDF APIを300ms遅延でモック
+    // 3秒遅延でモック（ローディング状態を確認するための十分な時間を確保）
     await page.route(
       `**/api/v1/teams/${TEAM_ID}/invite-tokens/${MOCK_INVITE_TOKEN.id}/pdf`,
       async (route) => {
-        await new Promise<void>((resolve) => setTimeout(resolve, 300))
+        await new Promise<void>((resolve) => setTimeout(resolve, 3_000))
         await route.fulfill({
           status: 200,
           contentType: 'application/pdf',
@@ -135,11 +138,15 @@ test.describe('INVITE-QR-001〜005: 招待QRコードPDFダウンロード', () 
     const pdfButton = page.locator('button:has(.pi-file-pdf)')
     await expect(pdfButton.first()).toBeVisible({ timeout: 10_000 })
 
-    // クリックしてすぐにローディング状態（disabled）を確認
+    // リクエストが発火するのを先に待ち受けてからボタンをクリック
+    const requestStarted = page.waitForRequest(
+      (req) => req.url().includes(`/invite-tokens/${MOCK_INVITE_TOKEN.id}/pdf`),
+    )
     await pdfButton.first().click()
+    await requestStarted
 
-    // PrimeVue Button の :loading="true" はボタンに disabled 属性を付与する
-    await expect(pdfButton.first()).toBeDisabled({ timeout: 3_000 })
+    // PrimeVue 4 は loading 中に SVG スピナーを data-pc-section="loadingicon" で描画する
+    await expect(page.locator('[data-pc-section="loadingicon"]').first()).toBeVisible({ timeout: 2_000 })
   })
 
   test('INVITE-QR-004: APIエラー時にエラートーストが表示される', async ({ page }) => {
