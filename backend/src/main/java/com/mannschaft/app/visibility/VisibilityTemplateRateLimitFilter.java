@@ -24,11 +24,11 @@ import java.util.Map;
  *
  * <p>設計書 §5 に従い、以下の5エンドポイントに対してユーザー単位のレートリミットを適用する:</p>
  * <ul>
- *   <li>{@code POST  /api/v1/visibility-templates} — 10 req/時間</li>
- *   <li>{@code PUT   /api/v1/visibility-templates/*} — 30 req/時間</li>
- *   <li>{@code DELETE /api/v1/visibility-templates/*} — 30 req/時間</li>
- *   <li>{@code POST  /api/v1/visibility-templates/*/evaluate} — 100 req/時間</li>
- *   <li>{@code GET   /api/v1/visibility-templates/*/resolved-members} — 20 req/時間</li>
+ *   <li>{@code POST  /api/v1/visibility-templates} - 10 req/時間</li>
+ *   <li>{@code PUT   /api/v1/visibility-templates/{id}} - 30 req/時間</li>
+ *   <li>{@code DELETE /api/v1/visibility-templates/{id}} - 30 req/時間</li>
+ *   <li>{@code POST  /api/v1/visibility-templates/{id}/evaluate} - 100 req/時間</li>
+ *   <li>{@code GET   /api/v1/visibility-templates/{id}/resolved-members} - 20 req/時間</li>
  * </ul>
  *
  * <p><b>設計意図</b>: テンプレート作成・更新・削除は操作の重み（DB書き込み）に対して上限を設定。

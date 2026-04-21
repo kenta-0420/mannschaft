@@ -6,7 +6,6 @@ definePageMeta({
 })
 
 const { t } = useI18n()
-const router = useRouter()
 const { templates, loading, error, fetchTemplates, deleteTemplate } = useVisibilityTemplate()
 
 const USER_TEMPLATE_LIMIT = 10
