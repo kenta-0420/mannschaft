@@ -136,7 +136,9 @@ public class VisibilityTemplateController {
     public ResponseEntity<ApiResponse<EvaluateVisibilityResponse>> evaluate(
             @PathVariable Long id,
             @Valid @RequestBody EvaluateVisibilityRequest request) {
-        // evaluate は自分のテンプレートまたはプリセットのみ可能（Service で検証済み）
+        Long userId = SecurityUtils.getCurrentUserId();
+        // 自分のテンプレートまたはプリセットのみ evaluate 可能（IDOR対策）
+        visibilityTemplateService.getTemplate(id, userId);
         boolean canView = visibilityTemplateEvaluator.canView(
                 request.getTargetUserId(), id, request.getOwnerUserId());
         EvaluateVisibilityResponse response = EvaluateVisibilityResponse.builder()
