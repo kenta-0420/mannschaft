@@ -520,5 +520,47 @@
     "my_projects": "My projects",
     "my_projects_description": "Personal task management and goals",
     "no_my_projects": "No personal projects yet"
+  },
+  "visibilityTemplate": {
+    "title": "Visibility Templates",
+    "systemPresets": "System Presets",
+    "userTemplates": "My Templates",
+    "createNew": "Create Template",
+    "noUserTemplates": "No templates yet",
+    "ruleCount": "{n} rules",
+    "deleteConfirm": "Delete this template? Posts using it will become private.",
+    "limitReached": "Template limit (10) reached. Delete an existing template first.",
+    "form": {
+      "name": "Template Name",
+      "description": "Description",
+      "iconEmoji": "Icon Emoji",
+      "rules": "Rules",
+      "addRule": "Add Rule",
+      "ruleType": "Rule Type",
+      "ruleTargetId": "Target ID"
+    },
+    "ruleTypes": {
+      "TEAM_FRIEND_OF": "Friend teams of specified team",
+      "ORGANIZATION_MEMBER_OF": "Members of specified organization",
+      "TEAM_MEMBER_OF": "Members of specified team",
+      "REGION_MATCH": "Region match",
+      "EXPLICIT_TEAM": "Specific team",
+      "EXPLICIT_USER": "Specific user",
+      "EXPLICIT_SOCIAL_PROFILE": "Specific social profile"
+    },
+    "preset": {
+      "PRESET_TRAINING_PARTNERS": {
+        "name": "Training Partners",
+        "description": "All friend teams"
+      },
+      "PRESET_LOCAL_TEAMS": {
+        "name": "Local Teams",
+        "description": "Team + region-matched teams"
+      },
+      "PRESET_ALL_FRIENDS": {
+        "name": "All Friends",
+        "description": "All friend team members"
+      }
+    }
   }
 }

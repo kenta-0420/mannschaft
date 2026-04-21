@@ -68,6 +68,10 @@ public class ScheduleEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     private ScheduleVisibility visibility;
 
+    /** カスタム公開範囲テンプレートID (F01.7)。visibility = CUSTOM_TEMPLATE の場合のみ使用 */
+    @Column(name = "visibility_template_id")
+    private Long visibilityTemplateId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private MinViewRole minViewRole;

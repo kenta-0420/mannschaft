@@ -520,5 +520,47 @@
     "my_projects": "개인 프로젝트",
     "my_projects_description": "개인 작업 관리 및 목표",
     "no_my_projects": "아직 개인 프로젝트가 없습니다"
+  },
+  "visibilityTemplate": {
+    "title": "공개 범위 템플릿",
+    "systemPresets": "시스템 프리셋",
+    "userTemplates": "내 템플릿",
+    "createNew": "템플릿 만들기",
+    "noUserTemplates": "템플릿이 없습니다",
+    "ruleCount": "{n}개 규칙",
+    "deleteConfirm": "이 템플릿을 삭제하시겠습니까? 사용 중인 게시물이 비공개로 변경됩니다.",
+    "limitReached": "템플릿 한도(10개)에 도달했습니다. 불필요한 템플릿을 먼저 삭제하세요.",
+    "form": {
+      "name": "템플릿 이름",
+      "description": "설명",
+      "iconEmoji": "아이콘 이모지",
+      "rules": "규칙",
+      "addRule": "규칙 추가",
+      "ruleType": "규칙 유형",
+      "ruleTargetId": "대상 ID"
+    },
+    "ruleTypes": {
+      "TEAM_FRIEND_OF": "지정 팀의 친구 팀 멤버",
+      "ORGANIZATION_MEMBER_OF": "지정 조직의 멤버",
+      "TEAM_MEMBER_OF": "지정 팀의 멤버",
+      "REGION_MATCH": "지역 일치",
+      "EXPLICIT_TEAM": "팀 직접 지정",
+      "EXPLICIT_USER": "사용자 직접 지정",
+      "EXPLICIT_SOCIAL_PROFILE": "소셜 프로필 지정"
+    },
+    "preset": {
+      "PRESET_TRAINING_PARTNERS": {
+        "name": "연습 동료",
+        "description": "자신의 팀 전체 친구 팀"
+      },
+      "PRESET_LOCAL_TEAMS": {
+        "name": "지역 팀",
+        "description": "자팀+지역 일치 팀"
+      },
+      "PRESET_ALL_FRIENDS": {
+        "name": "모든 친구",
+        "description": "모든 친구 팀 멤버"
+      }
+    }
   }
 }

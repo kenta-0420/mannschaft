@@ -520,5 +520,47 @@
     "my_projects": "Meine Projekte",
     "my_projects_description": "Persönliche Aufgabenverwaltung und Ziele",
     "no_my_projects": "Noch keine persönlichen Projekte"
+  },
+  "visibilityTemplate": {
+    "title": "Sichtbarkeitsvorlagen",
+    "systemPresets": "Systemvorlagen",
+    "userTemplates": "Meine Vorlagen",
+    "createNew": "Vorlage erstellen",
+    "noUserTemplates": "Noch keine Vorlagen",
+    "ruleCount": "{n} Regeln",
+    "deleteConfirm": "Vorlage löschen? Beiträge, die sie nutzen, werden privat.",
+    "limitReached": "Vorlagengrenze (10) erreicht. Löschen Sie zunächst eine Vorlage.",
+    "form": {
+      "name": "Name",
+      "description": "Beschreibung",
+      "iconEmoji": "Symbol-Emoji",
+      "rules": "Regeln",
+      "addRule": "Regel hinzufügen",
+      "ruleType": "Regeltyp",
+      "ruleTargetId": "Ziel-ID"
+    },
+    "ruleTypes": {
+      "TEAM_FRIEND_OF": "Mitglieder von Freundschaftsteams",
+      "ORGANIZATION_MEMBER_OF": "Mitglieder der Organisation",
+      "TEAM_MEMBER_OF": "Mitglieder des Teams",
+      "REGION_MATCH": "Regionsübereinstimmung",
+      "EXPLICIT_TEAM": "Bestimmtes Team",
+      "EXPLICIT_USER": "Bestimmter Benutzer",
+      "EXPLICIT_SOCIAL_PROFILE": "Bestimmtes Sozialprofil"
+    },
+    "preset": {
+      "PRESET_TRAINING_PARTNERS": {
+        "name": "Trainingspartner",
+        "description": "Alle befreundeten Teams"
+      },
+      "PRESET_LOCAL_TEAMS": {
+        "name": "Lokale Teams",
+        "description": "Eigenes Team + regionsmatchende Teams"
+      },
+      "PRESET_ALL_FRIENDS": {
+        "name": "Alle Freunde",
+        "description": "Alle befreundeten Teammitglieder"
+      }
+    }
   }
 }

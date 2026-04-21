@@ -98,7 +98,12 @@ public class GlobalExceptionHandler {
             Map.entry("COMMITTEE_INVITATION_EXPIRED", HttpStatus.GONE),
             Map.entry("COMMITTEE_INVITATION_TOKEN_INVALID", HttpStatus.BAD_REQUEST),
             Map.entry("COMMITTEE_MINUTES_ALREADY_CONFIRMED", HttpStatus.CONFLICT),
-            Map.entry("COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE", HttpStatus.BAD_REQUEST)
+            Map.entry("COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE", HttpStatus.BAD_REQUEST),
+            // F01.7 カスタム公開範囲テンプレート
+            Map.entry("VT_001", HttpStatus.NOT_FOUND),        // TEMPLATE_NOT_FOUND（IDOR対策で404）
+            Map.entry("VT_002", HttpStatus.FORBIDDEN),        // TEMPLATE_LIMIT_EXCEEDED
+            Map.entry("VT_003", HttpStatus.CONFLICT),         // TEMPLATE_NAME_CONFLICT
+            Map.entry("VT_004", HttpStatus.FORBIDDEN)         // FORBIDDEN_PRESET_MODIFY
     );
 
     /**

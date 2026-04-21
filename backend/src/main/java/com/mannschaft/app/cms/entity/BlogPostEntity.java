@@ -67,6 +67,10 @@ public class BlogPostEntity extends BaseEntity {
     @Builder.Default
     private Visibility visibility = Visibility.MEMBERS_ONLY;
 
+    /** カスタム公開範囲テンプレートID (F01.7)。visibility = CUSTOM_TEMPLATE の場合のみ使用 */
+    @Column(name = "visibility_template_id")
+    private Long visibilityTemplateId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     @Builder.Default
