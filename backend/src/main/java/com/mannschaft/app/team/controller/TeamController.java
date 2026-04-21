@@ -4,6 +4,8 @@ import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.social.dto.FollowResponse;
+import com.mannschaft.app.social.service.FollowService;
 import com.mannschaft.app.role.service.BlockService;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.role.service.PermissionGroupService;
@@ -70,6 +72,7 @@ public class TeamController {
     private final PermissionGroupService permissionGroupService;
     private final BlockService blockService;
     private final SupporterService supporterService;
+    private final FollowService followService;
 
 
     // ========================================
@@ -419,5 +422,22 @@ public class TeamController {
     public ResponseEntity<Void> restoreTeam(@PathVariable Long id) {
         teamService.restoreTeam(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ========================================
+    // F04.4 / F01.7 Phase 2: チームフォロワー一覧
+    // ========================================
+
+    /**
+     * チームのフォロワー一覧を取得する。
+     */
+    @GetMapping("/{id}/followers")
+    @Operation(summary = "チームフォロワー一覧取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<FollowResponse>>> getTeamFollowers(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "20") int size) {
+        List<FollowResponse> followers = followService.getTeamFollowers(id, size);
+        return ResponseEntity.ok(ApiResponse.of(followers));
     }
 }

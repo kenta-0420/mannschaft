@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.DmReceiveFrom;
 import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.contact.OnlineVisibility;
 import com.mannschaft.app.common.EncryptedStringConverter;
+import com.mannschaft.app.social.FollowListVisibility;
 import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -139,6 +140,12 @@ public class UserEntity extends BaseEntity {
     @Builder.Default
     private Boolean reportingRestricted = false;
 
+    /** フォロー一覧の公開設定。デフォルト: PUBLIC。 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "follow_list_visibility", nullable = false, length = 16)
+    @Builder.Default
+    private FollowListVisibility followListVisibility = FollowListVisibility.PUBLIC;
+
     private LocalDateTime archivedAt;
 
     private LocalDateTime deletedAt;
@@ -259,6 +266,13 @@ public class UserEntity extends BaseEntity {
         if (contactApprovalRequired != null) this.contactApprovalRequired = contactApprovalRequired;
         if (dmReceiveFrom != null) this.dmReceiveFrom = dmReceiveFrom;
         if (onlineVisibility != null) this.onlineVisibility = onlineVisibility;
+    }
+
+    /**
+     * フォロー一覧の公開設定を更新する。
+     */
+    public void updateFollowListVisibility(FollowListVisibility followListVisibility) {
+        this.followListVisibility = followListVisibility;
     }
 
     /**
