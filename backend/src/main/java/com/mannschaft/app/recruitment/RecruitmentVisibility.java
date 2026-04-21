@@ -9,5 +9,7 @@ public enum RecruitmentVisibility {
     /** スコープ内のみ */
     SCOPE_ONLY,
     /** サポーターのみ */
-    SUPPORTERS_ONLY
+    SUPPORTERS_ONLY,
+    /** カスタム公開範囲テンプレート参照（F01.7） */
+    CUSTOM_TEMPLATE
 }

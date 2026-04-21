@@ -8,5 +8,7 @@ public enum Visibility {
     MEMBERS_ONLY,
     SUPPORTERS_AND_ABOVE,
     FOLLOWERS_ONLY,
-    PRIVATE
+    PRIVATE,
+    /** カスタム公開範囲テンプレート参照（F01.7） */
+    CUSTOM_TEMPLATE
 }
