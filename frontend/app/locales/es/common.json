@@ -23,7 +23,9 @@
     "created_at": "Creado el",
     "updated_at": "Actualizado el",
     "status": "Estado",
-    "actions": "Acciones"
+    "actions": "Acciones",
+    "teamFriendCount": "Amigos del equipo",
+    "supporterCount": "Seguidores"
   },
   "dialog": {
     "confirm_delete": "Esta seguro de que desea eliminar esto? Esta accion no se puede deshacer.",

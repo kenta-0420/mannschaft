@@ -15,4 +15,6 @@ public class TeamSummaryResponse {
     private final String template;
     private final String visibility;
     private final int memberCount;
+    private final long teamFriendCount;
+    private final long supporterCount;
 }

@@ -23,7 +23,9 @@
     "created_at": "作成日時",
     "updated_at": "更新日時",
     "status": "ステータス",
-    "actions": "操作"
+    "actions": "操作",
+    "teamFriendCount": "チームフレンド数",
+    "supporterCount": "サポーター数"
   },
   "dialog": {
     "confirm_delete": "本当に削除しますか？この操作は取り消せません。",

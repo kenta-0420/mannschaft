@@ -28,4 +28,6 @@ public class TeamResponse {
     private final String bannerUrl;
     private final LocalDateTime archivedAt;
     private final LocalDateTime createdAt;
+    private final long teamFriendCount;
+    private final long supporterCount;
 }
