@@ -25,7 +25,18 @@
     "status": "Estado",
     "actions": "Acciones",
     "teamFriendCount": "Amigos del equipo",
-    "supporterCount": "Seguidores"
+    "supporterCount": "Seguidores",
+    "following": "Siguiendo",
+    "followers": "Seguidores",
+    "followListVisibility": "Visibilidad de la lista de seguidos",
+    "visibilityPublic": "Publico",
+    "visibilityFriendsOnly": "Solo mutuos",
+    "visibilityPrivate": "Privado",
+    "followListPrivate": "La lista de seguidos de este usuario es privada",
+    "noFollowing": "Aun no sigues a nadie",
+    "noFollowers": "Aun no tienes seguidores",
+    "loadMore": "Cargar mas",
+    "unfollow": "Dejar de seguir"
   },
   "dialog": {
     "confirm_delete": "Esta seguro de que desea eliminar esto? Esta accion no se puede deshacer.",

@@ -25,7 +25,18 @@
     "status": "ステータス",
     "actions": "操作",
     "teamFriendCount": "チームフレンド数",
-    "supporterCount": "サポーター数"
+    "supporterCount": "サポーター数",
+    "following": "フォロー中",
+    "followers": "フォロワー",
+    "followListVisibility": "フォロー一覧の公開設定",
+    "visibilityPublic": "全員に公開",
+    "visibilityFriendsOnly": "相互フォローのみ",
+    "visibilityPrivate": "非公開",
+    "followListPrivate": "このユーザーのフォロー一覧は非公開です",
+    "noFollowing": "フォロー中のユーザーはいません",
+    "noFollowers": "フォロワーはいません",
+    "loadMore": "もっと見る",
+    "unfollow": "フォロー解除"
   },
   "dialog": {
     "confirm_delete": "本当に削除しますか？この操作は取り消せません。",

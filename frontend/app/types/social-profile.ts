@@ -1,4 +1,4 @@
-export type FollowTargetType = 'USER' | 'SOCIAL_PROFILE'
+export type FollowTargetType = 'USER' | 'SOCIAL_PROFILE' | 'TEAM' | 'ORGANIZATION'
 
 export interface SocialProfile {
   id: number
@@ -31,4 +31,17 @@ export interface FollowRecord {
 
 export interface FollowCheckResponse {
   isFollowing: boolean
+}
+
+export type FollowListVisibility = 'PUBLIC' | 'FRIENDS_ONLY' | 'PRIVATE'
+
+export interface FollowListVisibilityResponse {
+  visibility: FollowListVisibility
+}
+
+export interface FollowPageResponse {
+  data: FollowRecord[]
+  meta: {
+    nextCursor: string | null
+  }
 }

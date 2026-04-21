@@ -25,7 +25,18 @@
     "status": "状态",
     "actions": "操作",
     "teamFriendCount": "团队好友数",
-    "supporterCount": "支持者数"
+    "supporterCount": "支持者数",
+    "following": "关注中",
+    "followers": "粉丝",
+    "followListVisibility": "关注列表可见性",
+    "visibilityPublic": "公开",
+    "visibilityFriendsOnly": "仅互相关注",
+    "visibilityPrivate": "私密",
+    "followListPrivate": "该用户的关注列表不公开",
+    "noFollowing": "暂无关注",
+    "noFollowers": "暂无粉丝",
+    "loadMore": "加载更多",
+    "unfollow": "取消关注"
   },
   "dialog": {
     "confirm_delete": "确定要删除吗？此操作无法撤销。",

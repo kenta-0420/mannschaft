@@ -25,7 +25,18 @@
     "status": "Status",
     "actions": "Actions",
     "teamFriendCount": "Team Friends",
-    "supporterCount": "Supporters"
+    "supporterCount": "Supporters",
+    "following": "Following",
+    "followers": "Followers",
+    "followListVisibility": "Follow List Visibility",
+    "visibilityPublic": "Public",
+    "visibilityFriendsOnly": "Friends Only",
+    "visibilityPrivate": "Private",
+    "followListPrivate": "This user's follow list is private",
+    "noFollowing": "Not following anyone yet",
+    "noFollowers": "No followers yet",
+    "loadMore": "Load more",
+    "unfollow": "Unfollow"
   },
   "dialog": {
     "confirm_delete": "Are you sure you want to delete this? This action cannot be undone.",

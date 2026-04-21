@@ -25,7 +25,18 @@
     "status": "상태",
     "actions": "작업",
     "teamFriendCount": "팀 친구 수",
-    "supporterCount": "서포터 수"
+    "supporterCount": "서포터 수",
+    "following": "팔로잉",
+    "followers": "팔로워",
+    "followListVisibility": "팔로우 목록 공개 설정",
+    "visibilityPublic": "전체 공개",
+    "visibilityFriendsOnly": "맞팔 전용",
+    "visibilityPrivate": "비공개",
+    "followListPrivate": "이 사용자의 팔로우 목록은 비공개입니다",
+    "noFollowing": "팔로잉 중인 사용자가 없습니다",
+    "noFollowers": "팔로워가 없습니다",
+    "loadMore": "더 보기",
+    "unfollow": "팔로우 취소"
   },
   "dialog": {
     "confirm_delete": "정말로 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
