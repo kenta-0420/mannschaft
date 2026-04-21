@@ -103,7 +103,14 @@ public class GlobalExceptionHandler {
             Map.entry("VT_001", HttpStatus.NOT_FOUND),        // TEMPLATE_NOT_FOUND（IDOR対策で404）
             Map.entry("VT_002", HttpStatus.FORBIDDEN),        // TEMPLATE_LIMIT_EXCEEDED
             Map.entry("VT_003", HttpStatus.CONFLICT),         // TEMPLATE_NAME_CONFLICT
-            Map.entry("VT_004", HttpStatus.FORBIDDEN)         // FORBIDDEN_PRESET_MODIFY
+            Map.entry("VT_004", HttpStatus.FORBIDDEN),        // FORBIDDEN_PRESET_MODIFY
+            // F13.1 求人マッチング（Phase 13.1.1 MVP）
+            Map.entry("JOB_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("JOB_CAPACITY_FULL", HttpStatus.CONFLICT),
+            Map.entry("JOB_ALREADY_APPLIED", HttpStatus.CONFLICT),
+            Map.entry("JOB_APPLICATION_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("JOB_CONTRACT_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("JOB_PERMISSION_DENIED", HttpStatus.FORBIDDEN)
     );
 
     /**
