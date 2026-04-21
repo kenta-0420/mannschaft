@@ -44,6 +44,18 @@
     "install_prompt": "Add to home screen to use like an app",
     "install_button": "Install",
     "update_available": "A new version is available",
-    "update_button": "Update"
+    "update_button": "Update",
+    "later": "Later",
+    "installed": "Installed",
+    "install_success": "Installation complete!",
+    "ios": {
+      "guide_title": "How to install on iPhone",
+      "step1": "Make sure you're using Safari",
+      "step2": "Tap the Share button at the bottom (square with an up arrow)",
+      "step3": "Select 'Add to Home Screen'",
+      "step4": "Tap 'Add' to finish",
+      "close": "Close",
+      "note": "Chrome/Firefox cannot install PWAs"
+    }
   }
 }

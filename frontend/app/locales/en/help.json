@@ -1,0 +1,87 @@
+{
+  "qa": {
+    "title": "Frequently Asked Questions (Q&A)",
+    "description": "Answers to common questions about using Mannschaft, installing the PWA, and more.",
+    "search_placeholder": "Search questions...",
+    "no_results": "No matching questions found",
+    "result_count": "{count} question(s)",
+    "category": {
+      "all": "All",
+      "basic": "Basics",
+      "pwa": "PWA & Install",
+      "offline": "Offline",
+      "troubleshooting": "Troubleshooting"
+    },
+    "tutorial_banner": {
+      "title": "New to Mannschaft?",
+      "description": "Take the tutorial to learn the basics",
+      "button": "View tutorial"
+    },
+    "pwa_cta": {
+      "title": "It's even better as an app!",
+      "description": "Add to your home screen to use it offline and receive push notifications."
+    },
+    "items": {
+      "basic": {
+        "q1": {
+          "question": "Are there any feature differences between PC and smartphone?",
+          "answer": "Core features work identically on every device. Smartphones are optimized for touch input and can be installed as a PWA on the home screen. PCs let you view more information at once on a large screen and type quickly using keyboard shortcuts."
+        },
+        "q2": {
+          "question": "What's the recommended way to use it on a smartphone?",
+          "answer": "Install the PWA and launch it from the home screen. The browser address bar disappears, giving you a native-app feel. Use long-press menus for quick actions, swipe to switch screens, and tap notifications to jump directly to related pages."
+        },
+        "q3": {
+          "question": "How do I change my profile picture?",
+          "answer": "Tap the icon in the top-right corner, go to Settings -> Profile, and upload a new image using the change button."
+        },
+        "q4": {
+          "question": "How do I change the display language?",
+          "answer": "Go to Settings -> Language to switch between Japanese, English, Chinese, Korean, Spanish, and German."
+        },
+        "q5": {
+          "question": "Where can I log out?",
+          "answer": "Tap the Log out button in the navigation bar, or on mobile, find Log out inside the menu."
+        }
+      },
+      "pwa": {
+        "q1": {
+          "question": "What is a PWA?",
+          "answer": "A PWA (Progressive Web App) lets you use a website like an app. Once added to your home screen, it launches like a regular app and works offline. No installation via Google Play or App Store is required."
+        },
+        "q2": {
+          "question": "What are the benefits of installing the PWA?",
+          "answer": "- Launch with one tap from the home screen\n- Browse and draft content even offline\n- Receive push notifications\n- Full-screen experience without the browser address bar\n- Fast startup\n- Lower data usage"
+        },
+        "q3": {
+          "question": "How do I install it on an Android phone?",
+          "answer": "Open this page in Chrome and tap the Install button at the top of this Q&A page. When the 'Add to Home screen' dialog appears, tap Add."
+        },
+        "q4": {
+          "question": "How do I install it on an iPhone?",
+          "answer": "Open the page in Safari, tap the Share button at the bottom (square with an up arrow), choose 'Add to Home Screen', then tap Add. Note that Chrome and Firefox on iOS cannot install PWAs."
+        }
+      },
+      "offline": {
+        "q1": {
+          "question": "Can I use the app offline?",
+          "answer": "Yes. Once you install the PWA, most screens are available offline. Input actions such as action memos, quick memos, and adding TODOs are saved on the device and sent automatically when you reconnect."
+        },
+        "q2": {
+          "question": "What happens to data I edited while offline?",
+          "answer": "It syncs automatically when you come back online. If another device or member edited the same data first, you can resolve it manually from the Conflict Resolution screen."
+        }
+      },
+      "troubleshooting": {
+        "q1": {
+          "question": "I'm not receiving notifications. Why?",
+          "answer": "You must install the PWA and allow notifications when prompted on first launch. Check that notifications are not blocked in your browser or OS settings. iOS supports PWA notifications from iOS 16.4 and later."
+        },
+        "q2": {
+          "question": "Pages won't load or the app behaves strangely.",
+          "answer": "First, clear your browser cache. If the issue persists, try uninstalling and reinstalling the PWA. If it still doesn't work, please contact support."
+        }
+      }
+    }
+  }
+}

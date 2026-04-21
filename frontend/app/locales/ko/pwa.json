@@ -44,6 +44,18 @@
     "install_prompt": "홈 화면에 추가하면 앱처럼 사용할 수 있습니다",
     "install_button": "설치",
     "update_available": "새 버전을 사용할 수 있습니다",
-    "update_button": "업데이트"
+    "update_button": "업데이트",
+    "later": "나중에",
+    "installed": "설치됨",
+    "install_success": "설치가 완료되었습니다!",
+    "ios": {
+      "guide_title": "iPhone 설치 방법",
+      "step1": "Safari에서 열려 있는지 확인하세요",
+      "step2": "하단의 공유 버튼(사각형과 위 화살표)을 탭",
+      "step3": "'홈 화면에 추가' 선택",
+      "step4": "'추가'를 탭하여 완료",
+      "close": "닫기",
+      "note": "Chrome/Firefox에서는 추가할 수 없습니다"
+    }
   }
 }

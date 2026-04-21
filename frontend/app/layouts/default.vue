@@ -27,6 +27,7 @@ const navItems = computed(() => [
   { label: 'タイムライン', icon: 'pi pi-comments', to: '/timeline' },
   { label: 'チャット', icon: 'pi pi-comment', to: '/chat' },
   { label: 'マイページ', icon: 'pi pi-user', to: '/my' },
+  { label: 'Q&A', icon: 'pi pi-question-circle', to: '/help/qa' },
   { label: '設定', icon: 'pi pi-cog', to: '/settings' },
 ])
 

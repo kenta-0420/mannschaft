@@ -1,0 +1,87 @@
+{
+  "qa": {
+    "title": "Haeufig gestellte Fragen (Q&A)",
+    "description": "Antworten auf haeufige Fragen zur Nutzung von Mannschaft, zur Installation der PWA und mehr.",
+    "search_placeholder": "Fragen durchsuchen...",
+    "no_results": "Keine passenden Fragen gefunden",
+    "result_count": "{count} Frage(n)",
+    "category": {
+      "all": "Alle",
+      "basic": "Grundlagen",
+      "pwa": "PWA & Installation",
+      "offline": "Offline",
+      "troubleshooting": "Fehlerbehebung"
+    },
+    "tutorial_banner": {
+      "title": "Neu bei Mannschaft?",
+      "description": "Im Tutorial koennen Sie die grundlegenden Bedienungen pruefen",
+      "button": "Tutorial ansehen"
+    },
+    "pwa_cta": {
+      "title": "Als App noch praktischer!",
+      "description": "Zum Startbildschirm hinzufuegen, um die App offline zu nutzen und Push-Benachrichtigungen zu erhalten."
+    },
+    "items": {
+      "basic": {
+        "q1": {
+          "question": "Gibt es Funktionsunterschiede zwischen PC und Smartphone?",
+          "answer": "Die Grundfunktionen sind auf allen Geraeten gleich. Smartphones sind fuer die Touch-Bedienung optimiert und koennen als PWA zum Startbildschirm hinzugefuegt werden. Auf dem PC koennen Sie auf einem grossen Bildschirm mehrere Informationen gleichzeitig sehen und mit Tastenkuerzeln schnell eingeben."
+        },
+        "q2": {
+          "question": "Was ist die empfohlene Bedienung auf dem Smartphone?",
+          "answer": "Installieren Sie die PWA und starten Sie sie vom Startbildschirm. Die Adressleiste des Browsers verschwindet und die Nutzung fuehlt sich wie eine native App an. Nutzen Sie Langdruck-Menues fuer schnelle Aktionen, wischen Sie zum Wechseln der Ansicht und tippen Sie auf Benachrichtigungen, um direkt zu verwandten Seiten zu springen."
+        },
+        "q3": {
+          "question": "Wie aendere ich mein Profilbild?",
+          "answer": "Tippen Sie oben rechts auf das Symbol, oeffnen Sie Einstellungen -> Profil und laden Sie das Bild ueber die Aendern-Schaltflaeche hoch."
+        },
+        "q4": {
+          "question": "Wie aendere ich die Anzeigesprache?",
+          "answer": "Unter Einstellungen -> Sprache koennen Sie zwischen Japanisch, Englisch, Chinesisch, Koreanisch, Spanisch und Deutsch waehlen (6 Sprachen)."
+        },
+        "q5": {
+          "question": "Wo kann ich mich abmelden?",
+          "answer": "Ueber die Schaltflaeche Abmelden in der Navigationsleiste oder auf dem Mobilgeraet ueber Abmelden im Menue."
+        }
+      },
+      "pwa": {
+        "q1": {
+          "question": "Was ist eine PWA?",
+          "answer": "Eine PWA (Progressive Web App) ist eine Technologie, mit der Sie eine Website wie eine App nutzen koennen. Einmal zum Startbildschirm hinzugefuegt, laesst sie sich wie eine normale App starten und funktioniert auch offline. Eine Installation ueber Google Play oder den App Store ist nicht erforderlich."
+        },
+        "q2": {
+          "question": "Welche Vorteile hat die Installation der PWA?",
+          "answer": "- Start mit einem Tippen vom Startbildschirm\n- Auch offline lesen und Entwuerfe erstellen moeglich\n- Push-Benachrichtigungen empfangen\n- Ohne Browser-Adressleiste groessere Ansicht\n- Schneller Start\n- Weniger Datenverbrauch"
+        },
+        "q3": {
+          "question": "Wie installiere ich die App auf einem Android-Smartphone?",
+          "answer": "Oeffnen Sie diese Seite in Chrome und tippen Sie oben auf dieser Q&A-Seite auf die Schaltflaeche Installieren. Wenn der Dialog 'Zum Startbildschirm hinzufuegen' erscheint, waehlen Sie Hinzufuegen."
+        },
+        "q4": {
+          "question": "Wie installiere ich die App auf einem iPhone?",
+          "answer": "Oeffnen Sie die Seite in Safari, tippen Sie unten auf die Teilen-Schaltflaeche (Quadrat mit Pfeil nach oben) -> 'Zum Home-Bildschirm' -> 'Hinzufuegen'. Beachten Sie, dass dies in Chrome/Firefox nicht moeglich ist."
+        }
+      },
+      "offline": {
+        "q1": {
+          "question": "Kann ich die App auch offline nutzen?",
+          "answer": "Ja. Wenn die PWA installiert ist, werden die wichtigsten Ansichten auch offline angezeigt. Eingaben wie Aktionsnotizen, Schnellnotizen und TODOs werden auf dem Geraet gespeichert und bei Rueckkehr online automatisch gesendet."
+        },
+        "q2": {
+          "question": "Was passiert mit offline bearbeiteten Daten?",
+          "answer": "Sie werden automatisch synchronisiert, sobald Sie wieder online sind. Falls ein anderes Geraet oder Mitglied dieselben Daten zuerst bearbeitet hat, koennen Sie im Konfliktloesungs-Bildschirm manuell auswaehlen."
+        }
+      },
+      "troubleshooting": {
+        "q1": {
+          "question": "Ich erhalte keine Benachrichtigungen.",
+          "answer": "Sie muessen die PWA installieren und beim ersten Start Benachrichtigungen erlauben. Pruefen Sie, dass Benachrichtigungen in den Browser- oder Betriebssystemeinstellungen nicht blockiert sind. iOS unterstuetzt PWA-Benachrichtigungen ab iOS 16.4."
+        },
+        "q2": {
+          "question": "Die Seite laedt nicht oder verhaelt sich seltsam.",
+          "answer": "Leeren Sie zunaechst den Browser-Cache. Falls das nicht hilft, deinstallieren Sie die PWA und installieren Sie sie erneut. Wenn das Problem weiterhin besteht, kontaktieren Sie bitte den Support."
+        }
+      }
+    }
+  }
+}
