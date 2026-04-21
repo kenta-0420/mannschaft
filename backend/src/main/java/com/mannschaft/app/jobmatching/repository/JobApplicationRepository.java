@@ -2,6 +2,8 @@ package com.mannschaft.app.jobmatching.repository;
 
 import com.mannschaft.app.jobmatching.entity.JobApplicationEntity;
 import com.mannschaft.app.jobmatching.enums.JobApplicationStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -23,9 +25,20 @@ public interface JobApplicationRepository extends JpaRepository<JobApplicationEn
     List<JobApplicationEntity> findByApplicantUserIdOrderByAppliedAtDesc(Long userId);
 
     /**
+     * ユーザーの応募履歴をページング取得する（マイ応募一覧 API 用）。
+     */
+    Page<JobApplicationEntity> findByApplicantUserId(Long userId, Pageable pageable);
+
+    /**
      * 特定ユーザーの特定求人への応募を取得する（重複応募チェック用）。
      */
     Optional<JobApplicationEntity> findByJobPostingIdAndApplicantUserId(Long jobPostingId, Long userId);
+
+    /**
+     * 求人に対する応募総数（論理削除なし設計のため単純カウント）。
+     * update() 時の「応募者がいれば報酬・日時変更不可」判定に利用する。
+     */
+    int countByJobPostingId(Long jobPostingId);
 
     /**
      * 求人の特定ステータスの応募件数を取得する（採用済み人数カウント等）。
