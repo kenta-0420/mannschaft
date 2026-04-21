@@ -4,11 +4,12 @@ import type { BlogPostResponse, BlogSeries, BlogTag } from '~/types/cms'
 const route = useRoute()
 const slug = route.params.slug as string
 
-const { getPost } = useBlogApi()
+const { getPost, addMitayo, removeMitayo } = useBlogApi()
 const { handleError } = useErrorHandler()
 
 const post = ref<BlogPostResponse | null>(null)
 const loading = ref(true)
+const mitayoLoading = ref(false)
 
 async function loadPost() {
   loading.value = true
@@ -19,6 +20,21 @@ async function loadPost() {
     handleError(error)
   } finally {
     loading.value = false
+  }
+}
+
+async function handleToggleMitayo() {
+  if (!post.value || mitayoLoading.value) return
+  mitayoLoading.value = true
+  try {
+    const res = post.value.mitayo
+      ? await removeMitayo(post.value.id)
+      : await addMitayo(post.value.id)
+    post.value = { ...post.value, mitayo: res.data.mitayo, mitayoCount: res.data.mitayoCount }
+  } catch (error) {
+    handleError(error)
+  } finally {
+    mitayoLoading.value = false
   }
 }
 
@@ -70,6 +86,15 @@ onMounted(() => loadPost())
 
     <template v-else-if="post">
       <BlogPostDetail :post="post" @tag-click="onTagClick" />
+
+      <div class="mt-4 flex justify-center">
+        <TimelineMitayoButton
+          :mitayo="post.mitayo"
+          :mitayo-count="post.mitayoCount"
+          :loading="mitayoLoading"
+          @toggle="handleToggleMitayo"
+        />
+      </div>
 
       <BlogSeriesNav
         v-if="seriesForNav"

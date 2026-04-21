@@ -26,6 +26,8 @@ public interface CmsMapper {
     @Mapping(target = "priority", expression = "java(entity.getPriority().name())")
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
     @Mapping(target = "tags", expression = "java(java.util.Collections.emptyList())")
+    @Mapping(target = "mitayo", constant = "false")
+    @Mapping(target = "mitayoCount", constant = "0")
     BlogPostResponse toBlogPostResponse(BlogPostEntity entity);
 
     List<BlogPostResponse> toBlogPostResponseList(List<BlogPostEntity> entities);

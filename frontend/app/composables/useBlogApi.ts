@@ -1,4 +1,4 @@
-import type { BlogPostResponse, BlogTag, BlogSeries, BlogRevision } from '~/types/cms'
+import type { BlogPostResponse, BlogReactionResponse, BlogTag, BlogSeries, BlogRevision } from '~/types/cms'
 
 interface BlogSettings {
   displayName: string | null
@@ -199,6 +199,19 @@ export function useBlogApi() {
     return api<{ data: BlogPostResponse }>(`/api/v1/users/${userId}/blog/posts/${slug}`)
   }
 
+  // === Blog Reactions (みたよ！) ===
+  async function addMitayo(postId: number) {
+    return api<{ data: BlogReactionResponse }>(`/api/v1/blog/posts/${postId}/reactions`, {
+      method: 'POST',
+    })
+  }
+
+  async function removeMitayo(postId: number) {
+    return api<{ data: BlogReactionResponse }>(`/api/v1/blog/posts/${postId}/reactions`, {
+      method: 'DELETE',
+    })
+  }
+
   return {
     getPosts,
     getPost,
@@ -235,5 +248,7 @@ export function useBlogApi() {
     updateMyBlogSettings,
     getUserPosts,
     getUserPost,
+    addMitayo,
+    removeMitayo,
   }
 }

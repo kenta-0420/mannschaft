@@ -21,6 +21,14 @@ export interface BlogPostResponse {
   viewCount: number
   createdAt: string
   updatedAt: string
+  mitayo: boolean
+  mitayoCount: number
+}
+
+export interface BlogReactionResponse {
+  blogPostId: number
+  mitayo: boolean
+  mitayoCount: number
 }
 
 export interface BlogTag {

@@ -86,7 +86,7 @@ class BlogPostServiceAdditionalTest {
         return new BlogPostResponse(
                 null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, false, 0);
     }
 
     // ========================================

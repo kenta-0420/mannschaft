@@ -38,6 +38,21 @@ public class BlogPostResponse {
     private final List<TagSummary> tags;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+    private final boolean mitayo;
+    private final int mitayoCount;
+
+    /**
+     * リアクション情報（みたよ！状態・件数）を付与した新しいインスタンスを返す。
+     */
+    public BlogPostResponse withReaction(boolean mitayo, int mitayoCount) {
+        return new BlogPostResponse(
+                this.id, this.teamId, this.organizationId, this.userId, this.authorId,
+                this.title, this.slug, this.body, this.excerpt, this.coverImageUrl,
+                this.postType, this.visibility, this.priority, this.status,
+                this.publishedAt, this.pinned, this.allowComments, this.viewCount,
+                this.readingTimeMinutes, this.version, this.seriesId, this.seriesOrder,
+                this.tags, this.createdAt, this.updatedAt, mitayo, mitayoCount);
+    }
 
     /**
      * タグの要約情報。

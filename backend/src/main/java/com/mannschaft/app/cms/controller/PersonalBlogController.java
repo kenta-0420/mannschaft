@@ -1,6 +1,7 @@
 package com.mannschaft.app.cms.controller;
 
 import com.mannschaft.app.cms.dto.BlogPostResponse;
+import com.mannschaft.app.cms.dto.BlogReactionResponse;
 import com.mannschaft.app.cms.dto.BlogSettingsResponse;
 import com.mannschaft.app.cms.dto.CreateBlogPostRequest;
 import com.mannschaft.app.cms.dto.PublishRequest;
@@ -9,6 +10,7 @@ import com.mannschaft.app.cms.dto.SharePostRequest;
 import com.mannschaft.app.cms.dto.SharePostResponse;
 import com.mannschaft.app.cms.dto.UpdateBlogSettingsRequest;
 import com.mannschaft.app.cms.service.BlogPostService;
+import com.mannschaft.app.cms.service.BlogReactionService;
 import com.mannschaft.app.cms.service.UserBlogSettingsService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
@@ -43,6 +45,7 @@ public class PersonalBlogController {
 
     private final BlogPostService postService;
     private final UserBlogSettingsService settingsService;
+    private final BlogReactionService reactionService;
 
 
     /**
@@ -71,6 +74,10 @@ public class PersonalBlogController {
             @PathVariable Long userId,
             @PathVariable String slug) {
         BlogPostResponse response = postService.getBySlug(null, null, userId, slug);
+        // リアクション情報（みたよ！）を付与する
+        Long currentUserId = SecurityUtils.getCurrentUserIdOrNull();
+        BlogReactionResponse reactionStatus = reactionService.getReactionStatus(response.getId(), currentUserId);
+        response = response.withReaction(reactionStatus.isMitayo(), reactionStatus.getMitayoCount());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

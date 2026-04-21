@@ -69,7 +69,13 @@ public enum CmsErrorCode implements ErrorCode {
     SHARE_NOT_FOUND("CMS_019", "共有が見つかりません", Severity.WARN),
 
     /** ブログ設定が見つからない */
-    SETTINGS_NOT_FOUND("CMS_020", "ブログ設定が見つかりません", Severity.WARN);
+    SETTINGS_NOT_FOUND("CMS_020", "ブログ設定が見つかりません", Severity.WARN),
+
+    /** リアクション（みたよ！）が既に存在する */
+    REACTION_ALREADY_EXISTS("CMS_021", "既にみたよ！を送信済みです", Severity.WARN),
+
+    /** リアクション（みたよ！）が見つからない */
+    REACTION_NOT_FOUND("CMS_022", "みたよ！が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

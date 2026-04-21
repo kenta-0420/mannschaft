@@ -25,7 +25,7 @@ class BlogFeedServiceTest {
         return new BlogPostResponse(
                 null, teamId, null, null, null, title, slug, null, null, null,
                 null, null, null, null, LocalDateTime.now(), null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, false, 0);
     }
 
     @Nested
