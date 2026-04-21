@@ -16,7 +16,8 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * タイムラインリアクションエンティティ。投稿への絵文字リアクションを管理する。
+ * タイムラインリアクションエンティティ。投稿への「みたよ！」リアクションを管理する。
+ * ユーザーは投稿に対して1件だけ「みたよ！」を付けることができる（UNIQUE: timeline_post_id, user_id）。
  */
 @Entity
 @Table(name = "timeline_post_reactions")
@@ -35,9 +36,6 @@ public class TimelinePostReactionEntity {
 
     @Column(nullable = false)
     private Long userId;
-
-    @Column(nullable = false, length = 10)
-    private String emoji;
 
     private LocalDateTime createdAt;
 

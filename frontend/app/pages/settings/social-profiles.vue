@@ -1,17 +1,26 @@
 <script setup lang="ts">
-import type { SocialProfile, CreateSocialProfileRequest } from '~/types/social-profile'
+import type { SocialProfile, CreateSocialProfileRequest, FollowListVisibility } from '~/types/social-profile'
 
 definePageMeta({ middleware: 'auth' })
 
 const socialApi = useSocialProfileApi()
 const notification = useNotification()
+const { t } = useI18n()
 
 const profiles = ref<SocialProfile[]>([])
 const loading = ref(true)
 const showDialog = ref(false)
 const editingProfile = ref<SocialProfile | null>(null)
+const followListVisibility = ref<FollowListVisibility>('PUBLIC')
+const savingVisibility = ref(false)
 
 const form = ref<CreateSocialProfileRequest>({ handle: '', displayName: '', bio: '' })
+
+const visibilityOptions = computed(() => [
+  { label: t('label.visibilityPublic'), value: 'PUBLIC' as FollowListVisibility },
+  { label: t('label.visibilityFriendsOnly'), value: 'FRIENDS_ONLY' as FollowListVisibility },
+  { label: t('label.visibilityPrivate'), value: 'PRIVATE' as FollowListVisibility },
+])
 
 async function loadProfiles() {
   loading.value = true
@@ -22,6 +31,26 @@ async function loadProfiles() {
     notification.error('プロフィールの取得に失敗しました')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadFollowListVisibility() {
+  try {
+    followListVisibility.value = await socialApi.getFollowListVisibility()
+  } catch {
+    // 取得失敗時はデフォルト値のまま
+  }
+}
+
+async function onVisibilityChange() {
+  savingVisibility.value = true
+  try {
+    await socialApi.updateFollowListVisibility(followListVisibility.value)
+    notification.success(t('label.followListVisibility') + 'を更新しました')
+  } catch {
+    notification.error('公開設定の更新に失敗しました')
+  } finally {
+    savingVisibility.value = false
   }
 }
 
@@ -63,7 +92,9 @@ async function handleDelete(_id: number) {
   }
 }
 
-onMounted(loadProfiles)
+onMounted(async () => {
+  await Promise.all([loadProfiles(), loadFollowListVisibility()])
+})
 </script>
 
 <template>
@@ -79,6 +110,24 @@ onMounted(loadProfiles)
     <p class="mb-4 text-sm text-surface-500">
       最大3つのプロフィールを作成できます（{{ profiles.length }}/3）
     </p>
+
+    <!-- フォロー一覧公開設定 -->
+    <SectionCard :title="$t('label.followListVisibility')" class="mb-6">
+      <div class="space-y-3">
+        <p class="text-sm text-surface-500">
+          {{ $t('label.following') }}・{{ $t('label.followers') }} 一覧を誰に見せるか設定します
+        </p>
+        <Select
+          v-model="followListVisibility"
+          :options="visibilityOptions"
+          option-label="label"
+          option-value="value"
+          class="w-full"
+          :loading="savingVisibility"
+          @change="onVisibilityChange"
+        />
+      </div>
+    </SectionCard>
 
     <PageLoading v-if="loading" />
 

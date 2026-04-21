@@ -10,17 +10,19 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   reply: [postId: number]
-  reaction: [postId: number, emoji: string]
   bookmark: [postId: number]
   pin: [postId: number]
   delete: [postId: number]
   repost: [postId: number]
   clickPost: [postId: number]
+  mitayoToggled: [postId: number, mitayo: boolean, mitayoCount: number]
 }>()
 
 const { relativeTime } = useRelativeTime()
+const { addReaction, removeReaction } = useTimelineApi()
 const menu = ref()
 const expanded = ref(false)
+const mitayoLoading = ref(false)
 
 const displayName = computed(() => {
   if (props.post.postedAs) {
@@ -63,6 +65,22 @@ const menuItems = computed(() => {
 
 function toggleMenu(event: Event) {
   menu.value.toggle(event)
+}
+
+async function handleToggleMitayo() {
+  if (mitayoLoading.value) return
+  mitayoLoading.value = true
+  try {
+    const result = props.post.mitayo
+      ? await removeReaction(props.post.id)
+      : await addReaction(props.post.id)
+    if (result?.data) {
+      emit('mitayoToggled', props.post.id, result.data.mitayo, result.data.mitayoCount)
+    }
+  }
+  finally {
+    mitayoLoading.value = false
+  }
 }
 </script>
 
@@ -225,12 +243,13 @@ function toggleMenu(event: Event) {
       </p>
     </div>
 
-    <!-- リアクション -->
+    <!-- みたよ！ボタン -->
     <div class="mb-2" @click.stop>
-      <TimelineReactionPicker
-        :reaction-summary="post.reactionSummary"
-        :my-reactions="post.myReactions"
-        @toggle="(emoji) => emit('reaction', post.id, emoji)"
+      <TimelineMitayoButton
+        :mitayo="post.mitayo"
+        :mitayo-count="post.mitayoCount"
+        :loading="mitayoLoading"
+        @toggle="handleToggleMitayo"
       />
     </div>
 

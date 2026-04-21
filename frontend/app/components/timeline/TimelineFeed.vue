@@ -12,8 +12,7 @@ const emit = defineEmits<{
   clickPost: [postId: number]
 }>()
 
-const { getFeed, addReaction, removeReaction, addBookmark, removeBookmark, pinPost, deletePost } =
-  useTimelineApi()
+const { getFeed, addBookmark, removeBookmark, pinPost, deletePost } = useTimelineApi()
 const { showSuccess, showError } = useNotification()
 
 const pinnedPosts = ref<TimelinePostResponse[]>([])
@@ -53,29 +52,12 @@ function loadMore() {
   }
 }
 
-async function onReaction(postId: number, emoji: string) {
+function onMitayoToggled(postId: number, mitayo: boolean, mitayoCount: number) {
   const post = [...pinnedPosts.value, ...posts.value].find((p) => p.id === postId)
   if (!post) return
-  try {
-    if (post.myReactions.includes(emoji)) {
-      await removeReaction(postId, emoji)
-      post.myReactions = post.myReactions.filter((e) => e !== emoji)
-      post.reactionSummary[emoji] = (post.reactionSummary[emoji] || 1) - 1
-      if (post.reactionSummary[emoji] <= 0) {
-        post.reactionSummary = Object.fromEntries(
-          Object.entries(post.reactionSummary).filter(([k]) => k !== emoji),
-        )
-      }
-      post.reactionCount--
-    } else {
-      await addReaction(postId, emoji)
-      post.myReactions.push(emoji)
-      post.reactionSummary[emoji] = (post.reactionSummary[emoji] || 0) + 1
-      post.reactionCount++
-    }
-  } catch {
-    showError('リアクションに失敗しました')
-  }
+  post.mitayo = mitayo
+  post.mitayoCount = mitayoCount
+  post.reactionCount = mitayoCount
 }
 
 async function onBookmark(postId: number) {
@@ -135,7 +117,7 @@ defineExpose({ refresh })
       :post="post"
       :can-pin="canPin"
       :can-delete-others="canDeleteOthers"
-      @reaction="onReaction"
+      @mitayo-toggled="onMitayoToggled"
       @bookmark="onBookmark"
       @pin="onPin"
       @delete="onDelete"
@@ -149,7 +131,7 @@ defineExpose({ refresh })
       :post="post"
       :can-pin="canPin"
       :can-delete-others="canDeleteOthers"
-      @reaction="onReaction"
+      @mitayo-toggled="onMitayoToggled"
       @bookmark="onBookmark"
       @pin="onPin"
       @delete="onDelete"

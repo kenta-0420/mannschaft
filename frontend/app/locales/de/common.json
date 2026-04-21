@@ -25,7 +25,18 @@
     "status": "Status",
     "actions": "Aktionen",
     "teamFriendCount": "Teamfreunde",
-    "supporterCount": "Unterstuetzer"
+    "supporterCount": "Unterstuetzer",
+    "following": "Gefolgt",
+    "followers": "Follower",
+    "followListVisibility": "Sichtbarkeit der Folgeliste",
+    "visibilityPublic": "Oeffentlich",
+    "visibilityFriendsOnly": "Nur Gegenseitig",
+    "visibilityPrivate": "Privat",
+    "followListPrivate": "Die Folgeliste dieses Benutzers ist privat",
+    "noFollowing": "Noch niemandem gefolgt",
+    "noFollowers": "Noch keine Follower",
+    "loadMore": "Mehr laden",
+    "unfollow": "Entfolgen"
   },
   "dialog": {
     "confirm_delete": "Sind Sie sicher, dass Sie dies loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
@@ -351,7 +362,8 @@
     "videoUploading": "Video wird hochgeladen...",
     "videoUploadSuccess": "Video erfolgreich hochgeladen",
     "videoUploadError": "Video-Upload fehlgeschlagen",
-    "videoRemove": "Video entfernen"
+    "videoRemove": "Video entfernen",
+    "mitayo": "Gesehen!"
   },
   "gallery": {
     "title": "Galerie",

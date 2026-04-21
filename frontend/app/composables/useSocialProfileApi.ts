@@ -4,6 +4,8 @@ import type {
   FollowRecord,
   FollowCheckResponse,
   FollowTargetType,
+  FollowListVisibility,
+  FollowListVisibilityResponse,
 } from '~/types/social-profile'
 
 export function useSocialProfileApi() {
@@ -87,6 +89,40 @@ export function useSocialProfileApi() {
     return res.data
   }
 
+  async function getFollowListVisibility(): Promise<FollowListVisibility> {
+    const res = await api<{ data: FollowListVisibilityResponse }>('/api/v1/users/me/follow-list-visibility')
+    return res.data.visibility
+  }
+
+  async function updateFollowListVisibility(visibility: FollowListVisibility): Promise<void> {
+    await api('/api/v1/users/me/follow-list-visibility', {
+      method: 'PUT',
+      body: { visibility },
+    })
+  }
+
+  async function getUserFollowing(userId: number, params?: { cursor?: string; size?: number }) {
+    const query = new URLSearchParams()
+    if (params?.cursor) query.set('cursor', params.cursor)
+    if (params?.size) query.set('size', String(params.size))
+    const qs = query.toString()
+    const res = await api<{ data: FollowRecord[]; meta: { nextCursor: string | null } }>(
+      `/api/v1/users/${userId}/following${qs ? `?${qs}` : ''}`,
+    )
+    return res
+  }
+
+  async function getUserFollowers(userId: number, params?: { cursor?: string; size?: number }) {
+    const query = new URLSearchParams()
+    if (params?.cursor) query.set('cursor', params.cursor)
+    if (params?.size) query.set('size', String(params.size))
+    const qs = query.toString()
+    const res = await api<{ data: FollowRecord[]; meta: { nextCursor: string | null } }>(
+      `/api/v1/users/${userId}/followers${qs ? `?${qs}` : ''}`,
+    )
+    return res
+  }
+
   return {
     getMyProfile,
     getByHandle,
@@ -99,5 +135,9 @@ export function useSocialProfileApi() {
     listFollowing,
     listFollowers,
     checkFollow,
+    getFollowListVisibility,
+    updateFollowListVisibility,
+    getUserFollowing,
+    getUserFollowers,
   }
 }

@@ -60,12 +60,18 @@ watch(handle, loadProfile)
           <p class="text-surface-500">@{{ profile.handle }}</p>
           <p v-if="profile.bio" class="mt-2 text-sm">{{ profile.bio }}</p>
           <div class="mt-3 flex items-center gap-4">
-            <span class="text-sm"
-              ><strong>{{ profile.followerCount }}</strong> フォロワー</span
+            <NuxtLink
+              :to="`/users/${profile.id}/followers`"
+              class="text-sm hover:underline"
             >
-            <span class="text-sm"
-              ><strong>{{ profile.followingCount }}</strong> フォロー中</span
+              <strong>{{ profile.followerCount }}</strong> {{ $t('label.followers') }}
+            </NuxtLink>
+            <NuxtLink
+              :to="`/users/${profile.id}/following`"
+              class="text-sm hover:underline"
             >
+              <strong>{{ profile.followingCount }}</strong> {{ $t('label.following') }}
+            </NuxtLink>
             <FollowButton
               followed-type="SOCIAL_PROFILE"
               :followed-id="profile.id"
@@ -78,8 +84,8 @@ watch(handle, loadProfile)
 
       <Tabs v-model:value="activeTab">
         <TabList>
-          <Tab value="0">フォロワー</Tab>
-          <Tab value="1">フォロー中</Tab>
+          <Tab value="0">{{ $t('label.followers') }}</Tab>
+          <Tab value="1">{{ $t('label.following') }}</Tab>
         </TabList>
         <TabPanels>
           <TabPanel value="0">

@@ -27,6 +27,7 @@ public interface FollowRepository extends JpaRepository<FollowEntity, Long> {
 
     /**
      * フォロー関係の存在チェックを行う。
+     * 相互フォロー確認（FRIENDS_ONLY アクセス制御）にも使用する。
      */
     boolean existsByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(
             FollowerType followerType, Long followerId, FollowerType followedType, Long followedId);
@@ -62,6 +63,13 @@ public interface FollowRepository extends JpaRepository<FollowEntity, Long> {
             @org.springframework.data.repository.query.Param("followerType") FollowerType followerType,
             @org.springframework.data.repository.query.Param("followerId") Long followerId,
             @org.springframework.data.repository.query.Param("followedType") FollowerType followedType);
+
+    /**
+     * followerType・followerId・followedType で絞り込んだフォロー一覧を取得する。
+     * チームフォロー一覧など followedType による絞り込みに使用する。
+     */
+    List<FollowEntity> findByFollowerTypeAndFollowerIdAndFollowedTypeOrderByCreatedAtDesc(
+            FollowerType followerType, Long followerId, FollowerType followedType, Pageable pageable);
 
     /**
      * フォロー数を取得する。

@@ -3,7 +3,6 @@ import type {
   TimelinePostDetailResponse,
   TimelinePostResponse,
   TimelineEditHistory,
-  ReactionDetail,
   TimelineScopeType,
 } from '~/types/timeline'
 
@@ -105,27 +104,19 @@ export function useTimelineApi() {
     return api<TimelineFeedResponse>(`/api/v1/timeline/posts/${postId}/replies?${qs}`)
   }
 
-  // === Reactions ===
-  async function addReaction(postId: number, emoji: string) {
-    return api(`/api/v1/timeline/posts/${postId}/reactions`, {
-      method: 'POST',
-      body: { emoji },
-    })
+  // === Reactions (みたよ！) ===
+  async function addReaction(postId: number) {
+    return api<{ data: { timelinePostId: number; mitayo: boolean; mitayoCount: number } }>(
+      `/api/v1/timeline/posts/${postId}/reactions`,
+      { method: 'POST' },
+    )
   }
 
-  async function removeReaction(postId: number, emoji: string) {
-    return api(`/api/v1/timeline/posts/${postId}/reactions`, {
-      method: 'DELETE',
-      body: { emoji },
-    })
-  }
-
-  async function getReactions(postId: number) {
-    return api<{ data: ReactionDetail[] }>(`/api/v1/timeline/posts/${postId}/reactions`)
-  }
-
-  async function getReactionsSummary(postId: number) {
-    return api(`/api/v1/timeline/posts/${postId}/reactions/summary`)
+  async function removeReaction(postId: number) {
+    return api<{ data: { timelinePostId: number; mitayo: boolean; mitayoCount: number } }>(
+      `/api/v1/timeline/posts/${postId}/reactions`,
+      { method: 'DELETE' },
+    )
   }
 
   // === Pin ===
@@ -264,8 +255,6 @@ export function useTimelineApi() {
     getReplies,
     addReaction,
     removeReaction,
-    getReactions,
-    getReactionsSummary,
     pinPost,
     getPinnedPosts,
     addBookmark,

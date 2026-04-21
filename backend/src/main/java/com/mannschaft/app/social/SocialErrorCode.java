@@ -35,6 +35,12 @@ public enum SocialErrorCode implements ErrorCode {
     /** フォロー対象が見つからない */
     FOLLOW_TARGET_NOT_FOUND("SOCIAL_008", "フォロー対象が見つかりません", Severity.WARN),
 
+    /** フォロー一覧が非公開（閲覧権限なし） */
+    FOLLOW_LIST_NOT_PUBLIC("SOCIAL_009", "このユーザーのフォロー一覧は公開されていません", Severity.WARN),
+
+    /** ユーザーが見つからない */
+    FOLLOW_USER_NOT_FOUND("SOCIAL_010", "ユーザーが見つかりません", Severity.WARN),
+
     // ─────────────────────────────────────────────
     // F01.5 フレンドチーム関係
     // ─────────────────────────────────────────────
