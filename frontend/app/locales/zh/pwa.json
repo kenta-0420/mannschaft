@@ -44,6 +44,18 @@
     "install_prompt": "添加到主屏幕，像应用一样使用",
     "install_button": "安装",
     "update_available": "有新版本可用",
-    "update_button": "更新"
+    "update_button": "更新",
+    "later": "稍后",
+    "installed": "已安装",
+    "install_success": "安装完成！",
+    "ios": {
+      "guide_title": "iPhone 的安装步骤",
+      "step1": "请确认已在 Safari 中打开",
+      "step2": "点击底部的分享按钮（方框和向上箭头）",
+      "step3": "选择「添加到主屏幕」",
+      "step4": "点击「添加」完成",
+      "close": "关闭",
+      "note": "无法从 Chrome/Firefox 添加"
+    }
   }
 }

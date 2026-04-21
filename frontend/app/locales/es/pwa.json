@@ -44,6 +44,18 @@
     "install_prompt": "Agrega a la pantalla de inicio para usarlo como una aplicacion",
     "install_button": "Instalar",
     "update_available": "Hay una nueva version disponible",
-    "update_button": "Actualizar"
+    "update_button": "Actualizar",
+    "later": "Mas tarde",
+    "installed": "Instalado",
+    "install_success": "Instalacion completada!",
+    "ios": {
+      "guide_title": "Como instalar en iPhone",
+      "step1": "Asegurate de estar usando Safari",
+      "step2": "Toca el boton de compartir abajo (cuadrado con flecha hacia arriba)",
+      "step3": "Selecciona 'Agregar a pantalla de inicio'",
+      "step4": "Toca 'Agregar' para finalizar",
+      "close": "Cerrar",
+      "note": "No se puede agregar desde Chrome/Firefox"
+    }
   }
 }

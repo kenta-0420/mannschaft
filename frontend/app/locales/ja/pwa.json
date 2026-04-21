@@ -44,6 +44,18 @@
     "install_prompt": "ホーム画面に追加すると、アプリのように使えます",
     "install_button": "インストール",
     "update_available": "新しいバージョンが利用可能です",
-    "update_button": "更新する"
+    "update_button": "更新する",
+    "later": "あとで",
+    "installed": "インストール済み",
+    "install_success": "インストールが完了しました！",
+    "ios": {
+      "guide_title": "iPhoneへのインストール手順",
+      "step1": "Safariで開いていることを確認",
+      "step2": "下部の共有ボタン（□↑）をタップ",
+      "step3": "「ホーム画面に追加」を選択",
+      "step4": "「追加」をタップして完了",
+      "close": "閉じる",
+      "note": "Chrome/Firefox からは追加できません"
+    }
   }
 }

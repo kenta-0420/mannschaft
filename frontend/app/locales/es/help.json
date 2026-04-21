@@ -1,0 +1,87 @@
+{
+  "qa": {
+    "title": "Preguntas frecuentes (Q&A)",
+    "description": "Respuestas a preguntas comunes sobre el uso de Mannschaft, la instalacion de la PWA y mas.",
+    "search_placeholder": "Buscar preguntas...",
+    "no_results": "No se encontraron preguntas coincidentes",
+    "result_count": "{count} pregunta(s)",
+    "category": {
+      "all": "Todas",
+      "basic": "Basicas",
+      "pwa": "PWA e instalacion",
+      "offline": "Sin conexion",
+      "troubleshooting": "Solucion de problemas"
+    },
+    "tutorial_banner": {
+      "title": "Nuevo en Mannschaft?",
+      "description": "Revisa las operaciones basicas con el tutorial",
+      "button": "Ver tutorial"
+    },
+    "pwa_cta": {
+      "title": "Es aun mas comodo como aplicacion!",
+      "description": "Agregalo a la pantalla de inicio para usarlo sin conexion y recibir notificaciones push."
+    },
+    "items": {
+      "basic": {
+        "q1": {
+          "question": "Hay diferencias de funciones entre PC y smartphone?",
+          "answer": "Las funciones basicas son las mismas en todos los dispositivos. Los smartphones estan optimizados para el uso tactil y pueden agregarse a la pantalla de inicio como PWA. Los PC permiten ver varias informaciones a la vez en una pantalla grande y usar atajos de teclado para escribir rapido."
+        },
+        "q2": {
+          "question": "Cual es la forma recomendada de usarlo en un smartphone?",
+          "answer": "Instala la PWA y abrela desde la pantalla de inicio. La barra de direcciones del navegador desaparece y podras usarla como una aplicacion nativa. Usa los menus de pulsacion larga para acciones rapidas, desliza para cambiar de pantalla y toca las notificaciones para ir directo a la pantalla relacionada."
+        },
+        "q3": {
+          "question": "Como cambio mi foto de perfil?",
+          "answer": "Toca el icono de la esquina superior derecha, abre Configuracion -> Perfil y sube una imagen con el boton de cambio."
+        },
+        "q4": {
+          "question": "Como cambio el idioma de visualizacion?",
+          "answer": "Desde Configuracion -> Idioma puedes alternar entre los 6 idiomas: japones, ingles, chino, coreano, espanol y aleman."
+        },
+        "q5": {
+          "question": "Donde puedo cerrar sesion?",
+          "answer": "Desde el boton Cerrar sesion en la barra de navegacion, o en movil desde Cerrar sesion dentro del menu."
+        }
+      },
+      "pwa": {
+        "q1": {
+          "question": "Que es una PWA?",
+          "answer": "Una PWA (Progressive Web App) permite usar un sitio web como una aplicacion. Al agregarla a la pantalla de inicio, se inicia como una app normal y funciona tambien sin conexion. No es necesario instalarla desde Google Play o la App Store."
+        },
+        "q2": {
+          "question": "Cuales son los beneficios de instalar la PWA?",
+          "answer": "- Se inicia con un toque desde la pantalla de inicio\n- Puedes navegar y crear borradores sin conexion\n- Puedes recibir notificaciones push\n- La barra de direcciones del navegador desaparece y se usa toda la pantalla\n- Inicio rapido\n- Menor consumo de datos"
+        },
+        "q3": {
+          "question": "Como se instala en un telefono Android?",
+          "answer": "Abre esta pagina en Chrome y toca el boton Instalar en la parte superior de esta pagina de Q&A. Cuando aparezca el dialogo 'Agregar a pantalla de inicio', selecciona 'Agregar'."
+        },
+        "q4": {
+          "question": "Como se instala en un iPhone?",
+          "answer": "Abrela con Safari, toca el boton de compartir abajo (cuadrado con flecha hacia arriba) -> 'Agregar a pantalla de inicio' -> 'Agregar'. Ten en cuenta que no se puede agregar desde Chrome/Firefox."
+        }
+      },
+      "offline": {
+        "q1": {
+          "question": "Puedo usar la app sin conexion?",
+          "answer": "Si. Si instalas la PWA, las pantallas principales se pueden mostrar sin conexion. Las acciones de entrada como notas de accion, notas rapidas y agregar TODOs se guardan en el dispositivo y se envian automaticamente al volver en linea."
+        },
+        "q2": {
+          "question": "Que pasa con los datos que edito sin conexion?",
+          "answer": "Se sincronizan automaticamente al volver en linea. Si otro dispositivo u otro miembro edito primero los mismos datos, puedes seleccionar manualmente desde la pantalla de Resolucion de conflictos."
+        }
+      },
+      "troubleshooting": {
+        "q1": {
+          "question": "No me llegan las notificaciones.",
+          "answer": "Es necesario instalar la PWA y 'permitir' las notificaciones en el primer inicio. Verifica que las notificaciones no esten bloqueadas en la configuracion del navegador o del sistema operativo. iOS admite notificaciones PWA desde iOS 16.4."
+        },
+        "q2": {
+          "question": "La pagina no carga o el comportamiento es extrano.",
+          "answer": "Primero borra la cache del navegador. Si no mejora, prueba a desinstalar y reinstalar la PWA. Si aun asi no se soluciona, contacta con soporte."
+        }
+      }
+    }
+  }
+}

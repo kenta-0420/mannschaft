@@ -44,6 +44,18 @@
     "install_prompt": "Zum Startbildschirm hinzufuegen, um es wie eine App zu verwenden",
     "install_button": "Installieren",
     "update_available": "Eine neue Version ist verfuegbar",
-    "update_button": "Aktualisieren"
+    "update_button": "Aktualisieren",
+    "later": "Spaeter",
+    "installed": "Installiert",
+    "install_success": "Installation abgeschlossen!",
+    "ios": {
+      "guide_title": "Installation auf dem iPhone",
+      "step1": "Stellen Sie sicher, dass Sie Safari verwenden",
+      "step2": "Tippen Sie unten auf die Teilen-Schaltflaeche (Quadrat mit Pfeil nach oben)",
+      "step3": "Waehlen Sie 'Zum Home-Bildschirm'",
+      "step4": "Tippen Sie auf 'Hinzufuegen', um abzuschliessen",
+      "close": "Schliessen",
+      "note": "Ueber Chrome/Firefox nicht moeglich"
+    }
   }
 }
