@@ -2,6 +2,7 @@ package com.mannschaft.app.cms.controller;
 
 import com.mannschaft.app.cms.dto.AutoSaveRequest;
 import com.mannschaft.app.cms.dto.BlogPostResponse;
+import com.mannschaft.app.cms.dto.BlogReactionResponse;
 import com.mannschaft.app.cms.dto.BulkActionRequest;
 import com.mannschaft.app.cms.dto.BulkActionResponse;
 import com.mannschaft.app.cms.dto.CreateBlogPostRequest;
@@ -9,6 +10,7 @@ import com.mannschaft.app.cms.dto.PublishRequest;
 import com.mannschaft.app.cms.dto.UpdateBlogPostRequest;
 import com.mannschaft.app.cms.service.BlogFeedService;
 import com.mannschaft.app.cms.service.BlogPostService;
+import com.mannschaft.app.cms.service.BlogReactionService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import org.springframework.lang.Nullable;
 
 /**
  * ブログ記事コントローラー。記事のCRUD・公開制御・リビジョン管理APIを提供する。
@@ -45,6 +48,7 @@ public class BlogPostController {
 
     private final BlogPostService postService;
     private final BlogFeedService feedService;
+    private final BlogReactionService reactionService;
 
 
     /**
@@ -94,6 +98,10 @@ public class BlogPostController {
         } else {
             response = postService.getBySlug(teamId, organizationId, userId, slug);
         }
+        // リアクション情報（みたよ！）を付与する
+        Long currentUserId = SecurityUtils.getCurrentUserIdOrNull();
+        BlogReactionResponse reactionStatus = reactionService.getReactionStatus(response.getId(), currentUserId);
+        response = response.withReaction(reactionStatus.isMitayo(), reactionStatus.getMitayoCount());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

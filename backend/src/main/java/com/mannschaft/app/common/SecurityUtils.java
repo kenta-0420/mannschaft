@@ -26,4 +26,22 @@ public final class SecurityUtils {
         }
         return Long.valueOf(authentication.getName());
     }
+
+    /**
+     * 現在のユーザーIDを取得する。未認証の場合は null を返す。
+     *
+     * @return ユーザーID、未認証の場合は null
+     */
+    public static Long getCurrentUserIdOrNull() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            return null;
+        }
+        try {
+            return Long.valueOf(authentication.getName());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 }
