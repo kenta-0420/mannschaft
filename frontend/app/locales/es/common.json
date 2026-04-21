@@ -521,6 +521,10 @@
     "my_projects_description": "Gestión personal de tareas y objetivos",
     "no_my_projects": "Aún no hay proyectos personales"
   },
+  "inviteToken": {
+    "printQrPdf": "Imprimir QR PDF",
+    "printQrPdfError": "Error al imprimir el PDF"
+  },
   "visibilityTemplate": {
     "title": "Plantillas de visibilidad",
     "systemPresets": "Presets del sistema",

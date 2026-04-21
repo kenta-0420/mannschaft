@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -299,6 +300,32 @@ public class InviteService {
         } catch (WriterException | IOException e) {
             throw new IllegalStateException("QRコードの生成に失敗しました: " + tokenStr, e);
         }
+    }
+
+    /**
+     * 招待QRコードをBase64エンコードされたPNG文字列として生成する。
+     * PDFテンプレートへの埋め込み用。
+     *
+     * @param tokenStr トークン文字列（UUIDv4）
+     * @param size     QRコードサイズ（px）
+     * @return Base64エンコード済みPNG文字列（data URI プレフィックスなし）
+     */
+    public String generateInviteQrCodeAsBase64(String tokenStr, int size) {
+        byte[] qrBytes = generateInviteQrCode(tokenStr, size);
+        return Base64.getEncoder().encodeToString(qrBytes);
+    }
+
+    /**
+     * 招待トークンをIDとチームIDで取得する（IDORチェック用）。
+     *
+     * @param tokenId 招待トークンID
+     * @param teamId  チームID
+     * @return 招待トークンEntity
+     * @throws BusinessException ROLE_002（存在しないまたはチームに属さない）
+     */
+    public InviteTokenEntity findByIdAndTeamId(Long tokenId, Long teamId) {
+        return inviteTokenRepository.findByIdAndTeamId(tokenId, teamId)
+            .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
     }
 
     private InviteTokenResponse toResponse(InviteTokenEntity token, String roleName) {

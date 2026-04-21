@@ -521,6 +521,10 @@
     "my_projects_description": "自分のタスク管理・目標",
     "no_my_projects": "個人プロジェクトがまだありません"
   },
+  "inviteToken": {
+    "printQrPdf": "QRコードPDF印刷",
+    "printQrPdfError": "PDF印刷に失敗しました"
+  },
   "visibilityTemplate": {
     "title": "公開範囲テンプレート",
     "systemPresets": "システムプリセット",

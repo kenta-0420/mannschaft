@@ -521,6 +521,10 @@
     "my_projects_description": "Personal task management and goals",
     "no_my_projects": "No personal projects yet"
   },
+  "inviteToken": {
+    "printQrPdf": "Print QR PDF",
+    "printQrPdfError": "Failed to print QR PDF"
+  },
   "visibilityTemplate": {
     "title": "Visibility Templates",
     "systemPresets": "System Presets",

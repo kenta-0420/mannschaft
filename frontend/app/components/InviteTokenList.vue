@@ -15,11 +15,15 @@ interface InviteToken {
   createdAt: string
 }
 
+const { t } = useI18n()
 const api = useApi()
 const notification = useNotification()
 const tokens = ref<InviteToken[]>([])
 const loading = ref(false)
 const showCreateDialog = ref(false)
+
+// ローディング状態（PDF生成中）
+const pdfLoadingId = ref<number | null>(null)
 
 // 作成フォーム
 const newToken = ref({
@@ -95,6 +99,29 @@ function copyInviteUrl(token: string) {
   notification.success('招待URLをコピーしました')
 }
 
+async function downloadQrPdf(tokenId: number) {
+  pdfLoadingId.value = tokenId
+  try {
+    const base = props.scopeType === 'team' ? 'teams' : 'organizations'
+    const response = await $fetch<Blob>(
+      `/api/v1/${base}/${props.scopeId}/invite-tokens/${tokenId}/pdf`,
+      { responseType: 'blob' }
+    )
+    const url = URL.createObjectURL(response)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = ''
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  catch {
+    notification.error(t('inviteToken.printQrPdfError'))
+  }
+  finally {
+    pdfLoadingId.value = null
+  }
+}
+
 function isExpired(token: InviteToken): boolean {
   if (token.revokedAt) return true
   if (token.expiresAt && new Date(token.expiresAt) < new Date()) return true
@@ -151,6 +178,16 @@ onMounted(() => loadTokens())
               rounded
               size="small"
               @click="copyInviteUrl(data.token)"
+            />
+            <Button
+              v-if="props.scopeType === 'team'"
+              v-tooltip.top="t('inviteToken.printQrPdf')"
+              icon="pi pi-file-pdf"
+              text
+              rounded
+              size="small"
+              :loading="pdfLoadingId === data.id"
+              @click="downloadQrPdf(data.id)"
             />
             <Button
               v-if="!isExpired(data)"
