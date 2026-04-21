@@ -24,4 +24,6 @@ public interface InviteTokenRepository extends JpaRepository<InviteTokenEntity, 
     List<InviteTokenEntity> findByTeamIdAndRevokedAtIsNull(Long teamId);
 
     List<InviteTokenEntity> findByOrganizationIdAndRevokedAtIsNull(Long organizationId);
+
+    Optional<InviteTokenEntity> findByIdAndTeamId(Long id, Long teamId);
 }

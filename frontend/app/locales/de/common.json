@@ -521,6 +521,10 @@
     "my_projects_description": "Persönliche Aufgabenverwaltung und Ziele",
     "no_my_projects": "Noch keine persönlichen Projekte"
   },
+  "inviteToken": {
+    "printQrPdf": "QR PDF drucken",
+    "printQrPdfError": "Fehler beim Drucken des PDF"
+  },
   "visibilityTemplate": {
     "title": "Sichtbarkeitsvorlagen",
     "systemPresets": "Systemvorlagen",

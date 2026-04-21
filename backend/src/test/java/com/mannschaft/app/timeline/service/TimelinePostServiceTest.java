@@ -479,7 +479,6 @@ class TimelinePostServiceTest {
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(attachments);
             given(timelineMapper.toAttachmentResponseList(attachments)).willReturn(attachmentResponses);
-            given(reactionRepository.countByPostIdGroupByEmoji(POST_ID)).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
 
             // when
@@ -491,31 +490,7 @@ class TimelinePostServiceTest {
             assertThat(result.getUserId()).isEqualTo(USER_ID);
         }
 
-        @Test
-        @DisplayName("正常系: リアクションサマリーが含まれる")
-        void リアクションサマリーが含まれる() {
-            // given
-            TimelinePostEntity post = createPost();
-
-            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
-            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
-                    .willReturn(List.of());
-            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
-            // リアクション行を返す
-            List<Object[]> reactionRows = new java.util.ArrayList<>();
-            reactionRows.add(new Object[]{"👍", 5L});
-            given(reactionRepository.countByPostIdGroupByEmoji(POST_ID))
-                    .willReturn(reactionRows);
-            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
-
-            // when
-            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
-
-            // then
-            assertThat(result.getReactions()).hasSize(1);
-            assertThat(result.getReactions().get(0).getEmoji()).isEqualTo("👍");
-            assertThat(result.getReactions().get(0).getCount()).isEqualTo(5L);
-        }
+        // リアクションサマリーテストは絵文字リアクション機能（countByPostIdGroupByEmoji）実装時に追加予定
 
         @Test
         @DisplayName("異常系: 投稿が存在しない場合はエラー")

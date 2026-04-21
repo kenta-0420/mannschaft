@@ -521,6 +521,10 @@
     "my_projects_description": "个人任务管理与目标",
     "no_my_projects": "暂无个人项目"
   },
+  "inviteToken": {
+    "printQrPdf": "打印二维码PDF",
+    "printQrPdfError": "打印PDF失败"
+  },
   "visibilityTemplate": {
     "title": "可见范围模板",
     "systemPresets": "系统预设",

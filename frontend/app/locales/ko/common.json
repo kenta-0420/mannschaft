@@ -521,6 +521,10 @@
     "my_projects_description": "개인 작업 관리 및 목표",
     "no_my_projects": "아직 개인 프로젝트가 없습니다"
   },
+  "inviteToken": {
+    "printQrPdf": "QR코드 PDF 인쇄",
+    "printQrPdfError": "PDF 인쇄에 실패했습니다"
+  },
   "visibilityTemplate": {
     "title": "공개 범위 템플릿",
     "systemPresets": "시스템 프리셋",
