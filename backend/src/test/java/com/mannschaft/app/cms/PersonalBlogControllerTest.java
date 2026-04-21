@@ -2,6 +2,7 @@ package com.mannschaft.app.cms;
 
 import com.mannschaft.app.cms.controller.PersonalBlogController;
 import com.mannschaft.app.cms.dto.BlogPostResponse;
+import com.mannschaft.app.cms.dto.BlogReactionResponse;
 import com.mannschaft.app.cms.dto.BlogSettingsResponse;
 import com.mannschaft.app.cms.dto.CreateBlogPostRequest;
 import com.mannschaft.app.cms.dto.PublishRequest;
@@ -11,6 +12,7 @@ import com.mannschaft.app.cms.dto.SharePostResponse;
 import com.mannschaft.app.cms.dto.UpdateBlogPostRequest;
 import com.mannschaft.app.cms.dto.UpdateBlogSettingsRequest;
 import com.mannschaft.app.cms.service.BlogPostService;
+import com.mannschaft.app.cms.service.BlogReactionService;
 import com.mannschaft.app.cms.service.UserBlogSettingsService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
@@ -50,6 +52,9 @@ class PersonalBlogControllerTest {
 
     @Mock
     private UserBlogSettingsService settingsService;
+
+    @Mock
+    private BlogReactionService reactionService;
 
     @InjectMocks
     private PersonalBlogController controller;
@@ -111,6 +116,8 @@ class PersonalBlogControllerTest {
         @DisplayName("正常系: ユーザーの記事詳細がslugで返却される")
         void 記事詳細_slug_正常() {
             given(postService.getBySlug(null, null, USER_ID, "my-post")).willReturn(mockResponse());
+            given(reactionService.getReactionStatus(eq(POST_ID), any()))
+                    .willReturn(new BlogReactionResponse(POST_ID, false, 0));
 
             ResponseEntity<ApiResponse<BlogPostResponse>> result =
                     controller.getUserPost(USER_ID, "my-post");

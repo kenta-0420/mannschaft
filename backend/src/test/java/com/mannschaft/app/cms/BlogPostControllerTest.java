@@ -8,8 +8,10 @@ import com.mannschaft.app.cms.dto.BulkActionResponse;
 import com.mannschaft.app.cms.dto.CreateBlogPostRequest;
 import com.mannschaft.app.cms.dto.PublishRequest;
 import com.mannschaft.app.cms.dto.UpdateBlogPostRequest;
+import com.mannschaft.app.cms.dto.BlogReactionResponse;
 import com.mannschaft.app.cms.service.BlogFeedService;
 import com.mannschaft.app.cms.service.BlogPostService;
+import com.mannschaft.app.cms.service.BlogReactionService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -48,6 +50,9 @@ class BlogPostControllerTest {
 
     @Mock
     private BlogFeedService feedService;
+
+    @Mock
+    private BlogReactionService reactionService;
 
     @InjectMocks
     private BlogPostController controller;
@@ -123,6 +128,8 @@ class BlogPostControllerTest {
         @DisplayName("正常系: previewTokenなしでslug取得")
         void slug取得_プレビューなし_正常() {
             given(postService.getBySlug(TEAM_ID, null, null, "my-post")).willReturn(mockResponse());
+            given(reactionService.getReactionStatus(eq(POST_ID), any()))
+                    .willReturn(new BlogReactionResponse(POST_ID, false, 0));
 
             ResponseEntity<ApiResponse<BlogPostResponse>> result =
                     controller.getPostBySlug("my-post", TEAM_ID, null, null, null);
@@ -136,6 +143,8 @@ class BlogPostControllerTest {
         void slug取得_プレビューあり_正常() {
             given(postService.getBySlugWithPreviewToken(TEAM_ID, null, null, "my-post", "token123"))
                     .willReturn(mockResponse());
+            given(reactionService.getReactionStatus(eq(POST_ID), any()))
+                    .willReturn(new BlogReactionResponse(POST_ID, false, 0));
 
             ResponseEntity<ApiResponse<BlogPostResponse>> result =
                     controller.getPostBySlug("my-post", TEAM_ID, null, null, "token123");
