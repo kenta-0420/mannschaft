@@ -26,15 +26,16 @@ const searchQuery = ref('')
 const selectedCategory = ref<QaCategoryFilter>('all')
 
 // i18n から全カテゴリの Q&A を吸い上げて QaItem[] に正規化する
+// tm() は locale message を返すが値が特殊ラッパーの可能性があるため t() で個別解決する
 const allItems = computed<QaItem[]>(() => {
   return CATEGORIES.flatMap((category) => {
-    const items = tm(`qa.items.${category}`) as Record<string, { question: string; answer: string }> | null
+    const items = tm(`qa.items.${category}`) as Record<string, unknown> | null
     if (!items || typeof items !== 'object') return []
-    return Object.entries(items).map(([key, value]) => ({
+    return Object.keys(items).map((key) => ({
       id: `${category}-${key}`,
       category,
-      question: value.question,
-      answer: value.answer,
+      question: t(`qa.items.${category}.${key}.question`),
+      answer: t(`qa.items.${category}.${key}.answer`),
     }))
   })
 })
