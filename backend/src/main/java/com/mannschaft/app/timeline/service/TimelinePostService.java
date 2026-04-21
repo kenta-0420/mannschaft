@@ -17,7 +17,6 @@ import com.mannschaft.app.timeline.dto.CreatePostRequest;
 import com.mannschaft.app.timeline.dto.PollResponse;
 import com.mannschaft.app.timeline.dto.PostDetailResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
-import com.mannschaft.app.timeline.dto.ReactionSummaryResponse;
 import com.mannschaft.app.timeline.dto.UpdatePostRequest;
 import com.mannschaft.app.timeline.entity.TimelinePostAttachmentEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostEditEntity;
@@ -180,10 +179,10 @@ public class TimelinePostService {
     }
 
     /**
-     * 投稿詳細を取得する。添付ファイル・リアクション集計・投票を含む。
+     * 投稿詳細を取得する。添付ファイル・みたよ！状態・投票を含む。
      *
      * @param postId 投稿ID
-     * @param userId 閲覧ユーザーID（投票の自分の投票を取得するため）
+     * @param userId 閲覧ユーザーID（みたよ！状態・投票の自分の投票を取得するため）
      * @return 投稿詳細
      */
     public PostDetailResponse getPostDetail(Long postId, Long userId) {
@@ -192,10 +191,8 @@ public class TimelinePostService {
         List<AttachmentResponse> attachments = timelineMapper.toAttachmentResponseList(
                 attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(postId));
 
-        List<ReactionSummaryResponse> reactions = reactionRepository.countByPostIdGroupByEmoji(postId)
-                .stream()
-                .map(row -> new ReactionSummaryResponse((String) row[0], (Long) row[1]))
-                .toList();
+        boolean mitayo = reactionRepository.existsByTimelinePostIdAndUserId(postId, userId);
+        int mitayoCount = (int) reactionRepository.countByTimelinePostId(postId);
 
         PollResponse pollResponse = pollService.getPollByPostId(postId, userId);
 
@@ -219,7 +216,8 @@ public class TimelinePostService {
                 post.getAttachmentCount(),
                 post.getEditCount(),
                 attachments,
-                reactions,
+                mitayo,
+                mitayoCount,
                 pollResponse,
                 post.getCreatedAt(),
                 post.getUpdatedAt());

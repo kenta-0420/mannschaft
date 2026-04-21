@@ -351,7 +351,8 @@
     "videoUploading": "Uploading video...",
     "videoUploadSuccess": "Video uploaded successfully",
     "videoUploadError": "Failed to upload video",
-    "videoRemove": "Remove video"
+    "videoRemove": "Remove video",
+    "mitayo": "Noted!"
   },
   "gallery": {
     "title": "Gallery",

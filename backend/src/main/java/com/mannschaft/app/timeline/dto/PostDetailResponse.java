@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * タイムライン投稿詳細レスポンスDTO。添付ファイル・リアクション集計・投票を含む。
+ * タイムライン投稿詳細レスポンスDTO。添付ファイル・みたよ！状態・投票を含む。
  */
 @Getter
 @RequiredArgsConstructor
@@ -32,7 +32,10 @@ public class PostDetailResponse {
     private final Short attachmentCount;
     private final Short editCount;
     private final List<AttachmentResponse> attachments;
-    private final List<ReactionSummaryResponse> reactions;
+    /** 閲覧ユーザーが「みたよ！」済みかどうか */
+    private final boolean mitayo;
+    /** 投稿の「みたよ！」件数 */
+    private final int mitayoCount;
     private final PollResponse poll;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;

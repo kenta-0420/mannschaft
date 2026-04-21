@@ -5,12 +5,10 @@ import com.mannschaft.app.timeline.dto.BookmarkResponse;
 import com.mannschaft.app.timeline.dto.MuteResponse;
 import com.mannschaft.app.timeline.dto.PollOptionResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
-import com.mannschaft.app.timeline.dto.ReactionResponse;
 import com.mannschaft.app.timeline.entity.TimelineBookmarkEntity;
 import com.mannschaft.app.timeline.entity.TimelinePollOptionEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostAttachmentEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
-import com.mannschaft.app.timeline.entity.TimelinePostReactionEntity;
 import com.mannschaft.app.timeline.entity.UserMuteEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -35,10 +33,6 @@ public interface TimelineMapper {
     AttachmentResponse toAttachmentResponse(TimelinePostAttachmentEntity entity);
 
     List<AttachmentResponse> toAttachmentResponseList(List<TimelinePostAttachmentEntity> entities);
-
-    ReactionResponse toReactionResponse(TimelinePostReactionEntity entity);
-
-    List<ReactionResponse> toReactionResponseList(List<TimelinePostReactionEntity> entities);
 
     BookmarkResponse toBookmarkResponse(TimelineBookmarkEntity entity);
 
