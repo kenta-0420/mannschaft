@@ -6,6 +6,7 @@ import com.mannschaft.app.timeline.entity.TimelineBookmarkEntity;
 import com.mannschaft.app.timeline.entity.TimelinePollOptionEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostAttachmentEntity;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
+import com.mannschaft.app.timeline.entity.TimelinePostReactionEntity;
 import com.mannschaft.app.timeline.entity.UserMuteEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -119,9 +120,6 @@ class TimelineMapperTest {
             assertThat(mapper.toAttachmentResponseList(List.of(e))).hasSize(1);
         }
     }
-
-    // toReactionResponse / toReactionResponseList は絵文字リアクション機能実装時に追加予定
-    // （TimelinePostReactionEntity に emoji フィールドが追加されたタイミングで復活させること）
 
     @Nested
     @DisplayName("toBookmarkResponse")

@@ -479,6 +479,8 @@ class TimelinePostServiceTest {
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(attachments);
             given(timelineMapper.toAttachmentResponseList(attachments)).willReturn(attachmentResponses);
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
 
             // when
@@ -490,7 +492,27 @@ class TimelinePostServiceTest {
             assertThat(result.getUserId()).isEqualTo(USER_ID);
         }
 
-        // リアクションサマリーテストは絵文字リアクション機能（countByPostIdGroupByEmoji）実装時に追加予定
+        @Test
+        @DisplayName("正常系: みたよ！状態が含まれる")
+        void みたよ状態が含まれる() {
+            // given
+            TimelinePostEntity post = createPost();
+
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of());
+            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(true);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(5L);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            // when
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            // then
+            assertThat(result.isMitayo()).isTrue();
+            assertThat(result.getMitayoCount()).isEqualTo(5);
+        }
 
         @Test
         @DisplayName("異常系: 投稿が存在しない場合はエラー")
