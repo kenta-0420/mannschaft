@@ -23,7 +23,9 @@
     "created_at": "Erstellt am",
     "updated_at": "Aktualisiert am",
     "status": "Status",
-    "actions": "Aktionen"
+    "actions": "Aktionen",
+    "teamFriendCount": "Teamfreunde",
+    "supporterCount": "Unterstuetzer"
   },
   "dialog": {
     "confirm_delete": "Sind Sie sicher, dass Sie dies loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",

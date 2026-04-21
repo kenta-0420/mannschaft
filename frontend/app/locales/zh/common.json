@@ -23,7 +23,9 @@
     "created_at": "创建时间",
     "updated_at": "更新时间",
     "status": "状态",
-    "actions": "操作"
+    "actions": "操作",
+    "teamFriendCount": "团队好友数",
+    "supporterCount": "支持者数"
   },
   "dialog": {
     "confirm_delete": "确定要删除吗？此操作无法撤销。",

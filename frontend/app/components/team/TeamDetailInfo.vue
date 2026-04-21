@@ -12,6 +12,8 @@ interface Props {
   visibility: string
   visibilityLabel: string
   memberCount: number
+  teamFriendCount: number
+  supporterCount: number
   supporterEnabled: boolean
   description: string | null
   isAdmin: boolean
@@ -70,6 +72,14 @@ defineProps<Props>()
       <div>
         <label class="text-sm font-medium text-gray-500">メンバー数</label>
         <p class="mt-1">{{ memberCount }}人</p>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-500">{{ $t('label.teamFriendCount') }}</label>
+        <p class="mt-1">{{ teamFriendCount }}チーム</p>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-500">{{ $t('label.supporterCount') }}</label>
+        <p class="mt-1">{{ supporterCount }}人</p>
       </div>
       <div>
         <label class="text-sm font-medium text-gray-500">サポーター機能</label>

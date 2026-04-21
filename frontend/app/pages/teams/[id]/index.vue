@@ -79,7 +79,8 @@ interface TeamDetail {
   supporterEnabled: boolean
   version: number
   memberCount: number
-  supporterCount?: number
+  teamFriendCount: number
+  supporterCount: number
   archivedAt: string | null
   createdAt: string
   iconUrl: string | null
@@ -196,6 +197,8 @@ onMounted(async () => {
               :visibility="team.visibility"
               :visibility-label="visibilityLabel[team.visibility] ?? team.visibility"
               :member-count="team.memberCount"
+              :team-friend-count="team.teamFriendCount"
+              :supporter-count="team.supporterCount"
               :supporter-enabled="team.supporterEnabled"
               :description="team.description"
               :is-admin="isAdmin"

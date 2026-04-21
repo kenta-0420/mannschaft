@@ -95,4 +95,17 @@ public interface TeamFriendRepository extends JpaRepository<TeamFriendEntity, Lo
     Optional<TeamFriendEntity> findByTeamAIdAndTeamBIdForUpdateNoWait(
             @Param("teamAId") Long teamAId,
             @Param("teamBId") Long teamBId);
+
+    /**
+     * 指定チームが関与するフレンド関係の総数を返す。
+     * team_friends は teamAId &lt; teamBId で正規化されているため両方向を OR で検索する。
+     *
+     * @param teamId チーム ID
+     * @return フレンド関係数
+     */
+    @Query("""
+            SELECT COUNT(tf) FROM TeamFriendEntity tf
+            WHERE tf.teamAId = :teamId OR tf.teamBId = :teamId
+            """)
+    long countFriendsByTeamId(@Param("teamId") Long teamId);
 }

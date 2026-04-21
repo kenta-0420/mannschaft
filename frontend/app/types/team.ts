@@ -32,6 +32,8 @@ export interface TeamResponse {
   createdAt: string
   iconUrl: string | null
   bannerUrl: string | null
+  teamFriendCount: number
+  supporterCount: number
 }
 
 export interface TeamSummaryResponse {
@@ -44,6 +46,8 @@ export interface TeamSummaryResponse {
   template: TeamTemplate
   memberCount: number
   supporterEnabled: boolean
+  teamFriendCount: number
+  supporterCount: number
 }
 
 export interface CreateTeamRequest {

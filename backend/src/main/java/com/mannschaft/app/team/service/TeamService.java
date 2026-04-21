@@ -24,6 +24,7 @@ import com.mannschaft.app.team.dto.TeamSummaryResponse;
 import com.mannschaft.app.team.dto.UpdateTeamRequest;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
+import com.mannschaft.app.social.repository.TeamFriendRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +51,7 @@ public class TeamService {
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final TeamFriendRepository teamFriendRepository;
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。
@@ -79,7 +81,9 @@ public class TeamService {
         userRoleRepository.save(userRole);
 
         log.info("チーム作成完了: teamId={}, userId={}", team.getId(), userId);
-        return ApiResponse.of(toResponse(team, 1));
+        long teamFriendCount = teamFriendRepository.countFriendsByTeamId(team.getId());
+        long supporterCount = userRoleRepository.countMembersByScopeAndRole("TEAM", team.getId(), "SUPPORTER");
+        return ApiResponse.of(toResponse(team, 1, teamFriendCount, supporterCount));
     }
 
     /**
@@ -88,7 +92,9 @@ public class TeamService {
     public ApiResponse<TeamResponse> getTeam(Long teamId) {
         TeamEntity team = findTeamOrThrow(teamId);
         int memberCount = (int) userRoleRepository.countByTeamId(teamId);
-        return ApiResponse.of(toResponse(team, memberCount));
+        long teamFriendCount = teamFriendRepository.countFriendsByTeamId(teamId);
+        long supporterCount = userRoleRepository.countMembersByScopeAndRole("TEAM", teamId, "SUPPORTER");
+        return ApiResponse.of(toResponse(team, memberCount, teamFriendCount, supporterCount));
     }
 
     /**
@@ -115,8 +121,10 @@ public class TeamService {
         teamRepository.save(updated);
 
         int memberCount = (int) userRoleRepository.countByTeamId(teamId);
+        long teamFriendCount = teamFriendRepository.countFriendsByTeamId(teamId);
+        long supporterCount = userRoleRepository.countMembersByScopeAndRole("TEAM", teamId, "SUPPORTER");
         log.info("チーム更新完了: teamId={}", teamId);
-        return ApiResponse.of(toResponse(updated, memberCount));
+        return ApiResponse.of(toResponse(updated, memberCount, teamFriendCount, supporterCount));
     }
 
     /**
@@ -162,9 +170,13 @@ public class TeamService {
         var data = page.getContent().stream()
                 .map(team -> {
                     int memberCount = (int) userRoleRepository.countByTeamId(team.getId());
+                    long teamFriendCount = teamFriendRepository.countFriendsByTeamId(team.getId());
+                    long supporterCount = userRoleRepository.countMembersByScopeAndRole(
+                            "TEAM", team.getId(), "SUPPORTER");
                     return new TeamSummaryResponse(
                             team.getId(), team.getName(), team.getTemplate(),
-                            team.getVisibility().name(), memberCount);
+                            team.getVisibility().name(), memberCount,
+                            teamFriendCount, supporterCount);
                 })
                 .toList();
 
@@ -289,13 +301,15 @@ public class TeamService {
         }
     }
 
-    private TeamResponse toResponse(TeamEntity team, int memberCount) {
+    private TeamResponse toResponse(TeamEntity team, int memberCount,
+                                     long teamFriendCount, long supporterCount) {
         return new TeamResponse(
                 team.getId(), team.getName(), team.getNameKana(),
                 team.getNickname1(), team.getNickname2(), team.getTemplate(),
                 team.getPrefecture(), team.getCity(), team.getVisibility().name(),
                 team.getSupporterEnabled(), team.getVersion(),
                 memberCount, team.getIconUrl(), team.getBannerUrl(),
-                team.getArchivedAt(), team.getCreatedAt());
+                team.getArchivedAt(), team.getCreatedAt(),
+                teamFriendCount, supporterCount);
     }
 }

@@ -23,7 +23,9 @@
     "created_at": "생성일시",
     "updated_at": "수정일시",
     "status": "상태",
-    "actions": "작업"
+    "actions": "작업",
+    "teamFriendCount": "팀 친구 수",
+    "supporterCount": "서포터 수"
   },
   "dialog": {
     "confirm_delete": "정말로 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
