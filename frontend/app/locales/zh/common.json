@@ -520,5 +520,47 @@
     "my_projects": "个人项目",
     "my_projects_description": "个人任务管理与目标",
     "no_my_projects": "暂无个人项目"
+  },
+  "visibilityTemplate": {
+    "title": "可见范围模板",
+    "systemPresets": "系统预设",
+    "userTemplates": "我的模板",
+    "createNew": "创建模板",
+    "noUserTemplates": "暂无模板",
+    "ruleCount": "{n}条规则",
+    "deleteConfirm": "确定删除该模板？使用中的帖子将变为不可见。",
+    "limitReached": "已达模板上限（10个），请先删除不需要的模板。",
+    "form": {
+      "name": "模板名称",
+      "description": "描述",
+      "iconEmoji": "图标表情",
+      "rules": "规则",
+      "addRule": "添加规则",
+      "ruleType": "规则类型",
+      "ruleTargetId": "目标ID"
+    },
+    "ruleTypes": {
+      "TEAM_FRIEND_OF": "指定队伍的友队成员",
+      "ORGANIZATION_MEMBER_OF": "指定组织的成员",
+      "TEAM_MEMBER_OF": "指定队伍的成员",
+      "REGION_MATCH": "地区匹配",
+      "EXPLICIT_TEAM": "直接指定队伍",
+      "EXPLICIT_USER": "直接指定用户",
+      "EXPLICIT_SOCIAL_PROFILE": "指定社交资料"
+    },
+    "preset": {
+      "PRESET_TRAINING_PARTNERS": {
+        "name": "训练伙伴",
+        "description": "自己队伍的所有友队"
+      },
+      "PRESET_LOCAL_TEAMS": {
+        "name": "当地队伍",
+        "description": "本队+地区匹配队伍"
+      },
+      "PRESET_ALL_FRIENDS": {
+        "name": "所有朋友",
+        "description": "所有友队成员"
+      }
+    }
   }
 }

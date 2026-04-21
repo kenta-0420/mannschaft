@@ -520,5 +520,47 @@
     "my_projects": "個人プロジェクト",
     "my_projects_description": "自分のタスク管理・目標",
     "no_my_projects": "個人プロジェクトがまだありません"
+  },
+  "visibilityTemplate": {
+    "title": "公開範囲テンプレート",
+    "systemPresets": "システムプリセット",
+    "userTemplates": "マイテンプレート",
+    "createNew": "テンプレートを作成",
+    "noUserTemplates": "まだテンプレートがありません",
+    "ruleCount": "{n}件のルール",
+    "deleteConfirm": "このテンプレートを削除しますか？削除すると使用中の投稿が非公開相当になります。",
+    "limitReached": "テンプレートの上限（10件）に達しています。不要なテンプレートを削除してから追加してください。",
+    "form": {
+      "name": "テンプレート名",
+      "description": "説明",
+      "iconEmoji": "アイコン絵文字",
+      "rules": "ルール",
+      "addRule": "ルールを追加",
+      "ruleType": "ルール種別",
+      "ruleTargetId": "対象ID"
+    },
+    "ruleTypes": {
+      "TEAM_FRIEND_OF": "指定チームのフレンドチームメンバー",
+      "ORGANIZATION_MEMBER_OF": "指定組織のメンバー",
+      "TEAM_MEMBER_OF": "指定チームのメンバー",
+      "REGION_MATCH": "地域一致",
+      "EXPLICIT_TEAM": "チームを直接指定",
+      "EXPLICIT_USER": "ユーザーを直接指定",
+      "EXPLICIT_SOCIAL_PROFILE": "ソーシャルプロフィールを指定"
+    },
+    "preset": {
+      "PRESET_TRAINING_PARTNERS": {
+        "name": "練習仲間",
+        "description": "自チームのフレンドチーム全員"
+      },
+      "PRESET_LOCAL_TEAMS": {
+        "name": "地域のチーム",
+        "description": "自チーム＋地域属性が合致するチーム"
+      },
+      "PRESET_ALL_FRIENDS": {
+        "name": "全フレンド",
+        "description": "全フレンドチームのメンバー"
+      }
+    }
   }
 }

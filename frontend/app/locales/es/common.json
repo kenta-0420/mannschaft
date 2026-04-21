@@ -520,5 +520,47 @@
     "my_projects": "Mis proyectos",
     "my_projects_description": "Gestión personal de tareas y objetivos",
     "no_my_projects": "Aún no hay proyectos personales"
+  },
+  "visibilityTemplate": {
+    "title": "Plantillas de visibilidad",
+    "systemPresets": "Presets del sistema",
+    "userTemplates": "Mis plantillas",
+    "createNew": "Crear plantilla",
+    "noUserTemplates": "Aún no hay plantillas",
+    "ruleCount": "{n} reglas",
+    "deleteConfirm": "¿Eliminar esta plantilla? Las publicaciones que la usen serán privadas.",
+    "limitReached": "Límite de plantillas (10) alcanzado. Elimina una primero.",
+    "form": {
+      "name": "Nombre",
+      "description": "Descripción",
+      "iconEmoji": "Emoji de icono",
+      "rules": "Reglas",
+      "addRule": "Añadir regla",
+      "ruleType": "Tipo de regla",
+      "ruleTargetId": "ID de destino"
+    },
+    "ruleTypes": {
+      "TEAM_FRIEND_OF": "Miembros de equipos amigos",
+      "ORGANIZATION_MEMBER_OF": "Miembros de organización",
+      "TEAM_MEMBER_OF": "Miembros del equipo",
+      "REGION_MATCH": "Coincidencia de región",
+      "EXPLICIT_TEAM": "Equipo específico",
+      "EXPLICIT_USER": "Usuario específico",
+      "EXPLICIT_SOCIAL_PROFILE": "Perfil social específico"
+    },
+    "preset": {
+      "PRESET_TRAINING_PARTNERS": {
+        "name": "Compañeros de entrenamiento",
+        "description": "Todos los equipos amigos"
+      },
+      "PRESET_LOCAL_TEAMS": {
+        "name": "Equipos locales",
+        "description": "Equipo + equipos de la región"
+      },
+      "PRESET_ALL_FRIENDS": {
+        "name": "Todos los amigos",
+        "description": "Todos los miembros amigos"
+      }
+    }
   }
 }
