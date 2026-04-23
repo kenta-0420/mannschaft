@@ -24,6 +24,7 @@ const navItems = computed(() => [
   { label: '組織', icon: 'pi pi-building', to: '/organizations' },
   { label: 'TODO', icon: 'pi pi-check-square', to: '/todos' },
   { label: 'カレンダー', icon: 'pi pi-calendar', to: '/calendar' },
+  { label: 'シフト管理', icon: 'pi pi-table', to: '/shift' },
   { label: 'タイムライン', icon: 'pi pi-comments', to: '/timeline' },
   { label: 'チャット', icon: 'pi pi-comment', to: '/chat' },
   { label: 'マイページ', icon: 'pi pi-user', to: '/my' },
