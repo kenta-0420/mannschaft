@@ -24,5 +24,37 @@ public enum ShiftPreference {
     STRONG_REST,
 
     /** 絶対休み（自動割当の対象外とする強い拒否）— 自動割当スコア目安: -∞（候補から除外）。 */
-    ABSOLUTE_REST
+    ABSOLUTE_REST;
+
+    /**
+     * 自動割当の候補除外フラグ。{@link #ABSOLUTE_REST} のみ候補から完全除外される。
+     *
+     * <p>Phase 1 ではインタフェースのみ提供。Phase 2 の自動割当ロジックから呼び出される想定。</p>
+     *
+     * @return {@code true} = 候補から完全除外 / {@code false} = スコア計算対象
+     */
+    public boolean isHardExcluded() {
+        return this == ABSOLUTE_REST;
+    }
+
+    /**
+     * 自動割当スコアリング用の評価点。値が大きいほどアサイン優先度が高い。
+     *
+     * <p>ABSOLUTE_REST は本メソッドでは {@link Integer#MIN_VALUE} を返すが、実際には
+     * {@link #isHardExcluded()} で除外判定することを推奨する（オーバーフロー事故防止）。</p>
+     *
+     * <p>具体的な重みは Phase 2 の自動割当実装時に {@code application.yml} から調整可能にする。
+     * ここで返す値は Phase 1 時点のデフォルト値（設計書 §5.10 のスコア目安と整合）。</p>
+     *
+     * @return スコア値
+     */
+    public int toAssignmentScore() {
+        return switch (this) {
+            case PREFERRED -> 100;
+            case AVAILABLE -> 0;
+            case WEAK_REST -> -30;
+            case STRONG_REST -> -80;
+            case ABSOLUTE_REST -> Integer.MIN_VALUE;
+        };
+    }
 }
