@@ -1,0 +1,250 @@
+{
+  "jobmatching": {
+    "status": {
+      "posting": {
+        "DRAFT": "草稿",
+        "OPEN": "招募中",
+        "CLOSED": "已结束",
+        "CANCELLED": "已取消"
+      },
+      "application": {
+        "APPLIED": "申请中",
+        "ACCEPTED": "已录用",
+        "REJECTED": "未录用",
+        "WITHDRAWN": "已撤回"
+      },
+      "contract": {
+        "MATCHED": "已成立",
+        "CHECKED_IN": "已签到",
+        "IN_PROGRESS": "进行中",
+        "CHECKED_OUT": "已签退",
+        "TIME_CONFIRMED": "工时已确认",
+        "COMPLETION_REPORTED": "已报告完成",
+        "COMPLETED": "已完成",
+        "AUTHORIZED": "已授权",
+        "CAPTURED": "已扣款",
+        "PAID": "已支付",
+        "CANCELLED": "已取消",
+        "DISPUTED": "争议中"
+      }
+    },
+    "workLocationType": {
+      "ONSITE": "现场",
+      "ONLINE": "在线",
+      "HYBRID": "混合"
+    },
+    "rewardType": {
+      "LUMP_SUM": "一次性报酬",
+      "HOURLY": "时薪",
+      "DAILY": "日薪"
+    },
+    "visibilityScope": {
+      "TEAM_MEMBERS": "仅团队成员",
+      "TEAM_MEMBERS_SUPPORTERS": "团队成员及支持者",
+      "JOBBER_INTERNAL": "JOBBER 内部",
+      "JOBBER_PUBLIC_BOARD": "JOBBER 综合招募板",
+      "ORGANIZATION_SCOPE": "整个组织",
+      "CUSTOM_TEMPLATE": "自定义公开范围"
+    },
+    "form": {
+      "title": "职位标题",
+      "titlePlaceholder": "例：招募周末活动人员",
+      "description": "工作内容",
+      "descriptionPlaceholder": "请填写工作内容和应聘条件",
+      "category": "类别",
+      "categoryPlaceholder": "例：活动 / 轻体力 / 讲师",
+      "workLocationType": "工作形式",
+      "workAddress": "工作地址",
+      "workAddressPlaceholder": "例：东京都涩谷区◯◯",
+      "workStartAt": "开始日期时间",
+      "workEndAt": "结束日期时间",
+      "applicationDeadlineAt": "申请截止",
+      "rewardType": "报酬类型",
+      "baseRewardJpy": "基本报酬（日元）",
+      "baseRewardJpyHint": "时薪/日薪情况下为每小时/每日金额",
+      "capacity": "招募人数",
+      "visibilityScope": "公开范围",
+      "visibilityScopeHint": "选择谁可以查看此招募信息"
+    },
+    "validation": {
+      "titleRequired": "职位标题为必填",
+      "descriptionRequired": "工作内容为必填",
+      "workDateRequired": "请输入工作开始和结束日期时间",
+      "workEndAfterStart": "结束日期时间必须晚于开始日期时间",
+      "deadlineRequired": "请输入申请截止时间",
+      "deadlineBeforeStart": "申请截止必须早于工作开始时间",
+      "rewardRequired": "请输入基本报酬金额",
+      "rewardRange": "基本报酬必须在1到10,000,000日元之间",
+      "capacityMin": "招募人数至少为1人",
+      "workAddressRequired": "现场工作需要填写工作地址",
+      "failed": "输入内容有误"
+    },
+    "fee": {
+      "title": "手续费预览",
+      "placeholder": "输入报酬金额后将计算手续费",
+      "requester": "发布方支付",
+      "worker": "接单方收取",
+      "baseReward": "基本报酬",
+      "requesterFee": "手续费（10% + 100日元）",
+      "requesterFeeTax": "手续费消费税",
+      "requesterTotal": "发布方支付合计",
+      "workerFee": "手续费（2% + 100日元）",
+      "workerReceipt": "接单方净收入"
+    },
+    "card": {
+      "workAt": "工作日期时间",
+      "workLocationType": "工作形式",
+      "capacity": "招募人数",
+      "capacityValue": "{count}人",
+      "deadline": "申请截止",
+      "deadlineValue": "截至 {at}"
+    },
+    "filter": {
+      "all": "全部"
+    },
+    "list": {
+      "teamTitle": "团队招募列表",
+      "createButton": "创建新招募",
+      "empty": "尚无招募信息"
+    },
+    "create": {
+      "title": "创建新招募",
+      "description": "请输入招募内容并保存草稿或发布",
+      "cancel": "取消",
+      "saveDraft": "保存草稿",
+      "draftSaved": "草稿已保存",
+      "failed": "保存草稿失败"
+    },
+    "edit": {
+      "title": "编辑招募",
+      "description": "可编辑招募内容",
+      "cancel": "取消",
+      "save": "保存",
+      "saved": "已保存",
+      "failed": "保存失败"
+    },
+    "detail": {
+      "notFound": "未找到招募信息",
+      "back": "返回",
+      "edit": "编辑",
+      "publish": "发布",
+      "close": "结束招募",
+      "cancel": "取消",
+      "delete": "删除",
+      "publishSucceeded": "已发布招募",
+      "publishFailed": "发布失败",
+      "closeSucceeded": "招募已结束",
+      "closeFailed": "结束招募失败",
+      "cancelSucceeded": "已取消",
+      "cancelFailed": "取消失败",
+      "deleteSucceeded": "已删除",
+      "deleteFailed": "删除失败",
+      "sections": {
+        "overview": "招募概要",
+        "applications": "申请列表（{count}）"
+      },
+      "fields": {
+        "workLocationType": "工作形式",
+        "workAddress": "工作地址",
+        "workStartAt": "开始日期时间",
+        "workEndAt": "结束日期时间",
+        "rewardType": "报酬类型",
+        "baseRewardJpy": "基本报酬",
+        "capacity": "招募人数",
+        "applicationDeadlineAt": "申请截止",
+        "visibilityScope": "公开范围",
+        "publishAt": "发布日期"
+      }
+    },
+    "application": {
+      "empty": "尚无申请",
+      "applicantLabel": "申请人 #{userId}",
+      "appliedAt": "申请时间：{at}",
+      "accept": "录用",
+      "reject": "不录用",
+      "acceptSucceeded": "已录用",
+      "acceptFailed": "录用处理失败",
+      "rejectSucceeded": "已不录用",
+      "rejectFailed": "不录用处理失败",
+      "rejectDialog": {
+        "title": "不录用申请",
+        "description": "请输入理由（将通知申请人）",
+        "reasonPlaceholder": "请输入不录用理由",
+        "cancel": "取消",
+        "confirm": "不录用"
+      }
+    },
+    "workerSearch": {
+      "title": "寻找零工",
+      "description": "可从加入的团队中申请招募",
+      "selectTeam": "选择团队",
+      "teamPlaceholder": "请选择团队",
+      "noTeams": "尚未加入任何团队",
+      "empty": "该团队当前没有招募中的职位"
+    },
+    "workerDetail": {
+      "applyButton": "申请该职位",
+      "applySucceeded": "已申请",
+      "applyFailed": "申请失败",
+      "applyDialog": {
+        "title": "确认申请",
+        "description": "申请该招募？请填写自我介绍并提交。",
+        "selfPrPlaceholder": "自我介绍/意愿（可选）",
+        "cancel": "取消",
+        "confirm": "申请"
+      }
+    },
+    "myJobs": {
+      "title": "我的申请与合同",
+      "description": "管理申请中的职位和已成立的合同",
+      "tabs": {
+        "applications": "申请中",
+        "contracts": "合同"
+      },
+      "applicationsEmpty": "没有申请中的职位",
+      "contractsEmpty": "没有进行中的合同",
+      "jobLink": "职位 #{id}",
+      "contractLink": "合同对应职位 #{id}",
+      "withdrawButton": "撤回申请",
+      "withdrawSucceeded": "已撤回申请",
+      "withdrawFailed": "撤回失败"
+    },
+    "contract": {
+      "actions": {
+        "title": "合同操作",
+        "reportCompletion": "报告完成",
+        "approveCompletion": "批准完成",
+        "rejectCompletion": "退回",
+        "cancel": "取消合同"
+      },
+      "matchedAt": "成立时间：{at}",
+      "reportSucceeded": "已提交完成报告",
+      "reportFailed": "完成报告提交失败",
+      "approveSucceeded": "已批准完成",
+      "approveFailed": "批准失败",
+      "rejectReasonRequired": "请输入退回理由",
+      "rejectSucceeded": "已退回",
+      "rejectFailed": "退回失败",
+      "cancelSucceeded": "合同已取消",
+      "cancelFailed": "取消失败",
+      "rejectDialog": {
+        "title": "退回完成报告",
+        "description": "请输入退回理由（将通知对方）",
+        "reasonPlaceholder": "例：存在遗漏工作，请重新处理",
+        "cancel": "关闭",
+        "confirm": "退回"
+      },
+      "cancelDialog": {
+        "title": "取消合同",
+        "description": "请输入取消理由（将通知对方）",
+        "reasonPlaceholder": "请输入取消理由",
+        "cancel": "关闭",
+        "confirm": "取消"
+      }
+    },
+    "error": {
+      "loadFailed": "数据加载失败",
+      "applicationsLoadFailed": "申请列表加载失败"
+    }
+  }
+}

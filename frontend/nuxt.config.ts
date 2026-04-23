@@ -122,6 +122,7 @@ export default defineNuxtConfig({
           'ja/appearance.json',
           'ja/event.json',
           'ja/committee.json',
+          'ja/jobmatching.json',
         ],
       },
       {
@@ -145,6 +146,7 @@ export default defineNuxtConfig({
           'en/appearance.json',
           'en/event.json',
           'en/committee.json',
+          'en/jobmatching.json',
         ],
       },
       {
@@ -168,6 +170,7 @@ export default defineNuxtConfig({
           'zh/appearance.json',
           'zh/event.json',
           'zh/committee.json',
+          'zh/jobmatching.json',
         ],
       },
       {
@@ -191,6 +194,7 @@ export default defineNuxtConfig({
           'ko/appearance.json',
           'ko/event.json',
           'ko/committee.json',
+          'ko/jobmatching.json',
         ],
       },
       {
@@ -214,6 +218,7 @@ export default defineNuxtConfig({
           'es/appearance.json',
           'es/event.json',
           'es/committee.json',
+          'es/jobmatching.json',
         ],
       },
       {
@@ -237,6 +242,7 @@ export default defineNuxtConfig({
           'de/appearance.json',
           'de/event.json',
           'de/committee.json',
+          'de/jobmatching.json',
         ],
       },
     ],
