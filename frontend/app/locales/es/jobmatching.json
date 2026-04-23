@@ -1,0 +1,242 @@
+{
+  "jobmatching": {
+    "status": {
+      "posting": {
+        "DRAFT": "Borrador",
+        "OPEN": "Abierto",
+        "CLOSED": "Cerrado",
+        "CANCELLED": "Cancelado"
+      },
+      "application": {
+        "PENDING": "Pendiente",
+        "ACCEPTED": "Aceptado",
+        "REJECTED": "Rechazado",
+        "WITHDRAWN": "Retirado"
+      },
+      "contract": {
+        "MATCHED": "Emparejado",
+        "IN_PROGRESS": "En progreso",
+        "REPORTED": "Finalización reportada",
+        "APPROVED": "Aprobado",
+        "REJECTED": "Rechazado",
+        "CANCELLED": "Cancelado",
+        "PAID": "Pagado"
+      }
+    },
+    "workLocationType": {
+      "ONSITE": "Presencial",
+      "ONLINE": "En línea",
+      "HYBRID": "Híbrido"
+    },
+    "rewardType": {
+      "LUMP_SUM": "Pago único",
+      "HOURLY": "Por hora",
+      "DAILY": "Por día"
+    },
+    "visibilityScope": {
+      "TEAM_ONLY": "Solo equipo",
+      "TEAM_AND_FRIENDS": "Equipo y amigos",
+      "PUBLIC": "Público"
+    },
+    "form": {
+      "title": "Título del trabajo",
+      "titlePlaceholder": "Ej.: Se busca personal para evento de fin de semana",
+      "description": "Descripción del trabajo",
+      "descriptionPlaceholder": "Describa el trabajo y los requisitos",
+      "category": "Categoría",
+      "categoryPlaceholder": "Ej.: Evento / Trabajo ligero / Instructor",
+      "workLocationType": "Tipo de ubicación",
+      "workAddress": "Dirección del trabajo",
+      "workAddressPlaceholder": "Ej.: Shibuya-ku, Tokio",
+      "workStartAt": "Fecha/hora de inicio",
+      "workEndAt": "Fecha/hora de fin",
+      "applicationDeadlineAt": "Fecha límite de solicitud",
+      "rewardType": "Tipo de recompensa",
+      "baseRewardJpy": "Recompensa base (JPY)",
+      "baseRewardJpyHint": "Para pagos por hora/día, el monto por hora/día",
+      "capacity": "Capacidad",
+      "visibilityScope": "Visibilidad",
+      "visibilityScopeHint": "Seleccione quién puede ver esta publicación"
+    },
+    "validation": {
+      "titleRequired": "El título del trabajo es obligatorio",
+      "descriptionRequired": "La descripción del trabajo es obligatoria",
+      "workDateRequired": "Ingrese la fecha/hora de inicio y fin del trabajo",
+      "workEndAfterStart": "La fecha/hora de fin debe ser posterior a la de inicio",
+      "deadlineRequired": "Ingrese la fecha límite de solicitud",
+      "deadlineBeforeStart": "La fecha límite debe ser anterior al inicio del trabajo",
+      "rewardRequired": "Ingrese el monto de recompensa base",
+      "rewardRange": "La recompensa base debe estar entre 1 y 10,000,000 JPY",
+      "capacityMin": "La capacidad debe ser al menos 1",
+      "workAddressRequired": "La dirección es obligatoria para trabajos presenciales",
+      "failed": "La validación ha fallado"
+    },
+    "fee": {
+      "title": "Vista previa de comisiones",
+      "placeholder": "Ingrese el monto de recompensa para calcular las comisiones",
+      "requester": "Paga el solicitante",
+      "worker": "Recibe el trabajador",
+      "baseReward": "Recompensa base",
+      "requesterFee": "Comisión (10% + 100 JPY)",
+      "requesterFeeTax": "Impuesto sobre la comisión",
+      "requesterTotal": "Total a pagar por el solicitante",
+      "workerFee": "Comisión (2% + 100 JPY)",
+      "workerReceipt": "Monto neto del trabajador"
+    },
+    "card": {
+      "workAt": "Fecha/hora del trabajo",
+      "workLocationType": "Tipo de ubicación",
+      "capacity": "Capacidad",
+      "capacityValue": "{count} personas",
+      "deadline": "Fecha límite de solicitud",
+      "deadlineValue": "Hasta {at}"
+    },
+    "filter": {
+      "all": "Todos"
+    },
+    "list": {
+      "teamTitle": "Publicaciones del equipo",
+      "createButton": "Crear nueva publicación",
+      "empty": "Aún no hay publicaciones"
+    },
+    "create": {
+      "title": "Crear nueva publicación",
+      "description": "Ingrese los detalles y guarde como borrador o publique",
+      "cancel": "Cancelar",
+      "saveDraft": "Guardar borrador",
+      "draftSaved": "Borrador guardado",
+      "failed": "Error al guardar borrador"
+    },
+    "edit": {
+      "title": "Editar publicación",
+      "description": "Edite los detalles de la publicación",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "saved": "Guardado",
+      "failed": "Error al guardar"
+    },
+    "detail": {
+      "notFound": "Publicación no encontrada",
+      "back": "Volver",
+      "edit": "Editar",
+      "publish": "Publicar",
+      "close": "Cerrar publicación",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "publishSucceeded": "Publicación publicada",
+      "publishFailed": "Error al publicar",
+      "closeSucceeded": "Publicación cerrada",
+      "closeFailed": "Error al cerrar publicación",
+      "cancelSucceeded": "Cancelado",
+      "cancelFailed": "Error al cancelar",
+      "deleteSucceeded": "Eliminado",
+      "deleteFailed": "Error al eliminar",
+      "sections": {
+        "overview": "Resumen",
+        "applications": "Solicitudes ({count})"
+      },
+      "fields": {
+        "workLocationType": "Tipo de ubicación",
+        "workAddress": "Dirección del trabajo",
+        "workStartAt": "Fecha/hora de inicio",
+        "workEndAt": "Fecha/hora de fin",
+        "rewardType": "Tipo de recompensa",
+        "baseRewardJpy": "Recompensa base",
+        "capacity": "Capacidad",
+        "applicationDeadlineAt": "Fecha límite de solicitud",
+        "visibilityScope": "Visibilidad",
+        "publishAt": "Fecha de publicación"
+      }
+    },
+    "application": {
+      "empty": "Aún no hay solicitudes",
+      "applicantLabel": "Solicitante #{userId}",
+      "appliedAt": "Solicitado el: {at}",
+      "accept": "Aceptar",
+      "reject": "Rechazar",
+      "acceptSucceeded": "Solicitud aceptada",
+      "acceptFailed": "Error al aceptar solicitud",
+      "rejectSucceeded": "Solicitud rechazada",
+      "rejectFailed": "Error al rechazar solicitud",
+      "rejectDialog": {
+        "title": "Rechazar solicitud",
+        "description": "Ingrese la razón (se notificará al solicitante)",
+        "reasonPlaceholder": "Ingrese la razón de rechazo",
+        "cancel": "Cancelar",
+        "confirm": "Rechazar"
+      }
+    },
+    "workerSearch": {
+      "title": "Buscar trabajos",
+      "description": "Solicite trabajos de los equipos a los que se ha unido",
+      "selectTeam": "Seleccionar equipo",
+      "teamPlaceholder": "Por favor seleccione un equipo",
+      "noTeams": "No tiene equipos a los que se haya unido",
+      "empty": "No hay publicaciones abiertas en este equipo"
+    },
+    "workerDetail": {
+      "applyButton": "Solicitar este trabajo",
+      "applySucceeded": "Solicitud enviada",
+      "applyFailed": "Error al solicitar",
+      "applyDialog": {
+        "title": "Confirmar solicitud",
+        "description": "¿Solicitar este trabajo? Ingrese su presentación y envíe.",
+        "selfPrPlaceholder": "Auto-presentación / motivación (opcional)",
+        "cancel": "Cancelar",
+        "confirm": "Solicitar"
+      }
+    },
+    "myJobs": {
+      "title": "Mis solicitudes y contratos",
+      "description": "Gestione sus solicitudes y contratos emparejados",
+      "tabs": {
+        "applications": "Solicitudes",
+        "contracts": "Contratos"
+      },
+      "applicationsEmpty": "No hay solicitudes activas",
+      "contractsEmpty": "No hay contratos activos",
+      "jobLink": "Trabajo #{id}",
+      "contractLink": "Contrato para trabajo #{id}",
+      "withdrawButton": "Retirar solicitud",
+      "withdrawSucceeded": "Solicitud retirada",
+      "withdrawFailed": "Error al retirar"
+    },
+    "contract": {
+      "actions": {
+        "title": "Acciones del contrato",
+        "reportCompletion": "Reportar finalización",
+        "approveCompletion": "Aprobar finalización",
+        "rejectCompletion": "Rechazar",
+        "cancel": "Cancelar contrato"
+      },
+      "matchedAt": "Emparejado el: {at}",
+      "reportSucceeded": "Finalización reportada",
+      "reportFailed": "Error al reportar finalización",
+      "approveSucceeded": "Finalización aprobada",
+      "approveFailed": "Error al aprobar",
+      "rejectReasonRequired": "Ingrese una razón de rechazo",
+      "rejectSucceeded": "Rechazado",
+      "rejectFailed": "Error al rechazar",
+      "cancelSucceeded": "Contrato cancelado",
+      "cancelFailed": "Error al cancelar",
+      "rejectDialog": {
+        "title": "Rechazar reporte de finalización",
+        "description": "Ingrese la razón (se notificará a la contraparte)",
+        "reasonPlaceholder": "Ej.: Por favor rehaga el trabajo faltante",
+        "cancel": "Cerrar",
+        "confirm": "Rechazar"
+      },
+      "cancelDialog": {
+        "title": "Cancelar contrato",
+        "description": "Ingrese la razón de cancelación (se notificará a la contraparte)",
+        "reasonPlaceholder": "Ingrese la razón de cancelación",
+        "cancel": "Cerrar",
+        "confirm": "Cancelar"
+      }
+    },
+    "error": {
+      "loadFailed": "Error al cargar los datos",
+      "applicationsLoadFailed": "Error al cargar las solicitudes"
+    }
+  }
+}

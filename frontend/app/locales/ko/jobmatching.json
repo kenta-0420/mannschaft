@@ -1,0 +1,242 @@
+{
+  "jobmatching": {
+    "status": {
+      "posting": {
+        "DRAFT": "초안",
+        "OPEN": "모집 중",
+        "CLOSED": "모집 종료",
+        "CANCELLED": "취소됨"
+      },
+      "application": {
+        "PENDING": "지원 중",
+        "ACCEPTED": "채용됨",
+        "REJECTED": "불채용",
+        "WITHDRAWN": "철회됨"
+      },
+      "contract": {
+        "MATCHED": "성립",
+        "IN_PROGRESS": "진행 중",
+        "REPORTED": "완료 보고됨",
+        "APPROVED": "승인됨",
+        "REJECTED": "반려됨",
+        "CANCELLED": "취소됨",
+        "PAID": "지급 완료"
+      }
+    },
+    "workLocationType": {
+      "ONSITE": "현장",
+      "ONLINE": "온라인",
+      "HYBRID": "하이브리드"
+    },
+    "rewardType": {
+      "LUMP_SUM": "일괄 보수",
+      "HOURLY": "시급",
+      "DAILY": "일급"
+    },
+    "visibilityScope": {
+      "TEAM_ONLY": "팀 내만",
+      "TEAM_AND_FRIENDS": "팀 및 친구",
+      "PUBLIC": "전체 공개"
+    },
+    "form": {
+      "title": "구인 제목",
+      "titlePlaceholder": "예: 주말 이벤트 스태프 모집",
+      "description": "업무 내용",
+      "descriptionPlaceholder": "업무 내용과 지원 조건을 기재하세요",
+      "category": "카테고리",
+      "categoryPlaceholder": "예: 이벤트 / 단순 작업 / 강사",
+      "workLocationType": "근무 형태",
+      "workAddress": "근무지 주소",
+      "workAddressPlaceholder": "예: 도쿄도 시부야구 ◯◯",
+      "workStartAt": "시작 일시",
+      "workEndAt": "종료 일시",
+      "applicationDeadlineAt": "지원 마감",
+      "rewardType": "보수 유형",
+      "baseRewardJpy": "기본 보수 (엔)",
+      "baseRewardJpyHint": "시급/일급인 경우 시간/일당 금액",
+      "capacity": "모집 인원",
+      "visibilityScope": "공개 범위",
+      "visibilityScopeHint": "이 구인을 누가 볼 수 있는지 선택하세요"
+    },
+    "validation": {
+      "titleRequired": "구인 제목은 필수입니다",
+      "descriptionRequired": "업무 내용은 필수입니다",
+      "workDateRequired": "근무 시작 및 종료 일시를 입력하세요",
+      "workEndAfterStart": "종료 일시는 시작 일시 이후여야 합니다",
+      "deadlineRequired": "지원 마감을 입력하세요",
+      "deadlineBeforeStart": "지원 마감은 근무 시작 일시 이전이어야 합니다",
+      "rewardRequired": "기본 보수 금액을 입력하세요",
+      "rewardRange": "기본 보수는 1엔 ~ 10,000,000엔 범위로 입력하세요",
+      "capacityMin": "모집 인원은 1명 이상이어야 합니다",
+      "workAddressRequired": "현장 근무의 경우 근무지 주소를 입력하세요",
+      "failed": "입력 내용에 오류가 있습니다"
+    },
+    "fee": {
+      "title": "수수료 미리보기",
+      "placeholder": "보수 금액을 입력하면 수수료가 계산됩니다",
+      "requester": "발주자 부담",
+      "worker": "수주자 수령",
+      "baseReward": "기본 보수",
+      "requesterFee": "수수료 (10% + 100엔)",
+      "requesterFeeTax": "수수료 부가세",
+      "requesterTotal": "발주자 지불 합계",
+      "workerFee": "수수료 (2% + 100엔)",
+      "workerReceipt": "수주자 실수령액"
+    },
+    "card": {
+      "workAt": "근무 일시",
+      "workLocationType": "근무 형태",
+      "capacity": "모집 인원",
+      "capacityValue": "{count}명",
+      "deadline": "지원 마감",
+      "deadlineValue": "{at}까지"
+    },
+    "filter": {
+      "all": "전체"
+    },
+    "list": {
+      "teamTitle": "팀 내 구인 목록",
+      "createButton": "새 구인 작성",
+      "empty": "구인이 아직 없습니다"
+    },
+    "create": {
+      "title": "새 구인 작성",
+      "description": "구인 내용을 입력하고 초안 저장 또는 공개하세요",
+      "cancel": "취소",
+      "saveDraft": "초안 저장",
+      "draftSaved": "초안을 저장했습니다",
+      "failed": "초안 저장에 실패했습니다"
+    },
+    "edit": {
+      "title": "구인 편집",
+      "description": "구인 내용을 편집할 수 있습니다",
+      "cancel": "취소",
+      "save": "저장",
+      "saved": "저장했습니다",
+      "failed": "저장에 실패했습니다"
+    },
+    "detail": {
+      "notFound": "구인을 찾을 수 없습니다",
+      "back": "돌아가기",
+      "edit": "편집",
+      "publish": "공개하기",
+      "close": "모집 종료",
+      "cancel": "취소하기",
+      "delete": "삭제",
+      "publishSucceeded": "구인을 공개했습니다",
+      "publishFailed": "공개에 실패했습니다",
+      "closeSucceeded": "모집을 종료했습니다",
+      "closeFailed": "모집 종료에 실패했습니다",
+      "cancelSucceeded": "취소했습니다",
+      "cancelFailed": "취소에 실패했습니다",
+      "deleteSucceeded": "삭제했습니다",
+      "deleteFailed": "삭제에 실패했습니다",
+      "sections": {
+        "overview": "구인 개요",
+        "applications": "지원 목록 ({count}건)"
+      },
+      "fields": {
+        "workLocationType": "근무 형태",
+        "workAddress": "근무지 주소",
+        "workStartAt": "시작 일시",
+        "workEndAt": "종료 일시",
+        "rewardType": "보수 유형",
+        "baseRewardJpy": "기본 보수",
+        "capacity": "모집 인원",
+        "applicationDeadlineAt": "지원 마감",
+        "visibilityScope": "공개 범위",
+        "publishAt": "공개 일시"
+      }
+    },
+    "application": {
+      "empty": "지원이 아직 없습니다",
+      "applicantLabel": "지원자 #{userId}",
+      "appliedAt": "지원 일시: {at}",
+      "accept": "채용",
+      "reject": "불채용",
+      "acceptSucceeded": "채용했습니다",
+      "acceptFailed": "채용 처리에 실패했습니다",
+      "rejectSucceeded": "불채용 처리했습니다",
+      "rejectFailed": "불채용 처리에 실패했습니다",
+      "rejectDialog": {
+        "title": "지원 불채용",
+        "description": "이유를 입력하세요 (지원자에게 통지됩니다)",
+        "reasonPlaceholder": "불채용 이유를 입력",
+        "cancel": "취소",
+        "confirm": "불채용"
+      }
+    },
+    "workerSearch": {
+      "title": "스키마 알바 찾기",
+      "description": "참여 팀 내의 구인에 지원할 수 있습니다",
+      "selectTeam": "팀 선택",
+      "teamPlaceholder": "팀을 선택하세요",
+      "noTeams": "소속 팀이 없습니다",
+      "empty": "이 팀에는 현재 모집 중인 구인이 없습니다"
+    },
+    "workerDetail": {
+      "applyButton": "이 구인에 지원하기",
+      "applySucceeded": "지원했습니다",
+      "applyFailed": "지원에 실패했습니다",
+      "applyDialog": {
+        "title": "지원 확인",
+        "description": "이 구인에 지원하시겠습니까? 자기 PR을 입력하고 제출하세요.",
+        "selfPrPlaceholder": "자기 PR / 의욕 (선택)",
+        "cancel": "취소",
+        "confirm": "지원"
+      }
+    },
+    "myJobs": {
+      "title": "내 지원 및 계약",
+      "description": "지원 중인 구인과 성립된 계약을 관리합니다",
+      "tabs": {
+        "applications": "지원 중",
+        "contracts": "계약"
+      },
+      "applicationsEmpty": "지원 중인 구인이 없습니다",
+      "contractsEmpty": "진행 중인 계약이 없습니다",
+      "jobLink": "구인 #{id}",
+      "contractLink": "계약 대상 구인 #{id}",
+      "withdrawButton": "지원 철회",
+      "withdrawSucceeded": "지원을 철회했습니다",
+      "withdrawFailed": "철회에 실패했습니다"
+    },
+    "contract": {
+      "actions": {
+        "title": "계약 액션",
+        "reportCompletion": "완료 보고",
+        "approveCompletion": "완료 승인",
+        "rejectCompletion": "반려",
+        "cancel": "계약 취소"
+      },
+      "matchedAt": "계약 성립: {at}",
+      "reportSucceeded": "완료 보고를 제출했습니다",
+      "reportFailed": "완료 보고에 실패했습니다",
+      "approveSucceeded": "완료를 승인했습니다",
+      "approveFailed": "승인에 실패했습니다",
+      "rejectReasonRequired": "반려 이유를 입력하세요",
+      "rejectSucceeded": "반려했습니다",
+      "rejectFailed": "반려에 실패했습니다",
+      "cancelSucceeded": "계약을 취소했습니다",
+      "cancelFailed": "취소에 실패했습니다",
+      "rejectDialog": {
+        "title": "완료 보고 반려",
+        "description": "반려 이유를 입력하세요 (상대방에게 통지됩니다)",
+        "reasonPlaceholder": "예: 누락된 작업이 있어 재작업을 부탁드립니다",
+        "cancel": "닫기",
+        "confirm": "반려"
+      },
+      "cancelDialog": {
+        "title": "계약 취소",
+        "description": "취소 이유를 입력하세요 (상대방에게 통지됩니다)",
+        "reasonPlaceholder": "취소 이유를 입력",
+        "cancel": "닫기",
+        "confirm": "취소"
+      }
+    },
+    "error": {
+      "loadFailed": "데이터 로드에 실패했습니다",
+      "applicationsLoadFailed": "지원 목록 로드에 실패했습니다"
+    }
+  }
+}

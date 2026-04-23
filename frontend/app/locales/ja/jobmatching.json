@@ -1,0 +1,242 @@
+{
+  "jobmatching": {
+    "status": {
+      "posting": {
+        "DRAFT": "下書き",
+        "OPEN": "募集中",
+        "CLOSED": "募集終了",
+        "CANCELLED": "キャンセル"
+      },
+      "application": {
+        "PENDING": "応募中",
+        "ACCEPTED": "採用",
+        "REJECTED": "不採用",
+        "WITHDRAWN": "辞退"
+      },
+      "contract": {
+        "MATCHED": "成立",
+        "IN_PROGRESS": "作業中",
+        "REPORTED": "完了報告済み",
+        "APPROVED": "承認済み",
+        "REJECTED": "差戻し",
+        "CANCELLED": "キャンセル",
+        "PAID": "支払い済み"
+      }
+    },
+    "workLocationType": {
+      "ONSITE": "現地",
+      "ONLINE": "オンライン",
+      "HYBRID": "ハイブリッド"
+    },
+    "rewardType": {
+      "LUMP_SUM": "一括報酬",
+      "HOURLY": "時給",
+      "DAILY": "日給"
+    },
+    "visibilityScope": {
+      "TEAM_ONLY": "チーム内のみ",
+      "TEAM_AND_FRIENDS": "チーム＋友達",
+      "PUBLIC": "全体公開"
+    },
+    "form": {
+      "title": "求人タイトル",
+      "titlePlaceholder": "例：週末のイベントスタッフ募集",
+      "description": "業務内容",
+      "descriptionPlaceholder": "業務内容や応募条件を記入してください",
+      "category": "カテゴリ",
+      "categoryPlaceholder": "例：イベント / 軽作業 / 講師",
+      "workLocationType": "勤務形態",
+      "workAddress": "勤務先住所",
+      "workAddressPlaceholder": "例：東京都渋谷区◯◯",
+      "workStartAt": "開始日時",
+      "workEndAt": "終了日時",
+      "applicationDeadlineAt": "応募締切",
+      "rewardType": "報酬タイプ",
+      "baseRewardJpy": "基本報酬額（円）",
+      "baseRewardJpyHint": "時給/日給の場合は1時間/1日あたりの金額",
+      "capacity": "募集人数",
+      "visibilityScope": "公開範囲",
+      "visibilityScopeHint": "誰がこの求人を見られるかを選択します"
+    },
+    "validation": {
+      "titleRequired": "求人タイトルは必須です",
+      "descriptionRequired": "業務内容は必須です",
+      "workDateRequired": "勤務開始日時と終了日時を入力してください",
+      "workEndAfterStart": "終了日時は開始日時より後にしてください",
+      "deadlineRequired": "応募締切を入力してください",
+      "deadlineBeforeStart": "応募締切は勤務開始日時より前にしてください",
+      "rewardRequired": "基本報酬額を入力してください",
+      "rewardRange": "基本報酬額は1円〜10,000,000円の範囲で入力してください",
+      "capacityMin": "募集人数は1人以上にしてください",
+      "workAddressRequired": "現地勤務の場合、勤務先住所を入力してください",
+      "failed": "入力内容に誤りがあります"
+    },
+    "fee": {
+      "title": "手数料プレビュー",
+      "placeholder": "報酬額を入力すると手数料が計算されます",
+      "requester": "発注者負担",
+      "worker": "受注者受取",
+      "baseReward": "基本報酬",
+      "requesterFee": "手数料（10%＋100円）",
+      "requesterFeeTax": "手数料にかかる消費税",
+      "requesterTotal": "発注者お支払い合計",
+      "workerFee": "手数料（2%＋100円）",
+      "workerReceipt": "受注者受取額"
+    },
+    "card": {
+      "workAt": "勤務日時",
+      "workLocationType": "勤務形態",
+      "capacity": "募集人数",
+      "capacityValue": "{count}名",
+      "deadline": "応募締切",
+      "deadlineValue": "{at} まで"
+    },
+    "filter": {
+      "all": "すべて"
+    },
+    "list": {
+      "teamTitle": "チーム内求人一覧",
+      "createButton": "新規求人を作成",
+      "empty": "求人はまだありません"
+    },
+    "create": {
+      "title": "新規求人作成",
+      "description": "求人内容を入力して下書き保存または公開してください",
+      "cancel": "キャンセル",
+      "saveDraft": "下書き保存",
+      "draftSaved": "下書きを保存しました",
+      "failed": "下書き保存に失敗しました"
+    },
+    "edit": {
+      "title": "求人編集",
+      "description": "求人内容を編集できます",
+      "cancel": "キャンセル",
+      "save": "保存",
+      "saved": "保存しました",
+      "failed": "保存に失敗しました"
+    },
+    "detail": {
+      "notFound": "求人が見つかりませんでした",
+      "back": "戻る",
+      "edit": "編集",
+      "publish": "公開する",
+      "close": "募集を終了",
+      "cancel": "キャンセルする",
+      "delete": "削除",
+      "publishSucceeded": "求人を公開しました",
+      "publishFailed": "公開に失敗しました",
+      "closeSucceeded": "募集を終了しました",
+      "closeFailed": "募集終了に失敗しました",
+      "cancelSucceeded": "キャンセルしました",
+      "cancelFailed": "キャンセルに失敗しました",
+      "deleteSucceeded": "削除しました",
+      "deleteFailed": "削除に失敗しました",
+      "sections": {
+        "overview": "求人概要",
+        "applications": "応募一覧（{count}件）"
+      },
+      "fields": {
+        "workLocationType": "勤務形態",
+        "workAddress": "勤務先住所",
+        "workStartAt": "開始日時",
+        "workEndAt": "終了日時",
+        "rewardType": "報酬タイプ",
+        "baseRewardJpy": "基本報酬額",
+        "capacity": "募集人数",
+        "applicationDeadlineAt": "応募締切",
+        "visibilityScope": "公開範囲",
+        "publishAt": "公開日時"
+      }
+    },
+    "application": {
+      "empty": "応募はまだありません",
+      "applicantLabel": "応募者 #{userId}",
+      "appliedAt": "応募日時：{at}",
+      "accept": "採用する",
+      "reject": "不採用",
+      "acceptSucceeded": "採用しました",
+      "acceptFailed": "採用処理に失敗しました",
+      "rejectSucceeded": "不採用にしました",
+      "rejectFailed": "不採用処理に失敗しました",
+      "rejectDialog": {
+        "title": "応募を不採用にする",
+        "description": "理由を入力してください（応募者に通知されます）",
+        "reasonPlaceholder": "不採用理由を入力",
+        "cancel": "キャンセル",
+        "confirm": "不採用にする"
+      }
+    },
+    "workerSearch": {
+      "title": "スキマバイトを探す",
+      "description": "参加チーム内の求人から応募できます",
+      "selectTeam": "チームを選択",
+      "teamPlaceholder": "チームを選んでください",
+      "noTeams": "所属チームがありません",
+      "empty": "このチームには現在募集中の求人がありません"
+    },
+    "workerDetail": {
+      "applyButton": "この求人に応募する",
+      "applySucceeded": "応募しました",
+      "applyFailed": "応募に失敗しました",
+      "applyDialog": {
+        "title": "応募の確認",
+        "description": "この求人に応募しますか？自己PRを入力して送信してください。",
+        "selfPrPlaceholder": "自己PR・意気込みを記入（任意）",
+        "cancel": "キャンセル",
+        "confirm": "応募する"
+      }
+    },
+    "myJobs": {
+      "title": "自分の応募・契約",
+      "description": "応募中の求人や成立した契約を管理できます",
+      "tabs": {
+        "applications": "応募中",
+        "contracts": "契約"
+      },
+      "applicationsEmpty": "応募中の求人はありません",
+      "contractsEmpty": "契約中の案件はありません",
+      "jobLink": "求人 #{id}",
+      "contractLink": "契約対象求人 #{id}",
+      "withdrawButton": "応募を取り下げる",
+      "withdrawSucceeded": "応募を取り下げました",
+      "withdrawFailed": "取り下げに失敗しました"
+    },
+    "contract": {
+      "actions": {
+        "title": "契約アクション",
+        "reportCompletion": "完了を報告",
+        "approveCompletion": "完了を承認",
+        "rejectCompletion": "差し戻す",
+        "cancel": "契約をキャンセル"
+      },
+      "matchedAt": "契約成立：{at}",
+      "reportSucceeded": "完了報告を送信しました",
+      "reportFailed": "完了報告に失敗しました",
+      "approveSucceeded": "完了を承認しました",
+      "approveFailed": "承認に失敗しました",
+      "rejectReasonRequired": "差し戻し理由を入力してください",
+      "rejectSucceeded": "差し戻しました",
+      "rejectFailed": "差し戻しに失敗しました",
+      "cancelSucceeded": "契約をキャンセルしました",
+      "cancelFailed": "キャンセルに失敗しました",
+      "rejectDialog": {
+        "title": "完了報告を差し戻す",
+        "description": "差し戻し理由を入力してください（相手に通知されます）",
+        "reasonPlaceholder": "例：作業漏れがあるため再作業をお願いします",
+        "cancel": "閉じる",
+        "confirm": "差し戻す"
+      },
+      "cancelDialog": {
+        "title": "契約をキャンセル",
+        "description": "キャンセル理由を入力してください（相手に通知されます）",
+        "reasonPlaceholder": "キャンセル理由を入力",
+        "cancel": "閉じる",
+        "confirm": "キャンセルする"
+      }
+    },
+    "error": {
+      "loadFailed": "データの読み込みに失敗しました",
+      "applicationsLoadFailed": "応募一覧の読み込みに失敗しました"
+    }
+  }
+}

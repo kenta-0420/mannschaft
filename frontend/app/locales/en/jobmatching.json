@@ -1,0 +1,242 @@
+{
+  "jobmatching": {
+    "status": {
+      "posting": {
+        "DRAFT": "Draft",
+        "OPEN": "Open",
+        "CLOSED": "Closed",
+        "CANCELLED": "Cancelled"
+      },
+      "application": {
+        "PENDING": "Pending",
+        "ACCEPTED": "Accepted",
+        "REJECTED": "Rejected",
+        "WITHDRAWN": "Withdrawn"
+      },
+      "contract": {
+        "MATCHED": "Matched",
+        "IN_PROGRESS": "In Progress",
+        "REPORTED": "Completion Reported",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "CANCELLED": "Cancelled",
+        "PAID": "Paid"
+      }
+    },
+    "workLocationType": {
+      "ONSITE": "On-site",
+      "ONLINE": "Online",
+      "HYBRID": "Hybrid"
+    },
+    "rewardType": {
+      "LUMP_SUM": "Lump Sum",
+      "HOURLY": "Hourly",
+      "DAILY": "Daily"
+    },
+    "visibilityScope": {
+      "TEAM_ONLY": "Team Only",
+      "TEAM_AND_FRIENDS": "Team & Friends",
+      "PUBLIC": "Public"
+    },
+    "form": {
+      "title": "Job Title",
+      "titlePlaceholder": "e.g. Weekend event staff wanted",
+      "description": "Job Description",
+      "descriptionPlaceholder": "Describe the work and requirements",
+      "category": "Category",
+      "categoryPlaceholder": "e.g. Event / Light work / Instructor",
+      "workLocationType": "Work Location Type",
+      "workAddress": "Work Address",
+      "workAddressPlaceholder": "e.g. Shibuya-ku, Tokyo",
+      "workStartAt": "Start Date/Time",
+      "workEndAt": "End Date/Time",
+      "applicationDeadlineAt": "Application Deadline",
+      "rewardType": "Reward Type",
+      "baseRewardJpy": "Base Reward (JPY)",
+      "baseRewardJpyHint": "For hourly/daily rates, the amount per hour/day",
+      "capacity": "Capacity",
+      "visibilityScope": "Visibility Scope",
+      "visibilityScopeHint": "Select who can view this job posting"
+    },
+    "validation": {
+      "titleRequired": "Job title is required",
+      "descriptionRequired": "Job description is required",
+      "workDateRequired": "Please enter work start and end date/time",
+      "workEndAfterStart": "End date/time must be after start date/time",
+      "deadlineRequired": "Please enter the application deadline",
+      "deadlineBeforeStart": "Application deadline must be before work start time",
+      "rewardRequired": "Please enter the base reward amount",
+      "rewardRange": "Base reward must be between 1 and 10,000,000 JPY",
+      "capacityMin": "Capacity must be at least 1",
+      "workAddressRequired": "Work address is required for on-site jobs",
+      "failed": "Validation failed"
+    },
+    "fee": {
+      "title": "Fee Preview",
+      "placeholder": "Enter reward amount to calculate fees",
+      "requester": "Requester pays",
+      "worker": "Worker receives",
+      "baseReward": "Base Reward",
+      "requesterFee": "Fee (10% + 100 JPY)",
+      "requesterFeeTax": "Tax on fee",
+      "requesterTotal": "Requester Total",
+      "workerFee": "Fee (2% + 100 JPY)",
+      "workerReceipt": "Worker Net Receipt"
+    },
+    "card": {
+      "workAt": "Work Date/Time",
+      "workLocationType": "Work Location Type",
+      "capacity": "Capacity",
+      "capacityValue": "{count} people",
+      "deadline": "Application Deadline",
+      "deadlineValue": "By {at}"
+    },
+    "filter": {
+      "all": "All"
+    },
+    "list": {
+      "teamTitle": "Team Job Postings",
+      "createButton": "Create New Job",
+      "empty": "No job postings yet"
+    },
+    "create": {
+      "title": "Create New Job",
+      "description": "Enter job details and save as draft or publish",
+      "cancel": "Cancel",
+      "saveDraft": "Save Draft",
+      "draftSaved": "Draft saved",
+      "failed": "Failed to save draft"
+    },
+    "edit": {
+      "title": "Edit Job",
+      "description": "Edit job posting details",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Saved",
+      "failed": "Failed to save"
+    },
+    "detail": {
+      "notFound": "Job posting not found",
+      "back": "Back",
+      "edit": "Edit",
+      "publish": "Publish",
+      "close": "Close Posting",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "publishSucceeded": "Job posting published",
+      "publishFailed": "Failed to publish",
+      "closeSucceeded": "Posting closed",
+      "closeFailed": "Failed to close posting",
+      "cancelSucceeded": "Cancelled",
+      "cancelFailed": "Failed to cancel",
+      "deleteSucceeded": "Deleted",
+      "deleteFailed": "Failed to delete",
+      "sections": {
+        "overview": "Overview",
+        "applications": "Applications ({count})"
+      },
+      "fields": {
+        "workLocationType": "Work Location Type",
+        "workAddress": "Work Address",
+        "workStartAt": "Start Date/Time",
+        "workEndAt": "End Date/Time",
+        "rewardType": "Reward Type",
+        "baseRewardJpy": "Base Reward",
+        "capacity": "Capacity",
+        "applicationDeadlineAt": "Application Deadline",
+        "visibilityScope": "Visibility Scope",
+        "publishAt": "Published At"
+      }
+    },
+    "application": {
+      "empty": "No applications yet",
+      "applicantLabel": "Applicant #{userId}",
+      "appliedAt": "Applied at: {at}",
+      "accept": "Accept",
+      "reject": "Reject",
+      "acceptSucceeded": "Application accepted",
+      "acceptFailed": "Failed to accept application",
+      "rejectSucceeded": "Application rejected",
+      "rejectFailed": "Failed to reject application",
+      "rejectDialog": {
+        "title": "Reject Application",
+        "description": "Please enter the reason (the applicant will be notified)",
+        "reasonPlaceholder": "Enter reason for rejection",
+        "cancel": "Cancel",
+        "confirm": "Reject"
+      }
+    },
+    "workerSearch": {
+      "title": "Find Jobs",
+      "description": "Apply to jobs from your joined teams",
+      "selectTeam": "Select Team",
+      "teamPlaceholder": "Please select a team",
+      "noTeams": "You have no joined teams",
+      "empty": "No open job postings in this team"
+    },
+    "workerDetail": {
+      "applyButton": "Apply to this job",
+      "applySucceeded": "Application submitted",
+      "applyFailed": "Failed to apply",
+      "applyDialog": {
+        "title": "Confirm Application",
+        "description": "Apply to this job posting? Enter your self-introduction and submit.",
+        "selfPrPlaceholder": "Self-PR / motivation (optional)",
+        "cancel": "Cancel",
+        "confirm": "Apply"
+      }
+    },
+    "myJobs": {
+      "title": "My Applications & Contracts",
+      "description": "Manage your applications and matched contracts",
+      "tabs": {
+        "applications": "Applications",
+        "contracts": "Contracts"
+      },
+      "applicationsEmpty": "No active applications",
+      "contractsEmpty": "No active contracts",
+      "jobLink": "Job #{id}",
+      "contractLink": "Contract for Job #{id}",
+      "withdrawButton": "Withdraw Application",
+      "withdrawSucceeded": "Application withdrawn",
+      "withdrawFailed": "Failed to withdraw"
+    },
+    "contract": {
+      "actions": {
+        "title": "Contract Actions",
+        "reportCompletion": "Report Completion",
+        "approveCompletion": "Approve Completion",
+        "rejectCompletion": "Reject",
+        "cancel": "Cancel Contract"
+      },
+      "matchedAt": "Matched at: {at}",
+      "reportSucceeded": "Completion reported",
+      "reportFailed": "Failed to report completion",
+      "approveSucceeded": "Completion approved",
+      "approveFailed": "Failed to approve",
+      "rejectReasonRequired": "Please enter a rejection reason",
+      "rejectSucceeded": "Rejected",
+      "rejectFailed": "Failed to reject",
+      "cancelSucceeded": "Contract cancelled",
+      "cancelFailed": "Failed to cancel",
+      "rejectDialog": {
+        "title": "Reject Completion Report",
+        "description": "Please enter the reason (the counterparty will be notified)",
+        "reasonPlaceholder": "e.g. Please redo the missing work",
+        "cancel": "Close",
+        "confirm": "Reject"
+      },
+      "cancelDialog": {
+        "title": "Cancel Contract",
+        "description": "Please enter the cancellation reason (the counterparty will be notified)",
+        "reasonPlaceholder": "Enter reason for cancellation",
+        "cancel": "Close",
+        "confirm": "Cancel"
+      }
+    },
+    "error": {
+      "loadFailed": "Failed to load data",
+      "applicationsLoadFailed": "Failed to load applications"
+    }
+  }
+}
