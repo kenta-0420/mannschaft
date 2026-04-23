@@ -16,8 +16,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'accept', applicationId: number): void
-  (e: 'reject', applicationId: number): void
+  (e: 'accept' | 'reject', applicationId: number): void
 }>()
 
 const { t, locale } = useI18n()

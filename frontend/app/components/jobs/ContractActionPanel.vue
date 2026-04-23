@@ -28,10 +28,7 @@ export type ContractActionKind =
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
-  (e: 'report-completion'): void
-  (e: 'approve-completion'): void
-  (e: 'reject-completion'): void
-  (e: 'cancel'): void
+  (e: 'report-completion' | 'approve-completion' | 'reject-completion' | 'cancel'): void
 }>()
 
 const { t } = useI18n()

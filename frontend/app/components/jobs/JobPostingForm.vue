@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type {
-  CreateJobPostingRequest,
   JobPostingResponse,
   RewardType,
   VisibilityScope,

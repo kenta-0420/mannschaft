@@ -95,7 +95,7 @@ export function useJobPostingApi() {
 
   /** 求人を論理削除する（応募者ゼロ件のみ）。BE: DELETE /api/v1/jobs/{id} */
   async function deleteJob(jobId: number) {
-    return api<void>(`/api/v1/jobs/${jobId}`, {
+    return api<never>(`/api/v1/jobs/${jobId}`, {
       method: 'DELETE',
     })
   }
