@@ -1,0 +1,147 @@
+{
+  "shift": {
+    "page": {
+      "title": "Turno",
+      "myShift": "Mi Turno",
+      "submitRequest": "Enviar Solicitud",
+      "availability": "Disponibilidad por Defecto",
+      "schedules": "Lista de Horarios",
+      "detail": "Detalle",
+      "edit": "Editar",
+      "requests": "Solicitudes",
+      "workConstraints": "Restricciones de Trabajo"
+    },
+    "status": {
+      "draft": "Borrador",
+      "collecting": "Recopilando",
+      "adjusting": "Ajustando",
+      "published": "Publicado",
+      "archived": "Archivado"
+    },
+    "preference": {
+      "preferred": "Prefiero trabajar",
+      "available": "Sin preferencia",
+      "weakRest": "Puedo trabajar si es necesario",
+      "strongRest": "Prefiero descansar",
+      "absoluteRest": "Día libre obligatorio"
+    },
+    "action": {
+      "create": "Crear",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "publish": "Publicar",
+      "copy": "Copiar",
+      "submit": "Enviar",
+      "withdraw": "Retirar",
+      "assign": "Asignar",
+      "unassign": "Desasignar",
+      "reminder": "Enviar Recordatorio",
+      "export": "Exportar",
+      "reset": "Restablecer"
+    },
+    "field": {
+      "title": "Título",
+      "period": "Período",
+      "startDate": "Fecha de Inicio",
+      "endDate": "Fecha de Fin",
+      "slotDate": "Fecha",
+      "startTime": "Hora de Inicio",
+      "endTime": "Hora de Fin",
+      "position": "Posición",
+      "requiredHeadcount": "Personal Requerido",
+      "assignedMembers": "Miembros Asignados",
+      "note": "Nota",
+      "preference": "Preferencia",
+      "preferenceNote": "Nota de Preferencia",
+      "deadline": "Plazo de Solicitud",
+      "reason": "Razón"
+    },
+    "workConstraint": {
+      "title": "Restricciones de Trabajo",
+      "maxMonthlyHours": "Horas Máximas Mensuales",
+      "maxMonthlyDays": "Días Máximos Mensuales",
+      "maxConsecutiveDays": "Días Consecutivos Máximos",
+      "maxNightShiftsPerMonth": "Turnos Nocturnos Máximos por Mes",
+      "minRestHoursBetweenShifts": "Horas Mínimas de Descanso entre Turnos",
+      "note": "Nota",
+      "teamDefault": "Valor por Defecto del Equipo",
+      "individual": "Configuración Individual"
+    },
+    "validation": {
+      "atLeastOneConstraint": "Por favor especifique al menos una restricción"
+    },
+    "summary": {
+      "totalMembers": "Total de Miembros",
+      "submitted": "Enviado",
+      "pending": "Pendiente",
+      "preferred": "Prefiero Trabajar",
+      "available": "Sin Preferencia",
+      "weakRest": "Puedo Trabajar Si Es Necesario",
+      "strongRest": "Prefiero Descansar",
+      "absoluteRest": "Día Libre Obligatorio"
+    },
+    "payment": {
+      "hourlyRate": "Tarifa por Hora",
+      "estimatedPay": "Pago Estimado",
+      "paySummary": "Resumen de Pago"
+    },
+    "swap": {
+      "create": "Crear Solicitud de Cambio",
+      "accept": "Aceptar",
+      "reject": "Rechazar",
+      "approve": "Aprobar",
+      "pending": "Pendiente de Aprobación",
+      "openCall": "Convocatoria Abierta",
+      "claimed": "Reclamado"
+    },
+    "reminder": {
+      "send": "Enviar Recordatorio",
+      "sent": "Recordatorio Enviado"
+    },
+    "empty": {
+      "noSchedules": "No hay horarios",
+      "noShifts": "No hay turnos",
+      "noRequests": "No hay solicitudes",
+      "noConstraints": "No hay restricciones de trabajo configuradas"
+    },
+    "notification": {
+      "publishSuccess": "Turno publicado exitosamente",
+      "submitSuccess": "Solicitud enviada exitosamente",
+      "deleteSuccess": "Eliminado exitosamente",
+      "updateSuccess": "Actualizado exitosamente",
+      "errorLoad": "Error al cargar datos",
+      "errorSubmit": "Error al enviar",
+      "errorDelete": "Error al eliminar",
+      "errorUpdate": "Error al actualizar"
+    },
+    "view": {
+      "monthly": "Vista Mensual",
+      "weekly": "Vista Semanal",
+      "daily": "Vista Diaria",
+      "today": "Hoy",
+      "prev": "Período anterior",
+      "next": "Período siguiente"
+    },
+    "legend": "Leyenda",
+    "availabilityDescription": "Configure sus preferencias predeterminadas por día de la semana. Se usarán como valores iniciales al enviar solicitudes de turno.",
+    "bulkSet": {
+      "title": "Configuración Masiva",
+      "selectAll": "Seleccionar Todo",
+      "clearAll": "Limpiar Todo",
+      "applyToAll": "Aplicar a Todos los Turnos",
+      "applyToWeekday": "Aplicar a Días Laborales",
+      "applyToWeekend": "Aplicar a Fines de Semana",
+      "confirm": "Aplicar"
+    },
+    "preview": {
+      "title": "Confirmar Envío",
+      "preferredCount": "Prefiero trabajar: {count}",
+      "availableCount": "Sin preferencia: {count}",
+      "weakRestCount": "Puedo trabajar si es necesario: {count}",
+      "strongRestCount": "Prefiero descansar: {count}",
+      "absoluteRestCount": "Día libre obligatorio: {count}",
+      "totalCount": "Total: {count}",
+      "confirmSubmit": "¿Enviar con esta configuración?"
+    }
+  }
+}

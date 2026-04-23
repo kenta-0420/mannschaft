@@ -1,0 +1,147 @@
+{
+  "shift": {
+    "page": {
+      "title": "シフト",
+      "myShift": "マイシフト",
+      "submitRequest": "希望提出",
+      "availability": "デフォルト可否",
+      "schedules": "スケジュール一覧",
+      "detail": "詳細",
+      "edit": "編集",
+      "requests": "希望一覧",
+      "workConstraints": "勤務制約"
+    },
+    "status": {
+      "draft": "下書き",
+      "collecting": "希望収集中",
+      "adjusting": "調整中",
+      "published": "確定済み",
+      "archived": "アーカイブ"
+    },
+    "preference": {
+      "preferred": "出勤希望",
+      "available": "指定なし",
+      "weakRest": "出れなくはない",
+      "strongRest": "できれば休み",
+      "absoluteRest": "絶対休み"
+    },
+    "action": {
+      "create": "作成",
+      "edit": "編集",
+      "delete": "削除",
+      "publish": "確定公開",
+      "copy": "複製",
+      "submit": "提出",
+      "withdraw": "取り下げ",
+      "assign": "割り当て",
+      "unassign": "割り当て解除",
+      "reminder": "リマインダー送信",
+      "export": "エクスポート",
+      "reset": "リセット"
+    },
+    "field": {
+      "title": "タイトル",
+      "period": "期間",
+      "startDate": "開始日",
+      "endDate": "終了日",
+      "slotDate": "日付",
+      "startTime": "開始時刻",
+      "endTime": "終了時刻",
+      "position": "ポジション",
+      "requiredHeadcount": "必要人数",
+      "assignedMembers": "割当メンバー",
+      "note": "メモ",
+      "preference": "希望",
+      "preferenceNote": "希望メモ",
+      "deadline": "希望締切",
+      "reason": "理由"
+    },
+    "workConstraint": {
+      "title": "勤務制約",
+      "maxMonthlyHours": "月最大勤務時間",
+      "maxMonthlyDays": "月最大勤務日数",
+      "maxConsecutiveDays": "最大連続勤務日数",
+      "maxNightShiftsPerMonth": "月最大夜勤回数",
+      "minRestHoursBetweenShifts": "シフト間最低休憩時間",
+      "note": "備考",
+      "teamDefault": "チームデフォルト",
+      "individual": "個人設定"
+    },
+    "validation": {
+      "atLeastOneConstraint": "少なくとも1つの項目を指定してください"
+    },
+    "summary": {
+      "totalMembers": "総メンバー数",
+      "submitted": "提出済み",
+      "pending": "未提出",
+      "preferred": "出勤希望",
+      "available": "指定なし",
+      "weakRest": "出れなくはない",
+      "strongRest": "できれば休み",
+      "absoluteRest": "絶対休み"
+    },
+    "payment": {
+      "hourlyRate": "時給",
+      "estimatedPay": "給与概算",
+      "paySummary": "給与サマリー"
+    },
+    "swap": {
+      "create": "交代依頼を作成",
+      "accept": "承諾",
+      "reject": "却下",
+      "approve": "承認",
+      "pending": "承認待ち",
+      "openCall": "オープン募集",
+      "claimed": "手挙げ済み"
+    },
+    "reminder": {
+      "send": "リマインダーを送信",
+      "sent": "リマインダー送信済み"
+    },
+    "empty": {
+      "noSchedules": "スケジュールがありません",
+      "noShifts": "シフトがありません",
+      "noRequests": "希望提出がありません",
+      "noConstraints": "勤務制約が設定されていません"
+    },
+    "notification": {
+      "publishSuccess": "シフトを公開しました",
+      "submitSuccess": "希望を提出しました",
+      "deleteSuccess": "削除しました",
+      "updateSuccess": "更新しました",
+      "errorLoad": "データの取得に失敗しました",
+      "errorSubmit": "提出に失敗しました",
+      "errorDelete": "削除に失敗しました",
+      "errorUpdate": "更新に失敗しました"
+    },
+    "view": {
+      "monthly": "月ビュー",
+      "weekly": "週ビュー",
+      "daily": "日ビュー",
+      "today": "今日",
+      "prev": "前の期間",
+      "next": "次の期間"
+    },
+    "legend": "凡例",
+    "availabilityDescription": "曜日ごとのデフォルト希望を設定します。希望提出時の初期値として使われます。",
+    "bulkSet": {
+      "title": "一括設定",
+      "selectAll": "全て選択",
+      "clearAll": "全てクリア",
+      "applyToAll": "全スロットに適用",
+      "applyToWeekday": "平日に適用",
+      "applyToWeekend": "休日に適用",
+      "confirm": "適用する"
+    },
+    "preview": {
+      "title": "提出前確認",
+      "preferredCount": "出勤希望: {count} 件",
+      "availableCount": "指定なし: {count} 件",
+      "weakRestCount": "出れなくはない: {count} 件",
+      "strongRestCount": "できれば休み: {count} 件",
+      "absoluteRestCount": "絶対休み: {count} 件",
+      "totalCount": "合計: {count} 件",
+      "confirmSubmit": "この内容で提出しますか？"
+    }
+  }
+}

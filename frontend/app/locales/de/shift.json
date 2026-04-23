@@ -1,0 +1,147 @@
+{
+  "shift": {
+    "page": {
+      "title": "Schicht",
+      "myShift": "Meine Schicht",
+      "submitRequest": "Wunsch einreichen",
+      "availability": "Standard-Verfügbarkeit",
+      "schedules": "Schichtplan-Liste",
+      "detail": "Detail",
+      "edit": "Bearbeiten",
+      "requests": "Anfragen",
+      "workConstraints": "Arbeitsbeschränkungen"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "collecting": "Sammlung läuft",
+      "adjusting": "Anpassung",
+      "published": "Veröffentlicht",
+      "archived": "Archiviert"
+    },
+    "preference": {
+      "preferred": "Arbeit bevorzugt",
+      "available": "Keine Präferenz",
+      "weakRest": "Kann arbeiten wenn nötig",
+      "strongRest": "Ruhe bevorzugt",
+      "absoluteRest": "Freier Tag erforderlich"
+    },
+    "action": {
+      "create": "Erstellen",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "publish": "Veröffentlichen",
+      "copy": "Kopieren",
+      "submit": "Einreichen",
+      "withdraw": "Zurückziehen",
+      "assign": "Zuweisen",
+      "unassign": "Zuweisung aufheben",
+      "reminder": "Erinnerung senden",
+      "export": "Exportieren",
+      "reset": "Zurücksetzen"
+    },
+    "field": {
+      "title": "Titel",
+      "period": "Zeitraum",
+      "startDate": "Startdatum",
+      "endDate": "Enddatum",
+      "slotDate": "Datum",
+      "startTime": "Startzeit",
+      "endTime": "Endzeit",
+      "position": "Position",
+      "requiredHeadcount": "Benötigte Mitarbeiterzahl",
+      "assignedMembers": "Zugewiesene Mitglieder",
+      "note": "Notiz",
+      "preference": "Präferenz",
+      "preferenceNote": "Präferenznotiz",
+      "deadline": "Einsendeschluss",
+      "reason": "Grund"
+    },
+    "workConstraint": {
+      "title": "Arbeitsbeschränkungen",
+      "maxMonthlyHours": "Max. monatliche Arbeitsstunden",
+      "maxMonthlyDays": "Max. monatliche Arbeitstage",
+      "maxConsecutiveDays": "Max. aufeinanderfolgende Arbeitstage",
+      "maxNightShiftsPerMonth": "Max. Nachtschichten pro Monat",
+      "minRestHoursBetweenShifts": "Min. Ruhezeit zwischen Schichten",
+      "note": "Anmerkung",
+      "teamDefault": "Team-Standard",
+      "individual": "Individuelle Einstellung"
+    },
+    "validation": {
+      "atLeastOneConstraint": "Bitte geben Sie mindestens eine Beschränkung an"
+    },
+    "summary": {
+      "totalMembers": "Gesamtmitglieder",
+      "submitted": "Eingereicht",
+      "pending": "Ausstehend",
+      "preferred": "Arbeit bevorzugt",
+      "available": "Keine Präferenz",
+      "weakRest": "Kann arbeiten wenn nötig",
+      "strongRest": "Ruhe bevorzugt",
+      "absoluteRest": "Freier Tag erforderlich"
+    },
+    "payment": {
+      "hourlyRate": "Stundenlohn",
+      "estimatedPay": "Geschätzter Verdienst",
+      "paySummary": "Gehaltsübersicht"
+    },
+    "swap": {
+      "create": "Schichttausch beantragen",
+      "accept": "Annehmen",
+      "reject": "Ablehnen",
+      "approve": "Genehmigen",
+      "pending": "Genehmigung ausstehend",
+      "openCall": "Offene Anfrage",
+      "claimed": "Beansprucht"
+    },
+    "reminder": {
+      "send": "Erinnerung senden",
+      "sent": "Erinnerung gesendet"
+    },
+    "empty": {
+      "noSchedules": "Keine Schichtpläne vorhanden",
+      "noShifts": "Keine Schichten vorhanden",
+      "noRequests": "Keine Anfragen vorhanden",
+      "noConstraints": "Keine Arbeitsbeschränkungen festgelegt"
+    },
+    "notification": {
+      "publishSuccess": "Schicht erfolgreich veröffentlicht",
+      "submitSuccess": "Anfrage erfolgreich eingereicht",
+      "deleteSuccess": "Erfolgreich gelöscht",
+      "updateSuccess": "Erfolgreich aktualisiert",
+      "errorLoad": "Daten konnten nicht geladen werden",
+      "errorSubmit": "Einreichung fehlgeschlagen",
+      "errorDelete": "Löschen fehlgeschlagen",
+      "errorUpdate": "Aktualisierung fehlgeschlagen"
+    },
+    "view": {
+      "monthly": "Monatsansicht",
+      "weekly": "Wochenansicht",
+      "daily": "Tagesansicht",
+      "today": "Heute",
+      "prev": "Vorheriger Zeitraum",
+      "next": "Nächster Zeitraum"
+    },
+    "legend": "Legende",
+    "availabilityDescription": "Legen Sie Ihre Standardpräferenzen nach Wochentag fest. Diese werden als Anfangswerte beim Einreichen von Schichtanfragen verwendet.",
+    "bulkSet": {
+      "title": "Masseneinstellung",
+      "selectAll": "Alle auswählen",
+      "clearAll": "Alle löschen",
+      "applyToAll": "Auf alle Slots anwenden",
+      "applyToWeekday": "Auf Wochentage anwenden",
+      "applyToWeekend": "Auf Wochenenden anwenden",
+      "confirm": "Anwenden"
+    },
+    "preview": {
+      "title": "Einreichung bestätigen",
+      "preferredCount": "Arbeit bevorzugt: {count}",
+      "availableCount": "Keine Präferenz: {count}",
+      "weakRestCount": "Kann arbeiten wenn nötig: {count}",
+      "strongRestCount": "Ruhe bevorzugt: {count}",
+      "absoluteRestCount": "Freier Tag erforderlich: {count}",
+      "totalCount": "Gesamt: {count}",
+      "confirmSubmit": "Mit diesen Einstellungen einreichen?"
+    }
+  }
+}

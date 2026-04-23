@@ -1,0 +1,147 @@
+{
+  "shift": {
+    "page": {
+      "title": "Shift",
+      "myShift": "My Shift",
+      "submitRequest": "Submit Request",
+      "availability": "Default Availability",
+      "schedules": "Schedule List",
+      "detail": "Detail",
+      "edit": "Edit",
+      "requests": "Requests",
+      "workConstraints": "Work Constraints"
+    },
+    "status": {
+      "draft": "Draft",
+      "collecting": "Collecting",
+      "adjusting": "Adjusting",
+      "published": "Published",
+      "archived": "Archived"
+    },
+    "preference": {
+      "preferred": "Work preferred",
+      "available": "No preference",
+      "weakRest": "Can work if needed",
+      "strongRest": "Prefer day off",
+      "absoluteRest": "Day off required"
+    },
+    "action": {
+      "create": "Create",
+      "edit": "Edit",
+      "delete": "Delete",
+      "publish": "Publish",
+      "copy": "Copy",
+      "submit": "Submit",
+      "withdraw": "Withdraw",
+      "assign": "Assign",
+      "unassign": "Unassign",
+      "reminder": "Send Reminder",
+      "export": "Export",
+      "reset": "Reset"
+    },
+    "field": {
+      "title": "Title",
+      "period": "Period",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "slotDate": "Date",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "position": "Position",
+      "requiredHeadcount": "Required Headcount",
+      "assignedMembers": "Assigned Members",
+      "note": "Note",
+      "preference": "Preference",
+      "preferenceNote": "Preference Note",
+      "deadline": "Request Deadline",
+      "reason": "Reason"
+    },
+    "workConstraint": {
+      "title": "Work Constraints",
+      "maxMonthlyHours": "Max Monthly Hours",
+      "maxMonthlyDays": "Max Monthly Days",
+      "maxConsecutiveDays": "Max Consecutive Days",
+      "maxNightShiftsPerMonth": "Max Night Shifts per Month",
+      "minRestHoursBetweenShifts": "Min Rest Hours Between Shifts",
+      "note": "Note",
+      "teamDefault": "Team Default",
+      "individual": "Individual"
+    },
+    "validation": {
+      "atLeastOneConstraint": "Please specify at least one constraint"
+    },
+    "summary": {
+      "totalMembers": "Total Members",
+      "submitted": "Submitted",
+      "pending": "Pending",
+      "preferred": "Work Preferred",
+      "available": "No Preference",
+      "weakRest": "Can Work If Needed",
+      "strongRest": "Prefer Day Off",
+      "absoluteRest": "Day Off Required"
+    },
+    "payment": {
+      "hourlyRate": "Hourly Rate",
+      "estimatedPay": "Estimated Pay",
+      "paySummary": "Pay Summary"
+    },
+    "swap": {
+      "create": "Create Swap Request",
+      "accept": "Accept",
+      "reject": "Reject",
+      "approve": "Approve",
+      "pending": "Pending Approval",
+      "openCall": "Open Call",
+      "claimed": "Claimed"
+    },
+    "reminder": {
+      "send": "Send Reminder",
+      "sent": "Reminder Sent"
+    },
+    "empty": {
+      "noSchedules": "No schedules found",
+      "noShifts": "No shifts found",
+      "noRequests": "No requests found",
+      "noConstraints": "No work constraints set"
+    },
+    "notification": {
+      "publishSuccess": "Shift published successfully",
+      "submitSuccess": "Request submitted successfully",
+      "deleteSuccess": "Deleted successfully",
+      "updateSuccess": "Updated successfully",
+      "errorLoad": "Failed to load data",
+      "errorSubmit": "Failed to submit",
+      "errorDelete": "Failed to delete",
+      "errorUpdate": "Failed to update"
+    },
+    "view": {
+      "monthly": "Monthly View",
+      "weekly": "Weekly View",
+      "daily": "Daily View",
+      "today": "Today",
+      "prev": "Previous period",
+      "next": "Next period"
+    },
+    "legend": "Legend",
+    "availabilityDescription": "Set your default preferences by day of week. These will be used as initial values when submitting shift requests.",
+    "bulkSet": {
+      "title": "Bulk Set",
+      "selectAll": "Select All",
+      "clearAll": "Clear All",
+      "applyToAll": "Apply to All Slots",
+      "applyToWeekday": "Apply to Weekdays",
+      "applyToWeekend": "Apply to Weekends",
+      "confirm": "Apply"
+    },
+    "preview": {
+      "title": "Confirm Submission",
+      "preferredCount": "Work preferred: {count}",
+      "availableCount": "No preference: {count}",
+      "weakRestCount": "Can work if needed: {count}",
+      "strongRestCount": "Prefer day off: {count}",
+      "absoluteRestCount": "Day off required: {count}",
+      "totalCount": "Total: {count}",
+      "confirmSubmit": "Submit with these settings?"
+    }
+  }
+}
