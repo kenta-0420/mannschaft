@@ -141,13 +141,12 @@ public class SurveyResultService {
         }
 
         List<SurveyTargetEntity> targets = targetRepository.findBySurveyId(surveyId);
-        Set<Long> respondedUserIds = responseRepository.findBySurveyIdOrderByCreatedAtAsc(surveyId)
-                .stream()
-                .map(SurveyResponseEntity::getUserId)
-                .collect(Collectors.toCollection(HashSet::new));
+        List<SurveyResponseEntity> allResponses = responseRepository.findBySurveyIdOrderByCreatedAtAsc(surveyId);
 
+        Set<Long> respondedUserIds = new HashSet<>();
         Map<Long, SurveyResponseEntity> firstResponseByUser = new HashMap<>();
-        for (SurveyResponseEntity r : responseRepository.findBySurveyIdOrderByCreatedAtAsc(surveyId)) {
+        for (SurveyResponseEntity r : allResponses) {
+            respondedUserIds.add(r.getUserId());
             firstResponseByUser.putIfAbsent(r.getUserId(), r);
         }
 
