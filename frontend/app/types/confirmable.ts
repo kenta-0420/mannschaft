@@ -2,6 +2,14 @@ export type ConfirmableNotificationStatus = 'ACTIVE' | 'COMPLETED' | 'EXPIRED' |
 export type ConfirmableNotificationPriority = 'NORMAL' | 'HIGH' | 'URGENT'
 export type ConfirmableConfirmedVia = 'APP' | 'TOKEN' | 'BULK'
 
+/**
+ * 未確認者リストの公開範囲
+ * - HIDDEN: 表示しない
+ * - CREATOR_AND_ADMIN: 作成者・管理者のみ
+ * - ALL_MEMBERS: 全員に公開
+ */
+export type UnconfirmedVisibility = 'HIDDEN' | 'CREATOR_AND_ADMIN' | 'ALL_MEMBERS'
+
 export interface ConfirmableNotificationSettings {
   id?: number
   scopeType: 'TEAM' | 'ORGANIZATION'
@@ -9,6 +17,8 @@ export interface ConfirmableNotificationSettings {
   defaultFirstReminderMinutes: number | null
   defaultSecondReminderMinutes: number | null
   senderAlertThresholdPercent: number
+  /** デフォルトの未確認者リスト公開範囲 */
+  defaultUnconfirmedVisibility: UnconfirmedVisibility
 }
 
 export interface ConfirmableNotificationSummary {
@@ -22,6 +32,8 @@ export interface ConfirmableNotificationSummary {
   totalRecipientCount: number
   confirmedCount: number
   createdAt: string
+  /** この通知における未確認者リストの公開範囲 */
+  unconfirmedVisibility: UnconfirmedVisibility
 }
 
 export interface ConfirmableNotificationDetail extends ConfirmableNotificationSummary {
@@ -68,12 +80,16 @@ export interface CreateConfirmableNotificationRequest {
   actionUrl?: string
   templateId?: number
   recipientUserIds: number[]
+  /** 未確認者リストの公開範囲（未指定時はサーバ側でスコープ設定にフォールバック） */
+  unconfirmedVisibility?: UnconfirmedVisibility | null
 }
 
 export interface UpdateConfirmableNotificationSettingsRequest {
   defaultFirstReminderMinutes: number | null
   defaultSecondReminderMinutes: number | null
   senderAlertThresholdPercent: number
+  /** デフォルトの未確認者リスト公開範囲 */
+  defaultUnconfirmedVisibility: UnconfirmedVisibility
 }
 
 export interface CreateConfirmableNotificationTemplateRequest {

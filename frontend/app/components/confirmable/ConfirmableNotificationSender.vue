@@ -3,7 +3,13 @@ import type {
   ConfirmableNotificationTemplate,
   ConfirmableNotificationPriority,
   CreateConfirmableNotificationRequest,
+  UnconfirmedVisibility,
 } from '~/types/confirmable'
+
+/** 未確認者リスト公開範囲を localStorage に保存するためのキー */
+const UNCONFIRMED_VISIBILITY_STORAGE_KEY = 'confirmable.lastUnconfirmedVisibility'
+/** デフォルトの未確認者リスト公開範囲 */
+const DEFAULT_UNCONFIRMED_VISIBILITY: UnconfirmedVisibility = 'CREATOR_AND_ADMIN'
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
@@ -28,6 +34,20 @@ const body = ref('')
 const priority = ref<ConfirmableNotificationPriority>('NORMAL')
 const deadlineAt = ref<Date | null>(null)
 const recipientUserIdsInput = ref('')
+const unconfirmedVisibility = ref<UnconfirmedVisibility>(DEFAULT_UNCONFIRMED_VISIBILITY)
+const showAdvanced = ref(false)
+
+/** 未確認者リスト公開範囲の選択肢 */
+const unconfirmedVisibilityOptions = computed(() => [
+  { label: t('confirmable.unconfirmed_visibility.HIDDEN'), value: 'HIDDEN' as const },
+  { label: t('confirmable.unconfirmed_visibility.CREATOR_AND_ADMIN'), value: 'CREATOR_AND_ADMIN' as const },
+  { label: t('confirmable.unconfirmed_visibility.ALL_MEMBERS'), value: 'ALL_MEMBERS' as const },
+])
+
+/** 与えられた値が UnconfirmedVisibility として有効か判定する */
+function isValidVisibility(value: string | null): value is UnconfirmedVisibility {
+  return value === 'HIDDEN' || value === 'CREATOR_AND_ADMIN' || value === 'ALL_MEMBERS'
+}
 
 /** 優先度の選択肢 */
 const priorityOptions = computed(() => [
@@ -84,10 +104,21 @@ async function onSend() {
     if (body.value.trim()) request.body = body.value.trim()
     if (deadlineAt.value) request.deadlineAt = deadlineAt.value.toISOString()
     if (selectedTemplateId.value !== null) request.templateId = selectedTemplateId.value
+    request.unconfirmedVisibility = unconfirmedVisibility.value
 
     await sendNotification(props.scopeType, props.scopeId, request)
 
-    // フォームリセット
+    // 送信成功時に未確認者リスト公開範囲を localStorage へ保存（次回送信時に復元）
+    if (import.meta.client) {
+      try {
+        window.localStorage.setItem(UNCONFIRMED_VISIBILITY_STORAGE_KEY, unconfirmedVisibility.value)
+      } catch (storageErr) {
+        // localStorage 利用不可（プライベートモード等）の場合はログのみ
+        console.warn('未確認者リスト公開範囲の永続化に失敗しました', storageErr)
+      }
+    }
+
+    // フォームリセット（unconfirmedVisibility は次回も同じ設定が使われるよう維持）
     title.value = ''
     body.value = ''
     priority.value = 'NORMAL'
@@ -117,7 +148,24 @@ async function loadTemplates() {
   }
 }
 
-onMounted(() => loadTemplates())
+/** localStorage から未確認者リスト公開範囲の前回設定を復元する */
+function restoreUnconfirmedVisibility() {
+  if (!import.meta.client) return
+  try {
+    const stored = window.localStorage.getItem(UNCONFIRMED_VISIBILITY_STORAGE_KEY)
+    if (isValidVisibility(stored)) {
+      unconfirmedVisibility.value = stored
+    }
+  } catch (err) {
+    // localStorage 利用不可の場合はデフォルト値のまま
+    console.warn('未確認者リスト公開範囲の復元に失敗しました', err)
+  }
+}
+
+onMounted(() => {
+  restoreUnconfirmedVisibility()
+  loadTemplates()
+})
 </script>
 
 <template>
@@ -200,6 +248,37 @@ onMounted(() => loadTemplates())
           class="w-full"
         />
         <p class="text-xs text-surface-400">カンマ区切りでUserIDを入力してください</p>
+      </div>
+
+      <!-- 詳細設定（折り畳み） -->
+      <div class="mt-2">
+        <button
+          type="button"
+          class="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          @click="showAdvanced = !showAdvanced"
+        >
+          <i :class="showAdvanced ? 'pi pi-chevron-down' : 'pi pi-chevron-right'" class="text-xs" />
+          {{ $t('label.advanced_settings') }}
+        </button>
+
+        <div v-if="showAdvanced" class="mt-3 flex flex-col gap-4 rounded border border-surface-200 p-3">
+          <!-- 未確認者リストの公開範囲 -->
+          <div class="flex flex-col gap-1">
+            <label class="text-sm font-medium text-surface-700">
+              {{ $t('confirmable.unconfirmed_visibility.label') }}
+            </label>
+            <Select
+              v-model="unconfirmedVisibility"
+              :options="unconfirmedVisibilityOptions"
+              option-label="label"
+              option-value="value"
+              class="w-full"
+            />
+            <p class="text-xs text-surface-400">
+              {{ $t('confirmable.unconfirmed_visibility.help') }}
+            </p>
+          </div>
+        </div>
       </div>
 
       <!-- 送信ボタン -->

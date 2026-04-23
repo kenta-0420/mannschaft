@@ -2,7 +2,7 @@
 import type { NotificationResponse } from '~/types/notification'
 
 const { getNotifications, markAsRead, markAsUnread, markAllAsRead } = useNotificationApi()
-const { confirmNotification } = useConfirmableNotificationApi()
+const { confirmNotification, getNotificationDetail } = useConfirmableNotificationApi()
 const { showError } = useNotification()
 const router = useRouter()
 const { relativeTime } = useRelativeTime()
@@ -12,6 +12,15 @@ const loading = ref(false)
 const nextCursor = ref<number | null>(null)
 const hasNext = ref(false)
 const filter = ref<'all' | 'unread'>('all')
+
+/** 確認通知の sourceId をキーとした未確認サマリのキャッシュ */
+interface UnconfirmedSummary {
+  unconfirmedCount: number
+  totalRecipientCount: number
+  /** 公開範囲。ALL_MEMBERS かつメンバーでも閲覧可能な場合に未確認数を表示する */
+  visibility: import('~/types/confirmable').UnconfirmedVisibility
+}
+const confirmableSummaries = ref<Record<number, UnconfirmedSummary>>({})
 
 async function loadNotifications(cursor?: number) {
   loading.value = true
@@ -27,6 +36,8 @@ async function loadNotifications(cursor?: number) {
     }
     nextCursor.value = res.meta.nextCursor
     hasNext.value = res.meta.hasNext
+    // 確認通知のサマリ（未確認件数等）を並列取得（権限が無いものは静かにスキップ）
+    await loadConfirmableSummariesForList()
   } catch {
     showError('通知の取得に失敗しました')
   } finally {
@@ -93,11 +104,45 @@ function isConfirmableNotification(notif: NotificationResponse): boolean {
 }
 
 /** 確認通知の期限日を取得する（sourceIdを使って別途取得する場合のプレースホルダ。現状はbodyから判断） */
-function getConfirmableDeadlineFromBody(notif: NotificationResponse): string | null {
+function getConfirmableDeadlineFromBody(_notif: NotificationResponse): string | null {
   // NotificationResponseにdeadlineAtは含まれないため、
   // actionUrlや本文に期限情報がある場合は表示する
   // 将来的にAPIレスポンスに追加されたら更新すること
   return null
+}
+
+/**
+ * 確認通知の詳細を取得して未確認サマリをキャッシュする。
+ * 認可分岐により、メンバーで閲覧不可の場合（HIDDEN/CREATOR_AND_ADMIN）はサーバが 403 を返すので
+ * その場合はキャッシュに保存しない（無視して通常表示にフォールバック）。
+ */
+async function loadConfirmableSummary(notif: NotificationResponse) {
+  if (!notif.sourceId || notif.sourceId in confirmableSummaries.value) return
+  const scopeType = notif.scopeType
+  if (!notif.scopeId || (scopeType !== 'TEAM' && scopeType !== 'ORGANIZATION')) return
+  try {
+    const res = await getNotificationDetail(scopeType, notif.scopeId, notif.sourceId)
+    const detail = res.data
+    confirmableSummaries.value[notif.sourceId] = {
+      unconfirmedCount: detail.totalRecipientCount - detail.confirmedCount,
+      totalRecipientCount: detail.totalRecipientCount,
+      visibility: detail.unconfirmedVisibility,
+    }
+  } catch {
+    // 認可エラー等は無視（メンバーが閲覧権限を持たないケース）
+  }
+}
+
+/** 通知一覧読み込み後に確認通知のサマリを並列取得する */
+async function loadConfirmableSummariesForList() {
+  const targets = notifications.value.filter(n => isConfirmableNotification(n) && n.sourceId)
+  await Promise.all(targets.map(n => loadConfirmableSummary(n)))
+}
+
+/** 通知に紐づく未確認サマリを取得する（テンプレートから参照） */
+function getConfirmableSummary(notif: NotificationResponse): UnconfirmedSummary | null {
+  if (!notif.sourceId) return null
+  return confirmableSummaries.value[notif.sourceId] ?? null
 }
 
 /** 確認通知の「確認する」ボタンをクリックした時の処理 */
@@ -213,6 +258,14 @@ defineExpose({ refresh: () => loadNotifications() })
             >
               <i class="pi pi-clock mr-0.5" />
               {{ $t('confirmable.deadline') }}: {{ getConfirmableDeadlineFromBody(notif) }}
+            </span>
+            <!-- 未確認件数サマリ（公開範囲が許す場合のみ表示） -->
+            <span
+              v-if="isConfirmableNotification(notif) && getConfirmableSummary(notif)"
+              class="font-medium text-amber-700"
+            >
+              <i class="pi pi-users mr-0.5" />
+              {{ $t('confirmable.unconfirmed_count', { count: getConfirmableSummary(notif)?.unconfirmedCount ?? 0 }) }}
             </span>
           </div>
 

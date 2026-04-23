@@ -36,7 +36,8 @@
     "noFollowing": "Noch niemandem gefolgt",
     "noFollowers": "Noch keine Follower",
     "loadMore": "Mehr laden",
-    "unfollow": "Entfolgen"
+    "unfollow": "Entfolgen",
+    "advanced_settings": "Erweiterte Einstellungen"
   },
   "dialog": {
     "confirm_delete": "Sind Sie sicher, dass Sie dies loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
@@ -353,7 +354,16 @@
     "cancel_error": "キャンセルに失敗しました",
     "resend_error": "リマインド再送に失敗しました",
     "title_required": "タイトルを入力してください",
-    "recipients_required": "受信者を1人以上指定してください"
+    "recipients_required": "受信者を1人以上指定してください",
+    "unconfirmed_visibility": {
+      "label": "Sichtbarkeit der Liste nicht bestaetigter Empfaenger",
+      "help": "Waehlen Sie aus, wer die Liste der noch nicht bestaetigten Empfaenger sehen kann.",
+      "HIDDEN": "Verborgen",
+      "CREATOR_AND_ADMIN": "Nur Ersteller und Admins",
+      "ALL_MEMBERS": "Fuer alle Mitglieder"
+    },
+    "unconfirmed_count": "Nicht bestaetigt: {count}",
+    "unconfirmed_list": "Nicht bestaetigte Empfaenger"
   },
   "timeline": {
     "videoProcessing": "Video wird verarbeitet...",
@@ -566,5 +576,15 @@
         "description": "Alle befreundeten Teammitglieder"
       }
     }
+  },
+  "survey": {
+    "unresponded_visibility": {
+      "label": "未回答者リストの公開範囲",
+      "HIDDEN": "表示しない",
+      "CREATOR_AND_ADMIN": "作成者・管理者のみ",
+      "ALL_MEMBERS": "全員に公開"
+    },
+    "unresponded_count": "未回答: {count}名",
+    "unresponded_list": "未回答者一覧"
   }
 }

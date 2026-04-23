@@ -1,4 +1,9 @@
-import type { SurveyResponse, SurveyDetailResponse, SurveyResultSummary } from '~/types/survey'
+import type {
+  SurveyResponse,
+  SurveyDetailResponse,
+  SurveyResultSummary,
+  RespondentsResponse,
+} from '~/types/survey'
 
 export function useSurveyApi() {
   const api = useApi()
@@ -43,6 +48,10 @@ export function useSurveyApi() {
     )
   }
 
+  /**
+   * アンケート新規作成。
+   * body には CreateSurveyRequest（unrespondedVisibility 含む）相当のフィールドを渡す。
+   */
   async function createSurvey(scopeType: string, scopeId: number, body: Record<string, unknown>) {
     return api<{ data: SurveyResponse }>(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys`, {
       method: 'POST',
@@ -50,6 +59,10 @@ export function useSurveyApi() {
     })
   }
 
+  /**
+   * アンケート更新。
+   * body には UpdateSurveyRequest（unrespondedVisibility 含む）相当のフィールドを渡す。
+   */
   async function updateSurvey(
     scopeType: string,
     scopeId: number,
@@ -129,6 +142,17 @@ export function useSurveyApi() {
     return api<{ data: SurveyResultSummary[] }>(`/api/v1/surveys/${surveyId}/results`)
   }
 
+  // === Respondents (未回答者一覧の可視化) ===
+  /**
+   * 回答者・未回答者一覧を取得する。
+   * 認可分岐は Backend 側で unrespondedVisibility に応じて行う。
+   */
+  async function getRespondents(scopeType: string, scopeId: number, surveyId: number) {
+    return api<RespondentsResponse>(
+      `/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}/respondents`,
+    )
+  }
+
   return {
     getSurveys,
     getSurveyStats,
@@ -145,5 +169,6 @@ export function useSurveyApi() {
     setTargets,
     setResultViewers,
     getResults,
+    getRespondents,
   }
 }
