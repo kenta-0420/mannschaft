@@ -121,7 +121,7 @@ class TeamConfirmableNotificationControllerTest {
 
                 given(notificationService.send(
                         eq(ScopeType.TEAM), eq(TEAM_ID), any(), any(), any(), any(),
-                        any(), any(), any(), any(), eq(USER_ID), any()))
+                        any(), any(), any(), any(), any(), eq(USER_ID), any()))
                         .willReturn(entity);
                 given(mapper.toResponse(entity)).willReturn(response);
 

@@ -36,6 +36,12 @@ public class CreateSurveyRequest {
     @NotBlank
     private final String distributionMode;
 
+    /**
+     * 未回答者一覧の公開範囲。HIDDEN / CREATOR_AND_ADMIN / ALL_MEMBERS。
+     * 省略時は CREATOR_AND_ADMIN（既存挙動と同等）。
+     */
+    private final String unrespondedVisibility;
+
     private final Boolean autoPostToTimeline;
 
     @Size(max = 50)

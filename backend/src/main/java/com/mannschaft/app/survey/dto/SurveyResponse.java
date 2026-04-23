@@ -22,6 +22,7 @@ public class SurveyResponse {
     private final Boolean allowMultipleSubmissions;
     private final String resultsVisibility;
     private final String distributionMode;
+    private final String unrespondedVisibility;
     private final Boolean autoPostToTimeline;
     private final String seriesId;
     private final String remindBeforeHours;

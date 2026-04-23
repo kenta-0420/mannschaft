@@ -70,6 +70,7 @@ class SurveyServiceTest {
     private SurveyResponse createSurveyResponse() {
         return new SurveyResponse(SURVEY_ID, SCOPE_TYPE, SCOPE_ID, "テストアンケート",
                 "説明", "DRAFT", false, false, "AFTER_RESPONSE", "ALL",
+                "CREATOR_AND_ADMIN",
                 false, null, null, 0, null, null, 0, 0, USER_ID, null, null, null, null, null);
     }
 

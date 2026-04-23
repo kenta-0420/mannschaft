@@ -45,7 +45,10 @@ public enum SurveyErrorCode implements ErrorCode {
     INVALID_TIME_RANGE("SURVEY_011", "開始時刻は終了時刻より前である必要があります", Severity.ERROR),
 
     /** 設問なしで公開不可 */
-    NO_QUESTIONS("SURVEY_012", "設問が1つも登録されていないアンケートは公開できません", Severity.WARN);
+    NO_QUESTIONS("SURVEY_012", "設問が1つも登録されていないアンケートは公開できません", Severity.WARN),
+
+    /** 回答者一覧の閲覧権限なし（F05.4 §7.2） */
+    RESPONDENTS_ACCESS_DENIED("SURVEY_013", "未回答者一覧を閲覧する権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;

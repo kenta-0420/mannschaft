@@ -59,7 +59,8 @@ public class OrgConfirmableNotificationSettingsController {
                 orgId,
                 request.getDefaultFirstReminderMinutes(),
                 request.getDefaultSecondReminderMinutes(),
-                request.getSenderAlertThresholdPercent());
+                request.getSenderAlertThresholdPercent(),
+                request.getDefaultUnconfirmedVisibility());
         return ResponseEntity.ok(ApiResponse.of(mapper.toSettingsResponse(entity)));
     }
 }

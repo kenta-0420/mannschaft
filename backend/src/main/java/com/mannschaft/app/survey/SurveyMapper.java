@@ -22,6 +22,7 @@ public interface SurveyMapper {
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
     @Mapping(target = "resultsVisibility", expression = "java(entity.getResultsVisibility().name())")
     @Mapping(target = "distributionMode", expression = "java(entity.getDistributionMode().name())")
+    @Mapping(target = "unrespondedVisibility", expression = "java(entity.getUnrespondedVisibility().name())")
     SurveyResponse toSurveyResponse(SurveyEntity entity);
 
     List<SurveyResponse> toSurveyResponseList(List<SurveyEntity> entities);

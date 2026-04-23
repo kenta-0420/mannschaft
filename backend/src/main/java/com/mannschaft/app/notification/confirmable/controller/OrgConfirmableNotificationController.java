@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.confirmable.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
@@ -45,6 +46,7 @@ public class OrgConfirmableNotificationController {
     private final ConfirmableNotificationService notificationService;
     private final ConfirmableNotificationRecipientRepository recipientRepository;
     private final ConfirmableNotificationMapper mapper;
+    private final AccessControlService accessControlService;
 
     /**
      * 確認通知を送信する。
@@ -69,6 +71,7 @@ public class OrgConfirmableNotificationController {
                 request.getSecondReminderMinutes(),
                 request.getActionUrl(),
                 request.getTemplateId(),
+                request.getUnconfirmedVisibility(),
                 currentUserId,
                 request.getRecipientUserIds());
 
@@ -159,6 +162,14 @@ public class OrgConfirmableNotificationController {
 
     /**
      * 確認通知の受信者一覧を取得する。
+     *
+     * <p><b>F04.9 Phase D 認可分岐</b>:
+     * <ul>
+     *   <li>ADMIN+ → 全件返す</li>
+     *   <li>非 ADMIN かつ {@code unconfirmedVisibility = ALL_MEMBERS} かつ受信者本人 → 未確認者のみ返す（マスク）</li>
+     *   <li>それ以外 → 403</li>
+     * </ul>
+     * </p>
      */
     @GetMapping("/{notificationId}/recipients")
     @Operation(summary = "受信者一覧取得（組織）")
@@ -166,10 +177,20 @@ public class OrgConfirmableNotificationController {
     public ResponseEntity<ApiResponse<List<ConfirmableNotificationRecipientResponse>>> getRecipients(
             @PathVariable Long orgId,
             @PathVariable Long notificationId) {
-        List<ConfirmableNotificationRecipientEntity> recipients =
-                notificationService.getRecipients(notificationId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+
+        if (accessControlService.isAdminOrAbove(currentUserId, orgId, ScopeType.ORGANIZATION.name())) {
+            List<ConfirmableNotificationRecipientEntity> recipients =
+                    notificationService.getRecipients(notificationId);
+            List<ConfirmableNotificationRecipientResponse> responses =
+                    mapper.toRecipientResponseList(recipients);
+            return ResponseEntity.ok(ApiResponse.of(responses));
+        }
+
+        List<ConfirmableNotificationRecipientEntity> unconfirmed =
+                notificationService.getRecipientsForMember(notificationId, currentUserId);
         List<ConfirmableNotificationRecipientResponse> responses =
-                mapper.toRecipientResponseList(recipients);
+                mapper.toRecipientPublicResponseList(unconfirmed);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 

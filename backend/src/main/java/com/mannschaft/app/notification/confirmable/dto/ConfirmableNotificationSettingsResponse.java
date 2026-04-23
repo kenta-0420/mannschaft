@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.confirmable.dto;
 
+import com.mannschaft.app.notification.confirmable.entity.UnconfirmedVisibility;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,4 +23,10 @@ public class ConfirmableNotificationSettingsResponse {
 
     /** 送信者へのアラート閾値（確認率%） */
     private Integer senderAlertThresholdPercent;
+
+    /**
+     * デフォルト未確認者リスト公開範囲。
+     * 通知作成時にリクエストで省略された場合の既定値。
+     */
+    private UnconfirmedVisibility defaultUnconfirmedVisibility;
 }

@@ -1,6 +1,7 @@
 package com.mannschaft.app.notification.confirmable.dto;
 
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
+import com.mannschaft.app.notification.confirmable.entity.UnconfirmedVisibility;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
@@ -40,6 +41,14 @@ public class ConfirmableNotificationCreateRequest {
 
     /** 使用テンプレートID（任意） */
     private Long templateId;
+
+    /**
+     * 未確認者リストの公開範囲（任意）。
+     *
+     * <p>NULL の場合はスコープ設定（{@code default_unconfirmed_visibility}）を採用する。
+     * スコープ設定もデフォルト（CREATOR_AND_ADMIN）。</p>
+     */
+    private UnconfirmedVisibility unconfirmedVisibility;
 
     /** 受信者ユーザーIDリスト（必須・最低1件） */
     @NotEmpty
