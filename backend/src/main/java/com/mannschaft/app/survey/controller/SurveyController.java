@@ -3,11 +3,15 @@ package com.mannschaft.app.survey.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
+import com.mannschaft.app.survey.dto.RespondentResponse;
 import com.mannschaft.app.survey.dto.SurveyDetailResponse;
 import com.mannschaft.app.survey.dto.SurveyResponse;
 import com.mannschaft.app.survey.dto.SurveyStatsResponse;
 import com.mannschaft.app.survey.dto.UpdateSurveyRequest;
+import com.mannschaft.app.survey.service.SurveyResultService;
 import com.mannschaft.app.survey.service.SurveyService;
+
+import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,6 +41,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class SurveyController {
 
     private final SurveyService surveyService;
+    private final SurveyResultService surveyResultService;
 
 
     /**
@@ -142,6 +147,25 @@ public class SurveyController {
             @PathVariable Long surveyId) {
         surveyService.deleteSurvey(scopeType, scopeId, surveyId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 回答者一覧（未回答者を含む）を取得する。F05.4 §7.2 未回答者一覧の可視化。
+     *
+     * <p>認可は {@code unresponded_visibility} に応じて分岐する。詳細は
+     * {@link SurveyResultService#getRespondents(Long, Long)} を参照。</p>
+     */
+    @GetMapping("/{surveyId}/respondents")
+    @Operation(summary = "回答者一覧（未回答者含む）",
+            description = "F05.4 §7.2 未回答者一覧。ALL_MEMBERS 公開時はメンバーも未回答者のみ閲覧可")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<RespondentResponse>>> getRespondents(
+            @PathVariable String scopeType,
+            @PathVariable Long scopeId,
+            @PathVariable Long surveyId) {
+        List<RespondentResponse> respondents = surveyResultService.getRespondents(
+                surveyId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(respondents));
     }
 
     /**

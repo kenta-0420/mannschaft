@@ -9,6 +9,7 @@ import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyErrorCode;
 import com.mannschaft.app.survey.SurveyMapper;
 import com.mannschaft.app.survey.SurveyStatus;
+import com.mannschaft.app.survey.UnrespondedVisibility;
 import com.mannschaft.app.survey.dto.CreateOptionRequest;
 import com.mannschaft.app.survey.dto.CreateQuestionRequest;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
@@ -117,6 +118,9 @@ public class SurveyService {
                 .allowMultipleSubmissions(request.getAllowMultipleSubmissions())
                 .resultsVisibility(ResultsVisibility.valueOf(request.getResultsVisibility()))
                 .distributionMode(DistributionMode.valueOf(request.getDistributionMode()))
+                .unrespondedVisibility(request.getUnrespondedVisibility() != null
+                        ? UnrespondedVisibility.valueOf(request.getUnrespondedVisibility())
+                        : UnrespondedVisibility.CREATOR_AND_ADMIN)
                 .autoPostToTimeline(request.getAutoPostToTimeline() != null
                         ? request.getAutoPostToTimeline() : false)
                 .seriesId(request.getSeriesId())
@@ -181,6 +185,10 @@ public class SurveyService {
                     request.getAutoPostToTimeline() != null
                             ? request.getAutoPostToTimeline() : entity.getAutoPostToTimeline()
             );
+        }
+        if (request.getUnrespondedVisibility() != null) {
+            entity.updateUnrespondedVisibility(
+                    UnrespondedVisibility.valueOf(request.getUnrespondedVisibility()));
         }
         if (request.getStartsAt() != null || request.getExpiresAt() != null) {
             validateTimeRange(

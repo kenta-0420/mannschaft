@@ -9,8 +9,10 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationSettingsEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationTemplateEntity;
+import org.mapstruct.IterableMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
 import java.util.List;
 
@@ -54,6 +56,7 @@ public interface ConfirmableNotificationMapper {
     /**
      * 確認通知受信者 Entity → レスポンスDTO に変換する（ADMIN+ 視点・全フィールド）。
      */
+    @Named("toRecipientResponseFull")
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "displayName", source = "user.displayName")
     @Mapping(target = "avatarUrl", source = "user.avatarUrl")
@@ -63,9 +66,7 @@ public interface ConfirmableNotificationMapper {
     /**
      * 確認通知受信者エンティティリスト → レスポンスDTOリストに変換する（ADMIN+ 視点）。
      */
-    @Mapping(target = "userId", source = "user.id")
-    @Mapping(target = "displayName", source = "user.displayName")
-    @Mapping(target = "avatarUrl", source = "user.avatarUrl")
+    @IterableMapping(qualifiedByName = "toRecipientResponseFull")
     List<ConfirmableNotificationRecipientResponse> toRecipientResponseList(
             List<ConfirmableNotificationRecipientEntity> entities);
 
@@ -77,6 +78,7 @@ public interface ConfirmableNotificationMapper {
      *
      * <p>本メソッドが返すのは未確認者のみという前提で呼び出すこと（フィルタは Service 層で実施）。</p>
      */
+    @Named("toRecipientResponsePublic")
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "displayName", source = "user.displayName")
     @Mapping(target = "avatarUrl", source = "user.avatarUrl")
@@ -91,12 +93,7 @@ public interface ConfirmableNotificationMapper {
      *
      * <p>F04.9 Phase D の MEMBER 視点用。confirmedAt / confirmedVia / excludedAt はマスク。</p>
      */
-    @Mapping(target = "userId", source = "user.id")
-    @Mapping(target = "displayName", source = "user.displayName")
-    @Mapping(target = "avatarUrl", source = "user.avatarUrl")
-    @Mapping(target = "confirmedAt", ignore = true)
-    @Mapping(target = "confirmedVia", ignore = true)
-    @Mapping(target = "excludedAt", ignore = true)
+    @IterableMapping(qualifiedByName = "toRecipientResponsePublic")
     List<ConfirmableNotificationRecipientResponse> toRecipientPublicResponseList(
             List<ConfirmableNotificationRecipientEntity> entities);
 

@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyStatus;
+import com.mannschaft.app.survey.UnrespondedVisibility;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -65,6 +66,14 @@ public class SurveyEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private DistributionMode distributionMode = DistributionMode.ALL;
+
+    /**
+     * 未回答者一覧の公開範囲。F05.4 §7.2。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private UnrespondedVisibility unrespondedVisibility = UnrespondedVisibility.CREATOR_AND_ADMIN;
 
     @Column(nullable = false)
     @Builder.Default
@@ -160,6 +169,15 @@ public class SurveyEntity extends BaseEntity {
         this.allowMultipleSubmissions = allowMultipleSubmissions;
         this.resultsVisibility = resultsVisibility;
         this.autoPostToTimeline = autoPostToTimeline;
+    }
+
+    /**
+     * 未回答者一覧の公開範囲を更新する。
+     *
+     * @param visibility 新しい公開範囲
+     */
+    public void updateUnrespondedVisibility(UnrespondedVisibility visibility) {
+        this.unrespondedVisibility = visibility;
     }
 
     /**

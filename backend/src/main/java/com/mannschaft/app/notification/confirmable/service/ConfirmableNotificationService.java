@@ -93,6 +93,30 @@ public class ConfirmableNotificationService {
      * @param recipientUserIds   受信者ユーザーIDリスト（最大500件）
      * @return 作成された確認通知エンティティ
      */
+    /**
+     * 旧シグネチャ互換のオーバーロード。{@code unconfirmedVisibility} を省略する呼び出し向け。
+     * F04.9 Phase D 導入前の呼び出し元（CommitteeDistributionService 等）の互換性のため。
+     * 内部で {@code unconfirmedVisibility=null} を渡し、スコープ設定の default に解決させる。
+     */
+    @Transactional
+    public ConfirmableNotificationEntity send(
+            ScopeType scopeType,
+            Long scopeId,
+            String title,
+            String body,
+            ConfirmableNotificationPriority priority,
+            LocalDateTime deadlineAt,
+            Integer firstReminderMinutes,
+            Integer secondReminderMinutes,
+            String actionUrl,
+            Long templateId,
+            Long createdByUserId,
+            List<Long> recipientUserIds) {
+        return send(scopeType, scopeId, title, body, priority, deadlineAt,
+                firstReminderMinutes, secondReminderMinutes, actionUrl, templateId,
+                null, createdByUserId, recipientUserIds);
+    }
+
     @Transactional
     public ConfirmableNotificationEntity send(
             ScopeType scopeType,

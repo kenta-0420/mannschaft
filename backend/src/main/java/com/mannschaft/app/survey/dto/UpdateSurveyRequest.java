@@ -26,6 +26,11 @@ public class UpdateSurveyRequest {
 
     private final String resultsVisibility;
 
+    /**
+     * 未回答者一覧の公開範囲。HIDDEN / CREATOR_AND_ADMIN / ALL_MEMBERS。
+     */
+    private final String unrespondedVisibility;
+
     private final Boolean autoPostToTimeline;
 
     private final List<Integer> remindBeforeHours;
