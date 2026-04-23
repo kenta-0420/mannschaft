@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.confirmable.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.membership.ScopeType;
@@ -45,6 +46,7 @@ public class TeamConfirmableNotificationController {
     private final ConfirmableNotificationService notificationService;
     private final ConfirmableNotificationRecipientRepository recipientRepository;
     private final ConfirmableNotificationMapper mapper;
+    private final AccessControlService accessControlService;
 
     /**
      * 確認通知を送信する。
@@ -69,6 +71,7 @@ public class TeamConfirmableNotificationController {
                 request.getSecondReminderMinutes(),
                 request.getActionUrl(),
                 request.getTemplateId(),
+                request.getUnconfirmedVisibility(),
                 currentUserId,
                 request.getRecipientUserIds());
 
@@ -159,6 +162,18 @@ public class TeamConfirmableNotificationController {
 
     /**
      * 確認通知の受信者一覧を取得する。
+     *
+     * <p><b>F04.9 Phase D 認可分岐</b>:
+     * <ul>
+     *   <li>ADMIN+ → 全件返す（HIDDEN を含むすべての公開範囲で閲覧可）</li>
+     *   <li>非 ADMIN かつ {@code unconfirmedVisibility = HIDDEN} → 403</li>
+     *   <li>非 ADMIN かつ {@code unconfirmedVisibility = CREATOR_AND_ADMIN} → 403（既存挙動）</li>
+     *   <li>非 ADMIN かつ {@code unconfirmedVisibility = ALL_MEMBERS} かつ
+     *       呼び出しユーザーが当通知の受信者である場合 → 未確認者のみ返す
+     *       （confirmedAt / confirmedVia / excludedAt は NULL マスク）</li>
+     *   <li>それ以外 → 403</li>
+     * </ul>
+     * </p>
      */
     @GetMapping("/{notificationId}/recipients")
     @Operation(summary = "受信者一覧取得")
@@ -166,10 +181,22 @@ public class TeamConfirmableNotificationController {
     public ResponseEntity<ApiResponse<List<ConfirmableNotificationRecipientResponse>>> getRecipients(
             @PathVariable Long teamId,
             @PathVariable Long notificationId) {
-        List<ConfirmableNotificationRecipientEntity> recipients =
-                notificationService.getRecipients(notificationId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+
+        // ADMIN+ なら全件返す（既存挙動）
+        if (accessControlService.isAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name())) {
+            List<ConfirmableNotificationRecipientEntity> recipients =
+                    notificationService.getRecipients(notificationId);
+            List<ConfirmableNotificationRecipientResponse> responses =
+                    mapper.toRecipientResponseList(recipients);
+            return ResponseEntity.ok(ApiResponse.of(responses));
+        }
+
+        // 非 ADMIN は ALL_MEMBERS かつ受信者本人のみ閲覧可（Service 層で認可判定 + マスク前データ取得）
+        List<ConfirmableNotificationRecipientEntity> unconfirmed =
+                notificationService.getRecipientsForMember(notificationId, currentUserId);
         List<ConfirmableNotificationRecipientResponse> responses =
-                mapper.toRecipientResponseList(recipients);
+                mapper.toRecipientPublicResponseList(unconfirmed);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 

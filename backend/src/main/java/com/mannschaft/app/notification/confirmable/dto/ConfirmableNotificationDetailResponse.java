@@ -3,6 +3,7 @@ package com.mannschaft.app.notification.confirmable.dto;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus;
+import com.mannschaft.app.notification.confirmable.entity.UnconfirmedVisibility;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -52,6 +53,9 @@ public class ConfirmableNotificationDetailResponse {
 
     /** 確認済み受信者数 */
     private Long confirmedCount;
+
+    /** 未確認者リストの公開範囲（HIDDEN / CREATOR_AND_ADMIN / ALL_MEMBERS） */
+    private UnconfirmedVisibility unconfirmedVisibility;
 
     /** キャンセル日時 */
     private LocalDateTime cancelledAt;

@@ -2,6 +2,7 @@ package com.mannschaft.app.notification.confirmable.service;
 
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationSettingsEntity;
+import com.mannschaft.app.notification.confirmable.entity.UnconfirmedVisibility;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,11 +51,13 @@ public class ConfirmableNotificationSettingsService {
     /**
      * スコープの確認通知設定を更新する。
      *
-     * @param scopeType                    スコープ種別
-     * @param scopeId                      スコープID
-     * @param firstReminderMinutes         1回目リマインド送信タイミング（分）。NULL でリマインドなし
-     * @param secondReminderMinutes        2回目リマインド送信タイミング（分）。NULL でリマインドなし
-     * @param senderAlertThresholdPercent  送信者アラート閾値（確認率%）
+     * @param scopeType                     スコープ種別
+     * @param scopeId                       スコープID
+     * @param firstReminderMinutes          1回目リマインド送信タイミング（分）。NULL でリマインドなし
+     * @param secondReminderMinutes         2回目リマインド送信タイミング（分）。NULL でリマインドなし
+     * @param senderAlertThresholdPercent   送信者アラート閾値（確認率%）
+     * @param defaultUnconfirmedVisibility  デフォルト未確認者リスト公開範囲。
+     *                                       NULL の場合は CREATOR_AND_ADMIN（既存挙動）を採用する
      * @return 更新後の確認通知設定エンティティ
      */
     @Transactional
@@ -63,7 +66,8 @@ public class ConfirmableNotificationSettingsService {
             Long scopeId,
             Integer firstReminderMinutes,
             Integer secondReminderMinutes,
-            Integer senderAlertThresholdPercent) {
+            Integer senderAlertThresholdPercent,
+            UnconfirmedVisibility defaultUnconfirmedVisibility) {
 
         // 設定が存在しない場合はデフォルト値で作成してから更新する
         ConfirmableNotificationSettingsEntity settings = getOrCreate(scopeType, scopeId);
@@ -73,11 +77,15 @@ public class ConfirmableNotificationSettingsService {
                 .defaultSecondReminderMinutes(secondReminderMinutes)
                 .senderAlertThresholdPercent(
                         senderAlertThresholdPercent != null ? senderAlertThresholdPercent : 80)
+                .defaultUnconfirmedVisibility(
+                        defaultUnconfirmedVisibility != null
+                                ? defaultUnconfirmedVisibility
+                                : UnconfirmedVisibility.CREATOR_AND_ADMIN)
                 .build();
 
         ConfirmableNotificationSettingsEntity saved = settingsRepository.save(updated);
-        log.info("確認通知設定を更新: scopeType={}, scopeId={}, firstReminder={}, secondReminder={}, alertThreshold={}",
-                scopeType, scopeId, firstReminderMinutes, secondReminderMinutes, senderAlertThresholdPercent);
+        log.info("確認通知設定を更新: scopeType={}, scopeId={}, firstReminder={}, secondReminder={}, alertThreshold={}, defaultVisibility={}",
+                scopeType, scopeId, firstReminderMinutes, secondReminderMinutes, senderAlertThresholdPercent, defaultUnconfirmedVisibility);
         return saved;
     }
 }

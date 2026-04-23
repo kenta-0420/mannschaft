@@ -125,6 +125,18 @@ public class ConfirmableNotificationEntity {
     @Builder.Default
     private Integer totalRecipientCount = 0;
 
+    /**
+     * 未確認者リストの公開範囲（HIDDEN / CREATOR_AND_ADMIN / ALL_MEMBERS）。
+     *
+     * <p>送信時にリクエスト値、または省略時はスコープ設定
+     * （{@link ConfirmableNotificationSettingsEntity#getDefaultUnconfirmedVisibility()}）の値を
+     * スナップショットする。後からスコープ設定を変更しても本値は不変。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private UnconfirmedVisibility unconfirmedVisibility = UnconfirmedVisibility.CREATOR_AND_ADMIN;
+
     /** 使用したテンプレートID（参照用。テンプレート削除後も記録を保持） */
     @Column
     private Long templateId;

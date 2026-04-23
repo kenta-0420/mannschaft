@@ -72,6 +72,17 @@ public class ConfirmableNotificationSettingsEntity {
     @Builder.Default
     private Integer senderAlertThresholdPercent = 80;
 
+    /**
+     * デフォルト未確認者リスト公開範囲（HIDDEN / CREATOR_AND_ADMIN / ALL_MEMBERS）。
+     *
+     * <p>確認通知作成時にリクエストで {@code unconfirmedVisibility} が省略された場合、
+     * 本値が採用される。フロントエンドの {@code localStorage} がない場合のサーバー側既定値。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private UnconfirmedVisibility defaultUnconfirmedVisibility = UnconfirmedVisibility.CREATOR_AND_ADMIN;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
