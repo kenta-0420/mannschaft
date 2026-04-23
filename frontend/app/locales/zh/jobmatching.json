@@ -8,19 +8,24 @@
         "CANCELLED": "已取消"
       },
       "application": {
-        "PENDING": "申请中",
+        "APPLIED": "申请中",
         "ACCEPTED": "已录用",
         "REJECTED": "未录用",
         "WITHDRAWN": "已撤回"
       },
       "contract": {
         "MATCHED": "已成立",
+        "CHECKED_IN": "已签到",
         "IN_PROGRESS": "进行中",
-        "REPORTED": "已报告完成",
-        "APPROVED": "已批准",
-        "REJECTED": "已退回",
+        "CHECKED_OUT": "已签退",
+        "TIME_CONFIRMED": "工时已确认",
+        "COMPLETION_REPORTED": "已报告完成",
+        "COMPLETED": "已完成",
+        "AUTHORIZED": "已授权",
+        "CAPTURED": "已扣款",
+        "PAID": "已支付",
         "CANCELLED": "已取消",
-        "PAID": "已支付"
+        "DISPUTED": "争议中"
       }
     },
     "workLocationType": {
@@ -34,9 +39,12 @@
       "DAILY": "日薪"
     },
     "visibilityScope": {
-      "TEAM_ONLY": "仅团队内",
-      "TEAM_AND_FRIENDS": "团队和好友",
-      "PUBLIC": "公开"
+      "TEAM_MEMBERS": "仅团队成员",
+      "TEAM_MEMBERS_SUPPORTERS": "团队成员及支持者",
+      "JOBBER_INTERNAL": "JOBBER 内部",
+      "JOBBER_PUBLIC_BOARD": "JOBBER 综合招募板",
+      "ORGANIZATION_SCOPE": "整个组织",
+      "CUSTOM_TEMPLATE": "自定义公开范围"
     },
     "form": {
       "title": "职位标题",

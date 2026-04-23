@@ -8,19 +8,24 @@
         "CANCELLED": "Cancelado"
       },
       "application": {
-        "PENDING": "Pendiente",
+        "APPLIED": "Postulado",
         "ACCEPTED": "Aceptado",
         "REJECTED": "Rechazado",
         "WITHDRAWN": "Retirado"
       },
       "contract": {
         "MATCHED": "Emparejado",
+        "CHECKED_IN": "Entrada registrada",
         "IN_PROGRESS": "En progreso",
-        "REPORTED": "Finalización reportada",
-        "APPROVED": "Aprobado",
-        "REJECTED": "Rechazado",
+        "CHECKED_OUT": "Salida registrada",
+        "TIME_CONFIRMED": "Horario confirmado",
+        "COMPLETION_REPORTED": "Finalización reportada",
+        "COMPLETED": "Completado",
+        "AUTHORIZED": "Autorizado",
+        "CAPTURED": "Cobro confirmado",
+        "PAID": "Pagado",
         "CANCELLED": "Cancelado",
-        "PAID": "Pagado"
+        "DISPUTED": "En disputa"
       }
     },
     "workLocationType": {
@@ -34,9 +39,12 @@
       "DAILY": "Por día"
     },
     "visibilityScope": {
-      "TEAM_ONLY": "Solo equipo",
-      "TEAM_AND_FRIENDS": "Equipo y amigos",
-      "PUBLIC": "Público"
+      "TEAM_MEMBERS": "Solo miembros del equipo",
+      "TEAM_MEMBERS_SUPPORTERS": "Miembros del equipo y colaboradores",
+      "JOBBER_INTERNAL": "Interno de JOBBER",
+      "JOBBER_PUBLIC_BOARD": "Tablón público de JOBBER",
+      "ORGANIZATION_SCOPE": "Toda la organización",
+      "CUSTOM_TEMPLATE": "Alcance personalizado"
     },
     "form": {
       "title": "Título del trabajo",

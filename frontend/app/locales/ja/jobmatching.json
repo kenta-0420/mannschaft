@@ -8,19 +8,24 @@
         "CANCELLED": "キャンセル"
       },
       "application": {
-        "PENDING": "応募中",
+        "APPLIED": "応募中",
         "ACCEPTED": "採用",
         "REJECTED": "不採用",
         "WITHDRAWN": "辞退"
       },
       "contract": {
         "MATCHED": "成立",
+        "CHECKED_IN": "入場済み",
         "IN_PROGRESS": "作業中",
-        "REPORTED": "完了報告済み",
-        "APPROVED": "承認済み",
-        "REJECTED": "差戻し",
+        "CHECKED_OUT": "退場済み",
+        "TIME_CONFIRMED": "業務時間確定",
+        "COMPLETION_REPORTED": "完了報告済み",
+        "COMPLETED": "完了",
+        "AUTHORIZED": "承認済み",
+        "CAPTURED": "請求確定",
+        "PAID": "支払完了",
         "CANCELLED": "キャンセル",
-        "PAID": "支払い済み"
+        "DISPUTED": "紛争中"
       }
     },
     "workLocationType": {
@@ -34,9 +39,12 @@
       "DAILY": "日給"
     },
     "visibilityScope": {
-      "TEAM_ONLY": "チーム内のみ",
-      "TEAM_AND_FRIENDS": "チーム＋友達",
-      "PUBLIC": "全体公開"
+      "TEAM_MEMBERS": "チームメンバーのみ",
+      "TEAM_MEMBERS_SUPPORTERS": "チームメンバー＋サポーター",
+      "JOBBER_INTERNAL": "JOBBER内部",
+      "JOBBER_PUBLIC_BOARD": "JOBBER総合掲示板",
+      "ORGANIZATION_SCOPE": "組織全体",
+      "CUSTOM_TEMPLATE": "カスタム公開範囲"
     },
     "form": {
       "title": "求人タイトル",

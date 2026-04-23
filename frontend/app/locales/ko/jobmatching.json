@@ -8,19 +8,24 @@
         "CANCELLED": "취소됨"
       },
       "application": {
-        "PENDING": "지원 중",
+        "APPLIED": "지원 중",
         "ACCEPTED": "채용됨",
         "REJECTED": "불채용",
         "WITHDRAWN": "철회됨"
       },
       "contract": {
         "MATCHED": "성립",
+        "CHECKED_IN": "입장 완료",
         "IN_PROGRESS": "진행 중",
-        "REPORTED": "완료 보고됨",
-        "APPROVED": "승인됨",
-        "REJECTED": "반려됨",
+        "CHECKED_OUT": "퇴장 완료",
+        "TIME_CONFIRMED": "업무 시간 확정",
+        "COMPLETION_REPORTED": "완료 보고됨",
+        "COMPLETED": "완료",
+        "AUTHORIZED": "승인됨",
+        "CAPTURED": "청구 확정",
+        "PAID": "지급 완료",
         "CANCELLED": "취소됨",
-        "PAID": "지급 완료"
+        "DISPUTED": "분쟁 중"
       }
     },
     "workLocationType": {
@@ -34,9 +39,12 @@
       "DAILY": "일급"
     },
     "visibilityScope": {
-      "TEAM_ONLY": "팀 내만",
-      "TEAM_AND_FRIENDS": "팀 및 친구",
-      "PUBLIC": "전체 공개"
+      "TEAM_MEMBERS": "팀 멤버만",
+      "TEAM_MEMBERS_SUPPORTERS": "팀 멤버 및 서포터",
+      "JOBBER_INTERNAL": "JOBBER 내부",
+      "JOBBER_PUBLIC_BOARD": "JOBBER 종합 게시판",
+      "ORGANIZATION_SCOPE": "조직 전체",
+      "CUSTOM_TEMPLATE": "사용자 지정 공개 범위"
     },
     "form": {
       "title": "구인 제목",

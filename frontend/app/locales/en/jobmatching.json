@@ -8,19 +8,24 @@
         "CANCELLED": "Cancelled"
       },
       "application": {
-        "PENDING": "Pending",
+        "APPLIED": "Applied",
         "ACCEPTED": "Accepted",
         "REJECTED": "Rejected",
         "WITHDRAWN": "Withdrawn"
       },
       "contract": {
         "MATCHED": "Matched",
+        "CHECKED_IN": "Checked In",
         "IN_PROGRESS": "In Progress",
-        "REPORTED": "Completion Reported",
-        "APPROVED": "Approved",
-        "REJECTED": "Rejected",
+        "CHECKED_OUT": "Checked Out",
+        "TIME_CONFIRMED": "Time Confirmed",
+        "COMPLETION_REPORTED": "Completion Reported",
+        "COMPLETED": "Completed",
+        "AUTHORIZED": "Authorized",
+        "CAPTURED": "Captured",
+        "PAID": "Paid",
         "CANCELLED": "Cancelled",
-        "PAID": "Paid"
+        "DISPUTED": "Disputed"
       }
     },
     "workLocationType": {
@@ -34,9 +39,12 @@
       "DAILY": "Daily"
     },
     "visibilityScope": {
-      "TEAM_ONLY": "Team Only",
-      "TEAM_AND_FRIENDS": "Team & Friends",
-      "PUBLIC": "Public"
+      "TEAM_MEMBERS": "Team Members Only",
+      "TEAM_MEMBERS_SUPPORTERS": "Team Members & Supporters",
+      "JOBBER_INTERNAL": "JOBBER Internal",
+      "JOBBER_PUBLIC_BOARD": "JOBBER Public Board",
+      "ORGANIZATION_SCOPE": "Organization-wide",
+      "CUSTOM_TEMPLATE": "Custom Scope"
     },
     "form": {
       "title": "Job Title",

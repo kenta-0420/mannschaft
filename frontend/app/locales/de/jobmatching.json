@@ -8,19 +8,24 @@
         "CANCELLED": "Abgebrochen"
       },
       "application": {
-        "PENDING": "Ausstehend",
+        "APPLIED": "Beworben",
         "ACCEPTED": "Angenommen",
         "REJECTED": "Abgelehnt",
         "WITHDRAWN": "Zurückgezogen"
       },
       "contract": {
         "MATCHED": "Vermittelt",
+        "CHECKED_IN": "Eingecheckt",
         "IN_PROGRESS": "In Bearbeitung",
-        "REPORTED": "Abschluss gemeldet",
-        "APPROVED": "Genehmigt",
-        "REJECTED": "Zurückgewiesen",
+        "CHECKED_OUT": "Ausgecheckt",
+        "TIME_CONFIRMED": "Arbeitszeit bestätigt",
+        "COMPLETION_REPORTED": "Abschluss gemeldet",
+        "COMPLETED": "Abgeschlossen",
+        "AUTHORIZED": "Genehmigt",
+        "CAPTURED": "Zahlung eingezogen",
+        "PAID": "Bezahlt",
         "CANCELLED": "Abgebrochen",
-        "PAID": "Bezahlt"
+        "DISPUTED": "In Streit"
       }
     },
     "workLocationType": {
@@ -34,9 +39,12 @@
       "DAILY": "Tageslohn"
     },
     "visibilityScope": {
-      "TEAM_ONLY": "Nur Team",
-      "TEAM_AND_FRIENDS": "Team und Freunde",
-      "PUBLIC": "Öffentlich"
+      "TEAM_MEMBERS": "Nur Teammitglieder",
+      "TEAM_MEMBERS_SUPPORTERS": "Teammitglieder und Unterstützer",
+      "JOBBER_INTERNAL": "JOBBER intern",
+      "JOBBER_PUBLIC_BOARD": "JOBBER-Hauptbrett",
+      "ORGANIZATION_SCOPE": "Gesamte Organisation",
+      "CUSTOM_TEMPLATE": "Benutzerdefinierte Sichtbarkeit"
     },
     "form": {
       "title": "Jobtitel",
