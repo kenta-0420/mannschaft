@@ -360,6 +360,8 @@ class ShiftRequestServiceTest {
             given(requestRepository.countDistinctUserIdByScheduleId(SCHEDULE_ID)).willReturn(3L);
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(10L);
+            given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
+                    .willReturn(List.of());
 
             // When
             ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID);
@@ -369,6 +371,60 @@ class ShiftRequestServiceTest {
             assertThat(result.getTotalMembers()).isEqualTo(10L);
             assertThat(result.getSubmittedCount()).isEqualTo(3L);
             assertThat(result.getPendingCount()).isEqualTo(7L);
+        }
+
+        @Test
+        @DisplayName("希望提出サマリー取得_5段階preference別集計_正確にカウント")
+        void 希望提出サマリー取得_5段階preference別集計_正確にカウント() {
+            // Given
+            ShiftScheduleEntity schedule = createCollectingSchedule();
+            given(requestRepository.countDistinctUserIdByScheduleId(SCHEDULE_ID)).willReturn(5L);
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(10L);
+            given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
+                    .willReturn(List.of(
+                            new Object[]{ShiftPreference.PREFERRED, 7L},
+                            new Object[]{ShiftPreference.AVAILABLE, 12L},
+                            new Object[]{ShiftPreference.WEAK_REST, 2L},
+                            new Object[]{ShiftPreference.STRONG_REST, 3L},
+                            new Object[]{ShiftPreference.ABSOLUTE_REST, 1L}));
+
+            // When
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID);
+
+            // Then
+            assertThat(result.getPreferredCount()).isEqualTo(7L);
+            assertThat(result.getAvailableCount()).isEqualTo(12L);
+            assertThat(result.getWeakRestCount()).isEqualTo(2L);
+            assertThat(result.getStrongRestCount()).isEqualTo(3L);
+            assertThat(result.getAbsoluteRestCount()).isEqualTo(1L);
+            // 互換フィールド: STRONG_REST + ABSOLUTE_REST
+            assertThat(result.getUnavailableCount()).isEqualTo(4L);
+        }
+
+        @Test
+        @DisplayName("希望提出サマリー取得_一部preferenceのみ_他は0")
+        void 希望提出サマリー取得_一部preferenceのみ_他は0() {
+            // Given
+            ShiftScheduleEntity schedule = createCollectingSchedule();
+            given(requestRepository.countDistinctUserIdByScheduleId(SCHEDULE_ID)).willReturn(2L);
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(10L);
+            given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
+                    .willReturn(List.of(
+                            new Object[]{ShiftPreference.PREFERRED, 3L},
+                            new Object[]{ShiftPreference.ABSOLUTE_REST, 1L}));
+
+            // When
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID);
+
+            // Then
+            assertThat(result.getPreferredCount()).isEqualTo(3L);
+            assertThat(result.getAvailableCount()).isEqualTo(0L);
+            assertThat(result.getWeakRestCount()).isEqualTo(0L);
+            assertThat(result.getStrongRestCount()).isEqualTo(0L);
+            assertThat(result.getAbsoluteRestCount()).isEqualTo(1L);
+            assertThat(result.getUnavailableCount()).isEqualTo(1L);
         }
     }
 }

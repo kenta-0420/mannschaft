@@ -1,0 +1,232 @@
+{
+  "shift": {
+    "page": {
+      "title": "근무",
+      "myShift": "내 근무",
+      "submitRequest": "희망 제출",
+      "availability": "기본 가용성",
+      "schedules": "스케줄 목록",
+      "detail": "상세",
+      "edit": "편집",
+      "requests": "신청 목록",
+      "workConstraints": "근무 제약"
+    },
+    "status": {
+      "all": "전체",
+      "draft": "초안",
+      "collecting": "수집 중",
+      "adjusting": "조정 중",
+      "published": "확정",
+      "archived": "보관됨"
+    },
+    "index": {
+      "title": "근무 관리",
+      "createNew": "새로 만들기",
+      "createDialog": "근무 새로 만들기",
+      "createSuccess": "근무를 생성했습니다",
+      "selectTeam": "팀 선택",
+      "fromDate": "시작일",
+      "toDate": "종료일",
+      "noSchedule": "근무가 없습니다",
+      "submissionRate": "제출률 {rate}%",
+      "deadline": "마감",
+      "formTitle": "제목",
+      "formTitlePlaceholder": "예: 2026년 5월 근무",
+      "formStart": "시작일",
+      "formEnd": "종료일",
+      "formDeadline": "신청 마감",
+      "formNote": "메모",
+      "formNotePlaceholder": "선택 사항"
+    },
+    "detail": {
+      "tabOverview": "개요",
+      "tabEdit": "편집",
+      "tabRequests": "신청 목록",
+      "tabConstraints": "근무 제약",
+      "startCollecting": "신청 수집 시작",
+      "startAdjusting": "조정 시작",
+      "publish": "확정 공개",
+      "archive": "보관",
+      "transitionSuccess": "상태를 변경했습니다",
+      "saveSuccess": "저장했습니다",
+      "calendarView": "달력 보기",
+      "noDate": "날짜 없음",
+      "colDate": "날짜",
+      "colSlots": "슬롯",
+      "editDialogTitle": "근무 편집"
+    },
+    "slot": {
+      "createTitle": "슬롯 생성",
+      "editTitle": "슬롯 편집",
+      "bulkCreate": "일괄 생성",
+      "bulkCreateSuccess": "{count}개의 슬롯을 생성했습니다",
+      "noSlot": "슬롯이 없습니다",
+      "noPosition": "포지션 없음",
+      "assigned": "배정됨",
+      "date": "날짜",
+      "startTime": "시작 시간",
+      "endTime": "종료 시간",
+      "position": "포지션",
+      "requiredCount": "필요 인원",
+      "note": "메모",
+      "notePlaceholder": "선택 사항",
+      "dayOfWeek": "요일",
+      "dayOfWeekHint": "선택한 요일에만 슬롯을 생성합니다",
+      "saveSuccess": "슬롯을 저장했습니다",
+      "deleteSuccess": "슬롯을 삭제했습니다"
+    },
+    "requests": {
+      "submissionRate": "제출률",
+      "pending": "미제출",
+      "matrixTitle": "희망 매트릭스",
+      "noRequests": "신청이 없습니다",
+      "colUser": "멤버",
+      "legend": "범례"
+    },
+    "preference": {
+      "preferred": "출근 희망",
+      "available": "지정 없음",
+      "weakRest": "출근 가능",
+      "strongRest": "가능하면 휴식",
+      "absoluteRest": "반드시 휴식"
+    },
+    "action": {
+      "create": "생성",
+      "edit": "편집",
+      "delete": "삭제",
+      "publish": "공개",
+      "copy": "복사",
+      "submit": "제출",
+      "withdraw": "취소",
+      "assign": "배정",
+      "unassign": "배정 해제",
+      "reminder": "리마인더 전송",
+      "export": "내보내기",
+      "reset": "초기화"
+    },
+    "field": {
+      "title": "제목",
+      "period": "기간",
+      "startDate": "시작일",
+      "endDate": "종료일",
+      "slotDate": "날짜",
+      "startTime": "시작 시간",
+      "endTime": "종료 시간",
+      "position": "포지션",
+      "requiredHeadcount": "필요 인원",
+      "assignedMembers": "배정 멤버",
+      "note": "메모",
+      "preference": "희망",
+      "preferenceNote": "희망 메모",
+      "deadline": "신청 마감",
+      "reason": "이유"
+    },
+    "workConstraint": {
+      "title": "근무 제약",
+      "maxMonthlyHours": "월 최대 근무 시간",
+      "maxMonthlyDays": "월 최대 근무 일수",
+      "maxConsecutiveDays": "최대 연속 근무 일수",
+      "maxNightShiftsPerMonth": "월 최대 야간 근무 횟수",
+      "maxNightShifts": "월 최대 야간 근무 횟수",
+      "minRestHoursBetweenShifts": "근무 간 최소 휴식 시간",
+      "minRestHours": "근무 간 최소 휴식 시간",
+      "note": "비고",
+      "notePlaceholder": "선택 사항",
+      "teamDefault": "팀 기본값",
+      "teamDefaultDescription": "팀 전체의 기본값으로 적용됩니다. 개별 재정의가 없는 한 모든 멤버에게 적용됩니다.",
+      "appliedToAll": "전원에게 적용",
+      "individual": "개인 설정",
+      "memberOverrides": "멤버별 예외 설정",
+      "memberOverridesDescription": "특정 멤버에게 다른 제약을 적용하려면 여기에 추가하세요.",
+      "addMember": "멤버 추가",
+      "noDefault": "팀 기본값이 설정되지 않았습니다",
+      "noOverrides": "개별 설정된 멤버가 없습니다",
+      "noLimit": "제한 없음",
+      "days": "일",
+      "times": "회",
+      "memberLabel": "사용자 #{userId}",
+      "readOnly": "읽기 전용",
+      "userId": "사용자 ID",
+      "userIdPlaceholder": "사용자 ID 입력",
+      "saveSuccess": "근무 제약을 저장했습니다",
+      "deleteSuccess": "근무 제약을 삭제했습니다"
+    },
+    "validation": {
+      "atLeastOneConstraint": "최소 하나의 항목을 지정해 주세요"
+    },
+    "summary": {
+      "totalMembers": "전체 멤버 수",
+      "submitted": "제출 완료",
+      "pending": "미제출",
+      "preferred": "출근 희망",
+      "available": "지정 없음",
+      "weakRest": "출근 가능",
+      "strongRest": "가능하면 휴식",
+      "absoluteRest": "반드시 휴식"
+    },
+    "payment": {
+      "hourlyRate": "시급",
+      "estimatedPay": "예상 급여",
+      "paySummary": "급여 요약"
+    },
+    "swap": {
+      "create": "교대 신청 생성",
+      "accept": "수락",
+      "reject": "거절",
+      "approve": "승인",
+      "pending": "승인 대기",
+      "openCall": "공개 모집",
+      "claimed": "신청됨"
+    },
+    "reminder": {
+      "send": "리마인더 전송",
+      "sent": "리마인더 전송됨"
+    },
+    "empty": {
+      "noSchedules": "스케줄이 없습니다",
+      "noShifts": "근무가 없습니다",
+      "noRequests": "신청이 없습니다",
+      "noConstraints": "근무 제약이 설정되지 않았습니다"
+    },
+    "notification": {
+      "publishSuccess": "근무를 공개했습니다",
+      "submitSuccess": "희망을 제출했습니다",
+      "deleteSuccess": "삭제했습니다",
+      "updateSuccess": "업데이트했습니다",
+      "errorLoad": "데이터 로드에 실패했습니다",
+      "errorSubmit": "제출에 실패했습니다",
+      "errorDelete": "삭제에 실패했습니다",
+      "errorUpdate": "업데이트에 실패했습니다"
+    },
+    "view": {
+      "monthly": "월 보기",
+      "weekly": "주 보기",
+      "daily": "일 보기",
+      "today": "오늘",
+      "prev": "이전 기간",
+      "next": "다음 기간"
+    },
+    "legend": "범례",
+    "availabilityDescription": "요일별 기본 희망을 설정합니다. 희망 제출 시 초기값으로 사용됩니다.",
+    "bulkSet": {
+      "title": "일괄 설정",
+      "selectAll": "모두 선택",
+      "clearAll": "모두 지우기",
+      "applyToAll": "전체 슬롯에 적용",
+      "applyToWeekday": "평일에 적용",
+      "applyToWeekend": "휴일에 적용",
+      "confirm": "적용"
+    },
+    "preview": {
+      "title": "제출 전 확인",
+      "preferredCount": "출근 희망: {count} 건",
+      "availableCount": "지정 없음: {count} 건",
+      "weakRestCount": "출근 가능: {count} 건",
+      "strongRestCount": "가능하면 휴식: {count} 건",
+      "absoluteRestCount": "반드시 휴식: {count} 건",
+      "totalCount": "합계: {count} 건",
+      "totalLabel": "합계",
+      "confirmSubmit": "이 내용으로 제출하시겠습니까？"
+    }
+  }
+}

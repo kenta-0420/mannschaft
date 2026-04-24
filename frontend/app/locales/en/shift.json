@@ -1,0 +1,232 @@
+{
+  "shift": {
+    "page": {
+      "title": "Shift",
+      "myShift": "My Shift",
+      "submitRequest": "Submit Request",
+      "availability": "Default Availability",
+      "schedules": "Schedule List",
+      "detail": "Detail",
+      "edit": "Edit",
+      "requests": "Requests",
+      "workConstraints": "Work Constraints"
+    },
+    "status": {
+      "all": "All",
+      "draft": "Draft",
+      "collecting": "Collecting",
+      "adjusting": "Adjusting",
+      "published": "Published",
+      "archived": "Archived"
+    },
+    "index": {
+      "title": "Shift Management",
+      "createNew": "Create New",
+      "createDialog": "Create New Shift",
+      "createSuccess": "Shift created successfully",
+      "selectTeam": "Select team",
+      "fromDate": "From",
+      "toDate": "To",
+      "noSchedule": "No shifts found",
+      "submissionRate": "Submission rate {rate}%",
+      "deadline": "Deadline",
+      "formTitle": "Title",
+      "formTitlePlaceholder": "e.g. May 2026 shift",
+      "formStart": "Start date",
+      "formEnd": "End date",
+      "formDeadline": "Request deadline",
+      "formNote": "Note",
+      "formNotePlaceholder": "Optional"
+    },
+    "detail": {
+      "tabOverview": "Overview",
+      "tabEdit": "Edit",
+      "tabRequests": "Requests",
+      "tabConstraints": "Constraints",
+      "startCollecting": "Start Collecting",
+      "startAdjusting": "Start Adjusting",
+      "publish": "Publish",
+      "archive": "Archive",
+      "transitionSuccess": "Status changed",
+      "saveSuccess": "Saved",
+      "calendarView": "Calendar view",
+      "noDate": "No date",
+      "colDate": "Date",
+      "colSlots": "Slots",
+      "editDialogTitle": "Edit Shift"
+    },
+    "slot": {
+      "createTitle": "Create Slot",
+      "editTitle": "Edit Slot",
+      "bulkCreate": "Bulk Create",
+      "bulkCreateSuccess": "Created {count} slots",
+      "noSlot": "No slots",
+      "noPosition": "No position",
+      "assigned": "Assigned",
+      "date": "Date",
+      "startTime": "Start time",
+      "endTime": "End time",
+      "position": "Position",
+      "requiredCount": "Required count",
+      "note": "Note",
+      "notePlaceholder": "Optional",
+      "dayOfWeek": "Day of week",
+      "dayOfWeekHint": "Slots will be created only on the selected days of week",
+      "saveSuccess": "Slot saved",
+      "deleteSuccess": "Slot deleted"
+    },
+    "requests": {
+      "submissionRate": "Submission rate",
+      "pending": "Pending",
+      "matrixTitle": "Preference Matrix",
+      "noRequests": "No requests submitted",
+      "colUser": "Member",
+      "legend": "Legend"
+    },
+    "preference": {
+      "preferred": "Work preferred",
+      "available": "No preference",
+      "weakRest": "Can work if needed",
+      "strongRest": "Prefer day off",
+      "absoluteRest": "Day off required"
+    },
+    "action": {
+      "create": "Create",
+      "edit": "Edit",
+      "delete": "Delete",
+      "publish": "Publish",
+      "copy": "Copy",
+      "submit": "Submit",
+      "withdraw": "Withdraw",
+      "assign": "Assign",
+      "unassign": "Unassign",
+      "reminder": "Send Reminder",
+      "export": "Export",
+      "reset": "Reset"
+    },
+    "field": {
+      "title": "Title",
+      "period": "Period",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "slotDate": "Date",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "position": "Position",
+      "requiredHeadcount": "Required Headcount",
+      "assignedMembers": "Assigned Members",
+      "note": "Note",
+      "preference": "Preference",
+      "preferenceNote": "Preference Note",
+      "deadline": "Request Deadline",
+      "reason": "Reason"
+    },
+    "workConstraint": {
+      "title": "Work Constraints",
+      "maxMonthlyHours": "Max Monthly Hours",
+      "maxMonthlyDays": "Max Monthly Days",
+      "maxConsecutiveDays": "Max Consecutive Days",
+      "maxNightShiftsPerMonth": "Max Night Shifts per Month",
+      "maxNightShifts": "Max Night Shifts per Month",
+      "minRestHoursBetweenShifts": "Min Rest Hours Between Shifts",
+      "minRestHours": "Min Rest Hours Between Shifts",
+      "note": "Note",
+      "notePlaceholder": "Optional",
+      "teamDefault": "Team Default",
+      "teamDefaultDescription": "Applied as the default for the whole team. Applies to all members unless individually overridden.",
+      "appliedToAll": "Applied to all",
+      "individual": "Individual",
+      "memberOverrides": "Per-member overrides",
+      "memberOverridesDescription": "Add an override here if a specific member needs different constraints.",
+      "addMember": "Add member",
+      "noDefault": "No team default set",
+      "noOverrides": "No members with individual overrides",
+      "noLimit": "No limit",
+      "days": "days",
+      "times": "times",
+      "memberLabel": "User #{userId}",
+      "readOnly": "Read only",
+      "userId": "User ID",
+      "userIdPlaceholder": "Enter user ID",
+      "saveSuccess": "Work constraints saved",
+      "deleteSuccess": "Work constraints deleted"
+    },
+    "validation": {
+      "atLeastOneConstraint": "Please specify at least one constraint"
+    },
+    "summary": {
+      "totalMembers": "Total Members",
+      "submitted": "Submitted",
+      "pending": "Pending",
+      "preferred": "Work Preferred",
+      "available": "No Preference",
+      "weakRest": "Can Work If Needed",
+      "strongRest": "Prefer Day Off",
+      "absoluteRest": "Day Off Required"
+    },
+    "payment": {
+      "hourlyRate": "Hourly Rate",
+      "estimatedPay": "Estimated Pay",
+      "paySummary": "Pay Summary"
+    },
+    "swap": {
+      "create": "Create Swap Request",
+      "accept": "Accept",
+      "reject": "Reject",
+      "approve": "Approve",
+      "pending": "Pending Approval",
+      "openCall": "Open Call",
+      "claimed": "Claimed"
+    },
+    "reminder": {
+      "send": "Send Reminder",
+      "sent": "Reminder Sent"
+    },
+    "empty": {
+      "noSchedules": "No schedules found",
+      "noShifts": "No shifts found",
+      "noRequests": "No requests found",
+      "noConstraints": "No work constraints set"
+    },
+    "notification": {
+      "publishSuccess": "Shift published successfully",
+      "submitSuccess": "Request submitted successfully",
+      "deleteSuccess": "Deleted successfully",
+      "updateSuccess": "Updated successfully",
+      "errorLoad": "Failed to load data",
+      "errorSubmit": "Failed to submit",
+      "errorDelete": "Failed to delete",
+      "errorUpdate": "Failed to update"
+    },
+    "view": {
+      "monthly": "Monthly View",
+      "weekly": "Weekly View",
+      "daily": "Daily View",
+      "today": "Today",
+      "prev": "Previous period",
+      "next": "Next period"
+    },
+    "legend": "Legend",
+    "availabilityDescription": "Set your default preferences by day of week. These will be used as initial values when submitting shift requests.",
+    "bulkSet": {
+      "title": "Bulk Set",
+      "selectAll": "Select All",
+      "clearAll": "Clear All",
+      "applyToAll": "Apply to All Slots",
+      "applyToWeekday": "Apply to Weekdays",
+      "applyToWeekend": "Apply to Weekends",
+      "confirm": "Apply"
+    },
+    "preview": {
+      "title": "Confirm Submission",
+      "preferredCount": "Work preferred: {count}",
+      "availableCount": "No preference: {count}",
+      "weakRestCount": "Can work if needed: {count}",
+      "strongRestCount": "Prefer day off: {count}",
+      "absoluteRestCount": "Day off required: {count}",
+      "totalCount": "Total: {count}",
+      "totalLabel": "Total",
+      "confirmSubmit": "Submit with these settings?"
+    }
+  }
+}

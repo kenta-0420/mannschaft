@@ -484,3 +484,35 @@ onUnmounted(() => {
 | パスワードリセット申請 | 「パスワードリセット用のメールを user@example.com に送信しました。30分以内に手続きを完了してください。」|
 | メールアドレス変更 | 「確認メールを new@example.com に送信しました。24時間以内にメール内のリンクをクリックして変更を完了してください。」|
 | OAuth衝突（統合確認） | 「このメールアドレスには既存のアカウントが存在します。連携承認メールを user@example.com に送信しました。メールを確認してください。」|
+
+---
+
+## 15. 国際化 (i18n)
+
+UI に表示する文字列は **直書き禁止**。必ずロケールファイル（`app/locales/{ja,en,zh,ko,es,de}/*.json`）に追加してから `$t('key')` / `t('key')` で参照する。デフォルトロケールは `ja`。対応言語は日本語・英語・中国語（簡体）・韓国語・スペイン語・ドイツ語の 6 言語。
+
+### ロケール別フォーマット関数を呼ぶ際の注意
+
+`toLocaleDateString` / `toLocaleString` / `Intl.DateTimeFormat` 等にロケールを渡す場合、`useI18n()` から取り出した `locale` は `WritableComputedRef<string>` なので、**必ず `locale.value` を渡すこと**。`locale` をそのまま渡すと実行時に `Ref` オブジェクトが toString されて `[object Object]` となる、または `RangeError: Invalid language tag` を投げる恐れがある。
+
+```ts
+// NG — locale を直接渡している（実行時エラーのリスク）
+const { locale } = useI18n()
+date.toLocaleDateString(locale, { weekday: 'short' })
+
+// OK — locale.value を渡す
+const { locale } = useI18n()
+date.toLocaleDateString(locale.value, { weekday: 'short' })
+```
+
+また、`'ja-JP'` などロケールをハードコードしないこと。ユーザーの言語設定に追従させるため、必ず `locale.value` を使用する。
+
+### i18n ファイル追加時のガードレール
+
+新規ロケール JSON（例: `app/locales/ja/xxx.json`）を追加した際は、**必ず `nuxt.config.ts` の `i18n.locales[*].files` 配列にも登録すること**。登録漏れがあると `@nuxtjs/i18n` の lazy loading 機構が該当ファイルを一切ロードせず、UI にはキー文字列そのまま（例: `shift.index.title`）が表示される。この不具合は lint / unit test / backend CI では検出されない性質のため、機械的なチェックが効かない。
+
+新規追加時の確認手順:
+
+1. **6 言語すべて**（ja/en/zh/ko/es/de）に同じファイル名で JSON を配置する（未翻訳ならひとまず日本語と同じ値で可、後で翻訳でもよい）。
+2. `nuxt.config.ts` の各ロケール定義の `files:` 配列にファイル名を追加する（6 箇所）。
+3. `npm run dev` で該当画面を目視し、キーが実テキストに解決されていることを確認する。
