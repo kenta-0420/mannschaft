@@ -114,8 +114,13 @@ public class GlobalExceptionHandler {
             // F13.1 Phase 13.1.2: QR チェックイン／アウト
             Map.entry("JOB_QR_TOKEN_INVALID_SIGNATURE", HttpStatus.UNAUTHORIZED),
             Map.entry("JOB_QR_TOKEN_WRONG_WORKER", HttpStatus.FORBIDDEN),
+            Map.entry("JOB_QR_TOKEN_EXPIRED", HttpStatus.BAD_REQUEST),
+            Map.entry("JOB_QR_TOKEN_REUSED", HttpStatus.BAD_REQUEST),
+            Map.entry("JOB_QR_SHORT_CODE_NOT_FOUND", HttpStatus.BAD_REQUEST),
+            Map.entry("JOB_CHECK_IN_ALREADY_EXISTS", HttpStatus.BAD_REQUEST),
             Map.entry("JOB_CHECK_OUT_BEFORE_CHECK_IN", HttpStatus.CONFLICT),
-            Map.entry("JOB_CHECK_IN_CONCURRENT_CONFLICT", HttpStatus.FORBIDDEN)
+            Map.entry("JOB_CHECK_IN_CONCURRENT_CONFLICT", HttpStatus.FORBIDDEN),
+            Map.entry("JOB_INVALID_STATE_TRANSITION", HttpStatus.CONFLICT)
     );
 
     /**

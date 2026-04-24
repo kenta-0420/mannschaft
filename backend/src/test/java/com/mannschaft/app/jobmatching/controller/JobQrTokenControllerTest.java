@@ -111,8 +111,8 @@ class JobQrTokenControllerTest {
     class IssueToken {
 
         @Test
-        @DisplayName("正常系: 200 OK + token/shortCode/type/issuedAt/expiresAt/kid が返る")
-        void issue_正常系_200() throws Exception {
+        @DisplayName("正常系: 201 Created + token/shortCode/type/issuedAt/expiresAt/kid が返る")
+        void issue_正常系_201() throws Exception {
             JobContractEntity contract = setupContractForUser(USER_ID);
             given(jobPolicy.canIssueQrToken(contract, USER_ID)).willReturn(true);
             given(qrTokenService.issue(eq(CONTRACT_ID), eq(JobCheckInType.IN), eq(60), eq(USER_ID)))
@@ -125,7 +125,7 @@ class JobQrTokenControllerTest {
             mockMvc.perform(post("/api/v1/contracts/{contractId}/qr-tokens", CONTRACT_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isOk())
+                    .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.token").value("jwt-string"))
                     .andExpect(jsonPath("$.data.shortCode").value("AB23CD"))
                     .andExpect(jsonPath("$.data.type").value("IN"))

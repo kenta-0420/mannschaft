@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -65,7 +66,7 @@ public class JobQrTokenController {
      */
     @PostMapping
     @Operation(summary = "QR トークン発行", description = "Requester デバイスで QR 画像化するための短命トークンを発行する")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "発行成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "発行成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "発行権限なし（Requester 本人以外）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "契約が見つからない")
     public ResponseEntity<ApiResponse<QrTokenResponse>> issue(
@@ -91,7 +92,7 @@ public class JobQrTokenController {
                 result.expiresAt(),
                 result.kid()
         );
-        return ResponseEntity.ok(ApiResponse.of(body));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(body));
     }
 
     /**

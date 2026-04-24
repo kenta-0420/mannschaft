@@ -42,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>以下を検証する:</p>
  * <ul>
- *   <li>正常系: 200 + CheckInResponse JSON 構造</li>
+ *   <li>正常系: 201 Created + CheckInResponse JSON 構造</li>
  *   <li>{@code JOB_QR_TOKEN_INVALID_SIGNATURE} → 401</li>
  *   <li>{@code JOB_QR_TOKEN_WRONG_WORKER} → 403</li>
  *   <li>{@code JOB_CHECK_IN_CONCURRENT_CONFLICT} → 403</li>
@@ -112,8 +112,8 @@ class JobCheckInControllerTest {
     class Success {
 
         @Test
-        @DisplayName("IN 成立: 200 OK + CheckInResponse JSON")
-        void recordCheckIn_正常_IN成立_200() throws Exception {
+        @DisplayName("IN 成立: 201 Created + CheckInResponse JSON")
+        void recordCheckIn_正常_IN成立_201() throws Exception {
             given(checkInService.recordCheckIn(any(CheckInCommand.class)))
                     .willReturn(new CheckInResult(
                             9001L, CONTRACT_ID, JobCheckInType.IN,
@@ -122,7 +122,7 @@ class JobCheckInControllerTest {
             mockMvc.perform(post("/api/v1/jobs/check-ins")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(baseInRequest())))
-                    .andExpect(status().isOk())
+                    .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.checkInId").value(9001))
                     .andExpect(jsonPath("$.data.contractId").value(CONTRACT_ID))
                     .andExpect(jsonPath("$.data.type").value("IN"))
@@ -145,7 +145,7 @@ class JobCheckInControllerTest {
             mockMvc.perform(post("/api/v1/jobs/check-ins")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isOk())
+                    .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.type").value("OUT"))
                     .andExpect(jsonPath("$.data.newStatus").value("CHECKED_OUT"))
                     .andExpect(jsonPath("$.data.workDurationMinutes").value(60));
@@ -166,7 +166,7 @@ class JobCheckInControllerTest {
             mockMvc.perform(post("/api/v1/jobs/check-ins")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isOk());
+                    .andExpect(status().isCreated());
 
             ArgumentCaptor<CheckInCommand> captor = ArgumentCaptor.forClass(CheckInCommand.class);
             verify(checkInService).recordCheckIn(captor.capture());

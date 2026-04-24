@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -52,7 +53,7 @@ public class JobCheckInController {
      *       {@code JOB_QR_SHORT_CODE_NOT_FOUND} / {@code JOB_CHECK_IN_ALREADY_EXISTS} — 400 Bad Request</li>
      *   <li>{@code JOB_QR_TOKEN_INVALID_SIGNATURE} — 401 Unauthorized</li>
      *   <li>{@code JOB_QR_TOKEN_WRONG_WORKER} / {@code JOB_CHECK_IN_CONCURRENT_CONFLICT} — 403 Forbidden</li>
-     *   <li>{@code JOB_CHECK_OUT_BEFORE_CHECK_IN} — 409 Conflict</li>
+     *   <li>{@code JOB_CHECK_OUT_BEFORE_CHECK_IN} / {@code JOB_INVALID_STATE_TRANSITION} — 409 Conflict</li>
      *   <li>{@code JOB_CONTRACT_NOT_FOUND} — 404 Not Found</li>
      * </ul>
      *
@@ -62,12 +63,12 @@ public class JobCheckInController {
     @PostMapping
     @Operation(summary = "QR チェックイン／アウト記録",
             description = "Worker がスキャンした QR トークンまたは短コードで契約のチェックイン／アウトを記録する")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "記録成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "記録成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "トークン失効／再利用／重複等")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "トークン署名不正")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Worker 不一致／掛け持ち")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "契約が見つからない")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "IN 未完で OUT を試行")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "IN 未完で OUT を試行／不正な状態遷移")
     public ResponseEntity<ApiResponse<CheckInResponse>> recordCheckIn(
             @Valid @RequestBody RecordCheckInRequest req) {
         Long workerUserId = SecurityUtils.getCurrentUserId();
@@ -96,6 +97,6 @@ public class JobCheckInController {
                 result.workDurationMinutes(),
                 result.geoAnomaly()
         );
-        return ResponseEntity.ok(ApiResponse.of(body));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(body));
     }
 }
