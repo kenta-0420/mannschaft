@@ -3,11 +3,16 @@ package com.mannschaft.app.jobmatching.service;
 import com.mannschaft.app.jobmatching.entity.JobApplicationEntity;
 import com.mannschaft.app.jobmatching.entity.JobContractEntity;
 import com.mannschaft.app.jobmatching.entity.JobPostingEntity;
+import com.mannschaft.app.jobmatching.repository.JobContractRepository;
+import com.mannschaft.app.jobmatching.repository.JobPostingRepository;
+import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 /**
  * 求人マッチング機能の通知発火サービス。
@@ -44,6 +49,8 @@ public class JobNotificationService {
     private static final String TYPE_JOB_GEO_ANOMALY = "JOB_GEO_ANOMALY";
 
     private final NotificationHelper notificationHelper;
+    private final JobContractRepository contractRepository;
+    private final JobPostingRepository postingRepository;
 
     /**
      * 応募発生を Requester（求人投稿者）へ通知する。
@@ -127,43 +134,136 @@ public class JobNotificationService {
     // ---------------------------------------------------------------------
 
     /**
-     * Worker のチェックイン成立を Requester へ通知する。
+     * Worker のチェックイン成立を Requester へ通知する（設計書 §2.7 JOB_CHECKED_IN）。
      *
-     * <p>Phase 13.1.2 足軽参時点ではスタブ実装（呼び出しポイント確保のみ）。
-     * 実通知本文・遷移先 URL・スコープ等の詳細化は足軽肆（Controller 担当）で
-     * 実装する想定（設計書 §2.7 JOB_CHECKED_IN）。</p>
+     * <p>Requester 宛・{@link NotificationPriority#NORMAL}。契約や求人が存在しない場合は
+     * 警告ログを出力して黙って抜ける（業務トランザクションを妨げない）。</p>
      *
      * @param contractId 対象契約 ID
      */
     public void notifyCheckedIn(Long contractId) {
-        log.debug("[stub] JOB_CHECKED_IN 通知: contractId={}, type={}",
-                contractId, TYPE_JOB_CHECKED_IN);
+        Optional<JobContractEntity> contractOpt = contractRepository.findById(contractId);
+        if (contractOpt.isEmpty()) {
+            log.warn("JOB_CHECKED_IN 通知送信時に契約が見つかりません: contractId={}", contractId);
+            return;
+        }
+        JobContractEntity contract = contractOpt.get();
+        Optional<JobPostingEntity> postingOpt = postingRepository.findById(contract.getJobPostingId());
+        if (postingOpt.isEmpty()) {
+            log.warn("JOB_CHECKED_IN 通知送信時に求人が見つかりません: contractId={}, postingId={}",
+                    contractId, contract.getJobPostingId());
+            return;
+        }
+        JobPostingEntity posting = postingOpt.get();
+
+        String title = "Worker がチェックインしました";
+        String body = String.format("「%s」で Worker の業務開始が記録されました。", posting.getTitle());
+        String actionUrl = "/jobs/contracts/" + contractId;
+
+        notificationHelper.notify(
+                contract.getRequesterUserId(),
+                TYPE_JOB_CHECKED_IN,
+                title,
+                body,
+                SOURCE_TYPE_JOB_CONTRACT,
+                contractId,
+                NotificationScopeType.TEAM,
+                posting.getTeamId(),
+                actionUrl,
+                contract.getWorkerUserId()
+        );
     }
 
     /**
-     * Worker のチェックアウト成立を Requester へ通知する。
+     * Worker のチェックアウト成立を Requester へ通知する（設計書 §2.7 JOB_CHECKED_OUT）。
      *
-     * <p>Phase 13.1.2 足軽参時点ではスタブ実装（設計書 §2.7 JOB_CHECKED_OUT）。</p>
+     * <p>Requester 宛・{@link NotificationPriority#NORMAL}。契約や求人が存在しない場合は
+     * 警告ログを出力して黙って抜ける（業務トランザクションを妨げない）。</p>
      *
      * @param contractId 対象契約 ID
      */
     public void notifyCheckedOut(Long contractId) {
-        log.debug("[stub] JOB_CHECKED_OUT 通知: contractId={}, type={}",
-                contractId, TYPE_JOB_CHECKED_OUT);
+        Optional<JobContractEntity> contractOpt = contractRepository.findById(contractId);
+        if (contractOpt.isEmpty()) {
+            log.warn("JOB_CHECKED_OUT 通知送信時に契約が見つかりません: contractId={}", contractId);
+            return;
+        }
+        JobContractEntity contract = contractOpt.get();
+        Optional<JobPostingEntity> postingOpt = postingRepository.findById(contract.getJobPostingId());
+        if (postingOpt.isEmpty()) {
+            log.warn("JOB_CHECKED_OUT 通知送信時に求人が見つかりません: contractId={}, postingId={}",
+                    contractId, contract.getJobPostingId());
+            return;
+        }
+        JobPostingEntity posting = postingOpt.get();
+
+        String title = "Worker がチェックアウトしました";
+        String body = String.format("「%s」で Worker の業務終了が記録されました。完了報告を待機してください。",
+                posting.getTitle());
+        String actionUrl = "/jobs/contracts/" + contractId;
+
+        notificationHelper.notify(
+                contract.getRequesterUserId(),
+                TYPE_JOB_CHECKED_OUT,
+                title,
+                body,
+                SOURCE_TYPE_JOB_CONTRACT,
+                contractId,
+                NotificationScopeType.TEAM,
+                posting.getTeamId(),
+                actionUrl,
+                contract.getWorkerUserId()
+        );
     }
 
     /**
-     * Geolocation 乖離（業務場所から閾値超の離れ）を Requester へアラート通知する。
+     * Geolocation 乖離（業務場所から閾値超の離れ）を Requester へアラート通知する
+     *（設計書 §2.7 JOB_GEO_ANOMALY）。
      *
-     * <p>Phase 13.1.2 足軽参時点ではスタブ実装（設計書 §2.7 JOB_GEO_ANOMALY、強制配信）。
-     * 自動拒否はせず、Requester の判断に委ねるアラートとして送信する。</p>
+     * <p>強制配信（opt-out 不可）とするため {@link NotificationPriority#URGENT} で送信する。
+     * 自動拒否はせず、Requester の判断に委ねるアラートとして扱う。契約や求人が見つからない
+     * 場合は警告ログを出力してスキップ。</p>
      *
      * @param contractId     対象契約 ID
-     * @param distanceMeters 業務場所からの距離（メートル）
+     * @param distanceMeters 業務場所からの距離（メートル、計算不能時は負値が渡される）
      */
     public void notifyGeoAnomaly(Long contractId, double distanceMeters) {
-        log.debug("[stub] JOB_GEO_ANOMALY 通知: contractId={}, distance={}m, type={}",
-                contractId, distanceMeters, TYPE_JOB_GEO_ANOMALY);
+        Optional<JobContractEntity> contractOpt = contractRepository.findById(contractId);
+        if (contractOpt.isEmpty()) {
+            log.warn("JOB_GEO_ANOMALY 通知送信時に契約が見つかりません: contractId={}", contractId);
+            return;
+        }
+        JobContractEntity contract = contractOpt.get();
+        Optional<JobPostingEntity> postingOpt = postingRepository.findById(contract.getJobPostingId());
+        if (postingOpt.isEmpty()) {
+            log.warn("JOB_GEO_ANOMALY 通知送信時に求人が見つかりません: contractId={}, postingId={}",
+                    contractId, contract.getJobPostingId());
+            return;
+        }
+        JobPostingEntity posting = postingOpt.get();
+
+        String title = "業務場所からの乖離が検知されました";
+        String distanceLabel = distanceMeters >= 0
+                ? String.format("約 %.0f m", distanceMeters)
+                : "距離不明";
+        String body = String.format(
+                "「%s」でチェックイン位置が業務場所から %s 離れています。内容を確認してください。",
+                posting.getTitle(), distanceLabel);
+        String actionUrl = "/jobs/contracts/" + contractId;
+
+        notificationHelper.notify(
+                contract.getRequesterUserId(),
+                TYPE_JOB_GEO_ANOMALY,
+                NotificationPriority.URGENT,
+                title,
+                body,
+                SOURCE_TYPE_JOB_CONTRACT,
+                contractId,
+                NotificationScopeType.TEAM,
+                posting.getTeamId(),
+                actionUrl,
+                contract.getWorkerUserId()
+        );
     }
 
     // 源流からオーバーロードを提供（Contract 単独から呼べる版、未使用時はコンパイラ警告にならない実装）。
