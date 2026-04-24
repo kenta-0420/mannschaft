@@ -22,6 +22,7 @@ import jakarta.persistence.Query;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -39,6 +40,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -234,15 +236,19 @@ class JobContractServiceTest {
 
         /**
          * <p>シナリオ: 定員1の求人に対し、2人の応募（applicationA/applicationB）が同時に採用確定要求される。
-         * モック化した {@code countByJobPostingIdAndStatus} は 1 件目の呼び出しで「0件受理」を返して採用成功し、
-         * 以降は {@link AtomicInteger} で「すでに 1 件受理された」状態を返すことで、
-         * 2 件目の呼び出しで {@link JobmatchingErrorCode#JOB_CAPACITY_FULL} が発火することを検証する。</p>
+         * 実装は MySQL {@code GET_LOCK} による分散排他で 2 スレッドを直列化する。テスト側はこの
+         * セマンティクスを {@link ReentrantLock} で再現し、後発スレッドが先発スレッドの完了を待つ挙動を模す。</p>
+         *
+         * <p>1 件目成功時に {@link JobContractService#acceptApplication} は
+         * 求人ステータスを {@link JobPostingStatus#CLOSED} に遷移させるため、
+         * 2 件目は {@link JobmatchingErrorCode#JOB_NOT_OPEN} で拒否される
+         * （{@code JOB_CAPACITY_FULL} にならないのは、close() 遷移が capacity 検査より先に到達するため）。</p>
          *
          * <p>{@link CountDownLatch} で 2 スレッドを同時スタートし、両方の完了を待ち合わせる。
-         * 結果は成功 1 件・失敗 1 件（CAPACITY_FULL）となる。</p>
+         * 結果は成功 1 件・排他拒否 1 件（JOB_NOT_OPEN）となる。</p>
          */
-        @Test
-        @DisplayName("並列2スレッド_定員1に同時accept_1件成功_もう1件はJOB_CAPACITY_FULL")
+        @RepeatedTest(value = 20, name = "{displayName} [{currentRepetition}/{totalRepetitions}]")
+        @DisplayName("並列2スレッド_定員1に同時accept_排他制御で1件成功_もう1件は拒否される")
         void 並列accept_片方のみ成功() throws Exception {
             final Long applicationIdA = 2001L;
             final Long applicationIdB = 2002L;
@@ -275,23 +281,54 @@ class JobContractServiceTest {
                 return saved;
             });
 
+            // 実 DB の MySQL GET_LOCK による分散排他を ReentrantLock で再現する。
+            // デフォルトの @BeforeEach スタブは GET_LOCK/RELEASE_LOCK のいずれも "1" を即時返すため、
+            // 2 スレッドが count→save 区間を同時通過し、定員1に対して両方 ACCEPT される flaky が発生していた。
+            // 実装（JobContractService#acquireLockOrFail）は SELECT GET_LOCK(key, timeout) を叩き、
+            // 実 DB 環境では同一 key に対して 1 スレッドしか保持できない。そのセマンティクスをモックで再現する。
+            final ReentrantLock lockSerializer = new ReentrantLock();
+            final ThreadLocal<String> threadSql = new ThreadLocal<>();
+            given(entityManager.createNativeQuery(anyString())).willAnswer(inv -> {
+                threadSql.set(inv.getArgument(0));
+                return nativeQuery;
+            });
+            given(nativeQuery.getSingleResult()).willAnswer(inv -> {
+                String sql = threadSql.get();
+                try {
+                    if (sql != null && sql.contains("GET_LOCK")) {
+                        lockSerializer.lock();
+                    } else if (sql != null && sql.contains("RELEASE_LOCK")) {
+                        if (lockSerializer.isHeldByCurrentThread()) {
+                            lockSerializer.unlock();
+                        }
+                    }
+                    return "1";
+                } finally {
+                    // ExecutorService のワーカースレッド再利用による値の持ち越し・メモリリーク防止。
+                    threadSql.remove();
+                }
+            });
+
             // 2 スレッド同時起動。両スレッドが latch.await で待機 → countDown で同時スタート。
             ExecutorService executor = Executors.newFixedThreadPool(2);
             CountDownLatch startLatch = new CountDownLatch(1);
             CountDownLatch doneLatch = new CountDownLatch(2);
             AtomicInteger successCount = new AtomicInteger(0);
-            AtomicInteger capacityFullCount = new AtomicInteger(0);
+            // 定員1 の場合、1 件目成功時に求人が CLOSED に遷移するため、後発スレッドは必ず JOB_NOT_OPEN を受ける。
+            // 実装仕様（close() が capacity チェックに先立って走る）と厳密に縛ることで、
+            // 将来の実装変更（close 遅延化・capacity チェック先行化など）が入った際の退行検知力を高める。
+            AtomicInteger notOpenCount = new AtomicInteger(0);
             AtomicReference<Throwable> unexpectedError = new AtomicReference<>();
 
-            Runnable attempt = () -> { /* 各スレッドで1回採用確定を試行 */ };
+            Runnable runAccept = () -> { /* 各スレッドで1回採用確定を試行 */ };
             executor.submit(() -> {
                 try {
                     startLatch.await();
                     service.acceptApplication(applicationIdA, REQUESTER_ID);
                     successCount.incrementAndGet();
                 } catch (BusinessException e) {
-                    if (e.getErrorCode() == JobmatchingErrorCode.JOB_CAPACITY_FULL) {
-                        capacityFullCount.incrementAndGet();
+                    if (e.getErrorCode() == JobmatchingErrorCode.JOB_NOT_OPEN) {
+                        notOpenCount.incrementAndGet();
                     } else {
                         unexpectedError.set(e);
                     }
@@ -307,8 +344,8 @@ class JobContractServiceTest {
                     service.acceptApplication(applicationIdB, REQUESTER_ID);
                     successCount.incrementAndGet();
                 } catch (BusinessException e) {
-                    if (e.getErrorCode() == JobmatchingErrorCode.JOB_CAPACITY_FULL) {
-                        capacityFullCount.incrementAndGet();
+                    if (e.getErrorCode() == JobmatchingErrorCode.JOB_NOT_OPEN) {
+                        notOpenCount.incrementAndGet();
                     } else {
                         unexpectedError.set(e);
                     }
@@ -326,9 +363,9 @@ class JobContractServiceTest {
 
             // 想定外例外が無いこと。
             assertThat(unexpectedError.get()).as("想定外例外").isNull();
-            // 成功が 1 件、定員超過が 1 件になること（排他制御が機能している証拠）。
+            // 成功が 1 件、JOB_NOT_OPEN が 1 件になること（排他制御 + close() 遷移が機能している証拠）。
             assertThat(successCount.get()).as("採用成功数").isEqualTo(1);
-            assertThat(capacityFullCount.get()).as("JOB_CAPACITY_FULL 発生数").isEqualTo(1);
+            assertThat(notOpenCount.get()).as("JOB_NOT_OPEN 発生数").isEqualTo(1);
         }
     }
 
