@@ -262,11 +262,51 @@ class JobContractServiceTest {
             given(applicationRepository.findById(applicationIdB)).willReturn(Optional.of(appB));
             given(postingRepository.findByIdForUpdate(POSTING_ID)).willReturn(Optional.of(posting));
             given(jobPolicy.canDecideApplication(eq(REQUESTER_ID), any())).willReturn(true);
-            given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(contractRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(jobChatService.createRoomForContract(any(), any())).willReturn(CHAT_ROOM_ID);
 
+            // --- 根治ポイント: MySQL GET_LOCK / RELEASE_LOCK の排他セマンティクスを ReentrantLock で
+            //     忠実に再現する。@BeforeEach の共通スタブ（すべての getSingleResult が "1" を返す）を
+            //     ここで上書きし、SQL 種別ごとに Query インスタンスを使い分けた Answer に差し替える。
+            //
+            //     これにより、実装の try { GET_LOCK; ... } finally { RELEASE_LOCK } と同じく
+            //     GET_LOCK 取得から RELEASE_LOCK 解放までがスレッド単位で直列化され、
+            //     その内側で実行される countByJobPostingIdAndStatus → save の順序が保護される。
+            Query getLockQuery = org.mockito.Mockito.mock(Query.class);
+            Query releaseLockQuery = org.mockito.Mockito.mock(Query.class);
+            given(getLockQuery.setParameter(anyInt(), any())).willReturn(getLockQuery);
+            given(releaseLockQuery.setParameter(anyInt(), any())).willReturn(releaseLockQuery);
+
+            final ReentrantLock postingLock = new ReentrantLock();
+
+            // SQL 種別で返す Query を切り替える（GET_LOCK / RELEASE_LOCK を区別）。
+            given(entityManager.createNativeQuery(anyString())).willAnswer(inv -> {
+                String sql = inv.getArgument(0);
+                if (sql.contains("GET_LOCK")) {
+                    return getLockQuery;
+                }
+                if (sql.contains("RELEASE_LOCK")) {
+                    return releaseLockQuery;
+                }
+                return nativeQuery;
+            });
+
+            // GET_LOCK.getSingleResult() 呼び出しで ReentrantLock を実取得する
+            // （他スレッドが保持中ならここでブロックする。これが MySQL GET_LOCK の本来の意味論）。
+            given(getLockQuery.getSingleResult()).willAnswer(inv -> {
+                postingLock.lock();
+                return "1";
+            });
+            // RELEASE_LOCK.getSingleResult() 呼び出しで解放。
+            given(releaseLockQuery.getSingleResult()).willAnswer(inv -> {
+                if (postingLock.isHeldByCurrentThread()) {
+                    postingLock.unlock();
+                }
+                return "1";
+            });
+
             // countByJobPostingIdAndStatus の原子的カウンタ。初期0、1件成功するたび +1。
+            // GET_LOCK で直列化されているため、スレッド A の save 完了後に B の count が走る。
             final AtomicInteger acceptedCounter = new AtomicInteger(0);
             given(applicationRepository.countByJobPostingIdAndStatus(
                     POSTING_ID, JobApplicationStatus.ACCEPTED))

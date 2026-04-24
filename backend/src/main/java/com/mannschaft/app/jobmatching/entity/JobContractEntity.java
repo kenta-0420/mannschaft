@@ -14,6 +14,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -61,6 +63,22 @@ public class JobContractEntity extends BaseEntity {
 
     @Column(name = "matched_at", nullable = false)
     private LocalDateTime matchedAt;
+
+    /** Worker チェックイン日時（QR スキャン確定時刻、ミリ秒精度 UTC）。Phase 13.1.2 追加。 */
+    @Column(name = "checked_in_at", columnDefinition = "TIMESTAMP(3)")
+    private Instant checkedInAt;
+
+    /** Worker チェックアウト日時（QR スキャン確定時刻、ミリ秒精度 UTC）。Phase 13.1.2 追加。 */
+    @Column(name = "checked_out_at", columnDefinition = "TIMESTAMP(3)")
+    private Instant checkedOutAt;
+
+    /**
+     * 業務時間（分）= checked_out_at − checked_in_at。
+     * CHECKED_OUT 遷移時に {@link #recordCheckOut(Instant)} から自動算出される（分未満切り捨て）。
+     * Phase 13.1.2 追加。
+     */
+    @Column(name = "work_duration_minutes")
+    private Integer workDurationMinutes;
 
     @Column(name = "completion_reported_at")
     private LocalDateTime completionReportedAt;
@@ -123,5 +141,38 @@ public class JobContractEntity extends BaseEntity {
     public void cancel() {
         this.status = JobContractStatus.CANCELLED;
         this.cancelledAt = LocalDateTime.now();
+    }
+
+    /**
+     * Worker チェックイン時刻を記録する。Phase 13.1.2 追加。
+     *
+     * <p>ステータス遷移（MATCHED → CHECKED_IN 等）は {@code JobContractStateMachine} が担い、
+     * 本メソッドは {@code checkedInAt} フィールドの更新のみ行う。</p>
+     *
+     * @param at チェックイン時刻（QR スキャン確定時刻、UTC）
+     */
+    public void recordCheckIn(Instant at) {
+        this.checkedInAt = at;
+    }
+
+    /**
+     * Worker チェックアウト時刻を記録し、業務時間（分）を計算する。Phase 13.1.2 追加。
+     *
+     * <p>{@code workDurationMinutes} は {@code Duration.between(checkedInAt, at).toMinutes()} で算出し、
+     * 分未満は切り捨てる（例: 59 秒 → 0 分、60 秒 → 1 分）。</p>
+     *
+     * <p>ステータス遷移は {@code JobContractStateMachine} が担い、本メソッドはフィールド更新のみ。</p>
+     *
+     * @param at チェックアウト時刻（QR スキャン確定時刻、UTC）
+     * @throws IllegalStateException {@code checkedInAt} が未設定の場合
+     */
+    public void recordCheckOut(Instant at) {
+        if (this.checkedInAt == null) {
+            throw new IllegalStateException(
+                    "checkedInAt が未設定のため recordCheckOut を実行できません（contractId=" + getId() + "）");
+        }
+        this.checkedOutAt = at;
+        long minutes = Duration.between(this.checkedInAt, at).toMinutes();
+        this.workDurationMinutes = (int) minutes;
     }
 }

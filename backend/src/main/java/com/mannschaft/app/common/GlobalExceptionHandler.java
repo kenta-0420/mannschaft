@@ -110,7 +110,12 @@ public class GlobalExceptionHandler {
             Map.entry("JOB_ALREADY_APPLIED", HttpStatus.CONFLICT),
             Map.entry("JOB_APPLICATION_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("JOB_CONTRACT_NOT_FOUND", HttpStatus.NOT_FOUND),
-            Map.entry("JOB_PERMISSION_DENIED", HttpStatus.FORBIDDEN)
+            Map.entry("JOB_PERMISSION_DENIED", HttpStatus.FORBIDDEN),
+            // F13.1 Phase 13.1.2: QR チェックイン／アウト
+            Map.entry("JOB_QR_TOKEN_INVALID_SIGNATURE", HttpStatus.UNAUTHORIZED),
+            Map.entry("JOB_QR_TOKEN_WRONG_WORKER", HttpStatus.FORBIDDEN),
+            Map.entry("JOB_CHECK_OUT_BEFORE_CHECK_IN", HttpStatus.CONFLICT),
+            Map.entry("JOB_CHECK_IN_CONCURRENT_CONFLICT", HttpStatus.FORBIDDEN)
     );
 
     /**
