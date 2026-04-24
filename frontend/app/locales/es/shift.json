@@ -225,6 +225,7 @@
       "strongRestCount": "Prefiero descansar: {count}",
       "absoluteRestCount": "Día libre obligatorio: {count}",
       "totalCount": "Total: {count}",
+      "totalLabel": "Total",
       "confirmSubmit": "¿Enviar con esta configuración?"
     }
   }

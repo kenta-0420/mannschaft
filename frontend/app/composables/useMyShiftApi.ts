@@ -11,6 +11,9 @@ export function useMyShiftApi() {
 
   /**
    * 自分のシフト希望一覧を取得する（確定分 + 希望分）。
+   *
+   * TODO(F03.5 Phase2): useShiftRequestApi.listMyRequests と統合予定。
+   * 現在は本 composable と {@link useShiftRequestApi} の両方に同等実装が存在する。
    */
   async function listMyRequests(): Promise<ShiftRequestResponse[]> {
     const res = await api<{ data: ShiftRequestResponse[] }>('/api/v1/shifts/my/requests')

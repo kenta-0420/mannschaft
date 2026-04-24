@@ -15,7 +15,7 @@ import { preferenceToColor, preferenceToI18nKey } from '~/utils/shiftPreference'
 
 definePageMeta({ middleware: 'auth' })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { error: showError, success: showSuccess } = useNotification()
 const { getAvailabilityDefaults, setAvailabilityDefaults, deleteAvailabilityDefaults } =
   useShiftAvailabilityDefaultApi()
@@ -25,12 +25,14 @@ const loading = ref(false)
 const saving = ref(false)
 const selectedTeamId = ref<number | null>(null)
 
-// 曜日 0(日)〜6(土) — toLocaleDateString で動的生成
-const DOW_LABELS = Array.from({ length: 7 }, (_, i) => {
-  // 2024-01-07(日)を起点に i 日加算
-  const d = new Date(2024, 0, 7 + i)
-  return d.toLocaleDateString('ja-JP', { weekday: 'short' })
-})
+// 曜日 0(日)〜6(土) — toLocaleDateString で動的生成。locale 変更に追従させる。
+const DOW_LABELS = computed(() =>
+  Array.from({ length: 7 }, (_, i) => {
+    // 2024-01-07(日)を起点に i 日加算
+    const d = new Date(2024, 0, 7 + i)
+    return d.toLocaleDateString(locale.value, { weekday: 'short' })
+  }),
+)
 
 const preferenceOptions: ShiftPreference[] = [
   'PREFERRED',

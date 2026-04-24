@@ -8,7 +8,7 @@ import type {
 
 definePageMeta({ middleware: 'auth' })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const teamStore = useTeamStore()
 const { getSchedule } = useShiftApi()
@@ -182,7 +182,7 @@ const sortedSlots = computed(() =>
 )
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' })
+  return new Date(dateStr).toLocaleDateString(locale.value, { month: 'short', day: 'numeric', weekday: 'short' })
 }
 </script>
 

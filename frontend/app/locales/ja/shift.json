@@ -225,6 +225,7 @@
       "strongRestCount": "できれば休み: {count} 件",
       "absoluteRestCount": "絶対休み: {count} 件",
       "totalCount": "合計: {count} 件",
+      "totalLabel": "合計",
       "confirmSubmit": "この内容で提出しますか？"
     }
   }

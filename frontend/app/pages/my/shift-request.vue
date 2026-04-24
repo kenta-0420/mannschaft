@@ -22,7 +22,7 @@ import { preferenceToI18nKey } from '~/utils/shiftPreference'
 
 definePageMeta({ middleware: 'auth' })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { error: showError, success: showSuccess } = useNotification()
 const { listSchedules } = useShiftApi()
 const { listSlots } = useShiftSlotApi()
@@ -225,7 +225,7 @@ const sortedDates = computed(() => [...slotsByDate.value.keys()].sort())
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr)
-  return d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short' })
+  return d.toLocaleDateString(locale.value, { month: 'numeric', day: 'numeric', weekday: 'short' })
 }
 
 function formatTime(timeStr: string): string {
@@ -465,7 +465,7 @@ onMounted(async () => {
           <div
             class="mt-2 flex items-center justify-between border-t border-surface-200 pt-2 text-sm font-semibold"
           >
-            <span>合計</span>
+            <span>{{ t('shift.preview.totalLabel') }}</span>
             <span>{{ slots.length }}</span>
           </div>
         </div>

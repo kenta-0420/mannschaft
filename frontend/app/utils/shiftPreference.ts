@@ -44,7 +44,7 @@ export function preferenceToColor(preference: ShiftPreference): string {
 /**
  * ShiftPreference を自動割当スコアに変換する。
  *
- * スコア定義（設計書§5 準拠）:
+ * スコア定義（設計書 F03.5 v2.3 §5.10 準拠・Phase 1 MVP 実装値）:
  * | 値             | スコア            |
  * |---|---|
  * | PREFERRED      | +100 （出勤希望）  |
@@ -53,9 +53,9 @@ export function preferenceToColor(preference: ShiftPreference): string {
  * | STRONG_REST    | -80  （できれば休み）   |
  * | ABSOLUTE_REST  | -Infinity（割当不可）  |
  *
- * ※ 設計書§5 の重みは +50/0/-20/-80/-∞ だが、本 util はフロントエンド表示用スコア目安として
- *   PREFERRED=+100, WEAK_REST=-30 に調整。バックエンドの GreedyShiftAssignmentStrategy
- *   が使う実際のスコアとは独立。
+ * 旧 v2.2 の +50/-20 から Phase 1 MVP で +100/-30 へ上方修正し、設計書側を v2.3 として追随。
+ * バックエンドの {@code ShiftPreference#toAssignmentScore()} と一致。Phase 2 の自動割当実機
+ * テスト結果を踏まえ、動的重み調整の余地を残す。
  * @param preference 希望強度
  * @returns 割当スコア（ABSOLUTE_REST は Number.NEGATIVE_INFINITY）
  */

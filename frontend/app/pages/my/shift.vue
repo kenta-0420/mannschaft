@@ -12,7 +12,7 @@ import { preferenceToI18nKey } from '~/utils/shiftPreference'
 
 definePageMeta({ middleware: 'auth' })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { error: showError, success: showSuccess } = useNotification()
 const { listMyRequests } = useMyShiftApi()
 const { createSwapRequest } = useShiftSwapApi()
@@ -47,7 +47,7 @@ const weekDates = computed(() => {
 })
 
 const monthLabel = computed(() =>
-  currentDate.value.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' }),
+  currentDate.value.toLocaleDateString(locale.value, { year: 'numeric', month: 'long' }),
 )
 
 const weekLabel = computed(() => {
@@ -223,7 +223,7 @@ onMounted(() => load())
               {{ date.getDate() }}
             </span>
             <span class="text-xs text-surface-500">
-              {{ date.toLocaleDateString('ja-JP', { weekday: 'short' }) }}
+              {{ date.toLocaleDateString(locale, { weekday: 'short' }) }}
             </span>
           </div>
 

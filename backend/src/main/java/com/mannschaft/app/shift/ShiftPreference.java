@@ -11,19 +11,19 @@ package com.mannschaft.app.shift;
  */
 public enum ShiftPreference {
 
-    /** 希望（出勤したい）— 自動割当スコア目安: +100。 */
+    /** 希望（出勤したい）— 自動割当スコア: +100（設計書 F03.5 v2.3 §5.10 準拠）。 */
     PREFERRED,
 
-    /** 可能（指定なし・出勤可能）— 自動割当スコア目安: 0。 */
+    /** 可能（指定なし・出勤可能）— 自動割当スコア: 0。 */
     AVAILABLE,
 
-    /** できれば出勤を避けたい（出れなくはない）— 自動割当スコア目安: -30。 */
+    /** できれば出勤を避けたい（出れなくはない）— 自動割当スコア: -30（設計書 F03.5 v2.3 §5.10 準拠）。 */
     WEAK_REST,
 
-    /** できれば休みたい（旧 UNAVAILABLE 相当）— 自動割当スコア目安: -80。 */
+    /** できれば休みたい（旧 UNAVAILABLE 相当）— 自動割当スコア: -80。 */
     STRONG_REST,
 
-    /** 絶対休み（自動割当の対象外とする強い拒否）— 自動割当スコア目安: -∞（候補から除外）。 */
+    /** 絶対休み（自動割当の対象外とする強い拒否）— 自動割当スコア: -∞（候補から除外）。 */
     ABSOLUTE_REST;
 
     /**
@@ -43,8 +43,10 @@ public enum ShiftPreference {
      * <p>ABSOLUTE_REST は本メソッドでは {@link Integer#MIN_VALUE} を返すが、実際には
      * {@link #isHardExcluded()} で除外判定することを推奨する（オーバーフロー事故防止）。</p>
      *
-     * <p>具体的な重みは Phase 2 の自動割当実装時に {@code application.yml} から調整可能にする。
-     * ここで返す値は Phase 1 時点のデフォルト値（設計書 §5.10 のスコア目安と整合）。</p>
+     * <p>Phase 1 MVP 実装値（設計書 F03.5 v2.3 §5.10 と整合）:
+     * PREFERRED=+100 / AVAILABLE=0 / WEAK_REST=-30 / STRONG_REST=-80 / ABSOLUTE_REST=-∞。
+     * 旧 v2.2 の +50/-20 から上方修正済み。Phase 2 の自動割当実機テスト結果を踏まえ、
+     * {@code application.yml} から動的に重み調整できる余地を残す。</p>
      *
      * @return スコア値
      */

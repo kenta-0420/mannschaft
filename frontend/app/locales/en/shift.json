@@ -225,6 +225,7 @@
       "strongRestCount": "Prefer day off: {count}",
       "absoluteRestCount": "Day off required: {count}",
       "totalCount": "Total: {count}",
+      "totalLabel": "Total",
       "confirmSubmit": "Submit with these settings?"
     }
   }

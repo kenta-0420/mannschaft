@@ -32,13 +32,38 @@ const canManage = computed(() => {
   )
 })
 
+/**
+ * チームデフォルト未設定を 404 として検知するヘルパー。
+ * 403/500/ネットワーク断は握りつぶさず上位へ再 throw させるため、404 のみ許容する。
+ */
+function isNotFoundError(error: unknown): boolean {
+  const e = error as {
+    statusCode?: number
+    response?: { status?: number }
+    data?: { error?: { code?: string } }
+  }
+  if (e?.statusCode === 404) return true
+  if (e?.response?.status === 404) return true
+  if (e?.data?.error?.code === 'WORK_CONSTRAINT_NOT_FOUND') return true
+  return false
+}
+
 async function load() {
   if (!schedule.value) return
   loading.value = true
   try {
     const [constraints, def] = await Promise.all([
       listConstraints(schedule.value.teamId),
-      getTeamDefault(schedule.value.teamId).catch(() => null),
+      (async () => {
+        try {
+          return await getTeamDefault(schedule.value!.teamId)
+        } catch (e) {
+          // 未設定（404 / WORK_CONSTRAINT_NOT_FOUND）のみ null として許容。
+          // 403/500/ネットワーク断などは上位へ伝搬させ、handleApiError で通知する。
+          if (isNotFoundError(e)) return null
+          throw e
+        }
+      })(),
     ])
     teamDefault.value = def
     // userId !== null のもののみメンバー個別制約として表示

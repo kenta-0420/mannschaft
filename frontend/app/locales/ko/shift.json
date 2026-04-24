@@ -225,6 +225,7 @@
       "strongRestCount": "가능하면 휴식: {count} 건",
       "absoluteRestCount": "반드시 휴식: {count} 건",
       "totalCount": "합계: {count} 건",
+      "totalLabel": "합계",
       "confirmSubmit": "이 내용으로 제출하시겠습니까？"
     }
   }
