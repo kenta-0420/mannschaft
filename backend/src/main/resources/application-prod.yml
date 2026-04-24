@@ -19,6 +19,13 @@ mannschaft:
     secret: ${MANNSCHAFT_JWT_SECRET}
     access-token-expiration: ${MANNSCHAFT_JWT_ACCESS_EXPIRATION:900}
     refresh-token-expiration: ${MANNSCHAFT_JWT_REFRESH_EXPIRATION:604800}
+  # F13.1 Phase 13.1.2: QR 署名鍵は環境変数から必須注入（デフォルト値なし＝未設定時は起動失敗）
+  jobs:
+    qr:
+      signing-keys:
+        - kid: ${JOB_QR_SIGNING_KID:v1}
+          secret: ${JOB_QR_SIGNING_SECRET}
+          active: true
 
 server:
   port: ${SERVER_PORT:8080}

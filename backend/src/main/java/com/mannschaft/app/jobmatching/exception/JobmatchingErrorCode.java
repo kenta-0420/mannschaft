@@ -55,7 +55,39 @@ public enum JobmatchingErrorCode implements ErrorCode {
     JOB_REWARD_OUT_OF_RANGE("JOB_REWARD_OUT_OF_RANGE", "報酬額が許容範囲外です", Severity.WARN),
 
     /** 差し戻し回数の上限を超過 */
-    JOB_REJECTION_LIMIT_EXCEEDED("JOB_REJECTION_LIMIT_EXCEEDED", "差し戻し回数の上限を超過しました", Severity.WARN);
+    JOB_REJECTION_LIMIT_EXCEEDED("JOB_REJECTION_LIMIT_EXCEEDED", "差し戻し回数の上限を超過しました", Severity.WARN),
+
+    // ===== F13.1 Phase 13.1.2: QR チェックイン／アウト =====
+
+    /** QR トークン失効（TTL 超過） / 400 Bad Request */
+    JOB_QR_TOKEN_EXPIRED("JOB_QR_TOKEN_EXPIRED", "QR コードの有効期限が切れています", Severity.WARN),
+
+    /** QR トークン再利用（used_at が既に記録されている） / 400 Bad Request */
+    JOB_QR_TOKEN_REUSED("JOB_QR_TOKEN_REUSED", "この QR コードは既に使用されています", Severity.WARN),
+
+    /** QR トークン署名検証失敗（改ざん疑い） / 401 Unauthorized */
+    JOB_QR_TOKEN_INVALID_SIGNATURE("JOB_QR_TOKEN_INVALID_SIGNATURE",
+            "QR コードの署名検証に失敗しました", Severity.WARN),
+
+    /** 採用確定 Worker 以外のスキャン（ペイロードの worker_user_id 不一致） / 403 Forbidden */
+    JOB_QR_TOKEN_WRONG_WORKER("JOB_QR_TOKEN_WRONG_WORKER",
+            "この QR コードはあなたが採用された求人のものではありません", Severity.WARN),
+
+    /** 同一契約・同一種別のチェックイン／アウトが既に存在 / 400 Bad Request */
+    JOB_CHECK_IN_ALREADY_EXISTS("JOB_CHECK_IN_ALREADY_EXISTS",
+            "既にチェックイン／アウト済みです", Severity.WARN),
+
+    /** チェックイン未完のままチェックアウトを試みた / 409 Conflict */
+    JOB_CHECK_OUT_BEFORE_CHECK_IN("JOB_CHECK_OUT_BEFORE_CHECK_IN",
+            "チェックインが完了していないためチェックアウトできません", Severity.WARN),
+
+    /** 同時刻に他契約でチェックイン中（掛け持ち禁止） / 403 Forbidden */
+    JOB_CHECK_IN_CONCURRENT_CONFLICT("JOB_CHECK_IN_CONCURRENT_CONFLICT",
+            "同じ時間帯に別の契約でチェックイン中のため、この契約へのチェックインはできません", Severity.WARN),
+
+    /** 手動入力フォールバック用の短コードが見つからない（失効・未発行） / 400 Bad Request */
+    JOB_QR_SHORT_CODE_NOT_FOUND("JOB_QR_SHORT_CODE_NOT_FOUND",
+            "入力された短コードは無効または失効しています", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -6,6 +6,9 @@ import type { JobApplicationResponse } from '~/types/jobmatching'
  *
  * <p>状態遷移のガードは BE Service 側で行われるため、FE ではボタンの有効無効のみ判定する
  * （APPLIED 以外は採用/不採用ボタンを非表示）。確認ダイアログは親または個別実装に委ねる。</p>
+ *
+ * <p>F13.1 Phase 13.1.2: 採用確定（ACCEPTED）の応募については
+ * 契約 ID があれば「QR を表示」ボタンを出し、親に {@code show-qr} を発火する。</p>
  */
 
 const props = defineProps<{
@@ -13,10 +16,12 @@ const props = defineProps<{
   loading?: boolean
   /** 採用確定の進行中応募 ID（親から制御）。 */
   busyApplicationId?: number | null
+  /** 応募 ID → 契約 ID のマップ（ACCEPTED 応募について QR ボタンを出すために使う）。 */
+  contractIdByApplicationId?: Record<number, number>
 }>()
 
 const emit = defineEmits<{
-  (e: 'accept' | 'reject', applicationId: number): void
+  (e: 'accept' | 'reject' | 'show-qr', id: number): void
 }>()
 
 const { t, locale } = useI18n()
@@ -42,6 +47,10 @@ function isBusy(applicationId: number): boolean {
 
 function canDecide(app: JobApplicationResponse): boolean {
   return app.status === 'APPLIED'
+}
+
+function contractIdOf(app: JobApplicationResponse): number | null {
+  return props.contractIdByApplicationId?.[app.id] ?? null
 }
 </script>
 
@@ -114,6 +123,16 @@ function canDecide(app: JobApplicationResponse): boolean {
                 @click="emit('reject', app.id)"
               />
             </div>
+            <Button
+              v-else-if="app.status === 'ACCEPTED' && contractIdOf(app) !== null"
+              :label="t('jobmatching.qr.display.showButton')"
+              icon="pi pi-qrcode"
+              severity="primary"
+              size="small"
+              outlined
+              data-testid="application-show-qr"
+              @click="emit('show-qr', contractIdOf(app) as number)"
+            />
           </div>
         </div>
       </li>

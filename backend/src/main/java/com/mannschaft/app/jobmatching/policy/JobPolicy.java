@@ -3,10 +3,14 @@ package com.mannschaft.app.jobmatching.policy;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.jobmatching.entity.JobContractEntity;
 import com.mannschaft.app.jobmatching.entity.JobPostingEntity;
+import com.mannschaft.app.jobmatching.enums.JobCheckInType;
+import com.mannschaft.app.jobmatching.enums.JobContractStatus;
 import com.mannschaft.app.jobmatching.enums.VisibilityScope;
 import com.mannschaft.app.role.service.RoleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+
+import java.util.Objects;
 
 /**
  * F13.1 求人マッチング機能の認可ポリシー。
@@ -152,6 +156,67 @@ public class JobPolicy {
             return false;
         }
         return userId.equals(contract.getRequesterUserId());
+    }
+
+    // ------------------------------------------------------------------
+    // Phase 13.1.2: QR チェックイン／アウト
+    // ------------------------------------------------------------------
+
+    /**
+     * QR トークン発行権限（Requester 本人のみ許可）。
+     *
+     * <p>Requester 側デバイスでのみ QR コードを画面表示するため、発行できるのは
+     * Requester 本人に限定する。SYSTEM_ADMIN による代理発行は本メソッドのスコープ外で、
+     * 別途管理画面経由の例外ルートで扱う（設計書 §5.4 備考）。</p>
+     *
+     * @param contract 対象契約
+     * @param userId   発行要求ユーザー
+     * @return 許可される場合 true
+     */
+    public boolean canIssueQrToken(JobContractEntity contract, Long userId) {
+        if (contract == null || userId == null) {
+            return false;
+        }
+        return Objects.equals(contract.getRequesterUserId(), userId);
+    }
+
+    /**
+     * QR チェックイン／アウト記録権限。
+     *
+     * <p>判定条件（設計書 §2.3.1 / §5.4）:</p>
+     * <ul>
+     *   <li>操作ユーザーが契約の Worker 本人であること</li>
+     *   <li>{@code type=IN} の場合、契約ステータスが {@link JobContractStatus#MATCHED} または
+     *       {@link JobContractStatus#CHECKED_IN}（冪等性担保用、実際の再送は DB UNIQUE で弾かれる）</li>
+     *   <li>{@code type=OUT} の場合、契約ステータスが {@link JobContractStatus#IN_PROGRESS} または
+     *       {@link JobContractStatus#CHECKED_OUT}（同上）</li>
+     * </ul>
+     *
+     * <p>本判定は認可層のゲートであり、実際の重複検知は Service 層で
+     * {@code JobCheckInRepository.findByJobContractIdAndType} により行う。</p>
+     *
+     * @param contract 対象契約
+     * @param userId   操作ユーザー（Worker）
+     * @param type     IN / OUT
+     * @return 許可される場合 true
+     */
+    public boolean canRecordCheckIn(JobContractEntity contract, Long userId, JobCheckInType type) {
+        if (contract == null || userId == null || type == null) {
+            return false;
+        }
+        if (!Objects.equals(contract.getWorkerUserId(), userId)) {
+            return false;
+        }
+        JobContractStatus status = contract.getStatus();
+        if (status == null) {
+            return false;
+        }
+        return switch (type) {
+            case IN -> status == JobContractStatus.MATCHED
+                    || status == JobContractStatus.CHECKED_IN;
+            case OUT -> status == JobContractStatus.IN_PROGRESS
+                    || status == JobContractStatus.CHECKED_OUT;
+        };
     }
 
     // ------------------------------------------------------------------

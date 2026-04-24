@@ -4,6 +4,8 @@ import type {
   JobPagedMeta,
   JobPostingResponse,
 } from '~/types/jobmatching'
+// F13.1 Phase 13.1.2: ACCEPTED 応募について「QR を表示」ボタンを出すため、
+// 現在ログイン中ユーザーの契約一覧を引いて応募 ID → 契約 ID のマップを作る。
 
 /**
  * F13.1 チーム配下求人詳細（Requester 視点）。
@@ -18,6 +20,7 @@ const router = useRouter()
 const { t, locale } = useI18n()
 const postingApi = useJobPostingApi()
 const applicationApi = useJobApplicationApi()
+const contractApi = useJobContractApi()
 const { success, error, warn } = useNotification()
 
 const teamId = computed(() => Number(route.params.id))
@@ -30,6 +33,11 @@ const applicationsMeta = ref<JobPagedMeta>({ total: 0, page: 0, size: 20, totalP
 const applicationsLoading = ref(false)
 const busyAction = ref<string | null>(null)
 const busyApplicationId = ref<number | null>(null)
+/**
+ * F13.1 Phase 13.1.2: 応募 ID → 契約 ID のマップ。
+ * ACCEPTED 応募について「QR を表示」ボタンを出すために使う。
+ */
+const contractIdByApplicationId = ref<Record<number, number>>({})
 
 // --- reject-completion ならぬ reject-application ダイアログ ---
 const rejectDialog = ref(false)
@@ -57,16 +65,46 @@ async function loadApplications() {
     const res = await applicationApi.listApplicationsByJob(jobId.value, { page: 0, size: 20 })
     applications.value = res.data
     applicationsMeta.value = res.meta
+    // ACCEPTED 応募に対応する契約 ID を引くため、自分の契約一覧から該当求人分を拾ってマップ化する。
+    // 権限が無い／契約が存在しないケースは静かに空マップとする。
+    await loadContractMap()
   }
   catch (e) {
     // 権限なし等で失敗するケースは静かに空表示
     applications.value = []
     applicationsMeta.value = { total: 0, page: 0, size: 20, totalPages: 0 }
+    contractIdByApplicationId.value = {}
     warn(t('jobmatching.error.applicationsLoadFailed'), String(e))
   }
   finally {
     applicationsLoading.value = false
   }
+}
+
+/**
+ * 自分（Requester）の契約一覧から、現在の求人 ID に紐づく契約を拾って
+ * 応募 ID → 契約 ID のマップを作る。
+ */
+async function loadContractMap() {
+  try {
+    // 件数上限は一旦 100 件に。MVP なので十分。
+    const res = await contractApi.listMyContracts({ page: 0, size: 100 })
+    const map: Record<number, number> = {}
+    for (const c of res.data) {
+      if (c.jobPostingId === jobId.value) {
+        map[c.jobApplicationId] = c.id
+      }
+    }
+    contractIdByApplicationId.value = map
+  }
+  catch {
+    // 契約一覧が取れなくても QR ボタンが出ないだけなので静かに握る。
+    contractIdByApplicationId.value = {}
+  }
+}
+
+function showQrForContract(contractId: number) {
+  router.push(`/contracts/${contractId}/qr?type=IN`)
 }
 
 async function publish() {
@@ -403,8 +441,10 @@ onMounted(async () => {
           :applications="applications"
           :loading="applicationsLoading"
           :busy-application-id="busyApplicationId"
+          :contract-id-by-application-id="contractIdByApplicationId"
           @accept="acceptApplication"
           @reject="openRejectDialog"
+          @show-qr="showQrForContract"
         />
       </section>
     </div>

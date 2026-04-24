@@ -233,6 +233,27 @@ function fmtJpy(v: number): string {
 
 const currentUserId = computed<number>(() => authStore.user?.id ?? 0)
 
+// --- QR スキャン導線（Worker のみ、未完了ステータスで表示） ---
+
+/**
+ * Worker かつ MATCHED/CHECKED_IN/IN_PROGRESS の契約にのみ QR スキャン導線を出す。
+ * CHECKED_OUT 以降は時刻確定フェーズ（QR は使わない）。
+ */
+function canShowScanLink(contract: JobContractResponse): boolean {
+  if (contract.workerUserId !== currentUserId.value) return false
+  return (
+    contract.status === 'MATCHED'
+    || contract.status === 'CHECKED_IN'
+    || contract.status === 'IN_PROGRESS'
+  )
+}
+
+/** 契約 status から次に取るべき IN/OUT を推定する。 */
+function scanTypeFor(contract: JobContractResponse): 'IN' | 'OUT' {
+  if (contract.status === 'CHECKED_IN' || contract.status === 'IN_PROGRESS') return 'OUT'
+  return 'IN'
+}
+
 // ContractActionPanel の busyAction を各契約ごとに算出
 function busyActionFor(contractId: number): ContractActionKind | null {
   const key = busyContractKey.value
@@ -407,6 +428,21 @@ onMounted(async () => {
                 {{ fmtJpy(contract.baseRewardJpy) }}
               </span>
             </div>
+          </div>
+
+          <div
+            v-if="canShowScanLink(contract)"
+            class="mb-2 flex flex-wrap gap-2"
+          >
+            <NuxtLink :to="`/contracts/${contract.id}/scan?type=${scanTypeFor(contract)}`">
+              <Button
+                :label="t(`jobmatching.qr.scanner.linkFromContract.${scanTypeFor(contract)}`)"
+                icon="pi pi-qrcode"
+                severity="info"
+                size="small"
+                data-testid="qr-scan-link"
+              />
+            </NuxtLink>
           </div>
 
           <ContractActionPanel

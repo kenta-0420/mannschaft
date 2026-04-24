@@ -245,6 +245,89 @@
     "error": {
       "loadFailed": "データの読み込みに失敗しました",
       "applicationsLoadFailed": "応募一覧の読み込みに失敗しました"
+    },
+    "qr": {
+      "display": {
+        "title": {
+          "IN": "入場 QR",
+          "OUT": "退場 QR"
+        },
+        "back": "戻る",
+        "switchIn": "入場",
+        "switchOut": "退場",
+        "loading": "QR を発行中...",
+        "unavailable": "QR コードを表示できません。再発行ボタンを押してください。",
+        "qrAriaLabel": "業務開始／終了のチェックイン QR コード",
+        "shortCodeLabel": "短コード（手動入力用）",
+        "remainingLabel": "有効時間",
+        "remainingSeconds": "残り {sec} 秒",
+        "showButton": "QR を表示",
+        "showForContract": "チェックイン QR を表示",
+        "screenshotWarning": {
+          "title": "注意：スクリーンショットでの共有は禁止",
+          "body": "この QR は短時間で無効化されます。画面キャプチャやスクリーンショットを他人に共有しないでください。"
+        }
+      },
+      "error": {
+        "issueFailed": "QR トークンの発行に失敗しました",
+        "renderFailed": "QR コードの描画に失敗しました",
+        "contractNotFound": "契約が見つかりませんでした"
+      },
+      "checkInTimeline": {
+        "sectionTitle": "チェックイン状況",
+        "empty": "チェックイン履歴はまだありません",
+        "typeIn": "入場",
+        "typeOut": "退場",
+        "duration": "業務時間",
+        "durationMinutes": "{min} 分",
+        "geoAnomaly": "勤務地から離れた場所で記録されました",
+        "recordedAt": "記録日時：{at}"
+      },
+      "scanner": {
+        "title": {
+          "IN": "QR スキャン（入場）",
+          "OUT": "QR スキャン（退場）"
+        },
+        "switchIn": "入場をスキャン",
+        "switchOut": "退場をスキャン",
+        "tab": {
+          "camera": "カメラでスキャン",
+          "manual": "コードを手入力"
+        },
+        "cameraInactive": "カメラは停止中です",
+        "startCamera": "カメラを起動",
+        "stopCamera": "カメラを停止",
+        "submitting": "送信中...",
+        "offlineBanner": "オフライン中です。読み取ったチェックインは復帰時に自動送信します。",
+        "geoConsent": "勤務地確認のため位置情報を利用する（任意）",
+        "permission": {
+          "title": "カメラの利用を許可してください",
+          "body": "QR コードを読み取るため、カメラ権限が必要です。プライバシー保護のため映像はサーバーに送信しません。"
+        },
+        "manual": {
+          "description": "依頼者画面の QR 下部に表示されている 6 桁の英数字を入力してください。",
+          "placeholder": "ABC123",
+          "submit": "送信する",
+          "invalid": "6 桁の英数字で入力してください"
+        },
+        "submitted": {
+          "inSuccess": "入場を記録しました",
+          "outSuccess": "退場を記録しました",
+          "outDetail": "業務時間 {min} 分",
+          "queuedTitle": "オフライン保留",
+          "queuedBody": "ネットワーク復帰時に自動送信します。",
+          "failedTitle": "チェックインに失敗しました",
+          "geoAnomalyTitle": "位置情報の注意",
+          "geoAnomalyBody": "勤務地として登録された場所と大きく離れています。依頼者にご確認ください。"
+        },
+        "error": {
+          "cameraFailed": "カメラを起動できませんでした：{detail}"
+        },
+        "linkFromContract": {
+          "IN": "QR で入場する",
+          "OUT": "QR で退場する"
+        }
+      }
     }
   }
 }

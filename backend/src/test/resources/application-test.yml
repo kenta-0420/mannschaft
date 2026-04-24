@@ -27,3 +27,16 @@ mannschaft:
     hmac-key: dGVzdC1obWFjLWtleS0tLTEyMzQ1Njc4OTBhYmNkZWY=
   storage:
     type: local
+  # F13.1 Phase 13.1.2: QR 署名 — テスト決定性のために固定 secret を使用
+  # src/main/resources/application-test.yml と同一値（src/test/ が優先されるため同期必須）
+  jobs:
+    qr:
+      ttl-seconds: 60
+      ttl-seconds-max: 300
+      rotation-advance-seconds: 5
+      short-code-length: 6
+      anomaly-distance-meters: 500
+      signing-keys:
+        - kid: v1
+          secret: test-qr-signing-key-fixed-32bytes-testingxxxx
+          active: true
