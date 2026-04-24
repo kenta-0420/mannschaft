@@ -10,3 +10,16 @@ spring:
 
   flyway:
     enabled: true
+
+mannschaft:
+  # F13.1 Phase 13.1.2: QR 署名 — テスト決定性のために固定 secret を使用
+  jobs:
+    qr:
+      ttl-seconds: 60
+      ttl-seconds-max: 300
+      rotation-advance-seconds: 5
+      short-code-length: 6
+      signing-keys:
+        - kid: v1
+          secret: test-qr-signing-key-fixed-32bytes-testingxxxx
+          active: true
