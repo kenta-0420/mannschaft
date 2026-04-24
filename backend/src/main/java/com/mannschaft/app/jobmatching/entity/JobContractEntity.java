@@ -156,6 +156,28 @@ public class JobContractEntity extends BaseEntity {
     }
 
     /**
+     * ステータスを CHECKED_IN → IN_PROGRESS へ二段遷移させる（Phase 13.1.2）。
+     *
+     * <p>設計書 §5.4 備考「チェックイン成立と同時に自動的に IN_PROGRESS へ遷移する」に従い、
+     * Service 層で {@link JobContractStateMachine#validate} を 2 回（MATCHED→CHECKED_IN 及び
+     * CHECKED_IN→IN_PROGRESS）通したあと、本メソッドで最終ステータスを書き換える。</p>
+     */
+    public void markInProgressAfterCheckIn() {
+        this.status = JobContractStatus.IN_PROGRESS;
+    }
+
+    /**
+     * ステータスを CHECKED_OUT に遷移させる（Phase 13.1.2）。
+     *
+     * <p>Service 層で {@link JobContractStateMachine#validate}（IN_PROGRESS → CHECKED_OUT）
+     * を通したあとに呼び出す。フィールド更新と業務時間計算は
+     * {@link #recordCheckOut(Instant)} が担うため、本メソッドはステータス更新のみ。</p>
+     */
+    public void markCheckedOut() {
+        this.status = JobContractStatus.CHECKED_OUT;
+    }
+
+    /**
      * Worker チェックアウト時刻を記録し、業務時間（分）を計算する。Phase 13.1.2 追加。
      *
      * <p>{@code workDurationMinutes} は {@code Duration.between(checkedInAt, at).toMinutes()} で算出し、

@@ -38,6 +38,11 @@ public class JobNotificationService {
     private static final String TYPE_JOB_MATCHED = "JOB_MATCHED";
     private static final String TYPE_JOB_COMPLETION_REPORTED = "JOB_COMPLETION_REPORTED";
 
+    /** Phase 13.1.2: QR チェックイン／アウト関連の通知種別。 */
+    private static final String TYPE_JOB_CHECKED_IN = "JOB_CHECKED_IN";
+    private static final String TYPE_JOB_CHECKED_OUT = "JOB_CHECKED_OUT";
+    private static final String TYPE_JOB_GEO_ANOMALY = "JOB_GEO_ANOMALY";
+
     private final NotificationHelper notificationHelper;
 
     /**
@@ -115,6 +120,50 @@ public class JobNotificationService {
                 actionUrl,
                 contract.getWorkerUserId()
         );
+    }
+
+    // ---------------------------------------------------------------------
+    // Phase 13.1.2: QR チェックイン／アウト通知（足軽参実装のスタブ）
+    // ---------------------------------------------------------------------
+
+    /**
+     * Worker のチェックイン成立を Requester へ通知する。
+     *
+     * <p>Phase 13.1.2 足軽参時点ではスタブ実装（呼び出しポイント確保のみ）。
+     * 実通知本文・遷移先 URL・スコープ等の詳細化は足軽肆（Controller 担当）で
+     * 実装する想定（設計書 §2.7 JOB_CHECKED_IN）。</p>
+     *
+     * @param contractId 対象契約 ID
+     */
+    public void notifyCheckedIn(Long contractId) {
+        log.debug("[stub] JOB_CHECKED_IN 通知: contractId={}, type={}",
+                contractId, TYPE_JOB_CHECKED_IN);
+    }
+
+    /**
+     * Worker のチェックアウト成立を Requester へ通知する。
+     *
+     * <p>Phase 13.1.2 足軽参時点ではスタブ実装（設計書 §2.7 JOB_CHECKED_OUT）。</p>
+     *
+     * @param contractId 対象契約 ID
+     */
+    public void notifyCheckedOut(Long contractId) {
+        log.debug("[stub] JOB_CHECKED_OUT 通知: contractId={}, type={}",
+                contractId, TYPE_JOB_CHECKED_OUT);
+    }
+
+    /**
+     * Geolocation 乖離（業務場所から閾値超の離れ）を Requester へアラート通知する。
+     *
+     * <p>Phase 13.1.2 足軽参時点ではスタブ実装（設計書 §2.7 JOB_GEO_ANOMALY、強制配信）。
+     * 自動拒否はせず、Requester の判断に委ねるアラートとして送信する。</p>
+     *
+     * @param contractId     対象契約 ID
+     * @param distanceMeters 業務場所からの距離（メートル）
+     */
+    public void notifyGeoAnomaly(Long contractId, double distanceMeters) {
+        log.debug("[stub] JOB_GEO_ANOMALY 通知: contractId={}, distance={}m, type={}",
+                contractId, distanceMeters, TYPE_JOB_GEO_ANOMALY);
     }
 
     // 源流からオーバーロードを提供（Contract 単独から呼べる版、未使用時はコンパイラ警告にならない実装）。

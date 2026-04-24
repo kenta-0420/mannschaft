@@ -55,6 +55,14 @@ public class QrSigningProperties {
     @Min(4)
     private int shortCodeLength = 6;
 
+    /**
+     * Geolocation 乖離判定の閾値（メートル）。業務場所と端末位置の Haversine 距離が
+     * この値を超えた場合に {@code geo_anomaly=TRUE} を立てる（設計書 §10.10）。
+     * デフォルト 500 m。自動拒否はせず Requester へアラート通知するのみ。
+     */
+    @Min(1)
+    private int anomalyDistanceMeters = 500;
+
     /** HMAC-SHA256 署名鍵リスト（必須、最低 1 件）。 */
     @NotEmpty
     @Valid
