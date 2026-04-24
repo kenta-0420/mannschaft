@@ -294,14 +294,19 @@ class JobContractServiceTest {
             });
             given(nativeQuery.getSingleResult()).willAnswer(inv -> {
                 String sql = threadSql.get();
-                if (sql != null && sql.contains("GET_LOCK")) {
-                    lockSerializer.lock();
-                } else if (sql != null && sql.contains("RELEASE_LOCK")) {
-                    if (lockSerializer.isHeldByCurrentThread()) {
-                        lockSerializer.unlock();
+                try {
+                    if (sql != null && sql.contains("GET_LOCK")) {
+                        lockSerializer.lock();
+                    } else if (sql != null && sql.contains("RELEASE_LOCK")) {
+                        if (lockSerializer.isHeldByCurrentThread()) {
+                            lockSerializer.unlock();
+                        }
                     }
+                    return "1";
+                } finally {
+                    // ExecutorService のワーカースレッド再利用による値の持ち越し・メモリリーク防止。
+                    threadSql.remove();
                 }
-                return "1";
             });
 
             // 2 スレッド同時起動。両スレッドが latch.await で待機 → countDown で同時スタート。
@@ -309,9 +314,10 @@ class JobContractServiceTest {
             CountDownLatch startLatch = new CountDownLatch(1);
             CountDownLatch doneLatch = new CountDownLatch(2);
             AtomicInteger successCount = new AtomicInteger(0);
-            // 排他制御で弾かれた件数（JOB_CAPACITY_FULL または JOB_NOT_OPEN の合算）。
-            // 定員1 の場合、1 件目成功時に求人が CLOSED に遷移するため、後発スレッドは JOB_NOT_OPEN で拒否される。
-            AtomicInteger rejectedCount = new AtomicInteger(0);
+            // 定員1 の場合、1 件目成功時に求人が CLOSED に遷移するため、後発スレッドは必ず JOB_NOT_OPEN を受ける。
+            // 実装仕様（close() が capacity チェックに先立って走る）と厳密に縛ることで、
+            // 将来の実装変更（close 遅延化・capacity チェック先行化など）が入った際の退行検知力を高める。
+            AtomicInteger notOpenCount = new AtomicInteger(0);
             AtomicReference<Throwable> unexpectedError = new AtomicReference<>();
 
             Runnable runAccept = () -> { /* 各スレッドで1回採用確定を試行 */ };
@@ -321,9 +327,8 @@ class JobContractServiceTest {
                     service.acceptApplication(applicationIdA, REQUESTER_ID);
                     successCount.incrementAndGet();
                 } catch (BusinessException e) {
-                    if (e.getErrorCode() == JobmatchingErrorCode.JOB_CAPACITY_FULL
-                            || e.getErrorCode() == JobmatchingErrorCode.JOB_NOT_OPEN) {
-                        rejectedCount.incrementAndGet();
+                    if (e.getErrorCode() == JobmatchingErrorCode.JOB_NOT_OPEN) {
+                        notOpenCount.incrementAndGet();
                     } else {
                         unexpectedError.set(e);
                     }
@@ -339,9 +344,8 @@ class JobContractServiceTest {
                     service.acceptApplication(applicationIdB, REQUESTER_ID);
                     successCount.incrementAndGet();
                 } catch (BusinessException e) {
-                    if (e.getErrorCode() == JobmatchingErrorCode.JOB_CAPACITY_FULL
-                            || e.getErrorCode() == JobmatchingErrorCode.JOB_NOT_OPEN) {
-                        rejectedCount.incrementAndGet();
+                    if (e.getErrorCode() == JobmatchingErrorCode.JOB_NOT_OPEN) {
+                        notOpenCount.incrementAndGet();
                     } else {
                         unexpectedError.set(e);
                     }
@@ -359,9 +363,9 @@ class JobContractServiceTest {
 
             // 想定外例外が無いこと。
             assertThat(unexpectedError.get()).as("想定外例外").isNull();
-            // 成功が 1 件、排他拒否が 1 件になること（排他制御が機能している証拠）。
+            // 成功が 1 件、JOB_NOT_OPEN が 1 件になること（排他制御 + close() 遷移が機能している証拠）。
             assertThat(successCount.get()).as("採用成功数").isEqualTo(1);
-            assertThat(rejectedCount.get()).as("排他拒否数（JOB_CAPACITY_FULL or JOB_NOT_OPEN）").isEqualTo(1);
+            assertThat(notOpenCount.get()).as("JOB_NOT_OPEN 発生数").isEqualTo(1);
         }
     }
 
