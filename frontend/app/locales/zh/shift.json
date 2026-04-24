@@ -141,6 +141,7 @@
       "strongRestCount": "希望休息: {count} 件",
       "absoluteRestCount": "必须休息: {count} 件",
       "totalCount": "合计: {count} 件",
+      "totalLabel": "合计",
       "confirmSubmit": "确认提交这些内容吗？"
     }
   }

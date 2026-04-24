@@ -141,6 +141,7 @@
       "strongRestCount": "Ruhe bevorzugt: {count}",
       "absoluteRestCount": "Freier Tag erforderlich: {count}",
       "totalCount": "Gesamt: {count}",
+      "totalLabel": "Gesamt",
       "confirmSubmit": "Mit diesen Einstellungen einreichen?"
     }
   }
