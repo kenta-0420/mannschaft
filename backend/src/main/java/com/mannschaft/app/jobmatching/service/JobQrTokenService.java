@@ -366,6 +366,7 @@ public class JobQrTokenService {
 
         try {
             return Jwts.parser()
+                    .clock(() -> Date.from(clock.instant()))
                     .verifyWith(key)
                     .build()
                     .parseSignedClaims(token)
