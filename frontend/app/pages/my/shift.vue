@@ -223,7 +223,7 @@ onMounted(() => load())
               {{ date.getDate() }}
             </span>
             <span class="text-xs text-surface-500">
-              {{ date.toLocaleDateString(locale, { weekday: 'short' }) }}
+              {{ date.toLocaleDateString(locale.value, { weekday: 'short' }) }}
             </span>
           </div>
 

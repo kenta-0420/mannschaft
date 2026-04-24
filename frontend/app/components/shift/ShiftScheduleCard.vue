@@ -10,7 +10,7 @@ const emit = defineEmits<{
   click: [id: number]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 /** 提出率（%）: submittedCount / totalMembers */
 const submissionRate = computed<number>(() => {
@@ -19,7 +19,7 @@ const submissionRate = computed<number>(() => {
 })
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('ja-JP', {
+  return new Date(dateStr).toLocaleDateString(locale.value, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
