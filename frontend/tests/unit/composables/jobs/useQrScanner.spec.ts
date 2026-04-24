@@ -95,13 +95,13 @@ describe('playBeep', () => {
   })
 
   it('AudioContext ctor が throw しても呼び出し元に伝搬させない', () => {
-    class ThrowingAudioContext {
-      constructor() {
-        throw new Error('blocked')
-      }
+    // autoplay policy 等で AudioContext ctor が throw した場合も落ちないこと。
+    // 関数コンストラクタ形式で throw を表現（クラス構文だと no-extraneous-class に抵触するため）
+    const throwingCtor = function ThrowingAudioContext() {
+      throw new Error('blocked')
     }
     // @ts-expect-error stub AudioContext ctor to throw for negative scenario
-    window.AudioContext = ThrowingAudioContext
+    window.AudioContext = throwingCtor
     expect(() => playBeep(10)).not.toThrow()
   })
 })
