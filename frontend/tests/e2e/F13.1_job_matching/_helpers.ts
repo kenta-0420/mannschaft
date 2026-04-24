@@ -232,6 +232,40 @@ export function buildFeePreview(baseRewardJpy: number) {
   }
 }
 
+/**
+ * F13.1 Phase 13.1.2 QR トークンレスポンス雛形。
+ * BE: QrTokenResponse。shortCode は 6 桁英数・紛らわしい文字除外。
+ */
+export function buildQrTokenResponse(overrides: Record<string, unknown> = {}) {
+  const issuedAtMs = Date.now()
+  const ttlMs = 60_000
+  return {
+    token: 'eyJhbGciOiJIUzM4NCJ9.e2V4YW1wbGVfanddGh9.placeholder',
+    shortCode: 'ABC123',
+    type: 'IN',
+    issuedAt: new Date(issuedAtMs).toISOString(),
+    expiresAt: new Date(issuedAtMs + ttlMs).toISOString(),
+    kid: 'test-kid',
+    ...overrides,
+  }
+}
+
+/**
+ * F13.1 Phase 13.1.2 CheckInResponse 雛形。
+ * BE: CheckInResponse（POST /api/v1/jobs/check-ins）。
+ */
+export function buildCheckInResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    checkInId: 9001,
+    contractId: CONTRACT_ID_MATCHED,
+    type: 'IN',
+    newStatus: 'IN_PROGRESS',
+    workDurationMinutes: null,
+    geoAnomaly: false,
+    ...overrides,
+  }
+}
+
 /** PagedResponse 形式で包む。 */
 export function pagedOf<T>(items: T[]) {
   return {
