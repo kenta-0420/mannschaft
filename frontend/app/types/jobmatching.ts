@@ -262,6 +262,69 @@ export interface JobPagedResponse<T> {
 }
 
 // ==================================================
+// QR チェックイン関連（F13.1 Phase 13.1.2）
+// ==================================================
+
+/**
+ * チェックイン／アウト種別。
+ * BE: {@code com.mannschaft.app.jobmatching.enums.JobCheckInType}。
+ */
+export type JobCheckInType = 'IN' | 'OUT'
+
+/**
+ * QR トークン発行／取得レスポンス。
+ *
+ * <p>BE: {@code com.mannschaft.app.jobmatching.controller.dto.QrTokenResponse}。</p>
+ *
+ * <p>{@code GET /api/v1/contracts/{id}/qr-tokens/current} で既存トークンを参照するケースでは
+ * {@code token}（JWT 文字列）は DB 非保存のため {@code null} になる。
+ * その場合クライアントは {@code shortCode} ＋ メタ情報のみで運用するか、{@code issue} で再発行する。</p>
+ */
+export interface QrTokenResponse {
+  /** QR 画像化対象の JWT 文字列。{@code /current} で取得した場合は {@code null}。 */
+  token: string | null
+  /** 手動入力フォールバック用の短コード（紛らわしい文字を除外した英数 6 桁）。 */
+  shortCode: string
+  /** IN / OUT 種別。 */
+  type: JobCheckInType
+  /** 発行時刻（ISO8601 / UTC, ミリ秒精度）。 */
+  issuedAt: string
+  /** 失効時刻（ISO8601 / UTC, ミリ秒精度）。 */
+  expiresAt: string
+  /** 発行に用いた署名鍵 ID。 */
+  kid: string
+}
+
+/** QR トークン発行リクエスト（BE: {@code IssueQrTokenRequest}）。 */
+export interface IssueQrTokenRequest {
+  /** IN / OUT 種別。 */
+  type: JobCheckInType
+  /** 任意の TTL（秒）。未指定時は BE の既定値が使用される。 */
+  ttlSeconds?: number | null
+}
+
+/**
+ * QR チェックイン／アウト記録レスポンス。
+ *
+ * <p>BE: {@code com.mannschaft.app.jobmatching.controller.dto.CheckInResponse}。
+ * {@code POST /api/v1/jobs/check-ins} の正常系で返す。足軽陸（Worker 側スキャン）で使用する。</p>
+ */
+export interface CheckInResponse {
+  /** 生成された {@code job_check_ins.id}。 */
+  checkInId: number
+  /** 対象契約 ID。 */
+  contractId: number
+  /** IN / OUT 種別。 */
+  type: JobCheckInType
+  /** 遷移後の契約ステータス（IN は IN_PROGRESS、OUT は CHECKED_OUT）。 */
+  newStatus: JobContractStatus
+  /** 業務時間（分、OUT 時のみ非 null）。 */
+  workDurationMinutes: number | null
+  /** Geolocation 乖離フラグ（閾値超なら true）。 */
+  geoAnomaly: boolean
+}
+
+// ==================================================
 // クエリパラメータ
 // ==================================================
 

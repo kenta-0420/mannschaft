@@ -245,6 +245,40 @@
     "error": {
       "loadFailed": "Failed to load data",
       "applicationsLoadFailed": "Failed to load applications"
+    },
+    "qr": {
+      "display": {
+        "title": {
+          "IN": "入場 QR",
+          "OUT": "退場 QR"
+        },
+        "back": "戻る",
+        "switchIn": "入場",
+        "switchOut": "退場",
+        "loading": "QR を発行中...",
+        "unavailable": "QR コードを表示できません。再発行ボタンを押してください。",
+        "qrAriaLabel": "業務開始／終了のチェックイン QR コード",
+        "shortCodeLabel": "短コード（手動入力用）",
+        "remainingLabel": "有効時間",
+        "remainingSeconds": "残り {sec} 秒",
+        "showButton": "QR を表示",
+        "showForContract": "チェックイン QR を表示",
+        "screenshotWarning": {
+          "title": "注意：スクリーンショットでの共有は禁止",
+          "body": "この QR は短時間で無効化されます。画面キャプチャやスクリーンショットを他人に共有しないでください。"
+        }
+      },
+      "error": {
+        "issueFailed": "QR トークンの発行に失敗しました",
+        "renderFailed": "QR コードの描画に失敗しました",
+        "contractNotFound": "契約が見つかりませんでした"
+      },
+      "checkInTimeline": {
+        "empty": "チェックイン履歴はまだありません",
+        "typeIn": "入場",
+        "typeOut": "退場",
+        "recordedAt": "記録日時：{at}"
+      }
     }
   }
 }
