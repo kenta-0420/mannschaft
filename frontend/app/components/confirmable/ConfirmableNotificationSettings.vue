@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
   ConfirmableNotificationSettings,
+  UnconfirmedVisibility,
   UpdateConfirmableNotificationSettingsRequest,
 } from '~/types/confirmable'
 
@@ -20,6 +21,14 @@ const saving = ref(false)
 const firstReminderMinutes = ref<number | null>(null)
 const secondReminderMinutes = ref<number | null>(null)
 const alertThresholdPercent = ref<number>(50)
+const defaultUnconfirmedVisibility = ref<UnconfirmedVisibility>('CREATOR_AND_ADMIN')
+
+/** 未確認者リスト公開範囲のデフォルト選択肢 */
+const unconfirmedVisibilityOptions = computed(() => [
+  { label: t('confirmable.unconfirmed_visibility.HIDDEN'), value: 'HIDDEN' as const },
+  { label: t('confirmable.unconfirmed_visibility.CREATOR_AND_ADMIN'), value: 'CREATOR_AND_ADMIN' as const },
+  { label: t('confirmable.unconfirmed_visibility.ALL_MEMBERS'), value: 'ALL_MEMBERS' as const },
+])
 
 /** 設定を取得してフォームに反映する */
 async function loadSettings() {
@@ -30,6 +39,7 @@ async function loadSettings() {
     firstReminderMinutes.value = settings.defaultFirstReminderMinutes
     secondReminderMinutes.value = settings.defaultSecondReminderMinutes
     alertThresholdPercent.value = settings.senderAlertThresholdPercent
+    defaultUnconfirmedVisibility.value = settings.defaultUnconfirmedVisibility
   } catch (err) {
     console.error('確認通知設定の取得に失敗しました', err)
     showError(t('confirmable.load_settings_error'))
@@ -46,6 +56,7 @@ async function saveSettings() {
       defaultFirstReminderMinutes: firstReminderMinutes.value,
       defaultSecondReminderMinutes: secondReminderMinutes.value,
       senderAlertThresholdPercent: alertThresholdPercent.value,
+      defaultUnconfirmedVisibility: defaultUnconfirmedVisibility.value,
     }
     await updateSettings(props.scopeType, props.scopeId, body)
     // 保存成功トーストを表示
@@ -119,6 +130,23 @@ onMounted(() => loadSettings())
           suffix="%"
           class="w-48"
         />
+      </div>
+
+      <!-- 未確認者リスト公開範囲のデフォルト -->
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium text-surface-700">
+          {{ $t('confirmable.unconfirmed_visibility.label') }}
+        </label>
+        <Select
+          v-model="defaultUnconfirmedVisibility"
+          :options="unconfirmedVisibilityOptions"
+          option-label="label"
+          option-value="value"
+          class="w-full max-w-md"
+        />
+        <p class="text-xs text-surface-400">
+          {{ $t('confirmable.unconfirmed_visibility.help') }}
+        </p>
       </div>
 
       <!-- 保存ボタン -->

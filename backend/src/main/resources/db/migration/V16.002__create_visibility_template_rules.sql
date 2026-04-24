@@ -1,6 +1,6 @@
 CREATE TABLE visibility_template_rules (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    template_id BIGINT NOT NULL,
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    template_id BIGINT UNSIGNED NOT NULL,
     rule_type VARCHAR(40) NOT NULL,
     rule_target_id BIGINT NULL,
     rule_target_text VARCHAR(120) NULL,

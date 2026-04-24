@@ -36,7 +36,8 @@
     "noFollowing": "팔로잉 중인 사용자가 없습니다",
     "noFollowers": "팔로워가 없습니다",
     "loadMore": "더 보기",
-    "unfollow": "팔로우 취소"
+    "unfollow": "팔로우 취소",
+    "advanced_settings": "고급 설정"
   },
   "dialog": {
     "confirm_delete": "정말로 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
@@ -353,7 +354,16 @@
     "cancel_error": "キャンセルに失敗しました",
     "resend_error": "リマインド再送に失敗しました",
     "title_required": "タイトルを入力してください",
-    "recipients_required": "受信者を1人以上指定してください"
+    "recipients_required": "受信者を1人以上指定してください",
+    "unconfirmed_visibility": {
+      "label": "미확인자 목록 공개 범위",
+      "help": "미확인자 목록을 누가 볼 수 있는지 선택합니다.",
+      "HIDDEN": "표시하지 않음",
+      "CREATOR_AND_ADMIN": "작성자 및 관리자만",
+      "ALL_MEMBERS": "모든 멤버에게 공개"
+    },
+    "unconfirmed_count": "미확인: {count}명",
+    "unconfirmed_list": "미확인자 목록"
   },
   "timeline": {
     "videoProcessing": "동영상 처리 중...",
@@ -566,5 +576,15 @@
         "description": "모든 친구 팀 멤버"
       }
     }
+  },
+  "survey": {
+    "unresponded_visibility": {
+      "label": "未回答者リストの公開範囲",
+      "HIDDEN": "表示しない",
+      "CREATOR_AND_ADMIN": "作成者・管理者のみ",
+      "ALL_MEMBERS": "全員に公開"
+    },
+    "unresponded_count": "未回答: {count}名",
+    "unresponded_list": "未回答者一覧"
   }
 }

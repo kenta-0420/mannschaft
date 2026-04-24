@@ -36,7 +36,8 @@
     "noFollowing": "暂无关注",
     "noFollowers": "暂无粉丝",
     "loadMore": "加载更多",
-    "unfollow": "取消关注"
+    "unfollow": "取消关注",
+    "advanced_settings": "高级设置"
   },
   "dialog": {
     "confirm_delete": "确定要删除吗？此操作无法撤销。",
@@ -353,7 +354,16 @@
     "cancel_error": "キャンセルに失敗しました",
     "resend_error": "リマインド再送に失敗しました",
     "title_required": "タイトルを入力してください",
-    "recipients_required": "受信者を1人以上指定してください"
+    "recipients_required": "受信者を1人以上指定してください",
+    "unconfirmed_visibility": {
+      "label": "未确认者列表的公开范围",
+      "help": "选择谁可以查看未确认者的列表。",
+      "HIDDEN": "不显示",
+      "CREATOR_AND_ADMIN": "仅创建者和管理员",
+      "ALL_MEMBERS": "向所有成员公开"
+    },
+    "unconfirmed_count": "未确认: {count}名",
+    "unconfirmed_list": "未确认者列表"
   },
   "timeline": {
     "videoProcessing": "视频处理中...",
@@ -566,5 +576,15 @@
         "description": "所有友队成员"
       }
     }
+  },
+  "survey": {
+    "unresponded_visibility": {
+      "label": "未回答者リストの公開範囲",
+      "HIDDEN": "表示しない",
+      "CREATOR_AND_ADMIN": "作成者・管理者のみ",
+      "ALL_MEMBERS": "全員に公開"
+    },
+    "unresponded_count": "未回答: {count}名",
+    "unresponded_list": "未回答者一覧"
   }
 }

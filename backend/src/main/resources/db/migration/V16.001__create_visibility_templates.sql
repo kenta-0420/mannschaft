@@ -1,6 +1,6 @@
 CREATE TABLE visibility_templates (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    owner_user_id BIGINT NULL,
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    owner_user_id BIGINT UNSIGNED NULL,
     name VARCHAR(60) NOT NULL,
     description VARCHAR(240) NULL,
     icon_emoji VARCHAR(16) NULL,

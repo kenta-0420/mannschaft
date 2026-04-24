@@ -1,0 +1,250 @@
+{
+  "jobmatching": {
+    "status": {
+      "posting": {
+        "DRAFT": "Entwurf",
+        "OPEN": "Offen",
+        "CLOSED": "Geschlossen",
+        "CANCELLED": "Abgebrochen"
+      },
+      "application": {
+        "APPLIED": "Beworben",
+        "ACCEPTED": "Angenommen",
+        "REJECTED": "Abgelehnt",
+        "WITHDRAWN": "Zurückgezogen"
+      },
+      "contract": {
+        "MATCHED": "Vermittelt",
+        "CHECKED_IN": "Eingecheckt",
+        "IN_PROGRESS": "In Bearbeitung",
+        "CHECKED_OUT": "Ausgecheckt",
+        "TIME_CONFIRMED": "Arbeitszeit bestätigt",
+        "COMPLETION_REPORTED": "Abschluss gemeldet",
+        "COMPLETED": "Abgeschlossen",
+        "AUTHORIZED": "Genehmigt",
+        "CAPTURED": "Zahlung eingezogen",
+        "PAID": "Bezahlt",
+        "CANCELLED": "Abgebrochen",
+        "DISPUTED": "In Streit"
+      }
+    },
+    "workLocationType": {
+      "ONSITE": "Vor Ort",
+      "ONLINE": "Online",
+      "HYBRID": "Hybrid"
+    },
+    "rewardType": {
+      "LUMP_SUM": "Pauschale",
+      "HOURLY": "Stundenlohn",
+      "DAILY": "Tageslohn"
+    },
+    "visibilityScope": {
+      "TEAM_MEMBERS": "Nur Teammitglieder",
+      "TEAM_MEMBERS_SUPPORTERS": "Teammitglieder und Unterstützer",
+      "JOBBER_INTERNAL": "JOBBER intern",
+      "JOBBER_PUBLIC_BOARD": "JOBBER-Hauptbrett",
+      "ORGANIZATION_SCOPE": "Gesamte Organisation",
+      "CUSTOM_TEMPLATE": "Benutzerdefinierte Sichtbarkeit"
+    },
+    "form": {
+      "title": "Jobtitel",
+      "titlePlaceholder": "z. B. Wochenend-Event-Personal gesucht",
+      "description": "Jobbeschreibung",
+      "descriptionPlaceholder": "Beschreiben Sie die Arbeit und die Anforderungen",
+      "category": "Kategorie",
+      "categoryPlaceholder": "z. B. Event / Leichte Arbeit / Kursleiter",
+      "workLocationType": "Arbeitsform",
+      "workAddress": "Arbeitsadresse",
+      "workAddressPlaceholder": "z. B. Shibuya-ku, Tokio",
+      "workStartAt": "Startzeit",
+      "workEndAt": "Endzeit",
+      "applicationDeadlineAt": "Bewerbungsfrist",
+      "rewardType": "Vergütungsart",
+      "baseRewardJpy": "Grundvergütung (JPY)",
+      "baseRewardJpyHint": "Bei Stunden-/Tageslohn der Betrag pro Stunde/Tag",
+      "capacity": "Teilnehmerzahl",
+      "visibilityScope": "Sichtbarkeit",
+      "visibilityScopeHint": "Wählen Sie aus, wer diese Anzeige sehen kann"
+    },
+    "validation": {
+      "titleRequired": "Jobtitel ist erforderlich",
+      "descriptionRequired": "Jobbeschreibung ist erforderlich",
+      "workDateRequired": "Bitte Start- und Endzeit eingeben",
+      "workEndAfterStart": "Die Endzeit muss nach der Startzeit liegen",
+      "deadlineRequired": "Bitte die Bewerbungsfrist eingeben",
+      "deadlineBeforeStart": "Die Bewerbungsfrist muss vor der Startzeit liegen",
+      "rewardRequired": "Bitte die Grundvergütung eingeben",
+      "rewardRange": "Grundvergütung muss zwischen 1 und 10.000.000 JPY liegen",
+      "capacityMin": "Die Teilnehmerzahl muss mindestens 1 sein",
+      "workAddressRequired": "Für Vor-Ort-Jobs ist die Adresse erforderlich",
+      "failed": "Validierung fehlgeschlagen"
+    },
+    "fee": {
+      "title": "Gebührenvorschau",
+      "placeholder": "Geben Sie den Betrag ein, um die Gebühren zu berechnen",
+      "requester": "Auftraggeber zahlt",
+      "worker": "Arbeitnehmer erhält",
+      "baseReward": "Grundvergütung",
+      "requesterFee": "Gebühr (10 % + 100 JPY)",
+      "requesterFeeTax": "Mehrwertsteuer auf Gebühr",
+      "requesterTotal": "Gesamtkosten für Auftraggeber",
+      "workerFee": "Gebühr (2 % + 100 JPY)",
+      "workerReceipt": "Nettobetrag für Arbeitnehmer"
+    },
+    "card": {
+      "workAt": "Arbeitszeit",
+      "workLocationType": "Arbeitsform",
+      "capacity": "Teilnehmerzahl",
+      "capacityValue": "{count} Personen",
+      "deadline": "Bewerbungsfrist",
+      "deadlineValue": "Bis {at}"
+    },
+    "filter": {
+      "all": "Alle"
+    },
+    "list": {
+      "teamTitle": "Team-Stellenanzeigen",
+      "createButton": "Neue Anzeige erstellen",
+      "empty": "Noch keine Anzeigen"
+    },
+    "create": {
+      "title": "Neue Anzeige erstellen",
+      "description": "Geben Sie die Details ein und speichern oder veröffentlichen Sie",
+      "cancel": "Abbrechen",
+      "saveDraft": "Entwurf speichern",
+      "draftSaved": "Entwurf gespeichert",
+      "failed": "Fehler beim Speichern des Entwurfs"
+    },
+    "edit": {
+      "title": "Anzeige bearbeiten",
+      "description": "Bearbeiten Sie die Details der Anzeige",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "saved": "Gespeichert",
+      "failed": "Fehler beim Speichern"
+    },
+    "detail": {
+      "notFound": "Anzeige nicht gefunden",
+      "back": "Zurück",
+      "edit": "Bearbeiten",
+      "publish": "Veröffentlichen",
+      "close": "Anzeige schließen",
+      "cancel": "Abbrechen",
+      "delete": "Löschen",
+      "publishSucceeded": "Anzeige veröffentlicht",
+      "publishFailed": "Veröffentlichung fehlgeschlagen",
+      "closeSucceeded": "Anzeige geschlossen",
+      "closeFailed": "Schließen fehlgeschlagen",
+      "cancelSucceeded": "Abgebrochen",
+      "cancelFailed": "Abbruch fehlgeschlagen",
+      "deleteSucceeded": "Gelöscht",
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "sections": {
+        "overview": "Übersicht",
+        "applications": "Bewerbungen ({count})"
+      },
+      "fields": {
+        "workLocationType": "Arbeitsform",
+        "workAddress": "Arbeitsadresse",
+        "workStartAt": "Startzeit",
+        "workEndAt": "Endzeit",
+        "rewardType": "Vergütungsart",
+        "baseRewardJpy": "Grundvergütung",
+        "capacity": "Teilnehmerzahl",
+        "applicationDeadlineAt": "Bewerbungsfrist",
+        "visibilityScope": "Sichtbarkeit",
+        "publishAt": "Veröffentlicht am"
+      }
+    },
+    "application": {
+      "empty": "Noch keine Bewerbungen",
+      "applicantLabel": "Bewerber #{userId}",
+      "appliedAt": "Beworben am: {at}",
+      "accept": "Annehmen",
+      "reject": "Ablehnen",
+      "acceptSucceeded": "Bewerbung angenommen",
+      "acceptFailed": "Fehler beim Annehmen der Bewerbung",
+      "rejectSucceeded": "Bewerbung abgelehnt",
+      "rejectFailed": "Fehler beim Ablehnen der Bewerbung",
+      "rejectDialog": {
+        "title": "Bewerbung ablehnen",
+        "description": "Geben Sie den Grund ein (der Bewerber wird benachrichtigt)",
+        "reasonPlaceholder": "Ablehnungsgrund eingeben",
+        "cancel": "Abbrechen",
+        "confirm": "Ablehnen"
+      }
+    },
+    "workerSearch": {
+      "title": "Jobs finden",
+      "description": "Bewerben Sie sich auf Jobs aus Ihren Teams",
+      "selectTeam": "Team auswählen",
+      "teamPlaceholder": "Bitte wählen Sie ein Team",
+      "noTeams": "Sie sind in keinem Team",
+      "empty": "Keine offenen Anzeigen in diesem Team"
+    },
+    "workerDetail": {
+      "applyButton": "Für diesen Job bewerben",
+      "applySucceeded": "Bewerbung eingereicht",
+      "applyFailed": "Bewerbung fehlgeschlagen",
+      "applyDialog": {
+        "title": "Bewerbung bestätigen",
+        "description": "Möchten Sie sich für diesen Job bewerben? Geben Sie Ihre Selbstvorstellung ein und senden Sie ab.",
+        "selfPrPlaceholder": "Selbstvorstellung / Motivation (optional)",
+        "cancel": "Abbrechen",
+        "confirm": "Bewerben"
+      }
+    },
+    "myJobs": {
+      "title": "Meine Bewerbungen und Verträge",
+      "description": "Verwalten Sie Ihre Bewerbungen und Verträge",
+      "tabs": {
+        "applications": "Bewerbungen",
+        "contracts": "Verträge"
+      },
+      "applicationsEmpty": "Keine aktiven Bewerbungen",
+      "contractsEmpty": "Keine aktiven Verträge",
+      "jobLink": "Job #{id}",
+      "contractLink": "Vertrag für Job #{id}",
+      "withdrawButton": "Bewerbung zurückziehen",
+      "withdrawSucceeded": "Bewerbung zurückgezogen",
+      "withdrawFailed": "Fehler beim Zurückziehen"
+    },
+    "contract": {
+      "actions": {
+        "title": "Vertragsaktionen",
+        "reportCompletion": "Abschluss melden",
+        "approveCompletion": "Abschluss genehmigen",
+        "rejectCompletion": "Zurückweisen",
+        "cancel": "Vertrag abbrechen"
+      },
+      "matchedAt": "Vermittelt am: {at}",
+      "reportSucceeded": "Abschlussmeldung eingereicht",
+      "reportFailed": "Fehler beim Melden des Abschlusses",
+      "approveSucceeded": "Abschluss genehmigt",
+      "approveFailed": "Fehler beim Genehmigen",
+      "rejectReasonRequired": "Bitte einen Ablehnungsgrund eingeben",
+      "rejectSucceeded": "Zurückgewiesen",
+      "rejectFailed": "Fehler beim Zurückweisen",
+      "cancelSucceeded": "Vertrag abgebrochen",
+      "cancelFailed": "Fehler beim Abbrechen",
+      "rejectDialog": {
+        "title": "Abschlussmeldung zurückweisen",
+        "description": "Geben Sie den Grund ein (die Gegenpartei wird benachrichtigt)",
+        "reasonPlaceholder": "z. B. Bitte holen Sie die fehlende Arbeit nach",
+        "cancel": "Schließen",
+        "confirm": "Zurückweisen"
+      },
+      "cancelDialog": {
+        "title": "Vertrag abbrechen",
+        "description": "Geben Sie den Abbruchgrund ein (die Gegenpartei wird benachrichtigt)",
+        "reasonPlaceholder": "Abbruchgrund eingeben",
+        "cancel": "Schließen",
+        "confirm": "Abbrechen"
+      }
+    },
+    "error": {
+      "loadFailed": "Fehler beim Laden der Daten",
+      "applicationsLoadFailed": "Fehler beim Laden der Bewerbungen"
+    }
+  }
+}
