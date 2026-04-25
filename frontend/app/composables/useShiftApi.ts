@@ -174,6 +174,84 @@ export function useShiftApi() {
     return api<{ data: unknown }>(`${BASE}/hourly-rate`, { method: 'POST', body })
   }
 
+  // === Auto Assign ===
+  async function runAutoAssign(
+    scheduleId: number,
+    body: { strategy: string; parameters?: Record<string, unknown> },
+  ) {
+    return api<{ data: unknown }>(`${BASE}/schedules/${scheduleId}/auto-assign`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function confirmAutoAssign(
+    scheduleId: number,
+    req: { runId: number; assignmentIds: number[]; scheduleVersion: number },
+  ) {
+    return api<{ data: unknown }>(`${BASE}/schedules/${scheduleId}/auto-assign/confirm`, {
+      method: 'POST',
+      body: req,
+    })
+  }
+
+  async function revokeAutoAssign(scheduleId: number) {
+    return api(`${BASE}/schedules/${scheduleId}/auto-assign`, { method: 'DELETE' })
+  }
+
+  async function getAssignmentRuns(scheduleId: number) {
+    return api<{ data: unknown[] }>(`${BASE}/schedules/${scheduleId}/assignment-runs`)
+  }
+
+  async function getAssignmentRunDetail(runId: number) {
+    return api<{ data: unknown }>(`${BASE}/assignment-runs/${runId}`)
+  }
+
+  async function confirmVisualReview(runId: number, note?: string) {
+    return api(`${BASE}/assignment-runs/${runId}/confirm-visual-review`, {
+      method: 'POST',
+      body: { note },
+    })
+  }
+
+  // === Slot Assignments (D&D) ===
+  async function patchSlotAssignments(
+    slotId: number,
+    req: { addUserIds?: number[]; removeUserIds?: number[]; slotVersion: number },
+  ) {
+    return api<{ data: unknown }>(`${BASE}/slots/${slotId}/assignments`, {
+      method: 'PATCH',
+      body: req,
+    })
+  }
+
+  // === Work Constraints ===
+  async function getWorkConstraints(teamId: number) {
+    return api<{ data: unknown[] }>(`${BASE}/teams/${teamId}/work-constraints`)
+  }
+
+  async function upsertDefaultConstraint(teamId: number, req: Record<string, unknown>) {
+    return api<{ data: unknown }>(`${BASE}/teams/${teamId}/work-constraints`, {
+      method: 'PUT',
+      body: req,
+    })
+  }
+
+  async function upsertMemberConstraint(
+    teamId: number,
+    userId: number,
+    req: Record<string, unknown>,
+  ) {
+    return api<{ data: unknown }>(`${BASE}/teams/${teamId}/work-constraints/${userId}`, {
+      method: 'PUT',
+      body: req,
+    })
+  }
+
+  async function deleteMemberConstraint(teamId: number, userId: number) {
+    return api(`${BASE}/teams/${teamId}/work-constraints/${userId}`, { method: 'DELETE' })
+  }
+
   return {
     listShiftSchedules,
     createShiftSchedule,
@@ -207,5 +285,16 @@ export function useShiftApi() {
     deleteAvailability,
     getHourlyRate,
     setHourlyRate,
+    runAutoAssign,
+    confirmAutoAssign,
+    revokeAutoAssign,
+    getAssignmentRuns,
+    getAssignmentRunDetail,
+    confirmVisualReview,
+    patchSlotAssignments,
+    getWorkConstraints,
+    upsertDefaultConstraint,
+    upsertMemberConstraint,
+    deleteMemberConstraint,
   }
 }
