@@ -38,6 +38,7 @@ onMounted(load)
   <DashboardWidgetCard
     :title="$t('recruitment.widget.myRecruitmentsTitle')"
     icon="pi pi-ticket"
+    to="/me/recruitment-listings"
     :loading="loading"
     refreshable
     @refresh="load"

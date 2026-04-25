@@ -30,6 +30,7 @@ onMounted(load)
   <DashboardWidgetCard
     title="未読"
     icon="pi pi-envelope"
+    to="/chat"
     :loading="loading"
     refreshable
     @refresh="load"

@@ -3,7 +3,7 @@ const teamStore = useTeamStore()
 </script>
 
 <template>
-  <DashboardWidgetCard title="Links：チーム" icon="pi pi-users">
+  <DashboardWidgetCard title="Links：チーム" icon="pi pi-users" to="/teams">
     <template v-if="teamStore.myTeams.length > 0">
       <div class="flex flex-wrap gap-2">
         <NuxtLink

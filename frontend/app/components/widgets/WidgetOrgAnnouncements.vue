@@ -58,6 +58,7 @@ onMounted(load)
   <DashboardWidgetCard
     title="組織のお知らせ"
     icon="pi pi-building"
+    to="/timeline"
     :loading="loading"
     refreshable
     @refresh="load"

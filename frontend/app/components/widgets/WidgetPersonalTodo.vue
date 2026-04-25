@@ -115,6 +115,7 @@ onMounted(load)
   <DashboardWidgetCard
     title="TODO"
     icon="pi pi-check-square"
+    to="/todos"
     :loading="loading"
     refreshable
     @refresh="load"
