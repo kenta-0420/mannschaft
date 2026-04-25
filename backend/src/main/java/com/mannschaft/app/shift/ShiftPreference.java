@@ -29,24 +29,22 @@ public enum ShiftPreference {
     /**
      * 自動割当の候補除外フラグ。{@link #ABSOLUTE_REST} のみ候補から完全除外される。
      *
-     * <p>Phase 1 ではインタフェースのみ提供。Phase 2 の自動割当ロジックから呼び出される想定。</p>
-     *
      * @return {@code true} = 候補から完全除外 / {@code false} = スコア計算対象
      */
     public boolean isHardExcluded() {
         return this == ABSOLUTE_REST;
     }
 
+    /** {@link #isHardExcluded()} の逆。割当可能かどうかを返す（互換用）。 */
+    public boolean isAssignable() {
+        return !isHardExcluded();
+    }
+
     /**
      * 自動割当スコアリング用の評価点。値が大きいほどアサイン優先度が高い。
      *
-     * <p>ABSOLUTE_REST は本メソッドでは {@link Integer#MIN_VALUE} を返すが、実際には
-     * {@link #isHardExcluded()} で除外判定することを推奨する（オーバーフロー事故防止）。</p>
-     *
-     * <p>Phase 1 MVP 実装値（設計書 F03.5 v2.3 §5.10 と整合）:
-     * PREFERRED=+100 / AVAILABLE=0 / WEAK_REST=-30 / STRONG_REST=-80 / ABSOLUTE_REST=-∞。
-     * 旧 v2.2 の +50/-20 から上方修正済み。Phase 2 の自動割当実機テスト結果を踏まえ、
-     * {@code application.yml} から動的に重み調整できる余地を残す。</p>
+     * <p>PREFERRED=+100 / AVAILABLE=0 / WEAK_REST=-30 / STRONG_REST=-80 / ABSOLUTE_REST=-∞。
+     * 設計書 F03.5 v2.3 §5.10 準拠。</p>
      *
      * @return スコア値
      */

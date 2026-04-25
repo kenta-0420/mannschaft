@@ -1,5 +1,83 @@
 {
   "shift": {
+    "board": {
+      "title": "Tablero de turnos",
+      "memberPool": "Miembros sin asignar",
+      "dragHint": "Arrastra miembros para asignar",
+      "unassignedSlots": "{count} turnos sin asignar"
+    },
+    "autoAssign": {
+      "button": "Asignación automática",
+      "strategy": "Estrategia de asignación",
+      "greedyV1": "Algoritmo voraz (MVP)",
+      "preferenceWeight": "Prioridad de preferencia",
+      "fairnessWeight": "Equidad",
+      "consecutivePenalty": "Penalización consecutiva",
+      "run": "Ejecutar asignación",
+      "running": "Asignando...",
+      "resultBanner": "Asignación automática completada. Por favor revise y confirme.",
+      "confirm": "Confirmar",
+      "revoke": "Descartar",
+      "history": "Historial de ejecuciones",
+      "slotsFilled": "{filled}/{total} turnos cubiertos",
+      "warnings": "{count} advertencias"
+    },
+    "visualReview": {
+      "title": "Revisión visual",
+      "check1": "Todos los turnos tienen un miembro asignado",
+      "check2": "Ningún miembro en días de descanso absoluto está asignado",
+      "check3": "No se violan las restricciones de días consecutivos",
+      "check4": "No se supera el límite mensual de horas",
+      "check5": "Las preferencias de los miembros se consideraron en lo posible",
+      "note": "Nota de revisión (opcional)",
+      "submit": "Completar revisión visual"
+    },
+    "constraint": {
+      "warning": "Advertencia de restricción laboral",
+      "consecutiveDaysExceeded": "Riesgo de superar el límite de días consecutivos",
+      "absoluteRest": "Asignado en día de descanso absoluto"
+    },
+    "changeRequest": {
+      "title": "Solicitud de cambio",
+      "type": {
+        "PRE_CONFIRM_EDIT": "Edición pre-confirmación",
+        "INDIVIDUAL_SWAP": "Intercambio individual",
+        "OPEN_CALL": "Convocatoria abierta"
+      },
+      "status": {
+        "OPEN": "Abierto",
+        "ACCEPTED": "Aceptado",
+        "REJECTED": "Rechazado",
+        "WITHDRAWN": "Retirado",
+        "EXPIRED": "Expirado"
+      },
+      "reason": "Razón (opcional)",
+      "submit": "Solicitar cambio",
+      "review": "Revisar",
+      "withdraw": "Retirar",
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "reviewComment": "Comentario de revisión",
+      "openCallLimit": "Las convocatorias abiertas están limitadas a 3 por mes",
+      "fetchError": "Error al obtener las solicitudes de cambio"
+    },
+    "openCall": {
+      "badge": "Buscando miembro sustituto",
+      "claim": "Cubriré este turno",
+      "claimed": "Ya solicitado",
+      "full": "Convocatoria cerrada"
+    },
+    "pdf": {
+      "teamLayout": "PDF del horario del equipo",
+      "personalLayout": "PDF de la línea de tiempo personal",
+      "downloading": "Generando PDF...",
+      "error": "Error al generar el PDF"
+    },
+    "myShifts": {
+      "title": "Mis turnos",
+      "empty": "No hay turnos",
+      "fetchError": "Error al obtener la información de turnos"
+    },
     "page": {
       "title": "Turno",
       "myShift": "Mi Turno",

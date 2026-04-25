@@ -303,3 +303,99 @@ export interface MemberWorkConstraintRequest {
   minRestHoursBetweenShifts?: number
   note?: string
 }
+
+// 自動割当
+export type AssignmentStrategyType = 'MANUAL' | 'GREEDY_V1' | 'CSP_V1'
+export type ShiftAssignmentStatus = 'PROPOSED' | 'CONFIRMED' | 'REVOKED'
+export type ShiftAssignmentRunStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CONFIRMED' | 'REVOKED'
+
+export interface AssignmentParameters {
+  preferenceWeight?: number
+  fairnessWeight?: number
+  consecutivePenaltyWeight?: number
+  respectWorkConstraints?: boolean
+  overwriteExisting?: boolean
+}
+
+export interface AssignmentWarning {
+  code: string
+  message: string
+  slotId?: number
+  userId?: number
+}
+
+export interface ProposedAssignment {
+  id: number
+  slotId: number
+  userId: number
+  status: ShiftAssignmentStatus
+  score?: number
+  note?: string
+}
+
+export interface AssignmentRun {
+  id: number
+  scheduleId: number
+  strategy: AssignmentStrategyType
+  status: ShiftAssignmentRunStatus
+  triggeredBy: number
+  slotsTotal: number
+  slotsFilled: number
+  warnings?: AssignmentWarning[]
+  parameters?: AssignmentParameters
+  errorMessage?: string
+  visualReviewConfirmedBy?: number
+  visualReviewConfirmedAt?: string
+  visualReviewNote?: string
+  startedAt: string
+  completedAt?: string
+  assignments?: ProposedAssignment[]
+}
+
+// 勤務制約
+export interface WorkConstraint {
+  id?: number
+  teamId: number
+  userId?: number
+  maxMonthlyHours?: number
+  maxMonthlyDays?: number
+  maxConsecutiveDays?: number
+  maxNightShiftsPerMonth?: number
+  minRestHoursBetweenShifts?: number
+  note?: string
+}
+
+// 変更依頼
+export type ChangeRequestType = 'PRE_CONFIRM_EDIT' | 'INDIVIDUAL_SWAP' | 'OPEN_CALL'
+export type ChangeRequestStatus = 'OPEN' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN' | 'EXPIRED'
+
+export interface ChangeRequest {
+  id: number
+  scheduleId: number
+  slotId?: number
+  requestType: ChangeRequestType
+  status: ChangeRequestStatus
+  requestedBy: number
+  reason?: string
+  reviewerId?: number
+  reviewComment?: string
+  reviewedAt?: string
+  expiresAt?: string
+  createdAt: string
+}
+
+export interface CreateChangeRequestPayload {
+  scheduleId: number
+  slotId?: number
+  requestType: ChangeRequestType
+  reason?: string
+}
+
+export interface ReviewChangeRequestPayload {
+  decision: 'ACCEPTED' | 'REJECTED'
+  reviewComment?: string
+  version: number
+}
+
+// オープンコール
+export type SwapRequestStatus = 'PENDING' | 'ACCEPTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'OPEN_CALL' | 'CLAIMED'

@@ -1,14 +1,12 @@
 import type {
+  ChangeRequest,
+  CreateChangeRequestPayload,
+  ReviewChangeRequestPayload,
   CreateShiftScheduleRequest,
   ShiftScheduleResponse,
   UpdateShiftScheduleRequest,
 } from '~/types/shift'
 
-/**
- * F03.5 シフトスケジュール API クライアント。
- *
- * エンドポイントベース: `GET/POST /api/v1/shifts/schedules`
- */
 export function useShiftApi() {
   const api = useApi()
   const BASE = '/api/v1/shifts/schedules'
@@ -112,6 +110,135 @@ export function useShiftApi() {
     return res.data
   }
 
+  // === Auto Assign ===
+  async function runAutoAssign(
+    scheduleId: number,
+    body: { strategy: string; parameters?: Record<string, unknown> },
+  ) {
+    return api<{ data: unknown }>(`${BASE}/schedules/${scheduleId}/auto-assign`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function confirmAutoAssign(
+    scheduleId: number,
+    req: { runId: number; assignmentIds: number[]; scheduleVersion: number },
+  ) {
+    return api<{ data: unknown }>(`${BASE}/schedules/${scheduleId}/auto-assign/confirm`, {
+      method: 'POST',
+      body: req,
+    })
+  }
+
+  async function revokeAutoAssign(scheduleId: number) {
+    return api(`${BASE}/schedules/${scheduleId}/auto-assign`, { method: 'DELETE' })
+  }
+
+  async function getAssignmentRuns(scheduleId: number) {
+    return api<{ data: unknown[] }>(`${BASE}/schedules/${scheduleId}/assignment-runs`)
+  }
+
+  async function getAssignmentRunDetail(runId: number) {
+    return api<{ data: unknown }>(`${BASE}/assignment-runs/${runId}`)
+  }
+
+  async function confirmVisualReview(runId: number, note?: string) {
+    return api(`${BASE}/assignment-runs/${runId}/confirm-visual-review`, {
+      method: 'POST',
+      body: { note },
+    })
+  }
+
+  // === Slot Assignments (D&D) ===
+  async function patchSlotAssignments(
+    slotId: number,
+    req: { addUserIds?: number[]; removeUserIds?: number[]; slotVersion: number },
+  ) {
+    return api<{ data: unknown }>(`${BASE}/slots/${slotId}/assignments`, {
+      method: 'PATCH',
+      body: req,
+    })
+  }
+
+  // === Work Constraints ===
+  async function getWorkConstraints(teamId: number) {
+    return api<{ data: unknown[] }>(`${BASE}/teams/${teamId}/work-constraints`)
+  }
+
+  async function upsertDefaultConstraint(teamId: number, req: Record<string, unknown>) {
+    return api<{ data: unknown }>(`${BASE}/teams/${teamId}/work-constraints`, {
+      method: 'PUT',
+      body: req,
+    })
+  }
+
+  async function upsertMemberConstraint(
+    teamId: number,
+    userId: number,
+    req: Record<string, unknown>,
+  ) {
+    return api<{ data: unknown }>(`${BASE}/teams/${teamId}/work-constraints/${userId}`, {
+      method: 'PUT',
+      body: req,
+    })
+  }
+
+  async function deleteMemberConstraint(teamId: number, userId: number) {
+    return api(`${BASE}/teams/${teamId}/work-constraints/${userId}`, { method: 'DELETE' })
+  }
+
+  // === 変更依頼 ===
+  async function createChangeRequest(payload: CreateChangeRequestPayload): Promise<ChangeRequest> {
+    const res = await api<{ data: ChangeRequest }>(`${BASE}/change-requests`, {
+      method: 'POST',
+      body: payload,
+    })
+    return res.data
+  }
+
+  async function listChangeRequests(scheduleId: number): Promise<ChangeRequest[]> {
+    const res = await api<{ data: ChangeRequest[] }>(`${BASE}/change-requests?scheduleId=${scheduleId}`)
+    return res.data
+  }
+
+  async function getChangeRequest(id: number): Promise<ChangeRequest> {
+    const res = await api<{ data: ChangeRequest }>(`${BASE}/change-requests/${id}`)
+    return res.data
+  }
+
+  async function reviewChangeRequest(id: number, payload: ReviewChangeRequestPayload): Promise<ChangeRequest> {
+    const res = await api<{ data: ChangeRequest }>(`${BASE}/change-requests/${id}/review`, {
+      method: 'PATCH',
+      body: payload,
+    })
+    return res.data
+  }
+
+  async function withdrawChangeRequest(id: number): Promise<void> {
+    await api(`${BASE}/change-requests/${id}`, { method: 'DELETE' })
+  }
+
+  // === オープンコール ===
+  async function claimOpenCall(swapRequestId: number): Promise<void> {
+    await api(`${BASE}/swap-requests/${swapRequestId}/claim`, { method: 'POST' })
+  }
+
+  async function selectClaimer(swapRequestId: number, claimedBy: number): Promise<void> {
+    await api(`${BASE}/swap-requests/${swapRequestId}/select-claimer`, {
+      method: 'POST',
+      body: claimedBy,
+    })
+  }
+
+  // === PDF ===
+  async function downloadShiftPdf(scheduleId: number, layout: 'team' | 'personal'): Promise<Blob> {
+    const res = await api<Blob>(`${BASE}/schedules/${scheduleId}/pdf?layout=${layout}`, {
+      responseType: 'blob',
+    })
+    return res
+  }
+
   return {
     listSchedules,
     getSchedule,
@@ -120,5 +247,49 @@ export function useShiftApi() {
     deleteSchedule,
     transitionStatus,
     duplicateSchedule,
+    getPositions,
+    createPosition,
+    updatePosition,
+    deletePosition,
+    getShiftSlots,
+    createShiftSlot,
+    bulkCreateSlots,
+    updateSlot,
+    deleteSlot,
+    listShiftRequests,
+    submitShiftRequest,
+    updateShiftRequest,
+    deleteShiftRequest,
+    getShiftRequestSummary,
+    getMyShiftRequests,
+    listSwapRequests,
+    createSwapRequest,
+    deleteSwapRequest,
+    acceptSwap,
+    resolveSwap,
+    getAvailability,
+    setAvailability,
+    deleteAvailability,
+    getHourlyRate,
+    setHourlyRate,
+    runAutoAssign,
+    confirmAutoAssign,
+    revokeAutoAssign,
+    getAssignmentRuns,
+    getAssignmentRunDetail,
+    confirmVisualReview,
+    patchSlotAssignments,
+    getWorkConstraints,
+    upsertDefaultConstraint,
+    upsertMemberConstraint,
+    deleteMemberConstraint,
+    createChangeRequest,
+    listChangeRequests,
+    getChangeRequest,
+    reviewChangeRequest,
+    withdrawChangeRequest,
+    claimOpenCall,
+    selectClaimer,
+    downloadShiftPdf,
   }
 }

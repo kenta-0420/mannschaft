@@ -4,6 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.shift.dto.BulkCreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.ShiftSlotResponse;
+import com.mannschaft.app.shift.dto.SlotAssignmentPatchRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
 import com.mannschaft.app.shift.service.ShiftSlotService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -95,5 +96,20 @@ public class ShiftSlotController {
             @PathVariable Long slotId) {
         slotService.deleteSlot(slotId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * スロットの割当ユーザーを差分更新する。
+     * 楽観ロック競合時は 409 Conflict を返す。
+     */
+    @PatchMapping("/slots/{slotId}/assignments")
+    @Operation(summary = "スロット差分割当更新")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "競合（楽観ロック）")
+    public ResponseEntity<ApiResponse<ShiftSlotResponse>> patchSlotAssignments(
+            @PathVariable Long slotId,
+            @Valid @RequestBody SlotAssignmentPatchRequest request) {
+        ShiftSlotResponse response = slotService.patchSlotAssignments(slotId, request);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

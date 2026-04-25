@@ -19,16 +19,35 @@ public interface MemberWorkConstraintRepository extends JpaRepository<MemberWork
     Optional<MemberWorkConstraintEntity> findByUserIdAndTeamId(Long userId, Long teamId);
 
     /**
+     * チームのデフォルト制約を取得する（userId = NULL）— 互換用。
+     */
+    default Optional<MemberWorkConstraintEntity> findByTeamIdAndUserIdIsNull(Long teamId) {
+        return findTeamDefault(teamId);
+    }
+
+    /**
+     * メンバー個別の制約を取得する — 互換用。
+     */
+    default Optional<MemberWorkConstraintEntity> findByTeamIdAndUserId(Long teamId, Long userId) {
+        return findByUserIdAndTeamId(userId, teamId);
+    }
+
+    /**
      * 指定チームの全勤務制約（個別 + チームデフォルト含む）を取得する。
      */
     List<MemberWorkConstraintEntity> findByTeamId(Long teamId);
 
     /**
+     * チームの全制約一覧を取得する — 互換用。
+     */
+    default List<MemberWorkConstraintEntity> findAllByTeamId(Long teamId) {
+        return findByTeamId(teamId);
+    }
+
+    /**
      * チームデフォルト（{@code user_id IS NULL}）を取得する。
      *
-     * <p>JPA の derived query では {@code findByUserIdNullAndTeamId} のように NULL 検索を
-     * 宣言できるが、実装ごとの挙動差（Hibernate で {@code IS NULL} に置換されるかどうか）を
-     * 避けるため JPQL で明示的に記述する。</p>
+     * <p>JPQL で明示的に IS NULL を記述することで Hibernate の挙動差を回避する。</p>
      */
     @Query("SELECT c FROM MemberWorkConstraintEntity c "
             + "WHERE c.teamId = :teamId AND c.userId IS NULL")

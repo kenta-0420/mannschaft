@@ -75,4 +75,16 @@ public class MemberWorkConstraintEntity extends BaseEntity {
         this.minRestHoursBetweenShifts = minRestHoursBetweenShifts;
         this.note = note;
     }
+
+    /** {@link #updateConstraints} の互換エイリアス。 */
+    public void update(
+            BigDecimal maxMonthlyHours,
+            Integer maxMonthlyDays,
+            Integer maxConsecutiveDays,
+            Integer maxNightShiftsPerMonth,
+            BigDecimal minRestHoursBetweenShifts,
+            String note) {
+        updateConstraints(maxMonthlyHours, maxMonthlyDays, maxConsecutiveDays,
+                maxNightShiftsPerMonth, minRestHoursBetweenShifts, note);
+    }
 }

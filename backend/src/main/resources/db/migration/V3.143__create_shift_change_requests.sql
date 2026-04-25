@@ -1,0 +1,25 @@
+CREATE TABLE shift_change_requests (
+  id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  schedule_id       BIGINT UNSIGNED NOT NULL,
+  slot_id           BIGINT UNSIGNED NULL COMMENT 'NULL=スケジュール全体への依頼',
+  request_type      ENUM('PRE_CONFIRM_EDIT','INDIVIDUAL_SWAP','OPEN_CALL') NOT NULL,
+  status            ENUM('OPEN','ACCEPTED','REJECTED','WITHDRAWN','EXPIRED') NOT NULL DEFAULT 'OPEN',
+  requested_by      BIGINT UNSIGNED NOT NULL,
+  reason            VARCHAR(1000) NULL,
+  reviewer_id       BIGINT UNSIGNED NULL,
+  review_comment    VARCHAR(500) NULL,
+  reviewed_at       DATETIME NULL,
+  expires_at        DATETIME NULL,
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  version           INT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  INDEX idx_shift_change_requests_schedule_id (schedule_id),
+  INDEX idx_shift_change_requests_requested_by (requested_by),
+  INDEX idx_shift_change_requests_status (status),
+  CONSTRAINT fk_shift_change_requests_schedule FOREIGN KEY (schedule_id) REFERENCES shift_schedules(id) ON DELETE CASCADE,
+  CONSTRAINT fk_shift_change_requests_slot FOREIGN KEY (slot_id) REFERENCES shift_slots(id) ON DELETE SET NULL,
+  CONSTRAINT fk_shift_change_requests_requested_by FOREIGN KEY (requested_by) REFERENCES users(id),
+  CONSTRAINT fk_shift_change_requests_reviewer FOREIGN KEY (reviewer_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='シフト変更依頼（A-1確定前変更/A-2個別交代/A-3オープンコール）';

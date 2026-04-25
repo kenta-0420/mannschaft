@@ -18,5 +18,11 @@ public enum SwapRequestStatus {
     REJECTED,
 
     /** キャンセル */
-    CANCELLED
+    CANCELLED,
+
+    /** オープンコール（不特定多数募集中） */
+    OPEN_CALL,
+
+    /** 手挙げ済み（先着1名が確定） */
+    CLAIMED
 }

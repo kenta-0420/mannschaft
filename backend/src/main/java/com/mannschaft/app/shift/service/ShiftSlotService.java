@@ -5,6 +5,7 @@ import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.dto.BulkCreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.ShiftSlotResponse;
+import com.mannschaft.app.shift.dto.SlotAssignmentPatchRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
@@ -18,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -130,6 +132,56 @@ public class ShiftSlotService {
         entity = slotRepository.save(builder.build());
         log.info("シフト枠更新: id={}", slotId);
         return toSlotResponse(entity);
+    }
+
+    /**
+     * スロットの割当ユーザーを差分更新する（楽観ロック付き）。
+     *
+     * @param slotId  シフト枠ID
+     * @param request 差分割当リクエスト
+     * @return 更新後のシフト枠レスポンス
+     */
+    @Transactional
+    public ShiftSlotResponse patchSlotAssignments(Long slotId, SlotAssignmentPatchRequest request) {
+        ShiftSlotEntity entity = findSlotOrThrow(slotId);
+
+        // 楽観ロックチェック: version が一致しない場合は 409
+        if (!entity.getVersion().equals(request.slotVersion().longValue())) {
+            throw new BusinessException(ShiftErrorCode.OPTIMISTIC_LOCK_CONFLICT);
+        }
+
+        // 現在の割当ユーザーリストを取得
+        List<Long> currentUserIds = new ArrayList<>(deserializeUserIds(entity.getAssignedUserIds()));
+
+        // ユーザーを追加
+        if (request.addUserIds() != null) {
+            for (Long userId : request.addUserIds()) {
+                if (!currentUserIds.contains(userId)) {
+                    currentUserIds.add(userId);
+                }
+            }
+        }
+
+        // ユーザーを削除
+        if (request.removeUserIds() != null) {
+            currentUserIds.removeAll(request.removeUserIds());
+        }
+
+        // 必要人数超過チェック
+        if (currentUserIds.size() > entity.getRequiredCount()) {
+            throw new BusinessException(ShiftErrorCode.SLOT_ASSIGNMENT_EXCEEDED);
+        }
+
+        ShiftSlotEntity updated = entity.toBuilder()
+                .assignedUserIds(serializeUserIds(currentUserIds))
+                .build();
+        updated = slotRepository.save(updated);
+
+        log.info("スロット差分割当更新: slotId={}, added={}, removed={}",
+                slotId,
+                request.addUserIds() != null ? request.addUserIds().size() : 0,
+                request.removeUserIds() != null ? request.removeUserIds().size() : 0);
+        return toSlotResponse(updated);
     }
 
     /**
