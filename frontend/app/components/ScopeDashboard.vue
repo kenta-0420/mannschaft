@@ -34,7 +34,13 @@ function toggleCollapse(key: string) {
   collapsedKeys.value = new Set(collapsedKeys.value)
 }
 
-const DATA_WIDGET_KEYS = new Set(['survey-results', 'attendance-results', 'recruitment-feed', 'my-recruitments'])
+const DATA_WIDGET_KEYS = new Set([
+  'survey-results',
+  'attendance-results',
+  'recruitment-feed',
+  'my-recruitments',
+  'schedule',
+])
 
 function isDataWidget(key: string): boolean {
   return DATA_WIDGET_KEYS.has(key)
@@ -218,7 +224,7 @@ function onDragEnd() {
 
         <!-- データウィジェット: 実コンテンツ -->
         <template v-if="isDataWidget(w.key)">
-          <div class="mt-3">
+          <div class="mt-3" :class="w.key === 'schedule' ? 'min-h-[28rem]' : ''">
             <WidgetSurveyResults
               v-if="w.key === 'survey-results' && scopeId"
               :scope-type="(scopeType as 'team' | 'organization')"
@@ -232,6 +238,12 @@ function onDragEnd() {
             <!-- Phase 2: F03.11 募集型予約ウィジェット -->
             <WidgetRecruitmentFeed v-else-if="w.key === 'recruitment-feed'" />
             <WidgetMyRecruitments v-else-if="w.key === 'my-recruitments'" />
+            <!-- スケジュールカレンダー (team/organization スコープのみ) -->
+            <WidgetScheduleCalendar
+              v-else-if="w.key === 'schedule' && scopeId"
+              :scope-type="(scopeType as 'team' | 'organization')"
+              :scope-id="scopeId"
+            />
           </div>
         </template>
       </DashboardWidgetCard>
