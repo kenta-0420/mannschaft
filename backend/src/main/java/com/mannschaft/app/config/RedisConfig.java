@@ -7,6 +7,8 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
@@ -53,5 +55,27 @@ public class RedisConfig {
                         RedisSerializationContext.SerializationPair
                                 .fromSerializer(jsonSerializer))
                 .disableCachingNullValues();
+    }
+
+    /**
+     * キャッシュマネージャー。
+     *
+     * <p>デフォルト TTL は 30分。ケアリンク判定用キャッシュ（careLinks / careCategory）は
+     * 変更頻度が高いため 5分 TTL を設定する。</p>
+     */
+    @Bean
+    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+        // デフォルト設定（30分TTL）
+        RedisCacheConfiguration defaultConfig = redisCacheConfiguration();
+
+        // ケアリンク判定用（5分TTL）
+        RedisCacheConfiguration careLinksConfig = redisCacheConfiguration()
+                .entryTtl(Duration.ofMinutes(5));
+
+        return RedisCacheManager.builder(connectionFactory)
+                .cacheDefaults(defaultConfig)
+                .withCacheConfiguration("careLinks", careLinksConfig)
+                .withCacheConfiguration("careCategory", careLinksConfig)
+                .build();
     }
 }
