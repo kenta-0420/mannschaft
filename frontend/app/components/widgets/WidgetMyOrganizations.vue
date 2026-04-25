@@ -3,7 +3,7 @@ const orgStore = useOrganizationStore()
 </script>
 
 <template>
-  <DashboardWidgetCard title="Links：組織" icon="pi pi-building">
+  <DashboardWidgetCard title="Links：組織" icon="pi pi-building" to="/organizations">
     <template v-if="orgStore.myOrganizations.length > 0">
       <div class="flex flex-wrap gap-2">
         <NuxtLink

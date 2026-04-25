@@ -34,6 +34,7 @@ onMounted(load)
   <DashboardWidgetCard
     :title="$t('recruitment.widget.feedTitle')"
     icon="pi pi-megaphone"
+    to="/me/recruitment-feed"
     :loading="loading"
     refreshable
     @refresh="load"

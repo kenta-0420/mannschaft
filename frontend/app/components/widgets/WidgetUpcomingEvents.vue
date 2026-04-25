@@ -43,6 +43,7 @@ onMounted(load)
   <DashboardWidgetCard
     title="今週の予定"
     icon="pi pi-calendar"
+    to="/calendar"
     :loading="loading"
     refreshable
     @refresh="load"
