@@ -113,4 +113,19 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     List<UserEntity> findPendingDeletionUsers(
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
+
+    /** メンバー一覧表示用の最小プロジェクション */
+    interface MemberSummary {
+        Long getId();
+        String getDisplayName();
+        String getAvatarUrl();
+    }
+
+    /**
+     * メンバー一覧用に displayName・avatarUrl のみを取得する。
+     * 暗号化フィールド（lastName/firstName 等）を含むフルエンティティをロードしないことで、
+     * seed データの平文カラム値による EncryptionService 復号エラーを回避する。
+     */
+    @Query(value = "SELECT u.id, u.display_name AS displayName, u.avatar_url AS avatarUrl FROM users u WHERE u.id = :id AND u.deleted_at IS NULL", nativeQuery = true)
+    Optional<MemberSummary> findMemberSummaryById(@Param("id") Long id);
 }
