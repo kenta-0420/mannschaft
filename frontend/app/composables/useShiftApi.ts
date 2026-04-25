@@ -1,3 +1,9 @@
+import type {
+  ChangeRequest,
+  CreateChangeRequestPayload,
+  ReviewChangeRequestPayload,
+} from '~/types/shift'
+
 export function useShiftApi() {
   const api = useApi()
 
@@ -252,6 +258,57 @@ export function useShiftApi() {
     return api(`${BASE}/teams/${teamId}/work-constraints/${userId}`, { method: 'DELETE' })
   }
 
+  // === 変更依頼 ===
+  async function createChangeRequest(payload: CreateChangeRequestPayload): Promise<ChangeRequest> {
+    const res = await api<{ data: ChangeRequest }>(`${BASE}/change-requests`, {
+      method: 'POST',
+      body: payload,
+    })
+    return res.data
+  }
+
+  async function listChangeRequests(scheduleId: number): Promise<ChangeRequest[]> {
+    const res = await api<{ data: ChangeRequest[] }>(`${BASE}/change-requests?scheduleId=${scheduleId}`)
+    return res.data
+  }
+
+  async function getChangeRequest(id: number): Promise<ChangeRequest> {
+    const res = await api<{ data: ChangeRequest }>(`${BASE}/change-requests/${id}`)
+    return res.data
+  }
+
+  async function reviewChangeRequest(id: number, payload: ReviewChangeRequestPayload): Promise<ChangeRequest> {
+    const res = await api<{ data: ChangeRequest }>(`${BASE}/change-requests/${id}/review`, {
+      method: 'PATCH',
+      body: payload,
+    })
+    return res.data
+  }
+
+  async function withdrawChangeRequest(id: number): Promise<void> {
+    await api(`${BASE}/change-requests/${id}`, { method: 'DELETE' })
+  }
+
+  // === オープンコール ===
+  async function claimOpenCall(swapRequestId: number): Promise<void> {
+    await api(`${BASE}/swap-requests/${swapRequestId}/claim`, { method: 'POST' })
+  }
+
+  async function selectClaimer(swapRequestId: number, claimedBy: number): Promise<void> {
+    await api(`${BASE}/swap-requests/${swapRequestId}/select-claimer`, {
+      method: 'POST',
+      body: claimedBy,
+    })
+  }
+
+  // === PDF ===
+  async function downloadShiftPdf(scheduleId: number, layout: 'team' | 'personal'): Promise<Blob> {
+    const res = await api<Blob>(`${BASE}/schedules/${scheduleId}/pdf?layout=${layout}`, {
+      responseType: 'blob',
+    })
+    return res
+  }
+
   return {
     listShiftSchedules,
     createShiftSchedule,
@@ -296,5 +353,13 @@ export function useShiftApi() {
     upsertDefaultConstraint,
     upsertMemberConstraint,
     deleteMemberConstraint,
+    createChangeRequest,
+    listChangeRequests,
+    getChangeRequest,
+    reviewChangeRequest,
+    withdrawChangeRequest,
+    claimOpenCall,
+    selectClaimer,
+    downloadShiftPdf,
   }
 }

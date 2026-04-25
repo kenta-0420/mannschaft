@@ -149,3 +149,38 @@ export interface WorkConstraint {
   minRestHoursBetweenShifts?: number
   note?: string
 }
+
+// 変更依頼
+export type ChangeRequestType = 'PRE_CONFIRM_EDIT' | 'INDIVIDUAL_SWAP' | 'OPEN_CALL'
+export type ChangeRequestStatus = 'OPEN' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN' | 'EXPIRED'
+
+export interface ChangeRequest {
+  id: number
+  scheduleId: number
+  slotId?: number
+  requestType: ChangeRequestType
+  status: ChangeRequestStatus
+  requestedBy: number
+  reason?: string
+  reviewerId?: number
+  reviewComment?: string
+  reviewedAt?: string
+  expiresAt?: string
+  createdAt: string
+}
+
+export interface CreateChangeRequestPayload {
+  scheduleId: number
+  slotId?: number
+  requestType: ChangeRequestType
+  reason?: string
+}
+
+export interface ReviewChangeRequestPayload {
+  decision: 'ACCEPTED' | 'REJECTED'
+  reviewComment?: string
+  version: number
+}
+
+// オープンコール
+export type SwapRequestStatus = 'PENDING' | 'ACCEPTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'OPEN_CALL' | 'CLAIMED'
