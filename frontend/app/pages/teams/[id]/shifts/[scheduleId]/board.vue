@@ -133,10 +133,11 @@ const route = useRoute()
 const teamId = computed(() => Number(route.params.id))
 const scheduleId = computed(() => Number(route.params.scheduleId))
 
-const { currentUser } = useAuth()
-const isSupporter = computed(() => currentUser.value?.role === 'SUPPORTER')
+const authStore = useAuthStore()
+const isSupporter = computed(() => authStore.currentUser?.role === 'SUPPORTER')
 
 const shiftApi = useShiftApi()
+const teamApi = useTeamApi()
 const { localAssignments, initSlot, moveUser, addUser, removeUser } = useShiftBoard(scheduleId)
 const { runs, currentRun, isRunning, runAutoAssign, confirmAutoAssign, revokeAutoAssign, fetchRuns } =
   useAutoAssign(scheduleId)
@@ -179,7 +180,8 @@ const assignedUserIds = computed(() => {
   slots.value.forEach((slot) => {
     const local = localAssignments.value[slot.id]
     if (local === undefined) {
-      slot.assignedMembers.forEach((m) => ids.add(m.userId))
+      // assignedUserIds は number[] 型
+      ;(slot.assignedUserIds ?? []).forEach((userId) => ids.add(userId))
     }
   })
   return ids
@@ -191,7 +193,7 @@ const unassignedMembers = computed(() =>
 
 // 初期データ取得
 onMounted(async () => {
-  await Promise.all([loadSchedule(), loadSlots(), loadPositions(), fetchRuns()])
+  await Promise.all([loadSchedule(), loadSlots(), loadPositions(), loadMembers(), fetchRuns()])
 })
 
 async function loadSchedule(): Promise<void> {
@@ -203,26 +205,29 @@ async function loadSlots(): Promise<void> {
   const res = await shiftApi.getShiftSlots(scheduleId.value)
   const data = (res as { data: ShiftSlotResponse[] }).data
   slots.value = data
-  // ローカル状態を初期化
+  // ローカル状態を初期化（assignedUserIds は number[] 型）
   data.forEach((slot) => {
-    initSlot(
-      slot.id,
-      slot.assignedMembers.map((m) => m.userId),
-    )
+    initSlot(slot.id, slot.assignedUserIds ?? [])
   })
-  // メンバー一覧を収集
-  const memberSet = new Map<number, { userId: number; displayName: string; avatarUrl: string | null }>()
-  data.forEach((slot) => {
-    slot.assignedMembers.forEach((m) => {
-      memberSet.set(m.userId, m)
-    })
-  })
-  allMembers.value = Array.from(memberSet.values())
 }
 
 async function loadPositions(): Promise<void> {
   const res = await shiftApi.getPositions()
   positions.value = (res as { data: ShiftPositionResponse[] }).data
+}
+
+async function loadMembers(): Promise<void> {
+  try {
+    const res = await teamApi.getMembers(teamId.value, { size: 200 })
+    allMembers.value = res.data.map((m) => ({
+      userId: m.userId,
+      displayName: m.displayName || String(m.userId),
+      avatarUrl: m.avatarUrl,
+    }))
+  } catch {
+    // メンバー取得失敗時は空のまま続行（ボード表示は可能）
+    allMembers.value = []
+  }
 }
 
 // D&D でドロップ

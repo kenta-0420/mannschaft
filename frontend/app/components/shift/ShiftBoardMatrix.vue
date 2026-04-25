@@ -40,7 +40,7 @@
             class="border-b border-surface-100 hover:bg-surface-50"
           >
             <td class="px-3 py-2 text-surface-600 whitespace-nowrap font-medium">
-              <div>{{ formatSlotDate(slot.date) }}</div>
+              <div>{{ formatSlotDate(slot.slotDate) }}</div>
               <div class="text-xs text-surface-400">{{ slot.startTime }}〜{{ slot.endTime }}</div>
             </td>
             <td
@@ -93,7 +93,7 @@ const { locale } = useI18n()
 // スロットをそのまま並べ（日付順にソート済みと仮定）
 const groupedSlots = computed(() => {
   return [...props.slots].sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date)
+    if (a.slotDate !== b.slotDate) return a.slotDate.localeCompare(b.slotDate)
     return a.startTime.localeCompare(b.startTime)
   })
 })
@@ -102,14 +102,13 @@ function getAssignments(
   slot: ShiftSlotResponse,
 ): Array<{ userId: number; displayName: string; avatarUrl: string | null }> {
   const localUserIds = props.localAssignments[slot.id]
-  if (localUserIds !== undefined) {
-    return localUserIds.map((userId) => ({
-      userId,
-      displayName: props.memberMap[userId]?.displayName ?? String(userId),
-      avatarUrl: props.memberMap[userId]?.avatarUrl ?? null,
-    }))
-  }
-  return slot.assignedMembers
+  // ローカル割当が存在する場合はそちらを優先
+  const userIds = localUserIds ?? slot.assignedUserIds ?? []
+  return userIds.map((userId) => ({
+    userId,
+    displayName: props.memberMap[userId]?.displayName ?? String(userId),
+    avatarUrl: props.memberMap[userId]?.avatarUrl ?? null,
+  }))
 }
 
 function getSlotWarnings(slotId: number): Array<{ userId: number; message: string }> {

@@ -54,6 +54,9 @@ onMounted(() => loadPermissions())
 
 <template>
   <div>
+    <!-- ネストされたページ（ボード・変更依頼）が存在する場合はそちらに委譲 -->
+    <NuxtPage v-if="$route.params.scheduleId" />
+    <template v-else>
     <PageHeader title="シフト管理" class="mb-4" />
 
     <Tabs v-model:value="activeTab">
@@ -126,5 +129,6 @@ onMounted(() => loadPermissions())
       :team-id="teamId"
       :schedule-id="selectedScheduleId"
     />
+    </template>
   </div>
 </template>

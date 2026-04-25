@@ -7,7 +7,7 @@ import type { ChangeRequest, CreateChangeRequestPayload } from '~/types/shift'
  */
 export function useChangeRequest(scheduleId: Ref<number>) {
   const shiftApi = useShiftApi()
-  const { showError, showSuccess } = useNotification()
+  const { error: showError, success: showSuccess } = useNotification()
   const { t } = useI18n()
 
   const requests = ref<ChangeRequest[]>([])
