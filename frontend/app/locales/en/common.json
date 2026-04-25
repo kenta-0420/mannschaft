@@ -586,5 +586,14 @@
     },
     "unresponded_count": "Unresponded: {count}",
     "unresponded_list": "Unresponded members"
+  },
+  "organization": {
+    "parent_chain": "Parent organizations",
+    "children": "Sub-organizations",
+    "children_tab": "Sub-organizations",
+    "no_children": "No sub-organizations",
+    "hidden_org": "Hidden organization",
+    "archived": "Archived",
+    "load_more": "Load more"
   }
 }

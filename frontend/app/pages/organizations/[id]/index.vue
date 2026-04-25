@@ -32,7 +32,19 @@ const {
   leaveOrganization,
 } = useOrgDetail(orgId)
 
+const {
+  ancestors,
+  children,
+  loading: hierarchyLoading,
+  childrenHasNext,
+  fetchAncestors,
+  fetchChildren,
+} = useOrgHierarchy(orgId)
+
 const activeTab = ref(0)
+
+/** 下位組織タブを表示するか（子0件かつ非ADMINなら隠す） */
+const showChildrenTab = computed(() => isAdmin.value || children.value.length > 0)
 
 onMounted(async () => {
   await Promise.all([fetchOrg(), loadPermissions()])
@@ -40,6 +52,8 @@ onMounted(async () => {
     fetchOrgTeams(),
     isAdmin.value ? fetchPermissionGroups() : Promise.resolve(),
     fetchFollowStatus(roleName),
+    fetchAncestors(),
+    fetchChildren(true),
   ])
 })
 </script>
@@ -120,6 +134,13 @@ onMounted(async () => {
         />
       </div>
 
+      <OrgAncestorsBreadcrumb
+        v-if="ancestors.length > 0"
+        :ancestors="ancestors"
+        :current-org-name="org.nickname1 || org.name"
+        class="mb-4"
+      />
+
       <ProfileHeader
         :icon-url="org.iconUrl ?? null"
         :banner-url="org.bannerUrl ?? null"
@@ -137,6 +158,9 @@ onMounted(async () => {
           <Tab :value="1"> 基本情報 </Tab>
           <Tab :value="2"> メンバー </Tab>
           <Tab :value="3"> 所属チーム </Tab>
+          <Tab v-if="showChildrenTab" :value="8">
+            {{ $t('organization.children_tab') }}
+          </Tab>
           <Tab v-if="isAdminOrDeputy" :value="4"> 招待 </Tab>
           <Tab v-if="isAdmin" :value="5"> 権限グループ </Tab>
           <Tab v-if="isAdmin && org.supporterEnabled" :value="6"> サポーター管理 </Tab>
@@ -156,7 +180,7 @@ onMounted(async () => {
           </TabPanel>
 
           <TabPanel :value="1">
-            <OrgInfoTab :org="org" :is-admin="isAdmin" />
+            <OrgInfoTab :org="org" :is-admin="isAdmin" :ancestors="ancestors" />
           </TabPanel>
 
           <TabPanel :value="2">
@@ -172,6 +196,15 @@ onMounted(async () => {
 
           <TabPanel :value="3">
             <OrgTeamGrid :teams="orgTeams" />
+          </TabPanel>
+
+          <TabPanel v-if="showChildrenTab" :value="8">
+            <OrgChildrenGrid
+              :children="children"
+              :loading="hierarchyLoading"
+              :has-next="childrenHasNext"
+              @load-more="fetchChildren(false)"
+            />
           </TabPanel>
 
           <TabPanel v-if="isAdminOrDeputy" :value="4">

@@ -158,3 +158,39 @@ export interface ReorderItem {
 export interface ReorderRequest {
   orders: ReorderItem[]
 }
+
+// === F01.2 組織階層（祖先・子組織） ===
+
+/**
+ * 祖先組織1件分。`hidden: true` の場合は `id` 以外のフィールドは省略される。
+ * （非公開祖先のプレースホルダ。チェーンの抜けを示す）
+ */
+export interface AncestorOrganization {
+  id: number
+  name?: string | null
+  nickname1?: string | null
+  description?: string | null
+  iconUrl?: string | null
+  visibility?: 'PUBLIC' | 'PRIVATE' | null
+  hidden: boolean
+}
+
+export interface AncestorsResponse {
+  data: AncestorOrganization[]
+  meta: { depth: number; truncated: boolean }
+}
+
+export interface ChildOrganization {
+  id: number
+  name: string
+  nickname1?: string | null
+  iconUrl?: string | null
+  visibility: 'PUBLIC' | 'PRIVATE'
+  memberCount: number
+  archived: boolean
+}
+
+export interface ChildrenResponse {
+  data: ChildOrganization[]
+  meta: { nextCursor: string | null; size: number; hasNext: boolean }
+}
