@@ -229,7 +229,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await waitForHydration(page)
 
     // 「確認通知を送信」セクション見出しを確認
-    await expect(page.getByRole('heading', { name: '確認通知を送信' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: '確認通知を送信', level: 2 })).toBeVisible({
       timeout: 10_000,
     })
 
@@ -243,7 +243,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await page.getByRole('button', { name: /詳細設定/ }).click()
 
     // 公開範囲セレクトで「作成者・管理者のみ」を選択
-    await page.getByLabel('未確認者リストの公開範囲').click()
+    await page.locator('label:has-text("未確認者リストの公開範囲") + [role="combobox"]').click()
     await page.getByRole('option', { name: '作成者・管理者のみ' }).click()
 
     // 送信ボタンをクリック
@@ -348,7 +348,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await waitForHydration(page)
 
     // 「確認通知を送信」セクション見出しを確認
-    await expect(page.getByRole('heading', { name: '確認通知を送信' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: '確認通知を送信', level: 2 })).toBeVisible({
       timeout: 10_000,
     })
 
@@ -362,7 +362,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await page.getByRole('button', { name: /詳細設定/ }).click()
 
     // 公開範囲セレクトで「全員に公開」を選択
-    await page.getByLabel('未確認者リストの公開範囲').click()
+    await page.locator('label:has-text("未確認者リストの公開範囲") + [role="combobox"]').click()
     await page.getByRole('option', { name: '全員に公開' }).click()
 
     // 送信ボタンをクリック
@@ -479,7 +479,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await waitForHydration(page)
 
     // 「確認通知を送信」セクション見出しを確認
-    await expect(page.getByRole('heading', { name: '確認通知を送信' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: '確認通知を送信', level: 2 })).toBeVisible({
       timeout: 10_000,
     })
 
@@ -493,7 +493,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await page.getByRole('button', { name: /詳細設定/ }).click()
 
     // 公開範囲セレクトで「表示しない」を選択
-    await page.getByLabel('未確認者リストの公開範囲').click()
+    await page.locator('label:has-text("未確認者リストの公開範囲") + [role="combobox"]').click()
     await page.getByRole('option', { name: '表示しない' }).click()
 
     // 送信ボタンをクリック
@@ -581,7 +581,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
 
     // 4) 公開範囲セレクトの表示値が「全員に公開」に復元されていることを確認
     await expect(
-      page.getByLabel('未確認者リストの公開範囲'),
+      page.locator('label:has-text("未確認者リストの公開範囲") + [role="combobox"]'),
     ).toContainText('全員に公開', { timeout: 5_000 })
   })
 })
