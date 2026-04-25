@@ -586,5 +586,14 @@
     },
     "unresponded_count": "未回答: {count}名",
     "unresponded_list": "未回答者一覧"
+  },
+  "organization": {
+    "parent_chain": "上级组织",
+    "children": "下级组织",
+    "children_tab": "下级组织",
+    "no_children": "没有下级组织",
+    "hidden_org": "非公开组织",
+    "archived": "已归档",
+    "load_more": "加载更多"
   }
 }

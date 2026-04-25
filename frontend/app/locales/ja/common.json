@@ -586,5 +586,14 @@
     },
     "unresponded_count": "未回答: {count}名",
     "unresponded_list": "未回答者一覧"
+  },
+  "organization": {
+    "parent_chain": "上位組織",
+    "children": "下位組織",
+    "children_tab": "下位組織",
+    "no_children": "下位組織はありません",
+    "hidden_org": "非公開組織",
+    "archived": "アーカイブ",
+    "load_more": "もっと読み込む"
   }
 }
