@@ -109,8 +109,8 @@ class CareEventNotificationServiceTest {
 
             given(careLinkService.isUnderCare(recipientUserId)).willReturn(true);
             given(careLinkService.getActiveWatchers(recipientUserId, "RSVP")).willReturn(List.of(watcherUserId));
-            given(notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndNotificationType(
-                    eventId, recipientUserId, EventCareNotificationType.RSVP_CONFIRMED)).willReturn(false);
+            given(notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndWatcherUserIdAndNotificationType(
+                    eventId, recipientUserId, watcherUserId, EventCareNotificationType.RSVP_CONFIRMED)).willReturn(false);
             given(eventRepository.findById(eventId)).willReturn(Optional.of(event));
             given(userRepository.findById(recipientUserId)).willReturn(Optional.of(recipientUser));
             given(notificationService.createNotification(
@@ -146,8 +146,8 @@ class CareEventNotificationServiceTest {
             given(careLinkService.getActiveWatchers(recipientUserId, "RSVP")).willReturn(List.of(watcherUserId));
             given(eventRepository.findById(eventId)).willReturn(Optional.of(event));
             given(userRepository.findById(recipientUserId)).willReturn(Optional.of(recipientUser));
-            given(notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndNotificationType(
-                    eventId, recipientUserId, EventCareNotificationType.RSVP_CONFIRMED)).willReturn(true);
+            given(notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndWatcherUserIdAndNotificationType(
+                    eventId, recipientUserId, watcherUserId, EventCareNotificationType.RSVP_CONFIRMED)).willReturn(true);
 
             service.notifyRsvpConfirmed(recipientUserId, eventId);
 
@@ -178,8 +178,8 @@ class CareEventNotificationServiceTest {
 
             given(careLinkService.isUnderCare(recipientUserId)).willReturn(true);
             given(careLinkService.getActiveWatchers(recipientUserId, "CHECKIN")).willReturn(List.of(watcherUserId));
-            given(notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndNotificationType(
-                    eventId, recipientUserId, EventCareNotificationType.CHECKIN)).willReturn(false);
+            given(notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndWatcherUserIdAndNotificationType(
+                    eventId, recipientUserId, watcherUserId, EventCareNotificationType.CHECKIN)).willReturn(false);
             given(eventRepository.findById(eventId)).willReturn(Optional.of(event));
             given(userRepository.findById(recipientUserId)).willReturn(Optional.of(recipientUser));
             given(notificationService.createNotification(
@@ -222,8 +222,8 @@ class CareEventNotificationServiceTest {
 
             given(careLinkService.isUnderCare(recipientUserId)).willReturn(true);
             given(careLinkService.getActiveWatchers(recipientUserId, "ABSENT_ALERT")).willReturn(List.of(watcherUserId));
-            given(notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndNotificationType(
-                    eventId, recipientUserId, EventCareNotificationType.NO_CONTACT_CHECK)).willReturn(false);
+            given(notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndWatcherUserIdAndNotificationType(
+                    eventId, recipientUserId, watcherUserId, EventCareNotificationType.NO_CONTACT_CHECK)).willReturn(false);
             given(eventRepository.findById(eventId)).willReturn(Optional.of(event));
             given(userRepository.findById(recipientUserId)).willReturn(Optional.of(recipientUser));
             given(notificationService.createNotification(
@@ -265,8 +265,8 @@ class CareEventNotificationServiceTest {
 
             given(careLinkService.isUnderCare(recipientUserId)).willReturn(true);
             given(careLinkService.getActiveWatchers(recipientUserId, "ABSENT_ALERT")).willReturn(List.of(watcherUserId));
-            given(notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndNotificationType(
-                    eventId, recipientUserId, EventCareNotificationType.ABSENT_ALERT)).willReturn(false);
+            given(notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndWatcherUserIdAndNotificationType(
+                    eventId, recipientUserId, watcherUserId, EventCareNotificationType.ABSENT_ALERT)).willReturn(false);
             given(eventRepository.findById(eventId)).willReturn(Optional.of(event));
             given(userRepository.findById(recipientUserId)).willReturn(Optional.of(recipientUser));
             given(notificationService.createNotification(

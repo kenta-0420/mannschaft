@@ -66,8 +66,8 @@ public class CareEventNotificationService {
 
         for (Long watcherId : watcherIds) {
             // 冪等チェック（同じイベント・ケア対象者・通知種別の組み合わせは一度のみ送信）
-            if (notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndNotificationType(
-                    eventId, recipientUserId, EventCareNotificationType.RSVP_CONFIRMED)) continue;
+            if (notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndWatcherUserIdAndNotificationType(
+                    eventId, recipientUserId, watcherId, EventCareNotificationType.RSVP_CONFIRMED)) continue;
 
             String title = buildTitle(EventCareNotificationType.RSVP_CONFIRMED, category, recipientName, eventLabel);
             String body = buildBody(EventCareNotificationType.RSVP_CONFIRMED, category, recipientName, eventLabel, null);
@@ -108,8 +108,8 @@ public class CareEventNotificationService {
         String eventLabel = resolveEventLabel(event);
 
         for (Long watcherId : watcherIds) {
-            if (notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndNotificationType(
-                    eventId, recipientUserId, EventCareNotificationType.CHECKIN)) continue;
+            if (notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndWatcherUserIdAndNotificationType(
+                    eventId, recipientUserId, watcherId, EventCareNotificationType.CHECKIN)) continue;
 
             String title = buildTitle(EventCareNotificationType.CHECKIN, category, recipientName, eventLabel);
             String body = buildBody(EventCareNotificationType.CHECKIN, category, recipientName, eventLabel, null);
@@ -212,8 +212,8 @@ public class CareEventNotificationService {
         String eventLabel = resolveEventLabel(event);
 
         for (Long watcherId : watcherIds) {
-            if (notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndNotificationType(
-                    eventId, recipientUserId, type)) continue;
+            if (notificationLogRepository.existsByEventIdAndCareRecipientUserIdAndWatcherUserIdAndNotificationType(
+                    eventId, recipientUserId, watcherId, type)) continue;
 
             String title = buildTitle(type, category, recipientName, eventLabel);
             String body = buildBody(type, category, recipientName, eventLabel, null);
