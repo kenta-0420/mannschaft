@@ -36,6 +36,47 @@
       "warning": "勤務制約に注意が必要です",
       "consecutiveDaysExceeded": "連続勤務日数超過の恐れ",
       "absoluteRest": "出勤不可日に割り当て済み"
+    },
+    "changeRequest": {
+      "title": "変更依頼",
+      "type": {
+        "PRE_CONFIRM_EDIT": "確定前変更",
+        "INDIVIDUAL_SWAP": "個別交代",
+        "OPEN_CALL": "オープンコール"
+      },
+      "status": {
+        "OPEN": "申請中",
+        "ACCEPTED": "承認",
+        "REJECTED": "却下",
+        "WITHDRAWN": "取下",
+        "EXPIRED": "期限切れ"
+      },
+      "reason": "理由（任意）",
+      "submit": "変更を依頼する",
+      "review": "審査する",
+      "withdraw": "取り下げる",
+      "approve": "承認",
+      "reject": "却下",
+      "reviewComment": "審査コメント",
+      "openCallLimit": "オープンコールは月3件まで",
+      "fetchError": "変更依頼の取得に失敗しました"
+    },
+    "openCall": {
+      "badge": "代替メンバー募集中",
+      "claim": "代わりに入ります",
+      "claimed": "手挙げ済み",
+      "full": "募集終了"
+    },
+    "pdf": {
+      "teamLayout": "チーム全体表 PDF",
+      "personalLayout": "個人タイムライン PDF",
+      "downloading": "PDF を生成中...",
+      "error": "PDF の生成に失敗しました"
+    },
+    "myShifts": {
+      "title": "マイシフト",
+      "empty": "シフトがありません",
+      "fetchError": "シフト情報の取得に失敗しました"
     }
   }
 }

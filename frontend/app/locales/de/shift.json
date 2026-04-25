@@ -36,6 +36,47 @@
       "warning": "Arbeitsbeschränkungswarnung",
       "consecutiveDaysExceeded": "Risiko der Überschreitung aufeinanderfolgender Tage",
       "absoluteRest": "An absolutem Ruhetag zugewiesen"
+    },
+    "changeRequest": {
+      "title": "Änderungsantrag",
+      "type": {
+        "PRE_CONFIRM_EDIT": "Vorbestätigungs-Bearbeitung",
+        "INDIVIDUAL_SWAP": "Individueller Tausch",
+        "OPEN_CALL": "Offene Ausschreibung"
+      },
+      "status": {
+        "OPEN": "Offen",
+        "ACCEPTED": "Akzeptiert",
+        "REJECTED": "Abgelehnt",
+        "WITHDRAWN": "Zurückgezogen",
+        "EXPIRED": "Abgelaufen"
+      },
+      "reason": "Grund (optional)",
+      "submit": "Änderung beantragen",
+      "review": "Überprüfen",
+      "withdraw": "Zurückziehen",
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "reviewComment": "Prüfungskommentar",
+      "openCallLimit": "Offene Ausschreibungen sind auf 3 pro Monat begrenzt",
+      "fetchError": "Fehler beim Abrufen der Änderungsanträge"
+    },
+    "openCall": {
+      "badge": "Ersatzmitglied gesucht",
+      "claim": "Ich übernehme diese Schicht",
+      "claimed": "Bereits beansprucht",
+      "full": "Ausschreibung geschlossen"
+    },
+    "pdf": {
+      "teamLayout": "Team-Schichtplan PDF",
+      "personalLayout": "Persönliche Zeitleiste PDF",
+      "downloading": "PDF wird erstellt...",
+      "error": "PDF-Erstellung fehlgeschlagen"
+    },
+    "myShifts": {
+      "title": "Meine Schichten",
+      "empty": "Keine Schichten vorhanden",
+      "fetchError": "Fehler beim Abrufen der Schichtinformationen"
     }
   }
 }

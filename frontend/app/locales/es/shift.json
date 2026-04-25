@@ -36,6 +36,47 @@
       "warning": "Advertencia de restricción laboral",
       "consecutiveDaysExceeded": "Riesgo de superar el límite de días consecutivos",
       "absoluteRest": "Asignado en día de descanso absoluto"
+    },
+    "changeRequest": {
+      "title": "Solicitud de cambio",
+      "type": {
+        "PRE_CONFIRM_EDIT": "Edición pre-confirmación",
+        "INDIVIDUAL_SWAP": "Intercambio individual",
+        "OPEN_CALL": "Convocatoria abierta"
+      },
+      "status": {
+        "OPEN": "Abierto",
+        "ACCEPTED": "Aceptado",
+        "REJECTED": "Rechazado",
+        "WITHDRAWN": "Retirado",
+        "EXPIRED": "Expirado"
+      },
+      "reason": "Razón (opcional)",
+      "submit": "Solicitar cambio",
+      "review": "Revisar",
+      "withdraw": "Retirar",
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "reviewComment": "Comentario de revisión",
+      "openCallLimit": "Las convocatorias abiertas están limitadas a 3 por mes",
+      "fetchError": "Error al obtener las solicitudes de cambio"
+    },
+    "openCall": {
+      "badge": "Buscando miembro sustituto",
+      "claim": "Cubriré este turno",
+      "claimed": "Ya solicitado",
+      "full": "Convocatoria cerrada"
+    },
+    "pdf": {
+      "teamLayout": "PDF del horario del equipo",
+      "personalLayout": "PDF de la línea de tiempo personal",
+      "downloading": "Generando PDF...",
+      "error": "Error al generar el PDF"
+    },
+    "myShifts": {
+      "title": "Mis turnos",
+      "empty": "No hay turnos",
+      "fetchError": "Error al obtener la información de turnos"
     }
   }
 }

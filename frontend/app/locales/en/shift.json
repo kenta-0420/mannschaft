@@ -36,6 +36,47 @@
       "warning": "Work constraint warning",
       "consecutiveDaysExceeded": "Risk of exceeding consecutive days limit",
       "absoluteRest": "Assigned on absolute rest day"
+    },
+    "changeRequest": {
+      "title": "Change Request",
+      "type": {
+        "PRE_CONFIRM_EDIT": "Pre-confirm Edit",
+        "INDIVIDUAL_SWAP": "Individual Swap",
+        "OPEN_CALL": "Open Call"
+      },
+      "status": {
+        "OPEN": "Open",
+        "ACCEPTED": "Accepted",
+        "REJECTED": "Rejected",
+        "WITHDRAWN": "Withdrawn",
+        "EXPIRED": "Expired"
+      },
+      "reason": "Reason (optional)",
+      "submit": "Request Change",
+      "review": "Review",
+      "withdraw": "Withdraw",
+      "approve": "Approve",
+      "reject": "Reject",
+      "reviewComment": "Review Comment",
+      "openCallLimit": "Open calls are limited to 3 per month",
+      "fetchError": "Failed to fetch change requests"
+    },
+    "openCall": {
+      "badge": "Seeking substitute member",
+      "claim": "I'll cover this shift",
+      "claimed": "Already claimed",
+      "full": "Claim closed"
+    },
+    "pdf": {
+      "teamLayout": "Team Schedule PDF",
+      "personalLayout": "Personal Timeline PDF",
+      "downloading": "Generating PDF...",
+      "error": "Failed to generate PDF"
+    },
+    "myShifts": {
+      "title": "My Shifts",
+      "empty": "No shifts found",
+      "fetchError": "Failed to fetch shift information"
     }
   }
 }

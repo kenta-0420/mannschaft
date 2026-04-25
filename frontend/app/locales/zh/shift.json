@@ -36,6 +36,47 @@
       "warning": "请注意工作限制",
       "consecutiveDaysExceeded": "可能超过连续工作天数限制",
       "absoluteRest": "已分配到休假日"
+    },
+    "changeRequest": {
+      "title": "变更申请",
+      "type": {
+        "PRE_CONFIRM_EDIT": "确定前变更",
+        "INDIVIDUAL_SWAP": "个人替换",
+        "OPEN_CALL": "公开招募"
+      },
+      "status": {
+        "OPEN": "申请中",
+        "ACCEPTED": "已批准",
+        "REJECTED": "已拒绝",
+        "WITHDRAWN": "已撤回",
+        "EXPIRED": "已过期"
+      },
+      "reason": "理由（可选）",
+      "submit": "申请变更",
+      "review": "审核",
+      "withdraw": "撤回",
+      "approve": "批准",
+      "reject": "拒绝",
+      "reviewComment": "审核评论",
+      "openCallLimit": "公开招募每月最多3次",
+      "fetchError": "获取变更申请失败"
+    },
+    "openCall": {
+      "badge": "招募替补成员",
+      "claim": "我来顶替",
+      "claimed": "已申请",
+      "full": "招募结束"
+    },
+    "pdf": {
+      "teamLayout": "团队排班表 PDF",
+      "personalLayout": "个人时间表 PDF",
+      "downloading": "正在生成 PDF...",
+      "error": "PDF 生成失败"
+    },
+    "myShifts": {
+      "title": "我的班次",
+      "empty": "没有班次",
+      "fetchError": "获取班次信息失败"
     }
   }
 }
