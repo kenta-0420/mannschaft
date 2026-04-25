@@ -1,0 +1,41 @@
+{
+  "shift": {
+    "board": {
+      "title": "Schichtplan-Board",
+      "memberPool": "Nicht zugewiesene Mitglieder",
+      "dragHint": "Mitglieder per Drag & Drop zuweisen",
+      "unassignedSlots": "{count} nicht zugewiesene Schichten"
+    },
+    "autoAssign": {
+      "button": "Automatisch zuweisen",
+      "strategy": "Zuweisungsstrategie",
+      "greedyV1": "Greedy-Algorithmus (MVP)",
+      "preferenceWeight": "Präferenzpriorität",
+      "fairnessWeight": "Fairness",
+      "consecutivePenalty": "Aufeinanderfolge-Strafe",
+      "run": "Zuweisung ausführen",
+      "running": "Wird zugewiesen...",
+      "resultBanner": "Automatische Zuweisung abgeschlossen. Bitte überprüfen und bestätigen.",
+      "confirm": "Bestätigen",
+      "revoke": "Verwerfen",
+      "history": "Ausführungshistorie",
+      "slotsFilled": "{filled}/{total} Schichten besetzt",
+      "warnings": "{count} Warnungen"
+    },
+    "visualReview": {
+      "title": "Sichtprüfung",
+      "check1": "Alle Schichten haben einen zugewiesenen Verantwortlichen",
+      "check2": "Keine Mitglieder an absoluten Ruhetagen zugewiesen",
+      "check3": "Keine Verletzung der Aufeinanderfolge-Beschränkungen",
+      "check4": "Monatliches Arbeitsstundenlimit nicht überschritten",
+      "check5": "Mitgliederwünsche so weit wie möglich berücksichtigt",
+      "note": "Prüfnotiz (optional)",
+      "submit": "Sichtprüfung abschließen"
+    },
+    "constraint": {
+      "warning": "Arbeitsbeschränkungswarnung",
+      "consecutiveDaysExceeded": "Risiko der Überschreitung aufeinanderfolgender Tage",
+      "absoluteRest": "An absolutem Ruhetag zugewiesen"
+    }
+  }
+}

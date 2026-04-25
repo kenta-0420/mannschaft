@@ -1,0 +1,41 @@
+{
+  "shift": {
+    "board": {
+      "title": "시프트 보드",
+      "memberPool": "미배정 멤버",
+      "dragHint": "멤버를 드래그하여 배정",
+      "unassignedSlots": "{count}건 미배정"
+    },
+    "autoAssign": {
+      "button": "자동 배정",
+      "strategy": "배정 전략",
+      "greedyV1": "탐욕 알고리즘 (MVP)",
+      "preferenceWeight": "희망 우선도",
+      "fairnessWeight": "공평성",
+      "consecutivePenalty": "연속 억제",
+      "run": "배정 실행",
+      "running": "배정 중...",
+      "resultBanner": "자동 배정이 완료되었습니다. 목시 확인 후 확정하세요.",
+      "confirm": "확정",
+      "revoke": "파기",
+      "history": "실행 이력",
+      "slotsFilled": "{filled}/{total} 슬롯 충족",
+      "warnings": "{count}건의 경고"
+    },
+    "visualReview": {
+      "title": "목시 확인",
+      "check1": "모든 슬롯에 담당자가 배정되어 있음",
+      "check2": "절대 휴무 멤버가 배정되지 않음",
+      "check3": "연속 근무일수 제약을 위반하지 않음",
+      "check4": "월간 근무 시간 상한을 초과하지 않음",
+      "check5": "멤버의 희망이 가능한 한 반영됨",
+      "note": "확인 메모 (선택)",
+      "submit": "목시 확인 완료"
+    },
+    "constraint": {
+      "warning": "근무 제약에 주의가 필요합니다",
+      "consecutiveDaysExceeded": "연속 근무일수 초과 위험",
+      "absoluteRest": "휴무일에 배정됨"
+    }
+  }
+}

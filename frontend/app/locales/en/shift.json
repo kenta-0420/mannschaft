@@ -1,0 +1,41 @@
+{
+  "shift": {
+    "board": {
+      "title": "Shift Board",
+      "memberPool": "Unassigned Members",
+      "dragHint": "Drag members to assign",
+      "unassignedSlots": "{count} unassigned slots"
+    },
+    "autoAssign": {
+      "button": "Auto Assign",
+      "strategy": "Assignment Strategy",
+      "greedyV1": "Greedy (MVP)",
+      "preferenceWeight": "Preference Priority",
+      "fairnessWeight": "Fairness",
+      "consecutivePenalty": "Consecutive Penalty",
+      "run": "Run Assignment",
+      "running": "Assigning...",
+      "resultBanner": "Auto assignment complete. Please review and confirm.",
+      "confirm": "Confirm",
+      "revoke": "Discard",
+      "history": "Run History",
+      "slotsFilled": "{filled}/{total} slots filled",
+      "warnings": "{count} warnings"
+    },
+    "visualReview": {
+      "title": "Visual Review",
+      "check1": "All slots have an assigned member",
+      "check2": "No members on absolute rest days are assigned",
+      "check3": "No consecutive days constraint violations",
+      "check4": "Monthly working hours limit not exceeded",
+      "check5": "Member preferences considered as much as possible",
+      "note": "Review note (optional)",
+      "submit": "Complete Visual Review"
+    },
+    "constraint": {
+      "warning": "Work constraint warning",
+      "consecutiveDaysExceeded": "Risk of exceeding consecutive days limit",
+      "absoluteRest": "Assigned on absolute rest day"
+    }
+  }
+}

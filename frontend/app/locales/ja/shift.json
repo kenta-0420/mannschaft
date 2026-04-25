@@ -1,0 +1,41 @@
+{
+  "shift": {
+    "board": {
+      "title": "シフトボード",
+      "memberPool": "未割当メンバー",
+      "dragHint": "メンバーをドラッグして割り当て",
+      "unassignedSlots": "{count}件未割当"
+    },
+    "autoAssign": {
+      "button": "自動割当",
+      "strategy": "割当戦略",
+      "greedyV1": "貪欲法 (MVP)",
+      "preferenceWeight": "希望優先度",
+      "fairnessWeight": "公平性",
+      "consecutivePenalty": "連続抑制",
+      "run": "割当を実行",
+      "running": "割当中...",
+      "resultBanner": "自動割当が完了しました。目視確認後に確定してください。",
+      "confirm": "確定",
+      "revoke": "破棄",
+      "history": "実行履歴",
+      "slotsFilled": "{filled}/{total}スロット充足",
+      "warnings": "{count}件の警告"
+    },
+    "visualReview": {
+      "title": "目視確認",
+      "check1": "全スロットに担当者が割り当てられている",
+      "check2": "出勤不可のメンバーが割り当てられていない",
+      "check3": "連続勤務日数制約に違反していない",
+      "check4": "月次勤務時間上限を超えていない",
+      "check5": "メンバーの希望が可能な限り考慮されている",
+      "note": "確認メモ（任意）",
+      "submit": "目視確認完了"
+    },
+    "constraint": {
+      "warning": "勤務制約に注意が必要です",
+      "consecutiveDaysExceeded": "連続勤務日数超過の恐れ",
+      "absoluteRest": "出勤不可日に割り当て済み"
+    }
+  }
+}
