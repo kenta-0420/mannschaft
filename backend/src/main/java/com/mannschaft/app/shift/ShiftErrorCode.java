@@ -54,7 +54,19 @@ public enum ShiftErrorCode implements ErrorCode {
     OPTIMISTIC_LOCK_CONFLICT("SHIFT_018", "他のユーザーによって更新されています。再度お試しください", Severity.WARN),
 
     /** アクセス権なし */
-    ACCESS_DENIED("SHIFT_019", "このシフトへのアクセス権がありません", Severity.WARN);
+    ACCESS_DENIED("SHIFT_019", "このシフトへのアクセス権がありません", Severity.WARN),
+
+    /** 自動割当実行ログが見つからない */
+    ASSIGNMENT_RUN_NOT_FOUND("SHIFT_020", "自動割当実行ログが見つかりません", Severity.WARN),
+
+    /** 目視確認が完了していない（公開ゲート） */
+    VISUAL_REVIEW_REQUIRED("SHIFT_021", "目視確認が完了していない割当提案があります。確認後に公開してください", Severity.WARN),
+
+    /** 自動割当実行ログのステータスが不正 */
+    INVALID_ASSIGNMENT_RUN_STATUS("SHIFT_022", "この操作は現在の実行ステータスでは実行できません", Severity.WARN),
+
+    /** 勤務制約が見つからない */
+    WORK_CONSTRAINT_NOT_FOUND("SHIFT_023", "勤務制約が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;
