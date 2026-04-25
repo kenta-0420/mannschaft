@@ -13,8 +13,13 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 /**
- * メンバー勤務制約エンティティ。チームまたはメンバー個別の勤務制約を管理する。
- * userId が NULL の場合はチームデフォルト制約を表す。
+ * メンバー単位の任意勤務制約エンティティ（F03.5 v2 新規）。
+ *
+ * <p>月次労働時間・月次勤務日数・連続勤務日数・月次夜勤数・シフト間休息時間を任意に設定できる。
+ * 全項目 NULL 可能（オプトイン）だが、全て NULL のレコードは DB 層 CHECK 制約で拒否される。</p>
+ *
+ * <p>{@code userId} が NULL の場合はチーム単位のデフォルト値として扱う。解決順序は
+ * 「メンバー個別レコード → チームデフォルト → 制約なし」（詳細は設計書 §3）。</p>
  */
 @Entity
 @Table(name = "member_work_constraints")
@@ -27,36 +32,36 @@ public class MemberWorkConstraintEntity extends BaseEntity {
     @Column(nullable = false)
     private Long teamId;
 
-    /** NULL の場合はチームデフォルト制約 */
+    /** NULL の場合はチームデフォルト（全メンバー適用）。 */
     private Long userId;
 
-    /** 月最大勤務時間 */
-    @Column(precision = 5, scale = 1)
+    /** 月次労働時間上限（h）。NULL = 制約なし。 */
+    @Column(precision = 6, scale = 2)
     private BigDecimal maxMonthlyHours;
 
-    /** 月最大勤務日数 */
+    /** 月次勤務日数上限。NULL = 制約なし。 */
     @Column(columnDefinition = "TINYINT UNSIGNED")
     private Integer maxMonthlyDays;
 
-    /** 最大連続勤務日数 */
+    /** 連続勤務日数上限。NULL = 制約なし。 */
     @Column(columnDefinition = "TINYINT UNSIGNED")
     private Integer maxConsecutiveDays;
 
-    /** 月最大夜勤回数 */
+    /** 月次夜勤数上限。NULL = 制約なし。 */
     @Column(columnDefinition = "TINYINT UNSIGNED")
     private Integer maxNightShiftsPerMonth;
 
-    /** シフト間最低休憩時間（時間） */
-    @Column(precision = 4, scale = 1)
+    /** シフト間の最低休息時間（h）。NULL = 制約なし。 */
+    @Column(precision = 4, scale = 2)
     private BigDecimal minRestHoursBetweenShifts;
 
     @Column(length = 500)
     private String note;
 
     /**
-     * 制約内容を更新する。
+     * 勤務制約を更新する。
      */
-    public void update(
+    public void updateConstraints(
             BigDecimal maxMonthlyHours,
             Integer maxMonthlyDays,
             Integer maxConsecutiveDays,
@@ -69,5 +74,17 @@ public class MemberWorkConstraintEntity extends BaseEntity {
         this.maxNightShiftsPerMonth = maxNightShiftsPerMonth;
         this.minRestHoursBetweenShifts = minRestHoursBetweenShifts;
         this.note = note;
+    }
+
+    /** {@link #updateConstraints} の互換エイリアス。 */
+    public void update(
+            BigDecimal maxMonthlyHours,
+            Integer maxMonthlyDays,
+            Integer maxConsecutiveDays,
+            Integer maxNightShiftsPerMonth,
+            BigDecimal minRestHoursBetweenShifts,
+            String note) {
+        updateConstraints(maxMonthlyHours, maxMonthlyDays, maxConsecutiveDays,
+                maxNightShiftsPerMonth, minRestHoursBetweenShifts, note);
     }
 }

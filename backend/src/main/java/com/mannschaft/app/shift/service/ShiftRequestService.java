@@ -19,7 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * シフト希望サービス。メンバーのシフト希望提出・更新・集計を担当する。
@@ -128,6 +130,9 @@ public class ShiftRequestService {
     /**
      * シフト希望提出サマリーを取得する。
      *
+     * <p>v2 拡張: 5 段階 preference 別カウント（PREFERRED / AVAILABLE / WEAK_REST /
+     * STRONG_REST / ABSOLUTE_REST）を 1 クエリで集計して返却する。</p>
+     *
      * @param scheduleId スケジュールID
      * @return 提出サマリー
      */
@@ -137,7 +142,37 @@ public class ShiftRequestService {
         long totalMembers = userRoleRepository.countByTeamId(schedule.getTeamId());
         long pendingCount = Math.max(0, totalMembers - submittedCount);
 
-        return new ShiftRequestSummaryResponse(scheduleId, totalMembers, submittedCount, pendingCount);
+        Map<ShiftPreference, Long> preferenceCounts = aggregatePreferenceCounts(scheduleId);
+
+        return new ShiftRequestSummaryResponse(
+                scheduleId,
+                totalMembers,
+                submittedCount,
+                pendingCount,
+                preferenceCounts.getOrDefault(ShiftPreference.PREFERRED, 0L),
+                preferenceCounts.getOrDefault(ShiftPreference.AVAILABLE, 0L),
+                preferenceCounts.getOrDefault(ShiftPreference.WEAK_REST, 0L),
+                preferenceCounts.getOrDefault(ShiftPreference.STRONG_REST, 0L),
+                preferenceCounts.getOrDefault(ShiftPreference.ABSOLUTE_REST, 0L));
+    }
+
+    /**
+     * スケジュール単位の 5 段階 preference 別件数を集計する。
+     *
+     * <p>DB への 1 クエリで取得した結果を {@link EnumMap} に詰め替えて返却。
+     * 集計対象が存在しない preference は Map に含まれず、呼び出し側で {@code 0} として扱う。</p>
+     */
+    private Map<ShiftPreference, Long> aggregatePreferenceCounts(Long scheduleId) {
+        Map<ShiftPreference, Long> counts = new EnumMap<>(ShiftPreference.class);
+        List<Object[]> rows = requestRepository.countByPreferenceForSchedule(scheduleId);
+        for (Object[] row : rows) {
+            ShiftPreference preference = (ShiftPreference) row[0];
+            Long count = (Long) row[1];
+            if (preference != null && count != null) {
+                counts.put(preference, count);
+            }
+        }
+        return counts;
     }
 
     /**

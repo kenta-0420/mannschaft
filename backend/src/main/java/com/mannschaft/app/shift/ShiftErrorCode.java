@@ -56,17 +56,23 @@ public enum ShiftErrorCode implements ErrorCode {
     /** アクセス権なし */
     ACCESS_DENIED("SHIFT_019", "このシフトへのアクセス権がありません", Severity.WARN),
 
+    /** 勤務制約が見つからない（v2 新規） */
+    WORK_CONSTRAINT_NOT_FOUND("SHIFT_020", "勤務制約が見つかりません", Severity.WARN),
+
+    /** 勤務制約の全項目が NULL（v2 新規） */
+    WORK_CONSTRAINT_ALL_NULL("SHIFT_021", "少なくとも1つの勤務制約項目を指定してください", Severity.WARN),
+
+    /** 勤務制約の管理権限なし（v2 新規） */
+    WORK_CONSTRAINT_FORBIDDEN("SHIFT_022", "勤務制約を管理する権限がありません", Severity.WARN),
+
     /** 自動割当実行ログが見つからない */
-    ASSIGNMENT_RUN_NOT_FOUND("SHIFT_020", "自動割当実行ログが見つかりません", Severity.WARN),
+    ASSIGNMENT_RUN_NOT_FOUND("SHIFT_024", "自動割当実行ログが見つかりません", Severity.WARN),
 
     /** 目視確認が完了していない（公開ゲート） */
-    VISUAL_REVIEW_REQUIRED("SHIFT_021", "目視確認が完了していない割当提案があります。確認後に公開してください", Severity.WARN),
+    VISUAL_REVIEW_REQUIRED("SHIFT_025", "目視確認が完了していない割当提案があります。確認後に公開してください", Severity.WARN),
 
     /** 自動割当実行ログのステータスが不正 */
-    INVALID_ASSIGNMENT_RUN_STATUS("SHIFT_022", "この操作は現在の実行ステータスでは実行できません", Severity.WARN),
-
-    /** 勤務制約が見つからない */
-    WORK_CONSTRAINT_NOT_FOUND("SHIFT_023", "勤務制約が見つかりません", Severity.WARN),
+    INVALID_ASSIGNMENT_RUN_STATUS("SHIFT_026", "この操作は現在の実行ステータスでは実行できません", Severity.WARN),
 
     /** 変更依頼が見つからない */
     CHANGE_REQUEST_NOT_FOUND("SHIFT_030", "シフト変更依頼が見つかりません", Severity.WARN),

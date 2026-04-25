@@ -2,182 +2,112 @@ import type {
   ChangeRequest,
   CreateChangeRequestPayload,
   ReviewChangeRequestPayload,
+  CreateShiftScheduleRequest,
+  ShiftScheduleResponse,
+  UpdateShiftScheduleRequest,
 } from '~/types/shift'
 
 export function useShiftApi() {
   const api = useApi()
+  const BASE = '/api/v1/shifts/schedules'
 
-  const BASE = '/api/v1/shifts'
-
-  // === Schedule ===
-  async function listShiftSchedules(params?: { status?: string; page?: number; size?: number }) {
+  /**
+   * チームのシフトスケジュール一覧を取得する。
+   * @param teamId チーム ID
+   * @param from  期間開始日（YYYY-MM-DD）省略可
+   * @param to    期間終了日（YYYY-MM-DD）省略可
+   */
+  async function listSchedules(
+    teamId: number,
+    from?: string,
+    to?: string,
+  ): Promise<ShiftScheduleResponse[]> {
     const query = new URLSearchParams()
-    if (params?.status) query.set('status', params.status)
-    query.set('page', String(params?.page ?? 0))
-    query.set('size', String(params?.size ?? 20))
-    return api<{
-      data: unknown[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
-    }>(`${BASE}/schedules?${query}`)
+    query.set('teamId', String(teamId))
+    if (from) query.set('from', from)
+    if (to) query.set('to', to)
+    const res = await api<{ data: ShiftScheduleResponse[] }>(`${BASE}?${query.toString()}`)
+    return res.data
   }
 
-  async function createShiftSchedule(body: Record<string, unknown>) {
-    return api<{ data: unknown }>(`${BASE}/schedules`, { method: 'POST', body })
+  /**
+   * シフトスケジュール詳細を取得する。
+   * @param scheduleId スケジュール ID
+   */
+  async function getSchedule(scheduleId: number): Promise<ShiftScheduleResponse> {
+    const res = await api<{ data: ShiftScheduleResponse }>(`${BASE}/${scheduleId}`)
+    return res.data
   }
 
-  async function getShiftSchedule(scheduleId: number) {
-    return api<{ data: unknown }>(`${BASE}/schedules/${scheduleId}`)
+  /**
+   * シフトスケジュールを作成する。
+   * @param teamId  チーム ID
+   * @param payload 作成リクエスト
+   */
+  async function createSchedule(
+    teamId: number,
+    payload: CreateShiftScheduleRequest,
+  ): Promise<ShiftScheduleResponse> {
+    const query = new URLSearchParams()
+    query.set('teamId', String(teamId))
+    const res = await api<{ data: ShiftScheduleResponse }>(`${BASE}?${query.toString()}`, {
+      method: 'POST',
+      body: payload,
+    })
+    return res.data
   }
 
-  async function updateShiftSchedule(scheduleId: number, body: Record<string, unknown>) {
-    return api<{ data: unknown }>(`${BASE}/schedules/${scheduleId}`, { method: 'PATCH', body })
-  }
-
-  async function deleteShiftSchedule(scheduleId: number) {
-    return api(`${BASE}/schedules/${scheduleId}`, { method: 'DELETE' })
-  }
-
-  async function duplicateShiftSchedule(scheduleId: number) {
-    return api<{ data: unknown }>(`${BASE}/schedules/${scheduleId}/duplicate`, { method: 'POST' })
-  }
-
-  async function transitionShiftSchedule(scheduleId: number, body?: Record<string, unknown>) {
-    return api(`${BASE}/schedules/${scheduleId}/transition`, { method: 'POST', body })
-  }
-
-  // === Positions ===
-  async function getPositions() {
-    return api<{ data: unknown[] }>(`${BASE}/positions`)
-  }
-
-  async function createPosition(body: {
-    name: string
-    description?: string
-    requiredCount: number
-    color?: string
-  }) {
-    return api<{ data: unknown }>(`${BASE}/positions`, { method: 'POST', body })
-  }
-
-  async function updatePosition(positionId: number, body: Record<string, unknown>) {
-    return api<{ data: unknown }>(`${BASE}/positions/${positionId}`, { method: 'PATCH', body })
-  }
-
-  async function deletePosition(positionId: number) {
-    return api(`${BASE}/positions/${positionId}`, { method: 'DELETE' })
-  }
-
-  // === Slots ===
-  async function getShiftSlots(
+  /**
+   * シフトスケジュールを更新する。
+   * @param scheduleId スケジュール ID
+   * @param payload    更新リクエスト
+   */
+  async function updateSchedule(
     scheduleId: number,
-    params?: { date?: string; positionId?: number },
-  ) {
+    payload: UpdateShiftScheduleRequest,
+  ): Promise<ShiftScheduleResponse> {
+    const res = await api<{ data: ShiftScheduleResponse }>(`${BASE}/${scheduleId}`, {
+      method: 'PATCH',
+      body: payload,
+    })
+    return res.data
+  }
+
+  /**
+   * シフトスケジュールを削除する（論理削除）。
+   * @param scheduleId スケジュール ID
+   */
+  async function deleteSchedule(scheduleId: number): Promise<void> {
+    await api(`${BASE}/${scheduleId}`, { method: 'DELETE' })
+  }
+
+  /**
+   * シフトスケジュールのステータスを遷移する。
+   * @param scheduleId スケジュール ID
+   * @param status     遷移先ステータス
+   */
+  async function transitionStatus(
+    scheduleId: number,
+    status: string,
+  ): Promise<ShiftScheduleResponse> {
     const query = new URLSearchParams()
-    if (params?.date) query.set('date', params.date)
-    if (params?.positionId) query.set('positionId', String(params.positionId))
-    return api<{ data: unknown[] }>(`${BASE}/schedules/${scheduleId}/slots?${query}`)
+    query.set('status', status)
+    const res = await api<{ data: ShiftScheduleResponse }>(
+      `${BASE}/${scheduleId}/transition?${query.toString()}`,
+      { method: 'POST' },
+    )
+    return res.data
   }
 
-  async function createShiftSlot(scheduleId: number, body: Record<string, unknown>) {
-    return api<{ data: unknown }>(`${BASE}/schedules/${scheduleId}/slots`, { method: 'POST', body })
-  }
-
-  async function bulkCreateSlots(scheduleId: number, body: Array<Record<string, unknown>>) {
-    return api(`${BASE}/schedules/${scheduleId}/slots/bulk`, { method: 'POST', body })
-  }
-
-  async function updateSlot(slotId: number, body: Record<string, unknown>) {
-    return api<{ data: unknown }>(`${BASE}/slots/${slotId}`, { method: 'PATCH', body })
-  }
-
-  async function deleteSlot(slotId: number) {
-    return api(`${BASE}/slots/${slotId}`, { method: 'DELETE' })
-  }
-
-  // === Requests ===
-  async function listShiftRequests(params?: { page?: number; size?: number }) {
-    const query = new URLSearchParams()
-    if (params?.page !== undefined) query.set('page', String(params.page))
-    if (params?.size !== undefined) query.set('size', String(params.size))
-    const qs = query.toString()
-    return api<{ data: unknown[] }>(`${BASE}/requests${qs ? `?${qs}` : ''}`)
-  }
-
-  async function submitShiftRequest(body: Record<string, unknown>) {
-    return api(`${BASE}/requests`, { method: 'POST', body })
-  }
-
-  async function updateShiftRequest(requestId: number, body: Record<string, unknown>) {
-    return api(`${BASE}/requests/${requestId}`, { method: 'PATCH', body })
-  }
-
-  async function deleteShiftRequest(requestId: number) {
-    return api(`${BASE}/requests/${requestId}`, { method: 'DELETE' })
-  }
-
-  async function getShiftRequestSummary() {
-    return api<{ data: unknown }>(`${BASE}/requests/summary`)
-  }
-
-  async function getMyShiftRequests() {
-    return api<{ data: unknown[] }>(`${BASE}/my/requests`)
-  }
-
-  // === Swap Requests ===
-  async function listSwapRequests(params?: { status?: string }) {
-    const query = params?.status ? `?status=${params.status}` : ''
-    return api<{ data: unknown[] }>(`${BASE}/swap-requests${query}`)
-  }
-
-  async function createSwapRequest(body: {
-    slotId: number
-    targetUserId: number
-    reason?: string
-  }) {
-    return api<{ data: unknown }>(`${BASE}/swap-requests`, { method: 'POST', body })
-  }
-
-  async function deleteSwapRequest(swapId: number) {
-    return api(`${BASE}/swap-requests/${swapId}`, { method: 'DELETE' })
-  }
-
-  async function acceptSwap(swapId: number) {
-    return api(`${BASE}/swap-requests/${swapId}/accept`, { method: 'POST' })
-  }
-
-  async function resolveSwap(swapId: number, body?: Record<string, unknown>) {
-    return api(`${BASE}/swap-requests/${swapId}/resolve`, { method: 'POST', body })
-  }
-
-  // === Availability ===
-  async function getAvailability(params?: Record<string, string>) {
-    const query = new URLSearchParams(params)
-    const qs = query.toString()
-    return api<{ data: unknown[] }>(`${BASE}/availability${qs ? `?${qs}` : ''}`)
-  }
-
-  async function setAvailability(
-    body: Array<{
-      dayOfWeek: number
-      startTime: string | null
-      endTime: string | null
-      isAvailable: boolean
-    }>,
-  ) {
-    return api(`${BASE}/availability`, { method: 'PUT', body })
-  }
-
-  async function deleteAvailability() {
-    return api(`${BASE}/availability`, { method: 'DELETE' })
-  }
-
-  // === Hourly Rate ===
-  async function getHourlyRate() {
-    return api<{ data: unknown }>(`${BASE}/hourly-rate`)
-  }
-
-  async function setHourlyRate(body: Record<string, unknown>) {
-    return api<{ data: unknown }>(`${BASE}/hourly-rate`, { method: 'POST', body })
+  /**
+   * シフトスケジュールを複製する。
+   * @param scheduleId 複製元スケジュール ID
+   */
+  async function duplicateSchedule(scheduleId: number): Promise<ShiftScheduleResponse> {
+    const res = await api<{ data: ShiftScheduleResponse }>(`${BASE}/${scheduleId}/duplicate`, {
+      method: 'POST',
+    })
+    return res.data
   }
 
   // === Auto Assign ===
@@ -310,13 +240,13 @@ export function useShiftApi() {
   }
 
   return {
-    listShiftSchedules,
-    createShiftSchedule,
-    getShiftSchedule,
-    updateShiftSchedule,
-    deleteShiftSchedule,
-    duplicateShiftSchedule,
-    transitionShiftSchedule,
+    listSchedules,
+    getSchedule,
+    createSchedule,
+    updateSchedule,
+    deleteSchedule,
+    transitionStatus,
+    duplicateSchedule,
     getPositions,
     createPosition,
     updatePosition,

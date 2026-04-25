@@ -152,7 +152,7 @@ class ShiftMapperTest {
         @Test
         @DisplayName("シフト希望エンティティ変換_STRONG_REST_正常変換")
         void シフト希望エンティティ変換_STRONG_REST_正常変換() {
-            // V3.137 で旧 UNAVAILABLE は STRONG_REST に移行済み
+            // F03.5 v2: 旧 UNAVAILABLE は STRONG_REST に移行済み（Flyway V3.137）
             ShiftRequestEntity entity = ShiftRequestEntity.builder()
                     .scheduleId(1L).userId(1L).slotDate(LocalDate.of(2026, 3, 1))
                     .preference(ShiftPreference.STRONG_REST).build();

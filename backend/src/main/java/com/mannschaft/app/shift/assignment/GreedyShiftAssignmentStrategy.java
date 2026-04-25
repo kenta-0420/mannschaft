@@ -175,8 +175,8 @@ public class GreedyShiftAssignmentStrategy implements ShiftAssignmentStrategy {
             List<LocalDate> assignedDates,
             AssignmentParametersDto params) {
 
-        // 希望スコア（PREFERRED=100, AVAILABLE=50, WEAK_REST=10, STRONG_REST=0）
-        double preferenceScore = preference.getScore();
+        // 希望スコア（PREFERRED=100, AVAILABLE=0, WEAK_REST=-30, STRONG_REST=-80）
+        double preferenceScore = preference.toAssignmentScore();
 
         // 公平性スコア: 未使用勤務日数の割合 * 100
         double fairnessScore = 100.0;
