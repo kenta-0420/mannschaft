@@ -70,6 +70,10 @@ public class ShiftScheduleEntity extends BaseEntity {
 
     @Column(nullable = false)
     @Builder.Default
+    private Boolean isReminderSent48h = false;
+
+    @Column(nullable = false)
+    @Builder.Default
     private Boolean isLowSubmissionAlerted = false;
 
     private LocalDateTime lastAutoTransitionAt;
@@ -125,6 +129,13 @@ public class ShiftScheduleEntity extends BaseEntity {
      */
     public void markReminderSent() {
         this.isReminderSent = true;
+    }
+
+    /**
+     * 48時間前リマインダー送信済みに更新する。
+     */
+    public void markReminderSent48h() {
+        this.isReminderSent48h = true;
     }
 
     /**

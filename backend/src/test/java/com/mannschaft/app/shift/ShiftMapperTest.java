@@ -150,12 +150,13 @@ class ShiftMapperTest {
         }
 
         @Test
-        @DisplayName("シフト希望エンティティ変換_UNAVAILABLE_正常変換")
-        void シフト希望エンティティ変換_UNAVAILABLE_正常変換() {
+        @DisplayName("シフト希望エンティティ変換_STRONG_REST_正常変換")
+        void シフト希望エンティティ変換_STRONG_REST_正常変換() {
+            // V3.137 で旧 UNAVAILABLE は STRONG_REST に移行済み
             ShiftRequestEntity entity = ShiftRequestEntity.builder()
                     .scheduleId(1L).userId(1L).slotDate(LocalDate.of(2026, 3, 1))
-                    .preference(ShiftPreference.UNAVAILABLE).build();
-            assertThat(mapper.toRequestResponse(entity).getPreference()).isEqualTo("UNAVAILABLE");
+                    .preference(ShiftPreference.STRONG_REST).build();
+            assertThat(mapper.toRequestResponse(entity).getPreference()).isEqualTo("STRONG_REST");
         }
     }
 
