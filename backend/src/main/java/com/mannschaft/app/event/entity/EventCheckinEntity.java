@@ -55,8 +55,42 @@ public class EventCheckinEntity {
 
     private LocalDateTime createdAt;
 
+    // F03.12 ケア対象者見守り通知・点呼機能
+    private LocalDateTime checkoutAt;
+    private LocalDateTime guardianCheckinNotifiedAt;
+    private LocalDateTime guardianCheckoutNotifiedAt;
+
+    @Column(length = 36)
+    private String rollCallSessionId;
+
+    private Integer lateArrivalMinutes;
+
+    @Column(length = 30)
+    private String absenceReason;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    /**
+     * チェックアウト日時を記録する。
+     */
+    public void recordCheckout() {
+        this.checkoutAt = LocalDateTime.now();
+    }
+
+    /**
+     * 保護者へのチェックイン通知送信日時を記録する。
+     */
+    public void markGuardianCheckinNotified() {
+        this.guardianCheckinNotifiedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 保護者へのチェックアウト通知送信日時を記録する。
+     */
+    public void markGuardianCheckoutNotified() {
+        this.guardianCheckoutNotifiedAt = LocalDateTime.now();
     }
 }
