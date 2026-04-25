@@ -76,6 +76,7 @@ onMounted(load)
   <DashboardWidgetCard
     title="家族"
     icon="pi pi-home"
+    to="/teams"
     :loading="loading"
     :col-span="2"
     refreshable

@@ -39,6 +39,7 @@ onMounted(load)
   <DashboardWidgetCard
     title="マイブログ"
     icon="pi pi-book"
+    to="/blog"
     :loading="loading"
     :col-span="2"
     refreshable

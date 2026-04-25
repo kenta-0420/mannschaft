@@ -162,6 +162,7 @@ function onDragEnd() {
         title=""
         class="group cursor-default transition-all"
         :col-span="isDataWidget(w.key) ? 2 : 1"
+        :scrollable="false"
         :is-dragging="dragIndex === index"
         :is-drop-target="dropTargetIndex === index && dragIndex !== index"
         draggable="true"
@@ -183,7 +184,22 @@ function onDragEnd() {
           >
             <i :class="w.icon" class="text-xl" />
           </div>
-          <h3 class="flex-1 text-[20px] font-semibold text-surface-700 dark:text-surface-200">
+          <NuxtLink
+            v-if="linkTo(w.key)"
+            :to="linkTo(w.key)"
+            class="group/title flex-1"
+            @click.stop
+          >
+            <h3
+              class="text-[20px] font-semibold text-surface-700 transition-colors group-hover/title:text-primary dark:text-surface-200"
+            >
+              {{ w.label }}
+            </h3>
+          </NuxtLink>
+          <h3
+            v-else
+            class="flex-1 text-[20px] font-semibold text-surface-700 dark:text-surface-200"
+          >
             {{ w.label }}
           </h3>
           <!-- 折り畳みボタン (モバイルのみ・ナビゲーションウィジェットのみ) -->
@@ -224,7 +240,10 @@ function onDragEnd() {
 
         <!-- データウィジェット: 実コンテンツ -->
         <template v-if="isDataWidget(w.key)">
-          <div class="mt-3" :class="w.key === 'schedule' ? 'min-h-[28rem]' : ''">
+          <div
+            class="mt-3"
+            :class="w.key === 'schedule' ? 'min-h-[28rem]' : 'max-h-96 overflow-y-auto pr-1'"
+          >
             <WidgetSurveyResults
               v-if="w.key === 'survey-results' && scopeId"
               :scope-type="(scopeType as 'team' | 'organization')"
