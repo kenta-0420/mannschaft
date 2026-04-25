@@ -88,3 +88,64 @@ export interface SubmitShiftRequestRequest {
   preference: ShiftRequestPreference
   note?: string
 }
+
+// 自動割当
+export type AssignmentStrategyType = 'MANUAL' | 'GREEDY_V1' | 'CSP_V1'
+export type ShiftAssignmentStatus = 'PROPOSED' | 'CONFIRMED' | 'REVOKED'
+export type ShiftAssignmentRunStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CONFIRMED' | 'REVOKED'
+
+export interface AssignmentParameters {
+  preferenceWeight?: number
+  fairnessWeight?: number
+  consecutivePenaltyWeight?: number
+  respectWorkConstraints?: boolean
+  overwriteExisting?: boolean
+}
+
+export interface AssignmentWarning {
+  code: string
+  message: string
+  slotId?: number
+  userId?: number
+}
+
+export interface ProposedAssignment {
+  id: number
+  slotId: number
+  userId: number
+  status: ShiftAssignmentStatus
+  score?: number
+  note?: string
+}
+
+export interface AssignmentRun {
+  id: number
+  scheduleId: number
+  strategy: AssignmentStrategyType
+  status: ShiftAssignmentRunStatus
+  triggeredBy: number
+  slotsTotal: number
+  slotsFilled: number
+  warnings?: AssignmentWarning[]
+  parameters?: AssignmentParameters
+  errorMessage?: string
+  visualReviewConfirmedBy?: number
+  visualReviewConfirmedAt?: string
+  visualReviewNote?: string
+  startedAt: string
+  completedAt?: string
+  assignments?: ProposedAssignment[]
+}
+
+// 勤務制約
+export interface WorkConstraint {
+  id?: number
+  teamId: number
+  userId?: number
+  maxMonthlyHours?: number
+  maxMonthlyDays?: number
+  maxConsecutiveDays?: number
+  maxNightShiftsPerMonth?: number
+  minRestHoursBetweenShifts?: number
+  note?: string
+}
