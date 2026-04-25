@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.DmReceiveFrom;
 import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.contact.OnlineVisibility;
 import com.mannschaft.app.common.EncryptedStringConverter;
+import com.mannschaft.app.family.CareCategory;
 import com.mannschaft.app.social.FollowListVisibility;
 import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
@@ -153,6 +154,26 @@ public class UserEntity extends BaseEntity {
     /** 物理削除完了日時。NULLの場合は未実行。 */
     @Column(name = "purged_at")
     private LocalDateTime purgedAt;
+
+    // === ケア対象者属性（F03.12）===
+
+    /** 生年月日（暗号化保存）。 */
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "VARBINARY(255)")
+    private String birthDate;
+
+    /** ケアカテゴリ。MINOR / ELDERLY / DISABILITY_SUPPORT / GENERAL_FAMILY。 */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private CareCategory careCategory;
+
+    /** ケア通知の受信フラグ。デフォルト true。 */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean careNotificationEnabled = true;
+
+    /** 見守り者がアカウントを代理作成した場合の作成者ユーザーID。 */
+    private Long accountCreatedByWatcherUserId;
 
     /**
      * ユーザーステータス

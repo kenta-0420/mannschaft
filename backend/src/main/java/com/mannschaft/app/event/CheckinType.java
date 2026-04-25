@@ -5,5 +5,9 @@ package com.mannschaft.app.event;
  */
 public enum CheckinType {
     STAFF_SCAN,
-    SELF
+    SELF,
+    /** 点呼（個別）。F03.12 ケア対象者見守り通知で使用。 */
+    ROLL_CALL,
+    /** 点呼（一括）。F03.12 ケア対象者見守り通知で使用。 */
+    ROLL_CALL_BATCH
 }
