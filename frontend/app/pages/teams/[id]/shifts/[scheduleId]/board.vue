@@ -17,6 +17,23 @@
       </div>
 
       <div class="flex items-center gap-2">
+        <!-- PDF エクスポートボタン（SUPPORTER ロールは非表示） -->
+        <ShiftPdfExportButton
+          v-if="!isSupporter"
+          :schedule-id="scheduleId"
+        />
+
+        <!-- 変更依頼ページへのリンク -->
+        <NuxtLink :to="`/teams/${teamId}/shifts/${scheduleId}/change-requests`">
+          <Button
+            :label="$t('shift.changeRequest.title')"
+            icon="pi pi-list"
+            severity="secondary"
+            outlined
+            size="small"
+          />
+        </NuxtLink>
+
         <Button
           :label="$t('shift.autoAssign.history')"
           icon="pi pi-history"
@@ -115,6 +132,9 @@ import type {
 const route = useRoute()
 const teamId = computed(() => Number(route.params.id))
 const scheduleId = computed(() => Number(route.params.scheduleId))
+
+const { currentUser } = useAuth()
+const isSupporter = computed(() => currentUser.value?.role === 'SUPPORTER')
 
 const shiftApi = useShiftApi()
 const { localAssignments, initSlot, moveUser, addUser, removeUser } = useShiftBoard(scheduleId)
