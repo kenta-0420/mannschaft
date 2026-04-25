@@ -11,6 +11,7 @@ import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventRsvpResponseEntity;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
+import com.mannschaft.app.family.service.CareEventNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class EventRsvpService {
     private final EventRsvpResponseRepository rsvpResponseRepository;
     private final UserRepository userRepository;
     private final EventService eventService;
+    private final CareEventNotificationService careEventNotificationService;
 
     /**
      * RSVP回答を送信する（初回）。
@@ -65,6 +67,11 @@ public class EventRsvpService {
 
         EventRsvpResponseEntity saved = rsvpResponseRepository.save(entity);
         log.info("RSVP送信: eventId={}, userId={}, response={}", eventId, userId, req.getResponse());
+
+        // F03.12 ケア対象者見守り通知: ATTENDING の場合に見守り者へ通知
+        if ("ATTENDING".equals(req.getResponse())) {
+            careEventNotificationService.notifyRsvpConfirmed(userId, eventId);
+        }
 
         String userName = getUserDisplayName(userId);
         return toDto(saved, userName);

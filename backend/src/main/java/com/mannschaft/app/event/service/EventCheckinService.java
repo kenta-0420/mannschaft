@@ -11,8 +11,10 @@ import com.mannschaft.app.event.dto.SelfCheckinRequest;
 import com.mannschaft.app.event.entity.EventCheckinEntity;
 import com.mannschaft.app.event.entity.EventTicketEntity;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
+import com.mannschaft.app.event.repository.EventRegistrationRepository;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.event.repository.EventTicketRepository;
+import com.mannschaft.app.family.service.CareEventNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -32,8 +34,10 @@ public class EventCheckinService {
     private final EventCheckinRepository checkinRepository;
     private final EventTicketRepository ticketRepository;
     private final EventRepository eventRepository;
+    private final EventRegistrationRepository registrationRepository;
     private final EventTicketService ticketService;
     private final EventMapper eventMapper;
+    private final CareEventNotificationService careEventNotificationService;
 
     /**
      * イベントのチェックイン一覧をページング取得する。
@@ -74,6 +78,10 @@ public class EventCheckinService {
 
         incrementEventCheckinCount(ticket.getEventId());
 
+        // F03.12 ケア対象者見守り通知: 登録ユーザーへのチェックインフック
+        resolveTicketUserId(ticket).ifPresent(userId ->
+                careEventNotificationService.notifyCheckin(userId, ticket.getEventId()));
+
         log.info("スタッフチェックイン: ticketId={}, staffUserId={}", ticket.getId(), staffUserId);
         return eventMapper.toCheckinResponse(saved);
     }
@@ -101,6 +109,10 @@ public class EventCheckinService {
         EventCheckinEntity saved = checkinRepository.save(checkin);
 
         incrementEventCheckinCount(ticket.getEventId());
+
+        // F03.12 ケア対象者見守り通知: 登録ユーザーへのチェックインフック
+        resolveTicketUserId(ticket).ifPresent(userId ->
+                careEventNotificationService.notifyCheckin(userId, ticket.getEventId()));
 
         log.info("セルフチェックイン: ticketId={}", ticket.getId());
         return eventMapper.toCheckinResponse(saved);
@@ -136,5 +148,17 @@ public class EventCheckinService {
             event.incrementCheckinCount();
             eventRepository.save(event);
         });
+    }
+
+    /**
+     * チケットの参加登録からユーザーIDを解決する。
+     * ゲスト参加（userId=null）の場合は空のOptionalを返す。
+     *
+     * @param ticket チェックイン対象チケット
+     * @return ユーザーIDのOptional。ゲスト参加の場合は空。
+     */
+    private java.util.Optional<Long> resolveTicketUserId(EventTicketEntity ticket) {
+        return registrationRepository.findById(ticket.getRegistrationId())
+                .map(reg -> reg.getUserId());
     }
 }

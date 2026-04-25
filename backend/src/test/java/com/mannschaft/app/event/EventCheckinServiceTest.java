@@ -8,10 +8,12 @@ import com.mannschaft.app.event.entity.EventCheckinEntity;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventTicketEntity;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
+import com.mannschaft.app.event.repository.EventRegistrationRepository;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.event.repository.EventTicketRepository;
 import com.mannschaft.app.event.service.EventCheckinService;
 import com.mannschaft.app.event.service.EventTicketService;
+import com.mannschaft.app.family.service.CareEventNotificationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -53,10 +55,16 @@ class EventCheckinServiceTest {
     private EventRepository eventRepository;
 
     @Mock
+    private EventRegistrationRepository registrationRepository;
+
+    @Mock
     private EventTicketService ticketService;
 
     @Mock
     private EventMapper eventMapper;
+
+    @Mock
+    private CareEventNotificationService careEventNotificationService;
 
     @InjectMocks
     private EventCheckinService eventCheckinService;

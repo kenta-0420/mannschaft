@@ -122,6 +122,16 @@ public class EventEntity extends BaseEntity {
 
     private LocalDateTime deletedAt;
 
+    // F03.12 解散通知・リマインド
+    private LocalDateTime dismissalNotificationSentAt;
+    private Long dismissalNotifiedBy;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Byte organizerReminderSentCount = 0;
+
+    private LocalDateTime lastOrganizerReminderAt;
+
     /**
      * イベントを公開する。
      */
@@ -176,5 +186,23 @@ public class EventEntity extends BaseEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 解散通知を送信済みとして記録する。
+     *
+     * @param notifiedByUserId 解散通知を送信したユーザーID
+     */
+    public void recordDismissal(Long notifiedByUserId) {
+        this.dismissalNotificationSentAt = LocalDateTime.now();
+        this.dismissalNotifiedBy = notifiedByUserId;
+    }
+
+    /**
+     * 主催者向けリマインダー送信回数をインクリメントする。
+     */
+    public void incrementOrganizerReminder() {
+        this.organizerReminderSentCount = (byte) (this.organizerReminderSentCount + 1);
+        this.lastOrganizerReminderAt = LocalDateTime.now();
     }
 }

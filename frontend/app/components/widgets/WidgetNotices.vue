@@ -60,6 +60,7 @@ onMounted(load)
   <DashboardWidgetCard
     title="お知らせ"
     icon="pi pi-bell"
+    to="/notifications"
     :loading="loading"
     refreshable
     @refresh="load"

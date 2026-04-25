@@ -72,9 +72,9 @@ const ALL_WIDGETS: WidgetDefinition[] = [
   },
   {
     key: 'schedule',
-    label: 'スケジュール',
-    icon: 'pi pi-calendar-clock',
-    description: '今週の予定',
+    label: 'カレンダー',
+    icon: 'pi pi-calendar',
+    description: '月のスケジュールをカレンダーで表示',
     scope: ['team', 'organization'],
   },
   {
