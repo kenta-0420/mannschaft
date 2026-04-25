@@ -5,6 +5,8 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.organization.dto.AncestorsResponse;
+import com.mannschaft.app.organization.dto.ChildrenResponse;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrgAllMembersResponse;
 import com.mannschaft.app.organization.dto.OrgTeamSummaryResponse;
@@ -398,6 +400,54 @@ public class OrganizationController {
     public ResponseEntity<Void> leaveOrganization(@PathVariable Long id) {
         roleService.leaveScope(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.noContent().build();
+    }
+
+    // ========================================
+    // 階層表示API (F01.2)
+    // ========================================
+
+    /**
+     * 対象組織の祖先チェーン（root → 直近の親）を返す。
+     *
+     * <p>未認証でもアクセス可能（対象組織が PUBLIC の場合）。PRIVATE の場合は未認証で 401・
+     * 非メンバー＆非子孫メンバーで 403 を返す。各祖先はその visibility / hierarchyVisibility に応じて
+     * フル情報・限定情報・プレースホルダ（{@code hidden: true}）のいずれかとして返す。</p>
+     */
+    @GetMapping("/{id}/ancestors")
+    @Operation(summary = "祖先組織一覧（階層パンくず用）",
+            description = "対象組織の上位組織チェーンを root から直近の親の順に返す。" +
+                    "max-depth (default 5) を超える場合は途中で打ち切り、meta.truncated=true を立てる。")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+            description = "未認証（対象組織が PRIVATE の場合のみ）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "PRIVATE 組織で呼び出し者が直接所属でも子孫メンバーでもない")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "対象組織が存在しない / 論理削除済み")
+    public ResponseEntity<AncestorsResponse> getAncestors(@PathVariable Long id) {
+        Long requesterId = SecurityUtils.getCurrentUserIdOrNull();
+        return ResponseEntity.ok(organizationService.getAncestors(id, requesterId));
+    }
+
+    /**
+     * 対象組織の直近の子組織一覧を返す（深い孫は含まない）。
+     */
+    @GetMapping("/{id}/children")
+    @Operation(summary = "直近の子組織一覧",
+            description = "parent_organization_id = id かつ未削除の子組織のみ返す。" +
+                    "PRIVATE 子組織は呼び出し者が直接所属メンバーの場合のみ含める。")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未認証")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "対象組織が PRIVATE で呼び出し者が直接所属メンバーでない")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "対象組織が存在しない / 論理削除済み")
+    public ResponseEntity<ChildrenResponse> getChildren(
+            @PathVariable Long id,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "50") int size) {
+        Long requesterId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(organizationService.getChildren(id, requesterId, cursor, size));
     }
 
     // ========================================
