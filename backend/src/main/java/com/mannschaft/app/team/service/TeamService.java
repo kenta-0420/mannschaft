@@ -5,7 +5,6 @@ import com.mannschaft.app.team.event.TeamMemberRemovedEvent;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.TeamErrorCode;
-import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -195,7 +194,7 @@ public class TeamService {
 
         var data = page.getContent().stream()
                 .map(ur -> {
-                    UserEntity user = userRepository.findById(ur.getUserId()).orElse(null);
+                    UserRepository.MemberSummary user = userRepository.findMemberSummaryById(ur.getUserId()).orElse(null);
                     RoleEntity role = roleRepository.findById(ur.getRoleId()).orElse(null);
                     return new MemberResponse(
                             ur.getUserId(),
