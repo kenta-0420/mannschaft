@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { SurveyDetailResponse } from '~/types/survey'
 
-// i18n: surveys.detail.*
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
@@ -12,6 +11,7 @@ const scopeType = (rawScope === 'TEAM' || rawScope === 'ORGANIZATION'
   : '') as 'TEAM' | 'ORGANIZATION' | ''
 const scopeId = Number(route.query.scopeId)
 
+const { t } = useI18n()
 const { getSurvey, publishSurvey, closeSurvey, deleteSurvey } = useSurveyApi()
 const { error: showError, success: showSuccess } = useNotification()
 const { confirmAction } = useConfirmDialog()
@@ -19,7 +19,7 @@ const authStore = useAuthStore()
 
 // scope / scopeId 欠落・不正な場合は即トップへ
 if (!scopeType || !Number.isFinite(scopeId) || scopeId <= 0 || !Number.isFinite(surveyId)) {
-  showError('アンケートのスコープ情報が不足しています')
+  showError(t('surveys.detail.scopeMissing'))
   await navigateTo('/')
 }
 
@@ -102,15 +102,6 @@ function statusClass(status: string): string {
   }
 }
 
-function statusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    DRAFT: '下書き',
-    PUBLISHED: '受付中',
-    CLOSED: '締切',
-  }
-  return labels[status] ?? status
-}
-
 const responseCountLabel = computed(() => {
   const s = survey.value
   if (!s) return ''
@@ -132,10 +123,10 @@ async function onPublish() {
   actionLoading.value = true
   try {
     await publishSurvey(scopeType as 'TEAM' | 'ORGANIZATION', scopeId, surveyId)
-    showSuccess('アンケートを公開しました')
+    showSuccess(t('surveys.detail.publishSuccess'))
     await fetchDetail()
   } catch {
-    showError('アンケートの公開に失敗しました')
+    showError(t('surveys.detail.publishFailed'))
   } finally {
     actionLoading.value = false
   }
@@ -144,16 +135,16 @@ async function onPublish() {
 function onCloseSurvey() {
   if (!survey.value) return
   confirmAction({
-    header: 'アンケートを締切る',
-    message: 'このアンケートを締切ります。締切後は新規回答を受け付けません。よろしいですか？',
+    header: t('surveys.detail.closeConfirmHeader'),
+    message: t('surveys.detail.closeConfirmMessage'),
     onAccept: async () => {
       actionLoading.value = true
       try {
         await closeSurvey(scopeType as 'TEAM' | 'ORGANIZATION', scopeId, surveyId)
-        showSuccess('アンケートを締切りました')
+        showSuccess(t('surveys.detail.closeSuccess'))
         await fetchDetail()
       } catch {
-        showError('アンケートの締切に失敗しました')
+        showError(t('surveys.detail.closeFailed'))
       } finally {
         actionLoading.value = false
       }
@@ -164,16 +155,16 @@ function onCloseSurvey() {
 function onDelete() {
   if (!survey.value) return
   confirmAction({
-    header: 'アンケートを削除',
-    message: 'このアンケートを削除します。この操作は取り消せません。よろしいですか？',
+    header: t('surveys.detail.deleteConfirmHeader'),
+    message: t('surveys.detail.deleteConfirmMessage'),
     onAccept: async () => {
       actionLoading.value = true
       try {
         await deleteSurvey(scopeType as 'TEAM' | 'ORGANIZATION', scopeId, surveyId)
-        showSuccess('アンケートを削除しました')
+        showSuccess(t('surveys.detail.deleteSuccess'))
         await navigateTo(scopeListPath.value)
       } catch {
-        showError('アンケートの削除に失敗しました')
+        showError(t('surveys.detail.deleteFailed'))
         actionLoading.value = false
       }
     },
@@ -203,19 +194,19 @@ onMounted(async () => {
       class="flex flex-col items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-8 text-center dark:border-red-700 dark:bg-red-900/20"
     >
       <i class="pi pi-exclamation-triangle text-3xl text-red-500" />
-      <p class="text-sm text-red-700 dark:text-red-200">アンケート情報を取得できませんでした</p>
-      <Button label="戻る" icon="pi pi-arrow-left" outlined @click="navigateTo(scopeListPath)" />
+      <p class="text-sm text-red-700 dark:text-red-200">{{ t('surveys.detail.fetchFailed') }}</p>
+      <Button :label="t('surveys.detail.back')" icon="pi pi-arrow-left" outlined @click="navigateTo(scopeListPath)" />
     </div>
 
     <template v-else>
       <!-- ヘッダー -->
       <PageHeader :title="survey.title" size="sm">
         <span :class="statusClass(survey.status)" class="rounded px-2 py-0.5 text-xs font-medium">
-          {{ statusLabel(survey.status) }}
+          {{ t(`surveys.statusLabel.${survey.status}`) }}
         </span>
         <Badge
           v-if="survey.hasResponded"
-          value="回答済み"
+          :value="t('surveys.detail.answeredBadge')"
           severity="success"
         />
       </PageHeader>
@@ -226,13 +217,13 @@ onMounted(async () => {
           <i class="pi pi-user mr-1" />{{ survey.createdBy.displayName }}
         </span>
         <span v-if="survey.deadline">
-          <i class="pi pi-clock mr-1" />期限: {{ survey.deadline }}
+          <i class="pi pi-clock mr-1" />{{ t('surveys.detail.deadline') }}: {{ survey.deadline }}
         </span>
         <span>
-          <i class="pi pi-users mr-1" />回答: {{ responseCountLabel }}
+          <i class="pi pi-users mr-1" />{{ t('surveys.detail.responseCount') }}: {{ responseCountLabel }}
         </span>
         <span v-if="survey.isAnonymous" class="text-surface-400">
-          <i class="pi pi-eye-slash mr-1" />匿名
+          <i class="pi pi-eye-slash mr-1" />{{ t('surveys.detail.anonymous') }}
         </span>
       </div>
 
@@ -251,7 +242,7 @@ onMounted(async () => {
       >
         <Button
           v-if="survey.status === 'PUBLISHED'"
-          label="アンケートを締切る"
+          :label="t('surveys.detail.closeButton')"
           icon="pi pi-times-circle"
           severity="warn"
           outlined
@@ -268,17 +259,17 @@ onMounted(async () => {
       >
         <p class="mb-4 text-sm text-surface-600 dark:text-surface-300">
           <i class="pi pi-info-circle mr-1" />
-          このアンケートは下書き状態です。公開するまで回答を受け付けません。
+          {{ t('surveys.detail.draftHint') }}
         </p>
         <div v-if="isCreator || isAdminPlus" class="flex flex-wrap gap-2">
           <Button
-            label="公開する"
+            :label="t('surveys.detail.publishButton')"
             icon="pi pi-send"
             :loading="actionLoading"
             @click="onPublish"
           />
           <Button
-            label="削除"
+            :label="t('surveys.detail.deleteButton')"
             icon="pi pi-trash"
             severity="danger"
             outlined
@@ -310,7 +301,7 @@ onMounted(async () => {
       >
         <i class="pi pi-lock text-3xl text-surface-400" />
         <p class="text-sm text-surface-500 dark:text-surface-300">
-          このアンケートは締切られました。結果は公開されていません。
+          {{ t('surveys.detail.closedNoPermission') }}
         </p>
       </div>
     </template>

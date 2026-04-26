@@ -3,7 +3,6 @@
 // - PrimeVue Dialog で全項目を1ページに集約
 // - 設問編集は SurveyQuestionEditor を v-model で組み込み
 // - 簡易バリデーションを通過後 useSurveyApi().createSurvey を呼び出す
-// i18n: surveys.create.* （第三陣Dで置換予定）
 
 import type {
   CreateSurveyRequest,
@@ -25,6 +24,7 @@ const emit = defineEmits<{
   created: [survey: SurveyResponse]
 }>()
 
+const { t } = useI18n()
 const { createSurvey } = useSurveyApi()
 const { error: showError, success: showSuccess } = useNotification()
 
@@ -41,17 +41,17 @@ const questions = ref<QuestionDraft[]>([])
 const submitting = ref(false)
 
 // === 選択肢定義 ===
-const resultsVisibilityOptions: Array<{ label: string; value: ResultsVisibility }> = [
-  { label: '作成者のみ', value: 'CREATOR_ONLY' }, // i18n: surveys.create.resultsVisibility.creatorOnly
-  { label: '回答者のみ', value: 'RESPONDENTS' }, // i18n: surveys.create.resultsVisibility.respondents
-  { label: '全メンバー', value: 'ALL_MEMBERS' }, // i18n: surveys.create.resultsVisibility.allMembers
-]
+const resultsVisibilityOptions = computed<Array<{ label: string; value: ResultsVisibility }>>(() => [
+  { label: t('surveys.resultsVisibility.CREATOR_ONLY'), value: 'CREATOR_ONLY' },
+  { label: t('surveys.resultsVisibility.RESPONDENTS'), value: 'RESPONDENTS' },
+  { label: t('surveys.resultsVisibility.ALL_MEMBERS'), value: 'ALL_MEMBERS' },
+])
 
-const unrespondedVisibilityOptions: Array<{ label: string; value: UnrespondedVisibility }> = [
-  { label: '非表示', value: 'HIDDEN' }, // i18n: surveys.create.unrespondedVisibility.hidden
-  { label: '作成者と管理者のみ', value: 'CREATOR_AND_ADMIN' }, // i18n: surveys.create.unrespondedVisibility.creatorAndAdmin
-  { label: '全メンバー', value: 'ALL_MEMBERS' }, // i18n: surveys.create.unrespondedVisibility.allMembers
-]
+const unrespondedVisibilityOptions = computed<Array<{ label: string; value: UnrespondedVisibility }>>(() => [
+  { label: t('surveys.unrespondedVisibility.HIDDEN'), value: 'HIDDEN' },
+  { label: t('surveys.unrespondedVisibility.CREATOR_AND_ADMIN'), value: 'CREATOR_AND_ADMIN' },
+  { label: t('surveys.unrespondedVisibility.ALL_MEMBERS'), value: 'ALL_MEMBERS' },
+])
 
 // === 内部状態リセット ===
 function resetForm() {
@@ -72,33 +72,32 @@ function close() {
 
 // === バリデーション ===
 function validate(): string | null {
-  // i18n: surveys.create.validation.*
   if (!title.value.trim()) {
-    return 'タイトルを入力してください'
+    return t('surveys.create.validation.titleRequired')
   }
   if (title.value.trim().length > 200) {
-    return 'タイトルは200文字以内で入力してください'
+    return t('surveys.create.validation.titleTooLong')
   }
   if (description.value.length > 1000) {
-    return '説明は1000文字以内で入力してください'
+    return t('surveys.create.validation.descriptionTooLong')
   }
   if (questions.value.length === 0) {
-    return '設問を1つ以上追加してください'
+    return t('surveys.create.validation.questionsRequired')
   }
   for (let i = 0; i < questions.value.length; i++) {
     const q = questions.value[i]
     if (!q) continue
     if (!q.questionText.trim()) {
-      return `設問${i + 1}の文章を入力してください`
+      return t('surveys.create.validation.questionTextRequired', { index: i + 1 })
     }
     if (q.questionType === 'SINGLE_CHOICE' || q.questionType === 'MULTIPLE_CHOICE') {
       const opts = q.options ?? []
       if (opts.length < 2) {
-        return `設問${i + 1}の選択肢は2つ以上必要です`
+        return t('surveys.create.validation.optionsTooFew', { index: i + 1 })
       }
       const hasEmpty = opts.some((o) => !o.optionText.trim())
       if (hasEmpty) {
-        return `設問${i + 1}の選択肢に空欄があります`
+        return t('surveys.create.validation.optionEmpty', { index: i + 1 })
       }
     }
   }
@@ -143,14 +142,12 @@ async function submit() {
       props.scopeId,
       body as unknown as Record<string, unknown>,
     )
-    showSuccess('アンケートを作成しました')
-    // i18n: surveys.create.successToast
+    showSuccess(t('surveys.create.successToast'))
     emit('created', res.data)
     resetForm()
     close()
   } catch {
-    showError('アンケートの作成に失敗しました')
-    // i18n: surveys.create.failureToast
+    showError(t('surveys.create.failureToast'))
   } finally {
     submitting.value = false
   }
@@ -163,36 +160,33 @@ async function submit() {
     modal
     :style="{ width: '720px' }"
     :breakpoints="{ '960px': '90vw' }"
-    header="アンケートを作成"
+    :header="t('surveys.create.dialogHeader')"
     @hide="resetForm"
   >
-    <!-- i18n: surveys.create.dialogHeader -->
     <div class="flex flex-col gap-4">
       <!-- タイトル -->
       <div>
         <label class="mb-1 block text-sm font-medium">
-          タイトル <span class="text-red-500">*</span>
-          <!-- i18n: surveys.create.title -->
+          {{ t('surveys.create.title') }} <span class="text-red-500">*</span>
         </label>
         <InputText
           v-model="title"
           class="w-full"
           maxlength="200"
-          placeholder="例: 次回イベントの希望日アンケート"
+          :placeholder="t('surveys.create.titlePlaceholder')"
           autofocus
         />
       </div>
 
       <!-- 説明 -->
       <div>
-        <label class="mb-1 block text-sm font-medium">説明（任意）</label>
-        <!-- i18n: surveys.create.description -->
+        <label class="mb-1 block text-sm font-medium">{{ t('surveys.create.description') }}</label>
         <Textarea
           v-model="description"
           class="w-full"
           rows="3"
           maxlength="1000"
-          placeholder="アンケートの目的や注意事項を記載してください"
+          :placeholder="t('surveys.create.descriptionPlaceholder')"
           auto-resize
         />
       </div>
@@ -201,21 +195,18 @@ async function submit() {
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label class="flex items-center gap-2 text-sm">
           <Checkbox v-model="isAnonymous" binary />
-          <span>匿名回答にする</span>
-          <!-- i18n: surveys.create.isAnonymous -->
+          <span>{{ t('surveys.create.isAnonymous') }}</span>
         </label>
         <label class="flex items-center gap-2 text-sm">
           <Checkbox v-model="allowMultipleSubmissions" binary />
-          <span>複数回の回答を許可</span>
-          <!-- i18n: surveys.create.allowMultipleSubmissions -->
+          <span>{{ t('surveys.create.allowMultipleSubmissions') }}</span>
         </label>
       </div>
 
       <!-- 可視性設定 -->
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label class="mb-1 block text-sm font-medium">結果の公開範囲</label>
-          <!-- i18n: surveys.create.resultsVisibility.label -->
+          <label class="mb-1 block text-sm font-medium">{{ t('surveys.resultsVisibility.label') }}</label>
           <Select
             v-model="resultsVisibility"
             :options="resultsVisibilityOptions"
@@ -225,8 +216,7 @@ async function submit() {
           />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">未回答者の可視範囲</label>
-          <!-- i18n: surveys.create.unrespondedVisibility.label -->
+          <label class="mb-1 block text-sm font-medium">{{ t('surveys.unrespondedVisibility.label') }}</label>
           <Select
             v-model="unrespondedVisibility"
             :options="unrespondedVisibilityOptions"
@@ -239,8 +229,7 @@ async function submit() {
 
       <!-- 締切 -->
       <div>
-        <label class="mb-1 block text-sm font-medium">締切日時（任意）</label>
-        <!-- i18n: surveys.create.deadline -->
+        <label class="mb-1 block text-sm font-medium">{{ t('surveys.create.deadline') }}</label>
         <DatePicker
           v-model="deadline"
           class="w-full"
@@ -248,15 +237,14 @@ async function submit() {
           show-icon
           hour-format="24"
           date-format="yy/mm/dd"
-          placeholder="未設定"
+          :placeholder="t('surveys.create.deadlinePlaceholder')"
         />
       </div>
 
       <!-- 設問エディタ -->
       <div>
         <label class="mb-2 block text-sm font-medium">
-          設問 <span class="text-red-500">*</span>
-          <!-- i18n: surveys.create.questions -->
+          {{ t('surveys.create.questions') }} <span class="text-red-500">*</span>
         </label>
         <SurveyQuestionEditor v-model="questions" />
       </div>
@@ -264,20 +252,18 @@ async function submit() {
 
     <template #footer>
       <Button
-        label="キャンセル"
+        :label="t('surveys.create.cancel')"
         text
         severity="secondary"
         :disabled="submitting"
         @click="close"
       />
-      <!-- i18n: surveys.create.cancel -->
       <Button
-        label="保存"
+        :label="t('surveys.create.save')"
         icon="pi pi-check"
         :loading="submitting"
         @click="submit"
       />
-      <!-- i18n: surveys.create.save -->
     </template>
   </Dialog>
 </template>

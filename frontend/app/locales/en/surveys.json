@@ -1,0 +1,151 @@
+{
+  "surveys": {
+    "pageTitle": "Surveys & Polls",
+    "statusLabel": {
+      "DRAFT": "Draft",
+      "PUBLISHED": "Open",
+      "CLOSED": "Closed"
+    },
+    "questionType": {
+      "SINGLE_CHOICE": "Single choice",
+      "MULTIPLE_CHOICE": "Multiple choice",
+      "TEXT": "Free text",
+      "RATING": "Rating (1-5)",
+      "DATE": "Date"
+    },
+    "resultsVisibility": {
+      "label": "Results visibility",
+      "CREATOR_ONLY": "Creator only",
+      "RESPONDENTS": "Respondents only",
+      "ALL_MEMBERS": "All members"
+    },
+    "unrespondedVisibility": {
+      "label": "Unresponded visibility",
+      "HIDDEN": "Hidden",
+      "CREATOR_AND_ADMIN": "Creator & admins only",
+      "ALL_MEMBERS": "All members"
+    },
+    "list": {
+      "filterAll": "All",
+      "filterPlaceholder": "Status",
+      "createButton": "Create survey",
+      "answeredBadge": "Answered",
+      "anonymous": "Anonymous",
+      "responseCountUnit": "responses",
+      "empty": "No surveys yet",
+      "loadFailed": "Failed to load surveys"
+    },
+    "create": {
+      "dialogHeader": "Create a survey",
+      "title": "Title",
+      "titlePlaceholder": "e.g. Preferred date for the next event",
+      "description": "Description (optional)",
+      "descriptionPlaceholder": "Describe the purpose or any notes for this survey",
+      "isAnonymous": "Anonymous responses",
+      "allowMultipleSubmissions": "Allow multiple submissions",
+      "deadline": "Deadline (optional)",
+      "deadlinePlaceholder": "Not set",
+      "questions": "Questions",
+      "cancel": "Cancel",
+      "save": "Save",
+      "successToast": "Survey created",
+      "failureToast": "Failed to create survey",
+      "validation": {
+        "titleRequired": "Please enter a title",
+        "titleTooLong": "Title must be within 200 characters",
+        "descriptionTooLong": "Description must be within 1000 characters",
+        "questionsRequired": "Please add at least one question",
+        "questionTextRequired": "Please enter text for question {index}",
+        "optionsTooFew": "Question {index} requires at least two options",
+        "optionEmpty": "Question {index} has empty option(s)"
+      },
+      "questionEditor": {
+        "empty": "No questions yet",
+        "questionNo": "Question {no}",
+        "questionText": "Question text",
+        "questionTextPlaceholder": "Enter the question",
+        "type": "Answer format",
+        "required": "Required",
+        "options": "Options",
+        "optionPlaceholder": "Option text",
+        "addOption": "Add option",
+        "addQuestion": "Add question",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "remove": "Remove",
+        "removeOption": "Remove option",
+        "ratingScale": "Rating scale (1-5)",
+        "textHint": "Respondents will answer in free text",
+        "dateHint": "Respondents will pick a date"
+      }
+    },
+    "detail": {
+      "scopeMissing": "Survey scope information is missing",
+      "fetchFailed": "Failed to load survey details",
+      "back": "Back",
+      "answeredBadge": "Answered",
+      "deadline": "Deadline",
+      "responseCount": "Responses",
+      "anonymous": "Anonymous",
+      "draftHint": "This survey is a draft. It will not accept responses until published.",
+      "publishButton": "Publish",
+      "publishSuccess": "Survey published",
+      "publishFailed": "Failed to publish the survey",
+      "closeButton": "Close survey",
+      "closeConfirmHeader": "Close survey",
+      "closeConfirmMessage": "This will close the survey. New responses will no longer be accepted. Are you sure?",
+      "closeSuccess": "Survey closed",
+      "closeFailed": "Failed to close the survey",
+      "deleteButton": "Delete",
+      "deleteConfirmHeader": "Delete survey",
+      "deleteConfirmMessage": "This will permanently delete the survey. This action cannot be undone. Are you sure?",
+      "deleteSuccess": "Survey deleted",
+      "deleteFailed": "Failed to delete the survey",
+      "closedNoPermission": "This survey has been closed. Results are not public.",
+      "form": {
+        "alreadyResponded": "You have already responded to this survey.",
+        "requiredBadge": "Required",
+        "textPlaceholder": "Enter your answer",
+        "validationRequired": "\"{question}\" is required",
+        "validationTextTooLong": "\"{question}\" must be within 2000 characters",
+        "submitNew": "Submit response",
+        "submitUpdate": "Update response",
+        "submitSuccess": "Response submitted",
+        "submitFailed": "Failed to submit response"
+      },
+      "results": {
+        "title": "Results",
+        "reload": "Reload results",
+        "fetchFailed": "Failed to load results",
+        "retry": "Retry",
+        "empty": "No data yet",
+        "loadFailedToast": "Failed to load results",
+        "responsesUnit": "",
+        "responsesLabel": "Responses",
+        "noData": "No data",
+        "noTextResponses": "No text responses",
+        "moreCount": "{count} more"
+      }
+    },
+    "respondents": {
+      "summary": "{responded} / {total} members",
+      "reload": "Reload",
+      "tabResponded": "Responded ({count})",
+      "tabUnresponded": "Unresponded ({count})",
+      "remindHint": "Send a reminder to {count} unresponded members (up to 3 times)",
+      "remindButton": "Send reminder",
+      "remindAutoNotice": "An auto reminder will be sent 24 hours before the deadline",
+      "remindSuccess": "Reminder sent to {count} member(s)",
+      "remindRemaining": "Remaining sends: {count}",
+      "remindFailed": "Failed to send reminder",
+      "remindFailedDetail": "Please check sending limit, cooldown and permissions",
+      "loadFailed": "Failed to load respondents",
+      "loadErrorTitle": "Failed to load respondents",
+      "retry": "Retry",
+      "respondedBadge": "Responded",
+      "unrespondedBadge": "Unresponded",
+      "emptyResponded": "No respondents yet",
+      "emptyUnresponded": "No unresponded members"
+    }
+  }
+}

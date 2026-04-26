@@ -1,0 +1,151 @@
+{
+  "surveys": {
+    "pageTitle": "Umfragen & Abstimmungen",
+    "statusLabel": {
+      "DRAFT": "Entwurf",
+      "PUBLISHED": "Geöffnet",
+      "CLOSED": "Geschlossen"
+    },
+    "questionType": {
+      "SINGLE_CHOICE": "Einzelauswahl",
+      "MULTIPLE_CHOICE": "Mehrfachauswahl",
+      "TEXT": "Freitext",
+      "RATING": "Bewertung (1-5)",
+      "DATE": "Datum"
+    },
+    "resultsVisibility": {
+      "label": "Sichtbarkeit der Ergebnisse",
+      "CREATOR_ONLY": "Nur Ersteller",
+      "RESPONDENTS": "Nur Befragte",
+      "ALL_MEMBERS": "Alle Mitglieder"
+    },
+    "unrespondedVisibility": {
+      "label": "Sichtbarkeit der Nicht-Befragten",
+      "HIDDEN": "Verborgen",
+      "CREATOR_AND_ADMIN": "Nur Ersteller und Admins",
+      "ALL_MEMBERS": "Alle Mitglieder"
+    },
+    "list": {
+      "filterAll": "Alle",
+      "filterPlaceholder": "Status",
+      "createButton": "Umfrage erstellen",
+      "answeredBadge": "Beantwortet",
+      "anonymous": "Anonym",
+      "responseCountUnit": "Antworten",
+      "empty": "Noch keine Umfragen",
+      "loadFailed": "Umfrageliste konnte nicht geladen werden"
+    },
+    "create": {
+      "dialogHeader": "Umfrage erstellen",
+      "title": "Titel",
+      "titlePlaceholder": "z. B. Wunschtermin für das nächste Event",
+      "description": "Beschreibung (optional)",
+      "descriptionPlaceholder": "Beschreibe Zweck oder Hinweise zur Umfrage",
+      "isAnonymous": "Anonyme Antworten",
+      "allowMultipleSubmissions": "Mehrfache Antworten erlauben",
+      "deadline": "Stichtag (optional)",
+      "deadlinePlaceholder": "Nicht festgelegt",
+      "questions": "Fragen",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "successToast": "Umfrage erstellt",
+      "failureToast": "Umfrage konnte nicht erstellt werden",
+      "validation": {
+        "titleRequired": "Bitte einen Titel eingeben",
+        "titleTooLong": "Der Titel darf maximal 200 Zeichen lang sein",
+        "descriptionTooLong": "Die Beschreibung darf maximal 1000 Zeichen lang sein",
+        "questionsRequired": "Bitte mindestens eine Frage hinzufügen",
+        "questionTextRequired": "Bitte Text für Frage {index} eingeben",
+        "optionsTooFew": "Frage {index} benötigt mindestens zwei Optionen",
+        "optionEmpty": "Frage {index} hat leere Option(en)"
+      },
+      "questionEditor": {
+        "empty": "Noch keine Fragen",
+        "questionNo": "Frage {no}",
+        "questionText": "Fragentext",
+        "questionTextPlaceholder": "Frage eingeben",
+        "type": "Antwortformat",
+        "required": "Pflichtfeld",
+        "options": "Optionen",
+        "optionPlaceholder": "Optionstext",
+        "addOption": "Option hinzufügen",
+        "addQuestion": "Frage hinzufügen",
+        "moveUp": "Nach oben",
+        "moveDown": "Nach unten",
+        "remove": "Entfernen",
+        "removeOption": "Option entfernen",
+        "ratingScale": "Bewertungsskala (1-5)",
+        "textHint": "Befragte antworten in Freitext",
+        "dateHint": "Befragte wählen ein Datum"
+      }
+    },
+    "detail": {
+      "scopeMissing": "Bereichsinformationen zur Umfrage fehlen",
+      "fetchFailed": "Umfragedetails konnten nicht geladen werden",
+      "back": "Zurück",
+      "answeredBadge": "Beantwortet",
+      "deadline": "Stichtag",
+      "responseCount": "Antworten",
+      "anonymous": "Anonym",
+      "draftHint": "Diese Umfrage ist ein Entwurf. Vor der Veröffentlichung werden keine Antworten angenommen.",
+      "publishButton": "Veröffentlichen",
+      "publishSuccess": "Umfrage veröffentlicht",
+      "publishFailed": "Umfrage konnte nicht veröffentlicht werden",
+      "closeButton": "Umfrage schließen",
+      "closeConfirmHeader": "Umfrage schließen",
+      "closeConfirmMessage": "Die Umfrage wird geschlossen. Danach werden keine neuen Antworten mehr angenommen. Fortfahren?",
+      "closeSuccess": "Umfrage geschlossen",
+      "closeFailed": "Umfrage konnte nicht geschlossen werden",
+      "deleteButton": "Löschen",
+      "deleteConfirmHeader": "Umfrage löschen",
+      "deleteConfirmMessage": "Die Umfrage wird gelöscht. Diese Aktion kann nicht rückgängig gemacht werden. Fortfahren?",
+      "deleteSuccess": "Umfrage gelöscht",
+      "deleteFailed": "Umfrage konnte nicht gelöscht werden",
+      "closedNoPermission": "Diese Umfrage wurde geschlossen. Die Ergebnisse sind nicht öffentlich.",
+      "form": {
+        "alreadyResponded": "Du hast diese Umfrage bereits beantwortet.",
+        "requiredBadge": "Pflicht",
+        "textPlaceholder": "Antwort eingeben",
+        "validationRequired": "„{question}“ ist ein Pflichtfeld",
+        "validationTextTooLong": "„{question}“ darf maximal 2000 Zeichen lang sein",
+        "submitNew": "Antwort senden",
+        "submitUpdate": "Antwort aktualisieren",
+        "submitSuccess": "Antwort gesendet",
+        "submitFailed": "Antwort konnte nicht gesendet werden"
+      },
+      "results": {
+        "title": "Auswertung",
+        "reload": "Ergebnisse neu laden",
+        "fetchFailed": "Auswertung konnte nicht geladen werden",
+        "retry": "Erneut versuchen",
+        "empty": "Noch keine Daten",
+        "loadFailedToast": "Auswertung konnte nicht geladen werden",
+        "responsesUnit": "",
+        "responsesLabel": "Antworten",
+        "noData": "Keine Daten",
+        "noTextResponses": "Keine Textantworten",
+        "moreCount": "{count} weitere"
+      }
+    },
+    "respondents": {
+      "summary": "{responded} / {total} Mitglieder",
+      "reload": "Neu laden",
+      "tabResponded": "Beantwortet ({count})",
+      "tabUnresponded": "Offen ({count})",
+      "remindHint": "Erinnerung an {count} Nicht-Befragte senden (max. 3 Mal)",
+      "remindButton": "Erinnerung senden",
+      "remindAutoNotice": "Eine automatische Erinnerung wird 24 Stunden vor Ablauf gesendet",
+      "remindSuccess": "Erinnerung an {count} Mitglied(er) gesendet",
+      "remindRemaining": "Verbleibende Sendungen: {count}",
+      "remindFailed": "Erinnerung konnte nicht gesendet werden",
+      "remindFailedDetail": "Bitte Sendelimit, Cooldown und Berechtigungen prüfen",
+      "loadFailed": "Befragte konnten nicht geladen werden",
+      "loadErrorTitle": "Befragte konnten nicht geladen werden",
+      "retry": "Erneut versuchen",
+      "respondedBadge": "Beantwortet",
+      "unrespondedBadge": "Offen",
+      "emptyResponded": "Noch keine Befragten",
+      "emptyUnresponded": "Keine offenen Befragten"
+    }
+  }
+}

@@ -8,8 +8,6 @@
  * 督促 UI: canRemind=true の場合のみ未回答タブに「督促送信」ボタンを表示。
  *   - Backend API: POST /api/v1/surveys/{surveyId}/remind
  *   - 認可・回数制限・24時間クールダウン等は Backend 側で判定（403/400 を画面に表示）
- *
- * <!-- i18n: surveys.respondents.* (第三陣Dにて多言語化予定) -->
  */
 import type { RespondentItem } from '~/types/survey'
 
@@ -23,6 +21,7 @@ const props = withDefaults(
   { canRemind: false },
 )
 
+const { t } = useI18n()
 const { getRespondents, remindRespondents } = useSurveyApi()
 const { error: showError, success: showSuccess } = useNotification()
 const { relativeTime } = useRelativeTime()
@@ -44,6 +43,11 @@ const visibleList = computed<RespondentItem[]>(() =>
   activeTab.value === 'responded' ? responded.value : unresponded.value,
 )
 
+const tabOptions = computed(() => [
+  { label: t('surveys.respondents.tabResponded', { count: respondedCount.value }), value: 'responded' },
+  { label: t('surveys.respondents.tabUnresponded', { count: totalCount.value - respondedCount.value }), value: 'unresponded' },
+])
+
 async function loadRespondents() {
   loading.value = true
   loadError.value = false
@@ -52,7 +56,7 @@ async function loadRespondents() {
     respondents.value = res.data
   } catch {
     loadError.value = true
-    showError('回答者一覧の取得に失敗しました')
+    showError(t('surveys.respondents.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -66,11 +70,11 @@ async function sendReminder() {
     const res = await remindRespondents(props.surveyId)
     const remindedCount = res.data?.reminded_count ?? unresponded.value.length
     const remaining = res.data?.remaining_remind_quota
-    const detail = remaining !== undefined ? `残り送信可能: ${remaining}回` : undefined
-    showSuccess(`${remindedCount}名にリマインドを送信しました`, detail)
+    const detail = remaining !== undefined ? t('surveys.respondents.remindRemaining', { count: remaining }) : undefined
+    showSuccess(t('surveys.respondents.remindSuccess', { count: remindedCount }), detail)
   } catch {
     // Backend が 400/403 を返す（上限超過・クールダウン中・権限不足）
-    showError('督促の送信に失敗しました', '送信上限・クールダウン・権限をご確認ください')
+    showError(t('surveys.respondents.remindFailed'), t('surveys.respondents.remindFailedDetail'))
   } finally {
     reminding.value = false
   }
@@ -91,9 +95,8 @@ defineExpose({ refresh: loadRespondents })
   <div class="flex flex-col gap-3">
     <!-- ヘッダー: サマリー + 再読込 -->
     <div class="flex items-center justify-between gap-2">
-      <div class="text-sm">
-        <span class="font-semibold text-surface-900">{{ respondedCount }}</span>
-        <span class="text-surface-500"> / 全 {{ totalCount }} 名</span>
+      <div class="text-sm text-surface-700">
+        {{ t('surveys.respondents.summary', { responded: respondedCount, total: totalCount }) }}
       </div>
       <Button
         icon="pi pi-refresh"
@@ -102,7 +105,7 @@ defineExpose({ refresh: loadRespondents })
         rounded
         size="small"
         :disabled="loading"
-        aria-label="再読込"
+        :aria-label="t('surveys.respondents.reload')"
         @click="loadRespondents"
       />
     </div>
@@ -110,10 +113,7 @@ defineExpose({ refresh: loadRespondents })
     <!-- タブ切替（PrimeVue SelectButton） -->
     <SelectButton
       v-model="activeTab"
-      :options="[
-        { label: `回答済み (${respondedCount})`, value: 'responded' },
-        { label: `未回答 (${totalCount - respondedCount})`, value: 'unresponded' },
-      ]"
+      :options="tabOptions"
       option-label="label"
       option-value="value"
       :allow-empty="false"
@@ -127,10 +127,10 @@ defineExpose({ refresh: loadRespondents })
         class="flex items-center justify-between gap-2 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2"
       >
         <span class="text-xs text-surface-600">
-          未回答の {{ unresponded.length }} 名にリマインド通知を送信できます（最大3回まで）
+          {{ t('surveys.respondents.remindHint', { count: unresponded.length }) }}
         </span>
         <Button
-          label="督促送信"
+          :label="t('surveys.respondents.remindButton')"
           icon="pi pi-send"
           size="small"
           :loading="reminding"
@@ -143,7 +143,7 @@ defineExpose({ refresh: loadRespondents })
         class="rounded-lg border border-dashed border-surface-200 bg-surface-50 px-3 py-2 text-xs text-surface-500"
       >
         <i class="pi pi-info-circle mr-1" />
-        督促通知は回答期限の 24 時間前に自動送信されます
+        {{ t('surveys.respondents.remindAutoNotice') }}
       </div>
     </div>
 
@@ -158,8 +158,8 @@ defineExpose({ refresh: loadRespondents })
       class="flex flex-col items-center gap-2 py-8 text-center"
     >
       <i class="pi pi-exclamation-triangle text-3xl text-red-500" />
-      <p class="text-sm text-surface-500">回答者一覧を取得できませんでした</p>
-      <Button label="再試行" icon="pi pi-refresh" size="small" @click="loadRespondents" />
+      <p class="text-sm text-surface-500">{{ t('surveys.respondents.loadErrorTitle') }}</p>
+      <Button :label="t('surveys.respondents.retry')" icon="pi pi-refresh" size="small" @click="loadRespondents" />
     </div>
 
     <!-- リスト本体 -->
@@ -196,8 +196,8 @@ defineExpose({ refresh: loadRespondents })
         >
           {{ relativeTime(item.respondedAt) }}
         </span>
-        <Badge v-else-if="item.hasResponded" value="回答済み" severity="success" />
-        <Badge v-else value="未回答" severity="warn" />
+        <Badge v-else-if="item.hasResponded" :value="t('surveys.respondents.respondedBadge')" severity="success" />
+        <Badge v-else :value="t('surveys.respondents.unrespondedBadge')" severity="warn" />
       </li>
     </ul>
 
@@ -205,7 +205,7 @@ defineExpose({ refresh: loadRespondents })
     <div v-else class="flex flex-col items-center gap-2 py-10 text-center">
       <i class="pi pi-users text-3xl text-surface-300" />
       <p class="text-sm text-surface-400">
-        {{ activeTab === 'responded' ? 'まだ回答者はいません' : '未回答者はいません' }}
+        {{ activeTab === 'responded' ? t('surveys.respondents.emptyResponded') : t('surveys.respondents.emptyUnresponded') }}
       </p>
     </div>
   </div>
