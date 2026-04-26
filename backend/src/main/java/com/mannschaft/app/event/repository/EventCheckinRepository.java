@@ -63,16 +63,6 @@ public interface EventCheckinRepository extends JpaRepository<EventCheckinEntity
     /**
      * 点呼セッションID・ユーザーIDで既存チェックインレコードを取得する（冪等処理用）。
      *
-     * <p>F03.12 §14 主催者点呼機能。同一 rollCallSessionId + userId の再送時に UPDATE 対象を特定する。</p>
-     *
-     * @param eventId          イベントID
-     * @param rollCallSessionId 点呼セッションID
-     * @param userId           ユーザーID
-     * @return 既存チェックインレコード（存在しない場合は空）
-     */
-    /**
-     * 点呼セッションID・ユーザーIDで既存チェックインレコードを取得する（冪等処理用）。
-     *
      * <p>F03.12 §14 主催者点呼機能。同一 rollCallSessionId + userId の再送時に UPDATE 対象を特定する。
      * 点呼レコードは rollCallUserId で userId を保持するため、直接参照する。</p>
      *
@@ -138,4 +128,22 @@ public interface EventCheckinRepository extends JpaRepository<EventCheckinEntity
               AND c.rollCallSessionId IS NOT NULL
             """)
     List<String> findDistinctRollCallSessionIdsByEventId(@Param("eventId") Long eventId);
+
+    /**
+     * 指定イベントにチェックイン済みのユーザーIDリストを取得する。
+     *
+     * <p>event_checkins → event_tickets → event_registrations の結合で userId を取得する。
+     * F03.12 §16 解散通知サービスが RSVP 未登録だがチェックイン済みの参加者を補完するために使用する。</p>
+     *
+     * @param eventId イベントID
+     * @return チェックイン済みユーザーIDリスト
+     */
+    @Query("""
+            SELECT DISTINCT r.userId
+            FROM EventCheckinEntity c
+            JOIN EventTicketEntity t ON t.id = c.ticketId
+            JOIN EventRegistrationEntity r ON r.id = t.registrationId
+            WHERE c.eventId = :eventId
+            """)
+    List<Long> findCheckedInUserIdsByEventId(@Param("eventId") Long eventId);
 }
