@@ -119,7 +119,7 @@ useHead({
 
     <!-- チュートリアル誘導バナー -->
     <section
-      class="mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 p-6 text-white shadow-md"
+      class="mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-6 text-white shadow-md"
       :aria-label="t('qa.tutorial_banner.title')"
     >
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
