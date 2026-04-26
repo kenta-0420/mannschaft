@@ -273,6 +273,7 @@ onMounted(() => {
               option-label="label"
               option-value="value"
               class="w-full"
+              data-testid="sender-visibility-select"
             />
             <p class="text-xs text-surface-400">
               {{ $t('confirmable.unconfirmed_visibility.help') }}

@@ -144,6 +144,15 @@ async function mockSettingsGet(page: Page, visibility: UnconfirmedVisibility): P
 
 test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13）', () => {
   test.beforeEach(async ({ page }) => {
+    // reservation-settings は useScopeStore の currentScope が truthy でないと
+    // onMounted の load() が発火しない。addInitScript でページ初期化前にセットする
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'currentScope',
+        JSON.stringify({ type: 'team', id: 1, name: 'テストチーム' }),
+      )
+    })
+
     await mockReservationSettingsSideApis(page)
     // History コンポーネントが自動ロードする通知一覧
     await page.route('**/api/v1/teams/*/confirmable-notifications', async (route) => {
@@ -234,7 +243,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     })
 
     // タイトルを入力
-    await page.getByLabel(/タイトル/).fill('臨時休業のお知らせ')
+    await page.locator('label:has-text("タイトル") + input').fill('臨時休業のお知らせ')
 
     // 受信者 UserID を入力
     await page.getByPlaceholder('例: 1, 2, 3').fill('10, 11')
@@ -243,7 +252,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await page.getByRole('button', { name: /詳細設定/ }).click()
 
     // 公開範囲セレクトで「作成者・管理者のみ」を選択
-    await page.locator('label:has-text("未確認者リストの公開範囲") + [role="combobox"]').click()
+    await page.getByTestId('sender-visibility-select').click()
     await page.getByRole('option', { name: '作成者・管理者のみ' }).click()
 
     // 送信ボタンをクリック
@@ -353,7 +362,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     })
 
     // タイトルを入力
-    await page.getByLabel(/タイトル/).fill('重要連絡')
+    await page.locator('label:has-text("タイトル") + input').fill('重要連絡')
 
     // 受信者 UserID を入力
     await page.getByPlaceholder('例: 1, 2, 3').fill('10, 11')
@@ -362,7 +371,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await page.getByRole('button', { name: /詳細設定/ }).click()
 
     // 公開範囲セレクトで「全員に公開」を選択
-    await page.locator('label:has-text("未確認者リストの公開範囲") + [role="combobox"]').click()
+    await page.getByTestId('sender-visibility-select').click()
     await page.getByRole('option', { name: '全員に公開' }).click()
 
     // 送信ボタンをクリック
@@ -484,7 +493,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     })
 
     // タイトルを入力
-    await page.getByLabel(/タイトル/).fill('機密連絡')
+    await page.locator('label:has-text("タイトル") + input').fill('機密連絡')
 
     // 受信者 UserID を入力
     await page.getByPlaceholder('例: 1, 2, 3').fill('10, 11')
@@ -493,7 +502,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await page.getByRole('button', { name: /詳細設定/ }).click()
 
     // 公開範囲セレクトで「表示しない」を選択
-    await page.locator('label:has-text("未確認者リストの公開範囲") + [role="combobox"]').click()
+    await page.getByTestId('sender-visibility-select').click()
     await page.getByRole('option', { name: '表示しない' }).click()
 
     // 送信ボタンをクリック
@@ -581,7 +590,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
 
     // 4) 公開範囲セレクトの表示値が「全員に公開」に復元されていることを確認
     await expect(
-      page.locator('label:has-text("未確認者リストの公開範囲") + [role="combobox"]'),
+      page.getByTestId('sender-visibility-select'),
     ).toContainText('全員に公開', { timeout: 5_000 })
   })
 })
