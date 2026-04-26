@@ -9,5 +9,8 @@ public enum EventCareNotificationType {
     CHECKOUT,
     NO_CONTACT_CHECK,
     ABSENT_ALERT,
-    DISMISSAL
+    DISMISSAL,
+
+    /** F03.12 §16 主催者・ADMIN向け解散通知忘れリマインド */
+    EVENT_DISMISSAL_REMINDER
 }

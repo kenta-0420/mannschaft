@@ -76,4 +76,54 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
     List<Long> findActiveEventIdsStartedBefore(
             @Param("now") LocalDateTime now,
             @Param("cutoff") LocalDateTime cutoff);
+
+    /**
+     * 解散通知リマインド対象のイベントを取得する（F03.12 §16）。
+     *
+     * <p>以下の条件をすべて満たすイベントを返す:</p>
+     * <ul>
+     *   <li>dismissal_notification_sent_at が NULL（未解散）</li>
+     *   <li>schedules.end_at が now より前（終了時刻を過ぎている）</li>
+     *   <li>organizer_reminder_sent_count が maxReminderCount 未満（リマインド上限未到達）</li>
+     *   <li>schedules.end_at が cutoff より前（endAt から minElapsedMinutes 分以上経過）</li>
+     * </ul>
+     *
+     * @param now              現在日時
+     * @param cutoff           カットオフ日時（endAt がこれより前であれば経過済み）
+     * @param maxReminderCount リマインド上限回数（この値以上は対象外）
+     * @return 条件を満たすイベントエンティティリスト
+     */
+    @Query("""
+            SELECT e
+            FROM EventEntity e
+            JOIN ScheduleEntity s ON s.id = e.scheduleId
+            WHERE e.dismissalNotificationSentAt IS NULL
+              AND s.endAt IS NOT NULL
+              AND s.endAt < :cutoff
+              AND e.organizerReminderSentCount < :maxReminderCount
+            """)
+    List<EventEntity> findDismissalReminderTargets(
+            @Param("now") LocalDateTime now,
+            @Param("cutoff") LocalDateTime cutoff,
+            @Param("maxReminderCount") int maxReminderCount);
+
+    /**
+     * イベントIDとチームIDでイベントを取得する（スコープ検証付き）。
+     *
+     * <p>チームスコープのイベントのみを対象とする。スコープ不一致は空を返す。</p>
+     *
+     * @param eventId イベントID
+     * @param scopeId チームID（TEAM スコープの scopeId）
+     * @return イベント（存在しない or スコープ不一致の場合は empty）
+     */
+    @Query("""
+            SELECT e
+            FROM EventEntity e
+            WHERE e.id = :eventId
+              AND e.scopeType = 'TEAM'
+              AND e.scopeId = :scopeId
+            """)
+    Optional<EventEntity> findByIdAndTeamScopeId(
+            @Param("eventId") Long eventId,
+            @Param("scopeId") Long scopeId);
 }
