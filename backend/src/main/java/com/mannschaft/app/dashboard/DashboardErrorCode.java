@@ -58,7 +58,24 @@ public enum DashboardErrorCode implements ErrorCode {
     DASHBOARD_015("DASHBOARD_015", "並び順は0以上の整数を指定してください", Severity.WARN),
 
     /** フォルダアイテムが存在しない */
-    DASHBOARD_016("DASHBOARD_016", "指定されたフォルダアイテムが存在しません", Severity.WARN);
+    DASHBOARD_016("DASHBOARD_016", "指定されたフォルダアイテムが存在しません", Severity.WARN),
+
+    // ========================================
+    // F02.2.1 ウィジェットロール別可視性
+    // 別名対応:
+    //   DASHBOARD_017 = WIDGET_NOT_CONFIGURABLE
+    //   DASHBOARD_018 = INVALID_MIN_ROLE
+    //   DASHBOARD_019 = UNKNOWN_WIDGET_KEY
+    // ========================================
+
+    /** ADMIN 限定ウィジェット（BILLING / PAGE_VIEWS）は min_role 設定の対象外（WIDGET_NOT_CONFIGURABLE） */
+    DASHBOARD_017("DASHBOARD_017", "このウィジェットは可視性設定の対象外です", Severity.WARN),
+
+    /** 不正な min_role 値（PUBLIC / SUPPORTER / MEMBER 以外）（INVALID_MIN_ROLE） */
+    DASHBOARD_018("DASHBOARD_018", "min_role は PUBLIC / SUPPORTER / MEMBER のいずれかを指定してください", Severity.WARN),
+
+    /** 未知の widget_key（UNKNOWN_WIDGET_KEY） */
+    DASHBOARD_019("DASHBOARD_019", "未知のウィジェットキーです", Severity.WARN);
 
     private final String code;
     private final String message;
