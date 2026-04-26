@@ -29,6 +29,7 @@ public class ChatMemberService {
     private final ChatChannelMemberRepository memberRepository;
     private final ChatChannelService channelService;
     private final ChatMapper chatMapper;
+    private final ChatChannelEventPublisher eventPublisher;
 
     /**
      * チャンネルのメンバー一覧を取得する。
@@ -84,6 +85,8 @@ public class ChatMemberService {
         }
         memberRepository.deleteByChannelIdAndUserId(channelId, userId);
         log.info("メンバー除外完了: channelId={}, userId={}", channelId, userId);
+        // F04.2.1 §3.10.1: kick されたメンバーにタブ自動クローズを通知
+        eventPublisher.publishMemberKicked(channelId, userId);
     }
 
     /**
