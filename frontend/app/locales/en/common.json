@@ -1,4 +1,34 @@
 {
+  "chat": {
+    "sidebar": {
+      "chat": "Chat",
+      "contacts": "Contacts",
+      "requests": "Requests",
+      "addByHandle": "Add by {'@'}handle"
+    },
+    "tab": {
+      "addNew": "Open new tab",
+      "close": "Close tab",
+      "closeOthers": "Close other tabs",
+      "closeRight": "Close tabs to the right",
+      "openInNewWindow": "Open in new window",
+      "maxReached": "Maximum {max} tabs allowed",
+      "kickedNotice": "You were removed from {name}. Closing tab.",
+      "channelDeleted": "{name} has been deleted. Closing tab.",
+      "unreadBadge": "{count} unread",
+      "draftIndicator": "Draft in progress",
+      "selectChannelEmpty": "Select a channel or click + to open one",
+      "channelNotAccessible": "Cannot access the specified channel",
+      "popupBlocked": "Please allow popups",
+      "subtab": {
+        "channels": "Channels",
+        "contacts": "Contacts",
+        "requests": "Requests"
+      },
+      "comingSoonContacts": "Contacts tab coming soon",
+      "comingSoonRequests": "Requests tab coming soon"
+    }
+  },
   "button": {
     "save": "Save",
     "cancel": "Cancel",
