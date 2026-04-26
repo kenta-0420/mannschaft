@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useWindowSize } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import type { ChatTab, ChatChannelResponse } from '~/types/chat'
@@ -45,13 +45,30 @@ function onCreated() {
 
 // ─── タブ操作 ───────────────────────────────────────────────────────
 
+/**
+ * アクティブタブの入力欄にフォーカスを当てる（§3.9 フォーカス挙動）。
+ * タッチデバイスでは自動 focus を呼ばない（ソフトキーボード自動展開を回避）。
+ */
+async function focusActiveInput() {
+  if (import.meta.client && matchMedia('(hover: none)').matches) return
+  await nextTick()
+  const activePanel = document.querySelector<HTMLElement>('[data-tab-active="true"]')
+  if (!activePanel) return
+  const input = activePanel.querySelector<HTMLElement>(
+    'textarea:not([disabled]), input[type="text"]:not([disabled]), [contenteditable="true"]'
+  )
+  input?.focus()
+}
+
 /** + ドロップダウンからチャンネルを選択してタブ追加 */
 function handleAddTab(channel: ChatChannelResponse) {
   const result = store.addTab(channel)
   showAddDropdown.value = false
   if (!result.ok && result.reason === 'MAX_TABS_REACHED') {
     warn(t('chat.tab.maxReached', { max: 10 }))
+    return
   }
+  void focusActiveInput()
 }
 
 /** サイドバーのチャンネル一覧からタブを追加（PC 専用動線） */
@@ -59,8 +76,10 @@ function onSelectChannel(ch: ChatChannelResponse) {
   const result = store.addTab(ch)
   if (!result.ok && result.reason === 'MAX_TABS_REACHED') {
     warn(t('chat.tab.maxReached', { max: 10 }))
+    return
   }
   leftTab.value = 'chat'
+  void focusActiveInput()
 }
 
 /** タブの閉じる（× ボタン） */
@@ -284,12 +303,16 @@ onUnmounted(() => {
       <!-- タブごとに ChatMessagePanel を v-show で並列保持（§4.2 設計準拠） -->
       <div class="relative flex-1 overflow-hidden bg-surface-0 dark:bg-surface-900">
         <template v-if="tabs.length > 0">
-          <ChatMessagePanel
+          <div
             v-for="tab in tabs"
             v-show="tab.id === activeTabId"
             :key="tab.id"
-            :channel="tab.channel"
-          />
+            :data-tab-panel="tab.id"
+            :data-tab-active="tab.id === activeTabId ? 'true' : 'false'"
+            class="h-full"
+          >
+            <ChatMessagePanel :channel="tab.channel" />
+          </div>
         </template>
 
         <!-- タブが0個の時の空状態 -->
