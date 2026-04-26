@@ -1,3 +1,6 @@
+import type { Client, StompSubscription } from '@stomp/stompjs'
+import { Client as StompClient } from '@stomp/stompjs'
+import { useEventBus } from '@vueuse/core'
 import type {
   ChatChannelListResponse,
   ChatChannelDetailResponse,
@@ -6,6 +9,14 @@ import type {
   ChatChannelResponse,
   CreateChannelRequest,
 } from '~/types/chat'
+
+// ============================================================
+// モジュールレベルのシングルトン状態（composable再呼び出しを跨いで維持）
+// ============================================================
+
+const _subscriptionCounts = new Map<number, number>()
+const _stompSubscriptions = new Map<number, StompSubscription>()
+let _stompClient: Client | null = null
 
 interface ChannelListParams {
   teamId?: number
@@ -238,6 +249,89 @@ export function useChatApi() {
     })
   }
 
+  // ============================================================
+  // WebSocket STOMP 購読管理（参照カウント方式）
+  // ============================================================
+
+  /**
+   * STOMP クライアントが未接続なら接続する。
+   * 接続済みの場合は即座に resolve する。
+   */
+  function ensureConnected(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      if (_stompClient !== null && _stompClient.connected) {
+        resolve()
+        return
+      }
+
+      const client = new StompClient({
+        webSocketFactory: () => new WebSocket('/ws'),
+        reconnectDelay: 5000,
+        onConnect: () => {
+          resolve()
+        },
+        onStompError: (frame) => {
+          reject(new Error(`STOMP エラー: ${frame.headers['message'] ?? 'unknown'}`))
+        },
+      })
+      _stompClient = client
+      client.activate()
+    })
+  }
+
+  /**
+   * 指定チャンネルの STOMP 購読を開始する（参照カウント方式）。
+   * 同一 channelId を複数回呼んでも SUBSCRIBE は1回のみ実行される。
+   *
+   * @param channelId 購読対象のチャンネル ID
+   */
+  function subscribeChannel(channelId: number): void {
+    const count = _subscriptionCounts.get(channelId) ?? 0
+    _subscriptionCounts.set(channelId, count + 1)
+
+    if (count === 0) {
+      // 初回のみ STOMP SUBSCRIBE を実行
+      ensureConnected()
+        .then(() => {
+          if (_stompClient === null) return
+
+          const subscription = _stompClient.subscribe(
+            `/topic/channels/${channelId}`,
+            (frame) => {
+              const message = JSON.parse(frame.body) as ChatMessageResponse
+              useEventBus<ChatMessageResponse>('chat:message').emit(message)
+            },
+          )
+          _stompSubscriptions.set(channelId, subscription)
+        })
+        .catch((err: unknown) => {
+          console.error(`[useChatApi] チャンネル ${channelId} の購読接続に失敗しました:`, err)
+        })
+    }
+  }
+
+  /**
+   * 指定チャンネルの STOMP 購読参照カウントをデクリメントする。
+   * カウントが 0 になったら STOMP UNSUBSCRIBE を実行する。
+   *
+   * @param channelId 購読解除対象のチャンネル ID
+   */
+  function unsubscribeChannel(channelId: number): void {
+    const count = _subscriptionCounts.get(channelId) ?? 0
+    if (count <= 0) {
+      return
+    }
+
+    const newCount = count - 1
+    _subscriptionCounts.set(channelId, newCount)
+
+    if (newCount === 0) {
+      _stompSubscriptions.get(channelId)?.unsubscribe()
+      _stompSubscriptions.delete(channelId)
+      _subscriptionCounts.delete(channelId)
+    }
+  }
+
   return {
     getChannels,
     getChannel,
@@ -269,5 +363,7 @@ export function useChatApi() {
     getDownloadUrl,
     forwardMessage,
     updateChannelSettings,
+    subscribeChannel,
+    unsubscribeChannel,
   }
 }
