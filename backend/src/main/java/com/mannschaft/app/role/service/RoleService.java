@@ -15,8 +15,10 @@ import com.mannschaft.app.role.repository.UserPermissionGroupRepository;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
+import com.mannschaft.app.role.event.MembershipChangedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +44,7 @@ public class RoleService {
     private final PermissionGroupRepository permissionGroupRepository;
     private final PermissionGroupPermissionRepository permissionGroupPermissionRepository;
     private final UserPermissionGroupRepository userPermissionGroupRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * ユーザーにロールを割り当てる。
@@ -65,6 +68,10 @@ public class RoleService {
 
         log.info("ロール割当完了: scopeType={}, scopeId={}, userId={}, roleId={}, grantedBy={}",
                 scopeType, scopeId, targetUserId, roleId, grantedBy);
+
+        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
+        eventPublisher.publishEvent(new MembershipChangedEvent(
+                targetUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.ASSIGNED));
     }
 
     /**
@@ -99,6 +106,10 @@ public class RoleService {
 
         log.info("ロール変更完了: scopeType={}, scopeId={}, userId={}, newRoleId={}, changedBy={}",
                 scopeType, scopeId, targetUserId, req.getRoleId(), changedBy);
+
+        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
+        eventPublisher.publishEvent(new MembershipChangedEvent(
+                targetUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.CHANGED));
     }
 
     /**
@@ -114,6 +125,10 @@ public class RoleService {
 
         userRoleRepository.delete(current);
         log.info("メンバー除名完了: scopeType={}, scopeId={}, userId={}", scopeType, scopeId, targetUserId);
+
+        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
+        eventPublisher.publishEvent(new MembershipChangedEvent(
+                targetUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.REMOVED));
     }
 
     /**
@@ -129,6 +144,10 @@ public class RoleService {
 
         userRoleRepository.delete(current);
         log.info("スコープ退会完了: scopeType={}, scopeId={}, userId={}", scopeType, scopeId, userId);
+
+        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
+        eventPublisher.publishEvent(new MembershipChangedEvent(
+                userId, scopeType, scopeId, MembershipChangedEvent.ChangeType.REMOVED));
     }
 
     /**
@@ -232,6 +251,13 @@ public class RoleService {
 
         log.info("オーナー譲渡完了: scopeType={}, scopeId={}, from={}, to={}",
                 scopeType, scopeId, currentUserId, targetUserId);
+
+        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
+        // 対象ユーザーは新規 ADMIN 昇格、現オーナーは MEMBER ダウングレード
+        eventPublisher.publishEvent(new MembershipChangedEvent(
+                targetUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.CHANGED));
+        eventPublisher.publishEvent(new MembershipChangedEvent(
+                currentUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.CHANGED));
     }
 
     // ========================================

@@ -61,7 +61,8 @@ public class RedisConfig {
      * キャッシュマネージャー。
      *
      * <p>デフォルト TTL は 30分。ケアリンク判定用キャッシュ（careLinks / careCategory）は
-     * 変更頻度が高いため 5分 TTL を設定する。</p>
+     * 変更頻度が高いため 5分 TTL を設定する。F02.2.1 ダッシュボード可視性キャッシュは
+     * 設計書 §5 に従い「閲覧者ロール: 60秒」「ウィジェット可視性: 300秒」を設定する。</p>
      */
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
@@ -72,10 +73,20 @@ public class RedisConfig {
         RedisCacheConfiguration careLinksConfig = redisCacheConfiguration()
                 .entryTtl(Duration.ofMinutes(5));
 
+        // F02.2.1 ダッシュボード閲覧者ロール（60秒TTL）
+        RedisCacheConfiguration dashboardViewerRoleConfig = redisCacheConfiguration()
+                .entryTtl(Duration.ofSeconds(60));
+
+        // F02.2.1 ダッシュボードウィジェット可視性マップ（300秒TTL）
+        RedisCacheConfiguration dashboardWidgetVisibilityConfig = redisCacheConfiguration()
+                .entryTtl(Duration.ofSeconds(300));
+
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
                 .withCacheConfiguration("careLinks", careLinksConfig)
                 .withCacheConfiguration("careCategory", careLinksConfig)
+                .withCacheConfiguration("dashboard:viewer-role", dashboardViewerRoleConfig)
+                .withCacheConfiguration("dashboard:widget-visibility", dashboardWidgetVisibilityConfig)
                 .build();
     }
 }
