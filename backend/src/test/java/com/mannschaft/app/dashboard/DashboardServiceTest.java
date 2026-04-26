@@ -94,6 +94,12 @@ class DashboardServiceTest {
     @Mock
     private UserRoleRepository userRoleRepository;
 
+    @Mock
+    private com.mannschaft.app.dashboard.service.RoleResolver roleResolver;
+
+    @Mock
+    private com.mannschaft.app.dashboard.service.WidgetVisibilityResolver widgetVisibilityResolver;
+
     @InjectMocks
     private DashboardService dashboardService;
 
@@ -104,6 +110,25 @@ class DashboardServiceTest {
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
     private static final Long ORG_ID = 20L;
+
+    /**
+     * F02.2.1 で追加された RoleResolver / WidgetVisibilityResolver のデフォルトスタブ。
+     * 既存テスト全件は ADMIN 視点でデータが見える前提で書かれているため、
+     * デフォルトで viewer_role=ADMIN（バイパス）を返し、可視性マップは空にする。
+     * 個別テストで PUBLIC 等のフィルタを検証したい場合は上書きする。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void setUpVisibilityDefaults() {
+        org.mockito.Mockito.lenient().when(roleResolver.resolveViewerRole(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn(com.mannschaft.app.dashboard.ViewerRole.ADMIN);
+        org.mockito.Mockito.lenient().when(widgetVisibilityResolver.resolve(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn(java.util.Map.of());
+    }
 
     // ========================================
     // 共通スタブヘルパー
