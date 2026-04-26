@@ -195,38 +195,6 @@ export function buildChangeRequest(overrides: Record<string, unknown> = {}) {
   }
 }
 
-/** チームメンバー一覧のモック。 */
-export async function mockTeamMembers(page: Page): Promise<void> {
-  await page.route(`**/api/v1/teams/${TEAM_ID}/members**`, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: [
-          {
-            userId: ADMIN_USER_ID,
-            displayName: 'e2e_admin',
-            avatarUrl: null,
-            role: 'ADMIN',
-          },
-          {
-            userId: MEMBER_USER_ID,
-            displayName: 'e2e_member',
-            avatarUrl: null,
-            role: 'MEMBER',
-          },
-          {
-            userId: MEMBER2_USER_ID,
-            displayName: 'e2e_member2',
-            avatarUrl: null,
-            role: 'MEMBER',
-          },
-        ],
-      }),
-    })
-  })
-}
-
 /** チームメンバー一覧 API のモック（board.vue の loadMembers() が呼ぶ）。 */
 export async function mockTeamMembersApi(page: Page): Promise<void> {
   await page.route(`**/api/v1/teams/${TEAM_ID}/members**`, async (route) => {
