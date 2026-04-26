@@ -25,9 +25,6 @@ const mockSubscribeFn = vi.fn((_destination: string, _callback: SubscribeCallbac
 const mockUnsubscribeFn = vi.fn()
 const mockActivateFn = vi.fn()
 
-/** onConnect コールバックをキャプチャして後から呼べるようにする */
-let capturedOnConnect: OnConnectCallback | null = null
-
 vi.mock('@stomp/stompjs', () => {
   class MockClient {
     connected = false
@@ -36,13 +33,11 @@ vi.mock('@stomp/stompjs', () => {
     constructor(config: { onConnect?: OnConnectCallback }) {
       if (config.onConnect) {
         this.onConnect = config.onConnect
-        capturedOnConnect = config.onConnect
       }
     }
 
     activate() {
       mockActivateFn()
-      // 接続を同期的にシミュレート（Promise マイクロタスク内で解決）
       this.connected = true
       const cb = this.onConnect
       if (cb) {
@@ -99,7 +94,6 @@ async function freshUseChatApi() {
       constructor(config: { onConnect?: OnConnectCallback }) {
         if (config.onConnect) {
           this.onConnect = config.onConnect
-          capturedOnConnect = config.onConnect
         }
       }
 
@@ -154,7 +148,6 @@ describe('useChatApi — WebSocket STOMP 購読管理', () => {
     mockUnsubscribeFn.mockClear()
     mockActivateFn.mockClear()
     mockEmit.mockClear()
-    capturedOnConnect = null
   })
 
   describe('subscribeChannel', () => {
@@ -247,10 +240,7 @@ describe('useChatApi — WebSocket STOMP 購読管理', () => {
       await flushPromises()
 
       expect(mockSubscribeFn).toHaveBeenCalledTimes(1)
-      const [_destination, stompCallback] = mockSubscribeFn.mock.calls[0] as [
-        string,
-        SubscribeCallback,
-      ]
+      const [, stompCallback] = mockSubscribeFn.mock.calls[0] as [string, SubscribeCallback]
 
       // 受信メッセージをシミュレート
       const fakeMessage = {

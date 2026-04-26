@@ -298,8 +298,15 @@ export function useChatApi() {
           const subscription = _stompClient.subscribe(
             `/topic/channels/${channelId}`,
             (frame) => {
-              const message = JSON.parse(frame.body) as ChatMessageResponse
-              useEventBus<ChatMessageResponse>('chat:message').emit(message)
+              try {
+                const message = JSON.parse(frame.body) as ChatMessageResponse
+                useEventBus<ChatMessageResponse>('chat:message').emit(message)
+              } catch (err: unknown) {
+                console.error(
+                  `[useChatApi] チャンネル ${channelId} の受信メッセージのパースに失敗しました:`,
+                  err,
+                )
+              }
             },
           )
           _stompSubscriptions.set(channelId, subscription)
