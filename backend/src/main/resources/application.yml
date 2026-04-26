@@ -113,3 +113,8 @@ equipment:
     score-weight-team: 3.0
     score-weight-consume: 1.0
     top-n-per-category: 20
+
+# F03.12 ケア対象者2段階不在アラートバッチ設定
+care:
+  absent-alert:
+    enabled: true
