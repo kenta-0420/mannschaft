@@ -192,7 +192,7 @@ test.describe('CARE-007〜010: F03.12 Phase 6 招待フロー', () => {
     await waitForHydration(page)
 
     // ページタイトルが表示される（i18n care.page.inviteWatcher = "見守り者を招待"）
-    await expect(page.getByText('見守り者を招待')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('heading', { name: '見守り者を招待' })).toBeVisible({ timeout: 10_000 })
 
     // ユーザーIDを入力（InputNumber コンポーネント）
     const userIdInput = page.locator('input[type="text"]').or(page.locator('input[inputmode]')).first()

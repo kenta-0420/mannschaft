@@ -161,7 +161,7 @@ test.describe('CARE-001〜006: F03.12 Phase 6 ケアリンク管理画面', () =
     await deleteBtn.click()
 
     // 確認ダイアログが表示される（i18n care.dialog.deleteLinkTitle = "ケアリンクを解除"）
-    await expect(page.getByText('ケアリンクを解除')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('ケアリンクを解除', { exact: true })).toBeVisible({ timeout: 10_000 })
 
     // ダイアログ内の確認ボタンをクリック
     // ダイアログのフッター内にある「リンクを解除」ボタンを押す
