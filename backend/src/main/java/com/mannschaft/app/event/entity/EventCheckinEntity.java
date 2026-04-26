@@ -36,7 +36,10 @@ public class EventCheckinEntity {
     @Column(nullable = false)
     private Long eventId;
 
-    @Column(nullable = false)
+    /**
+     * チケットID。QR/セルフチェックイン時は必須。
+     * 点呼（ROLL_CALL / ROLL_CALL_BATCH）の場合はチケットが存在しないため null を許容する。
+     */
     private Long ticketId;
 
     @Enumerated(EnumType.STRING)
@@ -56,6 +59,12 @@ public class EventCheckinEntity {
     private LocalDateTime createdAt;
 
     // F03.12 ケア対象者見守り通知・点呼機能
+    /**
+     * 点呼チェックイン時の対象ユーザーID。
+     * ROLL_CALL / ROLL_CALL_BATCH の場合のみ設定される（ticketId=null の代替）。
+     */
+    private Long rollCallUserId;
+
     private LocalDateTime checkoutAt;
     private LocalDateTime guardianCheckinNotifiedAt;
     private LocalDateTime guardianCheckoutNotifiedAt;
@@ -71,6 +80,20 @@ public class EventCheckinEntity {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    /**
+     * 点呼結果を上書き更新する（冪等処理の UPDATE 用）。
+     *
+     * @param checkinType        チェックイン種別（ROLL_CALL 等）
+     * @param lateArrivalMinutes 遅刻分数（LATE の場合のみ）
+     * @param absenceReason      欠席理由（ABSENT の場合のみ）
+     */
+    public void updateRollCallResult(CheckinType checkinType, Integer lateArrivalMinutes, String absenceReason) {
+        this.checkinType = checkinType;
+        this.lateArrivalMinutes = lateArrivalMinutes;
+        this.absenceReason = absenceReason;
+        this.checkedInAt = LocalDateTime.now();
     }
 
     /**
