@@ -69,12 +69,28 @@ class DashboardServiceAdditionalTest {
     @Mock private ChatChannelMemberRepository chatChannelMemberRepository;
     @Mock private PlatformAnnouncementRepository platformAnnouncementRepository;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private com.mannschaft.app.dashboard.service.RoleResolver roleResolver;
+    @Mock private com.mannschaft.app.dashboard.service.WidgetVisibilityResolver widgetVisibilityResolver;
 
     @InjectMocks
     private DashboardService dashboardService;
 
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
+
+    /** F02.2.1 で追加された Resolver のデフォルトスタブ（ADMIN バイパス）。 */
+    @org.junit.jupiter.api.BeforeEach
+    void setUpVisibilityDefaults() {
+        org.mockito.Mockito.lenient().when(roleResolver.resolveViewerRole(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn(com.mannschaft.app.dashboard.ViewerRole.ADMIN);
+        org.mockito.Mockito.lenient().when(widgetVisibilityResolver.resolve(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn(java.util.Map.of());
+    }
 
     private void stubCommonPersonal() {
         given(widgetService.getWidgetSettings(eq(USER_ID), eq(ScopeType.PERSONAL), eq(0L), eq(false)))
