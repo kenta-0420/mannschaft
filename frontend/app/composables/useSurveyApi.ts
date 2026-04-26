@@ -153,6 +153,23 @@ export function useSurveyApi() {
     )
   }
 
+  /**
+   * 未回答メンバーへの手動リマインド送信。
+   * 認可: 作成者 / ADMIN+ のみ（Backend 側で判定）。
+   * 制約: 手動送信は最大3回まで・前回送信から24時間経過必須・PUBLISHED のみ。
+   * 設計書: docs/features/F05.4_survey_vote.md `POST /api/v1/surveys/{id}/remind`
+   */
+  async function remindRespondents(surveyId: number) {
+    return api<{
+      data: {
+        survey_id: number
+        reminded_count: number
+        remaining_remind_quota: number
+        message: string
+      }
+    }>(`/api/v1/surveys/${surveyId}/remind`, { method: 'POST' })
+  }
+
   return {
     getSurveys,
     getSurveyStats,
@@ -170,5 +187,6 @@ export function useSurveyApi() {
     setResultViewers,
     getResults,
     getRespondents,
+    remindRespondents,
   }
 }
