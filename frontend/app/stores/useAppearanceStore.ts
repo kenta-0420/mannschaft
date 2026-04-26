@@ -51,10 +51,10 @@ export const useAppearanceStore = defineStore('appearance', {
       if (!import.meta.client) return
       const html = document.documentElement
       if (this.isDark) {
-        html.classList.add('p-dark')
+        html.classList.add('p-dark', 'dark')
       }
       else {
-        html.classList.remove('p-dark')
+        html.classList.remove('p-dark', 'dark')
       }
       // テーマ切替時に背景色も再適用（ライトモード制御）
       this.applyBgColor()
