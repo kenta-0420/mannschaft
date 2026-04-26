@@ -1,4 +1,34 @@
 {
+  "chat": {
+    "sidebar": {
+      "chat": "聊天",
+      "contacts": "联系人",
+      "requests": "申请",
+      "addByHandle": "通过{'@'}用户名添加"
+    },
+    "tab": {
+      "addNew": "打开新标签",
+      "close": "关闭标签",
+      "closeOthers": "关闭其他标签",
+      "closeRight": "关闭右侧所有标签",
+      "openInNewWindow": "在新窗口中打开",
+      "maxReached": "最多允许{max}个标签",
+      "kickedNotice": "您已从{name}中被移除。正在关闭标签。",
+      "channelDeleted": "{name}已被删除。正在关闭标签。",
+      "unreadBadge": "{count}条未读",
+      "draftIndicator": "有草稿",
+      "selectChannelEmpty": "选择频道或点击+打开一个",
+      "channelNotAccessible": "无法访问指定的频道",
+      "popupBlocked": "请允许弹出窗口",
+      "subtab": {
+        "channels": "频道",
+        "contacts": "联系人",
+        "requests": "申请"
+      },
+      "comingSoonContacts": "联系人标签即将推出",
+      "comingSoonRequests": "申请标签即将推出"
+    }
+  },
   "button": {
     "save": "保存",
     "cancel": "取消",
