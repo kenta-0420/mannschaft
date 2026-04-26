@@ -1,4 +1,27 @@
 {
+  "chat": {
+    "sidebar": {
+      "chat": "채팅",
+      "contacts": "연락처",
+      "requests": "신청",
+      "addByHandle": "@핸들로 추가"
+    },
+    "tab": {
+      "addNew": "새 탭 열기",
+      "close": "탭 닫기",
+      "closeOthers": "다른 탭 모두 닫기",
+      "closeRight": "오른쪽 탭 모두 닫기",
+      "openInNewWindow": "새 창에서 열기",
+      "maxReached": "탭은 최대 {max}개까지 가능합니다",
+      "kickedNotice": "{name}에서 퇴출되었습니다. 탭을 닫습니다.",
+      "channelDeleted": "{name}이(가) 삭제되었습니다. 탭을 닫습니다.",
+      "unreadBadge": "읽지 않음 {count}건",
+      "draftIndicator": "작성 중인 초안",
+      "selectChannelEmpty": "채널을 선택하거나 +를 눌러 열어주세요",
+      "channelNotAccessible": "지정된 채널에 접근할 수 없습니다",
+      "popupBlocked": "팝업을 허용해 주세요"
+    }
+  },
   "button": {
     "save": "저장",
     "cancel": "취소",

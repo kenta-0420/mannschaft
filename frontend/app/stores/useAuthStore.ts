@@ -86,6 +86,7 @@ export const useAuthStore = defineStore('auth', {
           // DB 削除失敗は握りつぶす
         }
       }
+      useChatTabsStore().clearAll()
       navigateTo('/login')
     },
 

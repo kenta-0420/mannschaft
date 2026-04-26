@@ -1,4 +1,27 @@
 {
+  "chat": {
+    "sidebar": {
+      "chat": "チャット",
+      "contacts": "連絡先",
+      "requests": "申請",
+      "addByHandle": "@ハンドルで追加"
+    },
+    "tab": {
+      "addNew": "新しいタブを開く",
+      "close": "タブを閉じる",
+      "closeOthers": "他のタブを閉じる",
+      "closeRight": "右側のタブを全て閉じる",
+      "openInNewWindow": "別ウィンドウで開く",
+      "maxReached": "タブは最大{max}個までです",
+      "kickedNotice": "{name}から退出させられました。タブを閉じます",
+      "channelDeleted": "{name}は削除されました。タブを閉じます",
+      "unreadBadge": "未読{count}件",
+      "draftIndicator": "下書きあり",
+      "selectChannelEmpty": "チャンネルを選択するか、+ ボタンで開いてください",
+      "channelNotAccessible": "指定されたチャンネルにアクセスできません",
+      "popupBlocked": "ポップアップを許可してください"
+    }
+  },
   "button": {
     "save": "保存",
     "cancel": "キャンセル",

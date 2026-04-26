@@ -1,4 +1,27 @@
 {
+  "chat": {
+    "sidebar": {
+      "chat": "Chat",
+      "contacts": "Contactos",
+      "requests": "Solicitudes",
+      "addByHandle": "Agregar por @handle"
+    },
+    "tab": {
+      "addNew": "Abrir nueva pestaña",
+      "close": "Cerrar pestaña",
+      "closeOthers": "Cerrar otras pestañas",
+      "closeRight": "Cerrar pestañas a la derecha",
+      "openInNewWindow": "Abrir en nueva ventana",
+      "maxReached": "Máximo {max} pestañas permitidas",
+      "kickedNotice": "Fuiste eliminado de {name}. Cerrando pestaña.",
+      "channelDeleted": "{name} ha sido eliminado. Cerrando pestaña.",
+      "unreadBadge": "{count} no leídos",
+      "draftIndicator": "Borrador en progreso",
+      "selectChannelEmpty": "Selecciona un canal o haz clic en + para abrir uno",
+      "channelNotAccessible": "No se puede acceder al canal especificado",
+      "popupBlocked": "Por favor, permite las ventanas emergentes"
+    }
+  },
   "button": {
     "save": "Guardar",
     "cancel": "Cancelar",

@@ -109,3 +109,15 @@ export interface ChatMessageListResponse {
     hasMore: boolean
   }
 }
+
+/** チャットマルチタブUI — タブ1件分の状態 (F04.2.1) */
+export interface ChatTab {
+  /** UUID v4（重複タブ区別用タブ固有ID） */
+  id: string
+  /** チャンネルID */
+  channelId: number
+  /** 表示用スナップショット */
+  channel: ChatChannelResponse
+  /** 作成日時（ms） */
+  createdAt: number
+}

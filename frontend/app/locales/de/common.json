@@ -1,4 +1,27 @@
 {
+  "chat": {
+    "sidebar": {
+      "chat": "Chat",
+      "contacts": "Kontakte",
+      "requests": "Anfragen",
+      "addByHandle": "Per @Handle hinzufügen"
+    },
+    "tab": {
+      "addNew": "Neuen Tab öffnen",
+      "close": "Tab schließen",
+      "closeOthers": "Andere Tabs schließen",
+      "closeRight": "Tabs rechts schließen",
+      "openInNewWindow": "In neuem Fenster öffnen",
+      "maxReached": "Maximal {max} Tabs erlaubt",
+      "kickedNotice": "Sie wurden aus {name} entfernt. Tab wird geschlossen.",
+      "channelDeleted": "{name} wurde gelöscht. Tab wird geschlossen.",
+      "unreadBadge": "{count} ungelesen",
+      "draftIndicator": "Entwurf vorhanden",
+      "selectChannelEmpty": "Kanal auswählen oder + drücken, um einen zu öffnen",
+      "channelNotAccessible": "Auf den angegebenen Kanal kann nicht zugegriffen werden",
+      "popupBlocked": "Bitte erlauben Sie Popups"
+    }
+  },
   "button": {
     "save": "Speichern",
     "cancel": "Abbrechen",
