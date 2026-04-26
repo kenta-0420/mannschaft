@@ -1,0 +1,110 @@
+{
+  "care": {
+    "page": {
+      "title": "케어링크 관리",
+      "inviteWatcher": "보호자 초대",
+      "inviteRecipient": "피보호자 초대",
+      "invitationAccept": "초대 확인",
+      "teamOverride": "팀별 알림 재정의 설정"
+    },
+    "tab": {
+      "watchers": "보호자",
+      "recipients": "피보호자",
+      "pending": "대기 중인 초대"
+    },
+    "label": {
+      "watcher": "보호자",
+      "recipient": "피보호자",
+      "careCategory": "케어 카테고리",
+      "relationship": "관계",
+      "isPrimary": "주담당",
+      "status": "상태",
+      "notifySettings": "알림 설정",
+      "notifyOnRsvp": "참가 신청 시 알림",
+      "notifyOnCheckin": "체크인 시 알림",
+      "notifyOnCheckout": "체크아웃 시 알림",
+      "notifyOnAbsentAlert": "결석 경보 시 알림",
+      "notifyOnDismissal": "해산 시 알림",
+      "confirmedAt": "확인 일시",
+      "invitedBy": "초대자",
+      "createdAt": "등록 일시",
+      "noWatchers": "보호자가 없습니다",
+      "noRecipients": "피보호자가 없습니다",
+      "noPendingInvitations": "대기 중인 초대가 없습니다",
+      "userId": "사용자 ID",
+      "inviterName": "초대자",
+      "expiresAt": "유효 기간",
+      "disabled": "비활성화",
+      "overrideNote": "이 팀의 알림 설정을 개별적으로 재정의합니다"
+    },
+    "category": {
+      "MINOR": "미성년자",
+      "ELDERLY": "노인",
+      "DISABILITY_SUPPORT": "장애 지원",
+      "GENERAL_FAMILY": "일반 가족"
+    },
+    "relationship": {
+      "PARENT": "부모",
+      "CHILD": "자녀",
+      "SPOUSE": "배우자",
+      "GRANDPARENT": "조부모",
+      "GRANDCHILD": "손자녀",
+      "SIBLING": "형제자매",
+      "LEGAL_GUARDIAN": "법정 후견인",
+      "CARETAKER": "돌봄 제공자",
+      "OTHER": "기타"
+    },
+    "status": {
+      "PENDING": "대기 중",
+      "ACTIVE": "활성",
+      "REJECTED": "거부됨",
+      "REVOKED": "취소됨"
+    },
+    "invitedBy": {
+      "CARE_RECIPIENT": "피보호자",
+      "WATCHER": "보호자",
+      "ADMIN": "관리자",
+      "SYSTEM": "시스템"
+    },
+    "button": {
+      "inviteWatcher": "보호자 초대",
+      "inviteRecipient": "피보호자 초대",
+      "updateNotify": "알림 설정 저장",
+      "deleteLink": "링크 해제",
+      "acceptInvitation": "초대 수락",
+      "rejectInvitation": "초대 거부",
+      "saveOverride": "재정의 설정 저장",
+      "deleteOverride": "재정의 설정 삭제"
+    },
+    "dialog": {
+      "deleteLinkTitle": "케어링크 해제",
+      "deleteLinkConfirm": "이 케어링크를 해제하시겠습니까? 이 작업은 취소할 수 없습니다.",
+      "deleteOverrideTitle": "재정의 설정 삭제",
+      "deleteOverrideConfirm": "팀별 알림 재정의 설정을 삭제하시겠습니까?"
+    },
+    "message": {
+      "inviteWatcherSuccess": "보호자 초대를 전송했습니다",
+      "inviteRecipientSuccess": "피보호자 초대를 전송했습니다",
+      "inviteError": "초대 전송에 실패했습니다",
+      "updateNotifySuccess": "알림 설정을 업데이트했습니다",
+      "updateNotifyError": "알림 설정 업데이트에 실패했습니다",
+      "deleteLinkSuccess": "케어링크를 해제했습니다",
+      "deleteLinkError": "케어링크 해제에 실패했습니다",
+      "acceptSuccess": "초대를 수락했습니다",
+      "acceptError": "초대 수락에 실패했습니다",
+      "rejectSuccess": "초대를 거부했습니다",
+      "rejectError": "초대 거부에 실패했습니다",
+      "saveOverrideSuccess": "재정의 설정을 저장했습니다",
+      "saveOverrideError": "재정의 설정 저장에 실패했습니다",
+      "deleteOverrideSuccess": "재정의 설정을 삭제했습니다",
+      "deleteOverrideError": "재정의 설정 삭제에 실패했습니다",
+      "loadError": "데이터 로딩에 실패했습니다",
+      "invalidToken": "유효하지 않거나 만료된 초대 링크입니다"
+    },
+    "validation": {
+      "userIdRequired": "사용자 ID를 입력해 주세요",
+      "careCategoryRequired": "케어 카테고리를 선택해 주세요",
+      "relationshipRequired": "관계를 선택해 주세요"
+    }
+  }
+}

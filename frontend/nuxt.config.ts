@@ -124,6 +124,7 @@ export default defineNuxtConfig({
           'ja/committee.json',
           'ja/jobmatching.json',
           'ja/shift.json',
+          'ja/care.json',
         ],
       },
       {
@@ -149,6 +150,7 @@ export default defineNuxtConfig({
           'en/committee.json',
           'en/jobmatching.json',
           'en/shift.json',
+          'en/care.json',
         ],
       },
       {
@@ -174,6 +176,7 @@ export default defineNuxtConfig({
           'zh/committee.json',
           'zh/jobmatching.json',
           'zh/shift.json',
+          'zh/care.json',
         ],
       },
       {
@@ -199,6 +202,7 @@ export default defineNuxtConfig({
           'ko/committee.json',
           'ko/jobmatching.json',
           'ko/shift.json',
+          'ko/care.json',
         ],
       },
       {
@@ -224,6 +228,7 @@ export default defineNuxtConfig({
           'es/committee.json',
           'es/jobmatching.json',
           'es/shift.json',
+          'es/care.json',
         ],
       },
       {
@@ -249,6 +254,7 @@ export default defineNuxtConfig({
           'de/committee.json',
           'de/jobmatching.json',
           'de/shift.json',
+          'de/care.json',
         ],
       },
     ],

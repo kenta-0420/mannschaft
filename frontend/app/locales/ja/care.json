@@ -1,0 +1,110 @@
+{
+  "care": {
+    "page": {
+      "title": "ケアリンク管理",
+      "inviteWatcher": "見守り者を招待",
+      "inviteRecipient": "ケア対象者を招待",
+      "invitationAccept": "招待の確認",
+      "teamOverride": "チーム別通知上書き設定"
+    },
+    "tab": {
+      "watchers": "見守り者",
+      "recipients": "ケア対象者",
+      "pending": "保留中の招待"
+    },
+    "label": {
+      "watcher": "見守り者",
+      "recipient": "ケア対象者",
+      "careCategory": "ケアカテゴリ",
+      "relationship": "続柄",
+      "isPrimary": "主担当",
+      "status": "ステータス",
+      "notifySettings": "通知設定",
+      "notifyOnRsvp": "参加申込時に通知",
+      "notifyOnCheckin": "チェックイン時に通知",
+      "notifyOnCheckout": "チェックアウト時に通知",
+      "notifyOnAbsentAlert": "欠席アラート時に通知",
+      "notifyOnDismissal": "解散時に通知",
+      "confirmedAt": "確認日時",
+      "invitedBy": "招待者",
+      "createdAt": "登録日時",
+      "noWatchers": "見守り者はまだいません",
+      "noRecipients": "ケア対象者はまだいません",
+      "noPendingInvitations": "保留中の招待はありません",
+      "userId": "ユーザーID",
+      "inviterName": "招待者",
+      "expiresAt": "有効期限",
+      "disabled": "無効化",
+      "overrideNote": "このチームでの通知設定を個別に上書きします"
+    },
+    "category": {
+      "MINOR": "未成年",
+      "ELDERLY": "高齢者",
+      "DISABILITY_SUPPORT": "障がい者支援",
+      "GENERAL_FAMILY": "一般家族"
+    },
+    "relationship": {
+      "PARENT": "親",
+      "CHILD": "子",
+      "SPOUSE": "配偶者",
+      "GRANDPARENT": "祖父母",
+      "GRANDCHILD": "孫",
+      "SIBLING": "兄弟姉妹",
+      "LEGAL_GUARDIAN": "法定後見人",
+      "CARETAKER": "介護者",
+      "OTHER": "その他"
+    },
+    "status": {
+      "PENDING": "保留中",
+      "ACTIVE": "有効",
+      "REJECTED": "拒否済み",
+      "REVOKED": "取り消し済み"
+    },
+    "invitedBy": {
+      "CARE_RECIPIENT": "ケア対象者",
+      "WATCHER": "見守り者",
+      "ADMIN": "管理者",
+      "SYSTEM": "システム"
+    },
+    "button": {
+      "inviteWatcher": "見守り者を招待",
+      "inviteRecipient": "ケア対象者を招待",
+      "updateNotify": "通知設定を保存",
+      "deleteLink": "リンクを解除",
+      "acceptInvitation": "招待を承認",
+      "rejectInvitation": "招待を拒否",
+      "saveOverride": "上書き設定を保存",
+      "deleteOverride": "上書き設定を削除"
+    },
+    "dialog": {
+      "deleteLinkTitle": "ケアリンクを解除",
+      "deleteLinkConfirm": "このケアリンクを解除しますか？この操作は取り消せません。",
+      "deleteOverrideTitle": "上書き設定を削除",
+      "deleteOverrideConfirm": "チーム別通知上書き設定を削除しますか？"
+    },
+    "message": {
+      "inviteWatcherSuccess": "見守り者を招待しました",
+      "inviteRecipientSuccess": "ケア対象者を招待しました",
+      "inviteError": "招待に失敗しました",
+      "updateNotifySuccess": "通知設定を更新しました",
+      "updateNotifyError": "通知設定の更新に失敗しました",
+      "deleteLinkSuccess": "ケアリンクを解除しました",
+      "deleteLinkError": "ケアリンクの解除に失敗しました",
+      "acceptSuccess": "招待を承認しました",
+      "acceptError": "招待の承認に失敗しました",
+      "rejectSuccess": "招待を拒否しました",
+      "rejectError": "招待の拒否に失敗しました",
+      "saveOverrideSuccess": "上書き設定を保存しました",
+      "saveOverrideError": "上書き設定の保存に失敗しました",
+      "deleteOverrideSuccess": "上書き設定を削除しました",
+      "deleteOverrideError": "上書き設定の削除に失敗しました",
+      "loadError": "データの読み込みに失敗しました",
+      "invalidToken": "無効または期限切れの招待リンクです"
+    },
+    "validation": {
+      "userIdRequired": "ユーザーIDを入力してください",
+      "careCategoryRequired": "ケアカテゴリを選択してください",
+      "relationshipRequired": "続柄を選択してください"
+    }
+  }
+}
