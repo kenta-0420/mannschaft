@@ -4,13 +4,12 @@ const appearanceStore = useAppearanceStore()
 const themeOptions = [
   { label: 'ライト', value: 'LIGHT', icon: 'pi pi-sun' },
   { label: 'ダーク', value: 'DARK', icon: 'pi pi-moon' },
-  { label: 'システム', value: 'SYSTEM', icon: 'pi pi-desktop' },
 ]
 
 const selectedTheme = computed({
   get: () => appearanceStore.theme,
   set: (val: string) => {
-    appearanceStore.setTheme(val as 'LIGHT' | 'DARK' | 'SYSTEM')
+    appearanceStore.setTheme(val as 'LIGHT' | 'DARK')
     appearanceStore.syncWithServer()
   },
 })

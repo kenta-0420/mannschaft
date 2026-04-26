@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-type ThemeMode = 'LIGHT' | 'DARK' | 'SYSTEM'
+type ThemeMode = 'LIGHT' | 'DARK'
 
 interface AppearanceState {
   theme: ThemeMode
@@ -11,7 +11,7 @@ interface AppearanceState {
 
 export const useAppearanceStore = defineStore('appearance', {
   state: (): AppearanceState => ({
-    theme: 'SYSTEM',
+    theme: 'LIGHT',
     bgColor: '#f3efe0',
     seasonalThemeId: null,
     hideChatPreview: false,
@@ -19,18 +19,12 @@ export const useAppearanceStore = defineStore('appearance', {
 
   getters: {
     isDark(): boolean {
-      if (this.theme === 'DARK') return true
-      if (this.theme === 'LIGHT') return false
-      // SYSTEM: check OS preference
-      if (import.meta.client) {
-        return window.matchMedia('(prefers-color-scheme: dark)').matches
-      }
-      return false
+      return this.theme === 'DARK'
     },
   },
 
   actions: {
-    setTheme(theme: ThemeMode) {
+    setTheme(theme: 'LIGHT' | 'DARK') {
       this.theme = theme
       this.applyTheme()
       this.persistToStorage()
@@ -77,7 +71,8 @@ export const useAppearanceStore = defineStore('appearance', {
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          this.theme = parsed.theme ?? 'SYSTEM'
+          const saved = parsed.theme
+          this.theme = (saved === 'LIGHT' || saved === 'DARK') ? saved : 'LIGHT'
           this.bgColor = parsed.bgColor ?? '#f3efe0'
           this.seasonalThemeId = parsed.seasonalThemeId ?? null
           this.hideChatPreview = parsed.hideChatPreview ?? false
@@ -88,10 +83,6 @@ export const useAppearanceStore = defineStore('appearance', {
       }
       this.applyTheme()
       this.applyBgColor()
-      // Watch system theme changes
-      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        if (this.theme === 'SYSTEM') this.applyTheme()
-      })
     },
 
     persistToStorage() {
@@ -126,7 +117,8 @@ export const useAppearanceStore = defineStore('appearance', {
       try {
         const api = useApi()
         const response = await api<{ data: AppearanceState }>('/api/v1/settings/appearance')
-        this.theme = response.data.theme
+        const t = response.data.theme as string
+        this.theme = (t === 'LIGHT' || t === 'DARK') ? t : 'LIGHT'
         this.bgColor = response.data.bgColor
         this.seasonalThemeId = response.data.seasonalThemeId
         this.hideChatPreview = response.data.hideChatPreview
