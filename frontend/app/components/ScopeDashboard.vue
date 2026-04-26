@@ -21,6 +21,10 @@ const isReady = ref(false)
 onMounted(() => {
   nextTick(() => {
     isReady.value = true
+    // モバイルでは全ウィジェットをデフォルト折り畳み状態にする
+    if (window.innerWidth < 768) {
+      collapsedKeys.value = new Set(visibleWidgets.value.map((w) => w.key))
+    }
   })
 })
 
@@ -202,9 +206,8 @@ function onDragEnd() {
           >
             {{ w.label }}
           </h3>
-          <!-- 折り畳みボタン (モバイルのみ・ナビゲーションウィジェットのみ) -->
+          <!-- 折り畳みボタン (モバイルのみ) -->
           <button
-            v-if="!isDataWidget(w.key)"
             class="md:hidden flex items-center justify-center rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100"
             @click.stop="toggleCollapse(w.key)"
           >
@@ -242,7 +245,10 @@ function onDragEnd() {
         <template v-if="isDataWidget(w.key)">
           <div
             class="mt-3"
-            :class="w.key === 'schedule' ? 'min-h-[28rem]' : 'max-h-96 overflow-y-auto pr-1'"
+            :class="[
+              w.key === 'schedule' ? 'min-h-[28rem]' : 'max-h-96 overflow-y-auto pr-1',
+              collapsedKeys.has(w.key) ? 'hidden md:block' : '',
+            ]"
           >
             <WidgetSurveyResults
               v-if="w.key === 'survey-results' && scopeId"

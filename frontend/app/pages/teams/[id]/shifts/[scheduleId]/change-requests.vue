@@ -6,8 +6,8 @@ const teamId = computed(() => Number(route.params.id))
 const scheduleId = computed(() => Number(route.params.scheduleId))
 
 const { t } = useI18n()
-const { currentUser } = useAuth()
-const isAdmin = computed(() => currentUser.value?.role === 'ADMIN')
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.currentUser?.role === 'ADMIN')
 
 const { requests, isLoading, fetchRequests, createRequest, review, withdraw } =
   useChangeRequest(scheduleId)
@@ -52,7 +52,7 @@ async function onWithdraw(id: number): Promise<void> {
     <SectionCard>
       <ShiftChangeRequestList
         :requests="requests"
-        :current-user-id="currentUser?.id ?? 0"
+        :current-user-id="authStore.currentUser?.id ?? 0"
         :is-admin="isAdmin"
         :is-loading="isLoading"
         @review="onReview"
