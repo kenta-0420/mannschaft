@@ -1,0 +1,151 @@
+{
+  "surveys": {
+    "pageTitle": "アンケート・投票",
+    "statusLabel": {
+      "DRAFT": "下書き",
+      "PUBLISHED": "受付中",
+      "CLOSED": "締切"
+    },
+    "questionType": {
+      "SINGLE_CHOICE": "単一選択",
+      "MULTIPLE_CHOICE": "複数選択",
+      "TEXT": "自由記述",
+      "RATING": "評価（1〜5）",
+      "DATE": "日付"
+    },
+    "resultsVisibility": {
+      "label": "結果の公開範囲",
+      "CREATOR_ONLY": "作成者のみ",
+      "RESPONDENTS": "回答者のみ",
+      "ALL_MEMBERS": "全メンバー"
+    },
+    "unrespondedVisibility": {
+      "label": "未回答者の可視範囲",
+      "HIDDEN": "非表示",
+      "CREATOR_AND_ADMIN": "作成者と管理者のみ",
+      "ALL_MEMBERS": "全メンバー"
+    },
+    "list": {
+      "filterAll": "すべて",
+      "filterPlaceholder": "ステータス",
+      "createButton": "アンケート作成",
+      "answeredBadge": "回答済み",
+      "anonymous": "匿名",
+      "responseCountUnit": "回答",
+      "empty": "アンケートがありません",
+      "loadFailed": "アンケート一覧の取得に失敗しました"
+    },
+    "create": {
+      "dialogHeader": "アンケートを作成",
+      "title": "タイトル",
+      "titlePlaceholder": "例: 次回イベントの希望日アンケート",
+      "description": "説明（任意）",
+      "descriptionPlaceholder": "アンケートの目的や注意事項を記載してください",
+      "isAnonymous": "匿名回答にする",
+      "allowMultipleSubmissions": "複数回の回答を許可",
+      "deadline": "締切日時（任意）",
+      "deadlinePlaceholder": "未設定",
+      "questions": "設問",
+      "cancel": "キャンセル",
+      "save": "保存",
+      "successToast": "アンケートを作成しました",
+      "failureToast": "アンケートの作成に失敗しました",
+      "validation": {
+        "titleRequired": "タイトルを入力してください",
+        "titleTooLong": "タイトルは200文字以内で入力してください",
+        "descriptionTooLong": "説明は1000文字以内で入力してください",
+        "questionsRequired": "設問を1つ以上追加してください",
+        "questionTextRequired": "設問{index}の文章を入力してください",
+        "optionsTooFew": "設問{index}の選択肢は2つ以上必要です",
+        "optionEmpty": "設問{index}の選択肢に空欄があります"
+      },
+      "questionEditor": {
+        "empty": "設問がありません",
+        "questionNo": "設問 {no}",
+        "questionText": "設問文",
+        "questionTextPlaceholder": "質問内容を入力してください",
+        "type": "回答形式",
+        "required": "必須回答",
+        "options": "選択肢",
+        "optionPlaceholder": "選択肢のテキスト",
+        "addOption": "選択肢を追加",
+        "addQuestion": "設問を追加",
+        "moveUp": "上へ移動",
+        "moveDown": "下へ移動",
+        "remove": "削除",
+        "removeOption": "選択肢を削除",
+        "ratingScale": "評価スケール（1〜5）",
+        "textHint": "回答者は自由記述で回答します",
+        "dateHint": "回答者は日付を選択して回答します"
+      }
+    },
+    "detail": {
+      "scopeMissing": "アンケートのスコープ情報が不足しています",
+      "fetchFailed": "アンケート情報を取得できませんでした",
+      "back": "戻る",
+      "answeredBadge": "回答済み",
+      "deadline": "期限",
+      "responseCount": "回答",
+      "anonymous": "匿名",
+      "draftHint": "このアンケートは下書き状態です。公開するまで回答を受け付けません。",
+      "publishButton": "公開する",
+      "publishSuccess": "アンケートを公開しました",
+      "publishFailed": "アンケートの公開に失敗しました",
+      "closeButton": "アンケートを締切る",
+      "closeConfirmHeader": "アンケートを締切る",
+      "closeConfirmMessage": "このアンケートを締切ります。締切後は新規回答を受け付けません。よろしいですか？",
+      "closeSuccess": "アンケートを締切りました",
+      "closeFailed": "アンケートの締切に失敗しました",
+      "deleteButton": "削除",
+      "deleteConfirmHeader": "アンケートを削除",
+      "deleteConfirmMessage": "このアンケートを削除します。この操作は取り消せません。よろしいですか？",
+      "deleteSuccess": "アンケートを削除しました",
+      "deleteFailed": "アンケートの削除に失敗しました",
+      "closedNoPermission": "このアンケートは締切られました。結果は公開されていません。",
+      "form": {
+        "alreadyResponded": "このアンケートには既に回答済みです。",
+        "requiredBadge": "必須",
+        "textPlaceholder": "回答を入力してください",
+        "validationRequired": "「{question}」は必須項目です",
+        "validationTextTooLong": "「{question}」は2000文字以内で入力してください",
+        "submitNew": "回答を送信",
+        "submitUpdate": "回答を更新",
+        "submitSuccess": "回答を送信しました",
+        "submitFailed": "回答の送信に失敗しました"
+      },
+      "results": {
+        "title": "集計結果",
+        "reload": "結果を再読込",
+        "fetchFailed": "集計結果を取得できませんでした",
+        "retry": "再試行",
+        "empty": "集計データがまだありません",
+        "loadFailedToast": "集計結果の取得に失敗しました",
+        "responsesUnit": "件",
+        "responsesLabel": "回答数",
+        "noData": "データなし",
+        "noTextResponses": "テキスト回答なし",
+        "moreCount": "他 {count} 件"
+      }
+    },
+    "respondents": {
+      "summary": "{responded} / 全 {total} 名",
+      "reload": "再読込",
+      "tabResponded": "回答済み ({count})",
+      "tabUnresponded": "未回答 ({count})",
+      "remindHint": "未回答の {count} 名にリマインド通知を送信できます（最大3回まで）",
+      "remindButton": "督促送信",
+      "remindAutoNotice": "督促通知は回答期限の 24 時間前に自動送信されます",
+      "remindSuccess": "{count}名にリマインドを送信しました",
+      "remindRemaining": "残り送信可能: {count}回",
+      "remindFailed": "督促の送信に失敗しました",
+      "remindFailedDetail": "送信上限・クールダウン・権限をご確認ください",
+      "loadFailed": "回答者一覧の取得に失敗しました",
+      "loadErrorTitle": "回答者一覧を取得できませんでした",
+      "retry": "再試行",
+      "respondedBadge": "回答済み",
+      "unrespondedBadge": "未回答",
+      "emptyResponded": "まだ回答者はいません",
+      "emptyUnresponded": "未回答者はいません"
+    }
+  }
+}

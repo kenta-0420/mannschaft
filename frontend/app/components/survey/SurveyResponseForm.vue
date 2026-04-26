@@ -5,7 +5,6 @@ import type {
   SubmitResponseRequest,
 } from '~/types/survey'
 
-// i18n: surveys.detail.form.*
 const props = defineProps<{
   survey: SurveyDetailResponse['data']
   alreadyResponded: boolean
@@ -16,6 +15,7 @@ const emit = defineEmits<{
   submitted: []
 }>()
 
+const { t } = useI18n()
 const { submitResponse, getMyResponse } = useSurveyApi()
 const { error: showError, success: showSuccess } = useNotification()
 
@@ -95,21 +95,21 @@ function validate(): string | null {
     switch (q.questionType) {
       case 'SINGLE_CHOICE':
       case 'RATING':
-        if (typeof v !== 'number') return `「${q.questionText}」は必須項目です`
+        if (typeof v !== 'number') return t('surveys.detail.form.validationRequired', { question: q.questionText })
         break
       case 'MULTIPLE_CHOICE':
         if (!Array.isArray(v) || v.length === 0) {
-          return `「${q.questionText}」は必須項目です`
+          return t('surveys.detail.form.validationRequired', { question: q.questionText })
         }
         break
       case 'TEXT':
         if (typeof v !== 'string' || v.trim().length === 0) {
-          return `「${q.questionText}」は必須項目です`
+          return t('surveys.detail.form.validationRequired', { question: q.questionText })
         }
         break
       case 'DATE':
         if (!(v instanceof Date) || Number.isNaN(v.getTime())) {
-          return `「${q.questionText}」は必須項目です`
+          return t('surveys.detail.form.validationRequired', { question: q.questionText })
         }
         break
     }
@@ -119,7 +119,7 @@ function validate(): string | null {
     if (q.questionType !== 'TEXT') continue
     const v = answers.value[q.id]
     if (typeof v === 'string' && v.length > 2000) {
-      return `「${q.questionText}」は2000文字以内で入力してください`
+      return t('surveys.detail.form.validationTextTooLong', { question: q.questionText })
     }
   }
   return null
@@ -171,10 +171,10 @@ async function onSubmit() {
   submitting.value = true
   try {
     await submitResponse(props.survey.id, buildPayload() as unknown as Record<string, unknown>)
-    showSuccess('回答を送信しました')
+    showSuccess(t('surveys.detail.form.submitSuccess'))
     emit('submitted')
   } catch {
-    showError('回答の送信に失敗しました')
+    showError(t('surveys.detail.form.submitFailed'))
   } finally {
     submitting.value = false
   }
@@ -188,13 +188,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <!-- i18n: surveys.detail.form.alreadyResponded -->
   <div
     v-if="alreadyResponded && !allowMultiple"
     class="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700 dark:border-green-700 dark:bg-green-900/20 dark:text-green-200"
   >
     <i class="pi pi-check-circle mr-2" />
-    このアンケートには既に回答済みです。
+    {{ t('surveys.detail.form.alreadyResponded') }}
   </div>
 
   <form v-else class="flex flex-col gap-6" @submit.prevent="onSubmit">
@@ -208,7 +207,7 @@ onMounted(() => {
         <span
           v-if="q.isRequired"
           class="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-600"
-          >必須</span
+          >{{ t('surveys.detail.form.requiredBadge') }}</span
         >
       </p>
 
@@ -251,7 +250,7 @@ onMounted(() => {
           rows="4"
           maxlength="2000"
           class="w-full"
-          placeholder="回答を入力してください"
+          :placeholder="t('surveys.detail.form.textPlaceholder')"
         />
         <p class="mt-1 text-right text-xs text-surface-400">
           {{ (typeof answers[q.id] === 'string' ? (answers[q.id] as string).length : 0) }} / 2000
@@ -297,7 +296,7 @@ onMounted(() => {
       <Button
         type="submit"
         :loading="submitting"
-        :label="alreadyResponded && allowMultiple ? '回答を更新' : '回答を送信'"
+        :label="alreadyResponded && allowMultiple ? t('surveys.detail.form.submitUpdate') : t('surveys.detail.form.submitNew')"
         icon="pi pi-send"
       />
     </div>

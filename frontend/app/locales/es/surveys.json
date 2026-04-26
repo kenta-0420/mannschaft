@@ -1,0 +1,151 @@
+{
+  "surveys": {
+    "pageTitle": "Encuestas y votaciones",
+    "statusLabel": {
+      "DRAFT": "Borrador",
+      "PUBLISHED": "Abierta",
+      "CLOSED": "Cerrada"
+    },
+    "questionType": {
+      "SINGLE_CHOICE": "Opción única",
+      "MULTIPLE_CHOICE": "Opción múltiple",
+      "TEXT": "Texto libre",
+      "RATING": "Valoración (1-5)",
+      "DATE": "Fecha"
+    },
+    "resultsVisibility": {
+      "label": "Visibilidad de resultados",
+      "CREATOR_ONLY": "Solo el creador",
+      "RESPONDENTS": "Solo los encuestados",
+      "ALL_MEMBERS": "Todos los miembros"
+    },
+    "unrespondedVisibility": {
+      "label": "Visibilidad de no encuestados",
+      "HIDDEN": "Oculto",
+      "CREATOR_AND_ADMIN": "Creador y administradores",
+      "ALL_MEMBERS": "Todos los miembros"
+    },
+    "list": {
+      "filterAll": "Todos",
+      "filterPlaceholder": "Estado",
+      "createButton": "Crear encuesta",
+      "answeredBadge": "Respondida",
+      "anonymous": "Anónima",
+      "responseCountUnit": "respuestas",
+      "empty": "Aún no hay encuestas",
+      "loadFailed": "No se pudo cargar la lista de encuestas"
+    },
+    "create": {
+      "dialogHeader": "Crear encuesta",
+      "title": "Título",
+      "titlePlaceholder": "Ej.: Fechas preferidas para el próximo evento",
+      "description": "Descripción (opcional)",
+      "descriptionPlaceholder": "Indica el propósito o las notas de esta encuesta",
+      "isAnonymous": "Respuestas anónimas",
+      "allowMultipleSubmissions": "Permitir múltiples envíos",
+      "deadline": "Fecha límite (opcional)",
+      "deadlinePlaceholder": "Sin definir",
+      "questions": "Preguntas",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "successToast": "Encuesta creada",
+      "failureToast": "No se pudo crear la encuesta",
+      "validation": {
+        "titleRequired": "Introduce un título",
+        "titleTooLong": "El título debe tener máximo 200 caracteres",
+        "descriptionTooLong": "La descripción debe tener máximo 1000 caracteres",
+        "questionsRequired": "Añade al menos una pregunta",
+        "questionTextRequired": "Introduce el texto de la pregunta {index}",
+        "optionsTooFew": "La pregunta {index} requiere al menos dos opciones",
+        "optionEmpty": "La pregunta {index} tiene opciones vacías"
+      },
+      "questionEditor": {
+        "empty": "Aún no hay preguntas",
+        "questionNo": "Pregunta {no}",
+        "questionText": "Texto de la pregunta",
+        "questionTextPlaceholder": "Escribe la pregunta",
+        "type": "Formato de respuesta",
+        "required": "Obligatoria",
+        "options": "Opciones",
+        "optionPlaceholder": "Texto de la opción",
+        "addOption": "Añadir opción",
+        "addQuestion": "Añadir pregunta",
+        "moveUp": "Mover arriba",
+        "moveDown": "Mover abajo",
+        "remove": "Eliminar",
+        "removeOption": "Eliminar opción",
+        "ratingScale": "Escala de valoración (1-5)",
+        "textHint": "Los encuestados responderán con texto libre",
+        "dateHint": "Los encuestados elegirán una fecha"
+      }
+    },
+    "detail": {
+      "scopeMissing": "Falta la información de alcance de la encuesta",
+      "fetchFailed": "No se pudo cargar la información de la encuesta",
+      "back": "Volver",
+      "answeredBadge": "Respondida",
+      "deadline": "Fecha límite",
+      "responseCount": "Respuestas",
+      "anonymous": "Anónima",
+      "draftHint": "Esta encuesta es un borrador. No aceptará respuestas hasta que se publique.",
+      "publishButton": "Publicar",
+      "publishSuccess": "Encuesta publicada",
+      "publishFailed": "No se pudo publicar la encuesta",
+      "closeButton": "Cerrar encuesta",
+      "closeConfirmHeader": "Cerrar encuesta",
+      "closeConfirmMessage": "Se cerrará la encuesta y no se aceptarán nuevas respuestas. ¿Confirmas?",
+      "closeSuccess": "Encuesta cerrada",
+      "closeFailed": "No se pudo cerrar la encuesta",
+      "deleteButton": "Eliminar",
+      "deleteConfirmHeader": "Eliminar encuesta",
+      "deleteConfirmMessage": "Se eliminará la encuesta. Esta acción no se puede deshacer. ¿Confirmas?",
+      "deleteSuccess": "Encuesta eliminada",
+      "deleteFailed": "No se pudo eliminar la encuesta",
+      "closedNoPermission": "Esta encuesta se ha cerrado. Los resultados no son públicos.",
+      "form": {
+        "alreadyResponded": "Ya has respondido a esta encuesta.",
+        "requiredBadge": "Obligatoria",
+        "textPlaceholder": "Escribe tu respuesta",
+        "validationRequired": "«{question}» es obligatoria",
+        "validationTextTooLong": "«{question}» debe tener máximo 2000 caracteres",
+        "submitNew": "Enviar respuesta",
+        "submitUpdate": "Actualizar respuesta",
+        "submitSuccess": "Respuesta enviada",
+        "submitFailed": "No se pudo enviar la respuesta"
+      },
+      "results": {
+        "title": "Resultados",
+        "reload": "Recargar resultados",
+        "fetchFailed": "No se pudieron cargar los resultados",
+        "retry": "Reintentar",
+        "empty": "Aún no hay datos",
+        "loadFailedToast": "No se pudieron cargar los resultados",
+        "responsesUnit": "",
+        "responsesLabel": "Respuestas",
+        "noData": "Sin datos",
+        "noTextResponses": "Sin respuestas de texto",
+        "moreCount": "{count} más"
+      }
+    },
+    "respondents": {
+      "summary": "{responded} / {total} miembros",
+      "reload": "Recargar",
+      "tabResponded": "Respondidos ({count})",
+      "tabUnresponded": "Sin responder ({count})",
+      "remindHint": "Puedes enviar un recordatorio a {count} miembros sin responder (hasta 3 veces)",
+      "remindButton": "Enviar recordatorio",
+      "remindAutoNotice": "Se enviará un recordatorio automático 24 horas antes del cierre",
+      "remindSuccess": "Recordatorio enviado a {count} miembro(s)",
+      "remindRemaining": "Envíos restantes: {count}",
+      "remindFailed": "No se pudo enviar el recordatorio",
+      "remindFailedDetail": "Verifica el límite de envío, el tiempo de espera y los permisos",
+      "loadFailed": "No se pudo cargar la lista de encuestados",
+      "loadErrorTitle": "No se pudo cargar la lista de encuestados",
+      "retry": "Reintentar",
+      "respondedBadge": "Respondido",
+      "unrespondedBadge": "Sin responder",
+      "emptyResponded": "Aún no hay encuestados",
+      "emptyUnresponded": "No hay miembros sin responder"
+    }
+  }
+}

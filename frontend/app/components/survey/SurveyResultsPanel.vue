@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { SurveyResultSummary } from '~/types/survey'
 
-// i18n: surveys.detail.results.*
 const props = defineProps<{
   surveyId: number
 }>()
 
+const { t } = useI18n()
 const { getResults } = useSurveyApi()
 const { error: showError } = useNotification()
 
@@ -21,7 +21,7 @@ async function loadResults() {
     results.value = res.data ?? []
   } catch {
     fetchFailed.value = true
-    showError('集計結果の取得に失敗しました')
+    showError(t('surveys.detail.results.loadFailedToast'))
   } finally {
     loading.value = false
   }
@@ -33,9 +33,9 @@ onMounted(loadResults)
 <template>
   <div class="flex flex-col gap-3">
     <div class="flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-surface-800 dark:text-surface-100">集計結果</h2>
+      <h2 class="text-lg font-semibold text-surface-800 dark:text-surface-100">{{ t('surveys.detail.results.title') }}</h2>
       <Button
-        label="結果を再読込"
+        :label="t('surveys.detail.results.reload')"
         icon="pi pi-refresh"
         size="small"
         outlined
@@ -55,8 +55,8 @@ onMounted(loadResults)
       class="flex flex-col items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-6 text-center dark:border-red-700 dark:bg-red-900/20"
     >
       <i class="pi pi-exclamation-triangle text-2xl text-red-500" />
-      <p class="text-sm text-red-700 dark:text-red-200">集計結果を取得できませんでした</p>
-      <Button label="再試行" icon="pi pi-refresh" size="small" @click="loadResults" />
+      <p class="text-sm text-red-700 dark:text-red-200">{{ t('surveys.detail.results.fetchFailed') }}</p>
+      <Button :label="t('surveys.detail.results.retry')" icon="pi pi-refresh" size="small" @click="loadResults" />
     </div>
 
     <!-- 空状態 -->
@@ -65,7 +65,7 @@ onMounted(loadResults)
       class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-surface-300 bg-surface-50 p-8 text-center dark:border-surface-600 dark:bg-surface-800/40"
     >
       <i class="pi pi-chart-bar text-3xl text-surface-300" />
-      <p class="text-sm text-surface-400">集計データがまだありません</p>
+      <p class="text-sm text-surface-400">{{ t('surveys.detail.results.empty') }}</p>
     </div>
 
     <!-- 結果一覧 -->
