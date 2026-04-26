@@ -8,7 +8,10 @@ import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.dashboard.MinRole;
 import com.mannschaft.app.dashboard.ScopeType;
+import com.mannschaft.app.dashboard.ViewerRole;
+import com.mannschaft.app.dashboard.WidgetKey;
 import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
 import com.mannschaft.app.dashboard.dto.GreetingResponse;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
@@ -37,7 +40,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -57,6 +62,8 @@ public class DashboardService {
     private final NameResolverService nameResolverService;
     private final AccessControlService accessControlService;
     private final ActivityFeedService activityFeedService;
+    private final RoleResolver roleResolver;
+    private final WidgetVisibilityResolver widgetVisibilityResolver;
     private final NotificationRepository notificationRepository;
     private final ScheduleRepository scheduleRepository;
     private final TodoRepository todoRepository;
@@ -261,6 +268,10 @@ public class DashboardService {
         accessControlService.checkMembership(userId, teamId, "TEAM");
         boolean isAdmin = accessControlService.isAdminOrAbove(userId, teamId, "TEAM");
 
+        // F02.2.1: 閲覧者ロール解決と可視性マップ取得（管理者バイパスにも対応）
+        ViewerRole viewerRole = roleResolver.resolveViewerRole(userId, "TEAM", teamId);
+        Map<WidgetKey, MinRole> visibilityMap = widgetVisibilityResolver.resolve("TEAM", teamId);
+
         List<WidgetSettingResponse> widgetSettings = widgetService.getWidgetSettings(userId, ScopeType.TEAM, teamId, isAdmin);
 
         LocalDateTime now = LocalDateTime.now();
@@ -329,24 +340,42 @@ public class DashboardService {
                 .map(this::toAnnouncementMap)
                 .toList();
 
+        // F02.2.1: 各ウィジェットを viewerRole.isAtLeast(min_role) で判定し、不可視は null にする
+        // 管理者（DEPUTY_ADMIN/ADMIN/SYSTEM_ADMIN）は全ウィジェットをバイパスして閲覧可
+        Map<String, Object> teamTodoData = Map.of("items", teamTodoItems, "overdue_count", teamOverdue,
+                "total_incomplete", (long) incompleteTeamTodos.size());
+        Map<String, Object> teamActivityData = Map.of(
+                "posts_this_week", postsThisWeek,
+                "events_this_week", eventsThisWeek,
+                "active_members_this_week", 0,
+                "total_members", totalMembers);
+        Map<String, Object> teamUnreadData = Map.of(
+                "bulletin_count", unreadBulletinCount, "chat_count", unreadChatCount);
+        Map<String, Object> teamAttendanceData = Map.of("attending", 0, "absent", 0, "pending", 0);
+
         return TeamDashboardResponse.builder()
-                .teamNotices(List.of())
-                .teamUpcomingEvents(teamUpcomingItems)
-                .teamTodo(Map.of("items", teamTodoItems, "overdue_count", teamOverdue, "total_incomplete", (long) incompleteTeamTodos.size()))
-                .teamProjectProgress(List.of())
-                .teamActivity(Map.of(
-                        "posts_this_week", postsThisWeek,
-                        "events_this_week", eventsThisWeek,
-                        "active_members_this_week", 0,
-                        "total_members", totalMembers
-                ))
-                .teamLatestPosts(latestPosts.stream().map(this::toTimelinePostMap).toList())
-                .teamUnreadThreads(Map.of("bulletin_count", unreadBulletinCount, "chat_count", unreadChatCount))
-                .teamMemberAttendance(Map.of("attending", 0, "absent", 0, "pending", 0))
+                .teamNotices(filterIfVisible(viewerRole, visibilityMap, WidgetKey.TEAM_NOTICES, List.of()))
+                .teamUpcomingEvents(filterIfVisible(
+                        viewerRole, visibilityMap, WidgetKey.TEAM_UPCOMING_EVENTS, teamUpcomingItems))
+                .teamTodo(filterIfVisible(viewerRole, visibilityMap, WidgetKey.TEAM_TODO, teamTodoData))
+                .teamProjectProgress(filterIfVisible(
+                        viewerRole, visibilityMap, WidgetKey.TEAM_PROJECT_PROGRESS, List.of()))
+                .teamActivity(filterIfVisible(
+                        viewerRole, visibilityMap, WidgetKey.TEAM_ACTIVITY, teamActivityData))
+                .teamLatestPosts(filterIfVisible(
+                        viewerRole, visibilityMap, WidgetKey.TEAM_LATEST_POSTS,
+                        latestPosts.stream().map(this::toTimelinePostMap).toList()))
+                .teamUnreadThreads(filterIfVisible(
+                        viewerRole, visibilityMap, WidgetKey.TEAM_UNREAD_THREADS, teamUnreadData))
+                .teamMemberAttendance(filterIfVisible(
+                        viewerRole, visibilityMap, WidgetKey.TEAM_MEMBER_ATTENDANCE, teamAttendanceData))
+                // ADMIN 限定ウィジェットは F02.2 既存ルール（isAdmin）でフィルタ。本機能の対象外
                 .teamBilling(isAdmin ? Map.of() : null)
                 .teamPageViews(null)
                 .widgetSettings(widgetSettings)
                 .platformAnnouncements(announcementItems)
+                .viewerRole(viewerRole.name())
+                .widgetVisibility(buildVisibilityList(viewerRole, visibilityMap))
                 .build();
     }
 
@@ -360,6 +389,10 @@ public class DashboardService {
     public OrgDashboardResponse getOrgDashboard(Long userId, Long orgId, String statsPeriod) {
         accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
         boolean isAdmin = accessControlService.isAdminOrAbove(userId, orgId, "ORGANIZATION");
+
+        // F02.2.1: 閲覧者ロール解決と可視性マップ取得
+        ViewerRole viewerRole = roleResolver.resolveViewerRole(userId, "ORGANIZATION", orgId);
+        Map<WidgetKey, MinRole> visibilityMap = widgetVisibilityResolver.resolve("ORGANIZATION", orgId);
 
         List<WidgetSettingResponse> widgetSettings = widgetService.getWidgetSettings(userId, ScopeType.ORGANIZATION, orgId, isAdmin);
 
@@ -397,20 +430,28 @@ public class DashboardService {
                 .map(this::toAnnouncementMap)
                 .toList();
 
+        // F02.2.1: 各ウィジェットを viewerRole.isAtLeast(min_role) で判定し、不可視は null にする
+        Map<String, Object> orgTodoData = Map.of("items", orgTodoItems, "overdue_count", orgOverdue,
+                "total_incomplete", (long) incompleteOrgTodos.size());
+        Map<String, Object> orgStatsData = Map.of(
+                "total_teams", 0,
+                "total_members", totalMembers,
+                "new_members_this_month", 0,
+                "active_rate", 0.0);
+
         return OrgDashboardResponse.builder()
-                .orgTeamList(List.of())
-                .orgNotices(orgNoticeItems)
-                .orgTodo(Map.of("items", orgTodoItems, "overdue_count", orgOverdue, "total_incomplete", (long) incompleteOrgTodos.size()))
-                .orgProjectProgress(List.of())
-                .orgStats(Map.of(
-                        "total_teams", 0,
-                        "total_members", totalMembers,
-                        "new_members_this_month", 0,
-                        "active_rate", 0.0
-                ))
+                .orgTeamList(filterIfVisible(viewerRole, visibilityMap, WidgetKey.ORG_TEAM_LIST, List.of()))
+                .orgNotices(filterIfVisible(viewerRole, visibilityMap, WidgetKey.ORG_NOTICES, orgNoticeItems))
+                .orgTodo(filterIfVisible(viewerRole, visibilityMap, WidgetKey.ORG_TODO, orgTodoData))
+                .orgProjectProgress(filterIfVisible(
+                        viewerRole, visibilityMap, WidgetKey.ORG_PROJECT_PROGRESS, List.of()))
+                .orgStats(filterIfVisible(viewerRole, visibilityMap, WidgetKey.ORG_STATS, orgStatsData))
+                // ADMIN 限定ウィジェットは F02.2 既存ルール（isAdmin）でフィルタ。本機能の対象外
                 .orgBilling(isAdmin ? Map.of() : null)
                 .widgetSettings(widgetSettings)
                 .platformAnnouncements(announcementItems)
+                .viewerRole(viewerRole.name())
+                .widgetVisibility(buildVisibilityList(viewerRole, visibilityMap))
                 .build();
     }
 
@@ -523,6 +564,49 @@ public class DashboardService {
         map.put("content", entity.getContent());
         map.put("created_at", entity.getCreatedAt());
         return map;
+    }
+
+    /**
+     * F02.2.1: ウィジェットが閲覧者ロールから可視であればデータをそのまま、不可視なら null を返す。
+     *
+     * <p>{@link ViewerRole#isAdminOrAbove()} が true の場合は可視性チェックをバイパスして
+     * 常にデータを返す（管理者は全ウィジェットを閲覧できる）。
+     * {@code visibilityMap} に該当キーが含まれない場合（管理対象外ウィジェット）は
+     * 既存挙動を保持するため、データをそのまま返す。</p>
+     */
+    private static <T> T filterIfVisible(ViewerRole viewerRole,
+                                         Map<WidgetKey, MinRole> visibilityMap,
+                                         WidgetKey key,
+                                         T data) {
+        if (viewerRole.isAdminOrAbove()) {
+            return data;
+        }
+        MinRole minRole = visibilityMap.get(key);
+        if (minRole == null) {
+            // 管理対象外ウィジェットは本機能のフィルタ対象外（既存挙動を維持）
+            return data;
+        }
+        return viewerRole.isAtLeast(minRole) ? data : null;
+    }
+
+    /**
+     * F02.2.1: レスポンス用の可視性配列を構築する。
+     *
+     * <p>各要素は {@code widget_key / min_role / is_visible} を持つ。
+     * 管理者（ADMIN/DEPUTY_ADMIN/SYSTEM_ADMIN）の場合は全ウィジェットが {@code is_visible=true}。</p>
+     */
+    private static List<Map<String, Object>> buildVisibilityList(ViewerRole viewerRole,
+                                                                  Map<WidgetKey, MinRole> visibilityMap) {
+        List<Map<String, Object>> result = new ArrayList<>(visibilityMap.size());
+        boolean adminBypass = viewerRole.isAdminOrAbove();
+        for (Map.Entry<WidgetKey, MinRole> entry : visibilityMap.entrySet()) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("widget_key", entry.getKey().name());
+            item.put("min_role", entry.getValue().name());
+            item.put("is_visible", adminBypass || viewerRole.isAtLeast(entry.getValue()));
+            result.add(item);
+        }
+        return result;
     }
 
     /**
