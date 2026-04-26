@@ -6,11 +6,14 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.dashboard.MinRole;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.WidgetKey;
-import com.mannschaft.app.dashboard.dto.WidgetVisibilityItem;
-import com.mannschaft.app.dashboard.dto.WidgetVisibilityUpdate;
+import com.mannschaft.app.dashboard.dto.UpdateWidgetVisibilityRequest;
+import com.mannschaft.app.dashboard.dto.UserSummaryDto;
+import com.mannschaft.app.dashboard.dto.WidgetVisibilityItemDto;
+import com.mannschaft.app.dashboard.dto.WidgetVisibilityResponse;
 import com.mannschaft.app.dashboard.entity.DashboardWidgetRoleVisibilityEntity;
 import com.mannschaft.app.dashboard.repository.DashboardWidgetRoleVisibilityRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,12 +23,16 @@ import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.ZoneOffset;
+
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * F02.2.1: ダッシュボードウィジェット可視性設定の管理サービス。
@@ -62,6 +69,7 @@ public class DashboardWidgetVisibilityService {
     private final DashboardWidgetRoleVisibilityRepository repository;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
+    private final NameResolverService nameResolverService;
     private final CacheManager cacheManager;
     private final ObjectMapper objectMapper;
 
@@ -75,55 +83,23 @@ public class DashboardWidgetVisibilityService {
      * <p>本機能の管理対象ウィジェット（ADMIN 限定除く）すべてについて、
      * DB 設定がある場合はそれを、ない場合はアプリ層デフォルト値を返す。
      * フロントの設定 UI と1対1で対応する完全な集合を返す。</p>
-     *
-     * @param scopeType     スコープ種別。{@code "TEAM"} または {@code "ORGANIZATION"}
-     * @param scopeId       スコープID
-     * @param currentUserId 認証済みユーザーID
-     * @return ウィジェット可視性設定一覧（ADMIN 限定除く・必ず非 null）
      */
-    public List<WidgetVisibilityItem> getSettings(String scopeType, Long scopeId, Long currentUserId) {
-        validateScopeArgs(scopeType, scopeId, currentUserId);
+    public WidgetVisibilityResponse getSettings(Long currentUserId, ScopeType scopeType, Long scopeId) {
+        validateArgs(currentUserId, scopeType, scopeId);
 
         // スコープ所属検証（最低限 MEMBER 以上である必要あり）
-        accessControlService.checkMembership(currentUserId, scopeId, scopeType);
+        accessControlService.checkMembership(currentUserId, scopeId, scopeType.name());
 
-        ScopeType scope = ScopeType.fromPathSegment(scopeType);
-        if (scope == ScopeType.PERSONAL) {
+        if (scopeType == ScopeType.PERSONAL) {
             // 個人ダッシュボードは本機能の対象外
-            return List.of();
+            return WidgetVisibilityResponse.builder()
+                    .scopeType(scopeType)
+                    .scopeId(scopeId)
+                    .widgets(List.of())
+                    .build();
         }
 
-        // 1. DB レコードを scopeType + scopeId でまとめて取得しキー別 Map に整理
-        List<DashboardWidgetRoleVisibilityEntity> entities =
-                repository.findByScopeTypeAndScopeId(scope, scopeId);
-        Map<String, DashboardWidgetRoleVisibilityEntity> dbMap = new HashMap<>();
-        for (DashboardWidgetRoleVisibilityEntity e : entities) {
-            dbMap.put(e.getWidgetKey(), e);
-        }
-
-        // 2. 管理対象ウィジェット全てについて Item を生成（DB 設定 or デフォルト）
-        Map<WidgetKey, MinRole> defaults = WidgetDefaultMinRoleMap.getDefaultsForScope(scope);
-        List<WidgetVisibilityItem> result = new ArrayList<>(defaults.size());
-        for (Map.Entry<WidgetKey, MinRole> entry : defaults.entrySet()) {
-            WidgetKey key = entry.getKey();
-            DashboardWidgetRoleVisibilityEntity dbEntity = dbMap.get(key.name());
-            if (dbEntity != null) {
-                result.add(WidgetVisibilityItem.builder()
-                        .widgetKey(key.name())
-                        .minRole(dbEntity.getMinRole())
-                        .isDefault(false)
-                        .updatedById(dbEntity.getUpdatedBy())
-                        .updatedAt(dbEntity.getUpdatedAt())
-                        .build());
-            } else {
-                result.add(WidgetVisibilityItem.builder()
-                        .widgetKey(key.name())
-                        .minRole(entry.getValue())
-                        .isDefault(true)
-                        .build());
-            }
-        }
-        return result;
+        return buildResponse(scopeType, scopeId);
     }
 
     // ─────────────────────────────────────────────
@@ -132,52 +108,97 @@ public class DashboardWidgetVisibilityService {
 
     /**
      * 指定スコープのウィジェット可視性設定を一括更新する。
-     *
-     * <p>動作:</p>
-     * <ul>
-     *   <li>各 update について、min_role がアプリ層デフォルトと一致する場合は DB レコードを DELETE
-     *       （テーブル肥大化を防ぐ）。一致しない場合は UPSERT（既存あれば更新・なければ INSERT）</li>
-     *   <li>リクエストに含まれない widget_key の既存レコードは変更しない（差分更新）</li>
-     *   <li>未知の widget_key・本機能の管理対象外ウィジェット（ADMIN 限定など）は 400 エラー</li>
-     *   <li>監査ログに {@link #AUDIT_EVENT_TYPE} で before/after を記録</li>
-     *   <li>{@code dashboard:widget-visibility:{scopeType}:{scopeId}} キャッシュを無効化</li>
-     * </ul>
-     *
-     * @param scopeType     スコープ種別
-     * @param scopeId       スコープID
-     * @param currentUserId 認証済みユーザーID
-     * @param updates       更新対象リスト
      */
     @Transactional
-    public void updateSettings(String scopeType, Long scopeId, Long currentUserId,
-                                List<WidgetVisibilityUpdate> updates) {
-        validateScopeArgs(scopeType, scopeId, currentUserId);
-        if (updates == null) {
-            throw new IllegalArgumentException("updates must not be null");
+    public WidgetVisibilityResponse updateSettings(Long currentUserId,
+                                                    ScopeType scopeType,
+                                                    Long scopeId,
+                                                    UpdateWidgetVisibilityRequest request) {
+        validateArgs(currentUserId, scopeType, scopeId);
+        if (request == null || request.getWidgets() == null) {
+            throw new BusinessException(CommonErrorCode.COMMON_001);
         }
 
         // 認可: スコープ所属＋更新権限
-        accessControlService.checkMembership(currentUserId, scopeId, scopeType);
-        checkUpdatePermission(currentUserId, scopeId, scopeType);
+        accessControlService.checkMembership(currentUserId, scopeId, scopeType.name());
+        checkUpdatePermission(currentUserId, scopeId, scopeType.name());
 
-        ScopeType scope = ScopeType.fromPathSegment(scopeType);
-        if (scope == ScopeType.PERSONAL) {
+        if (scopeType == ScopeType.PERSONAL) {
             throw new BusinessException(CommonErrorCode.COMMON_001);
         }
 
         // バリデーション + 差分処理 + audit log 用の変更リスト構築
         List<Map<String, Object>> changes = new ArrayList<>();
-        for (WidgetVisibilityUpdate update : updates) {
-            applyOneUpdate(scope, scopeId, currentUserId, update, changes);
+        for (UpdateWidgetVisibilityRequest.WidgetVisibilityUpdateItem update : request.getWidgets()) {
+            applyOneUpdate(scopeType, scopeId, currentUserId, update, changes);
         }
 
         // 監査ログ（fire-and-forget）
         if (!changes.isEmpty()) {
-            recordAuditLog(scope, scopeId, currentUserId, changes);
+            recordAuditLog(scopeType, scopeId, currentUserId, changes);
         }
 
         // キャッシュ無効化（同期的・障害時は WARN ログのみで続行）
-        evictVisibilityCache(scope, scopeId);
+        evictVisibilityCache(scopeType, scopeId);
+
+        // 更新後の最新状態を返却
+        return buildResponse(scopeType, scopeId);
+    }
+
+    // ─────────────────────────────────────────────
+    // レスポンス組み立て
+    // ─────────────────────────────────────────────
+
+    private WidgetVisibilityResponse buildResponse(ScopeType scopeType, Long scopeId) {
+        // 1. DB レコードを scopeType + scopeId でまとめて取得しキー別 Map に整理
+        List<DashboardWidgetRoleVisibilityEntity> entities =
+                repository.findByScopeTypeAndScopeId(scopeType, scopeId);
+        Map<String, DashboardWidgetRoleVisibilityEntity> dbMap = new HashMap<>();
+        Set<Long> updaterIds = new HashSet<>();
+        for (DashboardWidgetRoleVisibilityEntity e : entities) {
+            dbMap.put(e.getWidgetKey(), e);
+            if (e.getUpdatedBy() != null) {
+                updaterIds.add(e.getUpdatedBy());
+            }
+        }
+
+        // 2. 更新者の表示名を一括解決
+        Map<Long, String> displayNames = updaterIds.isEmpty()
+                ? Map.of()
+                : nameResolverService.resolveUserDisplayNames(updaterIds);
+
+        // 3. 管理対象ウィジェット全てについて Item を生成（DB 設定 or デフォルト）
+        Map<WidgetKey, MinRole> defaults = WidgetDefaultMinRoleMap.getDefaultsForScope(scopeType);
+        List<WidgetVisibilityItemDto> widgets = new ArrayList<>(defaults.size());
+        for (Map.Entry<WidgetKey, MinRole> entry : defaults.entrySet()) {
+            WidgetKey key = entry.getKey();
+            DashboardWidgetRoleVisibilityEntity dbEntity = dbMap.get(key.name());
+            if (dbEntity != null) {
+                UserSummaryDto updatedBy = UserSummaryDto.builder()
+                        .id(dbEntity.getUpdatedBy())
+                        .displayName(displayNames.getOrDefault(dbEntity.getUpdatedBy(), null))
+                        .build();
+                widgets.add(WidgetVisibilityItemDto.builder()
+                        .widgetKey(key.name())
+                        .minRole(dbEntity.getMinRole())
+                        .isDefault(false)
+                        .updatedBy(updatedBy)
+                        .updatedAt(dbEntity.getUpdatedAt() != null ? dbEntity.getUpdatedAt().toInstant(ZoneOffset.UTC) : null)
+                        .build());
+            } else {
+                widgets.add(WidgetVisibilityItemDto.builder()
+                        .widgetKey(key.name())
+                        .minRole(entry.getValue())
+                        .isDefault(true)
+                        .build());
+            }
+        }
+
+        return WidgetVisibilityResponse.builder()
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .widgets(widgets)
+                .build();
     }
 
     // ─────────────────────────────────────────────
@@ -188,17 +209,14 @@ public class DashboardWidgetVisibilityService {
      * 1件の更新リクエストを処理する。デフォルト一致なら DELETE / 不一致なら UPSERT。
      */
     private void applyOneUpdate(ScopeType scope, Long scopeId, Long currentUserId,
-                                 WidgetVisibilityUpdate update,
+                                 UpdateWidgetVisibilityRequest.WidgetVisibilityUpdateItem update,
                                  List<Map<String, Object>> changes) {
-        if (update == null) {
-            throw new BusinessException(CommonErrorCode.COMMON_001);
-        }
-        if (update.minRole() == null) {
+        if (update == null || update.getMinRole() == null) {
             throw new BusinessException(CommonErrorCode.COMMON_001);
         }
 
         // widget_key の妥当性検証
-        WidgetKey key = parseWidgetKey(update.widgetKey());
+        WidgetKey key = parseWidgetKey(update.getWidgetKey());
 
         // 管理対象外（ADMIN 限定など）は 400
         if (!WidgetDefaultMinRoleMap.isConfigurable(key)) {
@@ -215,7 +233,7 @@ public class DashboardWidgetVisibilityService {
         }
 
         MinRole defaultMinRole = WidgetDefaultMinRoleMap.getDefault(key);
-        MinRole newMinRole = update.minRole();
+        MinRole newMinRole = update.getMinRole();
 
         Optional<DashboardWidgetRoleVisibilityEntity> existing =
                 repository.findByScopeTypeAndScopeIdAndWidgetKey(scope, scopeId, key.name());
@@ -230,7 +248,6 @@ public class DashboardWidgetVisibilityService {
                 repository.deleteByScopeTypeAndScopeIdAndWidgetKey(scope, scopeId, key.name());
                 addChangeIfDifferent(changes, key, beforeMinRole, newMinRole);
             }
-            // 既存なし＆デフォルトと一致 → 何もしない（変更なし）
             return;
         }
 
@@ -242,7 +259,6 @@ public class DashboardWidgetVisibilityService {
                 repository.save(entity);
                 addChangeIfDifferent(changes, key, beforeMinRole, newMinRole);
             }
-            // 既存値と同じなら何もしない
         } else {
             DashboardWidgetRoleVisibilityEntity entity = DashboardWidgetRoleVisibilityEntity.builder()
                     .scopeType(scope)
@@ -277,15 +293,12 @@ public class DashboardWidgetVisibilityService {
      * {@link #PERMISSION_NAME} を保有していれば可、それ以外は 403。
      */
     private void checkUpdatePermission(Long userId, Long scopeId, String scopeType) {
-        // ADMIN は無条件で可
         if (accessControlService.isAdmin(userId, scopeId, scopeType)) {
             return;
         }
-        // SYSTEM_ADMIN もバイパス（運用上の安全側設計）
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
-        // DEPUTY_ADMIN 含むそれ以外は permission チェック必須
         accessControlService.checkPermission(userId, scopeId, scopeType, PERMISSION_NAME);
     }
 
@@ -293,15 +306,15 @@ public class DashboardWidgetVisibilityService {
     // バリデーションヘルパー
     // ─────────────────────────────────────────────
 
-    private static void validateScopeArgs(String scopeType, Long scopeId, Long currentUserId) {
-        if (scopeType == null || scopeType.isBlank()) {
-            throw new IllegalArgumentException("scopeType must not be blank");
+    private static void validateArgs(Long currentUserId, ScopeType scopeType, Long scopeId) {
+        if (currentUserId == null) {
+            throw new IllegalArgumentException("currentUserId must not be null");
+        }
+        if (scopeType == null) {
+            throw new IllegalArgumentException("scopeType must not be null");
         }
         if (scopeId == null) {
             throw new IllegalArgumentException("scopeId must not be null");
-        }
-        if (currentUserId == null) {
-            throw new IllegalArgumentException("currentUserId must not be null");
         }
     }
 
@@ -334,13 +347,11 @@ public class DashboardWidgetVisibilityService {
         try {
             metadataJson = objectMapper.writeValueAsString(metadataMap);
         } catch (JsonProcessingException ex) {
-            // 直列化失敗時はログのみ残し、監査記録は最低限の文字列で
             log.warn("DashboardWidgetVisibilityService: 監査ログ metadata の JSON 直列化失敗 "
                     + "(userId={})", currentUserId, ex);
             metadataJson = "{}";
         }
 
-        // AuditLogService.record は @Async で fire-and-forget（失敗しても本処理は続行）
         auditLogService.record(
                 AUDIT_EVENT_TYPE,
                 currentUserId,
@@ -368,7 +379,6 @@ public class DashboardWidgetVisibilityService {
             String key = scope.name() + ":" + scopeId;
             cache.evict(key);
         } catch (Exception ex) {
-            // Valkey 不通など → WARN だけ残し続行（5分後 TTL で自然解消）
             log.warn("DashboardWidgetVisibilityService: キャッシュ無効化失敗 "
                     + "(cache={}, scopeType={}, scopeId={})",
                     VISIBILITY_CACHE_NAME, scope, scopeId, ex);

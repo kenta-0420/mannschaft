@@ -19,6 +19,7 @@ import com.mannschaft.app.dashboard.dto.PersonalDashboardResponse;
 import com.mannschaft.app.dashboard.dto.ScopeCoverageResponse;
 import com.mannschaft.app.dashboard.dto.TeamDashboardResponse;
 import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
+import com.mannschaft.app.dashboard.dto.WidgetVisibilityRowDto;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
@@ -42,7 +43,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -374,7 +374,7 @@ public class DashboardService {
                 .teamPageViews(null)
                 .widgetSettings(widgetSettings)
                 .platformAnnouncements(announcementItems)
-                .viewerRole(viewerRole.name())
+                .viewerRole(viewerRole)
                 .widgetVisibility(buildVisibilityList(viewerRole, visibilityMap))
                 .build();
     }
@@ -450,7 +450,7 @@ public class DashboardService {
                 .orgBilling(isAdmin ? Map.of() : null)
                 .widgetSettings(widgetSettings)
                 .platformAnnouncements(announcementItems)
-                .viewerRole(viewerRole.name())
+                .viewerRole(viewerRole)
                 .widgetVisibility(buildVisibilityList(viewerRole, visibilityMap))
                 .build();
     }
@@ -592,19 +592,19 @@ public class DashboardService {
     /**
      * F02.2.1: レスポンス用の可視性配列を構築する。
      *
-     * <p>各要素は {@code widget_key / min_role / is_visible} を持つ。
+     * <p>各要素は {@link WidgetVisibilityRowDto} で {@code widget_key / min_role / is_visible} を持つ。
      * 管理者（ADMIN/DEPUTY_ADMIN/SYSTEM_ADMIN）の場合は全ウィジェットが {@code is_visible=true}。</p>
      */
-    private static List<Map<String, Object>> buildVisibilityList(ViewerRole viewerRole,
-                                                                  Map<WidgetKey, MinRole> visibilityMap) {
-        List<Map<String, Object>> result = new ArrayList<>(visibilityMap.size());
+    private static List<WidgetVisibilityRowDto> buildVisibilityList(ViewerRole viewerRole,
+                                                                    Map<WidgetKey, MinRole> visibilityMap) {
+        List<WidgetVisibilityRowDto> result = new ArrayList<>(visibilityMap.size());
         boolean adminBypass = viewerRole.isAdminOrAbove();
         for (Map.Entry<WidgetKey, MinRole> entry : visibilityMap.entrySet()) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("widget_key", entry.getKey().name());
-            item.put("min_role", entry.getValue().name());
-            item.put("is_visible", adminBypass || viewerRole.isAtLeast(entry.getValue()));
-            result.add(item);
+            result.add(WidgetVisibilityRowDto.builder()
+                    .widgetKey(entry.getKey().name())
+                    .minRole(entry.getValue())
+                    .isVisible(adminBypass || viewerRole.isAtLeast(entry.getValue()))
+                    .build());
         }
         return result;
     }

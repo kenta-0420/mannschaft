@@ -1,6 +1,8 @@
 package com.mannschaft.app.dashboard.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.mannschaft.app.dashboard.ViewerRole;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -27,8 +29,16 @@ public class OrgDashboardResponse {
     private final Map<String, Object> orgBilling;
     private final List<WidgetSettingResponse> widgetSettings;
     private final List<Map<String, Object>> platformAnnouncements;
-    /** F02.2.1: 本リクエスト閲覧者のロール */
-    private final String viewerRole;
-    /** F02.2.1: ウィジェット可視性配列。各要素は {@code widget_key / min_role / is_visible} を持つ */
-    private final List<Map<String, Object>> widgetVisibility;
+
+    // ========================================
+    // F02.2.1 追加フィールド
+    // ========================================
+
+    /** 閲覧者の本スコープでのロール（SYSTEM_ADMIN / ADMIN / DEPUTY_ADMIN / MEMBER / SUPPORTER / PUBLIC） */
+    @JsonProperty("viewer_role")
+    private final ViewerRole viewerRole;
+
+    /** ウィジェット可視性マップ（min_role 管理対象ウィジェットのみ含む。ADMIN 限定ウィジェットは除外） */
+    @JsonProperty("widget_visibility")
+    private final List<WidgetVisibilityRowDto> widgetVisibility;
 }
