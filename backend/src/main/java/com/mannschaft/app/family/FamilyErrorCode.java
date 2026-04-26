@@ -81,7 +81,33 @@ public enum FamilyErrorCode implements ErrorCode {
     FAMILY_023("FAMILY_023", "質問文は200文字以内で入力してください", Severity.WARN),
 
     /** 不正なロール名 */
-    FAMILY_024("FAMILY_024", "不正なロール名です", Severity.WARN);
+    FAMILY_024("FAMILY_024", "不正なロール名です", Severity.WARN),
+
+    // === ケアリンク関連（F03.12）===
+
+    /** ケアリンクが見つからない */
+    FAMILY_025("FAMILY_025", "ケアリンクが見つかりません", Severity.WARN),
+
+    /** 自己参照のケアリンクは作成できない */
+    FAMILY_026("FAMILY_026", "自己参照のケアリンクは作成できません", Severity.WARN),
+
+    /** ケアリンク上限超過 */
+    FAMILY_027("FAMILY_027", "ケアリンクは1人のケア対象につき最大5件まで登録できます", Severity.WARN),
+
+    /** 同一ペアの重複 */
+    FAMILY_028("FAMILY_028", "同一ペアのケアリンクは既に存在します", Severity.WARN),
+
+    /** 招待トークン無効または期限切れ */
+    FAMILY_029("FAMILY_029", "招待トークンが無効または期限切れです", Severity.WARN),
+
+    /** 操作権限なし */
+    FAMILY_030("FAMILY_030", "このケアリンクを操作する権限がありません", Severity.WARN),
+
+    /** 既にアクティブなケアリンク */
+    FAMILY_031("FAMILY_031", "既にアクティブなケアリンクです", Severity.WARN),
+
+    /** チーム通知設定が見つからない */
+    FAMILY_032("FAMILY_032", "チーム通知設定が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

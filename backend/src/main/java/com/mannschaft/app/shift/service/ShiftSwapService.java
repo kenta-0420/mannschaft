@@ -145,6 +145,91 @@ public class ShiftSwapService {
     }
 
     /**
+     * オープンコール交代リクエストを作成する（is_open_call=true で作成）。
+     *
+     * @param slotId   対象シフト枠ID
+     * @param reason   理由
+     * @param userId   依頼者ユーザーID
+     * @return 作成されたオープンコール交代リクエスト
+     */
+    @Transactional
+    public SwapRequestResponse createOpenCall(Long slotId, String reason, Long userId) {
+        ShiftSwapRequestEntity entity = ShiftSwapRequestEntity.builder()
+                .slotId(slotId)
+                .requesterId(userId)
+                .reason(reason)
+                .isOpenCall(true)
+                .status(SwapRequestStatus.OPEN_CALL)
+                .build();
+
+        entity = swapRepository.save(entity);
+        log.info("オープンコール作成: id={}, slotId={}, requesterId={}", entity.getId(), slotId, userId);
+        return shiftMapper.toSwapResponse(entity);
+    }
+
+    /**
+     * オープンコールに手を挙げる（先着1名、楽観ロック）。
+     *
+     * @param swapRequestId オープンコールの交代リクエストID
+     * @param userId        手挙げユーザーID
+     * @return 更新された交代リクエスト
+     */
+    @Transactional
+    public SwapRequestResponse claimOpenCall(Long swapRequestId, Long userId) {
+        ShiftSwapRequestEntity entity = findSwapOrThrow(swapRequestId);
+
+        if (!Boolean.TRUE.equals(entity.getIsOpenCall())) {
+            throw new BusinessException(ShiftErrorCode.NOT_OPEN_CALL);
+        }
+
+        if (entity.getStatus() != SwapRequestStatus.OPEN_CALL) {
+            throw new BusinessException(ShiftErrorCode.OPEN_CALL_ALREADY_CLAIMED);
+        }
+
+        if (entity.getRequesterId().equals(userId)) {
+            throw new BusinessException(ShiftErrorCode.SWAP_SELF_REQUEST);
+        }
+
+        entity.claim(userId);
+        entity = swapRepository.save(entity);
+
+        log.info("オープンコール手挙げ: id={}, claimedBy={}", swapRequestId, userId);
+        return shiftMapper.toSwapResponse(entity);
+    }
+
+    /**
+     * オープンコールの候補者を選定して承諾済みにする（申請者または ADMIN のみ）。
+     *
+     * @param swapRequestId オープンコールの交代リクエストID
+     * @param claimedBy     選定する手挙げユーザーID
+     * @param actorId       操作者ユーザーID
+     * @return 更新された交代リクエスト
+     */
+    @Transactional
+    public SwapRequestResponse selectClaimer(Long swapRequestId, Long claimedBy, Long actorId) {
+        ShiftSwapRequestEntity entity = findSwapOrThrow(swapRequestId);
+
+        if (!Boolean.TRUE.equals(entity.getIsOpenCall())) {
+            throw new BusinessException(ShiftErrorCode.NOT_OPEN_CALL);
+        }
+
+        if (entity.getStatus() != SwapRequestStatus.CLAIMED) {
+            throw new BusinessException(ShiftErrorCode.INVALID_SWAP_STATUS);
+        }
+
+        // 申請者本人または管理者のみ（権限チェックはコントローラーにも委ねるが二重防御）
+        if (!entity.getRequesterId().equals(actorId)) {
+            throw new BusinessException(ShiftErrorCode.CLAIMER_SELECT_DENIED);
+        }
+
+        entity.selectClaimer(claimedBy);
+        entity = swapRepository.save(entity);
+
+        log.info("オープンコール候補者選定: id={}, claimedBy={}, actorId={}", swapRequestId, claimedBy, actorId);
+        return shiftMapper.toSwapResponse(entity);
+    }
+
+    /**
      * 交代リクエストを取得する。存在しない場合は例外をスローする。
      */
     private ShiftSwapRequestEntity findSwapOrThrow(Long id) {

@@ -15,7 +15,12 @@ import { waitForHydration } from '../helpers/wait'
  * 認可判定はバックエンドが行う（ADMIN: 全件返却、MEMBER(ALL_MEMBERS): マスク後の未確認者のみ、
  * MEMBER(HIDDEN|CREATOR_AND_ADMIN): 403）。
  * ここでは API モックを通じてフロントエンドの表示・送信挙動・ストレージ復元を検証する。
+ *
+ * PR #136 で ConfirmableNotificationSender が /admin/reservation-settings ページに
+ * 配置されたため、UI フォーム操作方式で検証する。
  */
+
+test.use({ storageState: 'tests/e2e/.auth/admin.json' })
 
 type UnconfirmedVisibility = 'HIDDEN' | 'CREATOR_AND_ADMIN' | 'ALL_MEMBERS'
 
@@ -140,6 +145,47 @@ async function mockSettingsGet(page: Page, visibility: UnconfirmedVisibility): P
 test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13）', () => {
   test.beforeEach(async ({ page }) => {
     await mockReservationSettingsSideApis(page)
+    // History コンポーネントが自動ロードする通知一覧
+    await page.route('**/api/v1/teams/*/confirmable-notifications', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: [] }),
+        })
+        return
+      }
+      await route.continue()
+    })
+    await page.route('**/api/v1/organizations/*/confirmable-notifications', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: [] }),
+        })
+        return
+      }
+      await route.continue()
+    })
+    // Sender のテンプレート一覧
+    await page.route('**/api/v1/teams/*/confirmable-notification-templates', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [] }),
+      })
+    })
+    await page.route(
+      '**/api/v1/organizations/*/confirmable-notification-templates',
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: [] }),
+        })
+      },
+    )
   })
 
   /**
@@ -147,7 +193,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
    * CREATOR_AND_ADMIN 作成 → ADMIN は未確認者リスト閲覧可、MEMBER は 403
    *
    * 検証内容:
-   * 1) ADMIN が CREATOR_AND_ADMIN で通知を送信した際、リクエストボディに
+   * 1) Sender フォームで CREATOR_AND_ADMIN を選択して送信した際、リクエストボディに
    *    unconfirmedVisibility: 'CREATOR_AND_ADMIN' が含まれること
    * 2) ADMIN 視点で recipients を取得すると全件（confirmedAt 付き）取得できること
    * 3) MEMBER 視点で recipients を取得すると 403 が返ること
@@ -157,6 +203,8 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
   }) => {
     const captured: CapturedSendRequest = {}
     const notificationId = 101
+
+    await mockSettingsGet(page, 'CREATOR_AND_ADMIN')
 
     // 送信 API: POST をキャプチャ
     await page.route('**/api/v1/teams/*/confirmable-notifications', async (route) => {
@@ -177,27 +225,35 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
       await route.continue()
     })
 
-    // 送信リクエストを直接発行して visibility 指定の到達を確認する
-    // （Sender コンポーネントは 2026-04 時点で画面配置されていないため、API レベルで検証）
-    await page.goto('/')
+    await page.goto('/admin/reservation-settings')
     await waitForHydration(page)
 
-    const sendRes = await page.evaluate(async () => {
-      const res = await fetch('/api/v1/teams/1/confirmable-notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: '臨時休業のお知らせ',
-          priority: 'HIGH',
-          recipientUserIds: [10, 11],
-          unconfirmedVisibility: 'CREATOR_AND_ADMIN',
-        }),
-      })
-      return { status: res.status, ok: res.ok }
+    // 「確認通知を送信」セクション見出しを確認
+    await expect(page.getByRole('heading', { name: '確認通知を送信' })).toBeVisible({
+      timeout: 10_000,
     })
 
-    expect(sendRes.status).toBe(201)
-    expect(captured.unconfirmedVisibility).toBe('CREATOR_AND_ADMIN')
+    // タイトルを入力
+    await page.getByLabel(/タイトル/).fill('臨時休業のお知らせ')
+
+    // 受信者 UserID を入力
+    await page.getByPlaceholder('例: 1, 2, 3').fill('10, 11')
+
+    // 「詳細設定」ボタンをクリックして展開
+    await page.getByRole('button', { name: /詳細設定/ }).click()
+
+    // 公開範囲セレクトで「作成者・管理者のみ」を選択
+    await page.getByLabel('未確認者リストの公開範囲').click()
+    await page.getByRole('option', { name: '作成者・管理者のみ' }).click()
+
+    // 送信ボタンをクリック
+    await page.getByRole('button', { name: /送信/ }).click()
+
+    // POST キャプチャを検証
+    await expect.poll(() => captured.unconfirmedVisibility, { timeout: 5_000 }).toBe(
+      'CREATOR_AND_ADMIN',
+    )
+    expect(captured.title).toBe('臨時休業のお知らせ')
     expect(captured.recipientUserIds).toEqual([10, 11])
 
     // ADMIN 視点 — 全件（確認日時・リマインド付き）取得可能
@@ -216,7 +272,11 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
       const body = (await res.json()) as {
         data: Array<{ isConfirmed: boolean; confirmedAt: string | null }>
       }
-      return { status: res.status, count: body.data.length, hasConfirmedAt: body.data.some(r => r.confirmedAt !== null) }
+      return {
+        status: res.status,
+        count: body.data.length,
+        hasConfirmedAt: body.data.some(r => r.confirmedAt !== null),
+      }
     }, notificationId)
     expect(adminRes.status).toBe(200)
     expect(adminRes.count).toBe(2)
@@ -255,7 +315,8 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
    * MEMBER は未確認者のみ（confirmedAt 等は null にマスク済）
    *
    * 検証内容:
-   * 1) 送信時に unconfirmedVisibility: 'ALL_MEMBERS' が到達すること
+   * 1) Sender フォームで ALL_MEMBERS を選択して送信時に
+   *    unconfirmedVisibility: 'ALL_MEMBERS' が到達すること
    * 2) ADMIN 視点で全件取得できること（confirmed/unconfirmed 両方、confirmedAt 有り）
    * 3) MEMBER 視点で未確認者のみ取得でき、confirmedAt/confirmedVia 等が null であること
    */
@@ -264,6 +325,8 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
   }) => {
     const captured: CapturedSendRequest = {}
     const notificationId = 102
+
+    await mockSettingsGet(page, 'ALL_MEMBERS')
 
     await page.route('**/api/v1/teams/*/confirmable-notifications', async (route) => {
       if (route.request().method() === 'POST') {
@@ -281,24 +344,32 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
       await route.continue()
     })
 
-    await page.goto('/')
+    await page.goto('/admin/reservation-settings')
     await waitForHydration(page)
 
-    const sendRes = await page.evaluate(async () => {
-      const res = await fetch('/api/v1/teams/1/confirmable-notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: '重要連絡',
-          priority: 'URGENT',
-          recipientUserIds: [10, 11],
-          unconfirmedVisibility: 'ALL_MEMBERS',
-        }),
-      })
-      return { status: res.status }
+    // 「確認通知を送信」セクション見出しを確認
+    await expect(page.getByRole('heading', { name: '確認通知を送信' })).toBeVisible({
+      timeout: 10_000,
     })
-    expect(sendRes.status).toBe(201)
-    expect(captured.unconfirmedVisibility).toBe('ALL_MEMBERS')
+
+    // タイトルを入力
+    await page.getByLabel(/タイトル/).fill('重要連絡')
+
+    // 受信者 UserID を入力
+    await page.getByPlaceholder('例: 1, 2, 3').fill('10, 11')
+
+    // 「詳細設定」ボタンをクリックして展開
+    await page.getByRole('button', { name: /詳細設定/ }).click()
+
+    // 公開範囲セレクトで「全員に公開」を選択
+    await page.getByLabel('未確認者リストの公開範囲').click()
+    await page.getByRole('option', { name: '全員に公開' }).click()
+
+    // 送信ボタンをクリック
+    await page.getByRole('button', { name: /送信/ }).click()
+
+    // POST キャプチャを検証
+    await expect.poll(() => captured.unconfirmedVisibility, { timeout: 5_000 }).toBe('ALL_MEMBERS')
 
     // ADMIN 視点 — 全件取得（confirmed 済みユーザー含む）
     await page.route(
@@ -377,13 +448,16 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
    * HIDDEN 作成 → ADMIN は閲覧可、MEMBER は 403
    *
    * 検証内容:
-   * 1) 送信時に unconfirmedVisibility: 'HIDDEN' が到達すること
+   * 1) Sender フォームで HIDDEN を選択して送信時に
+   *    unconfirmedVisibility: 'HIDDEN' が到達すること
    * 2) ADMIN 視点で受信者一覧が取得できること
    * 3) MEMBER 視点で 403 が返ること
    */
   test('VISIBILITY-003: HIDDEN 作成 — ADMIN 閲覧可 / MEMBER 閲覧不可(403)', async ({ page }) => {
     const captured: CapturedSendRequest = {}
     const notificationId = 103
+
+    await mockSettingsGet(page, 'HIDDEN')
 
     await page.route('**/api/v1/teams/*/confirmable-notifications', async (route) => {
       if (route.request().method() === 'POST') {
@@ -401,24 +475,32 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
       await route.continue()
     })
 
-    await page.goto('/')
+    await page.goto('/admin/reservation-settings')
     await waitForHydration(page)
 
-    const sendRes = await page.evaluate(async () => {
-      const res = await fetch('/api/v1/teams/1/confirmable-notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: '機密連絡',
-          priority: 'NORMAL',
-          recipientUserIds: [10, 11],
-          unconfirmedVisibility: 'HIDDEN',
-        }),
-      })
-      return { status: res.status }
+    // 「確認通知を送信」セクション見出しを確認
+    await expect(page.getByRole('heading', { name: '確認通知を送信' })).toBeVisible({
+      timeout: 10_000,
     })
-    expect(sendRes.status).toBe(201)
-    expect(captured.unconfirmedVisibility).toBe('HIDDEN')
+
+    // タイトルを入力
+    await page.getByLabel(/タイトル/).fill('機密連絡')
+
+    // 受信者 UserID を入力
+    await page.getByPlaceholder('例: 1, 2, 3').fill('10, 11')
+
+    // 「詳細設定」ボタンをクリックして展開
+    await page.getByRole('button', { name: /詳細設定/ }).click()
+
+    // 公開範囲セレクトで「表示しない」を選択
+    await page.getByLabel('未確認者リストの公開範囲').click()
+    await page.getByRole('option', { name: '表示しない' }).click()
+
+    // 送信ボタンをクリック
+    await page.getByRole('button', { name: /送信/ }).click()
+
+    // POST キャプチャを検証
+    await expect.poll(() => captured.unconfirmedVisibility, { timeout: 5_000 }).toBe('HIDDEN')
 
     // ADMIN 視点 — 作成者/管理者は HIDDEN でも閲覧可
     await page.route(
@@ -473,40 +555,33 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
    * 送信成功時に `confirmable.lastUnconfirmedVisibility` を localStorage に書き込み、
    * 次回 onMounted 時に復元する実装となっている（DEFAULT は CREATOR_AND_ADMIN）。
    *
-   * このテストでは reservation-settings ページを経由して
-   * 1) 設定 API が defaultUnconfirmedVisibility を返すこと
-   * 2) 事前に localStorage にセットした値を onMounted 復元ロジックが読めること
-   * を検証する。
+   * このテストでは:
+   * 1) localStorage に ALL_MEMBERS をセットしてページをリロード
+   * 2) onMounted の復元ロジックが走り、公開範囲セレクトが「全員に公開」で初期化されることを
+   *    「詳細設定」を展開して UI で確認する
    */
-  test('VISIBILITY-004: Sender の localStorage 前回値が復元される', async ({ page }) => {
+  test('VISIBILITY-004: Sender の localStorage 前回値がフォームに復元される', async ({
+    page,
+  }) => {
     await mockSettingsGet(page, 'CREATOR_AND_ADMIN')
 
+    // 1) localStorage に前回値をセット
     await page.goto('/admin/reservation-settings')
     await waitForHydration(page)
-
-    // 1) 予約管理設定ページから確認通知設定の見出しが表示され、API 連携が成立していること
-    await expect(page.getByRole('heading', { name: '確認通知設定' })).toBeVisible({
-      timeout: 10_000,
-    })
-
-    // 2) localStorage に前回値（ALL_MEMBERS）をセット → 再読み込みしても保持される
     await page.evaluate(() => {
       window.localStorage.setItem('confirmable.lastUnconfirmedVisibility', 'ALL_MEMBERS')
     })
-    const stored = await page.evaluate(() =>
-      window.localStorage.getItem('confirmable.lastUnconfirmedVisibility'),
-    )
-    expect(stored).toBe('ALL_MEMBERS')
 
-    // 3) 無効値（不正文字列）がセットされてもランタイムで弾かれる想定
-    //    Sender 側の isValidVisibility ガードが実装されているため、不正値は無視される。
-    //    E2E 層では読み取り API の健全性のみ確認する
-    await page.evaluate(() => {
-      window.localStorage.setItem('confirmable.lastUnconfirmedVisibility', 'INVALID_VALUE')
-    })
-    const stored2 = await page.evaluate(() =>
-      window.localStorage.getItem('confirmable.lastUnconfirmedVisibility'),
-    )
-    expect(stored2).toBe('INVALID_VALUE')
+    // 2) ページをリロードして onMounted の復元ロジックを走らせる
+    await page.reload()
+    await waitForHydration(page)
+
+    // 3) 「詳細設定」を展開
+    await page.getByRole('button', { name: /詳細設定/ }).click()
+
+    // 4) 公開範囲セレクトの表示値が「全員に公開」に復元されていることを確認
+    await expect(
+      page.getByLabel('未確認者リストの公開範囲'),
+    ).toContainText('全員に公開', { timeout: 5_000 })
   })
 })

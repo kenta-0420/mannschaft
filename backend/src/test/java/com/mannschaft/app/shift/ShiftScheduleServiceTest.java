@@ -6,6 +6,7 @@ import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftScheduleRequest;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.shift.service.ShiftAutoAssignService;
 import com.mannschaft.app.shift.service.ShiftScheduleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -39,6 +40,9 @@ class ShiftScheduleServiceTest {
 
     @Mock
     private ShiftMapper shiftMapper;
+
+    @Mock
+    private ShiftAutoAssignService autoAssignService;
 
     @InjectMocks
     private ShiftScheduleService shiftScheduleService;

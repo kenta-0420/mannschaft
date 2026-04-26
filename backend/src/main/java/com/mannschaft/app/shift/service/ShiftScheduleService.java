@@ -12,6 +12,7 @@ import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,10 @@ public class ShiftScheduleService {
 
     private final ShiftScheduleRepository scheduleRepository;
     private final ShiftMapper shiftMapper;
+
+    /** 循環依存を避けるため @Lazy で注入する */
+    @Lazy
+    private final ShiftAutoAssignService autoAssignService;
 
     /**
      * チームのシフトスケジュール一覧を取得する。
@@ -155,7 +160,11 @@ public class ShiftScheduleService {
         switch (targetStatus) {
             case COLLECTING -> entity.startCollecting();
             case ADJUSTING -> entity.startAdjusting();
-            case PUBLISHED -> entity.publish(userId);
+            case PUBLISHED -> {
+                // 未確認の SUCCEEDED 割当実行ログがある場合は目視確認ゲートをかける
+                autoAssignService.assertNoUnreviewedRuns(id);
+                entity.publish(userId);
+            }
             case ARCHIVED -> entity.archive();
             default -> throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
         }

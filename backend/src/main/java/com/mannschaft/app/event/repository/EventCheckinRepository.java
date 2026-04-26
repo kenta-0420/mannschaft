@@ -4,6 +4,8 @@ import com.mannschaft.app.event.entity.EventCheckinEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * イベントチェックインリポジトリ。
@@ -24,4 +26,24 @@ public interface EventCheckinRepository extends JpaRepository<EventCheckinEntity
      * イベントのチェックイン数を取得する。
      */
     long countByEventId(Long eventId);
+
+    /**
+     * イベントIDとユーザーIDでチェックインが存在するか確認する。
+     *
+     * <p>event_checkins → event_tickets → event_registrations の結合で userId を照合する。
+     * F03.12 Phase4 バッチが未チェックイン判定に使用する。</p>
+     *
+     * @param eventId イベントID
+     * @param userId  ユーザーID
+     * @return チェックイン済みの場合 true
+     */
+    @Query("""
+            SELECT COUNT(c) > 0
+            FROM EventCheckinEntity c
+            JOIN EventTicketEntity t ON t.id = c.ticketId
+            JOIN EventRegistrationEntity r ON r.id = t.registrationId
+            WHERE c.eventId = :eventId
+              AND r.userId = :userId
+            """)
+    boolean existsByEventIdAndUserId(@Param("eventId") Long eventId, @Param("userId") Long userId);
 }

@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -49,6 +50,26 @@ public class ShiftSwapRequestEntity extends BaseEntity {
 
     private LocalDateTime resolvedAt;
 
+    /** オープンコール（不特定多数募集）フラグ */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isOpenCall = false;
+
+    /** 指定交代相手ユーザーID（is_open_call=false の場合） */
+    private Long targetUserId;
+
+    /** 手挙げユーザーID（先着1名） */
+    private Long claimedBy;
+
+    /** 手挙げ日時 */
+    private LocalDateTime claimedAt;
+
+    /** 楽観ロック用バージョン */
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
     /**
      * 相手が承諾する。
      *
@@ -90,5 +111,27 @@ public class ShiftSwapRequestEntity extends BaseEntity {
      */
     public void cancel() {
         this.status = SwapRequestStatus.CANCELLED;
+    }
+
+    /**
+     * 手挙げする（先着1名）。楽観ロックで競合を防ぐ。
+     *
+     * @param userId 手挙げユーザーID
+     */
+    public void claim(Long userId) {
+        this.claimedBy = userId;
+        this.claimedAt = LocalDateTime.now();
+        this.status = SwapRequestStatus.CLAIMED;
+    }
+
+    /**
+     * 候補者を選定して承諾済みにする。
+     *
+     * @param claimedBy 選定された手挙げユーザーID
+     */
+    public void selectClaimer(Long claimedBy) {
+        this.claimedBy = claimedBy;
+        this.accepterId = claimedBy;
+        this.status = SwapRequestStatus.ACCEPTED;
     }
 }

@@ -586,5 +586,14 @@
     },
     "unresponded_count": "未回答: {count}名",
     "unresponded_list": "未回答者一覧"
+  },
+  "organization": {
+    "parent_chain": "상위 조직",
+    "children": "하위 조직",
+    "children_tab": "하위 조직",
+    "no_children": "하위 조직이 없습니다",
+    "hidden_org": "비공개 조직",
+    "archived": "보관됨",
+    "load_more": "더 불러오기"
   }
 }

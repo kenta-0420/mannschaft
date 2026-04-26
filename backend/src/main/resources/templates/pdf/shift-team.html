@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+    <style>
+        table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+        th, td { border: 1px solid #ccc; padding: 4px 6px; }
+        th { background-color: #f0f0f0; font-weight: bold; }
+        .slot-date { font-weight: bold; background-color: #e8f0fe; }
+    </style>
+</head>
+<body>
+    <div class="pdf-header">
+        <h1 th:text="${schedule.title} + ' — チーム全体シフト表'">シフト表</h1>
+        <p th:text="'対象期間: ' + ${schedule.periodStart} + ' 〜 ' + ${schedule.periodEnd}">期間</p>
+    </div>
+
+    <div class="pdf-body">
+        <table>
+            <thead>
+                <tr>
+                    <th>日付</th>
+                    <th>開始</th>
+                    <th>終了</th>
+                    <th>役割</th>
+                    <th>必要人数</th>
+                    <th>割当メンバー</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="slot : ${slots}">
+                    <td class="slot-date" th:text="${slot.slotDate}">日付</td>
+                    <td th:text="${slot.startTime}">開始</td>
+                    <td th:text="${slot.endTime}">終了</td>
+                    <td th:text="${slot.positionName}">役割</td>
+                    <td style="text-align: center;" th:text="${slot.requiredCount}">1</td>
+                    <td th:text="${#strings.listJoin(slot.assignedUserIds, ', ')}">メンバー</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pdf-footer">
+        <span th:text="'出力日: ' + ${#temporals.format(#temporals.createNow(), 'yyyy年MM月dd日 HH:mm')}">出力日</span>
+    </div>
+</body>
+</html>

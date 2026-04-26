@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import type { OrgDetail } from '~/composables/useOrgDetail'
+import type { AncestorOrganization } from '~/types/organization'
 
-defineProps<{
+const props = defineProps<{
   org: OrgDetail
   isAdmin: boolean
+  ancestors?: AncestorOrganization[]
 }>()
 
+const { t } = useI18n()
 const { visibilityLabel } = useScopeLabels()
+
+const ancestorList = computed<AncestorOrganization[]>(() => props.ancestors ?? [])
 </script>
 
 <template>
@@ -38,6 +43,32 @@ const { visibilityLabel } = useScopeLabels()
       </div>
     </div>
     <div class="space-y-4">
+      <div v-if="ancestorList.length > 0">
+        <label class="text-sm font-medium text-gray-500">{{ t('organization.parent_chain') }}</label>
+        <ul class="mt-1 space-y-1" data-testid="org-info-parent-chain">
+          <li
+            v-for="ancestor in ancestorList"
+            :key="ancestor.id"
+            class="flex items-center gap-2"
+          >
+            <i class="pi pi-chevron-right text-xs text-surface-400" aria-hidden="true" />
+            <span
+              v-if="ancestor.hidden"
+              class="inline-flex items-center gap-1 rounded bg-surface-200 px-2 py-0.5 text-xs text-surface-500 dark:bg-surface-700 dark:text-surface-400"
+            >
+              <i class="pi pi-lock text-xs" />
+              {{ t('organization.hidden_org') }}
+            </span>
+            <NuxtLink
+              v-else
+              :to="`/organizations/${ancestor.id}`"
+              class="hover:text-primary hover:underline"
+            >
+              {{ ancestor.nickname1 || ancestor.name }}
+            </NuxtLink>
+          </li>
+        </ul>
+      </div>
       <div>
         <label class="text-sm font-medium text-gray-500">所在地</label>
         <p class="mt-1">

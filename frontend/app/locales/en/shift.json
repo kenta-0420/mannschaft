@@ -1,5 +1,84 @@
 {
   "shift": {
+    "board": {
+      "title": "Shift Board",
+      "memberPool": "Unassigned Members",
+      "dragHint": "Drag members to assign",
+      "unassignedSlots": "{count} unassigned slots"
+    },
+    "autoAssign": {
+      "button": "Auto Assign",
+      "strategy": "Assignment Strategy",
+      "greedyV1": "Greedy (MVP)",
+      "preferenceWeight": "Preference Priority",
+      "fairnessWeight": "Fairness",
+      "consecutivePenalty": "Consecutive Penalty",
+      "run": "Run Assignment",
+      "running": "Assigning...",
+      "resultBanner": "Auto assignment complete. Please review and confirm.",
+      "confirm": "Confirm",
+      "revoke": "Discard",
+      "history": "Run History",
+      "slotsFilled": "{filled}/{total} slots filled",
+      "warnings": "{count} warnings"
+    },
+    "visualReview": {
+      "title": "Visual Review",
+      "check1": "All slots have an assigned member",
+      "check2": "No members on absolute rest days are assigned",
+      "check3": "No consecutive days constraint violations",
+      "check4": "Monthly working hours limit not exceeded",
+      "check5": "Member preferences considered as much as possible",
+      "note": "Review note (optional)",
+      "submit": "Complete Visual Review"
+    },
+    "constraint": {
+      "warning": "Work constraint warning",
+      "consecutiveDaysExceeded": "Risk of exceeding consecutive days limit",
+      "absoluteRest": "Assigned on absolute rest day"
+    },
+    "changeRequest": {
+      "title": "Change Request",
+      "type": {
+        "PRE_CONFIRM_EDIT": "Pre-confirm Edit",
+        "INDIVIDUAL_SWAP": "Individual Swap",
+        "OPEN_CALL": "Open Call"
+      },
+      "status": {
+        "OPEN": "Open",
+        "ACCEPTED": "Accepted",
+        "REJECTED": "Rejected",
+        "WITHDRAWN": "Withdrawn",
+        "EXPIRED": "Expired"
+      },
+      "reason": "Reason (optional)",
+      "submit": "Request Change",
+      "review": "Review",
+      "withdraw": "Withdraw",
+      "approve": "Approve",
+      "reject": "Reject",
+      "reviewComment": "Review Comment",
+      "openCallLimit": "Open calls are limited to 3 per month",
+      "fetchError": "Failed to fetch change requests"
+    },
+    },
+    "openCall": {
+      "badge": "Seeking substitute member",
+      "claim": "I'll cover this shift",
+      "claimed": "Already claimed",
+      "full": "Claim closed"
+    },
+    "pdf": {
+      "teamLayout": "Team Schedule PDF",
+      "personalLayout": "Personal Timeline PDF",
+      "downloading": "Generating PDF...",
+      "error": "Failed to generate PDF"
+    },
+    "myShifts": {
+      "title": "My Shifts",
+      "empty": "No shifts found",
+      "fetchError": "Failed to fetch shift information"
+    },
     "page": {
       "title": "Shift",
       "myShift": "My Shift",

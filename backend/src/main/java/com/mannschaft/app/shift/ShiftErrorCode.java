@@ -63,7 +63,34 @@ public enum ShiftErrorCode implements ErrorCode {
     WORK_CONSTRAINT_ALL_NULL("SHIFT_021", "少なくとも1つの勤務制約項目を指定してください", Severity.WARN),
 
     /** 勤務制約の管理権限なし（v2 新規） */
-    WORK_CONSTRAINT_FORBIDDEN("SHIFT_022", "勤務制約を管理する権限がありません", Severity.WARN);
+    WORK_CONSTRAINT_FORBIDDEN("SHIFT_022", "勤務制約を管理する権限がありません", Severity.WARN),
+
+    /** 自動割当実行ログが見つからない */
+    ASSIGNMENT_RUN_NOT_FOUND("SHIFT_024", "自動割当実行ログが見つかりません", Severity.WARN),
+
+    /** 目視確認が完了していない（公開ゲート） */
+    VISUAL_REVIEW_REQUIRED("SHIFT_025", "目視確認が完了していない割当提案があります。確認後に公開してください", Severity.WARN),
+
+    /** 自動割当実行ログのステータスが不正 */
+    INVALID_ASSIGNMENT_RUN_STATUS("SHIFT_026", "この操作は現在の実行ステータスでは実行できません", Severity.WARN),
+
+    /** 変更依頼が見つからない */
+    CHANGE_REQUEST_NOT_FOUND("SHIFT_030", "シフト変更依頼が見つかりません", Severity.WARN),
+
+    /** 変更依頼のステータスが不正 */
+    INVALID_CHANGE_REQUEST_STATUS("SHIFT_031", "この操作は現在の変更依頼ステータスでは実行できません", Severity.WARN),
+
+    /** オープンコールの月次上限超過 */
+    OPEN_CALL_MONTHLY_LIMIT_EXCEEDED("SHIFT_032", "オープンコールは月3件までしか申請できません", Severity.WARN),
+
+    /** 交代リクエストがオープンコールではない */
+    NOT_OPEN_CALL("SHIFT_033", "この交代リクエストはオープンコールではありません", Severity.WARN),
+
+    /** 既に手挙げ済みのオープンコール */
+    OPEN_CALL_ALREADY_CLAIMED("SHIFT_034", "このオープンコールは既に手挙げされています", Severity.WARN),
+
+    /** 候補者の選定権限なし */
+    CLAIMER_SELECT_DENIED("SHIFT_035", "候補者選定はオープンコール申請者または管理者のみ実行できます", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -1,5 +1,83 @@
 {
   "shift": {
+    "board": {
+      "title": "排班板",
+      "memberPool": "未分配成员",
+      "dragHint": "拖动成员进行分配",
+      "unassignedSlots": "{count}个未分配班次"
+    },
+    "autoAssign": {
+      "button": "自动分配",
+      "strategy": "分配策略",
+      "greedyV1": "贪婪算法 (MVP)",
+      "preferenceWeight": "偏好优先度",
+      "fairnessWeight": "公平性",
+      "consecutivePenalty": "连续抑制",
+      "run": "执行分配",
+      "running": "分配中...",
+      "resultBanner": "自动分配完成。请目视确认后再确定。",
+      "confirm": "确定",
+      "revoke": "放弃",
+      "history": "执行历史",
+      "slotsFilled": "{filled}/{total}个班次已填充",
+      "warnings": "{count}个警告"
+    },
+    "visualReview": {
+      "title": "目视确认",
+      "check1": "所有班次均已分配负责人",
+      "check2": "休假成员未被分配班次",
+      "check3": "未违反连续工作天数限制",
+      "check4": "未超过月度工作时间上限",
+      "check5": "尽可能考虑了成员的意愿",
+      "note": "确认备注（可选）",
+      "submit": "完成目视确认"
+    },
+    "constraint": {
+      "warning": "请注意工作限制",
+      "consecutiveDaysExceeded": "可能超过连续工作天数限制",
+      "absoluteRest": "已分配到休假日"
+    },
+    "changeRequest": {
+      "title": "变更申请",
+      "type": {
+        "PRE_CONFIRM_EDIT": "确定前变更",
+        "INDIVIDUAL_SWAP": "个人替换",
+        "OPEN_CALL": "公开招募"
+      },
+      "status": {
+        "OPEN": "申请中",
+        "ACCEPTED": "已批准",
+        "REJECTED": "已拒绝",
+        "WITHDRAWN": "已撤回",
+        "EXPIRED": "已过期"
+      },
+      "reason": "理由（可选）",
+      "submit": "申请变更",
+      "review": "审核",
+      "withdraw": "撤回",
+      "approve": "批准",
+      "reject": "拒绝",
+      "reviewComment": "审核评论",
+      "openCallLimit": "公开招募每月最多3次",
+      "fetchError": "获取变更申请失败"
+    },
+    "openCall": {
+      "badge": "招募替补成员",
+      "claim": "我来顶替",
+      "claimed": "已申请",
+      "full": "招募结束"
+    },
+    "pdf": {
+      "teamLayout": "团队排班表 PDF",
+      "personalLayout": "个人时间表 PDF",
+      "downloading": "正在生成 PDF...",
+      "error": "PDF 生成失败"
+    },
+    "myShifts": {
+      "title": "我的班次",
+      "empty": "没有班次",
+      "fetchError": "获取班次信息失败"
+    },
     "page": {
       "title": "班次",
       "myShift": "我的班次",

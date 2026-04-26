@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,4 +43,29 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
      */
     @Query(value = "SELECT COUNT(*) FROM organizations WHERE id = :id", nativeQuery = true)
     long countByIdIncludingDeleted(@Param("id") Long id);
+
+    // ========================================
+    // F01.2 階層表示API用
+    // ========================================
+
+    /**
+     * 親組織IDのみを軽量に取得する（祖先チェーン構築用）。
+     *
+     * <p>{@code SQLRestriction("deleted_at IS NULL")} により論理削除済み組織はヒットしない。</p>
+     *
+     * @param id 対象組織ID
+     * @return 親組織ID。トップレベル組織や対象不在の場合は空。
+     */
+    @Query("SELECT o.parentOrganizationId FROM OrganizationEntity o WHERE o.id = :id")
+    Optional<Long> findParentOrganizationIdById(@Param("id") Long id);
+
+    /**
+     * 直近の子組織を取得する（{@code parent_organization_id = :parentId} かつ未削除）。
+     */
+    List<OrganizationEntity> findByParentOrganizationIdAndDeletedAtIsNull(Long parentId, Pageable pageable);
+
+    /**
+     * 複数IDを一括取得（祖先チェーンを1回の SQL でまとめて取得する用途）。
+     */
+    List<OrganizationEntity> findByIdInAndDeletedAtIsNull(Collection<Long> ids);
 }

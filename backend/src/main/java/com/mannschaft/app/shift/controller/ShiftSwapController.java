@@ -95,4 +95,31 @@ public class ShiftSwapController {
         swapService.cancelSwapRequest(swapId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * オープンコールに手を挙げる（先着1名）。
+     */
+    @PostMapping("/{swapId}/claim")
+    @Operation(summary = "オープンコール手挙げ")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "手挙げ成功")
+    public ResponseEntity<ApiResponse<com.mannschaft.app.shift.dto.SwapRequestResponse>> claimOpenCall(
+            @PathVariable Long swapId) {
+        com.mannschaft.app.shift.dto.SwapRequestResponse response =
+                swapService.claimOpenCall(swapId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * オープンコールの候補者を選定する（申請者のみ）。
+     */
+    @PostMapping("/{swapId}/select-claimer")
+    @Operation(summary = "オープンコール候補者選定")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "選定成功")
+    public ResponseEntity<ApiResponse<com.mannschaft.app.shift.dto.SwapRequestResponse>> selectClaimer(
+            @PathVariable Long swapId,
+            @RequestBody Long claimedBy) {
+        com.mannschaft.app.shift.dto.SwapRequestResponse response =
+                swapService.selectClaimer(swapId, claimedBy, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
 }

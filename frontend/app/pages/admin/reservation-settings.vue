@@ -92,6 +92,11 @@ async function remove(item: ReservationLine) {
 
 watch(scopeId, (v) => { if (v) load() })
 onMounted(() => { if (scopeId.value) load() })
+
+const historyRef = ref<{ refresh: () => void } | null>(null)
+function onNotificationSent() {
+  historyRef.value?.refresh()
+}
 </script>
 
 <template>
@@ -135,6 +140,26 @@ onMounted(() => { if (scopeId.value) load() })
     <section class="mt-8">
       <h2 class="text-lg font-semibold mb-4">{{ $t('confirmable.settings') }}</h2>
       <ConfirmableNotificationSettings
+        :scope-type="scopeType"
+        :scope-id="scopeId"
+      />
+    </section>
+
+    <!-- 確認通知送信セクション -->
+    <section class="mt-8">
+      <h2 class="text-lg font-semibold mb-4">{{ $t('confirmable.send') }}</h2>
+      <ConfirmableNotificationSender
+        :scope-type="scopeType"
+        :scope-id="scopeId"
+        @sent="onNotificationSent"
+      />
+    </section>
+
+    <!-- 発信履歴セクション -->
+    <section class="mt-8">
+      <h2 class="text-lg font-semibold mb-4">{{ $t('confirmable.history') }}</h2>
+      <ConfirmableNotificationHistory
+        ref="historyRef"
         :scope-type="scopeType"
         :scope-id="scopeId"
       />

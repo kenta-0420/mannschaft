@@ -28,8 +28,8 @@ async function load() {
   schedules.value = []
   try {
     const now = new Date()
-    const from = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10)
-    const to = new Date(now.getTime() + 30 * 86400000).toISOString().slice(0, 10)
+    const from = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 19)
+    const to = new Date(now.getTime() + 30 * 86400000).toISOString().slice(0, 19)
     const res = await listSchedules(props.scopeType, props.scopeId, { from, to, size: 10 })
     schedules.value = (res.data as ScheduleResponse[]).filter((s) => s.attendanceStats !== null)
   } catch (err) {

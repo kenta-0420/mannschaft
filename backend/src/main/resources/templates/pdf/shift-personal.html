@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+    <style>
+        table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+        th, td { border: 1px solid #ccc; padding: 4px 6px; }
+        th { background-color: #f0f0f0; font-weight: bold; }
+        .slot-date { font-weight: bold; background-color: #e8f0fe; }
+        .total-row { background-color: #f8f8f8; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="pdf-header">
+        <h1 th:text="${schedule.title} + ' — 個人タイムライン'">個人タイムライン</h1>
+        <p th:text="'対象期間: ' + ${schedule.periodStart} + ' 〜 ' + ${schedule.periodEnd}">期間</p>
+    </div>
+
+    <div class="pdf-body">
+        <table>
+            <thead>
+                <tr>
+                    <th>日付</th>
+                    <th>開始</th>
+                    <th>終了</th>
+                    <th>役割</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="slot : ${slots}">
+                    <td class="slot-date" th:text="${slot.slotDate}">日付</td>
+                    <td th:text="${slot.startTime}">開始</td>
+                    <td th:text="${slot.endTime}">終了</td>
+                    <td th:text="${slot.positionName}">役割</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(slots)}">
+                    <td colspan="4" style="text-align: center; color: #999;">割り当てられたシフトはありません</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p class="total-row" style="margin-top: 12px; padding: 6px;" th:text="'合計シフト数: ' + ${#lists.size(slots)} + ' 件'">合計</p>
+    </div>
+
+    <div class="pdf-footer">
+        <span th:text="'出力日: ' + ${#temporals.format(#temporals.createNow(), 'yyyy年MM月dd日 HH:mm')}">出力日</span>
+    </div>
+</body>
+</html>

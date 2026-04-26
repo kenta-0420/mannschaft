@@ -1,15 +1,35 @@
 <script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router'
+
 defineOptions({ inheritAttrs: false })
 
-defineProps<{
-  title?: string
-  icon?: string
-  loading?: boolean
-  colSpan?: 1 | 2 | 3
-  refreshable?: boolean
-  isDragging?: boolean
-  isDropTarget?: boolean
-}>()
+withDefaults(
+  defineProps<{
+    title?: string
+    icon?: string
+    loading?: boolean
+    colSpan?: 1 | 2 | 3
+    refreshable?: boolean
+    isDragging?: boolean
+    isDropTarget?: boolean
+    /**
+     * タイトルクリック時の遷移先。指定時はタイトル全体が NuxtLink になる。
+     */
+    to?: string | RouteLocationRaw
+    /**
+     * slot コンテンツ領域を縦スクロール可能にするか。デフォルト true。
+     */
+    scrollable?: boolean
+    /**
+     * scrollable=true 時の最大高さ（CSS 値）。デフォルト '24rem'。
+     */
+    maxHeight?: string
+  }>(),
+  {
+    scrollable: true,
+    maxHeight: '24rem',
+  },
+)
 
 const emit = defineEmits<{
   refresh: []
@@ -37,7 +57,22 @@ const emit = defineEmits<{
 
     <!-- ヘッダー -->
     <div v-if="title" class="mb-3 flex items-center justify-between">
-      <div class="flex items-center gap-2">
+      <NuxtLink
+        v-if="to"
+        :to="to"
+        class="group/title flex items-center gap-2 cursor-pointer hover:text-primary"
+      >
+        <i v-if="icon" :class="icon" class="text-primary" />
+        <h3
+          class="text-[22px] font-semibold text-surface-700 transition-colors group-hover/title:text-primary dark:text-surface-200"
+        >
+          {{ title }}
+        </h3>
+        <i
+          class="pi pi-external-link text-xs text-surface-400 opacity-0 transition-opacity group-hover/title:opacity-100"
+        />
+      </NuxtLink>
+      <div v-else class="flex items-center gap-2">
         <i v-if="icon" :class="icon" class="text-primary" />
         <h3 class="text-[22px] font-semibold text-surface-700 dark:text-surface-200">
           {{ title }}
@@ -62,7 +97,11 @@ const emit = defineEmits<{
     </div>
 
     <!-- コンテンツ -->
-    <div v-else>
+    <div
+      v-else
+      :class="scrollable ? 'overflow-y-auto pr-1' : ''"
+      :style="scrollable ? { maxHeight } : undefined"
+    >
       <slot />
     </div>
   </div>

@@ -58,6 +58,13 @@ public class EventRsvpResponseEntity {
 
     private LocalDateTime updatedAt;
 
+    // F03.12 ケア対象者見守り通知・事前遅刻連絡
+    private LocalDateTime guardianRsvpNotifiedAt;
+    private Integer expectedArrivalMinutesLate;
+
+    @Column(length = 30)
+    private String advanceAbsenceReason;
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
@@ -79,6 +86,34 @@ public class EventRsvpResponseEntity {
     public void updateResponse(String response, String comment) {
         this.response = response;
         this.comment = comment;
+        this.respondedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 保護者へのRSVP確認通知送信日時を記録する。
+     */
+    public void markGuardianRsvpNotified() {
+        this.guardianRsvpNotifiedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 遅刻予定を記録する。
+     *
+     * @param minutes 遅刻予定分数
+     */
+    public void recordLateNotice(int minutes) {
+        this.expectedArrivalMinutesLate = minutes;
+        this.respondedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 事前欠席連絡を記録する。
+     *
+     * @param reason 欠席理由
+     */
+    public void recordAbsenceNotice(String reason) {
+        this.response = "NOT_ATTENDING";
+        this.advanceAbsenceReason = reason;
         this.respondedAt = LocalDateTime.now();
     }
 }
