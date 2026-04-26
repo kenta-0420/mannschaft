@@ -6,7 +6,7 @@ ALTER TABLE users
     COMMENT 'ケア区分（NULL=ケア対象外、設定時はbirth_dateより優先）',
   ADD COLUMN care_notification_enabled BOOLEAN NOT NULL DEFAULT TRUE
     COMMENT '見守り通知有効フラグ（本人または見守り者が無効化可能）',
-  ADD COLUMN account_created_by_watcher_user_id BIGINT NULL
+  ADD COLUMN account_created_by_watcher_user_id BIGINT UNSIGNED NULL
     COMMENT '見守り者代理作成の場合の見守り者users.id（自動リンク作成のため）';
 
 ALTER TABLE users
