@@ -4,7 +4,7 @@
       "chat": "Chat",
       "contacts": "Kontakte",
       "requests": "Anfragen",
-      "addByHandle": "Per @Handle hinzufügen"
+      "addByHandle": "Per {'@'}Handle hinzufügen"
     },
     "tab": {
       "addNew": "Neuen Tab öffnen",
@@ -19,7 +19,14 @@
       "draftIndicator": "Entwurf vorhanden",
       "selectChannelEmpty": "Kanal auswählen oder + drücken, um einen zu öffnen",
       "channelNotAccessible": "Auf den angegebenen Kanal kann nicht zugegriffen werden",
-      "popupBlocked": "Bitte erlauben Sie Popups"
+      "popupBlocked": "Bitte erlauben Sie Popups",
+      "subtab": {
+        "channels": "Kanäle",
+        "contacts": "Kontakte",
+        "requests": "Anfragen"
+      },
+      "comingSoonContacts": "Kontakte-Tab kommt in Kürze",
+      "comingSoonRequests": "Anfragen-Tab kommt in Kürze"
     }
   },
   "button": {

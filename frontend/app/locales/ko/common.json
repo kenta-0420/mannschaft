@@ -4,7 +4,7 @@
       "chat": "채팅",
       "contacts": "연락처",
       "requests": "신청",
-      "addByHandle": "@핸들로 추가"
+      "addByHandle": "{'@'}핸들로 추가"
     },
     "tab": {
       "addNew": "새 탭 열기",
@@ -19,7 +19,14 @@
       "draftIndicator": "작성 중인 초안",
       "selectChannelEmpty": "채널을 선택하거나 +를 눌러 열어주세요",
       "channelNotAccessible": "지정된 채널에 접근할 수 없습니다",
-      "popupBlocked": "팝업을 허용해 주세요"
+      "popupBlocked": "팝업을 허용해 주세요",
+      "subtab": {
+        "channels": "채널",
+        "contacts": "연락처",
+        "requests": "신청"
+      },
+      "comingSoonContacts": "연락처 탭은 곧 제공됩니다",
+      "comingSoonRequests": "신청 탭은 곧 제공됩니다"
     }
   },
   "button": {

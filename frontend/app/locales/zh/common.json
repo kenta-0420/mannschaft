@@ -4,7 +4,7 @@
       "chat": "聊天",
       "contacts": "联系人",
       "requests": "申请",
-      "addByHandle": "通过@用户名添加"
+      "addByHandle": "通过{'@'}用户名添加"
     },
     "tab": {
       "addNew": "打开新标签",
@@ -19,7 +19,14 @@
       "draftIndicator": "有草稿",
       "selectChannelEmpty": "选择频道或点击+打开一个",
       "channelNotAccessible": "无法访问指定的频道",
-      "popupBlocked": "请允许弹出窗口"
+      "popupBlocked": "请允许弹出窗口",
+      "subtab": {
+        "channels": "频道",
+        "contacts": "联系人",
+        "requests": "申请"
+      },
+      "comingSoonContacts": "联系人标签即将推出",
+      "comingSoonRequests": "申请标签即将推出"
     }
   },
   "button": {

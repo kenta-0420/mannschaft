@@ -4,7 +4,7 @@
       "chat": "Chat",
       "contacts": "Contacts",
       "requests": "Requests",
-      "addByHandle": "Add by @handle"
+      "addByHandle": "Add by {'@'}handle"
     },
     "tab": {
       "addNew": "Open new tab",
@@ -19,7 +19,14 @@
       "draftIndicator": "Draft in progress",
       "selectChannelEmpty": "Select a channel or click + to open one",
       "channelNotAccessible": "Cannot access the specified channel",
-      "popupBlocked": "Please allow popups"
+      "popupBlocked": "Please allow popups",
+      "subtab": {
+        "channels": "Channels",
+        "contacts": "Contacts",
+        "requests": "Requests"
+      },
+      "comingSoonContacts": "Contacts tab coming soon",
+      "comingSoonRequests": "Requests tab coming soon"
     }
   },
   "button": {

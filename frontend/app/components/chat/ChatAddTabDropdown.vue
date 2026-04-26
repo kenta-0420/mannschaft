@@ -119,7 +119,7 @@ const { t } = useI18n()
           "
           @click="selectSubTab('channels')"
         >
-          チャンネル
+          {{ t('chat.tab.subtab.channels') }}
         </button>
         <button
           class="flex-1 px-3 py-2 text-sm font-medium transition-colors"
@@ -130,7 +130,7 @@ const { t } = useI18n()
           "
           @click="selectSubTab('contacts')"
         >
-          連絡先
+          {{ t('chat.tab.subtab.contacts') }}
         </button>
         <button
           class="flex-1 px-3 py-2 text-sm font-medium transition-colors"
@@ -141,7 +141,7 @@ const { t } = useI18n()
           "
           @click="selectSubTab('requests')"
         >
-          申請
+          {{ t('chat.tab.subtab.requests') }}
         </button>
       </div>
 
@@ -157,7 +157,7 @@ const { t } = useI18n()
           v-else-if="activeSubTab === 'contacts'"
           class="flex h-full items-center justify-center py-16 text-sm text-surface-400"
         >
-          連絡先タブは近日対応予定
+          {{ t('chat.tab.comingSoonContacts') }}
         </div>
 
         <!-- 申請タブ（プレースホルダー） -->
@@ -165,7 +165,7 @@ const { t } = useI18n()
           v-else-if="activeSubTab === 'requests'"
           class="flex h-full items-center justify-center py-16 text-sm text-surface-400"
         >
-          申請タブは近日対応予定
+          {{ t('chat.tab.comingSoonRequests') }}
         </div>
       </div>
     </div>
@@ -189,7 +189,7 @@ const { t } = useI18n()
           "
           @click="selectSubTab('channels')"
         >
-          チャンネル
+          {{ t('chat.tab.subtab.channels') }}
         </button>
         <button
           class="flex-1 px-3 py-2 text-sm font-medium transition-colors"
@@ -200,7 +200,7 @@ const { t } = useI18n()
           "
           @click="selectSubTab('contacts')"
         >
-          連絡先
+          {{ t('chat.tab.subtab.contacts') }}
         </button>
         <button
           class="flex-1 px-3 py-2 text-sm font-medium transition-colors"
@@ -211,7 +211,7 @@ const { t } = useI18n()
           "
           @click="selectSubTab('requests')"
         >
-          申請
+          {{ t('chat.tab.subtab.requests') }}
         </button>
       </div>
 
@@ -227,7 +227,7 @@ const { t } = useI18n()
           v-else-if="activeSubTab === 'contacts'"
           class="flex items-center justify-center py-16 text-sm text-surface-400"
         >
-          連絡先タブは近日対応予定
+          {{ t('chat.tab.comingSoonContacts') }}
         </div>
 
         <!-- 申請タブ（プレースホルダー） -->
@@ -235,7 +235,7 @@ const { t } = useI18n()
           v-else-if="activeSubTab === 'requests'"
           class="flex items-center justify-center py-16 text-sm text-surface-400"
         >
-          申請タブは近日対応予定
+          {{ t('chat.tab.comingSoonRequests') }}
         </div>
       </div>
     </div>
