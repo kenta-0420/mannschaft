@@ -72,6 +72,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           # Cache npm dependencies keyed on package-lock.json
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       # Install dependencies to validate the lockfile and run any type checks
       # before building the Docker image. Fail fast without spending time on
