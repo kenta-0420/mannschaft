@@ -296,6 +296,7 @@ public class CareEventNotificationService {
             case NO_CONTACT_CHECK -> recipientName + "がまだ到着していないようです";
             case ABSENT_ALERT     -> "⚠️ " + recipientName + "の到着が確認できていません";
             case DISMISSAL        -> recipientName + "の「" + eventLabel + "」が終了しました";
+            case EVENT_DISMISSAL_REMINDER -> "⏰ 「" + eventLabel + "」の解散通知をまだ送信していません";
         };
     }
 
@@ -318,6 +319,8 @@ public class CareEventNotificationService {
                     ? "⚠️ " + recipientName + "さんの「" + eventLabel + "」への到着が確認できておりません。ご確認をお願いします。"
                     : "⚠️ " + recipientName + "の「" + eventLabel + "」へのチェックインが確認されていません。";
             case DISMISSAL -> "「" + eventLabel + "」が終了しました。お迎えの準備をお願いします。";
+            case EVENT_DISMISSAL_REMINDER ->
+                "「" + eventLabel + "」の終了予定時刻を過ぎていますが、解散通知がまだ送信されていません。参加者・保護者に解散通知を送信してください。";
         };
     }
 }
