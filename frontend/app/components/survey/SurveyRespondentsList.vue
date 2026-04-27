@@ -72,6 +72,9 @@ async function sendReminder() {
     const remaining = res.data?.remainingRemindQuota
     const detail = remaining !== undefined ? t('surveys.respondents.remindRemaining', { count: remaining }) : undefined
     showSuccess(t('surveys.respondents.remindSuccess', { count: remindedCount }), detail)
+    // 督促送信後は最新状態（lastRemindedAt 等）を反映するため一覧を再取得する。
+    // 失敗時は再取得しない（一覧は変化しない想定 + エラートーストのみ表示）。
+    await loadRespondents()
   } catch {
     // Backend が 400/403 を返す（上限超過・クールダウン中・権限不足）
     showError(t('surveys.respondents.remindFailed'), t('surveys.respondents.remindFailedDetail'))
