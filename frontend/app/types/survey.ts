@@ -107,3 +107,20 @@ export interface RespondentItem {
 export interface RespondentsResponse {
   data: RespondentItem[]
 }
+
+/**
+ * 督促送信レスポンス（POST /api/v1/surveys/{id}/remind）。
+ *
+ * Backend は Java DTO を Jackson のデフォルト命名（camelCase）で返すため、
+ * 本プロジェクト全体の API レスポンス命名規則に合わせて camelCase で受ける。
+ * 設計書 (docs/features/F05.4_survey_vote.md §POST /remind) は snake_case で
+ * 例示しているが、これはドキュメント側の不整合であり実装は camelCase が正。
+ */
+export interface RemindRespondentsResponse {
+  data: {
+    surveyId: number
+    remindedCount: number
+    remainingRemindQuota: number
+    message: string
+  }
+}
