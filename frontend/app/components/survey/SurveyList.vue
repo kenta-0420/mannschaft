@@ -56,7 +56,7 @@ defineExpose({ refresh: loadSurveys })
 </script>
 
 <template>
-  <div>
+  <div data-testid="survey-list-container">
     <div class="mb-4 flex items-center justify-between">
       <Select
         v-model="statusFilter"
@@ -65,8 +65,9 @@ defineExpose({ refresh: loadSurveys })
         option-value="value"
         :placeholder="t('surveys.list.filterPlaceholder')"
         class="w-36"
+        data-testid="survey-status-filter"
       />
-      <Button :label="t('surveys.list.createButton')" icon="pi pi-plus" @click="emit('create')" />
+      <Button :label="t('surveys.list.createButton')" icon="pi pi-plus" data-testid="survey-create-button" @click="emit('create')" />
     </div>
 
     <div v-if="loading" class="flex justify-center py-8">
@@ -78,11 +79,12 @@ defineExpose({ refresh: loadSurveys })
         v-for="survey in surveys"
         :key="survey.id"
         class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm"
+        :data-testid="`survey-item-${survey.id}`"
         @click="emit('select', survey)"
       >
         <div class="min-w-0 flex-1">
           <div class="mb-1 flex items-center gap-2">
-            <span :class="getStatusClass(survey.status)" class="rounded px-2 py-0.5 text-xs font-medium">
+            <span :class="getStatusClass(survey.status)" class="rounded px-2 py-0.5 text-xs font-medium" :data-testid="`survey-item-status-${survey.id}`">
               {{ t(`surveys.statusLabel.${survey.status}`) }}
             </span>
             <span v-if="survey.isAnonymous" class="text-xs text-surface-400"><i class="pi pi-eye-slash" /> {{ t('surveys.list.anonymous') }}</span>

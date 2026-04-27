@@ -176,7 +176,7 @@ function isChoiceType(type: QuestionType): boolean {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
+  <div class="flex flex-col gap-3" data-testid="survey-question-editor">
     <div
       v-if="sortedQuestions.length === 0"
       class="rounded-lg border border-dashed border-surface-300 py-8 text-center text-sm text-surface-400"
@@ -189,6 +189,7 @@ function isChoiceType(type: QuestionType): boolean {
       v-for="(question, qIndex) in sortedQuestions"
       :key="qIndex"
       class="rounded-xl border border-surface-300 bg-surface-0 p-4"
+      :data-testid="`question-card-${qIndex}`"
     >
       <!-- ヘッダー: 番号 + 並び替え + 削除 -->
       <div class="mb-3 flex items-center justify-between">
@@ -204,6 +205,7 @@ function isChoiceType(type: QuestionType): boolean {
             size="small"
             :disabled="qIndex === 0"
             :aria-label="t('surveys.create.questionEditor.moveUp')"
+            :data-testid="`question-move-up-${qIndex}`"
             @click="moveUp(qIndex)"
           />
           <Button
@@ -214,6 +216,7 @@ function isChoiceType(type: QuestionType): boolean {
             size="small"
             :disabled="qIndex === sortedQuestions.length - 1"
             :aria-label="t('surveys.create.questionEditor.moveDown')"
+            :data-testid="`question-move-down-${qIndex}`"
             @click="moveDown(qIndex)"
           />
           <Button
@@ -223,6 +226,7 @@ function isChoiceType(type: QuestionType): boolean {
             severity="danger"
             size="small"
             :aria-label="t('surveys.create.questionEditor.remove')"
+            :data-testid="`question-delete-${qIndex}`"
             @click="removeQuestion(qIndex)"
           />
         </div>
@@ -238,6 +242,7 @@ function isChoiceType(type: QuestionType): boolean {
           class="w-full"
           maxlength="200"
           :placeholder="t('surveys.create.questionEditor.questionTextPlaceholder')"
+          :data-testid="`question-text-${qIndex}`"
           @update:model-value="(v) => updateQuestionText(qIndex, v ?? '')"
         />
       </div>
@@ -252,6 +257,7 @@ function isChoiceType(type: QuestionType): boolean {
             option-label="label"
             option-value="value"
             class="w-full"
+            :data-testid="`question-type-${qIndex}`"
             @update:model-value="(v: QuestionType) => updateQuestionType(qIndex, v)"
           />
         </div>
@@ -260,6 +266,7 @@ function isChoiceType(type: QuestionType): boolean {
             <Checkbox
               :model-value="question.isRequired"
               binary
+              :data-testid="`question-required-${qIndex}`"
               @update:model-value="(v: boolean) => updateIsRequired(qIndex, v)"
             />
             <span>{{ t('surveys.create.questionEditor.required') }}</span>
@@ -281,6 +288,7 @@ function isChoiceType(type: QuestionType): boolean {
             class="flex-1"
             maxlength="200"
             :placeholder="t('surveys.create.questionEditor.optionPlaceholder')"
+            :data-testid="`question-option-${qIndex}-${oIndex}`"
             @update:model-value="(v) => updateOptionText(qIndex, oIndex, v ?? '')"
           />
           <Button
@@ -291,6 +299,7 @@ function isChoiceType(type: QuestionType): boolean {
             size="small"
             :disabled="(question.options?.length ?? 0) <= 2"
             :aria-label="t('surveys.create.questionEditor.removeOption')"
+            :data-testid="`question-delete-option-${qIndex}-${oIndex}`"
             @click="removeOption(qIndex, oIndex)"
           />
         </div>
@@ -300,6 +309,7 @@ function isChoiceType(type: QuestionType): boolean {
           text
           severity="secondary"
           size="small"
+          :data-testid="`question-add-option-${qIndex}`"
           @click="addOption(qIndex)"
         />
       </div>
@@ -334,6 +344,7 @@ function isChoiceType(type: QuestionType): boolean {
       severity="secondary"
       outlined
       class="self-start"
+      data-testid="question-add"
       @click="addQuestion"
     />
   </div>
