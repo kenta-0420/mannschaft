@@ -87,4 +87,18 @@ public interface EventRsvpResponseRepository extends JpaRepository<EventRsvpResp
      */
     List<EventRsvpResponseEntity> findByEventIdAndExpectedArrivalMinutesLateIsNotNullOrEventIdAndAdvanceAbsenceReasonIsNotNull(
             Long eventId1, Long eventId2);
+
+    /**
+     * 指定イベントの指定回答値を持つ RSVP 参加者のユーザーIDリストを取得する。
+     *
+     * <p>F03.12 §16 解散通知サービスが ATTENDING 参加者一覧取得に使用する。</p>
+     *
+     * @param eventId  イベントID
+     * @param response 回答値（"ATTENDING" を渡すこと）
+     * @return ユーザーIDリスト
+     */
+    @Query("SELECT r.userId FROM EventRsvpResponseEntity r WHERE r.eventId = :eventId AND r.response = :response")
+    List<Long> findUserIdsByEventIdAndResponse(
+            @Param("eventId") Long eventId,
+            @Param("response") String response);
 }

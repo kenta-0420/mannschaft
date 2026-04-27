@@ -78,7 +78,10 @@ public enum EventErrorCode implements ErrorCode {
     RSVP_NOT_FOUND("EVENT_022", "RSVP回答が見つかりません", Severity.WARN),
 
     /** RSVPモードのイベントではない */
-    RSVP_MODE_REQUIRED("EVENT_023", "このイベントはRSVP出欠確認モードではありません", Severity.WARN);
+    RSVP_MODE_REQUIRED("EVENT_023", "このイベントはRSVP出欠確認モードではありません", Severity.WARN),
+
+    /** 既に解散通知済み（F03.12 §16） */
+    ALREADY_DISMISSED("EVENT_024", "このイベントには既に解散通知が送信されています", Severity.WARN);
 
     private final String code;
     private final String message;

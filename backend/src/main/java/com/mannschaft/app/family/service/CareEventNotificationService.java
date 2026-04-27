@@ -299,6 +299,8 @@ public class CareEventNotificationService {
             // Phase8 §15 事前遅刻・欠席連絡
             case EVENT_LATE_ARRIVAL_NOTICE -> "遅刻連絡";
             case EVENT_ABSENCE_NOTICE      -> "欠席連絡";
+            // Phase9 §16 解散通知忘れリマインド
+            case EVENT_DISMISSAL_REMINDER  -> "⏰ 「" + eventLabel + "」の解散通知をまだ送信していません";
         };
     }
 
@@ -331,6 +333,9 @@ public class CareEventNotificationService {
                 extra != null
                     ? recipientName + " が事前欠席連絡を送りました（理由: " + extra + "）"
                     : recipientName + " が事前欠席連絡を送りました";
+            // Phase9 §16 解散通知忘れリマインド
+            case EVENT_DISMISSAL_REMINDER ->
+                "「" + eventLabel + "」の終了予定時刻を過ぎていますが、解散通知がまだ送信されていません。参加者・保護者に解散通知を送信してください。";
         };
     }
 }

@@ -15,5 +15,7 @@ public enum EventCareNotificationType {
     /** §15 主催者向け遅刻連絡通知。メンバーが「N分遅刻予定」を申告した際に主催者へ送信する。 */
     EVENT_LATE_ARRIVAL_NOTICE,
     /** §15 主催者向け欠席連絡通知。メンバーが事前欠席を申告した際に主催者へ送信する。 */
-    EVENT_ABSENCE_NOTICE
+    EVENT_ABSENCE_NOTICE,
+    /** §16 主催者・ADMIN向け解散通知忘れリマインド。 */
+    EVENT_DISMISSAL_REMINDER
 }
