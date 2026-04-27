@@ -4,3 +4,4 @@
 export * from './rollCall'
 export * from './advanceNotice'
 export * from './dismissal'
+export * from './dismissalReminderTarget'
