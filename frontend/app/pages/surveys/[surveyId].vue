@@ -92,15 +92,17 @@ type DisplayMode = 'response' | 'results' | 'closed-no-permission' | 'draft'
 const displayMode = computed<DisplayMode>(() => {
   const s = survey.value
   if (!s) return 'response'
+  // DRAFT は作成者・ADMIN+ 向けのプレビュー画面
   if (s.status === 'DRAFT') return 'draft'
-  if (s.status === 'PUBLISHED') {
-    // 仕様: 未回答 or 複数回答可なら回答画面（最優先）
-    if (!s.hasResponded || s.allowMultipleSubmissions) return 'response'
-    // 回答済み・複数回答不可: 結果閲覧権限があれば結果、なければ「回答済み」表示（response 内で出る）
-    return canViewResults.value ? 'results' : 'response'
-  }
-  // CLOSED: 結果閲覧権限があれば結果、なければ非公開メッセージ
-  return canViewResults.value ? 'results' : 'closed-no-permission'
+  // 設計書 docs/features/F05.4_survey_vote.md L1377〜「結果閲覧権限の判定」に準拠:
+  // 結果閲覧権限 (canViewResults) を持つユーザーは、回答可否より優先して結果画面を表示する。
+  // ALL_MEMBERS（誰でも閲覧可）の場合、未回答 MEMBER も結果画面に直接遷移できる。
+  if (canViewResults.value) return 'results'
+  // 結果閲覧不可の場合のフォールバック分岐。
+  // PUBLISHED: 未回答も回答済みも 'response'（SurveyResponseForm 側で「回答済み」表示へ）。
+  if (s.status === 'PUBLISHED') return 'response'
+  // CLOSED かつ結果閲覧権限なし → 非公開メッセージ。
+  return 'closed-no-permission'
 })
 
 function statusClass(status: string): string {
