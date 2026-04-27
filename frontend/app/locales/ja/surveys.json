@@ -125,6 +125,11 @@
         "noData": "データなし",
         "noTextResponses": "テキスト回答なし",
         "moreCount": "他 {count} 件"
+      },
+      "respondentsSection": {
+        "title": "回答者一覧",
+        "toggleShow": "表示",
+        "toggleHide": "非表示"
       }
     },
     "respondents": {

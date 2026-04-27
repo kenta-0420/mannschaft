@@ -125,6 +125,11 @@
         "noData": "No data",
         "noTextResponses": "No text responses",
         "moreCount": "{count} more"
+      },
+      "respondentsSection": {
+        "title": "Respondents",
+        "toggleShow": "Show",
+        "toggleHide": "Hide"
       }
     },
     "respondents": {

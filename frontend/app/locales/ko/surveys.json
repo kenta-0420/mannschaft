@@ -125,6 +125,11 @@
         "noData": "데이터 없음",
         "noTextResponses": "텍스트 응답 없음",
         "moreCount": "외 {count}건"
+      },
+      "respondentsSection": {
+        "title": "응답자 목록",
+        "toggleShow": "표시",
+        "toggleHide": "숨기기"
       }
     },
     "respondents": {
