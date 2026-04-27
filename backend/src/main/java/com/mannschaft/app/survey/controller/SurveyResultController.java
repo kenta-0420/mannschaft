@@ -5,6 +5,7 @@ import com.mannschaft.app.survey.dto.AddResultViewersRequest;
 import com.mannschaft.app.survey.dto.AddTargetsRequest;
 import com.mannschaft.app.survey.dto.RemindResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse;
+import com.mannschaft.app.survey.service.SurveyRemindService;
 import com.mannschaft.app.survey.service.SurveyResultService;
 import com.mannschaft.app.survey.service.SurveyService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +33,7 @@ public class SurveyResultController {
 
     private final SurveyResultService resultService;
     private final SurveyService surveyService;
+    private final SurveyRemindService remindService;
 
 
     /**
@@ -77,7 +79,7 @@ public class SurveyResultController {
      *
      * <p>認可は作成者または ADMIN+。状態は PUBLISHED のみ受付。
      * 24 時間クールダウンと最大 3 回の上限制約あり。詳細は
-     * {@link SurveyService#remind(Long, Long)} を参照。</p>
+     * {@link SurveyRemindService#remind(Long, Long)} を参照。</p>
      *
      * <p>例外（403 / 400 / 404）の HTTP マッピングは GlobalExceptionHandler に委譲する。</p>
      */
@@ -87,7 +89,7 @@ public class SurveyResultController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "送信成功")
     public ResponseEntity<ApiResponse<RemindResponse>> remind(
             @PathVariable Long surveyId) {
-        RemindResponse response = surveyService.remind(surveyId, SecurityUtils.getCurrentUserId());
+        RemindResponse response = remindService.remind(surveyId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }
