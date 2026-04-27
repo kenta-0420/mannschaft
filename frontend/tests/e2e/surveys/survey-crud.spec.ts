@@ -377,8 +377,22 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
     await gotoTeamSurveys(page, TEAM_ID)
     await waitForSurveyList(page)
 
-    // アンケート行クリック → 詳細へ遷移
-    await page.getByTestId(`survey-item-${PUBLISHED_SURVEY_ID}`).click()
+    // アンケート行が表示されることを確認 → 一覧 → 詳細遷移シナリオを満たす。
+    await expect(page.getByTestId(`survey-item-${PUBLISHED_SURVEY_ID}`)).toBeVisible({
+      timeout: 10_000,
+    })
+
+    // クリックで詳細ページへ遷移する。
+    // Nuxt の SPA navigation では pageTransition (mode: out-in) によりトランジション中に
+    // 一時的に DOM が空になり、その間に waitForSelector が走るとタイムアウトすることがある。
+    // 確実に navigation 完了を捉えるため、click と waitForURL を Promise.all でレースさせる。
+    await Promise.all([
+      page.waitForURL(
+        new RegExp(`/surveys/${PUBLISHED_SURVEY_ID}\\?scope=team&scopeId=${TEAM_ID}`),
+        { timeout: 10_000 },
+      ),
+      page.getByTestId(`survey-item-${PUBLISHED_SURVEY_ID}`).click(),
+    ])
 
     // 詳細ページ表示完了
     await waitForSurveyDetail(page, PUBLISHED_SURVEY_ID)

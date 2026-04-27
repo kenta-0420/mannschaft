@@ -111,16 +111,30 @@ async function mockSideApis(page: Page): Promise<void> {
 async function expandRespondentsSection(page: Page): Promise<void> {
   // ADMIN+ もしくは作成者の場合のみ section が描画される。
   await expect(page.getByTestId('survey-respondents-section')).toBeVisible()
+
+  // toggle クリックと同時に SurveyRespondentsList の onMounted が
+  // 発火して GET /respondents を叩く。レスポンス到着を待つことで
+  // 「タブを切り替えれば必ず項目が見える状態」を保証する。
+  // 初期タブは 'responded' のため、未回答ユーザー（id=11/12）はまだ DOM に出ない点に注意。
+  const respondentsResponsePromise = page.waitForResponse(
+    (res) =>
+      res.request().method() === 'GET' &&
+      /\/api\/v1\/teams\/\d+\/surveys\/\d+\/respondents$/.test(res.url()),
+    { timeout: 10_000 },
+  )
   await page.getByTestId('survey-respondents-toggle').click()
   await page.waitForSelector('[data-testid="survey-respondents-list"]', { timeout: 10_000 })
-  // onMounted 経由の loadRespondents 完了を、未回答行の出現で確認する。
-  await page.waitForSelector('[data-testid="respondent-item-11"]', { timeout: 10_000 })
+  await respondentsResponsePromise
+  // タブ非依存のサマリー文言が描画されていること（loading=false 確認）
+  await page.waitForSelector('[data-testid="respondents-summary"]', { timeout: 5_000 })
 }
 
 /** 未回答タブへ切り替え、督促ボタンの出現まで待つ。 */
 async function switchToUnrespondedTab(page: Page): Promise<void> {
   const filter = page.locator('[data-testid="respondents-filter"]')
   await filter.getByText(/未回答/).click()
+  // タブ切替後、未回答ユーザー（id=11）がリストに出ることでタブ切替完了を判定する。
+  await page.waitForSelector('[data-testid="respondent-item-11"]', { timeout: 5_000 })
   await page.waitForSelector('[data-testid="respondents-remind-button"]', { timeout: 5_000 })
 }
 
@@ -330,8 +344,9 @@ test.describe('SURVEY-003-4: 詳細ページで回答者セクション開閉', 
     // 3. toggle クリック → リスト表示
     await page.getByTestId('survey-respondents-toggle').click()
     await expect(page.getByTestId('survey-respondents-list')).toBeVisible()
-    // 一覧データが届いていることも確認
-    await expect(page.locator('[data-testid="respondent-item-11"]')).toBeVisible()
+    // 一覧データが届いていることを「回答済みタブ（初期表示）に出る userId=13」で確認する。
+    // 未回答ユーザー（11/12）は未回答タブに切り替えないと描画されない仕様。
+    await expect(page.locator('[data-testid="respondent-item-13"]')).toBeVisible()
 
     // 4. 再度 toggle クリック → リスト非表示
     await page.getByTestId('survey-respondents-toggle').click()
