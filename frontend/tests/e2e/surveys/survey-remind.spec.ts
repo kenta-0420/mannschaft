@@ -1,24 +1,34 @@
 import { test, expect, type Page } from '@playwright/test'
-import { setupAuth, mockSurveyApi, buildRespondent } from './_helpers'
+import {
+  setupAuth,
+  mockSurveyApi,
+  buildRespondent,
+  buildSurvey,
+  buildQuestion,
+  buildSurveyDetail,
+  gotoSurveyDetail,
+  waitForSurveyDetail,
+} from './_helpers'
 
 /**
- * F05.4 アンケート画面 E2E — SURVEY-003 督促送信
+ * F05.4 アンケート画面 E2E — SURVEY-003 督促送信 + 回答者セクション開閉
  *
- * <p>3 ケース:</p>
+ * <p>本 spec は「アンケート詳細ページ ({@code /surveys/{id}?scope=...&scopeId=...})
+ * 経由で回答者セクションを開閉し、督促ボタンを操作する」シナリオを検証する。
+ * 第一陣 (b9b84234) で {@code SurveyRespondentsList} が survey 詳細ページに
+ * 正式組み込みされたため、E2E 専用ページ（{@code pages/_test/survey-respondents.vue}）
+ * を経由する旧フローは廃止し、本 spec から削除した。</p>
+ *
+ * <h2>テストケース</h2>
  * <ul>
  *   <li>SURVEY-003-1: 成功（200）— 成功通知 + 一覧再取得</li>
  *   <li>SURVEY-003-2: クールダウン中（400）— エラー通知 + 一覧不変</li>
  *   <li>SURVEY-003-3: 上限超過（400）— エラー通知 + 一覧不変</li>
+ *   <li>SURVEY-003-4a: ADMIN+ で詳細ページから回答者セクションを開閉できる</li>
+ *   <li>SURVEY-003-4b: MEMBER（作成者でない）には回答者セクションが表示されない</li>
  * </ul>
  *
- * <h2>テスト方針</h2>
- *
- * <p>{@code SurveyRespondentsList} コンポーネントは現時点で本番ページに
- * 組み込まれていないため、E2E 専用ページ
- * {@code pages/_test/survey-respondents.vue} にマウントしてテストする。
- * 本コンポーネントが survey 詳細ページへ統合された後は、本 spec を実ページ
- * 経由のアサーションに書き換え、{@code _test} ページは削除すること。</p>
- *
+ * <h2>前提</h2>
  * <p>API レスポンスは PR#165 の修正後仕様に従い camelCase で返す
  * （{@code surveyId / remindedCount / remainingRemindQuota / message}）。</p>
  */
@@ -26,6 +36,8 @@ import { setupAuth, mockSurveyApi, buildRespondent } from './_helpers'
 const TEAM_ID = 1
 const SURVEY_ID = 901
 const ADMIN_ID = 200
+const CREATOR_ID = 100
+const MEMBER_ID = 300
 
 // ---------------------------------------------------------------------------
 // 共通モックデータ
@@ -51,38 +63,72 @@ const RESPONDENTS = [
   }),
 ]
 
-/** テスト用ページへの遷移ヘルパー。 */
-async function gotoTestPage(page: Page): Promise<void> {
-  await page.goto(
-    `/_test/survey-respondents?surveyId=${SURVEY_ID}&scopeType=TEAM&scopeId=${TEAM_ID}&canRemind=true`,
-  )
+/** ADMIN が回答者セクションを開ける状態のアンケート（PUBLISHED + 督促可）。 */
+function buildPublishedSurveyForAdmin() {
+  return buildSurvey({
+    id: SURVEY_ID,
+    scopeType: 'TEAM',
+    scopeId: TEAM_ID,
+    status: 'PUBLISHED',
+    resultsVisibility: 'CREATOR_ONLY',
+    allowMultipleSubmissions: false,
+    hasResponded: false,
+    createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
+  })
 }
 
-/** SurveyRespondentsList のレンダリング完了を待つ。 */
-async function waitForRespondentsList(page: Page): Promise<void> {
-  await page.waitForFunction(() => {
-    const el = document.querySelector('#__nuxt')
-    return el !== null && '__vue_app__' in el
+/** {@link useRoleAccess} の me/permissions モック。roleName を切替可能。 */
+async function mockMePermissions(
+  page: Page,
+  roleName: 'SYSTEM_ADMIN' | 'ADMIN' | 'MEMBER',
+): Promise<void> {
+  await page.route(`**/api/v1/teams/${TEAM_ID}/me/permissions`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          roleName,
+          permissions: [],
+        },
+      }),
+    })
   })
+}
+
+/** 詳細ページ周辺の「叩かれうるが本テストで関係しない」API を空応答で潰す。 */
+async function mockSideApis(page: Page): Promise<void> {
+  await page.route('**/api/v1/surveys/*/responses/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { answers: [] } }),
+    })
+  })
+}
+
+/** 回答者セクションを展開し、SurveyRespondentsList が表示されるまで待つ。 */
+async function expandRespondentsSection(page: Page): Promise<void> {
+  // ADMIN+ もしくは作成者の場合のみ section が描画される。
+  await expect(page.getByTestId('survey-respondents-section')).toBeVisible()
+  await page.getByTestId('survey-respondents-toggle').click()
   await page.waitForSelector('[data-testid="survey-respondents-list"]', { timeout: 10_000 })
-  // onMounted の loadRespondents 完了を待つため、要素の出現で判定
+  // onMounted 経由の loadRespondents 完了を、未回答行の出現で確認する。
   await page.waitForSelector('[data-testid="respondent-item-11"]', { timeout: 10_000 })
 }
 
-/** 未回答タブへ切り替える。 */
+/** 未回答タブへ切り替え、督促ボタンの出現まで待つ。 */
 async function switchToUnrespondedTab(page: Page): Promise<void> {
-  // PrimeVue SelectButton は未回答ラベルを含むボタンを描画する
   const filter = page.locator('[data-testid="respondents-filter"]')
   await filter.getByText(/未回答/).click()
-  // 未回答タブ表示後に督促ボタンが出現するのを待つ
   await page.waitForSelector('[data-testid="respondents-remind-button"]', { timeout: 5_000 })
 }
 
 // ---------------------------------------------------------------------------
-// SURVEY-003-1: 成功
+// SURVEY-003: 督促送信（実ページ経由）
 // ---------------------------------------------------------------------------
 
-test.describe('SURVEY-003: 督促送信', () => {
+test.describe('SURVEY-003: 督促送信（詳細ページ → 回答者セクション展開）', () => {
   test.beforeEach(async ({ page }) => {
     await setupAuth(page, {
       userId: ADMIN_ID,
@@ -91,11 +137,14 @@ test.describe('SURVEY-003: 督促送信', () => {
       scopeType: 'TEAM',
       scopeId: TEAM_ID,
     })
+    await mockMePermissions(page, 'ADMIN')
+    await mockSideApis(page)
   })
 
   test('SURVEY-003-1: 成功 — showSuccess + 一覧再取得', async ({ page }) => {
-    // 督促 API: 200 + camelCase body（PR#165 後の正式仕様）
+    const survey = buildPublishedSurveyForAdmin()
     await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })]) },
       respondentsById: { [SURVEY_ID]: RESPONDENTS },
       remindResponse: {
         ok: true,
@@ -111,13 +160,13 @@ test.describe('SURVEY-003: 督促送信', () => {
       },
     })
 
-    await gotoTestPage(page)
-    await waitForRespondentsList(page)
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+    await expandRespondentsSection(page)
     await switchToUnrespondedTab(page)
 
     // 督促送信ボタン押下と並行して、再取得 GET をキャッチする。
-    // onMounted で 1 回目の GET が走っている前提で「2 回目以降」を捕捉するため、
-    // waitForRequest の predicate で時刻を見ずに「ボタン押下後」のリクエストを拾う。
+    // 「ボタン押下後」のリクエストを拾うため、押下前に waitForRequest を準備する。
     const refreshRequestPromise = page.waitForRequest(
       (req) =>
         req.method() === 'GET' &&
@@ -135,19 +184,23 @@ test.describe('SURVEY-003: 督促送信', () => {
   })
 
   test('SURVEY-003-2: クールダウン中 — showError + 一覧不変', async ({ page }) => {
-    // 1 回目の GET レスポンスを記録するためカウンタ
+    const survey = buildPublishedSurveyForAdmin()
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })]) },
+    })
+
+    // GET /respondents 回数を計測しつつ常に同じ一覧を返す。
+    // mockSurveyApi の respondentsHandler を後勝ちで上書きする。
     let respondentsGetCount = 0
-    await page.route(
-      '**/api/v1/teams/*/surveys/*/respondents',
-      async (route) => {
-        if (route.request().method() === 'GET') respondentsGetCount++
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: RESPONDENTS }),
-        })
-      },
-    )
+    await page.route('**/api/v1/teams/*/surveys/*/respondents', async (route) => {
+      if (route.request().method() === 'GET') respondentsGetCount++
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: RESPONDENTS }),
+      })
+    })
+
     // 督促 API: 400（COOLDOWN）
     await page.route('**/api/v1/surveys/*/remind', async (route) => {
       if (route.request().method() !== 'POST') {
@@ -166,11 +219,12 @@ test.describe('SURVEY-003: 督促送信', () => {
       })
     })
 
-    await gotoTestPage(page)
-    await waitForRespondentsList(page)
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+    await expandRespondentsSection(page)
     await switchToUnrespondedTab(page)
 
-    // 1 回目の GET（onMounted 経由）が走った後を起点にする
+    // セクション展開時の初回 GET が走った後を起点にする
     expect(respondentsGetCount).toBeGreaterThanOrEqual(1)
     const beforeCount = respondentsGetCount
 
@@ -188,18 +242,21 @@ test.describe('SURVEY-003: 督促送信', () => {
   })
 
   test('SURVEY-003-3: 上限超過 — showError + 一覧不変', async ({ page }) => {
+    const survey = buildPublishedSurveyForAdmin()
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })]) },
+    })
+
     let respondentsGetCount = 0
-    await page.route(
-      '**/api/v1/teams/*/surveys/*/respondents',
-      async (route) => {
-        if (route.request().method() === 'GET') respondentsGetCount++
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: RESPONDENTS }),
-        })
-      },
-    )
+    await page.route('**/api/v1/teams/*/surveys/*/respondents', async (route) => {
+      if (route.request().method() === 'GET') respondentsGetCount++
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: RESPONDENTS }),
+      })
+    })
+
     await page.route('**/api/v1/surveys/*/remind', async (route) => {
       if (route.request().method() !== 'POST') {
         await route.continue()
@@ -217,8 +274,9 @@ test.describe('SURVEY-003: 督促送信', () => {
       })
     })
 
-    await gotoTestPage(page)
-    await waitForRespondentsList(page)
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+    await expandRespondentsSection(page)
     await switchToUnrespondedTab(page)
 
     expect(respondentsGetCount).toBeGreaterThanOrEqual(1)
@@ -232,5 +290,88 @@ test.describe('SURVEY-003: 督促送信', () => {
 
     await expect(page.locator('[data-testid="respondent-item-11"]')).toBeVisible()
     await expect(page.locator('[data-testid="respondent-item-12"]')).toBeVisible()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// SURVEY-003-4: 詳細ページで回答者セクションを開閉
+// ---------------------------------------------------------------------------
+
+test.describe('SURVEY-003-4: 詳細ページで回答者セクション開閉', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockSideApis(page)
+  })
+
+  test('SURVEY-003-4a: ADMIN+ は section 表示 + toggle で開閉できる', async ({ page }) => {
+    await setupAuth(page, {
+      userId: ADMIN_ID,
+      displayName: 'admin-user',
+      role: 'ADMIN',
+      scopeType: 'TEAM',
+      scopeId: TEAM_ID,
+    })
+    await mockMePermissions(page, 'ADMIN')
+
+    const survey = buildPublishedSurveyForAdmin()
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })]) },
+      respondentsById: { [SURVEY_ID]: RESPONDENTS },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    // 1. セクションは可視
+    await expect(page.getByTestId('survey-respondents-section')).toBeVisible()
+
+    // 2. 初期状態では SurveyRespondentsList はマウントされていない
+    await expect(page.locator('[data-testid="survey-respondents-list"]')).toHaveCount(0)
+
+    // 3. toggle クリック → リスト表示
+    await page.getByTestId('survey-respondents-toggle').click()
+    await expect(page.getByTestId('survey-respondents-list')).toBeVisible()
+    // 一覧データが届いていることも確認
+    await expect(page.locator('[data-testid="respondent-item-11"]')).toBeVisible()
+
+    // 4. 再度 toggle クリック → リスト非表示
+    await page.getByTestId('survey-respondents-toggle').click()
+    await expect(page.locator('[data-testid="survey-respondents-list"]')).toHaveCount(0)
+  })
+
+  test('SURVEY-003-4b: MEMBER（作成者でない）には section が表示されない', async ({ page }) => {
+    await setupAuth(page, {
+      userId: MEMBER_ID,
+      displayName: 'member-user',
+      role: 'MEMBER',
+      scopeType: 'TEAM',
+      scopeId: TEAM_ID,
+    })
+    await mockMePermissions(page, 'MEMBER')
+
+    const survey = buildSurvey({
+      id: SURVEY_ID,
+      scopeType: 'TEAM',
+      scopeId: TEAM_ID,
+      status: 'PUBLISHED',
+      resultsVisibility: 'ALL_MEMBERS',
+      allowMultipleSubmissions: false,
+      hasResponded: false,
+      // 作成者は MEMBER_ID 以外
+      createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
+    })
+    await mockSurveyApi(page, {
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })]) },
+      respondentsById: { [SURVEY_ID]: RESPONDENTS },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    // ページ自体は描画される
+    await expect(page.getByTestId('survey-detail-page')).toBeVisible()
+
+    // 回答者セクションは作成者でも ADMIN+ でもないため非表示
+    await expect(page.locator('[data-testid="survey-respondents-section"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid="survey-respondents-toggle"]')).toHaveCount(0)
   })
 })

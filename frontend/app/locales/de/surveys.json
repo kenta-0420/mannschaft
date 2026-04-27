@@ -125,6 +125,11 @@
         "noData": "Keine Daten",
         "noTextResponses": "Keine Textantworten",
         "moreCount": "{count} weitere"
+      },
+      "respondentsSection": {
+        "title": "Befragte",
+        "toggleShow": "Anzeigen",
+        "toggleHide": "Ausblenden"
       }
     },
     "respondents": {

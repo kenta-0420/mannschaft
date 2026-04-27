@@ -125,6 +125,11 @@
         "noData": "无数据",
         "noTextResponses": "无文本回答",
         "moreCount": "另 {count} 条"
+      },
+      "respondentsSection": {
+        "title": "应答者列表",
+        "toggleShow": "显示",
+        "toggleHide": "隐藏"
       }
     },
     "respondents": {

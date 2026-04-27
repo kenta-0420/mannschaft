@@ -125,6 +125,11 @@
         "noData": "Sin datos",
         "noTextResponses": "Sin respuestas de texto",
         "moreCount": "{count} más"
+      },
+      "respondentsSection": {
+        "title": "Encuestados",
+        "toggleShow": "Mostrar",
+        "toggleHide": "Ocultar"
       }
     },
     "respondents": {
