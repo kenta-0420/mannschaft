@@ -181,7 +181,7 @@ class EventRollCallServiceTest {
             given(userRepository.findById(USER_ID_TARO))
                     .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田太郎", null)));
 
-            EventCheckinEntity savedCheckin = buildCheckin(EVENT_ID, SESSION_ID, USER_ID_TARO, "PRESENT");
+            EventCheckinEntity savedCheckin = buildCheckin(EVENT_ID, SESSION_ID, USER_ID_TARO, null, null);
             given(checkinRepository.save(any())).willReturn(savedCheckin);
 
             // Act
@@ -219,7 +219,7 @@ class EventRollCallServiceTest {
             given(userRepository.findById(USER_ID_TARO))
                     .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田太郎", null)));
 
-            EventCheckinEntity savedCheckin = buildCheckin(EVENT_ID, SESSION_ID, USER_ID_TARO, "ABSENT");
+            EventCheckinEntity savedCheckin = buildCheckin(EVENT_ID, SESSION_ID, USER_ID_TARO, null, "SICK");
             given(checkinRepository.save(any())).willReturn(savedCheckin);
 
             // Act
@@ -240,7 +240,7 @@ class EventRollCallServiceTest {
             RollCallEntryRequest entry = new RollCallEntryRequest(USER_ID_TARO, "PRESENT", null, null);
             RollCallSessionRequest request = new RollCallSessionRequest(SESSION_ID, List.of(entry), false);
 
-            EventCheckinEntity existingCheckin = buildCheckin(EVENT_ID, SESSION_ID, USER_ID_TARO, "PRESENT");
+            EventCheckinEntity existingCheckin = buildCheckin(EVENT_ID, SESSION_ID, USER_ID_TARO, null, null);
             // 既存レコードあり → UPDATE パス
             given(checkinRepository.findByEventIdAndRollCallSessionIdAndUserId(
                     EVENT_ID, SESSION_ID, USER_ID_TARO))
@@ -283,7 +283,7 @@ class EventRollCallServiceTest {
             given(userRepository.findById(USER_ID_TARO))
                     .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田太郎", null)));
             given(checkinRepository.save(any()))
-                    .willReturn(buildCheckin(EVENT_ID, SESSION_ID, USER_ID_TARO, "PRESENT"));
+                    .willReturn(buildCheckin(EVENT_ID, SESSION_ID, USER_ID_TARO, null, null));
 
             // Act
             RollCallSessionResponse response =
@@ -378,13 +378,16 @@ class EventRollCallServiceTest {
                 .build();
     }
 
-    private EventCheckinEntity buildCheckin(Long eventId, String sessionId, Long userId, String status) {
+    private EventCheckinEntity buildCheckin(Long eventId, String sessionId, Long userId,
+                                            Integer lateArrivalMinutes, String absenceReason) {
         return EventCheckinEntity.builder()
                 .eventId(eventId)
                 .rollCallUserId(userId)
                 .checkinType(CheckinType.ROLL_CALL_BATCH)
                 .rollCallSessionId(sessionId)
                 .checkedInBy(OPERATOR_USER_ID)
+                .lateArrivalMinutes(lateArrivalMinutes)
+                .absenceReason(absenceReason)
                 .build();
     }
 }
