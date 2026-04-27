@@ -346,7 +346,7 @@ class SurveyServiceTest {
             assertThat(survey.getManualRemindCount()).isEqualTo(1);
             assertThat(survey.getLastRemindedAt()).isNotNull();
             verify(notificationHelper).notifyAll(
-                    eq(List.of(101L, 103L)), eq("SURVEY_RESPONSE_REMINDER"),
+                    eq(List.of(101L, 103L)), eq(SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name()),
                     anyString(), anyString(), eq("SURVEY"), eq(SURVEY_ID),
                     eq(NotificationScopeType.TEAM), eq(SCOPE_ID), anyString(), eq(USER_ID));
         }
