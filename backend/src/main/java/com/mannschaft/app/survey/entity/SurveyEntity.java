@@ -222,6 +222,18 @@ public class SurveyEntity extends BaseEntity {
     }
 
     /**
+     * 手動督促の送信を記録する。F05.4 督促 API。
+     * <p>{@code lastRemindedAt} を引数の時刻に更新し、
+     * {@code manualRemindCount} を 1 加算する。クールダウン・上限判定は呼び出し側の責務。</p>
+     *
+     * @param sentAt 督促送信時刻
+     */
+    public void recordManualRemind(LocalDateTime sentAt) {
+        this.lastRemindedAt = sentAt;
+        this.manualRemindCount = (this.manualRemindCount != null ? this.manualRemindCount : 0) + 1;
+    }
+
+    /**
      * 公開可能かどうかを判定する。
      *
      * @return DRAFT ステータスの場合 true
