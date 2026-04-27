@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { statusLabel, statusSeverity, formatDateTime } from '~/utils/eventFormat'
+import AdvanceNoticeList from '~/components/event/advanceNotice/AdvanceNoticeList.vue'
+import LateAbsenceNoticeBar from '~/components/event/advanceNotice/LateAbsenceNoticeBar.vue'
+import DismissalDialog from '~/components/event/dismissal/DismissalDialog.vue'
+import DismissalStatusBadge from '~/components/event/dismissal/DismissalStatusBadge.vue'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
@@ -9,6 +13,7 @@ const props = defineProps<{
 }>()
 
 const showEditDialog = ref(false)
+const showDismissalDialog = ref(false)
 const activeTab = ref(0)
 
 const {
@@ -35,7 +40,33 @@ const {
   eventId: toRef(props, 'eventId'),
 })
 
-onMounted(() => init())
+// F03.12 Phase 10 §16 解散通知ステータス
+// scopeType=team の場合のみ取得する（イベント解散通知はチーム配下のイベントのみ対応）。
+const teamIdRef = computed(() => (props.scopeType === 'team' ? props.scopeId : 0))
+const eventIdRef = computed(() => props.eventId)
+const { status: dismissalStatus, loadStatus: loadDismissalStatus } = useDismissal(
+  teamIdRef,
+  eventIdRef,
+)
+
+// F03.12 Phase 10 §14/§15 タブ表示判定
+const isTeamScope = computed(() => props.scopeType === 'team')
+const showRollCallTab = computed(
+  () => isTeamScope.value && props.canEdit && event.value?.status === 'IN_PROGRESS',
+)
+const showAdvanceNoticeTab = computed(() => isTeamScope.value && props.canEdit)
+
+onMounted(async () => {
+  await init()
+  if (isTeamScope.value) {
+    await loadDismissalStatus()
+  }
+})
+
+function onDismissalSubmitted() {
+  // 送信後に最新ステータスを再取得
+  loadDismissalStatus()
+}
 </script>
 
 <template>
@@ -61,16 +92,21 @@ onMounted(() => init())
             <span v-else class="text-sm text-surface-500">
               <i class="pi pi-eye-slash mr-1" />{{ $t('event.visibility.MEMBERS_ONLY') }}
             </span>
+            <!-- F03.12 §16 解散済みバッジ -->
+            <DismissalStatusBadge v-if="dismissalStatus?.dismissed" :status="dismissalStatus" />
           </div>
         </div>
         <EventActionButtons
           v-if="canEdit"
           :status="event.status"
+          :dismissal-status="dismissalStatus"
+          :show-dismissal-button="isTeamScope"
           @edit="showEditDialog = true"
           @publish="publishEvent"
           @close-registration="closeRegistration"
           @open-registration="openRegistration"
           @cancel="cancelEvent"
+          @dismiss="showDismissalDialog = true"
         />
       </div>
 
@@ -130,6 +166,18 @@ onMounted(() => init())
         />
       </div>
 
+      <!-- F03.12 §15 事前遅刻・欠席連絡バー（チームイベントのみ） -->
+      <div
+        v-if="isTeamScope && (event.attendanceMode ?? 'NONE') === 'RSVP'"
+        class="mb-4"
+      >
+        <LateAbsenceNoticeBar
+          :team-id="props.scopeId"
+          :event-id="event.id"
+          :current-user-rsvp-status="myRsvpResponse"
+        />
+      </div>
+
       <Tabs v-model:value="activeTab">
         <TabList>
           <Tab v-if="(event.attendanceMode ?? 'NONE') === 'RSVP'" :value="0">
@@ -140,6 +188,19 @@ onMounted(() => init())
           </Tab>
           <Tab :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 2 : 1">チェックイン</Tab>
           <Tab :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 3 : 2">タイムテーブル</Tab>
+          <!-- F03.12 §14 主催者点呼タブ -->
+          <Tab v-if="showRollCallTab" :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 4 : 3">
+            {{ $t('event.rollCall.tab') }}
+          </Tab>
+          <!-- F03.12 §15 事前連絡タブ -->
+          <Tab
+            v-if="showAdvanceNoticeTab"
+            :value="
+              ((event.attendanceMode ?? 'NONE') === 'RSVP' ? 4 : 3) + (showRollCallTab ? 1 : 0)
+            "
+          >
+            {{ $t('event.advanceNotice.tab') }}
+          </Tab>
         </TabList>
         <TabPanels>
           <TabPanel v-if="(event.attendanceMode ?? 'NONE') === 'RSVP'" :value="0">
@@ -186,8 +247,45 @@ onMounted(() => init())
           <TabPanel :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 3 : 2">
             <EventTimetableTable :timetable-items="timetableItems" />
           </TabPanel>
+          <!-- F03.12 §14 主催者点呼パネル -->
+          <TabPanel
+            v-if="showRollCallTab"
+            :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 4 : 3"
+          >
+            <div
+              class="flex flex-col items-start gap-3 rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-900"
+            >
+              <p class="text-sm text-surface-600 dark:text-surface-300">
+                {{ $t('event.rollCall.tabDescription') }}
+              </p>
+              <Button
+                :label="$t('event.rollCall.openSheet')"
+                icon="pi pi-external-link"
+                severity="primary"
+                @click="navigateTo(`/teams/${props.scopeId}/events/${event.id}/roll-call`)"
+              />
+            </div>
+          </TabPanel>
+          <!-- F03.12 §15 事前連絡パネル -->
+          <TabPanel
+            v-if="showAdvanceNoticeTab"
+            :value="
+              ((event.attendanceMode ?? 'NONE') === 'RSVP' ? 4 : 3) + (showRollCallTab ? 1 : 0)
+            "
+          >
+            <AdvanceNoticeList :team-id="props.scopeId" :event-id="event.id" />
+          </TabPanel>
         </TabPanels>
       </Tabs>
+
+      <!-- F03.12 §16 解散通知ダイアログ -->
+      <DismissalDialog
+        v-if="isTeamScope"
+        v-model:open="showDismissalDialog"
+        :team-id="props.scopeId"
+        :event-id="event.id"
+        @submitted="onDismissalSubmitted"
+      />
 
       <EventForm
         v-model:visible="showEditDialog"
