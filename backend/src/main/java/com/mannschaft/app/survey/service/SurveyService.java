@@ -11,6 +11,7 @@ import com.mannschaft.app.survey.QuestionType;
 import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyErrorCode;
 import com.mannschaft.app.survey.SurveyMapper;
+import com.mannschaft.app.survey.SurveyNotificationType;
 import com.mannschaft.app.survey.SurveyStatus;
 import com.mannschaft.app.survey.UnrespondedVisibility;
 import com.mannschaft.app.survey.dto.CreateOptionRequest;
@@ -338,7 +339,7 @@ public class SurveyService {
         if (!unansweredUserIds.isEmpty()) {
             notificationHelper.notifyAll(
                     unansweredUserIds,
-                    "SURVEY_RESPONSE_REMINDER",
+                    SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name(),
                     "アンケート未回答のお知らせ",
                     "「" + survey.getTitle() + "」が未回答です。回答にご協力ください。",
                     "SURVEY",
