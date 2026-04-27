@@ -68,7 +68,7 @@ class EventEndReminderBatchServiceTest {
     class RunEndReminderCheck {
 
         @Test
-        @DisplayName("1回目リマインド送信: count=0のイベント → NORMAL優先度で主催者に通知")
+        @DisplayName("1回目リマインド送信: count=0のイベント → NORMAL優先度で主催者に通知。F03.12 Phase11: actionUrl にチームID 含む")
         void 一回目リマインド送信() {
             // Arrange: count=0（未送信）の終了済みイベント
             EventEntity event = buildEventWithReminderCount(0);
@@ -84,13 +84,14 @@ class EventEndReminderBatchServiceTest {
             // Act
             batchService.runEndReminderCheck();
 
-            // Assert: NORMAL 優先度で主催者に送信
+            // Assert: NORMAL 優先度で主催者に送信。actionUrl は /teams/{teamId}/events/{eventId} 形式
+            String expectedActionUrl = "/teams/" + TEAM_ID + "/events/" + EVENT_ID;
             verify(notificationService).createNotification(
                     eq(ORGANIZER_USER_ID),
                     eq("EVENT_DISMISSAL_REMINDER"),
                     eq(NotificationPriority.NORMAL),
                     any(), any(), eq("EVENT"), eq(EVENT_ID),
-                    any(NotificationScopeType.class), anyLong(), any(), any());
+                    any(NotificationScopeType.class), anyLong(), eq(expectedActionUrl), any());
             verify(dispatchService).dispatch(any(NotificationEntity.class));
             // ADMINには通知しない
             verify(userRoleRepository, never()).findUserIdsByTeamIdAndRoleName(any(), any());

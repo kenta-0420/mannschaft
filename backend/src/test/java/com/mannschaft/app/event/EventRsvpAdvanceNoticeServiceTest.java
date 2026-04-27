@@ -133,11 +133,12 @@ class EventRsvpAdvanceNoticeServiceTest {
 
             // RSVP に遅刻分数が保存されたことを確認
             verify(rsvpResponseRepository).save(rsvp);
-            // 主催者へ通知が送信されたことを確認
+            // 主催者へ通知が送信されたことを確認。F03.12 Phase11: actionUrl は /teams/{teamId}/events/{eventId}
+            String expectedActionUrl = "/teams/" + TEAM_ID + "/events/" + EVENT_ID;
             verify(notificationService).createNotification(
                     eq(OPERATOR), anyString(), any(NotificationPriority.class),
                     anyString(), anyString(), anyString(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), anyString(), anyLong());
+                    any(NotificationScopeType.class), anyLong(), eq(expectedActionUrl), anyLong());
             verify(notificationDispatchService).dispatch(notification);
         }
 

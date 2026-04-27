@@ -97,7 +97,7 @@ class CareEventNotificationServiceTest {
         }
 
         @Test
-        @DisplayName("正常に見守り者へ通知を送信する")
+        @DisplayName("正常に見守り者へ通知を送信する。F03.12 Phase11: actionUrl は /teams/{teamId}/events/{eventId} 形式")
         void shouldSendNotificationToWatcher() {
             Long recipientUserId = 1L;
             Long watcherUserId = 2L;
@@ -122,12 +122,14 @@ class CareEventNotificationServiceTest {
 
             service.notifyRsvpConfirmed(recipientUserId, eventId);
 
+            // F03.12 Phase11: actionUrl が /teams/{teamId}/events/{eventId} になっていること（teamId=10）
+            String expectedActionUrl = "/teams/10/events/" + eventId;
             verify(notificationService).createNotification(
                     eq(watcherUserId), eq(EventCareNotificationType.RSVP_CONFIRMED.name()),
                     eq(NotificationPriority.NORMAL), anyString(), anyString(),
                     eq("EVENT"), eq(eventId),
                     eq(NotificationScopeType.PERSONAL), eq(watcherUserId),
-                    anyString(), eq(recipientUserId));
+                    eq(expectedActionUrl), eq(recipientUserId));
             verify(dispatchService).dispatch(notification);
             verify(notificationLogRepository).save(any(EventCareNotificationLogEntity.class));
         }
