@@ -195,6 +195,9 @@ public class CareAbsentAlertBatchService {
         // チェックイン済みならスキップ
         if (eventCheckinRepository.existsByEventIdAndUserId(eventId, userId)) return;
 
+        // Phase8 §15: 事前欠席連絡済みは無断不着扱いしない（既に欠席意思が示されているため）
+        if (rsvp.getAdvanceAbsenceReason() != null) return;
+
         // カテゴリ別タイミング判定
         CareCategory category = resolveCategory(userId);
         int softMinutes = SOFT_CHECK_MINUTES.getOrDefault(category, MIN_SOFT_CHECK_MINUTES);
@@ -234,6 +237,9 @@ public class CareAbsentAlertBatchService {
         if (!careLinkService.isUnderCare(userId)) return;
 
         if (eventCheckinRepository.existsByEventIdAndUserId(eventId, userId)) return;
+
+        // Phase8 §15: 事前欠席連絡済みは無断不着アラート対象外
+        if (rsvp.getAdvanceAbsenceReason() != null) return;
 
         CareCategory category = resolveCategory(userId);
         int alertMinutes = ABSENT_ALERT_MINUTES.getOrDefault(category, MIN_ABSENT_ALERT_MINUTES);

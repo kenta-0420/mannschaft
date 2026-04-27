@@ -106,6 +106,27 @@ class CareAbsentAlertBatchServiceTest {
             // Assert: sendNoContactCheck は呼ばれないこと
             verify(careEventNotificationService, never()).sendNoContactCheck(anyLong(), anyLong());
         }
+
+        @Test
+        @DisplayName("事前欠席連絡済みはスキップ: advanceAbsenceReason 設定済み → sendNoContactCheck が呼ばれないこと")
+        void 事前欠席連絡済みはスキップ() {
+            // Arrange: Phase8 §15 — 事前欠席連絡済みのケア対象者は NO_CONTACT_CHECK 対象外
+            EventRsvpResponseEntity rsvp = buildRsvpWithAdvanceAbsence(EVENT_ID, USER_ID, "SICK");
+
+            given(eventRepository.findActiveEventIdsStartedBefore(any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of(EVENT_ID));
+            given(rsvpResponseRepository.findByEventIdInAndResponse(anyList(), eq("ATTENDING")))
+                    .willReturn(List.of(rsvp));
+            given(careLinkService.isUnderCare(USER_ID)).willReturn(true);
+            // 事前欠席連絡済みは早期 return するためチェックイン照会後にスキップされる。
+            given(eventCheckinRepository.existsByEventIdAndUserId(EVENT_ID, USER_ID)).willReturn(false);
+
+            // Act
+            batchService.runNoContactCheck();
+
+            // Assert: sendNoContactCheck は呼ばれないこと
+            verify(careEventNotificationService, never()).sendNoContactCheck(anyLong(), anyLong());
+        }
     }
 
     // =========================================================
@@ -140,6 +161,26 @@ class CareAbsentAlertBatchServiceTest {
             // Assert
             verify(careEventNotificationService).sendAbsentAlert(USER_ID, EVENT_ID);
         }
+
+        @Test
+        @DisplayName("事前欠席連絡済みはスキップ: advanceAbsenceReason 設定済み → sendAbsentAlert が呼ばれないこと")
+        void 事前欠席連絡済みはスキップ() {
+            // Arrange: Phase8 §15 — 事前欠席連絡済みのケア対象者は ABSENT_ALERT 対象外
+            EventRsvpResponseEntity rsvp = buildRsvpWithAdvanceAbsence(EVENT_ID, USER_ID, "SICK");
+
+            given(eventRepository.findActiveEventIdsStartedBefore(any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of(EVENT_ID));
+            given(rsvpResponseRepository.findByEventIdInAndResponse(anyList(), eq("ATTENDING")))
+                    .willReturn(List.of(rsvp));
+            given(careLinkService.isUnderCare(USER_ID)).willReturn(true);
+            given(eventCheckinRepository.existsByEventIdAndUserId(EVENT_ID, USER_ID)).willReturn(false);
+
+            // Act
+            batchService.runAbsentAlertCheck();
+
+            // Assert: sendAbsentAlert は呼ばれないこと
+            verify(careEventNotificationService, never()).sendAbsentAlert(anyLong(), anyLong());
+        }
     }
 
     // =========================================================
@@ -151,6 +192,15 @@ class CareAbsentAlertBatchServiceTest {
                 .eventId(eventId)
                 .userId(userId)
                 .response("ATTENDING")
+                .build();
+    }
+
+    private EventRsvpResponseEntity buildRsvpWithAdvanceAbsence(Long eventId, Long userId, String reason) {
+        return EventRsvpResponseEntity.builder()
+                .eventId(eventId)
+                .userId(userId)
+                .response("ATTENDING")
+                .advanceAbsenceReason(reason)
                 .build();
     }
 
