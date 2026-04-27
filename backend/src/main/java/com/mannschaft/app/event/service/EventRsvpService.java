@@ -329,16 +329,16 @@ public class EventRsvpService {
     /**
      * イベントの主催者（createdBy）へ通知を送信する。
      *
-     * @param event      イベントエンティティ
-     * @param teamId     チームID（スコープID）
-     * @param type       通知種別
-     * @param title      通知タイトル
-     * @param body       通知本文
-     * @param actorId    操作者ID
+     * @param event           イベントエンティティ
+     * @param teamId          チームID（スコープID）
+     * @param type            通知種別
+     * @param title           通知タイトル
+     * @param body            通知本文
+     * @param operatorUserId  操作者のユーザーID（本人または見守り者の userId）
      */
     private void notifyOrganizer(EventEntity event, Long teamId,
                                   EventCareNotificationType type,
-                                  String title, String body, Long actorId) {
+                                  String title, String body, Long operatorUserId) {
         Long organizerUserId = event.getCreatedBy();
         if (organizerUserId == null) return;
 
@@ -349,7 +349,7 @@ public class EventRsvpService {
                 title, body,
                 "EVENT", event.getId(),
                 NotificationScopeType.TEAM, teamId,
-                "/events/" + event.getId(), actorId);
+                "/events/" + event.getId(), operatorUserId);
         notificationDispatchService.dispatch(notification);
     }
 
