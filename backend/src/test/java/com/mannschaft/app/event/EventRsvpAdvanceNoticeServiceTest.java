@@ -31,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -318,13 +319,18 @@ class EventRsvpAdvanceNoticeServiceTest {
     }
 
     private EventEntity buildEvent(Long eventId, Long createdBy) {
-        return EventEntity.builder()
+        EventEntity event = EventEntity.builder()
                 .scopeType(com.mannschaft.app.event.EventScopeType.TEAM)
                 .scopeId(10L)
                 .slug("test-event")
                 .attendanceMode(EventAttendanceMode.RSVP)
                 .createdBy(createdBy)
                 .build();
+        // BaseEntity の id フィールドは Lombok @Builder の対象外のためリフレクション経由でセットする。
+        // 主催者通知の sourceId に event.getId() を渡す箇所があり、null だと anyLong() マッチャーに合わず
+        // PotentialStubbingProblem になるため必須。
+        ReflectionTestUtils.setField(event, "id", eventId);
+        return event;
     }
 
     private UserEntity buildUser(Long userId, String displayName) {
