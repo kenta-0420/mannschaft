@@ -191,16 +191,18 @@ onMounted(() => {
   <div
     v-if="alreadyResponded && !allowMultiple"
     class="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700 dark:border-green-700 dark:bg-green-900/20 dark:text-green-200"
+    data-testid="survey-already-responded"
   >
     <i class="pi pi-check-circle mr-2" />
     {{ t('surveys.detail.form.alreadyResponded') }}
   </div>
 
-  <form v-else class="flex flex-col gap-6" @submit.prevent="onSubmit">
+  <form v-else class="flex flex-col gap-6" data-testid="survey-response-form" @submit.prevent="onSubmit">
     <div
       v-for="q in sortedQuestions"
       :key="q.id"
       class="rounded-lg border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
+      :data-testid="`response-question-${q.id}`"
     >
       <p class="mb-3 text-sm font-semibold text-surface-800 dark:text-surface-100">
         {{ q.questionText }}
@@ -222,6 +224,7 @@ onMounted(() => {
             v-model="answers[q.id]"
             :name="`q-${q.id}`"
             :value="opt.id"
+            :data-testid="`response-radio-${q.id}-${opt.id}`"
           />
           <span>{{ opt.optionText }}</span>
         </label>
@@ -238,6 +241,7 @@ onMounted(() => {
             v-model="answers[q.id]"
             :name="`q-${q.id}`"
             :value="opt.id"
+            :data-testid="`response-checkbox-${q.id}-${opt.id}`"
           />
           <span>{{ opt.optionText }}</span>
         </label>
@@ -251,6 +255,7 @@ onMounted(() => {
           maxlength="2000"
           class="w-full"
           :placeholder="t('surveys.detail.form.textPlaceholder')"
+          :data-testid="`response-text-${q.id}`"
         />
         <p class="mt-1 text-right text-xs text-surface-400">
           {{ (typeof answers[q.id] === 'string' ? (answers[q.id] as string).length : 0) }} / 2000
@@ -268,6 +273,7 @@ onMounted(() => {
             v-model="answers[q.id]"
             :name="`q-${q.id}`"
             :value="r.id"
+            :data-testid="`response-rating-${q.id}-${r.id}`"
           />
           <span>{{ r.label }}</span>
         </label>
@@ -280,6 +286,7 @@ onMounted(() => {
           date-format="yy/mm/dd"
           show-icon
           class="w-full sm:w-64"
+          :data-testid="`response-date-${q.id}`"
         />
       </div>
     </div>
@@ -298,6 +305,7 @@ onMounted(() => {
         :loading="submitting"
         :label="alreadyResponded && allowMultiple ? t('surveys.detail.form.submitUpdate') : t('surveys.detail.form.submitNew')"
         icon="pi pi-send"
+        data-testid="survey-response-submit"
       />
     </div>
   </form>
