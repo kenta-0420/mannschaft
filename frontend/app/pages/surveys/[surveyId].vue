@@ -55,7 +55,12 @@ const isCreator = computed(() => {
 /** ADMIN+（ADMIN または SYSTEM_ADMIN）の判定 */
 const isAdminPlus = computed(() => isAdmin.value)
 
-/** 結果閲覧権限の判定 */
+/**
+ * 結果閲覧権限の判定。
+ *
+ * 設計書 docs/features/F05.4_survey_vote.md §権限判定 (L1377〜) に準拠。
+ * AFTER_CLOSE は status='CLOSED' のときのみ全員に閲覧解放する。
+ */
 const canViewResults = computed(() => {
   const s = survey.value
   if (!s) return false
@@ -68,6 +73,8 @@ const canViewResults = computed(() => {
       return s.hasResponded === true
     case 'ALL_MEMBERS':
       return true
+    case 'AFTER_CLOSE':
+      return s.status === 'CLOSED'
     default:
       return false
   }
