@@ -182,7 +182,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl p-4">
+  <div class="mx-auto max-w-3xl p-4" data-testid="survey-detail-page">
     <BackButton :to="scopeListPath" />
 
     <!-- ローディング -->
@@ -201,7 +201,7 @@ onMounted(async () => {
     <template v-else>
       <!-- ヘッダー -->
       <PageHeader :title="survey.title" size="sm">
-        <span :class="statusClass(survey.status)" class="rounded px-2 py-0.5 text-xs font-medium">
+        <span :class="statusClass(survey.status)" class="rounded px-2 py-0.5 text-xs font-medium" data-testid="survey-detail-status">
           {{ t(`surveys.statusLabel.${survey.status}`) }}
         </span>
         <Badge
@@ -247,6 +247,7 @@ onMounted(async () => {
           severity="warn"
           outlined
           :loading="actionLoading"
+          data-testid="survey-close-button"
           @click="onCloseSurvey"
         />
       </div>
@@ -256,6 +257,7 @@ onMounted(async () => {
       <div
         v-if="displayMode === 'draft'"
         class="rounded-lg border border-surface-200 bg-surface-50 p-6 dark:border-surface-700 dark:bg-surface-800"
+        data-testid="survey-mode-draft"
       >
         <p class="mb-4 text-sm text-surface-600 dark:text-surface-300">
           <i class="pi pi-info-circle mr-1" />
@@ -266,6 +268,7 @@ onMounted(async () => {
             :label="t('surveys.detail.publishButton')"
             icon="pi pi-send"
             :loading="actionLoading"
+            data-testid="survey-publish-button"
             @click="onPublish"
           />
           <Button
@@ -274,6 +277,7 @@ onMounted(async () => {
             severity="danger"
             outlined
             :loading="actionLoading"
+            data-testid="survey-delete-button"
             @click="onDelete"
           />
         </div>
@@ -285,6 +289,7 @@ onMounted(async () => {
         :survey="survey"
         :already-responded="survey.hasResponded"
         :allow-multiple="survey.allowMultipleSubmissions"
+        data-testid="survey-mode-response"
         @submitted="onSubmitted"
       />
 
@@ -292,12 +297,14 @@ onMounted(async () => {
       <SurveyResultsPanel
         v-else-if="displayMode === 'results'"
         :survey-id="survey.id"
+        data-testid="survey-mode-results"
       />
 
       <!-- 結果非公開（締切＆権限なし） -->
       <div
         v-else-if="displayMode === 'closed-no-permission'"
         class="flex flex-col items-center gap-2 rounded-lg border border-surface-300 bg-surface-50 p-8 text-center dark:border-surface-600 dark:bg-surface-800/60"
+        data-testid="survey-mode-closed-no-permission"
       >
         <i class="pi pi-lock text-3xl text-surface-400" />
         <p class="text-sm text-surface-500 dark:text-surface-300">

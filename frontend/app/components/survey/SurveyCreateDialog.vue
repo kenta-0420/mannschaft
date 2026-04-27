@@ -163,7 +163,7 @@ async function submit() {
     :header="t('surveys.create.dialogHeader')"
     @hide="resetForm"
   >
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-4" data-testid="survey-create-dialog">
       <!-- タイトル -->
       <div>
         <label class="mb-1 block text-sm font-medium">
@@ -175,6 +175,7 @@ async function submit() {
           maxlength="200"
           :placeholder="t('surveys.create.titlePlaceholder')"
           autofocus
+          data-testid="survey-create-title"
         />
       </div>
 
@@ -188,16 +189,17 @@ async function submit() {
           maxlength="1000"
           :placeholder="t('surveys.create.descriptionPlaceholder')"
           auto-resize
+          data-testid="survey-create-description"
         />
       </div>
 
       <!-- オプション群 -->
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label class="flex items-center gap-2 text-sm">
+        <label class="flex items-center gap-2 text-sm" data-testid="survey-create-anonymous">
           <Checkbox v-model="isAnonymous" binary />
           <span>{{ t('surveys.create.isAnonymous') }}</span>
         </label>
-        <label class="flex items-center gap-2 text-sm">
+        <label class="flex items-center gap-2 text-sm" data-testid="survey-create-allow-multiple">
           <Checkbox v-model="allowMultipleSubmissions" binary />
           <span>{{ t('surveys.create.allowMultipleSubmissions') }}</span>
         </label>
@@ -213,6 +215,7 @@ async function submit() {
             option-label="label"
             option-value="value"
             class="w-full"
+            data-testid="survey-create-results-visibility"
           />
         </div>
         <div>
@@ -223,6 +226,7 @@ async function submit() {
             option-label="label"
             option-value="value"
             class="w-full"
+            data-testid="survey-create-unresponded-visibility"
           />
         </div>
       </div>
@@ -238,6 +242,7 @@ async function submit() {
           hour-format="24"
           date-format="yy/mm/dd"
           :placeholder="t('surveys.create.deadlinePlaceholder')"
+          data-testid="survey-create-deadline"
         />
       </div>
 
@@ -256,12 +261,14 @@ async function submit() {
         text
         severity="secondary"
         :disabled="submitting"
+        data-testid="survey-create-cancel"
         @click="close"
       />
       <Button
         :label="t('surveys.create.save')"
         icon="pi pi-check"
         :loading="submitting"
+        data-testid="survey-create-submit"
         @click="submit"
       />
     </template>

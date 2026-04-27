@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * ケア対象者の2段階不在アラートバッチサービス。F03.12 Phase4。
@@ -24,6 +26,9 @@ import java.util.Map;
  *   <li>第1段階 ({@link #runNoContactCheck()}): ソフト確認通知（NO_CONTACT_CHECK）</li>
  *   <li>第2段階 ({@link #runAbsentAlertCheck()}): 正式不在アラート（ABSENT_ALERT）</li>
  * </ul>
+ *
+ * <p>Phase8 §15 遅刻連絡対応: {@code expectedArrivalMinutesLate} が設定されている場合は
+ * カットオフ時刻を遅刻分だけ後ろにずらし、実際の想定到着時刻を基準にアラートを送信する。</p>
  *
  * <p>{@code care.absent-alert.enabled=false} でテスト時に無効化できる。</p>
  */
@@ -82,9 +87,14 @@ public class CareAbsentAlertBatchService {
     /**
      * 第1段階: ソフト確認通知（NO_CONTACT_CHECK）バッチ。
      *
-     * <p>進行中イベントで ATTENDING かつ未チェックイン かつ遅刻連絡なし のケア対象者を検索し、
-     * カテゴリ別の soft_check_minutes 以上経過していれば通知を送信する。
-     * 冪等チェックは {@link CareEventNotificationService#sendNoContactCheck} に委譲する。</p>
+     * <p>進行中イベントで ATTENDING かつ未チェックイン のケア対象者を検索し、
+     * カテゴリ別の soft_check_minutes 以上経過していれば通知を送信する。</p>
+     *
+     * <p>Phase8 §15 遅刻連絡対応: expectedArrivalMinutesLate が設定されている場合は
+     * カットオフを遅刻分だけ後ろにずらす（例: MINOR・10分ベース・遅刻30分申告 → 開始40分後に通知）。
+     * N+1 防止のため、イベントのアクティブ RSVP をメモリマップに一括キャッシュする。</p>
+     *
+     * <p>冪等チェックは {@link CareEventNotificationService#sendNoContactCheck} に委譲する。</p>
      */
     @Scheduled(fixedDelay = 180_000)
     @Transactional
@@ -100,27 +110,34 @@ public class CareAbsentAlertBatchService {
             return;
         }
 
-        List<EventRsvpResponseEntity> candidates =
-                rsvpResponseRepository.findByEventIdInAndResponseAndExpectedArrivalMinutesLateIsNull(
-                        activeEventIds, RESPONSE_ATTENDING);
+        // 遅刻連絡なし（遅刻連絡がないもの）と遅刻連絡あり（遅刻オフセット考慮が必要なもの）の両方を処理する
+        // N+1 防止: 対象イベントの全 RSVP（ATTENDING）を一括取得しメモリマップ化する
+        List<EventRsvpResponseEntity> allCandidates =
+                rsvpResponseRepository.findByEventIdInAndResponse(activeEventIds, RESPONSE_ATTENDING);
+        Map<String, EventRsvpResponseEntity> rsvpMap = buildRsvpMap(allCandidates);
 
-        for (EventRsvpResponseEntity rsvp : candidates) {
+        for (EventRsvpResponseEntity rsvp : allCandidates) {
             try {
-                processNoContactCheck(rsvp, now, activeEventIds);
+                processNoContactCheck(rsvp, now, rsvpMap);
             } catch (Exception e) {
                 log.warn("NO_CONTACT_CHECK 処理中にエラー: eventId={}, userId={}, error={}",
                         rsvp.getEventId(), rsvp.getUserId(), e.getMessage(), e);
             }
         }
-        log.debug("NO_CONTACT_CHECK バッチ完了: 候補件数={}", candidates.size());
+        log.debug("NO_CONTACT_CHECK バッチ完了: 候補件数={}", allCandidates.size());
     }
 
     /**
      * 第2段階: 正式不在アラート（ABSENT_ALERT）バッチ。
      *
-     * <p>進行中イベントで ATTENDING かつ未チェックイン かつ遅刻連絡なし のケア対象者を検索し、
-     * カテゴリ別の absent_alert_minutes 以上経過していれば正式不在アラートを送信する。
-     * 冪等チェックは {@link CareEventNotificationService#sendAbsentAlert} に委譲する。</p>
+     * <p>進行中イベントで ATTENDING かつ未チェックイン のケア対象者を検索し、
+     * カテゴリ別の absent_alert_minutes 以上経過していれば正式不在アラートを送信する。</p>
+     *
+     * <p>Phase8 §15 遅刻連絡対応: expectedArrivalMinutesLate が設定されている場合は
+     * カットオフを遅刻分だけ後ろにずらす。
+     * N+1 防止のため、イベントのアクティブ RSVP をメモリマップに一括キャッシュする。</p>
+     *
+     * <p>冪等チェックは {@link CareEventNotificationService#sendAbsentAlert} に委譲する。</p>
      */
     @Scheduled(fixedDelay = 180_000)
     @Transactional
@@ -135,19 +152,20 @@ public class CareAbsentAlertBatchService {
             return;
         }
 
-        List<EventRsvpResponseEntity> candidates =
-                rsvpResponseRepository.findByEventIdInAndResponseAndExpectedArrivalMinutesLateIsNull(
-                        activeEventIds, RESPONSE_ATTENDING);
+        // N+1 防止: 対象イベントの全 RSVP（ATTENDING）を一括取得しメモリマップ化する
+        List<EventRsvpResponseEntity> allCandidates =
+                rsvpResponseRepository.findByEventIdInAndResponse(activeEventIds, RESPONSE_ATTENDING);
+        Map<String, EventRsvpResponseEntity> rsvpMap = buildRsvpMap(allCandidates);
 
-        for (EventRsvpResponseEntity rsvp : candidates) {
+        for (EventRsvpResponseEntity rsvp : allCandidates) {
             try {
-                processAbsentAlertCheck(rsvp, now, activeEventIds);
+                processAbsentAlertCheck(rsvp, now, rsvpMap);
             } catch (Exception e) {
                 log.warn("ABSENT_ALERT 処理中にエラー: eventId={}, userId={}, error={}",
                         rsvp.getEventId(), rsvp.getUserId(), e.getMessage(), e);
             }
         }
-        log.debug("ABSENT_ALERT バッチ完了: 候補件数={}", candidates.size());
+        log.debug("ABSENT_ALERT バッチ完了: 候補件数={}", allCandidates.size());
     }
 
     // =========================================================
@@ -157,13 +175,17 @@ public class CareAbsentAlertBatchService {
     /**
      * 1件の RSVP に対して NO_CONTACT_CHECK の送信判定を行う。
      *
-     * @param rsvp          RSVP回答エンティティ
-     * @param now           現在日時
-     * @param activeEventIds 進行中イベントIDリスト（バッチ呼び出し元で取得済み）
+     * <p>Phase8 §15 遅刻連絡対応:
+     * expectedArrivalMinutesLate が設定されている場合は、ソフト確認のカットオフを
+     * 「基本分数 + 遅刻申告分数」で計算する。</p>
+     *
+     * @param rsvp    RSVP回答エンティティ
+     * @param now     現在日時
+     * @param rsvpMap イベントIDとユーザーIDをキーにした RSVP マップ（N+1 防止用）
      */
     private void processNoContactCheck(EventRsvpResponseEntity rsvp,
                                         LocalDateTime now,
-                                        List<Long> activeEventIds) {
+                                        Map<String, EventRsvpResponseEntity> rsvpMap) {
         Long userId = rsvp.getUserId();
         Long eventId = rsvp.getEventId();
 
@@ -176,12 +198,18 @@ public class CareAbsentAlertBatchService {
         // カテゴリ別タイミング判定
         CareCategory category = resolveCategory(userId);
         int softMinutes = SOFT_CHECK_MINUTES.getOrDefault(category, MIN_SOFT_CHECK_MINUTES);
-        LocalDateTime requiredCutoff = now.minusMinutes(softMinutes);
 
-        // 「開始から softMinutes 以上経過したイベント」かどうかを activeEventIds との照合で確認
-        // activeEventIds は MIN_SOFT_CHECK_MINUTES 基準で取得済みなので、
-        // カテゴリ固有のタイミングで再チェックする
+        // Phase8 §15: 遅刻申告がある場合はカットオフを遅刻分だけ後ろにずらす
+        int lateOffset = resolveLateOffset(rsvp);
+        int effectiveMinutes = softMinutes + lateOffset;
+        LocalDateTime requiredCutoff = now.minusMinutes(effectiveMinutes);
+
         if (!isEventStartedBefore(eventId, requiredCutoff, now)) return;
+
+        if (lateOffset > 0) {
+            log.debug("NO_CONTACT_CHECK（遅刻オフセット適用）: eventId={}, userId={}, base={}分, offset={}分, effective={}分",
+                    eventId, userId, softMinutes, lateOffset, effectiveMinutes);
+        }
 
         careEventNotificationService.sendNoContactCheck(userId, eventId);
     }
@@ -189,13 +217,17 @@ public class CareAbsentAlertBatchService {
     /**
      * 1件の RSVP に対して ABSENT_ALERT の送信判定を行う。
      *
-     * @param rsvp          RSVP回答エンティティ
-     * @param now           現在日時
-     * @param activeEventIds 進行中イベントIDリスト（バッチ呼び出し元で取得済み）
+     * <p>Phase8 §15 遅刻連絡対応:
+     * expectedArrivalMinutesLate が設定されている場合は、正式アラートのカットオフを
+     * 「基本分数 + 遅刻申告分数」で計算する。</p>
+     *
+     * @param rsvp    RSVP回答エンティティ
+     * @param now     現在日時
+     * @param rsvpMap イベントIDとユーザーIDをキーにした RSVP マップ（N+1 防止用）
      */
     private void processAbsentAlertCheck(EventRsvpResponseEntity rsvp,
                                           LocalDateTime now,
-                                          List<Long> activeEventIds) {
+                                          Map<String, EventRsvpResponseEntity> rsvpMap) {
         Long userId = rsvp.getUserId();
         Long eventId = rsvp.getEventId();
 
@@ -205,11 +237,47 @@ public class CareAbsentAlertBatchService {
 
         CareCategory category = resolveCategory(userId);
         int alertMinutes = ABSENT_ALERT_MINUTES.getOrDefault(category, MIN_ABSENT_ALERT_MINUTES);
-        LocalDateTime requiredCutoff = now.minusMinutes(alertMinutes);
+
+        // Phase8 §15: 遅刻申告がある場合はカットオフを遅刻分だけ後ろにずらす
+        int lateOffset = resolveLateOffset(rsvp);
+        int effectiveMinutes = alertMinutes + lateOffset;
+        LocalDateTime requiredCutoff = now.minusMinutes(effectiveMinutes);
 
         if (!isEventStartedBefore(eventId, requiredCutoff, now)) return;
 
+        if (lateOffset > 0) {
+            log.debug("ABSENT_ALERT（遅刻オフセット適用）: eventId={}, userId={}, base={}分, offset={}分, effective={}分",
+                    eventId, userId, alertMinutes, lateOffset, effectiveMinutes);
+        }
+
         careEventNotificationService.sendAbsentAlert(userId, eventId);
+    }
+
+    /**
+     * RSVP から遅刻オフセット分数を取得する。
+     * expectedArrivalMinutesLate が設定されていれば その値、なければ 0 を返す。
+     *
+     * @param rsvp RSVP回答エンティティ
+     * @return 遅刻オフセット分数（0以上）
+     */
+    private int resolveLateOffset(EventRsvpResponseEntity rsvp) {
+        Integer late = rsvp.getExpectedArrivalMinutesLate();
+        return (late != null) ? late : 0;
+    }
+
+    /**
+     * RSVP リストを「eventId:userId」の複合キーで Map 化する（N+1 防止用）。
+     *
+     * @param rsvps RSVP リスト
+     * @return 複合キー → RSVP のマップ
+     */
+    private Map<String, EventRsvpResponseEntity> buildRsvpMap(List<EventRsvpResponseEntity> rsvps) {
+        return rsvps.stream()
+                .collect(Collectors.toMap(
+                        r -> r.getEventId() + ":" + r.getUserId(),
+                        Function.identity(),
+                        (a, b) -> a   // 重複時は最初のものを使用
+                ));
     }
 
     /**

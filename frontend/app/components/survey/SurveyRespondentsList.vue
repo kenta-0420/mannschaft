@@ -92,10 +92,10 @@ defineExpose({ refresh: loadRespondents })
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
+  <div class="flex flex-col gap-3" data-testid="survey-respondents-list">
     <!-- ヘッダー: サマリー + 再読込 -->
     <div class="flex items-center justify-between gap-2">
-      <div class="text-sm text-surface-700">
+      <div class="text-sm text-surface-700" data-testid="respondents-summary">
         {{ t('surveys.respondents.summary', { responded: respondedCount, total: totalCount }) }}
       </div>
       <Button
@@ -106,6 +106,7 @@ defineExpose({ refresh: loadRespondents })
         size="small"
         :disabled="loading"
         :aria-label="t('surveys.respondents.reload')"
+        data-testid="respondents-refresh"
         @click="loadRespondents"
       />
     </div>
@@ -118,6 +119,7 @@ defineExpose({ refresh: loadRespondents })
       option-value="value"
       :allow-empty="false"
       class="self-start"
+      data-testid="respondents-filter"
     />
 
     <!-- 督促ヒント / 督促ボタン（未回答タブのみ） -->
@@ -135,6 +137,7 @@ defineExpose({ refresh: loadRespondents })
           size="small"
           :loading="reminding"
           :disabled="unresponded.length === 0 || loading"
+          data-testid="respondents-remind-button"
           @click="sendReminder"
         />
       </div>
@@ -168,6 +171,7 @@ defineExpose({ refresh: loadRespondents })
         v-for="item in visibleList"
         :key="item.userId"
         class="flex items-center gap-3 rounded-lg border border-surface-200 bg-surface-0 px-3 py-2"
+        :data-testid="`respondent-item-${item.userId}`"
       >
         <!-- アバター -->
         <Avatar

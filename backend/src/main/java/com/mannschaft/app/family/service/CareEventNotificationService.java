@@ -290,18 +290,23 @@ public class CareEventNotificationService {
     private String buildTitle(EventCareNotificationType type, CareCategory category,
                                String recipientName, String eventLabel) {
         return switch (type) {
-            case RSVP_CONFIRMED   -> recipientName + "が「" + eventLabel + "」に参加予定です";
-            case CHECKIN          -> recipientName + "が「" + eventLabel + "」に到着しました";
-            case CHECKOUT         -> recipientName + "が「" + eventLabel + "」を退場しました";
-            case NO_CONTACT_CHECK -> recipientName + "がまだ到着していないようです";
-            case ABSENT_ALERT     -> "⚠️ " + recipientName + "の到着が確認できていません";
-            case DISMISSAL        -> recipientName + "の「" + eventLabel + "」が終了しました";
-            case EVENT_DISMISSAL_REMINDER -> "⏰ 「" + eventLabel + "」の解散通知をまだ送信していません";
+            case RSVP_CONFIRMED           -> recipientName + "が「" + eventLabel + "」に参加予定です";
+            case CHECKIN                  -> recipientName + "が「" + eventLabel + "」に到着しました";
+            case CHECKOUT                 -> recipientName + "が「" + eventLabel + "」を退場しました";
+            case NO_CONTACT_CHECK         -> recipientName + "がまだ到着していないようです";
+            case ABSENT_ALERT             -> "⚠️ " + recipientName + "の到着が確認できていません";
+            case DISMISSAL                -> recipientName + "の「" + eventLabel + "」が終了しました";
+            // Phase8 §15 事前遅刻・欠席連絡
+            case EVENT_LATE_ARRIVAL_NOTICE -> "遅刻連絡";
+            case EVENT_ABSENCE_NOTICE      -> "欠席連絡";
+            // Phase9 §16 解散通知忘れリマインド
+            case EVENT_DISMISSAL_REMINDER  -> "⏰ 「" + eventLabel + "」の解散通知をまだ送信していません";
         };
     }
 
     /**
      * 通知本文を生成する。カテゴリ（ELDERLY等）に応じてメッセージトーンを変える。
+     * extra には遅刻分数や欠席理由などの付加情報を渡す（null 可）。
      */
     private String buildBody(EventCareNotificationType type, CareCategory category,
                               String recipientName, String eventLabel,
@@ -319,6 +324,16 @@ public class CareEventNotificationService {
                     ? "⚠️ " + recipientName + "さんの「" + eventLabel + "」への到着が確認できておりません。ご確認をお願いします。"
                     : "⚠️ " + recipientName + "の「" + eventLabel + "」へのチェックインが確認されていません。";
             case DISMISSAL -> "「" + eventLabel + "」が終了しました。お迎えの準備をお願いします。";
+            // Phase8 §15 事前遅刻・欠席連絡（extra に付加情報が入る）
+            case EVENT_LATE_ARRIVAL_NOTICE ->
+                extra != null
+                    ? recipientName + " が " + extra + "分遅刻予定です"
+                    : recipientName + " が遅刻予定です";
+            case EVENT_ABSENCE_NOTICE ->
+                extra != null
+                    ? recipientName + " が事前欠席連絡を送りました（理由: " + extra + "）"
+                    : recipientName + " が事前欠席連絡を送りました";
+            // Phase9 §16 解散通知忘れリマインド
             case EVENT_DISMISSAL_REMINDER ->
                 "「" + eventLabel + "」の終了予定時刻を過ぎていますが、解散通知がまだ送信されていません。参加者・保護者に解散通知を送信してください。";
         };

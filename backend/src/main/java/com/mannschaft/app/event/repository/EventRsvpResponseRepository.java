@@ -40,6 +40,18 @@ public interface EventRsvpResponseRepository extends JpaRepository<EventRsvpResp
     long countByEventIdAndResponse(Long eventId, String response);
 
     /**
+     * 指定イベントIDリストの中で指定した回答値（ATTENDING 等）の RSVP 回答一覧を取得する。
+     *
+     * <p>F03.12 Phase8 バッチが遅刻連絡の有無にかかわらず全 ATTENDING を一括取得するために使用する。
+     * メモリ上でオフセット計算を行うことで N+1 を防止する。</p>
+     *
+     * @param eventIds イベントIDリスト
+     * @param response 回答値（"ATTENDING" を渡すこと）
+     * @return 該当するRSVP回答リスト
+     */
+    List<EventRsvpResponseEntity> findByEventIdInAndResponse(List<Long> eventIds, String response);
+
+    /**
      * 指定イベントIDリストの中で ATTENDING かつ遅刻連絡なし（expectedArrivalMinutesLate が null）の
      * RSVP回答一覧を取得する。
      *
@@ -62,6 +74,19 @@ public interface EventRsvpResponseRepository extends JpaRepository<EventRsvpResp
      */
     @Query("SELECT r FROM EventRsvpResponseEntity r WHERE r.eventId = :eventId AND r.response IN ('ATTENDING', 'MAYBE')")
     List<EventRsvpResponseEntity> findAttendingOrMaybeByEventId(@Param("eventId") Long eventId);
+
+    /**
+     * 指定イベントの事前通知一覧（遅刻連絡または欠席連絡が設定されているもの）を取得する。
+     *
+     * <p>F03.12 Phase8 §15 事前遅刻・欠席連絡の一覧取得に使用する。
+     * expectedArrivalMinutesLate が NULL でない、または advanceAbsenceReason が NULL でない
+     * レコードを返す。</p>
+     *
+     * @param eventId イベントID
+     * @return 事前通知があるRSVP回答リスト
+     */
+    List<EventRsvpResponseEntity> findByEventIdAndExpectedArrivalMinutesLateIsNotNullOrEventIdAndAdvanceAbsenceReasonIsNotNull(
+            Long eventId1, Long eventId2);
 
     /**
      * 指定イベントの指定回答値を持つ RSVP 参加者のユーザーIDリストを取得する。

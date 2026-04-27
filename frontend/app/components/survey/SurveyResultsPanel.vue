@@ -31,7 +31,7 @@ onMounted(loadResults)
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
+  <div class="flex flex-col gap-3" data-testid="survey-results-panel">
     <div class="flex items-center justify-between">
       <h2 class="text-lg font-semibold text-surface-800 dark:text-surface-100">{{ t('surveys.detail.results.title') }}</h2>
       <Button
@@ -40,6 +40,7 @@ onMounted(loadResults)
         size="small"
         outlined
         :loading="loading"
+        data-testid="survey-results-refresh"
         @click="loadResults"
       />
     </div>
@@ -63,6 +64,7 @@ onMounted(loadResults)
     <div
       v-else-if="results.length === 0"
       class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-surface-300 bg-surface-50 p-8 text-center dark:border-surface-600 dark:bg-surface-800/40"
+      data-testid="survey-results-empty"
     >
       <i class="pi pi-chart-bar text-3xl text-surface-300" />
       <p class="text-sm text-surface-400">{{ t('surveys.detail.results.empty') }}</p>
@@ -70,7 +72,9 @@ onMounted(loadResults)
 
     <!-- 結果一覧 -->
     <div v-else class="flex flex-col gap-2">
-      <SurveyQuestionChart v-for="r in results" :key="r.questionId" :result="r" />
+      <div v-for="r in results" :key="r.questionId" :data-testid="`result-question-${r.questionId}`">
+        <SurveyQuestionChart :result="r" />
+      </div>
     </div>
   </div>
 </template>
