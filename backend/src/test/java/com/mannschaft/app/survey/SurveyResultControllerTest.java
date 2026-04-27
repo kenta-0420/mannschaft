@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.survey.controller.SurveyResultController;
 import com.mannschaft.app.survey.dto.RemindResponse;
+import com.mannschaft.app.survey.service.SurveyRemindService;
 import com.mannschaft.app.survey.service.SurveyResultService;
 import com.mannschaft.app.survey.service.SurveyService;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +44,9 @@ class SurveyResultControllerTest {
     @Mock
     private SurveyService surveyService;
 
+    @Mock
+    private SurveyRemindService remindService;
+
     @InjectMocks
     private SurveyResultController controller;
 
@@ -61,7 +65,7 @@ class SurveyResultControllerTest {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 RemindResponse remindResponse =
                         new RemindResponse(SURVEY_ID, 5, 2, "5名にリマインド送信しました");
-                given(surveyService.remind(SURVEY_ID, USER_ID)).willReturn(remindResponse);
+                given(remindService.remind(SURVEY_ID, USER_ID)).willReturn(remindResponse);
 
                 // When
                 ResponseEntity<ApiResponse<RemindResponse>> result = controller.remind(SURVEY_ID);
@@ -73,7 +77,7 @@ class SurveyResultControllerTest {
                 assertThat(result.getBody().getData().surveyId()).isEqualTo(SURVEY_ID);
                 assertThat(result.getBody().getData().remindedCount()).isEqualTo(5);
                 assertThat(result.getBody().getData().remainingRemindQuota()).isEqualTo(2);
-                verify(surveyService).remind(SURVEY_ID, USER_ID);
+                verify(remindService).remind(SURVEY_ID, USER_ID);
             }
         }
 
@@ -84,7 +88,7 @@ class SurveyResultControllerTest {
                 // Given: Service が REMIND_PERMISSION_DENIED を投げる
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 willThrow(new BusinessException(SurveyErrorCode.REMIND_PERMISSION_DENIED))
-                        .given(surveyService).remind(SURVEY_ID, USER_ID);
+                        .given(remindService).remind(SURVEY_ID, USER_ID);
 
                 // When & Then: 例外が伝播する（実 HTTP 403 マッピングは GlobalExceptionHandler 担当）
                 assertThatThrownBy(() -> controller.remind(SURVEY_ID))
@@ -101,7 +105,7 @@ class SurveyResultControllerTest {
                 // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 willThrow(new BusinessException(SurveyErrorCode.INVALID_SURVEY_STATUS))
-                        .given(surveyService).remind(SURVEY_ID, USER_ID);
+                        .given(remindService).remind(SURVEY_ID, USER_ID);
 
                 // When & Then
                 assertThatThrownBy(() -> controller.remind(SURVEY_ID))
@@ -118,7 +122,7 @@ class SurveyResultControllerTest {
                 // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 willThrow(new BusinessException(SurveyErrorCode.REMIND_COOLDOWN_NOT_ELAPSED))
-                        .given(surveyService).remind(SURVEY_ID, USER_ID);
+                        .given(remindService).remind(SURVEY_ID, USER_ID);
 
                 // When & Then
                 assertThatThrownBy(() -> controller.remind(SURVEY_ID))
@@ -135,7 +139,7 @@ class SurveyResultControllerTest {
                 // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 willThrow(new BusinessException(SurveyErrorCode.SURVEY_NOT_FOUND))
-                        .given(surveyService).remind(SURVEY_ID, USER_ID);
+                        .given(remindService).remind(SURVEY_ID, USER_ID);
 
                 // When & Then
                 assertThatThrownBy(() -> controller.remind(SURVEY_ID))
