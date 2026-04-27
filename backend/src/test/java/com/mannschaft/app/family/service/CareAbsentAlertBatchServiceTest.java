@@ -71,8 +71,8 @@ class CareAbsentAlertBatchServiceTest {
             // 1回目: 粗フィルタ(5min), 2回目: カテゴリ固有フィルタ(10min for MINOR)
             given(eventRepository.findActiveEventIdsStartedBefore(any(LocalDateTime.class), any(LocalDateTime.class)))
                     .willReturn(List.of(EVENT_ID));
-            given(rsvpResponseRepository.findByEventIdInAndResponseAndExpectedArrivalMinutesLateIsNull(
-                    anyList(), eq("ATTENDING")))
+            // F03.12 Phase8: 本体は遅刻連絡の有無に関わらず一括取得し、メモリでオフセット計算する仕様に変更された。
+            given(rsvpResponseRepository.findByEventIdInAndResponse(anyList(), eq("ATTENDING")))
                     .willReturn(List.of(rsvp));
             given(careLinkService.isUnderCare(USER_ID)).willReturn(true);
             given(eventCheckinRepository.existsByEventIdAndUserId(EVENT_ID, USER_ID)).willReturn(false);
@@ -90,15 +90,14 @@ class CareAbsentAlertBatchServiceTest {
         void チェックイン済みはスキップ() {
             // Arrange
             EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
-            CareLinkResponse link = buildCareLinkResponse(USER_ID, CareCategory.MINOR);
 
             given(eventRepository.findActiveEventIdsStartedBefore(any(LocalDateTime.class), any(LocalDateTime.class)))
                     .willReturn(List.of(EVENT_ID));
-            given(rsvpResponseRepository.findByEventIdInAndResponseAndExpectedArrivalMinutesLateIsNull(
-                    anyList(), eq("ATTENDING")))
+            // F03.12 Phase8: 本体は遅刻連絡の有無に関わらず一括取得する仕様に変更された。
+            given(rsvpResponseRepository.findByEventIdInAndResponse(anyList(), eq("ATTENDING")))
                     .willReturn(List.of(rsvp));
             given(careLinkService.isUnderCare(USER_ID)).willReturn(true);
-            // チェックイン済み
+            // チェックイン済み: 早期 return するためカテゴリ解決には到達せず getActiveLinksForCareRecipient は呼ばれない。
             given(eventCheckinRepository.existsByEventIdAndUserId(EVENT_ID, USER_ID)).willReturn(true);
 
             // Act
@@ -128,8 +127,8 @@ class CareAbsentAlertBatchServiceTest {
             // 1回目: 粗フィルタ(15min), 2回目: カテゴリ固有フィルタ(15min for ELDERLY)
             given(eventRepository.findActiveEventIdsStartedBefore(any(LocalDateTime.class), any(LocalDateTime.class)))
                     .willReturn(List.of(EVENT_ID));
-            given(rsvpResponseRepository.findByEventIdInAndResponseAndExpectedArrivalMinutesLateIsNull(
-                    anyList(), eq("ATTENDING")))
+            // F03.12 Phase8: 本体は遅刻連絡の有無に関わらず一括取得し、メモリでオフセット計算する仕様に変更された。
+            given(rsvpResponseRepository.findByEventIdInAndResponse(anyList(), eq("ATTENDING")))
                     .willReturn(List.of(rsvp));
             given(careLinkService.isUnderCare(USER_ID)).willReturn(true);
             given(eventCheckinRepository.existsByEventIdAndUserId(EVENT_ID, USER_ID)).willReturn(false);
