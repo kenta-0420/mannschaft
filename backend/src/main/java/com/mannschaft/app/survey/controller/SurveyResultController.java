@@ -3,6 +3,7 @@ package com.mannschaft.app.survey.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.survey.dto.AddResultViewersRequest;
 import com.mannschaft.app.survey.dto.AddTargetsRequest;
+import com.mannschaft.app.survey.dto.RemindResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse;
 import com.mannschaft.app.survey.service.SurveyResultService;
 import com.mannschaft.app.survey.service.SurveyService;
@@ -69,5 +70,24 @@ public class SurveyResultController {
             @Valid @RequestBody AddResultViewersRequest request) {
         surveyService.addResultViewers(surveyId, request.getUserIds());
         return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    /**
+     * F05.4 督促 API。未回答者へリマインド通知を送信する。
+     *
+     * <p>認可は作成者または ADMIN+。状態は PUBLISHED のみ受付。
+     * 24 時間クールダウンと最大 3 回の上限制約あり。詳細は
+     * {@link SurveyService#remind(Long, Long)} を参照。</p>
+     *
+     * <p>例外（403 / 400 / 404）の HTTP マッピングは GlobalExceptionHandler に委譲する。</p>
+     */
+    @PostMapping("/remind")
+    @Operation(summary = "アンケート督促送信",
+            description = "F05.4 §289-292 未回答者へリマインド通知を一括送信する（最大3回・24h クールダウン）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "送信成功")
+    public ResponseEntity<ApiResponse<RemindResponse>> remind(
+            @PathVariable Long surveyId) {
+        RemindResponse response = surveyService.remind(surveyId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }
