@@ -4,6 +4,8 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.SurveyErrorCode;
 import com.mannschaft.app.survey.SurveyNotificationType;
 import com.mannschaft.app.survey.SurveyStatus;
@@ -47,6 +49,7 @@ public class SurveyRemindService {
     private final SurveyRepository surveyRepository;
     private final SurveyTargetRepository targetRepository;
     private final SurveyResponseRepository responseRepository;
+    private final UserRoleRepository userRoleRepository;
     private final AccessControlService accessControlService;
     private final NotificationHelper notificationHelper;
 
@@ -58,10 +61,10 @@ public class SurveyRemindService {
      * 一部ユーザーへの送信失敗があっても全体ロールバックは発生しない（onboarding 流儀に準拠）。
      * カウンタ更新（{@code lastRemindedAt} / {@code manualRemindCount}）は同一トランザクションで永続化する。</p>
      *
-     * <p>母集団の決定:
+     * <p>母集団の決定（設計書 §1035-1036 に準拠）:
      * <ul>
-     *   <li>{@code survey_targets} に登録があれば、それを母集団とする</li>
-     *   <li>未登録（DistributionMode = ALL かつ事前登録なし）の場合は対象0件として扱い、送信スキップ</li>
+     *   <li>{@code distribution_mode = ALL} → スコープ内全メンバー（user_roles 経由）</li>
+     *   <li>{@code distribution_mode = TARGETED} → {@code survey_targets} 登録ユーザー</li>
      * </ul>
      * 既に回答済みのユーザーは除外する。
      * </p>
@@ -104,8 +107,8 @@ public class SurveyRemindService {
             throw new BusinessException(SurveyErrorCode.REMIND_QUOTA_EXCEEDED);
         }
 
-        // 未回答者抽出（母集団は survey_targets。回答済みを除外）
-        List<Long> unansweredUserIds = findUnansweredUserIds(surveyId);
+        // 未回答者抽出（distribution_mode に応じて母集団を切り替え。回答済みを除外）
+        List<Long> unansweredUserIds = findUnansweredUserIds(survey);
 
         // 通知送信（NotificationHelper.notifyAll が個別の失敗を握りつつ継続する）
         NotificationScopeType notifScope = "TEAM".equals(survey.getScopeType())
@@ -141,26 +144,51 @@ public class SurveyRemindService {
     }
 
     /**
-     * 未回答ユーザーIDを抽出する。母集団は {@code survey_targets}（未登録時は空）。
+     * 未回答ユーザーIDを抽出する。
+     *
+     * <p>母集団は {@link SurveyEntity#getDistributionMode()} に応じて切り替える:
+     * <ul>
+     *   <li>{@link DistributionMode#ALL} → {@code user_roles} 経由でスコープ内全メンバーを取得</li>
+     *   <li>{@link DistributionMode#TARGETED} → {@code survey_targets} 登録ユーザー</li>
+     * </ul>
+     * 設計書 F05.4 §1035-1036 を参照。回答済みユーザーは母集団から除外する。
      */
-    private List<Long> findUnansweredUserIds(Long surveyId) {
-        List<SurveyTargetEntity> targets = targetRepository.findBySurveyId(surveyId);
-        if (targets.isEmpty()) {
+    private List<Long> findUnansweredUserIds(SurveyEntity survey) {
+        List<Long> universeUserIds = resolveUniverseUserIds(survey);
+        if (universeUserIds.isEmpty()) {
             return List.of();
         }
         Set<Long> respondedUserIds = new HashSet<>();
-        for (SurveyResponseEntity r : responseRepository.findBySurveyIdOrderByCreatedAtAsc(surveyId)) {
+        for (SurveyResponseEntity r : responseRepository.findBySurveyIdOrderByCreatedAtAsc(survey.getId())) {
             respondedUserIds.add(r.getUserId());
         }
         List<Long> result = new ArrayList<>();
         Set<Long> seen = new HashSet<>();
-        for (SurveyTargetEntity t : targets) {
-            Long uid = t.getUserId();
+        for (Long uid : universeUserIds) {
             if (uid == null || respondedUserIds.contains(uid) || !seen.add(uid)) {
                 continue;
             }
             result.add(uid);
         }
         return result;
+    }
+
+    /**
+     * distribution_mode に応じて母集団ユーザーIDリストを取得する。
+     *
+     * @param survey 対象アンケート
+     * @return 母集団ユーザーIDリスト（順序は配信モードのソース順）
+     */
+    private List<Long> resolveUniverseUserIds(SurveyEntity survey) {
+        if (survey.getDistributionMode() == DistributionMode.ALL) {
+            return userRoleRepository.findUserIdsByScope(survey.getScopeType(), survey.getScopeId());
+        }
+        // TARGETED: survey_targets が母集団
+        List<SurveyTargetEntity> targets = targetRepository.findBySurveyId(survey.getId());
+        List<Long> ids = new ArrayList<>(targets.size());
+        for (SurveyTargetEntity t : targets) {
+            ids.add(t.getUserId());
+        }
+        return ids;
     }
 }
