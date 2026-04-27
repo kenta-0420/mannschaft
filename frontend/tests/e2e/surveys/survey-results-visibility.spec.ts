@@ -20,10 +20,12 @@ import {
  *   <li>SURVEY-005b: {@code resultsVisibility = 'RESPONDENTS'}
  *       — 回答済み MEMBER は見える、未回答 MEMBER は見えない</li>
  *   <li>SURVEY-005c: {@code resultsVisibility = 'ALL_MEMBERS'}
- *       — 全員結果見える（ただし表示モードは現状実装の優先順位に従う）</li>
+ *       — 全員結果見える（未回答 MEMBER でも結果画面に直接遷移）</li>
  * </ul>
  *
  * <h2>現状実装 ({@code pages/surveys/[surveyId].vue}) の判定ロジック</h2>
+ *
+ * <p>設計書 docs/features/F05.4_survey_vote.md L1377〜「結果閲覧権限の判定」に準拠。</p>
  *
  * <pre>
  * canViewResults:
@@ -33,20 +35,18 @@ import {
  *     - CREATOR_ONLY  → false
  *     - RESPONDENTS   → hasResponded === true で true
  *     - ALL_MEMBERS   → true
+ *     - AFTER_CLOSE   → status === 'CLOSED' で true
  *
- * displayMode (status === 'PUBLISHED' の場合):
- *   1) !hasResponded || allowMultipleSubmissions  → 'response' (最優先)
- *   2) canViewResults  → 'results'
- *   3) それ以外          → 'response' (回答済み表示)
- *
- * displayMode (status === 'CLOSED' の場合):
- *   - canViewResults  → 'results'
- *   - それ以外          → 'closed-no-permission'
+ * displayMode:
+ *   1) status === 'DRAFT'              → 'draft'
+ *   2) canViewResults                  → 'results' (最優先)
+ *   3) status === 'PUBLISHED'          → 'response'
+ *   4) status === 'CLOSED' & 権限なし  → 'closed-no-permission'
  * </pre>
  *
- * <p>従って、PUBLISHED + 未回答時は結果可視性に関わらず常に 'response' になる
- * （最優先ルール）。'results' / 'closed-no-permission' を確実に検証するために
- * 一部サブケースは {@code status: 'CLOSED'} で組む。</p>
+ * <p>結果閲覧権限を回答画面より優先するため、ALL_MEMBERS では未回答 MEMBER も
+ * 直接 'results' に遷移する。CREATOR_ONLY / RESPONDENTS で結果権限を持たない
+ * 未回答ユーザーは従来通り 'response' に誘導される。</p>
  */
 
 const TEAM_ID = 1
@@ -363,12 +363,10 @@ test.describe('SURVEY-005c: 結果可視性 ALL_MEMBERS', () => {
     await mockSideApis(page)
   })
 
-  test('MEMBER (未回答) は PUBLISHED では回答画面が優先される', async ({ page }) => {
-    // 現状実装: PUBLISHED かつ !hasResponded のときは displayMode='response' が
-    // 最優先で適用される。設計書では ALL_MEMBERS なら未回答でも結果閲覧可だが
-    // PUBLISHED 中はまず回答画面に誘導する仕様。
-    // TODO: 設計書では結果閲覧可だが現状実装は 'response' フォールバック優先。
-    //       仕様変更が決まったらここを 'results' へ更新すること。
+  test('MEMBER (未回答・PUBLISHED) は ALL_MEMBERS なので結果画面に直接遷移', async ({ page }) => {
+    // 設計書 docs/features/F05.4_survey_vote.md L1377〜:
+    //   resultsVisibility = ALWAYS (実装は ALL_MEMBERS) は誰でも閲覧可。
+    //   結果閲覧権限が回答可否より優先されるため、未回答 MEMBER でも 'results'。
     await setupAuth(page, {
       userId: MEMBER_ID,
       displayName: 'member-user',
@@ -394,8 +392,8 @@ test.describe('SURVEY-005c: 結果可視性 ALL_MEMBERS', () => {
     await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
     await waitForSurveyDetail(page, SURVEY_ID)
 
-    await expect(page.locator('[data-testid="survey-mode-response"]')).toBeVisible()
-    await expect(page.locator('[data-testid="survey-mode-results"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid="survey-mode-results"]')).toBeVisible()
+    await expect(page.locator('[data-testid="survey-mode-response"]')).toHaveCount(0)
   })
 
   test('MEMBER (回答済み・複数回答不可) は結果が見える', async ({ page }) => {

@@ -67,7 +67,13 @@ const PUBLISHED_QUESTION_ID = 501
 const PUBLISHED_OPTION_RED_ID = 9001
 const PUBLISHED_OPTION_BLUE_ID = 9002
 
-/** PUBLISHED アンケート（未回答・複数回答不可・結果は ALL_MEMBERS 公開） */
+/**
+ * PUBLISHED アンケート（未回答・複数回答不可・結果は RESPONDENTS 限定公開）。
+ *
+ * <p>resultsVisibility は {@code RESPONDENTS} に固定する。
+ * ALL_MEMBERS にすると displayMode が常に 'results' となり、回答送信フロー
+ * （未回答→response→送信→results）の検証ができなくなる。</p>
+ */
 function buildPublishedSurvey(overrides: Partial<SurveyResponse> = {}): SurveyResponse {
   return buildSurvey({
     id: PUBLISHED_SURVEY_ID,
@@ -76,7 +82,7 @@ function buildPublishedSurvey(overrides: Partial<SurveyResponse> = {}): SurveyRe
     status: 'PUBLISHED',
     isAnonymous: false,
     allowMultipleSubmissions: false,
-    resultsVisibility: 'ALL_MEMBERS',
+    resultsVisibility: 'RESPONDENTS',
     unrespondedVisibility: 'ALL_MEMBERS',
     deadline: null,
     responseCount: 0,
@@ -392,8 +398,8 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
     // 送信ボタンクリック
     await page.getByTestId('survey-response-submit').click()
 
-    // 詳細再 fetch 後 hasResponded=true・resultsVisibility=ALL_MEMBERS のため
-    // 結果モードに切り替わる（response モードは消える）
+    // 詳細再 fetch 後 hasResponded=true・resultsVisibility=RESPONDENTS のため
+    // canViewResults=true となり、結果モードに切り替わる（response モードは消える）
     await expect(page.getByTestId('survey-mode-results')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByTestId('survey-mode-response')).toBeHidden({ timeout: 10_000 })
 
