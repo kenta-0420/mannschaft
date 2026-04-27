@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -217,6 +218,9 @@ class EventEndReminderBatchServiceTest {
                 .attendanceMode(EventAttendanceMode.REGISTRATION)
                 .visibility(EventVisibility.MEMBERS_ONLY)
                 .build();
+        // BaseEntity.id は @GeneratedValue 由来で Lombok ビルダーから設定できないため、
+        // リフレクションで明示的に注入する。バッチが event.getId() を通知の sourceId として使うため必須。
+        ReflectionTestUtils.setField(event, "id", EVENT_ID);
 
         // incrementOrganizerReminder を指定回数呼び出してカウントを設定
         for (int i = 0; i < reminderCount; i++) {
