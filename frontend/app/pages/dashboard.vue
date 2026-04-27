@@ -53,6 +53,11 @@ onMounted(async () => {
         </div>
       </div>
 
+      <!-- F03.12 §16 解散通知未送信リマインダー（主催者向け） -->
+      <div class="mb-4">
+        <WidgetEventDismissalReminder />
+      </div>
+
       <!-- データウィジェット群 (広告込み) -->
       <div class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
         <WidgetFamilyHub v-if="hasFamilyTeam" />

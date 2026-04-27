@@ -95,17 +95,15 @@ public class EventRollCallService {
         // ユーザーID → ケア対象フラグ のセット（ケアリンクが1件以上あれば対象）
         Set<Long> underCareUserIds = new HashSet<>(watcherCountMap.keySet());
 
-        // ユーザー表示名・アバター情報をまとめて取得（N+1 だが件数は点呼候補者数に限定されるため許容）
+        // ユーザー表示名・アバター情報を IN 句で一括取得（N+1 防止）
         Map<Long, UserEntity> userMap = new HashMap<>();
-        for (Long uid : userIds) {
-            userRepository.findById(uid).ifPresent(u -> userMap.put(uid, u));
+        for (UserEntity u : userRepository.findByIdIn(userIds)) {
+            userMap.put(u.getId(), u);
         }
 
-        // 各ユーザーの既存チェックイン状態を確認
-        Map<Long, Boolean> checkinMap = new HashMap<>();
-        for (Long userId : userIds) {
-            checkinMap.put(userId, checkinRepository.existsByEventIdAndUserId(eventId, userId));
-        }
+        // 各ユーザーの既存チェックイン状態を IN 句で一括取得（N+1 防止）
+        Set<Long> checkedInUserIds = new HashSet<>(
+                checkinRepository.findCheckedInUserIdsByEventIdAndUserIdIn(eventId, userIds));
 
         // レスポンス構築
         List<RollCallCandidateResponse> results = new ArrayList<>();
@@ -116,7 +114,7 @@ public class EventRollCallService {
             String avatarUrl = user != null ? user.getAvatarUrl() : null;
             boolean isUnderCare = underCareUserIds.contains(userId);
             int watcherCount = watcherCountMap.getOrDefault(userId, 0L).intValue();
-            boolean alreadyCheckedIn = checkinMap.getOrDefault(userId, false);
+            boolean alreadyCheckedIn = checkedInUserIds.contains(userId);
 
             results.add(RollCallCandidateResponse.builder()
                     .userId(userId)

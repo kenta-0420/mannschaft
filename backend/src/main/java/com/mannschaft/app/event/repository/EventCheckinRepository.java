@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -59,6 +60,29 @@ public interface EventCheckinRepository extends JpaRepository<EventCheckinEntity
               AND (r.userId = :userId OR c.rollCallUserId = :userId)
             """)
     boolean existsByEventIdAndUserId(@Param("eventId") Long eventId, @Param("userId") Long userId);
+
+    /**
+     * イベントID＋ユーザーIDコレクションでチェックイン済みのユーザーIDだけを一括取得する（N+1 防止）。
+     *
+     * <p>F03.12 §14 主催者点呼候補者一覧取得時に、各候補者の {@code isAlreadyCheckedIn} フラグを
+     * 1 クエリで解決するために使用する。QR/セルフチェックイン（ticket→registration 経由）と
+     * 点呼（rollCallUserId 直接）の両方を考慮する。</p>
+     *
+     * @param eventId イベントID
+     * @param userIds ユーザーID コレクション
+     * @return チェックイン済みのユーザーID一覧（重複なし）
+     */
+    @Query("""
+            SELECT DISTINCT COALESCE(r.userId, c.rollCallUserId)
+            FROM EventCheckinEntity c
+            LEFT JOIN EventTicketEntity t ON t.id = c.ticketId
+            LEFT JOIN EventRegistrationEntity r ON r.id = t.registrationId
+            WHERE c.eventId = :eventId
+              AND (r.userId IN :userIds OR c.rollCallUserId IN :userIds)
+            """)
+    List<Long> findCheckedInUserIdsByEventIdAndUserIdIn(
+            @Param("eventId") Long eventId,
+            @Param("userIds") Collection<Long> userIds);
 
     /**
      * 点呼セッションID・ユーザーIDで既存チェックインレコードを取得する（冪等処理用）。
