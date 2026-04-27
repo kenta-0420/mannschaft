@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,6 +29,16 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     boolean existsByContactHandle(String contactHandle);
 
     List<UserEntity> findByStatusAndCreatedAtBefore(UserStatus status, LocalDateTime threshold);
+
+    /**
+     * ユーザーIDコレクションから一括取得する（N+1 防止）。
+     *
+     * <p>F03.12 §14 主催者点呼候補者一覧取得時に、表示名・アバターを 1 クエリで解決するために使用する。</p>
+     *
+     * @param ids ユーザーID コレクション
+     * @return 該当ユーザー一覧（@SQLRestriction により未削除のみ）
+     */
+    List<UserEntity> findByIdIn(Collection<Long> ids);
 
     boolean existsByEmail(String email);
 
