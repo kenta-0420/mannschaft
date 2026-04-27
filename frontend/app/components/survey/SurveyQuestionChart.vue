@@ -16,6 +16,8 @@ const props = defineProps<{
   result: SurveyResultSummary
 }>()
 
+const { t } = useI18n()
+
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let chartInstance: ChartJS | null = null
 
@@ -34,7 +36,7 @@ function buildConfig() {
         labels: optionResults.map((o) => o.optionText),
         datasets: [
           {
-            label: '回答数',
+            label: t('surveys.detail.results.responsesLabel'),
             data: optionResults.map((o) => o.count),
             backgroundColor: '#6366f1',
             borderRadius: 4,
@@ -94,7 +96,7 @@ onUnmounted(() => {
   <div class="mb-3 rounded-lg bg-surface-50 p-3 dark:bg-surface-700/30">
     <p class="mb-2 text-sm font-semibold text-surface-700 dark:text-surface-200">
       {{ result.questionText }}
-      <span class="ml-1 text-xs font-normal text-surface-400">{{ result.totalResponses }}件</span>
+      <span class="ml-1 text-xs font-normal text-surface-400">{{ result.totalResponses }}{{ t('surveys.detail.results.responsesUnit') }}</span>
     </p>
 
     <!-- 選択式・評価: グラフ表示 -->
@@ -106,7 +108,7 @@ onUnmounted(() => {
       >
         <canvas ref="canvasRef" />
       </div>
-      <p v-else class="text-xs text-surface-400">データなし</p>
+      <p v-else class="text-xs text-surface-400">{{ t('surveys.detail.results.noData') }}</p>
     </template>
 
     <!-- テキスト回答 -->
@@ -120,10 +122,10 @@ onUnmounted(() => {
           {{ text }}
         </li>
         <li v-if="(result.textResponses?.length ?? 0) > 8" class="px-3 text-xs text-surface-400">
-          他 {{ result.textResponses!.length - 8 }} 件
+          {{ t('surveys.detail.results.moreCount', { count: result.textResponses!.length - 8 }) }}
         </li>
       </ul>
-      <p v-else class="text-xs text-surface-400">テキスト回答なし</p>
+      <p v-else class="text-xs text-surface-400">{{ t('surveys.detail.results.noTextResponses') }}</p>
     </template>
 
     <!-- 日付回答 -->
@@ -135,7 +137,7 @@ onUnmounted(() => {
           class="flex items-center justify-between text-xs"
         >
           <span class="text-surface-600 dark:text-surface-300">{{ o.optionText }}</span>
-          <span class="text-surface-400">{{ o.count }}件 ({{ o.percentage }}%)</span>
+          <span class="text-surface-400">{{ o.count }}{{ t('surveys.detail.results.responsesUnit') }} ({{ o.percentage }}%)</span>
         </div>
       </div>
     </template>

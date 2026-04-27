@@ -125,6 +125,7 @@ export default defineNuxtConfig({
           'ja/jobmatching.json',
           'ja/shift.json',
           'ja/care.json',
+          'ja/surveys.json',
         ],
       },
       {
@@ -151,6 +152,7 @@ export default defineNuxtConfig({
           'en/jobmatching.json',
           'en/shift.json',
           'en/care.json',
+          'en/surveys.json',
         ],
       },
       {
@@ -177,6 +179,7 @@ export default defineNuxtConfig({
           'zh/jobmatching.json',
           'zh/shift.json',
           'zh/care.json',
+          'zh/surveys.json',
         ],
       },
       {
@@ -203,6 +206,7 @@ export default defineNuxtConfig({
           'ko/jobmatching.json',
           'ko/shift.json',
           'ko/care.json',
+          'ko/surveys.json',
         ],
       },
       {
@@ -229,6 +233,7 @@ export default defineNuxtConfig({
           'es/jobmatching.json',
           'es/shift.json',
           'es/care.json',
+          'es/surveys.json',
         ],
       },
       {
@@ -255,6 +260,7 @@ export default defineNuxtConfig({
           'de/jobmatching.json',
           'de/shift.json',
           'de/care.json',
+          'de/surveys.json',
         ],
       },
     ],
