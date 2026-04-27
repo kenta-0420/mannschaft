@@ -4,6 +4,8 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.QuestionType;
 import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyErrorCode;
@@ -53,6 +55,7 @@ public class SurveyResultService {
     private final SurveyService surveyService;
     private final AccessControlService accessControlService;
     private final UserRepository userRepository;
+    private final UserRoleRepository userRoleRepository;
 
     /**
      * アンケート結果を取得する。閲覧権限チェックを行う。
@@ -116,8 +119,11 @@ public class SurveyResultService {
      *   <li>それ以外 → {@link SurveyErrorCode#RESPONDENTS_ACCESS_DENIED}</li>
      * </ul>
      *
-     * <p>母集団は {@code survey_targets}（TARGETED 配信時、もしくは ALL でも事前登録時）。
-     * 配信対象が登録されていない場合は、回答済みユーザーのみを返却する。
+     * <p>母集団の決定（設計書 §1035-1036 に準拠）:
+     * <ul>
+     *   <li>{@link DistributionMode#ALL} → スコープ内全メンバー（user_roles 経由）</li>
+     *   <li>{@link DistributionMode#TARGETED} → {@code survey_targets} 登録ユーザー</li>
+     * </ul>
      *
      * @param surveyId 対象アンケートID
      * @param userId   閲覧者ユーザーID
@@ -133,14 +139,13 @@ public class SurveyResultService {
         boolean fullAccess = isAdmin || isCreator || isViewer;
 
         if (!fullAccess) {
-            // MEMBER 経路: ALL_MEMBERS かつ自分が対象者である場合のみ未回答者リスト閲覧可
+            // MEMBER 経路: ALL_MEMBERS かつ自分が母集団に含まれる場合のみ未回答者リスト閲覧可
             if (survey.getUnrespondedVisibility() != UnrespondedVisibility.ALL_MEMBERS
-                    || !targetRepository.existsBySurveyIdAndUserId(survey.getId(), userId)) {
+                    || !isUserInUniverse(survey, userId)) {
                 throw new BusinessException(SurveyErrorCode.RESPONDENTS_ACCESS_DENIED);
             }
         }
 
-        List<SurveyTargetEntity> targets = targetRepository.findBySurveyId(surveyId);
         List<SurveyResponseEntity> allResponses = responseRepository.findBySurveyIdOrderByCreatedAtAsc(surveyId);
 
         Set<Long> respondedUserIds = new HashSet<>();
@@ -150,13 +155,7 @@ public class SurveyResultService {
             firstResponseByUser.putIfAbsent(r.getUserId(), r);
         }
 
-        List<Long> universeUserIds;
-        if (!targets.isEmpty()) {
-            universeUserIds = targets.stream().map(SurveyTargetEntity::getUserId).distinct().collect(Collectors.toList());
-        } else {
-            // ALL モードかつ survey_targets 未登録時は、回答済みユーザーのみを母集団とする（未回答者抽出は将来対応）
-            universeUserIds = new ArrayList<>(respondedUserIds);
-        }
+        List<Long> universeUserIds = resolveUniverseUserIds(survey);
 
         List<UserEntity> users = userRepository.findAllById(universeUserIds);
         Map<Long, UserEntity> userById = users.stream()
@@ -251,5 +250,42 @@ public class SurveyResultService {
                 optionResults,
                 textResponses
         );
+    }
+
+    /**
+     * distribution_mode に応じて母集団ユーザーIDリストを取得する。
+     *
+     * <p>F05.4 §1035-1036 準拠:
+     * <ul>
+     *   <li>{@link DistributionMode#ALL} → user_roles 経由でスコープ内全メンバー</li>
+     *   <li>{@link DistributionMode#TARGETED} → survey_targets 登録ユーザー</li>
+     * </ul>
+     */
+    private List<Long> resolveUniverseUserIds(SurveyEntity survey) {
+        if (survey.getDistributionMode() == DistributionMode.ALL) {
+            return userRoleRepository.findUserIdsByScope(survey.getScopeType(), survey.getScopeId());
+        }
+        List<SurveyTargetEntity> targets = targetRepository.findBySurveyId(survey.getId());
+        return targets.stream()
+                .map(SurveyTargetEntity::getUserId)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 指定ユーザーが当該アンケートの母集団に属するか判定する。
+     *
+     * <p>MEMBER 経路の認可（{@code unresponded_visibility = ALL_MEMBERS}）で
+     * 「自分が母集団内のメンバーかどうか」をチェックする際に使用する。</p>
+     */
+    private boolean isUserInUniverse(SurveyEntity survey, Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        if (survey.getDistributionMode() == DistributionMode.ALL) {
+            return userRoleRepository.findUserIdsByScope(survey.getScopeType(), survey.getScopeId())
+                    .contains(userId);
+        }
+        return targetRepository.existsBySurveyIdAndUserId(survey.getId(), userId);
     }
 }

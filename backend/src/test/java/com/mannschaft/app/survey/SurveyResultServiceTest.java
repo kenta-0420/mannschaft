@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.dto.RespondentResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse;
 import com.mannschaft.app.survey.entity.SurveyEntity;
@@ -63,6 +64,9 @@ class SurveyResultServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private UserRoleRepository userRoleRepository;
 
     @InjectMocks
     private SurveyResultService surveyResultService;
@@ -234,21 +238,20 @@ class SurveyResultServiceTest {
         /**
          * ADMIN 向け共通セットアップ: 対象者2人（userId=10 回答済み, userId=20 未回答）を stub する。
          *
+         * <p>テストアンケートは {@link DistributionMode#ALL} モードのため、母集団は user_roles 経由で取得する。</p>
+         *
          * @param survey テスト対象のアンケートエンティティ
          */
         private void setupAdminScenario(SurveyEntity survey) {
             UserEntity user1 = buildUser(10L, "回答済みユーザー");
             UserEntity user2 = buildUser(20L, "未回答ユーザー");
 
-            SurveyTargetEntity target1 = buildTarget(SURVEY_ID, 10L);
-            SurveyTargetEntity target2 = buildTarget(SURVEY_ID, 20L);
-
             LocalDateTime respondedAt = LocalDateTime.of(2026, 4, 25, 10, 0);
             SurveyResponseEntity response1 = buildResponse(SURVEY_ID, 10L, respondedAt);
 
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
             given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, 1L, "TEAM")).willReturn(true);
-            given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(target1, target2));
+            given(userRoleRepository.findUserIdsByScope("TEAM", 1L)).willReturn(List.of(10L, 20L));
             given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID)).willReturn(List.of(response1));
             given(userRepository.findAllById(anyList())).willReturn(List.of(user1, user2));
         }
@@ -402,17 +405,14 @@ class SurveyResultServiceTest {
             UserEntity respondedUser = buildUser(10L, "回答済みユーザー");
             UserEntity unrespondedUser = buildUser(MEMBER_USER_ID, "未回答ユーザー");
 
-            SurveyTargetEntity target1 = buildTarget(SURVEY_ID, 10L);
-            SurveyTargetEntity target2 = buildTarget(SURVEY_ID, MEMBER_USER_ID);
-
             LocalDateTime respondedAt = LocalDateTime.of(2026, 4, 25, 10, 0);
             SurveyResponseEntity response1 = buildResponse(SURVEY_ID, 10L, respondedAt);
 
+            // ALL モード: user_roles 経由で母集団を取得する
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
             given(accessControlService.isAdminOrAbove(MEMBER_USER_ID, 1L, "TEAM")).willReturn(false);
             given(resultViewerRepository.existsBySurveyIdAndUserId(SURVEY_ID, MEMBER_USER_ID)).willReturn(false);
-            given(targetRepository.existsBySurveyIdAndUserId(SURVEY_ID, MEMBER_USER_ID)).willReturn(true);
-            given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(target1, target2));
+            given(userRoleRepository.findUserIdsByScope("TEAM", 1L)).willReturn(List.of(10L, MEMBER_USER_ID));
             given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID)).willReturn(List.of(response1));
             given(userRepository.findAllById(anyList())).willReturn(List.of(respondedUser, unrespondedUser));
 
@@ -442,13 +442,94 @@ class SurveyResultServiceTest {
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
             given(accessControlService.isAdminOrAbove(MEMBER_USER_ID, 1L, "TEAM")).willReturn(false);
             given(resultViewerRepository.existsBySurveyIdAndUserId(SURVEY_ID, MEMBER_USER_ID)).willReturn(false);
-            given(targetRepository.existsBySurveyIdAndUserId(SURVEY_ID, MEMBER_USER_ID)).willReturn(false);
+            // ALL モード: user_roles に MEMBER_USER_ID が含まれないので isUserInUniverse は false
+            given(userRoleRepository.findUserIdsByScope("TEAM", 1L)).willReturn(List.of(10L, 20L));
 
             // When & Then
             assertThatThrownBy(() -> surveyResultService.getRespondents(SURVEY_ID, MEMBER_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SurveyErrorCode.RESPONDENTS_ACCESS_DENIED));
+        }
+
+        @Test
+        @DisplayName("ケース8: ALLモード_user_rolesから母集団取得（F05.4 §1035-1036）")
+        void ケース8_ALLモード_user_rolesから母集団取得() {
+            // Given: ALL モード、ADMIN 経路で全件返却
+            // user_roles にスコープ内 5 名おり、うち 2 名のみ回答済み → 全 5 名返却（has_responded 付き）
+            SurveyEntity survey = SurveyEntity.builder()
+                    .scopeType("TEAM").scopeId(1L).title("ALL配信テスト")
+                    .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
+                    .distributionMode(DistributionMode.ALL)
+                    .unrespondedVisibility(UnrespondedVisibility.HIDDEN)
+                    .createdBy(CREATOR_USER_ID)
+                    .build();
+            setEntityId(survey, SURVEY_ID);
+            survey.publish();
+
+            UserEntity u1 = buildUser(10L, "ユーザー1");
+            UserEntity u2 = buildUser(20L, "ユーザー2");
+            UserEntity u3 = buildUser(30L, "ユーザー3");
+            UserEntity u4 = buildUser(40L, "ユーザー4");
+            UserEntity u5 = buildUser(50L, "ユーザー5");
+
+            LocalDateTime respondedAt = LocalDateTime.of(2026, 4, 25, 10, 0);
+            SurveyResponseEntity r1 = buildResponse(SURVEY_ID, 10L, respondedAt);
+            SurveyResponseEntity r2 = buildResponse(SURVEY_ID, 30L, respondedAt);
+
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, 1L, "TEAM")).willReturn(true);
+            given(userRoleRepository.findUserIdsByScope("TEAM", 1L))
+                    .willReturn(List.of(10L, 20L, 30L, 40L, 50L));
+            given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                    .willReturn(List.of(r1, r2));
+            given(userRepository.findAllById(anyList()))
+                    .willReturn(List.of(u1, u2, u3, u4, u5));
+
+            // When
+            List<RespondentResponse> result = surveyResultService.getRespondents(SURVEY_ID, ADMIN_USER_ID);
+
+            // Then: 母集団 5 名全て返却。回答済み 2 名（10, 30）の respondedAt は非 null
+            assertThat(result).hasSize(5);
+            long respondedCount = result.stream().filter(RespondentResponse::getHasResponded).count();
+            assertThat(respondedCount).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("ケース9: TARGETEDモード_survey_targetsから母集団取得")
+        void ケース9_TARGETEDモード_survey_targetsから母集団取得() {
+            // Given: TARGETED モード。targets に登録された 2 名が母集団
+            SurveyEntity survey = SurveyEntity.builder()
+                    .scopeType("TEAM").scopeId(1L).title("TARGETED配信テスト")
+                    .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
+                    .distributionMode(DistributionMode.TARGETED)
+                    .unrespondedVisibility(UnrespondedVisibility.HIDDEN)
+                    .createdBy(CREATOR_USER_ID)
+                    .build();
+            setEntityId(survey, SURVEY_ID);
+            survey.publish();
+
+            UserEntity u1 = buildUser(10L, "ユーザー1");
+            UserEntity u2 = buildUser(20L, "ユーザー2");
+
+            SurveyTargetEntity t1 = buildTarget(SURVEY_ID, 10L);
+            SurveyTargetEntity t2 = buildTarget(SURVEY_ID, 20L);
+
+            LocalDateTime respondedAt = LocalDateTime.of(2026, 4, 25, 10, 0);
+            SurveyResponseEntity r1 = buildResponse(SURVEY_ID, 10L, respondedAt);
+
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, 1L, "TEAM")).willReturn(true);
+            given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(t1, t2));
+            given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                    .willReturn(List.of(r1));
+            given(userRepository.findAllById(anyList())).willReturn(List.of(u1, u2));
+
+            // When
+            List<RespondentResponse> result = surveyResultService.getRespondents(SURVEY_ID, ADMIN_USER_ID);
+
+            // Then: 母集団 2 名（targets ベース）。userRoleRepository は呼ばれない
+            assertThat(result).hasSize(2);
         }
     }
 }

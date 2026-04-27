@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.dto.RemindResponse;
 import com.mannschaft.app.survey.entity.SurveyEntity;
 import com.mannschaft.app.survey.entity.SurveyResponseEntity;
@@ -54,6 +55,9 @@ class SurveyRemindServiceTest {
     private SurveyResponseRepository responseRepository;
 
     @Mock
+    private UserRoleRepository userRoleRepository;
+
+    @Mock
     private AccessControlService accessControlService;
 
     @Mock
@@ -68,21 +72,54 @@ class SurveyRemindServiceTest {
     private static final Long OTHER_USER_ID = 99L;
     private static final String SCOPE_TYPE = "TEAM";
 
-    private SurveyEntity createDraftSurvey() {
-        return SurveyEntity.builder()
-                .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).title("テストアンケート")
-                .description("説明").isAnonymous(false).allowMultipleSubmissions(false)
-                .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
-                .distributionMode(DistributionMode.ALL)
-                .createdBy(USER_ID).build();
+    /**
+     * SurveyEntity の BaseEntity.id をリフレクションで設定する。
+     */
+    private void setEntityId(SurveyEntity entity, Long id) {
+        try {
+            var idField = entity.getClass().getSuperclass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(entity, id);
+        } catch (Exception ignored) {
+        }
     }
 
     /**
-     * PUBLISHED 状態の督促可能アンケートを生成する。
+     * TARGETED 配信のドラフトアンケートを生成する（既存テスト互換のデフォルト）。
+     * id は SURVEY_ID で設定済み。
+     */
+    private SurveyEntity createDraftSurvey() {
+        SurveyEntity entity = SurveyEntity.builder()
+                .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).title("テストアンケート")
+                .description("説明").isAnonymous(false).allowMultipleSubmissions(false)
+                .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
+                .distributionMode(DistributionMode.TARGETED)
+                .createdBy(USER_ID).build();
+        setEntityId(entity, SURVEY_ID);
+        return entity;
+    }
+
+    /**
+     * PUBLISHED 状態の督促可能アンケートを生成する（TARGETED 配信）。
      * lastRemindedAt = null / manualRemindCount = 0 が初期値。
      */
     private SurveyEntity createRemindableSurvey() {
         SurveyEntity entity = createDraftSurvey();
+        entity.publish();
+        return entity;
+    }
+
+    /**
+     * ALL 配信モードの督促可能アンケートを生成する（F05.4 §1035-1036）。
+     */
+    private SurveyEntity createAllModeRemindableSurvey() {
+        SurveyEntity entity = SurveyEntity.builder()
+                .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).title("ALL配信アンケート")
+                .description("説明").isAnonymous(false).allowMultipleSubmissions(false)
+                .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
+                .distributionMode(DistributionMode.ALL)
+                .createdBy(USER_ID).build();
+        setEntityId(entity, SURVEY_ID);
         entity.publish();
         return entity;
     }
@@ -274,6 +311,7 @@ class SurveyRemindServiceTest {
                 .lastRemindedAt(LocalDateTime.now().minusHours(24).minusMinutes(1))
                 .manualRemindCount(1)
                 .build();
+        setEntityId(survey, SURVEY_ID);
         given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
         given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(buildTarget(300L)));
         given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
@@ -296,6 +334,7 @@ class SurveyRemindServiceTest {
                 .lastRemindedAt(LocalDateTime.now().minusDays(2))
                 .manualRemindCount(2)
                 .build();
+        setEntityId(survey, SURVEY_ID);
         given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
         given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(buildTarget(400L)));
         given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
@@ -333,15 +372,61 @@ class SurveyRemindServiceTest {
     }
 
     @Test
+    @DisplayName("督促_ALLモード_user_roles から母集団取得し未回答者のみ通知（F05.4 §1035-1036）")
+    void 督促_ALLモード_user_rolesから母集団取得() {
+        // Given: ALL モード。スコープ内全メンバー 5 名のうち 2 名が回答済み → 未回答 3 名
+        SurveyEntity survey = createAllModeRemindableSurvey();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        given(userRoleRepository.findUserIdsByScope(SCOPE_TYPE, SCOPE_ID))
+                .willReturn(List.of(101L, 102L, 103L, 104L, 105L));
+        given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                .willReturn(List.of(buildResponse(102L), buildResponse(104L)));
+        given(surveyRepository.save(survey)).willReturn(survey);
+
+        // When
+        RemindResponse result = remindService.remind(SURVEY_ID, USER_ID);
+
+        // Then: targets ではなく user_roles 経由の母集団から未回答者を抽出する
+        assertThat(result.remindedCount()).isEqualTo(3);
+        assertThat(survey.getManualRemindCount()).isEqualTo(1);
+        verify(notificationHelper).notifyAll(
+                eq(List.of(101L, 103L, 105L)), eq(SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name()),
+                anyString(), anyString(), eq("SURVEY"), eq(SURVEY_ID),
+                eq(NotificationScopeType.TEAM), eq(SCOPE_ID), anyString(), eq(USER_ID));
+    }
+
+    @Test
+    @DisplayName("督促_ALLモード_survey_targetsは参照されない")
+    void 督促_ALLモード_targetRepositoryは呼ばれない() {
+        // Given: ALL モード。targets が登録されていても user_roles 側の母集団のみが対象
+        SurveyEntity survey = createAllModeRemindableSurvey();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        given(userRoleRepository.findUserIdsByScope(SCOPE_TYPE, SCOPE_ID))
+                .willReturn(List.of(200L));
+        given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                .willReturn(List.of());
+        given(surveyRepository.save(survey)).willReturn(survey);
+
+        // When
+        RemindResponse result = remindService.remind(SURVEY_ID, USER_ID);
+
+        // Then
+        assertThat(result.remindedCount()).isEqualTo(1);
+        // ALL モード時は targetRepository.findBySurveyId は呼ばれない
+        verify(targetRepository, never()).findBySurveyId(any());
+    }
+
+    @Test
     @DisplayName("督促_ORGANIZATIONスコープ_NotificationScopeType.ORGANIZATIONで送信")
     void 督促_ORGANIZATIONスコープ_ORG通知() {
-        // Given: scopeType = ORGANIZATION の Survey
+        // Given: scopeType = ORGANIZATION の Survey（TARGETED モードで targets を母集団とする）
         SurveyEntity survey = SurveyEntity.builder()
                 .scopeType("ORGANIZATION").scopeId(SCOPE_ID).title("ORG向け")
                 .description("").isAnonymous(false).allowMultipleSubmissions(false)
                 .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
-                .distributionMode(DistributionMode.ALL)
+                .distributionMode(DistributionMode.TARGETED)
                 .createdBy(USER_ID).build();
+        setEntityId(survey, SURVEY_ID);
         survey.publish();
         given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
         given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(buildTarget(500L)));
