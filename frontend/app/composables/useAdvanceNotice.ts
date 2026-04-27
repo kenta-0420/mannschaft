@@ -4,14 +4,15 @@ import type {
   AdvanceNoticeResponse,
   LateNoticeRequest,
 } from '~/types/care'
-import { enqueueCareJob } from '~/composables/jobs/useOfflineCareQueue'
+import { useOfflineCareQueue } from '~/composables/jobs/useOfflineCareQueue'
 
 /**
  * F03.12 §15 事前遅刻・欠席連絡の上位 composable。
  *
  * <p>API 呼び出しと Dexie オフラインキューを束ねるラッパ。
  * オンライン時は {@link useAdvanceNoticeApi} を直接叩き、
- * オフライン時は {@code useOfflineCareQueue} に積み Background Sync で送信する。</p>
+ * オフライン時は {@code useOfflineCareQueue().enqueueCareJob} に積み
+ * Background Sync で送信する。</p>
  *
  * <p>UI コンポーネント（{@code LateNoticeDialog} / {@code AbsenceNoticeDialog} /
  * {@code LateAbsenceNoticeBar} / {@code AdvanceNoticeList}）から本 composable を経由して
@@ -19,6 +20,7 @@ import { enqueueCareJob } from '~/composables/jobs/useOfflineCareQueue'
  */
 export function useAdvanceNotice(teamId: Ref<number>, eventId: Ref<number>) {
   const api = useAdvanceNoticeApi()
+  const careQueue = useOfflineCareQueue()
   const online = useOnline()
 
   const notices = ref<AdvanceNoticeResponse[]>([])
@@ -58,7 +60,7 @@ export function useAdvanceNotice(teamId: Ref<number>, eventId: Ref<number>) {
       }
       return created
     }
-    await enqueueCareJob({
+    await careQueue.enqueueCareJob({
       type: 'LATE_NOTICE',
       teamId: teamId.value,
       eventId: eventId.value,
@@ -78,7 +80,7 @@ export function useAdvanceNotice(teamId: Ref<number>, eventId: Ref<number>) {
       }
       return created
     }
-    await enqueueCareJob({
+    await careQueue.enqueueCareJob({
       type: 'ABSENCE_NOTICE',
       teamId: teamId.value,
       eventId: eventId.value,
