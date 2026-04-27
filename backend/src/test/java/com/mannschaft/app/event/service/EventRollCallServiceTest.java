@@ -98,15 +98,15 @@ class EventRollCallServiceTest {
                     any(), eq(CareLinkStatus.ACTIVE)))
                     .willReturn(List.of(careLink));
 
-            // ユーザー情報（findById 個別呼び出しでモック）
-            given(userRepository.findById(USER_ID_TARO))
-                    .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田太郎", null)));
-            given(userRepository.findById(USER_ID_HANAKO))
-                    .willReturn(Optional.of(buildUser(USER_ID_HANAKO, "鈴木花子", null)));
+            // ユーザー情報（findByIdIn 一括取得でモック・N+1 解消後）
+            given(userRepository.findByIdIn(any()))
+                    .willReturn(List.of(
+                            buildUser(USER_ID_TARO, "山田太郎", null),
+                            buildUser(USER_ID_HANAKO, "鈴木花子", null)));
 
-            // チェックイン状態：太郎は未チェックイン、花子は既チェックイン
-            given(checkinRepository.existsByEventIdAndUserId(EVENT_ID, USER_ID_TARO)).willReturn(false);
-            given(checkinRepository.existsByEventIdAndUserId(EVENT_ID, USER_ID_HANAKO)).willReturn(true);
+            // チェックイン状態：太郎は未チェックイン、花子は既チェックイン（IN 句一括取得）
+            given(checkinRepository.findCheckedInUserIdsByEventIdAndUserIdIn(eq(EVENT_ID), any()))
+                    .willReturn(List.of(USER_ID_HANAKO));
 
             // Act
             List<RollCallCandidateResponse> result =
@@ -366,8 +366,9 @@ class EventRollCallServiceTest {
     }
 
     private UserEntity buildUser(Long id, String displayName, String avatarUrl) {
-        return UserEntity.builder()
+        UserEntity user = UserEntity.builder()
                 .displayName(displayName)
+                .avatarUrl(avatarUrl)
                 .email("test" + id + "@example.com")
                 .lastName("テスト")
                 .firstName("ユーザー" + id)
@@ -376,6 +377,10 @@ class EventRollCallServiceTest {
                 .status(UserEntity.UserStatus.ACTIVE)
                 .isSearchable(true)
                 .build();
+        // id は BaseEntity に定義されており @Builder のフィールドに含まれないため、
+        // テストでは ReflectionTestUtils で直接注入する。
+        org.springframework.test.util.ReflectionTestUtils.setField(user, "id", id);
+        return user;
     }
 
     private EventCheckinEntity buildCheckin(Long eventId, String sessionId, Long userId,
