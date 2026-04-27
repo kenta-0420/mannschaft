@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SurveyDetailResponse } from '~/types/survey'
+import SurveyRespondentsList from '~/components/survey/SurveyRespondentsList.vue'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -54,6 +55,12 @@ const isCreator = computed(() => {
 
 /** ADMIN+（ADMIN または SYSTEM_ADMIN）の判定 */
 const isAdminPlus = computed(() => isAdmin.value)
+
+/** 回答者セクションの開閉状態（初期は閉じた状態） */
+const showRespondents = ref(false)
+
+/** 督促送信可否（ADMIN+ かつ 公開中のみ） */
+const canRemind = computed(() => isAdminPlus.value && survey.value?.status === 'PUBLISHED')
 
 /**
  * 結果閲覧権限の判定。
@@ -318,6 +325,38 @@ onMounted(async () => {
           {{ t('surveys.detail.closedNoPermission') }}
         </p>
       </div>
+
+      <!-- 回答者セクション（作成者 or ADMIN+ のみ） -->
+      <section
+        v-if="isAdminPlus || isCreator"
+        data-testid="survey-respondents-section"
+        class="mt-6"
+      >
+        <Card>
+          <template #title>
+            <div class="flex items-center justify-between">
+              <span>{{ t('surveys.detail.respondentsSection.title') }}</span>
+              <Button
+                :label="showRespondents ? t('surveys.detail.respondentsSection.toggleHide') : t('surveys.detail.respondentsSection.toggleShow')"
+                :icon="showRespondents ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
+                text
+                size="small"
+                data-testid="survey-respondents-toggle"
+                @click="showRespondents = !showRespondents"
+              />
+            </div>
+          </template>
+          <template #content>
+            <SurveyRespondentsList
+              v-if="showRespondents"
+              :scope-type="scopeType as 'TEAM' | 'ORGANIZATION'"
+              :scope-id="scopeId"
+              :survey-id="surveyId"
+              :can-remind="canRemind"
+            />
+          </template>
+        </Card>
+      </section>
     </template>
   </div>
 </template>
