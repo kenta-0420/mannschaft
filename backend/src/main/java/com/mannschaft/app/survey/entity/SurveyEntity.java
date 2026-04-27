@@ -89,6 +89,13 @@ public class SurveyEntity extends BaseEntity {
     @Builder.Default
     private Integer manualRemindCount = 0;
 
+    /**
+     * 最終督促送信時刻。F05.4 督促 API のクールダウン判定に利用する。
+     * NULL = 一度も督促していない。
+     */
+    @Column(name = "last_reminded_at")
+    private LocalDateTime lastRemindedAt;
+
     private LocalDateTime startsAt;
 
     private LocalDateTime expiresAt;
@@ -212,6 +219,18 @@ public class SurveyEntity extends BaseEntity {
      */
     public void incrementManualRemindCount() {
         this.manualRemindCount++;
+    }
+
+    /**
+     * 手動督促の送信を記録する。F05.4 督促 API。
+     * <p>{@code lastRemindedAt} を引数の時刻に更新し、
+     * {@code manualRemindCount} を 1 加算する。クールダウン・上限判定は呼び出し側の責務。</p>
+     *
+     * @param sentAt 督促送信時刻
+     */
+    public void recordManualRemind(LocalDateTime sentAt) {
+        this.lastRemindedAt = sentAt;
+        this.manualRemindCount = (this.manualRemindCount != null ? this.manualRemindCount : 0) + 1;
     }
 
     /**

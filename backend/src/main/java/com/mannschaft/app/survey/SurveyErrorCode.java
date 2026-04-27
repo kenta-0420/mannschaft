@@ -48,7 +48,16 @@ public enum SurveyErrorCode implements ErrorCode {
     NO_QUESTIONS("SURVEY_012", "設問が1つも登録されていないアンケートは公開できません", Severity.WARN),
 
     /** 回答者一覧の閲覧権限なし（F05.4 §7.2） */
-    RESPONDENTS_ACCESS_DENIED("SURVEY_013", "未回答者一覧を閲覧する権限がありません", Severity.WARN);
+    RESPONDENTS_ACCESS_DENIED("SURVEY_013", "未回答者一覧を閲覧する権限がありません", Severity.WARN),
+
+    /** 督促操作の権限なし（F05.4 督促 API） */
+    REMIND_PERMISSION_DENIED("SURVEY_014", "督促を送信する権限がありません", Severity.WARN),
+
+    /** 督促のクールダウン未経過（F05.4 督促 API） */
+    REMIND_COOLDOWN_NOT_ELAPSED("SURVEY_015", "前回の督促から24時間経過していません", Severity.WARN),
+
+    /** 督促回数の上限到達（F05.4 督促 API） */
+    REMIND_QUOTA_EXCEEDED("SURVEY_016", "督促の上限回数（3回）に達しました", Severity.WARN);
 
     private final String code;
     private final String message;
