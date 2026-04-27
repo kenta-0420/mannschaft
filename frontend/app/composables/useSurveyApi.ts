@@ -3,6 +3,7 @@ import type {
   SurveyDetailResponse,
   SurveyResultSummary,
   RespondentsResponse,
+  RemindRespondentsResponse,
 } from '~/types/survey'
 
 export function useSurveyApi() {
@@ -158,16 +159,12 @@ export function useSurveyApi() {
    * 認可: 作成者 / ADMIN+ のみ（Backend 側で判定）。
    * 制約: 手動送信は最大3回まで・前回送信から24時間経過必須・PUBLISHED のみ。
    * 設計書: docs/features/F05.4_survey_vote.md `POST /api/v1/surveys/{id}/remind`
+   *
+   * NOTE: Backend は Jackson デフォルト命名（camelCase）で返す。
+   * 設計書の snake_case 例示はドキュメント側の不整合のため、レスポンスは camelCase で受ける。
    */
   async function remindRespondents(surveyId: number) {
-    return api<{
-      data: {
-        survey_id: number
-        reminded_count: number
-        remaining_remind_quota: number
-        message: string
-      }
-    }>(`/api/v1/surveys/${surveyId}/remind`, { method: 'POST' })
+    return api<RemindRespondentsResponse>(`/api/v1/surveys/${surveyId}/remind`, { method: 'POST' })
   }
 
   return {

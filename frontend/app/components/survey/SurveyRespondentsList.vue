@@ -68,8 +68,8 @@ async function sendReminder() {
   reminding.value = true
   try {
     const res = await remindRespondents(props.surveyId)
-    const remindedCount = res.data?.reminded_count ?? unresponded.value.length
-    const remaining = res.data?.remaining_remind_quota
+    const remindedCount = res.data?.remindedCount ?? unresponded.value.length
+    const remaining = res.data?.remainingRemindQuota
     const detail = remaining !== undefined ? t('surveys.respondents.remindRemaining', { count: remaining }) : undefined
     showSuccess(t('surveys.respondents.remindSuccess', { count: remindedCount }), detail)
   } catch {
