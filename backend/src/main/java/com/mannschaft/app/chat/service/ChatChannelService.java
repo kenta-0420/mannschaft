@@ -46,6 +46,7 @@ public class ChatChannelService {
     private final UserBlockRepository userBlockRepository;
     private final UserRoleRepository userRoleRepository;
     private final ChatContactFolderItemRepository chatContactFolderItemRepository;
+    private final ChatChannelEventPublisher eventPublisher;
 
     /**
      * ユーザーが参加しているチャンネル一覧を取得する。
@@ -160,6 +161,8 @@ public class ChatChannelService {
         channel.softDelete();
         channelRepository.save(channel);
         log.info("チャンネル削除完了: channelId={}", channelId);
+        // F04.2.1 §3.10.1: 削除されたチャンネルを開いている全メンバーにタブ自動クローズを通知
+        eventPublisher.publishChannelDeleted(channelId);
     }
 
     /**
@@ -174,8 +177,11 @@ public class ChatChannelService {
         channel.archive();
         ChatChannelEntity saved = channelRepository.save(channel);
         log.info("チャンネルアーカイブ完了: channelId={}", channelId);
+        // F04.2.1 §3.10.1: アーカイブされたチャンネルを開いている全メンバーに入力欄無効化を通知
+        eventPublisher.publishChannelArchived(channelId);
         return chatMapper.toChannelResponse(saved);
     }
+    // TODO F04.2.1 §3.10.1: アーカイブ解除メソッドが追加された際は eventPublisher.publishChannelUnarchived(channelId) を呼び出すこと
 
     /**
      * 会話を開始する。参加者数に応じて Kabine（DM）/ Zimmer（GROUP_DM）を自動振り分け。

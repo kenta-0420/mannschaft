@@ -71,6 +71,9 @@ class ChatChannelServiceTest {
     @Mock
     private ChatContactFolderItemRepository chatContactFolderItemRepository;
 
+    @Mock
+    private ChatChannelEventPublisher eventPublisher;
+
     @InjectMocks
     private ChatChannelService chatChannelService;
 
@@ -246,6 +249,8 @@ class ChatChannelServiceTest {
 
             // then
             verify(channelRepository).save(any(ChatChannelEntity.class));
+            // F04.2.1 §3.10.1: 削除イベントが発出されることを検証
+            verify(eventPublisher).publishChannelDeleted(CHANNEL_ID);
         }
 
         @Test
@@ -286,6 +291,8 @@ class ChatChannelServiceTest {
 
             // then
             assertThat(result).isEqualTo(expected);
+            // F04.2.1 §3.10.1: アーカイブイベントが発出されることを検証
+            verify(eventPublisher).publishChannelArchived(CHANNEL_ID);
         }
     }
 

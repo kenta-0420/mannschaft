@@ -46,6 +46,9 @@ class ChatMemberServiceTest {
     @Mock
     private ChatMapper chatMapper;
 
+    @Mock
+    private ChatChannelEventPublisher eventPublisher;
+
     @InjectMocks
     private ChatMemberService chatMemberService;
 
@@ -127,6 +130,8 @@ class ChatMemberServiceTest {
 
             // then
             verify(memberRepository).deleteByChannelIdAndUserId(CHANNEL_ID, USER_ID);
+            // F04.2.1 §3.10.1: kick イベントが発出されることを検証
+            verify(eventPublisher).publishMemberKicked(CHANNEL_ID, USER_ID);
         }
 
         @Test
