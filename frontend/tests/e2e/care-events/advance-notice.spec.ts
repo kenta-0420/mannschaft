@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Route } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import jaEvent from '../../../app/locales/ja/event.json' with { type: 'json' }
 import enEvent from '../../../app/locales/en/event.json' with { type: 'json' }
 import {
@@ -30,7 +30,7 @@ import { waitForHydration } from '../helpers/wait'
  *   <li>CARE-ADVANCE-002: 本人が欠席連絡（SICK 理由）を送信し、API リクエスト本文が正しい</li>
  *   <li>CARE-ADVANCE-003: 主催者向け一覧で複数の事前連絡が時刻昇順で並ぶ</li>
  *   <li>CARE-ADVANCE-004: 見守り者がケア対象を選択して代理送信し、body.userId が代理対象 ID</li>
- *   <li>CARE-ADVANCE-005: RSVP 状態によるバー出し分け（NOTE: myRsvpResponse 派生が未実装）</li>
+ *   <li>CARE-ADVANCE-005: RSVP 未回答時のバー表示・遅刻ボタン非表示</li>
  *   <li>CARE-ADVANCE-006: オフライン中の遅刻連絡が Dexie ケアキューに積まれる</li>
  * </ul>
  *
@@ -406,11 +406,9 @@ test.describe('CARE-ADVANCE-001〜006: F03.12 §15 事前遅刻・欠席連絡',
   })
 
   test('CARE-ADVANCE-005: RSVP 未回答時はバー表示・遅刻ボタン非表示', async ({ page }) => {
-    // NOTE: 設計書 §15 では NOT_ATTENDING 時にバー全体を非表示にする想定だが、
-    // 現状 useEventDetail.myRsvpResponse は rsvpList から派生していない（null 固定）。
-    // そのためここでは「null（未回答）時」の出し分けのみを検証し、
-    // NOT_ATTENDING ケースは足軽 J による useEventDetail 改修後に
-    // myRsvpResponse 派生ロジックが入った段階で別 spec として追加する。
+    // useEventDetail.myRsvpResponse は rsvpList から認証ユーザーの userId で派生する仕様。
+    // ここでは「null（未回答）時」の出し分けのみを検証する。
+    // NOT_ATTENDING / ATTENDING の出し分けは別 spec で追加する想定。
     await loginAsMember(page, { userId: MEMBER_USER_ID })
     await mockEventDetailSurroundings(page, { roleName: 'MEMBER' })
     await mockGetMyCareRecipients(page, [])
