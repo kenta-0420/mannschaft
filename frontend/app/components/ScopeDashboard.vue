@@ -1,15 +1,55 @@
 <script setup lang="ts">
-const props = defineProps<{
-  scopeType: 'personal' | 'team' | 'organization'
-  scopeId?: number
-  scopeName?: string
-  scopeTemplate?: string
-}>()
+import type { ViewerRole, WidgetVisibilitySetting } from '~/types/dashboard'
+
+const props = withDefaults(
+  defineProps<{
+    scopeType: 'personal' | 'team' | 'organization'
+    scopeId?: number
+    scopeName?: string
+    scopeTemplate?: string
+    viewerRole?: ViewerRole
+    isAdminOrDeputy?: boolean
+    visibilityMap?: WidgetVisibilitySetting[]
+  }>(),
+  {
+    scopeId: undefined,
+    scopeName: undefined,
+    scopeTemplate: undefined,
+    viewerRole: undefined,
+    isAdminOrDeputy: false,
+    visibilityMap: () => [],
+  },
+)
 
 const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder } = useDashboardWidgets(
   props.scopeType,
   props.scopeId,
 )
+
+const publicHintDismissed = ref(false)
+const publicHintStorageKey = computed(
+  () => `dashboard-public-hint-dismissed:${props.scopeType}:${props.scopeId ?? 0}`,
+)
+
+const showPublicHint = computed(
+  () =>
+    props.viewerRole === 'PUBLIC' &&
+    props.scopeType !== 'personal' &&
+    !publicHintDismissed.value,
+)
+
+function dismissPublicHint() {
+  publicHintDismissed.value = true
+  if (import.meta.client) {
+    localStorage.setItem(publicHintStorageKey.value, '1')
+  }
+}
+
+onMounted(() => {
+  if (import.meta.client && localStorage.getItem(publicHintStorageKey.value) === '1') {
+    publicHintDismissed.value = true
+  }
+})
 
 const showConfig = ref(false)
 const dragIndex = ref<number | null>(null)
@@ -125,10 +165,21 @@ function onDragEnd() {
 
 <template>
   <div class="space-y-6">
+    <!-- PUBLIC 閲覧者向けヒントバナー (§3.6 / §6 設計書) -->
+    <Message
+      v-if="showPublicHint"
+      severity="info"
+      :closable="true"
+      class="text-sm"
+      @close="dismissPublicHint"
+    >
+      {{ $t('dashboard.widget_visibility.public_viewer_hint') }}
+    </Message>
+
     <!-- ウィジェット設定ボタン -->
     <div class="flex justify-end">
       <Button
-        label="ウィジェット設定"
+        :label="$t('dashboard.widget_settings.config_button')"
         icon="pi pi-cog"
         text
         size="small"
@@ -149,9 +200,9 @@ function onDragEnd() {
         class="col-span-full rounded-xl border border-dashed border-surface-400 py-12 text-center dark:border-surface-600"
       >
         <i class="pi pi-th-large mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">表示するウィジェットがありません</p>
+        <p class="text-surface-400">{{ $t('dashboard.widget_settings.no_widgets_message') }}</p>
         <Button
-          label="ウィジェットを追加"
+          :label="$t('dashboard.widget_settings.add_widget_button')"
           icon="pi pi-plus"
           text
           size="small"

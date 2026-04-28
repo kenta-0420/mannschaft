@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ViewerRole } from '~/types/dashboard'
+
 definePageMeta({
   middleware: 'auth',
   layout: 'default',
@@ -13,6 +15,8 @@ const {
   isAdmin,
   isAdminOrDeputy,
 } = useRoleAccess('organization', orgId)
+
+const viewerRole = computed<ViewerRole>(() => (roleName.value as ViewerRole | null) ?? 'PUBLIC')
 
 const {
   org,
@@ -175,6 +179,8 @@ onMounted(async () => {
                 :scope-id="orgId"
                 :scope-name="org.nickname1 || org.name"
                 :scope-template="org.template"
+                :viewer-role="viewerRole"
+                :is-admin-or-deputy="isAdminOrDeputy"
               />
             </div>
           </TabPanel>

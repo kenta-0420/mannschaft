@@ -1,0 +1,30 @@
+{
+  "dashboard": {
+    "widget_settings": {
+      "dialog_header": "위젯 설정",
+      "config_button": "위젯 설정",
+      "save": "저장",
+      "no_widgets_message": "표시할 위젯이 없습니다",
+      "add_widget_button": "위젯 추가"
+    },
+    "widget_visibility": {
+      "tab_self": "내 표시／숨기기",
+      "tab_role_based": "열람자 역할별 공개 설정",
+      "admin_only_badge": "관리자 전용",
+      "min_role_label": "열람 가능한 최소 역할",
+      "min_role_public": "PUBLIC (누구나)",
+      "min_role_supporter": "SUPPORTER 이상",
+      "min_role_member": "MEMBER 이상",
+      "is_default_badge": "기본",
+      "reset_all": "모두 기본값으로 되돌리기",
+      "downgrade_to_public_title": "PUBLIC 변경 확인",
+      "downgrade_to_public_body": "「{widget}」을(를) PUBLIC 으로 변경하면 팀 외부의 열람자에게도 내용이 표시됩니다. 변경하시겠습니까?",
+      "downgrade_confirm": "PUBLIC 으로 변경",
+      "save_success": "위젯 공개 설정을 저장했습니다",
+      "save_error": "설정 저장에 실패했습니다. 다시 시도해 주세요",
+      "public_viewer_hint": "이 팀의 멤버가 아니므로 일부 위젯이 숨겨집니다",
+      "public_viewer_hint_dismiss": "닫기",
+      "join_request_link": "멤버십 신청"
+    }
+  }
+}
