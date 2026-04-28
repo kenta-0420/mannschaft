@@ -26,7 +26,10 @@
         "requests": "신청"
       },
       "comingSoonContacts": "연락처 탭은 곧 제공됩니다",
-      "comingSoonRequests": "신청 탭은 곧 제공됩니다"
+      "comingSoonRequests": "신청 탭은 곧 제공됩니다",
+      "closed_kicked": "채널에서 제외되어 탭을 닫았습니다",
+      "closed_deleted": "채널이 삭제되어 탭을 닫았습니다",
+      "closed_archived": "채널이 보관되어 탭을 닫았습니다"
     }
   },
   "button": {

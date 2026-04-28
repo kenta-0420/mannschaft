@@ -27,6 +27,8 @@ const {
 } = useChatApi()
 const { showSuccess, showError } = useNotification()
 
+useChatChannelEventListener(props.channel.id)
+
 const messages = ref<ChatMessageResponse[]>([])
 const loading = ref(false)
 const nextCursor = ref<string | null>(null)

@@ -26,7 +26,10 @@
         "requests": "申請"
       },
       "comingSoonContacts": "連絡先タブは近日対応予定",
-      "comingSoonRequests": "申請タブは近日対応予定"
+      "comingSoonRequests": "申請タブは近日対応予定",
+      "closed_kicked": "メンバーから外されたためタブを閉じました",
+      "closed_deleted": "チャンネルが削除されたためタブを閉じました",
+      "closed_archived": "チャンネルがアーカイブされたためタブを閉じました"
     }
   },
   "button": {

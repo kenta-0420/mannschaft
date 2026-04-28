@@ -115,6 +115,31 @@ export const useChatTabsStore = defineStore('chatTabs', () => {
   }
 
   /**
+   * 指定チャンネルIDに紐づくタブをすべて閉じる（F04.2.1 Phase10）。
+   *
+   * kick / チャンネル削除 / アーカイブ等のイベント受信時に使用。
+   * 同一チャンネルの重複タブが複数開いている場合、すべて一括で閉じる。
+   *
+   * - 削除対象に activeTab が含まれていれば、残ったタブの先頭をアクティブにする
+   * - 永続化（localStorage）も同期更新する
+   *
+   * @param channelId 閉じる対象のチャンネル ID
+   */
+  function closeTabsByChannelId(channelId: number): void {
+    const targets = tabs.value.filter(t => t.channelId === channelId)
+    if (targets.length === 0) return
+
+    const wasActive = targets.some(t => t.id === activeTabId.value)
+    tabs.value = tabs.value.filter(t => t.channelId !== channelId)
+
+    if (wasActive) {
+      activeTabId.value = tabs.value[0]?.id ?? null
+    }
+
+    _persist()
+  }
+
+  /**
    * 全タブを閉じ、localStorage から永続化データも削除する。
    */
   function closeAllTabs(): void {
@@ -200,6 +225,7 @@ export const useChatTabsStore = defineStore('chatTabs', () => {
     closeTab,
     closeOtherTabs,
     closeRightTabs,
+    closeTabsByChannelId,
     switchTab,
     clearAll,
     closeAllTabs,
