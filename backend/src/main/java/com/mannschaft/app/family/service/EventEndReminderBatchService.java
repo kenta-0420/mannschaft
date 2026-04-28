@@ -1,5 +1,6 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.event.EventScopeType;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -171,14 +172,14 @@ public class EventEndReminderBatchService {
             case 0 -> {
                 // 1回目: priority=NORMAL。主催者のみ。
                 String body = "「" + eventLabel + "」の終了予定時刻を過ぎています。解散通知を送信してください。";
-                sendReminderNotification(createdBy, eventId, eventLabel,
+                sendReminderNotification(createdBy, event, eventId, eventLabel,
                         "解散通知を忘れていませんか？", body, NotificationPriority.NORMAL);
                 log.info("解散通知リマインド1回目送信: eventId={}, createdBy={}", eventId, createdBy);
             }
             case 1 -> {
                 // 2回目: priority=HIGH。主催者のみ。保護者が心配しています。
                 String body = "「" + eventLabel + "」終了から時間が経過しています。保護者が心配しています。解散通知を送ってください。";
-                sendReminderNotification(createdBy, eventId, eventLabel,
+                sendReminderNotification(createdBy, event, eventId, eventLabel,
                         "⚠️ 解散通知が未送信です（保護者が心配しています）", body, NotificationPriority.HIGH);
                 log.info("解散通知リマインド2回目送信: eventId={}, createdBy={}", eventId, createdBy);
             }
@@ -186,7 +187,7 @@ public class EventEndReminderBatchService {
                 // 3回目: priority=URGENT。主催者 + チームADMIN全員。
                 String body = "「" + eventLabel + "」終了から長時間経過しています。チームADMINにも通知しました。至急対応してください。";
                 String urgentTitle = "🚨 解散通知が未送信です（至急）";
-                sendReminderNotification(createdBy, eventId, eventLabel,
+                sendReminderNotification(createdBy, event, eventId, eventLabel,
                         urgentTitle, body, NotificationPriority.URGENT);
                 // チームADMIN全員にも送信
                 sendAdminReminders(event, eventId, eventLabel, urgentTitle, body);
@@ -223,7 +224,7 @@ public class EventEndReminderBatchService {
         Long createdBy = event.getCreatedBy();
         for (Long adminUserId : adminUserIds) {
             if (adminUserId.equals(createdBy)) continue;
-            sendReminderNotification(adminUserId, eventId, eventLabel, title, body, NotificationPriority.URGENT);
+            sendReminderNotification(adminUserId, event, eventId, eventLabel, title, body, NotificationPriority.URGENT);
             log.debug("ADMIN向け解散通知リマインド送信: eventId={}, adminUserId={}", eventId, adminUserId);
         }
     }
@@ -231,14 +232,20 @@ public class EventEndReminderBatchService {
     /**
      * リマインド通知を作成・配信する。
      *
+     * <p>F03.12 Phase11: 通知の {@code actionUrl} に teamId を含めることで、
+     * 通知センターからチームのイベント詳細ページへ deep link できるようにする。
+     * チームスコープでないイベントは従来通りの URL を使用する。</p>
+     *
      * @param targetUserId 通知先ユーザーID（null の場合はスキップ）
+     * @param event        イベントエンティティ（actionUrl 構築用）
      * @param eventId      イベントID
-     * @param eventLabel   イベント表示名
+     * @param eventLabel   イベント表示名（現状未使用、将来の本文埋め込み用に保持）
      * @param title        通知タイトル
      * @param body         通知本文
      * @param priority     通知優先度
      */
-    private void sendReminderNotification(Long targetUserId, Long eventId, String eventLabel,
+    private void sendReminderNotification(Long targetUserId, EventEntity event, Long eventId,
+                                           @SuppressWarnings("unused") String eventLabel,
                                            String title, String body, NotificationPriority priority) {
         if (targetUserId == null) {
             log.warn("解散通知リマインドの送信先ユーザーIDが null: eventId={}", eventId);
@@ -252,9 +259,26 @@ public class EventEndReminderBatchService {
                 title, body,
                 "EVENT", eventId,
                 NotificationScopeType.PERSONAL, targetUserId,
-                "/events/" + eventId + "/dismissal", null);
+                buildEventActionUrl(event, eventId), null);
 
         dispatchService.dispatch(notification);
+    }
+
+    /**
+     * イベント詳細への deep link URL を構築する。F03.12 Phase11。
+     *
+     * <p>チームスコープのイベントは {@code /teams/{teamId}/events/{eventId}}、
+     * それ以外は {@code /events/{eventId}/dismissal} を返す（従来動作の保持）。</p>
+     *
+     * @param event   イベントエンティティ
+     * @param eventId イベントID
+     * @return actionUrl 文字列
+     */
+    private String buildEventActionUrl(EventEntity event, Long eventId) {
+        if (event.getScopeType() == EventScopeType.TEAM && event.getScopeId() != null) {
+            return "/teams/" + event.getScopeId() + "/events/" + eventId;
+        }
+        return "/events/" + eventId + "/dismissal";
     }
 
     /**

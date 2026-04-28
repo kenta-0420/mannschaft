@@ -2,6 +2,7 @@ package com.mannschaft.app.event.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.event.EventErrorCode;
+import com.mannschaft.app.event.dto.DismissalReminderTargetResponse;
 import com.mannschaft.app.event.dto.DismissalRequest;
 import com.mannschaft.app.event.dto.DismissalStatusResponse;
 import com.mannschaft.app.event.entity.EventAttendanceMode;
@@ -9,6 +10,7 @@ import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventVisibility;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRepository;
+import com.mannschaft.app.event.repository.EventRepository.DismissalReminderTargetProjection;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
 import com.mannschaft.app.family.service.CareEventNotificationService;
 import com.mannschaft.app.family.service.CareLinkService;
@@ -110,11 +112,12 @@ class EventDismissalServiceTest {
             // Act
             eventDismissalService.sendDismissalNotification(EVENT_ID, TEAM_ID, OPERATOR_USER_ID, req);
 
-            // Assert: 参加者3名に通知送信
+            // Assert: 参加者3名に通知送信。F03.12 Phase11: actionUrl は /teams/{teamId}/events/{eventId} 形式。
+            String expectedActionUrl = "/teams/" + TEAM_ID + "/events/" + EVENT_ID;
             verify(notificationService, times(3)).createNotification(
                     anyLong(), eq("EVENT_DISMISSAL"), any(NotificationPriority.class),
                     any(), any(), eq("EVENT"), eq(EVENT_ID),
-                    any(NotificationScopeType.class), anyLong(), any(), isNull());
+                    any(NotificationScopeType.class), anyLong(), eq(expectedActionUrl), isNull());
             verify(dispatchService, times(3)).dispatch(any(NotificationEntity.class));
 
             // ケア対象者の見守り者にも通知
@@ -262,8 +265,102 @@ class EventDismissalServiceTest {
     }
 
     // =========================================================
+    // getMyDismissalReminderTargets (F03.12 Phase11)
+    // =========================================================
+
+    @Nested
+    @DisplayName("getMyDismissalReminderTargets")
+    class GetMyDismissalReminderTargets {
+
+        @Test
+        @DisplayName("正常_主催未解散イベントを DTO 化して返す: 投影 → DTO 変換 + minutesPassed/teamName/eventName 解決")
+        void 正常_主催未解散イベントを返す() {
+            // Arrange
+            LocalDateTime endAt = LocalDateTime.now().minusMinutes(45);
+            DismissalReminderTargetProjection projection = buildProjection(
+                    EVENT_ID, "テスト解散イベント", "test-event", TEAM_ID, "テストチーム",
+                    endAt, (byte) 1);
+            given(eventRepository.findMyOrganizingUndismissedExpiredEvents(
+                    eq(OPERATOR_USER_ID), any(LocalDateTime.class)))
+                    .willReturn(List.of(projection));
+
+            // Act
+            List<DismissalReminderTargetResponse> result =
+                    eventDismissalService.getMyDismissalReminderTargets(OPERATOR_USER_ID);
+
+            // Assert
+            assertThat(result).hasSize(1);
+            DismissalReminderTargetResponse dto = result.get(0);
+            assertThat(dto.getEventId()).isEqualTo(EVENT_ID);
+            assertThat(dto.getEventName()).isEqualTo("テスト解散イベント");
+            assertThat(dto.getTeamId()).isEqualTo(TEAM_ID);
+            assertThat(dto.getTeamName()).isEqualTo("テストチーム");
+            assertThat(dto.getEndAt()).isEqualTo(endAt);
+            // 経過分数は 45分前後（バッファ ±2 分）
+            assertThat(dto.getMinutesPassed()).isBetween(43L, 47L);
+            assertThat(dto.getReminderCount()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("subtitle が空の場合は slug を fallback として使う")
+        void subtitle空_slug_fallback() {
+            // Arrange
+            LocalDateTime endAt = LocalDateTime.now().minusMinutes(60);
+            DismissalReminderTargetProjection projection = buildProjection(
+                    EVENT_ID, null, "fallback-slug", TEAM_ID, "チームA",
+                    endAt, (byte) 0);
+            given(eventRepository.findMyOrganizingUndismissedExpiredEvents(
+                    eq(OPERATOR_USER_ID), any(LocalDateTime.class)))
+                    .willReturn(List.of(projection));
+
+            // Act
+            List<DismissalReminderTargetResponse> result =
+                    eventDismissalService.getMyDismissalReminderTargets(OPERATOR_USER_ID);
+
+            // Assert
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getEventName()).isEqualTo("fallback-slug");
+            assertThat(result.get(0).getReminderCount()).isZero();
+        }
+
+        @Test
+        @DisplayName("対象0件: 空リストを返す")
+        void 対象0件() {
+            // Arrange
+            given(eventRepository.findMyOrganizingUndismissedExpiredEvents(
+                    eq(OPERATOR_USER_ID), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+
+            // Act
+            List<DismissalReminderTargetResponse> result =
+                    eventDismissalService.getMyDismissalReminderTargets(OPERATOR_USER_ID);
+
+            // Assert
+            assertThat(result).isEmpty();
+        }
+    }
+
+    // =========================================================
     // テストヘルパー
     // =========================================================
+
+    /**
+     * テスト用の {@link DismissalReminderTargetProjection} を生成する。
+     */
+    private DismissalReminderTargetProjection buildProjection(Long eventId, String subtitle, String slug,
+                                                              Long teamId, String teamName,
+                                                              LocalDateTime endAt, Byte reminderCount) {
+        return new DismissalReminderTargetProjection() {
+            @Override public Long getEventId() { return eventId; }
+            @Override public String getSubtitle() { return subtitle; }
+            @Override public String getSlug() { return slug; }
+            @Override public Long getTeamId() { return teamId; }
+            @Override public String getTeamName() { return teamName; }
+            @Override public LocalDateTime getEndAt() { return endAt; }
+            @Override public Byte getReminderCount() { return reminderCount; }
+        };
+    }
+
 
     /**
      * 解散通知が未送信のイベントエンティティを構築する。

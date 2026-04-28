@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.event.EventErrorCode;
+import com.mannschaft.app.event.EventScopeType;
 import com.mannschaft.app.event.entity.EventCareNotificationLogEntity;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.repository.EventCareNotificationLogRepository;
@@ -79,7 +80,7 @@ public class CareEventNotificationService {
                     title, body,
                     "EVENT", eventId,
                     NotificationScopeType.PERSONAL, watcherId,
-                    "/events/" + eventId, recipientUserId);
+                    buildEventActionUrl(event, eventId), recipientUserId);
 
             dispatchService.dispatch(notification);
             logNotification(eventId, recipientUserId, watcherId, category, EventCareNotificationType.RSVP_CONFIRMED, notification.getId());
@@ -121,7 +122,7 @@ public class CareEventNotificationService {
                     title, body,
                     "EVENT", eventId,
                     NotificationScopeType.PERSONAL, watcherId,
-                    "/events/" + eventId, recipientUserId);
+                    buildEventActionUrl(event, eventId), recipientUserId);
 
             dispatchService.dispatch(notification);
             logNotification(eventId, recipientUserId, watcherId, category, EventCareNotificationType.CHECKIN, notification.getId());
@@ -159,7 +160,7 @@ public class CareEventNotificationService {
                     title, body,
                     "EVENT", eventId,
                     NotificationScopeType.PERSONAL, watcherId,
-                    "/events/" + eventId, recipientUserId);
+                    buildEventActionUrl(event, eventId), recipientUserId);
 
             dispatchService.dispatch(notification);
             logNotification(eventId, recipientUserId, watcherId, category, EventCareNotificationType.DISMISSAL, notification.getId());
@@ -225,7 +226,7 @@ public class CareEventNotificationService {
                     title, body,
                     "EVENT", eventId,
                     NotificationScopeType.PERSONAL, watcherId,
-                    "/events/" + eventId, recipientUserId);
+                    buildEventActionUrl(event, eventId), recipientUserId);
 
             dispatchService.dispatch(notification);
             logNotification(eventId, recipientUserId, watcherId, category, type, notification.getId());
@@ -266,6 +267,24 @@ public class CareEventNotificationService {
     private String resolveEventLabel(EventEntity event) {
         String subtitle = event.getSubtitle();
         return (subtitle != null && !subtitle.isBlank()) ? subtitle : event.getSlug();
+    }
+
+    /**
+     * イベント詳細への deep link URL を構築する。F03.12 Phase11。
+     *
+     * <p>チームスコープのイベントは {@code /teams/{teamId}/events/{eventId}}、
+     * それ以外（ORGANIZATION 等の将来拡張）は従来通り {@code /events/{eventId}} を返す。
+     * 通知センターのクリックハンドラがフロントエンドのイベント詳細ページに遷移できるようにする。</p>
+     *
+     * @param event   イベントエンティティ
+     * @param eventId イベントID
+     * @return actionUrl 文字列
+     */
+    private String buildEventActionUrl(EventEntity event, Long eventId) {
+        if (event.getScopeType() == EventScopeType.TEAM && event.getScopeId() != null) {
+            return "/teams/" + event.getScopeId() + "/events/" + eventId;
+        }
+        return "/events/" + eventId;
     }
 
     /**

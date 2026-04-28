@@ -349,7 +349,7 @@ public class EventRsvpService {
                 title, body,
                 "EVENT", event.getId(),
                 NotificationScopeType.TEAM, teamId,
-                "/events/" + event.getId(), operatorUserId);
+                "/teams/" + teamId + "/events/" + event.getId(), operatorUserId);
         notificationDispatchService.dispatch(notification);
     }
 
@@ -386,7 +386,7 @@ public class EventRsvpService {
                     title, body,
                     "EVENT", eventId,
                     NotificationScopeType.PERSONAL, watcherId,
-                    "/events/" + eventId, operatorUserId);
+                    "/teams/" + teamId + "/events/" + eventId, operatorUserId);
             notificationDispatchService.dispatch(notification);
         }
     }
