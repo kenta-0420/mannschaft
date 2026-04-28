@@ -1,0 +1,30 @@
+{
+  "dashboard": {
+    "widget_settings": {
+      "dialog_header": "Widget Settings",
+      "config_button": "Widget Settings",
+      "save": "Save",
+      "no_widgets_message": "No widgets to display",
+      "add_widget_button": "Add Widget"
+    },
+    "widget_visibility": {
+      "tab_self": "My Show / Hide",
+      "tab_role_based": "Public visibility by viewer role",
+      "admin_only_badge": "Admin only",
+      "min_role_label": "Minimum role to view",
+      "min_role_public": "PUBLIC (Anyone)",
+      "min_role_supporter": "SUPPORTER and above",
+      "min_role_member": "MEMBER and above",
+      "is_default_badge": "Default",
+      "reset_all": "Reset all to defaults",
+      "downgrade_to_public_title": "Confirm change to PUBLIC",
+      "downgrade_to_public_body": "Changing \"{widget}\" to PUBLIC will make its contents visible to viewers outside the team. Are you sure?",
+      "downgrade_confirm": "Change to PUBLIC",
+      "save_success": "Widget visibility settings saved",
+      "save_error": "Failed to save settings. Please try again",
+      "public_viewer_hint": "You are not a member of this team, so some widgets are hidden",
+      "public_viewer_hint_dismiss": "Dismiss",
+      "join_request_link": "Request membership"
+    }
+  }
+}

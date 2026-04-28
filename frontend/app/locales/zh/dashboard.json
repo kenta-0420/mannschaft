@@ -1,0 +1,30 @@
+{
+  "dashboard": {
+    "widget_settings": {
+      "dialog_header": "小部件设置",
+      "config_button": "小部件设置",
+      "save": "保存",
+      "no_widgets_message": "没有可显示的小部件",
+      "add_widget_button": "添加小部件"
+    },
+    "widget_visibility": {
+      "tab_self": "我的显示／隐藏",
+      "tab_role_based": "按访客角色的公开设置",
+      "admin_only_badge": "仅管理员",
+      "min_role_label": "可查看的最低角色",
+      "min_role_public": "PUBLIC（任何人）",
+      "min_role_supporter": "SUPPORTER 及以上",
+      "min_role_member": "MEMBER 及以上",
+      "is_default_badge": "默认",
+      "reset_all": "全部重置为默认",
+      "downgrade_to_public_title": "确认更改为 PUBLIC",
+      "downgrade_to_public_body": "将「{widget}」更改为 PUBLIC 后，非团队成员的访客也将看到其内容。确定要更改吗？",
+      "downgrade_confirm": "更改为 PUBLIC",
+      "save_success": "已保存小部件的公开设置",
+      "save_error": "保存设置失败。请重试",
+      "public_viewer_hint": "您不是该团队的成员，部分小部件已被隐藏",
+      "public_viewer_hint_dismiss": "关闭",
+      "join_request_link": "申请加入会员"
+    }
+  }
+}

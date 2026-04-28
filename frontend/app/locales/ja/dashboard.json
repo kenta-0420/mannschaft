@@ -1,0 +1,30 @@
+{
+  "dashboard": {
+    "widget_settings": {
+      "dialog_header": "ウィジェット設定",
+      "config_button": "ウィジェット設定",
+      "save": "保存",
+      "no_widgets_message": "表示するウィジェットがありません",
+      "add_widget_button": "ウィジェットを追加"
+    },
+    "widget_visibility": {
+      "tab_self": "自分の表示／非表示",
+      "tab_role_based": "閲覧者ロール別の公開設定",
+      "admin_only_badge": "管理者専用",
+      "min_role_label": "閲覧できる最低ロール",
+      "min_role_public": "PUBLIC（誰でも）",
+      "min_role_supporter": "SUPPORTER 以上",
+      "min_role_member": "MEMBER 以上",
+      "is_default_badge": "デフォルト",
+      "reset_all": "すべてデフォルトに戻す",
+      "downgrade_to_public_title": "PUBLIC への変更の確認",
+      "downgrade_to_public_body": "「{widget}」を PUBLIC に変更すると、チームに所属していない閲覧者にも内容が表示されます。本当に変更してよろしいですか？",
+      "downgrade_confirm": "PUBLIC に変更する",
+      "save_success": "ウィジェットの公開設定を保存しました",
+      "save_error": "設定の保存に失敗しました。再度お試しください",
+      "public_viewer_hint": "あなたはこのチームのメンバーではないため、一部のウィジェットは非表示になっています",
+      "public_viewer_hint_dismiss": "閉じる",
+      "join_request_link": "メンバーシップを申請する"
+    }
+  }
+}

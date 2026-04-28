@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ViewerRole } from '~/types/dashboard'
+
 definePageMeta({
   middleware: 'auth',
   layout: 'default',
@@ -18,6 +20,8 @@ const {
   isAdmin,
   isAdminOrDeputy,
 } = useRoleAccess('team', teamId)
+
+const viewerRole = computed<ViewerRole>(() => (roleName.value as ViewerRole | null) ?? 'PUBLIC')
 
 const followStatus = ref<'NONE' | 'PENDING' | 'APPROVED'>('NONE')
 const followLoading = ref(false)
@@ -179,6 +183,8 @@ onMounted(async () => {
                 :scope-id="teamId"
                 :scope-name="displayName"
                 :scope-template="team.template"
+                :viewer-role="viewerRole"
+                :is-admin-or-deputy="isAdminOrDeputy"
               />
             </div>
           </TabPanel>

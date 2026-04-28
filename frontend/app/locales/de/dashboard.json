@@ -1,0 +1,30 @@
+{
+  "dashboard": {
+    "widget_settings": {
+      "dialog_header": "Widget-Einstellungen",
+      "config_button": "Widget-Einstellungen",
+      "save": "Speichern",
+      "no_widgets_message": "Keine Widgets zum Anzeigen",
+      "add_widget_button": "Widget hinzufügen"
+    },
+    "widget_visibility": {
+      "tab_self": "Meine Anzeige / Ausblenden",
+      "tab_role_based": "Öffentliche Sichtbarkeit nach Betrachterrolle",
+      "admin_only_badge": "Nur Admin",
+      "min_role_label": "Mindestrolle zum Anzeigen",
+      "min_role_public": "PUBLIC (Jeder)",
+      "min_role_supporter": "SUPPORTER und höher",
+      "min_role_member": "MEMBER und höher",
+      "is_default_badge": "Standard",
+      "reset_all": "Alles auf Standard zurücksetzen",
+      "downgrade_to_public_title": "Änderung auf PUBLIC bestätigen",
+      "downgrade_to_public_body": "Wenn „{widget}\" auf PUBLIC geändert wird, sind die Inhalte auch für Betrachter außerhalb des Teams sichtbar. Wirklich ändern?",
+      "downgrade_confirm": "Auf PUBLIC ändern",
+      "save_success": "Widget-Sichtbarkeitseinstellungen gespeichert",
+      "save_error": "Speichern der Einstellungen fehlgeschlagen. Bitte erneut versuchen",
+      "public_viewer_hint": "Du bist kein Mitglied dieses Teams, daher sind einige Widgets ausgeblendet",
+      "public_viewer_hint_dismiss": "Schließen",
+      "join_request_link": "Mitgliedschaft beantragen"
+    }
+  }
+}

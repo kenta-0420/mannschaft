@@ -1,0 +1,30 @@
+{
+  "dashboard": {
+    "widget_settings": {
+      "dialog_header": "Configuración de widgets",
+      "config_button": "Configuración de widgets",
+      "save": "Guardar",
+      "no_widgets_message": "No hay widgets para mostrar",
+      "add_widget_button": "Añadir widget"
+    },
+    "widget_visibility": {
+      "tab_self": "Mostrar / Ocultar míos",
+      "tab_role_based": "Visibilidad pública por rol de visor",
+      "admin_only_badge": "Solo admin",
+      "min_role_label": "Rol mínimo para ver",
+      "min_role_public": "PUBLIC (Cualquiera)",
+      "min_role_supporter": "SUPPORTER o superior",
+      "min_role_member": "MEMBER o superior",
+      "is_default_badge": "Predeterminado",
+      "reset_all": "Restablecer todo a los valores predeterminados",
+      "downgrade_to_public_title": "Confirmar cambio a PUBLIC",
+      "downgrade_to_public_body": "Cambiar «{widget}» a PUBLIC hará que su contenido sea visible para visores fuera del equipo. ¿Estás seguro?",
+      "downgrade_confirm": "Cambiar a PUBLIC",
+      "save_success": "Se guardó la configuración de visibilidad del widget",
+      "save_error": "Error al guardar la configuración. Inténtalo de nuevo",
+      "public_viewer_hint": "No eres miembro de este equipo, por lo que algunos widgets están ocultos",
+      "public_viewer_hint_dismiss": "Cerrar",
+      "join_request_link": "Solicitar membresía"
+    }
+  }
+}

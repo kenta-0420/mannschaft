@@ -1,9 +1,52 @@
+import type { MinRole } from '~/types/dashboard'
+
 export interface WidgetDefinition {
   key: string
   label: string
   icon: string
   description: string
   scope: Array<'personal' | 'team' | 'organization'>
+  defaultMinRole?: MinRole
+}
+
+export const WidgetKeyMap: Record<string, { team?: string; organization?: string }> = {
+  bulletin: { team: 'TEAM_NOTICES', organization: 'ORG_NOTICES' },
+  'upcoming-events': { team: 'TEAM_UPCOMING_EVENTS' },
+  todos: { team: 'TEAM_TODO', organization: 'ORG_TODO' },
+  timeline: { team: 'TEAM_LATEST_POSTS' },
+  chat: { team: 'TEAM_UNREAD_THREADS' },
+  schedule: { team: 'TEAM_UPCOMING_EVENTS' },
+  members: { team: 'TEAM_MEMBERS', organization: 'ORG_MEMBERS' },
+  activities: { team: 'TEAM_ACTIVITY' },
+  gallery: { team: 'TEAM_GALLERY' },
+  circulation: { team: 'TEAM_CIRCULATION' },
+  surveys: { team: 'TEAM_SURVEYS' },
+  'survey-results': { team: 'TEAM_SURVEY_RESULTS' },
+  'attendance-results': { team: 'TEAM_MEMBER_ATTENDANCE' },
+  blog: { team: 'TEAM_BLOG' },
+}
+
+export const WidgetDefaultMinRoleMap: Record<string, MinRole> = {
+  TEAM_NOTICES: 'PUBLIC',
+  TEAM_UPCOMING_EVENTS: 'PUBLIC',
+  TEAM_TODO: 'MEMBER',
+  TEAM_PROJECT_PROGRESS: 'MEMBER',
+  TEAM_ACTIVITY: 'SUPPORTER',
+  TEAM_LATEST_POSTS: 'SUPPORTER',
+  TEAM_UNREAD_THREADS: 'MEMBER',
+  TEAM_MEMBER_ATTENDANCE: 'MEMBER',
+  ORG_TEAM_LIST: 'PUBLIC',
+  ORG_NOTICES: 'PUBLIC',
+  ORG_TODO: 'MEMBER',
+  ORG_PROJECT_PROGRESS: 'MEMBER',
+  ORG_STATS: 'SUPPORTER',
+}
+
+export function backendKeyForWidget(
+  frontendKey: string,
+  scopeType: 'team' | 'organization',
+): string | undefined {
+  return WidgetKeyMap[frontendKey]?.[scopeType]
 }
 
 const ALL_WIDGETS: WidgetDefinition[] = [
