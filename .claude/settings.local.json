@@ -493,7 +493,29 @@
       "Bash(npm test *)",
       "Bash(BASE_URL=http://localhost:3001 REUSE_SERVER=true node node_modules/@playwright/test/cli.js test tests/e2e/surveys/ --reporter=list --workers=2)",
       "PowerShell(Get-Process rm -ErrorAction SilentlyContinue | Select Id, @{N='CPU';E={[math]::Round\\($_.CPU,1\\)}} | Format-Table -AutoSize)",
-      "Bash(BASE_URL=http://localhost:3001 REUSE_SERVER=true node /d/mannschaft/frontend/node_modules/@playwright/test/cli.js test tests/e2e/surveys/ --reporter=list --workers=2)"
+      "Bash(BASE_URL=http://localhost:3001 REUSE_SERVER=true node /d/mannschaft/frontend/node_modules/@playwright/test/cli.js test tests/e2e/surveys/ --reporter=list --workers=2)",
+      "Write(D:/mannschaft/**)",
+      "Edit(D:/mannschaft/**)",
+      "Write(/d/mannschaft/**)",
+      "Edit(/d/mannschaft/**)",
+      "Bash(touch:*)",
+      "Bash(mkdir:*)"
+    ],
+    "deny": [
+      "Write(**/.env)",
+      "Write(**/.env.*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Write(**/credentials*)",
+      "Edit(**/credentials*)",
+      "Write(**/secrets*)",
+      "Edit(**/secrets*)",
+      "Write(**/.ssh/**)",
+      "Edit(**/.ssh/**)",
+      "Write(**/.git/hooks/**)",
+      "Edit(**/.git/hooks/**)",
+      "Write(**/.git/config)",
+      "Edit(**/.git/config)"
     ]
   }
 }
