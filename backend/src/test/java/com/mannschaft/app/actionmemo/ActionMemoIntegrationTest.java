@@ -2,6 +2,7 @@ package com.mannschaft.app.actionmemo;
 
 import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
 import com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity;
+import com.mannschaft.app.actionmemo.enums.ActionMemoCategory;
 import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
 import com.mannschaft.app.gdpr.service.PersonalDataCollector;
@@ -10,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -20,6 +23,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -118,5 +122,129 @@ class ActionMemoIntegrationTest {
         assertThat(result).containsKey("action_memos.json");
         // 実データは空でも JSON 構造が返ること
         assertThat(result.get("action_memos.json")).isNotNull();
+    }
+
+    // ========================================================================
+    // Phase 3 — カテゴリフィルタ系クエリの検証（設計書 §10.1）
+    //
+    // 既存の本クラス ApplicationContext を再利用するため、別ファイル化せず
+    // ここに統合する（@SpringBootTest を別ファイルで増やすと TestContext
+    // キャッシュエントリが増え、CI JVM ヒープを圧迫して OOM 連鎖を起こすため）。
+    // ========================================================================
+
+    private static final Long PHASE3_USER_ID = 9_001L;
+    private static final Long PHASE3_OTHER_USER_ID = 9_002L;
+    private static final Long PHASE3_TEAM_ID = 7_777L;
+
+    /**
+     * Phase 3 テスト用ヘルパ: 検証対象ユーザーのメモを物理削除して独立性を担保。
+     */
+    private void cleanUpPhase3Memos() {
+        memoRepository.findByUserIdOrderByMemoDateDescCreatedAtDesc(PHASE3_USER_ID)
+                .forEach(memoRepository::delete);
+        memoRepository.findByUserIdOrderByMemoDateDescCreatedAtDesc(PHASE3_OTHER_USER_ID)
+                .forEach(memoRepository::delete);
+    }
+
+    /**
+     * Phase 3 テスト用ヘルパ: 行動メモを永続化する。
+     */
+    private ActionMemoEntity persistMemo(Long userId,
+                                         LocalDate memoDate,
+                                         String content,
+                                         ActionMemoCategory category,
+                                         Long postedTeamId) {
+        ActionMemoEntity entity = ActionMemoEntity.builder()
+                .userId(userId)
+                .memoDate(memoDate)
+                .content(content)
+                .category(category)
+                .postedTeamId(postedTeamId)
+                .completesTodo(false)
+                .build();
+        return memoRepository.saveAndFlush(entity);
+    }
+
+    @Test
+    @DisplayName("Phase 3: findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull — カテゴリ + 未投稿のみ抽出")
+    void findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull_filtersByCategoryAndUnposted() {
+        cleanUpPhase3Memos();
+        LocalDate today = LocalDate.now();
+
+        // WORK 未投稿（対象）
+        ActionMemoEntity workUnposted = persistMemo(PHASE3_USER_ID, today, "work A",
+                ActionMemoCategory.WORK, null);
+        // WORK 投稿済（除外: postedTeamId NOT NULL）
+        persistMemo(PHASE3_USER_ID, today, "work B (already posted)",
+                ActionMemoCategory.WORK, PHASE3_TEAM_ID);
+        // PRIVATE 未投稿（除外: カテゴリ違い）
+        persistMemo(PHASE3_USER_ID, today, "private memo",
+                ActionMemoCategory.PRIVATE, null);
+        // 別日の WORK 未投稿（除外: 日付違い）
+        persistMemo(PHASE3_USER_ID, today.minusDays(1), "yesterday work",
+                ActionMemoCategory.WORK, null);
+        // 他ユーザーの WORK 未投稿（除外: ユーザー違い）
+        persistMemo(PHASE3_OTHER_USER_ID, today, "other user work",
+                ActionMemoCategory.WORK, null);
+
+        List<ActionMemoEntity> result = memoRepository
+                .findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull(
+                        PHASE3_USER_ID, today, ActionMemoCategory.WORK);
+
+        assertThat(result)
+                .extracting(ActionMemoEntity::getId)
+                .containsExactly(workUnposted.getId());
+        assertThat(result.get(0).getContent()).isEqualTo("work A");
+        assertThat(result.get(0).getPostedTeamId()).isNull();
+        assertThat(result.get(0).getCategory()).isEqualTo(ActionMemoCategory.WORK);
+
+        cleanUpPhase3Memos();
+    }
+
+    @Test
+    @DisplayName("Phase 3: findByUserIdAndCategoryWithCursor — カテゴリでカーソルページネーション（同カテゴリのみ降順返却）")
+    void findByUserIdAndCategoryWithCursor_paginatesByCategory() {
+        cleanUpPhase3Memos();
+        LocalDate today = LocalDate.now();
+
+        // WORK を 3 件、PRIVATE を 2 件。各 PRIVATE は除外されるべき。
+        ActionMemoEntity work1 = persistMemo(PHASE3_USER_ID, today, "work-1",
+                ActionMemoCategory.WORK, null);
+        persistMemo(PHASE3_USER_ID, today, "private-1",
+                ActionMemoCategory.PRIVATE, null);
+        ActionMemoEntity work2 = persistMemo(PHASE3_USER_ID, today, "work-2",
+                ActionMemoCategory.WORK, null);
+        persistMemo(PHASE3_USER_ID, today, "private-2",
+                ActionMemoCategory.PRIVATE, null);
+        ActionMemoEntity work3 = persistMemo(PHASE3_USER_ID, today, "work-3",
+                ActionMemoCategory.WORK, null);
+
+        Pageable pageable = PageRequest.of(0, 10);
+
+        // cursorId = null → 全 WORK を id 降順で取得
+        List<ActionMemoEntity> all = memoRepository.findByUserIdAndCategoryWithCursor(
+                PHASE3_USER_ID, ActionMemoCategory.WORK, null, pageable);
+        assertThat(all)
+                .extracting(ActionMemoEntity::getId)
+                .containsExactly(work3.getId(), work2.getId(), work1.getId());
+        assertThat(all)
+                .extracting(ActionMemoEntity::getCategory)
+                .containsOnly(ActionMemoCategory.WORK);
+
+        // cursorId = work3.id → work3 より古い (id < cursor) のみ返る
+        List<ActionMemoEntity> older = memoRepository.findByUserIdAndCategoryWithCursor(
+                PHASE3_USER_ID, ActionMemoCategory.WORK, work3.getId(), pageable);
+        assertThat(older)
+                .extracting(ActionMemoEntity::getId)
+                .containsExactly(work2.getId(), work1.getId());
+
+        // ページサイズ 1 で先頭1件のみ
+        List<ActionMemoEntity> firstOnly = memoRepository.findByUserIdAndCategoryWithCursor(
+                PHASE3_USER_ID, ActionMemoCategory.WORK, null, PageRequest.of(0, 1));
+        assertThat(firstOnly)
+                .extracting(ActionMemoEntity::getId)
+                .containsExactly(work3.getId());
+
+        cleanUpPhase3Memos();
     }
 }
