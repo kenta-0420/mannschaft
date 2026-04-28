@@ -204,6 +204,52 @@ class ActionMemoRateLimitFilterTest {
     }
 
     @Nested
+    @DisplayName("Phase 3 パス: /publish-to-team / /publish-daily-to-team")
+    class Phase3PublishToTeamPaths {
+
+        /**
+         * <p><b>Spec drift</b>: 設計書 §9.2 では「{@code publish-to-team}: 10回/分」と定義されているが、
+         * {@link ActionMemoRateLimitFilter} の {@code Endpoint} enum には
+         * {@code /publish-to-team} / {@code /publish-daily-to-team} が含まれておらず、
+         * これらのパスは現状フィルタ対象外（無制限）である。
+         * 本テストは現実装の挙動（filter 透過）を回帰防止しつつ、Spec drift の存在を明示する。
+         * 実装で path が追加された際にはこのテストを「閾値超過で 429」を assert する形に書き換えること。</p>
+         */
+        @Test
+        @DisplayName("POST /publish-to-team: 現状 filter 対象外（shouldNotFilter=true）— Spec drift 注記")
+        void publishToTeam_currentlyNotFiltered() {
+            MockHttpServletRequest request = request("POST", "/api/v1/action-memos/1/publish-to-team", "10.0.6.1");
+            assertThat(filter.shouldNotFilter(request))
+                    .as("publish-to-team は現実装で filter 対象外（設計書 §9.2 とは drift）")
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("POST /publish-to-team: 11 回連続実行しても 429 にはならない（filter 透過）")
+        void publishToTeam_exceedingDesignLimit_currentlyNoLimit() throws Exception {
+            String ip = "10.0.6.2";
+            // 設計書の閾値（10回/分）を超えても、現実装は filter 透過のため全件 200 OK が期待される
+            for (int i = 0; i < 12; i++) {
+                MockHttpServletResponse response = invoke(
+                        request("POST", "/api/v1/action-memos/100/publish-to-team", ip));
+                assertThat(response.getStatus())
+                        .as("filter 対象外の path は doFilterInternal でも透過する想定 (#%d)", i + 1)
+                        .isEqualTo(HttpStatus.OK.value());
+            }
+        }
+
+        @Test
+        @DisplayName("POST /publish-daily-to-team: 現状 filter 対象外（shouldNotFilter=true）")
+        void publishDailyToTeam_currentlyNotFiltered() {
+            MockHttpServletRequest request = request(
+                    "POST", "/api/v1/action-memos/publish-daily-to-team", "10.0.6.3");
+            assertThat(filter.shouldNotFilter(request))
+                    .as("publish-daily-to-team も Phase 3 で追加されたが、filter 対象外のまま")
+                    .isTrue();
+        }
+    }
+
+    @Nested
     @DisplayName("バケット寿命（Caffeine キャッシュ）")
     class BucketEviction {
 
