@@ -638,3 +638,4 @@ export async function waitForHydration(page: Page): Promise<void> {
     return el !== null && '__vue_app__' in el
   })
 }
+
