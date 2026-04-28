@@ -4,23 +4,38 @@ import com.mannschaft.app.actionmemo.ActionMemoErrorCode;
 import com.mannschaft.app.actionmemo.ActionMemoMetrics;
 import com.mannschaft.app.actionmemo.ActionMemoMood;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
+import com.mannschaft.app.actionmemo.dto.AvailableTeamResponse;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
 import com.mannschaft.app.actionmemo.dto.PublishDailyRequest;
 import com.mannschaft.app.actionmemo.dto.PublishDailyResponse;
+import com.mannschaft.app.actionmemo.dto.PublishDailyToTeamRequest;
+import com.mannschaft.app.actionmemo.dto.PublishDailyToTeamResponse;
+import com.mannschaft.app.actionmemo.dto.PublishToTeamRequest;
+import com.mannschaft.app.actionmemo.dto.PublishToTeamResponse;
 import com.mannschaft.app.actionmemo.dto.UpdateActionMemoRequest;
 import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
+import com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity;
+import com.mannschaft.app.actionmemo.enums.ActionMemoCategory;
 import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.todo.TodoPriority;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.TodoStatus;
+import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
+import com.mannschaft.app.todo.service.TodoService;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -31,6 +46,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -43,7 +59,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.lenient;
 
 /**
  * {@link ActionMemoService} 単体テスト。
@@ -86,6 +105,18 @@ class ActionMemoServiceTest {
 
     @Mock
     private ActionMemoMetrics metrics;
+
+    @Mock
+    private TodoService todoService;
+
+    @Mock
+    private UserRoleRepository userRoleRepository;
+
+    @Mock
+    private TeamRepository teamRepository;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private ActionMemoService actionMemoService;
@@ -496,6 +527,810 @@ class ActionMemoServiceTest {
                     .contains("今日はよく動けた")
                     .doesNotContain("<script>")
                     .doesNotContain("</script>");
+        }
+    }
+
+    // ==================================================================
+    // Phase 3 テスト: 設計書 §10.1 に列挙されたユニットテスト項目を検証する
+    // ==================================================================
+
+    /**
+     * Phase 3 テスト用: id / createdAt / Phase3 フィールドを設定済みの ActionMemoEntity を生成する。
+     */
+    private ActionMemoEntity phase3Memo(Long id, Long userId, LocalDate memoDate,
+                                        String content, ActionMemoCategory category,
+                                        Integer durationMinutes, BigDecimal progressRate,
+                                        Long relatedTodoId, boolean completesTodo,
+                                        LocalDateTime createdAt) {
+        ActionMemoEntity memo = ActionMemoEntity.builder()
+                .userId(userId)
+                .memoDate(memoDate)
+                .content(content)
+                .category(category)
+                .durationMinutes(durationMinutes)
+                .progressRate(progressRate)
+                .relatedTodoId(relatedTodoId)
+                .completesTodo(completesTodo)
+                .build();
+        ReflectionTestUtils.setField(memo, "id", id);
+        if (createdAt != null) {
+            ReflectionTestUtils.setField(memo, "createdAt", createdAt);
+        }
+        return memo;
+    }
+
+    /**
+     * Phase 3 テスト用: 自分所有の PERSONAL TODO を生成する。
+     */
+    private TodoEntity ownPersonalTodo(Long id, Long userId, String title, TodoStatus status) {
+        TodoEntity todo = TodoEntity.builder()
+                .scopeType(TodoScopeType.PERSONAL)
+                .scopeId(userId)
+                .title(title)
+                .status(status)
+                .priority(TodoPriority.MEDIUM)
+                .createdBy(userId)
+                .sortOrder(0)
+                .build();
+        ReflectionTestUtils.setField(todo, "id", id);
+        return todo;
+    }
+
+    /**
+     * Phase 3 テスト用: ユーザー設定エンティティを生成する。
+     */
+    private UserActionMemoSettingsEntity settingsOf(Long userId,
+                                                    ActionMemoCategory defaultCategory,
+                                                    Long defaultPostTeamId) {
+        return UserActionMemoSettingsEntity.builder()
+                .userId(userId)
+                .moodEnabled(false)
+                .defaultCategory(defaultCategory)
+                .defaultPostTeamId(defaultPostTeamId)
+                .build();
+    }
+
+    // ------------------------------------------------------------------
+    // 1. CategoryDefaultTest
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Phase 3: カテゴリのデフォルト適用")
+    class CategoryDefaultTest {
+
+        @Test
+        @DisplayName("category 省略 → settings.defaultCategory（WORK）が適用される")
+        void createMemo_categoryOmitted_appliesDefaultFromSettings() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("メモ");
+            // category 未指定
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+            given(settingsService.findSettings(USER_ID))
+                    .willReturn(Optional.of(settingsOf(USER_ID, ActionMemoCategory.WORK, null)));
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            ActionMemoResponse response = actionMemoService.createMemo(req, USER_ID);
+
+            assertThat(response.getCategory()).isEqualTo(ActionMemoCategory.WORK);
+        }
+
+        @Test
+        @DisplayName("category 省略 + settings なし → PRIVATE が適用される")
+        void createMemo_categoryOmittedNoSettings_defaultsToPrivate() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("メモ");
+            // category 未指定
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+            given(settingsService.findSettings(USER_ID)).willReturn(Optional.empty());
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            ActionMemoResponse response = actionMemoService.createMemo(req, USER_ID);
+
+            assertThat(response.getCategory()).isEqualTo(ActionMemoCategory.PRIVATE);
+        }
+
+        @Test
+        @DisplayName("category 省略 + settings.defaultCategory が NULL → PRIVATE が適用される")
+        void createMemo_categoryOmittedSettingsHasNullCategory_defaultsToPrivate() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("メモ");
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+            given(settingsService.findSettings(USER_ID))
+                    .willReturn(Optional.of(settingsOf(USER_ID, null, null)));
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            ActionMemoResponse response = actionMemoService.createMemo(req, USER_ID);
+
+            assertThat(response.getCategory()).isEqualTo(ActionMemoCategory.PRIVATE);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 2. DurationProgressValidationTest
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Phase 3: duration_minutes / progress_rate バリデーション")
+    class DurationProgressValidationTest {
+
+        @Test
+        @DisplayName("duration_minutes = 0（境界値）は Service 層で通る")
+        void createMemo_durationZero_passes() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("メモ");
+            req.setDurationMinutes(0);
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            ActionMemoResponse response = actionMemoService.createMemo(req, USER_ID);
+            assertThat(response.getDurationMinutes()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("duration_minutes = 1440（境界値）は Service 層で通る")
+        void createMemo_duration1440_passes() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("メモ");
+            req.setDurationMinutes(1440);
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            ActionMemoResponse response = actionMemoService.createMemo(req, USER_ID);
+            assertThat(response.getDurationMinutes()).isEqualTo(1440);
+        }
+
+        @Test
+        @Disabled("実装ギャップ: duration の範囲チェックは Bean Validation (@Min/@Max) のみで Service 層には無い。"
+                + "設計書 §10.1 の「createMemo_durationOutOfRange_throws_INVALID_DURATION」は "
+                + "Service 単体テストでは検証不能（Controller 層の WebMvcTest が適切）。"
+                + "実装を Service 層にも複線するか別途検討。")
+        @DisplayName("[実装ギャップ] duration_minutes = -1 で INVALID_DURATION を投げてほしい")
+        void createMemo_durationNegative_throws_INVALID_DURATION() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("メモ");
+            req.setDurationMinutes(-1);
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+
+            assertThatThrownBy(() -> actionMemoService.createMemo(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ActionMemoErrorCode.ACTION_MEMO_INVALID_DURATION);
+        }
+
+        @Test
+        @Disabled("実装ギャップ: duration の範囲チェックは Bean Validation (@Min/@Max) のみで Service 層には無い。"
+                + "1441 も同上。")
+        @DisplayName("[実装ギャップ] duration_minutes = 1441 で INVALID_DURATION を投げてほしい")
+        void createMemo_durationOver1440_throws_INVALID_DURATION() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("メモ");
+            req.setDurationMinutes(1441);
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+
+            assertThatThrownBy(() -> actionMemoService.createMemo(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ActionMemoErrorCode.ACTION_MEMO_INVALID_DURATION);
+        }
+
+        @Test
+        @Disabled("実装ギャップ: progress_rate の範囲チェックも Bean Validation (@DecimalMin/@DecimalMax) のみで "
+                + "Service 層には無い。設計書 §10.1 の「INVALID_PROGRESS_RATE」を投げる経路を Service に追加するか別途検討。")
+        @DisplayName("[実装ギャップ] progress_rate = 100.01 で INVALID_PROGRESS_RATE を投げてほしい")
+        void createMemo_progressRateOutOfRange_throws_INVALID_PROGRESS_RATE() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("メモ");
+            req.setRelatedTodoId(42L);
+            req.setProgressRate(new BigDecimal("100.01"));
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+            given(todoRepository.findByIdAndDeletedAtIsNull(42L))
+                    .willReturn(Optional.of(ownPersonalTodo(42L, USER_ID, "TODO", TodoStatus.OPEN)));
+
+            assertThatThrownBy(() -> actionMemoService.createMemo(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ActionMemoErrorCode.ACTION_MEMO_INVALID_PROGRESS_RATE);
+        }
+
+        @Test
+        @DisplayName("progress_rate 指定 + relatedTodoId 未指定 → PROGRESS_REQUIRES_TODO")
+        void createMemo_progressRateWithoutTodo_throws_PROGRESS_REQUIRES_TODO() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("メモ");
+            req.setProgressRate(new BigDecimal("50.00"));
+            // relatedTodoId 未指定
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+
+            assertThatThrownBy(() -> actionMemoService.createMemo(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ActionMemoErrorCode.ACTION_MEMO_PROGRESS_REQUIRES_TODO);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 3. ProgressPropagationTest
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Phase 3: progress_rate の TODO への伝播")
+    class ProgressPropagationTest {
+
+        @Test
+        @DisplayName("createMemo: progress_rate 指定で TodoService.setProgressRate が呼ばれる")
+        void createMemo_withProgressRate_callsTodoSetProgressRate() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("メモ");
+            req.setRelatedTodoId(42L);
+            req.setProgressRate(new BigDecimal("70.00"));
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+            given(todoRepository.findByIdAndDeletedAtIsNull(42L))
+                    .willReturn(Optional.of(ownPersonalTodo(42L, USER_ID, "TODO", TodoStatus.OPEN)));
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            actionMemoService.createMemo(req, USER_ID);
+
+            verify(todoService).setProgressRate(eq(42L), eq(new BigDecimal("70.00")));
+        }
+
+        @Test
+        @DisplayName("updateMemo: progress_rate 変更時に TODO に伝播する")
+        void updateMemo_progressRateChanged_propagates() {
+            // 既存メモ（relatedTodoId 設定済み）
+            ActionMemoEntity existing = phase3Memo(MEMO_ID, USER_ID, LocalDate.now(),
+                    "既存", ActionMemoCategory.WORK, null, null, 42L, false,
+                    LocalDateTime.now());
+            given(memoRepository.findByIdAndUserId(MEMO_ID, USER_ID))
+                    .willReturn(Optional.of(existing));
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(tagLinkRepository.findByMemoId(any())).willReturn(List.of());
+
+            UpdateActionMemoRequest req = new UpdateActionMemoRequest();
+            req.setProgressRate(new BigDecimal("85.00"));
+
+            actionMemoService.updateMemo(MEMO_ID, req, USER_ID);
+
+            verify(todoService).setProgressRate(eq(42L), eq(new BigDecimal("85.00")));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 4. CompletesTodoTest
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Phase 3: completes_todo による TODO 完了同期")
+    class CompletesTodoTest {
+
+        @Test
+        @DisplayName("completes_todo = true で TodoService.changeStatus が COMPLETED で呼ばれる")
+        void createMemo_completesTodoTrue_callsTodoServiceChangeStatusCompleted() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("作業完了");
+            req.setRelatedTodoId(42L);
+            req.setCompletesTodo(true);
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+            // validateTodoScope の OPEN な TODO
+            TodoEntity openTodo = ownPersonalTodo(42L, USER_ID, "作業", TodoStatus.OPEN);
+            given(todoRepository.findByIdAndDeletedAtIsNull(42L))
+                    .willReturn(Optional.of(openTodo));
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> {
+                        ActionMemoEntity saved = inv.getArgument(0);
+                        if (saved.getId() == null) {
+                            ReflectionTestUtils.setField(saved, "id", MEMO_ID);
+                        }
+                        return saved;
+                    });
+
+            actionMemoService.createMemo(req, USER_ID);
+
+            ArgumentCaptor<TodoStatusChangeRequest> captor =
+                    ArgumentCaptor.forClass(TodoStatusChangeRequest.class);
+            verify(todoService).changeStatus(eq(42L), captor.capture(), eq(USER_ID));
+            assertThat(captor.getValue().getStatus()).isEqualTo("COMPLETED");
+        }
+
+        @Test
+        @DisplayName("completes_todo = true でも既に COMPLETED なら changeStatus を呼ばない")
+        void createMemo_completesTodoButTodoAlreadyCompleted_skipsChange() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("メモ");
+            req.setRelatedTodoId(42L);
+            req.setCompletesTodo(true);
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+            TodoEntity completedTodo = ownPersonalTodo(42L, USER_ID, "作業", TodoStatus.COMPLETED);
+            given(todoRepository.findByIdAndDeletedAtIsNull(42L))
+                    .willReturn(Optional.of(completedTodo));
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            actionMemoService.createMemo(req, USER_ID);
+
+            verify(todoService, never()).changeStatus(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("completes_todo = true + relatedTodoId 未指定 → COMPLETES_REQUIRES_TODO")
+        void createMemo_completesTodoTrueWithoutTodo_throws_COMPLETES_REQUIRES_TODO() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("メモ");
+            req.setCompletesTodo(true);
+            // relatedTodoId 未指定
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+
+            assertThatThrownBy(() -> actionMemoService.createMemo(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ActionMemoErrorCode.ACTION_MEMO_COMPLETES_REQUIRES_TODO);
+        }
+
+        @Test
+        @DisplayName("completeTodoFromMemo: AuditLogService.record の metadata JSON に "
+                + "source=ACTION_MEMO / source_id=memoId が含まれる")
+        void completeTodoFromMemo_recordsAuditLogWithSourceActionMemo() {
+            CreateActionMemoRequest req = new CreateActionMemoRequest();
+            req.setContent("作業完了");
+            req.setRelatedTodoId(42L);
+            req.setCompletesTodo(true);
+
+            given(memoRepository.countByUserIdAndMemoDateAndDeletedAtIsNull(eq(USER_ID), any()))
+                    .willReturn(0L);
+            TodoEntity openTodo = ownPersonalTodo(42L, USER_ID, "作業", TodoStatus.OPEN);
+            given(todoRepository.findByIdAndDeletedAtIsNull(42L))
+                    .willReturn(Optional.of(openTodo));
+            // memo.save は id をセットして返す
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> {
+                        ActionMemoEntity saved = inv.getArgument(0);
+                        ReflectionTestUtils.setField(saved, "id", 7777L);
+                        return saved;
+                    });
+
+            actionMemoService.createMemo(req, USER_ID);
+
+            // AuditLogService.record(eventType, userId, targetUserId, teamId, organizationId,
+            //                        ipAddress, userAgent, sessionHash, metadata)
+            ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
+            verify(auditLogService).record(
+                    eq("AUDIT_LOG_TODO_STATUS_CHANGED"),
+                    eq(USER_ID),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    metadataCaptor.capture()
+            );
+            String metadata = metadataCaptor.getValue();
+            assertThat(metadata)
+                    .contains("\"source\":\"ACTION_MEMO\"")
+                    .contains("\"source_id\":7777")
+                    .contains("\"todo_id\":42");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 5. PublishToTeamTest
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Phase 3: publishToTeam（メモ個別チーム投稿）")
+    class PublishToTeamTest {
+
+        @Test
+        @DisplayName("正常系: WORK / 自チーム / 未投稿 → timelinePostId が返る")
+        void publishToTeam_workMemoOwnTeam_returnsTimelinePostId() {
+            ActionMemoEntity workMemo = phase3Memo(MEMO_ID, USER_ID, LocalDate.now(),
+                    "作業ログ", ActionMemoCategory.WORK, 30, null, null, false,
+                    LocalDateTime.of(2026, 4, 27, 10, 0));
+            given(memoRepository.findByIdAndUserId(MEMO_ID, USER_ID))
+                    .willReturn(Optional.of(workMemo));
+            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, 42L)).willReturn(true);
+            given(timelinePostRepository.save(any(TimelinePostEntity.class)))
+                    .willAnswer(inv -> {
+                        TimelinePostEntity p = inv.getArgument(0);
+                        ReflectionTestUtils.setField(p, "id", 9000L);
+                        return p;
+                    });
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            PublishToTeamRequest req = new PublishToTeamRequest(42L, null);
+            PublishToTeamResponse response = actionMemoService.publishToTeam(MEMO_ID, req, USER_ID);
+
+            assertThat(response.getTimelinePostId()).isEqualTo(9000L);
+            assertThat(response.getTeamId()).isEqualTo(42L);
+            assertThat(response.getMemoId()).isEqualTo(MEMO_ID);
+            assertThat(workMemo.getPostedTeamId()).isEqualTo(42L);
+            assertThat(workMemo.getTimelinePostId()).isEqualTo(9000L);
+        }
+
+        @Test
+        @DisplayName("PRIVATE メモは ONLY_WORK_CAN_BE_POSTED で拒否")
+        void publishToTeam_privateMemo_throws_ONLY_WORK_CAN_BE_POSTED() {
+            ActionMemoEntity privateMemo = phase3Memo(MEMO_ID, USER_ID, LocalDate.now(),
+                    "私事", ActionMemoCategory.PRIVATE, null, null, null, false,
+                    LocalDateTime.now());
+            given(memoRepository.findByIdAndUserId(MEMO_ID, USER_ID))
+                    .willReturn(Optional.of(privateMemo));
+
+            PublishToTeamRequest req = new PublishToTeamRequest(42L, null);
+
+            assertThatThrownBy(() -> actionMemoService.publishToTeam(MEMO_ID, req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ActionMemoErrorCode.ACTION_MEMO_ONLY_WORK_CAN_BE_POSTED);
+        }
+
+        @Test
+        @DisplayName("既に投稿済みのメモは ALREADY_POSTED で拒否")
+        void publishToTeam_alreadyPosted_throws_ALREADY_POSTED() {
+            ActionMemoEntity workMemo = phase3Memo(MEMO_ID, USER_ID, LocalDate.now(),
+                    "作業", ActionMemoCategory.WORK, null, null, null, false,
+                    LocalDateTime.now());
+            workMemo.setPostedTeamId(42L); // 既投稿
+
+            given(memoRepository.findByIdAndUserId(MEMO_ID, USER_ID))
+                    .willReturn(Optional.of(workMemo));
+
+            PublishToTeamRequest req = new PublishToTeamRequest(42L, null);
+
+            assertThatThrownBy(() -> actionMemoService.publishToTeam(MEMO_ID, req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ActionMemoErrorCode.ACTION_MEMO_ALREADY_POSTED);
+        }
+
+        @Test
+        @DisplayName("非メンバーチームは TEAM_NOT_FOUND（IDOR 対策で 404）")
+        void publishToTeam_notTeamMember_throws_TEAM_NOT_FOUND() {
+            ActionMemoEntity workMemo = phase3Memo(MEMO_ID, USER_ID, LocalDate.now(),
+                    "作業", ActionMemoCategory.WORK, null, null, null, false,
+                    LocalDateTime.now());
+            given(memoRepository.findByIdAndUserId(MEMO_ID, USER_ID))
+                    .willReturn(Optional.of(workMemo));
+            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, 42L)).willReturn(false);
+
+            PublishToTeamRequest req = new PublishToTeamRequest(42L, null);
+
+            assertThatThrownBy(() -> actionMemoService.publishToTeam(MEMO_ID, req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ActionMemoErrorCode.ACTION_MEMO_TEAM_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("team_id 省略 + settings.defaultPostTeamId も NULL → TEAM_ID_REQUIRED")
+        void publishToTeam_teamIdNullAndNoDefault_throws_TEAM_ID_REQUIRED() {
+            ActionMemoEntity workMemo = phase3Memo(MEMO_ID, USER_ID, LocalDate.now(),
+                    "作業", ActionMemoCategory.WORK, null, null, null, false,
+                    LocalDateTime.now());
+            given(memoRepository.findByIdAndUserId(MEMO_ID, USER_ID))
+                    .willReturn(Optional.of(workMemo));
+            given(settingsService.findSettings(USER_ID)).willReturn(Optional.empty());
+
+            PublishToTeamRequest req = new PublishToTeamRequest(null, null);
+
+            assertThatThrownBy(() -> actionMemoService.publishToTeam(MEMO_ID, req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ActionMemoErrorCode.ACTION_MEMO_TEAM_ID_REQUIRED);
+        }
+
+        @Test
+        @DisplayName("team_id 省略 + settings.defaultPostTeamId あり → デフォルトチームに投稿成功")
+        void publishToTeam_teamIdNullUsesDefault_succeeds() {
+            ActionMemoEntity workMemo = phase3Memo(MEMO_ID, USER_ID, LocalDate.now(),
+                    "作業", ActionMemoCategory.WORK, null, null, null, false,
+                    LocalDateTime.of(2026, 4, 27, 10, 0));
+            given(memoRepository.findByIdAndUserId(MEMO_ID, USER_ID))
+                    .willReturn(Optional.of(workMemo));
+            given(settingsService.findSettings(USER_ID))
+                    .willReturn(Optional.of(settingsOf(USER_ID, ActionMemoCategory.WORK, 99L)));
+            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, 99L)).willReturn(true);
+            given(timelinePostRepository.save(any(TimelinePostEntity.class)))
+                    .willAnswer(inv -> {
+                        TimelinePostEntity p = inv.getArgument(0);
+                        ReflectionTestUtils.setField(p, "id", 9100L);
+                        return p;
+                    });
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            PublishToTeamRequest req = new PublishToTeamRequest(null, null);
+            PublishToTeamResponse response = actionMemoService.publishToTeam(MEMO_ID, req, USER_ID);
+
+            assertThat(response.getTeamId()).isEqualTo(99L);
+            assertThat(response.getTimelinePostId()).isEqualTo(9100L);
+        }
+
+        @Test
+        @DisplayName("本文フォーマット: HH:MM / duration / 進捗率 / 関連TODO / extra_comment(sanitized) を含む")
+        void publishToTeam_contentFormat_includesHHMM_duration_progress_todoTitle_extraComment_sanitized() {
+            // 9:15 (JST) / WORK / duration=30 / progressRate=70.5 / relatedTodoId=42
+            LocalDateTime created = LocalDateTime.of(2026, 4, 27, 9, 15);
+            ActionMemoEntity workMemo = phase3Memo(MEMO_ID, USER_ID, LocalDate.of(2026, 4, 27),
+                    "朝の作業", ActionMemoCategory.WORK, 30, new BigDecimal("70.50"), 42L, false,
+                    created);
+
+            given(memoRepository.findByIdAndUserId(MEMO_ID, USER_ID))
+                    .willReturn(Optional.of(workMemo));
+            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, 42L)).willReturn(true);
+            given(todoRepository.findByIdAndDeletedAtIsNull(42L))
+                    .willReturn(Optional.of(ownPersonalTodo(42L, USER_ID, "重要タスク", TodoStatus.OPEN)));
+            given(timelinePostRepository.save(any(TimelinePostEntity.class)))
+                    .willAnswer(inv -> {
+                        TimelinePostEntity p = inv.getArgument(0);
+                        ReflectionTestUtils.setField(p, "id", 9200L);
+                        return p;
+                    });
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            PublishToTeamRequest req = new PublishToTeamRequest(42L,
+                    "順調です<script>alert(1)</script>");
+            actionMemoService.publishToTeam(MEMO_ID, req, USER_ID);
+
+            ArgumentCaptor<TimelinePostEntity> postCaptor =
+                    ArgumentCaptor.forClass(TimelinePostEntity.class);
+            verify(timelinePostRepository).save(postCaptor.capture());
+            String content = postCaptor.getValue().getContent();
+
+            // [HH:MM] {content}
+            assertThat(content).contains("[09:15]").contains("朝の作業");
+            // 実績時間
+            assertThat(content).contains("30分");
+            // 進捗率（trailing zeros stripped: 70.5）
+            assertThat(content).contains("70.5%");
+            // 関連 TODO タイトル
+            assertThat(content).contains("重要タスク");
+            // 末尾コメント
+            assertThat(content).contains("順調です");
+            // XSS サニタイズ（<script> は除去される）
+            assertThat(content)
+                    .doesNotContain("<script>")
+                    .doesNotContain("</script>");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 6. PublishDailyToTeamTest
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Phase 3: publishDailyToTeam（日次まとめチーム投稿）")
+    class PublishDailyToTeamTest {
+
+        @Test
+        @DisplayName("WORK かつ未投稿のメモのみが対象になる")
+        void publishDailyToTeam_filtersWorkAndUnposted() {
+            // findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull が
+            // WORK & postedTeamId=null のメモを返すことを mock で表現
+            ActionMemoEntity m1 = phase3Memo(11L, USER_ID, LocalDate.now(),
+                    "メモ1", ActionMemoCategory.WORK, null, null, null, false,
+                    LocalDateTime.of(2026, 4, 27, 9, 0));
+            ActionMemoEntity m2 = phase3Memo(12L, USER_ID, LocalDate.now(),
+                    "メモ2", ActionMemoCategory.WORK, null, null, null, false,
+                    LocalDateTime.of(2026, 4, 27, 10, 0));
+
+            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, 42L)).willReturn(true);
+            given(memoRepository.findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull(
+                    eq(USER_ID), any(LocalDate.class), eq(ActionMemoCategory.WORK)))
+                    .willReturn(List.of(m1, m2));
+            // publishToTeam の中で findByIdAndUserId が呼ばれる
+            given(memoRepository.findByIdAndUserId(11L, USER_ID)).willReturn(Optional.of(m1));
+            given(memoRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(m2));
+            given(timelinePostRepository.save(any(TimelinePostEntity.class)))
+                    .willAnswer(inv -> {
+                        TimelinePostEntity p = inv.getArgument(0);
+                        ReflectionTestUtils.setField(p, "id", 9300L);
+                        return p;
+                    });
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            PublishDailyToTeamRequest req = new PublishDailyToTeamRequest(42L);
+            PublishDailyToTeamResponse response = actionMemoService.publishDailyToTeam(req, USER_ID);
+
+            assertThat(response.getPostedCount()).isEqualTo(2);
+            assertThat(response.getTeamId()).isEqualTo(42L);
+        }
+
+        @Test
+        @DisplayName("repository が WORK 未投稿フィルタで返却するメモのみ投稿対象になる（既投稿はそもそも返らない）")
+        void publishDailyToTeam_skipsAlreadyPosted() {
+            // 既投稿メモ (postedTeamId != null) は repository 側で除外される設計のため、
+            // mock の返却値には未投稿メモのみを含める。
+            ActionMemoEntity unpostedWork = phase3Memo(11L, USER_ID, LocalDate.now(),
+                    "未投稿WORK", ActionMemoCategory.WORK, null, null, null, false,
+                    LocalDateTime.of(2026, 4, 27, 9, 0));
+
+            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, 42L)).willReturn(true);
+            given(memoRepository.findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull(
+                    eq(USER_ID), any(LocalDate.class), eq(ActionMemoCategory.WORK)))
+                    .willReturn(List.of(unpostedWork));
+            given(memoRepository.findByIdAndUserId(11L, USER_ID))
+                    .willReturn(Optional.of(unpostedWork));
+            given(timelinePostRepository.save(any(TimelinePostEntity.class)))
+                    .willAnswer(inv -> {
+                        TimelinePostEntity p = inv.getArgument(0);
+                        ReflectionTestUtils.setField(p, "id", 9400L);
+                        return p;
+                    });
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            PublishDailyToTeamRequest req = new PublishDailyToTeamRequest(42L);
+            PublishDailyToTeamResponse response = actionMemoService.publishDailyToTeam(req, USER_ID);
+
+            // 既投稿は repository 段階で除外されるため、postedCount は未投稿分のみ
+            assertThat(response.getPostedCount()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("当日 WORK メモが0件 → NO_WORK_MEMO_TODAY")
+        void publishDailyToTeam_zeroWorkMemos_throws_NO_WORK_MEMO_TODAY() {
+            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, 42L)).willReturn(true);
+            given(memoRepository.findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull(
+                    eq(USER_ID), any(LocalDate.class), eq(ActionMemoCategory.WORK)))
+                    .willReturn(List.of());
+
+            PublishDailyToTeamRequest req = new PublishDailyToTeamRequest(42L);
+
+            assertThatThrownBy(() -> actionMemoService.publishDailyToTeam(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ActionMemoErrorCode.ACTION_MEMO_NO_WORK_MEMO_TODAY);
+        }
+
+        @Test
+        @DisplayName("postedCount は実際に投稿したメモ数と一致する")
+        void publishDailyToTeam_postedCountMatches() {
+            ActionMemoEntity m1 = phase3Memo(11L, USER_ID, LocalDate.now(),
+                    "M1", ActionMemoCategory.WORK, null, null, null, false,
+                    LocalDateTime.of(2026, 4, 27, 9, 0));
+            ActionMemoEntity m2 = phase3Memo(12L, USER_ID, LocalDate.now(),
+                    "M2", ActionMemoCategory.WORK, null, null, null, false,
+                    LocalDateTime.of(2026, 4, 27, 10, 0));
+            ActionMemoEntity m3 = phase3Memo(13L, USER_ID, LocalDate.now(),
+                    "M3", ActionMemoCategory.WORK, null, null, null, false,
+                    LocalDateTime.of(2026, 4, 27, 11, 0));
+
+            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, 42L)).willReturn(true);
+            given(memoRepository.findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull(
+                    eq(USER_ID), any(LocalDate.class), eq(ActionMemoCategory.WORK)))
+                    .willReturn(List.of(m1, m2, m3));
+            given(memoRepository.findByIdAndUserId(11L, USER_ID)).willReturn(Optional.of(m1));
+            given(memoRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(m2));
+            given(memoRepository.findByIdAndUserId(13L, USER_ID)).willReturn(Optional.of(m3));
+            given(timelinePostRepository.save(any(TimelinePostEntity.class)))
+                    .willAnswer(inv -> {
+                        TimelinePostEntity p = inv.getArgument(0);
+                        ReflectionTestUtils.setField(p, "id", 9500L);
+                        return p;
+                    });
+            given(memoRepository.save(any(ActionMemoEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            PublishDailyToTeamRequest req = new PublishDailyToTeamRequest(42L);
+            PublishDailyToTeamResponse response = actionMemoService.publishDailyToTeam(req, USER_ID);
+
+            assertThat(response.getPostedCount()).isEqualTo(3);
+            // timelinePostRepository.save が 3 回呼ばれる
+            verify(timelinePostRepository, atLeastOnce()).save(any(TimelinePostEntity.class));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 7. AvailableTeamsTest
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Phase 3: getAvailableTeams（投稿先チーム一覧）")
+    class AvailableTeamsTest {
+
+        private TeamEntity teamWith(Long id, String name) {
+            TeamEntity team = TeamEntity.builder()
+                    .name(name)
+                    .build();
+            ReflectionTestUtils.setField(team, "id", id);
+            return team;
+        }
+
+        private UserRoleEntity roleWith(Long userId, Long teamId) {
+            return UserRoleEntity.builder()
+                    .userId(userId)
+                    .roleId(1L)
+                    .teamId(teamId)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("isDefault が settings.defaultPostTeamId と一致するチームに付与される")
+        void getAvailableTeams_marksDefaultTeam() {
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
+                    .willReturn(List.of(roleWith(USER_ID, 10L), roleWith(USER_ID, 20L)));
+            given(settingsService.findSettings(USER_ID))
+                    .willReturn(Optional.of(settingsOf(USER_ID, ActionMemoCategory.WORK, 20L)));
+            given(teamRepository.findById(10L)).willReturn(Optional.of(teamWith(10L, "チームA")));
+            given(teamRepository.findById(20L)).willReturn(Optional.of(teamWith(20L, "チームB")));
+
+            List<AvailableTeamResponse> result = actionMemoService.getAvailableTeams(USER_ID);
+
+            assertThat(result).hasSize(2);
+            AvailableTeamResponse a = result.stream().filter(t -> t.getId() == 10L).findFirst().orElseThrow();
+            AvailableTeamResponse b = result.stream().filter(t -> t.getId() == 20L).findFirst().orElseThrow();
+            assertThat(a.isDefault()).isFalse();
+            assertThat(b.isDefault()).isTrue();
+            assertThat(b.getName()).isEqualTo("チームB");
+        }
+
+        @Test
+        @DisplayName("同一 teamId が複数所属（複数ロール）でも distinct で1件にまとまる")
+        void getAvailableTeams_distinctTeamIds() {
+            // 同じ teamId=30 に複数ロールで所属しているケース
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
+                    .willReturn(List.of(
+                            roleWith(USER_ID, 30L),
+                            roleWith(USER_ID, 30L),
+                            roleWith(USER_ID, 40L)));
+            given(settingsService.findSettings(USER_ID)).willReturn(Optional.empty());
+            given(teamRepository.findById(30L)).willReturn(Optional.of(teamWith(30L, "チームC")));
+            given(teamRepository.findById(40L)).willReturn(Optional.of(teamWith(40L, "チームD")));
+
+            List<AvailableTeamResponse> result = actionMemoService.getAvailableTeams(USER_ID);
+
+            assertThat(result).hasSize(2);
+            assertThat(result).extracting(AvailableTeamResponse::getId).containsExactlyInAnyOrder(30L, 40L);
+            assertThat(result).allSatisfy(t -> assertThat(t.isDefault()).isFalse());
+        }
+
+        @Test
+        @DisplayName("チーム未所属ユーザーには空リストが返る")
+        void getAvailableTeams_emptyForNonMember() {
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
+                    .willReturn(List.of());
+            // findSettings は呼ばれる可能性あり（lenient）
+            lenient().when(settingsService.findSettings(USER_ID)).thenReturn(Optional.empty());
+
+            List<AvailableTeamResponse> result = actionMemoService.getAvailableTeams(USER_ID);
+
+            assertThat(result).isEmpty();
         }
     }
 }
