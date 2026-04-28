@@ -84,19 +84,81 @@ export async function setupAuth(page: Page, opts: AuthOptions): Promise<void> {
 export type Locale = 'ja' | 'en' | 'zh' | 'ko' | 'es' | 'de'
 
 /**
- * @nuxtjs/i18n のロケールを切り替える。
- * addInitScript で navigator.language を上書きし、cookie/localStorage 双方に
- * 値を入れることで初期表示前にロケール検出を確定させる。
+ * @nuxtjs/i18n v9 のロケールを切り替える。
+ *
+ * <p>nuxt.config.ts の現行設定:</p>
+ * <ul>
+ *   <li>{@code strategy: 'no_prefix'} — URL に locale prefix を含めない</li>
+ *   <li>{@code detectBrowserLanguage.useCookie: false} — cookie 検出を無効化</li>
+ * </ul>
+ *
+ * <p>そのため、addInitScript で localStorage / cookie を入れても i18n は
+ * 検出に使わず、初期 locale は常に {@code defaultLocale = 'ja'} で固定される。
+ * よって本ヘルパーは、{@link page.goto} 後にハイドレーションを待ってから
+ * Vue App の {@code $i18n} composer 経由で
+ * {@code setLocale(locale)} を呼ぶ方式に切り替える。</p>
+ *
+ * <p>呼び出し位置: {@link gotoTeamSurveys} 等のページ遷移ヘルパーの後。
+ * page.goto より前に呼ばれた場合でも安全になるよう addInitScript も保持し、
+ * 旧来のロジック互換性を維持する（テスト spec は事前/事後どちらでも呼べる）。</p>
  */
 export async function setLocale(page: Page, locale: Locale): Promise<void> {
+  // (1) addInitScript: 一部の自前検出ロジック向けに localStorage/cookie も入れておく。
+  //     これだけでは @nuxtjs/i18n は切り替わらないため、(2) の page.evaluate で実際に切替を実行する。
   await page.addInitScript((loc) => {
     try {
-      // 一部の検出ロジック・自前 useLocale 用
       localStorage.setItem('i18n_redirected', loc)
       localStorage.setItem('i18n_locale', loc)
       document.cookie = `i18n_redirected=${loc}; path=/`
     } catch {
       // localStorage / document.cookie が使えない環境では黙ってスキップ
+    }
+  }, locale)
+
+  // (2) ページが既にロード済みであれば、Vue App の i18n composer を直接操作して切替を実行する。
+  //     ja の場合はデフォルトロケールと同一のため不要だが、明示的に呼んで lazy load も完了させる。
+  //     未ロード時（goto 前に呼ばれた場合）は Page の url が about:blank なのでスキップする。
+  const currentUrl = page.url()
+  if (currentUrl === 'about:blank' || currentUrl === '') {
+    return
+  }
+  await applyLocaleViaVueApp(page, locale)
+}
+
+/**
+ * Vue App の i18n composer 経由で locale を切り替える。
+ *
+ * <p>Nuxt 3 + @nuxtjs/i18n v9 の場合、
+ * {@code document.querySelector('#__nuxt').__vue_app__.config.globalProperties.$i18n}
+ * で {@code Composer} インスタンスにアクセスでき、{@code setLocale} を呼べる。</p>
+ *
+ * <p>{@link waitForHydration} 相当の待機を内部で行うため、外側で改めて待つ必要はない。</p>
+ */
+export async function applyLocaleViaVueApp(page: Page, locale: Locale): Promise<void> {
+  // ハイドレーション完了 + $i18n が globalProperties に注入されるまで待つ
+  await page.waitForFunction(() => {
+    const el = document.querySelector('#__nuxt') as (HTMLElement & { __vue_app__?: unknown }) | null
+    if (!el || !('__vue_app__' in el)) return false
+    const app = el.__vue_app__ as
+      | { config?: { globalProperties?: { $i18n?: unknown } } }
+      | undefined
+    return Boolean(app?.config?.globalProperties?.$i18n)
+  })
+
+  // setLocale を呼ぶ。lazy load されたメッセージファイルの取得完了まで await する。
+  await page.evaluate(async (loc) => {
+    const el = document.querySelector('#__nuxt') as (HTMLElement & { __vue_app__?: unknown }) | null
+    if (!el) throw new Error('Nuxt root element not found')
+    const app = el.__vue_app__ as
+      | { config: { globalProperties: { $i18n: { setLocale?: (l: string) => Promise<void>; locale: { value: string } } } } }
+      | undefined
+    if (!app) throw new Error('Vue app instance not found on #__nuxt')
+    const i18n = app.config.globalProperties.$i18n
+    if (typeof i18n.setLocale === 'function') {
+      await i18n.setLocale(loc)
+    } else {
+      // 旧バージョン互換のフォールバック（v9 では setLocale 必須なので通常通らない）
+      i18n.locale.value = loc
     }
   }, locale)
 }
@@ -243,8 +305,68 @@ export interface MockSurveyApiOptions {
  *
  * <p>後着優先のため、本関数の呼び出し後に spec 個別の page.route で
  * 振る舞いを上書きできる。</p>
+ *
+ * <p>layouts/default.vue 配下の {@code NotificationBell} が叩く
+ * 通知/チャット/メンション関連 API も合わせて 200 で空返ししておく。
+ * これらをモックしないと未認証扱いの 401 → useApi.refreshAccessToken 失敗 →
+ * authStore.logout → /login へリダイレクトされてアンケート画面が消失する
+ * （SPA navigation 経由の SURVEY-002 / SURVEY-004 で観測された根本原因）。</p>
  */
 export async function mockSurveyApi(page: Page, opts: MockSurveyApiOptions): Promise<void> {
+  // ----- layout 共通の周辺 API（NotificationBell が叩く 3 種 + auth refresh）-----
+  // これらが 401 を返すと useApi の onResponseError が refresh → logout を起こし、
+  // /login にリダイレクトされてアンケート画面が消える。空配列で 200 返しに固定する。
+  await page.route('**/api/v1/notifications/unread-count', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { total: 0 } }),
+    })
+  })
+  await page.route('**/api/v1/chat/channels**', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    })
+  })
+  await page.route('**/api/v1/mentions', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    })
+  })
+  // 念のため auth refresh も止める（万一 401 が抜けてきても logout を起こさない）
+  await page.route('**/api/v1/auth/refresh', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          accessToken: 'eyJhbGciOiJIUzM4NCJ9.e2UyZV90ZXN0X3VzZXJ9.placeholder_for_e2e',
+          refreshToken: 'e2e-refresh-token-placeholder',
+        },
+      }),
+    })
+  })
+
   // ----- 一覧（チーム / 組織）-----
   const listHandler = async (route: Route): Promise<void> => {
     if (route.request().method() !== 'GET') {

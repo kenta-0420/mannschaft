@@ -5,12 +5,25 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  BarController,
+  DoughnutController,
   Tooltip,
   Legend,
 } from 'chart.js'
 import type { SurveyResultSummary } from '~/types/survey'
 
-ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend)
+// chart.js 4.x では Controller も明示登録が必要。
+// 登録漏れがあると `"<type>" is not a registered controller.` で実行時エラーになる。
+ChartJS.register(
+  ArcElement,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  BarController,
+  DoughnutController,
+  Tooltip,
+  Legend,
+)
 
 const props = defineProps<{
   result: SurveyResultSummary

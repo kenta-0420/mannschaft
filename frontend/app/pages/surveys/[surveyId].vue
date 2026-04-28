@@ -310,11 +310,18 @@ onMounted(async () => {
       />
 
       <!-- 結果パネル -->
-      <SurveyResultsPanel
+      <!--
+        NOTE: SurveyResultsPanel の root には `data-testid="survey-results-panel"` が付与されている。
+        ここで `data-testid="survey-mode-results"` を渡すと Vue 3 の attribute fallthrough で
+        root に上書きマージされて子の testid が消える。両方 testid を残すために
+        wrapper の `<div>` で分離する。
+      -->
+      <div
         v-else-if="displayMode === 'results'"
-        :survey-id="survey.id"
         data-testid="survey-mode-results"
-      />
+      >
+        <SurveyResultsPanel :survey-id="survey.id" />
+      </div>
 
       <!-- 結果非公開（締切＆権限なし） -->
       <div

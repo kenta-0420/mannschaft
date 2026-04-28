@@ -88,9 +88,7 @@ test.describe('SURVEY-004: F05.4 アンケート i18n スモーク', () => {
     test(`SURVEY-004: ${expectation.locale} ロケールで PUBLISHED ステータスと作成導線が翻訳される`, async ({
       page,
     }) => {
-      // 認証 + ロケール切替を beforeEach 相当で先に注入する。
-      // setLocale は addInitScript を使うため goto 前に呼ぶ必要がある。
-      await setLocale(page, expectation.locale)
+      // 認証注入 + 一覧モック登録（setLocale 前に済ませる）
       await setupAuth(page, {
         userId: 1,
         displayName: 'e2e_admin',
@@ -111,6 +109,11 @@ test.describe('SURVEY-004: F05.4 アンケート i18n スモーク', () => {
 
       await gotoTeamSurveys(page, TEAM_ID)
       await waitForSurveyList(page)
+
+      // ハイドレーション後に Vue App の $i18n.setLocale を呼んで実際にロケールを切り替える。
+      // nuxt.config.ts で detectBrowserLanguage.useCookie=false / strategy='no_prefix' のため、
+      // localStorage や cookie を入れるだけでは defaultLocale='ja' から切り替わらない。
+      await setLocale(page, expectation.locale)
 
       // 1) 一覧アイテムの PUBLISHED バッジが該当ロケールの値で表示される
       await expect(
