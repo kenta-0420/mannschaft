@@ -61,7 +61,6 @@
       "openCallLimit": "Open calls are limited to 3 per month",
       "fetchError": "Failed to fetch change requests"
     },
-    },
     "openCall": {
       "badge": "Seeking substitute member",
       "claim": "I'll cover this shift",

@@ -305,8 +305,68 @@ export interface MockSurveyApiOptions {
  *
  * <p>後着優先のため、本関数の呼び出し後に spec 個別の page.route で
  * 振る舞いを上書きできる。</p>
+ *
+ * <p>layouts/default.vue 配下の {@code NotificationBell} が叩く
+ * 通知/チャット/メンション関連 API も合わせて 200 で空返ししておく。
+ * これらをモックしないと未認証扱いの 401 → useApi.refreshAccessToken 失敗 →
+ * authStore.logout → /login へリダイレクトされてアンケート画面が消失する
+ * （SPA navigation 経由の SURVEY-002 / SURVEY-004 で観測された根本原因）。</p>
  */
 export async function mockSurveyApi(page: Page, opts: MockSurveyApiOptions): Promise<void> {
+  // ----- layout 共通の周辺 API（NotificationBell が叩く 3 種 + auth refresh）-----
+  // これらが 401 を返すと useApi の onResponseError が refresh → logout を起こし、
+  // /login にリダイレクトされてアンケート画面が消える。空配列で 200 返しに固定する。
+  await page.route('**/api/v1/notifications/unread-count', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { total: 0 } }),
+    })
+  })
+  await page.route('**/api/v1/chat/channels**', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    })
+  })
+  await page.route('**/api/v1/mentions', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    })
+  })
+  // 念のため auth refresh も止める（万一 401 が抜けてきても logout を起こさない）
+  await page.route('**/api/v1/auth/refresh', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          accessToken: 'eyJhbGciOiJIUzM4NCJ9.e2UyZV90ZXN0X3VzZXJ9.placeholder_for_e2e',
+          refreshToken: 'e2e-refresh-token-placeholder',
+        },
+      }),
+    })
+  })
+
   // ----- 一覧（チーム / 組織）-----
   const listHandler = async (route: Route): Promise<void> => {
     if (route.request().method() !== 'GET') {
