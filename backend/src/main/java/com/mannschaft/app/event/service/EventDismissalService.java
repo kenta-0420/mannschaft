@@ -2,11 +2,13 @@ package com.mannschaft.app.event.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.event.EventErrorCode;
+import com.mannschaft.app.event.dto.DismissalReminderTargetResponse;
 import com.mannschaft.app.event.dto.DismissalRequest;
 import com.mannschaft.app.event.dto.DismissalStatusResponse;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRepository;
+import com.mannschaft.app.event.repository.EventRepository.DismissalReminderTargetProjection;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
 import com.mannschaft.app.family.service.CareEventNotificationService;
 import com.mannschaft.app.family.service.CareLinkService;
@@ -20,10 +22,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * イベント解散通知サービス。F03.12 §16。
@@ -98,9 +102,9 @@ public class EventDismissalService {
         String message = req.resolveMessage();
         String eventLabel = resolveEventLabel(event);
 
-        // 参加者へのプッシュ通知
+        // 参加者へのプッシュ通知（F03.12 Phase11: actionUrl にチームID を含める）
         for (Long targetUserId : targetUserIds) {
-            sendParticipantDismissalNotification(targetUserId, eventId, eventLabel, message);
+            sendParticipantDismissalNotification(targetUserId, eventId, teamId, eventLabel, message);
         }
 
         // 見守り者への追加通知
@@ -133,9 +137,59 @@ public class EventDismissalService {
                 .build();
     }
 
+    /**
+     * ログインユーザーが主催している、終了予定時刻を過ぎたが未解散のイベント一覧を取得する。
+     * F03.12 Phase11 / §16 Widget 連携。
+     *
+     * <p>主催者向けダッシュボード Widget {@code WidgetEventDismissalReminder} がカード描画に使う。
+     * チームスコープのイベントのみを対象とする（個人スコープ・組織スコープでは「解散通知」自体が
+     * 機能しないため）。</p>
+     *
+     * @param userId ログインユーザーID
+     * @return 解散通知未送信イベントのレスポンスリスト（endAt 昇順）
+     */
+    public List<DismissalReminderTargetResponse> getMyDismissalReminderTargets(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        List<DismissalReminderTargetProjection> projections =
+                eventRepository.findMyOrganizingUndismissedExpiredEvents(userId, now);
+
+        return projections.stream()
+                .map(p -> toDismissalReminderTargetResponse(p, now))
+                .collect(Collectors.toList());
+    }
+
     // =========================================================
     // プライベートヘルパー
     // =========================================================
+
+    /**
+     * リマインダー対象 Projection を DTO に変換する。
+     *
+     * <p>イベント名は {@code subtitle} 優先で {@code slug} fallback、
+     * 経過分数は {@code now - endAt} を分換算（負値は 0 にクランプ）して算出する。</p>
+     *
+     * @param p   投影
+     * @param now 現在時刻
+     * @return レスポンス DTO
+     */
+    private DismissalReminderTargetResponse toDismissalReminderTargetResponse(
+            DismissalReminderTargetProjection p, LocalDateTime now) {
+        String eventName = (p.getSubtitle() != null && !p.getSubtitle().isBlank())
+                ? p.getSubtitle() : p.getSlug();
+        long minutes = Duration.between(p.getEndAt(), now).toMinutes();
+        if (minutes < 0) minutes = 0;
+        int reminderCount = p.getReminderCount() != null ? p.getReminderCount().intValue() : 0;
+
+        return DismissalReminderTargetResponse.builder()
+                .eventId(p.getEventId())
+                .eventName(eventName)
+                .teamId(p.getTeamId())
+                .teamName(p.getTeamName())
+                .endAt(p.getEndAt())
+                .minutesPassed(minutes)
+                .reminderCount(reminderCount)
+                .build();
+    }
 
     /**
      * チームスコープ検証付きでイベントを取得する。
@@ -153,12 +207,16 @@ public class EventDismissalService {
     /**
      * 参加者個人へ解散通知プッシュを送信する。
      *
+     * <p>F03.12 Phase11: 通知の {@code actionUrl} に teamId を含めることで、
+     * 通知センターからイベント詳細へ deep link できるようにする。</p>
+     *
      * @param targetUserId 通知先ユーザーID
      * @param eventId      イベントID
+     * @param teamId       チームID（actionUrl 構築用）
      * @param eventLabel   イベント表示名
      * @param message      解散メッセージ
      */
-    private void sendParticipantDismissalNotification(Long targetUserId, Long eventId,
+    private void sendParticipantDismissalNotification(Long targetUserId, Long eventId, Long teamId,
                                                        String eventLabel, String message) {
         String title = "「" + eventLabel + "」が解散しました";
         String body = message;
@@ -170,10 +228,10 @@ public class EventDismissalService {
                 title, body,
                 "EVENT", eventId,
                 NotificationScopeType.PERSONAL, targetUserId,
-                "/events/" + eventId, null);
+                "/teams/" + teamId + "/events/" + eventId, null);
 
         dispatchService.dispatch(notification);
-        log.debug("解散通知送信: eventId={}, targetUserId={}", eventId, targetUserId);
+        log.debug("解散通知送信: eventId={}, teamId={}, targetUserId={}", eventId, teamId, targetUserId);
     }
 
     /**

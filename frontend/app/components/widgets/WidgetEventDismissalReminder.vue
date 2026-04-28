@@ -1,49 +1,48 @@
 <script setup lang="ts">
 /**
- * F03.12 Phase 10 §16 解散通知未送信リマインダー Widget。
+ * F03.12 §16 / Phase11 解散通知未送信リマインダー Widget。
  *
  * <p>主催者向けに「終了したのに解散通知が未送信のイベント」を一覧表示する。
- * BE 側 EventDismissalReminderJob から発火される {@code EVENT_DISMISSAL_REMINDER}
- * 通知の actionUrl と紐付けて表示するのが本来の姿だが、Phase 10 時点では
- * 主催イベントから dismissalStatus を逐次取得する API がまだ存在しないため、
- * この Widget は枠組みのみを提供し、内容は Phase 11 で確定させる。</p>
+ * BE 側 EventEndReminderBatchService から発火される {@code EVENT_DISMISSAL_REMINDER}
+ * 通知の「アクション元」となるダッシュボード上の常設エリアでもある。</p>
  *
- * <p>表示候補の抽出ロジック:</p>
+ * <p>Phase11 で {@code GET /api/v1/events/my-organizing/dismissal-reminders}
+ * を新設し、placeholder だった本 Widget を実データ連携に切り替えた。</p>
+ *
+ * <p>表示条件:</p>
  * <ul>
- *   <li>現在の主催イベントから {@code endAt < now} かつ {@code dismissalStatus.dismissed === false} のものを抽出</li>
+ *   <li>BE が「自分が主催 / endAt &lt; now / 未解散」のイベントを抽出して返す</li>
+ *   <li>0 件の時はカード自体を描画しない（条件付きレンダリング）</li>
  *   <li>各イベントについて {@link EventDismissalCard} を表示し、CTA から {@link DismissalDialog} を開く</li>
  * </ul>
  *
- * @todo Phase 11 で「主催イベントの dismissalStatus を一括取得する BE API」を追加し、
- *       本 Widget の {@code targets} を実データで埋める。
- *       それまでは空リストを返し、ダッシュボードに枠は表示しない（条件付きレンダリング）。
+ * <p>取得失敗時は空表示にする。loading 中も空表示。
+ * 本 Widget はあくまで「補助的な気付き」であり、主動線は通知センター経由の deep link なので、
+ * 失敗を派手に表示する必要はない。</p>
  */
 import EventDismissalCard from '~/components/event/dismissal/EventDismissalCard.vue'
-
-interface DismissalReminderTarget {
-  teamId: number
-  eventId: number
-  eventName: string
-}
+import type { DismissalReminderTarget } from '~/types/care'
 
 const targets = ref<DismissalReminderTarget[]>([])
+const { fetchTargets } = useDismissalReminders()
 
 /**
- * Phase 11 で「主催イベントの dismissalStatus 一括取得 API」を呼ぶ予定。
- * 現状はバックエンドにエンドポイントが無いため、targets は空のままとする。
+ * 主催未解散イベントを再取得する。
  *
- * 候補の抽出条件（実装時のメモ）:
- * - 自分が主催する team イベント
- * - endAt < now
- * - dismissalStatus.dismissed === false
+ * <p>失敗時は targets を空のままにし、ダッシュボードに枠を表示しない。
+ * ログだけ console.warn で残す（ユーザーの動線を阻害しないため）。</p>
  */
 async function loadTargets(): Promise<void> {
-  // TODO Phase 11: 主催イベントの dismissalStatus 一括取得 API を呼んで targets を埋める
-  targets.value = []
+  try {
+    targets.value = await fetchTargets()
+  } catch (e) {
+    console.warn('[WidgetEventDismissalReminder] 主催未解散イベントの取得に失敗', e)
+    targets.value = []
+  }
 }
 
 function onSubmitted(): void {
-  // 送信された対象を targets から除外する
+  // 送信された対象を targets から除外する（最新を BE から取り直す）
   loadTargets()
 }
 

@@ -8,7 +8,7 @@ import type {
   RollCallSessionResponse,
   RollCallStatus,
 } from '~/types/care'
-import { enqueueCareJob } from '~/composables/jobs/useOfflineCareQueue'
+import { useOfflineCareQueue } from '~/composables/jobs/useOfflineCareQueue'
 
 /**
  * F03.12 §14 主催者点呼の上位 composable。
@@ -19,8 +19,8 @@ import { enqueueCareJob } from '~/composables/jobs/useOfflineCareQueue'
  * <ul>
  *   <li>点呼候補者の取得 / 結果の一括送信 / 個別修正 / 過去セッション履歴取得</li>
  *   <li>送信時はクライアントで冪等キー（UUID）を発行</li>
- *   <li>オフライン時は {@link enqueueCareJob} で IndexedDB にキューイングし、
- *       オンライン復帰時に {@code flushPendingCareJobs} で再送する</li>
+ *   <li>オフライン時は {@code useOfflineCareQueue().enqueueCareJob} で IndexedDB に
+ *       キューイングし、オンライン復帰時に {@code flushPendingCareJobs} で再送する</li>
  * </ul>
  *
  * <p>{@code submit} は成功時には BE のレスポンスをそのまま返すが、
@@ -28,6 +28,7 @@ import { enqueueCareJob } from '~/composables/jobs/useOfflineCareQueue'
  */
 export function useRollCall(teamId: Ref<number>, eventId: Ref<number>) {
   const api = useRollCallApi()
+  const careQueue = useOfflineCareQueue()
 
   const candidates = ref<RollCallCandidate[]>([])
   const sessionIds = ref<string[]>([])
@@ -76,7 +77,7 @@ export function useRollCall(teamId: Ref<number>, eventId: Ref<number>) {
       }
 
       if (!isOnline()) {
-        await enqueueCareJob({
+        await careQueue.enqueueCareJob({
           type: 'ROLL_CALL',
           teamId: teamId.value,
           eventId: eventId.value,

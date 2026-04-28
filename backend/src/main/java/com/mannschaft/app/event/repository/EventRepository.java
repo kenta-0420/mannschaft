@@ -126,4 +126,68 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
     Optional<EventEntity> findByIdAndTeamScopeId(
             @Param("eventId") Long eventId,
             @Param("scopeId") Long scopeId);
+
+    /**
+     * ログインユーザーが主催しており、終了予定時刻を過ぎたが解散通知が未送信の
+     * チームスコープイベント一覧を取得する（F03.12 Phase11 / §16 Widget 連携）。
+     *
+     * <p>条件:</p>
+     * <ul>
+     *   <li>{@code e.created_by = :userId}（主催者）</li>
+     *   <li>{@code e.dismissal_notification_sent_at IS NULL}（未解散）</li>
+     *   <li>{@code e.scope_type = 'TEAM'}（チームスコープのみ）</li>
+     *   <li>{@code s.end_at IS NOT NULL AND s.end_at < :cutoff}（終了時刻を過ぎている）</li>
+     * </ul>
+     *
+     * <p>結果は {@link DismissalReminderTargetProjection} 型のフラット投影で返し、
+     * Service 側で経過分数の算出と DTO 組み立てを行う。
+     * チーム名はリストカードのラベル用にあらかじめ JOIN で取得する。</p>
+     *
+     * @param userId ログインユーザーID（主催者）
+     * @param cutoff 「終了時刻を過ぎている」の判定基準（通常は現在時刻）
+     * @return 投影結果のリスト。endAt 昇順（古いものから先に表示）。
+     */
+    @Query("""
+            SELECT e.id AS eventId,
+                   e.subtitle AS subtitle,
+                   e.slug AS slug,
+                   t.id AS teamId,
+                   t.name AS teamName,
+                   s.endAt AS endAt,
+                   e.organizerReminderSentCount AS reminderCount
+            FROM EventEntity e
+            JOIN ScheduleEntity s ON s.id = e.scheduleId
+            JOIN com.mannschaft.app.team.entity.TeamEntity t ON t.id = e.scopeId
+            WHERE e.createdBy = :userId
+              AND e.dismissalNotificationSentAt IS NULL
+              AND e.scopeType = 'TEAM'
+              AND s.endAt IS NOT NULL
+              AND s.endAt < :cutoff
+            ORDER BY s.endAt ASC
+            """)
+    List<DismissalReminderTargetProjection> findMyOrganizingUndismissedExpiredEvents(
+            @Param("userId") Long userId,
+            @Param("cutoff") LocalDateTime cutoff);
+
+    /**
+     * {@link #findMyOrganizingUndismissedExpiredEvents} の投影インターフェース。
+     *
+     * <p>Spring Data JPA の Interface-based Projection。
+     * {@code subtitle} が NULL のときの fallback (slug) は Service 層で組み立てる。</p>
+     */
+    interface DismissalReminderTargetProjection {
+        Long getEventId();
+
+        String getSubtitle();
+
+        String getSlug();
+
+        Long getTeamId();
+
+        String getTeamName();
+
+        LocalDateTime getEndAt();
+
+        Byte getReminderCount();
+    }
 }

@@ -38,12 +38,18 @@ vi.mock('~/composables/useRollCallApi', () => ({
 }))
 
 // ============================================================
-// useOfflineCareQueue のモック
+// useOfflineCareQueue のモック（useDismissal.spec.ts と同じ factory 形式）
 // ============================================================
 
 const mockEnqueueCareJob = vi.fn()
 vi.mock('~/composables/jobs/useOfflineCareQueue', () => ({
-  enqueueCareJob: (...args: unknown[]) => mockEnqueueCareJob(...args),
+  useOfflineCareQueue: () => ({
+    enqueueCareJob: mockEnqueueCareJob,
+    flushPendingCareJobs: vi.fn(),
+    getPendingCareJobCount: vi.fn(),
+    getPendingCareJobs: vi.fn(),
+    clearAllCareJobs: vi.fn(),
+  }),
 }))
 
 // ============================================================

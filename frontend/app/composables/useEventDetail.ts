@@ -18,6 +18,7 @@ export function useEventDetail({ scopeType, scopeId, eventId }: UseEventDetailOp
   const eventApi = useEventApi()
   const rsvpApi = useEventRsvpApi()
   const notification = useNotification()
+  const authStore = useAuthStore()
 
   const event = ref<EventDetailResponse | null>(null)
   const registrations = ref<RegistrationResponse[]>([])
@@ -25,7 +26,13 @@ export function useEventDetail({ scopeType, scopeId, eventId }: UseEventDetailOp
   const timetableItems = ref<TimetableItemResponse[]>([])
   const rsvpList = ref<EventRsvpResponseItem[]>([])
   const rsvpSummary = ref<EventRsvpSummary | null>(null)
-  const myRsvpResponse = ref<RsvpResponse | null>(null)
+  // 認証ユーザーの RSVP 回答を rsvpList から派生させる
+  const myRsvpResponse = computed<RsvpResponse | null>(() => {
+    const currentUserId = authStore.currentUser?.id
+    if (!currentUserId) return null
+    const mine = rsvpList.value.find((item) => item.userId === currentUserId)
+    return mine?.response ?? null
+  })
   const loading = ref(true)
 
   async function loadEvent() {
