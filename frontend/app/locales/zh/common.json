@@ -26,7 +26,10 @@
         "requests": "申请"
       },
       "comingSoonContacts": "联系人标签即将推出",
-      "comingSoonRequests": "申请标签即将推出"
+      "comingSoonRequests": "申请标签即将推出",
+      "closed_kicked": "因您已从频道中被移除，标签已关闭",
+      "closed_deleted": "因频道已被删除，标签已关闭",
+      "closed_archived": "因频道已被归档，标签已关闭"
     }
   },
   "button": {

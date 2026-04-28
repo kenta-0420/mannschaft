@@ -121,3 +121,20 @@ export interface ChatTab {
   /** 作成日時（ms） */
   createdAt: number
 }
+
+/**
+ * チャンネルイベントペイロード（F04.2.1 Phase10）
+ *
+ * BE 側の {@code ChatChannelEventPayload} record に対応。
+ * /topic/channels/{channelId}/events を通じて配信される。
+ *
+ * - MEMBER_KICKED: 特定メンバーが kick されたとき。userId 必須
+ * - CHANNEL_DELETED: チャンネルが削除されたとき
+ * - CHANNEL_ARCHIVED: チャンネルがアーカイブされたとき
+ * - CHANNEL_UNARCHIVED: チャンネルがアーカイブ解除されたとき（BE 未配信、将来対応用）
+ */
+export type ChatChannelEvent =
+  | { type: 'MEMBER_KICKED'; userId: number }
+  | { type: 'CHANNEL_DELETED' }
+  | { type: 'CHANNEL_ARCHIVED' }
+  | { type: 'CHANNEL_UNARCHIVED' }

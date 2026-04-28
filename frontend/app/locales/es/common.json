@@ -26,7 +26,10 @@
         "requests": "Solicitudes"
       },
       "comingSoonContacts": "La pestaña de contactos estará disponible próximamente",
-      "comingSoonRequests": "La pestaña de solicitudes estará disponible próximamente"
+      "comingSoonRequests": "La pestaña de solicitudes estará disponible próximamente",
+      "closed_kicked": "Pestaña cerrada porque fuiste eliminado del canal",
+      "closed_deleted": "Pestaña cerrada porque el canal fue eliminado",
+      "closed_archived": "Pestaña cerrada porque el canal fue archivado"
     }
   },
   "button": {

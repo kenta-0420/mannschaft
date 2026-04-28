@@ -26,7 +26,10 @@
         "requests": "Anfragen"
       },
       "comingSoonContacts": "Kontakte-Tab kommt in Kürze",
-      "comingSoonRequests": "Anfragen-Tab kommt in Kürze"
+      "comingSoonRequests": "Anfragen-Tab kommt in Kürze",
+      "closed_kicked": "Tab geschlossen, weil Sie aus dem Kanal entfernt wurden",
+      "closed_deleted": "Tab geschlossen, weil der Kanal gelöscht wurde",
+      "closed_archived": "Tab geschlossen, weil der Kanal archiviert wurde"
     }
   },
   "button": {
