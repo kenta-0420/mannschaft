@@ -5,6 +5,7 @@ const props = defineProps<{
   teamId: number
 }>()
 
+const { t } = useI18n()
 const closureApi = useEmergencyClosureApi()
 const notification = useNotification()
 
@@ -85,10 +86,10 @@ const periodText = computed(() => {
 const timeRangeError = computed<string | null>(() => {
   if (!useTimeRange.value) return null
   if (startHour.value === null || endHour.value === null) {
-    return '開始時刻と終了時刻を選択してください'
+    return t('emergency_closure.error.time_range_required')
   }
   if (startHour.value >= endHour.value) {
-    return '開始時刻は終了時刻より前にしてください'
+    return t('emergency_closure.error.time_range_order')
   }
   return null
 })
@@ -101,62 +102,41 @@ interface Template {
   body: string
 }
 
-const TEMPLATES: Template[] = [
+const TEMPLATES = computed((): Template[] => [
   {
-    label: '先生体調不良',
-    subject: '【重要】担当スタッフ体調不良による臨時休業のお知らせ',
-    reason: '担当スタッフ体調不良',
-    body: `いつもご利用いただきありがとうございます。
-
-誠に恐れ入りますが、担当スタッフの体調不良により、
-{period}の診療を休業とさせていただきます。
-
-ご予約いただいておりましたお客様には大変ご迷惑をおかけし、深くお詫び申し上げます。
-
-改めてご予約いただけますようよろしくお願いいたします。`,
+    label: t('emergency_closure.template.staff_sick'),
+    subject: t('emergency_closure.template.staff_sick_subject'),
+    reason: t('emergency_closure.template.staff_sick_reason'),
+    body: t('emergency_closure.template.staff_sick_body'),
   },
   {
-    label: '設備メンテナンス',
-    subject: '【重要】設備メンテナンスによる臨時休業のお知らせ',
-    reason: '設備メンテナンス',
-    body: `いつもご利用いただきありがとうございます。
-
-誠に恐れ入りますが、設備メンテナンスのため、
-{period}の診療を休業とさせていただきます。
-
-ご不便をおかけして大変申し訳ございませんが、何卒ご理解いただけますようお願い申し上げます。
-
-改めてご予約いただけますようよろしくお願いいたします。`,
+    label: t('emergency_closure.template.maintenance'),
+    subject: t('emergency_closure.template.maintenance_subject'),
+    reason: t('emergency_closure.template.maintenance_reason'),
+    body: t('emergency_closure.template.maintenance_body'),
   },
   {
-    label: '天候・緊急事態',
-    subject: '【重要】臨時休業のお知らせ',
-    reason: '天候・緊急事態',
-    body: `いつもご利用いただきありがとうございます。
-
-誠に恐れ入りますが、天候・緊急事態のため、
-{period}の診療を休業とさせていただきます。
-
-ご予約いただいておりましたお客様には大変ご迷惑をおかけし、深くお詫び申し上げます。
-
-状況が改善次第、改めてご連絡させていただきます。`,
+    label: t('emergency_closure.template.emergency'),
+    subject: t('emergency_closure.template.emergency_subject'),
+    reason: t('emergency_closure.template.emergency_reason'),
+    body: t('emergency_closure.template.emergency_body'),
   },
   {
-    label: 'その他（手動入力）',
+    label: t('emergency_closure.template.custom'),
     subject: '',
     reason: '',
     body: '',
   },
-]
+])
 
 const selectedTemplateIndex = ref<number | null>(null)
 
 function applyTemplate(index: number) {
   selectedTemplateIndex.value = index
-  const tmpl = TEMPLATES[index]
+  const tmpl = TEMPLATES.value[index]
   subject.value = tmpl.subject
   reason.value = tmpl.reason
-  messageBody.value = tmpl.body.replace('{period}', periodText.value)
+  messageBody.value = tmpl.body.replace('__PERIOD__', periodText.value)
 }
 
 // --- メッセージ編集 ---
@@ -164,11 +144,11 @@ const subject = ref('')
 const reason = ref('')
 const messageBody = ref('')
 
-// 期間または時間帯が変わったときにテンプレート本文の {period} を更新
+// 期間または時間帯が変わったときにテンプレート本文の __PERIOD__ を更新
 watch([startDate, endDate, useTimeRange, startHour, endHour], () => {
   if (selectedTemplateIndex.value === null) return
-  const tmpl = TEMPLATES[selectedTemplateIndex.value]
-  messageBody.value = tmpl.body.replace('{period}', periodText.value)
+  const tmpl = TEMPLATES.value[selectedTemplateIndex.value]
+  messageBody.value = tmpl.body.replace('__PERIOD__', periodText.value)
 })
 
 // --- オプション ---
@@ -181,7 +161,7 @@ const previewDone = ref(false)
 
 async function loadPreview() {
   if (!startDate.value || !endDate.value) {
-    notification.warn('期間を選択してください')
+    notification.warn(t('emergency_closure.error.period_required'))
     return
   }
   if (timeRangeError.value) {
@@ -204,7 +184,7 @@ async function loadPreview() {
     previewDone.value = true
   }
   catch {
-    notification.error('プレビューの取得に失敗しました')
+    notification.error(t('emergency_closure.error.preview_failed'))
   }
   finally {
     previewLoading.value = false
@@ -218,7 +198,7 @@ const showConfirm = ref(false)
 
 function openConfirm() {
   if (!startDate.value || !endDate.value) {
-    notification.warn('期間を選択してください')
+    notification.warn(t('emergency_closure.error.period_required'))
     return
   }
   if (timeRangeError.value) {
@@ -226,11 +206,11 @@ function openConfirm() {
     return
   }
   if (!subject.value.trim()) {
-    notification.warn('件名を入力してください')
+    notification.warn(t('emergency_closure.error.subject_required'))
     return
   }
   if (!messageBody.value.trim()) {
-    notification.warn('本文を入力してください')
+    notification.warn(t('emergency_closure.error.body_required'))
     return
   }
   showConfirm.value = true
@@ -252,13 +232,13 @@ async function confirmSend() {
       cancelReservations: cancelReservations.value,
     })
     sendResult.value = res.data.notifiedCount
-    notification.success(`${res.data.notifiedCount}件に送信しました`)
+    notification.success(t('emergency_closure.message.sent_count', { count: res.data.notifiedCount }))
     await loadHistory()
     previewItems.value = []
     previewDone.value = false
   }
   catch {
-    notification.error('送信に失敗しました')
+    notification.error(t('emergency_closure.error.send_failed'))
   }
   finally {
     sendLoading.value = false
@@ -285,15 +265,9 @@ async function loadHistory() {
 
 // --- ステータス日本語変換 ---
 function statusLabel(status: string): string {
-  const map: Record<string, string> = {
-    PENDING: '仮予約',
-    CONFIRMED: '確定',
-    COMPLETED: '完了',
-    CANCELLED: 'キャンセル',
-    NO_SHOW: '無断不参加',
-    REJECTED: '拒否',
-  }
-  return map[status] ?? status
+  const key = `emergency_closure.reservation_status.${status}`
+  const translated = t(key)
+  return translated !== key ? translated : status
 }
 
 function statusSeverity(status: string): string {
@@ -327,7 +301,7 @@ async function toggleConfirmations(closureId: number) {
     confirmationsMap.value[closureId] = res.data
   }
   catch {
-    notification.error('確認状況の取得に失敗しました')
+    notification.error(t('emergency_closure.error.confirmations_failed'))
     expandedClosureId.value = null
   }
   finally {
@@ -350,10 +324,10 @@ onMounted(loadHistory)
   <div class="space-y-6">
     <!-- Section 1: 休業期間選択 -->
     <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
-      <h3 class="mb-3 font-semibold text-surface-700 dark:text-surface-200">休業期間</h3>
+      <h3 class="mb-3 font-semibold text-surface-700 dark:text-surface-200">{{ $t('emergency_closure.section.period') }}</h3>
       <div class="flex flex-wrap items-end gap-3">
         <div>
-          <label class="mb-1 block text-sm font-medium">開始日</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.start_date') }}</label>
           <input
             v-model="startDate"
             type="date"
@@ -361,7 +335,7 @@ onMounted(loadHistory)
           >
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">終了日</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.end_date') }}</label>
           <input
             v-model="endDate"
             type="date"
@@ -370,7 +344,7 @@ onMounted(loadHistory)
           >
         </div>
         <Button
-          label="今日のみ"
+          :label="$t('emergency_closure.button.today_only')"
           icon="pi pi-calendar"
           size="small"
           severity="secondary"
@@ -384,21 +358,21 @@ onMounted(loadHistory)
         <div class="flex items-center gap-2">
           <Checkbox v-model="useTimeRange" input-id="use-time-range" :binary="true" />
           <label for="use-time-range" class="cursor-pointer text-sm">
-            一日のうち一部の時間帯のみ休業する
+            {{ $t('emergency_closure.label.partial_time') }}
           </label>
         </div>
         <p class="mt-1 text-xs text-surface-400">
-          チェックを入れない場合は終日休業になります。複数日指定時は各日同じ時間帯が休業対象です
+          {{ $t('emergency_closure.hint.all_day') }}
         </p>
 
         <div v-if="useTimeRange" class="mt-3 flex flex-wrap items-end gap-3">
           <div>
-            <label class="mb-1 block text-sm font-medium">開始時刻</label>
+            <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.start_time') }}</label>
             <select
               v-model.number="startHour"
               class="rounded-md border border-surface-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
             >
-              <option :value="null">選択してください</option>
+              <option :value="null">{{ $t('emergency_closure.placeholder.select') }}</option>
               <option v-for="h in HOURS" :key="`s${h}`" :value="h">
                 {{ String(h).padStart(2, '0') }}:00
               </option>
@@ -406,12 +380,12 @@ onMounted(loadHistory)
           </div>
           <span class="pb-2 text-surface-400">〜</span>
           <div>
-            <label class="mb-1 block text-sm font-medium">終了時刻</label>
+            <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.end_time') }}</label>
             <select
               v-model.number="endHour"
               class="rounded-md border border-surface-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
             >
-              <option :value="null">選択してください</option>
+              <option :value="null">{{ $t('emergency_closure.placeholder.select') }}</option>
               <option v-for="h in HOURS" :key="`e${h}`" :value="h">
                 {{ String(h).padStart(2, '0') }}:00
               </option>
@@ -425,13 +399,13 @@ onMounted(loadHistory)
       </div>
 
       <p v-if="startDate" class="mt-3 text-sm text-surface-500">
-        対象期間: <span class="font-medium text-surface-700 dark:text-surface-200">{{ periodText }}</span>
+        {{ $t('emergency_closure.label.target_period') }}: <span class="font-medium text-surface-700 dark:text-surface-200">{{ periodText }}</span>
       </p>
     </section>
 
     <!-- Section 2: テンプレート選択 -->
     <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
-      <h3 class="mb-3 font-semibold text-surface-700 dark:text-surface-200">メッセージテンプレート</h3>
+      <h3 class="mb-3 font-semibold text-surface-700 dark:text-surface-200">{{ $t('emergency_closure.section.template') }}</h3>
       <div class="flex flex-wrap gap-2">
         <Button
           v-for="(tmpl, idx) in TEMPLATES"
@@ -447,19 +421,19 @@ onMounted(loadHistory)
 
     <!-- Section 3: メッセージ編集 -->
     <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
-      <h3 class="mb-3 font-semibold text-surface-700 dark:text-surface-200">メッセージ編集</h3>
+      <h3 class="mb-3 font-semibold text-surface-700 dark:text-surface-200">{{ $t('emergency_closure.section.message_edit') }}</h3>
       <div class="space-y-3">
         <div>
-          <label class="mb-1 block text-sm font-medium">件名</label>
-          <InputText v-model="subject" class="w-full" placeholder="件名を入力してください" />
+          <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.subject') }}</label>
+          <InputText v-model="subject" class="w-full" :placeholder="$t('emergency_closure.placeholder.subject')" />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">本文</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.body') }}</label>
           <Textarea
             v-model="messageBody"
             class="w-full"
             rows="8"
-            placeholder="本文を入力してください"
+            :placeholder="$t('emergency_closure.placeholder.body')"
             auto-resize
           />
         </div>
@@ -468,24 +442,24 @@ onMounted(loadHistory)
 
     <!-- Section 4: オプション -->
     <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
-      <h3 class="mb-3 font-semibold text-surface-700 dark:text-surface-200">オプション</h3>
+      <h3 class="mb-3 font-semibold text-surface-700 dark:text-surface-200">{{ $t('emergency_closure.section.options') }}</h3>
       <div class="flex items-center gap-2">
         <Checkbox v-model="cancelReservations" input-id="cancel-reservations" :binary="true" />
         <label for="cancel-reservations" class="cursor-pointer text-sm">
-          対象予約をキャンセルする
+          {{ $t('emergency_closure.label.cancel_reservations') }}
         </label>
       </div>
       <p class="mt-1 text-xs text-surface-400">
-        チェックを入れると、対象期間の予約が自動的にキャンセル状態になります
+        {{ $t('emergency_closure.hint.cancel_reservations') }}
       </p>
     </section>
 
     <!-- Section 5: プレビュー -->
     <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
       <div class="mb-3 flex items-center justify-between">
-        <h3 class="font-semibold text-surface-700 dark:text-surface-200">影響する予約の確認</h3>
+        <h3 class="font-semibold text-surface-700 dark:text-surface-200">{{ $t('emergency_closure.section.preview') }}</h3>
         <Button
-          label="影響する予約を確認"
+          :label="$t('emergency_closure.button.check_preview')"
           icon="pi pi-search"
           size="small"
           severity="info"
@@ -502,10 +476,10 @@ onMounted(loadHistory)
       <template v-else-if="previewDone">
         <p class="mb-2 text-sm font-medium">
           <span v-if="previewItems.length > 0" class="text-primary-600 dark:text-primary-400">
-            {{ previewItems.length }}件の予約に通知します
+            {{ $t('emergency_closure.message.notify_count', { count: previewItems.length }) }}
           </span>
           <span v-else class="text-surface-400">
-            対象期間に予約はありません
+            {{ $t('emergency_closure.message.no_reservations') }}
           </span>
         </p>
 
@@ -513,9 +487,9 @@ onMounted(loadHistory)
           <table class="w-full text-sm">
             <thead>
               <tr class="border-b border-surface-200 dark:border-surface-600">
-                <th class="pb-2 text-left font-medium text-surface-500">患者名</th>
-                <th class="pb-2 text-left font-medium text-surface-500">日時</th>
-                <th class="pb-2 text-left font-medium text-surface-500">ステータス</th>
+                <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.patient_name') }}</th>
+                <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.datetime') }}</th>
+                <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.status') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -538,21 +512,21 @@ onMounted(loadHistory)
       </template>
 
       <p v-else class="text-sm text-surface-400">
-        「影響する予約を確認」ボタンを押して対象予約を確認してください
+        {{ $t('emergency_closure.hint.press_check_preview') }}
       </p>
     </section>
 
     <!-- Section 6: 送信 -->
     <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
-      <h3 class="mb-3 font-semibold text-surface-700 dark:text-surface-200">一括送信</h3>
+      <h3 class="mb-3 font-semibold text-surface-700 dark:text-surface-200">{{ $t('emergency_closure.section.bulk_send') }}</h3>
 
       <div v-if="sendResult !== null" class="mb-3 rounded-md bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
         <i class="pi pi-check-circle mr-2" />
-        {{ sendResult }}件に送信しました
+        {{ $t('emergency_closure.message.sent_count', { count: sendResult }) }}
       </div>
 
       <Button
-        label="一括送信"
+        :label="$t('emergency_closure.button.bulk_send')"
         icon="pi pi-send"
         severity="danger"
         :loading="sendLoading"
@@ -563,7 +537,7 @@ onMounted(loadHistory)
     <!-- 送信履歴 -->
     <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
       <div class="mb-3 flex items-center justify-between">
-        <h3 class="font-semibold text-surface-700 dark:text-surface-200">送信履歴</h3>
+        <h3 class="font-semibold text-surface-700 dark:text-surface-200">{{ $t('emergency_closure.section.history') }}</h3>
         <Button
           icon="pi pi-refresh"
           text
@@ -581,11 +555,11 @@ onMounted(loadHistory)
         <table class="w-full text-sm">
           <thead>
             <tr class="border-b border-surface-200 dark:border-surface-600">
-              <th class="pb-2 text-left font-medium text-surface-500">送信日時</th>
-              <th class="pb-2 text-left font-medium text-surface-500">休業期間</th>
-              <th class="pb-2 text-left font-medium text-surface-500">理由</th>
-              <th class="pb-2 text-left font-medium text-surface-500">件数</th>
-              <th class="pb-2 text-left font-medium text-surface-500">確認状況</th>
+              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.sent_at') }}</th>
+              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.section.period') }}</th>
+              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.reason') }}</th>
+              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.count') }}</th>
+              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.confirmation_status') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -617,9 +591,9 @@ onMounted(loadHistory)
                     <i v-if="confirmationsLoading && expandedClosureId === item.id" class="pi pi-spin pi-spinner text-xs" />
                     <template v-else>
                       <span v-if="confirmationsMap[item.id]">
-                        {{ confirmedCount(item.id) }}/{{ totalCount(item.id) }}件確認済み
+                        {{ $t('emergency_closure.message.confirmed_count', { confirmed: confirmedCount(item.id), total: totalCount(item.id) }) }}
                       </span>
-                      <span v-else>確認状況を見る</span>
+                      <span v-else>{{ $t('emergency_closure.button.view_confirmations') }}</span>
                       <i :class="expandedClosureId === item.id ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-xs" />
                     </template>
                   </button>
@@ -628,14 +602,14 @@ onMounted(loadHistory)
               <tr v-if="expandedClosureId === item.id">
                 <td colspan="5" class="px-4 pb-3 pt-1">
                   <div v-if="confirmationsMap[item.id]" class="rounded-md border border-surface-200 bg-surface-50 p-3 dark:border-surface-600 dark:bg-surface-800">
-                    <p class="mb-2 text-xs font-semibold text-surface-500">確認状況</p>
+                    <p class="mb-2 text-xs font-semibold text-surface-500">{{ $t('emergency_closure.section.confirmations') }}</p>
                     <table class="w-full text-xs">
                       <thead>
                         <tr class="border-b border-surface-200 dark:border-surface-600">
-                          <th class="pb-1 text-left font-medium text-surface-500">患者名</th>
-                          <th class="pb-1 text-left font-medium text-surface-500">予約日時</th>
-                          <th class="pb-1 text-left font-medium text-surface-500">確認</th>
-                          <th class="pb-1 text-left font-medium text-surface-500">リマインド</th>
+                          <th class="pb-1 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.patient_name') }}</th>
+                          <th class="pb-1 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.appointment_at') }}</th>
+                          <th class="pb-1 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.confirmed_header') }}</th>
+                          <th class="pb-1 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.reminder') }}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -650,15 +624,15 @@ onMounted(loadHistory)
                           </td>
                           <td class="py-1 pr-4">
                             <span v-if="conf.confirmed" class="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
-                              <i class="pi pi-check-circle" /> 確認済み
+                              <i class="pi pi-check-circle" /> {{ $t('emergency_closure.status.confirmed') }}
                             </span>
                             <span v-else class="inline-flex items-center gap-1 text-red-500">
-                              <i class="pi pi-times-circle" /> 未確認
+                              <i class="pi pi-times-circle" /> {{ $t('emergency_closure.status.unconfirmed') }}
                             </span>
                           </td>
                           <td class="py-1">
-                            <span v-if="conf.reminderSent" class="text-amber-500">送信済み</span>
-                            <span v-else class="text-surface-400">未送信</span>
+                            <span v-if="conf.reminderSent" class="text-amber-500">{{ $t('emergency_closure.status.reminder_sent') }}</span>
+                            <span v-else class="text-surface-400">{{ $t('emergency_closure.status.reminder_not_sent') }}</span>
                           </td>
                         </tr>
                       </tbody>
@@ -670,29 +644,29 @@ onMounted(loadHistory)
           </tbody>
         </table>
       </div>
-      <DashboardEmptyState v-else icon="pi pi-inbox" message="送信履歴はありません" />
+      <DashboardEmptyState v-else icon="pi pi-inbox" :message="$t('emergency_closure.message.no_history')" />
     </section>
 
     <!-- 確認ダイアログ -->
     <Dialog
       v-model:visible="showConfirm"
-      header="送信確認"
+      :header="$t('emergency_closure.dialog.title')"
       :style="{ width: '420px' }"
       modal
     >
       <div class="space-y-2 text-sm">
-        <p>以下の内容で一括送信します。よろしいですか？</p>
+        <p>{{ $t('emergency_closure.dialog.confirm_message') }}</p>
         <ul class="mt-2 space-y-1 rounded-md bg-surface-50 p-3 dark:bg-surface-800">
-          <li><span class="font-medium">対象期間:</span> {{ periodText }}</li>
-          <li><span class="font-medium">件名:</span> {{ subject }}</li>
+          <li><span class="font-medium">{{ $t('emergency_closure.dialog.label_period') }}:</span> {{ periodText }}</li>
+          <li><span class="font-medium">{{ $t('emergency_closure.dialog.label_subject') }}:</span> {{ subject }}</li>
           <li v-if="cancelReservations" class="text-orange-600 dark:text-orange-400">
-            ※ 対象予約はキャンセルされます
+            {{ $t('emergency_closure.dialog.cancel_warning') }}
           </li>
         </ul>
       </div>
       <template #footer>
-        <Button label="キャンセル" text @click="showConfirm = false" />
-        <Button label="送信する" icon="pi pi-send" severity="danger" @click="confirmSend" />
+        <Button :label="$t('button.cancel')" text @click="showConfirm = false" />
+        <Button :label="$t('emergency_closure.button.send_confirm')" icon="pi pi-send" severity="danger" @click="confirmSend" />
       </template>
     </Dialog>
   </div>

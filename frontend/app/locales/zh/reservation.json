@@ -1,0 +1,107 @@
+{
+  "emergency_closure": {
+    "section": {
+      "period": "休业期间",
+      "template": "消息模板",
+      "message_edit": "编辑消息",
+      "options": "选项",
+      "preview": "确认受影响的预约",
+      "bulk_send": "批量发送",
+      "history": "发送历史",
+      "confirmations": "确认状态"
+    },
+    "label": {
+      "start_date": "开始日期",
+      "end_date": "结束日期",
+      "partial_time": "仅在当天部分时段内休业",
+      "start_time": "开始时间",
+      "end_time": "结束时间",
+      "target_period": "目标期间",
+      "subject": "主题",
+      "body": "正文",
+      "cancel_reservations": "取消受影响的预约"
+    },
+    "placeholder": {
+      "select": "请选择",
+      "subject": "请输入主题",
+      "body": "请输入正文"
+    },
+    "hint": {
+      "all_day": "不勾选则为全天休业。选择多天时，每天适用相同的时段。",
+      "cancel_reservations": "勾选后，目标期间内的预约将自动取消。",
+      "press_check_preview": "请按「确认受影响的预约」按钮查看受影响的预约。"
+    },
+    "button": {
+      "today_only": "仅今天",
+      "check_preview": "确认受影响的预约",
+      "bulk_send": "批量发送",
+      "view_confirmations": "查看确认状态",
+      "send_confirm": "发送"
+    },
+    "table": {
+      "patient_name": "患者姓名",
+      "datetime": "日期/时间",
+      "status": "状态",
+      "sent_at": "发送时间",
+      "reason": "原因",
+      "count": "件数",
+      "confirmation_status": "确认状态",
+      "appointment_at": "预约日期/时间",
+      "confirmed_header": "已确认",
+      "reminder": "提醒"
+    },
+    "message": {
+      "notify_count": "将通知 {count} 件预约",
+      "no_reservations": "目标期间内没有预约",
+      "no_history": "没有发送历史",
+      "sent_count": "已发送给 {count} 人",
+      "confirmed_count": "{confirmed}/{total} 已确认"
+    },
+    "status": {
+      "confirmed": "已确认",
+      "unconfirmed": "未确认",
+      "reminder_sent": "已发送",
+      "reminder_not_sent": "未发送"
+    },
+    "dialog": {
+      "title": "确认发送",
+      "confirm_message": "是否以以下内容批量发送？",
+      "cancel_warning": "※ 受影响的预约将被取消",
+      "label_period": "目标期间",
+      "label_subject": "主题"
+    },
+    "error": {
+      "time_range_required": "请选择开始和结束时间",
+      "time_range_order": "开始时间必须早于结束时间",
+      "period_required": "请选择期间",
+      "preview_failed": "预览加载失败",
+      "subject_required": "请输入主题",
+      "body_required": "请输入正文",
+      "send_failed": "发送失败",
+      "confirmations_failed": "确认状态加载失败"
+    },
+    "template": {
+      "staff_sick": "员工生病",
+      "staff_sick_subject": "【重要】因员工生病临时休业通知",
+      "staff_sick_reason": "员工生病",
+      "staff_sick_body": "感谢您一直以来的惠顾。\n\n非常抱歉，由于员工生病，\n__PERIOD__的诊疗将休业。\n\n对于有预约的顾客，给您带来了极大的不便，深表歉意。\n\n请重新预约，感谢您的理解与支持。",
+      "maintenance": "设备维护",
+      "maintenance_subject": "【重要】因设备维护临时休业通知",
+      "maintenance_reason": "设备维护",
+      "maintenance_body": "感谢您一直以来的惠顾。\n\n非常抱歉，由于设备维护，\n__PERIOD__的诊疗将休业。\n\n给您带来不便，深表歉意，请谅解。\n\n请重新预约，感谢您的理解与支持。",
+      "emergency": "天气/紧急情况",
+      "emergency_subject": "【重要】临时休业通知",
+      "emergency_reason": "天气/紧急情况",
+      "emergency_body": "感谢您一直以来的惠顾。\n\n非常抱歉，由于天气或紧急情况，\n__PERIOD__的诊疗将休业。\n\n对于有预约的顾客，给您带来了极大的不便，深表歉意。\n\n情况改善后，我们将再次与您联系。",
+      "custom": "其他（手动输入）"
+    },
+    "reservation_status": {
+      "PENDING": "待确认",
+      "CONFIRMED": "已确认",
+      "COMPLETED": "已完成",
+      "CANCELLED": "已取消",
+      "NO_SHOW": "未到场",
+      "REJECTED": "已拒绝"
+    }
+  }
+}
