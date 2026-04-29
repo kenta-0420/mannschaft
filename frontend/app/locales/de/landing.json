@@ -1,14 +1,14 @@
 {
   "landing": {
     "hero": {
-      "badge": "All-in-One-Management für Sport, Community & Arbeitsplatz",
+      "badge": "Die Team-Plattform, die du nie wusstest, dass du sie brauchst",
       "title_pre": "Die Plattform, die das Potenzial deines Teams ",
       "title_accent": "maximiert",
       "title_post": "",
-      "subtitle": "Mannschaft ist eine All-in-One-Management-Plattform, die alles vereint, was dein Team oder deine Organisation für einen reibungslosen Betrieb braucht.",
+      "subtitle": "Mannschaft ist eine All-in-One-Verwaltungsplattform, die alles vereint, was dein Team oder deine Organisation braucht. Von Sportvereinen über Friseursalons und Praxen bis hin zu Klassentreffen — die Möglichkeiten sind endlos.",
       "cta_register": "Kostenlos starten",
       "cta_login": "Anmelden",
-      "note": "Keine Kreditkarte nötig · Registrierung in 1 Minute"
+      "note": "Meistens kostenlos. Erstell einfach mal ein persönliches Konto."
     },
     "stats": {
       "heading": "Aktuelle Registrierungen",
@@ -17,7 +17,8 @@
       "organizations": "Registrierte Organisationen"
     },
     "features": {
-      "heading": "Alles, was du brauchst",
+      "heading_main": "Alles dabei",
+      "heading_kamo": " (vielleicht)",
       "subheading": "Alle Funktionen für dein Team – auf einer Plattform",
       "items": {
         "0": { "title": "Team- & Org-Verwaltung", "desc": "Mitglieder einladen, Rollen zuweisen und Berechtigungen einfach verwalten" },
@@ -34,7 +35,7 @@
       "heading": "In 3 Schritten heute starten",
       "cta": "Jetzt kostenlos registrieren",
       "items": {
-        "0": { "title": "Kostenlos registrieren", "desc": "Sofort loslegen – nur mit deiner E-Mail-Adresse. Keine Kreditkarte nötig." },
+        "0": { "title": "Kostenlos registrieren", "desc": "Starte jetzt sofort nur mit deiner E-Mail-Adresse." },
         "1": { "title": "Team oder Org erstellen", "desc": "Vorlage wählen, Team oder Organisation erstellen und Mitglieder einladen." },
         "2": { "title": "Funktionen nutzen", "desc": "Nur die Funktionen aktivieren, die du brauchst – Termine, Chat, Schichten und mehr." }
       }
@@ -44,8 +45,8 @@
       "subheading": "Anpassbar an Teams und Organisationen jeder Branche und Größe",
       "items": {
         "0": { "title": "Sportteams", "desc": "Training- & Spielpläne, Schichtkoordination, Anwesenheit und Ranglisten." },
-        "1": { "title": "Lokale Gemeinschaften", "desc": "Event-Ankündigungen, Rundschreiben und Beitragsverwaltung online zentralisieren." },
-        "2": { "title": "Unternehmen & Arbeitsplatz", "desc": "Abteilungsübergreifendes Projektmanagement, Genehmigungs-Workflows und interne Kommunikation." },
+        "1": { "title": "Lokale Gemeinschaften", "desc": "Zentralisiere Veranstaltungsankündigungen, Rundschreiben und Gebührenverwaltung online. Auch ideal für Klassentreffen, Nachbarschaftsvereine und Freiwilligengruppen." },
+        "2": { "title": "Unternehmen & Arbeitsplatz", "desc": "Abteilungsübergreifendes Projektmanagement, Genehmigungs-Workflows und interne Kommunikation. Auch ideal für kleine Unternehmen wie Friseursalons und Praxen." },
         "3": { "title": "Bildung & Schulen", "desc": "Elternkommunikation, AG-Verwaltung, Aktivitätenprotokoll, Fotosharing und Umfragen." }
       }
     },
@@ -61,7 +62,7 @@
     },
     "cta": {
       "heading": "Heute kostenlos ausprobieren",
-      "subheading": "Keine Kreditkarte nötig. Registriere dich jetzt und beginne dein Team zu verwalten.",
+      "subheading": "Registrier dich jetzt und fang an, dein Team zu verwalten.",
       "register": "Kostenloses Konto erstellen",
       "login": "Mit bestehendem Konto anmelden"
     },

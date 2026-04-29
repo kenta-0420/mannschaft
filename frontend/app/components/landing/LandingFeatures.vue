@@ -18,7 +18,7 @@ const features = [
     <div class="mx-auto max-w-6xl px-4">
       <div class="mb-14 text-center">
         <h2 id="features-heading" class="text-3xl font-bold text-surface-900 dark:text-white md:text-4xl">
-          {{ t('landing.features.heading') }}
+          {{ t('landing.features.heading_main') }}<span class="text-lg font-normal text-surface-400 md:text-2xl">{{ t('landing.features.heading_kamo') }}</span>
         </h2>
         <p class="mt-4 text-surface-500">{{ t('landing.features.subheading') }}</p>
       </div>

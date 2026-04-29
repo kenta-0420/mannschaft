@@ -1,14 +1,14 @@
 {
   "landing": {
     "hero": {
-      "badge": "All-in-one management for sports, community & workplace",
+      "badge": "The team platform you never knew you needed",
       "title_pre": "The platform that ",
       "title_accent": "maximizes",
       "title_post": " your team's potential",
-      "subtitle": "Mannschaft is an all-in-one management platform that brings together everything your team or organization needs to operate smoothly.",
+      "subtitle": "Mannschaft is an all-in-one management platform that brings together everything your team or organization needs. From sports teams to salons, clinics, and reunions — the possibilities are endless.",
       "cta_register": "Get started free",
       "cta_login": "Log in",
-      "note": "No credit card required · Sign up in 1 minute"
+      "note": "Mostly free. Just create a personal account first."
     },
     "stats": {
       "heading": "Current registrations",
@@ -17,7 +17,8 @@
       "organizations": "Registered organizations"
     },
     "features": {
-      "heading": "Everything you need",
+      "heading_main": "Everything you need",
+      "heading_kamo": " (probably)",
       "subheading": "All the features your team needs, in one platform",
       "items": {
         "0": { "title": "Team & Org Management", "desc": "Invite members, assign roles, and manage permissions with ease" },
@@ -34,7 +35,7 @@
       "heading": "Get started in 3 steps",
       "cta": "Sign up for free now",
       "items": {
-        "0": { "title": "Sign up for free", "desc": "Get started instantly with just your email address. No credit card required." },
+        "0": { "title": "Sign up for free", "desc": "Get started right now with just your email address." },
         "1": { "title": "Create a team or org", "desc": "Pick a template, create your team or organization, and invite members." },
         "2": { "title": "Start using features", "desc": "Enable only the features you need — schedules, chat, shifts, and more." }
       }
@@ -44,8 +45,8 @@
       "subheading": "Adaptable to teams and organizations of any industry or size",
       "items": {
         "0": { "title": "Sports Teams", "desc": "Practice & game schedules, shift coordination, attendance tracking, and standings." },
-        "1": { "title": "Local Communities", "desc": "Centralize event announcements, circulars, and fee management online." },
-        "2": { "title": "Businesses & Workplaces", "desc": "Cross-department project management, approval workflows, and internal communication." },
+        "1": { "title": "Local Communities", "desc": "Centralize event announcements, newsletters, and fee management online. Also great for reunions, neighborhood associations, and volunteer groups." },
+        "2": { "title": "Businesses & Workplaces", "desc": "Cross-department project management, approval workflows, and internal communication. Also perfect for small businesses like salons and chiropractic clinics." },
         "3": { "title": "Education & Schools", "desc": "Parent communication, club management, activity records, photo sharing, and surveys." }
       }
     },
@@ -61,7 +62,7 @@
     },
     "cta": {
       "heading": "Try it free today",
-      "subheading": "No credit card required. Sign up now and start managing your team.",
+      "subheading": "Sign up now and start managing your team.",
       "register": "Create a free account",
       "login": "Log in with existing account"
     },

@@ -1,14 +1,14 @@
 {
   "landing": {
     "hero": {
-      "badge": "Gestión todo en uno para deportes, comunidades y trabajo",
+      "badge": "La plataforma de equipo que nunca supiste que necesitabas",
       "title_pre": "La plataforma que ",
       "title_accent": "maximiza",
       "title_post": " el potencial de tu equipo",
-      "subtitle": "Mannschaft es una plataforma de gestión todo en uno que reúne todo lo que tu equipo u organización necesita para funcionar sin problemas.",
+      "subtitle": "Mannschaft es una plataforma de gestión todo en uno que reúne todo lo que tu equipo u organización necesita. Desde equipos deportivos hasta salones, clínicas y reuniones de exalumnos — las posibilidades son infinitas.",
       "cta_register": "Empieza gratis",
       "cta_login": "Iniciar sesión",
-      "note": "Sin tarjeta de crédito · Regístrate en 1 minuto"
+      "note": "Básicamente gratis. Por ahora, crea una cuenta personal."
     },
     "stats": {
       "heading": "Registros actuales",
@@ -17,7 +17,8 @@
       "organizations": "Organizaciones registradas"
     },
     "features": {
-      "heading": "Todo lo que necesitas",
+      "heading_main": "Todo lo que necesitas",
+      "heading_kamo": " (quizás)",
       "subheading": "Todas las funciones para tu equipo, en una sola plataforma",
       "items": {
         "0": { "title": "Gestión de equipos y orgs", "desc": "Invita miembros, asigna roles y gestiona permisos fácilmente" },
@@ -34,7 +35,7 @@
       "heading": "Empieza en 3 pasos",
       "cta": "Regístrate gratis ahora",
       "items": {
-        "0": { "title": "Regístrate gratis", "desc": "Empieza al instante solo con tu correo electrónico. Sin tarjeta de crédito." },
+        "0": { "title": "Regístrate gratis", "desc": "Comienza ahora mismo solo con tu dirección de correo electrónico." },
         "1": { "title": "Crea un equipo u org", "desc": "Elige una plantilla, crea tu equipo u organización e invita a los miembros." },
         "2": { "title": "Usa las funciones", "desc": "Activa solo las funciones que necesites: agenda, chat, turnos y más." }
       }
@@ -44,8 +45,8 @@
       "subheading": "Adaptable a equipos y organizaciones de cualquier sector o tamaño",
       "items": {
         "0": { "title": "Equipos deportivos", "desc": "Gestión de entrenamientos y partidos, coordinación de turnos, asistencia y clasificaciones." },
-        "1": { "title": "Comunidades locales", "desc": "Centraliza anuncios de eventos, circulares y gestión de cuotas en línea." },
-        "2": { "title": "Empresas y oficinas", "desc": "Gestión de proyectos interdepartamentales, flujos de aprobación y comunicación interna." },
+        "1": { "title": "Comunidades locales", "desc": "Centraliza anuncios de eventos, boletines y gestión de cuotas en línea. También perfecto para reuniones de exalumnos, asociaciones vecinales y grupos de voluntarios." },
+        "2": { "title": "Empresas y oficinas", "desc": "Gestión de proyectos interdepartamentales, flujos de aprobación y comunicación interna. También perfecto para pequeños negocios como salones de belleza y clínicas." },
         "3": { "title": "Educación y escuelas", "desc": "Comunicación con padres, gestión de clubes, registro de actividades, fotos y encuestas." }
       }
     },
@@ -61,7 +62,7 @@
     },
     "cta": {
       "heading": "Pruébalo gratis hoy",
-      "subheading": "Sin tarjeta de crédito. Regístrate ahora y empieza a gestionar tu equipo.",
+      "subheading": "Regístrate ahora y empieza a gestionar tu equipo.",
       "register": "Crear cuenta gratuita",
       "login": "Iniciar sesión con cuenta existente"
     },
