@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MatchActivityType, MatchLevel, MatchVisibility } from '~/types/matching'
+import type { MatchActivityType, MatchCategory, MatchLevel, MatchVisibility } from '~/types/matching'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
@@ -14,8 +14,10 @@ const listRef = ref<{ refresh: () => void } | null>(null)
 const form = ref({
   title: '',
   activity_type: 'COMPETITION' as MatchActivityType,
+  category: 'ANY' as MatchCategory,
   level: 'ANY' as MatchLevel,
   visibility: 'PLATFORM' as MatchVisibility,
+  prefecture_code: '',
   description: '',
   preferred_date_from: '',
   preferred_date_to: '',
@@ -25,8 +27,10 @@ function openCreateDialog() {
   form.value = {
     title: '',
     activity_type: 'COMPETITION',
+    category: 'ANY',
     level: 'ANY',
     visibility: 'PLATFORM',
+    prefecture_code: '',
     description: '',
     preferred_date_from: '',
     preferred_date_to: '',
@@ -41,8 +45,10 @@ async function handleCreate() {
     await createRequest(teamId, {
       title: form.value.title,
       activity_type: form.value.activity_type,
+      category: form.value.category,
       level: form.value.level,
       visibility: form.value.visibility,
+      prefecture_code: form.value.prefecture_code || '00',
       description: form.value.description || undefined,
       preferred_date_from: form.value.preferred_date_from || undefined,
       preferred_date_to: form.value.preferred_date_to || undefined,
@@ -60,7 +66,9 @@ async function handleCreate() {
 
 <template>
   <div>
-    <div class="mb-4"><PageHeader title="マッチング" /></div>
+    <div class="mb-4">
+      <h1 class="text-2xl font-bold">マッチング</h1>
+    </div>
     <MatchRequestList
       ref="listRef"
       :team-id="teamId"
@@ -72,6 +80,24 @@ async function handleCreate() {
         <div class="flex flex-col gap-1">
           <label class="text-sm font-medium">タイトル <span class="text-red-500">*</span></label>
           <InputText v-model="form.title" placeholder="例: 練習試合 相手募集" class="w-full" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium">カテゴリ <span class="text-red-500">*</span></label>
+          <Select
+            v-model="form.category"
+            :options="[
+              { label: '指定なし', value: 'ANY' },
+              { label: '小学生', value: 'ELEMENTARY' },
+              { label: '中学生', value: 'JUNIOR_HIGH' },
+              { label: '高校生', value: 'HIGH_SCHOOL' },
+              { label: '大学生', value: 'UNIVERSITY' },
+              { label: '一般', value: 'ADULT' },
+              { label: 'シニア', value: 'SENIOR' },
+            ]"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+          />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
