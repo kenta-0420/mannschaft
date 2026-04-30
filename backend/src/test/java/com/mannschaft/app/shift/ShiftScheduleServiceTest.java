@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftScheduleRequest;
@@ -43,6 +44,9 @@ class ShiftScheduleServiceTest {
 
     @Mock
     private ShiftAutoAssignService autoAssignService;
+
+    @Mock
+    private DomainEventPublisher eventPublisher;
 
     @InjectMocks
     private ShiftScheduleService shiftScheduleService;
