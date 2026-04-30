@@ -1,4 +1,4 @@
-package com.mannschaft.app.actionmemo.controller;
+﻿package com.mannschaft.app.actionmemo.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.actionmemo.ActionMemoErrorCode;
@@ -15,6 +15,7 @@ import com.mannschaft.app.actionmemo.service.ActionMemoTagService;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -84,6 +85,10 @@ class ActionMemoControllerPhase3Test {
     // F11.3: UserLocaleFilter 依存解決用
     @MockitoBean
     private UserLocaleCache userLocaleCache;
+
+    // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+    @MockitoBean
+    private ProxyInputConsentRepository proxyInputConsentRepository;
 
     @BeforeEach
     void setUpSecurityContext() {

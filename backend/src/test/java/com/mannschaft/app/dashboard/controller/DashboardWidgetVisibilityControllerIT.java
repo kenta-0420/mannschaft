@@ -1,10 +1,11 @@
-package com.mannschaft.app.dashboard.controller;
+﻿package com.mannschaft.app.dashboard.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.dashboard.MinRole;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.WidgetKey;
@@ -72,6 +73,10 @@ class DashboardWidgetVisibilityControllerIT {
     // UserLocaleFilter の依存解決用
     @MockitoBean
     private UserLocaleCache userLocaleCache;
+
+    // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+    @MockitoBean
+    private ProxyInputConsentRepository proxyInputConsentRepository;
 
     @BeforeEach
     void setUpSecurityContext() {

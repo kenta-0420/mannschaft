@@ -1,9 +1,10 @@
-package com.mannschaft.app.social.controller;
+﻿package com.mannschaft.app.social.controller;
 
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.social.SocialErrorCode;
 import com.mannschaft.app.social.dto.FollowTeamResponse;
 import com.mannschaft.app.social.dto.PastForwardHandling;
@@ -80,6 +81,10 @@ class TeamFriendsControllerTest {
     // F11.3: UserLocaleFilter の依存解決用
     @MockitoBean
     private UserLocaleCache userLocaleCache;
+
+    // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+    @MockitoBean
+    private ProxyInputConsentRepository proxyInputConsentRepository;
 
     @BeforeEach
     void setUpSecurityContext() {

@@ -1,10 +1,11 @@
-package com.mannschaft.app.gdpr;
+﻿package com.mannschaft.app.gdpr;
 
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.gdpr.controller.GdprController;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.service.DataExportService;
@@ -50,6 +51,10 @@ class GdprControllerTest {
     // F11.3: UserLocaleFilter の依存解決用
     @MockitoBean
     private UserLocaleCache userLocaleCache;
+
+    // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+    @MockitoBean
+    private ProxyInputConsentRepository proxyInputConsentRepository;
 
     // GdprController の依存解決用
     @MockitoBean

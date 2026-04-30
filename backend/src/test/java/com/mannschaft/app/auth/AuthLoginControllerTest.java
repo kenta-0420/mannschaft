@@ -1,4 +1,4 @@
-package com.mannschaft.app.auth;
+﻿package com.mannschaft.app.auth;
 
 import com.mannschaft.app.auth.controller.AuthLoginController;
 import com.mannschaft.app.auth.service.AuthService;
@@ -12,6 +12,7 @@ import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +51,10 @@ class AuthLoginControllerTest {
     // F11.3: UserLocaleFilter の依存解決用（@WebMvcTest コンテキストで必要）
     @MockitoBean
     private UserLocaleCache userLocaleCache;
+
+    // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+    @MockitoBean
+    private ProxyInputConsentRepository proxyInputConsentRepository;
 
     // ──────────────────────────────────────────────
     // POST /api/v1/auth/register
