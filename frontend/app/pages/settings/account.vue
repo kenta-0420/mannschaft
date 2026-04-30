@@ -3,6 +3,20 @@ import type { ScopeDefault } from '~/types/seal'
 
 definePageMeta({ middleware: 'auth' })
 
+const showDeletionPreviewDialog = ref(false)
+const api = useApi()
+const notification = useNotification()
+
+async function handleDeleteAccount() {
+  try {
+    await api('/api/v1/users/me', { method: 'DELETE' })
+    authStore.logout()
+    navigateTo('/login')
+  } catch {
+    notification.error('アカウントの削除に失敗しました')
+  }
+}
+
 const authStore = useAuthStore()
 const appearanceStore = useAppearanceStore()
 const teamStore = useTeamStore()
@@ -250,7 +264,14 @@ onMounted(async () => {
         @toggle-org-sync="toggleOrgSync"
       />
 
-      <SettingsDeleteAccountSection />
+      <SettingsDataExportSection />
+
+      <SettingsDeleteAccountSection @show-deletion-preview="showDeletionPreviewDialog = true" />
+
+      <SettingsDeletionPreviewDialog
+        v-model:visible="showDeletionPreviewDialog"
+        @confirmed="handleDeleteAccount"
+      />
     </div>
   </div>
 </template>
