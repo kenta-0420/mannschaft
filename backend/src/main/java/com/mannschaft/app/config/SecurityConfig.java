@@ -2,6 +2,7 @@ package com.mannschaft.app.config;
 
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,6 +24,18 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ProxyInputContextFilter proxyInputContextFilter;
+
+    /**
+     * ProxyInputContextFilter の @Component によるサーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterAfter）のみで動作させる。
+     */
+    @Bean
+    public FilterRegistrationBean<ProxyInputContextFilter> proxyInputContextFilterRegistration() {
+        FilterRegistrationBean<ProxyInputContextFilter> registration =
+                new FilterRegistrationBean<>(proxyInputContextFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
