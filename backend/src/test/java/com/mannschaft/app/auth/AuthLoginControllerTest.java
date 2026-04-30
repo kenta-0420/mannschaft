@@ -169,7 +169,8 @@ class AuthLoginControllerTest {
                 .willReturn(ApiResponse.of(msgResp));
 
         mockMvc.perform(post("/api/v1/auth/verify-email")
-                        .param("token", "valid-token-123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"valid-token-123\"}"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data.message").value("メール認証が完了しました"));
