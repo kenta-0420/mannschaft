@@ -92,6 +92,33 @@
       "description": "Mannschaft ist eine All-in-One-Management-Plattform für Sportteams, Gemeinschaften und Unternehmen – Mitgliederverwaltung, Termine, Chat, Zahlungen und mehr.",
       "og_title": "Mannschaft - Maximiere das Potenzial deines Teams",
       "og_description": "Alles für die Teamverwaltung an einem Ort. Mitglieder, Termine, Chat und Zahlungen."
+    },
+    "era_themes": {
+      "switcher": {
+        "label": "🎨 Zur modernen Version zurück",
+        "aria_label": "Zur modernen Version der Seite zurückkehren",
+        "tooltip": "Dies ist ein verstecktes Mannschaft-Theme (1 von 100 Chance)"
+      },
+      "fc": {
+        "push_start": "PUSH START",
+        "copyright": "© 2026 MANNSCHAFT"
+      },
+      "sfc": {
+        "menu_start": "▶ はじめる",
+        "menu_continue": "　つづきから",
+        "menu_features": "　きのう一覧",
+        "save_dialog": "このぼうけんを　セーブしますか？",
+        "yes": "はい",
+        "no": "いいえ"
+      },
+      "y1998": {
+        "under_construction": "🚧 工事中 🚧",
+        "visitor_count": "あなたは ",
+        "visitor_count_suffix": " 人目のお客様です！",
+        "best_viewed": "※ このページは Netscape Navigator 4.0、画面解像度 800×600 での閲覧を推奨します",
+        "made_with": "♦ Made with Notepad ♦",
+        "welcome_message": "★ Mannschaft へようこそ！ チームの力を最大化するプラットフォームです ★"
+      }
     }
   }
 }
