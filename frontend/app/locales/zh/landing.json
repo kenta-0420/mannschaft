@@ -92,6 +92,33 @@
       "description": "Mannschaft 是面向体育团队、社区和企业的一体化管理平台——成员管理、日程、聊天、支付等一应俱全。",
       "og_title": "Mannschaft - 最大化团队潜力",
       "og_description": "团队管理一站式解决。成员、日程、聊天、支付全覆盖。"
+    },
+    "era_themes": {
+      "switcher": {
+        "label": "🎨 返回现代版",
+        "aria_label": "返回页面的现代版本",
+        "tooltip": "这是 Mannschaft 的隐藏主题（1/100 的概率触发）"
+      },
+      "fc": {
+        "push_start": "PUSH START",
+        "copyright": "© 2026 MANNSCHAFT"
+      },
+      "sfc": {
+        "menu_start": "▶ はじめる",
+        "menu_continue": "　つづきから",
+        "menu_features": "　きのう一覧",
+        "save_dialog": "このぼうけんを　セーブしますか？",
+        "yes": "はい",
+        "no": "いいえ"
+      },
+      "y1998": {
+        "under_construction": "🚧 工事中 🚧",
+        "visitor_count": "あなたは ",
+        "visitor_count_suffix": " 人目のお客様です！",
+        "best_viewed": "※ このページは Netscape Navigator 4.0、画面解像度 800×600 での閲覧を推奨します",
+        "made_with": "♦ Made with Notepad ♦",
+        "welcome_message": "★ Mannschaft へようこそ！ チームの力を最大化するプラットフォームです ★"
+      }
     }
   }
 }
