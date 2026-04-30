@@ -42,8 +42,8 @@ async function markAsRead(id: number) {
     await api(`/api/v1/mentions/${id}/read`, { method: 'POST' })
     const mention = mentions.value.find(m => m.id === id)
     if (mention) mention.isRead = true
-  } catch {
-    // silent
+  } catch (e) {
+    console.error('既読マークに失敗しました', e)
   }
 }
 

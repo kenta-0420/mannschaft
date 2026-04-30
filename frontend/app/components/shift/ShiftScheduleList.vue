@@ -11,6 +11,7 @@ const emit = defineEmits<{
 
 const shiftApi = useShiftApi()
 const notification = useNotification()
+const confirm = useConfirm()
 
 interface Schedule {
   id: number
@@ -38,7 +39,8 @@ async function load() {
   try {
     const res = await shiftApi.listShiftSchedules({ size: 20 })
     schedules.value = res.data as Schedule[]
-  } catch {
+  } catch (e) {
+    console.error('シフト表一覧の取得に失敗しました', e)
     schedules.value = []
   } finally {
     loading.value = false
@@ -46,10 +48,18 @@ async function load() {
 }
 
 async function publish(id: number) {
-  if (!confirm('このシフトを公開しますか？メンバーに通知されます。')) return
-  await shiftApi.transitionShiftSchedule(id)
-  notification.success('シフトを公開しました')
-  await load()
+  confirm.require({
+    message: 'このシフトを公開しますか？メンバーに通知されます。',
+    header: 'シフト公開の確認',
+    icon: 'pi pi-send',
+    acceptLabel: '公開する',
+    rejectLabel: 'キャンセル',
+    accept: async () => {
+      await shiftApi.transitionShiftSchedule(id)
+      notification.success('シフトを公開しました')
+      await load()
+    },
+  })
 }
 
 async function archive(id: number) {
@@ -63,6 +73,7 @@ onMounted(load)
 
 <template>
   <div>
+    <ConfirmDialog />
     <div class="mb-4 flex items-center justify-between">
       <h3 class="text-lg font-semibold">シフト表</h3>
       <Button

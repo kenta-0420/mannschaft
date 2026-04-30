@@ -95,9 +95,10 @@ export function useKnowledgeBaseApi(scopeType: KbScopeType = 'teams') {
   }
 
   // === Search / Discovery ===
-  async function searchPages(scopeId: number, query: string) {
+  async function searchPages(scopeId: number, params: Record<string, string>) {
+    const qs = new URLSearchParams(params).toString()
     return api<{ data: KbPageSummaryResponse[] }>(
-      `${base(scopeId)}/search?q=${encodeURIComponent(query)}`,
+      `${base(scopeId)}/search?${qs}`,
     )
   }
 
