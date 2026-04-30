@@ -1,0 +1,32 @@
+-- F03.13 学校日次・教科別出欠管理: 時限別出欠（教科担任の出欠登録）
+CREATE TABLE period_attendance_records (
+    id                         BIGINT UNSIGNED    NOT NULL AUTO_INCREMENT,
+    team_id                    BIGINT UNSIGNED    NOT NULL,
+    student_user_id            BIGINT UNSIGNED    NOT NULL,
+    attendance_date            DATE               NOT NULL,
+    period_number              TINYINT UNSIGNED   NOT NULL COMMENT '時限番号（1〜15）',
+    timetable_slot_id          BIGINT UNSIGNED    NULL     COMMENT 'FK → timetable_slots.id（基本コマ）',
+    timetable_change_id        BIGINT UNSIGNED    NULL     COMMENT 'FK → timetable_changes.id（臨時変更時）',
+    subject_name               VARCHAR(100)       NOT NULL COMMENT 'スナップショット（変更後も履歴維持）',
+    teacher_name               VARCHAR(100)       NULL     COMMENT 'スナップショット',
+    teacher_user_id            BIGINT UNSIGNED    NULL     COMMENT 'FK → users.id（教科担任）',
+    status                     ENUM('ATTENDING','PARTIAL','ABSENT','UNDECIDED') NOT NULL DEFAULT 'UNDECIDED',
+    late_minutes               INT                NULL     COMMENT '遅刻分数（PARTIAL 時）',
+    comment                    VARCHAR(500)       NULL     COMMENT '教科担任コメント',
+    recorded_by                BIGINT UNSIGNED    NOT NULL COMMENT '記録者（教科担任 user_id）',
+    recorded_at                DATETIME           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                 DATETIME           NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    transition_alert_sent_at   DATETIME           NULL     COMMENT '「前にいたのに今いない」検知通知送信日時',
+
+    PRIMARY KEY (id),
+    CONSTRAINT uq_par UNIQUE (team_id, student_user_id, attendance_date, period_number),
+    INDEX idx_par_date_period (attendance_date, team_id, period_number),
+    INDEX idx_par_student_date (student_user_id, attendance_date),
+    INDEX idx_par_teacher (teacher_user_id, attendance_date),
+    CONSTRAINT fk_par_team             FOREIGN KEY (team_id)             REFERENCES teams(id) ON DELETE CASCADE,
+    CONSTRAINT fk_par_student          FOREIGN KEY (student_user_id)     REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_par_recorded_by      FOREIGN KEY (recorded_by)         REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_par_teacher_user     FOREIGN KEY (teacher_user_id)     REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_par_timetable_slot   FOREIGN KEY (timetable_slot_id)   REFERENCES timetable_slots(id) ON DELETE SET NULL,
+    CONSTRAINT fk_par_timetable_change FOREIGN KEY (timetable_change_id) REFERENCES timetable_changes(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='時限別出欠（教科担任の出欠登録）';
