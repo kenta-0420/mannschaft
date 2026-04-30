@@ -1,19 +1,7 @@
 <script setup lang="ts">
-const api = useApi()
-const authStore = useAuthStore()
-const notification = useNotification()
-
-const showDeleteDialog = ref(false)
-
-async function deleteAccount() {
-  try {
-    await api('/api/v1/users/me', { method: 'DELETE' })
-    authStore.logout()
-    navigateTo('/login')
-  } catch {
-    notification.error('アカウントの削除に失敗しました')
-  }
-}
+const emit = defineEmits<{
+  showDeletionPreview: []
+}>()
 </script>
 
 <template>
@@ -29,22 +17,7 @@ async function deleteAccount() {
       icon="pi pi-trash"
       severity="danger"
       outlined
-      @click="showDeleteDialog = true"
+      @click="emit('showDeletionPreview')"
     />
   </div>
-
-  <Dialog
-    v-model:visible="showDeleteDialog"
-    header="アカウント削除の確認"
-    :modal="true"
-    class="w-full max-w-md"
-  >
-    <p class="mb-4">
-      本当にアカウントを削除しますか？全てのデータが完全に削除され、復元できません。
-    </p>
-    <div class="flex justify-end gap-2">
-      <Button label="キャンセル" severity="secondary" @click="showDeleteDialog = false" />
-      <Button label="削除する" severity="danger" @click="deleteAccount" />
-    </div>
-  </Dialog>
 </template>

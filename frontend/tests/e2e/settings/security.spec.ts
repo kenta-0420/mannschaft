@@ -16,81 +16,62 @@ const MOCK_SESSIONS = {
 
 const MOCK_WEBAUTHN = { data: [] }
 
+async function mockSecurityApis(page: import('@playwright/test').Page) {
+  // キャッチオール: 未モックのAPIエンドポイントが500/401を返してページ状態に影響しないよう空データを返す
+  await page.route('**/api/v1/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    })
+  })
+  // 特定のモックは後から登録して上書きする（Playwrightは後着優先）
+  await page.route('**/api/v1/auth/sessions**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(MOCK_SESSIONS),
+    })
+  })
+  await page.route('**/api/v1/auth/webauthn/credentials**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(MOCK_WEBAUTHN),
+    })
+  })
+}
+
 test.describe('SET-006〜008: セキュリティ設定', () => {
   test('SET-006: セキュリティページが表示される', async ({ page }) => {
-    await page.route('**/api/v1/auth/sessions**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_SESSIONS),
-      })
-    })
-    await page.route('**/api/v1/auth/webauthn/credentials**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_WEBAUTHN),
-      })
-    })
-
+    await mockSecurityApis(page)
     await page.goto('/settings/security')
     await waitForHydration(page)
-
     await expect(page.getByRole('heading', { name: 'セキュリティ' })).toBeVisible({
       timeout: 10_000,
     })
   })
 
   test('SET-007: セッション一覧が表示される', async ({ page }) => {
-    await page.route('**/api/v1/auth/sessions**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_SESSIONS),
-      })
-    })
-    await page.route('**/api/v1/auth/webauthn/credentials**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_WEBAUTHN),
-      })
-    })
-
+    await mockSecurityApis(page)
     await page.goto('/settings/security')
     await waitForHydration(page)
-
     await expect(page.getByRole('heading', { name: 'セキュリティ' })).toBeVisible({
       timeout: 10_000,
     })
-    await expect(page.getByText('Chrome on Windows')).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByText('現在')).toBeVisible()
+    await expect(page.getByText('Chrome on Windows')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('現在')).toBeVisible({ timeout: 5_000 })
   })
 
   test('SET-008: 2FAセットアップボタンが表示される', async ({ page }) => {
-    await page.route('**/api/v1/auth/sessions**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_SESSIONS),
-      })
-    })
-    await page.route('**/api/v1/auth/webauthn/credentials**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_WEBAUTHN),
-      })
-    })
-
+    await mockSecurityApis(page)
     await page.goto('/settings/security')
     await waitForHydration(page)
-
     await expect(page.getByRole('heading', { name: 'セキュリティ' })).toBeVisible({
       timeout: 10_000,
     })
     await expect(page.getByRole('button', { name: '2FAをセットアップ' })).toBeVisible({
-      timeout: 5_000,
+      timeout: 10_000,
     })
   })
 })

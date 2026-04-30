@@ -8,6 +8,8 @@ definePageMeta({
 const notification = useNotification()
 const authStore = useAuthStore()
 const {
+  setup2fa,
+  regenerateBackupCodes,
   getSessions,
   revokeSession,
   revokeAllSessions,
@@ -19,6 +21,18 @@ const {
 const loading = ref(true)
 const sessions = ref<AuthSessionResponse[]>([])
 const credentials = ref<WebAuthnCredentialResponse[]>([])
+
+// 2FA state
+const totpSetup = ref<{ secret: string; qrCodeUrl: string } | null>(null)
+const backupCodes = ref<string[]>([])
+const showBackupCodesDialog = ref(false)
+const setting2fa = ref(false)
+const regenerating = ref(false)
+
+// WebAuthn rename
+const renameDialog = ref(false)
+const renameTarget = ref<WebAuthnCredentialResponse | null>(null)
+const newDeviceName = ref('')
 
 onMounted(async () => {
   await loadData()
@@ -37,6 +51,34 @@ async function loadData() {
   }
 }
 
+// === 2FA ===
+async function handleSetup2fa() {
+  setting2fa.value = true
+  try {
+    const res = await setup2fa()
+    totpSetup.value = res.data
+  } catch {
+    notification.error('2FAセットアップの開始に失敗しました')
+  } finally {
+    setting2fa.value = false
+  }
+}
+
+async function handleRegenerateBackupCodes() {
+  regenerating.value = true
+  try {
+    const res = await regenerateBackupCodes()
+    backupCodes.value = res.data.backupCodes
+    showBackupCodesDialog.value = true
+    notification.success('バックアップコードを再生成しました')
+  } catch {
+    notification.error('バックアップコードの再生成に失敗しました')
+  } finally {
+    regenerating.value = false
+  }
+}
+
+// === Sessions ===
 async function handleRevokeSession(id: number) {
   try {
     await revokeSession(id)
@@ -57,6 +99,7 @@ async function handleRevokeAllSessions() {
   }
 }
 
+// === WebAuthn ===
 async function handleDeleteCredential(id: number) {
   try {
     await deleteWebAuthnCredential(id)
@@ -67,11 +110,21 @@ async function handleDeleteCredential(id: number) {
   }
 }
 
-async function handleRenameCredential(id: number, deviceName: string) {
+function openRenameDialog(cred: WebAuthnCredentialResponse) {
+  renameTarget.value = cred
+  newDeviceName.value = cred.deviceName ?? ''
+  renameDialog.value = true
+}
+
+async function handleRenameCredential() {
+  if (!renameTarget.value) return
   try {
-    const res = await updateWebAuthnCredential(id, { deviceName })
-    const idx = credentials.value.findIndex((c) => c.id === id)
+    const res = await updateWebAuthnCredential(renameTarget.value.id, {
+      deviceName: newDeviceName.value,
+    })
+    const idx = credentials.value.findIndex((c) => c.id === renameTarget.value!.id)
     if (idx !== -1) credentials.value[idx] = res.data
+    renameDialog.value = false
     notification.success('デバイス名を更新しました')
   } catch {
     notification.error('デバイス名の更新に失敗しました')
@@ -87,18 +140,26 @@ async function handleRenameCredential(id: number, deviceName: string) {
     <PageLoading v-if="loading" />
 
     <div v-else class="fade-in space-y-8">
-      <SettingsSecurityTotpSection />
-
-      <SettingsSecuritySessionList
+      <SettingsSecuritySection
+        :totp-setup="totpSetup"
+        :setting2fa="setting2fa"
+        :regenerating="regenerating"
         :sessions="sessions"
-        @revoke="handleRevokeSession"
-        @revoke-all="handleRevokeAllSessions"
-      />
-
-      <SettingsSecurityWebAuthnSection
         :credentials="credentials"
-        @delete="handleDeleteCredential"
-        @rename="handleRenameCredential"
+        :backup-codes="backupCodes"
+        :show-backup-codes-dialog="showBackupCodesDialog"
+        :rename-dialog="renameDialog"
+        :new-device-name="newDeviceName"
+        @setup2fa="handleSetup2fa"
+        @regenerate-backup-codes="handleRegenerateBackupCodes"
+        @revoke-session="handleRevokeSession"
+        @revoke-all-sessions="handleRevokeAllSessions"
+        @delete-credential="handleDeleteCredential"
+        @open-rename-dialog="openRenameDialog"
+        @rename-credential="handleRenameCredential"
+        @update:show-backup-codes-dialog="showBackupCodesDialog = $event"
+        @update:rename-dialog="renameDialog = $event"
+        @update:new-device-name="newDeviceName = $event"
       />
     </div>
   </div>
