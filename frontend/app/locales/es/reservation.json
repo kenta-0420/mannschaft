@@ -1,0 +1,107 @@
+{
+  "emergency_closure": {
+    "section": {
+      "period": "Período de cierre",
+      "template": "Plantilla de mensaje",
+      "message_edit": "Editar mensaje",
+      "options": "Opciones",
+      "preview": "Revisar reservas afectadas",
+      "bulk_send": "Envío masivo",
+      "history": "Historial de envíos",
+      "confirmations": "Estado de confirmación"
+    },
+    "label": {
+      "start_date": "Fecha de inicio",
+      "end_date": "Fecha de fin",
+      "partial_time": "Cerrar solo durante ciertas horas del día",
+      "start_time": "Hora de inicio",
+      "end_time": "Hora de fin",
+      "target_period": "Período objetivo",
+      "subject": "Asunto",
+      "body": "Cuerpo",
+      "cancel_reservations": "Cancelar reservas afectadas"
+    },
+    "placeholder": {
+      "select": "Por favor, seleccione",
+      "subject": "Ingrese el asunto",
+      "body": "Ingrese el cuerpo del mensaje"
+    },
+    "hint": {
+      "all_day": "Si no se marca, el cierre será todo el día. Al seleccionar varios días, se aplica el mismo horario a cada día.",
+      "cancel_reservations": "Si se marca, las reservas durante el período objetivo se cancelarán automáticamente.",
+      "press_check_preview": "Presione el botón «Revisar reservas afectadas» para ver las reservas afectadas."
+    },
+    "button": {
+      "today_only": "Solo hoy",
+      "check_preview": "Revisar reservas afectadas",
+      "bulk_send": "Envío masivo",
+      "view_confirmations": "Ver estado de confirmación",
+      "send_confirm": "Enviar"
+    },
+    "table": {
+      "patient_name": "Nombre del paciente",
+      "datetime": "Fecha/Hora",
+      "status": "Estado",
+      "sent_at": "Enviado el",
+      "reason": "Motivo",
+      "count": "Cantidad",
+      "confirmation_status": "Estado de confirmación",
+      "appointment_at": "Fecha/Hora de cita",
+      "confirmed_header": "Confirmado",
+      "reminder": "Recordatorio"
+    },
+    "message": {
+      "notify_count": "Se notificará a {count} reserva(s)",
+      "no_reservations": "No hay reservas en el período objetivo",
+      "no_history": "No hay historial de envíos",
+      "sent_count": "Enviado a {count} destinatario(s)",
+      "confirmed_count": "{confirmed}/{total} confirmado(s)"
+    },
+    "status": {
+      "confirmed": "Confirmado",
+      "unconfirmed": "No confirmado",
+      "reminder_sent": "Enviado",
+      "reminder_not_sent": "No enviado"
+    },
+    "dialog": {
+      "title": "Confirmar envío",
+      "confirm_message": "¿Desea enviar el mensaje masivo con los siguientes detalles?",
+      "cancel_warning": "※ Las reservas afectadas serán canceladas",
+      "label_period": "Período objetivo",
+      "label_subject": "Asunto"
+    },
+    "error": {
+      "time_range_required": "Por favor, seleccione la hora de inicio y fin",
+      "time_range_order": "La hora de inicio debe ser anterior a la hora de fin",
+      "period_required": "Por favor, seleccione un período",
+      "preview_failed": "Error al cargar la vista previa",
+      "subject_required": "Por favor, ingrese un asunto",
+      "body_required": "Por favor, ingrese el cuerpo del mensaje",
+      "send_failed": "Error al enviar",
+      "confirmations_failed": "Error al cargar el estado de confirmación"
+    },
+    "template": {
+      "staff_sick": "Enfermedad del personal",
+      "staff_sick_subject": "[Importante] Cierre temporal por enfermedad del personal",
+      "staff_sick_reason": "Enfermedad del personal",
+      "staff_sick_body": "Gracias por su preferencia.\n\nLamentamos informarle que debido a la enfermedad del personal,\nestaremos cerrados el __PERIOD__.\n\nNos disculpamos sinceramente por los inconvenientes causados a los clientes con reservas.\n\nPor favor, contáctenos para reprogramar su cita.",
+      "maintenance": "Mantenimiento de equipos",
+      "maintenance_subject": "[Importante] Cierre temporal por mantenimiento de equipos",
+      "maintenance_reason": "Mantenimiento de equipos",
+      "maintenance_body": "Gracias por su preferencia.\n\nLamentamos informarle que debido al mantenimiento de equipos,\nestaremos cerrados el __PERIOD__.\n\nNos disculpamos por los inconvenientes y agradecemos su comprensión.\n\nPor favor, contáctenos para reprogramar su cita.",
+      "emergency": "Clima/Emergencia",
+      "emergency_subject": "[Importante] Aviso de cierre temporal",
+      "emergency_reason": "Clima/Emergencia",
+      "emergency_body": "Gracias por su preferencia.\n\nLamentamos informarle que debido al clima o una emergencia,\nestaremos cerrados el __PERIOD__.\n\nNos disculpamos sinceramente por los inconvenientes causados a los clientes con reservas.\n\nNos comunicaremos con usted una vez que la situación mejore.",
+      "custom": "Otro (entrada manual)"
+    },
+    "reservation_status": {
+      "PENDING": "Pendiente",
+      "CONFIRMED": "Confirmado",
+      "COMPLETED": "Completado",
+      "CANCELLED": "Cancelado",
+      "NO_SHOW": "No presentado",
+      "REJECTED": "Rechazado"
+    }
+  }
+}

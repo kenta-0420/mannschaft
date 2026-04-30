@@ -126,6 +126,7 @@ export default defineNuxtConfig({
           'ja/shift.json',
           'ja/care.json',
           'ja/surveys.json',
+          'ja/reservation.json',
         ],
       },
       {
@@ -153,6 +154,7 @@ export default defineNuxtConfig({
           'en/shift.json',
           'en/care.json',
           'en/surveys.json',
+          'en/reservation.json',
         ],
       },
       {
@@ -180,6 +182,7 @@ export default defineNuxtConfig({
           'zh/shift.json',
           'zh/care.json',
           'zh/surveys.json',
+          'zh/reservation.json',
         ],
       },
       {
@@ -207,6 +210,7 @@ export default defineNuxtConfig({
           'ko/shift.json',
           'ko/care.json',
           'ko/surveys.json',
+          'ko/reservation.json',
         ],
       },
       {
@@ -234,6 +238,7 @@ export default defineNuxtConfig({
           'es/shift.json',
           'es/care.json',
           'es/surveys.json',
+          'es/reservation.json',
         ],
       },
       {
@@ -261,6 +266,7 @@ export default defineNuxtConfig({
           'de/shift.json',
           'de/care.json',
           'de/surveys.json',
+          'de/reservation.json',
         ],
       },
     ],

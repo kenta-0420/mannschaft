@@ -1,0 +1,107 @@
+{
+  "emergency_closure": {
+    "section": {
+      "period": "Closure Period",
+      "template": "Message Template",
+      "message_edit": "Edit Message",
+      "options": "Options",
+      "preview": "Check Affected Reservations",
+      "bulk_send": "Bulk Send",
+      "history": "Send History",
+      "confirmations": "Confirmation Status"
+    },
+    "label": {
+      "start_date": "Start Date",
+      "end_date": "End Date",
+      "partial_time": "Close only during specific hours of the day",
+      "start_time": "Start Time",
+      "end_time": "End Time",
+      "target_period": "Target Period",
+      "subject": "Subject",
+      "body": "Body",
+      "cancel_reservations": "Cancel affected reservations"
+    },
+    "placeholder": {
+      "select": "Please select",
+      "subject": "Enter subject",
+      "body": "Enter body"
+    },
+    "hint": {
+      "all_day": "If unchecked, the closure will be all-day. When multiple days are selected, the same hours apply to each day.",
+      "cancel_reservations": "If checked, reservations during the target period will be automatically cancelled.",
+      "press_check_preview": "Press the \"Check Affected Reservations\" button to review affected reservations."
+    },
+    "button": {
+      "today_only": "Today only",
+      "check_preview": "Check Affected Reservations",
+      "bulk_send": "Bulk Send",
+      "view_confirmations": "View confirmation status",
+      "send_confirm": "Send"
+    },
+    "table": {
+      "patient_name": "Patient Name",
+      "datetime": "Date/Time",
+      "status": "Status",
+      "sent_at": "Sent At",
+      "reason": "Reason",
+      "count": "Count",
+      "confirmation_status": "Confirmation Status",
+      "appointment_at": "Appointment Date/Time",
+      "confirmed_header": "Confirmed",
+      "reminder": "Reminder"
+    },
+    "message": {
+      "notify_count": "Will notify {count} reservation(s)",
+      "no_reservations": "No reservations found for the target period",
+      "no_history": "No send history",
+      "sent_count": "Sent to {count} recipient(s)",
+      "confirmed_count": "{confirmed}/{total} confirmed"
+    },
+    "status": {
+      "confirmed": "Confirmed",
+      "unconfirmed": "Not confirmed",
+      "reminder_sent": "Sent",
+      "reminder_not_sent": "Not sent"
+    },
+    "dialog": {
+      "title": "Confirm Send",
+      "confirm_message": "Send bulk notification with the following details?",
+      "cancel_warning": "* Affected reservations will be cancelled",
+      "label_period": "Target Period",
+      "label_subject": "Subject"
+    },
+    "error": {
+      "time_range_required": "Please select both start and end times",
+      "time_range_order": "Start time must be before end time",
+      "period_required": "Please select a period",
+      "preview_failed": "Failed to load preview",
+      "subject_required": "Please enter a subject",
+      "body_required": "Please enter a body",
+      "send_failed": "Failed to send",
+      "confirmations_failed": "Failed to load confirmation status"
+    },
+    "template": {
+      "staff_sick": "Staff illness",
+      "staff_sick_subject": "[Important] Temporary closure due to staff illness",
+      "staff_sick_reason": "Staff illness",
+      "staff_sick_body": "Thank you for your continued patronage.\n\nWe regret to inform you that due to staff illness,\nwe will be closed on __PERIOD__.\n\nWe sincerely apologize for any inconvenience caused to customers with reservations.\n\nPlease contact us to rebook your appointment.",
+      "maintenance": "Equipment maintenance",
+      "maintenance_subject": "[Important] Temporary closure due to equipment maintenance",
+      "maintenance_reason": "Equipment maintenance",
+      "maintenance_body": "Thank you for your continued patronage.\n\nWe regret to inform you that due to equipment maintenance,\nwe will be closed on __PERIOD__.\n\nWe apologize for the inconvenience and appreciate your understanding.\n\nPlease contact us to rebook your appointment.",
+      "emergency": "Weather/Emergency",
+      "emergency_subject": "[Important] Temporary closure notice",
+      "emergency_reason": "Weather/Emergency",
+      "emergency_body": "Thank you for your continued patronage.\n\nWe regret to inform you that due to weather or an emergency,\nwe will be closed on __PERIOD__.\n\nWe sincerely apologize for any inconvenience caused to customers with reservations.\n\nWe will contact you again once the situation improves.",
+      "custom": "Other (manual input)"
+    },
+    "reservation_status": {
+      "PENDING": "Pending",
+      "CONFIRMED": "Confirmed",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled",
+      "NO_SHOW": "No show",
+      "REJECTED": "Rejected"
+    }
+  }
+}

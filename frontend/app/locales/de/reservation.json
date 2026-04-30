@@ -1,0 +1,107 @@
+{
+  "emergency_closure": {
+    "section": {
+      "period": "Schließungszeitraum",
+      "template": "Nachrichtenvorlage",
+      "message_edit": "Nachricht bearbeiten",
+      "options": "Optionen",
+      "preview": "Betroffene Reservierungen prüfen",
+      "bulk_send": "Massenversand",
+      "history": "Versandverlauf",
+      "confirmations": "Bestätigungsstatus"
+    },
+    "label": {
+      "start_date": "Startdatum",
+      "end_date": "Enddatum",
+      "partial_time": "Nur während bestimmter Stunden des Tages schließen",
+      "start_time": "Startzeit",
+      "end_time": "Endzeit",
+      "target_period": "Zielzeitraum",
+      "subject": "Betreff",
+      "body": "Nachrichtentext",
+      "cancel_reservations": "Betroffene Reservierungen stornieren"
+    },
+    "placeholder": {
+      "select": "Bitte auswählen",
+      "subject": "Betreff eingeben",
+      "body": "Nachrichtentext eingeben"
+    },
+    "hint": {
+      "all_day": "Ohne Häkchen gilt die Schließung ganztägig. Bei mehreren Tagen gelten dieselben Stunden für jeden Tag.",
+      "cancel_reservations": "Mit Häkchen werden Reservierungen im Zielzeitraum automatisch storniert.",
+      "press_check_preview": "Klicken Sie auf «Betroffene Reservierungen prüfen», um betroffene Reservierungen einzusehen."
+    },
+    "button": {
+      "today_only": "Nur heute",
+      "check_preview": "Betroffene Reservierungen prüfen",
+      "bulk_send": "Massenversand",
+      "view_confirmations": "Bestätigungsstatus anzeigen",
+      "send_confirm": "Senden"
+    },
+    "table": {
+      "patient_name": "Patientenname",
+      "datetime": "Datum/Uhrzeit",
+      "status": "Status",
+      "sent_at": "Gesendet am",
+      "reason": "Grund",
+      "count": "Anzahl",
+      "confirmation_status": "Bestätigungsstatus",
+      "appointment_at": "Termindatum/-uhrzeit",
+      "confirmed_header": "Bestätigt",
+      "reminder": "Erinnerung"
+    },
+    "message": {
+      "notify_count": "{count} Reservierung(en) werden benachrichtigt",
+      "no_reservations": "Keine Reservierungen im Zielzeitraum",
+      "no_history": "Kein Versandverlauf vorhanden",
+      "sent_count": "An {count} Empfänger gesendet",
+      "confirmed_count": "{confirmed}/{total} bestätigt"
+    },
+    "status": {
+      "confirmed": "Bestätigt",
+      "unconfirmed": "Nicht bestätigt",
+      "reminder_sent": "Gesendet",
+      "reminder_not_sent": "Nicht gesendet"
+    },
+    "dialog": {
+      "title": "Versand bestätigen",
+      "confirm_message": "Massenbenachrichtigung mit folgenden Details senden?",
+      "cancel_warning": "※ Betroffene Reservierungen werden storniert",
+      "label_period": "Zielzeitraum",
+      "label_subject": "Betreff"
+    },
+    "error": {
+      "time_range_required": "Bitte Start- und Endzeit auswählen",
+      "time_range_order": "Die Startzeit muss vor der Endzeit liegen",
+      "period_required": "Bitte einen Zeitraum auswählen",
+      "preview_failed": "Vorschau konnte nicht geladen werden",
+      "subject_required": "Bitte einen Betreff eingeben",
+      "body_required": "Bitte einen Nachrichtentext eingeben",
+      "send_failed": "Versand fehlgeschlagen",
+      "confirmations_failed": "Bestätigungsstatus konnte nicht geladen werden"
+    },
+    "template": {
+      "staff_sick": "Mitarbeitererkrankung",
+      "staff_sick_subject": "[Wichtig] Vorübergehende Schließung wegen Mitarbeitererkrankung",
+      "staff_sick_reason": "Mitarbeitererkrankung",
+      "staff_sick_body": "Vielen Dank für Ihre Treue.\n\nWir bedauern Ihnen mitteilen zu müssen, dass wir aufgrund einer Mitarbeitererkrankung\nam __PERIOD__ geschlossen sind.\n\nWir entschuldigen uns aufrichtig für die Unannehmlichkeiten, die Kunden mit Reservierungen entstanden sind.\n\nBitte kontaktieren Sie uns, um Ihren Termin neu zu vereinbaren.",
+      "maintenance": "Gerätewartung",
+      "maintenance_subject": "[Wichtig] Vorübergehende Schließung wegen Gerätewartung",
+      "maintenance_reason": "Gerätewartung",
+      "maintenance_body": "Vielen Dank für Ihre Treue.\n\nWir bedauern Ihnen mitteilen zu müssen, dass wir aufgrund von Gerätewartung\nam __PERIOD__ geschlossen sind.\n\nWir entschuldigen uns für die Unannehmlichkeiten und danken Ihnen für Ihr Verständnis.\n\nBitte kontaktieren Sie uns, um Ihren Termin neu zu vereinbaren.",
+      "emergency": "Wetter/Notfall",
+      "emergency_subject": "[Wichtig] Hinweis auf vorübergehende Schließung",
+      "emergency_reason": "Wetter/Notfall",
+      "emergency_body": "Vielen Dank für Ihre Treue.\n\nWir bedauern Ihnen mitteilen zu müssen, dass wir aufgrund von Wetter oder einem Notfall\nam __PERIOD__ geschlossen sind.\n\nWir entschuldigen uns aufrichtig für die Unannehmlichkeiten, die Kunden mit Reservierungen entstanden sind.\n\nWir werden uns melden, sobald sich die Situation verbessert.",
+      "custom": "Sonstiges (manuelle Eingabe)"
+    },
+    "reservation_status": {
+      "PENDING": "Vorläufig",
+      "CONFIRMED": "Bestätigt",
+      "COMPLETED": "Abgeschlossen",
+      "CANCELLED": "Storniert",
+      "NO_SHOW": "Nicht erschienen",
+      "REJECTED": "Abgelehnt"
+    }
+  }
+}
