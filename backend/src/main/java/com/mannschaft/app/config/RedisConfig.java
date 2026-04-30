@@ -97,6 +97,7 @@ public class RedisConfig {
                 .withCacheConfiguration("careCategory", careLinksConfig)
                 .withCacheConfiguration("dashboard:viewer-role", dashboardViewerRoleConfig)
                 .withCacheConfiguration("dashboard:widget-visibility", dashboardWidgetVisibilityConfig)
+                .withCacheConfiguration("public-stats", redisCacheConfiguration().entryTtl(Duration.ofMinutes(5)))
                 .build();
     }
 }
