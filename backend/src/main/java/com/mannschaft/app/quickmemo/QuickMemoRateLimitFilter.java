@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
  * <p>以下のエンドポイントに対してユーザー単位のレートリミットを適用する:</p>
  * <ul>
  *   <li>CRUD 操作 ({@code /api/v1/quick-memos/**}): 60 req/分</li>
- *   <li>添付ファイル操作 ({@code /api/v1/quick-memos/*/attachments/presign}, {@code /confirm}): 10 req/分</li>
+ *   <li>添付ファイル操作 ({@code /api/v1/quick-memos/{id}/attachments/presign}, {@code /confirm}): 10 req/分</li>
  *   <li>タグ操作 ({@code /api/v1/me/tags}, {@code /api/v1/teams/*/tags}, {@code /api/v1/organizations/*/tags}): 20 req/分</li>
  * </ul>
  *
