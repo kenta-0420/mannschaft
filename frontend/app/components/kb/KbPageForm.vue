@@ -138,6 +138,9 @@ watch(visible, (v) => {
             option-value="value"
             class="w-full"
           />
+          <Message v-if="accessLevel === 'CUSTOM'" severity="info" class="mt-2">
+            カスタムACLは現在準備中です。選択中は「管理者のみ」と同等の制限が適用されます。
+          </Message>
         </div>
       </div>
 

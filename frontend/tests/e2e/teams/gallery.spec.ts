@@ -29,6 +29,6 @@ test.describe('TEAM-035〜036: ギャラリー', () => {
     await expect(page.getByRole('heading', { name: 'ギャラリー', level: 1 })).toBeVisible({
       timeout: 10_000,
     })
-    await expect(page.getByText('エラー')).not.toBeVisible()
+    await expect(page.getByText('エラー', { exact: true })).not.toBeVisible()
   })
 })

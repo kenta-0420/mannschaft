@@ -6,63 +6,60 @@ const props = defineProps<{
 }>()
 
 const { listTranslations, updateStatus, publishTranslation, getDashboard } = useTranslationApi()
+const { t } = useI18n()
 
-// フィルタ
 const filterStatus = ref<string>('')
 const filterLanguage = ref<string>('')
 const filterSourceType = ref<string>('')
 
-// ページネーション
 const currentPage = ref(0)
 const pageSize = 20
 
-// データ
 const translations = ref<TranslationResponse[]>([])
 const totalRecords = ref(0)
 const loading = ref(false)
 const dashboardLoading = ref(false)
 
-// ダッシュボード統計
 const dashboard = ref<{
   totalCount: number
   byStatus: Record<string, number>
   byLanguage: Record<string, number>
 } | null>(null)
 
-const statusOptions = [
-  { label: '全て', value: '' },
-  { label: '下書き', value: 'DRAFT' },
-  { label: 'レビュー中', value: 'IN_REVIEW' },
-  { label: '承認済み', value: 'APPROVED' },
-  { label: '公開中', value: 'PUBLISHED' },
-  { label: '要更新', value: 'STALE' },
-  { label: '却下', value: 'REJECTED' },
-]
+const statusOptions = computed(() => [
+  { label: t('translation.filter_all'), value: '' },
+  { label: t('translation.status_draft'), value: 'DRAFT' },
+  { label: t('translation.status_in_review'), value: 'IN_REVIEW' },
+  { label: t('translation.status_approved'), value: 'APPROVED' },
+  { label: t('translation.status_published'), value: 'PUBLISHED' },
+  { label: t('translation.status_stale'), value: 'STALE' },
+  { label: t('translation.status_rejected'), value: 'REJECTED' },
+])
 
-const languageOptions = [
-  { label: '全て', value: '' },
-  { label: '日本語 (ja)', value: 'ja' },
-  { label: '英語 (en)', value: 'en' },
-  { label: '中国語 (zh)', value: 'zh' },
-  { label: '韓国語 (ko)', value: 'ko' },
-]
+const languageOptions = computed(() => [
+  { label: t('translation.filter_all'), value: '' },
+  { label: t('translation.language_ja'), value: 'ja' },
+  { label: t('translation.language_en'), value: 'en' },
+  { label: t('translation.language_zh'), value: 'zh' },
+  { label: t('translation.language_ko'), value: 'ko' },
+])
 
-const sourceTypeOptions = [
-  { label: '全て', value: '' },
-  { label: 'ブログ', value: 'BLOG_POST' },
-  { label: 'ナレッジベース', value: 'KNOWLEDGE_BASE' },
-  { label: 'お知らせ', value: 'ANNOUNCEMENT' },
-  { label: 'イベント', value: 'EVENT' },
-  { label: 'フォーム', value: 'FORM' },
-]
+const sourceTypeOptions = computed(() => [
+  { label: t('translation.filter_all'), value: '' },
+  { label: t('translation.source_blog_post'), value: 'BLOG_POST' },
+  { label: t('translation.source_knowledge_base'), value: 'KNOWLEDGE_BASE' },
+  { label: t('translation.source_announcement'), value: 'ANNOUNCEMENT' },
+  { label: t('translation.source_event'), value: 'EVENT' },
+  { label: t('translation.source_form'), value: 'FORM' },
+])
 
-const sourceTypeLabels: Record<TranslationSourceType, string> = {
-  BLOG_POST: 'ブログ',
-  KNOWLEDGE_BASE: 'ナレッジベース',
-  ANNOUNCEMENT: 'お知らせ',
-  EVENT: 'イベント',
-  FORM: 'フォーム',
-}
+const sourceTypeLabels = computed((): Record<TranslationSourceType, string> => ({
+  BLOG_POST: t('translation.source_blog_post'),
+  KNOWLEDGE_BASE: t('translation.source_knowledge_base'),
+  ANNOUNCEMENT: t('translation.source_announcement'),
+  EVENT: t('translation.source_event'),
+  FORM: t('translation.source_form'),
+}))
 
 async function fetchTranslations() {
   loading.value = true
@@ -127,12 +124,12 @@ function formatDate(dateStr: string) {
 const statusCardItems = computed(() => {
   if (!dashboard.value) return []
   return [
-    { label: '下書き', value: dashboard.value.byStatus['DRAFT'] ?? 0, color: 'text-gray-500' },
-    { label: 'レビュー中', value: dashboard.value.byStatus['IN_REVIEW'] ?? 0, color: 'text-yellow-500' },
-    { label: '承認済み', value: dashboard.value.byStatus['APPROVED'] ?? 0, color: 'text-blue-500' },
-    { label: '公開中', value: dashboard.value.byStatus['PUBLISHED'] ?? 0, color: 'text-green-500' },
-    { label: '要更新', value: dashboard.value.byStatus['STALE'] ?? 0, color: 'text-orange-500' },
-    { label: '却下', value: dashboard.value.byStatus['REJECTED'] ?? 0, color: 'text-red-500' },
+    { label: t('translation.status_draft'), value: dashboard.value.byStatus['DRAFT'] ?? 0, color: 'text-gray-500' },
+    { label: t('translation.status_in_review'), value: dashboard.value.byStatus['IN_REVIEW'] ?? 0, color: 'text-yellow-500' },
+    { label: t('translation.status_approved'), value: dashboard.value.byStatus['APPROVED'] ?? 0, color: 'text-blue-500' },
+    { label: t('translation.status_published'), value: dashboard.value.byStatus['PUBLISHED'] ?? 0, color: 'text-green-500' },
+    { label: t('translation.status_stale'), value: dashboard.value.byStatus['STALE'] ?? 0, color: 'text-orange-500' },
+    { label: t('translation.status_rejected'), value: dashboard.value.byStatus['REJECTED'] ?? 0, color: 'text-red-500' },
   ]
 })
 
@@ -146,12 +143,11 @@ onMounted(() => {
 
 <template>
   <div class="space-y-4">
-    <!-- ダッシュボード統計 -->
     <div v-if="dashboard" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
       <Card class="text-center">
         <template #content>
           <div class="text-2xl font-bold text-primary">{{ dashboard.totalCount }}</div>
-          <div class="text-sm text-muted-color">総件数</div>
+          <div class="text-sm text-muted-color">{{ $t('translation.total_count') }}</div>
         </template>
       </Card>
       <Card v-for="item in statusCardItems" :key="item.label" class="text-center">
@@ -162,14 +158,13 @@ onMounted(() => {
       </Card>
     </div>
 
-    <!-- フィルタバー -->
     <div class="flex flex-wrap gap-3">
       <Select
         v-model="filterStatus"
         :options="statusOptions"
         option-label="label"
         option-value="value"
-        placeholder="ステータス"
+        :placeholder="$t('translation.placeholder_status')"
         class="w-40"
       />
       <Select
@@ -177,7 +172,7 @@ onMounted(() => {
         :options="languageOptions"
         option-label="label"
         option-value="value"
-        placeholder="言語"
+        :placeholder="$t('translation.placeholder_language')"
         class="w-40"
       />
       <Select
@@ -185,12 +180,11 @@ onMounted(() => {
         :options="sourceTypeOptions"
         option-label="label"
         option-value="value"
-        placeholder="コンテンツ種別"
+        :placeholder="$t('translation.placeholder_source_type')"
         class="w-48"
       />
     </div>
 
-    <!-- 一覧テーブル -->
     <DataTable
       :value="translations"
       :loading="loading"
@@ -198,58 +192,58 @@ onMounted(() => {
       class="w-full"
     >
       <template #empty>
-        <div class="py-8 text-center text-muted-color">翻訳データがありません</div>
+        <div class="py-8 text-center text-muted-color">{{ $t('translation.empty') }}</div>
       </template>
 
-      <Column field="sourceType" header="種別" style="width: 130px">
+      <Column field="sourceType" :header="$t('translation.column_source_type')" style="width: 130px">
         <template #body="{ data }">
           {{ sourceTypeLabels[data.sourceType as TranslationSourceType] ?? data.sourceType }}
         </template>
       </Column>
 
-      <Column field="sourceTitle" header="タイトル">
+      <Column field="sourceTitle" :header="$t('translation.column_title')">
         <template #body="{ data }">
           <span class="font-medium">{{ data.sourceTitle }}</span>
         </template>
       </Column>
 
-      <Column field="targetLanguage" header="翻訳言語" style="width: 100px">
+      <Column field="targetLanguage" :header="$t('translation.column_language')" style="width: 100px">
         <template #body="{ data }">
           <span class="uppercase">{{ data.targetLanguage }}</span>
         </template>
       </Column>
 
-      <Column field="status" header="ステータス" style="width: 130px">
+      <Column field="status" :header="$t('translation.column_status')" style="width: 130px">
         <template #body="{ data }">
           <TranslationStatusBadge :status="data.status" />
         </template>
       </Column>
 
-      <Column field="updatedAt" header="更新日" style="width: 110px">
+      <Column field="updatedAt" :header="$t('translation.column_updated_at')" style="width: 110px">
         <template #body="{ data }">
           {{ formatDate(data.updatedAt) }}
         </template>
       </Column>
 
-      <Column header="操作" style="width: 160px">
+      <Column :header="$t('translation.column_actions')" style="width: 160px">
         <template #body="{ data }">
           <div class="flex gap-2">
             <Button
               v-if="data.status === 'DRAFT' || data.status === 'IN_REVIEW'"
-              label="承認"
+              :label="$t('translation.button_approve')"
               size="small"
               severity="info"
               @click="onApprove(data)"
             />
             <Button
               v-if="data.status === 'APPROVED'"
-              label="公開"
+              :label="$t('translation.button_publish')"
               size="small"
               severity="success"
               @click="onPublish(data)"
             />
             <Button
-              label="詳細"
+              :label="$t('translation.button_detail')"
               size="small"
               severity="secondary"
               outlined
@@ -259,7 +253,6 @@ onMounted(() => {
       </Column>
     </DataTable>
 
-    <!-- ページネーション -->
     <Paginator
       :rows="pageSize"
       :total-records="totalRecords"

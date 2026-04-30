@@ -8,7 +8,7 @@ const orgId = computed(() => Number(route.params.id))
 <template>
   <div class="p-4">
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-xl font-bold">翻訳管理</h1>
+      <h1 class="text-xl font-bold">{{ $t('translation.title') }}</h1>
     </div>
     <TranslationList :org-id="orgId" />
   </div>

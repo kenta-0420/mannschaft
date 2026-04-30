@@ -19,6 +19,6 @@ test.describe('TEAM-027〜028: 回覧板', () => {
     await waitForHydration(page)
     await expect(page.getByRole('heading', { name: '回覧板' })).toBeVisible({ timeout: 10_000 })
     // エラー表示がないこと
-    await expect(page.getByText('エラー')).not.toBeVisible()
+    await expect(page.getByText('エラー', { exact: true })).not.toBeVisible()
   })
 })

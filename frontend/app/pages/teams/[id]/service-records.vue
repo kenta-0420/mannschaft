@@ -1,13 +1,25 @@
 <script setup lang="ts">
+import type { ServiceRecordResponse } from '~/types/service'
+
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const teamId = Number(route.params.id)
 
-const { getRecords } = useServiceRecordApi()
-const { showError } = useNotification()
+const { getRecords, createRecord } = useServiceRecordApi()
+const notification = useNotification()
+const authStore = useAuthStore()
 
-const records = ref<Record<string, unknown>[]>([])
+const records = ref<ServiceRecordResponse[]>([])
 const loading = ref(false)
+
+const showCreateDialog = ref(false)
+const saving = ref(false)
+const form = ref({
+  targetUserId: authStore.currentUser?.id ?? 0,
+  serviceDate: new Date().toISOString().slice(0, 10),
+  title: '',
+  body: '',
+})
 
 async function load() {
   loading.value = true
@@ -15,9 +27,39 @@ async function load() {
     const res = await getRecords(teamId)
     records.value = res.data
   } catch {
-    showError('サービス履歴の取得に失敗しました')
+    notification.error('サービス履歴の取得に失敗しました')
   } finally {
     loading.value = false
+  }
+}
+
+function openCreateDialog() {
+  form.value = {
+    targetUserId: authStore.currentUser?.id ?? 0,
+    serviceDate: new Date().toISOString().slice(0, 10),
+    title: '',
+    body: '',
+  }
+  showCreateDialog.value = true
+}
+
+async function handleCreate() {
+  if (!form.value.title.trim()) return
+  saving.value = true
+  try {
+    await createRecord(teamId, {
+      targetUserId: form.value.targetUserId,
+      serviceDate: form.value.serviceDate,
+      title: form.value.title,
+      body: form.value.body || undefined,
+    })
+    notification.success('サービス履歴を登録しました')
+    showCreateDialog.value = false
+    await load()
+  } catch {
+    notification.error('サービス履歴の登録に失敗しました')
+  } finally {
+    saving.value = false
   }
 }
 
@@ -28,7 +70,7 @@ onMounted(() => load())
   <div>
     <div class="mb-4 flex items-center justify-between">
       <PageHeader title="サービス履歴" />
-      <Button label="記録を追加" icon="pi pi-plus" />
+
     </div>
 
     <PageLoading v-if="loading" size="40px" />
@@ -63,5 +105,26 @@ onMounted(() => load())
         message="サービス履歴がありません"
       />
     </div>
+
+    <Dialog v-model:visible="showCreateDialog" modal header="サービス履歴を追加" :style="{ width: '28rem' }">
+      <div class="flex flex-col gap-4 py-2">
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium">タイトル <span class="text-red-500">*</span></label>
+          <InputText v-model="form.title" placeholder="例: カット・カラー" class="w-full" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium">施術日 <span class="text-red-500">*</span></label>
+          <InputText v-model="form.serviceDate" type="date" class="w-full" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium">詳細メモ</label>
+          <Textarea v-model="form.body" rows="3" class="w-full" />
+        </div>
+      </div>
+      <template #footer>
+        <Button label="キャンセル" text @click="showCreateDialog = false" :disabled="saving" />
+        <Button label="登録" icon="pi pi-check" :loading="saving" @click="handleCreate" />
+      </template>
+    </Dialog>
   </div>
 </template>

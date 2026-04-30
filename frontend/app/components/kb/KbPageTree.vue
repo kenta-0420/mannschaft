@@ -29,6 +29,27 @@ const searchQuery = ref('')
 const activeTab = ref<'tree' | 'recent' | 'pinned' | 'favorites'>('tree')
 const expandedNodes = ref<Set<number>>(new Set())
 
+// Filter state
+const showFilter = ref(false)
+const filterAuthor = ref('')
+const filterStatus = ref<string | null>(null)
+const filterDateFrom = ref<Date | null>(null)
+const filterDateTo = ref<Date | null>(null)
+
+const statusOptions = [
+  { label: '全て', value: null },
+  { label: '下書き', value: 'DRAFT' },
+  { label: '公開中', value: 'PUBLISHED' },
+  { label: 'アーカイブ', value: 'ARCHIVED' },
+]
+
+function clearFilter() {
+  filterAuthor.value = ''
+  filterStatus.value = null
+  filterDateFrom.value = null
+  filterDateTo.value = null
+}
+
 // Build tree structure from flat list
 interface TreeNode {
   page: KbPageSummaryResponse
@@ -54,12 +75,25 @@ const pageTree = computed<TreeNode[]>(() => {
   return buildChildren(null)
 })
 
+function highlightText(text: string, query: string): string {
+  if (!query.trim()) return text
+  // XSS対策: テキストをHTMLエスケープしてから<mark>タグのみ挿入
+  const safeText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return safeText.replace(new RegExp(`(${escapedQuery})`, 'gi'), '<mark>$1</mark>')
+}
+
 async function loadPages() {
   loading.value = true
   try {
     let res: { data: KbPageSummaryResponse[] }
     if (searchQuery.value.trim()) {
-      res = await searchPages(props.scopeId, searchQuery.value.trim())
+      const params: Record<string, string> = { q: searchQuery.value.trim() }
+      if (filterAuthor.value) params.author = filterAuthor.value
+      if (filterStatus.value) params.status = filterStatus.value
+      if (filterDateFrom.value) params.date_from = filterDateFrom.value.toISOString().slice(0, 10)
+      if (filterDateTo.value) params.date_to = filterDateTo.value.toISOString().slice(0, 10)
+      res = await searchPages(props.scopeId, params)
     } else if (activeTab.value === 'recent') {
       res = await getRecentPages(props.scopeId)
     } else if (activeTab.value === 'pinned') {
@@ -113,14 +147,74 @@ defineExpose({ refresh: () => loadPages() })
 <template>
   <div>
     <!-- Header -->
-    <div class="mb-4 flex flex-wrap items-center gap-3">
+    <div class="mb-2 flex flex-wrap items-center gap-3">
       <InputText v-model="searchQuery" placeholder="ページを検索..." class="w-48" />
+      <Button
+        :label="showFilter ? 'フィルタ▲' : 'フィルタ▼'"
+        text
+        size="small"
+        @click="showFilter = !showFilter"
+      />
       <div class="ml-auto flex items-center gap-2">
         <Button
           v-if="canManage"
           label="新規ページ"
           icon="pi pi-plus"
           @click="emit('create')"
+        />
+      </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div v-if="showFilter" class="mb-4 rounded-xl border border-surface-300 bg-surface-50 p-4 dark:border-surface-600 dark:bg-surface-800">
+      <div class="flex flex-wrap gap-4">
+        <div class="min-w-40 flex-1">
+          <label class="mb-1 block text-xs font-medium text-surface-500">作成者</label>
+          <InputText
+            v-model="filterAuthor"
+            placeholder="ユーザー名で絞り込み"
+            class="w-full"
+            size="small"
+          />
+        </div>
+        <div class="min-w-40 flex-1">
+          <label class="mb-1 block text-xs font-medium text-surface-500">ステータス</label>
+          <Select
+            v-model="filterStatus"
+            :options="statusOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+          />
+        </div>
+        <div class="min-w-36 flex-1">
+          <label class="mb-1 block text-xs font-medium text-surface-500">期間 From</label>
+          <DatePicker
+            v-model="filterDateFrom"
+            date-format="yy/mm/dd"
+            placeholder="2024/01/01"
+            class="w-full"
+            show-icon
+          />
+        </div>
+        <div class="min-w-36 flex-1">
+          <label class="mb-1 block text-xs font-medium text-surface-500">期間 To</label>
+          <DatePicker
+            v-model="filterDateTo"
+            date-format="yy/mm/dd"
+            placeholder="2024/12/31"
+            class="w-full"
+            show-icon
+          />
+        </div>
+      </div>
+      <div class="mt-3 flex justify-end">
+        <Button
+          label="フィルタをクリア"
+          text
+          size="small"
+          icon="pi pi-times"
+          @click="clearFilter"
         />
       </div>
     </div>
@@ -193,7 +287,8 @@ defineExpose({ refresh: () => loadPages() })
             </span>
           </div>
 
-          <h3 class="text-sm font-semibold">{{ page.title }}</h3>
+          <!-- eslint-disable-next-line vue/no-v-html -->
+          <h3 class="text-sm font-semibold" v-html="highlightText(page.title, searchQuery)" />
 
           <div class="mt-1 flex items-center gap-3 text-xs text-surface-400">
             <span>{{ relativeTime(page.updatedAt) }}</span>

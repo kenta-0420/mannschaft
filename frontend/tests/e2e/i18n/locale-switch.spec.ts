@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 
+test.use({ storageState: { cookies: [], origins: [] } })
+
 const MOCK_PROFILE = {
   data: {
     id: 1,

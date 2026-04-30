@@ -34,6 +34,14 @@ const schema = toTypedSchema(
 
 const { defineField, handleSubmit, errors } = useForm({
   validationSchema: schema,
+  initialValues: {
+    email: '',
+    password: '',
+    lastName: '',
+    firstName: '',
+    displayName: '',
+    postalCode: '',
+  },
 })
 
 const [email, emailProps] = defineField('email')
@@ -76,6 +84,7 @@ const onSubmit = handleSubmit(async (values) => {
 
 <template>
   <form
+    novalidate
     @submit.prevent="submitted = true; onSubmit()"
   >
     <div class="flex flex-col gap-4">
@@ -95,7 +104,7 @@ const onSubmit = handleSubmit(async (values) => {
       <div class="flex flex-col gap-2">
         <label for="password">パスワード <span class="text-red-500">※</span></label>
         <Password
-          id="password"
+          input-id="password"
           v-model="password"
           v-bind="passwordProps"
           :feedback="true"

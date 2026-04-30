@@ -12,7 +12,8 @@ const emit = defineEmits<{
   clickPost: [postId: number]
 }>()
 
-const { getFeed, addBookmark, removeBookmark, pinPost, deletePost } = useTimelineApi()
+const { getFeed, addReaction, removeReaction, addBookmark, removeBookmark, pinPost, deletePost, createReply, repost } =
+  useTimelineApi()
 const { showSuccess, showError } = useNotification()
 
 const pinnedPosts = ref<TimelinePostResponse[]>([])
@@ -21,6 +22,15 @@ const nextCursor = ref<number | null>(null)
 const hasNext = ref(false)
 const loading = ref(false)
 const initialLoaded = ref(false)
+
+// --- 返信フォーム ---
+const replyTargetId = ref<number | null>(null)
+const replyContent = ref('')
+const replySubmitting = ref(false)
+
+// --- リポスト確認 ---
+const repostTargetId = ref<number | null>(null)
+const repostSubmitting = ref(false)
 
 async function loadFeed(cursor?: number) {
   loading.value = true
@@ -99,6 +109,57 @@ async function onDelete(postId: number) {
   }
 }
 
+// --- 返信 ---
+function onReply(postId: number) {
+  replyTargetId.value = postId
+  replyContent.value = ''
+}
+
+function cancelReply() {
+  replyTargetId.value = null
+  replyContent.value = ''
+}
+
+async function submitReply() {
+  if (!replyTargetId.value || !replyContent.value.trim()) return
+  replySubmitting.value = true
+  try {
+    await createReply(replyTargetId.value, replyContent.value.trim())
+    showSuccess('返信しました')
+    replyTargetId.value = null
+    replyContent.value = ''
+    refresh()
+  } catch {
+    showError('返信に失敗しました')
+  } finally {
+    replySubmitting.value = false
+  }
+}
+
+// --- リポスト ---
+function onRepost(postId: number) {
+  repostTargetId.value = postId
+}
+
+function cancelRepost() {
+  repostTargetId.value = null
+}
+
+async function confirmRepost() {
+  if (!repostTargetId.value) return
+  repostSubmitting.value = true
+  try {
+    await repost(repostTargetId.value)
+    showSuccess('リポストしました')
+    repostTargetId.value = null
+    refresh()
+  } catch {
+    showError('リポストに失敗しました')
+  } finally {
+    repostSubmitting.value = false
+  }
+}
+
 function refresh() {
   loadFeed()
 }
@@ -121,6 +182,8 @@ defineExpose({ refresh })
       @bookmark="onBookmark"
       @pin="onPin"
       @delete="onDelete"
+      @reply="onReply"
+      @repost="onRepost"
       @click-post="(id) => emit('clickPost', id)"
     />
 
@@ -135,6 +198,8 @@ defineExpose({ refresh })
       @bookmark="onBookmark"
       @pin="onPin"
       @delete="onDelete"
+      @reply="onReply"
+      @repost="onRepost"
       @click-post="(id) => emit('clickPost', id)"
     />
 
@@ -157,4 +222,50 @@ defineExpose({ refresh })
       <ProgressSpinner style="width: 40px; height: 40px" />
     </div>
   </div>
+
+  <!-- 返信フォームダイアログ -->
+  <Dialog
+    :visible="replyTargetId !== null"
+    modal
+    header="返信する"
+    :style="{ width: '480px' }"
+    @update:visible="(v) => { if (!v) cancelReply() }"
+  >
+    <Textarea
+      v-model="replyContent"
+      placeholder="返信を入力..."
+      auto-resize
+      rows="3"
+      class="w-full"
+    />
+    <template #footer>
+      <Button label="キャンセル" severity="secondary" text @click="cancelReply" />
+      <Button
+        label="返信"
+        :loading="replySubmitting"
+        :disabled="!replyContent.trim()"
+        @click="submitReply"
+      />
+    </template>
+  </Dialog>
+
+  <!-- リポスト確認ダイアログ -->
+  <Dialog
+    :visible="repostTargetId !== null"
+    modal
+    header="リポスト"
+    :style="{ width: '360px' }"
+    @update:visible="(v) => { if (!v) cancelRepost() }"
+  >
+    <p class="text-sm text-surface-600">この投稿をリポストしますか？</p>
+    <template #footer>
+      <Button label="キャンセル" severity="secondary" text @click="cancelRepost" />
+      <Button
+        label="リポストする"
+        severity="success"
+        :loading="repostSubmitting"
+        @click="confirmRepost"
+      />
+    </template>
+  </Dialog>
 </template>

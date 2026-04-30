@@ -5,16 +5,19 @@ const props = defineProps<{
   status: TranslationStatus
 }>()
 
-const badgeMap: Record<TranslationStatus, { severity: string; label: string }> = {
-  DRAFT: { severity: 'secondary', label: '下書き' },
-  IN_REVIEW: { severity: 'warn', label: 'レビュー中' },
-  APPROVED: { severity: 'info', label: '承認済み' },
-  PUBLISHED: { severity: 'success', label: '公開中' },
-  STALE: { severity: 'warn', label: '要更新' },
-  REJECTED: { severity: 'danger', label: '却下' },
-}
+const { t } = useI18n()
 
-const badge = computed(() => badgeMap[props.status] ?? { severity: 'secondary', label: props.status })
+const badge = computed(() => {
+  const map: Record<TranslationStatus, { severity: string; label: string }> = {
+    DRAFT: { severity: 'secondary', label: t('translation.status_draft') },
+    IN_REVIEW: { severity: 'warn', label: t('translation.status_in_review') },
+    APPROVED: { severity: 'info', label: t('translation.status_approved') },
+    PUBLISHED: { severity: 'success', label: t('translation.status_published') },
+    STALE: { severity: 'warn', label: t('translation.status_stale') },
+    REJECTED: { severity: 'danger', label: t('translation.status_rejected') },
+  }
+  return map[props.status] ?? { severity: 'secondary', label: props.status }
+})
 </script>
 
 <template>
