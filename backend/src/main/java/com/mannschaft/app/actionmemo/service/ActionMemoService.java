@@ -559,11 +559,8 @@ public class ActionMemoService {
             if (moodEnabled && memo.getMood() != null) {
                 sb.append(moodEmoji(memo.getMood())).append(" ");
             }
-            // createdAt は JST に変換して HH:mm を取り出す
             String hhmm = memo.getCreatedAt() != null
-                    ? memo.getCreatedAt().atZone(ZoneId.systemDefault())
-                        .withZoneSameInstant(ZONE_JST)
-                        .format(MEMO_TIME_FORMATTER)
+                    ? memo.getCreatedAt().format(MEMO_TIME_FORMATTER)
                     : "";
             if (!hhmm.isEmpty()) {
                 sb.append(hhmm).append(" ");
@@ -758,9 +755,7 @@ public class ActionMemoService {
 
         // [HH:MM] {content}
         if (memo.getCreatedAt() != null) {
-            String hhmm = memo.getCreatedAt().atZone(ZoneId.systemDefault())
-                    .withZoneSameInstant(ZONE_JST)
-                    .format(MEMO_TIME_FORMATTER);
+            String hhmm = memo.getCreatedAt().format(MEMO_TIME_FORMATTER);
             sb.append("[").append(hhmm).append("] ");
         }
         sb.append(memo.getContent()).append("\n");
