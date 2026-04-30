@@ -47,7 +47,7 @@
 3. **`/出陣`** — 足軽を `Agent(isolation:"worktree")` で起動、実装
 4. **`/検分`** — 成果物のレビュー
 
-**開発作業（実装・修正・調査・テスト）は原則として必ず大名システム（Agent サブエージェント）経由で実行すること。** メインの作業ディレクトリ `D:\mannschaft` で直接コーディング・コミットする運用は禁止。
+**開発作業（実装・修正・調査・テスト）は原則として必ず大名システム（Agent サブエージェント）経由で実行すること。** メインの作業ディレクトリ `C:\Claude\mannschaft` で直接コーディング・コミットする運用は禁止。
 
 ### なぜ必須なのか
 
@@ -76,7 +76,7 @@
 - 同じ作業ディレクトリで複数の Claude セッションを動かす運用は **絶対に避ける**（HEAD 衝突で作業が破壊される）
 - worktree 内で commit が完了したら、メインリポジトリに `git merge` でマージする
 
-詳細: `~/.claude/projects/D--mannschaft/memory/feedback_branch_isolation.md`
+詳細: `~/.claude/projects/C--Claude-mannschaft/memory/feedback_branch_isolation.md`
 
 ---
 
@@ -172,7 +172,7 @@
 ## 禁止事項
 
 - `main` ブランチへの直接コミット
-- **メインの作業ディレクトリ `D:\mannschaft` で大規模実装を直接行うこと**（並列セッションとの HEAD 衝突を防ぐため、必ず大名システム経由で worktree 隔離する）
+- **メインの作業ディレクトリ `C:\Claude\mannschaft` で大規模実装を直接行うこと**（並列セッションとの HEAD 衝突を防ぐため、必ず大名システム経由で worktree 隔離する）
 - **対処療法でバグを切り抜けること**（障害対応の原則を参照）
 - TypeScript の `any` 使用（原則禁止）
 - `types/generated/` への直接編集（未導入だが、今後導入した場合も自動生成ファイルは手動編集禁止）

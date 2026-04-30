@@ -30,6 +30,7 @@
 - [API設計](#api設計)
 - [実装フェーズ](#実装フェーズ)
 - [インフラ構成](#インフラ構成)
+- [開発環境セットアップ](#開発環境セットアップ)
 - [アーキテクチャ・開発ガイドライン](#アーキテクチャ開発ガイドライン)
 - [Git運用ルール](#git運用ルール)
 
@@ -921,6 +922,150 @@
 - 全シークレットは環境変数管理
 - WAR パッケージングへの変更も容易
 - 決済機能導入時にはセキュリティ要件の追加検討
+
+---
+
+## 開発環境セットアップ
+
+### 前提条件
+
+| ツール | 場所 | 備考 |
+|---|---|---|
+| WSL2 + Ubuntu 24.04 | Windows 機能 | `wsl --install -d Ubuntu-24.04` |
+| Docker Engine | WSL2 内 | Docker Desktop 不使用。WSL2 内に直接インストール |
+| Java 21 JDK | WSL2 内 | Spring Boot の起動に必要 |
+| Node.js 20+ | WSL2 内 or Windows | フロントエンド開発サーバー用 |
+| Git | Windows or WSL2 | リポジトリ管理 |
+
+VSCode に Spring Boot をインストールする必要はない。Spring Boot は Gradle でビルドして `java -jar` で起動するフレームワークであり、IDE 拡張は任意。
+
+### WSL2 内 Docker のセットアップ（初回のみ）
+
+```bash
+# WSL2 Ubuntu 内で実行
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+# ターミナルを再起動後に確認
+docker ps
+```
+
+### Java 21 のインストール（WSL2 内）
+
+```bash
+sudo apt update && sudo apt install -y openjdk-21-jdk
+java -version  # openjdk 21 が表示されれば OK
+```
+
+### Node.js のインストール（WSL2 内）
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v  # v20.x が表示されれば OK
+```
+
+### Docker サービスの起動
+
+`docker-compose.yml` は Windows 側のリポジトリルートにあるが、WSL2 内からマウントパス経由で起動する。
+
+```bash
+# WSL2 内で実行（/mnt/c/... でリポジトリにアクセス）
+cd /mnt/c/Claude/mannschaft
+docker compose up -d
+docker ps  # mannschaft-mysql と mannschaft-valkey が Running であれば OK
+```
+
+### application-local.yml の作成（初回のみ・gitignore 対象）
+
+`backend/src/main/resources/application-local.yml` は `.gitignore` で管理されていないため、新環境では手動作成が必要。
+
+```bash
+# WSL2 内で実行
+cat > /mnt/c/Claude/mannschaft/backend/src/main/resources/application-local.yml << 'EOF'
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/mannschaft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Tokyo
+    username: mannschaft
+    password: mannschaft
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  flyway:
+    validate-on-migrate: false
+    ignore-migration-patterns: "*:missing"
+
+mannschaft:
+  encryption:
+    key: <openssl rand -base64 32 の出力>
+    hmac-key: <openssl rand -base64 32 の出力>
+EOF
+```
+
+暗号化キーは必ず以下で生成する（**hex 64 文字では起動失敗**する）:
+
+```bash
+openssl rand -base64 32  # → 44文字の Base64 文字列
+```
+
+### Spring Boot のビルドと起動
+
+Spring Boot は **WSL2 内から起動する**こと（Docker コンテナの MySQL に `localhost:3306` で接続するため）。
+
+```bash
+# Windows 側で Gradle ビルド（JAR 生成）
+cd C:\Claude\mannschaft\backend
+./gradlew bootJar
+
+# WSL2 内で起動
+wsl -d Ubuntu-24.04 -- bash -c "
+  java -Xmx1g -XX:+UseG1GC \
+    -jar /mnt/c/Claude/mannschaft/backend/build/libs/app-0.0.1-SNAPSHOT.jar \
+    >> /mnt/c/Claude/mannschaft/backend/logs/app.log 2>&1 &
+"
+# 起動確認（Flyway マイグレーション数が多いため 2〜3 分かかる場合あり）
+curl -s http://localhost:8080/actuator/health
+```
+
+### フロントエンド開発サーバーの起動
+
+```bash
+cd frontend
+npm install  # 初回のみ
+npm run dev  # http://localhost:3000
+```
+
+### よく使うコマンド早見表
+
+```bash
+# Docker 起動・停止
+docker compose up -d
+docker compose down
+
+# バックエンドビルド（テスト込み）
+cd backend && ./gradlew build
+
+# バックエンドテストのみ
+cd backend && ./gradlew test
+
+# フロントエンドユニットテスト
+cd frontend && npm run test:unit
+
+# フロントエンド lint
+cd frontend && npm run lint
+```
+
+### カスタムスキル（Claude Code）
+
+| スキル | 用途 |
+|---|---|
+| `/陣立て` | 開発環境の起動（WSL2 + Docker + ビルド確認）|
+| `/陣触れ` | フロントエンド（Nuxt）開発サーバー起動 |
+| `/伝令` | Spring Boot 起動 + swagger.json 取得 |
+| `/出陣` | 機能実装の実行 |
+| `/軍議` | 設計・タスク分解 |
+| `/検分` | コードレビュー・品質チェック |
+| `/撤収` | 開発環境の終了 |
 
 ---
 

@@ -94,7 +94,7 @@ APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s\n' "$PWD" ) || exi
 case "$(uname 2>/dev/null)" in
     MINGW*|MSYS*|CYGWIN*)
         if [ -z "${GRADLE_USER_HOME:-}" ] || echo "${GRADLE_USER_HOME}" | grep -qP '[^\x00-\x7F]'; then
-            export GRADLE_USER_HOME="D:/gradle-home"
+            export GRADLE_USER_HOME="C:/gradle-home"
         fi
         ;;
 esac
