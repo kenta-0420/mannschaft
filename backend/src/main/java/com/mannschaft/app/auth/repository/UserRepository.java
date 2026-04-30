@@ -45,6 +45,8 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @org.springframework.data.jpa.repository.Query("SELECT u FROM UserEntity u WHERE u.displayName LIKE %:keyword% OR u.email LIKE %:keyword%")
     java.util.List<UserEntity> searchByKeyword(@org.springframework.data.repository.query.Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
 
+    long countByStatus(UserEntity.UserStatus status);
+
     long countByLastLoginAtAfterAndStatusAndDeletedAtIsNull(LocalDateTime since, UserEntity.UserStatus status);
 
     // === Analytics 集計用クエリ ===
