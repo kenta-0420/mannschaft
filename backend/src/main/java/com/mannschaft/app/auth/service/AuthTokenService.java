@@ -203,6 +203,14 @@ public class AuthTokenService {
     }
 
     /**
+     * ユーザーの無効化タイムスタンプを削除する（退会取り消し時に使用）。
+     */
+    public void clearUserInvalidationTimestamp(Long userId) {
+        String key = USER_INVALIDATED_KEY_PREFIX + userId;
+        redisTemplate.delete(key);
+    }
+
+    /**
      * JTIがブラックリストに登録されているかチェックする。
      *
      * @param jti JTI（JWT ID）

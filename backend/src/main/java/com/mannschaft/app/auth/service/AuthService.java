@@ -124,9 +124,13 @@ public class AuthService {
         String rateLimitKey = "mannschaft:auth:register_attempt:" + ipAddress;
         authTokenService.checkRateLimit(rateLimitKey, REGISTER_MAX_ATTEMPTS, REGISTER_WINDOW);
 
-        // 2. email重複チェック
+        // 2. email重複チェック（論理削除済みユーザーも含めて確認）
         if (userRepository.existsByEmail(req.getEmail())) {
             throw new BusinessException(AuthErrorCode.AUTH_004);
+        }
+        Optional<UserEntity> deletedUserOpt = userRepository.findByEmailIncludingDeleted(req.getEmail());
+        if (deletedUserOpt.isPresent() && deletedUserOpt.get().getDeletedAt() != null) {
+            throw new BusinessException(AuthErrorCode.AUTH_041);
         }
 
         // 3. パスワードポリシー検証
@@ -273,12 +277,32 @@ public class AuthService {
 
         // 2. ユーザー検索（不在でもダミーbcrypt検証 → タイミング攻撃対策）
         Optional<UserEntity> userOpt = userRepository.findByEmail(req.getEmail());
+        boolean reactivated = false;
         if (userOpt.isEmpty()) {
-            // タイミング攻撃対策: ダミーのbcrypt検証を実行して処理時間を合わせる
-            passwordEncoder.matches(req.getPassword(), "$2a$12$000000000000000000000uGHJKLMNOPQRSTUVWXYZ012345678901");
-            eventPublisher.publish(new LoginFailedEvent(
-                    req.getEmail(), ipAddress, userAgent, "USER_NOT_FOUND"));
-            throw new BusinessException(AuthErrorCode.AUTH_009);
+            // 退会処理中アカウントの確認（@SQLRestriction バイパス）
+            Optional<UserEntity> pendingDeletionOpt = userRepository.findByEmailIncludingDeleted(req.getEmail());
+            if (pendingDeletionOpt.isPresent() && pendingDeletionOpt.get().getDeletedAt() != null) {
+                UserEntity pendingUser = pendingDeletionOpt.get();
+                if (passwordEncoder.matches(req.getPassword(), pendingUser.getPasswordHash())) {
+                    // 正しいパスワード → 退会取り消しして通常ログインへ
+                    pendingUser.cancelDeletion();
+                    userRepository.save(pendingUser);
+                    authTokenService.clearUserInvalidationTimestamp(pendingUser.getId());
+                    log.info("ユーザー[{}]が退会処理中にログインしたため退会を自動取り消しました", pendingUser.getId());
+                    userOpt = Optional.of(pendingUser);
+                    reactivated = true;
+                } else {
+                    eventPublisher.publish(new LoginFailedEvent(
+                            req.getEmail(), ipAddress, userAgent, "PENDING_DELETION_WRONG_PW"));
+                    throw new BusinessException(AuthErrorCode.AUTH_009);
+                }
+            } else {
+                // タイミング攻撃対策: ダミーのbcrypt検証を実行して処理時間を合わせる
+                passwordEncoder.matches(req.getPassword(), "$2a$12$000000000000000000000uGHJKLMNOPQRSTUVWXYZ012345678901");
+                eventPublisher.publish(new LoginFailedEvent(
+                        req.getEmail(), ipAddress, userAgent, "USER_NOT_FOUND"));
+                throw new BusinessException(AuthErrorCode.AUTH_009);
+            }
         }
 
         UserEntity user = userOpt.get();
@@ -333,7 +357,7 @@ public class AuthService {
         }
 
         // 8. トークン発行（2FA無効の場合）
-        return ApiResponse.of(issueLoginTokens(user, req, ipAddress, userAgent));
+        return ApiResponse.of(issueLoginTokens(user, req, ipAddress, userAgent, reactivated));
     }
 
     // ========================================
@@ -819,7 +843,7 @@ public class AuthService {
      * Access Token + Refresh Token を生成し、DBに保存する。
      */
     private LoginResponse issueLoginTokens(UserEntity user, LoginRequest req,
-                                           String ipAddress, String userAgent) {
+                                           String ipAddress, String userAgent, boolean reactivated) {
         // Access Token発行
         String accessToken = authTokenService.issueAccessToken(user.getId(), List.of("MEMBER"));
 
@@ -868,6 +892,6 @@ public class AuthService {
                 user.getDisplayName(),
                 user.getEmail(),
                 pendingDeletionUntil,
-                false);
+                reactivated);
     }
 }

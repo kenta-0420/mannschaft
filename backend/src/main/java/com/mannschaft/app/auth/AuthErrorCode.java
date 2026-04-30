@@ -130,7 +130,10 @@ public enum AuthErrorCode implements ErrorCode {
     AUTH_038("AUTH_038", "このセッションは既にログアウトされています", Severity.WARN),
 
     /** ユーザーの全トークン無効化後のアクセス（全デバイスログアウト後） */
-    AUTH_039("AUTH_039", "全デバイスのセッションが無効化されています", Severity.WARN);
+    AUTH_039("AUTH_039", "全デバイスのセッションが無効化されています", Severity.WARN),
+
+    /** 退会処理中のメールアドレスで登録しようとした */
+    AUTH_041("AUTH_041", "このメールアドレスは退会処理中のアカウントで使用されています。ログインすると退会を取り消して再利用できます", Severity.WARN);
 
     private final String code;
     private final String message;

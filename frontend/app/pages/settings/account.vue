@@ -7,11 +7,15 @@ const showDeletionPreviewDialog = ref(false)
 const api = useApi()
 const notification = useNotification()
 
-async function handleDeleteAccount() {
+async function handleDeleteAccount(currentPassword: string | null) {
   try {
-    await api('/api/v1/users/me', { method: 'DELETE' })
+    await api('/api/v1/users/me', {
+      method: 'DELETE',
+      body: { currentPassword: currentPassword ?? null },
+    })
+    notification.success('アカウントを削除しました。ご利用ありがとうございました。')
     authStore.logout()
-    navigateTo('/login')
+    setTimeout(() => navigateTo('/login'), 2000)
   } catch {
     notification.error('アカウントの削除に失敗しました')
   }
@@ -270,6 +274,7 @@ onMounted(async () => {
 
       <SettingsDeletionPreviewDialog
         v-model:visible="showDeletionPreviewDialog"
+        :has-password="profile.hasPassword"
         @confirmed="handleDeleteAccount"
       />
     </div>

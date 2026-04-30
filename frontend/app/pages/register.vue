@@ -18,7 +18,17 @@ const schema = toTypedSchema(
       .string()
       .min(1, 'メールアドレスは必須です')
       .email('有効なメールアドレスを入力してください'),
-    password: z.string().min(8, 'パスワードは8文字以上で入力してください'),
+    password: z
+      .string()
+      .min(8, 'パスワードは8文字以上で入力してください')
+      .refine((val) => {
+        let count = 0
+        if (/[A-Z]/.test(val)) count++
+        if (/[a-z]/.test(val)) count++
+        if (/[0-9]/.test(val)) count++
+        if (/[^A-Za-z0-9]/.test(val)) count++
+        return count >= 3
+      }, '大文字・小文字・数字・記号のうち3種以上含めてください'),
     lastName: z.string().min(1, '姓は必須です').max(50, '姓は50文字以内で入力してください'),
     firstName: z.string().min(1, '名は必須です').max(50, '名は50文字以内で入力してください'),
     displayName: z
@@ -73,9 +83,14 @@ const onSubmit = handleSubmit(async (values) => {
     notification.success('登録が完了しました。メールをご確認ください。')
     navigateTo(`/verify-email?email=${encodeURIComponent(values.email)}`)
   } catch (e: unknown) {
-    const err = e as { data?: { error?: { message?: string } } }
+    const err = e as { data?: { error?: { code?: string; message?: string } } }
+    const code = err?.data?.error?.code
     const message = err?.data?.error?.message || 'しばらく時間をおいて再度お試しください。'
-    notification.error('登録に失敗しました', message)
+    if (code === 'AUTH_041') {
+      notification.error('このメールアドレスは使用できません', message + '　→ ログインして退会を取り消してください。')
+    } else {
+      notification.error('登録に失敗しました', message)
+    }
   } finally {
     loading.value = false
   }
@@ -115,6 +130,9 @@ const onSubmit = handleSubmit(async (values) => {
         <small v-if="submitted && errors.password" class="text-red-500">{{
           errors.password
         }}</small>
+        <small class="text-surface-500">
+          8文字以上、大文字・小文字・数字・記号のうち3種以上を含めてください。
+        </small>
         <small class="text-surface-400">パスワードは暗号化された状態で保存されます。</small>
       </div>
 

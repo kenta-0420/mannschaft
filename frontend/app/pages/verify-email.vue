@@ -26,6 +26,7 @@ async function verifyToken() {
     })
     verified.value = true
     notification.success('メール認証が完了しました')
+    setTimeout(() => navigateTo('/login'), 2000)
   }
   catch {
     verifyError.value = true
