@@ -58,6 +58,7 @@ class RecruitmentListingServiceTest {
     private static final Long USER_ID = 1L;
     private static final Long CATEGORY_ID = 100L;
     private static final Long LISTING_ID = 200L;
+    private static final LocalDateTime BASE_TIME = LocalDateTime.now();
 
     // ========================================
     // create - §5.1 バリデーション
@@ -87,10 +88,10 @@ class RecruitmentListingServiceTest {
             CreateRecruitmentListingRequest request = new CreateRecruitmentListingRequest(
                     CATEGORY_ID, null, "test", null,
                     RecruitmentParticipationType.INDIVIDUAL,
-                    LocalDateTime.now().plusDays(2),
-                    LocalDateTime.now().plusDays(2).plusHours(2),
-                    LocalDateTime.now().plusDays(1),
-                    LocalDateTime.now().plusDays(1),
+                    BASE_TIME.plusDays(2),
+                    BASE_TIME.plusDays(2).plusHours(2),
+                    BASE_TIME.plusDays(1),
+                    BASE_TIME.plusDays(1),
                     5, 10, // capacity=5, minCapacity=10 → 不正
                     false, null,
                     RecruitmentVisibility.SCOPE_ONLY,
@@ -109,10 +110,10 @@ class RecruitmentListingServiceTest {
             CreateRecruitmentListingRequest request = new CreateRecruitmentListingRequest(
                     CATEGORY_ID, null, "test", null,
                     RecruitmentParticipationType.INDIVIDUAL,
-                    LocalDateTime.now().plusDays(2),
-                    LocalDateTime.now().plusDays(2).plusHours(2),
-                    LocalDateTime.now().plusDays(1),
-                    LocalDateTime.now().plusDays(1),
+                    BASE_TIME.plusDays(2),
+                    BASE_TIME.plusDays(2).plusHours(2),
+                    BASE_TIME.plusDays(1),
+                    BASE_TIME.plusDays(1),
                     10, 1,
                     true, null, // paymentEnabled=true, price=null
                     RecruitmentVisibility.SCOPE_ONLY,
@@ -171,10 +172,10 @@ class RecruitmentListingServiceTest {
         return new CreateRecruitmentListingRequest(
                 CATEGORY_ID, null, "test title", "desc",
                 RecruitmentParticipationType.INDIVIDUAL,
-                LocalDateTime.now().plusDays(2),
-                LocalDateTime.now().plusDays(2).plusHours(2),
-                LocalDateTime.now().plusDays(1),
-                LocalDateTime.now().plusDays(1),
+                BASE_TIME.plusDays(2),
+                BASE_TIME.plusDays(2).plusHours(2),
+                BASE_TIME.plusDays(1),
+                BASE_TIME.plusDays(1),
                 10, 1,
                 false, null,
                 RecruitmentVisibility.SCOPE_ONLY,
@@ -188,10 +189,10 @@ class RecruitmentListingServiceTest {
                 .categoryId(CATEGORY_ID)
                 .title("test")
                 .participationType(RecruitmentParticipationType.INDIVIDUAL)
-                .startAt(LocalDateTime.now().plusDays(2))
-                .endAt(LocalDateTime.now().plusDays(2).plusHours(2))
-                .applicationDeadline(LocalDateTime.now().plusDays(1))
-                .autoCancelAt(LocalDateTime.now().plusDays(1))
+                .startAt(BASE_TIME.plusDays(2))
+                .endAt(BASE_TIME.plusDays(2).plusHours(2))
+                .applicationDeadline(BASE_TIME.plusDays(1))
+                .autoCancelAt(BASE_TIME.plusDays(1))
                 .capacity(10)
                 .minCapacity(1)
                 .visibility(RecruitmentVisibility.SCOPE_ONLY)
