@@ -89,7 +89,7 @@ public class ProxyInputConsentService {
 
         // スコープを追加（OneToManyのcascade ALL で一括保存）
         List<ProxyInputConsentScopeEntity> scopeEntities = command.scopes().stream()
-                .map(scope -> ProxyInputConsentScopeEntity.create(null, scope))
+                .map(ProxyInputConsentScopeEntity::create)
                 .toList();
         consent.getScopes().addAll(scopeEntities);
 

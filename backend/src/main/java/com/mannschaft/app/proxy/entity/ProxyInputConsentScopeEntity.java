@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 /**
  * 同意書ごとの許可機能スコープエンティティ（F14.1）。
  * 代理入力を許可する機能の範囲を同意書単位で管理する。
+ * FKカラム proxy_input_consent_id は ProxyInputConsentEntity の @OneToMany @JoinColumn で管理。
  */
 @Entity
 @Table(name = "proxy_input_consent_scopes")
@@ -32,10 +33,6 @@ public class ProxyInputConsentScopeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    /** FK→proxy_input_consents.id */
-    @Column(nullable = false)
-    private Long proxyInputConsentId;
 
     /** 許可された機能スコープ。 */
     @Enumerated(EnumType.STRING)
@@ -52,10 +49,10 @@ public class ProxyInputConsentScopeEntity {
 
     /**
      * スコープエンティティのファクトリーメソッド。
+     * FKは親エンティティの @OneToMany @JoinColumn で自動設定される。
      */
-    public static ProxyInputConsentScopeEntity create(Long proxyInputConsentId, FeatureScope featureScope) {
+    public static ProxyInputConsentScopeEntity create(FeatureScope featureScope) {
         return ProxyInputConsentScopeEntity.builder()
-                .proxyInputConsentId(proxyInputConsentId)
                 .featureScope(featureScope)
                 .build();
     }
