@@ -5,8 +5,10 @@ import com.mannschaft.app.auth.dto.ConfirmPasswordResetRequest;
 import com.mannschaft.app.auth.dto.LoginRequest;
 import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.RegisterRequest;
+import com.mannschaft.app.auth.dto.ResendVerificationRequest;
 import com.mannschaft.app.auth.dto.SessionResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;
+import com.mannschaft.app.auth.dto.VerifyEmailRequest;
 import com.mannschaft.app.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -66,9 +68,9 @@ public class AuthLoginController {
     @Operation(summary = "メール認証トークン検証")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "認証成功")
     public ResponseEntity<ApiResponse<MessageResponse>> verifyEmail(
-            @RequestParam String token) {
+            @Valid @RequestBody VerifyEmailRequest req) {
 
-        return ResponseEntity.ok(authService.verifyEmail(token));
+        return ResponseEntity.ok(authService.verifyEmail(req.getToken()));
     }
 
     /**
@@ -78,9 +80,9 @@ public class AuthLoginController {
     @Operation(summary = "メール認証メール再送信")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再送信完了")
     public ResponseEntity<ApiResponse<MessageResponse>> resendVerificationEmail(
-            @RequestParam String email) {
+            @Valid @RequestBody ResendVerificationRequest req) {
 
-        return ResponseEntity.ok(authService.resendVerificationEmail(email));
+        return ResponseEntity.ok(authService.resendVerificationEmail(req.getEmail()));
     }
 
     /**

@@ -26,6 +26,7 @@ async function handleLogin() {
         email: string
         mfaRequired?: boolean
         mfaSessionToken?: string
+        reactivated?: boolean
       }
     }>('/api/v1/auth/login', {
       method: 'POST',
@@ -68,14 +69,19 @@ async function handleLogin() {
         })
       }
 
-      notification.success('ログイン成功')
-      const redirect = route.query.redirect as string
-      if (redirect) {
-        navigateTo(redirect)
-      } else if (authStore.isSystemAdmin) {
-        navigateTo('/system-admin')
+      if (data.data.reactivated) {
+        notification.success('ログインしました')
+        navigateTo('/account-restore')
       } else {
-        navigateTo('/')
+        notification.success('ログイン成功')
+        const redirect = route.query.redirect as string
+        if (redirect) {
+          navigateTo(redirect)
+        } else if (authStore.isSystemAdmin) {
+          navigateTo('/system-admin')
+        } else {
+          navigateTo('/')
+        }
       }
     }
   } catch {
