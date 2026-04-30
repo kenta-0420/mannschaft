@@ -56,17 +56,17 @@ public enum ReservationErrorCode implements ErrorCode {
     /** リマインダー上限超過 */
     MAX_REMINDERS_EXCEEDED("RESERVATION_015", "リマインダーは最大3件です", Severity.ERROR),
 
-    /** 臨時休業の日付範囲不正 */
-    INVALID_CLOSURE_DATE_RANGE("RESERVATION_016", "終了日は開始日以降の日付を指定してください", Severity.WARN),
-
     /** 臨時休業が見つからない */
-    CLOSURE_NOT_FOUND("RESERVATION_017", "臨時休業が見つかりません", Severity.WARN),
+    CLOSURE_NOT_FOUND("RESERVATION_016", "臨時休業が見つかりません", Severity.WARN),
 
     /** 臨時休業確認レコードが見つからない */
-    CLOSURE_CONFIRMATION_NOT_FOUND("RESERVATION_018", "臨時休業確認レコードが見つかりません", Severity.WARN),
+    CLOSURE_CONFIRMATION_NOT_FOUND("RESERVATION_017", "臨時休業確認レコードが見つかりません", Severity.WARN),
 
-    /** 臨時休業の時間帯指定不正 */
-    INVALID_CLOSURE_TIME_RANGE("RESERVATION_019", "休業時間帯は開始時刻と終了時刻を両方指定し、開始時刻は終了時刻より前である必要があります（時間単位 / HH:00 のみ）", Severity.WARN);
+    /** 臨時休業の日付範囲が不正 */
+    INVALID_CLOSURE_DATE_RANGE("RESERVATION_018", "終了日は開始日以降である必要があります", Severity.ERROR),
+
+    /** 臨時休業の時刻範囲が不正 */
+    INVALID_CLOSURE_TIME_RANGE("RESERVATION_019", "時刻範囲が不正です。開始・終了は両方指定し、整時（HH:00）かつ開始 < 終了である必要があります", Severity.ERROR);
 
     private final String code;
     private final String message;

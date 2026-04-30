@@ -75,4 +75,10 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      * 指定期間内のチームの予約件数を取得する。
      */
     long countByTeamIdAndBookedAtBetween(Long teamId, LocalDateTime from, LocalDateTime to);
+
+    /**
+     * 指定スロットIDリストに紐付くアクティブ予約を取得する（臨時休業通知用）。
+     */
+    List<ReservationEntity> findByReservationSlotIdInAndStatusIn(
+            List<Long> slotIds, List<ReservationStatus> statuses);
 }

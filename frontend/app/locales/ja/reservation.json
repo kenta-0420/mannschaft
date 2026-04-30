@@ -1,0 +1,107 @@
+{
+  "emergency_closure": {
+    "section": {
+      "period": "休業期間",
+      "template": "メッセージテンプレート",
+      "message_edit": "メッセージ編集",
+      "options": "オプション",
+      "preview": "影響する予約の確認",
+      "bulk_send": "一括送信",
+      "history": "送信履歴",
+      "confirmations": "確認状況"
+    },
+    "label": {
+      "start_date": "開始日",
+      "end_date": "終了日",
+      "partial_time": "一日のうち一部の時間帯のみ休業する",
+      "start_time": "開始時刻",
+      "end_time": "終了時刻",
+      "target_period": "対象期間",
+      "subject": "件名",
+      "body": "本文",
+      "cancel_reservations": "対象予約をキャンセルする"
+    },
+    "placeholder": {
+      "select": "選択してください",
+      "subject": "件名を入力してください",
+      "body": "本文を入力してください"
+    },
+    "hint": {
+      "all_day": "チェックを入れない場合は終日休業になります。複数日指定時は各日同じ時間帯が休業対象です",
+      "cancel_reservations": "チェックを入れると、対象期間の予約が自動的にキャンセル状態になります",
+      "press_check_preview": "「影響する予約を確認」ボタンを押して対象予約を確認してください"
+    },
+    "button": {
+      "today_only": "今日のみ",
+      "check_preview": "影響する予約を確認",
+      "bulk_send": "一括送信",
+      "view_confirmations": "確認状況を見る",
+      "send_confirm": "送信する"
+    },
+    "table": {
+      "patient_name": "患者名",
+      "datetime": "日時",
+      "status": "ステータス",
+      "sent_at": "送信日時",
+      "reason": "理由",
+      "count": "件数",
+      "confirmation_status": "確認状況",
+      "appointment_at": "予約日時",
+      "confirmed_header": "確認",
+      "reminder": "リマインド"
+    },
+    "message": {
+      "notify_count": "{count}件の予約に通知します",
+      "no_reservations": "対象期間に予約はありません",
+      "no_history": "送信履歴はありません",
+      "sent_count": "{count}件に送信しました",
+      "confirmed_count": "{confirmed}/{total}件確認済み"
+    },
+    "status": {
+      "confirmed": "確認済み",
+      "unconfirmed": "未確認",
+      "reminder_sent": "送信済み",
+      "reminder_not_sent": "未送信"
+    },
+    "dialog": {
+      "title": "送信確認",
+      "confirm_message": "以下の内容で一括送信します。よろしいですか？",
+      "cancel_warning": "※ 対象予約はキャンセルされます",
+      "label_period": "対象期間",
+      "label_subject": "件名"
+    },
+    "error": {
+      "time_range_required": "開始時刻と終了時刻を選択してください",
+      "time_range_order": "開始時刻は終了時刻より前にしてください",
+      "period_required": "期間を選択してください",
+      "preview_failed": "プレビューの取得に失敗しました",
+      "subject_required": "件名を入力してください",
+      "body_required": "本文を入力してください",
+      "send_failed": "送信に失敗しました",
+      "confirmations_failed": "確認状況の取得に失敗しました"
+    },
+    "template": {
+      "staff_sick": "先生体調不良",
+      "staff_sick_subject": "【重要】担当スタッフ体調不良による臨時休業のお知らせ",
+      "staff_sick_reason": "担当スタッフ体調不良",
+      "staff_sick_body": "いつもご利用いただきありがとうございます。\n\n誠に恐れ入りますが、担当スタッフの体調不良により、\n__PERIOD__の診療を休業とさせていただきます。\n\nご予約いただいておりましたお客様には大変ご迷惑をおかけし、深くお詫び申し上げます。\n\n改めてご予約いただけますようよろしくお願いいたします。",
+      "maintenance": "設備メンテナンス",
+      "maintenance_subject": "【重要】設備メンテナンスによる臨時休業のお知らせ",
+      "maintenance_reason": "設備メンテナンス",
+      "maintenance_body": "いつもご利用いただきありがとうございます。\n\n誠に恐れ入りますが、設備メンテナンスのため、\n__PERIOD__の診療を休業とさせていただきます。\n\nご不便をおかけして大変申し訳ございませんが、何卒ご理解いただけますようお願い申し上げます。\n\n改めてご予約いただけますようよろしくお願いいたします。",
+      "emergency": "天候・緊急事態",
+      "emergency_subject": "【重要】臨時休業のお知らせ",
+      "emergency_reason": "天候・緊急事態",
+      "emergency_body": "いつもご利用いただきありがとうございます。\n\n誠に恐れ入りますが、天候・緊急事態のため、\n__PERIOD__の診療を休業とさせていただきます。\n\nご予約いただいておりましたお客様には大変ご迷惑をおかけし、深くお詫び申し上げます。\n\n状況が改善次第、改めてご連絡させていただきます。",
+      "custom": "その他（手動入力）"
+    },
+    "reservation_status": {
+      "PENDING": "仮予約",
+      "CONFIRMED": "確定",
+      "COMPLETED": "完了",
+      "CANCELLED": "キャンセル",
+      "NO_SHOW": "無断不参加",
+      "REJECTED": "拒否"
+    }
+  }
+}
