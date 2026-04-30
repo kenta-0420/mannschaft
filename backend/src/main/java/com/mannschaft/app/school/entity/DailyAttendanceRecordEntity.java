@@ -1,15 +1,12 @@
 package com.mannschaft.app.school.entity;
 
+import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -28,11 +25,7 @@ import java.time.LocalTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(toBuilder = true)
-public class DailyAttendanceRecordEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class DailyAttendanceRecordEntity extends BaseEntity {
 
     @Column(nullable = false)
     private Long teamId;
@@ -68,17 +61,9 @@ public class DailyAttendanceRecordEntity {
     private Long recordedBy;
 
     private LocalDateTime recordedAt;
-    private LocalDateTime updatedAt;
 
     @PrePersist
-    protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        this.recordedAt = now;
-        this.updatedAt = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+    protected void onRecordCreate() {
+        this.recordedAt = LocalDateTime.now();
     }
 }
