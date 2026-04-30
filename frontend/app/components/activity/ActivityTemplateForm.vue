@@ -27,14 +27,16 @@ const description = ref('')
 const fields = ref<FieldRow[]>([])
 const saving = ref(false)
 
-const fieldTypeOptions = [
-  { label: 'テキスト', value: 'TEXT' },
-  { label: '数値', value: 'NUMBER' },
-  { label: '日付', value: 'DATE' },
-  { label: '選択', value: 'SELECT' },
-  { label: 'チェックボックス', value: 'CHECKBOX' },
-  { label: 'テキストエリア', value: 'TEXTAREA' },
-]
+const { t } = useI18n()
+
+const fieldTypeOptions = computed(() => [
+  { label: t('activity.template.field_type.TEXT'), value: 'TEXT' },
+  { label: t('activity.template.field_type.NUMBER'), value: 'NUMBER' },
+  { label: t('activity.template.field_type.DATE'), value: 'DATE' },
+  { label: t('activity.template.field_type.SELECT'), value: 'SELECT' },
+  { label: t('activity.template.field_type.CHECKBOX'), value: 'CHECKBOX' },
+  { label: t('activity.template.field_type.TEXTAREA'), value: 'TEXTAREA' },
+])
 
 function initForm() {
   if (props.template) {
@@ -88,7 +90,7 @@ function onFieldTypeChange(index: number) {
 
 async function handleSave() {
   if (!name.value.trim()) {
-    showError('テンプレート名は必須です')
+    showError(t('activity.template.name_required'))
     return
   }
   saving.value = true
@@ -115,11 +117,11 @@ async function handleSave() {
     } else {
       await createTemplate(body)
     }
-    showSuccess('テンプレートを保存しました')
+    showSuccess(t('activity.template.save_success'))
     emit('saved')
     emit('update:visible', false)
   } catch {
-    showError('テンプレートの保存に失敗しました')
+    showError(t('activity.template.save_error'))
   } finally {
     saving.value = false
   }
@@ -135,18 +137,18 @@ function handleCancel() {
     :visible="visible"
     modal
     style="width: 700px"
-    :header="template ? 'テンプレートを編集' : 'テンプレートを作成'"
+    :header="template ? $t('activity.template.dialog_title_edit') : $t('activity.template.dialog_title_create')"
     @update:visible="emit('update:visible', $event)"
   >
     <div class="flex flex-col gap-4">
       <!-- 基本情報 -->
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium">テンプレート名 <span class="text-red-500">*</span></label>
-        <InputText v-model="name" placeholder="テンプレート名を入力" class="w-full" />
+        <label class="text-sm font-medium">{{ $t('activity.template.name_label') }} <span class="text-red-500">*</span></label>
+        <InputText v-model="name" : placeholder="$t('activity.template.name_placeholder')" class="w-full" />
       </div>
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium">説明</label>
-        <Textarea v-model="description" rows="2" placeholder="説明（任意）" class="w-full" />
+        <Textarea v-model="description" rows="2" : placeholder="$t('activity.template.description_placeholder')" class="w-full" />
       </div>
 
       <!-- フィールド定義テーブル -->
@@ -154,7 +156,7 @@ function handleCancel() {
         <div class="mb-2 flex items-center justify-between">
           <span class="text-sm font-medium">フィールド定義</span>
           <Button
-            label="フィールドを追加"
+            :label="$t('activity.template.add_field')"
             icon="pi pi-plus"
             size="small"
             outlined
@@ -187,7 +189,7 @@ function handleCancel() {
                 <td class="py-2 pr-2">
                   <InputText
                     v-model="field.label"
-                    placeholder="フィールド名"
+                    : placeholder="$t('activity.template.field_name_placeholder')"
                     class="w-full"
                     size="small"
                   />
@@ -217,7 +219,7 @@ function handleCancel() {
                   <InputText
                     v-if="field.fieldType === 'SELECT'"
                     v-model="field.optionsRaw"
-                    placeholder="選択肢1,選択肢2,..."
+                    : placeholder="$t('activity.template.options_placeholder')"
                     class="w-full"
                     size="small"
                   />
@@ -242,8 +244,8 @@ function handleCancel() {
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button label="キャンセル" text @click="handleCancel" />
-        <Button label="保存" icon="pi pi-check" :loading="saving" @click="handleSave" />
+        <Button :label="$t('button.cancel')" text @click="handleCancel" />
+        <Button :label="$t('button.save')" icon="pi pi-check" :loading="saving" @click="handleSave" />
       </div>
     </template>
   </Dialog>

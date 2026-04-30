@@ -18,6 +18,7 @@ const props = defineProps<{
 
 const { getStats } = useActivityApi()
 const { showError } = useNotification()
+const { t } = useI18n()
 
 // デフォルト: 過去6ヶ月〜今日
 const today = new Date()
@@ -45,7 +46,7 @@ async function fetchStats() {
     const res = await getStats(props.scopeType, props.scopeId)
     stats.value = res.data
   } catch {
-    showError('統計の取得に失敗しました')
+    showError(t('activity.stats.fetch_error'))
   } finally {
     loading.value = false
   }
@@ -61,7 +62,7 @@ watch(stats, (newStats) => {
       labels: newStats.monthlyBreakdown.map((m) => m.month),
       datasets: [
         {
-          label: '活動件数',
+          label: t('activity.stats.table_count'),
           data: newStats.monthlyBreakdown.map((m) => m.count),
           backgroundColor: '#6366f1',
         },
@@ -85,77 +86,54 @@ onMounted(() => {
 
 <template>
   <div class="flex flex-col gap-6">
-    <!-- 期間フィルター -->
     <div class="flex flex-wrap items-end gap-3 rounded-xl border border-surface-200 bg-surface-0 p-4">
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium">期間開始</label>
-        <DatePicker
-          v-model="periodStart"
-          date-format="yy/mm/dd"
-          show-icon
-          class="w-44"
-        />
+        <label class="text-sm font-medium">{{ $t('activity.stats.period_start') }}</label>
+        <DatePicker v-model="periodStart" date-format="yy/mm/dd" show-icon class="w-44" />
       </div>
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium">期間終了</label>
-        <DatePicker
-          v-model="periodEnd"
-          date-format="yy/mm/dd"
-          show-icon
-          class="w-44"
-        />
+        <label class="text-sm font-medium">{{ $t('activity.stats.period_end') }}</label>
+        <DatePicker v-model="periodEnd" date-format="yy/mm/dd" show-icon class="w-44" />
       </div>
-      <Button label="集計" icon="pi pi-chart-bar" :loading="loading" @click="fetchStats" />
+      <Button :label="$t('activity.stats.aggregate')" icon="pi pi-chart-bar" :loading="loading" @click="fetchStats" />
     </div>
 
     <PageLoading v-if="loading" size="40px" />
 
     <template v-if="stats && !loading">
-      <!-- サマリーカード -->
       <div class="grid grid-cols-3 gap-4">
         <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 text-center">
           <div class="text-2xl font-bold text-indigo-500">{{ stats.totalActivities }}</div>
-          <div class="mt-1 text-sm text-surface-500">総活動数</div>
+          <div class="mt-1 text-sm text-surface-500">{{ $t('activity.stats.total_activities') }}</div>
         </div>
         <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 text-center">
           <div class="text-2xl font-bold text-indigo-500">{{ stats.totalParticipants }}</div>
-          <div class="mt-1 text-sm text-surface-500">総参加者数</div>
+          <div class="mt-1 text-sm text-surface-500">{{ $t('activity.stats.total_participants') }}</div>
         </div>
         <div class="rounded-xl border border-surface-200 bg-surface-0 p-4 text-center">
-          <div class="text-2xl font-bold text-indigo-500">
-            {{ stats.averageParticipants.toFixed(1) }}
-          </div>
-          <div class="mt-1 text-sm text-surface-500">平均参加者数</div>
+          <div class="text-2xl font-bold text-indigo-500">{{ stats.averageParticipants.toFixed(1) }}</div>
+          <div class="mt-1 text-sm text-surface-500">{{ $t('activity.stats.avg_participants') }}</div>
         </div>
       </div>
 
-      <!-- 月別活動件数グラフ -->
       <div class="rounded-xl border border-surface-200 bg-surface-0 p-4">
-        <h2 class="mb-3 text-sm font-semibold">月別活動件数</h2>
+        <h2 class="mb-3 text-sm font-semibold">{{ $t('activity.stats.monthly_chart_title') }}</h2>
         <div class="relative h-64">
           <canvas ref="chartRef" />
         </div>
       </div>
 
-      <!-- 月別内訳テーブル -->
       <div class="rounded-xl border border-surface-200 bg-surface-0 p-4">
-        <h2 class="mb-3 text-sm font-semibold">月別内訳</h2>
         <DataTable :value="stats.monthlyBreakdown" striped-rows class="text-sm">
-          <template #empty>
-            <div class="py-4 text-center text-surface-400">データがありません</div>
-          </template>
-          <Column field="month" header="月" />
-          <Column field="count" header="活動件数" />
+          <Column field="month" :header="$t('activity.stats.table_month')" />
+          <Column field="count" :header="$t('activity.stats.table_count')" />
         </DataTable>
       </div>
     </template>
 
-    <div
-      v-if="!stats && !loading"
-      class="py-12 text-center text-surface-400"
-    >
+    <div v-if="!stats && !loading" class="py-12 text-center text-surface-400">
       <i class="pi pi-chart-bar mb-3 text-4xl text-surface-300" />
-      <p>「集計」ボタンを押して統計を表示してください</p>
+      <p>{{ $t('activity.stats.aggregate') }}</p>
     </div>
   </div>
 </template>
