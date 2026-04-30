@@ -3,6 +3,7 @@ package com.mannschaft.app.common.storage;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -30,6 +31,7 @@ import java.util.List;
  */
 @Slf4j
 @Service
+@ConditionalOnProperty(prefix = "storage", name = "provider", havingValue = "s3")
 @RequiredArgsConstructor
 public class S3StorageService implements StorageService {
 
