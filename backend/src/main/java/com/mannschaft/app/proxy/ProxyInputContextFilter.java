@@ -7,8 +7,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -25,7 +25,6 @@ import java.util.Optional;
  * ヘッダーがない場合は通常入力として何もせず chain を続行する。
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class ProxyInputContextFilter extends OncePerRequestFilter {
 
@@ -36,6 +35,14 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
 
     private final ProxyInputConsentRepository proxyInputConsentRepository;
     private final ProxyInputContext proxyInputContext;
+
+    // @Lazy により @WebMvcTest スライスでのコンテキスト初期化時に JPA Bean の存在を要求しない
+    public ProxyInputContextFilter(
+            @Lazy ProxyInputConsentRepository proxyInputConsentRepository,
+            ProxyInputContext proxyInputContext) {
+        this.proxyInputConsentRepository = proxyInputConsentRepository;
+        this.proxyInputContext = proxyInputContext;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
