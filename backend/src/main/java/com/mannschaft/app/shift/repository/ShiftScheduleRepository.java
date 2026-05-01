@@ -88,4 +88,17 @@ public interface ShiftScheduleRepository extends JpaRepository<ShiftScheduleEnti
     List<ShiftScheduleEntity> findPublishedExpiredBefore(
             @Param("cutoffDate") LocalDate cutoffDate,
             Pageable pageable);
+
+    /**
+     * ARCHIVED かつ updatedAt が cutoff より前のスケジュール ID を返す（希望物理削除用）。
+     */
+    @Query("""
+            SELECT s.id FROM ShiftScheduleEntity s
+            WHERE s.status = 'ARCHIVED'
+              AND s.updatedAt < :cutoff
+              AND s.deletedAt IS NULL
+            """)
+    List<Long> findArchivedScheduleIdsOlderThan(
+            @Param("cutoff") LocalDateTime cutoff,
+            Pageable pageable);
 }

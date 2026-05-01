@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.repository;
 import com.mannschaft.app.shift.ShiftPreference;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -61,4 +62,11 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
             + "WHERE r.scheduleId = :scheduleId "
             + "GROUP BY r.preference")
     List<Object[]> countByPreferenceForSchedule(@Param("scheduleId") Long scheduleId);
+
+    /**
+     * 指定スケジュール ID の希望を物理削除する（ARCHIVED 30 日後クリーンアップ用）。
+     */
+    @Modifying
+    @Query("DELETE FROM ShiftRequestEntity r WHERE r.scheduleId IN :scheduleIds")
+    int deleteByScheduleIds(@Param("scheduleIds") List<Long> scheduleIds);
 }
