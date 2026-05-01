@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.ShiftPeriodType;
@@ -9,6 +10,7 @@ import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftScheduleRequest;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.event.ShiftPublishedEvent;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,7 @@ public class ShiftScheduleService {
 
     private final ShiftScheduleRepository scheduleRepository;
     private final ShiftMapper shiftMapper;
+    private final DomainEventPublisher eventPublisher;
 
     /** 循環依存を避けるため @Lazy で注入する */
     @Lazy
@@ -170,6 +173,12 @@ public class ShiftScheduleService {
         }
 
         entity = scheduleRepository.save(entity);
+
+        // イベント発行は save() 後（AFTER_COMMIT リスナーがコミット済みデータを参照するため）
+        if (targetStatus == ShiftScheduleStatus.PUBLISHED) {
+            eventPublisher.publish(new ShiftPublishedEvent(entity.getId(), entity.getTeamId(), userId));
+        }
+
         log.info("シフトスケジュールステータス遷移: id={}, status={}", id, targetStatus);
         return shiftMapper.toScheduleResponse(entity);
     }
