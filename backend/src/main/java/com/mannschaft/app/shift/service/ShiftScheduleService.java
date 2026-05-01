@@ -167,13 +167,18 @@ public class ShiftScheduleService {
                 // 未確認の SUCCEEDED 割当実行ログがある場合は目視確認ゲートをかける
                 autoAssignService.assertNoUnreviewedRuns(id);
                 entity.publish(userId);
-                eventPublisher.publish(new ShiftPublishedEvent(entity.getId(), entity.getTeamId(), userId));
             }
             case ARCHIVED -> entity.archive();
             default -> throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
         }
 
         entity = scheduleRepository.save(entity);
+
+        // イベント発行は save() 後（AFTER_COMMIT リスナーがコミット済みデータを参照するため）
+        if (targetStatus == ShiftScheduleStatus.PUBLISHED) {
+            eventPublisher.publish(new ShiftPublishedEvent(entity.getId(), entity.getTeamId(), userId));
+        }
+
         log.info("シフトスケジュールステータス遷移: id={}, status={}", id, targetStatus);
         return shiftMapper.toScheduleResponse(entity);
     }

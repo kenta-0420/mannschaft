@@ -38,8 +38,8 @@ public class ShiftPreferenceReminderBatchService {
     /**
      * 10 分ごとに実行。48h前・24h前リマインドを未提出メンバーに送信する。
      */
-    @Scheduled(fixedDelay = 600_000, initialDelay = 60_000)
-    @SchedulerLock(name = "shift_preference_reminder", lockAtMostFor = "PT8M", lockAtLeastFor = "PT1M")
+    @Scheduled(cron = "0 */10 * * * *", zone = "Asia/Tokyo")
+    @SchedulerLock(name = "shift_preference_reminder", lockAtMostFor = "15m", lockAtLeastFor = "2m")
     @Transactional
     public void processReminders() {
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Tokyo"));
