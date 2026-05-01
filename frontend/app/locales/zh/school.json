@@ -1,0 +1,53 @@
+{
+  "school": {
+    "attendance": {
+      "status": {
+        "ATTENDING": "出席",
+        "PARTIAL": "部分出席",
+        "ABSENT": "缺席",
+        "UNDECIDED": "未确认"
+      },
+      "absenceReason": {
+        "ILLNESS": "生病",
+        "INJURY": "受伤",
+        "FAMILY": "家庭原因",
+        "OTHER": "其他"
+      },
+      "dailyRollCall": {
+        "title": "早点名",
+        "date": "日期",
+        "submit": "提交点名",
+        "submitSuccess": "点名已记录",
+        "comment": "备注",
+        "arrivalTime": "到校时间",
+        "leaveTime": "离校时间",
+        "loading": "加载中...",
+        "noStudents": "未找到学生"
+      },
+      "period": {
+        "title": "课时出勤",
+        "periodNumber": "第{n}节",
+        "selectPeriod": "选择课时",
+        "submit": "记录出勤",
+        "submitSuccess": "课时出勤已记录",
+        "previousStatus": "上节课时",
+        "loading": "加载中..."
+      },
+      "summary": {
+        "title": "汇总结果",
+        "total": "合计",
+        "attending": "出席",
+        "partial": "部分出席",
+        "absent": "缺席",
+        "undecided": "未确认"
+      },
+      "label": {
+        "student": "学生",
+        "dailyStatus": "当日出勤",
+        "status": "出勤",
+        "reason": "缺席原因",
+        "comment": "备注"
+      }
+    }
+  }
+}

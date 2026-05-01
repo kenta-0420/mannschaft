@@ -129,6 +129,7 @@ export default defineNuxtConfig({
           'ja/care.json',
           'ja/surveys.json',
           'ja/reservation.json',
+          'ja/school.json',
         ],
       },
       {
@@ -159,6 +160,7 @@ export default defineNuxtConfig({
           'en/care.json',
           'en/surveys.json',
           'en/reservation.json',
+          'en/school.json',
         ],
       },
       {
@@ -189,6 +191,7 @@ export default defineNuxtConfig({
           'zh/care.json',
           'zh/surveys.json',
           'zh/reservation.json',
+          'zh/school.json',
         ],
       },
       {
@@ -219,6 +222,7 @@ export default defineNuxtConfig({
           'ko/care.json',
           'ko/surveys.json',
           'ko/reservation.json',
+          'ko/school.json',
         ],
       },
       {
@@ -249,6 +253,7 @@ export default defineNuxtConfig({
           'es/care.json',
           'es/surveys.json',
           'es/reservation.json',
+          'es/school.json',
         ],
       },
       {
@@ -279,6 +284,7 @@ export default defineNuxtConfig({
           'de/care.json',
           'de/surveys.json',
           'de/reservation.json',
+          'de/school.json',
         ],
       },
     ],

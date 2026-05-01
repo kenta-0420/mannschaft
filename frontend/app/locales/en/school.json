@@ -1,0 +1,53 @@
+{
+  "school": {
+    "attendance": {
+      "status": {
+        "ATTENDING": "Present",
+        "PARTIAL": "Partial",
+        "ABSENT": "Absent",
+        "UNDECIDED": "Unconfirmed"
+      },
+      "absenceReason": {
+        "ILLNESS": "Illness",
+        "INJURY": "Injury",
+        "FAMILY": "Family Reasons",
+        "OTHER": "Other"
+      },
+      "dailyRollCall": {
+        "title": "Morning Roll Call",
+        "date": "Date",
+        "submit": "Submit Roll Call",
+        "submitSuccess": "Roll call recorded",
+        "comment": "Comment",
+        "arrivalTime": "Arrival Time",
+        "leaveTime": "Departure Time",
+        "loading": "Loading...",
+        "noStudents": "No students found"
+      },
+      "period": {
+        "title": "Period Attendance",
+        "periodNumber": "Period {n}",
+        "selectPeriod": "Select period",
+        "submit": "Record Attendance",
+        "submitSuccess": "Period attendance recorded",
+        "previousStatus": "Previous period",
+        "loading": "Loading..."
+      },
+      "summary": {
+        "title": "Summary",
+        "total": "Total",
+        "attending": "Present",
+        "partial": "Partial",
+        "absent": "Absent",
+        "undecided": "Unconfirmed"
+      },
+      "label": {
+        "student": "Student",
+        "dailyStatus": "Daily Status",
+        "status": "Attendance",
+        "reason": "Absence Reason",
+        "comment": "Comment"
+      }
+    }
+  }
+}

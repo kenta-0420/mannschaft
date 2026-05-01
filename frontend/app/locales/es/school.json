@@ -1,0 +1,53 @@
+{
+  "school": {
+    "attendance": {
+      "status": {
+        "ATTENDING": "Presente",
+        "PARTIAL": "Parcial",
+        "ABSENT": "Ausente",
+        "UNDECIDED": "Sin confirmar"
+      },
+      "absenceReason": {
+        "ILLNESS": "Enfermedad",
+        "INJURY": "Lesión",
+        "FAMILY": "Motivos familiares",
+        "OTHER": "Otro"
+      },
+      "dailyRollCall": {
+        "title": "Pase de lista matutino",
+        "date": "Fecha",
+        "submit": "Enviar lista",
+        "submitSuccess": "Lista registrada",
+        "comment": "Comentario",
+        "arrivalTime": "Hora de llegada",
+        "leaveTime": "Hora de salida",
+        "loading": "Cargando...",
+        "noStudents": "No se encontraron estudiantes"
+      },
+      "period": {
+        "title": "Asistencia por período",
+        "periodNumber": "Período {n}",
+        "selectPeriod": "Seleccionar período",
+        "submit": "Registrar asistencia",
+        "submitSuccess": "Asistencia por período registrada",
+        "previousStatus": "Período anterior",
+        "loading": "Cargando..."
+      },
+      "summary": {
+        "title": "Resumen",
+        "total": "Total",
+        "attending": "Presente",
+        "partial": "Parcial",
+        "absent": "Ausente",
+        "undecided": "Sin confirmar"
+      },
+      "label": {
+        "student": "Estudiante",
+        "dailyStatus": "Estado diario",
+        "status": "Asistencia",
+        "reason": "Motivo de ausencia",
+        "comment": "Comentario"
+      }
+    }
+  }
+}

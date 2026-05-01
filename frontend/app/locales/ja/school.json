@@ -1,0 +1,53 @@
+{
+  "school": {
+    "attendance": {
+      "status": {
+        "ATTENDING": "出席",
+        "PARTIAL": "部分出席",
+        "ABSENT": "欠席",
+        "UNDECIDED": "未確認"
+      },
+      "absenceReason": {
+        "ILLNESS": "病気",
+        "INJURY": "怪我",
+        "FAMILY": "家庭の事情",
+        "OTHER": "その他"
+      },
+      "dailyRollCall": {
+        "title": "朝の点呼",
+        "date": "日付",
+        "submit": "点呼を提出",
+        "submitSuccess": "点呼を記録しました",
+        "comment": "コメント",
+        "arrivalTime": "登校時刻",
+        "leaveTime": "下校時刻",
+        "loading": "読み込み中...",
+        "noStudents": "生徒が見つかりません"
+      },
+      "period": {
+        "title": "時限別出欠",
+        "periodNumber": "第{n}限",
+        "selectPeriod": "時限を選択",
+        "submit": "出欠を記録",
+        "submitSuccess": "時限別出欠を記録しました",
+        "previousStatus": "前時限",
+        "loading": "読み込み中..."
+      },
+      "summary": {
+        "title": "集計結果",
+        "total": "合計",
+        "attending": "出席",
+        "partial": "部分出席",
+        "absent": "欠席",
+        "undecided": "未確認"
+      },
+      "label": {
+        "student": "生徒",
+        "dailyStatus": "日次出欠",
+        "status": "出欠",
+        "reason": "欠席理由",
+        "comment": "コメント"
+      }
+    }
+  }
+}
