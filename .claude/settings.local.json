@@ -584,7 +584,8 @@
       "PowerShell(Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c cd C:\\\\Claude\\\\mannschaft\\\\backend && gradlew.bat bootRun > C:\\\\Claude\\\\mannschaft\\\\backend\\\\spring-boot.log 2>&1\" -WindowStyle Hidden)",
       "PowerShell(Start-Process -FilePath \"C:\\\\Claude\\\\mannschaft\\\\backend\\\\gradlew.bat\" -ArgumentList \"bootRun\" -WorkingDirectory \"C:\\\\Claude\\\\mannschaft\\\\backend\" -RedirectStandardOutput \"C:\\\\Claude\\\\mannschaft\\\\backend\\\\spring-boot.log\" -RedirectStandardError \"C:\\\\Claude\\\\mannschaft\\\\backend\\\\spring-boot-err.log\" -WindowStyle Hidden)",
       "Bash(GRADLE_USER_HOME=\"C:/gradle-home\" ./gradlew compileJava --no-daemon -q)",
-      "Bash(./gradlew compileTestJava -x test)"
+      "Bash(./gradlew compileTestJava -x test)",
+      "Bash(npx vue-tsc *)"
     ],
     "deny": [
       "Write(**/.env)",

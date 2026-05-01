@@ -1,5 +1,7 @@
 package com.mannschaft.app.common;
 
+import com.mannschaft.app.family.CareLinkStatus;
+import com.mannschaft.app.family.repository.UserCareLinkRepository;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -24,6 +26,7 @@ public class AccessControlService {
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final RoleService roleService;
+    private final UserCareLinkRepository userCareLinkRepository;
 
     private static final Set<String> ADMIN_ROLES = Set.of("ADMIN", "DEPUTY_ADMIN");
 
@@ -150,6 +153,26 @@ public class AccessControlService {
             return; // 本人はOK
         }
         if (!isAdminOrAbove(currentUserId, scopeId, scopeType)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    // ========================================
+    // ケアリンク検証
+    // ========================================
+
+    /**
+     * 見守り者（保護者）がケア対象者への ACTIVE なケアリンクを持つか確認する。
+     * リンクが存在しない場合は 403 をスローする。
+     *
+     * @param watcherUserId       見守り者（保護者）のユーザーID
+     * @param careRecipientUserId ケア対象者（生徒）のユーザーID
+     */
+    public void checkCareLink(Long watcherUserId, Long careRecipientUserId) {
+        boolean linked = userCareLinkRepository
+                .existsByCareRecipientUserIdAndWatcherUserIdAndStatus(
+                        careRecipientUserId, watcherUserId, CareLinkStatus.ACTIVE);
+        if (!linked) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
     }
