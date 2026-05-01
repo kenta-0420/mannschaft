@@ -85,11 +85,16 @@ class ShiftCleanupBatchServiceTest {
 
             batchService.runSwapExpiryCancel();
 
-            verify(notificationHelper, times(2)).notify(
-                    anyLong(), eq("SHIFT_SWAP_EXPIRED"),
+            verify(notificationHelper).notify(
+                    eq(10L), eq("SHIFT_SWAP_EXPIRED"),
                     anyString(), anyString(),
                     eq("SHIFT_SWAP_REQUEST"), eq(2L),
-                    any(), anyLong(), anyString(), isNull());
+                    any(), eq(10L), anyString(), isNull());
+            verify(notificationHelper).notify(
+                    eq(20L), eq("SHIFT_SWAP_EXPIRED"),
+                    anyString(), anyString(),
+                    eq("SHIFT_SWAP_REQUEST"), eq(2L),
+                    any(), eq(20L), anyString(), isNull());
         }
 
         @Test
@@ -101,11 +106,11 @@ class ShiftCleanupBatchServiceTest {
 
             batchService.runSwapExpiryCancel();
 
-            verify(notificationHelper, times(1)).notify(
-                    anyLong(), eq("SHIFT_SWAP_EXPIRED"),
+            verify(notificationHelper).notify(
+                    eq(10L), eq("SHIFT_SWAP_EXPIRED"),
                     anyString(), anyString(),
-                    anyString(), anyLong(),
-                    any(), anyLong(), anyString(), isNull());
+                    eq("SHIFT_SWAP_REQUEST"), eq(3L),
+                    any(), eq(10L), anyString(), isNull());
         }
 
         @Test
