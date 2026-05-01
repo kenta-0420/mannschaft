@@ -221,6 +221,34 @@ public class AuditLogService {
     }
 
     // ─────────────────────────────────────────────
+    // ソース別ログ参照（Phase 4-α: 行動メモ監査折りたたみUI用）
+    // ─────────────────────────────────────────────
+
+    /**
+     * metadata の JSON に {@code "source":"<source>"} かつ {@code "source_id":<sourceId>} を含む
+     * 監査ログを最新 {@code limit} 件返す。
+     *
+     * <p>呼び出し元（ActionMemoService）でアクセス権チェック済みの前提。</p>
+     *
+     * @param source   ソース種別文字列（例: "ACTION_MEMO"）
+     * @param sourceId ソース ID（メモ ID 等）
+     * @param limit    最大取得件数（最大 50）
+     */
+    @Transactional(readOnly = true)
+    public List<AuditLogResponse> findBySourceAndSourceId(String source, Long sourceId, int limit) {
+        int safeLimit = Math.min(limit, 50);
+        String sql = "SELECT id, user_id, target_user_id, team_id, organization_id,"
+                + " event_type, ip_address, user_agent, session_hash, metadata, created_at"
+                + " FROM audit_logs"
+                + " WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.source')) = ?"
+                + "   AND JSON_EXTRACT(metadata, '$.source_id') = ?"
+                + " ORDER BY id DESC"
+                + " LIMIT ?";
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, source, sourceId, safeLimit);
+        return rows.stream().map(this::mapRow).toList();
+    }
+
+    // ─────────────────────────────────────────────
     // ヘルパー
     // ─────────────────────────────────────────────
 
