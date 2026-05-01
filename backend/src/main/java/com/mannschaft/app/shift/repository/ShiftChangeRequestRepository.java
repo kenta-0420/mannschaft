@@ -4,9 +4,11 @@ import com.mannschaft.app.shift.ChangeRequestStatus;
 import com.mannschaft.app.shift.ChangeRequestType;
 import com.mannschaft.app.shift.entity.ShiftChangeRequestEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -42,4 +44,20 @@ public interface ShiftChangeRequestRepository extends JpaRepository<ShiftChangeR
     long countByRequestedByAndRequestTypeInCurrentMonth(
             @Param("userId") Long userId,
             @Param("requestType") ChangeRequestType requestType);
+
+    /**
+     * 指定スケジュールの OPEN 状態の変更依頼を一括 WITHDRAWN にする（アーカイブ時）。
+     * JPQL UPDATE は @PreUpdate を経由しないため updatedAt を明示的に渡す。
+     */
+    @Modifying
+    @Query("""
+            UPDATE ShiftChangeRequestEntity cr
+            SET cr.status = com.mannschaft.app.shift.ChangeRequestStatus.WITHDRAWN,
+                cr.updatedAt = :now
+            WHERE cr.scheduleId = :scheduleId
+              AND cr.status = com.mannschaft.app.shift.ChangeRequestStatus.OPEN
+            """)
+    int withdrawOpenRequestsByScheduleId(
+            @Param("scheduleId") Long scheduleId,
+            @Param("now") LocalDateTime now);
 }

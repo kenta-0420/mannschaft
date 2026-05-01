@@ -2,6 +2,7 @@ package com.mannschaft.app.actionmemo.controller;
 
 import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
+import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.actionmemo.dto.AddTagsToMemoRequest;
 import com.mannschaft.app.actionmemo.dto.AvailableTeamResponse;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
@@ -252,5 +253,18 @@ public class ActionMemoController {
         MoodStatsResponse response = actionMemoService.getMoodStats(
                 SecurityUtils.getCurrentUserId(), from, to);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * Phase 4-α: メモに紐付く監査ログを取得する（折りたたみUI用）。
+     *
+     * <p>自分のメモのみ取得可能。最新10件を返す。</p>
+     */
+    @GetMapping("/{id}/audit-logs")
+    @Operation(summary = "メモ監査ログ取得（Phase 4-α）")
+    public ResponseEntity<ApiResponse<List<AuditLogResponse>>> getMemoAuditLogs(@PathVariable Long id) {
+        List<AuditLogResponse> logs = actionMemoService.getMemoAuditLogs(
+                id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(logs));
     }
 }

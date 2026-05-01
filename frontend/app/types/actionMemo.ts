@@ -16,6 +16,11 @@ export type Mood = 'GREAT' | 'GOOD' | 'OK' | 'TIRED' | 'BAD'
 /** メモカテゴリ。WORK のみチーム投稿対象となる */
 export type ActionMemoCategory = 'WORK' | 'PRIVATE' | 'OTHER'
 
+// === OrgVisibility (Phase 4-α) ===
+
+/** 組織スコープ公開範囲。organization_id が設定された場合のみ有効 */
+export type OrgVisibility = 'TEAM_ONLY' | 'ORG_WIDE'
+
 // === Tag ===
 
 /**
@@ -61,6 +66,10 @@ export interface ActionMemo {
   completesTodo: boolean
   /** Phase 3: チーム投稿先の teamId。未投稿または WORK 以外は null */
   postedTeamId: number | null
+  /** Phase 4-α: 組織スコープ投稿先の組織 ID。未設定時は null */
+  organizationId: number | null
+  /** Phase 4-α: 組織公開範囲。organizationId が null の場合は null */
+  orgVisibility: OrgVisibility | null
 }
 
 // === Settings ===
@@ -104,6 +113,9 @@ export interface CreateActionMemoPayload {
   durationMinutes?: number | null
   progressRate?: number | null
   completesTodo?: boolean
+  /** Phase 4-α */
+  organizationId?: number | null
+  orgVisibility?: OrgVisibility | null
 }
 
 export interface UpdateActionMemoPayload {
@@ -117,6 +129,20 @@ export interface UpdateActionMemoPayload {
   durationMinutes?: number | null
   progressRate?: number | null
   completesTodo?: boolean
+  /** Phase 4-α: 0 を送るとクリア */
+  organizationId?: number | null
+  orgVisibility?: OrgVisibility | null
+}
+
+// === Audit logs (Phase 4-α) ===
+
+/** メモに紐付く監査ログ項目（折りたたみUI用） */
+export interface MemoAuditLog {
+  id: number
+  eventType: string
+  userId: number | null
+  metadata: string | null
+  createdAt: string
 }
 
 // === Publish to team (Phase 3) ===

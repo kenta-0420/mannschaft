@@ -26,6 +26,9 @@ public interface UserCareLinkRepository extends JpaRepository<UserCareLinkEntity
 
     boolean existsByCareRecipientUserIdAndWatcherUserId(Long careRecipientUserId, Long watcherUserId);
 
+    boolean existsByCareRecipientUserIdAndWatcherUserIdAndStatus(
+            Long careRecipientUserId, Long watcherUserId, CareLinkStatus status);
+
     long countByCareRecipientUserIdAndStatusIn(Long careRecipientUserId, List<CareLinkStatus> statuses);
 
     boolean existsByCareRecipientUserIdAndStatus(Long careRecipientUserId, CareLinkStatus status);

@@ -163,6 +163,19 @@ public class ActionMemoService {
         // Phase 3: category 解決（省略時は設定の defaultCategory を適用）
         ActionMemoCategory category = resolveCategory(request.getCategory(), userId);
 
+        // Phase 4-α: 組織スコープ検証
+        if (request.getOrganizationId() != null) {
+            if (!userRoleRepository.existsByUserIdAndOrganizationId(userId, request.getOrganizationId())) {
+                throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_ORG_NOT_FOUND);
+            }
+        }
+        com.mannschaft.app.actionmemo.enums.OrgVisibility orgVisibility =
+                (request.getOrganizationId() != null && request.getOrgVisibility() != null)
+                        ? request.getOrgVisibility()
+                        : (request.getOrganizationId() != null
+                                ? com.mannschaft.app.actionmemo.enums.OrgVisibility.TEAM_ONLY
+                                : null);
+
         // 7. エンティティ保存
         ActionMemoEntity entity = ActionMemoEntity.builder()
                 .userId(userId)
@@ -174,6 +187,8 @@ public class ActionMemoService {
                 .mood(mood)
                 .relatedTodoId(request.getRelatedTodoId())
                 .completesTodo(request.isCompletesTodo())
+                .organizationId(request.getOrganizationId())
+                .orgVisibility(orgVisibility)
                 .build();
         ActionMemoEntity saved = memoRepository.save(entity);
 
@@ -216,6 +231,17 @@ public class ActionMemoService {
         ActionMemoEntity memo = findOwnMemoOrThrow(memoId, userId);
         List<ActionMemoTagEntity> tags = fetchTagsForMemo(memoId);
         return toResponse(memo, tags);
+    }
+
+    /**
+     * Phase 4-α: 自分のメモに紐付く監査ログを取得する（折りたたみUI用）。
+     *
+     * <p>所有者チェック後、{@code audit_logs.metadata} に {@code "source":"ACTION_MEMO","source_id":N}
+     * を含むレコードを最新10件返す。</p>
+     */
+    public List<com.mannschaft.app.auth.dto.AuditLogResponse> getMemoAuditLogs(Long memoId, Long userId) {
+        findOwnMemoOrThrow(memoId, userId);
+        return auditLogService.findBySourceAndSourceId("ACTION_MEMO", memoId, 10);
     }
 
     /**
@@ -359,6 +385,25 @@ public class ActionMemoService {
                         .tagId(tag.getId())
                         .build());
             }
+        }
+
+        // Phase 4-α: 組織スコープ更新
+        if (request.getOrganizationId() != null) {
+            long orgId = request.getOrganizationId();
+            if (orgId == 0L) {
+                memo.setOrganizationId(null);
+                memo.setOrgVisibility(null);
+            } else {
+                if (!userRoleRepository.existsByUserIdAndOrganizationId(userId, orgId)) {
+                    throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_ORG_NOT_FOUND);
+                }
+                memo.setOrganizationId(orgId);
+                memo.setOrgVisibility(request.getOrgVisibility() != null
+                        ? request.getOrgVisibility()
+                        : com.mannschaft.app.actionmemo.enums.OrgVisibility.TEAM_ONLY);
+            }
+        } else if (request.getOrgVisibility() != null && memo.getOrganizationId() != null) {
+            memo.setOrgVisibility(request.getOrgVisibility());
         }
 
         ActionMemoEntity saved = memoRepository.save(memo);
@@ -1038,6 +1083,8 @@ public class ActionMemoService {
                 .completesTodo(Boolean.TRUE.equals(memo.getCompletesTodo()))
                 .timelinePostId(memo.getTimelinePostId())
                 .postedTeamId(memo.getPostedTeamId())
+                .organizationId(memo.getOrganizationId())
+                .orgVisibility(memo.getOrgVisibility())
                 .tags(tagSummaries)
                 .createdAt(memo.getCreatedAt())
                 .updatedAt(memo.getUpdatedAt())

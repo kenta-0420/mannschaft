@@ -57,6 +57,7 @@ public class GlobalExceptionHandler {
             Map.entry("ACTION_MEMO_018", HttpStatus.BAD_REQUEST),    // no_work_memo_today
             Map.entry("ACTION_MEMO_019", HttpStatus.NOT_FOUND),      // team_not_found (IDOR対策)
             Map.entry("ACTION_MEMO_020", HttpStatus.BAD_REQUEST),    // invalid_default_team
+            Map.entry("ACTION_MEMO_021", HttpStatus.NOT_FOUND),      // org_not_found (Phase 4-α, IDOR対策)
             // F05.4 アンケート 督促 API（権限なしのみ 403、その他は Severity.WARN 既定の 400）
             Map.entry("SURVEY_014", HttpStatus.FORBIDDEN),           // REMIND_PERMISSION_DENIED
             // F11.1 オフライン同期
@@ -122,7 +123,17 @@ public class GlobalExceptionHandler {
             Map.entry("JOB_CHECK_IN_ALREADY_EXISTS", HttpStatus.BAD_REQUEST),
             Map.entry("JOB_CHECK_OUT_BEFORE_CHECK_IN", HttpStatus.CONFLICT),
             Map.entry("JOB_CHECK_IN_CONCURRENT_CONFLICT", HttpStatus.FORBIDDEN),
-            Map.entry("JOB_INVALID_STATE_TRANSITION", HttpStatus.CONFLICT)
+            Map.entry("JOB_INVALID_STATE_TRANSITION", HttpStatus.CONFLICT),
+            // F03.13 学校出欠管理
+            Map.entry("SCHOOL_HOMEROOM_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("SCHOOL_HOMEROOM_ALREADY_EXISTS", HttpStatus.CONFLICT),
+            Map.entry("SCHOOL_DAILY_RECORD_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("SCHOOL_DAILY_RECORD_DUPLICATE", HttpStatus.CONFLICT),
+            Map.entry("SCHOOL_PERIOD_RECORD_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("SCHOOL_FAMILY_NOTICE_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("SCHOOL_FAMILY_NOTICE_ALREADY_APPLIED", HttpStatus.CONFLICT),
+            Map.entry("SCHOOL_TRANSITION_ALERT_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("SCHOOL_TRANSITION_ALERT_ALREADY_RESOLVED", HttpStatus.CONFLICT)
     );
 
     /**

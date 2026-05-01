@@ -1,0 +1,53 @@
+{
+  "school": {
+    "attendance": {
+      "status": {
+        "ATTENDING": "출석",
+        "PARTIAL": "부분 출석",
+        "ABSENT": "결석",
+        "UNDECIDED": "미확인"
+      },
+      "absenceReason": {
+        "ILLNESS": "질병",
+        "INJURY": "부상",
+        "FAMILY": "가정 사정",
+        "OTHER": "기타"
+      },
+      "dailyRollCall": {
+        "title": "아침 점호",
+        "date": "날짜",
+        "submit": "점호 제출",
+        "submitSuccess": "점호가 기록되었습니다",
+        "comment": "코멘트",
+        "arrivalTime": "등교 시간",
+        "leaveTime": "하교 시간",
+        "loading": "로딩 중...",
+        "noStudents": "학생을 찾을 수 없습니다"
+      },
+      "period": {
+        "title": "교시별 출결",
+        "periodNumber": "제{n}교시",
+        "selectPeriod": "교시 선택",
+        "submit": "출결 기록",
+        "submitSuccess": "교시별 출결이 기록되었습니다",
+        "previousStatus": "이전 교시",
+        "loading": "로딩 중..."
+      },
+      "summary": {
+        "title": "집계 결과",
+        "total": "합계",
+        "attending": "출석",
+        "partial": "부분 출석",
+        "absent": "결석",
+        "undecided": "미확인"
+      },
+      "label": {
+        "student": "학생",
+        "dailyStatus": "일일 출결",
+        "status": "출결",
+        "reason": "결석 사유",
+        "comment": "코멘트"
+      }
+    }
+  }
+}

@@ -3,6 +3,7 @@ package com.mannschaft.app.actionmemo.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.actionmemo.ActionMemoMood;
 import com.mannschaft.app.actionmemo.enums.ActionMemoCategory;
+import com.mannschaft.app.actionmemo.enums.OrgVisibility;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -60,6 +61,14 @@ public class ActionMemoResponse {
     /** Phase 3: チームタイムライン投稿済みチームID */
     @JsonProperty("posted_team_id")
     private Long postedTeamId;
+
+    /** Phase 4-α: 組織スコープ投稿先組織 ID */
+    @JsonProperty("organization_id")
+    private Long organizationId;
+
+    /** Phase 4-α: 組織公開範囲 */
+    @JsonProperty("org_visibility")
+    private OrgVisibility orgVisibility;
 
     @Builder.Default
     private List<ActionMemoTagSummary> tags = List.of();

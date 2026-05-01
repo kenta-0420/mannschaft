@@ -3,6 +3,7 @@ package com.mannschaft.app.actionmemo.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.actionmemo.ActionMemoMood;
 import com.mannschaft.app.actionmemo.enums.ActionMemoCategory;
+import com.mannschaft.app.actionmemo.enums.OrgVisibility;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -82,4 +83,18 @@ public class CreateActionMemoRequest {
      */
     @JsonProperty("completes_todo")
     private boolean completesTodo = false;
+
+    /**
+     * Phase 4-α: 組織スコープ投稿先組織 ID。省略時は組織スコープなし。
+     * 指定時はユーザーがその組織に所属しているかを Service 層で検証する。
+     */
+    @JsonProperty("organization_id")
+    private Long organizationId;
+
+    /**
+     * Phase 4-α: 組織公開範囲（TEAM_ONLY / ORG_WIDE）。省略時は TEAM_ONLY 扱い。
+     * organizationId が null の場合は無視される。
+     */
+    @JsonProperty("org_visibility")
+    private OrgVisibility orgVisibility;
 }

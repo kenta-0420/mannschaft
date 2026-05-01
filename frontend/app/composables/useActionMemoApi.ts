@@ -11,6 +11,7 @@ import type {
   ListActionMemoParams,
   Mood,
   MoodStatsResponse,
+  OrgVisibility,
   PublishDailyPayload,
   PublishDailyResponse,
   PublishDailyToTeamPayload,
@@ -66,6 +67,9 @@ export function useActionMemoApi() {
     progress_rate?: number | null
     completes_todo?: boolean | null
     posted_team_id?: number | null
+    // Phase 4-α
+    organization_id?: number | null
+    org_visibility?: string | null
   }
 
   type RawSettings = {
@@ -118,6 +122,9 @@ export function useActionMemoApi() {
       progressRate: raw.progress_rate ?? null,
       completesTodo: raw.completes_todo ?? false,
       postedTeamId: raw.posted_team_id ?? null,
+      // Phase 4-α
+      organizationId: raw.organization_id ?? null,
+      orgVisibility: (raw.org_visibility as OrgVisibility) ?? null,
     }
   }
 
@@ -151,6 +158,9 @@ export function useActionMemoApi() {
     if (payload.durationMinutes !== undefined) body.duration_minutes = payload.durationMinutes
     if (payload.progressRate !== undefined) body.progress_rate = payload.progressRate
     if (payload.completesTodo !== undefined) body.completes_todo = payload.completesTodo
+    // Phase 4-α
+    if (payload.organizationId !== undefined) body.organization_id = payload.organizationId
+    if (payload.orgVisibility !== undefined) body.org_visibility = payload.orgVisibility
     return body
   }
 
@@ -166,6 +176,9 @@ export function useActionMemoApi() {
     if (payload.durationMinutes !== undefined) body.duration_minutes = payload.durationMinutes
     if (payload.progressRate !== undefined) body.progress_rate = payload.progressRate
     if (payload.completesTodo !== undefined) body.completes_todo = payload.completesTodo
+    // Phase 4-α
+    if (payload.organizationId !== undefined) body.organization_id = payload.organizationId
+    if (payload.orgVisibility !== undefined) body.org_visibility = payload.orgVisibility
     return body
   }
 

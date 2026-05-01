@@ -3,11 +3,12 @@ import type { DeletionPreviewResponse } from '~/composables/useGdprApi'
 
 const props = defineProps<{
   visible: boolean
+  hasPassword?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  confirmed: []
+  confirmed: [currentPassword: string | null]
 }>()
 
 const { getDeletionPreview } = useGdprApi()
@@ -15,6 +16,7 @@ const notification = useNotification()
 
 const preview = ref<DeletionPreviewResponse | null>(null)
 const loadingPreview = ref(false)
+const currentPassword = ref('')
 
 interface SummaryRow {
   category: string
@@ -61,11 +63,13 @@ watch(
 )
 
 function cancel() {
+  currentPassword.value = ''
   emit('update:visible', false)
 }
 
 function confirm() {
-  emit('confirmed')
+  emit('confirmed', props.hasPassword ? currentPassword.value : null)
+  currentPassword.value = ''
   emit('update:visible', false)
 }
 </script>
@@ -134,6 +138,20 @@ function confirm() {
           ※ 一部のデータは法的要件により {{ preview.retentionDays }} 日間保持された後に削除されます。
         </p>
       </template>
+
+      <div v-if="hasPassword" class="flex flex-col gap-2">
+        <label for="deletePassword" class="text-sm font-semibold">
+          確認のため現在のパスワードを入力してください
+        </label>
+        <Password
+          input-id="deletePassword"
+          v-model="currentPassword"
+          :feedback="false"
+          toggle-mask
+          fluid
+          placeholder="現在のパスワード"
+        />
+      </div>
     </div>
 
     <template #footer>
@@ -147,7 +165,7 @@ function confirm() {
           label="削除する"
           severity="danger"
           icon="pi pi-trash"
-          :disabled="loadingPreview"
+          :disabled="loadingPreview || (hasPassword && !currentPassword)"
           @click="confirm"
         />
       </div>

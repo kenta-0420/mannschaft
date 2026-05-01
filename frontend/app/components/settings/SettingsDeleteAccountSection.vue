@@ -2,6 +2,20 @@
 const emit = defineEmits<{
   showDeletionPreview: []
 }>()
+
+const confirm = useConfirm()
+
+function confirmDelete() {
+  confirm.require({
+    message: 'アカウントを削除すると、全てのデータが完全に削除されます。本当に続けますか？',
+    header: 'アカウント削除の確認',
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: 'キャンセル',
+    acceptLabel: '削除の手続きへ進む',
+    acceptClass: 'p-button-danger',
+    accept: () => emit('showDeletionPreview'),
+  })
+}
 </script>
 
 <template>
@@ -17,7 +31,7 @@ const emit = defineEmits<{
       icon="pi pi-trash"
       severity="danger"
       outlined
-      @click="emit('showDeletionPreview')"
+      @click="confirmDelete"
     />
   </div>
 </template>

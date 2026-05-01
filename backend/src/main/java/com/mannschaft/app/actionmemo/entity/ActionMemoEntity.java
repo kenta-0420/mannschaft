@@ -2,6 +2,7 @@ package com.mannschaft.app.actionmemo.entity;
 
 import com.mannschaft.app.actionmemo.ActionMemoMood;
 import com.mannschaft.app.actionmemo.enums.ActionMemoCategory;
+import com.mannschaft.app.actionmemo.enums.OrgVisibility;
 import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
@@ -106,6 +107,22 @@ public class ActionMemoEntity extends BaseEntity {
     @Setter
     @Column(name = "posted_team_id")
     private Long postedTeamId;
+
+    /**
+     * Phase 4-α: 組織スコープ投稿先組織 ID。NULL = 組織スコープ未使用。
+     * FK → organizations.id（ON DELETE SET NULL）。
+     */
+    @Setter
+    @Column(name = "organization_id")
+    private Long organizationId;
+
+    /**
+     * Phase 4-α: 組織公開範囲（TEAM_ONLY / ORG_WIDE）。organizationId が NULL の場合は無視される。
+     */
+    @Setter
+    @Enumerated(EnumType.STRING)
+    @Column(name = "org_visibility", length = 20)
+    private OrgVisibility orgVisibility;
 
     private LocalDateTime deletedAt;
 

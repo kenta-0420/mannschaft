@@ -42,6 +42,20 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     boolean existsByEmail(String email);
 
+    /**
+     * メールアドレスの使用有無を確認する（論理削除済みユーザーを含む）。
+     * @SQLRestriction をバイパスするためネイティブSQL使用。退会処理中の保持期間中は再登録を防ぐ。
+     */
+    @Query(value = "SELECT COUNT(*) > 0 FROM users WHERE email = :email", nativeQuery = true)
+    boolean existsByEmailIncludingDeleted(@Param("email") String email);
+
+    /**
+     * メールアドレスでユーザーを取得する（論理削除済みユーザーを含む）。
+     * @SQLRestriction をバイパスするためネイティブSQL使用。退会取り消しログイン時に使用する。
+     */
+    @Query(value = "SELECT * FROM users WHERE email = :email LIMIT 1", nativeQuery = true)
+    Optional<UserEntity> findByEmailIncludingDeleted(@Param("email") String email);
+
     @org.springframework.data.jpa.repository.Query("SELECT u FROM UserEntity u WHERE u.displayName LIKE %:keyword% OR u.email LIKE %:keyword%")
     java.util.List<UserEntity> searchByKeyword(@org.springframework.data.repository.query.Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
 
