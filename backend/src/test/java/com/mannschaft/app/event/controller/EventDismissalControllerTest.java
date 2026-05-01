@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.event.controller;
+package com.mannschaft.app.event.controller;
 
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;

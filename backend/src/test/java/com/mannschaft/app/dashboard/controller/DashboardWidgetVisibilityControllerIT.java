@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.dashboard.controller;
+package com.mannschaft.app.dashboard.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuthTokenService;

@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.gdpr;
+package com.mannschaft.app.gdpr;
 
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;

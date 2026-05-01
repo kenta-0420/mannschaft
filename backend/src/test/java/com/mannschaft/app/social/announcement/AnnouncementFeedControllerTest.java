@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.social.announcement;
+package com.mannschaft.app.social.announcement;
 
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;

@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.schedule;
+package com.mannschaft.app.schedule;
 
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.ApiResponse;

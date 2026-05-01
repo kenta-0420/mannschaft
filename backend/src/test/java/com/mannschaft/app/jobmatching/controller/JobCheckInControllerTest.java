@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.jobmatching.controller;
+package com.mannschaft.app.jobmatching.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuthTokenService;

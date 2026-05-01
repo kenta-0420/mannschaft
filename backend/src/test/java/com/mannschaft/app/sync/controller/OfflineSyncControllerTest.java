@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.sync.controller;
+package com.mannschaft.app.sync.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuthTokenService;

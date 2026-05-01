@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.social.controller;
+package com.mannschaft.app.social.controller;
 
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.AccessControlService;

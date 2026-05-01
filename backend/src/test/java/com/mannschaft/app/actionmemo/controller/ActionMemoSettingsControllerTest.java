@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.actionmemo.controller;
+package com.mannschaft.app.actionmemo.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.actionmemo.ActionMemoErrorCode;

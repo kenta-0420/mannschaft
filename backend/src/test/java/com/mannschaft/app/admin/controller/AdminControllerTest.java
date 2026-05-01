@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.admin.controller;
+package com.mannschaft.app.admin.controller;
 
 import com.mannschaft.app.admin.dto.AnnouncementResponse;
 import com.mannschaft.app.admin.dto.CreateAnnouncementRequest;
