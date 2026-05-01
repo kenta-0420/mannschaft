@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * CI 環境では自動的に起動する。ローカルでの単独実行は ./gradlew test --tests "*.ProxyInputConsentRepositoryTest"。</p>
  */
 @DataJpaTest
+@ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:proxy_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
