@@ -6,7 +6,7 @@ import lombok.Getter;
 /**
  * シフト公開イベント。PUBLISHED 遷移時にトランザクション内で発行される。
  * TODO: Google Calendar リスナーは将来追加
- * TODO: TodoListener は Phase 4-α で追加
+ * Phase 4-β: ShiftToTaskListener が購読し Todo 自動作成を行う（実装済み）
  */
 @Getter
 public class ShiftPublishedEvent extends BaseEvent {
