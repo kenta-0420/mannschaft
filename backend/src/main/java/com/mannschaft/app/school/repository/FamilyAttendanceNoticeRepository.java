@@ -20,4 +20,8 @@ public interface FamilyAttendanceNoticeRepository extends JpaRepository<FamilyAt
     /** クラスの特定日の未確認連絡一覧を取得する。 */
     List<FamilyAttendanceNoticeEntity> findByTeamIdAndAttendanceDateAndAcknowledgedByIsNull(
             Long teamId, LocalDate attendanceDate);
+
+    /** 保護者の送信履歴を期間指定で取得する。 */
+    List<FamilyAttendanceNoticeEntity> findBySubmitterUserIdAndAttendanceDateBetweenOrderByAttendanceDateDesc(
+            Long submitterUserId, LocalDate from, LocalDate to);
 }

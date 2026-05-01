@@ -2,6 +2,7 @@ package com.mannschaft.app.school.service;
 
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.schedule.AttendanceStatus;
+import com.mannschaft.app.school.entity.FamilyAttendanceNoticeEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -56,5 +57,27 @@ public class SchoolAttendanceNotificationService {
                 // UNDECIDED は上で return 済みのため到達しない
             }
         }
+    }
+
+    /**
+     * 保護者から欠席・遅刻連絡が送信されたときの担任向け通知。
+     *
+     * @param notice 送信された保護者連絡
+     */
+    public void notifyFamilyNoticeSubmitted(FamilyAttendanceNoticeEntity notice) {
+        // TODO: NotificationDispatchService 経由で担任へプッシュ通知を送信する
+        log.info("保護者連絡送信通知 noticeId={} studentUserId={} noticeType={}",
+                notice.getId(), notice.getStudentUserId(), notice.getNoticeType());
+    }
+
+    /**
+     * 担任が保護者連絡を確認済みにしたときの保護者向け通知。
+     *
+     * @param notice 確認済みになった保護者連絡
+     */
+    public void notifyFamilyNoticeAcknowledged(FamilyAttendanceNoticeEntity notice) {
+        // TODO: NotificationDispatchService 経由で保護者へプッシュ通知を送信する
+        log.info("保護者連絡確認通知 noticeId={} studentUserId={} acknowledgedBy={}",
+                notice.getId(), notice.getStudentUserId(), notice.getAcknowledgedBy());
     }
 }

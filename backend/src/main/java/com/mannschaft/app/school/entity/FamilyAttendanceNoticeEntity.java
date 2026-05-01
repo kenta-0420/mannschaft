@@ -1,7 +1,9 @@
 package com.mannschaft.app.school.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.common.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -46,8 +48,9 @@ public class FamilyAttendanceNoticeEntity extends BaseEntity {
     @Column(length = 25)
     private AbsenceReason reason;
 
-    /** 詳細（健康情報配慮） */
-    @Column(length = 1000)
+    /** 詳細（健康情報配慮）— AES-256-GCM で暗号化して保存。 */
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(length = 2000)
     private String reasonDetail;
 
     /** 遅刻時の到着予定 */
