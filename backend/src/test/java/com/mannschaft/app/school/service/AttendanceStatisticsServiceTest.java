@@ -68,9 +68,6 @@ class AttendanceStatisticsServiceTest {
             given(dailyRepo.findByTeamIdAndAttendanceDateBetweenOrderByAttendanceDateAsc(
                     eq(TEAM_ID), any(LocalDate.class), any(LocalDate.class)))
                     .willReturn(List.of(r1, r2, r3, r4));
-            given(periodRepo.findByStudentUserIdAndAttendanceDateBetweenOrderByAttendanceDateAscPeriodNumberAsc(
-                    any(Long.class), any(LocalDate.class), any(LocalDate.class)))
-                    .willReturn(List.of());
 
             MonthlyStatisticsResponse result = service.getMonthlyStatistics(TEAM_ID, 2026, 5);
 
@@ -110,9 +107,6 @@ class AttendanceStatisticsServiceTest {
             given(dailyRepo.findByTeamIdAndAttendanceDateBetweenOrderByAttendanceDateAsc(
                     eq(TEAM_ID), any(LocalDate.class), any(LocalDate.class)))
                     .willReturn(List.of(r1, r2));
-            given(periodRepo.findByStudentUserIdAndAttendanceDateBetweenOrderByAttendanceDateAscPeriodNumberAsc(
-                    any(Long.class), any(LocalDate.class), any(LocalDate.class)))
-                    .willReturn(List.of());
 
             MonthlyStatisticsResponse result = service.getMonthlyStatistics(TEAM_ID, 2026, 5);
 
