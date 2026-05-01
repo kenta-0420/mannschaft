@@ -94,7 +94,15 @@ public enum ActionMemoErrorCode implements ErrorCode {
 
     /** settings.default_post_team_id に所属していないチームを指定しようとした */
     ACTION_MEMO_INVALID_DEFAULT_TEAM("ACTION_MEMO_020",
-            "デフォルト投稿先チームに所属していません", Severity.WARN);
+            "デフォルト投稿先チームに所属していません", Severity.WARN),
+
+    // ==================================================================
+    // Phase 4-α エラーコード
+    // ==================================================================
+
+    /** 組織スコープ投稿時に指定組織に所属していない（IDOR 対策で 404 扱い） */
+    ACTION_MEMO_ORG_NOT_FOUND("ACTION_MEMO_021",
+            "指定した組織が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

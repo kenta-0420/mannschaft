@@ -8,6 +8,7 @@ import type {
   CreateTagPayload,
   Mood,
   MoodStatsResponse,
+  OrgVisibility,
   PublishDailyPayload,
   PublishDailyResponse,
   PublishDailyToTeamPayload,
@@ -60,6 +61,8 @@ interface ActionMemoStoreState {
   weeklyTotalPages: number
   /** Phase 3: チーム投稿先候補一覧 */
   availableTeams: AvailableTeam[]
+  /** Phase 4-α: 次回作成時に付与する組織スコープ（折りたたみパネルで設定） */
+  pendingOrgScope: { organizationId: number | null; orgVisibility: OrgVisibility | null }
 }
 
 export type ActionMemoErrorCode =
@@ -116,6 +119,7 @@ export const useActionMemoStore = defineStore('actionMemo', {
     weeklyPage: 0,
     weeklyTotalPages: 0,
     availableTeams: [],
+    pendingOrgScope: { organizationId: null, orgVisibility: null },
   }),
 
   getters: {
@@ -161,6 +165,8 @@ export const useActionMemoStore = defineStore('actionMemo', {
         progressRate: payload.progressRate ?? null,
         completesTodo: payload.completesTodo ?? false,
         postedTeamId: null,
+        organizationId: payload.organizationId ?? this.pendingOrgScope.organizationId,
+        orgVisibility: payload.orgVisibility ?? this.pendingOrgScope.orgVisibility,
       }
       this.memos.unshift(optimistic)
       this.error = null
@@ -188,7 +194,13 @@ export const useActionMemoStore = defineStore('actionMemo', {
 
       try {
         const api = useActionMemoApi()
-        const created = await api.createMemo(payload)
+        // Phase 4-α: pendingOrgScope をペイロードにマージ
+        const enrichedPayload: CreateActionMemoPayload = {
+          ...payload,
+          organizationId: payload.organizationId ?? this.pendingOrgScope.organizationId ?? undefined,
+          orgVisibility: payload.orgVisibility ?? this.pendingOrgScope.orgVisibility ?? undefined,
+        }
+        const created = await api.createMemo(enrichedPayload)
         // 一時 ID を本物に置き換え
         const idx = this.memos.findIndex((m) => m.id === tempId)
         if (idx >= 0) {
@@ -658,6 +670,16 @@ export const useActionMemoStore = defineStore('actionMemo', {
       }
       this.lastError = 'UNKNOWN'
       this.error = 'action_memo.error.save_failed'
+    },
+
+    // === Phase 4-α: org scope ===
+
+    /**
+     * 次回の createMemo に付与する組織スコープを設定する。
+     * index.vue の org selector パネルから呼ばれる。
+     */
+    setPendingOrgScope(organizationId: number | null, orgVisibility: OrgVisibility | null): void {
+      this.pendingOrgScope = { organizationId, orgVisibility }
     },
   },
 })

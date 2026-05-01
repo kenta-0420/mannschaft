@@ -164,5 +164,24 @@
       "empty": "Aún no hay notas de Trabajo publicadas en este equipo",
       "load_more": "Cargar más"
     }
+  },
+  "phase4": {
+    "org_scope": {
+      "label": "組織に共有",
+      "select_org": "共有先組織を選択",
+      "visibility_label": "公開範囲",
+      "team_only": "チームメンバーのみ",
+      "org_wide": "組織全体に公開",
+      "no_orgs": "所属組織がありません",
+      "already_set": "組織スコープ設定済み",
+      "clear": "組織共有を解除"
+    },
+    "audit": {
+      "toggle": "変更履歴",
+      "empty": "変更履歴はありません",
+      "loading": "読み込み中...",
+      "error": "履歴の取得に失敗しました",
+      "event_todo_completed": "関連TODO を完了にしました"
+    }
   }
 }

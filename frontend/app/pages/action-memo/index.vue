@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ActionMemo, ActionMemoCategory } from '~/types/actionMemo'
+import type { ActionMemo, ActionMemoCategory, OrgVisibility } from '~/types/actionMemo'
 
 /**
  * F02.5 行動メモ メイン画面（ワンショット入力 + 当日メモ一覧）。
@@ -47,6 +47,14 @@ const selectedDuration = ref<number | null>(null)
 const selectedProgressRate = ref<number | null>(null)
 const selectedCompletesTodo = ref(false)
 const selectedTeamId = ref<number | null>(store.settings.defaultPostTeamId ?? null)
+
+// Phase 4-α: 組織スコープ
+const selectedOrgId = ref<number | null>(null)
+const selectedOrgVisibility = ref<OrgVisibility>('TEAM_ONLY')
+
+watch([selectedOrgId, selectedOrgVisibility], ([orgId, orgVis]) => {
+  store.setPendingOrgScope(orgId, orgId ? orgVis : null)
+})
 
 // 設定のデフォルト値を反映
 watch(
@@ -250,6 +258,30 @@ function goTags() {
           :available-teams="store.availableTeams"
           data-testid="index-team-post-switch"
         />
+
+        <!-- Phase 4-α: 組織スコープ選択 -->
+        <div class="flex flex-col gap-1" data-testid="index-org-scope-selector">
+          <label class="text-xs text-surface-600 dark:text-surface-400">
+            {{ t('action_memo.phase4.org_scope.label') }}
+          </label>
+          <div class="flex items-center gap-2">
+            <select
+              v-model.number="selectedOrgId"
+              class="flex-1 rounded-md border border-surface-300 bg-surface-0 px-2 py-1 text-xs dark:border-surface-600 dark:bg-surface-800"
+            >
+              <option :value="null">（なし）</option>
+              <!-- 組織一覧は将来的にAPIから取得 - 暫定で空 -->
+            </select>
+            <select
+              v-if="selectedOrgId"
+              v-model="selectedOrgVisibility"
+              class="rounded-md border border-surface-300 bg-surface-0 px-2 py-1 text-xs dark:border-surface-600 dark:bg-surface-800"
+            >
+              <option value="TEAM_ONLY">{{ t('action_memo.phase4.org_scope.team_only') }}</option>
+              <option value="ORG_WIDE">{{ t('action_memo.phase4.org_scope.org_wide') }}</option>
+            </select>
+          </div>
+        </div>
       </div>
     </details>
 
