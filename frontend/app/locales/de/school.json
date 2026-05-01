@@ -1,0 +1,53 @@
+{
+  "school": {
+    "attendance": {
+      "status": {
+        "ATTENDING": "Anwesend",
+        "PARTIAL": "Teilweise anwesend",
+        "ABSENT": "Abwesend",
+        "UNDECIDED": "Nicht bestätigt"
+      },
+      "absenceReason": {
+        "ILLNESS": "Krankheit",
+        "INJURY": "Verletzung",
+        "FAMILY": "Familiäre Gründe",
+        "OTHER": "Sonstiges"
+      },
+      "dailyRollCall": {
+        "title": "Morgenappell",
+        "date": "Datum",
+        "submit": "Appell einreichen",
+        "submitSuccess": "Appell wurde aufgezeichnet",
+        "comment": "Kommentar",
+        "arrivalTime": "Ankunftszeit",
+        "leaveTime": "Abgangszeit",
+        "loading": "Wird geladen...",
+        "noStudents": "Keine Schüler gefunden"
+      },
+      "period": {
+        "title": "Stunden-Anwesenheit",
+        "periodNumber": "Stunde {n}",
+        "selectPeriod": "Stunde auswählen",
+        "submit": "Anwesenheit erfassen",
+        "submitSuccess": "Stunden-Anwesenheit wurde aufgezeichnet",
+        "previousStatus": "Vorherige Stunde",
+        "loading": "Wird geladen..."
+      },
+      "summary": {
+        "title": "Zusammenfassung",
+        "total": "Gesamt",
+        "attending": "Anwesend",
+        "partial": "Teilweise",
+        "absent": "Abwesend",
+        "undecided": "Nicht bestätigt"
+      },
+      "label": {
+        "student": "Schüler",
+        "dailyStatus": "Täglicher Status",
+        "status": "Anwesenheit",
+        "reason": "Abwesenheitsgrund",
+        "comment": "Kommentar"
+      }
+    }
+  }
+}
