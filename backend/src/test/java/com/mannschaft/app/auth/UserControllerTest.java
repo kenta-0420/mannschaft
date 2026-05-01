@@ -15,6 +15,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.ProxyInputContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -74,6 +75,8 @@ class UserControllerTest {
     // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
     @MockitoBean
     private ProxyInputConsentRepository proxyInputConsentRepository;
+    @MockitoBean
+    private ProxyInputContext proxyInputContext;
 
     @BeforeEach
     void setUpSecurityContext() {

@@ -3,6 +3,7 @@ package com.mannschaft.app.event.controller;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.event.dto.DismissalReminderTargetResponse;
 import com.mannschaft.app.event.service.EventDismissalService;
 import org.junit.jupiter.api.AfterEach;
@@ -56,6 +57,8 @@ class EventDismissalControllerTest {
     // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
     @MockitoBean
     private ProxyInputConsentRepository proxyInputConsentRepository;
+    @MockitoBean
+    private ProxyInputContext proxyInputContext;
 
     private static final Long USER_ID = 100L;
 

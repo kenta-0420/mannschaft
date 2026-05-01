@@ -6,6 +6,7 @@ import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.gdpr.controller.GdprController;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.service.DataExportService;
@@ -55,6 +56,8 @@ class GdprControllerTest {
     // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
     @MockitoBean
     private ProxyInputConsentRepository proxyInputConsentRepository;
+    @MockitoBean
+    private ProxyInputContext proxyInputContext;
 
     // GdprController の依存解決用
     @MockitoBean

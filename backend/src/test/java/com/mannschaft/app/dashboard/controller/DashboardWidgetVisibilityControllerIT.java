@@ -6,6 +6,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.dashboard.MinRole;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.WidgetKey;
@@ -77,6 +78,8 @@ class DashboardWidgetVisibilityControllerIT {
     // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
     @MockitoBean
     private ProxyInputConsentRepository proxyInputConsentRepository;
+    @MockitoBean
+    private ProxyInputContext proxyInputContext;
 
     @BeforeEach
     void setUpSecurityContext() {
