@@ -497,6 +497,7 @@ export async function mockGetFamilyNotices(
  */
 export async function mockSubmitFamilyNotice(
   page: Page,
+  response?: FamilyAttendanceNoticeResponse,
   captured?: { lastBody: unknown },
 ): Promise<void> {
   await page.route('**/api/v1/me/attendance/notices', async (route) => {
@@ -508,7 +509,7 @@ export async function mockSubmitFamilyNotice(
     await route.fulfill({
       status: 201,
       contentType: 'application/json',
-      body: JSON.stringify({ data: buildFamilyAttendanceNoticeResponse() }),
+      body: JSON.stringify({ data: response ?? buildFamilyAttendanceNoticeResponse() }),
     })
   })
 }
