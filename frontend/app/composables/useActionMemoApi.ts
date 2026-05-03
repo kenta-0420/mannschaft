@@ -6,6 +6,7 @@ import type {
   ActionMemoRateLimitError,
   ActionMemoSettings,
   ActionMemoTag,
+  AvailableOrg,
   AvailableTeam,
   CreateActionMemoPayload,
   CreateTagPayload,
@@ -527,6 +528,21 @@ export function useActionMemoApi() {
     }
   }
 
+  // === Available Orgs (Phase 5-2) ===
+
+  /**
+   * 組織スコープ投稿先候補一覧を取得する。
+   * {@code GET /api/v1/action-memos/available-orgs}
+   */
+  async function fetchAvailableOrgs(): Promise<AvailableOrg[]> {
+    try {
+      const res = await api<{ data: { id: number; name: string }[] }>(`${BASE}/available-orgs`)
+      return (res.data ?? []).map((o) => ({ id: o.id, name: o.name }))
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
   // === Publish to team (Phase 3) ===
 
   /**
@@ -701,5 +717,7 @@ export function useActionMemoApi() {
     fetchMemberMemos,
     // Phase 5-1
     getMemoAuditLogs,
+    // Phase 5-2
+    fetchAvailableOrgs,
   }
 }
