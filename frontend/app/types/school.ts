@@ -431,3 +431,57 @@ export interface UpdateRequirementRuleRequest {
   effectiveFrom?: string
   effectiveUntil?: string | null
 }
+
+// ===== Phase 11: 出席集計 =====
+
+export interface StudentSummaryResponse {
+  id: number
+  teamId: number
+  studentUserId: number
+  termId?: number
+  academicYear: number
+  periodFrom: string
+  periodTo: string
+  totalSchoolDays: number
+  presentDays: number
+  absentDays: number
+  lateCount: number
+  earlyLeaveCount: number
+  officialAbsenceDays: number
+  schoolActivityDays: number
+  sickBayDays: number
+  separateRoomDays: number
+  onlineDays: number
+  homeLearningDays: number
+  attendanceRate: number
+  totalPeriods: number
+  presentPeriods: number
+  periodAttendanceRate: number
+  subjectBreakdown?: string
+  lastRecalculatedAt: string
+}
+
+export interface ClassSummaryListResponse {
+  teamId: number
+  academicYear: number
+  termId?: number
+  total: number
+  summaries: StudentSummaryResponse[]
+}
+
+export interface RecalculateSummaryRequest {
+  teamId: number
+  academicYear: number
+  termId?: number
+  periodFrom: string
+  periodTo: string
+}
+
+export interface RecalculateSummaryResponse {
+  studentUserId: number
+  teamId: number
+  academicYear: number
+  termId?: number
+  recalculatedAt: string
+  summary: StudentSummaryResponse
+}
