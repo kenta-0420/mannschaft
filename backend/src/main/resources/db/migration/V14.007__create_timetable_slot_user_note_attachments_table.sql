@@ -1,5 +1,5 @@
 -- F03.15 個人時間割: メモ添付ファイル（最大5件/ノート、R2 ストレージ）
-CREATE TABLE timetable_slot_user_note_attachments (
+CREATE TABLE IF NOT EXISTS timetable_slot_user_note_attachments (
     id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     note_id           BIGINT UNSIGNED NOT NULL                COMMENT 'FK → timetable_slot_user_notes.id',
     user_id           BIGINT UNSIGNED NOT NULL                COMMENT 'FK → users.id（認可ショートサーキット用に冗長保持）',

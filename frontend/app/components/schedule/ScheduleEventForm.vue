@@ -127,6 +127,9 @@ async function submit() {
   }
   if (props.isPersonal) {
     body.color = form.value.color
+  } else {
+    body.eventType = 'OTHER'
+    body.attendanceRequired = false
   }
 
   try {

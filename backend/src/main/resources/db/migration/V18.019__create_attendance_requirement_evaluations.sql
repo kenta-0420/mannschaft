@@ -1,9 +1,9 @@
 -- F03.13 Phase 12: 出席要件評価テーブル
 CREATE TABLE IF NOT EXISTS attendance_requirement_evaluations (
     id                          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    requirement_rule_id         BIGINT UNSIGNED NOT NULL COMMENT 'FK→attendance_requirement_rules.id',
+    requirement_rule_id         BIGINT          NOT NULL COMMENT 'FK→attendance_requirement_rules.id',
     student_user_id             BIGINT UNSIGNED NOT NULL COMMENT '評価対象生徒 FK→users.id',
-    summary_id                  BIGINT UNSIGNED NOT NULL COMMENT '元となった集計 FK→student_attendance_summaries.id',
+    summary_id                  BIGINT          NOT NULL COMMENT '元となった集計 FK→student_attendance_summaries.id',
     status                      VARCHAR(16)     NOT NULL COMMENT 'OK | WARNING | RISK | VIOLATION',
     current_attendance_rate     DECIMAL(5,2)    NOT NULL DEFAULT 0.00 COMMENT '評価時点の出席率（%）',
     remaining_allowed_absences  INT             NOT NULL DEFAULT 0    COMMENT 'あと何日休めるか（0以下=違反）',

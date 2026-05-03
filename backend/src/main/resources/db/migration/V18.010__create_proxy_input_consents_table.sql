@@ -1,5 +1,5 @@
 -- F14.1 代理入力・非デジタル住民対応: 代理入力同意書テーブル
-CREATE TABLE proxy_input_consents (
+CREATE TABLE IF NOT EXISTS proxy_input_consents (
     id                          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     subject_user_id             BIGINT UNSIGNED NOT NULL COMMENT '代理される本人 FK→users.id',
     proxy_user_id               BIGINT UNSIGNED NOT NULL COMMENT '代理者 FK→users.id',

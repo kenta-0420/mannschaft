@@ -1,5 +1,5 @@
 -- F03.15 個人時間割: ユーザー定義カスタムメモ項目（最大10件/ユーザー）
-CREATE TABLE timetable_slot_user_note_fields (
+CREATE TABLE IF NOT EXISTS timetable_slot_user_note_fields (
     id            BIGINT UNSIGNED   NOT NULL AUTO_INCREMENT,
     user_id       BIGINT UNSIGNED   NOT NULL                COMMENT 'FK → users.id',
     label         VARCHAR(50)       NOT NULL                COMMENT '項目名（例: "演習問題"）',

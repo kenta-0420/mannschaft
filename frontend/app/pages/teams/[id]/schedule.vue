@@ -39,6 +39,7 @@ interface ScheduleEventDetail {
 
 const events = ref<CalEvent[]>([])
 const loading = ref(true)
+const refreshing = ref(false)
 const showTypeSelector = ref(false)
 const showCreateDialog = ref(false)
 const createAsPersonal = ref(false)
@@ -48,22 +49,38 @@ const selectedEvent = ref<ScheduleEventDetail | null>(null)
 const showDetailPanel = ref(false)
 const showEditDialog = ref(false)
 
-async function loadEvents() {
-  loading.value = true
+function buildDateRange() {
+  const from = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-01T00:00:00`
+  const lastDay = new Date(currentYear.value, currentMonth.value, 0).getDate()
+  const to = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`
+  return { from, to }
+}
+
+async function loadEvents(isInitial = false) {
+  if (isInitial) {
+    loading.value = true
+  } else {
+    refreshing.value = true
+  }
   try {
-    const from = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-01`
-    const lastDay = new Date(currentYear.value, currentMonth.value, 0).getDate()
-    const to = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${lastDay}`
-    const res = await scheduleApi.listSchedules('team', teamId, { from, to, size: 100 })
-    events.value = (res.data as CalEvent[]).map((e) => ({
-      ...e,
-      isPersonal: false,
-      scopeType: 'TEAM',
-    }))
+    const { from, to } = buildDateRange()
+    const [teamRes, personalRes] = await Promise.all([
+      scheduleApi.listSchedules('team', teamId, { from, to, size: 100 }),
+      scheduleApi.getMySchedules({ from, to, size: 100 }),
+    ])
+    events.value = [
+      ...(teamRes.data as CalEvent[]).map((e) => ({ ...e, isPersonal: false, scopeType: 'TEAM' })),
+      ...(personalRes.data as CalEvent[]).map((e) => ({
+        ...e,
+        isPersonal: true,
+        scopeType: 'PERSONAL',
+      })),
+    ]
   } catch {
     events.value = []
   } finally {
     loading.value = false
+    refreshing.value = false
   }
 }
 
@@ -135,7 +152,7 @@ function onSaved() {
 
 onMounted(async () => {
   await loadPermissions()
-  await loadEvents()
+  await loadEvents(true)
 })
 </script>
 
@@ -153,7 +170,7 @@ onMounted(async () => {
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <!-- カレンダー -->
       <div class="lg:col-span-2">
-        <SectionCard>
+        <SectionCard :class="{ 'opacity-60': refreshing }">
           <CalendarGrid
             :year="currentYear"
             :month="currentMonth"

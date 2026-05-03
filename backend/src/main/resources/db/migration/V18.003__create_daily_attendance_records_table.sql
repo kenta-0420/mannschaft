@@ -1,6 +1,6 @@
 -- F03.13 学校日次・教科別出欠管理: 日次出欠（朝の点呼）
 -- status は既存 AttendanceStatus enum に準拠: ATTENDING=出席, PARTIAL=遅刻/早退, ABSENT=欠席, UNDECIDED=未確認
-CREATE TABLE daily_attendance_records (
+CREATE TABLE IF NOT EXISTS daily_attendance_records (
     id                BIGINT UNSIGNED    NOT NULL AUTO_INCREMENT,
     team_id           BIGINT UNSIGNED    NOT NULL COMMENT 'クラスチーム',
     student_user_id   BIGINT UNSIGNED    NOT NULL COMMENT '生徒',

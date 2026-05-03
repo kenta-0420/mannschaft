@@ -1,5 +1,5 @@
 -- F14.1 代理入力・非デジタル住民対応: 代理入力実行ログテーブル（集計分離専用・追記のみ）
-CREATE TABLE proxy_input_records (
+CREATE TABLE IF NOT EXISTS proxy_input_records (
     id                      BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     proxy_input_consent_id  BIGINT UNSIGNED NOT NULL COMMENT '根拠となる同意書 FK→proxy_input_consents.id',
     subject_user_id         BIGINT UNSIGNED NOT NULL COMMENT '本人（集計用冗長保持）FK→users.id',

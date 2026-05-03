@@ -1,5 +1,5 @@
 -- F03.13 学校日次・教科別出欠管理: クラス・学級担任マッピング
-CREATE TABLE class_homerooms (
+CREATE TABLE IF NOT EXISTS class_homerooms (
     id                         BIGINT UNSIGNED    NOT NULL AUTO_INCREMENT,
     team_id                    BIGINT UNSIGNED    NOT NULL COMMENT 'FK → teams.id（クラスチーム）',
     homeroom_teacher_user_id   BIGINT UNSIGNED    NOT NULL COMMENT 'FK → users.id（学級担任）',
