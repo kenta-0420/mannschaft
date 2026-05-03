@@ -4,7 +4,9 @@
     "description": "Introduzca solicitudes en papel en nombre de residentes no digitales",
     "consent": {
       "title": "Consentimiento de entrada por representación",
+      "subjectUserId": "ID de residente representado",
       "method": {
+        "label": "Método de consentimiento",
         "paper_signed": "Firma en papel",
         "witnessed_oral": "Oral con testigo",
         "digital_signature": "Firma digital",
@@ -22,6 +24,14 @@
       "approvedAt": "Aprobado el",
       "revokedAt": "Revocado el",
       "noActive": "No hay consentimientos activos"
+    },
+    "scope": {
+      "survey": "Encuesta",
+      "schedule_attendance": "Asistencia",
+      "shift_request": "Solicitud de turno",
+      "announcement_read": "Lectura de anuncio",
+      "parking_application": "Solicitud de aparcamiento",
+      "circular": "Circular"
     },
     "desk": {
       "pinSubject": "Fijar residente",

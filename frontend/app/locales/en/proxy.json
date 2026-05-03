@@ -4,7 +4,9 @@
     "description": "Enter paper applications on behalf of non-digital residents",
     "consent": {
       "title": "Proxy Input Consent",
+      "subjectUserId": "Subject Resident ID",
       "method": {
+        "label": "Consent Method",
         "paper_signed": "Paper Signature",
         "witnessed_oral": "Witnessed Oral",
         "digital_signature": "Digital Signature",
@@ -22,6 +24,14 @@
       "approvedAt": "Approved At",
       "revokedAt": "Revoked At",
       "noActive": "No active consents found"
+    },
+    "scope": {
+      "survey": "Survey",
+      "schedule_attendance": "Attendance",
+      "shift_request": "Shift Request",
+      "announcement_read": "Announcements",
+      "parking_application": "Parking Application",
+      "circular": "Circular"
     },
     "desk": {
       "pinSubject": "Pin Resident",

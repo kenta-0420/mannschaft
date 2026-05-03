@@ -4,7 +4,9 @@
     "description": "비디지털 주민을 대신하여 서류 신청서를 입력합니다",
     "consent": {
       "title": "대리 입력 동의서",
+      "subjectUserId": "대상 주민 ID",
       "method": {
+        "label": "동의 방법",
         "paper_signed": "종이 서명",
         "witnessed_oral": "목격 구두",
         "digital_signature": "전자 서명",
@@ -22,6 +24,14 @@
       "approvedAt": "승인 일시",
       "revokedAt": "철회 일시",
       "noActive": "유효한 동의서가 없습니다"
+    },
+    "scope": {
+      "survey": "설문조사",
+      "schedule_attendance": "출결 확인",
+      "shift_request": "교대 신청",
+      "announcement_read": "공지 읽음",
+      "parking_application": "주차 신청",
+      "circular": "회람판"
     },
     "desk": {
       "pinSubject": "주민 고정",

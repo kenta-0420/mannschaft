@@ -4,7 +4,9 @@
     "description": "非デジタル住民の紙申込書を代理で入力できます",
     "consent": {
       "title": "代理入力同意書",
+      "subjectUserId": "対象住民ID",
       "method": {
+        "label": "同意方法",
         "paper_signed": "紙面署名",
         "witnessed_oral": "立会口頭",
         "digital_signature": "電子署名",
@@ -22,6 +24,14 @@
       "approvedAt": "承認日時",
       "revokedAt": "撤回日時",
       "noActive": "有効な同意書がありません"
+    },
+    "scope": {
+      "survey": "アンケート",
+      "schedule_attendance": "出欠確認",
+      "shift_request": "シフト希望",
+      "announcement_read": "お知らせ既読",
+      "parking_application": "駐車場申請",
+      "circular": "回覧板"
     },
     "desk": {
       "pinSubject": "住民をピン留め",

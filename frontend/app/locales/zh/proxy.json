@@ -4,7 +4,9 @@
     "description": "代表非数字化居民录入纸质申请",
     "consent": {
       "title": "代理输入同意书",
+      "subjectUserId": "被代理住民ID",
       "method": {
+        "label": "同意方式",
         "paper_signed": "纸质签名",
         "witnessed_oral": "见证口头",
         "digital_signature": "电子签名",
@@ -22,6 +24,14 @@
       "approvedAt": "审批时间",
       "revokedAt": "撤销时间",
       "noActive": "没有有效的同意书"
+    },
+    "scope": {
+      "survey": "问卷调查",
+      "schedule_attendance": "出勤确认",
+      "shift_request": "班次申请",
+      "announcement_read": "公告已读",
+      "parking_application": "停车申请",
+      "circular": "传阅通知"
     },
     "desk": {
       "pinSubject": "锁定居民",
