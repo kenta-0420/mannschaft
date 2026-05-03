@@ -129,7 +129,7 @@ describe('useQrTokenApi', () => {
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       expect(onToken).toHaveBeenCalledTimes(1)
-      expect(onToken.mock.calls[0][0].shortCode).toBe('A1B2C3')
+      expect(onToken.mock.calls[0]![0].shortCode).toBe('A1B2C3')
 
       stop()
     })
@@ -164,7 +164,7 @@ describe('useQrTokenApi', () => {
       await flushMicrotasks()
       expect(mockApiFetch).toHaveBeenCalledTimes(2)
       expect(onToken).toHaveBeenCalledTimes(2)
-      expect(onToken.mock.calls[1][0].shortCode).toBe('SECND2')
+      expect(onToken.mock.calls[1]![0].shortCode).toBe('SECND2')
 
       stop()
     })

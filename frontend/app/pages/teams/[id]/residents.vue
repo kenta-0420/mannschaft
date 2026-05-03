@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import type { DwellingUnit } from '~/types/resident'
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const teamId = Number(route.params.id)
 const { getUnits } = useResidentApi()
 const { showError } = useNotification()
-const units = ref<Record<string, unknown>[]>([])
+const units = ref<DwellingUnit[]>([])
 const loading = ref(false)
 async function load() {
   loading.value = true

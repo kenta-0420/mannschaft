@@ -19,7 +19,7 @@ const form = reactive<DutyRotationRequest>({
   dutyName: '',
   rotationType: 'DAILY',
   memberOrder: [],
-  startDate: new Date().toISOString().split('T')[0],
+  startDate: new Date().toISOString().split('T')[0] ?? '',
   icon: '📋',
   isEnabled: true,
 })
@@ -49,7 +49,7 @@ function openCreate() {
     dutyName: '',
     rotationType: 'DAILY',
     memberOrder: [],
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: new Date().toISOString().split('T')[0] ?? '',
     icon: '📋',
     isEnabled: true,
   })

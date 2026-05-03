@@ -2,15 +2,14 @@ import type {
   CheckinRequest,
   CheckinResponse,
   CreateEventRequest,
-  CreateInviteTokenRequest,
+  EventCreateInviteTokenRequest,
   CreateRegistrationRequest,
   CreateTicketTypeRequest,
   CreateTimetableItemRequest,
   EventDetailResponse,
   EventResponse,
   GuestRegistrationRequest,
-  InviteTokenResponse,
-  PageMeta,
+  EventInviteTokenResponse,
   RegistrationResponse,
   ReorderTimetableRequest,
   SelfCheckinRequest,
@@ -20,6 +19,7 @@ import type {
   UpdateTicketTypeRequest,
   UpdateTimetableItemRequest,
 } from '~/types/event'
+import type { PageMeta } from '~/types/api'
 
 interface EventListParams {
   status?: string
@@ -273,11 +273,11 @@ export function useEventApi() {
 
   // === Invite Tokens ===
   async function listInviteTokens(eventId: number) {
-    return api<{ data: InviteTokenResponse[] }>(`/api/v1/events/${eventId}/invite-tokens`)
+    return api<{ data: EventInviteTokenResponse[] }>(`/api/v1/events/${eventId}/invite-tokens`)
   }
 
-  async function createInviteToken(eventId: number, body: CreateInviteTokenRequest) {
-    return api<{ data: InviteTokenResponse }>(`/api/v1/events/${eventId}/invite-tokens`, {
+  async function createInviteToken(eventId: number, body: EventCreateInviteTokenRequest) {
+    return api<{ data: EventInviteTokenResponse }>(`/api/v1/events/${eventId}/invite-tokens`, {
       method: 'POST',
       body,
     })

@@ -1,6 +1,6 @@
 export type ScheduleScopeType = 'TEAM' | 'ORGANIZATION'
 export type ScheduleStatus = 'DRAFT' | 'PUBLISHED' | 'CANCELLED'
-export type AttendanceStatus = 'YES' | 'NO' | 'MAYBE' | 'PENDING'
+export type ScheduleAttendanceStatus = 'YES' | 'NO' | 'MAYBE' | 'PENDING'
 export type RecurrenceType = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY'
 export type EditScope = 'THIS_ONLY' | 'THIS_AND_FOLLOWING' | 'ALL'
 
@@ -30,7 +30,7 @@ export interface ScheduleResponse {
     pending: number
     total: number
   } | null
-  myAttendance: AttendanceStatus | null
+  myAttendance: ScheduleAttendanceStatus | null
   createdAt: string
   updatedAt: string
 }
@@ -89,13 +89,13 @@ export interface AttendanceResponse {
   userId: number
   displayName: string
   avatarUrl: string | null
-  status: AttendanceStatus
+  status: ScheduleAttendanceStatus
   comment: string | null
   respondedAt: string | null
 }
 
 export interface RespondAttendanceRequest {
-  status: AttendanceStatus
+  status: ScheduleAttendanceStatus
   comment?: string
 }
 
@@ -147,7 +147,7 @@ export interface ExecuteCopyRequest {
 // === Bulk Attendance ===
 export interface BulkAttendanceItem {
   userId: number
-  status: AttendanceStatus
+  status: ScheduleAttendanceStatus
   comment?: string
 }
 

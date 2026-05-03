@@ -1,42 +1,24 @@
 <script setup lang="ts">
-defineProps<{
+import type { ShiftPositionResponse } from '~/types/shift'
+
+const props = defineProps<{
   teamId: number
 }>()
 
 const shiftApi = useShiftApi()
 const notification = useNotification()
 
-interface Position {
-  id: number
-  name: string
-  description: string | null
-  requiredCount: number
-  color: string | null
-  sortOrder: number
-}
-
-const positions = ref<Position[]>([])
+const positions = ref<ShiftPositionResponse[]>([])
 const loading = ref(true)
 const showDialog = ref(false)
-const editing = ref<Position | null>(null)
-const form = ref({ name: '', description: '', requiredCount: 1, color: '#6366f1' })
-
-const colorOptions = [
-  '#6366f1',
-  '#ef4444',
-  '#22c55e',
-  '#f59e0b',
-  '#3b82f6',
-  '#ec4899',
-  '#8b5cf6',
-  '#14b8a6',
-]
+const editing = ref<ShiftPositionResponse | null>(null)
+const form = ref({ name: '', displayOrder: 1 })
 
 async function load() {
   loading.value = true
   try {
-    const res = await shiftApi.getPositions()
-    positions.value = res.data as Position[]
+    const res = await shiftApi.getPositions(props.teamId)
+    positions.value = res.data
   } catch {
     positions.value = []
   } finally {
@@ -46,17 +28,15 @@ async function load() {
 
 function openCreate() {
   editing.value = null
-  form.value = { name: '', description: '', requiredCount: 1, color: '#6366f1' }
+  form.value = { name: '', displayOrder: positions.value.length + 1 }
   showDialog.value = true
 }
 
-function openEdit(pos: Position) {
+function openEdit(pos: ShiftPositionResponse) {
   editing.value = pos
   form.value = {
     name: pos.name,
-    description: pos.description ?? '',
-    requiredCount: pos.requiredCount,
-    color: pos.color ?? '#6366f1',
+    displayOrder: pos.displayOrder,
   }
   showDialog.value = true
 }
@@ -65,9 +45,9 @@ async function save() {
   if (!form.value.name.trim()) return
   try {
     if (editing.value) {
-      await shiftApi.updatePosition(editing.value.id, form.value)
+      await shiftApi.updatePosition(editing.value.id, { name: form.value.name, displayOrder: form.value.displayOrder })
     } else {
-      await shiftApi.createPosition(form.value)
+      await shiftApi.createPosition(props.teamId, { name: form.value.name, displayOrder: form.value.displayOrder })
     }
     notification.success('ポジションを保存しました')
     showDialog.value = false
@@ -103,7 +83,7 @@ onMounted(load)
         <div class="h-4 w-4 rounded-full" :style="{ backgroundColor: pos.color ?? '#6366f1' }" />
         <div class="min-w-0 flex-1">
           <p class="font-medium">{{ pos.name }}</p>
-          <p class="text-xs text-surface-500">必要人数: {{ pos.requiredCount }}</p>
+          <p class="text-xs text-surface-500">表示順: {{ pos.displayOrder }}</p>
         </div>
         <Button icon="pi pi-pencil" text rounded size="small" @click="openEdit(pos)" />
         <Button
@@ -130,27 +110,8 @@ onMounted(load)
           <InputText v-model="form.name" class="w-full" placeholder="例: レジ担当" />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">説明</label>
-          <InputText v-model="form.description" class="w-full" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-medium">必要人数</label>
-          <InputNumber v-model="form.requiredCount" :min="1" class="w-full" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-medium">色</label>
-          <div class="flex gap-2">
-            <button
-              v-for="c in colorOptions"
-              :key="c"
-              class="h-8 w-8 rounded-full border-2"
-              :class="
-                form.color === c ? 'border-primary ring-2 ring-primary/30' : 'border-surface-300'
-              "
-              :style="{ backgroundColor: c }"
-              @click="form.color = c"
-            />
-          </div>
+          <label class="mb-1 block text-sm font-medium">表示順</label>
+          <InputNumber v-model="form.displayOrder" :min="1" class="w-full" />
         </div>
       </div>
       <template #footer>

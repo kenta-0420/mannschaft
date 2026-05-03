@@ -42,7 +42,7 @@ async function callNext(counterId: number) {
 
 async function cancelTicket(counterId: number, ticketNumber: string) {
   try {
-    await queueApi.cancelTicket(props.teamId, counterId)
+    await queueApi.ticketAction(props.teamId, counterId, { action: 'CANCEL' })
     notification.success(`${ticketNumber} をキャンセルしました`)
     await load()
   } catch {

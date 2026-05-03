@@ -1,3 +1,10 @@
+import type {
+  ReportResponse,
+  ReportStatsResponse,
+  InternalNoteResponse,
+  FeedbackResponse,
+} from '~/types/admin-report'
+
 export function useAdminReportApi() {
   const api = useApi()
 
@@ -88,7 +95,7 @@ export function useAdminReportApi() {
       for (const [k, v] of Object.entries(params)) {
         if (v != null) q.set(k, String(v))
       }
-    return api<{ data: unknown[] }>(`/api/v1/admin/feedbacks?${q}`)
+    return api<{ data: FeedbackResponse[] }>(`/api/v1/admin/feedbacks?${q}`)
   }
 
   async function respondToFeedback(id: number, body: Record<string, unknown>) {
@@ -122,7 +129,7 @@ export function useAdminReportApi() {
   }
 
   async function getReportStats() {
-    return api<{ data: unknown }>('/api/v1/admin/reports/stats')
+    return api<{ data: ReportStatsResponse }>('/api/v1/admin/reports/stats')
   }
 
   async function restrictReporting(userId: number, body: Record<string, unknown>) {
@@ -166,15 +173,15 @@ export function useAdminReportApi() {
     if (params?.page != null) q.set('page', String(params.page))
     if (params?.size != null) q.set('size', String(params.size))
     if (params?.status) q.set('status', params.status)
-    return api<{ data: Array<Record<string, unknown>>; meta?: { totalElements: number } }>(`/api/v1/admin/reports?${q.toString()}`)
+    return api<{ data: ReportResponse[]; meta?: { totalElements: number } }>(`/api/v1/admin/reports?${q.toString()}`)
   }
 
   async function getReportNotes(reportId: number) {
-    return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/admin/reports/${reportId}/notes`)
+    return api<{ data: InternalNoteResponse[] }>(`/api/v1/admin/reports/${reportId}/notes`)
   }
 
   async function createReportNote(reportId: number, body: { note: string }) {
-    return api<{ data: Record<string, unknown> }>(`/api/v1/admin/reports/${reportId}/notes`, { method: 'POST', body })
+    return api<{ data: InternalNoteResponse }>(`/api/v1/admin/reports/${reportId}/notes`, { method: 'POST', body })
   }
 
   async function reviewReport(reportId: number) {

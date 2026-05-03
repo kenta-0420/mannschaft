@@ -493,16 +493,18 @@ export function useShiftApi() {
   async function selectClaimer(swapRequestId: number, claimedBy: number): Promise<void> {
     await api(`${BASE}/swap-requests/${swapRequestId}/select-claimer`, {
       method: 'POST',
-      body: claimedBy,
+      body: { claimedBy },
     })
   }
 
   // === PDF ===
   async function downloadShiftPdf(scheduleId: number, layout: 'team' | 'personal'): Promise<Blob> {
-    const res = await api<Blob>(`${BASE}/${scheduleId}/pdf?layout=${layout}`, {
+    const config = useRuntimeConfig()
+    const { accessToken } = useAuthStore()
+    return $fetch<Blob>(`${config.public.apiBase}/api/v1${BASE}/${scheduleId}/pdf?layout=${layout}`, {
       responseType: 'blob',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
     })
-    return res
   }
 
   return {

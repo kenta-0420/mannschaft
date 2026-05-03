@@ -26,7 +26,7 @@ async function loadLists() {
     const res = await shoppingApi.listShoppingLists(teamId)
     lists.value = res.data
     if (res.data.length > 0 && !selectedList.value) {
-      await selectList(res.data[0])
+      await selectList(res.data[0]!)
     }
   } catch {
     showError('買い物リストの取得に失敗しました')

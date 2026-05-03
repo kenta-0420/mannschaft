@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ViewerRole } from '~/types/dashboard'
+import type { TeamResponse } from '~/types/team'
 
 definePageMeta({
   middleware: 'auth',
@@ -69,29 +70,7 @@ async function cancelSupporter() {
   }
 }
 
-interface TeamDetail {
-  id: number
-  name: string
-  nameKana: string | null
-  nickname1: string | null
-  nickname2: string | null
-  template: string
-  prefecture: string | null
-  city: string | null
-  description: string | null
-  visibility: string
-  supporterEnabled: boolean
-  version: number
-  memberCount: number
-  teamFriendCount: number
-  supporterCount: number
-  archivedAt: string | null
-  createdAt: string
-  iconUrl: string | null
-  bannerUrl: string | null
-}
-
-const team = ref<TeamDetail | null>(null)
+const team = ref<TeamResponse | null>(null)
 const loading = ref(false)
 const activeTab = ref(0)
 const showLeaveConfirm = ref(false)

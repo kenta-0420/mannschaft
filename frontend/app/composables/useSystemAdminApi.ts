@@ -1,3 +1,4 @@
+import type { PageMeta } from '~/types/api'
 import type {
   AnnouncementResponse,
   CreateAnnouncementRequest,
@@ -19,7 +20,7 @@ import type {
   CreateAffiliateConfigRequest,
   TournamentPresetResponse,
   SafetyPresetResponse,
-  SafetyTemplateResponse,
+  SystemAdminSafetyTemplateResponse,
   WallpaperResponse,
   CreateWallpaperRequest,
   ActivityTemplatePresetResponse,
@@ -29,7 +30,6 @@ import type {
   ReviewUnflagRequest,
   UserViolationHistoryResponse,
   OrganizationEntity,
-  PageMeta,
   ErrorReportResponse,
   ErrorReportStatsResponse,
 } from '~/types/system-admin'
@@ -327,18 +327,18 @@ export function useSystemAdminApi() {
   }
 
   async function getSafetyCheckTemplates() {
-    return api<{ data: SafetyTemplateResponse[] }>(`${BASE}/safety-checks/templates`)
+    return api<{ data: SystemAdminSafetyTemplateResponse[] }>(`${BASE}/safety-checks/templates`)
   }
 
   async function createSafetyCheckTemplate(body: Record<string, unknown>) {
-    return api<{ data: SafetyTemplateResponse }>(`${BASE}/safety-checks/templates`, {
+    return api<{ data: SystemAdminSafetyTemplateResponse }>(`${BASE}/safety-checks/templates`, {
       method: 'POST',
       body,
     })
   }
 
   async function updateSafetyCheckTemplate(id: number, body: Record<string, unknown>) {
-    return api<{ data: SafetyTemplateResponse }>(`${BASE}/safety-checks/templates/${id}`, {
+    return api<{ data: SystemAdminSafetyTemplateResponse }>(`${BASE}/safety-checks/templates/${id}`, {
       method: 'PATCH',
       body,
     })

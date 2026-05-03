@@ -134,6 +134,7 @@ const selectedTemplateIndex = ref<number | null>(null)
 function applyTemplate(index: number) {
   selectedTemplateIndex.value = index
   const tmpl = TEMPLATES.value[index]
+  if (!tmpl) return
   subject.value = tmpl.subject
   reason.value = tmpl.reason
   messageBody.value = tmpl.body.replace('__PERIOD__', periodText.value)
@@ -148,6 +149,7 @@ const messageBody = ref('')
 watch([startDate, endDate, useTimeRange, startHour, endHour], () => {
   if (selectedTemplateIndex.value === null) return
   const tmpl = TEMPLATES.value[selectedTemplateIndex.value]
+  if (!tmpl) return
   messageBody.value = tmpl.body.replace('__PERIOD__', periodText.value)
 })
 

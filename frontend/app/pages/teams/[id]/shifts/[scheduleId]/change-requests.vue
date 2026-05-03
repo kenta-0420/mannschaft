@@ -6,7 +6,7 @@ const teamId = computed(() => Number(route.params.id))
 const scheduleId = computed(() => Number(route.params.scheduleId))
 
 const authStore = useAuthStore()
-const isAdmin = computed(() => authStore.currentUser?.role === 'ADMIN')
+const isAdmin = computed(() => authStore.currentUser?.systemRole === 'ADMIN')
 
 const { requests, isLoading, fetchRequests, review, withdraw } =
   useChangeRequest(scheduleId)

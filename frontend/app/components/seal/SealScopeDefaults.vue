@@ -45,7 +45,7 @@ watch(
       >
         <span class="min-w-24 text-sm">{{ scopeLabel(d) }}</span>
         <Select
-          v-model="localDefaults[index].variant"
+          v-model="localDefaults[index]!.variant"
           :options="variantOptions"
           option-label="label"
           option-value="value"

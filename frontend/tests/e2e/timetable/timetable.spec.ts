@@ -99,7 +99,7 @@ test.describe('TIMETABLE-001〜005: F03.9 時間割', () => {
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
-          body: JSON.stringify({ data: { ...MOCK_TIMETABLES[0], id: 99, name: '新しい時間割' } }),
+          body: JSON.stringify({ data: { ...MOCK_TIMETABLES[0]!, id: 99, name: '新しい時間割' } }),
         })
       } else {
         await route.continue()
@@ -116,7 +116,7 @@ test.describe('TIMETABLE-001〜005: F03.9 時間割', () => {
     })
 
     // 時間割詳細・操作APIをモック
-    await page.route(`**/api/v1/teams/${TEAM_ID}/timetables/${MOCK_TIMETABLES[0].id}`, async (route) => {
+    await page.route(`**/api/v1/teams/${TEAM_ID}/timetables/${MOCK_TIMETABLES[0]!.id}`, async (route) => {
       const method = route.request().method()
       if (method === 'GET') {
         await route.fulfill({
@@ -139,7 +139,7 @@ test.describe('TIMETABLE-001〜005: F03.9 時間割', () => {
 
     // 週間ビューAPIをモック
     await page.route(
-      `**/api/v1/teams/${TEAM_ID}/timetables/${MOCK_TIMETABLES[0].id}/weekly**`,
+      `**/api/v1/teams/${TEAM_ID}/timetables/${MOCK_TIMETABLES[0]!.id}/weekly**`,
       async (route) => {
         await route.fulfill({
           status: 200,
@@ -171,7 +171,7 @@ test.describe('TIMETABLE-001〜005: F03.9 時間割', () => {
 
     // 臨時変更一覧APIをモック
     await page.route(
-      `**/api/v1/timetables/${MOCK_TIMETABLES[0].id}/changes**`,
+      `**/api/v1/timetables/${MOCK_TIMETABLES[0]!.id}/changes**`,
       async (route) => {
         const method = route.request().method()
         if (method === 'GET') {
@@ -194,7 +194,7 @@ test.describe('TIMETABLE-001〜005: F03.9 時間割', () => {
 
     // activate/archive/revert-to-draft APIをモック
     await page.route(
-      `**/api/v1/teams/${TEAM_ID}/timetables/${MOCK_TIMETABLES[0].id}/**`,
+      `**/api/v1/teams/${TEAM_ID}/timetables/${MOCK_TIMETABLES[0]!.id}/**`,
       async (route) => {
         await route.fulfill({
           status: 200,
@@ -259,7 +259,7 @@ test.describe('TIMETABLE-001〜005: F03.9 時間割', () => {
   }) => {
     let weeklyApiCalled = false
     await page.route(
-      `**/api/v1/teams/${TEAM_ID}/timetables/${MOCK_TIMETABLES[0].id}/weekly**`,
+      `**/api/v1/teams/${TEAM_ID}/timetables/${MOCK_TIMETABLES[0]!.id}/weekly**`,
       async (route) => {
         weeklyApiCalled = true
         await route.fulfill({
@@ -285,7 +285,7 @@ test.describe('TIMETABLE-001〜005: F03.9 時間割', () => {
   }) => {
     let changesApiCalled = false
     await page.route(
-      `**/api/v1/timetables/${MOCK_TIMETABLES[0].id}/changes**`,
+      `**/api/v1/timetables/${MOCK_TIMETABLES[0]!.id}/changes**`,
       async (route) => {
         if (route.request().method() === 'GET') {
           changesApiCalled = true

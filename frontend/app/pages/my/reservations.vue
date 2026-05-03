@@ -1,16 +1,17 @@
 <script setup lang="ts">
+import type { ReservationResponse } from '~/types/reservation'
 definePageMeta({ middleware: 'auth' })
 
-const { getMyReservations } = useReservationApi()
+const { listMyReservations } = useReservationApi()
 const { showError } = useNotification()
 
-const reservations = ref<Record<string, unknown>[]>([])
+const reservations = ref<ReservationResponse[]>([])
 const loading = ref(false)
 
 async function load() {
   loading.value = true
   try {
-    const res = await getMyReservations()
+    const res = await listMyReservations()
     reservations.value = res.data
   } catch {
     showError('予約情報の取得に失敗しました')
@@ -47,13 +48,12 @@ onMounted(() => load())
         :key="r.id"
       >
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold">{{ r.slotTitle ?? r.serviceName }}</h3>
+          <h3 class="text-sm font-semibold">{{ r.lineName }}</h3>
           <span :class="getStatusClass(r.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{
             r.status
           }}</span>
         </div>
-        <p class="mt-1 text-xs text-surface-400">{{ r.startAt }} - {{ r.endAt }}</p>
-        <p v-if="r.teamName" class="mt-1 text-xs text-surface-500">{{ r.teamName }}</p>
+        <p class="mt-1 text-xs text-surface-400">{{ r.date }} {{ r.startTime }} - {{ r.endTime }}</p>
       </SectionCard>
       <DashboardEmptyState v-if="reservations.length === 0" icon="pi-calendar" message="予約がありません" />
     </div>

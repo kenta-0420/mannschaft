@@ -2,7 +2,6 @@ import type {
   ApprovalDecisionRequest,
   CreateWorkflowRequestRequest,
   CreateWorkflowTemplateRequest,
-  PageMeta,
   UpdateWorkflowRequestRequest,
   UpdateWorkflowTemplateRequest,
   WorkflowAttachmentResponse,
@@ -11,6 +10,7 @@ import type {
   WorkflowRequestResponse,
   WorkflowTemplateResponse,
 } from '~/types/workflow'
+import type { PageMeta } from '~/types/api'
 
 interface WorkflowListParams {
   status?: string

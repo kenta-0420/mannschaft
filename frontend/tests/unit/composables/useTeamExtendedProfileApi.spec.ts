@@ -42,8 +42,8 @@ describe('useTeamExtendedProfileApi', () => {
       await api.getProfile(1)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
-      expect(mockApiFetch.mock.calls[0][0]).toBe('/api/v1/teams/1/profile')
-      expect(mockApiFetch.mock.calls[0][1]).toBeUndefined()
+      expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/profile')
+      expect(mockApiFetch.mock.calls[0]![1]).toBeUndefined()
     })
 
     it('teamId がURLに正しく反映されること', async () => {
@@ -52,7 +52,7 @@ describe('useTeamExtendedProfileApi', () => {
       const api = useTeamExtendedProfileApi()
       await api.getProfile(42)
 
-      expect(mockApiFetch.mock.calls[0][0]).toBe('/api/v1/teams/42/profile')
+      expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/42/profile')
     })
   })
 
@@ -84,8 +84,8 @@ describe('useTeamExtendedProfileApi', () => {
       await api.getOfficers(1)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
-      expect(mockApiFetch.mock.calls[0][0]).toBe('/api/v1/teams/1/officers')
-      expect(mockApiFetch.mock.calls[0][1]).toBeUndefined()
+      expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/officers')
+      expect(mockApiFetch.mock.calls[0]![1]).toBeUndefined()
     })
 
     it('visibilityPreview=true の場合、?visibilityPreview=true 付きURLで呼ぶこと', async () => {
@@ -95,7 +95,7 @@ describe('useTeamExtendedProfileApi', () => {
       await api.getOfficers(1, true)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
-      expect(mockApiFetch.mock.calls[0][0]).toBe('/api/v1/teams/1/officers?visibilityPreview=true')
+      expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/officers?visibilityPreview=true')
     })
 
     it('visibilityPreview=false を明示的に渡した場合、クエリパラメータなしのURLで呼ぶこと', async () => {
@@ -104,7 +104,7 @@ describe('useTeamExtendedProfileApi', () => {
       const api = useTeamExtendedProfileApi()
       await api.getOfficers(1, false)
 
-      expect(mockApiFetch.mock.calls[0][0]).toBe('/api/v1/teams/1/officers')
+      expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/officers')
     })
   })
 
@@ -163,18 +163,18 @@ describe('useTeamExtendedProfileApi', () => {
   // ===== reorderOfficers テスト =====
 
   describe('reorderOfficers', () => {
-    it('PUT /api/v1/teams/{id}/officers/reorder を { ids } body で呼ぶこと', async () => {
+    it('PUT /api/v1/teams/{id}/officers/reorder を { orders } body で呼ぶこと', async () => {
       mockApiFetch.mockResolvedValueOnce(undefined)
 
       const api = useTeamExtendedProfileApi()
-      const body = { ids: [3, 1, 2] }
+      const body = { orders: [{ id: 3, displayOrder: 1 }, { id: 1, displayOrder: 2 }, { id: 2, displayOrder: 3 }] }
       await api.reorderOfficers(1, body)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockApiFetch.mock.calls[0] as [string, Record<string, unknown>]
       expect(url).toBe('/api/v1/teams/1/officers/reorder')
       expect(options.method).toBe('PUT')
-      expect(options.body).toEqual({ ids: [3, 1, 2] })
+      expect(options.body).toEqual(body)
     })
   })
 
@@ -188,8 +188,8 @@ describe('useTeamExtendedProfileApi', () => {
       await api.getCustomFields(1)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
-      expect(mockApiFetch.mock.calls[0][0]).toBe('/api/v1/teams/1/custom-fields')
-      expect(mockApiFetch.mock.calls[0][1]).toBeUndefined()
+      expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/custom-fields')
+      expect(mockApiFetch.mock.calls[0]![1]).toBeUndefined()
     })
 
     it('visibilityPreview=true の場合、?visibilityPreview=true 付きURLで呼ぶこと', async () => {
@@ -199,7 +199,7 @@ describe('useTeamExtendedProfileApi', () => {
       await api.getCustomFields(1, true)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
-      expect(mockApiFetch.mock.calls[0][0]).toBe('/api/v1/teams/1/custom-fields?visibilityPreview=true')
+      expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/custom-fields?visibilityPreview=true')
     })
 
     it('visibilityPreview=false を明示的に渡した場合、クエリパラメータなしのURLで呼ぶこと', async () => {
@@ -208,7 +208,7 @@ describe('useTeamExtendedProfileApi', () => {
       const api = useTeamExtendedProfileApi()
       await api.getCustomFields(1, false)
 
-      expect(mockApiFetch.mock.calls[0][0]).toBe('/api/v1/teams/1/custom-fields')
+      expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/custom-fields')
     })
   })
 
@@ -219,7 +219,7 @@ describe('useTeamExtendedProfileApi', () => {
       mockApiFetch.mockResolvedValueOnce({ data: {} })
 
       const api = useTeamExtendedProfileApi()
-      const body = { label: '創設年', field_type: 'TEXT', display_order: 1 }
+      const body = { label: '創設年', value: '2015年' }
       await api.createCustomField(1, body)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
@@ -267,18 +267,18 @@ describe('useTeamExtendedProfileApi', () => {
   // ===== reorderCustomFields テスト =====
 
   describe('reorderCustomFields', () => {
-    it('PUT /api/v1/teams/{id}/custom-fields/reorder を { ids } body で呼ぶこと', async () => {
+    it('PUT /api/v1/teams/{id}/custom-fields/reorder を { orders } body で呼ぶこと', async () => {
       mockApiFetch.mockResolvedValueOnce(undefined)
 
       const api = useTeamExtendedProfileApi()
-      const body = { ids: [2, 5, 1, 3] }
+      const body = { orders: [{ id: 2, displayOrder: 1 }, { id: 5, displayOrder: 2 }, { id: 1, displayOrder: 3 }] }
       await api.reorderCustomFields(1, body)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockApiFetch.mock.calls[0] as [string, Record<string, unknown>]
       expect(url).toBe('/api/v1/teams/1/custom-fields/reorder')
       expect(options.method).toBe('PUT')
-      expect(options.body).toEqual({ ids: [2, 5, 1, 3] })
+      expect(options.body).toEqual(body)
     })
   })
 })

@@ -84,6 +84,10 @@ function removeVideo() {
   videoContentType.value = null
 }
 
+function createObjectURL(file: File): string {
+  return URL.createObjectURL(file)
+}
+
 async function onSubmit() {
   if (!canSubmit.value) return
   submitting.value = true
@@ -166,7 +170,7 @@ async function onSubmit() {
     <!-- 画像プレビュー -->
     <div v-if="images.length > 0" class="mb-3 flex flex-wrap gap-2">
       <div v-for="(img, i) in images" :key="i" class="relative">
-        <img :src="URL.createObjectURL(img)" class="h-20 w-20 rounded-lg object-cover" >
+        <img :src="createObjectURL(img)" class="h-20 w-20 rounded-lg object-cover" >
         <button
           class="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white"
           @click="removeImage(i)"

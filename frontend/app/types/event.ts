@@ -265,7 +265,8 @@ export interface ReorderTimetableRequest {
 }
 
 // === Invite Token ===
-export interface InviteTokenResponse {
+// member.ts と名前が衝突するため EventInviteTokenResponse として定義
+export interface EventInviteTokenResponse {
   id: number
   token: string
   roleName: string | null
@@ -276,14 +277,15 @@ export interface InviteTokenResponse {
   createdAt: string
 }
 
-export interface CreateInviteTokenRequest {
+export interface EventCreateInviteTokenRequest {
   roleId: number
   expiresIn?: string
   maxUses?: number
 }
 
 // === EventCategory ===
-export interface EventCategoryResponse {
+// schedule.ts と名前が衝突するため EventCategoryItem として定義
+export interface EventCategoryItem {
   id: number
   name: string
   color: string | null

@@ -61,7 +61,7 @@ export function useFriendFeed(teamId: number) {
     const idx = posts.value.findIndex(p => p.postId === postId)
     if (idx !== -1) {
       posts.value[idx] = {
-        ...posts.value[idx],
+        ...posts.value[idx]!,
         forwardStatus: {
           isForwarded: true,
           forwardId,

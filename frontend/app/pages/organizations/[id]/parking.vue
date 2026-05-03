@@ -1,16 +1,17 @@
 <script setup lang="ts">
+import type { ParkingSpaceResponse } from '~/types/parking'
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const orgId = Number(route.params.id)
 const { getSpaces } = useParkingApi()
 const { showError } = useNotification()
-const spaces = ref<Record<string, unknown>[]>([])
+const spaces = ref<ParkingSpaceResponse[]>([])
 const loading = ref(false)
 async function load() {
   loading.value = true
   try {
     const res = await getSpaces('organization', orgId)
-    spaces.value = res.data
+    spaces.value = res.data as ParkingSpaceResponse[]
   } catch {
     showError('駐車場情報の取得に失敗しました')
   } finally {

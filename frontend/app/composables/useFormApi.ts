@@ -3,10 +3,10 @@ import type {
   CreateFormTemplateRequest,
   FormSubmissionResponse,
   FormTemplateResponse,
-  PageMeta,
   UpdateFormSubmissionRequest,
   UpdateFormTemplateRequest,
 } from '~/types/form'
+import type { PageMeta } from '~/types/api'
 
 interface FormListParams {
   status?: string

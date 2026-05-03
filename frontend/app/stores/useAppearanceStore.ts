@@ -71,8 +71,8 @@ export const useAppearanceStore = defineStore('appearance', {
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          const saved = parsed.theme
-          this.theme = (saved === 'LIGHT' || saved === 'DARK') ? saved : 'LIGHT'
+          const themeVal = parsed.theme
+          this.theme = (themeVal === 'LIGHT' || themeVal === 'DARK') ? themeVal : 'LIGHT'
           this.bgColor = parsed.bgColor ?? '#f3efe0'
           this.seasonalThemeId = parsed.seasonalThemeId ?? null
           this.hideChatPreview = parsed.hideChatPreview ?? false

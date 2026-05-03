@@ -96,11 +96,11 @@ test.describe('AUTH-001〜004: ログイン', () => {
     }
     await expect(page.getByText('二要素認証')).toBeVisible()
 
-    const code = totp.generate(seed)
+    const code = await totp.generate({ secret: seed })
     const inputs = page.locator('.p-inputotp input')
     for (let i = 0; i < 6; i++) {
       await inputs.nth(i).click()
-      await inputs.nth(i).pressSequentially(code[i], { delay: 10 })
+      await inputs.nth(i).pressSequentially(code[i] ?? '', { delay: 10 })
     }
 
     await page.getByRole('button', { name: '認証する' }).click()

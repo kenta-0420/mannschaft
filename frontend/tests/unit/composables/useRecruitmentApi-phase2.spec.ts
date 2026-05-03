@@ -56,7 +56,7 @@ describe('useRecruitmentApi - Phase 2', () => {
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/me/recruitment-feed')
       expect(result.data).toHaveLength(1)
-      expect(result.data[0].title).toBe('フットサル個人参加')
+      expect(result.data[0]!.title).toBe('フットサル個人参加')
     })
   })
 
@@ -83,7 +83,7 @@ describe('useRecruitmentApi - Phase 2', () => {
       const result = await api.getMyListings()
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/me/recruitment-listings')
-      expect(result.data[0].status).toBe('CONFIRMED')
+      expect(result.data[0]!.status).toBe('CONFIRMED')
     })
   })
 
@@ -98,7 +98,7 @@ describe('useRecruitmentApi - Phase 2', () => {
       const result = await api.getDistributionTargets(10)
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/recruitment-listings/10/distribution-targets')
-      expect(result.data[0].targetType).toBe('MEMBERS')
+      expect(result.data[0]!.targetType).toBe('MEMBERS')
     })
   })
 

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-defineProps<{
+import type { ShiftScheduleResponse } from '~/types/shift'
+
+const props = defineProps<{
   teamId: number
   canManage: boolean
 }>()
@@ -13,17 +15,7 @@ const shiftApi = useShiftApi()
 const notification = useNotification()
 const confirm = useConfirm()
 
-interface Schedule {
-  id: number
-  title: string
-  periodStart: string
-  periodEnd: string
-  status: string
-  publishedAt: string | null
-  createdAt: string
-}
-
-const schedules = ref<Schedule[]>([])
+const schedules = ref<ShiftScheduleResponse[]>([])
 const loading = ref(true)
 
 const statusConfig: Record<string, { label: string; severity: string }> = {
@@ -37,8 +29,8 @@ const statusConfig: Record<string, { label: string; severity: string }> = {
 async function load() {
   loading.value = true
   try {
-    const res = await shiftApi.listShiftSchedules({ size: 20 })
-    schedules.value = res.data as Schedule[]
+    const data = await shiftApi.listSchedules(props.teamId)
+    schedules.value = data
   } catch (e) {
     console.error('シフト表一覧の取得に失敗しました', e)
     schedules.value = []
@@ -55,7 +47,7 @@ async function publish(id: number) {
     acceptLabel: '公開する',
     rejectLabel: 'キャンセル',
     accept: async () => {
-      await shiftApi.transitionShiftSchedule(id)
+      await shiftApi.transitionStatus(id, 'PUBLISHED')
       notification.success('シフトを公開しました')
       await load()
     },
@@ -63,7 +55,7 @@ async function publish(id: number) {
 }
 
 async function archive(id: number) {
-  await shiftApi.transitionShiftSchedule(id)
+  await shiftApi.transitionStatus(id, 'ARCHIVED')
   notification.success('アーカイブしました')
   await load()
 }
@@ -95,7 +87,7 @@ onMounted(load)
         <div class="flex items-center justify-between">
           <div>
             <p class="font-medium">{{ s.title }}</p>
-            <p class="text-xs text-surface-500">{{ s.periodStart }} 〜 {{ s.periodEnd }}</p>
+            <p class="text-xs text-surface-500">{{ s.startDate }} 〜 {{ s.endDate }}</p>
           </div>
           <div class="flex items-center gap-2">
             <Tag

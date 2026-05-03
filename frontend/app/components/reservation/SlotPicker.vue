@@ -22,7 +22,7 @@ async function loadLines() {
   const res = await reservationApi.getLines(props.teamId)
   lines.value = (res.data as Line[]).filter(l => l.isActive)
   if (lines.value.length > 0 && !selectedLineId.value) {
-    selectedLineId.value = lines.value[0].id
+    selectedLineId.value = lines.value[0]!.id
   }
 }
 

@@ -140,15 +140,20 @@ async function load() {
     ])
 
     // TODO 期限切れ
-    if (todoRes.status === 'fulfilled' && todoRes.value.data.overdueCount > 0) {
-      result.push({
-        key: 'todo-overdue',
-        type: 'todo',
-        title: `${todoRes.value.data.overdueCount}件のTODOが期限切れです`,
-        scopeName: '個人',
-        deadline: null,
-        linkTo: '/todos',
-      })
+    if (todoRes.status === 'fulfilled') {
+      const overdueTodos = todoRes.value.data.filter(
+        (t) => t.dueDate !== null && new Date(t.dueDate) < new Date() && t.status !== 'DONE',
+      )
+      if (overdueTodos.length > 0) {
+        result.push({
+          key: 'todo-overdue',
+          type: 'todo',
+          title: `${overdueTodos.length}件のTODOが期限切れです`,
+          scopeName: '個人',
+          deadline: null,
+          linkTo: '/todos',
+        })
+      }
     }
 
     // アンケート・出席確認・マッチング
