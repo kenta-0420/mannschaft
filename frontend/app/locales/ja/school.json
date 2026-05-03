@@ -228,6 +228,16 @@
       "recalculateSuccess": "集計を再計算しました",
       "noData": "集計データがありません"
     },
+    "requirements": {
+      "title": "出席要件管理",
+      "filterAll": "すべて",
+      "runEvaluation": "評価を実行",
+      "evaluationSuccess": "評価が完了しました",
+      "evaluateAll": "全生徒を一括評価",
+      "evaluating": "評価中…",
+      "loadError": "リスト取得に失敗しました",
+      "resolveSuccess": "解消を記録しました"
+    },
     "evaluation": {
       "title": "出席要件評価",
       "status": {
