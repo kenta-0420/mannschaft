@@ -59,7 +59,27 @@
     "mood_enabled": {
       "label": "Enable mood input",
       "description": "Choose your mood from 5 levels when adding a memo. Off by default."
+    },
+    "reminder": {
+      "label": "Daily Reminder",
+      "description": "Receive a notification at the set time to record your action memo (will be activated after batch implementation)",
+      "time_label": "Notification time"
     }
+  },
+  "dashboard": {
+    "title": "Member Action Memo Management",
+    "select_team": "Select team",
+    "select_member": "Select member",
+    "no_work_memos": "No WORK memos",
+    "forbidden": "Manager permission required",
+    "error_load": "Failed to load memos",
+    "load_more": "Load more"
+  },
+  "todo_revert": {
+    "button": "Revert TODO",
+    "confirm": "Revert the TODO completion for this memo?",
+    "success": "TODO has been reverted",
+    "error": "Failed to revert TODO"
   },
   "error": {
     "rate_limit": "Too many requests. Please wait a moment and try again.",

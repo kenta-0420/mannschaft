@@ -59,7 +59,27 @@
     "mood_enabled": {
       "label": "기분 입력 사용",
       "description": "메모 입력 시 5단계로 기분을 선택할 수 있습니다. 기본값은 비활성입니다."
+    },
+    "reminder": {
+      "label": "매일 리마인드",
+      "description": "설정한 시간에 행동 메모 기록을 촉구하는 알림을 받습니다（배치 구현 후 유효화）",
+      "time_label": "알림 시간"
     }
+  },
+  "dashboard": {
+    "title": "멤버 행동 메모 관리",
+    "select_team": "팀 선택",
+    "select_member": "멤버 선택",
+    "no_work_memos": "WORK 메모가 없습니다",
+    "forbidden": "관리자 권한이 필요합니다",
+    "error_load": "메모 불러오기 실패",
+    "load_more": "더 불러오기"
+  },
+  "todo_revert": {
+    "button": "TODO 되돌리기",
+    "confirm": "이 메모의 TODO 완료를 되돌리겠습니까?",
+    "success": "TODO를 되돌렸습니다",
+    "error": "되돌리기 실패"
   },
   "error": {
     "rate_limit": "너무 빠릅니다. 잠시 후 다시 시도해 주세요.",

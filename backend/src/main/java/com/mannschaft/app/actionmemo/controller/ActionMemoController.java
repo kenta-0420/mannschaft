@@ -267,4 +267,17 @@ public class ActionMemoController {
                 id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(logs));
     }
+
+    /**
+     * Phase 4-β: チーム管理者が TODO 自動完了を差し戻す。
+     *
+     * <p>認可: 呼び出し者がメモの postedTeamId チームの ADMIN または DEPUTY_ADMIN であること。</p>
+     */
+    @DeleteMapping("/{id}/complete-todo")
+    @Operation(summary = "TODO 差し戻し（Phase 4-β）— チーム管理者のみ")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "差し戻し成功")
+    public ResponseEntity<Void> revertTodoCompletion(@PathVariable Long id) {
+        actionMemoService.revertTodoCompletion(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
 }

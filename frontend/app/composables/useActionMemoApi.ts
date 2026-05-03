@@ -77,6 +77,9 @@ export function useActionMemoApi() {
     // Phase 3
     default_post_team_id?: number | null
     default_category?: string | null
+    // Phase 4-β
+    reminder_enabled?: boolean
+    reminder_time?: string | null
   }
 
   type RawAvailableTeam = {
@@ -134,6 +137,9 @@ export function useActionMemoApi() {
       // Phase 3
       defaultPostTeamId: raw.default_post_team_id ?? null,
       defaultCategory: (raw.default_category as ActionMemoCategory) ?? 'OTHER',
+      // Phase 4-β
+      reminderEnabled: raw.reminder_enabled ?? false,
+      reminderTime: raw.reminder_time ?? null,
     }
   }
 
@@ -297,12 +303,48 @@ export function useActionMemoApi() {
     // Phase 3
     if (payload.defaultPostTeamId !== undefined) body.default_post_team_id = payload.defaultPostTeamId
     if (payload.defaultCategory !== undefined) body.default_category = payload.defaultCategory
+    // Phase 4-β
+    if (payload.reminderEnabled !== undefined) body.reminder_enabled = payload.reminderEnabled
+    if (payload.reminderTime !== undefined) body.reminder_time = payload.reminderTime
     try {
       const res = await api<{ data: RawSettings }>(SETTINGS_BASE, {
         method: 'PATCH',
         body,
       })
       return normalizeSettings(res.data)
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
+  // === Phase 4-β: TODO 差し戻し ===
+
+  async function revertTodoCompletion(memoId: number): Promise<void> {
+    try {
+      await api(`${BASE}/${memoId}/complete-todo`, { method: 'DELETE' })
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
+  // === Phase 4-β: 管理職ダッシュボード ===
+
+  async function fetchMemberMemos(
+    teamId: number,
+    memberId: number,
+    params: { cursor?: string; limit?: number } = {},
+  ): Promise<ActionMemoListResponse> {
+    const query = new URLSearchParams()
+    if (params.cursor) query.set('cursor', params.cursor)
+    if (params.limit !== undefined) query.set('limit', String(params.limit))
+    try {
+      const res = await api<RawListResponse>(
+        `/api/v1/teams/${teamId}/members/${memberId}/action-memos?${query.toString()}`,
+      )
+      return {
+        data: (res.data ?? []).map(normalizeMemo),
+        nextCursor: res.next_cursor ?? null,
+      }
     } catch (error) {
       rethrow(error)
     }
@@ -622,5 +664,8 @@ export function useActionMemoApi() {
     fetchAvailableTeams,
     publishToTeam,
     publishDailyToTeam,
+    // Phase 4-β
+    revertTodoCompletion,
+    fetchMemberMemos,
   }
 }

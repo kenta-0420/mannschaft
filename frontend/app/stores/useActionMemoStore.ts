@@ -105,7 +105,13 @@ function todayJst(): string {
 export const useActionMemoStore = defineStore('actionMemo', {
   state: (): ActionMemoStoreState => ({
     memos: [],
-    settings: { moodEnabled: false, defaultPostTeamId: null, defaultCategory: 'OTHER' },
+    settings: {
+      moodEnabled: false,
+      defaultPostTeamId: null,
+      defaultCategory: 'OTHER',
+      reminderEnabled: false,
+      reminderTime: null,
+    },
     tags: [],
     moodStats: null,
     loading: false,

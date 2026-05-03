@@ -162,4 +162,24 @@ public interface ActionMemoRepository extends JpaRepository<ActionMemoEntity, Lo
             @Param("category") ActionMemoCategory category,
             @Param("cursorId") Long cursorId,
             Pageable pageable);
+
+    // ==================================================================
+    // Phase 4-β: 管理職ダッシュボード用クエリ
+    // ==================================================================
+
+    /**
+     * 指定メンバーが指定チームに投稿した WORK カテゴリのメモをカーソルページネーションで取得する。
+     * 管理職ダッシュボード（{@code GET /api/v1/teams/{teamId}/members/{memberId}/action-memos}）で使用。
+     */
+    @Query("SELECT m FROM ActionMemoEntity m "
+            + "WHERE m.userId = :userId "
+            + "AND m.postedTeamId = :teamId "
+            + "AND m.category = com.mannschaft.app.actionmemo.enums.ActionMemoCategory.WORK "
+            + "AND (:cursorId IS NULL OR m.id < :cursorId) "
+            + "ORDER BY m.memoDate DESC, m.createdAt DESC, m.id DESC")
+    List<ActionMemoEntity> findByUserIdAndPostedTeamIdAndCategoryWork(
+            @Param("userId") Long userId,
+            @Param("teamId") Long teamId,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable);
 }

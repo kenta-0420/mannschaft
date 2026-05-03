@@ -59,7 +59,27 @@
     "mood_enabled": {
       "label": "Stimmungseingabe aktivieren",
       "description": "Wähle beim Hinzufügen einer Notiz deine Stimmung aus 5 Stufen. Standardmäßig deaktiviert."
+    },
+    "reminder": {
+      "label": "Tägliche Erinnerung",
+      "description": "Erhalte zur eingestellten Zeit eine Benachrichtigung zum Aufzeichnen deiner Aktionsnotiz (wird nach Batch-Implementierung aktiviert)",
+      "time_label": "Benachrichtigungszeit"
     }
+  },
+  "dashboard": {
+    "title": "Mitglieder-Aktionsnotizen-Verwaltung",
+    "select_team": "Team auswählen",
+    "select_member": "Mitglied auswählen",
+    "no_work_memos": "Keine WORK-Notizen",
+    "forbidden": "Managerrechte erforderlich",
+    "error_load": "Notizen konnten nicht geladen werden",
+    "load_more": "Mehr laden"
+  },
+  "todo_revert": {
+    "button": "TODO zurücksetzen",
+    "confirm": "TODO-Abschluss für diese Notiz zurücksetzen?",
+    "success": "TODO wurde zurückgesetzt",
+    "error": "Zurücksetzen fehlgeschlagen"
   },
   "error": {
     "rate_limit": "Zu viele Aktionen. Bitte warte einen Moment und versuche es erneut.",
