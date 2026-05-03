@@ -90,6 +90,8 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:mysql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // H2: @DataJpaTest 系の in-memory テスト（ProxyInputConsentRepositoryTest 等）に使用
+    testRuntimeOnly("com.h2database:h2")
 
     // === F12.1 PDF生成共通基盤 ===
     // Thymeleaf: PDF用HTMLテンプレートエンジン（画面描画には使わない）

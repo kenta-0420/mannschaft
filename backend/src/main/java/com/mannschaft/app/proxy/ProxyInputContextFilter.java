@@ -1,5 +1,7 @@
 package com.mannschaft.app.proxy;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
@@ -9,12 +11,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -36,6 +37,7 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
 
     private final ProxyInputConsentRepository proxyInputConsentRepository;
     private final ProxyInputContext proxyInputContext;
+    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -121,21 +123,12 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
     }
 
     private Long extractCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
-            return null;
-        }
-        try {
-            return Long.parseLong(auth.getPrincipal().toString());
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return SecurityUtils.getCurrentUserIdOrNull();
     }
 
     private void sendError(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         response.setContentType("application/json;charset=UTF-8");
-        String escaped = message.replace("\"", "\\\"");
-        response.getWriter().write("{\"error\":\"" + escaped + "\"}");
+        response.getWriter().write(objectMapper.writeValueAsString(Map.of("error", message)));
     }
 }

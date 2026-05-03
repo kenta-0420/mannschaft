@@ -206,6 +206,9 @@ public class ProxyInputConsentService {
     /**
      * 代理入力監査ログ一覧を取得する（ADMIN or 本人のみ）。
      * Phase 12-α では同意書一覧を返す（監査ログの詳細はPhase 13で追加）。
+     *
+     * <p>TODO Phase 13-α: 監査ログ詳細化時に findActiveBySubjectUserId → findBySubjectUserId（全件）に変更予定。
+     * 現在は有効（未撤回）同意書のみ返す。撤回済みレコードは監査ログ（audit_logs）を参照すること。</p>
      */
     @Transactional(readOnly = true)
     public List<ProxyInputConsentEntity> getConsentsBySubject(Long requestUserId, Long subjectUserId) {

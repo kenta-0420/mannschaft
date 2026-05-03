@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxy;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import jakarta.servlet.FilterChain;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockFilterChain;
@@ -43,6 +45,9 @@ class ProxyInputContextFilterTest {
 
     @Mock
     private ProxyInputContext proxyInputContext;
+
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
     private ProxyInputContextFilter filter;
