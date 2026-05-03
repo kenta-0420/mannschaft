@@ -1,14 +1,21 @@
 package com.mannschaft.app.timetable.personal;
 
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.timetable.WeekPattern;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableEntity;
+import com.mannschaft.app.timetable.personal.entity.PersonalTimetablePeriodEntity;
+import com.mannschaft.app.timetable.personal.entity.PersonalTimetableSlotEntity;
+import com.mannschaft.app.timetable.personal.repository.PersonalTimetablePeriodRepository;
 import com.mannschaft.app.timetable.personal.repository.PersonalTimetableRepository;
+import com.mannschaft.app.timetable.personal.repository.PersonalTimetableSlotRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,6 +42,12 @@ class PersonalTimetableIntegrationTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private PersonalTimetableRepository repository;
+
+    @Autowired
+    private PersonalTimetablePeriodRepository periodRepository;
+
+    @Autowired
+    private PersonalTimetableSlotRepository slotRepository;
 
     private PersonalTimetableEntity persist(Long userId,
                                             String name,
@@ -110,6 +123,83 @@ class PersonalTimetableIntegrationTest extends AbstractMySqlIntegrationTest {
 
         assertThat(result).extracting(PersonalTimetableEntity::getId)
                 .containsExactly(overlapping.getId());
+    }
+
+    // ============================================================
+    // Phase 2: 時限・コマ Repository 統合テスト
+    // ============================================================
+
+    @Test
+    @Transactional
+    @DisplayName("Phase 2 PeriodRepository: 個人時間割IDで periodNumber 昇順取得・一括削除")
+    void period_リポジトリCRUD() {
+        Long userId = 6_001L;
+        PersonalTimetableEntity tt = persist(userId, "Phase2-period", PersonalTimetableStatus.DRAFT,
+                LocalDate.of(2026, 4, 1), LocalDate.of(2026, 9, 30));
+
+        periodRepository.save(PersonalTimetablePeriodEntity.builder()
+                .personalTimetableId(tt.getId())
+                .periodNumber(2)
+                .label("2限")
+                .startTime(LocalTime.of(10, 40))
+                .endTime(LocalTime.of(12, 10))
+                .isBreak(false)
+                .build());
+        periodRepository.save(PersonalTimetablePeriodEntity.builder()
+                .personalTimetableId(tt.getId())
+                .periodNumber(1)
+                .label("1限")
+                .startTime(LocalTime.of(9, 0))
+                .endTime(LocalTime.of(10, 30))
+                .isBreak(false)
+                .build());
+        periodRepository.flush();
+
+        List<PersonalTimetablePeriodEntity> result =
+                periodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(tt.getId());
+        assertThat(result).extracting(PersonalTimetablePeriodEntity::getPeriodNumber)
+                .containsExactly(1, 2);
+
+        periodRepository.deleteByPersonalTimetableId(tt.getId());
+        periodRepository.flush();
+        assertThat(periodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(tt.getId()))
+                .isEmpty();
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Phase 2 SlotRepository: 曜日フィルタと部分削除（曜日指定）")
+    void slot_曜日フィルタと部分削除() {
+        Long userId = 6_002L;
+        PersonalTimetableEntity tt = persist(userId, "Phase2-slot", PersonalTimetableStatus.DRAFT,
+                LocalDate.of(2026, 4, 1), LocalDate.of(2026, 9, 30));
+
+        slotRepository.save(PersonalTimetableSlotEntity.builder()
+                .personalTimetableId(tt.getId())
+                .dayOfWeek("MON").periodNumber(1).weekPattern(WeekPattern.EVERY)
+                .subjectName("国語").autoSyncChanges(true).build());
+        slotRepository.save(PersonalTimetableSlotEntity.builder()
+                .personalTimetableId(tt.getId())
+                .dayOfWeek("MON").periodNumber(2).weekPattern(WeekPattern.EVERY)
+                .subjectName("数学").autoSyncChanges(true).build());
+        slotRepository.save(PersonalTimetableSlotEntity.builder()
+                .personalTimetableId(tt.getId())
+                .dayOfWeek("TUE").periodNumber(1).weekPattern(WeekPattern.EVERY)
+                .subjectName("理科").autoSyncChanges(true).build());
+        slotRepository.flush();
+
+        assertThat(slotRepository.countByPersonalTimetableId(tt.getId())).isEqualTo(3L);
+        assertThat(slotRepository.findByPersonalTimetableIdAndDayOfWeekOrderByPeriodNumberAsc(
+                tt.getId(), "MON")).hasSize(2);
+
+        // 曜日指定削除
+        slotRepository.deleteByPersonalTimetableIdAndDayOfWeek(tt.getId(), "MON");
+        slotRepository.flush();
+        assertThat(slotRepository.countByPersonalTimetableId(tt.getId())).isEqualTo(1L);
+        assertThat(slotRepository.findByPersonalTimetableIdAndDayOfWeekOrderByPeriodNumberAsc(
+                tt.getId(), "MON")).isEmpty();
+        assertThat(slotRepository.findByPersonalTimetableIdAndDayOfWeekOrderByPeriodNumberAsc(
+                tt.getId(), "TUE")).hasSize(1);
     }
 
     @Test
