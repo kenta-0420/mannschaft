@@ -59,7 +59,27 @@
     "mood_enabled": {
       "label": "启用心情输入",
       "description": "添加备忘录时可从5个等级中选择心情。默认关闭。"
+    },
+    "reminder": {
+      "label": "每日提醒",
+      "description": "在设定时间收到记录行动备忘的通知（批次实装后有效）",
+      "time_label": "通知时间"
     }
+  },
+  "dashboard": {
+    "title": "成员行动备忘管理",
+    "select_team": "选择团队",
+    "select_member": "选择成员",
+    "no_work_memos": "没有WORK备忘",
+    "forbidden": "需要管理权限",
+    "error_load": "获取备忘失败",
+    "load_more": "加载更多"
+  },
+  "todo_revert": {
+    "button": "撤回TODO",
+    "confirm": "撤回此备忘的TODO完成吗？",
+    "success": "已撤回TODO",
+    "error": "撤回失败"
   },
   "error": {
     "rate_limit": "操作过于频繁，请稍后再试。",

@@ -14,6 +14,7 @@ import lombok.Setter;
  * <p>レコード未作成のユーザーはデフォルト値（mood_enabled = false）で返す。</p>
  *
  * <p><b>Phase 3 追加フィールド</b>: default_post_team_id / default_category。</p>
+ * <p><b>Phase 4-β 追加フィールド</b>: reminder_enabled / reminder_time。</p>
  */
 @Getter
 @Setter
@@ -33,4 +34,12 @@ public class ActionMemoSettingsResponse {
     @JsonProperty("default_category")
     @Builder.Default
     private ActionMemoCategory defaultCategory = ActionMemoCategory.PRIVATE;
+
+    /** Phase 4-β: リマインド有効フラグ */
+    @JsonProperty("reminder_enabled")
+    private boolean reminderEnabled;
+
+    /** Phase 4-β: リマインド通知時刻（"HH:mm" 形式）。未設定時は null */
+    @JsonProperty("reminder_time")
+    private String reminderTime;
 }

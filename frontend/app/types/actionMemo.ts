@@ -84,6 +84,10 @@ export interface ActionMemoSettings {
   defaultPostTeamId: number | null
   /** Phase 3: デフォルトカテゴリ */
   defaultCategory: ActionMemoCategory
+  /** Phase 4-β: 毎日リマインド有効フラグ */
+  reminderEnabled: boolean
+  /** Phase 4-β: リマインド通知時刻（"HH:mm"）。未設定時は null */
+  reminderTime: string | null
 }
 
 // === Available teams (Phase 3) ===

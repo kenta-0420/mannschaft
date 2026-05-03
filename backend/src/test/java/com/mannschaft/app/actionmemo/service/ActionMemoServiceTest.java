@@ -1257,6 +1257,91 @@ class ActionMemoServiceTest {
     }
 
     // ------------------------------------------------------------------
+    // 7. Phase 4-β: revertTodoCompletion
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Phase 4-β: revertTodoCompletion（TODO 差し戻し）")
+    class RevertTodoCompletionTest {
+
+        private static final Long ADMIN_ID = 200L;
+        private static final Long TEAM_ID = 300L;
+
+        private ActionMemoEntity memoWithTodo(Long memoId, Long userId, Long todoId, Long postedTeamId, boolean completesTodo) {
+            ActionMemoEntity memo = ActionMemoEntity.builder()
+                    .userId(userId)
+                    .memoDate(LocalDate.now())
+                    .content("テストメモ")
+                    .postedTeamId(postedTeamId)
+                    .relatedTodoId(todoId)
+                    .completesTodo(completesTodo)
+                    .category(ActionMemoCategory.WORK)
+                    .build();
+            ReflectionTestUtils.setField(memo, "id", memoId);
+            return memo;
+        }
+
+        private TodoEntity todoWith(Long todoId, TodoStatus status) {
+            TodoEntity todo = TodoEntity.builder()
+                    .scopeType(TodoScopeType.PERSONAL)
+                    .scopeId(USER_ID)
+                    .title("テストTODO")
+                    .status(status)
+                    .build();
+            ReflectionTestUtils.setField(todo, "id", todoId);
+            return todo;
+        }
+
+        @Test
+        @DisplayName("ADMIN が差し戻し → TODO が OPEN に戻る")
+        void revertTodoCompletion_asAdmin_success() {
+            Long todoId = 50L;
+            ActionMemoEntity memo = memoWithTodo(MEMO_ID, USER_ID, todoId, TEAM_ID, true);
+            TodoEntity todo = todoWith(todoId, TodoStatus.COMPLETED);
+
+            given(memoRepository.findById(MEMO_ID)).willReturn(Optional.of(memo));
+            given(userRoleRepository.countTeamAdminByUserIdAndTeamId(ADMIN_ID, TEAM_ID)).willReturn(1L);
+            given(todoRepository.findByIdAndDeletedAtIsNull(todoId)).willReturn(Optional.of(todo));
+
+            actionMemoService.revertTodoCompletion(MEMO_ID, ADMIN_ID);
+
+            verify(todoService).changeStatus(eq(todoId), any(TodoStatusChangeRequest.class), eq(USER_ID));
+            verify(auditLogService).record(
+                    eq("AUDIT_LOG_TODO_REVERTED_BY_ADMIN"),
+                    eq(ADMIN_ID),
+                    any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("ADMIN 以外が差し戻し → TODO_REVERT_NOT_ALLOWED")
+        void revertTodoCompletion_notAdmin_forbidden() {
+            Long todoId = 50L;
+            ActionMemoEntity memo = memoWithTodo(MEMO_ID, USER_ID, todoId, TEAM_ID, true);
+
+            given(memoRepository.findById(MEMO_ID)).willReturn(Optional.of(memo));
+            given(userRoleRepository.countTeamAdminByUserIdAndTeamId(USER_ID, TEAM_ID)).willReturn(0L);
+
+            assertThatThrownBy(() -> actionMemoService.revertTodoCompletion(MEMO_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ActionMemoErrorCode.ACTION_MEMO_TODO_REVERT_NOT_ALLOWED);
+        }
+
+        @Test
+        @DisplayName("completesTodo=false のメモは差し戻し不可 → TODO_NOT_COMPLETED_BY_MEMO")
+        void revertTodoCompletion_completesTodoFalse_throws() {
+            ActionMemoEntity memo = memoWithTodo(MEMO_ID, USER_ID, 50L, TEAM_ID, false);
+
+            given(memoRepository.findById(MEMO_ID)).willReturn(Optional.of(memo));
+
+            assertThatThrownBy(() -> actionMemoService.revertTodoCompletion(MEMO_ID, ADMIN_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ActionMemoErrorCode.ACTION_MEMO_TODO_NOT_COMPLETED_BY_MEMO);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // 7. AvailableTeamsTest
     // ------------------------------------------------------------------
 
@@ -1331,6 +1416,79 @@ class ActionMemoServiceTest {
             List<AvailableTeamResponse> result = actionMemoService.getAvailableTeams(USER_ID);
 
             assertThat(result).isEmpty();
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 8. Phase 4-β: listTeamMemberMemos（管理職ダッシュボード）
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Phase 4-β: listTeamMemberMemos（管理職ダッシュボード）")
+    class ListTeamMemberMemosTest {
+
+        private static final Long ADMIN_ID = 200L;
+        private static final Long MEMBER_ID = 300L;
+        private static final Long TEAM_ID = 400L;
+
+        private ActionMemoEntity workMemo(Long id) {
+            ActionMemoEntity memo = ActionMemoEntity.builder()
+                    .userId(MEMBER_ID)
+                    .memoDate(LocalDate.of(2026, 5, 1))
+                    .content("WORK メモ")
+                    .category(ActionMemoCategory.WORK)
+                    .postedTeamId(TEAM_ID)
+                    .build();
+            ReflectionTestUtils.setField(memo, "id", id);
+            return memo;
+        }
+
+        @Test
+        @DisplayName("管理者権限あり: WORK メモ一覧を返す")
+        void listTeamMemberMemos_asAdmin_success() {
+            ActionMemoEntity memo1 = workMemo(10L);
+            ActionMemoEntity memo2 = workMemo(11L);
+            given(userRoleRepository.countTeamAdminByUserIdAndTeamId(ADMIN_ID, TEAM_ID)).willReturn(1L);
+            given(memoRepository.findByUserIdAndPostedTeamIdAndCategoryWork(
+                    eq(MEMBER_ID), eq(TEAM_ID), eq(null), any()))
+                    .willReturn(List.of(memo1, memo2));
+            given(tagLinkRepository.findByMemoId(any())).willReturn(List.of());
+
+            var result = actionMemoService.listTeamMemberMemos(TEAM_ID, MEMBER_ID, ADMIN_ID, null, 50);
+
+            assertThat(result.getData()).hasSize(2);
+            assertThat(result.getNextCursor()).isNull();
+        }
+
+        @Test
+        @DisplayName("管理者権限なし: DASHBOARD_FORBIDDEN 例外")
+        void listTeamMemberMemos_notAdmin_throws() {
+            given(userRoleRepository.countTeamAdminByUserIdAndTeamId(USER_ID, TEAM_ID)).willReturn(0L);
+
+            assertThatThrownBy(() -> actionMemoService.listTeamMemberMemos(TEAM_ID, MEMBER_ID, USER_ID, null, 50))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ActionMemoErrorCode.ACTION_MEMO_DASHBOARD_FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("カーソルページネーション: limit=2 で3件返ったとき hasNext=true")
+        void listTeamMemberMemos_cursorPagination() {
+            // limit=2 → effectiveLimit=2 → リポジトリに limit+1=3 件要求
+            // 3件返ってくれば hasNext=true、page は先頭2件、nextCursor は2件目のID
+            ActionMemoEntity memo1 = workMemo(10L);
+            ActionMemoEntity memo2 = workMemo(11L);
+            ActionMemoEntity memo3 = workMemo(12L);
+            given(userRoleRepository.countTeamAdminByUserIdAndTeamId(ADMIN_ID, TEAM_ID)).willReturn(1L);
+            given(memoRepository.findByUserIdAndPostedTeamIdAndCategoryWork(
+                    eq(MEMBER_ID), eq(TEAM_ID), eq(null), any()))
+                    .willReturn(List.of(memo1, memo2, memo3));
+            given(tagLinkRepository.findByMemoId(any())).willReturn(List.of());
+
+            var result = actionMemoService.listTeamMemberMemos(TEAM_ID, MEMBER_ID, ADMIN_ID, null, 2);
+
+            assertThat(result.getData()).hasSize(2);
+            assertThat(result.getNextCursor()).isEqualTo("11");
         }
     }
 }

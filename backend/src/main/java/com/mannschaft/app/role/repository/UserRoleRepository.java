@@ -254,6 +254,16 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     List<Object[]> findAdminsByTeamIds(@Param("teamIds") List<Long> teamIds);
 
     /**
+     * 指定ユーザーが指定チームの ADMIN または DEPUTY_ADMIN かどうかを確認する（管理職権限チェック用）。
+     */
+    @Query(value = "SELECT COUNT(*) FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "WHERE ur.user_id = :userId AND ur.team_id = :teamId " +
+            "AND r.name IN ('ADMIN', 'DEPUTY_ADMIN')",
+            nativeQuery = true)
+    long countTeamAdminByUserIdAndTeamId(@Param("userId") Long userId, @Param("teamId") Long teamId);
+
+    /**
      * 2ユーザーが共通チームに所属しているか確認する（DM受信制限チェック用）。
      */
     @Query(value = "SELECT COUNT(*) > 0 FROM user_roles ur1 " +
