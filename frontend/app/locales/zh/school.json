@@ -208,6 +208,25 @@
       "category_SUBJECT_CREDIT": "学科学分认定",
       "category_PERFECT_ATTENDANCE": "全勤奖",
       "category_CUSTOM": "自定义"
+    },
+    "attendanceSummary": {
+      "title": "出勤汇总",
+      "attendanceRate": "出勤率",
+      "totalSchoolDays": "上课天数",
+      "presentDays": "出席天数",
+      "absentDays": "缺席天数",
+      "lateCount": "迟到次数",
+      "earlyLeaveCount": "早退次数",
+      "officialAbsenceDays": "公假天数",
+      "sickBayDays": "保健室上课",
+      "separateRoomDays": "隔离室上课",
+      "onlineDays": "线上上课",
+      "homeLearningDays": "居家学习",
+      "days": "天",
+      "times": "次",
+      "recalculate": "重新汇总",
+      "recalculateSuccess": "已重新汇总",
+      "noData": "暂无汇总数据"
     }
   }
 }
