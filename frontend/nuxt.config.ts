@@ -130,6 +130,7 @@ export default defineNuxtConfig({
           'ja/surveys.json',
           'ja/reservation.json',
           'ja/school.json',
+          'ja/shiftBudget.json',
         ],
       },
       {
@@ -161,6 +162,7 @@ export default defineNuxtConfig({
           'en/surveys.json',
           'en/reservation.json',
           'en/school.json',
+          'en/shiftBudget.json',
         ],
       },
       {
@@ -192,6 +194,7 @@ export default defineNuxtConfig({
           'zh/surveys.json',
           'zh/reservation.json',
           'zh/school.json',
+          'zh/shiftBudget.json',
         ],
       },
       {
@@ -223,6 +226,7 @@ export default defineNuxtConfig({
           'ko/surveys.json',
           'ko/reservation.json',
           'ko/school.json',
+          'ko/shiftBudget.json',
         ],
       },
       {
@@ -254,6 +258,7 @@ export default defineNuxtConfig({
           'es/surveys.json',
           'es/reservation.json',
           'es/school.json',
+          'es/shiftBudget.json',
         ],
       },
       {
@@ -285,6 +290,7 @@ export default defineNuxtConfig({
           'de/surveys.json',
           'de/reservation.json',
           'de/school.json',
+          'de/shiftBudget.json',
         ],
       },
     ],
