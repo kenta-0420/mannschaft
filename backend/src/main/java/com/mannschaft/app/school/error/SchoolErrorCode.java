@@ -43,7 +43,16 @@ public enum SchoolErrorCode implements ErrorCode {
     LOCATION_UNCHANGED("SCHOOL_LOCATION_UNCHANGED", "変化前後のロケーションが同一です", Severity.WARN),
 
     /** 日次出欠レコードが存在しない（ロケーション変化記録の前提） */
-    LOCATION_CHANGE_NO_DAILY_RECORD("SCHOOL_LOCATION_CHANGE_NO_DAILY_RECORD", "対象日の日次出欠レコードが存在しません", Severity.WARN);
+    LOCATION_CHANGE_NO_DAILY_RECORD("SCHOOL_LOCATION_CHANGE_NO_DAILY_RECORD", "対象日の日次出欠レコードが存在しません", Severity.WARN),
+
+    /** 出席要件規程が見つからない */
+    REQUIREMENT_RULE_NOT_FOUND("S030", "出席要件規程が見つかりません", Severity.WARN),
+
+    /** 組織スコープとチームスコープを同時に指定できない */
+    REQUIREMENT_RULE_SCOPE_CONFLICT("S031", "組織スコープとチームスコープを同時に指定できません", Severity.WARN),
+
+    /** 有効期限の開始日が終了日より後 */
+    REQUIREMENT_RULE_DATE_INVALID("S032", "有効期限の開始日が終了日より後です", Severity.WARN);
 
     private final String code;
     private final String message;
