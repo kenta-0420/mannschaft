@@ -206,4 +206,22 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
             ORDER BY t.dueDate ASC, t.id ASC
             """)
     List<TodoEntity> findOverdueForReminder(@Param("today") LocalDate today);
+
+    /**
+     * 指定スケジュールの、シフト自動作成 Todo（linked_shift_slot_id IS NOT NULL）
+     * かつ未完了（OPEN または IN_PROGRESS）のものを一括取得。
+     * Phase 4-γ: ARCHIVED 遷移時の自動キャンセル用。
+     *
+     * @param scheduleId 対象シフトスケジュールID
+     * @return シフト連携かつ未完了の TODO 一覧
+     */
+    @Query("""
+            SELECT t FROM TodoEntity t
+            WHERE t.linkedScheduleId = :scheduleId
+              AND t.linkedShiftSlotId IS NOT NULL
+              AND t.status IN (com.mannschaft.app.todo.TodoStatus.OPEN,
+                               com.mannschaft.app.todo.TodoStatus.IN_PROGRESS)
+              AND t.deletedAt IS NULL
+            """)
+    List<TodoEntity> findOpenShiftLinkedTodosByScheduleId(@Param("scheduleId") Long scheduleId);
 }

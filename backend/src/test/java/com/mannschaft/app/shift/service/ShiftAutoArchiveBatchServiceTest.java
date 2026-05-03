@@ -4,15 +4,18 @@ import com.mannschaft.app.shift.ChangeRequestStatus;
 import com.mannschaft.app.shift.ShiftScheduleStatus;
 import com.mannschaft.app.shift.entity.ShiftChangeRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.event.ShiftArchivedEvent;
 import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -33,6 +36,7 @@ class ShiftAutoArchiveBatchServiceTest {
 
     @Mock private ShiftScheduleRepository scheduleRepository;
     @Mock private ShiftChangeRequestRepository changeRequestRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private ShiftAutoArchiveBatchService batchService;
@@ -61,6 +65,25 @@ class ShiftAutoArchiveBatchServiceTest {
 
             assertThat(schedule.getStatus()).isEqualTo(ShiftScheduleStatus.ARCHIVED);
             verify(scheduleRepository).save(schedule);
+        }
+
+        @Test
+        @DisplayName("ARCHIVED 遷移時に ShiftArchivedEvent を発行する（Phase 4-γ）")
+        void ShiftArchivedEventを発行() {
+            ShiftScheduleEntity schedule = buildPublishedSchedule(SCHEDULE_ID, TEAM_ID,
+                    LocalDate.now().minusDays(10));
+            given(scheduleRepository.findPublishedExpiredBefore(any(LocalDate.class), any(Pageable.class)))
+                    .willReturn(List.of(schedule));
+            given(changeRequestRepository.withdrawOpenRequestsByScheduleId(any(), any())).willReturn(0);
+
+            batchService.runArchive();
+
+            ArgumentCaptor<ShiftArchivedEvent> eventCaptor = ArgumentCaptor.forClass(ShiftArchivedEvent.class);
+            verify(eventPublisher).publishEvent(eventCaptor.capture());
+            ShiftArchivedEvent published = eventCaptor.getValue();
+            assertThat(published.getScheduleId()).isEqualTo(SCHEDULE_ID);
+            assertThat(published.getTeamId()).isEqualTo(TEAM_ID);
+            assertThat(published.getArchivedByUserId()).isNull();
         }
 
         @Test
