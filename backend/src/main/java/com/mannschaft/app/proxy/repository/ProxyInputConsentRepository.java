@@ -39,7 +39,7 @@ public interface ProxyInputConsentRepository extends JpaRepository<ProxyInputCon
      * 同一組み合わせの有効同意書が存在するかチェックする（二重登録防止）。
      * DB側のUNIQUE制約ではなくService層でチェックする方式（MySQL NULL制約の回避）。
      */
-    @Query("SELECT COUNT(c) > 0 FROM ProxyInputConsentEntity c " +
+    @Query("SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END FROM ProxyInputConsentEntity c " +
            "WHERE c.subjectUserId = :subjectUserId AND c.proxyUserId = :proxyUserId " +
            "AND c.organizationId = :organizationId AND c.effectiveFrom = :effectiveFrom " +
            "AND c.revokedAt IS NULL AND c.approvedAt IS NOT NULL")
