@@ -148,6 +148,17 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_BUDGET_007", HttpStatus.BAD_REQUEST),          // MISSING_POSITION_COUNTS
             Map.entry("SHIFT_BUDGET_008", HttpStatus.NOT_FOUND),            // TEAM_NOT_FOUND (IDOR対策で404)
             Map.entry("SHIFT_BUDGET_009", HttpStatus.BAD_REQUEST),          // INVALID_BUDGET_AMOUNT
+            // F08.7 シフト予算 (Phase 9-β: 割当 / 消化記録 CRUD)
+            Map.entry("SHIFT_BUDGET_010", HttpStatus.NOT_FOUND),            // ALLOCATION_NOT_FOUND (IDOR対策で404)
+            Map.entry("SHIFT_BUDGET_011", HttpStatus.CONFLICT),             // ALLOCATION_ALREADY_EXISTS
+            Map.entry("SHIFT_BUDGET_012", HttpStatus.CONFLICT),             // HAS_CONSUMPTIONS_PLANNED
+            Map.entry("SHIFT_BUDGET_013", HttpStatus.CONFLICT),             // HAS_CONSUMPTIONS_CONFIRMED
+            Map.entry("SHIFT_BUDGET_014", HttpStatus.CONFLICT),             // OPTIMISTIC_LOCK_CONFLICT
+            Map.entry("SHIFT_BUDGET_015", HttpStatus.BAD_REQUEST),          // INVALID_PERIOD
+            Map.entry("SHIFT_BUDGET_016", HttpStatus.BAD_REQUEST),          // INVALID_ALLOCATED_AMOUNT
+            Map.entry("SHIFT_BUDGET_017", HttpStatus.CONFLICT),             // CONFIRMED_RECORD_IMMUTABLE
+            Map.entry("SHIFT_BUDGET_018", HttpStatus.FORBIDDEN),            // BUDGET_VIEW_REQUIRED
+            Map.entry("SHIFT_BUDGET_019", HttpStatus.FORBIDDEN),            // BUDGET_MANAGE_REQUIRED
             // F03.15 個人時間割（IDOR 対策で 404 統一、上限・遷移エラーは 409）
             Map.entry("PERSONAL_TIMETABLE_001", HttpStatus.NOT_FOUND),       // PERSONAL_TIMETABLE_NOT_FOUND
             Map.entry("PERSONAL_TIMETABLE_010", HttpStatus.CONFLICT),        // LIMIT_EXCEEDED
