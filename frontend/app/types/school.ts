@@ -301,3 +301,55 @@ export interface ClassHomeroomUpdateRequest {
   assistantTeacherUserIds?: number[]
   effectiveUntil?: string
 }
+
+// --- AttendanceLocation ---
+export type AttendanceLocation =
+  | 'CLASSROOM' | 'SICK_BAY' | 'SEPARATE_ROOM' | 'LIBRARY'
+  | 'ONLINE' | 'HOME_LEARNING' | 'OUT_OF_SCHOOL' | 'NOT_APPLICABLE'
+
+export type AttendanceLocationChangeReason =
+  | 'FELT_SICK' | 'INJURY' | 'MENTAL_HEALTH' | 'SCHEDULED'
+  | 'RECOVERED' | 'RETURNED_TO_CLASS' | 'OTHER'
+
+export interface LocationChangeRequest {
+  fromLocation: AttendanceLocation
+  toLocation: AttendanceLocation
+  changedAtPeriod?: number
+  changedAtTime?: string   // "HH:mm"
+  reason: AttendanceLocationChangeReason
+  note?: string
+}
+
+export interface LocationChangeResponse {
+  id: number
+  teamId: number
+  studentUserId: number
+  attendanceDate: string
+  fromLocation: AttendanceLocation
+  toLocation: AttendanceLocation
+  changedAtPeriod?: number
+  changedAtTime?: string
+  reason: AttendanceLocationChangeReason
+  note?: string
+  recordedBy: number
+  recordedAt: string
+}
+
+export interface LocationTimelineResponse {
+  studentUserId: number
+  attendanceDate: string
+  changes: LocationChangeResponse[]
+  currentLocation: AttendanceLocation
+}
+
+export interface LocationListItem {
+  studentUserId: number
+  currentLocation: AttendanceLocation
+  locationChangedDuringDay: boolean
+}
+
+export interface LocationListResponse {
+  teamId: number
+  attendanceDate: string
+  items: LocationListItem[]
+}

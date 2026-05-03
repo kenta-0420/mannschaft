@@ -142,6 +142,36 @@
       "updateSuccess": "Homeroom assignment updated",
       "noHomerooms": "No homeroom assignments",
       "current": "Currently Active"
+    },
+    "location": {
+      "title": "Attendance Location",
+      "current": "Current Location",
+      "changeButton": "Change Location",
+      "changeTitle": "Record Location Change",
+      "from": "From",
+      "to": "To",
+      "period": "Period of Change",
+      "time": "Time of Change",
+      "reason": "Reason",
+      "note": "Note (optional)",
+      "submit": "Record",
+      "submitSuccess": "Location change recorded",
+      "noChanges": "No location changes today",
+      "CLASSROOM": "Classroom",
+      "SICK_BAY": "Nurse's Office",
+      "SEPARATE_ROOM": "Separate Room",
+      "LIBRARY": "Library",
+      "ONLINE": "Online",
+      "HOME_LEARNING": "Home Learning",
+      "OUT_OF_SCHOOL": "Off Campus",
+      "NOT_APPLICABLE": "N/A",
+      "reason_FELT_SICK": "Felt sick",
+      "reason_INJURY": "Injury",
+      "reason_MENTAL_HEALTH": "Mental/physical health",
+      "reason_SCHEDULED": "Scheduled",
+      "reason_RECOVERED": "Recovered",
+      "reason_RETURNED_TO_CLASS": "Returned to class",
+      "reason_OTHER": "Other"
     }
   }
 }

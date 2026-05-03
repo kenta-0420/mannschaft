@@ -1,7 +1,6 @@
 package com.mannschaft.app.school.entity;
 
 import com.mannschaft.app.common.BaseEntity;
-import com.mannschaft.app.schedule.AttendanceStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,14 +17,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-/** 日次出欠（朝の点呼記録）。1日1生徒につき1レコード。 */
+/** 登校場所変更履歴。1生徒・1日につき複数回の場所変更を記録する。 */
 @Entity
-@Table(name = "daily_attendance_records")
+@Table(name = "attendance_location_changes")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(toBuilder = true)
-public class DailyAttendanceRecordEntity extends BaseEntity {
+public class AttendanceLocationChangeEntity extends BaseEntity {
 
     @Column(nullable = false)
     private Long teamId;
@@ -37,34 +36,25 @@ public class DailyAttendanceRecordEntity extends BaseEntity {
     private LocalDate attendanceDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
-    @Builder.Default
-    private AttendanceStatus status = AttendanceStatus.UNDECIDED;
+    @Column(nullable = false, length = 25)
+    private AttendanceLocation fromLocation;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 25)
-    @Builder.Default
-    private AttendanceLocation attendanceLocation = AttendanceLocation.CLASSROOM;
+    private AttendanceLocation toLocation;
 
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean locationChangedDuringDay = false;
+    /** 変更が発生した時限番号（任意） */
+    private Integer changedAtPeriod;
+
+    /** 変更が発生した時刻（任意） */
+    private LocalTime changedAtTime;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 25)
-    private AbsenceReason absenceReason;
-
-    /** 実際の登校時刻（PARTIAL=遅刻の場合に記録） */
-    private LocalTime arrivalTime;
-
-    /** 早退時刻（PARTIAL=早退の場合に記録） */
-    private LocalTime leaveTime;
+    @Column(nullable = false, length = 25)
+    private AttendanceLocationChangeReason reason;
 
     @Column(length = 500)
-    private String comment;
-
-    /** FK → family_attendance_notices.id */
-    private Long familyNoticeId;
+    private String note;
 
     @Column(nullable = false)
     private Long recordedBy;
