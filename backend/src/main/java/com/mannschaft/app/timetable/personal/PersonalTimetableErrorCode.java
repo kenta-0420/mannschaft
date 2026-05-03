@@ -28,7 +28,23 @@ public enum PersonalTimetableErrorCode implements ErrorCode {
     // ---- 入力検証（400 / 422） ----
     PERSONAL_TIMETABLE_INVALID_DATE_RANGE("PERSONAL_TIMETABLE_030", "適用開始日は適用終了日以前である必要があります", Severity.WARN),
     PERSONAL_TIMETABLE_WEEK_PATTERN_BASE_REQUIRED("PERSONAL_TIMETABLE_031", "週パターン有効時は基準日が必須です", Severity.WARN),
-    PERSONAL_TIMETABLE_WEEK_PATTERN_BASE_OUT_OF_RANGE("PERSONAL_TIMETABLE_032", "週パターン基準日は適用期間内である必要があります", Severity.WARN);
+    PERSONAL_TIMETABLE_WEEK_PATTERN_BASE_OUT_OF_RANGE("PERSONAL_TIMETABLE_032", "週パターン基準日は適用期間内である必要があります", Severity.WARN),
+
+    // ---- 時限定義（Phase 2） ----
+    PERSONAL_PERIOD_LIMIT_EXCEEDED("PERSONAL_TIMETABLE_040", "時限は最大15件までです", Severity.WARN),
+    PERSONAL_PERIOD_INVALID_TIME_RANGE("PERSONAL_TIMETABLE_041", "時限の開始時刻は終了時刻より前である必要があります", Severity.WARN),
+    PERSONAL_PERIOD_NUMBER_DUPLICATED("PERSONAL_TIMETABLE_042", "時限番号が重複しています", Severity.WARN),
+    PERSONAL_PERIOD_NUMBER_OUT_OF_RANGE("PERSONAL_TIMETABLE_043", "時限番号は1〜15の範囲で指定してください", Severity.WARN),
+    PERSONAL_TIMETABLE_NOT_EDITABLE("PERSONAL_TIMETABLE_044", "個人時間割が下書き状態でないため編集できません", Severity.WARN),
+
+    // ---- コマ（Phase 2） ----
+    PERSONAL_SLOT_LIMIT_EXCEEDED("PERSONAL_TIMETABLE_050", "コマは最大100件までです", Severity.WARN),
+    PERSONAL_SLOT_BREAK_PERIOD_ASSIGNED("PERSONAL_TIMETABLE_051", "休憩時限にはコマを割り当てられません", Severity.WARN),
+    PERSONAL_SLOT_PERIOD_NOT_FOUND("PERSONAL_TIMETABLE_052", "指定された時限が定義されていません", Severity.WARN),
+    PERSONAL_SLOT_WEEK_PATTERN_CONFLICT("PERSONAL_TIMETABLE_053", "EVERY と A/B 週の同時登録はできません", Severity.WARN),
+    PERSONAL_SLOT_WEEK_PATTERN_NOT_ENABLED("PERSONAL_TIMETABLE_054", "週パターン無効時は EVERY のみ指定できます", Severity.WARN),
+    PERSONAL_SLOT_DUPLICATED("PERSONAL_TIMETABLE_055", "同一の曜日×時限×週パターンのコマが重複しています", Severity.WARN),
+    PERSONAL_SLOT_LINK_NOT_SUPPORTED_YET("PERSONAL_TIMETABLE_056", "コマのチームリンク機能は Phase 4 で提供予定です", Severity.WARN);
 
     private final String code;
     private final String message;
