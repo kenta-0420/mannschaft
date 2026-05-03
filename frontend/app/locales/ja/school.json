@@ -48,6 +48,100 @@
         "reason": "欠席理由",
         "comment": "コメント"
       }
+    },
+    "familyNotice": {
+      "title": "保護者連絡",
+      "noticeType": {
+        "ABSENCE": "欠席",
+        "LATE": "遅刻",
+        "EARLY_LEAVE": "早退",
+        "OTHER": "その他"
+      },
+      "reason": {
+        "SICK": "体調不良",
+        "INJURY": "怪我",
+        "FAMILY_REASON": "家庭の事情",
+        "BEREAVEMENT": "忌引",
+        "INFECTIOUS_DISEASE": "出席停止（感染症）",
+        "MENTAL_HEALTH": "心身の不調",
+        "OFFICIAL_BUSINESS": "公的活動",
+        "OTHER": "その他"
+      },
+      "status": {
+        "PENDING": "未確認",
+        "ACKNOWLEDGED": "確認済み",
+        "APPLIED": "出欠反映済み"
+      },
+      "submit": "連絡を送る",
+      "submitSuccess": "連絡を送信しました",
+      "acknowledge": "確認する",
+      "acknowledgeSuccess": "確認しました",
+      "apply": "出欠に反映する",
+      "applySuccess": "出欠に反映しました",
+      "attendanceDate": "対象日",
+      "expectedArrivalTime": "登校予定時刻",
+      "expectedLeaveTime": "早退予定時刻",
+      "reasonDetail": "詳細（任意）",
+      "unacknowledged": "未確認 {count}件",
+      "noNotices": "連絡はありません",
+      "history": "送信履歴",
+      "studentName": "生徒名"
+    },
+    "transitionAlert": {
+      "title": "移動検知アラート",
+      "unresolvedOnly": "未解決のみ表示",
+      "resolve": "解決する",
+      "resolveSuccess": "アラートを解決しました",
+      "resolveNote": "解決理由",
+      "resolveNotePlaceholder": "例：保健室に行っていた、早退連絡が遅れた等",
+      "alertLevel": {
+        "NORMAL": "通常",
+        "URGENT": "緊急"
+      },
+      "message": "{studentName}さんが{previousPeriod}限まで出席でしたが、{currentPeriod}限から不在です",
+      "resolved": "解決済み",
+      "noAlerts": "アラートはありません",
+      "unresolvedCount": "未解決 {count}件"
+    },
+    "statistics": {
+      "title": "出欠統計",
+      "monthly": "月次統計",
+      "term": "期間別統計",
+      "year": "年",
+      "month": "月",
+      "from": "開始日",
+      "to": "終了日",
+      "totalSchoolDays": "授業日数",
+      "totalStudents": "生徒数",
+      "presentCount": "出席",
+      "absentCount": "欠席",
+      "attendanceRate": "出席率",
+      "lateCount": "遅刻",
+      "earlyLeaveCount": "早退",
+      "subjectBreakdown": "教科別出席率",
+      "exportCsv": "CSVエクスポート",
+      "noData": "データがありません"
+    },
+    "timeline": {
+      "title": "1日の出欠タイムライン",
+      "date": "日付",
+      "dailyStatus": "日次出欠",
+      "periodStatus": "時限別出欠",
+      "noPeriods": "時限データがありません"
+    },
+    "homeroom": {
+      "title": "学級担任設定",
+      "homeroomTeacher": "学級担任",
+      "assistantTeachers": "副担任",
+      "academicYear": "年度",
+      "effectiveFrom": "有効開始日",
+      "effectiveUntil": "有効終了日",
+      "add": "担任を追加",
+      "update": "更新する",
+      "addSuccess": "学級担任を設定しました",
+      "updateSuccess": "学級担任設定を更新しました",
+      "noHomerooms": "担任設定がありません",
+      "current": "現在担当中"
     }
   }
 }

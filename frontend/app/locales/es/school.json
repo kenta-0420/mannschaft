@@ -48,6 +48,100 @@
         "reason": "Motivo de ausencia",
         "comment": "Comentario"
       }
+    },
+    "familyNotice": {
+      "title": "Aviso familiar",
+      "noticeType": {
+        "ABSENCE": "Ausencia",
+        "LATE": "Llegada tarde",
+        "EARLY_LEAVE": "Salida anticipada",
+        "OTHER": "Otro"
+      },
+      "reason": {
+        "SICK": "Enfermedad",
+        "INJURY": "Lesión",
+        "FAMILY_REASON": "Motivos familiares",
+        "BEREAVEMENT": "Duelo",
+        "INFECTIOUS_DISEASE": "Enfermedad infecciosa (suspensión)",
+        "MENTAL_HEALTH": "Salud mental/física",
+        "OFFICIAL_BUSINESS": "Actividad oficial",
+        "OTHER": "Otro"
+      },
+      "status": {
+        "PENDING": "Pendiente",
+        "ACKNOWLEDGED": "Confirmado",
+        "APPLIED": "Aplicado al registro"
+      },
+      "submit": "Enviar aviso",
+      "submitSuccess": "Aviso enviado correctamente",
+      "acknowledge": "Confirmar",
+      "acknowledgeSuccess": "Confirmado correctamente",
+      "apply": "Aplicar a asistencia",
+      "applySuccess": "Aplicado al registro de asistencia",
+      "attendanceDate": "Fecha objetivo",
+      "expectedArrivalTime": "Hora de llegada prevista",
+      "expectedLeaveTime": "Hora de salida prevista",
+      "reasonDetail": "Detalles (opcional)",
+      "unacknowledged": "{count} sin confirmar",
+      "noNotices": "No hay avisos",
+      "history": "Historial de envíos",
+      "studentName": "Nombre del estudiante"
+    },
+    "transitionAlert": {
+      "title": "Alerta de transición",
+      "unresolvedOnly": "Solo sin resolver",
+      "resolve": "Resolver",
+      "resolveSuccess": "Alerta resuelta",
+      "resolveNote": "Nota de resolución",
+      "resolveNotePlaceholder": "Ej.: Fue a enfermería, aviso tardío del tutor, etc.",
+      "alertLevel": {
+        "NORMAL": "Normal",
+        "URGENT": "Urgente"
+      },
+      "message": "{studentName} estuvo presente hasta el período {previousPeriod} pero ausente desde el período {currentPeriod}",
+      "resolved": "Resuelto",
+      "noAlerts": "No hay alertas",
+      "unresolvedCount": "{count} sin resolver"
+    },
+    "statistics": {
+      "title": "Estadísticas de asistencia",
+      "monthly": "Estadísticas mensuales",
+      "term": "Estadísticas por período",
+      "year": "Año",
+      "month": "Mes",
+      "from": "Desde",
+      "to": "Hasta",
+      "totalSchoolDays": "Días de clase",
+      "totalStudents": "Estudiantes",
+      "presentCount": "Presentes",
+      "absentCount": "Ausentes",
+      "attendanceRate": "Tasa de asistencia",
+      "lateCount": "Tardanzas",
+      "earlyLeaveCount": "Salidas anticipadas",
+      "subjectBreakdown": "Desglose por materia",
+      "exportCsv": "Exportar CSV",
+      "noData": "Sin datos disponibles"
+    },
+    "timeline": {
+      "title": "Línea de tiempo de asistencia diaria",
+      "date": "Fecha",
+      "dailyStatus": "Estado diario",
+      "periodStatus": "Estado por período",
+      "noPeriods": "Sin datos de período"
+    },
+    "homeroom": {
+      "title": "Asignación de tutor de clase",
+      "homeroomTeacher": "Tutor de clase",
+      "assistantTeachers": "Profesores asistentes",
+      "academicYear": "Año académico",
+      "effectiveFrom": "Válido desde",
+      "effectiveUntil": "Válido hasta",
+      "add": "Agregar tutor",
+      "update": "Actualizar",
+      "addSuccess": "Tutor de clase asignado",
+      "updateSuccess": "Asignación de tutor actualizada",
+      "noHomerooms": "Sin asignaciones de tutor",
+      "current": "Actualmente activo"
     }
   }
 }
