@@ -1,6 +1,6 @@
 -- F03.13 学校日次・教科別出欠管理: 保護者からの欠席・遅刻連絡
 -- daily_attendance_records が FK 参照するため先に作成する
-CREATE TABLE family_attendance_notices (
+CREATE TABLE IF NOT EXISTS family_attendance_notices (
     id                     BIGINT UNSIGNED    NOT NULL AUTO_INCREMENT,
     team_id                BIGINT UNSIGNED    NOT NULL COMMENT 'クラスチーム',
     student_user_id        BIGINT UNSIGNED    NOT NULL COMMENT '生徒',

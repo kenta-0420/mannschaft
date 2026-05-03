@@ -1,6 +1,6 @@
 -- 登校場所変更履歴テーブルを作成する
 
-CREATE TABLE attendance_location_changes (
+CREATE TABLE IF NOT EXISTS attendance_location_changes (
     id                BIGINT       NOT NULL AUTO_INCREMENT,
     team_id           BIGINT       NOT NULL,
     student_user_id   BIGINT       NOT NULL,

@@ -6,6 +6,7 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.schedule.CommentOption;
+import com.mannschaft.app.schedule.AttendanceGenerationStatus;
 import com.mannschaft.app.schedule.EventType;
 import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.MinViewRole;
@@ -369,8 +370,9 @@ public class ScheduleService {
                 .minViewRole(req.getMinViewRole() != null
                         ? MinViewRole.valueOf(req.getMinViewRole()) : MinViewRole.MEMBER_PLUS)
                 .minResponseRole(req.getMinResponseRole() != null
-                        ? MinResponseRole.valueOf(req.getMinResponseRole()) : null)
+                        ? MinResponseRole.valueOf(req.getMinResponseRole()) : MinResponseRole.MEMBER_PLUS)
                 .status(ScheduleStatus.SCHEDULED)
+                .attendanceStatus(AttendanceGenerationStatus.READY)
                 .attendanceRequired(req.getAttendanceRequired())
                 .attendanceDeadline(req.getAttendanceDeadline())
                 .commentOption(req.getCommentOption() != null

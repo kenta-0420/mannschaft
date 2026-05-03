@@ -1,5 +1,5 @@
 -- F03.15 個人時間割: コマ（曜日×時限→講義/教室/教員/チームリンク）
-CREATE TABLE personal_timetable_slots (
+CREATE TABLE IF NOT EXISTS personal_timetable_slots (
     id                       BIGINT UNSIGNED   NOT NULL AUTO_INCREMENT,
     personal_timetable_id    BIGINT UNSIGNED   NOT NULL                COMMENT 'FK → personal_timetables.id',
     day_of_week              VARCHAR(3)        NOT NULL                COMMENT 'MON/TUE/WED/THU/FRI/SAT/SUN',

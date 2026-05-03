@@ -485,3 +485,54 @@ export interface RecalculateSummaryResponse {
   recalculatedAt: string
   summary: StudentSummaryResponse
 }
+
+// ===== Phase 12: 出席要件評価 =====
+
+export type EvaluationStatus = 'OK' | 'WARNING' | 'RISK' | 'VIOLATION'
+
+export interface AttendanceRequirementEvaluation {
+  id: number
+  requirementRuleId: number
+  studentUserId: number
+  summaryId: number
+  status: EvaluationStatus
+  currentAttendanceRate: number
+  remainingAllowedAbsences: number
+  evaluatedAt: string
+  notifiedUserIds?: number[]
+  resolvedAt?: string
+  resolutionNote?: string
+  resolverUserId?: number
+}
+
+export interface StudentEvaluationListResponse {
+  studentUserId: number
+  evaluations: AttendanceRequirementEvaluation[]
+}
+
+export interface AtRiskStudentResponse {
+  studentUserId: number
+  status: EvaluationStatus
+  requirementRuleId: number
+  currentAttendanceRate: number
+  remainingAllowedAbsences: number
+  evaluatedAt: string
+}
+
+export interface AtRiskStudentListResponse {
+  teamId: number
+  total: number
+  students: AtRiskStudentResponse[]
+}
+
+export interface ResolveEvaluationRequest {
+  resolutionNote: string
+}
+
+export interface ResolveEvaluationResponse {
+  id: number
+  status: EvaluationStatus
+  resolvedAt: string
+  resolutionNote: string
+  resolverUserId: number
+}

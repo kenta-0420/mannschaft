@@ -227,6 +227,32 @@
       "recalculate": "Neu berechnen",
       "recalculateSuccess": "Zusammenfassung neu berechnet",
       "noData": "Keine Zusammenfassungsdaten"
+    },
+    "evaluation": {
+      "title": "Bewertung der Anwesenheitsanforderungen",
+      "status": {
+        "OK": "Auf Kurs",
+        "WARNING": "Vorsicht",
+        "RISK": "Gefährdet",
+        "VIOLATION": "Verstoß"
+      },
+      "currentAttendanceRate": "Aktuelle Anwesenheitsquote",
+      "remainingAllowedAbsences": "Verbleibende erlaubte Fehltage",
+      "remainingDays": "Noch {days} Tage",
+      "noDaysLeft": "Keine weiteren Fehlzeiten erlaubt",
+      "evaluatedAt": "Bewertet am",
+      "resolve": "Verstoß auflösen",
+      "resolveTitle": "Auflösung des Verstoßes aufzeichnen",
+      "resolveNote": "Auflösungsnotiz",
+      "resolveNoteHint": "z.B. Nachholunterricht abgeschlossen, Sondergenehmigung erteilt",
+      "resolveSuccess": "Verstoß erfolgreich aufgelöst",
+      "resolveError": "Fehler beim Aufzeichnen der Auflösung",
+      "atRisk": "Gefährdete Schüler",
+      "noEvaluations": "Keine Bewertungsdaten verfügbar",
+      "noAtRisk": "Keine gefährdeten Schüler",
+      "dashboard": "Anforderungsbewertungs-Dashboard",
+      "filterByStatus": "Nach Status filtern",
+      "loadError": "Fehler beim Laden der Bewertungsdaten"
     }
   }
 }

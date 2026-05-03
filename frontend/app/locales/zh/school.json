@@ -227,6 +227,32 @@
       "recalculate": "重新汇总",
       "recalculateSuccess": "已重新汇总",
       "noData": "暂无汇总数据"
+    },
+    "evaluation": {
+      "title": "出勤要求评估",
+      "status": {
+        "OK": "预计达标",
+        "WARNING": "需注意",
+        "RISK": "有未达标风险",
+        "VIOLATION": "确认未达标"
+      },
+      "currentAttendanceRate": "当前出勤率",
+      "remainingAllowedAbsences": "剩余允许缺勤天数",
+      "remainingDays": "还可缺勤{days}天",
+      "noDaysLeft": "不能再缺勤了",
+      "evaluatedAt": "评估时间",
+      "resolve": "解除违规",
+      "resolveTitle": "记录违规解除",
+      "resolveNote": "解除理由",
+      "resolveNoteHint": "例：补课完成・特殊批准等",
+      "resolveSuccess": "违规解除已记录",
+      "resolveError": "违规解除记录失败",
+      "atRisk": "风险学生列表",
+      "noEvaluations": "暂无评估数据",
+      "noAtRisk": "没有风险学生",
+      "dashboard": "要求评估仪表板",
+      "filterByStatus": "按状态筛选",
+      "loadError": "评估数据加载失败"
     }
   }
 }
