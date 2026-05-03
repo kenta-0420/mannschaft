@@ -2,18 +2,23 @@ package com.mannschaft.app.proxy;
 
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Transactional;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,20 +27,40 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link ProxyInputConsentRepository} の結合テスト。
  * カスタム @Query メソッド（findValidConsent・existsActiveConsent）を検証する。
  *
- * <p>実行には Docker + MySQL 8.0 が必要（Testcontainers）。
- * CI 環境では自動的に起動する。ローカルでの単独実行は ./gradlew test --tests "*.ProxyInputConsentRepositoryTest"。</p>
+ * <p>Testcontainers で MySQL 8.0 を起動し、Spring Boot のフルコンテキストで実行する。
+ * OOM 対策として ActionMemoIntegrationTest と同一の ApplicationContext を再利用できるよう
+ * 同じ設定パターンを採用している。</p>
  */
-@DataJpaTest
+@SpringBootTest
+@Testcontainers
 @ActiveProfiles("test")
-@TestPropertySource(properties = "spring.flyway.enabled=false")
+@Transactional
 @DisplayName("ProxyInputConsentRepository 結合テスト（カスタムクエリ）")
 class ProxyInputConsentRepositoryTest {
 
-    @Autowired
-    private TestEntityManager em;
+    @Container
+    @SuppressWarnings("resource")
+    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
+            .withDatabaseName("mannschaft_test")
+            .withUsername("test")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", mysql::getJdbcUrl);
+        registry.add("spring.datasource.username", mysql::getUsername);
+        registry.add("spring.datasource.password", mysql::getPassword);
+    }
+
+    // Redis 関連 Bean をモック化（OOM 対策 — ActionMemoIntegrationTest と同パターン）
+    @MockitoBean
+    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
     @Autowired
     private ProxyInputConsentRepository repository;
+
+    @PersistenceContext
+    private EntityManager em;
 
     private static final Long SUBJECT_USER_ID = 100L;
     private static final Long PROXY_USER_ID = 200L;
@@ -52,7 +77,9 @@ class ProxyInputConsentRepositoryTest {
                 LocalDate.now().minusDays(1),
                 LocalDate.now().plusMonths(6));
         consent.approve(999L);
-        return em.persistAndFlush(consent);
+        em.persist(consent);
+        em.flush();
+        return consent;
     }
 
     @Nested
@@ -62,10 +89,10 @@ class ProxyInputConsentRepositoryTest {
         @Test
         @DisplayName("承認済み・有効期限内・revoke なし → 取得できる")
         void shouldReturnConsentWhenActive() {
-            persistActiveConsent(SUBJECT_USER_ID, PROXY_USER_ID);
+            ProxyInputConsentEntity saved = persistActiveConsent(SUBJECT_USER_ID, PROXY_USER_ID);
 
             Optional<ProxyInputConsentEntity> result = repository.findValidConsent(
-                    getLastInsertedId(), PROXY_USER_ID);
+                    saved.getId(), PROXY_USER_ID);
 
             assertThat(result).isPresent();
             assertThat(result.get().getSubjectUserId()).isEqualTo(SUBJECT_USER_ID);
@@ -79,7 +106,8 @@ class ProxyInputConsentRepositoryTest {
                     ProxyInputConsentEntity.ConsentMethod.PAPER_SIGNED,
                     null, null, null,
                     LocalDate.now().minusDays(1), LocalDate.now().plusMonths(6));
-            em.persistAndFlush(consent);
+            em.persist(consent);
+            em.flush();
 
             Optional<ProxyInputConsentEntity> result = repository.findValidConsent(
                     consent.getId(), PROXY_USER_ID);
@@ -97,7 +125,8 @@ class ProxyInputConsentRepositoryTest {
                     LocalDate.now().minusMonths(2),
                     LocalDate.now().minusDays(1));
             consent.approve(999L);
-            em.persistAndFlush(consent);
+            em.persist(consent);
+            em.flush();
 
             Optional<ProxyInputConsentEntity> result = repository.findValidConsent(
                     consent.getId(), PROXY_USER_ID);
@@ -142,15 +171,5 @@ class ProxyInputConsentRepositoryTest {
 
             assertThat(result).isFalse();
         }
-    }
-
-    /**
-     * TestEntityManager 経由で最後に永続化したエンティティの ID を取得するヘルパー。
-     * より堅牢なテストでは戻り値の ID を直接使うこと。
-     */
-    private Long getLastInsertedId() {
-        return (Long) em.getEntityManager()
-                .createQuery("SELECT MAX(c.id) FROM ProxyInputConsentEntity c")
-                .getSingleResult();
     }
 }
