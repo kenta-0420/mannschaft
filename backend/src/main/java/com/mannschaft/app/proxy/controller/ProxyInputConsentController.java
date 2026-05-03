@@ -130,7 +130,7 @@ public class ProxyInputConsentController {
      * スキャン文書アップロード用 presigned PUT URL を発行する（TTL 5分）。
      * クライアントはこのURLを使ってブラウザから直接S3にアップロードし、
      * 返却された s3Key を同意書登録API（POST /proxy-input-consents）に提出する。
-     * 権限: ADMIN以上（DEPUTY_ADMINは対象外。checkDeputyAdminOrAboveが未実装のため）。
+     * 権限: ADMIN以上。
      */
     @Operation(summary = "スキャン文書アップロードURL発行")
     @PostMapping("/api/v1/organizations/{orgId}/proxy-input-consents/scan-upload-url")
