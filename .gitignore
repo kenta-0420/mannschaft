@@ -4,3 +4,24 @@
 
 # --- Accidental Gradle home (Windows path parsing bug) ---
 backend/D:/
+
+# --- Secrets & Environment ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.jks
+*.pfx
+secrets.yml
+secrets.yaml
+credentials.yml
+credentials.yaml
+
+# --- Production overrides (ローカルで作る本番用上書きファイル。トラッキング中の application-prod.yml はプレースホルダのみで安全) ---
+application-prod.local.*
+application-production.local.*
+docker-compose.prod.yml
+docker-compose.production.yml
+docker-compose.override.yml

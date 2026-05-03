@@ -55,6 +55,8 @@ function needsTimes(entry: StudentEntry): boolean {
         v-for="(entry, index) in entries"
         :key="entry.studentUserId"
         class="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-4"
+        :data-testid="'roll-call-row-' + entry.studentUserId"
+        :data-status="entry.status"
       >
         <div class="flex items-center justify-between mb-3">
           <span class="font-semibold text-surface-800 dark:text-surface-100">
@@ -71,6 +73,7 @@ function needsTimes(entry: StudentEntry): boolean {
                   ? 'bg-primary-500 text-white'
                   : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'
               "
+              :data-testid="'roll-call-row-' + entry.studentUserId + '-' + opt.value.toLowerCase()"
               @click="updateEntry(index, { status: opt.value as DailyRollCallEntry['status'] })"
             >
               {{ opt.label() }}
