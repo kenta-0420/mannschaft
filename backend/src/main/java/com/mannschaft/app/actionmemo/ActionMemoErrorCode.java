@@ -102,7 +102,27 @@ public enum ActionMemoErrorCode implements ErrorCode {
 
     /** 組織スコープ投稿時に指定組織に所属していない（IDOR 対策で 404 扱い） */
     ACTION_MEMO_ORG_NOT_FOUND("ACTION_MEMO_021",
-            "指定した組織が見つかりません", Severity.WARN);
+            "指定した組織が見つかりません", Severity.WARN),
+
+    // ==================================================================
+    // Phase 4-β エラーコード
+    // ==================================================================
+
+    /** ADMIN でないユーザーが TODO 差し戻しを試みた */
+    ACTION_MEMO_TODO_REVERT_NOT_ALLOWED("ACTION_MEMO_022",
+            "チーム管理者のみ TODO の差し戻しができます", Severity.WARN),
+
+    /** completes_todo = false のメモに対して差し戻しを試みた */
+    ACTION_MEMO_TODO_NOT_COMPLETED_BY_MEMO("ACTION_MEMO_023",
+            "このメモは TODO を完了させていません", Severity.WARN),
+
+    /** 管理職ダッシュボードへのアクセス権限がない */
+    ACTION_MEMO_DASHBOARD_FORBIDDEN("ACTION_MEMO_024",
+            "チーム管理者のみアクセスできます", Severity.WARN),
+
+    /** リマインド有効時に時刻が未設定 */
+    ACTION_MEMO_REMINDER_TIME_REQUIRED("ACTION_MEMO_025",
+            "リマインドを有効にする場合は通知時刻を設定してください", Severity.WARN);
 
     private final String code;
     private final String message;

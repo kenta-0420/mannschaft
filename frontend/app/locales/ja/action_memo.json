@@ -59,7 +59,27 @@
     "mood_enabled": {
       "label": "気分入力を有効にする",
       "description": "メモ入力時に5段階の気分を選べます。デフォルトは無効です。"
+    },
+    "reminder": {
+      "label": "毎日リマインド",
+      "description": "設定した時刻に行動メモの記録を促す通知を受け取ります（バッチ実装後に有効化）",
+      "time_label": "通知時刻"
     }
+  },
+  "dashboard": {
+    "title": "メンバー行動メモ管理",
+    "select_team": "チームを選択",
+    "select_member": "メンバーを選択",
+    "no_work_memos": "WORKメモがありません",
+    "forbidden": "管理職権限が必要です",
+    "error_load": "メモの取得に失敗しました",
+    "load_more": "もっと読み込む"
+  },
+  "todo_revert": {
+    "button": "TODO を差し戻す",
+    "confirm": "このメモのTODO完了を差し戻しますか？",
+    "success": "TODOを差し戻しました",
+    "error": "差し戻しに失敗しました"
   },
   "error": {
     "rate_limit": "操作が早すぎます。少し時間をおいて再度お試しください",

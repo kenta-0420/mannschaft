@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -200,5 +201,83 @@ class ActionMemoSettingsServiceTest {
         assertThat(response.isMoodEnabled()).isFalse();
         assertThat(response.getDefaultPostTeamId()).isNull();
         assertThat(response.getDefaultCategory()).isEqualTo(ActionMemoCategory.PRIVATE);
+    }
+
+    // ==================================================================
+    // Phase 4-β: リマインド設定のテスト
+    // ==================================================================
+
+    @Test
+    @DisplayName("updateSettings: reminderEnabled=true と reminderTime 指定で永続化される")
+    void updateSettings_reminderEnabled_true_withTime_success() {
+        given(settingsRepository.findById(USER_ID)).willReturn(Optional.empty());
+        given(settingsRepository.save(any(UserActionMemoSettingsEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        UpdateActionMemoSettingsRequest req = new UpdateActionMemoSettingsRequest();
+        req.setReminderEnabled(true);
+        req.setReminderTime("09:00");
+
+        ActionMemoSettingsResponse response = settingsService.updateSettings(USER_ID, req);
+
+        assertThat(response.isReminderEnabled()).isTrue();
+        assertThat(response.getReminderTime()).isEqualTo("09:00");
+
+        ArgumentCaptor<UserActionMemoSettingsEntity> captor =
+                ArgumentCaptor.forClass(UserActionMemoSettingsEntity.class);
+        verify(settingsRepository).save(captor.capture());
+        assertThat(captor.getValue().getReminderEnabled()).isTrue();
+        assertThat(captor.getValue().getReminderTime()).isEqualTo(LocalTime.of(9, 0));
+    }
+
+    @Test
+    @DisplayName("updateSettings: reminderEnabled=true で reminderTime 未設定なら REMINDER_TIME_REQUIRED 例外")
+    void updateSettings_reminderEnabled_true_withoutTime_throwsBadRequest() {
+        // reminderEnabled=true だが既存レコードも reminderTime=null
+        UserActionMemoSettingsEntity existing = UserActionMemoSettingsEntity.builder()
+                .userId(USER_ID)
+                .moodEnabled(false)
+                .reminderEnabled(false)
+                .build();
+        given(settingsRepository.findById(USER_ID)).willReturn(Optional.of(existing));
+
+        UpdateActionMemoSettingsRequest req = new UpdateActionMemoSettingsRequest();
+        req.setReminderEnabled(true);
+        // reminderTime は設定しない
+
+        assertThatThrownBy(() -> settingsService.updateSettings(USER_ID, req))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ActionMemoErrorCode.ACTION_MEMO_REMINDER_TIME_REQUIRED);
+
+        verify(settingsRepository, never()).save(any(UserActionMemoSettingsEntity.class));
+    }
+
+    @Test
+    @DisplayName("getSettings: reminderEnabled / reminderTime フィールドを正しく返す")
+    void getSettings_reminderFields_returned() {
+        UserActionMemoSettingsEntity entity = UserActionMemoSettingsEntity.builder()
+                .userId(USER_ID)
+                .moodEnabled(false)
+                .reminderEnabled(true)
+                .reminderTime(LocalTime.of(20, 30))
+                .build();
+        given(settingsRepository.findById(USER_ID)).willReturn(Optional.of(entity));
+
+        ActionMemoSettingsResponse response = settingsService.getSettings(USER_ID);
+
+        assertThat(response.isReminderEnabled()).isTrue();
+        assertThat(response.getReminderTime()).isEqualTo("20:30");
+    }
+
+    @Test
+    @DisplayName("getSettings: レコード未作成時に reminderEnabled=false / reminderTime=null を返す")
+    void getSettings_noRecord_reminderDefaults() {
+        given(settingsRepository.findById(USER_ID)).willReturn(Optional.empty());
+
+        ActionMemoSettingsResponse response = settingsService.getSettings(USER_ID);
+
+        assertThat(response.isReminderEnabled()).isFalse();
+        assertThat(response.getReminderTime()).isNull();
     }
 }
