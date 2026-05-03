@@ -61,6 +61,11 @@ public class PeriodAttendanceRecordEntity extends BaseEntity {
     @Builder.Default
     private AttendanceStatus status = AttendanceStatus.UNDECIDED;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 25)
+    @Builder.Default
+    private AttendanceLocation attendanceLocation = AttendanceLocation.CLASSROOM;
+
     /** 遅刻分数（PARTIAL 時） */
     private Integer lateMinutes;
 

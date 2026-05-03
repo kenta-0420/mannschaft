@@ -87,6 +87,7 @@ onMounted(() => {
             v-model="selectedDate"
             type="date"
             class="w-full"
+            data-testid="period-attendance-date"
           />
         </div>
         <div>
@@ -99,6 +100,7 @@ onMounted(() => {
             option-label="label"
             option-value="value"
             class="w-full"
+            data-testid="period-attendance-period-select"
           />
         </div>
       </div>
@@ -114,7 +116,7 @@ onMounted(() => {
           @change="(e) => (entries = e)"
         />
 
-        <div v-if="showSummary && lastSummary" class="mt-6 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-4">
+        <div v-if="showSummary && lastSummary" data-testid="period-attendance-summary" class="mt-6 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-4">
           <h2 class="text-base font-semibold mb-3">
             {{ $t('school.attendance.summary.title') }}
           </h2>
@@ -125,7 +127,7 @@ onMounted(() => {
             </div>
             <div>
               <div class="text-surface-500 text-xs mb-1">{{ $t('school.attendance.summary.attending') }}</div>
-              <div class="font-bold text-lg text-green-600">{{ lastSummary.attending }}</div>
+              <div data-testid="period-attendance-summary-attending" class="font-bold text-lg text-green-600">{{ lastSummary.attending }}</div>
             </div>
             <div>
               <div class="text-surface-500 text-xs mb-1">{{ $t('school.attendance.summary.partial') }}</div>
@@ -133,7 +135,7 @@ onMounted(() => {
             </div>
             <div>
               <div class="text-surface-500 text-xs mb-1">{{ $t('school.attendance.summary.absent') }}</div>
-              <div class="font-bold text-lg text-red-600">{{ lastSummary.absent }}</div>
+              <div data-testid="period-attendance-summary-absent" class="font-bold text-lg text-red-600">{{ lastSummary.absent }}</div>
             </div>
             <div>
               <div class="text-surface-500 text-xs mb-1">{{ $t('school.attendance.summary.undecided') }}</div>
@@ -148,6 +150,7 @@ onMounted(() => {
             :loading="submitting"
             :disabled="entries.length === 0"
             class="w-full"
+            data-testid="period-attendance-submit"
             @click="onSubmit"
           />
         </div>

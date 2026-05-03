@@ -42,6 +42,15 @@ public class DailyAttendanceRecordEntity extends BaseEntity {
     private AttendanceStatus status = AttendanceStatus.UNDECIDED;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 25)
+    @Builder.Default
+    private AttendanceLocation attendanceLocation = AttendanceLocation.CLASSROOM;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean locationChangedDuringDay = false;
+
+    @Enumerated(EnumType.STRING)
     @Column(length = 25)
     private AbsenceReason absenceReason;
 

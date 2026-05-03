@@ -142,6 +142,36 @@
       "updateSuccess": "Klassenlehrer-Zuweisung wurde aktualisiert",
       "noHomerooms": "Keine Klassenlehrer-Zuweisungen",
       "current": "Derzeit aktiv"
+    },
+    "location": {
+      "title": "Anwesenheitsort",
+      "current": "Aktueller Ort",
+      "changeButton": "Ort ändern",
+      "changeTitle": "Ortswechsel erfassen",
+      "from": "Von",
+      "to": "Nach",
+      "period": "Stunde des Wechsels",
+      "time": "Uhrzeit des Wechsels",
+      "reason": "Grund",
+      "note": "Notiz (optional)",
+      "submit": "Erfassen",
+      "submitSuccess": "Ortswechsel wurde erfasst",
+      "noChanges": "Heute keine Ortswechsel",
+      "CLASSROOM": "Klassenraum",
+      "SICK_BAY": "Sanitätsraum",
+      "SEPARATE_ROOM": "Separater Raum",
+      "LIBRARY": "Bibliothek",
+      "ONLINE": "Online",
+      "HOME_LEARNING": "Häusliches Lernen",
+      "OUT_OF_SCHOOL": "Außerschulisch",
+      "NOT_APPLICABLE": "Nicht zutreffend",
+      "reason_FELT_SICK": "Unwohl gefühlt",
+      "reason_INJURY": "Verletzung",
+      "reason_MENTAL_HEALTH": "Psychische/körperliche Beschwerden",
+      "reason_SCHEDULED": "Geplant",
+      "reason_RECOVERED": "Erholt",
+      "reason_RETURNED_TO_CLASS": "Zurück im Klassenraum",
+      "reason_OTHER": "Sonstiges"
     }
   }
 }

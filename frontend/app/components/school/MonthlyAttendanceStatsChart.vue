@@ -63,7 +63,7 @@ const useChartComponent = computed(() => {
 </script>
 
 <template>
-  <div class="monthly-attendance-stats-chart">
+  <div class="monthly-attendance-stats-chart" data-testid="stats-chart">
     <!-- サマリーカード -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
       <div class="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-4 text-center">
@@ -78,7 +78,7 @@ const useChartComponent = computed(() => {
         <div class="text-xs text-green-600 dark:text-green-400 mb-1">
           {{ $t('school.statistics.presentCount') }}
         </div>
-        <div class="text-2xl font-bold text-green-700 dark:text-green-300">
+        <div class="text-2xl font-bold text-green-700 dark:text-green-300" data-testid="stats-present-count">
           {{ stats.presentCount }}
         </div>
       </div>
@@ -86,7 +86,7 @@ const useChartComponent = computed(() => {
         <div class="text-xs text-red-600 dark:text-red-400 mb-1">
           {{ $t('school.statistics.absentCount') }}
         </div>
-        <div class="text-2xl font-bold text-red-700 dark:text-red-300">
+        <div class="text-2xl font-bold text-red-700 dark:text-red-300" data-testid="stats-absent-count">
           {{ stats.absentCount }}
         </div>
       </div>
@@ -94,7 +94,7 @@ const useChartComponent = computed(() => {
         <div class="text-xs text-surface-500 mb-1">
           {{ $t('school.statistics.attendanceRate') }}
         </div>
-        <div class="text-2xl font-bold text-primary-600 dark:text-primary-400">
+        <div class="text-2xl font-bold text-primary-600 dark:text-primary-400" data-testid="statistics-attendance-rate">
           {{ stats.attendanceRate.toFixed(1) }}%
         </div>
       </div>

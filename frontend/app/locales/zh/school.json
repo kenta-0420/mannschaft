@@ -142,6 +142,36 @@
       "updateSuccess": "班主任设置已更新",
       "noHomerooms": "暂无班主任设置",
       "current": "当前任职"
+    },
+    "location": {
+      "title": "出勤地点",
+      "current": "当前地点",
+      "changeButton": "变更地点",
+      "changeTitle": "记录地点变更",
+      "from": "变更前",
+      "to": "变更后",
+      "period": "变更课时",
+      "time": "变更时刻",
+      "reason": "原因",
+      "note": "备注（可选）",
+      "submit": "记录",
+      "submitSuccess": "地点变更已记录",
+      "noChanges": "今日暂无移动记录",
+      "CLASSROOM": "教室",
+      "SICK_BAY": "保健室上课",
+      "SEPARATE_ROOM": "隔离室上课",
+      "LIBRARY": "图书室上课",
+      "ONLINE": "线上上课",
+      "HOME_LEARNING": "居家学习",
+      "OUT_OF_SCHOOL": "校外活动",
+      "NOT_APPLICABLE": "不适用",
+      "reason_FELT_SICK": "身体不适",
+      "reason_INJURY": "受伤",
+      "reason_MENTAL_HEALTH": "身心不适",
+      "reason_SCHEDULED": "事先安排",
+      "reason_RECOVERED": "恢复健康",
+      "reason_RETURNED_TO_CLASS": "返回教室",
+      "reason_OTHER": "其他"
     }
   }
 }
