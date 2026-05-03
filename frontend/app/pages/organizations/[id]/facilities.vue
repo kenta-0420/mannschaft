@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import type { FacilityResponse } from '~/types/facility'
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const orgId = Number(route.params.id)
 const { getFacilities } = useFacilityApi()
 const { showError } = useNotification()
-const facilities = ref<Record<string, unknown>[]>([])
+const facilities = ref<FacilityResponse[]>([])
 const loading = ref(false)
 async function load() {
   loading.value = true
@@ -35,7 +36,7 @@ onMounted(() => load())
         <p v-if="f.description" class="mt-1 text-xs text-surface-500">{{ f.description }}</p>
         <div class="mt-2 flex items-center gap-2 text-xs text-surface-400">
           <span><i class="pi pi-users" /> 定員{{ f.capacity }}名</span>
-          <span v-if="f.hourlyRate"><i class="pi pi-yen" /> {{ f.hourlyRate }}/時間</span>
+          <span v-if="f.location"><i class="pi pi-map-marker" /> {{ f.location }}</span>
         </div>
       </SectionCard>
       <DashboardEmptyState v-if="facilities.length === 0" class="col-span-full" icon="pi pi-building" message="施設がありません" />

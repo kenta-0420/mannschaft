@@ -69,11 +69,8 @@ export interface LoginHistoryResponse {
 }
 
 // === Presence ===
-export interface PresenceGoingOutRequest {
-  destination?: string
-  expectedReturnAt?: string
-  message?: string
-}
+// PresenceGoingOutRequest は presence.ts で定義（重複を避けるため再エクスポート）
+export type { PresenceGoingOutRequest } from './presence'
 
 export interface NotifiedTeam {
   teamId: number
@@ -92,7 +89,8 @@ export interface PresenceBulkResponse {
 }
 
 // === Vehicles ===
-export interface VehicleResponse {
+// parking.ts の VehicleResponse とは異なる構造（ユーザー自身の車両管理 API 用）
+export interface UserVehicleResponse {
   id: number
   userId: number
   vehicleType: string
@@ -115,26 +113,8 @@ export interface UpdateVehicleRequest {
 }
 
 // === Violations ===
-export interface ViolationResponse {
-  id: number
-  userId: number
-  reportId: number
-  actionId: number
-  violationType: string
-  reason: string
-  expiresAt: string | null
-  isActive: boolean
-  createdAt: string
-}
-
-export interface UserViolationHistoryResponse {
-  userId: number
-  activeWarningCount: number
-  activeContentDeleteCount: number
-  totalViolationCount: number
-  violations: ViolationResponse[]
-  yabai: boolean
-}
+// ViolationResponse と UserViolationHistoryResponse は admin-report.ts で定義（重複を避けるため再エクスポート）
+export type { ViolationResponse, UserViolationHistoryResponse } from './admin-report'
 
 // === OAuth ===
 export interface OAuthProviderResponse {
@@ -219,7 +199,8 @@ export interface DwellingUnitResponse {
 }
 
 // === Resident Info ===
-export interface ResidentResponse {
+// resident.ts の ResidentResponse とは異なる構造（ユーザー自身の居住者情報 API 用）
+export interface UserResidentResponse {
   id: number
   dwellingUnitId: number
   userId: number

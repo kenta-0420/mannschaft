@@ -13,7 +13,7 @@ const previewItem = ref<WallpaperResponse | null>(null)
 const showPreview = ref(false)
 const saving = ref(false)
 
-const form = ref<CreateWallpaperRequest & { startDate?: string; endDate?: string }>({
+const form = ref<CreateWallpaperRequest & { startDate?: Date; endDate?: Date }>({
   name: '',
   imageUrl: '',
   thumbnailUrl: '',

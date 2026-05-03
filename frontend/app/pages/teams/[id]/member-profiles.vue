@@ -162,7 +162,7 @@ onMounted(loadData)
             />
             <DatePicker
               v-else-if="field.fieldType === 'DATE'"
-              v-model="form.customFieldValues[String(field.id)]"
+              v-model="(form.customFieldValues as unknown as Record<string, Date | undefined>)[String(field.id)]"
               date-format="yy/mm/dd"
               class="w-full"
             />

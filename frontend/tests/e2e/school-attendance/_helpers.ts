@@ -567,7 +567,7 @@ export async function mockApplyFamilyNotice(
 /** GET /api/v1/teams/{teamId}/attendance/statistics/monthly をモック。 */
 export async function mockGetMonthlyStatistics(
   page: Page,
-  response: MonthlyStatisticsResponse,
+  response: MonthlyStatisticsResponse | null,
 ): Promise<void> {
   await page.route('**/api/v1/teams/*/attendance/statistics/monthly**', async (route) => {
     if (route.request().method() !== 'GET') {
@@ -575,9 +575,9 @@ export async function mockGetMonthlyStatistics(
       return
     }
     await route.fulfill({
-      status: 200,
+      status: response ? 200 : 404,
       contentType: 'application/json',
-      body: JSON.stringify({ data: response }),
+      body: JSON.stringify(response ? { data: response } : { error: 'Not Found' }),
     })
   })
 }

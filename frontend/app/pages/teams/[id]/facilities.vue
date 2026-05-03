@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import type { FacilityResponse } from '~/types/facility'
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const teamId = Number(route.params.id)
 const { getFacilities } = useFacilityApi()
 const { showError } = useNotification()
-const facilities = ref<Record<string, unknown>[]>([])
+const facilities = ref<FacilityResponse[]>([])
 const loading = ref(false)
 async function load() {
   loading.value = true

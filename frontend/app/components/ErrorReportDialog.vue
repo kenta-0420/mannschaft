@@ -18,7 +18,7 @@ async function sendComment() {
 }
 
 watch(
-  () => state.visible,
+  () => state.value.visible,
   (v) => {
     if (!v) {
       comment.value = ''

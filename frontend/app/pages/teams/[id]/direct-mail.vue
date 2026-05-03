@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import type { DirectMailResponse } from '~/types/line'
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const teamId = Number(route.params.id)
 const { getMails } = useDirectMailApi()
 const { error: showError } = useNotification()
-const mails = ref<Array<Record<string, unknown>>>([])
+const mails = ref<DirectMailResponse[]>([])
 const loading = ref(false)
 async function load() {
   loading.value = true

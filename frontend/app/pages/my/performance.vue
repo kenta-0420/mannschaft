@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import type { MemberPerformance } from '~/types/performance'
+
 definePageMeta({ middleware: 'auth' })
 
 const { getMyPerformance } = usePerformanceApi()
 const { showError } = useNotification()
 
-const data = ref<Record<string, unknown> | null>(null)
+const data = ref<MemberPerformance | null>(null)
 const loading = ref(false)
 
 async function load() {
@@ -29,28 +31,13 @@ onMounted(() => load())
     <template v-else-if="data">
       <div class="grid gap-4 md:grid-cols-3">
         <SectionCard
-          v-for="(value, key) in data.metrics"
-          :key="key"
+          v-for="metric in data.metrics"
+          :key="metric.metricId"
           class="text-center"
         >
-          <p class="text-sm text-surface-500">{{ key }}</p>
-          <p class="text-2xl font-bold text-primary">{{ value }}</p>
+          <p class="text-sm text-surface-500">{{ metric.metricName }}</p>
+          <p class="text-2xl font-bold text-primary">{{ metric.value }}</p>
         </SectionCard>
-      </div>
-      <div v-if="data.records?.length" class="mt-6">
-        <h2 class="mb-3 text-lg font-semibold">記録一覧</h2>
-        <div class="flex flex-col gap-2">
-          <SectionCard
-            v-for="r in data.records"
-            :key="r.id"
-          >
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-medium">{{ r.metricName }}</span>
-              <span class="text-sm font-bold text-primary">{{ r.value }}</span>
-            </div>
-            <p class="text-xs text-surface-400">{{ r.recordedAt }} - {{ r.teamName }}</p>
-          </SectionCard>
-        </div>
       </div>
     </template>
     <DashboardEmptyState v-else icon="pi-chart-bar" message="パフォーマンスデータがありません" />

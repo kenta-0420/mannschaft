@@ -1,5 +1,5 @@
 export function useTimedMessage() {
-  const { tm, rt } = useI18n()
+  const { tm } = useI18n()
   const message = ref('')
 
   function pick() {
@@ -11,10 +11,11 @@ export function useTimedMessage() {
     else if (hour >= 17 && hour < 21) period = 'evening'
     else period = 'night'
 
-    const raw = tm(`timedMessage.${period}`)
-    const messages = Array.isArray(raw) ? raw.map((m) => rt(m)) : []
+    // tm() returns deeply typed locale values; use unknown to avoid excessive type instantiation
+    const raw: unknown = tm(`timedMessage.${period}`)
+    const messages: string[] = Array.isArray(raw) ? (raw as { value: string }[]).map((m) => m.value ?? '') : []
     if (messages.length > 0) {
-      message.value = messages[Math.floor(Math.random() * messages.length)]
+      message.value = messages[Math.floor(Math.random() * messages.length)] ?? ''
     }
   }
 

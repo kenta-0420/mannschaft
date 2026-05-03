@@ -1,3 +1,6 @@
+import type { EstablishedDatePrecision, ProfileVisibility } from './organization'
+export type { EstablishedDatePrecision, ProfileVisibility }
+
 export type TeamTemplate =
   | 'CLUB'
   | 'CLINIC'
@@ -76,16 +79,7 @@ export interface UpdateTeamRequest {
 }
 
 // === F01.2 拡張プロフィール ===
-
-export type EstablishedDatePrecision = 'YEAR' | 'YEAR_MONTH' | 'FULL'
-
-export interface ProfileVisibility {
-  homepage_url?: boolean
-  established_date?: boolean
-  philosophy?: boolean
-  officers?: boolean
-  custom_fields?: boolean
-}
+// EstablishedDatePrecision と ProfileVisibility は organization.ts で定義（team/org 共通）
 
 export interface TeamProfileResponse {
   id: number

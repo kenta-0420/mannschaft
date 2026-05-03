@@ -49,13 +49,14 @@ function openEdit(template: OnboardingTemplate) {
   showTemplateDialog.value = true
 }
 
-async function handleSave(data: Parameters<typeof onboardingApi.createTemplate>[2]) {
+async function handleSave(data: { name: string; description: string; deadlineDays: number | null; reminderDaysBefore: number | null; isOrderEnforced: boolean; isAdminNotifiedOnComplete: boolean; isTimelinePostedOnComplete: boolean; presetId?: number; steps: import('~/types/onboarding').CreateStepRequest[] }) {
+  const body = { ...data, deadlineDays: data.deadlineDays ?? undefined, reminderDaysBefore: data.reminderDaysBefore ?? undefined }
   try {
     if (editingTemplate.value) {
-      await onboardingApi.updateTemplate(editingTemplate.value.id, data)
+      await onboardingApi.updateTemplate(editingTemplate.value.id, body)
       notification.success('テンプレートを更新しました')
     } else {
-      await onboardingApi.createTemplate('organization', orgId.value, data)
+      await onboardingApi.createTemplate('organization', orgId.value, body)
       notification.success('テンプレートを作成しました')
     }
     showTemplateDialog.value = false

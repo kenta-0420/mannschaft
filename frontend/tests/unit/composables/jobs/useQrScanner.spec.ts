@@ -18,7 +18,6 @@ describe('pulseVibration', () => {
 
   it('navigator.vibrate が存在すれば呼び出す', () => {
     const spy = vi.fn()
-    // @ts-expect-error navigator.vibrate is stubbed for this test scenario only
     navigator.vibrate = spy
     pulseVibration(42)
     expect(spy).toHaveBeenCalledWith(42)
@@ -30,7 +29,6 @@ describe('pulseVibration', () => {
   })
 
   it('vibrate が throw しても呼び出し元に伝搬させない', () => {
-    // @ts-expect-error navigator.vibrate is stubbed to throw in this scenario
     navigator.vibrate = () => {
       throw new Error('blocked')
     }
@@ -52,9 +50,7 @@ describe('playBeep', () => {
   })
 
   it('AudioContext が無ければ noop（throw しない）', () => {
-    // @ts-expect-error delete optional AudioContext for negative scenario
-    delete window.AudioContext
-    // @ts-expect-error delete optional webkit AudioContext for negative scenario
+    delete (window as unknown as { AudioContext?: unknown }).AudioContext
     delete (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext
     expect(() => playBeep(10)).not.toThrow()
   })

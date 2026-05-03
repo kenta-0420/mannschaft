@@ -100,7 +100,7 @@ async function fetchAuditLogs() {
 function formatAuditTime(iso: string): string {
   if (!iso) return ''
   const m = iso.match(/T(\d{2}:\d{2})/)
-  return m ? m[1] : iso
+  return m ? (m[1] ?? iso) : iso
 }
 </script>
 

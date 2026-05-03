@@ -282,7 +282,7 @@ describe('useConflictResolver ロジック', () => {
       const result = normalizePagedResponse(rawData, meta)
 
       expect(result.data).toHaveLength(1)
-      expect(result.data[0].resourceType).toBe('TEST')
+      expect(result.data[0]!.resourceType).toBe('TEST')
       expect(result.meta.totalElements).toBe(1)
     })
 

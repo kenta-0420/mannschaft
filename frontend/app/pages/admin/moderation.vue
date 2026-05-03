@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import type { ContentReportResponse } from '~/types/moderation'
 definePageMeta({ middleware: 'auth' })
 const { getReports } = useModerationApi()
 const { showError } = useNotification()
 const { relativeTime } = useRelativeTime()
-const reports = ref<Record<string, unknown>[]>([])
+const reports = ref<ContentReportResponse[]>([])
 const loading = ref(false)
 const statusFilter = ref<string | undefined>(undefined)
 async function load() {

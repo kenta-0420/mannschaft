@@ -150,7 +150,7 @@ onMounted(load)
 
           <!-- 結果なし -->
           <div
-            v-else-if="!resultsMap[survey.id] || resultsMap[survey.id].length === 0"
+            v-else-if="!resultsMap[survey.id] || resultsMap[survey.id]!.length === 0"
             class="py-4 text-center text-sm text-surface-400"
           >
             <i class="pi pi-chart-bar mb-2 block text-2xl" />

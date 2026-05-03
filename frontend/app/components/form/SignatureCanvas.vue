@@ -28,7 +28,8 @@ function getPos(e: MouseEvent | TouchEvent, canvas: HTMLCanvasElement) {
   const scaleX = canvas.width / rect.width
   const scaleY = canvas.height / rect.height
   if (e instanceof TouchEvent) {
-    const touch = e.touches[0] || e.changedTouches[0]
+    const touch = e.touches[0] ?? e.changedTouches[0]
+    if (!touch) return { x: 0, y: 0 }
     return {
       x: (touch.clientX - rect.left) * scaleX,
       y: (touch.clientY - rect.top) * scaleY,

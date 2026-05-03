@@ -2,7 +2,7 @@ export type PageType = 'MAIN' | 'YEARLY'
 export type PageStatus = 'DRAFT' | 'PUBLISHED'
 export type PageVisibility = 'PUBLIC' | 'MEMBERS_ONLY'
 export type SectionType = 'TEXT' | 'IMAGE' | 'MEMBER_LIST' | 'HEADING'
-export type FieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT'
+export type FieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'TEXTAREA' | 'CHECKBOX'
 
 export interface TeamPage {
   id: number

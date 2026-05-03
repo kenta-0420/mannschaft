@@ -252,7 +252,8 @@ export interface SafetyPresetResponse {
   createdAt: string
 }
 
-export interface SafetyTemplateResponse {
+// system-admin 専用の安否確認テンプレート（safety.ts の SafetyTemplateResponse とは別物）
+export interface SystemAdminSafetyTemplateResponse {
   id: number
   scopeType: string
   scopeId: number
@@ -304,40 +305,11 @@ export interface ActivityTemplatePresetResponse {
 }
 
 // ===== Warning Re-reviews =====
-export interface WarningReReviewResponse {
-  id: number
-  userId: number
-  reportId: number
-  actionId: number
-  reason: string
-  status: string
-  adminReviewedBy: number | null
-  adminReviewNote: string | null
-  adminReviewedAt: string | null
-  escalationReason: string | null
-  systemAdminReviewedBy: number | null
-  systemAdminReviewNote: string | null
-  systemAdminReviewedAt: string | null
-  createdAt: string
-}
+// WarningReReviewResponse と YabaiUnflagResponse は warning.ts で定義（重複を避けるため再エクスポート）
+export type { WarningReReviewResponse, YabaiUnflagResponse } from './warning'
 
-export interface ReviewReReviewRequest {
-  status: string
-  reviewNote?: string
-}
-
-// ===== Yabai Unflag =====
-export interface YabaiUnflagResponse {
-  id: number
-  userId: number
-  reason: string
-  status: string
-  reviewedBy: number | null
-  reviewNote: string | null
-  reviewedAt: string | null
-  nextEligibleAt: string | null
-  createdAt: string
-}
+// ReviewReReviewRequest は admin-report.ts で定義（重複を避けるため再エクスポート）
+export type { ReviewReReviewRequest } from './admin-report'
 
 export interface ReviewUnflagRequest {
   status: string
@@ -345,26 +317,8 @@ export interface ReviewUnflagRequest {
 }
 
 // ===== User Violations =====
-export interface ViolationResponse {
-  id: number
-  userId: number
-  reportId: number
-  actionId: number
-  violationType: string
-  reason: string
-  expiresAt: string | null
-  isActive: boolean
-  createdAt: string
-}
-
-export interface UserViolationHistoryResponse {
-  userId: number
-  activeWarningCount: number
-  activeContentDeleteCount: number
-  totalViolationCount: number
-  violations: ViolationResponse[]
-  yabai: boolean
-}
+// ViolationResponse と UserViolationHistoryResponse は admin-report.ts で定義（重複を避けるため再エクスポート）
+export type { ViolationResponse, UserViolationHistoryResponse } from './admin-report'
 
 // ===== Organization Entity =====
 export interface OrganizationEntity {

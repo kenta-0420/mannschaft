@@ -25,6 +25,7 @@ const loading = ref(true)
 const showDialog = ref(false)
 const editingItem = ref<AffiliateConfigResponse | null>(null)
 const previewItem = ref<AffiliateConfigResponse | null>(null)
+const showPreviewDialog = ref(false)
 
 const defaultForm = (): CreateAffiliateConfigRequest => ({
   provider: 'AMAZON',
@@ -168,7 +169,7 @@ onMounted(load)
             size="small"
             severity="secondary"
             text
-            @click="previewItem = cfg"
+            @click="previewItem = cfg; showPreviewDialog = true"
           />
           <Button
             icon="pi pi-pencil"
@@ -278,7 +279,7 @@ onMounted(load)
     </Dialog>
 
     <!-- Preview Dialog -->
-    <Dialog v-model:visible="previewItem" header="バナープレビュー" :style="{ width: '520px' }" modal>
+    <Dialog v-model:visible="showPreviewDialog" header="バナープレビュー" :style="{ width: '520px' }" modal>
       <template v-if="previewItem">
         <p class="mb-3 text-sm text-surface-500">{{ providerLabel(previewItem.provider) }} / {{ placementLabel(previewItem.placement) }}</p>
         <div

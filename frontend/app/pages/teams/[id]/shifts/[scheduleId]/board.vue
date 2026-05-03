@@ -134,7 +134,7 @@ const teamId = computed(() => Number(route.params.id))
 const scheduleId = computed(() => Number(route.params.scheduleId))
 
 const authStore = useAuthStore()
-const isSupporter = computed(() => authStore.currentUser?.role === 'SUPPORTER')
+const isSupporter = computed(() => authStore.currentUser?.systemRole === 'SUPPORTER')
 
 const shiftApi = useShiftApi()
 const teamApi = useTeamApi()
