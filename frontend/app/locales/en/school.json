@@ -227,6 +227,42 @@
       "recalculate": "Recalculate",
       "recalculateSuccess": "Summary recalculated",
       "noData": "No summary data available"
+    },
+    "requirements": {
+      "title": "Attendance Requirements",
+      "filterAll": "All",
+      "runEvaluation": "Run Evaluation",
+      "evaluationSuccess": "Evaluation complete",
+      "evaluateAll": "Evaluate All Students",
+      "evaluating": "Evaluating...",
+      "loadError": "Failed to load list",
+      "resolveSuccess": "Resolution recorded"
+    },
+    "evaluation": {
+      "title": "Attendance Requirement Evaluation",
+      "status": {
+        "OK": "On Track",
+        "WARNING": "Caution",
+        "RISK": "At Risk",
+        "VIOLATION": "Violation"
+      },
+      "currentAttendanceRate": "Current Attendance Rate",
+      "remainingAllowedAbsences": "Remaining Allowed Absences",
+      "remainingDays": "{days} days left",
+      "noDaysLeft": "No more absences allowed",
+      "evaluatedAt": "Evaluated At",
+      "resolve": "Resolve Violation",
+      "resolveTitle": "Record Violation Resolution",
+      "resolveNote": "Resolution Note",
+      "resolveNoteHint": "e.g. Makeup class completed, special approval granted",
+      "resolveSuccess": "Violation resolved successfully",
+      "resolveError": "Failed to record violation resolution",
+      "atRisk": "At-Risk Students",
+      "noEvaluations": "No evaluation data available",
+      "noAtRisk": "No at-risk students",
+      "dashboard": "Requirement Evaluation Dashboard",
+      "filterByStatus": "Filter by Status",
+      "loadError": "Failed to load evaluation data"
     }
   }
 }

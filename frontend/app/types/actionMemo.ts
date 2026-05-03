@@ -103,6 +103,17 @@ export interface AvailableTeam {
   isDefault: boolean
 }
 
+// === Available orgs (Phase 5-2) ===
+
+/**
+ * 組織スコープ投稿先候補。
+ * {@code GET /api/v1/action-memos/available-orgs} で取得する。
+ */
+export interface AvailableOrg {
+  id: number
+  name: string
+}
+
 // === Request payloads ===
 
 export interface CreateActionMemoPayload {
@@ -138,7 +149,7 @@ export interface UpdateActionMemoPayload {
   orgVisibility?: OrgVisibility | null
 }
 
-// === Audit logs (Phase 4-α) ===
+// === Audit logs (Phase 4-α / Phase 5-1) ===
 
 /** メモに紐付く監査ログ項目（折りたたみUI用） */
 export interface MemoAuditLog {
@@ -147,6 +158,18 @@ export interface MemoAuditLog {
   userId: number | null
   metadata: string | null
   createdAt: string
+}
+
+/**
+ * Phase 5-1: ActionMemoAuditLogResponse に対応する型。
+ * バックエンドのスネークケースフィールドをキャメルケースに正規化したもの。
+ */
+export interface ActionMemoAuditLog {
+  id: number
+  eventType: 'CREATED' | 'UPDATED' | 'DELETED' | 'TODO_COMPLETED' | 'TODO_REVERTED' | string
+  actorId: number | null
+  createdAt: string
+  metadata: string | null
 }
 
 // === Publish to team (Phase 3) ===

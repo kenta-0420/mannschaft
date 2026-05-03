@@ -155,6 +155,20 @@ public class GlobalExceptionHandler {
             Map.entry("PERSONAL_TIMETABLE_021", HttpStatus.CONFLICT),        // NOT_ACTIVE
             Map.entry("PERSONAL_TIMETABLE_022", HttpStatus.CONFLICT),        // NOT_ARCHIVED
             Map.entry("PERSONAL_TIMETABLE_023", HttpStatus.CONFLICT),        // INVALID_STATUS_TRANSITION
+            // F03.15 Phase 2 時限定義
+            Map.entry("PERSONAL_TIMETABLE_040", HttpStatus.CONFLICT),        // PERIOD_LIMIT_EXCEEDED
+            Map.entry("PERSONAL_TIMETABLE_041", HttpStatus.UNPROCESSABLE_ENTITY), // PERIOD_INVALID_TIME_RANGE
+            Map.entry("PERSONAL_TIMETABLE_042", HttpStatus.UNPROCESSABLE_ENTITY), // PERIOD_NUMBER_DUPLICATED
+            Map.entry("PERSONAL_TIMETABLE_043", HttpStatus.UNPROCESSABLE_ENTITY), // PERIOD_NUMBER_OUT_OF_RANGE
+            Map.entry("PERSONAL_TIMETABLE_044", HttpStatus.CONFLICT),        // NOT_EDITABLE (DRAFT のみ)
+            // F03.15 Phase 2 コマ
+            Map.entry("PERSONAL_TIMETABLE_050", HttpStatus.CONFLICT),        // SLOT_LIMIT_EXCEEDED
+            Map.entry("PERSONAL_TIMETABLE_051", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_BREAK_PERIOD_ASSIGNED
+            Map.entry("PERSONAL_TIMETABLE_052", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_PERIOD_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_053", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_WEEK_PATTERN_CONFLICT
+            Map.entry("PERSONAL_TIMETABLE_054", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_WEEK_PATTERN_NOT_ENABLED
+            Map.entry("PERSONAL_TIMETABLE_055", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_DUPLICATED
+            Map.entry("PERSONAL_TIMETABLE_056", HttpStatus.BAD_REQUEST),     // LINK_NOT_SUPPORTED_YET (Phase 4 で対応)
             // F09.8.1 コルクボード ピン止め
             Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
             Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED

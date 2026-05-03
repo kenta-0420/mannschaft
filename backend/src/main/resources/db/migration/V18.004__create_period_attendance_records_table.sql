@@ -1,5 +1,5 @@
 -- F03.13 学校日次・教科別出欠管理: 時限別出欠（教科担任の出欠登録）
-CREATE TABLE period_attendance_records (
+CREATE TABLE IF NOT EXISTS period_attendance_records (
     id                         BIGINT UNSIGNED    NOT NULL AUTO_INCREMENT,
     team_id                    BIGINT UNSIGNED    NOT NULL,
     student_user_id            BIGINT UNSIGNED    NOT NULL,

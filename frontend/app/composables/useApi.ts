@@ -10,6 +10,7 @@ let _errorBatchFirst: { status: number; statusText: string; url: string } | null
 export function useApi() {
   const config = useRuntimeConfig()
   const authStore = useAuthStore()
+  const proxyDeskStore = useProxyDeskStore()
   const nuxtApp = useNuxtApp()
   const errorReport = useErrorReport()
 
@@ -24,6 +25,17 @@ export function useApi() {
       if (authStore.accessToken) {
         const headers = new Headers(options.headers)
         headers.set('Authorization', `Bearer ${authStore.accessToken}`)
+
+        // 代理入力モードが有効な場合: 4ヘッダを自動付与
+        if (proxyDeskStore.isPinned) {
+          headers.set('X-Proxy-For-User-Id', String(proxyDeskStore.pinnedSubjectUserId))
+          headers.set('X-Proxy-Consent-Id', String(proxyDeskStore.pinnedConsentId))
+          headers.set('X-Proxy-Input-Source', proxyDeskStore.inputSource)
+          if (proxyDeskStore.originalStorageLocation) {
+            headers.set('X-Proxy-Original-Storage', proxyDeskStore.originalStorageLocation)
+          }
+        }
+
         options.headers = headers
       }
     },

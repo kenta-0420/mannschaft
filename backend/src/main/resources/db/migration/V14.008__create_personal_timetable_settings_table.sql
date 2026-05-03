@@ -1,5 +1,5 @@
 -- F03.15 個人時間割: ユーザーごと設定（1ユーザー1行・UPSERT 動作）
-CREATE TABLE personal_timetable_settings (
+CREATE TABLE IF NOT EXISTS personal_timetable_settings (
     user_id                                  BIGINT UNSIGNED NOT NULL                COMMENT 'PK + FK → users.id',
     auto_reflect_class_changes_to_calendar   BOOLEAN         NOT NULL DEFAULT TRUE   COMMENT 'チーム時間割の臨時変更を個人カレンダー自動反映',
     notify_team_slot_note_updates            BOOLEAN         NOT NULL DEFAULT TRUE   COMMENT 'チーム時間割コマ共通メモ更新の通知を受け取る',

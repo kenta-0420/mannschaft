@@ -2,6 +2,9 @@ package com.mannschaft.app.timetable.personal.repository;
 
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetablePeriodEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -18,5 +21,7 @@ public interface PersonalTimetablePeriodRepository extends JpaRepository<Persona
     /**
      * 個人時間割 ID で時限を一括削除。duplicate / 上書きで使用。
      */
-    void deleteByPersonalTimetableId(Long personalTimetableId);
+    @Modifying
+    @Query("DELETE FROM PersonalTimetablePeriodEntity p WHERE p.personalTimetableId = :pid")
+    void deleteByPersonalTimetableId(@Param("pid") Long personalTimetableId);
 }

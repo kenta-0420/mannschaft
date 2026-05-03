@@ -1,4 +1,4 @@
-CREATE TABLE student_attendance_summaries (
+CREATE TABLE IF NOT EXISTS student_attendance_summaries (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   team_id BIGINT NOT NULL COMMENT 'チームID',
   student_user_id BIGINT NOT NULL COMMENT '生徒ユーザーID',

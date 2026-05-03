@@ -151,7 +151,7 @@ onMounted(async () => {
           <Tab v-if="isAdminOrDeputy" :value="3"> 招待 </Tab>
           <Tab v-if="isAdmin && team.supporterEnabled" :value="4"> サポーター管理 </Tab>
           <Tab v-if="isAdmin" :value="5"> 機能設定 </Tab>
-          <Tab v-if="isAdmin" :value="6"> {{ $t('friends.nav.tab') }} </Tab>
+          <Tab v-if="isAdmin" :value="6"> {{ $t('nav.tab') }} </Tab>
         </TabList>
 
         <TabPanels>

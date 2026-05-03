@@ -1,0 +1,77 @@
+{
+  "proxy": {
+    "title": "Proxy Input Desk",
+    "description": "Enter paper applications on behalf of non-digital residents",
+    "consent": {
+      "title": "Proxy Input Consent",
+      "subjectUserId": "Subject Resident ID",
+      "method": {
+        "label": "Consent Method",
+        "paper_signed": "Paper Signature",
+        "witnessed_oral": "Witnessed Oral",
+        "digital_signature": "Digital Signature",
+        "guardian_by_court": "Court-appointed Guardian"
+      },
+      "status": {
+        "pending": "Pending Approval",
+        "active": "Active",
+        "expired": "Expired",
+        "revoked": "Revoked"
+      },
+      "effectiveFrom": "Effective From",
+      "effectiveUntil": "Effective Until",
+      "scopes": "Feature Scopes",
+      "approvedAt": "Approved At",
+      "revokedAt": "Revoked At",
+      "noActive": "No active consents found"
+    },
+    "scope": {
+      "survey": "Survey",
+      "schedule_attendance": "Attendance",
+      "shift_request": "Shift Request",
+      "announcement_read": "Announcements",
+      "parking_application": "Parking Application",
+      "circular": "Circular"
+    },
+    "desk": {
+      "pinSubject": "Pin Resident",
+      "pinConsent": "Select Consent",
+      "unpin": "Unpin",
+      "pinned": "Entering as {name}",
+      "inputSource": {
+        "label": "Input Source",
+        "paper_form": "Paper Form",
+        "phone_interview": "Phone Interview",
+        "in_person": "In-person"
+      },
+      "originalStorage": {
+        "label": "Original Storage Location",
+        "placeholder": "e.g. proxy-records/2026/scan_001.pdf"
+      },
+      "active": "Proxy input mode active",
+      "inactive": "Proxy input mode inactive"
+    },
+    "record": {
+      "title": "Proxy Input History",
+      "createdAt": "Created At",
+      "featureScope": "Feature Scope",
+      "targetEntity": "Target Record"
+    },
+    "revoke": {
+      "title": "Revoke Consent",
+      "method": {
+        "api": "Online Application by Subject",
+        "paper": "Paper Application",
+        "life_event": "Life Event (relocation etc.)",
+        "tenure_end": "End of Tenure"
+      },
+      "reason": "Revoke Reason",
+      "confirm": "Are you sure you want to revoke this consent?"
+    },
+    "audit": {
+      "byPerson": "Self Input",
+      "byProxy": "Proxy Input",
+      "total": "Total"
+    }
+  }
+}

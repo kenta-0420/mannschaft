@@ -131,7 +131,11 @@
       "empty": "変更履歴はありません",
       "loading": "読み込み中...",
       "error": "履歴の取得に失敗しました",
-      "event_todo_completed": "関連TODO を完了にしました"
+      "event_todo_completed": "関連TODO を完了にしました",
+      "event_created": "メモを作成しました",
+      "event_updated": "メモを更新しました",
+      "event_deleted": "メモを削除しました",
+      "event_todo_reverted": "TODOを差し戻しました"
     }
   },
   "offline": {

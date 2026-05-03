@@ -152,6 +152,7 @@ export default defineNuxtConfig({
           'ja/dashboard.json',
           'ja/activity.json',
           'ja/settings.json',
+          'ja/timetable.json',
         ],
       },
       {
@@ -187,6 +188,7 @@ export default defineNuxtConfig({
           'en/dashboard.json',
           'en/activity.json',
           'en/settings.json',
+          'en/timetable.json',
         ],
       },
       {
@@ -222,6 +224,7 @@ export default defineNuxtConfig({
           'zh/dashboard.json',
           'zh/activity.json',
           'zh/settings.json',
+          'zh/timetable.json',
         ],
       },
       {
@@ -257,6 +260,7 @@ export default defineNuxtConfig({
           'ko/dashboard.json',
           'ko/activity.json',
           'ko/settings.json',
+          'ko/timetable.json',
         ],
       },
       {
@@ -292,6 +296,7 @@ export default defineNuxtConfig({
           'es/dashboard.json',
           'es/activity.json',
           'es/settings.json',
+          'es/timetable.json',
         ],
       },
       {
@@ -327,6 +332,7 @@ export default defineNuxtConfig({
           'de/dashboard.json',
           'de/activity.json',
           'de/settings.json',
+          'de/timetable.json',
         ],
       },
     ],

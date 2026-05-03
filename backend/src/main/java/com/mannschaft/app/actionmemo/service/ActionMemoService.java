@@ -6,6 +6,7 @@ import com.mannschaft.app.actionmemo.ActionMemoMood;
 import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoTagSummary;
+import com.mannschaft.app.actionmemo.dto.AvailableOrgResponse;
 import com.mannschaft.app.actionmemo.dto.AvailableTeamResponse;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
 import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
@@ -28,6 +29,8 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.security.HtmlSanitizer;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -106,6 +109,7 @@ public class ActionMemoService {
     private final TimelinePostRepository timelinePostRepository;
     private final UserRoleRepository userRoleRepository;
     private final TeamRepository teamRepository;
+    private final OrganizationRepository organizationRepository;
     private final ActionMemoSettingsService settingsService;
     private final AuditLogService auditLogService;
     private final ActionMemoMetrics metrics;
@@ -216,6 +220,20 @@ public class ActionMemoService {
         metrics.incrementCreated();
         log.info("行動メモ作成: memoId={}, userId={}, memoDate={}, length={}, category={}",
                 saved.getId(), userId, memoDate, saved.getContent().length(), category);
+
+        // 10. 監査ログ記録（非同期 fire-and-forget）
+        auditLogService.record(
+                "ACTION_MEMO_CREATED",
+                userId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                String.format("{\"source\":\"ACTION_MEMO\",\"source_id\":%d,\"event\":\"CREATED\",\"category\":\"%s\"}",
+                        saved.getId(), category != null ? category.name() : "")
+        );
 
         return toResponse(saved, tagEntities);
     }
@@ -421,6 +439,31 @@ public class ActionMemoService {
         log.info("行動メモ更新: memoId={}, userId={}, length={}, category={}",
                 saved.getId(), userId, saved.getContent().length(), saved.getCategory());
 
+        // 監査ログ記録: 変更フィールドを列挙（非同期 fire-and-forget）
+        List<String> changedFields = new ArrayList<>();
+        if (request.getContent() != null) changedFields.add("content");
+        if (request.getMemoDate() != null) changedFields.add("memo_date");
+        if (request.getMood() != null) changedFields.add("mood");
+        if (request.getRelatedTodoId() != null) changedFields.add("related_todo_id");
+        if (request.getCategory() != null) changedFields.add("category");
+        if (request.getDurationMinutes() != null) changedFields.add("duration_minutes");
+        if (request.getProgressRate() != null) changedFields.add("progress_rate");
+        if (request.getCompletesTodo() != null) changedFields.add("completes_todo");
+        if (request.getTagIds() != null) changedFields.add("tag_ids");
+        if (request.getOrganizationId() != null) changedFields.add("organization_id");
+        auditLogService.record(
+                "ACTION_MEMO_UPDATED",
+                userId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                String.format("{\"source\":\"ACTION_MEMO\",\"source_id\":%d,\"event\":\"UPDATED\",\"fields_changed\":\"%s\"}",
+                        memoId, String.join(",", changedFields))
+        );
+
         List<ActionMemoTagEntity> tags = fetchTagsForMemo(memoId);
         return toResponse(saved, tags);
     }
@@ -438,6 +481,19 @@ public class ActionMemoService {
         memo.softDelete();
         memoRepository.save(memo);
         log.info("行動メモ削除: memoId={}, userId={}", memoId, userId);
+
+        // 監査ログ記録（非同期 fire-and-forget）
+        auditLogService.record(
+                "ACTION_MEMO_DELETED",
+                userId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                String.format("{\"source\":\"ACTION_MEMO\",\"source_id\":%d,\"event\":\"DELETED\"}", memoId)
+        );
     }
 
     // ==================================================================
@@ -779,6 +835,27 @@ public class ActionMemoService {
                         .id(team.getId())
                         .name(team.getName())
                         .isDefault(Objects.equals(team.getId(), defaultPostTeamId))
+                        .build())
+                .toList();
+    }
+
+    /**
+     * Phase 5-2: ユーザーの所属組織一覧（組織スコープ投稿先選択候補）を返す。
+     *
+     * @param userId 現在のユーザー ID
+     * @return 所属組織一覧
+     */
+    public List<AvailableOrgResponse> getAvailableOrgs(Long userId) {
+        List<UserRoleEntity> userRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
+
+        return userRoles.stream()
+                .map(UserRoleEntity::getOrganizationId)
+                .distinct()
+                .map(orgId -> organizationRepository.findById(orgId).orElse(null))
+                .filter(Objects::nonNull)
+                .map(org -> AvailableOrgResponse.builder()
+                        .id(org.getId())
+                        .name(org.getName())
                         .build())
                 .toList();
     }

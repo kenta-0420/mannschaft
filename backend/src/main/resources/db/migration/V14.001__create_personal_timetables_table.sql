@@ -20,7 +20,7 @@ CREATE TABLE personal_timetables (
     INDEX idx_pt_user_status (user_id, status),
     INDEX idx_pt_user_effective (user_id, effective_from, effective_until),
 
-    CONSTRAINT fk_pt_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_personal_timetable_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT chk_pt_status CHECK (status IN ('DRAFT', 'ACTIVE', 'ARCHIVED')),
     CONSTRAINT chk_pt_visibility CHECK (visibility IN ('PRIVATE', 'FAMILY_SHARED')),
     CONSTRAINT chk_pt_effective_range CHECK (effective_until IS NULL OR effective_from <= effective_until)

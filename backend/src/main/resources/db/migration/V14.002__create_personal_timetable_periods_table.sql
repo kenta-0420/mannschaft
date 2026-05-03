@@ -1,5 +1,5 @@
 -- F03.15 個人時間割: 時限定義（個人時間割ごとの時限割り）
-CREATE TABLE personal_timetable_periods (
+CREATE TABLE IF NOT EXISTS personal_timetable_periods (
     id                       BIGINT UNSIGNED   NOT NULL AUTO_INCREMENT,
     personal_timetable_id    BIGINT UNSIGNED   NOT NULL                COMMENT 'FK → personal_timetables.id',
     period_number            TINYINT UNSIGNED  NOT NULL                COMMENT '時限番号（1〜15）',

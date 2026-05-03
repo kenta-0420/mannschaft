@@ -1,6 +1,6 @@
 -- F03.15 個人時間割: コマ単位の個人メモ（チーム/個人スロット両方に紐付く統一テーブル）
 -- slot_kind による多態参照のため slot_id への FK は貼らない（イベント駆動でクリーンアップ）。
-CREATE TABLE timetable_slot_user_notes (
+CREATE TABLE IF NOT EXISTS timetable_slot_user_notes (
     id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id         BIGINT UNSIGNED NOT NULL                COMMENT 'FK → users.id（所有者）',
     slot_kind       VARCHAR(10)     NOT NULL                COMMENT 'TEAM / PERSONAL',

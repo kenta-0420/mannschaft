@@ -1,5 +1,5 @@
 -- F03.15 個人時間割: 家族チーム共有先
-CREATE TABLE personal_timetable_share_targets (
+CREATE TABLE IF NOT EXISTS personal_timetable_share_targets (
     id                       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     personal_timetable_id    BIGINT UNSIGNED NOT NULL                COMMENT 'FK → personal_timetables.id',
     team_id                  BIGINT UNSIGNED NOT NULL                COMMENT 'FK → teams.id（FAMILY 限定。アプリ層で検証）',

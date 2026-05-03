@@ -1,10 +1,12 @@
 import type {
   ActionMemo,
+  ActionMemoAuditLog,
   ActionMemoCategory,
   ActionMemoListResponse,
   ActionMemoRateLimitError,
   ActionMemoSettings,
   ActionMemoTag,
+  AvailableOrg,
   AvailableTeam,
   CreateActionMemoPayload,
   CreateTagPayload,
@@ -317,6 +319,37 @@ export function useActionMemoApi() {
     }
   }
 
+  // === Phase 5-1: 監査ログ取得 ===
+
+  type RawAuditLog = {
+    id: number
+    event_type: string
+    actor_id: number | null
+    created_at: string
+    metadata: string | null
+  }
+
+  /**
+   * メモに紐付く監査ログを取得する（変更履歴折りたたみUI用）。
+   *
+   * @param memoId 対象メモ ID
+   * @returns 最新10件の監査ログ（新しい順）
+   */
+  async function getMemoAuditLogs(memoId: number): Promise<ActionMemoAuditLog[]> {
+    try {
+      const res = await api<{ data: RawAuditLog[] }>(`${BASE}/${memoId}/audit-logs`)
+      return (res.data ?? []).map((raw: RawAuditLog): ActionMemoAuditLog => ({
+        id: raw.id,
+        eventType: raw.event_type,
+        actorId: raw.actor_id ?? null,
+        createdAt: raw.created_at,
+        metadata: raw.metadata ?? null,
+      }))
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
   // === Phase 4-β: TODO 差し戻し ===
 
   async function revertTodoCompletion(memoId: number): Promise<void> {
@@ -495,6 +528,21 @@ export function useActionMemoApi() {
     }
   }
 
+  // === Available Orgs (Phase 5-2) ===
+
+  /**
+   * 組織スコープ投稿先候補一覧を取得する。
+   * {@code GET /api/v1/action-memos/available-orgs}
+   */
+  async function fetchAvailableOrgs(): Promise<AvailableOrg[]> {
+    try {
+      const res = await api<{ data: { id: number; name: string }[] }>(`${BASE}/available-orgs`)
+      return (res.data ?? []).map((o) => ({ id: o.id, name: o.name }))
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
   // === Publish to team (Phase 3) ===
 
   /**
@@ -667,5 +715,9 @@ export function useActionMemoApi() {
     // Phase 4-β
     revertTodoCompletion,
     fetchMemberMemos,
+    // Phase 5-1
+    getMemoAuditLogs,
+    // Phase 5-2
+    fetchAvailableOrgs,
   }
 }
