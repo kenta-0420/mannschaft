@@ -154,7 +154,11 @@ public class GlobalExceptionHandler {
             Map.entry("PERSONAL_TIMETABLE_020", HttpStatus.CONFLICT),        // NOT_DRAFT
             Map.entry("PERSONAL_TIMETABLE_021", HttpStatus.CONFLICT),        // NOT_ACTIVE
             Map.entry("PERSONAL_TIMETABLE_022", HttpStatus.CONFLICT),        // NOT_ARCHIVED
-            Map.entry("PERSONAL_TIMETABLE_023", HttpStatus.CONFLICT)         // INVALID_STATUS_TRANSITION
+            Map.entry("PERSONAL_TIMETABLE_023", HttpStatus.CONFLICT),        // INVALID_STATUS_TRANSITION
+            // F09.8.1 コルクボード ピン止め
+            Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
+            Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED
+            Map.entry("CORKBOARD_013", HttpStatus.CONFLICT)                  // PIN_LIMIT_EXCEEDED
     );
 
     /**

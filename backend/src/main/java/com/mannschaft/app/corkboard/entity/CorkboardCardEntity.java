@@ -133,6 +133,15 @@ public class CorkboardCardEntity extends BaseEntity {
     }
 
     /**
+     * ピン止め状態を切り替える。
+     * pin=true で {@code pinnedAt} を現在時刻に設定し、pin=false で {@code pinnedAt} を null に戻す。
+     */
+    public void pin(boolean pin) {
+        this.isPinned = pin;
+        this.pinnedAt = pin ? LocalDateTime.now() : null;
+    }
+
+    /**
      * 論理削除を行う。
      */
     public void softDelete() {
