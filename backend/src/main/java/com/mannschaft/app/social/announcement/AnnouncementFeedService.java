@@ -15,6 +15,10 @@ import com.mannschaft.app.committee.repository.CommitteeDistributionLogRepositor
 import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.survey.entity.SurveyEntity;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
@@ -81,6 +85,8 @@ public class AnnouncementFeedService {
     private final AnnouncementFeedQueryRepository feedQueryRepository;
     private final AnnouncementReadStatusRepository readStatusRepository;
     private final AccessControlService accessControlService;
+    private final ProxyInputContext proxyInputContext;
+    private final ProxyInputRecordRepository proxyInputRecordRepository;
 
     // ── ソースリポジトリ（IDOR 検証・タイトル/excerpt 取得用） ──
     private final BlogPostRepository blogPostRepository;
@@ -336,7 +342,17 @@ public class AnnouncementFeedService {
                 .announcementFeedId(announcementId)
                 .userId(userId)
                 .build();
-        readStatusRepository.save(status);
+        status = readStatusRepository.save(status);
+
+        // 代理確認の場合: proxy_input_records を作成し、is_proxy_confirmed フラグをセット
+        if (proxyInputContext.isProxy()) {
+            ProxyInputRecordEntity proxyRecord = buildAndSaveAnnouncementProxyRecord(
+                    "ANNOUNCEMENT_READ", announcementId);
+            readStatusRepository.save(status.toBuilder()
+                    .isProxyConfirmed(true)
+                    .proxyInputRecordId(proxyRecord.getId())
+                    .build());
+        }
 
         log.debug("既読マーク完了 announcementId={}, userId={}", announcementId, userId);
     }
@@ -445,6 +461,36 @@ public class AnnouncementFeedService {
         log.info("自動お知らせ化完了 sourceType={}, sourceId={}, scopeType={}, scopeId={}",
                 sourceType, sourceId, scopeType, scopeId);
         return saved;
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // ヘルパー: 代理入力記録作成
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * お知らせ代理確認の proxy_input_records を作成して保存する（冪等性チェック付き）。
+     *
+     * @param targetEntityType 対象エンティティ種別
+     * @param targetEntityId   対象エンティティID
+     * @return 保存済みの代理入力記録エンティティ
+     */
+    private ProxyInputRecordEntity buildAndSaveAnnouncementProxyRecord(String targetEntityType, Long targetEntityId) {
+        Long proxyUserId = SecurityUtils.getCurrentUserIdOrNull();
+        // 冪等性チェック（紙運用での二重登録防止）
+        return proxyInputRecordRepository.findByProxyInputConsentIdAndTargetEntityTypeAndTargetEntityId(
+                proxyInputContext.getConsentId(), targetEntityType, targetEntityId)
+                .orElseGet(() -> proxyInputRecordRepository.save(
+                        ProxyInputRecordEntity.builder()
+                                .proxyInputConsentId(proxyInputContext.getConsentId())
+                                .subjectUserId(proxyInputContext.getSubjectUserId())
+                                .proxyUserId(proxyUserId)
+                                .featureScope("ANNOUNCEMENT_READ")
+                                .targetEntityType(targetEntityType)
+                                .targetEntityId(targetEntityId)
+                                .inputSource(ProxyInputRecordEntity.InputSource.valueOf(
+                                        proxyInputContext.getInputSource()))
+                                .originalStorageLocation(proxyInputContext.getOriginalStorageLocation())
+                                .build()));
     }
 
     // ═════════════════════════════════════════════════════════════

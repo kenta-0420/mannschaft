@@ -42,7 +42,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder
+@Builder(toBuilder = true)
 public class AnnouncementReadStatusEntity {
 
     @Id
@@ -66,6 +66,19 @@ public class AnnouncementReadStatusEntity {
      */
     @Column(nullable = false)
     private LocalDateTime readAt;
+
+    /**
+     * 代理確認フラグ（0=本人既読, 1=代理確認）。
+     */
+    @Column(name = "is_proxy_confirmed", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean isProxyConfirmed = false;
+
+    /**
+     * 代理入力記録ID（proxy_input_records.id）。代理確認時のみセットされる。
+     */
+    @Column(name = "proxy_input_record_id")
+    private Long proxyInputRecordId;
 
     /**
      * readAt が未設定の場合に現在時刻で補完する。

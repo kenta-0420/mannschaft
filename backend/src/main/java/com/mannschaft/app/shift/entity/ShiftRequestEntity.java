@@ -53,6 +53,13 @@ public class ShiftRequestEntity {
     @Column(length = 200)
     private String note;
 
+    @Column(name = "is_proxy_input", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean isProxyInput = false;
+
+    @Column(name = "proxy_input_record_id")
+    private Long proxyInputRecordId;
+
     private LocalDateTime submittedAt;
 
     private LocalDateTime updatedAt;
