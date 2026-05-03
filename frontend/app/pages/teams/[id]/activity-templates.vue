@@ -108,28 +108,28 @@ function formatDate(dateStr: string) {
         <template #body="{ data }">
           <div class="flex items-center gap-1">
             <Button
+              v-tooltip.top="'編集'"
               icon="pi pi-pencil"
               text
               rounded
               size="small"
-              v-tooltip.top="'編集'"
               @click="openEdit(data)"
             />
             <Button
+              v-tooltip.top="'複製'"
               icon="pi pi-copy"
               text
               rounded
               size="small"
-              v-tooltip.top="'複製'"
               @click="handleDuplicate(data.id)"
             />
             <Button
+              v-tooltip.top="'削除'"
               icon="pi pi-trash"
               text
               rounded
               size="small"
               severity="danger"
-              v-tooltip.top="'削除'"
               @click="handleDelete(data.id)"
             />
           </div>

@@ -147,7 +147,14 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_BUDGET_006", HttpStatus.BAD_REQUEST),          // MISSING_EXPLICIT_RATE
             Map.entry("SHIFT_BUDGET_007", HttpStatus.BAD_REQUEST),          // MISSING_POSITION_COUNTS
             Map.entry("SHIFT_BUDGET_008", HttpStatus.NOT_FOUND),            // TEAM_NOT_FOUND (IDOR対策で404)
-            Map.entry("SHIFT_BUDGET_009", HttpStatus.BAD_REQUEST)           // INVALID_BUDGET_AMOUNT
+            Map.entry("SHIFT_BUDGET_009", HttpStatus.BAD_REQUEST),          // INVALID_BUDGET_AMOUNT
+            // F03.15 個人時間割（IDOR 対策で 404 統一、上限・遷移エラーは 409）
+            Map.entry("PERSONAL_TIMETABLE_001", HttpStatus.NOT_FOUND),       // PERSONAL_TIMETABLE_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_010", HttpStatus.CONFLICT),        // LIMIT_EXCEEDED
+            Map.entry("PERSONAL_TIMETABLE_020", HttpStatus.CONFLICT),        // NOT_DRAFT
+            Map.entry("PERSONAL_TIMETABLE_021", HttpStatus.CONFLICT),        // NOT_ACTIVE
+            Map.entry("PERSONAL_TIMETABLE_022", HttpStatus.CONFLICT),        // NOT_ARCHIVED
+            Map.entry("PERSONAL_TIMETABLE_023", HttpStatus.CONFLICT)         // INVALID_STATUS_TRANSITION
     );
 
     /**

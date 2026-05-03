@@ -172,6 +172,11 @@ public class UserEntity extends BaseEntity {
     @Builder.Default
     private Boolean careNotificationEnabled = true;
 
+    /** スマートフォン・PCを持たない住民フラグ（F14.1 非デジタル住民対応）。 */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean offlineOnly = false;
+
     /** 見守り者がアカウントを代理作成した場合の作成者ユーザーID。 */
     private Long accountCreatedByWatcherUserId;
 
@@ -182,7 +187,11 @@ public class UserEntity extends BaseEntity {
         PENDING_VERIFICATION,
         ACTIVE,
         FROZEN,
-        ARCHIVED
+        ARCHIVED,
+        /** 死亡（F14.1 ライフイベント: 代理入力同意書を自動失効させる） */
+        DECEASED,
+        /** 転居（F14.1 ライフイベント: 代理入力同意書を自動失効させる） */
+        RELOCATED
     }
 
     /**

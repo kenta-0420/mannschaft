@@ -7,8 +7,6 @@ definePageMeta({
 
 const route = useRoute()
 const teamId = computed(() => Number(route.params.id))
-const { t } = useI18n()
-
 const { monthlyStats, termStats, loadingMonthly, loadingTerm, exporting, loadMonthlyStatistics, loadTermStatistics, downloadCsv } =
   useAttendanceStatistics(teamId)
 

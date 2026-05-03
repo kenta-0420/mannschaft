@@ -48,7 +48,7 @@ watch(handle, loadProfile)
           :src="profile.avatarUrl"
           alt=""
           class="h-24 w-24 rounded-full object-cover"
-        />
+        >
         <div
           v-else
           class="flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-3xl text-primary"

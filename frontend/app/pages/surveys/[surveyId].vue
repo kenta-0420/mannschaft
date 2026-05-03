@@ -26,6 +26,7 @@ if (!scopeType || !Number.isFinite(scopeId) || scopeId <= 0 || !Number.isFinite(
 
 // scopeId が確定してから RoleAccess をロード
 const roleScope = scopeType === 'TEAM' ? 'team' : 'organization'
+const scopeTypeStrict = scopeType as 'TEAM' | 'ORGANIZATION'
 const { isAdmin, loadPermissions } = useRoleAccess(roleScope, scopeId)
 
 const survey = ref<SurveyDetailResponse['data'] | null>(null)
@@ -358,7 +359,7 @@ onMounted(async () => {
           <template #content>
             <SurveyRespondentsList
               v-if="showRespondents"
-              :scope-type="scopeType as 'TEAM' | 'ORGANIZATION'"
+              :scope-type="scopeTypeStrict"
               :scope-id="scopeId"
               :survey-id="surveyId"
               :can-remind="canRemind"

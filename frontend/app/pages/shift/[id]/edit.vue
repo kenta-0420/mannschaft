@@ -310,8 +310,8 @@ function formatDate(dateStr: string): string {
     <!-- スロット編集ダイアログ -->
     <ShiftSlotEditDialog
       v-model:visible="showSlotDialog"
+      :slot-data="editingSlot"
       :schedule-id="scheduleId"
-      :slot="editingSlot"
       :positions="positions"
       @saved="handleSlotSaved"
     />

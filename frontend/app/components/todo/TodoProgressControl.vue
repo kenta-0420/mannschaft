@@ -82,7 +82,7 @@ function switchToManual() {
         :disabled="!progressManual"
         class="h-2 flex-1 cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-50"
         @input="onSliderChange"
-      />
+      >
       <div class="flex items-center gap-1">
         <input
           type="number"
@@ -93,7 +93,7 @@ function switchToManual() {
           :disabled="!progressManual"
           class="w-16 rounded-lg border border-surface-300 bg-surface-0 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-surface-600 dark:bg-surface-800"
           @change="onNumberInput"
-        />
+        >
         <span class="text-sm text-surface-500">%</span>
       </div>
     </div>

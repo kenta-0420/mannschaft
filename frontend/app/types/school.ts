@@ -353,3 +353,81 @@ export interface LocationListResponse {
   attendanceDate: string
   items: LocationListItem[]
 }
+
+// ===== Phase 10: 出席要件規程 =====
+
+export type RequirementCategory =
+  | 'GRADE_PROMOTION'
+  | 'GRADUATION'
+  | 'SUBJECT_CREDIT'
+  | 'PERFECT_ATTENDANCE'
+  | 'CUSTOM'
+
+export interface AttendanceRequirementRule {
+  id: number
+  organizationId: number | null
+  teamId: number | null
+  termId: number | null
+  academicYear: number
+  category: RequirementCategory
+  name: string
+  description: string | null
+  minAttendanceRate: number | null
+  maxAbsenceDays: number | null
+  maxAbsenceRate: number | null
+  countSickBayAsPresent: boolean
+  countSeparateRoomAsPresent: boolean
+  countLibraryAsPresent: boolean
+  countOnlineAsPresent: boolean
+  countHomeLearningAsOfficialAbsence: boolean
+  countLateAsAbsenceThreshold: number
+  warningThresholdRate: number | null
+  effectiveFrom: string
+  effectiveUntil: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AttendanceRequirementRuleListResponse {
+  rules: AttendanceRequirementRule[]
+  total: number
+}
+
+export interface CreateRequirementRuleRequest {
+  organizationId?: number | null
+  teamId?: number | null
+  termId?: number | null
+  academicYear: number
+  category: RequirementCategory
+  name: string
+  description?: string | null
+  minAttendanceRate?: number | null
+  maxAbsenceDays?: number | null
+  maxAbsenceRate?: number | null
+  countSickBayAsPresent?: boolean
+  countSeparateRoomAsPresent?: boolean
+  countLibraryAsPresent?: boolean
+  countOnlineAsPresent?: boolean
+  countHomeLearningAsOfficialAbsence?: boolean
+  countLateAsAbsenceThreshold?: number
+  warningThresholdRate?: number | null
+  effectiveFrom: string
+  effectiveUntil?: string | null
+}
+
+export interface UpdateRequirementRuleRequest {
+  name?: string
+  description?: string | null
+  minAttendanceRate?: number | null
+  maxAbsenceDays?: number | null
+  maxAbsenceRate?: number | null
+  countSickBayAsPresent?: boolean
+  countSeparateRoomAsPresent?: boolean
+  countLibraryAsPresent?: boolean
+  countOnlineAsPresent?: boolean
+  countHomeLearningAsOfficialAbsence?: boolean
+  countLateAsAbsenceThreshold?: number
+  warningThresholdRate?: number | null
+  effectiveFrom?: string
+  effectiveUntil?: string | null
+}

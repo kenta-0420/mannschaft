@@ -98,7 +98,7 @@ onMounted(loadData)
                   :src="ub.badge.iconUrl"
                   alt=""
                   class="mb-2 h-16 w-16"
-                />
+                >
                 <div
                   v-else
                   class="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 text-2xl"
@@ -152,7 +152,7 @@ onMounted(loadData)
                   :src="entry.avatarUrl"
                   alt=""
                   class="h-10 w-10 rounded-full object-cover"
-                />
+                >
                 <div
                   v-else
                   class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary"

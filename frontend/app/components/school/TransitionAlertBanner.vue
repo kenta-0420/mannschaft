@@ -11,8 +11,6 @@ const emit = defineEmits<{
   resolved: [alertId: number]
 }>()
 
-const { t } = useI18n()
-
 const selectedAlert = ref<TransitionAlertResponse | null>(null)
 const showModal = ref(false)
 

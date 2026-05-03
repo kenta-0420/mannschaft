@@ -188,7 +188,7 @@ onMounted(load)
                   :src="member.avatarUrl"
                   :alt="member.displayName"
                   class="h-full w-full object-cover"
-                />
+                >
                 <span v-else>{{ member.displayName.charAt(0) }}</span>
               </div>
               <!-- 名前 -->

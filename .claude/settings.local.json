@@ -613,7 +613,10 @@
       "Bash(cp C:/Claude/mannschaft/.claude/worktrees/agent-a8ba5899cd6c14119/frontend/app/components/school/TeacherInboxNoticeList.vue C:/Claude/mannschaft/frontend/app/components/school/)",
       "Bash(cp C:/Claude/mannschaft/.claude/worktrees/agent-a8ba5899cd6c14119/frontend/app/composables/useFamilyAttendanceNotice.ts C:/Claude/mannschaft/frontend/app/composables/)",
       "Bash(cp C:/Claude/mannschaft/.claude/worktrees/agent-a8ba5899cd6c14119/frontend/app/composables/useFamilyAttendanceNoticeApi.ts C:/Claude/mannschaft/frontend/app/composables/)",
-      "Bash(mkdir -p C:/Claude/mannschaft/frontend/app/pages/me/attendance)"
+      "Bash(mkdir -p C:/Claude/mannschaft/frontend/app/pages/me/attendance)",
+      "Bash(Select-String \"reminder|data-testid\")",
+      "Bash(node_modules/.bin/eslint . --fix --max-warnings=9999)",
+      "Bash(\"/c/Program Files/Docker/Docker/resources/bin/docker.exe\" info)"
     ],
     "deny": [
       "Write(**/.env)",

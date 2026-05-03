@@ -47,7 +47,7 @@ const videoSrc = computed(() => {
       :poster="thumbnailUrl"
       preload="metadata"
     >
-      <source v-if="videoSrc" :src="videoSrc" :type="mimeType || 'video/mp4'" />
+      <source v-if="videoSrc" :src="videoSrc" :type="mimeType || 'video/mp4'" >
     </video>
   </div>
 </template>

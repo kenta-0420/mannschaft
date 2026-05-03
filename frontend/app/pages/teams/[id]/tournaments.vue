@@ -8,7 +8,6 @@ const teamId = Number(route.params.id)
 const {
   getTeamTournamentHistory,
   getTeamTournamentStats,
-  getIndividualRankings,
 } = useTournamentApi()
 const { showError } = useNotification()
 
@@ -17,7 +16,6 @@ const stats = ref<TournamentTeamStats | null>(null)
 const scoringRankings = ref<IndividualRanking[]>([])
 const loading = ref(false)
 const rankingLoading = ref(false)
-const selectedTournamentId = ref<number | null>(null)
 const activeTab = ref<'history' | 'stats' | 'ranking'>('history')
 
 async function load() {
@@ -36,19 +34,6 @@ async function load() {
   }
 }
 
-async function loadRankings(orgId: number, tournamentId: number) {
-  rankingLoading.value = true
-  selectedTournamentId.value = tournamentId
-  try {
-    const res = await getIndividualRankings(orgId, tournamentId, 'goals')
-    scoringRankings.value = res.data
-    activeTab.value = 'ranking'
-  } catch {
-    showError('得点ランキングの取得に失敗しました')
-  } finally {
-    rankingLoading.value = false
-  }
-}
 
 function getFinalRankLabel(rank: number | null): string {
   if (rank === null) return '-'

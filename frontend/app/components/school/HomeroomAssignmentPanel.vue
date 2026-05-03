@@ -11,8 +11,6 @@ const teamIdRef = computed(() => props.teamId)
 const { homerooms, loading, submitting, loadHomerooms, addHomeroom, editHomeroom } =
   useClassHomeroom(teamIdRef)
 
-const { t } = useI18n()
-
 const showAddForm = ref(false)
 const editingId = ref<number | null>(null)
 

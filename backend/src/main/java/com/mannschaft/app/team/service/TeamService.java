@@ -27,6 +27,7 @@ import com.mannschaft.app.social.repository.TeamFriendRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.mannschaft.app.team.service.TeamShiftSettingsService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -51,6 +52,7 @@ public class TeamService {
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final TeamFriendRepository teamFriendRepository;
+    private final TeamShiftSettingsService teamShiftSettingsService;
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。
@@ -78,6 +80,9 @@ public class TeamService {
                 .teamId(team.getId())
                 .build();
         userRoleRepository.save(userRole);
+
+        // チームシフト設定をデフォルト値で初期化
+        teamShiftSettingsService.initializeDefaultSettings(team.getId());
 
         log.info("チーム作成完了: teamId={}, userId={}", team.getId(), userId);
         long teamFriendCount = teamFriendRepository.countFriendsByTeamId(team.getId());

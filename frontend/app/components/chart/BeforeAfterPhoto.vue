@@ -33,10 +33,10 @@ function handleUpload(event: Event, type: string) {
             :src="photo.photoUrl"
             alt="ビフォー"
             class="h-32 w-full rounded-lg object-cover"
-          />
+          >
         </div>
         <label class="mt-2 inline-block cursor-pointer">
-          <input type="file" accept="image/*" class="hidden" @change="handleUpload($event, 'BEFORE')" />
+          <input type="file" accept="image/*" class="hidden" @change="handleUpload($event, 'BEFORE')" >
           <Button label="ビフォー追加" icon="pi pi-camera" size="small" severity="secondary" outlined as="span" />
         </label>
       </div>
@@ -49,10 +49,10 @@ function handleUpload(event: Event, type: string) {
             :src="photo.photoUrl"
             alt="アフター"
             class="h-32 w-full rounded-lg object-cover"
-          />
+          >
         </div>
         <label class="mt-2 inline-block cursor-pointer">
-          <input type="file" accept="image/*" class="hidden" @change="handleUpload($event, 'AFTER')" />
+          <input type="file" accept="image/*" class="hidden" @change="handleUpload($event, 'AFTER')" >
           <Button label="アフター追加" icon="pi pi-camera" size="small" severity="secondary" outlined as="span" />
         </label>
       </div>

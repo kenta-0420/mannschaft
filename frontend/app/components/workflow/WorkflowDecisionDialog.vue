@@ -83,7 +83,7 @@ function onSubmit() {
         >
           <template #option="{ option }">
             <div class="flex items-center gap-3">
-              <div v-html="option.svgData" class="size-8 shrink-0" />
+              <div class="size-8 shrink-0" v-html="option.svgData" />
               <span>{{ option.displayText }}</span>
             </div>
           </template>

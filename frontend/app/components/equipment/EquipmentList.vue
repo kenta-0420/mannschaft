@@ -68,7 +68,7 @@ defineExpose({ refresh: loadItems })
         @click="emit('select', item)"
       >
         <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-100">
-          <img v-if="item.imageUrl" :src="item.imageUrl" class="h-full w-full rounded-lg object-cover" />
+          <img v-if="item.imageUrl" :src="item.imageUrl" class="h-full w-full rounded-lg object-cover" >
           <i v-else class="pi pi-box text-xl text-surface-400" />
         </div>
         <div class="min-w-0 flex-1">

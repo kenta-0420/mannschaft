@@ -628,5 +628,14 @@
     "hidden_org": "Hidden organization",
     "archived": "Archived",
     "load_more": "Load more"
+  },
+  "teamShiftSettings": {
+    "title": "Shift Reminder Settings",
+    "description": "Configure reminder notification timing before the shift preference submission deadline.",
+    "reminder48h": "48-hour reminder",
+    "reminder24h": "24-hour reminder",
+    "reminder12h": "12-hour reminder (coming soon)",
+    "atLeastOneRequired": "Please enable at least one reminder.",
+    "saved": "Settings saved."
   }
 }

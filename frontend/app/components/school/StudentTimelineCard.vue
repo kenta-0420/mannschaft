@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { StudentTimelineResponse, AttendanceStatus } from '~/types/school'
 
-const props = defineProps<{
+defineProps<{
   timeline: StudentTimelineResponse
 }>()
 

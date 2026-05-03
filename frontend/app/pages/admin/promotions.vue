@@ -216,11 +216,11 @@ onMounted(() => load())
               @click="handleCancel(data.id)"
             />
             <Button
+              v-tooltip="'削除'"
               icon="pi pi-trash"
               size="small"
               severity="danger"
               text
-              v-tooltip="'削除'"
               @click="handleDelete(data.id)"
             />
           </div>

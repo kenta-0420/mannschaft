@@ -112,7 +112,7 @@ onMounted(() => load())
   <div>
     <div class="mb-4 flex items-center justify-between">
       <PageHeader title="大会・リーグ" />
-
+      <Button label="大会を作成" icon="pi pi-plus" size="small" @click="openCreateDialog" />
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="grid gap-4 sm:grid-cols-2">
@@ -194,7 +194,7 @@ onMounted(() => load())
         </div>
       </div>
       <template #footer>
-        <Button label="キャンセル" text @click="showCreateDialog = false" :disabled="saving" />
+        <Button label="キャンセル" text :disabled="saving" @click="showCreateDialog = false" />
         <Button label="作成" icon="pi pi-check" :loading="saving" @click="handleCreate" />
       </template>
     </Dialog>

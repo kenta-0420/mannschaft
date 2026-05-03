@@ -6,7 +6,7 @@
  * チェックするとメモ保存時に関連 TODO が完了状態になる。</p>
  */
 
-const props = defineProps<{
+defineProps<{
   modelValue: boolean
   relatedTodoId: number | null
 }>()

@@ -111,8 +111,8 @@ async function handleLogin() {
       <div class="flex flex-col gap-2">
         <label for="password">パスワード</label>
         <Password
-          input-id="password"
           v-model="password"
+          input-id="password"
           :feedback="false"
           toggle-mask
           fluid

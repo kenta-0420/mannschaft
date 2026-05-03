@@ -21,7 +21,7 @@ const emit = defineEmits<{
           :src="profile.photoUrl"
           alt=""
           class="h-16 w-16 rounded-full object-cover"
-        />
+        >
         <div v-else class="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-xl text-primary">
           {{ profile.displayName.charAt(0) }}
         </div>

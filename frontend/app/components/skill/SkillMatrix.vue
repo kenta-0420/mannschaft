@@ -123,9 +123,9 @@ defineExpose({ refresh: loadMatrix })
             <td
               v-for="cat in categories"
               :key="cat.id"
+              v-tooltip.top="getCellTooltip(row, cat.id)"
               :class="getCellClass(row.skills[cat.id]?.status)"
               class="px-3 py-2 text-center"
-              v-tooltip.top="getCellTooltip(row, cat.id)"
             >
               <i v-if="row.skills[cat.id]" :class="getCellIcon(row.skills[cat.id]?.status)" />
               <span v-else class="text-surface-300">-</span>

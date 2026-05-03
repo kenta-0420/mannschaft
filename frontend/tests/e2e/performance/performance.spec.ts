@@ -117,8 +117,6 @@ test.describe('PERF-001〜005: F07.2 パフォーマンス管理', () => {
   })
 
   test('PERF-003: パフォーマンス記録を追加できる（POST）', async ({ page }) => {
-    let createCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -138,7 +136,6 @@ test.describe('PERF-001〜005: F07.2 パフォーマンス管理', () => {
 
     await page.route(`**/api/v1/teams/${TEAM_ID}/performance/records`, async (route) => {
       if (route.request().method() === 'POST') {
-        createCalled = true
         await route.fulfill({
           status: 201,
           contentType: 'application/json',

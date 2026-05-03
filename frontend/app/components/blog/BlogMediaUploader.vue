@@ -140,7 +140,7 @@ async function onVideoSelected(event: Event) {
       class="hidden"
       :aria-label="$t('blog.media.selectImage')"
       @change="onImageSelected"
-    />
+    >
 
     <!-- 非表示ファイル入力（動画） -->
     <input
@@ -150,7 +150,7 @@ async function onVideoSelected(event: Event) {
       class="hidden"
       :aria-label="$t('blog.media.selectVideo')"
       @change="onVideoSelected"
-    />
+    >
 
     <!-- アップロード中表示 -->
     <div v-if="uploading" class="flex items-center gap-2">

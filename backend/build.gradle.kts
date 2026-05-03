@@ -149,6 +149,7 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    maxHeapSize = "2g"
     finalizedBy(tasks.jacocoTestReport)
 }
 

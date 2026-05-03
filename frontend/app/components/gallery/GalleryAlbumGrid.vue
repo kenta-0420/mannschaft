@@ -62,7 +62,7 @@ defineExpose({ refresh: loadAlbums, openVideoPlayer })
         @click="emit('select', album)"
       >
         <div class="aspect-video bg-surface-100">
-          <img v-if="album.coverPhotoUrl" :src="album.coverPhotoUrl" class="h-full w-full object-cover" />
+          <img v-if="album.coverPhotoUrl" :src="album.coverPhotoUrl" class="h-full w-full object-cover" >
           <div v-else class="flex h-full items-center justify-center">
             <i class="pi pi-images text-3xl text-surface-300" />
           </div>

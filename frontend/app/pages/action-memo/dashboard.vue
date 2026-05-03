@@ -88,7 +88,7 @@ async function onLoadMore() {
             min="1"
             class="rounded-lg border border-surface-300 bg-surface-0 p-2 text-sm dark:border-surface-600 dark:bg-surface-800"
             @keydown.enter="onSearch"
-          />
+          >
         </div>
         <div class="flex items-end">
           <button

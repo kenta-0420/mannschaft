@@ -66,7 +66,7 @@ onMounted(loadInitial)
           :src="record.avatarUrl"
           alt=""
           class="h-10 w-10 rounded-full object-cover"
-        />
+        >
         <div v-else class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
           <i class="pi pi-user" />
         </div>

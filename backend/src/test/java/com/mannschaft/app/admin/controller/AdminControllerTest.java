@@ -13,6 +13,8 @@ import com.mannschaft.app.admin.service.MaintenanceScheduleService;
 import com.mannschaft.app.admin.service.PlatformAnnouncementService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.role.dto.PermissionGroupRequest;
 import com.mannschaft.app.role.dto.PermissionGroupResponse;
 import com.mannschaft.app.role.service.PermissionGroupService;
@@ -77,6 +79,12 @@ public class AdminControllerTest {
         // F11.3: UserLocaleFilter の依存解決用（@WebMvcTest コンテキストで必要）
         @MockitoBean
         private UserLocaleCache userLocaleCache;
+
+        // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+        @MockitoBean
+        private ProxyInputConsentRepository proxyInputConsentRepository;
+        @MockitoBean
+        private ProxyInputContext proxyInputContext;
 
         private MaintenanceScheduleResponse buildResponse(Long id) {
             return new MaintenanceScheduleResponse(
@@ -236,6 +244,12 @@ public class AdminControllerTest {
         @MockitoBean
         private UserLocaleCache userLocaleCache;
 
+        // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+        @MockitoBean
+        private ProxyInputConsentRepository proxyInputConsentRepository;
+        @MockitoBean
+        private ProxyInputContext proxyInputContext;
+
         private AnnouncementResponse buildAnnouncementResponse(Long id) {
             return new AnnouncementResponse(
                     id, "重要なお知らせ", "システムメンテナンスがあります",
@@ -368,6 +382,12 @@ public class AdminControllerTest {
         @MockitoBean
         private UserLocaleCache userLocaleCache;
 
+        // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+        @MockitoBean
+        private ProxyInputConsentRepository proxyInputConsentRepository;
+        @MockitoBean
+        private ProxyInputContext proxyInputContext;
+
         private FeedbackResponse buildFeedbackResponse(Long id) {
             return new FeedbackResponse(
                     id, "TEAM", 10L, "BUG",
@@ -466,6 +486,12 @@ public class AdminControllerTest {
         // F11.3: UserLocaleFilter の依存解決用（@WebMvcTest コンテキストで必要）
         @MockitoBean
         private UserLocaleCache userLocaleCache;
+
+        // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+        @MockitoBean
+        private ProxyInputConsentRepository proxyInputConsentRepository;
+        @MockitoBean
+        private ProxyInputContext proxyInputContext;
 
         private PermissionGroupResponse buildGroupResponse(Long id) {
             return new PermissionGroupResponse(

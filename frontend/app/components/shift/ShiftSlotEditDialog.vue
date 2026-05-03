@@ -9,7 +9,7 @@ import type {
 const props = defineProps<{
   visible: boolean
   scheduleId: number
-  slot?: ShiftSlotResponse | null
+  slotData?: ShiftSlotResponse | null
   positions: ShiftPositionResponse[]
 }>()
 
@@ -47,14 +47,14 @@ watch(
   () => props.visible,
   (visible) => {
     if (!visible) return
-    if (props.slot) {
+    if (props.slotData) {
       form.value = {
-        slotDate: props.slot.slotDate,
-        startTime: props.slot.startTime,
-        endTime: props.slot.endTime,
-        positionId: props.slot.positionId,
-        requiredCount: props.slot.requiredCount,
-        note: props.slot.note ?? '',
+        slotDate: props.slotData.slotDate,
+        startTime: props.slotData.startTime,
+        endTime: props.slotData.endTime,
+        positionId: props.slotData.positionId,
+        requiredCount: props.slotData.requiredCount,
+        note: props.slotData.note ?? '',
       }
     } else {
       form.value = {
@@ -75,7 +75,7 @@ async function save() {
   saving.value = true
   try {
     let saved: ShiftSlotResponse
-    if (props.slot) {
+    if (props.slotData) {
       const payload: UpdateShiftSlotRequest = {
         slotDate: form.value.slotDate,
         startTime: form.value.startTime,
@@ -84,7 +84,7 @@ async function save() {
         requiredCount: form.value.requiredCount,
         note: form.value.note.trim() || undefined,
       }
-      saved = await updateSlot(props.slot.id, payload)
+      saved = await updateSlot(props.slotData.id, payload)
     } else {
       const payload: CreateShiftSlotRequest = {
         slotDate: form.value.slotDate,
@@ -116,7 +116,7 @@ const positionOptions = computed(() => [
 ])
 
 const dialogHeader = computed(() =>
-  props.slot ? t('shift.slot.editTitle') : t('shift.slot.createTitle'),
+  props.slotData ? t('shift.slot.editTitle') : t('shift.slot.createTitle'),
 )
 </script>
 

@@ -166,23 +166,23 @@ export function useAdminReportApi() {
     if (params?.page != null) q.set('page', String(params.page))
     if (params?.size != null) q.set('size', String(params.size))
     if (params?.status) q.set('status', params.status)
-    return api<{ data: Array<Record<string, unknown>>; meta?: { totalElements: number } }>()
+    return api<{ data: Array<Record<string, unknown>>; meta?: { totalElements: number } }>(`/api/v1/admin/reports?${q.toString()}`)
   }
 
   async function getReportNotes(reportId: number) {
-    return api<{ data: Array<Record<string, unknown>> }>()
+    return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/admin/reports/${reportId}/notes`)
   }
 
   async function createReportNote(reportId: number, body: { note: string }) {
-    return api<{ data: Record<string, unknown> }>(, { method: 'POST', body })
+    return api<{ data: Record<string, unknown> }>(`/api/v1/admin/reports/${reportId}/notes`, { method: 'POST', body })
   }
 
   async function reviewReport(reportId: number) {
-    return api(, { method: 'PATCH' })
+    return api(`/api/v1/admin/reports/${reportId}/review`, { method: 'PATCH' })
   }
 
   async function hideContent(reportId: number) {
-    return api(, { method: 'PATCH' })
+    return api(`/api/v1/admin/reports/${reportId}/hide-content`, { method: 'PATCH' })
   }
 
     async function startReview(reportId: number) {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
+const emailForm = defineModel<{ newEmail: string; currentPassword: string }>('emailForm', { required: true })
+
 defineProps<{
   currentEmail: string
-  emailForm: { newEmail: string; currentPassword: string }
   submittingEmail: boolean
   emailSent: boolean
   canSubmitEmail: boolean
