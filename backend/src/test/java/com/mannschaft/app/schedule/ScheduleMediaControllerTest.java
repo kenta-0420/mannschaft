@@ -4,6 +4,8 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.schedule.controller.ScheduleMediaController;
 import com.mannschaft.app.schedule.dto.ScheduleMediaListResponse;
 import com.mannschaft.app.schedule.dto.ScheduleMediaResponse;
@@ -69,6 +71,12 @@ class ScheduleMediaControllerTest {
 
         @MockitoBean
         private UserLocaleCache userLocaleCache;
+
+        // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+        @MockitoBean
+        private ProxyInputConsentRepository proxyInputConsentRepository;
+        @MockitoBean
+        private ProxyInputContext proxyInputContext;
 
         private static final Long SCHEDULE_ID = 100L;
         private static final Long MEDIA_ID = 200L;
@@ -269,6 +277,12 @@ class ScheduleMediaControllerTest {
 
         @MockitoBean
         private UserLocaleCache userLocaleCache;
+
+        // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+        @MockitoBean
+        private ProxyInputConsentRepository proxyInputConsentRepository;
+        @MockitoBean
+        private ProxyInputContext proxyInputContext;
 
         private static final Long SCHEDULE_ID = 100L;
         private static final Long MEDIA_ID = 200L;

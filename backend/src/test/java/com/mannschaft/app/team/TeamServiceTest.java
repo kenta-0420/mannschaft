@@ -14,6 +14,7 @@ import com.mannschaft.app.social.repository.TeamFriendRepository;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
+import com.mannschaft.app.team.service.TeamShiftSettingsService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ class TeamServiceTest {
     @Mock private RoleRepository roleRepository;
     @Mock private UserRepository userRepository;
     @Mock private TeamFriendRepository teamFriendRepository;
+    @Mock private TeamShiftSettingsService teamShiftSettingsService;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.school.dto.FamilyAttendanceNoticeResponse;
 import com.mannschaft.app.school.dto.FamilyNoticeListResponse;
 import com.mannschaft.app.school.entity.FamilyNoticeType;
@@ -63,6 +65,12 @@ class FamilyAttendanceNoticeControllerTest {
 
     @MockitoBean
     private UserLocaleCache userLocaleCache;
+
+    // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+    @MockitoBean
+    private ProxyInputConsentRepository proxyInputConsentRepository;
+    @MockitoBean
+    private ProxyInputContext proxyInputContext;
 
     @BeforeEach
     void setUpSecurityContext() {
