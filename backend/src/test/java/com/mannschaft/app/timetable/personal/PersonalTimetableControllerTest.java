@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.timetable.personal.controller.PersonalTimetableController;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableEntity;
 import com.mannschaft.app.timetable.personal.service.PersonalTimetableService;
@@ -55,6 +56,8 @@ class PersonalTimetableControllerTest {
     @MockitoBean private PersonalTimetableService service;
     @MockitoBean private AuthTokenService authTokenService;
     @MockitoBean private UserLocaleCache userLocaleCache;
+    // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+    @MockitoBean private ProxyInputConsentRepository proxyInputConsentRepository;
 
     @BeforeEach
     void setUpAuthentication() {
