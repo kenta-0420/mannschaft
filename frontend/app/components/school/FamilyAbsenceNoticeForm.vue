@@ -67,7 +67,7 @@ function onSubmit(): void {
 </script>
 
 <template>
-  <div class="family-absence-notice-form">
+  <div class="family-absence-notice-form" data-testid="family-notice-form">
     <div class="flex flex-col gap-4">
       <!-- 対象日 -->
       <div>
@@ -86,7 +86,7 @@ function onSubmit(): void {
         <label class="text-sm text-surface-500 mb-2 block">
           {{ $t('school.attendance.label.status') }}
         </label>
-        <div class="flex gap-2 flex-wrap">
+        <div class="flex gap-2 flex-wrap" data-testid="family-notice-type">
           <button
             v-for="opt in NOTICE_TYPE_OPTIONS"
             :key="opt.value"
@@ -116,6 +116,7 @@ function onSubmit(): void {
           option-value="value"
           :placeholder="$t('school.attendance.label.reason')"
           class="w-full"
+          data-testid="family-notice-reason"
         />
       </div>
 
@@ -163,6 +164,7 @@ function onSubmit(): void {
           :loading="submitting"
           :disabled="!attendanceDate"
           class="w-full"
+          data-testid="family-notice-submit"
           @click="onSubmit"
         />
       </div>

@@ -57,7 +57,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col min-h-screen">
+  <div class="flex flex-col min-h-screen" data-testid="statistics-page">
     <header class="flex items-center gap-3 px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
       <BackButton :to="`/teams/${teamId}`" :label="$t('common.back')" />
       <h1 class="text-lg font-bold m-0">
@@ -74,6 +74,7 @@ onMounted(() => {
           :class="activeTab === 'monthly'
             ? 'border-primary-500 text-primary-600 dark:text-primary-400'
             : 'border-transparent text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'"
+          data-testid="statistics-tab-monthly"
           @click="activeTab = 'monthly'"
         >
           {{ $t('school.statistics.monthly') }}
@@ -84,6 +85,7 @@ onMounted(() => {
           :class="activeTab === 'term'
             ? 'border-primary-500 text-primary-600 dark:text-primary-400'
             : 'border-transparent text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'"
+          data-testid="statistics-tab-term"
           @click="activeTab = 'term'"
         >
           {{ $t('school.statistics.term') }}
@@ -103,6 +105,7 @@ onMounted(() => {
               option-label="label"
               option-value="value"
               class="w-28"
+              data-testid="statistics-year"
             />
           </div>
           <div>
@@ -115,6 +118,7 @@ onMounted(() => {
               option-label="label"
               option-value="value"
               class="w-20"
+              data-testid="statistics-month"
             />
           </div>
           <div class="flex items-end">
@@ -129,7 +133,7 @@ onMounted(() => {
 
         <PageLoading v-if="loadingMonthly" />
 
-        <div v-else-if="!monthlyStats" class="text-center text-surface-400 text-sm py-12">
+        <div v-else-if="!monthlyStats" class="text-center text-surface-400 text-sm py-12" data-testid="statistics-no-data">
           {{ $t('school.statistics.noData') }}
         </div>
 
@@ -162,6 +166,7 @@ onMounted(() => {
             :loading="exporting"
             severity="secondary"
             size="small"
+            data-testid="statistics-export-csv"
             @click="onExportCsv"
           />
         </div>

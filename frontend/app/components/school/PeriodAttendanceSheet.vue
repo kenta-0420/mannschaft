@@ -59,6 +59,8 @@ function statusLabel(status: string | undefined): string {
       <div
         v-for="(entry, index) in entries"
         :key="entry.studentUserId"
+        :data-testid="'period-row-' + entry.studentUserId"
+        :data-status="entry.status"
         class="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-4"
       >
         <div class="flex items-start justify-between mb-2">
@@ -78,6 +80,7 @@ function statusLabel(status: string | undefined): string {
               v-for="opt in STATUS_OPTIONS"
               :key="opt.value"
               type="button"
+              :data-testid="'period-row-' + entry.studentUserId + '-' + opt.value.toLowerCase()"
               class="px-2 py-1 rounded text-xs font-medium transition-colors"
               :class="
                 entry.status === opt.value

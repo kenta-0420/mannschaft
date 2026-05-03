@@ -43,6 +43,7 @@ onMounted(async () => {
       <!-- 未解決件数バッジ -->
       <span
         v-if="unresolvedCount > 0"
+        data-testid="transition-alert-unresolved-count"
         class="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
       >
         {{ $t('school.transitionAlert.unresolvedCount', { count: unresolvedCount }) }}
@@ -69,6 +70,7 @@ onMounted(async () => {
               v-model="unresolvedOnly"
               input-id="unresolvedOnly"
               :binary="true"
+              data-testid="transition-alert-unresolved-filter"
               @change="onFilterChange"
             />
             <label for="unresolvedOnly" class="text-sm text-surface-700 dark:text-surface-200 cursor-pointer">
@@ -95,15 +97,16 @@ onMounted(async () => {
         </div>
 
         <!-- アラートバナー一覧 -->
-        <div v-if="alerts.length === 0" class="text-center text-surface-400 py-12">
+        <div v-if="alerts.length === 0" data-testid="transition-alert-empty" class="text-center text-surface-400 py-12">
           {{ $t('school.transitionAlert.noAlerts') }}
         </div>
-        <TransitionAlertBanner
-          v-else
-          :alerts="alerts"
-          :team-id="teamId"
-          @resolved="onResolved"
-        />
+        <div v-else data-testid="transition-alert-list">
+          <TransitionAlertBanner
+            :alerts="alerts"
+            :team-id="teamId"
+            @resolved="onResolved"
+          />
+        </div>
       </template>
     </main>
   </div>
