@@ -1,0 +1,67 @@
+{
+  "proxy": {
+    "title": "代理输入台",
+    "description": "代表非数字化居民录入纸质申请",
+    "consent": {
+      "title": "代理输入同意书",
+      "method": {
+        "paper_signed": "纸质签名",
+        "witnessed_oral": "见证口头",
+        "digital_signature": "电子签名",
+        "guardian_by_court": "法院指定监护人"
+      },
+      "status": {
+        "pending": "待审批",
+        "active": "有效",
+        "expired": "已过期",
+        "revoked": "已撤销"
+      },
+      "effectiveFrom": "有效期（开始）",
+      "effectiveUntil": "有效期（结束）",
+      "scopes": "功能范围",
+      "approvedAt": "审批时间",
+      "revokedAt": "撤销时间",
+      "noActive": "没有有效的同意书"
+    },
+    "desk": {
+      "pinSubject": "锁定居民",
+      "pinConsent": "选择同意书",
+      "unpin": "取消锁定",
+      "pinned": "正在以 {name} 的身份输入",
+      "inputSource": {
+        "label": "输入来源",
+        "paper_form": "纸质表格",
+        "phone_interview": "电话问询",
+        "in_person": "现场面谈"
+      },
+      "originalStorage": {
+        "label": "原件存放位置",
+        "placeholder": "例：proxy-records/2026/scan_001.pdf"
+      },
+      "active": "代理输入模式已启动",
+      "inactive": "代理输入模式已停止"
+    },
+    "record": {
+      "title": "代理输入记录",
+      "createdAt": "输入时间",
+      "featureScope": "功能范围",
+      "targetEntity": "目标记录"
+    },
+    "revoke": {
+      "title": "撤销同意书",
+      "method": {
+        "api": "本人在线申请",
+        "paper": "纸质申请",
+        "life_event": "生活事件（搬迁等）",
+        "tenure_end": "任期届满"
+      },
+      "reason": "撤销原因",
+      "confirm": "确定要撤销此同意书吗？"
+    },
+    "audit": {
+      "byPerson": "本人输入",
+      "byProxy": "代理输入",
+      "total": "合计"
+    }
+  }
+}

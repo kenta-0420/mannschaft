@@ -1,0 +1,67 @@
+{
+  "proxy": {
+    "title": "Stellvertretender Eingabe-Desk",
+    "description": "Papiereingaben stellvertretend für nicht-digitale Bewohner erfassen",
+    "consent": {
+      "title": "Stellvertretungs-Einwilligung",
+      "method": {
+        "paper_signed": "Papierunterschrift",
+        "witnessed_oral": "Mündlich mit Zeugen",
+        "digital_signature": "Digitale Signatur",
+        "guardian_by_court": "Gerichtlich bestellter Vormund"
+      },
+      "status": {
+        "pending": "Genehmigung ausstehend",
+        "active": "Aktiv",
+        "expired": "Abgelaufen",
+        "revoked": "Widerrufen"
+      },
+      "effectiveFrom": "Gültig ab",
+      "effectiveUntil": "Gültig bis",
+      "scopes": "Funktionsbereiche",
+      "approvedAt": "Genehmigt am",
+      "revokedAt": "Widerrufen am",
+      "noActive": "Keine aktiven Einwilligungen vorhanden"
+    },
+    "desk": {
+      "pinSubject": "Bewohner anheften",
+      "pinConsent": "Einwilligung auswählen",
+      "unpin": "Anheftung lösen",
+      "pinned": "Eingabe als {name}",
+      "inputSource": {
+        "label": "Eingabequelle",
+        "paper_form": "Papierformular",
+        "phone_interview": "Telefoninterview",
+        "in_person": "Persönlich vor Ort"
+      },
+      "originalStorage": {
+        "label": "Originalspeicherort",
+        "placeholder": "z.B. proxy-records/2026/scan_001.pdf"
+      },
+      "active": "Stellvertretungsmodus aktiv",
+      "inactive": "Stellvertretungsmodus inaktiv"
+    },
+    "record": {
+      "title": "Stellvertretungs-Eingabehistorie",
+      "createdAt": "Erstellt am",
+      "featureScope": "Funktionsbereich",
+      "targetEntity": "Zieldatensatz"
+    },
+    "revoke": {
+      "title": "Einwilligung widerrufen",
+      "method": {
+        "api": "Online-Antrag durch Betroffene/n",
+        "paper": "Papierantrag",
+        "life_event": "Lebensereignis (Umzug usw.)",
+        "tenure_end": "Amtszeitende"
+      },
+      "reason": "Widerrufsgrund",
+      "confirm": "Möchten Sie diese Einwilligung wirklich widerrufen?"
+    },
+    "audit": {
+      "byPerson": "Eigeneingabe",
+      "byProxy": "Stellvertretende Eingabe",
+      "total": "Gesamt"
+    }
+  }
+}
