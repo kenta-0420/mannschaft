@@ -196,7 +196,7 @@ async function handleDelete() {
         <div class="space-y-3">
           <InputText v-model="editForm.title" class="w-full" maxlength="200" />
           <Textarea v-model="editForm.body" class="w-full" rows="8" maxlength="10000" />
-          <QuickMemoTagPicker v-model="editForm.tagIds" :tags="personalTags" />
+          <QuickMemoTagPicker v-model="editForm.tagIds as number[]" :tags="personalTags" />
         </div>
         <div class="flex gap-2 pt-2">
           <Button :label="t('button.cancel')" severity="secondary" @click="editing = false" />

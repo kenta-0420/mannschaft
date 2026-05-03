@@ -47,7 +47,7 @@ async function loadData() {
     const newFormMap = new Map<number, TeamCareOverrideRequest>()
 
     results.forEach((result, idx) => {
-      const linkId = allLinks[idx].id
+      const linkId = allLinks[idx]!.id
       if (result.status === 'fulfilled') {
         const override = result.value.data
         newMap.set(linkId, override)

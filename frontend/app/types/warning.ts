@@ -24,17 +24,8 @@ export interface SelfCorrectRequest {
   correctionNote?: string
 }
 
-export interface ViolationResponse {
-  id: number
-  userId: number
-  reportId: number
-  actionId: number
-  violationType: string
-  reason: string
-  expiresAt: string | null
-  isActive: boolean
-  createdAt: string
-}
+// ViolationResponse は admin-report.ts で定義（重複を避けるためここでは再エクスポート）
+export type { ViolationResponse } from './admin-report'
 
 export interface YabaiUnflagResponse {
   id: number

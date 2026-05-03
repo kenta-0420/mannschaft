@@ -161,7 +161,7 @@ onMounted(loadResults)
           class="flex items-center gap-3 rounded-lg border border-surface-300 p-3 dark:border-surface-600"
         >
           <Avatar
-            :image="res.avatarUrl"
+            :image="res.avatarUrl ?? undefined"
             :label="res.avatarUrl ? undefined : res.displayName.charAt(0)"
             shape="circle"
           />
@@ -194,7 +194,7 @@ onMounted(loadResults)
           class="flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 dark:bg-red-900/20"
         >
           <Avatar
-            :image="member.avatarUrl"
+            :image="member.avatarUrl ?? undefined"
             :label="member.avatarUrl ? undefined : member.displayName.charAt(0)"
             shape="circle"
             size="small"

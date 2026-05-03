@@ -9,7 +9,7 @@ const { relativeTime } = useRelativeTime()
 interface FamilyTodo {
   id: number
   title: string
-  completed: boolean
+  completedAt: string | null
   dueDate: string | null
   createdAt: string
 }
@@ -55,7 +55,7 @@ async function load() {
           announcements: announcementsRes.status === 'fulfilled' ? announcementsRes.value.data : [],
           todos:
             todosRes.status === 'fulfilled'
-              ? (todosRes.value.data as FamilyTodo[]).filter((t) => !t.completed).slice(0, 4)
+              ? (todosRes.value.data as unknown as FamilyTodo[]).filter((t) => !t.completedAt).slice(0, 4)
               : [],
         }
       }),

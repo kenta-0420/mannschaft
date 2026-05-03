@@ -29,10 +29,10 @@ async function createSchedule() {
     return
   creating.value = true
   try {
-    await shiftApi.createShiftSchedule({
+    await shiftApi.createSchedule(teamId, {
       title: createForm.value.title.trim(),
-      periodStart: createForm.value.periodStart.toISOString().split('T')[0],
-      periodEnd: createForm.value.periodEnd.toISOString().split('T')[0],
+      startDate: createForm.value.periodStart.toISOString().split('T')[0] ?? '',
+      endDate: createForm.value.periodEnd.toISOString().split('T')[0] ?? '',
     })
     notification.success('シフト表を作成しました')
     showCreateDialog.value = false

@@ -2,6 +2,39 @@
  * Web Speech API ラッパー。
  * Chrome / Edge / Safari 対応。Firefox は isSupported=false になりボタンが非表示になる。
  */
+
+// Web Speech API の型宣言（lib.dom.d.ts に含まれない環境向け）
+interface SpeechRecognition extends EventTarget {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  onerror: ((event: Event) => void) | null
+  onend: (() => void) | null
+  start(): void
+  stop(): void
+}
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number
+  results: SpeechRecognitionResultList
+}
+interface SpeechRecognitionResultList {
+  length: number
+  [index: number]: SpeechRecognitionResult | undefined
+}
+interface SpeechRecognitionResult {
+  isFinal: boolean
+  length: number
+  [index: number]: SpeechRecognitionAlternative | undefined
+}
+interface SpeechRecognitionAlternative {
+  transcript: string
+  confidence: number
+}
+declare const SpeechRecognition: {
+  new (): SpeechRecognition
+}
+
 export function useVoiceRecognition() {
   const isSupported =
     typeof window !== 'undefined' &&

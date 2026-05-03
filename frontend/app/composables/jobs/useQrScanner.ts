@@ -200,7 +200,7 @@ export function useQrScanner() {
           pulseVibration()
           playBeep()
           opts.onScanned({
-            text: results[0].rawValue,
+            text: results[0]!.rawValue,
             detector: 'BarcodeDetector',
             detectedAt: Date.now(),
           })

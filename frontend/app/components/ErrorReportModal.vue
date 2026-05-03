@@ -1,11 +1,11 @@
 <script setup lang="ts">
-const { state, submit, close } = useErrorReport()
+const { state, submitComment, close } = useErrorReport()
 
 const userComment = ref('')
 const isDev = import.meta.dev
 
 const handleSubmit = async () => {
-  await submit(userComment.value)
+  await submitComment(userComment.value)
   userComment.value = ''
 }
 

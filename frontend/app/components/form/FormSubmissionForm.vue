@@ -124,6 +124,13 @@ function initFieldValues(fields: FormFieldResponse[]) {
   }
 }
 
+function getFieldValue(fieldKey: string) {
+  if (!fieldValues.value[fieldKey]) {
+    fieldValues.value[fieldKey] = { textValue: '', numberValue: null, dateValue: null }
+  }
+  return fieldValues.value[fieldKey]!
+}
+
 async function submit() {
   if (!template.value) return
   if (!validateFields()) return
@@ -131,13 +138,13 @@ async function submit() {
   submitting.value = true
 
   const values: SubmissionValueRequest[] = template.value.fields.map((field) => {
-    const val = fieldValues.value[field.fieldKey] ?? {}
+    const val = fieldValues.value[field.fieldKey] ?? { textValue: '', numberValue: null, dateValue: null }
     return {
       fieldKey: field.fieldKey,
       fieldType: field.fieldType ?? 'TEXT',
       textValue: val.textValue,
-      numberValue: val.numberValue,
-      dateValue: val.dateValue,
+      numberValue: val.numberValue ?? undefined,
+      dateValue: val.dateValue ? val.dateValue.toISOString().split('T')[0] : undefined,
     }
   })
 
@@ -202,7 +209,7 @@ function close() {
         <!-- テキスト -->
         <InputText
           v-if="field.fieldType === 'TEXT'"
-          v-model="fieldValues[field.fieldKey].textValue"
+          v-model="getFieldValue(field.fieldKey).textValue"
           class="w-full"
           :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
           :placeholder="field.placeholder || ''"
@@ -211,7 +218,7 @@ function close() {
         <!-- テキストエリア -->
         <Textarea
           v-else-if="field.fieldType === 'TEXTAREA'"
-          v-model="fieldValues[field.fieldKey].textValue"
+          v-model="getFieldValue(field.fieldKey).textValue"
           rows="3"
           class="w-full"
           :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
@@ -221,7 +228,7 @@ function close() {
         <!-- 数値 -->
         <InputNumber
           v-else-if="field.fieldType === 'NUMBER'"
-          v-model="fieldValues[field.fieldKey].numberValue"
+          v-model="getFieldValue(field.fieldKey).numberValue"
           class="w-full"
           :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
           :placeholder="field.placeholder || ''"
@@ -230,7 +237,7 @@ function close() {
         <!-- 日付 -->
         <DatePicker
           v-else-if="field.fieldType === 'DATE'"
-          v-model="fieldValues[field.fieldKey].dateValue"
+          v-model="getFieldValue(field.fieldKey).dateValue"
           date-format="yy-mm-dd"
           class="w-full"
           :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
@@ -240,7 +247,7 @@ function close() {
         <!-- 選択 -->
         <Select
           v-else-if="field.fieldType === 'SELECT'"
-          v-model="fieldValues[field.fieldKey].textValue"
+          v-model="getFieldValue(field.fieldKey).textValue"
           :options="field.optionsJson ? JSON.parse(field.optionsJson) : []"
           class="w-full"
           :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
@@ -250,7 +257,7 @@ function close() {
         <!-- チェックボックス -->
         <div v-else-if="field.fieldType === 'CHECKBOX'" class="flex items-center gap-2">
           <Checkbox
-            v-model="fieldValues[field.fieldKey].textValue"
+            v-model="getFieldValue(field.fieldKey).textValue"
             true-value="true"
             false-value="false"
             :binary="false"
@@ -260,7 +267,7 @@ function close() {
         <!-- デフォルト (テキスト) -->
         <InputText
           v-else
-          v-model="fieldValues[field.fieldKey].textValue"
+          v-model="getFieldValue(field.fieldKey).textValue"
           class="w-full"
           :class="{ 'p-invalid': fieldErrors[field.fieldKey] }"
           :placeholder="field.placeholder || ''"

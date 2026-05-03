@@ -73,8 +73,7 @@ test.describe('JOB-016: F13.1 Geolocation 乖離検知', () => {
 
     // 送信ボディに geoLat/geoLng が含まれていることを検証
     expect(capturedBody).not.toBeNull()
-    const body = capturedBody as Record<string, unknown>
-    expect(typeof body?.geoLat).toBe('number')
-    expect(typeof body?.geoLng).toBe('number')
+    expect(typeof capturedBody!.geoLat).toBe('number')
+    expect(typeof capturedBody!.geoLng).toBe('number')
   })
 })

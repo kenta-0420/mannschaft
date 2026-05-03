@@ -5,7 +5,7 @@ defineProps<{
 
 const { t } = useI18n()
 
-const statusMap = computed(() => ({
+const statusMap = computed<Record<string, { severity: string; icon?: string; label: string }>>(() => ({
   GENERATING: { severity: 'info', icon: 'pi pi-spin pi-spinner', label: t('timeline_digest.status_generating') },
   GENERATED: { severity: 'success', label: t('timeline_digest.status_generated') },
   PUBLISHED: { severity: 'primary', label: t('timeline_digest.status_published') },

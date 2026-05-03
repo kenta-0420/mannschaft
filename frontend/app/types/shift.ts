@@ -64,6 +64,7 @@ export interface ShiftPositionResponse {
   id: number
   teamId: number
   name: string
+  color: string | null
   displayOrder: number
   isActive: boolean
   createdAt: string
@@ -398,4 +399,4 @@ export interface ReviewChangeRequestPayload {
 }
 
 // オープンコール
-export type SwapRequestStatus = 'PENDING' | 'ACCEPTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'OPEN_CALL' | 'CLAIMED'
+// SwapRequestStatus は上部（行28付近）で定義済み（重複削除）

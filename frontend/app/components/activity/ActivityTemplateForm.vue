@@ -80,6 +80,7 @@ function removeField(index: number) {
 
 function onFieldTypeChange(index: number) {
   const f = fields.value[index]
+  if (!f) return
   if (f.fieldType !== 'NUMBER') {
     f.isAggregatable = false
   }

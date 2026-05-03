@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { CorkboardResponse } from '~/types/corkboard'
 definePageMeta({ middleware: 'auth' })
 const { getMyBoards } = useCorkboardApi()
 const { showError } = useNotification()
-const boards = ref<Record<string, unknown>[]>([])
+const boards = ref<CorkboardResponse[]>([])
 const loading = ref(false)
 async function load() {
   loading.value = true

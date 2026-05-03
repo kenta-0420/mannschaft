@@ -125,7 +125,7 @@ onMounted(async () => {
 
     <TabView v-model:active-index="activeTab">
       <!-- プラン一覧タブ -->
-      <TabPanel header="プラン一覧">
+      <TabPanel header="プラン一覧" value="0">
         <PageLoading v-if="loading" size="40px" />
 
         <DataTable v-else :value="plans" data-key="id" striped-rows>
@@ -200,7 +200,7 @@ onMounted(async () => {
       </TabPanel>
 
       <!-- チーム使用状況タブ -->
-      <TabPanel header="チーム使用状況">
+      <TabPanel header="チーム使用状況" value="1">
         <DataTable :value="usageList" data-key="teamId" striped-rows>
           <template #empty>
             <DashboardEmptyState icon="pi pi-chart-bar" message="使用状況データがありません" />

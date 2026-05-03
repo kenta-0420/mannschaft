@@ -41,8 +41,8 @@ export function useEraTheme() {
     if (isCrawler(ua)) return 'modern'
 
     // 3. ?era=クエリで強制指定
-    const rawQuery: LocationQueryValue | LocationQueryValue[] = route.query.era
-    const eraQuery: LocationQueryValue = Array.isArray(rawQuery) ? rawQuery[0] : rawQuery
+    const rawQuery = route.query.era
+    const eraQuery: LocationQueryValue = Array.isArray(rawQuery) ? (rawQuery[0] ?? null) : (rawQuery ?? null)
     if (isEraTheme(eraQuery)) {
       // モバイルでゲーム機テーマが指定された場合はmodernにフォールバック（Q2: 案B）
       if (isMobile(ua) && (GAME_CONSOLE_THEMES as readonly string[]).includes(eraQuery)) {

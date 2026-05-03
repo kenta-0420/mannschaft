@@ -1,5 +1,6 @@
 <script setup lang="ts">
-defineProps<{
+import type { ShiftPreference } from '~/types/shift'
+const props = defineProps<{
   teamId: number
   scheduleId: number
   visible: boolean
@@ -15,10 +16,8 @@ const notification = useNotification()
 
 const submitting = ref(false)
 const form = ref({
-  date: null as Date | null,
-  startTime: '09:00',
-  endTime: '17:00',
-  preference: 'WANT' as string,
+  slotDate: null as Date | null,
+  preference: 'WANT' as ShiftPreference,
   note: '',
 })
 
@@ -29,13 +28,13 @@ const preferenceOptions = [
 ]
 
 async function submit() {
-  if (!form.value.date) return
+  if (!form.value.slotDate) return
   submitting.value = true
   try {
+    const slotDate = form.value.slotDate.toISOString().split('T')[0] ?? ''
     await shiftApi.submitShiftRequest({
-      date: form.value.date.toISOString().split('T')[0],
-      startTime: form.value.startTime,
-      endTime: form.value.endTime,
+      scheduleId: props.scheduleId,
+      slotDate,
       preference: form.value.preference,
       note: form.value.note.trim() || undefined,
     })
@@ -51,7 +50,7 @@ async function submit() {
 
 function close() {
   emit('update:visible', false)
-  form.value = { date: null, startTime: '09:00', endTime: '17:00', preference: 'WANT', note: '' }
+  form.value = { slotDate: null, preference: 'WANT' as ShiftPreference, note: '' }
 }
 </script>
 
@@ -66,17 +65,7 @@ function close() {
     <div class="flex flex-col gap-4">
       <div>
         <label class="mb-1 block text-sm font-medium">日付</label>
-        <DatePicker v-model="form.date" date-format="yy/mm/dd" class="w-full" show-icon />
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="mb-1 block text-sm font-medium">開始時刻</label>
-          <InputText v-model="form.startTime" type="time" class="w-full" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-medium">終了時刻</label>
-          <InputText v-model="form.endTime" type="time" class="w-full" />
-        </div>
+        <DatePicker v-model="form.slotDate" date-format="yy/mm/dd" class="w-full" show-icon />
       </div>
       <div>
         <label class="mb-2 block text-sm font-medium">希望</label>
@@ -90,7 +79,7 @@ function close() {
                 ? 'border-primary bg-primary/5'
                 : 'border-surface-200 dark:border-surface-600'
             "
-            @click="form.preference = opt.value"
+            @click="form.preference = opt.value as ShiftPreference"
           >
             <i :class="[opt.icon, opt.color]" />
             {{ opt.label }}

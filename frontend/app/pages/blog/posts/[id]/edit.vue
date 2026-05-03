@@ -56,7 +56,7 @@ async function load() {
     status.value = post.status ?? 'DRAFT'
     scopeType.value = post.scopeType ?? null
     scopeId.value = post.scopeId ?? null
-    rejectionReason.value = (post as Record<string, unknown>).rejectionReason as string | null ?? null
+    rejectionReason.value = (post as unknown as Record<string, unknown>).rejectionReason as string | null ?? null
   } catch {
     // タイトルはクエリパラメータから引き継いでいるので画面表示は継続
   } finally {

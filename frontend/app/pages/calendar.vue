@@ -64,10 +64,10 @@ async function loadEvents() {
       ...e,
       isPersonal: true,
       scopeType: 'PERSONAL',
-      color: ((e as Record<string, unknown>).color as string) ?? '#22c55e',
+      color: e.color ?? '#22c55e',
     }))
     const sharedEvents = (
-      ((shared.data as Record<string, unknown>)?.events as CalEvent[]) ?? []
+      ((shared.data as unknown as Record<string, unknown>)?.events as CalEvent[]) ?? []
     ).map((e) => ({ ...e, isPersonal: false }))
     events.value = [...personalEvents, ...sharedEvents]
   } catch (e) {

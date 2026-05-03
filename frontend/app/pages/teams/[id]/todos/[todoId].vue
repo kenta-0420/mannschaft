@@ -44,7 +44,7 @@ async function loadTodo() {
   try {
     const res = await todoApi.getTodo('team', teamId, todoId)
     // progressRate / progressManual が存在しない場合はデフォルト値を設定
-    const data = res.data as TodoDetail & { progressRate?: string; progressManual?: boolean }
+    const data = res.data as unknown as TodoDetail & { progressRate?: string; progressManual?: boolean }
     todo.value = {
       ...data,
       progressRate: data.progressRate ?? '0.00',
@@ -170,7 +170,7 @@ onMounted(async () => {
       <div v-if="todo.assignees.length > 0" class="flex flex-wrap gap-2">
         <div v-for="a in todo.assignees" :key="a.userId" class="flex items-center gap-2 rounded-full bg-surface-100 px-3 py-1 dark:bg-surface-700">
           <Avatar
-            :image="a.avatarUrl"
+            :image="a.avatarUrl ?? undefined"
             :label="a.avatarUrl ? undefined : a.displayName.charAt(0)"
             shape="circle"
             size="small"
