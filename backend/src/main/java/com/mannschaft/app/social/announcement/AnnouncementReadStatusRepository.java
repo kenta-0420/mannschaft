@@ -1,6 +1,7 @@
 package com.mannschaft.app.social.announcement;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +14,8 @@ import java.util.Optional;
  * ウィジェットの未読バッジ・既読マーク・全件既読などの操作で使用する。
  * </p>
  */
-public interface AnnouncementReadStatusRepository extends JpaRepository<AnnouncementReadStatusEntity, Long> {
+public interface AnnouncementReadStatusRepository extends JpaRepository<AnnouncementReadStatusEntity, Long>,
+        JpaSpecificationExecutor<AnnouncementReadStatusEntity> {
 
     /**
      * フィード ID とユーザー ID で既読レコードを取得する（既読確認・冪等チェック用）。
