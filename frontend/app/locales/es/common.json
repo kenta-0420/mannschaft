@@ -628,5 +628,14 @@
     "hidden_org": "Organización oculta",
     "archived": "Archivado",
     "load_more": "Cargar más"
+  },
+  "teamShiftSettings": {
+    "title": "シフトリマインド設定",
+    "description": "希望提出期限前のリマインド通知タイミングを設定します",
+    "reminder48h": "48時間前リマインド",
+    "reminder24h": "24時間前リマインド",
+    "reminder12h": "12時間前リマインド（将来対応）",
+    "atLeastOneRequired": "少なくとも1つのリマインドを有効にしてください",
+    "saved": "設定を保存しました"
   }
 }
