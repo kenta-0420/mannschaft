@@ -28,4 +28,16 @@ public interface AttendanceRequirementEvaluationRepository
     List<AttendanceRequirementEvaluationEntity> findLatestAtRiskByStudentIds(
             @Param("studentUserIds") List<Long> studentUserIds,
             @Param("statuses") List<AttendanceRequirementEvaluationEntity.EvaluationStatus> statuses);
+
+    /**
+     * チームに紐づく規程を経由してリスクあり評価を取得する（at-risk一覧用）。
+     * teamId の規程に属する評価のうち、指定ステータスのものを評価日降順で返す。
+     */
+    @Query("SELECT e FROM AttendanceRequirementEvaluationEntity e " +
+           "JOIN AttendanceRequirementRuleEntity r ON r.id = e.requirementRuleId " +
+           "WHERE r.teamId = :teamId AND e.status IN :statuses " +
+           "ORDER BY e.evaluatedAt DESC")
+    List<AttendanceRequirementEvaluationEntity> findAtRiskByTeamId(
+            @Param("teamId") Long teamId,
+            @Param("statuses") List<AttendanceRequirementEvaluationEntity.EvaluationStatus> statuses);
 }
