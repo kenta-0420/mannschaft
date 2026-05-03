@@ -6,6 +6,7 @@ import com.mannschaft.app.actionmemo.ActionMemoMood;
 import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoTagSummary;
+import com.mannschaft.app.actionmemo.dto.AvailableOrgResponse;
 import com.mannschaft.app.actionmemo.dto.AvailableTeamResponse;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
 import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
@@ -28,6 +29,8 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.security.HtmlSanitizer;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -106,6 +109,7 @@ public class ActionMemoService {
     private final TimelinePostRepository timelinePostRepository;
     private final UserRoleRepository userRoleRepository;
     private final TeamRepository teamRepository;
+    private final OrganizationRepository organizationRepository;
     private final ActionMemoSettingsService settingsService;
     private final AuditLogService auditLogService;
     private final ActionMemoMetrics metrics;
@@ -831,6 +835,27 @@ public class ActionMemoService {
                         .id(team.getId())
                         .name(team.getName())
                         .isDefault(Objects.equals(team.getId(), defaultPostTeamId))
+                        .build())
+                .toList();
+    }
+
+    /**
+     * Phase 5-2: ユーザーの所属組織一覧（組織スコープ投稿先選択候補）を返す。
+     *
+     * @param userId 現在のユーザー ID
+     * @return 所属組織一覧
+     */
+    public List<AvailableOrgResponse> getAvailableOrgs(Long userId) {
+        List<UserRoleEntity> userRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
+
+        return userRoles.stream()
+                .map(UserRoleEntity::getOrganizationId)
+                .distinct()
+                .map(orgId -> organizationRepository.findById(orgId).orElse(null))
+                .filter(Objects::nonNull)
+                .map(org -> AvailableOrgResponse.builder()
+                        .id(org.getId())
+                        .name(org.getName())
                         .build())
                 .toList();
     }

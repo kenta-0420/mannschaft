@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ActionMemo, Mood, UpdateActionMemoPayload } from '~/types/actionMemo'
+import type { ActionMemo, Mood, OrgVisibility, UpdateActionMemoPayload } from '~/types/actionMemo'
 
 /**
  * F02.5 行動メモ編集ダイアログ（Phase 2）。
@@ -30,6 +30,8 @@ const MAX_LENGTH = 5000
 
 const content = ref<string>('')
 const mood = ref<Mood | null>(null)
+const editOrgId = ref<number | null>(null)
+const editOrgVisibility = ref<OrgVisibility>('TEAM_ONLY')
 const submitting = ref(false)
 
 const charCount = computed(() => content.value.length)
@@ -46,6 +48,8 @@ watch(
     if (open && memo) {
       content.value = memo.content
       mood.value = memo.mood
+      editOrgId.value = memo.organizationId ?? null
+      editOrgVisibility.value = memo.orgVisibility ?? 'TEAM_ONLY'
     }
     if (!open) {
       // 閉じたとき次回開くまでの間に値が見えるのを防ぐ
@@ -73,6 +77,13 @@ async function onSave() {
     // mood_enabled = true の場合のみ mood を送る（OFF ユーザーの誤操作を防ぐ）
     if (store.isMoodEnabled) {
       patch.mood = mood.value
+    }
+    // 組織スコープ: 変更があれば送る（0 = クリア）
+    if (editOrgId.value !== (props.memo.organizationId ?? null)) {
+      patch.organizationId = editOrgId.value ?? 0
+      patch.orgVisibility = editOrgId.value ? editOrgVisibility.value : undefined
+    } else if (editOrgId.value && editOrgVisibility.value !== props.memo.orgVisibility) {
+      patch.orgVisibility = editOrgVisibility.value
     }
     const updated = await store.updateMemo(props.memo.id, patch)
     if (updated) {
@@ -126,6 +137,38 @@ async function onSave() {
 
         <div v-if="store.isMoodEnabled">
           <MoodSelector v-model="mood" />
+        </div>
+
+        <!-- Phase 5-2: 組織スコープ選択 -->
+        <div
+          v-if="store.availableOrgs.length > 0"
+          class="flex flex-col gap-1"
+          data-testid="edit-dialog-org-scope-selector"
+        >
+          <label class="text-xs text-surface-500 dark:text-surface-400">
+            {{ t('action_memo.phase4.org_scope.label') }}
+          </label>
+          <div class="flex items-center gap-2">
+            <select
+              v-model.number="editOrgId"
+              class="flex-1 rounded-lg border border-surface-300 bg-surface-0 p-2 text-sm dark:border-surface-600 dark:bg-surface-800"
+              data-testid="edit-dialog-org-scope-select"
+            >
+              <option :value="null">—</option>
+              <option v-for="org in store.availableOrgs" :key="org.id" :value="org.id">
+                {{ org.name }}
+              </option>
+            </select>
+            <select
+              v-if="editOrgId"
+              v-model="editOrgVisibility"
+              class="rounded-lg border border-surface-300 bg-surface-0 p-2 text-sm dark:border-surface-600 dark:bg-surface-800"
+              data-testid="edit-dialog-org-visibility-select"
+            >
+              <option value="TEAM_ONLY">{{ t('action_memo.phase4.org_scope.team_only') }}</option>
+              <option value="ORG_WIDE">{{ t('action_memo.phase4.org_scope.org_wide') }}</option>
+            </select>
+          </div>
         </div>
 
         <div class="flex items-center justify-between text-xs">

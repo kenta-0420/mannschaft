@@ -5,6 +5,7 @@ import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
 import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.actionmemo.dto.AddTagsToMemoRequest;
+import com.mannschaft.app.actionmemo.dto.AvailableOrgResponse;
 import com.mannschaft.app.actionmemo.dto.AvailableTeamResponse;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
 import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
@@ -231,6 +232,19 @@ public class ActionMemoController {
     @Operation(summary = "投稿先チーム一覧取得")
     public ResponseEntity<ApiResponse<List<AvailableTeamResponse>>> getAvailableTeams() {
         List<AvailableTeamResponse> response = actionMemoService.getAvailableTeams(
+                SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * Phase 5-2: 組織スコープ投稿先として選択可能な組織一覧を取得する。
+     *
+     * <p>ユーザーが所属する組織の一覧を返す。</p>
+     */
+    @GetMapping("/available-orgs")
+    @Operation(summary = "組織スコープ投稿先組織一覧取得（Phase 5-2）")
+    public ResponseEntity<ApiResponse<List<AvailableOrgResponse>>> getAvailableOrgs() {
+        List<AvailableOrgResponse> response = actionMemoService.getAvailableOrgs(
                 SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }

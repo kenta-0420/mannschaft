@@ -103,6 +103,17 @@ export interface AvailableTeam {
   isDefault: boolean
 }
 
+// === Available orgs (Phase 5-2) ===
+
+/**
+ * 組織スコープ投稿先候補。
+ * {@code GET /api/v1/action-memos/available-orgs} で取得する。
+ */
+export interface AvailableOrg {
+  id: number
+  name: string
+}
+
 // === Request payloads ===
 
 export interface CreateActionMemoPayload {
