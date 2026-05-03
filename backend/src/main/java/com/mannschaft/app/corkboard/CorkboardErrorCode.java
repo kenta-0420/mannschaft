@@ -36,7 +36,16 @@ public enum CorkboardErrorCode implements ErrorCode {
     NOT_EDITABLE("CORKBOARD_008", "このボードは編集できません", Severity.WARN),
 
     /** 権限不足 */
-    INSUFFICIENT_PERMISSION("CORKBOARD_009", "この操作に必要な権限がありません", Severity.WARN);
+    INSUFFICIENT_PERMISSION("CORKBOARD_009", "この操作に必要な権限がありません", Severity.WARN),
+
+    /** 共有ボードでのピン操作拒否（個人スコープのみ許可） */
+    PIN_PERSONAL_ONLY("CORKBOARD_011", "個人ボードのカードのみピン止めできます", Severity.WARN),
+
+    /** アーカイブ済みカードへのピン操作拒否 */
+    PIN_ARCHIVED_NOT_ALLOWED("CORKBOARD_012", "アーカイブ済みカードはピン止めできません", Severity.WARN),
+
+    /** ピン止めカード上限超過 */
+    PIN_LIMIT_EXCEEDED("CORKBOARD_013", "ピン止めカードの上限（50枚）に達しています", Severity.WARN);
 
     private final String code;
     private final String message;

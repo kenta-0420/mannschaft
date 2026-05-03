@@ -168,7 +168,11 @@ public class GlobalExceptionHandler {
             Map.entry("PERSONAL_TIMETABLE_053", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_WEEK_PATTERN_CONFLICT
             Map.entry("PERSONAL_TIMETABLE_054", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_WEEK_PATTERN_NOT_ENABLED
             Map.entry("PERSONAL_TIMETABLE_055", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_DUPLICATED
-            Map.entry("PERSONAL_TIMETABLE_056", HttpStatus.BAD_REQUEST)      // LINK_NOT_SUPPORTED_YET (Phase 4 で対応)
+            Map.entry("PERSONAL_TIMETABLE_056", HttpStatus.BAD_REQUEST),     // LINK_NOT_SUPPORTED_YET (Phase 4 で対応)
+            // F09.8.1 コルクボード ピン止め
+            Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
+            Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED
+            Map.entry("CORKBOARD_013", HttpStatus.CONFLICT)                  // PIN_LIMIT_EXCEEDED
     );
 
     /**
