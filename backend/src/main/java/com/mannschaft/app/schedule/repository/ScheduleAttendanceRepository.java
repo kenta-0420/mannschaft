@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.repository;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.schedule.entity.ScheduleAttendanceEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,7 +13,7 @@ import java.util.Optional;
 /**
  * スケジュール出欠リポジトリ。
  */
-public interface ScheduleAttendanceRepository extends JpaRepository<ScheduleAttendanceEntity, Long> {
+public interface ScheduleAttendanceRepository extends JpaRepository<ScheduleAttendanceEntity, Long>, JpaSpecificationExecutor<ScheduleAttendanceEntity> {
 
     /**
      * スケジュールIDとユーザーIDで出欠を取得する。
