@@ -12,3 +12,4 @@ public enum PersonalTimetableVisibility {
     PRIVATE,
     FAMILY_SHARED
 }
+
