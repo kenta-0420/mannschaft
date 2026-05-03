@@ -301,3 +301,133 @@ export interface ClassHomeroomUpdateRequest {
   assistantTeacherUserIds?: number[]
   effectiveUntil?: string
 }
+
+// --- AttendanceLocation ---
+export type AttendanceLocation =
+  | 'CLASSROOM' | 'SICK_BAY' | 'SEPARATE_ROOM' | 'LIBRARY'
+  | 'ONLINE' | 'HOME_LEARNING' | 'OUT_OF_SCHOOL' | 'NOT_APPLICABLE'
+
+export type AttendanceLocationChangeReason =
+  | 'FELT_SICK' | 'INJURY' | 'MENTAL_HEALTH' | 'SCHEDULED'
+  | 'RECOVERED' | 'RETURNED_TO_CLASS' | 'OTHER'
+
+export interface LocationChangeRequest {
+  fromLocation: AttendanceLocation
+  toLocation: AttendanceLocation
+  changedAtPeriod?: number
+  changedAtTime?: string   // "HH:mm"
+  reason: AttendanceLocationChangeReason
+  note?: string
+}
+
+export interface LocationChangeResponse {
+  id: number
+  teamId: number
+  studentUserId: number
+  attendanceDate: string
+  fromLocation: AttendanceLocation
+  toLocation: AttendanceLocation
+  changedAtPeriod?: number
+  changedAtTime?: string
+  reason: AttendanceLocationChangeReason
+  note?: string
+  recordedBy: number
+  recordedAt: string
+}
+
+export interface LocationTimelineResponse {
+  studentUserId: number
+  attendanceDate: string
+  changes: LocationChangeResponse[]
+  currentLocation: AttendanceLocation
+}
+
+export interface LocationListItem {
+  studentUserId: number
+  currentLocation: AttendanceLocation
+  locationChangedDuringDay: boolean
+}
+
+export interface LocationListResponse {
+  teamId: number
+  attendanceDate: string
+  items: LocationListItem[]
+}
+
+// ===== Phase 10: 出席要件規程 =====
+
+export type RequirementCategory =
+  | 'GRADE_PROMOTION'
+  | 'GRADUATION'
+  | 'SUBJECT_CREDIT'
+  | 'PERFECT_ATTENDANCE'
+  | 'CUSTOM'
+
+export interface AttendanceRequirementRule {
+  id: number
+  organizationId: number | null
+  teamId: number | null
+  termId: number | null
+  academicYear: number
+  category: RequirementCategory
+  name: string
+  description: string | null
+  minAttendanceRate: number | null
+  maxAbsenceDays: number | null
+  maxAbsenceRate: number | null
+  countSickBayAsPresent: boolean
+  countSeparateRoomAsPresent: boolean
+  countLibraryAsPresent: boolean
+  countOnlineAsPresent: boolean
+  countHomeLearningAsOfficialAbsence: boolean
+  countLateAsAbsenceThreshold: number
+  warningThresholdRate: number | null
+  effectiveFrom: string   // 'YYYY-MM-DD'
+  effectiveUntil: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AttendanceRequirementRuleListResponse {
+  rules: AttendanceRequirementRule[]
+  total: number
+}
+
+export interface CreateRequirementRuleRequest {
+  organizationId?: number | null
+  teamId?: number | null
+  termId?: number | null
+  academicYear: number
+  category: RequirementCategory
+  name: string
+  description?: string | null
+  minAttendanceRate?: number | null
+  maxAbsenceDays?: number | null
+  maxAbsenceRate?: number | null
+  countSickBayAsPresent?: boolean
+  countSeparateRoomAsPresent?: boolean
+  countLibraryAsPresent?: boolean
+  countOnlineAsPresent?: boolean
+  countHomeLearningAsOfficialAbsence?: boolean
+  countLateAsAbsenceThreshold?: number
+  warningThresholdRate?: number | null
+  effectiveFrom: string
+  effectiveUntil?: string | null
+}
+
+export interface UpdateRequirementRuleRequest {
+  name?: string
+  description?: string | null
+  minAttendanceRate?: number | null
+  maxAbsenceDays?: number | null
+  maxAbsenceRate?: number | null
+  countSickBayAsPresent?: boolean
+  countSeparateRoomAsPresent?: boolean
+  countLibraryAsPresent?: boolean
+  countOnlineAsPresent?: boolean
+  countHomeLearningAsOfficialAbsence?: boolean
+  countLateAsAbsenceThreshold?: number
+  warningThresholdRate?: number | null
+  effectiveFrom?: string
+  effectiveUntil?: string | null
+}
