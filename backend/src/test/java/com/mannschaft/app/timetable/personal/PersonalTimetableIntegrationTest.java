@@ -1,20 +1,12 @@
 package com.mannschaft.app.timetable.personal;
 
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableEntity;
 import com.mannschaft.app.timetable.personal.repository.PersonalTimetableRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -30,40 +22,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>論理削除（deleted_at IS NULL）の SQLRestriction が効いていること</li>
  * </ul>
  *
- * <p>Hibernate ddl-auto=create-drop で Entity 定義からテーブルを生成するため、
- * Flyway マイグレーション SQL の文法検証はここでは行わない（別途 Flyway テストで検証する想定）。</p>
+ * <p>テーブルは Flyway マイグレーション (V14.001 〜 V14.008) により Testcontainers MySQL 上に生成される
+ * （application-test.yml で {@code spring.flyway.enabled=true} かつ {@code spring.jpa.hibernate.ddl-auto=validate}）。</p>
+ *
+ * <p><b>OOM 対策</b>: {@link AbstractMySqlIntegrationTest} を継承して ApplicationContext と
+ * MySQL コンテナを他統合テストと共有する。詳細は親クラスの Javadoc を参照。</p>
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
-@EnabledIf("com.mannschaft.app.timetable.personal.PersonalTimetableIntegrationTest#isDockerAvailable")
 @DisplayName("PersonalTimetable 統合テスト")
-class PersonalTimetableIntegrationTest {
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    static boolean isDockerAvailable() {
-        try {
-            return DockerClientFactory.instance().isDockerAvailable();
-        } catch (Exception e) {
-            return false;
-        }
-    }
+// JUnit 5 の @EnabledIf は @Inherited ではないため、派生クラスでも明示的に再宣言する必要がある
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
+class PersonalTimetableIntegrationTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private PersonalTimetableRepository repository;
