@@ -89,7 +89,11 @@ onMounted(() => loadSettings())
       <ProgressSpinner />
     </div>
 
-    <div v-else class="rounded-lg border border-surface-200 p-5 dark:border-surface-700">
+    <div
+      v-else
+      data-testid="reminder-settings-form"
+      class="rounded-lg border border-surface-200 p-5 dark:border-surface-700"
+    >
       <!-- リマインド設定トグル群 -->
       <div class="flex flex-col gap-4">
         <div class="flex items-center justify-between">
@@ -98,6 +102,7 @@ onMounted(() => loadSettings())
           </label>
           <ToggleSwitch
             v-model="form.reminder48hEnabled"
+            data-testid="reminder-48h-toggle"
           />
         </div>
 
@@ -107,6 +112,7 @@ onMounted(() => loadSettings())
           </label>
           <ToggleSwitch
             v-model="form.reminder24hEnabled"
+            data-testid="reminder-24h-toggle"
           />
         </div>
 
@@ -118,6 +124,7 @@ onMounted(() => loadSettings())
           </div>
           <ToggleSwitch
             v-model="form.reminder12hEnabled"
+            data-testid="reminder-12h-toggle"
             disabled
           />
         </div>
@@ -126,6 +133,7 @@ onMounted(() => loadSettings())
       <!-- バリデーションエラー -->
       <div
         v-if="validationError"
+        data-testid="reminder-validation-error"
         class="mt-4 rounded-md bg-red-50 px-4 py-2 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400"
       >
         {{ validationError }}
@@ -134,6 +142,7 @@ onMounted(() => loadSettings())
       <!-- 保存ボタン -->
       <div class="mt-6">
         <Button
+          data-testid="reminder-settings-save-btn"
           :label="$t('button.save')"
           icon="pi pi-save"
           :loading="saving"
