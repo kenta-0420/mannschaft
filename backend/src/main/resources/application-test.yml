@@ -11,6 +11,11 @@ spring:
   flyway:
     enabled: true
 
+# F08.7 Phase 9-α: テスト環境ではシフト予算機能を有効化
+feature:
+  shift-budget:
+    enabled: true
+
 mannschaft:
   # F13.1 Phase 13.1.2: QR 署名 — テスト決定性のために固定 secret を使用
   jobs:

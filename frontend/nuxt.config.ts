@@ -9,7 +9,15 @@ export default defineNuxtConfig({
     head: {
       charset: 'utf-8',
       viewport: 'width=device-width, initial-scale=1',
-      link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
+      link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap',
+        },
+      ],
     },
     pageTransition: { name: 'page-fade', mode: 'out-in' },
   },
@@ -95,9 +103,15 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiBase: 'http://localhost:8080',
+      apiBase: process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080',
     },
   },
+
+  // E2E テスト時（NUXT_API_PROXY=true 環境変数）は API を Nuxt サーバー経由でプロキシする。
+  // これにより CORS プリフライト問題を回避し、Playwright のルートインターセプトが確実に機能する。
+  routeRules: process.env.NUXT_API_PROXY === 'true' ? {
+    '/api/v1/**': { proxy: 'http://localhost:8080/api/v1/**' },
+  } : {},
 
   i18n: {
     locales: [
@@ -130,6 +144,10 @@ export default defineNuxtConfig({
           'ja/surveys.json',
           'ja/reservation.json',
           'ja/school.json',
+          'ja/shiftBudget.json',
+          'ja/dashboard.json',
+          'ja/activity.json',
+          'ja/settings.json',
         ],
       },
       {
@@ -161,6 +179,10 @@ export default defineNuxtConfig({
           'en/surveys.json',
           'en/reservation.json',
           'en/school.json',
+          'en/shiftBudget.json',
+          'en/dashboard.json',
+          'en/activity.json',
+          'en/settings.json',
         ],
       },
       {
@@ -192,6 +214,10 @@ export default defineNuxtConfig({
           'zh/surveys.json',
           'zh/reservation.json',
           'zh/school.json',
+          'zh/shiftBudget.json',
+          'zh/dashboard.json',
+          'zh/activity.json',
+          'zh/settings.json',
         ],
       },
       {
@@ -223,6 +249,10 @@ export default defineNuxtConfig({
           'ko/surveys.json',
           'ko/reservation.json',
           'ko/school.json',
+          'ko/shiftBudget.json',
+          'ko/dashboard.json',
+          'ko/activity.json',
+          'ko/settings.json',
         ],
       },
       {
@@ -254,6 +284,10 @@ export default defineNuxtConfig({
           'es/surveys.json',
           'es/reservation.json',
           'es/school.json',
+          'es/shiftBudget.json',
+          'es/dashboard.json',
+          'es/activity.json',
+          'es/settings.json',
         ],
       },
       {
@@ -285,6 +319,10 @@ export default defineNuxtConfig({
           'de/surveys.json',
           'de/reservation.json',
           'de/school.json',
+          'de/shiftBudget.json',
+          'de/dashboard.json',
+          'de/activity.json',
+          'de/settings.json',
         ],
       },
     ],

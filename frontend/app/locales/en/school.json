@@ -208,6 +208,25 @@
       "category_SUBJECT_CREDIT": "Subject Credit",
       "category_PERFECT_ATTENDANCE": "Perfect Attendance",
       "category_CUSTOM": "Custom"
+    },
+    "attendanceSummary": {
+      "title": "Attendance Summary",
+      "attendanceRate": "Attendance Rate",
+      "totalSchoolDays": "School Days",
+      "presentDays": "Present Days",
+      "absentDays": "Absent Days",
+      "lateCount": "Late Count",
+      "earlyLeaveCount": "Early Leave Count",
+      "officialAbsenceDays": "Official Absence Days",
+      "sickBayDays": "Sick Bay Days",
+      "separateRoomDays": "Separate Room Days",
+      "onlineDays": "Online Days",
+      "homeLearningDays": "Home Learning Days",
+      "days": " days",
+      "times": " times",
+      "recalculate": "Recalculate",
+      "recalculateSuccess": "Summary recalculated",
+      "noData": "No summary data available"
     }
   }
 }

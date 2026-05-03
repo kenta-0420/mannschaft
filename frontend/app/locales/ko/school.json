@@ -208,6 +208,25 @@
       "category_SUBJECT_CREDIT": "교과 학점 인정",
       "category_PERFECT_ATTENDANCE": "개근상",
       "category_CUSTOM": "커스텀"
+    },
+    "attendanceSummary": {
+      "title": "출결 집계",
+      "attendanceRate": "출석률",
+      "totalSchoolDays": "수업일수",
+      "presentDays": "출석일수",
+      "absentDays": "결석일수",
+      "lateCount": "지각횟수",
+      "earlyLeaveCount": "조퇴횟수",
+      "officialAbsenceDays": "공결일수",
+      "sickBayDays": "보건실 등교",
+      "separateRoomDays": "별실 등교",
+      "onlineDays": "온라인 등교",
+      "homeLearningDays": "가정 학습",
+      "days": "일",
+      "times": "회",
+      "recalculate": "재집계",
+      "recalculateSuccess": "집계를 재계산했습니다",
+      "noData": "집계 데이터가 없습니다"
     }
   }
 }

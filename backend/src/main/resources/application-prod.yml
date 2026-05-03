@@ -14,6 +14,12 @@ spring:
   jpa:
     show-sql: false
 
+# F08.7 Phase 9-α: 本番環境はデフォルト無効（明示的に false 維持）。
+# 段階導入: 組織毎オプトインは Phase 9-δ で実装予定。
+feature:
+  shift-budget:
+    enabled: ${FEATURE_SHIFT_BUDGET_ENABLED:false}
+
 mannschaft:
   jwt:
     secret: ${MANNSCHAFT_JWT_SECRET}

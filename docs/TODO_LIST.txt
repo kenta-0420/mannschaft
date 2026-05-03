@@ -28,8 +28,14 @@ TODO記述個所の対応を行っていこう！U. その他（個別対応）
   - FeatureFlag 判定（34箇所）
     // TODO: FeatureFlagService.isEnabled("FEATURE_DIGEST_AI") で enabled を判定
 
-  38,[設計完了:F08.7] TODO､シフトと連動した予算管理機能｡追記の予算を決め､時給などを考慮してシフト作成できるといい｡TODOは予算を決めてTODOをきめられる？ちょっと具体性に乏しいけど､そんな感じにしたい｡
-    → docs/features/F08.7_shift_budget_integration.md (v1.0, 2026-05-03)
+  38,[Phase 9-α 実装完了:F08.7] TODO､シフトと連動した予算管理機能｡追記の予算を決め､時給などを考慮してシフト作成できるといい｡TODOは予算を決めてTODOをきめられる？ちょっと具体性に乏しいけど､そんな感じにしたい｡
+    → docs/features/F08.7_shift_budget_integration.md (v1.2, 2026-05-03)
+    → Phase 9-α 実装完了 (2026-05-03): 逆算 API #6 単独
+       - POST /api/v1/shift-budget/calc/required-slots (ステートレス)
+       - 3モード: MEMBER_AVG / POSITION_AVG / EXPLICIT
+       - フィーチャーフラグ feature.shift-budget.enabled (default false)
+       - i18n 32キー × 6言語投入 (ja 確定/他5言語暫定コピー)
+       - 残: Phase 9-β (DDL+CRUD#1-5) / 9-γ (TODO紐付#7-8) / 9-δ (警告/月次締め+権限)
 
 ================================================================================
   合計: 約12,000箇所

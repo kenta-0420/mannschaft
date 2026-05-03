@@ -19,7 +19,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -119,12 +118,13 @@ class ProxyInputConsentRepositoryTest {
         @Test
         @DisplayName("有効期限切れ（effectiveUntil < 今日）→ empty")
         void shouldReturnEmptyWhenExpired() {
+            // タイムゾーン差異による境界フリップを防ぐため過去固定日付を使用
             ProxyInputConsentEntity consent = ProxyInputConsentEntity.create(
                     SUBJECT_USER_ID, PROXY_USER_ID, ORG_ID,
                     ProxyInputConsentEntity.ConsentMethod.PAPER_SIGNED,
                     null, null, null,
-                    LocalDate.now(ZoneOffset.UTC).minusMonths(2),
-                    LocalDate.now(ZoneOffset.UTC).minusDays(1));
+                    LocalDate.of(2024, 1, 1),
+                    LocalDate.of(2024, 6, 30));
             consent.approve(999L);
             em.persist(consent);
             em.flush();

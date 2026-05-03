@@ -52,7 +52,10 @@ public enum SchoolErrorCode implements ErrorCode {
     REQUIREMENT_RULE_SCOPE_CONFLICT("S031", "組織スコープとチームスコープを同時に指定できません", Severity.WARN),
 
     /** 有効期限の開始日が終了日より後 */
-    REQUIREMENT_RULE_DATE_INVALID("S032", "有効期限の開始日が終了日より後です", Severity.WARN);
+    REQUIREMENT_RULE_DATE_INVALID("S032", "有効期限の開始日が終了日より後です", Severity.WARN),
+
+    /** 出席集計が見つからない */
+    SUMMARY_NOT_FOUND("S033", "出席集計が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;
