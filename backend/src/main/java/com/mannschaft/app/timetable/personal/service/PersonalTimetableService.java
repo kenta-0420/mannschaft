@@ -1,6 +1,7 @@
 package com.mannschaft.app.timetable.personal.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.timetable.personal.PersonalPeriodTemplate;
 import com.mannschaft.app.timetable.personal.PersonalTimetableErrorCode;
 import com.mannschaft.app.timetable.personal.PersonalTimetableStatus;
 import com.mannschaft.app.timetable.personal.PersonalTimetableVisibility;
@@ -37,6 +38,7 @@ public class PersonalTimetableService {
     private final PersonalTimetableRepository repository;
     private final PersonalTimetablePeriodRepository periodRepository;
     private final PersonalTimetableSlotRepository slotRepository;
+    private final PersonalTimetablePeriodService periodService;
 
     /**
      * 自分の個人時間割一覧を取得する。
@@ -89,6 +91,18 @@ public class PersonalTimetableService {
 
         PersonalTimetableEntity saved = repository.save(entity);
         log.info("個人時間割を作成しました: id={}, userId={}", saved.getId(), userId);
+
+        // Phase 2: 時限テンプレートの自動投入
+        // 不正値や空文字は無視（テンプレートが特定できなければ何もしない）
+        if (data.initPeriodTemplate() != null && !data.initPeriodTemplate().isBlank()) {
+            PersonalPeriodTemplate.from(data.initPeriodTemplate())
+                    .filter(t -> t != PersonalPeriodTemplate.CUSTOM)
+                    .ifPresent(template -> {
+                        periodService.applyTemplate(saved.getId(), userId, template);
+                        log.info("個人時間割の時限テンプレートを投入しました: id={}, template={}",
+                                saved.getId(), template);
+                    });
+        }
         return saved;
     }
 

@@ -42,6 +42,7 @@ class PersonalTimetableServiceTest {
     @Mock private PersonalTimetableRepository repository;
     @Mock private PersonalTimetablePeriodRepository periodRepository;
     @Mock private PersonalTimetableSlotRepository slotRepository;
+    @Mock private com.mannschaft.app.timetable.personal.service.PersonalTimetablePeriodService periodService;
     @InjectMocks private PersonalTimetableService service;
 
     private static final Long USER_ID = 100L;
