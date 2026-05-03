@@ -142,6 +142,36 @@
       "updateSuccess": "담임 교사 설정을 업데이트했습니다",
       "noHomerooms": "담임 설정이 없습니다",
       "current": "현재 담당 중"
+    },
+    "location": {
+      "title": "출결 위치",
+      "current": "현재 위치",
+      "changeButton": "위치 변경",
+      "changeTitle": "위치 변화 기록",
+      "from": "변화 전",
+      "to": "변화 후",
+      "period": "변화한 교시",
+      "time": "변화한 시각",
+      "reason": "이유",
+      "note": "메모（선택）",
+      "submit": "기록하기",
+      "submitSuccess": "위치 변화를 기록했습니다",
+      "noChanges": "오늘 이동 기록이 없습니다",
+      "CLASSROOM": "교실",
+      "SICK_BAY": "보건실 등교",
+      "SEPARATE_ROOM": "별실 등교",
+      "LIBRARY": "도서실 등교",
+      "ONLINE": "온라인 등교",
+      "HOME_LEARNING": "가정 학습",
+      "OUT_OF_SCHOOL": "교외 활동",
+      "NOT_APPLICABLE": "해당 없음",
+      "reason_FELT_SICK": "몸이 좋지 않음",
+      "reason_INJURY": "부상",
+      "reason_MENTAL_HEALTH": "심신 불편",
+      "reason_SCHEDULED": "사전 예정",
+      "reason_RECOVERED": "회복",
+      "reason_RETURNED_TO_CLASS": "교실 복귀",
+      "reason_OTHER": "기타"
     }
   }
 }

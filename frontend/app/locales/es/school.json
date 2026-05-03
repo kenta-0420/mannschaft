@@ -142,6 +142,36 @@
       "updateSuccess": "Asignación de tutor actualizada",
       "noHomerooms": "Sin asignaciones de tutor",
       "current": "Actualmente activo"
+    },
+    "location": {
+      "title": "Ubicación de asistencia",
+      "current": "Ubicación actual",
+      "changeButton": "Cambiar ubicación",
+      "changeTitle": "Registrar cambio de ubicación",
+      "from": "Desde",
+      "to": "Hasta",
+      "period": "Período del cambio",
+      "time": "Hora del cambio",
+      "reason": "Motivo",
+      "note": "Nota (opcional)",
+      "submit": "Registrar",
+      "submitSuccess": "Cambio de ubicación registrado",
+      "noChanges": "Sin cambios de ubicación hoy",
+      "CLASSROOM": "Aula",
+      "SICK_BAY": "Enfermería",
+      "SEPARATE_ROOM": "Sala separada",
+      "LIBRARY": "Biblioteca",
+      "ONLINE": "En línea",
+      "HOME_LEARNING": "Aprendizaje en casa",
+      "OUT_OF_SCHOOL": "Fuera del centro",
+      "NOT_APPLICABLE": "No aplica",
+      "reason_FELT_SICK": "Se sintió mal",
+      "reason_INJURY": "Lesión",
+      "reason_MENTAL_HEALTH": "Salud mental/física",
+      "reason_SCHEDULED": "Programado",
+      "reason_RECOVERED": "Recuperado",
+      "reason_RETURNED_TO_CLASS": "Regresó al aula",
+      "reason_OTHER": "Otro"
     }
   }
 }
