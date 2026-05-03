@@ -1283,7 +1283,6 @@ class ActionMemoServiceTest {
 
         private TodoEntity todoWith(Long todoId, TodoStatus status) {
             TodoEntity todo = TodoEntity.builder()
-                    .userId(USER_ID)
                     .scopeType(TodoScopeType.PERSONAL)
                     .scopeId(USER_ID)
                     .title("テストTODO")
