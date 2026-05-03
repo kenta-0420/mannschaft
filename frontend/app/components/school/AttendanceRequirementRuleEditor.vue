@@ -16,8 +16,6 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const { t } = useI18n()
-
 const categoryOptions: RequirementCategory[] = [
   'GRADE_PROMOTION',
   'GRADUATION',
