@@ -38,7 +38,7 @@ async function fetchPreview() {
 }
 
 async function acceptInvite() {
-  if (!authStore.isLoggedIn) {
+  if (!authStore.isAuthenticated) {
     await navigateTo(`/login?redirect=${encodeURIComponent(route.fullPath)}`)
     return
   }
@@ -113,7 +113,7 @@ onMounted(fetchPreview)
 
         <div class="w-full flex flex-col gap-2">
           <Button
-            :label="authStore.isLoggedIn ? '連絡先に追加する' : 'ログインして追加する'"
+            :label="authStore.isAuthenticated ? '連絡先に追加する' : 'ログインして追加する'"
             icon="pi pi-user-plus"
             class="w-full"
             :loading="accepting"

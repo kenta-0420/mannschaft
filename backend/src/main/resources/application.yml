@@ -114,6 +114,14 @@ equipment:
     score-weight-consume: 1.0
     top-n-per-category: 20
 
+# F08.7 シフト予算機能フィーチャーフラグ (Phase 9-α)
+# default false（本番含むすべての環境で OFF）。
+# 有効化したい環境では application-{profile}.yml で feature.shift-budget.enabled=true を設定。
+# 設計書 §13: 三値論理（グローバル × 組織別）は Phase 9-δ で完成予定。
+feature:
+  shift-budget:
+    enabled: false
+
 # F03.12 ケア対象者2段階不在アラートバッチ設定
 care:
   absent-alert:

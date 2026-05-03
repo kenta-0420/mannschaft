@@ -59,8 +59,8 @@ const calendarDays = computed(() => {
 
 function getEventsForDate(dateStr: string) {
   return props.events.filter(e => {
-    const start = e.startAt.split('T')[0]
-    const end = e.endAt.split('T')[0]
+    const start = e.startAt.split('T')[0] ?? ''
+    const end = e.endAt.split('T')[0] ?? ''
     return dateStr >= start && dateStr <= end
   }).slice(0, 3)
 }

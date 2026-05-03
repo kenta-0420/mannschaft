@@ -30,7 +30,7 @@ async function loadSeals() {
     const { getSeals } = useSealApi()
     seals.value = await getSeals(props.userId)
     if (seals.value.length > 0 && !selectedSealId.value) {
-      selectedSealId.value = seals.value[0].sealId
+      selectedSealId.value = seals.value[0]!.sealId
     }
   } catch {
     /* silent */

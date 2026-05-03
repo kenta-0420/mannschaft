@@ -105,7 +105,7 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: n
     const idx = feed.value.findIndex(f => f.id === id)
     if (idx !== -1) {
       feed.value[idx] = {
-        ...feed.value[idx],
+        ...feed.value[idx]!,
         isPinned: res.data.isPinned,
         pinnedAt: res.data.pinnedAt,
       }
@@ -120,7 +120,7 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: n
     await api<ApiResponse<MarkReadResponse>>(`${basePath()}/${id}/read`, { method: 'POST' })
     const idx = feed.value.findIndex(f => f.id === id)
     if (idx !== -1) {
-      feed.value[idx] = { ...feed.value[idx], isRead: true }
+      feed.value[idx] = { ...feed.value[idx]!, isRead: true }
     }
     // 未読カウント減算
     if (meta.value && meta.value.unreadCount > 0) {

@@ -77,7 +77,7 @@ export function useChangeRequest(scheduleId: Ref<number>) {
       await shiftApi.withdrawChangeRequest(id)
       const idx = requests.value.findIndex((r) => r.id === id)
       if (idx !== -1) {
-        requests.value[idx] = { ...requests.value[idx], status: 'WITHDRAWN' }
+        requests.value[idx] = { ...requests.value[idx]!, status: 'WITHDRAWN' }
       }
       showSuccess(t('shift.changeRequest.withdraw'))
     } catch {

@@ -56,7 +56,7 @@ async function load() {
   try {
     const res = await getFiscalYears('team', teamId)
     fiscalYears.value = res.data
-    if (res.data.length > 0) selectFy(res.data[0])
+    if (res.data.length > 0) selectFy(res.data[0]!)
   } catch {
     notification.error('予算情報の取得に失敗しました')
   }

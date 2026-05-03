@@ -86,7 +86,7 @@ async function uploadCertificate(): Promise<string | undefined> {
 function onFileSelect(event: Event) {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    certificateFile.value = target.files[0]
+    certificateFile.value = target.files[0] ?? null
   }
 }
 

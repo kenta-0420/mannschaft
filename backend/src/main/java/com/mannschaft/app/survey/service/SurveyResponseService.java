@@ -1,6 +1,10 @@
 package com.mannschaft.app.survey.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.QuestionType;
 import com.mannschaft.app.survey.SurveyErrorCode;
@@ -40,6 +44,8 @@ public class SurveyResponseService {
     private final SurveyTargetRepository targetRepository;
     private final SurveyMapper surveyMapper;
     private final SurveyService surveyService;
+    private final ProxyInputContext proxyInputContext;
+    private final ProxyInputRecordRepository proxyInputRecordRepository;
 
     /**
      * アンケートに回答を送信する。
@@ -97,6 +103,20 @@ public class SurveyResponseService {
             }
 
             savedResponses.addAll(saveAnswerEntries(surveyId, userId, question, answer));
+        }
+
+        // 代理入力の場合: proxy_input_records を作成し、各回答にフラグをセット
+        if (proxyInputContext.isProxy()) {
+            ProxyInputRecordEntity proxyRecord = buildAndSaveProxyInputRecord(
+                    "SURVEY", surveyId);
+            List<SurveyResponseEntity> proxyFlagged = new ArrayList<>();
+            for (SurveyResponseEntity r : savedResponses) {
+                proxyFlagged.add(r.toBuilder()
+                        .isProxyInput(true)
+                        .proxyInputRecordId(proxyRecord.getId())
+                        .build());
+            }
+            savedResponses = responseRepository.saveAll(proxyFlagged);
         }
 
         // 回答カウントの更新（初回回答のみ）
@@ -198,5 +218,24 @@ public class SurveyResponseService {
         }
 
         return saved;
+    }
+
+    private ProxyInputRecordEntity buildAndSaveProxyInputRecord(String targetEntityType, Long targetEntityId) {
+        Long proxyUserId = SecurityUtils.getCurrentUserIdOrNull();
+        // 冪等性チェック（紙運用での二重登録防止）
+        return proxyInputRecordRepository.findByProxyInputConsentIdAndTargetEntityTypeAndTargetEntityId(
+                proxyInputContext.getConsentId(), targetEntityType, targetEntityId)
+                .orElseGet(() -> proxyInputRecordRepository.save(
+                        ProxyInputRecordEntity.builder()
+                                .proxyInputConsentId(proxyInputContext.getConsentId())
+                                .subjectUserId(proxyInputContext.getSubjectUserId())
+                                .proxyUserId(proxyUserId)
+                                .featureScope(targetEntityType.equals("SURVEY") ? "SURVEY" : "SCHEDULE_ATTENDANCE")
+                                .targetEntityType(targetEntityType)
+                                .targetEntityId(targetEntityId)
+                                .inputSource(ProxyInputRecordEntity.InputSource.valueOf(
+                                        proxyInputContext.getInputSource()))
+                                .originalStorageLocation(proxyInputContext.getOriginalStorageLocation())
+                                .build()));
     }
 }

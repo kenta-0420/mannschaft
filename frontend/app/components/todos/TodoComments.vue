@@ -93,7 +93,7 @@ onMounted(loadComments)
     <div v-else-if="comments.length > 0" class="space-y-3">
       <div v-for="comment in comments" :key="comment.id" class="flex gap-3">
         <Avatar
-          :image="comment.avatarUrl"
+          :image="comment.avatarUrl ?? undefined"
           :label="comment.avatarUrl ? undefined : comment.displayName.charAt(0)"
           shape="circle"
           size="normal"

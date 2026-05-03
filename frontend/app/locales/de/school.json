@@ -208,6 +208,25 @@
       "category_SUBJECT_CREDIT": "Fachkreditanerkennung",
       "category_PERFECT_ATTENDANCE": "Vollständige Anwesenheit",
       "category_CUSTOM": "Benutzerdefiniert"
+    },
+    "attendanceSummary": {
+      "title": "Anwesenheitszusammenfassung",
+      "attendanceRate": "Anwesenheitsrate",
+      "totalSchoolDays": "Schultage",
+      "presentDays": "Anwesenheitstage",
+      "absentDays": "Fehltage",
+      "lateCount": "Verspätungen",
+      "earlyLeaveCount": "Frühzeitige Abgänge",
+      "officialAbsenceDays": "Offizielle Fehltage",
+      "sickBayDays": "Krankenzimmertage",
+      "separateRoomDays": "Tage im Separatraum",
+      "onlineDays": "Online-Tage",
+      "homeLearningDays": "Heimlerntage",
+      "days": " Tage",
+      "times": " Mal",
+      "recalculate": "Neu berechnen",
+      "recalculateSuccess": "Zusammenfassung neu berechnet",
+      "noData": "Keine Zusammenfassungsdaten"
     }
   }
 }

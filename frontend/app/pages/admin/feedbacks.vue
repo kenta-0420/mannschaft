@@ -47,7 +47,7 @@ function openRespond(fb: FeedbackResponse) {
 async function respond() {
   if (!selectedFeedback.value) return
   try {
-    await adminReportApi.respondFeedback(selectedFeedback.value.id, respondForm.value)
+    await adminReportApi.respondToFeedback(selectedFeedback.value.id, respondForm.value)
     success('回答しました')
     showRespondDialog.value = false
     await load()

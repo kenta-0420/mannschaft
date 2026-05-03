@@ -4,10 +4,9 @@ import type {
   RequestEmailChangeRequest,
   ChangePasswordRequest,
   LoginHistoryResponse,
-  CursorMeta,
   PresenceGoingOutRequest,
   PresenceBulkResponse,
-  VehicleResponse,
+  UserVehicleResponse,
   CreateVehicleRequest,
   UpdateVehicleRequest,
   UserViolationHistoryResponse,
@@ -18,10 +17,10 @@ import type {
   UserCouponResponse,
   RedeemCouponRequest,
   UserPromotionResponse,
-  PageMeta,
   DwellingUnitResponse,
-  ResidentResponse,
+  UserResidentResponse,
 } from '~/types/user-settings'
+import type { CursorMeta, PageMeta } from '~/types/api'
 
 interface MessageRes {
   message: string
@@ -103,18 +102,18 @@ export function useUserSettingsApi() {
 
   // === Vehicles ===
   async function getVehicles() {
-    return api<{ data: VehicleResponse[] }>('/api/v1/users/me/vehicles')
+    return api<{ data: UserVehicleResponse[] }>('/api/v1/users/me/vehicles')
   }
 
   async function createVehicle(body: CreateVehicleRequest) {
-    return api<{ data: VehicleResponse }>('/api/v1/users/me/vehicles', {
+    return api<{ data: UserVehicleResponse }>('/api/v1/users/me/vehicles', {
       method: 'POST',
       body,
     })
   }
 
   async function updateVehicle(id: number, body: UpdateVehicleRequest) {
-    return api<{ data: VehicleResponse }>(`/api/v1/users/me/vehicles/${id}`, {
+    return api<{ data: UserVehicleResponse }>(`/api/v1/users/me/vehicles/${id}`, {
       method: 'PUT',
       body,
     })
@@ -210,7 +209,7 @@ export function useUserSettingsApi() {
 
   // === Resident Info ===
   async function getResidentInfo() {
-    return api<{ data: ResidentResponse }>('/api/v1/users/me/resident-info')
+    return api<{ data: UserResidentResponse }>('/api/v1/users/me/resident-info')
   }
 
   return {

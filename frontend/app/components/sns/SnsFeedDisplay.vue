@@ -59,8 +59,8 @@ async function loadFeeds() {
         preview.items.forEach((item) => {
           items.push({
             ...item,
-            provider: activeFeeds[index].provider,
-            accountUsername: activeFeeds[index].accountUsername,
+            provider: activeFeeds[index]!.provider,
+            accountUsername: activeFeeds[index]!.accountUsername,
           })
         })
       }

@@ -1,6 +1,10 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
@@ -49,6 +53,8 @@ public class ScheduleAttendanceService {
     private final EventSurveyService eventSurveyService;
     private final UserRoleRepository userRoleRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final ProxyInputContext proxyInputContext;
+    private final ProxyInputRecordRepository proxyInputRecordRepository;
 
     /**
      * 出欠回答を行う。期限チェック・コメント必須チェックを実施し、
@@ -74,6 +80,16 @@ public class ScheduleAttendanceService {
 
         attendance.respond(newStatus, req.getComment());
         attendance = attendanceRepository.save(attendance);
+
+        // 代理入力の場合: proxy_input_records を作成し、出欠エンティティにフラグをセット
+        if (proxyInputContext.isProxy()) {
+            ProxyInputRecordEntity proxyRecord = buildAndSaveProxyInputRecord(
+                    "SCHEDULE_ATTENDANCE", attendance.getId());
+            attendance = attendanceRepository.save(attendance.toBuilder()
+                    .isProxyInput(true)
+                    .proxyInputRecordId(proxyRecord.getId())
+                    .build());
+        }
 
         // アンケート回答の同時保存
         if (req.getSurveyResponses() != null && !req.getSurveyResponses().isEmpty()) {
@@ -382,5 +398,23 @@ public class ScheduleAttendanceService {
                 entity.getStatus().name(),
                 entity.getComment(),
                 entity.getRespondedAt());
+    }
+
+    private ProxyInputRecordEntity buildAndSaveProxyInputRecord(String targetEntityType, Long targetEntityId) {
+        Long proxyUserId = SecurityUtils.getCurrentUserIdOrNull();
+        return proxyInputRecordRepository.findByProxyInputConsentIdAndTargetEntityTypeAndTargetEntityId(
+                proxyInputContext.getConsentId(), targetEntityType, targetEntityId)
+                .orElseGet(() -> proxyInputRecordRepository.save(
+                        ProxyInputRecordEntity.builder()
+                                .proxyInputConsentId(proxyInputContext.getConsentId())
+                                .subjectUserId(proxyInputContext.getSubjectUserId())
+                                .proxyUserId(proxyUserId)
+                                .featureScope("SCHEDULE_ATTENDANCE")
+                                .targetEntityType(targetEntityType)
+                                .targetEntityId(targetEntityId)
+                                .inputSource(ProxyInputRecordEntity.InputSource.valueOf(
+                                        proxyInputContext.getInputSource()))
+                                .originalStorageLocation(proxyInputContext.getOriginalStorageLocation())
+                                .build()));
     }
 }

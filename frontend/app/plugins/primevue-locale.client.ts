@@ -1,4 +1,5 @@
 import { usePrimeVue } from 'primevue/config'
+import type { PrimeVueLocaleOptions } from 'primevue/config'
 
 const PRIMEVUE_LOCALES: Record<string, Record<string, unknown>> = {
   ja: {
@@ -501,7 +502,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 
   const applyLocale = (code: string) => {
     const localeData = PRIMEVUE_LOCALES[code] ?? PRIMEVUE_LOCALES.ja
-    primeVue.config.locale = { ...primeVue.config.locale, ...localeData }
+    primeVue.config.locale = { ...primeVue.config.locale, ...localeData } as PrimeVueLocaleOptions
   }
 
   applyLocale(i18n.locale.value)

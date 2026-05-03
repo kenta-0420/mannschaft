@@ -208,6 +208,25 @@
       "category_SUBJECT_CREDIT": "Reconocimiento de créditos",
       "category_PERFECT_ATTENDANCE": "Asistencia perfecta",
       "category_CUSTOM": "Personalizado"
+    },
+    "attendanceSummary": {
+      "title": "Resumen de asistencia",
+      "attendanceRate": "Tasa de asistencia",
+      "totalSchoolDays": "Días de clase",
+      "presentDays": "Días presente",
+      "absentDays": "Días ausente",
+      "lateCount": "Llegadas tarde",
+      "earlyLeaveCount": "Salidas anticipadas",
+      "officialAbsenceDays": "Ausencias oficiales",
+      "sickBayDays": "Días en enfermería",
+      "separateRoomDays": "Días en sala separada",
+      "onlineDays": "Días en línea",
+      "homeLearningDays": "Días aprendizaje en casa",
+      "days": " días",
+      "times": " veces",
+      "recalculate": "Recalcular",
+      "recalculateSuccess": "Resumen recalculado",
+      "noData": "Sin datos de resumen"
     }
   }
 }

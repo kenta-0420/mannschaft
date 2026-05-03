@@ -1,3 +1,5 @@
+import type { MemberResponse } from '~/types/member'
+
 interface OrganizationResponse {
   id: number
   name: string
@@ -24,14 +26,6 @@ interface OrganizationSummaryResponse {
   city: string | null
   memberCount: number
   supporterEnabled: boolean
-}
-
-interface MemberResponse {
-  userId: number
-  displayName: string
-  avatarUrl: string | null
-  roleName: string
-  joinedAt: string
 }
 
 interface InviteTokenResponse {

@@ -208,6 +208,25 @@
       "category_SUBJECT_CREDIT": "教科単位認定",
       "category_PERFECT_ATTENDANCE": "皆勤賞",
       "category_CUSTOM": "カスタム"
+    },
+    "attendanceSummary": {
+      "title": "出席集計",
+      "attendanceRate": "出席率",
+      "totalSchoolDays": "授業日数",
+      "presentDays": "出席日数",
+      "absentDays": "欠席日数",
+      "lateCount": "遅刻回数",
+      "earlyLeaveCount": "早退回数",
+      "officialAbsenceDays": "公欠日数",
+      "sickBayDays": "保健室登校",
+      "separateRoomDays": "別室登校",
+      "onlineDays": "オンライン登校",
+      "homeLearningDays": "家庭学習",
+      "days": "日",
+      "times": "回",
+      "recalculate": "再集計",
+      "recalculateSuccess": "集計を再計算しました",
+      "noData": "集計データがありません"
     }
   }
 }

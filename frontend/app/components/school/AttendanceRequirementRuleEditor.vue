@@ -174,9 +174,8 @@ function onCancel(): void {
         <label class="text-xs text-surface-500 mb-1 block">
           {{ $t('school.requirement.minAttendanceRate') }}
         </label>
-        <InputText
-          v-model.number="form.minAttendanceRate"
-          type="number"
+        <InputNumber
+          v-model="form.minAttendanceRate"
           :min="0"
           :max="100"
           class="w-full"
@@ -188,9 +187,8 @@ function onCancel(): void {
         <label class="text-xs text-surface-500 mb-1 block">
           {{ $t('school.requirement.maxAbsenceDays') }}
         </label>
-        <InputText
-          v-model.number="form.maxAbsenceDays"
-          type="number"
+        <InputNumber
+          v-model="form.maxAbsenceDays"
           :min="0"
           class="w-full"
         />
@@ -201,9 +199,8 @@ function onCancel(): void {
         <label class="text-xs text-surface-500 mb-1 block">
           {{ $t('school.requirement.warningThresholdRate') }}
         </label>
-        <InputText
-          v-model.number="form.warningThresholdRate"
-          type="number"
+        <InputNumber
+          v-model="form.warningThresholdRate"
           :min="0"
           :max="100"
           class="w-full"
@@ -215,9 +212,8 @@ function onCancel(): void {
         <label class="text-xs text-surface-500 mb-1 block">
           {{ $t('school.requirement.countLateAsAbsenceThreshold') }}
         </label>
-        <InputText
-          v-model.number="form.countLateAsAbsenceThreshold"
-          type="number"
+        <InputNumber
+          v-model="form.countLateAsAbsenceThreshold"
           :min="0"
           class="w-full"
         />

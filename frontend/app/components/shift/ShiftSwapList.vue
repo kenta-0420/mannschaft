@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { SwapRequestResponse } from '~/types/shift'
+
 defineProps<{
   teamId: number
 }>()
@@ -7,20 +9,7 @@ const shiftApi = useShiftApi()
 const authStore = useAuthStore()
 const notification = useNotification()
 
-interface Swap {
-  id: number
-  requesterId: number
-  requesterName: string
-  targetId: number
-  targetName: string
-  date: string
-  positionName: string
-  status: string
-  reason: string | null
-  createdAt: string
-}
-
-const swaps = ref<Swap[]>([])
+const swaps = ref<SwapRequestResponse[]>([])
 const loading = ref(true)
 
 const statusConfig: Record<string, { label: string; severity: string }> = {
@@ -33,8 +22,7 @@ const statusConfig: Record<string, { label: string; severity: string }> = {
 async function load() {
   loading.value = true
   try {
-    const res = await shiftApi.listSwapRequests()
-    swaps.value = res.data as Swap[]
+    swaps.value = await shiftApi.listSwapRequests()
   } catch {
     swaps.value = []
   } finally {
@@ -49,7 +37,7 @@ async function accept(id: number) {
 }
 
 async function reject(id: number) {
-  await shiftApi.resolveSwap(id)
+  await shiftApi.resolveSwap(id, { action: 'reject' })
   notification.success('交換を却下しました')
   await load()
 }
@@ -69,11 +57,11 @@ onMounted(load)
       >
         <div class="min-w-0 flex-1">
           <p class="text-sm">
-            <span class="font-medium">{{ swap.requesterName }}</span>
+            <span class="font-medium">申請者 #{{ swap.requesterId }}</span>
             <span class="text-surface-500"> → </span>
-            <span class="font-medium">{{ swap.targetName }}</span>
+            <span class="font-medium">対象 #{{ swap.accepterId ?? '未定' }}</span>
           </p>
-          <p class="text-xs text-surface-500">{{ swap.date }} | {{ swap.positionName }}</p>
+          <p class="text-xs text-surface-500">スロット #{{ swap.slotId }}</p>
           <p v-if="swap.reason" class="text-xs text-surface-400">理由: {{ swap.reason }}</p>
         </div>
         <Tag
@@ -82,7 +70,7 @@ onMounted(load)
           rounded
         />
         <div
-          v-if="swap.status === 'PENDING' && swap.targetId === authStore.currentUser?.id"
+          v-if="swap.status === 'PENDING' && swap.accepterId === authStore.currentUser?.id"
           class="flex gap-1"
         >
           <Button

@@ -150,7 +150,7 @@ function onOfficerDrop(index: number) {
   if (officerDragIndex.value !== null && officerDragIndex.value !== index) {
     const arr = [...officers.value]
     const [moved] = arr.splice(officerDragIndex.value, 1)
-    arr.splice(index, 0, moved)
+    if (moved) arr.splice(index, 0, moved)
     officers.value = arr
     officerOrderDirty.value = true
   }
@@ -250,7 +250,7 @@ function onCfDrop(index: number) {
   if (cfDragIndex.value !== null && cfDragIndex.value !== index) {
     const arr = [...customFields.value]
     const [moved] = arr.splice(cfDragIndex.value, 1)
-    arr.splice(index, 0, moved)
+    if (moved) arr.splice(index, 0, moved)
     customFields.value = arr
     cfOrderDirty.value = true
   }

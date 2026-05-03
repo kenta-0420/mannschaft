@@ -348,7 +348,7 @@ async function mockRecruitmentApis(page: Page): Promise<void> {
  */
 async function mockMyParticipations(
   page: Page,
-  payload: typeof MOCK_MY_PARTICIPATIONS_EMPTY,
+  payload: { data: unknown[] },
 ): Promise<void> {
   await page.route('**/api/v1/me/recruitment-listings', async (route) => {
     await route.fulfill({

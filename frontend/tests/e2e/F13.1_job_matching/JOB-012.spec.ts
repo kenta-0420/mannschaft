@@ -60,9 +60,9 @@ test.describe('JOB-012: F13.1 手動コード入力フォールバック', () =>
 
     // 送信されたボディを検証（manualCodeFallback = true、token は null、shortCode は ABC123 に大文字化）
     expect(capturedBody).not.toBeNull()
-    expect((capturedBody as Record<string, unknown>)?.manualCodeFallback).toBe(true)
-    expect((capturedBody as Record<string, unknown>)?.token).toBeNull()
-    expect((capturedBody as Record<string, unknown>)?.shortCode).toBe('ABC123')
+    expect(capturedBody!.manualCodeFallback).toBe(true)
+    expect(capturedBody!.token).toBeNull()
+    expect(capturedBody!.shortCode).toBe('ABC123')
   })
 
   test('JOB-012-02: 5 桁以下など不正な shortCode は送信せずエラー表示する', async ({ page }) => {

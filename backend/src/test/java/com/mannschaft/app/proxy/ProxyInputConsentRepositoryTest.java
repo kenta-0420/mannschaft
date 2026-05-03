@@ -67,7 +67,28 @@ class ProxyInputConsentRepositoryTest {
     private static final Long ORG_ID = 10L;
 
     /**
+     * AssertJ の {@code .as(...)} メッセージで Optional<ProxyInputConsentEntity> の中身を読みやすく出す。
+     * 失敗時にどのフィールド値（特に approvedAt / revokedAt / effectiveFrom / effectiveUntil）が
+     * 期待と違うのかを CI ログから即座に把握できるようにする。
+     */
+    private static String describe(Optional<ProxyInputConsentEntity> opt) {
+        if (opt == null || opt.isEmpty()) {
+            return "Optional.empty";
+        }
+        ProxyInputConsentEntity c = opt.get();
+        return String.format(
+                "Optional[id=%s, subjectUserId=%s, proxyUserId=%s, orgId=%s, "
+                        + "approvedAt=%s, revokedAt=%s, effectiveFrom=%s, effectiveUntil=%s]",
+                c.getId(), c.getSubjectUserId(), c.getProxyUserId(), c.getOrganizationId(),
+                c.getApprovedAt(), c.getRevokedAt(), c.getEffectiveFrom(), c.getEffectiveUntil());
+    }
+
+    /**
      * 承認済み・有効期限内・revoke なしのアクティブ同意書を永続化して返す。
+     *
+     * <p>flush 後に {@link EntityManager#clear()} を呼び、Persistence Context（1次キャッシュ）から
+     * managed エンティティを除去する。これにより後続の JPQL クエリは Hibernate のキャッシュ短絡経路を
+     * 通らず、純粋に DB の WHERE 句評価結果を返す。Repository の結合テストとしての決定論性を担保する。</p>
      */
     private ProxyInputConsentEntity persistActiveConsent(Long subjectUserId, Long proxyUserId) {
         ProxyInputConsentEntity consent = ProxyInputConsentEntity.create(
@@ -79,6 +100,7 @@ class ProxyInputConsentRepositoryTest {
         consent.approve(999L);
         em.persist(consent);
         em.flush();
+        em.clear();
         return consent;
     }
 
@@ -108,43 +130,60 @@ class ProxyInputConsentRepositoryTest {
                     LocalDate.now().minusDays(1), LocalDate.now().plusMonths(6));
             em.persist(consent);
             em.flush();
+            em.clear();
 
             Optional<ProxyInputConsentEntity> result = repository.findValidConsent(
                     consent.getId(), PROXY_USER_ID);
 
-            assertThat(result).isEmpty();
+            assertThat(result)
+                    .as("approvedAt が NULL なので findValidConsent の WHERE 句で除外されるはず — actual=%s",
+                            describe(result))
+                    .isEmpty();
         }
 
         @Test
         @DisplayName("有効期限切れ（effectiveUntil < 今日）→ empty")
         void shouldReturnEmptyWhenExpired() {
+            // タイムゾーン差異による境界フリップを防ぐため過去固定日付を使用
             ProxyInputConsentEntity consent = ProxyInputConsentEntity.create(
                     SUBJECT_USER_ID, PROXY_USER_ID, ORG_ID,
                     ProxyInputConsentEntity.ConsentMethod.PAPER_SIGNED,
                     null, null, null,
-                    LocalDate.now().minusMonths(2),
-                    LocalDate.now().minusDays(1));
+                    LocalDate.of(2024, 1, 1),
+                    LocalDate.of(2024, 6, 30));
             consent.approve(999L);
             em.persist(consent);
             em.flush();
+            // Persistence Context をクリアすることで、後続 JPQL は Hibernate 1次キャッシュの managed
+            // エンティティを返す短絡経路を通らず、純粋に DB の WHERE c.effective_until >= CURRENT_DATE の
+            // 評価結果を返す。これにより effectiveUntil=2024-06-30 のレコードが正しく除外されることを検証。
+            em.clear();
 
             Optional<ProxyInputConsentEntity> result = repository.findValidConsent(
                     consent.getId(), PROXY_USER_ID);
 
-            assertThat(result).isEmpty();
+            assertThat(result)
+                    .as("effectiveUntil=2024-06-30 は CURRENT_DATE より過去なので除外されるはず — actual=%s",
+                            describe(result))
+                    .isEmpty();
         }
 
         @Test
         @DisplayName("revokedAt あり → empty")
         void shouldReturnEmptyWhenRevoked() {
             ProxyInputConsentEntity consent = persistActiveConsent(SUBJECT_USER_ID, PROXY_USER_ID);
-            consent.revoke(ProxyInputConsentEntity.RevokeMethod.API_BY_SUBJECT, null, "本人希望");
+            // persistActiveConsent で em.clear 済みのため、revoke を反映するには再 attach が必要
+            ProxyInputConsentEntity reattached = em.find(ProxyInputConsentEntity.class, consent.getId());
+            reattached.revoke(ProxyInputConsentEntity.RevokeMethod.API_BY_SUBJECT, null, "本人希望");
             em.flush();
+            em.clear();
 
             Optional<ProxyInputConsentEntity> result = repository.findValidConsent(
-                    consent.getId(), PROXY_USER_ID);
+                    reattached.getId(), PROXY_USER_ID);
 
-            assertThat(result).isEmpty();
+            assertThat(result)
+                    .as("revokedAt が非NULLなので除外されるはず — actual=%s", describe(result))
+                    .isEmpty();
         }
     }
 

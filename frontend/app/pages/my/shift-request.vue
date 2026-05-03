@@ -236,7 +236,7 @@ onMounted(async () => {
   await teamStore.fetchMyTeams()
   // チームが1つの場合は自動選択
   if (teamStore.myTeams.length === 1) {
-    await selectTeam(teamStore.myTeams[0].id)
+    await selectTeam(teamStore.myTeams[0]!.id)
   }
 })
 </script>

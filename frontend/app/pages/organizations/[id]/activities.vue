@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ActivityRecordResponse } from '~/types/activity'
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const orgId = Number(route.params.id)
@@ -6,7 +7,7 @@ const orgId = Number(route.params.id)
 const { getActivities } = useActivityApi()
 const { showError } = useNotification()
 
-const activities = ref<Record<string, unknown>[]>([])
+const activities = ref<ActivityRecordResponse[]>([])
 const loading = ref(false)
 
 async function load() {

@@ -26,7 +26,7 @@ const config = computed(() => activityConfig[props.activityType] ?? { icon: 'pi 
 <template>
   <div class="flex items-start gap-3 py-2">
     <Avatar
-      :image="actorAvatarUrl"
+      :image="actorAvatarUrl ?? undefined"
       :label="actorAvatarUrl ? undefined : actorName.charAt(0)"
       shape="circle"
       size="normal"

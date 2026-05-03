@@ -201,7 +201,7 @@ test.describe('TEAM-DEEP-chat: チャット送信操作の深掘り', () => {
             contentType: 'application/json',
             body: JSON.stringify({
               data: {
-                ...MOCK_MESSAGES[0],
+                ...MOCK_MESSAGES[0]!,
                 id: 999,
                 body: postBody.body,
                 createdAt: '2026-04-07T00:05:00Z',
@@ -229,7 +229,7 @@ test.describe('TEAM-DEEP-chat: チャット送信操作の深掘り', () => {
     await respPromise
 
     expect(postBody).not.toBeNull()
-    expect(postBody?.body).toBe('送信ボタンから送るメッセージ')
+    expect(postBody!.body).toBe('送信ボタンから送るメッセージ')
   })
 
   test('TEAM-DEEP-chat-005: Enter キー押下で送信される（Shift+Enter ではない）', async ({
