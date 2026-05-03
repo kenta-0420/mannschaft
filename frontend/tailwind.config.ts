@@ -11,5 +11,20 @@ export default {
     './app/app.vue',
   ],
   darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: [
+          'Noto Sans JP',
+          'Yu Gothic UI',
+          'Meiryo UI',
+          'Hiragino Sans',
+          'ui-sans-serif',
+          'system-ui',
+          'sans-serif',
+        ],
+      },
+    },
+  },
   plugins: [PrimeUI],
 } satisfies Config

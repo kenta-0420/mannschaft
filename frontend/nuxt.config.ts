@@ -9,7 +9,15 @@ export default defineNuxtConfig({
     head: {
       charset: 'utf-8',
       viewport: 'width=device-width, initial-scale=1',
-      link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
+      link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap',
+        },
+      ],
     },
     pageTransition: { name: 'page-fade', mode: 'out-in' },
   },
@@ -130,6 +138,9 @@ export default defineNuxtConfig({
           'ja/surveys.json',
           'ja/reservation.json',
           'ja/school.json',
+          'ja/dashboard.json',
+          'ja/activity.json',
+          'ja/settings.json',
         ],
       },
       {
@@ -161,6 +172,9 @@ export default defineNuxtConfig({
           'en/surveys.json',
           'en/reservation.json',
           'en/school.json',
+          'en/dashboard.json',
+          'en/activity.json',
+          'en/settings.json',
         ],
       },
       {
@@ -192,6 +206,9 @@ export default defineNuxtConfig({
           'zh/surveys.json',
           'zh/reservation.json',
           'zh/school.json',
+          'zh/dashboard.json',
+          'zh/activity.json',
+          'zh/settings.json',
         ],
       },
       {
@@ -223,6 +240,9 @@ export default defineNuxtConfig({
           'ko/surveys.json',
           'ko/reservation.json',
           'ko/school.json',
+          'ko/dashboard.json',
+          'ko/activity.json',
+          'ko/settings.json',
         ],
       },
       {
@@ -254,6 +274,9 @@ export default defineNuxtConfig({
           'es/surveys.json',
           'es/reservation.json',
           'es/school.json',
+          'es/dashboard.json',
+          'es/activity.json',
+          'es/settings.json',
         ],
       },
       {
@@ -285,6 +308,9 @@ export default defineNuxtConfig({
           'de/surveys.json',
           'de/reservation.json',
           'de/school.json',
+          'de/dashboard.json',
+          'de/activity.json',
+          'de/settings.json',
         ],
       },
     ],
