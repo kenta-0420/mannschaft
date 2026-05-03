@@ -10,8 +10,12 @@ let _errorBatchFirst: { status: number; statusText: string; url: string } | null
 export function useApi() {
   const config = useRuntimeConfig()
   const authStore = useAuthStore()
-  const { t } = useI18n()
+  const nuxtApp = useNuxtApp()
   const errorReport = useErrorReport()
+
+  // useI18n() は setup コンテキスト外（イベントハンドラや Pinia アクション）では
+  // 呼べないため、useNuxtApp().$i18n 経由でアクセスする。
+  const t = (key: string) => nuxtApp.$i18n.t(key)
 
   const api = ofetch.create({
     baseURL: config.public.apiBase as string,
