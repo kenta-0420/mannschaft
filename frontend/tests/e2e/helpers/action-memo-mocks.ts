@@ -140,6 +140,10 @@ export interface MockState {
   // Phase 4-β: 管理職ダッシュボード
   dashboardMemos: MockMemo[]
   dashboardNextCursor: string | null
+  /** Phase 5-2: 組織スコープ投稿先候補 */
+  availableOrgs: Array<{ id: number; name: string }>
+  /** Phase 5-1: メモIDごとの監査ログ */
+  auditLogs: Record<number, Array<{ id: number; eventType: string; actorId: number; createdAt: string; metadata: string | null }>>
 }
 
 /** {@link buildMockState} のオプション。一部フィールドだけ上書きできる。 */
@@ -148,6 +152,7 @@ export type BuildMockStateOptions = Partial<{
   settings: Partial<MockSettings>
   availableTeams: MockAvailableTeam[]
   todos: MockTodo[]
+  availableOrgs: Array<{ id: number; name: string }>
 }>
 
 /** デフォルト値で {@link MockState} を構築する。 */
@@ -171,6 +176,9 @@ export function buildMockState(opts: BuildMockStateOptions = {}): MockState {
     // Phase 4-β
     dashboardMemos: [],
     dashboardNextCursor: null,
+    // Phase 5-2
+    availableOrgs: opts.availableOrgs ?? [],
+    auditLogs: {},
   }
 }
 
@@ -604,6 +612,35 @@ export async function mockActionMemoApi(page: Page, state: MockState): Promise<v
           memo_count: memoIds.length,
         },
       }),
+    })
+  })
+
+  // ----- Phase 5-2: 組織スコープ投稿先候補 -----
+  await page.route('**/api/v1/action-memos/available-orgs', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: state.availableOrgs }),
+    })
+  })
+
+  // ----- Phase 5-1: 監査ログ -----
+  await page.route(/.*\/api\/v1\/action-memos\/\d+\/audit-logs$/, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    const idMatch = route.request().url().match(/\/action-memos\/(\d+)\/audit-logs/)
+    const id = idMatch ? Number(idMatch[1]) : 0
+    const logs = state.auditLogs[id] ?? []
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: logs }),
     })
   })
 

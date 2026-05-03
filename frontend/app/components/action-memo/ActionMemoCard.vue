@@ -222,6 +222,7 @@ function formatAuditEventType(eventType: string): string {
           v-else
           :key="log.id"
           class="flex items-center gap-2 text-xs text-surface-500 dark:text-surface-400"
+          data-testid="action-memo-card-audit-log-item"
         >
           <span class="shrink-0 font-mono">{{ formatAuditTime(log.createdAt) }}</span>
           <span>{{ formatAuditEventType(log.eventType) }}</span>
