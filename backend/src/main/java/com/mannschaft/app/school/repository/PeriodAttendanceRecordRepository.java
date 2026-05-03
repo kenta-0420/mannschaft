@@ -30,4 +30,12 @@ public interface PeriodAttendanceRecordRepository extends JpaRepository<PeriodAt
     /** クラスの特定日・時限の特定ステータス人数カウント（統計用）。 */
     long countByTeamIdAndAttendanceDateAndPeriodNumberAndStatus(
             Long teamId, LocalDate attendanceDate, Integer periodNumber, AttendanceStatus status);
+
+    /** クラスの期間内時限別出欠を一括取得（教科別統計用）。 */
+    List<PeriodAttendanceRecordEntity> findByTeamIdAndAttendanceDateBetweenOrderByAttendanceDateAscPeriodNumberAsc(
+            Long teamId, LocalDate from, LocalDate to);
+
+    /** 生徒の期間内時限別出欠を取得（教科別出席率用）。 */
+    List<PeriodAttendanceRecordEntity> findByStudentUserIdAndAttendanceDateBetweenOrderByAttendanceDateAscPeriodNumberAsc(
+            Long studentUserId, LocalDate from, LocalDate to);
 }
