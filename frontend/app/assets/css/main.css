@@ -8,6 +8,12 @@ html {
   scroll-behavior: smooth;
 }
 
+body {
+  font-family: 'Noto Sans JP', 'Yu Gothic UI', 'Meiryo UI', 'Hiragino Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 .page-fade-enter-active,
 .page-fade-leave-active {
   transition: opacity 0.2s ease;
