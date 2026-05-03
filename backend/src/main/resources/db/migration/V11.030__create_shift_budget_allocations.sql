@@ -28,6 +28,11 @@ CREATE TABLE shift_budget_allocations (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME DEFAULT NULL,
+    -- UNIQUE 用 STORED 生成カラム: MySQL の UNIQUE は NULL を「異なる値」と扱うため、
+    -- NULL を非 NULL の番兵値に COALESCE した実体カラムを別途用意して UNIQUE を効かせる
+    team_id_uq BIGINT UNSIGNED AS (COALESCE(team_id, 0)) STORED NOT NULL,
+    project_id_uq BIGINT UNSIGNED AS (COALESCE(project_id, 0)) STORED NOT NULL,
+    deleted_at_uq DATETIME AS (COALESCE(deleted_at, '9999-12-31 00:00:00')) STORED NOT NULL,
     PRIMARY KEY (id),
 
     -- インデックス（設計書 §5.2 準拠）
@@ -38,9 +43,10 @@ CREATE TABLE shift_budget_allocations (
     INDEX idx_sba_currency (currency),
 
     -- UNIQUE 制約（v1.1: project_id 含む / v1.2: deleted_at 含み「論理削除→再作成」を許可）
+    -- NULL を区別するため STORED 生成カラム経由で UNIQUE を張る
     CONSTRAINT uq_sba_scope_category_period UNIQUE (
-        organization_id, team_id, project_id, budget_category_id,
-        period_start, period_end, deleted_at
+        organization_id, team_id_uq, project_id_uq, budget_category_id,
+        period_start, period_end, deleted_at_uq
     ),
 
     -- CHECK 制約（設計書 §5.2 準拠）

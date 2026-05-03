@@ -23,6 +23,8 @@ CREATE TABLE shift_budget_consumptions (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME DEFAULT NULL,
+    -- UNIQUE 用 STORED 生成カラム: MySQL の UNIQUE は NULL を「異なる値」と扱うため
+    deleted_at_uq DATETIME AS (COALESCE(deleted_at, '9999-12-31 00:00:00')) STORED NOT NULL,
     PRIMARY KEY (id),
 
     -- インデックス（設計書 §5.3 準拠）
@@ -34,7 +36,8 @@ CREATE TABLE shift_budget_consumptions (
     -- UNIQUE 制約（§11.1 同一 (slot, user) 再 INSERT パターンに対応）
     -- CANCELLED は status 違いで再記録可能（旧 PLANNED を CANCELLED に遷移後、新規 PLANNED を INSERT）。
     -- deleted_at を含めて論理削除との並存を許可（運用ミスに備える）。
-    CONSTRAINT uq_sbc_slot_user_status UNIQUE (slot_id, user_id, status, deleted_at),
+    -- NULL を区別するため STORED 生成カラム経由で UNIQUE を張る
+    CONSTRAINT uq_sbc_slot_user_status UNIQUE (slot_id, user_id, status, deleted_at_uq),
 
     -- CHECK 制約（設計書 §5.3 準拠）
     CONSTRAINT chk_sbc_amount CHECK (amount >= 0 AND hours >= 0),
