@@ -9,5 +9,7 @@ public enum TodoStatus {
     /** 進行中 */
     IN_PROGRESS,
     /** 完了 */
-    COMPLETED
+    COMPLETED,
+    /** キャンセル（F03.5 Phase 4-γ: シフト ARCHIVED 時に自動遷移） */
+    CANCELLED
 }
