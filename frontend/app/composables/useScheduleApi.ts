@@ -30,8 +30,8 @@ export function useScheduleApi() {
     },
   ) {
     const query = new URLSearchParams()
-    query.set('from', params.from)
-    query.set('to', params.to)
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
     if (params?.status) query.set('status', params.status)
     if (params?.categoryId) query.set('categoryId', String(params.categoryId))
     query.set('page', String(params?.page ?? 0))
@@ -129,26 +129,26 @@ export function useScheduleApi() {
   }
 
   // === Personal Schedule ===
-  async function listPersonalSchedules(params: { from: string; to: string }) {
+  async function listPersonalSchedules(params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
-    query.set('from', params.from)
-    query.set('to', params.to)
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
     return api<{ data: unknown[] }>(`/api/v1/me/schedules?${query}`)
   }
 
   async function createPersonalSchedule(body: Record<string, unknown>) {
-    return api<{ data: unknown }>('/api/v1/me/schedules', { method: 'POST', body })
+    return api<{ data: unknown }>('/api/v1/schedules/personal', { method: 'POST', body })
   }
 
   async function updatePersonalSchedule(scheduleId: number, body: Record<string, unknown>) {
-    return api<{ data: unknown }>(`/api/v1/me/schedules/${scheduleId}`, {
+    return api<{ data: unknown }>(`/api/v1/schedules/personal/${scheduleId}`, {
       method: 'PATCH',
       body,
     })
   }
 
   async function deletePersonalSchedule(scheduleId: number) {
-    return api(`/api/v1/me/schedules/${scheduleId}`, { method: 'DELETE' })
+    return api(`/api/v1/schedules/personal/${scheduleId}`, { method: 'DELETE' })
   }
 
   // === Calendar View ===
@@ -338,8 +338,8 @@ export function useScheduleApi() {
   // === Attendance Stats ===
   async function getTeamAttendanceStats(teamId: number, params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
-    query.set('from', params.from)
-    query.set('to', params.to)
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
     return api<{ data: unknown }>(`/api/v1/teams/${teamId}/attendance-stats?${query}`)
   }
 
@@ -348,22 +348,22 @@ export function useScheduleApi() {
     params?: { from?: string; to?: string },
   ) {
     const query = new URLSearchParams()
-    query.set('from', params.from)
-    query.set('to', params.to)
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
     return api(`/api/v1/teams/${teamId}/attendance-stats/export?${query}`, { responseType: 'blob' })
   }
 
   async function getOrgAttendanceStats(orgId: number, params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
-    query.set('from', params.from)
-    query.set('to', params.to)
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
     return api<{ data: unknown }>(`/api/v1/organizations/${orgId}/attendance-stats?${query}`)
   }
 
   async function exportOrgAttendanceStats(orgId: number, params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
-    query.set('from', params.from)
-    query.set('to', params.to)
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
     return api(`/api/v1/organizations/${orgId}/attendance-stats/export?${query}`, {
       responseType: 'blob',
     })
@@ -371,16 +371,16 @@ export function useScheduleApi() {
 
   async function getMyAttendanceStats(params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
-    query.set('from', params.from)
-    query.set('to', params.to)
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
     return api<{ data: unknown }>(`/api/v1/me/attendance-stats?${query}`)
   }
 
   // === My Calendar ===
   async function getMyCalendar(params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
-    query.set('from', params.from)
-    query.set('to', params.to)
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
     return api<{ data: unknown[] }>(`/api/v1/my/calendar?${query}`)
   }
 
@@ -394,8 +394,8 @@ export function useScheduleApi() {
     size?: number
   }) {
     const query = new URLSearchParams()
-    query.set('from', params.from)
-    query.set('to', params.to)
+    if (params?.from) query.set('from', params.from)
+    if (params?.to) query.set('to', params.to)
     if (params?.q) query.set('q', params.q)
     if (params?.eventType) query.set('eventType', params.eventType)
     if (params?.cursor) query.set('cursor', params.cursor)

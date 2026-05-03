@@ -38,7 +38,9 @@ watch(
   () => form.value.startTime,
   (newTime) => {
     if (!newTime || form.value.allDay) return
-    const [h, m] = newTime.split(':').map(Number)
+    const parts = newTime.split(':').map(Number)
+    const h = parts[0] ?? 0
+    const m = parts[1] ?? 0
     const endH = h + 1
     if (endH >= 24) {
       form.value.endTime = `${String(endH - 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`
@@ -127,9 +129,6 @@ async function submit() {
   }
   if (props.isPersonal) {
     body.color = form.value.color
-  } else {
-    body.eventType = 'OTHER'
-    body.attendanceRequired = false
   }
 
   try {

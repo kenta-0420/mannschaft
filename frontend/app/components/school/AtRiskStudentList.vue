@@ -34,7 +34,7 @@ const statusSeverity: Record<EvaluationStatus, 'warn' | 'danger'> = {
     >
       <Column field="studentUserId" :header="$t('school.homeroom.title')" />
       <Column :header="$t('school.evaluation.title')">
-        <template #body="{ data }">
+        <template #body="{ data }: { data: AtRiskStudentResponse }">
           <Tag
             :value="$t(`school.evaluation.status.${data.status}`)"
             :severity="statusSeverity[data.status]"
