@@ -135,6 +135,7 @@ const showLimitBanner = computed(
 </script>
 
 <template>
+  <div>
   <div class="mx-auto max-w-2xl px-4 py-6">
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-xl font-bold">{{ t('quick_memo.title') }}</h1>
@@ -253,4 +254,5 @@ const showLimitBanner = computed(
 
   <!-- 常駐フローティングボタン（ページ内に入れないよう注意：layout側推奨だが暫定） -->
   <QuickMemoFloatingButton />
+  </div>
 </template>

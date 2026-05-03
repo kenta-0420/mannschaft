@@ -1,13 +1,14 @@
 <script setup lang="ts">
+const profile = defineModel<{
+  displayName: string
+  email: string
+  phoneNumber: string
+  postalCode: string
+  avatarUrl: string | null
+  isSearchable: boolean
+}>('profile', { required: true })
+
 defineProps<{
-  profile: {
-    displayName: string
-    email: string
-    phoneNumber: string
-    postalCode: string
-    avatarUrl: string | null
-    isSearchable: boolean
-  }
   savingProfile: boolean
 }>()
 
@@ -27,7 +28,7 @@ defineEmits<{
             :src="profile.avatarUrl"
             alt="アバター"
             class="h-20 w-20 rounded-full object-cover"
-          />
+          >
           <div
             v-else
             class="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-2xl text-primary"
@@ -42,7 +43,7 @@ defineEmits<{
               accept="image/*"
               class="hidden"
               @change="$emit('uploadAvatar', $event)"
-            />
+            >
             <Button
               label="画像を変更"
               icon="pi pi-upload"

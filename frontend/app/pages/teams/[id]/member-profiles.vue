@@ -156,8 +156,8 @@ onMounted(loadData)
             />
             <InputText
               v-else-if="field.fieldType === 'NUMBER'"
-              type="number"
               v-model="form.customFieldValues[String(field.id)]"
+              type="number"
               class="w-full"
             />
             <DatePicker
@@ -174,8 +174,8 @@ onMounted(loadData)
             />
             <Select
               v-else-if="field.fieldType === 'SELECT'"
-              :options="field.options ?? []"
               v-model="form.customFieldValues[String(field.id)]"
+              :options="field.options ?? []"
               class="w-full"
             />
             <Checkbox

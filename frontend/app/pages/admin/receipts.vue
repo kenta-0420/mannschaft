@@ -214,19 +214,19 @@ onMounted(() => load())
               @click="handleReissue(data.id)"
             />
             <Button
+              v-tooltip="'PDF'"
               icon="pi pi-file-pdf"
               size="small"
               severity="secondary"
               text
-              v-tooltip="'PDF'"
               @click="handleDownloadPdf(data.id)"
             />
             <Button
+              v-tooltip="'メール送信'"
               icon="pi pi-envelope"
               size="small"
               severity="secondary"
               text
-              v-tooltip="'メール送信'"
               @click="handleSendEmail(data.id)"
             />
           </div>

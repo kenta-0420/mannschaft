@@ -49,7 +49,7 @@ onMounted(() => load())
           >{{ s.status }}</span
         >
         <p v-if="s.assignedTo" class="mt-2 text-xs text-surface-400">
-          {{ s.assignedTo.displayName }}<br />{{ s.assignedTo.vehiclePlate }}
+          {{ s.assignedTo.displayName }}<br >{{ s.assignedTo.vehiclePlate }}
         </p>
       </SectionCard>
     </div>

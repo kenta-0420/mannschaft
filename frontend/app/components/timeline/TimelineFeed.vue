@@ -12,7 +12,7 @@ const emit = defineEmits<{
   clickPost: [postId: number]
 }>()
 
-const { getFeed, addReaction, removeReaction, addBookmark, removeBookmark, pinPost, deletePost, createReply, repost } =
+const { getFeed, addBookmark, removeBookmark, pinPost, deletePost, createReply, repost } =
   useTimelineApi()
 const { showSuccess, showError } = useNotification()
 

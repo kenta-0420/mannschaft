@@ -12,7 +12,7 @@ definePageMeta({
     <div class="flex flex-col gap-2">
       <h2 class="text-xl font-bold">退会が取り消されました</h2>
       <p class="text-surface-500">
-        退会処理中のアカウントでログインしたため、退会を自動的に取り消しました。<br />
+        退会処理中のアカウントでログインしたため、退会を自動的に取り消しました。<br >
         引き続きご利用いただけます。
       </p>
     </div>

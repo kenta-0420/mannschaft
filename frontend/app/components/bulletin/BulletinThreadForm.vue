@@ -187,7 +187,7 @@ watch(visible, (v) => {
             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
             class="hidden"
             @change="onFileChange"
-          />
+          >
         </div>
       </div>
 

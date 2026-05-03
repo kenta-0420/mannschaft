@@ -4,7 +4,6 @@ import {
   TEAM_ID,
   SCHEDULE_ID,
   MEMBER_USER_ID,
-  MEMBER2_USER_ID,
   SLOT_ID_1,
   SLOT_ID_2,
   SLOT_ID_3,
@@ -102,11 +101,9 @@ test.describe('BOARD-001〜004: F03.5 Phase 2 D&D シフトボード', () => {
     await mockAssignmentRuns(page, [])
 
     // スロット割当 PATCH API のモック
-    let assignCalled = false
     await page.route(`**/api/v1/shifts/schedules/slots/${SLOT_ID_1}/assignments`, async (route) => {
       const method = route.request().method()
       if (method === 'PATCH') {
-        assignCalled = true
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -210,10 +207,8 @@ test.describe('BOARD-001〜004: F03.5 Phase 2 D&D シフトボード', () => {
     })
 
     // スロット2 に追加 API のモック
-    let moveToSlot2Called = false
     await page.route(`**/api/v1/shifts/schedules/slots/${SLOT_ID_2}/assignments`, async (route) => {
       if (route.request().method() === 'PATCH') {
-        moveToSlot2Called = true
         await route.fulfill({
           status: 200,
           contentType: 'application/json',

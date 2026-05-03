@@ -141,8 +141,6 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
   })
 
   test('INCIDENT-003: インシデントを作成できる（POST）', async ({ page }) => {
-    let createCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -160,7 +158,6 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
           body: JSON.stringify(MOCK_INCIDENTS_LIST),
         })
       } else if (route.request().method() === 'POST') {
-        createCalled = true
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
@@ -198,8 +195,6 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
   })
 
   test('INCIDENT-004: インシデントのステータスを更新できる（PATCH）', async ({ page }) => {
-    let statusUpdateCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -223,7 +218,6 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
 
     await page.route(`**/api/incidents/${INCIDENT_ID}/status`, async (route) => {
       if (route.request().method() === 'PATCH') {
-        statusUpdateCalled = true
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -254,8 +248,6 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
   })
 
   test('INCIDENT-005: インシデントを解決済みにできる（PATCH）', async ({ page }) => {
-    let resolveCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -279,7 +271,6 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
 
     await page.route(`**/api/incidents/${INCIDENT_ID}/status`, async (route) => {
       if (route.request().method() === 'PATCH') {
-        resolveCalled = true
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -314,8 +305,6 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
   })
 
   test('INCIDENT-006: インシデントを削除できる（DELETE）', async ({ page }) => {
-    let deleteCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -339,7 +328,6 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
 
     await page.route(`**/api/incidents/${INCIDENT_ID}`, async (route) => {
       if (route.request().method() === 'DELETE') {
-        deleteCalled = true
         await route.fulfill({ status: 204 })
       } else {
         await route.continue()

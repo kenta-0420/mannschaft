@@ -103,7 +103,7 @@ async function handleFileChange(event: Event) {
       accept="video/mp4,video/webm,video/quicktime"
       class="hidden"
       @change="handleFileChange"
-    />
+    >
 
     <!-- アップロード中 -->
     <div v-if="uploading" class="flex items-center gap-2 rounded-lg border border-surface-300 p-3">

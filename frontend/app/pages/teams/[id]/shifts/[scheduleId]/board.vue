@@ -139,7 +139,7 @@ const isSupporter = computed(() => authStore.currentUser?.role === 'SUPPORTER')
 const shiftApi = useShiftApi()
 const teamApi = useTeamApi()
 const { localAssignments, initSlot, moveUser, addUser, removeUser } = useShiftBoard(scheduleId)
-const { runs, currentRun, isRunning, runAutoAssign, confirmAutoAssign, revokeAutoAssign, fetchRuns } =
+const { runs, isRunning, runAutoAssign, confirmAutoAssign, revokeAutoAssign, fetchRuns } =
   useAutoAssign(scheduleId)
 
 // データ
@@ -270,7 +270,7 @@ async function onRunAutoAssign(
 }
 
 // 自動割当確定（目視確認後）
-async function onConfirmAutoAssignWithNote(note: string | undefined): Promise<void> {
+async function onConfirmAutoAssignWithNote(_note: string | undefined): Promise<void> {
   const run = pendingRun.value
   if (!run) return
   const assignmentIds = (run.assignments ?? []).map((a) => a.id)

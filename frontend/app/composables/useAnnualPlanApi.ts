@@ -5,7 +5,6 @@ import type {
   CopyExecuteRequest,
   CopyExecuteResponse,
   CopyLog,
-  ExecuteCopyItem,
 } from '~/types/annual-plan'
 
 export function useAnnualPlanApi() {

@@ -144,30 +144,30 @@ onMounted(loadDigests)
           <div class="flex gap-1">
             <Button
               v-if="data.status === 'GENERATED'"
+              v-tooltip.top="$t('timeline_digest.tooltip_publish')"
               icon="pi pi-upload"
               size="small"
               severity="primary"
               text
               rounded
-              v-tooltip.top="$t('timeline_digest.tooltip_publish')"
               @click="onPublish(data)"
             />
             <Button
+              v-tooltip.top="$t('timeline_digest.tooltip_regenerate')"
               icon="pi pi-refresh"
               size="small"
               severity="secondary"
               text
               rounded
-              v-tooltip.top="$t('timeline_digest.tooltip_regenerate')"
               @click="onRegenerate(data)"
             />
             <Button
+              v-tooltip.top="$t('timeline_digest.tooltip_delete')"
               icon="pi pi-trash"
               size="small"
               severity="danger"
               text
               rounded
-              v-tooltip.top="$t('timeline_digest.tooltip_delete')"
               @click="onDelete(data)"
             />
           </div>

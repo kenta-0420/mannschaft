@@ -138,7 +138,7 @@ onMounted(() => loadMyPosts())
               :src="post.coverImageUrl"
               :alt="post.title"
               class="h-28 w-full rounded-lg object-cover"
-            />
+            >
             <div
               v-else
               class="flex h-28 w-full items-center justify-center rounded-lg bg-surface-100 dark:bg-surface-800"

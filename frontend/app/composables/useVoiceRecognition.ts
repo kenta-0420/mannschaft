@@ -25,14 +25,11 @@ export function useVoiceRecognition() {
     recognition.interimResults = true
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let interim = ''
       let final = ''
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i]
         if (result && result.isFinal) {
           final += result[0]?.transcript ?? ''
-        } else {
-          interim += result?.[0]?.transcript ?? ''
         }
       }
       if (final) transcript.value += final

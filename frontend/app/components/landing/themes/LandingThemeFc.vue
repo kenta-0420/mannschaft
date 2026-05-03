@@ -46,7 +46,7 @@ useKonamiCommand(playKonamiSound)
       <p class="fc-subtitle">TEAM MANAGEMENT SYSTEM</p>
 
       <!-- ピクセルセパレーター -->
-      <div class="fc-separator" aria-hidden="true"></div>
+      <div class="fc-separator" aria-hidden="true"/>
 
       <!-- ピクセルボックス：機能一覧 -->
       <div class="pixel-box" role="list" :aria-label="t('landing.features.heading')">

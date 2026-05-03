@@ -61,14 +61,6 @@ if (!storageStateExists) {
       await page.goto('/quick-memos')
       await waitForHydration(page)
 
-      // フローティングボタンまたはページ内のメモ作成ボタンをクリック
-      const captureBtn = page.locator('button').filter({ hasText: '保存する' }).first()
-        .or(page.locator('button[title*="Ctrl+Shift+M"]'))
-        .or(page.locator('button').filter({ hasText: /保存する|ポイっとメモ/ }).first())
-      // ページ内の「保存する」ボタン付きの入力ボタンを探す
-      const openModalBtn = page.locator('button').filter({ hasText: /保存する/ })
-        .or(page.locator('.pi-feather').locator('..').first())
-
       // フローティングボタン（fixed, bottom-right）をクリック
       const floatingBtn = page.locator('button.\\!fixed')
       if (await floatingBtn.count() > 0) {

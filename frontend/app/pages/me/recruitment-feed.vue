@@ -2,7 +2,6 @@
 import { ref, onMounted } from 'vue'
 import type { RecruitmentFeedItem } from '~/types/recruitment'
 
-const { t } = useI18n()
 const api = useRecruitmentApi()
 const { error } = useNotification()
 const router = useRouter()

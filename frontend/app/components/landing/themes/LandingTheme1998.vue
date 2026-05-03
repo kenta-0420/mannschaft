@@ -19,9 +19,9 @@
       <p class="blink geo-badge">{{ $t('landing.hero.badge') }}</p>
 
       <p class="construction-row">
-        <span class="construction-icon" aria-hidden="true"></span>
+        <span class="construction-icon" aria-hidden="true"/>
         <span class="construction-text">{{ $t('landing.era_themes.y1998.under_construction') }}</span>
-        <span class="construction-icon" aria-hidden="true"></span>
+        <span class="construction-icon" aria-hidden="true"/>
       </p>
     </header>
 
@@ -67,7 +67,7 @@
 
     <!-- フッター -->
     <footer class="geo-footer">
-      <div class="rainbow-hr" aria-hidden="true"></div>
+      <div class="rainbow-hr" aria-hidden="true"/>
       <p class="best-viewed">{{ $t('landing.era_themes.y1998.best_viewed') }}</p>
       <p class="made-with">{{ $t('landing.era_themes.y1998.made_with') }}</p>
     </footer>

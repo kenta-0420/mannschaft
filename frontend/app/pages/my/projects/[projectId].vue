@@ -85,7 +85,8 @@ function openEdit() {
   showEditDialog.value = true
 }
 
-async function saveProject() {
+async function saveProject(updatedForm?: UpdateProjectRequest) {
+  if (updatedForm) Object.assign(editForm, updatedForm)
   try {
     await projectApi.updateProject(null, projectId, editForm)
     showEditDialog.value = false
@@ -125,7 +126,8 @@ function openEditMilestone(ms: MilestoneResponse) {
   showMilestoneDialog.value = true
 }
 
-async function saveMilestone() {
+async function saveMilestone(updatedForm?: CreateMilestoneRequest) {
+  if (updatedForm) Object.assign(milestoneForm, updatedForm)
   try {
     if (editingMilestone.value) {
       await projectApi.updateMilestone(null, projectId, editingMilestone.value.id, milestoneForm)

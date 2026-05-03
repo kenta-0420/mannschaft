@@ -5,7 +5,6 @@ import type {
   RecruitmentSearchParams,
 } from '~/types/recruitment'
 
-const { t } = useI18n()
 const api = useRecruitmentApi()
 
 // カテゴリ一覧

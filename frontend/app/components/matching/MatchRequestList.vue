@@ -4,7 +4,7 @@ import type { MatchRequestResponse, MatchRequestSearchParams } from '~/types/mat
 const props = defineProps<{ teamId?: number }>()
 const emit = defineEmits<{ select: [req: MatchRequestResponse]; create: [] }>()
 
-const { searchRequests, getTeamRequests, getPrefectures } = useMatchingApi()
+const { searchRequests, getTeamRequests } = useMatchingApi()
 const { showError } = useNotification()
 const { relativeTime } = useRelativeTime()
 

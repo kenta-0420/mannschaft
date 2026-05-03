@@ -121,7 +121,7 @@ export function useEmergencyClosureApi() {
   }
 
   async function confirmClosure(teamId: number, closureId: number) {
-    return api<void>(`${base(teamId)}/emergency-closures/${closureId}/confirm`, {
+    return api<undefined>(`${base(teamId)}/emergency-closures/${closureId}/confirm`, {
       method: 'POST',
     })
   }

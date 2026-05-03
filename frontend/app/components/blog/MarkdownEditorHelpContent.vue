@@ -8,9 +8,9 @@
       <ol class="help-ol">
         <li><strong>☰ ボタン</strong>を押して目次ブロックを挿入</li>
         <li>
-          ブロック内のリストに見出しを書く<br />
-          <code>- 大見出し（H1）</code><br />
-          <code> - 中見出し（H2）</code><br />
+          ブロック内のリストに見出しを書く<br >
+          <code>- 大見出し（H1）</code><br >
+          <code> - 中見出し（H2）</code><br >
           <code> - 小見出し（H3）</code>
         </li>
         <li><strong>⚡ 構成を生成</strong>ボタンを押すと見出しが自動挿入される</li>

@@ -285,7 +285,7 @@ onMounted(load)
           class="flex items-center justify-center rounded border border-dashed border-surface-300 bg-surface-50 p-4 dark:border-surface-600 dark:bg-surface-900"
           :style="{ minHeight: `${previewItem.bannerHeight}px`, maxWidth: `${previewItem.bannerWidth}px` }"
         >
-          <img v-if="previewItem.bannerImageUrl" :src="previewItem.bannerImageUrl" :alt="previewItem.altText" :width="previewItem.bannerWidth" :height="previewItem.bannerHeight" class="max-w-full object-contain" />
+          <img v-if="previewItem.bannerImageUrl" :src="previewItem.bannerImageUrl" :alt="previewItem.altText" :width="previewItem.bannerWidth" :height="previewItem.bannerHeight" class="max-w-full object-contain" >
           <div v-else class="text-center text-surface-400">
             <i class="pi pi-image mb-2 text-3xl" />
             <p class="text-sm">{{ previewItem.bannerWidth }} x {{ previewItem.bannerHeight }}</p>

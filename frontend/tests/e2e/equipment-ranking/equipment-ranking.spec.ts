@@ -257,8 +257,6 @@ test.describe('ERANK-001〜006: F09.12 同類チーム備品ランキング', ()
   })
 
   test('ERANK-003: opt-out ダイアログで opt-out 設定ができる', async ({ page }) => {
-    let optOutCalled = false
-
     await mockTrendingApis(page)
 
     // opt-out エンドポイントをモック
@@ -266,7 +264,6 @@ test.describe('ERANK-001〜006: F09.12 同類チーム備品ランキング', ()
       `**/api/v1/teams/${TEAM_ID}/equipment/trending/opt-out`,
       async (route) => {
         if (route.request().method() === 'POST') {
-          optOutCalled = true
           await route.fulfill({
             status: 201,
             contentType: 'application/json',
@@ -330,8 +327,6 @@ test.describe('ERANK-001〜006: F09.12 同類チーム備品ランキング', ()
   })
 
   test('ERANK-005: opt-in で opt-out が解除される', async ({ page }) => {
-    let optInCalled = false
-
     // opt-out 状態から開始
     await mockTrendingApis(page, true)
 
@@ -340,7 +335,6 @@ test.describe('ERANK-001〜006: F09.12 同類チーム備品ランキング', ()
       `**/api/v1/teams/${TEAM_ID}/equipment/trending/opt-out`,
       async (route) => {
         if (route.request().method() === 'DELETE') {
-          optInCalled = true
           await route.fulfill({
             status: 200,
             contentType: 'application/json',

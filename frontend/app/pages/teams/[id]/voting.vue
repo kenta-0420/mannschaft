@@ -82,7 +82,7 @@ onMounted(() => load())
   <div>
     <div class="mb-4 flex items-center justify-between">
       <PageHeader title="議決権行使" />
-
+      <Button label="投票セッションを作成" icon="pi pi-plus" size="small" @click="openCreateDialog" />
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-3">
@@ -143,7 +143,7 @@ onMounted(() => load())
         </div>
       </div>
       <template #footer>
-        <Button label="キャンセル" text @click="showCreateDialog = false" :disabled="saving" />
+        <Button label="キャンセル" text :disabled="saving" @click="showCreateDialog = false" />
         <Button label="作成" icon="pi pi-check" :loading="saving" @click="handleCreate" />
       </template>
     </Dialog>

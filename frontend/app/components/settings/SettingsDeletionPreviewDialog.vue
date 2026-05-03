@@ -144,8 +144,8 @@ function confirm() {
           確認のため現在のパスワードを入力してください
         </label>
         <Password
-          input-id="deletePassword"
           v-model="currentPassword"
+          input-id="deletePassword"
           :feedback="false"
           toggle-mask
           fluid

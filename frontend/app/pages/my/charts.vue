@@ -100,7 +100,7 @@ onMounted(() => loadData())
                 :src="p.photoUrl"
                 :alt="p.caption ?? ''"
                 class="h-24 w-full rounded-lg object-cover"
-              />
+              >
             </div>
           </div>
         </div>

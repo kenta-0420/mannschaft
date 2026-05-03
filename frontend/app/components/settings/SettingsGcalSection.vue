@@ -1,11 +1,12 @@
 <script setup lang="ts">
+const gcalSyncSettings = defineModel<{
+  personalSync: boolean
+  teamSyncIds: number[]
+  orgSyncIds: number[]
+} | null>('gcalSyncSettings', { required: true })
+
 defineProps<{
   gcalStatus: { isConnected: boolean; email: string | null; lastSyncedAt: string | null } | null
-  gcalSyncSettings: {
-    personalSync: boolean
-    teamSyncIds: number[]
-    orgSyncIds: number[]
-  } | null
   gcalSyncing: boolean
   teams: { id: number; name: string; nickname1?: string | null }[]
   organizations: { id: number; name: string; nickname1?: string | null }[]

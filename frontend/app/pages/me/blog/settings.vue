@@ -108,7 +108,7 @@ onMounted(() => loadSettings())
               :src="settings.avatarUrl"
               alt="アバタープレビュー"
               class="mt-2 h-16 w-16 rounded-full object-cover"
-            />
+            >
           </div>
         </div>
       </SectionCard>

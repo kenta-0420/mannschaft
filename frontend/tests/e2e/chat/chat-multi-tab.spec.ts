@@ -280,11 +280,6 @@ test.describe('CHAT-TAB-001〜006: チャットマルチタブUI（F04.2.1）', 
     // タブが10個表示されていることを確認
     await expect(page.getByRole('tab')).toHaveCount(10, { timeout: 10_000 })
 
-    // + ボタンが disabled になっていることを確認
-    const addButton = page.getByRole('button', { name: /新しいタブ|タブを追加|addNew|add/ })
-    // aria-label は $t('chat.tab.addNew') なので日本語ロケールで確認
-    const addBtn = page.locator('button[aria-label]').filter({ hasText: '' }).locator('[aria-label*="タブ"]')
-
     // + ボタンを aria-disabled 属性で探す
     await expect(page.locator('button[aria-disabled="true"]')).toBeVisible({ timeout: 5_000 })
   })
