@@ -228,6 +228,16 @@
       "recalculateSuccess": "Summary recalculated",
       "noData": "No summary data available"
     },
+    "requirements": {
+      "title": "Attendance Requirements",
+      "filterAll": "All",
+      "runEvaluation": "Run Evaluation",
+      "evaluationSuccess": "Evaluation complete",
+      "evaluateAll": "Evaluate All Students",
+      "evaluating": "Evaluating...",
+      "loadError": "Failed to load list",
+      "resolveSuccess": "Resolution recorded"
+    },
     "evaluation": {
       "title": "Attendance Requirement Evaluation",
       "status": {

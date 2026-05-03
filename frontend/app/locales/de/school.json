@@ -228,6 +228,16 @@
       "recalculateSuccess": "Zusammenfassung neu berechnet",
       "noData": "Keine Zusammenfassungsdaten"
     },
+    "requirements": {
+      "title": "Anwesenheitspflichten",
+      "filterAll": "Alle",
+      "runEvaluation": "Auswertung starten",
+      "evaluationSuccess": "Auswertung abgeschlossen",
+      "evaluateAll": "Alle Schüler auswerten",
+      "evaluating": "Auswertung läuft…",
+      "loadError": "Laden fehlgeschlagen",
+      "resolveSuccess": "Lösung gespeichert"
+    },
     "evaluation": {
       "title": "Bewertung der Anwesenheitsanforderungen",
       "status": {
