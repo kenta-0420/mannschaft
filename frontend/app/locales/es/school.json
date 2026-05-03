@@ -227,6 +227,32 @@
       "recalculate": "Recalcular",
       "recalculateSuccess": "Resumen recalculado",
       "noData": "Sin datos de resumen"
+    },
+    "evaluation": {
+      "title": "Evaluación de Requisitos de Asistencia",
+      "status": {
+        "OK": "En camino",
+        "WARNING": "Precaución",
+        "RISK": "En riesgo",
+        "VIOLATION": "Incumplimiento"
+      },
+      "currentAttendanceRate": "Tasa de asistencia actual",
+      "remainingAllowedAbsences": "Ausencias permitidas restantes",
+      "remainingDays": "{days} días restantes",
+      "noDaysLeft": "No se permiten más ausencias",
+      "evaluatedAt": "Evaluado el",
+      "resolve": "Resolver incumplimiento",
+      "resolveTitle": "Registrar resolución de incumplimiento",
+      "resolveNote": "Nota de resolución",
+      "resolveNoteHint": "Ej: Clase de recuperación completada, aprobación especial",
+      "resolveSuccess": "Incumplimiento resuelto correctamente",
+      "resolveError": "Error al registrar la resolución",
+      "atRisk": "Alumnos en riesgo",
+      "noEvaluations": "No hay datos de evaluación",
+      "noAtRisk": "No hay alumnos en riesgo",
+      "dashboard": "Panel de evaluación de requisitos",
+      "filterByStatus": "Filtrar por estado",
+      "loadError": "Error al cargar los datos de evaluación"
     }
   }
 }

@@ -227,6 +227,32 @@
       "recalculate": "再集計",
       "recalculateSuccess": "集計を再計算しました",
       "noData": "集計データがありません"
+    },
+    "evaluation": {
+      "title": "出席要件評価",
+      "status": {
+        "OK": "要件達成見込み",
+        "WARNING": "要注意",
+        "RISK": "要件未達リスク",
+        "VIOLATION": "要件未達確定"
+      },
+      "currentAttendanceRate": "現在出席率",
+      "remainingAllowedAbsences": "残り許容欠席日数",
+      "remainingDays": "あと{days}日",
+      "noDaysLeft": "これ以上欠席できません",
+      "evaluatedAt": "評価日時",
+      "resolve": "違反解消",
+      "resolveTitle": "違反解消を記録",
+      "resolveNote": "解消理由",
+      "resolveNoteHint": "例：補習完了・特例承認など",
+      "resolveSuccess": "違反解消を記録しました",
+      "resolveError": "違反解消の記録に失敗しました",
+      "atRisk": "リスク生徒一覧",
+      "noEvaluations": "評価データがありません",
+      "noAtRisk": "リスク生徒はいません",
+      "dashboard": "要件評価ダッシュボード",
+      "filterByStatus": "ステータスで絞り込み",
+      "loadError": "評価データの読み込みに失敗しました"
     }
   }
 }
