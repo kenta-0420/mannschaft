@@ -217,6 +217,20 @@ public class ActionMemoService {
         log.info("行動メモ作成: memoId={}, userId={}, memoDate={}, length={}, category={}",
                 saved.getId(), userId, memoDate, saved.getContent().length(), category);
 
+        // 10. 監査ログ記録（非同期 fire-and-forget）
+        auditLogService.record(
+                "ACTION_MEMO_CREATED",
+                userId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                String.format("{\"source\":\"ACTION_MEMO\",\"source_id\":%d,\"event\":\"CREATED\",\"category\":\"%s\"}",
+                        saved.getId(), category != null ? category.name() : "")
+        );
+
         return toResponse(saved, tagEntities);
     }
 
@@ -421,6 +435,31 @@ public class ActionMemoService {
         log.info("行動メモ更新: memoId={}, userId={}, length={}, category={}",
                 saved.getId(), userId, saved.getContent().length(), saved.getCategory());
 
+        // 監査ログ記録: 変更フィールドを列挙（非同期 fire-and-forget）
+        List<String> changedFields = new ArrayList<>();
+        if (request.getContent() != null) changedFields.add("content");
+        if (request.getMemoDate() != null) changedFields.add("memo_date");
+        if (request.getMood() != null) changedFields.add("mood");
+        if (request.getRelatedTodoId() != null) changedFields.add("related_todo_id");
+        if (request.getCategory() != null) changedFields.add("category");
+        if (request.getDurationMinutes() != null) changedFields.add("duration_minutes");
+        if (request.getProgressRate() != null) changedFields.add("progress_rate");
+        if (request.getCompletesTodo() != null) changedFields.add("completes_todo");
+        if (request.getTagIds() != null) changedFields.add("tag_ids");
+        if (request.getOrganizationId() != null) changedFields.add("organization_id");
+        auditLogService.record(
+                "ACTION_MEMO_UPDATED",
+                userId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                String.format("{\"source\":\"ACTION_MEMO\",\"source_id\":%d,\"event\":\"UPDATED\",\"fields_changed\":\"%s\"}",
+                        memoId, String.join(",", changedFields))
+        );
+
         List<ActionMemoTagEntity> tags = fetchTagsForMemo(memoId);
         return toResponse(saved, tags);
     }
@@ -438,6 +477,19 @@ public class ActionMemoService {
         memo.softDelete();
         memoRepository.save(memo);
         log.info("行動メモ削除: memoId={}, userId={}", memoId, userId);
+
+        // 監査ログ記録（非同期 fire-and-forget）
+        auditLogService.record(
+                "ACTION_MEMO_DELETED",
+                userId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                String.format("{\"source\":\"ACTION_MEMO\",\"source_id\":%d,\"event\":\"DELETED\"}", memoId)
+        );
     }
 
     // ==================================================================
