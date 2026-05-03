@@ -86,6 +86,13 @@ public class CorkboardCardEntity extends BaseEntity {
     @Builder.Default
     private Boolean isArchived = false;
 
+    @Column(name = "is_pinned", nullable = false)
+    @Builder.Default
+    private Boolean isPinned = false;
+
+    @Column(name = "pinned_at")
+    private LocalDateTime pinnedAt;
+
     @Column(nullable = false)
     private Long createdBy;
 

@@ -32,6 +32,8 @@ public class CorkboardCardResponse {
     private final String userNote;
     private final LocalDateTime autoArchiveAt;
     private final Boolean isArchived;
+    private final Boolean isPinned;
+    private final LocalDateTime pinnedAt;
     private final Long createdBy;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;

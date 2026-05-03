@@ -45,7 +45,7 @@ class CorkboardCardServiceTest {
             given(cardRepository.save(any(CorkboardCardEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(corkboardMapper.toCardResponse(any(CorkboardCardEntity.class)))
                     .willReturn(new CorkboardCardResponse(1L, 1L, "NOTE", null, null,
-                            null, "タイトル", "本文", null, null, null, null, "NONE", "MEDIUM", 0, 0, 0, null, null, false, 1L, null, null));
+                            null, "タイトル", "本文", null, null, null, null, "NONE", "MEDIUM", 0, 0, 0, null, null, false, false, null, 1L, null, null));
 
             CreateCardRequest req = new CreateCardRequest("NOTE", null, null,
                     "タイトル", "本文", null, null, null, null, null, null, null, null);
