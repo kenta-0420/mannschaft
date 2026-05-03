@@ -320,13 +320,18 @@ class MyCorkboardPinServiceTest {
         @Test
         @DisplayName("他ユーザーのボード ID 直叩き → 所有者検索で空 → CORKBOARD_011 (IDOR防止)")
         void 他人boardId_IDOR防止_011() {
-            // Given: USER_ID で検索したが、boardId は OTHER_USER_ID 所有 → 空
-            given(boardRepository.findByIdAndOwnerId(BOARD_ID, USER_ID))
-                    .willReturn(Optional.empty());
+            // Given: 攻撃者である OTHER_USER_ID で togglePin を呼ぶ。
+            //   Service は引数 userId をそのまま findByIdAndOwnerId に渡すので
+            //   findByIdAndOwnerId(BOARD_ID, OTHER_USER_ID) が呼ばれる。
+            //   Mockito のデフォルト戻り値で Optional.empty() が返るため、
+            //   明示的な given スタブは不要（書くと Strict mode の引数ミスマッチで失敗する）。
 
             // When / Then
             assertThatThrownBy(() -> service.togglePin(BOARD_ID, CARD_ID, true, OTHER_USER_ID))
-                    .isInstanceOf(BusinessException.class);
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("CORKBOARD_011"));
+            verify(cardRepository, never()).save(any());
         }
     }
 }

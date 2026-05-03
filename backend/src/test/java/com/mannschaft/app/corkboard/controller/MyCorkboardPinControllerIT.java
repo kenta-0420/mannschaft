@@ -114,7 +114,7 @@ class MyCorkboardPinControllerIT {
                     .willReturn(stubResponse(true));
 
             String body = """
-                    { "is_pinned": true }
+                    { "isPinned": true }
                     """;
 
             mockMvc.perform(patch("/api/v1/corkboards/{boardId}/cards/{cardId}/pin", BOARD_ID, CARD_ID)
@@ -122,8 +122,8 @@ class MyCorkboardPinControllerIT {
                             .content(body))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.id").value(CARD_ID))
-                    .andExpect(jsonPath("$.data.is_pinned").value(true))
-                    .andExpect(jsonPath("$.data.pinned_at").exists());
+                    .andExpect(jsonPath("$.data.isPinned").value(true))
+                    .andExpect(jsonPath("$.data.pinnedAt").exists());
 
             verify(pinService).togglePin(BOARD_ID, CARD_ID, true, USER_ID);
         }
@@ -135,15 +135,15 @@ class MyCorkboardPinControllerIT {
                     .willReturn(stubResponse(false));
 
             String body = """
-                    { "is_pinned": false }
+                    { "isPinned": false }
                     """;
 
             mockMvc.perform(patch("/api/v1/corkboards/{boardId}/cards/{cardId}/pin", BOARD_ID, CARD_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.is_pinned").value(false))
-                    .andExpect(jsonPath("$.data.pinned_at").doesNotExist());
+                    .andExpect(jsonPath("$.data.isPinned").value(false))
+                    .andExpect(jsonPath("$.data.pinnedAt").doesNotExist());
         }
 
         @Test
@@ -153,7 +153,7 @@ class MyCorkboardPinControllerIT {
                     .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(), eq(USER_ID));
 
             String body = """
-                    { "is_pinned": true }
+                    { "isPinned": true }
                     """;
 
             mockMvc.perform(patch("/api/v1/corkboards/{boardId}/cards/{cardId}/pin", BOARD_ID, CARD_ID)
@@ -170,7 +170,7 @@ class MyCorkboardPinControllerIT {
                     .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(), eq(USER_ID));
 
             String body = """
-                    { "is_pinned": true }
+                    { "isPinned": true }
                     """;
 
             mockMvc.perform(patch("/api/v1/corkboards/{boardId}/cards/{cardId}/pin", BOARD_ID, CARD_ID)
@@ -187,7 +187,7 @@ class MyCorkboardPinControllerIT {
                     .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(), eq(USER_ID));
 
             String body = """
-                    { "is_pinned": true }
+                    { "isPinned": true }
                     """;
 
             mockMvc.perform(patch("/api/v1/corkboards/{boardId}/cards/{cardId}/pin", BOARD_ID, CARD_ID)
@@ -204,7 +204,7 @@ class MyCorkboardPinControllerIT {
                     .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(), eq(USER_ID));
 
             String body = """
-                    { "is_pinned": true }
+                    { "isPinned": true }
                     """;
 
             mockMvc.perform(patch("/api/v1/corkboards/{boardId}/cards/{cardId}/pin", BOARD_ID, CARD_ID)
@@ -221,7 +221,7 @@ class MyCorkboardPinControllerIT {
                     .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(), eq(USER_ID));
 
             String body = """
-                    { "is_pinned": true }
+                    { "isPinned": true }
                     """;
 
             mockMvc.perform(patch("/api/v1/corkboards/{boardId}/cards/{cardId}/pin", BOARD_ID, CARD_ID)
