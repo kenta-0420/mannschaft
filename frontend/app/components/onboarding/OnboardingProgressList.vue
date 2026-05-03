@@ -30,12 +30,7 @@ const statusLabel = (status: OnboardingProgressStatus) => {
   return map[status] ?? status
 }
 
-const filteredProgresses = computed(() => {
-  return (props: { progresses: OnboardingProgress[] }) => {
-    if (statusFilter.value === 'ALL') return props.progresses
-    return props.progresses.filter(p => p.status === statusFilter.value)
-  }
-})
+
 </script>
 
 <template>

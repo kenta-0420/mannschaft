@@ -14,7 +14,6 @@ import { waitForHydration } from '../helpers/wait'
  *   - app/pages/organizations/[id]/index.vue
  */
 
-const ORG_ID = 1
 const PARENT_ORG_ID = 1
 const CURRENT_ORG_ID = 2
 const HIDDEN_PARENT_ORG_ID = 5
@@ -68,7 +67,7 @@ async function setupAuth(page: Page): Promise<void> {
  */
 async function mockOrgDetailApis(
   page: Page,
-  options: { withAncestors?: boolean; withChildren?: boolean } = {},
+  _options: { withAncestors?: boolean; withChildren?: boolean } = {},
 ): Promise<void> {
   // 現組織詳細
   await page.route(`**/api/v1/organizations/${CURRENT_ORG_ID}`, async (route) => {

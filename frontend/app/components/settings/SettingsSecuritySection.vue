@@ -57,7 +57,7 @@ function formatDate(dateStr: string | null) {
     <div v-else class="space-y-4">
       <p class="text-sm text-surface-500">認証アプリでQRコードをスキャンしてください。</p>
       <div class="flex justify-center">
-        <img :src="totpSetup.qrCodeUrl" alt="TOTP QRコード" class="h-48 w-48" />
+        <img :src="totpSetup.qrCodeUrl" alt="TOTP QRコード" class="h-48 w-48" >
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">シークレットキー</label>

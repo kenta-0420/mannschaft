@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler } from 'chart.js'
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler, type ChartConfiguration } from 'chart.js'
 import type { DailyPageView, MonthlyPageView } from '~/types/analytics'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler)
@@ -10,6 +10,8 @@ const props = defineProps<{
 }>()
 
 const viewMode = ref<'daily' | 'monthly'>('daily')
+const chartCanvas = ref<HTMLCanvasElement | null>(null)
+let chartInstance: ChartJS | null = null
 
 const dailyChartData = computed(() => ({
   labels: props.daily.map(d => d.date),
@@ -55,6 +57,19 @@ const chartOptions = {
   plugins: { legend: { position: 'top' as const } },
   scales: { y: { beginAtZero: true } },
 }
+
+function renderChart() {
+  if (!chartCanvas.value) return
+  chartInstance?.destroy()
+  const data = viewMode.value === 'daily' ? dailyChartData.value : monthlyChartData.value
+  const type = viewMode.value === 'daily' ? 'line' : 'bar'
+  const config: ChartConfiguration = { type, data, options: chartOptions }
+  chartInstance = new ChartJS(chartCanvas.value, config)
+}
+
+watch(viewMode, () => renderChart())
+onMounted(() => renderChart())
+onUnmounted(() => chartInstance?.destroy())
 </script>
 
 <template>

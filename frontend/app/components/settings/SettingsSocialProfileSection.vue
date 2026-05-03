@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { SocialProfile, CreateSocialProfileRequest } from '~/types/social-profile'
 
+const socialForm = defineModel<CreateSocialProfileRequest>('socialForm', { required: true })
+
 defineProps<{
   socialProfiles: SocialProfile[]
   showSocialDialog: boolean
   editingSocialProfile: SocialProfile | null
-  socialForm: CreateSocialProfileRequest
 }>()
 
 defineEmits<{

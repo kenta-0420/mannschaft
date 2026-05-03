@@ -216,7 +216,7 @@ async function submit() {
           accept="image/*,application/pdf"
           class="block w-full text-sm text-surface-500 file:mr-3 file:rounded file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20"
           @change="onFileSelect"
-        />
+        >
         <p v-if="certificateFile" class="mt-1 text-xs text-surface-400">
           {{ certificateFile.name }}
         </p>

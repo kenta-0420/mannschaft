@@ -88,7 +88,7 @@ onUnmounted(() => {
               :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData.token)}`"
               alt="QRコード"
               class="h-48 w-48"
-            />
+            >
             <p class="mt-2 text-xs text-surface-400">5分ごとに自動更新</p>
           </div>
         </div>

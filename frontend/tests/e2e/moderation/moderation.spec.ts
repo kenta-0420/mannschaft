@@ -61,7 +61,6 @@ const MOCK_REPORTS = [
   },
 ]
 
-const MOCK_PENDING_REPORTS = MOCK_REPORTS.filter((r) => r.status === 'PENDING')
 
 /** 認証状態をシミュレートする */
 async function setupAuth(page: Page): Promise<void> {

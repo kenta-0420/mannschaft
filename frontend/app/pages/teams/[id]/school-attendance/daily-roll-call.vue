@@ -16,8 +16,6 @@ const teamId = computed(() => Number(route.params.id))
 const { records, loading, submitting, lastSummary, loadRecords, submitRollCall } =
   useDailyRollCall(teamId)
 
-const { t } = useI18n()
-
 const today = new Date().toISOString().slice(0, 10)
 const selectedDate = ref(today)
 

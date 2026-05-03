@@ -86,7 +86,7 @@ onMounted(() => load())
   <div>
     <div class="mb-4 flex items-center justify-between">
       <PageHeader title="回数券" />
-
+      <Button label="回数券を追加" icon="pi pi-plus" size="small" @click="openCreateDialog" />
     </div>
     <SelectButton
       v-model="tab"
@@ -179,7 +179,7 @@ onMounted(() => load())
         </div>
       </div>
       <template #footer>
-        <Button label="キャンセル" text @click="showCreateDialog = false" :disabled="saving" />
+        <Button label="キャンセル" text :disabled="saving" @click="showCreateDialog = false" />
         <Button label="追加" icon="pi pi-check" :loading="saving" @click="handleCreate" />
       </template>
     </Dialog>

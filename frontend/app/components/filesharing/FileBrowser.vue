@@ -6,7 +6,7 @@ const props = defineProps<{
   scopeId: number
 }>()
 
-const { getFolder, getFolders, getDownloadUrl, deleteFile, deleteFolder, createFolder } = useFileSharingApi()
+const { getFolder, getFolders, getDownloadUrl, deleteFile, createFolder } = useFileSharingApi()
 const { showSuccess, showError } = useNotification()
 const { relativeTime } = useRelativeTime()
 

@@ -64,8 +64,8 @@ const onSubmit = handleSubmit(async (values) => {
         <div class="flex flex-col gap-2">
           <label for="newPassword">新しいパスワード</label>
           <Password
-            input-id="newPassword"
             v-model="newPassword"
+            input-id="newPassword"
             v-bind="newPasswordProps"
             :feedback="true"
             toggle-mask
@@ -77,8 +77,8 @@ const onSubmit = handleSubmit(async (values) => {
         <div class="flex flex-col gap-2">
           <label for="confirmPassword">確認用パスワード</label>
           <Password
-            input-id="confirmPassword"
             v-model="confirmPassword"
+            input-id="confirmPassword"
             v-bind="confirmPasswordProps"
             :feedback="false"
             toggle-mask

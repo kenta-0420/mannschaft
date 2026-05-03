@@ -95,7 +95,7 @@ onMounted(() => loadPosts())
             :src="post.coverImageUrl"
             :alt="post.title"
             class="h-40 w-full object-cover"
-          />
+          >
           <div class="p-4">
             <div class="mb-2 flex flex-wrap gap-1">
               <span

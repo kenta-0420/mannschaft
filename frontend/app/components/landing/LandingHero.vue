@@ -16,7 +16,7 @@ const { t } = useI18n()
         id="hero-heading"
         class="mb-6 text-4xl font-black leading-tight tracking-tight text-surface-900 dark:text-white md:text-6xl"
       >
-        {{ t('landing.hero.title_pre') }}<br />
+        {{ t('landing.hero.title_pre') }}<br >
         <span class="text-primary">{{ t('landing.hero.title_accent') }}</span>{{ t('landing.hero.title_post') }}
       </h1>
 

@@ -220,7 +220,7 @@ watch(visible, (val) => {
           class="hidden"
           accept="image/jpeg,image/png,image/webp,image/gif"
           @change="handleFileSelect"
-        />
+        >
       </div>
 
       <!-- 画像選択済み: Canvas クロッパー -->

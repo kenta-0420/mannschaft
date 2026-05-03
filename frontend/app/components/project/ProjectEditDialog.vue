@@ -8,8 +8,14 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  save: []
+  save: [form: UpdateProjectRequest]
 }>()
+
+const localForm = ref<UpdateProjectRequest>({ ...props.form })
+
+watch(() => props.form, (val) => {
+  localForm.value = { ...val }
+}, { deep: true })
 </script>
 
 <template>
@@ -22,30 +28,30 @@ const emit = defineEmits<{
     <div class="flex flex-col gap-4">
       <div>
         <label class="mb-1 block text-sm font-medium">タイトル</label>
-        <InputText v-model="props.form.title" class="w-full" />
+        <InputText v-model="localForm.title" class="w-full" />
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">説明</label>
-        <Textarea v-model="props.form.description" class="w-full" rows="3" />
+        <Textarea v-model="localForm.description" class="w-full" rows="3" />
       </div>
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="mb-1 block text-sm font-medium">絵文字</label>
-          <InputText v-model="props.form.emoji" class="w-full" />
+          <InputText v-model="localForm.emoji" class="w-full" />
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">カラー</label>
-          <InputText v-model="props.form.color" type="color" class="w-full" />
+          <InputText v-model="localForm.color" type="color" class="w-full" />
         </div>
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">期限</label>
-        <InputText v-model="props.form.dueDate" type="date" class="w-full" />
+        <InputText v-model="localForm.dueDate" type="date" class="w-full" />
       </div>
     </div>
     <template #footer>
       <Button label="キャンセル" text @click="visible = false" />
-      <Button label="更新" @click="emit('save')" />
+      <Button label="更新" @click="emit('save', localForm)" />
     </template>
   </Dialog>
 </template>

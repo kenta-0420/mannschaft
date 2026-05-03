@@ -152,19 +152,19 @@ onMounted(load)
         <template #body="{ data }">
           <div class="flex gap-1">
             <Button
+              v-tooltip="'編集'"
               icon="pi pi-pencil"
               size="small"
               severity="secondary"
               text
-              v-tooltip="'編集'"
               @click="openEdit(data)"
             />
             <Button
+              v-tooltip="'削除'"
               icon="pi pi-trash"
               size="small"
               severity="danger"
               text
-              v-tooltip="'削除'"
               @click="openDelete(data)"
             />
           </div>

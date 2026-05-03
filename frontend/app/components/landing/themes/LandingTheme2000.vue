@@ -58,7 +58,7 @@ const features = [
       </aside>
 
       <!-- メインコンテンツエリア -->
-      <main class="main-content" id="main-content">
+      <main id="main-content" class="main-content">
         <!-- ヒーローウィンドウパネル -->
         <section class="glass-window hero-window" aria-labelledby="hero2000-heading">
           <div class="window-titlebar">

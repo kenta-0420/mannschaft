@@ -101,8 +101,8 @@ function submitCreate() {
         maxlength="50"
         class="h-7 flex-1 rounded border border-surface-300 bg-surface-0 px-2 text-xs focus:border-primary focus:outline-none dark:border-surface-600 dark:bg-surface-700"
         @keydown.enter.prevent="submitCreate"
-      />
-      <input v-model="newTagColor" type="color" class="h-7 w-7 cursor-pointer rounded border border-surface-300" />
+      >
+      <input v-model="newTagColor" type="color" class="h-7 w-7 cursor-pointer rounded border border-surface-300" >
       <Button
         size="small"
         :label="t('button.create')"

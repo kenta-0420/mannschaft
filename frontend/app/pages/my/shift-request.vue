@@ -266,7 +266,7 @@ onMounted(async () => {
               :src="team.iconUrl"
               class="h-10 w-10 rounded-full object-cover"
               alt=""
-            />
+            >
             <div
               v-else
               class="flex h-10 w-10 items-center justify-center rounded-full bg-surface-200 text-sm font-bold text-surface-600"

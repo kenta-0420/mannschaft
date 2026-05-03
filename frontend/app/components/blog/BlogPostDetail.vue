@@ -10,7 +10,6 @@ const emit = defineEmits<{
 }>()
 
 const { renderMarkdown } = useMarkdownRenderer()
-const { relativeTime } = useRelativeTime()
 
 const renderedBody = computed(() => {
   return props.post.body ? renderMarkdown(props.post.body) : ''
@@ -34,7 +33,7 @@ const formattedPublishedAt = computed(() => {
       :src="post.coverImageUrl"
       :alt="post.title"
       class="mb-8 h-64 w-full rounded-xl object-cover shadow-sm"
-    />
+    >
 
     <!-- タイトル -->
     <h1 class="mb-4 text-3xl font-bold leading-tight text-surface-900 dark:text-surface-0">
@@ -50,7 +49,7 @@ const formattedPublishedAt = computed(() => {
           :src="post.author.avatarUrl"
           :alt="post.author.displayName"
           class="h-7 w-7 rounded-full object-cover"
-        />
+        >
         <span v-else class="flex h-7 w-7 items-center justify-center rounded-full bg-surface-200 text-xs">
           {{ post.author.displayName.charAt(0) }}
         </span>

@@ -154,11 +154,11 @@ onMounted(() => { if (scopeId.value) load() })
         <template #body="{ data }">
           <div class="flex gap-1">
             <Button
+              v-tooltip="'プレビュー更新'"
               icon="pi pi-refresh"
               size="small"
               text
               severity="info"
-              v-tooltip="'プレビュー更新'"
               :loading="previewing === data.id"
               @click="preview(data.id)"
             />

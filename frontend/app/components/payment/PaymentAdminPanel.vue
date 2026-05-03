@@ -3,7 +3,7 @@ import type { PaymentItemResponse, MemberPaymentResponse } from '~/types/payment
 
 const props = defineProps<{ scopeType: 'team' | 'organization'; scopeId: number }>()
 
-const { getPaymentItems, getMemberPayments, getPaymentSummary, sendReminder } = usePaymentApi()
+const { getPaymentItems, getMemberPayments, sendReminder } = usePaymentApi()
 const { showSuccess, showError } = useNotification()
 
 const items = ref<PaymentItemResponse[]>([])

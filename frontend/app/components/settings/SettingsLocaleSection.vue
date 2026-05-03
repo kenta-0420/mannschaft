@@ -1,6 +1,7 @@
 <script setup lang="ts">
+const profile = defineModel<{ locale: string; timezone: string }>('profile', { required: true })
+
 defineProps<{
-  profile: { locale: string; timezone: string }
   savingLocale: boolean
 }>()
 

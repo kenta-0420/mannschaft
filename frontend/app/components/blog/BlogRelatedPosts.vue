@@ -58,7 +58,7 @@ onMounted(() => loadRelatedPosts())
           :src="post.coverImageUrl"
           :alt="post.title"
           class="h-32 w-full object-cover"
-        />
+        >
         <div class="p-3">
           <p class="mb-1 text-sm font-medium text-surface-800 line-clamp-2 group-hover:text-primary-600 dark:text-surface-100">
             {{ post.title }}

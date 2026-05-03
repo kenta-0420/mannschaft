@@ -1,7 +1,8 @@
 <script setup lang="ts">
+const passwordForm = defineModel<{ currentPassword: string; newPassword: string; confirmPassword: string }>('passwordForm', { required: true })
+
 defineProps<{
   hasPassword: boolean
-  passwordForm: { currentPassword: string; newPassword: string; confirmPassword: string }
   submittingPassword: boolean
   canSubmitPassword: boolean
   passwordError: string | null

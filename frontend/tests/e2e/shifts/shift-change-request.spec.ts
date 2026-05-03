@@ -142,13 +142,10 @@ test.describe('CHANGE-001〜006: F03.5 Phase 2 変更依頼', () => {
 
     // 変更依頼作成 POST をモック
     let createCalled = false
-    let createdType = ''
     await page.route('**/api/v1/shifts/schedules/change-requests', async (route) => {
       const method = route.request().method()
       if (method === 'POST') {
         createCalled = true
-        const body = JSON.parse(route.request().postData() ?? '{}')
-        createdType = body.requestType ?? ''
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
@@ -203,13 +200,10 @@ test.describe('CHANGE-001〜006: F03.5 Phase 2 変更依頼', () => {
 
     // 変更依頼作成 POST をモック
     let createCalled = false
-    let createdType = ''
     await page.route('**/api/v1/shifts/schedules/change-requests', async (route) => {
       const method = route.request().method()
       if (method === 'POST') {
         createCalled = true
-        const body = JSON.parse(route.request().postData() ?? '{}')
-        createdType = body.requestType ?? ''
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
@@ -301,11 +295,6 @@ test.describe('CHANGE-001〜006: F03.5 Phase 2 変更依頼', () => {
       expect(claimCalled).toBe(true)
     } else {
       // 「申請中」バッジや OPEN_CALL タイプのバッジを確認（一覧に表示されているか）
-      const openCallBadge = page.getByText('オープンコール').first()
-      const openStatusBadge = page.getByText('申請中').first()
-      const isVisible =
-        await openCallBadge.isVisible({ timeout: 3_000 }).catch(() => false) ||
-        await openStatusBadge.isVisible({ timeout: 3_000 }).catch(() => false)
       // 変更依頼一覧が表示されていればテストとして充足
       expect(true).toBe(true)
     }

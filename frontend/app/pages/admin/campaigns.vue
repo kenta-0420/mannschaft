@@ -171,7 +171,7 @@ onMounted(loadCampaigns)
                 <template #body="{ data }">
                   <div class="flex gap-1">
                     <Button label="クーポン" size="small" severity="info" outlined @click="selectForCoupons(data.id)" />
-                    <Button icon="pi pi-trash" size="small" severity="danger" text v-tooltip="'削除'" @click="handleDelete(data.id)" />
+                    <Button v-tooltip="'削除'" icon="pi pi-trash" size="small" severity="danger" text @click="handleDelete(data.id)" />
                   </div>
                 </template>
               </Column>
