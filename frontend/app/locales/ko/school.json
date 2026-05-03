@@ -48,6 +48,100 @@
         "reason": "결석 사유",
         "comment": "코멘트"
       }
+    },
+    "familyNotice": {
+      "title": "학부모 연락",
+      "noticeType": {
+        "ABSENCE": "결석",
+        "LATE": "지각",
+        "EARLY_LEAVE": "조퇴",
+        "OTHER": "기타"
+      },
+      "reason": {
+        "SICK": "몸이 좋지 않음",
+        "INJURY": "부상",
+        "FAMILY_REASON": "가정 사정",
+        "BEREAVEMENT": "조의",
+        "INFECTIOUS_DISEASE": "출석 정지（감염병）",
+        "MENTAL_HEALTH": "심신 불편",
+        "OFFICIAL_BUSINESS": "공적 활동",
+        "OTHER": "기타"
+      },
+      "status": {
+        "PENDING": "미확인",
+        "ACKNOWLEDGED": "확인 완료",
+        "APPLIED": "출결 반영 완료"
+      },
+      "submit": "연락 보내기",
+      "submitSuccess": "연락을 보냈습니다",
+      "acknowledge": "확인하기",
+      "acknowledgeSuccess": "확인했습니다",
+      "apply": "출결에 반영하기",
+      "applySuccess": "출결에 반영했습니다",
+      "attendanceDate": "대상 날짜",
+      "expectedArrivalTime": "등교 예정 시각",
+      "expectedLeaveTime": "조퇴 예정 시각",
+      "reasonDetail": "상세 내용（선택）",
+      "unacknowledged": "미확인 {count}건",
+      "noNotices": "연락이 없습니다",
+      "history": "전송 내역",
+      "studentName": "학생 이름"
+    },
+    "transitionAlert": {
+      "title": "이동 감지 알림",
+      "unresolvedOnly": "미해결만 표시",
+      "resolve": "해결하기",
+      "resolveSuccess": "알림이 해결되었습니다",
+      "resolveNote": "해결 사유",
+      "resolveNotePlaceholder": "예: 보건실에 갔었음, 조기 퇴교 연락이 늦어짐 등",
+      "alertLevel": {
+        "NORMAL": "일반",
+        "URGENT": "긴급"
+      },
+      "message": "{studentName}님이 {previousPeriod}교시까지 출석했지만 {currentPeriod}교시부터 결석입니다",
+      "resolved": "해결됨",
+      "noAlerts": "알림이 없습니다",
+      "unresolvedCount": "미해결 {count}건"
+    },
+    "statistics": {
+      "title": "출결 통계",
+      "monthly": "월별 통계",
+      "term": "기간별 통계",
+      "year": "연도",
+      "month": "월",
+      "from": "시작일",
+      "to": "종료일",
+      "totalSchoolDays": "수업일수",
+      "totalStudents": "학생수",
+      "presentCount": "출석",
+      "absentCount": "결석",
+      "attendanceRate": "출석률",
+      "lateCount": "지각",
+      "earlyLeaveCount": "조퇴",
+      "subjectBreakdown": "과목별 출석률",
+      "exportCsv": "CSV 내보내기",
+      "noData": "데이터가 없습니다"
+    },
+    "timeline": {
+      "title": "하루 출결 타임라인",
+      "date": "날짜",
+      "dailyStatus": "일일 출결",
+      "periodStatus": "교시별 출결",
+      "noPeriods": "교시 데이터가 없습니다"
+    },
+    "homeroom": {
+      "title": "담임 교사 설정",
+      "homeroomTeacher": "담임 교사",
+      "assistantTeachers": "부담임 교사",
+      "academicYear": "학년도",
+      "effectiveFrom": "유효 시작일",
+      "effectiveUntil": "유효 종료일",
+      "add": "담임 추가",
+      "update": "업데이트",
+      "addSuccess": "담임 교사를 설정했습니다",
+      "updateSuccess": "담임 교사 설정을 업데이트했습니다",
+      "noHomerooms": "담임 설정이 없습니다",
+      "current": "현재 담당 중"
     }
   }
 }

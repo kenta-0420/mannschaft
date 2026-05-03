@@ -140,3 +140,164 @@ export interface StudentTimelineResponse {
   dailyStatus: AttendanceStatus
   periods: PeriodTimelineItem[]
 }
+
+// --- FamilyAttendanceNotice ---
+
+export type FamilyNoticeType = 'ABSENCE' | 'LATE' | 'EARLY_LEAVE' | 'OTHER'
+
+export type FamilyNoticeReason =
+  | 'SICK'
+  | 'INJURY'
+  | 'FAMILY_REASON'
+  | 'BEREAVEMENT'
+  | 'INFECTIOUS_DISEASE'
+  | 'MENTAL_HEALTH'
+  | 'OFFICIAL_BUSINESS'
+  | 'OTHER'
+
+export type FamilyNoticeStatus = 'PENDING' | 'ACKNOWLEDGED' | 'APPLIED'
+
+export interface FamilyAttendanceNoticeRequest {
+  teamId: number
+  studentUserId: number
+  attendanceDate: string
+  noticeType: FamilyNoticeType
+  reason?: FamilyNoticeReason
+  reasonDetail?: string
+  expectedArrivalTime?: string
+  expectedLeaveTime?: string
+}
+
+export interface FamilyAttendanceNoticeResponse {
+  id: number
+  teamId: number
+  studentUserId: number
+  submitterUserId: number
+  attendanceDate: string
+  noticeType: FamilyNoticeType
+  reason?: FamilyNoticeReason
+  reasonDetail?: string
+  expectedArrivalTime?: string
+  expectedLeaveTime?: string
+  attachedDownloadUrls?: string[]
+  status: FamilyNoticeStatus
+  acknowledgedBy?: number
+  acknowledgedAt?: string
+  appliedToRecord: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FamilyNoticeListResponse {
+  teamId: number
+  attendanceDate: string
+  records: FamilyAttendanceNoticeResponse[]
+  totalCount: number
+  unacknowledgedCount: number
+}
+
+// --- TransitionAlert ---
+
+export type TransitionAlertLevel = 'NORMAL' | 'URGENT'
+
+export interface TransitionAlertResponse {
+  id: number
+  teamId: number
+  studentUserId: number
+  attendanceDate: string
+  previousPeriodNumber: number
+  currentPeriodNumber: number
+  previousPeriodStatus: AttendanceStatus
+  currentPeriodStatus: AttendanceStatus
+  alertLevel: TransitionAlertLevel
+  resolved: boolean
+  resolvedAt?: string
+  resolvedBy?: number
+  resolutionNote?: string
+  createdAt: string
+}
+
+export interface TransitionAlertListResponse {
+  teamId: number
+  attendanceDate: string
+  alerts: TransitionAlertResponse[]
+  totalCount: number
+  unresolvedCount: number
+}
+
+export interface TransitionAlertResolveRequest {
+  note: string
+}
+
+// --- Statistics ---
+
+export interface AttendanceStatisticsSummary {
+  studentUserId: number
+  presentDays: number
+  absentDays: number
+  lateCount: number
+  earlyLeaveCount: number
+  attendanceRate: number
+}
+
+export interface MonthlyStatisticsResponse {
+  year: number
+  month: number
+  teamId: number
+  totalSchoolDays: number
+  totalStudents: number
+  presentCount: number
+  absentCount: number
+  undecidedCount: number
+  attendanceRate: number
+  studentBreakdown: AttendanceStatisticsSummary[]
+}
+
+export interface SubjectAttendanceBreakdown {
+  subjectName: string
+  presentPeriods: number
+  totalPeriods: number
+  attendanceRate: number
+}
+
+export interface StudentTermStatisticsResponse {
+  studentUserId: number
+  from: string
+  to: string
+  totalSchoolDays: number
+  presentDays: number
+  absentDays: number
+  lateCount: number
+  earlyLeaveCount: number
+  attendanceRate: number
+  subjectBreakdown: SubjectAttendanceBreakdown[]
+}
+
+// --- ClassHomeroom ---
+
+export interface ClassHomeroomResponse {
+  id: number
+  teamId: number
+  homeroomTeacherUserId: number
+  assistantTeacherUserIds: number[]
+  academicYear: number
+  effectiveFrom: string
+  effectiveUntil?: string
+  createdBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ClassHomeroomCreateRequest {
+  homeroomTeacherUserId: number
+  assistantTeacherUserIds?: number[]
+  academicYear: number
+  effectiveFrom: string
+  effectiveUntil?: string
+}
+
+export interface ClassHomeroomUpdateRequest {
+  homeroomTeacherUserId?: number
+  assistantTeacherUserIds?: number[]
+  effectiveUntil?: string
+}
