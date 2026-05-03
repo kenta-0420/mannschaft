@@ -203,7 +203,7 @@ onMounted(async () => {
     />
 
     <!-- 作成ダイアログ -->
-    <EventForm
+    <ScheduleEventForm
       v-model:visible="showCreateDialog"
       scope-type="organization"
       :scope-id="createAsPersonal ? 0 : orgId"
@@ -213,7 +213,7 @@ onMounted(async () => {
     />
 
     <!-- 編集ダイアログ -->
-    <EventForm
+    <ScheduleEventForm
       v-model:visible="showEditDialog"
       scope-type="organization"
       :scope-id="orgId"

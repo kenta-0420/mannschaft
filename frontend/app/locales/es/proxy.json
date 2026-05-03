@@ -1,0 +1,77 @@
+{
+  "proxy": {
+    "title": "Escritorio de entrada por representación",
+    "description": "Introduzca solicitudes en papel en nombre de residentes no digitales",
+    "consent": {
+      "title": "Consentimiento de entrada por representación",
+      "subjectUserId": "ID de residente representado",
+      "method": {
+        "label": "Método de consentimiento",
+        "paper_signed": "Firma en papel",
+        "witnessed_oral": "Oral con testigo",
+        "digital_signature": "Firma digital",
+        "guardian_by_court": "Tutor designado por tribunal"
+      },
+      "status": {
+        "pending": "Pendiente de aprobación",
+        "active": "Activo",
+        "expired": "Caducado",
+        "revoked": "Revocado"
+      },
+      "effectiveFrom": "Válido desde",
+      "effectiveUntil": "Válido hasta",
+      "scopes": "Ámbitos de función",
+      "approvedAt": "Aprobado el",
+      "revokedAt": "Revocado el",
+      "noActive": "No hay consentimientos activos"
+    },
+    "scope": {
+      "survey": "Encuesta",
+      "schedule_attendance": "Asistencia",
+      "shift_request": "Solicitud de turno",
+      "announcement_read": "Lectura de anuncio",
+      "parking_application": "Solicitud de aparcamiento",
+      "circular": "Circular"
+    },
+    "desk": {
+      "pinSubject": "Fijar residente",
+      "pinConsent": "Seleccionar consentimiento",
+      "unpin": "Desfijar",
+      "pinned": "Introduciendo como {name}",
+      "inputSource": {
+        "label": "Fuente de entrada",
+        "paper_form": "Formulario en papel",
+        "phone_interview": "Entrevista telefónica",
+        "in_person": "Presencial"
+      },
+      "originalStorage": {
+        "label": "Ubicación del original",
+        "placeholder": "p. ej. proxy-records/2026/scan_001.pdf"
+      },
+      "active": "Modo de entrada por representación activo",
+      "inactive": "Modo de entrada por representación inactivo"
+    },
+    "record": {
+      "title": "Historial de entradas por representación",
+      "createdAt": "Creado el",
+      "featureScope": "Ámbito de función",
+      "targetEntity": "Registro objetivo"
+    },
+    "revoke": {
+      "title": "Revocar consentimiento",
+      "method": {
+        "api": "Solicitud en línea por el titular",
+        "paper": "Solicitud en papel",
+        "life_event": "Evento vital (mudanza, etc.)",
+        "tenure_end": "Fin del mandato"
+      },
+      "reason": "Motivo de revocación",
+      "confirm": "¿Está seguro de que desea revocar este consentimiento?"
+    },
+    "audit": {
+      "byPerson": "Entrada propia",
+      "byProxy": "Entrada por representación",
+      "total": "Total"
+    }
+  }
+}

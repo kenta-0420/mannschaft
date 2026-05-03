@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const authStore = useAuthStore()
 const syncStore = useSyncStore()
+const teamStore = useTeamStore()
 const route = useRoute()
 const { t } = useI18n()
 
@@ -36,7 +37,16 @@ const navItems = computed(() => [
 /** 未解決コンフリクトがある場合のみ「同期」ナビを表示 */
 const showSyncNav = computed(() => syncStore.hasConflicts)
 
+/** DEPUTY_ADMIN 以上のチームが 1 つでもある場合に代理入力デスクを表示 */
+const showProxyDeskNav = computed(() =>
+  teamStore.myTeams.some(
+    (team) => team.role === 'ADMIN' || team.role === 'SYSTEM_ADMIN' || team.role === 'DEPUTY_ADMIN',
+  ),
+)
+
 const systemAdminItem = { label: 'SYSTEM', icon: 'pi pi-shield', to: '/system-admin' }
+
+const proxyDeskItem = { label: t('proxy.title'), icon: 'pi pi-tablet', to: '/admin/proxy-desk' }
 
 function isActive(path: string): boolean {
   return route.path.startsWith(path)
@@ -74,6 +84,16 @@ function isActive(path: string): boolean {
               >
                 <i :class="item.icon" />
                 {{ item.label }}
+              </NuxtLink>
+              <!-- 代理入力デスク（DEPUTY_ADMIN 以上のみ表示） -->
+              <NuxtLink
+                v-if="showProxyDeskNav"
+                :to="proxyDeskItem.to"
+                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
+                :class="isActive(proxyDeskItem.to) ? 'bg-primary/10 text-primary' : 'text-surface-600'"
+              >
+                <i :class="proxyDeskItem.icon" />
+                {{ proxyDeskItem.label }}
               </NuxtLink>
               <NuxtLink
                 v-if="authStore.isSystemAdmin"
@@ -198,6 +218,17 @@ function isActive(path: string): boolean {
             >
               {{ syncStore.conflictCount }}
             </span>
+          </NuxtLink>
+          <!-- 代理入力デスク（DEPUTY_ADMIN 以上のみ表示） -->
+          <NuxtLink
+            v-if="showProxyDeskNav"
+            :to="proxyDeskItem.to"
+            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100"
+            :class="isActive(proxyDeskItem.to) ? 'bg-primary/10 text-primary' : 'text-surface-700'"
+            @click="showMobileMenu = false"
+          >
+            <i :class="[proxyDeskItem.icon, 'text-base']" />
+            {{ proxyDeskItem.label }}
           </NuxtLink>
           <!-- システム管理 -->
           <NuxtLink
