@@ -25,4 +25,12 @@ public interface DailyAttendanceRecordRepository extends JpaRepository<DailyAtte
     /** 特定ステータスの生徒を取得する（点呼後の統計用）。 */
     List<DailyAttendanceRecordEntity> findByTeamIdAndAttendanceDateAndStatus(
             Long teamId, LocalDate attendanceDate, AttendanceStatus status);
+
+    /** クラスの期間内日次出欠を一括取得（月次集計・CSV エクスポート用）。 */
+    List<DailyAttendanceRecordEntity> findByTeamIdAndAttendanceDateBetweenOrderByAttendanceDateAsc(
+            Long teamId, LocalDate from, LocalDate to);
+
+    /** 生徒の期間内日次出欠を取得（学期別統計用）。 */
+    List<DailyAttendanceRecordEntity> findByStudentUserIdAndTeamIdAndAttendanceDateBetweenOrderByAttendanceDateAsc(
+            Long studentUserId, Long teamId, LocalDate from, LocalDate to);
 }

@@ -48,6 +48,100 @@
         "reason": "Abwesenheitsgrund",
         "comment": "Kommentar"
       }
+    },
+    "familyNotice": {
+      "title": "Elternbenachrichtigung",
+      "noticeType": {
+        "ABSENCE": "Abwesenheit",
+        "LATE": "Verspätung",
+        "EARLY_LEAVE": "Frühzeitiges Verlassen",
+        "OTHER": "Sonstiges"
+      },
+      "reason": {
+        "SICK": "Krankheit",
+        "INJURY": "Verletzung",
+        "FAMILY_REASON": "Familiäre Gründe",
+        "BEREAVEMENT": "Trauerfall",
+        "INFECTIOUS_DISEASE": "Infektionskrankheit (Sperrung)",
+        "MENTAL_HEALTH": "Psychische/körperliche Beschwerden",
+        "OFFICIAL_BUSINESS": "Offizielle Tätigkeit",
+        "OTHER": "Sonstiges"
+      },
+      "status": {
+        "PENDING": "Ausstehend",
+        "ACKNOWLEDGED": "Bestätigt",
+        "APPLIED": "Im Protokoll vermerkt"
+      },
+      "submit": "Benachrichtigung senden",
+      "submitSuccess": "Benachrichtigung erfolgreich gesendet",
+      "acknowledge": "Bestätigen",
+      "acknowledgeSuccess": "Erfolgreich bestätigt",
+      "apply": "Auf Anwesenheit anwenden",
+      "applySuccess": "Im Anwesenheitsprotokoll vermerkt",
+      "attendanceDate": "Zieldatum",
+      "expectedArrivalTime": "Voraussichtliche Ankunftszeit",
+      "expectedLeaveTime": "Voraussichtliche Abgangszeit",
+      "reasonDetail": "Details (optional)",
+      "unacknowledged": "{count} unbestätigt",
+      "noNotices": "Keine Benachrichtigungen",
+      "history": "Sendeverlauf",
+      "studentName": "Schülername"
+    },
+    "transitionAlert": {
+      "title": "Übergangserkennung-Alarm",
+      "unresolvedOnly": "Nur ungelöste anzeigen",
+      "resolve": "Lösen",
+      "resolveSuccess": "Alarm wurde gelöst",
+      "resolveNote": "Lösungsnotiz",
+      "resolveNotePlaceholder": "z.B. War beim Sanitäter, Nachricht von Erziehungsberechtigten verspätet, etc.",
+      "alertLevel": {
+        "NORMAL": "Normal",
+        "URGENT": "Dringend"
+      },
+      "message": "{studentName} war bis Stunde {previousPeriod} anwesend, ist aber ab Stunde {currentPeriod} abwesend",
+      "resolved": "Gelöst",
+      "noAlerts": "Keine Alarme",
+      "unresolvedCount": "{count} ungelöst"
+    },
+    "statistics": {
+      "title": "Anwesenheitsstatistiken",
+      "monthly": "Monatliche Statistiken",
+      "term": "Statistiken nach Zeitraum",
+      "year": "Jahr",
+      "month": "Monat",
+      "from": "Von",
+      "to": "Bis",
+      "totalSchoolDays": "Schultage",
+      "totalStudents": "Schüler",
+      "presentCount": "Anwesend",
+      "absentCount": "Abwesend",
+      "attendanceRate": "Anwesenheitsrate",
+      "lateCount": "Verspätungen",
+      "earlyLeaveCount": "Frühzeitige Abgänge",
+      "subjectBreakdown": "Aufschlüsselung nach Fach",
+      "exportCsv": "CSV exportieren",
+      "noData": "Keine Daten verfügbar"
+    },
+    "timeline": {
+      "title": "Tägliche Anwesenheitszeitachse",
+      "date": "Datum",
+      "dailyStatus": "Täglicher Status",
+      "periodStatus": "Status nach Stunde",
+      "noPeriods": "Keine Stundendaten verfügbar"
+    },
+    "homeroom": {
+      "title": "Klassenlehrer-Zuweisung",
+      "homeroomTeacher": "Klassenlehrer",
+      "assistantTeachers": "Assistenzlehrer",
+      "academicYear": "Schuljahr",
+      "effectiveFrom": "Gültig ab",
+      "effectiveUntil": "Gültig bis",
+      "add": "Klassenlehrer hinzufügen",
+      "update": "Aktualisieren",
+      "addSuccess": "Klassenlehrer wurde zugewiesen",
+      "updateSuccess": "Klassenlehrer-Zuweisung wurde aktualisiert",
+      "noHomerooms": "Keine Klassenlehrer-Zuweisungen",
+      "current": "Derzeit aktiv"
     }
   }
 }

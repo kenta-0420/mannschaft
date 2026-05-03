@@ -48,6 +48,100 @@
         "reason": "缺席原因",
         "comment": "备注"
       }
+    },
+    "familyNotice": {
+      "title": "家长联络",
+      "noticeType": {
+        "ABSENCE": "缺席",
+        "LATE": "迟到",
+        "EARLY_LEAVE": "早退",
+        "OTHER": "其他"
+      },
+      "reason": {
+        "SICK": "身体不适",
+        "INJURY": "受伤",
+        "FAMILY_REASON": "家庭原因",
+        "BEREAVEMENT": "丧假",
+        "INFECTIOUS_DISEASE": "停课（传染病）",
+        "MENTAL_HEALTH": "身心不适",
+        "OFFICIAL_BUSINESS": "公务活动",
+        "OTHER": "其他"
+      },
+      "status": {
+        "PENDING": "未确认",
+        "ACKNOWLEDGED": "已确认",
+        "APPLIED": "已反映至出勤"
+      },
+      "submit": "发送联络",
+      "submitSuccess": "联络已发送",
+      "acknowledge": "确认",
+      "acknowledgeSuccess": "已确认",
+      "apply": "反映至出勤",
+      "applySuccess": "已反映至出勤记录",
+      "attendanceDate": "对象日期",
+      "expectedArrivalTime": "预计到校时间",
+      "expectedLeaveTime": "预计早退时间",
+      "reasonDetail": "详情（可选）",
+      "unacknowledged": "未确认 {count} 件",
+      "noNotices": "暂无联络",
+      "history": "发送历史",
+      "studentName": "学生姓名"
+    },
+    "transitionAlert": {
+      "title": "移动检测警报",
+      "unresolvedOnly": "仅显示未解决",
+      "resolve": "解决",
+      "resolveSuccess": "警报已解决",
+      "resolveNote": "解决原因",
+      "resolveNotePlaceholder": "例：去了保健室、监护人联系延迟等",
+      "alertLevel": {
+        "NORMAL": "普通",
+        "URGENT": "紧急"
+      },
+      "message": "{studentName}在第{previousPeriod}节课时在场，但从第{currentPeriod}节课起缺席",
+      "resolved": "已解决",
+      "noAlerts": "没有警报",
+      "unresolvedCount": "未解决 {count}件"
+    },
+    "statistics": {
+      "title": "出勤统计",
+      "monthly": "月度统计",
+      "term": "学期统计",
+      "year": "年",
+      "month": "月",
+      "from": "开始日期",
+      "to": "结束日期",
+      "totalSchoolDays": "上课天数",
+      "totalStudents": "学生数",
+      "presentCount": "出席",
+      "absentCount": "缺席",
+      "attendanceRate": "出勤率",
+      "lateCount": "迟到",
+      "earlyLeaveCount": "早退",
+      "subjectBreakdown": "科目出勤率",
+      "exportCsv": "导出CSV",
+      "noData": "暂无数据"
+    },
+    "timeline": {
+      "title": "一日出勤时间线",
+      "date": "日期",
+      "dailyStatus": "当日出勤",
+      "periodStatus": "课时出勤",
+      "noPeriods": "暂无课时数据"
+    },
+    "homeroom": {
+      "title": "班主任设置",
+      "homeroomTeacher": "班主任",
+      "assistantTeachers": "副班主任",
+      "academicYear": "学年",
+      "effectiveFrom": "生效日期",
+      "effectiveUntil": "截止日期",
+      "add": "添加班主任",
+      "update": "更新",
+      "addSuccess": "班主任已设置",
+      "updateSuccess": "班主任设置已更新",
+      "noHomerooms": "暂无班主任设置",
+      "current": "当前任职"
     }
   }
 }

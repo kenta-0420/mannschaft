@@ -48,6 +48,100 @@
         "reason": "Absence Reason",
         "comment": "Comment"
       }
+    },
+    "familyNotice": {
+      "title": "Family Notice",
+      "noticeType": {
+        "ABSENCE": "Absence",
+        "LATE": "Late Arrival",
+        "EARLY_LEAVE": "Early Leave",
+        "OTHER": "Other"
+      },
+      "reason": {
+        "SICK": "Illness",
+        "INJURY": "Injury",
+        "FAMILY_REASON": "Family Reasons",
+        "BEREAVEMENT": "Bereavement",
+        "INFECTIOUS_DISEASE": "Infectious Disease (Suspension)",
+        "MENTAL_HEALTH": "Mental/Physical Health",
+        "OFFICIAL_BUSINESS": "Official Business",
+        "OTHER": "Other"
+      },
+      "status": {
+        "PENDING": "Pending",
+        "ACKNOWLEDGED": "Acknowledged",
+        "APPLIED": "Applied to Record"
+      },
+      "submit": "Send Notice",
+      "submitSuccess": "Notice sent successfully",
+      "acknowledge": "Acknowledge",
+      "acknowledgeSuccess": "Acknowledged successfully",
+      "apply": "Apply to Attendance",
+      "applySuccess": "Applied to attendance record",
+      "attendanceDate": "Target Date",
+      "expectedArrivalTime": "Expected Arrival Time",
+      "expectedLeaveTime": "Expected Leave Time",
+      "reasonDetail": "Details (optional)",
+      "unacknowledged": "{count} unacknowledged",
+      "noNotices": "No notices",
+      "history": "Sent History",
+      "studentName": "Student Name"
+    },
+    "transitionAlert": {
+      "title": "Transition Alert",
+      "unresolvedOnly": "Unresolved only",
+      "resolve": "Resolve",
+      "resolveSuccess": "Alert resolved",
+      "resolveNote": "Resolution note",
+      "resolveNotePlaceholder": "e.g. Was in the nurse's office, late contact from guardian, etc.",
+      "alertLevel": {
+        "NORMAL": "Normal",
+        "URGENT": "Urgent"
+      },
+      "message": "{studentName} was present until period {previousPeriod} but absent from period {currentPeriod}",
+      "resolved": "Resolved",
+      "noAlerts": "No alerts",
+      "unresolvedCount": "{count} unresolved"
+    },
+    "statistics": {
+      "title": "Attendance Statistics",
+      "monthly": "Monthly Statistics",
+      "term": "Term Statistics",
+      "year": "Year",
+      "month": "Month",
+      "from": "From",
+      "to": "To",
+      "totalSchoolDays": "School Days",
+      "totalStudents": "Students",
+      "presentCount": "Present",
+      "absentCount": "Absent",
+      "attendanceRate": "Attendance Rate",
+      "lateCount": "Late",
+      "earlyLeaveCount": "Early Leave",
+      "subjectBreakdown": "Subject Breakdown",
+      "exportCsv": "Export CSV",
+      "noData": "No data available"
+    },
+    "timeline": {
+      "title": "Daily Attendance Timeline",
+      "date": "Date",
+      "dailyStatus": "Daily Status",
+      "periodStatus": "Period Status",
+      "noPeriods": "No period data available"
+    },
+    "homeroom": {
+      "title": "Homeroom Assignment",
+      "homeroomTeacher": "Homeroom Teacher",
+      "assistantTeachers": "Assistant Teachers",
+      "academicYear": "Academic Year",
+      "effectiveFrom": "Effective From",
+      "effectiveUntil": "Effective Until",
+      "add": "Add Homeroom",
+      "update": "Update",
+      "addSuccess": "Homeroom teacher assigned",
+      "updateSuccess": "Homeroom assignment updated",
+      "noHomerooms": "No homeroom assignments",
+      "current": "Currently Active"
     }
   }
 }

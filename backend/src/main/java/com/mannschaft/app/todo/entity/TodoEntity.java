@@ -90,6 +90,10 @@ public class TodoEntity {
     @Column(name = "linked_schedule_id")
     private Long linkedScheduleId;
 
+    /** シフト枠との連携ID。シフト公開時の Todo 自動作成で設定（F03.5 Phase 4-β）。 */
+    @Column(name = "linked_shift_slot_id")
+    private Long linkedShiftSlotId;
+
     @Column(name = "progress_rate", nullable = false, precision = 5, scale = 2)
     @Builder.Default
     private BigDecimal progressRate = BigDecimal.ZERO;
