@@ -57,6 +57,7 @@ class PersonalTimetableControllerTest {
     @MockitoBean private PersonalTimetableService service;
     @MockitoBean private AuthTokenService authTokenService;
     @MockitoBean private UserLocaleCache userLocaleCache;
+    // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
     @MockitoBean private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean private ProxyInputContext proxyInputContext;
 
