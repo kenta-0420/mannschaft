@@ -80,7 +80,7 @@ public class ModuleService {
      * @param teamId チームID
      * @return チームモジュールレスポンスリスト
      */
-    @Cacheable(value = "teamModules", key = "#teamId")
+    @Cacheable(value = "teamModules", key = "#teamId", unless = "#result == null || #result.isEmpty()")
     public List<TeamModuleResponse> getTeamModules(Long teamId) {
         return teamEnabledModuleRepository.findByTeamId(teamId).stream()
                 .map(tem -> {
