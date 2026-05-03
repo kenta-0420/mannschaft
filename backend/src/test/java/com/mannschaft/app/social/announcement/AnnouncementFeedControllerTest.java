@@ -3,6 +3,8 @@ package com.mannschaft.app.social.announcement;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.social.announcement.AnnouncementFeedService.AnnouncementFeedItem;
 import com.mannschaft.app.social.announcement.AnnouncementFeedService.AnnouncementFeedResult;
 import com.mannschaft.app.social.announcement.controller.AnnouncementFeedController;
@@ -69,6 +71,12 @@ class AnnouncementFeedControllerTest {
     // F11.3: UserLocaleFilter の依存解決用
     @MockitoBean
     private UserLocaleCache userLocaleCache;
+
+    // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+    @MockitoBean
+    private ProxyInputConsentRepository proxyInputConsentRepository;
+    @MockitoBean
+    private ProxyInputContext proxyInputContext;
 
     @BeforeEach
     void setUpSecurityContext() {

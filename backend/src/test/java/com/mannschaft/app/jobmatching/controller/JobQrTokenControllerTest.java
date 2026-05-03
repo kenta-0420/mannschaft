@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.jobmatching.controller.dto.IssueQrTokenRequest;
 import com.mannschaft.app.jobmatching.entity.JobContractEntity;
 import com.mannschaft.app.jobmatching.entity.JobQrTokenEntity;
@@ -80,6 +82,12 @@ class JobQrTokenControllerTest {
     // UserLocaleFilter の依存解決用
     @MockitoBean
     private UserLocaleCache userLocaleCache;
+
+    // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
+    @MockitoBean
+    private ProxyInputConsentRepository proxyInputConsentRepository;
+    @MockitoBean
+    private ProxyInputContext proxyInputContext;
 
     @BeforeEach
     void setUpSecurityContext() {
