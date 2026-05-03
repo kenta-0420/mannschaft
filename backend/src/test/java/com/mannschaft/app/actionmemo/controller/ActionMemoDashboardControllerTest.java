@@ -24,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
@@ -80,7 +81,7 @@ class ActionMemoDashboardControllerTest {
         ActionMemoListResponse response = new ActionMemoListResponse(List.of(memo), null);
 
         given(actionMemoService.listTeamMemberMemos(eq(TEAM_ID), eq(MEMBER_ID),
-                eq(ADMIN_USER_ID), any(), any())).willReturn(response);
+                eq(ADMIN_USER_ID), any(), anyInt())).willReturn(response);
 
         mockMvc.perform(get("/api/v1/teams/{teamId}/members/{memberId}/action-memos",
                         TEAM_ID, MEMBER_ID))
@@ -95,7 +96,7 @@ class ActionMemoDashboardControllerTest {
     @DisplayName("非 ADMIN: DASHBOARD_FORBIDDEN で 403 が返る")
     void listMemberMemos_notAdmin_forbidden() throws Exception {
         willThrow(new BusinessException(ActionMemoErrorCode.ACTION_MEMO_DASHBOARD_FORBIDDEN))
-                .given(actionMemoService).listTeamMemberMemos(any(), any(), any(), any(), any());
+                .given(actionMemoService).listTeamMemberMemos(any(), any(), any(), any(), anyInt());
 
         mockMvc.perform(get("/api/v1/teams/{teamId}/members/{memberId}/action-memos",
                         TEAM_ID, MEMBER_ID))
@@ -108,7 +109,7 @@ class ActionMemoDashboardControllerTest {
         ActionMemoListResponse response = new ActionMemoListResponse(List.of(), null);
 
         given(actionMemoService.listTeamMemberMemos(eq(TEAM_ID), eq(MEMBER_ID),
-                eq(ADMIN_USER_ID), eq(99L), any())).willReturn(response);
+                eq(ADMIN_USER_ID), eq(99L), anyInt())).willReturn(response);
 
         mockMvc.perform(get("/api/v1/teams/{teamId}/members/{memberId}/action-memos",
                         TEAM_ID, MEMBER_ID)
