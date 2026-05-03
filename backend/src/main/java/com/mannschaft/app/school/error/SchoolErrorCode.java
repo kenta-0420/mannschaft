@@ -55,7 +55,13 @@ public enum SchoolErrorCode implements ErrorCode {
     REQUIREMENT_RULE_DATE_INVALID("S032", "有効期限の開始日が終了日より後です", Severity.WARN),
 
     /** 出席集計が見つからない */
-    SUMMARY_NOT_FOUND("S033", "出席集計が見つかりません", Severity.WARN);
+    SUMMARY_NOT_FOUND("S033", "出席集計が見つかりません", Severity.WARN),
+
+    /** 出席要件評価が見つからない */
+    EVALUATION_NOT_FOUND("S034", "出席要件評価が見つかりません", Severity.WARN),
+
+    /** 評価は既に解消済み */
+    EVALUATION_ALREADY_RESOLVED("S035", "この評価は既に解消済みです", Severity.WARN);
 
     private final String code;
     private final String message;
