@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ActionMemo, MemoAuditLog, Mood } from '~/types/actionMemo'
+import type { ActionMemo, ActionMemoAuditLog, Mood } from '~/types/actionMemo'
 
 /**
  * F02.5 メモ1件を表示するカード。
@@ -67,9 +67,11 @@ const moodInfo = computed<MoodMeta | null>(() => {
   return moodMeta[props.memo.mood]
 })
 
-// ─── Phase 4-α: 監査ログ折りたたみ ───────────────────────────
+// ─── Phase 4-α / Phase 5-1: 監査ログ折りたたみ ───────────────────────────
+const { getMemoAuditLogs } = useActionMemoApi()
+
 const auditOpen = ref(false)
-const auditLogs = ref<MemoAuditLog[]>([])
+const auditLogs = ref<ActionMemoAuditLog[]>([])
 const auditLoading = ref(false)
 const auditError = ref(false)
 
@@ -84,10 +86,7 @@ async function fetchAuditLogs() {
   auditLoading.value = true
   auditError.value = false
   try {
-    const res = await $fetch<{ data: MemoAuditLog[] }>(
-      `/api/v1/action-memos/${props.memo.id}/audit-logs`,
-    )
-    auditLogs.value = res.data ?? []
+    auditLogs.value = await getMemoAuditLogs(props.memo.id)
   }
   catch {
     auditError.value = true
@@ -101,6 +100,22 @@ function formatAuditTime(iso: string): string {
   if (!iso) return ''
   const m = iso.match(/T(\d{2}:\d{2})/)
   return m ? m[1] : iso
+}
+
+/**
+ * eventType を i18n キーに変換して表示ラベルを返す。
+ * 未知のイベントはそのまま表示する。
+ */
+function formatAuditEventType(eventType: string): string {
+  const keyMap: Record<string, string> = {
+    'ACTION_MEMO_CREATED': 'action_memo.phase4.audit.event_created',
+    'ACTION_MEMO_UPDATED': 'action_memo.phase4.audit.event_updated',
+    'ACTION_MEMO_DELETED': 'action_memo.phase4.audit.event_deleted',
+    'AUDIT_LOG_TODO_STATUS_CHANGED': 'action_memo.phase4.audit.event_todo_completed',
+    'AUDIT_LOG_TODO_REVERTED_BY_ADMIN': 'action_memo.phase4.audit.event_todo_reverted',
+  }
+  const key = keyMap[eventType]
+  return key ? t(key) : eventType
 }
 </script>
 
@@ -209,7 +224,7 @@ function formatAuditTime(iso: string): string {
           class="flex items-center gap-2 text-xs text-surface-500 dark:text-surface-400"
         >
           <span class="shrink-0 font-mono">{{ formatAuditTime(log.createdAt) }}</span>
-          <span>{{ log.eventType }}</span>
+          <span>{{ formatAuditEventType(log.eventType) }}</span>
         </div>
       </div>
     </div>

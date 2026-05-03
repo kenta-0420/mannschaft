@@ -1,5 +1,6 @@
 package com.mannschaft.app.actionmemo.controller;
 
+import com.mannschaft.app.actionmemo.dto.ActionMemoAuditLogResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
 import com.mannschaft.app.auth.dto.AuditLogResponse;
@@ -256,16 +257,21 @@ public class ActionMemoController {
     }
 
     /**
-     * Phase 4-α: メモに紐付く監査ログを取得する（折りたたみUI用）。
+     * Phase 5-1: メモに紐付く監査ログを取得する（折りたたみUI用）。
      *
-     * <p>自分のメモのみ取得可能。最新10件を返す。</p>
+     * <p>自分のメモのみ取得可能。最新10件を返す。
+     * {@code ActionMemoAuditLogResponse} に変換して返すことで、
+     * フロントエンドに不要なフィールド（IP アドレス・セッションハッシュ等）を露出しない。</p>
      */
     @GetMapping("/{id}/audit-logs")
-    @Operation(summary = "メモ監査ログ取得（Phase 4-α）")
-    public ResponseEntity<ApiResponse<List<AuditLogResponse>>> getMemoAuditLogs(@PathVariable Long id) {
+    @Operation(summary = "メモ監査ログ取得（Phase 5-1）")
+    public ResponseEntity<ApiResponse<List<ActionMemoAuditLogResponse>>> getMemoAuditLogs(@PathVariable Long id) {
         List<AuditLogResponse> logs = actionMemoService.getMemoAuditLogs(
                 id, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.of(logs));
+        List<ActionMemoAuditLogResponse> response = logs.stream()
+                .map(ActionMemoAuditLogResponse::from)
+                .toList();
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**

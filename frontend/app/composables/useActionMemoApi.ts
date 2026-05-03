@@ -1,5 +1,6 @@
 import type {
   ActionMemo,
+  ActionMemoAuditLog,
   ActionMemoCategory,
   ActionMemoListResponse,
   ActionMemoRateLimitError,
@@ -312,6 +313,37 @@ export function useActionMemoApi() {
         body,
       })
       return normalizeSettings(res.data)
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
+  // === Phase 5-1: 監査ログ取得 ===
+
+  type RawAuditLog = {
+    id: number
+    event_type: string
+    actor_id: number | null
+    created_at: string
+    metadata: string | null
+  }
+
+  /**
+   * メモに紐付く監査ログを取得する（変更履歴折りたたみUI用）。
+   *
+   * @param memoId 対象メモ ID
+   * @returns 最新10件の監査ログ（新しい順）
+   */
+  async function getMemoAuditLogs(memoId: number): Promise<ActionMemoAuditLog[]> {
+    try {
+      const res = await api<{ data: RawAuditLog[] }>(`${BASE}/${memoId}/audit-logs`)
+      return (res.data ?? []).map((raw: RawAuditLog): ActionMemoAuditLog => ({
+        id: raw.id,
+        eventType: raw.event_type,
+        actorId: raw.actor_id ?? null,
+        createdAt: raw.created_at,
+        metadata: raw.metadata ?? null,
+      }))
     } catch (error) {
       rethrow(error)
     }
@@ -667,5 +699,7 @@ export function useActionMemoApi() {
     // Phase 4-β
     revertTodoCompletion,
     fetchMemberMemos,
+    // Phase 5-1
+    getMemoAuditLogs,
   }
 }
