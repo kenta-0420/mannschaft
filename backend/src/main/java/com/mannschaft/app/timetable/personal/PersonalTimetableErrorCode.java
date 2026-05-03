@@ -50,3 +50,4 @@ public enum PersonalTimetableErrorCode implements ErrorCode {
     private final String message;
     private final Severity severity;
 }
+
