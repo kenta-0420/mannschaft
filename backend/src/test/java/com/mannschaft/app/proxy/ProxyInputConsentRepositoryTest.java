@@ -19,6 +19,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -122,8 +123,8 @@ class ProxyInputConsentRepositoryTest {
                     SUBJECT_USER_ID, PROXY_USER_ID, ORG_ID,
                     ProxyInputConsentEntity.ConsentMethod.PAPER_SIGNED,
                     null, null, null,
-                    LocalDate.now().minusMonths(2),
-                    LocalDate.now().minusDays(1));
+                    LocalDate.now(ZoneOffset.UTC).minusMonths(2),
+                    LocalDate.now(ZoneOffset.UTC).minusDays(1));
             consent.approve(999L);
             em.persist(consent);
             em.flush();
