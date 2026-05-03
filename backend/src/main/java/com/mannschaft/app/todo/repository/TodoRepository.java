@@ -183,7 +183,8 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
             SELECT t FROM TodoEntity t
             WHERE t.deletedAt IS NULL
               AND t.dueDate = :dueDate
-              AND t.status <> com.mannschaft.app.todo.TodoStatus.COMPLETED
+              AND t.status IN (com.mannschaft.app.todo.TodoStatus.OPEN,
+                               com.mannschaft.app.todo.TodoStatus.IN_PROGRESS)
               AND t.milestoneLocked = false
             ORDER BY t.id ASC
             """)
@@ -201,7 +202,8 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
             SELECT t FROM TodoEntity t
             WHERE t.deletedAt IS NULL
               AND t.dueDate < :today
-              AND t.status <> com.mannschaft.app.todo.TodoStatus.COMPLETED
+              AND t.status IN (com.mannschaft.app.todo.TodoStatus.OPEN,
+                               com.mannschaft.app.todo.TodoStatus.IN_PROGRESS)
               AND t.milestoneLocked = false
             ORDER BY t.dueDate ASC, t.id ASC
             """)
