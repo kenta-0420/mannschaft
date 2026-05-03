@@ -206,7 +206,7 @@ onMounted(async () => {
               :team-friend-count="team.teamFriendCount"
               :supporter-count="team.supporterCount"
               :supporter-enabled="team.supporterEnabled"
-              :description="team.description"
+              :description="team.description ?? null"
               :is-admin="isAdmin"
             />
           </TabPanel>
