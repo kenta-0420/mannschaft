@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AtRiskStudentResponse, EvaluationStatus } from '~/types/school'
 
-const props = defineProps<{
+defineProps<{
   students: AtRiskStudentResponse[]
   loading?: boolean
 }>()

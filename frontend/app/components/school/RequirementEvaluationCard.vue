@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AttendanceRequirementEvaluation, EvaluationStatus } from '~/types/school'
 
-const props = defineProps<{
+defineProps<{
   evaluation: AttendanceRequirementEvaluation
 }>()
 
