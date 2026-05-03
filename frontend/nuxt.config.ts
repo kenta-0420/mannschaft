@@ -95,9 +95,15 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiBase: 'http://localhost:8080',
+      apiBase: process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080',
     },
   },
+
+  // E2E テスト時（NUXT_API_PROXY=true 環境変数）は API を Nuxt サーバー経由でプロキシする。
+  // これにより CORS プリフライト問題を回避し、Playwright のルートインターセプトが確実に機能する。
+  routeRules: process.env.NUXT_API_PROXY === 'true' ? {
+    '/api/v1/**': { proxy: 'http://localhost:8080/api/v1/**' },
+  } : {},
 
   i18n: {
     locales: [

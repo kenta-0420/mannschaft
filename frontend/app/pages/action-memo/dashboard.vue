@@ -64,6 +64,7 @@ async function onLoadMore() {
         <select
           :value="selectedTeamId ?? ''"
           class="rounded-lg border border-surface-300 bg-surface-0 p-2 text-sm dark:border-surface-600 dark:bg-surface-800"
+          data-testid="dashboard-team-select"
           @change="onTeamChange(($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null)"
         >
           <option value="">—</option>
@@ -87,6 +88,7 @@ async function onLoadMore() {
             type="number"
             min="1"
             class="rounded-lg border border-surface-300 bg-surface-0 p-2 text-sm dark:border-surface-600 dark:bg-surface-800"
+            data-testid="dashboard-member-input"
             @keydown.enter="onSearch"
           />
         </div>
@@ -94,6 +96,7 @@ async function onLoadMore() {
           <button
             :disabled="!selectedTeamId || !memberIdInput"
             class="rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+            data-testid="dashboard-search-btn"
             @click="onSearch"
           >
             {{ t('action_memo.input.submit') }}
@@ -106,6 +109,7 @@ async function onLoadMore() {
     <div
       v-if="error"
       class="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400"
+      data-testid="dashboard-error"
     >
       {{ t(error) }}
     </div>
@@ -122,6 +126,7 @@ async function onLoadMore() {
           v-for="memo in memos"
           :key="memo.id"
           class="rounded-xl border border-surface-200 bg-surface-0 p-3 dark:border-surface-700 dark:bg-surface-800"
+          data-testid="dashboard-memo-item"
         >
           <div class="flex items-start justify-between gap-2">
             <p class="flex-1 text-sm text-surface-800 dark:text-surface-100">
@@ -148,6 +153,7 @@ async function onLoadMore() {
         v-if="hasMore"
         :disabled="loadingMore"
         class="w-full rounded-xl border border-surface-300 py-2 text-sm text-surface-600 disabled:opacity-40 dark:border-surface-600 dark:text-surface-400"
+        data-testid="dashboard-load-more-btn"
         @click="onLoadMore"
       >
         {{ loadingMore ? '…' : t('action_memo.dashboard.load_more') }}
@@ -158,6 +164,7 @@ async function onLoadMore() {
     <div
       v-else-if="memberId && !loading"
       class="py-8 text-center text-sm text-surface-500"
+      data-testid="dashboard-no-data"
     >
       {{ t('action_memo.dashboard.no_work_memos') }}
     </div>
