@@ -64,4 +64,15 @@ public interface BudgetTransactionRepository extends JpaRepository<BudgetTransac
      * 年度IDと費目IDで承認済み取引を検索する。
      */
     List<BudgetTransactionEntity> findByFiscalYearIdAndCategoryIdAndApprovalStatus(Long fiscalYearId, Long categoryId, BudgetApprovalStatus approvalStatus);
+
+    /**
+     * 同一 (source_type, source_id, transaction_date) の取引が存在するかを判定する。
+     *
+     * <p>F08.7 Phase 9-δ 月次締めの冪等性保証用:
+     * {@code source_type='SHIFT_BUDGET_MONTHLY'} かつ {@code source_id=allocation_id} かつ
+     * {@code transaction_date=lastDayOfMonth} のレコード既存をチェックし、
+     * 二重仕訳を防ぐ。設計書 §4.6 / §6.1 #11 参照。</p>
+     */
+    boolean existsBySourceTypeAndSourceIdAndTransactionDate(
+            String sourceType, Long sourceId, LocalDate transactionDate);
 }

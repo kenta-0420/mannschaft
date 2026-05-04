@@ -118,4 +118,51 @@ public interface ShiftBudgetAllocationRepository
             + "WHERE a.id = :allocationId")
     int decrementConsumedAmount(@Param("allocationId") Long allocationId,
                                 @Param("delta") BigDecimal delta);
+
+    /**
+     * {@code confirmed_amount} をアトミックに加算する（Phase 9-δ 追加）。
+     *
+     * <p>月次締め ({@code MonthlyShiftBudgetCloseService}) で
+     * PLANNED → CONFIRMED 遷移後に確定額を加算する用途。
+     * 設計書 §4.6 「PLANNED を CONFIRMED に一括昇格」に対応。</p>
+     *
+     * @return 更新行数
+     */
+    @Modifying
+    @Query("UPDATE ShiftBudgetAllocationEntity a "
+            + "SET a.confirmedAmount = a.confirmedAmount + :delta "
+            + "WHERE a.id = :allocationId")
+    int incrementConfirmedAmount(@Param("allocationId") Long allocationId,
+                                 @Param("delta") BigDecimal delta);
+
+    /**
+     * 指定月（{@code period_start} と {@code period_end} が指定月内に完全包含される）の
+     * 全組織横断の生存割当を取得する（Phase 9-δ 月次締めバッチ用）。
+     *
+     * <p>cron バッチが「全組織を横断して前月分を締める」ユースケースで使用。
+     * 多テナント分離は呼び出し側で考慮不要（バッチは横断的に処理）。</p>
+     */
+    @Query("SELECT a FROM ShiftBudgetAllocationEntity a "
+            + "WHERE a.periodStart >= :monthStart "
+            + "  AND a.periodEnd <= :monthEnd "
+            + "  AND a.deletedAt IS NULL")
+    List<ShiftBudgetAllocationEntity> findLiveByPeriodRange(
+            @Param("monthStart") LocalDate monthStart,
+            @Param("monthEnd") LocalDate monthEnd);
+
+    /**
+     * 指定組織×指定月の生存割当一覧を取得（Phase 9-δ 月次締め API #11 用）。
+     *
+     * <p>{@code period_start ≥ monthStart かつ period_end ≤ monthEnd} の生存レコードを返す。
+     * 多テナント分離のため {@code organization_id} を強制条件に含める。</p>
+     */
+    @Query("SELECT a FROM ShiftBudgetAllocationEntity a "
+            + "WHERE a.organizationId = :organizationId "
+            + "  AND a.periodStart >= :monthStart "
+            + "  AND a.periodEnd <= :monthEnd "
+            + "  AND a.deletedAt IS NULL")
+    List<ShiftBudgetAllocationEntity> findLiveByOrgAndPeriodRange(
+            @Param("organizationId") Long organizationId,
+            @Param("monthStart") LocalDate monthStart,
+            @Param("monthEnd") LocalDate monthEnd);
 }

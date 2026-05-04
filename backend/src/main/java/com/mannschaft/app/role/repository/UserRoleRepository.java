@@ -228,6 +228,53 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
                                               @Param("roleName") String roleName);
 
     /**
+     * 指定組織配下で「指定権限を保有する」ユーザーIDリストを取得する（F08.7 Phase 9-δ 警告通知用）。
+     *
+     * <p>権限保有判定は以下の経路を OR で集約する:</p>
+     * <ul>
+     *   <li>{@code role_permissions} 経由（ロール天井定義）</li>
+     *   <li>{@code permission_groups → user_permission_groups} 経由（個別付与）</li>
+     * </ul>
+     *
+     * <p>退会・非アクティブユーザーは除外する。SYSTEM_ADMIN は別途 {@link #findSystemAdminUserIds} で取得する想定。</p>
+     */
+    @Query(value =
+            "SELECT DISTINCT ur.user_id FROM user_roles ur " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.organization_id = :organizationId " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND ( " +
+            "    EXISTS ( " +
+            "      SELECT 1 FROM role_permissions rp " +
+            "      JOIN permissions p ON p.id = rp.permission_id " +
+            "      WHERE rp.role_id = ur.role_id AND p.name = :permissionName AND rp.is_default = 1 " +
+            "    ) OR EXISTS ( " +
+            "      SELECT 1 FROM user_permission_groups upg " +
+            "      JOIN permission_group_permissions pgp ON pgp.permission_group_id = upg.permission_group_id " +
+            "      JOIN permissions p2 ON p2.id = pgp.permission_id " +
+            "      WHERE upg.user_id = ur.user_id " +
+            "        AND upg.organization_id = ur.organization_id " +
+            "        AND p2.name = :permissionName " +
+            "    ) " +
+            "  )",
+            nativeQuery = true)
+    List<Long> findUserIdsByOrganizationIdAndPermissionName(
+            @Param("organizationId") Long organizationId,
+            @Param("permissionName") String permissionName);
+
+    /**
+     * 指定組織の ADMIN/DEPUTY_ADMIN ユーザーIDリストを取得する（F08.7 Phase 9-δ 通知用）。
+     */
+    @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.organization_id = :organizationId " +
+            "AND r.name IN ('ADMIN', 'DEPUTY_ADMIN') " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findAdminUserIdsByOrganizationId(@Param("organizationId") Long organizationId);
+
+    /**
      * 複数チームに所属する ADMIN または DEPUTY_ADMIN の userId 一覧を返す（通知一斉送信用）。
      * 退会・非アクティブユーザーは除外する。
      */
