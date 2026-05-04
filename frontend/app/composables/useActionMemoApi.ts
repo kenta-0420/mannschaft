@@ -528,6 +528,18 @@ export function useActionMemoApi() {
     }
   }
 
+  // === Team members (Phase 6-1) ===
+  async function fetchTeamMembers(teamId: number): Promise<{ userId: number; displayName: string; avatarUrl: string | null }[]> {
+    try {
+      const res = await api<{ data: { userId: number; displayName: string; avatarUrl: string | null }[] }>(
+        `/api/v1/teams/${teamId}/members?size=200&page=0`,
+      )
+      return res.data ?? []
+    } catch (error) {
+      rethrow(error)
+    }
+  }
+
   // === Available Orgs (Phase 5-2) ===
 
   /**
@@ -719,5 +731,7 @@ export function useActionMemoApi() {
     getMemoAuditLogs,
     // Phase 5-2
     fetchAvailableOrgs,
+    // Phase 6-1
+    fetchTeamMembers,
   }
 }
