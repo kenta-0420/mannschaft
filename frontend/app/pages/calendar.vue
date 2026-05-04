@@ -152,9 +152,11 @@ function toggleScope(value: string) {
 // #49-B: 日別一覧
 const dayEvents = computed(() => {
   if (!selectedDay.value) return []
-  return extendedEvents.value.filter(
-    e => e.startAt.slice(0, 10) === selectedDay.value || e.endAt.slice(0, 10) === selectedDay.value,
-  )
+  return extendedEvents.value.filter((e) => {
+    const start = e.startAt.slice(0, 10)
+    const end = e.endAt.slice(0, 10)
+    return selectedDay.value! >= start && selectedDay.value! <= end
+  })
 })
 
 // 日付クリック
