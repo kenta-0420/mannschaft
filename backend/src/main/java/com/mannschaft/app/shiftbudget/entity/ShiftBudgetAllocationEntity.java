@@ -12,6 +12,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.GeneratedColumn;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -132,28 +133,16 @@ public class ShiftBudgetAllocationEntity extends BaseEntity {
      * Entity 側に {@code columnDefinition} で生成カラム定義を明示する。
      * 既存 V3.120 ({@code recruitment_participants.active_subject_key}) と同パターン。</p>
      */
-    @Column(
-            name = "team_id_uq",
-            insertable = false,
-            updatable = false,
-            columnDefinition = "BIGINT GENERATED ALWAYS AS (COALESCE(team_id, 0)) STORED NOT NULL"
-    )
+    @GeneratedColumn("COALESCE(team_id, 0)")
+    @Column(name = "team_id_uq", nullable = false, insertable = false, updatable = false)
     private Long teamIdUq;
 
-    @Column(
-            name = "project_id_uq",
-            insertable = false,
-            updatable = false,
-            columnDefinition = "BIGINT GENERATED ALWAYS AS (COALESCE(project_id, 0)) STORED NOT NULL"
-    )
+    @GeneratedColumn("COALESCE(project_id, 0)")
+    @Column(name = "project_id_uq", nullable = false, insertable = false, updatable = false)
     private Long projectIdUq;
 
-    @Column(
-            name = "deleted_at_uq",
-            insertable = false,
-            updatable = false,
-            columnDefinition = "DATETIME GENERATED ALWAYS AS (COALESCE(deleted_at, '9999-12-31 00:00:00')) STORED NOT NULL"
-    )
+    @GeneratedColumn("COALESCE(deleted_at, '9999-12-31 00:00:00')")
+    @Column(name = "deleted_at_uq", nullable = false, insertable = false, updatable = false)
     private LocalDateTime deletedAtUq;
 
     /**

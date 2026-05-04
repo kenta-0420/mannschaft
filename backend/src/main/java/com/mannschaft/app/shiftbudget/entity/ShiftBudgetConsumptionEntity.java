@@ -15,6 +15,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.GeneratedColumn;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -119,12 +120,8 @@ public class ShiftBudgetConsumptionEntity extends BaseEntity {
      * UNIQUE 用 STORED 生成カラム（{@code deleted_at} の NULL 重複問題を回避）。
      * 詳細は {@link ShiftBudgetAllocationEntity#deletedAtUq} 参照。
      */
-    @Column(
-            name = "deleted_at_uq",
-            insertable = false,
-            updatable = false,
-            columnDefinition = "DATETIME GENERATED ALWAYS AS (COALESCE(deleted_at, '9999-12-31 00:00:00')) STORED NOT NULL"
-    )
+    @GeneratedColumn("COALESCE(deleted_at, '9999-12-31 00:00:00')")
+    @Column(name = "deleted_at_uq", nullable = false, insertable = false, updatable = false)
     private LocalDateTime deletedAtUq;
 
     /**
