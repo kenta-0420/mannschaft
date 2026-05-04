@@ -5,6 +5,7 @@ import com.mannschaft.app.shiftbudget.ShiftBudgetConsumptionStatus;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetConsumptionEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
-@Transactional
+// 注: クラスレベル @Transactional を外し、各テストが独立 commit する設計（仮説 F 検証）。
+// データ汚染は @BeforeEach repository.deleteAll() でクリーンアップする。
 @DisplayName("ShiftBudgetConsumptionRepository 結合テスト")
 class ShiftBudgetConsumptionRepositoryTest {
 
@@ -70,6 +72,12 @@ class ShiftBudgetConsumptionRepositoryTest {
     private static final Long SHIFT = 2001L;
     private static final Long SLOT = 3001L;
     private static final Long SLOT_2 = 3002L;
+
+    @BeforeEach
+    void cleanUp() {
+        // クラスレベル @Transactional を外したため明示クリーンアップ
+        repository.deleteAll();
+    }
     private static final Long USER = 4001L;
     private static final Long USER_2 = 4002L;
 

@@ -3,6 +3,7 @@ package com.mannschaft.app.shiftbudget.repository;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
-@Transactional
+// 注: クラスレベル @Transactional を外し、各テストが独立 commit する設計。
+// MySQL InnoDB の UNIQUE 制約違反を確実に発火させるため（仮説 F: ロールバック前提では violation 遅延発火）。
+// データ汚染は @BeforeEach repository.deleteAll() でクリーンアップする。
 @DisplayName("ShiftBudgetAllocationRepository 結合テスト")
 class ShiftBudgetAllocationRepositoryTest {
 
@@ -71,6 +74,12 @@ class ShiftBudgetAllocationRepositoryTest {
     private static final Long FISCAL_YEAR = 3001L;
     private static final Long CATEGORY = 4001L;
     private static final Long CREATED_BY = 5001L;
+
+    @BeforeEach
+    void cleanUp() {
+        // クラスレベル @Transactional を外したため、明示クリーンアップでテスト間の独立性を担保
+        repository.deleteAll();
+    }
 
     /**
      * 指定スコープの生存割当を 1 件永続化する。
