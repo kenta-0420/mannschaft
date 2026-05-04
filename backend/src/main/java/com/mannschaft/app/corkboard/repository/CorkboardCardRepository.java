@@ -43,6 +43,42 @@ public interface CorkboardCardRepository extends JpaRepository<CorkboardCardEnti
     long countByCorkboardId(Long corkboardId);
 
     /**
+     * F09.8 Phase A-4: REFERENCE カードのうち、まだ参照削除フラグが立っていないものを
+     * referenceType ごとに取得する。デッドリファレンス検知バッチで使用する。
+     *
+     * <p>{@code @SQLRestriction} で deleted_at IS NULL は自動付与されるため、
+     * 論理削除済みカードは含まれない。</p>
+     */
+    @Query("""
+            SELECT c FROM CorkboardCardEntity c
+             WHERE c.cardType = 'REFERENCE'
+               AND c.referenceType = :referenceType
+               AND c.isRefDeleted = false
+            """)
+    List<CorkboardCardEntity> findActiveReferenceCardsByType(@Param("referenceType") String referenceType);
+
+    /**
+     * F09.8 Phase A-4: 論理削除から指定日数以上経過したカードを取得する（物理削除バッチ用）。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} の対象外にするため、ネイティブクエリで取得する。</p>
+     */
+    @Query(value = """
+            SELECT id FROM corkboard_cards
+             WHERE deleted_at IS NOT NULL
+               AND deleted_at < :threshold
+            """, nativeQuery = true)
+    List<Long> findCardIdsDeletedBefore(@Param("threshold") LocalDateTime threshold);
+
+    /**
+     * F09.8 Phase A-4: 指定 ID 群のカードを物理削除する（論理削除→物理削除バッチ用）。
+     *
+     * <p>FK ON DELETE CASCADE により {@code corkboard_card_groups} の関連レコードも自動削除される。</p>
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = "DELETE FROM corkboard_cards WHERE id IN (:ids)", nativeQuery = true)
+    int hardDeleteByIds(@Param("ids") List<Long> ids);
+
+    /**
      * 指定ユーザーの個人スコープボード配下でピン止め中（かつ未アーカイブ・未削除）のカード数を取得する。
      * F09.8.1 ピン止め上限チェックに使用する。
      *

@@ -1,6 +1,7 @@
 package com.mannschaft.app.corkboard.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.corkboard.dto.CorkboardGroupResponse;
 import com.mannschaft.app.corkboard.dto.CreateGroupRequest;
 import com.mannschaft.app.corkboard.dto.UpdateGroupRequest;
@@ -38,7 +39,8 @@ public class CorkboardGroupController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<CorkboardGroupResponse>> createGroup(
             @PathVariable Long boardId, @Valid @RequestBody CreateGroupRequest request) {
-        CorkboardGroupResponse response = groupService.createGroup(boardId, request);
+        CorkboardGroupResponse response = groupService.createGroup(
+                boardId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -51,7 +53,8 @@ public class CorkboardGroupController {
     public ResponseEntity<ApiResponse<CorkboardGroupResponse>> updateGroup(
             @PathVariable Long boardId, @PathVariable Long groupId,
             @Valid @RequestBody UpdateGroupRequest request) {
-        CorkboardGroupResponse response = groupService.updateGroup(boardId, groupId, request);
+        CorkboardGroupResponse response = groupService.updateGroup(
+                boardId, SecurityUtils.getCurrentUserId(), groupId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -62,7 +65,7 @@ public class CorkboardGroupController {
     @Operation(summary = "セクション削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteGroup(@PathVariable Long boardId, @PathVariable Long groupId) {
-        groupService.deleteGroup(boardId, groupId);
+        groupService.deleteGroup(boardId, SecurityUtils.getCurrentUserId(), groupId);
         return ResponseEntity.noContent().build();
     }
 
@@ -74,7 +77,7 @@ public class CorkboardGroupController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "追加成功")
     public ResponseEntity<Void> addCardToGroup(
             @PathVariable Long boardId, @PathVariable Long groupId, @PathVariable Long cardId) {
-        groupService.addCardToGroup(boardId, groupId, cardId);
+        groupService.addCardToGroup(boardId, SecurityUtils.getCurrentUserId(), groupId, cardId);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
@@ -86,7 +89,7 @@ public class CorkboardGroupController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> removeCardFromGroup(
             @PathVariable Long boardId, @PathVariable Long groupId, @PathVariable Long cardId) {
-        groupService.removeCardFromGroup(boardId, groupId, cardId);
+        groupService.removeCardFromGroup(boardId, SecurityUtils.getCurrentUserId(), groupId, cardId);
         return ResponseEntity.noContent().build();
     }
 }

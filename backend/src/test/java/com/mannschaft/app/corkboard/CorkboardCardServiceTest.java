@@ -4,9 +4,12 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.corkboard.dto.CorkboardCardResponse;
 import com.mannschaft.app.corkboard.dto.CreateCardRequest;
 import com.mannschaft.app.corkboard.entity.CorkboardCardEntity;
+import com.mannschaft.app.corkboard.entity.CorkboardEntity;
 import com.mannschaft.app.corkboard.repository.CorkboardCardRepository;
 import com.mannschaft.app.corkboard.service.CorkboardCardService;
+import com.mannschaft.app.corkboard.service.CorkboardPermissionService;
 import com.mannschaft.app.corkboard.service.CorkboardService;
+import com.mannschaft.app.corkboard.service.OgpFetchService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -14,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -30,7 +34,19 @@ class CorkboardCardServiceTest {
     @Mock private CorkboardCardRepository cardRepository;
     @Mock private CorkboardService corkboardService;
     @Mock private CorkboardMapper corkboardMapper;
+    @Mock private CorkboardPermissionService permissionService;
+    @Mock private OgpFetchService ogpFetchService;
+    @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private CorkboardCardService service;
+
+    /** 個人ボード（PERSONAL）モックを返す共通設定。 */
+    private CorkboardEntity personalBoard() {
+        return CorkboardEntity.builder()
+                .scopeType("PERSONAL")
+                .ownerId(1L)
+                .name("テストボード")
+                .build();
+    }
 
     @Nested
     @DisplayName("createCard")
@@ -40,12 +56,12 @@ class CorkboardCardServiceTest {
         @DisplayName("正常系: カードが追加される")
         void 追加_正常_保存() {
             // Given
-            // corkboardService はモックなので findBoardOrThrow は何もせず null を返す（戻り値は使用されない）
+            given(corkboardService.findBoardOrThrow(1L)).willReturn(personalBoard());
             given(cardRepository.countByCorkboardId(1L)).willReturn(0L);
             given(cardRepository.save(any(CorkboardCardEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(corkboardMapper.toCardResponse(any(CorkboardCardEntity.class)))
                     .willReturn(new CorkboardCardResponse(1L, 1L, "NOTE", null, null,
-                            null, "タイトル", "本文", null, null, null, null, "NONE", "MEDIUM", 0, 0, 0, null, null, false, false, null, 1L, null, null));
+                            null, "タイトル", "本文", null, null, null, null, "NONE", "MEDIUM", 0, 0, 0, null, null, false, false, null, false, 1L, null, null));
 
             CreateCardRequest req = new CreateCardRequest("NOTE", null, null,
                     "タイトル", "本文", null, null, null, null, null, null, null, null);
@@ -62,7 +78,7 @@ class CorkboardCardServiceTest {
         @DisplayName("異常系: カード数上限超過でCORKBOARD_005例外")
         void 追加_上限超過_例外() {
             // Given
-            // corkboardService はモックなので findBoardOrThrow は何もせず null を返す（戻り値は使用されない）
+            given(corkboardService.findBoardOrThrow(1L)).willReturn(personalBoard());
             given(cardRepository.countByCorkboardId(1L)).willReturn(200L);
 
             // When / Then
@@ -83,10 +99,11 @@ class CorkboardCardServiceTest {
         @DisplayName("異常系: カード不在でCORKBOARD_002例外")
         void 削除_不在_例外() {
             // Given
+            given(corkboardService.findBoardOrThrow(1L)).willReturn(personalBoard());
             given(cardRepository.findByIdAndCorkboardId(1L, 1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.deleteCard(1L, 1L))
+            assertThatThrownBy(() -> service.deleteCard(1L, 1L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CORKBOARD_002"));

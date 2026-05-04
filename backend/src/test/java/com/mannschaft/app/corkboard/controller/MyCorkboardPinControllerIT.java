@@ -100,7 +100,7 @@ class MyCorkboardPinControllerIT {
                 "メモ", "本文", null, null, null, null,
                 "NONE", "MEDIUM", 0, 0, 0, null, null,
                 false, isPinned, isPinned ? LocalDateTime.now() : null,
-                USER_ID, null, null);
+                false, USER_ID, null, null);
     }
 
     @Nested
