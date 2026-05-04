@@ -9,6 +9,11 @@ import type {
   FamilyAttendanceNoticeResponse,
   FamilyNoticeListResponse,
   MonthlyStatisticsResponse,
+  AtRiskStudentResponse,
+  EvaluationStatus,
+  AttendanceRequirementEvaluation,
+  DisclosedEvaluationResponse,
+  DisclosureResponse,
 } from '../../../app/types/school'
 
 /**
@@ -596,6 +601,201 @@ export async function mockGetTermStatistics(
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: response }),
+    })
+  })
+}
+
+// ---------------------------------------------------------------------------
+// F03.13 Phase 16: 開示判断フロー + 生徒・保護者インボックス
+// ---------------------------------------------------------------------------
+
+/** AtRiskStudentResponse の雛形（WARNING 状態の生徒）。 */
+export function buildAtRiskStudentResponse(
+  overrides: Partial<AtRiskStudentResponse> = {},
+): AtRiskStudentResponse {
+  return {
+    studentUserId: STUDENT_USER_ID_1,
+    status: 'WARNING' as EvaluationStatus,
+    requirementRuleId: 10,
+    currentAttendanceRate: 0.82,
+    remainingAllowedAbsences: 5,
+    evaluatedAt: '2026-05-01T10:00:00.000Z',
+    ...overrides,
+  }
+}
+
+/** AttendanceRequirementEvaluation の雛形（開示判断で使用する evaluationId 取得用）。 */
+export function buildAttendanceRequirementEvaluation(
+  overrides: Partial<AttendanceRequirementEvaluation> = {},
+): AttendanceRequirementEvaluation {
+  return {
+    id: 999,
+    requirementRuleId: 10,
+    studentUserId: STUDENT_USER_ID_1,
+    summaryId: 1,
+    status: 'RISK' as EvaluationStatus,
+    currentAttendanceRate: 0.82,
+    remainingAllowedAbsences: 5,
+    evaluatedAt: '2026-05-01T10:00:00.000Z',
+    ...overrides,
+  }
+}
+
+/** DisclosedEvaluationResponse の雛形（生徒・保護者向けインボックス用）。 */
+export function buildDisclosedEvaluationResponse(
+  overrides: Partial<DisclosedEvaluationResponse> = {},
+): DisclosedEvaluationResponse {
+  return {
+    evaluationId: 999,
+    ruleId: 10,
+    ruleName: '進級要件（2026年度）',
+    status: 'RISK' as EvaluationStatus,
+    mode: 'WITH_NUMBERS',
+    message: undefined,
+    disclosedAt: '2026-05-01T10:00:00.000Z',
+    currentRate: 0.82,
+    remainingAllowedDays: 5,
+    ...overrides,
+  }
+}
+
+/** DisclosureResponse の雛形（開示/非開示 POST レスポンス用）。 */
+export function buildDisclosureResponse(
+  overrides: Partial<DisclosureResponse> = {},
+): DisclosureResponse {
+  return {
+    id: 1,
+    evaluationId: 999,
+    studentUserId: STUDENT_USER_ID_1,
+    decision: 'DISCLOSED',
+    mode: 'WITH_NUMBERS',
+    recipients: 'BOTH',
+    message: undefined,
+    decidedBy: TEACHER_USER_ID,
+    decidedAt: '2026-05-01T10:00:00.000Z',
+    ...overrides,
+  }
+}
+
+/**
+ * GET /api/v1/teams/{teamId}/attendance/requirements/at-risk をモック。
+ *
+ * <p>クエリパラメータ（status=...）の有無に関わらず glob でマッチさせる。</p>
+ */
+export async function mockGetAtRiskStudents(
+  page: Page,
+  students: AtRiskStudentResponse[],
+): Promise<void> {
+  await page.route('**/api/v1/teams/*/attendance/requirements/at-risk**', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: students }),
+    })
+  })
+}
+
+/**
+ * GET /api/v1/students/{studentId}/attendance/requirements/evaluations をモック。
+ *
+ * <p>requirements.vue の onDisclose() 内部で studentUserId を使って evaluationId を取得するため必要。</p>
+ */
+export async function mockGetStudentEvaluations(
+  page: Page,
+  evaluations: AttendanceRequirementEvaluation[],
+): Promise<void> {
+  await page.route(
+    '**/api/v1/students/*/attendance/requirements/evaluations',
+    async (route) => {
+      if (route.request().method() !== 'GET') {
+        await route.continue()
+        return
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: evaluations }),
+      })
+    },
+  )
+}
+
+/**
+ * POST /api/v1/teams/{teamId}/attendance/requirements/evaluations/{evaluationId}/disclose をモック。
+ *
+ * <p>{@code captured} を渡すと {@code lastBody} にリクエスト本文（mode/recipients/message）が記録される。</p>
+ */
+export async function mockDisclose(
+  page: Page,
+  captured?: { lastBody: unknown },
+): Promise<void> {
+  await page.route(
+    '**/api/v1/teams/*/attendance/requirements/evaluations/*/disclose',
+    async (route) => {
+      if (route.request().method() !== 'POST') {
+        await route.continue()
+        return
+      }
+      await captureBody(route, captured)
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: buildDisclosureResponse() }),
+      })
+    },
+  )
+}
+
+/**
+ * POST /api/v1/teams/{teamId}/attendance/requirements/evaluations/{evaluationId}/withhold をモック。
+ *
+ * <p>{@code captured} を渡すと {@code lastBody} にリクエスト本文（withholdReason）が記録される。</p>
+ */
+export async function mockWithhold(
+  page: Page,
+  captured?: { lastBody: unknown },
+): Promise<void> {
+  await page.route(
+    '**/api/v1/teams/*/attendance/requirements/evaluations/*/withhold',
+    async (route) => {
+      if (route.request().method() !== 'POST') {
+        await route.continue()
+        return
+      }
+      await captureBody(route, captured)
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: buildDisclosureResponse({ decision: 'WITHHELD', mode: undefined }),
+        }),
+      })
+    },
+  )
+}
+
+/**
+ * GET /api/v1/me/attendance/requirements/disclosed をモック。
+ *
+ * <p>生徒・保護者向けのインボックス一覧を返す。</p>
+ */
+export async function mockGetMyDisclosedEvaluations(
+  page: Page,
+  evaluations: DisclosedEvaluationResponse[],
+): Promise<void> {
+  await page.route('**/api/v1/me/attendance/requirements/disclosed', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: evaluations }),
     })
   })
 }

@@ -6,6 +6,7 @@ import com.mannschaft.app.timetable.TimetableErrorCode;
 import com.mannschaft.app.timetable.entity.TimetableChangeEntity;
 import com.mannschaft.app.timetable.entity.TimetableEntity;
 import com.mannschaft.app.timetable.event.TimetableChangeCreatedEvent;
+import com.mannschaft.app.timetable.event.TimetableChangeDeletedEvent;
 import com.mannschaft.app.timetable.repository.TimetableChangeRepository;
 import com.mannschaft.app.timetable.repository.TimetableRepository;
 import lombok.RequiredArgsConstructor;
@@ -141,6 +142,9 @@ public class TimetableChangeService {
         TimetableChangeEntity entity = changeRepository.findByIdAndTimetableId(changeId, timetableId)
                 .orElseThrow(() -> new BusinessException(TimetableErrorCode.CHANGE_NOT_FOUND));
         changeRepository.delete(entity);
+
+        // F03.15 Phase 4: 取消イベントを発火（個人カレンダーの自動反映済みレコードを削除させる）
+        eventPublisher.publishEvent(new TimetableChangeDeletedEvent(changeId, timetableId));
     }
 
     // ---- Validation Helpers ----

@@ -13,10 +13,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -66,6 +69,7 @@ class ActionMemoReminderBatchServiceTest {
     void execute_時刻一致_通知が送られる() {
         // given
         LocalTime targetTime = LocalTime.of(9, 0);
+        LocalDate today = LocalDate.of(2026, 5, 4);
         UserActionMemoSettingsEntity settings = UserActionMemoSettingsEntity.builder()
                 .userId(1L)
                 .reminderEnabled(true)
@@ -76,21 +80,21 @@ class ActionMemoReminderBatchServiceTest {
                 .willReturn(List.of(settings));
 
         // when
-        service.executeAt(targetTime);
+        service.executeAt(targetTime, today);
 
-        // then
+        // then: actionUrl が /action-memo?date=YYYY-MM-DD 形式になっていることを ArgumentCaptor で検証
         verify(notificationService, times(1)).createNotification(
-                1L,
-                "ACTION_MEMO_REMINDER",
-                NotificationPriority.NORMAL,
-                "行動メモのリマインド",
-                "今日の行動メモを記録しましょう",
-                "ACTION_MEMO",
-                null,
-                NotificationScopeType.PERSONAL,
-                1L,
-                "/action-memo",
-                null
+                eq(1L),
+                eq("ACTION_MEMO_REMINDER"),
+                eq(NotificationPriority.NORMAL),
+                eq("行動メモのリマインド"),
+                eq("今日の行動メモを記録しましょう"),
+                eq("ACTION_MEMO"),
+                eq(null),
+                eq(NotificationScopeType.PERSONAL),
+                eq(1L),
+                contains("/action-memo?date="),
+                eq(null)
         );
         verify(auditLogService, times(1)).record(
                 "ACTION_MEMO_REMINDER_BATCH", null, null, null, null, null, null, null,

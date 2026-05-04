@@ -125,6 +125,18 @@
       "visible_default_fields": "メモエディタで表示する標準項目",
       "save_success": "設定を保存しました",
       "save_error": "設定の保存に失敗しました"
+    },
+    "link": {
+      "title": "チームリンク",
+      "linked_to": "リンク先: {teamName}",
+      "auto_sync": "臨時変更を自動カレンダー反映",
+      "btn_link": "リンク",
+      "btn_unlink": "リンク解除",
+      "link_success": "リンクを設定しました",
+      "link_error": "リンク設定に失敗しました",
+      "unlink_success": "リンクを解除しました",
+      "unlink_error": "リンク解除に失敗しました",
+      "revoked_warning": "このコマのチームリンクは無効になりました（再リンクしてください）"
     }
   }
 }
