@@ -8,6 +8,8 @@ import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.circulation.service.CirculationStampService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -38,6 +40,12 @@ class CirculationStampServiceTest {
 
     @Mock
     private CirculationMapper circulationMapper;
+
+    @Mock
+    private ProxyInputContext proxyInputContext;
+
+    @Mock
+    private ProxyInputRecordRepository proxyInputRecordRepository;
 
     @InjectMocks
     private CirculationStampService circulationStampService;

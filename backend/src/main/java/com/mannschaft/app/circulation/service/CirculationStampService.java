@@ -11,6 +11,10 @@ import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +34,8 @@ public class CirculationStampService {
     private final CirculationDocumentRepository documentRepository;
     private final CirculationRecipientRepository recipientRepository;
     private final CirculationMapper circulationMapper;
+    private final ProxyInputContext proxyInputContext;
+    private final ProxyInputRecordRepository proxyInputRecordRepository;
 
     /**
      * 押印する。
@@ -57,7 +63,17 @@ public class CirculationStampService {
 
         recipient.stamp(request.getSealId(), request.getSealVariant(),
                 request.getTiltAngle(), request.getIsFlipped());
-        CirculationRecipientEntity saved = recipientRepository.save(recipient);
+        CirculationRecipientEntity savedRecipient = recipientRepository.save(recipient);
+
+        // 代理確認の場合: proxy_input_records を作成し、is_proxy_confirmed フラグをセット
+        if (proxyInputContext.isProxy()) {
+            ProxyInputRecordEntity proxyRecord = buildAndSaveStampProxyRecord(
+                    "CIRCULATION_STAMP", savedRecipient.getId());
+            savedRecipient = recipientRepository.save(savedRecipient.toBuilder()
+                    .isProxyConfirmed(true)
+                    .proxyInputRecordId(proxyRecord.getId())
+                    .build());
+        }
 
         document.incrementStampedCount();
         if (document.isAllStamped()) {
@@ -66,7 +82,7 @@ public class CirculationStampService {
         documentRepository.save(document);
 
         log.info("押印完了: documentId={}, userId={}", documentId, userId);
-        return circulationMapper.toRecipientResponse(saved);
+        return circulationMapper.toRecipientResponse(savedRecipient);
     }
 
     /**
@@ -161,5 +177,31 @@ public class CirculationStampService {
     private CirculationRecipientEntity findRecipientOrThrow(Long documentId, Long userId) {
         return recipientRepository.findByDocumentIdAndUserId(documentId, userId)
                 .orElseThrow(() -> new BusinessException(CirculationErrorCode.RECIPIENT_NOT_FOUND));
+    }
+
+    /**
+     * 代理確認押印の記録を作成して保存する（冪等性チェックあり）。
+     *
+     * @param targetEntityType 対象エンティティ種別
+     * @param targetEntityId   対象エンティティID
+     * @return 保存済み代理入力記録エンティティ
+     */
+    private ProxyInputRecordEntity buildAndSaveStampProxyRecord(String targetEntityType, Long targetEntityId) {
+        Long proxyUserId = SecurityUtils.getCurrentUserIdOrNull();
+        // 冪等性チェック（紙運用での二重登録防止）
+        return proxyInputRecordRepository.findByProxyInputConsentIdAndTargetEntityTypeAndTargetEntityId(
+                proxyInputContext.getConsentId(), targetEntityType, targetEntityId)
+                .orElseGet(() -> proxyInputRecordRepository.save(
+                        ProxyInputRecordEntity.builder()
+                                .proxyInputConsentId(proxyInputContext.getConsentId())
+                                .subjectUserId(proxyInputContext.getSubjectUserId())
+                                .proxyUserId(proxyUserId)
+                                .featureScope("CIRCULAR")
+                                .targetEntityType(targetEntityType)
+                                .targetEntityId(targetEntityId)
+                                .inputSource(ProxyInputRecordEntity.InputSource.valueOf(
+                                        proxyInputContext.getInputSource()))
+                                .originalStorageLocation(proxyInputContext.getOriginalStorageLocation())
+                                .build()));
     }
 }

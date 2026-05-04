@@ -110,6 +110,11 @@ public class AttendanceRequirementRuleEntity {
     /** 有効終了日（NULLなら無期限） */
     private LocalDate effectiveUntil;
 
+    /** VIOLATION確定時に自動で保護者通知するか（デフォルト false） */
+    @Column(nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private boolean notifyViolationToGuardianAutomatically = false;
+
     /** 作成日時 */
     @Column(nullable = false, updatable = false)
     @Builder.Default
