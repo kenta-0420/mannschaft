@@ -59,7 +59,27 @@
     "mood_enabled": {
       "label": "Activar entrada de ánimo",
       "description": "Selecciona tu ánimo entre 5 niveles al añadir una nota. Desactivado por defecto."
+    },
+    "reminder": {
+      "label": "Recordatorio diario",
+      "description": "Recibe una notificación a la hora establecida para registrar tu nota de acción (se activará tras la implementación del lote)",
+      "time_label": "Hora de notificación"
     }
+  },
+  "dashboard": {
+    "title": "Gestión de notas de miembros",
+    "select_team": "Seleccionar equipo",
+    "select_member": "Seleccionar miembro",
+    "no_work_memos": "No hay notas WORK",
+    "forbidden": "Se requiere permiso de gestor",
+    "error_load": "Error al cargar notas",
+    "load_more": "Cargar más"
+  },
+  "todo_revert": {
+    "button": "Revertir TODO",
+    "confirm": "¿Revertir la finalización del TODO para esta nota?",
+    "success": "TODO revertido",
+    "error": "Error al revertir el TODO"
   },
   "error": {
     "rate_limit": "Demasiadas acciones. Espera un momento e inténtalo de nuevo.",
@@ -181,7 +201,11 @@
       "empty": "変更履歴はありません",
       "loading": "読み込み中...",
       "error": "履歴の取得に失敗しました",
-      "event_todo_completed": "関連TODO を完了にしました"
+      "event_todo_completed": "関連TODO を完了にしました",
+      "event_created": "メモを作成しました",
+      "event_updated": "メモを更新しました",
+      "event_deleted": "メモを削除しました",
+      "event_todo_reverted": "TODOを差し戻しました"
     }
   }
 }

@@ -11,8 +11,6 @@ const emit = defineEmits<{
   resolved: [alertId: number]
 }>()
 
-const { t } = useI18n()
-
 const selectedAlert = ref<TransitionAlertResponse | null>(null)
 const showModal = ref(false)
 
@@ -29,10 +27,11 @@ function onResolved(alertId: number): void {
 </script>
 
 <template>
-  <div v-if="props.alerts.length > 0" class="transition-alert-banner">
+  <div v-if="props.alerts.length > 0" data-testid="transition-alert-banner" class="transition-alert-banner">
     <div
       v-for="alert in props.alerts"
       :key="alert.id"
+      :data-testid="'transition-alert-item-' + alert.id"
       class="flex items-start justify-between gap-3 px-4 py-3 mb-2 rounded-lg border"
       :class="{
         'bg-red-50 border-red-300 dark:bg-red-950 dark:border-red-700': alert.alertLevel === 'NORMAL',
@@ -78,6 +77,7 @@ function onResolved(alertId: number): void {
           v-else
           size="small"
           severity="danger"
+          :data-testid="'transition-alert-resolve-' + alert.id"
           :label="$t('school.transitionAlert.resolve')"
           @click="openResolveModal(alert)"
         />

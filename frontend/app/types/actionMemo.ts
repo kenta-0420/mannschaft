@@ -84,6 +84,10 @@ export interface ActionMemoSettings {
   defaultPostTeamId: number | null
   /** Phase 3: デフォルトカテゴリ */
   defaultCategory: ActionMemoCategory
+  /** Phase 4-β: 毎日リマインド有効フラグ */
+  reminderEnabled: boolean
+  /** Phase 4-β: リマインド通知時刻（"HH:mm"）。未設定時は null */
+  reminderTime: string | null
 }
 
 // === Available teams (Phase 3) ===
@@ -97,6 +101,17 @@ export interface AvailableTeam {
   name: string
   /** このチームがデフォルト投稿先として設定されているか */
   isDefault: boolean
+}
+
+// === Available orgs (Phase 5-2) ===
+
+/**
+ * 組織スコープ投稿先候補。
+ * {@code GET /api/v1/action-memos/available-orgs} で取得する。
+ */
+export interface AvailableOrg {
+  id: number
+  name: string
 }
 
 // === Request payloads ===
@@ -134,7 +149,7 @@ export interface UpdateActionMemoPayload {
   orgVisibility?: OrgVisibility | null
 }
 
-// === Audit logs (Phase 4-α) ===
+// === Audit logs (Phase 4-α / Phase 5-1) ===
 
 /** メモに紐付く監査ログ項目（折りたたみUI用） */
 export interface MemoAuditLog {
@@ -143,6 +158,18 @@ export interface MemoAuditLog {
   userId: number | null
   metadata: string | null
   createdAt: string
+}
+
+/**
+ * Phase 5-1: ActionMemoAuditLogResponse に対応する型。
+ * バックエンドのスネークケースフィールドをキャメルケースに正規化したもの。
+ */
+export interface ActionMemoAuditLog {
+  id: number
+  eventType: 'CREATED' | 'UPDATED' | 'DELETED' | 'TODO_COMPLETED' | 'TODO_REVERTED' | string
+  actorId: number | null
+  createdAt: string
+  metadata: string | null
 }
 
 // === Publish to team (Phase 3) ===

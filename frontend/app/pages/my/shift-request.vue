@@ -236,7 +236,7 @@ onMounted(async () => {
   await teamStore.fetchMyTeams()
   // チームが1つの場合は自動選択
   if (teamStore.myTeams.length === 1) {
-    await selectTeam(teamStore.myTeams[0].id)
+    await selectTeam(teamStore.myTeams[0]!.id)
   }
 })
 </script>
@@ -266,7 +266,7 @@ onMounted(async () => {
               :src="team.iconUrl"
               class="h-10 w-10 rounded-full object-cover"
               alt=""
-            />
+            >
             <div
               v-else
               class="flex h-10 w-10 items-center justify-center rounded-full bg-surface-200 text-sm font-bold text-surface-600"

@@ -1,4 +1,4 @@
-CREATE TABLE attendance_requirement_rules (
+CREATE TABLE IF NOT EXISTS attendance_requirement_rules (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   organization_id BIGINT NULL COMMENT '組織スコープ（team_id と排他）',
   team_id BIGINT NULL COMMENT 'チームスコープ（organization_id と排他）',

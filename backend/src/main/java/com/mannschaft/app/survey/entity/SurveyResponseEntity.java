@@ -45,6 +45,12 @@ public class SurveyResponseEntity {
     @Column(columnDefinition = "TEXT")
     private String textResponse;
 
+    @Column(name = "is_proxy_input", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    private Boolean isProxyInput = false;
+
+    @Column(name = "proxy_input_record_id")
+    private Long proxyInputRecordId;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

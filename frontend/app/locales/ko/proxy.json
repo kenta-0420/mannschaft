@@ -1,0 +1,77 @@
+{
+  "proxy": {
+    "title": "대리 입력 데스크",
+    "description": "비디지털 주민을 대신하여 서류 신청서를 입력합니다",
+    "consent": {
+      "title": "대리 입력 동의서",
+      "subjectUserId": "대상 주민 ID",
+      "method": {
+        "label": "동의 방법",
+        "paper_signed": "종이 서명",
+        "witnessed_oral": "목격 구두",
+        "digital_signature": "전자 서명",
+        "guardian_by_court": "법원 지정 후견인"
+      },
+      "status": {
+        "pending": "승인 대기",
+        "active": "유효",
+        "expired": "기간 만료",
+        "revoked": "철회됨"
+      },
+      "effectiveFrom": "유효 기간 (시작)",
+      "effectiveUntil": "유효 기간 (종료)",
+      "scopes": "대상 기능",
+      "approvedAt": "승인 일시",
+      "revokedAt": "철회 일시",
+      "noActive": "유효한 동의서가 없습니다"
+    },
+    "scope": {
+      "survey": "설문조사",
+      "schedule_attendance": "출결 확인",
+      "shift_request": "교대 신청",
+      "announcement_read": "공지 읽음",
+      "parking_application": "주차 신청",
+      "circular": "회람판"
+    },
+    "desk": {
+      "pinSubject": "주민 고정",
+      "pinConsent": "동의서 선택",
+      "unpin": "고정 해제",
+      "pinned": "{name} 님으로 입력 중",
+      "inputSource": {
+        "label": "입력 방식",
+        "paper_form": "서류 양식",
+        "phone_interview": "전화 청취",
+        "in_person": "창구 대면"
+      },
+      "originalStorage": {
+        "label": "원본 보관 위치",
+        "placeholder": "예: proxy-records/2026/scan_001.pdf"
+      },
+      "active": "대리 입력 모드 작동 중",
+      "inactive": "대리 입력 모드 정지"
+    },
+    "record": {
+      "title": "대리 입력 이력",
+      "createdAt": "입력 일시",
+      "featureScope": "대상 기능",
+      "targetEntity": "대상 레코드"
+    },
+    "revoke": {
+      "title": "동의서 철회",
+      "method": {
+        "api": "본인 온라인 신청",
+        "paper": "서류 신청",
+        "life_event": "생활 이벤트 (이사 등)",
+        "tenure_end": "임기 만료"
+      },
+      "reason": "철회 사유",
+      "confirm": "이 동의서를 철회하시겠습니까?"
+    },
+    "audit": {
+      "byPerson": "본인 입력",
+      "byProxy": "대리 입력",
+      "total": "합계"
+    }
+  }
+}

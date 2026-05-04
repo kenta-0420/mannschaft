@@ -1,10 +1,8 @@
 # =============================================================================
 # Frontend CI — pull_request to main
 # =============================================================================
-# Runs install on every PR targeting main to validate package-lock.json.
+# Runs install, lint, and typecheck on every PR targeting main.
 # No AWS credentials required — build and deploy are intentionally omitted.
-# Note: lint and typecheck are omitted until pre-existing errors are resolved
-#       in a dedicated cleanup task.
 # =============================================================================
 
 name: Frontend — CI (PR Check)
@@ -45,3 +43,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck

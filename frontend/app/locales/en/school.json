@@ -208,6 +208,99 @@
       "category_SUBJECT_CREDIT": "Subject Credit",
       "category_PERFECT_ATTENDANCE": "Perfect Attendance",
       "category_CUSTOM": "Custom"
+    },
+    "attendanceSummary": {
+      "title": "Attendance Summary",
+      "attendanceRate": "Attendance Rate",
+      "totalSchoolDays": "School Days",
+      "presentDays": "Present Days",
+      "absentDays": "Absent Days",
+      "lateCount": "Late Count",
+      "earlyLeaveCount": "Early Leave Count",
+      "officialAbsenceDays": "Official Absence Days",
+      "sickBayDays": "Sick Bay Days",
+      "separateRoomDays": "Separate Room Days",
+      "onlineDays": "Online Days",
+      "homeLearningDays": "Home Learning Days",
+      "days": " days",
+      "times": " times",
+      "recalculate": "Recalculate",
+      "recalculateSuccess": "Summary recalculated",
+      "noData": "No summary data available"
+    },
+    "requirements": {
+      "title": "Attendance Requirements",
+      "filterAll": "All",
+      "runEvaluation": "Run Evaluation",
+      "evaluationSuccess": "Evaluation complete",
+      "evaluateAll": "Evaluate All Students",
+      "evaluating": "Evaluating...",
+      "loadError": "Failed to load list",
+      "resolveSuccess": "Resolution recorded"
+    },
+    "evaluation": {
+      "title": "Attendance Requirement Evaluation",
+      "status": {
+        "OK": "On Track",
+        "WARNING": "Caution",
+        "RISK": "At Risk",
+        "VIOLATION": "Violation"
+      },
+      "currentAttendanceRate": "Current Attendance Rate",
+      "remainingAllowedAbsences": "Remaining Allowed Absences",
+      "remainingDays": "{days} days left",
+      "noDaysLeft": "No more absences allowed",
+      "evaluatedAt": "Evaluated At",
+      "resolve": "Resolve Violation",
+      "resolveTitle": "Record Violation Resolution",
+      "resolveNote": "Resolution Note",
+      "resolveNoteHint": "e.g. Makeup class completed, special approval granted",
+      "resolveSuccess": "Violation resolved successfully",
+      "resolveError": "Failed to record violation resolution",
+      "atRisk": "At-Risk Students",
+      "noEvaluations": "No evaluation data available",
+      "noAtRisk": "No at-risk students",
+      "dashboard": "Requirement Evaluation Dashboard",
+      "filterByStatus": "Filter by Status",
+      "loadError": "Failed to load evaluation data"
+    },
+    "disclosure": {
+      "title": "Disclosure Decision",
+      "decide": "Make disclosure decision",
+      "tabDisclose": "Disclose",
+      "tabWithhold": "Withhold for now",
+      "mode": {
+        "label": "Disclosure mode",
+        "WITH_NUMBERS": "Disclose with numbers",
+        "WITHOUT_NUMBERS": "Disclose without numbers (notice only)",
+        "MEETING_REQUEST_ONLY": "Send meeting request only"
+      },
+      "recipients": {
+        "label": "Recipients",
+        "STUDENT_ONLY": "Student only",
+        "GUARDIAN_ONLY": "Guardian only",
+        "BOTH": "Both student and guardian"
+      },
+      "message": "Message from teacher (optional)",
+      "messagePlaceholder": "Enter a message for the student/guardian",
+      "withholdReason": "Reason for withholding",
+      "withholdReasonPlaceholder": "This will be saved as a guidance record",
+      "submit": "Confirm decision",
+      "submitting": "Submitting...",
+      "historyTitle": "Disclosure history",
+      "historyEmpty": "No disclosure records",
+      "decision": {
+        "DISCLOSED": "Disclosed",
+        "WITHHELD": "Withheld"
+      },
+      "inbox": {
+        "title": "Attendance requirement notices from teacher",
+        "empty": "No disclosed information from your teacher",
+        "contactTeacher": "Please contact your teacher for details",
+        "meetingRequest": "Your teacher has requested a meeting. Please contact them.",
+        "currentRate": "Current attendance rate",
+        "remainingAllowed": "{days} days remaining"
+      }
     }
   }
 }

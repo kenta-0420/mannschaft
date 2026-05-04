@@ -64,6 +64,9 @@ onMounted(async () => {
         <WidgetNotices />
         <WidgetUpcomingEvents />
         <WidgetPersonalTodo />
+        <!-- F03.15 Phase 3: 個人時間割「今日の時間割」「今日のメモ」ウィジェット -->
+        <DashboardTimetableTodayWidget />
+        <DashboardTimetableNotesWidget />
         <WidgetUnreadThreads />
         <WidgetTeamAnnouncements />
         <WidgetOrgAnnouncements />
@@ -86,7 +89,7 @@ onMounted(async () => {
             <h2 class="text-lg font-semibold">新しいチーム・組織を見つける</h2>
           </div>
           <p class="mb-4 text-sm text-surface-500">
-            参加したいチームや組織を検索してサポーターとして申請できます。<br />
+            参加したいチームや組織を検索してサポーターとして申請できます。<br >
             メンバーとして参加するには招待リンクが必要です。
           </p>
           <div class="flex flex-wrap gap-3">
@@ -109,7 +112,7 @@ onMounted(async () => {
             <h2 class="text-lg font-semibold">新しいチーム・組織を作る</h2>
           </div>
           <p class="mb-4 text-sm text-surface-500">
-            家族・スポーツ・地域・企業など新しいグループを作成できます。<br />
+            家族・スポーツ・地域・企業など新しいグループを作成できます。<br >
             作成後すぐにメンバーを招待して利用できます。
           </p>
           <div class="flex flex-wrap gap-3">

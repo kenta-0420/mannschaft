@@ -32,7 +32,7 @@ const props = defineProps<{
 const { t } = useI18n()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
-let chartInstance: ChartJS | null = null
+let chartInstance: InstanceType<typeof ChartJS> | null = null
 
 const CHART_COLORS = [
   '#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6',
@@ -95,7 +95,7 @@ function buildConfig() {
 function initChart() {
   if (!canvasRef.value) return
   chartInstance?.destroy()
-  chartInstance = new ChartJS(canvasRef.value, buildConfig() as ConstructorParameters<typeof ChartJS>[1])
+  chartInstance = new ChartJS(canvasRef.value, buildConfig() as unknown as ConstructorParameters<typeof ChartJS>[1])
 }
 
 onMounted(initChart)

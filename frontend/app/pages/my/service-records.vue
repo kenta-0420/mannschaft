@@ -34,12 +34,12 @@ onMounted(() => load())
         :key="r.id"
       >
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold">{{ r.serviceName }}</h3>
+          <h3 class="text-sm font-semibold">{{ r.title }}</h3>
           <span class="text-xs text-surface-400">{{ r.serviceDate }}</span>
         </div>
-        <p v-if="r.staffName" class="mt-1 text-xs text-surface-500">担当: {{ r.staffName }}</p>
-        <p v-if="r.notes" class="mt-1 text-sm text-surface-600">{{ r.notes }}</p>
-        <p v-if="r.teamName" class="mt-1 text-xs text-surface-400">{{ r.teamName }}</p>
+        <p v-if="r.recordedBy" class="mt-1 text-xs text-surface-500">担当: {{ r.recordedBy.displayName }}</p>
+        <p v-if="r.body" class="mt-1 text-sm text-surface-600">{{ r.body }}</p>
+        <p v-if="r.templateName" class="mt-1 text-xs text-surface-400">{{ r.templateName }}</p>
       </SectionCard>
       <DashboardEmptyState v-if="records.length === 0" icon="pi-list" message="サービス履歴がありません" />
     </div>

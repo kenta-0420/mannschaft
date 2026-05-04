@@ -12,6 +12,7 @@ import type { ActionMemo, ActionMemoCategory, OrgVisibility } from '~/types/acti
 definePageMeta({ middleware: 'auth' })
 
 const router = useRouter()
+const route = useRoute()
 const { t } = useI18n()
 const store = useActionMemoStore()
 
@@ -56,6 +57,12 @@ watch([selectedOrgId, selectedOrgVisibility], ([orgId, orgVis]) => {
   store.setPendingOrgScope(orgId, orgId ? orgVis : null)
 })
 
+function onOrgChange() {
+  if (!selectedOrgId.value) {
+    selectedOrgVisibility.value = 'TEAM_ONLY'
+  }
+}
+
 // 設定のデフォルト値を反映
 watch(
   () => store.settings,
@@ -78,10 +85,17 @@ function handleOnline() {
 }
 
 onMounted(async () => {
+  // 通知からのディープリンク: ?date=YYYY-MM-DD があれば today を上書きして当日メモへ直遷移
+  const queryDate = route.query.date
+  if (typeof queryDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(queryDate)) {
+    today.value = queryDate
+  }
+
   await Promise.all([
     store.fetchSettings(),
     store.fetchMemosForDate(today.value),
     store.fetchAvailableTeams(),
+    store.fetchAvailableOrgs(),
   ])
   await store.refreshOfflineQueueCount()
   // mood_enabled = true の場合のみ mood-stats を取得
@@ -259,8 +273,12 @@ function goTags() {
           data-testid="index-team-post-switch"
         />
 
-        <!-- Phase 4-α: 組織スコープ選択 -->
-        <div class="flex flex-col gap-1" data-testid="index-org-scope-selector">
+        <!-- Phase 5-2: 組織スコープ選択 -->
+        <div
+          v-if="store.availableOrgs.length > 0"
+          class="flex flex-col gap-1"
+          data-testid="index-org-scope-selector"
+        >
           <label class="text-xs text-surface-600 dark:text-surface-400">
             {{ t('action_memo.phase4.org_scope.label') }}
           </label>
@@ -268,14 +286,19 @@ function goTags() {
             <select
               v-model.number="selectedOrgId"
               class="flex-1 rounded-md border border-surface-300 bg-surface-0 px-2 py-1 text-xs dark:border-surface-600 dark:bg-surface-800"
+              data-testid="org-scope-select"
+              @change="onOrgChange"
             >
-              <option :value="null">（なし）</option>
-              <!-- 組織一覧は将来的にAPIから取得 - 暫定で空 -->
+              <option :value="null">—</option>
+              <option v-for="org in store.availableOrgs" :key="org.id" :value="org.id">
+                {{ org.name }}
+              </option>
             </select>
             <select
               v-if="selectedOrgId"
               v-model="selectedOrgVisibility"
               class="rounded-md border border-surface-300 bg-surface-0 px-2 py-1 text-xs dark:border-surface-600 dark:bg-surface-800"
+              data-testid="org-visibility-select"
             >
               <option value="TEAM_ONLY">{{ t('action_memo.phase4.org_scope.team_only') }}</option>
               <option value="ORG_WIDE">{{ t('action_memo.phase4.org_scope.org_wide') }}</option>

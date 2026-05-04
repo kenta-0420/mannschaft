@@ -5,7 +5,6 @@ import type {
   RecruitmentSearchParams,
 } from '~/types/recruitment'
 
-const { t } = useI18n()
 const api = useRecruitmentApi()
 
 // カテゴリ一覧
@@ -62,7 +61,7 @@ async function search(page = 0) {
     }
     const res = await api.searchListings(params)
     listings.value = res.data
-    totalCount.value = res.meta.total
+    totalCount.value = res.meta.totalElements
     totalPages.value = res.meta.totalPages
   }
   catch {

@@ -128,8 +128,6 @@ describe('ChatTabBar.vue', () => {
       },
     })
 
-    // 閉じるボタン（aria-label に "close" が含まれるボタン）をクリック
-    const closeBtn = wrapper.find('button[aria-label]')
     // × ボタンは tabitem 内にある
     const tabItem = wrapper.find('[role="tab"]')
     const closeBtnInTab = tabItem.find('button')

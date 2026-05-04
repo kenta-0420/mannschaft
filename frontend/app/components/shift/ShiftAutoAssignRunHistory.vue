@@ -4,7 +4,7 @@
 
     <DataTable
       :value="runs"
-      selectionMode="single"
+      selection-mode="single"
       :meta-key-selection="false"
       class="text-sm"
       @row-click="onRowClick"

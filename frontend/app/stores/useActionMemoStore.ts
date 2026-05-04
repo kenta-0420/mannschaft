@@ -3,6 +3,7 @@ import type {
   ActionMemo,
   ActionMemoSettings,
   ActionMemoTag,
+  AvailableOrg,
   AvailableTeam,
   CreateActionMemoPayload,
   CreateTagPayload,
@@ -61,6 +62,8 @@ interface ActionMemoStoreState {
   weeklyTotalPages: number
   /** Phase 3: チーム投稿先候補一覧 */
   availableTeams: AvailableTeam[]
+  /** Phase 5-2: 組織スコープ投稿先候補一覧 */
+  availableOrgs: AvailableOrg[]
   /** Phase 4-α: 次回作成時に付与する組織スコープ（折りたたみパネルで設定） */
   pendingOrgScope: { organizationId: number | null; orgVisibility: OrgVisibility | null }
 }
@@ -105,7 +108,13 @@ function todayJst(): string {
 export const useActionMemoStore = defineStore('actionMemo', {
   state: (): ActionMemoStoreState => ({
     memos: [],
-    settings: { moodEnabled: false, defaultPostTeamId: null, defaultCategory: 'OTHER' },
+    settings: {
+      moodEnabled: false,
+      defaultPostTeamId: null,
+      defaultCategory: 'OTHER',
+      reminderEnabled: false,
+      reminderTime: null,
+    },
     tags: [],
     moodStats: null,
     loading: false,
@@ -119,6 +128,7 @@ export const useActionMemoStore = defineStore('actionMemo', {
     weeklyPage: 0,
     weeklyTotalPages: 0,
     availableTeams: [],
+    availableOrgs: [],
     pendingOrgScope: { organizationId: null, orgVisibility: null },
   }),
 
@@ -528,6 +538,23 @@ export const useActionMemoStore = defineStore('actionMemo', {
       try {
         const api = useActionMemoApi()
         this.availableTeams = await api.fetchAvailableTeams()
+      } catch (error) {
+        this._handleError(error)
+      }
+    },
+
+    // === Phase 5-2: Available Orgs ===
+
+    /**
+     * 組織スコープ投稿先候補を取得する。
+     * {@code GET /api/v1/action-memos/available-orgs}
+     */
+    async fetchAvailableOrgs(): Promise<void> {
+      this.error = null
+      this.lastError = null
+      try {
+        const api = useActionMemoApi()
+        this.availableOrgs = await api.fetchAvailableOrgs()
       } catch (error) {
         this._handleError(error)
       }

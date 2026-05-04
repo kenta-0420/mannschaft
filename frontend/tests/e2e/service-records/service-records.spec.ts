@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
-import { TEAM_ID, mockTeam, mockTeamFeatureApis } from '../teams/helpers'
+import { TEAM_ID, mockTeam } from '../teams/helpers'
 
 /**
  * F07.1 サービス履歴 — Playwright E2E テスト
@@ -113,7 +113,6 @@ test.describe('SVC-001〜006: F07.1 サービス履歴', () => {
   })
 
   test('SVC-003: 新規サービス記録を作成できる（POST）', async ({ page }) => {
-    let createCalled = false
 
     await mockTeam(page)
     // キャッチオール
@@ -127,7 +126,6 @@ test.describe('SVC-001〜006: F07.1 サービス履歴', () => {
 
     await page.route(`**/api/v1/teams/${TEAM_ID}/service-records`, async (route) => {
       if (route.request().method() === 'POST') {
-        createCalled = true
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
@@ -158,8 +156,6 @@ test.describe('SVC-001〜006: F07.1 サービス履歴', () => {
   })
 
   test('SVC-004: サービス記録を編集できる（PUT）', async ({ page }) => {
-    let updateCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -183,7 +179,6 @@ test.describe('SVC-001〜006: F07.1 サービス履歴', () => {
 
     await page.route(`**/api/v1/teams/${TEAM_ID}/service-records/${RECORD_ID}`, async (route) => {
       if (route.request().method() === 'PUT') {
-        updateCalled = true
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -202,8 +197,6 @@ test.describe('SVC-001〜006: F07.1 サービス履歴', () => {
   })
 
   test('SVC-005: サービス記録を削除できる（DELETE）', async ({ page }) => {
-    let deleteCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -227,7 +220,6 @@ test.describe('SVC-001〜006: F07.1 サービス履歴', () => {
 
     await page.route(`**/api/v1/teams/${TEAM_ID}/service-records/${RECORD_ID}`, async (route) => {
       if (route.request().method() === 'DELETE') {
-        deleteCalled = true
         await route.fulfill({ status: 204 })
       } else {
         await route.continue()

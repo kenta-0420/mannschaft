@@ -42,11 +42,11 @@ function handleChange(val: boolean | undefined) {
   <div class="flex flex-col gap-1">
     <div class="flex items-center gap-2">
       <Checkbox
+        v-tooltip="tooltipText"
         :model-value="modelValue"
         :disabled="isDisabled"
         binary
         input-id="displayInAnnouncement"
-        v-tooltip="tooltipText"
         @update:model-value="handleChange"
       />
       <label

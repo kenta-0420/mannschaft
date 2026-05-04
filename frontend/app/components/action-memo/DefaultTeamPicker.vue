@@ -7,7 +7,7 @@ import type { AvailableTeam } from '~/types/actionMemo'
  * <p>WORKカテゴリでメモを作成した際に自動選択されるチームを設定する。</p>
  */
 
-const props = defineProps<{
+defineProps<{
   availableTeams: AvailableTeam[]
   modelValue: number | null
 }>()

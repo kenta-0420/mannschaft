@@ -28,7 +28,9 @@ const totalCount = computed(() =>
 )
 
 const tabs = computed(() => {
-  const items = [{ type: 'ALL' as const, label: 'すべて', count: totalCount.value }]
+  const items: Array<{ type: ContentType | 'ALL'; label: string; count: number }> = [
+    { type: 'ALL', label: 'すべて', count: totalCount.value },
+  ]
   for (const [type, count] of Object.entries(props.typeCounts)) {
     if (count > 0) {
       items.push({ type: type as ContentType, label: typeLabels[type] ?? type, count })

@@ -1,18 +1,20 @@
 <script setup lang="ts">
+import type { ShiftRequestResponse } from '~/types/shift'
+
 definePageMeta({ middleware: 'auth' })
 
 const { getMyShiftRequests } = useShiftApi()
 const { showError } = useNotification()
 const { t } = useI18n()
 
-const shifts = ref<Record<string, unknown>[]>([])
+const shifts = ref<ShiftRequestResponse[]>([])
 const loading = ref(false)
 
 async function load() {
   loading.value = true
   try {
     const res = await getMyShiftRequests()
-    shifts.value = res.data
+    shifts.value = res
   } catch {
     showError(t('shift.myShifts.fetchError'))
   } finally {
@@ -54,21 +56,19 @@ onMounted(() => load())
     <div v-else class="flex flex-col gap-3">
       <SectionCard
         v-for="s in shifts"
-        :key="s.id as string"
+        :key="s.id"
       >
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold">{{ s.date }}</h3>
-          <span :class="getStatusClass(s.status as string)" class="rounded px-2 py-0.5 text-xs font-medium">{{
-            s.status
+          <h3 class="text-sm font-semibold">{{ s.slotDate }}</h3>
+          <span :class="getStatusClass(s.preference)" class="rounded px-2 py-0.5 text-xs font-medium">{{
+            s.preference
           }}</span>
         </div>
-        <p class="mt-1 text-xs text-surface-400">{{ s.startTime }} - {{ s.endTime }}</p>
-        <p v-if="s.positionName" class="mt-1 text-xs text-surface-500">{{ s.positionName }}</p>
-        <p v-if="s.teamName" class="mt-1 text-xs text-surface-400">{{ s.teamName }}</p>
+        <p v-if="s.note" class="mt-1 text-xs text-surface-400">{{ s.note }}</p>
         <!-- スケジュール ID がある場合は変更依頼リンクを表示 -->
         <NuxtLink
-          v-if="s.scheduleId && s.teamId"
-          :to="`/teams/${s.teamId}/shifts/${s.scheduleId}/change-requests`"
+          v-if="s.scheduleId"
+          :to="`/shifts/schedules/${s.scheduleId}`"
           class="mt-2 inline-flex items-center gap-1 text-xs text-primary-600 hover:underline"
         >
           <i class="pi pi-arrow-right text-xs" />

@@ -208,6 +208,99 @@
       "category_SUBJECT_CREDIT": "教科単位認定",
       "category_PERFECT_ATTENDANCE": "皆勤賞",
       "category_CUSTOM": "カスタム"
+    },
+    "attendanceSummary": {
+      "title": "出席集計",
+      "attendanceRate": "出席率",
+      "totalSchoolDays": "授業日数",
+      "presentDays": "出席日数",
+      "absentDays": "欠席日数",
+      "lateCount": "遅刻回数",
+      "earlyLeaveCount": "早退回数",
+      "officialAbsenceDays": "公欠日数",
+      "sickBayDays": "保健室登校",
+      "separateRoomDays": "別室登校",
+      "onlineDays": "オンライン登校",
+      "homeLearningDays": "家庭学習",
+      "days": "日",
+      "times": "回",
+      "recalculate": "再集計",
+      "recalculateSuccess": "集計を再計算しました",
+      "noData": "集計データがありません"
+    },
+    "requirements": {
+      "title": "出席要件管理",
+      "filterAll": "すべて",
+      "runEvaluation": "評価を実行",
+      "evaluationSuccess": "評価が完了しました",
+      "evaluateAll": "全生徒を一括評価",
+      "evaluating": "評価中…",
+      "loadError": "リスト取得に失敗しました",
+      "resolveSuccess": "解消を記録しました"
+    },
+    "evaluation": {
+      "title": "出席要件評価",
+      "status": {
+        "OK": "要件達成見込み",
+        "WARNING": "要注意",
+        "RISK": "要件未達リスク",
+        "VIOLATION": "要件未達確定"
+      },
+      "currentAttendanceRate": "現在出席率",
+      "remainingAllowedAbsences": "残り許容欠席日数",
+      "remainingDays": "あと{days}日",
+      "noDaysLeft": "これ以上欠席できません",
+      "evaluatedAt": "評価日時",
+      "resolve": "違反解消",
+      "resolveTitle": "違反解消を記録",
+      "resolveNote": "解消理由",
+      "resolveNoteHint": "例：補習完了・特例承認など",
+      "resolveSuccess": "違反解消を記録しました",
+      "resolveError": "違反解消の記録に失敗しました",
+      "atRisk": "リスク生徒一覧",
+      "noEvaluations": "評価データがありません",
+      "noAtRisk": "リスク生徒はいません",
+      "dashboard": "要件評価ダッシュボード",
+      "filterByStatus": "ステータスで絞り込み",
+      "loadError": "評価データの読み込みに失敗しました"
+    },
+    "disclosure": {
+      "title": "開示判断",
+      "decide": "開示判断を行う",
+      "tabDisclose": "開示する",
+      "tabWithhold": "今は開示しない",
+      "mode": {
+        "label": "開示モード",
+        "WITH_NUMBERS": "数値を含めて開示",
+        "WITHOUT_NUMBERS": "数値を伏せて開示（注意喚起のみ）",
+        "MEETING_REQUEST_ONLY": "面談予約のみ送る"
+      },
+      "recipients": {
+        "label": "通知先",
+        "STUDENT_ONLY": "生徒のみ",
+        "GUARDIAN_ONLY": "保護者のみ",
+        "BOTH": "生徒と保護者の両方"
+      },
+      "message": "担任からのメッセージ（任意）",
+      "messagePlaceholder": "生徒・保護者へのメッセージを入力してください",
+      "withholdReason": "非開示の理由",
+      "withholdReasonPlaceholder": "指導記録として残ります",
+      "submit": "判断を確定する",
+      "submitting": "送信中...",
+      "historyTitle": "開示判断の履歴",
+      "historyEmpty": "開示判断の記録はありません",
+      "decision": {
+        "DISCLOSED": "開示済み",
+        "WITHHELD": "非開示"
+      },
+      "inbox": {
+        "title": "担任からの出席要件情報",
+        "empty": "担任からの開示情報はありません",
+        "contactTeacher": "詳細は担任へご相談ください",
+        "meetingRequest": "面談のご連絡があります。担任にお問い合わせください",
+        "currentRate": "現在の出席率",
+        "remainingAllowed": "あと {days} 日の余裕があります"
+      }
     }
   }
 }

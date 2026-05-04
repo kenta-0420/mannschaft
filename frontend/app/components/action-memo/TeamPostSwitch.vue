@@ -28,7 +28,7 @@ watch(
   (teams) => {
     if (props.category !== 'WORK') return
     if (teams.length === 1 && props.modelValue === null) {
-      emit('update:modelValue', teams[0].id)
+      emit('update:modelValue', teams[0]!.id)
     }
   },
   { immediate: true },
@@ -41,7 +41,7 @@ watch(
       // WORK 以外になったら投稿先をクリア
       emit('update:modelValue', null)
     } else if (props.availableTeams.length === 1) {
-      emit('update:modelValue', props.availableTeams[0].id)
+      emit('update:modelValue', props.availableTeams[0]!.id)
     }
   },
 )
@@ -78,7 +78,7 @@ function onSelectChange(event: Event) {
       data-testid="team-post-switch-single"
     >
       <i class="pi pi-users text-xs text-primary" />
-      <span class="text-surface-700 dark:text-surface-200">{{ availableTeams[0].name }}</span>
+      <span class="text-surface-700 dark:text-surface-200">{{ availableTeams[0]!.name }}</span>
       <i class="pi pi-check ml-auto text-xs text-emerald-500" />
     </div>
 

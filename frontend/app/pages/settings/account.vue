@@ -154,15 +154,15 @@ onMounted(async () => {
 
     <div v-else class="fade-in space-y-8">
       <SettingsProfileSection
-        :profile="profile"
+        v-model:profile="profile"
         :saving-profile="savingProfile"
         @save="saveProfile"
         @upload-avatar="uploadAvatar"
       />
 
       <SettingsEmailSection
+        v-model:email-form="emailForm"
         :current-email="profile.email"
-        :email-form="emailForm"
         :submitting-email="submittingEmail"
         :email-sent="emailSent"
         :can-submit-email="canSubmitEmail"
@@ -170,8 +170,8 @@ onMounted(async () => {
       />
 
       <SettingsPasswordSection
+        v-model:password-form="passwordForm"
         :has-password="profile.hasPassword"
-        :password-form="passwordForm"
         :submitting-password="submittingPassword"
         :can-submit-password="canSubmitPassword"
         :password-error="passwordError"
@@ -179,7 +179,7 @@ onMounted(async () => {
       />
 
       <SettingsLocaleSection
-        :profile="profile"
+        v-model:profile="profile"
         :saving-locale="savingLocale"
         @save="saveLocale"
       />
@@ -191,15 +191,15 @@ onMounted(async () => {
       </SectionCard>
 
       <SettingsSecuritySection
+        v-model:show-backup-codes-dialog="showBackupCodesDialog"
+        v-model:rename-dialog="renameDialog"
+        v-model:new-device-name="newDeviceName"
         :totp-setup="totpSetup"
         :setting2fa="setting2fa"
         :regenerating="regenerating"
         :sessions="sessions"
         :credentials="credentials"
         :backup-codes="backupCodes"
-        v-model:show-backup-codes-dialog="showBackupCodesDialog"
-        v-model:rename-dialog="renameDialog"
-        v-model:new-device-name="newDeviceName"
         @setup2fa="handleSetup2fa"
         @regenerate-backup-codes="handleRegenerateBackupCodes"
         @revoke-session="handleRevokeSession"
@@ -217,19 +217,19 @@ onMounted(async () => {
       />
 
       <SettingsMemberCardSection
+        v-model:member-card-active-tab="memberCardActiveTab"
         :member-cards="memberCards"
         :selected-card="selectedCard"
-        v-model:member-card-active-tab="memberCardActiveTab"
         @select-card="handleSelectCard"
         @suspend-card="handleSuspendCard"
         @reactivate-card="handleReactivateCard"
       />
 
       <SettingsSocialProfileSection
-        :social-profiles="socialProfiles"
         v-model:show-social-dialog="showSocialDialog"
+        v-model:social-form="socialForm"
+        :social-profiles="socialProfiles"
         :editing-social-profile="editingSocialProfile"
-        :social-form="socialForm"
         @create-social="openCreateSocial"
         @edit-social="openEditSocial"
         @delete-social="handleDeleteSocial"
@@ -237,10 +237,10 @@ onMounted(async () => {
       />
 
       <SettingsSealSection
+        v-model:seal-active-tab="sealActiveTab"
         :seals="seals"
         :scope-defaults="scopeDefaults"
         :regenerating-seals="regeneratingSeals"
-        v-model:seal-active-tab="sealActiveTab"
         :user-id="userId"
         @regenerate-seals="handleRegenerateSeals(userId)"
         @save-defaults="(defaults: ScopeDefault[]) => handleSaveDefaults(userId, defaults)"
@@ -255,8 +255,8 @@ onMounted(async () => {
       />
 
       <SettingsGcalSection
+        v-model:gcal-sync-settings="gcalSyncSettings"
         :gcal-status="gcalStatus"
-        :gcal-sync-settings="gcalSyncSettings"
         :gcal-syncing="gcalSyncing"
         :teams="teamStore.myTeams"
         :organizations="orgStore.myOrganizations"

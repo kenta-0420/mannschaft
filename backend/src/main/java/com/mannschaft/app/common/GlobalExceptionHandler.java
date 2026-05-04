@@ -58,6 +58,10 @@ public class GlobalExceptionHandler {
             Map.entry("ACTION_MEMO_019", HttpStatus.NOT_FOUND),      // team_not_found (IDOR対策)
             Map.entry("ACTION_MEMO_020", HttpStatus.BAD_REQUEST),    // invalid_default_team
             Map.entry("ACTION_MEMO_021", HttpStatus.NOT_FOUND),      // org_not_found (Phase 4-α, IDOR対策)
+            Map.entry("ACTION_MEMO_022", HttpStatus.FORBIDDEN),      // todo_revert_not_allowed (Phase 4-β)
+            Map.entry("ACTION_MEMO_023", HttpStatus.BAD_REQUEST),    // todo_not_completed_by_memo (Phase 4-β)
+            Map.entry("ACTION_MEMO_024", HttpStatus.FORBIDDEN),      // dashboard_forbidden (Phase 4-β)
+            Map.entry("ACTION_MEMO_025", HttpStatus.BAD_REQUEST),    // reminder_time_required (Phase 4-β)
             // F05.4 アンケート 督促 API（権限なしのみ 403、その他は Severity.WARN 既定の 400）
             Map.entry("SURVEY_014", HttpStatus.FORBIDDEN),           // REMIND_PERMISSION_DENIED
             // F11.1 オフライン同期
@@ -133,7 +137,83 @@ public class GlobalExceptionHandler {
             Map.entry("SCHOOL_FAMILY_NOTICE_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("SCHOOL_FAMILY_NOTICE_ALREADY_APPLIED", HttpStatus.CONFLICT),
             Map.entry("SCHOOL_TRANSITION_ALERT_NOT_FOUND", HttpStatus.NOT_FOUND),
-            Map.entry("SCHOOL_TRANSITION_ALERT_ALREADY_RESOLVED", HttpStatus.CONFLICT)
+            Map.entry("SCHOOL_TRANSITION_ALERT_ALREADY_RESOLVED", HttpStatus.CONFLICT),
+            // F08.7 シフト予算 (Phase 9-α: 逆算 API)
+            Map.entry("SHIFT_BUDGET_001", HttpStatus.SERVICE_UNAVAILABLE),  // FEATURE_DISABLED
+            Map.entry("SHIFT_BUDGET_002", HttpStatus.BAD_REQUEST),          // EMPTY_POSITION_LIST
+            Map.entry("SHIFT_BUDGET_003", HttpStatus.BAD_REQUEST),          // DUPLICATE_POSITION_ID
+            Map.entry("SHIFT_BUDGET_004", HttpStatus.BAD_REQUEST),          // INVALID_REQUIRED_COUNT
+            Map.entry("SHIFT_BUDGET_005", HttpStatus.BAD_REQUEST),          // INVALID_SLOT_HOURS
+            Map.entry("SHIFT_BUDGET_006", HttpStatus.BAD_REQUEST),          // MISSING_EXPLICIT_RATE
+            Map.entry("SHIFT_BUDGET_007", HttpStatus.BAD_REQUEST),          // MISSING_POSITION_COUNTS
+            Map.entry("SHIFT_BUDGET_008", HttpStatus.NOT_FOUND),            // TEAM_NOT_FOUND (IDOR対策で404)
+            Map.entry("SHIFT_BUDGET_009", HttpStatus.BAD_REQUEST),          // INVALID_BUDGET_AMOUNT
+            // F08.7 シフト予算 (Phase 9-β: 割当 / 消化記録 CRUD)
+            Map.entry("SHIFT_BUDGET_010", HttpStatus.NOT_FOUND),            // ALLOCATION_NOT_FOUND (IDOR対策で404)
+            Map.entry("SHIFT_BUDGET_011", HttpStatus.CONFLICT),             // ALLOCATION_ALREADY_EXISTS
+            Map.entry("SHIFT_BUDGET_012", HttpStatus.CONFLICT),             // HAS_CONSUMPTIONS_PLANNED
+            Map.entry("SHIFT_BUDGET_013", HttpStatus.CONFLICT),             // HAS_CONSUMPTIONS_CONFIRMED
+            Map.entry("SHIFT_BUDGET_014", HttpStatus.CONFLICT),             // OPTIMISTIC_LOCK_CONFLICT
+            Map.entry("SHIFT_BUDGET_015", HttpStatus.BAD_REQUEST),          // INVALID_PERIOD
+            Map.entry("SHIFT_BUDGET_016", HttpStatus.BAD_REQUEST),          // INVALID_ALLOCATED_AMOUNT
+            Map.entry("SHIFT_BUDGET_017", HttpStatus.CONFLICT),             // CONFIRMED_RECORD_IMMUTABLE
+            Map.entry("SHIFT_BUDGET_018", HttpStatus.FORBIDDEN),            // BUDGET_VIEW_REQUIRED
+            Map.entry("SHIFT_BUDGET_019", HttpStatus.FORBIDDEN),            // BUDGET_MANAGE_REQUIRED
+            // F03.15 個人時間割（IDOR 対策で 404 統一、上限・遷移エラーは 409）
+            Map.entry("PERSONAL_TIMETABLE_001", HttpStatus.NOT_FOUND),       // PERSONAL_TIMETABLE_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_010", HttpStatus.CONFLICT),        // LIMIT_EXCEEDED
+            Map.entry("PERSONAL_TIMETABLE_020", HttpStatus.CONFLICT),        // NOT_DRAFT
+            Map.entry("PERSONAL_TIMETABLE_021", HttpStatus.CONFLICT),        // NOT_ACTIVE
+            Map.entry("PERSONAL_TIMETABLE_022", HttpStatus.CONFLICT),        // NOT_ARCHIVED
+            Map.entry("PERSONAL_TIMETABLE_023", HttpStatus.CONFLICT),        // INVALID_STATUS_TRANSITION
+            // F03.15 Phase 2 時限定義
+            Map.entry("PERSONAL_TIMETABLE_040", HttpStatus.CONFLICT),        // PERIOD_LIMIT_EXCEEDED
+            Map.entry("PERSONAL_TIMETABLE_041", HttpStatus.UNPROCESSABLE_ENTITY), // PERIOD_INVALID_TIME_RANGE
+            Map.entry("PERSONAL_TIMETABLE_042", HttpStatus.UNPROCESSABLE_ENTITY), // PERIOD_NUMBER_DUPLICATED
+            Map.entry("PERSONAL_TIMETABLE_043", HttpStatus.UNPROCESSABLE_ENTITY), // PERIOD_NUMBER_OUT_OF_RANGE
+            Map.entry("PERSONAL_TIMETABLE_044", HttpStatus.CONFLICT),        // NOT_EDITABLE (DRAFT のみ)
+            // F03.15 Phase 2 コマ
+            Map.entry("PERSONAL_TIMETABLE_050", HttpStatus.CONFLICT),        // SLOT_LIMIT_EXCEEDED
+            Map.entry("PERSONAL_TIMETABLE_051", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_BREAK_PERIOD_ASSIGNED
+            Map.entry("PERSONAL_TIMETABLE_052", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_PERIOD_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_053", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_WEEK_PATTERN_CONFLICT
+            Map.entry("PERSONAL_TIMETABLE_054", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_WEEK_PATTERN_NOT_ENABLED
+            Map.entry("PERSONAL_TIMETABLE_055", HttpStatus.UNPROCESSABLE_ENTITY), // SLOT_DUPLICATED
+            Map.entry("PERSONAL_TIMETABLE_056", HttpStatus.BAD_REQUEST),     // LINK_NOT_SUPPORTED_YET (Phase 4 で対応)
+            // F03.15 Phase 3 個人メモ
+            Map.entry("PERSONAL_TIMETABLE_060", HttpStatus.NOT_FOUND),       // NOTE_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_061", HttpStatus.PRECONDITION_FAILED), // NOTE_PRECONDITION_FAILED
+            Map.entry("PERSONAL_TIMETABLE_062", HttpStatus.UNPROCESSABLE_ENTITY), // NOTE_UNSAFE_MARKDOWN
+            Map.entry("PERSONAL_TIMETABLE_063", HttpStatus.UNPROCESSABLE_ENTITY), // NOTE_FIELD_TOO_LONG
+            Map.entry("PERSONAL_TIMETABLE_064", HttpStatus.BAD_REQUEST),     // NOTE_INVALID_SLOT_KIND
+            Map.entry("PERSONAL_TIMETABLE_065", HttpStatus.NOT_FOUND),       // NOTE_SLOT_NOT_OWNED (IDOR対策で404)
+            Map.entry("PERSONAL_TIMETABLE_066", HttpStatus.NOT_FOUND),       // NOTE_TEAM_NOT_MEMBER (IDOR対策で404)
+            // F03.15 Phase 3 カスタムフィールド
+            Map.entry("PERSONAL_TIMETABLE_070", HttpStatus.NOT_FOUND),       // NOTE_FIELD_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_071", HttpStatus.CONFLICT),        // NOTE_FIELD_LIMIT_EXCEEDED
+            Map.entry("PERSONAL_TIMETABLE_072", HttpStatus.CONFLICT),        // NOTE_FIELD_LABEL_DUPLICATED
+            Map.entry("PERSONAL_TIMETABLE_073", HttpStatus.UNPROCESSABLE_ENTITY), // NOTE_FIELD_INVALID_MAX_LENGTH
+            // F03.15 Phase 3 添付ファイル
+            Map.entry("PERSONAL_TIMETABLE_080", HttpStatus.NOT_FOUND),       // ATTACHMENT_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_081", HttpStatus.CONFLICT),        // ATTACHMENT_LIMIT_EXCEEDED
+            Map.entry("PERSONAL_TIMETABLE_082", HttpStatus.UNPROCESSABLE_ENTITY), // ATTACHMENT_SIZE_EXCEEDED
+            Map.entry("PERSONAL_TIMETABLE_083", HttpStatus.UNPROCESSABLE_ENTITY), // ATTACHMENT_UNSUPPORTED_TYPE
+            Map.entry("PERSONAL_TIMETABLE_084", HttpStatus.TOO_MANY_REQUESTS), // ATTACHMENT_QUOTA_EXCEEDED (429)
+            Map.entry("PERSONAL_TIMETABLE_085", HttpStatus.UNPROCESSABLE_ENTITY), // ATTACHMENT_MAGIC_BYTE_MISMATCH
+            Map.entry("PERSONAL_TIMETABLE_086", HttpStatus.UNPROCESSABLE_ENTITY), // ATTACHMENT_OBJECT_NOT_FOUND
+            // F03.15 Phase 4 チームリンク
+            Map.entry("PERSONAL_TIMETABLE_090", HttpStatus.NOT_FOUND),       // SLOT_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_091", HttpStatus.NOT_FOUND),       // LINK_TARGET_TEAM_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_092", HttpStatus.NOT_FOUND),       // LINK_TARGET_TIMETABLE_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_093", HttpStatus.NOT_FOUND),       // LINK_TARGET_SLOT_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_094", HttpStatus.FORBIDDEN),       // LINK_NOT_TEAM_MEMBER
+            Map.entry("PERSONAL_TIMETABLE_095", HttpStatus.CONFLICT),        // LINK_STATUS_INVALID
+            Map.entry("PERSONAL_TIMETABLE_096", HttpStatus.CONFLICT),        // LINK_POSITION_MISMATCH
+            Map.entry("PERSONAL_TIMETABLE_097", HttpStatus.BAD_REQUEST),     // LINK_TIMETABLE_REQUIRED
+            // F09.8.1 コルクボード ピン止め
+            Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
+            Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED
+            Map.entry("CORKBOARD_013", HttpStatus.CONFLICT)                  // PIN_LIMIT_EXCEEDED
     );
 
     /**

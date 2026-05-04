@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import type { DwellingUnit } from '~/types/resident'
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const orgId = Number(route.params.id)
 const { getUnits } = useResidentApi()
 const { showError } = useNotification()
-const units = ref<Record<string, unknown>[]>([])
+const units = ref<DwellingUnit[]>([])
 const loading = ref(false)
 async function load() {
   loading.value = true
@@ -39,16 +40,16 @@ onMounted(() => load())
         </div>
         <div class="flex-1">
           <p class="text-sm font-medium">{{ u.floor }}F - {{ u.unitNumber }}</p>
-          <p class="text-xs text-surface-400">{{ u.residentCount }}名居住</p>
+          <p class="text-xs text-surface-400">{{ u.residents.length }}名居住</p>
         </div>
         <span
           class="rounded px-2 py-0.5 text-xs font-medium"
           :class="
-            u.status === 'OCCUPIED'
+            !u.isVacant
               ? 'bg-green-100 text-green-700'
               : 'bg-surface-100 text-surface-500'
           "
-          >{{ u.status === 'OCCUPIED' ? '入居中' : '空室' }}</span
+          >{{ !u.isVacant ? '入居中' : '空室' }}</span
         >
       </div>
       <DashboardEmptyState v-if="units.length === 0" icon="pi pi-building" message="住戸情報がありません" />

@@ -5,11 +5,10 @@ const route = useRoute()
 const teamId = computed(() => Number(route.params.id))
 const scheduleId = computed(() => Number(route.params.scheduleId))
 
-const { t } = useI18n()
 const authStore = useAuthStore()
-const isAdmin = computed(() => authStore.currentUser?.role === 'ADMIN')
+const isAdmin = computed(() => authStore.currentUser?.systemRole === 'ADMIN')
 
-const { requests, isLoading, fetchRequests, createRequest, review, withdraw } =
+const { requests, isLoading, fetchRequests, review, withdraw } =
   useChangeRequest(scheduleId)
 
 onMounted(() => fetchRequests())

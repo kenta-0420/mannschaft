@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ChangeRequest, ChangeRequestStatus } from '~/types/shift'
 
-const props = defineProps<{
+defineProps<{
   requests: ChangeRequest[]
   currentUserId: number
   isAdmin?: boolean

@@ -103,7 +103,7 @@ function handleIconUploaded(url: string) {
 const initials = computed(() => {
   if (!props.name) return '?'
   const words = props.name.trim().split(/\s+/)
-  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase()
+  if (words.length >= 2) return ((words[0]![0] ?? '') + (words[1]![0] ?? '')).toUpperCase()
   return props.name.slice(0, 2).toUpperCase()
 })
 
@@ -141,7 +141,7 @@ const initialsColorClass = computed(() => {
         :src="bannerUrl"
         :alt="t('profile_media.banner')"
         class="w-full h-full object-cover object-center"
-      />
+      >
       <!-- バナーなし: グラデーション背景 -->
       <div
         v-else
@@ -172,7 +172,7 @@ const initialsColorClass = computed(() => {
         class="hidden"
         accept="image/jpeg,image/png,image/webp"
         @change="handleBannerFileSelect"
-      />
+      >
     </div>
 
     <!-- アイコン領域（バナー下端に重なって表示） -->
@@ -191,7 +191,7 @@ const initialsColorClass = computed(() => {
           :src="iconUrl"
           :alt="t('profile_media.icon')"
           class="w-full h-full object-cover"
-        />
+        >
         <!-- イニシャルフォールバック -->
         <div
           v-else

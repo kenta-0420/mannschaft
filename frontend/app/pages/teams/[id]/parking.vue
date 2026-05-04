@@ -1,16 +1,17 @@
 <script setup lang="ts">
+import type { ParkingSpaceResponse } from '~/types/parking'
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const teamId = Number(route.params.id)
 const { getSpaces } = useParkingApi()
 const { showError } = useNotification()
-const spaces = ref<Record<string, unknown>[]>([])
+const spaces = ref<ParkingSpaceResponse[]>([])
 const loading = ref(false)
 async function load() {
   loading.value = true
   try {
     const res = await getSpaces('team', teamId)
-    spaces.value = res.data
+    spaces.value = res.data as ParkingSpaceResponse[]
   } catch {
     showError('駐車場情報の取得に失敗しました')
   } finally {
@@ -49,7 +50,7 @@ onMounted(() => load())
           >{{ s.status }}</span
         >
         <p v-if="s.assignedTo" class="mt-2 text-xs text-surface-400">
-          {{ s.assignedTo.displayName }}<br />{{ s.assignedTo.vehiclePlate }}
+          {{ s.assignedTo.displayName }}<br >{{ s.assignedTo.vehiclePlate }}
         </p>
       </SectionCard>
     </div>

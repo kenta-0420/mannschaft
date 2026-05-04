@@ -25,6 +25,7 @@ const loading = ref(true)
 const showDialog = ref(false)
 const editingItem = ref<AffiliateConfigResponse | null>(null)
 const previewItem = ref<AffiliateConfigResponse | null>(null)
+const showPreviewDialog = ref(false)
 
 const defaultForm = (): CreateAffiliateConfigRequest => ({
   provider: 'AMAZON',
@@ -168,7 +169,7 @@ onMounted(load)
             size="small"
             severity="secondary"
             text
-            @click="previewItem = cfg"
+            @click="previewItem = cfg; showPreviewDialog = true"
           />
           <Button
             icon="pi pi-pencil"
@@ -278,14 +279,14 @@ onMounted(load)
     </Dialog>
 
     <!-- Preview Dialog -->
-    <Dialog v-model:visible="previewItem" header="バナープレビュー" :style="{ width: '520px' }" modal>
+    <Dialog v-model:visible="showPreviewDialog" header="バナープレビュー" :style="{ width: '520px' }" modal>
       <template v-if="previewItem">
         <p class="mb-3 text-sm text-surface-500">{{ providerLabel(previewItem.provider) }} / {{ placementLabel(previewItem.placement) }}</p>
         <div
           class="flex items-center justify-center rounded border border-dashed border-surface-300 bg-surface-50 p-4 dark:border-surface-600 dark:bg-surface-900"
           :style="{ minHeight: `${previewItem.bannerHeight}px`, maxWidth: `${previewItem.bannerWidth}px` }"
         >
-          <img v-if="previewItem.bannerImageUrl" :src="previewItem.bannerImageUrl" :alt="previewItem.altText" :width="previewItem.bannerWidth" :height="previewItem.bannerHeight" class="max-w-full object-contain" />
+          <img v-if="previewItem.bannerImageUrl" :src="previewItem.bannerImageUrl" :alt="previewItem.altText" :width="previewItem.bannerWidth" :height="previewItem.bannerHeight" class="max-w-full object-contain" >
           <div v-else class="text-center text-surface-400">
             <i class="pi pi-image mb-2 text-3xl" />
             <p class="text-sm">{{ previewItem.bannerWidth }} x {{ previewItem.bannerHeight }}</p>

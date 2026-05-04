@@ -186,11 +186,11 @@ onMounted(load)
               @click="handleTogglePublish(data as PackageResponse)"
             />
             <Button
+              v-tooltip="'削除'"
               icon="pi pi-trash"
               size="small"
               severity="danger"
               text
-              v-tooltip="'削除'"
               @click="handleDelete(data as PackageResponse)"
             />
           </div>

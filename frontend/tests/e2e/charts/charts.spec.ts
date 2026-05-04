@@ -140,8 +140,6 @@ test.describe('CHART-001〜005: F07.4 カルテ', () => {
   })
 
   test('CHART-003: カルテを作成できる（POST）', async ({ page }) => {
-    let createCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -159,7 +157,6 @@ test.describe('CHART-001〜005: F07.4 カルテ', () => {
           body: JSON.stringify(MOCK_CHARTS_LIST),
         })
       } else if (route.request().method() === 'POST') {
-        createCalled = true
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
@@ -198,8 +195,6 @@ test.describe('CHART-001〜005: F07.4 カルテ', () => {
   })
 
   test('CHART-004: カルテを編集できる（PUT）', async ({ page }) => {
-    let updateCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -229,7 +224,6 @@ test.describe('CHART-001〜005: F07.4 カルテ', () => {
           body: JSON.stringify({ data: MOCK_CHART }),
         })
       } else if (route.request().method() === 'PUT') {
-        updateCalled = true
         await route.fulfill({
           status: 200,
           contentType: 'application/json',

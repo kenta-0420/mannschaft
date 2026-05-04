@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.repository;
 import com.mannschaft.app.shift.ShiftPreference;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,7 +15,8 @@ import java.util.Optional;
 /**
  * シフト希望リポジトリ。
  */
-public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity, Long> {
+public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity, Long>,
+        JpaSpecificationExecutor<ShiftRequestEntity> {
 
     /**
      * スケジュールの全希望を取得する。

@@ -16,8 +16,6 @@ const teamId = computed(() => Number(route.params.id))
 const { records, loading, submitting, lastSummary, loadRecords, submitRollCall } =
   useDailyRollCall(teamId)
 
-const { t } = useI18n()
-
 const today = new Date().toISOString().slice(0, 10)
 const selectedDate = ref(today)
 
@@ -81,6 +79,7 @@ onMounted(async () => {
           v-model="selectedDate"
           type="date"
           class="w-full"
+          data-testid="daily-roll-call-date"
           @change="onDateChange"
         />
       </div>
@@ -94,18 +93,18 @@ onMounted(async () => {
           @change="(e) => (entries = e)"
         />
 
-        <div v-if="showSummary && lastSummary" class="mt-6 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-4">
+        <div v-if="showSummary && lastSummary" class="mt-6 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-4" data-testid="daily-roll-call-summary">
           <h2 class="text-base font-semibold mb-3">
             {{ $t('school.attendance.summary.title') }}
           </h2>
           <div class="grid grid-cols-5 gap-2 text-center text-sm">
             <div>
               <div class="text-surface-500 text-xs mb-1">{{ $t('school.attendance.summary.total') }}</div>
-              <div class="font-bold text-lg">{{ lastSummary.total }}</div>
+              <div class="font-bold text-lg" data-testid="daily-roll-call-summary-total">{{ lastSummary.total }}</div>
             </div>
             <div>
               <div class="text-surface-500 text-xs mb-1">{{ $t('school.attendance.summary.attending') }}</div>
-              <div class="font-bold text-lg text-green-600">{{ lastSummary.attending }}</div>
+              <div class="font-bold text-lg text-green-600" data-testid="daily-roll-call-summary-attending">{{ lastSummary.attending }}</div>
             </div>
             <div>
               <div class="text-surface-500 text-xs mb-1">{{ $t('school.attendance.summary.partial') }}</div>
@@ -113,7 +112,7 @@ onMounted(async () => {
             </div>
             <div>
               <div class="text-surface-500 text-xs mb-1">{{ $t('school.attendance.summary.absent') }}</div>
-              <div class="font-bold text-lg text-red-600">{{ lastSummary.absent }}</div>
+              <div class="font-bold text-lg text-red-600" data-testid="daily-roll-call-summary-absent">{{ lastSummary.absent }}</div>
             </div>
             <div>
               <div class="text-surface-500 text-xs mb-1">{{ $t('school.attendance.summary.undecided') }}</div>
@@ -128,6 +127,7 @@ onMounted(async () => {
             :loading="submitting"
             :disabled="entries.length === 0"
             class="w-full"
+            data-testid="daily-roll-call-submit"
             @click="onSubmit"
           />
         </div>

@@ -131,8 +131,6 @@ test.describe('EQUIP-001〜006: F07.3 備品管理', () => {
   })
 
   test('EQUIP-003: 備品を登録できる（POST）', async ({ page }) => {
-    let createCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -150,7 +148,6 @@ test.describe('EQUIP-001〜006: F07.3 備品管理', () => {
           body: JSON.stringify(MOCK_EQUIPMENT_LIST),
         })
       } else if (route.request().method() === 'POST') {
-        createCalled = true
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
@@ -181,8 +178,6 @@ test.describe('EQUIP-001〜006: F07.3 備品管理', () => {
   })
 
   test('EQUIP-004: 備品を編集できる（PUT）', async ({ page }) => {
-    let updateCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -206,7 +201,6 @@ test.describe('EQUIP-001〜006: F07.3 備品管理', () => {
 
     await page.route(`**/api/v1/teams/${TEAM_ID}/equipment/${EQUIP_ID}`, async (route) => {
       if (route.request().method() === 'PUT') {
-        updateCalled = true
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -236,8 +230,6 @@ test.describe('EQUIP-001〜006: F07.3 備品管理', () => {
   })
 
   test('EQUIP-005: 備品を削除できる（DELETE）', async ({ page }) => {
-    let deleteCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -261,7 +253,6 @@ test.describe('EQUIP-001〜006: F07.3 備品管理', () => {
 
     await page.route(`**/api/v1/teams/${TEAM_ID}/equipment/${EQUIP_ID}`, async (route) => {
       if (route.request().method() === 'DELETE') {
-        deleteCalled = true
         await route.fulfill({ status: 204 })
       } else {
         await route.continue()
@@ -285,9 +276,6 @@ test.describe('EQUIP-001〜006: F07.3 備品管理', () => {
   })
 
   test('EQUIP-006: 備品を貸し出し・返却できる（PATCH）', async ({ page }) => {
-    let assignCalled = false
-    let returnCalled = false
-
     await mockTeam(page)
     await page.route('**/api/v1/**', async (route) => {
       await route.fulfill({
@@ -313,7 +301,6 @@ test.describe('EQUIP-001〜006: F07.3 備品管理', () => {
     await page.route(
       `**/api/v1/teams/${TEAM_ID}/equipment/${EQUIP_ID}/assign`,
       async (route) => {
-        assignCalled = true
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -332,7 +319,6 @@ test.describe('EQUIP-001〜006: F07.3 備品管理', () => {
     await page.route(
       `**/api/v1/teams/${TEAM_ID}/equipment/2/return`,
       async (route) => {
-        returnCalled = true
         await route.fulfill({
           status: 200,
           contentType: 'application/json',

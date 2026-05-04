@@ -56,7 +56,7 @@ async function load() {
     status.value = post.status ?? 'DRAFT'
     scopeType.value = post.scopeType ?? null
     scopeId.value = post.scopeId ?? null
-    rejectionReason.value = (post as Record<string, unknown>).rejectionReason as string | null ?? null
+    rejectionReason.value = (post as unknown as Record<string, unknown>).rejectionReason as string | null ?? null
   } catch {
     // タイトルはクエリパラメータから引き継いでいるので画面表示は継続
   } finally {
@@ -300,11 +300,11 @@ onMounted(load)
         <span class="text-sm text-surface-600">予約公開日時</span>
         <DatePicker
           v-model="scheduledAt"
-          showTime
-          hourFormat="24"
-          dateFormat="yy/mm/dd"
+          show-time
+          hour-format="24"
+          date-format="yy/mm/dd"
           placeholder="日時を選択すると予約公開"
-          showButtonBar
+          show-button-bar
         />
       </div>
 

@@ -133,7 +133,7 @@ public class DashboardService {
         // todos 連携: 自分に割り当てられた未完了TODO
         List<TodoEntity> myTodos = todoRepository.findMyTodos(userId);
         List<TodoEntity> incompleteTodos = myTodos.stream()
-                .filter(t -> t.getStatus() != TodoStatus.COMPLETED)
+                .filter(t -> t.getStatus() == TodoStatus.OPEN || t.getStatus() == TodoStatus.IN_PROGRESS)
                 .toList();
         long overdueCount = incompleteTodos.stream()
                 .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()))
@@ -245,7 +245,7 @@ public class DashboardService {
     public Map<String, Object> getPersonalTodos(Long userId) {
         List<TodoEntity> myTodos = todoRepository.findMyTodos(userId);
         List<TodoEntity> incompleteTodos = myTodos.stream()
-                .filter(t -> t.getStatus() != TodoStatus.COMPLETED)
+                .filter(t -> t.getStatus() == TodoStatus.OPEN || t.getStatus() == TodoStatus.IN_PROGRESS)
                 .toList();
         long overdueCount = incompleteTodos.stream()
                 .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()))
@@ -291,7 +291,7 @@ public class DashboardService {
         Page<TodoEntity> teamTodos = todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
                 com.mannschaft.app.todo.TodoScopeType.TEAM, teamId, PageRequest.of(0, 100));
         List<TodoEntity> incompleteTeamTodos = teamTodos.getContent().stream()
-                .filter(t -> t.getStatus() != TodoStatus.COMPLETED)
+                .filter(t -> t.getStatus() == TodoStatus.OPEN || t.getStatus() == TodoStatus.IN_PROGRESS)
                 .toList();
         long teamOverdue = incompleteTeamTodos.stream()
                 .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()))
@@ -400,7 +400,7 @@ public class DashboardService {
         Page<TodoEntity> orgTodos = todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
                 com.mannschaft.app.todo.TodoScopeType.ORGANIZATION, orgId, PageRequest.of(0, 100));
         List<TodoEntity> incompleteOrgTodos = orgTodos.getContent().stream()
-                .filter(t -> t.getStatus() != TodoStatus.COMPLETED)
+                .filter(t -> t.getStatus() == TodoStatus.OPEN || t.getStatus() == TodoStatus.IN_PROGRESS)
                 .toList();
         long orgOverdue = incompleteOrgTodos.stream()
                 .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()))

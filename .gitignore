@@ -25,3 +25,10 @@ application-production.local.*
 docker-compose.prod.yml
 docker-compose.production.yml
 docker-compose.override.yml
+
+# --- Claude Code worktrees & lock files ---
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+
+# --- ローカルログ ---
+*.log

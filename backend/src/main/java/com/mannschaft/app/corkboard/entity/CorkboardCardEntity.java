@@ -86,6 +86,13 @@ public class CorkboardCardEntity extends BaseEntity {
     @Builder.Default
     private Boolean isArchived = false;
 
+    @Column(name = "is_pinned", nullable = false)
+    @Builder.Default
+    private Boolean isPinned = false;
+
+    @Column(name = "pinned_at")
+    private LocalDateTime pinnedAt;
+
     @Column(nullable = false)
     private Long createdBy;
 
@@ -123,6 +130,15 @@ public class CorkboardCardEntity extends BaseEntity {
      */
     public void archive(boolean archived) {
         this.isArchived = archived;
+    }
+
+    /**
+     * ピン止め状態を切り替える。
+     * pin=true で {@code pinnedAt} を現在時刻に設定し、pin=false で {@code pinnedAt} を null に戻す。
+     */
+    public void pin(boolean pin) {
+        this.isPinned = pin;
+        this.pinnedAt = pin ? LocalDateTime.now() : null;
     }
 
     /**

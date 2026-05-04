@@ -208,6 +208,99 @@
       "category_SUBJECT_CREDIT": "Fachkreditanerkennung",
       "category_PERFECT_ATTENDANCE": "Vollständige Anwesenheit",
       "category_CUSTOM": "Benutzerdefiniert"
+    },
+    "attendanceSummary": {
+      "title": "Anwesenheitszusammenfassung",
+      "attendanceRate": "Anwesenheitsrate",
+      "totalSchoolDays": "Schultage",
+      "presentDays": "Anwesenheitstage",
+      "absentDays": "Fehltage",
+      "lateCount": "Verspätungen",
+      "earlyLeaveCount": "Frühzeitige Abgänge",
+      "officialAbsenceDays": "Offizielle Fehltage",
+      "sickBayDays": "Krankenzimmertage",
+      "separateRoomDays": "Tage im Separatraum",
+      "onlineDays": "Online-Tage",
+      "homeLearningDays": "Heimlerntage",
+      "days": " Tage",
+      "times": " Mal",
+      "recalculate": "Neu berechnen",
+      "recalculateSuccess": "Zusammenfassung neu berechnet",
+      "noData": "Keine Zusammenfassungsdaten"
+    },
+    "requirements": {
+      "title": "Anwesenheitspflichten",
+      "filterAll": "Alle",
+      "runEvaluation": "Auswertung starten",
+      "evaluationSuccess": "Auswertung abgeschlossen",
+      "evaluateAll": "Alle Schüler auswerten",
+      "evaluating": "Auswertung läuft…",
+      "loadError": "Laden fehlgeschlagen",
+      "resolveSuccess": "Lösung gespeichert"
+    },
+    "evaluation": {
+      "title": "Bewertung der Anwesenheitsanforderungen",
+      "status": {
+        "OK": "Auf Kurs",
+        "WARNING": "Vorsicht",
+        "RISK": "Gefährdet",
+        "VIOLATION": "Verstoß"
+      },
+      "currentAttendanceRate": "Aktuelle Anwesenheitsquote",
+      "remainingAllowedAbsences": "Verbleibende erlaubte Fehltage",
+      "remainingDays": "Noch {days} Tage",
+      "noDaysLeft": "Keine weiteren Fehlzeiten erlaubt",
+      "evaluatedAt": "Bewertet am",
+      "resolve": "Verstoß auflösen",
+      "resolveTitle": "Auflösung des Verstoßes aufzeichnen",
+      "resolveNote": "Auflösungsnotiz",
+      "resolveNoteHint": "z.B. Nachholunterricht abgeschlossen, Sondergenehmigung erteilt",
+      "resolveSuccess": "Verstoß erfolgreich aufgelöst",
+      "resolveError": "Fehler beim Aufzeichnen der Auflösung",
+      "atRisk": "Gefährdete Schüler",
+      "noEvaluations": "Keine Bewertungsdaten verfügbar",
+      "noAtRisk": "Keine gefährdeten Schüler",
+      "dashboard": "Anforderungsbewertungs-Dashboard",
+      "filterByStatus": "Nach Status filtern",
+      "loadError": "Fehler beim Laden der Bewertungsdaten"
+    },
+    "disclosure": {
+      "title": "Offenlegungsentscheidung",
+      "decide": "Offenlegungsentscheidung treffen",
+      "tabDisclose": "Offenlegen",
+      "tabWithhold": "Vorerst zurückhalten",
+      "mode": {
+        "label": "Offenlegungsmodus",
+        "WITH_NUMBERS": "Mit Zahlen offenlegen",
+        "WITHOUT_NUMBERS": "Ohne Zahlen offenlegen (nur Hinweis)",
+        "MEETING_REQUEST_ONLY": "Nur Gesprächsanfrage senden"
+      },
+      "recipients": {
+        "label": "Empfänger",
+        "STUDENT_ONLY": "Nur Schüler",
+        "GUARDIAN_ONLY": "Nur Erziehungsberechtigte",
+        "BOTH": "Schüler und Erziehungsberechtigte"
+      },
+      "message": "Nachricht des Lehrers (optional)",
+      "messagePlaceholder": "Nachricht für Schüler/Erziehungsberechtigte eingeben",
+      "withholdReason": "Grund für Zurückhalten",
+      "withholdReasonPlaceholder": "Wird als Beratungsprotokoll gespeichert",
+      "submit": "Entscheidung bestätigen",
+      "submitting": "Wird gesendet...",
+      "historyTitle": "Offenlegungsverlauf",
+      "historyEmpty": "Keine Offenlegungsaufzeichnungen",
+      "decision": {
+        "DISCLOSED": "Offengelegt",
+        "WITHHELD": "Zurückgehalten"
+      },
+      "inbox": {
+        "title": "Anwesenheitsanforderungshinweise vom Lehrer",
+        "empty": "Keine offengelegten Informationen von Ihrem Lehrer",
+        "contactTeacher": "Bitte wenden Sie sich für Details an Ihren Lehrer",
+        "meetingRequest": "Ihr Lehrer hat ein Gespräch angefordert. Bitte kontaktieren Sie ihn.",
+        "currentRate": "Aktuelle Anwesenheitsquote",
+        "remainingAllowed": "Noch {days} Tage übrig"
+      }
     }
   }
 }

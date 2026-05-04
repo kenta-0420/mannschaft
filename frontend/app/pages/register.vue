@@ -119,8 +119,8 @@ const onSubmit = handleSubmit(async (values) => {
       <div class="flex flex-col gap-2">
         <label for="password">パスワード <span class="text-red-500">※</span></label>
         <Password
-          input-id="password"
           v-model="password"
+          input-id="password"
           v-bind="passwordProps"
           :feedback="true"
           toggle-mask

@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 学校出欠通知サービス。
@@ -79,5 +80,59 @@ public class SchoolAttendanceNotificationService {
         // TODO: NotificationDispatchService 経由で保護者へプッシュ通知を送信する
         log.info("保護者連絡確認通知 noticeId={} studentUserId={} acknowledgedBy={}",
                 notice.getId(), notice.getStudentUserId(), notice.getAcknowledgedBy());
+    }
+
+    // ─── 出席要件警告通知（教員側のみ、生徒・保護者へは配信しない） ───
+
+    /**
+     * 出席要件 WARNING 水準到達時の担任・副担任向け通知。
+     *
+     * @param studentUserId  対象生徒のユーザーID
+     * @param ruleName       規程名
+     * @param teacherUserIds 通知先教員のユーザーIDリスト
+     */
+    public void notifyRequirementWarning(Long studentUserId, String ruleName, List<Long> teacherUserIds) {
+        log.info("出席要件WARNING通知（教員向け）: studentUserId={}, rule={}, recipients={}",
+                 studentUserId, ruleName, teacherUserIds);
+        // TODO: NotificationDispatchService 経由でプッシュ通知を送信する
+    }
+
+    /**
+     * 出席要件 RISK 水準到達時の担任・副担任・教科担任・教務向け通知。
+     *
+     * @param studentUserId  対象生徒のユーザーID
+     * @param ruleName       規程名
+     * @param teacherUserIds 通知先教員のユーザーIDリスト
+     */
+    public void notifyRequirementRisk(Long studentUserId, String ruleName, List<Long> teacherUserIds) {
+        log.info("出席要件RISK通知（教員向け）: studentUserId={}, rule={}, recipients={}",
+                 studentUserId, ruleName, teacherUserIds);
+        // TODO: NotificationDispatchService 経由でプッシュ通知を送信する
+    }
+
+    /**
+     * 出席要件 VIOLATION 確定時の担任・教務向け通知。
+     *
+     * @param studentUserId  対象生徒のユーザーID
+     * @param ruleName       規程名
+     * @param teacherUserIds 通知先教員のユーザーIDリスト
+     */
+    public void notifyRequirementViolation(Long studentUserId, String ruleName, List<Long> teacherUserIds) {
+        log.info("出席要件VIOLATION通知（教員向け）: studentUserId={}, rule={}, recipients={}",
+                 studentUserId, ruleName, teacherUserIds);
+        // TODO: NotificationDispatchService 経由でプッシュ通知を送信する
+    }
+
+    /**
+     * 週次ダイジェスト：担任へチームのリスク生徒一覧を通知。
+     *
+     * @param teamId                  チームID
+     * @param atRiskCount             リスクあり生徒数
+     * @param homeroomTeacherUserId   担任のユーザーID
+     */
+    public void sendWeeklyRiskDigest(Long teamId, int atRiskCount, Long homeroomTeacherUserId) {
+        log.info("週次リスクダイジェスト（担任向け）: teamId={}, atRiskCount={}, teacherUserId={}",
+                 teamId, atRiskCount, homeroomTeacherUserId);
+        // TODO: NotificationDispatchService 経由でプッシュ通知を送信する
     }
 }

@@ -80,6 +80,7 @@ function removeField(index: number) {
 
 function onFieldTypeChange(index: number) {
   const f = fields.value[index]
+  if (!f) return
   if (f.fieldType !== 'NUMBER') {
     f.isAggregatable = false
   }
@@ -175,7 +176,7 @@ function handleCancel() {
                 <th class="pb-2 pr-2">フィールド名</th>
                 <th class="pb-2 pr-2">型</th>
                 <th class="pb-2 pr-2 text-center">必須</th>
-                <th class="pb-2 pr-2 text-center">集計対象<br />(NUMBERのみ)</th>
+                <th class="pb-2 pr-2 text-center">集計対象<br >(NUMBERのみ)</th>
                 <th class="pb-2 pr-2">選択肢 (SELECTのみ)</th>
                 <th class="pb-2 text-center">操作</th>
               </tr>

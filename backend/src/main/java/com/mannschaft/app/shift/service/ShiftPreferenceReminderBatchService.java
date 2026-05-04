@@ -7,6 +7,8 @@ import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.team.entity.TeamShiftSettingsEntity;
+import com.mannschaft.app.team.repository.TeamShiftSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -34,6 +36,7 @@ public class ShiftPreferenceReminderBatchService {
     private final ShiftRequestRepository requestRepository;
     private final UserRoleRepository userRoleRepository;
     private final NotificationHelper notificationHelper;
+    private final TeamShiftSettingsRepository teamShiftSettingsRepository;
 
     /**
      * 10 分ごとに実行。48h前・24h前リマインドを未提出メンバーに送信する。
@@ -54,6 +57,14 @@ public class ShiftPreferenceReminderBatchService {
         int count = 0;
         for (ShiftScheduleEntity schedule : targets) {
             try {
+                // チームのリマインド設定を確認し、48h が無効なら送信をスキップ
+                TeamShiftSettingsEntity teamSettings = teamShiftSettingsRepository
+                        .findByTeamId(schedule.getTeamId())
+                        .orElse(null);
+                if (teamSettings != null && !teamSettings.isReminder48hEnabled()) {
+                    log.info("48hリマインド無効のためスキップ: teamId={}", schedule.getTeamId());
+                    continue;
+                }
                 sendReminderToUnsubmittedMembers(schedule,
                         "SHIFT_REQUEST_REMINDER_48H",
                         "シフト希望の提出期限 48 時間前です",
@@ -75,6 +86,14 @@ public class ShiftPreferenceReminderBatchService {
         int count = 0;
         for (ShiftScheduleEntity schedule : targets) {
             try {
+                // チームのリマインド設定を確認し、24h が無効なら送信をスキップ
+                TeamShiftSettingsEntity teamSettings = teamShiftSettingsRepository
+                        .findByTeamId(schedule.getTeamId())
+                        .orElse(null);
+                if (teamSettings != null && !teamSettings.isReminder24hEnabled()) {
+                    log.info("24hリマインド無効のためスキップ: teamId={}", schedule.getTeamId());
+                    continue;
+                }
                 sendReminderToUnsubmittedMembers(schedule,
                         "SHIFT_REQUEST_REMINDER",
                         "シフト希望の提出期限が明日までです",

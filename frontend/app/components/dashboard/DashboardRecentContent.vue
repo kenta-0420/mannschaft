@@ -121,7 +121,7 @@ onMounted(() => {
             v-if="post.coverImageUrl"
             :src="post.coverImageUrl"
             class="h-32 w-full object-cover"
-          />
+          >
           <div class="p-3">
             <h3
               class="mb-1 text-sm font-semibold text-surface-800 line-clamp-2 group-hover:text-primary dark:text-surface-100"

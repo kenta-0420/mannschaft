@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ViewerRole } from '~/types/dashboard'
+import type { TeamResponse } from '~/types/team'
 
 definePageMeta({
   middleware: 'auth',
@@ -69,29 +70,7 @@ async function cancelSupporter() {
   }
 }
 
-interface TeamDetail {
-  id: number
-  name: string
-  nameKana: string | null
-  nickname1: string | null
-  nickname2: string | null
-  template: string
-  prefecture: string | null
-  city: string | null
-  description: string | null
-  visibility: string
-  supporterEnabled: boolean
-  version: number
-  memberCount: number
-  teamFriendCount: number
-  supporterCount: number
-  archivedAt: string | null
-  createdAt: string
-  iconUrl: string | null
-  bannerUrl: string | null
-}
-
-const team = ref<TeamDetail | null>(null)
+const team = ref<TeamResponse | null>(null)
 const loading = ref(false)
 const activeTab = ref(0)
 const showLeaveConfirm = ref(false)
@@ -172,7 +151,7 @@ onMounted(async () => {
           <Tab v-if="isAdminOrDeputy" :value="3"> 招待 </Tab>
           <Tab v-if="isAdmin && team.supporterEnabled" :value="4"> サポーター管理 </Tab>
           <Tab v-if="isAdmin" :value="5"> 機能設定 </Tab>
-          <Tab v-if="isAdmin" :value="6"> {{ $t('friends.nav.tab') }} </Tab>
+          <Tab v-if="isAdmin" :value="6"> {{ $t('nav.tab') }} </Tab>
         </TabList>
 
         <TabPanels>
@@ -206,7 +185,7 @@ onMounted(async () => {
               :team-friend-count="team.teamFriendCount"
               :supporter-count="team.supporterCount"
               :supporter-enabled="team.supporterEnabled"
-              :description="team.description"
+              :description="team.description ?? null"
               :is-admin="isAdmin"
             />
           </TabPanel>

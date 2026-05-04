@@ -1,7 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
 
-const { t } = useI18n()
 const { loadMyFollowers, loadMoreMyFollowers, followers, followersCursor, followersLoading } =
   useFollowList()
 const socialApi = useSocialProfileApi()
@@ -45,7 +44,7 @@ onMounted(loadData)
               :src="record.avatarUrl"
               alt=""
               class="h-10 w-10 rounded-full object-cover"
-            />
+            >
             <div
               v-else
               class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary"

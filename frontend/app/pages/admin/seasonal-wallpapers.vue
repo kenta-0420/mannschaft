@@ -13,7 +13,7 @@ const previewItem = ref<WallpaperResponse | null>(null)
 const showPreview = ref(false)
 const saving = ref(false)
 
-const form = ref<CreateWallpaperRequest & { startDate?: string; endDate?: string }>({
+const form = ref<CreateWallpaperRequest & { startDate?: Date; endDate?: Date }>({
   name: '',
   imageUrl: '',
   thumbnailUrl: '',
@@ -168,7 +168,7 @@ onMounted(load)
             :src="item.thumbnailUrl"
             :alt="item.name"
             class="size-full object-cover"
-          />
+          >
           <div
             v-else
             class="flex size-full items-center justify-center text-surface-400"
@@ -235,7 +235,7 @@ onMounted(load)
             accept="image/*"
             class="block w-full text-sm text-surface-500 file:mr-4 file:rounded file:border-0 file:bg-primary-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900 dark:file:text-primary-300"
             @change="onFileSelect"
-          />
+          >
         </div>
 
         <div v-if="form.imageUrl" class="overflow-hidden rounded-lg border border-surface-200">
@@ -243,7 +243,7 @@ onMounted(load)
             :src="form.imageUrl"
             alt="プレビュー"
             class="h-40 w-full object-cover"
-          />
+          >
         </div>
 
         <div>
@@ -300,7 +300,7 @@ onMounted(load)
           :src="previewItem.imageUrl"
           :alt="previewItem.name"
           class="w-full rounded-lg object-contain"
-        />
+        >
         <div class="grid grid-cols-2 gap-2 text-sm">
           <div><span class="font-medium">カテゴリ:</span> {{ previewItem.category }}</div>
           <div><span class="font-medium">スラッグ:</span> {{ previewItem.templateSlug }}</div>

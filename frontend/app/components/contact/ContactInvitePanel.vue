@@ -185,7 +185,7 @@ onMounted(fetchTokens)
             :src="token.qrCodeUrl"
             alt="QRコード"
             class="h-16 w-16 rounded border border-surface-300"
-          />
+          >
           <span class="text-xs text-gray-400">QRコードをスキャンして追加</span>
         </div>
       </div>

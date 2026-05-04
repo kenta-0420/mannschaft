@@ -49,6 +49,7 @@ async function onConfirm(): Promise<void> {
     modal
     :closable="!submitting"
     :style="{ width: '480px', maxWidth: '95vw' }"
+    data-testid="transition-alert-resolve-modal"
     @update:visible="close"
   >
     <!-- アラート情報 -->
@@ -90,6 +91,7 @@ async function onConfirm(): Promise<void> {
         rows="4"
         class="w-full"
         :disabled="submitting"
+        data-testid="transition-alert-resolve-note"
       />
     </div>
 
@@ -106,6 +108,7 @@ async function onConfirm(): Promise<void> {
         severity="danger"
         :loading="submitting"
         :disabled="!note.trim()"
+        data-testid="transition-alert-resolve-submit"
         @click="onConfirm"
       />
     </template>

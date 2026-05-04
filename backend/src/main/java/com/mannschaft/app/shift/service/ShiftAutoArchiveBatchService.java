@@ -1,11 +1,13 @@
 package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.event.ShiftArchivedEvent;
 import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ public class ShiftAutoArchiveBatchService {
 
     private final ShiftScheduleRepository scheduleRepository;
     private final ShiftChangeRequestRepository changeRequestRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 毎日 AM 3:00（JST）に実行。終了から 7 日超過した PUBLISHED スケジュールをアーカイブする。
@@ -59,7 +62,9 @@ public class ShiftAutoArchiveBatchService {
                     log.info("OPEN 変更依頼を自動 WITHDRAWN: scheduleId={}, 件数={}", schedule.getId(), withdrawn);
                 }
 
-                // TODO: ShiftArchivedEvent を発行して通知連動（Phase 4-α で追加予定）
+                // Phase 4-γ: ShiftArchivedEvent を発行して紐づく Todo を自動 CANCELLED にする
+                eventPublisher.publishEvent(new ShiftArchivedEvent(
+                        schedule.getId(), schedule.getTeamId(), null));
                 archived++;
                 log.info("シフト自動アーカイブ: scheduleId={}, endDate={}", schedule.getId(), schedule.getEndDate());
 

@@ -71,24 +71,8 @@ export interface CreateInternalNoteRequest {
 }
 
 // ===== Feedbacks =====
-export interface FeedbackResponse {
-  id: number
-  scopeType: string
-  scopeId: number
-  category: string
-  title: string
-  body: string
-  isAnonymous: boolean
-  submittedBy: number
-  status: string
-  adminResponse: string | null
-  respondedBy: number | null
-  respondedAt: string | null
-  isPublicResponse: boolean
-  voteCount: number
-  createdAt: string
-  updatedAt: string
-}
+// FeedbackResponse は feedback.ts で定義（重複を避けるためここでは再エクスポートのみ）
+export type { FeedbackResponse } from './feedback'
 
 export interface FeedbackRespondRequest {
   adminResponse: string

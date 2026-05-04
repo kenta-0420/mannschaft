@@ -1,5 +1,5 @@
 -- F03.13 学校日次・教科別出欠管理: 「前にいたのに今いない」検知ログ
-CREATE TABLE attendance_transition_alerts (
+CREATE TABLE IF NOT EXISTS attendance_transition_alerts (
     id                      BIGINT UNSIGNED    NOT NULL AUTO_INCREMENT,
     team_id                 BIGINT UNSIGNED    NOT NULL,
     student_user_id         BIGINT UNSIGNED    NOT NULL,

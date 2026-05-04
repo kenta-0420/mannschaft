@@ -2,6 +2,7 @@ package com.mannschaft.app.survey.repository;
 
 import com.mannschaft.app.survey.entity.SurveyResponseEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -10,7 +11,7 @@ import java.util.List;
 /**
  * アンケート回答リポジトリ。
  */
-public interface SurveyResponseRepository extends JpaRepository<SurveyResponseEntity, Long> {
+public interface SurveyResponseRepository extends JpaRepository<SurveyResponseEntity, Long>, JpaSpecificationExecutor<SurveyResponseEntity> {
 
     /**
      * アンケート・ユーザーの回答が存在するか確認する。

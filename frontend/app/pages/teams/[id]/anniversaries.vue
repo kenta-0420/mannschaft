@@ -17,7 +17,7 @@ const editingItem = ref<AnniversaryResponse | null>(null)
 
 const form = reactive<AnniversaryRequest>({
   name: '',
-  date: new Date().toISOString().split('T')[0],
+  date: new Date().toISOString().split('T')[0] ?? '',
   repeatAnnually: true,
   notifyDaysBefore: 7,
 })
@@ -42,7 +42,7 @@ function openCreate() {
   editingItem.value = null
   Object.assign(form, {
     name: '',
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split('T')[0] ?? '',
     repeatAnnually: true,
     notifyDaysBefore: 7,
   })

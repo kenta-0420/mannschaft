@@ -12,7 +12,7 @@ export interface BlogPostResponse {
   scopeType: BlogPostScope
   scopeId: number | null
   author: { id: number; displayName: string; avatarUrl: string | null }
-  tags: Array<{ id: number; name: string }>
+  tags: BlogTag[]
   seriesId: number | null
   seriesName: string | null
   seriesOrder: number | null

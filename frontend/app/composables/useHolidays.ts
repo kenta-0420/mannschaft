@@ -34,7 +34,10 @@ export function useHolidays() {
    * @param dateStr - "YYYY-MM-DD" 形式の日付文字列
    */
   function getHoliday(dateStr: string): string | null {
-    const [year, month, day] = dateStr.split('-').map(Number)
+    const parts = dateStr.split('-').map(Number)
+    const year = parts[0] ?? 0
+    const month = parts[1] ?? 1
+    const day = parts[2] ?? 1
     // タイムゾーン問題を避けるためローカル日付で生成する
     const date = new Date(year, month - 1, day)
     const hd = new Holidays(countryCode.value)

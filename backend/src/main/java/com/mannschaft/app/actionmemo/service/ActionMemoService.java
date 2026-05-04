@@ -6,6 +6,7 @@ import com.mannschaft.app.actionmemo.ActionMemoMood;
 import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoTagSummary;
+import com.mannschaft.app.actionmemo.dto.AvailableOrgResponse;
 import com.mannschaft.app.actionmemo.dto.AvailableTeamResponse;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
 import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
@@ -28,6 +29,8 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.security.HtmlSanitizer;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -106,6 +109,7 @@ public class ActionMemoService {
     private final TimelinePostRepository timelinePostRepository;
     private final UserRoleRepository userRoleRepository;
     private final TeamRepository teamRepository;
+    private final OrganizationRepository organizationRepository;
     private final ActionMemoSettingsService settingsService;
     private final AuditLogService auditLogService;
     private final ActionMemoMetrics metrics;
@@ -216,6 +220,20 @@ public class ActionMemoService {
         metrics.incrementCreated();
         log.info("行動メモ作成: memoId={}, userId={}, memoDate={}, length={}, category={}",
                 saved.getId(), userId, memoDate, saved.getContent().length(), category);
+
+        // 10. 監査ログ記録（非同期 fire-and-forget）
+        auditLogService.record(
+                "ACTION_MEMO_CREATED",
+                userId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                String.format("{\"source\":\"ACTION_MEMO\",\"source_id\":%d,\"event\":\"CREATED\",\"category\":\"%s\"}",
+                        saved.getId(), category != null ? category.name() : "")
+        );
 
         return toResponse(saved, tagEntities);
     }
@@ -421,6 +439,31 @@ public class ActionMemoService {
         log.info("行動メモ更新: memoId={}, userId={}, length={}, category={}",
                 saved.getId(), userId, saved.getContent().length(), saved.getCategory());
 
+        // 監査ログ記録: 変更フィールドを列挙（非同期 fire-and-forget）
+        List<String> changedFields = new ArrayList<>();
+        if (request.getContent() != null) changedFields.add("content");
+        if (request.getMemoDate() != null) changedFields.add("memo_date");
+        if (request.getMood() != null) changedFields.add("mood");
+        if (request.getRelatedTodoId() != null) changedFields.add("related_todo_id");
+        if (request.getCategory() != null) changedFields.add("category");
+        if (request.getDurationMinutes() != null) changedFields.add("duration_minutes");
+        if (request.getProgressRate() != null) changedFields.add("progress_rate");
+        if (request.getCompletesTodo() != null) changedFields.add("completes_todo");
+        if (request.getTagIds() != null) changedFields.add("tag_ids");
+        if (request.getOrganizationId() != null) changedFields.add("organization_id");
+        auditLogService.record(
+                "ACTION_MEMO_UPDATED",
+                userId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                String.format("{\"source\":\"ACTION_MEMO\",\"source_id\":%d,\"event\":\"UPDATED\",\"fields_changed\":\"%s\"}",
+                        memoId, String.join(",", changedFields))
+        );
+
         List<ActionMemoTagEntity> tags = fetchTagsForMemo(memoId);
         return toResponse(saved, tags);
     }
@@ -438,6 +481,19 @@ public class ActionMemoService {
         memo.softDelete();
         memoRepository.save(memo);
         log.info("行動メモ削除: memoId={}, userId={}", memoId, userId);
+
+        // 監査ログ記録（非同期 fire-and-forget）
+        auditLogService.record(
+                "ACTION_MEMO_DELETED",
+                userId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                String.format("{\"source\":\"ACTION_MEMO\",\"source_id\":%d,\"event\":\"DELETED\"}", memoId)
+        );
     }
 
     // ==================================================================
@@ -784,6 +840,27 @@ public class ActionMemoService {
     }
 
     /**
+     * Phase 5-2: ユーザーの所属組織一覧（組織スコープ投稿先選択候補）を返す。
+     *
+     * @param userId 現在のユーザー ID
+     * @return 所属組織一覧
+     */
+    public List<AvailableOrgResponse> getAvailableOrgs(Long userId) {
+        List<UserRoleEntity> userRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
+
+        return userRoles.stream()
+                .map(UserRoleEntity::getOrganizationId)
+                .distinct()
+                .map(orgId -> organizationRepository.findById(orgId).orElse(null))
+                .filter(Objects::nonNull)
+                .map(org -> AvailableOrgResponse.builder()
+                        .id(org.getId())
+                        .name(org.getName())
+                        .build())
+                .toList();
+    }
+
+    /**
      * publish-to-team 本文を組み立てる。
      *
      * <pre>
@@ -980,7 +1057,12 @@ public class ActionMemoService {
     }
 
     /**
-     * 紐付け対象 TODO が自分の PERSONAL スコープであることを検証する。
+     * 紐付け対象 TODO のスコープを検証する（Phase 4-β 拡張）。
+     *
+     * <ul>
+     *   <li>PERSONAL スコープ: 自分の TODO のみ許可</li>
+     *   <li>TEAM スコープ: 自分が所属するチームの TODO のみ許可</li>
+     * </ul>
      * 違反時は 404（IDOR 対策）。
      */
     private void validateTodoScope(Long todoId, Long userId) {
@@ -989,10 +1071,108 @@ public class ActionMemoService {
             throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TODO_NOT_FOUND);
         }
         TodoEntity todo = todoOpt.get();
-        if (todo.getScopeType() != TodoScopeType.PERSONAL
-                || !Objects.equals(todo.getScopeId(), userId)) {
+        if (todo.getScopeType() == TodoScopeType.PERSONAL) {
+            if (!Objects.equals(todo.getScopeId(), userId)) {
+                throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TODO_NOT_FOUND);
+            }
+        } else if (todo.getScopeType() == TodoScopeType.TEAM) {
+            // Phase 4-β: TEAM スコープ TODO は所属チームのもののみ許可
+            if (!userRoleRepository.existsByUserIdAndTeamId(userId, todo.getScopeId())) {
+                throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TODO_NOT_FOUND);
+            }
+        } else {
+            // ORGANIZATION スコープは未対応
             throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TODO_NOT_FOUND);
         }
+    }
+
+    /**
+     * Phase 4-β: チーム管理者が TODO を OPEN に差し戻す。
+     *
+     * <p>認可: callerUserId が memo.postedTeamId の ADMIN または DEPUTY_ADMIN であること。
+     * completesTodo = false のメモは差し戻し対象外（400）。</p>
+     *
+     * @param memoId        対象メモ ID
+     * @param callerUserId  呼び出し者 ID（管理者）
+     */
+    @Transactional
+    public void revertTodoCompletion(Long memoId, Long callerUserId) {
+        // メモ取得（@SQLRestriction で論理削除済みは除外）
+        ActionMemoEntity memo = memoRepository.findById(memoId)
+                .orElseThrow(() -> new BusinessException(ActionMemoErrorCode.ACTION_MEMO_NOT_FOUND));
+
+        // completesTodo フラグ確認
+        if (!Boolean.TRUE.equals(memo.getCompletesTodo())) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TODO_NOT_COMPLETED_BY_MEMO);
+        }
+
+        // チーム投稿済みかつ管理者権限チェック
+        if (memo.getPostedTeamId() == null
+                || userRoleRepository.countTeamAdminByUserIdAndTeamId(callerUserId, memo.getPostedTeamId()) == 0) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TODO_REVERT_NOT_ALLOWED);
+        }
+
+        Long todoId = memo.getRelatedTodoId();
+        if (todoId == null) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TODO_NOT_COMPLETED_BY_MEMO);
+        }
+
+        // TODO を OPEN に戻す（memo 所有者のIDで操作—TodoService の権限チェックをバイパスするため直接変更）
+        TodoEntity todo = todoRepository.findByIdAndDeletedAtIsNull(todoId).orElse(null);
+        if (todo != null && com.mannschaft.app.todo.TodoStatus.OPEN != todo.getStatus()) {
+            todoService.changeStatus(todoId, new TodoStatusChangeRequest("OPEN"), memo.getUserId());
+        }
+
+        // 監査ログ
+        auditLogService.record(
+                "AUDIT_LOG_TODO_REVERTED_BY_ADMIN",
+                callerUserId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                String.format("{\"source\":\"ACTION_MEMO\",\"memo_id\":%d,\"todo_id\":%d,\"reverted_by\":%d}",
+                        memoId, todoId, callerUserId)
+        );
+
+        log.info("TODO差し戻し: memoId={}, todoId={}, callerUserId={}", memoId, todoId, callerUserId);
+    }
+
+    /**
+     * Phase 4-β: 管理職向けダッシュボード — チームメンバーの WORK メモ一覧取得。
+     *
+     * <p>認可: callerUserId が teamId の ADMIN または DEPUTY_ADMIN であること。
+     * フィルタ: category=WORK AND postedTeamId=teamId AND userId=memberId。</p>
+     *
+     * @param teamId       チーム ID
+     * @param memberId     対象メンバーのユーザー ID
+     * @param callerUserId 呼び出し者 ID
+     * @param cursorId     カーソル（前回最後のメモ ID）
+     * @param limit        取得件数
+     * @return メモ一覧レスポンス
+     */
+    public ActionMemoListResponse listTeamMemberMemos(
+            Long teamId, Long memberId, Long callerUserId, Long cursorId, int limit) {
+        // 管理者権限チェック
+        if (userRoleRepository.countTeamAdminByUserIdAndTeamId(callerUserId, teamId) == 0) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_DASHBOARD_FORBIDDEN);
+        }
+
+        int effectiveLimit = normalizeLimit(limit);
+        List<ActionMemoEntity> memos = memoRepository.findByUserIdAndPostedTeamIdAndCategoryWork(
+                memberId, teamId, cursorId, PageRequest.of(0, effectiveLimit + 1));
+
+        boolean hasNext = memos.size() > effectiveLimit;
+        List<ActionMemoEntity> page = hasNext ? memos.subList(0, effectiveLimit) : memos;
+
+        List<ActionMemoResponse> responses = page.stream()
+                .map(m -> toResponse(m, fetchTagsForMemo(m.getId())))
+                .toList();
+
+        String nextCursor = hasNext ? String.valueOf(page.get(page.size() - 1).getId()) : null;
+        return new ActionMemoListResponse(responses, nextCursor);
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.mannschaft.app.parking.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.parking.ApplicationStatus;
 import com.mannschaft.app.parking.ParkingApplicationStatus;
 import com.mannschaft.app.parking.ParkingErrorCode;
@@ -12,6 +13,9 @@ import com.mannschaft.app.parking.entity.ParkingApplicationEntity;
 import com.mannschaft.app.parking.entity.ParkingSpaceEntity;
 import com.mannschaft.app.parking.repository.ParkingApplicationRepository;
 import com.mannschaft.app.parking.repository.ParkingSpaceRepository;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -35,6 +39,8 @@ public class ParkingApplicationService {
     private final ParkingApplicationRepository applicationRepository;
     private final ParkingSpaceRepository spaceRepository;
     private final ParkingMapper parkingMapper;
+    private final ProxyInputContext proxyInputContext;
+    private final ProxyInputRecordRepository proxyInputRecordRepository;
 
     /**
      * 申請一覧をページング取得する。
@@ -83,6 +89,17 @@ public class ParkingApplicationService {
                 .message(request.getMessage())
                 .build();
         ParkingApplicationEntity saved = applicationRepository.save(entity);
+
+        // 代理入力の場合: proxy_input_records を作成し、フラグをセット
+        if (proxyInputContext.isProxy()) {
+            ProxyInputRecordEntity proxyRecord = buildAndSaveProxyInputRecord(
+                    "PARKING_APPLICATION", saved.getId());
+            saved = applicationRepository.save(saved.toBuilder()
+                    .isProxyInput(true)
+                    .proxyInputRecordId(proxyRecord.getId())
+                    .build());
+        }
+
         log.info("区画申請: spaceId={}, userId={}", request.getSpaceId(), userId);
         return parkingMapper.toApplicationResponse(saved);
     }
@@ -160,5 +177,31 @@ public class ParkingApplicationService {
 
         log.info("抽選実行: spaceId={}, candidates={}", spaceId, candidates.size());
         return parkingMapper.toApplicationResponseList(candidates);
+    }
+
+    /**
+     * 代理入力記録を作成して保存する（冪等性チェックあり）。
+     *
+     * @param targetEntityType 対象エンティティ種別
+     * @param targetEntityId   対象エンティティID
+     * @return 保存済み代理入力記録エンティティ
+     */
+    private ProxyInputRecordEntity buildAndSaveProxyInputRecord(String targetEntityType, Long targetEntityId) {
+        Long proxyUserId = SecurityUtils.getCurrentUserIdOrNull();
+        // 冪等性チェック（紙運用での二重登録防止）
+        return proxyInputRecordRepository.findByProxyInputConsentIdAndTargetEntityTypeAndTargetEntityId(
+                proxyInputContext.getConsentId(), targetEntityType, targetEntityId)
+                .orElseGet(() -> proxyInputRecordRepository.save(
+                        ProxyInputRecordEntity.builder()
+                                .proxyInputConsentId(proxyInputContext.getConsentId())
+                                .subjectUserId(proxyInputContext.getSubjectUserId())
+                                .proxyUserId(proxyUserId)
+                                .featureScope("PARKING_APPLICATION")
+                                .targetEntityType(targetEntityType)
+                                .targetEntityId(targetEntityId)
+                                .inputSource(ProxyInputRecordEntity.InputSource.valueOf(
+                                        proxyInputContext.getInputSource()))
+                                .originalStorageLocation(proxyInputContext.getOriginalStorageLocation())
+                                .build()));
     }
 }

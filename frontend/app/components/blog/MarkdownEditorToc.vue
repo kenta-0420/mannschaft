@@ -39,19 +39,19 @@ defineEmits<{
           <div class="mb-2 text-xl">☰</div>
           <p class="mb-1 text-xs font-semibold text-green-700">まず目次を作りましょう！</p>
           <p class="text-xs leading-relaxed text-surface-400">
-            <code class="rounded bg-green-50 px-1 text-green-700">#</code> 大見出し<br />
-            <code class="rounded bg-green-50 px-1 text-green-700">##</code> 中見出し<br />
+            <code class="rounded bg-green-50 px-1 text-green-700">#</code> 大見出し<br >
+            <code class="rounded bg-green-50 px-1 text-green-700">##</code> 中見出し<br >
             <code class="rounded bg-green-50 px-1 text-green-700">###</code> 小見出し
           </p>
           <div
             class="mt-3 rounded-lg border border-dashed border-green-200 bg-green-50/60 p-2 text-left"
           >
             <p class="font-mono text-xs leading-relaxed text-green-600">
-              # はじめに<br />
-              ## 背景<br />
-              ## 目的<br />
-              # 本題<br />
-              ## ポイント1<br />
+              # はじめに<br >
+              ## 背景<br >
+              ## 目的<br >
+              # 本題<br >
+              ## ポイント1<br >
               # まとめ
             </p>
           </div>

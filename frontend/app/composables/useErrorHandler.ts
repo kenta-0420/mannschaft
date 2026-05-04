@@ -56,9 +56,13 @@ export const useErrorHandler = () => {
     return fieldErrors
   }
 
+  // エイリアス（handleError 形式でも使えるようにする）
+  const handleError = handleApiError
+
   return {
     resolveMessage,
     handleApiError,
+    handleError,
     getFieldErrors,
   }
 }

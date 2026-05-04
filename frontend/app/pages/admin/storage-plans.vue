@@ -125,7 +125,7 @@ onMounted(async () => {
 
     <TabView v-model:active-index="activeTab">
       <!-- プラン一覧タブ -->
-      <TabPanel header="プラン一覧">
+      <TabPanel header="プラン一覧" value="0">
         <PageLoading v-if="loading" size="40px" />
 
         <DataTable v-else :value="plans" data-key="id" striped-rows>
@@ -178,19 +178,19 @@ onMounted(async () => {
             <template #body="{ data }">
               <div class="flex gap-1">
                 <Button
+                  v-tooltip="'編集'"
                   icon="pi pi-pencil"
                   size="small"
                   severity="secondary"
                   text
-                  v-tooltip="'編集'"
                   @click="openEdit(data)"
                 />
                 <Button
+                  v-tooltip="'削除'"
                   icon="pi pi-trash"
                   size="small"
                   severity="danger"
                   text
-                  v-tooltip="'削除'"
                   @click="handleDelete(data.id)"
                 />
               </div>
@@ -200,7 +200,7 @@ onMounted(async () => {
       </TabPanel>
 
       <!-- チーム使用状況タブ -->
-      <TabPanel header="チーム使用状況">
+      <TabPanel header="チーム使用状況" value="1">
         <DataTable :value="usageList" data-key="teamId" striped-rows>
           <template #empty>
             <DashboardEmptyState icon="pi pi-chart-bar" message="使用状況データがありません" />

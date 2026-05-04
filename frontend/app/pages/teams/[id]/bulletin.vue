@@ -5,7 +5,7 @@ definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const teamId = Number(route.params.id)
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 
 const selectedThread = ref<BulletinThreadResponse | null>(null)
 const showCreateDialog = ref(false)

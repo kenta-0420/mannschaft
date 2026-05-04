@@ -88,11 +88,14 @@ export interface MockMemo {
   posted_team_id: number | null
 }
 
-/** Backend RawSettings に準拠（Phase 3 込み）。 */
+/** Backend RawSettings に準拠（Phase 3 + Phase 4-β 込み）。 */
 export interface MockSettings {
   mood_enabled: boolean
   default_post_team_id: number | null
   default_category: 'WORK' | 'PRIVATE' | 'OTHER'
+  // Phase 4-β
+  reminder_enabled: boolean
+  reminder_time: string | null
 }
 
 /** Backend RawAvailableTeam に準拠。 */
@@ -134,6 +137,15 @@ export interface MockState {
   nextTimelinePostId: number
   /** completes_todo=true で完了状態に変更された TODO の id 集合 */
   completedTodoIds: Set<number>
+  // Phase 4-β: 管理職ダッシュボード
+  dashboardMemos: MockMemo[]
+  dashboardNextCursor: string | null
+  /** Phase 5-2: 組織スコープ投稿先候補 */
+  availableOrgs: Array<{ id: number; name: string }>
+  /** Phase 5-1: メモIDごとの監査ログ */
+  auditLogs: Record<number, Array<{ id: number; eventType: string; actorId: number; createdAt: string; metadata: string | null }>>
+  /** Phase 7: チームメンバー（teamId → pages）大規模チーム対応 */
+  teamMembersPages: Record<number, Array<{ userId: number; displayName: string }[]>>
 }
 
 /** {@link buildMockState} のオプション。一部フィールドだけ上書きできる。 */
@@ -142,6 +154,9 @@ export type BuildMockStateOptions = Partial<{
   settings: Partial<MockSettings>
   availableTeams: MockAvailableTeam[]
   todos: MockTodo[]
+  availableOrgs: Array<{ id: number; name: string }>
+  /** Phase 7: チームメンバー（teamId → pages）大規模チーム対応 */
+  teamMembersPages: Record<number, Array<{ userId: number; displayName: string }[]>>
 }>
 
 /** デフォルト値で {@link MockState} を構築する。 */
@@ -153,6 +168,8 @@ export function buildMockState(opts: BuildMockStateOptions = {}): MockState {
       mood_enabled: false,
       default_post_team_id: null,
       default_category: 'OTHER',
+      reminder_enabled: false,
+      reminder_time: null,
       ...(opts.settings ?? {}),
     },
     availableTeams: opts.availableTeams ?? [],
@@ -160,6 +177,14 @@ export function buildMockState(opts: BuildMockStateOptions = {}): MockState {
     timeline_posts: [],
     nextTimelinePostId: 90000,
     completedTodoIds: new Set<number>(),
+    // Phase 4-β
+    dashboardMemos: [],
+    dashboardNextCursor: null,
+    // Phase 5-2
+    availableOrgs: opts.availableOrgs ?? [],
+    auditLogs: {},
+    // Phase 7
+    teamMembersPages: opts.teamMembersPages ?? {},
   }
 }
 
@@ -209,6 +234,27 @@ export function buildWorkMemo(opts: Partial<MockMemo> & { id: number; content: s
  * 振る舞いを上書きすることも可能（後着優先）。</p>
  */
 export async function mockActionMemoApi(page: Page, state: MockState): Promise<void> {
+  // ----- CORS プリフライト（OPTIONS）を一括処理 -----
+  // クロスオリジンリクエスト（Authorization ヘッダーを含む GET/POST/PATCH 等）に対して
+  // ブラウザが送る OPTIONS プリフライトをモックで処理する。
+  // バックエンドが起動していない環境でも全テストが動作するようにするため、
+  // **/api/v1/** に一致するすべての OPTIONS をここで消化する。
+  await page.route('**/api/v1/**', async (route) => {
+    if (route.request().method() === 'OPTIONS') {
+      await route.fulfill({
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Access-Control-Max-Age': '86400',
+        },
+      })
+      return
+    }
+    await route.fallback()
+  })
+
   // ----- layout 共通の周辺 API（NotificationBell / mentions / chat / refresh）-----
   await page.route('**/api/v1/notifications/unread-count', async (route) => {
     if (route.request().method() !== 'GET') {
@@ -263,6 +309,18 @@ export async function mockActionMemoApi(page: Page, state: MockState): Promise<v
   // ----- 設定 API -----
   await page.route('**/api/v1/action-memo-settings', async (route) => {
     const method = route.request().method()
+    // OPTIONS プリフライト（クロスオリジン PATCH 前にブラウザが送る）をモックで応答する
+    if (method === 'OPTIONS') {
+      await route.fulfill({
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, PATCH, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      })
+      return
+    }
     if (method === 'GET') {
       await route.fulfill({
         status: 200,
@@ -276,6 +334,9 @@ export async function mockActionMemoApi(page: Page, state: MockState): Promise<v
         mood_enabled?: boolean
         default_post_team_id?: number | null
         default_category?: 'WORK' | 'PRIVATE' | 'OTHER'
+        // Phase 4-β
+        reminder_enabled?: boolean
+        reminder_time?: string | null
       }
       if (typeof body.mood_enabled === 'boolean') {
         state.settings.mood_enabled = body.mood_enabled
@@ -285,6 +346,13 @@ export async function mockActionMemoApi(page: Page, state: MockState): Promise<v
       }
       if (body.default_category !== undefined) {
         state.settings.default_category = body.default_category
+      }
+      // Phase 4-β
+      if (typeof body.reminder_enabled === 'boolean') {
+        state.settings.reminder_enabled = body.reminder_enabled
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'reminder_time')) {
+        state.settings.reminder_time = body.reminder_time ?? null
       }
       await route.fulfill({
         status: 200,
@@ -381,11 +449,15 @@ export async function mockActionMemoApi(page: Page, state: MockState): Promise<v
     }
 
     if (method === 'GET') {
-      // クエリパラメータの date / from / to は無視して全件返す（spec 側で必要なら絞る）
+      // Phase 7: date クエリパラメータで絞り込む（ディープリンク対応）
+      const dateParam = new URL(route.request().url()).searchParams.get('date')
+      const filtered = dateParam
+        ? state.memos.filter((m) => m.memo_date === dateParam)
+        : state.memos
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: state.memos, next_cursor: null }),
+        body: JSON.stringify({ data: filtered, next_cursor: null }),
       })
       return
     }
@@ -549,6 +621,83 @@ export async function mockActionMemoApi(page: Page, state: MockState): Promise<v
           team_id: teamId,
           memo_count: memoIds.length,
         },
+      }),
+    })
+  })
+
+  // ----- Phase 5-2: 組織スコープ投稿先候補 -----
+  await page.route('**/api/v1/action-memos/available-orgs', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: state.availableOrgs }),
+    })
+  })
+
+  // ----- Phase 5-1: 監査ログ -----
+  await page.route(/.*\/api\/v1\/action-memos\/\d+\/audit-logs$/, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    const idMatch = route.request().url().match(/\/action-memos\/(\d+)\/audit-logs/)
+    const id = idMatch ? Number(idMatch[1]) : 0
+    const logs = state.auditLogs[id] ?? []
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: logs }),
+    })
+  })
+
+  // ----- Phase 7: チームメンバー一覧（ページング対応）-----
+  await page.route(/.*\/api\/v1\/teams\/\d+\/members(\?.*)?$/, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    const url = new URL(route.request().url())
+    const idMatch = route.request().url().match(/\/teams\/(\d+)\/members/)
+    const teamId = idMatch ? Number(idMatch[1]) : 0
+    const pageParam = Number(url.searchParams.get('page') ?? '0')
+    const pages = state.teamMembersPages[teamId] ?? [[]]
+    const pageData = pages[pageParam] ?? []
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: pageData,
+        meta: {
+          total: pages.flat().length,
+          page: pageParam,
+          size: 500,
+          totalPages: pages.length,
+        },
+      }),
+    })
+  })
+
+  // ----- Phase 4-β: 管理職ダッシュボード -----
+  await page.route(/.*\/api\/v1\/teams\/\d+\/members\/\d+\/action-memos.*/, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    const url = route.request().url()
+    const params = new URL(url).searchParams
+    const cursor = params.get('cursor')
+    // cursor がある場合は dashboardMemos を空で返す（ページ 2 以降のシミュレーション）
+    // spec 側で振る舞いを上書きすること
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: cursor ? [] : state.dashboardMemos,
+        next_cursor: cursor ? null : state.dashboardNextCursor,
       }),
     })
   })

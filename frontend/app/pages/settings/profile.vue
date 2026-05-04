@@ -121,7 +121,7 @@ async function uploadAvatar(event: Event) {
                 :src="profile.avatarUrl"
                 alt="アバター"
                 class="h-20 w-20 rounded-full object-cover"
-              />
+              >
               <div
                 v-else
                 class="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-2xl text-primary"
@@ -131,7 +131,7 @@ async function uploadAvatar(event: Event) {
             </div>
             <div>
               <label class="cursor-pointer">
-                <input type="file" accept="image/*" class="hidden" @change="uploadAvatar" />
+                <input type="file" accept="image/*" class="hidden" @change="uploadAvatar" >
                 <Button
                   label="画像を変更"
                   icon="pi pi-upload"

@@ -30,7 +30,7 @@ async function loadSeals() {
     const { getSeals } = useSealApi()
     seals.value = await getSeals(props.userId)
     if (seals.value.length > 0 && !selectedSealId.value) {
-      selectedSealId.value = seals.value[0].sealId
+      selectedSealId.value = seals.value[0]!.sealId
     }
   } catch {
     /* silent */
@@ -83,7 +83,7 @@ function onSubmit() {
         >
           <template #option="{ option }">
             <div class="flex items-center gap-3">
-              <div v-html="option.svgData" class="size-8 shrink-0" />
+              <div class="size-8 shrink-0" v-html="option.svgData" />
               <span>{{ option.displayText }}</span>
             </div>
           </template>

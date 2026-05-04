@@ -43,6 +43,13 @@ function makeMemo(overrides: Partial<ActionMemo> = {}): ActionMemo {
     timelinePostId: null,
     tags: [],
     createdAt: '2026-04-09T08:00:00',
+    category: 'OTHER',
+    durationMinutes: null,
+    progressRate: null,
+    completesTodo: false,
+    postedTeamId: null,
+    organizationId: null,
+    orgVisibility: null,
     ...overrides,
   }
 }

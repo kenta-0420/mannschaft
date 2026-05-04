@@ -59,8 +59,8 @@ async function loadFeeds() {
         preview.items.forEach((item) => {
           items.push({
             ...item,
-            provider: activeFeeds[index].provider,
-            accountUsername: activeFeeds[index].accountUsername,
+            provider: activeFeeds[index]!.provider,
+            accountUsername: activeFeeds[index]!.accountUsername,
           })
         })
       }
@@ -148,7 +148,7 @@ onMounted(() => {
               :src="item.imageUrl"
               :alt="`@${item.accountUsername}の投稿`"
               class="h-full w-full object-cover"
-            />
+            >
             <div
               class="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-white"
             >

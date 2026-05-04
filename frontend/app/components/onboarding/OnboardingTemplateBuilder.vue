@@ -67,8 +67,8 @@ function removeStep(index: number) {
 function moveStep(index: number, direction: -1 | 1) {
   const target = index + direction
   if (target < 0 || target >= steps.value.length) return
-  const temp = steps.value[index]
-  steps.value[index] = steps.value[target]
+  const temp = steps.value[index]!
+  steps.value[index] = steps.value[target]!
   steps.value[target] = temp
 }
 

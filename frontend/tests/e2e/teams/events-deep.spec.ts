@@ -139,7 +139,7 @@ test.describe('TEAM-DEEP-events: イベント作成ダイアログ深掘り', ()
     await page.goto(`/teams/${TEAM_ID}/events`)
     await waitForHydration(page)
     await page.getByRole('button', { name: 'イベント作成' }).click()
-    const dialog = await waitForDialog(page)
+    await waitForDialog(page)
 
     // 受付開始日時（show-time のため "yyyy/mm/dd hh:mm" 形式、input-id="event-registration-starts-at"）
     // dialog.locator() は .last() の遅延評価でカレンダーパネル開放後に誤ダイアログを参照するため

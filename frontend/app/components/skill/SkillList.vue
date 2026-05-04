@@ -201,20 +201,20 @@ defineExpose({ refresh: loadItems })
         <div class="flex shrink-0 gap-1">
           <Button
             v-if="skill.hasCertificate"
+            v-tooltip.top="'証明書を表示'"
             icon="pi pi-download"
             size="small"
             text
             severity="info"
-            v-tooltip.top="'証明書を表示'"
             @click="handleDownloadCertificate(skill)"
           />
           <Button
             v-if="canManage && skill.status === 'PENDING_REVIEW'"
+            v-tooltip.top="'承認'"
             icon="pi pi-check"
             size="small"
             text
             severity="success"
-            v-tooltip.top="'承認'"
             @click="handleVerify(skill)"
           />
           <Button

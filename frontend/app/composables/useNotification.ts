@@ -39,5 +39,11 @@ export function useNotification() {
     })
   }
 
-  return { success, info, warn, error }
+  // エイリアス（showXxx 形式でも使えるようにする）
+  const showSuccess = success
+  const showError = error
+  const showInfo = info
+  const showWarn = warn
+
+  return { success, info, warn, error, showSuccess, showError, showInfo, showWarn }
 }

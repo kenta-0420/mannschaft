@@ -1,0 +1,77 @@
+{
+  "proxy": {
+    "title": "代理入力デスク",
+    "description": "非デジタル住民の紙申込書を代理で入力できます",
+    "consent": {
+      "title": "代理入力同意書",
+      "subjectUserId": "対象住民ID",
+      "method": {
+        "label": "同意方法",
+        "paper_signed": "紙面署名",
+        "witnessed_oral": "立会口頭",
+        "digital_signature": "電子署名",
+        "guardian_by_court": "法定後見人"
+      },
+      "status": {
+        "pending": "承認待ち",
+        "active": "有効",
+        "expired": "期限切れ",
+        "revoked": "撤回済み"
+      },
+      "effectiveFrom": "有効期間（開始）",
+      "effectiveUntil": "有効期間（終了）",
+      "scopes": "対象機能",
+      "approvedAt": "承認日時",
+      "revokedAt": "撤回日時",
+      "noActive": "有効な同意書がありません"
+    },
+    "scope": {
+      "survey": "アンケート",
+      "schedule_attendance": "出欠確認",
+      "shift_request": "シフト希望",
+      "announcement_read": "お知らせ既読",
+      "parking_application": "駐車場申請",
+      "circular": "回覧板"
+    },
+    "desk": {
+      "pinSubject": "住民をピン留め",
+      "pinConsent": "同意書を選択",
+      "unpin": "ピン留め解除",
+      "pinned": "{name} さんとして入力中",
+      "inputSource": {
+        "label": "入力元",
+        "paper_form": "紙申込書",
+        "phone_interview": "電話聴き取り",
+        "in_person": "窓口対面"
+      },
+      "originalStorage": {
+        "label": "原本保管場所",
+        "placeholder": "例: proxy-records/2026/scan_001.pdf"
+      },
+      "active": "代理入力モード稼働中",
+      "inactive": "代理入力モード停止中"
+    },
+    "record": {
+      "title": "代理入力履歴",
+      "createdAt": "入力日時",
+      "featureScope": "対象機能",
+      "targetEntity": "対象レコード"
+    },
+    "revoke": {
+      "title": "同意書撤回",
+      "method": {
+        "api": "本人オンライン申請",
+        "paper": "紙面申請",
+        "life_event": "ライフイベント（転居等）",
+        "tenure_end": "任期満了"
+      },
+      "reason": "撤回理由",
+      "confirm": "この同意書を撤回してよろしいですか？"
+    },
+    "audit": {
+      "byPerson": "本人入力",
+      "byProxy": "代理入力",
+      "total": "合計"
+    }
+  }
+}

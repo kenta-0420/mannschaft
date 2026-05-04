@@ -115,7 +115,7 @@ async function handleCreate() {
         </div>
       </div>
       <template #footer>
-        <Button label="キャンセル" text @click="showCreateDialog = false" :disabled="saving" />
+        <Button label="キャンセル" text :disabled="saving" @click="showCreateDialog = false" />
         <Button label="登録" icon="pi pi-check" :loading="saving" @click="handleCreate" />
       </template>
     </Dialog>

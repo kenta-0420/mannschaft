@@ -17,9 +17,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.mannschaft.app.team.repository.TeamShiftSettingsRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
@@ -35,6 +37,7 @@ class ShiftPreferenceReminderBatchServiceTest {
     @Mock private ShiftRequestRepository requestRepository;
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private NotificationHelper notificationHelper;
+    @Mock private TeamShiftSettingsRepository teamShiftSettingsRepository;
 
     @InjectMocks
     private ShiftPreferenceReminderBatchService batchService;
@@ -59,6 +62,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
             given(scheduleRepository.findFor48hReminder(any(), any()))
                     .willReturn(List.of(schedule));
+            given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
             // USER_A が提出済み、USER_B・USER_C は未提出
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
                     .willReturn(List.of(buildRequest(SCHEDULE_ID, USER_A)));
@@ -85,6 +89,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
             given(scheduleRepository.findFor48hReminder(any(), any()))
                     .willReturn(List.of(schedule));
+            given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
                     .willReturn(List.of(buildRequest(SCHEDULE_ID, USER_A), buildRequest(SCHEDULE_ID, USER_B)));
             given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
@@ -101,6 +106,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
             given(scheduleRepository.findFor48hReminder(any(), any()))
                     .willReturn(List.of(schedule));
+            given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
                     .willReturn(List.of());
             given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
@@ -130,6 +136,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
             given(scheduleRepository.findFor24hReminder(any(), any()))
                     .willReturn(List.of(schedule));
+            given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
                     .willReturn(List.of());
             given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))

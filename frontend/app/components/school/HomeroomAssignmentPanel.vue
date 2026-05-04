@@ -11,8 +11,6 @@ const teamIdRef = computed(() => props.teamId)
 const { homerooms, loading, submitting, loadHomerooms, addHomeroom, editHomeroom } =
   useClassHomeroom(teamIdRef)
 
-const { t } = useI18n()
-
 const showAddForm = ref(false)
 const editingId = ref<number | null>(null)
 
@@ -103,22 +101,22 @@ onMounted(() => {
           <label class="text-xs text-surface-500 mb-1 block">
             {{ $t('school.homeroom.homeroomTeacher') }} *
           </label>
-          <InputText
-            v-model.number="newForm.homeroomTeacherUserId"
-            type="number"
+          <InputNumber
+            v-model="newForm.homeroomTeacherUserId"
             class="w-full"
             :placeholder="$t('school.homeroom.homeroomTeacher')"
+            :use-grouping="false"
           />
         </div>
         <div>
           <label class="text-xs text-surface-500 mb-1 block">
             {{ $t('school.homeroom.academicYear') }}
           </label>
-          <InputText
-            v-model.number="newForm.academicYear"
-            type="number"
+          <InputNumber
+            v-model="newForm.academicYear"
             class="w-full"
             readonly
+            :use-grouping="false"
           />
         </div>
         <div>

@@ -1,20 +1,5 @@
-interface TeamResponse {
-  id: number
-  name: string
-  nameKana: string | null
-  nickname1: string | null
-  nickname2: string | null
-  template: string
-  prefecture: string | null
-  city: string | null
-  description: string | null
-  visibility: string
-  supporterEnabled: boolean
-  version: number
-  memberCount: number
-  archivedAt: string | null
-  createdAt: string
-}
+import type { MemberResponse } from '~/types/member'
+import type { TeamResponse } from '~/types/team'
 
 interface TeamSummaryResponse {
   id: number
@@ -26,14 +11,6 @@ interface TeamSummaryResponse {
   template: string
   memberCount: number
   supporterEnabled: boolean
-}
-
-interface MemberResponse {
-  userId: number
-  displayName: string
-  avatarUrl: string | null
-  roleName: string
-  joinedAt: string
 }
 
 interface InviteTokenResponse {

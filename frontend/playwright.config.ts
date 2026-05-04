@@ -63,8 +63,10 @@ export default defineConfig({
   // テスト実行前に dev サーバーを起動する場合は有効化
   webServer: {
     command: 'npm run dev',
-    url: BASE_URL,
-    reuseExistingServer: process.env.REUSE_SERVER === 'true' || !process.env.CI,
+    // ヘルスチェック URL: 3000 or 3002 のどちらかが応答すれば OK。
+    // worktree サーバーは 127.0.0.1:3002 で起動済みの場合が多い。
+    url: 'http://localhost:3000',
+    reuseExistingServer: true,
     timeout: 120_000,
   },
 })

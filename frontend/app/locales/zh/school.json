@@ -208,6 +208,99 @@
       "category_SUBJECT_CREDIT": "学科学分认定",
       "category_PERFECT_ATTENDANCE": "全勤奖",
       "category_CUSTOM": "自定义"
+    },
+    "attendanceSummary": {
+      "title": "出勤汇总",
+      "attendanceRate": "出勤率",
+      "totalSchoolDays": "上课天数",
+      "presentDays": "出席天数",
+      "absentDays": "缺席天数",
+      "lateCount": "迟到次数",
+      "earlyLeaveCount": "早退次数",
+      "officialAbsenceDays": "公假天数",
+      "sickBayDays": "保健室上课",
+      "separateRoomDays": "隔离室上课",
+      "onlineDays": "线上上课",
+      "homeLearningDays": "居家学习",
+      "days": "天",
+      "times": "次",
+      "recalculate": "重新汇总",
+      "recalculateSuccess": "已重新汇总",
+      "noData": "暂无汇总数据"
+    },
+    "requirements": {
+      "title": "出勤率要件管理",
+      "filterAll": "全部",
+      "runEvaluation": "执行评估",
+      "evaluationSuccess": "评估完成",
+      "evaluateAll": "评估所有学生",
+      "evaluating": "评估中…",
+      "loadError": "获取列表失败",
+      "resolveSuccess": "已记录解决方案"
+    },
+    "evaluation": {
+      "title": "出勤要求评估",
+      "status": {
+        "OK": "预计达标",
+        "WARNING": "需注意",
+        "RISK": "有未达标风险",
+        "VIOLATION": "确认未达标"
+      },
+      "currentAttendanceRate": "当前出勤率",
+      "remainingAllowedAbsences": "剩余允许缺勤天数",
+      "remainingDays": "还可缺勤{days}天",
+      "noDaysLeft": "不能再缺勤了",
+      "evaluatedAt": "评估时间",
+      "resolve": "解除违规",
+      "resolveTitle": "记录违规解除",
+      "resolveNote": "解除理由",
+      "resolveNoteHint": "例：补课完成・特殊批准等",
+      "resolveSuccess": "违规解除已记录",
+      "resolveError": "违规解除记录失败",
+      "atRisk": "风险学生列表",
+      "noEvaluations": "暂无评估数据",
+      "noAtRisk": "没有风险学生",
+      "dashboard": "要求评估仪表板",
+      "filterByStatus": "按状态筛选",
+      "loadError": "评估数据加载失败"
+    },
+    "disclosure": {
+      "title": "开示决定",
+      "decide": "进行开示决定",
+      "tabDisclose": "开示",
+      "tabWithhold": "暂不开示",
+      "mode": {
+        "label": "开示模式",
+        "WITH_NUMBERS": "包含数值开示",
+        "WITHOUT_NUMBERS": "不含数值开示（仅提醒）",
+        "MEETING_REQUEST_ONLY": "仅发送面谈请求"
+      },
+      "recipients": {
+        "label": "通知对象",
+        "STUDENT_ONLY": "仅学生",
+        "GUARDIAN_ONLY": "仅监护人",
+        "BOTH": "学生和监护人"
+      },
+      "message": "班主任留言（可选）",
+      "messagePlaceholder": "请输入给学生/监护人的留言",
+      "withholdReason": "不开示的理由",
+      "withholdReasonPlaceholder": "将作为指导记录保存",
+      "submit": "确认决定",
+      "submitting": "提交中...",
+      "historyTitle": "开示历史",
+      "historyEmpty": "暂无开示记录",
+      "decision": {
+        "DISCLOSED": "已开示",
+        "WITHHELD": "未开示"
+      },
+      "inbox": {
+        "title": "来自班主任的出勤要求通知",
+        "empty": "暂无来自班主任的开示信息",
+        "contactTeacher": "详情请咨询班主任",
+        "meetingRequest": "班主任已申请面谈，请与其联系",
+        "currentRate": "当前出勤率",
+        "remainingAllowed": "还有 {days} 天的余裕"
+      }
     }
   }
 }

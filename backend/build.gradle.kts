@@ -90,6 +90,7 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:mysql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
 
     // === F12.1 PDF生成共通基盤 ===
     // Thymeleaf: PDF用HTMLテンプレートエンジン（画面描画には使わない）
@@ -149,6 +150,7 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    maxHeapSize = "2g"
     finalizedBy(tasks.jacocoTestReport)
 }
 

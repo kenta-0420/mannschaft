@@ -8,8 +8,6 @@ import {
   mockGetWatchers,
   mockGetRecipients,
   mockGetInvitations,
-  mockDeleteLink,
-  mockUpdateSettings,
 } from './_helpers'
 
 /**

@@ -28,4 +28,12 @@ public interface AttendanceRequirementRuleRepository extends JpaRepository<Atten
         @Param("teamId") Long teamId,
         @Param("year") short year,
         @Param("today") LocalDate today);
+
+    /** バッチ用: 全スコープの有効規程を学年度・有効期間でフィルタして一括取得する。 */
+    @Query("SELECT r FROM AttendanceRequirementRuleEntity r " +
+           "WHERE r.academicYear = :year " +
+           "AND (r.effectiveUntil IS NULL OR r.effectiveUntil >= :today)")
+    List<AttendanceRequirementRuleEntity> findAllActive(
+        @Param("today") LocalDate today,
+        @Param("year") short year);
 }

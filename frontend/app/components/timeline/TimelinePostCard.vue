@@ -174,7 +174,7 @@ async function handleToggleMitayo() {
           :class="post.attachments.length === 1 ? 'max-h-96' : 'h-48'"
           loading="lazy"
           @click.stop
-        />
+        >
         <div
           v-else-if="att.attachmentType === 'VIDEO_FILE' && att.fileKey"
           @click.stop
@@ -194,7 +194,7 @@ async function handleToggleMitayo() {
           class="flex items-center gap-2 rounded-lg border border-surface-300 p-3"
           @click.stop
         >
-          <img v-if="att.videoThumbnailUrl" :src="att.videoThumbnailUrl" class="h-16 w-24 rounded object-cover" />
+          <img v-if="att.videoThumbnailUrl" :src="att.videoThumbnailUrl" class="h-16 w-24 rounded object-cover" >
           <span class="text-sm text-primary">{{ att.videoTitle || '動画を見る' }}</span>
         </a>
         <a
@@ -205,7 +205,7 @@ async function handleToggleMitayo() {
           class="flex gap-3 rounded-lg border border-surface-300 p-3"
           @click.stop
         >
-          <img v-if="att.ogImageUrl" :src="att.ogImageUrl" class="h-16 w-16 rounded object-cover" />
+          <img v-if="att.ogImageUrl" :src="att.ogImageUrl" class="h-16 w-16 rounded object-cover" >
           <div class="min-w-0">
             <p class="truncate text-sm font-medium">{{ att.ogTitle }}</p>
             <p class="truncate text-xs text-surface-400">{{ att.ogSiteName }}</p>

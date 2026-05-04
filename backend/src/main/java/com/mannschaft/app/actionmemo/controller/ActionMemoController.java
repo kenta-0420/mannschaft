@@ -1,9 +1,11 @@
 package com.mannschaft.app.actionmemo.controller;
 
+import com.mannschaft.app.actionmemo.dto.ActionMemoAuditLogResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
 import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.actionmemo.dto.AddTagsToMemoRequest;
+import com.mannschaft.app.actionmemo.dto.AvailableOrgResponse;
 import com.mannschaft.app.actionmemo.dto.AvailableTeamResponse;
 import com.mannschaft.app.actionmemo.dto.CreateActionMemoRequest;
 import com.mannschaft.app.actionmemo.dto.LinkTodoRequest;
@@ -234,6 +236,19 @@ public class ActionMemoController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
+    /**
+     * Phase 5-2: 組織スコープ投稿先として選択可能な組織一覧を取得する。
+     *
+     * <p>ユーザーが所属する組織の一覧を返す。</p>
+     */
+    @GetMapping("/available-orgs")
+    @Operation(summary = "組織スコープ投稿先組織一覧取得（Phase 5-2）")
+    public ResponseEntity<ApiResponse<List<AvailableOrgResponse>>> getAvailableOrgs() {
+        List<AvailableOrgResponse> response = actionMemoService.getAvailableOrgs(
+                SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
     // ==================================================================
     // 気分集計（Phase 4）
     // ==================================================================
@@ -256,15 +271,33 @@ public class ActionMemoController {
     }
 
     /**
-     * Phase 4-α: メモに紐付く監査ログを取得する（折りたたみUI用）。
+     * Phase 5-1: メモに紐付く監査ログを取得する（折りたたみUI用）。
      *
-     * <p>自分のメモのみ取得可能。最新10件を返す。</p>
+     * <p>自分のメモのみ取得可能。最新10件を返す。
+     * {@code ActionMemoAuditLogResponse} に変換して返すことで、
+     * フロントエンドに不要なフィールド（IP アドレス・セッションハッシュ等）を露出しない。</p>
      */
     @GetMapping("/{id}/audit-logs")
-    @Operation(summary = "メモ監査ログ取得（Phase 4-α）")
-    public ResponseEntity<ApiResponse<List<AuditLogResponse>>> getMemoAuditLogs(@PathVariable Long id) {
+    @Operation(summary = "メモ監査ログ取得（Phase 5-1）")
+    public ResponseEntity<ApiResponse<List<ActionMemoAuditLogResponse>>> getMemoAuditLogs(@PathVariable Long id) {
         List<AuditLogResponse> logs = actionMemoService.getMemoAuditLogs(
                 id, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.of(logs));
+        List<ActionMemoAuditLogResponse> response = logs.stream()
+                .map(ActionMemoAuditLogResponse::from)
+                .toList();
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * Phase 4-β: チーム管理者が TODO 自動完了を差し戻す。
+     *
+     * <p>認可: 呼び出し者がメモの postedTeamId チームの ADMIN または DEPUTY_ADMIN であること。</p>
+     */
+    @DeleteMapping("/{id}/complete-todo")
+    @Operation(summary = "TODO 差し戻し（Phase 4-β）— チーム管理者のみ")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "差し戻し成功")
+    public ResponseEntity<Void> revertTodoCompletion(@PathVariable Long id) {
+        actionMemoService.revertTodoCompletion(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
     }
 }

@@ -382,7 +382,7 @@ export interface AttendanceRequirementRule {
   countHomeLearningAsOfficialAbsence: boolean
   countLateAsAbsenceThreshold: number
   warningThresholdRate: number | null
-  effectiveFrom: string   // 'YYYY-MM-DD'
+  effectiveFrom: string
   effectiveUntil: string | null
   createdAt: string
   updatedAt: string
@@ -430,4 +430,149 @@ export interface UpdateRequirementRuleRequest {
   warningThresholdRate?: number | null
   effectiveFrom?: string
   effectiveUntil?: string | null
+}
+
+// ===== Phase 11: 出席集計 =====
+
+export interface StudentSummaryResponse {
+  id: number
+  teamId: number
+  studentUserId: number
+  termId?: number
+  academicYear: number
+  periodFrom: string
+  periodTo: string
+  totalSchoolDays: number
+  presentDays: number
+  absentDays: number
+  lateCount: number
+  earlyLeaveCount: number
+  officialAbsenceDays: number
+  schoolActivityDays: number
+  sickBayDays: number
+  separateRoomDays: number
+  onlineDays: number
+  homeLearningDays: number
+  attendanceRate: number
+  totalPeriods: number
+  presentPeriods: number
+  periodAttendanceRate: number
+  subjectBreakdown?: string
+  lastRecalculatedAt: string
+}
+
+export interface ClassSummaryListResponse {
+  teamId: number
+  academicYear: number
+  termId?: number
+  total: number
+  summaries: StudentSummaryResponse[]
+}
+
+export interface RecalculateSummaryRequest {
+  teamId: number
+  academicYear: number
+  termId?: number
+  periodFrom: string
+  periodTo: string
+}
+
+export interface RecalculateSummaryResponse {
+  studentUserId: number
+  teamId: number
+  academicYear: number
+  termId?: number
+  recalculatedAt: string
+  summary: StudentSummaryResponse
+}
+
+// ===== Phase 12: 出席要件評価 =====
+
+export type EvaluationStatus = 'OK' | 'WARNING' | 'RISK' | 'VIOLATION'
+
+export interface AttendanceRequirementEvaluation {
+  id: number
+  requirementRuleId: number
+  studentUserId: number
+  summaryId: number
+  status: EvaluationStatus
+  currentAttendanceRate: number
+  remainingAllowedAbsences: number
+  evaluatedAt: string
+  notifiedUserIds?: number[]
+  resolvedAt?: string
+  resolutionNote?: string
+  resolverUserId?: number
+}
+
+export interface StudentEvaluationListResponse {
+  studentUserId: number
+  evaluations: AttendanceRequirementEvaluation[]
+}
+
+export interface AtRiskStudentResponse {
+  studentUserId: number
+  status: EvaluationStatus
+  requirementRuleId: number
+  currentAttendanceRate: number
+  remainingAllowedAbsences: number
+  evaluatedAt: string
+}
+
+export interface AtRiskStudentListResponse {
+  teamId: number
+  total: number
+  students: AtRiskStudentResponse[]
+}
+
+export interface ResolveEvaluationRequest {
+  resolutionNote: string
+}
+
+export interface ResolveEvaluationResponse {
+  id: number
+  status: EvaluationStatus
+  resolvedAt: string
+  resolutionNote: string
+  resolverUserId: number
+}
+
+// ===== F03.13 Phase 15: 開示判断 =====
+
+export type DisclosureDecision = 'DISCLOSED' | 'WITHHELD'
+export type DisclosureMode = 'WITH_NUMBERS' | 'WITHOUT_NUMBERS' | 'MEETING_REQUEST_ONLY'
+export type DisclosureRecipients = 'STUDENT_ONLY' | 'GUARDIAN_ONLY' | 'BOTH'
+
+export interface DisclosureRequest {
+  mode: DisclosureMode
+  recipients: DisclosureRecipients
+  message?: string
+}
+
+export interface WithholdRequest {
+  withholdReason: string
+}
+
+export interface DisclosureResponse {
+  id: number
+  evaluationId: number
+  studentUserId: number
+  decision: DisclosureDecision
+  mode?: DisclosureMode
+  recipients?: DisclosureRecipients
+  message?: string
+  decidedBy: number
+  decidedAt: string
+}
+
+export interface DisclosedEvaluationResponse {
+  evaluationId: number
+  ruleId: number
+  ruleName: string
+  status: EvaluationStatus
+  mode: DisclosureMode
+  message?: string
+  disclosedAt: string
+  currentRate?: number
+  remainingAllowedDays?: number
 }

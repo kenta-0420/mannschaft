@@ -14,13 +14,25 @@ export function useAdminDashboardApi() {
 
   async function listModules(scopeType: 'team' | 'organization', scopeId: number) {
     const base = scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
-    const res = await api<{ data: { moduleId: string; name: string; enabled: boolean }[] }>(`${base}/admin/modules`)
-    return res.data
+    const res = await api<{
+      data: { moduleId: number; moduleName: string; moduleSlug: string; isEnabled: boolean }[]
+    }>(`${base}/modules`)
+    return res.data.map((m) => ({
+      moduleId: String(m.moduleId),
+      name: m.moduleName,
+      enabled: m.isEnabled,
+    }))
   }
 
-  async function toggleModule(scopeType: 'team' | 'organization', scopeId: number, moduleId: string, enabled: boolean) {
+  async function toggleModule(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    moduleId: string,
+    enabled: boolean,
+  ) {
     const base = scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
-    await api(`${base}/admin/modules/${moduleId}`, { method: 'PUT', body: { enabled } })
+    const id = Number(moduleId)
+    await api(`${base}/modules/${id}/toggle`, { method: 'PATCH', body: { moduleId: id, enabled } })
   }
 
   return { getDashboard, getSystemDashboard, listModules, toggleModule }

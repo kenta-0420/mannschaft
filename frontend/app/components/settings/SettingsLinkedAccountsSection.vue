@@ -84,7 +84,7 @@ function providerIcon(provider: string) {
           :src="lineStatus.pictureUrl"
           alt="LINEアイコン"
           class="h-12 w-12 rounded-full"
-        />
+        >
         <div
           v-else
           class="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600"

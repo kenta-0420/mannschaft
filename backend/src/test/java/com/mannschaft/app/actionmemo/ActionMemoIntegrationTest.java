@@ -1,26 +1,17 @@
 package com.mannschaft.app.actionmemo;
 
 import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
-import com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity;
 import com.mannschaft.app.actionmemo.enums.ActionMemoCategory;
 import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
 import com.mannschaft.app.gdpr.service.PersonalDataCollector;
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -43,38 +34,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>ON DELETE CASCADE での4テーブル連鎖削除は、ユーザー物理削除を伴うため
  * Testcontainers 側でトランザクション分離の都合上詳細検証は省略する（DDL に FK 定義済み）。</p>
+ *
+ * <p><b>OOM 対策</b>: {@link AbstractMySqlIntegrationTest} を継承して ApplicationContext と
+ * MySQL コンテナを他統合テストと共有する。詳細は親クラスの Javadoc を参照。</p>
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
-@EnabledIf("com.mannschaft.app.actionmemo.ActionMemoIntegrationTest#isDockerAvailable")
 @DisplayName("ActionMemo 統合テスト")
-class ActionMemoIntegrationTest {
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    static boolean isDockerAvailable() {
-        try {
-            return DockerClientFactory.instance().isDockerAvailable();
-        } catch (Exception e) {
-            return false;
-        }
-    }
+// JUnit 5 の @EnabledIf は @Inherited ではないため、派生クラスでも明示的に再宣言する必要がある
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
+class ActionMemoIntegrationTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ActionMemoRepository memoRepository;
@@ -126,10 +93,6 @@ class ActionMemoIntegrationTest {
 
     // ========================================================================
     // Phase 3 — カテゴリフィルタ系クエリの検証（設計書 §10.1）
-    //
-    // 既存の本クラス ApplicationContext を再利用するため、別ファイル化せず
-    // ここに統合する（@SpringBootTest を別ファイルで増やすと TestContext
-    // キャッシュエントリが増え、CI JVM ヒープを圧迫して OOM 連鎖を起こすため）。
     // ========================================================================
 
     private static final Long PHASE3_USER_ID = 9_001L;

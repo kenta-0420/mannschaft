@@ -117,18 +117,18 @@ function onMouseUp() {
 
 function onTouchStart(e: TouchEvent) {
   isDragging.value = true
-  startX.value = e.touches[0].clientX
-  startY.value = e.touches[0].clientY
+  startX.value = e.touches[0]!.clientX
+  startY.value = e.touches[0]!.clientY
 }
 
 function onTouchMove(e: TouchEvent) {
   if (!isDragging.value) return
-  const dx = e.touches[0].clientX - startX.value
-  const dy = e.touches[0].clientY - startY.value
+  const dx = e.touches[0]!.clientX - startX.value
+  const dy = e.touches[0]!.clientY - startY.value
   offsetX.value = clamp(offsetX.value - dx, 0, Math.max(0, scaledW.value - 300))
   offsetY.value = clamp(offsetY.value - dy, 0, Math.max(0, scaledH.value - 300))
-  startX.value = e.touches[0].clientX
-  startY.value = e.touches[0].clientY
+  startX.value = e.touches[0]!.clientX
+  startY.value = e.touches[0]!.clientY
   drawFrame()
 }
 
@@ -220,7 +220,7 @@ watch(visible, (val) => {
           class="hidden"
           accept="image/jpeg,image/png,image/webp,image/gif"
           @change="handleFileSelect"
-        />
+        >
       </div>
 
       <!-- 画像選択済み: Canvas クロッパー -->

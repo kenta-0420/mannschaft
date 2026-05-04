@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { CommitteeMember } from '~/types/committee'
 
 definePageMeta({
   layout: 'auth',
@@ -22,8 +21,7 @@ const errorMessage = ref('')
 async function onAccept() {
   accepting.value = true
   try {
-    const res = await invitationApi.acceptByToken(token.value)
-    const member = res.data as CommitteeMember
+    await invitationApi.acceptByToken(token.value)
     notification.success(t('committee.invitation.accepted'))
     doneMessage.value = t('committee.invitation.accepted')
     done.value = true

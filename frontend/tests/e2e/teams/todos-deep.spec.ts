@@ -142,7 +142,7 @@ test.describe('TEAM-DEEP-todos: TODO作成ダイアログ深掘り', () => {
     await page.goto(`/teams/${TEAM_ID}/todos`)
     await waitForHydration(page)
     await page.getByRole('button', { name: 'TODO作成' }).click()
-    const dialog = await waitForDialog(page)
+    await waitForDialog(page)
 
     // 期限 DatePicker の input を取得（input-id="todo-due-date" で直接指定）
     // dialog.locator() の .last() 遅延評価でカレンダーパネル開放後に誤ダイアログを参照するため

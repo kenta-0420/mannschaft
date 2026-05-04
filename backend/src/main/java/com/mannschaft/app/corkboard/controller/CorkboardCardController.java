@@ -4,8 +4,10 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.corkboard.dto.BatchPositionRequest;
 import com.mannschaft.app.corkboard.dto.CorkboardCardResponse;
 import com.mannschaft.app.corkboard.dto.CreateCardRequest;
+import com.mannschaft.app.corkboard.dto.PinCardRequest;
 import com.mannschaft.app.corkboard.dto.UpdateCardRequest;
 import com.mannschaft.app.corkboard.service.CorkboardCardService;
+import com.mannschaft.app.corkboard.service.MyCorkboardPinService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -35,6 +37,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class CorkboardCardController {
 
     private final CorkboardCardService cardService;
+    private final MyCorkboardPinService pinService;
 
 
     /**
@@ -83,6 +86,20 @@ public class CorkboardCardController {
             @PathVariable Long boardId, @PathVariable Long cardId,
             @RequestParam(defaultValue = "true") boolean archived) {
         CorkboardCardResponse response = cardService.archiveCard(boardId, cardId, archived);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * F09.8.1 カードのピン止め状態を切り替える（個人ボード所有者のみ）。
+     */
+    @PatchMapping("/{cardId}/pin")
+    @Operation(summary = "カードピン止め切替（個人ボードのみ）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<CorkboardCardResponse>> pinCard(
+            @PathVariable Long boardId, @PathVariable Long cardId,
+            @Valid @RequestBody PinCardRequest request) {
+        CorkboardCardResponse response = pinService.togglePin(
+                boardId, cardId, request.getIsPinned(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

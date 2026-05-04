@@ -41,8 +41,8 @@ function statusClass(status: FamilyNoticeStatus): string {
 </script>
 
 <template>
-  <div class="teacher-inbox-notice-list">
-    <div v-if="records.length === 0" class="text-center text-surface-400 py-8">
+  <div class="teacher-inbox-notice-list" data-testid="teacher-notice-list">
+    <div v-if="records.length === 0" class="text-center text-surface-400 py-8" data-testid="teacher-notice-empty">
       {{ $t('school.familyNotice.noNotices') }}
     </div>
 
@@ -51,6 +51,7 @@ function statusClass(status: FamilyNoticeStatus): string {
         v-for="record in records"
         :key="record.id"
         class="rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-4"
+        :data-testid="'teacher-notice-item-' + record.id"
       >
         <!-- ヘッダー行 -->
         <div class="flex items-center justify-between mb-2">
@@ -61,6 +62,8 @@ function statusClass(status: FamilyNoticeStatus): string {
             <span
               class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
               :class="statusClass(record.status)"
+              :data-testid="'teacher-notice-status-' + record.id"
+              :data-status="record.status"
             >
               {{ statusLabel(record.status) }}
             </span>
@@ -102,6 +105,7 @@ function statusClass(status: FamilyNoticeStatus): string {
             size="small"
             severity="secondary"
             :loading="processing"
+            :data-testid="'teacher-notice-acknowledge-' + record.id"
             @click="emit('acknowledge', record.id)"
           />
           <Button
@@ -109,6 +113,7 @@ function statusClass(status: FamilyNoticeStatus): string {
             :label="$t('school.familyNotice.apply')"
             size="small"
             :loading="processing"
+            :data-testid="'teacher-notice-apply-' + record.id"
             @click="emit('apply', record.id)"
           />
         </div>

@@ -35,6 +35,7 @@ async function handleFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   if (!input.files || input.files.length === 0) return
   const file = input.files[0]
+  if (!file) return
   input.value = ''
 
   uploading.value = true
@@ -103,7 +104,7 @@ async function handleFileChange(event: Event) {
       accept="video/mp4,video/webm,video/quicktime"
       class="hidden"
       @change="handleFileChange"
-    />
+    >
 
     <!-- アップロード中 -->
     <div v-if="uploading" class="flex items-center gap-2 rounded-lg border border-surface-300 p-3">
