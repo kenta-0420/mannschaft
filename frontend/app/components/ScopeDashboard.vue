@@ -84,6 +84,8 @@ const DATA_WIDGET_KEYS = new Set([
   'recruitment-feed',
   'my-recruitments',
   'schedule',
+  // F09.8.1 Phase 4: マイコルクボードはデータ表示型ウィジェット
+  'my-corkboard',
 ])
 
 function isDataWidget(key: string): boolean {
@@ -106,6 +108,8 @@ function linkTo(widgetKey: string): string | undefined {
       blog: '/my/blog',
       'recruitment-feed': '/me/recruitment-feed',
       'my-recruitments': '/me/recruitment-listings',
+      // F09.8.1 Phase 4: 専用ページは Phase 5 で実装。先行してリンクのみ整える。
+      'my-corkboard': '/my/corkboard',
     }
     return personalLinks[widgetKey]
   }
@@ -320,6 +324,8 @@ function onDragEnd() {
               :scope-type="(scopeType as 'team' | 'organization')"
               :scope-id="scopeId"
             />
+            <!-- F09.8.1 Phase 4: マイコルクボード -->
+            <WidgetMyCorkboard v-else-if="w.key === 'my-corkboard' && scopeType === 'personal'" />
           </div>
         </template>
       </DashboardWidgetCard>

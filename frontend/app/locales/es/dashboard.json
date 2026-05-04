@@ -25,6 +25,20 @@
       "public_viewer_hint": "No eres miembro de este equipo, por lo que algunos widgets están ocultos",
       "public_viewer_hint_dismiss": "Cerrar",
       "join_request_link": "Solicitar membresía"
+    },
+    "myCorkboard": {
+      "widgetTitle": "Mi tablero de corcho",
+      "viewAll": "Ver todo",
+      "empty": "Aún no has fijado ninguna tarjeta",
+      "emptyHint": "Pulsa el botón 📌 de una tarjeta en el tablero para mostrarla aquí",
+      "loadingError": "Error al cargar",
+      "retry": "Reintentar",
+      "from": "de: {boardName}",
+      "noAccess": "(Sin permiso de visualización)",
+      "deletedRef": "(El elemento referenciado ha sido eliminado)",
+      "unpinAction": "Desfijar esta tarjeta",
+      "navigationFailed": "No se puede acceder a la referencia de esta tarjeta",
+      "colorLabelAria": "Etiqueta {color}"
     }
   }
 }

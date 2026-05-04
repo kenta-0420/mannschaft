@@ -25,6 +25,20 @@
       "public_viewer_hint": "You are not a member of this team, so some widgets are hidden",
       "public_viewer_hint_dismiss": "Dismiss",
       "join_request_link": "Request membership"
+    },
+    "myCorkboard": {
+      "widgetTitle": "My Corkboard",
+      "viewAll": "View all",
+      "empty": "You haven't pinned any cards yet",
+      "emptyHint": "Press the 📌 button on a card in the corkboard to show it here",
+      "loadingError": "Failed to load",
+      "retry": "Retry",
+      "from": "from: {boardName}",
+      "noAccess": "(No view permission)",
+      "deletedRef": "(Referenced item has been deleted)",
+      "unpinAction": "Unpin this card",
+      "navigationFailed": "Cannot access the reference of this card",
+      "colorLabelAria": "{color} label"
     }
   }
 }

@@ -29,6 +29,8 @@ public enum WidgetKey {
     TIMETABLE_TODAY(ScopeType.PERSONAL, true, 12),
     /** F03.15 Phase 4: 個人ダッシュボード「今日のメモ」ウィジェット */
     TIMETABLE_NOTES(ScopeType.PERSONAL, true, 13),
+    /** F09.8.1: マイコルクボードウィジェット（横断ピン止め一覧） */
+    MY_CORKBOARD(ScopeType.PERSONAL, true, 14),
 
     // --- チームダッシュボード ---
     TEAM_NOTICES(ScopeType.TEAM, true, 0),
