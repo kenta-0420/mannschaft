@@ -84,11 +84,22 @@ class UserRoleRepositoryF00ExtensionTest {
     /**
      * 各テスト直前に最小限のテストデータを投入する。
      *
-     * <p>roles 表は V2.014 で SYSTEM_ADMIN / MEMBER 等が seed 済みのため、ID を引いて再利用する。</p>
+     * <p>本テストは結合テスト用 MySQL Testcontainer 上で動作する。Flyway の V2.014 で
+     * roles 表には SYSTEM_ADMIN / MEMBER 等が seed されている前提だが、テストの自己完結性
+     * のため必要なロールを {@code INSERT IGNORE}（uq_roles_name に基づく冪等挿入）で
+     * 念押しし、テストが Flyway seed の有無に依存しないようにする。</p>
      */
     @BeforeEach
     void setUp() {
-        // 1. ロール ID を seed から取得
+        // 1. 必要なロールを冪等保証（uq_roles_name によりすでに存在すれば NOOP）
+        em.createNativeQuery(
+                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                        + "VALUES "
+                        + "('SYSTEM_ADMIN', 'システム管理者', 1, 1, NOW(), NOW()), "
+                        + "('MEMBER', 'メンバー', 4, 0, NOW(), NOW())").executeUpdate();
+        em.flush();
+
+        // 2. ロール ID を引く（seed もしくは上記で必ず存在する）
         memberRoleId = ((Number) em.createNativeQuery(
                 "SELECT id FROM roles WHERE name = 'MEMBER'").getSingleResult()).longValue();
         systemAdminRoleId = ((Number) em.createNativeQuery(
