@@ -630,9 +630,10 @@ async function removeCardFromSection(card: CorkboardCardDetail) {
   if (sectionId == null) return
   try {
     await apiRemoveCardFromGroup(boardId.value, sectionId, card.id)
-    const next: Record<number, number> = { ...cardSectionMap.value }
-    delete next[card.id]
-    cardSectionMap.value = next
+    // dynamic delete を避けるため、対象キー以外で再構築する
+    const { [card.id]: _removed, ...rest } = cardSectionMap.value
+    void _removed
+    cardSectionMap.value = rest
     toast.add({
       severity: 'success',
       summary: t('corkboard.toast.cardRemoveFromSectionSuccess'),
