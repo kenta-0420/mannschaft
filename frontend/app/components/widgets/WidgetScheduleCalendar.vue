@@ -25,6 +25,7 @@ const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> =
     allDay: e.allDay ?? false,
     color: e.color ?? null,
     isPersonal: false,
+    scopeType: props.scopeType === 'team' ? 'TEAM' : 'ORGANIZATION',
   }))
 }
 
