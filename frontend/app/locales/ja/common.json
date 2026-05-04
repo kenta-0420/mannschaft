@@ -794,6 +794,10 @@
       "cardRemoveFromSectionSuccess": "カードをセクションから外しました",
       "cardSectionChangeError": "カードのセクション変更に失敗しました"
     },
+    "ws": {
+      "disconnected": "接続が切れました",
+      "reconnecting": "再接続中…"
+    },
     "validation": {
       "required": "必須項目です",
       "urlInvalid": "正しい URL 形式で入力してください",

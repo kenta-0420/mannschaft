@@ -794,6 +794,10 @@
       "cardRemoveFromSectionSuccess": "已将卡片从分区移除。",
       "cardSectionChangeError": "更改卡片分区失败。"
     },
+    "ws": {
+      "disconnected": "连接已断开",
+      "reconnecting": "正在重新连接…"
+    },
     "validation": {
       "required": "此项为必填。",
       "urlInvalid": "请输入有效的 URL。",

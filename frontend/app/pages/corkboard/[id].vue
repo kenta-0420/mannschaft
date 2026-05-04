@@ -43,7 +43,9 @@ import type {
   CorkboardCardDetail,
   CorkboardGroupDetail,
   CorkboardScope,
+  CorkboardEventPayload,
 } from '~/types/corkboard'
+import { useCorkboardEventListener } from '~/composables/useCorkboardEventListener'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -706,6 +708,77 @@ async function clearSection() {
   if (!card) return
   await removeCardFromSection(card)
 }
+
+// ----- F09.8 Phase F: WebSocket リアルタイム同期 -----
+
+/**
+ * 共有ボード（TEAM / ORGANIZATION）か否か。
+ * 個人ボード（PERSONAL）は WebSocket 配信対象外なので購読をスキップする。
+ */
+const isSharedBoard = computed<boolean>(() => {
+  const sc = board.value?.scopeType
+  return sc === 'TEAM' || sc === 'ORGANIZATION'
+})
+
+/** 現在アクティブな購読 listener（ボード切替時に旧 listener を必ず disconnect する） */
+let corkboardListener: ReturnType<typeof useCorkboardEventListener> | null = null
+/** 現在購読中のボード ID（再購読判定に使う） */
+let subscribedBoardId: number | null = null
+
+/**
+ * 受信イベント時のハンドラ。
+ *
+ * Phase F MVP は eventType 別の局所更新ではなくフルリロードに統一する（設計書 §5）。
+ * 楽観的 UI 更新との競合を回避でき、ボード全体（最大 200 カード + 20 セクション）の
+ * レスポンスサイズも十分小さいため、まずは確実な整合性を優先する。
+ *
+ * BOARD_DELETED は将来の精緻化対象（v1.0 では再取得時に 404 が返って errorMessage 表示になる）。
+ */
+function handleCorkboardEvent(_event: CorkboardEventPayload) {
+  void _event
+  void load()
+}
+
+/**
+ * ボード詳細の読み込み完了を検知して STOMP 購読を開始する。
+ * ボード ID が変わった場合は旧購読を解除してから新規購読する。
+ */
+watch(
+  [board, isSharedBoard],
+  ([newBoard]) => {
+    const newBoardId = newBoard?.id ?? null
+
+    // 既に同じボードを購読中なら何もしない
+    if (corkboardListener && subscribedBoardId === newBoardId) {
+      return
+    }
+
+    // ボードが変わった or 共有ボードでなくなった → 旧購読を解除
+    if (corkboardListener) {
+      corkboardListener.disconnect()
+      corkboardListener = null
+      subscribedBoardId = null
+    }
+
+    // 共有ボードかつボードが読み込み済みのときのみ購読開始
+    if (newBoardId !== null && isSharedBoard.value) {
+      corkboardListener = useCorkboardEventListener({
+        boardId: newBoardId,
+        onEvent: handleCorkboardEvent,
+      })
+      corkboardListener.connect()
+      subscribedBoardId = newBoardId
+    }
+  },
+)
+
+onUnmounted(() => {
+  if (corkboardListener) {
+    corkboardListener.disconnect()
+    corkboardListener = null
+    subscribedBoardId = null
+  }
+})
 
 /** カードのアーカイブ状態を切り替え。 */
 async function toggleArchive(card: CorkboardCardDetail) {

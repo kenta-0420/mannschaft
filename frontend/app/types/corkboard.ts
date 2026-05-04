@@ -249,6 +249,48 @@ export interface UpdateGroupRequest {
   displayOrder?: number | null
 }
 
+// ===== F09.8 Phase F: WebSocket リアルタイム同期 =====
+
+/**
+ * バックエンド `CorkboardEvent.Type` と 1:1 対応するイベント種別。
+ *
+ * Jackson は enum を name() (大文字スネークケース) で出力するため、
+ * 受信ペイロードの `eventType` フィールドは下記いずれかの文字列となる。
+ *
+ * 参照: {@code com.mannschaft.app.corkboard.event.CorkboardEvent.Type}
+ */
+export type CorkboardEventType =
+  | 'CARD_CREATED'
+  | 'CARD_MOVED'
+  | 'CARD_UPDATED'
+  | 'CARD_DELETED'
+  | 'CARD_ARCHIVED'
+  | 'SECTION_CREATED'
+  | 'SECTION_UPDATED'
+  | 'SECTION_DELETED'
+  | 'CARD_SECTION_CHANGED'
+  | 'BOARD_DELETED'
+
+/**
+ * STOMP `/topic/corkboard/{boardId}` で受信する WebSocket イベントのペイロード。
+ *
+ * バックエンド record `CorkboardEvent(boardId, eventType, cardId, sectionId)` に厳密整合。
+ * Jackson のデフォルト挙動で record フィールドは camelCase そのままシリアライズされる。
+ *
+ *  - `CARD_*` / `CARD_SECTION_CHANGED` : `cardId` 設定（`sectionId` は CARD_SECTION_CHANGED のみ）
+ *  - `SECTION_*`                       : `sectionId` 設定
+ *  - `BOARD_DELETED`                   : `cardId` / `sectionId` ともに null
+ *
+ * Phase F MVP では eventType ごとの局所更新は行わず、受信時にボード詳細をフルリロードする方針。
+ * 詳細は設計書 §5「リアルタイム同期 / 切断時の復帰」参照。
+ */
+export interface CorkboardEventPayload {
+  boardId: number
+  eventType: CorkboardEventType
+  cardId: number | null
+  sectionId: number | null
+}
+
 /**
  * ボード詳細レスポンス（{@link com.mannschaft.app.corkboard.dto.CorkboardDetailResponse} と 1:1）。
  */

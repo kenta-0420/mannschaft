@@ -794,6 +794,10 @@
       "cardRemoveFromSectionSuccess": "Card removed from section.",
       "cardSectionChangeError": "Failed to change card section."
     },
+    "ws": {
+      "disconnected": "Connection lost",
+      "reconnecting": "Reconnecting…"
+    },
     "validation": {
       "required": "This field is required.",
       "urlInvalid": "Please enter a valid URL.",

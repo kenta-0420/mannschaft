@@ -794,6 +794,10 @@
       "cardRemoveFromSectionSuccess": "Karte aus dem Abschnitt entfernt.",
       "cardSectionChangeError": "Abschnitt der Karte konnte nicht geändert werden."
     },
+    "ws": {
+      "disconnected": "Verbindung verloren",
+      "reconnecting": "Verbindung wird wiederhergestellt…"
+    },
     "validation": {
       "required": "Pflichtfeld.",
       "urlInvalid": "Bitte eine gültige URL eingeben.",

@@ -794,6 +794,10 @@
       "cardRemoveFromSectionSuccess": "카드를 섹션에서 제거했습니다.",
       "cardSectionChangeError": "카드의 섹션 변경에 실패했습니다."
     },
+    "ws": {
+      "disconnected": "연결이 끊어졌습니다",
+      "reconnecting": "재연결 중…"
+    },
     "validation": {
       "required": "필수 항목입니다.",
       "urlInvalid": "올바른 URL 형식으로 입력해 주세요.",
