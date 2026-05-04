@@ -3,6 +3,7 @@ package com.mannschaft.app.circulation.repository;
 import com.mannschaft.app.circulation.RecipientStatus;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 import java.util.Optional;
@@ -10,7 +11,8 @@ import java.util.Optional;
 /**
  * 回覧受信者リポジトリ。
  */
-public interface CirculationRecipientRepository extends JpaRepository<CirculationRecipientEntity, Long> {
+public interface CirculationRecipientRepository extends JpaRepository<CirculationRecipientEntity, Long>,
+        JpaSpecificationExecutor<CirculationRecipientEntity> {
 
     /**
      * 文書IDで受信者一覧を取得する（ソート順）。
