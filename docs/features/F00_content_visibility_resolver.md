@@ -1,8 +1,8 @@
 # F00: ContentVisibilityResolver 共通基盤
 
-> **ステータス**: 🟢 **設計完了**（v1.0 — 第 1 回・第 2 回精査全件反映）
+> **ステータス**: 🟢 **設計完了**（v1.0 — 第 1 回・第 2 回精査全件反映、マスター裁可済）
 > **最終更新**: 2026-05-04
-> **マスター裁可待ち項目**: 1 件のみ（§17 Q1: 未認証ユーザーの扱い）
+> **マスター裁可済**: §17 Q1 確定（未認証ユーザーは PUBLIC のみ閲覧可、それ以外は fail-closed）
 > **モジュール種別**: 横断基盤（権限管理・共通部品）
 > **対象パッケージ**: `com.mannschaft.app.common.visibility`
 > **関連機能**:
@@ -650,7 +650,7 @@ package com.mannschaft.app.common.visibility;
  * 機能固有 enum は Mapper でこの enum に正規化される。
  */
 public enum StandardVisibility {
-    /** 誰でも閲覧可能 (未認証ユーザー含むかは §17.Q1 で確定) */
+    /** 誰でも閲覧可能。**未認証ユーザー (userId=null) も閲覧可** (§17.Q1 マスター裁可済) */
     PUBLIC,
 
     /** スコープ (TEAM/ORGANIZATION) の所属メンバーのみ
@@ -1431,7 +1431,7 @@ public void notifyMentions(Long messageId, List<Long> mentionedUserIds) {
 
 - 未対応 ReferenceType: `false` を返す（漏らさない）
 - Resolver 内で例外発生: `false` を返してログ記録（漏らさない）
-- 未認証 (userId=null): `false` を返す（PUBLIC 判定すら通さない、§17.Q1 で再検討）
+- 未認証 (userId=null): **PUBLIC コンテンツの PUBLISHED 状態のみ true**、それ以外は false（§17.Q1 マスター裁可済）
 
 #### DB 由来の不明 ReferenceType の扱い
 
@@ -2181,7 +2181,7 @@ public enum ReferenceType {
 
 ## 17. 未解決問題 (Open Questions)
 
-### Q1: 未認証ユーザー (userId=null) の扱い
+### Q1: 未認証ユーザー (userId=null) の扱い（マスター裁可済）
 
 **論点**: PUBLIC コンテンツは未認証でも見せるべきか？
 
@@ -2190,9 +2190,30 @@ public enum ReferenceType {
 - (B) `userId=null` → PUBLIC のみ true、他は false
 - (C) `userId=null` → IllegalArgumentException
 
-**現状方針 (v0.1)**: (A) fail-closed。ただし Public Web ページが未認証で記事を読めるユースケースが存在するなら (B) に変更。マスター裁可待ち。
+**マスター裁可 (2026-05-04)**: **(B) を採用**。Mannschaft は未認証（アカウント無し・未ログイン）の閲覧者にも PUBLIC コンテンツは公開する方針。
 
-**決着**: ▶ Q1 はマスター裁可後に確定。
+#### 実装規約
+
+`AbstractContentVisibilityResolver.visibleByVisibility` の冒頭に:
+
+```java
+if (viewerUserId == null) {
+    // 未認証: PUBLIC のみ通す。それ以外は fail-closed
+    StandardVisibility std = toStandard((V) row.visibility());
+    return std == StandardVisibility.PUBLIC
+        && toContentStatus(row) == ContentStatus.PUBLISHED;
+}
+```
+
+`MembershipBatchQueryService.snapshotForUser` も `userId=null` の場合は `UserScopeRoleSnapshot.empty()` を即返却（DB アクセスなし）。
+
+#### セキュリティ補足
+
+- `PRIVATE` / `MEMBERS_ONLY` / `SUPPORTERS_AND_ABOVE` / `ADMINS_ONLY` / `CUSTOM_TEMPLATE` / `FOLLOWERS_ONLY` / `ORGANIZATION_WIDE` はすべて未認証では false（fail-closed）
+- `status != PUBLISHED` のコンテンツは未認証では一律不可視（DRAFT/SCHEDULED は author 必須、author=null=未認証 では一致不能）
+- 監査ログ §11.4 の `userId` フィールドは未認証時 `"anonymous"` 文字列で記録（NPE 回避）
+
+**決着**: ✅ 確定（v1.0、マスター裁可済）。
 
 ### Q2: 「権限なし」と「存在しない」の HTTP レスポンス区別
 
@@ -2415,7 +2436,7 @@ public enum ReferenceType {
 
 | Q | 内容 | 状態 |
 |---|---|---|
-| Q1 | 未認証ユーザー扱い | ▶ マスター裁可待ち |
+| Q1 | 未認証ユーザー扱い | ✅ 確定（マスター裁可、PUBLIC のみ閲覧可、status=PUBLISHED 限定） |
 | Q2 | 「権限なし」と「存在しない」の HTTP 区別 | ✅ 確定（§7.4: VISIBILITY_004 追加で 403/404 分岐スロー） |
 | Q3 | REGION_MATCH 未実装 | ✅ 確定（現状追認） |
 | Q4 | バッチ件数上限 | ✅ 確定（1000 件 WARN ログ） |
@@ -2431,7 +2452,7 @@ public enum ReferenceType {
 | Q14 | 多テナント isolation 道筋 | ✅ 道筋確定（v0.3 / Phase 1 対象外） |
 | Q15 | 通知・アラート閾値の妥当性 | ▶ Phase A 完了後 1 sprint で確定 |
 
-**マスター裁可待ち項目**: Q1 のみ。それ以外はすべて Phase A 着手前の調査・確認で確定可（ヒアリング対象が明確）。
+**マスター裁可待ち項目**: なし（Q1 確定済）。Q11/Q12/Q13/Q15 は Phase A 着手前後の調査・確認で確定可（ヒアリング対象が明確）。
 
 ---
 
