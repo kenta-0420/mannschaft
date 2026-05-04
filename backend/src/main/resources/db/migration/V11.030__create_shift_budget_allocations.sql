@@ -8,6 +8,10 @@
 -- 補足: Phase 9-γ で「FK fk_sba_project」の追加は別マイグレーション（V11.035）で実施。
 -- 本マイグレーションでは FK を貼らず、カラムだけ用意する（projects テーブルへの参照は
 -- F02.3 で既に存在するため、Phase 9-γ で FK 制約のみを追加すれば良い）。
+--
+-- 修正 (MySQL 8.0): STORED 生成カラム経由の UNIQUE は FK ベースカラムに使えない
+-- (Error 3192: Cannot add foreign key on the base column of stored column)。
+-- MySQL 8.0.13+ の関数インデックスで同等の NULL-safe UNIQUE を実現する。
 
 CREATE TABLE shift_budget_allocations (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -28,11 +32,6 @@ CREATE TABLE shift_budget_allocations (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME DEFAULT NULL,
-    -- UNIQUE 用 STORED 生成カラム: MySQL の UNIQUE は NULL を「異なる値」と扱うため、
-    -- NULL を非 NULL の番兵値に COALESCE した実体カラムを別途用意して UNIQUE を効かせる
-    team_id_uq BIGINT UNSIGNED AS (COALESCE(team_id, 0)) STORED NOT NULL,
-    project_id_uq BIGINT UNSIGNED AS (COALESCE(project_id, 0)) STORED NOT NULL,
-    deleted_at_uq DATETIME AS (COALESCE(deleted_at, '9999-12-31 00:00:00')) STORED NOT NULL,
     PRIMARY KEY (id),
 
     -- インデックス（設計書 §5.2 準拠）
@@ -41,13 +40,6 @@ CREATE TABLE shift_budget_allocations (
     INDEX idx_sba_project (project_id),
     INDEX idx_sba_fiscal (fiscal_year_id),
     INDEX idx_sba_currency (currency),
-
-    -- UNIQUE 制約（v1.1: project_id 含む / v1.2: deleted_at 含み「論理削除→再作成」を許可）
-    -- NULL を区別するため STORED 生成カラム経由で UNIQUE を張る
-    CONSTRAINT uq_sba_scope_category_period UNIQUE (
-        organization_id, team_id_uq, project_id_uq, budget_category_id,
-        period_start, period_end, deleted_at_uq
-    ),
 
     -- CHECK 制約（設計書 §5.2 準拠）
     CONSTRAINT chk_sba_amount CHECK (allocated_amount >= 0),
@@ -77,3 +69,17 @@ CREATE TABLE shift_budget_allocations (
     -- TODO Phase 9-γ (V11.035): project_id への FK 追加
     --   CONSTRAINT fk_sba_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- UNIQUE 制約: NULL-safe で「同組織・同チーム・同費目・同期間・論理削除考慮」を保証。
+-- MySQL 8.0.13+ の関数インデックスで COALESCE による番兵値を使う。
+-- （STORED 生成カラムは FK ベースカラムに使えないため関数インデックスで代替）
+CREATE UNIQUE INDEX uq_sba_scope_category_period
+    ON shift_budget_allocations (
+        organization_id,
+        (COALESCE(team_id, 0)),
+        (COALESCE(project_id, 0)),
+        budget_category_id,
+        period_start,
+        period_end,
+        (COALESCE(deleted_at, '9999-12-31 00:00:00'))
+    );
