@@ -46,6 +46,8 @@ public class ChatMessageService {
     private final ChatMessageReactionRepository reactionRepository;
     private final ChatChannelService channelService;
     private final ChatMapper chatMapper;
+    /** F13 Phase 4-β: 統合ストレージクォータ連携。添付の INSERT 時 / 論理削除時の使用量計上に使用。 */
+    private final ChatAttachmentService chatAttachmentService;
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
@@ -112,8 +114,9 @@ public class ChatMessageService {
             messageRepository.save(parent);
         }
 
-        // 添付ファイルを保存
-        List<AttachmentResponse> attachmentResponses = saveAttachments(saved.getId(), request.getAttachments());
+        // 添付ファイルを保存（F13 Phase 4-β: 同時に StorageQuotaService.recordUpload を発火）
+        List<AttachmentResponse> attachmentResponses = saveAttachments(
+                saved.getId(), request.getAttachments(), channel, senderId);
 
         // チャンネルの最終メッセージ情報を更新
         String preview = request.getBody().length() > PREVIEW_LENGTH
@@ -160,6 +163,16 @@ public class ChatMessageService {
     public void deleteMessage(Long messageId, Long userId) {
         ChatMessageEntity message = findMessageOrThrow(messageId);
         validateMessageOwner(message, userId);
+
+        // F13 Phase 4-β: 論理削除前に添付ファイル一覧を取得し、各添付の使用量を減算
+        List<ChatMessageAttachmentEntity> attachments = attachmentRepository.findByMessageId(messageId);
+        if (!attachments.isEmpty()) {
+            ChatChannelEntity channel = channelService.findChannelOrThrow(message.getChannelId());
+            for (ChatMessageAttachmentEntity attachment : attachments) {
+                chatAttachmentService.recordAttachmentDeletion(
+                        channel, attachment, userId, message.getSenderId());
+            }
+        }
 
         message.softDelete();
         messageRepository.save(message);
@@ -254,7 +267,10 @@ public class ChatMessageService {
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND));
     }
 
-    private List<AttachmentResponse> saveAttachments(Long messageId, List<AttachmentRequest> attachments) {
+    private List<AttachmentResponse> saveAttachments(Long messageId,
+                                                     List<AttachmentRequest> attachments,
+                                                     ChatChannelEntity channel,
+                                                     Long senderId) {
         if (attachments == null || attachments.isEmpty()) {
             return List.of();
         }
@@ -268,6 +284,10 @@ public class ChatMessageService {
                     .contentType(req.getContentType())
                     .build();
             ChatMessageAttachmentEntity saved = attachmentRepository.save(attachment);
+
+            // F13 Phase 4-β: 添付 INSERT 直後に統合クォータ使用量を加算
+            chatAttachmentService.recordAttachmentUpload(channel, saved, senderId);
+
             responses.add(chatMapper.toAttachmentResponse(saved));
         }
         return responses;
