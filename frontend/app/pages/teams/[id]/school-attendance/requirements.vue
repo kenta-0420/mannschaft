@@ -132,7 +132,6 @@ onMounted(async () => {
         <AtRiskStudentList
           :students="atRiskStudents"
           :loading="resolving"
-          data-testid="at-risk-list"
           @resolve="onResolve"
         >
           <template #actions="{ student }">
