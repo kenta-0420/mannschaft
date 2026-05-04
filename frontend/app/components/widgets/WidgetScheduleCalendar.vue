@@ -20,7 +20,7 @@ const { captureQuiet } = useErrorReport()
 
 const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> => {
   const res = await scheduleApi.listSchedules(props.scopeType, props.scopeId, { from, to, size: 100 })
-  return (res.data ?? []).map((e: ScheduleApiItem) => ({
+  return ((res.data ?? []) as ScheduleApiItem[]).map((e) => ({
     ...e,
     allDay: e.allDay ?? false,
     color: e.color ?? null,
