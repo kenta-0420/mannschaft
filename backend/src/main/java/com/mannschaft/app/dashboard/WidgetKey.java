@@ -25,6 +25,10 @@ public enum WidgetKey {
     PERSONAL_PROJECT_PROGRESS(ScopeType.PERSONAL, true, 9),
     CHAT_HUB(ScopeType.PERSONAL, true, 10),
     BILLING_PERSONAL(ScopeType.PERSONAL, false, 11),
+    /** F03.15 Phase 4: 個人ダッシュボード「今日の時間割」ウィジェット */
+    TIMETABLE_TODAY(ScopeType.PERSONAL, true, 12),
+    /** F03.15 Phase 4: 個人ダッシュボード「今日のメモ」ウィジェット */
+    TIMETABLE_NOTES(ScopeType.PERSONAL, true, 13),
 
     // --- チームダッシュボード ---
     TEAM_NOTICES(ScopeType.TEAM, true, 0),

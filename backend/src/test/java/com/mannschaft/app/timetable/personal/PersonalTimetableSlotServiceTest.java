@@ -103,14 +103,16 @@ class PersonalTimetableSlotServiceTest {
     }
 
     @Test
-    @DisplayName("replaceAll: リンク付き要素は Phase 2 では 400 拒否")
-    void replaceAll_リンク付き要素で400() {
+    @DisplayName("replaceAll: Phase 4 — リンク付き要素は受け付けるが link 列は無視して保存")
+    void replaceAll_リンク付き要素は無視保存() {
         given(timetableRepository.findByIdAndUserIdAndDeletedAtIsNull(TIMETABLE_ID, USER_ID))
                 .willReturn(Optional.of(draft));
-        assertThatThrownBy(() -> service.replaceAll(TIMETABLE_ID, USER_ID, null,
-                List.of(slotWithLink(42L))))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Phase 4");
+        given(slotRepository.saveAll(anyList())).willAnswer(inv -> inv.getArgument(0));
+
+        // 例外なく完了することを確認（Phase 4 では link 列が含まれていても保存自体は成功）
+        var saved = service.replaceAll(TIMETABLE_ID, USER_ID, null,
+                List.of(slotWithLink(42L)));
+        assertThat(saved).isNotNull();
     }
 
     @Test

@@ -103,4 +103,22 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
             "GROUP BY s.venue_id ORDER BY cnt DESC LIMIT 1",
             nativeQuery = true)
     List<Object[]> findTopVenueByTeamId(@Param("teamId") Long teamId);
+
+    /**
+     * F03.15 Phase 4: external_ref に紐付くスケジュールを取得する（idempotency 用）。
+     */
+    Optional<ScheduleEntity> findByExternalRef(String externalRef);
+
+    /**
+     * F03.15 Phase 4: 指定 external_ref のスケジュールを論理削除する。
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE ScheduleEntity s SET s.deletedAt = CURRENT_TIMESTAMP WHERE s.externalRef = :externalRef AND s.deletedAt IS NULL")
+    int softDeleteByExternalRef(@Param("externalRef") String externalRef);
+
+    /**
+     * F03.15 Phase 4: external_ref のプレフィックス検索（取消フロー用）。
+     */
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.externalRef LIKE :prefix AND s.deletedAt IS NULL")
+    List<ScheduleEntity> findByExternalRefPrefix(@Param("prefix") String prefix);
 }

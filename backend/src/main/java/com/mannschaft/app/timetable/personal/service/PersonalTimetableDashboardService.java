@@ -1,7 +1,9 @@
 package com.mannschaft.app.timetable.personal.service;
 
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.timetable.TimetableChangeType;
 import com.mannschaft.app.timetable.WeekPattern;
+import com.mannschaft.app.timetable.entity.TimetableChangeEntity;
 import com.mannschaft.app.timetable.entity.TimetableEntity;
 import com.mannschaft.app.timetable.entity.TimetableSlotEntity;
 import com.mannschaft.app.timetable.notes.TimetableSlotKind;
@@ -16,6 +18,7 @@ import com.mannschaft.app.timetable.personal.entity.PersonalTimetableSlotEntity;
 import com.mannschaft.app.timetable.personal.repository.PersonalTimetablePeriodRepository;
 import com.mannschaft.app.timetable.personal.repository.PersonalTimetableRepository;
 import com.mannschaft.app.timetable.personal.repository.PersonalTimetableSlotRepository;
+import com.mannschaft.app.timetable.repository.TimetableChangeRepository;
 import com.mannschaft.app.timetable.repository.TimetableRepository;
 import com.mannschaft.app.timetable.repository.TimetableSlotRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,7 @@ import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -56,6 +60,7 @@ public class PersonalTimetableDashboardService {
     private final TimetableSlotUserNoteRepository userNoteRepository;
     private final TimetableSlotUserNoteAttachmentRepository attachmentRepository;
     private final UserRoleRepository userRoleRepository;
+    private final TimetableChangeRepository timetableChangeRepository;
 
     /**
      * 「今日の時間割」を取得する。
@@ -147,6 +152,36 @@ public class PersonalTimetableDashboardService {
         LocalTime endTime = period != null ? period.getEndTime() : null;
         String periodLabel = period != null ? period.getLabel() : null;
 
+        // F03.15 Phase 4: linked_timetable_id 経由で当日の臨時変更を引く
+        Boolean isChanged = Boolean.FALSE;
+        Object change = null;
+        if (slot.getLinkedTimetableId() != null) {
+            List<TimetableChangeEntity> changes = timetableChangeRepository
+                    .findByTimetableIdAndTargetDateOrderByPeriodNumber(slot.getLinkedTimetableId(), today);
+            // DAY_OFF 優先
+            TimetableChangeEntity dayOff = changes.stream()
+                    .filter(c -> c.getChangeType() == TimetableChangeType.DAY_OFF)
+                    .findFirst()
+                    .orElse(null);
+            TimetableChangeEntity periodMatch = changes.stream()
+                    .filter(c -> c.getPeriodNumber() != null
+                            && c.getPeriodNumber().equals(slot.getPeriodNumber()))
+                    .findFirst()
+                    .orElse(null);
+            TimetableChangeEntity effective = dayOff != null ? dayOff : periodMatch;
+            if (effective != null) {
+                isChanged = Boolean.TRUE;
+                change = buildChangeMap(effective);
+            }
+        }
+
+        // F03.15 Phase 4: linked_team_id がセットされているのに自分が現在 MEMBER でない場合は link_revoked
+        Boolean linkRevoked = Boolean.FALSE;
+        if (slot.getLinkedTeamId() != null
+                && !userRoleRepository.existsByUserIdAndTeamId(userId, slot.getLinkedTeamId())) {
+            linkRevoked = Boolean.TRUE;
+        }
+
         return new DashboardTimetableTodayResponse.TimetableTodayItem(
                 "PERSONAL",
                 null, null,
@@ -164,12 +199,22 @@ public class PersonalTimetableDashboardService {
                 slot.getCredits(),
                 slot.getColor(),
                 slot.getLinkedTeamId(),
-                Boolean.FALSE,
-                null,
-                Boolean.FALSE,
+                isChanged,
+                change,
+                linkRevoked,
                 noteId,
                 hasAttachments
         );
+    }
+
+    private Map<String, Object> buildChangeMap(TimetableChangeEntity change) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("change_type", change.getChangeType().name());
+        m.put("reason", change.getReason());
+        m.put("subject_name", change.getSubjectName());
+        m.put("teacher_name", change.getTeacherName());
+        m.put("room_name", change.getRoomName());
+        return m;
     }
 
     private DashboardTimetableTodayResponse.TimetableTodayItem buildTeamItem(
