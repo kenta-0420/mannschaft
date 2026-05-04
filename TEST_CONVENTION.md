@@ -578,6 +578,45 @@ frontend/e2e/                              # フロントエンド E2E（Playwri
 
 ---
 
+## 9.5 ContentVisibilityChecker のテスト規約
+
+機能側 Service / Controller のテストで `ContentVisibilityChecker` を `@MockBean`
+または `@Mock` する場合、必ず以下のユーティリティ経由でスタブすること:
+
+- `com.mannschaft.app.common.visibility.testsupport.VisibilityCheckerTestSupport`
+
+直接 `when(checker.canView(...))` を書くと、本基盤の API 進化（例: 多テナント
+対応 §17.Q14）で全テストが一斉に壊れる。ユーティリティ経由なら API 変更時に
+本ユーティリティ 1 箇所の修正で全機能テストが追従する。
+
+直接 `when()` を書く場合は、テストクラスのコメントに理由を明記すること。
+
+### 利用例
+
+```java
+@MockBean
+private ContentVisibilityChecker checker;
+
+@BeforeEach
+void setUp() {
+    VisibilityCheckerTestSupport.allowAll(checker);
+}
+```
+
+### 提供される 5 メソッド
+
+| メソッド | 用途 |
+|---------|------|
+| `allowAll(checker)` | 全 type / 全 contentId / 全 userId に対して allow（最も多いユースケース） |
+| `denyAll(checker)` | 全 deny。`assertCanView` は例外スロー |
+| `allowFor(checker, type, ids)` | 特定 `ReferenceType` の特定 contentId 集合のみ allow |
+| `allowForUser(checker, userId)` | 特定 userId のみ allow（他は deny） |
+| `denyWithReason(checker, reason)` | `decide()` でカスタム `DenyReason` を返す |
+
+詳細は設計書 `docs/features/F00_content_visibility_resolver.md` §13.8 を参照。
+
+---
+
 ## 10. テストに関する禁止事項
 
 | 禁止事項 | 理由 |
