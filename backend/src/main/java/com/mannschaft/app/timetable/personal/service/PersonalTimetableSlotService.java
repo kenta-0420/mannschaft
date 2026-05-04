@@ -94,15 +94,8 @@ public class PersonalTimetableSlotService {
             throw new BusinessException(PersonalTimetableErrorCode.PERSONAL_TIMETABLE_NOT_EDITABLE);
         }
 
-        // リンク機能は Phase 4 で実装。指定された場合 400 拒否。
-        for (SlotData d : data) {
-            if (d.linkedTeamId() != null
-                    || d.linkedTimetableId() != null
-                    || d.linkedSlotId() != null) {
-                throw new BusinessException(
-                        PersonalTimetableErrorCode.PERSONAL_SLOT_LINK_NOT_SUPPORTED_YET);
-            }
-        }
+        // F03.15 Phase 4: PUT /slots では link 情報を **無視** して保存する（保存は NULL）。
+        // リンクの正式登録は POST /slots/{slotId}/link で別途行う設計（設計書 §5.1）。
 
         // 上限チェックは「置換後の総コマ数」で行う
         long futureTotal;

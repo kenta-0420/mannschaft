@@ -46,4 +46,23 @@ public interface PersonalTimetableSlotRepository extends JpaRepository<PersonalT
      * コマ数カウント（上限チェック用）。
      */
     long countByPersonalTimetableId(Long personalTimetableId);
+
+    /**
+     * Phase 4: linked_timetable_id を持つコマを全取得（休講自動カレンダー反映用）。
+     */
+    List<PersonalTimetableSlotEntity> findByLinkedTimetableId(Long linkedTimetableId);
+
+    /**
+     * Phase 4: linked_team_id を持つコマを全取得（脱退時のリンク自動解除用）。
+     */
+    List<PersonalTimetableSlotEntity> findByLinkedTeamId(Long linkedTeamId);
+
+    /**
+     * Phase 4: linked_team_id を持つ自分のコマを取得（ユーザーの脱退時クリーンアップ用）。
+     */
+    @Query("SELECT s FROM PersonalTimetableSlotEntity s "
+            + "JOIN PersonalTimetableEntity pt ON pt.id = s.personalTimetableId "
+            + "WHERE pt.userId = :userId AND s.linkedTeamId = :teamId AND pt.deletedAt IS NULL")
+    List<PersonalTimetableSlotEntity> findByLinkedTeamIdAndOwnerUserId(
+            @Param("userId") Long userId, @Param("teamId") Long teamId);
 }

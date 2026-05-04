@@ -68,7 +68,17 @@ public enum PersonalTimetableErrorCode implements ErrorCode {
     ATTACHMENT_UNSUPPORTED_TYPE("PERSONAL_TIMETABLE_083", "サポートされていないファイル形式です", Severity.WARN),
     ATTACHMENT_QUOTA_EXCEEDED("PERSONAL_TIMETABLE_084", "ストレージ容量の上限（100MB）に達しています", Severity.WARN),
     ATTACHMENT_MAGIC_BYTE_MISMATCH("PERSONAL_TIMETABLE_085", "ファイル内容が宣言された形式と一致しません", Severity.WARN),
-    ATTACHMENT_OBJECT_NOT_FOUND("PERSONAL_TIMETABLE_086", "アップロードされたファイルが R2 に存在しません", Severity.WARN);
+    ATTACHMENT_OBJECT_NOT_FOUND("PERSONAL_TIMETABLE_086", "アップロードされたファイルが R2 に存在しません", Severity.WARN),
+
+    // ---- Phase 4 チームリンク ----
+    PERSONAL_SLOT_NOT_FOUND("PERSONAL_TIMETABLE_090", "コマが見つかりません", Severity.WARN),
+    PERSONAL_SLOT_LINK_TARGET_TEAM_NOT_FOUND("PERSONAL_TIMETABLE_091", "リンク先チームが見つかりません", Severity.WARN),
+    PERSONAL_SLOT_LINK_TARGET_TIMETABLE_NOT_FOUND("PERSONAL_TIMETABLE_092", "リンク先時間割が見つかりません", Severity.WARN),
+    PERSONAL_SLOT_LINK_TARGET_SLOT_NOT_FOUND("PERSONAL_TIMETABLE_093", "リンク先コマが見つかりません", Severity.WARN),
+    PERSONAL_SLOT_LINK_NOT_TEAM_MEMBER("PERSONAL_TIMETABLE_094", "リンク先チームのメンバーではありません", Severity.WARN),
+    PERSONAL_SLOT_LINK_STATUS_INVALID("PERSONAL_TIMETABLE_095", "リンク先時間割が ACTIVE 状態ではありません", Severity.WARN),
+    PERSONAL_SLOT_LINK_POSITION_MISMATCH("PERSONAL_TIMETABLE_096", "リンク先コマの曜日×時限が個人コマと一致しません", Severity.WARN),
+    PERSONAL_SLOT_LINK_TIMETABLE_REQUIRED("PERSONAL_TIMETABLE_097", "linked_team_id 指定時は linked_timetable_id も必須です", Severity.WARN);
 
     private final String code;
     private final String message;

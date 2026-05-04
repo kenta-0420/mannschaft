@@ -55,6 +55,7 @@ class PersonalTimetableSlotControllerTest {
     @Autowired private ObjectMapper objectMapper;
 
     @MockitoBean private PersonalTimetableSlotService service;
+    @MockitoBean private com.mannschaft.app.timetable.personal.service.PersonalTimetableSlotLinkService linkService;
     @MockitoBean private AuthTokenService authTokenService;
     @MockitoBean private UserLocaleCache userLocaleCache;
     // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
@@ -156,10 +157,11 @@ class PersonalTimetableSlotControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /slots 異常系: linked_team_id 指定で 400 (Phase 2 では未対応)")
-    void put_400_リンク指定() throws Exception {
-        willThrow(new BusinessException(PersonalTimetableErrorCode.PERSONAL_SLOT_LINK_NOT_SUPPORTED_YET))
-                .given(service).replaceAll(eq(TIMETABLE_ID), eq(USER_ID), eq(null), anyList());
+    @DisplayName("PUT /slots 正常系: linked_team_id 付与は Phase 4 で受け付ける（POST /link で別途登録）")
+    void put_200_link列付き() throws Exception {
+        // Phase 4 では PUT /slots では link 列は無視して保存する（200 を返す）
+        given(service.replaceAll(eq(TIMETABLE_ID), eq(USER_ID), eq(null), anyList()))
+                .willReturn(List.of(buildSlot(21L, "MON", 1, "X")));
 
         String body = """
                 {
@@ -171,8 +173,60 @@ class PersonalTimetableSlotControllerTest {
         mockMvc.perform(put("/api/v1/me/personal-timetables/{id}/slots", TIMETABLE_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("PERSONAL_TIMETABLE_056"));
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("POST /slots/{slotId}/link 正常系: 200")
+    void post_link_200() throws Exception {
+        given(linkService.link(eq(TIMETABLE_ID), eq(11L), eq(USER_ID),
+                eq(50L), eq(200L), eq(314L), eq(true)))
+                .willReturn(buildSlot(11L, "MON", 2, "ドイツ語"));
+
+        String body = """
+                {
+                  "linked_team_id": 50,
+                  "linked_timetable_id": 200,
+                  "linked_slot_id": 314,
+                  "auto_sync_changes": true
+                }
+                """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/me/personal-timetables/{id}/slots/{slotId}/link", TIMETABLE_ID, 11L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(11));
+    }
+
+    @Test
+    @DisplayName("POST /link 異常系: チームメンバーでなく 403")
+    void post_link_403() throws Exception {
+        willThrow(new BusinessException(PersonalTimetableErrorCode.PERSONAL_SLOT_LINK_NOT_TEAM_MEMBER))
+                .given(linkService).link(eq(TIMETABLE_ID), eq(11L), eq(USER_ID),
+                        any(), any(), any(), any());
+
+        String body = """
+                {
+                  "linked_team_id": 50,
+                  "linked_timetable_id": 200
+                }
+                """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/me/personal-timetables/{id}/slots/{slotId}/link", TIMETABLE_ID, 11L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("PERSONAL_TIMETABLE_094"));
+    }
+
+    @Test
+    @DisplayName("DELETE /slots/{slotId}/link 正常系: 200")
+    void delete_link_200() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/v1/me/personal-timetables/{id}/slots/{slotId}/link",
+                                TIMETABLE_ID, 11L))
+                .andExpect(status().isOk());
     }
 
     @Test

@@ -7,11 +7,13 @@ import com.mannschaft.app.timetable.WeekPattern;
 import com.mannschaft.app.timetable.entity.TimetableChangeEntity;
 import com.mannschaft.app.timetable.entity.TimetableEntity;
 import com.mannschaft.app.timetable.entity.TimetableSlotEntity;
+import com.mannschaft.app.timetable.event.TimetableSlotNoteUpdatedEvent;
 import com.mannschaft.app.timetable.repository.TimetableChangeRepository;
 import com.mannschaft.app.timetable.repository.TimetableRepository;
 import com.mannschaft.app.timetable.repository.TimetableSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,7 @@ public class TimetableSlotService {
     private final TimetableSlotRepository slotRepository;
     private final TimetableChangeRepository changeRepository;
     private final TimetableRepository timetableRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 時間割の全スロットを取得する。
@@ -65,6 +68,16 @@ public class TimetableSlotService {
         }
         validateSlotWeekPatterns(slots);
 
+        // 既存 slots の notes をスナップショット（F03.15 Phase 4: 共通メモ更新通知用）
+        Map<String, String> previousNotes = (dayOfWeek != null
+                ? slotRepository.findByTimetableIdAndDayOfWeek(timetableId, dayOfWeek)
+                : slotRepository.findByTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(timetableId))
+                .stream()
+                .collect(Collectors.toMap(
+                        s -> notesKey(s.getDayOfWeek(), s.getPeriodNumber(), s.getWeekPattern()),
+                        s -> s.getNotes() == null ? "" : s.getNotes(),
+                        (a, b) -> a));
+
         if (dayOfWeek != null) {
             // 特定曜日のスロットのみ削除
             List<TimetableSlotEntity> existing =
@@ -88,7 +101,28 @@ public class TimetableSlotService {
                         .build())
                 .toList();
 
-        return slotRepository.saveAll(entities);
+        List<TimetableSlotEntity> saved = slotRepository.saveAll(entities);
+
+        // F03.15 Phase 4: notes が変化したスロットについて Event を発火
+        for (TimetableSlotEntity s : saved) {
+            String key = notesKey(s.getDayOfWeek(), s.getPeriodNumber(), s.getWeekPattern());
+            String before = previousNotes.getOrDefault(key, "");
+            String after = s.getNotes() == null ? "" : s.getNotes();
+            if (!before.equals(after) && !after.isEmpty()) {
+                eventPublisher.publishEvent(new TimetableSlotNoteUpdatedEvent(
+                        s.getId(),
+                        timetableId,
+                        timetable.getTeamId(),
+                        s.getSubjectName(),
+                        after));
+            }
+        }
+
+        return saved;
+    }
+
+    private static String notesKey(String dow, Integer periodNumber, WeekPattern wp) {
+        return dow + ":" + periodNumber + ":" + (wp == null ? "EVERY" : wp.name());
     }
 
     /**
