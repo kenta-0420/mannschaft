@@ -4,6 +4,8 @@ import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.service.ActivityResultService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,11 @@ import java.util.List;
 
 /**
  * 公開活動記録コントローラー。認証不要のSSR用APIを提供する。
+ *
+ * <p>F00 Phase B 試験的置換 (§12.6.1 Activity リスク低 / 着手順 1):
+ * 詳細取得 ({@code getTeamPublicActivity} / {@code getOrgPublicActivity}) では
+ * {@link ContentVisibilityChecker#assertCanView(ReferenceType, Long, Long)} を経由し、
+ * 未認証ユーザーには PUBLIC のみ閲覧可（§17.Q1 マスター裁可済）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/public")
@@ -28,6 +35,7 @@ import java.util.List;
 public class ActivityPublicController {
 
     private final ActivityResultService activityService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * チーム公開活動記録一覧を取得する。
@@ -52,8 +60,10 @@ public class ActivityPublicController {
     public ResponseEntity<ApiResponse<ActivityResultEntity>> getTeamPublicActivity(
             @PathVariable Long teamId,
             @PathVariable Long id) {
+        // F00 Phase B: ContentVisibilityChecker 経由で実存確認 + visibility 評価。
+        // 未認証アクセス（userId=null）のため PUBLIC のみ通過する（§17.Q1 マスター裁可済）。
+        contentVisibilityChecker.assertCanView(ReferenceType.ACTIVITY_RESULT, id, null);
         ActivityResultEntity entity = activityService.getActivity(id);
-        // 公開チェックは Service 層で行うことを想定（ここでは基本的なチェック）
         return ResponseEntity.ok(ApiResponse.of(entity));
     }
 
@@ -80,6 +90,8 @@ public class ActivityPublicController {
     public ResponseEntity<ApiResponse<ActivityResultEntity>> getOrgPublicActivity(
             @PathVariable Long orgId,
             @PathVariable Long id) {
+        // F00 Phase B: 同上。組織側でも未認証 PUBLIC 限定で通す。
+        contentVisibilityChecker.assertCanView(ReferenceType.ACTIVITY_RESULT, id, null);
         ActivityResultEntity entity = activityService.getActivity(id);
         return ResponseEntity.ok(ApiResponse.of(entity));
     }
