@@ -1,6 +1,8 @@
 package com.mannschaft.app.corkboard.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.corkboard.dto.CorkboardDetailResponse;
 import com.mannschaft.app.corkboard.dto.CorkboardResponse;
 import com.mannschaft.app.corkboard.dto.CreateCorkboardRequest;
 import com.mannschaft.app.corkboard.service.CorkboardService;
@@ -51,5 +53,18 @@ public class OrganizationCorkboardController {
             @PathVariable Long orgId, @Valid @RequestBody CreateCorkboardRequest request) {
         CorkboardResponse response = corkboardService.createScopedBoard("ORGANIZATION", orgId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * 組織ボード詳細を取得する（カード・セクション含む）。組織所属チェックを実施する。
+     */
+    @GetMapping("/{boardId}")
+    @Operation(summary = "組織コルクボード詳細取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<CorkboardDetailResponse>> getBoard(
+            @PathVariable Long orgId, @PathVariable Long boardId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        CorkboardDetailResponse response = corkboardService.getOrganizationBoardDetail(orgId, boardId, userId);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

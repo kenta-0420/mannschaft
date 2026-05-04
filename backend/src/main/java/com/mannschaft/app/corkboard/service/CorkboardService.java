@@ -1,5 +1,6 @@
 package com.mannschaft.app.corkboard.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.corkboard.CorkboardErrorCode;
 import com.mannschaft.app.corkboard.CorkboardMapper;
@@ -39,6 +40,7 @@ public class CorkboardService {
     private final CorkboardGroupRepository groupRepository;
     private final CorkboardMapper corkboardMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
 
     /**
      * 個人ボード一覧を取得する。
@@ -121,6 +123,69 @@ public class CorkboardService {
     public CorkboardDetailResponse getScopedBoard(String scopeType, Long scopeId, Long boardId) {
         CorkboardEntity board = corkboardRepository.findByIdAndScopeTypeAndScopeId(boardId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
+        return buildDetailResponse(board);
+    }
+
+    /**
+     * 組織ボード詳細を取得する。所属チェックを実施する。
+     *
+     * @param orgId   組織ID
+     * @param boardId ボードID
+     * @param userId  操作ユーザーID
+     * @return ボード詳細レスポンス
+     */
+    public CorkboardDetailResponse getOrganizationBoardDetail(Long orgId, Long boardId, Long userId) {
+        CorkboardEntity board = corkboardRepository
+                .findByIdAndScopeTypeAndScopeId(boardId, "ORGANIZATION", orgId)
+                .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
+        if (!accessControlService.isMember(userId, orgId, "ORGANIZATION")) {
+            log.warn("組織コルクボード閲覧権限なし: boardId={}, userId={}, orgId={}", boardId, userId, orgId);
+            throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+        }
+        return buildDetailResponse(board);
+    }
+
+    /**
+     * boardId 単独でボード詳細を取得する（scope-agnostic）。
+     *
+     * <p>boardId からボードを引き当て、{@code scope_type} に応じて適切な閲覧権限チェックを行う。</p>
+     * <ul>
+     *   <li>{@code PERSONAL} &rarr; 所有者のみ</li>
+     *   <li>{@code TEAM} &rarr; チームメンバーのみ</li>
+     *   <li>{@code ORGANIZATION} &rarr; 組織メンバーのみ</li>
+     * </ul>
+     *
+     * @param boardId ボードID
+     * @param userId  操作ユーザーID
+     * @return ボード詳細レスポンス
+     * @throws BusinessException ボード未存在 ({@code CORKBOARD_001} / 404) または権限不足 ({@code CORKBOARD_009} / 403)
+     */
+    public CorkboardDetailResponse getBoardDetailByIdOnly(Long boardId, Long userId) {
+        CorkboardEntity board = corkboardRepository.findById(boardId)
+                .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
+
+        String scopeType = board.getScopeType();
+        switch (scopeType) {
+            case "PERSONAL" -> {
+                if (board.getOwnerId() == null || !board.getOwnerId().equals(userId)) {
+                    log.warn("個人コルクボード閲覧権限なし: boardId={}, userId={}, ownerId={}",
+                            boardId, userId, board.getOwnerId());
+                    throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+                }
+            }
+            case "TEAM", "ORGANIZATION" -> {
+                Long scopeId = board.getScopeId();
+                if (scopeId == null || !accessControlService.isMember(userId, scopeId, scopeType)) {
+                    log.warn("共有コルクボード閲覧権限なし: boardId={}, userId={}, scope={}, scopeId={}",
+                            boardId, userId, scopeType, scopeId);
+                    throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+                }
+            }
+            default -> {
+                log.warn("未知のスコープタイプ: boardId={}, scopeType={}", boardId, scopeType);
+                throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+            }
+        }
         return buildDetailResponse(board);
     }
 
