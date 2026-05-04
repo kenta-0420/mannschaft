@@ -1,25 +1,12 @@
 <script setup lang="ts">
+import type { CalendarEventItem } from '~/composables/useCalendarEvents'
+
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const orgId = Number(route.params.id)
 const scheduleApi = useScheduleApi()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
-
-const now = new Date()
-const currentYear = ref(now.getFullYear())
-const currentMonth = ref(now.getMonth() + 1)
-
-interface CalEvent {
-  id: number
-  title: string
-  startAt: string
-  endAt: string
-  allDay: boolean
-  color: string | null
-  scopeType: string
-  isPersonal: boolean
-}
 
 interface ScheduleEventDetail {
   id: number
@@ -37,8 +24,7 @@ interface ScheduleEventDetail {
   attendanceStats: { yes: number; no: number; maybe: number; pending: number; total: number } | null
 }
 
-const events = ref<CalEvent[]>([])
-const loading = ref(true)
+const refreshing = ref(false)
 const showTypeSelector = ref(false)
 const showCreateDialog = ref(false)
 const createAsPersonal = ref(false)
@@ -48,24 +34,31 @@ const selectedEvent = ref<ScheduleEventDetail | null>(null)
 const showDetailPanel = ref(false)
 const showEditDialog = ref(false)
 
-async function loadEvents() {
-  loading.value = true
-  try {
-    const from = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-01`
-    const lastDay = new Date(currentYear.value, currentMonth.value, 0).getDate()
-    const to = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${lastDay}`
-    const res = await scheduleApi.listSchedules('organization', orgId, { from, to, size: 100 })
-    events.value = (res.data as CalEvent[]).map((e) => ({
+const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> => {
+  const [orgRes, personalRes] = await Promise.all([
+    scheduleApi.listSchedules('organization', orgId, { from, to, size: 100 }),
+    scheduleApi.getMySchedules({ from, to, size: 100 }),
+  ])
+  return [
+    ...(orgRes.data as CalendarEventItem[]).map((e) => ({
       ...e,
+      allDay: e.allDay ?? false,
+      color: e.color ?? null,
       isPersonal: false,
       scopeType: 'ORGANIZATION',
-    }))
-  } catch {
-    events.value = []
-  } finally {
-    loading.value = false
-  }
+    })),
+    ...(personalRes.data as CalendarEventItem[]).map((e) => ({
+      ...e,
+      allDay: e.allDay ?? false,
+      color: e.color ?? null,
+      isPersonal: true,
+      scopeType: 'PERSONAL',
+    })),
+  ]
 }
+
+const { currentYear, currentMonth, events, loading, loadEvents, refresh, onPrevMonth, onNextMonth } =
+  useCalendarEvents(fetcher, { cacheHalfMonths: 2 })
 
 function onDateClick(date: string) {
   selectedDate.value = date
@@ -93,26 +86,6 @@ async function onEventClick(eventId: number) {
   }
 }
 
-function onPrevMonth() {
-  if (currentMonth.value === 1) {
-    currentMonth.value = 12
-    currentYear.value--
-  } else {
-    currentMonth.value--
-  }
-  loadEvents()
-}
-
-function onNextMonth() {
-  if (currentMonth.value === 12) {
-    currentMonth.value = 1
-    currentYear.value++
-  } else {
-    currentMonth.value++
-  }
-  loadEvents()
-}
-
 function onEditEvent() {
   showDetailPanel.value = false
   showEditDialog.value = true
@@ -123,10 +96,18 @@ async function onDeleteEvent() {
   try {
     await scheduleApi.deleteSchedule('organization', orgId, selectedEventId.value)
     showDetailPanel.value = false
-    await loadEvents()
+    refreshing.value = true
+    await refresh()
+    refreshing.value = false
   } catch {
     /* handled by api */
   }
+}
+
+async function onSaved() {
+  refreshing.value = true
+  await refresh()
+  refreshing.value = false
 }
 
 onMounted(async () => {
@@ -148,7 +129,7 @@ onMounted(async () => {
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div class="lg:col-span-2">
-        <SectionCard>
+        <SectionCard :class="{ 'opacity-60': refreshing }">
           <CalendarGrid
             :year="currentYear"
             :month="currentMonth"
@@ -170,7 +151,7 @@ onMounted(async () => {
             :can-edit="isAdminOrDeputy"
             @edit="onEditEvent"
             @delete="onDeleteEvent"
-            @responded="loadEvents"
+            @responded="refresh"
           />
         </SectionCard>
         <SectionCard v-else>
@@ -186,22 +167,22 @@ onMounted(async () => {
     />
 
     <!-- 作成ダイアログ -->
-    <EventForm
+    <ScheduleEventForm
       v-model:visible="showCreateDialog"
       scope-type="organization"
       :scope-id="createAsPersonal ? 0 : orgId"
       :is-personal="createAsPersonal"
       :initial-date="selectedDate"
-      @saved="loadEvents"
+      @saved="onSaved"
     />
 
     <!-- 編集ダイアログ -->
-    <EventForm
+    <ScheduleEventForm
       v-model:visible="showEditDialog"
       scope-type="organization"
       :scope-id="orgId"
       :schedule-id="selectedEventId"
-      @saved="loadEvents"
+      @saved="onSaved"
     />
   </div>
 </template>

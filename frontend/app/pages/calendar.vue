@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 import type { GanttTodo } from '~/types/todo'
 
 definePageMeta({ middleware: 'auth' })
@@ -8,13 +9,18 @@ const router = useRouter()
 const scheduleApi = useScheduleApi()
 const ganttApi = useTodoGantt()
 
-// タブ管理: calendar | gantt
 type CalendarTab = 'calendar' | 'gantt'
 const activeTab = ref<CalendarTab>('calendar')
 
-const now = new Date()
-const currentYear = ref(now.getFullYear())
-const currentMonth = ref(now.getMonth() + 1)
+const showCreateDialog = ref(false)
+const selectedDate = ref<string | undefined>(undefined)
+
+const ganttTodos = ref<GanttTodo[]>([])
+const ganttFromDate = ref('')
+const ganttToDate = ref('')
+const ganttLoading = ref(false)
+
+const pad = (n: number) => String(n).padStart(2, '0')
 
 interface CalEvent {
   id: number
@@ -27,18 +33,34 @@ interface CalEvent {
   isPersonal: boolean
 }
 
-const events = ref<CalEvent[]>([])
-const loading = ref(true)
-const showCreateDialog = ref(false)
-const selectedDate = ref<string | undefined>(undefined)
+const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> => {
+  const year = parseInt(from.slice(0, 4), 10)
+  const month = parseInt(from.slice(5, 7), 10)
+  const [personal, shared] = await Promise.all([
+    scheduleApi.listPersonalSchedules({ from, to }),
+    scheduleApi.getCalendarMonth(year, month),
+  ])
+  const personalEvents = ((personal.data ?? []) as CalEvent[]).map((e) => ({
+    ...e,
+    allDay: e.allDay ?? false,
+    color: e.color ?? '#22c55e',
+    isPersonal: true,
+    scopeType: 'PERSONAL',
+  }))
+  const sharedEvents = (
+    ((shared.data as unknown as Record<string, unknown>)?.events as CalEvent[]) ?? []
+  ).map((e) => ({
+    ...e,
+    allDay: e.allDay ?? false,
+    color: e.color ?? null,
+    isPersonal: false,
+    scopeType: e.scopeType ?? '',
+  }))
+  return [...personalEvents, ...sharedEvents]
+}
 
-// ガント用
-const ganttTodos = ref<GanttTodo[]>([])
-const ganttFromDate = ref('')
-const ganttToDate = ref('')
-const ganttLoading = ref(false)
-
-const pad = (n: number) => String(n).padStart(2, '0')
+const { currentYear, currentMonth, events, loading, loadEvents, refresh, onPrevMonth: calPrevMonth, onNextMonth: calNextMonth } =
+  useCalendarEvents(fetcher, { cacheHalfMonths: 0 })
 
 function getMonthRange(year: number, month: number) {
   const lastDay = new Date(year, month, 0).getDate()
@@ -48,43 +70,12 @@ function getMonthRange(year: number, month: number) {
   }
 }
 
-async function loadEvents() {
-  loading.value = true
-  try {
-    const year = currentYear.value
-    const month = currentMonth.value
-    const lastDay = new Date(year, month, 0).getDate()
-    const from = `${year}-${pad(month)}-01T00:00:00`
-    const to = `${year}-${pad(month)}-${pad(lastDay)}T23:59:59`
-    const [personal, shared] = await Promise.all([
-      scheduleApi.listPersonalSchedules({ from, to }),
-      scheduleApi.getCalendarMonth(currentYear.value, currentMonth.value),
-    ])
-    const personalEvents = ((personal.data ?? []) as CalEvent[]).map((e) => ({
-      ...e,
-      isPersonal: true,
-      scopeType: 'PERSONAL',
-      color: ((e as Record<string, unknown>).color as string) ?? '#22c55e',
-    }))
-    const sharedEvents = (
-      ((shared.data as Record<string, unknown>)?.events as CalEvent[]) ?? []
-    ).map((e) => ({ ...e, isPersonal: false }))
-    events.value = [...personalEvents, ...sharedEvents]
-  } catch (e) {
-    console.error('カレンダーイベントの取得に失敗しました', e)
-    events.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
 async function loadGantt() {
   ganttLoading.value = true
   try {
     const { from, to } = getMonthRange(currentYear.value, currentMonth.value)
     ganttFromDate.value = from
     ganttToDate.value = to
-    // 個人スコープのガントを取得（scopeType='PERSONAL' の場合は scopeId=0 で呼び出す想定）
     const res = await ganttApi.getGanttTodos('team', 0, from, to)
     ganttTodos.value = res.data
   } catch {
@@ -107,24 +98,12 @@ function onDateClick(date: string) {
 }
 
 function onPrevMonth() {
-  if (currentMonth.value === 1) {
-    currentMonth.value = 12
-    currentYear.value--
-  } else {
-    currentMonth.value--
-  }
-  loadEvents()
+  calPrevMonth()
   if (activeTab.value === 'gantt') loadGantt()
 }
 
 function onNextMonth() {
-  if (currentMonth.value === 12) {
-    currentMonth.value = 1
-    currentYear.value++
-  } else {
-    currentMonth.value++
-  }
-  loadEvents()
+  calNextMonth()
   if (activeTab.value === 'gantt') loadGantt()
 }
 
@@ -210,7 +189,7 @@ onMounted(loadEvents)
       :scope-id="0"
       :initial-date="selectedDate"
       :is-personal="true"
-      @saved="loadEvents"
+      @saved="refresh"
     />
   </div>
 </template>
