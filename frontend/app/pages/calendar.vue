@@ -159,26 +159,13 @@ const dayEvents = computed(() => {
   })
 })
 
-// 日付クリック
+// 日付クリック — チーム・組織カレンダーと同様、常に作成フォームを開く
 function onDateClick(date: string) {
   selectedDay.value = date
   selectedDate.value = date
   showEventPanel.value = false
-
-  // その日（範囲）にイベントがあるか確認
-  const hasEvents = events.value.some((e) => {
-    const start = e.startAt.slice(0, 10)
-    const end = e.endAt.slice(0, 10)
-    return date >= start && date <= end
-  })
-
-  if (hasEvents) {
-    showDayPanel.value = true
-    showCreateDialog.value = false
-  } else {
-    showDayPanel.value = false
-    showCreateDialog.value = true
-  }
+  showDayPanel.value = false
+  showCreateDialog.value = true
 }
 
 // イベントクリック
