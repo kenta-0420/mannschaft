@@ -35,26 +35,14 @@ const showDetailPanel = ref(false)
 const showEditDialog = ref(false)
 
 const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> => {
-  const [teamRes, personalRes] = await Promise.all([
-    scheduleApi.listSchedules('team', teamId, { from, to, size: 100 }),
-    scheduleApi.getMySchedules({ from, to, size: 100 }),
-  ])
-  return [
-    ...(teamRes.data as CalendarEventItem[]).map((e) => ({
-      ...e,
-      allDay: e.allDay ?? false,
-      color: e.color ?? null,
-      isPersonal: false,
-      scopeType: 'TEAM',
-    })),
-    ...(personalRes.data as CalendarEventItem[]).map((e) => ({
-      ...e,
-      allDay: e.allDay ?? false,
-      color: e.color ?? null,
-      isPersonal: true,
-      scopeType: 'PERSONAL',
-    })),
-  ]
+  const res = await scheduleApi.listSchedules('team', teamId, { from, to, size: 100 })
+  return (res.data as CalendarEventItem[]).map((e) => ({
+    ...e,
+    allDay: e.allDay ?? false,
+    color: e.color ?? null,
+    isPersonal: false,
+    scopeType: 'TEAM',
+  }))
 }
 
 const { currentYear, currentMonth, events, loading, loadEvents, refresh, onPrevMonth, onNextMonth } =
