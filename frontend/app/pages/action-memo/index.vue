@@ -12,6 +12,7 @@ import type { ActionMemo, ActionMemoCategory, OrgVisibility } from '~/types/acti
 definePageMeta({ middleware: 'auth' })
 
 const router = useRouter()
+const route = useRoute()
 const { t } = useI18n()
 const store = useActionMemoStore()
 
@@ -84,6 +85,12 @@ function handleOnline() {
 }
 
 onMounted(async () => {
+  // 通知からのディープリンク: ?date=YYYY-MM-DD があれば today を上書きして当日メモへ直遷移
+  const queryDate = route.query.date
+  if (typeof queryDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(queryDate)) {
+    today.value = queryDate
+  }
+
   await Promise.all([
     store.fetchSettings(),
     store.fetchMemosForDate(today.value),

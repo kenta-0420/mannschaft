@@ -13,6 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -53,9 +54,23 @@ public class ActionMemoReminderBatchService {
     /**
      * テスト可能な実装本体。現在時刻を引数で受け取ることでモック不要にする。
      *
+     * <p>日付は {@link LocalDate#now(ZoneId)} で JST を使用する。
+     * テスト時は {@link #executeAt(LocalTime, LocalDate)} オーバーロードを使うことで
+     * 日付も固定できる。</p>
+     *
      * @param nowMinute 分単位に切り捨てた現在時刻
      */
     void executeAt(LocalTime nowMinute) {
+        executeAt(nowMinute, LocalDate.now(ZONE_JST));
+    }
+
+    /**
+     * テスト可能な実装本体（日付も引数で指定できるオーバーロード）。
+     *
+     * @param nowMinute 分単位に切り捨てた現在時刻
+     * @param today     通知の actionUrl に埋め込む日付（JST の今日）
+     */
+    void executeAt(LocalTime nowMinute, LocalDate today) {
         List<UserActionMemoSettingsEntity> targets = settingsRepository
                 .findByReminderEnabledTrueAndReminderTimeIsNotNull()
                 .stream()
@@ -66,6 +81,7 @@ public class ActionMemoReminderBatchService {
             return;
         }
 
+        String todayStr = today.toString(); // "YYYY-MM-DD"
         int notified = 0;
         for (UserActionMemoSettingsEntity settings : targets) {
             try {
@@ -79,7 +95,7 @@ public class ActionMemoReminderBatchService {
                         null,
                         NotificationScopeType.PERSONAL,
                         settings.getUserId(),
-                        "/action-memo",
+                        "/action-memo?date=" + todayStr,
                         null
                 );
                 notified++;

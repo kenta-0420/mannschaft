@@ -528,13 +528,29 @@ export function useActionMemoApi() {
     }
   }
 
-  // === Team members (Phase 6-1) ===
+  // === Team members (Phase 6-1 / Phase 7) ===
+  /**
+   * チームメンバー一覧を全ページ取得する（Phase 7: 200名超チームへの対応）。
+   *
+   * <p>size=500 でページングしながら totalPages に達するまで繰り返し取得することで
+   * 大規模チームでも全メンバーを取りこぼしなく返す。</p>
+   */
   async function fetchTeamMembers(teamId: number): Promise<{ userId: number; displayName: string; avatarUrl: string | null }[]> {
+    type Member = { userId: number; displayName: string; avatarUrl: string | null }
+    type PagedRes = { data: Member[]; meta: { totalPages: number } }
+
+    const all: Member[] = []
+    let page = 0
+    let totalPages = 1
+
     try {
-      const res = await api<{ data: { userId: number; displayName: string; avatarUrl: string | null }[] }>(
-        `/api/v1/teams/${teamId}/members?size=200&page=0`,
-      )
-      return res.data ?? []
+      while (page < totalPages) {
+        const res = await api<PagedRes>(`/api/v1/teams/${teamId}/members?size=500&page=${page}`)
+        all.push(...(res.data ?? []))
+        totalPages = res.meta?.totalPages ?? 1
+        page++
+      }
+      return all
     } catch (error) {
       rethrow(error)
     }
