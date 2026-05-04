@@ -26,6 +26,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -183,8 +184,9 @@ class AnnouncementReadProxyInputTest {
             given(proxyInputContext.isProxy()).willReturn(true);
             given(proxyInputContext.getConsentId()).willReturn(CONSENT_ID);
             given(proxyInputContext.getSubjectUserId()).willReturn(30L);
-            given(proxyInputContext.getInputSource()).willReturn("PAPER_FORM");
-            given(proxyInputContext.getOriginalStorageLocation()).willReturn("書類棚B-2");
+            // 冪等性テストでは orElseGet ラムダが実行されないため lenient で登録
+            lenient().when(proxyInputContext.getInputSource()).thenReturn("PAPER_FORM");
+            lenient().when(proxyInputContext.getOriginalStorageLocation()).thenReturn("書類棚B-2");
         }
 
         @Test
