@@ -1,8 +1,9 @@
 package com.mannschaft.app.schedule;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
@@ -49,13 +50,13 @@ class ScheduleServiceTest {
     private NameResolverService nameResolverService;
 
     @Mock
-    private AccessControlService accessControlService;
-
-    @Mock
     private UserRoleRepository userRoleRepository;
 
     @Mock
     private ScheduleEventCategoryService eventCategoryService;
+
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private ScheduleService scheduleService;
@@ -149,8 +150,8 @@ class ScheduleServiceTest {
     class GetScheduleWithAccessCheck {
 
         @Test
-        @DisplayName("アクセスチェック付き取得_チームスコープ_メンバーシップ検証される")
-        void アクセスチェック付き取得_チームスコープ_メンバーシップ検証される() {
+        @DisplayName("アクセスチェック付き取得_F00 ContentVisibilityChecker 経由で判定される")
+        void アクセスチェック付き取得_ContentVisibilityChecker経由で判定される() {
             // given
             ScheduleEntity entity = createTeamScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
@@ -160,7 +161,21 @@ class ScheduleServiceTest {
 
             // then
             assertThat(result.getTitle()).isEqualTo("練習");
-            verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+            verify(contentVisibilityChecker).assertCanView(ReferenceType.SCHEDULE, SCHEDULE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("アクセスチェック付き取得_可視性無し_例外スロー")
+        void アクセスチェック付き取得_可視性無し_例外スロー() {
+            // given: ContentVisibilityChecker が assertCanView で BusinessException をスローする
+            org.mockito.Mockito.doThrow(new BusinessException(
+                            com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001))
+                    .when(contentVisibilityChecker)
+                    .assertCanView(ReferenceType.SCHEDULE, SCHEDULE_ID, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> scheduleService.getScheduleWithAccessCheck(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class);
         }
     }
 
