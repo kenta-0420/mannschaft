@@ -74,4 +74,13 @@ public interface ProxyInputConsentRepository extends JpaRepository<ProxyInputCon
     @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.effectiveUntil < CURRENT_DATE " +
            "AND c.revokedAt IS NULL")
     List<ProxyInputConsentEntity> findExpired();
+
+    /**
+     * 特定ユーザーが subject または proxy として関与する未失効の全同意書を取得する。
+     * ライフイベント発生時に、当該ユーザーに関連する全同意書を失効させるために使用する。
+     */
+    @Query("SELECT c FROM ProxyInputConsentEntity c WHERE " +
+           "(c.subjectUserId = :userId OR c.proxyUserId = :userId) " +
+           "AND c.revokedAt IS NULL")
+    List<ProxyInputConsentEntity> findActiveBySubjectOrProxyUserId(@Param("userId") Long userId);
 }
