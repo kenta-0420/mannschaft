@@ -5,6 +5,7 @@ import net.javacrumbs.shedlock.provider.jdbctemplate.JdbcTemplateLockProvider;
 import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import javax.sql.DataSource;
 
@@ -12,6 +13,7 @@ import javax.sql.DataSource;
  * ShedLock 設定。スケジュールタスクの分散排他制御を提供する。
  */
 @Configuration
+@EnableScheduling
 @EnableSchedulerLock(defaultLockAtMostFor = "30m")
 public class ShedLockConfig {
 

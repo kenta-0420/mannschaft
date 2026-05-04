@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ja">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+    <style>
+        h1 { font-size: 18px; border-bottom: 2px solid #333; padding-bottom: 8px; }
+        h2 { font-size: 14px; margin-top: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+        th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+        th { background-color: #f0f0f0; }
+        .total-row { background-color: #f8f8f8; font-weight: bold; }
+        .no-records { text-align: center; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="pdf-header">
+        <h1>代理入力 月次サマリ</h1>
+    </div>
+
+    <div class="pdf-body">
+        <h2>対象期間</h2>
+        <p th:text="${year} + '年' + ${month} + '月分'">2026年1月分</p>
+
+        <h2>本人情報</h2>
+        <table>
+            <tr><th>本人ユーザーID</th><td th:text="${subjectUserId}">-</td></tr>
+        </table>
+
+        <h2>当月代理入力件数（機能別）</h2>
+        <table>
+            <thead>
+                <tr><th>機能スコープ</th><th>件数</th></tr>
+            </thead>
+            <tbody>
+                <tr th:each="entry : ${byFeatureScope}">
+                    <td th:text="${entry.key}">-</td>
+                    <td th:text="${entry.value}">0</td>
+                </tr>
+                <tr th:if="${#maps.isEmpty(byFeatureScope)}">
+                    <td colspan="2" class="no-records">代理入力の記録がありません</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <th>合計</th>
+                    <th th:text="${totalCount}">0</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="pdf-footer">
+        <p>生成日: <span th:text="${generatedAt}">-</span></p>
+        <p>本レポートは機密です。非デジタル住民への月次配布資料として使用されます。</p>
+        <p>Mannschaft 代理入力管理システム（F14.1）</p>
+    </div>
+</body>
+</html>

@@ -173,7 +173,7 @@ public class UserEntity extends BaseEntity {
     private Boolean careNotificationEnabled = true;
 
     /** スマートフォン・PCを持たない住民フラグ（F14.1 非デジタル住民対応）。 */
-    @Column(nullable = false)
+    @Column(name = "offline_only", nullable = false)
     @Builder.Default
     private Boolean offlineOnly = false;
 
@@ -221,6 +221,17 @@ public class UserEntity extends BaseEntity {
     public void archive() {
         this.status = UserStatus.ARCHIVED;
         this.archivedAt = LocalDateTime.now();
+    }
+
+    /**
+     * ユーザーステータスを変更する。
+     * ライフイベント処理（DECEASED/RELOCATED）に使用する。
+     */
+    public void changeStatus(UserStatus newStatus) {
+        this.status = newStatus;
+        if (newStatus == UserStatus.ARCHIVED) {
+            this.archivedAt = LocalDateTime.now();
+        }
     }
 
     /**
