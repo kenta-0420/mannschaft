@@ -189,7 +189,11 @@ public class GlobalExceptionHandler {
             Map.entry("PERSONAL_TIMETABLE_083", HttpStatus.UNPROCESSABLE_ENTITY), // ATTACHMENT_UNSUPPORTED_TYPE
             Map.entry("PERSONAL_TIMETABLE_084", HttpStatus.TOO_MANY_REQUESTS), // ATTACHMENT_QUOTA_EXCEEDED (429)
             Map.entry("PERSONAL_TIMETABLE_085", HttpStatus.UNPROCESSABLE_ENTITY), // ATTACHMENT_MAGIC_BYTE_MISMATCH
-            Map.entry("PERSONAL_TIMETABLE_086", HttpStatus.UNPROCESSABLE_ENTITY) // ATTACHMENT_OBJECT_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_086", HttpStatus.UNPROCESSABLE_ENTITY), // ATTACHMENT_OBJECT_NOT_FOUND
+            // F09.8.1 コルクボード ピン止め
+            Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
+            Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED
+            Map.entry("CORKBOARD_013", HttpStatus.CONFLICT)                  // PIN_LIMIT_EXCEEDED
     );
 
     /**

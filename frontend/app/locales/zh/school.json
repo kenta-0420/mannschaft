@@ -228,6 +228,16 @@
       "recalculateSuccess": "已重新汇总",
       "noData": "暂无汇总数据"
     },
+    "requirements": {
+      "title": "出勤率要件管理",
+      "filterAll": "全部",
+      "runEvaluation": "执行评估",
+      "evaluationSuccess": "评估完成",
+      "evaluateAll": "评估所有学生",
+      "evaluating": "评估中…",
+      "loadError": "获取列表失败",
+      "resolveSuccess": "已记录解决方案"
+    },
     "evaluation": {
       "title": "出勤要求评估",
       "status": {

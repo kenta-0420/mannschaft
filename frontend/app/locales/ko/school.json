@@ -228,6 +228,16 @@
       "recalculateSuccess": "집계를 재계산했습니다",
       "noData": "집계 데이터가 없습니다"
     },
+    "requirements": {
+      "title": "출석 요건 관리",
+      "filterAll": "전체",
+      "runEvaluation": "평가 실행",
+      "evaluationSuccess": "평가 완료",
+      "evaluateAll": "전체 학생 평가",
+      "evaluating": "평가 중…",
+      "loadError": "목록 불러오기 실패",
+      "resolveSuccess": "해결 기록 완료"
+    },
     "evaluation": {
       "title": "출석 요건 평가",
       "status": {

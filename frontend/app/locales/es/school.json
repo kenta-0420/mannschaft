@@ -228,6 +228,16 @@
       "recalculateSuccess": "Resumen recalculado",
       "noData": "Sin datos de resumen"
     },
+    "requirements": {
+      "title": "Gestión de Requisitos",
+      "filterAll": "Todos",
+      "runEvaluation": "Ejecutar Evaluación",
+      "evaluationSuccess": "Evaluación completada",
+      "evaluateAll": "Evaluar todos",
+      "evaluating": "Evaluando…",
+      "loadError": "Error al cargar",
+      "resolveSuccess": "Resolución registrada"
+    },
     "evaluation": {
       "title": "Evaluación de Requisitos de Asistencia",
       "status": {
