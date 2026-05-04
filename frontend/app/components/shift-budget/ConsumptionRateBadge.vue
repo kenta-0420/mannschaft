@@ -45,6 +45,8 @@ const severity = computed<'success' | 'warn' | 'danger'>(() => {
     case 'EXCEEDED':
     case 'SEVERE_EXCEEDED':
       return 'danger'
+    default:
+      return 'success'
   }
 })
 
