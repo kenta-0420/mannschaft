@@ -263,6 +263,44 @@
       "dashboard": "Panel de evaluación de requisitos",
       "filterByStatus": "Filtrar por estado",
       "loadError": "Error al cargar los datos de evaluación"
+    },
+    "disclosure": {
+      "title": "Decisión de divulgación",
+      "decide": "Tomar decisión de divulgación",
+      "tabDisclose": "Divulgar",
+      "tabWithhold": "No divulgar por ahora",
+      "mode": {
+        "label": "Modo de divulgación",
+        "WITH_NUMBERS": "Divulgar con números",
+        "WITHOUT_NUMBERS": "Divulgar sin números (solo aviso)",
+        "MEETING_REQUEST_ONLY": "Solo enviar solicitud de reunión"
+      },
+      "recipients": {
+        "label": "Destinatarios",
+        "STUDENT_ONLY": "Solo estudiante",
+        "GUARDIAN_ONLY": "Solo tutor",
+        "BOTH": "Estudiante y tutor"
+      },
+      "message": "Mensaje del profesor (opcional)",
+      "messagePlaceholder": "Ingrese un mensaje para el estudiante/tutor",
+      "withholdReason": "Razón para no divulgar",
+      "withholdReasonPlaceholder": "Se guardará como registro de orientación",
+      "submit": "Confirmar decisión",
+      "submitting": "Enviando...",
+      "historyTitle": "Historial de divulgación",
+      "historyEmpty": "No hay registros de divulgación",
+      "decision": {
+        "DISCLOSED": "Divulgado",
+        "WITHHELD": "No divulgado"
+      },
+      "inbox": {
+        "title": "Avisos de requisitos de asistencia del profesor",
+        "empty": "No hay información divulgada de su profesor",
+        "contactTeacher": "Consulte a su profesor para más detalles",
+        "meetingRequest": "Su profesor ha solicitado una reunión. Contáctele.",
+        "currentRate": "Tasa de asistencia actual",
+        "remainingAllowed": "{days} días restantes"
+      }
     }
   }
 }

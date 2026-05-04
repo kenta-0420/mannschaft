@@ -263,6 +263,44 @@
       "dashboard": "Anforderungsbewertungs-Dashboard",
       "filterByStatus": "Nach Status filtern",
       "loadError": "Fehler beim Laden der Bewertungsdaten"
+    },
+    "disclosure": {
+      "title": "Offenlegungsentscheidung",
+      "decide": "Offenlegungsentscheidung treffen",
+      "tabDisclose": "Offenlegen",
+      "tabWithhold": "Vorerst zurückhalten",
+      "mode": {
+        "label": "Offenlegungsmodus",
+        "WITH_NUMBERS": "Mit Zahlen offenlegen",
+        "WITHOUT_NUMBERS": "Ohne Zahlen offenlegen (nur Hinweis)",
+        "MEETING_REQUEST_ONLY": "Nur Gesprächsanfrage senden"
+      },
+      "recipients": {
+        "label": "Empfänger",
+        "STUDENT_ONLY": "Nur Schüler",
+        "GUARDIAN_ONLY": "Nur Erziehungsberechtigte",
+        "BOTH": "Schüler und Erziehungsberechtigte"
+      },
+      "message": "Nachricht des Lehrers (optional)",
+      "messagePlaceholder": "Nachricht für Schüler/Erziehungsberechtigte eingeben",
+      "withholdReason": "Grund für Zurückhalten",
+      "withholdReasonPlaceholder": "Wird als Beratungsprotokoll gespeichert",
+      "submit": "Entscheidung bestätigen",
+      "submitting": "Wird gesendet...",
+      "historyTitle": "Offenlegungsverlauf",
+      "historyEmpty": "Keine Offenlegungsaufzeichnungen",
+      "decision": {
+        "DISCLOSED": "Offengelegt",
+        "WITHHELD": "Zurückgehalten"
+      },
+      "inbox": {
+        "title": "Anwesenheitsanforderungshinweise vom Lehrer",
+        "empty": "Keine offengelegten Informationen von Ihrem Lehrer",
+        "contactTeacher": "Bitte wenden Sie sich für Details an Ihren Lehrer",
+        "meetingRequest": "Ihr Lehrer hat ein Gespräch angefordert. Bitte kontaktieren Sie ihn.",
+        "currentRate": "Aktuelle Anwesenheitsquote",
+        "remainingAllowed": "Noch {days} Tage übrig"
+      }
     }
   }
 }

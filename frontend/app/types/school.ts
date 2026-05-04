@@ -536,3 +536,43 @@ export interface ResolveEvaluationResponse {
   resolutionNote: string
   resolverUserId: number
 }
+
+// ===== F03.13 Phase 15: 開示判断 =====
+
+export type DisclosureDecision = 'DISCLOSED' | 'WITHHELD'
+export type DisclosureMode = 'WITH_NUMBERS' | 'WITHOUT_NUMBERS' | 'MEETING_REQUEST_ONLY'
+export type DisclosureRecipients = 'STUDENT_ONLY' | 'GUARDIAN_ONLY' | 'BOTH'
+
+export interface DisclosureRequest {
+  mode: DisclosureMode
+  recipients: DisclosureRecipients
+  message?: string
+}
+
+export interface WithholdRequest {
+  withholdReason: string
+}
+
+export interface DisclosureResponse {
+  id: number
+  evaluationId: number
+  studentUserId: number
+  decision: DisclosureDecision
+  mode?: DisclosureMode
+  recipients?: DisclosureRecipients
+  message?: string
+  decidedBy: number
+  decidedAt: string
+}
+
+export interface DisclosedEvaluationResponse {
+  evaluationId: number
+  ruleId: number
+  ruleName: string
+  status: EvaluationStatus
+  mode: DisclosureMode
+  message?: string
+  disclosedAt: string
+  currentRate?: number
+  remainingAllowedDays?: number
+}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
-import type { AtRiskStudentResponse, EvaluationStatus, ResolveEvaluationRequest } from '~/types/school'
+import type { AtRiskStudentResponse, EvaluationStatus, ResolveEvaluationRequest, DisclosureRequest, WithholdRequest } from '~/types/school'
 
 definePageMeta({
   middleware: 'auth',
@@ -20,10 +20,16 @@ const {
 } = useAttendanceEvaluation()
 
 const evaluationApi = useAttendanceEvaluationApi()
+const { executeDisclose, executeWithhold } = useAttendanceDisclosure()
 
 const showResolveModal = ref(false)
 const selectedEvaluationId = ref<number | undefined>(undefined)
 const resolvingStudent = ref(false)
+
+// 開示モーダル
+const showDisclosureModal = ref(false)
+const selectedDisclosureEvaluationId = ref<number | undefined>(undefined)
+const disclosingStudent = ref(false)
 
 // フィルター選択値（null = 全件）
 const selectedStatus = ref<EvaluationStatus | null>(null)
@@ -62,6 +68,36 @@ async function onResolveSubmit(evaluationId: number, req: ResolveEvaluationReque
   selectedEvaluationId.value = undefined
 }
 
+async function onDisclose(student: AtRiskStudentResponse): Promise<void> {
+  disclosingStudent.value = true
+  try {
+    const evaluations = await evaluationApi.getStudentEvaluations(student.studentUserId)
+    const target = evaluations.find(e => !e.resolvedAt)
+    if (target) {
+      selectedDisclosureEvaluationId.value = target.id
+      showDisclosureModal.value = true
+    }
+  } finally {
+    disclosingStudent.value = false
+  }
+}
+
+async function onDisclosed(evaluationId: number, req: DisclosureRequest): Promise<void> {
+  await executeDisclose(teamId.value, evaluationId, req, () => {
+    void loadAtRiskStudents(teamId.value)
+  })
+  showDisclosureModal.value = false
+  selectedDisclosureEvaluationId.value = undefined
+}
+
+async function onWithheld(evaluationId: number, req: WithholdRequest): Promise<void> {
+  await executeWithhold(teamId.value, evaluationId, req, () => {
+    void loadAtRiskStudents(teamId.value)
+  })
+  showDisclosureModal.value = false
+  selectedDisclosureEvaluationId.value = undefined
+}
+
 onMounted(async () => {
   await loadAtRiskStudents(teamId.value)
 })
@@ -89,7 +125,7 @@ onMounted(async () => {
       </div>
 
       <!-- ローディング中 -->
-      <PageLoading v-if="loading || resolvingStudent" />
+      <PageLoading v-if="loading || resolvingStudent || disclosingStudent" />
 
       <!-- リスト -->
       <template v-else>
@@ -98,7 +134,18 @@ onMounted(async () => {
           :loading="resolving"
           data-testid="at-risk-list"
           @resolve="onResolve"
-        />
+        >
+          <template #actions="{ student }">
+            <Button
+              :label="$t('school.disclosure.decide')"
+              size="small"
+              severity="secondary"
+              outlined
+              data-testid="disclosure-decide-btn"
+              @click="onDisclose(student)"
+            />
+          </template>
+        </AtRiskStudentList>
       </template>
 
       <!-- 解消モーダル -->
@@ -106,6 +153,15 @@ onMounted(async () => {
         v-model:visible="showResolveModal"
         :evaluation-id="selectedEvaluationId"
         @resolve="onResolveSubmit"
+      />
+
+      <!-- 開示判断モーダル -->
+      <RequirementDisclosureDecisionModal
+        v-model:visible="showDisclosureModal"
+        :evaluation-id="selectedDisclosureEvaluationId"
+        :team-id="teamId"
+        @disclosed="onDisclosed"
+        @withheld="onWithheld"
       />
     </main>
   </div>

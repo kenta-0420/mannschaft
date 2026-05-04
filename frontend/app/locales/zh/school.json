@@ -263,6 +263,44 @@
       "dashboard": "要求评估仪表板",
       "filterByStatus": "按状态筛选",
       "loadError": "评估数据加载失败"
+    },
+    "disclosure": {
+      "title": "开示决定",
+      "decide": "进行开示决定",
+      "tabDisclose": "开示",
+      "tabWithhold": "暂不开示",
+      "mode": {
+        "label": "开示模式",
+        "WITH_NUMBERS": "包含数值开示",
+        "WITHOUT_NUMBERS": "不含数值开示（仅提醒）",
+        "MEETING_REQUEST_ONLY": "仅发送面谈请求"
+      },
+      "recipients": {
+        "label": "通知对象",
+        "STUDENT_ONLY": "仅学生",
+        "GUARDIAN_ONLY": "仅监护人",
+        "BOTH": "学生和监护人"
+      },
+      "message": "班主任留言（可选）",
+      "messagePlaceholder": "请输入给学生/监护人的留言",
+      "withholdReason": "不开示的理由",
+      "withholdReasonPlaceholder": "将作为指导记录保存",
+      "submit": "确认决定",
+      "submitting": "提交中...",
+      "historyTitle": "开示历史",
+      "historyEmpty": "暂无开示记录",
+      "decision": {
+        "DISCLOSED": "已开示",
+        "WITHHELD": "未开示"
+      },
+      "inbox": {
+        "title": "来自班主任的出勤要求通知",
+        "empty": "暂无来自班主任的开示信息",
+        "contactTeacher": "详情请咨询班主任",
+        "meetingRequest": "班主任已申请面谈，请与其联系",
+        "currentRate": "当前出勤率",
+        "remainingAllowed": "还有 {days} 天的余裕"
+      }
     }
   }
 }
