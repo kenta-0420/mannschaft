@@ -2,7 +2,7 @@
   "shiftBudget": {
     "title": "班次预算管理",
     "allocation": {
-      "list": "预算分配一览",
+      "list": "预算分配列表",
       "create": "新建分配",
       "amount": "分配金额",
       "period": "适用期间",
@@ -26,13 +26,13 @@
     },
     "link": {
       "project": "关联到项目",
-      "todo": "关联到 TODO",
+      "todo": "关联到待办事项",
       "fullAmount": "全额关联",
       "partialAmount": "指定上限金额",
       "percentage": "指定比例"
     },
     "calc": {
-      "requiredSlots": "反推所需班次数",
+      "requiredSlots": "反算所需班次数",
       "result": "所需班次数：{count} 个",
       "formula": "计算公式：floor({budget} / ({rate} × {hours}))",
       "warning": {
@@ -47,9 +47,9 @@
       "disabled": "此功能已被组织管理员禁用"
     },
     "monthlyClose": {
-      "button": "执行月末结算",
-      "confirm": "将确定 {month} 的班次预算。是否继续？",
-      "success": "月末结算完成：{month}（已确定消耗记录 {count} 条）",
+      "button": "执行月度结算",
+      "confirm": "将结算 {month} 的班次预算，确定要继续吗？",
+      "success": "月度结算完成：{month}（已确定消耗记录 {count} 条）",
       "alreadyClosed": "该月份已结算"
     }
   }

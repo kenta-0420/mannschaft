@@ -5,8 +5,8 @@
       "list": "Budgetzuweisungen",
       "create": "Neue Zuweisung",
       "amount": "Zugewiesener Betrag",
-      "period": "Zeitraum",
-      "category": "Kategorie"
+      "period": "Geltungszeitraum",
+      "category": "Kostenart"
     },
     "consumption": {
       "summary": "Verbrauchsübersicht",
@@ -16,9 +16,9 @@
       "byUserHidden": "Aufschlüsselung nach Benutzer ist aufgrund fehlender Berechtigungen nicht verfügbar"
     },
     "threshold": {
-      "warn80": "Budget hat 80% erreicht",
+      "warn80": "Budget hat 80% des Schwellenwerts erreicht",
       "exceeded": "Budget überschritten",
-      "severeExceeded120": "Budget überschritten um 120% (kritisch)"
+      "severeExceeded120": "Budget um 120% überschritten (kritisch)"
     },
     "alert": {
       "acknowledge": "Bestätigen",
@@ -26,7 +26,7 @@
     },
     "link": {
       "project": "Mit Projekt verknüpfen",
-      "todo": "Mit TODO verknüpfen",
+      "todo": "Mit Aufgabe verknüpfen",
       "fullAmount": "Vollständiger Betrag",
       "partialAmount": "Höchstbetrag angeben",
       "percentage": "Prozentsatz angeben"

@@ -1,24 +1,24 @@
 {
   "shiftBudget": {
-    "title": "교대 예산 관리",
+    "title": "시프트 예산 관리",
     "allocation": {
-      "list": "예산 할당 목록",
-      "create": "신규 할당",
-      "amount": "배분액",
+      "list": "예산 배정 목록",
+      "create": "신규 배정",
+      "amount": "배정 금액",
       "period": "적용 기간",
-      "category": "비목"
+      "category": "비용 항목"
     },
     "consumption": {
-      "summary": "소진 요약",
-      "consumed": "소진액",
+      "summary": "소비 요약",
+      "consumed": "소비액",
       "remaining": "잔액",
-      "rate": "소진율",
-      "byUserHidden": "권한이 없어 개인별 내역을 표시할 수 없습니다"
+      "rate": "소비율",
+      "byUserHidden": "권한이 없어 사용자별 내역을 표시할 수 없습니다"
     },
     "threshold": {
       "warn80": "예산이 80%에 도달했습니다",
       "exceeded": "예산을 초과했습니다",
-      "severeExceeded120": "예산을 120% 초과했습니다 (중대)"
+      "severeExceeded120": "예산을 120% 초과했습니다 (심각)"
     },
     "alert": {
       "acknowledge": "확인",
@@ -26,13 +26,13 @@
     },
     "link": {
       "project": "프로젝트에 연결",
-      "todo": "TODO에 연결",
+      "todo": "할 일에 연결",
       "fullAmount": "전액 연결",
       "partialAmount": "상한 금액 지정",
       "percentage": "비율 지정"
     },
     "calc": {
-      "requiredSlots": "필요 슬롯 수 역산",
+      "requiredSlots": "필요 슬롯 수 산정",
       "result": "필요 슬롯 수: {count} 개",
       "formula": "계산식: floor({budget} / ({rate} × {hours}))",
       "warning": {
@@ -41,15 +41,15 @@
       }
     },
     "dashboard": {
-      "title": "예산 소진 대시보드"
+      "title": "예산 소비 대시보드"
     },
     "feature": {
       "disabled": "이 기능은 조직 관리자에 의해 비활성화되었습니다"
     },
     "monthlyClose": {
       "button": "월 마감 실행",
-      "confirm": "{month}분 교대 예산을 확정합니다. 진행하시겠습니까?",
-      "success": "월 마감 완료: {month} (소진 레코드 {count} 건 확정)",
+      "confirm": "{month} 시프트 예산을 확정합니다. 진행하시겠습니까?",
+      "success": "월 마감 완료: {month} (소비 기록 {count} 건 확정)",
       "alreadyClosed": "해당 월은 이미 마감되었습니다"
     }
   }

@@ -5,8 +5,8 @@
       "list": "Asignaciones de Presupuesto",
       "create": "Nueva Asignación",
       "amount": "Importe Asignado",
-      "period": "Periodo",
-      "category": "Categoría"
+      "period": "Periodo de Vigencia",
+      "category": "Concepto de Gasto"
     },
     "consumption": {
       "summary": "Resumen de Consumo",
@@ -16,17 +16,17 @@
       "byUserHidden": "El desglose por usuario no está disponible por falta de permisos"
     },
     "threshold": {
-      "warn80": "El presupuesto ha alcanzado el 80%",
+      "warn80": "El presupuesto ha alcanzado el 80% del umbral",
       "exceeded": "Presupuesto excedido",
-      "severeExceeded120": "Presupuesto excedido en 120% (crítico)"
+      "severeExceeded120": "Presupuesto excedido al 120% (crítico)"
     },
     "alert": {
       "acknowledge": "Confirmar",
       "unacknowledged": "Alertas Sin Confirmar"
     },
     "link": {
-      "project": "Vincular al Proyecto",
-      "todo": "Vincular a TODO",
+      "project": "Vincular a Proyecto",
+      "todo": "Vincular a Tarea",
       "fullAmount": "Importe Completo",
       "partialAmount": "Especificar Importe Máximo",
       "percentage": "Especificar Porcentaje"
@@ -36,7 +36,7 @@
       "result": "Turnos necesarios: {count}",
       "formula": "Fórmula: floor({budget} / ({rate} × {hours}))",
       "warning": {
-        "zeroRate": "No se puede calcular porque la tarifa promedio por hora es 0",
+        "zeroRate": "No se puede calcular porque la tarifa media por hora es 0",
         "insufficientData": "La precisión puede ser baja porque muchos miembros no tienen tarifa por hora configurada"
       }
     },

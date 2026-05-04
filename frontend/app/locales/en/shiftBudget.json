@@ -5,8 +5,8 @@
       "list": "Budget Allocations",
       "create": "New Allocation",
       "amount": "Allocated Amount",
-      "period": "Period",
-      "category": "Category"
+      "period": "Effective Period",
+      "category": "Expense Category"
     },
     "consumption": {
       "summary": "Consumption Summary",
@@ -16,9 +16,9 @@
       "byUserHidden": "Per-user breakdown is unavailable due to insufficient permissions"
     },
     "threshold": {
-      "warn80": "Budget has reached 80%",
+      "warn80": "Budget has reached 80% of the threshold",
       "exceeded": "Budget exceeded",
-      "severeExceeded120": "Budget exceeded 120% (critical)"
+      "severeExceeded120": "Budget exceeded 120% threshold (critical)"
     },
     "alert": {
       "acknowledge": "Acknowledge",
@@ -26,7 +26,7 @@
     },
     "link": {
       "project": "Link to Project",
-      "todo": "Link to TODO",
+      "todo": "Link to Todo",
       "fullAmount": "Full Amount",
       "partialAmount": "Specify Maximum Amount",
       "percentage": "Specify Percentage"
@@ -48,8 +48,8 @@
     },
     "monthlyClose": {
       "button": "Run Monthly Close",
-      "confirm": "Confirm shift budget for {month}. Are you sure?",
-      "success": "Monthly close complete: {month} ({count} consumption records confirmed)",
+      "confirm": "Are you sure you want to finalize the shift budget for {month}?",
+      "success": "Monthly close complete: {month} ({count} consumption records finalized)",
       "alreadyClosed": "This month has already been closed"
     }
   }
