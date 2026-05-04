@@ -16,10 +16,10 @@ import java.util.List;
  * <p>形状確定ルール（v1.2）:</p>
  * <ul>
  *   <li>{@code by_user} は権限の有無に関わらず必ず <strong>配列</strong>（{@code null} 不可）。
- *       Phase 9-β 中はマスター御裁可 Q2 により <strong>常に空配列</strong> を返却する</li>
+ *       {@code BUDGET_ADMIN} 保有時のみ実データを返し、それ以外は空配列</li>
  *   <li>{@code flags} は権限の有無に関わらず必ず <strong>配列</strong>。
- *       Phase 9-β 中は <strong>常に {@code ["BY_USER_HIDDEN"]}</strong> を含める</li>
- *   <li>{@code alerts} は警告機能未実装のため Phase 9-δ までは常に空配列</li>
+ *       {@code BUDGET_VIEW} のみで {@code BUDGET_ADMIN} 不保持時は <strong>{@code ["BY_USER_HIDDEN"]}</strong> を含める</li>
+ *   <li>{@code alerts} は当該 allocation の警告全件 ({@code triggered_at DESC})、承認済 / 未承認 ともに含める</li>
  * </ul>
  *
  * <p>{@code status} 判定（4段階）:</p>
@@ -29,6 +29,10 @@ import java.util.List;
  *   <li>{@code 1.00 ≤ rate < 1.20} → {@code EXCEEDED}</li>
  *   <li>{@code ≥ 1.20} → {@code SEVERE_EXCEEDED}</li>
  * </ul>
+ *
+ * <p>Phase 9-δ 第3段で {@code @JsonView} を本格化済。Controller が
+ * {@link com.mannschaft.app.shiftbudget.view.BudgetView} を {@code MappingJacksonValue} 経由で
+ * 切替えることでフィールド単位のマスキングを実現する。</p>
  */
 @Builder
 public record ConsumptionSummaryResponse(
@@ -71,13 +75,13 @@ public record ConsumptionSummaryResponse(
 
         @JsonView(BudgetView.BudgetViewer.class)
         @JsonProperty("alerts")
-        List<Object> alerts,
+        List<AlertResponse> alerts,
 
         /**
-         * 個人別消化内訳。Phase 9-β 中は常に空配列。
-         * 9-δ で BUDGET_ADMIN クリーンカット移行時に実データを返却する設計。
+         * 個人別消化内訳。{@code BUDGET_ADMIN} 保有時のみ実データを返却する。
+         * BUDGET_VIEW のみのユーザーに対しては Service 層で空配列にし、{@code @JsonView} で更にフィールド除外する。
          */
-        @JsonView(BudgetView.BudgetViewer.class)
+        @JsonView(BudgetView.BudgetAdmin.class)
         @JsonProperty("by_user")
         List<UserConsumptionDto> byUser
 ) {

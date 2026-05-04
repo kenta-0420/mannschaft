@@ -1,56 +1,56 @@
 {
   "shiftBudget": {
-    "title": "シフト予算管理",
+    "title": "班次预算管理",
     "allocation": {
-      "list": "予算割当一覧",
-      "create": "新規割当",
-      "amount": "配分額",
-      "period": "適用期間",
-      "category": "費目"
+      "list": "预算分配一览",
+      "create": "新建分配",
+      "amount": "分配金额",
+      "period": "适用期间",
+      "category": "费用项目"
     },
     "consumption": {
-      "summary": "消化サマリ",
-      "consumed": "消化額",
-      "remaining": "残額",
-      "rate": "消化率",
-      "byUserHidden": "個人別内訳は権限がないため表示できません"
+      "summary": "消耗汇总",
+      "consumed": "已消耗",
+      "remaining": "剩余",
+      "rate": "消耗率",
+      "byUserHidden": "因权限不足，无法显示按用户的明细"
     },
     "threshold": {
-      "warn80": "予算 80% に到達しました",
-      "exceeded": "予算を超過しました",
-      "severeExceeded120": "予算 120% を超過しました（重大）"
+      "warn80": "预算已达到 80%",
+      "exceeded": "预算已超出",
+      "severeExceeded120": "预算已超出 120%（严重）"
     },
     "alert": {
-      "acknowledge": "確認",
-      "unacknowledged": "未確認の警告"
+      "acknowledge": "确认",
+      "unacknowledged": "未确认的警告"
     },
     "link": {
-      "project": "プロジェクトに紐付",
-      "todo": "TODO に紐付",
-      "fullAmount": "全額紐付",
-      "partialAmount": "上限金額を指定",
-      "percentage": "割合を指定"
+      "project": "关联到项目",
+      "todo": "关联到 TODO",
+      "fullAmount": "全额关联",
+      "partialAmount": "指定上限金额",
+      "percentage": "指定比例"
     },
     "calc": {
-      "requiredSlots": "必要枠数を逆算",
-      "result": "必要枠数: {count} 枠",
-      "formula": "計算式: floor({budget} / ({rate} × {hours}))",
+      "requiredSlots": "反推所需班次数",
+      "result": "所需班次数：{count} 个",
+      "formula": "计算公式：floor({budget} / ({rate} × {hours}))",
       "warning": {
-        "zeroRate": "平均時給が 0 円のため計算できません",
-        "insufficientData": "時給未設定のメンバーが多いため精度が低い可能性があります"
+        "zeroRate": "平均时薪为 0，无法计算",
+        "insufficientData": "由于许多成员未设置时薪，计算精度可能较低"
       }
     },
     "dashboard": {
-      "title": "予算消化ダッシュボード"
+      "title": "预算消耗仪表板"
     },
     "feature": {
-      "disabled": "この機能は組織管理者によって無効化されています"
+      "disabled": "此功能已被组织管理员禁用"
     },
     "monthlyClose": {
-      "button": "月次締め実行",
-      "confirm": "{month} 分のシフト予算を確定します。よろしいですか？",
-      "success": "月次締め完了: {month}（消化レコード {count} 件を確定）",
-      "alreadyClosed": "該当月は既に締め済みです"
+      "button": "执行月末结算",
+      "confirm": "将确定 {month} 的班次预算。是否继续？",
+      "success": "月末结算完成：{month}（已确定消耗记录 {count} 条）",
+      "alreadyClosed": "该月份已结算"
     }
   }
 }

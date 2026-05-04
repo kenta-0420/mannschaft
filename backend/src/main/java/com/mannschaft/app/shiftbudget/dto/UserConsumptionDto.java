@@ -13,8 +13,7 @@ import java.math.BigDecimal;
  * <p>設計書 F08.7 (v1.2) §6.2.3 / §9.3 に準拠。</p>
  *
  * <p>{@link BudgetView.BudgetAdmin} で初めて serialize される。
- * Phase 9-β 中は {@code by_user} 配列が常に空のため実体生成されないが、
- * 将来 9-δ で BUDGET_ADMIN クリーンカット移行時に有効化する。</p>
+ * Phase 9-δ 第3段で {@code by_user} 集計が有効化され、{@code BUDGET_ADMIN} 保有時のみ実データが返る。</p>
  *
  * @param userId ユーザーID
  * @param amount 消化額（円）

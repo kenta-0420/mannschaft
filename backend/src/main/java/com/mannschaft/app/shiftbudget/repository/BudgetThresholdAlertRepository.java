@@ -52,4 +52,15 @@ public interface BudgetThresholdAlertRepository
     List<BudgetThresholdAlertEntity> findUnacknowledgedByOrg(
             @Param("organizationId") Long organizationId,
             Pageable pageable);
+
+    /**
+     * 指定 allocation の警告を {@code triggered_at DESC} で全件取得する（Phase 9-δ 第3段追加）。
+     *
+     * <p>消化サマリの {@code alerts} フィールドに使用。承認済 / 未承認の両方を含めて返す
+     * （消化サマリ画面で時系列に全履歴を表示するため）。</p>
+     *
+     * <p>多テナント分離は呼出側 Service が allocation の組織検証を済ませた後で呼ぶ前提。
+     * 当該 allocation 配下のレコードしか返らないため、本メソッド単独で organization 絞込は不要。</p>
+     */
+    List<BudgetThresholdAlertEntity> findByAllocationIdOrderByTriggeredAtDesc(Long allocationId);
 }

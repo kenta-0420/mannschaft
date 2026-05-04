@@ -1,56 +1,56 @@
 {
   "shiftBudget": {
-    "title": "シフト予算管理",
+    "title": "Gestión de Presupuesto de Turnos",
     "allocation": {
-      "list": "予算割当一覧",
-      "create": "新規割当",
-      "amount": "配分額",
-      "period": "適用期間",
-      "category": "費目"
+      "list": "Asignaciones de Presupuesto",
+      "create": "Nueva Asignación",
+      "amount": "Importe Asignado",
+      "period": "Periodo",
+      "category": "Categoría"
     },
     "consumption": {
-      "summary": "消化サマリ",
-      "consumed": "消化額",
-      "remaining": "残額",
-      "rate": "消化率",
-      "byUserHidden": "個人別内訳は権限がないため表示できません"
+      "summary": "Resumen de Consumo",
+      "consumed": "Consumido",
+      "remaining": "Restante",
+      "rate": "Tasa de Consumo",
+      "byUserHidden": "El desglose por usuario no está disponible por falta de permisos"
     },
     "threshold": {
-      "warn80": "予算 80% に到達しました",
-      "exceeded": "予算を超過しました",
-      "severeExceeded120": "予算 120% を超過しました（重大）"
+      "warn80": "El presupuesto ha alcanzado el 80%",
+      "exceeded": "Presupuesto excedido",
+      "severeExceeded120": "Presupuesto excedido en 120% (crítico)"
     },
     "alert": {
-      "acknowledge": "確認",
-      "unacknowledged": "未確認の警告"
+      "acknowledge": "Confirmar",
+      "unacknowledged": "Alertas Sin Confirmar"
     },
     "link": {
-      "project": "プロジェクトに紐付",
-      "todo": "TODO に紐付",
-      "fullAmount": "全額紐付",
-      "partialAmount": "上限金額を指定",
-      "percentage": "割合を指定"
+      "project": "Vincular al Proyecto",
+      "todo": "Vincular a TODO",
+      "fullAmount": "Importe Completo",
+      "partialAmount": "Especificar Importe Máximo",
+      "percentage": "Especificar Porcentaje"
     },
     "calc": {
-      "requiredSlots": "必要枠数を逆算",
-      "result": "必要枠数: {count} 枠",
-      "formula": "計算式: floor({budget} / ({rate} × {hours}))",
+      "requiredSlots": "Calcular Turnos Necesarios",
+      "result": "Turnos necesarios: {count}",
+      "formula": "Fórmula: floor({budget} / ({rate} × {hours}))",
       "warning": {
-        "zeroRate": "平均時給が 0 円のため計算できません",
-        "insufficientData": "時給未設定のメンバーが多いため精度が低い可能性があります"
+        "zeroRate": "No se puede calcular porque la tarifa promedio por hora es 0",
+        "insufficientData": "La precisión puede ser baja porque muchos miembros no tienen tarifa por hora configurada"
       }
     },
     "dashboard": {
-      "title": "予算消化ダッシュボード"
+      "title": "Panel de Consumo de Presupuesto"
     },
     "feature": {
-      "disabled": "この機能は組織管理者によって無効化されています"
+      "disabled": "Esta función ha sido desactivada por el administrador de la organización"
     },
     "monthlyClose": {
-      "button": "月次締め実行",
-      "confirm": "{month} 分のシフト予算を確定します。よろしいですか？",
-      "success": "月次締め完了: {month}（消化レコード {count} 件を確定）",
-      "alreadyClosed": "該当月は既に締め済みです"
+      "button": "Ejecutar Cierre Mensual",
+      "confirm": "Se confirmará el presupuesto de turnos de {month}. ¿Desea continuar?",
+      "success": "Cierre mensual completado: {month} ({count} registros de consumo confirmados)",
+      "alreadyClosed": "Este mes ya ha sido cerrado"
     }
   }
 }
