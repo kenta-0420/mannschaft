@@ -815,6 +815,11 @@
     "ariaSectionActions": "섹션 작업",
     "ariaSectionEdit": "이 섹션 편집",
     "ariaSectionDelete": "이 섹션 삭제",
+    "dnd": {
+      "pinned": "고정됨 (이동 불가)",
+      "locked": "편집 권한 없음 (이동 불가)",
+      "updateError": "카드 위치 업데이트에 실패했습니다"
+    },
     "snapshot": {
       "refDeleted": "참조 원본 삭제됨",
       "refDeletedAria": "참조한 콘텐츠가 삭제되었습니다",

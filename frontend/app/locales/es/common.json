@@ -815,6 +815,11 @@
     "ariaSectionActions": "Acciones de la sección",
     "ariaSectionEdit": "Editar esta sección",
     "ariaSectionDelete": "Eliminar esta sección",
+    "dnd": {
+      "pinned": "Fijada (no se puede mover)",
+      "locked": "Sin permiso de edición (no se puede mover)",
+      "updateError": "Error al actualizar la posición de la tarjeta"
+    },
     "snapshot": {
       "refDeleted": "Origen eliminado",
       "refDeletedAria": "El contenido referenciado ha sido eliminado",

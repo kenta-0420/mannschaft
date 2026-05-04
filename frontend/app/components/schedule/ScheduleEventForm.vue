@@ -69,6 +69,13 @@ const form = ref({
   allDay: false,
   color: '#22c55e',
   attendanceRequired: false,
+  recurrence: false,
+  recurrenceType: 'WEEKLY' as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY',
+  recurrenceInterval: 1,
+  recurrenceDaysOfWeek: [] as string[],
+  recurrenceEndType: 'NEVER' as 'DATE' | 'COUNT' | 'NEVER',
+  recurrenceEndDate: null as Date | null,
+  recurrenceCount: 10,
 })
 
 // 開始時刻が変わったら終了時刻を1時間後に自動設定
@@ -173,6 +180,23 @@ async function submit() {
     body.attendanceRequired = form.value.attendanceRequired
   }
 
+  if (form.value.recurrence) {
+    body.recurrenceRule = {
+      type: form.value.recurrenceType,
+      interval: form.value.recurrenceInterval,
+      daysOfWeek: form.value.recurrenceType === 'WEEKLY'
+        ? form.value.recurrenceDaysOfWeek
+        : undefined,
+      endType: form.value.recurrenceEndType,
+      endDate: form.value.recurrenceEndType === 'DATE' && form.value.recurrenceEndDate
+        ? form.value.recurrenceEndDate.toISOString().split('T')[0]
+        : undefined,
+      count: form.value.recurrenceEndType === 'COUNT'
+        ? form.value.recurrenceCount
+        : undefined,
+    }
+  }
+
   try {
     if (props.isPersonal) {
       if (isEdit.value && props.scheduleId) {
@@ -221,8 +245,24 @@ function resetForm() {
     allDay: false,
     color: '#22c55e',
     attendanceRequired: false,
+    recurrence: false,
+    recurrenceType: 'WEEKLY',
+    recurrenceInterval: 1,
+    recurrenceDaysOfWeek: [],
+    recurrenceEndType: 'NEVER',
+    recurrenceEndDate: null,
+    recurrenceCount: 10,
   }
   fieldErrors.value = {}
+}
+
+function toggleDay(day: string) {
+  const idx = form.value.recurrenceDaysOfWeek.indexOf(day)
+  if (idx >= 0) {
+    form.value.recurrenceDaysOfWeek.splice(idx, 1)
+  } else {
+    form.value.recurrenceDaysOfWeek.push(day)
+  }
 }
 
 function close() {
@@ -319,6 +359,95 @@ function close() {
       <div>
         <label class="mb-1 block text-sm font-medium">場所</label>
         <InputText v-model="form.location" class="w-full" placeholder="場所（任意）" />
+      </div>
+      <!-- 繰り返し -->
+      <div class="flex flex-col gap-3 rounded-lg border border-surface-200 dark:border-surface-600 p-3">
+        <div class="flex items-center justify-between">
+          <label class="text-sm font-medium">繰り返し</label>
+          <ToggleSwitch v-model="form.recurrence" />
+        </div>
+
+        <template v-if="form.recurrence">
+          <!-- 種別 + 間隔 -->
+          <div class="flex items-center gap-2">
+            <InputNumber
+              v-model="form.recurrenceInterval"
+              :min="1" :max="99"
+              class="w-20"
+              input-class="text-center"
+            />
+            <Select
+              v-model="form.recurrenceType"
+              :options="[
+                { label: '日ごと',  value: 'DAILY' },
+                { label: '週ごと',  value: 'WEEKLY' },
+                { label: 'ヶ月ごと', value: 'MONTHLY' },
+                { label: '年ごと',  value: 'YEARLY' },
+              ]"
+              option-label="label"
+              option-value="value"
+              class="flex-1"
+            />
+          </div>
+
+          <!-- 曜日選択（WEEKLY のみ） -->
+          <div v-if="form.recurrenceType === 'WEEKLY'" class="flex gap-1.5 flex-wrap">
+            <button
+              v-for="d in [
+                { label: '日', value: 'SUNDAY' },
+                { label: '月', value: 'MONDAY' },
+                { label: '火', value: 'TUESDAY' },
+                { label: '水', value: 'WEDNESDAY' },
+                { label: '木', value: 'THURSDAY' },
+                { label: '金', value: 'FRIDAY' },
+                { label: '土', value: 'SATURDAY' },
+              ]"
+              :key="d.value"
+              type="button"
+              class="h-8 w-8 rounded-full text-xs font-medium border transition-colors"
+              :class="form.recurrenceDaysOfWeek.includes(d.value)
+                ? 'bg-primary text-white border-primary'
+                : 'border-surface-300 dark:border-surface-600 text-surface-600 dark:text-surface-300 hover:border-primary'"
+              @click="toggleDay(d.value)"
+            >
+              {{ d.label }}
+            </button>
+          </div>
+
+          <!-- 終了条件 -->
+          <div class="flex flex-col gap-2">
+            <label class="text-xs text-surface-500">終了</label>
+            <div class="flex flex-col gap-1.5">
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <RadioButton v-model="form.recurrenceEndType" value="NEVER" />
+                指定なし
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <RadioButton v-model="form.recurrenceEndType" value="DATE" />
+                <span class="shrink-0">日付</span>
+                <DatePicker
+                  v-if="form.recurrenceEndType === 'DATE'"
+                  v-model="form.recurrenceEndDate"
+                  date-format="yy/mm/dd"
+                  class="flex-1"
+                  show-icon
+                />
+              </label>
+              <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <RadioButton v-model="form.recurrenceEndType" value="COUNT" />
+                <span class="shrink-0">回数</span>
+                <InputNumber
+                  v-if="form.recurrenceEndType === 'COUNT'"
+                  v-model="form.recurrenceCount"
+                  :min="1" :max="365"
+                  class="w-20"
+                  input-class="text-center"
+                  suffix=" 回"
+                />
+              </label>
+            </div>
+          </div>
+        </template>
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">説明</label>

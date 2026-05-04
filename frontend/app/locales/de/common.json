@@ -815,6 +815,11 @@
     "ariaSectionActions": "Abschnittsaktionen",
     "ariaSectionEdit": "Diesen Abschnitt bearbeiten",
     "ariaSectionDelete": "Diesen Abschnitt löschen",
+    "dnd": {
+      "pinned": "Angepinnt (nicht verschiebbar)",
+      "locked": "Keine Bearbeitungsrechte (nicht verschiebbar)",
+      "updateError": "Aktualisierung der Kartenposition fehlgeschlagen"
+    },
     "snapshot": {
       "refDeleted": "Quelle gelöscht",
       "refDeletedAria": "Der referenzierte Inhalt wurde gelöscht",

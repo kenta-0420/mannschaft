@@ -815,6 +815,11 @@
     "ariaSectionActions": "Section actions",
     "ariaSectionEdit": "Edit this section",
     "ariaSectionDelete": "Delete this section",
+    "dnd": {
+      "pinned": "Pinned (cannot be moved)",
+      "locked": "No edit permission (cannot be moved)",
+      "updateError": "Failed to update card position"
+    },
     "snapshot": {
       "refDeleted": "Source deleted",
       "refDeletedAria": "The referenced content has been deleted",
