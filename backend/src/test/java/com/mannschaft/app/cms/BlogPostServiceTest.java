@@ -19,6 +19,7 @@ import com.mannschaft.app.cms.repository.BlogPostShareRepository;
 import com.mannschaft.app.cms.repository.BlogPostTagRepository;
 import com.mannschaft.app.cms.service.BlogPostService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -57,6 +58,8 @@ class BlogPostServiceTest {
     private BlogPostShareRepository shareRepository;
     @Mock
     private CmsMapper cmsMapper;
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private BlogPostService service;
