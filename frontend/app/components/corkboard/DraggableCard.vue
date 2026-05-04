@@ -63,7 +63,16 @@ const emit = defineEmits<{
   edit: [card: CorkboardCardDetail]
   delete: [card: CorkboardCardDetail]
   archive: [card: CorkboardCardDetail]
-  pin: [card: CorkboardCardDetail]
+  /**
+   * F09.8 件3' (V9.098): ピン止めトグル要求。
+   * 親側はカードの `isPinned` を見てトグル方向を決める:
+   *  - 未ピン (`card.isPinned === false`) → 親で PinNoteEditorPopover を開き、
+   *    確定後に `userNote` / `noteColor` を付けて togglePinCard を呼ぶ。
+   *  - ピン済 (`card.isPinned === true`) → 即時アンピン（userNote/noteColor は触らない）。
+   * 第 2/第 3 引数は将来 DraggableCard 側で popover を開くケース用の予約。
+   * 現実装ではボタン押下時には常に未指定で emit する。
+   */
+  pin: [card: CorkboardCardDetail, userNote?: string, noteColor?: string]
   /**
    * F09.8 Phase E: セクション紐付けメニューを開く要求。
    * 親側が `<Popover>` インスタンスを toggle するために event をそのまま渡す。

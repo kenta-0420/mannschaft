@@ -643,6 +643,22 @@
     "unpin": "Unpin",
     "pinned": "Pinned",
     "pinLimitReached": "Pin slots are full (max 50). Please unpin another card first.",
+    "pinNote": {
+      "title": "Sticky Note",
+      "placeholder": "Write a note (optional)",
+      "colorLabel": "Note color",
+      "confirm": "Pin it",
+      "cancel": "Cancel",
+      "colors": {
+        "white": "White",
+        "yellow": "Yellow",
+        "blue": "Blue",
+        "green": "Green",
+        "red": "Red",
+        "purple": "Purple",
+        "gray": "Gray"
+      }
+    },
     "pageTitle": "My Corkboard",
     "totalCount": "{count} total",
     "sortByPinnedAt": "Sort: Pinned at (desc)",

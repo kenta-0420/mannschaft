@@ -62,6 +62,11 @@ export interface PinnedCardItem {
   body: string | null
   /** ユーザーが付けたメモ（ピン止めに紐づく短文） */
   userNote: string | null
+  /**
+   * F09.8 件3' (V9.098): 付箋メモの専用色。
+   * `null` の場合はカラーラベル (`colorLabel`) と同色扱い。
+   */
+  noteColor: string | null
   /** ピン止め日時（ISO 8601 文字列） */
   pinnedAt: string
   /** 参照先メタ。MEMO / SECTION_HEADER 等の純メモカードでは null */

@@ -148,6 +148,12 @@ export interface CorkboardCardDetail {
   positionY: number
   zIndex: number | null
   userNote: string | null
+  /**
+   * F09.8 件3' (V9.098): ピン止め時付箋メモの専用色。
+   * `null` のときはカラーラベル (`colorLabel`) と同色とみなす。
+   * 値ありはピン時に明示的に選択された付箋色（YELLOW / BLUE / GREEN / RED / PURPLE / GRAY 等）。
+   */
+  noteColor: string | null
   autoArchiveAt: string | null
   isArchived: boolean
   isPinned: boolean
@@ -218,6 +224,22 @@ export interface UpdateCardRequest {
   zIndex?: number | null
   userNote?: string | null
   autoArchiveAt?: string | null
+}
+
+/**
+ * F09.8.1 / F09.8 件3': カードピン止めトグルリクエスト
+ * （{@link com.mannschaft.app.corkboard.dto.PinCardRequest} と 1:1）。
+ *
+ * - `isPinned` のみ必須。
+ * - `userNote` / `noteColor` は pin 時のみ書き込まれる任意フィールド（後方互換のため optional）。
+ *   アンピン時 (`isPinned=false`) に渡しても無視される（既存値が残る付箋メタファ）。
+ */
+export interface PinCardRequest {
+  isPinned: boolean
+  /** 付箋メモ本文（任意）。null/undefined のときは既存値を変更しない */
+  userNote?: string | null
+  /** 付箋色（任意。CorkboardColor と同じ列挙）。null/undefined のときはカラーラベルと同色扱い */
+  noteColor?: CorkboardColor | string | null
 }
 
 /**

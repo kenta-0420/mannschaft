@@ -84,7 +84,7 @@ class MyPinnedCardsControllerIT {
                 "/timeline/posts/9876", null, null, null);
         PinnedCardResponse item = new PinnedCardResponse(
                 345L, 12L, "仕事メモ", "REFERENCE", "YELLOW",
-                null, null, "重要！来週までに対応", now, ref);
+                null, null, "重要！来週までに対応", null, now, ref);
         PinnedCardListResponse stub = new PinnedCardListResponse(List.of(item), null, 1L);
 
         given(pinnedCardsService.list(eq(USER_ID), eq(20), eq(null))).willReturn(stub);
@@ -153,7 +153,7 @@ class MyPinnedCardsControllerIT {
                 "https://booking.example.com/og.png");
         PinnedCardResponse item = new PinnedCardResponse(
                 312L, 12L, "仕事メモ", "URL", "BLUE",
-                "会議室予約システム", null, null, now, ref);
+                "会議室予約システム", null, null, null, now, ref);
         PinnedCardListResponse stub = new PinnedCardListResponse(List.of(item), null, 1L);
 
         given(pinnedCardsService.list(eq(USER_ID), eq(null), eq(null))).willReturn(stub);
@@ -173,7 +173,7 @@ class MyPinnedCardsControllerIT {
         LocalDateTime now = LocalDateTime.now();
         PinnedCardResponse item = new PinnedCardResponse(
                 270L, 13L, "プロジェクト資料", "MEMO", "GREEN",
-                "買い出しリスト", "- マーカー\n- 付箋", null, now, null);
+                "買い出しリスト", "- マーカー\n- 付箋", null, null, now, null);
         PinnedCardListResponse stub = new PinnedCardListResponse(List.of(item), null, 1L);
 
         given(pinnedCardsService.list(eq(USER_ID), eq(null), eq(null))).willReturn(stub);
@@ -195,7 +195,7 @@ class MyPinnedCardsControllerIT {
                 "/chat/channels/42?messageId=5555", null, null, null);
         PinnedCardResponse item = new PinnedCardResponse(
                 900L, 12L, "仕事メモ", "REFERENCE", "BLUE",
-                null, null, "あとで確認", now, ref);
+                null, null, "あとで確認", null, now, ref);
         PinnedCardListResponse stub = new PinnedCardListResponse(List.of(item), null, 1L);
 
         given(pinnedCardsService.list(eq(USER_ID), eq(null), eq(null))).willReturn(stub);
@@ -218,7 +218,7 @@ class MyPinnedCardsControllerIT {
                 null, null, null, null);
         PinnedCardResponse item = new PinnedCardResponse(
                 251L, 12L, "仕事メモ", "REFERENCE", "RED",
-                null, null, "退会したメンバーの投稿", now, ref);
+                null, null, "退会したメンバーの投稿", null, now, ref);
         PinnedCardListResponse stub = new PinnedCardListResponse(List.of(item), null, 1L);
 
         given(pinnedCardsService.list(eq(USER_ID), eq(null), eq(null))).willReturn(stub);
