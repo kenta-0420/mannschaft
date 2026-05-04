@@ -28,6 +28,14 @@ public class CorkboardCardEntity extends BaseEntity {
     @Column(nullable = false)
     private Long corkboardId;
 
+    /**
+     * F09.8 積み残し件1: カードが現在所属している主セクション ID（V9.097 で追加）。
+     * <p>{@code corkboard_card_groups} 中間テーブルは並行運用で残置するが、
+     * primary section のみを持つ MVP 仕様ではこの列を真値とする。</p>
+     */
+    @Column(name = "section_id")
+    private Long sectionId;
+
     @Column(nullable = false, length = 20)
     private String cardType;
 
@@ -166,5 +174,13 @@ public class CorkboardCardEntity extends BaseEntity {
      */
     public void markRefDeleted(boolean refDeleted) {
         this.isRefDeleted = refDeleted;
+    }
+
+    /**
+     * 主セクション ID を更新する（F09.8 積み残し件1）。
+     * セクション解除時は {@code null} を渡すこと。
+     */
+    public void assignSection(Long sectionId) {
+        this.sectionId = sectionId;
     }
 }

@@ -92,6 +92,8 @@ export async function mockCatchAllApis(page: Page): Promise<void> {
 export interface E2eCard {
   id: number
   corkboardId: number
+  /** F09.8 積み残し件1 (V9.097): 主セクション ID。未所属時は null。 */
+  sectionId: number | null
   cardType: 'MEMO' | 'URL' | 'REFERENCE' | 'SECTION_HEADER'
   referenceType: string | null
   referenceId: number | null
@@ -152,6 +154,7 @@ export function buildCard(
   return {
     id,
     corkboardId: PERSONAL_BOARD_ID,
+    sectionId: null,
     cardType: 'MEMO',
     referenceType: null,
     referenceId: null,

@@ -382,4 +382,84 @@ test.describe('CORK-SECTION: コルクボードセクション CRUD UI', () => {
     await expect(page.getByTestId('corkboard-detail-page')).toBeVisible()
     await expect(page.getByTestId('corkboard-section-create-button')).toHaveCount(0)
   })
+
+  // ---------------------------------------------------------------------
+  // CORK-SECTION-008: 紐付けがリロード後も保持される（積み残し件1: V9.097）
+  //
+  // バックエンド DTO の `sectionId` をフロントが直接読む形になったため、
+  // 「カード DTO に sectionId が含まれた状態で再取得」したらチェックマークが残る、
+  // を回帰テストとして固定化する。
+  // ---------------------------------------------------------------------
+  test('CORK-SECTION-008: カードに sectionId が紐付いた状態でロードすると、選択済み（チェック）表示になる', async ({
+    page,
+  }) => {
+    // 既存セクションに既に所属しているカードを返す fixture
+    const board = buildBoardWithSection({
+      cards: [
+        buildCard(CARD_ID_MEMO, {
+          body: 'セクション所属済み MEMO',
+          sectionId: EXISTING_SECTION_ID,
+        }),
+      ],
+    })
+    await mockBoardDetail(page, board)
+    await mockSectionApis(page, PERSONAL_BOARD_ID)
+
+    await page.goto(DETAIL_URL)
+    await waitForHydration(page)
+
+    // カード上のセクションメニューを開く
+    const card = page.getByTestId(`corkboard-card-${CARD_ID_MEMO}`)
+    await card.hover()
+    await page
+      .getByTestId(`corkboard-card-section-button-${CARD_ID_MEMO}`)
+      .click({ force: true })
+
+    // EXISTING_SECTION_ID 行に pi-check アイコンが含まれていること（紐付け保持）
+    const sectionMenuItem = page.getByTestId(
+      `corkboard-card-section-menu-item-${EXISTING_SECTION_ID}`,
+    )
+    await expect(sectionMenuItem).toBeVisible()
+    await expect(sectionMenuItem.locator('i.pi-check')).toHaveCount(1)
+
+    // 「セクションから外す」項目も表示されている（= 所属していると認識されている）
+    await expect(page.getByTestId('corkboard-card-section-menu-clear')).toBeVisible()
+  })
+
+  // ---------------------------------------------------------------------
+  // CORK-SECTION-009: sectionId=null のカードは未所属として描画される
+  //
+  // 上の 008 と対称ケース。section-menu-clear が出ない / pi-check も無い。
+  // ---------------------------------------------------------------------
+  test('CORK-SECTION-009: sectionId=null のカードは未所属として描画される', async ({ page }) => {
+    const board = buildBoardWithSection({
+      cards: [
+        buildCard(CARD_ID_MEMO, {
+          body: 'セクション未所属 MEMO',
+          sectionId: null,
+        }),
+      ],
+    })
+    await mockBoardDetail(page, board)
+    await mockSectionApis(page, PERSONAL_BOARD_ID)
+
+    await page.goto(DETAIL_URL)
+    await waitForHydration(page)
+
+    const card = page.getByTestId(`corkboard-card-${CARD_ID_MEMO}`)
+    await card.hover()
+    await page
+      .getByTestId(`corkboard-card-section-button-${CARD_ID_MEMO}`)
+      .click({ force: true })
+
+    // メニュー項目は出るが、チェックは付いていない
+    const sectionMenuItem = page.getByTestId(
+      `corkboard-card-section-menu-item-${EXISTING_SECTION_ID}`,
+    )
+    await expect(sectionMenuItem).toBeVisible()
+    await expect(sectionMenuItem.locator('i.pi-check')).toHaveCount(0)
+
+    // 「セクションから外す」項目は所属がないので非表示
+    await expect(page.getByTestId('corkboard-card-section-menu-clear')).toHaveCount(0)
+  })
 })

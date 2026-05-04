@@ -91,7 +91,7 @@ class MyCorkboardPinServiceTest {
                 .willAnswer(inv -> {
                     CorkboardCardEntity e = inv.getArgument(0);
                     return new CorkboardCardResponse(
-                            CARD_ID, BOARD_ID, e.getCardType(), null, null, null,
+                            CARD_ID, BOARD_ID, null, e.getCardType(), null, null, null,
                             null, null, null, null, null, null,
                             "NONE", "MEDIUM", 0, 0, 0, null, null,
                             e.getIsArchived(), e.getIsPinned(), e.getPinnedAt(),
