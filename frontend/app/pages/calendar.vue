@@ -162,9 +162,23 @@ const dayEvents = computed(() => {
 // 日付クリック
 function onDateClick(date: string) {
   selectedDay.value = date
-  showDayPanel.value = true
-  showEventPanel.value = false
   selectedDate.value = date
+  showEventPanel.value = false
+
+  // その日（範囲）にイベントがあるか確認
+  const hasEvents = events.value.some((e) => {
+    const start = e.startAt.slice(0, 10)
+    const end = e.endAt.slice(0, 10)
+    return date >= start && date <= end
+  })
+
+  if (hasEvents) {
+    showDayPanel.value = true
+    showCreateDialog.value = false
+  } else {
+    showDayPanel.value = false
+    showCreateDialog.value = true
+  }
 }
 
 // イベントクリック
@@ -473,6 +487,7 @@ onMounted(loadEvents)
       :scope-id="selectedCreateScope.scopeId"
       :initial-date="selectedDate"
       :is-personal="selectedCreateScope.isPersonal"
+      :scope-options="createScopeOptions.length > 1 ? createScopeOptions : undefined"
       @saved="refresh"
     />
 
