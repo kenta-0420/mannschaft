@@ -83,4 +83,12 @@ public interface ProxyInputConsentRepository extends JpaRepository<ProxyInputCon
     @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.effectiveUntil < CURRENT_DATE " +
            "AND c.revokedAt IS NULL")
     List<ProxyInputConsentEntity> findExpired();
+
+    /**
+     * GDPRエクスポート用: 指定ユーザーが本人（subject）として関与する全同意書を取得する。
+     * 論理削除済みを含む全件（@SQLRestriction を回避するため nativeQuery 使用）。
+     */
+    @Query(value = "SELECT * FROM proxy_input_consents WHERE subject_user_id = :userId",
+           nativeQuery = true)
+    List<ProxyInputConsentEntity> findAllBySubjectUserIdForExport(@Param("userId") Long userId);
 }
