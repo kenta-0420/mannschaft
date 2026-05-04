@@ -9,8 +9,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * ユーザー−ロール割当リポジトリ。
@@ -286,4 +288,126 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     int countActiveMembers(@Param("scopeType") String scopeType,
                            @Param("scopeId") Long scopeId,
                            @Param("since") LocalDateTime since);
+
+    // ========================================================================
+    // F00 ContentVisibilityResolver 基盤拡張（Phase A-3a）
+    //
+    // MembershipBatchQueryService.snapshotForUser() からバルク判定で利用される。
+    // 設計書 docs/features/F00_content_visibility_resolver.md §10.2 参照。
+    // ========================================================================
+
+    /**
+     * ユーザーが指定スコープ集合のいずれかに所属しているレコードをバルク取得する。
+     *
+     * <p>F00 ContentVisibilityResolver 基盤の {@code MembershipBatchQueryService}
+     * から呼ばれ、複数スコープ（TEAM / ORGANIZATION 混在）に対する所属判定を
+     * 1 SQL で完結させるためのメソッド。</p>
+     *
+     * <p>設計書では {@code Set<ScopeKey>} を直接受ける形になっているが、Hibernate 6 では
+     * record を IN 句で展開できないため、{@code teamIds} 集合と {@code organizationIds}
+     * 集合に分離して受ける形を採用する。呼び出し元（{@code MembershipBatchQueryService}）
+     * で {@code Set<ScopeKey>} を受け取り、内部でスコープ種別ごとに分割してから
+     * 本メソッドを呼ぶ。</p>
+     *
+     * <p>{@code teamIds} と {@code organizationIds} がともに空の場合は SQL を発行せず
+     * 空 List を即返却する（Spring Data の IN 句に空集合を渡すと例外となるため、
+     * 呼び出し元の負担軽減として本メソッド側でガードする）。一方が空・他方が非空の
+     * 場合は、空でない側のみを WHERE 条件として SQL を発行する。</p>
+     *
+     * @param userId 対象ユーザー
+     * @param teamIds スコープ種別が TEAM のスコープに対応するチーム ID 集合
+     * @param organizationIds スコープ種別が ORGANIZATION のスコープに対応する組織 ID 集合
+     * @return 該当する {@link UserRoleProjection} のリスト。両集合とも空ならば空 List。
+     */
+    default List<UserRoleProjection> findByUserIdAndScopes(
+            Long userId,
+            Set<Long> teamIds,
+            Set<Long> organizationIds) {
+        boolean teamsEmpty = teamIds == null || teamIds.isEmpty();
+        boolean orgsEmpty = organizationIds == null || organizationIds.isEmpty();
+        if (teamsEmpty && orgsEmpty) {
+            return Collections.emptyList();
+        }
+        if (teamsEmpty) {
+            return findByUserIdAndOrganizationIdInOnly(userId, organizationIds);
+        }
+        if (orgsEmpty) {
+            return findByUserIdAndTeamIdInOnly(userId, teamIds);
+        }
+        return findByUserIdAndScopesInternal(userId, teamIds, organizationIds);
+    }
+
+    /**
+     * {@link #findByUserIdAndScopes(Long, Set, Set)} の内部実装。
+     * 両集合とも非空の場合のみ呼ばれる。直接呼び出さず {@link #findByUserIdAndScopes} を経由すること。
+     */
+    @Query("SELECT ur FROM UserRoleEntity ur " +
+            "WHERE ur.userId = :userId AND " +
+            "((ur.teamId IN :teamIds AND ur.organizationId IS NULL) OR " +
+            " (ur.organizationId IN :organizationIds AND ur.teamId IS NULL))")
+    List<UserRoleProjection> findByUserIdAndScopesInternal(
+            @Param("userId") Long userId,
+            @Param("teamIds") Set<Long> teamIds,
+            @Param("organizationIds") Set<Long> organizationIds);
+
+    /**
+     * {@link #findByUserIdAndScopes(Long, Set, Set)} の内部実装。
+     * teamIds のみが非空の場合に呼ばれる。直接呼び出さず {@link #findByUserIdAndScopes} を経由すること。
+     */
+    @Query("SELECT ur FROM UserRoleEntity ur " +
+            "WHERE ur.userId = :userId AND ur.teamId IN :teamIds AND ur.organizationId IS NULL")
+    List<UserRoleProjection> findByUserIdAndTeamIdInOnly(
+            @Param("userId") Long userId,
+            @Param("teamIds") Set<Long> teamIds);
+
+    /**
+     * {@link #findByUserIdAndScopes(Long, Set, Set)} の内部実装。
+     * organizationIds のみが非空の場合に呼ばれる。直接呼び出さず {@link #findByUserIdAndScopes} を経由すること。
+     *
+     * <p>本メソッドは {@code team_id IS NULL} を条件に含み、純粋な ORG スコープの所属のみを返す。
+     * これに対し {@link #findByUserIdAndOrganizationIdIn} は {@code team_id IS NULL} 条件を
+     * 含まず、当該 ORG 配下の TEAM 所属も含めて返す。両者の使い分けに留意すること。</p>
+     */
+    @Query("SELECT ur FROM UserRoleEntity ur " +
+            "WHERE ur.userId = :userId AND ur.organizationId IN :organizationIds AND ur.teamId IS NULL")
+    List<UserRoleProjection> findByUserIdAndOrganizationIdInOnly(
+            @Param("userId") Long userId,
+            @Param("organizationIds") Set<Long> organizationIds);
+
+    /**
+     * 指定ユーザーが指定組織群に所属しているレコードをバルク取得する。
+     *
+     * <p>F00 基盤の親 ORG メンバーシップ取得用。{@code MembershipBatchQueryService} は
+     * ORGANIZATION_WIDE 公開判定にあたり、TEAM スコープから親 ORG ID を解決した後、
+     * 当該 ORG にユーザーが所属するか本メソッドで照会する。</p>
+     *
+     * <p>本メソッドは {@code team_id} の値を制限せず、当該組織配下のチーム所属レコード
+     * （{@code team_id != NULL かつ organization_id != NULL}）も含めて返す点に注意。
+     * 組織直下メンバーのみを取得したい場合は {@link #findByUserIdAndOrganizationIdInOnly}
+     * を使用すること。</p>
+     *
+     * <p>{@code organizationIds} が空の場合は SQL を発行せず空 List を返す。</p>
+     *
+     * @param userId 対象ユーザー
+     * @param organizationIds 親 ORG ID 集合
+     * @return 該当する {@link UserRoleProjection} のリスト
+     */
+    default List<UserRoleProjection> findByUserIdAndOrganizationIdIn(
+            Long userId,
+            Set<Long> organizationIds) {
+        if (organizationIds == null || organizationIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return findByUserIdAndOrganizationIdInInternal(userId, organizationIds);
+    }
+
+    /**
+     * {@link #findByUserIdAndOrganizationIdIn(Long, Set)} の内部実装。
+     * 直接呼び出さず {@link #findByUserIdAndOrganizationIdIn} を経由すること。
+     */
+    @Query("SELECT ur FROM UserRoleEntity ur " +
+            "WHERE ur.userId = :userId AND ur.organizationId IN :organizationIds")
+    List<UserRoleProjection> findByUserIdAndOrganizationIdInInternal(
+            @Param("userId") Long userId,
+            @Param("organizationIds") Set<Long> organizationIds);
 }
