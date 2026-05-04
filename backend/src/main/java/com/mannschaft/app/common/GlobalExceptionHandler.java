@@ -167,6 +167,8 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_BUDGET_024", HttpStatus.NOT_FOUND),            // PROJECT_NOT_FOUND (IDOR 対策で 404)
             Map.entry("SHIFT_BUDGET_025", HttpStatus.NOT_FOUND),            // TODO_NOT_FOUND (IDOR 対策で 404)
             Map.entry("SHIFT_BUDGET_026", HttpStatus.FORBIDDEN),            // LINK_PERMISSION_REQUIRED
+            // F08.7 シフト予算 (Phase 9-δ: 警告 / 月次締め / BUDGET_ADMIN クリーンカット)
+            Map.entry("SHIFT_BUDGET_027", HttpStatus.FORBIDDEN),            // BUDGET_ADMIN_REQUIRED
             // F03.15 個人時間割（IDOR 対策で 404 統一、上限・遷移エラーは 409）
             Map.entry("PERSONAL_TIMETABLE_001", HttpStatus.NOT_FOUND),       // PERSONAL_TIMETABLE_NOT_FOUND
             Map.entry("PERSONAL_TIMETABLE_010", HttpStatus.CONFLICT),        // LIMIT_EXCEEDED
