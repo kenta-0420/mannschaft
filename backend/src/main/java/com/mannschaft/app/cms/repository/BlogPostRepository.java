@@ -3,12 +3,14 @@ package com.mannschaft.app.cms.repository;
 import com.mannschaft.app.cms.PostStatus;
 import com.mannschaft.app.cms.Visibility;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
+import com.mannschaft.app.cms.visibility.BlogPostVisibilityProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,4 +56,35 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
 
     List<BlogPostEntity> findTop20ByOrganizationIdAndStatusAndVisibilityOrderByPublishedAtDesc(
             Long organizationId, PostStatus status, Visibility visibility);
+
+    /**
+     * F00 共通可視性基盤 (BlogPostVisibilityResolver) 向けバルク射影取得。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} は {@link BlogPostEntity} に
+     * 付与されているが、constructor expression を使う本クエリでは適用されないため
+     * WHERE 句で明示的に {@code deleted_at IS NULL} を指定する。
+     *
+     * <p>SQL 1 本で {@link BlogPostVisibilityProjection} を生成し、N+1 を防ぐ。
+     *
+     * @param ids 射影対象 blog_post_id 集合（空でない）
+     * @return 実存する BlogPost の Projection リスト
+     */
+    @Query("""
+            SELECT new com.mannschaft.app.cms.visibility.BlogPostVisibilityProjection(
+                bp.id,
+                CASE
+                    WHEN bp.teamId IS NOT NULL THEN 'TEAM'
+                    WHEN bp.organizationId IS NOT NULL THEN 'ORGANIZATION'
+                    ELSE NULL
+                END,
+                COALESCE(bp.teamId, bp.organizationId),
+                bp.authorId,
+                bp.visibilityTemplateId,
+                bp.visibility,
+                bp.status)
+            FROM BlogPostEntity bp
+            WHERE bp.id IN :ids AND bp.deletedAt IS NULL
+            """)
+    List<BlogPostVisibilityProjection> findVisibilityProjectionsByIdIn(
+            @Param("ids") Collection<Long> ids);
 }

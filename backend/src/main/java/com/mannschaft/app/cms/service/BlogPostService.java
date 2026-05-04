@@ -25,6 +25,9 @@ import com.mannschaft.app.cms.repository.BlogPostRevisionRepository;
 import com.mannschaft.app.cms.repository.BlogPostShareRepository;
 import com.mannschaft.app.cms.repository.BlogPostTagRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -50,6 +53,7 @@ public class BlogPostService {
     private final BlogPostRevisionRepository revisionRepository;
     private final BlogPostShareRepository shareRepository;
     private final CmsMapper cmsMapper;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * チーム別記事一覧をページング取得する。
@@ -95,8 +99,17 @@ public class BlogPostService {
 
     /**
      * 記事詳細を取得する。
+     *
+     * <p>F00 Phase B (設計書 §12.3): 可視性判定を
+     * {@link ContentVisibilityChecker#assertCanView} に委譲する。
+     * 閲覧不可の場合は {@link com.mannschaft.app.common.BusinessException}
+     * ({@code VISIBILITY_001} = 403 / {@code VISIBILITY_004} = 404 相当) を投げる。
      */
     public BlogPostResponse getById(Long id) {
+        // 実存確認 + 可視性判定を ContentVisibilityChecker に一元化する。
+        // viewerUserId が null（未認証）の場合は PUBLIC かつ PUBLISHED の記事のみ可。
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        contentVisibilityChecker.assertCanView(ReferenceType.BLOG_POST, id, viewerUserId);
         BlogPostEntity entity = findPostOrThrow(id);
         return cmsMapper.toBlogPostResponse(entity);
     }

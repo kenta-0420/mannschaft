@@ -19,6 +19,9 @@ import com.mannschaft.app.cms.repository.BlogPostShareRepository;
 import com.mannschaft.app.cms.repository.BlogPostTagRepository;
 import com.mannschaft.app.cms.service.BlogPostService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.common.visibility.VisibilityErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Mockito;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -58,6 +62,8 @@ class BlogPostServiceAdditionalTest {
     private BlogPostShareRepository shareRepository;
     @Mock
     private CmsMapper cmsMapper;
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private BlogPostService service;
@@ -177,8 +183,9 @@ class BlogPostServiceAdditionalTest {
     class GetById {
 
         @Test
-        @DisplayName("正常系: IDで記事詳細が返却される")
+        @DisplayName("正常系: ContentVisibilityChecker 通過後IDで記事詳細が返却される")
         void IDで記事取得_正常_返却() {
+            // F00 Phase B: assertCanView は通る (void なので何もしない = pass)
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
@@ -186,17 +193,42 @@ class BlogPostServiceAdditionalTest {
             BlogPostResponse result = service.getById(POST_ID);
 
             assertThat(result).isNotNull();
+            verify(contentVisibilityChecker).assertCanView(
+                    org.mockito.ArgumentMatchers.eq(ReferenceType.BLOG_POST),
+                    org.mockito.ArgumentMatchers.eq(POST_ID),
+                    org.mockito.ArgumentMatchers.any());
         }
 
         @Test
-        @DisplayName("異常系: 記事不在でCMS_001例外")
-        void IDで記事取得_不在_例外() {
-            given(postRepository.findById(POST_ID)).willReturn(Optional.empty());
+        @DisplayName("異常系: ContentVisibilityChecker が NOT_FOUND を投げると VISIBILITY_004")
+        void IDで記事取得_不在_VISIBILITY004() {
+            // F00 Phase B: 実存確認は ContentVisibilityChecker が担う。
+            //   不在 → assertCanView 内で VisibilityErrorCode.VISIBILITY_004 (404) をスロー。
+            Mockito.doThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_004))
+                    .when(contentVisibilityChecker).assertCanView(
+                            org.mockito.ArgumentMatchers.eq(ReferenceType.BLOG_POST),
+                            org.mockito.ArgumentMatchers.eq(POST_ID),
+                            org.mockito.ArgumentMatchers.any());
 
             assertThatThrownBy(() -> service.getById(POST_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("CMS_001"));
+                            .isEqualTo("VISIBILITY_004"));
+        }
+
+        @Test
+        @DisplayName("異常系: ContentVisibilityChecker が権限不足を投げると VISIBILITY_001")
+        void IDで記事取得_権限不足_VISIBILITY001() {
+            Mockito.doThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
+                    .when(contentVisibilityChecker).assertCanView(
+                            org.mockito.ArgumentMatchers.eq(ReferenceType.BLOG_POST),
+                            org.mockito.ArgumentMatchers.eq(POST_ID),
+                            org.mockito.ArgumentMatchers.any());
+
+            assertThatThrownBy(() -> service.getById(POST_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("VISIBILITY_001"));
         }
     }
 
