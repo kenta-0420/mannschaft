@@ -144,6 +144,8 @@ export interface MockState {
   availableOrgs: Array<{ id: number; name: string }>
   /** Phase 5-1: メモIDごとの監査ログ */
   auditLogs: Record<number, Array<{ id: number; eventType: string; actorId: number; createdAt: string; metadata: string | null }>>
+  /** Phase 7: チームメンバー（teamId → pages）大規模チーム対応 */
+  teamMembersPages: Record<number, Array<{ userId: number; displayName: string }[]>>
 }
 
 /** {@link buildMockState} のオプション。一部フィールドだけ上書きできる。 */
@@ -153,6 +155,8 @@ export type BuildMockStateOptions = Partial<{
   availableTeams: MockAvailableTeam[]
   todos: MockTodo[]
   availableOrgs: Array<{ id: number; name: string }>
+  /** Phase 7: チームメンバー（teamId → pages）大規模チーム対応 */
+  teamMembersPages: Record<number, Array<{ userId: number; displayName: string }[]>>
 }>
 
 /** デフォルト値で {@link MockState} を構築する。 */
@@ -179,6 +183,8 @@ export function buildMockState(opts: BuildMockStateOptions = {}): MockState {
     // Phase 5-2
     availableOrgs: opts.availableOrgs ?? [],
     auditLogs: {},
+    // Phase 7
+    teamMembersPages: opts.teamMembersPages ?? {},
   }
 }
 
@@ -443,11 +449,15 @@ export async function mockActionMemoApi(page: Page, state: MockState): Promise<v
     }
 
     if (method === 'GET') {
-      // クエリパラメータの date / from / to は無視して全件返す（spec 側で必要なら絞る）
+      // Phase 7: date クエリパラメータで絞り込む（ディープリンク対応）
+      const dateParam = new URL(route.request().url()).searchParams.get('date')
+      const filtered = dateParam
+        ? state.memos.filter((m) => m.memo_date === dateParam)
+        : state.memos
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: state.memos, next_cursor: null }),
+        body: JSON.stringify({ data: filtered, next_cursor: null }),
       })
       return
     }
@@ -641,6 +651,33 @@ export async function mockActionMemoApi(page: Page, state: MockState): Promise<v
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: logs }),
+    })
+  })
+
+  // ----- Phase 7: チームメンバー一覧（ページング対応）-----
+  await page.route(/.*\/api\/v1\/teams\/\d+\/members(\?.*)?$/, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+    const url = new URL(route.request().url())
+    const idMatch = route.request().url().match(/\/teams\/(\d+)\/members/)
+    const teamId = idMatch ? Number(idMatch[1]) : 0
+    const pageParam = Number(url.searchParams.get('page') ?? '0')
+    const pages = state.teamMembersPages[teamId] ?? [[]]
+    const pageData = pages[pageParam] ?? []
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: pageData,
+        meta: {
+          total: pages.flat().length,
+          page: pageParam,
+          size: 500,
+          totalPages: pages.length,
+        },
+      }),
     })
   })
 

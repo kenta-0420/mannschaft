@@ -201,6 +201,15 @@ public class GlobalExceptionHandler {
             Map.entry("PERSONAL_TIMETABLE_084", HttpStatus.TOO_MANY_REQUESTS), // ATTACHMENT_QUOTA_EXCEEDED (429)
             Map.entry("PERSONAL_TIMETABLE_085", HttpStatus.UNPROCESSABLE_ENTITY), // ATTACHMENT_MAGIC_BYTE_MISMATCH
             Map.entry("PERSONAL_TIMETABLE_086", HttpStatus.UNPROCESSABLE_ENTITY), // ATTACHMENT_OBJECT_NOT_FOUND
+            // F03.15 Phase 4 チームリンク
+            Map.entry("PERSONAL_TIMETABLE_090", HttpStatus.NOT_FOUND),       // SLOT_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_091", HttpStatus.NOT_FOUND),       // LINK_TARGET_TEAM_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_092", HttpStatus.NOT_FOUND),       // LINK_TARGET_TIMETABLE_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_093", HttpStatus.NOT_FOUND),       // LINK_TARGET_SLOT_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_094", HttpStatus.FORBIDDEN),       // LINK_NOT_TEAM_MEMBER
+            Map.entry("PERSONAL_TIMETABLE_095", HttpStatus.CONFLICT),        // LINK_STATUS_INVALID
+            Map.entry("PERSONAL_TIMETABLE_096", HttpStatus.CONFLICT),        // LINK_POSITION_MISMATCH
+            Map.entry("PERSONAL_TIMETABLE_097", HttpStatus.BAD_REQUEST),     // LINK_TIMETABLE_REQUIRED
             // F09.8.1 コルクボード ピン止め
             Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
             Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED

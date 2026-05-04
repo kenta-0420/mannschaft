@@ -98,7 +98,7 @@ export interface PersonalTimetableSlot {
   notes?: string | null
 }
 
-/** コマ入力要素。リンク列は Phase 2 では未対応（送ると 400）。 */
+/** コマ入力要素。Phase 4 から link 列も受け付ける（保存はされない；POST /link 経由で別途登録）。 */
 export interface PersonalTimetableSlotInput {
   day_of_week: DayOfWeekKey
   period_number: number
@@ -109,7 +109,19 @@ export interface PersonalTimetableSlotInput {
   room_name?: string | null
   credits?: number | null
   color?: string | null
+  linked_team_id?: number | null
+  linked_timetable_id?: number | null
+  linked_slot_id?: number | null
+  auto_sync_changes?: boolean
   notes?: string | null
+}
+
+/** Phase 4 チームリンク登録/更新リクエスト。 */
+export interface PersonalSlotLinkRequest {
+  linked_team_id: number
+  linked_timetable_id: number
+  linked_slot_id?: number | null
+  auto_sync_changes?: boolean
 }
 
 /** 週間ビューの 1 コマ。 */

@@ -122,9 +122,36 @@ public class ScheduleEntity extends BaseEntity {
     @Column(length = 255)
     private String googleCalendarEventId;
 
+    /**
+     * F03.15 等の外部参照 JSON（idempotency 用）。
+     * 例: {"source":"F03.15","timetable_change_id":1,"personal_timetable_slot_id":2}
+     */
+    @Column(name = "external_ref", columnDefinition = "TEXT")
+    private String externalRef;
+
     private Long createdBy;
 
     private LocalDateTime deletedAt;
+
+    /**
+     * external_ref を更新するためのセッター（リスナー経由の冪等更新用）。
+     */
+    public void setExternalRef(String externalRef) {
+        this.externalRef = externalRef;
+    }
+
+    /**
+     * リスナー側からタイトル・時刻・色などを更新するためのセッター群。
+     */
+    public void updateScheduleFields(String title, String description, String location,
+                                      LocalDateTime startAt, LocalDateTime endAt, String color) {
+        this.title = title;
+        this.description = description;
+        this.location = location;
+        this.startAt = startAt;
+        this.endAt = endAt;
+        this.color = color;
+    }
 
     /**
      * スケジュールをキャンセルする。

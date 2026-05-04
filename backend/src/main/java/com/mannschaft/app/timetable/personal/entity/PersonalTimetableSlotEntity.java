@@ -73,4 +73,25 @@ public class PersonalTimetableSlotEntity extends BaseEntity {
 
     @Column(length = 300)
     private String notes;
+
+    /**
+     * Phase 4: チームリンクを設定する。
+     */
+    public void linkTo(Long teamId, Long timetableId, Long slotId, Boolean autoSyncChanges) {
+        this.linkedTeamId = teamId;
+        this.linkedTimetableId = timetableId;
+        this.linkedSlotId = slotId;
+        if (autoSyncChanges != null) {
+            this.autoSyncChanges = autoSyncChanges;
+        }
+    }
+
+    /**
+     * Phase 4: チームリンクを解除する（コマ自体とメモは保持）。
+     */
+    public void unlink() {
+        this.linkedTeamId = null;
+        this.linkedTimetableId = null;
+        this.linkedSlotId = null;
+    }
 }

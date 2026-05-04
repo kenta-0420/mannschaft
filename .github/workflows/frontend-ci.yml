@@ -1,7 +1,7 @@
 # =============================================================================
 # Frontend CI — pull_request to main
 # =============================================================================
-# Runs install and lint on every PR targeting main.
+# Runs install, lint, and typecheck on every PR targeting main.
 # No AWS credentials required — build and deploy are intentionally omitted.
 # =============================================================================
 
