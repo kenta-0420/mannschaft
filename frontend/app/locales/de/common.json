@@ -785,6 +785,11 @@
     "ariaCardUnarchive": "Diese Karte aus dem Archiv holen",
     "ariaCardPin": "Diese Karte anpinnen",
     "ariaCardUnpin": "Anpinnen dieser Karte aufheben",
+    "dnd": {
+      "pinned": "Angepinnt (nicht verschiebbar)",
+      "locked": "Keine Bearbeitungsrechte (nicht verschiebbar)",
+      "updateError": "Aktualisierung der Kartenposition fehlgeschlagen"
+    },
     "snapshot": {
       "refDeleted": "Quelle gelöscht",
       "refDeletedAria": "Der referenzierte Inhalt wurde gelöscht",

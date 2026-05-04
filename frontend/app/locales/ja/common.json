@@ -785,6 +785,11 @@
     "ariaCardUnarchive": "このカードのアーカイブを解除",
     "ariaCardPin": "このカードをピン止め",
     "ariaCardUnpin": "このカードのピン止めを外す",
+    "dnd": {
+      "pinned": "ピン止め中（移動不可）",
+      "locked": "編集権限なし（移動不可）",
+      "updateError": "位置の更新に失敗しました"
+    },
     "snapshot": {
       "refDeleted": "参照元削除済み",
       "refDeletedAria": "参照元のコンテンツは削除されました",

@@ -157,14 +157,27 @@ export function useCorkboardApi() {
       { method: 'PATCH' },
     )
   }
+  /**
+   * F09.8 Phase D: 複数カードの位置を一括更新する。
+   *
+   * バックエンド `BatchPositionRequest.CardPosition` は
+   * `{ cardId, positionX, positionY, zIndex }` をすべて必須で要求する。
+   * フロント側は単一カードの D&D 完了時にも本 API を 1 件配列で呼ぶ。
+   *
+   * - `is_pinned = true` のカードはバックエンド側で無視される（エラーにはならない）。
+   * - 設計書 §4.PATCH /cards/batch-position 準拠。
+   */
   async function batchUpdateCardPositions(
     boardId: number,
-    positions: Array<{ cardId: number; x: number; y: number }>,
+    positions: Array<{ cardId: number; positionX: number; positionY: number; zIndex: number }>,
   ) {
-    return api(`/api/v1/corkboards/${boardId}/cards/batch-position`, {
-      method: 'PATCH',
-      body: { positions },
-    })
+    return api<{ data: { updatedCount: number } }>(
+      `/api/v1/corkboards/${boardId}/cards/batch-position`,
+      {
+        method: 'PATCH',
+        body: { positions },
+      },
+    )
   }
   /**
    * F09.8.1: カードのピン止め状態を切り替える。

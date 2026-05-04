@@ -785,6 +785,11 @@
     "ariaCardUnarchive": "取消此卡片的归档",
     "ariaCardPin": "置顶此卡片",
     "ariaCardUnpin": "取消置顶此卡片",
+    "dnd": {
+      "pinned": "已置顶（无法移动）",
+      "locked": "无编辑权限（无法移动）",
+      "updateError": "卡片位置更新失败"
+    },
     "snapshot": {
       "refDeleted": "引用源已删除",
       "refDeletedAria": "引用的内容已被删除",

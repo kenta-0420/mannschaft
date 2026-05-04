@@ -785,6 +785,11 @@
     "ariaCardUnarchive": "Desarchivar esta tarjeta",
     "ariaCardPin": "Fijar esta tarjeta",
     "ariaCardUnpin": "Quitar la fijación de esta tarjeta",
+    "dnd": {
+      "pinned": "Fijada (no se puede mover)",
+      "locked": "Sin permiso de edición (no se puede mover)",
+      "updateError": "Error al actualizar la posición de la tarjeta"
+    },
     "snapshot": {
       "refDeleted": "Origen eliminado",
       "refDeletedAria": "El contenido referenciado ha sido eliminado",

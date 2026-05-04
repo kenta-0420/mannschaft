@@ -785,6 +785,11 @@
     "ariaCardUnarchive": "Unarchive this card",
     "ariaCardPin": "Pin this card",
     "ariaCardUnpin": "Unpin this card",
+    "dnd": {
+      "pinned": "Pinned (cannot be moved)",
+      "locked": "No edit permission (cannot be moved)",
+      "updateError": "Failed to update card position"
+    },
     "snapshot": {
       "refDeleted": "Source deleted",
       "refDeletedAria": "The referenced content has been deleted",
