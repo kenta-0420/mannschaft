@@ -126,7 +126,7 @@ class ShiftBudgetAllocationControllerTest {
     @DisplayName("POST /allocations: 作成 → 201")
     void create_201() throws Exception {
         AllocationCreateRequest req = new AllocationCreateRequest(
-                12L, 3L, 17L,
+                12L, null, 3L, 17L,
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30),
                 new BigDecimal("300000"), "JPY", "test");
         given(allocationService.createAllocation(eq(ORG_ID), any())).willReturn(sampleResponse());
@@ -143,7 +143,7 @@ class ShiftBudgetAllocationControllerTest {
     @DisplayName("POST /allocations: 重複 → 409")
     void create_重複_409() throws Exception {
         AllocationCreateRequest req = new AllocationCreateRequest(
-                12L, 3L, 17L,
+                12L, null, 3L, 17L,
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30),
                 new BigDecimal("300000"), null, null);
         willThrow(new BusinessException(ShiftBudgetErrorCode.ALLOCATION_ALREADY_EXISTS))

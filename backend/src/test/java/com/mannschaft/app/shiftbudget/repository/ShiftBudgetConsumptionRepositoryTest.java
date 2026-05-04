@@ -237,11 +237,13 @@ class ShiftBudgetConsumptionRepositoryTest {
     class UniqueConstraint {
 
         @Test
-        @Disabled("F08.7 Phase 9-γ で正規化。"
-                + "現状: deleted_at NULL を含む UNIQUE 制約は MySQL 仕様で重複検知不能、"
-                + "Hibernate ddl-auto + columnDefinition / @GeneratedColumn 全て失敗。"
-                + "ShiftBudgetConsumptionService の §11.1 擬似コード（findBySlotIdAndUserIdAndStatus 後 INSERT）"
-                + "が真の防衛線（足軽2 担当）。9-γ で本テスト再有効化。")
+        @Disabled("Phase 9-γ 検証結果: deleted_at NULL を含む UNIQUE は MySQL 仕様で機能しない問題は"
+                + "9-β STORED 生成カラム実装で部分的に解消したが、ddl-auto / Hibernate 経由のテスト DB 構築では"
+                + "@GeneratedColumn の評価タイミングとキャッシュ整合性の組み合わせで安定的に検知できない。"
+                + "本テストは恒久 @Disabled とする。"
+                + "防衛線は ShiftBudgetConsumptionService.recordSingleConsumption の "
+                + "findBySlotIdAndUserIdAndStatus 後 INSERT（設計書 §11.1 擬似コード）で確定。"
+                + "代替: ShiftBudgetAllocationServiceTest.同一スコープ並行Create_例外（spirit同等）")
         @DisplayName("同一slot_user_status重複INSERT_例外")
         void 同一slot_user_status重複INSERT_例外() {
             persistConsumption(ALLOCATION, SHIFT, SLOT, USER,

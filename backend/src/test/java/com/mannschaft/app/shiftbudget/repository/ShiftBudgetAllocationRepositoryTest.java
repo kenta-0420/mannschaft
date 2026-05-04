@@ -280,11 +280,11 @@ class ShiftBudgetAllocationRepositoryTest {
     class UniqueConstraint {
 
         @Test
-        @Disabled("F08.7 Phase 9-γ で project_id 実カラム化（V11.035）後に正規化。"
-                + "現状: project_id NULL を含む UNIQUE 制約は MySQL 仕様で重複検知不能、"
-                + "Hibernate ddl-auto + columnDefinition / @GeneratedColumn / @Transactional 撤去 全て失敗。"
-                + "アプリ層 ShiftBudgetAllocationService.create で findLiveByScope SELECT FOR UPDATE による"
-                + "重複チェック（足軽2 担当）が真の防衛線。9-γ で本テスト再有効化。")
+        @Disabled("Phase 9-γ 検証結果: project_id は設計書 §5.2 通り NULLABLE 維持と決定（マスター御裁可 Q3）。"
+                + "NULL を含む UNIQUE は MySQL 仕様で機能しないため、防衛線は "
+                + "ShiftBudgetAllocationService.findLiveByScope の SELECT FOR UPDATE で確定。"
+                + "本テストは恒久 @Disabled。"
+                + "代替: ShiftBudgetAllocationServiceTest.同一スコープ並行Create_例外")
         @DisplayName("同一スコープ重複INSERT_例外")
         void 同一スコープ重複INSERT_例外() {
             persistAllocation(

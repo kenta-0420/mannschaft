@@ -15,6 +15,7 @@ import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
+import com.mannschaft.app.todo.repository.ProjectRepository;
 import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +60,7 @@ public class ShiftBudgetAllocationService {
     private final ShiftBudgetAllocationRepository allocationRepository;
     private final ShiftBudgetConsumptionRepository consumptionRepository;
     private final ShiftBudgetRateQueryRepository rateQueryRepository;
+    private final ProjectRepository projectRepository;
     private final ShiftBudgetFeatureService featureService;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
@@ -126,14 +128,15 @@ public class ShiftBudgetAllocationService {
      * <ol>
      *   <li>フィーチャーフラグ判定 → {@code BUDGET_MANAGE} 権限チェック</li>
      *   <li>{@code team_id} 指定時は組織所属検証（IDOR 対策）</li>
+     *   <li>{@code project_id} 指定時はプロジェクト存在検証（Phase 9-γ 追加）</li>
      *   <li>バリデーション: {@code period_start ≤ period_end} / {@code allocated_amount ≥ 0}</li>
-     *   <li>{@code SELECT FOR UPDATE} で同一スコープ生存重複をロック付きチェック</li>
+     *   <li>{@code SELECT FOR UPDATE} で同一スコープ（project_id 含む）生存重複をロック付きチェック</li>
      *   <li>INSERT</li>
      *   <li>監査ログ {@code SHIFT_BUDGET_ALLOCATION_CREATED}</li>
      * </ol>
      *
-     * <p>マスター御裁可 Q1: {@code project_id} は受け付けず常に NULL で INSERT。
-     * 9-γ で API 拡張時に AllocationCreateRequest に {@code project_id} を追加予定。</p>
+     * <p>Phase 9-γ: {@code project_id} を受け付け開始。NULL = 通常割当 / 非NULL = プロジェクト専用割当。
+     * マスター御裁可 Q3 により {@code project_id} は NULLABLE 維持。</p>
      */
     @Transactional
     public AllocationResponse createAllocation(Long organizationId, AllocationCreateRequest request) {
@@ -149,11 +152,17 @@ public class ShiftBudgetAllocationService {
             requireTeamInOrganization(request.teamId(), organizationId);
         }
 
+        // project_id 指定時は存在検証（FK 制約に頼らずアプリ層でも検証して 404 を統一）
+        if (request.projectId() != null) {
+            requireProjectExists(request.projectId());
+        }
+
         // 同一スコープ重複チェック（SELECT FOR UPDATE で同時 INSERT 競合を排除）
+        // Phase 9-γ: project_id を含めて重複判定（NULL を含む UNIQUE は MySQL 仕様で機能しないための真の防衛線）
         Optional<ShiftBudgetAllocationEntity> existing = allocationRepository.findLiveByScope(
                 organizationId,
                 request.teamId(),
-                null,  // Phase 9-β: project_id は常に NULL
+                request.projectId(),
                 request.budgetCategoryId(),
                 request.periodStart(),
                 request.periodEnd());
@@ -166,7 +175,7 @@ public class ShiftBudgetAllocationService {
         ShiftBudgetAllocationEntity entity = ShiftBudgetAllocationEntity.builder()
                 .organizationId(organizationId)
                 .teamId(request.teamId())
-                .projectId(null)  // Phase 9-β は常に NULL
+                .projectId(request.projectId())
                 .fiscalYearId(request.fiscalYearId())
                 .budgetCategoryId(request.budgetCategoryId())
                 .periodStart(request.periodStart())
@@ -180,8 +189,9 @@ public class ShiftBudgetAllocationService {
                 .build();
 
         entity = allocationRepository.save(entity);
-        log.info("シフト予算割当を作成しました: id={}, organizationId={}, teamId={}, period={}〜{}, amount={}",
-                entity.getId(), organizationId, request.teamId(),
+        log.info("シフト予算割当を作成しました: id={}, organizationId={}, teamId={}, projectId={}, "
+                        + "period={}〜{}, amount={}",
+                entity.getId(), organizationId, request.teamId(), request.projectId(),
                 request.periodStart(), request.periodEnd(), request.allocatedAmount());
 
         // 監査ログ（非同期）
@@ -343,6 +353,21 @@ public class ShiftBudgetAllocationService {
         long count = rateQueryRepository.countTeamInOrganization(teamId, organizationId);
         if (count == 0) {
             throw new BusinessException(ShiftBudgetErrorCode.ALLOCATION_NOT_FOUND);
+        }
+    }
+
+    /**
+     * project_id の存在検証（Phase 9-γ で追加）。
+     *
+     * <p>FK 制約で物理的にも保証されるが、アプリ層でも事前検証して 404 を統一する。
+     * scope による組織所属検証はここでは行わない（プロジェクト専用割当の利用ケースは
+     * 「組織配下プロジェクトに人件費枠を割当てる」運用が主のため、scope 側ではなく
+     * 紐付ける allocation 側の {@code organizationId} で多テナント分離を担保する設計）。</p>
+     */
+    private void requireProjectExists(Long projectId) {
+        if (projectRepository.findByIdAndDeletedAtIsNull(projectId).isEmpty()) {
+            // PROJECT_NOT_FOUND は 9-γ TODO 紐付系で導入。allocation 系も同コードで統一
+            throw new BusinessException(ShiftBudgetErrorCode.PROJECT_NOT_FOUND);
         }
     }
 

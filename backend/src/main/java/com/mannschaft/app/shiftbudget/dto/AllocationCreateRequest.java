@@ -13,10 +13,12 @@ import java.time.LocalDate;
  *
  * <p>設計書 F08.7 (v1.2) §6.2.1 に準拠。</p>
  *
- * <p>マスター御裁可 Q1（案A）: {@code project_id} は Phase 9-β では受け付けず常に NULL。
- * Phase 9-γ で API 拡張予定。</p>
+ * <p>Phase 9-γ で {@code projectId} を受け付け開始。NULL = 通常の月×費目×team 割当、
+ * 非NULL = 「プロジェクト専用割当」。マスター御裁可 Q3 により {@code project_id} は
+ * NULLABLE 維持（NOT NULL 化しない）。</p>
  *
  * @param teamId           チームID（NULL = 組織全体スコープ）
+ * @param projectId        プロジェクトID（NULL = 通常割当 / 非NULL = プロジェクト専用割当、Phase 9-γ 追加）
  * @param fiscalYearId     会計年度ID
  * @param budgetCategoryId 費目ID（人件費配下）
  * @param periodStart      適用開始日（通常月初）
@@ -29,6 +31,9 @@ public record AllocationCreateRequest(
 
         @JsonProperty("team_id")
         Long teamId,
+
+        @JsonProperty("project_id")
+        Long projectId,
 
         @NotNull
         @JsonProperty("fiscal_year_id")
