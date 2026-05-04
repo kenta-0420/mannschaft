@@ -4,18 +4,24 @@
  *
  * <p>チームの ADMIN または DEPUTY_ADMIN が、メンバーの WORK カテゴリメモを閲覧する画面。
  * {@link useActionMemoDashboard} でカーソルページネーションを管理する。</p>
+ *
+ * <p>Phase 6-1: メンバー選択をテキスト入力からドロップダウン（select）に変更。
+ * チーム選択時に {@code GET /api/v1/teams/{teamId}/members} でメンバー一覧を取得する。</p>
  */
 
 definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const store = useActionMemoStore()
+const { fetchTeamMembers } = useActionMemoApi()
 const { memos, nextCursor, loading, loadingMore, error, loadMemos, loadMore, reset } =
   useActionMemoDashboard()
 
 const selectedTeamId = ref<number | null>(null)
-const memberIdInput = ref<string>('')
+const selectedMemberId = ref<number | null>(null)
 const memberId = ref<number | null>(null)
+const teamMembers = ref<{ userId: number; displayName: string }[]>([])
+const membersLoading = ref<boolean>(false)
 
 const hasMore = computed(() => nextCursor.value !== null)
 
@@ -23,17 +29,26 @@ onMounted(async () => {
   await store.fetchAvailableTeams()
 })
 
-function onTeamChange(id: number | null) {
+async function onTeamChange(id: number | null) {
   selectedTeamId.value = id
+  selectedMemberId.value = null
   memberId.value = null
-  memberIdInput.value = ''
+  teamMembers.value = []
   reset()
+  if (id) {
+    membersLoading.value = true
+    try {
+      teamMembers.value = await fetchTeamMembers(id)
+    } finally {
+      membersLoading.value = false
+    }
+  }
 }
 
 async function onSearch() {
   const tid = selectedTeamId.value
-  const mid = memberIdInput.value ? parseInt(memberIdInput.value, 10) : null
-  if (!tid || !mid || isNaN(mid)) return
+  const mid = selectedMemberId.value
+  if (!tid || !mid) return
   memberId.value = mid
   await loadMemos(tid, mid)
 }
@@ -81,20 +96,28 @@ async function onLoadMore() {
       <div class="flex gap-2">
         <div class="flex flex-1 flex-col gap-1">
           <label class="text-sm font-medium text-surface-700 dark:text-surface-300">
-            {{ t('action_memo.dashboard.select_member') }} (ID)
+            {{ t('action_memo.dashboard.select_member') }}
           </label>
-          <input
-            v-model="memberIdInput"
-            type="number"
-            min="1"
-            class="rounded-lg border border-surface-300 bg-surface-0 p-2 text-sm dark:border-surface-600 dark:bg-surface-800"
+          <select
+            :value="selectedMemberId ?? ''"
+            :disabled="!selectedTeamId || membersLoading"
+            class="rounded-lg border border-surface-300 bg-surface-0 p-2 text-sm disabled:opacity-50 dark:border-surface-600 dark:bg-surface-800"
             data-testid="dashboard-member-input"
-            @keydown.enter="onSearch"
+            @change="selectedMemberId = ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null"
           >
+            <option value="">{{ membersLoading ? '…' : '—' }}</option>
+            <option
+              v-for="member in teamMembers"
+              :key="member.userId"
+              :value="member.userId"
+            >
+              {{ member.displayName }}
+            </option>
+          </select>
         </div>
         <div class="flex items-end">
           <button
-            :disabled="!selectedTeamId || !memberIdInput"
+            :disabled="!selectedTeamId || !selectedMemberId"
             class="rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
             data-testid="dashboard-search-btn"
             @click="onSearch"

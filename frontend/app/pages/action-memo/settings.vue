@@ -20,6 +20,7 @@ const defaultPostTeamId = ref<number | null>(null)
 const defaultCategory = ref<ActionMemoCategory>('OTHER')
 const reminderEnabled = ref<boolean>(false)
 const reminderTime = ref<string>('')
+const reminderTimeInputRef = ref<HTMLInputElement | null>(null)
 
 onMounted(async () => {
   await Promise.all([store.fetchSettings(), store.fetchAvailableTeams()])
@@ -52,20 +53,23 @@ async function onReminderToggle(value: boolean) {
   reminderEnabled.value = value
   if (!value) {
     await store.updateSettings({ reminderEnabled: false })
+    reminderEnabled.value = store.settings.reminderEnabled
   } else if (reminderTime.value) {
     await store.updateSettings({ reminderEnabled: true, reminderTime: reminderTime.value })
+    reminderEnabled.value = store.settings.reminderEnabled
   } else {
-    // 有効にしたが時刻未設定 — トグルだけ保存（時刻設定後に再送信）
-    await store.updateSettings({ reminderEnabled: true })
+    // 時刻未設定: APIを送らず時刻入力にフォーカス（ユーザーに時刻入力を促す）
+    await nextTick()
+    reminderTimeInputRef.value?.focus()
   }
-  reminderEnabled.value = store.settings.reminderEnabled
 }
 
 async function onReminderTimeChange(event: Event) {
   const value = (event.target as HTMLInputElement).value
   reminderTime.value = value
-  if (reminderEnabled.value && value) {
+  if (value) {
     await store.updateSettings({ reminderEnabled: true, reminderTime: value })
+    reminderEnabled.value = store.settings.reminderEnabled
     reminderTime.value = store.settings.reminderTime ?? ''
   }
 }
@@ -180,12 +184,13 @@ function goBack() {
           />
         </label>
       </div>
-      <div v-if="reminderEnabled" class="flex items-center gap-3 pt-1">
+      <div v-show="reminderEnabled" class="flex items-center gap-3 pt-1">
         <label class="text-sm text-surface-700 dark:text-surface-300" for="reminder-time">
           {{ t('action_memo.settings.reminder.time_label') }}
         </label>
         <input
           id="reminder-time"
+          ref="reminderTimeInputRef"
           type="time"
           :value="reminderTime"
           class="rounded-lg border border-surface-300 bg-surface-0 px-3 py-1.5 text-sm dark:border-surface-600 dark:bg-surface-900"
