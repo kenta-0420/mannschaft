@@ -228,7 +228,10 @@ public class GlobalExceptionHandler {
             // F09.8.1 コルクボード ピン止め
             Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
             Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED
-            Map.entry("CORKBOARD_013", HttpStatus.CONFLICT)                  // PIN_LIMIT_EXCEEDED
+            Map.entry("CORKBOARD_013", HttpStatus.CONFLICT),                 // PIN_LIMIT_EXCEEDED
+            // F09.8 Phase A2 コルクボード詳細取得 — 設計書通り 403/404 を返す
+            Map.entry("CORKBOARD_001", HttpStatus.NOT_FOUND),                // BOARD_NOT_FOUND
+            Map.entry("CORKBOARD_009", HttpStatus.FORBIDDEN)                 // INSUFFICIENT_PERMISSION
     );
 
     /**
