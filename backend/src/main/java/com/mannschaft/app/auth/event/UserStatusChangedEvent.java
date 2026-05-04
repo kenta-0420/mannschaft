@@ -1,26 +1,34 @@
 package com.mannschaft.app.auth.event;
 
 import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
-import org.springframework.context.ApplicationEvent;
+import com.mannschaft.app.common.event.BaseEvent;
+import lombok.Getter;
 
 /**
- * ユーザーステータスが変更されたときに発行されるイベント（F14.1）。
- * ProxyConsentLifeEventJob がこのイベントを受信して同意書を自動失効させる。
+ * ユーザーステータス変更イベント（F14.1 Phase 13-β）。
+ * DECEASED・RELOCATED などのライフイベント発生時に発行し、
+ * 代理入力同意書の自動失効などの後続処理をトリガーする。
  */
-public class UserStatusChangedEvent extends ApplicationEvent {
+@Getter
+public class UserStatusChangedEvent extends BaseEvent {
 
+    /** イベント発行元オブジェクト（Spring ApplicationEvent 互換のため保持）。 */
+    private final Object source;
+
+    /** ステータスが変更されたユーザーのID。 */
     private final Long userId;
+
+    /** 変更前のステータス。 */
     private final UserStatus oldStatus;
+
+    /** 変更後のステータス。 */
     private final UserStatus newStatus;
 
     public UserStatusChangedEvent(Object source, Long userId, UserStatus oldStatus, UserStatus newStatus) {
-        super(source);
+        super();
+        this.source = source;
         this.userId = userId;
         this.oldStatus = oldStatus;
         this.newStatus = newStatus;
     }
-
-    public Long getUserId() { return userId; }
-    public UserStatus getOldStatus() { return oldStatus; }
-    public UserStatus getNewStatus() { return newStatus; }
 }
