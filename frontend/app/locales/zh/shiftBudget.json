@@ -1,69 +1,19 @@
 {
   "shiftBudget": {
     "title": "班次预算管理",
-    "nav": {
-      "menuLabel": "班次预算",
-      "allocations": "预算分配",
-      "dashboard": "预算仪表板",
-      "alerts": "警告历史",
-      "failedEvents": "失败事件"
-    },
-    "scope": {
-      "selectOrganization": "班次预算管理仅在组织范围内可用。请在范围选择器中选择一个组织。"
-    },
     "allocation": {
-      "list": "预算分配一览",
+      "list": "预算分配列表",
       "create": "新建分配",
-      "edit": "编辑分配",
-      "delete": "删除分配",
-      "deleteConfirm": "将逻辑删除此分配 (ID: {id})。是否继续？",
       "amount": "分配金额",
       "period": "适用期间",
-      "category": "费用项目",
-      "team": "团队",
-      "project": "项目",
-      "fiscalYear": "会计年度",
-      "currency": "货币",
-      "note": "备注",
-      "consumed": "已消耗",
-      "rate": "消耗率",
-      "status": "状态",
-      "actions": "操作",
-      "version": "版本",
-      "id": "ID",
-      "form": {
-        "teamIdHint": "留空表示组织全局范围",
-        "projectIdHint": "仅在项目专用分配时指定",
-        "amountHint": "请输入 0 或以上的值",
-        "periodStart": "开始日期",
-        "periodEnd": "结束日期",
-        "save": "保存",
-        "cancel": "取消"
-      },
-      "empty": "未注册分配",
-      "loadError": "获取分配列表失败",
-      "createSuccess": "已创建分配",
-      "createError": "创建分配失败",
-      "updateSuccess": "已更新分配",
-      "updateError": "更新分配失败（可能存在乐观锁冲突）",
-      "deleteSuccess": "已删除分配",
-      "deleteError": "删除分配失败"
+      "category": "费用项目"
     },
     "consumption": {
       "summary": "消耗汇总",
       "consumed": "已消耗",
       "remaining": "剩余",
       "rate": "消耗率",
-      "planned": "预计金额",
-      "confirmed": "已确认金额",
-      "byUser": "按用户消耗明细",
       "byUserHidden": "因权限不足，无法显示按用户的明细"
-    },
-    "status": {
-      "OK": "正常",
-      "WARN": "警告",
-      "EXCEEDED": "超出",
-      "SEVERE_EXCEEDED": "严重超出"
     },
     "threshold": {
       "warn80": "预算已达到 80%",
@@ -71,32 +21,18 @@
       "severeExceeded120": "预算已超出 120%（严重）"
     },
     "alert": {
-      "title": "预算警告历史",
-      "thresholdPercent": "阈值 (%)",
-      "triggeredAt": "发生时间",
-      "consumedAtTrigger": "发生时已消耗",
-      "acknowledgedAt": "确认时间",
-      "acknowledgedBy": "确认人",
-      "unacknowledged": "未确认",
-      "acknowledged": "已确认",
       "acknowledge": "确认",
-      "comment": "备注",
-      "commentPlaceholder": "可选（最多 500 字符）",
-      "acknowledgeConfirm": "将确认此警告 (ID: {id})。是否继续？",
-      "acknowledgeSuccess": "警告已确认",
-      "acknowledgeError": "确认警告失败",
-      "loadError": "获取警告列表失败",
-      "empty": "无警告"
+      "unacknowledged": "未确认的警告"
     },
     "link": {
       "project": "关联到项目",
-      "todo": "关联到 TODO",
+      "todo": "关联到待办事项",
       "fullAmount": "全额关联",
       "partialAmount": "指定上限金额",
       "percentage": "指定比例"
     },
     "calc": {
-      "requiredSlots": "反推所需班次数",
+      "requiredSlots": "反算所需班次数",
       "result": "所需班次数：{count} 个",
       "formula": "计算公式：floor({budget} / ({rate} × {hours}))",
       "warning": {
@@ -105,64 +41,16 @@
       }
     },
     "dashboard": {
-      "title": "预算消耗仪表板",
-      "subtitle": "全部预算分配的消耗情况一览",
-      "kpi": {
-        "ok": "正常",
-        "warn": "警告 (80% 以上)",
-        "exceeded": "超出 (100% 以上)",
-        "severeExceeded": "严重超出 (120% 以上)"
-      },
-      "viewAlerts": "查看警告历史",
-      "viewFailedEvents": "查看失败事件",
-      "viewAllocations": "查看分配列表",
-      "loadError": "获取仪表板失败",
-      "summaryError": "获取消耗汇总失败"
+      "title": "预算消耗仪表板"
     },
     "feature": {
       "disabled": "此功能已被组织管理员禁用"
     },
     "monthlyClose": {
-      "title": "月末结算",
-      "button": "执行月末结算",
-      "yearMonth": "对象月份",
-      "yearMonthHint": "YYYY-MM 格式（例如：2026-04）",
-      "confirm": "将确定 {month} 的班次预算。是否继续？",
-      "execute": "执行",
-      "success": "月末结算完成：{month}（已确定消耗记录 {count} 条）",
-      "alreadyClosed": "该月份已结算",
-      "error": "月末结算失败"
-    },
-    "failedEvent": {
-      "title": "失败事件管理",
-      "subtitle": "确认通知失败 / hook 失败 + 单独再执行 + 手动补正标记",
-      "id": "ID",
-      "eventType": "类型",
-      "sourceId": "对象 ID",
-      "errorMessage": "错误内容",
-      "retryCount": "重试次数",
-      "lastRetriedAt": "最后重试时间",
-      "status": "状态",
-      "createdAt": "发生时间",
-      "actions": "操作",
-      "filterStatus": "按状态筛选",
-      "filterAll": "全部",
-      "retry": "重试",
-      "resolve": "标记为已补正",
-      "retryConfirm": "将重试此失败事件 (ID: {id})。是否继续？",
-      "resolveConfirm": "将此失败事件 (ID: {id}) 标记为已手动补正。此操作不可撤销。",
-      "retrySuccess": "已重试失败事件",
-      "retryError": "重试失败事件失败",
-      "resolveSuccess": "已将失败事件标记为已补正",
-      "resolveError": "标记失败事件失败",
-      "loadError": "获取失败事件列表失败",
-      "empty": "无失败事件",
-      "statusValue": {
-        "PENDING": "待处理",
-        "RETRYING": "重试中",
-        "EXHAUSTED": "重试达上限",
-        "MANUAL_RESOLVED": "已手动补正"
-      }
+      "button": "执行月度结算",
+      "confirm": "将结算 {month} 的班次预算，确定要继续吗？",
+      "success": "月度结算完成：{month}（已确定消耗记录 {count} 条）",
+      "alreadyClosed": "该月份已结算"
     }
   }
 }

@@ -18,13 +18,11 @@ import com.mannschaft.app.membership.repository.MemberPositionRepository;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.repository.PositionRepository;
 import com.mannschaft.app.role.entity.RoleEntity;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,9 +37,8 @@ import java.util.Optional;
  * <p>memberships / member_positions テーブルへの入会・退会・再加入・役職割当・終了の
  * 単一エントリポイント。</p>
  *
- * <p>Phase 2-3 期間中は {@code feature.f005.dualWrite.enabled} フラグを参照し、
- * user_roles 側にも MEMBER/SUPPORTER 行を二重書き込みする（§13.4）。
- * Phase 4 完了時に同フラグを無効化し、二重書き込みコードは次の minor release で削除する。</p>
+ * <p>Phase 4 完了: 二重書き込みコードを物理削除済み。memberships のみへの書き込みに一本化。
+ * user_roles は SYSTEM_ADMIN / ADMIN / DEPUTY_ADMIN / GUEST の権限ロール専用に縮退。</p>
  *
  * <p>設計書: docs/features/F00.5_membership_basis.md §7 / §13</p>
  */
@@ -59,13 +56,6 @@ public class MembershipService {
     private final ApplicationEventPublisher eventPublisher;
 
     /**
-     * Phase 2-3 期間中の二重書き込みフラグ。
-     * Phase 4 で false に切り替え、二重書き込みコード自体は次の minor release で物理削除。
-     */
-    @Value("${feature.f005.dualWrite.enabled:true}")
-    private boolean dualWriteEnabled;
-
-    /**
      * 入会処理。
      *
      * <p>設計書 §7.1 / §13.7（冪等性保証）に従い:</p>
@@ -73,7 +63,6 @@ public class MembershipService {
      *   <li>既存 active membership があれば、同一 role_kind なら冪等的にそれを返す</li>
      *   <li>異なる role_kind なら 409 ACTIVE_EXISTS</li>
      *   <li>memberships に INSERT</li>
-     *   <li>dualWriteEnabled が true なら user_roles にも対応行を INSERT</li>
      *   <li>MembershipChangedEvent(ASSIGNED) を発火</li>
      * </ol>
      */
@@ -107,12 +96,6 @@ public class MembershipService {
                 .build();
         MembershipEntity saved = membershipRepository.save(entity);
 
-        // 二重書き込み: user_roles へも書き込む（Phase 4 完了で無効化）
-        if (dualWriteEnabled) {
-            writeDualUserRole(req.getUserId(), req.getScopeType(), req.getScopeId(),
-                    saved.getRoleKind(), req.getInvitedBy());
-        }
-
         // ダッシュボードキャッシュ無効化用イベント発火
         eventPublisher.publishEvent(new MembershipChangedEvent(
                 req.getUserId(), req.getScopeType().name(), req.getScopeId(),
@@ -135,7 +118,6 @@ public class MembershipService {
      *       かつ他 ADMIN がいない場合は 409 LAST_ADMIN_BLOCKED</li>
      *   <li>memberships UPDATE SET left_at=NOW(), leave_reason=...</li>
      *   <li>紐付く現役 member_positions を自動 ended_at セット</li>
-     *   <li>dualWriteEnabled が true なら user_roles から MEMBER/SUPPORTER 行を DELETE</li>
      *   <li>MembershipChangedEvent(REMOVED) を発火</li>
      * </ol>
      */
@@ -163,12 +145,6 @@ public class MembershipService {
         for (MemberPositionEntity mp : activePositions) {
             mp.setEndedAt(now);
             memberPositionRepository.save(mp);
-        }
-
-        // 二重書き込み: user_roles 側から MEMBER/SUPPORTER 行を削除
-        if (dualWriteEnabled && entity.getUserId() != null) {
-            deleteDualUserRole(entity.getUserId(), entity.getScopeType(), entity.getScopeId(),
-                    entity.getRoleKind());
         }
 
         // ダッシュボードキャッシュ無効化用イベント発火
@@ -308,59 +284,5 @@ public class MembershipService {
         }
     }
 
-    /**
-     * 二重書き込み: user_roles に MEMBER/SUPPORTER 行を INSERT する。
-     */
-    private void writeDualUserRole(Long userId, ScopeType scopeType, Long scopeId,
-                                   RoleKind roleKind, Long grantedBy) {
-        String roleName = roleKind == RoleKind.SUPPORTER ? "SUPPORTER" : "MEMBER";
-        Optional<RoleEntity> roleOpt = roleRepository.findByName(roleName);
-        if (roleOpt.isEmpty()) {
-            log.warn("二重書き込みスキップ: roles マスタに {} 行がありません", roleName);
-            return;
-        }
-        Long roleId = roleOpt.get().getId();
-
-        // 既存行があれば二重 INSERT を避ける（uq_user_roles_user_scope に違反するため）
-        boolean exists = scopeType == ScopeType.TEAM
-                ? userRoleRepository.existsByUserIdAndTeamId(userId, scopeId)
-                : userRoleRepository.existsByUserIdAndOrganizationId(userId, scopeId);
-        if (exists) {
-            log.debug("二重書き込みスキップ: 既存 user_roles 行あり userId={}, scope={}:{}",
-                    userId, scopeType, scopeId);
-            return;
-        }
-
-        UserRoleEntity.UserRoleEntityBuilder builder = UserRoleEntity.builder()
-                .userId(userId)
-                .roleId(roleId)
-                .grantedBy(grantedBy);
-        if (scopeType == ScopeType.TEAM) {
-            builder.teamId(scopeId);
-        } else {
-            builder.organizationId(scopeId);
-        }
-        userRoleRepository.save(builder.build());
-    }
-
-    /**
-     * 二重書き込み: user_roles から MEMBER/SUPPORTER 行を DELETE する。
-     * 権限ロール（ADMIN/DEPUTY_ADMIN/GUEST/SYSTEM_ADMIN）は削除しない。
-     */
-    private void deleteDualUserRole(Long userId, ScopeType scopeType, Long scopeId, RoleKind roleKind) {
-        String roleName = roleKind == RoleKind.SUPPORTER ? "SUPPORTER" : "MEMBER";
-        Optional<RoleEntity> roleOpt = roleRepository.findByName(roleName);
-        if (roleOpt.isEmpty()) {
-            return;
-        }
-        Long roleId = roleOpt.get().getId();
-
-        if (scopeType == ScopeType.TEAM) {
-            userRoleRepository.findByUserIdAndTeamIdAndRoleId(userId, scopeId, roleId)
-                    .ifPresent(userRoleRepository::delete);
-        } else {
-            userRoleRepository.findByUserIdAndOrganizationIdAndRoleId(userId, scopeId, roleId)
-                    .ifPresent(userRoleRepository::delete);
-        }
-    }
 }
+
