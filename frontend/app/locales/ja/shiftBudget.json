@@ -1,19 +1,69 @@
 {
   "shiftBudget": {
     "title": "シフト予算管理",
+    "nav": {
+      "menuLabel": "シフト予算",
+      "allocations": "予算割当",
+      "dashboard": "予算ダッシュボード",
+      "alerts": "警告履歴",
+      "failedEvents": "失敗イベント"
+    },
+    "scope": {
+      "selectOrganization": "シフト予算管理は組織スコープでのみ利用できます。スコープセレクタから組織を選択してください。"
+    },
     "allocation": {
       "list": "予算割当一覧",
       "create": "新規割当",
+      "edit": "割当を編集",
+      "delete": "割当を削除",
+      "deleteConfirm": "この割当 (ID: {id}) を論理削除します。よろしいですか？",
       "amount": "配分額",
       "period": "適用期間",
-      "category": "費目"
+      "category": "費目",
+      "team": "チーム",
+      "project": "プロジェクト",
+      "fiscalYear": "会計年度",
+      "currency": "通貨",
+      "note": "備考",
+      "consumed": "消化額",
+      "rate": "消化率",
+      "status": "状態",
+      "actions": "操作",
+      "version": "バージョン",
+      "id": "ID",
+      "form": {
+        "teamIdHint": "未指定で組織全体スコープ",
+        "projectIdHint": "プロジェクト専用割当の場合のみ指定",
+        "amountHint": "0 円以上で入力",
+        "periodStart": "開始日",
+        "periodEnd": "終了日",
+        "save": "保存",
+        "cancel": "キャンセル"
+      },
+      "empty": "割当が登録されていません",
+      "loadError": "割当一覧の取得に失敗しました",
+      "createSuccess": "割当を作成しました",
+      "createError": "割当の作成に失敗しました",
+      "updateSuccess": "割当を更新しました",
+      "updateError": "割当の更新に失敗しました（楽観ロック競合の可能性があります）",
+      "deleteSuccess": "割当を削除しました",
+      "deleteError": "割当の削除に失敗しました"
     },
     "consumption": {
       "summary": "消化サマリ",
       "consumed": "消化額",
       "remaining": "残額",
       "rate": "消化率",
+      "planned": "見込額",
+      "confirmed": "確定額",
+      "byUser": "個人別消化内訳",
       "byUserHidden": "個人別内訳は権限がないため表示できません"
+    },
+    "status": {
+      "OK": "正常",
+      "WARN": "警告",
+      "EXCEEDED": "超過",
+      "SEVERE_EXCEEDED": "重大超過"
     },
     "threshold": {
       "warn80": "予算 80% に到達しました",
@@ -21,8 +71,22 @@
       "severeExceeded120": "予算 120% を超過しました（重大）"
     },
     "alert": {
-      "acknowledge": "確認",
-      "unacknowledged": "未確認の警告"
+      "title": "予算警告履歴",
+      "thresholdPercent": "閾値 (%)",
+      "triggeredAt": "発生日時",
+      "consumedAtTrigger": "発生時消化額",
+      "acknowledgedAt": "承認日時",
+      "acknowledgedBy": "承認者",
+      "unacknowledged": "未承認",
+      "acknowledged": "承認済",
+      "acknowledge": "承認",
+      "comment": "コメント",
+      "commentPlaceholder": "任意（500 文字以内）",
+      "acknowledgeConfirm": "この警告 (ID: {id}) を承認します。よろしいですか？",
+      "acknowledgeSuccess": "警告を承認しました",
+      "acknowledgeError": "警告の承認に失敗しました",
+      "loadError": "警告一覧の取得に失敗しました",
+      "empty": "警告はありません"
     },
     "link": {
       "project": "プロジェクトに紐付",
@@ -41,16 +105,64 @@
       }
     },
     "dashboard": {
-      "title": "予算消化ダッシュボード"
+      "title": "予算消化ダッシュボード",
+      "subtitle": "全予算割当の消化状況を一覧表示します",
+      "kpi": {
+        "ok": "正常",
+        "warn": "警告 (80% 以上)",
+        "exceeded": "超過 (100% 以上)",
+        "severeExceeded": "重大超過 (120% 以上)"
+      },
+      "viewAlerts": "警告履歴を見る",
+      "viewFailedEvents": "失敗イベントを見る",
+      "viewAllocations": "割当一覧を見る",
+      "loadError": "ダッシュボードの取得に失敗しました",
+      "summaryError": "消化サマリの取得に失敗しました"
     },
     "feature": {
       "disabled": "この機能は組織管理者によって無効化されています"
     },
     "monthlyClose": {
+      "title": "月次締め",
       "button": "月次締め実行",
+      "yearMonth": "対象月",
+      "yearMonthHint": "YYYY-MM 形式（例: 2026-04）",
       "confirm": "{month} 分のシフト予算を確定します。よろしいですか？",
+      "execute": "実行",
       "success": "月次締め完了: {month}（消化レコード {count} 件を確定）",
-      "alreadyClosed": "該当月は既に締め済みです"
+      "alreadyClosed": "該当月は既に締め済みです",
+      "error": "月次締めに失敗しました"
+    },
+    "failedEvent": {
+      "title": "失敗イベント管理",
+      "subtitle": "通知失敗 / hook 失敗の確認 + 個別再実行 + 手動補正済マーク",
+      "id": "ID",
+      "eventType": "種別",
+      "sourceId": "対象 ID",
+      "errorMessage": "エラー内容",
+      "retryCount": "再試行回数",
+      "lastRetriedAt": "最終再試行",
+      "status": "状態",
+      "createdAt": "発生日時",
+      "actions": "操作",
+      "filterStatus": "ステータスで絞り込み",
+      "filterAll": "すべて",
+      "retry": "再実行",
+      "resolve": "補正済マーク",
+      "retryConfirm": "この失敗イベント (ID: {id}) を再実行します。よろしいですか？",
+      "resolveConfirm": "この失敗イベント (ID: {id}) を手動補正済としてマークします。この操作は取り消せません。",
+      "retrySuccess": "失敗イベントを再実行しました",
+      "retryError": "失敗イベントの再実行に失敗しました",
+      "resolveSuccess": "失敗イベントを補正済としてマークしました",
+      "resolveError": "失敗イベントのマークに失敗しました",
+      "loadError": "失敗イベント一覧の取得に失敗しました",
+      "empty": "失敗イベントはありません",
+      "statusValue": {
+        "PENDING": "未処理",
+        "RETRYING": "再試行中",
+        "EXHAUSTED": "再試行上限到達",
+        "MANUAL_RESOLVED": "手動補正済"
+      }
     }
   }
 }

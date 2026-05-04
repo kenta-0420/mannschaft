@@ -6,6 +6,7 @@ import com.mannschaft.app.corkboard.CorkboardMapper;
 import com.mannschaft.app.corkboard.dto.CorkboardGroupResponse;
 import com.mannschaft.app.corkboard.dto.CreateGroupRequest;
 import com.mannschaft.app.corkboard.dto.UpdateGroupRequest;
+import com.mannschaft.app.corkboard.entity.CorkboardCardEntity;
 import com.mannschaft.app.corkboard.entity.CorkboardCardGroupEntity;
 import com.mannschaft.app.corkboard.entity.CorkboardEntity;
 import com.mannschaft.app.corkboard.entity.CorkboardGroupEntity;
@@ -117,6 +118,10 @@ public class CorkboardGroupService {
 
     /**
      * カードをセクションに追加する。
+     *
+     * <p>F09.8 積み残し件1 (V9.097): 中間テーブル {@code corkboard_card_groups} の INSERT に加え、
+     * primary section として {@code corkboard_cards.section_id} も同時に更新する。
+     * これによりフロントはリロード後も `card.sectionId` で紐付け状態を取得できる。</p>
      */
     @Transactional
     public void addCardToGroup(Long boardId, Long userId, Long groupId, Long cardId) {
@@ -124,7 +129,7 @@ public class CorkboardGroupService {
         permissionService.checkEditPermission(board, userId);
 
         findGroupOrThrow(boardId, groupId);
-        cardRepository.findByIdAndCorkboardId(cardId, boardId)
+        CorkboardCardEntity card = cardRepository.findByIdAndCorkboardId(cardId, boardId)
                 .orElseThrow(() -> new BusinessException(CorkboardErrorCode.CARD_NOT_FOUND));
 
         if (cardGroupRepository.findByCardIdAndGroupId(cardId, groupId).isPresent()) {
@@ -137,6 +142,11 @@ public class CorkboardGroupService {
                 .build();
 
         cardGroupRepository.save(relation);
+
+        // 積み残し件1: primary section の正規列を更新
+        card.assignSection(groupId);
+        cardRepository.save(card);
+
         log.info("カードをセクションに追加: cardId={}, groupId={}", cardId, groupId);
 
         publishIfShared(board, CorkboardEvent.cardSection(boardId, cardId, groupId));
@@ -144,6 +154,9 @@ public class CorkboardGroupService {
 
     /**
      * カードをセクションから削除する。
+     *
+     * <p>F09.8 積み残し件1 (V9.097): 中間テーブル削除に加え、現在の primary section が指定 groupId と
+     * 一致する場合のみ {@code corkboard_cards.section_id} を {@code null} に戻す。</p>
      */
     @Transactional
     public void removeCardFromGroup(Long boardId, Long userId, Long groupId, Long cardId) {
@@ -156,6 +169,15 @@ public class CorkboardGroupService {
                 .orElseThrow(() -> new BusinessException(CorkboardErrorCode.CARD_NOT_IN_GROUP));
 
         cardGroupRepository.delete(relation);
+
+        // 積み残し件1: primary section が指定 group と一致する場合のみクリア
+        cardRepository.findByIdAndCorkboardId(cardId, boardId).ifPresent(card -> {
+            if (groupId.equals(card.getSectionId())) {
+                card.assignSection(null);
+                cardRepository.save(card);
+            }
+        });
+
         log.info("カードをセクションから削除: cardId={}, groupId={}", cardId, groupId);
 
         publishIfShared(board, CorkboardEvent.cardSection(boardId, cardId, null));

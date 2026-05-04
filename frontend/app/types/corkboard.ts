@@ -127,6 +127,11 @@ export interface CorkboardSummary {
 export interface CorkboardCardDetail {
   id: number
   corkboardId: number
+  /**
+   * F09.8 積み残し件1 (V9.097): カードが現在所属する主セクション ID。未所属時は `null`。
+   * これまで `cardSectionMap` でフロント保持していた紐付け情報を、サーバ側 DTO に正規化した。
+   */
+  sectionId: number | null
   cardType: CorkboardCardType | string
   referenceType: CorkboardReferenceType | string | null
   referenceId: number | null

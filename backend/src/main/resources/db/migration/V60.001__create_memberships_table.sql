@@ -8,10 +8,13 @@
 -- 多態 1 表（scope_type = ORGANIZATION | TEAM）。scope_id への FK は MySQL 8.0 が
 -- 条件付き FK をサポートしないため張らない（整合性はアプリ層 + 監査バッチで担保）。
 --
--- 4 つの CHECK 制約:
+-- 3 つの CHECK 制約:
 --   - chk_memberships_left_reason: left_at と leave_reason の同期
---   - chk_memberships_gdpr_masked: GDPR マスキング時は user_id IS NULL でなければならない
 --   - chk_memberships_period: left_at >= joined_at（期間の逆転防止）
+--
+-- NOTE: chk_memberships_gdpr_masked（gdpr_masked_at IS NULL OR user_id IS NULL）は
+--   MySQL 8.0 の制限により削除。ON DELETE SET NULL FK のカラムは CHECK 制約に使えない。
+--   GDPR マスキング時の user_id=NULL 保証はアプリ層（MembershipService）で担保する。
 --
 -- 2 つの FK SET NULL:
 --   - fk_memberships_user: users.id 削除時に user_id を NULL 化（履歴は壊さない）
@@ -36,9 +39,6 @@ CREATE TABLE memberships (
     CONSTRAINT chk_memberships_left_reason CHECK (
         (left_at IS NULL AND leave_reason IS NULL)
         OR (left_at IS NOT NULL AND leave_reason IS NOT NULL)
-    ),
-    CONSTRAINT chk_memberships_gdpr_masked CHECK (
-        gdpr_masked_at IS NULL OR user_id IS NULL
     ),
     CONSTRAINT chk_memberships_period CHECK (
         left_at IS NULL OR left_at >= joined_at

@@ -152,17 +152,20 @@ function toggleScope(value: string) {
 // #49-B: 日別一覧
 const dayEvents = computed(() => {
   if (!selectedDay.value) return []
-  return extendedEvents.value.filter(
-    e => e.startAt.slice(0, 10) === selectedDay.value || e.endAt.slice(0, 10) === selectedDay.value,
-  )
+  return extendedEvents.value.filter((e) => {
+    const start = e.startAt.slice(0, 10)
+    const end = e.endAt.slice(0, 10)
+    return selectedDay.value! >= start && selectedDay.value! <= end
+  })
 })
 
-// 日付クリック
+// 日付クリック — チーム・組織カレンダーと同様、常に作成フォームを開く
 function onDateClick(date: string) {
   selectedDay.value = date
-  showDayPanel.value = true
-  showEventPanel.value = false
   selectedDate.value = date
+  showEventPanel.value = false
+  showDayPanel.value = false
+  showCreateDialog.value = true
 }
 
 // イベントクリック
@@ -471,6 +474,7 @@ onMounted(loadEvents)
       :scope-id="selectedCreateScope.scopeId"
       :initial-date="selectedDate"
       :is-personal="selectedCreateScope.isPersonal"
+      :scope-options="createScopeOptions.length > 1 ? createScopeOptions : undefined"
       @saved="refresh"
     />
 

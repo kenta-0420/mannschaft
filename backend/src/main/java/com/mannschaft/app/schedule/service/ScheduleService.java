@@ -1,7 +1,8 @@
 package com.mannschaft.app.schedule.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.common.NameResolverService;
@@ -62,9 +63,9 @@ public class ScheduleService {
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
     private final NameResolverService nameResolverService;
-    private final AccessControlService accessControlService;
     private final UserRoleRepository userRoleRepository;
     private final ScheduleEventCategoryService eventCategoryService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * スケジュールを単体取得する。存在しない場合は例外をスローする。
@@ -79,19 +80,31 @@ public class ScheduleService {
     /**
      * 閲覧権限チェック付きでスケジュールを取得する。
      *
+     * <p>F00 Phase B: 試験的に {@link ContentVisibilityChecker} 経由の判定へ切り替えた
+     * （設計書 §12.6.1 / 任務「既存 ScheduleService の主要 canView 系メソッド 1 つを
+     * ContentVisibilityChecker 経由に切替」）。本ファサードは可視性が無い場合
+     * {@link com.mannschaft.app.common.visibility.VisibilityErrorCode} ベースの
+     * {@link BusinessException} をスローする。</p>
+     *
+     * <p>従来の {@code AccessControlService.checkMembership} 直接呼び出しは廃止。
+     * これにより以下が新たに統一される:</p>
+     * <ul>
+     *   <li>PERSONAL スコープのスケジュールは作成者本人のみ可視
+     *       （{@link ScheduleVisibilityResolver} が DRAFT に正規化）。</li>
+     *   <li>{@link ScheduleVisibility#ORGANIZATION} は親 ORG メンバーまで可視範囲拡張
+     *       （{@link com.mannschaft.app.common.visibility.StandardVisibility#ORGANIZATION_WIDE}）。</li>
+     *   <li>{@link ScheduleVisibility#CUSTOM_TEMPLATE} は F01.7 テンプレート評価へ委譲。</li>
+     *   <li>SystemAdmin は全件可視（§15 D-13）。</li>
+     * </ul>
+     *
      * @param id     スケジュールID
      * @param userId ユーザーID
      * @return スケジュールエンティティ
+     * @throws BusinessException 閲覧権限が無い、または存在しない場合
      */
     public ScheduleEntity getScheduleWithAccessCheck(Long id, Long userId) {
-        ScheduleEntity schedule = findScheduleOrThrow(id);
-        // スコープメンバーシップ検証
-        if (schedule.getTeamId() != null) {
-            accessControlService.checkMembership(userId, schedule.getTeamId(), "TEAM");
-        } else if (schedule.getOrganizationId() != null) {
-            accessControlService.checkMembership(userId, schedule.getOrganizationId(), "ORGANIZATION");
-        }
-        return schedule;
+        contentVisibilityChecker.assertCanView(ReferenceType.SCHEDULE, id, userId);
+        return findScheduleOrThrow(id);
     }
 
     /**

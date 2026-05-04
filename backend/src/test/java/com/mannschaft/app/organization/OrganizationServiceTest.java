@@ -5,6 +5,9 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.dto.MemberDto;
+import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
@@ -19,6 +22,8 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
+import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,6 +48,8 @@ import static org.mockito.Mockito.verify;
 /**
  * {@link OrganizationService} の単体テスト。
  * 組織のCRUD・アーカイブ・フォロー・メンバー一覧を検証する。
+ *
+ * <p>F00.5 Phase 3: getMembers() は MemberQueryDispatcher 経由で memberships 参照に切替済み。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OrganizationService 単体テスト")
@@ -66,6 +73,15 @@ class OrganizationServiceTest {
 
     @Mock
     private InviteTokenRepository inviteTokenRepository;
+
+    @Mock
+    private TeamRepository teamRepository;
+
+    @Mock
+    private TeamOrgMembershipRepository teamOrgMembershipRepository;
+
+    @Mock
+    private MemberQueryDispatcher memberQueryDispatcher;
 
     @InjectMocks
     private OrganizationService organizationService;
@@ -486,21 +502,13 @@ class OrganizationServiceTest {
             OrganizationEntity org = createOrganization();
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
 
-            UserRoleEntity ur = UserRoleEntity.builder()
-                    .id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(ORG_ID).build();
+            // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照
+            MemberDto memberDto = new MemberDto(USER_ID, "yamada", null, "ADMIN",
+                    LocalDateTime.now().minusMonths(1));
+            given(memberQueryDispatcher.queryMembers(ORG_ID, ScopeType.ORGANIZATION, null))
+                    .willReturn(List.of(memberDto));
 
             Pageable pageable = PageRequest.of(0, 10);
-            given(userRoleRepository.findByOrganizationId(ORG_ID, pageable))
-                    .willReturn(new PageImpl<>(List.of(ur), pageable, 1));
-
-            UserEntity user = UserEntity.builder()
-                    .email("test@example.com").displayName("yamada").build();
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-
-            RoleEntity role = RoleEntity.builder()
-                    .id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者").priority(2).isSystem(true).build();
-            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(role));
-
             PagedResponse<MemberResponse> response =
                     organizationService.getMembers(ORG_ID, pageable);
 
@@ -510,27 +518,20 @@ class OrganizationServiceTest {
         }
 
         @Test
-        @DisplayName("メンバー一覧取得_ユーザー/ロール不在でもnullで返される")
-        void メンバー一覧取得_ユーザーロール不在_null返却() {
+        @DisplayName("メンバー一覧取得_空リストの場合は空で返される")
+        void メンバー一覧取得_空リスト返却() {
             OrganizationEntity org = createOrganization();
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
 
-            UserRoleEntity ur = UserRoleEntity.builder()
-                    .id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(ORG_ID).build();
+            // Dispatcher が空リストを返す場合
+            given(memberQueryDispatcher.queryMembers(ORG_ID, ScopeType.ORGANIZATION, null))
+                    .willReturn(List.of());
 
             Pageable pageable = PageRequest.of(0, 10);
-            given(userRoleRepository.findByOrganizationId(ORG_ID, pageable))
-                    .willReturn(new PageImpl<>(List.of(ur), pageable, 1));
-
-            given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
-            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.empty());
-
             PagedResponse<MemberResponse> response =
                     organizationService.getMembers(ORG_ID, pageable);
 
-            assertThat(response.getData()).hasSize(1);
-            assertThat(response.getData().get(0).getDisplayName()).isNull();
-            assertThat(response.getData().get(0).getRoleName()).isNull();
+            assertThat(response.getData()).isEmpty();
         }
 
         @Test

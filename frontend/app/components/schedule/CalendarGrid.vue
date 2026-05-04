@@ -245,12 +245,12 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
           <div
             v-for="slot in week.slots.filter(s => s.lane < MAX_LANES)"
             :key="`${slot.event.id}-w${wi}`"
-            class="pointer-events-auto absolute flex cursor-pointer select-none items-center overflow-hidden text-xs font-medium"
+            class="pointer-events-auto absolute flex cursor-pointer select-none items-center justify-center overflow-hidden text-xs font-medium"
             :style="barStyle(slot)"
             @click.stop="emit('eventClick', slot.event.id, slot.event.isPersonal)"
           >
             <i v-if="slot.continuesBefore" class="pi pi-angle-left shrink-0 text-[9px]" />
-            <span class="truncate px-1">{{ slot.event.title }}</span>
+            <span class="flex-1 truncate px-1 text-center">{{ slot.event.title }}</span>
             <i v-if="slot.continuesAfter" class="pi pi-angle-right shrink-0 text-[9px]" />
           </div>
         </div>

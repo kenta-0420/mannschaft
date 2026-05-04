@@ -3,6 +3,9 @@ package com.mannschaft.app.gallery;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.quota.StorageFeatureType;
+import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.gallery.dto.UploadPhotosRequest;
 import com.mannschaft.app.gallery.entity.PhotoAlbumEntity;
 import com.mannschaft.app.gallery.entity.PhotoEntity;
@@ -25,9 +28,18 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.verify;
 
+/**
+ * {@link PhotoService} の単体テスト。
+ *
+ * <p>F13 Phase 4-δ: uploadPhotos での recordUpload・deletePhoto での recordDeletion 呼び出し検証を追加。</p>
+ */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PhotoService 単体テスト")
 class PhotoServiceTest {
@@ -37,6 +49,7 @@ class PhotoServiceTest {
     @Mock private GalleryMapper galleryMapper;
     @Mock private R2StorageService r2StorageService;
     @Mock private DomainEventPublisher eventPublisher;
+    @Mock private StorageQuotaService storageQuotaService;
 
     private PhotoAlbumService albumService;
     private PhotoService service;
@@ -45,7 +58,7 @@ class PhotoServiceTest {
     void setUp() {
         albumService = new PhotoAlbumService(albumRepository, galleryMapper);
         service = new PhotoService(photoRepository, albumRepository, albumService,
-                galleryMapper, r2StorageService, eventPublisher);
+                galleryMapper, r2StorageService, eventPublisher, storageQuotaService);
     }
 
     private static final Long ALBUM_ID = 1L;
@@ -183,6 +196,75 @@ class PhotoServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("GALLERY_004"));
+        }
+    }
+
+    // ==================== F13 Phase 4-δ クォータ統合テスト ====================
+
+    @Nested
+    @DisplayName("F13 Phase 4-δ: StorageQuotaService 統合テスト")
+    class StorageQuotaIntegration {
+
+        @Test
+        @DisplayName("正常系: uploadPhotos でrecordUploadが呼ばれる（TEAMスコープ）")
+        void uploadPhotos_recordUpload_呼び出し確認_TEAMスコープ() {
+            PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(0).build();
+            given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
+            given(albumRepository.sumPhotoCountByTeamId(1L)).willReturn(0);
+
+            PhotoEntity savedEntity = PhotoEntity.builder()
+                    .albumId(ALBUM_ID).r2Key("gallery/TEAM/1/album-1/photo-uuid.jpg")
+                    .originalFilename("test.jpg").fileSize(512L * 1024)
+                    .mediaType(GalleryMediaType.PHOTO)
+                    .processingStatus(GalleryProcessingStatus.READY).build();
+            given(photoRepository.save(any(PhotoEntity.class))).willReturn(savedEntity);
+
+            UploadPhotosRequest.PhotoItem item = new UploadPhotosRequest.PhotoItem(
+                    "gallery/TEAM/1/album-1/photo-uuid.jpg", "test.jpg", 512L * 1024,
+                    "image/jpeg", null, "PHOTO", null);
+            UploadPhotosRequest request = new UploadPhotosRequest(List.of(item));
+
+            service.uploadPhotos(ALBUM_ID, USER_ID, request);
+
+            then(storageQuotaService).should().recordUpload(
+                    eq(StorageScopeType.TEAM), eq(1L), eq(512L * 1024),
+                    eq(StorageFeatureType.GALLERY), anyString(), any(), eq(USER_ID));
+        }
+
+        @Test
+        @DisplayName("正常系: deletePhoto でrecordDeletionが呼ばれる（TEAMスコープ）")
+        void deletePhoto_recordDeletion_呼び出し確認_TEAMスコープ() {
+            PhotoEntity entity = PhotoEntity.builder()
+                    .albumId(ALBUM_ID).r2Key("gallery/TEAM/1/album-1/photo-uuid.jpg")
+                    .originalFilename("test.jpg").fileSize(1024L * 1024)
+                    .uploadedBy(USER_ID).build();
+            given(photoRepository.findById(PHOTO_ID)).willReturn(Optional.of(entity));
+            given(albumRepository.findById(ALBUM_ID)).willReturn(
+                    Optional.of(PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(1).build()));
+
+            service.deletePhoto(PHOTO_ID);
+
+            then(storageQuotaService).should().recordDeletion(
+                    eq(StorageScopeType.TEAM), eq(1L), eq(1024L * 1024),
+                    eq(StorageFeatureType.GALLERY), anyString(), eq(PHOTO_ID), eq(USER_ID));
+        }
+
+        @Test
+        @DisplayName("正常系: deletePhoto でrecordDeletionが呼ばれる（ORGANIZATIONスコープ）")
+        void deletePhoto_recordDeletion_呼び出し確認_ORGANIZATIONスコープ() {
+            PhotoEntity entity = PhotoEntity.builder()
+                    .albumId(ALBUM_ID).r2Key("gallery/ORGANIZATION/2/album-1/photo-uuid.jpg")
+                    .originalFilename("test.jpg").fileSize(2048L * 1024)
+                    .uploadedBy(USER_ID).build();
+            given(photoRepository.findById(PHOTO_ID)).willReturn(Optional.of(entity));
+            given(albumRepository.findById(ALBUM_ID)).willReturn(
+                    Optional.of(PhotoAlbumEntity.builder().organizationId(2L).title("a").photoCount(1).build()));
+
+            service.deletePhoto(PHOTO_ID);
+
+            then(storageQuotaService).should().recordDeletion(
+                    eq(StorageScopeType.ORGANIZATION), eq(2L), eq(2048L * 1024),
+                    eq(StorageFeatureType.GALLERY), anyString(), eq(PHOTO_ID), eq(USER_ID));
         }
     }
 }

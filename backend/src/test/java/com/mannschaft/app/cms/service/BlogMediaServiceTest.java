@@ -1,11 +1,17 @@
 package com.mannschaft.app.cms.service;
 
+import com.mannschaft.app.cms.CmsErrorCode;
 import com.mannschaft.app.cms.dto.BlogMediaUploadUrlRequest;
 import com.mannschaft.app.cms.dto.BlogMediaUploadUrlResponse;
 import com.mannschaft.app.cms.entity.BlogMediaUploadEntity;
 import com.mannschaft.app.cms.repository.BlogMediaUploadRepository;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.quota.StorageFeatureType;
+import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
+import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.files.dto.StartMultipartUploadRequest;
 import com.mannschaft.app.files.dto.StartMultipartUploadResponse;
 import com.mannschaft.app.files.service.MultipartUploadService;
@@ -31,12 +37,15 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
 /**
  * {@link BlogMediaService} の単体テスト。
- * Mockito で R2StorageService / MultipartUploadService / Repository をモックして
- * ビジネスロジックを検証する。
+ * Mockito で R2StorageService / MultipartUploadService / Repository / StorageQuotaService を
+ * モックしてビジネスロジックを検証する。
+ *
+ * <p>F13 Phase 4-δ: クォータ超過テスト・recordUpload / recordDeletion 呼び出し検証を追加。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("BlogMediaService 単体テスト")
@@ -50,6 +59,9 @@ class BlogMediaServiceTest {
 
     @Mock
     private BlogMediaUploadRepository blogMediaUploadRepository;
+
+    @Mock
+    private StorageQuotaService storageQuotaService;
 
     @InjectMocks
     private BlogMediaService blogMediaService;
@@ -276,6 +288,107 @@ class BlogMediaServiceTest {
             then(r2StorageService).should().delete("blog/TEAM/10/orphan-video-thumb.jpg");
             // DB から一括削除
             then(blogMediaUploadRepository).should().deleteAll(List.of(orphanImage, orphanVideo));
+            // F13 Phase 4-δ: 使用量減算が呼ばれること（スコープ解析可能な s3Key の場合）
+            then(storageQuotaService).should().recordDeletion(
+                    eq(StorageScopeType.TEAM), eq(10L), eq(1024L),
+                    eq(StorageFeatureType.CMS), anyString(), any(), any());
+        }
+    }
+
+    // ==================== F13 Phase 4-δ クォータ統合テスト ====================
+
+    @Nested
+    @DisplayName("F13 Phase 4-δ: StorageQuotaService 統合テスト")
+    class StorageQuotaIntegration {
+
+        @Test
+        @DisplayName("正常系_IMAGE_presign後にrecordUploadが呼ばれる")
+        void 正常系_IMAGE_recordUpload呼び出し確認() {
+            // given
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "IMAGE", "image/jpeg", 512L * 1024, "TEAM", 10L, null);
+
+            given(r2StorageService.generateUploadUrl(anyString(), eq("image/jpeg"), any(Duration.class)))
+                    .willReturn(new PresignedUploadResult(
+                            "https://r2.example.com/presigned-put-url", "blog/TEAM/10/uuid.jpg", 600L));
+            given(blogMediaUploadRepository.save(any(BlogMediaUploadEntity.class)))
+                    .willAnswer(inv -> {
+                        BlogMediaUploadEntity entity = inv.getArgument(0);
+                        return BlogMediaUploadEntity.builder()
+                                .blogPostId(entity.getBlogPostId())
+                                .uploaderId(entity.getUploaderId())
+                                .mediaType(entity.getMediaType())
+                                .s3Key(entity.getS3Key())
+                                .fileSize(entity.getFileSize())
+                                .contentType(entity.getContentType())
+                                .processingStatus(entity.getProcessingStatus())
+                                .build();
+                    });
+
+            // when
+            blogMediaService.generateUploadUrl(UPLOADER_ID, req);
+
+            // then: checkQuota → recordUpload の順に呼ばれる
+            then(storageQuotaService).should().checkQuota(
+                    eq(StorageScopeType.TEAM), eq(10L), eq(512L * 1024));
+            then(storageQuotaService).should().recordUpload(
+                    eq(StorageScopeType.TEAM), eq(10L), eq(512L * 1024),
+                    eq(StorageFeatureType.CMS), anyString(), any(), eq(UPLOADER_ID));
+        }
+
+        @Test
+        @DisplayName("正常系_VIDEO_presign後にrecordUploadが呼ばれる")
+        void 正常系_VIDEO_recordUpload呼び出し確認() {
+            // given
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "VIDEO", "video/mp4", 100L * 1024 * 1024, "ORGANIZATION", 5L, null);
+
+            given(multipartUploadService.startUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class)))
+                    .willReturn(new StartMultipartUploadResponse(
+                            "test-upload-id", "blog/ORGANIZATION/5/uuid.mp4", 1, 10L * 1024 * 1024));
+            given(blogMediaUploadRepository.save(any(BlogMediaUploadEntity.class)))
+                    .willAnswer(inv -> {
+                        BlogMediaUploadEntity entity = inv.getArgument(0);
+                        return BlogMediaUploadEntity.builder()
+                                .blogPostId(entity.getBlogPostId())
+                                .uploaderId(entity.getUploaderId())
+                                .mediaType(entity.getMediaType())
+                                .s3Key(entity.getS3Key())
+                                .fileSize(entity.getFileSize())
+                                .contentType(entity.getContentType())
+                                .processingStatus(entity.getProcessingStatus())
+                                .build();
+                    });
+
+            // when
+            blogMediaService.generateUploadUrl(UPLOADER_ID, req);
+
+            // then: checkQuota → recordUpload の順に呼ばれる
+            then(storageQuotaService).should().checkQuota(
+                    eq(StorageScopeType.ORGANIZATION), eq(5L), eq(100L * 1024 * 1024));
+            then(storageQuotaService).should().recordUpload(
+                    eq(StorageScopeType.ORGANIZATION), eq(5L), eq(100L * 1024 * 1024),
+                    eq(StorageFeatureType.CMS), anyString(), any(), eq(UPLOADER_ID));
+        }
+
+        @Test
+        @DisplayName("異常系_クォータ超過_CMS_023例外スロー")
+        void 異常系_クォータ超過_例外スロー() {
+            // given
+            BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
+                    "IMAGE", "image/jpeg", 1024L * 1024, "TEAM", 10L, null);
+
+            willThrow(new StorageQuotaExceededException(StorageScopeType.TEAM, 10L, 1024L * 1024, 9L * 1024 * 1024 * 1024, 10L * 1024 * 1024 * 1024))
+                    .given(storageQuotaService).checkQuota(any(), anyLong(), anyLong());
+
+            // when / then
+            assertThatThrownBy(() -> blogMediaService.generateUploadUrl(UPLOADER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("CMS_023"));
+            then(r2StorageService).should(never()).generateUploadUrl(anyString(), anyString(), any());
+            then(blogMediaUploadRepository).should(never()).save(any());
+            then(storageQuotaService).should(never()).recordUpload(any(), anyLong(), anyLong(), any(), anyString(), any(), anyLong());
         }
     }
 }

@@ -75,7 +75,10 @@ public enum CmsErrorCode implements ErrorCode {
     REACTION_ALREADY_EXISTS("CMS_021", "既にみたよ！を送信済みです", Severity.WARN),
 
     /** リアクション（みたよ！）が見つからない */
-    REACTION_NOT_FOUND("CMS_022", "みたよ！が見つかりません", Severity.WARN);
+    REACTION_NOT_FOUND("CMS_022", "みたよ！が見つかりません", Severity.WARN),
+
+    /** ストレージクォータ超過 */
+    MEDIA_QUOTA_EXCEEDED("CMS_023", "ストレージ容量が不足しているためアップロードできません", Severity.WARN);
 
     private final String code;
     private final String message;

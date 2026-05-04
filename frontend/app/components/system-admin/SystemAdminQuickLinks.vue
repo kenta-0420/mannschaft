@@ -92,6 +92,14 @@ const quickLinks: QuickLink[] = [
     color: 'text-slate-500',
     bg: 'bg-slate-50 dark:bg-slate-900/20',
   },
+  // F08.7 Phase 10-γ: シフト予算管理（BUDGET_VIEW/ADMIN 保有者向け、Service 層で 403）
+  {
+    label: 'シフト予算',
+    icon: 'pi pi-wallet',
+    to: '/admin/shift-budget/dashboard',
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+  },
 ]
 </script>
 

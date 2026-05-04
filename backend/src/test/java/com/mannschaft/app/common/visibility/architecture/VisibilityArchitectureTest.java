@@ -80,7 +80,7 @@ class VisibilityArchitectureTest {
                     "..activity..",
                     "..cms..",
                     "..committee.entity..",
-                    "..event.entity..",
+                    "..event..",
                     "..gallery..",
                     "..jobmatching.enums..",
                     "..matching..",

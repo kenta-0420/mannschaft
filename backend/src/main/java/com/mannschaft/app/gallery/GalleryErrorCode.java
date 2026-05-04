@@ -48,7 +48,10 @@ public enum GalleryErrorCode implements ErrorCode {
     UNSUPPORTED_CONTENT_TYPE("GALLERY_012", "対応していないコンテンツタイプです", Severity.WARN),
 
     /** ストレージにオブジェクトが存在しない */
-    MEDIA_NOT_FOUND_IN_STORAGE("GALLERY_013", "指定されたメディアがストレージに存在しません", Severity.WARN);
+    MEDIA_NOT_FOUND_IN_STORAGE("GALLERY_013", "指定されたメディアがストレージに存在しません", Severity.WARN),
+
+    /** ストレージクォータ超過 */
+    STORAGE_QUOTA_EXCEEDED("GALLERY_014", "ストレージ容量が不足しているためアップロードできません", Severity.WARN);
 
     private final String code;
     private final String message;
