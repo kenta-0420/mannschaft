@@ -1,11 +1,14 @@
 package com.mannschaft.app.notification;
 
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.notification.dto.NotificationResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.entity.PushSubscriptionEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationPreferenceService;
 import com.mannschaft.app.notification.service.PushSubscriptionService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -13,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.LocalDateTime;
@@ -29,6 +34,7 @@ import static org.mockito.Mockito.verify;
  * WebSocket・PWA Push配信の振り分けロジックを検証する。
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("NotificationDispatchService 単体テスト")
 class NotificationDispatchServiceTest {
 
@@ -44,8 +50,24 @@ class NotificationDispatchServiceTest {
     @Mock
     private NotificationMapper notificationMapper;
 
+    /**
+     * F00 Phase F セキュリティガード用の visibility checker (mock)。
+     * 既存テストは「visibility は通過した前提」で各シナリオを検証するため、
+     * デフォルトで {@code canView} を true にスタブする。
+     */
+    @Mock
+    private ContentVisibilityChecker visibilityChecker;
+
     @InjectMocks
     private NotificationDispatchService dispatchService;
+
+    @BeforeEach
+    void setUpVisibilityCheckerDefaults() {
+        // F00 Phase F: 既存テストの sourceType=SCHEDULE は ReferenceType.SCHEDULE
+        // に解決され canView が呼ばれる。配信ロジックの個別検証 (本テストの主旨)
+        // を可能にするため、デフォルトで全 user が閲覧可とする。
+        given(visibilityChecker.canView(any(ReferenceType.class), any(), any())).willReturn(true);
+    }
 
     // ========================================
     // テスト用定数・ヘルパー

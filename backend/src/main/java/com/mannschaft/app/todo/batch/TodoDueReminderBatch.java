@@ -181,6 +181,12 @@ public class TodoDueReminderBatch {
                         actionUrl,
                         null /* actorId: システムトリガー */
                 );
+                if (entity == null) {
+                    // F00 Phase F: visibility ガードで作成スキップされた場合は dispatch しない
+                    log.debug("TODO 期限通知をスキップ (visibility deny): userId={}, todoId={}, type={}",
+                            userId, todo.getId(), notificationType);
+                    continue;
+                }
                 notificationDispatchService.dispatch(entity);
             } catch (RuntimeException ex) {
                 log.error("TODO 期限通知送信失敗: userId={}, todoId={}, type={}",

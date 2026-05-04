@@ -1,5 +1,8 @@
 package com.mannschaft.app.notification.service;
 
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.NotificationSourceTypeMapper;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.notification.NotificationMapper;
 import com.mannschaft.app.notification.dto.NotificationResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -11,6 +14,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 通知配信サービス。通知の実際の送信処理（WebSocket・PWA Push等）を担当する。
@@ -26,12 +30,39 @@ public class NotificationDispatchService {
     private final NotificationMapper notificationMapper;
 
     /**
+     * F00 Phase F セキュリティ漏れ修正で導入。配信直前の二重防御として
+     * 受信者がソースコンテンツを閲覧可能かを再確認する。
+     * {@link NotificationService} 側で既にガード済だが、外部から
+     * 直接 {@link #dispatch} を呼ぶ経路 (DB から復元した古い通知の再送等) でも
+     * 漏れなくガードするための fail-safe。
+     *
+     * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §11.1 / §13.5。
+     */
+    private final ContentVisibilityChecker visibilityChecker;
+
+    /**
      * 通知を配信する。ユーザーの設定を確認し、有効なチャネルに送信する。
      * 確認通知（CONFIRMABLE_NOTIFICATION*）は opt-out 設定を無視して強制配信する。
+     *
+     * <p>F00 Phase F: 配信直前にも visibility ガードを行い、Resolver 配備済の
+     * sourceType に対しては受信者の閲覧可否を確認してから送信する。
      */
     @Async
     public void dispatch(NotificationEntity notification) {
+        if (notification == null) {
+            return;
+        }
         Long userId = notification.getUserId();
+
+        // ----------------------------------------------------------------
+        // F00 Phase F: 配信前 visibility ガード (二重防御 §11.1)
+        // ----------------------------------------------------------------
+        if (!isAccessibleForRecipient(notification)) {
+            log.warn("通知配信スキップ (visibility deny): userId={}, type={}, sourceType={}, sourceId={}",
+                    userId, notification.getNotificationType(),
+                    notification.getSourceType(), notification.getSourceId());
+            return;
+        }
 
         // 確認通知（CONFIRMABLE_NOTIFICATION*）は強制配信のため opt-out チェックをスキップ
         if (isConfirmableNotification(notification.getNotificationType())) {
@@ -63,6 +94,28 @@ public class NotificationDispatchService {
 
         // PWA Push送信
         sendViaPush(notification);
+    }
+
+    /**
+     * 配信対象通知に対する受信者の閲覧可否を判定する (F00 Phase F)。
+     *
+     * <p>fail-soft: {@code sourceType} が {@link ReferenceType} に解決できない、
+     * または {@code sourceId} が null の通知は判定対象外として true を返す。
+     *
+     * @param notification 配信対象通知
+     * @return アクセス可能または判定対象外なら true
+     */
+    private boolean isAccessibleForRecipient(NotificationEntity notification) {
+        Long sourceId = notification.getSourceId();
+        if (sourceId == null) {
+            return true;
+        }
+        Optional<ReferenceType> refType =
+                NotificationSourceTypeMapper.resolve(notification.getSourceType());
+        if (refType.isEmpty()) {
+            return true;
+        }
+        return visibilityChecker.canView(refType.get(), sourceId, notification.getUserId());
     }
 
     /**
