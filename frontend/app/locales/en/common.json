@@ -697,7 +697,9 @@
       "editCard": "Edit card",
       "deleteCard": "Delete card",
       "archiveCard": "Archive",
-      "unarchiveCard": "Unarchive"
+      "unarchiveCard": "Unarchive",
+      "pinCard": "Pin",
+      "unpinCard": "Unpin"
     },
     "modal": {
       "createTitle": "Create new card",
@@ -762,7 +764,11 @@
       "editError": "Failed to update card.",
       "deleteError": "Failed to delete card.",
       "archiveError": "Failed to archive card.",
-      "unarchiveError": "Failed to unarchive card."
+      "unarchiveError": "Failed to unarchive card.",
+      "pinSuccess": "Card pinned.",
+      "unpinSuccess": "Card unpinned.",
+      "pinError": "Failed to pin card.",
+      "unpinError": "Failed to unpin card."
     },
     "validation": {
       "required": "This field is required.",
@@ -777,6 +783,8 @@
     "ariaCardDelete": "Delete this card",
     "ariaCardArchive": "Archive this card",
     "ariaCardUnarchive": "Unarchive this card",
+    "ariaCardPin": "Pin this card",
+    "ariaCardUnpin": "Unpin this card",
     "snapshot": {
       "refDeleted": "Source deleted",
       "refDeletedAria": "The referenced content has been deleted",

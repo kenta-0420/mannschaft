@@ -52,10 +52,12 @@ const {
   getBoardDetailByBoardId,
   deleteCard: apiDeleteCard,
   archiveCard: apiArchiveCard,
+  togglePinCard: apiTogglePinCard,
 } = useCorkboardApi()
 const { captureQuiet } = useErrorReport()
 const toast = useToast()
 const { confirmAction } = useConfirmDialog()
+const authStore = useAuthStore()
 
 // ----- ルートパラメータ -----
 const boardId = computed<number>(() => {
@@ -403,6 +405,80 @@ async function doDelete(card: CorkboardCardDetail) {
   }
 }
 
+/**
+ * F09.8.1 追補: ボード詳細ページからカード単位のピン止めボタンを使う。
+ *
+ * - ピン操作は個人ボード (`scopeType === 'PERSONAL'`) かつ
+ *   `ownerId === currentUserId` のときのみ表示する。
+ * - PATCH レスポンスは `{ id, isPinned, pinnedAt }` のみで、
+ *   既存カードの他フィールドはローカル state を維持しつつマージする。
+ * - 上限到達 (409 `CORKBOARD_013`) の場合は専用 toast を表示。
+ */
+const canPin = computed<boolean>(() => {
+  if (!board.value) return false
+  if (board.value.scopeType !== 'PERSONAL') return false
+  const me = authStore.currentUser?.id
+  return me != null && board.value.ownerId === me
+})
+
+interface PinErrorPayload {
+  data?: { code?: string }
+  response?: { status?: number; _data?: { code?: string } }
+  status?: number
+  statusCode?: number
+}
+
+function isPinLimitError(e: unknown): boolean {
+  if (!e || typeof e !== 'object') return false
+  const err = e as PinErrorPayload
+  const status = err.status ?? err.statusCode ?? err.response?.status
+  const code = err.data?.code ?? err.response?._data?.code
+  if (status === 409) return true
+  if (code === 'CORKBOARD_013') return true
+  return false
+}
+
+async function togglePin(card: CorkboardCardDetail) {
+  const next = !card.isPinned
+  try {
+    const res = await apiTogglePinCard(boardId.value, card.id, next)
+    if (board.value) {
+      board.value = {
+        ...board.value,
+        cards: board.value.cards.map((c) =>
+          c.id === card.id
+            ? { ...c, isPinned: res.data.isPinned, pinnedAt: res.data.pinnedAt }
+            : c,
+        ),
+      }
+    }
+    toast.add({
+      severity: 'success',
+      summary: next
+        ? t('corkboard.toast.pinSuccess')
+        : t('corkboard.toast.unpinSuccess'),
+      life: 2500,
+    })
+  } catch (e) {
+    captureQuiet(e, { context: 'CorkboardDetailPage: ピン止め切替失敗' })
+    if (next && isPinLimitError(e)) {
+      toast.add({
+        severity: 'warn',
+        summary: t('corkboard.pinLimitReached'),
+        life: 4000,
+      })
+      return
+    }
+    toast.add({
+      severity: 'error',
+      summary: next
+        ? t('corkboard.toast.pinError')
+        : t('corkboard.toast.unpinError'),
+      life: 3500,
+    })
+  }
+}
+
 /** カードのアーカイブ状態を切り替え。 */
 async function toggleArchive(card: CorkboardCardDetail) {
   const next = !card.isArchived
@@ -436,7 +512,7 @@ async function toggleArchive(card: CorkboardCardDetail) {
 </script>
 
 <template>
-  <div class="mx-auto max-w-[1400px] px-4 pb-6">
+  <div class="mx-auto max-w-[1400px] px-4 pb-6" data-testid="corkboard-detail-page">
     <!-- ヘッダー -->
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
       <div class="flex items-center gap-3">
@@ -465,6 +541,7 @@ async function toggleArchive(card: CorkboardCardDetail) {
           size="small"
           severity="primary"
           :aria-label="t('corkboard.actions.createCard')"
+          data-testid="corkboard-card-create-button"
           @click="openCreate"
         />
       </div>
@@ -570,6 +647,7 @@ async function toggleArchive(card: CorkboardCardDetail) {
           :key="`card-${card.id}`"
           role="article"
           :aria-label="ariaLabelFor(card)"
+          :data-testid="`corkboard-card-${card.id}`"
           class="corkboard-card group absolute flex overflow-hidden rounded-md border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-800"
           :class="card.isArchived ? 'opacity-60' : ''"
           :style="{
@@ -591,9 +669,40 @@ async function toggleArchive(card: CorkboardCardDetail) {
               class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-surface-100 hover:text-primary dark:text-surface-300 dark:hover:bg-surface-700"
               :aria-label="t('corkboard.ariaCardEdit')"
               :title="t('corkboard.actions.editCard')"
+              :data-testid="`corkboard-card-edit-button-${card.id}`"
               @click.stop="openEdit(card)"
             >
               <i class="pi pi-pencil" aria-hidden="true" />
+            </button>
+            <!-- F09.8.1 追補: 個人ボード所有者のみピン止めボタンを表示 -->
+            <button
+              v-if="canPin"
+              type="button"
+              class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] hover:bg-surface-100 dark:hover:bg-surface-700"
+              :class="
+                card.isPinned
+                  ? 'text-amber-500'
+                  : 'text-surface-600 dark:text-surface-300 hover:text-amber-500'
+              "
+              :aria-label="
+                card.isPinned
+                  ? t('corkboard.ariaCardUnpin')
+                  : t('corkboard.ariaCardPin')
+              "
+              :aria-pressed="card.isPinned"
+              :title="
+                card.isPinned
+                  ? t('corkboard.actions.unpinCard')
+                  : t('corkboard.actions.pinCard')
+              "
+              :data-testid="`corkboard-card-pin-button-${card.id}`"
+              @click.stop="togglePin(card)"
+            >
+              <i
+                class="pi"
+                :class="card.isPinned ? 'pi-bookmark-fill' : 'pi-bookmark'"
+                aria-hidden="true"
+              />
             </button>
             <button
               type="button"
@@ -608,6 +717,7 @@ async function toggleArchive(card: CorkboardCardDetail) {
                   ? t('corkboard.actions.unarchiveCard')
                   : t('corkboard.actions.archiveCard')
               "
+              :data-testid="`corkboard-card-archive-button-${card.id}`"
               @click.stop="toggleArchive(card)"
             >
               <i
@@ -621,6 +731,7 @@ async function toggleArchive(card: CorkboardCardDetail) {
               class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-red-50 hover:text-red-500 dark:text-surface-300 dark:hover:bg-red-900/30"
               :aria-label="t('corkboard.ariaCardDelete')"
               :title="t('corkboard.actions.deleteCard')"
+              :data-testid="`corkboard-card-delete-button-${card.id}`"
               @click.stop="confirmDelete(card)"
             >
               <i class="pi pi-trash" aria-hidden="true" />
@@ -672,6 +783,7 @@ async function toggleArchive(card: CorkboardCardDetail) {
               :card="card"
               size="sm"
               class="mt-1"
+              :data-testid="`card-ogp-preview-${card.id}`"
             />
 
             <!-- F09.8 Phase G: REFERENCE カードのスナップショット（削除済みバッジ込み） -->
@@ -680,6 +792,8 @@ async function toggleArchive(card: CorkboardCardDetail) {
               :card="card"
               compact
               class="mt-1"
+              :data-testid="`card-snapshot-${card.id}`"
+              :deleted-badge-testid="`card-snapshot-deleted-badge-${card.id}`"
             />
           </div>
         </article>

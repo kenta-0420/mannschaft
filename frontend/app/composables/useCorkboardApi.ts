@@ -166,6 +166,19 @@ export function useCorkboardApi() {
       body: { positions },
     })
   }
+  /**
+   * F09.8.1: カードのピン止め状態を切り替える。
+   *
+   * - `isPinned = true` でピン止め、`false` でピン止め解除。
+   * - 個人ボードの所有者のみ操作可能（バックエンド側で 403 検証）。
+   * - 上限超過時は 409 `CORKBOARD_013` が返る。
+   */
+  async function togglePinCard(boardId: number, cardId: number, isPinned: boolean) {
+    return api<{ data: { id: number; isPinned: boolean; pinnedAt: string | null } }>(
+      `/api/v1/corkboards/${boardId}/cards/${cardId}/pin`,
+      { method: 'PATCH', body: { isPinned } },
+    )
+  }
 
   // === Groups ===
   async function createGroup(boardId: number, body: Record<string, unknown>) {
@@ -211,6 +224,7 @@ export function useCorkboardApi() {
     deleteCard,
     archiveCard,
     batchUpdateCardPositions,
+    togglePinCard,
     createGroup,
     updateGroup,
     deleteGroup,

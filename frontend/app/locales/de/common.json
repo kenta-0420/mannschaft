@@ -697,7 +697,9 @@
       "editCard": "Karte bearbeiten",
       "deleteCard": "Karte löschen",
       "archiveCard": "Archivieren",
-      "unarchiveCard": "Aus Archiv holen"
+      "unarchiveCard": "Aus Archiv holen",
+      "pinCard": "Anpinnen",
+      "unpinCard": "Anpinnen aufheben"
     },
     "modal": {
       "createTitle": "Neue Karte erstellen",
@@ -762,7 +764,11 @@
       "editError": "Karte konnte nicht aktualisiert werden.",
       "deleteError": "Karte konnte nicht gelöscht werden.",
       "archiveError": "Archivieren fehlgeschlagen.",
-      "unarchiveError": "Aus dem Archiv holen fehlgeschlagen."
+      "unarchiveError": "Aus dem Archiv holen fehlgeschlagen.",
+      "pinSuccess": "Karte angepinnt.",
+      "unpinSuccess": "Anpinnen aufgehoben.",
+      "pinError": "Karte konnte nicht angepinnt werden.",
+      "unpinError": "Anpinnen konnte nicht aufgehoben werden."
     },
     "validation": {
       "required": "Pflichtfeld.",
@@ -777,6 +783,8 @@
     "ariaCardDelete": "Diese Karte löschen",
     "ariaCardArchive": "Diese Karte archivieren",
     "ariaCardUnarchive": "Diese Karte aus dem Archiv holen",
+    "ariaCardPin": "Diese Karte anpinnen",
+    "ariaCardUnpin": "Anpinnen dieser Karte aufheben",
     "snapshot": {
       "refDeleted": "Quelle gelöscht",
       "refDeletedAria": "Der referenzierte Inhalt wurde gelöscht",
