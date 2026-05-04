@@ -13,7 +13,9 @@ import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
 import com.mannschaft.app.shiftbudget.repository.TodoBudgetLinkRepository;
 import com.mannschaft.app.shiftbudget.service.MonthlyShiftBudgetCloseService;
+import com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetSummaryService;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -97,6 +99,10 @@ class ShiftBudgetEndToEndIntegrationTest {
     private BudgetTransactionRepository budgetTransactionRepository;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private OrganizationRepository organizationRepository;
+    @Mock
+    private ShiftBudgetFailedEventService failedEventService;
 
     private ShiftBudgetSummaryService summaryService;
     private MonthlyShiftBudgetCloseService closeService;
@@ -112,7 +118,8 @@ class ShiftBudgetEndToEndIntegrationTest {
                 alertRepository, featureService, accessControlService);
         closeService = new MonthlyShiftBudgetCloseService(
                 allocationRepository, consumptionRepository, budgetTransactionRepository,
-                featureService, accessControlService, auditLogService);
+                featureService, accessControlService, auditLogService,
+                organizationRepository, failedEventService);
 
         allocation = ShiftBudgetAllocationEntity.builder()
                 .organizationId(ORG_ID).teamId(TEAM_ID)

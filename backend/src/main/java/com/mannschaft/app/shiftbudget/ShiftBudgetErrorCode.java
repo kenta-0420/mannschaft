@@ -171,7 +171,25 @@ public enum ShiftBudgetErrorCode implements ErrorCode {
      * <p>IDOR 対策で 404 統一 (HTTP 404)。</p>
      */
     ALERT_NOT_FOUND("SHIFT_BUDGET_029",
-            "対象の予算警告が見つかりません", Severity.WARN);
+            "対象の予算警告が見つかりません", Severity.WARN),
+
+    // ====================================================================
+    // Phase 10-β: 通知失敗リトライ・失敗イベント管理系（030〜039）
+    // ====================================================================
+
+    /**
+     * 失敗イベント（{@code shift_budget_failed_events}）が見つからない / 別組織所属。
+     * <p>IDOR 対策で 404 統一 (HTTP 404)。</p>
+     */
+    FAILED_EVENT_NOT_FOUND("SHIFT_BUDGET_030",
+            "対象の失敗イベントが見つかりません", Severity.WARN),
+
+    /**
+     * 終端ステータス（SUCCEEDED / MANUAL_RESOLVED）の失敗イベントは再実行不可 (HTTP 409)。
+     * EXHAUSTED に対しては運用判断による再試行を許容する（本エラーは投げない）。
+     */
+    FAILED_EVENT_NOT_RETRIABLE("SHIFT_BUDGET_031",
+            "対象の失敗イベントは終端状態のため再実行できません", Severity.WARN);
 
     private final String code;
     private final String message;

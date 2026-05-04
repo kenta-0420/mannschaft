@@ -8,6 +8,7 @@ import com.mannschaft.app.budget.repository.BudgetConfigRepository;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.entity.BudgetThresholdAlertEntity;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.repository.BudgetThresholdAlertRepository;
@@ -27,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -74,6 +76,8 @@ public class ThresholdAlertEvaluationService {
     private final AuditLogService auditLogService;
     private final WorkflowRequestService workflowRequestService;
     private final ObjectMapper objectMapper;
+    /** Phase 10-β で追加: 失敗イベントの永続化 */
+    private final ShiftBudgetFailedEventService failedEventService;
 
     /**
      * 指定 allocation について現在消化率を計算し、80/100/120% 閾値の発火判定を行う。
@@ -217,17 +221,45 @@ public class ThresholdAlertEvaluationService {
         String body = bodyForThreshold(thresholdPercent);
         String actionUrl = "/shift-budget/allocations/" + allocation.getId();
 
-        notificationHelper.notifyAll(
-                recipientUserIds,
-                "SHIFT_BUDGET_THRESHOLD_ALERT",
-                title, body,
-                "SHIFT_BUDGET_ALLOCATION",
-                allocation.getId(),
-                NotificationScopeType.ORGANIZATION,
-                allocation.getOrganizationId(),
-                actionUrl,
-                null  // システム自動発火、actor なし
-        );
+        try {
+            notificationHelper.notifyAll(
+                    recipientUserIds,
+                    "SHIFT_BUDGET_THRESHOLD_ALERT",
+                    title, body,
+                    "SHIFT_BUDGET_ALLOCATION",
+                    allocation.getId(),
+                    NotificationScopeType.ORGANIZATION,
+                    allocation.getOrganizationId(),
+                    actionUrl,
+                    null  // システム自動発火、actor なし
+            );
+        } catch (Exception e) {
+            // notifyAll の外側で総崩れする例外（DB 接続喪失など）— Phase 10-β failed_events に記録
+            log.error("F08.7: 通知一括送信失敗（握りつぶし）: allocId={}, threshold={}%, recipients={}",
+                    allocation.getId(), thresholdPercent, recipientUserIds.size(), e);
+            try {
+                failedEventService.recordFailure(
+                        allocation.getOrganizationId(),
+                        ShiftBudgetFailedEventType.NOTIFICATION_SEND,
+                        allocation.getId(),
+                        Map.of(
+                                "user_ids", recipientUserIds,
+                                "type", "SHIFT_BUDGET_THRESHOLD_ALERT",
+                                "title", title,
+                                "body", body,
+                                "source_type", "SHIFT_BUDGET_ALLOCATION",
+                                "source_id", allocation.getId(),
+                                "scope_id", allocation.getOrganizationId(),
+                                "action_url", actionUrl,
+                                "threshold_percent", thresholdPercent
+                        ),
+                        e.getClass().getSimpleName() + ": " + e.getMessage()
+                );
+            } catch (Exception recEx) {
+                log.error("F08.7: NOTIFICATION_SEND failed_events 記録自体も失敗（諦め）: allocId={}",
+                        allocation.getId(), recEx);
+            }
+        }
     }
 
     /**
@@ -334,6 +366,24 @@ public class ThresholdAlertEvaluationService {
                                     + "\"error\":\"%s\"}",
                             allocation.getId(), alert.getId(), workflowId,
                             escapeJson(e.getClass().getSimpleName() + ": " + e.getMessage())));
+            // Phase 10-β: failed_events にも記録 → リトライバッチ + 管理 API で根治
+            try {
+                failedEventService.recordFailure(
+                        allocation.getOrganizationId(),
+                        ShiftBudgetFailedEventType.WORKFLOW_START,
+                        alert.getId(),
+                        Map.of(
+                                "allocation_id", allocation.getId(),
+                                "alert_id", alert.getId(),
+                                "workflow_id", workflowId
+                        ),
+                        e.getClass().getSimpleName() + ": " + e.getMessage()
+                );
+            } catch (Exception recEx) {
+                log.error("F08.7: WORKFLOW_START failed_events 記録自体も失敗（諦め）: "
+                                + "allocId={}, alertId={}",
+                        allocation.getId(), alert.getId(), recEx);
+            }
         }
     }
 
