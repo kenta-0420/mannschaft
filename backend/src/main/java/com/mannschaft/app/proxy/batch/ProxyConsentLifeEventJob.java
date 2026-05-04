@@ -28,7 +28,7 @@ public class ProxyConsentLifeEventJob {
     private final ProxyConsentLifecycleService lifecycleService;
 
     @EventListener
-    @Async
+    @Async("event-pool")
     public void onUserStatusChanged(UserStatusChangedEvent event) {
         if (!LIFE_EVENT_STATUSES.contains(event.getNewStatus())) {
             return;
