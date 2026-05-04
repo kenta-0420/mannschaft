@@ -3,6 +3,7 @@ package com.mannschaft.app.actionmemo.repository;
 import com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -25,4 +26,9 @@ public interface UserActionMemoSettingsRepository extends JpaRepository<UserActi
     default Optional<UserActionMemoSettingsEntity> findByUserId(Long userId) {
         return findById(userId);
     }
+
+    /**
+     * リマインド有効かつ時刻設定済みの設定を全件取得する（バッチ用）。
+     */
+    List<UserActionMemoSettingsEntity> findByReminderEnabledTrueAndReminderTimeIsNotNull();
 }
