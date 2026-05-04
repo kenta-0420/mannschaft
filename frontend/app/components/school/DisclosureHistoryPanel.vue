@@ -6,7 +6,6 @@ const props = defineProps<{
   evaluationId?: number
 }>()
 
-const { t } = useI18n()
 const { disclosureHistory, loadingHistory, loadDisclosureHistory } = useAttendanceDisclosure()
 
 async function fetchHistory(): Promise<void> {
