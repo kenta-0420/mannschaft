@@ -7,8 +7,12 @@ import com.mannschaft.app.cms.PostPriority;
 import com.mannschaft.app.cms.Visibility;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
+import com.mannschaft.app.committee.repository.CommitteeDistributionLogRepository;
+import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
@@ -72,6 +76,18 @@ class AnnouncementFeedServiceTest {
 
     @Mock
     private SurveyRepository surveyRepository;
+
+    @Mock
+    private CommitteeDistributionLogRepository committeeDistributionLogRepository;
+
+    @Mock
+    private CommitteeMemberRepository committeeMemberRepository;
+
+    @Mock
+    private ProxyInputContext proxyInputContext;
+
+    @Mock
+    private ProxyInputRecordRepository proxyInputRecordRepository;
 
     @InjectMocks
     private AnnouncementFeedService announcementFeedService;

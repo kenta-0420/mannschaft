@@ -1,6 +1,8 @@
 package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.ShiftPreference;
@@ -52,6 +54,12 @@ class ShiftRequestServiceTest {
 
     @Mock
     private UserRoleRepository userRoleRepository;
+
+    @Mock
+    private ProxyInputContext proxyInputContext;
+
+    @Mock
+    private ProxyInputRecordRepository proxyInputRecordRepository;
 
     @InjectMocks
     private ShiftRequestService shiftRequestService;
