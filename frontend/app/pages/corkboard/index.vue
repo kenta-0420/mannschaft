@@ -1,12 +1,12 @@
 <script setup lang="ts">
 /**
- * F09.8.1 Phase 5: コルクボード一覧（既存）にピン止め関連の動線を追加。
+ * F09.8.1 Phase 5 + Phase A2: コルクボード一覧。
  *
  * 既存 corkboard index 画面はボード一覧のみで、個別カードは描画されない。
- * 個別カードへの 📌 ボタン追加は将来のボード詳細ページ実装時に行うものとし、
- * 本 Phase ではボード一覧から「ピン止め一覧（マイコルクボード）」への
- * 動線確保（ヘッダーリンク）と、個人ボードカードへの「ピン止め可能」
- * ヒント表示にとどめる（設計書 §6.2 の意図に対する最小限の現実解）。
+ * Phase 5 ではピン止め一覧（マイコルクボード）への動線とピン可能マークを追加。
+ * Phase A2 ではバックエンド `CorkboardResponse` の実フィールド名（`name` /
+ * `backgroundStyle`）に追従し、ボードカードクリックで scope-agnostic GET API
+ * `/api/v1/corkboards/{boardId}` を叩く詳細ページ `/corkboard/{id}` へ遷移する。
  */
 import type { CorkboardResponse } from '~/types/corkboard'
 
@@ -53,18 +53,11 @@ onMounted(() => load())
       <NuxtLink
         v-for="b in boards"
         :key="b.id"
-        :to="{
-          path: `/corkboard/${b.id}`,
-          query: {
-            scope: (b.scopeType || 'PERSONAL').toLowerCase(),
-            ...(b.scopeId != null ? { scopeId: b.scopeId } : {}),
-          },
-        }"
-        class="block rounded-xl border border-surface-300 bg-surface-0 p-4 transition hover:border-primary hover:shadow-sm"
-        :style="b.backgroundColor ? `border-color: ${b.backgroundColor}40` : ''"
+        :to="`/corkboard/${b.id}`"
+        class="block rounded-xl border border-surface-300 bg-surface-0 p-4 transition hover:border-primary-400 hover:shadow-sm"
       >
         <div class="flex items-start justify-between gap-2">
-          <h3 class="text-sm font-semibold">{{ b.title }}</h3>
+          <h3 class="text-sm font-semibold">{{ b.name }}</h3>
           <!-- F09.8.1 Phase 5: 個人ボードのみ「ピン止め可能」マークを表示 -->
           <span
             v-if="b.scopeType === 'PERSONAL'"
@@ -76,8 +69,9 @@ onMounted(() => load())
             {{ t('corkboard.pin') }}
           </span>
         </div>
-        <p v-if="b.description" class="mt-1 text-xs text-surface-400">{{ b.description }}</p>
-        <p class="mt-2 text-xs text-surface-400">{{ b.cardCount }}枚のカード</p>
+        <p v-if="b.backgroundStyle" class="mt-2 text-xs text-surface-400">
+          {{ b.backgroundStyle }}
+        </p>
       </NuxtLink>
       <div v-if="boards.length === 0" class="col-span-full py-12 text-center">
         <i class="pi pi-th-large mb-3 text-4xl text-surface-300" />

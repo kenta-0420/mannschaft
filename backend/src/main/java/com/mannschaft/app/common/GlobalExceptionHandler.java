@@ -167,6 +167,8 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_BUDGET_024", HttpStatus.NOT_FOUND),            // PROJECT_NOT_FOUND (IDOR 対策で 404)
             Map.entry("SHIFT_BUDGET_025", HttpStatus.NOT_FOUND),            // TODO_NOT_FOUND (IDOR 対策で 404)
             Map.entry("SHIFT_BUDGET_026", HttpStatus.FORBIDDEN),            // LINK_PERMISSION_REQUIRED
+            // F08.7 シフト予算 (Phase 9-δ: 警告 / 月次締め / BUDGET_ADMIN クリーンカット)
+            Map.entry("SHIFT_BUDGET_027", HttpStatus.FORBIDDEN),            // BUDGET_ADMIN_REQUIRED
             // F03.15 個人時間割（IDOR 対策で 404 統一、上限・遷移エラーは 409）
             Map.entry("PERSONAL_TIMETABLE_001", HttpStatus.NOT_FOUND),       // PERSONAL_TIMETABLE_NOT_FOUND
             Map.entry("PERSONAL_TIMETABLE_010", HttpStatus.CONFLICT),        // LIMIT_EXCEEDED
@@ -228,7 +230,10 @@ public class GlobalExceptionHandler {
             // F09.8.1 コルクボード ピン止め
             Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
             Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED
-            Map.entry("CORKBOARD_013", HttpStatus.CONFLICT)                  // PIN_LIMIT_EXCEEDED
+            Map.entry("CORKBOARD_013", HttpStatus.CONFLICT),                 // PIN_LIMIT_EXCEEDED
+            // F09.8 Phase A2 コルクボード詳細取得 — 設計書通り 403/404 を返す
+            Map.entry("CORKBOARD_001", HttpStatus.NOT_FOUND),                // BOARD_NOT_FOUND
+            Map.entry("CORKBOARD_009", HttpStatus.FORBIDDEN)                 // INSUFFICIENT_PERMISSION
     );
 
     /**

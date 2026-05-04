@@ -72,6 +72,10 @@ public class ProxyInputRecordEntity {
     @Column(updatable = false)
     private Long auditLogId;
 
+    /** 保管期限満了日（createdAt + 5年で自動計算、DBのSTORED生成列）。 */
+    @Column(name = "retention_expires_at", insertable = false, updatable = false)
+    private java.time.LocalDate retentionExpiresAt;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

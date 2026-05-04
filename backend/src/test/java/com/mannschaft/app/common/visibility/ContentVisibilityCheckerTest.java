@@ -1,5 +1,6 @@
 package com.mannschaft.app.common.visibility;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.Collection;
 import java.util.EnumMap;
@@ -16,6 +18,12 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 /**
  * {@link ContentVisibilityChecker} ファサードの単体テスト。
@@ -120,11 +128,16 @@ class ContentVisibilityCheckerTest {
         }
 
         @Test
-        @DisplayName("assertCanView は BusinessException をスローする")
+        @DisplayName("assertCanView は VISIBILITY_001 で BusinessException をスローする")
         void assertCanView_throwsBusinessExceptionForUnsupportedType() {
             assertThatThrownBy(() ->
                 checker.assertCanView(ReferenceType.FOLLOW_LIST, 1L, 100L))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException ex = (BusinessException) e;
+                    assertThat(ex.getErrorCode())
+                        .isEqualTo(VisibilityErrorCode.VISIBILITY_001);
+                });
         }
 
         @Test
@@ -272,8 +285,8 @@ class ContentVisibilityCheckerTest {
         }
 
         @Test
-        @DisplayName("assertCanView は拒否なら BusinessException を投げる")
-        void assertCanView_throwsWhenDenied() {
+        @DisplayName("assertCanView は拒否 (UNSPECIFIED) なら VISIBILITY_001 を投げる")
+        void assertCanView_throwsVisibility001WhenDenied() {
             StubResolver resolver = new StubResolver(
                 ReferenceType.BLOG_POST, Set.of(1L));
             ContentVisibilityChecker checker =
@@ -281,7 +294,37 @@ class ContentVisibilityCheckerTest {
 
             assertThatThrownBy(() ->
                 checker.assertCanView(ReferenceType.BLOG_POST, 999L, 100L))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException ex = (BusinessException) e;
+                    assertThat(ex.getErrorCode())
+                        .isEqualTo(VisibilityErrorCode.VISIBILITY_001);
+                });
+        }
+
+        @Test
+        @DisplayName("assertCanView は NOT_FOUND なら VISIBILITY_004 を投げる")
+        void assertCanView_throwsVisibility004WhenNotFound() {
+            // NOT_FOUND を返す Resolver を仕込む
+            StubResolver notFoundResolver = new StubResolver(
+                    ReferenceType.BLOG_POST, Set.of()) {
+                @Override
+                public VisibilityDecision decide(Long contentId, Long viewerUserId) {
+                    return VisibilityDecision.deny(
+                        ReferenceType.BLOG_POST, contentId, DenyReason.NOT_FOUND);
+                }
+            };
+            ContentVisibilityChecker checker =
+                new ContentVisibilityChecker(List.of(notFoundResolver), metrics);
+
+            assertThatThrownBy(() ->
+                checker.assertCanView(ReferenceType.BLOG_POST, 999L, 100L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException ex = (BusinessException) e;
+                    assertThat(ex.getErrorCode())
+                        .isEqualTo(VisibilityErrorCode.VISIBILITY_004);
+                });
         }
     }
 
@@ -333,6 +376,179 @@ class ContentVisibilityCheckerTest {
         }
     }
 
+    @Nested
+    @DisplayName("AuditLogService 連携 (Phase A-6 / マスター裁可 C-1)")
+    class AuditIntegration {
+
+        /**
+         * 指定した {@link VisibilityDecision} をそのまま返す Resolver スタブ。
+         * resolvedLevel を含む詳細な Decision を仕込むために用いる。
+         */
+        private ContentVisibilityResolver<String> fixedDecisionResolver(
+                ReferenceType type, VisibilityDecision decision) {
+            return new ContentVisibilityResolver<>() {
+                @Override
+                public ReferenceType referenceType() {
+                    return type;
+                }
+                @Override
+                public boolean canView(Long contentId, Long viewerUserId) {
+                    return decision.allowed();
+                }
+                @Override
+                public Set<Long> filterAccessible(
+                        Collection<Long> contentIds, Long viewerUserId) {
+                    return decision.allowed() ? Set.copyOf(contentIds) : Set.of();
+                }
+                @Override
+                public VisibilityDecision decide(Long contentId, Long viewerUserId) {
+                    return decision;
+                }
+            };
+        }
+
+        @Test
+        @DisplayName("PRIVATE deny 時は VISIBILITY_DENIED を AuditLogService に記録する")
+        void deniesPrivate_recordsAuditLog() {
+            VisibilityDecision deny = new VisibilityDecision(
+                    ReferenceType.BLOG_POST, 42L, false,
+                    DenyReason.NOT_OWNER, StandardVisibility.PRIVATE,
+                    "not the owner");
+            AuditLogService auditLogService = mock(AuditLogService.class);
+            ContentVisibilityChecker checker = new ContentVisibilityChecker(
+                    List.of(fixedDecisionResolver(ReferenceType.BLOG_POST, deny)),
+                    metrics, auditLogService);
+
+            assertThatThrownBy(() ->
+                checker.assertCanView(ReferenceType.BLOG_POST, 42L, 100L))
+                .isInstanceOf(BusinessException.class);
+
+            ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
+            verify(auditLogService, times(1)).record(
+                eq("VISIBILITY_DENIED"),
+                eq(100L),
+                any(), any(), any(), any(), any(), any(),
+                metadataCaptor.capture());
+            String metadata = metadataCaptor.getValue();
+            assertThat(metadata)
+                .contains("\"referenceType\":\"BLOG_POST\"")
+                .contains("\"contentId\":42")
+                .contains("\"denyReason\":\"NOT_OWNER\"")
+                .contains("\"resolvedLevel\":\"PRIVATE\"");
+        }
+
+        @Test
+        @DisplayName("CUSTOM_TEMPLATE deny 時も VISIBILITY_DENIED を記録する")
+        void deniesCustomTemplate_recordsAuditLog() {
+            VisibilityDecision deny = new VisibilityDecision(
+                    ReferenceType.EVENT, 7L, false,
+                    DenyReason.TEMPLATE_RULE_NO_MATCH,
+                    StandardVisibility.CUSTOM_TEMPLATE, null);
+            AuditLogService auditLogService = mock(AuditLogService.class);
+            ContentVisibilityChecker checker = new ContentVisibilityChecker(
+                    List.of(fixedDecisionResolver(ReferenceType.EVENT, deny)),
+                    metrics, auditLogService);
+
+            assertThatThrownBy(() ->
+                checker.assertCanView(ReferenceType.EVENT, 7L, 50L))
+                .isInstanceOf(BusinessException.class);
+
+            verify(auditLogService, times(1)).record(
+                eq("VISIBILITY_DENIED"),
+                eq(50L),
+                any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("ADMINS_ONLY deny 時も VISIBILITY_DENIED を記録する")
+        void deniesAdminsOnly_recordsAuditLog() {
+            VisibilityDecision deny = new VisibilityDecision(
+                    ReferenceType.BLOG_POST, 9L, false,
+                    DenyReason.INSUFFICIENT_ROLE,
+                    StandardVisibility.ADMINS_ONLY, null);
+            AuditLogService auditLogService = mock(AuditLogService.class);
+            ContentVisibilityChecker checker = new ContentVisibilityChecker(
+                    List.of(fixedDecisionResolver(ReferenceType.BLOG_POST, deny)),
+                    metrics, auditLogService);
+
+            assertThatThrownBy(() ->
+                checker.assertCanView(ReferenceType.BLOG_POST, 9L, 88L))
+                .isInstanceOf(BusinessException.class);
+
+            verify(auditLogService, times(1)).record(
+                eq("VISIBILITY_DENIED"),
+                eq(88L),
+                any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("MEMBERS_ONLY deny 時は AuditLogService に記録しない (cardinality 抑制)")
+        void deniesMembersOnly_doesNotRecord() {
+            VisibilityDecision deny = new VisibilityDecision(
+                    ReferenceType.BLOG_POST, 10L, false,
+                    DenyReason.NOT_A_MEMBER,
+                    StandardVisibility.MEMBERS_ONLY, null);
+            AuditLogService auditLogService = mock(AuditLogService.class);
+            ContentVisibilityChecker checker = new ContentVisibilityChecker(
+                    List.of(fixedDecisionResolver(ReferenceType.BLOG_POST, deny)),
+                    metrics, auditLogService);
+
+            assertThatThrownBy(() ->
+                checker.assertCanView(ReferenceType.BLOG_POST, 10L, 100L))
+                .isInstanceOf(BusinessException.class);
+
+            verify(auditLogService, never()).record(
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("UNSUPPORTED_REFERENCE_TYPE (resolvedLevel=null) は AuditLogService に記録しない")
+        void unsupportedReferenceType_doesNotRecord() {
+            AuditLogService auditLogService = mock(AuditLogService.class);
+            ContentVisibilityChecker checker = new ContentVisibilityChecker(
+                    List.of(), metrics, auditLogService);
+
+            assertThatThrownBy(() ->
+                checker.assertCanView(ReferenceType.BLOG_POST, 1L, 100L))
+                .isInstanceOf(BusinessException.class);
+
+            verify(auditLogService, never()).record(
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("allow 時は (現時点で) AuditLogService に記録しない (Phase A-1c の責務)")
+        void allow_doesNotRecord() {
+            VisibilityDecision allow = VisibilityDecision.allow(
+                    ReferenceType.BLOG_POST, 1L);
+            AuditLogService auditLogService = mock(AuditLogService.class);
+            ContentVisibilityChecker checker = new ContentVisibilityChecker(
+                    List.of(fixedDecisionResolver(ReferenceType.BLOG_POST, allow)),
+                    metrics, auditLogService);
+
+            checker.assertCanView(ReferenceType.BLOG_POST, 1L, 100L);
+
+            verify(auditLogService, never()).record(
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("AuditLogService 未配線 (null) でも例外なく動作する")
+        void noAuditLogService_doesNotFail() {
+            VisibilityDecision deny = new VisibilityDecision(
+                    ReferenceType.BLOG_POST, 1L, false,
+                    DenyReason.NOT_OWNER, StandardVisibility.PRIVATE, null);
+            ContentVisibilityChecker checker = new ContentVisibilityChecker(
+                    List.of(fixedDecisionResolver(ReferenceType.BLOG_POST, deny)),
+                    metrics);
+
+            assertThatThrownBy(() ->
+                checker.assertCanView(ReferenceType.BLOG_POST, 1L, 100L))
+                .isInstanceOf(BusinessException.class);
+            // AuditLogService=null でも NPE なしに完走することのみ確認
+        }
+    }
+
     // ---------------------------------------------------------------------
     // テスト用 Resolver スタブ — 「許可される ID 集合」を渡して挙動を制御
     // ---------------------------------------------------------------------
@@ -341,7 +557,7 @@ class ContentVisibilityCheckerTest {
      * 指定された contentId だけを許可し、それ以外を拒否する単純な Resolver スタブ。
      * Mockito を使わず、ファサードのディスパッチ責務を純粋に検証する目的で利用する。
      */
-    private static final class StubResolver
+    private static class StubResolver
             implements ContentVisibilityResolver<String> {
 
         private final ReferenceType type;

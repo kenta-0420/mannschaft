@@ -43,7 +43,7 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
-const { getBoardDetail } = useCorkboardApi()
+const { getBoardDetail, getBoardDetailByBoardId } = useCorkboardApi()
 const { captureQuiet } = useErrorReport()
 
 // ----- ルートパラメータ -----
@@ -136,19 +136,19 @@ async function load() {
     loading.value = false
     return
   }
-  if (!scopeParam.value) {
-    errorMessage.value = t('corkboard.scopeMissing')
-    loading.value = false
-    return
-  }
-  // PERSONAL は scopeId 不要、TEAM / ORGANIZATION は必須
-  if (scopeParam.value !== 'PERSONAL' && scopeIdParam.value == null) {
+  // PERSONAL 以外の scope は scopeId 必須（後方互換: scope クエリありで遷移する旧呼び出しを維持）
+  if (scopeParam.value && scopeParam.value !== 'PERSONAL' && scopeIdParam.value == null) {
     errorMessage.value = t('corkboard.scopeMissing')
     loading.value = false
     return
   }
   try {
-    const res = await getBoardDetail(scopeParam.value, scopeIdParam.value, boardId.value)
+    // F09.8 Phase A2: scope クエリが無い場合は scope-agnostic API
+    // (`GET /api/v1/corkboards/{boardId}`) を使ってバックエンドに scope 解決を任せる。
+    // scope クエリがある場合は従来どおり scope 別パスで取得する（後方互換）。
+    const res = scopeParam.value
+      ? await getBoardDetail(scopeParam.value, scopeIdParam.value, boardId.value)
+      : await getBoardDetailByBoardId(boardId.value)
     board.value = res.data
     loadCollapsedState()
   } catch (e) {

@@ -22,25 +22,24 @@
 
 export type CardType = 'NOTE' | 'IMAGE' | 'LINK' | 'CHECKLIST' | 'FILE'
 
+/**
+ * バックエンド `CorkboardResponse` (Java) に対応する TS 型。
+ * F09.8 Phase A2: 旧フィールド (`title` / `description` / `cardCount` / `isArchived` / `sections`) は
+ * バックエンド実体に存在しないため除去し、実フィールド (`name` / `backgroundStyle` / `editPolicy` /
+ * `isDefault` / `version` / `ownerId`) に揃える。
+ */
 export interface CorkboardResponse {
   id: number
   scopeType: 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
   scopeId: number | null
-  title: string
-  description: string | null
-  backgroundColor: string | null
-  isArchived: boolean
-  cardCount: number
-  sections: CorkboardSection[]
+  ownerId: number | null
+  name: string
+  backgroundStyle: string | null
+  editPolicy: string | null
+  isDefault: boolean
+  version: number | null
   createdAt: string
-}
-
-export interface CorkboardSection {
-  id: number
-  boardId: number
-  title: string
-  sortOrder: number
-  color: string | null
+  updatedAt: string | null
 }
 
 export interface CorkboardCard {

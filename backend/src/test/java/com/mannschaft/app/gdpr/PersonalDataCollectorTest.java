@@ -14,6 +14,8 @@ import com.mannschaft.app.gdpr.service.PersonalDataCollector;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -64,6 +66,10 @@ class PersonalDataCollectorTest {
     @Mock
     private ErrorReportRepository errorReportRepository;
     @Mock
+    private ProxyInputConsentRepository proxyInputConsentRepository;
+    @Mock
+    private ProxyInputRecordRepository proxyInputRecordRepository;
+    @Mock
     private EncryptionService encryptionService;
 
     @InjectMocks
@@ -74,7 +80,7 @@ class PersonalDataCollectorTest {
     class Collect {
 
         @Test
-        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（12カテゴリ）")
+        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（14カテゴリ）")
         void 正常_nullカテゴリ_全カテゴリ収集() {
             given(userRepository.findById(anyLong())).willReturn(Optional.empty());
             given(oAuthAccountRepository.findByUserId(anyLong())).willReturn(List.of());
@@ -96,15 +102,19 @@ class PersonalDataCollectorTest {
                     .willReturn(Optional.empty());
             given(errorReportRepository.findByUserIdOrderByCreatedAtDesc(anyLong()))
                     .willReturn(List.of());
+            given(proxyInputConsentRepository.findAllBySubjectUserIdForExport(anyLong()))
+                    .willReturn(List.of());
+            given(proxyInputRecordRepository.findBySubjectUserId(anyLong()))
+                    .willReturn(List.of());
 
             Map<String, String> result = collector.collect(1L, null);
 
-            assertThat(result).hasSize(12);
+            assertThat(result).hasSize(14);
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     "account.json", "oauth_accounts.json", "memberships.json", "profiles.json",
                     "payments.json", "charts.json", "chat_messages.json", "timeline_posts.json",
                     "audit_logs.json", "notifications.json", "action_memos.json",
-                    "error_reports.json"
+                    "error_reports.json", "proxy_input_consents.json", "proxy_input_records.json"
             );
         }
 
@@ -137,15 +147,15 @@ class PersonalDataCollectorTest {
     class GetCategoryKeys {
 
         @Test
-        @DisplayName("正常系: 12カテゴリキーが返る")
-        void 正常_12カテゴリキー返却() {
+        @DisplayName("正常系: 14カテゴリキーが返る")
+        void 正常_14カテゴリキー返却() {
             Set<String> keys = collector.getCategoryKeys();
 
-            assertThat(keys).hasSize(12);
+            assertThat(keys).hasSize(14);
             assertThat(keys).containsExactlyInAnyOrder(
                     "account", "oauth", "memberships", "profiles", "payments",
                     "charts", "chat_messages", "timeline", "audit_logs", "notifications",
-                    "action_memos", "error_reports"
+                    "action_memos", "error_reports", "proxy_consents", "proxy_records"
             );
         }
     }

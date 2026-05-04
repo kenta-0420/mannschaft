@@ -143,7 +143,18 @@ public enum ShiftBudgetErrorCode implements ErrorCode {
      * 設計書 §6.1: MANAGE_TODO + BUDGET_VIEW (HTTP 403)
      */
     LINK_PERMISSION_REQUIRED("SHIFT_BUDGET_026",
-            "TODO/プロジェクトの編集権限とシフト予算の閲覧権限が必要です", Severity.WARN);
+            "TODO/プロジェクトの編集権限とシフト予算の閲覧権限が必要です", Severity.WARN),
+
+    // ====================================================================
+    // Phase 9-δ: 警告・月次締め・BUDGET_ADMIN クリーンカット系（027〜039）
+    // ====================================================================
+
+    /**
+     * BUDGET_ADMIN 権限が不足（v1.2 クリーンカット方式の中核）。
+     * <p>設計書 §8.2: 予算割当の CRUD / 警告承認 / 月次締めバッチ起動など F08.7 の管理操作で必要 (HTTP 403)</p>
+     */
+    BUDGET_ADMIN_REQUIRED("SHIFT_BUDGET_027",
+            "シフト予算管理権限 (BUDGET_ADMIN) が必要です", Severity.WARN);
 
     private final String code;
     private final String message;

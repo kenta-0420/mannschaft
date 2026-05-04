@@ -47,6 +47,18 @@ export function useCorkboardApi() {
     )
   }
 
+  /**
+   * F09.8 Phase A2: scope を意識せず boardId だけでボード詳細を取得する。
+   * バックエンド `CorkboardLookupController#getBoardDetail` (`GET /api/v1/corkboards/{boardId}`)
+   * が呼び出し元ユーザーの scope/権限を解決して詳細を返す。
+   *
+   * 一覧画面 (`/corkboard`) からの遷移は scope クエリを付けずに `/corkboard/{id}` に
+   * 飛ぶため、詳細ページ側はこのメソッドを使えば scope 情報なしで詳細取得できる。
+   */
+  async function getBoardDetailByBoardId(boardId: number) {
+    return api<{ data: CorkboardDetail }>(`/api/v1/corkboards/${boardId}`)
+  }
+
   // === Personal Corkboards ===
   async function getMyBoards() {
     return api<{ data: CorkboardResponse[] }>('/api/v1/users/me/corkboards')
@@ -163,6 +175,7 @@ export function useCorkboardApi() {
     getOrgBoards,
     createOrgBoard,
     getBoardDetail,
+    getBoardDetailByBoardId,
     createCard,
     updateCard,
     deleteCard,

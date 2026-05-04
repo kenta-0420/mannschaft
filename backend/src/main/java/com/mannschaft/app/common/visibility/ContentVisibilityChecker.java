@@ -1,9 +1,10 @@
 package com.mannschaft.app.common.visibility;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.ErrorCode;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,13 @@ import java.util.Set;
  *
  * <p><strong>メトリクス (§9.4)</strong>: 全 5 メソッドの入口・出口で {@link VisibilityMetrics}
  * に記録する (latency / batch_size / access_ratio / denied / unsupported)。
+ *
+ * <p><strong>監査ログ連携 (§11.4 / マスター裁可 C-1)</strong>:
+ * deny 時に {@link ResolverAuditPolicy#shouldAuditDeny} を満たすセンシティブな
+ * 可視性レベル (PRIVATE / CUSTOM_TEMPLATE / ADMINS_ONLY) に対しては
+ * {@link AuditLogService} へ {@code VISIBILITY_DENIED} を非同期記録する。
+ * allow 時の {@code VISIBILITY_GRANTED_SENSITIVE} 記録は、Resolver 側で status 評価が
+ * 完成する Phase A-1c の責務とし、本クラスでは扱わない。
  */
 @Service
 @Transactional(readOnly = true)
@@ -51,6 +59,7 @@ public class ContentVisibilityChecker {
 
     private final Map<ReferenceType, ContentVisibilityResolver<?>> resolverMap;
     private final VisibilityMetrics visibilityMetrics;
+    private final AuditLogService auditLogService;
 
     /**
      * Spring が {@link ContentVisibilityResolver} の全 Bean を List で渡す。
@@ -58,13 +67,19 @@ public class ContentVisibilityChecker {
      * 不変 Map に変換する。同一 {@link ReferenceType} に対して複数の Resolver が
      * 登録された場合は {@link IllegalStateException} で起動失敗させる。
      *
+     * <p>{@code AuditLogService} は任意依存。テスト時など Bean が存在しない
+     * 構成でも本ファサードが動作するよう、{@code required = false} で受ける。
+     *
      * @param resolvers         Spring が収集した Resolver Bean の List (空でもよい)
      * @param visibilityMetrics メトリクス記録用 (必須 DI)
+     * @param auditLogService   監査ログサービス ({@code null} 可)
      * @throws IllegalStateException referenceType が重複した場合
      */
+    @Autowired
     public ContentVisibilityChecker(
             List<ContentVisibilityResolver<?>> resolvers,
-            VisibilityMetrics visibilityMetrics) {
+            VisibilityMetrics visibilityMetrics,
+            @Autowired(required = false) AuditLogService auditLogService) {
         Map<ReferenceType, ContentVisibilityResolver<?>> map = new EnumMap<>(ReferenceType.class);
         for (ContentVisibilityResolver<?> resolver : resolvers) {
             ReferenceType type = resolver.referenceType();
@@ -78,8 +93,22 @@ public class ContentVisibilityChecker {
         }
         this.resolverMap = Map.copyOf(map);
         this.visibilityMetrics = visibilityMetrics;
-        log.info("ContentVisibilityChecker initialized with {} resolver(s): {}",
-            this.resolverMap.size(), this.resolverMap.keySet());
+        this.auditLogService = auditLogService;
+        log.info("ContentVisibilityChecker initialized with {} resolver(s): {} (auditLogService={})",
+            this.resolverMap.size(), this.resolverMap.keySet(),
+            auditLogService != null ? "wired" : "absent");
+    }
+
+    /**
+     * テスト互換用コンストラクタ ({@code AuditLogService} なし)。
+     *
+     * @param resolvers         Spring が収集した Resolver Bean の List (空でもよい)
+     * @param visibilityMetrics メトリクス記録用 (必須)
+     */
+    public ContentVisibilityChecker(
+            List<ContentVisibilityResolver<?>> resolvers,
+            VisibilityMetrics visibilityMetrics) {
+        this(resolvers, visibilityMetrics, null);
     }
 
     /**
@@ -201,13 +230,13 @@ public class ContentVisibilityChecker {
      * <p>{@link #decide} の結果を見て:
      * <ul>
      *   <li>{@code allowed=true} → 何もしない (return)
-     *   <li>{@link DenyReason#NOT_FOUND} → {@code VISIBILITY_004} (404 相当) でスロー
-     *   <li>その他 deny → {@code VISIBILITY_001} (403 相当) でスロー
+     *   <li>{@link DenyReason#NOT_FOUND} → {@link VisibilityErrorCode#VISIBILITY_004} (404 相当) でスロー
+     *   <li>その他 deny → {@link VisibilityErrorCode#VISIBILITY_001} (403 相当) でスロー
      * </ul>
      *
-     * <p>TODO (Phase A-6): {@code VisibilityErrorCode} 完成後、ここでスタブの
-     * {@link StubVisibilityErrorCode} を本来の {@code VisibilityErrorCode.VISIBILITY_001
-     * / VISIBILITY_004} に置き換えること。
+     * <p>センシティブな可視性レベル ({@link ResolverAuditPolicy#shouldAuditDeny} 該当) で
+     * deny した場合は、例外を投げる前に {@link AuditLogService#record} で
+     * {@code VISIBILITY_DENIED} を非同期記録する (§11.4 / マスター裁可 C-1)。
      *
      * @param type      対象の reference_type
      * @param contentId 対象 contentId
@@ -219,14 +248,64 @@ public class ContentVisibilityChecker {
         try {
             VisibilityDecision decision = decide(type, contentId, userId);
             if (decision.allowed()) {
+                // TODO (Phase A-1c): allow かつ shouldAuditAllow なら
+                //   VISIBILITY_GRANTED_SENSITIVE を記録する。decide の戻り値に
+                //   resolvedLevel を載せる責務は AbstractContentVisibilityResolver 側で
+                //   完成させる予定 (本タスク A-6 では deny のみ扱う)。
                 return;
             }
+            recordDenyAudit(decision, userId);
             if (decision.denyReason() == DenyReason.NOT_FOUND) {
-                throw new BusinessException(StubVisibilityErrorCode.VISIBILITY_004);
+                throw new BusinessException(VisibilityErrorCode.VISIBILITY_004);
             }
-            throw new BusinessException(StubVisibilityErrorCode.VISIBILITY_001);
+            throw new BusinessException(VisibilityErrorCode.VISIBILITY_001);
         } finally {
             visibilityMetrics.stopCheckTimer(sample, type, OP_ASSERT_CAN_VIEW);
+        }
+    }
+
+    /**
+     * deny 判定をセンシティブ条件下で {@link AuditLogService} に永続化する。
+     *
+     * <p>マスター裁可 C-1 (2026-05-04): {@link ResolverAuditPolicy#shouldAuditDeny}
+     * を満たすレベル (PRIVATE / CUSTOM_TEMPLATE / ADMINS_ONLY) のみが対象。
+     * 全 deny は別途 {@code log.warn} と Counter で観測されるため、本メソッドは
+     * 永続化が必要なときのみ {@code auditLogService.record} を呼ぶ。
+     *
+     * <p>{@code AuditLogService} 未配線のテスト構成では何もしない。
+     *
+     * @param decision deny の判定結果
+     * @param userId   閲覧者 userId ({@code null} 可)
+     */
+    private void recordDenyAudit(VisibilityDecision decision, Long userId) {
+        if (auditLogService == null) {
+            return;
+        }
+        if (!ResolverAuditPolicy.shouldAuditDeny(decision.resolvedLevel())) {
+            return;
+        }
+        String metadata = String.format(
+            "{\"source\":\"VISIBILITY\",\"referenceType\":\"%s\",\"contentId\":%s,"
+                + "\"denyReason\":\"%s\",\"resolvedLevel\":\"%s\"}",
+            decision.referenceType().name(),
+            decision.contentId() != null ? decision.contentId().toString() : "null",
+            decision.denyReason().name(),
+            decision.resolvedLevel().name());
+        try {
+            auditLogService.record(
+                "VISIBILITY_DENIED",
+                userId,
+                null,   // targetUserId
+                null,   // teamId
+                null,   // organizationId
+                null,   // ipAddress
+                null,   // userAgent
+                null,   // sessionHash
+                metadata);
+        } catch (RuntimeException e) {
+            // 監査ログ記録失敗で本処理を止めない (auditLogService 自身も内部で握り潰しているが二重防御)
+            log.warn("VISIBILITY_DENIED 監査ログ記録失敗: referenceType={}, contentId={}",
+                decision.referenceType(), decision.contentId(), e);
         }
     }
 
@@ -250,43 +329,6 @@ public class ContentVisibilityChecker {
             }
         }
         visibilityMetrics.recordUnsupported(type);
-    }
-
-    /**
-     * Phase A-1b 時点での暫定 ErrorCode スタブ。
-     *
-     * <p>TODO (Phase A-6): 本 enum を削除し、
-     * {@code com.mannschaft.app.common.visibility.VisibilityErrorCode} に置き換えること。
-     * メッセージは i18n properties 経由となる予定 (§7.4.1)。
-     */
-    private enum StubVisibilityErrorCode implements ErrorCode {
-        /** 認可拒否 (権限不足) — 設計書 §7.4 で 403 にマップ予定. */
-        VISIBILITY_001("VISIBILITY_001", "このコンテンツを閲覧する権限がありません"),
-        /** 対象コンテンツ不在 — 設計書 §7.4 で 404 にマップ予定. */
-        VISIBILITY_004("VISIBILITY_004", "指定のコンテンツが見つかりません");
-
-        private final String code;
-        private final String message;
-
-        StubVisibilityErrorCode(String code, String message) {
-            this.code = code;
-            this.message = message;
-        }
-
-        @Override
-        public String getCode() {
-            return code;
-        }
-
-        @Override
-        public String getMessage() {
-            return message;
-        }
-
-        @Override
-        public Severity getSeverity() {
-            return Severity.WARN;
-        }
     }
 
 }
