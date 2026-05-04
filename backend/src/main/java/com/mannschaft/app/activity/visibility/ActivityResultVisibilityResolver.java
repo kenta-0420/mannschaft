@@ -13,7 +13,6 @@ import com.mannschaft.app.common.visibility.mapping.ActivityVisibilityMapper;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -42,7 +41,6 @@ import java.util.List;
  * 本クラスは最小契約 (loadProjections / toStandard / referenceType) のみ実装する。</p>
  */
 @Component
-@Transactional(readOnly = true)
 public class ActivityResultVisibilityResolver
         extends AbstractContentVisibilityResolver<ActivityVisibility, ActivityResultVisibilityProjection> {
 
