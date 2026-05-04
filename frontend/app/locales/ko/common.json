@@ -785,6 +785,11 @@
     "ariaCardUnarchive": "이 카드의 보관 해제",
     "ariaCardPin": "이 카드를 고정",
     "ariaCardUnpin": "이 카드의 고정 해제",
+    "dnd": {
+      "pinned": "고정됨 (이동 불가)",
+      "locked": "편집 권한 없음 (이동 불가)",
+      "updateError": "카드 위치 업데이트에 실패했습니다"
+    },
     "snapshot": {
       "refDeleted": "참조 원본 삭제됨",
       "refDeletedAria": "참조한 콘텐츠가 삭제되었습니다",

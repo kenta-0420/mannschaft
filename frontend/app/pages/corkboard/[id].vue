@@ -19,8 +19,12 @@
  *  - 「+ 新規カード」ボタン → CardEditorModal を create モードで開く
  *  - 各カードに編集 / 削除 / アーカイブ操作（ホバー時に表示するメニュー）
  *
+ * Phase D 追加:
+ *  - カード描画を `DraggableCard` コンポーネントへ切り出し
+ *  - `useDraggable` による D&D 位置移動 + `batch-position` API 連動
+ *  - ピン止めカード / 編集権限のないボードでは D&D 不可
+ *
  * Phase B 範囲外（後続 Phase で実装）:
- *  - D&D 位置移動 (Phase D)
  *  - セクション CRUD (Phase E)
  *  - WebSocket リアルタイム同期 (Phase F)
  *  - OGP プレビューの大画面詳細 (Phase G)
@@ -39,7 +43,6 @@ import type {
   CorkboardCardDetail,
   CorkboardGroupDetail,
   CorkboardScope,
-  CorkboardColor,
 } from '~/types/corkboard'
 
 definePageMeta({ middleware: 'auth' })
@@ -53,6 +56,7 @@ const {
   deleteCard: apiDeleteCard,
   archiveCard: apiArchiveCard,
   togglePinCard: apiTogglePinCard,
+  batchUpdateCardPositions: apiBatchUpdateCardPositions,
 } = useCorkboardApi()
 const { captureQuiet } = useErrorReport()
 const toast = useToast()
@@ -187,33 +191,11 @@ function goBack() {
 }
 
 // ----- 表示ヘルパ -----
-const COLOR_BAR: Record<string, string> = {
-  WHITE: 'bg-surface-200',
-  YELLOW: 'bg-yellow-400',
-  RED: 'bg-red-400',
-  BLUE: 'bg-blue-400',
-  GREEN: 'bg-green-400',
-  PURPLE: 'bg-purple-400',
-  GRAY: 'bg-gray-400',
-}
-
-function colorBarClass(color: CorkboardColor | string | null): string {
-  if (!color) return 'bg-surface-200'
-  return COLOR_BAR[color.toUpperCase()] ?? 'bg-surface-200'
-}
-
-const CARD_TYPE_ICON: Record<string, string> = {
-  REFERENCE: 'pi-paperclip',
-  MEMO: 'pi-pencil',
-  URL: 'pi-link',
-  SECTION_HEADER: 'pi-tag',
-}
-
-function iconClass(cardType: string | null): string {
-  if (!cardType) return 'pi-th-large'
-  return CARD_TYPE_ICON[cardType] ?? 'pi-th-large'
-}
-
+/**
+ * カードのサイズプリセット（ピクセル）。
+ * F09.8 Phase D 以降、カード描画は `DraggableCard.vue` 側で行うが、
+ * 本コンポーネントでも `boardContentSize` 算出用にサイズが必要なため残す。
+ */
 function cardSizePixels(card: CorkboardCardDetail): { width: number; height: number } {
   const size = (card.cardSize ?? 'MEDIUM').toUpperCase()
   if (card.cardType === 'SECTION_HEADER') {
@@ -222,39 +204,6 @@ function cardSizePixels(card: CorkboardCardDetail): { width: number; height: num
   if (size === 'SMALL') return { width: 150, height: 100 }
   if (size === 'LARGE') return { width: 300, height: 200 }
   return { width: 200, height: 150 }
-}
-
-/** カード本文のプレビュー用に先頭 N 文字で切る */
-function previewText(card: CorkboardCardDetail): string {
-  const raw =
-    card.body ??
-    card.contentSnapshot ??
-    card.title ??
-    ''
-  if (raw.length <= 100) return raw
-  return raw.slice(0, 100) + '…'
-}
-
-function cardTypeLabel(cardType: string | null): string {
-  switch (cardType) {
-    case 'REFERENCE':
-      return t('corkboard.cardTypeReference')
-    case 'MEMO':
-      return t('corkboard.cardTypeMemo')
-    case 'URL':
-      return t('corkboard.cardTypeUrl')
-    case 'SECTION_HEADER':
-      return t('corkboard.cardTypeSectionHeader')
-    default:
-      return cardType ?? ''
-  }
-}
-
-function ariaLabelFor(card: CorkboardCardDetail): string {
-  return t('corkboard.ariaCard', {
-    cardType: cardTypeLabel(card.cardType),
-    title: card.title ?? card.body?.slice(0, 30) ?? '',
-  })
 }
 
 // ----- スコープバッジ -----
@@ -479,6 +428,80 @@ async function togglePin(card: CorkboardCardDetail) {
   }
 }
 
+// ----- F09.8 Phase D: D&D 位置更新 -----
+
+/**
+ * ボードの編集権限を判定する。
+ *
+ * 設計書 §2 認可仕様:
+ *  - PERSONAL: 所有者のみ編集可
+ *  - TEAM / ORGANIZATION:
+ *      edit_policy = ALL_MEMBERS なら MEMBER 以上で編集可
+ *      edit_policy = ADMIN_ONLY  なら ADMIN / DEPUTY_ADMIN のみ編集可
+ *
+ * Phase D の現実装ではフロントから所属ロール情報を引く API が未配線のため、
+ * 「個人ボード（所有者）= 編集可、それ以外は edit_policy=ALL_MEMBERS のみ編集可」
+ * とする保守的判定を採用する。共有ボードの ADMIN/MEMBER 厳密判定は、
+ * 所属ロールを返す API が整備されてから Phase D 後続で精緻化する想定。
+ */
+const canEdit = computed<boolean>(() => {
+  if (!board.value) return false
+  if (board.value.scopeType === 'PERSONAL') {
+    const me = authStore.currentUser?.id
+    return me != null && board.value.ownerId === me
+  }
+  // 共有ボード: 暫定的に ALL_MEMBERS のみ true。ADMIN_ONLY は安全側で不可。
+  return board.value.editPolicy === 'ALL_MEMBERS'
+})
+
+/**
+ * D&D 完了時の位置更新ハンドラ。
+ *
+ * - 楽観的更新: 先にローカル state を新座標で書き換え、API を呼ぶ。
+ * - 失敗時: 旧座標へロールバック + toast。
+ * - 成功時: 既に UI 反映済みのためサイレント（toast なし）。
+ */
+async function onPositionChange(cardId: number, x: number, y: number) {
+  if (!board.value) return
+  const target = board.value.cards.find((c) => c.id === cardId)
+  if (!target) return
+
+  const prevX = target.positionX
+  const prevY = target.positionY
+  const zIndex = target.zIndex ?? 1
+
+  // 楽観的更新
+  board.value = {
+    ...board.value,
+    cards: board.value.cards.map((c) =>
+      c.id === cardId ? { ...c, positionX: x, positionY: y } : c,
+    ),
+  }
+
+  try {
+    await apiBatchUpdateCardPositions(boardId.value, [
+      { cardId, positionX: x, positionY: y, zIndex },
+    ])
+    // 成功時はサイレント
+  } catch (e) {
+    captureQuiet(e, { context: 'CorkboardDetailPage: カード位置更新失敗' })
+    // ロールバック
+    if (board.value) {
+      board.value = {
+        ...board.value,
+        cards: board.value.cards.map((c) =>
+          c.id === cardId ? { ...c, positionX: prevX, positionY: prevY } : c,
+        ),
+      }
+    }
+    toast.add({
+      severity: 'error',
+      summary: t('corkboard.dnd.updateError'),
+      life: 3500,
+    })
+  }
+}
+
 /** カードのアーカイブ状態を切り替え。 */
 async function toggleArchive(card: CorkboardCardDetail) {
   const next = !card.isArchived
@@ -641,162 +664,20 @@ async function toggleArchive(card: CorkboardCardDetail) {
           </button>
         </div>
 
-        <!-- カード一覧 -->
-        <article
+        <!-- F09.8 Phase D: カード一覧（DraggableCard で D&D 対応） -->
+        <DraggableCard
           v-for="card in cards"
           :key="`card-${card.id}`"
-          role="article"
-          :aria-label="ariaLabelFor(card)"
-          :data-testid="`corkboard-card-${card.id}`"
-          class="corkboard-card group absolute flex overflow-hidden rounded-md border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-800"
-          :class="card.isArchived ? 'opacity-60' : ''"
-          :style="{
-            left: card.positionX + 'px',
-            top: card.positionY + 'px',
-            width: cardSizePixels(card).width + 'px',
-            height: cardSizePixels(card).height + 'px',
-            zIndex: card.zIndex ?? 1,
-          }"
-          :tabindex="0"
-        >
-          <!-- F09.8 Phase C: カード操作メニュー（ホバー / フォーカス時に表示） -->
-          <div
-            class="corkboard-card-actions absolute right-0.5 top-0.5 z-10 hidden gap-0.5 rounded bg-surface-0/95 p-0.5 shadow group-hover:flex group-focus-within:flex dark:bg-surface-800/95"
-            :aria-label="t('corkboard.ariaCardActions')"
-          >
-            <button
-              type="button"
-              class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-surface-100 hover:text-primary dark:text-surface-300 dark:hover:bg-surface-700"
-              :aria-label="t('corkboard.ariaCardEdit')"
-              :title="t('corkboard.actions.editCard')"
-              :data-testid="`corkboard-card-edit-button-${card.id}`"
-              @click.stop="openEdit(card)"
-            >
-              <i class="pi pi-pencil" aria-hidden="true" />
-            </button>
-            <!-- F09.8.1 追補: 個人ボード所有者のみピン止めボタンを表示 -->
-            <button
-              v-if="canPin"
-              type="button"
-              class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] hover:bg-surface-100 dark:hover:bg-surface-700"
-              :class="
-                card.isPinned
-                  ? 'text-amber-500'
-                  : 'text-surface-600 dark:text-surface-300 hover:text-amber-500'
-              "
-              :aria-label="
-                card.isPinned
-                  ? t('corkboard.ariaCardUnpin')
-                  : t('corkboard.ariaCardPin')
-              "
-              :aria-pressed="card.isPinned"
-              :title="
-                card.isPinned
-                  ? t('corkboard.actions.unpinCard')
-                  : t('corkboard.actions.pinCard')
-              "
-              :data-testid="`corkboard-card-pin-button-${card.id}`"
-              @click.stop="togglePin(card)"
-            >
-              <i
-                class="pi"
-                :class="card.isPinned ? 'pi-bookmark-fill' : 'pi-bookmark'"
-                aria-hidden="true"
-              />
-            </button>
-            <button
-              type="button"
-              class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-surface-100 hover:text-amber-500 dark:text-surface-300 dark:hover:bg-surface-700"
-              :aria-label="
-                card.isArchived
-                  ? t('corkboard.ariaCardUnarchive')
-                  : t('corkboard.ariaCardArchive')
-              "
-              :title="
-                card.isArchived
-                  ? t('corkboard.actions.unarchiveCard')
-                  : t('corkboard.actions.archiveCard')
-              "
-              :data-testid="`corkboard-card-archive-button-${card.id}`"
-              @click.stop="toggleArchive(card)"
-            >
-              <i
-                class="pi"
-                :class="card.isArchived ? 'pi-undo' : 'pi-inbox'"
-                aria-hidden="true"
-              />
-            </button>
-            <button
-              type="button"
-              class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-red-50 hover:text-red-500 dark:text-surface-300 dark:hover:bg-red-900/30"
-              :aria-label="t('corkboard.ariaCardDelete')"
-              :title="t('corkboard.actions.deleteCard')"
-              :data-testid="`corkboard-card-delete-button-${card.id}`"
-              @click.stop="confirmDelete(card)"
-            >
-              <i class="pi pi-trash" aria-hidden="true" />
-            </button>
-          </div>
-
-          <!-- カラーラベル（左端） -->
-          <span
-            class="w-1.5 shrink-0"
-            :class="colorBarClass(card.colorLabel)"
-            aria-hidden="true"
-          />
-
-          <div class="flex min-w-0 flex-1 flex-col gap-1 p-2">
-            <!-- ヘッダ: カード種別アイコン + タイトル + ピン -->
-            <div class="flex items-start gap-1.5">
-              <i
-                class="pi mt-0.5 shrink-0 text-[10px] text-surface-500"
-                :class="iconClass(card.cardType)"
-                aria-hidden="true"
-              />
-              <p
-                v-if="card.title"
-                class="min-w-0 flex-1 truncate text-xs font-semibold text-surface-800 dark:text-surface-100"
-              >
-                {{ card.title }}
-              </p>
-              <i
-                v-if="card.isPinned"
-                class="pi pi-bookmark-fill text-[10px] text-amber-500"
-                aria-hidden="true"
-              />
-            </div>
-
-            <!-- 本文プレビュー（MEMO / URL のみ。REFERENCE は CardSnapshot 側で出す） -->
-            <p
-              v-if="
-                card.cardType !== 'SECTION_HEADER' &&
-                card.cardType !== 'REFERENCE'
-              "
-              class="line-clamp-3 whitespace-pre-wrap text-[11px] text-surface-600 dark:text-surface-300"
-            >
-              {{ previewText(card) }}
-            </p>
-
-            <!-- F09.8 Phase G: URL カード OGP プレビュー -->
-            <CardOgpPreview
-              v-if="card.cardType === 'URL'"
-              :card="card"
-              size="sm"
-              class="mt-1"
-              :data-testid="`card-ogp-preview-${card.id}`"
-            />
-
-            <!-- F09.8 Phase G: REFERENCE カードのスナップショット（削除済みバッジ込み） -->
-            <CardSnapshot
-              v-else-if="card.cardType === 'REFERENCE'"
-              :card="card"
-              compact
-              class="mt-1"
-              :data-testid="`card-snapshot-${card.id}`"
-              :deleted-badge-testid="`card-snapshot-deleted-badge-${card.id}`"
-            />
-          </div>
-        </article>
+          :card="card"
+          :board-id="boardId"
+          :can-edit="canEdit"
+          :can-pin="canPin"
+          @update:position="onPositionChange"
+          @edit="openEdit"
+          @delete="confirmDelete"
+          @archive="toggleArchive"
+          @pin="togglePin"
+        />
       </div>
     </div>
 
