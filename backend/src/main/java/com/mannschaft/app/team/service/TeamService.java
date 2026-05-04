@@ -10,8 +10,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.entity.MembershipEntity;
-import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
@@ -28,14 +27,10 @@ import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import io.micrometer.core.instrument.MeterRegistry;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -61,18 +56,8 @@ public class TeamService {
     private final ApplicationEventPublisher eventPublisher;
     private final TeamFriendRepository teamFriendRepository;
     private final TeamShiftSettingsService teamShiftSettingsService;
-    private final MembershipRepository membershipRepository;
     private final MeterRegistry meterRegistry;
-
-    /**
-     * F00.5 Phase 2 リリース時の Shadow Mode 比較フラグ。
-     * true のとき、{@link #getMembers(Long, Pageable)} は旧実装と新実装の両方を実行し、
-     * 差分を Prometheus メトリクス {@code f005.api.diff} に出力する。
-     * ユーザー応答は引き続き旧実装を返す（Phase 3 で完全切替）。
-     * 設計書: docs/features/F00.5_membership_basis.md §14.6
-     */
-    @Value("${feature.f005.shadowComparison.enabled:false}")
-    private boolean shadowComparisonEnabled;
+    private final MemberQueryDispatcher memberQueryDispatcher;
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。
@@ -212,89 +197,39 @@ public class TeamService {
     /**
      * チームのメンバー一覧を取得する。
      *
-     * <p>F00.5 Phase 2: Shadow Mode で旧実装（user_roles 参照）と新実装（memberships 参照）の
-     * 両方を実行し、差分があれば Prometheus メトリクスに出力する。ユーザー応答は引き続き
-     * 旧実装の結果を返す（Phase 3 で完全切替予定）。</p>
+     * <p>F00.5 Phase 3: MemberQueryDispatcher 経由で memberships + user_roles を統合参照する。
+     * Phase 2 の Shadow Mode（user_roles のみ参照）は廃止。</p>
      *
-     * <p>設計書: docs/features/F00.5_membership_basis.md §14.6</p>
+     * <p>設計書: docs/features/F00.5_membership_basis.md §7 / §13.6.4</p>
      */
     public PagedResponse<MemberResponse> getMembers(Long teamId, Pageable pageable) {
         findTeamOrThrow(teamId);
 
-        // 旧実装（user_roles JOIN users）
-        Page<UserRoleEntity> page = userRoleRepository.findByTeamId(teamId, pageable);
+        // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照に完全切替
+        var memberDtos = memberQueryDispatcher.queryMembers(teamId, ScopeType.TEAM, null);
 
-        var data = page.getContent().stream()
-                .map(ur -> {
-                    UserRepository.MemberSummary user = userRepository.findMemberSummaryById(ur.getUserId()).orElse(null);
-                    RoleEntity role = roleRepository.findById(ur.getRoleId()).orElse(null);
-                    return new MemberResponse(
-                            ur.getUserId(),
-                            user != null ? user.getDisplayName() : null,
-                            user != null ? user.getAvatarUrl() : null,
-                            role != null ? role.getName() : null,
-                            ur.getCreatedAt());
-                })
+        var data = memberDtos.stream()
+                .map(dto -> new MemberResponse(
+                        dto.userId(),
+                        dto.displayName(),
+                        dto.avatarUrl(),
+                        dto.roleName(),
+                        dto.joinedAt()))
                 .toList();
 
-        var meta = new PagedResponse.PageMeta(
-                page.getTotalElements(), page.getNumber(), page.getSize(), page.getTotalPages());
+        // Dispatcher は全件リストを返すため、ページネーションはアプリ側でエミュレート
+        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
+        int size = pageable.isPaged() ? pageable.getPageSize() : data.size();
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, data.size());
+        List<MemberResponse> pagedData = (fromIndex >= data.size())
+                ? List.<MemberResponse>of() : data.subList(fromIndex, toIndex);
 
-        // F00.5 Phase 2: Shadow Mode 比較
-        if (shadowComparisonEnabled) {
-            try {
-                compareWithMembershipImpl(teamId, data);
-            } catch (Exception ex) {
-                // 比較側の失敗で本処理を倒さない（Shadow Mode は本処理に副作用を与えない原則）
-                log.warn("F00.5 Shadow Mode 比較で例外発生: teamId={}, message={}", teamId, ex.getMessage());
-            }
-        }
+        long totalElements = data.size();
+        int totalPages = size == 0 ? 1 : (int) Math.ceil((double) totalElements / size);
 
-        return PagedResponse.of(data, meta);
-    }
-
-    /**
-     * F00.5 Shadow Mode: memberships ベースの新実装の結果と旧実装の結果を比較する。
-     * userId 集合の対称差を {@code f005.api.diff} カウンタに加算する。
-     */
-    private void compareWithMembershipImpl(Long teamId, List<MemberResponse> oldImpl) {
-        List<MembershipEntity> newImplEntities = membershipRepository
-                .findByScopeAndActive(ScopeType.TEAM, teamId, Pageable.unpaged())
-                .getContent();
-
-        Set<Long> oldUserIds = new HashSet<>();
-        for (MemberResponse r : oldImpl) {
-            if (r.getUserId() != null) {
-                oldUserIds.add(r.getUserId());
-            }
-        }
-        Set<Long> newUserIds = new HashSet<>();
-        for (MembershipEntity m : newImplEntities) {
-            if (m.getUserId() != null) {
-                newUserIds.add(m.getUserId());
-            }
-        }
-
-        Set<Long> onlyInOld = new HashSet<>(oldUserIds);
-        onlyInOld.removeAll(newUserIds);
-        Set<Long> onlyInNew = new HashSet<>(newUserIds);
-        onlyInNew.removeAll(oldUserIds);
-        int diffSize = onlyInOld.size() + onlyInNew.size();
-
-        if (diffSize > 0) {
-            log.warn("F00.5 API DIFF DETECTED: teamId={}, oldSize={}, newSize={}, onlyInOld={}, onlyInNew={}",
-                    teamId, oldUserIds.size(), newUserIds.size(), onlyInOld, onlyInNew);
-            if (meterRegistry != null) {
-                meterRegistry.counter("f005.api.diff", "endpoint", "teams.members").increment(diffSize);
-            }
-        } else if (meterRegistry != null) {
-            // 差分なしも観測可能にする（Shadow Mode が動いている裏付け）
-            meterRegistry.counter("f005.api.compare.ok", "endpoint", "teams.members").increment();
-        }
-
-        // 並び順や roleName の違いはユーザー集合差分とは別のメトリクスに分離可能だが、
-        // Phase 2 のゴールは集合差分の検知に限定する。Phase 3 で精緻化する。
-        Objects.requireNonNullElse(oldImpl, List.of());
+        var meta = new PagedResponse.PageMeta(totalElements, page, size, totalPages);
+        return PagedResponse.of(pagedData, meta);
     }
 
     /**

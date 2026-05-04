@@ -1,5 +1,8 @@
 package com.mannschaft.app.common;
 
+import com.mannschaft.app.family.repository.UserCareLinkRepository;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -23,6 +26,8 @@ import static org.mockito.Mockito.verify;
 /**
  * {@link AccessControlService} の単体テスト。
  * メンバーシップ検証・ロール判定・権限チェック・複合チェックを検証する。
+ *
+ * <p>F00.5 Phase 3: isMember() / checkMembership() は memberships テーブルを参照するよう切替済み。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AccessControlService 単体テスト")
@@ -36,6 +41,12 @@ class AccessControlServiceTest {
 
     @Mock
     private RoleService roleService;
+
+    @Mock
+    private UserCareLinkRepository userCareLinkRepository;
+
+    @Mock
+    private MembershipRepository membershipRepository;
 
     @InjectMocks
     private AccessControlService accessControlService;
@@ -76,30 +87,33 @@ class AccessControlServiceTest {
     class CheckMembership {
 
         @Test
-        @DisplayName("正常系: TEAMスコープでメンバーの場合は例外なし")
+        @DisplayName("正常系: TEAMスコープでアクティブなメンバーシップがある場合は例外なし")
         void checkMembership_TEAMスコープでメンバー_例外なし() {
-            // Given
-            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, SCOPE_ID)).willReturn(true);
+            // Given: F00.5 Phase 3 — memberships 参照に切替済み
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(true);
 
             // When / Then（例外が発生しないことを確認）
             accessControlService.checkMembership(USER_ID, SCOPE_ID, "TEAM");
         }
 
         @Test
-        @DisplayName("正常系: ORGANIZATIONスコープでメンバーの場合は例外なし")
+        @DisplayName("正常系: ORGANIZATIONスコープでアクティブなメンバーシップがある場合は例外なし")
         void checkMembership_ORGANIZATIONスコープでメンバー_例外なし() {
-            // Given
-            given(userRoleRepository.existsByUserIdAndOrganizationId(USER_ID, SCOPE_ID)).willReturn(true);
+            // Given: F00.5 Phase 3 — memberships 参照に切替済み
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(true);
 
             // When / Then
             accessControlService.checkMembership(USER_ID, SCOPE_ID, "ORGANIZATION");
         }
 
         @Test
-        @DisplayName("異常系: 非メンバーでCOMMON_002例外")
+        @DisplayName("異常系: アクティブなメンバーシップがない場合はCOMMON_002例外")
         void checkMembership_非メンバー_COMMON002例外() {
-            // Given
-            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, SCOPE_ID)).willReturn(false);
+            // Given: F00.5 Phase 3 — memberships 参照に切替済み
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(false);
 
             // When / Then
             assertThatThrownBy(() -> accessControlService.checkMembership(USER_ID, SCOPE_ID, "TEAM"))
@@ -118,10 +132,11 @@ class AccessControlServiceTest {
     class IsMember {
 
         @Test
-        @DisplayName("正常系: TEAMスコープでメンバーならtrue")
+        @DisplayName("正常系: TEAMスコープでアクティブなメンバーシップがあればtrue")
         void isMember_TEAMスコープでメンバー_true() {
-            // Given
-            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, SCOPE_ID)).willReturn(true);
+            // Given: F00.5 Phase 3 — memberships 参照に切替済み
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(true);
 
             // When
             boolean result = accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM");
@@ -131,10 +146,11 @@ class AccessControlServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: ORGANIZATIONスコープでメンバーならtrue")
+        @DisplayName("正常系: ORGANIZATIONスコープでアクティブなメンバーシップがあればtrue")
         void isMember_ORGANIZATIONスコープでメンバー_true() {
-            // Given
-            given(userRoleRepository.existsByUserIdAndOrganizationId(USER_ID, SCOPE_ID)).willReturn(true);
+            // Given: F00.5 Phase 3 — memberships 参照に切替済み
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(true);
 
             // When
             boolean result = accessControlService.isMember(USER_ID, SCOPE_ID, "ORGANIZATION");
@@ -144,16 +160,42 @@ class AccessControlServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: 非メンバーならfalse")
+        @DisplayName("正常系: アクティブなメンバーシップがなければfalse")
         void isMember_非メンバー_false() {
-            // Given
-            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, SCOPE_ID)).willReturn(false);
+            // Given: F00.5 Phase 3 — memberships 参照に切替済み
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(false);
 
             // When
             boolean result = accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM");
 
             // Then
             assertThat(result).isFalse();
+        }
+
+        @Test
+        @DisplayName("追加: アクティブなメンバーシップが存在する場合true (isMember_returns_true_when_active_membership_exists)")
+        void isMember_returns_true_when_active_membership_exists() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(true);
+            assertThat(accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM")).isTrue();
+        }
+
+        @Test
+        @DisplayName("追加: アクティブなメンバーシップが存在しない場合false (isMember_returns_false_when_no_active_membership)")
+        void isMember_returns_false_when_no_active_membership() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(false);
+            assertThat(accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM")).isFalse();
+        }
+
+        @Test
+        @DisplayName("追加: left_at がセット済み（退会済）の場合はfalse (isMember_returns_false_when_membership_left)")
+        void isMember_returns_false_when_membership_left() {
+            // left_at がある場合、existsActiveByUserAndScope は false を返す（leftAt IS NULL 条件）
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(false);
+            assertThat(accessControlService.isMember(USER_ID, SCOPE_ID, "ORGANIZATION")).isFalse();
         }
     }
 
