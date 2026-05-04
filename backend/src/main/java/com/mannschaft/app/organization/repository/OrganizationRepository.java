@@ -68,4 +68,30 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
      * 複数IDを一括取得（祖先チェーンを1回の SQL でまとめて取得する用途）。
      */
     List<OrganizationEntity> findByIdInAndDeletedAtIsNull(Collection<Long> ids);
+
+    // ========================================================================
+    // F00 ContentVisibilityResolver 基盤拡張 (Phase A-3b)
+    //
+    // MembershipBatchQueryService.snapshotForUser から §11.6 親 ORG 連鎖チェック
+    // のために利用される。設計書 docs/features/F00_content_visibility_resolver.md §11.6 参照。
+    // ========================================================================
+
+    /**
+     * 指定 ID 集合のうち、非アクティブな組織 ID を返す（§11.6 親 ORG 連鎖判定用）。
+     *
+     * <p>「非アクティブ」の定義: 現状は {@code deleted_at IS NOT NULL}（論理削除済み）のみ。
+     * 将来 {@code SUSPENDED} 列が追加されたら本クエリの WHERE 句に OR 条件を追加すれば
+     * 上位の {@link com.mannschaft.app.common.visibility.MembershipBatchQueryService}
+     * は無改修で追従する。</p>
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} を回避するため native query を使う。
+     * 入力集合が空のときは Spring Data の IN 句で例外となるため呼び出し側でガード必須
+     * （{@code MembershipBatchQueryService} 側でガード済み）。</p>
+     *
+     * @param ids 対象組織 ID 集合（非空）
+     * @return 非アクティブな組織 ID のリスト
+     */
+    @Query(value = "SELECT id FROM organizations WHERE id IN (:ids) AND deleted_at IS NOT NULL",
+           nativeQuery = true)
+    List<Long> findInactiveIdsByIdIn(@Param("ids") Collection<Long> ids);
 }
