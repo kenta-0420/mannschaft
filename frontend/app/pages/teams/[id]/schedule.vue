@@ -1,25 +1,12 @@
 <script setup lang="ts">
+import type { CalendarEventItem } from '~/composables/useCalendarEvents'
+
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const teamId = Number(route.params.id)
 const scheduleApi = useScheduleApi()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
-
-const now = new Date()
-const currentYear = ref(now.getFullYear())
-const currentMonth = ref(now.getMonth() + 1)
-
-interface CalEvent {
-  id: number
-  title: string
-  startAt: string
-  endAt: string
-  allDay: boolean
-  color: string | null
-  scopeType: string
-  isPersonal: boolean
-}
 
 interface ScheduleEventDetail {
   id: number
@@ -37,8 +24,6 @@ interface ScheduleEventDetail {
   attendanceStats: { yes: number; no: number; maybe: number; pending: number; total: number } | null
 }
 
-const events = ref<CalEvent[]>([])
-const loading = ref(true)
 const refreshing = ref(false)
 const showTypeSelector = ref(false)
 const showCreateDialog = ref(false)
@@ -49,40 +34,19 @@ const selectedEvent = ref<ScheduleEventDetail | null>(null)
 const showDetailPanel = ref(false)
 const showEditDialog = ref(false)
 
-function buildDateRange() {
-  const from = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-01T00:00:00`
-  const lastDay = new Date(currentYear.value, currentMonth.value, 0).getDate()
-  const to = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`
-  return { from, to }
+const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> => {
+  const res = await scheduleApi.listSchedules('team', teamId, { from, to, size: 100 })
+  return (res.data as CalendarEventItem[]).map((e) => ({
+    ...e,
+    allDay: e.allDay ?? false,
+    color: e.color ?? null,
+    isPersonal: false,
+    scopeType: 'TEAM',
+  }))
 }
 
-async function loadEvents(isInitial = false) {
-  if (isInitial) {
-    loading.value = true
-  } else {
-    refreshing.value = true
-  }
-  try {
-    const { from, to } = buildDateRange()
-    const [teamRes, personalRes] = await Promise.all([
-      scheduleApi.listSchedules('team', teamId, { from, to, size: 100 }),
-      scheduleApi.getMySchedules({ from, to, size: 100 }),
-    ])
-    events.value = [
-      ...(teamRes.data as CalEvent[]).map((e) => ({ ...e, isPersonal: false, scopeType: 'TEAM' })),
-      ...(personalRes.data as CalEvent[]).map((e) => ({
-        ...e,
-        isPersonal: true,
-        scopeType: 'PERSONAL',
-      })),
-    ]
-  } catch {
-    events.value = []
-  } finally {
-    loading.value = false
-    refreshing.value = false
-  }
-}
+const { currentYear, currentMonth, events, loading, loadEvents, refresh, onPrevMonth, onNextMonth } =
+  useCalendarEvents(fetcher, { cacheHalfMonths: 2 })
 
 function onDateClick(date: string) {
   selectedDate.value = date
@@ -110,26 +74,6 @@ async function onEventClick(eventId: number) {
   }
 }
 
-function onPrevMonth() {
-  if (currentMonth.value === 1) {
-    currentMonth.value = 12
-    currentYear.value--
-  } else {
-    currentMonth.value--
-  }
-  loadEvents()
-}
-
-function onNextMonth() {
-  if (currentMonth.value === 12) {
-    currentMonth.value = 1
-    currentYear.value++
-  } else {
-    currentMonth.value++
-  }
-  loadEvents()
-}
-
 function onEditEvent() {
   showDetailPanel.value = false
   showEditDialog.value = true
@@ -140,19 +84,23 @@ async function onDeleteEvent() {
   try {
     await scheduleApi.deleteSchedule('team', teamId, selectedEventId.value)
     showDetailPanel.value = false
-    await loadEvents()
+    refreshing.value = true
+    await refresh()
+    refreshing.value = false
   } catch {
     /* handled by api */
   }
 }
 
-function onSaved() {
-  loadEvents()
+async function onSaved() {
+  refreshing.value = true
+  await refresh()
+  refreshing.value = false
 }
 
 onMounted(async () => {
   await loadPermissions()
-  await loadEvents(true)
+  await loadEvents()
 })
 </script>
 
@@ -193,7 +141,7 @@ onMounted(async () => {
             :can-edit="isAdminOrDeputy"
             @edit="onEditEvent"
             @delete="onDeleteEvent"
-            @responded="loadEvents"
+            @responded="refresh"
           />
         </SectionCard>
         <SectionCard v-else class="p-8">
