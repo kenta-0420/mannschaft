@@ -13,7 +13,7 @@ public class ShiftRequestSpecs {
 
     /** 本人入力のみ（代理入力を除外）。統計・集計に使用する。 */
     public static Specification<ShiftRequestEntity> byPersonOnly() {
-        return (root, query, cb) -> cb.isFalse(root.get("isProxyInput"));
+        return (root, query, cb) -> cb.equal(root.get("isProxyInput"), false);
     }
 
     /** 代理入力を含む全件。監査・管理画面用。 */
