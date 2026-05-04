@@ -113,7 +113,7 @@ watch(
     if (visible && scheduleId) {
       try {
         const res = props.isPersonal
-          ? await scheduleApi.listPersonalSchedules()
+          ? await scheduleApi.getMyScheduleDetail(scheduleId as number)
           : await scheduleApi.getSchedule(props.scopeType, props.scopeId, scheduleId as number)
         const data = (res as { data: Record<string, unknown> }).data as Record<string, unknown>
         form.value.title = (data.title as string) ?? ''

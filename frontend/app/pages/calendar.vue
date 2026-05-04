@@ -83,9 +83,7 @@ const fetcher = async (from: string, to: string) => {
     scopeId: undefined,
     scopeName: null,
   }))
-  const sharedEvents = (
-    ((shared.data as unknown as Record<string, unknown>)?.events as CalEvent[]) ?? []
-  ).map((e) => ({
+  const sharedEvents = ((shared.data as unknown as CalEvent[]) ?? []).map((e) => ({
     ...e,
     allDay: e.allDay ?? false,
     color: e.color ?? null,

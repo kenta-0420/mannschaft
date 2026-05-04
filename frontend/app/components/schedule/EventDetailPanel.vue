@@ -77,7 +77,7 @@ const statusConfig: Record<string, { label: string; severity: string }> = {
         <i class="pi pi-map-marker text-surface-400" />
         <span>{{ event.location }}</span>
       </div>
-      <div class="flex items-center gap-2">
+      <div v-if="event.createdBy" class="flex items-center gap-2">
         <i class="pi pi-user text-surface-400" />
         <span>作成: {{ event.createdBy.displayName }}</span>
       </div>
@@ -90,6 +90,7 @@ const statusConfig: Record<string, { label: string; severity: string }> = {
 
     <!-- 出欠パネル -->
     <AttendancePanel
+      v-if="event.attendanceStats !== null"
       :scope-type="scopeType"
       :scope-id="scopeId"
       :schedule-id="event.id"
