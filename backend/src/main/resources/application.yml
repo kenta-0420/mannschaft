@@ -128,14 +128,13 @@ feature:
     monthly-close-cron-enabled: false
     retry-batch-enabled: false
   # F00.5 メンバーシップ基盤再設計
-  # dualWrite.enabled: Phase 2-3 期間中は true（user_roles と memberships の両方に書き込む）
-  #   Phase 4 リリースで false に切り替え、二重書き込みコード自体は次の minor release で削除する
+  # dualWrite.enabled: Phase 4 完了で false に変更済み（二重書き込みコード自体は Phase 4 で物理削除）
   # shadowComparison.enabled: GET /teams/{id}/members の旧実装と新実装を Shadow 比較する
   #   default false。Phase 2 リリース後、Staging で true に切り替えて diff 観測する
   # 設計書: docs/features/F00.5_membership_basis.md §13.4 / §14.6
   f005:
     dualWrite:
-      enabled: true
+      enabled: false   # Phase 4 完了
     shadowComparison:
       enabled: false
 
