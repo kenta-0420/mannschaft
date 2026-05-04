@@ -1,8 +1,11 @@
 import type {
   CorkboardResponse,
   CorkboardCard,
+  CorkboardCardDetail,
   CorkboardDetail,
   CorkboardScope,
+  CreateCardRequest,
+  UpdateCardRequest,
 } from '~/types/corkboard'
 
 interface CorkboardGroup {
@@ -112,20 +115,47 @@ export function useCorkboardApi() {
   }
 
   // === Cards ===
-  async function createCard(boardId: number, body: Record<string, unknown>) {
-    return api<{ data: CorkboardCard }>(`/api/v1/corkboards/${boardId}/cards`, {
+  /**
+   * カードを新規作成する。
+   *
+   * - リクエストは {@link CreateCardRequest} (camelCase) でバックエンド
+   *   `CreateCardRequest.java` と完全整合。
+   * - レスポンスは {@link CorkboardCardDetail} (Phase A 以降の DTO)。
+   */
+  async function createCard(boardId: number, body: CreateCardRequest) {
+    return api<{ data: CorkboardCardDetail }>(`/api/v1/corkboards/${boardId}/cards`, {
       method: 'POST',
       body,
     })
   }
-  async function updateCard(boardId: number, cardId: number, body: Record<string, unknown>) {
-    return api(`/api/v1/corkboards/${boardId}/cards/${cardId}`, { method: 'PUT', body })
+  /**
+   * カードを更新する（部分更新）。
+   *
+   * - 受け付けるフィールドは {@link UpdateCardRequest} を参照。
+   * - カード種別 (`cardType`) と参照先 (`referenceType` / `referenceId`) は変更不可。
+   */
+  async function updateCard(boardId: number, cardId: number, body: UpdateCardRequest) {
+    return api<{ data: CorkboardCardDetail }>(
+      `/api/v1/corkboards/${boardId}/cards/${cardId}`,
+      { method: 'PUT', body },
+    )
   }
   async function deleteCard(boardId: number, cardId: number) {
     return api(`/api/v1/corkboards/${boardId}/cards/${cardId}`, { method: 'DELETE' })
   }
-  async function archiveCard(boardId: number, cardId: number) {
-    return api(`/api/v1/corkboards/${boardId}/cards/${cardId}/archive`, { method: 'PATCH' })
+  /**
+   * カードのアーカイブ状態を切り替える。
+   *
+   * - `archived = true` でアーカイブ、`false` でアンアーカイブ。
+   * - バックエンド `CorkboardCardController#archiveCard` は
+   *   `?archived=true|false` のクエリ引数を取り、デフォルトは `true`。
+   */
+  async function archiveCard(boardId: number, cardId: number, archived = true) {
+    const q = archived ? '' : '?archived=false'
+    return api<{ data: CorkboardCardDetail }>(
+      `/api/v1/corkboards/${boardId}/cards/${cardId}/archive${q}`,
+      { method: 'PATCH' },
+    )
   }
   async function batchUpdateCardPositions(
     boardId: number,

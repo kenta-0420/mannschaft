@@ -15,8 +15,11 @@
  *  - 参照カードの「参照元削除済み」バッジ
  *  - URL カードの OGP サムネイル小サイズ表示
  *
+ * Phase C 追加:
+ *  - 「+ 新規カード」ボタン → CardEditorModal を create モードで開く
+ *  - 各カードに編集 / 削除 / アーカイブ操作（ホバー時に表示するメニュー）
+ *
  * Phase B 範囲外（後続 Phase で実装）:
- *  - カード CRUD UI (Phase C)
  *  - D&D 位置移動 (Phase D)
  *  - セクション CRUD (Phase E)
  *  - WebSocket リアルタイム同期 (Phase F)
@@ -30,6 +33,7 @@
  *       現状 organization scope では 404 が返る可能性がある。フロント側は
  *       将来実装される前提で配線のみしておく。
  */
+import { useToast } from 'primevue/usetoast'
 import type {
   CorkboardDetail,
   CorkboardCardDetail,
@@ -43,8 +47,15 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
-const { getBoardDetail, getBoardDetailByBoardId } = useCorkboardApi()
+const {
+  getBoardDetail,
+  getBoardDetailByBoardId,
+  deleteCard: apiDeleteCard,
+  archiveCard: apiArchiveCard,
+} = useCorkboardApi()
 const { captureQuiet } = useErrorReport()
+const toast = useToast()
+const { confirmAction } = useConfirmDialog()
 
 // ----- ルートパラメータ -----
 const boardId = computed<number>(() => {
@@ -316,6 +327,112 @@ const boardContentSize = computed<{ width: number; height: number }>(() => {
   }
   return { width: maxX, height: maxY }
 })
+
+// ----- F09.8 Phase C: カード CRUD モーダル制御 -----
+
+/** モーダル開閉とモード制御。`null` のとき非表示。 */
+const editorMode = ref<'create' | 'edit' | null>(null)
+const editorTarget = ref<CorkboardCardDetail | null>(null)
+const editorVisible = computed({
+  get: () => editorMode.value !== null,
+  set: (v: boolean) => {
+    if (!v) {
+      editorMode.value = null
+      editorTarget.value = null
+    }
+  },
+})
+/** create 時にモーダルへ渡す初期座標（既存カードと重ならない適度な位置）。 */
+const editorDefaultPosition = computed(() => {
+  // 既存カードの右下に少しずらした位置をデフォルトに（重なり回避の簡易ヒューリスティック）。
+  let x = 40
+  let y = 40
+  for (const c of cards.value) {
+    if (c.positionX + 40 > x) x = c.positionX + 40
+    if (c.positionY + 40 > y) y = c.positionY + 40
+  }
+  // 上限カット (極端な値で画面外にならないよう)
+  return { x: Math.min(x, 1000), y: Math.min(y, 600) }
+})
+
+function openCreate() {
+  editorTarget.value = null
+  editorMode.value = 'create'
+}
+
+function openEdit(card: CorkboardCardDetail) {
+  editorTarget.value = card
+  editorMode.value = 'edit'
+}
+
+/** モーダル保存成功時: ボード詳細を再取得して最新化する。 */
+async function onCardSaved() {
+  await load()
+}
+
+/** カード削除（確認ダイアログ → 論理削除 API → ローカル状態更新）。 */
+function confirmDelete(card: CorkboardCardDetail) {
+  confirmAction({
+    header: t('corkboard.confirm.deleteTitle'),
+    message: t('corkboard.confirm.deleteMessage'),
+    onAccept: () => doDelete(card),
+  })
+}
+
+async function doDelete(card: CorkboardCardDetail) {
+  try {
+    await apiDeleteCard(boardId.value, card.id)
+    if (board.value) {
+      board.value = {
+        ...board.value,
+        cards: board.value.cards.filter((c) => c.id !== card.id),
+      }
+    }
+    toast.add({
+      severity: 'success',
+      summary: t('corkboard.toast.deleteSuccess'),
+      life: 2500,
+    })
+  } catch (e) {
+    captureQuiet(e, { context: 'CorkboardDetailPage: カード削除失敗' })
+    toast.add({
+      severity: 'error',
+      summary: t('corkboard.toast.deleteError'),
+      life: 3500,
+    })
+  }
+}
+
+/** カードのアーカイブ状態を切り替え。 */
+async function toggleArchive(card: CorkboardCardDetail) {
+  const next = !card.isArchived
+  try {
+    const res = await apiArchiveCard(boardId.value, card.id, next)
+    // ローカル状態を最新カードで置換
+    if (board.value) {
+      board.value = {
+        ...board.value,
+        cards: board.value.cards.map((c) => (c.id === card.id ? res.data : c)),
+      }
+    }
+    toast.add({
+      severity: 'success',
+      summary: next
+        ? t('corkboard.toast.archiveSuccess')
+        : t('corkboard.toast.unarchiveSuccess'),
+      life: 2500,
+    })
+  } catch (e) {
+    captureQuiet(e, { context: 'CorkboardDetailPage: アーカイブ切替失敗' })
+    toast.add({
+      severity: 'error',
+      summary: next
+        ? t('corkboard.toast.archiveError')
+        : t('corkboard.toast.unarchiveError'),
+      life: 3500,
+    })
+  }
+}
 </script>
 
 <template>
@@ -339,6 +456,17 @@ const boardContentSize = computed<{ width: number; height: number }>(() => {
         >
           {{ scopeLabel }}
         </span>
+      </div>
+      <!-- F09.8 Phase C: 新規カード作成ボタン -->
+      <div v-if="board" class="flex items-center gap-2">
+        <Button
+          :label="t('corkboard.actions.createCard')"
+          icon="pi pi-plus"
+          size="small"
+          severity="primary"
+          :aria-label="t('corkboard.actions.createCard')"
+          @click="openCreate"
+        />
       </div>
     </div>
 
@@ -442,7 +570,8 @@ const boardContentSize = computed<{ width: number; height: number }>(() => {
           :key="`card-${card.id}`"
           role="article"
           :aria-label="ariaLabelFor(card)"
-          class="absolute flex overflow-hidden rounded-md border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-800"
+          class="corkboard-card group absolute flex overflow-hidden rounded-md border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-800"
+          :class="card.isArchived ? 'opacity-60' : ''"
           :style="{
             left: card.positionX + 'px',
             top: card.positionY + 'px',
@@ -452,6 +581,52 @@ const boardContentSize = computed<{ width: number; height: number }>(() => {
           }"
           :tabindex="0"
         >
+          <!-- F09.8 Phase C: カード操作メニュー（ホバー / フォーカス時に表示） -->
+          <div
+            class="corkboard-card-actions absolute right-0.5 top-0.5 z-10 hidden gap-0.5 rounded bg-surface-0/95 p-0.5 shadow group-hover:flex group-focus-within:flex dark:bg-surface-800/95"
+            :aria-label="t('corkboard.ariaCardActions')"
+          >
+            <button
+              type="button"
+              class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-surface-100 hover:text-primary dark:text-surface-300 dark:hover:bg-surface-700"
+              :aria-label="t('corkboard.ariaCardEdit')"
+              :title="t('corkboard.actions.editCard')"
+              @click.stop="openEdit(card)"
+            >
+              <i class="pi pi-pencil" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-surface-100 hover:text-amber-500 dark:text-surface-300 dark:hover:bg-surface-700"
+              :aria-label="
+                card.isArchived
+                  ? t('corkboard.ariaCardUnarchive')
+                  : t('corkboard.ariaCardArchive')
+              "
+              :title="
+                card.isArchived
+                  ? t('corkboard.actions.unarchiveCard')
+                  : t('corkboard.actions.archiveCard')
+              "
+              @click.stop="toggleArchive(card)"
+            >
+              <i
+                class="pi"
+                :class="card.isArchived ? 'pi-undo' : 'pi-inbox'"
+                aria-hidden="true"
+              />
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-red-50 hover:text-red-500 dark:text-surface-300 dark:hover:bg-red-900/30"
+              :aria-label="t('corkboard.ariaCardDelete')"
+              :title="t('corkboard.actions.deleteCard')"
+              @click.stop="confirmDelete(card)"
+            >
+              <i class="pi pi-trash" aria-hidden="true" />
+            </button>
+          </div>
+
           <!-- カラーラベル（左端） -->
           <span
             class="w-1.5 shrink-0"
@@ -509,6 +684,20 @@ const boardContentSize = computed<{ width: number; height: number }>(() => {
         </article>
       </div>
     </div>
+
+    <!-- F09.8 Phase C: カード作成・編集モーダル -->
+    <CardEditorModal
+      v-if="board && editorMode"
+      v-model:visible="editorVisible"
+      :mode="editorMode"
+      :board-id="board.id"
+      :card="editorTarget"
+      :default-position="editorDefaultPosition"
+      @save="onCardSaved"
+    />
+
+    <!-- F09.8 Phase C: 削除確認ダイアログ（useConfirmDialog 経由） -->
+    <ConfirmDialog />
   </div>
 </template>
 

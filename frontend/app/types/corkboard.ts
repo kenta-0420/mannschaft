@@ -78,13 +78,25 @@ export type CorkboardBackgroundStyle = 'CORK' | 'WHITE' | 'DARK'
 /** カード本体の種別（バックエンド `card_type` と同一表記） */
 export type CorkboardCardType = 'REFERENCE' | 'MEMO' | 'URL' | 'SECTION_HEADER'
 
-/** 参照カードの参照先種別 */
+/**
+ * 参照カードの参照先種別。
+ *
+ * 設計書 §4 で公式に列挙されているのは `CHAT_MESSAGE` / `TIMELINE_POST` / `BULLETIN_THREAD`
+ * / `BLOG_POST` / `FILE` の 5 種だが、Phase C のフォームでは将来拡張枠として
+ * `TEAM` / `ORGANIZATION` / `EVENT` / `DOCUMENT` / `URL` も選べるようにする
+ * （バックエンドの `referenceType` は `Size(max=30)` の自由文字列で受ける）。
+ */
 export type CorkboardReferenceType =
   | 'CHAT_MESSAGE'
   | 'TIMELINE_POST'
   | 'BULLETIN_THREAD'
   | 'BLOG_POST'
   | 'FILE'
+  | 'TEAM'
+  | 'ORGANIZATION'
+  | 'EVENT'
+  | 'DOCUMENT'
+  | 'URL'
 
 /** カードのカラーラベル（設計書 §3 corkboard_cards.color） */
 export type CorkboardColor = 'WHITE' | 'YELLOW' | 'RED' | 'BLUE' | 'GREEN' | 'PURPLE' | 'GRAY'
@@ -157,6 +169,50 @@ export interface CorkboardGroupDetail {
   displayOrder: number
   createdAt: string
   updatedAt: string
+}
+
+/**
+ * カード作成リクエスト（{@link com.mannschaft.app.corkboard.dto.CreateCardRequest} と 1:1）。
+ *
+ * - JSON は camelCase（バックエンド DTO と完全整合）。
+ * - `cardType` は必須。`REFERENCE` の場合は `referenceType` + `referenceId` 必須、
+ *   `URL` の場合は `url` 必須、`MEMO` / `SECTION_HEADER` の場合は `title` または `body` を使う。
+ * - `positionX` / `positionY` はバックエンド側で 0 デフォルト扱い。フロントから明示送信する。
+ */
+export interface CreateCardRequest {
+  cardType: CorkboardCardType
+  referenceType?: CorkboardReferenceType | string | null
+  referenceId?: number | null
+  title?: string | null
+  body?: string | null
+  url?: string | null
+  colorLabel?: CorkboardColor | null
+  cardSize?: CorkboardCardSize | null
+  positionX?: number | null
+  positionY?: number | null
+  zIndex?: number | null
+  userNote?: string | null
+  /** ISO 8601 (`yyyy-MM-ddTHH:mm:ss`) 形式の自動アーカイブ日時 */
+  autoArchiveAt?: string | null
+}
+
+/**
+ * カード更新リクエスト（{@link com.mannschaft.app.corkboard.dto.UpdateCardRequest} と 1:1）。
+ *
+ * カード種別 (`cardType`) と参照先 (`referenceType` / `referenceId`) は変更不可。
+ * 必要なフィールドのみを送る部分更新を許容する（null は明示クリア、undefined は無変更）。
+ */
+export interface UpdateCardRequest {
+  title?: string | null
+  body?: string | null
+  url?: string | null
+  colorLabel?: CorkboardColor | null
+  cardSize?: CorkboardCardSize | null
+  positionX?: number | null
+  positionY?: number | null
+  zIndex?: number | null
+  userNote?: string | null
+  autoArchiveAt?: string | null
 }
 
 /**
