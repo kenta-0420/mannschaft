@@ -2,6 +2,10 @@ package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.quota.StorageFeatureType;
+import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
+import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.files.dto.StartMultipartUploadRequest;
 import com.mannschaft.app.files.dto.StartMultipartUploadResponse;
 import com.mannschaft.app.files.service.MultipartUploadService;
@@ -10,6 +14,7 @@ import com.mannschaft.app.schedule.dto.ScheduleMediaPatchRequest;
 import com.mannschaft.app.schedule.dto.ScheduleMediaResponse;
 import com.mannschaft.app.schedule.dto.ScheduleMediaUploadUrlRequest;
 import com.mannschaft.app.schedule.dto.ScheduleMediaUploadUrlResponse;
+import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.ScheduleMediaUploadEntity;
 import com.mannschaft.app.schedule.repository.ScheduleMediaUploadRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -88,12 +93,17 @@ public class ScheduleMediaService {
     /** R2 配信 URL プレースホルダーベース */
     private static final String R2_BASE_URL = "https://storage.example.com/";
 
+    /** F13 Phase 4-γ: storage_usage_logs.reference_type に記録するテーブル名。 */
+    private static final String REFERENCE_TYPE = "schedule_media_uploads";
+
     // ==================== 依存 ====================
 
     private final R2StorageService r2StorageService;
     private final MultipartUploadService multipartUploadService;
     private final ScheduleMediaUploadRepository scheduleMediaUploadRepository;
     private final ScheduleRepository scheduleRepository;
+    /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
+    private final StorageQuotaService storageQuotaService;
 
     // ==================== 公開メソッド ====================
 
@@ -101,6 +111,9 @@ public class ScheduleMediaService {
      * スケジュールに添付するメディアのアップロード URL を発行する。
      * IMAGE（100MB 以下）→ Presigned PUT URL を発行する。
      * VIDEO または 100MB 超 → Multipart Upload を開始し uploadId を返す。
+     *
+     * <p><b>F13 Phase 4-γ</b>: アップロード URL 発行前に {@link StorageQuotaService#checkQuota} で
+     * クォータを確認する。超過時は 409 Conflict を返す。</p>
      *
      * @param scheduleId スケジュール ID
      * @param uploaderId アップロードを行うユーザー ID
@@ -112,20 +125,31 @@ public class ScheduleMediaService {
             Long scheduleId, Long uploaderId, ScheduleMediaUploadUrlRequest req) {
 
         // スケジュール存在確認
-        scheduleRepository.findById(scheduleId)
+        ScheduleEntity schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "スケジュールが見つかりません"));
 
         validateRequest(scheduleId, req);
 
+        // F13 Phase 4-γ: 統合クォータチェック（presign 前）
+        ScopeResolution scope = resolveScope(schedule, uploaderId);
+        try {
+            storageQuotaService.checkQuota(scope.scopeType(), scope.scopeId(), req.getFileSize());
+        } catch (StorageQuotaExceededException e) {
+            log.info("スケジュールメディアのクォータ超過: scheduleId={}, uploaderId={}, scope={}/{}, requested={}",
+                    scheduleId, uploaderId, scope.scopeType(), scope.scopeId(), e.getRequestedBytes());
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "ストレージ容量が不足しているためアップロードできません");
+        }
+
         String prefix = String.format(SCHEDULE_PREFIX_TEMPLATE, scheduleId);
 
         // VIDEO または 100MB 超 → Multipart Upload
         if ("VIDEO".equals(req.getMediaType()) || req.getFileSize() > MULTIPART_THRESHOLD_BYTES) {
-            return handleVideoUpload(scheduleId, uploaderId, req, prefix);
+            return handleVideoUpload(scheduleId, uploaderId, req, prefix, scope);
         } else {
             // IMAGE（100MB 以下）→ Presigned PUT URL
-            return handleImageUpload(scheduleId, uploaderId, req, prefix);
+            return handleImageUpload(scheduleId, uploaderId, req, prefix, scope);
         }
     }
 
@@ -247,6 +271,9 @@ public class ScheduleMediaService {
      * スケジュールメディアを削除する。
      * R2 からファイルを削除し、DB レコードを物理削除する。
      *
+     * <p><b>F13 Phase 4-γ</b>: DB 削除完了後に {@link StorageQuotaService#recordDeletion} で
+     * 使用量を減算する。スコープはスケジュールに紐付く teamId / organizationId / userId で判定する。</p>
+     *
      * @param scheduleId      スケジュール ID
      * @param mediaId         メディア ID
      * @param requestUserId   リクエストを行うユーザー ID
@@ -270,6 +297,8 @@ public class ScheduleMediaService {
                     HttpStatus.FORBIDDEN, "このメディアを削除する権限がありません");
         }
 
+        long fileSize = entity.getFileSize() != null ? entity.getFileSize() : 0L;
+
         // R2 からメインファイルを削除（失敗しても続行）
         try {
             r2StorageService.delete(entity.getR2Key());
@@ -291,6 +320,17 @@ public class ScheduleMediaService {
         scheduleMediaUploadRepository.delete(entity);
         log.info("メディア削除完了: scheduleId={}, mediaId={}, userId={}",
                 scheduleId, mediaId, requestUserId);
+
+        // F13 Phase 4-γ: 使用量減算（スコープはスケジュールで判定）
+        if (fileSize > 0) {
+            scheduleRepository.findById(scheduleId).ifPresent(schedule -> {
+                ScopeResolution scope = resolveScope(schedule, requestUserId);
+                storageQuotaService.recordDeletion(
+                        scope.scopeType(), scope.scopeId(), fileSize,
+                        StorageFeatureType.SCHEDULE_MEDIA,
+                        REFERENCE_TYPE, mediaId, requestUserId);
+            });
+        }
     }
 
     /**
@@ -371,14 +411,20 @@ public class ScheduleMediaService {
      * 画像アップロード URL 発行処理（100MB 以下）。
      * R2 の Presigned PUT URL を発行し、schedule_media_uploads に INSERT する。
      *
+     * <p><b>F13 Phase 4-γ</b>: INSERT 完了直後に {@link StorageQuotaService#recordUpload} で
+     * 使用量を加算する。IMAGE は Presigned URL 発行 + DB INSERT が同時に行われるため、
+     * presign 時に recordUpload する（confirm ステップはない）。</p>
+     *
      * @param scheduleId スケジュール ID
      * @param uploaderId アップロードを行うユーザー ID
      * @param req        リクエスト情報
      * @param prefix     R2 オブジェクトキープレフィックス
+     * @param scope      解決済みストレージスコープ
      * @return レスポンス（uploadUrl, expiresIn を設定。uploadId は null）
      */
     private ScheduleMediaUploadUrlResponse handleImageUpload(
-            Long scheduleId, Long uploaderId, ScheduleMediaUploadUrlRequest req, String prefix) {
+            Long scheduleId, Long uploaderId, ScheduleMediaUploadUrlRequest req, String prefix,
+            ScopeResolution scope) {
 
         // R2 オブジェクトキー生成: {prefix}{uuid}.{ext}
         String ext = resolveImageExtension(req.getContentType());
@@ -404,6 +450,12 @@ public class ScheduleMediaService {
         log.info("画像アップロード Presigned URL 発行: uploaderId={}, scheduleId={}, mediaId={}, key={}",
                 uploaderId, scheduleId, saved.getId(), r2Key);
 
+        // F13 Phase 4-γ: 使用量加算（IMAGE は presign 発行＋INSERT 完了を確定とみなす）
+        storageQuotaService.recordUpload(
+                scope.scopeType(), scope.scopeId(), req.getFileSize(),
+                StorageFeatureType.SCHEDULE_MEDIA,
+                REFERENCE_TYPE, saved.getId(), uploaderId);
+
         return ScheduleMediaUploadUrlResponse.builder()
                 .mediaId(saved.getId())
                 .mediaType("IMAGE")
@@ -419,14 +471,20 @@ public class ScheduleMediaService {
      * schedule_media_uploads に INSERT する。
      * 100MB 超の IMAGE でも mediaType は IMAGE を維持する。
      *
+     * <p><b>F13 Phase 4-γ</b>: INSERT 完了直後に {@link StorageQuotaService#recordUpload} で
+     * 使用量を加算する。Multipart Upload は Multipart Complete（クライアント側）で確定するが、
+     * checkQuota は presign 時（本メソッド呼び出し前）に実施済みのため、ここでは recordUpload のみ行う。</p>
+     *
      * @param scheduleId スケジュール ID
      * @param uploaderId アップロードを行うユーザー ID
      * @param req        リクエスト情報
      * @param prefix     R2 オブジェクトキープレフィックス（"schedules/{scheduleId}/"）
+     * @param scope      解決済みストレージスコープ
      * @return レスポンス（uploadId, partSize を設定。uploadUrl は null）
      */
     private ScheduleMediaUploadUrlResponse handleVideoUpload(
-            Long scheduleId, Long uploaderId, ScheduleMediaUploadUrlRequest req, String prefix) {
+            Long scheduleId, Long uploaderId, ScheduleMediaUploadUrlRequest req, String prefix,
+            ScopeResolution scope) {
 
         // ファイル名から拡張子を決定
         String ext = "VIDEO".equals(req.getMediaType())
@@ -469,6 +527,12 @@ public class ScheduleMediaService {
 
         log.info("Multipart Upload 開始: uploaderId={}, scheduleId={}, mediaId={}, uploadId={}, key={}",
                 uploaderId, scheduleId, saved.getId(), startResponse.getUploadId(), startResponse.getFileKey());
+
+        // F13 Phase 4-γ: 使用量加算（Multipart 開始＋DB INSERT 完了を確定とみなす）
+        storageQuotaService.recordUpload(
+                scope.scopeType(), scope.scopeId(), req.getFileSize(),
+                StorageFeatureType.SCHEDULE_MEDIA,
+                REFERENCE_TYPE, saved.getId(), uploaderId);
 
         return ScheduleMediaUploadUrlResponse.builder()
                 .mediaId(saved.getId())
@@ -534,6 +598,33 @@ public class ScheduleMediaService {
             default -> "bin";
         };
     }
+
+    /**
+     * スケジュールのスコープを解決する。
+     *
+     * <ul>
+     *     <li>teamId が設定されている場合 → TEAM スコープ</li>
+     *     <li>organizationId が設定されている場合 → ORGANIZATION スコープ</li>
+     *     <li>それ以外（個人スケジュール） → PERSONAL スコープ（uploaderId を使用）</li>
+     * </ul>
+     *
+     * @param schedule   スケジュールエンティティ
+     * @param uploaderId アップロードを行うユーザー ID（PERSONAL フォールバック用）
+     * @return 解決済みスコープ
+     */
+    public ScopeResolution resolveScope(ScheduleEntity schedule, Long uploaderId) {
+        if (schedule.getTeamId() != null) {
+            return new ScopeResolution(StorageScopeType.TEAM, schedule.getTeamId());
+        }
+        if (schedule.getOrganizationId() != null) {
+            return new ScopeResolution(StorageScopeType.ORGANIZATION, schedule.getOrganizationId());
+        }
+        // 個人スケジュール
+        return new ScopeResolution(StorageScopeType.PERSONAL, uploaderId);
+    }
+
+    /** 解決されたストレージスコープ。 */
+    public record ScopeResolution(StorageScopeType scopeType, Long scopeId) {}
 
     /**
      * エンティティをレスポンス DTO に変換する。

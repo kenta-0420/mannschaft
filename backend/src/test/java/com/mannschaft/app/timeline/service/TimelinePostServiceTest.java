@@ -3,6 +3,10 @@ package com.mannschaft.app.timeline.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.quota.StorageFeatureType;
+import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
+import com.mannschaft.app.timeline.AttachmentType;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.PostedAsType;
@@ -39,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -72,6 +77,9 @@ class TimelinePostServiceTest {
 
     @Mock
     private R2StorageService r2StorageService;
+
+    @Mock
+    private StorageQuotaService storageQuotaService;
 
     @InjectMocks
     private TimelinePostService timelinePostService;
@@ -331,6 +339,9 @@ class TimelinePostServiceTest {
             TimelinePostEntity post = createPost();
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(post);
+            // F13 Phase 4-γ: 添付ファイルなしの場合
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of());
 
             // when
             timelinePostService.deletePost(POST_ID, USER_ID);
@@ -345,6 +356,7 @@ class TimelinePostServiceTest {
             // given
             TimelinePostEntity post = createPost();
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            // validateOwner が先にスローするため attachmentRepository は呼ばれない
 
             // when & then
             assertThatThrownBy(() -> timelinePostService.deletePost(POST_ID, OTHER_USER_ID))
@@ -691,6 +703,175 @@ class TimelinePostServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimelineErrorCode.NOT_POST_OWNER));
+        }
+    }
+
+    // ========================================
+    // F13 Phase 4-γ: StorageQuota 統合テスト
+    // ========================================
+    @Nested
+    @DisplayName("F13 Phase 4-γ: StorageQuota 統合")
+    class StorageQuotaIntegration {
+
+        private static final Long TEAM_ID = 50L;
+        private static final Long ATTACHMENT_ID = 999L;
+
+        @Test
+        @DisplayName("正常系: IMAGE 添付付き投稿でcreatePost時にrecordUploadが呼ばれる（TEAM スコープ）")
+        void 正常系_IMAGE_createPost_recordUpload_TEAM() {
+            // given
+            List<CreateAttachmentRequest> attachments = List.of(
+                    new CreateAttachmentRequest("IMAGE", "timeline/TEAM/50/tmp/uuid.jpg", "photo.jpg",
+                            2048L, "image/jpeg", (short) 800, (short) 600,
+                            null, null, null, null, null, null, null, null, null,
+                            null, null, null, null, null, null)
+            );
+            CreatePostRequest req = new CreatePostRequest("チーム投稿", "TEAM", TEAM_ID,
+                    "USER", null, null, null, null, null, attachments);
+            TimelinePostEntity savedPost = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.TEAM)
+                    .scopeId(TEAM_ID)
+                    .userId(USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("チーム投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(attachmentRepository.save(any(TimelinePostAttachmentEntity.class)))
+                    .willAnswer(inv -> {
+                        TimelinePostAttachmentEntity entity = inv.getArgument(0);
+                        // リフレクションで id を設定
+                        try {
+                            var f = entity.getClass().getDeclaredField("id");
+                            f.setAccessible(true);
+                            f.set(entity, ATTACHMENT_ID);
+                        } catch (ReflectiveOperationException e) {
+                            throw new RuntimeException(e);
+                        }
+                        return entity;
+                    });
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class)))
+                    .willReturn(new PostResponse(POST_ID, "TEAM", TEAM_ID, USER_ID, null, "USER", null,
+                            null, "チーム投稿", null, 0, "PUBLISHED", null, false, 0, 0, (short) 0, (short) 0,
+                            LocalDateTime.now(), LocalDateTime.now()));
+
+            // when
+            timelinePostService.createPost(req, USER_ID);
+
+            // then: TEAM スコープで checkQuota → recordUpload が呼ばれる
+            then(storageQuotaService).should()
+                    .checkQuota(StorageScopeType.TEAM, TEAM_ID, 2048L);
+            then(storageQuotaService).should()
+                    .recordUpload(eq(StorageScopeType.TEAM), eq(TEAM_ID), eq(2048L),
+                            eq(StorageFeatureType.TIMELINE),
+                            eq("timeline_post_attachments"), eq(ATTACHMENT_ID), eq(USER_ID));
+        }
+
+        @Test
+        @DisplayName("正常系: 添付なし投稿でdeletePost時にrecordDeletionは呼ばれない")
+        void 正常系_添付なし_deletePost_recordDeletionは呼ばれない() {
+            // given
+            TimelinePostEntity post = createPost();
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(post);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of());
+
+            // when
+            timelinePostService.deletePost(POST_ID, USER_ID);
+
+            // then
+            then(storageQuotaService).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("正常系: deletePost で IMAGE 添付の recordDeletion が呼ばれる")
+        void 正常系_deletePost_IMAGE_recordDeletion() {
+            // given
+            TimelinePostEntity post = createPost(); // PUBLIC スコープ
+            TimelinePostAttachmentEntity att = TimelinePostAttachmentEntity.builder()
+                    .timelinePostId(POST_ID)
+                    .attachmentType(AttachmentType.IMAGE)
+                    .fileKey("timeline/PUBLIC/0/tmp/uuid.jpg")
+                    .fileSize(4096L)
+                    .mimeType("image/jpeg")
+                    .sortOrder((short) 0)
+                    .build();
+            // リフレクションで id 設定
+            try {
+                var f = att.getClass().getDeclaredField("id");
+                f.setAccessible(true);
+                f.set(att, ATTACHMENT_ID);
+            } catch (ReflectiveOperationException e) {
+                throw new RuntimeException(e);
+            }
+
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(post);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(att));
+
+            // when
+            timelinePostService.deletePost(POST_ID, USER_ID);
+
+            // then: PERSONAL スコープ（PUBLIC はフォールバック）で recordDeletion が呼ばれる
+            then(storageQuotaService).should()
+                    .recordDeletion(eq(StorageScopeType.PERSONAL), eq(USER_ID), eq(4096L),
+                            eq(StorageFeatureType.TIMELINE),
+                            eq("timeline_post_attachments"), eq(ATTACHMENT_ID), eq(USER_ID));
+        }
+
+        @Test
+        @DisplayName("正常系: VIDEO_LINK 型は recordDeletion の対象外")
+        void 正常系_deletePost_VIDEO_LINK_recordDeletion対象外() {
+            // given
+            TimelinePostEntity post = createPost();
+            TimelinePostAttachmentEntity att = TimelinePostAttachmentEntity.builder()
+                    .timelinePostId(POST_ID)
+                    .attachmentType(AttachmentType.VIDEO_LINK)
+                    .videoUrl("https://youtube.com/watch?v=xxx")
+                    .fileSize(null) // URL リンクはファイルサイズなし
+                    .sortOrder((short) 0)
+                    .build();
+
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(post);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(att));
+
+            // when
+            timelinePostService.deletePost(POST_ID, USER_ID);
+
+            // then: VIDEO_LINK は対象外なので recordDeletion は呼ばれない
+            then(storageQuotaService).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("正常系_resolveScope: TEAM スコープ判定")
+        void resolveScope_TEAM() {
+            TimelinePostService.ScopeResolution scope =
+                    timelinePostService.resolveScope("TEAM", TEAM_ID, USER_ID);
+            assertThat(scope.scopeType()).isEqualTo(StorageScopeType.TEAM);
+            assertThat(scope.scopeId()).isEqualTo(TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("正常系_resolveScope: ORGANIZATION スコープ判定")
+        void resolveScope_ORGANIZATION() {
+            TimelinePostService.ScopeResolution scope =
+                    timelinePostService.resolveScope("ORGANIZATION", 60L, USER_ID);
+            assertThat(scope.scopeType()).isEqualTo(StorageScopeType.ORGANIZATION);
+            assertThat(scope.scopeId()).isEqualTo(60L);
+        }
+
+        @Test
+        @DisplayName("正常系_resolveScope: PUBLIC → PERSONAL フォールバック")
+        void resolveScope_PUBLIC_PERSONAL() {
+            TimelinePostService.ScopeResolution scope =
+                    timelinePostService.resolveScope("PUBLIC", 0L, USER_ID);
+            assertThat(scope.scopeType()).isEqualTo(StorageScopeType.PERSONAL);
+            assertThat(scope.scopeId()).isEqualTo(USER_ID);
         }
     }
 }

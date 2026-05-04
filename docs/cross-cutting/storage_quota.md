@@ -598,8 +598,8 @@ Phase 3 で基盤（DB 3 テーブル + `StorageQuotaService.checkQuota / record
 |---|---|---|---|
 | F03.15 timetable-notes | ❌ 100MB 直書き | `user/{userId}/timetable-notes/` | 直書き削除 + checkQuota 統合（**最優先**） |
 | F04.2 chat | ❌ 未統合 | `chat/{uuid}/` | checkQuota 統合 + UX ガード 500MB 維持 |
-| F03.14 schedule-media | ❌ 未統合 | `schedules/{scheduleId}/` | checkQuota 統合（Multipart 対応済み） |
-| F04.1 timeline | ❌ 未統合 | `timeline/` | checkQuota 統合（VIDEO_FILE 含む） |
+| F03.14 schedule-media | 🟢 統合済み | `schedules/{scheduleId}/` | Phase 4-γ 完了（2026-05-04）|
+| F04.1 timeline | 🟢 統合済み | `timeline/` | Phase 4-γ 完了（2026-05-04）|
 | F06.1 cms/blog | ❌ 未統合 | `blog/` | checkQuota 統合 + UX ガード 1GB 維持 |
 | F06.2 gallery | ❌ 未統合 | `gallery/` | checkQuota 統合 |
 | F05.5 file-sharing | △ 独立 | `files/` | `team_storage_subscriptions` → `storage_subscriptions` 統合（V5.050、別軍議で対応） |
@@ -611,7 +611,7 @@ Phase 3 で基盤（DB 3 テーブル + `StorageQuotaService.checkQuota / record
 |---|---|---|---|---|
 | **4-α** | 救出・最優先 | F03.15 timetable-notes 直書き → 統合 | 1 | feature_type 追加（V14.010）含む |
 | **4-β** | 高頻度 | F04.2 chat | 1 | UX ガード 500MB 維持。R2 オペレーション課金に注意（多数小ファイル） |
-| **4-γ** | 大容量メディア | F03.14 schedule-media + F04.1 timeline | 2 | Multipart Upload 経路の checkQuota 組み込み |
+| **4-γ** | 大容量メディア | F03.14 schedule-media + F04.1 timeline | 2 | 🟢 完了（2026-05-04）Multipart Upload 経路の checkQuota 組み込み完了 |
 | **4-δ** | 中頻度 | F06.1 cms/blog + F06.2 gallery | 2 | UX ガード 1GB 維持（cms） |
 | **4-ε** | F05.5 統合 | `team_storage_subscriptions` 廃止 + データ移行 | 1 | **別軍議で起こす**（F05.5 の現状調査が必要） |
 | **4-ζ** | 検証バッチ | ドリフト検出を全 prefix 走査に更新 + feature_type 集計確定 | 1 | Phase 4-α〜δ 完了後 |
@@ -674,4 +674,5 @@ Phase 8 着手時は **基盤 + 計上が完備されている前提で** 課金
 | 2026-03-15 | 2段階実装フェーズを明記。Phase 3（基盤: DB・StorageQuotaService・ハードブロック・通知・使用状況API 4本・バッチ2本）+ Phase 8（課金: SYSTEM_ADMIN管理画面・プラン購入UI・Stripe連携・超過課金・API 7本）。Flyway を V3.020〜V3.023（基盤）+ V5.050（F05.5移行）に再編。エンドポイント一覧に Phase 列を追加 |
 | 2026-04-11 | ストレージ基盤を AWS S3 → Cloudflare R2 に全面差し替え。クォータ計上ロジック（GB 単位・組織/チーム/個人の独立プール）はそのまま維持。動画ファイル（F04.1 VIDEO_FILE、F06.2 動画、F06.1 ブログ動画）もクォータ計上対象として明記。R2 のエグレス料金ゼロに伴い、視聴回数による追加課金は行わず容量ベースの計量のみに統一。ドリフト検出バッチを R2 ListObjectsV2 ベースに更新。Lambda 生成物 → Cloudflare Workers / Cloudflare Images / Cloudflare Stream 生成物に呼称変更（カウント除外扱いは同じ）。動画アップロード時の `StorageQuotaService` 呼び出し順序を明示 |
 | 2026-04-11 | R2 移行 第2弾 — 上限撤廃・単一バケット・ハイブリッドサムネイル確定: (1) **機能別ファイルサイズ上限を撤廃**（チーム課金モデルと矛盾するため）。容量枠の範囲内なら自由にアップロード可能 (2) 技術的下限のみ残す: 単発 PUT 100MB / Multipart 5TB (3) UX ガードとして F04.2 チャット 500MB（大容量は F05.5 へ誘導）/ F06.1 ブログ 1GB（記事読み込み UX 観点）を維持。容量課金上限とは別軸 (4) **R2 バケット構成を `mannschaft-storage` 単一バケット + プレフィックス分割に統一**（機能別バケットは採用しない）(5) **サムネイル生成をハイブリッド方式に確定**: 動画 5 分以下は Workers + ffmpeg.wasm / 5 分超はクライアント側 Canvas 抽出 (6) Cloudflare Stream は採用しない（R2 と別課金体系で割高）(7) Cloudflare Images は画像最適化用途（F06.1 ブログ・F06.2 ギャラリー）で採用 (8) Class A/B オペレーション課金の運用メモを追記 (9) UX ガード: アップロード前の使用率プレビュー・容量超過時の 409 Conflict・技術下限超過時の 400・UX ガード超過時の 413 を明記 (10) ドリフト検出バッチを単一バケットのプレフィックス走査に更新 (11) 各機能影響テーブルの上限列を「機能別上限なし」または「UX ガードのみ」に修正 (12) `blog_image_uploads` → `blog_media_uploads` のテーブル名変更に追随 |
+| 2026-05-04 | **Phase 4-γ 完了**: F03.14 `ScheduleMediaService`・F04.1 `TimelineVideoAttachmentService` / `TimelinePostService` を `StorageQuotaService` に統合。presign 前 `checkQuota`（超過 → 409 Conflict）・INSERT 後 `recordUpload`・削除後 `recordDeletion` を実装。スコープ解決ロジック（TEAM / ORGANIZATION / PERSONAL フォールバック）を各 Service に追加。単体テスト（`ScheduleMediaServiceTest` / `TimelineVideoAttachmentServiceTest` / `TimelinePostServiceTest`）を更新し F13 Phase 4-γ 統合検証を追加 |
 | 2026-05-04 | **Phase 4 機能別統合ロードマップ追補**: F03.15 個人時間割の 100MB 直書きクォータが「F13 統合クォータに未接続」状態で稼働中であることが判明したため、各機能の段階的統合計画を §12 として新設。(1) §8 影響範囲表に F03.14 schedule-media / F03.15 timetable-notes / F01.6 profile-media の後発機能を追加（F01.6 は数MB レベルのアイコン・バナーのため **クォータ対象外** と明記）(2) feature_type 拡張: `PERSONAL_TIMETABLE_NOTES` / `SCHEDULE_MEDIA` を追加（PROFILE_MEDIA は対象外）(3) Phase 4 を α〜ζ の 6 段階に分割: α=F03.15 救出（最優先）/ β=F04.2 chat / γ=F03.14+F04.1 / δ=F06.1+F06.2 / ε=F05.5 統合（**別軍議**）/ ζ=ドリフトバッチ強化 (4) Phase ごとに足軽 1 PR の粒度で進める方針を確定 (5) Flyway V14.010（feature_type 拡張、実体は NO-OP に近い）を Phase 4-α 着手時に同梱 (6) ステータスを「Phase 3 基盤完了 / Phase 4 機能別統合 進行中 / Phase 8 課金 未着手」に更新 |
