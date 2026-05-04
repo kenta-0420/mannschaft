@@ -671,6 +671,26 @@
     "ariaUnpin": "ピン止めを外す",
     "ariaEdit": "メモを編集",
     "ariaDelete": "カードを削除",
-    "ariaNavigate": "参照先を開く"
+    "ariaNavigate": "参照先を開く",
+    "scopePersonal": "Persönlich",
+    "scopeTeam": "Team",
+    "scopeOrganization": "Organisation",
+    "cardCount": "{count} Karten",
+    "sectionCount": "{count} Abschnitte",
+    "boardNotFound": "Board nicht gefunden",
+    "boardLoadError": "Board konnte nicht geladen werden",
+    "scopeMissing": "Geltungsbereich fehlt",
+    "expandSection": "Abschnitt einblenden",
+    "collapseSection": "Abschnitt einklappen",
+    "refDeletedBadge": "Quelle gelöscht",
+    "ogImageAlt": "Link-Vorschaubild",
+    "emptyBoard": "Dieses Board enthält noch keine Karten",
+    "ariaCard": "{cardType}: {title}",
+    "cardTypeReference": "Referenz",
+    "cardTypeMemo": "Notiz",
+    "cardTypeUrl": "Link",
+    "cardTypeSectionHeader": "Überschrift",
+    "unsectioned": "Nicht zugeordnete Karten",
+    "retry": "Erneut versuchen"
   }
 }

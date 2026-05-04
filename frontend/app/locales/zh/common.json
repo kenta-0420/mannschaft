@@ -671,6 +671,26 @@
     "ariaUnpin": "ピン止めを外す",
     "ariaEdit": "メモを編集",
     "ariaDelete": "カードを削除",
-    "ariaNavigate": "参照先を開く"
+    "ariaNavigate": "参照先を開く",
+    "scopePersonal": "个人",
+    "scopeTeam": "团队",
+    "scopeOrganization": "组织",
+    "cardCount": "{count} 张卡片",
+    "sectionCount": "{count} 个分区",
+    "boardNotFound": "未找到看板",
+    "boardLoadError": "加载看板失败",
+    "scopeMissing": "缺少范围信息",
+    "expandSection": "展开分区",
+    "collapseSection": "收起分区",
+    "refDeletedBadge": "原内容已删除",
+    "ogImageAlt": "链接预览图",
+    "emptyBoard": "此看板尚无卡片",
+    "ariaCard": "{cardType}: {title}",
+    "cardTypeReference": "引用",
+    "cardTypeMemo": "便笺",
+    "cardTypeUrl": "链接",
+    "cardTypeSectionHeader": "标题",
+    "unsectioned": "未分类卡片",
+    "retry": "重试"
   }
 }

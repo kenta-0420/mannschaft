@@ -50,10 +50,17 @@ onMounted(() => load())
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div
+      <NuxtLink
         v-for="b in boards"
         :key="b.id"
-        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
+        :to="{
+          path: `/corkboard/${b.id}`,
+          query: {
+            scope: (b.scopeType || 'PERSONAL').toLowerCase(),
+            ...(b.scopeId != null ? { scopeId: b.scopeId } : {}),
+          },
+        }"
+        class="block rounded-xl border border-surface-300 bg-surface-0 p-4 transition hover:border-primary hover:shadow-sm"
         :style="b.backgroundColor ? `border-color: ${b.backgroundColor}40` : ''"
       >
         <div class="flex items-start justify-between gap-2">
@@ -71,7 +78,7 @@ onMounted(() => load())
         </div>
         <p v-if="b.description" class="mt-1 text-xs text-surface-400">{{ b.description }}</p>
         <p class="mt-2 text-xs text-surface-400">{{ b.cardCount }}枚のカード</p>
-      </div>
+      </NuxtLink>
       <div v-if="boards.length === 0" class="col-span-full py-12 text-center">
         <i class="pi pi-th-large mb-3 text-4xl text-surface-300" />
         <p class="text-surface-400">コルクボードがありません</p>
