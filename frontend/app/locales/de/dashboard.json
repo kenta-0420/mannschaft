@@ -25,6 +25,20 @@
       "public_viewer_hint": "Du bist kein Mitglied dieses Teams, daher sind einige Widgets ausgeblendet",
       "public_viewer_hint_dismiss": "Schließen",
       "join_request_link": "Mitgliedschaft beantragen"
+    },
+    "myCorkboard": {
+      "widgetTitle": "Meine Pinnwand",
+      "viewAll": "Alle anzeigen",
+      "empty": "Du hast noch keine Karten angepinnt",
+      "emptyHint": "Drücke die 📌-Schaltfläche auf einer Karte, um sie hier anzuzeigen",
+      "loadingError": "Laden fehlgeschlagen",
+      "retry": "Wiederholen",
+      "from": "aus: {boardName}",
+      "noAccess": "(Keine Ansichtsberechtigung)",
+      "deletedRef": "(Referenz wurde gelöscht)",
+      "unpinAction": "Diese Karte loslösen",
+      "navigationFailed": "Auf die Referenz dieser Karte kann nicht zugegriffen werden",
+      "colorLabelAria": "{color} Etikett"
     }
   }
 }

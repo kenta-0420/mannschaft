@@ -25,6 +25,20 @@
       "public_viewer_hint": "이 팀의 멤버가 아니므로 일부 위젯이 숨겨집니다",
       "public_viewer_hint_dismiss": "닫기",
       "join_request_link": "멤버십 신청"
+    },
+    "myCorkboard": {
+      "widgetTitle": "내 코르크보드",
+      "viewAll": "전체 보기",
+      "empty": "아직 고정된 카드가 없습니다",
+      "emptyHint": "코르크보드에서 카드의 📌 버튼을 누르면 여기에 표시됩니다",
+      "loadingError": "불러오기에 실패했습니다",
+      "retry": "재시도",
+      "from": "from: {boardName}",
+      "noAccess": "(열람 권한 없음)",
+      "deletedRef": "(참조 원본이 삭제되었습니다)",
+      "unpinAction": "이 카드의 고정을 해제",
+      "navigationFailed": "이 카드의 참조 대상에 접근할 수 없습니다",
+      "colorLabelAria": "{color} 라벨"
     }
   }
 }

@@ -198,6 +198,14 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     description: '自分の確定・キャンセル待ち参加予定',
     scope: ['personal'],
   },
+  // F09.8.1 Phase 4: マイコルクボード
+  {
+    key: 'my-corkboard',
+    label: 'マイコルクボード',
+    icon: 'pi pi-bookmark-fill',
+    description: 'ピン止めしたカードの横断一覧',
+    scope: ['personal'],
+  },
 ]
 
 function hiddenStorageKey(scopeType: string, scopeId?: number): string {

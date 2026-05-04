@@ -25,6 +25,20 @@
       "public_viewer_hint": "あなたはこのチームのメンバーではないため、一部のウィジェットは非表示になっています",
       "public_viewer_hint_dismiss": "閉じる",
       "join_request_link": "メンバーシップを申請する"
+    },
+    "myCorkboard": {
+      "widgetTitle": "マイコルクボード",
+      "viewAll": "すべて見る",
+      "empty": "まだピン止めしているカードはありません",
+      "emptyHint": "コルクボードでカードに 📌 ボタンを押すとここに表示されます",
+      "loadingError": "読み込みに失敗しました",
+      "retry": "再試行",
+      "from": "from: {boardName}",
+      "noAccess": "（閲覧権限なし）",
+      "deletedRef": "（参照元は削除されました）",
+      "unpinAction": "このカードのピン止めを外す",
+      "navigationFailed": "このカードの参照先にアクセスできません",
+      "colorLabelAria": "{color}ラベル"
     }
   }
 }

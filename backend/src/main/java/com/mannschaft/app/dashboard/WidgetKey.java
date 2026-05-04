@@ -25,6 +25,7 @@ public enum WidgetKey {
     PERSONAL_PROJECT_PROGRESS(ScopeType.PERSONAL, true, 9),
     CHAT_HUB(ScopeType.PERSONAL, true, 10),
     BILLING_PERSONAL(ScopeType.PERSONAL, false, 11),
+    MY_CORKBOARD(ScopeType.PERSONAL, true, 12),  // F09.8.1 で追加
 
     // --- チームダッシュボード ---
     TEAM_NOTICES(ScopeType.TEAM, true, 0),

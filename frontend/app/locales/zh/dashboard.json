@@ -25,6 +25,20 @@
       "public_viewer_hint": "您不是该团队的成员，部分小部件已被隐藏",
       "public_viewer_hint_dismiss": "关闭",
       "join_request_link": "申请加入会员"
+    },
+    "myCorkboard": {
+      "widgetTitle": "我的软木板",
+      "viewAll": "查看全部",
+      "empty": "尚未固定任何卡片",
+      "emptyHint": "在软木板上点击卡片的 📌 按钮，即可显示在这里",
+      "loadingError": "加载失败",
+      "retry": "重试",
+      "from": "来自: {boardName}",
+      "noAccess": "（无查看权限）",
+      "deletedRef": "（引用源已删除）",
+      "unpinAction": "取消固定此卡片",
+      "navigationFailed": "无法访问此卡片的引用对象",
+      "colorLabelAria": "{color}标签"
     }
   }
 }
