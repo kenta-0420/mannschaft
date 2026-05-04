@@ -1,5 +1,7 @@
 package com.mannschaft.app.corkboard.service;
 
+import com.mannschaft.app.chat.entity.ChatMessageEntity;
+import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.corkboard.dto.PinnedCardListResponse;
 import com.mannschaft.app.corkboard.dto.PinnedCardReferenceResponse;
@@ -65,6 +67,9 @@ class MyPinnedCardsServiceTest {
 
     @Mock
     private CorkboardRepository boardRepository;
+
+    @Mock
+    private ChatMessageRepository chatMessageRepository;
 
     @Spy
     private ReferenceTypeResolver referenceTypeResolver = new ReferenceTypeResolver();
@@ -153,7 +158,7 @@ class MyPinnedCardsServiceTest {
     }
 
     @Test
-    @DisplayName("正常系: 横断取得 + ボード名解決 + TIMELINE_POST の navigate_to 生成")
+    @DisplayName("正常系: 横断取得 + ボード名解決（保守的フォールバック適用で TIMELINE_POST は isAccessible=false）")
     void 横断取得_正常() {
         LocalDateTime now = LocalDateTime.of(2026, 5, 3, 14, 23);
         CorkboardCardEntity card1 = buildCard(345L, BOARD_ID, "REFERENCE", "TIMELINE_POST", 9876L, null, now);
@@ -176,8 +181,9 @@ class MyPinnedCardsServiceTest {
         assertThat(item1.getColorLabel()).isEqualTo("YELLOW");
         assertThat(item1.getReference()).isNotNull();
         assertThat(item1.getReference().getType()).isEqualTo("TIMELINE_POST");
-        assertThat(item1.getReference().getNavigateTo()).isEqualTo("/timeline/posts/9876");
-        assertThat(item1.getReference().getIsAccessible()).isTrue();
+        // 保守的フォールバック適用中: isAccessible=false、navigateTo=null
+        assertThat(item1.getReference().getIsAccessible()).isFalse();
+        assertThat(item1.getReference().getNavigateTo()).isNull();
         assertThat(item1.getReference().getIsDeleted()).isFalse();
 
         // MEMO カードは reference = null
@@ -240,9 +246,7 @@ class MyPinnedCardsServiceTest {
                 .willReturn(List.of(card));
         given(cardRepository.countPinnedByOwnerIdAndScopePersonal(USER_ID)).willReturn(1);
         given(boardRepository.findAllById(any())).willReturn(List.of(personalBoard));
-        // ディスパッチャの挙動を「閲覧不可」に上書き
-        given(accessControlDispatcher.filterAccessible(eq(USER_ID), eq("TIMELINE_POST"), any()))
-                .willReturn(Set.of());
+        // 保守的フォールバック適用中はディスパッチャがデフォルトで「全 false」を返すので追加スタブ不要
 
         PinnedCardReferenceResponse ref = service.list(USER_ID, 20, null).getItems().get(0).getReference();
         assertThat(ref.getType()).isEqualTo("TIMELINE_POST");
@@ -406,6 +410,144 @@ class MyPinnedCardsServiceTest {
         MyPinnedCardsService.CursorPosition decoded = service.decodeCursor(encoded);
         assertThat(decoded.pinnedAt()).isEqualTo(t);
         assertThat(decoded.id()).isEqualTo(id);
+    }
+
+    @Test
+    @DisplayName("保守的フォールバック: 全 type で isAccessible=false が返る（共通 ContentVisibilityResolver 完成までの繋ぎ）")
+    void 保守的フォールバック適用() {
+        LocalDateTime now = LocalDateTime.now();
+        // 対応 type を網羅して並べる
+        CorkboardCardEntity timeline = buildCard(11L, BOARD_ID, "REFERENCE", "TIMELINE_POST", 100L, null, now);
+        CorkboardCardEntity bulletin = buildCard(12L, BOARD_ID, "REFERENCE", "BULLETIN_THREAD", 200L, null, now.minusMinutes(1));
+        CorkboardCardEntity blog = buildCard(13L, BOARD_ID, "REFERENCE", "BLOG_POST", 300L, null, now.minusMinutes(2));
+        CorkboardCardEntity file = buildCard(14L, BOARD_ID, "REFERENCE", "FILE", 400L, null, now.minusMinutes(3));
+        CorkboardCardEntity team = buildCard(15L, BOARD_ID, "REFERENCE", "TEAM", 500L, null, now.minusMinutes(4));
+        CorkboardCardEntity org = buildCard(16L, BOARD_ID, "REFERENCE", "ORGANIZATION", 600L, null, now.minusMinutes(5));
+        CorkboardCardEntity event = buildCard(17L, BOARD_ID, "REFERENCE", "EVENT", 700L, null, now.minusMinutes(6));
+        CorkboardCardEntity document = buildCard(18L, BOARD_ID, "REFERENCE", "DOCUMENT", 800L, null, now.minusMinutes(7));
+
+        given(cardRepository.findPinnedCardsForUser(eq(USER_ID), eq(null), eq(null), any(Pageable.class)))
+                .willReturn(List.of(timeline, bulletin, blog, file, team, org, event, document));
+        given(cardRepository.countPinnedByOwnerIdAndScopePersonal(USER_ID)).willReturn(8);
+        given(boardRepository.findAllById(any())).willReturn(List.of(personalBoard));
+
+        List<PinnedCardResponse> items = service.list(USER_ID, 20, null).getItems();
+
+        // 全ての対応 type について isAccessible=false / navigateTo=null を確認
+        for (PinnedCardResponse item : items) {
+            PinnedCardReferenceResponse ref = item.getReference();
+            assertThat(ref).isNotNull();
+            assertThat(ref.getIsAccessible())
+                    .as("type=%s は保守的フォールバック中 isAccessible=false", ref.getType())
+                    .isFalse();
+            assertThat(ref.getNavigateTo())
+                    .as("type=%s は保守的フォールバック中 navigateTo=null", ref.getType())
+                    .isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("URL カードは保守的フォールバックの影響を受けず navigate_to=url 値のまま")
+    void URLカード_フォールバック影響なし() {
+        LocalDateTime now = LocalDateTime.now();
+        CorkboardCardEntity url = buildCard(501L, BOARD_ID, "URL", "URL", null,
+                "https://example.com/external", now);
+        CorkboardCardEntity timeline = buildCard(502L, BOARD_ID, "REFERENCE", "TIMELINE_POST", 9999L, null, now.minusMinutes(1));
+
+        given(cardRepository.findPinnedCardsForUser(eq(USER_ID), eq(null), eq(null), any(Pageable.class)))
+                .willReturn(List.of(url, timeline));
+        given(cardRepository.countPinnedByOwnerIdAndScopePersonal(USER_ID)).willReturn(2);
+        given(boardRepository.findAllById(any())).willReturn(List.of(personalBoard));
+
+        List<PinnedCardResponse> items = service.list(USER_ID, 20, null).getItems();
+
+        // URL カード: navigateTo=url 値、isAccessible=true
+        PinnedCardReferenceResponse urlRef = items.get(0).getReference();
+        assertThat(urlRef.getType()).isEqualTo("URL");
+        assertThat(urlRef.getIsAccessible()).isTrue();
+        assertThat(urlRef.getNavigateTo()).isEqualTo("https://example.com/external");
+
+        // 比較: TIMELINE_POST はフォールバックで false
+        PinnedCardReferenceResponse postRef = items.get(1).getReference();
+        assertThat(postRef.getType()).isEqualTo("TIMELINE_POST");
+        assertThat(postRef.getIsAccessible()).isFalse();
+        assertThat(postRef.getNavigateTo()).isNull();
+    }
+
+    @Test
+    @DisplayName("CHAT_MESSAGE: 閲覧権限あり時 navigate_to=/chat/channels/{channelId}?messageId={id}")
+    void CHAT_MESSAGE_navigate_to() {
+        LocalDateTime now = LocalDateTime.now();
+        Long messageId = 5555L;
+        Long channelId = 42L;
+        CorkboardCardEntity card = buildCard(900L, BOARD_ID, "REFERENCE", "CHAT_MESSAGE", messageId, null, now);
+
+        given(cardRepository.findPinnedCardsForUser(eq(USER_ID), eq(null), eq(null), any(Pageable.class)))
+                .willReturn(List.of(card));
+        given(cardRepository.countPinnedByOwnerIdAndScopePersonal(USER_ID)).willReturn(1);
+        given(boardRepository.findAllById(any())).willReturn(List.of(personalBoard));
+        // 閲覧権限あり扱いに上書き（保守的フォールバック中も dispatcher.filterAccessible を直接スタブで上書き）
+        given(accessControlDispatcher.filterAccessible(eq(USER_ID), eq("CHAT_MESSAGE"), any()))
+                .willReturn(Set.of(messageId));
+        // ChatMessage バッチ取得
+        ChatMessageEntity msg = ChatMessageEntity.builder()
+                .channelId(channelId)
+                .build();
+        setEntityId(msg, messageId);
+        given(chatMessageRepository.findAllById(any())).willReturn(List.of(msg));
+
+        PinnedCardReferenceResponse ref = service.list(USER_ID, 20, null).getItems().get(0).getReference();
+        assertThat(ref.getType()).isEqualTo("CHAT_MESSAGE");
+        assertThat(ref.getIsAccessible()).isTrue();
+        assertThat(ref.getIsDeleted()).isFalse();
+        assertThat(ref.getNavigateTo()).isEqualTo("/chat/channels/42?messageId=5555");
+    }
+
+    @Test
+    @DisplayName("CHAT_MESSAGE: 該当メッセージが存在しない（論理削除等）→ is_deleted=true、navigate_to=null")
+    void CHAT_MESSAGE_メッセージ削除済() {
+        LocalDateTime now = LocalDateTime.now();
+        Long messageId = 7777L;
+        CorkboardCardEntity card = buildCard(901L, BOARD_ID, "REFERENCE", "CHAT_MESSAGE", messageId, null, now);
+
+        given(cardRepository.findPinnedCardsForUser(eq(USER_ID), eq(null), eq(null), any(Pageable.class)))
+                .willReturn(List.of(card));
+        given(cardRepository.countPinnedByOwnerIdAndScopePersonal(USER_ID)).willReturn(1);
+        given(boardRepository.findAllById(any())).willReturn(List.of(personalBoard));
+        // 閲覧権限ありに上書きしても、メッセージ自体が見つからなければ is_deleted=true
+        given(accessControlDispatcher.filterAccessible(eq(USER_ID), eq("CHAT_MESSAGE"), any()))
+                .willReturn(Set.of(messageId));
+        // findAllById は空 → channelId 解決できず
+        given(chatMessageRepository.findAllById(any())).willReturn(List.of());
+
+        PinnedCardReferenceResponse ref = service.list(USER_ID, 20, null).getItems().get(0).getReference();
+        assertThat(ref.getType()).isEqualTo("CHAT_MESSAGE");
+        assertThat(ref.getIsDeleted()).isTrue();
+        assertThat(ref.getNavigateTo()).isNull();
+    }
+
+    @Test
+    @DisplayName("CHAT_MESSAGE: 保守的フォールバック中（isAccessible=false）は navigate_to=null（既定挙動）")
+    void CHAT_MESSAGE_フォールバック中() {
+        LocalDateTime now = LocalDateTime.now();
+        Long messageId = 6666L;
+        Long channelId = 11L;
+        CorkboardCardEntity card = buildCard(902L, BOARD_ID, "REFERENCE", "CHAT_MESSAGE", messageId, null, now);
+
+        given(cardRepository.findPinnedCardsForUser(eq(USER_ID), eq(null), eq(null), any(Pageable.class)))
+                .willReturn(List.of(card));
+        given(cardRepository.countPinnedByOwnerIdAndScopePersonal(USER_ID)).willReturn(1);
+        given(boardRepository.findAllById(any())).willReturn(List.of(personalBoard));
+        // dispatcher は保守的フォールバックで全 false（明示スタブなし）
+        ChatMessageEntity msg = ChatMessageEntity.builder()
+                .channelId(channelId)
+                .build();
+        setEntityId(msg, messageId);
+        given(chatMessageRepository.findAllById(any())).willReturn(List.of(msg));
+
+        PinnedCardReferenceResponse ref = service.list(USER_ID, 20, null).getItems().get(0).getReference();
+        assertThat(ref.getIsAccessible()).isFalse();
+        assertThat(ref.getNavigateTo()).isNull();
     }
 
     @Test

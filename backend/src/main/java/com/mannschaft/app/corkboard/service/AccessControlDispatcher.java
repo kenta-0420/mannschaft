@@ -1,10 +1,10 @@
 package com.mannschaft.app.corkboard.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -13,56 +13,63 @@ import java.util.Set;
  *
  * <p>設計書 §5.2 の {@code AccessControlService.filterAccessible(userId, type, ids)} 相当を担う。
  * type ごとに既存の権限チェッカー（{@code TimelinePostAccessChecker} 等）へディスパッチする
- * ことを将来想定とするが、現時点では既存に統一された参照先別 Checker が存在しないため、
- * <strong>Phase 3 の MVP として「対応 type は閲覧可、未対応 type は閲覧不可」フォールバック</strong>
- * を採用する（PR 説明文・設計書 §13 にて明記）。</p>
+ * ことを将来想定とする。</p>
  *
- * <p>v2.0 で type 別 Checker が整備され次第、本クラス内の {@link #filterAccessible} の
- * switch 文に「実 Checker 呼び出し」を追加する（API スキーマや Service 層への影響なし）。</p>
+ * <h3>★ 暫定方針: 保守的フォールバック（2026-05-04 適用）</h3>
+ * <p>共通 {@code ContentVisibilityResolver} の大改修プロジェクトが別タスクで進行中（推定 3 週間）。
+ * その完成までの繋ぎとして、本ディスパッチャは <strong>全ての参照タイプについて
+ * {@code is_accessible = false}（空 Set）を返す保守的フォールバック</strong> を適用する。</p>
+ * <p>これにより、ダッシュボード上の参照リンクは全カードが「閲覧権限なし」表示・ナビゲーション無効
+ * となる。MEMO / SECTION_HEADER / URL カードは参照先解決を必要としない（呼び出し側で
+ * 除外済み）ため影響を受けない。</p>
  *
  * <h3>論理削除判定について</h3>
- * <p>同様に {@link #filterDeleted} は MVP では「常に非削除」を返す。将来 type 別 Repository の
- * {@code existsByIdAndDeletedAtIsNull} 等を組み込む。論理削除済み参照先は
- * {@link ReferenceTypeResolver} で snapshot 表示にフォールバックされる。</p>
+ * <p>{@link #filterDeleted} も同方針で MVP では「常に非削除」を返す。
+ * 共通基盤完成後に type 別 Repository の {@code existsByIdAndDeletedAtIsNull} 等を組み込む。</p>
+ *
+ * <p><strong>TODO: 共通 ContentVisibilityResolver 完成後に置換すること（F00 別軍議）。</strong>
+ * 完成後は {@link #filterAccessible} で共通 Resolver 呼び出しに切り替え、本クラスの保守的
+ * フォールバックは撤去する。</p>
  */
+@Slf4j
 @Component
 public class AccessControlDispatcher {
 
     /**
      * 指定タイプ・ID 集合のうち、ユーザーが閲覧可能な ID 集合を返す（バッチ判定）。
      *
-     * <p>MVP 実装: 対応 type ({@link ReferenceTypeResolver#SUPPORTED_TYPES}) は全 ID を閲覧可、
-     * 未対応 type は空集合を返す。URL タイプは Resolver 側で常に accessible 扱いするため、
-     * 本ディスパッチャでは判定対象外（呼び出し側で除外推奨）。</p>
+     * <p><strong>暫定実装（保守的フォールバック）</strong>:
+     * 共通 ContentVisibilityResolver 完成までの繋ぎとして、全ての参照タイプについて
+     * 空集合（= 全 ID 閲覧不可）を返す。WARN ログを出力し、運用時に切替忘れを検知できる
+     * ようにする。</p>
      *
-     * @param userId ユーザーID（将来 Checker 呼び出しに使用）
+     * @param userId ユーザーID（将来 Resolver 呼び出しに使用）
      * @param refType 参照タイプ
      * @param ids 判定対象 ID 集合
-     * @return 閲覧可能な ID 集合（呼び出し側に対する読み取り専用ビュー）
+     * @return 閲覧可能な ID 集合（保守的フォールバック中は常に空集合）
      */
     public Set<Long> filterAccessible(Long userId, String refType, Collection<Long> ids) {
         if (refType == null || ids == null || ids.isEmpty()) {
             return Set.of();
         }
-        if (!ReferenceTypeResolver.SUPPORTED_TYPES.contains(refType) || "URL".equals(refType)) {
-            return Set.of();
-        }
-        // MVP: 対応 type は全 ID を閲覧可とする（type 別 Checker 整備後に置換）
-        return new HashSet<>(ids);
+        log.warn("ContentVisibilityResolver 共通基盤未完成のため保守的フォールバック適用: type={}, ids数={}, userId={}",
+                refType, ids.size(), userId);
+        return Set.of();
     }
 
     /**
      * 指定タイプ・ID 集合のうち、論理削除済みの ID 集合を返す（バッチ判定）。
      *
-     * <p>MVP 実装: 常に空集合を返す。type 別 Repository での
-     * {@code findAllByIdInAndDeletedAtIsNotNull} 整備後に置換。</p>
+     * <p><strong>暫定実装</strong>: 常に空集合を返す（= 削除なし扱い）。
+     * 参照先閲覧権限を保守的に false としているため、削除フラグの値は実質的に
+     * UI 表示へ影響しない。共通基盤完成後に type 別 Repository の
+     * {@code findAllByIdInAndDeletedAtIsNotNull} 等を組み込む。</p>
      *
      * @param refType 参照タイプ
      * @param ids 判定対象 ID 集合
-     * @return 論理削除済みの ID 集合
+     * @return 論理削除済みの ID 集合（暫定実装中は常に空集合）
      */
     public Set<Long> filterDeleted(String refType, Collection<Long> ids) {
-        // MVP: 削除判定は v2.0 で実装。現時点では常に「未削除」扱い。
         return Set.of();
     }
 
@@ -71,7 +78,7 @@ public class AccessControlDispatcher {
      *
      * @param userId   ユーザーID
      * @param idsByType 参照タイプ別 ID リスト
-     * @return 参照タイプ別「閲覧可能 ID 集合」マップ
+     * @return 参照タイプ別「閲覧可能 ID 集合」マップ（保守的フォールバック中は全 type で空集合）
      */
     public Map<String, Set<Long>> filterAccessibleByType(Long userId, Map<String, Set<Long>> idsByType) {
         Map<String, Set<Long>> result = new HashMap<>();

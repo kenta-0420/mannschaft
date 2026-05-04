@@ -8,6 +8,8 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.corkboard.dto.PinnedCardListResponse;
 import com.mannschaft.app.corkboard.dto.PinnedCardReferenceResponse;
 import com.mannschaft.app.corkboard.dto.PinnedCardResponse;
+import com.mannschaft.app.chat.entity.ChatMessageEntity;
+import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.corkboard.entity.CorkboardCardEntity;
 import com.mannschaft.app.corkboard.entity.CorkboardEntity;
 import com.mannschaft.app.corkboard.repository.CorkboardCardRepository;
@@ -78,6 +80,7 @@ public class MyPinnedCardsService {
     private final CorkboardRepository boardRepository;
     private final ReferenceTypeResolver referenceTypeResolver;
     private final AccessControlDispatcher accessControlDispatcher;
+    private final ChatMessageRepository chatMessageRepository;
 
     /**
      * 横断ピン止めカード一覧を取得する。
@@ -136,10 +139,13 @@ public class MyPinnedCardsService {
         Map<String, Set<Long>> deletedIdsByType =
                 accessControlDispatcher.filterDeletedByType(idsByType);
 
+        // 6.5) CHAT_MESSAGE 用 channelId バッチ取得（N+1 防止）
+        Map<Long, Long> chatChannelIdMap = resolveChatChannelIds(idsByType);
+
         // 7) DTO 化
         List<PinnedCardResponse> items = new ArrayList<>(pageRows.size());
         for (CorkboardCardEntity card : pageRows) {
-            items.add(toResponse(card, boardNameMap, accessibleIdsByType, deletedIdsByType));
+            items.add(toResponse(card, boardNameMap, accessibleIdsByType, deletedIdsByType, chatChannelIdMap));
         }
 
         // 8) next_cursor 生成
@@ -157,7 +163,8 @@ public class MyPinnedCardsService {
     private PinnedCardResponse toResponse(CorkboardCardEntity card,
                                            Map<Long, String> boardNameMap,
                                            Map<String, Set<Long>> accessibleIdsByType,
-                                           Map<String, Set<Long>> deletedIdsByType) {
+                                           Map<String, Set<Long>> deletedIdsByType,
+                                           Map<Long, Long> chatChannelIdMap) {
         String refType = card.getReferenceType();
         Long refId = card.getReferenceId();
 
@@ -167,7 +174,7 @@ public class MyPinnedCardsService {
             // 純メモ/セクション見出しは reference 自体が null（設計書 §4.3 表）
             reference = null;
         } else if ("URL".equals(refType)) {
-            reference = referenceTypeResolver.resolve(card, true, false);
+            reference = referenceTypeResolver.resolve(card, true, false, Collections.emptyMap());
         } else {
             boolean accessible = accessibleIdsByType
                     .getOrDefault(refType, Collections.emptySet())
@@ -175,7 +182,7 @@ public class MyPinnedCardsService {
             boolean deleted = deletedIdsByType
                     .getOrDefault(refType, Collections.emptySet())
                     .contains(refId);
-            reference = referenceTypeResolver.resolve(card, accessible, deleted);
+            reference = referenceTypeResolver.resolve(card, accessible, deleted, chatChannelIdMap);
         }
 
         return new PinnedCardResponse(
@@ -189,6 +196,24 @@ public class MyPinnedCardsService {
                 card.getUserNote(),
                 card.getPinnedAt(),
                 reference);
+    }
+
+    /**
+     * CHAT_MESSAGE 参照を持つカードについて、{@code messageId -> channelId} のマップを
+     * バッチ取得する（N+1 防止）。CHAT_MESSAGE 参照が存在しない場合は空マップを返す。
+     * 該当メッセージが論理削除されている場合は {@link ChatMessageRepository#findAllById}
+     * の結果に含まれず、マップに entry が無いため、Resolver 側で {@code is_deleted=true} 扱いとなる。
+     */
+    private Map<Long, Long> resolveChatChannelIds(Map<String, Set<Long>> idsByType) {
+        Set<Long> chatMessageIds = idsByType.get("CHAT_MESSAGE");
+        if (chatMessageIds == null || chatMessageIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, Long> map = new HashMap<>();
+        for (ChatMessageEntity msg : chatMessageRepository.findAllById(chatMessageIds)) {
+            map.put(msg.getId(), msg.getChannelId());
+        }
+        return map;
     }
 
     private int normalizeLimit(Integer limit) {

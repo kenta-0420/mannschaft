@@ -4,6 +4,7 @@ import com.mannschaft.app.corkboard.dto.PinnedCardReferenceResponse;
 import com.mannschaft.app.corkboard.entity.CorkboardCardEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,7 +20,7 @@ import java.util.Set;
  *   <li>TIMELINE_POST &rarr; /timeline/posts/{id}</li>
  *   <li>BULLETIN_THREAD &rarr; /bulletin/threads/{id}</li>
  *   <li>BLOG_POST &rarr; /blog/{id}</li>
- *   <li>CHAT_MESSAGE &rarr; /chat/messages/{id}（チャネル ID は Phase 3 では取得せず id 単独）</li>
+ *   <li>CHAT_MESSAGE &rarr; /chat/channels/{channelId}?messageId={id}（channelId は Service 側でバッチ取得）</li>
  *   <li>FILE &rarr; /files/{id}</li>
  *   <li>TEAM &rarr; /teams/{id}</li>
  *   <li>ORGANIZATION &rarr; /organizations/{id}</li>
@@ -40,12 +41,11 @@ public class ReferenceTypeResolver {
             "FILE", "TEAM", "ORGANIZATION", "EVENT", "DOCUMENT", "URL"
     );
 
-    /** タイプ別のナビゲート先テンプレート。{@code {id}} を ID で置換する。URL は別扱い。 */
+    /** タイプ別のナビゲート先テンプレート。{@code {id}} を ID で置換する。URL / CHAT_MESSAGE は別扱い。 */
     private static final Map<String, String> NAVIGATE_TEMPLATES = Map.ofEntries(
             Map.entry("TIMELINE_POST", "/timeline/posts/{id}"),
             Map.entry("BULLETIN_THREAD", "/bulletin/threads/{id}"),
             Map.entry("BLOG_POST", "/blog/{id}"),
-            Map.entry("CHAT_MESSAGE", "/chat/messages/{id}"),
             Map.entry("FILE", "/files/{id}"),
             Map.entry("TEAM", "/teams/{id}"),
             Map.entry("ORGANIZATION", "/organizations/{id}"),
@@ -54,32 +54,51 @@ public class ReferenceTypeResolver {
     );
 
     /**
+     * ピン止めカードから参照先 DTO を組み立てる（CHAT_MESSAGE の channelId 解決なし版）。
+     *
+     * <p>呼び出し側で CHAT_MESSAGE を扱わない場合の利便メソッド。CHAT_MESSAGE の場合は
+     * channelId を解決できないため {@code is_deleted=true} + {@code navigate_to=null}
+     * 扱いとなる。</p>
+     */
+    public PinnedCardReferenceResponse resolve(CorkboardCardEntity card,
+                                                boolean isAccessible,
+                                                boolean isDeleted) {
+        return resolve(card, isAccessible, isDeleted, Collections.emptyMap());
+    }
+
+    /**
      * ピン止めカードから参照先 DTO を組み立てる。
      *
      * <p>判定ルール:</p>
      * <ol>
      *   <li>カードに {@code reference_type} が無い（MEMO 等）&rarr; 呼び出し側で {@code reference = null} とする想定。本メソッドは呼ばれない</li>
      *   <li>{@code reference_type = URL} &rarr; カードの url カラムをそのまま navigate_to に設定</li>
+     *   <li>{@code reference_type = CHAT_MESSAGE} かつ閲覧権限あり &rarr;
+     *       {@code chatChannelIdMap} から channelId を引いて
+     *       {@code /chat/channels/{channelId}?messageId={id}} を生成。
+     *       channelId が引けない（メッセージ論理削除等）場合は {@code is_deleted=true} + {@code navigate_to=null}</li>
      *   <li>未対応 type &rarr; {@code is_accessible = false} + {@code navigate_to = null} のフォールバック（snapshot は表示）</li>
      *   <li>対応 type だが閲覧権限なし &rarr; {@code is_accessible = false} + {@code navigate_to = null}</li>
      *   <li>対応 type かつ閲覧権限あり &rarr; テンプレートから navigate_to 生成</li>
      * </ol>
      *
-     * @param card         カードエンティティ
-     * @param isAccessible 参照先への閲覧権限チェック結果（呼び出し側でバッチ判定済み）
-     * @param isDeleted    参照先が論理削除されているか（同様にバッチ判定済み）
+     * @param card             カードエンティティ
+     * @param isAccessible     参照先への閲覧権限チェック結果（呼び出し側でバッチ判定済み）
+     * @param isDeleted        参照先が論理削除されているか（同様にバッチ判定済み）
+     * @param chatChannelIdMap CHAT_MESSAGE 用の {@code messageId -> channelId} マップ（バッチ取得済み）
      * @return 参照先 DTO（カードが {@code reference_type} を持たない場合は呼び出し側で null を返すこと）
      */
     public PinnedCardReferenceResponse resolve(CorkboardCardEntity card,
                                                 boolean isAccessible,
-                                                boolean isDeleted) {
+                                                boolean isDeleted,
+                                                Map<Long, Long> chatChannelIdMap) {
         String type = card.getReferenceType();
         if (type == null) {
             // 呼び出し側で除外済みの想定だが防御的に null を返す
             return null;
         }
 
-        // URL カードは特別扱い（ID なし、url カラム参照）
+        // URL カードは特別扱い（ID なし、url カラム参照）— 保守的フォールバックの影響を受けない
         if ("URL".equals(type)) {
             String url = card.getUrl();
             return new PinnedCardReferenceResponse(
@@ -105,6 +124,36 @@ public class ReferenceTypeResolver {
                     Boolean.FALSE,
                     Boolean.FALSE,
                     null,
+                    null, null, null);
+        }
+
+        // CHAT_MESSAGE 専用ハンドリング: channelId が必要
+        if ("CHAT_MESSAGE".equals(type)) {
+            Long messageId = card.getReferenceId();
+            Long channelId = chatChannelIdMap.get(messageId);
+            if (channelId == null) {
+                // 該当メッセージが存在しない（論理削除等）→ is_deleted=true + navigate_to=null
+                return new PinnedCardReferenceResponse(
+                        type,
+                        messageId,
+                        extractSnapshotTitle(card),
+                        extractSnapshotExcerpt(card),
+                        isAccessible,
+                        Boolean.TRUE,
+                        null,
+                        null, null, null);
+            }
+            String navigateTo = isAccessible
+                    ? "/chat/channels/" + channelId + "?messageId=" + messageId
+                    : null;
+            return new PinnedCardReferenceResponse(
+                    type,
+                    messageId,
+                    extractSnapshotTitle(card),
+                    extractSnapshotExcerpt(card),
+                    isAccessible,
+                    isDeleted,
+                    navigateTo,
                     null, null, null);
         }
 

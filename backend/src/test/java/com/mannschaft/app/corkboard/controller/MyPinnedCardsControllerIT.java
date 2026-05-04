@@ -186,6 +186,29 @@ class MyPinnedCardsControllerIT {
     }
 
     @Test
+    @DisplayName("CHAT_MESSAGE カード: navigate_to=/chat/channels/{channelId}?messageId={id} 形式で返る")
+    void CHAT_MESSAGE_navigate_to() throws Exception {
+        LocalDateTime now = LocalDateTime.now();
+        PinnedCardReferenceResponse ref = new PinnedCardReferenceResponse(
+                "CHAT_MESSAGE", 5555L, "重要メッセージ", "プロジェクトの方針について...",
+                Boolean.TRUE, Boolean.FALSE,
+                "/chat/channels/42?messageId=5555", null, null, null);
+        PinnedCardResponse item = new PinnedCardResponse(
+                900L, 12L, "仕事メモ", "REFERENCE", "BLUE",
+                null, null, "あとで確認", now, ref);
+        PinnedCardListResponse stub = new PinnedCardListResponse(List.of(item), null, 1L);
+
+        given(pinnedCardsService.list(eq(USER_ID), eq(null), eq(null))).willReturn(stub);
+
+        mockMvc.perform(get("/api/v1/users/me/corkboards/pinned-cards"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].reference.type").value("CHAT_MESSAGE"))
+                .andExpect(jsonPath("$.data.items[0].reference.id").value(5555))
+                .andExpect(jsonPath("$.data.items[0].reference.navigateTo").value("/chat/channels/42?messageId=5555"))
+                .andExpect(jsonPath("$.data.items[0].reference.isAccessible").value(true));
+    }
+
+    @Test
     @DisplayName("権限喪失参照先: isAccessible=false、navigateTo=null で返る")
     void 権限喪失レスポンス() throws Exception {
         LocalDateTime now = LocalDateTime.now();
