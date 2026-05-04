@@ -228,7 +228,10 @@ public class GlobalExceptionHandler {
             // F09.8.1 コルクボード ピン止め
             Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
             Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED
-            Map.entry("CORKBOARD_013", HttpStatus.CONFLICT)                  // PIN_LIMIT_EXCEEDED
+            Map.entry("CORKBOARD_013", HttpStatus.CONFLICT),                 // PIN_LIMIT_EXCEEDED
+            // F13 ストレージクォータ統合機構（Phase 4-α）
+            Map.entry("STORAGE_QUOTA_001", HttpStatus.CONFLICT),             // QUOTA_EXCEEDED (容量超過)
+            Map.entry("STORAGE_QUOTA_002", HttpStatus.INTERNAL_SERVER_ERROR) // SUBSCRIPTION_NOT_FOUND
     );
 
     /**
