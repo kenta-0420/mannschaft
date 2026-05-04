@@ -21,6 +21,43 @@ const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 const isEdit = computed(() => !!props.scheduleId)
 
+// 15分刻みの時刻オプション生成（00:00〜23:45）
+const timeOptions = Array.from({ length: 96 }, (_, i) => {
+  const h = Math.floor(i / 4)
+  const m = (i % 4) * 15
+  const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  return { label: v, value: v }
+})
+
+// 入力履歴（localStorage）
+const HISTORY_KEY = 'schedule-time-history'
+
+interface TimeHistoryEntry {
+  startTime: string
+  endTime: string
+}
+
+function loadTimeHistory(): TimeHistoryEntry[] {
+  if (typeof localStorage === 'undefined') return []
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') as TimeHistoryEntry[]
+  } catch {
+    return []
+  }
+}
+
+function saveTimeHistory(startTime: string, endTime: string) {
+  if (typeof localStorage === 'undefined') return
+  const history = loadTimeHistory().filter(
+    h => !(h.startTime === startTime && h.endTime === endTime)
+  )
+  history.unshift({ startTime, endTime })
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 5)))
+  timeHistory.value = loadTimeHistory()
+}
+
+const timeHistory = ref<TimeHistoryEntry[]>(loadTimeHistory())
+
 const form = ref({
   title: '',
   description: '',
@@ -157,6 +194,9 @@ async function submit() {
       : isEdit.value
         ? 'イベントを更新しました'
         : 'イベントを作成しました'
+    if (!form.value.allDay && form.value.startTime && form.value.endTime) {
+      saveTimeHistory(form.value.startTime, form.value.endTime)
+    }
     notification.success(successMsg)
     emit('saved')
     close()
@@ -229,6 +269,19 @@ function close() {
           <label class="text-sm">終日</label>
         </div>
       </div>
+      <!-- よく使う時間（履歴クイック選択） -->
+      <div v-if="timeHistory.length > 0 && !form.allDay" class="flex flex-wrap gap-1.5 mb-1">
+        <span class="text-xs text-surface-400 self-center">履歴:</span>
+        <button
+          v-for="h in timeHistory"
+          :key="`${h.startTime}-${h.endTime}`"
+          type="button"
+          class="text-xs px-2 py-0.5 rounded-full bg-surface-100 hover:bg-surface-200 dark:bg-surface-700 dark:hover:bg-surface-600 border border-surface-200 dark:border-surface-600"
+          @click="form.startTime = h.startTime; form.endTime = h.endTime"
+        >
+          {{ h.startTime }}〜{{ h.endTime }}
+        </button>
+      </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label for="schedule-start-date" class="mb-1 block text-sm font-medium">開始日</label>
@@ -236,7 +289,14 @@ function close() {
         </div>
         <div v-if="!form.allDay">
           <label class="mb-1 block text-sm font-medium">開始時刻</label>
-          <InputText v-model="form.startTime" type="time" class="w-full" />
+          <Select
+            v-model="form.startTime"
+            :options="timeOptions"
+            option-label="label"
+            option-value="value"
+            filter
+            class="w-full"
+          />
         </div>
       </div>
       <div class="grid grid-cols-2 gap-3">
@@ -246,7 +306,14 @@ function close() {
         </div>
         <div v-if="!form.allDay">
           <label class="mb-1 block text-sm font-medium">終了時刻</label>
-          <InputText v-model="form.endTime" type="time" class="w-full" />
+          <Select
+            v-model="form.endTime"
+            :options="timeOptions"
+            option-label="label"
+            option-value="value"
+            filter
+            class="w-full"
+          />
         </div>
       </div>
       <div>
