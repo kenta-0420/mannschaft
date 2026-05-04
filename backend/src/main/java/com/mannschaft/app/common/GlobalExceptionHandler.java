@@ -238,7 +238,10 @@ public class GlobalExceptionHandler {
             Map.entry("CORKBOARD_009", HttpStatus.FORBIDDEN),                // INSUFFICIENT_PERMISSION
             // F13 ストレージクォータ統合機構（Phase 4-α）
             Map.entry("STORAGE_QUOTA_001", HttpStatus.CONFLICT),             // QUOTA_EXCEEDED (容量超過)
-            Map.entry("STORAGE_QUOTA_002", HttpStatus.INTERNAL_SERVER_ERROR) // SUBSCRIPTION_NOT_FOUND
+            Map.entry("STORAGE_QUOTA_002", HttpStatus.INTERNAL_SERVER_ERROR), // SUBSCRIPTION_NOT_FOUND
+            // F04.2 チャット 添付ファイル（F13 Phase 4-β）
+            Map.entry("CHAT_015", HttpStatus.PAYLOAD_TOO_LARGE),             // ATTACHMENT_SIZE_EXCEEDED (UX ガード 500MB 超過)
+            Map.entry("CHAT_019", HttpStatus.CONFLICT)                       // ATTACHMENT_QUOTA_EXCEEDED (F13 統合クォータ超過)
     );
 
     /**

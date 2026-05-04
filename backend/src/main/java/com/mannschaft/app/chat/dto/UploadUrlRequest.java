@@ -7,11 +7,18 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Pre-signed URLリクエストDTO。
+ * Pre-signed URL リクエスト DTO。
+ *
+ * <p>F13 Phase 4-β: スコープ判定（TEAM/ORG/PERSONAL）のために {@code channelId} を必須化した。
+ * 統合ストレージクォータの計上先となるチャンネル種別を `channelId` から解決する。</p>
  */
 @Getter
 @RequiredArgsConstructor
 public class UploadUrlRequest {
+
+    /** F13 Phase 4-β: スコープ判定に必要なチャンネル ID。 */
+    @NotNull
+    private final Long channelId;
 
     @NotBlank
     @Size(max = 255)

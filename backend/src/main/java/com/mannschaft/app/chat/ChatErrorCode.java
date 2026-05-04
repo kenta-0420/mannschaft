@@ -63,7 +63,10 @@ public enum ChatErrorCode implements ErrorCode {
     DM_RECEIVE_RESTRICTED("CHAT_017", "相手ユーザーのDM受信設定により送信できません", Severity.WARN),
 
     /** 自分自身への DM / 会話開始 */
-    CHANNEL_SELF_DM("CHAT_018", "自分自身との会話は開始できません", Severity.WARN);
+    CHANNEL_SELF_DM("CHAT_018", "自分自身との会話は開始できません", Severity.WARN),
+
+    /** F13 Phase 4-β: 統合ストレージクォータ超過（409 Conflict） */
+    ATTACHMENT_QUOTA_EXCEEDED("CHAT_019", "ストレージ容量が不足しているため添付ファイルをアップロードできません", Severity.ERROR);
 
     private final String code;
     private final String message;

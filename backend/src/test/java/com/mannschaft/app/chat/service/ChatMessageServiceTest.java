@@ -55,6 +55,10 @@ class ChatMessageServiceTest {
     @Mock
     private ChatMapper chatMapper;
 
+    /** F13 Phase 4-β: 添付の使用量計上連携。 */
+    @Mock
+    private ChatAttachmentService chatAttachmentService;
+
     @InjectMocks
     private ChatMessageService chatMessageService;
 
@@ -134,6 +138,37 @@ class ChatMessageServiceTest {
 
             // then
             verify(messageRepository).findById(parentId);
+        }
+
+        @Test
+        @DisplayName("F13 Phase 4-β: 添付ありメッセージ送信で recordAttachmentUpload が呼ばれる")
+        void f13_添付ありで_recordUpload発火() {
+            // given
+            com.mannschaft.app.chat.dto.AttachmentRequest att = new com.mannschaft.app.chat.dto.AttachmentRequest(
+                    "chat/uuid/x.png", "x.png", 4096L, "image/png");
+            SendMessageRequest req = new SendMessageRequest(
+                    "ファイル", null, null, java.util.List.of(att));
+            ChatChannelEntity channel = createChannel();
+            ChatMessageEntity saved = createMessage();
+            MessageResponse expected = createMessageResponse();
+            com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity attachmentEntity =
+                    com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity.builder()
+                            .messageId(MESSAGE_ID)
+                            .fileKey("chat/uuid/x.png").fileName("x.png")
+                            .fileSize(4096L).contentType("image/png").build();
+
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(saved);
+            given(attachmentRepository.save(any(com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity.class)))
+                    .willReturn(attachmentEntity);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+
+            // when
+            chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
+
+            // then: 添付保存後に recordAttachmentUpload が呼ばれる
+            verify(chatAttachmentService).recordAttachmentUpload(
+                    eq(channel), any(com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity.class), eq(SENDER_ID));
         }
     }
 
@@ -217,6 +252,31 @@ class ChatMessageServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.MESSAGE_EDIT_DENIED));
+        }
+
+        @Test
+        @DisplayName("F13 Phase 4-β: 添付ありメッセージ削除で recordAttachmentDeletion が呼ばれる")
+        void f13_添付ありで_recordDeletion発火() {
+            // given
+            ChatMessageEntity message = createMessage();
+            ChatChannelEntity channel = createChannel();
+            com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity att =
+                    com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity.builder()
+                            .messageId(MESSAGE_ID)
+                            .fileKey("chat/uuid/x.png").fileName("x.png")
+                            .fileSize(2048L).contentType("image/png").build();
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
+            given(attachmentRepository.findByMessageId(MESSAGE_ID))
+                    .willReturn(java.util.List.of(att));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+
+            // when
+            chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
+
+            // then: 各添付について recordAttachmentDeletion が呼ばれる
+            verify(chatAttachmentService).recordAttachmentDeletion(
+                    eq(channel), eq(att), eq(SENDER_ID), eq(SENDER_ID));
         }
     }
 

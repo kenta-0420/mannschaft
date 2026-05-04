@@ -400,10 +400,13 @@ public class ChatChannelService {
     /**
      * チャンネルエンティティを取得する。見つからない場合は例外をスローする。
      *
+     * <p>F13 Phase 4-β でパッケージ外（{@link com.mannschaft.app.chat.controller.ChatUploadController}）
+     * からも呼ばれるため public とした。</p>
+     *
      * @param channelId チャンネルID
      * @return チャンネルエンティティ
      */
-    ChatChannelEntity findChannelOrThrow(Long channelId) {
+    public ChatChannelEntity findChannelOrThrow(Long channelId) {
         return channelRepository.findById(channelId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_NOT_FOUND));
     }
