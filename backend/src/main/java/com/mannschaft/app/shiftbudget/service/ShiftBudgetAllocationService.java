@@ -42,12 +42,12 @@ import java.util.Optional;
  *
  * <p>権限:</p>
  * <ul>
- *   <li>一覧/詳細: {@code BUDGET_VIEW}</li>
- *   <li>作成/更新/削除: {@code BUDGET_MANAGE}</li>
+ *   <li>一覧/詳細: {@code BUDGET_VIEW}（変更なし）</li>
+ *   <li>作成/更新/削除: {@code BUDGET_ADMIN}（Phase 9-δ クリーンカット完了 — 旧 BUDGET_MANAGE は廃止）</li>
  * </ul>
  *
- * <p>TODO(F08.7 Phase 9-δ): BUDGET_ADMIN クリーンカット移行時に
- * {@code BUDGET_VIEW}/{@code BUDGET_MANAGE} を {@code BUDGET_ADMIN} 単独判定に置換する。</p>
+ * <p>Phase 9-δ クリーンカット完了: 設計書 §8.1 / §8.2 に従い CRUD は {@code BUDGET_ADMIN} 単独判定。
+ * 旧 BUDGET_MANAGE 権限は F08.6 では引き続き使用するが、F08.7 では参照しない（マスター御裁可 Q3）。</p>
  */
 @Slf4j
 @Service
@@ -141,7 +141,7 @@ public class ShiftBudgetAllocationService {
     @Transactional
     public AllocationResponse createAllocation(Long organizationId, AllocationCreateRequest request) {
         featureService.requireEnabled(organizationId);
-        requireBudgetManage(organizationId);
+        requireBudgetAdmin(organizationId);
 
         // バリデーション
         validatePeriod(request.periodStart(), request.periodEnd());
@@ -215,13 +215,13 @@ public class ShiftBudgetAllocationService {
      * <p>楽観ロックは {@link AllocationUpdateRequest#version()} と {@code @Version} カラムで衝突検出。
      * 衝突時は {@link ShiftBudgetErrorCode#OPTIMISTIC_LOCK_CONFLICT} (409) を返す。</p>
      *
-     * <p>権限: {@code BUDGET_MANAGE}</p>
+     * <p>権限: {@code BUDGET_ADMIN}（Phase 9-δ クリーンカット）</p>
      */
     @Transactional
     public AllocationResponse updateAllocation(Long organizationId, Long allocationId,
                                                AllocationUpdateRequest request) {
         featureService.requireEnabled(organizationId);
-        requireBudgetManage(organizationId);
+        requireBudgetAdmin(organizationId);
 
         validateAllocatedAmount(request.allocatedAmount());
 
@@ -263,12 +263,12 @@ public class ShiftBudgetAllocationService {
     /**
      * 割当を論理削除する。PLANNED/CONFIRMED 残存時は 409 で拒否。
      *
-     * <p>権限: {@code BUDGET_MANAGE}</p>
+     * <p>権限: {@code BUDGET_ADMIN}（Phase 9-δ クリーンカット）</p>
      */
     @Transactional
     public void deleteAllocation(Long organizationId, Long allocationId) {
         featureService.requireEnabled(organizationId);
-        requireBudgetManage(organizationId);
+        requireBudgetAdmin(organizationId);
 
         ShiftBudgetAllocationEntity entity = findOrThrow(allocationId, organizationId);
 
@@ -322,12 +322,17 @@ public class ShiftBudgetAllocationService {
         }
     }
 
-    private void requireBudgetManage(Long organizationId) {
+    /**
+     * BUDGET_ADMIN 権限チェック（Phase 9-δ クリーンカット）。
+     * <p>設計書 §8.1: v1.2 で OR 後方互換ロジックは廃止。{@code BUDGET_ADMIN} 単独で判定する。
+     * V11.034 マイグレーションで既存 ADMIN/DEPUTY_ADMIN ロールに自動付与済のため、
+     * 移行後の組織は本判定を通過できる。</p>
+     */
+    private void requireBudgetAdmin(Long organizationId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        // TODO(F08.7 Phase 9-δ): BUDGET_ADMIN クリーンカット移行時に置換
         if (!accessControlService.isSystemAdmin(currentUserId)
-                && !hasOrgPermission(currentUserId, organizationId, "BUDGET_MANAGE")) {
-            throw new BusinessException(ShiftBudgetErrorCode.BUDGET_MANAGE_REQUIRED);
+                && !hasOrgPermission(currentUserId, organizationId, "BUDGET_ADMIN")) {
+            throw new BusinessException(ShiftBudgetErrorCode.BUDGET_ADMIN_REQUIRED);
         }
     }
 

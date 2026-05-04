@@ -114,13 +114,16 @@ equipment:
     score-weight-consume: 1.0
     top-n-per-category: 20
 
-# F08.7 シフト予算機能フィーチャーフラグ (Phase 9-α)
+# F08.7 シフト予算機能フィーチャーフラグ (Phase 9-α / 9-δ)
 # default false（本番含むすべての環境で OFF）。
 # 有効化したい環境では application-{profile}.yml で feature.shift-budget.enabled=true を設定。
-# 設計書 §13: 三値論理（グローバル × 組織別）は Phase 9-δ で完成予定。
+# 設計書 §13: 三値論理（グローバル × 組織別）は Phase 9-δ で完成済。
+# monthly-close-cron-enabled: 月次締めバッチの自動起動有無 (Phase 9-δ / 御裁可 Q4)。
+#   デフォルト false。手動 API #11 でのみ運用したい環境では false 維持。
 feature:
   shift-budget:
     enabled: false
+    monthly-close-cron-enabled: false
   # F00.5 メンバーシップ基盤再設計
   # dualWrite.enabled: Phase 2-3 期間中は true（user_roles と memberships の両方に書き込む）
   #   Phase 4 リリースで false に切り替え、二重書き込みコード自体は次の minor release で削除する

@@ -14,11 +14,14 @@ spring:
   jpa:
     show-sql: false
 
-# F08.7 Phase 9-α: 本番環境はデフォルト無効（明示的に false 維持）。
-# 段階導入: 組織毎オプトインは Phase 9-δ で実装予定。
+# F08.7 Phase 9-α / 9-δ: 本番環境はデフォルト無効（明示的に false 維持）。
+# 組織毎オプトインは三値論理 (budget_configs.shift_budget_enabled) で Phase 9-δ から有効化可能。
+# monthly-close-cron-enabled: 月次締めバッチの cron 自動起動は本番でも OFF（運用側で
+#   FEATURE_SHIFT_BUDGET_MONTHLY_CRON_ENABLED=true を明示設定したときのみ有効化）
 feature:
   shift-budget:
     enabled: ${FEATURE_SHIFT_BUDGET_ENABLED:false}
+    monthly-close-cron-enabled: ${FEATURE_SHIFT_BUDGET_MONTHLY_CRON_ENABLED:false}
 
 mannschaft:
   jwt:

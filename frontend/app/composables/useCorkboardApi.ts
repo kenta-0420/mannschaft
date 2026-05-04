@@ -1,4 +1,12 @@
-import type { CorkboardResponse, CorkboardCard } from '~/types/corkboard'
+import type {
+  CorkboardResponse,
+  CorkboardCard,
+  CorkboardCardDetail,
+  CorkboardDetail,
+  CorkboardScope,
+  CreateCardRequest,
+  UpdateCardRequest,
+} from '~/types/corkboard'
 
 interface CorkboardGroup {
   id: number
@@ -9,6 +17,50 @@ interface CorkboardGroup {
 
 export function useCorkboardApi() {
   const api = useApi()
+
+  /**
+   * F09.8 Phase B: スコープに応じたボード詳細取得を一本化するヘルパ。
+   * バックエンドはスコープ別パスでのみ詳細 API を提供しているため、
+   * 呼び出し側で scope/scopeId を渡してもらいルーティングする。
+   *
+   * - PERSONAL: GET /api/v1/users/me/corkboards/{boardId}
+   * - TEAM:     GET /api/v1/teams/{scopeId}/corkboards/{boardId}
+   * - ORGANIZATION: GET /api/v1/organizations/{scopeId}/corkboards/{boardId} （Phase A 未実装）
+   */
+  async function getBoardDetail(
+    scope: CorkboardScope,
+    scopeId: number | null,
+    boardId: number,
+  ) {
+    if (scope === 'PERSONAL') {
+      return api<{ data: CorkboardDetail }>(
+        `/api/v1/users/me/corkboards/${boardId}`,
+      )
+    }
+    if (scope === 'TEAM') {
+      if (scopeId == null) throw new Error('TEAM scope requires scopeId')
+      return api<{ data: CorkboardDetail }>(
+        `/api/v1/teams/${scopeId}/corkboards/${boardId}`,
+      )
+    }
+    // ORGANIZATION
+    if (scopeId == null) throw new Error('ORGANIZATION scope requires scopeId')
+    return api<{ data: CorkboardDetail }>(
+      `/api/v1/organizations/${scopeId}/corkboards/${boardId}`,
+    )
+  }
+
+  /**
+   * F09.8 Phase A2: scope を意識せず boardId だけでボード詳細を取得する。
+   * バックエンド `CorkboardLookupController#getBoardDetail` (`GET /api/v1/corkboards/{boardId}`)
+   * が呼び出し元ユーザーの scope/権限を解決して詳細を返す。
+   *
+   * 一覧画面 (`/corkboard`) からの遷移は scope クエリを付けずに `/corkboard/{id}` に
+   * 飛ぶため、詳細ページ側はこのメソッドを使えば scope 情報なしで詳細取得できる。
+   */
+  async function getBoardDetailByBoardId(boardId: number) {
+    return api<{ data: CorkboardDetail }>(`/api/v1/corkboards/${boardId}`)
+  }
 
   // === Personal Corkboards ===
   async function getMyBoards() {
@@ -63,20 +115,47 @@ export function useCorkboardApi() {
   }
 
   // === Cards ===
-  async function createCard(boardId: number, body: Record<string, unknown>) {
-    return api<{ data: CorkboardCard }>(`/api/v1/corkboards/${boardId}/cards`, {
+  /**
+   * カードを新規作成する。
+   *
+   * - リクエストは {@link CreateCardRequest} (camelCase) でバックエンド
+   *   `CreateCardRequest.java` と完全整合。
+   * - レスポンスは {@link CorkboardCardDetail} (Phase A 以降の DTO)。
+   */
+  async function createCard(boardId: number, body: CreateCardRequest) {
+    return api<{ data: CorkboardCardDetail }>(`/api/v1/corkboards/${boardId}/cards`, {
       method: 'POST',
       body,
     })
   }
-  async function updateCard(boardId: number, cardId: number, body: Record<string, unknown>) {
-    return api(`/api/v1/corkboards/${boardId}/cards/${cardId}`, { method: 'PUT', body })
+  /**
+   * カードを更新する（部分更新）。
+   *
+   * - 受け付けるフィールドは {@link UpdateCardRequest} を参照。
+   * - カード種別 (`cardType`) と参照先 (`referenceType` / `referenceId`) は変更不可。
+   */
+  async function updateCard(boardId: number, cardId: number, body: UpdateCardRequest) {
+    return api<{ data: CorkboardCardDetail }>(
+      `/api/v1/corkboards/${boardId}/cards/${cardId}`,
+      { method: 'PUT', body },
+    )
   }
   async function deleteCard(boardId: number, cardId: number) {
     return api(`/api/v1/corkboards/${boardId}/cards/${cardId}`, { method: 'DELETE' })
   }
-  async function archiveCard(boardId: number, cardId: number) {
-    return api(`/api/v1/corkboards/${boardId}/cards/${cardId}/archive`, { method: 'PATCH' })
+  /**
+   * カードのアーカイブ状態を切り替える。
+   *
+   * - `archived = true` でアーカイブ、`false` でアンアーカイブ。
+   * - バックエンド `CorkboardCardController#archiveCard` は
+   *   `?archived=true|false` のクエリ引数を取り、デフォルトは `true`。
+   */
+  async function archiveCard(boardId: number, cardId: number, archived = true) {
+    const q = archived ? '' : '?archived=false'
+    return api<{ data: CorkboardCardDetail }>(
+      `/api/v1/corkboards/${boardId}/cards/${cardId}/archive${q}`,
+      { method: 'PATCH' },
+    )
   }
   async function batchUpdateCardPositions(
     boardId: number,
@@ -125,6 +204,8 @@ export function useCorkboardApi() {
     deleteTeamBoard,
     getOrgBoards,
     createOrgBoard,
+    getBoardDetail,
+    getBoardDetailByBoardId,
     createCard,
     updateCard,
     deleteCard,

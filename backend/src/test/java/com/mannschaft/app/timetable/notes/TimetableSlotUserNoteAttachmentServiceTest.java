@@ -4,6 +4,10 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.quota.StorageFeatureType;
+import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
+import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.timetable.notes.dto.AttachmentConfirmRequest;
 import com.mannschaft.app.timetable.notes.dto.AttachmentPresignRequest;
 import com.mannschaft.app.timetable.notes.entity.TimetableSlotUserNoteAttachmentEntity;
@@ -27,15 +31,19 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
  * F03.15 Phase 3 メモ添付ファイルサービスのユニットテスト。
+ *
+ * <p>F13 Phase 4-α: ユーザー累計クォータ判定が {@link StorageQuotaService} に統合された。
+ * 直書き 100MB は廃止し、{@code @Mock StorageQuotaService} のスタブで挙動を検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TimetableSlotUserNoteAttachmentService ユニットテスト")
@@ -48,6 +56,7 @@ class TimetableSlotUserNoteAttachmentServiceTest {
     @Mock private TimetableSlotUserNoteService noteService;
     @Mock private R2StorageService r2StorageService;
     @Mock private AuditLogService auditLogService;
+    @Mock private StorageQuotaService storageQuotaService;
 
     @InjectMocks private TimetableSlotUserNoteAttachmentService service;
 
@@ -64,11 +73,10 @@ class TimetableSlotUserNoteAttachmentServiceTest {
     class Presign {
 
         @Test
-        @DisplayName("正常系: 署名URL発行")
+        @DisplayName("正常系: 署名URL発行 + StorageQuotaService.checkQuota が呼ばれる")
         void 正常系_発行() {
             given(noteService.getMine(NOTE_ID, USER_ID)).willReturn(note);
             given(attachmentRepository.countByNoteIdAndDeletedAtIsNull(any())).willReturn(0L);
-            given(attachmentRepository.sumSizeBytesByUser(USER_ID)).willReturn(0L);
             given(r2StorageService.generateUploadUrl(anyString(), eq("image/jpeg"), any(Duration.class)))
                     .willReturn(new PresignedUploadResult("https://r2.example/up", "key", 300L));
 
@@ -77,6 +85,9 @@ class TimetableSlotUserNoteAttachmentServiceTest {
             assertThat(resp.uploadUrl()).startsWith("https://r2.example");
             assertThat(resp.r2ObjectKey()).startsWith("user/" + USER_ID + "/timetable-notes/");
             assertThat(resp.r2ObjectKey()).endsWith(".jpg");
+
+            // F13 Phase 4-α: クォータチェックが呼ばれることを検証
+            verify(storageQuotaService).checkQuota(StorageScopeType.PERSONAL, USER_ID, 1_000L);
         }
 
         @Test
@@ -114,11 +125,17 @@ class TimetableSlotUserNoteAttachmentServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: クォータ100MB超過で 429")
+        @DisplayName("異常系: F13 統合クォータ超過で ATTACHMENT_QUOTA_EXCEEDED (429) に変換される")
         void 異常系_クォータ超過() {
             given(noteService.getMine(NOTE_ID, USER_ID)).willReturn(note);
             given(attachmentRepository.countByNoteIdAndDeletedAtIsNull(any())).willReturn(0L);
-            given(attachmentRepository.sumSizeBytesByUser(USER_ID)).willReturn(99L * 1024 * 1024);
+            // F13 統合クォータが超過例外をスロー
+            willThrow(new StorageQuotaExceededException(
+                    StorageScopeType.PERSONAL, USER_ID,
+                    2L * 1024 * 1024, 99L * 1024 * 1024, 100L * 1024 * 1024))
+                    .given(storageQuotaService)
+                    .checkQuota(eq(StorageScopeType.PERSONAL), eq(USER_ID), anyLong());
+
             var req = new AttachmentPresignRequest("x.png", "image/png", 2L * 1024 * 1024);
             assertThatThrownBy(() -> service.presign(NOTE_ID, USER_ID, req))
                     .isInstanceOf(BusinessException.class)
@@ -142,7 +159,7 @@ class TimetableSlotUserNoteAttachmentServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: 冪等性 — 既存と同じ key の confirm は重複 INSERT しない")
+        @DisplayName("正常系: 冪等性 — 既存と同じ key の confirm は重複 INSERT しない・recordUpload も呼ばない")
         void 冪等性() {
             given(noteService.getMine(NOTE_ID, USER_ID)).willReturn(note);
             String key = "user/" + USER_ID + "/timetable-notes/uuid.jpg";
@@ -156,6 +173,10 @@ class TimetableSlotUserNoteAttachmentServiceTest {
             var saved = service.confirm(NOTE_ID, USER_ID, req, orig);
             assertThat(saved).isSameAs(existing);
             verify(attachmentRepository, never()).save(any(TimetableSlotUserNoteAttachmentEntity.class));
+            // 重複 confirm では使用量加算もしない
+            verify(storageQuotaService, never()).recordUpload(
+                    any(StorageScopeType.class), anyLong(), anyLong(),
+                    any(StorageFeatureType.class), anyString(), anyLong(), anyLong());
         }
     }
 
@@ -164,15 +185,39 @@ class TimetableSlotUserNoteAttachmentServiceTest {
     class Delete {
 
         @Test
-        @DisplayName("正常系: 自分の添付を論理削除")
+        @DisplayName("正常系: 自分の添付を論理削除 + recordDeletion が呼ばれる")
         void 正常系_論理削除() {
             TimetableSlotUserNoteAttachmentEntity entity = TimetableSlotUserNoteAttachmentEntity.builder()
+                    .id(50L)
                     .noteId(NOTE_ID).userId(USER_ID).r2ObjectKey("user/100/timetable-notes/x.jpg")
-                    .originalFilename("x").mimeType("image/jpeg").sizeBytes(1L).build();
+                    .originalFilename("x").mimeType("image/jpeg").sizeBytes(1234L).build();
             given(attachmentRepository.findByIdAndUserId(50L, USER_ID))
                     .willReturn(Optional.of(entity));
             service.delete(50L, USER_ID);
             assertThat(entity.getDeletedAt()).isNotNull();
+
+            // F13 Phase 4-α: 使用量減算が呼ばれることを検証
+            verify(storageQuotaService).recordDeletion(
+                    StorageScopeType.PERSONAL, USER_ID, 1234L,
+                    StorageFeatureType.PERSONAL_TIMETABLE_NOTES,
+                    "timetable_slot_user_note_attachments", 50L, USER_ID);
+        }
+
+        @Test
+        @DisplayName("正常系: 既に削除済みの場合は recordDeletion を呼ばない（冪等）")
+        void 冪等_既削除() {
+            TimetableSlotUserNoteAttachmentEntity entity = TimetableSlotUserNoteAttachmentEntity.builder()
+                    .id(51L)
+                    .noteId(NOTE_ID).userId(USER_ID).r2ObjectKey("user/100/timetable-notes/y.jpg")
+                    .originalFilename("y").mimeType("image/jpeg").sizeBytes(1L)
+                    .build();
+            entity.softDelete();
+            given(attachmentRepository.findByIdAndUserId(51L, USER_ID))
+                    .willReturn(Optional.of(entity));
+            service.delete(51L, USER_ID);
+            verify(storageQuotaService, never()).recordDeletion(
+                    any(StorageScopeType.class), anyLong(), anyLong(),
+                    any(StorageFeatureType.class), anyString(), anyLong(), anyLong());
         }
     }
 }

@@ -217,7 +217,7 @@ class ShiftBudgetAllocationServiceTest {
         }
 
         @Test
-        @DisplayName("BUDGET_MANAGE 権限なし → BUDGET_MANAGE_REQUIRED (403)")
+        @DisplayName("BUDGET_ADMIN 権限なし → BUDGET_ADMIN_REQUIRED (403) — Phase 9-δ クリーンカット")
         void 権限なし_403() {
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
             given(accessControlService.isMember(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
@@ -225,7 +225,7 @@ class ShiftBudgetAllocationServiceTest {
             assertThatThrownBy(() -> service.createAllocation(ORG_ID, sampleCreateRequest()))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(ShiftBudgetErrorCode.BUDGET_MANAGE_REQUIRED);
+                    .isEqualTo(ShiftBudgetErrorCode.BUDGET_ADMIN_REQUIRED);
         }
     }
 

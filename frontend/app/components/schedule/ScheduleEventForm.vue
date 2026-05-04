@@ -30,7 +30,8 @@ const form = ref({
   endDate: null as Date | null,
   endTime: '',
   allDay: false,
-  color: '#6366f1',
+  color: '#22c55e',
+  attendanceRequired: false,
 })
 
 // 開始時刻が変わったら終了時刻を1時間後に自動設定
@@ -82,6 +83,7 @@ watch(
         form.value.description = (data.description as string) ?? ''
         form.value.location = (data.location as string) ?? ''
         form.value.allDay = (data.allDay as boolean) ?? false
+        form.value.attendanceRequired = (data.attendanceRequired as boolean) ?? false
         if (data.startAt) {
           const start = new Date(data.startAt as string)
           form.value.startDate = start
@@ -129,6 +131,9 @@ async function submit() {
   }
   if (props.isPersonal) {
     body.color = form.value.color
+  } else {
+    body.eventType = 'OTHER'
+    body.attendanceRequired = form.value.attendanceRequired
   }
 
   try {
@@ -174,7 +179,8 @@ function resetForm() {
     endDate: null,
     endTime: '10:00',
     allDay: false,
-    color: '#6366f1',
+    color: '#22c55e',
+    attendanceRequired: false,
   }
   fieldErrors.value = {}
 }
@@ -213,9 +219,15 @@ function close() {
         />
         <small v-if="fieldErrors.title" class="text-red-500">{{ fieldErrors.title }}</small>
       </div>
-      <div class="flex items-center gap-2">
-        <ToggleSwitch v-model="form.allDay" />
-        <label class="text-sm">終日</label>
+      <div class="flex items-center gap-4">
+        <div v-if="!isPersonal" class="flex items-center gap-2">
+          <Checkbox v-model="form.attendanceRequired" input-id="attendance-required" :binary="true" />
+          <label for="attendance-required" class="text-sm cursor-pointer">出欠確認する</label>
+        </div>
+        <div class="flex items-center gap-2">
+          <ToggleSwitch v-model="form.allDay" />
+          <label class="text-sm">終日</label>
+        </div>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
