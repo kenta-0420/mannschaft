@@ -2,6 +2,7 @@ package com.mannschaft.app.proxy.repository;
 
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -91,4 +92,12 @@ public interface ProxyInputConsentRepository extends JpaRepository<ProxyInputCon
     @Query(value = "SELECT * FROM proxy_input_consents WHERE subject_user_id = :userId",
            nativeQuery = true)
     List<ProxyInputConsentEntity> findAllBySubjectUserIdForExport(@Param("userId") Long userId);
+
+    /**
+     * 退会時論理削除用: 指定ユーザーが本人（subject）の同意書を全件論理削除する。
+     * 監査証跡として同意書の記録は保持するため、物理削除ではなく論理削除を行う。
+     */
+    @Modifying
+    @Query("UPDATE ProxyInputConsentEntity c SET c.deletedAt = CURRENT_TIMESTAMP WHERE c.subjectUserId = :userId AND c.deletedAt IS NULL")
+    void logicalDeleteAllBySubjectUserId(@Param("userId") Long userId);
 }

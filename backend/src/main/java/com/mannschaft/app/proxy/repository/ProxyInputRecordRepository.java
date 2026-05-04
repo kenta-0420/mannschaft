@@ -65,4 +65,16 @@ public interface ProxyInputRecordRepository extends JpaRepository<ProxyInputReco
     @Modifying
     @Query("DELETE FROM ProxyInputRecordEntity r WHERE r.id IN :ids")
     void deleteByIdIn(@Param("ids") List<Long> ids);
+
+    /**
+     * 指定ユーザーが本人（subject）として関与する代理入力記録を全件取得する（GDPRエクスポート用）。
+     */
+    List<ProxyInputRecordEntity> findBySubjectUserId(Long subjectUserId);
+
+    /**
+     * 退会時物理削除用: 指定ユーザーが本人（subject）の代理入力記録を全件物理削除する。
+     */
+    @Modifying
+    @Query("DELETE FROM ProxyInputRecordEntity r WHERE r.subjectUserId = :userId")
+    void deleteAllBySubjectUserId(@Param("userId") Long userId);
 }

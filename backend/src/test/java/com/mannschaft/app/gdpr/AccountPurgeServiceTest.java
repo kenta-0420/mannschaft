@@ -18,6 +18,8 @@ import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.gdpr.service.AccountPurgeService;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -77,6 +79,10 @@ class AccountPurgeServiceTest {
     private TwoFactorAuthRepository twoFactorAuthRepository;
     @Mock
     private WebAuthnCredentialRepository webAuthnCredentialRepository;
+    @Mock
+    private ProxyInputConsentRepository proxyInputConsentRepository;
+    @Mock
+    private ProxyInputRecordRepository proxyInputRecordRepository;
 
     @InjectMocks
     private AccountPurgeService service;

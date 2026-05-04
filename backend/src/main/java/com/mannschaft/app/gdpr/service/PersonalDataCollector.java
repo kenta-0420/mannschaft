@@ -19,6 +19,10 @@ import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
+import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
+import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
@@ -55,6 +59,8 @@ public class PersonalDataCollector {
     private final ActionMemoTagLinkRepository actionMemoTagLinkRepository;
     private final UserActionMemoSettingsRepository userActionMemoSettingsRepository;
     private final ErrorReportRepository errorReportRepository;
+    private final ProxyInputConsentRepository proxyInputConsentRepository;
+    private final ProxyInputRecordRepository proxyInputRecordRepository;
     private final EncryptionService encryptionService;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
@@ -75,7 +81,10 @@ public class PersonalDataCollector {
             // F02.5 行動メモ（Phase 1.5 で追加）
             Map.entry("action_memos", "action_memos.json"),
             // F12.5 エラーレポート
-            Map.entry("error_reports", "error_reports.json")
+            Map.entry("error_reports", "error_reports.json"),
+            // F14.1 代理入力（Phase 13-γ で追加）
+            Map.entry("proxy_consents", "proxy_input_consents.json"),
+            Map.entry("proxy_records", "proxy_input_records.json")
     );
 
     /**
@@ -126,6 +135,8 @@ public class PersonalDataCollector {
             case "notifications" -> collectNotifications(userId);
             case "action_memos" -> collectActionMemos(userId);
             case "error_reports" -> collectErrorReports(userId);
+            case "proxy_consents" -> collectProxyConsents(userId);
+            case "proxy_records" -> collectProxyRecords(userId);
             default -> "[]";
         };
     }
@@ -265,6 +276,55 @@ public class PersonalDataCollector {
         payload.put("action_memo_tag_links", links);
         payload.put("user_action_memo_settings", settings.orElse(null));
         return OBJECT_MAPPER.writeValueAsString(payload);
+    }
+
+    /**
+     * 代理入力同意書データを収集する（GDPR エクスポート用）。
+     * proxyUserId は PROXY_USER_001 形式で仮名化し、代理者の実名を本人データに含めない。
+     */
+    private String collectProxyConsents(Long userId) throws Exception {
+        List<ProxyInputConsentEntity> consents =
+                proxyInputConsentRepository.findAllBySubjectUserIdForExport(userId);
+        // proxyUserId をローカル仮名 "PROXY_USER_001" 等に置換
+        var result = new java.util.ArrayList<Map<String, Object>>();
+        int proxyIndex = 1;
+        for (ProxyInputConsentEntity c : consents) {
+            Map<String, Object> entry = new java.util.LinkedHashMap<>();
+            entry.put("id", c.getId());
+            entry.put("subjectUserId", c.getSubjectUserId());
+            entry.put("proxyUser", String.format("PROXY_USER_%03d", proxyIndex++));
+            entry.put("consentMethod", c.getConsentMethod());
+            entry.put("effectiveFrom", c.getEffectiveFrom());
+            entry.put("effectiveUntil", c.getEffectiveUntil());
+            entry.put("approvedAt", c.getApprovedAt());
+            entry.put("revokedAt", c.getRevokedAt());
+            entry.put("revokeMethod", c.getRevokeMethod());
+            result.add(entry);
+        }
+        return OBJECT_MAPPER.writeValueAsString(result);
+    }
+
+    /**
+     * 代理入力記録データを収集する（GDPR エクスポート用）。
+     * proxyUserId は仮名化して出力する。
+     */
+    private String collectProxyRecords(Long userId) throws Exception {
+        List<ProxyInputRecordEntity> records =
+                proxyInputRecordRepository.findBySubjectUserId(userId);
+        var result = new java.util.ArrayList<Map<String, Object>>();
+        for (ProxyInputRecordEntity r : records) {
+            Map<String, Object> entry = new java.util.LinkedHashMap<>();
+            entry.put("id", r.getId());
+            entry.put("subjectUserId", r.getSubjectUserId());
+            entry.put("proxyUser", "ANONYMIZED");
+            entry.put("featureScope", r.getFeatureScope());
+            entry.put("targetEntityType", r.getTargetEntityType());
+            entry.put("targetEntityId", r.getTargetEntityId());
+            entry.put("inputSource", r.getInputSource());
+            entry.put("createdAt", r.getCreatedAt());
+            result.add(entry);
+        }
+        return OBJECT_MAPPER.writeValueAsString(result);
     }
 
     private String decryptSafe(String cipherText) {
