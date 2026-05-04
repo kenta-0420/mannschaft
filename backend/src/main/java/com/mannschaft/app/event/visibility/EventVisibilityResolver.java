@@ -14,7 +14,6 @@ import com.mannschaft.app.event.entity.EventVisibility;
 import com.mannschaft.app.event.repository.EventRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -35,7 +34,6 @@ import java.util.List;
  * メトリクス（§9.4）の責務は {@link AbstractContentVisibilityResolver} に委譲される。
  */
 @Component
-@Transactional(readOnly = true)
 public class EventVisibilityResolver
         extends AbstractContentVisibilityResolver<EventVisibility, EventVisibilityProjection> {
 
