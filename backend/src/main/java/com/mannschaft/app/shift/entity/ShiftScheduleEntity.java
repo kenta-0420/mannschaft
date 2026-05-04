@@ -78,6 +78,15 @@ public class ShiftScheduleEntity extends BaseEntity {
 
     private LocalDateTime lastAutoTransitionAt;
 
+    /**
+     * 紐付プロジェクト ID（F08.7 シフト-予算-TODO 連携で使用）。
+     * NULL: プロジェクト紐付なし（通常運用）。
+     * 設計書 F08.7 (v1.2) §4.3 / §12.1 参照。
+     * <p>1:1 関係。プロジェクト削除時は ON DELETE SET NULL で本カラムが NULL になる。</p>
+     */
+    @Column(name = "linked_project_id")
+    private Long linkedProjectId;
+
     @Version
     @Column(nullable = false)
     @Builder.Default
