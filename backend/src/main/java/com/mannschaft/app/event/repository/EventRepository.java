@@ -187,13 +187,17 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
     @Query("""
             SELECT new com.mannschaft.app.event.visibility.EventVisibilityProjection(
                 e.id,
-                CAST(e.scopeType AS string),
+                CASE
+                    WHEN e.scopeType = com.mannschaft.app.event.EventScopeType.TEAM THEN 'TEAM'
+                    WHEN e.scopeType = com.mannschaft.app.event.EventScopeType.ORGANIZATION THEN 'ORGANIZATION'
+                    ELSE NULL
+                END,
                 e.scopeId,
                 e.createdBy,
                 e.status,
                 e.visibility)
             FROM EventEntity e
-            WHERE e.id IN :ids
+            WHERE e.id IN :ids AND e.deletedAt IS NULL
             """)
     List<EventVisibilityProjection> findVisibilityProjectionsByIdIn(
             @Param("ids") Collection<Long> ids);
