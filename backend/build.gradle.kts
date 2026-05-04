@@ -152,6 +152,15 @@ tasks.withType<Test> {
     useJUnitPlatform()
     maxHeapSize = "2g"
     finalizedBy(tasks.jacocoTestReport)
+    testLogging {
+        // 失敗時に完全スタックトレースを出力する。CI ログのみで NPE 起源を追跡できるようにする。
+        showStandardStreams = false
+        events("failed", "skipped")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStackTraces = true
+        showExceptions = true
+        showCauses = true
+    }
 }
 
 tasks.jacocoTestReport {
