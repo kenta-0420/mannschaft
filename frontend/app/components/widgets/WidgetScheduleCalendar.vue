@@ -19,24 +19,26 @@ const scheduleApi = useScheduleApi()
 const { captureQuiet } = useErrorReport()
 
 const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> => {
-  const [scopeRes, personalRes] = await Promise.all([
-    scheduleApi.listSchedules(props.scopeType, props.scopeId, { from, to, size: 100 }),
-    scheduleApi.getMySchedules({ from, to, size: 100 }),
-  ])
-  return [
-    ...(scopeRes.data ?? []).map((e: ScheduleApiItem) => ({
-      ...e,
-      allDay: e.allDay ?? false,
-      color: e.color ?? null,
-      isPersonal: false,
-    })),
-    ...(personalRes.data ?? []).map((e: ScheduleApiItem) => ({
-      ...e,
-      allDay: e.allDay ?? false,
-      color: e.color ?? null,
-      isPersonal: true,
-    })),
-  ]
+  const toItem = (e: ScheduleApiItem, isPersonal: boolean): CalendarEventItem => ({
+    ...e,
+    allDay: e.allDay ?? false,
+    color: e.color ?? null,
+    isPersonal,
+  })
+
+  if (props.scopeType === 'team') {
+    const [scopeRes, personalRes] = await Promise.all([
+      scheduleApi.listSchedules('team', props.scopeId, { from, to, size: 100 }),
+      scheduleApi.getMySchedules({ from, to, size: 100 }),
+    ])
+    return [
+      ...(scopeRes.data ?? []).map((e: ScheduleApiItem) => toItem(e, false)),
+      ...(personalRes.data ?? []).map((e: ScheduleApiItem) => toItem(e, true)),
+    ]
+  }
+
+  const scopeRes = await scheduleApi.listSchedules('organization', props.scopeId, { from, to, size: 100 })
+  return (scopeRes.data ?? []).map((e: ScheduleApiItem) => toItem(e, false))
 }
 
 const { currentYear, currentMonth, events, loading, loadEvents, onPrevMonth, onNextMonth } =
