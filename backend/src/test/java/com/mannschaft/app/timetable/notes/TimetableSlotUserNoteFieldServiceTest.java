@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.notes;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.notes.dto.CreateTimetableSlotUserNoteFieldRequest;
 import com.mannschaft.app.timetable.notes.dto.UpdateTimetableSlotUserNoteFieldRequest;
@@ -34,6 +35,7 @@ class TimetableSlotUserNoteFieldServiceTest {
     private static final Long FIELD_ID = 11L;
 
     @Mock private TimetableSlotUserNoteFieldRepository repository;
+    @Mock private AuditLogService auditLogService;
     @InjectMocks private TimetableSlotUserNoteFieldService service;
 
     private TimetableSlotUserNoteFieldEntity field() {

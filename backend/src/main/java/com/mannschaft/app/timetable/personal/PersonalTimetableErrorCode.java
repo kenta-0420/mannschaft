@@ -78,7 +78,15 @@ public enum PersonalTimetableErrorCode implements ErrorCode {
     PERSONAL_SLOT_LINK_NOT_TEAM_MEMBER("PERSONAL_TIMETABLE_094", "リンク先チームのメンバーではありません", Severity.WARN),
     PERSONAL_SLOT_LINK_STATUS_INVALID("PERSONAL_TIMETABLE_095", "リンク先時間割が ACTIVE 状態ではありません", Severity.WARN),
     PERSONAL_SLOT_LINK_POSITION_MISMATCH("PERSONAL_TIMETABLE_096", "リンク先コマの曜日×時限が個人コマと一致しません", Severity.WARN),
-    PERSONAL_SLOT_LINK_TIMETABLE_REQUIRED("PERSONAL_TIMETABLE_097", "linked_team_id 指定時は linked_timetable_id も必須です", Severity.WARN);
+    PERSONAL_SLOT_LINK_TIMETABLE_REQUIRED("PERSONAL_TIMETABLE_097", "linked_team_id 指定時は linked_timetable_id も必須です", Severity.WARN),
+
+    // ---- Phase 5 家族共有 ----
+    SHARE_TARGET_LIMIT_EXCEEDED("PERSONAL_TIMETABLE_100", "共有先は最大3件までです", Severity.WARN),
+    SHARE_TARGET_NOT_FAMILY_TEAM("PERSONAL_TIMETABLE_101", "共有先は家族チームのみ指定できます", Severity.WARN),
+    SHARE_TARGET_NOT_TEAM_MEMBER("PERSONAL_TIMETABLE_102", "共有先家族チームのメンバーではありません", Severity.WARN),
+    SHARE_TARGET_TEAM_NOT_FOUND("PERSONAL_TIMETABLE_103", "共有先チームが見つかりません", Severity.WARN),
+    SHARE_TARGET_NOT_FOUND("PERSONAL_TIMETABLE_104", "共有先設定が見つかりません", Severity.WARN),
+    SHARE_TARGET_DUPLICATED("PERSONAL_TIMETABLE_105", "同じ家族チームは既に共有先に登録されています", Severity.WARN);
 
     private final String code;
     private final String message;

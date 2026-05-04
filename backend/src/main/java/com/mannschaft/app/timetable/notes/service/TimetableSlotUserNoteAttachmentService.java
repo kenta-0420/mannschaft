@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.notes.service;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -61,6 +62,8 @@ public class TimetableSlotUserNoteAttachmentService {
     private final TimetableSlotUserNoteAttachmentRepository attachmentRepository;
     private final TimetableSlotUserNoteService noteService;
     private final R2StorageService r2StorageService;
+    /** F03.15 Phase 5: 削除時の F11 監査ログ発火に使用。 */
+    private final AuditLogService auditLogService;
 
     /**
      * Pre-signed PUT URL を発行する。
@@ -192,6 +195,15 @@ public class TimetableSlotUserNoteAttachmentService {
         }
         entity.softDelete();
         attachmentRepository.save(entity);
+
+        // F03.15 Phase 5: 監査ログ発火
+        auditLogService.record(
+                "personal_timetable.attachment_deleted",
+                userId, null, null, null, null, null, null,
+                String.format(
+                        "{\"source\":\"PERSONAL_TIMETABLE\",\"source_id\":%d,\"note_id\":%d}",
+                        attachmentId, entity.getNoteId()));
+
         log.info("メモ添付を論理削除しました: id={}, userId={}", attachmentId, userId);
     }
 
