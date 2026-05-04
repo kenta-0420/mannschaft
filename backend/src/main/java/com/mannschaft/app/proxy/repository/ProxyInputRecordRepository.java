@@ -2,7 +2,10 @@ package com.mannschaft.app.proxy.repository;
 
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,4 +36,17 @@ public interface ProxyInputRecordRepository extends JpaRepository<ProxyInputReco
      * 同意書に紐づく代理入力記録を取得する（同意書ごとの監査用）。
      */
     List<ProxyInputRecordEntity> findByProxyInputConsentIdOrderByCreatedAtDesc(Long proxyInputConsentId);
+
+    /**
+     * 月次サマリ生成用：指定期間内に作成された代理入力レコードを全件取得する。
+     * proxy_input_records には organizationId が存在しないため、
+     * 全件を subjectUserId でグループ化して月次サマリPDFを生成する。
+     *
+     * @param fromDate 集計開始日時（inclusive）
+     * @param toDate   集計終了日時（exclusive）
+     */
+    @Query("SELECT r FROM ProxyInputRecordEntity r WHERE r.createdAt >= :fromDate AND r.createdAt < :toDate")
+    List<ProxyInputRecordEntity> findForMonthlySummary(
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate);
 }
