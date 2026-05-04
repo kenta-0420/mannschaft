@@ -222,21 +222,6 @@ async function installListMocks(page: Page): Promise<void> {
   })
 }
 
-async function installActivateMocks(page: Page): Promise<void> {
-  await page.route(`**/api/v1/me/personal-timetables/${PT_DRAFT_ID}/activate`, async (route) => {
-    if (route.request().method() === 'POST') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { ...buildDraftTimetable(), status: 'ACTIVE' } }),
-      })
-    }
-    else {
-      await route.continue()
-    }
-  })
-}
-
 async function installEditMocks(page: Page): Promise<void> {
   // 詳細
   await page.route(`**/api/v1/me/personal-timetables/${PT_DRAFT_ID}`, async (route) => {
