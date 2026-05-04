@@ -3,6 +3,9 @@ package com.mannschaft.app.gallery;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
+import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.gallery.dto.MediaUploadUrlRequest;
 import com.mannschaft.app.gallery.dto.MediaUploadUrlResponse;
 import com.mannschaft.app.gallery.entity.PhotoAlbumEntity;
@@ -23,9 +26,18 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 
+/**
+ * {@link GalleryMediaUploadService} の単体テスト。
+ *
+ * <p>F13 Phase 4-δ: クォータ超過テスト・checkQuota 呼び出し検証を追加。</p>
+ */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("GalleryMediaUploadService 単体テスト")
 class GalleryMediaUploadServiceTest {
@@ -33,6 +45,7 @@ class GalleryMediaUploadServiceTest {
     @Mock private R2StorageService r2StorageService;
     @Mock private PhotoAlbumRepository albumRepository;
     @Mock private GalleryMapper galleryMapper;
+    @Mock private StorageQuotaService storageQuotaService;
 
     private PhotoAlbumService albumService;
     private GalleryMediaUploadService service;
@@ -43,7 +56,7 @@ class GalleryMediaUploadServiceTest {
     @BeforeEach
     void setUp() {
         albumService = new PhotoAlbumService(albumRepository, galleryMapper);
-        service = new GalleryMediaUploadService(r2StorageService, albumService);
+        service = new GalleryMediaUploadService(r2StorageService, albumService, storageQuotaService);
     }
 
     @Nested
@@ -61,7 +74,7 @@ class GalleryMediaUploadServiceTest {
             given(r2StorageService.generateUploadUrl(keyCaptor.capture(), anyString(), any()))
                     .willReturn(new PresignedUploadResult("https://r2.example.com/upload", "gallery/TEAM/10/album-1/photo-uuid.jpg", 600L));
 
-            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "image/jpeg");
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "image/jpeg", null);
             MediaUploadUrlResponse response = service.generateUploadUrl(ALBUM_ID, request, USER_ID);
 
             String capturedKey = keyCaptor.getValue();
@@ -80,7 +93,7 @@ class GalleryMediaUploadServiceTest {
             given(r2StorageService.generateUploadUrl(keyCaptor.capture(), anyString(), any()))
                     .willReturn(new PresignedUploadResult("https://r2.example.com/upload", "", 600L));
 
-            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "image/png");
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "image/png", null);
             service.generateUploadUrl(ALBUM_ID, request, USER_ID);
 
             assertThat(keyCaptor.getValue()).endsWith(".png");
@@ -97,7 +110,7 @@ class GalleryMediaUploadServiceTest {
             given(r2StorageService.generateUploadUrl(keyCaptor.capture(), anyString(), any()))
                     .willReturn(new PresignedUploadResult("https://r2.example.com/upload", "", 600L));
 
-            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "image/jpeg");
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "image/jpeg", null);
             service.generateUploadUrl(ALBUM_ID, request, USER_ID);
 
             assertThat(keyCaptor.getValue()).startsWith("gallery/ORGANIZATION/20/album-1/photo-");
@@ -119,7 +132,7 @@ class GalleryMediaUploadServiceTest {
             given(r2StorageService.generateUploadUrl(keyCaptor.capture(), anyString(), any()))
                     .willReturn(new PresignedUploadResult("https://r2.example.com/upload", "gallery/TEAM/10/album-1/video-uuid.mp4", 900L));
 
-            MediaUploadUrlRequest request = new MediaUploadUrlRequest("VIDEO", "video/mp4");
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("VIDEO", "video/mp4", null);
             MediaUploadUrlResponse response = service.generateUploadUrl(ALBUM_ID, request, USER_ID);
 
             String capturedKey = keyCaptor.getValue();
@@ -138,7 +151,7 @@ class GalleryMediaUploadServiceTest {
             given(r2StorageService.generateUploadUrl(keyCaptor.capture(), anyString(), any()))
                     .willReturn(new PresignedUploadResult("https://r2.example.com/upload", "", 900L));
 
-            MediaUploadUrlRequest request = new MediaUploadUrlRequest("VIDEO", "video/webm");
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("VIDEO", "video/webm", null);
             service.generateUploadUrl(ALBUM_ID, request, USER_ID);
 
             assertThat(keyCaptor.getValue()).endsWith(".webm");
@@ -155,7 +168,7 @@ class GalleryMediaUploadServiceTest {
             given(r2StorageService.generateUploadUrl(keyCaptor.capture(), anyString(), any()))
                     .willReturn(new PresignedUploadResult("https://r2.example.com/upload", "", 900L));
 
-            MediaUploadUrlRequest request = new MediaUploadUrlRequest("VIDEO", "video/quicktime");
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("VIDEO", "video/quicktime", null);
             service.generateUploadUrl(ALBUM_ID, request, USER_ID);
 
             assertThat(keyCaptor.getValue()).endsWith(".mov");
@@ -173,7 +186,7 @@ class GalleryMediaUploadServiceTest {
                     .teamId(10L).title("test").build();
             given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
 
-            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "video/mp4");
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "video/mp4", null);
 
             assertThatThrownBy(() -> service.generateUploadUrl(ALBUM_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -188,7 +201,7 @@ class GalleryMediaUploadServiceTest {
                     .teamId(10L).title("test").build();
             given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
 
-            MediaUploadUrlRequest request = new MediaUploadUrlRequest("VIDEO", "image/jpeg");
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("VIDEO", "image/jpeg", null);
 
             assertThatThrownBy(() -> service.generateUploadUrl(ALBUM_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -203,12 +216,90 @@ class GalleryMediaUploadServiceTest {
                     .teamId(10L).title("test").build();
             given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
 
-            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "application/pdf");
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "application/pdf", null);
 
             assertThatThrownBy(() -> service.generateUploadUrl(ALBUM_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("GALLERY_012"));
+        }
+    }
+
+    // ==================== F13 Phase 4-δ クォータ統合テスト ====================
+
+    @Nested
+    @DisplayName("F13 Phase 4-δ: StorageQuotaService 統合テスト")
+    class StorageQuotaIntegration {
+
+        @Test
+        @DisplayName("正常系: fileSize あり → checkQuota が呼ばれる（TEAM スコープ）")
+        void fileSize有り_checkQuota呼び出し確認_TEAMスコープ() {
+            PhotoAlbumEntity album = PhotoAlbumEntity.builder()
+                    .teamId(10L).title("test").build();
+            given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
+
+            ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+            given(r2StorageService.generateUploadUrl(keyCaptor.capture(), anyString(), any()))
+                    .willReturn(new PresignedUploadResult("https://r2.example.com/upload", "", 600L));
+
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "image/jpeg", 1024L * 1024);
+            service.generateUploadUrl(ALBUM_ID, request, USER_ID);
+
+            then(storageQuotaService).should().checkQuota(
+                    eq(StorageScopeType.TEAM), eq(10L), eq(1024L * 1024));
+        }
+
+        @Test
+        @DisplayName("正常系: fileSize あり → checkQuota が呼ばれる（ORGANIZATION スコープ）")
+        void fileSize有り_checkQuota呼び出し確認_ORGANIZATIONスコープ() {
+            PhotoAlbumEntity album = PhotoAlbumEntity.builder()
+                    .organizationId(20L).title("test").build();
+            given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
+
+            ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+            given(r2StorageService.generateUploadUrl(keyCaptor.capture(), anyString(), any()))
+                    .willReturn(new PresignedUploadResult("https://r2.example.com/upload", "", 600L));
+
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "image/jpeg", 2048L * 1024);
+            service.generateUploadUrl(ALBUM_ID, request, USER_ID);
+
+            then(storageQuotaService).should().checkQuota(
+                    eq(StorageScopeType.ORGANIZATION), eq(20L), eq(2048L * 1024));
+        }
+
+        @Test
+        @DisplayName("正常系: fileSize null → checkQuota が呼ばれない（後方互換）")
+        void fileSize_null_checkQuota呼ばれない() {
+            PhotoAlbumEntity album = PhotoAlbumEntity.builder()
+                    .teamId(10L).title("test").build();
+            given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
+
+            ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+            given(r2StorageService.generateUploadUrl(keyCaptor.capture(), anyString(), any()))
+                    .willReturn(new PresignedUploadResult("https://r2.example.com/upload", "", 600L));
+
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "image/jpeg", null);
+            service.generateUploadUrl(ALBUM_ID, request, USER_ID);
+
+            then(storageQuotaService).should(org.mockito.Mockito.never()).checkQuota(any(), anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("異常系: クォータ超過 → GALLERY_014 例外スロー")
+        void クォータ超過_GALLERY_014例外() {
+            PhotoAlbumEntity album = PhotoAlbumEntity.builder()
+                    .teamId(10L).title("test").build();
+            given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
+
+            willThrow(new StorageQuotaExceededException(StorageScopeType.TEAM, 10L, 1024L * 1024, 9L * 1024 * 1024 * 1024, 10L * 1024 * 1024 * 1024))
+                    .given(storageQuotaService).checkQuota(any(), anyLong(), anyLong());
+
+            MediaUploadUrlRequest request = new MediaUploadUrlRequest("PHOTO", "image/jpeg", 1024L * 1024);
+
+            assertThatThrownBy(() -> service.generateUploadUrl(ALBUM_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("GALLERY_014"));
         }
     }
 }
