@@ -10,11 +10,13 @@ import com.mannschaft.app.corkboard.dto.UpdateCorkboardRequest;
 import com.mannschaft.app.corkboard.entity.CorkboardCardEntity;
 import com.mannschaft.app.corkboard.entity.CorkboardEntity;
 import com.mannschaft.app.corkboard.entity.CorkboardGroupEntity;
+import com.mannschaft.app.corkboard.event.CorkboardEvent;
 import com.mannschaft.app.corkboard.repository.CorkboardCardRepository;
 import com.mannschaft.app.corkboard.repository.CorkboardGroupRepository;
 import com.mannschaft.app.corkboard.repository.CorkboardRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +38,7 @@ public class CorkboardService {
     private final CorkboardCardRepository cardRepository;
     private final CorkboardGroupRepository groupRepository;
     private final CorkboardMapper corkboardMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 個人ボード一覧を取得する。
@@ -176,6 +179,8 @@ public class CorkboardService {
 
     /**
      * スコープ別ボードを削除する（論理削除）。
+     * 共有ボード（TEAM/ORGANIZATION）の場合、{@link CorkboardEvent.Type#BOARD_DELETED} を発行し、
+     * 購読中のクライアントへ削除を通知する。
      */
     @Transactional
     public void deleteScopedBoard(String scopeType, Long scopeId, Long boardId) {
@@ -184,12 +189,13 @@ public class CorkboardService {
         board.softDelete();
         corkboardRepository.save(board);
         log.info("コルクボード削除: boardId={}", boardId);
+        eventPublisher.publishEvent(CorkboardEvent.boardDeleted(boardId));
     }
 
     /**
-     * ボードIDでボードを検索する（カード・セクション操作用の内部メソッド）。
+     * ボードIDでボードを検索する（カード・セクション操作用の共有メソッド）。
      */
-    CorkboardEntity findBoardOrThrow(Long boardId) {
+    public CorkboardEntity findBoardOrThrow(Long boardId) {
         return corkboardRepository.findById(boardId)
                 .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
     }

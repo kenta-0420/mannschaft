@@ -93,6 +93,10 @@ public class CorkboardCardEntity extends BaseEntity {
     @Column(name = "pinned_at")
     private LocalDateTime pinnedAt;
 
+    @Column(name = "is_ref_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isRefDeleted = false;
+
     @Column(nullable = false)
     private Long createdBy;
 
@@ -146,5 +150,21 @@ public class CorkboardCardEntity extends BaseEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * OGP メタ情報を更新する（A-1 OGP 非同期取得バッチからの呼び出し用）。
+     */
+    public void updateOgpMeta(String ogTitle, String ogImageUrl, String ogDescription) {
+        this.ogTitle = ogTitle;
+        this.ogImageUrl = ogImageUrl;
+        this.ogDescription = ogDescription;
+    }
+
+    /**
+     * デッドリファレンス検知フラグを更新する。
+     */
+    public void markRefDeleted(boolean refDeleted) {
+        this.isRefDeleted = refDeleted;
     }
 }

@@ -61,7 +61,8 @@ public class CorkboardCardController {
     public ResponseEntity<ApiResponse<CorkboardCardResponse>> updateCard(
             @PathVariable Long boardId, @PathVariable Long cardId,
             @Valid @RequestBody UpdateCardRequest request) {
-        CorkboardCardResponse response = cardService.updateCard(boardId, cardId, request);
+        CorkboardCardResponse response = cardService.updateCard(
+                boardId, SecurityUtils.getCurrentUserId(), cardId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -72,7 +73,7 @@ public class CorkboardCardController {
     @Operation(summary = "カード削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteCard(@PathVariable Long boardId, @PathVariable Long cardId) {
-        cardService.deleteCard(boardId, cardId);
+        cardService.deleteCard(boardId, SecurityUtils.getCurrentUserId(), cardId);
         return ResponseEntity.noContent().build();
     }
 
@@ -85,7 +86,8 @@ public class CorkboardCardController {
     public ResponseEntity<ApiResponse<CorkboardCardResponse>> archiveCard(
             @PathVariable Long boardId, @PathVariable Long cardId,
             @RequestParam(defaultValue = "true") boolean archived) {
-        CorkboardCardResponse response = cardService.archiveCard(boardId, cardId, archived);
+        CorkboardCardResponse response = cardService.archiveCard(
+                boardId, SecurityUtils.getCurrentUserId(), cardId, archived);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -111,7 +113,8 @@ public class CorkboardCardController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<List<CorkboardCardResponse>>> batchUpdatePositions(
             @PathVariable Long boardId, @Valid @RequestBody BatchPositionRequest request) {
-        List<CorkboardCardResponse> responses = cardService.batchUpdatePositions(boardId, request);
+        List<CorkboardCardResponse> responses = cardService.batchUpdatePositions(
+                boardId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 }

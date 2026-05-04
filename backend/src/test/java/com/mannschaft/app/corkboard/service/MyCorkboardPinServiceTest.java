@@ -95,7 +95,7 @@ class MyCorkboardPinServiceTest {
                             null, null, null, null, null, null,
                             "NONE", "MEDIUM", 0, 0, 0, null, null,
                             e.getIsArchived(), e.getIsPinned(), e.getPinnedAt(),
-                            USER_ID, null, null);
+                            false, USER_ID, null, null);
                 });
     }
 

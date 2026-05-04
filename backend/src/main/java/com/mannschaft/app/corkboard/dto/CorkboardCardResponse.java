@@ -34,6 +34,7 @@ public class CorkboardCardResponse {
     private final Boolean isArchived;
     private final Boolean isPinned;
     private final LocalDateTime pinnedAt;
+    private final Boolean isRefDeleted;
     private final Long createdBy;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
