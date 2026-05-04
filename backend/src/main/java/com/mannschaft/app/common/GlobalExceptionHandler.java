@@ -235,7 +235,10 @@ public class GlobalExceptionHandler {
             Map.entry("CORKBOARD_013", HttpStatus.CONFLICT),                 // PIN_LIMIT_EXCEEDED
             // F09.8 Phase A2 コルクボード詳細取得 — 設計書通り 403/404 を返す
             Map.entry("CORKBOARD_001", HttpStatus.NOT_FOUND),                // BOARD_NOT_FOUND
-            Map.entry("CORKBOARD_009", HttpStatus.FORBIDDEN)                 // INSUFFICIENT_PERMISSION
+            Map.entry("CORKBOARD_009", HttpStatus.FORBIDDEN),                // INSUFFICIENT_PERMISSION
+            // F13 ストレージクォータ統合機構（Phase 4-α）
+            Map.entry("STORAGE_QUOTA_001", HttpStatus.CONFLICT),             // QUOTA_EXCEEDED (容量超過)
+            Map.entry("STORAGE_QUOTA_002", HttpStatus.INTERNAL_SERVER_ERROR) // SUBSCRIPTION_NOT_FOUND
     );
 
     /**
