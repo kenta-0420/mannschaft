@@ -179,9 +179,10 @@ class MembershipBatchQueryServiceIntegrationTest {
     }
 
     private void insertTeamOrgMembership(Long teamId, Long orgId) {
+        // NOTE: invited_at は @Column(nullable = false) のため明示必須（A-3a と同パターン）
         em.createNativeQuery(
-                "INSERT INTO team_org_memberships (team_id, organization_id, status, created_at) " +
-                        "VALUES (:tid, :oid, 'ACTIVE', NOW())")
+                "INSERT INTO team_org_memberships (team_id, organization_id, status, invited_at, created_at) " +
+                        "VALUES (:tid, :oid, 'ACTIVE', NOW(), NOW())")
                 .setParameter("tid", teamId)
                 .setParameter("oid", orgId)
                 .executeUpdate();
