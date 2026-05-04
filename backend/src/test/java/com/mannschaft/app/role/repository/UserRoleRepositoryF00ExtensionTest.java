@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.MySQLContainer;
@@ -43,6 +44,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
+@TestPropertySource(properties = {
+        // 本テストは roles seed (V2.014) と users / organizations / teams の
+        // 完全な production-like スキーマに依存するため、テストプロファイル既定の
+        // ddl-auto=create-drop / flyway.enabled=false を Flyway 駆動に切り替える。
+        // ddl-auto は none を採用（validate にすると entity-DB 間の既知ドリフト
+        // — 例: users.offline_only がエンティティ宣言のみで Flyway に対応 SQL なし —
+        // で起動失敗するため）。本テストは Repository クエリの SQL 妥当性のみを
+        // 検証すれば足り、entity-DB 全体の整合性検証はスコープ外。
+        "spring.flyway.enabled=true",
+        "spring.jpa.hibernate.ddl-auto=none"
+})
 @Transactional
 @DisplayName("UserRoleRepository F00 拡張 結合テスト")
 class UserRoleRepositoryF00ExtensionTest {
@@ -84,22 +96,16 @@ class UserRoleRepositoryF00ExtensionTest {
     /**
      * 各テスト直前に最小限のテストデータを投入する。
      *
-     * <p>本テストは結合テスト用 MySQL Testcontainer 上で動作する。Flyway の V2.014 で
-     * roles 表には SYSTEM_ADMIN / MEMBER 等が seed されている前提だが、テストの自己完結性
-     * のため必要なロールを {@code INSERT IGNORE}（uq_roles_name に基づく冪等挿入）で
-     * 念押しし、テストが Flyway seed の有無に依存しないようにする。</p>
+     * <p>本テストは結合テスト用 MySQL Testcontainer 上で動作し、クラス先頭の
+     * {@code @TestPropertySource} で Flyway を有効化しているため、起動時に
+     * V1.xxx〜V20.xxx 系の本番マイグレーションが流れ、{@code V2.014__seed_roles.sql}
+     * により {@code roles} 表には SYSTEM_ADMIN / ADMIN / DEPUTY_ADMIN / MEMBER /
+     * SUPPORTER / GUEST が seed されている。本 setUp ではそれを前提に、テスト固有の
+     * users / organizations / teams / user_roles 行を毎テスト追加する。</p>
      */
     @BeforeEach
     void setUp() {
-        // 1. 必要なロールを冪等保証（uq_roles_name によりすでに存在すれば NOOP）
-        em.createNativeQuery(
-                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES "
-                        + "('SYSTEM_ADMIN', 'システム管理者', 1, 1, NOW(), NOW()), "
-                        + "('MEMBER', 'メンバー', 4, 0, NOW(), NOW())").executeUpdate();
-        em.flush();
-
-        // 2. ロール ID を引く（seed もしくは上記で必ず存在する）
+        // 1. seed 済みロール ID を引く（Flyway V2.014 で必ず存在する）
         memberRoleId = ((Number) em.createNativeQuery(
                 "SELECT id FROM roles WHERE name = 'MEMBER'").getSingleResult()).longValue();
         systemAdminRoleId = ((Number) em.createNativeQuery(
@@ -138,10 +144,12 @@ class UserRoleRepositoryF00ExtensionTest {
     }
 
     private Long insertOrganization(String name) {
+        // org_type は V9.091 で enum 9 種 (GOVERNMENT/MUNICIPALITY/COMPANY/HOSPITAL/
+        // ASSOCIATION/SCHOOL/NPO/COMMUNITY/OTHER) に絞り込まれている。OTHER を使う。
         em.createNativeQuery(
                 "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, " +
                         "supporter_enabled, version, created_at, updated_at) " +
-                        "VALUES (:name, 'GENERAL', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW())")
+                        "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
