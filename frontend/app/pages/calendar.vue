@@ -151,9 +151,6 @@ function toggleScope(value: string) {
 
 const FILTER_OVERFLOW = 5
 
-// 「全て表示」状態かどうか
-const isAllScopesSelected = computed(() => selectedScopes.value.length === 0)
-
 // MultiSelect 用: selectedScopes が空 = 全選択と見なす双方向モデル
 const multiSelectScopes = computed({
   get: () => selectedScopes.value.length === 0
