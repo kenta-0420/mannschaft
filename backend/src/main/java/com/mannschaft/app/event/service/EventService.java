@@ -1,6 +1,8 @@
 package com.mannschaft.app.event.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.event.EventErrorCode;
 import com.mannschaft.app.event.EventMapper;
 import com.mannschaft.app.event.EventScopeType;
@@ -40,6 +42,15 @@ public class EventService {
     private final EventCheckinRepository checkinRepository;
     private final EventRsvpResponseRepository rsvpResponseRepository;
     private final EventMapper eventMapper;
+
+    /**
+     * F00 Phase B 試験的置換 — 共通可視性ファサード。
+     *
+     * <p>設計書 §12.6.1 のリスク評価で「1 メソッドのみの試験的置換」と定められており、
+     * 既存の {@code getEvent / listEvents / publish ...} 等は本フィールドを参照しない。
+     * 切替対象は {@link #canView(Long, Long)} のみ。</p>
+     */
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * スコープ別イベント一覧をページング取得する。
@@ -326,6 +337,25 @@ public class EventService {
 
         return new EventStatsResponse(total, draft, published, completed, cancelled,
                 totalRegistrations, approvedRegistrations, totalCheckins);
+    }
+
+    /**
+     * F00 Phase B — 指定ユーザーが対象イベントを閲覧可能かを共通基盤経由で判定する。
+     *
+     * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §12.3 / §12.6.1。
+     * 既存 API のリグレッションを避けるため、本メソッドは新規追加であり既存コール
+     * （{@code getEvent} / {@code listEvents} 等）の呼び出し経路は変更しない。</p>
+     *
+     * <p>判定は {@link ContentVisibilityChecker#canView} に委譲し、
+     * {@link EventVisibilityResolver} が events.status / events.visibility / メンバーシップを
+     * 1 リクエスト内最小 SQL で解決する。</p>
+     *
+     * @param eventId      対象 event_id
+     * @param viewerUserId 閲覧者 user_id（{@code null} 可: 匿名）
+     * @return 閲覧可能なら true
+     */
+    public boolean canView(Long eventId, Long viewerUserId) {
+        return contentVisibilityChecker.canView(ReferenceType.EVENT, eventId, viewerUserId);
     }
 
     /**
