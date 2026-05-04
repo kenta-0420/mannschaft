@@ -23,8 +23,12 @@ import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,6 +55,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * ダッシュボードコントローラー。
@@ -75,6 +80,8 @@ public class DashboardController {
     private final BulletinThreadRepository bulletinThreadRepository;
     private final BulletinReadStatusRepository bulletinReadStatusRepository;
     private final ChatChannelMemberRepository chatChannelMemberRepository;
+    private final TeamRepository teamRepository;
+    private final OrganizationRepository organizationRepository;
 
     // ============================================
     // 個人ダッシュボード
@@ -203,10 +210,23 @@ public class DashboardController {
                 .flatMap(role -> scheduleRepository
                         .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), now, until).stream())
                 .toList();
+        // 所属組織のスケジュール
+        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
+        List<ScheduleEntity> orgSchedules = orgRoles.stream()
+                .flatMap(role -> scheduleRepository
+                        .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), now, until).stream())
+                .toList();
 
         List<Map<String, Object>> items = new ArrayList<>();
-        personalSchedules.stream().map(this::toScheduleMap).forEach(items::add);
-        teamSchedules.stream().map(this::toScheduleMap).forEach(items::add);
+        personalSchedules.stream()
+                .map(e -> toScheduleMapPersonal(e))
+                .forEach(items::add);
+        teamSchedules.stream()
+                .map(e -> toScheduleMapTeam(e))
+                .forEach(items::add);
+        orgSchedules.stream()
+                .map(e -> toScheduleMapOrg(e))
+                .forEach(items::add);
         items.sort((a, b) -> ((LocalDateTime) a.get("start_at")).compareTo((LocalDateTime) b.get("start_at")));
 
         return ResponseEntity.ok(ApiResponse.of(items));
@@ -398,9 +418,56 @@ public class DashboardController {
     }
 
     /**
-     * スケジュールエンティティをMap表現に変換する。
+     * 個人予定をMap表現に変換する。
      */
-    private Map<String, Object> toScheduleMap(ScheduleEntity entity) {
+    private Map<String, Object> toScheduleMapPersonal(ScheduleEntity entity) {
+        Map<String, Object> map = toScheduleBaseMap(entity);
+        map.put("scope_type", "PERSONAL");
+        map.put("scope_name", null);
+        map.put("scope_icon_url", null);
+        return map;
+    }
+
+    /**
+     * チーム予定をMap表現に変換する。チーム名・アイコンを付与する。
+     */
+    private Map<String, Object> toScheduleMapTeam(ScheduleEntity entity) {
+        Map<String, Object> map = toScheduleBaseMap(entity);
+        map.put("scope_type", "TEAM");
+        Long teamId = entity.getTeamId();
+        if (teamId != null) {
+            Optional<TeamEntity> team = teamRepository.findById(teamId);
+            map.put("scope_name", team.map(TeamEntity::getName).orElse(null));
+            map.put("scope_icon_url", team.map(TeamEntity::getIconUrl).orElse(null));
+        } else {
+            map.put("scope_name", null);
+            map.put("scope_icon_url", null);
+        }
+        return map;
+    }
+
+    /**
+     * 組織予定をMap表現に変換する。組織名・アイコンを付与する。
+     */
+    private Map<String, Object> toScheduleMapOrg(ScheduleEntity entity) {
+        Map<String, Object> map = toScheduleBaseMap(entity);
+        map.put("scope_type", "ORG");
+        Long orgId = entity.getOrganizationId();
+        if (orgId != null) {
+            Optional<OrganizationEntity> org = organizationRepository.findById(orgId);
+            map.put("scope_name", org.map(OrganizationEntity::getName).orElse(null));
+            map.put("scope_icon_url", org.map(OrganizationEntity::getIconUrl).orElse(null));
+        } else {
+            map.put("scope_name", null);
+            map.put("scope_icon_url", null);
+        }
+        return map;
+    }
+
+    /**
+     * スケジュールエンティティの共通フィールドをMapに変換する。
+     */
+    private Map<String, Object> toScheduleBaseMap(ScheduleEntity entity) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", entity.getId());
         map.put("title", entity.getTitle());
