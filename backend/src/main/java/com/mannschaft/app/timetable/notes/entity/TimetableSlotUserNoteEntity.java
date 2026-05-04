@@ -67,4 +67,25 @@ public class TimetableSlotUserNoteEntity extends BaseEntity {
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
+
+    /**
+     * メモ本文を更新する。
+     *
+     * @param preparation   予習メモ
+     * @param review        復習メモ
+     * @param itemsToBring  持参物メモ
+     * @param freeMemo      自由メモ
+     * @param customFields  カスタムフィールド JSON 文字列
+     */
+    public void updateContent(String preparation,
+                              String review,
+                              String itemsToBring,
+                              String freeMemo,
+                              String customFields) {
+        this.preparation = preparation;
+        this.review = review;
+        this.itemsToBring = itemsToBring;
+        this.freeMemo = freeMemo;
+        this.customFields = customFields;
+    }
 }
