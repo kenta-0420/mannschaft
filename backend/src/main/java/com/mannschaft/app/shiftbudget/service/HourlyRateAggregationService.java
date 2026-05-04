@@ -113,9 +113,9 @@ public class HourlyRateAggregationService {
             warnings.add("AVG_RATE_ZERO");
         }
         // 設計書 §4.1 「平均時給未設定メンバーが過半数を占める場合」 — INSUFFICIENT_RATE_DATA
-        // Phase 9-α では team_members テーブル未導入のためチーム総人数が取得できず、
-        // 「時給設定済 0 人」の場合のみ警告を発する暫定実装とする。
-        // TODO: Phase 9-β で team_members 導入後、過半数判定を厳密化する。
+        // 過半数判定は team_members テーブル前提で、F08.7 9-α/β/γ/δ スコープ外の F00 基盤再設計で導入予定。
+        // 現状は「時給設定済 0 人」の場合のみ警告を発する暫定実装で運用継続する
+        // （F00 で team_members 新設後に厳密化する。本軍では着手しない）。
         if (memberCount == 0) {
             warnings.add("INSUFFICIENT_RATE_DATA");
         }

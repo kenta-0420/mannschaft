@@ -1,56 +1,56 @@
 {
   "shiftBudget": {
-    "title": "シフト予算管理",
+    "title": "Shift Budget Management",
     "allocation": {
-      "list": "予算割当一覧",
-      "create": "新規割当",
-      "amount": "配分額",
-      "period": "適用期間",
-      "category": "費目"
+      "list": "Budget Allocations",
+      "create": "New Allocation",
+      "amount": "Allocated Amount",
+      "period": "Period",
+      "category": "Category"
     },
     "consumption": {
-      "summary": "消化サマリ",
-      "consumed": "消化額",
-      "remaining": "残額",
-      "rate": "消化率",
-      "byUserHidden": "個人別内訳は権限がないため表示できません"
+      "summary": "Consumption Summary",
+      "consumed": "Consumed",
+      "remaining": "Remaining",
+      "rate": "Consumption Rate",
+      "byUserHidden": "Per-user breakdown is unavailable due to insufficient permissions"
     },
     "threshold": {
-      "warn80": "予算 80% に到達しました",
-      "exceeded": "予算を超過しました",
-      "severeExceeded120": "予算 120% を超過しました（重大）"
+      "warn80": "Budget has reached 80%",
+      "exceeded": "Budget exceeded",
+      "severeExceeded120": "Budget exceeded 120% (critical)"
     },
     "alert": {
-      "acknowledge": "確認",
-      "unacknowledged": "未確認の警告"
+      "acknowledge": "Acknowledge",
+      "unacknowledged": "Unacknowledged Alerts"
     },
     "link": {
-      "project": "プロジェクトに紐付",
-      "todo": "TODO に紐付",
-      "fullAmount": "全額紐付",
-      "partialAmount": "上限金額を指定",
-      "percentage": "割合を指定"
+      "project": "Link to Project",
+      "todo": "Link to TODO",
+      "fullAmount": "Full Amount",
+      "partialAmount": "Specify Maximum Amount",
+      "percentage": "Specify Percentage"
     },
     "calc": {
-      "requiredSlots": "必要枠数を逆算",
-      "result": "必要枠数: {count} 枠",
-      "formula": "計算式: floor({budget} / ({rate} × {hours}))",
+      "requiredSlots": "Calculate Required Slots",
+      "result": "Required slots: {count}",
+      "formula": "Formula: floor({budget} / ({rate} × {hours}))",
       "warning": {
-        "zeroRate": "平均時給が 0 円のため計算できません",
-        "insufficientData": "時給未設定のメンバーが多いため精度が低い可能性があります"
+        "zeroRate": "Cannot calculate because the average hourly rate is 0",
+        "insufficientData": "Accuracy may be low because many members have no hourly rate set"
       }
     },
     "dashboard": {
-      "title": "予算消化ダッシュボード"
+      "title": "Budget Consumption Dashboard"
     },
     "feature": {
-      "disabled": "この機能は組織管理者によって無効化されています"
+      "disabled": "This feature has been disabled by the organization administrator"
     },
     "monthlyClose": {
-      "button": "月次締め実行",
-      "confirm": "{month} 分のシフト予算を確定します。よろしいですか？",
-      "success": "月次締め完了: {month}（消化レコード {count} 件を確定）",
-      "alreadyClosed": "該当月は既に締め済みです"
+      "button": "Run Monthly Close",
+      "confirm": "Confirm shift budget for {month}. Are you sure?",
+      "success": "Monthly close complete: {month} ({count} consumption records confirmed)",
+      "alreadyClosed": "This month has already been closed"
     }
   }
 }

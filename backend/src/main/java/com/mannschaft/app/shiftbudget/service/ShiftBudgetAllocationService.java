@@ -313,9 +313,12 @@ public class ShiftBudgetAllocationService {
                 .orElseThrow(() -> new BusinessException(ShiftBudgetErrorCode.ALLOCATION_NOT_FOUND));
     }
 
+    /**
+     * 一覧/詳細など参照系の権限要件: {@code BUDGET_VIEW}（V11.034 で全 MEMBER に自動付与済）。
+     * <p>{@code BUDGET_ADMIN} 保有者は階層上 {@code BUDGET_VIEW} も持つため通過する。</p>
+     */
     private void requireBudgetView(Long organizationId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        // TODO(F08.7 Phase 9-δ): BUDGET_ADMIN クリーンカット移行時に置換
         if (!accessControlService.isSystemAdmin(currentUserId)
                 && !hasOrgPermission(currentUserId, organizationId, "BUDGET_VIEW")) {
             throw new BusinessException(ShiftBudgetErrorCode.BUDGET_VIEW_REQUIRED);

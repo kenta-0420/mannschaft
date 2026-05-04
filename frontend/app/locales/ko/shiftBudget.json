@@ -1,56 +1,56 @@
 {
   "shiftBudget": {
-    "title": "シフト予算管理",
+    "title": "교대 예산 관리",
     "allocation": {
-      "list": "予算割当一覧",
-      "create": "新規割当",
-      "amount": "配分額",
-      "period": "適用期間",
-      "category": "費目"
+      "list": "예산 할당 목록",
+      "create": "신규 할당",
+      "amount": "배분액",
+      "period": "적용 기간",
+      "category": "비목"
     },
     "consumption": {
-      "summary": "消化サマリ",
-      "consumed": "消化額",
-      "remaining": "残額",
-      "rate": "消化率",
-      "byUserHidden": "個人別内訳は権限がないため表示できません"
+      "summary": "소진 요약",
+      "consumed": "소진액",
+      "remaining": "잔액",
+      "rate": "소진율",
+      "byUserHidden": "권한이 없어 개인별 내역을 표시할 수 없습니다"
     },
     "threshold": {
-      "warn80": "予算 80% に到達しました",
-      "exceeded": "予算を超過しました",
-      "severeExceeded120": "予算 120% を超過しました（重大）"
+      "warn80": "예산이 80%에 도달했습니다",
+      "exceeded": "예산을 초과했습니다",
+      "severeExceeded120": "예산을 120% 초과했습니다 (중대)"
     },
     "alert": {
-      "acknowledge": "確認",
-      "unacknowledged": "未確認の警告"
+      "acknowledge": "확인",
+      "unacknowledged": "미확인 경고"
     },
     "link": {
-      "project": "プロジェクトに紐付",
-      "todo": "TODO に紐付",
-      "fullAmount": "全額紐付",
-      "partialAmount": "上限金額を指定",
-      "percentage": "割合を指定"
+      "project": "프로젝트에 연결",
+      "todo": "TODO에 연결",
+      "fullAmount": "전액 연결",
+      "partialAmount": "상한 금액 지정",
+      "percentage": "비율 지정"
     },
     "calc": {
-      "requiredSlots": "必要枠数を逆算",
-      "result": "必要枠数: {count} 枠",
-      "formula": "計算式: floor({budget} / ({rate} × {hours}))",
+      "requiredSlots": "필요 슬롯 수 역산",
+      "result": "필요 슬롯 수: {count} 개",
+      "formula": "계산식: floor({budget} / ({rate} × {hours}))",
       "warning": {
-        "zeroRate": "平均時給が 0 円のため計算できません",
-        "insufficientData": "時給未設定のメンバーが多いため精度が低い可能性があります"
+        "zeroRate": "평균 시급이 0원이므로 계산할 수 없습니다",
+        "insufficientData": "시급이 설정되지 않은 멤버가 많아 정확도가 낮을 수 있습니다"
       }
     },
     "dashboard": {
-      "title": "予算消化ダッシュボード"
+      "title": "예산 소진 대시보드"
     },
     "feature": {
-      "disabled": "この機能は組織管理者によって無効化されています"
+      "disabled": "이 기능은 조직 관리자에 의해 비활성화되었습니다"
     },
     "monthlyClose": {
-      "button": "月次締め実行",
-      "confirm": "{month} 分のシフト予算を確定します。よろしいですか？",
-      "success": "月次締め完了: {month}（消化レコード {count} 件を確定）",
-      "alreadyClosed": "該当月は既に締め済みです"
+      "button": "월 마감 실행",
+      "confirm": "{month}분 교대 예산을 확정합니다. 진행하시겠습니까?",
+      "success": "월 마감 완료: {month} (소진 레코드 {count} 건 확정)",
+      "alreadyClosed": "해당 월은 이미 마감되었습니다"
     }
   }
 }

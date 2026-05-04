@@ -11,9 +11,7 @@ import com.mannschaft.app.shiftbudget.dto.AllocationCreateRequest;
 import com.mannschaft.app.shiftbudget.dto.AllocationListResponse;
 import com.mannschaft.app.shiftbudget.dto.AllocationResponse;
 import com.mannschaft.app.shiftbudget.dto.AllocationUpdateRequest;
-import com.mannschaft.app.shiftbudget.dto.ConsumptionSummaryResponse;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetAllocationService;
-import com.mannschaft.app.shiftbudget.service.ShiftBudgetSummaryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,15 +41,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * {@link ShiftBudgetAllocationController} の MockMvc 結合テスト（Phase 9-β / API #1〜#5）。
+ * {@link ShiftBudgetAllocationController} の MockMvc 結合テスト（Phase 9-β / API #1〜#4）。
  *
  * <p>カバレッジ:</p>
  * <ul>
  *   <li>各エンドポイントの HTTP ステータス + JSON 形状</li>
- *   <li>消化サマリの v1.2 形状確定ルール (flags=BY_USER_HIDDEN, by_user=[])</li>
  *   <li>ALLOCATION_NOT_FOUND → 404, ALLOCATION_ALREADY_EXISTS → 409, OPTIMISTIC_LOCK → 409</li>
  *   <li>BUDGET_VIEW/MANAGE → 403</li>
  * </ul>
+ *
+ * <p>Phase 9-δ 第3段で {@code consumption-summary} は
+ * {@link ShiftBudgetSummaryController} に切り出し済（Q7 御裁可）。
+ * 該当テストは {@code ShiftBudgetSummaryControllerTest} 参照。</p>
  */
 @WebMvcTest(ShiftBudgetAllocationController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -70,9 +71,6 @@ class ShiftBudgetAllocationControllerTest {
 
     @MockitoBean
     private ShiftBudgetAllocationService allocationService;
-
-    @MockitoBean
-    private ShiftBudgetSummaryService summaryService;
 
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -212,33 +210,4 @@ class ShiftBudgetAllocationControllerTest {
                 .andExpect(status().isConflict());
     }
 
-    @org.junit.jupiter.api.Test
-    @DisplayName("GET /allocations/{id}/consumption-summary: by_user=[] + flags=BY_USER_HIDDEN (v1.2 形状)")
-    void summary_v12形状() throws Exception {
-        ConsumptionSummaryResponse res = ConsumptionSummaryResponse.builder()
-                .allocationId(ALLOCATION_ID)
-                .allocatedAmount(new BigDecimal("300000"))
-                .consumedAmount(new BigDecimal("245000"))
-                .confirmedAmount(new BigDecimal("200000"))
-                .plannedAmount(new BigDecimal("45000"))
-                .remainingAmount(new BigDecimal("55000"))
-                .consumptionRate(new BigDecimal("0.8167"))
-                .status("WARN")
-                .flags(List.of("BY_USER_HIDDEN"))
-                .alerts(List.of())
-                .byUser(List.of())
-                .build();
-        given(summaryService.getConsumptionSummary(ORG_ID, ALLOCATION_ID)).willReturn(res);
-
-        mockMvc.perform(get("/api/v1/shift-budget/allocations/{id}/consumption-summary", ALLOCATION_ID)
-                        .header("X-Organization-Id", ORG_ID))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.allocation_id").value(ALLOCATION_ID))
-                .andExpect(jsonPath("$.data.status").value("WARN"))
-                .andExpect(jsonPath("$.data.flags[0]").value("BY_USER_HIDDEN"))
-                .andExpect(jsonPath("$.data.by_user").isArray())
-                .andExpect(jsonPath("$.data.by_user").isEmpty())
-                .andExpect(jsonPath("$.data.alerts").isArray())
-                .andExpect(jsonPath("$.data.alerts").isEmpty());
-    }
 }
