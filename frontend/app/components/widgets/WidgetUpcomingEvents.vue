@@ -9,6 +9,9 @@ interface UpcomingEvent {
   end_at: string
   location: string | null
   all_day: boolean
+  scope_type: string | null
+  scope_name: string | null
+  scope_icon_url: string | null
 }
 
 const events = ref<UpcomingEvent[]>([])
@@ -69,6 +72,23 @@ onMounted(load)
           <p v-if="event.location" class="text-xs text-surface-400">
             <i class="pi pi-map-marker mr-1" />{{ event.location }}
           </p>
+          <div
+            v-if="event.scope_type && event.scope_type !== 'PERSONAL' && event.scope_name"
+            class="flex items-center gap-1.5 mt-1"
+          >
+            <div
+              class="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center bg-surface-200 text-surface-600 text-xs font-bold flex-shrink-0 dark:bg-surface-600 dark:text-surface-200"
+            >
+              <img
+                v-if="event.scope_icon_url"
+                :src="event.scope_icon_url"
+                class="w-full h-full object-cover"
+                alt=""
+              />
+              <span v-else>{{ event.scope_name.charAt(0) }}</span>
+            </div>
+            <span class="text-xs text-surface-500">{{ event.scope_name }}</span>
+          </div>
         </div>
         <Tag v-if="event.all_day" value="終日" severity="secondary" rounded />
       </div>

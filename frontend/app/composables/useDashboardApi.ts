@@ -40,6 +40,9 @@ export function useDashboardApi() {
         end_at: string
         location: string | null
         all_day: boolean
+        scope_type: string | null
+        scope_name: string | null
+        scope_icon_url: string | null
       }>
     }>(`/api/v1/dashboard/upcoming-events?days=${days}`)
   }
