@@ -134,6 +134,10 @@ function isToday(d: string) {
   return d === new Date().toISOString().split('T')[0]
 }
 
+function fmtTime(iso: string): string {
+  return iso.slice(11, 16)
+}
+
 function dateColorClass(dateStr: string, isCurrentMonth: boolean, col: number): string {
   if (isToday(dateStr)) return ''
   const holiday = !!getHoliday(dateStr)
@@ -225,7 +229,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
               :style="{ backgroundColor: (event.color ?? '#6366f1') + '20', color: event.color ?? '#6366f1' }"
               @click.stop="emit('eventClick', event.id, event.isPersonal)"
             >
-              {{ event.title }}
+              <span v-if="!event.allDay" class="opacity-70 mr-0.5">{{ fmtTime(event.startAt) }}</span>{{ event.title }}
             </div>
           </div>
         </div>
