@@ -2,6 +2,10 @@ package com.mannschaft.app.schedule;
 
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.quota.StorageFeatureType;
+import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
+import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.files.dto.StartMultipartUploadRequest;
 import com.mannschaft.app.files.dto.StartMultipartUploadResponse;
 import com.mannschaft.app.files.service.MultipartUploadService;
@@ -41,6 +45,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -65,6 +70,9 @@ class ScheduleMediaServiceTest {
 
     @Mock
     private ScheduleRepository scheduleRepository;
+
+    @Mock
+    private StorageQuotaService storageQuotaService;
 
     @InjectMocks
     private ScheduleMediaService scheduleMediaService;
@@ -731,6 +739,200 @@ class ScheduleMediaServiceTest {
             // DB から一括削除
             then(scheduleMediaUploadRepository).should()
                     .deleteAll(List.of(orphanImage, orphanVideo));
+        }
+    }
+
+    // ==================== F13 Phase 4-γ: StorageQuota 統合テスト ====================
+
+    @Nested
+    @DisplayName("F13 Phase 4-γ: StorageQuota 統合")
+    class StorageQuotaIntegration {
+
+        /** チームスコープを持つ ScheduleEntity モック */
+        private ScheduleEntity teamSchedule() {
+            ScheduleEntity s = mock(ScheduleEntity.class);
+            given(s.getTeamId()).willReturn(50L);
+            // resolveScope は teamId != null の時点でリターンするため、organizationId / userId は呼ばれない
+            return s;
+        }
+
+        /** 組織スコープを持つ ScheduleEntity モック */
+        private ScheduleEntity orgSchedule() {
+            ScheduleEntity s = mock(ScheduleEntity.class);
+            given(s.getTeamId()).willReturn(null);
+            given(s.getOrganizationId()).willReturn(60L);
+            // resolveScope は organizationId != null の時点でリターンするため、userId は呼ばれない
+            return s;
+        }
+
+        /** 個人スコープを持つ ScheduleEntity モック */
+        private ScheduleEntity personalSchedule() {
+            ScheduleEntity s = mock(ScheduleEntity.class);
+            given(s.getTeamId()).willReturn(null);
+            given(s.getOrganizationId()).willReturn(null);
+            // resolveScope は uploaderId パラメータを使うため、entity.getUserId() は呼ばれない
+            return s;
+        }
+
+        @Test
+        @DisplayName("正常系_IMAGE アップロード: checkQuota → recordUpload が呼ばれる（TEAM スコープ）")
+        void 正常系_IMAGE_checkQuota_recordUpload_TEAM() {
+            // given
+            ScheduleEntity schedule = teamSchedule();
+            ScheduleMediaUploadUrlRequest req = buildRequest("IMAGE", "image/jpeg", 1024L * 1024, "photo.jpg");
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(scheduleMediaUploadRepository.countByScheduleIdAndMediaType(SCHEDULE_ID, "IMAGE"))
+                    .willReturn(0);
+            given(r2StorageService.generateUploadUrl(anyString(), eq("image/jpeg"), any()))
+                    .willReturn(new PresignedUploadResult(
+                            "https://r2.example.com/presigned-put-url",
+                            "schedules/100/uuid.jpg",
+                            600L));
+            given(scheduleMediaUploadRepository.save(any(ScheduleMediaUploadEntity.class)))
+                    .willAnswer(inv -> {
+                        ScheduleMediaUploadEntity entity = inv.getArgument(0);
+                        return ScheduleMediaUploadEntity.builder()
+                                .id(MEDIA_ID)
+                                .scheduleId(entity.getScheduleId())
+                                .uploaderId(entity.getUploaderId())
+                                .mediaType(entity.getMediaType())
+                                .r2Key(entity.getR2Key())
+                                .fileName(entity.getFileName())
+                                .fileSize(entity.getFileSize())
+                                .contentType(entity.getContentType())
+                                .processingStatus(entity.getProcessingStatus())
+                                .build();
+                    });
+
+            // when
+            scheduleMediaService.generateUploadUrl(SCHEDULE_ID, UPLOADER_ID, req);
+
+            // then: TEAM スコープで checkQuota / recordUpload が呼ばれる
+            then(storageQuotaService).should()
+                    .checkQuota(StorageScopeType.TEAM, 50L, 1024L * 1024);
+            then(storageQuotaService).should()
+                    .recordUpload(eq(StorageScopeType.TEAM), eq(50L), eq(1024L * 1024),
+                            eq(StorageFeatureType.SCHEDULE_MEDIA),
+                            eq("schedule_media_uploads"), eq(MEDIA_ID), eq(UPLOADER_ID));
+        }
+
+        @Test
+        @DisplayName("正常系_VIDEO アップロード: checkQuota → recordUpload が呼ばれる（ORGANIZATION スコープ）")
+        void 正常系_VIDEO_checkQuota_recordUpload_ORG() {
+            // given
+            ScheduleEntity schedule = orgSchedule();
+            ScheduleMediaUploadUrlRequest req = buildRequest("VIDEO", "video/mp4", 200L * 1024 * 1024, "movie.mp4");
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(scheduleMediaUploadRepository.countByScheduleIdAndMediaType(SCHEDULE_ID, "VIDEO"))
+                    .willReturn(0);
+            given(multipartUploadService.startUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class)))
+                    .willReturn(new StartMultipartUploadResponse(
+                            "test-upload-id",
+                            "schedules/100/uuid.mp4",
+                            1,
+                            10L * 1024 * 1024));
+            given(scheduleMediaUploadRepository.save(any(ScheduleMediaUploadEntity.class)))
+                    .willAnswer(inv -> {
+                        ScheduleMediaUploadEntity entity = inv.getArgument(0);
+                        return ScheduleMediaUploadEntity.builder()
+                                .id(MEDIA_ID)
+                                .scheduleId(entity.getScheduleId())
+                                .uploaderId(entity.getUploaderId())
+                                .mediaType(entity.getMediaType())
+                                .r2Key(entity.getR2Key())
+                                .fileName(entity.getFileName())
+                                .fileSize(entity.getFileSize())
+                                .contentType(entity.getContentType())
+                                .processingStatus(entity.getProcessingStatus())
+                                .build();
+                    });
+
+            // when
+            scheduleMediaService.generateUploadUrl(SCHEDULE_ID, UPLOADER_ID, req);
+
+            // then: ORGANIZATION スコープで checkQuota / recordUpload が呼ばれる
+            then(storageQuotaService).should()
+                    .checkQuota(StorageScopeType.ORGANIZATION, 60L, 200L * 1024 * 1024);
+            then(storageQuotaService).should()
+                    .recordUpload(eq(StorageScopeType.ORGANIZATION), eq(60L), eq(200L * 1024 * 1024),
+                            eq(StorageFeatureType.SCHEDULE_MEDIA),
+                            eq("schedule_media_uploads"), eq(MEDIA_ID), eq(UPLOADER_ID));
+        }
+
+        @Test
+        @DisplayName("異常系_クォータ超過: generateUploadUrl で 409 がスローされる")
+        void 異常系_クォータ超過_generateUploadUrl_409() {
+            // given
+            ScheduleEntity schedule = teamSchedule();
+            ScheduleMediaUploadUrlRequest req = buildRequest("IMAGE", "image/jpeg", 1024L, "photo.jpg");
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(scheduleMediaUploadRepository.countByScheduleIdAndMediaType(SCHEDULE_ID, "IMAGE"))
+                    .willReturn(0);
+            willThrow(new StorageQuotaExceededException(
+                    StorageScopeType.TEAM, 50L, 1024L,
+                    5L * 1024 * 1024 * 1024L, 5L * 1024 * 1024 * 1024L))
+                    .given(storageQuotaService)
+                    .checkQuota(eq(StorageScopeType.TEAM), eq(50L), anyLong());
+
+            // when / then: クォータ超過 → 409 Conflict
+            assertThatThrownBy(() ->
+                    scheduleMediaService.generateUploadUrl(SCHEDULE_ID, UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.CONFLICT));
+            // recordUpload は呼ばれない
+            then(storageQuotaService).should(never())
+                    .recordUpload(any(), anyLong(), anyLong(), any(), anyString(), anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("正常系_deleteMedia: recordDeletion が呼ばれる（TEAM スコープ）")
+        void 正常系_deleteMedia_recordDeletion_TEAM() {
+            // given
+            long fileSize = 1024L * 1024;
+            ScheduleMediaUploadEntity entity = buildMediaEntity(MEDIA_ID, SCHEDULE_ID, UPLOADER_ID, "IMAGE");
+            ScheduleEntity schedule = teamSchedule();
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+
+            // when
+            scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false);
+
+            // then: TEAM スコープで recordDeletion が呼ばれる
+            then(storageQuotaService).should()
+                    .recordDeletion(eq(StorageScopeType.TEAM), eq(50L), eq(fileSize),
+                            eq(StorageFeatureType.SCHEDULE_MEDIA),
+                            eq("schedule_media_uploads"), eq(MEDIA_ID), eq(UPLOADER_ID));
+        }
+
+        @Test
+        @DisplayName("正常系_resolveScope: TEAM スコープ判定")
+        void resolveScope_TEAM() {
+            ScheduleEntity schedule = teamSchedule();
+            ScheduleMediaService.ScopeResolution scope =
+                    scheduleMediaService.resolveScope(schedule, UPLOADER_ID);
+            assertThat(scope.scopeType()).isEqualTo(StorageScopeType.TEAM);
+            assertThat(scope.scopeId()).isEqualTo(50L);
+        }
+
+        @Test
+        @DisplayName("正常系_resolveScope: ORGANIZATION スコープ判定")
+        void resolveScope_ORGANIZATION() {
+            ScheduleEntity schedule = orgSchedule();
+            ScheduleMediaService.ScopeResolution scope =
+                    scheduleMediaService.resolveScope(schedule, UPLOADER_ID);
+            assertThat(scope.scopeType()).isEqualTo(StorageScopeType.ORGANIZATION);
+            assertThat(scope.scopeId()).isEqualTo(60L);
+        }
+
+        @Test
+        @DisplayName("正常系_resolveScope: PERSONAL スコープ（個人スケジュール）")
+        void resolveScope_PERSONAL() {
+            ScheduleEntity schedule = personalSchedule();
+            ScheduleMediaService.ScopeResolution scope =
+                    scheduleMediaService.resolveScope(schedule, UPLOADER_ID);
+            assertThat(scope.scopeType()).isEqualTo(StorageScopeType.PERSONAL);
+            assertThat(scope.scopeId()).isEqualTo(UPLOADER_ID);
         }
     }
 }

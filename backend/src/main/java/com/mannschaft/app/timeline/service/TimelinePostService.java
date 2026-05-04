@@ -3,6 +3,10 @@ package com.mannschaft.app.timeline.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.quota.StorageFeatureType;
+import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
+import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.timeline.AttachmentType;
 import com.mannschaft.app.timeline.VideoProcessingStatus;
 import com.mannschaft.app.timeline.event.TimelinePostCreatedEvent;
@@ -28,13 +32,19 @@ import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 /**
  * タイムライン投稿サービス。投稿のCRUD・フィード取得・検索を担当する。
+ *
+ * <p><b>F13 Phase 4-γ</b>: 投稿作成（添付ファイル含む）時と投稿削除時に
+ * {@link StorageQuotaService} を通じてストレージ使用量を計上する。
+ * presign 時の checkQuota は {@link TimelineVideoAttachmentService#generateUploadUrl} で実施済み。</p>
  */
 @Slf4j
 @Service
@@ -45,6 +55,9 @@ public class TimelinePostService {
     private static final int MAX_ATTACHMENTS = 10;
     private static final int DEFAULT_FEED_SIZE = 20;
 
+    /** F13 Phase 4-γ: storage_usage_logs.reference_type に記録するテーブル名。 */
+    private static final String REFERENCE_TYPE = "timeline_post_attachments";
+
     private final TimelinePostRepository postRepository;
     private final TimelinePostAttachmentRepository attachmentRepository;
     private final TimelinePostEditRepository editRepository;
@@ -53,6 +66,8 @@ public class TimelinePostService {
     private final TimelineMapper timelineMapper;
     private final DomainEventPublisher domainEventPublisher;
     private final R2StorageService r2StorageService;
+    /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
+    private final StorageQuotaService storageQuotaService;
 
     /**
      * 投稿を作成する。添付ファイル・投票も同時に作成する。
@@ -108,7 +123,9 @@ public class TimelinePostService {
 
         // 添付ファイルの保存
         if (req.getAttachments() != null && !req.getAttachments().isEmpty()) {
-            saveAttachments(post.getId(), req.getAttachments());
+            ScopeResolution scope = resolveScope(req.getScopeTypeOrDefault(),
+                    req.getScopeIdOrDefault(), userId);
+            saveAttachments(post.getId(), req.getAttachments(), scope, userId);
         }
 
         // 投票の保存
@@ -164,6 +181,9 @@ public class TimelinePostService {
     /**
      * 投稿を論理削除する。
      *
+     * <p><b>F13 Phase 4-γ</b>: 論理削除完了後に添付ファイル（IMAGE / VIDEO_FILE）の
+     * 使用量を {@link StorageQuotaService#recordDeletion} で減算する。</p>
+     *
      * @param postId 投稿ID
      * @param userId ユーザーID
      */
@@ -172,10 +192,30 @@ public class TimelinePostService {
         TimelinePostEntity post = findPostOrThrow(postId);
         validateOwner(post, userId);
 
+        // F13 Phase 4-γ: 削除前に添付ファイル情報を取得してクォータ減算に備える
+        List<TimelinePostAttachmentEntity> attachments =
+                attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(postId);
+
         post.softDelete();
         postRepository.save(post);
 
         log.info("タイムライン投稿削除: id={}, userId={}", postId, userId);
+
+        // F13 Phase 4-γ: ファイル系添付（IMAGE / VIDEO_FILE）の使用量減算
+        ScopeResolution scope = resolveScope(
+                post.getScopeType().name(), post.getScopeId(), userId);
+        for (TimelinePostAttachmentEntity att : attachments) {
+            if (att.getFileSize() == null || att.getFileSize() <= 0) {
+                continue;
+            }
+            AttachmentType type = att.getAttachmentType();
+            if (type == AttachmentType.IMAGE || type == AttachmentType.VIDEO_FILE) {
+                storageQuotaService.recordDeletion(
+                        scope.scopeType(), scope.scopeId(), att.getFileSize(),
+                        StorageFeatureType.TIMELINE,
+                        REFERENCE_TYPE, att.getId(), userId);
+            }
+        }
     }
 
     /**
@@ -333,8 +373,18 @@ public class TimelinePostService {
     /**
      * 添付ファイルを保存する。
      * VIDEO_FILE 型の場合は R2 に対象オブジェクトが存在することを確認する。
+     *
+     * <p><b>F13 Phase 4-γ</b>: ファイル系添付（IMAGE / VIDEO_FILE）の INSERT 完了後に
+     * {@link StorageQuotaService#checkQuota} と {@link StorageQuotaService#recordUpload} を呼ぶ。
+     * VIDEO_FILE はファイルキーが設定されている場合のみ計上する（URL 埋め込み動画は対象外）。</p>
+     *
+     * @param postId      投稿 ID
+     * @param attachments 添付ファイルリスト
+     * @param scope       解決済みストレージスコープ
+     * @param userId      操作者ユーザー ID
      */
-    private void saveAttachments(Long postId, List<CreateAttachmentRequest> attachments) {
+    private void saveAttachments(Long postId, List<CreateAttachmentRequest> attachments,
+                                  ScopeResolution scope, Long userId) {
         short order = 0;
         for (CreateAttachmentRequest att : attachments) {
             AttachmentType attachmentType = AttachmentType.valueOf(att.getAttachmentType());
@@ -344,6 +394,19 @@ public class TimelinePostService {
                 if (!r2StorageService.objectExists(att.getFileKey())) {
                     log.warn("VIDEO_FILE の R2 オブジェクトが見つからない: key={}", att.getFileKey());
                     throw new BusinessException(TimelineErrorCode.ATTACHMENT_NOT_FOUND_IN_STORAGE);
+                }
+            }
+
+            // F13 Phase 4-γ: ファイル系（IMAGE/VIDEO_FILE）かつ fileSize 有効の場合、クォータ確認
+            if ((attachmentType == AttachmentType.IMAGE || attachmentType == AttachmentType.VIDEO_FILE)
+                    && att.getFileSize() != null && att.getFileSize() > 0) {
+                try {
+                    storageQuotaService.checkQuota(scope.scopeType(), scope.scopeId(), att.getFileSize());
+                } catch (StorageQuotaExceededException e) {
+                    log.info("タイムライン添付クォータ超過: postId={}, userId={}, scope={}/{}, requested={}",
+                            postId, userId, scope.scopeType(), scope.scopeId(), e.getRequestedBytes());
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "ストレージ容量が不足しているためアップロードできません");
                 }
             }
 
@@ -381,8 +444,49 @@ public class TimelinePostService {
                     .videoHeight(att.getVideoHeight())
                     .videoProcessingStatus(processingStatus)
                     .build();
-            attachmentRepository.save(entity);
+            TimelinePostAttachmentEntity saved = attachmentRepository.save(entity);
+
+            // F13 Phase 4-γ: ファイル系添付のクォータ使用量加算
+            if ((attachmentType == AttachmentType.IMAGE || attachmentType == AttachmentType.VIDEO_FILE)
+                    && att.getFileSize() != null && att.getFileSize() > 0) {
+                storageQuotaService.recordUpload(
+                        scope.scopeType(), scope.scopeId(), att.getFileSize(),
+                        StorageFeatureType.TIMELINE,
+                        REFERENCE_TYPE, saved.getId(), userId);
+            }
+
             order++;
         }
     }
+
+    /**
+     * タイムライン投稿のスコープ文字列からストレージスコープを解決する。
+     *
+     * <ul>
+     *     <li>TEAM → TEAM スコープ (scopeId = teams.id)</li>
+     *     <li>ORGANIZATION → ORGANIZATION スコープ (scopeId = organizations.id)</li>
+     *     <li>PUBLIC / PERSONAL / FRIEND_* / その他 → 投稿者の PERSONAL スコープ</li>
+     * </ul>
+     *
+     * @param scopeTypeStr 投稿スコープ文字列（例: "TEAM"）
+     * @param scopeId      スコープ ID
+     * @param userId       投稿者ユーザー ID（PERSONAL フォールバック用）
+     * @return 解決済みスコープ
+     */
+    ScopeResolution resolveScope(String scopeTypeStr, Long scopeId, Long userId) {
+        PostScopeType postScope;
+        try {
+            postScope = PostScopeType.valueOf(scopeTypeStr);
+        } catch (IllegalArgumentException e) {
+            return new ScopeResolution(StorageScopeType.PERSONAL, userId);
+        }
+        return switch (postScope) {
+            case TEAM -> new ScopeResolution(StorageScopeType.TEAM, scopeId);
+            case ORGANIZATION -> new ScopeResolution(StorageScopeType.ORGANIZATION, scopeId);
+            default -> new ScopeResolution(StorageScopeType.PERSONAL, userId);
+        };
+    }
+
+    /** 解決されたストレージスコープ。 */
+    record ScopeResolution(StorageScopeType scopeType, Long scopeId) {}
 }
