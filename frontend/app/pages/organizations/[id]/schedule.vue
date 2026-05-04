@@ -25,9 +25,7 @@ interface ScheduleEventDetail {
 }
 
 const refreshing = ref(false)
-const showTypeSelector = ref(false)
 const showCreateDialog = ref(false)
-const createAsPersonal = ref(false)
 const selectedDate = ref<string | undefined>(undefined)
 const selectedEventId = ref<number | undefined>(undefined)
 const selectedEvent = ref<ScheduleEventDetail | null>(null)
@@ -50,16 +48,11 @@ const { currentYear, currentMonth, events, loading, loadEvents, refresh, onPrevM
 
 function onDateClick(date: string) {
   selectedDate.value = date
-  showTypeSelector.value = true
+  showCreateDialog.value = true
 }
 
 function onAddButtonClick() {
   selectedDate.value = undefined
-  showTypeSelector.value = true
-}
-
-function onTypeSelected(type: 'personal' | 'event') {
-  createAsPersonal.value = type === 'personal'
   showCreateDialog.value = true
 }
 
@@ -148,18 +141,11 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- タイプ選択ダイアログ -->
-    <ScheduleTypeSelector
-      v-model:visible="showTypeSelector"
-      @select="onTypeSelected"
-    />
-
     <!-- 作成ダイアログ -->
     <ScheduleEventForm
       v-model:visible="showCreateDialog"
       scope-type="organization"
-      :scope-id="createAsPersonal ? 0 : orgId"
-      :is-personal="createAsPersonal"
+      :scope-id="orgId"
       :initial-date="selectedDate"
       @saved="onSaved"
     />

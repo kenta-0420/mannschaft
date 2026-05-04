@@ -137,18 +137,18 @@ export function useScheduleApi() {
   }
 
   async function createPersonalSchedule(body: Record<string, unknown>) {
-    return api<{ data: unknown }>('/api/v1/schedules/personal', { method: 'POST', body })
+    return api<{ data: unknown }>('/api/v1/me/schedules', { method: 'POST', body })
   }
 
   async function updatePersonalSchedule(scheduleId: number, body: Record<string, unknown>) {
-    return api<{ data: unknown }>(`/api/v1/schedules/personal/${scheduleId}`, {
+    return api<{ data: unknown }>(`/api/v1/me/schedules/${scheduleId}`, {
       method: 'PATCH',
       body,
     })
   }
 
   async function deletePersonalSchedule(scheduleId: number) {
-    return api(`/api/v1/schedules/personal/${scheduleId}`, { method: 'DELETE' })
+    return api(`/api/v1/me/schedules/${scheduleId}`, { method: 'DELETE' })
   }
 
   // === Calendar View ===
