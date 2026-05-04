@@ -671,6 +671,26 @@
     "ariaUnpin": "ピン止めを外す",
     "ariaEdit": "メモを編集",
     "ariaDelete": "カードを削除",
-    "ariaNavigate": "参照先を開く"
+    "ariaNavigate": "参照先を開く",
+    "scopePersonal": "개인",
+    "scopeTeam": "팀",
+    "scopeOrganization": "조직",
+    "cardCount": "카드 {count}장",
+    "sectionCount": "섹션 {count}개",
+    "boardNotFound": "보드를 찾을 수 없습니다",
+    "boardLoadError": "보드를 불러오지 못했습니다",
+    "scopeMissing": "범위 정보가 부족합니다",
+    "expandSection": "섹션 펼치기",
+    "collapseSection": "섹션 접기",
+    "refDeletedBadge": "원본 삭제됨",
+    "ogImageAlt": "링크 미리보기 이미지",
+    "emptyBoard": "이 보드에는 아직 카드가 없습니다",
+    "ariaCard": "{cardType}: {title}",
+    "cardTypeReference": "참조",
+    "cardTypeMemo": "메모",
+    "cardTypeUrl": "링크",
+    "cardTypeSectionHeader": "헤더",
+    "unsectioned": "미분류 카드",
+    "retry": "다시 시도"
   }
 }

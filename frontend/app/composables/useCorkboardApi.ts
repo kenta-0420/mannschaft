@@ -1,4 +1,9 @@
-import type { CorkboardResponse, CorkboardCard } from '~/types/corkboard'
+import type {
+  CorkboardResponse,
+  CorkboardCard,
+  CorkboardDetail,
+  CorkboardScope,
+} from '~/types/corkboard'
 
 interface CorkboardGroup {
   id: number
@@ -9,6 +14,50 @@ interface CorkboardGroup {
 
 export function useCorkboardApi() {
   const api = useApi()
+
+  /**
+   * F09.8 Phase B: スコープに応じたボード詳細取得を一本化するヘルパ。
+   * バックエンドはスコープ別パスでのみ詳細 API を提供しているため、
+   * 呼び出し側で scope/scopeId を渡してもらいルーティングする。
+   *
+   * - PERSONAL: GET /api/v1/users/me/corkboards/{boardId}
+   * - TEAM:     GET /api/v1/teams/{scopeId}/corkboards/{boardId}
+   * - ORGANIZATION: GET /api/v1/organizations/{scopeId}/corkboards/{boardId} （Phase A 未実装）
+   */
+  async function getBoardDetail(
+    scope: CorkboardScope,
+    scopeId: number | null,
+    boardId: number,
+  ) {
+    if (scope === 'PERSONAL') {
+      return api<{ data: CorkboardDetail }>(
+        `/api/v1/users/me/corkboards/${boardId}`,
+      )
+    }
+    if (scope === 'TEAM') {
+      if (scopeId == null) throw new Error('TEAM scope requires scopeId')
+      return api<{ data: CorkboardDetail }>(
+        `/api/v1/teams/${scopeId}/corkboards/${boardId}`,
+      )
+    }
+    // ORGANIZATION
+    if (scopeId == null) throw new Error('ORGANIZATION scope requires scopeId')
+    return api<{ data: CorkboardDetail }>(
+      `/api/v1/organizations/${scopeId}/corkboards/${boardId}`,
+    )
+  }
+
+  /**
+   * F09.8 Phase A2: scope を意識せず boardId だけでボード詳細を取得する。
+   * バックエンド `CorkboardLookupController#getBoardDetail` (`GET /api/v1/corkboards/{boardId}`)
+   * が呼び出し元ユーザーの scope/権限を解決して詳細を返す。
+   *
+   * 一覧画面 (`/corkboard`) からの遷移は scope クエリを付けずに `/corkboard/{id}` に
+   * 飛ぶため、詳細ページ側はこのメソッドを使えば scope 情報なしで詳細取得できる。
+   */
+  async function getBoardDetailByBoardId(boardId: number) {
+    return api<{ data: CorkboardDetail }>(`/api/v1/corkboards/${boardId}`)
+  }
 
   // === Personal Corkboards ===
   async function getMyBoards() {
@@ -125,6 +174,8 @@ export function useCorkboardApi() {
     deleteTeamBoard,
     getOrgBoards,
     createOrgBoard,
+    getBoardDetail,
+    getBoardDetailByBoardId,
     createCard,
     updateCard,
     deleteCard,

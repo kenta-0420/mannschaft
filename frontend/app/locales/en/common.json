@@ -671,6 +671,26 @@
     "ariaUnpin": "Unpin card",
     "ariaEdit": "Edit note",
     "ariaDelete": "Delete card",
-    "ariaNavigate": "Open referenced item"
+    "ariaNavigate": "Open referenced item",
+    "scopePersonal": "Personal",
+    "scopeTeam": "Team",
+    "scopeOrganization": "Organization",
+    "cardCount": "{count} cards",
+    "sectionCount": "{count} sections",
+    "boardNotFound": "Board not found",
+    "boardLoadError": "Failed to load board",
+    "scopeMissing": "Scope information is missing",
+    "expandSection": "Expand section",
+    "collapseSection": "Collapse section",
+    "refDeletedBadge": "Source deleted",
+    "ogImageAlt": "Link preview image",
+    "emptyBoard": "This board has no cards yet",
+    "ariaCard": "{cardType}: {title}",
+    "cardTypeReference": "Reference",
+    "cardTypeMemo": "Memo",
+    "cardTypeUrl": "Link",
+    "cardTypeSectionHeader": "Heading",
+    "unsectioned": "Unsectioned cards",
+    "retry": "Retry"
   }
 }
