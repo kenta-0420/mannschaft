@@ -12,6 +12,9 @@ import com.mannschaft.app.shiftbudget.entity.BudgetThresholdAlertEntity;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.repository.BudgetThresholdAlertRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
+import com.mannschaft.app.workflow.dto.CreateWorkflowRequestRequest;
+import com.mannschaft.app.workflow.dto.WorkflowRequestResponse;
+import com.mannschaft.app.workflow.service.WorkflowRequestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -43,8 +46,11 @@ import java.util.Set;
  *       で事前確認 → 既存ありなら skip</li>
  * </ul>
  *
- * <p>F05.6 ワークフロー連携 (100% 到達時) はマスター御裁可 Q2 により本 Phase ではスコープ外。
- * TODO コメントを残置し、監査ログ {@code WORKFLOW_NOT_CONFIGURED} を記録するのみ。</p>
+ * <p>F05.6 ワークフロー連携 (100% 到達時): Phase 10-α で本格実装。
+ * {@code budget_configs.over_limit_workflow_id} を参照し、設定済なら
+ * {@link WorkflowRequestService#createRequest} + {@code submitRequest} を呼び出し、
+ * 起動結果の {@code workflow_request_id} を {@code budget_threshold_alerts} に書戻す。
+ * 未設定時は監査ログ {@code WORKFLOW_NOT_CONFIGURED} のみ記録。</p>
  *
  * <p>本サービスは AFTER_COMMIT hook から呼ばれるが、自身も例外を握りつぶす責務は
  * 呼び出し側 (Listener) に委譲する。本サービス内の例外は呼び出し側で個別 catch される前提。</p>
@@ -66,6 +72,7 @@ public class ThresholdAlertEvaluationService {
     private final UserRoleRepository userRoleRepository;
     private final NotificationHelper notificationHelper;
     private final AuditLogService auditLogService;
+    private final WorkflowRequestService workflowRequestService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -148,8 +155,9 @@ public class ThresholdAlertEvaluationService {
                 .consumedAmountAtTrigger(consumedAtTrigger)
                 .notifiedUserIds(serializeUserIds(recipientUserIds))
                 .build();
+        BudgetThresholdAlertEntity savedAlert;
         try {
-            alertRepository.saveAndFlush(alert);
+            savedAlert = alertRepository.saveAndFlush(alert);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             // 並行 INSERT 競合（UNIQUE 違反）— 既に他スレッドが先に発火させた → skip
             log.debug("F08.7 閾値判定: 並行 INSERT 競合（UNIQUE 違反）でスキップ: allocId={}, threshold={}%",
@@ -162,7 +170,7 @@ public class ThresholdAlertEvaluationService {
 
         // F05.6 ワークフロー起動（100% 到達時のみ）
         if (thresholdPercent >= WORKFLOW_TRIGGER_THRESHOLD) {
-            tryStartWorkflow(allocation);
+            tryStartWorkflow(allocation, savedAlert);
         }
 
         // 監査ログ
@@ -242,13 +250,27 @@ public class ThresholdAlertEvaluationService {
     }
 
     /**
-     * F05.6 ワークフロー起動（100% 到達時）。
+     * F05.6 ワークフロー起動（100% 到達時）— Phase 10-α 本格実装。
      *
-     * <p><strong>マスター御裁可 Q2</strong>: Phase 9-δ では F05.6 連携は実装せず、
-     * 監査ログ {@code WORKFLOW_NOT_CONFIGURED} の記録のみ行う。実際の起動は Phase 10 へ持越し。</p>
+     * <p>処理フロー:</p>
+     * <ol>
+     *   <li>{@code budget_configs.over_limit_workflow_id} を参照</li>
+     *   <li>未設定 → 監査ログ {@code WORKFLOW_NOT_CONFIGURED} のみ記録（既存挙動維持）</li>
+     *   <li>設定済 → {@link WorkflowRequestService#createRequest} + {@code submitRequest} を呼び出し
+     *       起動結果の {@code workflow_request_id} を {@code budget_threshold_alerts} に書戻</li>
+     *   <li>起動成功 → 監査ログ {@code WORKFLOW_STARTED_FROM_BUDGET}</li>
+     *   <li>起動失敗（例外） → try-catch で握りつぶし、ERROR ログ + 監査ログ
+     *       {@code WORKFLOW_START_FAILED}（main トランザクション保護、9-δ AFTER_COMMIT パターン踏襲）</li>
+     * </ol>
+     *
+     * <p>申請者ユーザー（{@code requestedBy}）はシステム自動起動のため null とする
+     * （{@code workflow_requests.requested_by} は NULL 許容）。</p>
+     *
+     * @param allocation 警告発火対象の割当
+     * @param alert      INSERT 済の警告レコード（成功時に workflow_request_id を書戻）
      */
-    private void tryStartWorkflow(ShiftBudgetAllocationEntity allocation) {
-        // TODO(Phase 10): F05.6 WorkflowRequestService 起動 (over_limit_workflow_id)
+    private void tryStartWorkflow(ShiftBudgetAllocationEntity allocation,
+                                   BudgetThresholdAlertEntity alert) {
         Long workflowId = budgetConfigRepository
                 .findByScopeTypeAndScopeId("ORGANIZATION", allocation.getOrganizationId())
                 .map(BudgetConfigEntity::getOverLimitWorkflowId)
@@ -263,11 +285,70 @@ public class ThresholdAlertEvaluationService {
                             allocation.getId()));
             log.info("F08.7 100% 到達: 組織が over_limit_workflow_id 未設定のためワークフロー起動スキップ: "
                     + "allocId={}, orgId={}", allocation.getId(), allocation.getOrganizationId());
-        } else {
-            // 設定はされているが Phase 10 で起動コードを実装予定
-            log.info("F08.7 100% 到達: ワークフロー起動は Phase 10 で実装予定 (TODO): "
-                    + "allocId={}, workflowId={}", allocation.getId(), workflowId);
+            return;
         }
+
+        // F05.6 起動 — 例外は握りつぶす（main トランザクションを保護）
+        try {
+            String title = String.format("シフト予算 超過承認 (allocation #%d, %d%%)",
+                    allocation.getId(), alert.getThresholdPercent());
+            CreateWorkflowRequestRequest createReq = new CreateWorkflowRequestRequest(
+                    workflowId,
+                    title,
+                    null,                              // fieldValues: 自動起動のため未設定
+                    "BUDGET_THRESHOLD_ALERT",          // sourceType: 設計書 §12.4 連携元識別子
+                    alert.getId()                      // sourceId: 警告 ID で紐付
+            );
+            WorkflowRequestResponse created = workflowRequestService.createRequest(
+                    "ORGANIZATION", allocation.getOrganizationId(), null, createReq);
+            WorkflowRequestResponse submitted = workflowRequestService.submitRequest(
+                    "ORGANIZATION", allocation.getOrganizationId(), created.getId());
+
+            // 起動結果を alert に書戻
+            alert.linkWorkflowRequest(submitted.getId());
+            alertRepository.save(alert);
+
+            auditLogService.record(
+                    "WORKFLOW_STARTED_FROM_BUDGET",
+                    null, null,
+                    allocation.getTeamId(), allocation.getOrganizationId(),
+                    null, null, null,
+                    String.format("{\"allocation_id\":%d,\"alert_id\":%d,\"workflow_id\":%d,"
+                                    + "\"workflow_request_id\":%d}",
+                            allocation.getId(), alert.getId(), workflowId, submitted.getId()));
+            log.info("F08.7 100% 到達: ワークフロー起動成功: allocId={}, alertId={}, "
+                            + "workflowId={}, requestId={}",
+                    allocation.getId(), alert.getId(), workflowId, submitted.getId());
+        } catch (Exception e) {
+            // 設計書 障害対応の原則: AFTER_COMMIT hook と同じく、ワークフロー起動失敗は
+            // main の警告発火トランザクションを巻き戻させない。ERROR ログ + 監査で運用補正の起点とする。
+            log.error("F08.7 100% 到達: ワークフロー起動失敗 (握りつぶし): allocId={}, "
+                            + "alertId={}, workflowId={}",
+                    allocation.getId(), alert.getId(), workflowId, e);
+            auditLogService.record(
+                    "WORKFLOW_START_FAILED",
+                    null, null,
+                    allocation.getTeamId(), allocation.getOrganizationId(),
+                    null, null, null,
+                    String.format("{\"allocation_id\":%d,\"alert_id\":%d,\"workflow_id\":%d,"
+                                    + "\"error\":\"%s\"}",
+                            allocation.getId(), alert.getId(), workflowId,
+                            escapeJson(e.getClass().getSimpleName() + ": " + e.getMessage())));
+        }
+    }
+
+    /**
+     * 監査ログ JSON フィールドへ埋め込む文字列の最低限のエスケープ。
+     * 例外メッセージにダブルクォート・改行・バックスラッシュが含まれても JSON 構造を壊さないようにする。
+     */
+    private String escapeJson(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        return raw.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
     }
 
     private String serializeUserIds(List<Long> userIds) {

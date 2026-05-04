@@ -10,6 +10,9 @@ import com.mannschaft.app.shiftbudget.entity.BudgetThresholdAlertEntity;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.repository.BudgetThresholdAlertRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
+import com.mannschaft.app.workflow.dto.CreateWorkflowRequestRequest;
+import com.mannschaft.app.workflow.dto.WorkflowRequestResponse;
+import com.mannschaft.app.workflow.service.WorkflowRequestService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,6 +34,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -70,6 +74,8 @@ class ThresholdAlertEvaluationServiceTest {
     private NotificationHelper notificationHelper;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private WorkflowRequestService workflowRequestService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -79,7 +85,20 @@ class ThresholdAlertEvaluationServiceTest {
     void setUp() {
         service = new ThresholdAlertEvaluationService(
                 allocationRepository, alertRepository, budgetConfigRepository,
-                userRoleRepository, notificationHelper, auditLogService, objectMapper);
+                userRoleRepository, notificationHelper, auditLogService,
+                workflowRequestService, objectMapper);
+    }
+
+    /**
+     * テスト用 WorkflowRequestResponse を生成（id だけ意味あり、他フィールドはダミー）。
+     */
+    private WorkflowRequestResponse workflowResponse(Long id) {
+        return new WorkflowRequestResponse(
+                id, 77L, "ORGANIZATION", ORG_ID, "title", "DRAFT",
+                null, null, null, null, 0L,
+                "BUDGET_THRESHOLD_ALERT", 1L,
+                null, null, List.of()
+        );
     }
 
     private ShiftBudgetAllocationEntity allocationWith(BigDecimal allocated, BigDecimal consumed) {
@@ -130,6 +149,8 @@ class ThresholdAlertEvaluationServiceTest {
         given(allocationRepository.findById(ALLOCATION_ID)).willReturn(Optional.of(alloc));
         given(alertRepository.findByAllocationIdAndThresholdPercent(eq(ALLOCATION_ID), anyInt()))
                 .willReturn(Optional.empty());
+        given(alertRepository.saveAndFlush(any(BudgetThresholdAlertEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
         given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(List.of(10L));
         given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
                 .willReturn(List.of(11L));
@@ -156,6 +177,8 @@ class ThresholdAlertEvaluationServiceTest {
         given(allocationRepository.findById(ALLOCATION_ID)).willReturn(Optional.of(alloc));
         given(alertRepository.findByAllocationIdAndThresholdPercent(eq(ALLOCATION_ID), anyInt()))
                 .willReturn(Optional.empty());
+        given(alertRepository.saveAndFlush(any(BudgetThresholdAlertEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
         given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(List.of(10L));
         given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
                 .willReturn(List.of());
@@ -169,16 +192,20 @@ class ThresholdAlertEvaluationServiceTest {
                 any(), any(), any(), any(), any(), any(), any(), any());
         verify(auditLogService, times(1)).record(eq("WORKFLOW_NOT_CONFIGURED"),
                 any(), any(), any(), any(), any(), any(), any(), any());
+        // workflowId 未設定なので WorkflowRequestService は一切呼ばれない
+        verifyNoInteractions(workflowRequestService);
     }
 
     @Test
-    @DisplayName("120% 到達 → warn80 + exceeded + severeExceeded の 3 件発火")
+    @DisplayName("120% 到達 → warn80 + exceeded + severeExceeded の 3 件発火 + ワークフロー起動 (100/120 で各 1 回)")
     void 閾値120発火() {
         ShiftBudgetAllocationEntity alloc = allocationWith(
                 new BigDecimal("100000"), new BigDecimal("130000"));
         given(allocationRepository.findById(ALLOCATION_ID)).willReturn(Optional.of(alloc));
         given(alertRepository.findByAllocationIdAndThresholdPercent(eq(ALLOCATION_ID), anyInt()))
                 .willReturn(Optional.empty());
+        given(alertRepository.saveAndFlush(any(BudgetThresholdAlertEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
         given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(List.of(10L));
         given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
                 .willReturn(List.of());
@@ -186,12 +213,24 @@ class ThresholdAlertEvaluationServiceTest {
                 .willReturn(Optional.of(BudgetConfigEntity.builder()
                         .scopeType("ORGANIZATION").scopeId(ORG_ID)
                         .overLimitWorkflowId(99L).build()));
+        // workflow 起動: createRequest → submitRequest と進める
+        given(workflowRequestService.createRequest(eq("ORGANIZATION"), eq(ORG_ID), any(),
+                any(CreateWorkflowRequestRequest.class)))
+                .willReturn(workflowResponse(500L));
+        given(workflowRequestService.submitRequest("ORGANIZATION", ORG_ID, 500L))
+                .willReturn(workflowResponse(500L));
 
         service.evaluateAndTrigger(ALLOCATION_ID);
 
         verify(alertRepository, times(3)).saveAndFlush(any());  // 80 + 100 + 120
         // workflow_id 設定済 → WORKFLOW_NOT_CONFIGURED は記録されない
         verify(auditLogService, never()).record(eq("WORKFLOW_NOT_CONFIGURED"),
+                any(), any(), any(), any(), any(), any(), any(), any());
+        // 100% / 120% の 2 回ワークフロー起動が走る
+        verify(workflowRequestService, times(2)).createRequest(eq("ORGANIZATION"), eq(ORG_ID),
+                any(), any(CreateWorkflowRequestRequest.class));
+        verify(workflowRequestService, times(2)).submitRequest("ORGANIZATION", ORG_ID, 500L);
+        verify(auditLogService, times(2)).record(eq("WORKFLOW_STARTED_FROM_BUDGET"),
                 any(), any(), any(), any(), any(), any(), any(), any());
     }
 
@@ -207,6 +246,8 @@ class ThresholdAlertEvaluationServiceTest {
                         .allocationId(ALLOCATION_ID).thresholdPercent(80).build()));
         given(alertRepository.findByAllocationIdAndThresholdPercent(ALLOCATION_ID, 100))
                 .willReturn(Optional.empty());
+        given(alertRepository.saveAndFlush(any(BudgetThresholdAlertEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
         given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(List.of(10L));
         given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
                 .willReturn(List.of());
@@ -236,6 +277,99 @@ class ThresholdAlertEvaluationServiceTest {
     }
 
     @Nested
+    @DisplayName("F05.6 ワークフロー起動 (Phase 10-α)")
+    class ワークフロー起動 {
+
+        @Test
+        @DisplayName("100% 到達 + workflowId 設定済 → createRequest+submitRequest が呼ばれ workflow_request_id が書戻される")
+        void workflowId設定済_起動成功() {
+            ShiftBudgetAllocationEntity alloc = allocationWith(
+                    new BigDecimal("100000"), new BigDecimal("100000"));
+            given(allocationRepository.findById(ALLOCATION_ID)).willReturn(Optional.of(alloc));
+            given(alertRepository.findByAllocationIdAndThresholdPercent(eq(ALLOCATION_ID), anyInt()))
+                    .willReturn(Optional.empty());
+            given(alertRepository.saveAndFlush(any(BudgetThresholdAlertEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(List.of(10L));
+            given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
+                    .willReturn(List.of());
+            given(budgetConfigRepository.findByScopeTypeAndScopeId("ORGANIZATION", ORG_ID))
+                    .willReturn(Optional.of(BudgetConfigEntity.builder()
+                            .scopeType("ORGANIZATION").scopeId(ORG_ID)
+                            .overLimitWorkflowId(77L).build()));
+            given(workflowRequestService.createRequest(eq("ORGANIZATION"), eq(ORG_ID), any(),
+                    any(CreateWorkflowRequestRequest.class)))
+                    .willReturn(workflowResponse(900L));
+            given(workflowRequestService.submitRequest("ORGANIZATION", ORG_ID, 900L))
+                    .willReturn(workflowResponse(900L));
+
+            service.evaluateAndTrigger(ALLOCATION_ID);
+
+            // createRequest の引数を捕獲して templateId / sourceType を検証
+            ArgumentCaptor<CreateWorkflowRequestRequest> reqCaptor =
+                    ArgumentCaptor.forClass(CreateWorkflowRequestRequest.class);
+            verify(workflowRequestService, times(1)).createRequest(
+                    eq("ORGANIZATION"), eq(ORG_ID), eq((Long) null), reqCaptor.capture());
+            CreateWorkflowRequestRequest req = reqCaptor.getValue();
+            assertThat(req.getTemplateId()).isEqualTo(77L);
+            assertThat(req.getSourceType()).isEqualTo("BUDGET_THRESHOLD_ALERT");
+
+            verify(workflowRequestService, times(1)).submitRequest("ORGANIZATION", ORG_ID, 900L);
+
+            // workflow_request_id の書戻 → alert.linkWorkflowRequest 後に save が呼ばれる
+            ArgumentCaptor<BudgetThresholdAlertEntity> alertCaptor =
+                    ArgumentCaptor.forClass(BudgetThresholdAlertEntity.class);
+            verify(alertRepository, times(1)).save(alertCaptor.capture());
+            assertThat(alertCaptor.getValue().getWorkflowRequestId()).isEqualTo(900L);
+
+            // 監査ログ: WORKFLOW_STARTED_FROM_BUDGET 1 回 / WORKFLOW_NOT_CONFIGURED は 0
+            verify(auditLogService, times(1)).record(eq("WORKFLOW_STARTED_FROM_BUDGET"),
+                    any(), any(), any(), any(), any(), any(), any(), any());
+            verify(auditLogService, never()).record(eq("WORKFLOW_NOT_CONFIGURED"),
+                    any(), any(), any(), any(), any(), any(), any(), any());
+            verify(auditLogService, never()).record(eq("WORKFLOW_START_FAILED"),
+                    any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("100% 到達 + workflowId 設定済 + WorkflowRequestService 例外 → 握りつぶし + WORKFLOW_START_FAILED 監査")
+        void workflowId設定済_起動失敗は握りつぶし() {
+            ShiftBudgetAllocationEntity alloc = allocationWith(
+                    new BigDecimal("100000"), new BigDecimal("100000"));
+            given(allocationRepository.findById(ALLOCATION_ID)).willReturn(Optional.of(alloc));
+            given(alertRepository.findByAllocationIdAndThresholdPercent(eq(ALLOCATION_ID), anyInt()))
+                    .willReturn(Optional.empty());
+            given(alertRepository.saveAndFlush(any(BudgetThresholdAlertEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(List.of(10L));
+            given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
+                    .willReturn(List.of());
+            given(budgetConfigRepository.findByScopeTypeAndScopeId("ORGANIZATION", ORG_ID))
+                    .willReturn(Optional.of(BudgetConfigEntity.builder()
+                            .scopeType("ORGANIZATION").scopeId(ORG_ID)
+                            .overLimitWorkflowId(77L).build()));
+            // createRequest で例外 (workflow テンプレート無効など)
+            willThrow(new RuntimeException("template inactive"))
+                    .given(workflowRequestService).createRequest(
+                            eq("ORGANIZATION"), eq(ORG_ID), any(),
+                            any(CreateWorkflowRequestRequest.class));
+
+            // 例外は握りつぶされ、main の警告発火フローは続行する
+            service.evaluateAndTrigger(ALLOCATION_ID);
+
+            // WORKFLOW_START_FAILED が記録される
+            verify(auditLogService, times(1)).record(eq("WORKFLOW_START_FAILED"),
+                    any(), any(), any(), any(), any(), any(), any(), any());
+            // 起動失敗のため WORKFLOW_STARTED_FROM_BUDGET / linkWorkflowRequest 経由の save は無し
+            verify(auditLogService, never()).record(eq("WORKFLOW_STARTED_FROM_BUDGET"),
+                    any(), any(), any(), any(), any(), any(), any(), any());
+            verify(alertRepository, never()).save(any(BudgetThresholdAlertEntity.class));
+            // 警告発火そのものは成功しているはず (80 + 100 で 2 件)
+            verify(alertRepository, times(2)).saveAndFlush(any(BudgetThresholdAlertEntity.class));
+        }
+    }
+
+    @Nested
     @DisplayName("予算ゼロ円の境界ケース")
     class 予算ゼロ {
 
@@ -259,6 +393,8 @@ class ThresholdAlertEvaluationServiceTest {
             given(allocationRepository.findById(ALLOCATION_ID)).willReturn(Optional.of(alloc));
             given(alertRepository.findByAllocationIdAndThresholdPercent(eq(ALLOCATION_ID), anyInt()))
                     .willReturn(Optional.empty());
+            given(alertRepository.saveAndFlush(any(BudgetThresholdAlertEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
             given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(List.of(10L));
             given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
                     .willReturn(List.of());
@@ -279,6 +415,8 @@ class ThresholdAlertEvaluationServiceTest {
         given(allocationRepository.findById(ALLOCATION_ID)).willReturn(Optional.of(alloc));
         given(alertRepository.findByAllocationIdAndThresholdPercent(eq(ALLOCATION_ID), anyInt()))
                 .willReturn(Optional.empty());
+        given(alertRepository.saveAndFlush(any(BudgetThresholdAlertEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
         given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(List.of());
         given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
                 .willReturn(List.of());
