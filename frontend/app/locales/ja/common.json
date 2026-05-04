@@ -699,7 +699,13 @@
       "archiveCard": "アーカイブする",
       "unarchiveCard": "アーカイブを解除",
       "pinCard": "ピン止めする",
-      "unpinCard": "ピン止めを外す"
+      "unpinCard": "ピン止めを外す",
+      "createSection": "新規セクション",
+      "editSection": "セクションを編集",
+      "deleteSection": "セクションを削除",
+      "addToSection": "セクションへ追加",
+      "moveToSection": "セクションを変更",
+      "removeFromSection": "セクションから外す"
     },
     "modal": {
       "createTitle": "新規カードを作成",
@@ -748,11 +754,20 @@
       "userNote": "メモ（付箋）",
       "userNotePlaceholder": "このカードに付ける個人メモ（任意）",
       "save": "保存",
-      "cancel": "キャンセル"
+      "cancel": "キャンセル",
+      "sectionCreateTitle": "新規セクションを作成",
+      "sectionEditTitle": "セクションを編集",
+      "sectionTitle": "セクション名",
+      "sectionDescription": "概要（任意）",
+      "sectionIsCollapsed": "初期状態で折りたたむ",
+      "sectionIsCollapsedHint": "ON にすると、ボードを開いた時にセクションが折りたたまれた状態で表示されます。",
+      "sectionMenuTitle": "セクションを選択"
     },
     "confirm": {
       "deleteTitle": "カードを削除",
-      "deleteMessage": "このカードを削除しますか？この操作は取り消せません。"
+      "deleteMessage": "このカードを削除しますか？この操作は取り消せません。",
+      "deleteSectionTitle": "セクションを削除しますか？",
+      "deleteSectionMessage": "このセクションを削除します。カードは残ります（セクション未所属になります）。"
     },
     "toast": {
       "createSuccess": "カードを作成しました",
@@ -768,7 +783,16 @@
       "pinSuccess": "カードをピン止めしました",
       "unpinSuccess": "ピン止めを外しました",
       "pinError": "ピン止めに失敗しました",
-      "unpinError": "ピン止めの解除に失敗しました"
+      "unpinError": "ピン止めの解除に失敗しました",
+      "sectionCreateSuccess": "セクションを作成しました",
+      "sectionEditSuccess": "セクションを更新しました",
+      "sectionDeleteSuccess": "セクションを削除しました",
+      "sectionCreateError": "セクションの作成に失敗しました",
+      "sectionEditError": "セクションの更新に失敗しました",
+      "sectionDeleteError": "セクションの削除に失敗しました",
+      "cardAddToSectionSuccess": "カードをセクションに追加しました",
+      "cardRemoveFromSectionSuccess": "カードをセクションから外しました",
+      "cardSectionChangeError": "カードのセクション変更に失敗しました"
     },
     "validation": {
       "required": "必須項目です",
@@ -776,7 +800,9 @@
       "referenceIdRequired": "参照先 ID を入力してください",
       "referenceTypeRequired": "参照先種別を選択してください",
       "memoBodyRequired": "メモ本文を入力してください",
-      "sectionHeaderTitleRequired": "見出しのタイトルを入力してください"
+      "sectionHeaderTitleRequired": "見出しのタイトルを入力してください",
+      "sectionTitleRequired": "セクション名を入力してください",
+      "sectionTitleTooLong": "セクション名は {max} 文字以内で入力してください"
     },
     "ariaCardActions": "カードの操作",
     "ariaCardEdit": "このカードを編集",
@@ -785,6 +811,10 @@
     "ariaCardUnarchive": "このカードのアーカイブを解除",
     "ariaCardPin": "このカードをピン止め",
     "ariaCardUnpin": "このカードのピン止めを外す",
+    "ariaCardAddToSection": "このカードをセクションに追加・移動",
+    "ariaSectionActions": "セクションの操作",
+    "ariaSectionEdit": "このセクションを編集",
+    "ariaSectionDelete": "このセクションを削除",
     "snapshot": {
       "refDeleted": "参照元削除済み",
       "refDeletedAria": "参照元のコンテンツは削除されました",

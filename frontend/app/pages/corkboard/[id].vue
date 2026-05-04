@@ -53,6 +53,9 @@ const {
   deleteCard: apiDeleteCard,
   archiveCard: apiArchiveCard,
   togglePinCard: apiTogglePinCard,
+  deleteGroup: apiDeleteGroup,
+  addCardToGroup: apiAddCardToGroup,
+  removeCardFromGroup: apiRemoveCardFromGroup,
 } = useCorkboardApi()
 const { captureQuiet } = useErrorReport()
 const toast = useToast()
@@ -479,6 +482,207 @@ async function togglePin(card: CorkboardCardDetail) {
   }
 }
 
+// ----- F09.8 Phase E: セクション CRUD + カード紐付け -----
+
+/**
+ * セクション編集権限。
+ *
+ * - 個人ボード (`PERSONAL`) かつ `ownerId === currentUserId` のみ true。
+ * - チーム / 組織ボードは将来 Phase で BoardPermission API を経由して判定する。
+ *   現状は安全側に倒し false（編集 UI 非表示）とする。
+ */
+const canEditSection = computed<boolean>(() => {
+  if (!board.value) return false
+  if (board.value.scopeType !== 'PERSONAL') return false
+  const me = authStore.currentUser?.id
+  return me != null && board.value.ownerId === me
+})
+
+/**
+ * セクション編集モーダルの開閉状態。
+ *
+ * `null` のとき非表示。create / edit を 1 つの state で制御する。
+ */
+const sectionEditorMode = ref<'create' | 'edit' | null>(null)
+const sectionEditorTarget = ref<CorkboardGroupDetail | null>(null)
+const sectionEditorVisible = computed({
+  get: () => sectionEditorMode.value !== null,
+  set: (v: boolean) => {
+    if (!v) {
+      sectionEditorMode.value = null
+      sectionEditorTarget.value = null
+    }
+  },
+})
+
+function openCreateSection() {
+  sectionEditorTarget.value = null
+  sectionEditorMode.value = 'create'
+}
+
+function openEditSection(section: CorkboardGroupDetail) {
+  sectionEditorTarget.value = section
+  sectionEditorMode.value = 'edit'
+}
+
+/** モーダル保存成功 → ボード詳細を再取得。 */
+async function onSectionSaved() {
+  await load()
+}
+
+/** セクション削除（確認ダイアログ → API → 再取得）。 */
+function confirmDeleteSection(section: CorkboardGroupDetail) {
+  confirmAction({
+    header: t('corkboard.confirm.deleteSectionTitle'),
+    message: t('corkboard.confirm.deleteSectionMessage'),
+    onAccept: () => doDeleteSection(section),
+  })
+}
+
+async function doDeleteSection(section: CorkboardGroupDetail) {
+  try {
+    await apiDeleteGroup(boardId.value, section.id)
+    if (board.value) {
+      board.value = {
+        ...board.value,
+        groups: board.value.groups.filter((g) => g.id !== section.id),
+      }
+    }
+    // ローカルの紐付け map からもセクション ID を除去（残骸防止）
+    const next: Record<number, number> = {}
+    for (const [k, v] of Object.entries(cardSectionMap.value)) {
+      if (v !== section.id) next[Number(k)] = v
+    }
+    cardSectionMap.value = next
+    toast.add({
+      severity: 'success',
+      summary: t('corkboard.toast.sectionDeleteSuccess'),
+      life: 2500,
+    })
+  } catch (e) {
+    captureQuiet(e, { context: 'CorkboardDetailPage: セクション削除失敗' })
+    toast.add({
+      severity: 'error',
+      summary: t('corkboard.toast.sectionDeleteError'),
+      life: 3500,
+    })
+  }
+}
+
+/**
+ * カード → セクションのローカル紐付けマップ。
+ *
+ * バックエンド DTO (`CorkboardCardResponse`) には `sectionId` が含まれないため、
+ * 「このカードが今どのセクションに属しているか」をフロントで一意に決められない。
+ * Phase E では本マップに「最後に行った紐付け操作の結果」を楽観的に記録し、
+ * 操作メニューの表示を切り替える MVP 仕様とする。
+ *
+ * 今後バックエンド DTO に `sectionId` が追加されたら、`cards` 配列から直接読む形に
+ * 置き換える（このマップは廃止）。
+ */
+const cardSectionMap = ref<Record<number, number>>({})
+
+function getCardSectionId(card: CorkboardCardDetail): number | null {
+  const v = cardSectionMap.value[card.id]
+  return typeof v === 'number' ? v : null
+}
+
+/** カードをセクションに追加 / 移動する。 */
+async function addCardToSection(card: CorkboardCardDetail, sectionId: number) {
+  try {
+    // 既に別セクションに属していた場合は先に外す（中間テーブルの一意性は MVP では仮定しない）
+    const current = getCardSectionId(card)
+    if (current != null && current !== sectionId) {
+      try {
+        await apiRemoveCardFromGroup(boardId.value, current, card.id)
+      } catch (e) {
+        // 旧所属の解除失敗はログのみ（追加自体は試みる）
+        captureQuiet(e, {
+          context: 'CorkboardDetailPage: 旧セクションからの解除失敗',
+        })
+      }
+    }
+    await apiAddCardToGroup(boardId.value, sectionId, card.id)
+    cardSectionMap.value = {
+      ...cardSectionMap.value,
+      [card.id]: sectionId,
+    }
+    toast.add({
+      severity: 'success',
+      summary: t('corkboard.toast.cardAddToSectionSuccess'),
+      life: 2500,
+    })
+  } catch (e) {
+    captureQuiet(e, {
+      context: 'CorkboardDetailPage: カードをセクションに追加失敗',
+    })
+    toast.add({
+      severity: 'error',
+      summary: t('corkboard.toast.cardSectionChangeError'),
+      life: 3500,
+    })
+  }
+}
+
+/** カードを現在のセクションから外す。 */
+async function removeCardFromSection(card: CorkboardCardDetail) {
+  const sectionId = getCardSectionId(card)
+  if (sectionId == null) return
+  try {
+    await apiRemoveCardFromGroup(boardId.value, sectionId, card.id)
+    const next: Record<number, number> = { ...cardSectionMap.value }
+    delete next[card.id]
+    cardSectionMap.value = next
+    toast.add({
+      severity: 'success',
+      summary: t('corkboard.toast.cardRemoveFromSectionSuccess'),
+      life: 2500,
+    })
+  } catch (e) {
+    captureQuiet(e, {
+      context: 'CorkboardDetailPage: カードをセクションから外す失敗',
+    })
+    toast.add({
+      severity: 'error',
+      summary: t('corkboard.toast.cardSectionChangeError'),
+      life: 3500,
+    })
+  }
+}
+
+/**
+ * セクション選択ポップオーバーで現在開いているカード。
+ *
+ * 1 つの `<Popover>` インスタンスを使い回し、ボタン押下時に
+ * `popoverTargetCard` を切り替えてから `popover.show($event)` を呼ぶ運用。
+ */
+const popoverTargetCard = ref<CorkboardCardDetail | null>(null)
+const sectionMenuPopover = ref<{
+  toggle: (e: Event) => void
+  show: (e: Event) => void
+  hide: () => void
+} | null>(null)
+
+function openSectionMenu(event: Event, card: CorkboardCardDetail) {
+  popoverTargetCard.value = card
+  // 同じカードに対する再クリックは閉じる
+  sectionMenuPopover.value?.toggle(event)
+}
+
+async function chooseSection(sectionId: number) {
+  const card = popoverTargetCard.value
+  sectionMenuPopover.value?.hide()
+  if (!card) return
+  await addCardToSection(card, sectionId)
+}
+
+async function clearSection() {
+  const card = popoverTargetCard.value
+  sectionMenuPopover.value?.hide()
+  if (!card) return
+  await removeCardFromSection(card)
+}
+
 /** カードのアーカイブ状態を切り替え。 */
 async function toggleArchive(card: CorkboardCardDetail) {
   const next = !card.isArchived
@@ -533,8 +737,19 @@ async function toggleArchive(card: CorkboardCardDetail) {
           {{ scopeLabel }}
         </span>
       </div>
-      <!-- F09.8 Phase C: 新規カード作成ボタン -->
+      <!-- F09.8 Phase C: 新規カード作成ボタン / Phase E: 新規セクションボタン -->
       <div v-if="board" class="flex items-center gap-2">
+        <Button
+          v-if="canEditSection"
+          :label="t('corkboard.actions.createSection')"
+          icon="pi pi-folder-plus"
+          size="small"
+          severity="secondary"
+          outlined
+          :aria-label="t('corkboard.actions.createSection')"
+          data-testid="corkboard-section-create-button"
+          @click="openCreateSection"
+        />
         <Button
           :label="t('corkboard.actions.createCard')"
           icon="pi pi-plus"
@@ -609,7 +824,7 @@ async function toggleArchive(card: CorkboardCardDetail) {
         <div
           v-for="section in sections"
           :key="`sec-${section.id}`"
-          class="absolute rounded-lg border-2 border-dashed border-surface-300 bg-surface-0/40 dark:bg-surface-900/30"
+          class="corkboard-section group/sec absolute rounded-lg border-2 border-dashed border-surface-300 bg-surface-0/40 dark:bg-surface-900/30"
           :style="{
             left: section.positionX + 'px',
             top: section.positionY + 'px',
@@ -619,26 +834,56 @@ async function toggleArchive(card: CorkboardCardDetail) {
           }"
           role="region"
           :aria-label="section.name"
+          :data-testid="`corkboard-section-${section.id}`"
         >
-          <button
-            type="button"
+          <div
             class="flex w-full items-center justify-between gap-2 rounded-t-lg bg-surface-0/70 px-3 py-1.5 text-left text-xs font-semibold dark:bg-surface-800/70"
-            :aria-expanded="!isSectionCollapsed(section)"
-            :aria-label="
-              isSectionCollapsed(section)
-                ? t('corkboard.expandSection')
-                : t('corkboard.collapseSection')
-            "
-            @click="toggleSection(section.id)"
           >
-            <span class="inline-flex items-center gap-1">
+            <button
+              type="button"
+              class="flex flex-1 items-center gap-1 text-left"
+              :aria-expanded="!isSectionCollapsed(section)"
+              :aria-label="
+                isSectionCollapsed(section)
+                  ? t('corkboard.expandSection')
+                  : t('corkboard.collapseSection')
+              "
+              @click="toggleSection(section.id)"
+            >
               <i
                 class="pi text-[10px]"
                 :class="isSectionCollapsed(section) ? 'pi-chevron-right' : 'pi-chevron-down'"
               />
-              {{ section.name }}
-            </span>
-          </button>
+              <span class="truncate">{{ section.name }}</span>
+            </button>
+            <!-- F09.8 Phase E: セクション操作ボタン（ホバー / フォーカス時） -->
+            <div
+              v-if="canEditSection"
+              class="hidden gap-0.5 group-hover/sec:flex group-focus-within/sec:flex"
+              :aria-label="t('corkboard.ariaSectionActions')"
+            >
+              <button
+                type="button"
+                class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-surface-100 hover:text-primary dark:text-surface-300 dark:hover:bg-surface-700"
+                :aria-label="t('corkboard.ariaSectionEdit')"
+                :title="t('corkboard.actions.editSection')"
+                :data-testid="`corkboard-section-edit-button-${section.id}`"
+                @click.stop="openEditSection(section)"
+              >
+                <i class="pi pi-pencil" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-red-50 hover:text-red-500 dark:text-surface-300 dark:hover:bg-red-900/30"
+                :aria-label="t('corkboard.ariaSectionDelete')"
+                :title="t('corkboard.actions.deleteSection')"
+                :data-testid="`corkboard-section-delete-button-${section.id}`"
+                @click.stop="confirmDeleteSection(section)"
+              >
+                <i class="pi pi-trash" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- カード一覧 -->
@@ -703,6 +948,22 @@ async function toggleArchive(card: CorkboardCardDetail) {
                 :class="card.isPinned ? 'pi-bookmark-fill' : 'pi-bookmark'"
                 aria-hidden="true"
               />
+            </button>
+            <!-- F09.8 Phase E: セクションへ追加 / 移動 / 解除 メニュー -->
+            <button
+              v-if="canEditSection && sections.length > 0"
+              type="button"
+              class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-surface-100 hover:text-primary dark:text-surface-300 dark:hover:bg-surface-700"
+              :aria-label="t('corkboard.ariaCardAddToSection')"
+              :title="
+                getCardSectionId(card) == null
+                  ? t('corkboard.actions.addToSection')
+                  : t('corkboard.actions.moveToSection')
+              "
+              :data-testid="`corkboard-card-section-button-${card.id}`"
+              @click.stop="openSectionMenu($event, card)"
+            >
+              <i class="pi pi-folder" aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -810,6 +1071,58 @@ async function toggleArchive(card: CorkboardCardDetail) {
       :default-position="editorDefaultPosition"
       @save="onCardSaved"
     />
+
+    <!-- F09.8 Phase E: セクション作成・編集モーダル -->
+    <SectionEditorModal
+      v-if="board && sectionEditorMode"
+      v-model:visible="sectionEditorVisible"
+      :mode="sectionEditorMode"
+      :board-id="board.id"
+      :section="sectionEditorTarget"
+      @save="onSectionSaved"
+    />
+
+    <!-- F09.8 Phase E: カード→セクション紐付けメニュー（Popover） -->
+    <Popover ref="sectionMenuPopover" data-testid="corkboard-card-section-popover">
+      <div class="flex flex-col gap-1 py-1" style="min-width: 200px">
+        <p class="px-3 pb-1 text-[10px] font-semibold uppercase text-surface-500">
+          {{ t('corkboard.modal.sectionMenuTitle') }}
+        </p>
+        <button
+          v-for="section in sections"
+          :key="`menusec-${section.id}`"
+          type="button"
+          class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-700"
+          :data-testid="`corkboard-card-section-menu-item-${section.id}`"
+          @click="chooseSection(section.id)"
+        >
+          <i
+            class="pi text-[11px]"
+            :class="
+              popoverTargetCard && getCardSectionId(popoverTargetCard) === section.id
+                ? 'pi-check text-primary'
+                : 'pi-folder text-surface-500'
+            "
+            aria-hidden="true"
+          />
+          <span class="truncate">{{ section.name }}</span>
+        </button>
+        <div
+          v-if="popoverTargetCard && getCardSectionId(popoverTargetCard) != null"
+          class="my-1 border-t border-surface-200 dark:border-surface-700"
+        />
+        <button
+          v-if="popoverTargetCard && getCardSectionId(popoverTargetCard) != null"
+          type="button"
+          class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30"
+          data-testid="corkboard-card-section-menu-clear"
+          @click="clearSection"
+        >
+          <i class="pi pi-times text-[11px]" aria-hidden="true" />
+          <span>{{ t('corkboard.actions.removeFromSection') }}</span>
+        </button>
+      </div>
+    </Popover>
 
     <!-- F09.8 Phase C: 削除確認ダイアログ（useConfirmDialog 経由） -->
     <ConfirmDialog />

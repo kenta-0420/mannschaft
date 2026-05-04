@@ -216,6 +216,40 @@ export interface UpdateCardRequest {
 }
 
 /**
+ * セクション作成リクエスト（{@link com.mannschaft.app.corkboard.dto.CreateGroupRequest} と 1:1）。
+ *
+ * - `name` のみ必須（最大 100 文字）。
+ * - `isCollapsed` / 位置・サイズ / `displayOrder` は任意（バックエンド側でデフォルト値補完）。
+ *
+ * 注: バックエンド DTO に `description` フィールドは存在しないため Phase E では扱わない。
+ * 将来 DDL 追加時に併せて追加する。
+ */
+export interface CreateGroupRequest {
+  name: string
+  isCollapsed?: boolean | null
+  positionX?: number | null
+  positionY?: number | null
+  width?: number | null
+  height?: number | null
+  displayOrder?: number | null
+}
+
+/**
+ * セクション更新リクエスト（{@link com.mannschaft.app.corkboard.dto.UpdateGroupRequest} と 1:1）。
+ *
+ * バックエンド DTO のフィールドは {@link CreateGroupRequest} と同一。
+ */
+export interface UpdateGroupRequest {
+  name: string
+  isCollapsed?: boolean | null
+  positionX?: number | null
+  positionY?: number | null
+  width?: number | null
+  height?: number | null
+  displayOrder?: number | null
+}
+
+/**
  * ボード詳細レスポンス（{@link com.mannschaft.app.corkboard.dto.CorkboardDetailResponse} と 1:1）。
  */
 export interface CorkboardDetail {

@@ -699,7 +699,13 @@
       "archiveCard": "Archivieren",
       "unarchiveCard": "Aus Archiv holen",
       "pinCard": "Anpinnen",
-      "unpinCard": "Anpinnen aufheben"
+      "unpinCard": "Anpinnen aufheben",
+      "createSection": "Neuer Abschnitt",
+      "editSection": "Abschnitt bearbeiten",
+      "deleteSection": "Abschnitt löschen",
+      "addToSection": "Zum Abschnitt hinzufügen",
+      "moveToSection": "In Abschnitt verschieben",
+      "removeFromSection": "Aus Abschnitt entfernen"
     },
     "modal": {
       "createTitle": "Neue Karte erstellen",
@@ -748,11 +754,20 @@
       "userNote": "Notiz",
       "userNotePlaceholder": "Persönliche Notiz für diese Karte (optional)",
       "save": "Speichern",
-      "cancel": "Abbrechen"
+      "cancel": "Abbrechen",
+      "sectionCreateTitle": "Neuen Abschnitt erstellen",
+      "sectionEditTitle": "Abschnitt bearbeiten",
+      "sectionTitle": "Abschnittsname",
+      "sectionDescription": "Beschreibung (optional)",
+      "sectionIsCollapsed": "Standardmäßig eingeklappt",
+      "sectionIsCollapsedHint": "Wenn aktiviert, wird der Abschnitt beim Öffnen des Boards eingeklappt angezeigt.",
+      "sectionMenuTitle": "Abschnitt wählen"
     },
     "confirm": {
       "deleteTitle": "Karte löschen",
-      "deleteMessage": "Diese Karte löschen? Dieser Vorgang kann nicht rückgängig gemacht werden."
+      "deleteMessage": "Diese Karte löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.",
+      "deleteSectionTitle": "Diesen Abschnitt löschen?",
+      "deleteSectionMessage": "Dieser Abschnitt wird gelöscht. Die Karten bleiben erhalten (sie werden ohne Abschnitt)."
     },
     "toast": {
       "createSuccess": "Karte erstellt.",
@@ -768,7 +783,16 @@
       "pinSuccess": "Karte angepinnt.",
       "unpinSuccess": "Anpinnen aufgehoben.",
       "pinError": "Karte konnte nicht angepinnt werden.",
-      "unpinError": "Anpinnen konnte nicht aufgehoben werden."
+      "unpinError": "Anpinnen konnte nicht aufgehoben werden.",
+      "sectionCreateSuccess": "Abschnitt erstellt.",
+      "sectionEditSuccess": "Abschnitt aktualisiert.",
+      "sectionDeleteSuccess": "Abschnitt gelöscht.",
+      "sectionCreateError": "Abschnitt konnte nicht erstellt werden.",
+      "sectionEditError": "Abschnitt konnte nicht aktualisiert werden.",
+      "sectionDeleteError": "Abschnitt konnte nicht gelöscht werden.",
+      "cardAddToSectionSuccess": "Karte zum Abschnitt hinzugefügt.",
+      "cardRemoveFromSectionSuccess": "Karte aus dem Abschnitt entfernt.",
+      "cardSectionChangeError": "Abschnitt der Karte konnte nicht geändert werden."
     },
     "validation": {
       "required": "Pflichtfeld.",
@@ -776,7 +800,9 @@
       "referenceIdRequired": "Bitte eine Referenz-ID eingeben.",
       "referenceTypeRequired": "Bitte einen Referenztyp wählen.",
       "memoBodyRequired": "Bitte den Notiztext eingeben.",
-      "sectionHeaderTitleRequired": "Bitte den Überschriftstext eingeben."
+      "sectionHeaderTitleRequired": "Bitte den Überschriftstext eingeben.",
+      "sectionTitleRequired": "Bitte einen Abschnittsnamen eingeben.",
+      "sectionTitleTooLong": "Der Abschnittsname darf höchstens {max} Zeichen lang sein."
     },
     "ariaCardActions": "Kartenaktionen",
     "ariaCardEdit": "Diese Karte bearbeiten",
@@ -785,6 +811,10 @@
     "ariaCardUnarchive": "Diese Karte aus dem Archiv holen",
     "ariaCardPin": "Diese Karte anpinnen",
     "ariaCardUnpin": "Anpinnen dieser Karte aufheben",
+    "ariaCardAddToSection": "Diese Karte zu einem Abschnitt hinzufügen oder verschieben",
+    "ariaSectionActions": "Abschnittsaktionen",
+    "ariaSectionEdit": "Diesen Abschnitt bearbeiten",
+    "ariaSectionDelete": "Diesen Abschnitt löschen",
     "snapshot": {
       "refDeleted": "Quelle gelöscht",
       "refDeletedAria": "Der referenzierte Inhalt wurde gelöscht",

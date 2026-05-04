@@ -699,7 +699,13 @@
       "archiveCard": "Archivar",
       "unarchiveCard": "Desarchivar",
       "pinCard": "Fijar",
-      "unpinCard": "Quitar fijación"
+      "unpinCard": "Quitar fijación",
+      "createSection": "Nueva sección",
+      "editSection": "Editar sección",
+      "deleteSection": "Eliminar sección",
+      "addToSection": "Añadir a sección",
+      "moveToSection": "Mover a sección",
+      "removeFromSection": "Quitar de la sección"
     },
     "modal": {
       "createTitle": "Crear nueva tarjeta",
@@ -748,11 +754,20 @@
       "userNote": "Nota",
       "userNotePlaceholder": "Nota personal para esta tarjeta (opcional)",
       "save": "Guardar",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "sectionCreateTitle": "Crear nueva sección",
+      "sectionEditTitle": "Editar sección",
+      "sectionTitle": "Nombre de la sección",
+      "sectionDescription": "Descripción (opcional)",
+      "sectionIsCollapsed": "Contraída por defecto",
+      "sectionIsCollapsedHint": "Si se activa, la sección aparece contraída al abrir el tablero.",
+      "sectionMenuTitle": "Elegir una sección"
     },
     "confirm": {
       "deleteTitle": "Eliminar tarjeta",
-      "deleteMessage": "¿Eliminar esta tarjeta? Esta acción no se puede deshacer."
+      "deleteMessage": "¿Eliminar esta tarjeta? Esta acción no se puede deshacer.",
+      "deleteSectionTitle": "¿Eliminar esta sección?",
+      "deleteSectionMessage": "Se eliminará esta sección. Las tarjetas se mantienen (quedarán sin sección)."
     },
     "toast": {
       "createSuccess": "Tarjeta creada.",
@@ -768,7 +783,16 @@
       "pinSuccess": "Tarjeta fijada.",
       "unpinSuccess": "Fijación retirada.",
       "pinError": "No se pudo fijar la tarjeta.",
-      "unpinError": "No se pudo quitar la fijación."
+      "unpinError": "No se pudo quitar la fijación.",
+      "sectionCreateSuccess": "Sección creada.",
+      "sectionEditSuccess": "Sección actualizada.",
+      "sectionDeleteSuccess": "Sección eliminada.",
+      "sectionCreateError": "No se pudo crear la sección.",
+      "sectionEditError": "No se pudo actualizar la sección.",
+      "sectionDeleteError": "No se pudo eliminar la sección.",
+      "cardAddToSectionSuccess": "Tarjeta añadida a la sección.",
+      "cardRemoveFromSectionSuccess": "Tarjeta retirada de la sección.",
+      "cardSectionChangeError": "No se pudo cambiar la sección de la tarjeta."
     },
     "validation": {
       "required": "Este campo es obligatorio.",
@@ -776,7 +800,9 @@
       "referenceIdRequired": "Introduce un ID de referencia.",
       "referenceTypeRequired": "Selecciona un tipo de referencia.",
       "memoBodyRequired": "Introduce el contenido de la nota.",
-      "sectionHeaderTitleRequired": "Introduce el título del encabezado."
+      "sectionHeaderTitleRequired": "Introduce el título del encabezado.",
+      "sectionTitleRequired": "Introduce un nombre de sección.",
+      "sectionTitleTooLong": "El nombre de la sección debe tener {max} caracteres o menos."
     },
     "ariaCardActions": "Acciones de la tarjeta",
     "ariaCardEdit": "Editar esta tarjeta",
@@ -785,6 +811,10 @@
     "ariaCardUnarchive": "Desarchivar esta tarjeta",
     "ariaCardPin": "Fijar esta tarjeta",
     "ariaCardUnpin": "Quitar la fijación de esta tarjeta",
+    "ariaCardAddToSection": "Añadir o mover esta tarjeta a una sección",
+    "ariaSectionActions": "Acciones de la sección",
+    "ariaSectionEdit": "Editar esta sección",
+    "ariaSectionDelete": "Eliminar esta sección",
     "snapshot": {
       "refDeleted": "Origen eliminado",
       "refDeletedAria": "El contenido referenciado ha sido eliminado",

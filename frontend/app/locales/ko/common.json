@@ -699,7 +699,13 @@
       "archiveCard": "보관",
       "unarchiveCard": "보관 해제",
       "pinCard": "고정",
-      "unpinCard": "고정 해제"
+      "unpinCard": "고정 해제",
+      "createSection": "새 섹션",
+      "editSection": "섹션 편집",
+      "deleteSection": "섹션 삭제",
+      "addToSection": "섹션에 추가",
+      "moveToSection": "섹션 이동",
+      "removeFromSection": "섹션에서 제거"
     },
     "modal": {
       "createTitle": "새 카드 만들기",
@@ -748,11 +754,20 @@
       "userNote": "메모",
       "userNotePlaceholder": "이 카드에 붙일 개인 메모 (선택)",
       "save": "저장",
-      "cancel": "취소"
+      "cancel": "취소",
+      "sectionCreateTitle": "새 섹션 만들기",
+      "sectionEditTitle": "섹션 편집",
+      "sectionTitle": "섹션 이름",
+      "sectionDescription": "설명 (선택)",
+      "sectionIsCollapsed": "기본적으로 접기",
+      "sectionIsCollapsedHint": "켜면 보드를 열 때 섹션이 접힌 상태로 표시됩니다.",
+      "sectionMenuTitle": "섹션 선택"
     },
     "confirm": {
       "deleteTitle": "카드 삭제",
-      "deleteMessage": "이 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+      "deleteMessage": "이 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "deleteSectionTitle": "이 섹션을 삭제하시겠습니까?",
+      "deleteSectionMessage": "이 섹션을 삭제합니다. 카드는 남아 있습니다(섹션 미지정 상태가 됩니다)."
     },
     "toast": {
       "createSuccess": "카드를 만들었습니다.",
@@ -768,7 +783,16 @@
       "pinSuccess": "카드를 고정했습니다.",
       "unpinSuccess": "고정을 해제했습니다.",
       "pinError": "고정에 실패했습니다.",
-      "unpinError": "고정 해제에 실패했습니다."
+      "unpinError": "고정 해제에 실패했습니다.",
+      "sectionCreateSuccess": "섹션을 만들었습니다.",
+      "sectionEditSuccess": "섹션을 업데이트했습니다.",
+      "sectionDeleteSuccess": "섹션을 삭제했습니다.",
+      "sectionCreateError": "섹션 생성에 실패했습니다.",
+      "sectionEditError": "섹션 업데이트에 실패했습니다.",
+      "sectionDeleteError": "섹션 삭제에 실패했습니다.",
+      "cardAddToSectionSuccess": "카드를 섹션에 추가했습니다.",
+      "cardRemoveFromSectionSuccess": "카드를 섹션에서 제거했습니다.",
+      "cardSectionChangeError": "카드의 섹션 변경에 실패했습니다."
     },
     "validation": {
       "required": "필수 항목입니다.",
@@ -776,7 +800,9 @@
       "referenceIdRequired": "참조 ID를 입력해 주세요.",
       "referenceTypeRequired": "참조 종류를 선택해 주세요.",
       "memoBodyRequired": "메모 본문을 입력해 주세요.",
-      "sectionHeaderTitleRequired": "헤더 제목을 입력해 주세요."
+      "sectionHeaderTitleRequired": "헤더 제목을 입력해 주세요.",
+      "sectionTitleRequired": "섹션 이름을 입력해 주세요.",
+      "sectionTitleTooLong": "섹션 이름은 {max}자 이내로 입력해 주세요."
     },
     "ariaCardActions": "카드 작업",
     "ariaCardEdit": "이 카드 편집",
@@ -785,6 +811,10 @@
     "ariaCardUnarchive": "이 카드의 보관 해제",
     "ariaCardPin": "이 카드를 고정",
     "ariaCardUnpin": "이 카드의 고정 해제",
+    "ariaCardAddToSection": "이 카드를 섹션에 추가 또는 이동",
+    "ariaSectionActions": "섹션 작업",
+    "ariaSectionEdit": "이 섹션 편집",
+    "ariaSectionDelete": "이 섹션 삭제",
     "snapshot": {
       "refDeleted": "참조 원본 삭제됨",
       "refDeletedAria": "참조한 콘텐츠가 삭제되었습니다",

@@ -699,7 +699,13 @@
       "archiveCard": "Archive",
       "unarchiveCard": "Unarchive",
       "pinCard": "Pin",
-      "unpinCard": "Unpin"
+      "unpinCard": "Unpin",
+      "createSection": "New section",
+      "editSection": "Edit section",
+      "deleteSection": "Delete section",
+      "addToSection": "Add to section",
+      "moveToSection": "Move to section",
+      "removeFromSection": "Remove from section"
     },
     "modal": {
       "createTitle": "Create new card",
@@ -748,11 +754,20 @@
       "userNote": "Note",
       "userNotePlaceholder": "Personal note for this card (optional)",
       "save": "Save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "sectionCreateTitle": "Create new section",
+      "sectionEditTitle": "Edit section",
+      "sectionTitle": "Section name",
+      "sectionDescription": "Description (optional)",
+      "sectionIsCollapsed": "Collapsed by default",
+      "sectionIsCollapsedHint": "When ON, the section starts collapsed when the board is opened.",
+      "sectionMenuTitle": "Choose a section"
     },
     "confirm": {
       "deleteTitle": "Delete card",
-      "deleteMessage": "Delete this card? This action cannot be undone."
+      "deleteMessage": "Delete this card? This action cannot be undone.",
+      "deleteSectionTitle": "Delete this section?",
+      "deleteSectionMessage": "Delete this section. The cards will remain (they will become unsectioned)."
     },
     "toast": {
       "createSuccess": "Card created.",
@@ -768,7 +783,16 @@
       "pinSuccess": "Card pinned.",
       "unpinSuccess": "Card unpinned.",
       "pinError": "Failed to pin card.",
-      "unpinError": "Failed to unpin card."
+      "unpinError": "Failed to unpin card.",
+      "sectionCreateSuccess": "Section created.",
+      "sectionEditSuccess": "Section updated.",
+      "sectionDeleteSuccess": "Section deleted.",
+      "sectionCreateError": "Failed to create section.",
+      "sectionEditError": "Failed to update section.",
+      "sectionDeleteError": "Failed to delete section.",
+      "cardAddToSectionSuccess": "Card added to section.",
+      "cardRemoveFromSectionSuccess": "Card removed from section.",
+      "cardSectionChangeError": "Failed to change card section."
     },
     "validation": {
       "required": "This field is required.",
@@ -776,7 +800,9 @@
       "referenceIdRequired": "Please enter a reference ID.",
       "referenceTypeRequired": "Please select a reference type.",
       "memoBodyRequired": "Please enter the memo body.",
-      "sectionHeaderTitleRequired": "Please enter the heading title."
+      "sectionHeaderTitleRequired": "Please enter the heading title.",
+      "sectionTitleRequired": "Please enter a section name.",
+      "sectionTitleTooLong": "Section name must be {max} characters or fewer."
     },
     "ariaCardActions": "Card actions",
     "ariaCardEdit": "Edit this card",
@@ -785,6 +811,10 @@
     "ariaCardUnarchive": "Unarchive this card",
     "ariaCardPin": "Pin this card",
     "ariaCardUnpin": "Unpin this card",
+    "ariaCardAddToSection": "Add or move this card to a section",
+    "ariaSectionActions": "Section actions",
+    "ariaSectionEdit": "Edit this section",
+    "ariaSectionDelete": "Delete this section",
     "snapshot": {
       "refDeleted": "Source deleted",
       "refDeletedAria": "The referenced content has been deleted",
