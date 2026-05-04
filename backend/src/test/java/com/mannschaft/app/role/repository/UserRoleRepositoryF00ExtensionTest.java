@@ -13,7 +13,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.MySQLContainer;
@@ -44,17 +43,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
-@TestPropertySource(properties = {
-        // 本テストは roles seed (V2.014) と users / organizations / teams の
-        // 完全な production-like スキーマに依存するため、テストプロファイル既定の
-        // ddl-auto=create-drop / flyway.enabled=false を Flyway 駆動に切り替える。
-        // ddl-auto は none を採用（validate にすると entity-DB 間の既知ドリフト
-        // — 例: users.offline_only がエンティティ宣言のみで Flyway に対応 SQL なし —
-        // で起動失敗するため）。本テストは Repository クエリの SQL 妥当性のみを
-        // 検証すれば足り、entity-DB 全体の整合性検証はスコープ外。
-        "spring.flyway.enabled=true",
-        "spring.jpa.hibernate.ddl-auto=none"
-})
 @Transactional
 @DisplayName("UserRoleRepository F00 拡張 結合テスト")
 class UserRoleRepositoryF00ExtensionTest {
@@ -96,16 +84,32 @@ class UserRoleRepositoryF00ExtensionTest {
     /**
      * 各テスト直前に最小限のテストデータを投入する。
      *
-     * <p>本テストは結合テスト用 MySQL Testcontainer 上で動作し、クラス先頭の
-     * {@code @TestPropertySource} で Flyway を有効化しているため、起動時に
-     * V1.xxx〜V20.xxx 系の本番マイグレーションが流れ、{@code V2.014__seed_roles.sql}
-     * により {@code roles} 表には SYSTEM_ADMIN / ADMIN / DEPUTY_ADMIN / MEMBER /
-     * SUPPORTER / GUEST が seed されている。本 setUp ではそれを前提に、テスト固有の
-     * users / organizations / teams / user_roles 行を毎テスト追加する。</p>
+     * <p><b>スキーマ生成の前提</b>: 本テストは {@code spring.flyway.enabled=false} +
+     * {@code spring.jpa.hibernate.ddl-auto=create-drop} の組合せ（{@code application-test.yml}
+     * 既定）で動作する。すなわち全テーブルは Hibernate がエンティティ宣言から DDL を
+     * 生成して作成するため:</p>
+     * <ul>
+     *   <li>Flyway の {@code V2.014__seed_roles.sql} は走らない → {@code roles} 表は空。
+     *       本 setUp で必要な {@code SYSTEM_ADMIN} / {@code MEMBER} を直接 INSERT する。</li>
+     *   <li>Hibernate が生成する {@code users} 表は {@code @Builder.Default} 付きの
+     *       {@code @Column(nullable = false)} 列を全て NOT NULL（DB レベルのデフォルト値なし）
+     *       で作成する。INSERT では DB 列レベルでの全 NOT NULL 列を明示指定する必要がある。</li>
+     * </ul>
      */
     @BeforeEach
     void setUp() {
-        // 1. seed 済みロール ID を引く（Flyway V2.014 で必ず存在する）
+        // 1. ロールを直接投入（Flyway 無効環境で seed が無いため）。
+        //    冪等性は不要（Transactional ロールバックで毎テスト捨てる）。
+        em.createNativeQuery(
+                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                        + "VALUES ('SYSTEM_ADMIN', 'システム管理者', 1, 1, NOW(), NOW())")
+                .executeUpdate();
+        em.createNativeQuery(
+                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                        + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
+                .executeUpdate();
+        em.flush();
+
         memberRoleId = ((Number) em.createNativeQuery(
                 "SELECT id FROM roles WHERE name = 'MEMBER'").getSingleResult()).longValue();
         systemAdminRoleId = ((Number) em.createNativeQuery(
@@ -129,9 +133,23 @@ class UserRoleRepositoryF00ExtensionTest {
     }
 
     private Long insertUser(String email, String lastName, String firstName) {
+        // UserEntity の NOT NULL 列をすべて明示指定する。
+        // Hibernate の create-drop は @Builder.Default を DDL DEFAULT に
+        // 反映しないため、Java 側の既定値を生成 SQL に持ち込む必要がある。
         em.createNativeQuery(
-                "INSERT INTO users (email, last_name, first_name, display_name, status, created_at, updated_at) " +
-                        "VALUES (:email, :ln, :fn, :dn, 'ACTIVE', NOW(), NOW())")
+                "INSERT INTO users (" +
+                        "email, last_name, first_name, display_name, status, " +
+                        "is_searchable, handle_searchable, contact_approval_required, " +
+                        "online_visibility, dm_receive_from, encryption_key_version, " +
+                        "locale, timezone, reporting_restricted, follow_list_visibility, " +
+                        "care_notification_enabled, offline_only, " +
+                        "created_at, updated_at) " +
+                        "VALUES (:email, :ln, :fn, :dn, 'ACTIVE', " +
+                        "1, 1, 1, " +
+                        "'NOBODY', 'ANYONE', 1, " +
+                        "'ja', 'Asia/Tokyo', 0, 'PUBLIC', " +
+                        "1, 0, " +
+                        "NOW(), NOW())")
                 .setParameter("email", email)
                 .setParameter("ln", lastName)
                 .setParameter("fn", firstName)
@@ -144,8 +162,8 @@ class UserRoleRepositoryF00ExtensionTest {
     }
 
     private Long insertOrganization(String name) {
-        // org_type は V9.091 で enum 9 種 (GOVERNMENT/MUNICIPALITY/COMPANY/HOSPITAL/
-        // ASSOCIATION/SCHOOL/NPO/COMMUNITY/OTHER) に絞り込まれている。OTHER を使う。
+        // org_type は OrganizationEntity.OrgType の有効値 'OTHER' を使う
+        // （無効値も Hibernate-create-drop の VARCHAR 列なら通るが、enum 整合性を保つ）。
         em.createNativeQuery(
                 "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, " +
                         "supporter_enabled, version, created_at, updated_at) " +
