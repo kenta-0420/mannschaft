@@ -16,12 +16,14 @@ spring:
   flyway:
     enabled: true
 
-# F08.7 Phase 9-α / 9-δ: テスト環境ではシフト予算機能を有効化
+# F08.7 Phase 9-α / 9-δ / 10-β: テスト環境ではシフト予算機能を有効化
 # monthly-close-cron-enabled: テスト環境でも cron 自動起動は OFF（バッチは手動 API #11 から呼ぶ）
+# retry-batch-enabled: テスト環境でも 15分毎の自動再実行は OFF（明示的に Job 単体テストで起動する）
 feature:
   shift-budget:
     enabled: true
     monthly-close-cron-enabled: false
+    retry-batch-enabled: false
 
 mannschaft:
   # F13.1 Phase 13.1.2: QR 署名 — テスト決定性のために固定 secret を使用

@@ -76,6 +76,9 @@ class ThresholdAlertEvaluationServiceTest {
     private AuditLogService auditLogService;
     @Mock
     private WorkflowRequestService workflowRequestService;
+    /** Phase 10-β で追加された失敗イベント記録（テスト中は no-op で十分） */
+    @Mock
+    private ShiftBudgetFailedEventService failedEventService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -86,7 +89,7 @@ class ThresholdAlertEvaluationServiceTest {
         service = new ThresholdAlertEvaluationService(
                 allocationRepository, alertRepository, budgetConfigRepository,
                 userRoleRepository, notificationHelper, auditLogService,
-                workflowRequestService, objectMapper);
+                workflowRequestService, objectMapper, failedEventService);
     }
 
     /**

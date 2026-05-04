@@ -8,11 +8,13 @@ import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.event.ShiftPublishedEvent;
 import com.mannschaft.app.shift.repository.ShiftHourlyRateRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
+import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFeatureService;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
+import com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService;
 import com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +26,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -59,6 +62,8 @@ public class ShiftBudgetConsumptionRecordListener {
     private final ObjectMapper objectMapper;
     /** Phase 9-δ で追加: 閾値判定 hook */
     private final ThresholdAlertEvaluationService thresholdAlertEvaluationService;
+    /** Phase 10-β で追加: 失敗イベントの永続化（リトライバッチ + 管理 API の入口） */
+    private final ShiftBudgetFailedEventService failedEventService;
 
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -133,6 +138,17 @@ public class ShiftBudgetConsumptionRecordListener {
                         } catch (Exception thresholdEx) {
                             log.error("F08.7 hook: 閾値判定失敗（処理継続）: allocId={}, slot={}, user={}",
                                     allocation.getId(), slot.getId(), userId, thresholdEx);
+                            // Phase 10-β: 失敗イベントとして永続化 → リトライバッチ + 管理 API で根治
+                            recordFailureSafe(organizationId,
+                                    ShiftBudgetFailedEventType.THRESHOLD_ALERT,
+                                    allocation.getId(),
+                                    Map.of(
+                                            "allocation_id", allocation.getId(),
+                                            "shift_schedule_id", scheduleId,
+                                            "slot_id", slot.getId(),
+                                            "user_id", userId
+                                    ),
+                                    thresholdEx);
                         }
                     } catch (IllegalStateException e) {
                         // CONFIRMED 既存 → スキップして他継続（個別エラーで全体を止めない）
@@ -160,7 +176,7 @@ public class ShiftBudgetConsumptionRecordListener {
 
         } catch (Exception e) {
             // hook 全体の致命的失敗を握りつぶす（main トランザクション保護）。
-            // ただし監査ログ + ERROR ログでフォレンジック可能性は残す。
+            // ただし監査ログ + ERROR ログ + Phase 10-β failed_events でフォレンジック可能性を残す。
             log.error("F08.7 hook: シフト公開消化記録の致命的失敗: scheduleId={}, teamId={}",
                     scheduleId, teamId, e);
             try {
@@ -174,6 +190,41 @@ public class ShiftBudgetConsumptionRecordListener {
             } catch (Exception ignore) {
                 // 監査ログ書き込みも失敗した場合は諦める（メイン処理は既に完了済み）
             }
+            // Phase 10-β: organization_id が解決できていれば failed_events にも記録。
+            // 解決できていない（hook 入口で例外）場合は記録不可
+            try {
+                Long orgIdForFailure = rateQueryRepository.findOrganizationIdByTeamId(teamId)
+                        .orElse(null);
+                if (orgIdForFailure != null) {
+                    recordFailureSafe(orgIdForFailure,
+                            ShiftBudgetFailedEventType.CONSUMPTION_RECORD,
+                            scheduleId,
+                            Map.of(
+                                    "shift_schedule_id", scheduleId,
+                                    "team_id", teamId,
+                                    "triggered_by_user_id",
+                                    event.getTriggeredByUserId() == null ? -1L : event.getTriggeredByUserId()
+                            ),
+                            e);
+                }
+            } catch (Exception ignore) {
+                // failed_events 記録自体の失敗も諦める（ERROR ログは既に出ている）
+            }
+        }
+    }
+
+    /**
+     * Phase 10-β: 失敗イベント記録を例外安全に呼ぶ。
+     * recordFailure 自体が例外を投げても hook の他処理に影響しないよう catch する。
+     */
+    private void recordFailureSafe(Long organizationId, ShiftBudgetFailedEventType eventType,
+                                   Long sourceId, Map<String, Object> payload, Throwable cause) {
+        try {
+            String errorMsg = cause.getClass().getSimpleName() + ": " + cause.getMessage();
+            failedEventService.recordFailure(organizationId, eventType, sourceId, payload, errorMsg);
+        } catch (Exception recEx) {
+            log.error("F08.7 hook: failed_events 記録自体も失敗（諦め）: orgId={}, eventType={}",
+                    organizationId, eventType, recEx);
         }
     }
 

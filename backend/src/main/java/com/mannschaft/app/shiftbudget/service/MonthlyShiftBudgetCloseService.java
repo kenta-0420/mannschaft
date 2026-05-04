@@ -8,8 +8,11 @@ import com.mannschaft.app.budget.repository.BudgetTransactionRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.shiftbudget.ShiftBudgetConsumptionStatus;
 import com.mannschaft.app.shiftbudget.ShiftBudgetErrorCode;
+import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFeatureService;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetConsumptionEntity;
@@ -24,7 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * F08.7 シフト予算 月次締め サービス（Phase 9-δ 第2段、API #11 / cron バッチ用）。
@@ -61,6 +66,8 @@ public class MonthlyShiftBudgetCloseService {
     private final ShiftBudgetFeatureService featureService;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
+    private final OrganizationRepository organizationRepository;
+    private final ShiftBudgetFailedEventService failedEventService;
 
     /**
      * API #11 経由の手動締め（{@code BUDGET_ADMIN} 権限必須）。
@@ -257,6 +264,78 @@ public class MonthlyShiftBudgetCloseService {
     }
 
     /**
+     * Phase 10-β: 全組織横断で締めを行い、失敗組織のリストを返す。
+     *
+     * <p>各組織で {@link #closeFromBatch} を try-catch して、失敗時は
+     * {@link ShiftBudgetFailedEventService} に CONSUMPTION_RECORD 系ではなく
+     * 一時的に共通の MONTHLY_CLOSE 失敗として記録 + 続行する。
+     * 戻り値で運用者は失敗組織を確認し、個別 API #11 で再実行する。</p>
+     *
+     * <p>cron バッチからもこのメソッドを呼ぶことで、1 組織失敗で全体が止まる
+     * Phase 9-δ 時代の挙動を解消する。</p>
+     *
+     * @param targetMonth 対象月（YearMonth）
+     */
+    @Transactional(propagation = Propagation.NEVER)
+    public AllOrgsCloseResult closeAll(YearMonth targetMonth) {
+        List<OrganizationEntity> organizations = organizationRepository.findAll();
+
+        List<Long> processed = new ArrayList<>();
+        List<Long> failed = new ArrayList<>();
+        List<Long> alreadyClosed = new ArrayList<>();
+        int closedAllocsTotal = 0;
+        int alreadyClosedAllocsTotal = 0;
+        int closedConsumptionsTotal = 0;
+
+        for (OrganizationEntity org : organizations) {
+            Long orgId = org.getId();
+            try {
+                CloseResult r = closeFromBatch(orgId, targetMonth);
+                closedAllocsTotal += r.closedAllocations();
+                alreadyClosedAllocsTotal += r.alreadyClosedAllocations();
+                closedConsumptionsTotal += r.closedConsumptions();
+
+                if (r.closedAllocations() > 0) {
+                    processed.add(orgId);
+                } else if (r.alreadyClosedAllocations() > 0) {
+                    alreadyClosed.add(orgId);
+                }
+                // どちらも 0 の場合は対象 allocation 自体がない組織 → リストにも入れない
+            } catch (Exception e) {
+                // 1 組織の失敗で全体を止めない（Phase 9-δ 時代との互換）
+                failed.add(orgId);
+                log.error("F08.7 月次締め closeAll: 組織単位失敗 (続行): orgId={}, month={}",
+                        orgId, targetMonth, e);
+                // 失敗イベントとして永続化 → 運用者が後で個別再実行 API を叩ける
+                try {
+                    failedEventService.recordFailure(
+                            orgId,
+                            ShiftBudgetFailedEventType.CONSUMPTION_RECORD,  // 月次締めは共通枠で記録
+                            null,
+                            Map.of(
+                                    "operation", "MONTHLY_CLOSE",
+                                    "year_month", targetMonth.toString(),
+                                    "organization_id", orgId
+                            ),
+                            e.getClass().getSimpleName() + ": " + e.getMessage()
+                    );
+                } catch (Exception recEx) {
+                    log.error("F08.7 月次締め closeAll: failedEvent 記録自体も失敗 (致命的): orgId={}",
+                            orgId, recEx);
+                }
+            }
+        }
+
+        log.info("F08.7 月次締め closeAll 完了: month={}, processed={}, failed={}, alreadyClosed={}, "
+                        + "totalClosedAllocs={}, totalConsumptions={}",
+                targetMonth, processed.size(), failed.size(), alreadyClosed.size(),
+                closedAllocsTotal, closedConsumptionsTotal);
+
+        return new AllOrgsCloseResult(processed, failed, alreadyClosed,
+                closedAllocsTotal, alreadyClosedAllocsTotal, closedConsumptionsTotal);
+    }
+
+    /**
      * 締め処理の結果サマリ。
      *
      * @param closedAllocations    今回新規に締めた allocation 件数
@@ -264,5 +343,24 @@ public class MonthlyShiftBudgetCloseService {
      * @param closedConsumptions   PLANNED→CONFIRMED 化した consumption 件数の総計
      */
     public record CloseResult(int closedAllocations, int alreadyClosedAllocations, int closedConsumptions) {
+    }
+
+    /**
+     * Phase 10-β: 全組織横断 closeAll の結果サマリ。
+     *
+     * @param processedOrganizationIds      新規に締めが成功した組織 ID
+     * @param failedOrganizationIds         例外で締め失敗した組織 ID（運用者が個別再実行 API で対処）
+     * @param alreadyClosedOrganizationIds  全 allocation が既に締め済だった組織 ID
+     * @param closedAllocations             全組織合算: 今回新規に締めた allocation 件数
+     * @param alreadyClosedAllocations      全組織合算: 既に締め済として skip した allocation 件数
+     * @param closedConsumptions            全組織合算: PLANNED→CONFIRMED 化した consumption 件数
+     */
+    public record AllOrgsCloseResult(
+            List<Long> processedOrganizationIds,
+            List<Long> failedOrganizationIds,
+            List<Long> alreadyClosedOrganizationIds,
+            int closedAllocations,
+            int alreadyClosedAllocations,
+            int closedConsumptions) {
     }
 }
