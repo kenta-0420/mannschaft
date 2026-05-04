@@ -61,7 +61,13 @@ public enum SchoolErrorCode implements ErrorCode {
     EVALUATION_NOT_FOUND("S034", "出席要件評価が見つかりません", Severity.WARN),
 
     /** 評価は既に解消済み */
-    EVALUATION_ALREADY_RESOLVED("S035", "この評価は既に解消済みです", Severity.WARN);
+    EVALUATION_ALREADY_RESOLVED("S035", "この評価は既に解消済みです", Severity.WARN),
+
+    /** 開示対象の評価が見つからない */
+    DISCLOSURE_EVALUATION_NOT_FOUND("SCHOOL_015", "評価が見つかりません", Severity.WARN),
+
+    /** 評価がこのチームに属していない */
+    DISCLOSURE_TEAM_MISMATCH("SCHOOL_016", "評価がこのチームに属していません", Severity.WARN);
 
     private final String code;
     private final String message;
