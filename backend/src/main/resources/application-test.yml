@@ -7,6 +7,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+    properties:
+      hibernate:
+        # F00 §13.4: 性能テスト用 SQL 意図カウンタ。テーブル名ベースで発行 SQL 数を集計する
+        session_factory:
+          statement_inspector: com.mannschaft.app.common.visibility.perf.SqlIntentCounter
 
   flyway:
     enabled: true
