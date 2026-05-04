@@ -189,7 +189,9 @@ class ScheduleVisibilityResolverIntegrationTest extends AbstractMySqlIntegration
                 .isException(false)
                 .createdBy(createdBy)
                 .build();
-        return scheduleRepository.save(entity);
+        // saveAndFlush で MySQL auto_increment ID を即時確定させ、
+        // entity.getId() が null にならないようにする (NPE 防止)。
+        return scheduleRepository.saveAndFlush(entity);
     }
 
     private Long insertUser(String email, String lastName, String firstName) {
