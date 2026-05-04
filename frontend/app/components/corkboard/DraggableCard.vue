@@ -38,12 +38,12 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   /** ドラッグ完了時。親は API を呼んで永続化する。 */
-  (e: 'update:position', cardId: number, positionX: number, positionY: number): void
+  'update:position': [cardId: number, positionX: number, positionY: number]
   /** カード操作メニューからの emit。親が既存処理を実行する。 */
-  (e: 'edit', card: CorkboardCardDetail): void
-  (e: 'delete', card: CorkboardCardDetail): void
-  (e: 'archive', card: CorkboardCardDetail): void
-  (e: 'pin', card: CorkboardCardDetail): void
+  edit: [card: CorkboardCardDetail]
+  delete: [card: CorkboardCardDetail]
+  archive: [card: CorkboardCardDetail]
+  pin: [card: CorkboardCardDetail]
 }>()
 
 const { t } = useI18n()
