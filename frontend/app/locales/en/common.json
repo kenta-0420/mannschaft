@@ -730,7 +730,12 @@
       "referenceTypeDocument": "Document",
       "referenceTypeUrl": "URL",
       "referenceId": "Reference ID",
-      "referenceIdHint": "Reference picker UI is planned for Phase G. For now, please enter the ID directly.",
+      "referenceIdHint": "Enter the numeric ID from the URL of the target content.",
+      "referenceIdPasteHint": "Paste the URL into the field below to auto-extract the ID (optional).",
+      "referenceUrlPaste": "Extract ID from URL (optional)",
+      "referenceUrlPastePlaceholder": "Paste an https://... URL",
+      "referenceUrlExtractFailed": "Could not extract an ID from the URL. Please enter it manually.",
+      "referenceUrlExtractSuccess": "ID extracted from the URL.",
       "url": "URL",
       "urlPlaceholder": "https://example.com/...",
       "title": "Title",
@@ -771,6 +776,34 @@
     "ariaCardEdit": "Edit this card",
     "ariaCardDelete": "Delete this card",
     "ariaCardArchive": "Archive this card",
-    "ariaCardUnarchive": "Unarchive this card"
+    "ariaCardUnarchive": "Unarchive this card",
+    "snapshot": {
+      "refDeleted": "Source deleted",
+      "refDeletedAria": "The referenced content has been deleted",
+      "refUpdated": "Source has been updated",
+      "refUpdatedAria": "The referenced content has been updated since this card was created",
+      "title": "Snapshot",
+      "noContent": "No preview available",
+      "openOriginal": "Open original content",
+      "openOriginalDisabled": "Original content is not accessible"
+    },
+    "ogp": {
+      "imageAlt": "Preview image of {title}",
+      "imageAltFallback": "Link preview image",
+      "noImage": "No image",
+      "openLink": "Open link in new tab"
+    },
+    "referenceHint": {
+      "timelinePost": "Enter the trailing numeric ID from a timeline post URL (e.g. /timeline/posts/123).",
+      "bulletinThread": "Enter the trailing numeric ID from a bulletin thread URL (e.g. /bulletin/threads/456).",
+      "blogPost": "Enter the trailing numeric ID from a blog post URL (e.g. /blog/posts/789).",
+      "chatMessage": "Use the message action menu \"Copy message ID\" to obtain the numeric ID, then paste it here.",
+      "file": "Enter the trailing numeric ID from a file detail URL (e.g. /files/321).",
+      "team": "Enter the numeric ID from a team detail URL (e.g. /teams/12).",
+      "organization": "Enter the numeric ID from an organization detail URL (e.g. /organizations/3).",
+      "event": "Enter the numeric ID from an event detail URL (e.g. /events/77).",
+      "document": "Enter the numeric ID from a document detail URL (e.g. /documents/55).",
+      "url": "To create a URL card, change the card type above to URL."
+    }
   }
 }

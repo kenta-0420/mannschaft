@@ -655,31 +655,32 @@ async function toggleArchive(card: CorkboardCardDetail) {
               />
             </div>
 
-            <!-- 本文プレビュー -->
+            <!-- 本文プレビュー（MEMO / URL のみ。REFERENCE は CardSnapshot 側で出す） -->
             <p
-              v-if="card.cardType !== 'SECTION_HEADER'"
+              v-if="
+                card.cardType !== 'SECTION_HEADER' &&
+                card.cardType !== 'REFERENCE'
+              "
               class="line-clamp-3 whitespace-pre-wrap text-[11px] text-surface-600 dark:text-surface-300"
             >
               {{ previewText(card) }}
             </p>
 
-            <!-- URL カード OGP サムネイル（小サイズで表示） -->
-            <img
-              v-if="card.cardType === 'URL' && card.ogImageUrl"
-              :src="card.ogImageUrl"
-              :alt="t('corkboard.ogImageAlt')"
-              class="mt-1 h-10 w-full rounded object-cover"
-              loading="lazy"
+            <!-- F09.8 Phase G: URL カード OGP プレビュー -->
+            <CardOgpPreview
+              v-if="card.cardType === 'URL'"
+              :card="card"
+              size="sm"
+              class="mt-1"
             />
 
-            <!-- 参照元削除済みバッジ -->
-            <span
-              v-if="card.cardType === 'REFERENCE' && card.isRefDeleted"
-              class="mt-auto inline-flex items-center gap-1 self-start rounded bg-red-100 px-1.5 py-0.5 text-[10px] text-red-700 dark:bg-red-900/40 dark:text-red-200"
-            >
-              <i class="pi pi-trash text-[9px]" />
-              {{ t('corkboard.refDeletedBadge') }}
-            </span>
+            <!-- F09.8 Phase G: REFERENCE カードのスナップショット（削除済みバッジ込み） -->
+            <CardSnapshot
+              v-else-if="card.cardType === 'REFERENCE'"
+              :card="card"
+              compact
+              class="mt-1"
+            />
           </div>
         </article>
       </div>

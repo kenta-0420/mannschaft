@@ -730,7 +730,12 @@
       "referenceTypeDocument": "ドキュメント",
       "referenceTypeUrl": "URL",
       "referenceId": "参照先ID",
-      "referenceIdHint": "Phase G で参照先選択 UI 提供予定。現在は ID を直接入力してください。",
+      "referenceIdHint": "対象コンテンツの URL に含まれる数値 ID を入力してください。",
+      "referenceIdPasteHint": "URL を下の欄に貼り付けると、自動で ID を抽出します（任意）。",
+      "referenceUrlPaste": "URL から ID を抽出（任意）",
+      "referenceUrlPastePlaceholder": "https://… から始まる URL を貼り付け",
+      "referenceUrlExtractFailed": "URL から ID を抽出できませんでした。手動で入力してください。",
+      "referenceUrlExtractSuccess": "URL から ID を取り込みました。",
       "url": "URL",
       "urlPlaceholder": "https://example.com/...",
       "title": "タイトル",
@@ -771,6 +776,34 @@
     "ariaCardEdit": "このカードを編集",
     "ariaCardDelete": "このカードを削除",
     "ariaCardArchive": "このカードをアーカイブ",
-    "ariaCardUnarchive": "このカードのアーカイブを解除"
+    "ariaCardUnarchive": "このカードのアーカイブを解除",
+    "snapshot": {
+      "refDeleted": "参照元削除済み",
+      "refDeletedAria": "参照元のコンテンツは削除されました",
+      "refUpdated": "元の内容が更新されています",
+      "refUpdatedAria": "参照元の内容が作成時から更新されています",
+      "title": "スナップショット",
+      "noContent": "プレビュー本文がありません",
+      "openOriginal": "元のコンテンツを開く",
+      "openOriginalDisabled": "元のコンテンツは閲覧できません"
+    },
+    "ogp": {
+      "imageAlt": "{title} のプレビュー画像",
+      "imageAltFallback": "リンク先のプレビュー画像",
+      "noImage": "画像なし",
+      "openLink": "リンクを別タブで開く"
+    },
+    "referenceHint": {
+      "timelinePost": "タイムライン投稿の URL（例: /timeline/posts/123）から末尾の数値 ID を入力してください。",
+      "bulletinThread": "掲示板スレッドの URL（例: /bulletin/threads/456）から末尾の数値 ID を入力してください。",
+      "blogPost": "ブログ記事の URL（例: /blog/posts/789）から末尾の数値 ID を入力してください。",
+      "chatMessage": "チャットメッセージの操作メニュー「メッセージ ID をコピー」から取得した数値 ID を入力してください。",
+      "file": "ファイル詳細ページの URL（例: /files/321）から末尾の数値 ID を入力してください。",
+      "team": "チーム詳細ページの URL（例: /teams/12）から数値 ID を入力してください。",
+      "organization": "組織詳細ページの URL（例: /organizations/3）から数値 ID を入力してください。",
+      "event": "イベント詳細ページの URL（例: /events/77）から数値 ID を入力してください。",
+      "document": "ドキュメント詳細ページの URL（例: /documents/55）から数値 ID を入力してください。",
+      "url": "URL カードを使う場合は上の「カード種別」を URL に変更してください。"
+    }
   }
 }

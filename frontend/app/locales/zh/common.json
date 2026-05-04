@@ -730,7 +730,12 @@
       "referenceTypeDocument": "文档",
       "referenceTypeUrl": "URL",
       "referenceId": "引用源 ID",
-      "referenceIdHint": "引用源选择 UI 计划在 Phase G 提供。当前请直接输入 ID。",
+      "referenceIdHint": "请输入目标内容 URL 中的数字 ID。",
+      "referenceIdPasteHint": "在下方栏粘贴 URL 即可自动提取 ID（可选）。",
+      "referenceUrlPaste": "从 URL 提取 ID（可选）",
+      "referenceUrlPastePlaceholder": "粘贴以 https://… 开头的 URL",
+      "referenceUrlExtractFailed": "无法从 URL 提取 ID，请手动输入。",
+      "referenceUrlExtractSuccess": "已从 URL 中提取 ID。",
       "url": "URL",
       "urlPlaceholder": "https://example.com/...",
       "title": "标题",
@@ -771,6 +776,34 @@
     "ariaCardEdit": "编辑此卡片",
     "ariaCardDelete": "删除此卡片",
     "ariaCardArchive": "归档此卡片",
-    "ariaCardUnarchive": "取消此卡片的归档"
+    "ariaCardUnarchive": "取消此卡片的归档",
+    "snapshot": {
+      "refDeleted": "引用源已删除",
+      "refDeletedAria": "引用的内容已被删除",
+      "refUpdated": "原内容已更新",
+      "refUpdatedAria": "自创建该卡片以来，引用源内容已被更新",
+      "title": "快照",
+      "noContent": "暂无预览",
+      "openOriginal": "打开原始内容",
+      "openOriginalDisabled": "无法访问原始内容"
+    },
+    "ogp": {
+      "imageAlt": "{title} 的预览图片",
+      "imageAltFallback": "链接预览图片",
+      "noImage": "无图片",
+      "openLink": "在新标签页打开链接"
+    },
+    "referenceHint": {
+      "timelinePost": "请输入时间轴帖子 URL（例: /timeline/posts/123）末尾的数字 ID。",
+      "bulletinThread": "请输入公告板主题 URL（例: /bulletin/threads/456）末尾的数字 ID。",
+      "blogPost": "请输入博客文章 URL（例: /blog/posts/789）末尾的数字 ID。",
+      "chatMessage": "请通过聊天消息操作菜单的「复制消息 ID」获取数字 ID 后输入。",
+      "file": "请输入文件详情 URL（例: /files/321）末尾的数字 ID。",
+      "team": "请输入团队详情 URL（例: /teams/12）的数字 ID。",
+      "organization": "请输入组织详情 URL（例: /organizations/3）的数字 ID。",
+      "event": "请输入活动详情 URL（例: /events/77）的数字 ID。",
+      "document": "请输入文档详情 URL（例: /documents/55）的数字 ID。",
+      "url": "如要使用 URL 卡片，请将上方「卡片类型」改为 URL。"
+    }
   }
 }

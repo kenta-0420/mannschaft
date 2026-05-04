@@ -242,13 +242,33 @@ onMounted(load)
                 {{ item.body }}
               </p>
               <p
-                v-else-if="item.cardType === 'URL' && item.reference?.url"
+                v-else-if="item.cardType === 'URL' && item.reference?.url && !(item.reference?.ogTitle || item.reference?.ogImageUrl)"
                 class="truncate text-xs text-surface-400"
               >
                 {{ item.reference.url }}
               </p>
             </div>
           </div>
+
+          <!-- F09.8 Phase G: URL カードの OGP プレビュー（取得済みの時のみ） -->
+          <CardOgpPreview
+            v-if="
+              item.cardType === 'URL' &&
+              (item.reference?.ogTitle || item.reference?.ogImageUrl)
+            "
+            :card="item"
+            size="sm"
+          />
+
+          <!-- F09.8 Phase G: REFERENCE カードのスナップショット表示（削除済み・抜粋） -->
+          <CardSnapshot
+            v-else-if="
+              item.cardType === 'REFERENCE' &&
+              (item.reference?.snapshotTitle || item.reference?.snapshotExcerpt || item.reference?.isDeleted)
+            "
+            :card="item"
+            compact
+          />
 
           <!-- 権限喪失バッジ -->
           <div
@@ -268,9 +288,9 @@ onMounted(load)
             </button>
           </div>
 
-          <!-- 削除済み参照バッジ -->
+          <!-- 削除済み参照バッジ（REFERENCE 以外。REFERENCE は CardSnapshot 側で出す） -->
           <div
-            v-else-if="item.reference?.isDeleted"
+            v-else-if="item.cardType !== 'REFERENCE' && item.reference?.isDeleted"
             class="text-xs text-surface-400"
           >
             <i class="pi pi-trash mr-1 text-[10px]" />

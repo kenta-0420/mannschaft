@@ -730,7 +730,12 @@
       "referenceTypeDocument": "Dokument",
       "referenceTypeUrl": "URL",
       "referenceId": "Referenz-ID",
-      "referenceIdHint": "Eine Auswahl-Oberfläche kommt in Phase G. Bitte aktuell die ID direkt eingeben.",
+      "referenceIdHint": "Bitte die numerische ID aus der URL des Zielinhalts eingeben.",
+      "referenceIdPasteHint": "Eine URL in das Feld unten einfügen, um die ID automatisch zu extrahieren (optional).",
+      "referenceUrlPaste": "ID aus URL extrahieren (optional)",
+      "referenceUrlPastePlaceholder": "URL einfügen, die mit https://… beginnt",
+      "referenceUrlExtractFailed": "ID konnte nicht aus der URL extrahiert werden. Bitte manuell eingeben.",
+      "referenceUrlExtractSuccess": "ID aus der URL übernommen.",
       "url": "URL",
       "urlPlaceholder": "https://example.com/...",
       "title": "Titel",
@@ -771,6 +776,34 @@
     "ariaCardEdit": "Diese Karte bearbeiten",
     "ariaCardDelete": "Diese Karte löschen",
     "ariaCardArchive": "Diese Karte archivieren",
-    "ariaCardUnarchive": "Diese Karte aus dem Archiv holen"
+    "ariaCardUnarchive": "Diese Karte aus dem Archiv holen",
+    "snapshot": {
+      "refDeleted": "Quelle gelöscht",
+      "refDeletedAria": "Der referenzierte Inhalt wurde gelöscht",
+      "refUpdated": "Quelle wurde aktualisiert",
+      "refUpdatedAria": "Der referenzierte Inhalt wurde seit Erstellung dieser Karte aktualisiert",
+      "title": "Snapshot",
+      "noContent": "Keine Vorschau verfügbar",
+      "openOriginal": "Originalinhalt öffnen",
+      "openOriginalDisabled": "Auf den Originalinhalt kann nicht zugegriffen werden"
+    },
+    "ogp": {
+      "imageAlt": "Vorschaubild von {title}",
+      "imageAltFallback": "Link-Vorschaubild",
+      "noImage": "Kein Bild",
+      "openLink": "Link in neuem Tab öffnen"
+    },
+    "referenceHint": {
+      "timelinePost": "Bitte die abschließende numerische ID aus der URL eines Timeline-Beitrags eingeben (z. B. /timeline/posts/123).",
+      "bulletinThread": "Bitte die abschließende numerische ID aus der URL eines Pinnwand-Threads eingeben (z. B. /bulletin/threads/456).",
+      "blogPost": "Bitte die abschließende numerische ID aus der URL eines Blogbeitrags eingeben (z. B. /blog/posts/789).",
+      "chatMessage": "„Nachrichten-ID kopieren“ im Aktionsmenü der Chatnachricht verwenden und die numerische ID hier einfügen.",
+      "file": "Bitte die abschließende numerische ID aus der Datei-Detail-URL eingeben (z. B. /files/321).",
+      "team": "Bitte die numerische ID aus der Team-Detail-URL eingeben (z. B. /teams/12).",
+      "organization": "Bitte die numerische ID aus der Organisations-Detail-URL eingeben (z. B. /organizations/3).",
+      "event": "Bitte die numerische ID aus der Termin-Detail-URL eingeben (z. B. /events/77).",
+      "document": "Bitte die numerische ID aus der Dokument-Detail-URL eingeben (z. B. /documents/55).",
+      "url": "Für eine URL-Karte oben den „Kartentyp“ auf URL ändern."
+    }
   }
 }
