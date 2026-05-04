@@ -8,6 +8,7 @@ import com.mannschaft.app.shiftbudget.dto.ConsumptionSummaryResponse;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
+import com.mannschaft.app.shiftbudget.repository.TodoBudgetLinkRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -53,6 +54,8 @@ class ShiftBudgetSummaryServiceTest {
     private ShiftBudgetAllocationRepository allocationRepository;
     @Mock
     private ShiftBudgetConsumptionRepository consumptionRepository;
+    @Mock
+    private TodoBudgetLinkRepository todoBudgetLinkRepository;
     @Mock
     private ShiftBudgetFeatureService featureService;
     @Mock

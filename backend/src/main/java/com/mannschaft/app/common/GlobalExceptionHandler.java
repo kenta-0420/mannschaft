@@ -159,6 +159,14 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_BUDGET_017", HttpStatus.CONFLICT),             // CONFIRMED_RECORD_IMMUTABLE
             Map.entry("SHIFT_BUDGET_018", HttpStatus.FORBIDDEN),            // BUDGET_VIEW_REQUIRED
             Map.entry("SHIFT_BUDGET_019", HttpStatus.FORBIDDEN),            // BUDGET_MANAGE_REQUIRED
+            // F08.7 シフト予算 (Phase 9-γ: TODO/プロジェクト 予算紐付)
+            Map.entry("SHIFT_BUDGET_020", HttpStatus.BAD_REQUEST),          // INVALID_LINK_TARGET
+            Map.entry("SHIFT_BUDGET_021", HttpStatus.BAD_REQUEST),          // INVALID_LINK_PARAMETER
+            Map.entry("SHIFT_BUDGET_022", HttpStatus.CONFLICT),             // LINK_ALREADY_EXISTS
+            Map.entry("SHIFT_BUDGET_023", HttpStatus.NOT_FOUND),            // LINK_NOT_FOUND (IDOR 対策で 404)
+            Map.entry("SHIFT_BUDGET_024", HttpStatus.NOT_FOUND),            // PROJECT_NOT_FOUND (IDOR 対策で 404)
+            Map.entry("SHIFT_BUDGET_025", HttpStatus.NOT_FOUND),            // TODO_NOT_FOUND (IDOR 対策で 404)
+            Map.entry("SHIFT_BUDGET_026", HttpStatus.FORBIDDEN),            // LINK_PERMISSION_REQUIRED
             // F03.15 個人時間割（IDOR 対策で 404 統一、上限・遷移エラーは 409）
             Map.entry("PERSONAL_TIMETABLE_001", HttpStatus.NOT_FOUND),       // PERSONAL_TIMETABLE_NOT_FOUND
             Map.entry("PERSONAL_TIMETABLE_010", HttpStatus.CONFLICT),        // LIMIT_EXCEEDED

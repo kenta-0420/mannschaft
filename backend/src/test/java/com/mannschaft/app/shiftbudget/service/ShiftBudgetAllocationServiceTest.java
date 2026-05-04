@@ -13,6 +13,7 @@ import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
+import com.mannschaft.app.todo.repository.ProjectRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -71,6 +72,8 @@ class ShiftBudgetAllocationServiceTest {
     @Mock
     private ShiftBudgetRateQueryRepository rateQueryRepository;
     @Mock
+    private ProjectRepository projectRepository;
+    @Mock
     private ShiftBudgetFeatureService featureService;
     @Mock
     private AccessControlService accessControlService;
@@ -121,7 +124,7 @@ class ShiftBudgetAllocationServiceTest {
 
     private AllocationCreateRequest sampleCreateRequest() {
         return new AllocationCreateRequest(
-                TEAM_ID, 3L, 17L,
+                TEAM_ID, null, 3L, 17L,
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30),
                 new BigDecimal("300000"), "JPY", "6 月分人件費");
     }
@@ -176,7 +179,7 @@ class ShiftBudgetAllocationServiceTest {
         void 期間不正_400() {
             givenBudgetManageAllowed();
             AllocationCreateRequest bad = new AllocationCreateRequest(
-                    TEAM_ID, 3L, 17L,
+                    TEAM_ID, null, 3L, 17L,
                     LocalDate.of(2026, 7, 1), LocalDate.of(2026, 6, 30),
                     new BigDecimal("100"), "JPY", null);
 
@@ -191,7 +194,7 @@ class ShiftBudgetAllocationServiceTest {
         void 金額負数_400() {
             givenBudgetManageAllowed();
             AllocationCreateRequest bad = new AllocationCreateRequest(
-                    TEAM_ID, 3L, 17L,
+                    TEAM_ID, null, 3L, 17L,
                     LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30),
                     new BigDecimal("-1"), "JPY", null);
 
@@ -407,6 +410,102 @@ class ShiftBudgetAllocationServiceTest {
             assertThat(res.items()).hasSize(1);
             assertThat(res.page()).isZero();
             assertThat(res.size()).isEqualTo(20);
+        }
+    }
+
+    /**
+     * Phase 9-γ で追加された代替テスト群。
+     *
+     * <p>マスター御裁可 Q3 により、Repository UNIQUE による NULL 含有制約は機能しないため、
+     * 防衛線は本 Service の {@code findLiveByScope} SELECT FOR UPDATE 重複チェックである。
+     * 9-β リポジトリテストで {@code @Disabled} 化された 2 件の代替として、
+     * 本 ServiceTest が真の防衛線が機能することを検証する。</p>
+     */
+    @Nested
+    @DisplayName("Phase 9-γ 代替テスト: findLiveByScope による重複防御")
+    class Phase9GammaAlternativeTests {
+
+        /**
+         * 同一スコープで連続して create を呼び出した場合、2 回目で
+         * {@code findLiveByScope} が既存生存レコードを検出して
+         * {@code ALLOCATION_ALREADY_EXISTS} (409) を返すことを検証する。
+         *
+         * <p>並行性そのものを検証するのは難しいので、Mock の挙動で
+         * 「2回目の呼び出しでは findLiveByScope が既存レコードを返す」状態を再現することで
+         * SELECT FOR UPDATE による重複検知ロジックの妥当性を担保する。</p>
+         */
+        @Test
+        @DisplayName("同一スコープ並行Create_findLiveByScope の SELECT FOR UPDATE で重複検知される")
+        void 同一スコープ並行Create_例外() {
+            givenBudgetManageAllowed();
+            given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
+
+            // 1回目: 重複なし → 成功
+            given(allocationRepository.findLiveByScope(eq(ORG_ID), eq(TEAM_ID), eq(null),
+                    eq(17L), any(LocalDate.class), any(LocalDate.class)))
+                    .willReturn(Optional.empty())
+                    .willReturn(Optional.of(sampleEntity()));  // 2回目以降: 既存検出
+            given(allocationRepository.save(any(ShiftBudgetAllocationEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            // 1回目 — 成功
+            AllocationResponse first = service.createAllocation(ORG_ID, sampleCreateRequest());
+            assertThat(first).isNotNull();
+
+            // 2回目（同一スコープ） — findLiveByScope が既存検出 → 409
+            assertThatThrownBy(() -> service.createAllocation(ORG_ID, sampleCreateRequest()))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ShiftBudgetErrorCode.ALLOCATION_ALREADY_EXISTS);
+        }
+
+        /**
+         * project_id を指定した割当の作成が正常動作することを検証する。
+         */
+        @Test
+        @DisplayName("project_id 指定_プロジェクト存在時_正常作成")
+        void project_id指定_正常作成() {
+            givenBudgetManageAllowed();
+            given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
+            // ProjectRepository は実体を返す必要はなく、存在することのみを確認する
+            given(projectRepository.findByIdAndDeletedAtIsNull(eq(99L)))
+                    .willReturn(Optional.of(org.mockito.Mockito.mock(
+                            com.mannschaft.app.todo.entity.ProjectEntity.class)));
+            given(allocationRepository.findLiveByScope(eq(ORG_ID), eq(TEAM_ID), eq(99L),
+                    eq(17L), any(LocalDate.class), any(LocalDate.class)))
+                    .willReturn(Optional.empty());
+            given(allocationRepository.save(any(ShiftBudgetAllocationEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            AllocationCreateRequest req = new AllocationCreateRequest(
+                    TEAM_ID, 99L, 3L, 17L,
+                    LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30),
+                    new BigDecimal("300000"), "JPY", "プロジェクト専用割当");
+            AllocationResponse response = service.createAllocation(ORG_ID, req);
+
+            assertThat(response.projectId()).isEqualTo(99L);
+            verify(allocationRepository).save(any(ShiftBudgetAllocationEntity.class));
+        }
+
+        /**
+         * project_id を指定したが存在しない場合 → PROJECT_NOT_FOUND (404)。
+         */
+        @Test
+        @DisplayName("project_id 指定_存在しないプロジェクト_PROJECT_NOT_FOUND (404)")
+        void project_id指定_存在しない_404() {
+            givenBudgetManageAllowed();
+            given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
+            given(projectRepository.findByIdAndDeletedAtIsNull(eq(99L)))
+                    .willReturn(Optional.empty());
+
+            AllocationCreateRequest req = new AllocationCreateRequest(
+                    TEAM_ID, 99L, 3L, 17L,
+                    LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30),
+                    new BigDecimal("300000"), "JPY", null);
+            assertThatThrownBy(() -> service.createAllocation(ORG_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ShiftBudgetErrorCode.PROJECT_NOT_FOUND);
         }
     }
 }

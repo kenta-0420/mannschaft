@@ -10,6 +10,7 @@ import com.mannschaft.app.shiftbudget.dto.AllocationUpdateRequest;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
+import com.mannschaft.app.todo.repository.ProjectRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,6 +60,8 @@ class ShiftBudgetMultiTenantTest {
     @Mock
     private ShiftBudgetRateQueryRepository rateQueryRepository;
     @Mock
+    private ProjectRepository projectRepository;
+    @Mock
     private ShiftBudgetFeatureService featureService;
     @Mock
     private AccessControlService accessControlService;
@@ -106,7 +109,7 @@ class ShiftBudgetMultiTenantTest {
         given(rateQueryRepository.countTeamInOrganization(TEAM_OF_B, ORG_A)).willReturn(0L);
 
         AllocationCreateRequest req = new AllocationCreateRequest(
-                TEAM_OF_B, 3L, 17L,
+                TEAM_OF_B, null, 3L, 17L,
                 LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30),
                 new BigDecimal("100000"), null, null);
 

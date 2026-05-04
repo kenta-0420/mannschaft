@@ -11,6 +11,7 @@ import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetConsumptionEntity;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
+import com.mannschaft.app.shiftbudget.repository.TodoBudgetLinkRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -46,6 +47,7 @@ public class ShiftBudgetSummaryService {
 
     private final ShiftBudgetAllocationRepository allocationRepository;
     private final ShiftBudgetConsumptionRepository consumptionRepository;
+    private final TodoBudgetLinkRepository todoBudgetLinkRepository;
     private final ShiftBudgetFeatureService featureService;
     private final AccessControlService accessControlService;
 
@@ -135,6 +137,38 @@ public class ShiftBudgetSummaryService {
         return consumptionRepository.findByAllocationIdAndStatusInAndDeletedAtIsNull(
                 allocationId, List.of(ShiftBudgetConsumptionStatus.PLANNED,
                         ShiftBudgetConsumptionStatus.CONFIRMED));
+    }
+
+    /**
+     * プロジェクト消化額（直接経路 + TODO 経由）の合計を返す（Phase 9-γ 追加）。
+     *
+     * <p>設計書 §4.3 に厳密準拠:</p>
+     * <ul>
+     *   <li>直接経路: {@code shift_schedules.linked_project_id = projectId} のシフトに紐付く全消化を SUM</li>
+     *   <li>TODO 経由: {@code todo_budget_links.project_id = projectId} 経由で按分集計
+     *       （直接経路と重複する分は除外、{@code s.linked_project_id IS NULL OR != :projectId}）</li>
+     *   <li>合計 = 直接経路 + TODO 経由</li>
+     * </ul>
+     *
+     * <p>多テナント分離は Repository の native query 内
+     * {@code shift_budget_allocations.organization_id = :organizationId} で保証する。</p>
+     *
+     * <p>権限: {@code BUDGET_VIEW}</p>
+     *
+     * @param organizationId 組織ID（多テナント分離キー）
+     * @param projectId      プロジェクトID
+     * @return 合計消化額（直接 + TODO 経由）
+     */
+    public BigDecimal getProjectConsumedAmount(Long organizationId, Long projectId) {
+        featureService.requireEnabled(organizationId);
+        requireBudgetView(organizationId);
+
+        BigDecimal direct = todoBudgetLinkRepository.sumDirectAmountForProject(projectId, organizationId);
+        BigDecimal viaTodo = todoBudgetLinkRepository.sumViaTodoAmountForProject(projectId, organizationId);
+
+        BigDecimal safeDirect = direct != null ? direct : BigDecimal.ZERO;
+        BigDecimal safeViaTodo = viaTodo != null ? viaTodo : BigDecimal.ZERO;
+        return safeDirect.add(safeViaTodo);
     }
 
     private void requireBudgetView(Long organizationId) {

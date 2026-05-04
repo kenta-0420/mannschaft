@@ -100,7 +100,50 @@ public enum ShiftBudgetErrorCode implements ErrorCode {
 
     /** BUDGET_MANAGE 権限が不足 (HTTP 403) */
     BUDGET_MANAGE_REQUIRED("SHIFT_BUDGET_019",
-            "シフト予算の管理権限が必要です", Severity.WARN);
+            "シフト予算の管理権限が必要です", Severity.WARN),
+
+    // ====================================================================
+    // Phase 9-γ: TODO/プロジェクト 予算紐付系（020〜029）
+    // ====================================================================
+
+    /**
+     * 紐付対象の指定が不正（project_id と todo_id がどちらも NULL、または両方指定）
+     * 設計書 §5.4 chk_tbl_target_xor (HTTP 400)
+     */
+    INVALID_LINK_TARGET("SHIFT_BUDGET_020",
+            "紐付対象は project_id と todo_id のどちらか一方のみ指定してください", Severity.WARN),
+
+    /**
+     * 紐付方式の指定が不正（link_amount と link_percentage が同時指定）
+     * 設計書 §5.4 chk_tbl_link_xor (HTTP 400)
+     */
+    INVALID_LINK_PARAMETER("SHIFT_BUDGET_021",
+            "link_amount と link_percentage は同時指定できません", Severity.WARN),
+
+    /**
+     * 同一 (project_id, allocation_id) または (todo_id, allocation_id) で紐付済み (HTTP 409)
+     */
+    LINK_ALREADY_EXISTS("SHIFT_BUDGET_022",
+            "同一の対象と割当の組み合わせで紐付が既に存在します", Severity.WARN),
+
+    /** 紐付が見つからない / 別組織のIDを参照（IDOR対策で 404 統一） (HTTP 404) */
+    LINK_NOT_FOUND("SHIFT_BUDGET_023",
+            "対象の予算紐付が見つかりません", Severity.WARN),
+
+    /** プロジェクトが見つからない / 別組織所属（IDOR対策で 404 統一） (HTTP 404) */
+    PROJECT_NOT_FOUND("SHIFT_BUDGET_024",
+            "対象のプロジェクトが見つかりません", Severity.WARN),
+
+    /** TODO が見つからない / 別組織所属（IDOR対策で 404 統一） (HTTP 404) */
+    TODO_NOT_FOUND("SHIFT_BUDGET_025",
+            "対象の TODO が見つかりません", Severity.WARN),
+
+    /**
+     * TODO 紐付の権限が不足（todo/project の編集権 = ADMIN_OR_ABOVE が必要）。
+     * 設計書 §6.1: MANAGE_TODO + BUDGET_VIEW (HTTP 403)
+     */
+    LINK_PERMISSION_REQUIRED("SHIFT_BUDGET_026",
+            "TODO/プロジェクトの編集権限とシフト予算の閲覧権限が必要です", Severity.WARN);
 
     private final String code;
     private final String message;
