@@ -35,6 +35,11 @@ public class CorkboardCardResponse {
     private final Integer positionY;
     private final Integer zIndex;
     private final String userNote;
+    /**
+     * F09.8 件3' (V9.098): ピン止め時付箋メモの専用色。
+     * {@code null} はカラーラベル ({@link #colorLabel}) と同色とみなすことを意味する。
+     */
+    private final String noteColor;
     private final LocalDateTime autoArchiveAt;
     private final Boolean isArchived;
     private final Boolean isPinned;

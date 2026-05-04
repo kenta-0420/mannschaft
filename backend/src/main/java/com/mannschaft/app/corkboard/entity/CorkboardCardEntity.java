@@ -88,6 +88,14 @@ public class CorkboardCardEntity extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String userNote;
 
+    /**
+     * F09.8 件3': ピン止め時付箋メモの専用色（V9.098 で追加）。
+     * <p>{@code null} の場合はカラーラベル ({@link #colorLabel}) と同色とみなす。
+     * 値ありはピン時に明示的に選択された付箋色（YELLOW / BLUE / GREEN / RED / PURPLE / GRAY 等）。</p>
+     */
+    @Column(name = "note_color", length = 20)
+    private String noteColor;
+
     private LocalDateTime autoArchiveAt;
 
     @Column(nullable = false)
@@ -151,6 +159,23 @@ public class CorkboardCardEntity extends BaseEntity {
     public void pin(boolean pin) {
         this.isPinned = pin;
         this.pinnedAt = pin ? LocalDateTime.now() : null;
+    }
+
+    /**
+     * F09.8 件3': ピン止め時の付箋メモと付箋色を上書きする。
+     * <p>引数が {@code null} のフィールドは上書きしない（既存値を保持）。
+     * アンピン時は触らない方針のため、本メソッドは pin=true 時のみ呼び出すこと。</p>
+     *
+     * @param userNote  付箋メモ本文（null なら既存値維持）
+     * @param noteColor 付箋色（null なら既存値維持。値ありはカラーラベルと独立した明示色）
+     */
+    public void updatePinNote(String userNote, String noteColor) {
+        if (userNote != null) {
+            this.userNote = userNote;
+        }
+        if (noteColor != null) {
+            this.noteColor = noteColor;
+        }
     }
 
     /**

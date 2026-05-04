@@ -100,8 +100,12 @@ public class CorkboardCardController {
     public ResponseEntity<ApiResponse<CorkboardCardResponse>> pinCard(
             @PathVariable Long boardId, @PathVariable Long cardId,
             @Valid @RequestBody PinCardRequest request) {
+        // F09.8 件3' (V9.098): pin 時に付箋メモ・色を併送できる。
+        // userNote / noteColor は optional（null 許容）で、後方互換維持。
         CorkboardCardResponse response = pinService.togglePin(
-                boardId, cardId, request.getIsPinned(), SecurityUtils.getCurrentUserId());
+                boardId, cardId, request.getIsPinned(),
+                request.getUserNote(), request.getNoteColor(),
+                SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

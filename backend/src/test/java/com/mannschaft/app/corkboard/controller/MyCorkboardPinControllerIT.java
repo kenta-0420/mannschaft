@@ -28,6 +28,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
@@ -98,7 +99,7 @@ class MyCorkboardPinControllerIT {
         return new CorkboardCardResponse(
                 CARD_ID, BOARD_ID, null, "MEMO", null, null, null,
                 "メモ", "本文", null, null, null, null,
-                "NONE", "MEDIUM", 0, 0, 0, null, null,
+                "NONE", "MEDIUM", 0, 0, 0, null, null, null,
                 false, isPinned, isPinned ? LocalDateTime.now() : null,
                 false, USER_ID, null, null);
     }
@@ -110,7 +111,10 @@ class MyCorkboardPinControllerIT {
         @Test
         @DisplayName("正常系: pin → 200 + is_pinned=true")
         void 正常系_pin_200() throws Exception {
-            given(pinService.togglePin(eq(BOARD_ID), eq(CARD_ID), eq(true), eq(USER_ID)))
+            // F09.8 件3' (V9.098): Service シグネチャに userNote/noteColor が追加された。
+            // 本テストでは未指定 ({} body) のため両者は null で渡される。
+            given(pinService.togglePin(eq(BOARD_ID), eq(CARD_ID), eq(true),
+                    nullable(String.class), nullable(String.class), eq(USER_ID)))
                     .willReturn(stubResponse(true));
 
             String body = """
@@ -125,13 +129,14 @@ class MyCorkboardPinControllerIT {
                     .andExpect(jsonPath("$.data.isPinned").value(true))
                     .andExpect(jsonPath("$.data.pinnedAt").exists());
 
-            verify(pinService).togglePin(BOARD_ID, CARD_ID, true, USER_ID);
+            verify(pinService).togglePin(BOARD_ID, CARD_ID, true, null, null, USER_ID);
         }
 
         @Test
         @DisplayName("正常系: unpin → 200 + is_pinned=false + pinned_at=null")
         void 正常系_unpin_200() throws Exception {
-            given(pinService.togglePin(eq(BOARD_ID), eq(CARD_ID), eq(false), eq(USER_ID)))
+            given(pinService.togglePin(eq(BOARD_ID), eq(CARD_ID), eq(false),
+                    nullable(String.class), nullable(String.class), eq(USER_ID)))
                     .willReturn(stubResponse(false));
 
             String body = """
@@ -147,10 +152,31 @@ class MyCorkboardPinControllerIT {
         }
 
         @Test
+        @DisplayName("F09.8 件3': pin 時に userNote/noteColor を併送 → Service にそのまま渡る")
+        void pin_userNoteとnoteColor併送_200() throws Exception {
+            given(pinService.togglePin(eq(BOARD_ID), eq(CARD_ID), eq(true),
+                    eq("重要な確認事項"), eq("BLUE"), eq(USER_ID)))
+                    .willReturn(stubResponse(true));
+
+            String body = """
+                    { "isPinned": true, "userNote": "重要な確認事項", "noteColor": "BLUE" }
+                    """;
+
+            mockMvc.perform(patch("/api/v1/corkboards/{boardId}/cards/{cardId}/pin", BOARD_ID, CARD_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isPinned").value(true));
+
+            verify(pinService).togglePin(BOARD_ID, CARD_ID, true, "重要な確認事項", "BLUE", USER_ID);
+        }
+
+        @Test
         @DisplayName("他人のボード → Service が CORKBOARD_011 → 403")
         void 他人ボード_403() throws Exception {
             willThrow(new BusinessException(CorkboardErrorCode.PIN_PERSONAL_ONLY))
-                    .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(), eq(USER_ID));
+                    .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(),
+                            nullable(String.class), nullable(String.class), eq(USER_ID));
 
             String body = """
                     { "isPinned": true }
@@ -167,7 +193,8 @@ class MyCorkboardPinControllerIT {
         @DisplayName("TEAM スコープのボード → Service が CORKBOARD_011 → 403")
         void TEAMスコープ_403() throws Exception {
             willThrow(new BusinessException(CorkboardErrorCode.PIN_PERSONAL_ONLY))
-                    .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(), eq(USER_ID));
+                    .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(),
+                            nullable(String.class), nullable(String.class), eq(USER_ID));
 
             String body = """
                     { "isPinned": true }
@@ -184,7 +211,8 @@ class MyCorkboardPinControllerIT {
         @DisplayName("存在しないカード → Service が CORKBOARD_002 → 400")
         void カード不在_400() throws Exception {
             willThrow(new BusinessException(CorkboardErrorCode.CARD_NOT_FOUND))
-                    .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(), eq(USER_ID));
+                    .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(),
+                            nullable(String.class), nullable(String.class), eq(USER_ID));
 
             String body = """
                     { "isPinned": true }
@@ -201,7 +229,8 @@ class MyCorkboardPinControllerIT {
         @DisplayName("アーカイブ済みカード → Service が CORKBOARD_012 → 400")
         void アーカイブ済み_400() throws Exception {
             willThrow(new BusinessException(CorkboardErrorCode.PIN_ARCHIVED_NOT_ALLOWED))
-                    .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(), eq(USER_ID));
+                    .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(),
+                            nullable(String.class), nullable(String.class), eq(USER_ID));
 
             String body = """
                     { "isPinned": true }
@@ -218,7 +247,8 @@ class MyCorkboardPinControllerIT {
         @DisplayName("上限到達 → Service が CORKBOARD_013 → 409")
         void 上限到達_409() throws Exception {
             willThrow(new BusinessException(CorkboardErrorCode.PIN_LIMIT_EXCEEDED))
-                    .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(), eq(USER_ID));
+                    .given(pinService).togglePin(eq(BOARD_ID), eq(CARD_ID), anyBoolean(),
+                            nullable(String.class), nullable(String.class), eq(USER_ID));
 
             String body = """
                     { "isPinned": true }

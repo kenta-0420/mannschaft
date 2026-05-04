@@ -64,6 +64,25 @@ function colorClassFor(label: string | null): string {
   return colorBarClass[label.toUpperCase()] ?? 'bg-surface-300'
 }
 
+/**
+ * F09.8 件3' (V9.098): 付箋メモ背景色クラス。
+ * `noteColor` が明示設定されていれば優先、なければ `colorLabel` と同色。
+ */
+const noteBgClass: Record<string, string> = {
+  YELLOW: 'bg-yellow-100 dark:bg-yellow-900/30',
+  BLUE: 'bg-blue-100 dark:bg-blue-900/30',
+  GREEN: 'bg-green-100 dark:bg-green-900/30',
+  RED: 'bg-red-100 dark:bg-red-900/30',
+  PURPLE: 'bg-purple-100 dark:bg-purple-900/30',
+  GRAY: 'bg-gray-100 dark:bg-gray-800/50',
+  WHITE: 'bg-surface-100 dark:bg-surface-800/50',
+}
+function noteBgClassFor(item: PinnedCardItem): string {
+  const c = item.noteColor ?? item.colorLabel
+  if (!c) return 'bg-surface-100 dark:bg-surface-800/50'
+  return noteBgClass[c.toUpperCase()] ?? 'bg-surface-100 dark:bg-surface-800/50'
+}
+
 /** 参照型に応じたアイコンを返す */
 function iconFor(item: PinnedCardItem): string {
   if (item.cardType === 'URL' || item.reference?.type === 'URL') return 'pi pi-link'
@@ -229,12 +248,16 @@ onMounted(load)
               >
                 {{ item.title || item.reference?.snapshotTitle }}
               </p>
-              <p
+              <!-- F09.8 件3' (V9.098): 付箋風スタイル（noteColor 優先・なければ colorLabel と同色） -->
+              <div
                 v-if="item.userNote"
-                class="line-clamp-2 text-xs text-surface-500 dark:text-surface-400"
+                class="line-clamp-2 rounded px-2 py-1 text-xs text-surface-700 shadow-sm dark:text-surface-100"
+                :class="noteBgClassFor(item)"
+                :data-note-color="item.noteColor ?? item.colorLabel"
+                :data-testid="`widget-pinned-user-note-${item.cardId}`"
               >
                 「{{ item.userNote }}」
-              </p>
+              </div>
               <p
                 v-else-if="item.body"
                 class="line-clamp-2 text-xs text-surface-500 dark:text-surface-400"

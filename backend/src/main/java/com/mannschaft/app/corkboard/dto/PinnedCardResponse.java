@@ -25,6 +25,11 @@ public class PinnedCardResponse {
     private final String title;
     private final String body;
     private final String userNote;
+    /**
+     * F09.8 件3' (V9.098): ピン止め時付箋メモの専用色。
+     * {@code null} はカラーラベル ({@link #colorLabel}) と同色とみなす。
+     */
+    private final String noteColor;
     private final LocalDateTime pinnedAt;
 
     /** 参照先メタ。MEMO / SECTION_HEADER 等の純メモカードでは null。 */
