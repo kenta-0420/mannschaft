@@ -198,8 +198,8 @@ class ShiftRequestProxyInputTest {
         void setUpProxyContext() {
             given(proxyInputContext.isProxy()).willReturn(true);
             given(proxyInputContext.getConsentId()).willReturn(CONSENT_ID);
-            given(proxyInputContext.getSubjectUserId()).willReturn(20L);
-            // 冪等性テストでは orElseGet ラムダが実行されないため lenient で登録
+            // 以下3つは orElseGet ラムダ内でのみ呼ばれる。冪等性テストではラムダ未実行のため lenient で登録
+            lenient().when(proxyInputContext.getSubjectUserId()).thenReturn(20L);
             lenient().when(proxyInputContext.getInputSource()).thenReturn("PAPER_FORM");
             lenient().when(proxyInputContext.getOriginalStorageLocation()).thenReturn("書類棚A-1");
         }
