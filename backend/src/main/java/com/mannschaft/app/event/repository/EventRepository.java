@@ -4,6 +4,7 @@ import com.mannschaft.app.event.EventScopeType;
 import com.mannschaft.app.event.EventStatus;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventVisibility;
+import com.mannschaft.app.event.visibility.EventVisibilityProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -168,6 +170,33 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
     List<DismissalReminderTargetProjection> findMyOrganizingUndismissedExpiredEvents(
             @Param("userId") Long userId,
             @Param("cutoff") LocalDateTime cutoff);
+
+    /**
+     * F00 共通可視性基盤 — {@link EventVisibilityProjection} を 1 SQL でバルク取得する。
+     *
+     * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §4.6 / §6.3.2 工程 6。
+     *
+     * <p>{@code EventEntity} の {@code @SQLRestriction("deleted_at IS NULL")} により
+     * 論理削除済の行は自動的に除外されるため、明示の WHERE 句は不要。
+     * 本メソッドは Resolver の {@code AbstractContentVisibilityResolver#loadProjections} から
+     * のみ呼ばれ、戻り値の順序は保証しない。
+     *
+     * @param ids 取得対象 event_id 集合（空の場合は空 List を返す）
+     * @return 実存する events の Projection リスト
+     */
+    @Query("""
+            SELECT new com.mannschaft.app.event.visibility.EventVisibilityProjection(
+                e.id,
+                CAST(e.scopeType AS string),
+                e.scopeId,
+                e.createdBy,
+                e.status,
+                e.visibility)
+            FROM EventEntity e
+            WHERE e.id IN :ids
+            """)
+    List<EventVisibilityProjection> findVisibilityProjectionsByIdIn(
+            @Param("ids") Collection<Long> ids);
 
     /**
      * {@link #findMyOrganizingUndismissedExpiredEvents} の投影インターフェース。
