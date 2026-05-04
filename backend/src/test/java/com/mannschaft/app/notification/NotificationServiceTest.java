@@ -1,6 +1,8 @@
 package com.mannschaft.app.notification;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.notification.dto.NotificationResponse;
 import com.mannschaft.app.notification.dto.NotificationStatsResponse;
 import com.mannschaft.app.notification.dto.SnoozeRequest;
@@ -9,6 +11,7 @@ import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
 import com.mannschaft.app.notification.service.NotificationService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -36,6 +41,7 @@ import static org.mockito.Mockito.verify;
  * 通知のCRUD・既読管理・スヌーズ・統計を検証する。
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("NotificationService 単体テスト")
 class NotificationServiceTest {
 
@@ -48,8 +54,20 @@ class NotificationServiceTest {
     @Mock
     private NotificationMapper notificationMapper;
 
+    /**
+     * F00 Phase F セキュリティガード用の visibility checker (mock)。
+     * 既存テストは「visibility 通過済み」を前提とするため、デフォルトで allow。
+     */
+    @Mock
+    private ContentVisibilityChecker visibilityChecker;
+
     @InjectMocks
     private NotificationService notificationService;
+
+    @BeforeEach
+    void setUpVisibilityCheckerDefaults() {
+        given(visibilityChecker.canView(any(ReferenceType.class), any(), any())).willReturn(true);
+    }
 
     // ========================================
     // テスト用定数・ヘルパー

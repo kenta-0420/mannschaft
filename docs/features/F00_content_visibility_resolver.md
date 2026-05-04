@@ -1494,11 +1494,21 @@ public final class ResolverAuditPolicy {
 - `content_visibility.unsupported_reference_type` count > 0（コード不整合）
 - 同一 userId からの deny 100件/分超 → セキュリティ通知
 
-### 11.5 既存の漏れ修正 (Phase F)
+### 11.5 既存の漏れ修正 (Phase F) — v0.3 完了
 
-§1.4 で挙げた漏れ疑い箇所を Phase F として独立に修正:
-- Gallery / Survey / Schedule / Recruitment / Matching の visibility 未実装の Service を Resolver 経由に移行
-- 各々 PR 分割（1 機能 1 PR、Hotfix 級として優先）
+§1.4 で挙げた漏れ疑い箇所のうち、**通知配信における可視性確認漏れは
+Phase F で根治済み** (§19.3)。
+
+実装方針: 個別 5 Service に分散して visibility チェックを散りばめるのではなく、
+**通知発行の中央集約 API** (`NotificationService.createNotification` /
+`NotificationDispatchService.dispatch` / `NotificationHelper.notifyAll`)
+の 3 ヶ所に厳格ガードを設置することで、機能側の `*Service` から
+通知を発行する全経路を網羅的に守る根治治療を実施。
+
+機能側の visibility 未実装の Service (Gallery / Survey / Schedule /
+Recruitment / Matching 等) のフィルタリング自体は Phase B〜D で各機能の
+Resolver 実装と同時に行う。Phase F は **「通知配信における漏れ」を中央集約
+ガードで根治** することにスコープを絞った。
 
 ### 11.6 親スコープ非公開時の連鎖ルール
 
@@ -2547,15 +2557,49 @@ backend/src/main/java/com/mannschaft/app/organization/visibility/OrganizationVis
 | `recruitment/service/RecruitmentListingService.java` | Phase 2 留保コードを実装 |
 | (他 Phase B〜D 対象機能の Service) | Resolver 経由に切り替え |
 
-### 19.3 改修（Phase F: セキュリティ漏れ修正）
+### 19.3 改修（Phase F: セキュリティ漏れ修正） — v0.3 実態反映
 
-| ファイル | 変更内容 |
-|---|---|
-| `notification/service/NotificationDispatchService.java` | mention 配信前に `canView` チェック |
-| `social/mention/MentionDetectionService.java` | mention 抽出後に `filterAccessible` でフィルタ |
-| `circulation/service/CirculationDocumentService.java` | 配信先決定後に visibility チェック |
-| `social/timeline/TimelinePostService.java` | mention 通知送信前にチェック |
-| `social/bulletin/BulletinReplyService.java` | 返信通知送信前にチェック |
+**Phase F 着手前の grep 棚卸し結果 (2026-05-04)**: 実コードベースを精査した結果、
+v0.2 の予測表 (5 Service 表) と現実の Mannschaft 実装が乖離していることが判明した。
+
+- v0.2 で挙げた `MentionDetectionService` / `CirculationDocumentService` /
+  `TimelinePostService.notifyMentioned` / `BulletinReplyService.notifyParticipants`
+  はクラス自体が存在しない、または通知発行ロジックを持たない (該当 Service は
+  CRUD のみ実装)
+- 実際に `NotificationRepository.save*` を呼ぶ Service は **`NotificationService.createNotification`
+  ただ 1 つ**で、他の通知発行はすべて `NotificationHelper` または直接
+  `NotificationService` を経由する **中央集約構造**
+- 配信は `NotificationDispatchService.dispatch` が単独で担う
+
+このため Phase F は「中央集約された 5 ヶ所」を改修対象とする。これにより
+全通知が単一ポイントでガードされる根治治療となる。
+
+| 改修対象ファイル | 変更内容 | 役割 |
+|---|---|---|
+| `common/visibility/NotificationSourceTypeMapper.java` | 新規作成。`sourceType` 文字列 → `ReferenceType` の対応表 | 中央マッピング |
+| `notification/service/NotificationService.java` | `createNotification` の先頭で `canView` ガード。deny の場合 null 返却で通知作成スキップ | 中央作成 API |
+| `notification/service/NotificationDispatchService.java` | `dispatch` の先頭で `canView` ガード (二重防御)。null 通知は no-op | 中央配信 API |
+| `notification/service/NotificationHelper.java` | `notifyAll` の前段で `filterAccessible` 相当の絞込。`notify` は `createNotification` の null 返却を判定して dispatch スキップ | 一括ファサード |
+| `todo/batch/TodoDueReminderBatch.java` | `notifyAssignees` で `createNotification` の null 返却時に `dispatch` スキップ | 呼出元代表例 |
+
+**fail-soft 原則 (Phase F 専用)**: §11.2 では未対応 ReferenceType に対して
+fail-closed (false 返却) が原則だが、通知発行側で同じ運用をすると Resolver 未配備の
+sourceType (例: `MEMBER_PAYMENT`、`JOB_CONTRACT`) すべての通知が一斉に止まる
+破壊的変更となる。本 Phase ではマッピング不在の sourceType は
+`Optional.empty()` で「visibility 判定対象外」として通過させ、Resolver 配備済の
+type だけ厳格にガードする漸進的アプローチを採用。Phase B 以降で Resolver が
+順次配備されるたびに自動的にガード対象が拡張される。
+
+**ArchUnit + Mockito ガードテスト**:
+- `common/visibility/architecture/NotificationVisibilityArchitectureTest.java`
+  (新規) — `NotificationRepository.save*` 呼出側 = `ContentVisibilityChecker`
+  依存必須 + `NotificationDispatchService` の checker 依存必須を強制
+- `common/visibility/guard/NotificationServiceVisibilityGuardTest.java` (新規)
+  — InOrder + ArgumentCaptor で `canView → save` の順序検証
+- `common/visibility/guard/NotificationDispatchServiceVisibilityGuardTest.java`
+  (新規) — 配信ガードの InOrder 検証
+- `common/visibility/guard/NotificationHelperVisibilityGuardTest.java` (新規)
+  — `notifyAll` の `filterAccessible` 動作検証 + ArgumentCaptor で deny ユーザー除外確認
 
 ### 19.4 ドキュメント追記
 

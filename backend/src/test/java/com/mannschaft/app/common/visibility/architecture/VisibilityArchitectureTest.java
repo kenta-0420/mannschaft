@@ -128,32 +128,25 @@ class VisibilityArchitectureTest {
      *
      * <p>設計書 §13.5 / §15 D-11: 通知配信における可視性確認漏れを防ぐ。
      *
-     * <p><strong>Phase A 時点の取り扱い (freeze 戦略)</strong>:
-     * 既存実装には本ルール違反が広範に存在するため、Phase A では
-     * <strong>新規違反のみを検出するプレースホルダ</strong> として配置する。
-     * Phase F で {@link com.tngtech.archunit.lang.ArchRule#because} 付き本格ルールに
-     * 差し替え、各通知発行 Service への Mockito ガードテスト
-     * ({@code *VisibilityGuardTest}) と併用して呼び忘れまでカバーする。
+     * <p><strong>Phase F (2026-05-04) で本格ルールへ昇格済</strong>:
+     * 本ファイルの本ルールは Phase A プレースホルダから「Phase F 完了済」を
+     * 表すマーカーとして残す (空通過)。実体ルールは
+     * {@link NotificationVisibilityArchitectureTest} に移管。
      *
-     * <p>Phase F 本格ルール (予定):
-     * <pre>{@code
-     * classes().that().callMethodWhere(target ->
-     *         target.getOwner().getName().endsWith("NotificationRepository")
-     *      && target.getName().startsWith("save"))
-     *     .should().dependOnClassesThat()
-     *         .haveSimpleName("ContentVisibilityChecker")
-     *     .because("§13.5 / §15 D-11");
-     * }</pre>
+     * <p>新しい通知発行 Service を追加する場合、
+     * {@link NotificationVisibilityArchitectureTest#notification_repository_save_callers_must_depend_on_checker}
+     * が違反として検出する。中央集約された
+     * {@code NotificationHelper} / {@code NotificationService} 経由が推奨経路。
      */
     @ArchTest
     static final ArchRule notification_save_callers_must_depend_on_checker =
-        // Phase A プレースホルダ: 必ず通る空ルール (新規違反監視は Phase F で導入)
-        // allowEmptyShould(true) — Phase A 時点ではマッチするクラスが存在しなくても許容
-        noClasses().that().haveSimpleName("__phase_a_placeholder__")
+        // Phase F で実体ルールは NotificationVisibilityArchitectureTest に移管。
+        // ここはマーカーとして残し、設計書からの参照可能性を維持する。
+        noClasses().that().haveSimpleName("__phase_f_completed_marker__")
             .should().dependOnClassesThat().haveSimpleName("__never_match__")
-            .because("Phase A プレースホルダ — Phase F で NotificationRepository.save* "
-                + "呼出側に ContentVisibilityChecker 依存を強制する本格ルールに差し替える "
-                + "(設計書 §13.5 / §15 D-11)")
+            .because("Phase F 完了マーカー — 実体は NotificationVisibilityArchitectureTest "
+                + "(notification_repository_save_callers_must_depend_on_checker) に移管済 "
+                + "(設計書 §13.5 / §15 D-11 / §19.3)")
             .allowEmptyShould(true);
 
     /**

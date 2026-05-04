@@ -1,9 +1,12 @@
 package com.mannschaft.app.notification;
 
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.notification.service.NotificationService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -11,6 +14,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.List;
 
@@ -26,6 +31,7 @@ import static org.mockito.Mockito.verify;
  * 各モジュールからの通知作成・配信ファサードを検証する。
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("NotificationHelper 単体テスト")
 class NotificationHelperTest {
 
@@ -35,8 +41,23 @@ class NotificationHelperTest {
     @Mock
     private NotificationDispatchService dispatchService;
 
+    /**
+     * F00 Phase F セキュリティガード用の visibility checker (mock)。
+     * 既存テストは「visibility 通過済み」を前提とした配信ロジック検証なので、
+     * デフォルトで全ユーザー allow とする。
+     */
+    @Mock
+    private ContentVisibilityChecker visibilityChecker;
+
     @InjectMocks
     private NotificationHelper notificationHelper;
+
+    @BeforeEach
+    void setUpVisibilityCheckerDefaults() {
+        // sourceType=SCHEDULE は ReferenceType.SCHEDULE に解決され
+        // canView が呼ばれる。既存テストの主旨はガード対象外なので allow 固定。
+        given(visibilityChecker.canView(any(ReferenceType.class), any(), any())).willReturn(true);
+    }
 
     // ========================================
     // テスト用定数・ヘルパー

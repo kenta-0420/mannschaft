@@ -1,6 +1,9 @@
 package com.mannschaft.app.notification.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.NotificationSourceTypeMapper;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.notification.NotificationErrorCode;
 import com.mannschaft.app.notification.NotificationMapper;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 /**
  * 通知サービス。通知のCRUD・既読管理・スヌーズを担当する。
@@ -33,6 +37,15 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final PushSubscriptionRepository pushSubscriptionRepository;
     private final NotificationMapper notificationMapper;
+
+    /**
+     * F00 Phase F セキュリティ漏れ修正で導入。通知発行先ユーザーが
+     * 通知のソースコンテンツ ({@code sourceType} + {@code sourceId}) を閲覧可能か
+     * を判定し、不可の場合は通知作成自体をスキップする (fail-soft, §11.1)。
+     *
+     * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §11.1 / §13.5。
+     */
+    private final ContentVisibilityChecker visibilityChecker;
 
     /**
      * ユーザーの通知一覧をページング取得する。
@@ -156,6 +169,22 @@ public class NotificationService {
                                                   String sourceType, Long sourceId,
                                                   NotificationScopeType scopeType, Long scopeId,
                                                   String actionUrl, Long actorId) {
+        // ----------------------------------------------------------------
+        // F00 Phase F: 通知発行前の visibility ガード (§11.1)
+        // ----------------------------------------------------------------
+        // sourceType を ReferenceType にマップして閲覧権を確認。閲覧不可の
+        // ユーザーには通知を作らない (受信者リスト確定後の filterAccessible
+        // 相当を、単発 createNotification 経路でも担保する)。
+        //
+        // fail-soft: ReferenceType に対応しない sourceType (例: MEMBER_PAYMENT)
+        // や、sourceId が null の通知は visibility 判定対象外として通過させる。
+        // これにより既存の Resolver 未配備 sourceType を破壊しない。
+        if (!isAccessible(sourceType, sourceId, userId)) {
+            log.warn("通知作成スキップ (visibility deny): userId={}, type={}, sourceType={}, sourceId={}",
+                    userId, notificationType, sourceType, sourceId);
+            return null;
+        }
+
         NotificationEntity entity = NotificationEntity.builder()
                 .userId(userId)
                 .notificationType(notificationType)
@@ -173,6 +202,29 @@ public class NotificationService {
         NotificationEntity saved = notificationRepository.save(entity);
         log.info("通知作成: userId={}, type={}, notificationId={}", userId, notificationType, saved.getId());
         return saved;
+    }
+
+    /**
+     * 通知ソースに対する受信者の閲覧可否を判定する。
+     *
+     * <p>F00 Phase F セキュリティガード (§11.1)。{@code sourceType} を
+     * {@link ReferenceType} に解決できない、または {@code sourceId} が null の
+     * 通知は対象外として true を返す (fail-soft)。
+     *
+     * @param sourceType 通知 sourceType
+     * @param sourceId   通知 sourceId
+     * @param userId     受信者 userId
+     * @return アクセス可能または判定対象外なら true
+     */
+    private boolean isAccessible(String sourceType, Long sourceId, Long userId) {
+        if (sourceId == null) {
+            return true;
+        }
+        Optional<ReferenceType> refType = NotificationSourceTypeMapper.resolve(sourceType);
+        if (refType.isEmpty()) {
+            return true;
+        }
+        return visibilityChecker.canView(refType.get(), sourceId, userId);
     }
 
     /**
