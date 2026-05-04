@@ -74,6 +74,9 @@ class ShiftBudgetPublishedEventListenerTest {
     /** Phase 9-δ で追加された閾値判定 hook（テスト中は no-op で十分） */
     @Mock
     private ThresholdAlertEvaluationService thresholdAlertEvaluationService;
+    /** Phase 10-β で追加された失敗イベント記録（テスト中は no-op で十分） */
+    @Mock
+    private com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService failedEventService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -84,7 +87,7 @@ class ShiftBudgetPublishedEventListenerTest {
         listener = new ShiftBudgetConsumptionRecordListener(
                 featureService, allocationRepository, rateQueryRepository,
                 consumptionService, slotRepository, hourlyRateRepository,
-                auditLogService, objectMapper, thresholdAlertEvaluationService);
+                auditLogService, objectMapper, thresholdAlertEvaluationService, failedEventService);
     }
 
     private ShiftSlotEntity sampleSlotWithUser(Long slotId, Long userId) {

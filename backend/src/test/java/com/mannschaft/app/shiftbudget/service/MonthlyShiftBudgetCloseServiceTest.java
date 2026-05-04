@@ -5,6 +5,8 @@ import com.mannschaft.app.budget.entity.BudgetTransactionEntity;
 import com.mannschaft.app.budget.repository.BudgetTransactionRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.shiftbudget.ShiftBudgetConsumptionStatus;
 import com.mannschaft.app.shiftbudget.ShiftBudgetErrorCode;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFeatureService;
@@ -69,6 +71,10 @@ class MonthlyShiftBudgetCloseServiceTest {
     private AccessControlService accessControlService;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private OrganizationRepository organizationRepository;
+    @Mock
+    private ShiftBudgetFailedEventService failedEventService;
 
     private MonthlyShiftBudgetCloseService service;
 
@@ -76,7 +82,8 @@ class MonthlyShiftBudgetCloseServiceTest {
     void setUp() {
         service = new MonthlyShiftBudgetCloseService(
                 allocationRepository, consumptionRepository, budgetTransactionRepository,
-                featureService, accessControlService, auditLogService);
+                featureService, accessControlService, auditLogService,
+                organizationRepository, failedEventService);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
     }
@@ -244,5 +251,93 @@ class MonthlyShiftBudgetCloseServiceTest {
         verify(allocationRepository, never()).incrementConfirmedAmount(anyLong(), any());
         // tx は 1 件作成（amount=0、冪等性のための「締め済印」）
         verify(budgetTransactionRepository, times(1)).save(any());
+    }
+
+    // ====================================================================
+    // Phase 10-β: closeAll の部分失敗リカバリ
+    // ====================================================================
+
+    private OrganizationEntity orgEntity(Long id) {
+        try {
+            OrganizationEntity org = OrganizationEntity.builder().build();
+            java.lang.reflect.Field idField =
+                    org.getClass().getSuperclass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(org, id);
+            return org;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    @DisplayName("closeAll: 全組織成功 → processedOrganizationIds に全件含む")
+    void closeAll_全組織成功() {
+        OrganizationEntity org1 = orgEntity(1L);
+        OrganizationEntity org2 = orgEntity(2L);
+        given(organizationRepository.findAll()).willReturn(List.of(org1, org2));
+        // 両組織ともフィーチャーフラグ ON で 1 件ずつ締めが成功
+        given(featureService.isEnabled(1L)).willReturn(true);
+        given(featureService.isEnabled(2L)).willReturn(true);
+        ShiftBudgetAllocationEntity alloc = sampleAllocation();
+        given(allocationRepository.findLiveByOrgAndPeriodRange(any(), any(), any()))
+                .willReturn(List.of(alloc));
+        given(budgetTransactionRepository.existsBySourceTypeAndSourceIdAndTransactionDate(
+                any(), any(), any())).willReturn(false);
+        given(consumptionRepository.findByAllocationIdAndStatusInAndDeletedAtIsNull(any(), any()))
+                .willReturn(List.of(samplePlannedConsumption(new BigDecimal("4800"))));
+
+        MonthlyShiftBudgetCloseService.AllOrgsCloseResult result =
+                service.closeAll(TARGET_MONTH);
+
+        assertThat(result.processedOrganizationIds()).containsExactlyInAnyOrder(1L, 2L);
+        assertThat(result.failedOrganizationIds()).isEmpty();
+        assertThat(result.alreadyClosedOrganizationIds()).isEmpty();
+        assertThat(result.closedAllocations()).isEqualTo(2);
+        verify(failedEventService, never()).recordFailure(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("closeAll: 1 組織が例外で失敗 → failedOrganizationIds + failedEvent 記録 + 他組織は続行")
+    void closeAll_1組織失敗で他組織は続行() {
+        OrganizationEntity ok = orgEntity(1L);
+        OrganizationEntity ng = orgEntity(2L);
+        given(organizationRepository.findAll()).willReturn(List.of(ok, ng));
+        given(featureService.isEnabled(1L)).willReturn(true);
+        given(featureService.isEnabled(2L)).willReturn(true);
+        // 組織1: 成功
+        given(allocationRepository.findLiveByOrgAndPeriodRange(eq(1L), any(), any()))
+                .willReturn(List.of(sampleAllocation()));
+        // 組織2: findLive で例外
+        given(allocationRepository.findLiveByOrgAndPeriodRange(eq(2L), any(), any()))
+                .willThrow(new RuntimeException("DB lock timeout"));
+        given(budgetTransactionRepository.existsBySourceTypeAndSourceIdAndTransactionDate(
+                any(), any(), any())).willReturn(false);
+        given(consumptionRepository.findByAllocationIdAndStatusInAndDeletedAtIsNull(any(), any()))
+                .willReturn(List.of(samplePlannedConsumption(new BigDecimal("4800"))));
+
+        MonthlyShiftBudgetCloseService.AllOrgsCloseResult result =
+                service.closeAll(TARGET_MONTH);
+
+        assertThat(result.processedOrganizationIds()).containsExactly(1L);
+        assertThat(result.failedOrganizationIds()).containsExactly(2L);
+        // failed_events に記録されたか
+        verify(failedEventService).recordFailure(eq(2L), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("closeAll: フィーチャーフラグ OFF 組織は processed/failed どちらにも含めない (CloseResult 0,0,0 → 無視)")
+    void closeAll_フラグOFF組織はリスト未掲載() {
+        OrganizationEntity offOrg = orgEntity(3L);
+        given(organizationRepository.findAll()).willReturn(List.of(offOrg));
+        given(featureService.isEnabled(3L)).willReturn(false);
+
+        MonthlyShiftBudgetCloseService.AllOrgsCloseResult result =
+                service.closeAll(TARGET_MONTH);
+
+        assertThat(result.processedOrganizationIds()).isEmpty();
+        assertThat(result.failedOrganizationIds()).isEmpty();
+        assertThat(result.alreadyClosedOrganizationIds()).isEmpty();
+        verify(failedEventService, never()).recordFailure(any(), any(), any(), any(), any());
     }
 }

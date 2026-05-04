@@ -2,10 +2,12 @@ package com.mannschaft.app.shiftbudget.listener;
 
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.shift.event.ShiftArchivedEvent;
+import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFeatureService;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
+import com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService;
 import com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +17,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -39,6 +42,8 @@ public class ShiftBudgetConsumptionCancelListener {
     private final AuditLogService auditLogService;
     /** Phase 9-δ で追加: 閾値判定 hook */
     private final ThresholdAlertEvaluationService thresholdAlertEvaluationService;
+    /** Phase 10-β で追加: 失敗イベントの永続化（リトライバッチ + 管理 API の入口） */
+    private final ShiftBudgetFailedEventService failedEventService;
 
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -86,11 +91,54 @@ public class ShiftBudgetConsumptionCancelListener {
                     } catch (Exception thresholdEx) {
                         log.error("F08.7 cancel hook: 閾値判定失敗（処理継続）: allocId={}, scheduleId={}",
                                 allocationId, scheduleId, thresholdEx);
+                        // Phase 10-β: 失敗イベントとして永続化
+                        recordFailureSafe(organizationId,
+                                ShiftBudgetFailedEventType.THRESHOLD_ALERT,
+                                allocationId,
+                                Map.of(
+                                        "allocation_id", allocationId,
+                                        "shift_schedule_id", scheduleId,
+                                        "operation", "CANCEL_RE_EVALUATE"
+                                ),
+                                thresholdEx);
                     }
                 }
             }
         } catch (Exception e) {
             log.error("F08.7 cancel hook: シフトアーカイブ消化キャンセルの致命的失敗: scheduleId={}", scheduleId, e);
+            // Phase 10-β: organization_id が解決できていれば failed_events にも記録
+            try {
+                Long orgIdForFailure = rateQueryRepository.findOrganizationIdByTeamId(teamId)
+                        .orElse(null);
+                if (orgIdForFailure != null) {
+                    recordFailureSafe(orgIdForFailure,
+                            ShiftBudgetFailedEventType.CONSUMPTION_CANCEL,
+                            scheduleId,
+                            Map.of(
+                                    "shift_schedule_id", scheduleId,
+                                    "team_id", teamId,
+                                    "archived_by_user_id",
+                                    event.getArchivedByUserId() == null ? -1L : event.getArchivedByUserId()
+                            ),
+                            e);
+                }
+            } catch (Exception ignore) {
+                // failed_events 記録自体の失敗も諦める（ERROR ログは既に出ている）
+            }
+        }
+    }
+
+    /**
+     * Phase 10-β: 失敗イベント記録を例外安全に呼ぶ。
+     */
+    private void recordFailureSafe(Long organizationId, ShiftBudgetFailedEventType eventType,
+                                   Long sourceId, Map<String, Object> payload, Throwable cause) {
+        try {
+            String errorMsg = cause.getClass().getSimpleName() + ": " + cause.getMessage();
+            failedEventService.recordFailure(organizationId, eventType, sourceId, payload, errorMsg);
+        } catch (Exception recEx) {
+            log.error("F08.7 cancel hook: failed_events 記録自体も失敗（諦め）: orgId={}, eventType={}",
+                    organizationId, eventType, recEx);
         }
     }
 }
