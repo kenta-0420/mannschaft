@@ -15,7 +15,6 @@ import com.mannschaft.app.common.visibility.mapping.CmsVisibilityMapper;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -30,7 +29,6 @@ import java.util.List;
  * 親 ORG 連鎖・監査ログ連携・メトリクスは基底クラスで一括対応される。
  */
 @Component
-@Transactional(readOnly = true)
 public class BlogPostVisibilityResolver
         extends AbstractContentVisibilityResolver<Visibility, BlogPostVisibilityProjection> {
 
