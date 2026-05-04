@@ -2,9 +2,11 @@ package com.mannschaft.app.proxy.repository;
 
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -49,4 +51,30 @@ public interface ProxyInputRecordRepository extends JpaRepository<ProxyInputReco
     List<ProxyInputRecordEntity> findForMonthlySummary(
             @Param("fromDate") LocalDateTime fromDate,
             @Param("toDate") LocalDateTime toDate);
+
+    /**
+     * 保管期限が切れた代理入力記録のIDリストを取得する（RetentionJob用）。
+     * retentionExpiresAt が cutoffDate 以前のレコードを対象とする。
+     */
+    @Query("SELECT r.id FROM ProxyInputRecordEntity r WHERE r.retentionExpiresAt <= :cutoffDate")
+    List<Long> findExpiredRecordIds(@Param("cutoffDate") java.time.LocalDate cutoffDate);
+
+    /**
+     * IDリストで指定した代理入力記録を物理削除する（RetentionJob用）。
+     */
+    @Modifying
+    @Query("DELETE FROM ProxyInputRecordEntity r WHERE r.id IN :ids")
+    void deleteByIdIn(@Param("ids") List<Long> ids);
+
+    /**
+     * 指定ユーザーが本人（subject）として関与する代理入力記録を全件取得する（GDPRエクスポート用）。
+     */
+    List<ProxyInputRecordEntity> findBySubjectUserId(Long subjectUserId);
+
+    /**
+     * 退会時物理削除用: 指定ユーザーが本人（subject）の代理入力記録を全件物理削除する。
+     */
+    @Modifying
+    @Query("DELETE FROM ProxyInputRecordEntity r WHERE r.subjectUserId = :userId")
+    void deleteAllBySubjectUserId(@Param("userId") Long userId);
 }

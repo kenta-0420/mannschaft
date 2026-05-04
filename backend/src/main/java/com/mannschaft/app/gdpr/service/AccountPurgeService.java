@@ -18,6 +18,8 @@ import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import lombok.RequiredArgsConstructor;
@@ -67,6 +69,8 @@ public class AccountPurgeService {
     private final OAuthAccountRepository oAuthAccountRepository;
     private final TwoFactorAuthRepository twoFactorAuthRepository;
     private final WebAuthnCredentialRepository webAuthnCredentialRepository;
+    private final ProxyInputConsentRepository proxyInputConsentRepository;
+    private final ProxyInputRecordRepository proxyInputRecordRepository;
 
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "accountPurgeBatch", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
@@ -170,6 +174,11 @@ public class AccountPurgeService {
                     }
                     dataExportRepository.delete(de);
                 });
+
+        // 代理入力記録の物理削除（F14.1 Phase 13-γ）
+        proxyInputRecordRepository.deleteAllBySubjectUserId(userId);
+        // 代理入力同意書の論理削除（監査証跡として保持するため物理削除しない）
+        proxyInputConsentRepository.logicalDeleteAllBySubjectUserId(userId);
 
         // Phase 5: ユーザー本体削除
         // purged_atを記録してからsave（論理削除時刻を保存するため）
