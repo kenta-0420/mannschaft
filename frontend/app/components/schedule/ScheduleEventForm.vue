@@ -180,7 +180,7 @@ async function submit() {
     body.attendanceRequired = form.value.attendanceRequired
   }
 
-  if (!props.isPersonal && form.value.recurrence) {
+  if (form.value.recurrence) {
     body.recurrenceRule = {
       type: form.value.recurrenceType,
       interval: form.value.recurrenceInterval,
@@ -360,8 +360,8 @@ function close() {
         <label class="mb-1 block text-sm font-medium">場所</label>
         <InputText v-model="form.location" class="w-full" placeholder="場所（任意）" />
       </div>
-      <!-- 繰り返し（チーム・組織イベントのみ） -->
-      <div v-if="!isPersonal" class="flex flex-col gap-3 rounded-lg border border-surface-200 dark:border-surface-600 p-3">
+      <!-- 繰り返し -->
+      <div class="flex flex-col gap-3 rounded-lg border border-surface-200 dark:border-surface-600 p-3">
         <div class="flex items-center justify-between">
           <label class="text-sm font-medium">繰り返し</label>
           <ToggleSwitch v-model="form.recurrence" />
