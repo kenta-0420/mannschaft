@@ -3,6 +3,7 @@ import type {
   PersonalTimetable,
   PersonalTimetablePeriod,
   PersonalTimetablePeriodInput,
+  PersonalTimetableShareTarget,
   PersonalTimetableSlot,
   PersonalTimetableSlotInput,
 } from '~/types/personal-timetable'
@@ -13,7 +14,8 @@ definePageMeta({ middleware: 'auth' })
 const { t } = useI18n()
 const route = useRoute()
 const api = useMyPersonalTimetableApi()
-const { success, error } = useNotification()
+const { success, error, info } = useNotification()
+const teamStore = useTeamStore()
 
 const id = computed(() => Number(route.params.id))
 
@@ -22,6 +24,30 @@ const periods = ref<PersonalTimetablePeriodInput[]>([])
 const slots = ref<PersonalTimetableSlotInput[]>([])
 const loading = ref(true)
 const saving = ref(false)
+
+// ----- F03.15 Phase 5b: 家族と共有セクション -----
+const shareTargets = ref<PersonalTimetableShareTarget[]>([])
+const shareLoading = ref(false)
+const shareSubmitting = ref(false)
+const selectedFamilyTeamId = ref<number | null>(null)
+
+const SHARE_LIMIT = 3
+
+interface FamilyTeamOption {
+  value: number
+  label: string
+}
+
+/** 自分の所属チームから家族チーム (template = 'family') のみを抽出。 */
+const availableFamilyTeams = computed<FamilyTeamOption[]>(() => {
+  const sharedIds = new Set(shareTargets.value.map(t => t.team_id))
+  return teamStore.myTeams
+    .filter(t => t.template === 'family')
+    .filter(t => !sharedIds.has(t.id))
+    .map(t => ({ value: t.id, label: t.name }))
+})
+
+const isShareLimitReached = computed(() => shareTargets.value.length >= SHARE_LIMIT)
 
 const DAY_KEYS: DayOfWeekKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 const WEEK_PATTERNS: WeekPatternType[] = ['EVERY', 'A', 'B']
@@ -55,6 +81,81 @@ async function load() {
   }
   finally {
     loading.value = false
+  }
+  await loadShareTargets()
+  // 家族チーム選択肢のためにユーザー所属チームを取得（store にキャッシュ）
+  if (teamStore.myTeams.length === 0) {
+    await teamStore.fetchMyTeams()
+  }
+}
+
+async function loadShareTargets() {
+  shareLoading.value = true
+  try {
+    shareTargets.value = await api.listShareTargets(id.value)
+  }
+  catch (e) {
+    error(t('personalTimetable.share.load_error'), String(e))
+  }
+  finally {
+    shareLoading.value = false
+  }
+}
+
+async function addShareTarget() {
+  if (selectedFamilyTeamId.value == null) return
+  if (isShareLimitReached.value) {
+    error(t('personalTimetable.share.limit_reached'))
+    return
+  }
+  shareSubmitting.value = true
+  const teamIdToAdd = selectedFamilyTeamId.value
+  const wasPrivate = detail.value?.visibility === 'PRIVATE'
+  try {
+    await api.addShareTarget(id.value, { team_id: teamIdToAdd })
+    success(t('personalTimetable.share.add_success'))
+    selectedFamilyTeamId.value = null
+    // visibility 自動切替の通知（PRIVATE → FAMILY_SHARED）
+    if (wasPrivate) {
+      info(t('personalTimetable.share.info_visibility_to_family_shared'))
+    }
+    // 共有先一覧と本体メタを再取得（visibility 反映）
+    await Promise.all([loadShareTargets(), reloadDetailOnly()])
+  }
+  catch (e) {
+    error(t('personalTimetable.share.add_error'), String(e))
+  }
+  finally {
+    shareSubmitting.value = false
+  }
+}
+
+async function removeShareTarget(teamId: number) {
+  shareSubmitting.value = true
+  const beforeCount = shareTargets.value.length
+  try {
+    await api.removeShareTarget(id.value, teamId)
+    success(t('personalTimetable.share.remove_success'))
+    // 全削除時の通知（FAMILY_SHARED → PRIVATE）
+    if (beforeCount === 1 && detail.value?.visibility === 'FAMILY_SHARED') {
+      info(t('personalTimetable.share.info_visibility_to_private'))
+    }
+    await Promise.all([loadShareTargets(), reloadDetailOnly()])
+  }
+  catch (e) {
+    error(t('personalTimetable.share.remove_error'), String(e))
+  }
+  finally {
+    shareSubmitting.value = false
+  }
+}
+
+async function reloadDetailOnly() {
+  try {
+    detail.value = await api.get(id.value)
+  }
+  catch {
+    // ignore — load_error は load() 側で扱う
   }
 }
 
@@ -217,6 +318,83 @@ onMounted(load)
               </tr>
             </tbody>
           </table>
+        </template>
+      </Card>
+
+      <Card class="mb-6">
+        <template #title>
+          {{ t('personalTimetable.share.title') }}
+        </template>
+        <template #content>
+          <p class="text-sm text-gray-600 mb-3">
+            {{ t('personalTimetable.share.description') }}
+          </p>
+
+          <div v-if="shareLoading" class="text-center py-4">
+            <ProgressSpinner />
+          </div>
+
+          <div v-else>
+            <!-- 共有先一覧 -->
+            <div class="mb-4">
+              <h3 class="text-sm font-semibold mb-2">
+                {{ t('personalTimetable.share.shared_with') }}
+              </h3>
+              <p v-if="shareTargets.length === 0" class="text-sm text-gray-500">
+                {{ t('personalTimetable.share.shared_with_empty') }}
+              </p>
+              <ul v-else class="space-y-2">
+                <li
+                  v-for="target in shareTargets"
+                  :key="target.id"
+                  class="flex items-center justify-between border rounded px-3 py-2 bg-gray-50"
+                >
+                  <span class="text-sm">
+                    {{ target.team_name ?? t('personalTimetable.share.team_name_unknown') }}
+                  </span>
+                  <Button
+                    :label="t('personalTimetable.share.btn_remove')"
+                    icon="pi pi-times"
+                    severity="danger"
+                    size="small"
+                    text
+                    :loading="shareSubmitting"
+                    @click="removeShareTarget(target.team_id)"
+                  />
+                </li>
+              </ul>
+            </div>
+
+            <!-- 共有先追加 -->
+            <div>
+              <h3 class="text-sm font-semibold mb-2">
+                {{ t('personalTimetable.share.select_family_team') }}
+              </h3>
+              <div v-if="availableFamilyTeams.length === 0" class="text-sm text-gray-500">
+                {{ isShareLimitReached
+                  ? t('personalTimetable.share.limit_reached')
+                  : t('personalTimetable.share.no_family_teams') }}
+              </div>
+              <div v-else class="flex items-center gap-2">
+                <Select
+                  v-model="selectedFamilyTeamId"
+                  :options="availableFamilyTeams"
+                  option-value="value"
+                  option-label="label"
+                  :placeholder="t('personalTimetable.share.select_family_team')"
+                  :disabled="shareSubmitting || isShareLimitReached"
+                  class="flex-1"
+                />
+                <Button
+                  :label="t('personalTimetable.share.btn_add')"
+                  icon="pi pi-plus"
+                  :disabled="selectedFamilyTeamId == null || isShareLimitReached"
+                  :loading="shareSubmitting"
+                  @click="addShareTarget"
+                />
+              </div>
+            </div>
+          </div>
         </template>
       </Card>
 

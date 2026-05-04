@@ -154,3 +154,68 @@ export interface PersonalWeeklyView {
   periods: PersonalTimetablePeriod[]
   days: Record<DayOfWeekKey, PersonalWeeklyDayInfo>
 }
+
+// ===== F03.15 Phase 5 / 5b: 家族共有 =====
+
+/** Phase 5 個人時間割の家族チーム共有先。 */
+export interface PersonalTimetableShareTarget {
+  id: number
+  personal_timetable_id: number
+  team_id: number
+  team_name?: string | null
+  created_at: string
+}
+
+/** Phase 5 共有先追加リクエスト。 */
+export interface AddShareTargetInput {
+  team_id: number
+}
+
+/** Phase 5 家族閲覧用 個人時間割メタ情報レスポンス。
+ *  notes / visibility / created_at / updated_at は意図的に除外。
+ */
+export interface FamilyPersonalTimetable {
+  id: number
+  user_id: number
+  name: string
+  academic_year?: number | null
+  term_label?: string | null
+  effective_from: string
+  effective_until?: string | null
+  status: PersonalTimetableStatus
+  week_pattern_enabled: boolean
+  week_pattern_base_date?: string | null
+}
+
+/** Phase 5 家族閲覧用 週間ビュー 1 コマ情報。
+ *  notes / linked_* / auto_sync_changes / user_note_id / has_attachments は意図的に除外。
+ */
+export interface FamilyWeeklySlotInfo {
+  id: number
+  period_number: number
+  week_pattern: WeekPatternType
+  subject_name: string
+  course_code?: string | null
+  teacher_name?: string | null
+  room_name?: string | null
+  credits?: number | null
+  color?: string | null
+}
+
+/** Phase 5 家族閲覧用 週間ビュー曜日情報。 */
+export interface FamilyWeeklyDayInfo {
+  date: string
+  slots: FamilyWeeklySlotInfo[]
+}
+
+/** Phase 5 家族閲覧用 週間ビューレスポンス。 */
+export interface FamilyWeeklyView {
+  personal_timetable_id: number
+  personal_timetable_name: string
+  week_start: string
+  week_end: string
+  week_pattern_enabled: boolean
+  current_week_pattern: WeekPatternType
+  periods: PersonalTimetablePeriod[]
+  days: Record<DayOfWeekKey, FamilyWeeklyDayInfo>
+}

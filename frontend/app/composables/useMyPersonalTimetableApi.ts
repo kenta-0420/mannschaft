@@ -1,9 +1,11 @@
 import type {
+  AddShareTargetInput,
   CreatePersonalTimetableInput,
   DuplicatePersonalTimetableInput,
   PersonalTimetable,
   PersonalTimetablePeriod,
   PersonalTimetablePeriodInput,
+  PersonalTimetableShareTarget,
   PersonalTimetableSlot,
   PersonalTimetableSlotInput,
   PersonalWeeklyView,
@@ -125,6 +127,27 @@ export function useMyPersonalTimetableApi() {
     return res.data
   }
 
+  // ----- 共有先 (Phase 5) -----
+
+  async function listShareTargets(id: number) {
+    const res = await api<{ data: PersonalTimetableShareTarget[] }>(
+      `${base}/${id}/share-targets`,
+    )
+    return res.data
+  }
+
+  async function addShareTarget(id: number, body: AddShareTargetInput) {
+    const res = await api<{ data: PersonalTimetableShareTarget }>(
+      `${base}/${id}/share-targets`,
+      { method: 'POST', body },
+    )
+    return res.data
+  }
+
+  async function removeShareTarget(id: number, teamId: number) {
+    await api(`${base}/${id}/share-targets/${teamId}`, { method: 'DELETE' })
+  }
+
   return {
     list,
     get,
@@ -141,5 +164,8 @@ export function useMyPersonalTimetableApi() {
     replaceSlots,
     listTodaySlots,
     getWeekly,
+    listShareTargets,
+    addShareTarget,
+    removeShareTarget,
   }
 }

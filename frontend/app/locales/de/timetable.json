@@ -137,6 +137,39 @@
       "unlink_success": "リンクを解除しました",
       "unlink_error": "リンク解除に失敗しました",
       "revoked_warning": "このコマのチームリンクは無効になりました（再リンクしてください）"
+    },
+    "share": {
+      "title": "家族と共有",
+      "description": "選択した家族チームのメンバーが、この個人時間割のコマを閲覧できるようになります（メモ・添付・リンク先は共有されません）",
+      "loading": "読み込み中…",
+      "load_error": "共有先の取得に失敗しました",
+      "select_family_team": "共有する家族チームを選択",
+      "no_family_teams": "あなたが所属する家族チームがありません",
+      "btn_add": "共有先を追加",
+      "btn_remove": "解除",
+      "add_success": "共有先を追加しました",
+      "add_error": "共有先の追加に失敗しました",
+      "remove_success": "共有先を解除しました",
+      "remove_error": "共有先の解除に失敗しました",
+      "limit_reached": "共有先は最大 3 件まで登録できます",
+      "info_visibility_to_family_shared": "共有先を追加すると、公開モードが「家族共有」に切り替わります",
+      "info_visibility_to_private": "全ての共有先を解除したため、公開モードが「自分のみ」に戻りました",
+      "shared_with": "共有中の家族チーム",
+      "shared_with_empty": "まだ共有先は登録されていません",
+      "team_name_unknown": "（チーム名取得不可）"
+    },
+    "familyView": {
+      "page_title": "家族の個人時間割",
+      "list_loading": "読み込み中…",
+      "list_load_error": "家族メンバーの個人時間割の取得に失敗しました",
+      "list_empty": "共有されている個人時間割はありません",
+      "list_btn_open": "週間ビューを開く",
+      "weekly_loading": "読み込み中…",
+      "weekly_load_error": "週間ビューの取得に失敗しました",
+      "weekly_back_to_list": "一覧に戻る",
+      "weekly_no_slots": "この週はコマがありません",
+      "weekly_period_label": "{label}（{start} 〜 {end}）",
+      "private_notice": "個人メモ・添付・チームリンクは共有されません"
     }
   }
 }
