@@ -1,6 +1,9 @@
 package com.mannschaft.app.common.visibility;
 
 import com.mannschaft.app.common.BusinessException;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -17,13 +20,23 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * {@link ContentVisibilityChecker} ファサードの単体テスト。
  *
- * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §4.4 / §7.1〜§7.4。
+ * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §4.4 / §7.1〜§7.4 / §9.4。
  *
  * <p>本テストは Resolver を Mockito ではなく手書きスタブで差し込み、
- * 「ファサードのディスパッチ責務」のみを純粋に検証する。
+ * 「ファサードのディスパッチ責務」と Phase A-5b で組み込んだメトリクス記録を
+ * 純粋に検証する。
  */
 @DisplayName("ContentVisibilityChecker ファサード")
 class ContentVisibilityCheckerTest {
+
+    private MeterRegistry meterRegistry;
+    private VisibilityMetrics metrics;
+
+    @BeforeEach
+    void setUp() {
+        this.meterRegistry = new SimpleMeterRegistry();
+        this.metrics = new VisibilityMetrics(meterRegistry);
+    }
 
     @Nested
     @DisplayName("構築 (constructor)")
@@ -33,7 +46,7 @@ class ContentVisibilityCheckerTest {
         @DisplayName("Resolver 0 個でもファサードを構築できる (Smoke)")
         void smoke_emptyResolverList() {
             ContentVisibilityChecker checker =
-                new ContentVisibilityChecker(List.of());
+                new ContentVisibilityChecker(List.of(), metrics);
 
             assertThat(checker).isNotNull();
             // 未対応扱いとして fail-closed で false が返る
@@ -47,7 +60,7 @@ class ContentVisibilityCheckerTest {
             StubResolver event = new StubResolver(ReferenceType.EVENT, Set.of(2L));
 
             ContentVisibilityChecker checker =
-                new ContentVisibilityChecker(List.of(blog, event));
+                new ContentVisibilityChecker(List.of(blog, event), metrics);
 
             assertThat(checker.canView(ReferenceType.BLOG_POST, 1L, 99L)).isTrue();
             assertThat(checker.canView(ReferenceType.EVENT, 2L, 99L)).isTrue();
@@ -59,7 +72,7 @@ class ContentVisibilityCheckerTest {
             StubResolver a = new StubResolver(ReferenceType.BLOG_POST, Set.of(1L));
             StubResolver b = new StubResolver(ReferenceType.BLOG_POST, Set.of(2L));
 
-            assertThatThrownBy(() -> new ContentVisibilityChecker(List.of(a, b)))
+            assertThatThrownBy(() -> new ContentVisibilityChecker(List.of(a, b), metrics))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("duplicate")
                 .hasMessageContaining("BLOG_POST");
@@ -70,8 +83,12 @@ class ContentVisibilityCheckerTest {
     @DisplayName("未対応 ReferenceType の fail-closed 挙動")
     class FailClosed {
 
-        private final ContentVisibilityChecker checker =
-            new ContentVisibilityChecker(List.of());
+        private ContentVisibilityChecker checker;
+
+        @BeforeEach
+        void initChecker() {
+            checker = new ContentVisibilityChecker(List.of(), metrics);
+        }
 
         @Test
         @DisplayName("canView は false を返す")
@@ -109,6 +126,21 @@ class ContentVisibilityCheckerTest {
                 checker.assertCanView(ReferenceType.FOLLOW_LIST, 1L, 100L))
                 .isInstanceOf(BusinessException.class);
         }
+
+        @Test
+        @DisplayName("未対応 type は unsupported_reference_type メトリクスに記録される (§9.4)")
+        void records_unsupportedMetricOnFailClosed() {
+            checker.canView(ReferenceType.BLOG_POST, 1L, 100L);
+            checker.filterAccessible(ReferenceType.EVENT, List.of(1L), 100L);
+
+            double total = meterRegistry
+                .find("content_visibility.unsupported_reference_type")
+                .counters()
+                .stream()
+                .mapToDouble(c -> c.count())
+                .sum();
+            assertThat(total).isGreaterThanOrEqualTo(2.0);
+        }
     }
 
     @Nested
@@ -121,11 +153,32 @@ class ContentVisibilityCheckerTest {
             StubResolver resolver = new StubResolver(
                 ReferenceType.BLOG_POST, Set.of(1L, 3L, 5L));
             ContentVisibilityChecker checker =
-                new ContentVisibilityChecker(List.of(resolver));
+                new ContentVisibilityChecker(List.of(resolver), metrics);
 
             assertThat(checker.canView(ReferenceType.BLOG_POST, 1L, 100L)).isTrue();
             assertThat(checker.canView(ReferenceType.BLOG_POST, 2L, 100L)).isFalse();
             assertThat(checker.canView(ReferenceType.BLOG_POST, 5L, 100L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("canView 呼び出しで check.latency Timer が記録される (§9.4)")
+        void canView_recordsLatencyMetric() {
+            StubResolver resolver = new StubResolver(
+                ReferenceType.BLOG_POST, Set.of(1L));
+            ContentVisibilityChecker checker =
+                new ContentVisibilityChecker(List.of(resolver), metrics);
+
+            checker.canView(ReferenceType.BLOG_POST, 1L, 100L);
+
+            long count = meterRegistry
+                .find("content_visibility.check.latency")
+                .tag("referenceType", "BLOG_POST")
+                .tag("op", "canView")
+                .timers()
+                .stream()
+                .mapToLong(t -> t.count())
+                .sum();
+            assertThat(count).isEqualTo(1L);
         }
 
         @Test
@@ -134,7 +187,7 @@ class ContentVisibilityCheckerTest {
             StubResolver resolver = new StubResolver(
                 ReferenceType.BLOG_POST, Set.of(1L, 3L));
             ContentVisibilityChecker checker =
-                new ContentVisibilityChecker(List.of(resolver));
+                new ContentVisibilityChecker(List.of(resolver), metrics);
 
             Set<Long> result = checker.filterAccessible(
                 ReferenceType.BLOG_POST, List.of(1L, 2L, 3L, 4L), 100L);
@@ -143,12 +196,37 @@ class ContentVisibilityCheckerTest {
         }
 
         @Test
+        @DisplayName("filterAccessible で batch_size と access_ratio が記録される (§9.4)")
+        void filterAccessible_recordsBatchSizeAndAccessRatio() {
+            StubResolver resolver = new StubResolver(
+                ReferenceType.BLOG_POST, Set.of(1L, 3L));
+            ContentVisibilityChecker checker =
+                new ContentVisibilityChecker(List.of(resolver), metrics);
+
+            checker.filterAccessible(
+                ReferenceType.BLOG_POST, List.of(1L, 2L, 3L, 4L), 100L);
+
+            assertThat(meterRegistry
+                .find("content_visibility.check.batch_size")
+                .tag("referenceType", "BLOG_POST")
+                .summary())
+                .isNotNull();
+            // 入力 4 件、許可 2 件 → ratio 0.5
+            assertThat(meterRegistry
+                .find("content_visibility.check.access_ratio")
+                .tag("referenceType", "BLOG_POST")
+                .summary()
+                .mean())
+                .isEqualTo(0.5);
+        }
+
+        @Test
         @DisplayName("decide はデフォルト実装で allow/deny を返す")
         void decide_returnsAllowOrDenyViaDefaultImpl() {
             StubResolver resolver = new StubResolver(
                 ReferenceType.BLOG_POST, Set.of(1L));
             ContentVisibilityChecker checker =
-                new ContentVisibilityChecker(List.of(resolver));
+                new ContentVisibilityChecker(List.of(resolver), metrics);
 
             VisibilityDecision allowed =
                 checker.decide(ReferenceType.BLOG_POST, 1L, 100L);
@@ -163,12 +241,31 @@ class ContentVisibilityCheckerTest {
         }
 
         @Test
+        @DisplayName("decide deny 時に check.denied Counter が記録される (§9.4)")
+        void decide_recordsDeniedCounterOnDeny() {
+            StubResolver resolver = new StubResolver(
+                ReferenceType.BLOG_POST, Set.of(1L));
+            ContentVisibilityChecker checker =
+                new ContentVisibilityChecker(List.of(resolver), metrics);
+
+            checker.decide(ReferenceType.BLOG_POST, 999L, 100L);
+
+            double count = meterRegistry
+                .find("content_visibility.check.denied")
+                .tag("referenceType", "BLOG_POST")
+                .tag("denyReason", "UNSPECIFIED")
+                .counter()
+                .count();
+            assertThat(count).isEqualTo(1.0);
+        }
+
+        @Test
         @DisplayName("assertCanView は許可なら例外を投げない")
         void assertCanView_doesNotThrowWhenAllowed() {
             StubResolver resolver = new StubResolver(
                 ReferenceType.BLOG_POST, Set.of(1L));
             ContentVisibilityChecker checker =
-                new ContentVisibilityChecker(List.of(resolver));
+                new ContentVisibilityChecker(List.of(resolver), metrics);
 
             // 例外が出ないことを確認
             checker.assertCanView(ReferenceType.BLOG_POST, 1L, 100L);
@@ -180,7 +277,7 @@ class ContentVisibilityCheckerTest {
             StubResolver resolver = new StubResolver(
                 ReferenceType.BLOG_POST, Set.of(1L));
             ContentVisibilityChecker checker =
-                new ContentVisibilityChecker(List.of(resolver));
+                new ContentVisibilityChecker(List.of(resolver), metrics);
 
             assertThatThrownBy(() ->
                 checker.assertCanView(ReferenceType.BLOG_POST, 999L, 100L))
@@ -200,7 +297,7 @@ class ContentVisibilityCheckerTest {
             StubResolver event = new StubResolver(
                 ReferenceType.EVENT, Set.of(20L));
             ContentVisibilityChecker checker =
-                new ContentVisibilityChecker(List.of(blog, event));
+                new ContentVisibilityChecker(List.of(blog, event), metrics);
 
             Map<ReferenceType, Collection<Long>> input =
                 new EnumMap<>(ReferenceType.class);
@@ -221,7 +318,7 @@ class ContentVisibilityCheckerTest {
             StubResolver blog = new StubResolver(
                 ReferenceType.BLOG_POST, Set.of(1L));
             ContentVisibilityChecker checker =
-                new ContentVisibilityChecker(List.of(blog));
+                new ContentVisibilityChecker(List.of(blog), metrics);
 
             Map<ReferenceType, Collection<Long>> input =
                 new EnumMap<>(ReferenceType.class);

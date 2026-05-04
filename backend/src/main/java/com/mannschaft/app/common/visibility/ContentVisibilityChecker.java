@@ -2,6 +2,7 @@ package com.mannschaft.app.common.visibility;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ErrorCode;
+import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,13 +29,28 @@ import java.util.Set;
  * {@link #canView} は false、{@link #filterAccessible} は空 Set を返す。
  * {@link #decide} は {@link DenyReason#UNSUPPORTED_REFERENCE_TYPE}、
  * {@link #assertCanView} は {@link BusinessException} をスローする。
+ *
+ * <p><strong>メトリクス (§9.4)</strong>: 全 5 メソッドの入口・出口で {@link VisibilityMetrics}
+ * に記録する (latency / batch_size / access_ratio / denied / unsupported)。
  */
 @Service
 @Transactional(readOnly = true)
 @Slf4j
 public class ContentVisibilityChecker {
 
+    /** §9.4 op タグの値 — 単発判定. */
+    private static final String OP_CAN_VIEW = "canView";
+    /** §9.4 op タグの値 — バッチ判定. */
+    private static final String OP_FILTER_ACCESSIBLE = "filterAccessible";
+    /** §9.4 op タグの値 — 複数 type 混在判定. */
+    private static final String OP_FILTER_ACCESSIBLE_BY_TYPE = "filterAccessibleByType";
+    /** §9.4 op タグの値 — 詳細判定. */
+    private static final String OP_DECIDE = "decide";
+    /** §9.4 op タグの値 — 例外スロー版判定. */
+    private static final String OP_ASSERT_CAN_VIEW = "assertCanView";
+
     private final Map<ReferenceType, ContentVisibilityResolver<?>> resolverMap;
+    private final VisibilityMetrics visibilityMetrics;
 
     /**
      * Spring が {@link ContentVisibilityResolver} の全 Bean を List で渡す。
@@ -42,10 +58,13 @@ public class ContentVisibilityChecker {
      * 不変 Map に変換する。同一 {@link ReferenceType} に対して複数の Resolver が
      * 登録された場合は {@link IllegalStateException} で起動失敗させる。
      *
-     * @param resolvers Spring が収集した Resolver Bean の List (空でもよい)
+     * @param resolvers         Spring が収集した Resolver Bean の List (空でもよい)
+     * @param visibilityMetrics メトリクス記録用 (必須 DI)
      * @throws IllegalStateException referenceType が重複した場合
      */
-    public ContentVisibilityChecker(List<ContentVisibilityResolver<?>> resolvers) {
+    public ContentVisibilityChecker(
+            List<ContentVisibilityResolver<?>> resolvers,
+            VisibilityMetrics visibilityMetrics) {
         Map<ReferenceType, ContentVisibilityResolver<?>> map = new EnumMap<>(ReferenceType.class);
         for (ContentVisibilityResolver<?> resolver : resolvers) {
             ReferenceType type = resolver.referenceType();
@@ -58,6 +77,7 @@ public class ContentVisibilityChecker {
             }
         }
         this.resolverMap = Map.copyOf(map);
+        this.visibilityMetrics = visibilityMetrics;
         log.info("ContentVisibilityChecker initialized with {} resolver(s): {}",
             this.resolverMap.size(), this.resolverMap.keySet());
     }
@@ -71,12 +91,17 @@ public class ContentVisibilityChecker {
      * @return 閲覧可能なら true。未対応 type は fail-closed で false
      */
     public boolean canView(ReferenceType type, Long contentId, Long userId) {
-        ContentVisibilityResolver<?> resolver = resolverMap.get(type);
-        if (resolver == null) {
-            recordUnsupported(type);
-            return false;
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+            if (resolver == null) {
+                recordUnsupported(type);
+                return false;
+            }
+            return resolver.canView(contentId, userId);
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_CAN_VIEW);
         }
-        return resolver.canView(contentId, userId);
     }
 
     /**
@@ -89,12 +114,27 @@ public class ContentVisibilityChecker {
      */
     public Set<Long> filterAccessible(
             ReferenceType type, Collection<Long> ids, Long userId) {
-        ContentVisibilityResolver<?> resolver = resolverMap.get(type);
-        if (resolver == null) {
-            recordUnsupported(type);
-            return Set.of();
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        int inputSize = ids == null ? 0 : ids.size();
+        try {
+            visibilityMetrics.recordBatchSize(type, inputSize);
+            ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+            if (resolver == null) {
+                recordUnsupported(type);
+                if (inputSize > 0) {
+                    visibilityMetrics.recordAccessRatio(type, 0.0);
+                }
+                return Set.of();
+            }
+            Set<Long> result = resolver.filterAccessible(ids, userId);
+            if (inputSize > 0) {
+                double ratio = (double) result.size() / (double) inputSize;
+                visibilityMetrics.recordAccessRatio(type, ratio);
+            }
+            return result;
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_FILTER_ACCESSIBLE);
         }
-        return resolver.filterAccessible(ids, userId);
     }
 
     /**
@@ -110,10 +150,17 @@ public class ContentVisibilityChecker {
     public Map<ReferenceType, Set<Long>> filterAccessibleByType(
             Map<ReferenceType, ? extends Collection<Long>> idsByType,
             Long userId) {
-        Map<ReferenceType, Set<Long>> result = new EnumMap<>(ReferenceType.class);
-        idsByType.forEach((type, ids) ->
-            result.put(type, filterAccessible(type, ids, userId)));
-        return result;
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            Map<ReferenceType, Set<Long>> result = new EnumMap<>(ReferenceType.class);
+            idsByType.forEach((type, ids) ->
+                result.put(type, filterAccessible(type, ids, userId)));
+            return result;
+        } finally {
+            // 集約 op の latency は「合計時間」として記録 (内訳は各 filterAccessible に出る)。
+            // type タグは混在のため null (UNKNOWN) を渡す。
+            visibilityMetrics.stopCheckTimer(sample, null, OP_FILTER_ACCESSIBLE_BY_TYPE);
+        }
     }
 
     /**
@@ -127,14 +174,25 @@ public class ContentVisibilityChecker {
      * @return 判定結果
      */
     public VisibilityDecision decide(ReferenceType type, Long contentId, Long userId) {
-        ContentVisibilityResolver<?> resolver = resolverMap.get(type);
-        if (resolver == null) {
-            recordUnsupported(type);
-            return VisibilityDecision.deny(
-                type, contentId, DenyReason.UNSUPPORTED_REFERENCE_TYPE,
-                "no resolver registered for referenceType=" + type);
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+            if (resolver == null) {
+                recordUnsupported(type);
+                VisibilityDecision denied = VisibilityDecision.deny(
+                    type, contentId, DenyReason.UNSUPPORTED_REFERENCE_TYPE,
+                    "no resolver registered for referenceType=" + type);
+                visibilityMetrics.recordDenied(type, DenyReason.UNSUPPORTED_REFERENCE_TYPE);
+                return denied;
+            }
+            VisibilityDecision decision = resolver.decide(contentId, userId);
+            if (!decision.allowed()) {
+                visibilityMetrics.recordDenied(type, decision.denyReason());
+            }
+            return decision;
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_DECIDE);
         }
-        return resolver.decide(contentId, userId);
     }
 
     /**
@@ -157,25 +215,26 @@ public class ContentVisibilityChecker {
      * @throws BusinessException 閲覧不可の場合
      */
     public void assertCanView(ReferenceType type, Long contentId, Long userId) {
-        VisibilityDecision decision = decide(type, contentId, userId);
-        if (decision.allowed()) {
-            return;
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            VisibilityDecision decision = decide(type, contentId, userId);
+            if (decision.allowed()) {
+                return;
+            }
+            if (decision.denyReason() == DenyReason.NOT_FOUND) {
+                throw new BusinessException(StubVisibilityErrorCode.VISIBILITY_004);
+            }
+            throw new BusinessException(StubVisibilityErrorCode.VISIBILITY_001);
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_ASSERT_CAN_VIEW);
         }
-        if (decision.denyReason() == DenyReason.NOT_FOUND) {
-            throw new BusinessException(StubVisibilityErrorCode.VISIBILITY_004);
-        }
-        throw new BusinessException(StubVisibilityErrorCode.VISIBILITY_001);
     }
 
     /**
      * 未対応 {@link ReferenceType} の検出を記録する。
      *
-     * <p>tag cardinality 爆発防止のため、最終的には Micrometer メトリクス
+     * <p>tag cardinality 爆発防止のため、Micrometer メトリクス
      * (§9.4 {@code content_visibility.unsupported_reference_type}) に集約する。
-     *
-     * <p>TODO (Phase A-5b): {@code VisibilityMetrics} 完成後、{@code log.debug}
-     * の後で {@code visibilityMetrics.recordUnsupported(type)} を呼ぶこと。
-     * 現時点ではログ出力のみ。
      *
      * @param type 未対応として検出された reference_type
      */
@@ -190,7 +249,7 @@ public class ContentVisibilityChecker {
                 log.debug("Unsupported referenceType={} caller={}", type, stack[3]);
             }
         }
-        // TODO (Phase A-5b): visibilityMetrics.recordUnsupported(type) を呼ぶ
+        visibilityMetrics.recordUnsupported(type);
     }
 
     /**

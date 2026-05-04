@@ -1,0 +1,426 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "Mannschaft backend Prometheus データソース (Spring Boot Actuator scrape)",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "heatmap",
+      "name": "Heatmap",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "F00 共通可視性判定基盤 (ContentVisibilityResolver) の Micrometer メトリクス可視化。設計書 docs/features/F00_content_visibility_resolver.md §9.4 / §11.4 / §14.3 完全一致。",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "panels": [],
+      "title": "F00 ContentVisibilityResolver — 判定レイテンシ・バッチ統計",
+      "type": "row"
+    },
+    {
+      "id": 1,
+      "title": "1) 判定レイテンシ p50/p95/p99 (referenceType 別)",
+      "description": "content_visibility.check.latency Histogram から referenceType ごとの p50/p95/p99 を表示。設計書 §14.1 性能目標: canView p95 ≦ 30ms / filterAccessible p95 ≦ 60ms / filterAccessibleByType p95 ≦ 100ms",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "refId": "p50",
+          "expr": "histogram_quantile(0.50, sum by (referenceType, op, le) (rate(content_visibility_check_latency_seconds_bucket[5m])))",
+          "legendFormat": "p50 {{referenceType}} / {{op}}"
+        },
+        {
+          "refId": "p95",
+          "expr": "histogram_quantile(0.95, sum by (referenceType, op, le) (rate(content_visibility_check_latency_seconds_bucket[5m])))",
+          "legendFormat": "p95 {{referenceType}} / {{op}}"
+        },
+        {
+          "refId": "p99",
+          "expr": "histogram_quantile(0.99, sum by (referenceType, op, le) (rate(content_visibility_check_latency_seconds_bucket[5m])))",
+          "legendFormat": "p99 {{referenceType}} / {{op}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "2) バッチ判定 入力件数分布 (filterAccessible)",
+      "description": "content_visibility.check.batch_size の分布。referenceType ごとの平均と p95 を表示。",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "refId": "avg",
+          "expr": "rate(content_visibility_check_batch_size_sum[5m]) / rate(content_visibility_check_batch_size_count[5m])",
+          "legendFormat": "avg {{referenceType}}"
+        },
+        {
+          "refId": "p95",
+          "expr": "histogram_quantile(0.95, sum by (referenceType, le) (rate(content_visibility_check_batch_size_bucket[5m])))",
+          "legendFormat": "p95 {{referenceType}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "3) バッチ判定 許可率 (referenceType 別)",
+      "description": "content_visibility.check.access_ratio の平均値。1.0 が全許可、0.0 が全拒否。referenceType ごとの偏りを観察する。",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "refId": "avg",
+          "expr": "rate(content_visibility_check_access_ratio_sum[5m]) / rate(content_visibility_check_access_ratio_count[5m])",
+          "legendFormat": "avg {{referenceType}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "4) deny 発生率 (referenceType, denyReason 別 stacked)",
+      "description": "content_visibility.check.denied の発生レート。denyReason 別 stacked で表示。Slack アラート閾値: > 100/min for 5 min (§11.4)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 18 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "stacking": { "mode": "normal", "group": "A" }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "refId": "denied",
+          "expr": "sum by (referenceType, denyReason) (rate(content_visibility_check_denied_total[5m]))",
+          "legendFormat": "{{referenceType}} / {{denyReason}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "5) 未対応 ReferenceType 検出回数 (赤色アラート)",
+      "description": "content_visibility.unsupported_reference_type の累積発生数。0 を超えたら DB 整合性または Resolver 未登録の疑い。設計書 §11.2 / §15 D-12 / §17.Q15 参照。アラートは Phase A 完了後 1 sprint disable (DB 整合性確認後 enable)。",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 27 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 90
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "refId": "unsupported",
+          "expr": "sum by (referenceType) (increase(content_visibility_unsupported_reference_type_total[5m]))",
+          "legendFormat": "{{referenceType}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "6) テンプレート評価レイテンシ (rule_count 別)",
+      "description": "content_visibility.template_eval.latency の p50/p95/p99 (rule_count 別)。VisibilityTemplateEvaluator のキャッシュヒット率と合わせて観察。",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 27 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "refId": "p50",
+          "expr": "histogram_quantile(0.50, sum by (rule_count, le) (rate(content_visibility_template_eval_latency_seconds_bucket[5m])))",
+          "legendFormat": "p50 rule_count={{rule_count}}"
+        },
+        {
+          "refId": "p95",
+          "expr": "histogram_quantile(0.95, sum by (rule_count, le) (rate(content_visibility_template_eval_latency_seconds_bucket[5m])))",
+          "legendFormat": "p95 rule_count={{rule_count}}"
+        },
+        {
+          "refId": "p99",
+          "expr": "histogram_quantile(0.99, sum by (rule_count, le) (rate(content_visibility_template_eval_latency_seconds_bucket[5m])))",
+          "legendFormat": "p99 rule_count={{rule_count}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "7) CUSTOM 値経由の判定回数 (referenceType × customSubType heatmap)",
+      "description": "content_visibility.custom_dispatch_count を heatmap として表示し、設計書 §5.1.4 偏り検出に用いる。CUSTOM が特定 customSubType に集中する場合は、その種別を StandardVisibility 値として正式昇格する余地がある。",
+      "type": "heatmap",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 36 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "scaleDistribution": { "type": "linear" } }
+        },
+        "overrides": []
+      },
+      "options": {
+        "calculate": false,
+        "yAxis": { "axisPlacement": "left" },
+        "legend": { "show": true },
+        "tooltip": { "show": true, "yHistogram": false },
+        "color": { "mode": "scheme", "scheme": "Spectral", "steps": 64, "exponent": 0.5 }
+      },
+      "targets": [
+        {
+          "refId": "custom",
+          "expr": "sum by (referenceType, customSubType) (increase(content_visibility_custom_dispatch_count_total[5m]))",
+          "legendFormat": "{{referenceType}} / {{customSubType}}"
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["mannschaft", "backend", "visibility", "f00"],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "Prometheus",
+          "value": "Prometheus"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Datasource",
+        "multi": false,
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "F00 ContentVisibilityResolver メトリクス",
+  "uid": "f00-content-visibility-resolver",
+  "version": 1,
+  "weekStart": "",
+  "alerting": {
+    "_comment": "Phase A 完了後 1 sprint は全アラート disable (§17.Q15)。ベースライン測定後に閾値確定し enable する。",
+    "rules": [
+      {
+        "uid": "f00-unsupported-reference-type",
+        "title": "F00 / 未対応 ReferenceType 検出 (DISABLED until baseline)",
+        "condition": "C",
+        "for": "5m",
+        "annotations": {
+          "summary": "content_visibility.unsupported_reference_type が 0 を超えました",
+          "description": "DB 由来の不明 ReferenceType または Resolver 未登録の可能性があります。設計書 §11.2 / §15 D-12 を参照し、ReferenceTypeIntegrityCheck で DB 整合性を確認してください。",
+          "_status": "DISABLED — Phase A 完了後 1 週間は disable し、ヘルスチェック ReferenceTypeIntegrityCheck で DB 整合性確認後 enable する (§17.Q15)。"
+        },
+        "labels": { "severity": "warning", "team": "backend", "feature": "F00" },
+        "noDataState": "OK",
+        "execErrState": "OK",
+        "data": [
+          {
+            "refId": "C",
+            "datasourceUid": "${DS_PROMETHEUS}",
+            "model": {
+              "expr": "sum(increase(content_visibility_unsupported_reference_type_total[5m])) > 0",
+              "intervalMs": 60000,
+              "maxDataPoints": 43200,
+              "refId": "C"
+            }
+          }
+        ],
+        "_disabled": true
+      },
+      {
+        "uid": "f00-check-latency-p95",
+        "title": "F00 / check.latency p95 > 200ms (DISABLED until baseline)",
+        "condition": "C",
+        "for": "5m",
+        "annotations": {
+          "summary": "content_visibility.check.latency p95 が 200ms を超えました",
+          "description": "設計書 §14.3 性能劣化アラート。Phase A ベースライン測定後に閾値を再調整する。",
+          "_status": "DISABLED — Phase A 完了後 1 sprint disable、ベースライン測定後 enable (§17.Q15)。"
+        },
+        "labels": { "severity": "warning", "team": "backend", "feature": "F00" },
+        "noDataState": "OK",
+        "execErrState": "OK",
+        "data": [
+          {
+            "refId": "C",
+            "datasourceUid": "${DS_PROMETHEUS}",
+            "model": {
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(content_visibility_check_latency_seconds_bucket[5m]))) > 0.2",
+              "intervalMs": 60000,
+              "maxDataPoints": 43200,
+              "refId": "C"
+            }
+          }
+        ],
+        "_disabled": true
+      },
+      {
+        "uid": "f00-denied-rate",
+        "title": "F00 / deny rate > 100/min (DISABLED until baseline)",
+        "condition": "C",
+        "for": "5m",
+        "annotations": {
+          "summary": "content_visibility.check.denied のレートが 100/min を超えました",
+          "description": "攻撃疑い。設計書 §11.4 監査ログ + Slack 通知連携。Phase A 完了後にベースライン測定後 enable。",
+          "_status": "DISABLED — Phase A 完了後 1 sprint disable、ベースライン測定後 enable (§17.Q15)。"
+        },
+        "labels": { "severity": "warning", "team": "security", "feature": "F00" },
+        "noDataState": "OK",
+        "execErrState": "OK",
+        "data": [
+          {
+            "refId": "C",
+            "datasourceUid": "${DS_PROMETHEUS}",
+            "model": {
+              "expr": "sum(rate(content_visibility_check_denied_total[5m])) * 60 > 100",
+              "intervalMs": 60000,
+              "maxDataPoints": 43200,
+              "refId": "C"
+            }
+          }
+        ],
+        "_disabled": true
+      }
+    ]
+  }
+}
