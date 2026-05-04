@@ -1,5 +1,7 @@
 package com.mannschaft.app.shiftbudget;
 
+import com.mannschaft.app.budget.entity.BudgetConfigEntity;
+import com.mannschaft.app.budget.repository.BudgetConfigRepository;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -7,10 +9,16 @@ import org.springframework.stereotype.Service;
 /**
  * F08.7 シフト予算機能のフィーチャーフラグ判定サービス。
  *
- * <p>Phase 9-α では <strong>グローバルフラグ単独判定</strong> のみ実装。
- * 組織ごとのオプトアウト/オプトイン (三値論理) は Phase 9-δ で
- * {@code budget_configs.shift_budget_enabled} カラム追加と同時に実装する。
- * 詳細は設計書 §13 / §11 を参照。</p>
+ * <p>Phase 9-δ で三値論理に拡張済み。設計書 §13 / §8.5 参照。</p>
+ *
+ * <p>判定マトリックス:</p>
+ * <table border="1">
+ *   <tr><th>グローバル {@code feature.shiftBudget.enabled}</th><th>組織 {@code shift_budget_enabled}</th><th>結果</th></tr>
+ *   <tr><td>OFF</td>                                          <td>*</td>                                      <td>OFF（強制無効）</td></tr>
+ *   <tr><td>ON</td>                                           <td>NULL（未設定）</td>                          <td>ON（既定値継承）</td></tr>
+ *   <tr><td>ON</td>                                           <td>FALSE</td>                                   <td>OFF（オプトアウト）</td></tr>
+ *   <tr><td>ON</td>                                           <td>TRUE</td>                                    <td>ON（明示的有効化）</td></tr>
+ * </table>
  *
  * <p>判定結果が無効の場合は {@link ShiftBudgetErrorCode#FEATURE_DISABLED} を投げる。
  * GlobalExceptionHandler 側で HTTP 503 にマッピングする。</p>
@@ -20,22 +28,45 @@ import org.springframework.stereotype.Service;
 public class ShiftBudgetFeatureService {
 
     private final ShiftBudgetProperties properties;
+    private final BudgetConfigRepository budgetConfigRepository;
 
     /**
-     * 指定組織でシフト予算機能が有効かどうかを返す。
+     * 指定組織でシフト予算機能が有効かどうかを返す（三値論理判定）。
      *
-     * <p>Phase 9-α 実装: グローバルフラグ {@code feature.shift-budget.enabled} のみで判定。
-     * organizationId 引数は API シグネチャを 9-δ 完成形と互換にするために予約しているのみで、
-     * 現時点では参照しない。</p>
+     * <p>判定順:</p>
+     * <ol>
+     *   <li>グローバルフラグ OFF → 即 false（組織設定を見るまでもなく強制無効）</li>
+     *   <li>組織の {@code budget_configs.shift_budget_enabled} を引く
+     *     <ul>
+     *       <li>組織設定なし or shiftBudgetEnabled が NULL → グローバル既定値（true）を継承</li>
+     *       <li>明示 FALSE → false（オプトアウト）</li>
+     *       <li>明示 TRUE → true（明示的有効化）</li>
+     *     </ul>
+     *   </li>
+     * </ol>
      *
-     * @param organizationId 組織ID（Phase 9-δ で利用予定。9-α では未使用）
+     * @param organizationId 組織ID。null の場合はグローバル設定のみで判定
      * @return 機能が有効なら true
      */
     public boolean isEnabled(Long organizationId) {
-        // TODO: Phase 9-δ で budget_configs.shift_budget_enabled の三値論理を実装する。
-        //       設計書 §13 判定ロジックの擬似コードに従い、組織未設定はグローバル既定値を継承し、
-        //       明示的 FALSE はオプトアウト扱いとする。
-        return properties.isEnabled();
+        // グローバル OFF は組織設定を上書きする（強制無効）
+        if (!properties.isEnabled()) {
+            return false;
+        }
+        // 組織 ID 未指定はグローバル既定値 (= true) を返す
+        if (organizationId == null) {
+            return true;
+        }
+        // 組織別フラグを引く（三値論理）
+        Boolean orgFlag = budgetConfigRepository
+                .findByScopeTypeAndScopeId("ORGANIZATION", organizationId)
+                .map(BudgetConfigEntity::getShiftBudgetEnabled)
+                .orElse(null);
+        if (orgFlag == null) {
+            // 組織設定なし or shiftBudgetEnabled = NULL は既定値継承（グローバル ON 時は true）
+            return true;
+        }
+        return orgFlag;
     }
 
     /**
