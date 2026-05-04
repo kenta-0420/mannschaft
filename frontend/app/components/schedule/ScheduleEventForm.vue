@@ -27,6 +27,8 @@ const selectedScopeKey = ref<string>(
   (props.isPersonal ?? false) ? 'personal' : `${props.scopeType}_${props.scopeId}`,
 )
 
+const SCOPE_OVERFLOW = 5
+
 // ダイアログが開くたびにスコープキーを prop に合わせてリセット
 watch(
   () => props.visible,
@@ -330,7 +332,9 @@ function close() {
       <!-- スコープ選択（複数スコープがある場合のみ表示） -->
       <div v-if="props.scopeOptions && props.scopeOptions.length > 1" class="mb-4">
         <label class="mb-2 block text-sm font-medium text-surface-600 dark:text-surface-300">作成先</label>
-        <div class="flex flex-wrap gap-2">
+
+        <!-- ≤5件: 横並びボタン -->
+        <div v-if="props.scopeOptions.length <= SCOPE_OVERFLOW" class="flex flex-wrap gap-2">
           <button
             v-for="opt in props.scopeOptions"
             :key="opt.value"
@@ -344,6 +348,17 @@ function close() {
             {{ opt.label }}
           </button>
         </div>
+
+        <!-- 6件以上: Select ドロップダウン（単一選択） -->
+        <Select
+          v-else
+          v-model="selectedScopeKey"
+          :options="props.scopeOptions"
+          option-label="label"
+          option-value="value"
+          class="w-full"
+          placeholder="作成先を選択"
+        />
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium"
