@@ -50,7 +50,7 @@ class CorkboardCardServiceEventTest {
 
     private CorkboardCardResponse stubResponse() {
         return new CorkboardCardResponse(
-                1L, 1L, "MEMO", null, null, null, "t", null, null, null, null, null,
+                1L, 1L, null, "MEMO", null, null, null, "t", null, null, null, null, null,
                 "NONE", "MEDIUM", 0, 0, 0, null, null, false, false, null, false, 1L, null, null);
     }
 

@@ -568,17 +568,16 @@ async function doDeleteSection(section: CorkboardGroupDetail) {
   try {
     await apiDeleteGroup(boardId.value, section.id)
     if (board.value) {
+      // F09.8 積み残し件1: section_id FK は ON DELETE SET NULL なので、
+      // ローカル状態でも該当カードの sectionId を null にしておく（残骸防止）。
       board.value = {
         ...board.value,
         groups: board.value.groups.filter((g) => g.id !== section.id),
+        cards: board.value.cards.map((c) =>
+          c.sectionId === section.id ? { ...c, sectionId: null } : c,
+        ),
       }
     }
-    // ローカルの紐付け map からもセクション ID を除去（残骸防止）
-    const next: Record<number, number> = {}
-    for (const [k, v] of Object.entries(cardSectionMap.value)) {
-      if (v !== section.id) next[Number(k)] = v
-    }
-    cardSectionMap.value = next
     toast.add({
       severity: 'success',
       summary: t('corkboard.toast.sectionDeleteSuccess'),
@@ -595,21 +594,24 @@ async function doDeleteSection(section: CorkboardGroupDetail) {
 }
 
 /**
- * カード → セクションのローカル紐付けマップ。
+ * カードの主セクション ID を返す。
  *
- * バックエンド DTO (`CorkboardCardResponse`) には `sectionId` が含まれないため、
- * 「このカードが今どのセクションに属しているか」をフロントで一意に決められない。
- * Phase E では本マップに「最後に行った紐付け操作の結果」を楽観的に記録し、
- * 操作メニューの表示を切り替える MVP 仕様とする。
- *
- * 今後バックエンド DTO に `sectionId` が追加されたら、`cards` 配列から直接読む形に
- * 置き換える（このマップは廃止）。
+ * F09.8 積み残し件1 (V9.097) で `corkboard_cards.section_id` がバックエンド DTO に追加されたため、
+ * 旧 `cardSectionMap` ローカル保持を廃止し、カード DTO の `sectionId` を直接参照する。
  */
-const cardSectionMap = ref<Record<number, number>>({})
-
 function getCardSectionId(card: CorkboardCardDetail): number | null {
-  const v = cardSectionMap.value[card.id]
-  return typeof v === 'number' ? v : null
+  return card.sectionId ?? null
+}
+
+/** ボード内の特定カードの sectionId をローカル状態で楽観的に更新する。 */
+function patchCardSectionLocally(cardId: number, sectionId: number | null) {
+  if (!board.value) return
+  board.value = {
+    ...board.value,
+    cards: board.value.cards.map((c) =>
+      c.id === cardId ? { ...c, sectionId } : c,
+    ),
+  }
 }
 
 /** カードをセクションに追加 / 移動する。 */
@@ -628,10 +630,7 @@ async function addCardToSection(card: CorkboardCardDetail, sectionId: number) {
       }
     }
     await apiAddCardToGroup(boardId.value, sectionId, card.id)
-    cardSectionMap.value = {
-      ...cardSectionMap.value,
-      [card.id]: sectionId,
-    }
+    patchCardSectionLocally(card.id, sectionId)
     toast.add({
       severity: 'success',
       summary: t('corkboard.toast.cardAddToSectionSuccess'),
@@ -655,10 +654,7 @@ async function removeCardFromSection(card: CorkboardCardDetail) {
   if (sectionId == null) return
   try {
     await apiRemoveCardFromGroup(boardId.value, sectionId, card.id)
-    // dynamic delete を避けるため、対象キー以外で再構築する
-    const { [card.id]: _removed, ...rest } = cardSectionMap.value
-    void _removed
-    cardSectionMap.value = rest
+    patchCardSectionLocally(card.id, null)
     toast.add({
       severity: 'success',
       summary: t('corkboard.toast.cardRemoveFromSectionSuccess'),

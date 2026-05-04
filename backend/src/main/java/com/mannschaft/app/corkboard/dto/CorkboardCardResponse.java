@@ -14,6 +14,11 @@ public class CorkboardCardResponse {
 
     private final Long id;
     private final Long corkboardId;
+    /**
+     * F09.8 積み残し件1: カードの主セクション ID（V9.097 で追加。未所属時は {@code null}）。
+     * フロント (`corkboard/[id].vue`) はこの値を直接読んで紐付け表示を判定する。
+     */
+    private final Long sectionId;
     private final String cardType;
     private final String referenceType;
     private final Long referenceId;

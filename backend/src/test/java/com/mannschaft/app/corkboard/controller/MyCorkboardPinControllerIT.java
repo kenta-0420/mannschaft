@@ -96,7 +96,7 @@ class MyCorkboardPinControllerIT {
     /** mock 用に最小限のレスポンスを生成する。 */
     private CorkboardCardResponse stubResponse(boolean isPinned) {
         return new CorkboardCardResponse(
-                CARD_ID, BOARD_ID, "MEMO", null, null, null,
+                CARD_ID, BOARD_ID, null, "MEMO", null, null, null,
                 "メモ", "本文", null, null, null, null,
                 "NONE", "MEDIUM", 0, 0, 0, null, null,
                 false, isPinned, isPinned ? LocalDateTime.now() : null,
