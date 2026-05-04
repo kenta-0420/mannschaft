@@ -1,177 +1,205 @@
 package com.mannschaft.app.membership;
 
-import com.mannschaft.app.membership.domain.LeaveReason;
-import com.mannschaft.app.membership.domain.RoleKind;
-import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.entity.MembershipEntity;
-import com.mannschaft.app.membership.entity.PositionEntity;
-import com.mannschaft.app.membership.repository.MemberPositionRepository;
-import com.mannschaft.app.membership.repository.MembershipRepository;
-import com.mannschaft.app.membership.repository.PositionRepository;
-import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.testcontainers.DockerClientFactory;
+import org.testcontainers.containers.MySQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * F00.5 メンバーシップ基盤の統合テスト（Testcontainers MySQL）。
+ * F00.5 メンバーシップ基盤の DDL 制約検証統合テスト。
  *
- * <p>設計書 §14.2 のスコープ:</p>
+ * <p><b>方針</b>: Spring ApplicationContext を一切起動せず、Testcontainers MySQL に
+ * Flyway マイグレを直接適用した本物のスキーマに対して INSERT を試みる。これにより:</p>
+ *
  * <ul>
- *   <li>DDL 適用と CHECK / UNIQUE 制約の発火検証</li>
- *   <li>部分 UNIQUE（active_key）の挙動 — 古い行 NULL / 新規行 NOT NULL</li>
- *   <li>再加入時の uq_memberships_active 衝突</li>
+ *   <li>本番と同じ Flyway 由来の CHECK / UNIQUE 制約（部分 UNIQUE 含む）が DB に存在する状態で検証できる</li>
+ *   <li>Spring TestContext Cache に登録されないため OOM 連鎖の懸念なし
+ *       （{@link com.mannschaft.app.support.test.AbstractMySqlIntegrationTest} のドキュメント参照）</li>
+ *   <li>{@code application-test.yml} の {@code ddl-auto=create-drop} と {@code flyway.enabled=false} の影響を受けない</li>
  * </ul>
+ *
+ * <p>機能テスト（Service ロジック・Repository 派生メソッドの SQL 生成等）は
+ * {@code MembershipServiceTest}（モック）と Phase 3 で追加予定の Service 統合テストでカバーする。
+ * 本テストはあくまで <b>DDL の制約発火検証</b> に責務を絞る。</p>
+ *
+ * <p>設計書: docs/features/F00.5_membership_basis.md §14.2</p>
  */
-@DisplayName("F00.5 メンバーシップ基盤 統合テスト")
+@DisplayName("F00.5 メンバーシップ基盤 DDL 制約検証")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-class MembershipBasisIntegrationTest extends AbstractMySqlIntegrationTest {
+class MembershipBasisIntegrationTest {
 
-    @Autowired
-    private MembershipRepository membershipRepository;
+    @SuppressWarnings("resource")
+    private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
+            .withDatabaseName("mannschaft_f005_basis_test")
+            .withUsername("test")
+            .withPassword("test")
+            .withReuse(false);
 
-    @Autowired
-    private MemberPositionRepository memberPositionRepository;
+    private static JdbcTemplate jdbc;
 
-    @Autowired
-    private PositionRepository positionRepository;
+    @BeforeAll
+    static void startContainerAndMigrate() {
+        if (!DockerClientFactory.instance().isDockerAvailable()) {
+            return;
+        }
+        MYSQL.start();
 
-    @PersistenceContext
-    private EntityManager em;
+        DriverManagerDataSource ds = new DriverManagerDataSource();
+        ds.setUrl(MYSQL.getJdbcUrl());
+        ds.setUsername(MYSQL.getUsername());
+        ds.setPassword(MYSQL.getPassword());
+        ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
+
+        Flyway flyway = Flyway.configure()
+                .dataSource(ds)
+                .locations("classpath:db/migration")
+                .load();
+        flyway.migrate();
+
+        jdbc = new JdbcTemplate(ds);
+    }
+
+    @AfterAll
+    static void stopContainer() {
+        if (MYSQL.isRunning()) {
+            MYSQL.stop();
+        }
+    }
+
+    @BeforeEach
+    void cleanTables() {
+        // 各テスト前に F00.5 の 3 表をクリア（FK 順）
+        jdbc.update("DELETE FROM member_positions");
+        jdbc.update("DELETE FROM memberships");
+        jdbc.update("DELETE FROM positions");
+    }
 
     @Test
-    @Transactional
     @DisplayName("DDL: memberships に INSERT / SELECT が成立する")
     void insertAndSelect() {
-        MembershipEntity entity = MembershipEntity.builder()
-                .userId(1L)
-                .scopeType(ScopeType.TEAM)
-                .scopeId(100L)
-                .roleKind(RoleKind.MEMBER)
-                .build();
-        MembershipEntity saved = membershipRepository.save(entity);
-        em.flush();
+        jdbc.update(
+                "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at) VALUES (?, ?, ?, ?, NOW())",
+                1L, "TEAM", 100L, "MEMBER");
 
-        Optional<MembershipEntity> found = membershipRepository.findById(saved.getId());
-        assertThat(found).isPresent();
-        assertThat(found.get().getRoleKind()).isEqualTo(RoleKind.MEMBER);
-        assertThat(found.get().getScopeType()).isEqualTo(ScopeType.TEAM);
-        assertThat(found.get().isActive()).isTrue();
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM memberships WHERE user_id = ?",
+                Integer.class, 1L);
+        assertThat(count).isEqualTo(1);
+
+        String roleKind = jdbc.queryForObject(
+                "SELECT role_kind FROM memberships WHERE user_id = ?",
+                String.class, 1L);
+        assertThat(roleKind).isEqualTo("MEMBER");
     }
 
     @Test
-    @Transactional
     @DisplayName("uq_memberships_active: 同一 user × scope のアクティブ 2 行目は拒否")
     void duplicateActiveRejected() {
-        membershipRepository.save(MembershipEntity.builder()
-                .userId(2L).scopeType(ScopeType.TEAM).scopeId(101L)
-                .roleKind(RoleKind.MEMBER).build());
-        em.flush();
+        jdbc.update(
+                "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at) VALUES (?, ?, ?, ?, NOW())",
+                2L, "TEAM", 101L, "MEMBER");
 
-        assertThatThrownBy(() -> {
-            membershipRepository.save(MembershipEntity.builder()
-                    .userId(2L).scopeType(ScopeType.TEAM).scopeId(101L)
-                    .roleKind(RoleKind.MEMBER).build());
-            em.flush();
-        }).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at) VALUES (?, ?, ?, ?, NOW())",
+                2L, "TEAM", 101L, "MEMBER"))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
-    @Transactional
     @DisplayName("再加入: 退会済の旧行を残しつつ新行 INSERT が成立")
     void rejoinAfterLeave() {
         // 入会
-        MembershipEntity first = membershipRepository.save(MembershipEntity.builder()
-                .userId(3L).scopeType(ScopeType.TEAM).scopeId(102L)
-                .roleKind(RoleKind.MEMBER).build());
-        em.flush();
+        jdbc.update(
+                "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at) VALUES (?, ?, ?, ?, NOW())",
+                3L, "TEAM", 102L, "MEMBER");
 
         // 退会（少し未来の時刻にして CHECK chk_memberships_period をクリア）
-        first.setLeftAt(LocalDateTime.now().plusSeconds(1));
-        first.setLeaveReason(LeaveReason.SELF);
-        membershipRepository.save(first);
-        em.flush();
+        jdbc.update(
+                "UPDATE memberships SET left_at = DATE_ADD(NOW(), INTERVAL 1 SECOND), leave_reason = 'SELF' " +
+                        "WHERE user_id = ? AND scope_id = ?",
+                3L, 102L);
 
-        // 再加入（joined_at は新時刻、active_key は新行のみ立つ）
-        MembershipEntity rejoin = membershipRepository.save(MembershipEntity.builder()
-                .userId(3L).scopeType(ScopeType.TEAM).scopeId(102L)
-                .roleKind(RoleKind.MEMBER)
-                .joinedAt(LocalDateTime.now().plusSeconds(2))
-                .build());
-        em.flush();
+        // 再加入: joined_at を更に未来に。active_key は新行のみ立つ
+        jdbc.update(
+                "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at) " +
+                        "VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 2 SECOND))",
+                3L, "TEAM", 102L, "MEMBER");
 
-        List<MembershipEntity> history = membershipRepository
-                .findHistoryByUserAndScope(3L, ScopeType.TEAM, 102L);
-        assertThat(history).hasSize(2);
-        assertThat(rejoin.getId()).isNotEqualTo(first.getId());
+        Integer total = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM memberships WHERE user_id = ? AND scope_id = ?",
+                Integer.class, 3L, 102L);
+        assertThat(total).isEqualTo(2);
+
+        Integer active = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM memberships WHERE user_id = ? AND scope_id = ? AND left_at IS NULL",
+                Integer.class, 3L, 102L);
+        assertThat(active).isEqualTo(1);
     }
 
     @Test
-    @Transactional
     @DisplayName("chk_memberships_period: left_at < joined_at は CHECK で拒否")
     void periodInvertedRejected() {
-        MembershipEntity entity = MembershipEntity.builder()
-                .userId(4L).scopeType(ScopeType.TEAM).scopeId(103L)
-                .roleKind(RoleKind.MEMBER)
-                .joinedAt(LocalDateTime.now())
-                .build();
-        membershipRepository.save(entity);
-        em.flush();
+        jdbc.update(
+                "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at) VALUES (?, ?, ?, ?, NOW())",
+                4L, "TEAM", 103L, "MEMBER");
 
-        entity.setLeftAt(LocalDateTime.now().minusYears(1));
-        entity.setLeaveReason(LeaveReason.OTHER);
-
-        assertThatThrownBy(() -> {
-            membershipRepository.save(entity);
-            em.flush();
-        }).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbc.update(
+                "UPDATE memberships SET left_at = DATE_SUB(NOW(), INTERVAL 1 YEAR), leave_reason = 'OTHER' " +
+                        "WHERE user_id = ? AND scope_id = ?",
+                4L, 103L))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
-    @Transactional
     @DisplayName("chk_memberships_left_reason: left_at と leave_reason の片方だけは拒否")
     void leftReasonInconsistencyRejected() {
-        MembershipEntity entity = MembershipEntity.builder()
-                .userId(5L).scopeType(ScopeType.TEAM).scopeId(104L)
-                .roleKind(RoleKind.MEMBER).build();
-        membershipRepository.save(entity);
-        em.flush();
+        jdbc.update(
+                "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at) VALUES (?, ?, ?, ?, NOW())",
+                5L, "TEAM", 104L, "MEMBER");
 
-        entity.setLeftAt(LocalDateTime.now().plusSeconds(1));
-        // leave_reason をセットしない → CHECK で拒否
-
-        assertThatThrownBy(() -> {
-            membershipRepository.save(entity);
-            em.flush();
-        }).isInstanceOf(DataIntegrityViolationException.class);
+        // left_at だけセットして leave_reason は NULL のまま → CHECK で拒否
+        assertThatThrownBy(() -> jdbc.update(
+                "UPDATE memberships SET left_at = DATE_ADD(NOW(), INTERVAL 1 SECOND) " +
+                        "WHERE user_id = ? AND scope_id = ?",
+                5L, 104L))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
-    @Transactional
     @DisplayName("positions: uq_positions_scope_name が同 scope での重複を拒否")
     void positionScopeNameUnique() {
-        positionRepository.save(PositionEntity.builder()
-                .scopeType(ScopeType.TEAM).scopeId(105L)
-                .name("TREASURER").displayName("会計係").build());
-        em.flush();
+        jdbc.update(
+                "INSERT INTO positions (scope_type, scope_id, name, display_name) VALUES (?, ?, ?, ?)",
+                "TEAM", 105L, "TREASURER", "会計係");
 
-        assertThatThrownBy(() -> {
-            positionRepository.save(PositionEntity.builder()
-                    .scopeType(ScopeType.TEAM).scopeId(105L)
-                    .name("TREASURER").displayName("会計係2").build());
-            em.flush();
-        }).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO positions (scope_type, scope_id, name, display_name) VALUES (?, ?, ?, ?)",
+                "TEAM", 105L, "TREASURER", "会計係2"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("chk_memberships_gdpr_masked: gdpr_masked_at NOT NULL のとき user_id IS NULL でなければ拒否")
+    void gdprMaskedRequiresNullUserId() {
+        jdbc.update(
+                "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at) VALUES (?, ?, ?, ?, NOW())",
+                6L, "TEAM", 106L, "MEMBER");
+
+        // user_id を残したまま gdpr_masked_at をセット → CHECK で拒否
+        assertThatThrownBy(() -> jdbc.update(
+                "UPDATE memberships SET gdpr_masked_at = NOW() WHERE user_id = ? AND scope_id = ?",
+                6L, 106L))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 }
