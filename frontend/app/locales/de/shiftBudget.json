@@ -1,19 +1,69 @@
 {
   "shiftBudget": {
     "title": "Schichtbudgetverwaltung",
+    "nav": {
+      "menuLabel": "Schichtbudget",
+      "allocations": "Budgetzuweisungen",
+      "dashboard": "Budget-Dashboard",
+      "alerts": "Warnungsverlauf",
+      "failedEvents": "Fehlgeschlagene Ereignisse"
+    },
+    "scope": {
+      "selectOrganization": "Die Schichtbudgetverwaltung ist nur im Organisationsbereich verfügbar. Bitte wählen Sie eine Organisation im Bereichsauswahl."
+    },
     "allocation": {
       "list": "Budgetzuweisungen",
       "create": "Neue Zuweisung",
+      "edit": "Zuweisung bearbeiten",
+      "delete": "Zuweisung löschen",
+      "deleteConfirm": "Diese Zuweisung (ID: {id}) wird logisch gelöscht. Fortfahren?",
       "amount": "Zugewiesener Betrag",
       "period": "Zeitraum",
-      "category": "Kategorie"
+      "category": "Kategorie",
+      "team": "Team",
+      "project": "Projekt",
+      "fiscalYear": "Geschäftsjahr",
+      "currency": "Währung",
+      "note": "Notiz",
+      "consumed": "Verbraucht",
+      "rate": "Verbrauchsrate",
+      "status": "Status",
+      "actions": "Aktionen",
+      "version": "Version",
+      "id": "ID",
+      "form": {
+        "teamIdHint": "Leer lassen für organisationsweiten Bereich",
+        "projectIdHint": "Nur für projektspezifische Zuweisungen angeben",
+        "amountHint": "Wert von 0 oder mehr eingeben",
+        "periodStart": "Startdatum",
+        "periodEnd": "Enddatum",
+        "save": "Speichern",
+        "cancel": "Abbrechen"
+      },
+      "empty": "Keine Zuweisungen registriert",
+      "loadError": "Fehler beim Laden der Zuweisungen",
+      "createSuccess": "Zuweisung erstellt",
+      "createError": "Fehler beim Erstellen der Zuweisung",
+      "updateSuccess": "Zuweisung aktualisiert",
+      "updateError": "Fehler beim Aktualisieren (möglicher Konflikt bei optimistischer Sperre)",
+      "deleteSuccess": "Zuweisung gelöscht",
+      "deleteError": "Fehler beim Löschen der Zuweisung"
     },
     "consumption": {
       "summary": "Verbrauchsübersicht",
       "consumed": "Verbraucht",
       "remaining": "Verbleibend",
       "rate": "Verbrauchsrate",
+      "planned": "Geplant",
+      "confirmed": "Bestätigt",
+      "byUser": "Aufschlüsselung pro Benutzer",
       "byUserHidden": "Aufschlüsselung nach Benutzer ist aufgrund fehlender Berechtigungen nicht verfügbar"
+    },
+    "status": {
+      "OK": "OK",
+      "WARN": "Warnung",
+      "EXCEEDED": "Überschritten",
+      "SEVERE_EXCEEDED": "Stark Überschritten"
     },
     "threshold": {
       "warn80": "Budget hat 80% erreicht",
@@ -21,8 +71,22 @@
       "severeExceeded120": "Budget überschritten um 120% (kritisch)"
     },
     "alert": {
+      "title": "Budget-Warnungsverlauf",
+      "thresholdPercent": "Schwellenwert (%)",
+      "triggeredAt": "Ausgelöst am",
+      "consumedAtTrigger": "Verbraucht beim Auslösen",
+      "acknowledgedAt": "Bestätigt am",
+      "acknowledgedBy": "Bestätigt von",
+      "unacknowledged": "Unbestätigt",
+      "acknowledged": "Bestätigt",
       "acknowledge": "Bestätigen",
-      "unacknowledged": "Unbestätigte Warnungen"
+      "comment": "Kommentar",
+      "commentPlaceholder": "Optional (max. 500 Zeichen)",
+      "acknowledgeConfirm": "Diese Warnung (ID: {id}) wird bestätigt. Fortfahren?",
+      "acknowledgeSuccess": "Warnung bestätigt",
+      "acknowledgeError": "Fehler beim Bestätigen der Warnung",
+      "loadError": "Fehler beim Laden der Warnungen",
+      "empty": "Keine Warnungen"
     },
     "link": {
       "project": "Mit Projekt verknüpfen",
@@ -41,16 +105,64 @@
       }
     },
     "dashboard": {
-      "title": "Dashboard zur Budgetnutzung"
+      "title": "Dashboard zur Budgetnutzung",
+      "subtitle": "Übersicht über den Verbrauch aller Zuweisungen",
+      "kpi": {
+        "ok": "OK",
+        "warn": "Warnung (80%+)",
+        "exceeded": "Überschritten (100%+)",
+        "severeExceeded": "Stark Überschritten (120%+)"
+      },
+      "viewAlerts": "Warnungsverlauf anzeigen",
+      "viewFailedEvents": "Fehlgeschlagene Ereignisse anzeigen",
+      "viewAllocations": "Zuweisungen anzeigen",
+      "loadError": "Fehler beim Laden des Dashboards",
+      "summaryError": "Fehler beim Laden der Verbrauchsübersicht"
     },
     "feature": {
       "disabled": "Diese Funktion wurde vom Organisationsadministrator deaktiviert"
     },
     "monthlyClose": {
+      "title": "Monatsabschluss",
       "button": "Monatsabschluss ausführen",
+      "yearMonth": "Zielmonat",
+      "yearMonthHint": "YYYY-MM Format (z.B. 2026-04)",
       "confirm": "Schichtbudget für {month} wird bestätigt. Möchten Sie fortfahren?",
+      "execute": "Ausführen",
       "success": "Monatsabschluss abgeschlossen: {month} ({count} Verbrauchseinträge bestätigt)",
-      "alreadyClosed": "Dieser Monat wurde bereits abgeschlossen"
+      "alreadyClosed": "Dieser Monat wurde bereits abgeschlossen",
+      "error": "Monatsabschluss fehlgeschlagen"
+    },
+    "failedEvent": {
+      "title": "Verwaltung fehlgeschlagener Ereignisse",
+      "subtitle": "Benachrichtigungs-/Hook-Fehler prüfen + manueller Wiederholungsversuch + manuelle Auflösung",
+      "id": "ID",
+      "eventType": "Typ",
+      "sourceId": "Quell-ID",
+      "errorMessage": "Fehler",
+      "retryCount": "Wiederholungen",
+      "lastRetriedAt": "Letzter Wiederholungsversuch",
+      "status": "Status",
+      "createdAt": "Erstellt am",
+      "actions": "Aktionen",
+      "filterStatus": "Nach Status filtern",
+      "filterAll": "Alle",
+      "retry": "Wiederholen",
+      "resolve": "Als gelöst markieren",
+      "retryConfirm": "Dieses fehlgeschlagene Ereignis (ID: {id}) wird wiederholt. Fortfahren?",
+      "resolveConfirm": "Dieses fehlgeschlagene Ereignis (ID: {id}) wird als manuell gelöst markiert. Diese Aktion kann nicht rückgängig gemacht werden.",
+      "retrySuccess": "Fehlgeschlagenes Ereignis wiederholt",
+      "retryError": "Fehler beim Wiederholen des Ereignisses",
+      "resolveSuccess": "Ereignis als gelöst markiert",
+      "resolveError": "Fehler beim Markieren des Ereignisses als gelöst",
+      "loadError": "Fehler beim Laden der fehlgeschlagenen Ereignisse",
+      "empty": "Keine fehlgeschlagenen Ereignisse",
+      "statusValue": {
+        "PENDING": "Ausstehend",
+        "RETRYING": "Wiederholend",
+        "EXHAUSTED": "Wiederholungen erschöpft",
+        "MANUAL_RESOLVED": "Manuell Gelöst"
+      }
     }
   }
 }

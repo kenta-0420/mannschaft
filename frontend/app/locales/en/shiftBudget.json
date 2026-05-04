@@ -1,19 +1,69 @@
 {
   "shiftBudget": {
     "title": "Shift Budget Management",
+    "nav": {
+      "menuLabel": "Shift Budget",
+      "allocations": "Budget Allocations",
+      "dashboard": "Budget Dashboard",
+      "alerts": "Alert History",
+      "failedEvents": "Failed Events"
+    },
+    "scope": {
+      "selectOrganization": "Shift budget management is only available within an organization scope. Please select an organization in the scope selector."
+    },
     "allocation": {
       "list": "Budget Allocations",
       "create": "New Allocation",
+      "edit": "Edit Allocation",
+      "delete": "Delete Allocation",
+      "deleteConfirm": "Soft-delete this allocation (ID: {id}). Are you sure?",
       "amount": "Allocated Amount",
       "period": "Period",
-      "category": "Category"
+      "category": "Category",
+      "team": "Team",
+      "project": "Project",
+      "fiscalYear": "Fiscal Year",
+      "currency": "Currency",
+      "note": "Note",
+      "consumed": "Consumed",
+      "rate": "Consumption Rate",
+      "status": "Status",
+      "actions": "Actions",
+      "version": "Version",
+      "id": "ID",
+      "form": {
+        "teamIdHint": "Leave blank for organization-wide scope",
+        "projectIdHint": "Specify only when allocating exclusively to a project",
+        "amountHint": "Enter a value of 0 or greater",
+        "periodStart": "Start Date",
+        "periodEnd": "End Date",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "empty": "No allocations registered",
+      "loadError": "Failed to load allocations",
+      "createSuccess": "Allocation created",
+      "createError": "Failed to create allocation",
+      "updateSuccess": "Allocation updated",
+      "updateError": "Failed to update allocation (optimistic lock conflict possible)",
+      "deleteSuccess": "Allocation deleted",
+      "deleteError": "Failed to delete allocation"
     },
     "consumption": {
       "summary": "Consumption Summary",
       "consumed": "Consumed",
       "remaining": "Remaining",
       "rate": "Consumption Rate",
+      "planned": "Planned",
+      "confirmed": "Confirmed",
+      "byUser": "Per-user Breakdown",
       "byUserHidden": "Per-user breakdown is unavailable due to insufficient permissions"
+    },
+    "status": {
+      "OK": "OK",
+      "WARN": "Warning",
+      "EXCEEDED": "Exceeded",
+      "SEVERE_EXCEEDED": "Severely Exceeded"
     },
     "threshold": {
       "warn80": "Budget has reached 80%",
@@ -21,8 +71,22 @@
       "severeExceeded120": "Budget exceeded 120% (critical)"
     },
     "alert": {
+      "title": "Budget Alert History",
+      "thresholdPercent": "Threshold (%)",
+      "triggeredAt": "Triggered At",
+      "consumedAtTrigger": "Consumed at Trigger",
+      "acknowledgedAt": "Acknowledged At",
+      "acknowledgedBy": "Acknowledged By",
+      "unacknowledged": "Unacknowledged",
+      "acknowledged": "Acknowledged",
       "acknowledge": "Acknowledge",
-      "unacknowledged": "Unacknowledged Alerts"
+      "comment": "Comment",
+      "commentPlaceholder": "Optional (max 500 chars)",
+      "acknowledgeConfirm": "Acknowledge this alert (ID: {id}). Are you sure?",
+      "acknowledgeSuccess": "Alert acknowledged",
+      "acknowledgeError": "Failed to acknowledge alert",
+      "loadError": "Failed to load alerts",
+      "empty": "No alerts"
     },
     "link": {
       "project": "Link to Project",
@@ -41,16 +105,64 @@
       }
     },
     "dashboard": {
-      "title": "Budget Consumption Dashboard"
+      "title": "Budget Consumption Dashboard",
+      "subtitle": "Overview of consumption status across all allocations",
+      "kpi": {
+        "ok": "OK",
+        "warn": "Warning (80%+)",
+        "exceeded": "Exceeded (100%+)",
+        "severeExceeded": "Severely Exceeded (120%+)"
+      },
+      "viewAlerts": "View Alert History",
+      "viewFailedEvents": "View Failed Events",
+      "viewAllocations": "View Allocations",
+      "loadError": "Failed to load dashboard",
+      "summaryError": "Failed to load consumption summary"
     },
     "feature": {
       "disabled": "This feature has been disabled by the organization administrator"
     },
     "monthlyClose": {
+      "title": "Monthly Close",
       "button": "Run Monthly Close",
+      "yearMonth": "Target Month",
+      "yearMonthHint": "YYYY-MM format (e.g. 2026-04)",
       "confirm": "Confirm shift budget for {month}. Are you sure?",
+      "execute": "Execute",
       "success": "Monthly close complete: {month} ({count} consumption records confirmed)",
-      "alreadyClosed": "This month has already been closed"
+      "alreadyClosed": "This month has already been closed",
+      "error": "Monthly close failed"
+    },
+    "failedEvent": {
+      "title": "Failed Events Management",
+      "subtitle": "Inspect notification/hook failures + manual retry + manual resolve",
+      "id": "ID",
+      "eventType": "Type",
+      "sourceId": "Source ID",
+      "errorMessage": "Error",
+      "retryCount": "Retries",
+      "lastRetriedAt": "Last Retry",
+      "status": "Status",
+      "createdAt": "Created At",
+      "actions": "Actions",
+      "filterStatus": "Filter by status",
+      "filterAll": "All",
+      "retry": "Retry",
+      "resolve": "Mark Resolved",
+      "retryConfirm": "Retry this failed event (ID: {id}). Are you sure?",
+      "resolveConfirm": "Mark this failed event (ID: {id}) as manually resolved. This cannot be undone.",
+      "retrySuccess": "Failed event retried",
+      "retryError": "Failed to retry event",
+      "resolveSuccess": "Failed event marked as resolved",
+      "resolveError": "Failed to mark event as resolved",
+      "loadError": "Failed to load failed events",
+      "empty": "No failed events",
+      "statusValue": {
+        "PENDING": "Pending",
+        "RETRYING": "Retrying",
+        "EXHAUSTED": "Retries Exhausted",
+        "MANUAL_RESOLVED": "Manually Resolved"
+      }
     }
   }
 }
