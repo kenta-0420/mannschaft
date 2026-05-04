@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.notes;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -46,6 +47,7 @@ class TimetableSlotUserNoteAttachmentServiceTest {
     @Mock private TimetableSlotUserNoteAttachmentRepository attachmentRepository;
     @Mock private TimetableSlotUserNoteService noteService;
     @Mock private R2StorageService r2StorageService;
+    @Mock private AuditLogService auditLogService;
 
     @InjectMocks private TimetableSlotUserNoteAttachmentService service;
 
