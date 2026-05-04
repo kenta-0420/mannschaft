@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.notes.service;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.notes.dto.CreateTimetableSlotUserNoteFieldRequest;
 import com.mannschaft.app.timetable.notes.dto.UpdateTimetableSlotUserNoteFieldRequest;
@@ -32,6 +33,8 @@ public class TimetableSlotUserNoteFieldService {
     public static final Set<Integer> ALLOWED_MAX_LENGTHS = Set.of(500, 2_000, 5_000);
 
     private final TimetableSlotUserNoteFieldRepository repository;
+    /** F03.15 Phase 5: 削除時の F11 監査ログ発火に使用。 */
+    private final AuditLogService auditLogService;
 
     /** 自分のカスタム項目一覧。 */
     public List<TimetableSlotUserNoteFieldEntity> listMine(Long userId) {
@@ -94,7 +97,17 @@ public class TimetableSlotUserNoteFieldService {
     @Transactional
     public void delete(Long id, Long userId) {
         TimetableSlotUserNoteFieldEntity entity = getMine(id, userId);
+        String label = entity.getLabel();
         repository.delete(entity);
+
+        // F03.15 Phase 5: 監査ログ発火
+        auditLogService.record(
+                "personal_timetable.custom_field_deleted",
+                userId, null, null, null, null, null, null,
+                String.format(
+                        "{\"source\":\"PERSONAL_TIMETABLE\",\"source_id\":%d,\"label\":\"%s\"}",
+                        id, label.replace("\"", "\\\"")));
+
         log.info("カスタム項目を削除しました（既存メモの値はサーバ側残置）: id={}, userId={}",
                 id, userId);
     }

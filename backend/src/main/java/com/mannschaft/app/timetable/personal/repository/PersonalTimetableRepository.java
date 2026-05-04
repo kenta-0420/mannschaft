@@ -59,4 +59,27 @@ public interface PersonalTimetableRepository extends JpaRepository<PersonalTimet
             @Param("excludeId") Long excludeId,
             @Param("from") LocalDate from,
             @Param("until") LocalDate until);
+
+    /**
+     * 家族閲覧 API 用：指定ユーザーの ACTIVE な個人時間割を取得する。
+     *
+     * <p>visibility や share_targets の検証は呼び出し側 Service 層で別途実施する。</p>
+     */
+    @Query("SELECT pt FROM PersonalTimetableEntity pt"
+            + " WHERE pt.userId = :userId"
+            + "   AND pt.status = com.mannschaft.app.timetable.personal.PersonalTimetableStatus.ACTIVE"
+            + "   AND pt.deletedAt IS NULL"
+            + " ORDER BY pt.effectiveFrom DESC, pt.id DESC")
+    List<PersonalTimetableEntity> findActiveByUserId(@Param("userId") Long userId);
+
+    /**
+     * 家族閲覧 API 用：ID 指定でユーザー所有の ACTIVE 個人時間割を取得する。
+     */
+    @Query("SELECT pt FROM PersonalTimetableEntity pt"
+            + " WHERE pt.id = :id"
+            + "   AND pt.userId = :userId"
+            + "   AND pt.status = com.mannschaft.app.timetable.personal.PersonalTimetableStatus.ACTIVE"
+            + "   AND pt.deletedAt IS NULL")
+    Optional<PersonalTimetableEntity> findActiveByIdAndUserId(
+            @Param("id") Long id, @Param("userId") Long userId);
 }

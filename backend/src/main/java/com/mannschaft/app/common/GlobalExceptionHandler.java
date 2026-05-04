@@ -210,6 +210,13 @@ public class GlobalExceptionHandler {
             Map.entry("PERSONAL_TIMETABLE_095", HttpStatus.CONFLICT),        // LINK_STATUS_INVALID
             Map.entry("PERSONAL_TIMETABLE_096", HttpStatus.CONFLICT),        // LINK_POSITION_MISMATCH
             Map.entry("PERSONAL_TIMETABLE_097", HttpStatus.BAD_REQUEST),     // LINK_TIMETABLE_REQUIRED
+            // F03.15 Phase 5 家族共有
+            Map.entry("PERSONAL_TIMETABLE_100", HttpStatus.CONFLICT),        // SHARE_TARGET_LIMIT_EXCEEDED
+            Map.entry("PERSONAL_TIMETABLE_101", HttpStatus.UNPROCESSABLE_ENTITY), // SHARE_TARGET_NOT_FAMILY_TEAM
+            Map.entry("PERSONAL_TIMETABLE_102", HttpStatus.FORBIDDEN),       // SHARE_TARGET_NOT_TEAM_MEMBER
+            Map.entry("PERSONAL_TIMETABLE_103", HttpStatus.NOT_FOUND),       // SHARE_TARGET_TEAM_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_104", HttpStatus.NOT_FOUND),       // SHARE_TARGET_NOT_FOUND
+            Map.entry("PERSONAL_TIMETABLE_105", HttpStatus.CONFLICT),        // SHARE_TARGET_DUPLICATED
             // F09.8.1 コルクボード ピン止め
             Map.entry("CORKBOARD_011", HttpStatus.FORBIDDEN),                // PIN_PERSONAL_ONLY
             Map.entry("CORKBOARD_012", HttpStatus.BAD_REQUEST),              // PIN_ARCHIVED_NOT_ALLOWED
