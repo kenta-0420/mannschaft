@@ -61,6 +61,7 @@ interface CalEvent {
   scopeType: string
   scopeId?: number
   scopeName?: string | null
+  scopeIconUrl?: string | null
   isPersonal: boolean
 }
 
@@ -93,6 +94,7 @@ const fetcher = async (from: string, to: string) => {
     scopeType: e.scopeType ?? '',
     scopeId: e.scopeId,
     scopeName: e.scopeName ?? null,
+    scopeIconUrl: e.scopeIconUrl ?? null,
   }))
   const merged = [...personalEvents, ...sharedEvents]
   extendedEvents.value = merged

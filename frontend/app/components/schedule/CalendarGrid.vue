@@ -225,11 +225,21 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
             <div
               v-for="event in week.singleByCol[di]?.slice(0, 3)"
               :key="event.id"
-              class="truncate rounded px-1 py-0.5 text-xs"
+              class="flex items-center rounded px-1 py-0.5 text-xs gap-0.5"
               :style="{ backgroundColor: (event.color ?? '#6366f1') + '20', color: event.color ?? '#6366f1' }"
               @click.stop="emit('eventClick', event.id, event.isPersonal)"
             >
-              <span v-if="!event.allDay" class="opacity-70 mr-0.5">{{ fmtTime(event.startAt) }}</span>{{ event.title }}
+              <!-- チーム・組織スコープのみアイコンを表示 -->
+              <span
+                v-if="event.scopeType && event.scopeType !== 'PERSONAL'"
+                class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full overflow-hidden bg-white/30 flex-shrink-0"
+              >
+                <img v-if="event.scopeIconUrl" :src="event.scopeIconUrl" class="w-full h-full object-cover" alt="" />
+                <span v-else class="text-[8px] font-bold leading-none">{{ event.scopeName?.charAt(0) }}</span>
+              </span>
+              <span class="truncate">
+                <span v-if="!event.allDay" class="opacity-70 mr-0.5">{{ fmtTime(event.startAt) }}</span>{{ event.title }}
+              </span>
             </div>
           </div>
         </div>
@@ -245,12 +255,20 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
           <div
             v-for="slot in week.slots.filter(s => s.lane < MAX_LANES)"
             :key="`${slot.event.id}-w${wi}`"
-            class="pointer-events-auto absolute flex cursor-pointer select-none items-center justify-center overflow-hidden text-xs font-medium"
+            class="pointer-events-auto absolute flex cursor-pointer select-none items-center overflow-hidden text-xs font-medium"
             :style="barStyle(slot)"
             @click.stop="emit('eventClick', slot.event.id, slot.event.isPersonal)"
           >
             <i v-if="slot.continuesBefore" class="pi pi-angle-left shrink-0 text-[9px]" />
-            <span class="flex-1 truncate px-1 text-center">{{ slot.event.title }}</span>
+            <!-- チーム・組織スコープのみアイコンを表示 -->
+            <span
+              v-if="slot.event.scopeType && slot.event.scopeType !== 'PERSONAL'"
+              class="inline-flex items-center justify-center w-4 h-4 rounded-full overflow-hidden bg-white/30 flex-shrink-0 mx-0.5"
+            >
+              <img v-if="slot.event.scopeIconUrl" :src="slot.event.scopeIconUrl" class="w-full h-full object-cover" alt="" />
+              <span v-else class="text-[9px] font-bold leading-none">{{ slot.event.scopeName?.charAt(0) }}</span>
+            </span>
+            <span class="flex-1 truncate px-0.5">{{ slot.event.title }}</span>
             <i v-if="slot.continuesAfter" class="pi pi-angle-right shrink-0 text-[9px]" />
           </div>
         </div>
