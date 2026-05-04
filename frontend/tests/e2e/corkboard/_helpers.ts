@@ -83,14 +83,72 @@ export async function mockCatchAllApis(page: Page): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
+ * カード DTO 型（{@code CorkboardCardResponse} 準拠）。
+ *
+ * <p>nullable フィールドは {@code string | null} / {@code number | null} で明示し、
+ * spec 側で {@code { ...existing, title: '更新後' }} のように上書きしても
+ * リテラル {@code null} に推論されないようにする。</p>
+ */
+export interface E2eCard {
+  id: number
+  corkboardId: number
+  cardType: 'MEMO' | 'URL' | 'REFERENCE' | 'SECTION_HEADER'
+  referenceType: string | null
+  referenceId: number | null
+  contentSnapshot: string | null
+  title: string | null
+  body: string | null
+  url: string | null
+  ogTitle: string | null
+  ogImageUrl: string | null
+  ogDescription: string | null
+  colorLabel: string
+  cardSize: string
+  positionX: number
+  positionY: number
+  zIndex: number
+  userNote: string | null
+  autoArchiveAt: string | null
+  isArchived: boolean
+  isPinned: boolean
+  pinnedAt: string | null
+  isRefDeleted: boolean
+  createdBy: number
+  createdAt: string
+  updatedAt: string
+  /** 将来的なフィールド追加に備えて拡張可能としておく。 */
+  [key: string]: unknown
+}
+
+/**
+ * 個人ボード詳細 DTO 型（{@code CorkboardDetailResponse} 準拠）。
+ */
+export interface E2eBoardDetail {
+  id: number
+  scopeType: 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
+  scopeId: number | null
+  ownerId: number | null
+  name: string
+  backgroundStyle: string
+  editPolicy: string
+  isDefault: boolean
+  version: number
+  cards: E2eCard[]
+  groups: unknown[]
+  createdAt: string
+  updatedAt: string
+  [key: string]: unknown
+}
+
+/**
  * カード DTO の雛形（{@code CorkboardCardResponse} 準拠）。
  *
  * 必要なフィールドのみ overrides で上書きする。
  */
 export function buildCard(
   id: number,
-  overrides: Record<string, unknown> = {},
-) {
+  overrides: Partial<E2eCard> = {},
+): E2eCard {
   return {
     id,
     corkboardId: PERSONAL_BOARD_ID,
@@ -126,12 +184,12 @@ export function buildCard(
  * 個人ボード詳細 DTO の雛形（{@code CorkboardDetailResponse} 準拠）。
  */
 export function buildBoardDetail(
-  cards: ReturnType<typeof buildCard>[] = [],
-  overrides: Record<string, unknown> = {},
-) {
+  cards: E2eCard[] = [],
+  overrides: Partial<E2eBoardDetail> = {},
+): E2eBoardDetail {
   return {
     id: PERSONAL_BOARD_ID,
-    scopeType: 'PERSONAL' as const,
+    scopeType: 'PERSONAL',
     scopeId: null,
     ownerId: OWNER_USER_ID,
     name: 'E2Eテスト用個人ボード',
@@ -159,7 +217,7 @@ export function buildBoardDetail(
  */
 export async function mockBoardDetail(
   page: Page,
-  board: ReturnType<typeof buildBoardDetail>,
+  board: E2eBoardDetail,
 ): Promise<void> {
   await page.route(
     `**/api/v1/corkboards/${board.id}`,
@@ -196,9 +254,9 @@ export async function mockCardCrudApis(
   page: Page,
   boardId: number,
   options: {
-    onCreatedCard?: ReturnType<typeof buildCard>
-    onUpdatedCard?: ReturnType<typeof buildCard>
-    onArchivedCard?: ReturnType<typeof buildCard>
+    onCreatedCard?: E2eCard
+    onUpdatedCard?: E2eCard
+    onArchivedCard?: E2eCard
     onPinnedCard?: { id: number; isPinned: boolean; pinnedAt: string | null }
     /** 409 + CORKBOARD_013 を返したい場合 true */
     pinShouldFailLimit?: boolean
