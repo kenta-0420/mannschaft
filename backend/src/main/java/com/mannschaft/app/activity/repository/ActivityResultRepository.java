@@ -61,12 +61,21 @@ public interface ActivityResultRepository extends JpaRepository<ActivityResultEn
      * @param ids 取得対象 activity_result の ID 集合
      * @return 実存する {@link ActivityResultVisibilityProjection} のリスト（論理削除分を除外）
      */
-    @Query("SELECT ar.id AS id, "
-            + "CAST(ar.scopeType AS string) AS scopeType, "
-            + "ar.scopeId AS scopeId, "
-            + "ar.createdBy AS authorUserId, "
-            + "ar.visibility AS visibility "
-            + "FROM ActivityResultEntity ar WHERE ar.id IN :ids")
+    @Query("""
+            SELECT new com.mannschaft.app.activity.visibility.ActivityResultVisibilityProjection(
+                ar.id,
+                CASE
+                    WHEN ar.scopeType = com.mannschaft.app.activity.ActivityScopeType.TEAM THEN 'TEAM'
+                    WHEN ar.scopeType = com.mannschaft.app.activity.ActivityScopeType.ORGANIZATION THEN 'ORGANIZATION'
+                    WHEN ar.scopeType = com.mannschaft.app.activity.ActivityScopeType.COMMITTEE THEN 'COMMITTEE'
+                    ELSE NULL
+                END,
+                ar.scopeId,
+                ar.createdBy,
+                ar.visibility)
+            FROM ActivityResultEntity ar
+            WHERE ar.id IN :ids AND ar.deletedAt IS NULL
+            """)
     List<ActivityResultVisibilityProjection> findVisibilityProjectionsByIdIn(
             @Param("ids") Collection<Long> ids);
 }

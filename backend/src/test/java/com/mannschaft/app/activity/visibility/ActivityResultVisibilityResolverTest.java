@@ -127,7 +127,7 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("PUBLIC は未認証ユーザー (userId=null) でも閲覧可（§17.Q1）")
     void publicVisibility_anonymousAllowed() {
-        FakeProjection p = pub(1L, "TEAM", 100L, 999L);
+        ActivityResultVisibilityProjection p = pub(1L, "TEAM", 100L, 999L);
         when(repository.findVisibilityProjectionsByIdIn(List.of(1L))).thenReturn(List.of(p));
         when(membershipBatchQueryService.snapshotForUser(eq(null), any(), any()))
                 .thenReturn(UserScopeRoleSnapshot.empty());
@@ -138,7 +138,7 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("PUBLIC は認証ユーザー（非メンバー）も閲覧可")
     void publicVisibility_nonMemberAllowed() {
-        FakeProjection p = pub(1L, "TEAM", 100L, 999L);
+        ActivityResultVisibilityProjection p = pub(1L, "TEAM", 100L, 999L);
         when(repository.findVisibilityProjectionsByIdIn(List.of(1L))).thenReturn(List.of(p));
         when(membershipBatchQueryService.snapshotForUser(eq(42L), any(), any()))
                 .thenReturn(UserScopeRoleSnapshot.empty());
@@ -153,7 +153,7 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("MEMBERS_ONLY は未認証ユーザーには不可視")
     void membersOnly_anonymousDenied() {
-        FakeProjection p = members(1L, "TEAM", 100L, 999L);
+        ActivityResultVisibilityProjection p = members(1L, "TEAM", 100L, 999L);
         when(repository.findVisibilityProjectionsByIdIn(List.of(1L))).thenReturn(List.of(p));
         when(membershipBatchQueryService.snapshotForUser(eq(null), any(), any()))
                 .thenReturn(UserScopeRoleSnapshot.empty());
@@ -164,7 +164,7 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("MEMBERS_ONLY はチームメンバーには可視")
     void membersOnly_memberAllowed() {
-        FakeProjection p = members(1L, "TEAM", 100L, 999L);
+        ActivityResultVisibilityProjection p = members(1L, "TEAM", 100L, 999L);
         ScopeKey teamScope = new ScopeKey("TEAM", 100L);
         UserScopeRoleSnapshot snapshot = new UserScopeRoleSnapshot(
                 false,
@@ -183,7 +183,7 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("MEMBERS_ONLY は別チームのメンバーには不可視 / DenyReason=NOT_A_MEMBER")
     void membersOnly_otherTeamDenied() {
-        FakeProjection p = members(1L, "TEAM", 100L, 999L);
+        ActivityResultVisibilityProjection p = members(1L, "TEAM", 100L, 999L);
         ScopeKey otherTeam = new ScopeKey("TEAM", 200L);
         UserScopeRoleSnapshot snapshot = new UserScopeRoleSnapshot(
                 false,
@@ -210,7 +210,7 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("SystemAdmin は MEMBERS_ONLY コンテンツを実存確認後に可視")
     void systemAdmin_canViewMembersOnly() {
-        FakeProjection p = members(1L, "TEAM", 100L, 999L);
+        ActivityResultVisibilityProjection p = members(1L, "TEAM", 100L, 999L);
         when(repository.findVisibilityProjectionsByIdIn(List.of(1L))).thenReturn(List.of(p));
         when(membershipBatchQueryService.snapshotForUser(eq(1L), any(), any()))
                 .thenReturn(UserScopeRoleSnapshot.forSystemAdmin());
@@ -235,7 +235,7 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("親 ORG が SUSPENDED なら TEAM コンテンツは MEMBER でも不可視")
     void parentOrgSuspended_teamContentInvisible() {
-        FakeProjection p = members(1L, "TEAM", 100L, 999L);
+        ActivityResultVisibilityProjection p = members(1L, "TEAM", 100L, 999L);
         ScopeKey teamScope = new ScopeKey("TEAM", 100L);
         UserScopeRoleSnapshot snapshot = new UserScopeRoleSnapshot(
                 false,
@@ -254,7 +254,7 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("親 ORG が SUSPENDED でも SystemAdmin は閲覧可")
     void parentOrgSuspended_systemAdminCanView() {
-        FakeProjection p = members(1L, "TEAM", 100L, 999L);
+        ActivityResultVisibilityProjection p = members(1L, "TEAM", 100L, 999L);
         when(repository.findVisibilityProjectionsByIdIn(List.of(1L))).thenReturn(List.of(p));
         when(membershipBatchQueryService.snapshotForUser(eq(1L), any(), any()))
                 .thenReturn(UserScopeRoleSnapshot.forSystemAdmin());
@@ -269,7 +269,7 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("ORGANIZATION スコープの MEMBERS_ONLY は組織メンバーに可視")
     void organizationScope_memberAllowed() {
-        FakeProjection p = members(1L, "ORGANIZATION", 500L, 999L);
+        ActivityResultVisibilityProjection p = members(1L, "ORGANIZATION", 500L, 999L);
         ScopeKey orgScope = new ScopeKey("ORGANIZATION", 500L);
         UserScopeRoleSnapshot snapshot = new UserScopeRoleSnapshot(
                 false,
@@ -292,7 +292,7 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("COMMITTEE スコープ MEMBERS_ONLY は Phase B 範囲では fail-closed（解決対象外）")
     void committeeScope_failClosed() {
-        FakeProjection p = members(1L, "COMMITTEE", 700L, 999L);
+        ActivityResultVisibilityProjection p = members(1L, "COMMITTEE", 700L, 999L);
         // COMMITTEE は MembershipBatchQueryService で解決対象外なので空 snapshot
         when(repository.findVisibilityProjectionsByIdIn(List.of(1L))).thenReturn(List.of(p));
         when(membershipBatchQueryService.snapshotForUser(eq(42L), any(), any()))
@@ -304,7 +304,7 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("COMMITTEE スコープでも PUBLIC は誰でも可視")
     void committeeScope_publicVisible() {
-        FakeProjection p = pub(1L, "COMMITTEE", 700L, 999L);
+        ActivityResultVisibilityProjection p = pub(1L, "COMMITTEE", 700L, 999L);
         when(repository.findVisibilityProjectionsByIdIn(List.of(1L))).thenReturn(List.of(p));
         when(membershipBatchQueryService.snapshotForUser(eq(42L), any(), any()))
                 .thenReturn(UserScopeRoleSnapshot.empty());
@@ -319,8 +319,8 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("filterAccessible は実存 ID のみ返す（存在しない ID は除外）")
     void filterAccessible_filtersUnknownIds() {
-        FakeProjection p1 = pub(1L, "TEAM", 100L, 999L);
-        FakeProjection p2 = members(2L, "TEAM", 100L, 999L);
+        ActivityResultVisibilityProjection p1 = pub(1L, "TEAM", 100L, 999L);
+        ActivityResultVisibilityProjection p2 = members(2L, "TEAM", 100L, 999L);
         // 3L は loadProjections の戻りに含まれない（未存在）
 
         when(repository.findVisibilityProjectionsByIdIn(List.of(1L, 2L, 3L)))
@@ -343,8 +343,8 @@ class ActivityResultVisibilityResolverTest {
     @Test
     @DisplayName("filterAccessible は非メンバーには PUBLIC のみ返す")
     void filterAccessible_nonMemberSeesPublicOnly() {
-        FakeProjection p1 = pub(1L, "TEAM", 100L, 999L);
-        FakeProjection p2 = members(2L, "TEAM", 100L, 999L);
+        ActivityResultVisibilityProjection p1 = pub(1L, "TEAM", 100L, 999L);
+        ActivityResultVisibilityProjection p2 = members(2L, "TEAM", 100L, 999L);
 
         when(repository.findVisibilityProjectionsByIdIn(List.of(1L, 2L)))
                 .thenReturn(List.of(p1, p2));
@@ -387,40 +387,15 @@ class ActivityResultVisibilityResolverTest {
     // ヘルパ — Projection 生成
     // ========================================================================
 
-    /** PUBLIC な FakeProjection を生成。 */
-    private static FakeProjection pub(Long id, String scopeType, Long scopeId, Long authorUserId) {
-        FakeProjection p = new FakeProjection();
-        p.id = id;
-        p.scopeType = scopeType;
-        p.scopeId = scopeId;
-        p.authorUserId = authorUserId;
-        p.visibility = ActivityVisibility.PUBLIC;
-        return p;
+    /** PUBLIC な Projection を生成。 */
+    private static ActivityResultVisibilityProjection pub(Long id, String scopeType, Long scopeId, Long authorUserId) {
+        return new ActivityResultVisibilityProjection(
+                id, scopeType, scopeId, authorUserId, ActivityVisibility.PUBLIC);
     }
 
-    /** MEMBERS_ONLY な FakeProjection を生成。 */
-    private static FakeProjection members(Long id, String scopeType, Long scopeId, Long authorUserId) {
-        FakeProjection p = new FakeProjection();
-        p.id = id;
-        p.scopeType = scopeType;
-        p.scopeId = scopeId;
-        p.authorUserId = authorUserId;
-        p.visibility = ActivityVisibility.MEMBERS_ONLY;
-        return p;
-    }
-
-    /** Spring Data Projection の手動実装。 */
-    static class FakeProjection implements ActivityResultVisibilityProjection {
-        Long id;
-        String scopeType;
-        Long scopeId;
-        Long authorUserId;
-        ActivityVisibility visibility;
-
-        @Override public Long id() { return id; }
-        @Override public String scopeType() { return scopeType; }
-        @Override public Long scopeId() { return scopeId; }
-        @Override public Long authorUserId() { return authorUserId; }
-        @Override public ActivityVisibility visibility() { return visibility; }
+    /** MEMBERS_ONLY な Projection を生成。 */
+    private static ActivityResultVisibilityProjection members(Long id, String scopeType, Long scopeId, Long authorUserId) {
+        return new ActivityResultVisibilityProjection(
+                id, scopeType, scopeId, authorUserId, ActivityVisibility.MEMBERS_ONLY);
     }
 }

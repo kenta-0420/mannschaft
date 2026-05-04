@@ -10,13 +10,20 @@ import com.mannschaft.app.common.visibility.VisibilityProjection;
  * <p>設計書 {@code docs/features/F00_content_visibility_resolver.md} §4.6 の
  * {@code VisibilityProjection} 契約に準拠する。</p>
  *
+ * <p><strong>実装方針</strong>: BlogPost と同様に record + JPQL constructor
+ * expression で構築する。Spring Data JPA のインターフェース Projection は
+ * record 風メソッド名 ({@code id()} 等) と相性が悪く（JavaBeans 規則
+ * {@code getId()} を期待）、メソッド呼び出し時に
+ * {@link IllegalArgumentException} を投げるため、record 形式に統一する。</p>
+ *
  * <p><strong>Activity 固有の事情</strong>:</p>
  * <ul>
  *   <li>Activity は status 軸を持たないため、{@link com.mannschaft.app.common.visibility.ContentStatus}
  *       は常に {@code PUBLISHED}（Resolver 既定実装に委ねる）。</li>
  *   <li>{@link com.mannschaft.app.activity.entity.ActivityResultEntity} は
- *       {@code @SQLRestriction("deleted_at IS NULL")} で論理削除済を自動除外するため、
- *       本 Projection には DELETED 行は届かない。</li>
+ *       {@code @SQLRestriction("deleted_at IS NULL")} で論理削除済を自動除外するが、
+ *       本 Projection の JPQL でも明示的に {@code deletedAt IS NULL} を付ける
+ *       （constructor expression 経由のため SQLRestriction が効かない可能性に備える）。</li>
  *   <li>{@link com.mannschaft.app.activity.ActivityScopeType} には
  *       {@code TEAM / ORGANIZATION / COMMITTEE} の 3 値があるが、F00 Phase B 時点では
  *       {@code TEAM / ORGANIZATION} のみ {@link com.mannschaft.app.common.visibility.MembershipBatchQueryService}
@@ -25,50 +32,24 @@ import com.mannschaft.app.common.visibility.VisibilityProjection;
  *   <li>visibility_template_id は Activity に存在しないため常に {@code null}。</li>
  * </ul>
  *
- * <p>本 Projection は Spring Data JPA のインターフェース Projection で
- * {@link com.mannschaft.app.activity.repository.ActivityResultRepository#findVisibilityProjectionsByIdIn(java.util.Collection)}
- * から JPQL 経由で生成される。</p>
+ * @param id              activity_result_id
+ * @param scopeType       "TEAM" / "ORGANIZATION" / "COMMITTEE"
+ * @param scopeId         scope_id
+ * @param authorUserId    created_by（作成者 user_id）
+ * @param visibility      {@link ActivityVisibility} 値
  */
-public interface ActivityResultVisibilityProjection extends VisibilityProjection {
-
-    /** {@inheritDoc} ActivityResultEntity の主キー。 */
-    @Override
-    Long id();
-
-    /**
-     * {@inheritDoc}
-     *
-     * <p>JPQL 側で {@code CAST(scopeType AS string)} を用いて enum 名を文字列として返す。
-     * 値は {@code "TEAM" / "ORGANIZATION" / "COMMITTEE"}。</p>
-     */
-    @Override
-    String scopeType();
-
-    /** {@inheritDoc} */
-    @Override
-    Long scopeId();
-
-    /** {@inheritDoc} {@code created_by} カラム。 */
-    @Override
-    Long authorUserId();
+public record ActivityResultVisibilityProjection(
+        Long id,
+        String scopeType,
+        Long scopeId,
+        Long authorUserId,
+        ActivityVisibility visibility) implements VisibilityProjection {
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>Activity は CUSTOM_TEMPLATE 概念を持たないため常に {@code null} を返す。</p>
+     * Activity は CUSTOM_TEMPLATE 概念を持たないため常に {@code null} を返す。
      */
     @Override
-    default Long visibilityTemplateId() {
+    public Long visibilityTemplateId() {
         return null;
     }
-
-    /**
-     * {@inheritDoc}
-     *
-     * <p>戻り値は {@link ActivityVisibility} のいずれか。Resolver 側で
-     * {@link com.mannschaft.app.common.visibility.mapping.ActivityVisibilityMapper}
-     * で正規化される。</p>
-     */
-    @Override
-    ActivityVisibility visibility();
 }
