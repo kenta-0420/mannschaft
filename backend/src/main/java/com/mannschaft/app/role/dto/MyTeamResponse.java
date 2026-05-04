@@ -23,4 +23,10 @@ public class MyTeamResponse {
     private final LocalDateTime joinedAt;
     @JsonProperty("isArchived")
     private final boolean isArchived;
+    /**
+     * チームテンプレートスラッグ（"family", "school", "university" 等）。
+     * F03.15 Phase 5b で家族チーム判定用に追加。
+     * テンプレート未設定（汎用チーム）の場合は null。
+     */
+    private final String template;
 }

@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.personal.service;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.personal.PersonalPeriodTemplate;
 import com.mannschaft.app.timetable.personal.PersonalTimetableErrorCode;
@@ -13,6 +14,7 @@ import com.mannschaft.app.timetable.personal.repository.PersonalTimetableReposit
 import com.mannschaft.app.timetable.personal.repository.PersonalTimetableSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,12 @@ public class PersonalTimetableService {
     private final PersonalTimetablePeriodRepository periodRepository;
     private final PersonalTimetableSlotRepository slotRepository;
     private final PersonalTimetablePeriodService periodService;
+    /**
+     * F11 監査ログサービス（Phase 5b 追加）。既存テストとの互換性のため optional 注入。
+     * テスト環境では null になり、その場合は監査ログ呼び出しをスキップする。
+     */
+    @Autowired(required = false)
+    private AuditLogService auditLogService;
 
     /**
      * 自分の個人時間割一覧を取得する。
@@ -136,7 +144,23 @@ public class PersonalTimetableService {
         if (data.visibility() != null) builder.visibility(data.visibility());
         if (data.notes() != null) builder.notes(data.notes());
 
-        return repository.save(builder.build());
+        PersonalTimetableEntity saved = repository.save(builder.build());
+
+        // F03.15 Phase 5b: visibility 直接変更時の監査ログ
+        // ShareTargetService 経由の自動切替とは別に、PATCH での直接変更も網羅する
+        if (data.visibility() != null && auditLogService != null
+                && entity.getVisibility() != data.visibility()) {
+            auditLogService.record(
+                    "personal_timetable.visibility_changed",
+                    userId, null, null, null, null, null, null,
+                    String.format(
+                            "{\"source\":\"PERSONAL_TIMETABLE\",\"source_id\":%d,"
+                                    + "\"before\":\"%s\",\"after\":\"%s\","
+                                    + "\"trigger\":\"PATCH\"}",
+                            id, entity.getVisibility().name(), data.visibility().name()));
+        }
+
+        return saved;
     }
 
     /**

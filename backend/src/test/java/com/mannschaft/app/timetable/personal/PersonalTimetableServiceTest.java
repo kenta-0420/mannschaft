@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.personal;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableEntity;
 import com.mannschaft.app.timetable.personal.repository.PersonalTimetablePeriodRepository;
@@ -9,6 +10,7 @@ import com.mannschaft.app.timetable.personal.service.PersonalTimetableService;
 import com.mannschaft.app.timetable.personal.service.PersonalTimetableService.CreateData;
 import com.mannschaft.app.timetable.personal.service.PersonalTimetableService.DuplicateData;
 import com.mannschaft.app.timetable.personal.service.PersonalTimetableService.UpdateData;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -364,6 +366,55 @@ class PersonalTimetableServiceTest {
 
             assertThat(result.getName()).isEqualTo("改名後");
             assertThat(result.getNotes()).isEqualTo("更新メモ");
+        }
+
+        @Test
+        @DisplayName("update 監査ログ: visibility 変更時に visibility_changed が記録される (Phase 5b)")
+        void 更新_visibility変更_監査ログ記録() {
+            AuditLogService auditLogService = org.mockito.Mockito.mock(AuditLogService.class);
+            ReflectionTestUtils.setField(service, "auditLogService", auditLogService);
+
+            given(repository.findByIdAndUserIdAndDeletedAtIsNull(TIMETABLE_ID, USER_ID))
+                    .willReturn(Optional.of(draftEntity));
+            given(repository.save(any(PersonalTimetableEntity.class))).willAnswer(inv -> inv.getArgument(0));
+
+            UpdateData data = new UpdateData(
+                    null, null, null, null, null,
+                    PersonalTimetableVisibility.FAMILY_SHARED,
+                    null, null, null);
+            service.update(TIMETABLE_ID, USER_ID, data);
+
+            verify(auditLogService, times(1)).record(
+                    eq("personal_timetable.visibility_changed"),
+                    eq(USER_ID), org.mockito.ArgumentMatchers.isNull(),
+                    org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull(),
+                    org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull(),
+                    org.mockito.ArgumentMatchers.isNull(),
+                    org.mockito.ArgumentMatchers.contains("\"after\":\"FAMILY_SHARED\""));
+        }
+
+        @Test
+        @DisplayName("update 監査ログ: visibility 変化なし時は記録されない (Phase 5b)")
+        void 更新_visibility変化なし_監査ログ未記録() {
+            AuditLogService auditLogService = org.mockito.Mockito.mock(AuditLogService.class);
+            ReflectionTestUtils.setField(service, "auditLogService", auditLogService);
+
+            given(repository.findByIdAndUserIdAndDeletedAtIsNull(TIMETABLE_ID, USER_ID))
+                    .willReturn(Optional.of(draftEntity));
+            given(repository.save(any(PersonalTimetableEntity.class))).willAnswer(inv -> inv.getArgument(0));
+
+            UpdateData data = new UpdateData(
+                    null, null, null, null, null,
+                    PersonalTimetableVisibility.PRIVATE,
+                    null, null, null);
+            service.update(TIMETABLE_ID, USER_ID, data);
+
+            verify(auditLogService, never()).record(
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         }
 
         @Test

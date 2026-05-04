@@ -71,7 +71,8 @@ public class MeController {
                             memberCount,
                             roleName,
                             ur.getCreatedAt(),
-                            team.getArchivedAt() != null);
+                            team.getArchivedAt() != null,
+                            team.getTemplate());
                 })
                 .filter(t -> t != null)
                 .sorted(Comparator.comparing(MyTeamResponse::getJoinedAt))
