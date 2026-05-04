@@ -263,6 +263,44 @@
       "dashboard": "요건 평가 대시보드",
       "filterByStatus": "상태로 필터링",
       "loadError": "평가 데이터 로드에 실패했습니다"
+    },
+    "disclosure": {
+      "title": "공개 결정",
+      "decide": "공개 결정 수행",
+      "tabDisclose": "공개하기",
+      "tabWithhold": "지금은 공개 안 함",
+      "mode": {
+        "label": "공개 모드",
+        "WITH_NUMBERS": "수치 포함 공개",
+        "WITHOUT_NUMBERS": "수치 없이 공개 (주의 환기만)",
+        "MEETING_REQUEST_ONLY": "면담 요청만 전송"
+      },
+      "recipients": {
+        "label": "수신 대상",
+        "STUDENT_ONLY": "학생만",
+        "GUARDIAN_ONLY": "보호자만",
+        "BOTH": "학생과 보호자 모두"
+      },
+      "message": "담임 선생님 메시지 (선택)",
+      "messagePlaceholder": "학생/보호자에게 전달할 메시지를 입력하세요",
+      "withholdReason": "비공개 이유",
+      "withholdReasonPlaceholder": "지도 기록으로 저장됩니다",
+      "submit": "결정 확정",
+      "submitting": "전송 중...",
+      "historyTitle": "공개 이력",
+      "historyEmpty": "공개 기록이 없습니다",
+      "decision": {
+        "DISCLOSED": "공개됨",
+        "WITHHELD": "비공개"
+      },
+      "inbox": {
+        "title": "담임 선생님의 출석 요건 안내",
+        "empty": "담임 선생님의 공개 정보가 없습니다",
+        "contactTeacher": "자세한 내용은 담임 선생님께 문의하세요",
+        "meetingRequest": "담임 선생님께서 면담을 요청하셨습니다. 연락해 주세요.",
+        "currentRate": "현재 출석률",
+        "remainingAllowed": "{days}일 남았습니다"
+      }
     }
   }
 }

@@ -263,6 +263,44 @@
       "dashboard": "Requirement Evaluation Dashboard",
       "filterByStatus": "Filter by Status",
       "loadError": "Failed to load evaluation data"
+    },
+    "disclosure": {
+      "title": "Disclosure Decision",
+      "decide": "Make disclosure decision",
+      "tabDisclose": "Disclose",
+      "tabWithhold": "Withhold for now",
+      "mode": {
+        "label": "Disclosure mode",
+        "WITH_NUMBERS": "Disclose with numbers",
+        "WITHOUT_NUMBERS": "Disclose without numbers (notice only)",
+        "MEETING_REQUEST_ONLY": "Send meeting request only"
+      },
+      "recipients": {
+        "label": "Recipients",
+        "STUDENT_ONLY": "Student only",
+        "GUARDIAN_ONLY": "Guardian only",
+        "BOTH": "Both student and guardian"
+      },
+      "message": "Message from teacher (optional)",
+      "messagePlaceholder": "Enter a message for the student/guardian",
+      "withholdReason": "Reason for withholding",
+      "withholdReasonPlaceholder": "This will be saved as a guidance record",
+      "submit": "Confirm decision",
+      "submitting": "Submitting...",
+      "historyTitle": "Disclosure history",
+      "historyEmpty": "No disclosure records",
+      "decision": {
+        "DISCLOSED": "Disclosed",
+        "WITHHELD": "Withheld"
+      },
+      "inbox": {
+        "title": "Attendance requirement notices from teacher",
+        "empty": "No disclosed information from your teacher",
+        "contactTeacher": "Please contact your teacher for details",
+        "meetingRequest": "Your teacher has requested a meeting. Please contact them.",
+        "currentRate": "Current attendance rate",
+        "remainingAllowed": "{days} days remaining"
+      }
     }
   }
 }

@@ -263,6 +263,44 @@
       "dashboard": "要件評価ダッシュボード",
       "filterByStatus": "ステータスで絞り込み",
       "loadError": "評価データの読み込みに失敗しました"
+    },
+    "disclosure": {
+      "title": "開示判断",
+      "decide": "開示判断を行う",
+      "tabDisclose": "開示する",
+      "tabWithhold": "今は開示しない",
+      "mode": {
+        "label": "開示モード",
+        "WITH_NUMBERS": "数値を含めて開示",
+        "WITHOUT_NUMBERS": "数値を伏せて開示（注意喚起のみ）",
+        "MEETING_REQUEST_ONLY": "面談予約のみ送る"
+      },
+      "recipients": {
+        "label": "通知先",
+        "STUDENT_ONLY": "生徒のみ",
+        "GUARDIAN_ONLY": "保護者のみ",
+        "BOTH": "生徒と保護者の両方"
+      },
+      "message": "担任からのメッセージ（任意）",
+      "messagePlaceholder": "生徒・保護者へのメッセージを入力してください",
+      "withholdReason": "非開示の理由",
+      "withholdReasonPlaceholder": "指導記録として残ります",
+      "submit": "判断を確定する",
+      "submitting": "送信中...",
+      "historyTitle": "開示判断の履歴",
+      "historyEmpty": "開示判断の記録はありません",
+      "decision": {
+        "DISCLOSED": "開示済み",
+        "WITHHELD": "非開示"
+      },
+      "inbox": {
+        "title": "担任からの出席要件情報",
+        "empty": "担任からの開示情報はありません",
+        "contactTeacher": "詳細は担任へご相談ください",
+        "meetingRequest": "面談のご連絡があります。担任にお問い合わせください",
+        "currentRate": "現在の出席率",
+        "remainingAllowed": "あと {days} 日の余裕があります"
+      }
     }
   }
 }
