@@ -1678,13 +1678,20 @@ Team / Organization は既存の Profile 系 Service と整合性をとる必要
 - フィーチャーフラグ「要」の機能では `application.yml` に `feature.visibility-resolver.{module}: true|false` を仕込み、問題発生時の即時切り戻しを可能にする
 - フラグ削除は 2 sprint 安定稼働後
 
-### 12.7 Phase F: セキュリティ漏れ修正
+### 12.7 Phase F: セキュリティ漏れ修正 — v0.3 完了 (2026-05-04)
 
-**対象**: §11.5 の 5 件
+**対象**: §11.5 / §19.3 v0.3 で実態に合わせて再定義された中央集約 5 ヶ所
 
-各々 Hotfix 級として優先度を上げ、Phase A 完了次第着手可能。
+実装結果:
+- 中央 3 Service (`NotificationService` / `NotificationDispatchService` /
+  `NotificationHelper`) + 共通マッパ (`NotificationSourceTypeMapper`) +
+  呼出元代表例 (`TodoDueReminderBatch`) — **計 5 ヶ所改修済**
+- ArchUnit ルール 2 件 + Mockito InOrder ガードテスト 4 ファイル新規追加
+- 既存テスト 3 ファイル整合性修正 (visibility checker mock 追加)
 
-**触れるファイル概算**: 5 機能 × 2 ファイル = **10 ファイル改修**
+**実改修ファイル数**: 15 ファイル (本体 5 / テスト 4 / 既存テスト整合 3 / 設計書 1 / package-info 等の関連 2)。
+
+PR: feature/f00-phase-f-notification-security
 
 ### 12.8 Phase 間の並列度
 
