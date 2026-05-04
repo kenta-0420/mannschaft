@@ -4,6 +4,9 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.quota.StorageFeatureType;
+import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.gallery.GalleryErrorCode;
 import com.mannschaft.app.gallery.GalleryMapper;
 import com.mannschaft.app.gallery.GalleryMediaType;
@@ -38,6 +41,9 @@ import java.util.zip.ZipOutputStream;
 
 /**
  * 写真・動画サービス。メディアのアップロード・削除・更新・ダウンロードを担当する。
+ *
+ * <p><b>F13 Phase 4-δ</b>: アップロード確定（{@link #uploadPhotos}）・削除（{@link #deletePhoto}）時に
+ * {@link StorageQuotaService} で使用量を加減算する。スコープはアルバムの teamId / organizationId で決定する。</p>
  */
 @Slf4j
 @Service
@@ -51,10 +57,15 @@ public class PhotoService {
     private final GalleryMapper galleryMapper;
     private final R2StorageService r2StorageService;
     private final DomainEventPublisher eventPublisher;
+    /** F13 Phase 4-δ: 統合ストレージクォータサービス。 */
+    private final StorageQuotaService storageQuotaService;
 
     private static final long MAX_FILE_SIZE = 100L * 1024 * 1024; // 100MB（動画対応）
     private static final int MAX_BATCH_SIZE = 20;
     private static final int MAX_PHOTO_COUNT = 5000;
+
+    /** F13 Phase 4-δ: storage_usage_logs.reference_type に記録するテーブル名。 */
+    private static final String REFERENCE_TYPE = "photos";
 
     /**
      * アルバム内メディアをページング取得する。
@@ -71,6 +82,9 @@ public class PhotoService {
 
     /**
      * メディアをアップロードする（メタデータ登録）。
+     *
+     * <p><b>F13 Phase 4-δ</b>: DB INSERT 完了後に {@link StorageQuotaService#recordUpload} で
+     * 使用量を加算する。スコープはアルバムの teamId / organizationId で決定する。</p>
      */
     @Transactional
     public UploadPhotosResponse uploadPhotos(Long albumId, Long userId, UploadPhotosRequest request) {
@@ -87,7 +101,7 @@ public class PhotoService {
             }
         }
 
-        // ストレージクォータチェック
+        // 写真枚数上限チェック（既存の内部クォータ）
         int currentPhotoCount;
         if (album.getTeamId() != null) {
             currentPhotoCount = albumRepository.sumPhotoCountByTeamId(album.getTeamId());
@@ -98,6 +112,11 @@ public class PhotoService {
         if (currentPhotoCount + request.getPhotos().size() > MAX_PHOTO_COUNT) {
             throw new BusinessException(GalleryErrorCode.PHOTO_LIMIT_EXCEEDED);
         }
+
+        // F13 Phase 4-δ: スコープ解決
+        StorageScopeType scopeType = album.getTeamId() != null
+                ? StorageScopeType.TEAM : StorageScopeType.ORGANIZATION;
+        Long scopeId = album.getTeamId() != null ? album.getTeamId() : album.getOrganizationId();
 
         List<UploadPhotosResponse.UploadedPhotoInfo> uploadedPhotos = new ArrayList<>();
         List<Long> savedPhotoIds = new ArrayList<>();
@@ -142,6 +161,14 @@ public class PhotoService {
             savedPhotoIds.add(saved.getId());
             uploadedPhotos.add(new UploadPhotosResponse.UploadedPhotoInfo(
                     saved.getId(), null, processingStatus.name()));
+
+            // F13 Phase 4-δ: 使用量加算（INSERT 完了を確定とみなす）
+            if (item.getFileSize() != null && item.getFileSize() > 0) {
+                storageQuotaService.recordUpload(
+                        scopeType, scopeId, item.getFileSize(),
+                        StorageFeatureType.GALLERY,
+                        REFERENCE_TYPE, saved.getId(), userId);
+            }
         }
 
         // 写真カウントを更新
@@ -174,15 +201,30 @@ public class PhotoService {
 
     /**
      * 写真・動画を削除する。
+     *
+     * <p><b>F13 Phase 4-δ</b>: DB 削除後に {@link StorageQuotaService#recordDeletion} で
+     * 使用量を減算する。スコープはアルバムの teamId / organizationId で決定する。</p>
      */
     @Transactional
     public void deletePhoto(Long photoId) {
         PhotoEntity entity = findPhotoOrThrow(photoId);
+        Long fileSize = entity.getFileSize() != null ? entity.getFileSize() : 0L;
 
-        // アルバムの写真カウントを減算
+        // アルバムの写真カウントを減算（スコープ解決も兼ねる）
         albumRepository.findById(entity.getAlbumId()).ifPresent(album -> {
             album.decrementPhotoCount();
             albumRepository.save(album);
+
+            // F13 Phase 4-δ: 使用量減算
+            if (fileSize > 0) {
+                StorageScopeType scopeType = album.getTeamId() != null
+                        ? StorageScopeType.TEAM : StorageScopeType.ORGANIZATION;
+                Long scopeId = album.getTeamId() != null ? album.getTeamId() : album.getOrganizationId();
+                storageQuotaService.recordDeletion(
+                        scopeType, scopeId, fileSize,
+                        StorageFeatureType.GALLERY,
+                        REFERENCE_TYPE, photoId, entity.getUploadedBy());
+            }
         });
 
         photoRepository.delete(entity);

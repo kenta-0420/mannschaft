@@ -2,6 +2,7 @@ package com.mannschaft.app.gallery.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -20,4 +21,12 @@ public class MediaUploadUrlRequest {
     /** MIME タイプ */
     @NotBlank
     private final String contentType;
+
+    /**
+     * ファイルサイズ（バイト）。
+     * F13 Phase 4-δ: {@link com.mannschaft.app.gallery.service.GalleryMediaUploadService} の
+     * クォータチェックに使用する。null の場合はクォータチェックをスキップする（後方互換）。
+     */
+    @Positive
+    private final Long fileSize;
 }

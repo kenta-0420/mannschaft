@@ -1,11 +1,17 @@
 package com.mannschaft.app.cms.service;
 
+import com.mannschaft.app.cms.CmsErrorCode;
 import com.mannschaft.app.cms.dto.BlogMediaUploadUrlRequest;
 import com.mannschaft.app.cms.dto.BlogMediaUploadUrlResponse;
 import com.mannschaft.app.cms.entity.BlogMediaUploadEntity;
 import com.mannschaft.app.cms.repository.BlogMediaUploadRepository;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.quota.StorageFeatureType;
+import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
+import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.files.dto.StartMultipartUploadRequest;
 import com.mannschaft.app.files.dto.StartMultipartUploadResponse;
 import com.mannschaft.app.files.service.MultipartUploadService;
@@ -70,11 +76,16 @@ public class BlogMediaService {
     /** R2 オブジェクトキープレフィックステンプレート: blog/{scopeType}/{scopeId}/ */
     private static final String BLOG_PREFIX_TEMPLATE = "blog/%s/%d/";
 
+    /** F13 Phase 4-δ: storage_usage_logs.reference_type に記録するテーブル名。 */
+    private static final String REFERENCE_TYPE = "blog_media_uploads";
+
     // ==================== 依存 ====================
 
     private final R2StorageService r2StorageService;
     private final MultipartUploadService multipartUploadService;
     private final BlogMediaUploadRepository blogMediaUploadRepository;
+    /** F13 Phase 4-δ: 統合ストレージクォータサービス。 */
+    private final StorageQuotaService storageQuotaService;
 
     // ==================== 公開メソッド ====================
 
@@ -82,6 +93,9 @@ public class BlogMediaService {
      * ブログ記事本文に埋め込むメディアのアップロード URL を発行する。
      * IMAGE → Presigned PUT URL（単発）を発行する。
      * VIDEO → Multipart Upload を開始し uploadId を返す。
+     *
+     * <p><b>F13 Phase 4-δ</b>: アップロード URL 発行前に {@link StorageQuotaService#checkQuota} で
+     * クォータを確認する。超過時は {@link CmsErrorCode#MEDIA_QUOTA_EXCEEDED} をスローする。</p>
      *
      * @param uploaderId アップロードを行うユーザー ID
      * @param req        リクエスト情報
@@ -91,18 +105,32 @@ public class BlogMediaService {
     public BlogMediaUploadUrlResponse generateUploadUrl(Long uploaderId, BlogMediaUploadUrlRequest req) {
         validateRequest(req);
 
+        // F13 Phase 4-δ: 統合クォータチェック（presign 前）
+        StorageScopeType scopeType = StorageScopeType.valueOf(req.getScopeType().toUpperCase());
+        try {
+            storageQuotaService.checkQuota(scopeType, req.getScopeId(), req.getFileSize());
+        } catch (StorageQuotaExceededException e) {
+            log.info("ブログメディアのクォータ超過: uploaderId={}, scope={}/{}, requested={}",
+                    uploaderId, scopeType, req.getScopeId(), e.getRequestedBytes());
+            throw new BusinessException(CmsErrorCode.MEDIA_QUOTA_EXCEEDED, e);
+        }
+
         String prefix = String.format(BLOG_PREFIX_TEMPLATE, req.getScopeType().toUpperCase(), req.getScopeId());
 
         if ("IMAGE".equals(req.getMediaType())) {
-            return handleImageUpload(uploaderId, req, prefix);
+            return handleImageUpload(uploaderId, req, prefix, scopeType);
         } else {
-            return handleVideoUpload(uploaderId, req, prefix);
+            return handleVideoUpload(uploaderId, req, prefix, scopeType);
         }
     }
 
     /**
      * 孤立メディアのクリーンアップ（日次バッチ）。
      * blog_post_id IS NULL かつ 72 時間以上経過したレコードを R2 から削除して物理削除する。
+     *
+     * <p><b>F13 Phase 4-δ</b>: R2 削除成功後に {@link StorageQuotaService#recordDeletion} で
+     * 使用量を減算する。s3Key のプレフィックス（{@code blog/{SCOPE_TYPE}/{SCOPE_ID}/}）から
+     * スコープを復元する。スコープ解析に失敗した場合は警告ログのみで減算をスキップする。</p>
      */
     @Scheduled(cron = "0 0 2 * * *")
     @Transactional
@@ -117,6 +145,14 @@ public class BlogMediaService {
                 if (orphan.getThumbnailR2Key() != null) {
                     r2StorageService.delete(orphan.getThumbnailR2Key());
                 }
+                // F13 Phase 4-δ: 使用量減算（s3Key からスコープを復元）
+                if (orphan.getFileSize() != null && orphan.getFileSize() > 0) {
+                    resolveScopeFromKey(orphan.getS3Key()).ifPresent(scope ->
+                            storageQuotaService.recordDeletion(
+                                    scope.scopeType(), scope.scopeId(),
+                                    orphan.getFileSize(), StorageFeatureType.CMS,
+                                    REFERENCE_TYPE, orphan.getId(), orphan.getUploaderId()));
+                }
             } catch (Exception e) {
                 // R2 削除失敗は警告ログのみ（DB 削除は続行する）
                 log.warn("孤立メディアの R2 削除に失敗しました（DB 削除は続行）: mediaId={}, key={}",
@@ -127,6 +163,38 @@ public class BlogMediaService {
         blogMediaUploadRepository.deleteAll(orphans);
         log.info("孤立メディアのクリーンアップ完了: 削除件数={}", orphans.size());
     }
+
+    /**
+     * R2 キー（{@code blog/{SCOPE_TYPE}/{SCOPE_ID}/...}）からスコープを復元する。
+     *
+     * @param s3Key R2 オブジェクトキー
+     * @return スコープ情報（解析失敗時は空）
+     */
+    private java.util.Optional<ScopeResolution> resolveScopeFromKey(String s3Key) {
+        // blog/{SCOPE_TYPE}/{SCOPE_ID}/... 形式を解析
+        if (s3Key == null || !s3Key.startsWith("blog/")) {
+            log.warn("ブログメディア削除: s3Key のフォーマットが不正のためクォータ減算をスキップ: key={}", s3Key);
+            return java.util.Optional.empty();
+        }
+        String[] parts = s3Key.split("/");
+        if (parts.length < 3) {
+            log.warn("ブログメディア削除: s3Key のセグメント数が不足のためクォータ減算をスキップ: key={}", s3Key);
+            return java.util.Optional.empty();
+        }
+        try {
+            StorageScopeType scopeType = StorageScopeType.valueOf(parts[1]);
+            Long scopeId = Long.parseLong(parts[2]);
+            return java.util.Optional.of(new ScopeResolution(scopeType, scopeId));
+        } catch (IllegalArgumentException e) {
+            log.warn("ブログメディア削除: s3Key のスコープ解析に失敗したためクォータ減算をスキップ: key={}", s3Key);
+            return java.util.Optional.empty();
+        }
+    }
+
+    /**
+     * ストレージスコープの解決結果。
+     */
+    public record ScopeResolution(StorageScopeType scopeType, Long scopeId) {}
 
     // ==================== プライベートメソッド ====================
 
@@ -183,13 +251,19 @@ public class BlogMediaService {
      * 画像アップロード URL 発行処理。
      * R2 の Presigned PUT URL を発行し、blog_media_uploads に INSERT する。
      *
+     * <p><b>F13 Phase 4-δ</b>: INSERT 完了直後に {@link StorageQuotaService#recordUpload} で
+     * 使用量を加算する。IMAGE は Presigned URL 発行 + DB INSERT が同時に行われるため、
+     * presign 時に recordUpload する（confirm ステップはない）。</p>
+     *
      * @param uploaderId アップロードを行うユーザー ID
      * @param req        リクエスト情報
      * @param prefix     R2 オブジェクトキープレフィックス
+     * @param scopeType  解決済みストレージスコープ種別
      * @return レスポンス（uploadUrl, expiresIn を設定。uploadId は null）
      */
     private BlogMediaUploadUrlResponse handleImageUpload(
-            Long uploaderId, BlogMediaUploadUrlRequest req, String prefix) {
+            Long uploaderId, BlogMediaUploadUrlRequest req, String prefix,
+            StorageScopeType scopeType) {
 
         // R2 オブジェクトキー生成: {prefix}{uuid}.{ext}
         String ext = resolveImageExtension(req.getContentType());
@@ -214,6 +288,12 @@ public class BlogMediaService {
         log.info("画像アップロード Presigned URL 発行: uploaderId={}, mediaId={}, key={}",
                 uploaderId, saved.getId(), r2Key);
 
+        // F13 Phase 4-δ: 使用量加算（IMAGE は presign 発行＋INSERT 完了を確定とみなす）
+        storageQuotaService.recordUpload(
+                scopeType, req.getScopeId(), req.getFileSize(),
+                StorageFeatureType.CMS,
+                REFERENCE_TYPE, saved.getId(), uploaderId);
+
         return BlogMediaUploadUrlResponse.builder()
                 .mediaId(saved.getId())
                 .mediaType("IMAGE")
@@ -227,13 +307,19 @@ public class BlogMediaService {
      * 動画アップロード（Multipart Upload 開始）処理。
      * Multipart Upload を開始し、blog_media_uploads に INSERT する。
      *
+     * <p><b>F13 Phase 4-δ</b>: INSERT 完了直後に {@link StorageQuotaService#recordUpload} で
+     * 使用量を加算する。Multipart Upload は Multipart Complete（クライアント側）で確定するが、
+     * checkQuota は presign 時（本メソッド呼び出し前）に実施済みのため、ここでは recordUpload のみ行う。</p>
+     *
      * @param uploaderId アップロードを行うユーザー ID
      * @param req        リクエスト情報
      * @param prefix     R2 オブジェクトキープレフィックス
+     * @param scopeType  解決済みストレージスコープ種別
      * @return レスポンス（uploadId, partSize を設定。uploadUrl は null）
      */
     private BlogMediaUploadUrlResponse handleVideoUpload(
-            Long uploaderId, BlogMediaUploadUrlRequest req, String prefix) {
+            Long uploaderId, BlogMediaUploadUrlRequest req, String prefix,
+            StorageScopeType scopeType) {
 
         // Multipart Upload を開始する
         // fileName は contentType から拡張子を付けて生成（startUpload 内部でキー生成に使用）
@@ -266,6 +352,12 @@ public class BlogMediaService {
 
         log.info("動画 Multipart Upload 開始: uploaderId={}, mediaId={}, uploadId={}, key={}",
                 uploaderId, saved.getId(), startResponse.getUploadId(), startResponse.getFileKey());
+
+        // F13 Phase 4-δ: 使用量加算（Multipart 開始＋DB INSERT 完了を確定とみなす）
+        storageQuotaService.recordUpload(
+                scopeType, req.getScopeId(), req.getFileSize(),
+                StorageFeatureType.CMS,
+                REFERENCE_TYPE, saved.getId(), uploaderId);
 
         return BlogMediaUploadUrlResponse.builder()
                 .mediaId(saved.getId())
