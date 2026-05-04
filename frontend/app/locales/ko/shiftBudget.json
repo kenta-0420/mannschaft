@@ -1,102 +1,38 @@
 {
   "shiftBudget": {
-    "title": "교대 예산 관리",
-    "nav": {
-      "menuLabel": "교대 예산",
-      "allocations": "예산 할당",
-      "dashboard": "예산 대시보드",
-      "alerts": "경고 이력",
-      "failedEvents": "실패 이벤트"
-    },
-    "scope": {
-      "selectOrganization": "교대 예산 관리는 조직 범위에서만 사용할 수 있습니다. 범위 선택기에서 조직을 선택하세요."
-    },
+    "title": "시프트 예산 관리",
     "allocation": {
-      "list": "예산 할당 목록",
-      "create": "신규 할당",
-      "edit": "할당 편집",
-      "delete": "할당 삭제",
-      "deleteConfirm": "이 할당 (ID: {id}) 을 논리 삭제합니다. 진행하시겠습니까?",
-      "amount": "배분액",
+      "list": "예산 배정 목록",
+      "create": "신규 배정",
+      "amount": "배정 금액",
       "period": "적용 기간",
-      "category": "비목",
-      "team": "팀",
-      "project": "프로젝트",
-      "fiscalYear": "회계 연도",
-      "currency": "통화",
-      "note": "비고",
-      "consumed": "소진액",
-      "rate": "소진율",
-      "status": "상태",
-      "actions": "작업",
-      "version": "버전",
-      "id": "ID",
-      "form": {
-        "teamIdHint": "비워두면 조직 전체 범위",
-        "projectIdHint": "프로젝트 전용 할당인 경우에만 지정",
-        "amountHint": "0 이상의 값을 입력",
-        "periodStart": "시작일",
-        "periodEnd": "종료일",
-        "save": "저장",
-        "cancel": "취소"
-      },
-      "empty": "등록된 할당이 없습니다",
-      "loadError": "할당 목록을 불러오지 못했습니다",
-      "createSuccess": "할당을 만들었습니다",
-      "createError": "할당 생성에 실패했습니다",
-      "updateSuccess": "할당을 업데이트했습니다",
-      "updateError": "할당 업데이트에 실패했습니다 (낙관적 잠금 충돌 가능성)",
-      "deleteSuccess": "할당을 삭제했습니다",
-      "deleteError": "할당 삭제에 실패했습니다"
+      "category": "비용 항목"
     },
     "consumption": {
-      "summary": "소진 요약",
-      "consumed": "소진액",
+      "summary": "소비 요약",
+      "consumed": "소비액",
       "remaining": "잔액",
-      "rate": "소진율",
-      "planned": "예상액",
-      "confirmed": "확정액",
-      "byUser": "개인별 소진 내역",
-      "byUserHidden": "권한이 없어 개인별 내역을 표시할 수 없습니다"
-    },
-    "status": {
-      "OK": "정상",
-      "WARN": "경고",
-      "EXCEEDED": "초과",
-      "SEVERE_EXCEEDED": "중대 초과"
+      "rate": "소비율",
+      "byUserHidden": "권한이 없어 사용자별 내역을 표시할 수 없습니다"
     },
     "threshold": {
       "warn80": "예산이 80%에 도달했습니다",
       "exceeded": "예산을 초과했습니다",
-      "severeExceeded120": "예산을 120% 초과했습니다 (중대)"
+      "severeExceeded120": "예산을 120% 초과했습니다 (심각)"
     },
     "alert": {
-      "title": "예산 경고 이력",
-      "thresholdPercent": "임계값 (%)",
-      "triggeredAt": "발생 일시",
-      "consumedAtTrigger": "발생 시 소진액",
-      "acknowledgedAt": "확인 일시",
-      "acknowledgedBy": "확인자",
-      "unacknowledged": "미확인",
-      "acknowledged": "확인됨",
       "acknowledge": "확인",
-      "comment": "코멘트",
-      "commentPlaceholder": "선택 (500자 이내)",
-      "acknowledgeConfirm": "이 경고 (ID: {id}) 를 확인합니다. 진행하시겠습니까?",
-      "acknowledgeSuccess": "경고를 확인했습니다",
-      "acknowledgeError": "경고 확인에 실패했습니다",
-      "loadError": "경고 목록을 불러오지 못했습니다",
-      "empty": "경고가 없습니다"
+      "unacknowledged": "미확인 경고"
     },
     "link": {
       "project": "프로젝트에 연결",
-      "todo": "TODO에 연결",
+      "todo": "할 일에 연결",
       "fullAmount": "전액 연결",
       "partialAmount": "상한 금액 지정",
       "percentage": "비율 지정"
     },
     "calc": {
-      "requiredSlots": "필요 슬롯 수 역산",
+      "requiredSlots": "필요 슬롯 수 산정",
       "result": "필요 슬롯 수: {count} 개",
       "formula": "계산식: floor({budget} / ({rate} × {hours}))",
       "warning": {
@@ -105,64 +41,16 @@
       }
     },
     "dashboard": {
-      "title": "예산 소진 대시보드",
-      "subtitle": "전 예산 할당의 소진 현황 일람",
-      "kpi": {
-        "ok": "정상",
-        "warn": "경고 (80% 이상)",
-        "exceeded": "초과 (100% 이상)",
-        "severeExceeded": "중대 초과 (120% 이상)"
-      },
-      "viewAlerts": "경고 이력 보기",
-      "viewFailedEvents": "실패 이벤트 보기",
-      "viewAllocations": "할당 목록 보기",
-      "loadError": "대시보드를 불러오지 못했습니다",
-      "summaryError": "소진 요약을 불러오지 못했습니다"
+      "title": "예산 소비 대시보드"
     },
     "feature": {
       "disabled": "이 기능은 조직 관리자에 의해 비활성화되었습니다"
     },
     "monthlyClose": {
-      "title": "월 마감",
       "button": "월 마감 실행",
-      "yearMonth": "대상 월",
-      "yearMonthHint": "YYYY-MM 형식 (예: 2026-04)",
-      "confirm": "{month}분 교대 예산을 확정합니다. 진행하시겠습니까?",
-      "execute": "실행",
-      "success": "월 마감 완료: {month} (소진 레코드 {count} 건 확정)",
-      "alreadyClosed": "해당 월은 이미 마감되었습니다",
-      "error": "월 마감에 실패했습니다"
-    },
-    "failedEvent": {
-      "title": "실패 이벤트 관리",
-      "subtitle": "알림 실패 / hook 실패 확인 + 개별 재실행 + 수동 보정 표시",
-      "id": "ID",
-      "eventType": "유형",
-      "sourceId": "대상 ID",
-      "errorMessage": "오류 내용",
-      "retryCount": "재시도 횟수",
-      "lastRetriedAt": "마지막 재시도",
-      "status": "상태",
-      "createdAt": "발생 일시",
-      "actions": "작업",
-      "filterStatus": "상태로 필터링",
-      "filterAll": "전체",
-      "retry": "재실행",
-      "resolve": "보정 완료 표시",
-      "retryConfirm": "이 실패 이벤트 (ID: {id}) 를 재실행합니다. 진행하시겠습니까?",
-      "resolveConfirm": "이 실패 이벤트 (ID: {id}) 를 수동 보정 완료로 표시합니다. 이 작업은 취소할 수 없습니다.",
-      "retrySuccess": "실패 이벤트를 재실행했습니다",
-      "retryError": "실패 이벤트 재실행에 실패했습니다",
-      "resolveSuccess": "실패 이벤트를 보정 완료로 표시했습니다",
-      "resolveError": "실패 이벤트 표시에 실패했습니다",
-      "loadError": "실패 이벤트 목록을 불러오지 못했습니다",
-      "empty": "실패 이벤트가 없습니다",
-      "statusValue": {
-        "PENDING": "대기 중",
-        "RETRYING": "재시도 중",
-        "EXHAUSTED": "재시도 한도 도달",
-        "MANUAL_RESOLVED": "수동 보정 완료"
-      }
+      "confirm": "{month} 시프트 예산을 확정합니다. 진행하시겠습니까?",
+      "success": "월 마감 완료: {month} (소비 기록 {count} 건 확정)",
+      "alreadyClosed": "해당 월은 이미 마감되었습니다"
     }
   }
 }
