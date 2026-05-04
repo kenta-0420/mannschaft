@@ -4,6 +4,10 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.quota.StorageFeatureType;
+import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
+import com.mannschaft.app.common.storage.quota.StorageQuotaService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.timetable.notes.dto.AttachmentConfirmRequest;
 import com.mannschaft.app.timetable.notes.dto.AttachmentPresignRequest;
 import com.mannschaft.app.timetable.notes.dto.AttachmentPresignResponse;
@@ -26,7 +30,11 @@ import java.util.UUID;
  * F03.15 Phase 3 メモ添付ファイルサービス。
  *
  * <p>R2 ストレージへの presign 発行 / confirm（メタ確定 + magic byte 検証） / download URL 発行 /
- * 論理削除を担当する。1メモあたり最大5件、サイズ最大5MB、ユーザー累計100MB クォータ。</p>
+ * 論理削除を担当する。1メモあたり最大5件、サイズ最大5MB。</p>
+ *
+ * <p><b>F13 Phase 4-α 改修</b>: 従来の「1ユーザー累計 100MB 直書きクォータ」を廃止し、
+ * F13 統合クォータサービス（{@link StorageQuotaService}）に接続した。スコープは PERSONAL（投稿者本人）、
+ * feature_type は {@link StorageFeatureType#PERSONAL_TIMETABLE_NOTES}。</p>
  */
 @Slf4j
 @Service
@@ -38,10 +46,11 @@ public class TimetableSlotUserNoteAttachmentService {
     public static final int MAX_ATTACHMENTS_PER_NOTE = 5;
     /** 添付ファイル単体の最大サイズ（5MB）。 */
     public static final long MAX_ATTACHMENT_SIZE_BYTES = 5L * 1024 * 1024;
-    /** 1 ユーザーあたりの累計クォータ（100MB）。 */
-    public static final long USER_QUOTA_BYTES = 100L * 1024 * 1024;
     /** Pre-signed URL の TTL（5分）。 */
     public static final Duration PRESIGN_TTL = Duration.ofMinutes(5);
+
+    /** F13 Phase 4-α: storage_usage_logs.reference_type に記録するテーブル名。 */
+    private static final String REFERENCE_TYPE = "timetable_slot_user_note_attachments";
 
     /** 許容する MIME タイプとマジックバイトの先頭マーカーのマップ。 */
     public static final Map<String, byte[][]> ALLOWED_MIME_MAGIC_BYTES = Map.of(
@@ -64,9 +73,15 @@ public class TimetableSlotUserNoteAttachmentService {
     private final R2StorageService r2StorageService;
     /** F03.15 Phase 5: 削除時の F11 監査ログ発火に使用。 */
     private final AuditLogService auditLogService;
+    /** F13 Phase 4-α: 統合ストレージクォータサービス。 */
+    private final StorageQuotaService storageQuotaService;
 
     /**
      * Pre-signed PUT URL を発行する。
+     *
+     * <p>F13 Phase 4-α: ユーザー累計クォータの判定は {@link StorageQuotaService#checkQuota} に委譲する。
+     * 容量超過時は固有エラーコード {@link PersonalTimetableErrorCode#ATTACHMENT_QUOTA_EXCEEDED} に
+     * 変換してから再スローする（既存 API 契約 429 を維持）。</p>
      */
     @Transactional
     public AttachmentPresignResponse presign(Long noteId, Long userId, AttachmentPresignRequest req) {
@@ -83,9 +98,14 @@ public class TimetableSlotUserNoteAttachmentService {
         if (current >= MAX_ATTACHMENTS_PER_NOTE) {
             throw new BusinessException(PersonalTimetableErrorCode.ATTACHMENT_LIMIT_EXCEEDED);
         }
-        long usedBytes = attachmentRepository.sumSizeBytesByUser(userId);
-        if (usedBytes + req.sizeBytes() > USER_QUOTA_BYTES) {
-            throw new BusinessException(PersonalTimetableErrorCode.ATTACHMENT_QUOTA_EXCEEDED);
+
+        // F13 Phase 4-α: 統合クォータサービスでチェック（PERSONAL スコープ = 投稿者本人）
+        try {
+            storageQuotaService.checkQuota(StorageScopeType.PERSONAL, userId, req.sizeBytes());
+        } catch (StorageQuotaExceededException e) {
+            log.info("メモ添付クォータ超過: userId={}, requested={}, used={}, included={}",
+                    userId, e.getRequestedBytes(), e.getUsedBytes(), e.getIncludedBytes());
+            throw new BusinessException(PersonalTimetableErrorCode.ATTACHMENT_QUOTA_EXCEEDED, e);
         }
 
         String ext = resolveExtension(req.contentType());
@@ -101,6 +121,9 @@ public class TimetableSlotUserNoteAttachmentService {
      * アップロード完了通知（メタ確定 + magic byte 検証 + 冪等性）。
      *
      * <p>同一 r2_object_key に対する 2 回目以降は既存レコードを返却する（重複 INSERT しない）。</p>
+     *
+     * <p>F13 Phase 4-α: R2 検証成功 + DB 永続化成功直後に
+     * {@link StorageQuotaService#recordUpload} で使用量を加算する。</p>
      */
     @Transactional
     public TimetableSlotUserNoteAttachmentEntity confirm(
@@ -157,6 +180,13 @@ public class TimetableSlotUserNoteAttachmentService {
                 .sizeBytes(actualSize)
                 .build();
         TimetableSlotUserNoteAttachmentEntity saved = attachmentRepository.save(entity);
+
+        // F13 Phase 4-α: 使用量加算
+        storageQuotaService.recordUpload(
+                StorageScopeType.PERSONAL, userId, actualSize,
+                StorageFeatureType.PERSONAL_TIMETABLE_NOTES,
+                REFERENCE_TYPE, saved.getId(), userId);
+
         log.info("メモ添付を登録しました: id={}, noteId={}, userId={}, size={}",
                 saved.getId(), noteId, userId, actualSize);
         return saved;
@@ -183,6 +213,9 @@ public class TimetableSlotUserNoteAttachmentService {
 
     /**
      * 添付ファイルを論理削除する。R2 オブジェクトは週次バッチで物理削除する。
+     *
+     * <p>F13 Phase 4-α: 論理削除完了後に {@link StorageQuotaService#recordDeletion}
+     * で使用量を減算する。</p>
      */
     @Transactional
     public void delete(Long attachmentId, Long userId) {
@@ -193,8 +226,15 @@ public class TimetableSlotUserNoteAttachmentService {
         if (entity.getDeletedAt() != null) {
             return; // 既に削除済み
         }
+        long sizeBytes = entity.getSizeBytes() != null ? entity.getSizeBytes() : 0L;
         entity.softDelete();
         attachmentRepository.save(entity);
+
+        // F13 Phase 4-α: 使用量減算
+        storageQuotaService.recordDeletion(
+                StorageScopeType.PERSONAL, userId, sizeBytes,
+                StorageFeatureType.PERSONAL_TIMETABLE_NOTES,
+                REFERENCE_TYPE, entity.getId(), userId);
 
         // F03.15 Phase 5: 監査ログ発火
         auditLogService.record(
