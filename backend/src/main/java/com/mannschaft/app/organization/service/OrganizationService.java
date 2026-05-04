@@ -24,6 +24,8 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.entity.RoleEntity;
@@ -62,6 +64,7 @@ public class OrganizationService {
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final InviteTokenRepository inviteTokenRepository;
+    private final MemberQueryDispatcher memberQueryDispatcher;
 
     /** 祖先チェーン探索の最大深度。これを超える祖先は返さず {@code truncated: true} を立てる。 */
     @Value("${app.org.max-depth:5}")
@@ -211,28 +214,37 @@ public class OrganizationService {
 
     /**
      * 組織のメンバー一覧を取得する。
+     *
+     * <p>F00.5 Phase 3: MemberQueryDispatcher 経由で memberships + user_roles を統合参照する。</p>
      */
     public PagedResponse<MemberResponse> getMembers(Long orgId, Pageable pageable) {
         findOrganizationOrThrow(orgId);
 
-        Page<UserRoleEntity> page = userRoleRepository.findByOrganizationId(orgId, pageable);
+        // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照に完全切替
+        var memberDtos = memberQueryDispatcher.queryMembers(orgId, ScopeType.ORGANIZATION, null);
 
-        var data = page.getContent().stream()
-                .map(ur -> {
-                    UserEntity user = userRepository.findById(ur.getUserId()).orElse(null);
-                    RoleEntity role = roleRepository.findById(ur.getRoleId()).orElse(null);
-                    return new MemberResponse(
-                            ur.getUserId(),
-                            user != null ? user.getDisplayName() : null,
-                            user != null ? user.getAvatarUrl() : null,
-                            role != null ? role.getName() : null,
-                            ur.getCreatedAt());
-                })
+        var data = memberDtos.stream()
+                .map(dto -> new MemberResponse(
+                        dto.userId(),
+                        dto.displayName(),
+                        dto.avatarUrl(),
+                        dto.roleName(),
+                        dto.joinedAt()))
                 .toList();
 
-        var meta = new PagedResponse.PageMeta(
-                page.getTotalElements(), page.getNumber(), page.getSize(), page.getTotalPages());
-        return PagedResponse.of(data, meta);
+        // Dispatcher は全件リストを返すため、ページネーションはアプリ側でエミュレート
+        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
+        int size = pageable.isPaged() ? pageable.getPageSize() : data.size();
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, data.size());
+        List<MemberResponse> pagedData = (fromIndex >= data.size())
+                ? List.<MemberResponse>of() : data.subList(fromIndex, toIndex);
+
+        long totalElements = data.size();
+        int totalPages = size == 0 ? 1 : (int) Math.ceil((double) totalElements / size);
+
+        var meta = new PagedResponse.PageMeta(totalElements, page, size, totalPages);
+        return PagedResponse.of(pagedData, meta);
     }
 
     // ========================================

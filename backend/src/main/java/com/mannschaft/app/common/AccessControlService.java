@@ -2,6 +2,8 @@ package com.mannschaft.app.common;
 
 import com.mannschaft.app.family.CareLinkStatus;
 import com.mannschaft.app.family.repository.UserCareLinkRepository;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -27,6 +29,7 @@ public class AccessControlService {
     private final RoleRepository roleRepository;
     private final RoleService roleService;
     private final UserCareLinkRepository userCareLinkRepository;
+    private final MembershipRepository membershipRepository;
 
     private static final Set<String> ADMIN_ROLES = Set.of("ADMIN", "DEPUTY_ADMIN");
 
@@ -45,12 +48,13 @@ public class AccessControlService {
 
     /**
      * ユーザーがスコープのメンバーかどうかを返す。
+     *
+     * <p>F00.5 Phase 3: memberships テーブルを参照する（旧 user_roles 参照から切替）。
+     * ADMIN/DEPUTY_ADMIN 等の権限ロール判定は引き続き user_roles 参照（isAdminOrAbove 等）。</p>
      */
     public boolean isMember(Long userId, Long scopeId, String scopeType) {
-        if ("TEAM".equals(scopeType)) {
-            return userRoleRepository.existsByUserIdAndTeamId(userId, scopeId);
-        }
-        return userRoleRepository.existsByUserIdAndOrganizationId(userId, scopeId);
+        ScopeType scope = ScopeType.valueOf(scopeType);
+        return membershipRepository.existsActiveByUserAndScope(userId, scope, scopeId);
     }
 
     // ========================================
