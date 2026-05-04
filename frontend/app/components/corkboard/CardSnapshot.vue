@@ -46,11 +46,18 @@ interface Props {
   isRefStale?: boolean
   /** コンパクト表示（ボード詳細カード内向け） */
   compact?: boolean
+  /**
+   * 削除済みバッジに付与するテスト用 data-testid。
+   * E2E 用に親側 (`pages/corkboard/[id].vue`) から
+   * `card-snapshot-deleted-badge-{cardId}` を渡す。
+   */
+  deletedBadgeTestid?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   isRefStale: false,
   compact: true,
+  deletedBadgeTestid: null,
 })
 
 const { t } = useI18n()
@@ -116,6 +123,7 @@ const hasContent = computed<boolean>(
       v-if="snapshot.isDeleted"
       class="inline-flex items-center gap-1 self-start rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/40 dark:text-red-200"
       :aria-label="t('corkboard.snapshot.refDeletedAria')"
+      :data-testid="props.deletedBadgeTestid ?? undefined"
     >
       <i class="pi pi-trash text-[9px]" aria-hidden="true" />
       {{ t('corkboard.snapshot.refDeleted') }}

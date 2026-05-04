@@ -697,7 +697,9 @@
       "editCard": "Editar tarjeta",
       "deleteCard": "Eliminar tarjeta",
       "archiveCard": "Archivar",
-      "unarchiveCard": "Desarchivar"
+      "unarchiveCard": "Desarchivar",
+      "pinCard": "Fijar",
+      "unpinCard": "Quitar fijación"
     },
     "modal": {
       "createTitle": "Crear nueva tarjeta",
@@ -762,7 +764,11 @@
       "editError": "No se pudo actualizar la tarjeta.",
       "deleteError": "No se pudo eliminar la tarjeta.",
       "archiveError": "No se pudo archivar.",
-      "unarchiveError": "No se pudo desarchivar."
+      "unarchiveError": "No se pudo desarchivar.",
+      "pinSuccess": "Tarjeta fijada.",
+      "unpinSuccess": "Fijación retirada.",
+      "pinError": "No se pudo fijar la tarjeta.",
+      "unpinError": "No se pudo quitar la fijación."
     },
     "validation": {
       "required": "Este campo es obligatorio.",
@@ -777,6 +783,8 @@
     "ariaCardDelete": "Eliminar esta tarjeta",
     "ariaCardArchive": "Archivar esta tarjeta",
     "ariaCardUnarchive": "Desarchivar esta tarjeta",
+    "ariaCardPin": "Fijar esta tarjeta",
+    "ariaCardUnpin": "Quitar la fijación de esta tarjeta",
     "snapshot": {
       "refDeleted": "Origen eliminado",
       "refDeletedAria": "El contenido referenciado ha sido eliminado",

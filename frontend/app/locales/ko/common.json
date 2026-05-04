@@ -697,7 +697,9 @@
       "editCard": "카드 편집",
       "deleteCard": "카드 삭제",
       "archiveCard": "보관",
-      "unarchiveCard": "보관 해제"
+      "unarchiveCard": "보관 해제",
+      "pinCard": "고정",
+      "unpinCard": "고정 해제"
     },
     "modal": {
       "createTitle": "새 카드 만들기",
@@ -762,7 +764,11 @@
       "editError": "카드 업데이트에 실패했습니다.",
       "deleteError": "카드 삭제에 실패했습니다.",
       "archiveError": "보관에 실패했습니다.",
-      "unarchiveError": "보관 해제에 실패했습니다."
+      "unarchiveError": "보관 해제에 실패했습니다.",
+      "pinSuccess": "카드를 고정했습니다.",
+      "unpinSuccess": "고정을 해제했습니다.",
+      "pinError": "고정에 실패했습니다.",
+      "unpinError": "고정 해제에 실패했습니다."
     },
     "validation": {
       "required": "필수 항목입니다.",
@@ -777,6 +783,8 @@
     "ariaCardDelete": "이 카드 삭제",
     "ariaCardArchive": "이 카드를 보관",
     "ariaCardUnarchive": "이 카드의 보관 해제",
+    "ariaCardPin": "이 카드를 고정",
+    "ariaCardUnpin": "이 카드의 고정 해제",
     "snapshot": {
       "refDeleted": "참조 원본 삭제됨",
       "refDeletedAria": "참조한 콘텐츠가 삭제되었습니다",

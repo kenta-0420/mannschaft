@@ -445,10 +445,10 @@ const dialogHeader = computed(() =>
     :close-on-escape="!saving"
     :style="{ width: '560px', maxWidth: '95vw' }"
     :pt="{
-      root: { 'aria-modal': 'true' },
+      root: { 'aria-modal': 'true', 'data-testid': 'card-editor-modal' },
     }"
   >
-    <form class="flex flex-col gap-4" @submit.prevent="save">
+    <form class="flex flex-col gap-4" data-testid="card-editor-form" @submit.prevent="save">
       <!-- カード種別（create のみ可変、edit では固定表示） -->
       <div class="flex flex-col gap-1">
         <label for="cardEditorType" class="text-sm font-medium">
@@ -462,6 +462,7 @@ const dialogHeader = computed(() =>
           option-label="label"
           option-value="value"
           class="w-full"
+          data-testid="card-editor-card-type-select"
         />
         <span
           v-else
@@ -487,6 +488,7 @@ const dialogHeader = computed(() =>
             option-value="value"
             class="w-full"
             :disabled="props.mode === 'edit'"
+            data-testid="card-editor-reference-type-select"
           />
           <small v-if="errors.referenceType" class="text-red-500">
             {{ errors.referenceType }}
@@ -503,6 +505,7 @@ const dialogHeader = computed(() =>
             :use-grouping="false"
             class="w-full"
             :disabled="props.mode === 'edit'"
+            data-testid="card-editor-reference-id-input"
           />
           <!-- F09.8 Phase G: 参照種別ごとのヒント -->
           <small class="text-xs text-surface-500">
@@ -576,7 +579,12 @@ const dialogHeader = computed(() =>
           <label for="cardEditorMemoTitle" class="text-sm font-medium">
             {{ t('corkboard.modal.titleOptional') }}
           </label>
-          <InputText id="cardEditorMemoTitle" v-model="title" class="w-full" />
+          <InputText
+            id="cardEditorMemoTitle"
+            v-model="title"
+            class="w-full"
+            data-testid="card-editor-title-input"
+          />
         </div>
         <div class="flex flex-col gap-1">
           <label for="cardEditorMemoBody" class="text-sm font-medium">
@@ -589,6 +597,7 @@ const dialogHeader = computed(() =>
             rows="4"
             auto-resize
             class="w-full"
+            data-testid="card-editor-body-input"
           />
           <small v-if="errors.body" class="text-red-500">{{ errors.body }}</small>
         </div>
@@ -619,6 +628,7 @@ const dialogHeader = computed(() =>
             type="url"
             :placeholder="t('corkboard.modal.urlPlaceholder')"
             class="w-full"
+            data-testid="card-editor-url-input"
           />
           <small v-if="errors.url" class="text-red-500">{{ errors.url }}</small>
         </div>
@@ -626,7 +636,12 @@ const dialogHeader = computed(() =>
           <label for="cardEditorUrlTitle" class="text-sm font-medium">
             {{ t('corkboard.modal.titleOptional') }}
           </label>
-          <InputText id="cardEditorUrlTitle" v-model="title" class="w-full" />
+          <InputText
+            id="cardEditorUrlTitle"
+            v-model="title"
+            class="w-full"
+            data-testid="card-editor-title-input"
+          />
         </div>
         <div class="flex flex-col gap-1">
           <label for="cardEditorUrlNote" class="text-sm font-medium">
@@ -653,6 +668,7 @@ const dialogHeader = computed(() =>
             id="cardEditorSectionTitle"
             v-model="title"
             class="w-full"
+            data-testid="card-editor-title-input"
           />
           <small class="text-xs text-surface-500">
             {{ t('corkboard.modal.titleSectionHint') }}
@@ -672,6 +688,7 @@ const dialogHeader = computed(() =>
             role="radio"
             :aria-checked="colorLabel === opt.value"
             :aria-label="opt.label"
+            :data-testid="`card-editor-color-label-${opt.value}`"
             class="flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all"
             :class="[
               opt.swatch,
@@ -728,12 +745,14 @@ const dialogHeader = computed(() =>
         severity="secondary"
         text
         :disabled="saving"
+        data-testid="card-editor-cancel-button"
         @click="cancel"
       />
       <Button
         :label="t('corkboard.modal.save')"
         icon="pi pi-check"
         :loading="saving"
+        data-testid="card-editor-save-button"
         @click="save"
       />
     </template>

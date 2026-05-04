@@ -697,7 +697,9 @@
       "editCard": "编辑卡片",
       "deleteCard": "删除卡片",
       "archiveCard": "归档",
-      "unarchiveCard": "取消归档"
+      "unarchiveCard": "取消归档",
+      "pinCard": "置顶",
+      "unpinCard": "取消置顶"
     },
     "modal": {
       "createTitle": "创建新卡片",
@@ -762,7 +764,11 @@
       "editError": "更新卡片失败。",
       "deleteError": "删除卡片失败。",
       "archiveError": "归档失败。",
-      "unarchiveError": "取消归档失败。"
+      "unarchiveError": "取消归档失败。",
+      "pinSuccess": "已置顶卡片。",
+      "unpinSuccess": "已取消置顶。",
+      "pinError": "置顶失败。",
+      "unpinError": "取消置顶失败。"
     },
     "validation": {
       "required": "此项为必填。",
@@ -777,6 +783,8 @@
     "ariaCardDelete": "删除此卡片",
     "ariaCardArchive": "归档此卡片",
     "ariaCardUnarchive": "取消此卡片的归档",
+    "ariaCardPin": "置顶此卡片",
+    "ariaCardUnpin": "取消置顶此卡片",
     "snapshot": {
       "refDeleted": "引用源已删除",
       "refDeletedAria": "引用的内容已被删除",
