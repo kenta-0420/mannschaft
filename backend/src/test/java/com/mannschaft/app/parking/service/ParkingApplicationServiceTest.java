@@ -11,6 +11,8 @@ import com.mannschaft.app.parking.entity.ParkingApplicationEntity;
 import com.mannschaft.app.parking.entity.ParkingSpaceEntity;
 import com.mannschaft.app.parking.repository.ParkingApplicationRepository;
 import com.mannschaft.app.parking.repository.ParkingSpaceRepository;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -49,6 +51,12 @@ class ParkingApplicationServiceTest {
 
     @Mock
     private ParkingMapper parkingMapper;
+
+    @Mock
+    private ProxyInputContext proxyInputContext;
+
+    @Mock
+    private ProxyInputRecordRepository proxyInputRecordRepository;
 
     @InjectMocks
     private ParkingApplicationService parkingApplicationService;

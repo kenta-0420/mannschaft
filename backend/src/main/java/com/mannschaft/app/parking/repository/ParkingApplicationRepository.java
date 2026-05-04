@@ -5,6 +5,7 @@ import com.mannschaft.app.parking.entity.ParkingApplicationEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,7 +13,8 @@ import java.util.Optional;
 /**
  * 区画申請リポジトリ。
  */
-public interface ParkingApplicationRepository extends JpaRepository<ParkingApplicationEntity, Long> {
+public interface ParkingApplicationRepository extends JpaRepository<ParkingApplicationEntity, Long>,
+        JpaSpecificationExecutor<ParkingApplicationEntity> {
 
     Page<ParkingApplicationEntity> findBySpaceIdIn(List<Long> spaceIds, Pageable pageable);
 

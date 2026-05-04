@@ -43,6 +43,13 @@ public class CirculationRecipientEntity extends BaseEntity {
 
     private LocalDateTime stampedAt;
 
+    @Column(name = "is_proxy_confirmed", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean isProxyConfirmed = false;
+
+    @Column(name = "proxy_input_record_id")
+    private Long proxyInputRecordId;
+
     private Long sealId;
 
     @Column(length = 20)

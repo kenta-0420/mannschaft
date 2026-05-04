@@ -58,6 +58,13 @@ public class ParkingApplicationEntity extends BaseEntity {
     @Column(length = 500)
     private String rejectionReason;
 
+    @Column(name = "is_proxy_input", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean isProxyInput = false;
+
+    @Column(name = "proxy_input_record_id")
+    private Long proxyInputRecordId;
+
     private Integer lotteryNumber;
 
     private LocalDateTime decidedAt;
