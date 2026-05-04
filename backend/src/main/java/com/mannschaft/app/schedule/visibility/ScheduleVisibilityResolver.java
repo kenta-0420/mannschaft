@@ -15,7 +15,6 @@ import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -54,7 +53,6 @@ import java.util.List;
  * </ul>
  */
 @Component
-@Transactional(readOnly = true)
 public class ScheduleVisibilityResolver
         extends AbstractContentVisibilityResolver<ScheduleEffectiveVisibility, ScheduleVisibilityProjection> {
 
