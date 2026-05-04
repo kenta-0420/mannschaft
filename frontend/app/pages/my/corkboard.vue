@@ -491,12 +491,26 @@ onMounted(() => load(false))
           >
             {{ item.body }}
           </p>
-          <p
-            v-else-if="item.reference?.snapshotExcerpt"
-            class="line-clamp-3 text-sm text-surface-500"
-          >
-            {{ item.reference.snapshotExcerpt }}
-          </p>
+
+          <!-- F09.8 Phase G: URL カードの OGP プレビュー -->
+          <CardOgpPreview
+            v-if="
+              item.cardType === 'URL' &&
+              (item.reference?.ogTitle || item.reference?.ogImageUrl)
+            "
+            :card="item"
+            size="md"
+          />
+
+          <!-- F09.8 Phase G: REFERENCE カードのスナップショット表示 -->
+          <CardSnapshot
+            v-else-if="
+              item.cardType === 'REFERENCE' &&
+              (item.reference?.snapshotTitle || item.reference?.snapshotExcerpt || item.reference?.isDeleted)
+            "
+            :card="item"
+            :compact="false"
+          />
 
           <!-- 権限喪失バッジ -->
           <div
@@ -507,9 +521,9 @@ onMounted(() => load(false))
             {{ t('corkboard.noAccessLabel') }}
           </div>
 
-          <!-- 削除済み参照バッジ -->
+          <!-- 削除済み参照バッジ（REFERENCE 以外。REFERENCE は CardSnapshot 側で出す） -->
           <div
-            v-else-if="item.reference?.isDeleted"
+            v-else-if="item.cardType !== 'REFERENCE' && item.reference?.isDeleted"
             class="inline-flex items-center gap-1 text-xs text-surface-400"
           >
             <i class="pi pi-trash text-[10px]" />

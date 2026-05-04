@@ -730,7 +730,12 @@
       "referenceTypeDocument": "Documento",
       "referenceTypeUrl": "URL",
       "referenceId": "ID de referencia",
-      "referenceIdHint": "El selector de referencia llegará en la Fase G. Por ahora, introduce el ID directamente.",
+      "referenceIdHint": "Introduce el ID numérico que aparece en la URL del contenido objetivo.",
+      "referenceIdPasteHint": "Pega la URL en el campo de abajo para extraer el ID automáticamente (opcional).",
+      "referenceUrlPaste": "Extraer ID desde una URL (opcional)",
+      "referenceUrlPastePlaceholder": "Pega una URL que empiece por https://…",
+      "referenceUrlExtractFailed": "No se pudo extraer un ID desde la URL. Introdúcelo manualmente.",
+      "referenceUrlExtractSuccess": "ID extraído de la URL.",
       "url": "URL",
       "urlPlaceholder": "https://example.com/...",
       "title": "Título",
@@ -771,6 +776,34 @@
     "ariaCardEdit": "Editar esta tarjeta",
     "ariaCardDelete": "Eliminar esta tarjeta",
     "ariaCardArchive": "Archivar esta tarjeta",
-    "ariaCardUnarchive": "Desarchivar esta tarjeta"
+    "ariaCardUnarchive": "Desarchivar esta tarjeta",
+    "snapshot": {
+      "refDeleted": "Origen eliminado",
+      "refDeletedAria": "El contenido referenciado ha sido eliminado",
+      "refUpdated": "El origen ha sido actualizado",
+      "refUpdatedAria": "El contenido referenciado se ha actualizado desde la creación de esta tarjeta",
+      "title": "Instantánea",
+      "noContent": "Sin vista previa disponible",
+      "openOriginal": "Abrir contenido original",
+      "openOriginalDisabled": "El contenido original no es accesible"
+    },
+    "ogp": {
+      "imageAlt": "Imagen de vista previa de {title}",
+      "imageAltFallback": "Imagen de vista previa del enlace",
+      "noImage": "Sin imagen",
+      "openLink": "Abrir enlace en una nueva pestaña"
+    },
+    "referenceHint": {
+      "timelinePost": "Introduce el ID numérico final de la URL de una publicación de la línea de tiempo (ej. /timeline/posts/123).",
+      "bulletinThread": "Introduce el ID numérico final de la URL de un hilo del tablón (ej. /bulletin/threads/456).",
+      "blogPost": "Introduce el ID numérico final de la URL de un artículo del blog (ej. /blog/posts/789).",
+      "chatMessage": "Usa la opción «Copiar ID del mensaje» del menú de acciones del chat y pega aquí el ID numérico.",
+      "file": "Introduce el ID numérico final de la URL de detalle del archivo (ej. /files/321).",
+      "team": "Introduce el ID numérico de la URL de detalle del equipo (ej. /teams/12).",
+      "organization": "Introduce el ID numérico de la URL de detalle de la organización (ej. /organizations/3).",
+      "event": "Introduce el ID numérico de la URL de detalle del evento (ej. /events/77).",
+      "document": "Introduce el ID numérico de la URL de detalle del documento (ej. /documents/55).",
+      "url": "Para crear una tarjeta URL, cambia el «Tipo de tarjeta» de arriba a URL."
+    }
   }
 }

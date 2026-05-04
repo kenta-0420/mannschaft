@@ -71,6 +71,10 @@ const positionY = ref<number>(0)
 // REFERENCE 用
 const referenceType = ref<CorkboardReferenceType>('TIMELINE_POST')
 const referenceId = ref<number | null>(null)
+/** F09.8 Phase G: URL から ID を抽出するための一時入力欄（送信対象外） */
+const referenceUrlPaste = ref<string>('')
+/** URL 抽出メッセージ（成功 / 失敗） */
+const referenceUrlPasteMessage = ref<{ kind: 'success' | 'error'; text: string } | null>(null)
 
 // MEMO / URL / SECTION_HEADER 共通
 const title = ref<string>('')
@@ -140,6 +144,8 @@ function resetForm() {
     positionY.value = c.positionY ?? 0
     referenceType.value = ((c.referenceType as CorkboardReferenceType) ?? 'TIMELINE_POST')
     referenceId.value = c.referenceId ?? null
+    referenceUrlPaste.value = ''
+    referenceUrlPasteMessage.value = null
     title.value = c.title ?? ''
     body.value = c.body ?? ''
     url.value = c.url ?? ''
@@ -151,6 +157,8 @@ function resetForm() {
     positionY.value = props.defaultPosition.y
     referenceType.value = 'TIMELINE_POST'
     referenceId.value = null
+    referenceUrlPaste.value = ''
+    referenceUrlPasteMessage.value = null
     title.value = ''
     body.value = ''
     url.value = ''
@@ -325,6 +333,100 @@ function cancel() {
   dialogVisible.value = false
 }
 
+// ----- F09.8 Phase G: 参照先入力ヒント / URL → ID 抽出補助 -----
+
+/**
+ * 参照種別ごとに「どこから ID を取るか」のヒント文言を返す。
+ * i18n キーは `corkboard.referenceHint.*`。
+ */
+const referenceHintKey = computed<string>(() => {
+  switch (referenceType.value) {
+    case 'TIMELINE_POST':
+      return 'corkboard.referenceHint.timelinePost'
+    case 'BULLETIN_THREAD':
+      return 'corkboard.referenceHint.bulletinThread'
+    case 'BLOG_POST':
+      return 'corkboard.referenceHint.blogPost'
+    case 'CHAT_MESSAGE':
+      return 'corkboard.referenceHint.chatMessage'
+    case 'FILE':
+      return 'corkboard.referenceHint.file'
+    case 'TEAM':
+      return 'corkboard.referenceHint.team'
+    case 'ORGANIZATION':
+      return 'corkboard.referenceHint.organization'
+    case 'EVENT':
+      return 'corkboard.referenceHint.event'
+    case 'DOCUMENT':
+      return 'corkboard.referenceHint.document'
+    case 'URL':
+      return 'corkboard.referenceHint.url'
+    default:
+      return 'corkboard.modal.referenceIdHint'
+  }
+})
+
+/**
+ * referenceType に応じた URL パスのヒント。
+ * URL の末尾 / 連続する数字を対象に拾う簡易ロジックなので、
+ * これを満たさない URL は手入力を促す。
+ */
+const REFERENCE_PATH_HINT: Partial<Record<CorkboardReferenceType, RegExp>> = {
+  TIMELINE_POST: /\/timeline\/posts\/(\d+)/,
+  BULLETIN_THREAD: /\/bulletin\/threads\/(\d+)/,
+  BLOG_POST: /\/blog\/posts\/(\d+)/,
+  CHAT_MESSAGE: /\/chat\/messages\/(\d+)/,
+  FILE: /\/files\/(\d+)/,
+  TEAM: /\/teams\/(\d+)/,
+  ORGANIZATION: /\/organizations\/(\d+)/,
+  EVENT: /\/events\/(\d+)/,
+  DOCUMENT: /\/documents\/(\d+)/,
+}
+
+/**
+ * URL から数値 ID を抽出する。
+ *  1. referenceType ごとの専用パスで一致を試みる
+ *  2. なければ「URL 末尾の連続数字」を抽出
+ * いずれもダメなら null。
+ */
+function extractIdFromUrl(input: string, refType: CorkboardReferenceType): number | null {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+  const specific = REFERENCE_PATH_HINT[refType]
+  if (specific) {
+    const m = trimmed.match(specific)
+    if (m && m[1]) {
+      const v = Number(m[1])
+      if (Number.isFinite(v) && v > 0) return v
+    }
+  }
+  // 末尾連続数字（クエリ・ハッシュ除去後）
+  const noQuery = trimmed.split(/[?#]/)[0] ?? trimmed
+  const tail = noQuery.match(/(\d+)\/?$/)
+  if (tail && tail[1]) {
+    const v = Number(tail[1])
+    if (Number.isFinite(v) && v > 0) return v
+  }
+  return null
+}
+
+/** 「URL から抽出」ボタン押下時 */
+function applyReferenceUrlPaste() {
+  const id = extractIdFromUrl(referenceUrlPaste.value, referenceType.value)
+  if (id == null) {
+    referenceUrlPasteMessage.value = {
+      kind: 'error',
+      text: t('corkboard.modal.referenceUrlExtractFailed'),
+    }
+    return
+  }
+  referenceId.value = id
+  referenceUrlPasteMessage.value = {
+    kind: 'success',
+    text: t('corkboard.modal.referenceUrlExtractSuccess'),
+  }
+}
+
 // ----- アクセシビリティ -----
 
 const dialogHeader = computed(() =>
@@ -402,11 +504,55 @@ const dialogHeader = computed(() =>
             class="w-full"
             :disabled="props.mode === 'edit'"
           />
+          <!-- F09.8 Phase G: 参照種別ごとのヒント -->
           <small class="text-xs text-surface-500">
-            {{ t('corkboard.modal.referenceIdHint') }}
+            {{ t(referenceHintKey) }}
           </small>
           <small v-if="errors.referenceId" class="text-red-500">
             {{ errors.referenceId }}
+          </small>
+        </div>
+
+        <!-- F09.8 Phase G: URL ペーストで ID を自動抽出する補助欄（create 時のみ） -->
+        <div
+          v-if="props.mode === 'create' && referenceType !== 'URL'"
+          class="flex flex-col gap-1 rounded border border-dashed border-surface-300 p-2 dark:border-surface-700"
+        >
+          <label for="cardEditorRefUrlPaste" class="text-xs font-medium text-surface-600 dark:text-surface-300">
+            {{ t('corkboard.modal.referenceUrlPaste') }}
+          </label>
+          <div class="flex gap-2">
+            <InputText
+              id="cardEditorRefUrlPaste"
+              v-model="referenceUrlPaste"
+              type="url"
+              :placeholder="t('corkboard.modal.referenceUrlPastePlaceholder')"
+              class="flex-1"
+              @keydown.enter.prevent="applyReferenceUrlPaste"
+            />
+            <Button
+              :label="t('corkboard.modal.referenceUrlPaste')"
+              icon="pi pi-arrow-right"
+              size="small"
+              severity="secondary"
+              :disabled="!referenceUrlPaste.trim()"
+              @click="applyReferenceUrlPaste"
+            />
+          </div>
+          <small class="text-[11px] text-surface-500">
+            {{ t('corkboard.modal.referenceIdPasteHint') }}
+          </small>
+          <small
+            v-if="referenceUrlPasteMessage"
+            :class="
+              referenceUrlPasteMessage.kind === 'success'
+                ? 'text-green-600 dark:text-green-400'
+                : 'text-red-500'
+            "
+            class="text-[11px]"
+            role="status"
+          >
+            {{ referenceUrlPasteMessage.text }}
           </small>
         </div>
         <div class="flex flex-col gap-1">
