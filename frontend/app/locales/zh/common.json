@@ -699,7 +699,13 @@
       "archiveCard": "归档",
       "unarchiveCard": "取消归档",
       "pinCard": "置顶",
-      "unpinCard": "取消置顶"
+      "unpinCard": "取消置顶",
+      "createSection": "新建分区",
+      "editSection": "编辑分区",
+      "deleteSection": "删除分区",
+      "addToSection": "添加到分区",
+      "moveToSection": "移动到分区",
+      "removeFromSection": "从分区移除"
     },
     "modal": {
       "createTitle": "创建新卡片",
@@ -748,11 +754,20 @@
       "userNote": "备注",
       "userNotePlaceholder": "为此卡片附加的个人备注（可选）",
       "save": "保存",
-      "cancel": "取消"
+      "cancel": "取消",
+      "sectionCreateTitle": "创建新分区",
+      "sectionEditTitle": "编辑分区",
+      "sectionTitle": "分区名称",
+      "sectionDescription": "概要（可选）",
+      "sectionIsCollapsed": "默认折叠",
+      "sectionIsCollapsedHint": "开启后，打开看板时分区将以折叠状态显示。",
+      "sectionMenuTitle": "选择分区"
     },
     "confirm": {
       "deleteTitle": "删除卡片",
-      "deleteMessage": "确定删除此卡片吗？此操作无法撤销。"
+      "deleteMessage": "确定删除此卡片吗？此操作无法撤销。",
+      "deleteSectionTitle": "确定删除此分区吗？",
+      "deleteSectionMessage": "将删除此分区。卡片将保留（变为未分区状态）。"
     },
     "toast": {
       "createSuccess": "已创建卡片。",
@@ -768,7 +783,16 @@
       "pinSuccess": "已置顶卡片。",
       "unpinSuccess": "已取消置顶。",
       "pinError": "置顶失败。",
-      "unpinError": "取消置顶失败。"
+      "unpinError": "取消置顶失败。",
+      "sectionCreateSuccess": "已创建分区。",
+      "sectionEditSuccess": "已更新分区。",
+      "sectionDeleteSuccess": "已删除分区。",
+      "sectionCreateError": "创建分区失败。",
+      "sectionEditError": "更新分区失败。",
+      "sectionDeleteError": "删除分区失败。",
+      "cardAddToSectionSuccess": "已将卡片添加到分区。",
+      "cardRemoveFromSectionSuccess": "已将卡片从分区移除。",
+      "cardSectionChangeError": "更改卡片分区失败。"
     },
     "validation": {
       "required": "此项为必填。",
@@ -776,7 +800,9 @@
       "referenceIdRequired": "请输入引用源 ID。",
       "referenceTypeRequired": "请选择引用源类型。",
       "memoBodyRequired": "请输入便笺正文。",
-      "sectionHeaderTitleRequired": "请输入标题文字。"
+      "sectionHeaderTitleRequired": "请输入标题文字。",
+      "sectionTitleRequired": "请输入分区名称。",
+      "sectionTitleTooLong": "分区名称需在 {max} 个字符以内。"
     },
     "ariaCardActions": "卡片操作",
     "ariaCardEdit": "编辑此卡片",
@@ -785,6 +811,10 @@
     "ariaCardUnarchive": "取消此卡片的归档",
     "ariaCardPin": "置顶此卡片",
     "ariaCardUnpin": "取消置顶此卡片",
+    "ariaCardAddToSection": "将此卡片添加或移动到分区",
+    "ariaSectionActions": "分区操作",
+    "ariaSectionEdit": "编辑此分区",
+    "ariaSectionDelete": "删除此分区",
     "dnd": {
       "pinned": "已置顶（无法移动）",
       "locked": "无编辑权限（无法移动）",

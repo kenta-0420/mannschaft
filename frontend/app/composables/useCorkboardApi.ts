@@ -3,17 +3,13 @@ import type {
   CorkboardCard,
   CorkboardCardDetail,
   CorkboardDetail,
+  CorkboardGroupDetail,
   CorkboardScope,
   CreateCardRequest,
+  CreateGroupRequest,
   UpdateCardRequest,
+  UpdateGroupRequest,
 } from '~/types/corkboard'
-
-interface CorkboardGroup {
-  id: number
-  name: string
-  color: string | null
-  boardId: number
-}
 
 export function useCorkboardApi() {
   const api = useApi()
@@ -193,24 +189,51 @@ export function useCorkboardApi() {
     )
   }
 
-  // === Groups ===
-  async function createGroup(boardId: number, body: Record<string, unknown>) {
-    return api<{ data: CorkboardGroup }>(`/api/v1/corkboards/${boardId}/groups`, {
+  // === Groups (F09.8 Phase E) ===
+  /**
+   * セクション (group) を新規作成する。
+   *
+   * - リクエストは {@link CreateGroupRequest} で
+   *   バックエンド `CreateGroupRequest.java` と完全整合（camelCase）。
+   * - レスポンスは {@link CorkboardGroupDetail}。
+   */
+  async function createGroup(boardId: number, body: CreateGroupRequest) {
+    return api<{ data: CorkboardGroupDetail }>(`/api/v1/corkboards/${boardId}/groups`, {
       method: 'POST',
       body,
     })
   }
-  async function updateGroup(boardId: number, groupId: number, body: Record<string, unknown>) {
-    return api(`/api/v1/corkboards/${boardId}/groups/${groupId}`, { method: 'PUT', body })
+  /**
+   * セクションを更新する。
+   *
+   * - リクエストは {@link UpdateGroupRequest}（`name` 必須）。
+   * - レスポンスは {@link CorkboardGroupDetail}。
+   */
+  async function updateGroup(boardId: number, groupId: number, body: UpdateGroupRequest) {
+    return api<{ data: CorkboardGroupDetail }>(
+      `/api/v1/corkboards/${boardId}/groups/${groupId}`,
+      { method: 'PUT', body },
+    )
   }
+  /**
+   * セクションを削除する。所属カード自体は残り、`corkboard_card_groups` 中間レコードのみ消える。
+   */
   async function deleteGroup(boardId: number, groupId: number) {
     return api(`/api/v1/corkboards/${boardId}/groups/${groupId}`, { method: 'DELETE' })
   }
+  /**
+   * カードをセクションに追加する（`corkboard_card_groups` レコード作成）。
+   *
+   * 既に所属していた場合のバックエンド挙動は冪等（重複は弾く or 既存維持）に依存する。
+   */
   async function addCardToGroup(boardId: number, groupId: number, cardId: number) {
     return api(`/api/v1/corkboards/${boardId}/groups/${groupId}/cards/${cardId}`, {
       method: 'POST',
     })
   }
+  /**
+   * カードをセクションから外す（`corkboard_card_groups` レコード削除）。
+   */
   async function removeCardFromGroup(boardId: number, groupId: number, cardId: number) {
     return api(`/api/v1/corkboards/${boardId}/groups/${groupId}/cards/${cardId}`, {
       method: 'DELETE',

@@ -32,9 +32,29 @@ interface Props {
   canEdit: boolean
   /** ピン止め操作可否（個人ボード所有者のみ true） */
   canPin: boolean
+  /**
+   * F09.8 Phase E: セクション編集権限。
+   * true のとき「フォルダ」ボタン（セクション紐付けメニュー）を表示する。
+   * デフォルト false（共有ボード等で表示しない）。
+   */
+  canEditSection?: boolean
+  /**
+   * F09.8 Phase E: 当該カードが現在所属しているセクション ID。
+   * `null` のときは「セクション未所属」とみなしツールチップを「追加」表記にする。
+   */
+  currentSectionId?: number | null
+  /**
+   * F09.8 Phase E: 親ボードに存在する利用可能セクション一覧。
+   * 1 件以上あるときのみフォルダボタンを表示する。
+   */
+  availableSections?: ReadonlyArray<{ id: number; name: string }>
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  canEditSection: false,
+  currentSectionId: null,
+  availableSections: () => [],
+})
 
 const emit = defineEmits<{
   /** ドラッグ完了時。親は API を呼んで永続化する。 */
@@ -44,6 +64,11 @@ const emit = defineEmits<{
   delete: [card: CorkboardCardDetail]
   archive: [card: CorkboardCardDetail]
   pin: [card: CorkboardCardDetail]
+  /**
+   * F09.8 Phase E: セクション紐付けメニューを開く要求。
+   * 親側が `<Popover>` インスタンスを toggle するために event をそのまま渡す。
+   */
+  'section-menu-open': [event: Event, card: CorkboardCardDetail]
 }>()
 
 const { t } = useI18n()
@@ -260,6 +285,23 @@ const ariaLabel = computed<string>(() => {
           :class="card.isPinned ? 'pi-bookmark-fill' : 'pi-bookmark'"
           aria-hidden="true"
         />
+      </button>
+      <!-- F09.8 Phase E: セクション紐付けメニューを開くボタン -->
+      <button
+        v-if="canEditSection && availableSections.length > 0"
+        type="button"
+        class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-surface-100 hover:text-primary dark:text-surface-300 dark:hover:bg-surface-700"
+        :aria-label="t('corkboard.ariaCardAddToSection')"
+        :title="
+          currentSectionId == null
+            ? t('corkboard.actions.addToSection')
+            : t('corkboard.actions.moveToSection')
+        "
+        :data-testid="`corkboard-card-section-button-${card.id}`"
+        @pointerdown.stop
+        @click.stop="emit('section-menu-open', $event, card)"
+      >
+        <i class="pi pi-folder" aria-hidden="true" />
       </button>
       <button
         type="button"
