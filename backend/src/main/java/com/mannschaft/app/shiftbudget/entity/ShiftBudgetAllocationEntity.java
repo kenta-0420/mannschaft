@@ -39,8 +39,8 @@ import java.time.LocalDateTime;
                 @UniqueConstraint(
                         name = "uq_sba_scope_category_period",
                         columnNames = {
-                                "organization_id", "team_id", "project_id",
-                                "budget_category_id", "period_start", "period_end", "deleted_at"
+                                "organization_id", "team_id_uq", "project_id_uq",
+                                "budget_category_id", "period_start", "period_end", "deleted_at_uq"
                         }
                 )
         },
@@ -122,6 +122,39 @@ public class ShiftBudgetAllocationEntity extends BaseEntity {
     /** 論理削除タイムスタンプ */
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    /**
+     * UNIQUE 用 STORED 生成カラム。
+     * <p>MySQL の UNIQUE は NULL を「異なる値」と扱うため、{@code team_id} / {@code project_id} /
+     * {@code deleted_at} が NULL の場合に重複検知できない問題を回避するため、COALESCE で
+     * 番兵値に変換した STORED 生成カラムを {@code @UniqueConstraint} に組み込む。</p>
+     * <p>Hibernate の {@code ddl-auto} 経由でテスト DB に DDL 生成される際にも有効化されるよう、
+     * Entity 側に {@code columnDefinition} で生成カラム定義を明示する。
+     * 既存 V3.120 ({@code recruitment_participants.active_subject_key}) と同パターン。</p>
+     */
+    @Column(
+            name = "team_id_uq",
+            insertable = false,
+            updatable = false,
+            columnDefinition = "BIGINT GENERATED ALWAYS AS (COALESCE(team_id, 0)) STORED NOT NULL"
+    )
+    private Long teamIdUq;
+
+    @Column(
+            name = "project_id_uq",
+            insertable = false,
+            updatable = false,
+            columnDefinition = "BIGINT GENERATED ALWAYS AS (COALESCE(project_id, 0)) STORED NOT NULL"
+    )
+    private Long projectIdUq;
+
+    @Column(
+            name = "deleted_at_uq",
+            insertable = false,
+            updatable = false,
+            columnDefinition = "DATETIME GENERATED ALWAYS AS (COALESCE(deleted_at, '9999-12-31 00:00:00')) STORED NOT NULL"
+    )
+    private LocalDateTime deletedAtUq;
 
     /**
      * 割当額・備考を更新する。

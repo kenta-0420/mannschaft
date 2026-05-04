@@ -41,7 +41,7 @@ import java.time.LocalDateTime;
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uq_sbc_slot_user_status",
-                        columnNames = {"slot_id", "user_id", "status", "deleted_at"}
+                        columnNames = {"slot_id", "user_id", "status", "deleted_at_uq"}
                 )
         },
         indexes = {
@@ -114,6 +114,18 @@ public class ShiftBudgetConsumptionEntity extends BaseEntity {
     /** 論理削除タイムスタンプ（運用上は status 遷移を優先するが UNIQUE 制約用に保持） */
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    /**
+     * UNIQUE 用 STORED 生成カラム（{@code deleted_at} の NULL 重複問題を回避）。
+     * 詳細は {@link ShiftBudgetAllocationEntity#deletedAtUq} 参照。
+     */
+    @Column(
+            name = "deleted_at_uq",
+            insertable = false,
+            updatable = false,
+            columnDefinition = "DATETIME GENERATED ALWAYS AS (COALESCE(deleted_at, '9999-12-31 00:00:00')) STORED NOT NULL"
+    )
+    private LocalDateTime deletedAtUq;
 
     /**
      * PLANNED → CANCELLED 遷移を行う。
