@@ -1,11 +1,13 @@
 package com.mannschaft.app.schedule.repository;
 
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.visibility.ScheduleVisibilityProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -121,4 +123,19 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
      */
     @Query("SELECT s FROM ScheduleEntity s WHERE s.externalRef LIKE :prefix AND s.deletedAt IS NULL")
     List<ScheduleEntity> findByExternalRefPrefix(@Param("prefix") String prefix);
+
+    /**
+     * F00 ContentVisibilityResolver Phase B — schedules の可視性判定用射影を 1 SQL で取得する。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは除外される。
+     * 設計書 §4.6 の「実存確認込み射影取得」原則に従う（IDOR 防止 §11.3）。</p>
+     *
+     * @param ids 取得対象のスケジュール ID 集合
+     * @return 実存する {@link ScheduleVisibilityProjection} の List（空でも null 不可）
+     */
+    @Query("SELECT new com.mannschaft.app.schedule.visibility.ScheduleVisibilityProjection("
+            + "s.id, s.teamId, s.organizationId, s.userId, s.createdBy, "
+            + "s.visibility, s.visibilityTemplateId, s.status) "
+            + "FROM ScheduleEntity s WHERE s.id IN :ids")
+    List<ScheduleVisibilityProjection> findVisibilityProjectionsByIdIn(@Param("ids") Collection<Long> ids);
 }
