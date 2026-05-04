@@ -37,4 +37,14 @@ public class TimetableSlotUserNoteFieldEntity extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Integer maxLength = 2000;
+
+    /**
+     * フィールド属性を更新する。{@code null} を指定したフィールドは変更しない。
+     */
+    public void update(String label, String placeholder, Integer sortOrder, Integer maxLength) {
+        if (label != null) this.label = label;
+        if (placeholder != null) this.placeholder = placeholder;
+        if (sortOrder != null) this.sortOrder = sortOrder;
+        if (maxLength != null) this.maxLength = maxLength;
+    }
 }

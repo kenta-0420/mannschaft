@@ -86,6 +86,45 @@
     "day_thu": "木",
     "day_fri": "金",
     "day_sat": "土",
-    "day_sun": "日"
+    "day_sun": "日",
+    "dashboard": {
+      "title": "今日の時間割",
+      "loading": "読み込み中…",
+      "empty": "今日の時間割はありません",
+      "tag_personal": "個人",
+      "tag_team": "チーム"
+    },
+    "notes": {
+      "title": "個人メモ",
+      "loading": "読み込み中…",
+      "load_error": "メモの取得に失敗しました",
+      "save_success": "メモを保存しました",
+      "save_error": "メモの保存に失敗しました",
+      "save_first": "メモを先に保存してください",
+      "btn_save": "保存",
+      "field_preparation": "予習",
+      "field_review": "復習",
+      "field_items_to_bring": "持参物",
+      "field_free_memo": "自由メモ",
+      "attachments_title": "添付ファイル",
+      "attachment_upload_success": "添付ファイルをアップロードしました",
+      "attachment_upload_error": "添付ファイルのアップロードに失敗しました",
+      "attachment_download_error": "添付ファイルのダウンロードに失敗しました",
+      "attachment_delete_error": "添付ファイルの削除に失敗しました",
+      "dashboard_title": "今日のメモ",
+      "dashboard_empty": "今日のメモはまだありません",
+      "custom_fields_title": "カスタム項目",
+      "btn_add_field": "項目を追加",
+      "btn_remove_field": "項目を削除"
+    },
+    "settings": {
+      "title": "個人時間割の設定",
+      "auto_reflect": "チーム時間割の臨時変更を個人カレンダーに自動反映する",
+      "notify_team_note": "チーム時間割のコマ共通メモ更新時に通知を受け取る",
+      "default_template": "デフォルト時限テンプレート",
+      "visible_default_fields": "メモエディタで表示する標準項目",
+      "save_success": "設定を保存しました",
+      "save_error": "設定の保存に失敗しました"
+    }
   }
 }
