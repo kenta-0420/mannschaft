@@ -154,7 +154,24 @@ public enum ShiftBudgetErrorCode implements ErrorCode {
      * <p>設計書 §8.2: 予算割当の CRUD / 警告承認 / 月次締めバッチ起動など F08.7 の管理操作で必要 (HTTP 403)</p>
      */
     BUDGET_ADMIN_REQUIRED("SHIFT_BUDGET_027",
-            "シフト予算管理権限 (BUDGET_ADMIN) が必要です", Severity.WARN);
+            "シフト予算管理権限 (BUDGET_ADMIN) が必要です", Severity.WARN),
+
+    /**
+     * 月次締め重複実行検知（既に当月分の締めが完了している）。
+     * <p>設計書 §4.6 / §6.1 #11: {@code budget_transactions} に
+     * {@code source_type='SHIFT_BUDGET_MONTHLY'} かつ {@code source_id=allocation_id} かつ
+     * {@code transaction_date=lastDayOfMonth} のレコードが既存する場合、
+     * 二重仕訳を防ぐため本エラーを返却する (HTTP 409)。</p>
+     */
+    MONTHLY_ALREADY_CLOSED("SHIFT_BUDGET_028",
+            "該当月のシフト予算は既に締め済みです", Severity.WARN),
+
+    /**
+     * 警告（{@code budget_threshold_alerts}）が見つからない / 別組織所属。
+     * <p>IDOR 対策で 404 統一 (HTTP 404)。</p>
+     */
+    ALERT_NOT_FOUND("SHIFT_BUDGET_029",
+            "対象の予算警告が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

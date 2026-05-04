@@ -12,6 +12,7 @@ import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
+import com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -70,6 +71,9 @@ class ShiftBudgetPublishedEventListenerTest {
     private ShiftHourlyRateRepository hourlyRateRepository;
     @Mock
     private AuditLogService auditLogService;
+    /** Phase 9-δ で追加された閾値判定 hook（テスト中は no-op で十分） */
+    @Mock
+    private ThresholdAlertEvaluationService thresholdAlertEvaluationService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -80,7 +84,7 @@ class ShiftBudgetPublishedEventListenerTest {
         listener = new ShiftBudgetConsumptionRecordListener(
                 featureService, allocationRepository, rateQueryRepository,
                 consumptionService, slotRepository, hourlyRateRepository,
-                auditLogService, objectMapper);
+                auditLogService, objectMapper, thresholdAlertEvaluationService);
     }
 
     private ShiftSlotEntity sampleSlotWithUser(Long slotId, Long userId) {
@@ -202,6 +206,8 @@ class ShiftBudgetPublishedEventListenerTest {
         verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
                 eq(USER_ID), eq(null), eq(TEAM_ID), eq(ORG_ID),
                 any(), any(), any(), any());
+        // Phase 9-δ 追加: 各 (slot,user) PLANNED INSERT 後に閾値判定が呼ばれる
+        verify(thresholdAlertEvaluationService, times(1)).evaluateAndTrigger(ALLOCATION_ID);
     }
 
     @Test

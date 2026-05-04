@@ -13,6 +13,7 @@ import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
+import com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -56,6 +57,8 @@ public class ShiftBudgetConsumptionRecordListener {
     private final ShiftHourlyRateRepository hourlyRateRepository;
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
+    /** Phase 9-δ で追加: 閾値判定 hook */
+    private final ThresholdAlertEvaluationService thresholdAlertEvaluationService;
 
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -122,6 +125,15 @@ public class ShiftBudgetConsumptionRecordListener {
                                 hourlyRate,
                                 hours);
                         recordedCount++;
+
+                        // Phase 9-δ 追加: 各 (slot,user) PLANNED INSERT 後に閾値判定を呼ぶ。
+                        // 例外は飲み込む（既存パターン踏襲: hook 失敗が main トランザクションを巻き戻さないため）
+                        try {
+                            thresholdAlertEvaluationService.evaluateAndTrigger(allocation.getId());
+                        } catch (Exception thresholdEx) {
+                            log.error("F08.7 hook: 閾値判定失敗（処理継続）: allocId={}, slot={}, user={}",
+                                    allocation.getId(), slot.getId(), userId, thresholdEx);
+                        }
                     } catch (IllegalStateException e) {
                         // CONFIRMED 既存 → スキップして他継続（個別エラーで全体を止めない）
                         log.warn("F08.7 hook: CONFIRMED 既存のため skip: slot={}, user={}, msg={}",
