@@ -10,6 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
@@ -84,5 +85,62 @@ class CorkboardPermissionServiceTest {
     void 未知ポリシー拒否() {
         assertThatThrownBy(() -> service.checkEditPermission(teamBoard("UNKNOWN_POLICY"), 1L))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    // ===========================================================
+    //  F09.8 件A: canEdit (boolean 返却版)
+    //  詳細レスポンス DTO の viewerCanEdit フラグ算出用
+    // ===========================================================
+
+    @Test
+    @DisplayName("canEdit: PERSONAL 所有者なら true")
+    void canEdit_PERSONAL所有者_true() {
+        assertThat(service.canEdit(personalBoard(1L), 1L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("canEdit: PERSONAL 非所有者なら false")
+    void canEdit_PERSONAL非所有者_false() {
+        assertThat(service.canEdit(personalBoard(2L), 1L)).isFalse();
+    }
+
+    @Test
+    @DisplayName("canEdit: ADMIN_ONLY ボード × ADMIN なら true")
+    void canEdit_AdminOnly_Admin_true() {
+        given(accessControlService.isAdminOrAbove(1L, 10L, "TEAM")).willReturn(true);
+        assertThat(service.canEdit(teamBoard("ADMIN_ONLY"), 1L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("canEdit: ADMIN_ONLY ボード × 非ADMIN なら false")
+    void canEdit_AdminOnly_NonAdmin_false() {
+        given(accessControlService.isAdminOrAbove(1L, 10L, "TEAM")).willReturn(false);
+        assertThat(service.canEdit(teamBoard("ADMIN_ONLY"), 1L)).isFalse();
+    }
+
+    @Test
+    @DisplayName("canEdit: ALL_MEMBERS ボード × メンバーなら true")
+    void canEdit_AllMembers_Member_true() {
+        given(accessControlService.isMember(1L, 20L, "ORGANIZATION")).willReturn(true);
+        assertThat(service.canEdit(orgBoard("ALL_MEMBERS"), 1L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("canEdit: ALL_MEMBERS ボード × 非メンバーなら false")
+    void canEdit_AllMembers_NonMember_false() {
+        given(accessControlService.isMember(1L, 20L, "ORGANIZATION")).willReturn(false);
+        assertThat(service.canEdit(orgBoard("ALL_MEMBERS"), 1L)).isFalse();
+    }
+
+    @Test
+    @DisplayName("canEdit: 引数 null・未知スコープ・未知ポリシーは false（例外を投げない）")
+    void canEdit_異常入力_false() {
+        assertThat(service.canEdit(null, 1L)).isFalse();
+        assertThat(service.canEdit(personalBoard(1L), null)).isFalse();
+        assertThat(service.canEdit(teamBoard("UNKNOWN_POLICY"), 1L)).isFalse();
+
+        CorkboardEntity unknown = CorkboardEntity.builder()
+                .scopeType("UNKNOWN").scopeId(99L).editPolicy("ADMIN_ONLY").name("謎ボード").build();
+        assertThat(service.canEdit(unknown, 1L)).isFalse();
     }
 }

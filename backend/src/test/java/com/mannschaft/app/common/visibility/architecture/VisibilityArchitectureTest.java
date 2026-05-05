@@ -1,6 +1,8 @@
 package com.mannschaft.app.common.visibility.architecture;
 
+import com.mannschaft.app.common.visibility.AbstractContentVisibilityResolver;
 import com.mannschaft.app.common.visibility.ContentVisibilityResolver;
+import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -10,6 +12,7 @@ import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
+import org.springframework.transaction.annotation.Transactional;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -24,7 +27,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  * Phase F で各通知発行 Service に対して配置する Mockito ガードテスト
  * ({@code *VisibilityGuardTest}) が担当する (§13.5)。
  *
- * <h2>5 ルールの責務</h2>
+ * <h2>6 ルールの責務</h2>
  * <ol>
  *   <li>{@link #mappers_have_no_external_dependencies}
  *       — {@code common.visibility.mapping} は機能側 enum と {@code java..}
@@ -45,6 +48,11 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  *   <li>{@link #resolvers_dont_inject_other_resolvers}
  *       — Resolver は他 Resolver を直接 inject せず {@code ContentVisibilityChecker}
  *         経由とする (§15 D-16 循環参照対策)
+ *   </li>
+ *   <li>{@link #abstractContentVisibilityResolver_subclasses_must_not_be_transactional}
+ *       — {@link AbstractContentVisibilityResolver} のサブクラスは
+ *         {@code @Transactional} を付与してはならない
+ *         (CGLIB プロキシ + final テンプレートメソッドで NPE。PR#320/321 再発防止)
  *   </li>
  * </ol>
  */
@@ -201,9 +209,70 @@ class VisibilityArchitectureTest {
                 + "他 type の判定が必要なら ContentVisibilityChecker 経由とすること")
             .allowEmptyShould(true);
 
+    /**
+     * {@link AbstractContentVisibilityResolver} のサブクラスは
+     * {@code @Transactional} を付与してはならない。
+     *
+     * <p><strong>背景</strong> (PR#320 Event / PR#321 Schedule で発覚した CGLIB プロキシ NPE):
+     * <ul>
+     *   <li>{@code @Transactional} 付き Bean は Spring が CGLIB でプロキシ化する
+     *       (Objenesis でコンストラクタ bypass — フィールド初期化なし)</li>
+     *   <li>{@link AbstractContentVisibilityResolver#canView} /
+     *       {@link AbstractContentVisibilityResolver#filterAccessible} は
+     *       {@code final} テンプレートメソッド。CGLIB は {@code final} メソッドを
+     *       上書き (override) できない</li>
+     *   <li>結果: proxy インスタンス (フィールド null) 上で親クラスの本物の
+     *       実装が走り、{@code Repository} / {@code MembershipBatchQueryService} が
+     *       {@code null} 参照されて NPE</li>
+     * </ul>
+     *
+     * <p><strong>解決方針</strong>: トランザクションは下層
+     * ({@code Repository} / {@code MembershipBatchQueryService} 等) が自前で
+     * 持つため Resolver 側に {@code @Transactional} は不要。Resolver から
+     * {@code @Transactional} を外せば CGLIB プロキシ化されず、
+     * {@code final} テンプレートが本物のサブクラスインスタンス上で動く。
+     *
+     * <p>本ルールは Phase C/D で実装する 11 機能の Resolver で同型 NPE を
+     * 機械的に防ぐ。基底クラス自身は対象外。
+     */
+    @ArchTest
+    static final ArchRule abstractContentVisibilityResolver_subclasses_must_not_be_transactional =
+        // allowEmptyShould(true) — Phase A 時点ではサブクラスが未登場の場面でも
+        // ルール定義を main にマージできるようにする。Phase B 以降にサブクラスが
+        // 追加された瞬間から自動で検査が有効になる。
+        classes().that().areAssignableTo(AbstractContentVisibilityResolver.class)
+            .and(notAbstractContentVisibilityResolverItself())
+            .should().notBeAnnotatedWith(Transactional.class)
+            .because("AbstractContentVisibilityResolver は final テンプレートメソッド "
+                + "(canView / filterAccessible) を持つ。@Transactional を付けると "
+                + "CGLIB プロキシ化 (Objenesis でコンストラクタ bypass) され、"
+                + "final な canView/filterAccessible が proxy インスタンス "
+                + "(フィールド null) 上で実行され NPE になる "
+                + "(PR#320 Event / PR#321 Schedule で発覚)。"
+                + "トランザクションは下層 Repository / MembershipBatchQueryService が"
+                + "自前で持つため Resolver には不要")
+            .allowEmptyShould(true);
+
     // -----------------------------------------------------------------------
     // ヘルパー
     // -----------------------------------------------------------------------
+
+    /**
+     * 「{@link AbstractContentVisibilityResolver} 自身ではない」を表す
+     * {@link DescribedPredicate}。
+     *
+     * <p>{@link #abstractContentVisibilityResolver_subclasses_must_not_be_transactional}
+     * で「サブクラスのみを対象にする (基底クラス自身は除外する)」絞り込みに使う。
+     */
+    private static DescribedPredicate<JavaClass> notAbstractContentVisibilityResolverItself() {
+        return new DescribedPredicate<>("are not AbstractContentVisibilityResolver itself") {
+            @Override
+            public boolean test(JavaClass clazz) {
+                return !clazz.getFullName().equals(
+                    AbstractContentVisibilityResolver.class.getName());
+            }
+        };
+    }
 
     /**
      * クラスが Phase 2 予約 ReferenceType ({@code PERSONAL_TIMETABLE} /

@@ -487,26 +487,14 @@ async function doTogglePin(
 /**
  * ボードの編集権限を判定する。
  *
- * 設計書 §2 認可仕様:
- *  - PERSONAL: 所有者のみ編集可
- *  - TEAM / ORGANIZATION:
- *      edit_policy = ALL_MEMBERS なら MEMBER 以上で編集可
- *      edit_policy = ADMIN_ONLY  なら ADMIN / DEPUTY_ADMIN のみ編集可
- *
- * Phase D の現実装ではフロントから所属ロール情報を引く API が未配線のため、
- * 「個人ボード（所有者）= 編集可、それ以外は edit_policy=ALL_MEMBERS のみ編集可」
- * とする保守的判定を採用する。共有ボードの ADMIN/MEMBER 厳密判定は、
- * 所属ロールを返す API が整備されてから Phase D 後続で精緻化する想定。
+ * F09.8 件A 解消: バックエンドの `CorkboardPermissionService#canEdit` と同じロジックで
+ * 算出された `viewerCanEdit` フラグを DTO から直接参照する。これにより:
+ *  - PERSONAL: 所有者なら true
+ *  - 共有 ADMIN_ONLY: ADMIN/DEPUTY_ADMIN のみ true（従来は常に false の暫定実装）
+ *  - 共有 ALL_MEMBERS: メンバー全員 true
+ * となる。フロント側でロール情報を再取得する必要はない。
  */
-const canEdit = computed<boolean>(() => {
-  if (!board.value) return false
-  if (board.value.scopeType === 'PERSONAL') {
-    const me = authStore.currentUser?.id
-    return me != null && board.value.ownerId === me
-  }
-  // 共有ボード: 暫定的に ALL_MEMBERS のみ true。ADMIN_ONLY は安全側で不可。
-  return board.value.editPolicy === 'ALL_MEMBERS'
-})
+const canEdit = computed<boolean>(() => board.value?.viewerCanEdit ?? false)
 
 /**
  * D&D 完了時の位置更新ハンドラ。

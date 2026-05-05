@@ -4,9 +4,11 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.corkboard.dto.CorkboardResponse;
 import com.mannschaft.app.corkboard.dto.CreateCorkboardRequest;
 import com.mannschaft.app.corkboard.entity.CorkboardEntity;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.corkboard.repository.CorkboardCardRepository;
 import com.mannschaft.app.corkboard.repository.CorkboardGroupRepository;
 import com.mannschaft.app.corkboard.repository.CorkboardRepository;
+import com.mannschaft.app.corkboard.service.CorkboardPermissionService;
 import com.mannschaft.app.corkboard.service.CorkboardService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,6 +36,8 @@ class CorkboardServiceTest {
     @Mock private CorkboardGroupRepository groupRepository;
     @Mock private CorkboardMapper corkboardMapper;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private AccessControlService accessControlService;
+    @Mock private CorkboardPermissionService corkboardPermissionService;
     @InjectMocks private CorkboardService service;
 
     private static final Long USER_ID = 1L;

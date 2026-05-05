@@ -55,7 +55,12 @@
       "step3": "Selecciona 'Agregar a pantalla de inicio'",
       "step4": "Toca 'Agregar' para finalizar",
       "close": "Cerrar",
-      "note": "No se puede agregar desde Chrome/Firefox"
+      "note": "No se puede agregar desde Chrome/Firefox",
+      "memo_shortcut_title": "Abre Nota Rapida con un toque",
+      "memo_shortcut_step1": "Abre la pagina de notas (/quick-memos) en Safari",
+      "memo_shortcut_step2": "Toca el boton de compartir (cuadrado con flecha hacia arriba)",
+      "memo_shortcut_step3": "Selecciona 'Agregar a pantalla de inicio' y cambia el nombre (ej: 'Nota')",
+      "memo_shortcut_step4": "Toca 'Agregar' — aparecera un icono dedicado en tu pantalla de inicio"
     }
   }
 }

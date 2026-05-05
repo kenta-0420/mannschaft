@@ -3,7 +3,48 @@ const authStore = useAuthStore()
 const syncStore = useSyncStore()
 const teamStore = useTeamStore()
 const route = useRoute()
+const router = useRouter()
 const { t } = useI18n()
+
+// PWA インストール
+const { canInstall, isInstalled, isIOS, isDismissedThisSession, promptInstall } = usePWAInstall()
+const iosInstallModalVisible = ref(false)
+const showPwaInstallBtn = computed(
+  () => !isInstalled.value && !isDismissedThisSession.value && (canInstall.value || isIOS.value),
+)
+async function handlePwaInstall() {
+  if (isIOS.value) {
+    iosInstallModalVisible.value = true
+  } else {
+    await promptInstall()
+  }
+}
+
+// Mannschaftロゴ長押し → ポイっとメモへ（250ms）
+const logoLongPressTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+const logoLongPressTriggered = ref(false)
+
+const startLogoLongPress = () => {
+  logoLongPressTriggered.value = false
+  logoLongPressTimer.value = setTimeout(() => {
+    logoLongPressTriggered.value = true
+    router.push('/quick-memos')
+  }, 600)
+}
+
+const cancelLogoLongPress = () => {
+  if (logoLongPressTimer.value) {
+    clearTimeout(logoLongPressTimer.value)
+    logoLongPressTimer.value = null
+  }
+}
+
+const handleLogoClick = () => {
+  if (!logoLongPressTriggered.value) {
+    router.push('/dashboard')
+  }
+  logoLongPressTriggered.value = false
+}
 
 const isMounted = ref(false)
 const showMobileMenu = ref(false)
@@ -69,7 +110,23 @@ function isActive(path: string): boolean {
       <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4">
         <!-- 左: ロゴ + ナビゲーション -->
         <div class="flex min-w-0 flex-1 items-center gap-6">
-          <NuxtLink to="/dashboard" class="text-3xl font-bold text-primary"> Mannschaft </NuxtLink>
+          <!-- 通常タップ→/dashboard、長押し600ms→/quick-memos（ADHD向け裏仕掛け） -->
+          <span
+            class="text-3xl font-bold text-primary cursor-pointer select-none"
+            style="touch-action: manipulation"
+            role="link"
+            tabindex="0"
+            @mousedown="startLogoLongPress"
+            @mouseup="cancelLogoLongPress"
+            @mouseleave="cancelLogoLongPress"
+            @touchstart="startLogoLongPress"
+            @touchend="cancelLogoLongPress"
+            @touchcancel="cancelLogoLongPress"
+            @click="handleLogoClick"
+            @keydown.enter="handleLogoClick"
+          >
+            Mannschaft
+          </span>
           <ClientOnly>
             <nav
               v-if="authStore.isAuthenticated"
@@ -139,6 +196,16 @@ function isActive(path: string): boolean {
             <template v-if="authStore.isAuthenticated">
               <SyncProgressIndicator />
               <NotificationBell />
+              <!-- PWAインストールボタン（未インストール時のみ） -->
+              <Button
+                v-if="showPwaInstallBtn"
+                v-tooltip.bottom="'アプリをインストール'"
+                icon="pi pi-download"
+                text
+                rounded
+                severity="secondary"
+                @click="handlePwaInstall"
+              />
               <Button
                 v-tooltip.bottom="'ログアウト'"
                 icon="pi pi-sign-out"
@@ -176,6 +243,7 @@ function isActive(path: string): boolean {
 
     <ClientOnly>
       <ErrorReportDialog />
+      <IosInstallGuideModal v-model:visible="iosInstallModalVisible" />
 
       <!-- モバイルメニュー Drawer -->
       <Drawer v-model:visible="showMobileMenu" position="left" class="w-72">

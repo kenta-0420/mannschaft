@@ -67,6 +67,16 @@ export default defineNuxtConfig({
           purpose: 'maskable',
         },
       ],
+      // Androidホーム画面アイコン長押しメニュー（ショートカット）
+      shortcuts: [
+        {
+          name: 'ポイっとメモ',
+          short_name: 'メモ',
+          description: 'すぐにメモを入力する',
+          url: '/quick-memos',
+          icons: [{ src: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' }],
+        },
+      ],
     },
     workbox: {
       navigateFallback: '/',

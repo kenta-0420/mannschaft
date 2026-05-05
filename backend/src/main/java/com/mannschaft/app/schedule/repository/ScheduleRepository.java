@@ -35,6 +35,12 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
             Long userId, LocalDateTime from, LocalDateTime to);
 
     /**
+     * チーム・組織に紐付かない純粋な個人スケジュールを期間指定で取得する。
+     */
+    List<ScheduleEntity> findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
+            Long userId, LocalDateTime from, LocalDateTime to);
+
+    /**
      * IDとチームIDでスケジュールを取得する。
      */
     Optional<ScheduleEntity> findByIdAndTeamId(Long id, Long teamId);

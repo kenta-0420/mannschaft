@@ -55,7 +55,12 @@
       "step3": "Waehlen Sie 'Zum Home-Bildschirm'",
       "step4": "Tippen Sie auf 'Hinzufuegen', um abzuschliessen",
       "close": "Schliessen",
-      "note": "Ueber Chrome/Firefox nicht moeglich"
+      "note": "Ueber Chrome/Firefox nicht moeglich",
+      "memo_shortcut_title": "Schnellnotiz mit einem Tippen oeffnen",
+      "memo_shortcut_step1": "Oeffnen Sie die Notizseite (/quick-memos) in Safari",
+      "memo_shortcut_step2": "Tippen Sie auf die Teilen-Schaltflaeche (Quadrat mit Pfeil nach oben)",
+      "memo_shortcut_step3": "Waehlen Sie 'Zum Home-Bildschirm' und benennen Sie es um (z. B. 'Notiz')",
+      "memo_shortcut_step4": "Tippen Sie auf 'Hinzufuegen' — ein eigenes Symbol erscheint auf dem Home-Bildschirm"
     }
   }
 }

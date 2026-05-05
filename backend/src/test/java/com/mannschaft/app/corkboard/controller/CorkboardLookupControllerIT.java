@@ -92,7 +92,7 @@ class CorkboardLookupControllerIT {
         return new CorkboardDetailResponse(
                 BOARD_ID, scopeType, null, USER_ID, "テストボード",
                 "CORK", "ADMIN_ONLY", false, 0L,
-                List.of(), List.of(), null, null);
+                List.of(), List.of(), null, null, false);
     }
 
     @Nested
