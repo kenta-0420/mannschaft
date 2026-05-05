@@ -129,8 +129,7 @@ async function onSend() {
     emit('sent')
     const toast = useToast()
     toast.add({ severity: 'success', summary: t('dialog.success'), life: 3000 })
-  } catch (err) {
-    console.error('確認通知の送信に失敗しました', err)
+  } catch {
     showError(t('confirmable.send_error'))
   } finally {
     sending.value = false

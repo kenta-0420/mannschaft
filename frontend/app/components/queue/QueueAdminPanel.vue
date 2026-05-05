@@ -21,8 +21,8 @@ async function load() {
   try {
     const res = await queueApi.getCounters(props.teamId)
     counters.value = res.data as Counter[]
-  } catch (e) {
-    console.error('窓口一覧の取得に失敗しました', e)
+  } catch {
+    // 取得失敗時は空表示にフォールバック
     counters.value = []
   } finally {
     loading.value = false

@@ -49,8 +49,7 @@ async function loadRecipients() {
   try {
     const res = await getRecipients(props.scopeType, props.scopeId, props.notificationId)
     recipients.value = res.data
-  } catch (err) {
-    console.error('受信者一覧の取得に失敗しました', err)
+  } catch {
     showError(t('confirmable.load_recipients_error'))
   } finally {
     loading.value = false
@@ -64,8 +63,7 @@ async function onResendReminder() {
     await resendReminder(props.scopeType, props.scopeId, props.notificationId)
     const toast = useToast()
     toast.add({ severity: 'success', summary: t('dialog.success'), life: 3000 })
-  } catch (err) {
-    console.error('リマインダー再送に失敗しました', err)
+  } catch {
     showError(t('confirmable.resend_error'))
   } finally {
     resending.value = false
