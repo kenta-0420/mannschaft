@@ -8,6 +8,7 @@ import com.mannschaft.app.filesharing.dto.FileResponse;
 import com.mannschaft.app.filesharing.dto.UpdateFileRequest;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
 import com.mannschaft.app.filesharing.entity.SharedFileVersionEntity;
+import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileRepository;
 import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,10 @@ import java.util.List;
 
 /**
  * 共有ファイルサービス。ファイルのCRUDを担当する。
+ *
+ * <p>F13 Phase 4-ε でアップロード前の {@link SharedFileQuotaService#checkFileQuota} 呼び出しと、
+ * DB 登録完了後の {@link SharedFileQuotaService#recordFileUpload}、
+ * 論理削除後の {@link SharedFileQuotaService#recordFileDeletion} を組み込んだ。</p>
  */
 @Slf4j
 @Service
@@ -31,6 +36,8 @@ public class SharedFileService {
     private final SharedFileRepository fileRepository;
     private final SharedFileVersionRepository versionRepository;
     private final FileSharingMapper fileSharingMapper;
+    private final SharedFolderService folderService;
+    private final SharedFileQuotaService quotaService;
 
     /**
      * フォルダ内のファイル一覧を取得する。
@@ -69,12 +76,20 @@ public class SharedFileService {
     /**
      * ファイルを作成する。
      *
+     * <p>F13 Phase 4-ε: DB 登録前に {@link SharedFileQuotaService#checkFileQuota} でクォータを確認し、
+     * 登録完了後に {@link SharedFileQuotaService#recordFileUpload} で使用量を加算する。</p>
+     *
      * @param userId  作成者ユーザーID
      * @param request 作成リクエスト
      * @return 作成されたファイルレスポンス
      */
     @Transactional
     public FileResponse createFile(Long userId, CreateFileRequest request) {
+        // F13 Phase 4-ε: クォータ事前チェック
+        SharedFolderEntity folder = folderService.findFolderOrThrow(request.getFolderId());
+        long fileSize = request.getFileSize() != null ? request.getFileSize() : 0L;
+        quotaService.checkFileQuota(folder, fileSize);
+
         SharedFileEntity entity = SharedFileEntity.builder()
                 .folderId(request.getFolderId())
                 .name(request.getName())
@@ -97,6 +112,9 @@ public class SharedFileService {
                 .comment("初回アップロード")
                 .build();
         versionRepository.save(version);
+
+        // F13 Phase 4-ε: 使用量加算
+        quotaService.recordFileUpload(folder, saved.getId(), fileSize, userId);
 
         log.info("ファイル作成: fileId={}, folderId={}", saved.getId(), request.getFolderId());
         return fileSharingMapper.toFileResponse(saved);
@@ -131,13 +149,27 @@ public class SharedFileService {
     /**
      * ファイルを論理削除する。
      *
-     * @param fileId ファイルID
+     * <p>F13 Phase 4-ε: 論理削除後に {@link SharedFileQuotaService#recordFileDeletion} で
+     * 使用量を減算する。削除者ユーザーIDは呼び出し元が保持するため、ここでは SecurityUtils
+     * から取得する（SharedFileController と同じ方法）。</p>
+     *
+     * @param fileId  ファイルID
+     * @param actorId 操作者ユーザーID
      */
     @Transactional
-    public void deleteFile(Long fileId) {
+    public void deleteFile(Long fileId, Long actorId) {
         SharedFileEntity entity = findFileOrThrow(fileId);
+        long fileSize = entity.getFileSize() != null ? entity.getFileSize() : 0L;
+
+        // フォルダ情報を取得してスコープを解決する
+        SharedFolderEntity folder = folderService.findFolderOrThrow(entity.getFolderId());
+
         entity.softDelete();
         fileRepository.save(entity);
+
+        // F13 Phase 4-ε: 使用量減算
+        quotaService.recordFileDeletion(folder, fileId, fileSize, actorId);
+
         log.info("ファイル削除: fileId={}", fileId);
     }
 

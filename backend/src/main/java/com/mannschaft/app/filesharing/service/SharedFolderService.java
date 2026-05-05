@@ -203,7 +203,7 @@ public class SharedFolderService {
     /**
      * フォルダを取得する。存在しない場合は例外をスローする。
      */
-    SharedFolderEntity findFolderOrThrow(Long folderId) {
+    public SharedFolderEntity findFolderOrThrow(Long folderId) {
         return folderRepository.findById(folderId)
                 .orElseThrow(() -> new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND));
     }
