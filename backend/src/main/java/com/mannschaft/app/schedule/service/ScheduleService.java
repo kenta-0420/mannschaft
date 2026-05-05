@@ -725,7 +725,8 @@ public class ScheduleService {
                 entity.getCreatedAt(),
                 categoryResponse,
                 entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null,
-                entity.getSourceScheduleId());
+                entity.getSourceScheduleId(),
+                null, null, null);
     }
 
     /**

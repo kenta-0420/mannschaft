@@ -34,6 +34,7 @@ interface EventDetail {
   scopeType?: string
   scopeId?: number
   scopeName?: string | null
+  scopeIconUrl?: string | null
   myAttendance?: string | null
   attendanceStats?: { yes: number; no: number; maybe: number; pending: number; total: number } | null
   createdBy?: { displayName: string }
@@ -194,7 +195,11 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
     selectedEventIsPersonal.value = isPersonal
     if (isPersonal) {
       const res = await scheduleApi.getMyScheduleDetail(eventId)
-      selectedEvent.value = res.data as EventDetail
+      const d = res.data as EventDetail & { createdByDisplayName?: string }
+      selectedEvent.value = {
+        ...d,
+        createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
+      }
     }
     else {
       const ext = extendedEvents.value.find(e => e.id === eventId && !e.isPersonal)
@@ -202,8 +207,15 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
       const sid = ext.scopeId ?? 0
       const res = await scheduleApi.getSchedule(st, sid, eventId)
-      const d = res.data as EventDetail
-      selectedEvent.value = { ...d, scopeType: ext.scopeType, scopeId: ext.scopeId, scopeName: ext.scopeName }
+      const d = res.data as EventDetail & { createdByDisplayName?: string }
+      selectedEvent.value = {
+        ...d,
+        scopeType: ext.scopeType,
+        scopeId: ext.scopeId,
+        scopeName: (d as EventDetail).scopeName ?? ext.scopeName,
+        scopeIconUrl: (d as EventDetail).scopeIconUrl ?? null,
+        createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
+      }
     }
     showEventPanel.value = true
     showDayPanel.value = false
@@ -446,6 +458,8 @@ onMounted(loadEvents)
               :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
               :scope-id="selectedEvent.scopeId ?? 0"
               :can-edit="true"
+              :scope-name="selectedEvent.scopeName ?? null"
+              :scope-icon-url="selectedEvent.scopeIconUrl ?? null"
               @edit="onEditEvent"
               @delete="onDeleteEvent"
               @responded="refresh"

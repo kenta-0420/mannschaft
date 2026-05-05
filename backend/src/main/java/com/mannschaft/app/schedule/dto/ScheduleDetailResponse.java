@@ -59,7 +59,8 @@ public class ScheduleDetailResponse extends ScheduleResponse {
             AttendanceSummaryResponse attendanceSummary,
             List<CrossRefResponse> crossInvitations) {
         super(id, title, startAt, endAt, allDay, eventType, status,
-                attendanceRequired, location, createdAt, eventCategory, academicYear, sourceScheduleId);
+                attendanceRequired, location, createdAt, eventCategory, academicYear, sourceScheduleId,
+                null, null, null);
         this.description = description;
         this.visibility = visibility;
         this.minViewRole = minViewRole;
