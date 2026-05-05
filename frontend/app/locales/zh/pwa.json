@@ -55,7 +55,12 @@
       "step3": "选择「添加到主屏幕」",
       "step4": "点击「添加」完成",
       "close": "关闭",
-      "note": "无法从 Chrome/Firefox 添加"
+      "note": "无法从 Chrome/Firefox 添加",
+      "memo_shortcut_title": "一键打开快速备忘录",
+      "memo_shortcut_step1": "在Safari中打开备忘录页面（/quick-memos）",
+      "memo_shortcut_step2": "点击分享按钮（方框加向上箭头）",
+      "memo_shortcut_step3": "选择「添加到主屏幕」并修改名称（如「备忘录」）",
+      "memo_shortcut_step4": "点击「添加」，专属图标将出现在主屏幕"
     }
   }
 }

@@ -55,7 +55,12 @@
       "step3": "Select 'Add to Home Screen'",
       "step4": "Tap 'Add' to finish",
       "close": "Close",
-      "note": "Chrome/Firefox cannot install PWAs"
+      "note": "Chrome/Firefox cannot install PWAs",
+      "memo_shortcut_title": "Open Quick Memo in one tap",
+      "memo_shortcut_step1": "Open the Memo page (/quick-memos) in Safari",
+      "memo_shortcut_step2": "Tap the Share button (square with up arrow)",
+      "memo_shortcut_step3": "Select 'Add to Home Screen' and rename it (e.g. 'Memo')",
+      "memo_shortcut_step4": "Tap 'Add' — a dedicated icon appears on your home screen"
     }
   }
 }

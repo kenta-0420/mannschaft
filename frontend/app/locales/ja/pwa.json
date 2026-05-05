@@ -55,7 +55,12 @@
       "step3": "「ホーム画面に追加」を選択",
       "step4": "「追加」をタップして完了",
       "close": "閉じる",
-      "note": "Chrome/Firefox からは追加できません"
+      "note": "Chrome/Firefox からは追加できません",
+      "memo_shortcut_title": "ポイっとメモを1タップで開くには",
+      "memo_shortcut_step1": "Safariでメモページ（/quick-memos）を開く",
+      "memo_shortcut_step2": "共有ボタン（□↑）をタップ",
+      "memo_shortcut_step3": "「ホーム画面に追加」を選択し、名前を「メモ」などに変更",
+      "memo_shortcut_step4": "「追加」で専用アイコンがホーム画面に登録される"
     }
   }
 }
