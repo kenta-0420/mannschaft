@@ -301,21 +301,37 @@ export type CorkboardEventType =
 /**
  * STOMP `/topic/corkboard/{boardId}` で受信する WebSocket イベントのペイロード。
  *
- * バックエンド record `CorkboardEvent(boardId, eventType, cardId, sectionId)` に厳密整合。
- * Jackson のデフォルト挙動で record フィールドは camelCase そのままシリアライズされる。
+ * バックエンド record `CorkboardEvent(boardId, eventType, cardId, sectionId, card, section)`
+ * に厳密整合。Jackson のデフォルト挙動で record フィールドは camelCase そのままシリアライズされる。
  *
  *  - `CARD_*` / `CARD_SECTION_CHANGED` : `cardId` 設定（`sectionId` は CARD_SECTION_CHANGED のみ）
  *  - `SECTION_*`                       : `sectionId` 設定
  *  - `BOARD_DELETED`                   : `cardId` / `sectionId` ともに null
  *
- * Phase F MVP では eventType ごとの局所更新は行わず、受信時にボード詳細をフルリロードする方針。
- * 詳細は設計書 §5「リアルタイム同期 / 切断時の復帰」参照。
+ * 件B 拡張 (2026-05-03): フロント局所更新のために以下のペイロードも配信される。
+ *  - `card`    : CARD_CREATED / CARD_UPDATED / CARD_MOVED / CARD_ARCHIVED /
+ *                CARD_SECTION_CHANGED 時に同梱される完成 DTO。
+ *                CARD_DELETED 時は同梱しない（フロントは cardId で filter）。
+ *  - `section` : SECTION_CREATED / SECTION_UPDATED 時に同梱される完成 DTO。
+ *                SECTION_DELETED 時は同梱しない（フロントは sectionId で filter）。
+ *  - 旧バックエンド（payload なし）からの受信時は `card` / `section` ともに `undefined` で
+ *    届くため、フロントは `null` フォールバックでフルリロードする実装にする。
  */
 export interface CorkboardEventPayload {
   boardId: number
   eventType: CorkboardEventType
   cardId: number | null
   sectionId: number | null
+  /**
+   * 件B: CARD_* イベント時に同梱されるカード DTO。
+   * 旧 BE / CARD_DELETED では `undefined` または `null`。
+   */
+  card?: CorkboardCardDetail | null
+  /**
+   * 件B: SECTION_* イベント時に同梱されるセクション DTO。
+   * 旧 BE / SECTION_DELETED では `undefined` または `null`。
+   */
+  section?: CorkboardGroupDetail | null
 }
 
 /**

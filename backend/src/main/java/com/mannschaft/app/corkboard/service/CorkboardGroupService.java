@@ -3,6 +3,7 @@ package com.mannschaft.app.corkboard.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.corkboard.CorkboardErrorCode;
 import com.mannschaft.app.corkboard.CorkboardMapper;
+import com.mannschaft.app.corkboard.dto.CorkboardCardResponse;
 import com.mannschaft.app.corkboard.dto.CorkboardGroupResponse;
 import com.mannschaft.app.corkboard.dto.CreateGroupRequest;
 import com.mannschaft.app.corkboard.dto.UpdateGroupRequest;
@@ -67,9 +68,10 @@ public class CorkboardGroupService {
         CorkboardGroupEntity saved = groupRepository.save(entity);
         log.info("セクション作成: boardId={}, groupId={}", boardId, saved.getId());
 
-        publishIfShared(board, CorkboardEvent.section(boardId, CorkboardEvent.Type.SECTION_CREATED, saved.getId()));
+        CorkboardGroupResponse response = corkboardMapper.toGroupResponse(saved);
+        publishIfShared(board, CorkboardEvent.sectionCreated(boardId, response));
 
-        return corkboardMapper.toGroupResponse(saved);
+        return response;
     }
 
     /**
@@ -95,9 +97,10 @@ public class CorkboardGroupService {
         CorkboardGroupEntity saved = groupRepository.save(group);
         log.info("セクション更新: groupId={}", groupId);
 
-        publishIfShared(board, CorkboardEvent.section(boardId, CorkboardEvent.Type.SECTION_UPDATED, groupId));
+        CorkboardGroupResponse response = corkboardMapper.toGroupResponse(saved);
+        publishIfShared(board, CorkboardEvent.sectionUpdated(boardId, response));
 
-        return corkboardMapper.toGroupResponse(saved);
+        return response;
     }
 
     /**
@@ -113,7 +116,8 @@ public class CorkboardGroupService {
         groupRepository.delete(group);
         log.info("セクション削除: groupId={}", groupId);
 
-        publishIfShared(board, CorkboardEvent.section(boardId, CorkboardEvent.Type.SECTION_DELETED, groupId));
+        // 件B: 削除は sectionId のみで OK（フロントは filter で削除できる）
+        publishIfShared(board, CorkboardEvent.sectionDeleted(boardId, groupId));
     }
 
     /**
@@ -145,11 +149,15 @@ public class CorkboardGroupService {
 
         // 積み残し件1: primary section の正規列を更新
         card.assignSection(groupId);
-        cardRepository.save(card);
+        CorkboardCardEntity savedCard = cardRepository.save(card);
 
         log.info("カードをセクションに追加: cardId={}, groupId={}", cardId, groupId);
 
-        publishIfShared(board, CorkboardEvent.cardSection(boardId, cardId, groupId));
+        // 件B: 共有ボードのみ DTO を組み立てて配信（個人ボードでは無駄なマッピングを避ける）
+        if (isShared(board)) {
+            CorkboardCardResponse cardResponse = corkboardMapper.toCardResponse(savedCard);
+            eventPublisher.publishEvent(CorkboardEvent.cardSectionChanged(boardId, cardResponse, groupId));
+        }
     }
 
     /**
@@ -171,16 +179,30 @@ public class CorkboardGroupService {
         cardGroupRepository.delete(relation);
 
         // 積み残し件1: primary section が指定 group と一致する場合のみクリア
-        cardRepository.findByIdAndCorkboardId(cardId, boardId).ifPresent(card -> {
-            if (groupId.equals(card.getSectionId())) {
-                card.assignSection(null);
-                cardRepository.save(card);
-            }
-        });
+        // 件B: 配信用 DTO は最新状態（クリア後があればそれ、無ければ既存値）で組み立てる
+        CorkboardCardEntity latestCard = cardRepository.findByIdAndCorkboardId(cardId, boardId)
+                .map(card -> {
+                    if (groupId.equals(card.getSectionId())) {
+                        card.assignSection(null);
+                        return cardRepository.save(card);
+                    }
+                    return card;
+                })
+                .orElse(null);
 
         log.info("カードをセクションから削除: cardId={}, groupId={}", cardId, groupId);
 
-        publishIfShared(board, CorkboardEvent.cardSection(boardId, cardId, null));
+        // 件B: 共有ボードのみ配信。カード DTO（sectionId 反映済み）を含めることで
+        // フロントは局所更新が可能になる。カードが見つからない異常系は cardId のみで
+        // 配信し、フロントは null フォールバックで load() に倒す。
+        if (isShared(board)) {
+            if (latestCard != null) {
+                CorkboardCardResponse cardResponse = corkboardMapper.toCardResponse(latestCard);
+                eventPublisher.publishEvent(CorkboardEvent.cardSectionChanged(boardId, cardResponse, null));
+            } else {
+                eventPublisher.publishEvent(CorkboardEvent.cardSection(boardId, cardId, null));
+            }
+        }
     }
 
     private CorkboardGroupEntity findGroupOrThrow(Long boardId, Long groupId) {
@@ -189,8 +211,12 @@ public class CorkboardGroupService {
     }
 
     private void publishIfShared(CorkboardEntity board, CorkboardEvent event) {
-        if (board != null && !SCOPE_PERSONAL.equals(board.getScopeType())) {
+        if (isShared(board)) {
             eventPublisher.publishEvent(event);
         }
+    }
+
+    private boolean isShared(CorkboardEntity board) {
+        return board != null && !SCOPE_PERSONAL.equals(board.getScopeType());
     }
 }

@@ -50,8 +50,18 @@ public class CorkboardEventListener {
             if (event.sectionId() != null) {
                 payload.put("sectionId", event.sectionId());
             }
+            // 件B: card / section ペイロードもフロントへ配信し、局所更新を可能にする。
+            // 旧ファクトリ経由（payload なし）の場合は null のまま渡らないよう、
+            // 値があるときのみマップへ載せる。Jackson が DTO を camelCase で JSON 化する。
+            if (event.card() != null) {
+                payload.put("card", event.card());
+            }
+            if (event.section() != null) {
+                payload.put("section", event.section());
+            }
             messagingTemplate.convertAndSend(destination, payload);
-            log.debug("コルクボードイベント配信: dest={}, type={}", destination, event.eventType());
+            log.debug("コルクボードイベント配信: dest={}, type={}, hasCard={}, hasSection={}",
+                    destination, event.eventType(), event.card() != null, event.section() != null);
         } catch (Exception e) {
             // 配信失敗は WARN ログのみ（業務 TX には影響させない）
             log.warn("コルクボードイベント配信失敗: boardId={}, type={}, cause={}",
