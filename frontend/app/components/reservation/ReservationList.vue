@@ -45,8 +45,8 @@ async function loadReservations() {
     reservations.value = res.data as Reservation[]
     totalRecords.value = res.meta.totalElements
   }
-  catch (e) {
-    console.error('予約一覧の取得に失敗しました', e)
+  catch {
+    // 取得失敗時は空表示にフォールバック
     reservations.value = []
   }
   finally { loading.value = false }

@@ -201,9 +201,6 @@ export const useChatTabsStore = defineStore('chatTabs', () => {
 
     const skipped = saved.tabs.length - restored.length
     if (skipped > 0) {
-      if (import.meta.client) {
-        console.warn(`[ChatTabs] ${skipped}件のタブが利用できなくなったため閉じました`)
-      }
       const { info } = useNotification()
       info(`${skipped}件のチャンネルにアクセスできなくなったため閉じました`)
     }

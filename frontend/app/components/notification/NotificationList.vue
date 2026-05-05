@@ -165,8 +165,7 @@ async function onConfirmNotification(notif: NotificationResponse) {
     toast.add({ severity: 'success', summary: '確認しました', life: 3000 })
     // 一覧を再取得
     await loadNotifications()
-  } catch (err) {
-    console.error('確認通知の確認処理に失敗しました', err)
+  } catch {
     showError('確認処理に失敗しました')
   }
 }

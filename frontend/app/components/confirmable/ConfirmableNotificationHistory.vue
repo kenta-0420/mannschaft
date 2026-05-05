@@ -27,8 +27,7 @@ async function loadNotifications() {
   try {
     const res = await listNotifications(props.scopeType, props.scopeId)
     notifications.value = res.data
-  } catch (err) {
-    console.error('確認通知一覧の取得に失敗しました', err)
+  } catch {
     showError(t('confirmable.load_error'))
   } finally {
     loading.value = false
@@ -44,8 +43,7 @@ async function onCancel(notificationId: number) {
     await loadNotifications()
     const toast = useToast()
     toast.add({ severity: 'success', summary: t('dialog.success'), life: 3000 })
-  } catch (err) {
-    console.error('確認通知のキャンセルに失敗しました', err)
+  } catch {
     showError(t('confirmable.cancel_error'))
   } finally {
     cancelling.value = null
