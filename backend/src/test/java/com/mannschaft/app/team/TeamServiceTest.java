@@ -3,6 +3,12 @@ package com.mannschaft.app.team;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -28,6 +34,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -42,6 +49,8 @@ class TeamServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private TeamFriendRepository teamFriendRepository;
     @Mock private TeamShiftSettingsService teamShiftSettingsService;
+    @Mock private MembershipService membershipService;
+    @Mock private MembershipRepository membershipRepository;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;
@@ -65,7 +74,8 @@ class TeamServiceTest {
             given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(adminRole));
             given(userRoleRepository.save(any(UserRoleEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
-            given(userRoleRepository.countMembersByScopeAndRole(any(), any(), any())).willReturn(0);
+            // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
 
             // When
             ApiResponse<TeamResponse> result = service.createTeam(USER_ID, req);
@@ -137,20 +147,40 @@ class TeamServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 既に所属している場合TEAM_003例外")
+        @DisplayName("異常系: 既にSUPPORTERとして所属している場合TEAM_003例外")
         void フォロー_既所属_例外() {
             // Given
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
                     .visibility(TeamEntity.Visibility.PRIVATE).build();
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
             given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(false);
-            given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, TEAM_ID)).willReturn(true);
+            // F00.5 Phase 5: memberships ベースの重複チェック
+            given(membershipRepository.existsActiveByUserAndScopeAndRoleKind(
+                    USER_ID, ScopeType.TEAM, TEAM_ID, RoleKind.SUPPORTER)).willReturn(true);
 
             // When / Then
             assertThatThrownBy(() -> service.followTeam(USER_ID, TEAM_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TEAM_003"));
+        }
+
+        @Test
+        @DisplayName("正常系: memberships に SUPPORTER として入会される")
+        void フォロー_正常_入会() {
+            // Given
+            TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
+                    .visibility(TeamEntity.Visibility.PRIVATE).build();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+            given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(false);
+            given(membershipRepository.existsActiveByUserAndScopeAndRoleKind(
+                    USER_ID, ScopeType.TEAM, TEAM_ID, RoleKind.SUPPORTER)).willReturn(false);
+
+            // When
+            service.followTeam(USER_ID, TEAM_ID);
+
+            // Then
+            verify(membershipService).join(any(MembershipCreateRequest.class));
         }
     }
 }

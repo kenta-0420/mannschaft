@@ -9,7 +9,14 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.membership.domain.LeaveReason;
+import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.dto.MembershipLeaveRequest;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -28,6 +35,7 @@ import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
@@ -58,6 +66,8 @@ public class TeamService {
     private final TeamShiftSettingsService teamShiftSettingsService;
     private final MeterRegistry meterRegistry;
     private final MemberQueryDispatcher memberQueryDispatcher;
+    private final MembershipService membershipService;
+    private final MembershipRepository membershipRepository;
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。
@@ -91,7 +101,9 @@ public class TeamService {
 
         log.info("チーム作成完了: teamId={}, userId={}", team.getId(), userId);
         long teamFriendCount = teamFriendRepository.countFriendsByTeamId(team.getId());
-        long supporterCount = userRoleRepository.countMembersByScopeAndRole("TEAM", team.getId(), "SUPPORTER");
+        // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
+        long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
+                ScopeType.TEAM, team.getId(), RoleKind.SUPPORTER);
         return ApiResponse.of(toResponse(team, 1, teamFriendCount, supporterCount));
     }
 
@@ -102,7 +114,9 @@ public class TeamService {
         TeamEntity team = findTeamOrThrow(teamId);
         int memberCount = (int) userRoleRepository.countByTeamId(teamId);
         long teamFriendCount = teamFriendRepository.countFriendsByTeamId(teamId);
-        long supporterCount = userRoleRepository.countMembersByScopeAndRole("TEAM", teamId, "SUPPORTER");
+        // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
+        long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
+                ScopeType.TEAM, teamId, RoleKind.SUPPORTER);
         return ApiResponse.of(toResponse(team, memberCount, teamFriendCount, supporterCount));
     }
 
@@ -131,7 +145,9 @@ public class TeamService {
 
         int memberCount = (int) userRoleRepository.countByTeamId(teamId);
         long teamFriendCount = teamFriendRepository.countFriendsByTeamId(teamId);
-        long supporterCount = userRoleRepository.countMembersByScopeAndRole("TEAM", teamId, "SUPPORTER");
+        // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
+        long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
+                ScopeType.TEAM, teamId, RoleKind.SUPPORTER);
         log.info("チーム更新完了: teamId={}", teamId);
         return ApiResponse.of(toResponse(updated, memberCount, teamFriendCount, supporterCount));
     }
@@ -180,8 +196,9 @@ public class TeamService {
                 .map(team -> {
                     int memberCount = (int) userRoleRepository.countByTeamId(team.getId());
                     long teamFriendCount = teamFriendRepository.countFriendsByTeamId(team.getId());
-                    long supporterCount = userRoleRepository.countMembersByScopeAndRole(
-                            "TEAM", team.getId(), "SUPPORTER");
+                    // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
+                    long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
+                            ScopeType.TEAM, team.getId(), RoleKind.SUPPORTER);
                     return new TeamSummaryResponse(
                             team.getId(), team.getName(), team.getTemplate(),
                             team.getVisibility().name(), memberCount,
@@ -234,6 +251,9 @@ public class TeamService {
 
     /**
      * SUPPORTERとしてチームをフォローする（自己登録）。
+     *
+     * <p>F00.5 Phase 5: memberships への書き込みに切替。MembershipService.join() 経由で
+     * 冪等性保証・イベント発火を一本化する。</p>
      */
     @Transactional
     public void followTeam(Long userId, Long teamId) {
@@ -244,31 +264,43 @@ public class TeamService {
             throw new BusinessException(TeamErrorCode.TEAM_004);
         }
 
-        // 重複チェック
-        if (userRoleRepository.existsByUserIdAndTeamId(userId, teamId)) {
+        // 重複チェック（memberships に既にアクティブな SUPPORTER がいる場合）
+        if (membershipRepository.existsActiveByUserAndScopeAndRoleKind(
+                userId, ScopeType.TEAM, teamId, RoleKind.SUPPORTER)) {
             throw new BusinessException(TeamErrorCode.TEAM_003);
         }
 
-        RoleEntity supporterRole = roleRepository.findByName("SUPPORTER")
-                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_005));
-
-        UserRoleEntity userRole = UserRoleEntity.builder()
-                .userId(userId)
-                .roleId(supporterRole.getId())
-                .teamId(teamId)
-                .build();
-        userRoleRepository.save(userRole);
+        // F00.5 Phase 5: memberships に SUPPORTER として入会
+        MembershipCreateRequest req = new MembershipCreateRequest();
+        req.setUserId(userId);
+        req.setScopeType(ScopeType.TEAM);
+        req.setScopeId(teamId);
+        req.setRoleKind(RoleKind.SUPPORTER);
+        req.setSource("SELF_FOLLOW");
+        membershipService.join(req);
 
         log.info("チームフォロー完了: userId={}, teamId={}", userId, teamId);
     }
 
     /**
      * SUPPORTERとしてのフォローを解除する。
+     *
+     * <p>F00.5 Phase 5: memberships への退会処理に切替。MembershipService.leave() 経由で
+     * 退会履歴・イベント発火を一本化する。</p>
      */
     @Transactional
     public void unfollowTeam(Long userId, Long teamId) {
         findTeamOrThrow(teamId);
-        userRoleRepository.deleteByUserIdAndTeamId(userId, teamId);
+
+        // F00.5 Phase 5: memberships から SUPPORTER として退会
+        Optional<MembershipEntity> active = membershipRepository.findActiveByUserAndScope(
+                userId, ScopeType.TEAM, teamId);
+        if (active.isPresent()) {
+            MembershipLeaveRequest leaveReq = new MembershipLeaveRequest();
+            leaveReq.setLeaveReason(LeaveReason.SELF);
+            membershipService.leave(active.get().getId(), leaveReq);
+        }
+
         // Phase 3: チームメンバー脱退イベント発行（行動メモのデフォルト投稿先リセット用）
         eventPublisher.publishEvent(new TeamMemberRemovedEvent(userId, teamId));
         log.info("チームフォロー解除完了: userId={}, teamId={}", userId, teamId);

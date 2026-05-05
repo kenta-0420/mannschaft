@@ -24,7 +24,14 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.membership.domain.LeaveReason;
+import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.dto.MembershipLeaveRequest;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
@@ -46,6 +53,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -65,6 +73,8 @@ public class OrganizationService {
     private final UserRepository userRepository;
     private final InviteTokenRepository inviteTokenRepository;
     private final MemberQueryDispatcher memberQueryDispatcher;
+    private final MembershipService membershipService;
+    private final MembershipRepository membershipRepository;
 
     /** 祖先チェーン探索の最大深度。これを超える祖先は返さず {@code truncated: true} を立てる。 */
     @Value("${app.org.max-depth:5}")
@@ -252,35 +262,50 @@ public class OrganizationService {
     // ========================================
 
     /**
-     * 組織をフォロー（SUPPORTER ロールで参加）する。
+     * 組織をフォロー（SUPPORTER として memberships に入会）する。
+     *
+     * <p>F00.5 Phase 5: memberships への書き込みに切替。MembershipService.join() 経由で
+     * 冪等性保証・イベント発火を一本化する。</p>
      */
     @Transactional
     public void followOrganization(Long userId, Long orgId) {
         findOrganizationOrThrow(orgId);
 
-        if (userRoleRepository.existsByUserIdAndOrganizationId(userId, orgId)) {
+        // 重複チェック（memberships に既にアクティブな SUPPORTER がいる場合）
+        if (membershipRepository.existsActiveByUserAndScopeAndRoleKind(
+                userId, ScopeType.ORGANIZATION, orgId, RoleKind.SUPPORTER)) {
             throw new BusinessException(OrgErrorCode.ORG_007);
         }
 
-        RoleEntity supporterRole = roleRepository.findByName("SUPPORTER")
-                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_005));
-
-        UserRoleEntity userRole = UserRoleEntity.builder()
-                .userId(userId)
-                .roleId(supporterRole.getId())
-                .organizationId(orgId)
-                .build();
-        userRoleRepository.save(userRole);
+        // F00.5 Phase 5: memberships に SUPPORTER として入会
+        MembershipCreateRequest req = new MembershipCreateRequest();
+        req.setUserId(userId);
+        req.setScopeType(ScopeType.ORGANIZATION);
+        req.setScopeId(orgId);
+        req.setRoleKind(RoleKind.SUPPORTER);
+        req.setSource("SELF_FOLLOW");
+        membershipService.join(req);
         log.info("組織フォロー完了: userId={}, orgId={}", userId, orgId);
     }
 
     /**
      * 組織のフォローを解除する。
+     *
+     * <p>F00.5 Phase 5: memberships への退会処理に切替。MembershipService.leave() 経由で
+     * 退会履歴・イベント発火を一本化する。</p>
      */
     @Transactional
     public void unfollowOrganization(Long userId, Long orgId) {
         findOrganizationOrThrow(orgId);
-        userRoleRepository.deleteByUserIdAndOrganizationId(userId, orgId);
+
+        // F00.5 Phase 5: memberships から SUPPORTER として退会
+        Optional<MembershipEntity> active = membershipRepository.findActiveByUserAndScope(
+                userId, ScopeType.ORGANIZATION, orgId);
+        if (active.isPresent()) {
+            MembershipLeaveRequest leaveReq = new MembershipLeaveRequest();
+            leaveReq.setLeaveReason(LeaveReason.SELF);
+            membershipService.leave(active.get().getId(), leaveReq);
+        }
         log.info("組織フォロー解除完了: userId={}, orgId={}", userId, orgId);
     }
 
