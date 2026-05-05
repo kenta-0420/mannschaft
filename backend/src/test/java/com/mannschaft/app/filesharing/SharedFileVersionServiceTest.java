@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
@@ -248,7 +249,7 @@ class SharedFileVersionServiceTest {
             verify(versionRepository).save(any(SharedFileVersionEntity.class));
             // F13 Phase 4-ε: クォータチェックと使用量加算の検証
             verify(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(2048L));
-            verify(quotaService).recordVersionUpload(any(SharedFolderEntity.class), any(Long.class), eq(2048L), eq(USER_ID));
+            verify(quotaService).recordVersionUpload(any(SharedFolderEntity.class), nullable(Long.class), eq(2048L), eq(USER_ID));
             // ファイルエンティティのバージョンが更新されることを確認
             assertThat(fileEntity.getCurrentVersion()).isEqualTo(2);
             assertThat(fileEntity.getFileKey()).isEqualTo("files/new-version.pdf");
@@ -313,7 +314,7 @@ class SharedFileVersionServiceTest {
             assertThat(result.getComment()).isNull();
             assertThat(result.getVersionNumber()).isEqualTo(2);
             verify(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(512L));
-            verify(quotaService).recordVersionUpload(any(SharedFolderEntity.class), any(Long.class), eq(512L), eq(USER_ID));
+            verify(quotaService).recordVersionUpload(any(SharedFolderEntity.class), nullable(Long.class), eq(512L), eq(USER_ID));
         }
 
         @Test

@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
@@ -105,7 +106,7 @@ class SharedFileServiceTest {
             assertThat(result.getName()).isEqualTo("test.pdf");
             verify(versionRepository).save(any(SharedFileVersionEntity.class));
             verify(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(1024L));
-            verify(quotaService).recordFileUpload(any(SharedFolderEntity.class), any(Long.class), eq(1024L), eq(USER_ID));
+            verify(quotaService).recordFileUpload(any(SharedFolderEntity.class), nullable(Long.class), eq(1024L), eq(USER_ID));
         }
 
         @Test
