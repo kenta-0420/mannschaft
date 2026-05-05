@@ -69,6 +69,7 @@ onMounted(() => {
       >
         <span class="flex-1">
           <!-- highlightFn はXSSエスケープ済みHTMLを返すため v-html で安全に描画可能 -->
+          <!-- eslint-disable-next-line vue/no-v-html -->
           <span v-if="highlightFn" v-html="highlightFn(item.question)" />
           <span v-else>{{ item.question }}</span>
         </span>
@@ -85,6 +86,8 @@ onMounted(() => {
           :aria-labelledby="`qa-button-${item.id}`"
           class="qa-answer border-t border-surface-100 px-5 pb-5 pt-4 text-sm leading-relaxed text-surface-600 dark:border-surface-700 dark:text-surface-300"
         >
+          <!-- highlightFn はXSSエスケープ済みHTMLを返すため v-html で安全に描画可能 -->
+          <!-- eslint-disable-next-line vue/no-v-html -->
           <span v-if="highlightFn" v-html="highlightFn(item.answer)" />
           <span v-else>{{ item.answer }}</span>
         </div>

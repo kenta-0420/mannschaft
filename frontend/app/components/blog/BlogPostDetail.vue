@@ -97,13 +97,14 @@ const formattedPublishedAt = computed(() => {
       </button>
     </div>
 
-    <!-- 本文 -->
-    <!-- eslint-disable-next-line vue/no-v-html -->
+    <!-- 本文（renderedBody は marked + sanitizeHtml でサニタイズ済み） -->
+    <!-- eslint-disable vue/no-v-html -->
     <div
       v-if="renderedBody"
       class="prose prose-lg max-w-none dark:prose-invert"
       v-html="renderedBody"
     />
+    <!-- eslint-enable vue/no-v-html -->
     <p v-else class="text-surface-400 italic">
       {{ $t('blog.post.noPost') }}
     </p>

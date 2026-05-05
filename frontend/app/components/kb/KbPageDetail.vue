@@ -268,12 +268,14 @@ watch(() => props.pageId, () => {
         </div>
       </div>
 
-      <!-- Body -->
+      <!-- Body（sanitizeHtml により sanitize 済み） -->
+      <!-- eslint-disable vue/no-v-html -->
       <div
         v-if="page.body"
         class="prose max-w-none text-sm leading-relaxed dark:prose-invert"
         v-html="sanitizeHtml(page.body)"
       />
+      <!-- eslint-enable vue/no-v-html -->
       <div v-else class="py-8 text-center text-surface-400">
         <i class="pi pi-file mb-2 text-3xl" />
         <p>まだ内容がありません</p>

@@ -593,7 +593,7 @@ onMounted(() => load(false))
           v-model="editingNote"
           :placeholder="t('corkboard.editUserNotePlaceholder')"
           rows="4"
-          autoResize
+          auto-resize
           class="w-full"
         />
       </div>

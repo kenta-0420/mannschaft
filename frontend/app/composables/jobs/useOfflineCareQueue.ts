@@ -251,7 +251,8 @@ function toBody(job: CareJob): Record<string, unknown> {
   }
 }
 
-export function fromBody(body: Record<string, unknown>): CareJob {
+// fromBody はファイル内ローカルヘルパ（auto-import 重複回避のため非 export）
+function fromBody(body: Record<string, unknown>): CareJob {
   const type = body.type as CareJobType
   const teamId = Number(body.teamId)
   const eventId = Number(body.eventId)

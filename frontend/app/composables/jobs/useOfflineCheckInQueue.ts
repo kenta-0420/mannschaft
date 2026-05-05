@@ -214,7 +214,8 @@ function toBody(p: QueuedCheckInPayload): Record<string, unknown> {
   }
 }
 
-export function fromBody(body: Record<string, unknown>): QueuedCheckInPayload {
+// fromBody はファイル内ローカルヘルパ（auto-import 重複回避のため非 export）
+function fromBody(body: Record<string, unknown>): QueuedCheckInPayload {
   return {
     contractId: Number(body.contractId),
     token: (body.token as string | null) ?? null,

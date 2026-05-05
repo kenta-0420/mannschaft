@@ -26,6 +26,10 @@ withDefaults(
     maxHeight?: string
   }>(),
   {
+    title: undefined,
+    icon: undefined,
+    colSpan: undefined,
+    to: undefined,
     scrollable: true,
     maxHeight: '24rem',
   },

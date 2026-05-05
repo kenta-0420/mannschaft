@@ -234,7 +234,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
                 v-if="event.scopeType && event.scopeType !== 'PERSONAL'"
                 class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full overflow-hidden bg-white/30 flex-shrink-0"
               >
-                <img v-if="event.scopeIconUrl" :src="event.scopeIconUrl" class="w-full h-full object-cover" alt="" />
+                <img v-if="event.scopeIconUrl" :src="event.scopeIconUrl" class="w-full h-full object-cover" alt="" >
                 <span v-else class="text-[8px] font-bold leading-none">{{ event.scopeName?.charAt(0) }}</span>
               </span>
               <span class="truncate">
@@ -265,7 +265,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
               v-if="slot.event.scopeType && slot.event.scopeType !== 'PERSONAL'"
               class="inline-flex items-center justify-center w-4 h-4 rounded-full overflow-hidden bg-white/30 flex-shrink-0 mx-0.5"
             >
-              <img v-if="slot.event.scopeIconUrl" :src="slot.event.scopeIconUrl" class="w-full h-full object-cover" alt="" />
+              <img v-if="slot.event.scopeIconUrl" :src="slot.event.scopeIconUrl" class="w-full h-full object-cover" alt="" >
               <span v-else class="text-[9px] font-bold leading-none">{{ slot.event.scopeName?.charAt(0) }}</span>
             </span>
             <span class="flex-1 truncate px-0.5">{{ slot.event.title }}</span>

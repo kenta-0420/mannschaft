@@ -83,6 +83,8 @@ function onSubmit() {
         >
           <template #option="{ option }">
             <div class="flex items-center gap-3">
+              <!-- svgData は内部で生成された静的 SVG（外部入力を含まないため XSS リスクなし） -->
+              <!-- eslint-disable-next-line vue/no-v-html -->
               <div class="size-8 shrink-0" v-html="option.svgData" />
               <span>{{ option.displayText }}</span>
             </div>
