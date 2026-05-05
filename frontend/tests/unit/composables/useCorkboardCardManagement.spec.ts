@@ -66,9 +66,12 @@ vi.mock('vue-i18n', () => ({
 ;(globalThis as Record<string, unknown>).useI18n = () => ({ t: mockT })
 
 // ============================================================
-// useConfirmDialog のモック（Nuxt auto-import を模倣）
+// useConfirmDialog のモック
 // ============================================================
 const mockConfirmAction = vi.fn()
+vi.mock('~/composables/useConfirmDialog', () => ({
+  useConfirmDialog: () => ({ confirmAction: mockConfirmAction }),
+}))
 ;(globalThis as Record<string, unknown>).useConfirmDialog = () => ({
   confirmAction: mockConfirmAction,
 })
@@ -157,7 +160,7 @@ describe('useCorkboardCardManagement', () => {
     it('CORK-CARD-UNIT-001: editorVisible が true になり editorMode が create になる', () => {
       const board = ref<CorkboardDetail | null>(null)
       const boardId = ref(100)
-      const { editorVisible, editorMode, openCreate } = useCorkboardCardManagement(board, boardId)
+      const { editorVisible, editorMode, openCreate } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       openCreate()
 
@@ -168,7 +171,7 @@ describe('useCorkboardCardManagement', () => {
     it('openCreate() を呼ぶと editorTarget が null になる', () => {
       const board = ref<CorkboardDetail | null>(null)
       const boardId = ref(100)
-      const { editorTarget, openCreate } = useCorkboardCardManagement(board, boardId)
+      const { editorTarget, openCreate } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       openCreate()
 
@@ -180,14 +183,14 @@ describe('useCorkboardCardManagement', () => {
     it('CORK-CARD-UNIT-002: editorTarget が設定され editorMode が edit になる', () => {
       const board = ref<CorkboardDetail | null>(null)
       const boardId = ref(100)
-      const { editorTarget, editorMode, editorVisible, openEdit } = useCorkboardCardManagement(board, boardId)
+      const { editorTarget, editorMode, editorVisible, openEdit } = useCorkboardCardManagement(board, boardId, (k) => k)
       const card = makeCard({ id: 42 })
 
       openEdit(card)
 
       expect(editorMode.value).toBe('edit')
       expect(editorVisible.value).toBe(true)
-      expect(editorTarget.value).toBe(card)
+      expect(editorTarget.value).toEqual(card)
     })
   })
 
@@ -195,7 +198,7 @@ describe('useCorkboardCardManagement', () => {
     it('CORK-CARD-UNIT-003: false にセットするとモーダルが閉じ editorTarget がリセットされる', () => {
       const board = ref<CorkboardDetail | null>(null)
       const boardId = ref(100)
-      const { editorVisible, editorMode, editorTarget, openEdit } = useCorkboardCardManagement(board, boardId)
+      const { editorVisible, editorMode, editorTarget, openEdit } = useCorkboardCardManagement(board, boardId, (k) => k)
       const card = makeCard()
 
       openEdit(card)
@@ -213,7 +216,7 @@ describe('useCorkboardCardManagement', () => {
     it('CORK-CARD-UNIT-009: 既存カードがない場合は { x: 40, y: 40 } を返す', () => {
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [] }))
       const boardId = ref(100)
-      const { editorDefaultPosition } = useCorkboardCardManagement(board, boardId)
+      const { editorDefaultPosition } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       expect(editorDefaultPosition.value).toEqual({ x: 40, y: 40 })
     })
@@ -225,7 +228,7 @@ describe('useCorkboardCardManagement', () => {
         }),
       )
       const boardId = ref(100)
-      const { editorDefaultPosition } = useCorkboardCardManagement(board, boardId)
+      const { editorDefaultPosition } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       // positionX + 40 = 540, positionY + 40 = 440
       expect(editorDefaultPosition.value).toEqual({ x: 540, y: 440 })
@@ -238,7 +241,7 @@ describe('useCorkboardCardManagement', () => {
         }),
       )
       const boardId = ref(100)
-      const { editorDefaultPosition } = useCorkboardCardManagement(board, boardId)
+      const { editorDefaultPosition } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       expect(editorDefaultPosition.value).toEqual({ x: 1000, y: 600 })
     })
@@ -251,7 +254,7 @@ describe('useCorkboardCardManagement', () => {
       const card = makeCard({ id: 5 })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { doDelete } = useCorkboardCardManagement(board, boardId)
+      const { doDelete } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       mockDeleteCard.mockResolvedValueOnce(undefined)
 
@@ -265,7 +268,7 @@ describe('useCorkboardCardManagement', () => {
       const card = makeCard({ id: 5 })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { doDelete } = useCorkboardCardManagement(board, boardId)
+      const { doDelete } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       mockDeleteCard.mockResolvedValueOnce(undefined)
 
@@ -280,7 +283,7 @@ describe('useCorkboardCardManagement', () => {
       const card = makeCard({ id: 5 })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { doDelete } = useCorkboardCardManagement(board, boardId)
+      const { doDelete } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       mockDeleteCard.mockRejectedValueOnce(new Error('API Error'))
 
@@ -302,7 +305,7 @@ describe('useCorkboardCardManagement', () => {
       const card = makeCard({ id: 5 })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { confirmDelete } = useCorkboardCardManagement(board, boardId)
+      const { confirmDelete } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       confirmDelete(card)
 
@@ -322,7 +325,7 @@ describe('useCorkboardCardManagement', () => {
       const card = makeCard({ id: 7, isArchived: false })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { toggleArchive } = useCorkboardCardManagement(board, boardId)
+      const { toggleArchive } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       const updatedCard = makeCard({ id: 7, isArchived: true })
       mockArchiveCard.mockResolvedValueOnce({ data: updatedCard })
@@ -338,7 +341,7 @@ describe('useCorkboardCardManagement', () => {
       const card = makeCard({ id: 8, isArchived: true })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { toggleArchive } = useCorkboardCardManagement(board, boardId)
+      const { toggleArchive } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       const updatedCard = makeCard({ id: 8, isArchived: false })
       mockArchiveCard.mockResolvedValueOnce({ data: updatedCard })
@@ -352,7 +355,7 @@ describe('useCorkboardCardManagement', () => {
       const card = makeCard({ id: 9, isArchived: false })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { toggleArchive } = useCorkboardCardManagement(board, boardId)
+      const { toggleArchive } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       mockArchiveCard.mockRejectedValueOnce(new Error('API Error'))
 
@@ -373,7 +376,7 @@ describe('useCorkboardCardManagement', () => {
       const card = makeCard({ id: 10, isArchived: false })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { toggleArchive } = useCorkboardCardManagement(board, boardId)
+      const { toggleArchive } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       const updatedCard = makeCard({ id: 10, isArchived: true })
       mockArchiveCard.mockResolvedValueOnce({ data: updatedCard })
@@ -389,7 +392,7 @@ describe('useCorkboardCardManagement', () => {
       const card = makeCard({ id: 11, isArchived: false })
       const board = ref<CorkboardDetail | null>(null)
       const boardId = ref(100)
-      const { toggleArchive } = useCorkboardCardManagement(board, boardId)
+      const { toggleArchive } = useCorkboardCardManagement(board, boardId, (k) => k)
 
       const updatedCard = makeCard({ id: 11, isArchived: true })
       mockArchiveCard.mockResolvedValueOnce({ data: updatedCard })

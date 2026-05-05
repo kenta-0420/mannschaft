@@ -144,7 +144,7 @@ describe('useCorkboardDragDrop', () => {
     it('CORK-DND-UNIT-001: MEMO/MEDIUM カードに 200x150 を返す', () => {
       const board = ref<CorkboardDetail | null>(null)
       const boardId = ref(100)
-      const { cardSizePixels } = useCorkboardDragDrop(board, boardId)
+      const { cardSizePixels } = useCorkboardDragDrop(board, boardId, (k) => k)
       const card = makeCard({ cardType: 'MEMO', cardSize: 'MEDIUM' })
 
       expect(cardSizePixels(card)).toEqual({ width: 200, height: 150 })
@@ -153,7 +153,7 @@ describe('useCorkboardDragDrop', () => {
     it('CORK-DND-UNIT-002: SMALL カードに 150x100 を返す', () => {
       const board = ref<CorkboardDetail | null>(null)
       const boardId = ref(100)
-      const { cardSizePixels } = useCorkboardDragDrop(board, boardId)
+      const { cardSizePixels } = useCorkboardDragDrop(board, boardId, (k) => k)
       const card = makeCard({ cardType: 'MEMO', cardSize: 'SMALL' })
 
       expect(cardSizePixels(card)).toEqual({ width: 150, height: 100 })
@@ -162,7 +162,7 @@ describe('useCorkboardDragDrop', () => {
     it('CORK-DND-UNIT-003: LARGE カードに 300x200 を返す', () => {
       const board = ref<CorkboardDetail | null>(null)
       const boardId = ref(100)
-      const { cardSizePixels } = useCorkboardDragDrop(board, boardId)
+      const { cardSizePixels } = useCorkboardDragDrop(board, boardId, (k) => k)
       const card = makeCard({ cardType: 'MEMO', cardSize: 'LARGE' })
 
       expect(cardSizePixels(card)).toEqual({ width: 300, height: 200 })
@@ -171,7 +171,7 @@ describe('useCorkboardDragDrop', () => {
     it('CORK-DND-UNIT-004: SECTION_HEADER カードに 320x40 を返す（サイズ指定無視）', () => {
       const board = ref<CorkboardDetail | null>(null)
       const boardId = ref(100)
-      const { cardSizePixels } = useCorkboardDragDrop(board, boardId)
+      const { cardSizePixels } = useCorkboardDragDrop(board, boardId, (k) => k)
       const card = makeCard({ cardType: 'SECTION_HEADER', cardSize: 'LARGE' })
 
       expect(cardSizePixels(card)).toEqual({ width: 320, height: 40 })
@@ -180,7 +180,7 @@ describe('useCorkboardDragDrop', () => {
     it('cardSize が null の場合は MEDIUM（200x150）として扱う', () => {
       const board = ref<CorkboardDetail | null>(null)
       const boardId = ref(100)
-      const { cardSizePixels } = useCorkboardDragDrop(board, boardId)
+      const { cardSizePixels } = useCorkboardDragDrop(board, boardId, (k) => k)
       const card = makeCard({ cardType: 'MEMO', cardSize: null })
 
       expect(cardSizePixels(card)).toEqual({ width: 200, height: 150 })
@@ -193,7 +193,7 @@ describe('useCorkboardDragDrop', () => {
     it('CORK-DND-UNIT-009: カードもセクションもない場合は最低 1200x800 を返す', () => {
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [], groups: [] }))
       const boardId = ref(100)
-      const { boardContentSize } = useCorkboardDragDrop(board, boardId)
+      const { boardContentSize } = useCorkboardDragDrop(board, boardId, (k) => k)
 
       expect(boardContentSize.value).toEqual({ width: 1200, height: 800 })
     })
@@ -202,7 +202,7 @@ describe('useCorkboardDragDrop', () => {
       const card = makeCard({ positionX: 1500, positionY: 1000, cardSize: 'MEDIUM' })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { boardContentSize } = useCorkboardDragDrop(board, boardId)
+      const { boardContentSize } = useCorkboardDragDrop(board, boardId, (k) => k)
 
       // positionX(1500) + width(200) + margin(40) = 1740
       // positionY(1000) + height(150) + margin(40) = 1190
@@ -212,7 +212,7 @@ describe('useCorkboardDragDrop', () => {
     it('board が null の場合は 1200x800 を返す', () => {
       const board = ref<CorkboardDetail | null>(null)
       const boardId = ref(100)
-      const { boardContentSize } = useCorkboardDragDrop(board, boardId)
+      const { boardContentSize } = useCorkboardDragDrop(board, boardId, (k) => k)
 
       expect(boardContentSize.value).toEqual({ width: 1200, height: 800 })
     })
@@ -225,7 +225,7 @@ describe('useCorkboardDragDrop', () => {
       const card = makeCard({ id: 1, positionX: 100, positionY: 200 })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { onPositionChange } = useCorkboardDragDrop(board, boardId)
+      const { onPositionChange } = useCorkboardDragDrop(board, boardId, (k) => k)
 
       // API は解決されないままにしておき、呼び出し直後の state を確認する
       let resolveApi!: () => void
@@ -251,7 +251,7 @@ describe('useCorkboardDragDrop', () => {
       const card = makeCard({ id: 2, positionX: 100, positionY: 200 })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { onPositionChange } = useCorkboardDragDrop(board, boardId)
+      const { onPositionChange } = useCorkboardDragDrop(board, boardId, (k) => k)
 
       mockBatchUpdateCardPositions.mockResolvedValueOnce({ data: { updatedCount: 1 } })
 
@@ -268,7 +268,7 @@ describe('useCorkboardDragDrop', () => {
       const card = makeCard({ id: 3, positionX: 100, positionY: 200 })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { onPositionChange } = useCorkboardDragDrop(board, boardId)
+      const { onPositionChange } = useCorkboardDragDrop(board, boardId, (k) => k)
 
       mockBatchUpdateCardPositions.mockRejectedValueOnce(new Error('API Error'))
 
@@ -284,7 +284,7 @@ describe('useCorkboardDragDrop', () => {
       const card = makeCard({ id: 4, positionX: 100, positionY: 200 })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { onPositionChange } = useCorkboardDragDrop(board, boardId)
+      const { onPositionChange } = useCorkboardDragDrop(board, boardId, (k) => k)
 
       mockBatchUpdateCardPositions.mockRejectedValueOnce(new Error('API Error'))
 
@@ -299,7 +299,7 @@ describe('useCorkboardDragDrop', () => {
     it('CORK-DND-UNIT-011: board が null の場合は何もしない', async () => {
       const board = ref<CorkboardDetail | null>(null)
       const boardId = ref(100)
-      const { onPositionChange } = useCorkboardDragDrop(board, boardId)
+      const { onPositionChange } = useCorkboardDragDrop(board, boardId, (k) => k)
 
       await onPositionChange(1, 300, 400)
 
@@ -309,7 +309,7 @@ describe('useCorkboardDragDrop', () => {
     it('CORK-DND-UNIT-012: 対象カードが見つからない場合は何もしない', async () => {
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [] }))
       const boardId = ref(100)
-      const { onPositionChange } = useCorkboardDragDrop(board, boardId)
+      const { onPositionChange } = useCorkboardDragDrop(board, boardId, (k) => k)
 
       await onPositionChange(999, 300, 400)
 
@@ -320,7 +320,7 @@ describe('useCorkboardDragDrop', () => {
       const card = makeCard({ id: 5, positionX: 100, positionY: 200, zIndex: null })
       const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
       const boardId = ref(100)
-      const { onPositionChange } = useCorkboardDragDrop(board, boardId)
+      const { onPositionChange } = useCorkboardDragDrop(board, boardId, (k) => k)
 
       mockBatchUpdateCardPositions.mockResolvedValueOnce({ data: { updatedCount: 1 } })
 

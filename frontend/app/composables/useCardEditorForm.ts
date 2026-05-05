@@ -62,7 +62,6 @@ export function useCardEditorForm(
   tFn?: (key: string) => string,
 ) {
   // tFn が渡されない場合は useI18n() から取得（実際のコンポーネント利用時）
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { t } = tFn ? { t: tFn } : useI18n()
 
   // ----- フォーム状態 -----

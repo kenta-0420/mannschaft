@@ -15,10 +15,10 @@
  */
 import type { CorkboardDetail, CorkboardScope } from '~/types/corkboard'
 
-export function useCorkboardDetail() {
+export function useCorkboardDetail(tFn?: (key: string) => string) {
   const route = useRoute()
   const router = useRouter()
-  const { t } = useI18n()
+  const { t } = tFn ? { t: tFn } : useI18n()
   const { getBoardDetail, getBoardDetailByBoardId } = useCorkboardApi()
   const { captureQuiet } = useErrorReport()
   const authStore = useAuthStore()

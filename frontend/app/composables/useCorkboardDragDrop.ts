@@ -19,11 +19,12 @@ import type { CorkboardDetail, CorkboardCardDetail } from '~/types/corkboard'
 export function useCorkboardDragDrop(
   board: Ref<CorkboardDetail | null>,
   boardId: Ref<number>,
+  tFn?: (key: string) => string,
 ) {
   const { batchUpdateCardPositions: apiBatchUpdateCardPositions } = useCorkboardApi()
   const { captureQuiet } = useErrorReport()
   const toast = useToast()
-  const { t } = useI18n()
+  const { t } = tFn ? { t: tFn } : useI18n()
 
   // ----- カードサイズプリセット -----
 

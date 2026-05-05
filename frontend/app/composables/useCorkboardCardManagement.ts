@@ -17,6 +17,7 @@ import type { CorkboardDetail, CorkboardCardDetail } from '~/types/corkboard'
 export function useCorkboardCardManagement(
   board: Ref<CorkboardDetail | null>,
   boardId: Ref<number>,
+  tFn?: (key: string) => string,
 ) {
   const {
     deleteCard: apiDeleteCard,
@@ -24,7 +25,7 @@ export function useCorkboardCardManagement(
   } = useCorkboardApi()
   const { captureQuiet } = useErrorReport()
   const toast = useToast()
-  const { t } = useI18n()
+  const { t } = tFn ? { t: tFn } : useI18n()
   const { confirmAction } = useConfirmDialog()
 
   // ----- モーダル開閉・モード制御 -----

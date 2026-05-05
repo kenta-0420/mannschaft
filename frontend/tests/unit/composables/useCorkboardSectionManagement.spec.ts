@@ -179,7 +179,9 @@ function stubLocalStorage() {
       localStorageMock[key] = value
     },
     removeItem: (key: string) => {
-      delete localStorageMock[key]
+      localStorageMock = Object.fromEntries(
+        Object.entries(localStorageMock).filter(([k]) => k !== key),
+      )
     },
   })
 }
