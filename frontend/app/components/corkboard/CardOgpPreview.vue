@@ -134,7 +134,7 @@ function onImageError() {
       loading="lazy"
       referrerpolicy="no-referrer"
       @error="onImageError"
-    />
+    >
     <!-- 画像なしフォールバック（テキストのみで成立させるためのアイコン枠） -->
     <span
       v-else

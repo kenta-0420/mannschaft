@@ -173,12 +173,13 @@ onBeforeUnmount(() => {
         </p>
       </div>
       <!-- qrcode ライブラリが生成する静的 SVG を描画する（外部入力を含まないため XSS リスクは無い）。 -->
-      <!-- eslint-disable-next-line vue/no-v-html -->
+      <!-- eslint-disable vue/no-v-html -->
       <div
         v-else-if="qrSvg"
         class="h-full w-full"
         v-html="qrSvg"
       />
+      <!-- eslint-enable vue/no-v-html -->
       <div
         v-else
         class="px-4 text-center text-sm text-surface-500"

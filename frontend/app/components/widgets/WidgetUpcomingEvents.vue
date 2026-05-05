@@ -84,7 +84,7 @@ onMounted(load)
                 :src="event.scope_icon_url"
                 class="w-full h-full object-cover"
                 alt=""
-              />
+              >
               <span v-else>{{ event.scope_name.charAt(0) }}</span>
             </div>
             <span class="text-xs text-surface-500">{{ event.scope_name }}</span>

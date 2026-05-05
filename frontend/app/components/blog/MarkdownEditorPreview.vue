@@ -33,6 +33,8 @@ defineExpose({ rootRef })
         <i class="pi pi-times" />
       </button>
     </div>
+    <!-- html は呼び出し元で marked + sanitizeHtml により sanitize 済みである前提 -->
+    <!-- eslint-disable-next-line vue/no-v-html -->
     <div class="preview-content px-5 pb-8" v-html="html" />
   </div>
 </template>

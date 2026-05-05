@@ -21,6 +21,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  slotId: undefined,
   disabled: false,
 })
 
