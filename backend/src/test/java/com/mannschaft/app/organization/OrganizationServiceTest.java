@@ -5,8 +5,13 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MemberDto;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
@@ -82,6 +87,12 @@ class OrganizationServiceTest {
 
     @Mock
     private MemberQueryDispatcher memberQueryDispatcher;
+
+    @Mock
+    private MembershipService membershipService;
+
+    @Mock
+    private MembershipRepository membershipRepository;
 
     @InjectMocks
     private OrganizationService organizationService;
@@ -555,46 +566,32 @@ class OrganizationServiceTest {
     class FollowOrganization {
 
         @Test
-        @DisplayName("正常フォロー_SUPPORTERロールで参加される")
-        void 正常フォロー_SUPPORTERロールで参加される() {
+        @DisplayName("正常フォロー_memberships に SUPPORTER として入会される")
+        void 正常フォロー_membershipsにSUPPORTERとして入会される() {
             OrganizationEntity org = createOrganization();
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
-            given(userRoleRepository.existsByUserIdAndOrganizationId(USER_ID, ORG_ID)).willReturn(false);
-
-            RoleEntity supporterRole = RoleEntity.builder()
-                    .id(200L).name("SUPPORTER").displayName("サポーター").priority(5).isSystem(true).build();
-            given(roleRepository.findByName("SUPPORTER")).willReturn(Optional.of(supporterRole));
+            // F00.5 Phase 5: memberships ベースの重複チェック
+            given(membershipRepository.existsActiveByUserAndScopeAndRoleKind(
+                    USER_ID, ScopeType.ORGANIZATION, ORG_ID, RoleKind.SUPPORTER)).willReturn(false);
 
             organizationService.followOrganization(USER_ID, ORG_ID);
 
-            verify(userRoleRepository).save(any(UserRoleEntity.class));
+            verify(membershipService).join(any(MembershipCreateRequest.class));
         }
 
         @Test
-        @DisplayName("既にメンバー_ORG_007例外")
+        @DisplayName("既にSUPPORTERとして所属している_ORG_007例外")
         void 既にメンバー_ORG_007例外() {
             OrganizationEntity org = createOrganization();
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
-            given(userRoleRepository.existsByUserIdAndOrganizationId(USER_ID, ORG_ID)).willReturn(true);
+            // F00.5 Phase 5: memberships ベースの重複チェック
+            given(membershipRepository.existsActiveByUserAndScopeAndRoleKind(
+                    USER_ID, ScopeType.ORGANIZATION, ORG_ID, RoleKind.SUPPORTER)).willReturn(true);
 
             assertThatThrownBy(() -> organizationService.followOrganization(USER_ID, ORG_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ORG_007"));
-        }
-
-        @Test
-        @DisplayName("SUPPORTERロール未定義_ORG_005例外")
-        void SUPPORTERロール未定義_ORG_005例外() {
-            OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
-            given(userRoleRepository.existsByUserIdAndOrganizationId(USER_ID, ORG_ID)).willReturn(false);
-            given(roleRepository.findByName("SUPPORTER")).willReturn(Optional.empty());
-
-            assertThatThrownBy(() -> organizationService.followOrganization(USER_ID, ORG_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ORG_005"));
         }
 
         @Test
@@ -614,14 +611,36 @@ class OrganizationServiceTest {
     class UnfollowOrganization {
 
         @Test
-        @DisplayName("正常フォロー解除_ユーザーロールが削除される")
-        void 正常フォロー解除_ユーザーロールが削除される() {
+        @DisplayName("正常フォロー解除_memberships から退会される")
+        void 正常フォロー解除_membershipsから退会される() {
             OrganizationEntity org = createOrganization();
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            // F00.5 Phase 5: active な membership がある場合は leave を呼ぶ
+            MembershipEntity activeMembership = MembershipEntity.builder()
+                    .userId(USER_ID)
+                    .scopeType(ScopeType.ORGANIZATION)
+                    .scopeId(ORG_ID)
+                    .roleKind(RoleKind.SUPPORTER)
+                    .build();
+            given(membershipRepository.findActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
+                    .willReturn(Optional.of(activeMembership));
 
             organizationService.unfollowOrganization(USER_ID, ORG_ID);
 
-            verify(userRoleRepository).deleteByUserIdAndOrganizationId(USER_ID, ORG_ID);
+            verify(membershipService).leave(any(), any());
+        }
+
+        @Test
+        @DisplayName("フォロー未登録でも例外なし_何もしない")
+        void フォロー未登録_例外なし() {
+            OrganizationEntity org = createOrganization();
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            // active な membership がない場合は何もしない
+            given(membershipRepository.findActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
+                    .willReturn(Optional.empty());
+
+            organizationService.unfollowOrganization(USER_ID, ORG_ID);
+            // 例外が発生しないことを確認
         }
 
         @Test
