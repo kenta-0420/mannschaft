@@ -57,14 +57,6 @@ public class MemberPositionEntity {
 
     /**
      * 部分 UNIQUE 用の生成列（DB 側で計算）。
-     * {@code ended_at IS NULL} のとき {@code membership_id:position_id} の文字列、
-     * 離任済のとき NULL。JPA からの書き込みは禁止。
-     *
-     * <p>設計書 §5.5 / EC-20 参照。</p>
-     */
-    @Column(name = "active_position_key", insertable = false, updatable = false)
-    private String activePositionKey;
-
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();

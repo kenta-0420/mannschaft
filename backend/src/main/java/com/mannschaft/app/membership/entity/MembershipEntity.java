@@ -98,16 +98,6 @@ public class MembershipEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    /**
-     * 部分 UNIQUE 用の生成列（DB 側で計算）。
-     * {@code left_at IS NULL} のとき {@code user_id:scope_type:scope_id} の文字列、
-     * 退会済のとき NULL。JPA からの書き込みは禁止。
-     *
-     * <p>設計書 §5.5 / EC-20 参照。</p>
-     */
-    @Column(name = "active_key", insertable = false, updatable = false)
-    private String activeKey;
-
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
