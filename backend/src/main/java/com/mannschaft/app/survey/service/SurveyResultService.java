@@ -4,12 +4,12 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.QuestionType;
-import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyErrorCode;
-import com.mannschaft.app.survey.SurveyStatus;
 import com.mannschaft.app.survey.UnrespondedVisibility;
 import com.mannschaft.app.survey.dto.RespondentResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse;
@@ -56,6 +56,7 @@ public class SurveyResultService {
     private final AccessControlService accessControlService;
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * アンケート結果を取得する。閲覧権限チェックを行う。
@@ -74,37 +75,30 @@ public class SurveyResultService {
 
     /**
      * 結果閲覧権限を検証する。
+     *
+     * <p>F00 Phase C (2026-05-04): {@link ContentVisibilityChecker} 経由の判定に切り替えた。
+     * Resolver ({@link com.mannschaft.app.survey.visibility.SurveyVisibilityResolver}) が
+     * status × {@code ResultsVisibility} 合成を一元処理する。</p>
+     *
+     * <p>ただし「作成者本人は常に結果を閲覧可能」という既存挙動を維持するため、Resolver の
+     * 判定 (CUSTOM 経路では純粋に AFTER_RESPONSE / AFTER_CLOSE / VIEWERS_ONLY のみ評価) より
+     * 前段で「作成者高速パス」を Service 側に残す。これにより:</p>
+     * <ul>
+     *   <li>Resolver は §5.1.4「CUSTOM の意味論を厳密に」の規約を保てる</li>
+     *   <li>Service は既存挙動（作成者は常に可視）を担保できる</li>
+     * </ul>
      */
     private void validateResultAccess(SurveyEntity survey, Long userId) {
-        ResultsVisibility visibility = survey.getResultsVisibility();
-
-        switch (visibility) {
-            case AFTER_RESPONSE -> {
-                boolean hasResponded = responseRepository.existsBySurveyIdAndUserId(survey.getId(), userId);
-                if (!hasResponded) {
-                    throw new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED);
-                }
-            }
-            case AFTER_CLOSE -> {
-                if (survey.getStatus() != SurveyStatus.CLOSED
-                        && survey.getStatus() != SurveyStatus.ARCHIVED) {
-                    throw new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED);
-                }
-            }
-            case ADMINS_ONLY -> {
-                // 作成者またはADMIN/DEPUTY_ADMINのみ閲覧可能
-                if (!survey.getCreatedBy().equals(userId)
-                        && !accessControlService.isAdminOrAbove(userId, survey.getScopeId(), survey.getScopeType())) {
-                    throw new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED);
-                }
-            }
-            case VIEWERS_ONLY -> {
-                boolean isViewer = resultViewerRepository.existsBySurveyIdAndUserId(survey.getId(), userId);
-                boolean isCreator = survey.getCreatedBy() != null && survey.getCreatedBy().equals(userId);
-                if (!isViewer && !isCreator) {
-                    throw new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED);
-                }
-            }
+        // 作成者本人の高速パス（Resolver には含めない既存挙動の維持）。
+        if (userId != null && survey.getCreatedBy() != null
+                && survey.getCreatedBy().equals(userId)) {
+            return;
+        }
+        // それ以外は ContentVisibilityChecker に委譲。
+        // canView=false の場合は既存と同じ SurveyErrorCode.RESULT_ACCESS_DENIED で返す
+        // （根治治療: 既存挙動と同じ ErrorCode を投げ、上位 API 契約を保つ）。
+        if (!contentVisibilityChecker.canView(ReferenceType.SURVEY, survey.getId(), userId)) {
+            throw new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED);
         }
     }
 
