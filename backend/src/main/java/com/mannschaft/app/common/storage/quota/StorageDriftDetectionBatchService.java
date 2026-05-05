@@ -7,6 +7,7 @@ import com.mannschaft.app.common.storage.quota.repository.StorageSubscriptionRep
 import com.mannschaft.app.common.storage.quota.repository.StorageUsageLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,26 +19,29 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * F13 ストレージクォータ ドリフト検出・自動修正バッチ（週次）。
  *
- * <p>R2 の {@code ListObjectsV2} で全プレフィックスを走査し、
+ * <p>R2 の {@code ListObjectsV2} で各サブスクリプション（スコープ）ごとに
+ * スコープ別プレフィックス {@code {feature}/{scopeType}/{scopeId}/} を走査し、
  * {@code storage_subscriptions.used_bytes} と実際の使用量を突合する。
  * 差異が 1MB 以上の場合は {@code used_bytes} を実測値に修正し、
  * {@code storage_usage_logs} に {@code DRIFT_CORRECTION} を記録する。</p>
  *
- * <h3>走査対象プレフィックス（Phase 4-ζ 対応済み）</h3>
+ * <h3>スコープ別プレフィックス方式（Phase 5-c 対応済み）</h3>
+ * <p>各 feature_type のプレフィックスは以下のルートを使用する:</p>
  * <ul>
- *   <li>{@code timeline/} — F04.1 タイムライン（TIMELINE）</li>
- *   <li>{@code gallery/} — F06.2 メンバー紹介ギャラリー（GALLERY）</li>
- *   <li>{@code files/} — F05.5 ファイル共有（FILE_SHARING）</li>
- *   <li>{@code chat/} — F04.2 チャット（CHAT）</li>
- *   <li>{@code blog/} — F06.1 CMS/ブログ（CMS）</li>
- *   <li>{@code circulation/} — F05.2 回覧板（CIRCULATION）</li>
- *   <li>{@code bulletin/} — F05.1 掲示板（BULLETIN）</li>
- *   <li>{@code user/PERSONAL/} — F03.15 個人時間割メモ添付 (PERSONAL_TIMETABLE_NOTES. Phase 4-alpha 追加, Phase 5-a で新統一パス "user/PERSONAL/" に変更)</li>
- *   <li>{@code schedules/} — F03.14 スケジュールメディア (SCHEDULE_MEDIA. Phase 4-alpha 追加)</li>
+ *   <li>{@code timeline/{scopeType}/{scopeId}/} — F04.1 タイムライン（TIMELINE）</li>
+ *   <li>{@code gallery/{scopeType}/{scopeId}/} — F06.2 メンバー紹介ギャラリー（GALLERY）</li>
+ *   <li>{@code files/{scopeType}/{scopeId}/} — F05.5 ファイル共有（FILE_SHARING）</li>
+ *   <li>{@code chat/{scopeType}/{scopeId}/} — F04.2 チャット（CHAT）</li>
+ *   <li>{@code blog/{scopeType}/{scopeId}/} — F06.1 CMS/ブログ（CMS）</li>
+ *   <li>{@code circulation/{scopeType}/{scopeId}/} — F05.2 回覧板（CIRCULATION）</li>
+ *   <li>{@code bulletin/{scopeType}/{scopeId}/} — F05.1 掲示板（BULLETIN）</li>
+ *   <li>{@code schedules/{scopeType}/{scopeId}/} — F03.14 スケジュールメディア（SCHEDULE_MEDIA）</li>
+ *   <li>{@code user/PERSONAL/{scopeId}/timetable-notes/} — F03.15 個人時間割メモ添付（PERSONAL_TIMETABLE_NOTES、専用パターン）</li>
  * </ul>
  *
  * <h3>除外対象</h3>
@@ -45,6 +49,12 @@ import java.util.Map;
  *   <li>{@code thumbnails/} — Workers / クライアント生成サムネイル（自動生成物）</li>
  *   <li>{@code tmp/} — 一時ファイル（未コミット）</li>
  * </ul>
+ *
+ * <h3>移行期モード（{@code app.storage.drift.migration-mode-enabled=true}）</h3>
+ * <p>Phase 5 の新パス移行期間中は、旧パスのオブジェクトも集計に含める。
+ * {@link StorageFeatureType#PERSONAL_TIMETABLE_NOTES} の旧パス
+ * {@code user/{scopeId}/timetable-notes/} のみスコープ特定が可能なため対応する。
+ * 他の feature_type の旧パス（{@code chat/{uuid}/...} 等）はスコープ特定不可のため対象外。</p>
  *
  * <h3>Class A オペレーション課金対策</h3>
  * <ul>
@@ -66,26 +76,26 @@ public class StorageDriftDetectionBatchService {
     private static final int LIST_PAGE_SIZE = 1000;
 
     /**
-     * スコープ別サブスクリプションに帰属しないプレフィックス（バケット単位の集計）。
-     * 設計書 §6 で「スコープ別プレフィックス」として定義されている feature_type ごとのトップレベルプレフィックス。
+     * feature_type → R2 トップレベルルートのマッピング。
      *
-     * <p>Phase 4-ζ: Phase 4-α〜δ で追加した feature_type のプレフィックスを追加済み。</p>
+     * <p>Phase 5-c: スコープ別プレフィックス方式に移行。
+     * {@link StorageFeatureType#PERSONAL_TIMETABLE_NOTES} は専用パターンを使用するため
+     * このマップには含まれない（{@link #buildScopePrefix} 内で個別処理する）。</p>
      */
-    static final Map<StorageFeatureType, List<String>> FEATURE_PREFIX_MAP;
+    static final Map<StorageFeatureType, String> FEATURE_ROOT_MAP;
 
     static {
-        FEATURE_PREFIX_MAP = new EnumMap<>(StorageFeatureType.class);
-        FEATURE_PREFIX_MAP.put(StorageFeatureType.TIMELINE, List.of("timeline/"));
-        FEATURE_PREFIX_MAP.put(StorageFeatureType.GALLERY, List.of("gallery/"));
-        FEATURE_PREFIX_MAP.put(StorageFeatureType.FILE_SHARING, List.of("files/"));
-        FEATURE_PREFIX_MAP.put(StorageFeatureType.CHAT, List.of("chat/"));
-        FEATURE_PREFIX_MAP.put(StorageFeatureType.CMS, List.of("blog/"));
-        FEATURE_PREFIX_MAP.put(StorageFeatureType.CIRCULATION, List.of("circulation/"));
-        FEATURE_PREFIX_MAP.put(StorageFeatureType.BULLETIN, List.of("bulletin/"));
-        // Phase 4-α 追加: PERSONAL_TIMETABLE_NOTES / SCHEDULE_MEDIA
-        // Phase 5-a 修正: PERSONAL_TIMETABLE_NOTES のプレフィックスを新統一パス "user/PERSONAL/" に変更
-        FEATURE_PREFIX_MAP.put(StorageFeatureType.PERSONAL_TIMETABLE_NOTES, List.of("user/PERSONAL/"));
-        FEATURE_PREFIX_MAP.put(StorageFeatureType.SCHEDULE_MEDIA, List.of("schedules/"));
+        FEATURE_ROOT_MAP = new EnumMap<>(StorageFeatureType.class);
+        FEATURE_ROOT_MAP.put(StorageFeatureType.TIMELINE, "timeline");
+        FEATURE_ROOT_MAP.put(StorageFeatureType.GALLERY, "gallery");
+        FEATURE_ROOT_MAP.put(StorageFeatureType.FILE_SHARING, "files");
+        FEATURE_ROOT_MAP.put(StorageFeatureType.CHAT, "chat");
+        FEATURE_ROOT_MAP.put(StorageFeatureType.CMS, "blog");
+        FEATURE_ROOT_MAP.put(StorageFeatureType.CIRCULATION, "circulation");
+        FEATURE_ROOT_MAP.put(StorageFeatureType.BULLETIN, "bulletin");
+        FEATURE_ROOT_MAP.put(StorageFeatureType.SCHEDULE_MEDIA, "schedules");
+        // PERSONAL_TIMETABLE_NOTES は専用パターン: user/PERSONAL/{scopeId}/timetable-notes/
+        // buildScopePrefix() 内で個別処理するためここには含めない
     }
 
     private final S3Client s3Client;
@@ -94,24 +104,29 @@ public class StorageDriftDetectionBatchService {
     private final StorageUsageLogRepository usageLogRepository;
 
     /**
+     * 移行期モードフラグ。{@code true} の場合、旧パスのオブジェクトも集計に含める。
+     * デフォルト {@code false}（通常運用）。
+     */
+    @Value("${app.storage.drift.migration-mode-enabled:false}")
+    boolean migrationModeEnabled;
+
+    /**
      * 週次ドリフト検出バッチのエントリポイント。
      * 毎週日曜日深夜 2:00 に実行する。
      */
     @Scheduled(cron = "0 0 2 * * SUN")
     public void execute() {
-        log.info("F13 ドリフト検出バッチ 開始");
+        log.info("F13 ドリフト検出バッチ 開始 (migrationMode={})", migrationModeEnabled);
         int correctedCount = 0;
         int skippedCount = 0;
 
-        // R2 上のプレフィックス別バイト数を集計（スコープ横断の全体集計）
-        Map<StorageFeatureType, Long> r2BytesByFeature = sumR2BytesByFeature();
-        log.info("F13 R2 集計完了: featureBreakdown={}", r2BytesByFeature);
-
-        // 全サブスクリプションを走査して突合
         List<StorageSubscriptionEntity> subscriptions = subscriptionRepository.findAll();
         for (StorageSubscriptionEntity sub : subscriptions) {
             try {
-                int corrected = correctSubscriptionDrift(sub, r2BytesByFeature);
+                long r2Bytes = sumR2BytesForSubscription(sub);
+                log.debug("F13 R2 集計完了: subscriptionId={}, scopeType={}, scopeId={}, r2Bytes={}",
+                        sub.getId(), sub.getScopeType(), sub.getScopeId(), r2Bytes);
+                int corrected = correctSubscriptionDrift(sub, r2Bytes);
                 if (corrected > 0) {
                     correctedCount += corrected;
                 } else {
@@ -128,25 +143,71 @@ public class StorageDriftDetectionBatchService {
     }
 
     /**
-     * R2 の {@code ListObjectsV2} で全プレフィックスを走査し、
-     * {@link StorageFeatureType} 別の実バイト数を集計する。
+     * 指定されたサブスクリプション（スコープ）に帰属する全 R2 オブジェクトのバイト数合計を返す。
      *
-     * <p>除外対象: {@code thumbnails/} / {@code tmp/} プレフィックスは走査しない。</p>
+     * <p>全 {@link StorageFeatureType} に対してスコープ別プレフィックスを構築し、
+     * {@link #listAllObjectsBytes} で走査して合算する。
+     * 移行期モード有効時は旧パスも合算する（{@link #buildOldScopePrefix} 参照）。</p>
      *
-     * @return feature_type → 実バイト数のマップ
+     * @param sub 対象サブスクリプション
+     * @return 合計バイト数
      */
-    Map<StorageFeatureType, Long> sumR2BytesByFeature() {
-        Map<StorageFeatureType, Long> result = new EnumMap<>(StorageFeatureType.class);
+    long sumR2BytesForSubscription(StorageSubscriptionEntity sub) {
+        long total = 0L;
+        for (StorageFeatureType featureType : StorageFeatureType.values()) {
+            String newPrefix = buildScopePrefix(featureType, sub.getScopeType(), sub.getScopeId());
+            total += listAllObjectsBytes(newPrefix);
 
-        for (Map.Entry<StorageFeatureType, List<String>> entry : FEATURE_PREFIX_MAP.entrySet()) {
-            StorageFeatureType featureType = entry.getKey();
-            long totalBytes = 0L;
-            for (String prefix : entry.getValue()) {
-                totalBytes += listAllObjectsBytes(prefix);
+            if (migrationModeEnabled) {
+                Optional<String> oldPrefix = buildOldScopePrefix(featureType, sub.getScopeType(), sub.getScopeId());
+                if (oldPrefix.isPresent()) {
+                    total += listAllObjectsBytes(oldPrefix.get());
+                }
             }
-            result.put(featureType, totalBytes);
         }
-        return result;
+        return total;
+    }
+
+    /**
+     * feature_type とスコープ情報からスコープ別プレフィックスを構築する。
+     *
+     * <p>{@link StorageFeatureType#PERSONAL_TIMETABLE_NOTES} は専用パターンを使用する:
+     * {@code user/PERSONAL/{scopeId}/timetable-notes/}</p>
+     * <p>その他の feature_type は統一パターン:
+     * {@code {root}/{scopeType}/{scopeId}/}</p>
+     *
+     * @param featureType feature_type
+     * @param scopeType   スコープ種別（TEAM / ORGANIZATION / PERSONAL）
+     * @param scopeId     スコープ ID
+     * @return R2 プレフィックス文字列
+     */
+    String buildScopePrefix(StorageFeatureType featureType, String scopeType, Long scopeId) {
+        if (featureType == StorageFeatureType.PERSONAL_TIMETABLE_NOTES) {
+            return "user/PERSONAL/" + scopeId + "/timetable-notes/";
+        }
+        String root = FEATURE_ROOT_MAP.get(featureType);
+        return root + "/" + scopeType + "/" + scopeId + "/";
+    }
+
+    /**
+     * 移行期モード用: 旧パスのプレフィックスを返す。
+     *
+     * <p>{@link StorageFeatureType#PERSONAL_TIMETABLE_NOTES} のみ旧パスでスコープ特定が可能:
+     * {@code user/{scopeId}/timetable-notes/}</p>
+     * <p>他の feature_type（{@code chat/{uuid}/...} 等）は旧パスにスコープ情報が
+     * 埋め込まれていないためスコープ特定不可 → {@link Optional#empty()} を返す。</p>
+     *
+     * @param featureType feature_type
+     * @param scopeType   スコープ種別（未使用、将来拡張のため保持）
+     * @param scopeId     スコープ ID
+     * @return 旧パスプレフィックス（スコープ特定可能な場合のみ）
+     */
+    Optional<String> buildOldScopePrefix(StorageFeatureType featureType, String scopeType, Long scopeId) {
+        if (featureType == StorageFeatureType.PERSONAL_TIMETABLE_NOTES) {
+            // 旧パス: user/{userId}/timetable-notes/ (PERSONAL_TIMETABLE_NOTES のみスコープ特定可)
+            return Optional.of("user/" + scopeId + "/timetable-notes/");
+        }
+        return Optional.empty();
     }
 
     /**
@@ -196,22 +257,12 @@ public class StorageDriftDetectionBatchService {
     /**
      * サブスクリプション 1 件のドリフトを検出し、1MB 以上の差異があれば修正する。
      *
-     * @param sub              対象サブスクリプション
-     * @param r2BytesByFeature R2 の feature_type 別集計（全スコープ横断の合計）
+     * @param sub          対象サブスクリプション
+     * @param r2TotalBytes R2 の実測合計バイト数（スコープ別集計済み）
      * @return 修正件数（0 = 差異なし / 修正不要）
      */
     @Transactional
-    int correctSubscriptionDrift(StorageSubscriptionEntity sub,
-                                  Map<StorageFeatureType, Long> r2BytesByFeature) {
-        // 全 feature_type のバイト数合計を「このサブスクリプションが保持すべき実態値」として算出。
-        // 注意: 現在の実装では R2 集計がスコープ横断の合計であるため、マルチスコープ環境では
-        // feature_type の合計がこのサブスクリプション単独の actual にはならない。
-        // Phase 5（スコープ別プレフィックス走査）で精度を向上させる想定。
-        // Phase 4-ζ では「全機能が走査対象に含まれているか」の確認を主目的とする。
-        long r2TotalBytes = r2BytesByFeature.values().stream()
-                .mapToLong(Long::longValue)
-                .sum();
-
+    int correctSubscriptionDrift(StorageSubscriptionEntity sub, long r2TotalBytes) {
         long dbBytes = sub.getUsedBytes() != null ? sub.getUsedBytes() : 0L;
         long diff = Math.abs(r2TotalBytes - dbBytes);
 
@@ -262,18 +313,5 @@ public class StorageDriftDetectionBatchService {
         execute();
         // 簡易実装: 手動実行も同じフローを走らせる
         return 0;
-    }
-
-    /**
-     * feature_type とプレフィックスのマッピングを返す（テスト・管理 API 向け）。
-     *
-     * @return feature_type → R2 プレフィックスのマップ（不変）
-     */
-    public Map<StorageFeatureType, List<String>> getFeaturePrefixMap() {
-        Map<StorageFeatureType, List<String>> result = new EnumMap<>(StorageFeatureType.class);
-        for (Map.Entry<StorageFeatureType, List<String>> entry : FEATURE_PREFIX_MAP.entrySet()) {
-            result.put(entry.getKey(), List.copyOf(entry.getValue()));
-        }
-        return result;
     }
 }
