@@ -201,9 +201,9 @@ public class DashboardController {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime until = now.plusDays(days);
 
-        // 個人スケジュール
+        // 個人スケジュール（チーム・組織に紐付かないもののみ）
         List<ScheduleEntity> personalSchedules = scheduleRepository
-                .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, now, until);
+                .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(userId, now, until);
         // 所属チームのスケジュール
         List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
         List<ScheduleEntity> teamSchedules = teamRoles.stream()
