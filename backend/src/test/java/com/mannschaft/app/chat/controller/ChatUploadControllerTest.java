@@ -10,6 +10,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -81,9 +82,11 @@ class ChatUploadControllerTest {
     @DisplayName("POST presign 正常系: クォータ OK で 200 + presigned URL を返す")
     void presign_200() throws Exception {
         given(chatChannelService.findChannelOrThrow(CHANNEL_ID)).willReturn(teamChannel());
+        given(chatAttachmentService.resolveScope(any(ChatChannelEntity.class), anyLong()))
+                .willReturn(new ChatAttachmentService.ScopeResolution(StorageScopeType.TEAM, 50L));
         given(storageService.generateUploadUrl(anyString(), eq("image/jpeg"), any(Duration.class)))
                 .willReturn(new PresignedUploadResult(
-                        "https://r2.example/up", "chat/uuid/photo.jpg", 3600L));
+                        "https://r2.example/up", "chat/TEAM/50/uuid/photo.jpg", 3600L));
 
         String body = """
                 {"channelId": 7, "fileName":"photo.jpg", "contentType":"image/jpeg", "fileSize":1024}
