@@ -2,10 +2,8 @@ import { test, expect } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 import {
   CARD_ID_MEMO,
-  PERSONAL_BOARD_ID,
   buildBoardDetail,
   buildCard,
-  mockBoardDetail,
   mockCatchAllApis,
   setupOwnerAuth,
   type E2eCard,
