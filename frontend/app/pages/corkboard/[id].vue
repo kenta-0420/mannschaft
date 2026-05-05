@@ -185,7 +185,7 @@ const {
 } = useCorkboardPinManagement(board, boardId, t)
 
 // ----- WebSocket リアルタイム同期 -----
-const { setReloadFn } = useCorkboardWebSocketSync(board, boardId, t)
+const { setReloadFn } = useCorkboardWebSocketSync(board)
 
 // フルリロード関数を注入（eventType ごとのフォールバック用）
 setReloadFn(() => { void load() })

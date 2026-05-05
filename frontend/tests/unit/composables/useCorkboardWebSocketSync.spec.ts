@@ -145,13 +145,12 @@ function makeSection(id: number, overrides: Partial<CorkboardGroupDetail> = {}):
  */
 async function setupComposable(
   boardRef: ReturnType<typeof ref<CorkboardDetail | null>>,
-  boardIdRef: ReturnType<typeof ref<number>>,
 ) {
   let composableResult!: ReturnType<typeof useCorkboardWebSocketSync>
 
   const Wrapper = defineComponent({
     setup() {
-      composableResult = useCorkboardWebSocketSync(boardRef, boardIdRef)
+      composableResult = useCorkboardWebSocketSync(boardRef)
       return () => h('div')
     },
   })
@@ -181,9 +180,7 @@ describe('useCorkboardWebSocketSync', () => {
   describe('購読制御 (isSharedBoard / watch)', () => {
     it('CORK-SYNC-001: isSharedBoard が false（PERSONAL）のとき connect が呼ばれないこと', async () => {
       const board = ref<CorkboardDetail | null>(makeBoard('PERSONAL'))
-      const boardId = ref(42)
-
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       expect(result.isSharedBoard.value).toBe(false)
       expect(mockConnect).not.toHaveBeenCalled()
@@ -191,9 +188,7 @@ describe('useCorkboardWebSocketSync', () => {
 
     it('CORK-SYNC-002: isSharedBoard が true（TEAM）のとき connect が呼ばれること', async () => {
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM'))
-      const boardId = ref(42)
-
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       expect(result.isSharedBoard.value).toBe(true)
       expect(mockConnect).toHaveBeenCalledTimes(1)
@@ -201,9 +196,7 @@ describe('useCorkboardWebSocketSync', () => {
 
     it('CORK-SYNC-002b: isSharedBoard が true（ORGANIZATION）のとき connect が呼ばれること', async () => {
       const board = ref<CorkboardDetail | null>(makeBoard('ORGANIZATION'))
-      const boardId = ref(42)
-
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       expect(result.isSharedBoard.value).toBe(true)
       expect(mockConnect).toHaveBeenCalledTimes(1)
@@ -211,9 +204,7 @@ describe('useCorkboardWebSocketSync', () => {
 
     it('CORK-SYNC-015: onUnmounted で disconnect が呼ばれること', async () => {
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM'))
-      const boardId = ref(42)
-
-      const { wrapper } = await setupComposable(board, boardId)
+      const { wrapper } = await setupComposable(board)
 
       expect(mockConnect).toHaveBeenCalledTimes(1)
 
@@ -230,10 +221,9 @@ describe('useCorkboardWebSocketSync', () => {
   describe('CARD_CREATED', () => {
     it('CORK-SYNC-003: card ペイロードあり — board.value.cards に新規追加されること', async () => {
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM', { cards: [] }))
-      const boardId = ref(42)
       const newCard = makeCard(100)
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       const event: CorkboardEventPayload = {
         boardId: 42,
@@ -252,10 +242,9 @@ describe('useCorkboardWebSocketSync', () => {
     it('CORK-SYNC-004: 既に同 id のカードがあれば置換されること（多重 push 防止）', async () => {
       const existingCard = makeCard(100, { title: '旧タイトル' })
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM', { cards: [existingCard] }))
-      const boardId = ref(42)
       const updatedCard = makeCard(100, { title: '新タイトル' })
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       const event: CorkboardEventPayload = {
         boardId: 42,
@@ -273,10 +262,9 @@ describe('useCorkboardWebSocketSync', () => {
 
     it('CORK-SYNC-014: card ペイロードが null のとき フルリロードにフォールバックすること', async () => {
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM', { cards: [] }))
-      const boardId = ref(42)
       const reloadFn = vi.fn()
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
       result.setReloadFn(reloadFn)
 
       const event: CorkboardEventPayload = {
@@ -299,10 +287,9 @@ describe('useCorkboardWebSocketSync', () => {
       const card1 = makeCard(1, { title: '旧タイトル' })
       const card2 = makeCard(2)
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM', { cards: [card1, card2] }))
-      const boardId = ref(42)
       const updatedCard = makeCard(1, { title: '新タイトル' })
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       const event: CorkboardEventPayload = {
         boardId: 42,
@@ -324,10 +311,9 @@ describe('useCorkboardWebSocketSync', () => {
     it('CORK-SYNC-009a: CARD_MOVED — カードが置換されること', async () => {
       const card = makeCard(1, { positionX: 10, positionY: 20 })
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM', { cards: [card] }))
-      const boardId = ref(42)
       const movedCard = makeCard(1, { positionX: 100, positionY: 200 })
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       const event: CorkboardEventPayload = {
         boardId: 42,
@@ -346,10 +332,9 @@ describe('useCorkboardWebSocketSync', () => {
     it('CORK-SYNC-009b: CARD_ARCHIVED — カードが置換されること', async () => {
       const card = makeCard(1, { isArchived: false })
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM', { cards: [card] }))
-      const boardId = ref(42)
       const archivedCard = makeCard(1, { isArchived: true })
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       const event: CorkboardEventPayload = {
         boardId: 42,
@@ -370,9 +355,7 @@ describe('useCorkboardWebSocketSync', () => {
       const card1 = makeCard(1)
       const card2 = makeCard(2)
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM', { cards: [card1, card2] }))
-      const boardId = ref(42)
-
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       const event: CorkboardEventPayload = {
         boardId: 42,
@@ -392,10 +375,9 @@ describe('useCorkboardWebSocketSync', () => {
     it('CORK-SYNC-011: 該当カードが更新されること', async () => {
       const card = makeCard(1, { sectionId: null })
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM', { cards: [card] }))
-      const boardId = ref(42)
       const changedCard = makeCard(1, { sectionId: 10 })
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       const event: CorkboardEventPayload = {
         boardId: 42,
@@ -418,10 +400,9 @@ describe('useCorkboardWebSocketSync', () => {
   describe('SECTION_CREATED', () => {
     it('CORK-SYNC-007: board.value.groups に追加されること', async () => {
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM', { groups: [] }))
-      const boardId = ref(42)
       const newSection = makeSection(10)
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       const event: CorkboardEventPayload = {
         boardId: 42,
@@ -442,10 +423,9 @@ describe('useCorkboardWebSocketSync', () => {
     it('CORK-SYNC-010: セクションが置換されること', async () => {
       const section = makeSection(10, { name: '旧セクション名' })
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM', { groups: [section] }))
-      const boardId = ref(42)
       const updatedSection = makeSection(10, { name: '新セクション名' })
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       const event: CorkboardEventPayload = {
         boardId: 42,
@@ -473,9 +453,7 @@ describe('useCorkboardWebSocketSync', () => {
           cards: [card1, card2, card3],
         }),
       )
-      const boardId = ref(42)
-
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
 
       const event: CorkboardEventPayload = {
         boardId: 42,
@@ -500,10 +478,9 @@ describe('useCorkboardWebSocketSync', () => {
     it('CORK-SYNC-017: sectionId が null のとき フルリロードにフォールバックすること', async () => {
       const section = makeSection(10)
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM', { groups: [section] }))
-      const boardId = ref(42)
       const reloadFn = vi.fn()
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
       result.setReloadFn(reloadFn)
 
       const event: CorkboardEventPayload = {
@@ -526,10 +503,9 @@ describe('useCorkboardWebSocketSync', () => {
   describe('BOARD_DELETED / 未知 eventType', () => {
     it('CORK-SYNC-012: BOARD_DELETED — フルリロード関数が呼ばれること', async () => {
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM'))
-      const boardId = ref(42)
       const reloadFn = vi.fn()
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
       result.setReloadFn(reloadFn)
 
       const event: CorkboardEventPayload = {
@@ -546,10 +522,9 @@ describe('useCorkboardWebSocketSync', () => {
 
     it('CORK-SYNC-013: 未知の eventType — フルリロード関数が呼ばれること', async () => {
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM'))
-      const boardId = ref(42)
       const reloadFn = vi.fn()
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
       result.setReloadFn(reloadFn)
 
       // 型アサーションで未知の eventType を模倣
@@ -567,10 +542,9 @@ describe('useCorkboardWebSocketSync', () => {
 
     it('CORK-SYNC-018: setReloadFn で注入した関数が BOARD_DELETED で呼ばれること', async () => {
       const board = ref<CorkboardDetail | null>(makeBoard('TEAM'))
-      const boardId = ref(42)
       const reloadFn = vi.fn()
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
       result.setReloadFn(reloadFn)
 
       result.handleCorkboardEvent({
@@ -605,10 +579,9 @@ describe('useCorkboardWebSocketSync', () => {
   describe('board が null のとき', () => {
     it('CORK-SYNC-016: board.value が null のとき handleCorkboardEvent は何もしないこと', async () => {
       const board = ref<CorkboardDetail | null>(null)
-      const boardId = ref(42)
       const reloadFn = vi.fn()
 
-      const { result } = await setupComposable(board, boardId)
+      const { result } = await setupComposable(board)
       result.setReloadFn(reloadFn)
 
       const event: CorkboardEventPayload = {

@@ -32,18 +32,20 @@ import type { CorkboardCardDetail } from '~/types/corkboard'
 // @vueuse/core モック — useDraggable を固定値で返す
 // ============================================================
 
-vi.mock('@vueuse/core', () => ({
-  useDraggable: (_el: unknown, options: { initialValue?: { x: number; y: number } }) => {
-    const { ref } = require('vue')
-    const initX = options?.initialValue?.x ?? 0
-    const initY = options?.initialValue?.y ?? 0
-    return {
-      x: ref(initX),
-      y: ref(initY),
-      isDragging: ref(false),
-    }
-  },
-}))
+vi.mock('@vueuse/core', async () => {
+  const { ref } = await import('vue')
+  return {
+    useDraggable: (_el: unknown, options: { initialValue?: { x: number; y: number } }) => {
+      const initX = options?.initialValue?.x ?? 0
+      const initY = options?.initialValue?.y ?? 0
+      return {
+        x: ref(initX),
+        y: ref(initY),
+        isDragging: ref(false),
+      }
+    },
+  }
+})
 
 // ============================================================
 // 子コンポーネントモック（CardOgpPreview / CardSnapshot）

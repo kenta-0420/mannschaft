@@ -21,10 +21,7 @@ import type { CorkboardDetail, CorkboardEventPayload } from '~/types/corkboard'
 
 export function useCorkboardWebSocketSync(
   board: Ref<CorkboardDetail | null>,
-  boardId: Ref<number>,
-  tFn?: (key: string) => string,
 ) {
-  const { t: _t } = tFn ? { t: tFn } : useI18n()
 
   // ----- 共有ボード判定 -----
 
