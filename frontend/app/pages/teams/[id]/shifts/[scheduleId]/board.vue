@@ -133,8 +133,13 @@ const route = useRoute()
 const teamId = computed(() => Number(route.params.id))
 const scheduleId = computed(() => Number(route.params.scheduleId))
 
-const authStore = useAuthStore()
-const isSupporter = computed(() => authStore.currentUser?.systemRole === 'SUPPORTER')
+// F00.5 Phase 5: チームレベルの SUPPORTER 判定を useRoleAccess 経由に切替
+// 旧実装: authStore.currentUser?.systemRole === 'SUPPORTER'
+//   → systemRole はプラットフォームロール（SYSTEM_ADMIN など）であり、
+//     チームの SUPPORTER を判定するのは誤りだった。
+// 新実装: /api/v1/teams/{id}/me/permissions から取得した roleName で判定する。
+const { roleName, loadPermissions } = useRoleAccess('team', teamId)
+const isSupporter = computed(() => roleName.value === 'SUPPORTER')
 
 const shiftApi = useShiftApi()
 const teamApi = useTeamApi()
@@ -193,7 +198,7 @@ const unassignedMembers = computed(() =>
 
 // 初期データ取得
 onMounted(async () => {
-  await Promise.all([loadSchedule(), loadSlots(), loadPositions(), loadMembers(), fetchRuns()])
+  await Promise.all([loadSchedule(), loadSlots(), loadPositions(), loadMembers(), fetchRuns(), loadPermissions()])
 })
 
 async function loadSchedule(): Promise<void> {

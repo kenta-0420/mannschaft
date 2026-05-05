@@ -36,7 +36,6 @@ public class JobPolicy {
     public static final String PERMISSION_MANAGE_JOBS = "jobs.manage";
 
     private static final String SCOPE_TEAM = "TEAM";
-    private static final String ROLE_SUPPORTER = "SUPPORTER";
 
     private final AccessControlService accessControlService;
     private final RoleService roleService;
@@ -226,12 +225,16 @@ public class JobPolicy {
     /**
      * SUPPORTER 以外のチームメンバーかを判定する。
      * {@link VisibilityScope#TEAM_MEMBERS}（サポーター除外）用。
+     *
+     * <p>F00.5 Phase 5: memberships 参照に切替。Phase 4 で user_roles から SUPPORTER 行が削除されたため、
+     * 旧実装（accessControlService.getRoleName() 経由で user_roles 参照）では SUPPORTER を
+     * 常に非 SUPPORTER 扱いしてしまうバグがあった。
+     * {@link AccessControlService#isSupporter(Long, Long, String)} 経由で memberships.role_kind を参照する。</p>
      */
     private boolean isNonSupporterMember(Long userId, Long teamId) {
         if (!accessControlService.isMember(userId, teamId, SCOPE_TEAM)) {
             return false;
         }
-        String roleName = accessControlService.getRoleName(userId, teamId, SCOPE_TEAM);
-        return !ROLE_SUPPORTER.equals(roleName);
+        return !accessControlService.isSupporter(userId, teamId, SCOPE_TEAM);
     }
 }

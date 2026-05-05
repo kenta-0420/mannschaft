@@ -2,6 +2,7 @@ package com.mannschaft.app.common;
 
 import com.mannschaft.app.family.CareLinkStatus;
 import com.mannschaft.app.family.repository.UserCareLinkRepository;
+import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.role.entity.RoleEntity;
@@ -69,6 +70,22 @@ public class AccessControlService {
                 .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
                 .map(RoleEntity::getName)
                 .orElse(null);
+    }
+
+    /**
+     * ユーザーが指定スコープの SUPPORTER かどうかを返す。
+     *
+     * <p>F00.5 Phase 5: memberships.role_kind = SUPPORTER で判定する（旧 user_roles 参照から切替）。
+     * Phase 4 で user_roles から SUPPORTER 行が削除されているため、旧経路では常に false を返す問題があった。</p>
+     *
+     * @param userId    操作ユーザー
+     * @param scopeId   スコープ ID（チーム ID または組織 ID）
+     * @param scopeType スコープ種別（"TEAM" または "ORGANIZATION"）
+     * @return SUPPORTER の場合 true
+     */
+    public boolean isSupporter(Long userId, Long scopeId, String scopeType) {
+        ScopeType scope = ScopeType.valueOf(scopeType);
+        return membershipRepository.existsActiveByUserAndScopeAndRoleKind(userId, scope, scopeId, RoleKind.SUPPORTER);
     }
 
     /**
