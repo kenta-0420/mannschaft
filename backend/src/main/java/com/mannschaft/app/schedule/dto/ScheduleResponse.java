@@ -31,4 +31,7 @@ public class ScheduleResponse {
 
     /** コピー元スケジュールID（F03.10 拡張フィールド。前年度トレース時のみ設定）。 */
     private final Long sourceScheduleId;
+
+    /** ログインユーザーの出欠回答ステータス（YES/NO/MAYBE。未回答の場合 null）。 */
+    private final String myAttendanceStatus;
 }

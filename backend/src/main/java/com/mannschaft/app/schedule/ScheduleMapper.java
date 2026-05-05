@@ -28,6 +28,7 @@ public interface ScheduleMapper {
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
     @Mapping(target = "eventCategory", ignore = true)
     @Mapping(target = "academicYear", expression = "java(entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null)")
+    @Mapping(target = "myAttendanceStatus", ignore = true)
     ScheduleResponse toResponse(ScheduleEntity entity);
 
     List<ScheduleResponse> toResponseList(List<ScheduleEntity> entities);
@@ -46,6 +47,7 @@ public interface ScheduleMapper {
     @Mapping(target = "recurrenceRule", ignore = true)
     @Mapping(target = "eventCategory", ignore = true)
     @Mapping(target = "academicYear", expression = "java(entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null)")
+    @Mapping(target = "myAttendanceStatus", ignore = true)
     ScheduleDetailResponse toDetailResponse(ScheduleEntity entity);
 
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")

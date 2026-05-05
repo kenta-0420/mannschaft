@@ -86,13 +86,17 @@ public class OrgScheduleController {
             @PathVariable Long orgId,
             @PathVariable Long scheduleId) {
         var entity = scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
+        String myAttendanceStatus = attendanceService
+                .getMyAttendanceStatus(scheduleId, SecurityUtils.getCurrentUserId())
+                .orElse(null);
         ScheduleResponse response = new ScheduleResponse(
                 entity.getId(), entity.getTitle(), entity.getStartAt(), entity.getEndAt(),
                 entity.getAllDay(), entity.getEventType().name(), entity.getStatus().name(),
                 entity.getAttendanceRequired(), entity.getLocation(), entity.getCreatedAt(),
                 null,
                 entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null,
-                entity.getSourceScheduleId());
+                entity.getSourceScheduleId(),
+                myAttendanceStatus);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

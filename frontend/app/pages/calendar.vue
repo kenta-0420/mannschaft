@@ -34,6 +34,7 @@ interface EventDetail {
   scopeType?: string
   scopeId?: number
   scopeName?: string | null
+  attendanceRequired?: boolean
   myAttendance?: string | null
   attendanceStats?: { yes: number; no: number; maybe: number; pending: number; total: number } | null
   createdBy?: { displayName: string }
@@ -202,8 +203,14 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
       const sid = ext.scopeId ?? 0
       const res = await scheduleApi.getSchedule(st, sid, eventId)
-      const d = res.data as EventDetail
-      selectedEvent.value = { ...d, scopeType: ext.scopeType, scopeId: ext.scopeId, scopeName: ext.scopeName }
+      const d = res.data as EventDetail & { myAttendanceStatus?: string }
+      selectedEvent.value = {
+        ...d,
+        scopeType: ext.scopeType,
+        scopeId: ext.scopeId,
+        scopeName: ext.scopeName,
+        myAttendance: d.myAttendanceStatus ?? null,
+      }
     }
     showEventPanel.value = true
     showDayPanel.value = false
@@ -440,6 +447,7 @@ onMounted(loadEvents)
                 categoryName: selectedEvent.categoryName ?? null,
                 categoryColor: selectedEvent.categoryColor ?? null,
                 createdBy: selectedEvent.createdBy ?? { displayName: '' },
+                attendanceRequired: selectedEvent.attendanceRequired ?? false,
                 myAttendance: selectedEvent.myAttendance ?? null,
                 attendanceStats: selectedEvent.attendanceStats ?? null,
               }"
