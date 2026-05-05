@@ -248,7 +248,7 @@ class SharedFileVersionServiceTest {
             verify(versionRepository).save(any(SharedFileVersionEntity.class));
             // F13 Phase 4-ε: クォータチェックと使用量加算の検証
             verify(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(2048L));
-            verify(quotaService).recordVersionUpload(any(SharedFolderEntity.class), anyLong(), eq(2048L), eq(USER_ID));
+            verify(quotaService).recordVersionUpload(any(SharedFolderEntity.class), any(Long.class), eq(2048L), eq(USER_ID));
             // ファイルエンティティのバージョンが更新されることを確認
             assertThat(fileEntity.getCurrentVersion()).isEqualTo(2);
             assertThat(fileEntity.getFileKey()).isEqualTo("files/new-version.pdf");
@@ -313,7 +313,7 @@ class SharedFileVersionServiceTest {
             assertThat(result.getComment()).isNull();
             assertThat(result.getVersionNumber()).isEqualTo(2);
             verify(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(512L));
-            verify(quotaService).recordVersionUpload(any(SharedFolderEntity.class), anyLong(), eq(512L), eq(USER_ID));
+            verify(quotaService).recordVersionUpload(any(SharedFolderEntity.class), any(Long.class), eq(512L), eq(USER_ID));
         }
 
         @Test

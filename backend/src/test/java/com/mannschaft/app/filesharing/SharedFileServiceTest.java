@@ -105,7 +105,7 @@ class SharedFileServiceTest {
             assertThat(result.getName()).isEqualTo("test.pdf");
             verify(versionRepository).save(any(SharedFileVersionEntity.class));
             verify(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(1024L));
-            verify(quotaService).recordFileUpload(any(SharedFolderEntity.class), anyLong(), eq(1024L), eq(USER_ID));
+            verify(quotaService).recordFileUpload(any(SharedFolderEntity.class), any(Long.class), eq(1024L), eq(USER_ID));
         }
 
         @Test
