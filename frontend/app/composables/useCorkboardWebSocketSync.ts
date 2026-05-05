@@ -16,6 +16,7 @@
  *  - E2E 専用フック（__corkboardE2eEmit）は本番環境では window.__E2E__ が
  *    未定義なため公開されない。
  */
+import { computed, watch, onMounted, onUnmounted } from 'vue'
 import type { Ref } from 'vue'
 import type { CorkboardDetail, CorkboardEventPayload } from '~/types/corkboard'
 
