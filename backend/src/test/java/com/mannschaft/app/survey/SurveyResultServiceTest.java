@@ -4,6 +4,8 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.dto.RespondentResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse;
@@ -31,6 +33,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 /**
@@ -67,6 +70,9 @@ class SurveyResultServiceTest {
 
     @Mock
     private UserRoleRepository userRoleRepository;
+
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private SurveyResultService surveyResultService;
@@ -148,6 +154,8 @@ class SurveyResultServiceTest {
         @DisplayName("結果取得_AFTER_RESPONSE_未回答_BusinessException")
         void 結果取得_AFTER_RESPONSE_未回答_BusinessException() {
             // Given
+            // F00 Phase C: 判定は ContentVisibilityChecker に委譲済。
+            // createdBy != USER_ID なので作成者高速パスは効かず、Checker の戻り値で判定される。
             SurveyEntity survey = SurveyEntity.builder()
                     .scopeType("TEAM").scopeId(1L).title("テスト")
                     .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
@@ -156,7 +164,8 @@ class SurveyResultServiceTest {
             survey.publish();
 
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
-            given(responseRepository.existsBySurveyIdAndUserId(SURVEY_ID, USER_ID)).willReturn(false);
+            given(contentVisibilityChecker.canView(eq(ReferenceType.SURVEY), eq(SURVEY_ID), eq(USER_ID)))
+                    .willReturn(false);
 
             // When & Then
             assertThatThrownBy(() -> surveyResultService.getResults(SURVEY_ID, USER_ID))
@@ -177,6 +186,8 @@ class SurveyResultServiceTest {
             survey.publish();
 
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            given(contentVisibilityChecker.canView(eq(ReferenceType.SURVEY), eq(SURVEY_ID), eq(USER_ID)))
+                    .willReturn(false);
 
             // When & Then
             assertThatThrownBy(() -> surveyResultService.getResults(SURVEY_ID, USER_ID))
@@ -197,7 +208,9 @@ class SurveyResultServiceTest {
             survey.publish();
 
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
-            given(responseRepository.existsBySurveyIdAndUserId(SURVEY_ID, USER_ID)).willReturn(true);
+            // F00 Phase C: Checker が「回答済み」と判定する想定
+            given(contentVisibilityChecker.canView(eq(ReferenceType.SURVEY), eq(SURVEY_ID), eq(USER_ID)))
+                    .willReturn(true);
             given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(SURVEY_ID)).willReturn(List.of());
             given(responseRepository.countDistinctUsersBySurveyId(SURVEY_ID)).willReturn(5L);
 
@@ -221,13 +234,37 @@ class SurveyResultServiceTest {
             survey.publish();
 
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
-            given(resultViewerRepository.existsBySurveyIdAndUserId(SURVEY_ID, USER_ID)).willReturn(false);
+            given(contentVisibilityChecker.canView(eq(ReferenceType.SURVEY), eq(SURVEY_ID), eq(USER_ID)))
+                    .willReturn(false);
 
             // When & Then
             assertThatThrownBy(() -> surveyResultService.getResults(SURVEY_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SurveyErrorCode.RESULT_ACCESS_DENIED));
+        }
+
+        @Test
+        @DisplayName("F00 Phase C: 作成者本人は Checker をスキップして常に閲覧可（既存挙動の維持）")
+        void 結果取得_作成者本人_Checkerスキップで正常() {
+            // Given: createdBy = USER_ID
+            SurveyEntity survey = SurveyEntity.builder()
+                    .scopeType("TEAM").scopeId(1L).title("テスト")
+                    .resultsVisibility(ResultsVisibility.VIEWERS_ONLY)
+                    .distributionMode(DistributionMode.ALL).createdBy(USER_ID).build();
+            setEntityId(survey, SURVEY_ID);
+            survey.publish();
+
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(SURVEY_ID)).willReturn(List.of());
+            given(responseRepository.countDistinctUsersBySurveyId(SURVEY_ID)).willReturn(0L);
+
+            // When
+            SurveyResultResponse result = surveyResultService.getResults(SURVEY_ID, USER_ID);
+
+            // Then: Checker は呼ばれない（高速パス）。
+            assertThat(result).isNotNull();
+            org.mockito.Mockito.verifyNoInteractions(contentVisibilityChecker);
         }
     }
 

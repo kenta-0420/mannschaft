@@ -6,7 +6,9 @@ import com.mannschaft.app.filesharing.dto.UpdateFileRequest;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileRepository;
 import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
+import com.mannschaft.app.filesharing.service.SharedFileQuotaService;
 import com.mannschaft.app.filesharing.service.SharedFileService;
+import com.mannschaft.app.filesharing.service.SharedFolderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,12 @@ class SharedFileServiceAdditionalTest {
 
     @Mock
     private FileSharingMapper fileSharingMapper;
+
+    @Mock
+    private SharedFolderService folderService;
+
+    @Mock
+    private SharedFileQuotaService quotaService;
 
     @InjectMocks
     private SharedFileService service;

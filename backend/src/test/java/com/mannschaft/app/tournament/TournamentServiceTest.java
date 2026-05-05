@@ -1,6 +1,7 @@
 package com.mannschaft.app.tournament;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
@@ -38,6 +39,7 @@ class TournamentServiceTest {
     @Mock private TournamentDivisionRepository divisionRepository;
     @Mock private TournamentParticipantRepository participantRepository;
     @Mock private TournamentMapper mapper;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private TournamentService service;

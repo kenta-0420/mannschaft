@@ -143,7 +143,8 @@ class FileSharingControllerTest {
             ResponseEntity<Void> result = fileController.deleteFile(FILE_ID);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(fileService).deleteFile(FILE_ID);
+            // F13 Phase 4-ε: actorId（USER_ID）を渡す呼び出しに変更済み
+            verify(fileService).deleteFile(FILE_ID, USER_ID);
         }
     }
 

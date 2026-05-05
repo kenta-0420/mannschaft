@@ -27,8 +27,7 @@ async function loadChecks() {
   try {
     const res = await safetyApi.listSafetyChecks({ size: 20 })
     checks.value = res.data as SafetyCheck[]
-  } catch (e) {
-    console.error('安否確認一覧の取得に失敗しました', e)
+  } catch {
     notification.error('安否確認の取得に失敗しました')
     checks.value = []
   } finally {

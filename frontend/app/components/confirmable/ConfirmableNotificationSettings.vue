@@ -40,8 +40,7 @@ async function loadSettings() {
     secondReminderMinutes.value = settings.defaultSecondReminderMinutes
     alertThresholdPercent.value = settings.senderAlertThresholdPercent
     defaultUnconfirmedVisibility.value = settings.defaultUnconfirmedVisibility
-  } catch (err) {
-    console.error('確認通知設定の取得に失敗しました', err)
+  } catch {
     showError(t('confirmable.load_settings_error'))
   } finally {
     loading.value = false
@@ -62,8 +61,7 @@ async function saveSettings() {
     // 保存成功トーストを表示
     const toast = useToast()
     toast.add({ severity: 'success', summary: t('dialog.success'), life: 3000 })
-  } catch (err) {
-    console.error('確認通知設定の保存に失敗しました', err)
+  } catch {
     showError(t('confirmable.save_settings_error'))
   } finally {
     saving.value = false

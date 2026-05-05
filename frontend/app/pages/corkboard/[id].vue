@@ -923,6 +923,37 @@ onUnmounted(() => {
     corkboardListener = null
     subscribedBoardId = null
   }
+  // E2E テストフック解除
+  if (typeof window !== 'undefined') {
+    const w = window as unknown as { __corkboardE2eEmit?: unknown }
+    if (w.__corkboardE2eEmit) {
+      delete w.__corkboardE2eEmit
+    }
+  }
+})
+
+/**
+ * F09.8 件B 追補 E2E 専用フック。
+ *
+ * Playwright が `addInitScript` で `window.__E2E__ = true` を注入したときのみ
+ * `window.__corkboardE2eEmit(payload)` を公開し、テストから WebSocket 受信イベントを
+ * シミュレートできるようにする。本番環境では `__E2E__` が未定義のため公開されず、
+ * バンドルにも追加 API は残らない（ただの no-op）。
+ *
+ * 旧 BE 互換のフルリロード経路 (`event.card == null` 等) も検証可能なように、
+ * 受信した payload を {@link handleCorkboardEvent} へそのまま渡すだけのラッパとする。
+ */
+onMounted(() => {
+  if (typeof window === 'undefined') return
+  const w = window as unknown as {
+    __E2E__?: boolean
+    __corkboardE2eEmit?: (payload: CorkboardEventPayload) => void
+  }
+  if (w.__E2E__) {
+    w.__corkboardE2eEmit = (payload: CorkboardEventPayload) => {
+      handleCorkboardEvent(payload)
+    }
+  }
 })
 
 /** カードのアーカイブ状態を切り替え。 */
@@ -993,6 +1024,7 @@ async function toggleArchive(card: CorkboardCardDetail) {
           @click="openCreateSection"
         />
         <Button
+          v-if="canEdit"
           :label="t('corkboard.actions.createCard')"
           icon="pi pi-plus"
           size="small"

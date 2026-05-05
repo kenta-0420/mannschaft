@@ -31,8 +31,8 @@ async function load() {
   try {
     const data = await shiftApi.listSchedules(props.teamId)
     schedules.value = data
-  } catch (e) {
-    console.error('シフト表一覧の取得に失敗しました', e)
+  } catch {
+    // 取得失敗時は空表示にフォールバック
     schedules.value = []
   } finally {
     loading.value = false
