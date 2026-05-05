@@ -55,7 +55,7 @@ class CorkboardCardServiceEventTest {
     }
 
     @Test
-    @DisplayName("共有ボード（TEAM）: createCard で CARD_CREATED イベントが発行される")
+    @DisplayName("共有ボード（TEAM）: createCard で CARD_CREATED イベントが発行される（件B: card DTO 同梱）")
     void 共有ボード_イベント発行() {
         given(corkboardService.findBoardOrThrow(1L)).willReturn(teamBoard());
         given(cardRepository.countByCorkboardId(1L)).willReturn(0L);
@@ -66,7 +66,8 @@ class CorkboardCardServiceEventTest {
                             .corkboardId(e.getCorkboardId()).cardType(e.getCardType())
                             .url(e.getUrl()).createdBy(e.getCreatedBy()).build();
                 });
-        given(corkboardMapper.toCardResponse(any())).willReturn(stubResponse());
+        CorkboardCardResponse stub = stubResponse();
+        given(corkboardMapper.toCardResponse(any())).willReturn(stub);
 
         service.createCard(1L, 1L,
                 new CreateCardRequest("MEMO", null, null, "t", null, null, null, null, null, null, null, null, null));
@@ -75,6 +76,9 @@ class CorkboardCardServiceEventTest {
         verify(eventPublisher).publishEvent(captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo(CorkboardEvent.Type.CARD_CREATED);
         assertThat(captor.getValue().boardId()).isEqualTo(1L);
+        // 件B: フロント局所更新のためにカード DTO が同梱されること
+        assertThat(captor.getValue().card()).isSameAs(stub);
+        assertThat(captor.getValue().section()).isNull();
     }
 
     @Test

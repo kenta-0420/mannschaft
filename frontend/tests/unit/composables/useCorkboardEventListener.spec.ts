@@ -216,6 +216,109 @@ describe('useCorkboardEventListener — STOMP 購読・受信', () => {
       expect(onEvent).toHaveBeenCalledWith(fakePayload)
     })
 
+    it('CORK-WS-UNIT-009 (件B): card ペイロード付き CARD_CREATED が onEvent へそのまま配信される', async () => {
+      const useCorkboardEventListener = await freshUseCorkboardEventListener()
+      const onEvent = vi.fn()
+
+      const listener = useCorkboardEventListener({ boardId: 700, onEvent })
+      listener.connect()
+      await flushPromises()
+
+      const [, stompCallback] = mockSubscribeFn.mock.calls[0] as [string, SubscribeCallback]
+
+      const cardDto = {
+        id: 555,
+        corkboardId: 700,
+        sectionId: null,
+        cardType: 'MEMO',
+        title: '新規カード',
+        body: 'body',
+        positionX: 10,
+        positionY: 20,
+        zIndex: 1,
+        isArchived: false,
+        isPinned: false,
+      }
+      const payload = {
+        boardId: 700,
+        eventType: 'CARD_CREATED' as const,
+        cardId: 555,
+        sectionId: null,
+        card: cardDto,
+      }
+      stompCallback({ body: JSON.stringify(payload) })
+
+      expect(onEvent).toHaveBeenCalledTimes(1)
+      // composable は受信 JSON をそのまま渡すため、card フィールドも保持されること
+      expect(onEvent).toHaveBeenCalledWith(payload)
+      const received = onEvent.mock.calls[0]?.[0] as { card?: { id: number } }
+      expect(received.card).toBeDefined()
+      expect(received.card?.id).toBe(555)
+    })
+
+    it('CORK-WS-UNIT-010 (件B): section ペイロード付き SECTION_CREATED が onEvent へそのまま配信される', async () => {
+      const useCorkboardEventListener = await freshUseCorkboardEventListener()
+      const onEvent = vi.fn()
+
+      const listener = useCorkboardEventListener({ boardId: 800, onEvent })
+      listener.connect()
+      await flushPromises()
+
+      const [, stompCallback] = mockSubscribeFn.mock.calls[0] as [string, SubscribeCallback]
+
+      const sectionDto = {
+        id: 333,
+        corkboardId: 800,
+        name: '新セクション',
+        isCollapsed: false,
+        positionX: 0,
+        positionY: 0,
+        width: 400,
+        height: 300,
+        displayOrder: 0,
+      }
+      const payload = {
+        boardId: 800,
+        eventType: 'SECTION_CREATED' as const,
+        cardId: null,
+        sectionId: 333,
+        section: sectionDto,
+      }
+      stompCallback({ body: JSON.stringify(payload) })
+
+      expect(onEvent).toHaveBeenCalledTimes(1)
+      expect(onEvent).toHaveBeenCalledWith(payload)
+      const received = onEvent.mock.calls[0]?.[0] as { section?: { id: number } }
+      expect(received.section).toBeDefined()
+      expect(received.section?.id).toBe(333)
+    })
+
+    it('CORK-WS-UNIT-011 (件B 互換): 旧 BE からの payload なしメッセージも onEvent に渡る（card/section が undefined）', async () => {
+      const useCorkboardEventListener = await freshUseCorkboardEventListener()
+      const onEvent = vi.fn()
+
+      const listener = useCorkboardEventListener({ boardId: 900, onEvent })
+      listener.connect()
+      await flushPromises()
+
+      const [, stompCallback] = mockSubscribeFn.mock.calls[0] as [string, SubscribeCallback]
+
+      // 旧 BE フォーマット（card / section フィールド無し）
+      const legacyPayload = {
+        boardId: 900,
+        eventType: 'CARD_UPDATED' as const,
+        cardId: 1,
+        sectionId: null,
+      }
+      stompCallback({ body: JSON.stringify(legacyPayload) })
+
+      expect(onEvent).toHaveBeenCalledTimes(1)
+      const received = onEvent.mock.calls[0]?.[0] as { card?: unknown; section?: unknown }
+      // フロント側で安全にフォールバック判定できるよう、未定義のままで届くこと
+      expect(received.card).toBeUndefined()
+      expect(received.section).toBeUndefined()
+    })
+
     it('同一 boardId の複数 listener へ同時配信される（fan-out）', async () => {
       const useCorkboardEventListener = await freshUseCorkboardEventListener()
       const onEvent1 = vi.fn()

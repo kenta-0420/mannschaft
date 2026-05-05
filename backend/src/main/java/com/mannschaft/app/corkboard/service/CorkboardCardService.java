@@ -88,10 +88,11 @@ public class CorkboardCardService {
             scheduleOgpFetchAfterCommit(saved.getId(), saved.getUrl());
         }
 
-        // A-3: 共有ボードのみイベント発行
-        publishIfShared(board, CorkboardEvent.card(boardId, CorkboardEvent.Type.CARD_CREATED, saved.getId()));
+        // A-3: 共有ボードのみイベント発行（件B: 完成 DTO を含めてフロント局所更新を可能に）
+        CorkboardCardResponse response = corkboardMapper.toCardResponse(saved);
+        publishIfShared(board, CorkboardEvent.cardCreated(boardId, response));
 
-        return corkboardMapper.toCardResponse(saved);
+        return response;
     }
 
     /**
@@ -120,9 +121,10 @@ public class CorkboardCardService {
         CorkboardCardEntity saved = cardRepository.save(card);
         log.info("カード更新: cardId={}", cardId);
 
-        publishIfShared(board, CorkboardEvent.card(boardId, CorkboardEvent.Type.CARD_UPDATED, cardId));
+        CorkboardCardResponse response = corkboardMapper.toCardResponse(saved);
+        publishIfShared(board, CorkboardEvent.cardUpdated(boardId, response));
 
-        return corkboardMapper.toCardResponse(saved);
+        return response;
     }
 
     /**
@@ -138,7 +140,8 @@ public class CorkboardCardService {
         cardRepository.save(card);
         log.info("カード削除: cardId={}", cardId);
 
-        publishIfShared(board, CorkboardEvent.card(boardId, CorkboardEvent.Type.CARD_DELETED, cardId));
+        // 件B: 削除は cardId のみで OK（フロントは filter で削除できる）
+        publishIfShared(board, CorkboardEvent.cardDeleted(boardId, cardId));
     }
 
     /**
@@ -154,9 +157,10 @@ public class CorkboardCardService {
         CorkboardCardEntity saved = cardRepository.save(card);
         log.info("カードアーカイブ: cardId={}, archived={}", cardId, archived);
 
-        publishIfShared(board, CorkboardEvent.card(boardId, CorkboardEvent.Type.CARD_ARCHIVED, cardId));
+        CorkboardCardResponse response = corkboardMapper.toCardResponse(saved);
+        publishIfShared(board, CorkboardEvent.cardArchived(boardId, response));
 
-        return corkboardMapper.toCardResponse(saved);
+        return response;
     }
 
     /**
@@ -177,15 +181,16 @@ public class CorkboardCardService {
 
         log.info("カード一括位置更新: boardId={}, count={}", boardId, updatedCards.size());
 
-        // 一括移動: 個別の cardId を含めて配信（フロント側で順次反映）
+        List<CorkboardCardResponse> responses = corkboardMapper.toCardResponseList(updatedCards);
+
+        // 一括移動: 個別の card DTO を含めて配信（件B: フロントは map で局所更新）
         if (isShared(board)) {
-            for (CorkboardCardEntity card : updatedCards) {
-                eventPublisher.publishEvent(
-                        CorkboardEvent.card(boardId, CorkboardEvent.Type.CARD_MOVED, card.getId()));
+            for (CorkboardCardResponse response : responses) {
+                eventPublisher.publishEvent(CorkboardEvent.cardMoved(boardId, response));
             }
         }
 
-        return corkboardMapper.toCardResponseList(updatedCards);
+        return responses;
     }
 
     private CorkboardCardEntity findCardOrThrow(Long boardId, Long cardId) {

@@ -771,17 +771,129 @@ let corkboardListener: ReturnType<typeof useCorkboardEventListener> | null = nul
 let subscribedBoardId: number | null = null
 
 /**
- * 受信イベント時のハンドラ。
+ * 受信イベント時のハンドラ（件B: eventType 別の局所更新）。
  *
- * Phase F MVP は eventType 別の局所更新ではなくフルリロードに統一する（設計書 §5）。
- * 楽観的 UI 更新との競合を回避でき、ボード全体（最大 200 カード + 20 セクション）の
- * レスポンスサイズも十分小さいため、まずは確実な整合性を優先する。
- *
- * BOARD_DELETED は将来の精緻化対象（v1.0 では再取得時に 404 が返って errorMessage 表示になる）。
+ * 件B 改修 (2026-05-03):
+ *  - これまではイベント受信のたびに `load()` でボード詳細をフルリロードしていた。
+ *  - BE が `card` / `section` の完成 DTO を同梱配信するようになったため、
+ *    eventType ごとに push / map / filter で局所更新する。これにより API 呼び出しを
+ *    1 回節約でき、UX も向上する（カード追加が「サッと現れる」）。
+ *  - 旧 BE / DTO 不在のペイロード（`event.card == null` 等）は `void load()` で
+ *    フルリロードへフォールバックし、後方互換を保つ。
+ *  - 自身のアクションで既に楽観的更新済みのカードは、受信した完成 DTO で再描画される
+ *    （map で id 一致するものを置換するため二重表示にはならない）。
+ *  - BOARD_DELETED は当面 `load()` に倒し、再取得 404 で errorMessage に倒れる挙動に任せる。
  */
-function handleCorkboardEvent(_event: CorkboardEventPayload) {
-  void _event
-  void load()
+function handleCorkboardEvent(event: CorkboardEventPayload) {
+  if (!board.value) return
+
+  switch (event.eventType) {
+    case 'CARD_CREATED':
+      if (event.card) {
+        // 既に同 id のカードがあれば置換、無ければ末尾に追加（多重 push 防止）
+        const exists = board.value.cards.some((c) => c.id === event.cardId)
+        board.value = {
+          ...board.value,
+          cards: exists
+            ? board.value.cards.map((c) => (c.id === event.cardId ? event.card! : c))
+            : [...board.value.cards, event.card],
+        }
+      } else {
+        void load()
+      }
+      break
+
+    case 'CARD_UPDATED':
+    case 'CARD_MOVED':
+    case 'CARD_ARCHIVED':
+      if (event.card) {
+        const card = event.card
+        board.value = {
+          ...board.value,
+          cards: board.value.cards.map((c) => (c.id === event.cardId ? card : c)),
+        }
+      } else {
+        void load()
+      }
+      break
+
+    case 'CARD_DELETED':
+      if (event.cardId !== null) {
+        board.value = {
+          ...board.value,
+          cards: board.value.cards.filter((c) => c.id !== event.cardId),
+        }
+      } else {
+        void load()
+      }
+      break
+
+    case 'CARD_SECTION_CHANGED':
+      if (event.card) {
+        const card = event.card
+        board.value = {
+          ...board.value,
+          cards: board.value.cards.map((c) => (c.id === event.cardId ? card : c)),
+        }
+      } else {
+        void load()
+      }
+      break
+
+    case 'SECTION_CREATED':
+      if (event.section) {
+        const exists = board.value.groups.some((g) => g.id === event.sectionId)
+        board.value = {
+          ...board.value,
+          groups: exists
+            ? board.value.groups.map((g) => (g.id === event.sectionId ? event.section! : g))
+            : [...board.value.groups, event.section],
+        }
+      } else {
+        void load()
+      }
+      break
+
+    case 'SECTION_UPDATED':
+      if (event.section) {
+        const section = event.section
+        board.value = {
+          ...board.value,
+          groups: board.value.groups.map((g) => (g.id === event.sectionId ? section : g)),
+        }
+      } else {
+        void load()
+      }
+      break
+
+    case 'SECTION_DELETED':
+      if (event.sectionId !== null) {
+        const removedSectionId = event.sectionId
+        // 件B: section 削除時、紐付くカードの sectionId を null に戻す
+        // （V9.097 DDL の ON DELETE SET NULL とフロント表示を整合させる）。
+        board.value = {
+          ...board.value,
+          groups: board.value.groups.filter((g) => g.id !== removedSectionId),
+          cards: board.value.cards.map((c) =>
+            c.sectionId === removedSectionId ? { ...c, sectionId: null } : c,
+          ),
+        }
+      } else {
+        void load()
+      }
+      break
+
+    case 'BOARD_DELETED':
+      // 当面はリロードに倒す（再取得で 404 → errorMessage 表示）。
+      // 将来は一覧へリダイレクト + toast に置き換える。
+      void load()
+      break
+
+    default:
+      // 未知の eventType（将来 BE 拡張時の前方互換）→ 安全側にフルリロード
+      void load()
+      break
+  }
 }
 
 /**
