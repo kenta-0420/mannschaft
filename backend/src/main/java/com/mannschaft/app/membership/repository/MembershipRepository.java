@@ -90,4 +90,22 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("scopeType") ScopeType scopeType,
             @Param("scopeId") Long scopeId,
             @Param("roleKind") RoleKind roleKind);
+
+    /**
+     * 指定スコープ × 指定 {@link RoleKind} のアクティブメンバーシップを joined_at 降順でページング取得する。
+     *
+     * <p>サポーター一覧取得（{@code roleKind=SUPPORTER}）などに使用する。</p>
+     */
+    @Query(value = "SELECT m FROM MembershipEntity m " +
+            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId " +
+            "AND m.roleKind = :roleKind AND m.leftAt IS NULL " +
+            "ORDER BY m.joinedAt DESC",
+            countQuery = "SELECT COUNT(m) FROM MembershipEntity m " +
+                    "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId " +
+                    "AND m.roleKind = :roleKind AND m.leftAt IS NULL")
+    Page<MembershipEntity> findByScopeAndActiveAndRoleKind(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("roleKind") RoleKind roleKind,
+            Pageable pageable);
 }

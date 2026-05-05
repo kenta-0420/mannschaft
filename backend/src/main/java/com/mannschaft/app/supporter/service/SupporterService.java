@@ -5,10 +5,14 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
-import com.mannschaft.app.role.entity.RoleEntity;
-import com.mannschaft.app.role.entity.UserRoleEntity;
-import com.mannschaft.app.role.repository.RoleRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.membership.domain.LeaveReason;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.dto.MembershipLeaveRequest;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.supporter.SupporterApplicationStatus;
 import com.mannschaft.app.supporter.SupporterErrorCode;
 import com.mannschaft.app.supporter.dto.BulkApproveRequest;
@@ -30,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * サポーター申請・管理サービス。
@@ -41,13 +46,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SupporterService {
 
-    private static final String SUPPORTER_ROLE_NAME = "SUPPORTER";
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     private final SupporterApplicationRepository applicationRepository;
     private final SupporterSettingsRepository settingsRepository;
-    private final UserRoleRepository userRoleRepository;
-    private final RoleRepository roleRepository;
+    private final MembershipService membershipService;
+    private final MembershipRepository membershipRepository;
     private final UserRepository userRepository;
 
     // ========================================
@@ -65,12 +69,10 @@ public class SupporterService {
      */
     @Transactional
     public ApiResponse<FollowStatusResponse> follow(Long userId, String scopeType, Long scopeId) {
-        RoleEntity supporterRole = findSupporterRole();
+        ScopeType scope = ScopeType.valueOf(scopeType);
 
-        // 既にメンバー（任意ロール）なら申請不可
-        boolean alreadyMember = "TEAM".equals(scopeType)
-                ? userRoleRepository.existsByUserIdAndTeamId(userId, scopeId)
-                : userRoleRepository.existsByUserIdAndOrganizationId(userId, scopeId);
+        // 既にアクティブなメンバーシップがあれば申請不可
+        boolean alreadyMember = membershipRepository.existsActiveByUserAndScope(userId, scope, scopeId);
         if (alreadyMember) {
             throw new BusinessException(SupporterErrorCode.SUPPORTER_002);
         }
@@ -78,8 +80,14 @@ public class SupporterService {
         boolean autoApprove = getSettings(scopeType, scopeId).autoApprove();
 
         if (autoApprove) {
-            // 即時承認: SUPPORTER ロールを付与
-            saveUserRole(userId, scopeType, scopeId, supporterRole.getId());
+            // 即時承認: SUPPORTER メンバーシップを付与
+            MembershipCreateRequest req = new MembershipCreateRequest();
+            req.setUserId(userId);
+            req.setScopeType(scope);
+            req.setScopeId(scopeId);
+            req.setRoleKind(RoleKind.SUPPORTER);
+            req.setSource("SELF_SUPPORTER_REGISTRATION");
+            membershipService.join(req);
             log.info("サポーター即時承認: scopeType={}, scopeId={}, userId={}", scopeType, scopeId, userId);
             return ApiResponse.of(FollowStatusResponse.approved());
         }
@@ -112,15 +120,15 @@ public class SupporterService {
      */
     @Transactional
     public void unfollow(Long userId, String scopeType, Long scopeId) {
-        RoleEntity supporterRole = findSupporterRole();
+        ScopeType scope = ScopeType.valueOf(scopeType);
 
-        // APPROVED: SUPPORTER ロールを削除
-        if ("TEAM".equals(scopeType)) {
-            userRoleRepository.findByUserIdAndTeamIdAndRoleId(userId, scopeId, supporterRole.getId())
-                    .ifPresent(userRoleRepository::delete);
-        } else {
-            userRoleRepository.findByUserIdAndOrganizationIdAndRoleId(userId, scopeId, supporterRole.getId())
-                    .ifPresent(userRoleRepository::delete);
+        // APPROVED: SUPPORTER メンバーシップを退会
+        Optional<MembershipEntity> activeMembership = membershipRepository.findActiveByUserAndScope(
+                userId, scope, scopeId);
+        if (activeMembership.isPresent()) {
+            MembershipLeaveRequest leaveReq = new MembershipLeaveRequest();
+            leaveReq.setLeaveReason(LeaveReason.SELF);
+            membershipService.leave(activeMembership.get().getId(), leaveReq);
         }
 
         // PENDING: 申請レコードを削除
@@ -140,12 +148,11 @@ public class SupporterService {
      * @return NONE / PENDING / APPROVED
      */
     public ApiResponse<FollowStatusResponse> getFollowStatus(Long userId, String scopeType, Long scopeId) {
-        RoleEntity supporterRole = findSupporterRole();
+        ScopeType scope = ScopeType.valueOf(scopeType);
 
-        // SUPPORTER ロール保持 → APPROVED
-        boolean isApproved = "TEAM".equals(scopeType)
-                ? userRoleRepository.existsByUserIdAndTeamIdAndRoleId(userId, scopeId, supporterRole.getId())
-                : userRoleRepository.existsByUserIdAndOrganizationIdAndRoleId(userId, scopeId, supporterRole.getId());
+        // SUPPORTER メンバーシップ保持 → APPROVED
+        boolean isApproved = membershipRepository.existsActiveByUserAndScopeAndRoleKind(
+                userId, scope, scopeId, RoleKind.SUPPORTER);
         if (isApproved) {
             return ApiResponse.of(FollowStatusResponse.approved());
         }
@@ -172,21 +179,20 @@ public class SupporterService {
      * @param pageable  ページングパラメータ
      */
     public PagedResponse<SupporterResponse> getSupporters(String scopeType, Long scopeId, Pageable pageable) {
-        RoleEntity supporterRole = findSupporterRole();
+        ScopeType scope = ScopeType.valueOf(scopeType);
 
-        Page<UserRoleEntity> page = "TEAM".equals(scopeType)
-                ? userRoleRepository.findByTeamIdAndRoleIdOrderByCreatedAtDesc(scopeId, supporterRole.getId(), pageable)
-                : userRoleRepository.findByOrganizationIdAndRoleIdOrderByCreatedAtDesc(scopeId, supporterRole.getId(), pageable);
+        Page<MembershipEntity> page = membershipRepository.findByScopeAndActiveAndRoleKind(
+                scope, scopeId, RoleKind.SUPPORTER, pageable);
 
         List<SupporterResponse> data = page.getContent().stream()
-                .map(ur -> {
-                    UserEntity user = userRepository.findById(ur.getUserId()).orElse(null);
+                .map(m -> {
+                    UserEntity user = userRepository.findById(m.getUserId()).orElse(null);
                     String displayName = user != null ? user.getDisplayName() : "不明";
                     String avatarUrl = user != null ? user.getAvatarUrl() : null;
-                    String followedAt = ur.getCreatedAt() != null
-                            ? ur.getCreatedAt().format(ISO_FORMATTER)
+                    String followedAt = m.getJoinedAt() != null
+                            ? m.getJoinedAt().format(ISO_FORMATTER)
                             : null;
-                    return new SupporterResponse(ur.getUserId(), displayName, avatarUrl, followedAt);
+                    return new SupporterResponse(m.getUserId(), displayName, avatarUrl, followedAt);
                 })
                 .toList();
 
@@ -251,8 +257,13 @@ public class SupporterService {
         SupporterApplicationEntity app = findPendingApplicationOrThrow(applicationId, scopeType, scopeId);
         app.updateStatus(SupporterApplicationStatus.APPROVED);
 
-        RoleEntity supporterRole = findSupporterRole();
-        saveUserRole(app.getUserId(), scopeType, scopeId, supporterRole.getId());
+        MembershipCreateRequest req = new MembershipCreateRequest();
+        req.setUserId(app.getUserId());
+        req.setScopeType(ScopeType.valueOf(scopeType));
+        req.setScopeId(scopeId);
+        req.setRoleKind(RoleKind.SUPPORTER);
+        req.setSource("SUPPORTER_APPLICATION");
+        membershipService.join(req);
         log.info("サポーター承認: applicationId={}, userId={}", applicationId, app.getUserId());
     }
 
@@ -279,11 +290,18 @@ public class SupporterService {
      */
     @Transactional
     public void bulkApprove(BulkApproveRequest request, String scopeType, Long scopeId) {
-        RoleEntity supporterRole = findSupporterRole();
+        ScopeType scope = ScopeType.valueOf(scopeType);
         for (Long appId : request.getApplicationIds()) {
             SupporterApplicationEntity app = findPendingApplicationOrThrow(appId, scopeType, scopeId);
             app.updateStatus(SupporterApplicationStatus.APPROVED);
-            saveUserRole(app.getUserId(), scopeType, scopeId, supporterRole.getId());
+
+            MembershipCreateRequest req = new MembershipCreateRequest();
+            req.setUserId(app.getUserId());
+            req.setScopeType(scope);
+            req.setScopeId(scopeId);
+            req.setRoleKind(RoleKind.SUPPORTER);
+            req.setSource("SUPPORTER_APPLICATION");
+            membershipService.join(req);
         }
         log.info("サポーター一括承認: scopeType={}, scopeId={}, count={}",
                 scopeType, scopeId, request.getApplicationIds().size());
@@ -334,24 +352,6 @@ public class SupporterService {
     // ========================================
     // 内部ヘルパー
     // ========================================
-
-    private RoleEntity findSupporterRole() {
-        return roleRepository.findByName(SUPPORTER_ROLE_NAME)
-                .orElseThrow(() -> new IllegalStateException("SUPPORTERロールが存在しません"));
-    }
-
-    private void saveUserRole(Long userId, String scopeType, Long scopeId, Long roleId) {
-        // 既にロールがある場合は重複登録しない
-        boolean alreadyHasRole = "TEAM".equals(scopeType)
-                ? userRoleRepository.existsByUserIdAndTeamIdAndRoleId(userId, scopeId, roleId)
-                : userRoleRepository.existsByUserIdAndOrganizationIdAndRoleId(userId, scopeId, roleId);
-        if (alreadyHasRole) return;
-
-        UserRoleEntity userRole = "TEAM".equals(scopeType)
-                ? UserRoleEntity.builder().userId(userId).roleId(roleId).teamId(scopeId).build()
-                : UserRoleEntity.builder().userId(userId).roleId(roleId).organizationId(scopeId).build();
-        userRoleRepository.save(userRole);
-    }
 
     private SupporterApplicationEntity findPendingApplicationOrThrow(
             Long applicationId, String scopeType, Long scopeId) {
