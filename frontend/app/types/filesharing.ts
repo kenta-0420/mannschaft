@@ -46,3 +46,24 @@ export interface FolderDetailResponse {
     breadcrumbs: Array<{ id: number; name: string }>
   }
 }
+
+/**
+ * F13 Phase 5-a: ファイル共有 presign-upload リクエスト型。
+ * サーバー側で新統一パス命名規則に従った fileKey を生成してもらう。
+ */
+export interface SharedFilePresignRequest {
+  folderId: number
+  fileName: string
+  contentType: string
+  fileSize: number
+}
+
+/**
+ * F13 Phase 5-a: ファイル共有 presign-upload レスポンス型。
+ * uploadUrl を使って R2 に直接 PUT し、完了後に fileKey を createFile API に渡す。
+ */
+export interface SharedFilePresignResponse {
+  uploadUrl: string
+  fileKey: string
+  expiresInSeconds: number
+}

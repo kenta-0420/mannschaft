@@ -61,6 +61,9 @@ public class JobPostingController {
 
     /**
      * 求人一覧を取得する。teamId 必須、status は任意指定。
+     *
+     * <p>F00 Phase C 試験的置換: viewer 視点で閲覧可能な求人のみを返す
+     * （{@link com.mannschaft.app.jobmatching.visibility.JobPostingVisibilityResolver} 経由）。</p>
      */
     @GetMapping
     @Operation(summary = "求人検索（チーム配下）")
@@ -69,7 +72,9 @@ public class JobPostingController {
             @RequestParam Long teamId,
             @RequestParam(required = false) JobPostingStatus status,
             Pageable pageable) {
-        Page<JobPostingEntity> page = jobPostingService.listByTeam(teamId, status, pageable);
+        Long viewerUserId = SecurityUtils.getCurrentUserId();
+        Page<JobPostingEntity> page = jobPostingService.listByTeamForViewer(
+                teamId, status, viewerUserId, pageable);
         var data = jobMapper.toPostingSummaryResponseList(page.getContent());
         var meta = new PagedResponse.PageMeta(
                 page.getTotalElements(), page.getNumber(), page.getSize(), page.getTotalPages());

@@ -103,3 +103,23 @@ export interface CreateAttachmentRequest {
   fileSize?: number
   mimeType?: string
 }
+
+/**
+ * F13 Phase 5-a: 回覧板添付ファイル presign-upload リクエスト型。
+ * サーバー側で新統一パス命名規則に従った fileKey を生成してもらう。
+ */
+export interface CirculationAttachmentPresignRequest {
+  fileName: string
+  contentType: string
+  fileSize: number
+}
+
+/**
+ * F13 Phase 5-a: 回覧板添付ファイル presign-upload レスポンス型。
+ * uploadUrl を使って R2 に直接 PUT し、完了後に fileKey を addAttachment API に渡す。
+ */
+export interface CirculationAttachmentPresignResponse {
+  uploadUrl: string
+  fileKey: string
+  expiresInSeconds: number
+}

@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.schedule.dto.AttendanceResponse;
 import com.mannschaft.app.schedule.dto.BulkAttendanceRequest;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
@@ -48,6 +49,7 @@ public class TeamScheduleController {
     private final ScheduleService scheduleService;
     private final ScheduleAttendanceService attendanceService;
     private final ScheduleCrossRefService crossRefService;
+    private final NameResolverService nameResolverService;
 
 
     /**
@@ -91,13 +93,17 @@ public class TeamScheduleController {
             @PathVariable Long teamId,
             @PathVariable Long scheduleId) {
         var entity = scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
+        String createdByDisplayName = nameResolverService.resolveUserDisplayName(entity.getCreatedBy());
+        String scopeName = nameResolverService.resolveScopeName(SCOPE_TYPE_TEAM, teamId);
+        String scopeIconUrl = nameResolverService.resolveIconUrl(SCOPE_TYPE_TEAM, teamId);
         ScheduleResponse response = new ScheduleResponse(
                 entity.getId(), entity.getTitle(), entity.getStartAt(), entity.getEndAt(),
                 entity.getAllDay(), entity.getEventType().name(), entity.getStatus().name(),
                 entity.getAttendanceRequired(), entity.getLocation(), entity.getCreatedAt(),
                 null,
                 entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null,
-                entity.getSourceScheduleId());
+                entity.getSourceScheduleId(),
+                createdByDisplayName, scopeName, scopeIconUrl);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

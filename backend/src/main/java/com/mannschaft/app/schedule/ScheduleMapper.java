@@ -28,6 +28,9 @@ public interface ScheduleMapper {
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
     @Mapping(target = "eventCategory", ignore = true)
     @Mapping(target = "academicYear", expression = "java(entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null)")
+    @Mapping(target = "createdByDisplayName", ignore = true)
+    @Mapping(target = "scopeName", ignore = true)
+    @Mapping(target = "scopeIconUrl", ignore = true)
     ScheduleResponse toResponse(ScheduleEntity entity);
 
     List<ScheduleResponse> toResponseList(List<ScheduleEntity> entities);

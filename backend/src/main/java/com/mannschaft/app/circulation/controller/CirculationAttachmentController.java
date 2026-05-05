@@ -1,7 +1,10 @@
 package com.mannschaft.app.circulation.controller;
 
 import com.mannschaft.app.circulation.dto.AttachmentResponse;
+import com.mannschaft.app.circulation.dto.CirculationAttachmentPresignRequest;
+import com.mannschaft.app.circulation.dto.CirculationAttachmentPresignResponse;
 import com.mannschaft.app.circulation.dto.CreateAttachmentRequest;
+import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,8 +31,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CirculationAttachmentController {
 
-    private static final String SCOPE_TYPE = "TEAM";
-
     private final CirculationService circulationService;
 
     /**
@@ -46,6 +47,9 @@ public class CirculationAttachmentController {
 
     /**
      * 添付ファイルを追加する。
+     *
+     * <p><b>F13 Phase 5-a</b>: {@code SCOPE_TYPE = "TEAM"} 直書きバグを修正。
+     * ドキュメントエンティティから動的に scopeType/scopeId を取得する。</p>
      */
     @PostMapping
     @Operation(summary = "添付ファイル追加")
@@ -53,9 +57,28 @@ public class CirculationAttachmentController {
     public ResponseEntity<ApiResponse<AttachmentResponse>> addAttachment(
             @PathVariable Long documentId,
             @Valid @RequestBody CreateAttachmentRequest request) {
-        // ドキュメントからscopeType/scopeIdを解決（現時点ではデフォルト値を使用）
+        // F13 Phase 5-a: ドキュメントから動的にscopeType/scopeIdを解決（SCOPE_TYPE直書きバグ修正）
+        CirculationDocumentEntity doc = circulationService.findDocumentById(documentId);
         AttachmentResponse response = circulationService.addAttachment(
-                SCOPE_TYPE, 0L, documentId, request);
+                doc.getScopeType(), doc.getScopeId(), documentId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * F13 Phase 5-a: 添付ファイルアップロード用の Presigned URL を発行する。
+     *
+     * <p>クライアントはこのエンドポイントで {@code uploadUrl} と {@code fileKey} を取得し、
+     * {@code uploadUrl} を使って R2 に直接 PUT する。完了後、{@code fileKey} を
+     * {@code POST /api/v1/circulations/{documentId}/attachments} に渡してメタデータを登録する。</p>
+     */
+    @PostMapping("/upload-url")
+    @Operation(summary = "添付ファイルアップロード用 presigned URL 発行")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "発行成功")
+    public ResponseEntity<ApiResponse<CirculationAttachmentPresignResponse>> presignUpload(
+            @PathVariable Long documentId,
+            @Valid @RequestBody CirculationAttachmentPresignRequest request) {
+        CirculationAttachmentPresignResponse response =
+                circulationService.presignAttachmentUpload(documentId, request);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

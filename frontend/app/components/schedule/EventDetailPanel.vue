@@ -18,6 +18,8 @@ defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: number
   canEdit: boolean
+  scopeName?: string | null
+  scopeIconUrl?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -76,6 +78,13 @@ const statusConfig: Record<string, { label: string; severity: string }> = {
       <div v-if="event.location" class="flex items-center gap-2">
         <i class="pi pi-map-marker text-surface-400" />
         <span>{{ event.location }}</span>
+      </div>
+      <div v-if="scopeName" class="flex items-center gap-2">
+        <div class="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center bg-surface-200 text-surface-600 text-xs font-bold flex-shrink-0 dark:bg-surface-600 dark:text-surface-200">
+          <img v-if="scopeIconUrl" :src="scopeIconUrl" class="w-full h-full object-cover" alt="">
+          <span v-else>{{ scopeName.charAt(0) }}</span>
+        </div>
+        <span>{{ scopeName }}</span>
       </div>
       <div v-if="event.createdBy" class="flex items-center gap-2">
         <i class="pi pi-user text-surface-400" />

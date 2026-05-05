@@ -31,4 +31,8 @@ public class ScheduleResponse {
 
     /** コピー元スケジュールID（F03.10 拡張フィールド。前年度トレース時のみ設定）。 */
     private final Long sourceScheduleId;
+
+    private final String createdByDisplayName;
+    private final String scopeName;
+    private final String scopeIconUrl;
 }

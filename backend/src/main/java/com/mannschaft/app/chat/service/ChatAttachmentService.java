@@ -128,7 +128,7 @@ public class ChatAttachmentService {
      *     <li>DM / GROUP_DM → PERSONAL (sender userId)</li>
      * </ul>
      */
-    ScopeResolution resolveScope(ChatChannelEntity channel, Long userId) {
+    public ScopeResolution resolveScope(ChatChannelEntity channel, Long userId) {
         ChannelType type = channel.getChannelType();
         if (type == null) {
             throw new IllegalStateException("ChannelType is null for channelId=" + channel.getId());

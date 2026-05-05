@@ -73,12 +73,13 @@ class StorageDriftDetectionBatchServiceTest {
         }
 
         @Test
-        @DisplayName("Phase 4-α 追加: PERSONAL_TIMETABLE_NOTES が user/ プレフィックスにマッピングされている")
+        @DisplayName("Phase 5-a 修正: PERSONAL_TIMETABLE_NOTES が user/PERSONAL/ プレフィックスにマッピングされている")
         void PERSONAL_TIMETABLE_NOTESのプレフィックスが正しい() {
             Map<StorageFeatureType, List<String>> map = service.getFeaturePrefixMap();
 
+            // F13 Phase 5-a: 新統一パス "user/PERSONAL/" に変更
             assertThat(map.get(StorageFeatureType.PERSONAL_TIMETABLE_NOTES))
-                    .contains("user/");
+                    .contains("user/PERSONAL/");
         }
 
         @Test

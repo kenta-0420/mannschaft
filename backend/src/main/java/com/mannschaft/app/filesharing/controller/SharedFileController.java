@@ -2,8 +2,11 @@ package com.mannschaft.app.filesharing.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.filesharing.dto.CreateFileRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
+import com.mannschaft.app.filesharing.dto.SharedFilePresignRequest;
+import com.mannschaft.app.filesharing.dto.SharedFilePresignResponse;
 import com.mannschaft.app.filesharing.dto.UpdateFileRequest;
 import com.mannschaft.app.filesharing.service.SharedFileService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 共有ファイルコントローラー。ファイルのCRUD APIを提供する。
@@ -100,5 +102,23 @@ public class SharedFileController {
             @PathVariable Long fileId) {
         fileService.deleteFile(fileId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * F13 Phase 5-a: ファイルアップロード用の Presigned URL を発行する。
+     *
+     * <p>クライアントはこのエンドポイントで {@code uploadUrl} と {@code fileKey} を取得し、
+     * {@code uploadUrl} を使って R2 に直接 PUT する。完了後、{@code fileKey} を
+     * {@code POST /api/v1/files} に渡してメタデータを登録する。</p>
+     */
+    @PostMapping("/presign-upload")
+    @Operation(summary = "ファイルアップロード用 presigned URL 発行")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "発行成功")
+    public ResponseEntity<ApiResponse<SharedFilePresignResponse>> presignUpload(
+            @Valid @RequestBody SharedFilePresignRequest request) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        SharedFilePresignResponse response =
+                fileService.presignUpload(request.folderId(), actorId, request);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

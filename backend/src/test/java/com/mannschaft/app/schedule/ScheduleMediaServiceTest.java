@@ -186,7 +186,11 @@ class ScheduleMediaServiceTest {
             assertThat(result.getMediaType()).isEqualTo("IMAGE");
             assertThat(result.getUploadUrl()).isEqualTo("https://r2.example.com/presigned-put-url");
             assertThat(result.getExpiresIn()).isEqualTo(600);
-            assertThat(result.getR2Key()).contains("schedules/100/");
+            // F13 Phase 5-a: 新統一パス "schedules/{scopeType}/{scopeId}/{scheduleId}/" を検証
+            // dummySchedule は mock() → getTeamId() が null でない場合 TEAM スコープ
+            // スケジュールID=100 を含むことを確認する
+            assertThat(result.getR2Key()).contains("/100/");
+            assertThat(result.getR2Key()).startsWith("schedules/");
             assertThat(result.getUploadId()).isNull();
             assertThat(result.getPartSize()).isNull();
             then(r2StorageService).should()
