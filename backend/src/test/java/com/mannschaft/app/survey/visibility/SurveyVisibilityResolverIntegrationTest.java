@@ -251,8 +251,8 @@ class SurveyVisibilityResolverIntegrationTest {
                 "INSERT INTO survey_questions ("
                         + "survey_id, question_text, question_type, "
                         + "is_required, display_order, "
-                        + "created_at, updated_at) "
-                        + "VALUES (:sid, '質問', 'FREE_TEXT', 0, 0, NOW(), NOW())")
+                        + "created_at) "
+                        + "VALUES (:sid, '質問', 'FREE_TEXT', 0, 0, NOW())")
                 .setParameter("sid", surveyId)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
