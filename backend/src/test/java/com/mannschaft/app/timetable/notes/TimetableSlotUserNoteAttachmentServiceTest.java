@@ -83,7 +83,8 @@ class TimetableSlotUserNoteAttachmentServiceTest {
             var req = new AttachmentPresignRequest("photo.jpg", "image/jpeg", 1_000L);
             var resp = service.presign(NOTE_ID, USER_ID, req);
             assertThat(resp.uploadUrl()).startsWith("https://r2.example");
-            assertThat(resp.r2ObjectKey()).startsWith("user/" + USER_ID + "/timetable-notes/");
+            // F13 Phase 5-a: 新統一パス "user/PERSONAL/{userId}/timetable-notes/" を検証
+            assertThat(resp.r2ObjectKey()).startsWith("user/PERSONAL/" + USER_ID + "/timetable-notes/");
             assertThat(resp.r2ObjectKey()).endsWith(".jpg");
 
             // F13 Phase 4-α: クォータチェックが呼ばれることを検証
@@ -152,7 +153,8 @@ class TimetableSlotUserNoteAttachmentServiceTest {
         @DisplayName("異常系: r2_object_key が他ユーザーの prefix で 404")
         void 異常系_keyプレフィックス偽装() {
             given(noteService.getMine(NOTE_ID, USER_ID)).willReturn(note);
-            var req = new AttachmentConfirmRequest("user/999/timetable-notes/uuid.jpg");
+            // F13 Phase 5-a: 新パス形式での偽装テスト（別ユーザーの PERSONAL パス）
+            var req = new AttachmentConfirmRequest("user/PERSONAL/999/timetable-notes/uuid.jpg");
             var orig = new AttachmentPresignRequest("a.jpg", "image/jpeg", 100L);
             assertThatThrownBy(() -> service.confirm(NOTE_ID, USER_ID, req, orig))
                     .isInstanceOf(BusinessException.class);
@@ -162,7 +164,8 @@ class TimetableSlotUserNoteAttachmentServiceTest {
         @DisplayName("正常系: 冪等性 — 既存と同じ key の confirm は重複 INSERT しない・recordUpload も呼ばない")
         void 冪等性() {
             given(noteService.getMine(NOTE_ID, USER_ID)).willReturn(note);
-            String key = "user/" + USER_ID + "/timetable-notes/uuid.jpg";
+            // F13 Phase 5-a: 新統一パス形式でテスト
+            String key = "user/PERSONAL/" + USER_ID + "/timetable-notes/uuid.jpg";
             TimetableSlotUserNoteAttachmentEntity existing = TimetableSlotUserNoteAttachmentEntity.builder()
                     .noteId(NOTE_ID).userId(USER_ID).r2ObjectKey(key)
                     .originalFilename("a.jpg").mimeType("image/jpeg").sizeBytes(100L).build();
@@ -189,7 +192,8 @@ class TimetableSlotUserNoteAttachmentServiceTest {
         void 正常系_論理削除() {
             TimetableSlotUserNoteAttachmentEntity entity = TimetableSlotUserNoteAttachmentEntity.builder()
                     .id(50L)
-                    .noteId(NOTE_ID).userId(USER_ID).r2ObjectKey("user/100/timetable-notes/x.jpg")
+                    // F13 Phase 5-a: 新統一パス形式でテスト
+                    .noteId(NOTE_ID).userId(USER_ID).r2ObjectKey("user/PERSONAL/100/timetable-notes/x.jpg")
                     .originalFilename("x").mimeType("image/jpeg").sizeBytes(1234L).build();
             given(attachmentRepository.findByIdAndUserId(50L, USER_ID))
                     .willReturn(Optional.of(entity));
@@ -208,7 +212,8 @@ class TimetableSlotUserNoteAttachmentServiceTest {
         void 冪等_既削除() {
             TimetableSlotUserNoteAttachmentEntity entity = TimetableSlotUserNoteAttachmentEntity.builder()
                     .id(51L)
-                    .noteId(NOTE_ID).userId(USER_ID).r2ObjectKey("user/100/timetable-notes/y.jpg")
+                    // F13 Phase 5-a: 新統一パス形式でテスト
+                    .noteId(NOTE_ID).userId(USER_ID).r2ObjectKey("user/PERSONAL/100/timetable-notes/y.jpg")
                     .originalFilename("y").mimeType("image/jpeg").sizeBytes(1L)
                     .build();
             entity.softDelete();

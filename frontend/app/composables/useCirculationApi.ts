@@ -7,6 +7,8 @@ import type {
   CirculationAttachment,
   AddRecipientsRequest,
   CirculationRecipient,
+  CirculationAttachmentPresignRequest,
+  CirculationAttachmentPresignResponse,
 } from '~/types/circulation'
 
 interface CirculationListParams {
@@ -204,6 +206,20 @@ export function useCirculationApi() {
     })
   }
 
+  /**
+   * F13 Phase 5-a: 回覧板添付ファイルアップロード用の Presigned URL をサーバー側で生成する。
+   * 返却された uploadUrl で R2 に直接 PUT し、完了後に fileKey を createAttachment に渡す。
+   */
+  async function presignAttachmentUpload(
+    documentId: number,
+    request: CirculationAttachmentPresignRequest,
+  ) {
+    return api<{ data: CirculationAttachmentPresignResponse }>(
+      `/api/v1/circulations/${documentId}/attachments/upload-url`,
+      { method: 'POST', body: request },
+    )
+  }
+
   async function getComments(documentId: number, params?: { page?: number; size?: number }) {
     const query = new URLSearchParams()
     if (params?.page) query.set('page', String(params.page))
@@ -272,6 +288,7 @@ export function useCirculationApi() {
     getMyCreatedCirculations,
     getAttachments,
     createAttachment,
+    presignAttachmentUpload,
     getComments,
     createComment,
     getRecipients,

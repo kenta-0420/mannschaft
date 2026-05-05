@@ -87,8 +87,13 @@ public class ScheduleMediaService {
     /** 画像ファイルに対して Multipart Upload を適用するしきい値（100MB） */
     private static final long MULTIPART_THRESHOLD_BYTES = 100L * 1024 * 1024;
 
-    /** R2 オブジェクトキープレフィックステンプレート: schedules/{scheduleId}/ */
-    private static final String SCHEDULE_PREFIX_TEMPLATE = "schedules/%d/";
+    /**
+     * R2 オブジェクトキープレフィックステンプレート。
+     *
+     * <p><b>F13 Phase 5-a</b>: 新統一パス命名規則 {@code schedules/{scopeType}/{scopeId}/{scheduleId}/}
+     * に変更。スコープ種別（TEAM/ORGANIZATION/PERSONAL）とスコープ ID を含める。</p>
+     */
+    private static final String SCHEDULE_PREFIX_TEMPLATE = "schedules/%s/%d/%d/";
 
     /** R2 配信 URL プレースホルダーベース */
     private static final String R2_BASE_URL = "https://storage.example.com/";
@@ -142,7 +147,9 @@ public class ScheduleMediaService {
                     "ストレージ容量が不足しているためアップロードできません");
         }
 
-        String prefix = String.format(SCHEDULE_PREFIX_TEMPLATE, scheduleId);
+        // F13 Phase 5-a: スコープ種別・スコープIDを含む新統一パスを生成
+        String prefix = String.format(SCHEDULE_PREFIX_TEMPLATE,
+                scope.scopeType().name(), scope.scopeId(), scheduleId);
 
         // VIDEO または 100MB 超 → Multipart Upload
         if ("VIDEO".equals(req.getMediaType()) || req.getFileSize() > MULTIPART_THRESHOLD_BYTES) {

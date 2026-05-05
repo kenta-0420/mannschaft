@@ -61,7 +61,12 @@ public class ChatUploadController {
         long fileSize = request.getFileSize() != null ? request.getFileSize() : 0L;
         chatAttachmentService.checkAttachmentQuota(channel, fileSize, currentUserId);
 
-        String fileKey = "chat/" + UUID.randomUUID() + "/" + request.getFileName();
+        // F13 Phase 5-a: 新統一パス命名規則 "chat/{scopeType}/{scopeId}/{uuid}/{filename}" に変更
+        ChatAttachmentService.ScopeResolution scope =
+                chatAttachmentService.resolveScope(channel, currentUserId);
+        String scopeType = scope.scopeType().name();  // TEAM / ORGANIZATION / PERSONAL
+        Long scopeId = scope.scopeId();
+        String fileKey = "chat/" + scopeType + "/" + scopeId + "/" + UUID.randomUUID() + "/" + request.getFileName();
         PresignedUploadResult result = storageService.generateUploadUrl(
                 fileKey, request.getContentType(), Duration.ofSeconds(DEFAULT_EXPIRY_SECONDS));
         UploadUrlResponse response = new UploadUrlResponse(

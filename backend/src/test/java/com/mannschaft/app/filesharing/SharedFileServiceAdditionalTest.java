@@ -1,9 +1,14 @@
 package com.mannschaft.app.filesharing;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.filesharing.dto.FileResponse;
+import com.mannschaft.app.filesharing.dto.SharedFilePresignRequest;
+import com.mannschaft.app.filesharing.dto.SharedFilePresignResponse;
 import com.mannschaft.app.filesharing.dto.UpdateFileRequest;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
+import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileRepository;
 import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
 import com.mannschaft.app.filesharing.service.SharedFileQuotaService;
@@ -20,14 +25,19 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willDoNothing;
+import static org.mockito.BDDMockito.willThrow;
 
 /**
  * {@link SharedFileService} の追加単体テスト。未テストメソッドをカバーする。
@@ -50,6 +60,9 @@ class SharedFileServiceAdditionalTest {
 
     @Mock
     private SharedFileQuotaService quotaService;
+
+    @Mock
+    private R2StorageService r2StorageService;
 
     @InjectMocks
     private SharedFileService service;
@@ -149,6 +162,88 @@ class SharedFileServiceAdditionalTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FILE_NOT_FOUND));
+        }
+    }
+
+    // ========================================
+    // presignUpload
+    // ========================================
+
+    @Nested
+    @DisplayName("presignUpload")
+    class PresignUpload {
+
+        @Test
+        @DisplayName("正常系_TEAMスコープ_新統一パス形式の fileKey が返却される")
+        void 正常系_TEAMスコープ() {
+            // Given
+            SharedFolderEntity teamFolder = SharedFolderEntity.builder()
+                    .scopeType(FileScopeType.TEAM)
+                    .teamId(5L)
+                    .name("チームフォルダ")
+                    .build();
+            SharedFilePresignRequest req = new SharedFilePresignRequest(
+                    FOLDER_ID, "document.pdf", "application/pdf", 1024L);
+
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(teamFolder);
+            willDoNothing().given(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(1024L));
+            given(r2StorageService.generateUploadUrl(anyString(), eq("application/pdf"), any(Duration.class)))
+                    .willReturn(new PresignedUploadResult("https://r2.example/up", "files/TEAM/5/uuid.pdf", 900L));
+
+            // When
+            SharedFilePresignResponse resp = service.presignUpload(FOLDER_ID, USER_ID, req);
+
+            // Then
+            assertThat(resp.uploadUrl()).startsWith("https://r2.example");
+            // F13 Phase 5-a: 新統一パス "files/{scopeType}/{scopeId}/{uuid}.{ext}" を検証
+            assertThat(resp.fileKey()).startsWith("files/TEAM/5/");
+            assertThat(resp.fileKey()).endsWith(".pdf");
+            assertThat(resp.expiresInSeconds()).isEqualTo(900L);
+        }
+
+        @Test
+        @DisplayName("正常系_PERSONALスコープ_新統一パス形式の fileKey が返却される")
+        void 正常系_PERSONALスコープ() {
+            // Given
+            SharedFolderEntity personalFolder = SharedFolderEntity.builder()
+                    .scopeType(FileScopeType.PERSONAL)
+                    .userId(USER_ID)
+                    .name("個人フォルダ")
+                    .build();
+            SharedFilePresignRequest req = new SharedFilePresignRequest(
+                    FOLDER_ID, "photo.jpg", "image/jpeg", 512L);
+
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(personalFolder);
+            willDoNothing().given(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(512L));
+            given(r2StorageService.generateUploadUrl(anyString(), eq("image/jpeg"), any(Duration.class)))
+                    .willReturn(new PresignedUploadResult("https://r2.example/up2", "files/PERSONAL/10/uuid.jpg", 900L));
+
+            // When
+            SharedFilePresignResponse resp = service.presignUpload(FOLDER_ID, USER_ID, req);
+
+            // Then
+            assertThat(resp.fileKey()).startsWith("files/PERSONAL/" + USER_ID + "/");
+            assertThat(resp.fileKey()).endsWith(".jpg");
+        }
+
+        @Test
+        @DisplayName("異常系_クォータ超過_BusinessException_presigned URL を発行しない")
+        void 異常系_クォータ超過() {
+            // Given
+            SharedFolderEntity folder = SharedFolderEntity.builder()
+                    .scopeType(FileScopeType.TEAM).teamId(5L).name("f").build();
+            SharedFilePresignRequest req = new SharedFilePresignRequest(
+                    FOLDER_ID, "big.zip", "application/zip", 999999999L);
+
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
+            willThrow(new BusinessException(FileSharingErrorCode.STORAGE_QUOTA_EXCEEDED))
+                    .given(quotaService).checkFileQuota(any(SharedFolderEntity.class), anyLong());
+
+            // When & Then
+            assertThatThrownBy(() -> service.presignUpload(FOLDER_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.STORAGE_QUOTA_EXCEEDED));
         }
     }
 

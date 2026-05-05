@@ -8,6 +8,8 @@ import com.mannschaft.app.circulation.CirculationStatus;
 import com.mannschaft.app.circulation.StampDisplayStyle;
 import com.mannschaft.app.circulation.dto.AddRecipientsRequest;
 import com.mannschaft.app.circulation.dto.AttachmentResponse;
+import com.mannschaft.app.circulation.dto.CirculationAttachmentPresignRequest;
+import com.mannschaft.app.circulation.dto.CirculationAttachmentPresignResponse;
 import com.mannschaft.app.circulation.dto.CreateAttachmentRequest;
 import com.mannschaft.app.circulation.dto.CreateDocumentRequest;
 import com.mannschaft.app.circulation.dto.DocumentResponse;
@@ -23,6 +25,8 @@ import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +36,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 回覧板サービス。文書CRUD・受信者管理・添付ファイル管理を担当する。
@@ -42,6 +48,9 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CirculationService {
+
+    /** F13 Phase 5-a: presigned URL の有効期限。 */
+    private static final Duration PRESIGN_TTL = Duration.ofMinutes(15);
 
     private final CirculationDocumentRepository documentRepository;
     private final CirculationRecipientRepository recipientRepository;
@@ -53,6 +62,9 @@ public class CirculationService {
      * Bean 不在のテスト構成では {@code null} 注入され、ガードはスキップされる。
      */
     private final ContentVisibilityChecker contentVisibilityChecker;
+
+    /** F13 Phase 5-a: R2 presigned URL 発行に使用。 */
+    private final R2StorageService r2StorageService;
 
     /**
      * 文書一覧をページング取得する。
@@ -315,6 +327,42 @@ public class CirculationService {
     }
 
     /**
+     * F13 Phase 5-a: 回覧板添付ファイルのアップロード用 Presigned URL を発行する。
+     *
+     * <p>新統一パス命名規則 {@code circulation/{scopeType}/{scopeId}/{documentId}/{uuid}}
+     * に従った fileKey をサーバー側で生成する。クライアントは返却された {@code uploadUrl} を使って
+     * R2 に直接 PUT し、完了後に {@code fileKey} を {@code addAttachment} API に渡す。</p>
+     *
+     * @param documentId 文書 ID
+     * @param req        presign リクエスト
+     * @return presign レスポンス（uploadUrl / fileKey / expiresInSeconds）
+     */
+    @Transactional(readOnly = true)
+    public CirculationAttachmentPresignResponse presignAttachmentUpload(
+            Long documentId, CirculationAttachmentPresignRequest req) {
+
+        // 1. ドキュメント取得（documentId のみで解決、scopeType/scopeId をエンティティから取得）
+        CirculationDocumentEntity document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new BusinessException(CirculationErrorCode.DOCUMENT_NOT_FOUND));
+
+        // 2. スコープ情報の取得
+        String scopeType = document.getScopeType(); // TEAM / ORGANIZATION / PERSONAL
+        Long scopeId = document.getScopeId();
+
+        // 3. fileKey 生成: circulation/{scopeType}/{scopeId}/{documentId}/{uuid}
+        String fileKey = "circulation/" + scopeType + "/" + scopeId + "/" + documentId + "/" + UUID.randomUUID();
+
+        // 4. presigned URL 発行
+        PresignedUploadResult result = r2StorageService.generateUploadUrl(
+                fileKey, req.contentType(), PRESIGN_TTL);
+
+        log.info("回覧板添付 presign-upload 発行: documentId={}, scope={}/{}, fileKey={}",
+                documentId, scopeType, scopeId, fileKey);
+
+        return new CirculationAttachmentPresignResponse(result.uploadUrl(), fileKey, result.expiresInSeconds());
+    }
+
+    /**
      * 添付ファイル一覧を取得する。
      *
      * @param documentId 文書ID
@@ -406,6 +454,19 @@ public class CirculationService {
         long total = draft + active + completed + cancelled;
 
         return new DocumentStatsResponse(total, draft, active, completed, cancelled);
+    }
+
+    /**
+     * 文書を ID のみで取得する。存在しない場合は例外をスローする。
+     *
+     * <p><b>F13 Phase 5-a</b>: コントローラーから動的にscopeType/scopeIdを解決するために使用する。</p>
+     *
+     * @param documentId 文書 ID
+     * @return 文書エンティティ
+     */
+    public CirculationDocumentEntity findDocumentById(Long documentId) {
+        return documentRepository.findById(documentId)
+                .orElseThrow(() -> new BusinessException(CirculationErrorCode.DOCUMENT_NOT_FOUND));
     }
 
     /**
