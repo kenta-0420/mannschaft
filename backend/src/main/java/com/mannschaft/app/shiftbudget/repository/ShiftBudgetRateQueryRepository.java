@@ -43,7 +43,7 @@ public interface ShiftBudgetRateQueryRepository
      *
      * <p>計算ロジック:</p>
      * <ol>
-     *   <li>チーム所属ユーザー (user_roles.team_id) のうち、削除/非アクティブを除外</li>
+     *   <li>memberships.scope_type='TEAM' AND scope_id=:teamId AND left_at IS NULL でアクティブメンバーを絞る (F00.5 Phase 6)</li>
      *   <li>各ユーザーの最新有効時給 (effective_from <= :today で最大の effective_from) を抽出</li>
      *   <li>その時給の AVG と COUNT を返す</li>
      * </ol>
@@ -66,9 +66,8 @@ public interface ShiftBudgetRateQueryRepository
             "    ) latest ON latest.user_id = h1.user_id AND latest.max_from = h1.effective_from " +
             "    WHERE h1.team_id = :teamId " +
             ") rate " +
-            "INNER JOIN user_roles ur ON ur.user_id = rate.user_id AND ur.team_id = :teamId " +
-            "INNER JOIN users u ON u.id = rate.user_id " +
-            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            "JOIN memberships m ON m.user_id = rate.user_id " +
+            "WHERE m.scope_type = 'TEAM' AND m.scope_id = :teamId AND m.left_at IS NULL",
             nativeQuery = true)
     List<Object[]> findTeamAverageRate(@Param("teamId") Long teamId, @Param("today") LocalDate today);
 
