@@ -54,7 +54,10 @@ public enum FileSharingErrorCode implements ErrorCode {
     FILE_SIZE_EXCEEDED("FILE_SHARING_014", "ファイルサイズの上限を超えています", Severity.ERROR),
 
     /** 権限不足 */
-    INSUFFICIENT_PERMISSION("FILE_SHARING_015", "この操作を実行する権限がありません", Severity.WARN);
+    INSUFFICIENT_PERMISSION("FILE_SHARING_015", "この操作を実行する権限がありません", Severity.WARN),
+
+    /** ストレージクォータ超過 */
+    STORAGE_QUOTA_EXCEEDED("FILE_SHARING_016", "ストレージ使用量の上限に達しています", Severity.WARN);
 
     private final String code;
     private final String message;

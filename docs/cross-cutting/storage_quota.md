@@ -1,6 +1,6 @@
 # 横断設計: 統合ストレージクォータ
 
-> **ステータス**: 🟡 設計中（Phase 3 基盤 完了 / Phase 4 機能別統合 進行中 / Phase 8 課金 未着手）
+> **ステータス**: 🟡 設計中（Phase 3 基盤 完了 / Phase 4 機能別統合 α〜ε・ζ 完了 / Phase 8 課金 未着手）
 > **実装フェーズ**: Phase 3（基盤・クォータ制御）+ **Phase 4（機能別統合ロードマップ）** + Phase 8（課金・Stripe 連携）
 > **最終更新**: 2026-05-04
 > **影響範囲**: F03.14 スケジュールメディア、**F03.15 個人時間割メモ添付**、F04.1 タイムライン、F04.2 チャット、F05.1 掲示板、F05.2 回覧板、F05.5 ファイル共有、F06.1 CMS/ブログ、F06.2 メンバー紹介
@@ -602,7 +602,7 @@ Phase 3 で基盤（DB 3 テーブル + `StorageQuotaService.checkQuota / record
 | F04.1 timeline | 🟢 統合済み | `timeline/` | Phase 4-γ 完了（2026-05-04）|
 | F06.1 cms/blog | 🟢 統合済み | `blog/` | Phase 4-δ 完了（2026-05-04）UX ガード 1GB 維持 |
 | F06.2 gallery | 🟢 統合済み | `gallery/` | Phase 4-δ 完了（2026-05-04）|
-| F05.5 file-sharing | △ 独立 | `files/` | `team_storage_subscriptions` → `storage_subscriptions` 統合（V5.050、別軍議で対応） |
+| F05.5 file-sharing | 🟢 統合済み | `files/` | Phase 4-ε 完了（2026-05-04）。`team_storage_subscriptions` は存在せず V5.050 不要 |
 | F01.6 profile-media | ❌ 未統合 | `{scope}/{id}/{role}/` | **クォータ対象外**（数MBのアイコン・バナーは UX 観点で対象外） |
 
 ### Phase 分割
@@ -613,10 +613,10 @@ Phase 3 で基盤（DB 3 テーブル + `StorageQuotaService.checkQuota / record
 | **4-β** | 高頻度 | F04.2 chat | 1 | UX ガード 500MB 維持。R2 オペレーション課金に注意（多数小ファイル） |
 | **4-γ** | 大容量メディア | F03.14 schedule-media + F04.1 timeline | 2 | 🟢 完了（2026-05-04）Multipart Upload 経路の checkQuota 組み込み完了 |
 | **4-δ** | 中頻度 | F06.1 cms/blog + F06.2 gallery | 2 | 🟢 完了（2026-05-04）UX ガード 1GB 維持（cms）|
-| **4-ε** | F05.5 統合 | `team_storage_subscriptions` 廃止 + データ移行 | 1 | **別軍議で起こす**（F05.5 の現状調査が必要） |
+| **4-ε** | F05.5 統合 | F05.5 ファイル共有を `StorageQuotaService` に統合 | 1 | 🟢 完了（2026-05-04）`team_storage_subscriptions` は存在せず V5.050 不要と判明。`SharedFileQuotaService` 新規追加。`SharedFileService` / `SharedFileVersionService` 改修 |
 | **4-ζ** | 検証バッチ | ドリフト検出を全 prefix 走査に更新 + feature_type 集計確定 | 1 | 🟢 完了（2026-05-04）Phase 4-α〜δ 完了後に実施 |
 
-**本節の対象**: 4-α / 4-β / 4-γ×2 / 4-δ×2 / 4-ζ の **計 7 PR**。Phase 4-ε（F05.5 統合）は F05.5 の現状調査が必要なため**別軍議で起こす**（本節では対象外）。
+**本節の対象**: 4-α / 4-β / 4-γ×2 / 4-δ×2 / **4-ε** / 4-ζ の **計 8 PR**。
 
 > 4-α が最優先（既に直書きクォータが本番稼働中のため）。それ以降の β〜δ は順序自由（並行 PR 可）。4-ζ は α〜δ 完了後に着手。
 
@@ -701,3 +701,4 @@ Phase 8 着手時は **基盤 + 計上が完備されている前提で** 課金
 | 2026-05-04 | **Phase 4 機能別統合ロードマップ追補**: F03.15 個人時間割の 100MB 直書きクォータが「F13 統合クォータに未接続」状態で稼働中であることが判明したため、各機能の段階的統合計画を §12 として新設。(1) §8 影響範囲表に F03.14 schedule-media / F03.15 timetable-notes / F01.6 profile-media の後発機能を追加（F01.6 は数MB レベルのアイコン・バナーのため **クォータ対象外** と明記）(2) feature_type 拡張: `PERSONAL_TIMETABLE_NOTES` / `SCHEDULE_MEDIA` を追加（PROFILE_MEDIA は対象外）(3) Phase 4 を α〜ζ の 6 段階に分割: α=F03.15 救出（最優先）/ β=F04.2 chat / γ=F03.14+F04.1 / δ=F06.1+F06.2 / ε=F05.5 統合（**別軍議**）/ ζ=ドリフトバッチ強化 (4) Phase ごとに足軽 1 PR の粒度で進める方針を確定 (5) Flyway V14.010（feature_type 拡張、実体は NO-OP に近い）を Phase 4-α 着手時に同梱 (6) ステータスを「Phase 3 基盤完了 / Phase 4 機能別統合 進行中 / Phase 8 課金 未着手」に更新 |
 | 2026-05-04 | **Phase 4-δ 完了**: F06.1 `BlogMediaService`（CMS/ブログ）・F06.2 `GalleryMediaUploadService` / `PhotoService`（ギャラリー）を `StorageQuotaService` に統合。presign 前 `checkQuota`（CMS超過→CMS_023、ギャラリー超過→GALLERY_014）・presign/uploadPhotos 後 `recordUpload`・孤立メディア削除/deletePhoto 後 `recordDeletion` を実装。`CmsErrorCode` に `MEDIA_QUOTA_EXCEEDED`（CMS_023）、`GalleryErrorCode` に `STORAGE_QUOTA_EXCEEDED`（GALLERY_014）を追加。`MediaUploadUrlRequest` に `fileSize` フィールド追加（null 時はクォータチェックをスキップ・後方互換）。`BlogMediaService` に `ScopeResolution` record 追加（孤立メディアの s3Key からスコープ復元に使用）。単体テスト（`BlogMediaServiceTest` / `GalleryMediaUploadServiceTest` / `PhotoServiceTest`）を更新し F13 Phase 4-δ 統合検証を追加 |
 | 2026-05-04 | **Phase 4-ζ 完了**: `StorageDriftDetectionBatchService` を新規実装。Phase 3 時点でドリフト検出バッチが未実装だったため、新規作成。毎週日曜日深夜 2:00 に `@Scheduled` で実行。R2 `ListObjectsV2`（ページングサイズ 1000）で全プレフィックスを走査。`FEATURE_PREFIX_MAP` に Phase 4-α 追加の `PERSONAL_TIMETABLE_NOTES`（`user/`）/ `SCHEDULE_MEDIA`（`schedules/`）を含む全 9 feature_type のマッピングを登録。差異 1MB 以上で `used_bytes` を自動補正 + `DRIFT_CORRECTION` ログを挿入。`thumbnails/` / `tmp/` を除外。`StorageDriftDetectionBatchServiceTest`（14 件）を追加。Phase 4（α〜ζ）の全 feature_type 走査が完了し、Phase 4 のドリフトバッチ要件を達成 |
+| 2026-05-04 | **Phase 4-ε 完了**: F05.5 ファイル共有を `StorageQuotaService` に統合。調査の結果 `team_storage_subscriptions` テーブル/エンティティは存在せず（V5.050 は不要）、直接 `StorageQuotaService` に接続する実装とした。`SharedFileQuotaService`（新規）を追加し、`FileScopeType` から `StorageScopeType` へのスコープ解決（TEAM/ORGANIZATION/PERSONAL）を実装。`SharedFileService` の `createFile`・`deleteFile` にクォータ統合を追加（削除時の actorId 引数追加）。`SharedFileVersionService` の `createVersion` にクォータ統合を追加。`FileSharingErrorCode` に `STORAGE_QUOTA_EXCEEDED`（FILE_SHARING_016）を追加。`GlobalExceptionHandler` に 409 マッピング追加。単体テスト（`SharedFileQuotaServiceTest` 新規・`SharedFileServiceTest` 更新・`SharedFileVersionServiceTest` 更新・`SharedFileServiceAdditionalTest` 更新・`FileSharingControllerTest` 更新）を整備 |

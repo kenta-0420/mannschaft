@@ -139,6 +139,12 @@ export interface E2eBoardDetail {
   groups: unknown[]
   createdAt: string
   updatedAt: string
+  /**
+   * F09.8 件A: バックエンド `CorkboardPermissionService#canEdit` の判定結果。
+   * 既定は true（個人ボード所有者として扱う既存テストの大半に合致）。
+   * ADMIN_ONLY / 非所有者シナリオでは spec 側で false を上書きする。
+   */
+  viewerCanEdit: boolean
   [key: string]: unknown
 }
 
@@ -204,6 +210,7 @@ export function buildBoardDetail(
     groups: [],
     createdAt: '2026-04-01T00:00:00Z',
     updatedAt: '2026-05-01T00:00:00Z',
+    viewerCanEdit: true,
     ...overrides,
   }
 }
