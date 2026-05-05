@@ -91,7 +91,6 @@ class BetaRestrictionServiceTest {
                     .expiresAt(LocalDateTime.now().plusDays(7))
                     .build();
             given(inviteTokenRepository.findByToken("no-target-token")).willReturn(Optional.of(token));
-            given(repo.findTopByOrderByIdAsc()).willReturn(Optional.empty());
 
             // When
             boolean result = betaRestrictionService.isBetaTokenValid("no-target-token");

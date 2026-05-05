@@ -39,6 +39,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -316,7 +317,11 @@ class AuthServiceTest {
             given(betaRestrictionService.isBetaTokenValid("valid-token")).willReturn(true);
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
             given(passwordEncoder.encode(TEST_PASSWORD)).willReturn(ENCODED_PASSWORD);
-            given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
+            given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> {
+                UserEntity user = invocation.getArgument(0);
+                ReflectionTestUtils.setField(user, "id", 1L);
+                return user;
+            });
             given(authTokenService.hashToken(anyString())).willReturn("hashed-token");
             given(emailVerificationTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
