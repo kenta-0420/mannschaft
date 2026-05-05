@@ -122,9 +122,15 @@ class JobPostingVisibilityResolverIntegrationTest {
         teamId = insertTeam("JP結合 チーム");
         insertTeamOrgMembership(teamId, orgId);
 
+        // JOBBER は TEAM_MEMBERS スコープ判定で「メンバー」扱いされないよう、
+        // 本テストの teamId とは別の team に所属させる（JOBBER ロールのみで
+        // JOBBER_INTERNAL CUSTOM 経路を踏むことを検証する）。
+        Long jobberTeamId = insertTeam("JP結合 助っ人専用チーム");
+        insertTeamOrgMembership(jobberTeamId, orgId);
+
         insertUserRole(memberUserId, memberRoleId, teamId, null);
         insertUserRole(supporterUserId, supporterRoleId, teamId, null);
-        insertUserRole(jobberUserId, jobberRoleId, teamId, null);
+        insertUserRole(jobberUserId, jobberRoleId, jobberTeamId, null);
         insertUserRole(sysAdminUserId, systemAdminRoleId, null, null);
 
         em.flush();
