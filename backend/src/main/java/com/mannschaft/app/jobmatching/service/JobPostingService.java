@@ -1,6 +1,8 @@
 package com.mannschaft.app.jobmatching.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.jobmatching.entity.JobPostingEntity;
 import com.mannschaft.app.jobmatching.enums.JobPostingStatus;
 import com.mannschaft.app.jobmatching.enums.VisibilityScope;
@@ -14,12 +16,15 @@ import com.mannschaft.app.jobmatching.state.JobPostingStateMachine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -56,6 +61,11 @@ public class JobPostingService {
     private final JobApplicationRepository applicationRepository;
     private final JobPostingStateMachine stateMachine;
     private final JobPolicy jobPolicy;
+    /**
+     * F00 共通可視性基盤の Checker。
+     * Phase C 試験的置換: {@link #listByTeamForViewer(Long, JobPostingStatus, Long, Pageable)} で利用。
+     */
+    private final ContentVisibilityChecker visibilityChecker;
 
     // ---------------------------------------------------------------------
     // コマンド系（更新）
@@ -273,12 +283,51 @@ public class JobPostingService {
 
     /**
      * チーム配下の求人一覧をページング取得する。status が null の場合は全ステータス対象。
+     *
+     * <p><strong>注意</strong>: 本メソッドは可視性フィルタリングを行わない。viewer 視点で
+     * 閲覧可能な求人のみに絞り込みたい場合は
+     * {@link #listByTeamForViewer(Long, JobPostingStatus, Long, Pageable)} を使うこと。
+     * Phase E で本メソッドの呼び出し点をすべて Resolver 経由に切り替えた後、削除予定。</p>
      */
     public Page<JobPostingEntity> listByTeam(Long teamId, JobPostingStatus status, Pageable pageable) {
         if (status == null) {
             return postingRepository.findByTeamId(teamId, pageable);
         }
         return postingRepository.findByTeamIdAndStatus(teamId, status, pageable);
+    }
+
+    /**
+     * チーム配下の求人一覧を viewer 視点でフィルタしてページング取得する。
+     *
+     * <p>F00 Phase C 試験的置換: {@link ContentVisibilityChecker#filterAccessible} で
+     * viewer に閲覧可能な ID のみに絞り込む。ページング統計（totalElements/totalPages）は
+     * フィルタ後の数で再計算する（過剰開示を避けるため、生の DB 件数は出さない）。</p>
+     *
+     * <p>F00 設計書 §10.3 の移行パスに準拠。{@code AccessControlService} 直叩きの判定や
+     * Service 内部の {@code isVisibleTo()} と機能横断的に等価な可視性判断を共通基盤に集約する。</p>
+     *
+     * @param teamId       対象チーム ID
+     * @param status       絞り込み status（{@code null} で全ステータス）
+     * @param viewerUserId 閲覧者 user_id（{@code null} 可、未認証）
+     * @param pageable     ページング指定
+     * @return viewer に閲覧可能な求人のページ（フィルタ後の集計）
+     */
+    public Page<JobPostingEntity> listByTeamForViewer(
+            Long teamId, JobPostingStatus status, Long viewerUserId, Pageable pageable) {
+        Page<JobPostingEntity> raw = listByTeam(teamId, status, pageable);
+        if (raw.isEmpty()) {
+            return raw;
+        }
+        List<JobPostingEntity> rawContent = raw.getContent();
+        List<Long> ids = rawContent.stream().map(JobPostingEntity::getId).toList();
+        Set<Long> accessibleIds = visibilityChecker.filterAccessible(
+                ReferenceType.JOB_POSTING, ids, viewerUserId);
+        // 入力の順序を維持しつつフィルタ
+        List<JobPostingEntity> filtered = rawContent.stream()
+                .filter(e -> accessibleIds.contains(e.getId()))
+                .sorted(Comparator.comparingInt(e -> ids.indexOf(e.getId())))
+                .toList();
+        return new PageImpl<>(filtered, pageable, filtered.size());
     }
 
     /**
