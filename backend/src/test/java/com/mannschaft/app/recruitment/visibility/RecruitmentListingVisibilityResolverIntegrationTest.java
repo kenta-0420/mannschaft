@@ -108,7 +108,15 @@ class RecruitmentListingVisibilityResolverIntegrationTest {
         insertUserRole(memberUserId, memberRoleId, teamId, null);
         insertUserRole(sysAdminUserId, systemAdminRoleId, null, null);
 
-        // recruitment_categories は Flyway 初期データで投入済み。futsal_open を利用。
+        // ddl-auto=create-drop の test 環境では Flyway シードが走らないため
+        // テストヘルパーで futsal_open カテゴリを直接 INSERT する。
+        em.createNativeQuery(
+                "INSERT INTO recruitment_categories ("
+                        + "code, name_i18n_key, default_participation_type, "
+                        + "display_order, is_active, version, created_at, updated_at) "
+                        + "VALUES ('futsal_open', 'recruitment.category.futsal_open', "
+                        + "'INDIVIDUAL', 1, 1, 0, NOW(), NOW())")
+                .executeUpdate();
         categoryId = ((Number) em.createNativeQuery(
                 "SELECT id FROM recruitment_categories WHERE code = 'futsal_open'")
                 .getSingleResult()).longValue();
