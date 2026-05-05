@@ -335,4 +335,15 @@ export interface CorkboardDetail {
   groups: CorkboardGroupDetail[]
   createdAt: string
   updatedAt: string
+  /**
+   * F09.8 件A: 現在の閲覧ユーザーがこのボードを編集可能か。
+   *
+   * バックエンド `CorkboardPermissionService#canEdit` と同じロジックで判定済み。
+   * フロントは編集ボタンの disabled 制御にこの値をそのまま使う。
+   *
+   * - PERSONAL: 所有者のみ true
+   * - 共有 ADMIN_ONLY: ADMIN/DEPUTY_ADMIN のみ true
+   * - 共有 ALL_MEMBERS: メンバー全員 true
+   */
+  viewerCanEdit: boolean
 }

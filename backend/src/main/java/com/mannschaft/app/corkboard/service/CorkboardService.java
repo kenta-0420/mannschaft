@@ -41,6 +41,7 @@ public class CorkboardService {
     private final CorkboardMapper corkboardMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final AccessControlService accessControlService;
+    private final CorkboardPermissionService corkboardPermissionService;
 
     /**
      * 個人ボード一覧を取得する。
@@ -114,16 +115,25 @@ public class CorkboardService {
     public CorkboardDetailResponse getPersonalBoard(Long userId, Long boardId) {
         CorkboardEntity board = corkboardRepository.findByIdAndOwnerId(boardId, userId)
                 .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
-        return buildDetailResponse(board);
+        return buildDetailResponse(board, userId);
     }
 
     /**
      * スコープ別ボード詳細を取得する。
+     *
+     * <p>F09.8 件A: viewerCanEdit 算出のため userId を受け取る。
+     * 既存の閲覧権限チェック（{@code findByIdAndScopeTypeAndScopeId}）はスコープ整合性のみ
+     * 担保しており、メンバーシップチェックは行わない（既存挙動を維持）。</p>
+     *
+     * @param scopeType スコープ種別 ({@code TEAM} / {@code ORGANIZATION})
+     * @param scopeId   スコープID
+     * @param boardId   ボードID
+     * @param userId    操作ユーザーID（viewerCanEdit 判定用）
      */
-    public CorkboardDetailResponse getScopedBoard(String scopeType, Long scopeId, Long boardId) {
+    public CorkboardDetailResponse getScopedBoard(String scopeType, Long scopeId, Long boardId, Long userId) {
         CorkboardEntity board = corkboardRepository.findByIdAndScopeTypeAndScopeId(boardId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
-        return buildDetailResponse(board);
+        return buildDetailResponse(board, userId);
     }
 
     /**
@@ -142,7 +152,7 @@ public class CorkboardService {
             log.warn("組織コルクボード閲覧権限なし: boardId={}, userId={}, orgId={}", boardId, userId, orgId);
             throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
         }
-        return buildDetailResponse(board);
+        return buildDetailResponse(board, userId);
     }
 
     /**
@@ -186,7 +196,7 @@ public class CorkboardService {
                 throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
             }
         }
-        return buildDetailResponse(board);
+        return buildDetailResponse(board, userId);
     }
 
     /**
@@ -265,11 +275,18 @@ public class CorkboardService {
                 .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
     }
 
-    private CorkboardDetailResponse buildDetailResponse(CorkboardEntity board) {
+    /**
+     * ボード詳細レスポンスを組み立てる。
+     *
+     * <p>F09.8 件A: 閲覧ユーザーの編集権限を {@link CorkboardPermissionService#canEdit} で判定し、
+     * {@code viewerCanEdit} としてレスポンスに含める。フロントの編集ボタン disabled 制御に使う。</p>
+     */
+    private CorkboardDetailResponse buildDetailResponse(CorkboardEntity board, Long userId) {
         List<CorkboardCardEntity> cards = cardRepository
                 .findByCorkboardIdAndIsArchivedFalseOrderByZIndexDesc(board.getId());
         List<CorkboardGroupEntity> groups = groupRepository
                 .findByCorkboardIdOrderByDisplayOrderAsc(board.getId());
-        return corkboardMapper.toDetailResponse(board, cards, groups);
+        boolean viewerCanEdit = corkboardPermissionService.canEdit(board, userId);
+        return corkboardMapper.toDetailResponse(board, cards, groups, viewerCanEdit);
     }
 }

@@ -33,12 +33,19 @@ public interface CorkboardMapper {
 
     /**
      * ボード詳細レスポンスを組み立てる。
+     *
+     * @param entity        ボードエンティティ
+     * @param cards         アクティブカード一覧
+     * @param groups        セクション一覧
+     * @param viewerCanEdit 閲覧ユーザーがこのボードを編集可能か
+     *                      （F09.8 件A: フロントの編集ボタン disabled 制御用）
      */
     @Mapping(target = "cards", source = "cards")
     @Mapping(target = "groups", source = "groups")
     default CorkboardDetailResponse toDetailResponse(CorkboardEntity entity,
                                                       List<CorkboardCardEntity> cards,
-                                                      List<CorkboardGroupEntity> groups) {
+                                                      List<CorkboardGroupEntity> groups,
+                                                      boolean viewerCanEdit) {
         return new CorkboardDetailResponse(
                 entity.getId(),
                 entity.getScopeType(),
@@ -52,7 +59,8 @@ public interface CorkboardMapper {
                 toCardResponseList(cards),
                 toGroupResponseList(groups),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                viewerCanEdit
         );
     }
 }
