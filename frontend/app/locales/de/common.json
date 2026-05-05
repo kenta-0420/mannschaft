@@ -850,7 +850,13 @@
       "organization": "Bitte die numerische ID aus der Organisations-Detail-URL eingeben (z. B. /organizations/3).",
       "event": "Bitte die numerische ID aus der Termin-Detail-URL eingeben (z. B. /events/77).",
       "document": "Bitte die numerische ID aus der Dokument-Detail-URL eingeben (z. B. /documents/55).",
-      "url": "Für eine URL-Karte oben den „Kartentyp“ auf URL ändern."
+      “url”: “Für eine URL-Karte oben den „Kartentyp” auf URL ändern.”
+    }
+  },
+  “schedule”: {
+    “filter”: {
+      “allTeamsOrgs”: “Teams & Organisationen (alle)”,
+      “selectScope”: “Ziel auswählen”
     }
   }
 }

@@ -411,7 +411,7 @@ onMounted(loadEvents)
                 :options="availableScopes"
                 option-label="label"
                 option-value="value"
-                :placeholder="`チーム・組織 (全て)`"
+                :placeholder="t('schedule.filter.allTeamsOrgs')"
                 :max-selected-labels="2"
                 selected-items-label="{0}件選択中"
                 class="text-xs"

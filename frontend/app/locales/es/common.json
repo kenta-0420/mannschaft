@@ -852,5 +852,11 @@
       "document": "Introduce el ID numérico de la URL de detalle del documento (ej. /documents/55).",
       "url": "Para crear una tarjeta URL, cambia el «Tipo de tarjeta» de arriba a URL."
     }
+  },
+  "schedule": {
+    "filter": {
+      "allTeamsOrgs": "Equipos y organizaciones (todos)",
+      "selectScope": "Seleccionar destino"
+    }
   }
 }

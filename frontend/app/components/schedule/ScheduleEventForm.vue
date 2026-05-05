@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const { t } = useI18n()
+
 interface ScopeOption {
   label: string
   value: string
@@ -357,7 +359,7 @@ function close() {
           option-label="label"
           option-value="value"
           class="w-full"
-          placeholder="作成先を選択"
+          :placeholder="t('schedule.filter.selectScope')"
         />
       </div>
       <div>

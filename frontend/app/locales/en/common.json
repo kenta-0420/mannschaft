@@ -852,5 +852,11 @@
       "document": "Enter the numeric ID from a document detail URL (e.g. /documents/55).",
       "url": "To create a URL card, change the card type above to URL."
     }
+  },
+  "schedule": {
+    "filter": {
+      "allTeamsOrgs": "Teams & Orgs (All)",
+      "selectScope": "Select destination"
+    }
   }
 }

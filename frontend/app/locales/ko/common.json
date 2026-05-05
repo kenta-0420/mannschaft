@@ -852,5 +852,11 @@
       "document": "문서 상세 URL(예: /documents/55)의 숫자 ID를 입력하세요.",
       "url": "URL 카드를 사용하려면 위의 「카드 종류」를 URL로 변경하세요."
     }
+  },
+  "schedule": {
+    "filter": {
+      "allTeamsOrgs": "팀・조직 (전체)",
+      "selectScope": "생성 대상 선택"
+    }
   }
 }

@@ -852,5 +852,11 @@
       "document": "ドキュメント詳細ページの URL（例: /documents/55）から数値 ID を入力してください。",
       "url": "URL カードを使う場合は上の「カード種別」を URL に変更してください。"
     }
+  },
+  "schedule": {
+    "filter": {
+      "allTeamsOrgs": "チーム・組織 (全て)",
+      "selectScope": "作成先を選択"
+    }
   }
 }
