@@ -614,7 +614,7 @@ Phase 3 で基盤（DB 3 テーブル + `StorageQuotaService.checkQuota / record
 | **4-γ** | 大容量メディア | F03.14 schedule-media + F04.1 timeline | 2 | 🟢 完了（2026-05-04）Multipart Upload 経路の checkQuota 組み込み完了 |
 | **4-δ** | 中頻度 | F06.1 cms/blog + F06.2 gallery | 2 | 🟢 完了（2026-05-04）UX ガード 1GB 維持（cms）|
 | **4-ε** | F05.5 統合 | `team_storage_subscriptions` 廃止 + データ移行 | 1 | **別軍議で起こす**（F05.5 の現状調査が必要） |
-| **4-ζ** | 検証バッチ | ドリフト検出を全 prefix 走査に更新 + feature_type 集計確定 | 1 | Phase 4-α〜δ 完了後 |
+| **4-ζ** | 検証バッチ | ドリフト検出を全 prefix 走査に更新 + feature_type 集計確定 | 1 | 🟢 完了（2026-05-04）Phase 4-α〜δ 完了後に実施 |
 
 **本節の対象**: 4-α / 4-β / 4-γ×2 / 4-δ×2 / 4-ζ の **計 7 PR**。Phase 4-ε（F05.5 統合）は F05.5 の現状調査が必要なため**別軍議で起こす**（本節では対象外）。
 
@@ -645,11 +645,34 @@ Phase 3 で基盤（DB 3 テーブル + `StorageQuotaService.checkQuota / record
 6. 既存統合テストで checkQuota 失敗時 409、成功時 used_bytes 加算を end-to-end で検証
 7. 機能側の設計書に「F13 クォータ統合済み」を追記
 
-### Phase 4-ζ ドリフトバッチ強化
+### Phase 4-ζ ドリフトバッチ強化（🟢 完了 2026-05-04）
 
-- 既存ドリフト検出バッチが Phase 3 時点で `timeline/`・`files/`・`chat/`・`blog/`・`gallery/`・`circulation/` の prefix 走査になっている
-- Phase 4-α〜δ 完了後、追加 prefix（`user/*/timetable-notes/`、`schedules/*/`）を走査対象に追加
-- feature_type 別の集計を有効化し、`GET /storage` 系 API のレスポンスに新 feature_type を含める
+**実装概要**: `StorageDriftDetectionBatchService` を新規作成。Phase 3 時点でドリフト検出バッチは未実装だったため、新規実装として全プレフィックスを走査するバッチを構築した。
+
+**走査プレフィックスマッピング（`FEATURE_PREFIX_MAP` に登録済み）**:
+
+| feature_type | R2 プレフィックス | 追加フェーズ |
+|---|---|---|
+| `TIMELINE` | `timeline/` | Phase 3 設計済み |
+| `GALLERY` | `gallery/` | Phase 3 設計済み |
+| `FILE_SHARING` | `files/` | Phase 3 設計済み |
+| `CHAT` | `chat/` | Phase 3 設計済み |
+| `CMS` | `blog/` | Phase 3 設計済み |
+| `CIRCULATION` | `circulation/` | Phase 3 設計済み |
+| `BULLETIN` | `bulletin/` | Phase 3 設計済み |
+| `PERSONAL_TIMETABLE_NOTES` | `user/` | **Phase 4-α 追加** |
+| `SCHEDULE_MEDIA` | `schedules/` | **Phase 4-α 追加** |
+
+**仕様**:
+- 毎週日曜日深夜 2:00 に `@Scheduled(cron = "0 0 2 * * SUN")` で実行
+- R2 の `ListObjectsV2` でページングサイズ最大（1000 件/ページ）で走査し Class A 課金を抑制
+- `thumbnails/` / `tmp/` プレフィックスは除外（自動生成物・一時ファイルはカウント対象外）
+- 差異が 1MB 以上の場合: `storage_subscriptions.used_bytes` を実測値に補正 + `DRIFT_CORRECTION` ログを `storage_usage_logs` に挿入
+- `StorageDriftDetectionBatchServiceTest` で 14 件のユニットテストを追加（全 feature_type のマッピング検証・除外ロジック・ドリフト修正フロー）
+
+**今後の改善点（Phase 5 以降）**:
+- 現在の実装では R2 集計がスコープ横断の合計のため、マルチスコープ環境ではサブスクリプション単独の actual 値と完全に一致しない
+- Phase 5 でスコープ別プレフィックス走査（`timeline/{scopeType}/{scopeId}/` のようなスコープ埋め込み）に対応予定
 
 ### 完了基準（Phase 4 全体）
 
@@ -677,3 +700,4 @@ Phase 8 着手時は **基盤 + 計上が完備されている前提で** 課金
 | 2026-05-04 | **Phase 4-γ 完了**: F03.14 `ScheduleMediaService`・F04.1 `TimelineVideoAttachmentService` / `TimelinePostService` を `StorageQuotaService` に統合。presign 前 `checkQuota`（超過 → 409 Conflict）・INSERT 後 `recordUpload`・削除後 `recordDeletion` を実装。スコープ解決ロジック（TEAM / ORGANIZATION / PERSONAL フォールバック）を各 Service に追加。単体テスト（`ScheduleMediaServiceTest` / `TimelineVideoAttachmentServiceTest` / `TimelinePostServiceTest`）を更新し F13 Phase 4-γ 統合検証を追加 |
 | 2026-05-04 | **Phase 4 機能別統合ロードマップ追補**: F03.15 個人時間割の 100MB 直書きクォータが「F13 統合クォータに未接続」状態で稼働中であることが判明したため、各機能の段階的統合計画を §12 として新設。(1) §8 影響範囲表に F03.14 schedule-media / F03.15 timetable-notes / F01.6 profile-media の後発機能を追加（F01.6 は数MB レベルのアイコン・バナーのため **クォータ対象外** と明記）(2) feature_type 拡張: `PERSONAL_TIMETABLE_NOTES` / `SCHEDULE_MEDIA` を追加（PROFILE_MEDIA は対象外）(3) Phase 4 を α〜ζ の 6 段階に分割: α=F03.15 救出（最優先）/ β=F04.2 chat / γ=F03.14+F04.1 / δ=F06.1+F06.2 / ε=F05.5 統合（**別軍議**）/ ζ=ドリフトバッチ強化 (4) Phase ごとに足軽 1 PR の粒度で進める方針を確定 (5) Flyway V14.010（feature_type 拡張、実体は NO-OP に近い）を Phase 4-α 着手時に同梱 (6) ステータスを「Phase 3 基盤完了 / Phase 4 機能別統合 進行中 / Phase 8 課金 未着手」に更新 |
 | 2026-05-04 | **Phase 4-δ 完了**: F06.1 `BlogMediaService`（CMS/ブログ）・F06.2 `GalleryMediaUploadService` / `PhotoService`（ギャラリー）を `StorageQuotaService` に統合。presign 前 `checkQuota`（CMS超過→CMS_023、ギャラリー超過→GALLERY_014）・presign/uploadPhotos 後 `recordUpload`・孤立メディア削除/deletePhoto 後 `recordDeletion` を実装。`CmsErrorCode` に `MEDIA_QUOTA_EXCEEDED`（CMS_023）、`GalleryErrorCode` に `STORAGE_QUOTA_EXCEEDED`（GALLERY_014）を追加。`MediaUploadUrlRequest` に `fileSize` フィールド追加（null 時はクォータチェックをスキップ・後方互換）。`BlogMediaService` に `ScopeResolution` record 追加（孤立メディアの s3Key からスコープ復元に使用）。単体テスト（`BlogMediaServiceTest` / `GalleryMediaUploadServiceTest` / `PhotoServiceTest`）を更新し F13 Phase 4-δ 統合検証を追加 |
+| 2026-05-04 | **Phase 4-ζ 完了**: `StorageDriftDetectionBatchService` を新規実装。Phase 3 時点でドリフト検出バッチが未実装だったため、新規作成。毎週日曜日深夜 2:00 に `@Scheduled` で実行。R2 `ListObjectsV2`（ページングサイズ 1000）で全プレフィックスを走査。`FEATURE_PREFIX_MAP` に Phase 4-α 追加の `PERSONAL_TIMETABLE_NOTES`（`user/`）/ `SCHEDULE_MEDIA`（`schedules/`）を含む全 9 feature_type のマッピングを登録。差異 1MB 以上で `used_bytes` を自動補正 + `DRIFT_CORRECTION` ログを挿入。`thumbnails/` / `tmp/` を除外。`StorageDriftDetectionBatchServiceTest`（14 件）を追加。Phase 4（α〜ζ）の全 feature_type 走査が完了し、Phase 4 のドリフトバッチ要件を達成 |

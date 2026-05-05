@@ -176,17 +176,36 @@ export function useCorkboardApi() {
     )
   }
   /**
-   * F09.8.1: カードのピン止め状態を切り替える。
+   * F09.8.1 / F09.8 件3': カードのピン止め状態を切り替える。
    *
    * - `isPinned = true` でピン止め、`false` でピン止め解除。
    * - 個人ボードの所有者のみ操作可能（バックエンド側で 403 検証）。
    * - 上限超過時は 409 `CORKBOARD_013` が返る。
+   * - F09.8 件3' (V9.098) 追補: pin 時に `userNote` / `noteColor` を併送できる。
+   *   アンピン時に渡しても既存値は更新されない（付箋メタファ・再ピン時に再利用）。
    */
-  async function togglePinCard(boardId: number, cardId: number, isPinned: boolean) {
-    return api<{ data: { id: number; isPinned: boolean; pinnedAt: string | null } }>(
-      `/api/v1/corkboards/${boardId}/cards/${cardId}/pin`,
-      { method: 'PATCH', body: { isPinned } },
-    )
+  async function togglePinCard(
+    boardId: number,
+    cardId: number,
+    isPinned: boolean,
+    userNote?: string | null,
+    noteColor?: string | null,
+  ) {
+    const body: Record<string, unknown> = { isPinned }
+    if (userNote !== undefined) body.userNote = userNote
+    if (noteColor !== undefined) body.noteColor = noteColor
+    return api<{
+      data: {
+        id: number
+        isPinned: boolean
+        pinnedAt: string | null
+        userNote?: string | null
+        noteColor?: string | null
+      }
+    }>(`/api/v1/corkboards/${boardId}/cards/${cardId}/pin`, {
+      method: 'PATCH',
+      body,
+    })
   }
 
   // === Groups (F09.8 Phase E) ===

@@ -751,6 +751,7 @@ public class ScheduleService {
      * エンティティをカレンダーエントリーレスポンスDTOに変換する。
      */
     private CalendarEntryResponse toCalendarEntry(ScheduleEntity entity, String scopeType, Long scopeId) {
+        String iconUrl = nameResolverService.resolveIconUrl(scopeType, scopeId);
         return new CalendarEntryResponse(
                 entity.getId(),
                 entity.getTitle(),
@@ -762,6 +763,7 @@ public class ScheduleService {
                 scopeType,
                 scopeId,
                 nameResolverService.resolveScopeName(scopeType, scopeId),
-                null);
+                null,
+                iconUrl);
     }
 }

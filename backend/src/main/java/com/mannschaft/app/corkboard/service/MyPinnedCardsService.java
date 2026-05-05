@@ -194,6 +194,7 @@ public class MyPinnedCardsService {
                 card.getTitle(),
                 card.getBody(),
                 card.getUserNote(),
+                card.getNoteColor(),
                 card.getPinnedAt(),
                 reference);
     }

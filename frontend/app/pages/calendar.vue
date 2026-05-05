@@ -61,6 +61,7 @@ interface CalEvent {
   scopeType: string
   scopeId?: number
   scopeName?: string | null
+  scopeIconUrl?: string | null
   isPersonal: boolean
 }
 
@@ -93,6 +94,7 @@ const fetcher = async (from: string, to: string) => {
     scopeType: e.scopeType ?? '',
     scopeId: e.scopeId,
     scopeName: e.scopeName ?? null,
+    scopeIconUrl: e.scopeIconUrl ?? null,
   }))
   const merged = [...personalEvents, ...sharedEvents]
   extendedEvents.value = merged
@@ -149,6 +151,23 @@ function toggleScope(value: string) {
   }
 }
 
+const FILTER_OVERFLOW = 5
+
+// MultiSelect 用: selectedScopes が空 = 全選択と見なす双方向モデル
+const multiSelectScopes = computed({
+  get: () => selectedScopes.value.length === 0
+    ? availableScopes.value.map(s => s.value)
+    : [...selectedScopes.value],
+  set: (vals: string[]) => {
+    // 全件選択 = フィルターなし状態
+    if (vals.length === availableScopes.value.length) {
+      selectedScopes.value = []
+    } else {
+      selectedScopes.value = vals
+    }
+  },
+})
+
 // #49-B: 日別一覧
 const dayEvents = computed(() => {
   if (!selectedDay.value) return []
@@ -159,12 +178,13 @@ const dayEvents = computed(() => {
   })
 })
 
-// 日付クリック
+// 日付クリック — チーム・組織カレンダーと同様、常に作成フォームを開く
 function onDateClick(date: string) {
   selectedDay.value = date
-  showDayPanel.value = true
-  showEventPanel.value = false
   selectedDate.value = date
+  showEventPanel.value = false
+  showDayPanel.value = false
+  showCreateDialog.value = true
 }
 
 // イベントクリック
@@ -369,18 +389,36 @@ onMounted(loadEvents)
             <!-- #51: スコープフィルタ -->
             <div v-if="availableScopes.length > 0" class="flex gap-2 flex-wrap items-center">
               <span class="text-xs text-surface-400">表示:</span>
-              <button
-                v-for="sc in availableScopes"
-                :key="sc.value"
-                type="button"
-                class="text-xs px-2 py-0.5 rounded-full border transition-colors"
-                :class="selectedScopes.includes(sc.value) || selectedScopes.length === 0
-                  ? 'border-primary text-primary bg-primary/10'
-                  : 'border-surface-300 text-surface-400'"
-                @click="toggleScope(sc.value)"
-              >
-                {{ sc.label }}
-              </button>
+
+              <!-- ≤5件: 横並びトグルボタン -->
+              <template v-if="availableScopes.length <= FILTER_OVERFLOW">
+                <button
+                  v-for="sc in availableScopes"
+                  :key="sc.value"
+                  type="button"
+                  class="text-xs px-2 py-0.5 rounded-full border transition-colors"
+                  :class="selectedScopes.includes(sc.value) || selectedScopes.length === 0
+                    ? 'border-primary text-primary bg-primary/10'
+                    : 'border-surface-300 text-surface-400'"
+                  @click="toggleScope(sc.value)"
+                >
+                  {{ sc.label }}
+                </button>
+              </template>
+
+              <!-- 6件以上: MultiSelect ドロップダウン -->
+              <MultiSelect
+                v-else
+                v-model="multiSelectScopes"
+                :options="availableScopes"
+                option-label="label"
+                option-value="value"
+                :placeholder="t('schedule.filter.allTeamsOrgs')"
+                :max-selected-labels="2"
+                selected-items-label="{0}件選択中"
+                class="text-xs"
+                style="min-width: 180px"
+              />
             </div>
           </div>
         </div>
@@ -473,6 +511,7 @@ onMounted(loadEvents)
       :scope-id="selectedCreateScope.scopeId"
       :initial-date="selectedDate"
       :is-personal="selectedCreateScope.isPersonal"
+      :scope-options="createScopeOptions.length > 1 ? createScopeOptions : undefined"
       @saved="refresh"
     />
 

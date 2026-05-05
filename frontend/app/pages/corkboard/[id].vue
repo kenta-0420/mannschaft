@@ -392,16 +392,61 @@ function isPinLimitError(e: unknown): boolean {
   return false
 }
 
-async function togglePin(card: CorkboardCardDetail) {
-  const next = !card.isPinned
+/**
+ * F09.8 件3' (V9.098): ピン止め時付箋メモ機能。
+ *
+ * - 未ピンカードの 📌 押下 → PinNoteEditorPopover を開く（カードの colorLabel をデフォルト色）
+ * - 「ピン止めする」確定 → togglePinCard(true, userNote, noteColor)
+ * - ピン済カードの 📌 押下 → 即時アンピン（userNote/noteColor は触らない）
+ */
+const pinPopoverVisible = ref(false)
+const pinPopoverTargetCard = ref<CorkboardCardDetail | null>(null)
+
+function togglePin(card: CorkboardCardDetail) {
+  if (card.isPinned) {
+    // アンピン（即時）
+    void doTogglePin(card, false, null, null)
+    return
+  }
+  // ピン止め: Popover を開いて付箋メモ・色を入力させる
+  pinPopoverTargetCard.value = card
+  pinPopoverVisible.value = true
+}
+
+function onPinNoteConfirm(userNote: string, noteColor: string) {
+  const card = pinPopoverTargetCard.value
+  if (!card) return
+  void doTogglePin(card, true, userNote, noteColor)
+}
+
+async function doTogglePin(
+  card: CorkboardCardDetail,
+  next: boolean,
+  userNote: string | null,
+  noteColor: string | null,
+) {
   try {
-    const res = await apiTogglePinCard(boardId.value, card.id, next)
+    const res = await apiTogglePinCard(
+      boardId.value,
+      card.id,
+      next,
+      // アンピン時はサーバ側で無視されるが、明示的に undefined を送って差分最小化
+      next ? userNote : undefined,
+      next ? noteColor : undefined,
+    )
     if (board.value) {
       board.value = {
         ...board.value,
         cards: board.value.cards.map((c) =>
           c.id === card.id
-            ? { ...c, isPinned: res.data.isPinned, pinnedAt: res.data.pinnedAt }
+            ? {
+                ...c,
+                isPinned: res.data.isPinned,
+                pinnedAt: res.data.pinnedAt,
+                // pin 時に書き込んだ値があればローカル state へも反映
+                userNote: next && userNote !== null ? userNote : c.userNote,
+                noteColor: next && noteColor !== null ? noteColor : c.noteColor,
+              }
             : c,
         ),
       }
@@ -430,6 +475,10 @@ async function togglePin(card: CorkboardCardDetail) {
         : t('corkboard.toast.unpinError'),
       life: 3500,
     })
+  } finally {
+    if (next) {
+      pinPopoverTargetCard.value = null
+    }
   }
 }
 
@@ -1062,6 +1111,17 @@ async function toggleArchive(card: CorkboardCardDetail) {
         </button>
       </div>
     </Popover>
+
+    <!-- F09.8 件3' (V9.098): ピン止め時付箋メモエディタ -->
+    <PinNoteEditorPopover
+      v-if="pinPopoverTargetCard"
+      v-model:visible="pinPopoverVisible"
+      :default-color="pinPopoverTargetCard.colorLabel"
+      :initial-user-note="pinPopoverTargetCard.userNote"
+      :testid-suffix="pinPopoverTargetCard.id"
+      @confirm="onPinNoteConfirm"
+      @cancel="pinPopoverTargetCard = null"
+    />
 
     <!-- F09.8 Phase C: 削除確認ダイアログ（useConfirmDialog 経由） -->
     <ConfirmDialog />

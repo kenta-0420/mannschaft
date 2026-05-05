@@ -643,6 +643,22 @@
     "unpin": "ピン止めを外す",
     "pinned": "ピン止め済み",
     "pinLimitReached": "ピン止め枠が満杯です（最大50枚）。先に他のカードのピン止めを解除してください",
+    "pinNote": {
+      "title": "付箋メモ",
+      "placeholder": "メモを書く（任意）",
+      "colorLabel": "付箋の色",
+      "confirm": "ピン止めする",
+      "cancel": "キャンセル",
+      "colors": {
+        "white": "白",
+        "yellow": "黄",
+        "blue": "青",
+        "green": "緑",
+        "red": "赤",
+        "purple": "紫",
+        "gray": "灰"
+      }
+    },
     "pageTitle": "マイコルクボード",
     "totalCount": "全{count}件",
     "sortByPinnedAt": "ピン止め日時の降順",
@@ -850,7 +866,13 @@
       "organization": "Bitte die numerische ID aus der Organisations-Detail-URL eingeben (z. B. /organizations/3).",
       "event": "Bitte die numerische ID aus der Termin-Detail-URL eingeben (z. B. /events/77).",
       "document": "Bitte die numerische ID aus der Dokument-Detail-URL eingeben (z. B. /documents/55).",
-      "url": "Für eine URL-Karte oben den „Kartentyp“ auf URL ändern."
+      “url”: “Für eine URL-Karte oben den „Kartentyp” auf URL ändern.”
+    }
+  },
+  “schedule”: {
+    “filter”: {
+      “allTeamsOrgs”: “Teams & Organisationen (alle)”,
+      “selectScope”: “Ziel auswählen”
     }
   }
 }

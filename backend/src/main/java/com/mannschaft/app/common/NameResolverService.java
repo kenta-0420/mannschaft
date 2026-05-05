@@ -95,6 +95,30 @@ public class NameResolverService {
     }
 
     /**
+     * スコープ種別とIDからアイコン画像URLを返す。
+     * scopeType は文字列で受け取り、各パッケージ固有の ScopeType enum に依存しない。
+     * PERSONAL スコープまたは該当なしの場合は null を返す。
+     *
+     * @param scopeType "TEAM" または "ORGANIZATION"
+     * @param scopeId   スコープID
+     * @return アイコン画像URL。未設定またはPERSONALスコープの場合は null
+     */
+    public String resolveIconUrl(String scopeType, Long scopeId) {
+        if (scopeType == null || scopeId == null) {
+            return null;
+        }
+        return switch (scopeType.toUpperCase()) {
+            case "TEAM" -> teamRepository.findById(scopeId)
+                    .map(TeamEntity::getIconUrl)
+                    .orElse(null);
+            case "ORGANIZATION" -> organizationRepository.findById(scopeId)
+                    .map(OrganizationEntity::getIconUrl)
+                    .orElse(null);
+            default -> null;
+        };
+    }
+
+    /**
      * スコープ種別とIDからスコープ名を返す。
      * scopeType は文字列で受け取り、各パッケージ固有の ScopeType enum に依存しない。
      *

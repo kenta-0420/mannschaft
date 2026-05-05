@@ -35,12 +35,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -52,11 +50,12 @@ import static org.mockito.Mockito.verify;
  * <p>設計書 §14.1 のスコープに対応:</p>
  * <ul>
  *   <li>入会・退会・再加入の状態遷移</li>
- *   <li>二重書き込みフラグ ON/OFF の挙動差</li>
  *   <li>last admin 保護の発火</li>
  *   <li>役職割当・終了・スコープ越境拒否</li>
  *   <li>バリデーションエラー</li>
  * </ul>
+ *
+ * <p>Phase 4 完了: 二重書き込み（dualWrite）関連テストを削除済み。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("MembershipService 単体テスト")
@@ -90,7 +89,6 @@ class MembershipServiceTest {
         @Test
         @DisplayName("正常系: 新規入会で memberships に INSERT され、ASSIGNED イベント発火")
         void newJoin() {
-            ReflectionTestUtils.setField(service, "dualWriteEnabled", false);
             MembershipCreateRequest req = req(99L, ScopeType.TEAM, 100L, RoleKind.MEMBER, null);
             given(membershipRepository.findActiveByUserAndScope(99L, ScopeType.TEAM, 100L))
                     .willReturn(Optional.empty());
@@ -120,7 +118,6 @@ class MembershipServiceTest {
         @Test
         @DisplayName("冪等性: 既存 active 同 role_kind ならそのまま返却")
         void idempotent() {
-            ReflectionTestUtils.setField(service, "dualWriteEnabled", false);
             MembershipCreateRequest req = req(99L, ScopeType.TEAM, 100L, RoleKind.MEMBER, null);
             MembershipEntity existing = MembershipEntity.builder()
                     .userId(99L).scopeType(ScopeType.TEAM).scopeId(100L)
@@ -154,7 +151,6 @@ class MembershipServiceTest {
         @Test
         @DisplayName("再加入: 履歴行があれば isRejoin=true")
         void rejoin() {
-            ReflectionTestUtils.setField(service, "dualWriteEnabled", false);
             MembershipCreateRequest req = req(99L, ScopeType.TEAM, 100L, RoleKind.MEMBER, null);
             MembershipEntity past = MembershipEntity.builder()
                     .userId(99L).scopeType(ScopeType.TEAM).scopeId(100L)
@@ -179,26 +175,6 @@ class MembershipServiceTest {
         }
 
         @Test
-        @DisplayName("dualWrite=true のとき user_roles にも書き込む（MEMBER）")
-        void dualWriteEnabled() {
-            ReflectionTestUtils.setField(service, "dualWriteEnabled", true);
-            MembershipCreateRequest req = req(99L, ScopeType.TEAM, 100L, RoleKind.MEMBER, 7L);
-            given(membershipRepository.findActiveByUserAndScope(99L, ScopeType.TEAM, 100L))
-                    .willReturn(Optional.empty());
-            given(membershipRepository.findHistoryByUserAndScope(99L, ScopeType.TEAM, 100L))
-                    .willReturn(List.of());
-            given(membershipRepository.save(any(MembershipEntity.class))).willAnswer(inv -> inv.getArgument(0));
-
-            RoleEntity memberRole = role(4L, "MEMBER");
-            given(roleRepository.findByName("MEMBER")).willReturn(Optional.of(memberRole));
-            given(userRoleRepository.existsByUserIdAndTeamId(99L, 100L)).willReturn(false);
-
-            service.join(req);
-
-            verify(userRoleRepository).save(any());
-        }
-
-        @Test
         @DisplayName("validateScope: scopeId NULL で MEMBERSHIP_INVALID_SCOPE")
         void invalidScope() {
             MembershipCreateRequest req = req(99L, ScopeType.TEAM, null, RoleKind.MEMBER, null);
@@ -215,7 +191,6 @@ class MembershipServiceTest {
         @Test
         @DisplayName("正常系: left_at と leave_reason がセットされる")
         void normalLeave() {
-            ReflectionTestUtils.setField(service, "dualWriteEnabled", false);
             MembershipEntity entity = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
             given(membershipRepository.findById(11L)).willReturn(Optional.of(entity));
             given(memberPositionRepository.findCurrentByMembership(11L)).willReturn(List.of());
@@ -269,7 +244,6 @@ class MembershipServiceTest {
         @Test
         @DisplayName("退会時に紐付く現役 member_positions が自動 ended_at セット")
         void positionsAutoEnded() {
-            ReflectionTestUtils.setField(service, "dualWriteEnabled", false);
             MembershipEntity entity = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
             MemberPositionEntity mp = MemberPositionEntity.builder()
                     .membershipId(11L).positionId(31L).startedAt(LocalDateTime.now().minusMonths(3)).build();
@@ -398,8 +372,6 @@ class MembershipServiceTest {
     // ヘルパー
     // ========================================
 
-    private static final AtomicLong ID_SEQ = new AtomicLong(1);
-
     private static MembershipCreateRequest req(Long userId, ScopeType st, Long scopeId,
                                                 RoleKind rk, Long invitedBy) {
         MembershipCreateRequest r = new MembershipCreateRequest();
@@ -434,17 +406,16 @@ class MembershipServiceTest {
     }
 
     // ========================================
-    // Phase 3 追加テスト
+    // Phase 3 → Phase 4 イベント発火テスト
     // ========================================
 
     @Nested
-    @DisplayName("Phase3EventTest — イベント発火 + 二重書き込み")
-    class Phase3EventTest {
+    @DisplayName("EventTest — MembershipChangedEvent 発火確認")
+    class EventTest {
 
         @Test
         @DisplayName("join() で MembershipChangedEvent(ASSIGNED) が発火される")
         void join_fires_membership_changed_event() {
-            ReflectionTestUtils.setField(service, "dualWriteEnabled", false);
             MembershipCreateRequest req = req(10L, ScopeType.TEAM, 20L, RoleKind.MEMBER, null);
             given(membershipRepository.findActiveByUserAndScope(10L, ScopeType.TEAM, 20L))
                     .willReturn(Optional.empty());
@@ -471,7 +442,6 @@ class MembershipServiceTest {
         @Test
         @DisplayName("leave() で MembershipChangedEvent(REMOVED) が発火される")
         void leave_fires_membership_changed_event() {
-            ReflectionTestUtils.setField(service, "dualWriteEnabled", false);
             MembershipEntity entity = activeMembership(200L, 10L, ScopeType.TEAM, 20L, RoleKind.MEMBER);
             given(membershipRepository.findById(200L)).willReturn(Optional.of(entity));
             given(memberPositionRepository.findCurrentByMembership(200L)).willReturn(List.of());
@@ -493,33 +463,8 @@ class MembershipServiceTest {
         }
 
         @Test
-        @DisplayName("dualWriteEnabled=true のとき join() で userRoleRepository.save() が呼ばれる")
-        void join_dual_write_inserts_user_role() {
-            ReflectionTestUtils.setField(service, "dualWriteEnabled", true);
-            MembershipCreateRequest req = req(10L, ScopeType.TEAM, 20L, RoleKind.MEMBER, null);
-            given(membershipRepository.findActiveByUserAndScope(10L, ScopeType.TEAM, 20L))
-                    .willReturn(Optional.empty());
-            given(membershipRepository.findHistoryByUserAndScope(10L, ScopeType.TEAM, 20L))
-                    .willReturn(List.of());
-            given(membershipRepository.save(any(MembershipEntity.class)))
-                    .willAnswer(inv -> {
-                        MembershipEntity e = inv.getArgument(0);
-                        ReflectionTestUtils.setField(e, "id", 100L);
-                        return e;
-                    });
-            // MEMBER ロール取得用 stub
-            RoleEntity memberRole = role(3L, "MEMBER");
-            given(roleRepository.findByName("MEMBER")).willReturn(Optional.of(memberRole));
-
-            service.join(req);
-
-            verify(userRoleRepository, times(1)).save(any());
-        }
-
-        @Test
-        @DisplayName("dualWriteEnabled=false のとき join() で userRoleRepository.save() は呼ばれない")
-        void join_dual_write_skipped_when_disabled() {
-            ReflectionTestUtils.setField(service, "dualWriteEnabled", false);
+        @DisplayName("join() で userRoleRepository.save() は呼ばれない（二重書き込み廃止済み）")
+        void join_no_dual_write() {
             MembershipCreateRequest req = req(10L, ScopeType.TEAM, 20L, RoleKind.MEMBER, null);
             given(membershipRepository.findActiveByUserAndScope(10L, ScopeType.TEAM, 20L))
                     .willReturn(Optional.empty());

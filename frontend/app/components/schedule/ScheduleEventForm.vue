@@ -1,4 +1,14 @@
 <script setup lang="ts">
+const { t } = useI18n()
+
+interface ScopeOption {
+  label: string
+  value: string
+  isPersonal: boolean
+  scopeType: 'team' | 'organization'
+  scopeId: number
+}
+
 const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: number
@@ -6,12 +16,45 @@ const props = defineProps<{
   initialDate?: string
   visible: boolean
   isPersonal?: boolean
+  scopeOptions?: ScopeOption[]
 }>()
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
   saved: []
 }>()
+
+// スコープ選択（フォーム内で変更可能）
+const selectedScopeKey = ref<string>(
+  (props.isPersonal ?? false) ? 'personal' : `${props.scopeType}_${props.scopeId}`,
+)
+
+const SCOPE_OVERFLOW = 5
+
+// ダイアログが開くたびにスコープキーを prop に合わせてリセット
+watch(
+  () => props.visible,
+  (v) => {
+    if (v) {
+      selectedScopeKey.value = (props.isPersonal ?? false)
+        ? 'personal'
+        : `${props.scopeType}_${props.scopeId}`
+    }
+  },
+)
+
+// 実効スコープ（フォーム内選択 or props フォールバック）
+const effectiveScope = computed(() => {
+  if (props.scopeOptions && props.scopeOptions.length > 1) {
+    const found = props.scopeOptions.find(o => o.value === selectedScopeKey.value)
+    if (found) return found
+  }
+  return {
+    isPersonal: props.isPersonal ?? false,
+    scopeType: props.scopeType,
+    scopeId: props.scopeId,
+  }
+})
 
 const scheduleApi = useScheduleApi()
 const notification = useNotification()
@@ -119,9 +162,9 @@ watch(
   async ([visible, scheduleId]) => {
     if (visible && scheduleId) {
       try {
-        const res = props.isPersonal
+        const res = effectiveScope.value.isPersonal
           ? await scheduleApi.getMyScheduleDetail(scheduleId as number)
-          : await scheduleApi.getSchedule(props.scopeType, props.scopeId, scheduleId as number)
+          : await scheduleApi.getSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, scheduleId as number)
         const data = (res as { data: Record<string, unknown> }).data as Record<string, unknown>
         form.value.title = (data.title as string) ?? ''
         form.value.description = (data.description as string) ?? ''
@@ -173,7 +216,7 @@ async function submit() {
     startAt: buildDateTimeStr(form.value.startDate, form.value.allDay ? '' : form.value.startTime),
     endAt: buildDateTimeStr(form.value.endDate, form.value.allDay ? '' : form.value.endTime),
   }
-  if (props.isPersonal) {
+  if (effectiveScope.value.isPersonal) {
     body.color = form.value.color
   } else {
     body.eventType = 'OTHER'
@@ -198,7 +241,7 @@ async function submit() {
   }
 
   try {
-    if (props.isPersonal) {
+    if (effectiveScope.value.isPersonal) {
       if (isEdit.value && props.scheduleId) {
         await scheduleApi.updatePersonalSchedule(props.scheduleId, body)
       } else {
@@ -206,12 +249,12 @@ async function submit() {
       }
     } else {
       if (isEdit.value && props.scheduleId) {
-        await scheduleApi.updateSchedule(props.scopeType, props.scopeId, props.scheduleId, body)
+        await scheduleApi.updateSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, props.scheduleId, body)
       } else {
-        await scheduleApi.createSchedule(props.scopeType, props.scopeId, body)
+        await scheduleApi.createSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, body)
       }
     }
-    const successMsg = props.isPersonal
+    const successMsg = effectiveScope.value.isPersonal
       ? isEdit.value
         ? '予定を更新しました'
         : '予定を追加しました'
@@ -275,7 +318,7 @@ function close() {
   <Dialog
     :visible="visible"
     :header="
-      isPersonal
+      effectiveScope.isPersonal
         ? isEdit
           ? '予定を編集'
           : '予定を追加'
@@ -288,6 +331,37 @@ function close() {
     @update:visible="close"
   >
     <div class="flex flex-col gap-4">
+      <!-- スコープ選択（複数スコープがある場合のみ表示） -->
+      <div v-if="props.scopeOptions && props.scopeOptions.length > 1" class="mb-4">
+        <label class="mb-2 block text-sm font-medium text-surface-600 dark:text-surface-300">作成先</label>
+
+        <!-- ≤5件: 横並びボタン -->
+        <div v-if="props.scopeOptions.length <= SCOPE_OVERFLOW" class="flex flex-wrap gap-2">
+          <button
+            v-for="opt in props.scopeOptions"
+            :key="opt.value"
+            type="button"
+            class="rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors"
+            :class="selectedScopeKey === opt.value
+              ? 'border-primary bg-primary/10 text-primary'
+              : 'border-surface-300 text-surface-500 hover:border-surface-400 dark:border-surface-600 dark:text-surface-400'"
+            @click="selectedScopeKey = opt.value"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+
+        <!-- 6件以上: Select ドロップダウン（単一選択） -->
+        <Select
+          v-else
+          v-model="selectedScopeKey"
+          :options="props.scopeOptions"
+          option-label="label"
+          option-value="value"
+          class="w-full"
+          :placeholder="t('schedule.filter.selectScope')"
+        />
+      </div>
       <div>
         <label class="mb-1 block text-sm font-medium"
           >タイトル <span class="text-red-500">*</span></label
@@ -300,7 +374,7 @@ function close() {
         <small v-if="fieldErrors.title" class="text-red-500">{{ fieldErrors.title }}</small>
       </div>
       <div class="flex items-center gap-4">
-        <div v-if="!isPersonal" class="flex items-center gap-2">
+        <div v-if="!effectiveScope.isPersonal" class="flex items-center gap-2">
           <Checkbox v-model="form.attendanceRequired" input-id="attendance-required" :binary="true" />
           <label for="attendance-required" class="text-sm cursor-pointer">出欠確認する</label>
         </div>
@@ -453,7 +527,7 @@ function close() {
         <label class="mb-1 block text-sm font-medium">説明</label>
         <Textarea v-model="form.description" rows="3" class="w-full" />
       </div>
-      <div v-if="isPersonal">
+      <div v-if="effectiveScope.isPersonal">
         <label class="mb-1 block text-sm font-medium">色</label>
         <div class="flex gap-2">
           <button

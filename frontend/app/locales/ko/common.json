@@ -643,6 +643,22 @@
     "unpin": "ピン止めを外す",
     "pinned": "ピン止め済み",
     "pinLimitReached": "ピン止め枠が満杯です（最大50枚）。先に他のカードのピン止めを解除してください",
+    "pinNote": {
+      "title": "付箋メモ",
+      "placeholder": "メモを書く（任意）",
+      "colorLabel": "付箋の色",
+      "confirm": "ピン止めする",
+      "cancel": "キャンセル",
+      "colors": {
+        "white": "白",
+        "yellow": "黄",
+        "blue": "青",
+        "green": "緑",
+        "red": "赤",
+        "purple": "紫",
+        "gray": "灰"
+      }
+    },
     "pageTitle": "マイコルクボード",
     "totalCount": "全{count}件",
     "sortByPinnedAt": "ピン止め日時の降順",
@@ -851,6 +867,12 @@
       "event": "이벤트 상세 URL(예: /events/77)의 숫자 ID를 입력하세요.",
       "document": "문서 상세 URL(예: /documents/55)의 숫자 ID를 입력하세요.",
       "url": "URL 카드를 사용하려면 위의 「카드 종류」를 URL로 변경하세요."
+    }
+  },
+  "schedule": {
+    "filter": {
+      "allTeamsOrgs": "팀・조직 (전체)",
+      "selectScope": "생성 대상 선택"
     }
   }
 }

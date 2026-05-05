@@ -93,7 +93,7 @@ class MyCorkboardPinServiceTest {
                     return new CorkboardCardResponse(
                             CARD_ID, BOARD_ID, null, e.getCardType(), null, null, null,
                             null, null, null, null, null, null,
-                            "NONE", "MEDIUM", 0, 0, 0, null, null,
+                            "NONE", "MEDIUM", 0, 0, 0, null, e.getNoteColor(), null,
                             e.getIsArchived(), e.getIsPinned(), e.getPinnedAt(),
                             false, USER_ID, null, null);
                 });
@@ -214,6 +214,125 @@ class MyCorkboardPinServiceTest {
             // Then
             assertThat(result.getIsPinned()).isFalse();
             assertThat(archivedPinned.getIsPinned()).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("togglePin 付箋メモ機能 (F09.8 件3' / V9.098)")
+    class TogglePinNote {
+
+        @Test
+        @DisplayName("pin 時に userNote/noteColor を指定 → カードに反映される")
+        void pin_userNoteとnoteColor指定_反映() {
+            // Given
+            given(boardRepository.findByIdAndOwnerId(BOARD_ID, USER_ID))
+                    .willReturn(Optional.of(personalBoard));
+            given(cardRepository.findByIdAndCorkboardId(CARD_ID, BOARD_ID))
+                    .willReturn(Optional.of(activeCard));
+            given(cardRepository.countPinnedByOwnerIdAndScopePersonal(USER_ID)).willReturn(0);
+            given(cardRepository.save(any(CorkboardCardEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            givenMapperEchoesEntity();
+
+            // When
+            service.togglePin(BOARD_ID, CARD_ID, true, "重要な確認事項", "BLUE", USER_ID);
+
+            // Then
+            assertThat(activeCard.getUserNote()).isEqualTo("重要な確認事項");
+            assertThat(activeCard.getNoteColor()).isEqualTo("BLUE");
+            assertThat(activeCard.getIsPinned()).isTrue();
+        }
+
+        @Test
+        @DisplayName("pin 時に userNote/noteColor 未指定 (null) → カードの値は変わらない")
+        void pin_userNote未指定_既存値維持() {
+            // Given: 既存の userNote/noteColor を持つカード
+            CorkboardCardEntity cardWithNote = CorkboardCardEntity.builder()
+                    .corkboardId(BOARD_ID)
+                    .cardType("MEMO")
+                    .createdBy(USER_ID)
+                    .isArchived(false)
+                    .isPinned(false)
+                    .userNote("既存のメモ")
+                    .noteColor("YELLOW")
+                    .build();
+            given(boardRepository.findByIdAndOwnerId(BOARD_ID, USER_ID))
+                    .willReturn(Optional.of(personalBoard));
+            given(cardRepository.findByIdAndCorkboardId(CARD_ID, BOARD_ID))
+                    .willReturn(Optional.of(cardWithNote));
+            given(cardRepository.countPinnedByOwnerIdAndScopePersonal(USER_ID)).willReturn(0);
+            given(cardRepository.save(any(CorkboardCardEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            givenMapperEchoesEntity();
+
+            // When: pin=true, userNote=null, noteColor=null
+            service.togglePin(BOARD_ID, CARD_ID, true, null, null, USER_ID);
+
+            // Then: 既存値が維持される
+            assertThat(cardWithNote.getUserNote()).isEqualTo("既存のメモ");
+            assertThat(cardWithNote.getNoteColor()).isEqualTo("YELLOW");
+            assertThat(cardWithNote.getIsPinned()).isTrue();
+        }
+
+        @Test
+        @DisplayName("アンピン時 → userNote/noteColor は触られない（残る）")
+        void unpin_userNote残る() {
+            // Given: ピン済み・付箋付きカード
+            CorkboardCardEntity pinnedWithNote = CorkboardCardEntity.builder()
+                    .corkboardId(BOARD_ID)
+                    .cardType("MEMO")
+                    .createdBy(USER_ID)
+                    .isArchived(false)
+                    .isPinned(true)
+                    .pinnedAt(LocalDateTime.now().minusHours(2))
+                    .userNote("再ピンの時に再利用したいメモ")
+                    .noteColor("GREEN")
+                    .build();
+            given(boardRepository.findByIdAndOwnerId(BOARD_ID, USER_ID))
+                    .willReturn(Optional.of(personalBoard));
+            given(cardRepository.findByIdAndCorkboardId(CARD_ID, BOARD_ID))
+                    .willReturn(Optional.of(pinnedWithNote));
+            given(cardRepository.save(any(CorkboardCardEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            givenMapperEchoesEntity();
+
+            // When: アンピン (たとえ userNote/noteColor が渡されても無視される)
+            service.togglePin(BOARD_ID, CARD_ID, false, "上書きされない", "RED", USER_ID);
+
+            // Then: ピンは外れるが付箋メモ・色は残る
+            assertThat(pinnedWithNote.getIsPinned()).isFalse();
+            assertThat(pinnedWithNote.getPinnedAt()).isNull();
+            assertThat(pinnedWithNote.getUserNote()).isEqualTo("再ピンの時に再利用したいメモ");
+            assertThat(pinnedWithNote.getNoteColor()).isEqualTo("GREEN");
+        }
+
+        @Test
+        @DisplayName("pin 時に userNote のみ指定 → userNote だけ更新、noteColor は既存値維持")
+        void pin_userNoteのみ指定_部分更新() {
+            // Given
+            CorkboardCardEntity cardWithColor = CorkboardCardEntity.builder()
+                    .corkboardId(BOARD_ID)
+                    .cardType("MEMO")
+                    .createdBy(USER_ID)
+                    .isArchived(false)
+                    .isPinned(false)
+                    .noteColor("PURPLE")
+                    .build();
+            given(boardRepository.findByIdAndOwnerId(BOARD_ID, USER_ID))
+                    .willReturn(Optional.of(personalBoard));
+            given(cardRepository.findByIdAndCorkboardId(CARD_ID, BOARD_ID))
+                    .willReturn(Optional.of(cardWithColor));
+            given(cardRepository.countPinnedByOwnerIdAndScopePersonal(USER_ID)).willReturn(0);
+            given(cardRepository.save(any(CorkboardCardEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            givenMapperEchoesEntity();
+
+            // When
+            service.togglePin(BOARD_ID, CARD_ID, true, "新しい付箋", null, USER_ID);
+
+            // Then
+            assertThat(cardWithColor.getUserNote()).isEqualTo("新しい付箋");
+            assertThat(cardWithColor.getNoteColor()).isEqualTo("PURPLE"); // 既存値維持
         }
     }
 
