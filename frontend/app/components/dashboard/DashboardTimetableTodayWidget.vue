@@ -29,14 +29,14 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="rounded-lg border border-gray-200 p-4 bg-white shadow-sm">
-    <h3 class="text-base font-bold mb-2">
-      {{ t('personalTimetable.dashboard.title') }}
-    </h3>
-    <p v-if="loading" class="text-sm text-gray-500">
-      {{ t('personalTimetable.dashboard.loading') }}
-    </p>
-    <p v-else-if="!data || data.items.length === 0" class="text-sm text-gray-500">
+  <DashboardWidgetCard
+    :title="t('personalTimetable.dashboard.title')"
+    icon="pi pi-calendar"
+    :loading="loading"
+    refreshable
+    @refresh="load"
+  >
+    <p v-if="!data || data.items.length === 0" class="text-sm text-gray-500">
       {{ t('personalTimetable.dashboard.empty') }}
     </p>
     <ul v-else class="space-y-2">
@@ -57,5 +57,5 @@ onMounted(load)
         <span v-if="item.has_attachments" class="ml-1 text-xs">📎</span>
       </li>
     </ul>
-  </div>
+  </DashboardWidgetCard>
 </template>
