@@ -73,15 +73,15 @@ public class CorkboardCardEntity extends BaseEntity {
     @Builder.Default
     private String cardSize = "MEDIUM";
 
-    @Column(nullable = false)
+    @Column(name = "position_x", nullable = false)
     @Builder.Default
     private Integer positionX = 0;
 
-    @Column(nullable = false)
+    @Column(name = "position_y", nullable = false)
     @Builder.Default
     private Integer positionY = 0;
 
-    @Column(nullable = false)
+    @Column(name = "z_index", nullable = false)
     @Builder.Default
     private Integer zIndex = 0;
 

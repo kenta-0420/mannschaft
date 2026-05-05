@@ -59,7 +59,14 @@ async function submit() {
     title: form.value.title.trim(),
     allDay: form.value.allDay,
     startAt: buildDateTimeStr(form.value.startDate, form.value.allDay ? '' : form.value.startTime),
-    endAt: buildDateTimeStr(form.value.endDate, form.value.allDay ? '' : form.value.endTime),
+    endAt: (() => {
+      if (form.value.allDay && form.value.endDate) {
+        const d = new Date(form.value.endDate)
+        d.setDate(d.getDate() + 1)
+        return buildDateTimeStr(d, '')
+      }
+      return buildDateTimeStr(form.value.endDate, form.value.allDay ? '' : form.value.endTime)
+    })(),
   }
 
   try {
