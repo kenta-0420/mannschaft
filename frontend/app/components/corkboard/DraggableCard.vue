@@ -260,6 +260,7 @@ const ariaLabel = computed<string>(() => {
       :aria-label="t('corkboard.ariaCardActions')"
     >
       <button
+        v-if="canEdit"
         type="button"
         class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-surface-100 hover:text-primary dark:text-surface-300 dark:hover:bg-surface-700"
         :aria-label="t('corkboard.ariaCardEdit')"
@@ -313,6 +314,7 @@ const ariaLabel = computed<string>(() => {
         <i class="pi pi-folder" aria-hidden="true" />
       </button>
       <button
+        v-if="canEdit"
         type="button"
         class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-surface-100 hover:text-amber-500 dark:text-surface-300 dark:hover:bg-surface-700"
         :aria-label="
@@ -336,6 +338,7 @@ const ariaLabel = computed<string>(() => {
         />
       </button>
       <button
+        v-if="canEdit"
         type="button"
         class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-red-50 hover:text-red-500 dark:text-surface-300 dark:hover:bg-red-900/30"
         :aria-label="t('corkboard.ariaCardDelete')"
