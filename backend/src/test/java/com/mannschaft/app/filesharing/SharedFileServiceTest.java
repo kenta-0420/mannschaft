@@ -93,7 +93,7 @@ class SharedFileServiceTest {
                     1024L, "application/pdf", null, USER_ID, 1, null, null);
 
             given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
-            willDoNothing().given(quotaService).checkFileQuota(eq(folder), eq(1024L));
+            willDoNothing().given(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(1024L));
             given(fileRepository.save(any(SharedFileEntity.class))).willReturn(savedFile);
             given(versionRepository.save(any(SharedFileVersionEntity.class))).willReturn(null);
             given(fileSharingMapper.toFileResponse(savedFile)).willReturn(response);
@@ -104,8 +104,8 @@ class SharedFileServiceTest {
             // Then
             assertThat(result.getName()).isEqualTo("test.pdf");
             verify(versionRepository).save(any(SharedFileVersionEntity.class));
-            verify(quotaService).checkFileQuota(folder, 1024L);
-            verify(quotaService).recordFileUpload(eq(folder), anyLong(), eq(1024L), eq(USER_ID));
+            verify(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(1024L));
+            verify(quotaService).recordFileUpload(any(SharedFolderEntity.class), anyLong(), eq(1024L), eq(USER_ID));
         }
 
         @Test
@@ -118,7 +118,7 @@ class SharedFileServiceTest {
 
             given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
             willThrow(new BusinessException(FileSharingErrorCode.STORAGE_QUOTA_EXCEEDED))
-                    .given(quotaService).checkFileQuota(eq(folder), eq(999999L));
+                    .given(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(999999L));
 
             // When & Then
             assertThatThrownBy(() -> sharedFileService.createFile(USER_ID, request))
@@ -156,7 +156,7 @@ class SharedFileServiceTest {
 
             // Then
             assertThat(entity.getDeletedAt()).isNotNull();
-            verify(quotaService).recordFileDeletion(eq(folder), eq(FILE_ID), eq(1024L), eq(USER_ID));
+            verify(quotaService).recordFileDeletion(any(SharedFolderEntity.class), eq(FILE_ID), eq(1024L), eq(USER_ID));
         }
 
         @Test

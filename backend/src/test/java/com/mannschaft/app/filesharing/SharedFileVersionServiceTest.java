@@ -236,7 +236,7 @@ class SharedFileVersionServiceTest {
 
             given(fileService.findFileOrThrow(FILE_ID)).willReturn(fileEntity);
             given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
-            willDoNothing().given(quotaService).checkFileQuota(eq(folder), eq(2048L));
+            willDoNothing().given(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(2048L));
             given(versionRepository.save(any(SharedFileVersionEntity.class))).willReturn(savedVersion);
             given(fileSharingMapper.toVersionResponse(savedVersion)).willReturn(response);
 
@@ -247,8 +247,8 @@ class SharedFileVersionServiceTest {
             assertThat(result.getVersionNumber()).isEqualTo(2);
             verify(versionRepository).save(any(SharedFileVersionEntity.class));
             // F13 Phase 4-ε: クォータチェックと使用量加算の検証
-            verify(quotaService).checkFileQuota(folder, 2048L);
-            verify(quotaService).recordVersionUpload(eq(folder), anyLong(), eq(2048L), eq(USER_ID));
+            verify(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(2048L));
+            verify(quotaService).recordVersionUpload(any(SharedFolderEntity.class), anyLong(), eq(2048L), eq(USER_ID));
             // ファイルエンティティのバージョンが更新されることを確認
             assertThat(fileEntity.getCurrentVersion()).isEqualTo(2);
             assertThat(fileEntity.getFileKey()).isEqualTo("files/new-version.pdf");
@@ -268,7 +268,7 @@ class SharedFileVersionServiceTest {
             given(fileService.findFileOrThrow(FILE_ID)).willReturn(fileEntity);
             given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
             willThrow(new BusinessException(FileSharingErrorCode.STORAGE_QUOTA_EXCEEDED))
-                    .given(quotaService).checkFileQuota(eq(folder), eq(999999L));
+                    .given(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(999999L));
 
             // When & Then
             assertThatThrownBy(() -> sharedFileVersionService.createVersion(FILE_ID, USER_ID, request))
@@ -302,7 +302,7 @@ class SharedFileVersionServiceTest {
 
             given(fileService.findFileOrThrow(FILE_ID)).willReturn(fileEntity);
             given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
-            willDoNothing().given(quotaService).checkFileQuota(eq(folder), eq(512L));
+            willDoNothing().given(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(512L));
             given(versionRepository.save(any(SharedFileVersionEntity.class))).willReturn(savedVersion);
             given(fileSharingMapper.toVersionResponse(savedVersion)).willReturn(response);
 
@@ -312,8 +312,8 @@ class SharedFileVersionServiceTest {
             // Then
             assertThat(result.getComment()).isNull();
             assertThat(result.getVersionNumber()).isEqualTo(2);
-            verify(quotaService).checkFileQuota(folder, 512L);
-            verify(quotaService).recordVersionUpload(eq(folder), anyLong(), eq(512L), eq(USER_ID));
+            verify(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(512L));
+            verify(quotaService).recordVersionUpload(any(SharedFolderEntity.class), anyLong(), eq(512L), eq(USER_ID));
         }
 
         @Test
@@ -345,7 +345,7 @@ class SharedFileVersionServiceTest {
 
             given(fileService.findFileOrThrow(FILE_ID)).willReturn(fileEntity);
             given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
-            willDoNothing().given(quotaService).checkFileQuota(eq(folder), eq(4096L));
+            willDoNothing().given(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(4096L));
             given(versionRepository.save(any(SharedFileVersionEntity.class))).willReturn(savedVersion);
             given(fileSharingMapper.toVersionResponse(savedVersion)).willReturn(response);
 
