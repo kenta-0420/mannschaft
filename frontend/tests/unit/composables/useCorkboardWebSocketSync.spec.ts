@@ -29,7 +29,7 @@
  *  - `handleCorkboardEvent` を直接呼び出してイベント処理をテストする。
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { ref, defineComponent, h, nextTick } from 'vue'
+import { ref, defineComponent, h, nextTick, type Ref } from 'vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import type { CorkboardDetail, CorkboardCardDetail, CorkboardGroupDetail, CorkboardEventPayload } from '~/types/corkboard'
 import { useCorkboardWebSocketSync } from '~/composables/useCorkboardWebSocketSync'
@@ -144,7 +144,7 @@ function makeSection(id: number, overrides: Partial<CorkboardGroupDetail> = {}):
  * defineComponent ラッパー + mountSuspended でコンポーネントコンテキストを確保する。
  */
 async function setupComposable(
-  boardRef: ReturnType<typeof ref<CorkboardDetail | null>>,
+  boardRef: Ref<CorkboardDetail | null>,
 ) {
   let composableResult!: ReturnType<typeof useCorkboardWebSocketSync>
 
