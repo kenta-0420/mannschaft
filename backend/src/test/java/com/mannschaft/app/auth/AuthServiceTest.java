@@ -10,9 +10,11 @@ import com.mannschaft.app.auth.repository.PasswordResetTokenRepository;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.admin.service.BetaRestrictionService;
 import com.mannschaft.app.auth.service.AuthService;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.service.NewDeviceDetectionService;
+import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.auth.dto.ConfirmPasswordResetRequest;
 import com.mannschaft.app.auth.dto.LoginRequest;
 import com.mannschaft.app.auth.dto.LoginResponse;
@@ -92,6 +94,12 @@ class AuthServiceTest {
     @Mock
     private NewDeviceDetectionService newDeviceDetectionService;
 
+    @Mock
+    private BetaRestrictionService betaRestrictionService;
+
+    @Mock
+    private InviteService inviteService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -163,7 +171,7 @@ class AuthServiceTest {
 
     private RegisterRequest createRegisterRequest() {
         return new RegisterRequest(
-                TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo");
+                TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null);
     }
 
     private LoginRequest createLoginRequest() {
@@ -218,7 +226,7 @@ class AuthServiceTest {
         void register_パスワードポリシー違反_AUTH008例外() {
             // Given: 短すぎるパスワード
             RegisterRequest req = new RegisterRequest(
-                    TEST_EMAIL, "short", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo");
+                    TEST_EMAIL, "short", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null);
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
 
             // When / Then
@@ -233,7 +241,7 @@ class AuthServiceTest {
         void register_文字種不足_AUTH008例外() {
             // Given: 8文字以上だが小文字と数字の2種のみ
             RegisterRequest req = new RegisterRequest(
-                    TEST_EMAIL, "password123", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo");
+                    TEST_EMAIL, "password123", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null);
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
 
             // When / Then
@@ -248,7 +256,7 @@ class AuthServiceTest {
         void register_locale省略_デフォルト値() {
             // Given
             RegisterRequest req = new RegisterRequest(
-                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, null, null);
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, null, null, null);
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
             given(passwordEncoder.encode(TEST_PASSWORD)).willReturn(ENCODED_PASSWORD);
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> {
@@ -265,6 +273,61 @@ class AuthServiceTest {
 
             // Then
             assertThat(response.getData().getMessage()).contains("確認メール");
+        }
+
+        @Test
+        @DisplayName("異常系: ベータ制限ON・トークンなし・AUTH_042例外")
+        void register_ベータ制限ON_トークンなし_AUTH042() {
+            // Given
+            given(betaRestrictionService.isEnabled()).willReturn(true);
+            RegisterRequest req = new RegisterRequest(
+                    "new@example.com", "Password1!", "山田", "太郎", "yamada",
+                    "123-4567", "ja", "Asia/Tokyo", null);
+
+            // When / Then
+            assertThatThrownBy(() -> authService.register(req, TEST_IP))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_042"));
+        }
+
+        @Test
+        @DisplayName("異常系: ベータ制限ON・トークン無効・AUTH_043例外")
+        void register_ベータ制限ON_トークン無効_AUTH043() {
+            // Given
+            given(betaRestrictionService.isEnabled()).willReturn(true);
+            given(betaRestrictionService.isBetaTokenValid("bad-token")).willReturn(false);
+            RegisterRequest req = new RegisterRequest(
+                    "new@example.com", "Password1!", "山田", "太郎", "yamada",
+                    "123-4567", "ja", "Asia/Tokyo", "bad-token");
+
+            // When / Then
+            assertThatThrownBy(() -> authService.register(req, TEST_IP))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_043"));
+        }
+
+        @Test
+        @DisplayName("正常系: ベータ制限ON・トークン有効・登録成功")
+        void register_ベータ制限ON_トークン有効_登録成功() {
+            // Given
+            given(betaRestrictionService.isEnabled()).willReturn(true);
+            given(betaRestrictionService.isBetaTokenValid("valid-token")).willReturn(true);
+            given(userRepository.existsByEmail(any())).willReturn(false);
+            given(passwordEncoder.encode(any())).willReturn(ENCODED_PASSWORD);
+            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(authTokenService.hashToken(anyString())).willReturn("hashed-token");
+            given(emailVerificationTokenRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            RegisterRequest req = new RegisterRequest(
+                    "new@example.com", "Password1!", "山田", "太郎", "yamada",
+                    "123-4567", "ja", "Asia/Tokyo", "valid-token");
+
+            // When
+            authService.register(req, TEST_IP);
+
+            // Then
+            verify(inviteService).joinByInvite(eq("valid-token"), any());
         }
     }
 

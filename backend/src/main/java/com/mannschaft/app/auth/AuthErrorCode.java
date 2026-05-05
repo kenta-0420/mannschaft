@@ -133,7 +133,13 @@ public enum AuthErrorCode implements ErrorCode {
     AUTH_039("AUTH_039", "全デバイスのセッションが無効化されています", Severity.WARN),
 
     /** 退会処理中のメールアドレスで登録しようとした */
-    AUTH_041("AUTH_041", "このメールアドレスは退会処理中のアカウントで使用されています。ログインすると退会を取り消して再利用できます", Severity.WARN);
+    AUTH_041("AUTH_041", "このメールアドレスは退会処理中のアカウントで使用されています。ログインすると退会を取り消して再利用できます", Severity.WARN),
+
+    /** ベータ期間中は招待コードが必要 */
+    AUTH_042("AUTH_042", "ベータ期間中は招待コードが必要です", Severity.WARN),
+
+    /** 招待コードが無効またはベータ対象外 */
+    AUTH_043("AUTH_043", "招待コードが無効またはベータ対象外です", Severity.WARN);
 
     private final String code;
     private final String message;

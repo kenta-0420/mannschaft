@@ -1,5 +1,6 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.admin.service.BetaRestrictionService;
 import com.mannschaft.app.auth.AuthErrorCode;
 import com.mannschaft.app.auth.entity.EmailVerificationTokenEntity;
 import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
@@ -36,6 +37,7 @@ import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.auth.util.UserAgentParser;
+import com.mannschaft.app.role.service.InviteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -73,6 +75,8 @@ public class AuthService {
     private final StringRedisTemplate redisTemplate;
     private final EncryptionService encryptionService;
     private final NewDeviceDetectionService newDeviceDetectionService;
+    private final BetaRestrictionService betaRestrictionService;
+    private final InviteService inviteService;
 
     // レートリミット設定
     private static final int REGISTER_MAX_ATTEMPTS = 10;
@@ -124,6 +128,16 @@ public class AuthService {
         String rateLimitKey = "mannschaft:auth:register_attempt:" + ipAddress;
         authTokenService.checkRateLimit(rateLimitKey, REGISTER_MAX_ATTEMPTS, REGISTER_WINDOW);
 
+        // 1.5. ベータ制限チェック
+        if (betaRestrictionService.isEnabled()) {
+            if (req.getInviteToken() == null || req.getInviteToken().isBlank()) {
+                throw new BusinessException(AuthErrorCode.AUTH_042);
+            }
+            if (!betaRestrictionService.isBetaTokenValid(req.getInviteToken())) {
+                throw new BusinessException(AuthErrorCode.AUTH_043);
+            }
+        }
+
         // 2. email重複チェック（論理削除済みユーザーも含めて確認）
         if (userRepository.existsByEmail(req.getEmail())) {
             throw new BusinessException(AuthErrorCode.AUTH_004);
@@ -152,6 +166,11 @@ public class AuthService {
                 .isSearchable(true)
                 .build();
         userRepository.save(user);
+
+        // 4.5. ベータ招待トークンがあれば自動参加
+        if (req.getInviteToken() != null && !req.getInviteToken().isBlank()) {
+            inviteService.joinByInvite(req.getInviteToken(), user.getId());
+        }
 
         // 5. メール認証トークン生成（SHA-256ハッシュをDB保存、平文はイベントで送信）
         String rawToken = generateSecureToken();

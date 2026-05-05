@@ -1,0 +1,17 @@
+{
+  "beta_restriction": {
+    "title": "Beta Registration Restriction",
+    "description": "During the beta test period, only invited users are allowed to register.",
+    "enabled_label": "Enable beta restriction",
+    "max_team_id_label": "Maximum invitable team ID",
+    "max_org_id_label": "Maximum invitable organization ID",
+    "null_hint": "Leave blank for no restriction",
+    "save": "Save",
+    "save_success": "Settings saved",
+    "current_settings": "Current Settings",
+    "status_on": "Restricted",
+    "status_off": "No restriction",
+    "no_limit": "None",
+    "last_updated": "Last updated"
+  }
+}

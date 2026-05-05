@@ -100,6 +100,14 @@ const quickLinks: QuickLink[] = [
     color: 'text-emerald-500',
     bg: 'bg-emerald-50 dark:bg-emerald-900/20',
   },
+  // F00.6: ベータ登録制限
+  {
+    label: 'ベータ制限',
+    icon: 'pi pi-lock',
+    to: '/system-admin/beta-restriction',
+    color: 'text-rose-500',
+    bg: 'bg-rose-50 dark:bg-rose-900/20',
+  },
 ]
 </script>
 

@@ -70,6 +70,10 @@ function goToLogin() {
   navigateTo(`/login?redirect=/invite/${token.value}`)
 }
 
+function goToRegister() {
+  navigateTo(`/register?invite=${token.value}`)
+}
+
 function formatExpiry(expiresAt: string | null): string {
   if (!expiresAt) return '無期限'
   const date = new Date(expiresAt)
@@ -143,13 +147,21 @@ onMounted(() => {
           />
 
           <!-- 未ログイン -->
-          <Button
-            v-else
-            label="ログインして参加"
-            icon="pi pi-sign-in"
-            class="w-full"
-            @click="goToLogin"
-          />
+          <template v-else>
+            <Button
+              label="ログインして参加"
+              icon="pi pi-sign-in"
+              class="w-full"
+              @click="goToLogin"
+            />
+            <Button
+              label="アカウントをお持ちでない方"
+              icon="pi pi-user-plus"
+              severity="secondary"
+              class="mt-2 w-full"
+              @click="goToRegister"
+            />
+          </template>
         </div>
       </template>
     </div>
