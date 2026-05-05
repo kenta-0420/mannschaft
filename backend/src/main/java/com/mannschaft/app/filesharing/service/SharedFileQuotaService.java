@@ -33,10 +33,10 @@ import org.springframework.stereotype.Service;
 public class SharedFileQuotaService {
 
     /** F13 Phase 4-ε: storage_usage_logs.reference_type に記録するテーブル名（ファイル本体）。 */
-    static final String REFERENCE_TYPE_FILE = "shared_files";
+    public static final String REFERENCE_TYPE_FILE = "shared_files";
 
     /** F13 Phase 4-ε: storage_usage_logs.reference_type に記録するテーブル名（バージョン）。 */
-    static final String REFERENCE_TYPE_VERSION = "shared_file_versions";
+    public static final String REFERENCE_TYPE_VERSION = "shared_file_versions";
 
     private final StorageQuotaService storageQuotaService;
 
@@ -127,7 +127,7 @@ public class SharedFileQuotaService {
      *     <li>PERSONAL → PERSONAL (folder.userId)</li>
      * </ul>
      */
-    ScopeResolution resolveScope(SharedFolderEntity folder) {
+    public ScopeResolution resolveScope(SharedFolderEntity folder) {
         FileScopeType scopeType = folder.getScopeType();
         if (scopeType == null) {
             throw new IllegalStateException("FileScopeType is null for folderId=" + folder.getId());
