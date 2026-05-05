@@ -5,9 +5,12 @@ import com.mannschaft.app.filesharing.dto.CreateVersionRequest;
 import com.mannschaft.app.filesharing.dto.FileVersionResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
 import com.mannschaft.app.filesharing.entity.SharedFileVersionEntity;
+import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
+import com.mannschaft.app.filesharing.service.SharedFileQuotaService;
 import com.mannschaft.app.filesharing.service.SharedFileService;
 import com.mannschaft.app.filesharing.service.SharedFileVersionService;
+import com.mannschaft.app.filesharing.service.SharedFolderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,12 +26,18 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willDoNothing;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
  * {@link SharedFileVersionService} の単体テスト。
- * ファイルバージョンの一覧取得・特定バージョン取得・新規バージョン作成を検証する。
+ * ファイルバージョンの一覧取得・特定バージョン取得・新規バージョン作成と
+ * F13 Phase 4-ε クォータ統合を検証する。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SharedFileVersionService 単体テスト")
@@ -41,12 +50,19 @@ class SharedFileVersionServiceTest {
     private SharedFileService fileService;
 
     @Mock
+    private SharedFolderService folderService;
+
+    @Mock
     private FileSharingMapper fileSharingMapper;
+
+    @Mock
+    private SharedFileQuotaService quotaService;
 
     @InjectMocks
     private SharedFileVersionService sharedFileVersionService;
 
     private static final Long FILE_ID = 100L;
+    private static final Long FOLDER_ID = 1L;
     private static final Long USER_ID = 10L;
     private static final Long VERSION_ID = 1L;
     private static final Integer VERSION_NUMBER = 1;
@@ -73,13 +89,21 @@ class SharedFileVersionServiceTest {
 
     private SharedFileEntity createFileEntity(Integer currentVersion) {
         return SharedFileEntity.builder()
-                .folderId(1L)
+                .folderId(FOLDER_ID)
                 .name("test-file.pdf")
                 .fileKey(FILE_KEY)
                 .fileSize(FILE_SIZE)
                 .contentType(CONTENT_TYPE)
                 .createdBy(USER_ID)
                 .currentVersion(currentVersion)
+                .build();
+    }
+
+    private SharedFolderEntity buildFolder() {
+        return SharedFolderEntity.builder()
+                .scopeType(FileScopeType.TEAM)
+                .teamId(5L)
+                .name("テストフォルダ")
                 .build();
     }
 
@@ -192,7 +216,7 @@ class SharedFileVersionServiceTest {
     }
 
     // ========================================
-    // createVersion
+    // createVersion — F13 Phase 4-ε クォータ統合
     // ========================================
 
     @Nested
@@ -200,16 +224,19 @@ class SharedFileVersionServiceTest {
     class CreateVersion {
 
         @Test
-        @DisplayName("正常系: 新バージョンが作成される")
-        void バージョン作成_正常_レスポンス返却() {
+        @DisplayName("正常系: 新バージョンが作成される_クォータチェック・加算が呼ばれる")
+        void バージョン作成_正常_レスポンス返却_クォータ統合() {
             // Given
             CreateVersionRequest request = new CreateVersionRequest(
                     "files/new-version.pdf", 2048L, "application/pdf", "バージョン2");
             SharedFileEntity fileEntity = createFileEntity(1);
+            SharedFolderEntity folder = buildFolder();
             SharedFileVersionEntity savedVersion = createVersionEntity(2);
             FileVersionResponse response = createVersionResponse(2);
 
             given(fileService.findFileOrThrow(FILE_ID)).willReturn(fileEntity);
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
+            willDoNothing().given(quotaService).checkFileQuota(eq(folder), eq(2048L));
             given(versionRepository.save(any(SharedFileVersionEntity.class))).willReturn(savedVersion);
             given(fileSharingMapper.toVersionResponse(savedVersion)).willReturn(response);
 
@@ -219,11 +246,37 @@ class SharedFileVersionServiceTest {
             // Then
             assertThat(result.getVersionNumber()).isEqualTo(2);
             verify(versionRepository).save(any(SharedFileVersionEntity.class));
+            // F13 Phase 4-ε: クォータチェックと使用量加算の検証
+            verify(quotaService).checkFileQuota(folder, 2048L);
+            verify(quotaService).recordVersionUpload(eq(folder), anyLong(), eq(2048L), eq(USER_ID));
             // ファイルエンティティのバージョンが更新されることを確認
             assertThat(fileEntity.getCurrentVersion()).isEqualTo(2);
             assertThat(fileEntity.getFileKey()).isEqualTo("files/new-version.pdf");
             assertThat(fileEntity.getFileSize()).isEqualTo(2048L);
             assertThat(fileEntity.getContentType()).isEqualTo("application/pdf");
+        }
+
+        @Test
+        @DisplayName("異常系: クォータ超過でバージョン作成が拒否される")
+        void バージョン作成_クォータ超過_BusinessException_DB登録されない() {
+            // Given
+            CreateVersionRequest request = new CreateVersionRequest(
+                    "files/big-version.pdf", 999999L, "application/pdf", "大きいバージョン");
+            SharedFileEntity fileEntity = createFileEntity(1);
+            SharedFolderEntity folder = buildFolder();
+
+            given(fileService.findFileOrThrow(FILE_ID)).willReturn(fileEntity);
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
+            willThrow(new BusinessException(FileSharingErrorCode.STORAGE_QUOTA_EXCEEDED))
+                    .given(quotaService).checkFileQuota(eq(folder), eq(999999L));
+
+            // When & Then
+            assertThatThrownBy(() -> sharedFileVersionService.createVersion(FILE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.STORAGE_QUOTA_EXCEEDED));
+            verify(versionRepository, never()).save(any());
+            verify(quotaService, never()).recordVersionUpload(any(), anyLong(), anyLong(), anyLong());
         }
 
         @Test
@@ -233,6 +286,7 @@ class SharedFileVersionServiceTest {
             CreateVersionRequest request = new CreateVersionRequest(
                     "files/no-comment.pdf", 512L, "application/pdf", null);
             SharedFileEntity fileEntity = createFileEntity(1);
+            SharedFolderEntity folder = buildFolder();
             SharedFileVersionEntity savedVersion = SharedFileVersionEntity.builder()
                     .fileId(FILE_ID)
                     .versionNumber(2)
@@ -247,6 +301,8 @@ class SharedFileVersionServiceTest {
                     512L, "application/pdf", USER_ID, null, LocalDateTime.now());
 
             given(fileService.findFileOrThrow(FILE_ID)).willReturn(fileEntity);
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
+            willDoNothing().given(quotaService).checkFileQuota(eq(folder), eq(512L));
             given(versionRepository.save(any(SharedFileVersionEntity.class))).willReturn(savedVersion);
             given(fileSharingMapper.toVersionResponse(savedVersion)).willReturn(response);
 
@@ -256,6 +312,8 @@ class SharedFileVersionServiceTest {
             // Then
             assertThat(result.getComment()).isNull();
             assertThat(result.getVersionNumber()).isEqualTo(2);
+            verify(quotaService).checkFileQuota(folder, 512L);
+            verify(quotaService).recordVersionUpload(eq(folder), anyLong(), eq(512L), eq(USER_ID));
         }
 
         @Test
@@ -281,10 +339,13 @@ class SharedFileVersionServiceTest {
             CreateVersionRequest request = new CreateVersionRequest(
                     "files/v4.pdf", 4096L, "application/pdf", "第4版");
             SharedFileEntity fileEntity = createFileEntity(3);
+            SharedFolderEntity folder = buildFolder();
             SharedFileVersionEntity savedVersion = createVersionEntity(4);
             FileVersionResponse response = createVersionResponse(4);
 
             given(fileService.findFileOrThrow(FILE_ID)).willReturn(fileEntity);
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
+            willDoNothing().given(quotaService).checkFileQuota(eq(folder), eq(4096L));
             given(versionRepository.save(any(SharedFileVersionEntity.class))).willReturn(savedVersion);
             given(fileSharingMapper.toVersionResponse(savedVersion)).willReturn(response);
 

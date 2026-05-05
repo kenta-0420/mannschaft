@@ -98,7 +98,7 @@ public class SharedFileController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteFile(
             @PathVariable Long fileId) {
-        fileService.deleteFile(fileId);
+        fileService.deleteFile(fileId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

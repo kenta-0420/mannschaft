@@ -244,7 +244,9 @@ public class GlobalExceptionHandler {
             Map.entry("STORAGE_QUOTA_002", HttpStatus.INTERNAL_SERVER_ERROR), // SUBSCRIPTION_NOT_FOUND
             // F04.2 チャット 添付ファイル（F13 Phase 4-β）
             Map.entry("CHAT_015", HttpStatus.PAYLOAD_TOO_LARGE),             // ATTACHMENT_SIZE_EXCEEDED (UX ガード 500MB 超過)
-            Map.entry("CHAT_019", HttpStatus.CONFLICT)                       // ATTACHMENT_QUOTA_EXCEEDED (F13 統合クォータ超過)
+            Map.entry("CHAT_019", HttpStatus.CONFLICT),                      // ATTACHMENT_QUOTA_EXCEEDED (F13 統合クォータ超過)
+            // F05.5 ファイル共有（F13 Phase 4-epsilon）
+            Map.entry("FILE_SHARING_016", HttpStatus.CONFLICT)               // STORAGE_QUOTA_EXCEEDED (F13 統合クォータ超過)
     );
 
     /**
