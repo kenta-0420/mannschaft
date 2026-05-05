@@ -868,5 +868,11 @@
       "document": "请输入文档详情 URL（例: /documents/55）的数字 ID。",
       "url": "如要使用 URL 卡片，请将上方「卡片类型」改为 URL。"
     }
+  },
+  "schedule": {
+    "filter": {
+      "allTeamsOrgs": "团队・组织（全部）",
+      "selectScope": "选择创建目标"
+    }
   }
 }
