@@ -55,7 +55,12 @@
       "step3": "'홈 화면에 추가' 선택",
       "step4": "'추가'를 탭하여 완료",
       "close": "닫기",
-      "note": "Chrome/Firefox에서는 추가할 수 없습니다"
+      "note": "Chrome/Firefox에서는 추가할 수 없습니다",
+      "memo_shortcut_title": "빠른 메모를 한 번에 열기",
+      "memo_shortcut_step1": "Safari에서 메모 페이지(/quick-memos)를 열기",
+      "memo_shortcut_step2": "공유 버튼(위쪽 화살표 아이콘)을 탭",
+      "memo_shortcut_step3": "'홈 화면에 추가' 선택 후 이름 변경（예: '메모'）",
+      "memo_shortcut_step4": "'추가'를 탭하면 전용 아이콘이 홈 화면에 추가됨"
     }
   }
 }

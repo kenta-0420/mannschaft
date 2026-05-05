@@ -22,6 +22,13 @@ const steps: GuideStep[] = [
   { labelKey: 'pwa.ios.step4', icon: 'pi pi-check' },
 ]
 
+const memoShortcutSteps: GuideStep[] = [
+  { labelKey: 'pwa.ios.memo_shortcut_step1', icon: 'pi pi-globe' },
+  { labelKey: 'pwa.ios.memo_shortcut_step2', icon: 'pi pi-upload' },
+  { labelKey: 'pwa.ios.memo_shortcut_step3', icon: 'pi pi-plus-circle' },
+  { labelKey: 'pwa.ios.memo_shortcut_step4', icon: 'pi pi-check' },
+]
+
 function close() {
   visible.value = false
 }
@@ -52,6 +59,27 @@ function close() {
         </div>
       </li>
     </ol>
+
+    <!-- ポイっとメモ専用ショートカットのヒント -->
+    <Divider />
+    <div class="rounded-lg bg-surface-50 p-4 dark:bg-surface-800">
+      <p class="mb-3 flex items-center gap-2 text-sm font-semibold text-orange-600 dark:text-orange-400">
+        <i class="pi pi-bolt" />
+        {{ t('pwa.ios.memo_shortcut_title') }}
+      </p>
+      <ol class="space-y-2">
+        <li
+          v-for="(step, index) in memoShortcutSteps"
+          :key="step.labelKey"
+          class="flex items-start gap-2"
+        >
+          <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-400 text-xs font-bold text-white">
+            {{ index + 1 }}
+          </span>
+          <span class="text-sm text-surface-700 dark:text-surface-200">{{ t(step.labelKey) }}</span>
+        </li>
+      </ol>
+    </div>
 
     <template #footer>
       <div class="flex w-full flex-col gap-3">
