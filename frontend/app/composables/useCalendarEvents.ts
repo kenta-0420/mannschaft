@@ -7,6 +7,8 @@ export interface CalendarEventItem {
   color: string | null
   isPersonal: boolean
   scopeType?: string
+  scopeName?: string | null
+  scopeIconUrl?: string | null
 }
 
 export interface UseCalendarEventsOptions {

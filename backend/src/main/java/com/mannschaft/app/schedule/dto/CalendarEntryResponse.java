@@ -23,4 +23,6 @@ public class CalendarEntryResponse {
     private final Long scopeId;
     private final String scopeName;
     private final String myAttendanceStatus;
+    /** チーム・組織のアイコン画像URL。未設定またはPERSONALスコープの場合はnull。 */
+    private final String scopeIconUrl;
 }
