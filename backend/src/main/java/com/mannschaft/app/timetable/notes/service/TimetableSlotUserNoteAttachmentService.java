@@ -65,8 +65,13 @@ public class TimetableSlotUserNoteAttachmentService {
             "application/pdf", new byte[][]{{0x25, 0x50, 0x44, 0x46}} // "%PDF"
     );
 
-    /** R2 オブジェクトキー プレフィックステンプレート。 */
-    private static final String OBJECT_KEY_TEMPLATE = "user/%d/timetable-notes/%s.%s";
+    /**
+     * R2 オブジェクトキー プレフィックステンプレート。
+     *
+     * <p><b>F13 Phase 5-a</b>: 新統一パス命名規則 {@code user/PERSONAL/{userId}/timetable-notes/{uuid}.{ext}}
+     * に変更。scopeType は PERSONAL 固定。</p>
+     */
+    private static final String OBJECT_KEY_TEMPLATE = "user/PERSONAL/%d/timetable-notes/%s.%s";
 
     private final TimetableSlotUserNoteAttachmentRepository attachmentRepository;
     private final TimetableSlotUserNoteService noteService;
@@ -132,7 +137,8 @@ public class TimetableSlotUserNoteAttachmentService {
         TimetableSlotUserNoteEntity note = noteService.getMine(noteId, userId);
 
         // R2 キーが本ユーザーのプレフィックスに属することを検証
-        String expectedPrefix = "user/" + userId + "/timetable-notes/";
+        // F13 Phase 5-a: 新パス "user/PERSONAL/{userId}/timetable-notes/" に変更
+        String expectedPrefix = "user/PERSONAL/" + userId + "/timetable-notes/";
         if (!req.r2ObjectKey().startsWith(expectedPrefix)) {
             throw new BusinessException(PersonalTimetableErrorCode.NOTE_SLOT_NOT_OWNED);
         }
@@ -204,7 +210,8 @@ public class TimetableSlotUserNoteAttachmentService {
             throw new BusinessException(PersonalTimetableErrorCode.ATTACHMENT_NOT_FOUND);
         }
         // キープレフィックスの再検証
-        String expectedPrefix = "user/" + userId + "/";
+        // F13 Phase 5-a: 新パス "user/PERSONAL/{userId}/" に変更
+        String expectedPrefix = "user/PERSONAL/" + userId + "/";
         if (!entity.getR2ObjectKey().startsWith(expectedPrefix)) {
             throw new BusinessException(PersonalTimetableErrorCode.ATTACHMENT_NOT_FOUND);
         }

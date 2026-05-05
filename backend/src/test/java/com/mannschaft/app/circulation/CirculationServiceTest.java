@@ -9,6 +9,7 @@ import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.R2StorageService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,10 @@ class CirculationServiceTest {
 
     @Mock
     private CirculationMapper circulationMapper;
+
+    /** F13 Phase 5-a: presignAttachmentUpload メソッド追加に伴い @Mock 追加（他テストへの影響なし）。 */
+    @Mock
+    private R2StorageService r2StorageService;
 
     @InjectMocks
     private CirculationService circulationService;

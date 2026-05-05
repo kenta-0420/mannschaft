@@ -36,7 +36,7 @@ import java.util.Map;
  *   <li>{@code blog/} — F06.1 CMS/ブログ（CMS）</li>
  *   <li>{@code circulation/} — F05.2 回覧板（CIRCULATION）</li>
  *   <li>{@code bulletin/} — F05.1 掲示板（BULLETIN）</li>
- *   <li>{@code user/} — F03.15 個人時間割メモ添付 (PERSONAL_TIMETABLE_NOTES. Phase 4-alpha 追加)</li>
+ *   <li>{@code user/PERSONAL/} — F03.15 個人時間割メモ添付 (PERSONAL_TIMETABLE_NOTES. Phase 4-alpha 追加, Phase 5-a で新統一パス "user/PERSONAL/" に変更)</li>
  *   <li>{@code schedules/} — F03.14 スケジュールメディア (SCHEDULE_MEDIA. Phase 4-alpha 追加)</li>
  * </ul>
  *
@@ -83,7 +83,8 @@ public class StorageDriftDetectionBatchService {
         FEATURE_PREFIX_MAP.put(StorageFeatureType.CIRCULATION, List.of("circulation/"));
         FEATURE_PREFIX_MAP.put(StorageFeatureType.BULLETIN, List.of("bulletin/"));
         // Phase 4-α 追加: PERSONAL_TIMETABLE_NOTES / SCHEDULE_MEDIA
-        FEATURE_PREFIX_MAP.put(StorageFeatureType.PERSONAL_TIMETABLE_NOTES, List.of("user/"));
+        // Phase 5-a 修正: PERSONAL_TIMETABLE_NOTES のプレフィックスを新統一パス "user/PERSONAL/" に変更
+        FEATURE_PREFIX_MAP.put(StorageFeatureType.PERSONAL_TIMETABLE_NOTES, List.of("user/PERSONAL/"));
         FEATURE_PREFIX_MAP.put(StorageFeatureType.SCHEDULE_MEDIA, List.of("schedules/"));
     }
 

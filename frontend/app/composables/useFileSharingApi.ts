@@ -3,6 +3,8 @@ import type {
   SharedFile,
   FileVersion,
   FolderDetailResponse,
+  SharedFilePresignRequest,
+  SharedFilePresignResponse,
 } from '~/types/filesharing'
 
 export function useFileSharingApi() {
@@ -55,6 +57,17 @@ export function useFileSharingApi() {
     return api<{ data: { uploadUrl: string; fileKey: string } }>('/api/v1/files/upload-url', {
       method: 'POST',
       body: { fileName, contentType, fileSize },
+    })
+  }
+
+  /**
+   * F13 Phase 5-a: ファイルアップロード用の Presigned URL をサーバー側で生成する。
+   * 返却された uploadUrl で R2 に直接 PUT し、完了後に fileKey を registerFile に渡す。
+   */
+  async function presignUpload(request: SharedFilePresignRequest) {
+    return api<{ data: SharedFilePresignResponse }>('/api/v1/files/presign-upload', {
+      method: 'POST',
+      body: request,
     })
   }
 
@@ -223,6 +236,7 @@ export function useFileSharingApi() {
     getFiles,
     getFile,
     getUploadUrl,
+    presignUpload,
     registerFile,
     updateFile,
     deleteFile,

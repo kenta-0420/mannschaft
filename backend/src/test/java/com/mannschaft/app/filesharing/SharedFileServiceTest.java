@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.filesharing.dto.CreateFileRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
@@ -55,6 +56,10 @@ class SharedFileServiceTest {
 
     @Mock
     private SharedFileQuotaService quotaService;
+
+    /** F13 Phase 5-a: presignUpload メソッド追加に伴い @Mock 追加（他テストへの影響なし）。 */
+    @Mock
+    private R2StorageService r2StorageService;
 
     @InjectMocks
     private SharedFileService sharedFileService;

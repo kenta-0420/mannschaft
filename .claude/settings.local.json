@@ -662,7 +662,14 @@
       "PowerShell(wsl bash -c \"sudo -n apt-get install -y openjdk-21-jdk-headless 2>&1 | tail -5\")",
       "Bash(pkill -9 -f \"MannschaftApplication\")",
       "PowerShell(Get-ChildItem \"C:\\\\Claude\\\\mannschaft\\\\backend\\\\src\\\\main\\\\resources\\\\db\\\\migration\\\\\" | ForEach-Object { $_.Name } | Where-Object { $_ -match \"^V18\\\\.\" } | Sort-Object)",
-      "PowerShell(Get-ChildItem \"C:\\\\Claude\\\\mannschaft\\\\backend\\\\src\\\\main\\\\resources\\\\db\\\\migration\\\\\" | ForEach-Object { $_.Name } | Where-Object { $_ -match \"^V\\(1[5-9]|2[0-9]\\)\\\\.\" } | Sort-Object)"
+      "PowerShell(Get-ChildItem \"C:\\\\Claude\\\\mannschaft\\\\backend\\\\src\\\\main\\\\resources\\\\db\\\\migration\\\\\" | ForEach-Object { $_.Name } | Where-Object { $_ -match \"^V\\(1[5-9]|2[0-9]\\)\\\\.\" } | Sort-Object)",
+      "Bash(cat \"C:\\\\\\\\Users\\\\\\\\kenta\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\C--Claude-mannschaft\\\\\\\\d9da940b-62b3-43fd-8065-12ddde5d0bf2\\\\\\\\tasks\\\\\\\\b1f0vrjgz.output\")",
+      "Bash(./gradlew compileJava --no-daemon --stacktrace)",
+      "Bash(./gradlew compileJava --no-daemon --info)",
+      "Bash(Get-ChildItem *)",
+      "PowerShell(Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c cd C:\\\\Claude\\\\mannschaft\\\\frontend && npm run dev > C:\\\\Users\\\\kenta\\\\AppData\\\\Local\\\\Temp\\\\nuxt-dev.log 2>&1\" -WindowStyle Hidden; Write-Output \"Nuxt 起動中...\")",
+      "PowerShell(Test-Path *)",
+      "PowerShell(try { $tcp = New-Object System.Net.Sockets.TcpClient; $tcp.Connect\\(\"127.0.0.1\", 3306\\); Write-Host \"MySQL 3306: Connected\"; $tcp.Close\\(\\) } catch { Write-Host \"MySQL 3306: Failed - $_\" }; try { $tcp2 = New-Object System.Net.Sockets.TcpClient; $tcp2.Connect\\(\"127.0.0.1\", 6379\\); Write-Host \"Valkey 6379: Connected\"; $tcp2.Close\\(\\) } catch { Write-Host \"Valkey 6379: Failed - $_\" })"
     ],
     "deny": [
       "Write(**/.env)",
