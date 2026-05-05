@@ -22,6 +22,9 @@ import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -44,6 +47,12 @@ public class CirculationService {
     private final CirculationRecipientRepository recipientRepository;
     private final CirculationAttachmentRepository attachmentRepository;
     private final CirculationMapper circulationMapper;
+
+    /**
+     * F00 Phase C 試験的置換 — 単発文書取得時の可視性ガード用。
+     * Bean 不在のテスト構成では {@code null} 注入され、ガードはスキップされる。
+     */
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * 文書一覧をページング取得する。
@@ -70,6 +79,13 @@ public class CirculationService {
     /**
      * 文書詳細を取得する。
      *
+     * <p>F00 Phase C 試験的置換 (2026-05-04 / §12.3 工程 4): 既存のスコープ照合に加えて
+     * {@link ContentVisibilityChecker#assertCanView} で {@link ReferenceType#CIRCULATION_DOCUMENT}
+     * の可視性ガードを行う。配信先 ACL に登録されていない閲覧者は
+     * {@code VISIBILITY_001 / VISIBILITY_004} で拒否される（{@link CirculationDocumentVisibilityResolver}
+     * 案 A）。Bean 不在のテスト構成 (Mockito {@code @InjectMocks}) では
+     * {@code contentVisibilityChecker} が {@code null} 注入されガードはスキップされる。</p>
+     *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
      * @param documentId 文書ID
@@ -77,6 +93,12 @@ public class CirculationService {
      */
     public DocumentResponse getDocument(String scopeType, Long scopeId, Long documentId) {
         CirculationDocumentEntity entity = findDocumentOrThrow(scopeType, scopeId, documentId);
+        if (contentVisibilityChecker != null) {
+            contentVisibilityChecker.assertCanView(
+                    ReferenceType.CIRCULATION_DOCUMENT,
+                    entity.getId(),
+                    SecurityUtils.getCurrentUserIdOrNull());
+        }
         return circulationMapper.toDocumentResponse(entity);
     }
 
