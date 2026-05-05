@@ -220,7 +220,7 @@ describe('useCorkboardSectionManagement — 折りたたみ管理', () => {
 
     const stored = localStorageMock['corkboard:collapse:100']
     expect(stored).toBeDefined()
-    const parsed = JSON.parse(stored) as Record<string, boolean>
+    const parsed = JSON.parse(stored as string) as Record<string, boolean>
     expect(parsed['1']).toBe(true)
   })
 

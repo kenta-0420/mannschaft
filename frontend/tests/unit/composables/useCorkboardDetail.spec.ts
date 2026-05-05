@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { setActivePinia, createPinia } from 'pinia'
+import type { RouteLocationRaw } from 'vue-router'
 import { useCorkboardDetail } from '~/composables/useCorkboardDetail'
 import type { CorkboardDetail } from '~/types/corkboard'
 
@@ -153,7 +154,7 @@ function makeBoard(over: Partial<CorkboardDetail> = {}): CorkboardDetail {
  * mountSuspended の route オプションにより Nuxt 内部ルーターが更新される。
  */
 async function mountWithRoute(
-  routeLocation: Parameters<typeof mountSuspended>[1] extends { route?: infer R } ? R : never,
+  routeLocation: RouteLocationRaw,
 ): Promise<UseCorkboardDetailResult> {
   composableResult = null
   await mountSuspended(WrapperComponent, { route: routeLocation })
