@@ -274,6 +274,59 @@ class AuthServiceTest {
             // Then
             assertThat(response.getData().getMessage()).contains("確認メール");
         }
+
+        @Test
+        @DisplayName("異常系: ベータ制限ON + トークンなし → AUTH_042例外")
+        void register_ベータ制限ON_トークンなし_AUTH042例外() {
+            // Given
+            RegisterRequest req = new RegisterRequest(
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null);
+            given(betaRestrictionService.isEnabled()).willReturn(true);
+
+            // When / Then
+            assertThatThrownBy(() -> authService.register(req, TEST_IP))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_042"));
+        }
+
+        @Test
+        @DisplayName("異常系: ベータ制限ON + トークン無効 → AUTH_043例外")
+        void register_ベータ制限ON_トークン無効_AUTH043例外() {
+            // Given
+            RegisterRequest req = new RegisterRequest(
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", "invalid-token");
+            given(betaRestrictionService.isEnabled()).willReturn(true);
+            given(betaRestrictionService.isBetaTokenValid("invalid-token")).willReturn(false);
+
+            // When / Then
+            assertThatThrownBy(() -> authService.register(req, TEST_IP))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_043"));
+        }
+
+        @Test
+        @DisplayName("正常系: ベータ制限ON + トークン有効 → 登録成功 + joinByInviteが呼ばれる")
+        void register_ベータ制限ON_トークン有効_登録成功() {
+            // Given
+            RegisterRequest req = new RegisterRequest(
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", "valid-token");
+            given(betaRestrictionService.isEnabled()).willReturn(true);
+            given(betaRestrictionService.isBetaTokenValid("valid-token")).willReturn(true);
+            given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
+            given(passwordEncoder.encode(TEST_PASSWORD)).willReturn(ENCODED_PASSWORD);
+            given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
+            given(authTokenService.hashToken(anyString())).willReturn("hashed-token");
+            given(emailVerificationTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            ApiResponse<MessageResponse> response = authService.register(req, TEST_IP);
+
+            // Then
+            assertThat(response.getData().getMessage()).contains("確認メール");
+            verify(inviteService).joinByInvite(eq("valid-token"), any(Long.class));
+        }
     }
 
     // ========================================

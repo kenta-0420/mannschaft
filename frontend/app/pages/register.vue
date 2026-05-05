@@ -11,6 +11,7 @@ definePageMeta({
 const api = useApi()
 const route = useRoute()
 const notification = useNotification()
+const { t } = useI18n()
 const loading = ref(false)
 
 // クエリパラメータから招待トークンを取得（ベータ制限対応）
@@ -94,9 +95,9 @@ const onSubmit = handleSubmit(async (values) => {
     if (code === 'AUTH_041') {
       notification.error('このメールアドレスは使用できません', message + '　→ ログインして退会を取り消してください。')
     } else if (code === 'AUTH_042') {
-      notification.error('招待コードが必要です', 'ベータ期間中は招待リンクから登録してください。')
+      notification.error(t('auth.beta_invite_required'), t('auth.beta_invite_required_desc'))
     } else if (code === 'AUTH_043') {
-      notification.error('招待コードが無効です', '招待コードが無効またはベータ対象外です。')
+      notification.error(t('auth.beta_invite_invalid'), t('auth.beta_invite_invalid_desc'))
     } else {
       notification.error('登録に失敗しました', message)
     }
