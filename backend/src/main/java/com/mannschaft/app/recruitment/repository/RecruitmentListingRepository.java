@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment.repository;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
+import com.mannschaft.app.recruitment.visibility.RecruitmentListingVisibilityProjection;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +14,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -167,4 +169,34 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             """)
     List<RecruitmentListingEntity> findOpenByScopeIds(
             @Param("scopeIds") List<Long> scopeIds, Pageable pageable);
+
+    /**
+     * F00 共通可視性基盤用の軽量射影取得。
+     *
+     * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §4.6 / §7.5。
+     * {@link AbstractContentVisibilityResolver} のテンプレートが本メソッドを 1 回だけ
+     * 呼び、実存確認込みで {@link RecruitmentListingVisibilityProjection} の List を
+     * 取得する（取得できなかった ID は不存在 or 論理削除として fail-closed 扱い）。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} はネイティブ SQL の WHERE 句
+     * には自動付与されないため、JPQL で明示的に除外する。
+     */
+    @Query("""
+            SELECT new com.mannschaft.app.recruitment.visibility.RecruitmentListingVisibilityProjection(
+                r.id,
+                CASE
+                    WHEN r.scopeType = com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM THEN 'TEAM'
+                    WHEN r.scopeType = com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION THEN 'ORGANIZATION'
+                    ELSE NULL
+                END,
+                r.scopeId,
+                r.createdBy,
+                r.visibilityTemplateId,
+                r.status,
+                r.visibility)
+            FROM RecruitmentListingEntity r
+            WHERE r.id IN :ids AND r.deletedAt IS NULL
+            """)
+    List<RecruitmentListingVisibilityProjection> findVisibilityProjectionsByIdIn(
+            @Param("ids") Collection<Long> ids);
 }

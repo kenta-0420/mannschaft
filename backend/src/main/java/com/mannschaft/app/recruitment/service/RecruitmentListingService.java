@@ -2,6 +2,8 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.recruitment.RecruitmentDistributionTargetType;
@@ -85,6 +87,7 @@ public class RecruitmentListingService {
     private final RecruitmentMapper mapper;
     private final RecruitmentTemplateService templateService;
     private final RecruitmentTemplateRepository templateRepository;
+    private final ContentVisibilityChecker visibilityChecker;
 
     // ===========================================
     // 取得系
@@ -108,15 +111,25 @@ public class RecruitmentListingService {
 
     public RecruitmentListingResponse getListing(Long listingId, Long userId) {
         RecruitmentListingEntity entity = findOrThrow(listingId);
-        // DRAFT は作成者・ADMIN のみ閲覧可
+        // DRAFT は作成者・スコープ ADMIN のみ閲覧可（機能側ローカル要件）。
+        // F00 共通基盤の DRAFT 規約は「作成者 + SystemAdmin のみ」だが、
+        // Recruitment 機能では従来から TEAM/ORG ADMIN にも DRAFT 閲覧を許可しており、
+        // ローカル要件として本ガードで先に通過判定する。
         if (entity.getStatus() == RecruitmentListingStatus.DRAFT) {
             boolean isCreator = entity.getCreatedBy().equals(userId);
-            boolean isAdmin = accessControlService.isAdminOrAbove(userId, entity.getScopeId(), entity.getScopeType().name());
+            boolean isAdmin = accessControlService.isAdminOrAbove(
+                    userId, entity.getScopeId(), entity.getScopeType().name());
             if (!isCreator && !isAdmin) {
                 throw new BusinessException(RecruitmentErrorCode.DRAFT_VIEW_DENIED);
             }
+            // DRAFT で creator/admin が確認できた場合は F00 ガードをスキップ
+            // (F00 側はこの分岐を SystemAdmin と author 以外で deny するため)
+            return mapper.toListingResponse(entity);
         }
-        // SCOPE_ONLY/SUPPORTERS_ONLY 等の visibility チェックは Phase 2 で本格実装
+        // F00 共通可視性ガード: PUBLIC / SCOPE_ONLY / SUPPORTERS_ONLY / CUSTOM_TEMPLATE を
+        // ContentVisibilityChecker.assertCanView 経由で判定する (NOT_FOUND → 404, deny → 403)。
+        // F00 Phase C 試験的置換 (2026-05-04): Phase 2 留保コードを本格実装に昇格。
+        visibilityChecker.assertCanView(ReferenceType.RECRUITMENT_LISTING, listingId, userId);
         return mapper.toListingResponse(entity);
     }
 
