@@ -380,6 +380,9 @@ export default defineNuxtConfig({
   },
 
   vite: {
+    server: {
+      allowedHosts: true,
+    },
     optimizeDeps: {
       // date-holidays は pure ESM パッケージのため、Vite が事前バンドルしないと
       // dev server の SSR コンテキストでモジュール評価が失敗する

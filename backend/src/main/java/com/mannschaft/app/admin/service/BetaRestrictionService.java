@@ -33,8 +33,7 @@ public class BetaRestrictionService {
      * @return ベータ制限設定レスポンス
      */
     public BetaRestrictionConfigResponse getConfig() {
-        return repo.findAll().stream()
-                .findFirst()
+        return repo.findTopByOrderByIdAsc()
                 .map(entity -> new BetaRestrictionConfigResponse(
                         entity.getIsEnabled(),
                         entity.getMaxTeamId(),
@@ -51,8 +50,7 @@ public class BetaRestrictionService {
      */
     @Transactional
     public void updateConfig(UpdateBetaRestrictionRequest req, Long updatedBy) {
-        BetaRestrictionConfigEntity entity = repo.findAll().stream()
-                .findFirst()
+        BetaRestrictionConfigEntity entity = repo.findTopByOrderByIdAsc()
                 .orElseGet(() -> {
                     BetaRestrictionConfigEntity newEntity = BetaRestrictionConfigEntity.builder()
                             .updatedAt(LocalDateTime.now())
@@ -90,6 +88,11 @@ public class BetaRestrictionService {
 
         InviteTokenEntity token = tokenOpt.get();
         if (!token.isValid()) {
+            return false;
+        }
+
+        // teamId・orgId が両方未設定のトークンは招待として無効扱い
+        if (token.getTeamId() == null && token.getOrganizationId() == null) {
             return false;
         }
 

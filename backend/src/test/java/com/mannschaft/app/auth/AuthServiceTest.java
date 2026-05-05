@@ -274,6 +274,61 @@ class AuthServiceTest {
             // Then
             assertThat(response.getData().getMessage()).contains("確認メール");
         }
+
+        @Test
+        @DisplayName("異常系: ベータ制限ON・トークンなし・AUTH_042例外")
+        void register_ベータ制限ON_トークンなし_AUTH042() {
+            // Given
+            given(betaRestrictionService.isEnabled()).willReturn(true);
+            RegisterRequest req = new RegisterRequest(
+                    "new@example.com", "Password1!", "山田", "太郎", "yamada",
+                    "123-4567", "ja", "Asia/Tokyo", null);
+
+            // When / Then
+            assertThatThrownBy(() -> authService.register(req, TEST_IP))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_042"));
+        }
+
+        @Test
+        @DisplayName("異常系: ベータ制限ON・トークン無効・AUTH_043例外")
+        void register_ベータ制限ON_トークン無効_AUTH043() {
+            // Given
+            given(betaRestrictionService.isEnabled()).willReturn(true);
+            given(betaRestrictionService.isBetaTokenValid("bad-token")).willReturn(false);
+            RegisterRequest req = new RegisterRequest(
+                    "new@example.com", "Password1!", "山田", "太郎", "yamada",
+                    "123-4567", "ja", "Asia/Tokyo", "bad-token");
+
+            // When / Then
+            assertThatThrownBy(() -> authService.register(req, TEST_IP))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_043"));
+        }
+
+        @Test
+        @DisplayName("正常系: ベータ制限ON・トークン有効・登録成功")
+        void register_ベータ制限ON_トークン有効_登録成功() {
+            // Given
+            given(betaRestrictionService.isEnabled()).willReturn(true);
+            given(betaRestrictionService.isBetaTokenValid("valid-token")).willReturn(true);
+            given(userRepository.existsByEmail(any())).willReturn(false);
+            given(passwordEncoder.encode(any())).willReturn(ENCODED_PASSWORD);
+            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(authTokenService.hashToken(anyString())).willReturn("hashed-token");
+            given(emailVerificationTokenRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            RegisterRequest req = new RegisterRequest(
+                    "new@example.com", "Password1!", "山田", "太郎", "yamada",
+                    "123-4567", "ja", "Asia/Tokyo", "valid-token");
+
+            // When
+            authService.register(req, TEST_IP);
+
+            // Then
+            verify(inviteService).joinByInvite(eq("valid-token"), any());
+        }
     }
 
     // ========================================
