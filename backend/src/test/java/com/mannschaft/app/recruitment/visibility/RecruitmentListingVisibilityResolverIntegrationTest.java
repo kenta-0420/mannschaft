@@ -113,9 +113,9 @@ class RecruitmentListingVisibilityResolverIntegrationTest {
         em.createNativeQuery(
                 "INSERT INTO recruitment_categories ("
                         + "code, name_i18n_key, default_participation_type, "
-                        + "display_order, is_active, version, created_at, updated_at) "
+                        + "display_order, is_active, created_at, updated_at) "
                         + "VALUES ('futsal_open', 'recruitment.category.futsal_open', "
-                        + "'INDIVIDUAL', 1, 1, 0, NOW(), NOW())")
+                        + "'INDIVIDUAL', 1, 1, NOW(), NOW())")
                 .executeUpdate();
         categoryId = ((Number) em.createNativeQuery(
                 "SELECT id FROM recruitment_categories WHERE code = 'futsal_open'")
