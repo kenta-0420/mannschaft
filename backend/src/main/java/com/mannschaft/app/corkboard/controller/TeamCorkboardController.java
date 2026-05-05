@@ -1,6 +1,7 @@
 package com.mannschaft.app.corkboard.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.corkboard.dto.CorkboardDetailResponse;
 import com.mannschaft.app.corkboard.dto.CorkboardResponse;
 import com.mannschaft.app.corkboard.dto.CreateCorkboardRequest;
@@ -65,7 +66,9 @@ public class TeamCorkboardController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<CorkboardDetailResponse>> getBoard(
             @PathVariable Long teamId, @PathVariable Long id) {
-        CorkboardDetailResponse response = corkboardService.getScopedBoard("TEAM", teamId, id);
+        // F09.8 件A: viewerCanEdit 算出のため userId を渡す
+        Long userId = SecurityUtils.getCurrentUserId();
+        CorkboardDetailResponse response = corkboardService.getScopedBoard("TEAM", teamId, id, userId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

@@ -78,4 +78,51 @@ public class CorkboardPermissionService {
             throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
         }
     }
+
+    /**
+     * F09.8 件A: 編集権限を例外を投げずに boolean で返す版。
+     *
+     * <p>{@link #checkEditPermission(CorkboardEntity, Long)} と同じ判定ロジックだが、
+     * 詳細レスポンス DTO の {@code viewerCanEdit} フィールド構築用に boolean を返す。
+     * フロントの「編集ボタン disabled」表示判定で利用する。</p>
+     *
+     * <ul>
+     *   <li>{@code PERSONAL} &rarr; 所有者のみ {@code true}</li>
+     *   <li>{@code TEAM} / {@code ORGANIZATION} かつ {@code ADMIN_ONLY}
+     *       &rarr; ADMIN/DEPUTY_ADMIN のみ {@code true}</li>
+     *   <li>{@code TEAM} / {@code ORGANIZATION} かつ {@code ALL_MEMBERS}
+     *       &rarr; メンバー全員 {@code true}</li>
+     *   <li>引数 null・未知スコープ・未知ポリシー &rarr; {@code false}</li>
+     * </ul>
+     *
+     * @param board  対象ボードエンティティ
+     * @param userId 操作ユーザーID
+     * @return 編集可能なら {@code true}
+     */
+    public boolean canEdit(CorkboardEntity board, Long userId) {
+        if (board == null || userId == null) {
+            return false;
+        }
+        String scopeType = board.getScopeType();
+
+        if (SCOPE_PERSONAL.equals(scopeType)) {
+            return board.getOwnerId() != null && board.getOwnerId().equals(userId);
+        }
+
+        if (!SCOPE_TEAM.equals(scopeType) && !SCOPE_ORGANIZATION.equals(scopeType)) {
+            return false;
+        }
+
+        Long scopeId = board.getScopeId();
+        if (scopeId == null) {
+            return false;
+        }
+        String policy = board.getEditPolicy() != null ? board.getEditPolicy() : POLICY_ADMIN_ONLY;
+
+        return switch (policy) {
+            case POLICY_ADMIN_ONLY -> accessControlService.isAdminOrAbove(userId, scopeId, scopeType);
+            case POLICY_ALL_MEMBERS -> accessControlService.isMember(userId, scopeId, scopeType);
+            default -> false;
+        };
+    }
 }

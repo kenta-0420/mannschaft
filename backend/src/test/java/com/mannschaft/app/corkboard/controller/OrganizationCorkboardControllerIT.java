@@ -93,7 +93,7 @@ class OrganizationCorkboardControllerIT {
         return new CorkboardDetailResponse(
                 BOARD_ID, "ORGANIZATION", ORG_ID, null, "組織ボード",
                 "CORK", "ADMIN_ONLY", false, 0L,
-                List.of(), List.of(), null, null);
+                List.of(), List.of(), null, null, false);
     }
 
     @Nested

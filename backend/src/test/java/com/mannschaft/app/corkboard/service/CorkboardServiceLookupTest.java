@@ -24,6 +24,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,6 +48,7 @@ class CorkboardServiceLookupTest {
     @Mock private CorkboardMapper corkboardMapper;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private AccessControlService accessControlService;
+    @Mock private CorkboardPermissionService corkboardPermissionService;
 
     @InjectMocks private CorkboardService service;
 
@@ -63,7 +65,7 @@ class CorkboardServiceLookupTest {
         stubDetail = new CorkboardDetailResponse(
                 BOARD_ID, "PERSONAL", null, USER_ID, "詳細スタブ",
                 "CORK", "ADMIN_ONLY", false, 0L,
-                List.of(), List.of(), null, null);
+                List.of(), List.of(), null, null, false);
     }
 
     /**
@@ -77,7 +79,7 @@ class CorkboardServiceLookupTest {
                 .willReturn(List.of());
         given(groupRepository.findByCorkboardIdOrderByDisplayOrderAsc(any()))
                 .willReturn(List.of());
-        given(corkboardMapper.toDetailResponse(any(CorkboardEntity.class), anyList(), anyList()))
+        given(corkboardMapper.toDetailResponse(any(CorkboardEntity.class), anyList(), anyList(), anyBoolean()))
                 .willReturn(stubDetail);
     }
 
@@ -270,6 +272,42 @@ class CorkboardServiceLookupTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CORKBOARD_001"));
+        }
+    }
+
+    // ===========================================================
+    //  F09.8 件A: viewerCanEdit がレスポンスへ反映されること
+    // ===========================================================
+
+    @Nested
+    @DisplayName("viewerCanEdit がレスポンスへ反映される")
+    class ViewerCanEditWiring {
+
+        @Test
+        @DisplayName("ADMIN ユーザーが ADMIN_ONLY ボードを取得すると viewerCanEdit=true となる")
+        void ADMIN_ONLYボード_ADMIN_viewerCanEdit_true() {
+            CorkboardEntity board = CorkboardEntity.builder()
+                    .scopeType("TEAM").scopeId(TEAM_ID).editPolicy("ADMIN_ONLY")
+                    .name("チームボード").build();
+            given(corkboardRepository.findById(BOARD_ID)).willReturn(Optional.of(board));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(corkboardPermissionService.canEdit(board, USER_ID)).willReturn(true);
+
+            CorkboardDetailResponse trueDetail = new CorkboardDetailResponse(
+                    BOARD_ID, "TEAM", TEAM_ID, null, "チームボード",
+                    "CORK", "ADMIN_ONLY", false, 0L,
+                    List.of(), List.of(), null, null, true);
+
+            given(cardRepository.findByCorkboardIdAndIsArchivedFalseOrderByZIndexDesc(any()))
+                    .willReturn(List.of());
+            given(groupRepository.findByCorkboardIdOrderByDisplayOrderAsc(any()))
+                    .willReturn(List.of());
+            given(corkboardMapper.toDetailResponse(any(CorkboardEntity.class), anyList(), anyList(), anyBoolean()))
+                    .willReturn(trueDetail);
+
+            CorkboardDetailResponse result = service.getBoardDetailByIdOnly(BOARD_ID, USER_ID);
+
+            assertThat(result.getViewerCanEdit()).isTrue();
         }
     }
 }
