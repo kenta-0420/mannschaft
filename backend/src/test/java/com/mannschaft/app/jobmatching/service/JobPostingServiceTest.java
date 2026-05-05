@@ -1,6 +1,7 @@
 package com.mannschaft.app.jobmatching.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.jobmatching.entity.JobPostingEntity;
 import com.mannschaft.app.jobmatching.enums.JobPostingStatus;
 import com.mannschaft.app.jobmatching.enums.RewardType;
@@ -46,6 +47,8 @@ class JobPostingServiceTest {
     @Mock private JobApplicationRepository applicationRepository;
     @Mock private JobPostingStateMachine stateMachine;
     @Mock private JobPolicy jobPolicy;
+    /** F00 Phase C 試験的置換 — listByTeamForViewer から呼ばれるが、本テスト群では未使用。 */
+    @Mock private ContentVisibilityChecker visibilityChecker;
 
     @InjectMocks private JobPostingService service;
 

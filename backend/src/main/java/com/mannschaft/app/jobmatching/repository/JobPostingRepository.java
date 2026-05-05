@@ -2,6 +2,7 @@ package com.mannschaft.app.jobmatching.repository;
 
 import com.mannschaft.app.jobmatching.entity.JobPostingEntity;
 import com.mannschaft.app.jobmatching.enums.JobPostingStatus;
+import com.mannschaft.app.jobmatching.visibility.JobPostingVisibilityProjection;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,4 +56,32 @@ public interface JobPostingRepository extends JpaRepository<JobPostingEntity, Lo
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM JobPostingEntity p WHERE p.id = :id")
     Optional<JobPostingEntity> findByIdForUpdate(@Param("id") Long id);
+
+    /**
+     * F00 共通可視性基盤（{@link com.mannschaft.app.jobmatching.visibility.JobPostingVisibilityResolver}）
+     * 向けのバルク射影取得。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} は {@link JobPostingEntity} に付与されているが、
+     * constructor expression を使う本クエリでは適用されないため WHERE 句で明示的に
+     * {@code deleted_at IS NULL} を指定する。</p>
+     *
+     * <p>SQL 1 本で {@link JobPostingVisibilityProjection} を生成し、N+1 を防ぐ。
+     * {@code job_postings} は {@code team_id} のみを持つため scopeType は常に {@code 'TEAM'} で固定する。</p>
+     *
+     * @param ids 射影対象 job_posting_id 集合（空でない）
+     * @return 実存する求人投稿の Projection リスト
+     */
+    @Query("""
+            SELECT new com.mannschaft.app.jobmatching.visibility.JobPostingVisibilityProjection(
+                p.id,
+                'TEAM',
+                p.teamId,
+                p.createdByUserId,
+                p.status,
+                p.visibilityScope)
+            FROM JobPostingEntity p
+            WHERE p.id IN :ids AND p.deletedAt IS NULL
+            """)
+    List<JobPostingVisibilityProjection> findVisibilityProjectionsByIdIn(
+            @Param("ids") Collection<Long> ids);
 }
