@@ -706,11 +706,7 @@ public class AuthService {
         UserEntity user = userRepository.findById(resetToken.getUserId())
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
 
-        // UserEntityにはpasswordHashのsetterがないため、toBuilderで再構築
-        UserEntity updatedUser = user.toBuilder()
-                .passwordHash(passwordEncoder.encode(req.getNewPassword()))
-                .build();
-        userRepository.save(updatedUser);
+        user.updatePasswordHash(passwordEncoder.encode(req.getNewPassword()));
 
         // トークンを使用済みにする
         resetToken.markUsed();

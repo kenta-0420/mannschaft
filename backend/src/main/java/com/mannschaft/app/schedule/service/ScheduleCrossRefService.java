@@ -169,7 +169,7 @@ public class ScheduleCrossRefService {
                 null,
                 duplicate.getAcademicYear() != null ? duplicate.getAcademicYear().intValue() : null,
                 duplicate.getSourceScheduleId(),
-                null, null, null);
+                null, null, null, null);
     }
 
     /**

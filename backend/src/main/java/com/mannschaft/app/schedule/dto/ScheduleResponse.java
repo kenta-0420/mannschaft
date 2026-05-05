@@ -35,4 +35,7 @@ public class ScheduleResponse {
     private final String createdByDisplayName;
     private final String scopeName;
     private final String scopeIconUrl;
+
+    /** ログインユーザーの出欠回答ステータス（YES/NO/MAYBE。未回答の場合 null）。 */
+    private final String myAttendanceStatus;
 }

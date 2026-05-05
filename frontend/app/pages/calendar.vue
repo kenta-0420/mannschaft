@@ -34,7 +34,9 @@ interface EventDetail {
   scopeType?: string
   scopeId?: number
   scopeName?: string | null
+<<<<<<< HEAD
   scopeIconUrl?: string | null
+  attendanceRequired?: boolean
   myAttendance?: string | null
   attendanceStats?: { yes: number; no: number; maybe: number; pending: number; total: number } | null
   createdBy?: { displayName: string }
@@ -207,7 +209,7 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
       const sid = ext.scopeId ?? 0
       const res = await scheduleApi.getSchedule(st, sid, eventId)
-      const d = res.data as EventDetail & { createdByDisplayName?: string }
+      const d = res.data as EventDetail & { createdByDisplayName?: string; myAttendanceStatus?: string }
       selectedEvent.value = {
         ...d,
         scopeType: ext.scopeType,
@@ -215,6 +217,7 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
         scopeName: (d as EventDetail).scopeName ?? ext.scopeName,
         scopeIconUrl: (d as EventDetail).scopeIconUrl ?? null,
         createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
+        myAttendance: d.myAttendanceStatus ?? null,
       }
     }
     showEventPanel.value = true
@@ -452,6 +455,7 @@ onMounted(loadEvents)
                 categoryName: selectedEvent.categoryName ?? null,
                 categoryColor: selectedEvent.categoryColor ?? null,
                 createdBy: selectedEvent.createdBy ?? { displayName: '' },
+                attendanceRequired: selectedEvent.attendanceRequired ?? false,
                 myAttendance: selectedEvent.myAttendance ?? null,
                 attendanceStats: selectedEvent.attendanceStats ?? null,
               }"

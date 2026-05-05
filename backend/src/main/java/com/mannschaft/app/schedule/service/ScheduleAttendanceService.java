@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.StringJoiner;
 
 /**
@@ -197,6 +198,18 @@ public class ScheduleAttendanceService {
         }
 
         return csv.toString();
+    }
+
+    /**
+     * ログインユーザーの出欠回答ステータスを取得する。
+     *
+     * @param scheduleId スケジュールID
+     * @param userId     ユーザーID
+     * @return 出欠ステータス名（ATTENDING/PARTIAL/ABSENT/UNDECIDED）。レコードが存在しない場合は empty
+     */
+    public Optional<String> getMyAttendanceStatus(Long scheduleId, Long userId) {
+        return attendanceRepository.findByScheduleIdAndUserId(scheduleId, userId)
+                .map(e -> e.getStatus().name());
     }
 
     /**

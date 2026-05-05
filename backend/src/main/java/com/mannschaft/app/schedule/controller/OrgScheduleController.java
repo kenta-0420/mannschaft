@@ -91,6 +91,9 @@ public class OrgScheduleController {
         String createdByDisplayName = nameResolverService.resolveUserDisplayName(entity.getCreatedBy());
         String scopeName = nameResolverService.resolveScopeName(SCOPE_TYPE_ORGANIZATION, orgId);
         String scopeIconUrl = nameResolverService.resolveIconUrl(SCOPE_TYPE_ORGANIZATION, orgId);
+        String myAttendanceStatus = attendanceService
+                .getMyAttendanceStatus(scheduleId, SecurityUtils.getCurrentUserId())
+                .orElse(null);
         ScheduleResponse response = new ScheduleResponse(
                 entity.getId(), entity.getTitle(), entity.getStartAt(), entity.getEndAt(),
                 entity.getAllDay(), entity.getEventType().name(), entity.getStatus().name(),
@@ -98,7 +101,7 @@ public class OrgScheduleController {
                 null,
                 entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null,
                 entity.getSourceScheduleId(),
-                createdByDisplayName, scopeName, scopeIconUrl);
+                createdByDisplayName, scopeName, scopeIconUrl, myAttendanceStatus);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
