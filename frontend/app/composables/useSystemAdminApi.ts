@@ -32,6 +32,8 @@ import type {
   OrganizationEntity,
   ErrorReportResponse,
   ErrorReportStatsResponse,
+  BetaRestrictionConfigResponse,
+  UpdateBetaRestrictionRequest,
 } from '~/types/system-admin'
 
 const BASE = '/api/v1/system-admin'
@@ -489,6 +491,18 @@ export function useSystemAdminApi() {
     return api<{ data: ErrorReportStatsResponse }>(`${BASE}/error-reports/stats`)
   }
 
+  // ===== Beta Restriction (F00.6) =====
+  async function getBetaRestrictionConfig() {
+    return api<{ data: BetaRestrictionConfigResponse }>(`${BASE}/beta-restriction`)
+  }
+
+  async function updateBetaRestrictionConfig(body: UpdateBetaRestrictionRequest) {
+    return api<{ data: BetaRestrictionConfigResponse }>(`${BASE}/beta-restriction`, {
+      method: 'PUT',
+      body,
+    })
+  }
+
   return {
     // Announcements
     getAnnouncements,
@@ -589,5 +603,8 @@ export function useSystemAdminApi() {
     updateErrorReport,
     bulkUpdateErrorReports,
     getErrorReportStats,
+    // Beta Restriction (F00.6)
+    getBetaRestrictionConfig,
+    updateBetaRestrictionConfig,
   }
 }

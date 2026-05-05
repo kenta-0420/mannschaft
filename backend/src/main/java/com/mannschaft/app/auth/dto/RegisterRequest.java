@@ -37,6 +37,9 @@ public class RegisterRequest {
     private final String locale;
     private final String timezone;
 
+    /** ベータ招待トークン（nullable）。ベータ制限ON時に必須となる。 */
+    private final String inviteToken;
+
     @JsonCreator
     public RegisterRequest(
             @JsonProperty("email") String email,
@@ -46,7 +49,8 @@ public class RegisterRequest {
             @JsonProperty("displayName") String displayName,
             @JsonProperty("postalCode") String postalCode,
             @JsonProperty("locale") String locale,
-            @JsonProperty("timezone") String timezone) {
+            @JsonProperty("timezone") String timezone,
+            @JsonProperty("inviteToken") String inviteToken) {
         this.email = email;
         this.password = password;
         this.lastName = lastName;
@@ -55,5 +59,6 @@ public class RegisterRequest {
         this.postalCode = postalCode;
         this.locale = locale;
         this.timezone = timezone;
+        this.inviteToken = inviteToken;
     }
 }

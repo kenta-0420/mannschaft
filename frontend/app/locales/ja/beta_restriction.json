@@ -1,0 +1,17 @@
+{
+  "beta_restriction": {
+    "title": "ベータ登録制限",
+    "description": "ベータテスト期間中、招待されたユーザーのみ新規登録を許可します",
+    "enabled_label": "ベータ制限を有効にする",
+    "max_team_id_label": "招待可能チームID上限",
+    "max_org_id_label": "招待可能組織ID上限",
+    "null_hint": "空欄=制限なし",
+    "save": "保存する",
+    "save_success": "設定を保存しました",
+    "current_settings": "現在の設定",
+    "status_on": "制限中",
+    "status_off": "制限なし",
+    "no_limit": "なし",
+    "last_updated": "最終更新"
+  }
+}

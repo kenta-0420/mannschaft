@@ -1,0 +1,17 @@
+{
+  "beta_restriction": {
+    "title": "Beta-Registrierungsbeschränkung",
+    "description": "Während des Beta-Testzeitraums dürfen sich nur eingeladene Benutzer registrieren.",
+    "enabled_label": "Beta-Beschränkung aktivieren",
+    "max_team_id_label": "Maximale einladbare Team-ID",
+    "max_org_id_label": "Maximale einladbare Organisations-ID",
+    "null_hint": "Leer lassen für keine Einschränkung",
+    "save": "Speichern",
+    "save_success": "Einstellungen gespeichert",
+    "current_settings": "Aktuelle Einstellungen",
+    "status_on": "Eingeschränkt",
+    "status_off": "Keine Einschränkung",
+    "no_limit": "Keine",
+    "last_updated": "Zuletzt aktualisiert"
+  }
+}

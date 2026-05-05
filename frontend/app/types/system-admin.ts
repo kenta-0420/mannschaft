@@ -381,3 +381,17 @@ export interface ErrorReportStatsResponse {
   totalToday: number
   topErrors: Array<{ errorHash: string; errorMessage: string; count: number }>
 }
+
+// ===== Beta Restriction (F00.6) =====
+export interface BetaRestrictionConfigResponse {
+  isEnabled: boolean
+  maxTeamId: number | null
+  maxOrgId: number | null
+  updatedAt: string
+}
+
+export interface UpdateBetaRestrictionRequest {
+  isEnabled: boolean
+  maxTeamId: number | null
+  maxOrgId: number | null
+}

@@ -9,8 +9,12 @@ definePageMeta({
 })
 
 const api = useApi()
+const route = useRoute()
 const notification = useNotification()
 const loading = ref(false)
+
+// クエリパラメータから招待トークンを取得（ベータ制限対応）
+const inviteToken = computed(() => route.query.invite as string | undefined)
 
 const schema = toTypedSchema(
   z.object({
@@ -78,6 +82,7 @@ const onSubmit = handleSubmit(async (values) => {
         postalCode: values.postalCode,
         locale: 'ja',
         timezone: 'Asia/Tokyo',
+        ...(inviteToken.value ? { inviteToken: inviteToken.value } : {}),
       },
     })
     notification.success('登録が完了しました。メールをご確認ください。')
@@ -88,6 +93,10 @@ const onSubmit = handleSubmit(async (values) => {
     const message = err?.data?.error?.message || 'しばらく時間をおいて再度お試しください。'
     if (code === 'AUTH_041') {
       notification.error('このメールアドレスは使用できません', message + '　→ ログインして退会を取り消してください。')
+    } else if (code === 'AUTH_042') {
+      notification.error('招待コードが必要です', 'ベータ期間中は招待リンクから登録してください。')
+    } else if (code === 'AUTH_043') {
+      notification.error('招待コードが無効です', '招待コードが無効またはベータ対象外です。')
     } else {
       notification.error('登録に失敗しました', message)
     }
