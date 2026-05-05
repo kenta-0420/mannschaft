@@ -1,6 +1,8 @@
 package com.mannschaft.app.tournament.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.tournament.LeagueRoundType;
 import com.mannschaft.app.tournament.ParticipantStatus;
 import com.mannschaft.app.tournament.StatAggregationType;
@@ -58,6 +60,7 @@ public class TournamentService {
     private final TournamentDivisionRepository divisionRepository;
     private final TournamentParticipantRepository participantRepository;
     private final TournamentMapper mapper;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * 大会一覧を取得する。
@@ -96,12 +99,21 @@ public class TournamentService {
     }
 
     /**
-     * 公開アクセス可能か検証する。visibility = PUBLIC かつ指定組織に所属していることを確認。
+     * 公開アクセス可能か検証する。指定組織に所属し、かつ匿名閲覧者として
+     * F00 共通可視性 Resolver で閲覧可能であることを確認する。
+     *
+     * <p>F00 Phase C 試験的置換: 旧実装は {@code visibility == PUBLIC} を直接判定していたが、
+     * 本メソッドは {@link ContentVisibilityChecker#canView(ReferenceType, Long, Long)} に
+     * {@code userId=null}（匿名）を渡し、Resolver の status × visibility 合成判定に委譲する。
+     * これにより DRAFT / CANCELLED / ARCHIVED 等の status × PUBLIC が誤って通る既存バグも
+     * 同時に塞がれる。</p>
      */
     public void verifyPublicAccess(Long orgId, Long tournamentId) {
         TournamentEntity tournament = findTournamentOrThrow(tournamentId);
-        if (!tournament.getOrganizationId().equals(orgId)
-                || tournament.getVisibility() != TournamentVisibility.PUBLIC) {
+        if (!tournament.getOrganizationId().equals(orgId)) {
+            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+        if (!contentVisibilityChecker.canView(ReferenceType.TOURNAMENT, tournamentId, null)) {
             throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
         }
     }
