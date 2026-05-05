@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -269,6 +270,31 @@ public class R2StorageService implements StorageService {
         } catch (Exception e) {
             log.warn("R2画像サイズ取得失敗（ピクセル値はNULLで保存）: key={}", r2Key, e);
             return new int[0];
+        }
+    }
+
+    /**
+     * 同一バケット内でオブジェクトをコピーする（CopyObject）。
+     *
+     * <p>F13 Phase 5-b: ストレージパス移行バッチで使用。旧パス → 新パスへのコピー。
+     * 旧パスの削除は行わない（R2 ライフサイクルルールで 30 日後に自動削除される想定）。</p>
+     *
+     * @param srcKey  コピー元 R2 オブジェクトキー
+     * @param destKey コピー先 R2 オブジェクトキー
+     */
+    public void copyObject(String srcKey, String destKey) {
+        try {
+            CopyObjectRequest request = CopyObjectRequest.builder()
+                    .sourceBucket(storageProperties.getBucket())
+                    .sourceKey(srcKey)
+                    .destinationBucket(storageProperties.getBucket())
+                    .destinationKey(destKey)
+                    .build();
+            s3Client.copyObject(request);
+            log.debug("R2オブジェクトコピー完了: srcKey={}, destKey={}", srcKey, destKey);
+        } catch (Exception e) {
+            log.error("R2オブジェクトコピー失敗: srcKey={}, destKey={}", srcKey, destKey, e);
+            throw new BusinessException(StorageErrorCode.UPLOAD_FAILED, e);
         }
     }
 
