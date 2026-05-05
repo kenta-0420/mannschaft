@@ -1,7 +1,7 @@
 # 横断設計: 統合ストレージクォータ
 
-> **ステータス**: 🟡 設計中（Phase 3 基盤 完了 / Phase 4 機能別統合 α〜ε・ζ 完了 / Phase 8 課金 未着手）
-> **実装フェーズ**: Phase 3（基盤・クォータ制御）+ **Phase 4（機能別統合ロードマップ）** + Phase 8（課金・Stripe 連携）
+> **ステータス**: 🟡 設計中（Phase 3 基盤 完了 / Phase 4 機能別統合 完了 / **Phase 5 R2パス命名規則変更 設計完了・実装待ち** / Phase 8 課金 未着手）
+> **実装フェーズ**: Phase 3（基盤・クォータ制御）+ Phase 4（機能別統合ロードマップ）+ **Phase 5（R2スコープ別パス命名規則変更・ドリフトバッチ精度向上）** + Phase 8（課金・Stripe 連携）
 > **最終更新**: 2026-05-04
 > **影響範囲**: F03.14 スケジュールメディア、**F03.15 個人時間割メモ添付**、F04.1 タイムライン、F04.2 チャット、F05.1 掲示板、F05.2 回覧板、F05.5 ファイル共有、F06.1 CMS/ブログ、F06.2 メンバー紹介
 
@@ -500,6 +500,10 @@ POST /api/v1/timeline
       - used_bytes を実際の値に修正
       - storage_usage_logs に DRIFT_CORRECTION を記録
       - アプリケーションログに WARNING を出力
+> **Phase 5 以降**: Phase 5-c 完了後は、`storage_subscriptions` 全件を走査してスコープ別プレフィックス
+> `{feature}/{scopeType}/{scopeId}/` でリストし、スコープ単位での実測値と `used_bytes` を突合する。
+> Phase 5-a〜5-b の移行期間中は旧パス（トップレベル）と新パス（スコープ別）の両方を集計して合算する。
+
 4. 差異が頻発するスコープがあれば、アプリ層のバグ（削除時の減算漏れ等）を調査
 5. Class A オペレーション課金を抑えるため、ListObjectsV2 のページングサイズは
    最大（1000 件/ページ）に設定し、バッチは週次を厳守する
@@ -670,9 +674,7 @@ Phase 3 で基盤（DB 3 テーブル + `StorageQuotaService.checkQuota / record
 - 差異が 1MB 以上の場合: `storage_subscriptions.used_bytes` を実測値に補正 + `DRIFT_CORRECTION` ログを `storage_usage_logs` に挿入
 - `StorageDriftDetectionBatchServiceTest` で 14 件のユニットテストを追加（全 feature_type のマッピング検証・除外ロジック・ドリフト修正フロー）
 
-**今後の改善点（Phase 5 以降）**:
-- 現在の実装では R2 集計がスコープ横断の合計のため、マルチスコープ環境ではサブスクリプション単独の actual 値と完全に一致しない
-- Phase 5 でスコープ別プレフィックス走査（`timeline/{scopeType}/{scopeId}/` のようなスコープ埋め込み）に対応予定
+**Phase 5 で対応**: スコープ別プレフィックス走査は §12 Phase 5 で対応済み（設計完了）。
 
 ### 完了基準（Phase 4 全体）
 
@@ -689,7 +691,145 @@ Phase 8 着手時は **基盤 + 計上が完備されている前提で** 課金
 
 ---
 
-## 12. 変更履歴
+## 12. Phase 5: R2 スコープ別パス命名規則変更・ドリフトバッチ精度向上
+
+### 背景と課題
+
+Phase 4-ζ で実装した `StorageDriftDetectionBatchService` はトップレベルプレフィックス（`timeline/` / `gallery/` など）単位でしか R2 を走査できない。このため **全スコープ横断の合計バイト数** しか取得できず、`storage_subscriptions` の各スコープ（チームA / チームB / 組織）の `used_bytes` と実測値を 1:1 で照合できない。
+
+Phase 8 でチーム・組織ごとの GB 課金を実施するには、ドリフト検出の精度がスコープ単位で保証されている必要がある。Phase 5 では以下の 3 段階でこれを解決する。
+
+### 現状のR2パスとスコープ埋め込み状況
+
+| feature_type | 現在のパスパターン | スコープ埋め込み状態 |
+|---|---|---|
+| TIMELINE | `timeline/{TEAM\|ORGANIZATION\|PERSONAL}/{scopeId}/...` | ✅ 埋め込み済み |
+| GALLERY | `gallery/{TEAM\|ORGANIZATION}/{scopeId}/...` | ✅ 埋め込み済み |
+| CMS | `blog/{TEAM\|ORGANIZATION\|PERSONAL}/{scopeId}/...` | ✅ 埋め込み済み |
+| PERSONAL_TIMETABLE_NOTES | `user/{userId}/timetable-notes/{uuid}.ext` | ⚠️ PERSONAL 固定だが "PERSONAL" セグメント欠落 |
+| FILE_SHARING | `files/{uuid}.ext` | ❌ スコープなし |
+| CHAT | `chat/{uuid}/{filename}` | ❌ スコープなし |
+| CIRCULATION | `circulation/{documentId}/{uuid}` | ❌ スコープなし |
+| SCHEDULE_MEDIA | `schedules/{scheduleId}/{uuid}.ext` | ❌ scheduleId のみ（スコープなし） |
+| BULLETIN | 未実装 | ❌ |
+
+### 新統一パス命名規則
+
+```
+{feature}/{scopeType}/{scopeId}/{context}/{uuid}.{ext}
+```
+
+- `scopeType`: 大文字固定 — `TEAM` / `ORGANIZATION` / `PERSONAL`
+- `scopeId`: team_id / organization_id / user_id（数値）
+- `context`: feature 固有のサブパス（例: `album-{albumId}` / `timetable-notes` / `tmp`）。不要なら省略可
+
+**機能別の新旧パス対照表**
+
+| feature_type | 旧パス | 新パス | 変更有無 |
+|---|---|---|---|
+| TIMELINE | `timeline/{TEAM\|ORGANIZATION\|PERSONAL}/{scopeId}/...` | 変更なし | ─ |
+| GALLERY | `gallery/{TEAM\|ORGANIZATION}/{scopeId}/...` | 変更なし | ─ |
+| CMS | `blog/{TEAM\|ORGANIZATION\|PERSONAL}/{scopeId}/...` | 変更なし | ─ |
+| PERSONAL_TIMETABLE_NOTES | `user/{userId}/timetable-notes/` | `user/PERSONAL/{userId}/timetable-notes/` | ⚠️ PERSONAL セグメント追加 |
+| FILE_SHARING | `files/{uuid}.ext` | `files/{scopeType}/{scopeId}/{uuid}.ext` | 🔴 変更 |
+| CHAT | `chat/{uuid}/{filename}` | `chat/{scopeType}/{scopeId}/{uuid}/{filename}` | 🔴 変更 |
+| CIRCULATION | `circulation/{documentId}/{uuid}` | `circulation/{scopeType}/{scopeId}/{documentId}/{uuid}` | 🔴 変更 |
+| SCHEDULE_MEDIA | `schedules/{scheduleId}/{uuid}.ext` | `schedules/{scopeType}/{scopeId}/{scheduleId}/{uuid}.ext` | 🔴 変更 |
+| BULLETIN | 未実装 | `bulletin/{scopeType}/{scopeId}/{uuid}.ext` | 🆕 新規 |
+
+### 実装サブフェーズ
+
+**Phase 5-a: 新規アップロードに新パス適用**
+
+- **目的**: 以降の新規アップロードがスコープ付きパスに書き込まれるようにする。既存ファイルは旧パスのまま（破壊的変更なし）
+- **対象クラス**（以下を修正）:
+  - `ChatUploadController`: `"chat/" + UUID` → `"chat/" + scopeType + "/" + scopeId + "/" + UUID`
+  - `SharedFileService`: presign API をサーバー生成に変更（OQ-4 決定）。`"files/" + UUID` → `"files/" + scopeType + "/" + scopeId + "/" + UUID`。フロントエンドは返却された `fileKey` をそのまま使う
+  - `CirculationAttachmentService`: `"circulation/{documentId}/{uuid}"` → `"circulation/{scopeType}/{scopeId}/{documentId}/{uuid}"`
+  - `ScheduleMediaService`: `"schedules/{scheduleId}/{uuid}"` → `"schedules/{scopeType}/{scopeId}/{scheduleId}/{uuid}"`
+  - `TimetableSlotUserNoteAttachmentService`: `"user/{userId}/timetable-notes/"` → `"user/PERSONAL/{userId}/timetable-notes/"`
+  - `BulletinAttachmentService`（未実装）: 実装時から `"bulletin/{scopeType}/{scopeId}/{uuid}"` で作成
+
+**Phase 5-b: 既存ファイルの移行バッチ（Phase 5-a 直後に実施）**
+
+- **目的**: 旧パスのファイルを新パスに移行し、ドリフトバッチが全ファイルを正確に計測できるようにする
+- **新規クラス**: `StoragePathMigrationBatchService`
+- **処理フロー**:
+  1. `storage_usage_logs` の `referenceType` + `referenceId` から各機能テーブルの `file_key` を取得
+  2. `file_key` が旧パスパターンに一致するレコードを対象にする
+  3. R2 `CopyObject`（S3互換）で同一バケット内に旧パス → 新パスのコピー
+  4. コピー成功後、各機能テーブルの `file_key` カラムを新パスに UPDATE
+  5. 旧オブジェクトを R2 から削除（ただし削除前に 30 日間保持後、R2 ライフサイクルルールで自動削除を推奨）
+  6. 失敗行は `storage_migration_errors` テーブルに記録してスキップ（再試行可能）
+- **`R2StorageService` への追加**: `copyObject(String srcKey, String destKey): void`（現在未実装）
+- **Flyway**: `V14.020__create_storage_migration_errors_table.sql`（移行エラー記録テーブル）
+- **監視 API**: `GET /api/v1/system-admin/storage-migration-status`（移行進捗の可視化、Phase 5 スコープ内）
+
+`storage_migration_errors` テーブル定義:
+
+| カラム名 | 型 | NULL | 説明 |
+|---------|---|------|------|
+| `id` | BIGINT UNSIGNED | NO | PK |
+| `reference_type` | VARCHAR(50) | NO | 対象テーブル名（例: `shared_files`） |
+| `reference_id` | BIGINT UNSIGNED | NO | 対象レコード ID |
+| `old_file_key` | VARCHAR(1000) | NO | 移行前の R2 キー |
+| `new_file_key` | VARCHAR(1000) | NO | 移行先の R2 キー |
+| `error_message` | TEXT | YES | エラー内容 |
+| `retry_count` | INT | NO | リトライ回数 |
+| `created_at` | DATETIME | NO | エラー発生日時 |
+| `resolved_at` | DATETIME | YES | 解決日時（手動マーク用） |
+
+**Phase 5-c: ドリフトバッチをスコープ別走査に更新**
+
+- **前提**: Phase 5-b 完了後に実施（全ファイルが新パスに移行済みであること）
+- **変更内容**: `StorageDriftDetectionBatchService` の `FEATURE_PREFIX_MAP`（トップレベルプレフィックス）を廃止
+- **新ロジック**: `storage_subscriptions` 全件を走査し、各スコープに対して `{feature}/{scopeType}/{scopeId}/` プレフィックスで R2 を `ListObjectsV2` して実測バイト数を集計
+- **移行期モード（Phase 5-a〜5-b 間）**: 旧パス集計 + 新パス集計を両方実行して合算するフラグを追加（`migrationModeEnabled: boolean`）
+
+### セキュリティ考慮事項
+
+- **旧パスの Presigned URL の有効期限**: Presigned URL の有効期限は 15 分。移行バッチ実行前に払い出された URL は期限切れ後にアクセス不可になるため、15 分以上経過したファイルのみを移行対象とする（または移行後 30 日間は旧パスを R2 に残す）
+- **CopyObject 権限スコープ**: 同一バケット内のみ許可。クロスバケット CopyObject は禁止
+- **移行バッチの actorId**: バッチ操作のため `actorId = NULL` で `storage_usage_logs` に記録
+- **並行書き込みレースコンディション**: 移行バッチは旧パスのみ対象。新規アップロードは新パスに書き込まれるため競合なし
+
+### Class A オペレーション課金の試算
+
+CopyObject は Class A オペレーション（$4.50 / 百万リクエスト）。
+- 仮に全ファイル数が 100 万件の場合: $4.50 の 1 回コスト
+- 旧パスの削除は Class A（`DeleteObject`）: 同額
+- 合計試算（100 万ファイル）: 約 $9.00 の 1 回限りのコスト
+- 受容可能（スコープ別 GB 課金の正確性確保のほうが重要）
+
+### Flyway マイグレーション
+
+```
+V14.020__create_storage_migration_errors_table.sql  -- 移行エラー記録テーブル
+```
+
+### 未解決問題（全件決着）
+
+| OQ | 内容 | 決定 |
+|---|---|---|
+| OQ-1 | `user/` プレフィックスの命名統一 | `user/PERSONAL/{userId}/timetable-notes/` に変更（PERSONAL セグメント追加で一貫性確保） |
+| OQ-2 | Phase 5-b の実施タイミング | Phase 5-a 直後に実施（マスター裁可） |
+| OQ-3 | `bulletin/` の扱い（未実装機能） | Phase 5-a に含め、実装時から新パスを使う |
+| OQ-4 | F05.5 fileKey 生成方法 | サーバー生成に変更（マスター裁可）。presign API がスコープ付き fileKey を生成して返す。フロントエンドは返却された fileKey をそのまま使う |
+| OQ-5 | SharedFolderEntity スコープ情報 | ✅ 解決済み（scopeType / teamId / organizationId / userId フィールドあり） |
+| OQ-6 | `user/` プレフィックス競合 | ✅ 解決済み（アバター等は `user/` を使っていない） |
+| OQ-7 | CopyObject の Class A 課金コスト | 受容する（上記試算参照） |
+| OQ-8 | ロールバック戦略 | 旧パスのオブジェクトを 30 日間保持後に R2 ライフサイクルルールで自動削除 |
+
+### 完了基準
+
+- [ ] Phase 5-a: 新規アップロードが全機能でスコープ付きパス（`{feature}/{scopeType}/{scopeId}/...`）に書き込まれる
+- [ ] Phase 5-b: 移行バッチが完了し、旧パスのファイルが新パスに移行されている。`storage_migration_errors` の未解決件数がゼロ
+- [ ] Phase 5-c: `StorageDriftDetectionBatchService` が `storage_subscriptions` 全件をスコープ別に走査し、`used_bytes` との差異が 1MB 未満に収束している
+- [ ] マルチスコープ環境（チームA / チームB が同じ機能を使用）でスコープ別の使用量が正確に分離されている
+
+---
+
+## 13. 変更履歴
 
 | 日付 | 変更内容 |
 |------|---------|
@@ -702,3 +842,4 @@ Phase 8 着手時は **基盤 + 計上が完備されている前提で** 課金
 | 2026-05-04 | **Phase 4-δ 完了**: F06.1 `BlogMediaService`（CMS/ブログ）・F06.2 `GalleryMediaUploadService` / `PhotoService`（ギャラリー）を `StorageQuotaService` に統合。presign 前 `checkQuota`（CMS超過→CMS_023、ギャラリー超過→GALLERY_014）・presign/uploadPhotos 後 `recordUpload`・孤立メディア削除/deletePhoto 後 `recordDeletion` を実装。`CmsErrorCode` に `MEDIA_QUOTA_EXCEEDED`（CMS_023）、`GalleryErrorCode` に `STORAGE_QUOTA_EXCEEDED`（GALLERY_014）を追加。`MediaUploadUrlRequest` に `fileSize` フィールド追加（null 時はクォータチェックをスキップ・後方互換）。`BlogMediaService` に `ScopeResolution` record 追加（孤立メディアの s3Key からスコープ復元に使用）。単体テスト（`BlogMediaServiceTest` / `GalleryMediaUploadServiceTest` / `PhotoServiceTest`）を更新し F13 Phase 4-δ 統合検証を追加 |
 | 2026-05-04 | **Phase 4-ζ 完了**: `StorageDriftDetectionBatchService` を新規実装。Phase 3 時点でドリフト検出バッチが未実装だったため、新規作成。毎週日曜日深夜 2:00 に `@Scheduled` で実行。R2 `ListObjectsV2`（ページングサイズ 1000）で全プレフィックスを走査。`FEATURE_PREFIX_MAP` に Phase 4-α 追加の `PERSONAL_TIMETABLE_NOTES`（`user/`）/ `SCHEDULE_MEDIA`（`schedules/`）を含む全 9 feature_type のマッピングを登録。差異 1MB 以上で `used_bytes` を自動補正 + `DRIFT_CORRECTION` ログを挿入。`thumbnails/` / `tmp/` を除外。`StorageDriftDetectionBatchServiceTest`（14 件）を追加。Phase 4（α〜ζ）の全 feature_type 走査が完了し、Phase 4 のドリフトバッチ要件を達成 |
 | 2026-05-04 | **Phase 4-ε 完了**: F05.5 ファイル共有を `StorageQuotaService` に統合。調査の結果 `team_storage_subscriptions` テーブル/エンティティは存在せず（V5.050 は不要）、直接 `StorageQuotaService` に接続する実装とした。`SharedFileQuotaService`（新規）を追加し、`FileScopeType` から `StorageScopeType` へのスコープ解決（TEAM/ORGANIZATION/PERSONAL）を実装。`SharedFileService` の `createFile`・`deleteFile` にクォータ統合を追加（削除時の actorId 引数追加）。`SharedFileVersionService` の `createVersion` にクォータ統合を追加。`FileSharingErrorCode` に `STORAGE_QUOTA_EXCEEDED`（FILE_SHARING_016）を追加。`GlobalExceptionHandler` に 409 マッピング追加。単体テスト（`SharedFileQuotaServiceTest` 新規・`SharedFileServiceTest` 更新・`SharedFileVersionServiceTest` 更新・`SharedFileServiceAdditionalTest` 更新・`FileSharingControllerTest` 更新）を整備 |
+| 2026-05-04 | **Phase 5 R2 スコープ別パス命名規則変更 設計完了**: R2 パスにスコープ情報を埋め込む新統一命名規則 `{feature}/{scopeType}/{scopeId}/{context}/{uuid}.{ext}` を確定。TIMELINE / GALLERY / CMS は既に適合済み。FILE_SHARING / CHAT / CIRCULATION / SCHEDULE_MEDIA / PERSONAL_TIMETABLE_NOTES / BULLETIN は新パターンへの変更対象。F05.5 fileKey 生成をサーバー側に移行（クライアント生成廃止）。3 段階実施計画: 5-a（新規アップロードのパス変更）→ 5-b（既存ファイル移行バッチ＋CopyObject 追加＋V14.020）→ 5-c（ドリフトバッチのスコープ別走査化）。全 8 OQ 決着済み。 |
