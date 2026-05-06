@@ -38,6 +38,8 @@ withDefaults(
 const emit = defineEmits<{
   refresh: []
 }>()
+
+const collapsed = ref(false)
 </script>
 
 <template>
@@ -60,7 +62,11 @@ const emit = defineEmits<{
     />
 
     <!-- ヘッダー -->
-    <div v-if="title" class="mb-3 flex items-center justify-between">
+    <div
+      v-if="title"
+      class="flex items-center justify-between"
+      :class="{ 'mb-3': !collapsed }"
+    >
       <NuxtLink
         v-if="to"
         :to="to"
@@ -82,31 +88,58 @@ const emit = defineEmits<{
           {{ title }}
         </h3>
       </div>
-      <Button
-        v-if="refreshable"
-        icon="pi pi-refresh"
-        text
-        rounded
-        size="small"
-        :loading="loading"
-        @click="emit('refresh')"
-      />
+      <div class="flex items-center gap-1">
+        <Button
+          v-if="refreshable"
+          icon="pi pi-refresh"
+          text
+          rounded
+          size="small"
+          :loading="loading"
+          @click="emit('refresh')"
+        />
+        <Button
+          :icon="collapsed ? 'pi pi-plus' : 'pi pi-minus'"
+          text
+          rounded
+          size="small"
+          :aria-label="collapsed ? 'ウィジェットを展開する' : 'ウィジェットを折り畳む'"
+          @click="collapsed = !collapsed"
+        />
+      </div>
     </div>
 
-    <!-- ローディング -->
-    <div v-if="loading" class="space-y-3">
-      <Skeleton height="1.5rem" />
-      <Skeleton height="1.5rem" width="80%" />
-      <Skeleton height="1.5rem" width="60%" />
-    </div>
+    <!-- ローディング＋コンテンツ（折り畳み制御） -->
+    <Transition name="widget-collapse">
+      <div v-show="!collapsed">
+        <!-- ローディング -->
+        <div v-if="loading" class="space-y-3">
+          <Skeleton height="1.5rem" />
+          <Skeleton height="1.5rem" width="80%" />
+          <Skeleton height="1.5rem" width="60%" />
+        </div>
 
-    <!-- コンテンツ -->
-    <div
-      v-else
-      :class="scrollable ? 'overflow-y-auto pr-1' : ''"
-      :style="scrollable ? { maxHeight } : undefined"
-    >
-      <slot />
-    </div>
+        <!-- コンテンツ -->
+        <div
+          v-else
+          :class="scrollable ? 'overflow-y-auto pr-1' : ''"
+          :style="scrollable ? { maxHeight } : undefined"
+        >
+          <slot />
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+.widget-collapse-enter-active,
+.widget-collapse-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.widget-collapse-enter-from,
+.widget-collapse-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+</style>
