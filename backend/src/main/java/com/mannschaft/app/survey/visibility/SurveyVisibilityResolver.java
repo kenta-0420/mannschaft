@@ -160,10 +160,17 @@ public class SurveyVisibilityResolver
     /**
      * AFTER_CLOSE — 締切後のみ可視。
      *
-     * <p>{@code expiresAt == null}（締切未設定）は fail-closed（軍議裁可済 2026-05-04）。
-     * 判定は {@code now > expiresAt}（境界では未公開のまま）。</p>
+     * <p>{@link SurveyStatus#CLOSED} は管理者が明示的に締め切った状態のため、
+     * expiresAt の有無にかかわらず AFTER_CLOSE 条件を満足したものとみなす。</p>
+     *
+     * <p>PUBLISHED 状態での時刻ベース判定: {@code expiresAt == null}（締切未設定）は
+     * fail-closed（軍議裁可済 2026-05-04）。判定は {@code now > expiresAt}（境界では未公開のまま）。</p>
      */
     private boolean evaluateAfterClose(SurveyVisibilityProjection row) {
+        // 明示的に締め切られた → AFTER_CLOSE 条件満足
+        if (row.status() == SurveyStatus.CLOSED) {
+            return true;
+        }
         LocalDateTime expiresAt = row.expiresAt();
         if (expiresAt == null) {
             return false;
