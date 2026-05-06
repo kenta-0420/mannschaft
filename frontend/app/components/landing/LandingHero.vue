@@ -20,9 +20,16 @@ const { t } = useI18n()
         <span class="text-primary">{{ t('landing.hero.title_accent') }}</span>{{ t('landing.hero.title_post') }}
       </h1>
 
-      <p class="mx-auto mb-10 max-w-2xl whitespace-pre-line text-lg leading-relaxed text-surface-600 dark:text-surface-300">
-        {{ t('landing.hero.subtitle') }}
-      </p>
+      <template v-for="(part, i) in t('landing.hero.subtitle').split('\n\n')" :key="i">
+        <p
+          :class="[
+            'mx-auto text-lg leading-relaxed text-surface-600 dark:text-surface-300',
+            i === 0 ? 'mb-4 max-w-2xl' : 'mb-10 max-w-[45.5rem] text-left',
+          ]"
+        >
+          {{ part }}
+        </p>
+      </template>
 
       <div class="flex flex-col items-center justify-center gap-3 sm:flex-row">
         <NuxtLink to="/register">
