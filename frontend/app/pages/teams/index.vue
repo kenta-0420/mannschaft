@@ -31,10 +31,6 @@ watch(viewMode, (mode) => {
 function onTeamCreated(entity: { id: number; name: string }) {
   navigateTo(`/teams/${entity.id}`)
 }
-
-function formatLocation(prefecture: string | null, city: string | null): string {
-  return [prefecture, city].filter(Boolean).join(' ') || '-'
-}
 </script>
 
 <template>
@@ -121,10 +117,7 @@ function formatLocation(prefecture: string | null, city: string | null): string 
             />
           </div>
         </div>
-        <div class="flex items-center justify-between text-sm text-gray-500">
-          <span>
-            <i class="pi pi-map-marker mr-1" />{{ formatLocation(team.prefecture, team.city) }}
-          </span>
+        <div class="flex items-center justify-end text-sm text-gray-500">
           <span>
             <i class="pi pi-users mr-1" />{{ $t('teamHub.memberCount', { count: team.memberCount }) }}
           </span>
@@ -154,9 +147,6 @@ function formatLocation(prefecture: string | null, city: string | null): string 
             class="ml-2 text-xs"
           />
         </div>
-        <span class="shrink-0 text-sm text-gray-500">
-          <i class="pi pi-map-marker mr-1" />{{ formatLocation(team.prefecture, team.city) }}
-        </span>
         <span class="shrink-0 text-sm text-gray-500">
           <i class="pi pi-users mr-1" />{{ $t('teamHub.memberCount', { count: team.memberCount }) }}
         </span>

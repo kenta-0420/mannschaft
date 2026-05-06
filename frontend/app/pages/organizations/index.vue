@@ -30,10 +30,6 @@ watch(viewMode, (mode) => {
 function onOrgCreated(entity: { id: number; name: string }) {
   navigateTo(`/organizations/${entity.id}`)
 }
-
-function formatLocation(prefecture: string | null, city: string | null): string {
-  return [prefecture, city].filter(Boolean).join(' ') || '-'
-}
 </script>
 
 <template>
@@ -115,10 +111,7 @@ function formatLocation(prefecture: string | null, city: string | null): string 
             </h3>
           </div>
         </div>
-        <div class="flex items-center justify-between text-sm text-gray-500">
-          <span>
-            <i class="pi pi-map-marker mr-1" />{{ formatLocation(org.prefecture, org.city) }}
-          </span>
+        <div class="flex items-center justify-end text-sm text-gray-500">
           <span>
             <i class="pi pi-users mr-1" />{{ $t('orgHub.memberCount', { count: org.memberCount }) }}
           </span>
@@ -143,9 +136,6 @@ function formatLocation(prefecture: string | null, city: string | null): string 
         <div class="min-w-0 flex-1">
           <span class="truncate font-semibold">{{ org.nickname1 || org.name }}</span>
         </div>
-        <span class="shrink-0 text-sm text-gray-500">
-          <i class="pi pi-map-marker mr-1" />{{ formatLocation(org.prefecture, org.city) }}
-        </span>
         <span class="shrink-0 text-sm text-gray-500">
           <i class="pi pi-users mr-1" />{{ $t('orgHub.memberCount', { count: org.memberCount }) }}
         </span>
