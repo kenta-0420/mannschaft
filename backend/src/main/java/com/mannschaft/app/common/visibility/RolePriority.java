@@ -80,4 +80,5 @@ public final class RolePriority {
         }
         return PRIORITY_MAP.containsKey(role);
     }
+
 }
