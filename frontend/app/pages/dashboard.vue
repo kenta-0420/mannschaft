@@ -59,7 +59,7 @@ onMounted(async () => {
       </div>
 
       <!-- データウィジェット群 (広告込み) -->
-      <div class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <WidgetFamilyHub v-if="hasFamilyTeam" />
         <WidgetNotices />
         <WidgetUpcomingEvents />
@@ -79,7 +79,7 @@ onMounted(async () => {
       </div>
 
       <!-- チームを探す / チームを作る -->
-      <div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <!-- 探す -->
         <div
           class="rounded-xl border border-dashed border-surface-300 bg-surface-50 p-6 dark:border-surface-600 dark:bg-surface-800"
