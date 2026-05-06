@@ -150,7 +150,30 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-    maxHeapSize = "2g"
+    // テスト数が 180+ の SpringBootTest を含み、累積でヒープが膨らむ。
+    // 2g では CI で OOM（mysql-cj-abandoned-connection-cleanup スレッドからの OutOfMemoryError）が発生したため 3g に引き上げ。
+    maxHeapSize = "3g"
+    // 100 テストごとに JVM を fork し直し、累積メモリ（特に MySQL Connector の AbandonedConnectionCleanup が
+    // WeakReference 監視している放置 Connection オブジェクトの累積）をリセットする。
+    // forkEvery を入れないと全 ~1500 テストを 1 JVM で走らせるため、後半でヒープが枯渇する。
+    setForkEvery(100L)
+    // GC を明示し OOM 時にヒープダンプを残す（CI で再発時の調査用）
+    //
+    // -Dcom.mysql.cj.disableAbandonedConnectionCleanup=true:
+    //   MySQL Connector/J の AbandonedConnectionCleanupThread を無効化する。
+    //   このスレッドは「close() を呼ばずに参照を捨てた Connection」を WeakReference で監視し
+    //   GC 後に物理 close するためのものだが、HikariCP は必ず Connection.close() を保証するため
+    //   本来クリーンアップ対象は発生しない。にもかかわらず Connection 取得のたびに WeakReference
+    //   が内部 Set に積まれ続け、GC 跡地が AbandonedConnectionCleanupThread の「mysql-cj-abandoned-
+    //   connection-cleanup」スレッド由来の OutOfMemoryError を引き起こす（実際に CI で 27 分の沈黙
+    //   後に発生）。本フラグで cleanup スレッド自体の起動を抑止し、Hikari に Connection ライフサイクル
+    //   を完全に委譲する。これは MySQL Connector/J 公式の HikariCP 連携推奨設定。
+    jvmArgs(
+        "-XX:+UseG1GC",
+        "-XX:+HeapDumpOnOutOfMemoryError",
+        "-XX:HeapDumpPath=build/heap-dump.hprof",
+        "-Dcom.mysql.cj.disableAbandonedConnectionCleanup=true"
+    )
     finalizedBy(tasks.jacocoTestReport)
     testLogging {
         // 失敗時に完全スタックトレースを出力する。CI ログのみで NPE 起源を追跡できるようにする。
