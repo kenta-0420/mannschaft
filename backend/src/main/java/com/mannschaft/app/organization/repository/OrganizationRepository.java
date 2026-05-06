@@ -1,6 +1,7 @@
 package com.mannschaft.app.organization.repository;
 
 import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.visibility.OrganizationVisibilityProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -94,4 +95,29 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     @Query(value = "SELECT id FROM organizations WHERE id IN (:ids) AND deleted_at IS NOT NULL",
            nativeQuery = true)
     List<Long> findInactiveIdsByIdIn(@Param("ids") Collection<Long> ids);
+
+    // ========================================================================
+    // F00 Phase D-δ: OrganizationVisibilityResolver 用 Projection 一括取得
+    //
+    // ContentVisibilityChecker.canView(ReferenceType.ORGANIZATION, ...) が
+    // OrganizationVisibilityResolver 経由でこのクエリを呼び出す。
+    // 設計書: docs/features/F00_content_visibility_resolver.md §4.6 / §7.5。
+    // ========================================================================
+
+    /**
+     * F00 Phase D-δ: 可視性判定用 Projection を ID 集合で一括取得する。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} が適用された通常のクエリとは異なり、
+     * 本クエリでは {@code archivedAt} / {@code deletedAt} を射影することで
+     * {@link com.mannschaft.app.common.visibility.ContentStatus} への正規化を Resolver 側で
+     * 行えるようにしている。論理削除済行は {@code @SQLRestriction} により通常は除外されるため、
+     * {@code deletedAt != null} ケースは主にフラグ不整合の保険として機能する。</p>
+     *
+     * @param ids 取得対象の組織 ID 集合
+     * @return 実存する {@link OrganizationVisibilityProjection} の List
+     */
+    @Query("SELECT new com.mannschaft.app.organization.visibility.OrganizationVisibilityProjection(" +
+           "o.id, o.id, o.visibility, o.archivedAt, o.deletedAt) " +
+           "FROM OrganizationEntity o WHERE o.id IN :ids")
+    List<OrganizationVisibilityProjection> findVisibilityProjectionsByIdIn(@Param("ids") Collection<Long> ids);
 }
