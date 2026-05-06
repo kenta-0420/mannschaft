@@ -1154,7 +1154,6 @@ class AuthServiceTest {
             UserEntity user = createActiveUser();
             given(userRepository.findById(1L)).willReturn(Optional.of(user));
             given(passwordEncoder.encode("NewPassword1!")).willReturn("new-encoded-hash");
-            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(any())).willReturn(List.of());
 
             // When

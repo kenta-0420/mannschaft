@@ -231,7 +231,8 @@ class AuthLoginControllerTest {
                 .willReturn(ApiResponse.of(msgResp));
 
         mockMvc.perform(post("/api/v1/auth/password-reset/request")
-                        .param("email", "test@example.com"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\": \"test@example.com\"}"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data.message").value("パスワードリセットメールを送信しました"));
