@@ -10,8 +10,17 @@ export function useTodoGantt() {
   }
 
   /**
-   * ガントビュー用 TODO 一覧を取得する
+   * 個人ガントビュー用 TODO 一覧を取得する
+   * GET /api/v1/todos/gantt?from=yyyy-MM-dd&to=yyyy-MM-dd
+   */
+  async function getPersonalGanttTodos(from: string, to: string): Promise<GanttResponse> {
+    return api<GanttResponse>(`/api/v1/todos/gantt?from=${from}&to=${to}`)
+  }
+
+  /**
+   * チーム/組織ガントビュー用 TODO 一覧を取得する
    * GET /api/v1/teams/{teamId}/todos/gantt?from=yyyy-MM-dd&to=yyyy-MM-dd
+   * GET /api/v1/organizations/{orgId}/todos/gantt?from=yyyy-MM-dd&to=yyyy-MM-dd
    */
   async function getGanttTodos(
     scopeType: 'team' | 'organization',
@@ -25,6 +34,7 @@ export function useTodoGantt() {
   }
 
   return {
+    getPersonalGanttTodos,
     getGanttTodos,
   }
 }
