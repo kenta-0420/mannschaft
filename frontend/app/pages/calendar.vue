@@ -342,7 +342,8 @@ async function loadGantt() {
 
 async function onTabChange(tab: CalendarTab) {
   activeTab.value = tab
-  if (tab === 'gantt' && ganttTodos.value.length === 0) {
+  if (tab === 'gantt') {
+    // スコープが変わっている可能性があるため常に再読み込み
     await loadGantt()
   }
 }
