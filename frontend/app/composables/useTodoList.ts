@@ -6,6 +6,7 @@ export interface MyTodo {
   description: string | null
   status: string
   priority: string
+  startDate: string | null
   dueDate: string | null
   daysRemaining: number | null
   assignees: Array<{ id: number; userId: number; displayName: string; avatarUrl: string | null }>
