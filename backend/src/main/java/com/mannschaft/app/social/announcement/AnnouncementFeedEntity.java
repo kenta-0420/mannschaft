@@ -128,6 +128,15 @@ public class AnnouncementFeedEntity extends BaseEntity {
     private String visibility = "MEMBERS_ONLY";
 
     /**
+     * 組織告知でのチーム絞り込み対象（JSON 配列で team.id を保持）。
+     * NULL = スコープの全対象者。TEAM スコープでは常に NULL。
+     * 値例: "[1,3,5]"（team.id の JSON 配列文字列）
+     * UI フィルタのみに使用。コンテンツアクセス制御ではない（F02.8 §7 参照）。
+     */
+    @Column(columnDefinition = "JSON")
+    private String targetTeamIds;
+
+    /**
      * 表示開始日時（NULL = 即時）。予約公開のブログ記事を事前登録する場合に使用。
      */
     @Column
