@@ -1,14 +1,14 @@
 {
   "landing": {
     "hero": {
-      "badge": "La plataforma social para equipos que nunca supiste que necesitabas",
+      "badge": "Todo en uno. La plataforma integrada, \"Mannschaft\"",
       "title_pre": "La plataforma que ",
       "title_accent": "maximiza",
       "title_post": " el potencial de tu equipo",
-      "subtitle": "Mannschaft es una plataforma de gestión todo en uno que reúne todo lo que tu equipo u organización necesita. Desde equipos deportivos hasta salones, clínicas y reuniones de exalumnos — posibilidades infinitas.",
+      "subtitle": "Mannschaft es una plataforma de gestión todo en uno que reúne todo lo que tu equipo u organización necesita.\n\nDesde equipos deportivos hasta salones, clínicas, reuniones de exalumnos y clases — \"posibilidades infinitas\".",
       "cta_register": "Empieza gratis",
       "cta_login": "Iniciar sesión",
-      "note": "Básicamente gratis. Solo crea una cuenta personal para comenzar."
+      "note": "Básicamente gratis. Solo crea una cuenta personal."
     },
     "stats": {
       "heading": "Registros actuales",
@@ -21,14 +21,14 @@
       "heading_kamo": " (quizás)",
       "subheading": "Todas las funciones para tu equipo, en una sola plataforma",
       "items": {
-        "0": { "title": "Gestión de equipos y orgs", "desc": "Invita miembros, asigna roles y gestiona permisos fácilmente" },
-        "1": { "title": "Eventos y calendario", "desc": "Comparte agendas, confirma asistencia y configura recordatorios" },
-        "2": { "title": "Chat y tablón de anuncios", "desc": "Chat grupal, circulares y timeline para una comunicación fluida" },
-        "3": { "title": "Gestión de turnos", "desc": "Crea turnos, recoge preferencias y gestiona intercambios" },
-        "4": { "title": "Formularios y encuestas", "desc": "Crea formularios, recoge respuestas y analiza resultados" },
-        "5": { "title": "Galería y archivos", "desc": "Comparte fotos, vídeos y documentos de forma segura con tu equipo" },
-        "6": { "title": "Cuotas y pagos", "desc": "Digitaliza la facturación de cuotas y el seguimiento de pagos" },
-        "7": { "title": "Emparejamientos y torneos", "desc": "Organiza enfrentamientos, torneos y registra resultados" }
+        "0": { "title": "Gestión de equipos y orgs", "desc": "Invita miembros, asigna roles y gestiona permisos fácilmente", "detail": "Cobertura completa para gestión de miembros, asignación de roles y control de permisos. Gestiona múltiples equipos en una organización incluso a gran escala.", "features": ["Invitación y gestión de miembros", "Gestión de jerarquía equipo/org", "Configuración de roles y permisos", "Gestión de perfil e icono"], "useCases": ["Gestión de plantilla de equipo deportivo", "Gestión de departamentos y proyectos empresariales", "Operaciones de comunidad local"] },
+        "1": { "title": "Eventos y calendario", "desc": "Comparte agendas, confirma asistencia y configura recordatorios", "detail": "Centraliza los eventos del equipo en un calendario compartido. Comparte horarios a nivel individual, de equipo u organización y gestiona la asistencia fácilmente.", "features": ["Calendario de equipo compartido", "Gestión de asistencia y recordatorios", "Configuración de eventos recurrentes", "Integración con agenda personal"], "useCases": ["Gestión de horarios de entrenamiento y partidos", "Gestión de reuniones y eventos internos", "Calendarios de clases y eventos escolares"] },
+        "2": { "title": "Chat y tablón de anuncios", "desc": "Chat grupal, circulares y timeline para una comunicación fluida", "detail": "Herramienta de comunicación multifunción que combina chat en tiempo real y tablón de anuncios. Crea canales por equipo para mantener la información organizada.", "features": ["Chat en tiempo real", "Tablón de anuncios y notificaciones", "Creación de canales y grupos", "Adjuntos y compartición de imágenes"], "useCases": ["Comunicación diaria del equipo", "Publicación de anuncios importantes", "Discusiones por proyecto"] },
+        "3": { "title": "Gestión de turnos", "desc": "Crea turnos, recoge preferencias y gestiona intercambios", "detail": "Digitaliza todo el flujo de gestión de turnos, desde la creación hasta la recogida de preferencias, confirmación y notificaciones. Compatible con cálculo de salario por hora.", "features": ["Recogida de preferencias de turno", "Asistencia para generación automática", "Cálculo de salario y coste de personal", "Solicitudes de cambio y sustitución"], "useCases": ["Gestión de turnos en restauración y retail", "Turnos de personal médico y de cuidados", "Gestión de asistencia de trabajadores a tiempo parcial"] },
+        "4": { "title": "Formularios y encuestas", "desc": "Crea formularios, recoge respuestas y analiza resultados", "detail": "Recoge opiniones e inscripciones fácilmente con formularios y encuestas personalizables. Los resultados se visualizan en gráficos.", "features": ["Constructor de formularios personalizados", "Agregación de encuestas y gráficos", "Recordatorios a respondientes", "Exportación CSV"], "useCases": ["Inscripción a eventos", "Encuestas internas del equipo", "Encuestas de satisfacción del cliente"] },
+        "5": { "title": "Galería y archivos", "desc": "Comparte fotos, vídeos y documentos de forma segura con tu equipo", "detail": "Comparte recuerdos de las actividades del equipo en galerías. Gestiona documentos y archivos en un solo lugar y encuentra lo que necesitas al instante.", "features": ["Galería de fotos y vídeos", "Gestión y compartición de archivos", "Creación de álbumes", "Integración con almacenamiento en la nube"], "useCases": ["Compartir fotos de partidos y entrenamientos", "Almacenamiento de documentos y materiales", "Archivo de registros de actividades"] },
+        "6": { "title": "Cuotas y pagos", "desc": "Digitaliza la facturación de cuotas y el seguimiento de pagos", "detail": "Gestiona la recaudación de cuotas, reembolsos de gastos y administración de costes del equipo completamente online. Automatiza la verificación del estado de pago y los recordatorios.", "features": ["Recaudación y gestión de cuotas", "Reembolso de gastos", "Visualización del estado de pago", "Recordatorios automáticos"], "useCases": ["Gestión de cuotas mensuales del equipo", "Liquidación de gastos de viajes y campamentos", "Contabilidad de asociaciones de padres"] },
+        "7": { "title": "Emparejamientos y torneos", "desc": "Organiza enfrentamientos, torneos y registra resultados", "detail": "Agiliza el emparejamiento de equipos y la gestión de torneos. Soporte total desde el reclutamiento de rivales hasta la gestión de resultados.", "features": ["Emparejamiento de equipos", "Gestión de torneos y competiciones", "Registro de resultados de partidos", "Gestión de clasificaciones"], "useCases": ["Gestión de torneos deportivos", "Torneos de esports", "Gestión de ligas y federaciones locales"] }
       }
     },
     "steps": {
@@ -44,10 +44,10 @@
       "heading": "Usado en muchos entornos",
       "subheading": "Adaptable a equipos y organizaciones de cualquier sector o tamaño",
       "items": {
-        "0": { "title": "Equipos deportivos", "desc": "Gestión de entrenamientos y partidos, coordinación de turnos, asistencia y clasificaciones." },
-        "1": { "title": "Comunidades locales", "desc": "Centraliza anuncios de eventos, boletines y gestión de cuotas en línea. También perfecto para reuniones de exalumnos, asociaciones vecinales y grupos de voluntarios." },
-        "2": { "title": "Empresas y oficinas", "desc": "Gestión de proyectos interdepartamentales, flujos de aprobación y comunicación interna. También perfecto para pequeños negocios como salones de belleza y clínicas." },
-        "3": { "title": "Educación y escuelas", "desc": "Comunicación con padres, gestión de clubes, registro de actividades, fotos y encuestas." }
+        "0": { "title": "Equipos deportivos", "desc": "Gestión de entrenamientos y partidos, coordinación de turnos, asistencia y clasificaciones.", "detail": "Desde la gestión de horarios de entrenamiento y partidos hasta la confirmación de asistencia y la recaudación de cuotas. Todo lo que necesita un equipo deportivo.", "benefits": ["Fácil compartición de horarios de entrenamiento y partidos", "Reducción del esfuerzo de comunicación con recordatorios de asistencia", "Sin complicaciones para la recaudación de cuotas"], "features_used": ["Calendario", "Chat", "Gestión de cuotas", "Gestión de turnos"] },
+        "1": { "title": "Comunidades locales", "desc": "Centraliza anuncios de eventos, boletines y gestión de cuotas en línea. También perfecto para reuniones de exalumnos, asociaciones vecinales y grupos de voluntarios.", "detail": "Apoyo digital para conexiones locales como asociaciones de vecinos, grupos cívicos y organizaciones de voluntarios. Desde anuncios hasta registros de actividades.", "benefits": ["Difusión centralizada de anuncios y comunicaciones", "Archivo de registros de actividades y fotos", "Gestión de participantes y liquidación de gastos"], "features_used": ["Tablón de anuncios", "Galería", "Gestión de cuotas", "Encuestas"] },
+        "2": { "title": "Empresas y oficinas", "desc": "Gestión de proyectos interdepartamentales, flujos de aprobación y comunicación interna. También perfecto para pequeños negocios como salones de belleza y clínicas.", "detail": "Desde el intercambio de información entre departamentos hasta la gestión de turnos. Una herramienta de gestión organizacional flexible para empresas de todos los tamaños.", "benefits": ["Intercambio de información entre departamentos y equipos", "Digitalización de la gestión de turnos y asistencia", "Eficiencia en encuestas internas y formularios de solicitud"], "features_used": ["Gestión de equipos", "Chat", "Gestión de turnos", "Formularios"] },
+        "3": { "title": "Educación y escuelas", "desc": "Comunicación con padres, gestión de clubes, registro de actividades, fotos y encuestas.", "detail": "Soporte para todas las comunidades relacionadas con la escuela, incluidas clases, clubs, asociaciones de padres y grupos de padres. Desde tablones de anuncios hasta gestión de eventos.", "benefits": ["Comunicación fluida con padres y alumnos", "Compartición de horarios de eventos y clases", "Gestión y liquidación de cuotas de la asociación de padres"], "features_used": ["Calendario", "Tablón de anuncios", "Gestión de cuotas", "Encuestas"] }
       }
     },
     "faq": {
@@ -86,6 +86,61 @@
       "skip_to_content": "Ir al contenido principal",
       "open_menu": "Abrir menú",
       "nav_label": "Navegación principal"
+    },
+    "product": {
+      "title": "Producto Mannschaft",
+      "desc": "Una plataforma de gestión todo en uno con todo lo que tu equipo u organización necesita",
+      "features_heading": "Funciones principales",
+      "pricing_heading": "Planes de precios",
+      "pricing": {
+        "free": { "name": "Gratis", "price": "€0", "desc": "Para individuos y equipos pequeños", "features": ["Todas las funciones básicas", "Hasta 10 miembros", "1GB de almacenamiento"] },
+        "pro": { "name": "Pro", "price": "€9,80/mes", "desc": "Para equipos en crecimiento", "features": ["Todas las funciones gratuitas", "Miembros ilimitados", "50GB de almacenamiento", "Soporte prioritario"] },
+        "enterprise": { "name": "Enterprise", "price": "Contáctanos", "desc": "Para grandes organizaciones", "features": ["Todas las funciones Pro", "Integraciones personalizadas", "Soporte dedicado", "Garantía SLA"] }
+      }
+    },
+    "legal": {
+      "terms": {
+        "title": "Términos de servicio",
+        "last_updated": "Última actualización",
+        "placeholder": "El contenido de los Términos de servicio se colocará aquí. Por favor, reemplácelo con el documento legal real.",
+        "section1_title": "Artículo 1 (Aplicación)",
+        "section1_content": "Estos términos establecen las condiciones de uso de Mannschaft (el \"Servicio\").",
+        "section2_title": "Artículo 2 (Registro)",
+        "section2_content": "Los usuarios se registrarán de acuerdo con los procedimientos prescritos tras aceptar estos términos.",
+        "section3_title": "Artículo 3 (Actividades prohibidas)",
+        "section3_content": "Los usuarios no podrán participar en actividades que violen leyes o el orden público, ni en ninguna otra actividad considerada inapropiada por el Servicio.",
+        "section4_title": "Artículo 4 (Exención de responsabilidad)",
+        "section4_content": "El Servicio no acepta ninguna responsabilidad por la interrupción, terminación o modificación del Servicio.",
+        "section5_title": "Artículo 5 (Ley aplicable y jurisdicción)",
+        "section5_content": "Estos términos se rigen por la ley japonesa. El Tribunal de Distrito de Tokio tendrá jurisdicción exclusiva sobre cualquier disputa."
+      },
+      "privacy": {
+        "title": "Política de privacidad",
+        "last_updated": "Última actualización",
+        "placeholder": "El contenido de la Política de privacidad se colocará aquí. Por favor, reemplácelo con el documento legal real.",
+        "section1_title": "1. Información que recopilamos",
+        "section1_content": "Recopilamos información como dirección de correo electrónico y nombre al registrarse para una cuenta.",
+        "section2_title": "2. Cómo usamos la información",
+        "section2_content": "La información recopilada se utiliza para la prestación, mejora del servicio y soporte al cliente.",
+        "section3_title": "3. Compartir información",
+        "section3_content": "No compartimos información personal con terceros sin consentimiento, excepto cuando lo exija la ley.",
+        "section4_title": "4. Seguridad",
+        "section4_content": "Implementamos medidas de seguridad adecuadas que incluyen cifrado SSL/TLS y copias de seguridad periódicas.",
+        "section5_title": "5. Contacto",
+        "section5_content": "Para consultas sobre el manejo de información personal, póngase en contacto con nosotros a través del formulario de contacto."
+      }
+    },
+    "features_detail": {
+      "back_to_top": "← Volver al inicio",
+      "cta_register": "Empieza gratis",
+      "key_features": "Funciones principales",
+      "use_cases": "Casos de uso"
+    },
+    "use_cases_detail": {
+      "back_to_top": "← Volver al inicio",
+      "cta_register": "Empieza gratis",
+      "features_used": "Funciones utilizadas",
+      "benefits": "Ventajas"
     },
     "seo": {
       "title": "Mannschaft - Plataforma de gestión de equipos todo en uno",
