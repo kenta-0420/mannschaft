@@ -27,6 +27,15 @@ public class TodoStatusChangeRequest {
     private final Long statusLabelId;
 
     /**
+     * status のみで作成する後方互換コンストラクタ（F02.3.1 以前の呼び出し元向け）。
+     *
+     * @param status ステータス文字列
+     */
+    public TodoStatusChangeRequest(String status) {
+        this(status, null);
+    }
+
+    /**
      * status または statusLabelId のいずれか1つ以上が指定されていることを検証する。
      */
     @AssertTrue(message = "status または statusLabelId のいずれかを指定してください")

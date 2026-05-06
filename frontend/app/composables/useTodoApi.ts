@@ -1,4 +1,9 @@
 import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
+import type {
+  HandoffApiResponse,
+  HandoffHistoryResponse,
+  HandoffRequest,
+} from '~/types/todoHandoff'
 
 interface TodoListParams {
   status?: string
@@ -261,6 +266,36 @@ export function useTodoApi() {
     })
   }
 
+  // === Handoff (キャッチボール) — F02.3.1 Phase 2 ===
+  /**
+   * チーム/組織 TODO を別メンバーへ渡す。
+   * 個人 TODO では呼び出してはいけない（バックエンドが 400 を返す）。
+   */
+  async function handoff(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoId: number,
+    body: HandoffRequest,
+  ) {
+    return api<HandoffApiResponse>(
+      `${buildBase(scopeType, scopeId)}/todos/${todoId}/handoff`,
+      { method: 'POST', body },
+    )
+  }
+
+  /**
+   * チーム/組織 TODO のキャッチボール履歴を新しい順で取得する。
+   */
+  async function getHandoffHistory(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoId: number,
+  ) {
+    return api<HandoffHistoryResponse>(
+      `${buildBase(scopeType, scopeId)}/todos/${todoId}/handoffs`,
+    )
+  }
+
   return {
     getMyTodos,
     getPersonalTodo,
@@ -280,5 +315,7 @@ export function useTodoApi() {
     addComment,
     updateComment,
     deleteComment,
+    handoff,
+    getHandoffHistory,
   }
 }
