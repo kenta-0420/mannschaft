@@ -127,6 +127,12 @@ feature:
     enabled: false
     monthly-close-cron-enabled: false
     retry-batch-enabled: false
+  # F00 Phase D-γ: TeamVisibilityResolver 段階展開フラグ
+  # false = 無効（Bean 未登録、ContentVisibilityChecker は TEAM を fail-closed で処理）
+  # true  = 有効（TeamVisibilityResolver が登録され TEAM の可視性評価が機能する）
+  # 有効化したい環境では application-{profile}.yml で true を設定すること。
+  visibility-resolver:
+    team: false
   # F00.5 メンバーシップ基盤再設計
   # dualWrite.enabled: Phase 4 完了で false に変更済み（二重書き込みコード自体は Phase 4 で物理削除）
   # shadowComparison.enabled: GET /teams/{id}/members の旧実装と新実装を Shadow 比較する

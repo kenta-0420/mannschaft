@@ -1,6 +1,7 @@
 package com.mannschaft.app.team.repository;
 
 import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.visibility.TeamVisibilityProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,4 +74,21 @@ public interface TeamRepository extends JpaRepository<TeamEntity, Long> {
      */
     @Query("SELECT COUNT(t) FROM TeamEntity t WHERE t.deletedAt IS NULL AND t.archivedAt IS NULL AND t.template = :template")
     long countByTemplate(@Param("template") String template);
+
+    /**
+     * F00 Phase D-γ: 可視性判定用 Projection を ID 集合で一括取得する。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} が適用された通常のクエリとは異なり、
+     * 本クエリでは {@code archivedAt} / {@code deletedAt} を射影することで
+     * {@link com.mannschaft.app.common.visibility.ContentStatus} への正規化を Resolver 側で
+     * 行えるようにしている。論理削除済行は {@code @SQLRestriction} により通常は除外されるため、
+     * {@code deletedAt != null} ケースは主にフラグ不整合の保険として機能する。</p>
+     *
+     * @param ids 取得対象のチーム ID 集合
+     * @return 実存する {@link TeamVisibilityProjection} の List
+     */
+    @Query("SELECT new com.mannschaft.app.team.visibility.TeamVisibilityProjection(" +
+           "t.id, t.id, t.visibility, t.archivedAt, t.deletedAt) " +
+           "FROM TeamEntity t WHERE t.id IN :ids")
+    List<TeamVisibilityProjection> findVisibilityProjectionsByIdIn(@Param("ids") Collection<Long> ids);
 }
