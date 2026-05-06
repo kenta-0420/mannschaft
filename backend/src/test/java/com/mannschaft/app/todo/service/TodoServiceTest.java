@@ -485,7 +485,7 @@ class TodoServiceTest {
             TodoEntity todo = createOpenTodo();
             UpdateTodoRequest request = new UpdateTodoRequest(
                     "更新タイトル", "更新説明", null, null, "URGENT",
-                    LocalDate.now().plusDays(3), LocalTime.of(12, 0), 5);
+                    null, LocalDate.now().plusDays(3), LocalTime.of(12, 0), 5);
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> {
@@ -524,7 +524,7 @@ class TodoServiceTest {
                     .updatedAt(LocalDateTime.now())
                     .build();
             UpdateTodoRequest request = new UpdateTodoRequest(
-                    "更新", null, PROJECT_ID, null, null, null, null, null);
+                    "更新", null, PROJECT_ID, null, null, null, null, null, null);
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
             given(projectService.findProjectOrThrow(PROJECT_ID)).willReturn(wrongScopeProject);
 
@@ -540,7 +540,7 @@ class TodoServiceTest {
         void updateTodo_不在_TODO010例外() {
             // Given
             UpdateTodoRequest request = new UpdateTodoRequest(
-                    "更新", null, null, null, null, null, null, null);
+                    "更新", null, null, null, null, null, null, null, null);
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.empty());
 
             // When / Then
@@ -1072,7 +1072,7 @@ class TodoServiceTest {
             // given
             TodoEntity todo = createParentTodo();
             UpdateTodoRequest request = new UpdateTodoRequest(
-                    "更新タイトル", null, PROJECT_ID, null, null, null, null, null);
+                    "更新タイトル", null, PROJECT_ID, null, null, null, null, null, null);
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
             given(todoRepository.countByParentIdAndDeletedAtIsNull(TODO_ID)).willReturn(3L);
 

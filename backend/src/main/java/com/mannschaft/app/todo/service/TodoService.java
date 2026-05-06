@@ -297,6 +297,7 @@ public class TodoService {
                 .projectId(newProjectId)
                 .milestoneId(effectiveMilestoneId)
                 .priority(priority)
+                .startDate(request.getStartDate())
                 .dueDate(request.getDueDate())
                 .dueTime(request.getDueTime())
                 .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : todo.getSortOrder())

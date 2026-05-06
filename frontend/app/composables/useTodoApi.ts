@@ -82,6 +82,14 @@ export function useTodoApi() {
     })
   }
 
+  async function getPersonalTodo(todoId: number) {
+    return api<TodoDetail>(`/api/v1/todos/${todoId}`)
+  }
+
+  async function updatePersonalTodo(todoId: number, body: Record<string, unknown>) {
+    return api<TodoDetail>(`/api/v1/todos/${todoId}`, { method: 'PUT', body })
+  }
+
   // スコープを問わず使える汎用ステータス変更
   async function changeTodoStatusById(
     scopeType: string,
@@ -248,6 +256,8 @@ export function useTodoApi() {
   return {
     getMyTodos,
     createPersonalTodo,
+    getPersonalTodo,
+    updatePersonalTodo,
     changeTodoStatusById,
     listTodos,
     getTodo,

@@ -6,6 +6,7 @@ import com.mannschaft.app.todo.dto.CreateTodoRequest;
 import com.mannschaft.app.todo.dto.GanttTodoResponse;
 import com.mannschaft.app.todo.dto.LinkScheduleRequest;
 import com.mannschaft.app.todo.dto.PatchTodoRequest;
+import com.mannschaft.app.todo.dto.UpdateTodoRequest;
 import com.mannschaft.app.todo.dto.PersonalMemoRequest;
 import com.mannschaft.app.todo.dto.PersonalMemoResponse;
 import com.mannschaft.app.todo.dto.ProgressModeRequest;
@@ -79,6 +80,28 @@ public class PersonalTodoController {
                 request.getProgressRate(), request.getCreateLinkedSchedule());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(todoService.createTodo(TodoScopeType.PERSONAL, userId, enriched, userId));
+    }
+
+    /**
+     * 個人TODO詳細を取得する。
+     */
+    @GetMapping("/{id}")
+    @Operation(summary = "個人TODO詳細取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<TodoResponse>> getPersonalTodo(@PathVariable Long id) {
+        return ResponseEntity.ok(todoService.getTodo(id));
+    }
+
+    /**
+     * 個人TODOを更新する（タイトル・説明・優先度・開始日・期限）。
+     */
+    @PutMapping("/{id}")
+    @Operation(summary = "個人TODO更新")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<TodoResponse>> updatePersonalTodo(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateTodoRequest request) {
+        return ResponseEntity.ok(todoService.updateTodo(id, request));
     }
 
     /**

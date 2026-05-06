@@ -1,5 +1,6 @@
 package com.mannschaft.app.todo.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -27,6 +28,11 @@ public class UpdateTodoRequest {
 
     private final String priority;
 
+    /** 開始日（nullable）。ガントバー表示に使用する。 */
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private final LocalDate startDate;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private final LocalDate dueDate;
 
     private final LocalTime dueTime;

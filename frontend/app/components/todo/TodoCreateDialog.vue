@@ -10,6 +10,7 @@ const createForm = ref({
   title: '',
   description: '',
   priority: 'MEDIUM' as string,
+  startDate: null as Date | null,
   dueDate: null as Date | null,
   scopeType: 'PERSONAL' as string,
   scopeId: null as number | null,
@@ -45,6 +46,7 @@ function resetForm() {
     title: '',
     description: '',
     priority: 'MEDIUM',
+    startDate: null,
     dueDate: null,
     scopeType: 'PERSONAL',
     scopeId: null,
@@ -62,6 +64,9 @@ async function submitCreate() {
       title: createForm.value.title.trim(),
       description: createForm.value.description.trim() || undefined,
       priority: createForm.value.priority,
+      startDate: createForm.value.startDate
+        ? createForm.value.startDate.toISOString().slice(0, 10)
+        : undefined,
       dueDate: createForm.value.dueDate
         ? createForm.value.dueDate.toISOString().slice(0, 10)
         : undefined,
@@ -147,14 +152,25 @@ async function submitCreate() {
         </div>
       </div>
 
-      <div>
-        <label class="mb-1 block text-sm font-medium">期限（任意）</label>
-        <DatePicker
-          v-model="createForm.dueDate"
-          class="w-full"
-          date-format="yy/mm/dd"
-          show-icon
-        />
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="mb-1 block text-sm font-medium">開始日（任意）</label>
+          <DatePicker
+            v-model="createForm.startDate"
+            class="w-full"
+            date-format="yy/mm/dd"
+            show-icon
+          />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium">期限（任意）</label>
+          <DatePicker
+            v-model="createForm.dueDate"
+            class="w-full"
+            date-format="yy/mm/dd"
+            show-icon
+          />
+        </div>
       </div>
     </div>
 
