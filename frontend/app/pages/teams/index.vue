@@ -4,90 +4,30 @@ definePageMeta({
   layout: 'default',
 })
 
-const teamApi = useTeamApi()
+const { t } = useI18n()
 const teamStore = useTeamStore()
-const { handleApiError } = useErrorHandler()
-const notification = useNotification()
-
-const followedTeamIds = ref<number[]>([])
-const followingTeamIds = ref<number[]>([])
-
-const myTeamIds = computed(() => new Set(teamStore.myTeams.map((t) => t.id)))
-
-async function followTeam(teamId: number, event: Event) {
-  event.stopPropagation()
-  followingTeamIds.value.push(teamId)
-  try {
-    await teamApi.followTeam(teamId)
-    followedTeamIds.value.push(teamId)
-    notification.success('サポーターとして登録しました')
-  } catch {
-    notification.error('フォローに失敗しました')
-  } finally {
-    followingTeamIds.value = followingTeamIds.value.filter((id) => id !== teamId)
-  }
-}
-
-interface TeamSummary {
-  id: number
-  name: string
-  nickname1: string | null
-  iconUrl: string | null
-  prefecture: string | null
-  city: string | null
-  template: string
-  memberCount: number
-  supporterEnabled: boolean
-}
-
-const teams = ref<TeamSummary[]>([])
-const loading = ref(false)
-const totalRecords = ref(0)
-const currentPage = ref(0)
-const pageSize = 20
-const showCreateDialog = ref(false)
-
 const { templateLabel } = useScopeLabels()
 
-const searchParams = ref({
-  keyword: '',
-  prefecture: '',
-  template: '',
+const showCreateDialog = ref(false)
+
+type ViewMode = 'grid' | 'list'
+const VIEW_MODE_KEY = 'mannschaft:teams:viewMode'
+
+function loadViewMode(): ViewMode {
+  if (import.meta.client) {
+    const saved = localStorage.getItem(VIEW_MODE_KEY)
+    if (saved === 'grid' || saved === 'list') return saved
+  }
+  return 'grid'
+}
+
+const viewMode = ref<ViewMode>(loadViewMode())
+
+watch(viewMode, (mode) => {
+  if (import.meta.client) {
+    localStorage.setItem(VIEW_MODE_KEY, mode)
+  }
 })
-
-async function fetchTeams() {
-  loading.value = true
-  try {
-    const result = await teamApi.searchTeams({
-      keyword: searchParams.value.keyword || undefined,
-      prefecture: searchParams.value.prefecture || undefined,
-      template: searchParams.value.template || undefined,
-      page: currentPage.value,
-      size: pageSize,
-    })
-    teams.value = result.data
-    totalRecords.value = result.meta.totalElements
-  } catch (error) {
-    handleApiError(error, 'チーム検索')
-  } finally {
-    loading.value = false
-  }
-}
-
-function onSearch(params: { keyword: string; prefecture: string; template: string }) {
-  searchParams.value = {
-    keyword: params.keyword,
-    prefecture: params.prefecture,
-    template: params.template,
-  }
-  currentPage.value = 0
-  fetchTeams()
-}
-
-function onPageChange(event: { page: number }) {
-  currentPage.value = event.page
-  fetchTeams()
-}
 
 function onTeamCreated(entity: { id: number; name: string }) {
   navigateTo(`/teams/${entity.id}`)
@@ -96,99 +36,133 @@ function onTeamCreated(entity: { id: number; name: string }) {
 function formatLocation(prefecture: string | null, city: string | null): string {
   return [prefecture, city].filter(Boolean).join(' ') || '-'
 }
-
-onMounted(() => {
-  fetchTeams()
-})
 </script>
 
 <template>
   <div class="mx-auto max-w-6xl p-6">
-    <div class="mb-6 flex items-center justify-between">
-      <PageHeader title="チーム検索" />
-      <Button label="チームを作成" icon="pi pi-plus" @click="showCreateDialog = true" />
+    <!-- ヘッダー -->
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <PageHeader :title="$t('teamHub.pageTitle')" class="flex-1" />
+      <div class="flex items-center gap-2">
+        <Button
+          :label="$t('teamHub.createTeam')"
+          icon="pi pi-plus"
+          @click="showCreateDialog = true"
+        />
+        <Button
+          :label="$t('teamHub.searchTeam')"
+          icon="pi pi-search"
+          severity="secondary"
+          outlined
+          @click="navigateTo('/teams/search')"
+        />
+      </div>
     </div>
 
-    <div class="mb-6">
-      <SearchBar placeholder="チーム名で検索" :show-template-filter="true" @search="onSearch" />
-    </div>
+    <!-- チームのお知らせ -->
+    <SectionCard :title="$t('teamHub.announcements')" class="mb-6">
+      <WidgetTeamAnnouncements :embedded="true" />
+    </SectionCard>
 
-    <PageLoading v-if="loading" />
+    <!-- 所属チーム一覧 -->
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-lg font-semibold">{{ $t('teamHub.myTeams') }}</h2>
+      <div class="flex items-center gap-1">
+        <Button
+          icon="pi pi-th-large"
+          :severity="viewMode === 'grid' ? 'primary' : 'secondary'"
+          :outlined="viewMode !== 'grid'"
+          size="small"
+          :aria-label="$t('teamHub.viewGrid')"
+          @click="viewMode = 'grid'"
+        />
+        <Button
+          icon="pi pi-list"
+          :severity="viewMode === 'list' ? 'primary' : 'secondary'"
+          :outlined="viewMode !== 'list'"
+          size="small"
+          :aria-label="$t('teamHub.viewList')"
+          @click="viewMode = 'list'"
+        />
+      </div>
+    </div>
 
     <DashboardEmptyState
-      v-else-if="teams.length === 0"
-      icon="pi pi-search"
-      message="該当するチームが見つかりませんでした"
+      v-if="teamStore.myTeams.length === 0"
+      icon="pi pi-users"
+      :message="$t('teamHub.noTeams')"
     />
 
-    <template v-else>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div
-          v-for="team in teams"
-          :key="team.id"
-          class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/teams/${team.id}`)"
-        >
-          <div class="mb-3 flex items-center gap-3">
-            <Avatar
-              :image="team.iconUrl ?? undefined"
-              :label="team.iconUrl ? undefined : team.name.charAt(0)"
-              shape="circle"
-              size="large"
-            />
-            <div class="min-w-0 flex-1">
-              <h3 class="truncate font-semibold">
-                {{ team.nickname1 || team.name }}
-              </h3>
-              <Tag
-                :value="templateLabel[team.template] ?? team.template"
-                severity="info"
-                class="text-xs"
-              />
-            </div>
-          </div>
-          <div class="flex items-center justify-between text-sm text-gray-500">
-            <span
-              ><i class="pi pi-map-marker mr-1" />{{
-                formatLocation(team.prefecture, team.city)
-              }}</span
-            >
-            <span><i class="pi pi-users mr-1" />{{ team.memberCount }}人</span>
-          </div>
-          <div
-            v-if="team.supporterEnabled && !myTeamIds.has(team.id)"
-            class="mt-3 border-t border-surface-100 pt-3"
-          >
-            <span
-              v-if="followedTeamIds.includes(team.id)"
-              class="flex items-center gap-1 text-sm text-primary"
-            >
-              <i class="pi pi-heart-fill" />サポーター登録済み
-            </span>
-            <Button
-              v-else
-              label="サポーターになる"
-              icon="pi pi-heart"
-              size="small"
-              severity="secondary"
-              outlined
-              class="w-full"
-              :loading="followingTeamIds.includes(team.id)"
-              @click="followTeam(team.id, $event)"
+    <!-- グリッド表示 -->
+    <div
+      v-else-if="viewMode === 'grid'"
+      class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+    >
+      <div
+        v-for="team in teamStore.myTeams"
+        :key="team.id"
+        class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
+        @click="navigateTo(`/teams/${team.id}`)"
+      >
+        <div class="mb-3 flex items-center gap-3">
+          <Avatar
+            :image="team.iconUrl ?? undefined"
+            :label="team.iconUrl ? undefined : (team.nickname1 || team.name).charAt(0)"
+            shape="circle"
+            size="large"
+          />
+          <div class="min-w-0 flex-1">
+            <h3 class="truncate font-semibold">
+              {{ team.nickname1 || team.name }}
+            </h3>
+            <Tag
+              :value="templateLabel[team.template] ?? team.template"
+              severity="info"
+              class="text-xs"
             />
           </div>
         </div>
+        <div class="flex items-center justify-between text-sm text-gray-500">
+          <span>
+            <i class="pi pi-map-marker mr-1" />{{ formatLocation(team.prefecture, team.city) }}
+          </span>
+          <span>
+            <i class="pi pi-users mr-1" />{{ $t('teamHub.memberCount', { count: team.memberCount }) }}
+          </span>
+        </div>
       </div>
+    </div>
 
-      <div class="mt-6">
-        <Paginator
-          :rows="pageSize"
-          :total-records="totalRecords"
-          :first="currentPage * pageSize"
-          @page="onPageChange"
+    <!-- リスト表示 -->
+    <div v-else class="flex flex-col gap-2">
+      <div
+        v-for="team in teamStore.myTeams"
+        :key="team.id"
+        class="flex cursor-pointer items-center gap-4 rounded-lg border border-surface-200 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm"
+        @click="navigateTo(`/teams/${team.id}`)"
+      >
+        <Avatar
+          :image="team.iconUrl ?? undefined"
+          :label="team.iconUrl ? undefined : (team.nickname1 || team.name).charAt(0)"
+          shape="circle"
+          size="normal"
         />
+        <div class="min-w-0 flex-1">
+          <span class="truncate font-semibold">{{ team.nickname1 || team.name }}</span>
+          <Tag
+            :value="templateLabel[team.template] ?? team.template"
+            severity="info"
+            class="ml-2 text-xs"
+          />
+        </div>
+        <span class="shrink-0 text-sm text-gray-500">
+          <i class="pi pi-map-marker mr-1" />{{ formatLocation(team.prefecture, team.city) }}
+        </span>
+        <span class="shrink-0 text-sm text-gray-500">
+          <i class="pi pi-users mr-1" />{{ $t('teamHub.memberCount', { count: team.memberCount }) }}
+        </span>
       </div>
-    </template>
+    </div>
 
     <EntityCreateDialog
       entity-type="team"

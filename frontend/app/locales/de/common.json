@@ -873,6 +873,42 @@
     "filter": {
       "allTeamsOrgs": "Teams & Organisationen (alle)",
       "selectScope": "Ziel auswählen"
-    },
+    }
+  },
+  "teamHub": {
+    "pageTitle": "Meine Teams",
+    "createTeam": "Team erstellen",
+    "searchTeam": "Teams suchen",
+    "searchPageTitle": "Team-Suche",
+    "announcements": "Team-Ankündigungen",
+    "myTeams": "Meine Teams",
+    "noTeams": "Sie sind noch keinem Team beigetreten",
+    "noTeamsHint": "Erstellen Sie ein Team oder treten Sie einem bestehenden bei",
+    "noSearchResults": "Keine Teams gefunden, die Ihrer Suche entsprechen",
+    "viewGrid": "Rasteransicht",
+    "viewList": "Listenansicht",
+    "memberCount": "{count} Mitglieder",
+    "supporterRegistered": "Als Unterstützer registriert",
+    "becomeSupporter": "Unterstützer werden",
+    "supporterSuccess": "Als Unterstützer registriert",
+    "supporterError": "Folgen fehlgeschlagen"
+  },
+  "orgHub": {
+    "pageTitle": "Meine Organisationen",
+    "createOrg": "Organisation erstellen",
+    "searchOrg": "Organisationen suchen",
+    "searchPageTitle": "Organisations-Suche",
+    "announcements": "Organisations-Ankündigungen",
+    "myOrgs": "Meine Organisationen",
+    "noOrgs": "Sie sind noch keiner Organisation beigetreten",
+    "noOrgsHint": "Erstellen Sie eine Organisation oder treten Sie einer bestehenden bei",
+    "noSearchResults": "Keine Organisationen gefunden, die Ihrer Suche entsprechen",
+    "viewGrid": "Rasteransicht",
+    "viewList": "Listenansicht",
+    "memberCount": "{count} Mitglieder",
+    "supporterRegistered": "Als Unterstützer registriert",
+    "becomeSupporter": "Unterstützer werden",
+    "supporterSuccess": "Als Unterstützer registriert",
+    "supporterError": "Folgen fehlgeschlagen"
   }
 }

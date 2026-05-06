@@ -873,6 +873,42 @@
     "filter": {
       "allTeamsOrgs": "Teams & Orgs (All)",
       "selectScope": "Select destination"
-    },
+    }
+  },
+  "teamHub": {
+    "pageTitle": "My Teams",
+    "createTeam": "Create Team",
+    "searchTeam": "Search Teams",
+    "searchPageTitle": "Team Search",
+    "announcements": "Team Announcements",
+    "myTeams": "My Teams",
+    "noTeams": "You haven't joined any teams yet",
+    "noTeamsHint": "Create a team or join an existing one",
+    "noSearchResults": "No teams found matching your search",
+    "viewGrid": "Grid view",
+    "viewList": "List view",
+    "memberCount": "{count} members",
+    "supporterRegistered": "Supporter registered",
+    "becomeSupporter": "Become a supporter",
+    "supporterSuccess": "Registered as a supporter",
+    "supporterError": "Failed to follow"
+  },
+  "orgHub": {
+    "pageTitle": "My Organizations",
+    "createOrg": "Create Organization",
+    "searchOrg": "Search Organizations",
+    "searchPageTitle": "Organization Search",
+    "announcements": "Organization Announcements",
+    "myOrgs": "My Organizations",
+    "noOrgs": "You haven't joined any organizations yet",
+    "noOrgsHint": "Create an organization or join an existing one",
+    "noSearchResults": "No organizations found matching your search",
+    "viewGrid": "Grid view",
+    "viewList": "List view",
+    "memberCount": "{count} members",
+    "supporterRegistered": "Supporter registered",
+    "becomeSupporter": "Become a supporter",
+    "supporterSuccess": "Registered as a supporter",
+    "supporterError": "Failed to follow"
   }
 }
