@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,12 +37,13 @@ public class TeamTodoHandoffController {
      */
     @PostMapping("/handoff")
     @Operation(summary = "TODO キャッチボール（引き渡し）")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "引き渡し成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "引き渡し成功（履歴行を新規作成）")
     public ResponseEntity<ApiResponse<TodoHandoffResponse>> handoff(
             @PathVariable Long teamId,
             @PathVariable Long todoId,
             @Valid @RequestBody TodoHandoffRequest request) {
-        return ResponseEntity.ok(handoffService.handoff(
+        // 履歴行（todo_handoffs）を1行新規作成するため、リソース新規作成を表す 201 Created を返す
+        return ResponseEntity.status(HttpStatus.CREATED).body(handoffService.handoff(
                 TodoScopeType.TEAM, teamId, todoId, request, SecurityUtils.getCurrentUserId()));
     }
 

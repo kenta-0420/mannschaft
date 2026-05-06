@@ -251,7 +251,7 @@ public class GlobalExceptionHandler {
             Map.entry("TODO_070", HttpStatus.CONFLICT),                      // LABEL_NAME_DUPLICATE
             Map.entry("TODO_071", HttpStatus.CONFLICT),                      // LABEL_LIMIT_EXCEEDED
             Map.entry("TODO_072", HttpStatus.CONFLICT),                      // LABEL_IN_USE
-            Map.entry("TODO_073", HttpStatus.CONFLICT),                      // SYSTEM_LABEL_IMMUTABLE
+            Map.entry("TODO_073", HttpStatus.FORBIDDEN),                     // SYSTEM_LABEL_IMMUTABLE（書き込み禁止リソース → 403）
             Map.entry("TODO_076", HttpStatus.NOT_FOUND),                     // STATUS_LABEL_NOT_FOUND (IDOR 対策)
             // F14.2 メンバー情報収集
             Map.entry("MEMBER_INFO_002", HttpStatus.FORBIDDEN),              // FIELD_BELONGS_TO_OTHER_TEAM
