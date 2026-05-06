@@ -54,4 +54,15 @@ public class TodoResponse {
 
     /** 進捗率が手動設定かどうか。falseの場合は子から自動計算される。 */
     private final Boolean progressManual;
+
+    /**
+     * カスタムステータスラベル情報（F02.3.1）。NULL の場合は SYSTEM 既定にフォールバック表示する。
+     */
+    private final TodoStatusLabelInfo statusLabel;
+
+    /**
+     * TODO レスポンスに埋め込むステータスラベル要約。
+     */
+    public record TodoStatusLabelInfo(Long id, String name, String bucket, String color) {
+    }
 }

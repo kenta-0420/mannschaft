@@ -946,7 +946,7 @@ public class ActionMemoService {
         if (com.mannschaft.app.todo.TodoStatus.COMPLETED == todo.getStatus()) {
             return;
         }
-        todoService.changeStatus(todoId, new TodoStatusChangeRequest("COMPLETED"), userId);
+        todoService.changeStatus(todoId, new TodoStatusChangeRequest("COMPLETED", null), userId);
 
         // 監査ログ: source = "ACTION_MEMO", source_id = memoId
         auditLogService.record(
@@ -1120,7 +1120,7 @@ public class ActionMemoService {
         // TODO を OPEN に戻す（memo 所有者のIDで操作—TodoService の権限チェックをバイパスするため直接変更）
         TodoEntity todo = todoRepository.findByIdAndDeletedAtIsNull(todoId).orElse(null);
         if (todo != null && com.mannschaft.app.todo.TodoStatus.OPEN != todo.getStatus()) {
-            todoService.changeStatus(todoId, new TodoStatusChangeRequest("OPEN"), memo.getUserId());
+            todoService.changeStatus(todoId, new TodoStatusChangeRequest("OPEN", null), memo.getUserId());
         }
 
         // 監査ログ
