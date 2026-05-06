@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import type { BulletinThreadResponse } from '~/types/bulletin'
 
+const props = withDefaults(
+  defineProps<{
+    embedded?: boolean
+  }>(),
+  { embedded: false },
+)
+
 const teamStore = useTeamStore()
 const { getScopedThreads } = useBulletinApi()
 const { relativeTime } = useRelativeTime()
@@ -58,6 +65,7 @@ onMounted(load)
 
 <template>
   <DashboardWidgetCard
+    v-if="!props.embedded"
     title="チームのお知らせ"
     icon="pi pi-users"
     to="/timeline"
@@ -103,4 +111,45 @@ onMounted(load)
       </NuxtLink>
     </div>
   </DashboardWidgetCard>
+
+  <template v-else>
+    <PageLoading v-if="loading" />
+    <div v-else-if="teamStore.myTeams.length === 0">
+      <DashboardEmptyState icon="pi pi-users" message="チームに参加していません" />
+    </div>
+    <div v-else-if="threads.length === 0">
+      <DashboardEmptyState icon="pi pi-clipboard" message="チームからのお知らせはありません" />
+    </div>
+    <div v-else class="divide-y divide-surface-100 dark:divide-surface-700">
+      <NuxtLink
+        v-for="thread in threads"
+        :key="`${thread.scopeType}-${thread.id}`"
+        :to="`/teams/${thread.scopeId}/bulletin`"
+        class="flex items-start gap-2 py-2.5 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/50"
+      >
+        <i v-if="thread.isPinned" class="pi pi-thumbtack mt-0.5 shrink-0 text-xs text-orange-500" />
+        <div class="min-w-0 flex-1">
+          <div class="mb-0.5 flex flex-wrap items-center gap-1.5">
+            <span
+              v-if="thread.priority !== 'INFO'"
+              :class="priorityConfig[thread.priority]?.class"
+              class="rounded px-1.5 py-0.5 text-xs font-medium"
+            >
+              {{ priorityConfig[thread.priority]?.label }}
+            </span>
+            <span class="truncate text-sm font-medium text-surface-700 dark:text-surface-200">
+              {{ thread.title }}
+            </span>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-surface-400">
+            <Tag :value="thread.scopeName" severity="info" class="text-xs" />
+            <span>{{ relativeTime(thread.createdAt) }}</span>
+            <span v-if="thread.replyCount > 0">
+              <i class="pi pi-comment" /> {{ thread.replyCount }}
+            </span>
+          </div>
+        </div>
+      </NuxtLink>
+    </div>
+  </template>
 </template>

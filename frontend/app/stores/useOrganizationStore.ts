@@ -7,6 +7,7 @@ interface MyOrganization {
   iconUrl: string | null
   role: string
   orgType: string
+  memberCount: number
 }
 
 export const useOrganizationStore = defineStore('organization', {

@@ -927,7 +927,7 @@
     "filter": {
       "allTeamsOrgs": "团队・组织（全部）",
       "selectScope": "选择创建目标"
-    },
+    }
   },
   "handoff": {
     "button": { "passToOther": "他のメンバーに渡す" },
@@ -967,5 +967,41 @@
       "body": "{from}さんから「{title}」を渡されました（ステータス: {label}）"
     }
   },
-  "common": { "cancel": "キャンセル" }
+  "common": { "cancel": "キャンセル" },
+  "teamHub": {
+    "pageTitle": "我的团队",
+    "createTeam": "创建团队",
+    "searchTeam": "搜索团队",
+    "searchPageTitle": "团队搜索",
+    "announcements": "团队公告",
+    "myTeams": "所属团队",
+    "noTeams": "您尚未加入任何团队",
+    "noTeamsHint": "创建团队或加入现有团队",
+    "noSearchResults": "未找到符合条件的团队",
+    "viewGrid": "网格视图",
+    "viewList": "列表视图",
+    "memberCount": "{count}人",
+    "supporterRegistered": "已注册为支持者",
+    "becomeSupporter": "成为支持者",
+    "supporterSuccess": "已注册为支持者",
+    "supporterError": "关注失败"
+  },
+  "orgHub": {
+    "pageTitle": "我的组织",
+    "createOrg": "创建组织",
+    "searchOrg": "搜索组织",
+    "searchPageTitle": "组织搜索",
+    "announcements": "组织公告",
+    "myOrgs": "所属组织",
+    "noOrgs": "您尚未加入任何组织",
+    "noOrgsHint": "创建组织或加入现有组织",
+    "noSearchResults": "未找到符合条件的组织",
+    "viewGrid": "网格视图",
+    "viewList": "列表视图",
+    "memberCount": "{count}人",
+    "supporterRegistered": "已注册为支持者",
+    "becomeSupporter": "成为支持者",
+    "supporterSuccess": "已注册为支持者",
+    "supporterError": "关注失败"
+  }
 }

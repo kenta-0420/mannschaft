@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { GanttTodo } from '~/types/todo'
+import type { GanttResponse, GanttTodo } from '~/types/todo'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -284,12 +284,16 @@ const selectedCreateScope = computed(
   () => createScopeOptions.value.find(o => o.value === createScopeKey.value) ?? createScopeOptions.value[0]!,
 )
 
-// 上部セレクト変更でカレンダー表示を絞り込む
+// 上部セレクト変更でカレンダー表示を絞り込む（ガントタブ表示中は再読み込みも行う）
 watch(createScopeKey, (key) => {
   if (key === 'personal') {
     selectedScopes.value = [PERSONAL_KEY]
   } else {
     selectedScopes.value = [PERSONAL_KEY, key]
+  }
+  // ガントタブが表示中であればスコープ変更に合わせて再読み込み
+  if (activeTab.value === 'gantt') {
+    loadGantt()
   }
 })
 
@@ -307,7 +311,25 @@ async function loadGantt() {
     const { from, to } = getMonthRange(currentYear.value, currentMonth.value)
     ganttFromDate.value = from
     ganttToDate.value = to
-    const res = await ganttApi.getGanttTodos('team', 0, from, to)
+
+    const key = createScopeKey.value
+
+    let res: GanttResponse
+    if (key === 'personal') {
+      // 個人スコープ: 個人 TODO ガントエンドポイントを使用
+      res = await ganttApi.getPersonalGanttTodos(from, to)
+    }
+    else {
+      // チーム/組織スコープ: createScopeOptions から対応スコープを探す
+      const scope = createScopeOptions.value.find(o => o.value === key)
+      if (scope) {
+        res = await ganttApi.getGanttTodos(scope.scopeType, scope.scopeId, from, to)
+      }
+      else {
+        ganttTodos.value = []
+        return
+      }
+    }
     ganttTodos.value = res.data
   }
   catch {
@@ -320,7 +342,8 @@ async function loadGantt() {
 
 async function onTabChange(tab: CalendarTab) {
   activeTab.value = tab
-  if (tab === 'gantt' && ganttTodos.value.length === 0) {
+  if (tab === 'gantt') {
+    // スコープが変わっている可能性があるため常に再読み込み
     await loadGantt()
   }
 }

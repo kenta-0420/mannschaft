@@ -206,6 +206,14 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     description: 'ピン止めしたカードの横断一覧',
     scope: ['personal'],
   },
+  // F14.2: チームメンバー定期更新フォーム
+  {
+    key: 'member-info',
+    label: 'メンバー情報',
+    icon: 'pi pi-id-card',
+    description: '連絡先・緊急連絡先等の定期更新フォーム',
+    scope: ['team'],
+  },
 ]
 
 function hiddenStorageKey(scopeType: string, scopeId?: number): string {

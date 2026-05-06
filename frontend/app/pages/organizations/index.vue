@@ -4,177 +4,143 @@ definePageMeta({
   layout: 'default',
 })
 
-const orgApi = useOrganizationApi()
 const orgStore = useOrganizationStore()
-const { handleApiError } = useErrorHandler()
-const notification = useNotification()
 
-const followedOrgIds = ref<number[]>([])
-const followingOrgIds = ref<number[]>([])
-
-const myOrgIds = computed(() => new Set(orgStore.myOrganizations.map((o) => o.id)))
-
-async function followOrg(orgId: number, event: Event) {
-  event.stopPropagation()
-  followingOrgIds.value.push(orgId)
-  try {
-    await orgApi.followOrganization(orgId)
-    followedOrgIds.value.push(orgId)
-    notification.success('サポーターとして登録しました')
-  } catch {
-    notification.error('フォローに失敗しました')
-  } finally {
-    followingOrgIds.value = followingOrgIds.value.filter((id) => id !== orgId)
-  }
-}
-
-interface OrgSummary {
-  id: number
-  name: string
-  nickname1: string | null
-  iconUrl: string | null
-  prefecture: string | null
-  city: string | null
-  memberCount: number
-  supporterEnabled: boolean
-}
-
-const organizations = ref<OrgSummary[]>([])
-const loading = ref(false)
-const totalRecords = ref(0)
-const currentPage = ref(0)
-const pageSize = 20
 const showCreateDialog = ref(false)
 
-const searchParams = ref({
-  keyword: '',
-  prefecture: '',
-})
+type ViewMode = 'grid' | 'list'
+const VIEW_MODE_KEY = 'mannschaft:orgs:viewMode'
 
-async function fetchOrganizations() {
-  loading.value = true
-  try {
-    const result = await orgApi.searchOrganizations({
-      keyword: searchParams.value.keyword || undefined,
-      prefecture: searchParams.value.prefecture || undefined,
-      page: currentPage.value,
-      size: pageSize,
-    })
-    organizations.value = result.data
-    totalRecords.value = result.meta.totalElements
-  } catch (error) {
-    handleApiError(error, '組織検索')
-  } finally {
-    loading.value = false
+function loadViewMode(): ViewMode {
+  if (import.meta.client) {
+    const saved = localStorage.getItem(VIEW_MODE_KEY)
+    if (saved === 'grid' || saved === 'list') return saved
   }
+  return 'grid'
 }
 
-function onSearch(params: { keyword: string; prefecture: string; orgType: string }) {
-  searchParams.value = { keyword: params.keyword, prefecture: params.prefecture }
-  currentPage.value = 0
-  fetchOrganizations()
-}
+const viewMode = ref<ViewMode>(loadViewMode())
 
-function onPageChange(event: { page: number }) {
-  currentPage.value = event.page
-  fetchOrganizations()
-}
+watch(viewMode, (mode) => {
+  if (import.meta.client) {
+    localStorage.setItem(VIEW_MODE_KEY, mode)
+  }
+})
 
 function onOrgCreated(entity: { id: number; name: string }) {
   navigateTo(`/organizations/${entity.id}`)
 }
-
-function formatLocation(prefecture: string | null, city: string | null): string {
-  return [prefecture, city].filter(Boolean).join(' ') || '-'
-}
-
-onMounted(() => {
-  fetchOrganizations()
-})
 </script>
 
 <template>
   <div class="mx-auto max-w-6xl p-6">
-    <div class="mb-6 flex items-center justify-between">
-      <PageHeader title="組織検索" />
-      <Button label="組織を作成" icon="pi pi-plus" @click="showCreateDialog = true" />
-    </div>
-
-    <div class="mb-6">
-      <SearchBar placeholder="組織名で検索" :show-org-type-filter="true" @search="onSearch" />
-    </div>
-
-    <PageLoading v-if="loading" />
-
-    <DashboardEmptyState
-      v-else-if="organizations.length === 0"
-      icon="pi pi-search"
-      message="該当する組織が見つかりませんでした"
-    />
-
-    <template v-else>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div
-          v-for="org in organizations"
-          :key="org.id"
-          class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/organizations/${org.id}`)"
-        >
-          <div class="mb-3 flex items-center gap-3">
-            <Avatar
-              :image="org.iconUrl ?? undefined"
-              :label="org.iconUrl ? undefined : org.name.charAt(0)"
-              shape="circle"
-              size="large"
-            />
-            <div class="min-w-0 flex-1">
-              <h3 class="truncate font-semibold">
-                {{ org.nickname1 || org.name }}
-              </h3>
-            </div>
-          </div>
-          <div class="flex items-center justify-between text-sm text-gray-500">
-            <span
-              ><i class="pi pi-map-marker mr-1" />{{
-                formatLocation(org.prefecture, org.city)
-              }}</span
-            >
-            <span><i class="pi pi-users mr-1" />{{ org.memberCount }}人</span>
-          </div>
-          <div
-            v-if="org.supporterEnabled && !myOrgIds.has(org.id)"
-            class="mt-3 border-t border-surface-100 pt-3"
-          >
-            <span
-              v-if="followedOrgIds.includes(org.id)"
-              class="flex items-center gap-1 text-sm text-primary"
-            >
-              <i class="pi pi-heart-fill" />サポーター登録済み
-            </span>
-            <Button
-              v-else
-              label="サポーターになる"
-              icon="pi pi-heart"
-              size="small"
-              severity="secondary"
-              outlined
-              class="w-full"
-              :loading="followingOrgIds.includes(org.id)"
-              @click="followOrg(org.id, $event)"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div class="mt-6">
-        <Paginator
-          :rows="pageSize"
-          :total-records="totalRecords"
-          :first="currentPage * pageSize"
-          @page="onPageChange"
+    <!-- ヘッダー -->
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <PageHeader :title="$t('orgHub.pageTitle')" class="flex-1" />
+      <div class="flex items-center gap-2">
+        <Button
+          :label="$t('orgHub.createOrg')"
+          icon="pi pi-plus"
+          @click="showCreateDialog = true"
+        />
+        <Button
+          :label="$t('orgHub.searchOrg')"
+          icon="pi pi-search"
+          severity="secondary"
+          outlined
+          @click="navigateTo('/organizations/search')"
         />
       </div>
-    </template>
+    </div>
+
+    <!-- 組織のお知らせ -->
+    <SectionCard :title="$t('orgHub.announcements')" class="mb-6">
+      <WidgetOrgAnnouncements :embedded="true" />
+    </SectionCard>
+
+    <!-- 所属組織一覧 -->
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-lg font-semibold">{{ $t('orgHub.myOrgs') }}</h2>
+      <div class="flex items-center gap-1">
+        <Button
+          icon="pi pi-th-large"
+          :severity="viewMode === 'grid' ? 'primary' : 'secondary'"
+          :outlined="viewMode !== 'grid'"
+          size="small"
+          :aria-label="$t('orgHub.viewGrid')"
+          @click="viewMode = 'grid'"
+        />
+        <Button
+          icon="pi pi-list"
+          :severity="viewMode === 'list' ? 'primary' : 'secondary'"
+          :outlined="viewMode !== 'list'"
+          size="small"
+          :aria-label="$t('orgHub.viewList')"
+          @click="viewMode = 'list'"
+        />
+      </div>
+    </div>
+
+    <DashboardEmptyState
+      v-if="orgStore.myOrganizations.length === 0"
+      icon="pi pi-building"
+      :message="$t('orgHub.noOrgs')"
+    />
+
+    <!-- グリッド表示 -->
+    <div
+      v-else-if="viewMode === 'grid'"
+      class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+    >
+      <div
+        v-for="org in orgStore.myOrganizations"
+        :key="org.id"
+        class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
+        @click="navigateTo(`/organizations/${org.id}`)"
+      >
+        <div class="mb-3 flex items-center gap-3">
+          <Avatar
+            :image="org.iconUrl ?? undefined"
+            :label="org.iconUrl ? undefined : (org.nickname1 || org.name).charAt(0)"
+            shape="circle"
+            size="large"
+          />
+          <div class="min-w-0 flex-1">
+            <h3 class="truncate font-semibold">
+              {{ org.nickname1 || org.name }}
+            </h3>
+          </div>
+        </div>
+        <div class="flex items-center justify-end text-sm text-gray-500">
+          <span>
+            <i class="pi pi-users mr-1" />{{ $t('orgHub.memberCount', { count: org.memberCount }) }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- リスト表示 -->
+    <div v-else class="flex flex-col gap-2">
+      <div
+        v-for="org in orgStore.myOrganizations"
+        :key="org.id"
+        class="flex cursor-pointer items-center gap-4 rounded-lg border border-surface-200 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm"
+        @click="navigateTo(`/organizations/${org.id}`)"
+      >
+        <Avatar
+          :image="org.iconUrl ?? undefined"
+          :label="org.iconUrl ? undefined : (org.nickname1 || org.name).charAt(0)"
+          shape="circle"
+          size="normal"
+        />
+        <div class="min-w-0 flex-1">
+          <span class="truncate font-semibold">{{ org.nickname1 || org.name }}</span>
+        </div>
+        <span class="shrink-0 text-sm text-gray-500">
+          <i class="pi pi-users mr-1" />{{ $t('orgHub.memberCount', { count: org.memberCount }) }}
+        </span>
+      </div>
+    </div>
 
     <EntityCreateDialog
       entity-type="organization"

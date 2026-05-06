@@ -252,7 +252,16 @@ public class GlobalExceptionHandler {
             Map.entry("TODO_071", HttpStatus.CONFLICT),                      // LABEL_LIMIT_EXCEEDED
             Map.entry("TODO_072", HttpStatus.CONFLICT),                      // LABEL_IN_USE
             Map.entry("TODO_073", HttpStatus.CONFLICT),                      // SYSTEM_LABEL_IMMUTABLE
-            Map.entry("TODO_076", HttpStatus.NOT_FOUND)                      // STATUS_LABEL_NOT_FOUND (IDOR 対策)
+            Map.entry("TODO_076", HttpStatus.NOT_FOUND),                     // STATUS_LABEL_NOT_FOUND (IDOR 対策)
+            // F14.2 メンバー情報収集
+            Map.entry("MEMBER_INFO_002", HttpStatus.FORBIDDEN),              // FIELD_BELONGS_TO_OTHER_TEAM
+            Map.entry("MEMBER_INFO_008", HttpStatus.TOO_MANY_REQUESTS),      // REMIND_TOO_SOON
+            // F15.2 マイスコープフォルダ（IDOR対策で404統一、所属なしは403）
+            Map.entry("SCOPE_FOLDER_NOT_FOUND", HttpStatus.NOT_FOUND),       // フォルダ不存在 / 他ユーザーフォルダ (IDOR対策)
+            Map.entry("SCOPE_FOLDER_ACCESS_DENIED", HttpStatus.FORBIDDEN),   // アクセス権限なし
+            Map.entry("SCOPE_FOLDER_LIMIT_EXCEEDED", HttpStatus.CONFLICT),   // フォルダ上限超過
+            Map.entry("SCOPE_FOLDER_NAME_DUPLICATE", HttpStatus.CONFLICT),   // 同名フォルダ重複
+            Map.entry("SCOPE_FOLDER_NOT_MEMBER", HttpStatus.FORBIDDEN)       // スコープ非所属
     );
 
     /**

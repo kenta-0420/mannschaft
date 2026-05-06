@@ -1,5 +1,6 @@
 package com.mannschaft.app.timeline.repository;
 
+import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,7 +22,7 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
     @Query("SELECT p FROM TimelinePostEntity p WHERE p.scopeType = :scopeType AND p.scopeId = :scopeId "
             + "AND p.parentId IS NULL AND p.status = 'PUBLISHED' ORDER BY p.createdAt DESC")
     List<TimelinePostEntity> findFeedByScopeType(
-            @Param("scopeType") String scopeType,
+            @Param("scopeType") PostScopeType scopeType,
             @Param("scopeId") Long scopeId,
             Pageable pageable);
 
@@ -47,7 +48,7 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
     @Query("SELECT p FROM TimelinePostEntity p WHERE p.scopeType = :scopeType AND p.scopeId = :scopeId "
             + "AND p.isPinned = true AND p.status = 'PUBLISHED' ORDER BY p.createdAt DESC")
     List<TimelinePostEntity> findPinnedPosts(
-            @Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
+            @Param("scopeType") PostScopeType scopeType, @Param("scopeId") Long scopeId);
 
     /**
      * 全文検索で投稿を取得する。
