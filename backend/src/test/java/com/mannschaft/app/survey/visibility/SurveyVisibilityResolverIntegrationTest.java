@@ -63,15 +63,15 @@ class SurveyVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTe
     @BeforeEach
     void setUp() {
         em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                         + "VALUES ('SYSTEM_ADMIN', 'システム管理者', 1, 1, NOW(), NOW())")
                 .executeUpdate();
         em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                         + "VALUES ('ADMIN', '管理者', 2, 0, NOW(), NOW())")
                 .executeUpdate();
         em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                         + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
                 .executeUpdate();
         em.flush();
