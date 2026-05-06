@@ -62,4 +62,22 @@ public final class RolePriority {
     public static boolean isAtLeast(String actual, String required) {
         return priority(actual) <= priority(required);
     }
+
+    /**
+     * 指定ロールが「プライマリロール」（priority マップに搭載）かを返す。
+     *
+     * <p>JOBBER 等の「並行ロール」（F13.1 §2.9）は priority マップ非搭載のため
+     * {@code false} を返す。MEMBERS_ONLY 等のスコープメンバーシップ判定（OQ-B 根治）に用いる。</p>
+     *
+     * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §15 D-14 / OQ-B。</p>
+     *
+     * @param role ロール名（{@code null} は {@code false}）
+     * @return プライマリロールなら {@code true}
+     */
+    public static boolean isPrimaryRole(String role) {
+        if (role == null) {
+            return false;
+        }
+        return PRIORITY_MAP.containsKey(role);
+    }
 }

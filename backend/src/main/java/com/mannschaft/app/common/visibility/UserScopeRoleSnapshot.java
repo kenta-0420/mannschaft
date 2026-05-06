@@ -62,12 +62,22 @@ public record UserScopeRoleSnapshot(
 
     /**
      * スコープへの直接メンバーシップ（または SystemAdmin）を持つかを返す。
+     *
+     * <p>MEMBERS_ONLY 等の visibility 判定に使われるため、
+     * 「プライマリロール」（{@link RolePriority#isPrimaryRole}）保有者のみ {@code true} を返す。
+     * JOBBER 等の並行ロール（F13.1 §2.9 / priority マップ非搭載）保有者は {@code false}。</p>
+     *
+     * <p>設計書: §15 D-14 OQ-B 根治。</p>
      */
     public boolean isMemberOf(ScopeKey scope) {
         if (scope == null) {
             return false;
         }
-        return systemAdmin || roleByScope.containsKey(scope);
+        if (systemAdmin) {
+            return true;
+        }
+        String role = roleByScope.get(scope);
+        return RolePriority.isPrimaryRole(role);
     }
 
     /**

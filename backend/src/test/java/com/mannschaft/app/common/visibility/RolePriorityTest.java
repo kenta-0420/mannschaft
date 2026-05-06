@@ -110,4 +110,34 @@ class RolePriorityTest {
             assertThat(RolePriority.isAtLeast(null, "GUEST")).isFalse();
         }
     }
+
+    @Nested
+    @DisplayName("isPrimaryRole(role)")
+    class IsPrimaryRole {
+
+        @Test
+        @DisplayName("priority マップ搭載の 6 ロールはすべて true")
+        void プライマリロール6件はtrue() {
+            assertThat(RolePriority.isPrimaryRole("SYSTEM_ADMIN")).isTrue();
+            assertThat(RolePriority.isPrimaryRole("ADMIN")).isTrue();
+            assertThat(RolePriority.isPrimaryRole("DEPUTY_ADMIN")).isTrue();
+            assertThat(RolePriority.isPrimaryRole("MEMBER")).isTrue();
+            assertThat(RolePriority.isPrimaryRole("SUPPORTER")).isTrue();
+            assertThat(RolePriority.isPrimaryRole("GUEST")).isTrue();
+        }
+
+        @Test
+        @DisplayName("JOBBER 等の並行ロール（priority マップ非搭載）は false")
+        void 並行ロールはfalse() {
+            assertThat(RolePriority.isPrimaryRole("JOBBER")).isFalse();
+            assertThat(RolePriority.isPrimaryRole("UNKNOWN_ROLE")).isFalse();
+            assertThat(RolePriority.isPrimaryRole("")).isFalse();
+        }
+
+        @Test
+        @DisplayName("null は false")
+        void null_false() {
+            assertThat(RolePriority.isPrimaryRole(null)).isFalse();
+        }
+    }
 }

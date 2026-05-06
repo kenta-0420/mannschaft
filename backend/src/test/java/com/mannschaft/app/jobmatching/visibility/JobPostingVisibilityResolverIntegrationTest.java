@@ -126,11 +126,8 @@ class JobPostingVisibilityResolverIntegrationTest {
         insertUserRole(supporterUserId, supporterRoleId, teamId, null);
         // JOBBER は teamId に所属する必要あり（JOBBER_INTERNAL CUSTOM の判定が
         // 当該 team の JOBBER ロール保有を要求するため）。
-        // 既知制限: 現行 AbstractContentVisibilityResolver の MEMBERS_ONLY 判定は
-        // user_roles 行の存在で memberOf 判定するため、JOBBER ロールでも
-        // TEAM_MEMBERS スコープに対して可視になる。本来 JOBBER は priority マップ
-        // 非搭載の並行ロール（F13.1 §2.9）なので MEMBER とは区別すべきだが、
-        // この区別は Phase D で根治予定（memory: project_f00_phase_d_open_questions.md）。
+        // JOBBER は priority マップ非搭載の並行ロール（F13.1 §2.9）であり、
+        // OQ-B 根治後は isMemberOf が false を返すため MEMBERS_ONLY コンテンツは不可視。
         insertUserRole(jobberUserId, jobberRoleId, teamId, null);
         insertUserRole(sysAdminUserId, systemAdminRoleId, null, null);
 
@@ -269,9 +266,11 @@ class JobPostingVisibilityResolverIntegrationTest {
         assertThat(checker.canView(ReferenceType.JOB_POSTING, postingId, null)).isFalse();
         assertThat(checker.canView(ReferenceType.JOB_POSTING, postingId, nonMemberUserId)).isFalse();
         assertThat(checker.canView(ReferenceType.JOB_POSTING, postingId, memberUserId)).isTrue();
-        // SUPPORTER は MEMBER 包含外（MEMBERS_ONLY は scope の所属を見る → SUPPORTER も ok）
-        // C-2 マスター裁可: TEAM_MEMBERS_SUPPORTERS とは別。MEMBERS_ONLY はスコープ所属者すべて
+        // SUPPORTER は priority マップ搭載のプライマリロール → isMemberOf が true → 可視
+        // C-2 マスター裁可: TEAM_MEMBERS_SUPPORTERS とは別。MEMBERS_ONLY はスコープの primaryロール所属者
         assertThat(checker.canView(ReferenceType.JOB_POSTING, postingId, supporterUserId)).isTrue();
+        // JOBBER は priority マップ非搭載の並行ロール → isMemberOf が false → 不可視（OQ-B 根治）
+        assertThat(checker.canView(ReferenceType.JOB_POSTING, postingId, jobberUserId)).isFalse();
     }
 
     @Test
@@ -387,15 +386,13 @@ class JobPostingVisibilityResolverIntegrationTest {
         assertThat(member).containsExactlyInAnyOrder(openPublic, openMembers, draftAuthor);
         // ↑ draftAuthor は memberUserId が author 自身なので可視
 
-        // JOBBER: PUBLIC + JOBBER_INTERNAL + （既知制限）TEAM_MEMBERS
-        // 本来 JOBBER は priority マップ非搭載の並行ロール（F13.1 §2.9）であり、
-        // TEAM_MEMBERS スコープでは「メンバー」扱いされない設計だが、現行
-        // AbstractContentVisibilityResolver の MEMBERS_ONLY 判定が user_roles 行の
-        // 存在で memberOf 判定するため openMembers も可視となる。
-        // Phase D 根治待ち（memory: project_f00_phase_d_open_questions.md）。
+        // JOBBER: PUBLIC + JOBBER_INTERNAL のみ。TEAM_MEMBERS (MEMBERS_ONLY) は不可視。
+        // JOBBER は priority マップ非搭載の並行ロール（F13.1 §2.9）であり、
+        // isMemberOf が isPrimaryRole チェックで false を返すため openMembers は排除される。
+        // OQ-B 根治: RolePriority.isPrimaryRole / UserScopeRoleSnapshot.isMemberOf 修正により解決。
         Set<Long> jobber = checker.filterAccessible(
                 ReferenceType.JOB_POSTING, all, jobberUserId);
-        assertThat(jobber).containsExactlyInAnyOrder(openPublic, openMembers, openJobber);
+        assertThat(jobber).containsExactlyInAnyOrder(openPublic, openJobber);
 
         // SystemAdmin: status=DELETED 以外すべて可視（CANCELLED 含む）
         Set<Long> sysAdmin = checker.filterAccessible(

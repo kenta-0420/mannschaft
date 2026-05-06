@@ -188,11 +188,10 @@ class BulletinThreadVisibilityResolverTest {
         }
 
         @Test
-        @DisplayName("SUPPORTER ロール保有者には不可視（MEMBERS_ONLY は SUPPORTER 包含するが GUEST のみ除外、" +
-                "実装は roleByScope に entry あれば isMemberOf=true）")
+        @DisplayName("SUPPORTER ロール保有者は可視（SUPPORTER は priority マップ搭載のプライマリロール → isMemberOf=true）")
         void supporter_visible() {
-            // MEMBERS_ONLY は scope の roleByScope に entry があれば true。
-            // SUPPORTER も MEMBER 同様に entry があれば可視（GUEST も同様）。
+            // MEMBERS_ONLY は scope の roleByScope に primaryRole entry があれば true。
+            // SUPPORTER は priority マップ搭載のプライマリロール（priority=5）なので可視。
             BulletinThreadVisibilityProjection p = projection(1L, "TEAM", 100L, 99L);
             when(bulletinThreadRepository.findVisibilityProjectionsByIdIn(any()))
                     .thenReturn(List.of(p));

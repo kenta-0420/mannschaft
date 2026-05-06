@@ -93,6 +93,20 @@ class UserScopeRoleSnapshotTest {
             UserScopeRoleSnapshot s = UserScopeRoleSnapshot.empty();
             assertThat(s.isMemberOf(null)).isFalse();
         }
+
+        @Test
+        @DisplayName("JOBBER 等の並行ロール（priority マップ非搭載）は false（OQ-B 根治）")
+        void 並行ロールJOBBERはfalse() {
+            // JOBBER は priority マップ非搭載の並行ロール（F13.1 §2.9）
+            // roleByScope に entry があっても isPrimaryRole が false → isMemberOf も false
+            UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
+                    false,
+                    Map.of(TEAM_1, "JOBBER"),
+                    Map.of(),
+                    Set.of(),
+                    Set.of());
+            assertThat(s.isMemberOf(TEAM_1)).isFalse();
+        }
     }
 
     @Nested
