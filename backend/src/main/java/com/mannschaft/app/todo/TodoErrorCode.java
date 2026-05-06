@@ -127,7 +127,14 @@ public enum TodoErrorCode implements ErrorCode {
     STATUS_LABEL_BUCKET_MISMATCH("TODO_075", "指定された status とラベルのバケットが一致しません", Severity.WARN),
 
     /** ステータスラベルが見つからない */
-    STATUS_LABEL_NOT_FOUND("TODO_076", "ステータスラベルが見つかりません", Severity.WARN);
+    STATUS_LABEL_NOT_FOUND("TODO_076", "ステータスラベルが見つかりません", Severity.WARN),
+
+    // F02.3.1 Phase 2 キャッチボール
+    /** 個人 TODO はキャッチボール不可 */
+    HANDOFF_NOT_ALLOWED_FOR_PERSONAL("TODO_080", "個人TODOはキャッチボールできません", Severity.WARN),
+
+    /** 宛先メンバーがスコープに属していない */
+    HANDOFF_INVALID_RECIPIENT("TODO_081", "宛先メンバーが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;
