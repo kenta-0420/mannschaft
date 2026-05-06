@@ -20,7 +20,7 @@ const { t } = useI18n()
         <span class="text-primary">{{ t('landing.hero.title_accent') }}</span>{{ t('landing.hero.title_post') }}
       </h1>
 
-      <p class="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-surface-600 dark:text-surface-300">
+      <p class="mx-auto mb-10 max-w-2xl whitespace-pre-line text-lg leading-relaxed text-surface-600 dark:text-surface-300">
         {{ t('landing.hero.subtitle') }}
       </p>
 
