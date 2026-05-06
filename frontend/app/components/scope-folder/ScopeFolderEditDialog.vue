@@ -65,7 +65,7 @@ async function save() {
     if (isEdit.value && props.editTarget) {
       const req: UpdateFolderRequest = {
         name: name.value.trim(),
-        ...(selectedColor.value ? { color: selectedColor.value } : {}),
+        color: selectedColor.value,
       }
       folder = await folderApi.updateFolder(props.editTarget.id, req)
     }

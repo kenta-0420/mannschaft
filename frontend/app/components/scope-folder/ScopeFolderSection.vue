@@ -141,7 +141,6 @@ async function doDelete(folder: ScopeFolder) {
 
 // どのフォルダへ移動するかのドロップダウン制御
 const movingItemId = ref<number | null>(null)
-const moveMenuRef = ref<HTMLElement | null>(null)
 
 function toggleMoveMenu(itemId: number) {
   movingItemId.value = movingItemId.value === itemId ? null : itemId
@@ -207,7 +206,8 @@ function folderColorStyle(color: string | null): Record<string, string> {
 
 // クリックアウトサイドでドロップダウンを閉じる
 function handleClickOutside(event: MouseEvent) {
-  if (moveMenuRef.value && !moveMenuRef.value.contains(event.target as Node)) {
+  const target = event.target as Element
+  if (!target.closest('[data-move-menu]')) {
     movingItemId.value = null
   }
 }
@@ -307,7 +307,7 @@ onUnmounted(() => {
               </div>
 
               <!-- フォルダ移動ボタン -->
-              <div ref="moveMenuRef" class="relative">
+              <div data-move-menu class="relative">
                 <Button
                   icon="pi pi-folder-open"
                   size="small"
@@ -356,7 +356,7 @@ onUnmounted(() => {
               v-if="folderItems(folder).length === 0"
               class="col-span-full py-4 text-center text-sm text-surface-400"
             >
-              {{ $t('scopeFolder.uncategorized') }}
+              {{ $t('scopeFolder.emptyFolder') }}
             </div>
           </div>
         </div>
@@ -391,7 +391,7 @@ onUnmounted(() => {
               </div>
 
               <!-- フォルダ移動ボタン -->
-              <div ref="moveMenuRef" class="relative">
+              <div data-move-menu class="relative">
                 <Button
                   icon="pi pi-folder-open"
                   size="small"

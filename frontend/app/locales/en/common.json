@@ -925,6 +925,7 @@
     "moveToFolder": "Move to Folder",
     "removeFromFolder": "Remove from Folder",
     "noFolders": "No folders yet",
+    "emptyFolder": "This folder is empty",
     "limitExceeded": "You can create up to 20 folders",
     "nameDuplicate": "A folder with the same name already exists"
   }

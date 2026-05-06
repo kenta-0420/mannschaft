@@ -13,7 +13,7 @@ export interface CreateFolderRequest {
 
 export interface UpdateFolderRequest {
   name: string
-  color?: string
+  color?: string | null
 }
 
 export interface ReorderFoldersRequest {

@@ -925,6 +925,7 @@
     "moveToFolder": "フォルダへ移動",
     "removeFromFolder": "フォルダから外す",
     "noFolders": "フォルダはまだありません",
+    "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
     "nameDuplicate": "同じ名前のフォルダが既に存在します"
   }
