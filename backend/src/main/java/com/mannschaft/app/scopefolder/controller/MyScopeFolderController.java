@@ -1,5 +1,6 @@
 package com.mannschaft.app.scopefolder.controller;
 
+import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.scopefolder.dto.AddFolderItemRequest;
 import com.mannschaft.app.scopefolder.dto.CreateFolderRequest;
@@ -44,11 +45,11 @@ public class MyScopeFolderController {
     @GetMapping
     @Operation(summary = "フォルダ一覧取得",
             description = "指定スコープタイプ（TEAM/ORGANIZATION）のフォルダ一覧をアイテムID込みで取得する")
-    public ResponseEntity<List<ScopeFolderResponse>> getFolders(
+    public ResponseEntity<ApiResponse<List<ScopeFolderResponse>>> getFolders(
             @RequestParam ScopeType scopeType) {
         Long userId = SecurityUtils.getCurrentUserId();
         List<ScopeFolderResponse> response = folderService.getFolders(userId, scopeType);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
@@ -57,12 +58,12 @@ public class MyScopeFolderController {
     @PostMapping
     @Operation(summary = "フォルダ作成",
             description = "新しいスコープフォルダを作成する（1スコープタイプあたり上限20件）")
-    public ResponseEntity<ScopeFolderResponse> createFolder(
+    public ResponseEntity<ApiResponse<ScopeFolderResponse>> createFolder(
             @RequestParam ScopeType scopeType,
             @Valid @RequestBody CreateFolderRequest req) {
         Long userId = SecurityUtils.getCurrentUserId();
         ScopeFolderResponse response = folderService.createFolder(userId, scopeType, req);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     /**
@@ -85,12 +86,12 @@ public class MyScopeFolderController {
      */
     @PutMapping("/{folderId}")
     @Operation(summary = "フォルダ更新", description = "フォルダの名前・色を更新する")
-    public ResponseEntity<ScopeFolderResponse> updateFolder(
+    public ResponseEntity<ApiResponse<ScopeFolderResponse>> updateFolder(
             @PathVariable Long folderId,
             @Valid @RequestBody UpdateFolderRequest req) {
         Long userId = SecurityUtils.getCurrentUserId();
         ScopeFolderResponse response = folderService.updateFolder(userId, folderId, req);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
@@ -112,12 +113,12 @@ public class MyScopeFolderController {
     @PostMapping("/{folderId}/items")
     @Operation(summary = "アイテム追加",
             description = "フォルダにチーム/組織を追加する。既に別フォルダに属している場合は移動する（1アイテム1フォルダ制約）")
-    public ResponseEntity<ScopeFolderResponse> addItem(
+    public ResponseEntity<ApiResponse<ScopeFolderResponse>> addItem(
             @PathVariable Long folderId,
             @Valid @RequestBody AddFolderItemRequest req) {
         Long userId = SecurityUtils.getCurrentUserId();
         ScopeFolderResponse response = folderService.addItem(userId, folderId, req);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
