@@ -465,7 +465,8 @@
     "enhancement": {
       "gantt": {
         "title": "ガントビュー",
-        "no_data": "ガントバーに表示できる期間のある課題がありません"
+        "no_data": "ガントバーに表示できる期間のある課題がありません",
+        "gantt_view_link": "간트 뷰"
       },
       "progress": {
         "tab_label": "進捗",

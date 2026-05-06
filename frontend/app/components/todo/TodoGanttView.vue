@@ -139,7 +139,8 @@ const headerCellWidth = computed(() => `${(100 / totalDays.value).toFixed(4)}%`)
               >
                 <!-- 進捗充填 -->
                 <div
-                  class="absolute left-0 top-0 h-full rounded-l bg-black/20"
+                  class="absolute left-0 top-0 h-full bg-white/35"
+                  :class="parseFloat(todo.progressRate) >= 100 ? 'rounded' : 'rounded-l'"
                   :style="{ width: progressFillWidth(todo.progressRate) }"
                 />
                 <!-- 進捗率テキスト -->
