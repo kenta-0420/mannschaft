@@ -153,6 +153,17 @@ function onTeamCreated(entity: { id: number; name: string }) {
       </div>
     </div>
 
+    <!-- フォルダセクション -->
+    <div class="mt-8">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-lg font-semibold">{{ $t('teamHub.folders') }}</h2>
+      </div>
+      <ScopeFolderSection
+        scope-type="TEAM"
+        :items="teamStore.myTeams"
+      />
+    </div>
+
     <EntityCreateDialog
       entity-type="team"
       :visible="showCreateDialog"
