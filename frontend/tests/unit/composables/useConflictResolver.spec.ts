@@ -298,4 +298,100 @@ describe('useConflictResolver ロジック', () => {
       expect(result.meta.totalElements).toBe(0)
     })
   })
+
+  // --- 追加テスト(+8件) ---
+
+  describe('buildConflictsUrl — 追加テスト', () => {
+    it('page=0, size=50 で URL を構築する', () => {
+      expect(buildConflictsUrl(0, 50)).toBe('/api/v1/sync/conflicts/me?page=0&size=50')
+    })
+
+    it('page=10 で URL を構築する', () => {
+      expect(buildConflictsUrl(10, 20)).toBe('/api/v1/sync/conflicts/me?page=10&size=20')
+    })
+  })
+
+  describe('buildResolveBody — 追加テスト', () => {
+    it('mergedData が空オブジェクトのとき merged_data が空JSON文字列になる', () => {
+      const body = buildResolveBody({
+        resolution: 'MANUAL_MERGE',
+        mergedData: {},
+      })
+      expect(body.resolution).toBe('MANUAL_MERGE')
+      expect(body.merged_data).toBe('{}')
+    })
+
+    it('mergedData にネストされたオブジェクトが含まれる場合もシリアライズされること', () => {
+      const body = buildResolveBody({
+        resolution: 'MANUAL_MERGE',
+        mergedData: { nested: { key: 'value' }, count: 3 },
+      })
+      expect(body.merged_data).toBe('{"nested":{"key":"value"},"count":3}')
+    })
+  })
+
+  describe('normalizeListItem — 追加テスト', () => {
+    it('clientVersion / serverVersion が null のとき null のまま返る', () => {
+      const raw: RawConflictListItem = {
+        id: 5,
+        resource_type: 'SCHEDULE',
+        resource_id: 100,
+        client_version: null,
+        server_version: null,
+        resolution: null,
+        resolved_at: null,
+        created_at: '2026-01-01T00:00:00',
+      }
+      const result = normalizeListItem(raw)
+      expect(result.clientVersion).toBeNull()
+      expect(result.serverVersion).toBeNull()
+    })
+
+    it('resolution が SERVER_WIN のとき正しく変換される', () => {
+      const raw: RawConflictListItem = {
+        id: 7,
+        resource_type: 'EVENT',
+        resource_id: 50,
+        client_version: 1,
+        server_version: 2,
+        resolution: 'SERVER_WIN',
+        resolved_at: '2026-03-01T12:00:00',
+        created_at: '2026-03-01T10:00:00',
+      }
+      const result = normalizeListItem(raw)
+      expect(result.resolution).toBe('SERVER_WIN')
+      expect(result.resolvedAt).toBe('2026-03-01T12:00:00')
+    })
+  })
+
+  describe('normalizePagedResponse — 追加テスト', () => {
+    it('複数件の一覧を正規化すると全件キャメルケースになる', () => {
+      const rawData: RawConflictListItem[] = [
+        {
+          id: 1,
+          resource_type: 'EVENT',
+          resource_id: 10,
+          client_version: 1,
+          server_version: 2,
+          resolution: null,
+          resolved_at: null,
+          created_at: '2026-04-01T00:00:00',
+        },
+        {
+          id: 2,
+          resource_type: 'SCHEDULE',
+          resource_id: 20,
+          client_version: 3,
+          server_version: 4,
+          resolution: 'CLIENT_WIN',
+          resolved_at: '2026-04-02T00:00:00',
+          created_at: '2026-04-01T00:00:00',
+        },
+      ]
+      const result = normalizePagedResponse(rawData, { page: 0, size: 20, totalElements: 2, totalPages: 1 })
+      expect(result.data).toHaveLength(2)
+      expect(result.data[0]!.resourceType).toBe('EVENT')
+      expect(result.data[1]!.resolution).toBe('CLIENT_WIN')
+    })
+  })
 })
