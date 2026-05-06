@@ -108,4 +108,17 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("scopeId") Long scopeId,
             @Param("roleKind") RoleKind roleKind,
             Pageable pageable);
+
+    /**
+     * 指定スコープに対するアクティブメンバーシップを全件リストで取得する（バッチ処理用）。
+     *
+     * <p>F14.2 メンバー情報更新リマインダーバッチで使用する。
+     * ページングなしの全件取得のため、BATCH_LIMIT で処理件数を制御すること。</p>
+     */
+    @Query("SELECT m FROM MembershipEntity m " +
+            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL " +
+            "ORDER BY m.joinedAt ASC")
+    List<MembershipEntity> findAllActiveByScope(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId);
 }
