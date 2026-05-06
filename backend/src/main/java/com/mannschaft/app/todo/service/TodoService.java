@@ -670,10 +670,14 @@ public class TodoService {
      * <p>論理削除は分母を減らすだけで達成判定を不当に早めないため例外許可（呼び出し側で
      * 本メソッドを呼ばないことで実現）。本メソッドはステータス変更・編集・担当者変更で使用する。</p>
      *
+     * <p>F02.3.1 Phase 2: TODO キャッチボール（{@link TodoHandoffService}）からも呼び出すため
+     * public 化している。Handoff はステータス変更を伴うので、ロック中の TODO への引き渡しは
+     * {@code MilestoneLockedException}（HTTP 423 Locked）で拒否される。</p>
+     *
      * @param todo 対象 TODO
      * @throws MilestoneLockedException ロック中の場合
      */
-    private void assertNotMilestoneLocked(TodoEntity todo) {
+    public void assertNotMilestoneLocked(TodoEntity todo) {
         if (!Boolean.TRUE.equals(todo.getMilestoneLocked())) {
             return;
         }

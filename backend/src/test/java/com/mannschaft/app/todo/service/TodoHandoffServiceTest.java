@@ -18,6 +18,7 @@ import com.mannschaft.app.todo.entity.TodoHandoffEntity;
 import com.mannschaft.app.todo.entity.TodoStatusLabelEntity;
 import com.mannschaft.app.todo.event.TodoHandoffEvent;
 import com.mannschaft.app.todo.event.TodoStatusChangedEvent;
+import com.mannschaft.app.todo.exception.MilestoneLockedException;
 import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
 import com.mannschaft.app.todo.repository.TodoHandoffRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
@@ -58,6 +59,7 @@ class TodoHandoffServiceTest {
     @Mock private TodoAssigneeRepository assigneeRepository;
     @Mock private TodoHandoffRepository handoffRepository;
     @Mock private TodoStatusLabelService labelService;
+    @Mock private TodoService todoService;
     @Mock private AccessControlService accessControlService;
     @Mock private NameResolverService nameResolverService;
     @Mock private AuditLogService auditLogService;
@@ -304,5 +306,26 @@ class TodoHandoffServiceTest {
                 TodoScopeType.PERSONAL, ACTOR_ID, TODO_ID, ACTOR_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(TodoErrorCode.TODO_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("マイルストーンロック中の handoff は MilestoneLockedException（HTTP 423 Locked）")
+    void handoff_milestone_locked_rejected() {
+        Long toUser = 2L;
+        TodoHandoffRequest req = new TodoHandoffRequest(List.of(toUser), 10L, null);
+
+        given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(teamTodo));
+        // TodoService.assertNotMilestoneLocked がロック例外を投げる（F02.7 のロック判定）
+        org.mockito.BDDMockito.willThrow(new MilestoneLockedException(500L, "前マイルストーン"))
+                .given(todoService).assertNotMilestoneLocked(teamTodo);
+
+        assertThatThrownBy(() -> handoffService.handoff(
+                TodoScopeType.TEAM, TEAM_ID, TODO_ID, req, ACTOR_ID))
+                .isInstanceOf(MilestoneLockedException.class);
+
+        // ロックチェック失敗時、後続の処理（assignees 置換 / 履歴行 / イベント発行）は走らない
+        verify(handoffRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+        verify(assigneeRepository, never()).deleteAll(any());
     }
 }

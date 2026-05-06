@@ -64,6 +64,7 @@ public class TodoHandoffService {
     private final TodoAssigneeRepository assigneeRepository;
     private final TodoHandoffRepository handoffRepository;
     private final TodoStatusLabelService labelService;
+    private final TodoService todoService;
     private final AccessControlService accessControlService;
     private final NameResolverService nameResolverService;
     private final AuditLogService auditLogService;
@@ -91,6 +92,10 @@ public class TodoHandoffService {
         TodoEntity todo = todoRepository.findByIdAndDeletedAtIsNull(todoId)
                 .filter(t -> t.getScopeType() == scopeType && java.util.Objects.equals(t.getScopeId(), scopeId))
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
+
+        // (2.5) マイルストーンロック中 TODO への handoff は拒否（F02.7）
+        // Handoff はステータス・担当者変更を伴うため、ロック中の TODO は 423 Locked で拒否する。
+        todoService.assertNotMilestoneLocked(todo);
 
         // (3) 操作者がスコープのメンバーか
         String scopeKey = mapScopeTypeKey(scopeType);
