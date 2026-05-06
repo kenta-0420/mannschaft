@@ -24,6 +24,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -266,8 +267,8 @@ class MyPinnedCardsServiceTest {
         given(cardRepository.countPinnedByOwnerIdAndScopePersonal(USER_ID)).willReturn(1);
         given(boardRepository.findAllById(any())).willReturn(List.of(personalBoard));
         // 削除済みとして上書き
-        given(accessControlDispatcher.filterDeleted(eq("TIMELINE_POST"), any()))
-                .willReturn(Set.of(9001L));
+        given(accessControlDispatcher.filterDeletedByType(any()))
+                .willReturn(Map.of("TIMELINE_POST", Set.of(9001L)));
 
         PinnedCardReferenceResponse ref = service.list(USER_ID, 20, null).getItems().get(0).getReference();
         assertThat(ref.getIsDeleted()).isTrue();
@@ -486,9 +487,9 @@ class MyPinnedCardsServiceTest {
                 .willReturn(List.of(card));
         given(cardRepository.countPinnedByOwnerIdAndScopePersonal(USER_ID)).willReturn(1);
         given(boardRepository.findAllById(any())).willReturn(List.of(personalBoard));
-        // 閲覧権限あり扱いに上書き（保守的フォールバック中も dispatcher.filterAccessible を直接スタブで上書き）
-        given(accessControlDispatcher.filterAccessible(eq(USER_ID), eq("CHAT_MESSAGE"), any()))
-                .willReturn(Set.of(messageId));
+        // 閲覧権限あり扱いに上書き
+        given(accessControlDispatcher.filterAccessibleByType(eq(USER_ID), any()))
+                .willReturn(Map.of("CHAT_MESSAGE", Set.of(messageId)));
         // ChatMessage バッチ取得
         ChatMessageEntity msg = ChatMessageEntity.builder()
                 .channelId(channelId)
@@ -515,8 +516,8 @@ class MyPinnedCardsServiceTest {
         given(cardRepository.countPinnedByOwnerIdAndScopePersonal(USER_ID)).willReturn(1);
         given(boardRepository.findAllById(any())).willReturn(List.of(personalBoard));
         // 閲覧権限ありに上書きしても、メッセージ自体が見つからなければ is_deleted=true
-        given(accessControlDispatcher.filterAccessible(eq(USER_ID), eq("CHAT_MESSAGE"), any()))
-                .willReturn(Set.of(messageId));
+        given(accessControlDispatcher.filterAccessibleByType(eq(USER_ID), any()))
+                .willReturn(Map.of("CHAT_MESSAGE", Set.of(messageId)));
         // findAllById は空 → channelId 解決できず
         given(chatMessageRepository.findAllById(any())).willReturn(List.of());
 
