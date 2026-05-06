@@ -1,12 +1,14 @@
 package com.mannschaft.app.gallery.repository;
 
 import com.mannschaft.app.gallery.entity.PhotoAlbumEntity;
+import com.mannschaft.app.gallery.visibility.PhotoAlbumVisibilityProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -57,4 +59,19 @@ public interface PhotoAlbumRepository extends JpaRepository<PhotoAlbumEntity, Lo
      */
     @Query("SELECT COALESCE(SUM(a.photoCount), 0) FROM PhotoAlbumEntity a WHERE a.organizationId = :organizationId")
     int sumPhotoCountByOrganizationId(@Param("organizationId") Long organizationId);
+
+    /**
+     * F00 Phase D-β — 指定 ID 群のアルバムから可視性判定に必要な Projection を 1 SQL で取得する。
+     *
+     * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §4.6 / IDOR 防止 §11.3。
+     * {@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みの行は取得段階で除外され、
+     * 取得不可 ID は自動的に fail-closed（不存在）として扱われる。</p>
+     *
+     * @param ids 取得対象 photo_album_id 集合（空でない、{@code null} ではない）
+     * @return 実存するアルバムの Projection リスト（空でも null 不可）
+     */
+    @Query("SELECT new com.mannschaft.app.gallery.visibility.PhotoAlbumVisibilityProjection("
+            + "a.id, a.teamId, a.organizationId, a.createdBy, a.visibility) "
+            + "FROM PhotoAlbumEntity a WHERE a.id IN :ids")
+    List<PhotoAlbumVisibilityProjection> findVisibilityProjectionsByIdIn(@Param("ids") Collection<Long> ids);
 }
