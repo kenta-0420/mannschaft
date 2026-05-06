@@ -8,8 +8,9 @@ import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.event.TodoHandoffEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.Map;
 import java.util.Set;
@@ -35,9 +36,13 @@ public class TodoHandoffNotificationListener {
     /**
      * キャッチボールイベントを受信して通知を作成する。
      *
+     * <p>{@link TransactionalEventListener} で {@link TransactionPhase#AFTER_COMMIT} を指定し、
+     * 呼び出し元トランザクションが正常コミットされた後にのみ通知を発火する。これにより
+     * トランザクションがロールバックされた場合に「処理は失敗したが通知だけ飛んだ」状態を防ぐ。</p>
+     *
      * @param event 引き渡しイベント
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onHandoff(TodoHandoffEvent event) {
         if (event.getToUserIds() == null || event.getToUserIds().isEmpty()) {
             return;
