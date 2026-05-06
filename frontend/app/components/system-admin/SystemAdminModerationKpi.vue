@@ -3,6 +3,7 @@ import type { ModerationDashboardResponse } from '~/types/system-admin'
 
 const props = defineProps<{
   stats: ModerationDashboardResponse | null
+  loading?: boolean
 }>()
 
 interface KpiCard {
@@ -67,12 +68,7 @@ function value(card: KpiCard): string | number {
 </script>
 
 <template>
-  <section class="mb-6">
-    <h2
-      class="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-surface-400"
-    >
-      <i class="pi pi-shield" />モデレーション状況
-    </h2>
+  <DashboardWidgetCard title="モデレーション状況" icon="pi pi-shield" :loading="loading" :scrollable="false">
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
       <div
         v-for="card in cards"
@@ -117,5 +113,5 @@ function value(card: KpiCard): string | number {
         </span>
       </div>
     </div>
-  </section>
+  </DashboardWidgetCard>
 </template>
