@@ -14,8 +14,11 @@ import com.mannschaft.app.team.entity.TeamEntity;
  *       （未認証ユーザーも閲覧可）</li>
  *   <li>{@link TeamEntity.Visibility#ORGANIZATION_ONLY} → {@link StandardVisibility#ORGANIZATION_WIDE}
  *       （スコープの親 ORG 所属メンバーまで公開。親 ORG 連鎖ガードは §11.6 参照）</li>
- *   <li>{@link TeamEntity.Visibility#PRIVATE} → {@link StandardVisibility#PRIVATE}
- *       （作成者本人のみ。チームに作成者概念がないため実質 fail-closed）</li>
+ *   <li>{@link TeamEntity.Visibility#PRIVATE} → {@link StandardVisibility#MEMBERS_ONLY}
+ *       （招待制・非公開チーム。{@code TeamEntity} に {@code created_by} が存在しないため
+ *       {@link StandardVisibility#PRIVATE}（作者本人のみ）へのマッピングは実質 fail-closed
+ *       となり誰も閲覧できなくなる。チームの PRIVATE の意図は「メンバーだけ見える」であるため
+ *       {@link StandardVisibility#MEMBERS_ONLY} を使用する）</li>
  * </ul>
  */
 public final class TeamVisibilityMapper {
@@ -34,7 +37,7 @@ public final class TeamVisibilityMapper {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
             case ORGANIZATION_ONLY -> StandardVisibility.ORGANIZATION_WIDE;
-            case PRIVATE -> StandardVisibility.PRIVATE;
+            case PRIVATE -> StandardVisibility.MEMBERS_ONLY;
         };
     }
 }

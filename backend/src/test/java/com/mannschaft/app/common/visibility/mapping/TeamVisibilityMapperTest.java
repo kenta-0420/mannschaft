@@ -31,9 +31,9 @@ class TeamVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("PRIVATE は StandardVisibility.PRIVATE に変換される")
-    void private_maps_to_private() {
+    @DisplayName("PRIVATE は StandardVisibility.MEMBERS_ONLY に変換される（招待制・非公開チームはメンバー閲覧可）")
+    void private_maps_to_members_only() {
         assertThat(TeamVisibilityMapper.toStandard(TeamEntity.Visibility.PRIVATE))
-                .isEqualTo(StandardVisibility.PRIVATE);
+                .isEqualTo(StandardVisibility.MEMBERS_ONLY);
     }
 }

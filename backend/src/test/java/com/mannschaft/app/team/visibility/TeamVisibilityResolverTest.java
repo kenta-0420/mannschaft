@@ -45,7 +45,7 @@ import static org.mockito.Mockito.when;
  * <ul>
  *   <li>PUBLIC → StandardVisibility.PUBLIC</li>
  *   <li>ORGANIZATION_ONLY → StandardVisibility.ORGANIZATION_WIDE（親 ORG メンバーまで公開）</li>
- *   <li>PRIVATE → StandardVisibility.PRIVATE（authorUserId=null のため実質 fail-closed）</li>
+ *   <li>PRIVATE → StandardVisibility.MEMBERS_ONLY（招待制・非公開チームはメンバー閲覧可）</li>
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)
@@ -142,23 +142,39 @@ class TeamVisibilityResolverTest {
     }
 
     // -------------------------------------------------------------------------
-    // PRIVATE チームは authorUserId=null のため実質 fail-closed
+    // PRIVATE チームは MEMBERS_ONLY にマップ（招待制・非公開チームはメンバー閲覧可）
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("canView_PRIVATEチームはauthorUserId=nullのためSystemAdmin以外は常にfalse")
-    void canView_PRIVATEチームは非SystemAdminに不可視() {
-        // authorUserId=null なので PRIVATE でも誰も「本人」にならない
+    @DisplayName("canView_PRIVATEチームはチームメンバーに可視")
+    void canView_PRIVATEチームはチームメンバーに可視() {
+        // PRIVATE → MEMBERS_ONLY: チームメンバー（memberScopes に TEAM:1 を持つ）は閲覧可
         TeamVisibilityProjection projection = projection(
                 1L, 1L, TeamEntity.Visibility.PRIVATE, null, null);
         when(teamRepository.findVisibilityProjectionsByIdIn(any()))
                 .thenReturn(List.of(projection));
         when(membershipBatchQueryService.snapshotForUser(eq(10L), anySet(), anySet()))
                 .thenReturn(new UserScopeRoleSnapshot(false,
-                        Map.of(new ScopeKey("TEAM", 1L), "ADMIN"),
-                        Map.of(), Set.of(), Set.of()));
+                        Map.of(new ScopeKey("TEAM", 1L), "MEMBER"),
+                        Map.of(),
+                        Set.of(new ScopeKey("TEAM", 1L)),
+                        Set.of()));
 
-        assertThat(resolver.canView(1L, 10L)).isFalse();
+        assertThat(resolver.canView(1L, 10L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("canView_PRIVATEチームは非メンバーに不可視")
+    void canView_PRIVATEチームは非メンバーに不可視() {
+        // PRIVATE → MEMBERS_ONLY: チーム非メンバーは閲覧不可
+        TeamVisibilityProjection projection = projection(
+                1L, 1L, TeamEntity.Visibility.PRIVATE, null, null);
+        when(teamRepository.findVisibilityProjectionsByIdIn(any()))
+                .thenReturn(List.of(projection));
+        when(membershipBatchQueryService.snapshotForUser(eq(99L), anySet(), anySet()))
+                .thenReturn(UserScopeRoleSnapshot.empty());
+
+        assertThat(resolver.canView(1L, 99L)).isFalse();
     }
 
     @Test
