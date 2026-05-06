@@ -16,7 +16,16 @@ if (!token) {
 }
 
 const schema = toTypedSchema(z.object({
-  newPassword: z.string().min(8, 'パスワードは8文字以上で入力してください'),
+  newPassword: z.string()
+    .min(8, 'パスワードは8文字以上で入力してください')
+    .refine((val) => {
+      let count = 0
+      if (/[A-Z]/.test(val)) count++
+      if (/[a-z]/.test(val)) count++
+      if (/[0-9]/.test(val)) count++
+      if (/[^A-Za-z0-9]/.test(val)) count++
+      return count >= 3
+    }, '大文字・小文字・数字・記号のうち3種以上含めてください'),
   confirmPassword: z.string().min(1, '確認用パスワードは必須です'),
 }).refine(data => data.newPassword === data.confirmPassword, {
   message: 'パスワードが一致しません',
@@ -56,9 +65,13 @@ const onSubmit = handleSubmit(async (values) => {
 
 <template>
   <div v-if="!success">
-    <p class="mb-4 text-sm text-surface-500">
+    <p class="mb-2 text-sm text-surface-500">
       新しいパスワードを入力してください。
     </p>
+    <ul class="mb-4 text-xs text-surface-400 list-disc list-inside space-y-0.5">
+      <li>8文字以上</li>
+      <li>大文字・小文字・数字・記号のうち3種以上</li>
+    </ul>
     <form @submit.prevent="onSubmit">
       <div class="flex flex-col gap-4">
         <div class="flex flex-col gap-2">

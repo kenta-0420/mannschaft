@@ -2,6 +2,7 @@ package com.mannschaft.app.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -21,6 +22,7 @@ public class AsyncConfig {
      * イベント処理用スレッドプール。
      * ApplicationEvent の非同期リスナーで使用する。
      */
+    @Primary
     @Bean("event-pool")
     public Executor eventPoolExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

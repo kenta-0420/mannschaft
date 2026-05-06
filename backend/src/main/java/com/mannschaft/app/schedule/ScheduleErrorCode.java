@@ -15,7 +15,7 @@ public enum ScheduleErrorCode implements ErrorCode {
     SCHEDULE_NOT_FOUND("SCHEDULE_001", "スケジュールが見つかりません", Severity.WARN),
 
     /** 開始日時と終了日時の整合性エラー */
-    INVALID_DATE_RANGE("SCHEDULE_002", "開始日時は終了日時より前である必要があります", Severity.ERROR),
+    INVALID_DATE_RANGE("SCHEDULE_002", "開始日時は終了日時より前である必要があります", Severity.WARN),
 
     /** 出欠管理対象外のスケジュール */
     ATTENDANCE_NOT_REQUIRED("SCHEDULE_003", "このスケジュールは出欠管理対象外です", Severity.WARN),

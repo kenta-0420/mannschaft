@@ -40,4 +40,15 @@ public class AuthEmailEventListener {
         log.info("URL:  {}", verifyUrl);
         log.info("========================================");
     }
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handlePasswordResetRequested(PasswordResetRequestedEvent event) {
+        String resetUrl = frontendUrl + "/reset-password?token=" + event.getRawToken();
+        log.info("========================================");
+        log.info("【開発用】パスワードリセットURL");
+        log.info("宛先: {}", event.getEmail());
+        log.info("URL:  {}", resetUrl);
+        log.info("========================================");
+    }
 }

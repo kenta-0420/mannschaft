@@ -873,6 +873,6 @@
     "filter": {
       "allTeamsOrgs": "팀・조직 (전체)",
       "selectScope": "생성 대상 선택"
-    }
+    },
   }
 }

@@ -264,6 +264,13 @@ public class UserEntity extends BaseEntity {
     }
 
     /**
+     * パスワードハッシュを更新する（パスワードリセット用）。
+     */
+    public void updatePasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    /**
      * 通報権限の制限状態を更新する。
      */
     public void setReportingRestricted(boolean restricted) {

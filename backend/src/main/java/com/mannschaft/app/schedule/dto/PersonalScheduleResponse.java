@@ -30,4 +30,5 @@ public class PersonalScheduleResponse {
     private final boolean googleSynced;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+    private final String createdByDisplayName;
 }

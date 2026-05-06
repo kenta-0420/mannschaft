@@ -20,6 +20,7 @@ interface ScheduleEventDetail {
   categoryName: string | null
   categoryColor: string | null
   createdBy: { displayName: string }
+  attendanceRequired: boolean
   myAttendance: string | null
   attendanceStats: { yes: number; no: number; maybe: number; pending: number; total: number } | null
 }

@@ -2,6 +2,7 @@ package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.service.AuthService;
 import com.mannschaft.app.auth.dto.ConfirmPasswordResetRequest;
+import com.mannschaft.app.auth.dto.RequestPasswordResetRequest;
 import com.mannschaft.app.auth.dto.LoginRequest;
 import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.RegisterRequest;
@@ -211,11 +212,11 @@ public class AuthLoginController {
     @Operation(summary = "パスワードリセット要求")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リセットメール送信完了")
     public ResponseEntity<ApiResponse<MessageResponse>> requestPasswordReset(
-            @RequestParam String email,
+            @Valid @RequestBody RequestPasswordResetRequest req,
             HttpServletRequest request) {
 
         String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
-        return ResponseEntity.ok(authService.requestPasswordReset(email, ipAddress));
+        return ResponseEntity.ok(authService.requestPasswordReset(req.getEmail(), ipAddress));
     }
 
     /**

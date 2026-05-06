@@ -34,6 +34,8 @@ interface EventDetail {
   scopeType?: string
   scopeId?: number
   scopeName?: string | null
+  scopeIconUrl?: string | null
+  attendanceRequired?: boolean
   myAttendance?: string | null
   attendanceStats?: { yes: number; no: number; maybe: number; pending: number; total: number } | null
   createdBy?: { displayName: string }
@@ -129,13 +131,23 @@ const availableScopes = computed<ScopeOption[]>(() => {
   return result
 })
 
+const SCOPE_FILTER_KEY = 'mannschaft:calendar:scopeFilter'
+const PERSONAL_KEY = 'PERSONAL'
 const selectedScopes = ref<string[]>([])
 
+// 個人を含む全スコープ（フィルタ・MultiSelect 共通ソース）
+const allScopeOptions = computed<ScopeOption[]>(() => [
+  { label: '個人', value: PERSONAL_KEY, scopeType: 'PERSONAL', scopeId: 0 },
+  ...availableScopes.value,
+])
+
 const filteredEvents = computed(() => {
-  if (selectedScopes.value.length === 0) return events.value
   return events.value.filter(e => {
     const ext = extendedEvents.value.find(x => x.id === e.id && x.isPersonal === e.isPersonal)
-    if (!ext || ext.scopeType === 'PERSONAL' || ext.isPersonal) return true
+    if (!ext) return false
+    if (ext.isPersonal || ext.scopeType === 'PERSONAL') {
+      return selectedScopes.value.includes(PERSONAL_KEY)
+    }
     const key = `${ext.scopeType}:${ext.scopeId}`
     return selectedScopes.value.includes(key)
   })
@@ -144,28 +156,17 @@ const filteredEvents = computed(() => {
 function toggleScope(value: string) {
   const idx = selectedScopes.value.indexOf(value)
   if (idx >= 0) {
-    selectedScopes.value.splice(idx, 1)
-  }
-  else {
-    selectedScopes.value.push(value)
+    selectedScopes.value = selectedScopes.value.filter((_, i) => i !== idx)
+  } else {
+    selectedScopes.value = [...selectedScopes.value, value]
   }
 }
 
 const FILTER_OVERFLOW = 5
 
-// MultiSelect 用: selectedScopes が空 = 全選択と見なす双方向モデル
 const multiSelectScopes = computed({
-  get: () => selectedScopes.value.length === 0
-    ? availableScopes.value.map(s => s.value)
-    : [...selectedScopes.value],
-  set: (vals: string[]) => {
-    // 全件選択 = フィルターなし状態
-    if (vals.length === availableScopes.value.length) {
-      selectedScopes.value = []
-    } else {
-      selectedScopes.value = vals
-    }
-  },
+  get: () => [...selectedScopes.value],
+  set: (vals: string[]) => { selectedScopes.value = vals },
 })
 
 // #49-B: 日別一覧
@@ -194,7 +195,11 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
     selectedEventIsPersonal.value = isPersonal
     if (isPersonal) {
       const res = await scheduleApi.getMyScheduleDetail(eventId)
-      selectedEvent.value = res.data as EventDetail
+      const d = res.data as EventDetail & { createdByDisplayName?: string }
+      selectedEvent.value = {
+        ...d,
+        createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
+      }
     }
     else {
       const ext = extendedEvents.value.find(e => e.id === eventId && !e.isPersonal)
@@ -202,8 +207,16 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
       const sid = ext.scopeId ?? 0
       const res = await scheduleApi.getSchedule(st, sid, eventId)
-      const d = res.data as EventDetail
-      selectedEvent.value = { ...d, scopeType: ext.scopeType, scopeId: ext.scopeId, scopeName: ext.scopeName }
+      const d = res.data as EventDetail & { createdByDisplayName?: string; myAttendanceStatus?: string }
+      selectedEvent.value = {
+        ...d,
+        scopeType: ext.scopeType,
+        scopeId: ext.scopeId,
+        scopeName: (d as EventDetail).scopeName ?? ext.scopeName,
+        scopeIconUrl: (d as EventDetail).scopeIconUrl ?? null,
+        createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
+        myAttendance: d.myAttendanceStatus ?? null,
+      }
     }
     showEventPanel.value = true
     showDayPanel.value = false
@@ -271,6 +284,15 @@ const selectedCreateScope = computed(
   () => createScopeOptions.value.find(o => o.value === createScopeKey.value) ?? createScopeOptions.value[0]!,
 )
 
+// 上部セレクト変更でカレンダー表示を絞り込む
+watch(createScopeKey, (key) => {
+  if (key === 'personal') {
+    selectedScopes.value = [PERSONAL_KEY]
+  } else {
+    selectedScopes.value = [PERSONAL_KEY, key]
+  }
+})
+
 function getMonthRange(year: number, month: number) {
   const lastDay = new Date(year, month, 0).getDate()
   return {
@@ -313,7 +335,35 @@ function onNextMonth() {
   if (activeTab.value === 'gantt') loadGantt()
 }
 
-onMounted(loadEvents)
+let hasSavedFilter = false
+
+onMounted(() => {
+  try {
+    const saved = localStorage.getItem(SCOPE_FILTER_KEY)
+    if (saved) {
+      selectedScopes.value = JSON.parse(saved)
+      hasSavedFilter = true
+    }
+  } catch { /* 無視 */ }
+  loadEvents()
+})
+
+watch(selectedScopes, (val) => {
+  try {
+    localStorage.setItem(SCOPE_FILTER_KEY, JSON.stringify(val))
+  } catch { /* 無視 */ }
+}, { deep: true })
+
+// allScopeOptions が初めて確定したとき、localStorage がなければ全選択で初期化
+let scopesInitialized = false
+watch(allScopeOptions, (opts) => {
+  if (!scopesInitialized && opts.length > 1) {
+    scopesInitialized = true
+    if (!hasSavedFilter) {
+      selectedScopes.value = opts.map(s => s.value)
+    }
+  }
+})
 </script>
 
 <template>
@@ -386,18 +436,18 @@ onMounted(loadEvents)
           <div class="mt-4 flex flex-wrap items-center gap-4 text-xs text-surface-500">
             <span><span class="mr-1 inline-block h-3 w-3 rounded-full bg-green-500" />個人</span>
             <span><span class="mr-1 inline-block h-3 w-3 rounded-full bg-indigo-500" />チーム/組織</span>
-            <!-- #51: スコープフィルタ -->
-            <div v-if="availableScopes.length > 0" class="flex gap-2 flex-wrap items-center">
+            <!-- #51: スコープフィルタ（個人含む全スコープ） -->
+            <div v-if="allScopeOptions.length > 1" class="flex gap-2 flex-wrap items-center">
               <span class="text-xs text-surface-400">表示:</span>
 
               <!-- ≤5件: 横並びトグルボタン -->
-              <template v-if="availableScopes.length <= FILTER_OVERFLOW">
+              <template v-if="allScopeOptions.length <= FILTER_OVERFLOW">
                 <button
-                  v-for="sc in availableScopes"
+                  v-for="sc in allScopeOptions"
                   :key="sc.value"
                   type="button"
                   class="text-xs px-2 py-0.5 rounded-full border transition-colors"
-                  :class="selectedScopes.includes(sc.value) || selectedScopes.length === 0
+                  :class="selectedScopes.includes(sc.value)
                     ? 'border-primary text-primary bg-primary/10'
                     : 'border-surface-300 text-surface-400'"
                   @click="toggleScope(sc.value)"
@@ -410,7 +460,7 @@ onMounted(loadEvents)
               <MultiSelect
                 v-else
                 v-model="multiSelectScopes"
-                :options="availableScopes"
+                :options="allScopeOptions"
                 option-label="label"
                 option-value="value"
                 :placeholder="t('schedule.filter.allTeamsOrgs')"
@@ -440,12 +490,15 @@ onMounted(loadEvents)
                 categoryName: selectedEvent.categoryName ?? null,
                 categoryColor: selectedEvent.categoryColor ?? null,
                 createdBy: selectedEvent.createdBy ?? { displayName: '' },
+                attendanceRequired: selectedEvent.attendanceRequired ?? false,
                 myAttendance: selectedEvent.myAttendance ?? null,
                 attendanceStats: selectedEvent.attendanceStats ?? null,
               }"
               :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
               :scope-id="selectedEvent.scopeId ?? 0"
               :can-edit="true"
+              :scope-name="selectedEvent.scopeName ?? null"
+              :scope-icon-url="selectedEvent.scopeIconUrl ?? null"
               @edit="onEditEvent"
               @delete="onDeleteEvent"
               @responded="refresh"

@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.schedule.AttendanceGenerationStatus;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.EventType;
@@ -56,6 +57,7 @@ public class PersonalScheduleService {
     private final PersonalScheduleReminderRepository reminderRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
+    private final NameResolverService nameResolverService;
 
     /**
      * 個人スケジュールを作成する。ソフトリミット1000件を超過している場合はエラーとする。
@@ -512,6 +514,7 @@ public class PersonalScheduleService {
      */
     private PersonalScheduleResponse toPersonalScheduleResponse(ScheduleEntity entity,
                                                                  List<Integer> reminders) {
+        String createdByDisplayName = nameResolverService.resolveUserDisplayName(entity.getCreatedBy());
         return new PersonalScheduleResponse(
                 entity.getId(),
                 entity.getTitle(),
@@ -529,6 +532,7 @@ public class PersonalScheduleService {
                 reminders,
                 entity.getGoogleCalendarEventId() != null,
                 entity.getCreatedAt(),
-                entity.getUpdatedAt());
+                entity.getUpdatedAt(),
+                createdByDisplayName);
     }
 }

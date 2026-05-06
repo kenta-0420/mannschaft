@@ -18,6 +18,7 @@ public interface PersonalScheduleMapper {
     @Mapping(target = "recurrenceRule", ignore = true)
     @Mapping(target = "reminders", ignore = true)
     @Mapping(target = "googleSynced", expression = "java(entity.getGoogleCalendarEventId() != null)")
+    @Mapping(target = "createdByDisplayName", ignore = true)
     PersonalScheduleResponse toResponse(ScheduleEntity entity);
 
     List<PersonalScheduleResponse> toResponseList(List<ScheduleEntity> entities);

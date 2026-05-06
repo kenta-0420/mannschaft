@@ -68,7 +68,7 @@ public class ShiftScheduleEntity extends BaseEntity {
     @Builder.Default
     private Boolean isReminderSent = false;
 
-    @Column(nullable = false)
+    @Column(name = "is_reminder_sent_48h", nullable = false)
     @Builder.Default
     private Boolean isReminderSent48h = false;
 
