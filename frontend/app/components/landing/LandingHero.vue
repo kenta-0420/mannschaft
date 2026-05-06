@@ -24,7 +24,7 @@ const { t } = useI18n()
         <p
           :class="[
             'mx-auto text-lg leading-relaxed text-surface-600 dark:text-surface-300',
-            i === 0 ? 'mb-4 max-w-2xl text-left' : 'mb-10 max-w-[45.5rem] text-left',
+            i === 0 ? 'mb-4 max-w-2xl' : 'mb-10 max-w-[45.5rem]',
           ]"
         >
           {{ part }}
