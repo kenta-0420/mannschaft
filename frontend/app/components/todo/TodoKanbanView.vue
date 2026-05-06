@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import type { MyTodo, KanbanCol } from '~/composables/useTodoList'
 import { priorityBorder, priorityLabel, priorityClass } from '~/composables/useTodoList'
+import { SYSTEM_LABEL_ID, type TodoStatusLabelBucket } from '~/types/todoStatusLabel'
 
-defineProps<{
+/**
+ * F02.3.1: 旧前後遷移ボタン（左右矢印）を完全撤去。
+ * バケット間移動は HTML5 ドラッグ&ドロップで行い、
+ * 移動先バケットの SYSTEM 既定ラベル ID を statusLabelId として PATCH する（§5.7）。
+ */
+const props = defineProps<{
   kanbanCols: KanbanCol[]
   scopeDisplayName: (todo: MyTodo) => string
   scopeColor: (scopeType: string) => string
@@ -11,17 +17,74 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  changeStatus: [todo: MyTodo, status: string]
+  changeStatus: [todo: MyTodo, payload: { statusLabelId: number }]
   create: []
 }>()
+
+const draggingTodo = ref<MyTodo | null>(null)
+
+function todoLink(todo: MyTodo): string {
+  if (todo.scopeType === 'TEAM' && todo.scopeId) {
+    return `/teams/${todo.scopeId}/todos/${todo.id}`
+  }
+  if (todo.scopeType === 'ORGANIZATION' && todo.scopeId) {
+    return `/organizations/${todo.scopeId}/todos/${todo.id}`
+  }
+  return `/todos/${todo.id}`
+}
+
+function bucketDefaultLabelId(bucket: string): number | null {
+  if (bucket === 'OPEN') return SYSTEM_LABEL_ID.OPEN
+  if (bucket === 'IN_PROGRESS') return SYSTEM_LABEL_ID.IN_PROGRESS
+  if (bucket === 'COMPLETED') return SYSTEM_LABEL_ID.COMPLETED
+  return null
+}
+
+function onDragStart(todo: MyTodo, ev: DragEvent) {
+  draggingTodo.value = todo
+  if (ev.dataTransfer) {
+    ev.dataTransfer.effectAllowed = 'move'
+    // テキストデータを設定しないと一部ブラウザで drop イベントが発火しない
+    ev.dataTransfer.setData('text/plain', String(todo.id))
+  }
+}
+
+function onDragOver(ev: DragEvent) {
+  ev.preventDefault()
+  if (ev.dataTransfer) {
+    ev.dataTransfer.dropEffect = 'move'
+  }
+}
+
+function onDrop(targetBucket: TodoStatusLabelBucket, ev: DragEvent) {
+  ev.preventDefault()
+  const todo = draggingTodo.value
+  draggingTodo.value = null
+  if (!todo) return
+  if (todo.status === targetBucket) return
+  const labelId = bucketDefaultLabelId(targetBucket)
+  if (labelId === null) return
+  emit('changeStatus', todo, { statusLabelId: labelId })
+}
+
+// 各列の status を bucket と見なす（型安全化）
+function isBucket(v: string): v is TodoStatusLabelBucket {
+  return v === 'OPEN' || v === 'IN_PROGRESS' || v === 'COMPLETED'
+}
+
+const safeKanbanCols = computed(() =>
+  props.kanbanCols.filter((c) => isBucket(c.status)) as Array<KanbanCol & { status: TodoStatusLabelBucket }>,
+)
 </script>
 
 <template>
   <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
     <div
-      v-for="col in kanbanCols"
+      v-for="col in safeKanbanCols"
       :key="col.status"
       class="rounded-xl border-2 border-surface-400 dark:border-surface-500"
+      @dragover="onDragOver"
+      @drop="onDrop(col.status, $event)"
     >
       <div class="flex items-center justify-between rounded-t-xl px-4 py-3" :class="col.color">
         <span class="font-semibold" :class="col.headerColor">{{ col.label }}</span>
@@ -37,15 +100,25 @@ const emit = defineEmits<{
         <div
           v-for="todo in col.todos"
           :key="todo.id"
-          class="rounded-lg border-2 border-surface-400 bg-surface-0 p-3 shadow-sm dark:border-surface-500 dark:bg-surface-800"
-          :class="priorityBorder[todo.priority]"
+          class="rounded-lg border-2 border-surface-400 bg-surface-0 p-3 shadow-sm transition-opacity dark:border-surface-500 dark:bg-surface-800"
+          :class="[
+            priorityBorder[todo.priority],
+            { 'opacity-50': draggingTodo?.id === todo.id },
+          ]"
+          draggable="true"
+          @dragstart="onDragStart(todo, $event)"
         >
-          <p
-            class="mb-2 text-sm font-medium leading-snug text-surface-800 dark:text-surface-100"
-            :class="{ 'line-through text-surface-400': todo.status === 'COMPLETED' }"
+          <NuxtLink
+            :to="todoLink(todo)"
+            class="mb-2 block text-sm font-medium leading-snug hover:text-primary"
+            :class="
+              todo.status === 'COMPLETED'
+                ? 'text-surface-400 line-through'
+                : 'text-surface-800 dark:text-surface-100'
+            "
           >
             {{ todo.title }}
-          </p>
+          </NuxtLink>
 
           <div class="flex flex-wrap items-center gap-1.5">
             <span
@@ -60,6 +133,10 @@ const emit = defineEmits<{
             >
               {{ priorityLabel[todo.priority] }}
             </span>
+            <TodoStatusLabelBadge
+              :label="todo.statusLabel"
+              :fallback-bucket="todo.status"
+            />
             <span
               v-if="todo.dueDate"
               class="flex items-center gap-0.5 text-[10px]"
@@ -79,29 +156,6 @@ const emit = defineEmits<{
               size="small"
               shape="circle"
               class="border-2 border-surface-0 dark:border-surface-800"
-            />
-          </div>
-
-          <div class="mt-2 flex gap-1">
-            <Button
-              v-if="col.status !== 'OPEN'"
-              v-tooltip="col.status === 'IN_PROGRESS' ? '未着手に戻す' : '進行中に戻す'"
-              icon="pi pi-arrow-left"
-              size="small"
-              text
-              severity="secondary"
-              class="!p-1"
-              @click="emit('changeStatus', todo, col.status === 'IN_PROGRESS' ? 'OPEN' : 'IN_PROGRESS')"
-            />
-            <Button
-              v-if="col.status !== 'COMPLETED'"
-              v-tooltip="col.status === 'OPEN' ? '進行中にする' : '完了にする'"
-              icon="pi pi-arrow-right"
-              size="small"
-              text
-              severity="secondary"
-              class="!p-1 ml-auto"
-              @click="emit('changeStatus', todo, col.status === 'OPEN' ? 'IN_PROGRESS' : 'COMPLETED')"
             />
           </div>
         </div>

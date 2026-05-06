@@ -2,19 +2,28 @@
 import type { MyTodo, ListGroup } from '~/composables/useTodoList'
 import { priorityBorder, priorityLabel, priorityClass } from '~/composables/useTodoList'
 
+/**
+ * F02.3.1: 旧「進行中にする」「完了にする」クイックアクションボタンを完全撤去。
+ * ステータス変更はタイトルクリックで開く詳細ページ側に集約。
+ * バッジは TodoStatusLabelBadge でカスタムラベル対応。
+ */
 defineProps<{
   listGroups: ListGroup[]
   scopeDisplayName: (todo: MyTodo) => string
   scopeColor: (scopeType: string) => string
   formatDate: (d: string | null) => string
   isOverdue: (todo: MyTodo) => boolean
-  nextStatus: (current: string) => string
-  nextStatusLabel: (current: string) => string
 }>()
 
-const emit = defineEmits<{
-  changeStatus: [todo: MyTodo, status: string]
-}>()
+function todoLink(todo: MyTodo): string {
+  if (todo.scopeType === 'TEAM' && todo.scopeId) {
+    return `/teams/${todo.scopeId}/todos/${todo.id}`
+  }
+  if (todo.scopeType === 'ORGANIZATION' && todo.scopeId) {
+    return `/organizations/${todo.scopeId}/todos/${todo.id}`
+  }
+  return `/todos/${todo.id}`
+}
 </script>
 
 <template>
@@ -42,18 +51,11 @@ const emit = defineEmits<{
           class="flex items-center gap-3 rounded-xl border-2 border-surface-400 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm dark:border-surface-500 dark:bg-surface-800"
           :class="priorityBorder[todo.priority]"
         >
-          <Checkbox
-            :model-value="todo.status === 'COMPLETED'"
-            binary
-            @update:model-value="
-              emit('changeStatus', todo, todo.status === 'COMPLETED' ? 'OPEN' : 'COMPLETED')
-            "
-          />
-
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
-              <p
-                class="text-sm font-medium"
+              <NuxtLink
+                :to="todoLink(todo)"
+                class="text-sm font-medium hover:text-primary"
                 :class="
                   todo.status === 'COMPLETED'
                     ? 'text-surface-400 line-through'
@@ -61,13 +63,17 @@ const emit = defineEmits<{
                 "
               >
                 {{ todo.title }}
-              </p>
+              </NuxtLink>
               <span
                 class="rounded-full px-2 py-0.5 text-[11px] font-medium"
                 :class="scopeColor(todo.scopeType)"
               >
                 {{ scopeDisplayName(todo) }}
               </span>
+              <TodoStatusLabelBadge
+                :label="todo.statusLabel"
+                :fallback-bucket="todo.status"
+              />
             </div>
             <div class="mt-1 flex items-center gap-3">
               <span
@@ -94,16 +100,6 @@ const emit = defineEmits<{
           >
             {{ priorityLabel[todo.priority] }}
           </span>
-
-          <Button
-            v-if="todo.status !== 'COMPLETED'"
-            :label="nextStatusLabel(todo.status)"
-            size="small"
-            text
-            severity="secondary"
-            class="shrink-0 !text-xs"
-            @click="emit('changeStatus', todo, nextStatus(todo.status))"
-          />
         </div>
       </div>
     </div>
