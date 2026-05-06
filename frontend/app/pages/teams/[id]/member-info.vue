@@ -80,13 +80,6 @@ onMounted(loadResponses)
             {{ item.fieldName }}
           </span>
           <Tag v-if="item.isRequired" :value="$t('memberInfo.field.required')" severity="danger" class="text-xs" />
-          <span
-            v-if="item.isSensitive"
-            class="text-surface-400"
-            :title="$t('memberInfo.field.sensitiveHint')"
-          >
-            <i class="pi pi-lock text-sm" />
-          </span>
           <Tag v-if="item.isOverdue" :value="$t('memberInfo.response.overdue')" severity="danger" />
         </div>
 
