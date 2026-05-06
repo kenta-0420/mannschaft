@@ -1,3 +1,5 @@
+import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
+
 interface TodoListParams {
   status?: string
   priority?: string
@@ -8,49 +10,35 @@ interface TodoListParams {
   sort?: string
 }
 
+interface TodoBase {
+  id: number
+  scopeType: string
+  scopeId: number
+  title: string
+  description: string | null
+  status: string
+  /** F02.3.1 — カスタムステータスラベル情報（バックエンド側で SYSTEM 既定にフォールバック済み） */
+  statusLabel: TodoStatusLabelInfo | null
+  priority: string
+  dueDate: string | null
+  dueTime: string | null
+  daysRemaining: number | null
+  completedAt: string | null
+  completedBy: { id: number; displayName: string } | null
+  createdBy: { id: number; displayName: string }
+  sortOrder: number
+  assignees: Array<{ id: number; userId: number; displayName: string; avatarUrl: string | null }>
+  createdAt: string
+  updatedAt: string
+}
+
 interface PagedTodos {
-  data: Array<{
-    id: number
-    scopeType: string
-    scopeId: number
-    title: string
-    description: string | null
-    status: string
-    priority: string
-    dueDate: string | null
-    dueTime: string | null
-    daysRemaining: number | null
-    completedAt: string | null
-    completedBy: { id: number; displayName: string } | null
-    createdBy: { id: number; displayName: string }
-    sortOrder: number
-    assignees: Array<{ id: number; userId: number; displayName: string; avatarUrl: string | null }>
-    createdAt: string
-    updatedAt: string
-  }>
+  data: TodoBase[]
   meta: { page: number; size: number; totalElements: number; totalPages: number }
 }
 
 interface TodoDetail {
-  data: {
-    id: number
-    scopeType: string
-    scopeId: number
-    title: string
-    description: string | null
-    status: string
-    priority: string
-    dueDate: string | null
-    dueTime: string | null
-    daysRemaining: number | null
-    completedAt: string | null
-    completedBy: { id: number; displayName: string } | null
-    createdBy: { id: number; displayName: string }
-    sortOrder: number
-    assignees: Array<{ id: number; userId: number; displayName: string; avatarUrl: string | null }>
-    createdAt: string
-    updatedAt: string
-  }
+  data: TodoBase
 }
 
 interface CommentList {
@@ -82,20 +70,27 @@ export function useTodoApi() {
     })
   }
 
-  // スコープを問わず使える汎用ステータス変更
+  /**
+   * スコープを問わず使える汎用ステータス変更
+   *
+   * F02.3.1 でリクエストボディが拡張され、`status` / `statusLabelId` のいずれか（または両方）を指定可能。
+   * 後方互換のため、status のみの呼び出しも引き続きサポート。
+   */
   async function changeTodoStatusById(
     scopeType: string,
     scopeId: number | null,
     todoId: number,
-    status: string,
+    payload: { status?: string; statusLabelId?: number } | string,
   ) {
+    const body =
+      typeof payload === 'string' ? { status: payload } : payload
     if (scopeType === 'PERSONAL' || !scopeId) {
-      return api(`/api/v1/todos/${todoId}/status`, { method: 'PATCH', body: { status } })
+      return api(`/api/v1/todos/${todoId}/status`, { method: 'PATCH', body })
     }
     const type = scopeType === 'TEAM' ? ('team' as const) : ('organization' as const)
     return api(`${buildBase(type, scopeId)}/todos/${todoId}/status`, {
       method: 'PATCH',
-      body: { status },
+      body,
     })
   }
 
@@ -149,15 +144,23 @@ export function useTodoApi() {
   }
 
   // === Status ===
+  /**
+   * チーム / 組織 TODO のステータス変更
+   *
+   * F02.3.1 でリクエストボディが `{ status?, statusLabelId? }` に拡張。
+   * 後方互換のため、status のみの呼び出しも従来通り受け付ける。
+   */
   async function changeTodoStatus(
     scopeType: 'team' | 'organization',
     scopeId: number,
     todoId: number,
-    status: string,
+    payload: { status?: string; statusLabelId?: number } | string,
   ) {
+    const body =
+      typeof payload === 'string' ? { status: payload } : payload
     return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/status`, {
       method: 'PATCH',
-      body: { status },
+      body,
     })
   }
 
