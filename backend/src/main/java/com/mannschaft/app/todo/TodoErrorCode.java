@@ -105,7 +105,29 @@ public enum TodoErrorCode implements ErrorCode {
     SHARED_MEMO_EDIT_EXPIRED("TODO_053", "共有メモは投稿から24時間以内のみ編集可能です", Severity.WARN),
 
     /** 個人メモが見つからない */
-    PERSONAL_MEMO_NOT_FOUND("TODO_060", "個人メモが見つかりません", Severity.WARN);
+    PERSONAL_MEMO_NOT_FOUND("TODO_060", "個人メモが見つかりません", Severity.WARN),
+
+    // F02.3.1 カスタムステータスラベル
+    /** ラベル名がスコープ内で重複 */
+    LABEL_NAME_DUPLICATE("TODO_070", "同じスコープ内に同名のステータスラベルが既に存在します", Severity.WARN),
+
+    /** スコープあたりのラベル数上限超過（20件） */
+    LABEL_LIMIT_EXCEEDED("TODO_071", "ステータスラベルの上限（20件）に達しています", Severity.WARN),
+
+    /** 使用中のラベルは削除不可 */
+    LABEL_IN_USE("TODO_072", "使用中のステータスラベルは削除できません", Severity.WARN),
+
+    /** SYSTEM 既定ラベルは編集・削除不可 */
+    SYSTEM_LABEL_IMMUTABLE("TODO_073", "システム既定ラベルは編集・削除できません", Severity.WARN),
+
+    /** ラベルのスコープが TODO のスコープと一致しない */
+    STATUS_LABEL_SCOPE_MISMATCH("TODO_074", "指定したラベルはこの TODO のスコープでは使用できません", Severity.WARN),
+
+    /** status と statusLabelId のバケットが一致しない */
+    STATUS_LABEL_BUCKET_MISMATCH("TODO_075", "指定された status とラベルのバケットが一致しません", Severity.WARN),
+
+    /** ステータスラベルが見つからない */
+    STATUS_LABEL_NOT_FOUND("TODO_076", "ステータスラベルが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;
