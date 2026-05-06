@@ -9,6 +9,7 @@ import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.StandardVisibility;
 import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
+import com.mannschaft.app.common.visibility.mapping.OrganizationVisibilityMapper;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
@@ -87,13 +88,7 @@ public class OrganizationVisibilityResolver
 
     @Override
     protected StandardVisibility toStandard(OrganizationEntity.Visibility visibility) {
-        return switch (visibility) {
-            case PUBLIC -> StandardVisibility.PUBLIC;
-            // PRIVATE は組織管理者のみ閲覧可（保守的マッピング）
-            // 組織は PUBLIC/PRIVATE の 2 値のみで MEMBERS_ONLY 相当の中間概念を持たないため
-            // ADMINS_ONLY を採用し誤公開リスクを最小化する（Phase D-δ 設計方針）
-            case PRIVATE -> StandardVisibility.ADMINS_ONLY;
-        };
+        return OrganizationVisibilityMapper.toStandard(visibility);
     }
 
     @Override
