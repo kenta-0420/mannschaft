@@ -38,7 +38,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>D-3 で追加されたマッピング:
  * <ul>
  *   <li>ORGANIZATION_ONLY → ORGANIZATION_WIDE（親 ORG メンバーまで公開）のシナリオを検証</li>
- *   <li>PRIVATE → PRIVATE（authorUserId=null のため fail-closed）のシナリオを検証</li>
+ *   <li>PRIVATE → MEMBERS_ONLY（チームメンバーのみ可視。{@code TeamEntity} に {@code created_by}
+ *       がないため {@code PRIVATE}（作成者本人のみ）は実質 fail-closed となる。
+ *       チームの「非公開」の意図は「メンバーだけ見える」であるため MEMBERS_ONLY を使用）のシナリオを検証</li>
  * </ul>
  */
 @SpringBootTest(properties = {"feature.visibility-resolver.team=true"})
@@ -158,18 +160,18 @@ class TeamVisibilityResolverIntegrationTest {
     }
 
     // =========================================================================
-    // シナリオ 2: PRIVATE チームは非管理者には不可視
+    // シナリオ 2: PRIVATE チームはメンバーに可視、非メンバーには不可視
     // =========================================================================
 
     @Test
-    @DisplayName("private_team_invisible_to_non_admin: PRIVATE チームは非管理者は false")
-    void private_team_invisible_to_non_admin() {
-        // 非メンバー
+    @DisplayName("private_team_visible_to_members_only: PRIVATE チームはメンバーに true、非メンバーに false")
+    void private_team_visible_to_members_only() {
+        // チームメンバー（setUp で privateTeamId に MEMBER として登録済み）→ 可視
+        assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, memberUserId)).isTrue();
+        // 非メンバー → 不可視
         assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, nonMemberUserId)).isFalse();
-        // 匿名ユーザー
+        // 匿名ユーザー → 不可視
         assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, null)).isFalse();
-        // MEMBER ロールのみでは ADMINS_ONLY に届かない
-        assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, memberUserId)).isFalse();
         // SystemAdmin は高速パスで可視
         assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, sysAdminUserId)).isTrue();
     }
@@ -204,15 +206,17 @@ class TeamVisibilityResolverIntegrationTest {
     }
 
     // =========================================================================
-    // シナリオ 5: PRIVATE チームは authorUserId=null のため fail-closed
+    // シナリオ 5: PRIVATE チームは MEMBERS_ONLY として評価される
     // =========================================================================
 
     @Test
-    @DisplayName("private_team_fail_closed: PRIVATE チームは SystemAdmin のみ閲覧可（authorUserId=null のため）")
-    void private_team_fail_closed() {
-        // PRIVATE + authorUserId=null → 誰も「本人」にならないため、SystemAdmin 以外不可視
-        assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, memberUserId)).isFalse();
+    @DisplayName("private_team_members_only: PRIVATE は MEMBERS_ONLY にマップ — メンバーは可視、非メンバーは不可視")
+    void private_team_members_only() {
+        // PRIVATE → MEMBERS_ONLY: チームメンバーは可視
+        assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, memberUserId)).isTrue();
+        // チームメンバーではないユーザーは不可視
         assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, nonMemberUserId)).isFalse();
+        // 匿名ユーザーは不可視
         assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, null)).isFalse();
         // SystemAdmin は高速パスで可視
         assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, sysAdminUserId)).isTrue();
