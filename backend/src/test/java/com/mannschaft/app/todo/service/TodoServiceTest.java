@@ -90,6 +90,9 @@ class TodoServiceTest {
     @Mock
     private MilestoneGateService milestoneGateService;
 
+    @Mock
+    private TodoStatusLabelService todoStatusLabelService;
+
     @InjectMocks
     private TodoService todoService;
 
@@ -615,7 +618,7 @@ class TodoServiceTest {
         void changeStatus_正常_COMPLETED() {
             // Given
             TodoEntity todo = createOpenTodo();
-            TodoStatusChangeRequest request = new TodoStatusChangeRequest("COMPLETED");
+            TodoStatusChangeRequest request = new TodoStatusChangeRequest("COMPLETED", null);
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> {
@@ -641,7 +644,7 @@ class TodoServiceTest {
             // Given
             TodoEntity todo = createTodoWithProject();
             ProjectEntity project = createProject();
-            TodoStatusChangeRequest request = new TodoStatusChangeRequest("COMPLETED");
+            TodoStatusChangeRequest request = new TodoStatusChangeRequest("COMPLETED", null);
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> {
@@ -667,7 +670,7 @@ class TodoServiceTest {
         void changeStatus_正常_IN_PROGRESS() {
             // Given
             TodoEntity todo = createOpenTodo();
-            TodoStatusChangeRequest request = new TodoStatusChangeRequest("IN_PROGRESS");
+            TodoStatusChangeRequest request = new TodoStatusChangeRequest("IN_PROGRESS", null);
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> {
