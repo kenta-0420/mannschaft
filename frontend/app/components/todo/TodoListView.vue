@@ -80,13 +80,14 @@ function onTodoClick(todo: MyTodo) {
               </span>
             </div>
             <div class="mt-1 flex items-center gap-3">
-              <span
-                v-if="todo.dueDate"
-                class="text-xs"
-                :class="isOverdue(todo) ? 'font-semibold text-red-500' : 'text-surface-400'"
-              >
-                <i class="pi pi-calendar mr-0.5" />{{ formatDate(todo.dueDate) }}
-                <span v-if="isOverdue(todo)">（期限切れ）</span>
+              <span v-if="todo.startDate || todo.dueDate" class="text-xs text-surface-400">
+                <i class="pi pi-calendar mr-0.5" />
+                <span v-if="todo.startDate">{{ formatDate(todo.startDate) }}</span>
+                <span v-if="todo.startDate && todo.dueDate"> 〜 </span>
+                <span
+                  v-if="todo.dueDate"
+                  :class="isOverdue(todo) ? 'font-semibold text-red-500' : ''"
+                >{{ formatDate(todo.dueDate) }}<span v-if="isOverdue(todo)">（期限切れ）</span></span>
               </span>
               <span
                 v-if="todo.assignees.length > 0"

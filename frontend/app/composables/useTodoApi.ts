@@ -17,6 +17,7 @@ interface PagedTodos {
     description: string | null
     status: string
     priority: string
+    startDate: string | null
     dueDate: string | null
     dueTime: string | null
     daysRemaining: number | null
