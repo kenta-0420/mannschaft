@@ -873,6 +873,42 @@
     "filter": {
       "allTeamsOrgs": "チーム・組織 (全て)",
       "selectScope": "作成先を選択"
-    },
+    }
+  },
+  "teamHub": {
+    "pageTitle": "マイチーム",
+    "createTeam": "チームを作成",
+    "searchTeam": "チームを検索",
+    "searchPageTitle": "チーム検索",
+    "announcements": "チームのお知らせ",
+    "myTeams": "所属チーム",
+    "noTeams": "まだチームに参加していません",
+    "noTeamsHint": "チームを作成するか、既存のチームに参加してください",
+    "noSearchResults": "該当するチームが見つかりませんでした",
+    "viewGrid": "グリッド表示",
+    "viewList": "リスト表示",
+    "memberCount": "{count}人",
+    "supporterRegistered": "サポーター登録済み",
+    "becomeSupporter": "サポーターになる",
+    "supporterSuccess": "サポーターとして登録しました",
+    "supporterError": "フォローに失敗しました"
+  },
+  "orgHub": {
+    "pageTitle": "マイ組織",
+    "createOrg": "組織を作成",
+    "searchOrg": "組織を検索",
+    "searchPageTitle": "組織検索",
+    "announcements": "組織のお知らせ",
+    "myOrgs": "所属組織",
+    "noOrgs": "まだ組織に参加していません",
+    "noOrgsHint": "組織を作成するか、既存の組織に参加してください",
+    "noSearchResults": "該当する組織が見つかりませんでした",
+    "viewGrid": "グリッド表示",
+    "viewList": "リスト表示",
+    "memberCount": "{count}人",
+    "supporterRegistered": "サポーター登録済み",
+    "becomeSupporter": "サポーターになる",
+    "supporterSuccess": "サポーターとして登録しました",
+    "supporterError": "フォローに失敗しました"
   }
 }

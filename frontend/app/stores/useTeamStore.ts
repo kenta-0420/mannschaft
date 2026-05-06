@@ -7,6 +7,7 @@ interface MyTeam {
   iconUrl: string | null
   role: string
   template: string
+  memberCount: number
 }
 
 export const useTeamStore = defineStore('team', {

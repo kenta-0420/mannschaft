@@ -873,6 +873,42 @@
     "filter": {
       "allTeamsOrgs": "팀・조직 (전체)",
       "selectScope": "생성 대상 선택"
-    },
+    }
+  },
+  "teamHub": {
+    "pageTitle": "내 팀",
+    "createTeam": "팀 만들기",
+    "searchTeam": "팀 검색",
+    "searchPageTitle": "팀 검색",
+    "announcements": "팀 공지사항",
+    "myTeams": "소속 팀",
+    "noTeams": "아직 팀에 참가하지 않았습니다",
+    "noTeamsHint": "팀을 만들거나 기존 팀에 참가하세요",
+    "noSearchResults": "검색 조건에 맞는 팀을 찾을 수 없습니다",
+    "viewGrid": "그리드 보기",
+    "viewList": "목록 보기",
+    "memberCount": "{count}명",
+    "supporterRegistered": "서포터 등록됨",
+    "becomeSupporter": "서포터 되기",
+    "supporterSuccess": "서포터로 등록했습니다",
+    "supporterError": "팔로우에 실패했습니다"
+  },
+  "orgHub": {
+    "pageTitle": "내 조직",
+    "createOrg": "조직 만들기",
+    "searchOrg": "조직 검색",
+    "searchPageTitle": "조직 검색",
+    "announcements": "조직 공지사항",
+    "myOrgs": "소속 조직",
+    "noOrgs": "아직 조직에 참가하지 않았습니다",
+    "noOrgsHint": "조직을 만들거나 기존 조직에 참가하세요",
+    "noSearchResults": "검색 조건에 맞는 조직을 찾을 수 없습니다",
+    "viewGrid": "그리드 보기",
+    "viewList": "목록 보기",
+    "memberCount": "{count}명",
+    "supporterRegistered": "서포터 등록됨",
+    "becomeSupporter": "서포터 되기",
+    "supporterSuccess": "서포터로 등록했습니다",
+    "supporterError": "팔로우에 실패했습니다"
   }
 }

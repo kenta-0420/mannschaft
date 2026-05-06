@@ -873,6 +873,42 @@
     "filter": {
       "allTeamsOrgs": "Equipos y organizaciones (todos)",
       "selectScope": "Seleccionar destino"
-    },
+    }
+  },
+  "teamHub": {
+    "pageTitle": "Mis equipos",
+    "createTeam": "Crear equipo",
+    "searchTeam": "Buscar equipos",
+    "searchPageTitle": "Búsqueda de equipos",
+    "announcements": "Anuncios del equipo",
+    "myTeams": "Mis equipos",
+    "noTeams": "Todavía no te has unido a ningún equipo",
+    "noTeamsHint": "Crea un equipo o únete a uno existente",
+    "noSearchResults": "No se encontraron equipos que coincidan con tu búsqueda",
+    "viewGrid": "Vista de cuadrícula",
+    "viewList": "Vista de lista",
+    "memberCount": "{count} miembros",
+    "supporterRegistered": "Registrado como seguidor",
+    "becomeSupporter": "Convertirse en seguidor",
+    "supporterSuccess": "Registrado como seguidor",
+    "supporterError": "Error al seguir"
+  },
+  "orgHub": {
+    "pageTitle": "Mis organizaciones",
+    "createOrg": "Crear organización",
+    "searchOrg": "Buscar organizaciones",
+    "searchPageTitle": "Búsqueda de organizaciones",
+    "announcements": "Anuncios de la organización",
+    "myOrgs": "Mis organizaciones",
+    "noOrgs": "Todavía no te has unido a ninguna organización",
+    "noOrgsHint": "Crea una organización o únete a una existente",
+    "noSearchResults": "No se encontraron organizaciones que coincidan con tu búsqueda",
+    "viewGrid": "Vista de cuadrícula",
+    "viewList": "Vista de lista",
+    "memberCount": "{count} miembros",
+    "supporterRegistered": "Registrado como seguidor",
+    "becomeSupporter": "Convertirse en seguidor",
+    "supporterSuccess": "Registrado como seguidor",
+    "supporterError": "Error al seguir"
   }
 }
