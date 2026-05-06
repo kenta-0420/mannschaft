@@ -43,11 +43,9 @@ const userId = computed<number | null>(() => authStore.user?.id ?? null)
 async function loadTodo() {
   loading.value = true
   try {
-    const api = useApi()
-    // 個人 TODO 詳細は /api/v1/todos/{id} を想定（既存パターンに準拠）
-    const res = await api<{ data: PersonalTodoDetail }>(`/api/v1/todos/${todoId}`)
-    todo.value = res.data
-    newLabelId.value = res.data.statusLabel?.id ?? null
+    const res = await todoApi.getPersonalTodo(todoId)
+    todo.value = res.data as unknown as PersonalTodoDetail
+    newLabelId.value = todo.value?.statusLabel?.id ?? null
   } catch (e) {
     errorHandler.handleApiError(e, 'personal-todo:load')
     todo.value = null

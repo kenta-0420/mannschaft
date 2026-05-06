@@ -63,6 +63,13 @@ export function useTodoApi() {
     return api<{ data: PagedTodos['data'] }>('/api/v1/todos/my')
   }
 
+  /**
+   * 個人 TODO 詳細取得（F02.3.1 Phase 1b で追加）
+   */
+  async function getPersonalTodo(todoId: number) {
+    return api<TodoDetail>(`/api/v1/todos/${todoId}`)
+  }
+
   async function createPersonalTodo(body: Record<string, unknown>) {
     return api<TodoDetail>('/api/v1/todos', {
       method: 'POST',
@@ -250,6 +257,7 @@ export function useTodoApi() {
 
   return {
     getMyTodos,
+    getPersonalTodo,
     createPersonalTodo,
     changeTodoStatusById,
     listTodos,
