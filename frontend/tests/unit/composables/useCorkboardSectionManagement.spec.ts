@@ -486,4 +486,159 @@ describe('useCorkboardSectionManagement — confirmDeleteSection', () => {
     const unchanged = board.value!.cards.find((c) => c.id === 11)
     expect(unchanged?.sectionId).toBeNull()
   })
+
+  // ---- エッジケース追加テスト ----
+
+  it('CORK-SEC-UNIT-016: doDeleteSection — API 失敗時に error toast が表示され groups は変化しない', async () => {
+    mockConfirmAction.mockImplementation(({ onAccept }: { onAccept: () => void }) => {
+      onAccept()
+    })
+    mockDeleteGroup.mockRejectedValueOnce(new Error('削除失敗'))
+
+    const section = makeSection({ id: 6 })
+    const board = ref(makeBoard([], [section]))
+    const boardId = ref(100)
+    const { confirmDeleteSection } = useCorkboardSectionManagement(board, boardId, stubT)
+
+    confirmDeleteSection(section)
+    await new Promise((r) => setTimeout(r, 0))
+
+    // groups はそのまま残っている
+    expect(board.value!.groups.find((g) => g.id === 6)).toBeDefined()
+    // error toast が表示される
+    expect(mockToastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'error' }),
+    )
+  })
+
+  it('CORK-SEC-UNIT-017: doDeleteSection — API 失敗時に captureQuiet が呼ばれる', async () => {
+    mockConfirmAction.mockImplementation(({ onAccept }: { onAccept: () => void }) => {
+      onAccept()
+    })
+    const apiError = new Error('API Error')
+    mockDeleteGroup.mockRejectedValueOnce(apiError)
+
+    const section = makeSection({ id: 7 })
+    const board = ref(makeBoard([], [section]))
+    const boardId = ref(100)
+    const { confirmDeleteSection } = useCorkboardSectionManagement(board, boardId, stubT)
+
+    confirmDeleteSection(section)
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(mockCaptureQuiet).toHaveBeenCalledWith(
+      apiError,
+      expect.objectContaining({ context: expect.any(String) }),
+    )
+  })
+
+  it('CORK-SEC-UNIT-018: doDeleteSection 後に対象セクションが groups から消える', async () => {
+    mockConfirmAction.mockImplementation(({ onAccept }: { onAccept: () => void }) => {
+      onAccept()
+    })
+    mockDeleteGroup.mockResolvedValueOnce(undefined)
+
+    const section1 = makeSection({ id: 10 })
+    const section2 = makeSection({ id: 11 })
+    const board = ref(makeBoard([], [section1, section2]))
+    const boardId = ref(100)
+    const { confirmDeleteSection } = useCorkboardSectionManagement(board, boardId, stubT)
+
+    confirmDeleteSection(section1)
+    await new Promise((r) => setTimeout(r, 0))
+
+    // 削除したセクションのみが消え、もう一方は残る
+    expect(board.value!.groups.find((g) => g.id === 10)).toBeUndefined()
+    expect(board.value!.groups.find((g) => g.id === 11)).toBeDefined()
+  })
+})
+
+describe('useCorkboardSectionManagement — toggleSection エッジケース', () => {
+  beforeEach(() => {
+    mockDeleteGroup.mockReset()
+    mockAddCardToGroup.mockReset()
+    mockRemoveCardFromGroup.mockReset()
+    mockToastAdd.mockReset()
+    mockCaptureQuiet.mockReset()
+    mockConfirmAction.mockReset()
+    stubLocalStorage()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('CORK-SEC-UNIT-019: toggleSection で true → false → true の順にトグルが正しく動作する', () => {
+    const board = ref(makeBoard())
+    const boardId = ref(100)
+    const { collapsedSections, toggleSection } = useCorkboardSectionManagement(
+      board,
+      boardId,
+      stubT,
+    )
+
+    // 初期状態は undefined (falsy)
+    expect(collapsedSections.value[99]).toBeUndefined()
+
+    // 1回目: undefined → true
+    toggleSection(99)
+    expect(collapsedSections.value[99]).toBe(true)
+
+    // 2回目: true → false
+    toggleSection(99)
+    expect(collapsedSections.value[99]).toBe(false)
+
+    // 3回目: false → true
+    toggleSection(99)
+    expect(collapsedSections.value[99]).toBe(true)
+  })
+
+  it('CORK-SEC-UNIT-020: toggleSection 後に collapsedSections が localStorage に保存される', () => {
+    const board = ref(makeBoard())
+    const boardId = ref(100)
+    const { toggleSection } = useCorkboardSectionManagement(board, boardId, stubT)
+
+    toggleSection(42)
+
+    const stored = localStorageMock['corkboard:collapse:100']
+    expect(stored).toBeDefined()
+    const parsed = JSON.parse(stored as string) as Record<string, boolean>
+    expect(parsed['42']).toBe(true)
+  })
+
+  it('CORK-SEC-UNIT-021: loadCollapsedState — localStorage に無効な JSON がある場合は無視する', () => {
+    localStorageMock['corkboard:collapse:100'] = 'invalid-json'
+
+    const board = ref(makeBoard())
+    const boardId = ref(100)
+    const { collapsedSections, loadCollapsedState } = useCorkboardSectionManagement(
+      board,
+      boardId,
+      stubT,
+    )
+
+    // 例外なく完了すること
+    expect(() => loadCollapsedState()).not.toThrow()
+    // collapsedSections は空のまま
+    expect(Object.keys(collapsedSections.value)).toHaveLength(0)
+  })
+
+  it('CORK-SEC-UNIT-022: addCardToSection — API 失敗時に error toast が表示され sectionId は変化しない', async () => {
+    mockAddCardToGroup.mockRejectedValueOnce(new Error('API Error'))
+
+    const card = makeCard({ id: 50, sectionId: null })
+    const board = ref(makeBoard([card]))
+    const boardId = ref(100)
+    const { addCardToSection } = useCorkboardSectionManagement(board, boardId, stubT)
+
+    await addCardToSection(card, 99)
+
+    // ローカル state は変化しない（楽観的更新なし）
+    const updated = board.value!.cards.find((c) => c.id === 50)
+    expect(updated?.sectionId).toBeNull()
+    // error toast が表示される
+    expect(mockToastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'error' }),
+    )
+  })
 })

@@ -401,4 +401,148 @@ describe('useCorkboardCardManagement', () => {
       await expect(toggleArchive(card)).resolves.toBeUndefined()
     })
   })
+
+  // ---- エッジケース追加テスト ----
+
+  describe('doDelete() — エッジケース', () => {
+    it('CORK-CARD-UNIT-011: API エラー時に captureQuiet がエラーを記録する', async () => {
+      const card = makeCard({ id: 20 })
+      const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
+      const boardId = ref(100)
+      const { doDelete } = useCorkboardCardManagement(board, boardId, (k) => k)
+
+      const apiError = new Error('削除失敗')
+      mockDeleteCard.mockRejectedValueOnce(apiError)
+
+      await doDelete(card)
+
+      expect(mockCaptureQuiet).toHaveBeenCalledWith(
+        apiError,
+        expect.objectContaining({ context: expect.any(String) }),
+      )
+    })
+
+    it('CORK-CARD-UNIT-012: API エラー時に toast が severity: error で life: 3500 で表示される', async () => {
+      const card = makeCard({ id: 21 })
+      const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
+      const boardId = ref(100)
+      const { doDelete } = useCorkboardCardManagement(board, boardId, (k) => k)
+
+      mockDeleteCard.mockRejectedValueOnce(new Error('API Error'))
+
+      await doDelete(card)
+
+      expect(mockToastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ severity: 'error', life: 3500 }),
+      )
+    })
+
+    it('CORK-CARD-UNIT-013: board が null のときに doDelete を呼んでも例外が発生しない', async () => {
+      const card = makeCard({ id: 22 })
+      const board = ref<CorkboardDetail | null>(null)
+      const boardId = ref(100)
+      const { doDelete } = useCorkboardCardManagement(board, boardId, (k) => k)
+
+      mockDeleteCard.mockResolvedValueOnce(undefined)
+
+      await expect(doDelete(card)).resolves.toBeUndefined()
+    })
+  })
+
+  describe('toggleArchive() — isArchived=true のカードに対するアーカイブ操作', () => {
+    it('CORK-CARD-UNIT-014: isArchived=true のカードに対して unarchive リクエスト（false）を送る', async () => {
+      const card = makeCard({ id: 30, isArchived: true })
+      const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
+      const boardId = ref(100)
+      const { toggleArchive } = useCorkboardCardManagement(board, boardId, (k) => k)
+
+      const updatedCard = makeCard({ id: 30, isArchived: false })
+      mockArchiveCard.mockResolvedValueOnce({ data: updatedCard })
+
+      await toggleArchive(card)
+
+      expect(mockArchiveCard).toHaveBeenCalledWith(100, 30, false)
+    })
+
+    it('CORK-CARD-UNIT-015: isArchived=false のカードに対して archive リクエスト（true）を送る', async () => {
+      const card = makeCard({ id: 31, isArchived: false })
+      const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
+      const boardId = ref(100)
+      const { toggleArchive } = useCorkboardCardManagement(board, boardId, (k) => k)
+
+      const updatedCard = makeCard({ id: 31, isArchived: true })
+      mockArchiveCard.mockResolvedValueOnce({ data: updatedCard })
+
+      await toggleArchive(card)
+
+      expect(mockArchiveCard).toHaveBeenCalledWith(100, 31, true)
+    })
+
+    it('CORK-CARD-UNIT-016: アーカイブ失敗時に error toast の summary キーが unarchiveError キーを含む', async () => {
+      const card = makeCard({ id: 32, isArchived: true })
+      const board = ref<CorkboardDetail | null>(makeBoard({ cards: [card] }))
+      const boardId = ref(100)
+      const { toggleArchive } = useCorkboardCardManagement(board, boardId, (k) => k)
+
+      mockArchiveCard.mockRejectedValueOnce(new Error('API Error'))
+
+      await toggleArchive(card)
+
+      expect(mockToastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ severity: 'error', summary: 'corkboard.toast.unarchiveError' }),
+      )
+    })
+  })
+
+  describe('openEdit() / openCreate() — editorMode 状態確認', () => {
+    it('CORK-CARD-UNIT-017: openEdit() 後に editorMode が edit になる', () => {
+      const board = ref<CorkboardDetail | null>(null)
+      const boardId = ref(100)
+      const { editorMode, openEdit } = useCorkboardCardManagement(board, boardId, (k) => k)
+      const card = makeCard({ id: 40 })
+
+      openEdit(card)
+
+      expect(editorMode.value).toBe('edit')
+    })
+
+    it('CORK-CARD-UNIT-018: openCreate() 後に editorMode が create になる', () => {
+      const board = ref<CorkboardDetail | null>(null)
+      const boardId = ref(100)
+      const { editorMode, openCreate } = useCorkboardCardManagement(board, boardId, (k) => k)
+
+      openCreate()
+
+      expect(editorMode.value).toBe('create')
+    })
+
+    it('CORK-CARD-UNIT-019: editorVisible が false のとき editor が閉じている（editorMode が null）', () => {
+      const board = ref<CorkboardDetail | null>(null)
+      const boardId = ref(100)
+      const { editorMode, editorVisible } = useCorkboardCardManagement(board, boardId, (k) => k)
+
+      // 初期状態では editorVisible が false であること
+      expect(editorVisible.value).toBe(false)
+      expect(editorMode.value).toBeNull()
+    })
+
+    it('CORK-CARD-UNIT-020: openEdit() 後に editorVisible を false にするとエディタが閉じる', () => {
+      const board = ref<CorkboardDetail | null>(null)
+      const boardId = ref(100)
+      const { editorMode, editorVisible, openEdit } = useCorkboardCardManagement(
+        board,
+        boardId,
+        (k) => k,
+      )
+      const card = makeCard({ id: 41 })
+
+      openEdit(card)
+      expect(editorVisible.value).toBe(true)
+
+      editorVisible.value = false
+
+      expect(editorVisible.value).toBe(false)
+      expect(editorMode.value).toBeNull()
+    })
+  })
 })

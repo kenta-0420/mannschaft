@@ -374,4 +374,105 @@ describe('useChatTabsStore', () => {
       expect(getChannelMock).not.toHaveBeenCalled()
     })
   })
+
+  // ===========================================================
+  // 追加テスト(+8件)
+  // ===========================================================
+
+  describe('openChannelIds', () => {
+    it('openChannelIds は開いているチャンネルIDの Set を返す', () => {
+      const store = useChatTabsStore()
+      store.addTab(makeChannel({ id: 10 }))
+      store.addTab(makeChannel({ id: 20 }))
+
+      expect(store.openChannelIds.has(10)).toBe(true)
+      expect(store.openChannelIds.has(20)).toBe(true)
+      expect(store.openChannelIds.has(99)).toBe(false)
+    })
+
+    it('同一チャンネルを2回追加しても openChannelIds の要素数は1つ', () => {
+      const store = useChatTabsStore()
+      store.addTab(makeChannel({ id: 42 }))
+      store.addTab(makeChannel({ id: 42 }))
+
+      // タブ自体は2件だが Set なので id は1個
+      expect(store.openChannelIds.size).toBe(1)
+    })
+  })
+
+  describe('closeTabsByChannelId', () => {
+    it('指定チャンネルIDに紐づく全タブが削除される', () => {
+      const store = useChatTabsStore()
+      store.addTab(makeChannel({ id: 1 }))
+      store.addTab(makeChannel({ id: 2 }))
+      store.addTab(makeChannel({ id: 2 })) // 同一チャンネルの重複タブ
+
+      store.closeTabsByChannelId(2)
+
+      expect(store.tabs).toHaveLength(1)
+      expect(store.tabs[0]!.channelId).toBe(1)
+    })
+
+    it('存在しないチャンネルIDを渡しても何もしない', () => {
+      const store = useChatTabsStore()
+      store.addTab(makeChannel({ id: 1 }))
+
+      expect(() => store.closeTabsByChannelId(999)).not.toThrow()
+      expect(store.tabs).toHaveLength(1)
+    })
+
+    it('アクティブタブのチャンネルを closeTabsByChannelId で閉じると先頭タブがアクティブになる', () => {
+      const store = useChatTabsStore()
+      store.addTab(makeChannel({ id: 1 }))
+      store.addTab(makeChannel({ id: 2 }))
+      store.addTab(makeChannel({ id: 3 }))
+
+      // チャンネル3のタブをアクティブにする
+      const thirdId = store.tabs[2]!.id
+      store.switchTab(thirdId)
+      expect(store.activeTabId).toBe(thirdId)
+
+      store.closeTabsByChannelId(3)
+
+      // 先頭タブにフォールバック
+      expect(store.tabs).toHaveLength(2)
+      expect(store.activeTabId).toBe(store.tabs[0]!.id)
+    })
+  })
+
+  describe('closeAllTabs', () => {
+    it('closeAllTabs で全タブが削除されアクティブタブが null になる', () => {
+      const store = useChatTabsStore()
+      store.addTab(makeChannel({ id: 1 }))
+      store.addTab(makeChannel({ id: 2 }))
+
+      store.closeAllTabs()
+
+      expect(store.tabs).toHaveLength(0)
+      expect(store.activeTabId).toBeNull()
+    })
+
+    it('closeAllTabs 後に addTab すると再び追加できる', () => {
+      const store = useChatTabsStore()
+      store.addTab(makeChannel({ id: 1 }))
+      store.closeAllTabs()
+
+      const result = store.addTab(makeChannel({ id: 2 }))
+
+      expect(result.ok).toBe(true)
+      expect(store.tabs).toHaveLength(1)
+    })
+  })
+
+  describe('addTab — 上限境界テスト', () => {
+    it('9件の状態でもう1件追加すると合計10件になる（上限ちょうど）', () => {
+      const store = useChatTabsStore()
+      for (let i = 1; i <= 9; i++) {
+        store.addTab(makeChannel({ id: i }))
+      }
+      const result = store.addTab(makeChannel({ id: 10 }))
+      expect(result.ok).toBe(true)
+      expect(store.tabs).toHaveLength(10)
+    })
+  })
 })

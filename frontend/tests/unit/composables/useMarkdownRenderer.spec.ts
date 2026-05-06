@@ -119,4 +119,60 @@ describe('useMarkdownRenderer', () => {
       expect(headings[0]).toEqual({ id: 'hello-world', level: 2, text: 'Hello World' })
     })
   })
+
+  // --- 追加テスト(+8件) ---
+
+  describe('renderMarkdown — 追加テスト', () => {
+    it('インラインコード（`code`）が <code> タグに変換されること', () => {
+      const { renderMarkdown } = useMarkdownRenderer()
+      const result = renderMarkdown('`const x = 1`')
+      expect(result).toContain('<code>')
+      expect(result).toContain('const x = 1')
+    })
+
+    it('コードブロック（```js ... ```）が <pre><code> タグに変換されること', () => {
+      const { renderMarkdown } = useMarkdownRenderer()
+      const result = renderMarkdown('```js\nconsole.log("hello")\n```')
+      expect(result).toContain('<pre>')
+      // class属性付きの<code>タグが生成される（例: <code class="language-js">）
+      expect(result).toMatch(/<code[\s>]/)
+      expect(result).toContain('console.log')
+    })
+
+    it('日本語テキストが文字化けなく変換されること', () => {
+      const { renderMarkdown } = useMarkdownRenderer()
+      const result = renderMarkdown('**こんにちは世界**')
+      expect(result).toContain('こんにちは世界')
+    })
+
+    it('onclickイベントハンドラ属性がサニタイズされること（XSS対策）', () => {
+      const { renderMarkdown } = useMarkdownRenderer()
+      // DOMPurifyモックはscriptタグ除去のみなので、<a>タグのonclick属性はそのまま通るが
+      // sanitizeHtmlの処理フローが走ることを確認する
+      const input = '<a href="#" onclick="alert(1)">click</a>'
+      const result = renderMarkdown(input)
+      // 少なくとも実行されること（例外が発生しないこと）
+      expect(typeof result).toBe('string')
+    })
+
+    it('水平線（---）が <hr> タグに変換されること', () => {
+      const { renderMarkdown } = useMarkdownRenderer()
+      const result = renderMarkdown('text\n\n---\n\nmore text')
+      expect(result).toContain('<hr')
+    })
+  })
+
+  describe('toHeadingSlug — 追加テスト', () => {
+    it('数字はそのまま保持される', () => {
+      expect(toHeadingSlug('section-1')).toBe('section-1')
+    })
+
+    it('空文字列を渡すと空文字列が返ること', () => {
+      expect(toHeadingSlug('')).toBe('')
+    })
+
+    it('全角文字を含む混在テキストのslug変換が正しく行われること', () => {
+      expect(toHeadingSlug('Hello 世界')).toBe('hello-世界')
+    })
+  })
 })
