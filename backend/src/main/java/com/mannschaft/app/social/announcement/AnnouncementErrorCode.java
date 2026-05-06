@@ -44,7 +44,18 @@ public enum AnnouncementErrorCode implements ErrorCode {
     BROADCAST_003("BROADCAST_003", "テンプレートが見つかりません", Severity.WARN),
 
     /** 指定されたチャネルアダプターが登録されていません（500） */
-    BROADCAST_004("BROADCAST_004", "指定されたチャネルアダプターが登録されていません", Severity.ERROR);
+    BROADCAST_004("BROADCAST_004", "指定されたチャネルアダプターが登録されていません", Severity.ERROR),
+
+    // ── F02.8 範囲テンプレート管理エラーコード ──
+
+    /** テンプレートが見つからない（404） */
+    ANNOUNCE_008("ANNOUNCE_008", "テンプレートが見つかりません", Severity.WARN),
+
+    /** テンプレート操作権限なし（403） */
+    ANNOUNCE_009("ANNOUNCE_009", "テンプレートの操作には ADMIN 権限が必要です", Severity.WARN),
+
+    /** テンプレート上限超過（409） */
+    ANNOUNCE_010("ANNOUNCE_010", "テンプレートの上限（20件）に達しました", Severity.WARN);
 
     private final String code;
     private final String message;
