@@ -64,7 +64,8 @@ const filteredLabels = computed(() => {
   return labels.value.filter((l) => l.bucket === props.bucket)
 })
 
-function colorOf(label: TodoStatusLabel): string {
+function colorOf(label: TodoStatusLabel | undefined): string {
+  if (!label) return '#94a3b8'
   return label.color ?? BUCKET_DEFAULT_COLOR[label.bucket]
 }
 
@@ -90,7 +91,7 @@ function onChange(value: number | null) {
         <span class="inline-flex items-center gap-2">
           <span
             class="inline-block h-2.5 w-2.5 rounded-full"
-            :style="{ backgroundColor: colorOf(labels.find((l) => l.id === value) ?? labels[0]) }"
+            :style="{ backgroundColor: colorOf(labels.find((l) => l.id === value)) }"
           />
           {{ labels.find((l) => l.id === value)?.name ?? '' }}
         </span>

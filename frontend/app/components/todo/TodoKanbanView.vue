@@ -72,8 +72,14 @@ function isBucket(v: string): v is TodoStatusLabelBucket {
   return v === 'OPEN' || v === 'IN_PROGRESS' || v === 'COMPLETED'
 }
 
-const safeKanbanCols = computed(() =>
-  props.kanbanCols.filter((c) => isBucket(c.status)) as Array<KanbanCol & { status: TodoStatusLabelBucket }>,
+interface SafeKanbanCol extends Omit<KanbanCol, 'status'> {
+  status: TodoStatusLabelBucket
+}
+
+const safeKanbanCols = computed<SafeKanbanCol[]>(() =>
+  props.kanbanCols
+    .filter((c): c is SafeKanbanCol => isBucket(c.status))
+    .map((c) => c),
 )
 </script>
 
