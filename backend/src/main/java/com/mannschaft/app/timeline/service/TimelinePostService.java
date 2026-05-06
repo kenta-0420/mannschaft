@@ -273,8 +273,9 @@ public class TimelinePostService {
      */
     public List<PostResponse> getFeed(String scopeType, Long scopeId, int size) {
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
+        PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeType);
         List<TimelinePostEntity> posts = postRepository.findFeedByScopeType(
-                scopeType, scopeId, PageRequest.of(0, feedSize));
+                scopeTypeEnum, scopeId, PageRequest.of(0, feedSize));
         return timelineMapper.toPostResponseList(posts);
     }
 
@@ -314,7 +315,8 @@ public class TimelinePostService {
      * @return ピン留め投稿一覧
      */
     public List<PostResponse> getPinnedPosts(String scopeType, Long scopeId) {
-        List<TimelinePostEntity> posts = postRepository.findPinnedPosts(scopeType, scopeId);
+        PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeType);
+        List<TimelinePostEntity> posts = postRepository.findPinnedPosts(scopeTypeEnum, scopeId);
         return timelineMapper.toPostResponseList(posts);
     }
 

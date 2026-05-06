@@ -424,7 +424,7 @@ class DashboardServiceTest {
                     .willReturn(List.of());
             given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(new PageImpl<>(List.of()));
-            given(timelinePostRepository.findFeedByScopeType(eq("TEAM"), eq(TEAM_ID), any(PageRequest.class)))
+            given(timelinePostRepository.findFeedByScopeType(eq(com.mannschaft.app.timeline.PostScopeType.TEAM), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(List.of());
             given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(5L);
             given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(any(), eq(TEAM_ID), any()))
@@ -453,7 +453,7 @@ class DashboardServiceTest {
                     .willReturn(List.of());
             given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(new PageImpl<>(List.of()));
-            given(timelinePostRepository.findFeedByScopeType(eq("TEAM"), eq(TEAM_ID), any(PageRequest.class)))
+            given(timelinePostRepository.findFeedByScopeType(eq(com.mannschaft.app.timeline.PostScopeType.TEAM), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(List.of());
             given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(5L);
             given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(any(), eq(TEAM_ID), any()))
@@ -493,7 +493,7 @@ class DashboardServiceTest {
                     .willReturn(List.of());
             given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(new PageImpl<>(List.of()));
-            given(timelinePostRepository.findFeedByScopeType(eq("TEAM"), eq(TEAM_ID), any(PageRequest.class)))
+            given(timelinePostRepository.findFeedByScopeType(eq(com.mannschaft.app.timeline.PostScopeType.TEAM), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(List.of());
             given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(3L);
             given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(any(), eq(TEAM_ID), any()))
@@ -520,7 +520,7 @@ class DashboardServiceTest {
                     .willReturn(List.of());
             given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(new PageImpl<>(List.of()));
-            given(timelinePostRepository.findFeedByScopeType(eq("TEAM"), eq(TEAM_ID), any(PageRequest.class)))
+            given(timelinePostRepository.findFeedByScopeType(eq(com.mannschaft.app.timeline.PostScopeType.TEAM), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(List.of());
             given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(3L);
             given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(any(), eq(TEAM_ID), any()))
@@ -546,7 +546,7 @@ class DashboardServiceTest {
                     .willReturn(List.of());
             given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(new PageImpl<>(List.of()));
-            given(timelinePostRepository.findFeedByScopeType(eq("TEAM"), eq(TEAM_ID), any(PageRequest.class)))
+            given(timelinePostRepository.findFeedByScopeType(eq(com.mannschaft.app.timeline.PostScopeType.TEAM), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(List.of());
             given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(3L);
             given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(any(), eq(TEAM_ID), any()))
@@ -580,7 +580,7 @@ class DashboardServiceTest {
             given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(new PageImpl<>(List.of(overdueTodo)));
 
-            given(timelinePostRepository.findFeedByScopeType(eq("TEAM"), eq(TEAM_ID), any(PageRequest.class)))
+            given(timelinePostRepository.findFeedByScopeType(eq(com.mannschaft.app.timeline.PostScopeType.TEAM), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(List.of());
             given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(3L);
             given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(any(), eq(TEAM_ID), any()))

@@ -33,6 +33,7 @@ import com.mannschaft.app.digest.entity.TimelineDigestConfigEntity;
 import com.mannschaft.app.digest.entity.TimelineDigestEntity;
 import com.mannschaft.app.digest.repository.TimelineDigestConfigRepository;
 import com.mannschaft.app.digest.repository.TimelineDigestRepository;
+import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
@@ -152,7 +153,7 @@ public class DigestGenerationService {
         AiQuotaResponse aiQuota = buildAiQuota(scopeType, request.getScopeId());
         // 投稿数をタイムラインリポジトリから取得
         int estimatedPostCount = timelinePostRepository.findFeedByScopeType(
-                scopeType.name(), request.getScopeId(), PageRequest.of(0, 10000)).size();
+                PostScopeType.valueOf(scopeType.name()), request.getScopeId(), PageRequest.of(0, 10000)).size();
         return new DigestGenerateResponse(saved.getId(), saved.getStatus().name(), estimatedPostCount, aiQuota);
     }
 
@@ -507,7 +508,7 @@ public class DigestGenerationService {
     private void generateTemplateDigest(TimelineDigestEntity digest, TimelineDigestConfigEntity config) {
         // タイムラインから実際の投稿データを取得
         var timelinePosts = timelinePostRepository.findFeedByScopeType(
-                digest.getScopeType().name(), digest.getScopeId(), PageRequest.of(0, 1000));
+                PostScopeType.valueOf(digest.getScopeType().name()), digest.getScopeId(), PageRequest.of(0, 1000));
         // 期間内の投稿のみフィルタ
         var filteredPosts = timelinePosts.stream()
                 .filter(p -> p.getCreatedAt() != null
