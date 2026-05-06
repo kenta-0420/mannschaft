@@ -26,6 +26,7 @@ import java.util.List;
 public class TodoHandoffRequest {
 
     @NotEmpty(message = "宛先メンバーを1名以上指定してください")
+    @Size(max = 20, message = "宛先は最大20名まで")
     private List<Long> toUserIds;
 
     @NotNull(message = "ステータスラベルを指定してください")
