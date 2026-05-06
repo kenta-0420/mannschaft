@@ -246,7 +246,10 @@ public class GlobalExceptionHandler {
             Map.entry("CHAT_015", HttpStatus.PAYLOAD_TOO_LARGE),             // ATTACHMENT_SIZE_EXCEEDED (UX ガード 500MB 超過)
             Map.entry("CHAT_019", HttpStatus.CONFLICT),                      // ATTACHMENT_QUOTA_EXCEEDED (F13 統合クォータ超過)
             // F05.5 ファイル共有（F13 Phase 4-epsilon）
-            Map.entry("FILE_SHARING_016", HttpStatus.CONFLICT)               // STORAGE_QUOTA_EXCEEDED (F13 統合クォータ超過)
+            Map.entry("FILE_SHARING_016", HttpStatus.CONFLICT),              // STORAGE_QUOTA_EXCEEDED (F13 統合クォータ超過)
+            // F14.2 メンバー情報収集
+            Map.entry("MEMBER_INFO_002", HttpStatus.FORBIDDEN),              // FIELD_BELONGS_TO_OTHER_TEAM
+            Map.entry("MEMBER_INFO_008", HttpStatus.TOO_MANY_REQUESTS)       // REMIND_TOO_SOON
     );
 
     /**
