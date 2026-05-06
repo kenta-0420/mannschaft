@@ -15,6 +15,14 @@ defineProps<{
 const emit = defineEmits<{
   changeStatus: [todo: MyTodo, status: string]
 }>()
+
+const router = useRouter()
+
+function onTodoClick(todo: MyTodo) {
+  if (todo.scopeType === 'PERSONAL') {
+    router.push(`/todos/${todo.id}`)
+  }
+}
 </script>
 
 <template>
@@ -39,8 +47,9 @@ const emit = defineEmits<{
         <div
           v-for="todo in group.todos"
           :key="todo.id"
-          class="flex items-center gap-3 rounded-xl border-2 border-surface-400 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm dark:border-surface-500 dark:bg-surface-800"
+          class="flex items-center gap-3 rounded-xl border-2 border-surface-400 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm dark:border-surface-500 dark:bg-surface-800 cursor-pointer"
           :class="priorityBorder[todo.priority]"
+          @click="onTodoClick(todo)"
         >
           <Checkbox
             :model-value="todo.status === 'COMPLETED'"
@@ -48,6 +57,7 @@ const emit = defineEmits<{
             @update:model-value="
               emit('changeStatus', todo, todo.status === 'COMPLETED' ? 'OPEN' : 'COMPLETED')
             "
+            @click.stop
           />
 
           <div class="min-w-0 flex-1">
@@ -102,7 +112,7 @@ const emit = defineEmits<{
             text
             severity="secondary"
             class="shrink-0 !text-xs"
-            @click="emit('changeStatus', todo, nextStatus(todo.status))"
+            @click.stop="emit('changeStatus', todo, nextStatus(todo.status))"
           />
         </div>
       </div>

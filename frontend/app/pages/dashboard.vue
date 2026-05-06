@@ -64,6 +64,7 @@ onMounted(async () => {
         <WidgetNotices />
         <WidgetUpcomingEvents />
         <WidgetPersonalTodo />
+        <WidgetTodoCountdown />
         <!-- F03.15 Phase 3: 個人時間割「今日の時間割」「今日のメモ」ウィジェット -->
         <DashboardTimetableTodayWidget />
         <DashboardTimetableNotesWidget />
