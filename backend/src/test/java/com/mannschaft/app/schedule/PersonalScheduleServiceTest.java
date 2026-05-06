@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.schedule.dto.BatchDeleteResponse;
 import com.mannschaft.app.schedule.dto.CreatePersonalScheduleRequest;
 import com.mannschaft.app.schedule.dto.PersonalScheduleResponse;
@@ -45,6 +47,12 @@ class PersonalScheduleServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
+    @Mock
+    private NameResolverService nameResolverService;
 
     @InjectMocks
     private PersonalScheduleService personalScheduleService;
