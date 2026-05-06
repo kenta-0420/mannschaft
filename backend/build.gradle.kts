@@ -106,6 +106,11 @@ dependencies {
     // PDF内容検証用（テストスコープのみ）
     testImplementation("org.apache.pdfbox:pdfbox:3.0.3")
 
+    // === F09.13 Phase 1-γ Excel生成共通基盤（Apache POI） ===
+    // SXSSFWorkbook によるストリーミング生成で大量レコード（〜20,000件）に対応
+    implementation("org.apache.poi:poi:5.2.5")
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
+
     // === Markdown → HTML 変換 ===
     implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
 
