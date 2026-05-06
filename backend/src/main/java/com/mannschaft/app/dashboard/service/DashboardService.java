@@ -26,6 +26,7 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.todo.TodoStatus;
@@ -303,7 +304,7 @@ public class DashboardService {
 
         // チームアクティビティ統計
         List<TimelinePostEntity> teamPosts = timelinePostRepository
-                .findFeedByScopeType("TEAM", teamId, PageRequest.of(0, 100));
+                .findFeedByScopeType(PostScopeType.TEAM, teamId, PageRequest.of(0, 100));
         long postsThisWeek = teamPosts.stream()
                 .filter(p -> p.getCreatedAt() != null && p.getCreatedAt().isAfter(periodStart))
                 .count();
@@ -313,7 +314,7 @@ public class DashboardService {
 
         // チーム最新投稿
         List<TimelinePostEntity> latestPosts = timelinePostRepository
-                .findFeedByScopeType("TEAM", teamId, PageRequest.of(0, DASHBOARD_ITEM_LIMIT));
+                .findFeedByScopeType(PostScopeType.TEAM, teamId, PageRequest.of(0, DASHBOARD_ITEM_LIMIT));
 
         // チーム未読スレッド
         Page<com.mannschaft.app.bulletin.entity.BulletinThreadEntity> teamThreads =

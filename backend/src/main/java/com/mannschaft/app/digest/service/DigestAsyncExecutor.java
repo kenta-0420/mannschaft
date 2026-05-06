@@ -7,6 +7,7 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.digest.entity.TimelineDigestEntity;
 import com.mannschaft.app.digest.repository.TimelineDigestRepository;
+import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
@@ -56,7 +57,7 @@ public class DigestAsyncExecutor {
             // タイムラインから投稿データを取得し、期間内でフィルタ
             int maxPosts = digestProperties.getDefaults().getMaxPostsPerDigest();
             List<TimelinePostEntity> timelinePosts = timelinePostRepository.findFeedByScopeType(
-                    scopeType, scopeId, PageRequest.of(0, maxPosts));
+                    PostScopeType.valueOf(scopeType), scopeId, PageRequest.of(0, maxPosts));
             List<TimelinePostEntity> filteredPosts = timelinePosts.stream()
                     .filter(p -> p.getCreatedAt() != null
                             && !p.getCreatedAt().isBefore(digest.getPeriodStart())
