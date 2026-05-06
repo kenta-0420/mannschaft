@@ -2,6 +2,7 @@
 -- スコープ別（SYSTEM/PERSONAL/TEAM/ORGANIZATION）にラベルを定義し、
 -- 3バケット（OPEN/IN_PROGRESS/COMPLETED）にマッピングする。
 -- name 重複防止は Service 層で対応（MySQL の partial unique 不可のため）。
+-- 設計書: docs/features/F02.3.1_todo_status_labels_and_handoff.md
 CREATE TABLE todo_status_labels (
   id                BIGINT PRIMARY KEY AUTO_INCREMENT,
   scope_type        VARCHAR(20) NOT NULL,
