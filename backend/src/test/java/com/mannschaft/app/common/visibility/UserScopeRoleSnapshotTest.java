@@ -93,6 +93,65 @@ class UserScopeRoleSnapshotTest {
             UserScopeRoleSnapshot s = UserScopeRoleSnapshot.empty();
             assertThat(s.isMemberOf(null)).isFalse();
         }
+
+        @Test
+        @DisplayName("JOBBER ロール（RolePriority 未登録の並行ロール）は false")
+        void isMemberOf_jobber_returns_false() {
+            // JOBBER は F13.1 §2.9 の並行ロール — PRIORITY_MAP 未登録
+            UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
+                    false,
+                    Map.of(TEAM_1, "JOBBER"),
+                    Map.of(),
+                    Set.of(),
+                    Set.of());
+            assertThat(s.isMemberOf(TEAM_1)).isFalse();
+        }
+
+        @Test
+        @DisplayName("MEMBER ロールは true")
+        void isMemberOf_member_returns_true() {
+            UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
+                    false,
+                    Map.of(TEAM_1, "MEMBER"),
+                    Map.of(),
+                    Set.of(),
+                    Set.of());
+            assertThat(s.isMemberOf(TEAM_1)).isTrue();
+        }
+
+        @Test
+        @DisplayName("SUPPORTER ロール（PRIORITY_MAP 登録済み）は true")
+        void isMemberOf_supporter_returns_true() {
+            // SUPPORTER は PRIORITY_MAP に登録されているため isMemberOf=true
+            UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
+                    false,
+                    Map.of(TEAM_1, "SUPPORTER"),
+                    Map.of(),
+                    Set.of(),
+                    Set.of());
+            assertThat(s.isMemberOf(TEAM_1)).isTrue();
+        }
+
+        @Test
+        @DisplayName("未知のロールは false（PRIORITY_MAP 未登録）")
+        void isMemberOf_unknown_role_returns_false() {
+            UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
+                    false,
+                    Map.of(TEAM_1, "UNKNOWN_ROLE_XYZ"),
+                    Map.of(),
+                    Set.of(),
+                    Set.of());
+            assertThat(s.isMemberOf(TEAM_1)).isFalse();
+        }
+
+        @Test
+        @DisplayName("SystemAdmin スナップショットは scope に関わらず常に true")
+        void isMemberOf_system_admin_snapshot_returns_true() {
+            UserScopeRoleSnapshot s = UserScopeRoleSnapshot.forSystemAdmin();
+            assertThat(s.isMemberOf(TEAM_1)).isTrue();
+            assertThat(s.isMemberOf(TEAM_2)).isTrue();
+            assertThat(s.isMemberOf(ORG_10)).isTrue();
+        }
     }
 
     @Nested

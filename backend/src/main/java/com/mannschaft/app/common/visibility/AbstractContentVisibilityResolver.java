@@ -393,6 +393,15 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             return true;
         }
 
+        // §7.5 DRAFT/SCHEDULED の作者本人は visibility 軸をスキップ
+        // （status ガードを通過 = 作者本人か SystemAdmin のみ。SystemAdmin は上の if で返却済み）
+        ContentStatus status = toContentStatus(row);
+        if ((status == ContentStatus.DRAFT || status == ContentStatus.SCHEDULED)
+                && viewerUserId != null
+                && Objects.equals(viewerUserId, row.authorUserId())) {
+            return true;
+        }
+
         // §11.6 親 ORG 非アクティブなら即不可視
         ScopeKey scope = scopeOf(row);
         if (scope != null && snapshot.isParentOrgInactive(scope)) {
