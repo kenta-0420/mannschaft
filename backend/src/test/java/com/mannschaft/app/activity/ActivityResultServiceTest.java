@@ -9,6 +9,7 @@ import com.mannschaft.app.activity.repository.ActivityResultRepository;
 import com.mannschaft.app.activity.service.ActivityResultService;
 import com.mannschaft.app.activity.service.ActivityTemplateService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,6 +39,7 @@ class ActivityResultServiceTest {
     @Mock private ActivityTemplateService templateService;
     @Mock private ActivityMapper activityMapper;
     @Mock private ObjectMapper objectMapper;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private ActivityResultService service;
