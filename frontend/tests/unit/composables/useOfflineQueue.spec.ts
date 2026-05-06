@@ -114,4 +114,151 @@ describe('useOfflineQueue', () => {
     expect(results.length).toBe(0)
     expect(await queue.count()).toBe(2)
   })
+
+  // ─── 追加テスト +12件 ──────────────────────────────────────────────────────
+
+  it('enqueue の順序が FIFO で保持される（getAll の並び順）', async () => {
+    const queue = useOfflineQueue()
+    await queue.enqueue(samplePayload('first'), -10)
+    await queue.enqueue(samplePayload('second'), -11)
+    await queue.enqueue(samplePayload('third'), -12)
+
+    const all = await queue.getAll()
+    expect(all.length).toBe(3)
+    expect(all[0]?.payload.content).toBe('first')
+    expect(all[1]?.payload.content).toBe('second')
+    expect(all[2]?.payload.content).toBe('third')
+  })
+
+  it('clearAll 後に count が 0 になる', async () => {
+    const queue = useOfflineQueue()
+    await queue.enqueue(samplePayload('x'), -1)
+    await queue.enqueue(samplePayload('y'), -2)
+    expect(await queue.count()).toBe(2)
+
+    await queue.clearAll()
+    expect(await queue.count()).toBe(0)
+  })
+
+  it('clearAll 後に getAll が空配列を返す', async () => {
+    const queue = useOfflineQueue()
+    await queue.enqueue(samplePayload('a'), -1)
+    await queue.clearAll()
+
+    const all = await queue.getAll()
+    expect(all).toEqual([])
+  })
+
+  it('clearAll 後に hasQueuedItems が false を返す', async () => {
+    const queue = useOfflineQueue()
+    await queue.enqueue(samplePayload('data'), -1)
+    await queue.clearAll()
+
+    expect(await queue.hasQueuedItems()).toBe(false)
+  })
+
+  it('remove で先頭アイテムを削除しても残りの順序が崩れない', async () => {
+    const queue = useOfflineQueue()
+    const first = await queue.enqueue(samplePayload('alpha'), -1)
+    await queue.enqueue(samplePayload('beta'), -2)
+    await queue.enqueue(samplePayload('gamma'), -3)
+
+    await queue.remove(first.queueId as number)
+
+    const all = await queue.getAll()
+    expect(all.length).toBe(2)
+    expect(all[0]?.payload.content).toBe('beta')
+    expect(all[1]?.payload.content).toBe('gamma')
+  })
+
+  it('remove で末尾アイテムを削除できる', async () => {
+    const queue = useOfflineQueue()
+    await queue.enqueue(samplePayload('alpha'), -1)
+    const last = await queue.enqueue(samplePayload('beta'), -2)
+
+    await queue.remove(last.queueId as number)
+
+    const all = await queue.getAll()
+    expect(all.length).toBe(1)
+    expect(all[0]?.payload.content).toBe('alpha')
+  })
+
+  it('enqueue で返る queueId が一意である', async () => {
+    const queue = useOfflineQueue()
+    const a = await queue.enqueue(samplePayload('a'), -1)
+    const b = await queue.enqueue(samplePayload('b'), -2)
+    const c = await queue.enqueue(samplePayload('c'), -3)
+
+    const ids = [a.queueId, b.queueId, c.queueId]
+    const uniqueIds = new Set(ids)
+    expect(uniqueIds.size).toBe(3)
+  })
+
+  it('flushQueue で全件成功後のキューは空になる', async () => {
+    const queue = useOfflineQueue()
+    await queue.enqueue(samplePayload('x'), -1)
+    await queue.enqueue(samplePayload('y'), -2)
+
+    const sender = vi.fn().mockResolvedValue({ id: 999 })
+    await queue.flushQueue(sender)
+
+    expect(await queue.count()).toBe(0)
+    expect(await queue.hasQueuedItems()).toBe(false)
+  })
+
+  it('flushQueue の sender に渡されるペイロードが enqueue 時と一致する', async () => {
+    const queue = useOfflineQueue()
+    const payload = samplePayload('check-payload')
+    await queue.enqueue(payload, -1)
+
+    const capturedPayloads: typeof payload[] = []
+    const sender = vi.fn().mockImplementation(async (p: typeof payload) => {
+      capturedPayloads.push(p)
+      return { id: 1 }
+    })
+
+    await queue.flushQueue(sender)
+
+    expect(capturedPayloads.length).toBe(1)
+    expect(capturedPayloads[0]?.content).toBe('check-payload')
+    expect(capturedPayloads[0]?.memoDate).toBe('2026-04-09')
+  })
+
+  it('flushQueue で sender が全件 null を返したらキューが全件残る', async () => {
+    const queue = useOfflineQueue()
+    await queue.enqueue(samplePayload('a'), -1)
+    await queue.enqueue(samplePayload('b'), -2)
+    await queue.enqueue(samplePayload('c'), -3)
+
+    const sender = vi.fn().mockResolvedValue(null)
+    const results = await queue.flushQueue(sender)
+
+    // null を返した時点で break するので sender は 1 回しか呼ばれない
+    expect(sender).toHaveBeenCalledTimes(1)
+    expect(results.length).toBe(0)
+    expect(await queue.count()).toBe(3)
+  })
+
+  it('count は getAll の件数と一致する', async () => {
+    const queue = useOfflineQueue()
+    await queue.enqueue(samplePayload('p'), -1)
+    await queue.enqueue(samplePayload('q'), -2)
+    await queue.enqueue(samplePayload('r'), -3)
+
+    const countVal = await queue.count()
+    const allItems = await queue.getAll()
+
+    expect(countVal).toBe(allItems.length)
+  })
+
+  it('mood フィールドが null のペイロードもエンキュー・デキューできる', async () => {
+    const queue = useOfflineQueue()
+    const payload = { content: 'no mood', memoDate: '2026-05-01', mood: null }
+    await queue.enqueue(payload, -99)
+
+    const all = await queue.getAll()
+    expect(all.length).toBe(1)
+    expect(all[0]?.payload.mood).toBeNull()
+    expect(all[0]?.payload.content).toBe('no mood')
+  })
 })
