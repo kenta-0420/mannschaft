@@ -3,12 +3,16 @@ import type { ErrorReportStatsResponse } from '~/types/system-admin'
 
 defineProps<{
   stats: ErrorReportStatsResponse | null
-  loading?: boolean
 }>()
 </script>
 
 <template>
-  <DashboardWidgetCard title="エラーレポート" icon="pi pi-exclamation-triangle" :loading="loading" :scrollable="false">
+  <section class="mb-6">
+    <h2
+      class="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-surface-400"
+    >
+      <i class="pi pi-exclamation-triangle" />エラーレポート
+    </h2>
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div
         class="flex flex-col rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
@@ -95,5 +99,5 @@ defineProps<{
         </NuxtLink>
       </div>
     </div>
-  </DashboardWidgetCard>
+  </section>
 </template>
