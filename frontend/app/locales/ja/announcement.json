@@ -56,6 +56,8 @@
     "unsaved_changes_warning": "入力内容が失われますがよいですか？",
     "broadcast_success": "告知を送信しました",
     "broadcast_success_cta": "お知らせウィジェットを確認する",
+    "form_title": "タイトル",
+    "form_body": "本文",
     "template_name_label": "テンプレート名",
     "template_set_default": "デフォルトとして設定",
     "template_create": "テンプレートとして保存",

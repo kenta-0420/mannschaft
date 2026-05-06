@@ -115,8 +115,7 @@ const canSubmit = computed(() => {
       <!-- タイトル -->
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium text-surface-700 dark:text-surface-300">
-          <!-- TODO: announcement.form_title キーが追加されたら差し替える -->
-          {{ $t('announcement.template_name_label') }}
+          {{ $t('announcement.form_title') }}
           <span class="text-red-500">*</span>
         </label>
         <InputText v-model="title" class="w-full" :max-length="200" />
@@ -124,8 +123,7 @@ const canSubmit = computed(() => {
       <!-- 本文 -->
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium text-surface-700 dark:text-surface-300">
-          <!-- TODO: announcement.form_body キーが追加されたら差し替える -->
-          {{ $t('announcement.step3_title') }}
+          {{ $t('announcement.form_body') }}
           <span class="text-red-500">*</span>
         </label>
         <Textarea v-model="body" rows="5" class="w-full resize-none" />
@@ -135,8 +133,7 @@ const canSubmit = computed(() => {
     <template v-else-if="channel === 'TIMELINE_POST'">
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium text-surface-700 dark:text-surface-300">
-          <!-- TODO: announcement.form_body キーが追加されたら差し替える -->
-          {{ $t('announcement.step3_title') }}
+          {{ $t('announcement.form_body') }}
           <span class="text-red-500">*</span>
         </label>
         <Textarea v-model="timelineContent" rows="5" class="w-full resize-none" />
@@ -146,8 +143,7 @@ const canSubmit = computed(() => {
     <template v-else-if="channel === 'TODO'">
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium text-surface-700 dark:text-surface-300">
-          <!-- TODO: announcement.form_title キーが追加されたら差し替える -->
-          {{ $t('announcement.template_name_label') }}
+          {{ $t('announcement.form_title') }}
           <span class="text-red-500">*</span>
         </label>
         <InputText v-model="title" class="w-full" :max-length="200" />
@@ -161,8 +157,7 @@ const canSubmit = computed(() => {
     <template v-else-if="channel === 'SCHEDULE'">
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium text-surface-700 dark:text-surface-300">
-          <!-- TODO: announcement.form_title キーが追加されたら差し替える -->
-          {{ $t('announcement.template_name_label') }}
+          {{ $t('announcement.form_title') }}
           <span class="text-red-500">*</span>
         </label>
         <InputText v-model="title" class="w-full" :max-length="200" />
@@ -173,8 +168,7 @@ const canSubmit = computed(() => {
     <template v-else-if="channel === 'SURVEY'">
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium text-surface-700 dark:text-surface-300">
-          <!-- TODO: announcement.form_title キーが追加されたら差し替える -->
-          {{ $t('announcement.template_name_label') }}
+          {{ $t('announcement.form_title') }}
           <span class="text-red-500">*</span>
         </label>
         <InputText v-model="title" class="w-full" :max-length="200" />
