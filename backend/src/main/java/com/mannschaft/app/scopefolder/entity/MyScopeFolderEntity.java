@@ -1,0 +1,102 @@
+package com.mannschaft.app.scopefolder.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+/**
+ * マイスコープフォルダエンティティ。
+ * ユーザーがチームまたは組織を分類するために自由に作成するフォルダ。
+ * 1ユーザー1スコープタイプあたり最大20フォルダまで。
+ */
+@Entity
+@Table(name = "my_scope_folders")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Builder(toBuilder = true)
+public class MyScopeFolderEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scope_type", nullable = false, length = 20)
+    private ScopeType scopeType;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(length = 7)
+    private String color;
+
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+        if (this.sortOrder == null) {
+            this.sortOrder = 0;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * フォルダの名前・色を更新する。
+     */
+    public void update(String name, String color) {
+        this.name = name;
+        this.color = color;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * フォルダを論理削除する。
+     */
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 並び順を更新する。
+     */
+    public void updateSortOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
+        this.updatedAt = LocalDateTime.now();
+    }
+}

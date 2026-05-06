@@ -112,12 +112,7 @@ const quickLinks: QuickLink[] = [
 </script>
 
 <template>
-  <section class="mb-6">
-    <h2
-      class="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-surface-400"
-    >
-      <i class="pi pi-th-large" />管理メニュー
-    </h2>
+  <DashboardWidgetCard title="管理メニュー" icon="pi pi-th-large" :scrollable="false">
     <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
       <NuxtLink
         v-for="link in quickLinks"
@@ -133,5 +128,5 @@ const quickLinks: QuickLink[] = [
         }}</span>
       </NuxtLink>
     </div>
-  </section>
+  </DashboardWidgetCard>
 </template>

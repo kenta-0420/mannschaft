@@ -891,7 +891,8 @@
     "supporterRegistered": "Registrado como seguidor",
     "becomeSupporter": "Convertirse en seguidor",
     "supporterSuccess": "Registrado como seguidor",
-    "supporterError": "Error al seguir"
+    "supporterError": "Error al seguir",
+    "folders": "フォルダ整理"
   },
   "orgHub": {
     "pageTitle": "Mis organizaciones",
@@ -909,6 +910,23 @@
     "supporterRegistered": "Registrado como seguidor",
     "becomeSupporter": "Convertirse en seguidor",
     "supporterSuccess": "Registrado como seguidor",
-    "supporterError": "Error al seguir"
+    "supporterError": "Error al seguir",
+    "folders": "フォルダ整理"
+  },
+  "scopeFolder": {
+    "folders": "フォルダ",
+    "addFolder": "フォルダを追加",
+    "editFolder": "フォルダを編集",
+    "deleteFolder": "フォルダを削除",
+    "deleteConfirm": "フォルダを削除しますか？チームはフォルダから外れますが、削除されません。",
+    "folderName": "フォルダ名",
+    "folderColor": "フォルダカラー",
+    "uncategorized": "未分類",
+    "moveToFolder": "フォルダへ移動",
+    "removeFromFolder": "フォルダから外す",
+    "noFolders": "フォルダはまだありません",
+    "emptyFolder": "このフォルダは空です",
+    "limitExceeded": "フォルダは最大20個まで作成できます",
+    "nameDuplicate": "同じ名前のフォルダが既に存在します"
   }
 }

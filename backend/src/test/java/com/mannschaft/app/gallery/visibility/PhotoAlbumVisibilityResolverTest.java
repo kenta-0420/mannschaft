@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -84,6 +85,32 @@ class PhotoAlbumVisibilityResolverTest {
         assertThat(resolver.referenceType()).isEqualTo(ReferenceType.PHOTO_ALBUM);
     }
 
+    // -------------------------------------------------------------------------
+    // 入口ガード
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("contentId=null は false（DB 参照なし）")
+    void canView_nullContentId_false() {
+        assertThat(resolver.canView(null, 5L)).isFalse();
+        verifyNoInteractions(photoAlbumRepository);
+        verifyNoInteractions(membershipBatchQueryService);
+    }
+
+    @Test
+    @DisplayName("viewerUserId=null でも可視性評価は実施される（PUBLIC 判定用）")
+    void canView_nullUserId_evaluates_normally() {
+        // ALL_MEMBERS アルバムは匿名ユーザーには見えない
+        PhotoAlbumVisibilityProjection p = projection(
+                1L, 100L, null, 99L, AlbumVisibility.ALL_MEMBERS);
+        when(photoAlbumRepository.findVisibilityProjectionsByIdIn(any()))
+                .thenReturn(List.of(p));
+        when(membershipBatchQueryService.snapshotForUser(eq(null), anySet(), anySet()))
+                .thenReturn(UserScopeRoleSnapshot.empty());
+
+        assertThat(resolver.canView(1L, null)).isFalse();
+    }
+
     @Test
     @DisplayName("団員のみ閲覧可アルバムはスコープメンバーが見られる")
     void canView_団員のみ閲覧可アルバムはメンバーが見られる() {
@@ -112,6 +139,69 @@ class PhotoAlbumVisibilityResolverTest {
                         Map.of(), Set.of(), Set.of()));
 
         assertThat(resolver.canView(2L, 5L)).isFalse();
+    }
+
+    @Test
+    @DisplayName("SUPPORTERS_AND_ABOVE アルバムはサポーター以上のみ見られる")
+    void canView_supporters_and_above_visible_to_supporter() {
+        PhotoAlbumVisibilityProjection p = projection(
+                3L, 100L, null, 99L, AlbumVisibility.SUPPORTERS_AND_ABOVE);
+        when(photoAlbumRepository.findVisibilityProjectionsByIdIn(any()))
+                .thenReturn(List.of(p));
+        when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                .thenReturn(new UserScopeRoleSnapshot(false,
+                        Map.of(new ScopeKey("TEAM", 100L), "SUPPORTER"),
+                        Map.of(), Set.of(), Set.of()));
+
+        assertThat(resolver.canView(3L, 5L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("SUPPORTERS_AND_ABOVE アルバムは MEMBER（SUPPORTER より上位ロール）にも見える")
+    void canView_supporters_and_above_also_visible_to_member() {
+        // ロール優先度: MEMBER=4, SUPPORTER=5（小さいほど上位）。
+        // MEMBER は SUPPORTER より上位ロールのため hasRoleOrAbove(scope, "SUPPORTER") = true。
+        PhotoAlbumVisibilityProjection p = projection(
+                3L, 100L, null, 99L, AlbumVisibility.SUPPORTERS_AND_ABOVE);
+        when(photoAlbumRepository.findVisibilityProjectionsByIdIn(any()))
+                .thenReturn(List.of(p));
+        when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                .thenReturn(new UserScopeRoleSnapshot(false,
+                        Map.of(new ScopeKey("TEAM", 100L), "MEMBER"),
+                        Map.of(), Set.of(), Set.of()));
+
+        assertThat(resolver.canView(3L, 5L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("SUPPORTERS_AND_ABOVE アルバムは GUEST（最低位ロール）には見えない")
+    void canView_supporters_and_above_invisible_to_guest() {
+        // GUEST=6 は SUPPORTER=5 より下位のため見えない
+        PhotoAlbumVisibilityProjection p = projection(
+                3L, 100L, null, 99L, AlbumVisibility.SUPPORTERS_AND_ABOVE);
+        when(photoAlbumRepository.findVisibilityProjectionsByIdIn(any()))
+                .thenReturn(List.of(p));
+        when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                .thenReturn(new UserScopeRoleSnapshot(false,
+                        Map.of(new ScopeKey("TEAM", 100L), "GUEST"),
+                        Map.of(), Set.of(), Set.of()));
+
+        assertThat(resolver.canView(3L, 5L)).isFalse();
+    }
+
+    @Test
+    @DisplayName("ADMIN_ONLY アルバムは管理者ロール所持者のみ見られる")
+    void canView_admin_only_visible_to_admin() {
+        PhotoAlbumVisibilityProjection p = projection(
+                2L, 100L, null, 99L, AlbumVisibility.ADMIN_ONLY);
+        when(photoAlbumRepository.findVisibilityProjectionsByIdIn(any()))
+                .thenReturn(List.of(p));
+        when(membershipBatchQueryService.snapshotForUser(eq(10L), anySet(), anySet()))
+                .thenReturn(new UserScopeRoleSnapshot(false,
+                        Map.of(new ScopeKey("TEAM", 100L), "ADMIN"),
+                        Map.of(), Set.of(), Set.of()));
+
+        assertThat(resolver.canView(2L, 10L)).isTrue();
     }
 
     @Test

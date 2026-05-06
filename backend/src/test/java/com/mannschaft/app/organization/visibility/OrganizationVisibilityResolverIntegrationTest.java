@@ -2,11 +2,13 @@ package com.mannschaft.app.organization.visibility;
 
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -41,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @ActiveProfiles("test")
 @Transactional
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("OrganizationVisibilityResolver 結合テスト")
 class OrganizationVisibilityResolverIntegrationTest {
 
@@ -131,18 +134,18 @@ class OrganizationVisibilityResolverIntegrationTest {
     }
 
     // =========================================================================
-    // シナリオ 2: PRIVATE 組織は非管理者には不可視
+    // シナリオ 2: PRIVATE 組織は非メンバーには非公開・メンバーは閲覧可
     // =========================================================================
 
     @Test
-    @DisplayName("private_org_invisible_to_non_admin: PRIVATE 組織は非管理者は false")
+    @DisplayName("private_org_invisible_to_non_admin: PRIVATE 組織は非メンバーは false・メンバーは true")
     void private_org_invisible_to_non_admin() {
-        // 非メンバー
+        // 非メンバー（組織に所属していない）
         assertThat(checker.canView(ReferenceType.ORGANIZATION, privateOrgId, nonMemberUserId)).isFalse();
         // 匿名ユーザー
         assertThat(checker.canView(ReferenceType.ORGANIZATION, privateOrgId, null)).isFalse();
-        // MEMBER ロールのみでは ADMINS_ONLY に届かない
-        assertThat(checker.canView(ReferenceType.ORGANIZATION, privateOrgId, memberUserId)).isFalse();
+        // MEMBER ロールで MEMBERS_ONLY に届く（自組織は閲覧可）
+        assertThat(checker.canView(ReferenceType.ORGANIZATION, privateOrgId, memberUserId)).isTrue();
         // SystemAdmin は高速パスで可視
         assertThat(checker.canView(ReferenceType.ORGANIZATION, privateOrgId, sysAdminUserId)).isTrue();
     }

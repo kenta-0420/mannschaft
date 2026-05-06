@@ -35,16 +35,9 @@ function batchStatusLabel(status: string) {
 </script>
 
 <template>
-  <div
-    class="rounded-xl border border-surface-300 bg-surface-0 dark:border-surface-600 dark:bg-surface-800"
-  >
-    <div
-      class="flex items-center justify-between border-b border-surface-100 px-4 py-3 dark:border-surface-600"
-    >
-      <span class="text-sm font-semibold">バッチジョブ（直近）</span>
-    </div>
+  <DashboardWidgetCard title="バッチジョブ（直近）" icon="pi pi-cog" to="/admin/batch" :scrollable="true">
     <div v-if="logs.length > 0" class="divide-y divide-surface-100 dark:divide-surface-700">
-      <div v-for="log in logs" :key="log.id" class="px-4 py-3">
+      <div v-for="log in logs" :key="log.id" class="py-3">
         <div class="flex items-center justify-between gap-2">
           <p
             class="min-w-0 flex-1 truncate text-sm font-medium text-surface-700 dark:text-surface-200"
@@ -67,9 +60,6 @@ function batchStatusLabel(status: string) {
         </p>
       </div>
     </div>
-    <div v-else class="px-4 py-8 text-center text-sm text-surface-400">
-      <i class="pi pi-inbox mb-2 text-2xl" />
-      <p>バッチログがありません</p>
-    </div>
-  </div>
+    <DashboardEmptyState v-else icon="pi pi-inbox" message="バッチログがありません" />
+  </DashboardWidgetCard>
 </template>

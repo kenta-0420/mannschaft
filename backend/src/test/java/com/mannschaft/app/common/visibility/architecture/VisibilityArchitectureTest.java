@@ -100,7 +100,9 @@ class VisibilityArchitectureTest {
                     "..schedule..",
                     "..survey..",
                     "..timetable..",
-                    "..tournament..");
+                    "..tournament..",
+                    "..team..",
+                    "..organization..");
 
     /**
      * {@code common.visibility} パッケージは機能側 {@code *.service} に依存禁止。
