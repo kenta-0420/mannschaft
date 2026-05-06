@@ -106,7 +106,7 @@ class DashboardServiceVisibilityFilterTest {
                 .willReturn(List.of());
         given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(TEAM_ID), any(PageRequest.class)))
                 .willReturn(new PageImpl<>(List.of()));
-        given(timelinePostRepository.findFeedByScopeType(anyString(), eq(TEAM_ID), any(PageRequest.class)))
+        given(timelinePostRepository.findFeedByScopeType(any(com.mannschaft.app.timeline.PostScopeType.class), eq(TEAM_ID), any(PageRequest.class)))
                 .willReturn(List.of());
         given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
                 any(), eq(TEAM_ID), any(PageRequest.class)))

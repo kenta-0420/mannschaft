@@ -380,7 +380,7 @@ class TimelinePostServiceTest {
             List<TimelinePostEntity> posts = List.of(createPost());
             List<PostResponse> expected = List.of(createPostResponse());
 
-            given(postRepository.findFeedByScopeType(eq("PUBLIC"), eq(0L), any(PageRequest.class)))
+            given(postRepository.findFeedByScopeType(eq(PostScopeType.PUBLIC), eq(0L), any(PageRequest.class)))
                     .willReturn(posts);
             given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
 
@@ -395,7 +395,7 @@ class TimelinePostServiceTest {
         @DisplayName("正常系: sizeが0以下の場合はデフォルトサイズ20件で取得する")
         void sizeが0以下の場合はデフォルトサイズで取得する() {
             // given
-            given(postRepository.findFeedByScopeType(eq("PUBLIC"), eq(0L), any(PageRequest.class)))
+            given(postRepository.findFeedByScopeType(eq(PostScopeType.PUBLIC), eq(0L), any(PageRequest.class)))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
@@ -403,7 +403,7 @@ class TimelinePostServiceTest {
             timelinePostService.getFeed("PUBLIC", 0L, 0);
 
             // then
-            verify(postRepository).findFeedByScopeType(eq("PUBLIC"), eq(0L), eq(PageRequest.of(0, 20)));
+            verify(postRepository).findFeedByScopeType(eq(PostScopeType.PUBLIC), eq(0L), eq(PageRequest.of(0, 20)));
         }
     }
 
@@ -616,7 +616,7 @@ class TimelinePostServiceTest {
             List<TimelinePostEntity> posts = List.of(createPost());
             List<PostResponse> expected = List.of(createPostResponse());
 
-            given(postRepository.findPinnedPosts("PUBLIC", 0L)).willReturn(posts);
+            given(postRepository.findPinnedPosts(PostScopeType.PUBLIC, 0L)).willReturn(posts);
             given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
 
             // when
