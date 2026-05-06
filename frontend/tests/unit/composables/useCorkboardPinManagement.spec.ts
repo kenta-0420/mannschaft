@@ -358,4 +358,128 @@ describe('useCorkboardPinManagement — doTogglePin', () => {
     // アンピン(next=false)なので finally ブロックの reset は走らない
     expect(pinPopoverTargetCard.value).not.toBeNull()
   })
+
+  // ---- エッジケース追加テスト ----
+
+  it('CORK-PIN-UNIT-013: pinPopoverVisible が初期状態で false になっている', () => {
+    const board = ref(makeBoard())
+    const boardId = ref(100)
+    const { pinPopoverVisible } = useCorkboardPinManagement(board, boardId, stubT)
+
+    expect(pinPopoverVisible.value).toBe(false)
+  })
+
+  it('CORK-PIN-UNIT-014: doTogglePin(true) — isPinned=false のカードに対して pin リクエスト（next=true）を送る', async () => {
+    mockTogglePinCard.mockResolvedValueOnce({
+      data: { id: 10, isPinned: true, pinnedAt: '2026-05-01T00:00:00' },
+    })
+
+    const card = makeCard({ id: 10, isPinned: false })
+    const board = ref(makeBoard([card]))
+    const boardId = ref(100)
+    const { doTogglePin } = useCorkboardPinManagement(board, boardId, stubT)
+
+    await doTogglePin(card, true, '付箋メモ', 'RED')
+
+    expect(mockTogglePinCard).toHaveBeenCalledWith(100, 10, true, '付箋メモ', 'RED')
+  })
+
+  it('CORK-PIN-UNIT-015: doTogglePin(false) — isPinned=true のカードに対して unpin リクエスト（next=false）を送る', async () => {
+    mockTogglePinCard.mockResolvedValueOnce({
+      data: { id: 10, isPinned: false, pinnedAt: null },
+    })
+
+    const card = makeCard({ id: 10, isPinned: true })
+    const board = ref(makeBoard([card]))
+    const boardId = ref(100)
+    const { doTogglePin } = useCorkboardPinManagement(board, boardId, stubT)
+
+    await doTogglePin(card, false, null, null)
+
+    // next=false のときは userNote/noteColor が undefined として渡される
+    expect(mockTogglePinCard).toHaveBeenCalledWith(100, 10, false, undefined, undefined)
+  })
+
+  it('CORK-PIN-UNIT-016: ピン上限エラー（status 409）時に warn toast の summary が pinLimitReached キーを含む', async () => {
+    const err = { status: 409, message: 'pin limit reached' }
+    mockTogglePinCard.mockRejectedValueOnce(err)
+
+    const card = makeCard({ id: 10, isPinned: false })
+    const board = ref(makeBoard([card]))
+    const boardId = ref(100)
+    const { doTogglePin } = useCorkboardPinManagement(board, boardId, stubT)
+
+    await doTogglePin(card, true, null, null)
+
+    expect(mockToastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        severity: 'warn',
+        summary: 'corkboard.pinLimitReached',
+      }),
+    )
+  })
+
+  it('CORK-PIN-UNIT-017: ピン上限エラー（code CORKBOARD_013）で error toast は表示されない', async () => {
+    const err = { status: 400, data: { code: 'CORKBOARD_013' } }
+    mockTogglePinCard.mockRejectedValueOnce(err)
+
+    const card = makeCard({ id: 10, isPinned: false })
+    const board = ref(makeBoard([card]))
+    const boardId = ref(100)
+    const { doTogglePin } = useCorkboardPinManagement(board, boardId, stubT)
+
+    await doTogglePin(card, true, null, null)
+
+    const errorCall = mockToastAdd.mock.calls.find(
+      (call) => (call[0] as { severity: string }).severity === 'error',
+    )
+    expect(errorCall).toBeUndefined()
+  })
+
+  it('CORK-PIN-UNIT-018: doTogglePin(true) 成功時に success toast が表示される', async () => {
+    mockTogglePinCard.mockResolvedValueOnce({
+      data: { id: 10, isPinned: true, pinnedAt: '2026-05-01T00:00:00' },
+    })
+
+    const card = makeCard({ id: 10, isPinned: false })
+    const board = ref(makeBoard([card]))
+    const boardId = ref(100)
+    const { doTogglePin } = useCorkboardPinManagement(board, boardId, stubT)
+
+    await doTogglePin(card, true, null, null)
+
+    expect(mockToastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'success', summary: 'corkboard.toast.pinSuccess' }),
+    )
+  })
+
+  it('CORK-PIN-UNIT-019: doTogglePin(false) 成功時に unpinSuccess toast が表示される', async () => {
+    mockTogglePinCard.mockResolvedValueOnce({
+      data: { id: 10, isPinned: false, pinnedAt: null },
+    })
+
+    const card = makeCard({ id: 10, isPinned: true })
+    const board = ref(makeBoard([card]))
+    const boardId = ref(100)
+    const { doTogglePin } = useCorkboardPinManagement(board, boardId, stubT)
+
+    await doTogglePin(card, false, null, null)
+
+    expect(mockToastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'success', summary: 'corkboard.toast.unpinSuccess' }),
+    )
+  })
+
+  it('CORK-PIN-UNIT-020: board が null のときに doTogglePin を呼んでも例外が発生しない', async () => {
+    mockTogglePinCard.mockResolvedValueOnce({
+      data: { id: 10, isPinned: true, pinnedAt: '2026-05-01T00:00:00' },
+    })
+
+    const card = makeCard({ id: 10, isPinned: false })
+    const board = ref<CorkboardDetail | null>(null)
+    const boardId = ref(100)
+    const { doTogglePin } = useCorkboardPinManagement(board, boardId, stubT)
+
+    await expect(doTogglePin(card, true, null, null)).resolves.toBeUndefined()
+  })
 })
