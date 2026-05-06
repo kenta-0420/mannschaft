@@ -98,27 +98,12 @@ class OrganizationVisibilityResolverTest {
     }
 
     // -------------------------------------------------------------------------
-    // PRIVATE 組織は管理者のみ
+    // PRIVATE 組織は非メンバーには非公開・メンバーは閲覧可（MEMBERS_ONLY）
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("canView_PRIVATE組織は管理者のみ: 管理者は true")
-    void canView_PRIVATE組織は管理者に可視() {
-        OrganizationVisibilityProjection projection = projection(
-                1L, 1L, OrganizationEntity.Visibility.PRIVATE, null, null);
-        when(organizationRepository.findVisibilityProjectionsByIdIn(any()))
-                .thenReturn(List.of(projection));
-        when(membershipBatchQueryService.snapshotForUser(eq(10L), anySet(), anySet()))
-                .thenReturn(new UserScopeRoleSnapshot(false,
-                        Map.of(new ScopeKey("ORGANIZATION", 1L), "ADMIN"),
-                        Map.of(), Set.of(), Set.of()));
-
-        assertThat(resolver.canView(1L, 10L)).isTrue();
-    }
-
-    @Test
-    @DisplayName("canView_PRIVATE組織は管理者のみ: 一般メンバーは false")
-    void canView_PRIVATE組織は一般メンバーに不可視() {
+    @DisplayName("canView_PRIVATE組織は一般メンバーも閲覧可: MEMBER ロールは true")
+    void canView_PRIVATE組織はメンバーに可視() {
         OrganizationVisibilityProjection projection = projection(
                 1L, 1L, OrganizationEntity.Visibility.PRIVATE, null, null);
         when(organizationRepository.findVisibilityProjectionsByIdIn(any()))
@@ -128,7 +113,20 @@ class OrganizationVisibilityResolverTest {
                         Map.of(new ScopeKey("ORGANIZATION", 1L), "MEMBER"),
                         Map.of(), Set.of(), Set.of()));
 
-        assertThat(resolver.canView(1L, 20L)).isFalse();
+        assertThat(resolver.canView(1L, 20L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("canView_PRIVATE組織は非メンバーに非公開: 空スナップショットは false")
+    void canView_PRIVATE組織は非メンバーに不可視() {
+        OrganizationVisibilityProjection projection = projection(
+                1L, 1L, OrganizationEntity.Visibility.PRIVATE, null, null);
+        when(organizationRepository.findVisibilityProjectionsByIdIn(any()))
+                .thenReturn(List.of(projection));
+        when(membershipBatchQueryService.snapshotForUser(eq(99L), anySet(), anySet()))
+                .thenReturn(UserScopeRoleSnapshot.empty());
+
+        assertThat(resolver.canView(1L, 99L)).isFalse();
     }
 
     // -------------------------------------------------------------------------

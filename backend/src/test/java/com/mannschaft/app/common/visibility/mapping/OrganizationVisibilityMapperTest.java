@@ -32,9 +32,9 @@ class OrganizationVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("PRIVATE → StandardVisibility.ADMINS_ONLY（保守的マッピング）")
-    void private_maps_to_ADMINS_ONLY() {
+    @DisplayName("PRIVATE → StandardVisibility.MEMBERS_ONLY（外部非公開・メンバー閲覧可）")
+    void private_maps_to_MEMBERS_ONLY() {
         assertThat(OrganizationVisibilityMapper.toStandard(OrganizationEntity.Visibility.PRIVATE))
-            .isEqualTo(StandardVisibility.ADMINS_ONLY);
+            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
     }
 }

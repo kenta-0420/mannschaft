@@ -13,9 +13,8 @@ import com.mannschaft.app.organization.entity.OrganizationEntity;
  *   <li>{@link OrganizationEntity.Visibility#PUBLIC} →
  *       {@link StandardVisibility#PUBLIC}（誰でも閲覧可）</li>
  *   <li>{@link OrganizationEntity.Visibility#PRIVATE} →
- *       {@link StandardVisibility#ADMINS_ONLY}
- *       （組織は PUBLIC/PRIVATE の 2 値のみで MEMBERS_ONLY 相当の中間概念を持たないため、
- *       PRIVATE は最も制限的な ADMINS_ONLY にマッピングし誤公開リスクを最小化する）</li>
+ *       {@link StandardVisibility#MEMBERS_ONLY}
+ *       （外部非公開・組織メンバーは閲覧可。非メンバーには非公開となる）</li>
  * </ul>
  */
 public final class OrganizationVisibilityMapper {
@@ -33,9 +32,9 @@ public final class OrganizationVisibilityMapper {
     public static StandardVisibility toStandard(OrganizationEntity.Visibility v) {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
-            // 組織は PUBLIC/PRIVATE の 2 値のみで中間概念を持たない。
-            // PRIVATE は保守的に ADMINS_ONLY にマッピングし、誤公開リスクを最小化する。
-            case PRIVATE -> StandardVisibility.ADMINS_ONLY;
+            // PRIVATE は「外部非公開・組織メンバーは閲覧可」を意味する。
+            // MEMBERS_ONLY にマッピングすることで、メンバーは自組織を閲覧でき、非メンバーには非公開となる。
+            case PRIVATE -> StandardVisibility.MEMBERS_ONLY;
         };
     }
 }

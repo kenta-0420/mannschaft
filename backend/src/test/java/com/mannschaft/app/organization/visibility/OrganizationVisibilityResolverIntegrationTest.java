@@ -134,18 +134,18 @@ class OrganizationVisibilityResolverIntegrationTest {
     }
 
     // =========================================================================
-    // シナリオ 2: PRIVATE 組織は非管理者には不可視
+    // シナリオ 2: PRIVATE 組織は非メンバーには非公開・メンバーは閲覧可
     // =========================================================================
 
     @Test
-    @DisplayName("private_org_invisible_to_non_admin: PRIVATE 組織は非管理者は false")
+    @DisplayName("private_org_invisible_to_non_admin: PRIVATE 組織は非メンバーは false・メンバーは true")
     void private_org_invisible_to_non_admin() {
-        // 非メンバー
+        // 非メンバー（組織に所属していない）
         assertThat(checker.canView(ReferenceType.ORGANIZATION, privateOrgId, nonMemberUserId)).isFalse();
         // 匿名ユーザー
         assertThat(checker.canView(ReferenceType.ORGANIZATION, privateOrgId, null)).isFalse();
-        // MEMBER ロールのみでは ADMINS_ONLY に届かない
-        assertThat(checker.canView(ReferenceType.ORGANIZATION, privateOrgId, memberUserId)).isFalse();
+        // MEMBER ロールで MEMBERS_ONLY に届く（自組織は閲覧可）
+        assertThat(checker.canView(ReferenceType.ORGANIZATION, privateOrgId, memberUserId)).isTrue();
         // SystemAdmin は高速パスで可視
         assertThat(checker.canView(ReferenceType.ORGANIZATION, privateOrgId, sysAdminUserId)).isTrue();
     }
