@@ -32,11 +32,12 @@ public class AnnouncementRangeTemplateService {
      * @param scopeType     スコープ種別（TEAM / ORGANIZATION）
      * @param scopeId       スコープ ID
      * @param callerUserId  呼び出し元ユーザー ID
-     * @return テンプレートリスト（作成日時昇順）
+     * @return テンプレートリスト（作成日時降順）
      */
     public List<AnnouncementRangeTemplateEntity> findAll(String scopeType, Long scopeId, Long callerUserId) {
         accessControlService.checkMembership(callerUserId, scopeId, scopeType);
-        return templateRepository.findByScopeTypeAndScopeIdOrderByCreatedAtAsc(scopeType, scopeId);
+        AnnouncementScopeType scopeTypeEnum = AnnouncementScopeType.valueOf(scopeType);
+        return templateRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(scopeTypeEnum, scopeId);
     }
 
     /**
@@ -56,19 +57,21 @@ public class AnnouncementRangeTemplateService {
             throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_009);
         }
 
+        AnnouncementScopeType scopeTypeEnum = AnnouncementScopeType.valueOf(scopeType);
+
         // 上限チェック（1スコープあたり20件）
-        long count = templateRepository.countByScopeTypeAndScopeId(scopeType, scopeId);
+        long count = templateRepository.countByScopeTypeAndScopeId(scopeTypeEnum, scopeId);
         if (count >= TEMPLATE_LIMIT) {
             throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_010);
         }
 
         // is_default 排他制御: 新規をデフォルトにする場合、既存のデフォルトを解除
         if (Boolean.TRUE.equals(req.getIsDefault())) {
-            templateRepository.clearDefaultByScopeTypeAndScopeId(scopeType, scopeId);
+            templateRepository.clearDefault(scopeTypeEnum, scopeId);
         }
 
         AnnouncementRangeTemplateEntity entity = AnnouncementRangeTemplateEntity.builder()
-                .scopeType(scopeType)
+                .scopeType(scopeTypeEnum)
                 .scopeId(scopeId)
                 .name(req.getName())
                 .targetRole(req.getTargetRole() != null ? req.getTargetRole() : "MEMBERS_ONLY")
@@ -100,15 +103,17 @@ public class AnnouncementRangeTemplateService {
             throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_009);
         }
 
+        AnnouncementScopeType scopeTypeEnum = AnnouncementScopeType.valueOf(scopeType);
+
         AnnouncementRangeTemplateEntity entity = templateRepository.findById(id)
-                .filter(t -> t.getScopeType().equals(scopeType) && t.getScopeId().equals(scopeId))
+                .filter(t -> t.getScopeType() == scopeTypeEnum && t.getScopeId().equals(scopeId))
                 .orElseThrow(() -> new BusinessException(AnnouncementErrorCode.ANNOUNCE_008));
 
         boolean newIsDefault = Boolean.TRUE.equals(req.getIsDefault());
 
         // is_default 排他制御: 新規デフォルト指定かつ現在デフォルトでない場合、既存デフォルトを解除
         if (newIsDefault && !Boolean.TRUE.equals(entity.getIsDefault())) {
-            templateRepository.clearDefaultByScopeTypeAndScopeId(scopeType, scopeId);
+            templateRepository.clearDefault(scopeTypeEnum, scopeId);
         }
 
         entity.update(req.getName(), req.getTargetRole(), req.getTargetTeamIdsJson(),
@@ -132,8 +137,10 @@ public class AnnouncementRangeTemplateService {
             throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_009);
         }
 
+        AnnouncementScopeType scopeTypeEnum = AnnouncementScopeType.valueOf(scopeType);
+
         AnnouncementRangeTemplateEntity entity = templateRepository.findById(id)
-                .filter(t -> t.getScopeType().equals(scopeType) && t.getScopeId().equals(scopeId))
+                .filter(t -> t.getScopeType() == scopeTypeEnum && t.getScopeId().equals(scopeId))
                 .orElseThrow(() -> new BusinessException(AnnouncementErrorCode.ANNOUNCE_008));
 
         templateRepository.delete(entity);

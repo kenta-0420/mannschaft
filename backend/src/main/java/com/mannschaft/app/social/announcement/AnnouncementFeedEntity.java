@@ -149,14 +149,6 @@ public class AnnouncementFeedEntity extends BaseEntity {
     private LocalDateTime expiresAt;
 
     /**
-     * 組織告知での配信先チーム絞り込み（F02.8）。
-     * NULL = スコープ全対象者。[1,3,5] の場合、当該チームメンバーにのみ表示。
-     * TEAM スコープでは常に NULL。JSON 配列形式で保持する。
-     */
-    @Column(columnDefinition = "JSON")
-    private String targetTeamIds;
-
-    /**
      * 元コンテンツ削除検出日時。ApplicationEvent 経由でセット。
      * NULL 以外の行はウィジェット一覧から除外し、90 日後にバッチで物理削除する。
      */

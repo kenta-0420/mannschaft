@@ -76,4 +76,14 @@ public class AnnouncementRangeTemplateEntity extends BaseEntity {
      */
     @Column
     private Long createdBy;
+
+    /** テンプレートを更新する。 */
+    public void update(String name, String targetRole, String targetTeamIds,
+                       String preferredChannel, boolean isDefault) {
+        this.name = name;
+        this.targetRole = targetRole;
+        this.targetTeamIds = targetTeamIds;
+        this.preferredChannel = preferredChannel;
+        this.isDefault = isDefault;
+    }
 }
