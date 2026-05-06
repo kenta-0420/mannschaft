@@ -101,8 +101,8 @@ class VisibilityArchitectureTest {
                     "..survey..",
                     "..timetable..",
                     "..tournament..",
-                    "..team..",           // PR #400 (feature/f00-phase-d-team) のため追加
-                    "..organization.."); // PR #397 (feature/f00-phase-d-organization) のため追加
+                    "..team..",
+                    "..organization..");
 
     /**
      * {@code common.visibility} パッケージは機能側 {@code *.service} に依存禁止。
