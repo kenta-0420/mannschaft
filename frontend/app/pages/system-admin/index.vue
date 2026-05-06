@@ -70,28 +70,31 @@ onMounted(load)
       />
     </div>
 
-    <PageLoading v-if="loading" />
-
-    <template v-else>
-      <SystemAdminModerationKpi :stats="moderationStats" />
-      <SystemAdminErrorKpi :stats="errorStats" />
-      <SystemAdminQuickLinks />
-
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <SystemAdminPendingPanel
-          title="再審査待ち"
-          :items="pendingReReviews"
-          empty-message="対応待ちの再審査はありません"
-          link-to="/admin/moderation"
-        />
-        <SystemAdminPendingPanel
-          title="フラグ解除申請"
-          :items="pendingUnflagRequests"
-          empty-message="対応待ちの申請はありません"
-          link-to="/admin/moderation"
-        />
-        <SystemAdminBatchLogs :logs="batchLogs" />
-      </div>
-    </template>
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <SystemAdminModerationKpi
+        class="lg:col-span-3"
+        :stats="moderationStats"
+        :loading="loading"
+      />
+      <SystemAdminErrorKpi
+        class="lg:col-span-3"
+        :stats="errorStats"
+        :loading="loading"
+      />
+      <SystemAdminQuickLinks class="lg:col-span-3" />
+      <SystemAdminPendingPanel
+        title="再審査待ち"
+        :items="pendingReReviews"
+        empty-message="対応待ちの再審査はありません"
+        link-to="/admin/moderation"
+      />
+      <SystemAdminPendingPanel
+        title="フラグ解除申請"
+        :items="pendingUnflagRequests"
+        empty-message="対応待ちの申請はありません"
+        link-to="/admin/moderation"
+      />
+      <SystemAdminBatchLogs :logs="batchLogs" />
+    </div>
   </div>
 </template>
