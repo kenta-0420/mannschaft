@@ -4,7 +4,6 @@ definePageMeta({
   layout: 'default',
 })
 
-const { t } = useI18n()
 const orgStore = useOrganizationStore()
 
 const showCreateDialog = ref(false)
