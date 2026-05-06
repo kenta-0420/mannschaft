@@ -7,14 +7,14 @@ definePageMeta({
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = Number(route.params.id)
+const orgId = Number(route.params.id)
 const todoId = Number(route.params.todoId)
 const todoApi = useTodoApi()
 const labelApi = useTodoStatusLabelApi()
 const progressApi = useTodoProgress()
 const notification = useNotification()
 const errorHandler = useErrorHandler()
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
 
 interface TodoDetail {
   id: number
@@ -41,7 +41,6 @@ const todo = ref<TodoDetail | null>(null)
 const loading = ref(true)
 const showEditDialog = ref(false)
 
-// 拡張タブ: 'progress' | 'shared_memo' | 'personal_memo'
 type DetailTab = 'progress' | 'shared_memo' | 'personal_memo'
 const activeDetailTab = ref<DetailTab>('progress')
 
@@ -49,12 +48,14 @@ const activeDetailTab = ref<DetailTab>('progress')
 const newLabelId = ref<number | null>(null)
 const confirmDialogVisible = ref(false)
 const changing = ref(false)
+const toLabelName = ref('')
+
+const fromLabelName = computed(() => todo.value?.statusLabel?.name ?? '')
 
 async function loadTodo() {
   loading.value = true
   try {
-    const res = await todoApi.getTodo('team', teamId, todoId)
-    // progressRate / progressManual が存在しない場合はデフォルト値を設定
+    const res = await todoApi.getTodo('organization', orgId, todoId)
     const data = res.data as unknown as TodoDetail & {
       progressRate?: string
       progressManual?: boolean
@@ -65,29 +66,23 @@ async function loadTodo() {
       progressManual: data.progressManual ?? false,
     }
     newLabelId.value = data.statusLabel?.id ?? null
-  }
-  catch {
+  } catch {
     notification.error('TODOの取得に失敗しました')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-const fromLabelName = computed(() => todo.value?.statusLabel?.name ?? '')
-const toLabelName = ref('')
-
 async function openConfirmDialog() {
   if (!todo.value || newLabelId.value === null) return
   if (newLabelId.value === todo.value.statusLabel?.id) return
-  // 候補ラベルから新ラベル名を解決
   try {
-    const res = await labelApi.listLabels('team', teamId)
+    const res = await labelApi.listLabels('organization', orgId)
     const target = res.data.find((l) => l.id === newLabelId.value)
     toLabelName.value = target?.name ?? ''
     confirmDialogVisible.value = true
   } catch (e) {
-    errorHandler.handleApiError(e, 'team-todo:status-confirm')
+    errorHandler.handleApiError(e, 'org-todo:status-confirm')
   }
 }
 
@@ -95,7 +90,7 @@ async function applyStatusChange() {
   if (!todo.value || newLabelId.value === null) return
   changing.value = true
   try {
-    await todoApi.changeTodoStatus('team', teamId, todoId, {
+    await todoApi.changeTodoStatus('organization', orgId, todoId, {
       statusLabelId: newLabelId.value,
     })
     confirmDialogVisible.value = false
@@ -104,7 +99,7 @@ async function applyStatusChange() {
       t('todo.statusChange.success', { name: todo.value?.statusLabel?.name ?? '' }),
     )
   } catch (e) {
-    errorHandler.handleApiError(e, 'team-todo:status')
+    errorHandler.handleApiError(e, 'org-todo:status')
   } finally {
     changing.value = false
   }
@@ -113,7 +108,7 @@ async function applyStatusChange() {
 async function onProgressRateUpdate(rate: string) {
   if (!todo.value) return
   try {
-    await progressApi.updateProgress('team', teamId, todoId, { progressRate: rate })
+    await progressApi.updateProgress('organization', orgId, todoId, { progressRate: rate })
     todo.value.progressRate = rate
   } catch {
     notification.error('進捗率の更新に失敗しました')
@@ -123,10 +118,9 @@ async function onProgressRateUpdate(rate: string) {
 async function onProgressManualUpdate(manual: boolean) {
   if (!todo.value) return
   try {
-    await progressApi.updateProgressMode('team', teamId, todoId, { progressManual: manual })
+    await progressApi.updateProgressMode('organization', orgId, todoId, { progressManual: manual })
     todo.value.progressManual = manual
     if (!manual) {
-      // 自動モードに切り替えた場合は最新値を再取得
       await loadTodo()
     }
   } catch {
@@ -158,11 +152,18 @@ onMounted(async () => {
   <div v-else-if="todo" class="mx-auto max-w-3xl">
     <!-- ヘッダー -->
     <div class="mb-6">
-      <BackButton :to="`/teams/${teamId}/todos`" label="TODO一覧" />
+      <BackButton :to="`/organizations/${orgId}/todos`" :label="t('todo.backToList')" />
       <div class="flex items-start justify-between">
         <PageHeader :title="todo.title" />
         <div class="flex gap-2">
-          <Button v-if="isAdminOrDeputy" label="編集" icon="pi pi-pencil" outlined size="small" @click="showEditDialog = true" />
+          <Button
+            v-if="isAdminOrDeputy"
+            label="編集"
+            icon="pi pi-pencil"
+            outlined
+            size="small"
+            @click="showEditDialog = true"
+          />
         </div>
       </div>
     </div>
@@ -183,7 +184,13 @@ onMounted(async () => {
       </div>
       <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">{{ t('todo.field.dueDate') }}</p>
-        <p class="mt-1 text-sm font-medium" :class="{ 'text-red-500': todo.daysRemaining !== null && todo.daysRemaining < 0 && todo.status !== 'COMPLETED' }">
+        <p
+          class="mt-1 text-sm font-medium"
+          :class="{
+            'text-red-500':
+              todo.daysRemaining !== null && todo.daysRemaining < 0 && todo.status !== 'COMPLETED',
+          }"
+        >
           {{ formatDate(todo.dueDate) }}
         </p>
       </div>
@@ -199,8 +206,8 @@ onMounted(async () => {
         <div class="max-w-xs flex-1">
           <TodoStatusLabelSelect
             v-model="newLabelId"
-            scope-type="TEAM"
-            :scope-id="teamId"
+            scope-type="ORGANIZATION"
+            :scope-id="orgId"
           />
         </div>
         <Button
@@ -212,14 +219,20 @@ onMounted(async () => {
     </SectionCard>
 
     <!-- 説明 -->
-    <SectionCard v-if="todo.description" title="説明" class="mb-6">
-      <p class="whitespace-pre-wrap text-sm text-surface-700 dark:text-surface-300">{{ todo.description }}</p>
+    <SectionCard v-if="todo.description" :title="t('todo.field.description')" class="mb-6">
+      <p class="whitespace-pre-wrap text-sm text-surface-700 dark:text-surface-300">
+        {{ todo.description }}
+      </p>
     </SectionCard>
 
     <!-- 担当者 -->
     <SectionCard title="担当者" class="mb-6">
       <div v-if="todo.assignees.length > 0" class="flex flex-wrap gap-2">
-        <div v-for="a in todo.assignees" :key="a.userId" class="flex items-center gap-2 rounded-full bg-surface-100 px-3 py-1 dark:bg-surface-700">
+        <div
+          v-for="a in todo.assignees"
+          :key="a.userId"
+          class="flex items-center gap-2 rounded-full bg-surface-100 px-3 py-1 dark:bg-surface-700"
+        >
           <Avatar
             :image="a.avatarUrl ?? undefined"
             :label="a.avatarUrl ? undefined : a.displayName.charAt(0)"
@@ -233,23 +246,30 @@ onMounted(async () => {
     </SectionCard>
 
     <!-- 完了情報 -->
-    <div v-if="todo.completedAt" class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
+    <div
+      v-if="todo.completedAt"
+      class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20"
+    >
       <p class="text-sm">
         <i class="pi pi-check-circle mr-1 text-green-600" />
-        {{ todo.completedBy?.displayName ?? '不明' }} が {{ formatDateTime(todo.completedAt) }} に完了
+        {{ todo.completedBy?.displayName ?? '不明' }} が
+        {{ formatDateTime(todo.completedAt) }} に完了
       </p>
     </div>
 
     <!-- 拡張タブ（進捗 / 共有メモ / 個人メモ） -->
     <SectionCard class="mb-6">
-      <!-- タブヘッダー -->
-      <div class="mb-4 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700 w-fit">
+      <div
+        class="mb-4 flex w-fit gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700"
+      >
         <button
           type="button"
           class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-          :class="activeDetailTab === 'progress'
-            ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
-            : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
+          :class="
+            activeDetailTab === 'progress'
+              ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
+              : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'
+          "
           @click="activeDetailTab = 'progress'"
         >
           <i class="pi pi-chart-bar mr-1" />{{ t('todo.enhancement.progress.tab_label') }}
@@ -257,9 +277,11 @@ onMounted(async () => {
         <button
           type="button"
           class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-          :class="activeDetailTab === 'shared_memo'
-            ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
-            : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
+          :class="
+            activeDetailTab === 'shared_memo'
+              ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
+              : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'
+          "
           @click="activeDetailTab = 'shared_memo'"
         >
           <i class="pi pi-comments mr-1" />{{ t('todo.enhancement.shared_memo.title') }}
@@ -267,16 +289,17 @@ onMounted(async () => {
         <button
           type="button"
           class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-          :class="activeDetailTab === 'personal_memo'
-            ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
-            : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
+          :class="
+            activeDetailTab === 'personal_memo'
+              ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
+              : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'
+          "
           @click="activeDetailTab = 'personal_memo'"
         >
           <i class="pi pi-lock mr-1" />{{ t('todo.enhancement.personal_memo.title') }}
         </button>
       </div>
 
-      <!-- タブコンテンツ -->
       <div v-if="activeDetailTab === 'progress'">
         <TodoProgressControl
           :progress-rate="todo.progressRate"
@@ -287,32 +310,24 @@ onMounted(async () => {
       </div>
 
       <div v-else-if="activeDetailTab === 'shared_memo'">
-        <TodoSharedMemo
-          scope-type="team"
-          :scope-id="teamId"
-          :todo-id="todoId"
-        />
+        <TodoSharedMemo scope-type="organization" :scope-id="orgId" :todo-id="todoId" />
       </div>
 
       <div v-else-if="activeDetailTab === 'personal_memo'">
-        <TodoPersonalMemo
-          scope-type="team"
-          :scope-id="teamId"
-          :todo-id="todoId"
-        />
+        <TodoPersonalMemo scope-type="organization" :scope-id="orgId" :todo-id="todoId" />
       </div>
     </SectionCard>
 
     <!-- コメント -->
     <SectionCard>
-      <TodoComments scope-type="team" :scope-id="teamId" :todo-id="todoId" />
+      <TodoComments scope-type="organization" :scope-id="orgId" :todo-id="todoId" />
     </SectionCard>
 
     <!-- 編集ダイアログ -->
     <TodoForm
       v-model:visible="showEditDialog"
-      scope-type="team"
-      :scope-id="teamId"
+      scope-type="organization"
+      :scope-id="orgId"
       :todo-id="todoId"
       @saved="loadTodo"
     />
