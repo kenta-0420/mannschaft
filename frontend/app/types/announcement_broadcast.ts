@@ -51,6 +51,8 @@ export interface TodoContent {
 /** チャネル別コンテンツ入力 — スケジュール */
 export interface ScheduleContent {
   title: string
+  /** 説明（任意・最大5000文字） */
+  description: string | null
   /** ISO 8601 形式。allDay が true の場合も必須 */
   startAt: string | null
   /** ISO 8601 形式（任意） */

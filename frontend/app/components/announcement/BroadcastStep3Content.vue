@@ -135,6 +135,20 @@ const scheduleEndAt = computed({
   },
 })
 
+/** SCHEDULE: 説明（任意・最大5000文字） */
+const scheduleDescription = computed({
+  get() {
+    const c = props.modelValue.content as Partial<ScheduleContent>
+    return typeof c.description === 'string' ? c.description : ''
+  },
+  set(value: string) {
+    emit('update:modelValue', {
+      ...props.modelValue,
+      content: { ...props.modelValue.content, description: value || null },
+    })
+  },
+})
+
 /** SCHEDULE: 場所（任意・最大300文字） */
 const scheduleLocation = computed({
   get() {
@@ -308,6 +322,13 @@ const canSubmit = computed(() => {
           hour-format="24"
           class="w-full"
         />
+      </div>
+      <!-- 説明（任意） -->
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium text-surface-700 dark:text-surface-300">
+          {{ $t('announcement.form_description') }}
+        </label>
+        <Textarea v-model="scheduleDescription" rows="3" class="w-full resize-none" :maxlength="5000" />
       </div>
       <!-- 場所（任意） -->
       <div class="flex flex-col gap-1">
