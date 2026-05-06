@@ -891,7 +891,8 @@
     "supporterRegistered": "서포터 등록됨",
     "becomeSupporter": "서포터 되기",
     "supporterSuccess": "서포터로 등록했습니다",
-    "supporterError": "팔로우에 실패했습니다"
+    "supporterError": "팔로우에 실패했습니다",
+    "folders": "フォルダ整理"
   },
   "orgHub": {
     "pageTitle": "내 조직",
@@ -909,6 +910,22 @@
     "supporterRegistered": "서포터 등록됨",
     "becomeSupporter": "서포터 되기",
     "supporterSuccess": "서포터로 등록했습니다",
-    "supporterError": "팔로우에 실패했습니다"
+    "supporterError": "팔로우에 실패했습니다",
+    "folders": "フォルダ整理"
+  },
+  "scopeFolder": {
+    "folders": "フォルダ",
+    "addFolder": "フォルダを追加",
+    "editFolder": "フォルダを編集",
+    "deleteFolder": "フォルダを削除",
+    "deleteConfirm": "フォルダを削除しますか？チームはフォルダから外れますが、削除されません。",
+    "folderName": "フォルダ名",
+    "folderColor": "フォルダカラー",
+    "uncategorized": "未分類",
+    "moveToFolder": "フォルダへ移動",
+    "removeFromFolder": "フォルダから外す",
+    "noFolders": "フォルダはまだありません",
+    "limitExceeded": "フォルダは最大20個まで作成できます",
+    "nameDuplicate": "同じ名前のフォルダが既に存在します"
   }
 }
