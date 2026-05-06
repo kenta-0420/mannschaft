@@ -59,14 +59,15 @@ public class UserTodoStatusLabelController {
             @PathVariable Long labelId,
             @Valid @RequestBody UpdateTodoStatusLabelRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.of(labelService.update(labelId, request, userId)));
+        return ResponseEntity.ok(ApiResponse.of(
+                labelService.update(labelId, TodoStatusLabelScope.PERSONAL, userId, request, userId)));
     }
 
     @DeleteMapping("/{labelId}")
     @Operation(summary = "個人ステータスラベル削除")
     public ResponseEntity<Void> delete(@PathVariable Long labelId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        labelService.delete(labelId, userId);
+        labelService.delete(labelId, TodoStatusLabelScope.PERSONAL, userId, userId);
         return ResponseEntity.noContent().build();
     }
 }

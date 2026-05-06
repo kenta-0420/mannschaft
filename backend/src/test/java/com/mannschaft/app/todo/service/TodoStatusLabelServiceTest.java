@@ -193,12 +193,12 @@ class TodoStatusLabelServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: チームスコープで非ADMIN は 403")
+        @DisplayName("異常系: チームスコープで非ADMIN は 403（DEPUTY_ADMIN も不可）")
         void create_異常_チームADMIN権限なし() {
             CreateTodoStatusLabelRequest request = new CreateTodoStatusLabelRequest(
                     "レビュー中", "IN_PROGRESS", null, 0);
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM");
+            // 設計書 §2: チームスコープ CRUD は ADMIN のみ。isAdmin が false → 403
+            given(accessControlService.isAdmin(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             assertThatThrownBy(() -> labelService.create(
                     TodoStatusLabelScope.TEAM, TEAM_ID, request, ACTOR_ID))
@@ -229,7 +229,8 @@ class TodoStatusLabelServiceTest {
             UpdateTodoStatusLabelRequest request = new UpdateTodoStatusLabelRequest(
                     "新名", "IN_PROGRESS", "#3b82f6", 5);
 
-            TodoStatusLabelResponse response = labelService.update(10L, request, ACTOR_ID);
+            TodoStatusLabelResponse response = labelService.update(
+                    10L, TodoStatusLabelScope.PERSONAL, ACTOR_ID, request, ACTOR_ID);
 
             assertThat(response.getName()).isEqualTo("新名");
             assertThat(response.getBucket()).isEqualTo("IN_PROGRESS");
@@ -246,7 +247,9 @@ class TodoStatusLabelServiceTest {
             UpdateTodoStatusLabelRequest request = new UpdateTodoStatusLabelRequest(
                     "改名", null, null, null);
 
-            assertThatThrownBy(() -> labelService.update(1L, request, ACTOR_ID))
+            // SYSTEM ラベルは scope_type=SYSTEM/scope_id=NULL なので、SYSTEM スコープの path で来た想定
+            assertThatThrownBy(() -> labelService.update(
+                    1L, TodoStatusLabelScope.SYSTEM, null, request, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TodoErrorCode.SYSTEM_LABEL_IMMUTABLE);
@@ -263,7 +266,8 @@ class TodoStatusLabelServiceTest {
             UpdateTodoStatusLabelRequest request = new UpdateTodoStatusLabelRequest(
                     "重複名", null, null, null);
 
-            assertThatThrownBy(() -> labelService.update(10L, request, ACTOR_ID))
+            assertThatThrownBy(() -> labelService.update(
+                    10L, TodoStatusLabelScope.PERSONAL, ACTOR_ID, request, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TodoErrorCode.LABEL_NAME_DUPLICATE);
@@ -287,7 +291,7 @@ class TodoStatusLabelServiceTest {
             given(labelRepository.save(any(TodoStatusLabelEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
-            labelService.delete(10L, ACTOR_ID);
+            labelService.delete(10L, TodoStatusLabelScope.PERSONAL, ACTOR_ID, ACTOR_ID);
 
             assertThat(existing.getDeletedAt()).isNotNull();
         }
@@ -298,7 +302,8 @@ class TodoStatusLabelServiceTest {
             TodoStatusLabelEntity sys = systemDefault(1L, "未着手", TodoStatusBucket.OPEN, 0);
             given(labelRepository.findActiveById(1L)).willReturn(Optional.of(sys));
 
-            assertThatThrownBy(() -> labelService.delete(1L, ACTOR_ID))
+            assertThatThrownBy(() -> labelService.delete(
+                    1L, TodoStatusLabelScope.SYSTEM, null, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TodoErrorCode.SYSTEM_LABEL_IMMUTABLE);
@@ -312,7 +317,8 @@ class TodoStatusLabelServiceTest {
             given(labelRepository.findActiveById(10L)).willReturn(Optional.of(existing));
             given(labelRepository.countTodosUsing(10L)).willReturn(3L);
 
-            assertThatThrownBy(() -> labelService.delete(10L, ACTOR_ID))
+            assertThatThrownBy(() -> labelService.delete(
+                    10L, TodoStatusLabelScope.PERSONAL, ACTOR_ID, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TodoErrorCode.LABEL_IN_USE);

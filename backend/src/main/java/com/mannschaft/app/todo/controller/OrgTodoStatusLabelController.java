@@ -57,20 +57,21 @@ public class OrgTodoStatusLabelController {
     }
 
     @PutMapping("/{labelId}")
-    @Operation(summary = "組織ステータスラベル更新（ADMIN/DEPUTY_ADMIN）")
+    @Operation(summary = "組織ステータスラベル更新（ADMIN のみ）")
     public ResponseEntity<ApiResponse<TodoStatusLabelResponse>> update(
             @PathVariable Long orgId,
             @PathVariable Long labelId,
             @Valid @RequestBody UpdateTodoStatusLabelRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.of(labelService.update(labelId, request, userId)));
+        return ResponseEntity.ok(ApiResponse.of(
+                labelService.update(labelId, TodoStatusLabelScope.ORGANIZATION, orgId, request, userId)));
     }
 
     @DeleteMapping("/{labelId}")
-    @Operation(summary = "組織ステータスラベル削除（ADMIN/DEPUTY_ADMIN）")
+    @Operation(summary = "組織ステータスラベル削除（ADMIN のみ）")
     public ResponseEntity<Void> delete(@PathVariable Long orgId, @PathVariable Long labelId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        labelService.delete(labelId, userId);
+        labelService.delete(labelId, TodoStatusLabelScope.ORGANIZATION, orgId, userId);
         return ResponseEntity.noContent().build();
     }
 }

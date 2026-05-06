@@ -112,15 +112,29 @@ public class TodoStatusLabelService {
     /**
      * カスタムラベルを更新する。
      *
-     * @param labelId ラベル ID
-     * @param request 更新リクエスト
-     * @param actorId 操作ユーザー ID
+     * <p>IDOR 対策: path から渡された expectedScope / expectedScopeId と、ラベル本体の
+     * scope_type / scope_id が一致しない場合は 404 LABEL_NOT_FOUND を返す（403 ではなく
+     * 404 — リソース存在情報の漏洩を避けるため）。</p>
+     *
+     * @param labelId          ラベル ID
+     * @param expectedScope    path から渡されるスコープ種別（PERSONAL/TEAM/ORGANIZATION）
+     * @param expectedScopeId  path から渡されるスコープ ID
+     * @param request          更新リクエスト
+     * @param actorId          操作ユーザー ID
      * @return 更新後のラベル
      */
     @Transactional
-    public TodoStatusLabelResponse update(Long labelId, UpdateTodoStatusLabelRequest request, Long actorId) {
+    public TodoStatusLabelResponse update(Long labelId, TodoStatusLabelScope expectedScope,
+                                          Long expectedScopeId,
+                                          UpdateTodoStatusLabelRequest request, Long actorId) {
         TodoStatusLabelEntity entity = labelRepository.findActiveById(labelId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.STATUS_LABEL_NOT_FOUND));
+
+        // IDOR 対策: path scope と entity scope の整合チェック（不一致は 404 で漏らさない）
+        if (entity.getScopeType() != expectedScope
+                || !java.util.Objects.equals(entity.getScopeId(), expectedScopeId)) {
+            throw new BusinessException(TodoErrorCode.STATUS_LABEL_NOT_FOUND);
+        }
 
         if (entity.isSystemDefault()) {
             throw new BusinessException(TodoErrorCode.SYSTEM_LABEL_IMMUTABLE);
@@ -161,13 +175,25 @@ public class TodoStatusLabelService {
     /**
      * カスタムラベルを論理削除する。SYSTEM 既定ラベルは削除不可、使用中ラベルも削除不可。
      *
-     * @param labelId ラベル ID
-     * @param actorId 操作ユーザー ID
+     * <p>IDOR 対策: path から渡された expectedScope / expectedScopeId と、ラベル本体の
+     * scope_type / scope_id が一致しない場合は 404 LABEL_NOT_FOUND を返す。</p>
+     *
+     * @param labelId          ラベル ID
+     * @param expectedScope    path から渡されるスコープ種別
+     * @param expectedScopeId  path から渡されるスコープ ID
+     * @param actorId          操作ユーザー ID
      */
     @Transactional
-    public void delete(Long labelId, Long actorId) {
+    public void delete(Long labelId, TodoStatusLabelScope expectedScope,
+                       Long expectedScopeId, Long actorId) {
         TodoStatusLabelEntity entity = labelRepository.findActiveById(labelId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.STATUS_LABEL_NOT_FOUND));
+
+        // IDOR 対策: path scope と entity scope の整合チェック
+        if (entity.getScopeType() != expectedScope
+                || !java.util.Objects.equals(entity.getScopeId(), expectedScopeId)) {
+            throw new BusinessException(TodoErrorCode.STATUS_LABEL_NOT_FOUND);
+        }
 
         if (entity.isSystemDefault()) {
             throw new BusinessException(TodoErrorCode.SYSTEM_LABEL_IMMUTABLE);
@@ -235,12 +261,14 @@ public class TodoStatusLabelService {
     /**
      * スコープへのアクセス権を検証する。
      *
+     * <p>F02.3.1 設計書 §2 の権限マトリクスでは、チーム・組織スコープのラベル CRUD は
+     * <strong>ADMIN のみ</strong>（DEPUTY_ADMIN は不可）と定義されているため、設計書を正として
+     * {@link AccessControlService#isAdmin} で厳格判定する。違反時は 403。</p>
+     *
      * @param scopeType   スコープ種別
      * @param scopeId     スコープ ID
      * @param actorId     操作ユーザー ID
-     * @param adminOnly   true の場合は CRUD 権限（個人=本人 / チーム・組織=ADMIN/DEPUTY_ADMIN）。
-     *                    false の場合は閲覧権限（個人=本人 / チーム・組織=メンバー以上は許容しない、
-     *                    ここでは ADMIN チェック相当 — メンバーシップは AccessControlService で別途判定）
+     * @param adminOnly   true の場合は CRUD 権限（個人=本人 / チーム・組織=ADMIN のみ）
      */
     private void validateScopeAccess(TodoStatusLabelScope scopeType, Long scopeId, Long actorId, boolean adminOnly) {
         if (actorId == null) {
@@ -257,16 +285,26 @@ public class TodoStatusLabelService {
                 return;
             case TEAM:
                 if (adminOnly) {
-                    accessControlService.checkAdminOrAbove(actorId, scopeId, "TEAM");
+                    requireAdminStrict(actorId, scopeId, "TEAM");
                 }
                 return;
             case ORGANIZATION:
                 if (adminOnly) {
-                    accessControlService.checkAdminOrAbove(actorId, scopeId, "ORGANIZATION");
+                    requireAdminStrict(actorId, scopeId, "ORGANIZATION");
                 }
                 return;
             default:
                 throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * ADMIN のみを許容する厳格判定（DEPUTY_ADMIN は弾く）。違反時は 403。
+     * 設計書 §2 の権限マトリクスを正とする。
+     */
+    private void requireAdminStrict(Long actorId, Long scopeId, String scopeType) {
+        if (!accessControlService.isAdmin(actorId, scopeId, scopeType)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
     }
 

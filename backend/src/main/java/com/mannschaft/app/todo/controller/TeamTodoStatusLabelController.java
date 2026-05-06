@@ -57,20 +57,21 @@ public class TeamTodoStatusLabelController {
     }
 
     @PutMapping("/{labelId}")
-    @Operation(summary = "チームステータスラベル更新（ADMIN/DEPUTY_ADMIN）")
+    @Operation(summary = "チームステータスラベル更新（ADMIN のみ）")
     public ResponseEntity<ApiResponse<TodoStatusLabelResponse>> update(
             @PathVariable Long teamId,
             @PathVariable Long labelId,
             @Valid @RequestBody UpdateTodoStatusLabelRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.of(labelService.update(labelId, request, userId)));
+        return ResponseEntity.ok(ApiResponse.of(
+                labelService.update(labelId, TodoStatusLabelScope.TEAM, teamId, request, userId)));
     }
 
     @DeleteMapping("/{labelId}")
-    @Operation(summary = "チームステータスラベル削除（ADMIN/DEPUTY_ADMIN）")
+    @Operation(summary = "チームステータスラベル削除（ADMIN のみ）")
     public ResponseEntity<Void> delete(@PathVariable Long teamId, @PathVariable Long labelId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        labelService.delete(labelId, userId);
+        labelService.delete(labelId, TodoStatusLabelScope.TEAM, teamId, userId);
         return ResponseEntity.noContent().build();
     }
 }
