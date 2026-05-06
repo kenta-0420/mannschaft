@@ -1,8 +1,9 @@
 package com.mannschaft.app.todo.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 /**
  * TODOステータス変更リクエストDTO。
@@ -11,7 +12,6 @@ import lombok.RequiredArgsConstructor;
  * {@code statusLabelId} のいずれか一方以上を必須とする（両方指定可・整合確認は Service 層）。</p>
  */
 @Getter
-@RequiredArgsConstructor
 public class TodoStatusChangeRequest {
 
     /**
@@ -25,6 +25,17 @@ public class TodoStatusChangeRequest {
      * NULL の場合は {@code status} のみで動作（ラベル更新なし）。
      */
     private final Long statusLabelId;
+
+    /**
+     * Jackson デシリアライズ + 通常呼び出し兼用の正規コンストラクタ。
+     */
+    @JsonCreator
+    public TodoStatusChangeRequest(
+            @JsonProperty("status") String status,
+            @JsonProperty("statusLabelId") Long statusLabelId) {
+        this.status = status;
+        this.statusLabelId = statusLabelId;
+    }
 
     /**
      * status のみで作成する後方互換コンストラクタ（F02.3.1 以前の呼び出し元向け）。
