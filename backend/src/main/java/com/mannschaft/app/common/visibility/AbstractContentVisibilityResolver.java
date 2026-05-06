@@ -246,6 +246,16 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             if (!visibleByStatus(row, viewerUserId, snapshot)) {
                 continue;
             }
+            // 4.5) DRAFT / SCHEDULED × 作成者本人 → visibility 評価スキップ（§7.5 OQ-A 根治）
+            // status ガードで「作成者本人か SystemAdmin のみ通過」が保証されているため、
+            // 作者本人ならここで可視と確定させ、ADMINS_ONLY 等による誤排除（OQ-A）を防ぐ。
+            ContentStatus statusForSkip = toContentStatus(row);
+            if ((statusForSkip == ContentStatus.DRAFT || statusForSkip == ContentStatus.SCHEDULED)
+                    && viewerUserId != null
+                    && Objects.equals(viewerUserId, row.authorUserId())) {
+                result.add(row.id());
+                continue;
+            }
             if (!visibleByVisibility(row, viewerUserId, snapshot)) {
                 continue;
             }
@@ -298,6 +308,21 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             };
             String detail = "status=" + status;
             VisibilityDecision decision = decisionWithLevel(false, contentId, reason, null, detail);
+            recordAudit(decision, viewerUserId);
+            return decision;
+        }
+
+        // 3.5) DRAFT / SCHEDULED × 作成者本人 → visibility 評価スキップ（§7.5）
+        // status ガードで「作成者本人か SystemAdmin のみ通過」が保証されるが、
+        // ADMINS_ONLY 等の制限的 visibility が visibility 軸で更に作者本人を排除してしまう（OQ-A）。
+        // SystemAdmin はステップ5の visibleByVisibility 内の高速パスで済む。
+        // 作者本人の場合はここで可視と確定させ、visibility 評価を丸ごとスキップする。
+        ContentStatus statusForSkip = toContentStatus(row);
+        if ((statusForSkip == ContentStatus.DRAFT || statusForSkip == ContentStatus.SCHEDULED)
+                && viewerUserId != null
+                && Objects.equals(viewerUserId, row.authorUserId())) {
+            VisibilityDecision decision = decisionWithLevel(true, contentId, null, null,
+                    "status=" + statusForSkip + "+author_skip_visibility");
             recordAudit(decision, viewerUserId);
             return decision;
         }
