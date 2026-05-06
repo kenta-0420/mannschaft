@@ -50,6 +50,9 @@ const activeTab = ref(0)
 /** 下位組織タブを表示するか（子0件かつ非ADMINなら隠す） */
 const showChildrenTab = computed(() => isAdmin.value || children.value.length > 0)
 
+// F02.8 告知ウィザード
+const showBroadcastWizard = ref(false)
+
 onMounted(async () => {
   await Promise.all([fetchOrg(), loadPermissions()])
   await Promise.all([
@@ -127,6 +130,15 @@ onMounted(async () => {
             @click="applySupporter"
           />
         </template>
+        <!-- F02.8 告知ウィザード：MEMBER以上に表示 -->
+        <Button
+          v-if="roleName && roleName !== 'SUPPORTER'"
+          :label="$t('announcement.broadcast_button_org')"
+          icon="pi pi-bullhorn"
+          severity="secondary"
+          size="small"
+          @click="showBroadcastWizard = true"
+        />
         <Button
           v-if="!isAdmin && roleName"
           label="組織から退出"
@@ -236,6 +248,14 @@ onMounted(async () => {
           </TabPanel>
         </TabPanels>
       </Tabs>
+
+      <!-- F02.8 告知ウィザード -->
+      <BroadcastWizard
+        v-model:visible="showBroadcastWizard"
+        scope-type="ORGANIZATION"
+        :scope-id="orgId"
+        :is-admin="isAdmin"
+      />
 
       <Dialog
         v-model:visible="showCancelSupporterConfirm"

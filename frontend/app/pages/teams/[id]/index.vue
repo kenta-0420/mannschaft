@@ -28,6 +28,9 @@ const followStatus = ref<'NONE' | 'PENDING' | 'APPROVED'>('NONE')
 const followLoading = ref(false)
 const showCancelSupporterConfirm = ref(false)
 
+// F02.8 告知ウィザード
+const showBroadcastWizard = ref(false)
+
 async function fetchFollowStatus() {
   if (roleName.value) return
   try {
@@ -130,6 +133,22 @@ onMounted(async () => {
         @cancel-supporter="cancelSupporter"
         @show-cancel-confirm="showCancelSupporterConfirm = true"
         @show-leave-confirm="showLeaveConfirm = true"
+      />
+
+      <!-- F02.8 告知ウィザード：MEMBER以上に表示 -->
+      <div v-if="roleName && roleName !== 'SUPPORTER'" class="mb-4 flex justify-end">
+        <Button
+          :label="$t('announcement.broadcast_button_team')"
+          icon="pi pi-bullhorn"
+          severity="secondary"
+          @click="showBroadcastWizard = true"
+        />
+      </div>
+      <BroadcastWizard
+        v-model:visible="showBroadcastWizard"
+        scope-type="TEAM"
+        :scope-id="teamId"
+        :is-admin="isAdmin"
       />
 
       <ProfileHeader
