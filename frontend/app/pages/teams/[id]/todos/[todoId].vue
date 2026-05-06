@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
+
 definePageMeta({
   middleware: 'auth',
 })
@@ -8,8 +10,10 @@ const route = useRoute()
 const teamId = Number(route.params.id)
 const todoId = Number(route.params.todoId)
 const todoApi = useTodoApi()
+const labelApi = useTodoStatusLabelApi()
 const progressApi = useTodoProgress()
 const notification = useNotification()
+const errorHandler = useErrorHandler()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 
 interface TodoDetail {
@@ -17,6 +21,8 @@ interface TodoDetail {
   title: string
   description: string | null
   status: string
+  /** F02.3.1 — カスタムステータスラベル */
+  statusLabel: TodoStatusLabelInfo | null
   priority: string
   dueDate: string | null
   dueTime: string | null
@@ -39,17 +45,26 @@ const showEditDialog = ref(false)
 type DetailTab = 'progress' | 'shared_memo' | 'personal_memo'
 const activeDetailTab = ref<DetailTab>('progress')
 
+// ステータス変更（Select + 「変更」ボタン + 確認ダイアログ）
+const newLabelId = ref<number | null>(null)
+const confirmDialogVisible = ref(false)
+const changing = ref(false)
+
 async function loadTodo() {
   loading.value = true
   try {
     const res = await todoApi.getTodo('team', teamId, todoId)
     // progressRate / progressManual が存在しない場合はデフォルト値を設定
-    const data = res.data as unknown as TodoDetail & { progressRate?: string; progressManual?: boolean }
+    const data = res.data as unknown as TodoDetail & {
+      progressRate?: string
+      progressManual?: boolean
+    }
     todo.value = {
       ...data,
       progressRate: data.progressRate ?? '0.00',
       progressManual: data.progressManual ?? false,
     }
+    newLabelId.value = data.statusLabel?.id ?? null
   }
   catch {
     notification.error('TODOの取得に失敗しました')
@@ -59,14 +74,39 @@ async function loadTodo() {
   }
 }
 
-async function changeStatus(newStatus: string) {
+const fromLabelName = computed(() => todo.value?.statusLabel?.name ?? '')
+const toLabelName = ref('')
+
+async function openConfirmDialog() {
+  if (!todo.value || newLabelId.value === null) return
+  if (newLabelId.value === todo.value.statusLabel?.id) return
+  // 候補ラベルから新ラベル名を解決
   try {
-    await todoApi.changeTodoStatus('team', teamId, todoId, newStatus)
-    notification.success('ステータスを変更しました')
-    await loadTodo()
+    const res = await labelApi.listLabels('team', teamId)
+    const target = res.data.find((l) => l.id === newLabelId.value)
+    toLabelName.value = target?.name ?? ''
+    confirmDialogVisible.value = true
+  } catch (e) {
+    errorHandler.handleApiError(e, 'team-todo:status-confirm')
   }
-  catch {
-    notification.error('ステータス変更に失敗しました')
+}
+
+async function applyStatusChange() {
+  if (!todo.value || newLabelId.value === null) return
+  changing.value = true
+  try {
+    await todoApi.changeTodoStatus('team', teamId, todoId, {
+      statusLabelId: newLabelId.value,
+    })
+    confirmDialogVisible.value = false
+    await loadTodo()
+    notification.success(
+      t('todo.statusChange.success', { name: todo.value?.statusLabel?.name ?? '' }),
+    )
+  } catch (e) {
+    errorHandler.handleApiError(e, 'team-todo:status')
+  } finally {
+    changing.value = false
   }
 }
 
@@ -130,35 +170,46 @@ onMounted(async () => {
     <!-- メタ情報 -->
     <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
       <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
-        <p class="text-xs text-surface-500">ステータス</p>
+        <p class="text-xs text-surface-500">{{ t('todo.field.status') }}</p>
         <div class="mt-1">
-          <TodoStatusBadge :status="todo.status" />
+          <TodoStatusLabelBadge :label="todo.statusLabel" :fallback-bucket="todo.status" />
         </div>
       </div>
       <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
-        <p class="text-xs text-surface-500">優先度</p>
+        <p class="text-xs text-surface-500">{{ t('todo.field.priority') }}</p>
         <div class="mt-1">
           <TodoPriorityBadge :priority="todo.priority" />
         </div>
       </div>
       <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
-        <p class="text-xs text-surface-500">期限</p>
+        <p class="text-xs text-surface-500">{{ t('todo.field.dueDate') }}</p>
         <p class="mt-1 text-sm font-medium" :class="{ 'text-red-500': todo.daysRemaining !== null && todo.daysRemaining < 0 && todo.status !== 'COMPLETED' }">
           {{ formatDate(todo.dueDate) }}
         </p>
       </div>
       <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
-        <p class="text-xs text-surface-500">作成者</p>
+        <p class="text-xs text-surface-500">{{ t('todo.field.creator') }}</p>
         <p class="mt-1 text-sm font-medium">{{ todo.createdBy.displayName }}</p>
       </div>
     </div>
 
-    <!-- ステータス変更ボタン -->
-    <div class="mb-6 flex gap-2">
-      <Button v-if="todo.status !== 'OPEN'" label="未着手に戻す" size="small" severity="secondary" outlined @click="changeStatus('OPEN')" />
-      <Button v-if="todo.status !== 'IN_PROGRESS'" label="進行中にする" size="small" severity="info" outlined @click="changeStatus('IN_PROGRESS')" />
-      <Button v-if="todo.status !== 'COMPLETED'" label="完了にする" size="small" severity="success" @click="changeStatus('COMPLETED')" />
-    </div>
+    <!-- ステータス変更（Select + 「変更」ボタン、確認ダイアログ付き） -->
+    <SectionCard :title="t('todo.statusChange.section')" class="mb-6">
+      <div class="flex items-center gap-3">
+        <div class="max-w-xs flex-1">
+          <TodoStatusLabelSelect
+            v-model="newLabelId"
+            scope-type="TEAM"
+            :scope-id="teamId"
+          />
+        </div>
+        <Button
+          :label="t('todo.statusChange.applyButton')"
+          :disabled="newLabelId === null || newLabelId === todo.statusLabel?.id"
+          @click="openConfirmDialog"
+        />
+      </div>
+    </SectionCard>
 
     <!-- 説明 -->
     <SectionCard v-if="todo.description" title="説明" class="mb-6">
@@ -265,5 +316,32 @@ onMounted(async () => {
       :todo-id="todoId"
       @saved="loadTodo"
     />
+
+    <!-- ステータス変更確認ダイアログ -->
+    <Dialog
+      v-model:visible="confirmDialogVisible"
+      modal
+      :header="t('todo.statusChange.confirmTitle')"
+      class="w-full max-w-md"
+    >
+      <p class="text-sm text-surface-700 dark:text-surface-300">
+        {{ t('todo.statusChange.confirmBody', { from: fromLabelName, to: toLabelName }) }}
+      </p>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <Button
+            :label="t('todo.statusChange.cancelButton')"
+            severity="secondary"
+            text
+            @click="confirmDialogVisible = false"
+          />
+          <Button
+            :label="t('todo.statusChange.confirmButton')"
+            :loading="changing"
+            @click="applyStatusChange"
+          />
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>

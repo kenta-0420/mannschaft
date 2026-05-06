@@ -1,3 +1,5 @@
+import type { TodoStatusLabelInfo } from './todoStatusLabel'
+
 export type TodoStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED'
 export type TodoPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
 export type TodoScopeType = 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
@@ -11,6 +13,8 @@ export interface TodoResponse {
   title: string
   description: string | null
   status: TodoStatus
+  /** F02.3.1 — カスタムステータスラベル情報（NULL の場合は SYSTEM 既定にフォールバック描画） */
+  statusLabel: TodoStatusLabelInfo | null
   priority: TodoPriority
   dueDate: string | null
   dueTime: string | null
