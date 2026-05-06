@@ -1,14 +1,14 @@
 {
   "landing": {
     "hero": {
-      "badge": "Die Team-Plattform, die du nie wusstest, dass du sie brauchst",
+      "badge": "Alles in einem. Die integrierte Plattform, \"Mannschaft\"",
       "title_pre": "Die Plattform, die das Potenzial deines Teams ",
       "title_accent": "maximiert",
       "title_post": "",
-      "subtitle": "Mannschaft ist eine All-in-One-Verwaltungsplattform, die alles vereint, was dein Team oder deine Organisation braucht. Von Sportvereinen über Friseursalons und Praxen bis hin zu Klassentreffen — endlose Möglichkeiten.",
+      "subtitle": "Mannschaft ist eine All-in-One-Verwaltungsplattform, die alles vereint, was dein Team oder deine Organisation braucht.\n\nVon Sportvereinen über Friseursalons und Praxen bis hin zu Klassentreffen und Klassen — \"endlose Möglichkeiten\".",
       "cta_register": "Kostenlos starten",
       "cta_login": "Anmelden",
-      "note": "Größtenteils kostenlos. Erstelle einfach ein persönliches Konto, um loszulegen."
+      "note": "Größtenteils kostenlos. Erstelle einfach ein persönliches Konto."
     },
     "stats": {
       "heading": "Aktuelle Registrierungen",
@@ -21,14 +21,14 @@
       "heading_kamo": " (vielleicht)",
       "subheading": "Alle Funktionen für dein Team – auf einer Plattform",
       "items": {
-        "0": { "title": "Team- & Org-Verwaltung", "desc": "Mitglieder einladen, Rollen zuweisen und Berechtigungen einfach verwalten" },
-        "1": { "title": "Events & Kalender", "desc": "Termine teilen, Anwesenheit erfassen und Erinnerungen einrichten" },
-        "2": { "title": "Chat & Pinnwand", "desc": "Gruppenchat, Rundschreiben und Timeline für nahtlose Kommunikation" },
-        "3": { "title": "Schichtplanung", "desc": "Schichten erstellen, Wünsche sammeln und Tausch-Anfragen bearbeiten" },
-        "4": { "title": "Formulare & Umfragen", "desc": "Formulare erstellen, Antworten sammeln und Analysen anzeigen" },
-        "5": { "title": "Galerie & Dateien", "desc": "Fotos, Videos und Dokumente sicher mit dem Team teilen" },
-        "6": { "title": "Beiträge & Zahlungen", "desc": "Mitgliedsbeiträge und Zahlungsverfolgung digitalisieren" },
-        "7": { "title": "Matchmaking & Turniere", "desc": "Team-Duelle organisieren, Turniere verwalten und Ergebnisse erfassen" }
+        "0": { "title": "Team- & Org-Verwaltung", "desc": "Mitglieder einladen, Rollen zuweisen und Berechtigungen einfach verwalten", "detail": "Vollständige Abdeckung für Mitgliederverwaltung, Rollenzuweisung und Berechtigungskontrolle. Verwalte mehrere Teams in einer Organisation auch in großem Maßstab.", "features": ["Mitgliedereinladung & -verwaltung", "Team/Org-Hierarchieverwaltung", "Rollen- & Berechtigungseinstellungen", "Profil- & Avatar-Verwaltung"], "useCases": ["Kaderplanung im Sportteam", "Abteilungs- & Projektverwaltung im Unternehmen", "Betrieb lokaler Gemeinschaften"] },
+        "1": { "title": "Events & Kalender", "desc": "Termine teilen, Anwesenheit erfassen und Erinnerungen einrichten", "detail": "Zentralisiere Team-Events in einem gemeinsamen Kalender. Teile Termine auf Individual-, Team- oder Org-Ebene und verwalte die Anwesenheit reibungslos.", "features": ["Gemeinsamer Teamkalender", "Anwesenheitsverwaltung & Erinnerungen", "Einstellungen für wiederkehrende Events", "Integration mit persönlichem Kalender"], "useCases": ["Verwaltung von Training & Spielplänen", "Interne Meetings & Event-Management", "Klassen- & Schulveranstaltungskalender"] },
+        "2": { "title": "Chat & Pinnwand", "desc": "Gruppenchat, Rundschreiben und Timeline für nahtlose Kommunikation", "detail": "Ein multifunktionales Kommunikationswerkzeug, das Echtzeit-Chat und Pinnwand kombiniert. Erstelle Kanäle pro Team, um Informationen übersichtlich zu halten.", "features": ["Echtzeit-Chat", "Pinnwand & Ankündigungen", "Kanal- & Gruppenerstellung", "Dateianhänge & Bildfreigabe"], "useCases": ["Tägliche Teamkommunikation", "Veröffentlichung wichtiger Ankündigungen", "Projektspezifische Diskussionen"] },
+        "3": { "title": "Schichtplanung", "desc": "Schichten erstellen, Wünsche sammeln und Tausch-Anfragen bearbeiten", "detail": "Digitalisiere den gesamten Schichtmanagement-Workflow – von der Planerstellung über die Wünschesammlung bis zur Bestätigung und Benachrichtigung. Unterstützt Stundenlohn- und Personalkostenberechnung.", "features": ["Sammeln von Schichtwünschen", "Automatisierte Planungshilfe", "Stundenlohn- & Personalkostenberechnung", "Schichttausch & Vertretungsanfragen"], "useCases": ["Schichtplanung in Gastronomie & Einzelhandel", "Schichten für Medizin- & Pflegepersonal", "Anwesenheitsverwaltung für Teilzeitkräfte"] },
+        "4": { "title": "Formulare & Umfragen", "desc": "Formulare erstellen, Antworten sammeln und Analysen anzeigen", "detail": "Sammle einfach Meinungen und Anmeldungen mit anpassbaren Formularen und Umfragen. Ergebnisse werden als Grafiken visualisiert.", "features": ["Benutzerdefinierter Formular-Builder", "Umfrageauswertung & Grafiken", "Erinnerungen an Teilnehmende", "CSV-Export"], "useCases": ["Eventanmeldung", "Teaminterne Umfragen", "Kundenzufriedenheitsumfragen"] },
+        "5": { "title": "Galerie & Dateien", "desc": "Fotos, Videos und Dokumente sicher mit dem Team teilen", "detail": "Teile Erinnerungen an Teamaktivitäten in Galerien. Verwalte Dokumente und Dateien an einem Ort und finde sofort, was du brauchst.", "features": ["Foto- & Videogalerie", "Dateiverwaltung & -freigabe", "Albumerstellung", "Cloud-Speicher-Integration"], "useCases": ["Fotos von Spielen & Training teilen", "Dokumente & Materialien speichern", "Aktivitätsaufzeichnungen archivieren"] },
+        "6": { "title": "Beiträge & Zahlungen", "desc": "Mitgliedsbeiträge und Zahlungsverfolgung digitalisieren", "detail": "Verwalte Beitragserhebung, Auslagenerstattung und Kostenmanagement des Teams vollständig online. Automatisiere Zahlungsstatusüberprüfungen und Erinnerungen.", "features": ["Beitragserhebung & -verwaltung", "Auslagenerstattung", "Visualisierung des Zahlungsstatus", "Automatische Erinnerungen"], "useCases": ["Monatliche Vereinsbeiträge", "Reise- & Trainingslagerkostenabrechnung", "Elternvereinsbuchhaltung"] },
+        "7": { "title": "Matchmaking & Turniere", "desc": "Team-Duelle organisieren, Turniere verwalten und Ergebnisse erfassen", "detail": "Optimiere Team-Matching und Turnierverwaltung. Vollständige Unterstützung von der Gegnersuche bis zur Ergebnisverwaltung.", "features": ["Team-Matching", "Turnier- & Wettkampfverwaltung", "Ergebniserfassung", "Ranglisten-Management"], "useCases": ["Sportturnierorganisation", "E-Sport-Turniere", "Lokale Liga- & Verbandsverwaltung"] }
       }
     },
     "steps": {
@@ -44,10 +44,10 @@
       "heading": "Vielfältig einsetzbar",
       "subheading": "Anpassbar an Teams und Organisationen jeder Branche und Größe",
       "items": {
-        "0": { "title": "Sportteams", "desc": "Training- & Spielpläne, Schichtkoordination, Anwesenheit und Ranglisten." },
-        "1": { "title": "Lokale Gemeinschaften", "desc": "Zentralisiere Veranstaltungsankündigungen, Rundschreiben und Gebührenverwaltung online. Auch ideal für Klassentreffen, Nachbarschaftsvereine und Freiwilligengruppen." },
-        "2": { "title": "Unternehmen & Arbeitsplatz", "desc": "Abteilungsübergreifendes Projektmanagement, Genehmigungs-Workflows und interne Kommunikation. Auch ideal für kleine Unternehmen wie Friseursalons und Praxen." },
-        "3": { "title": "Bildung & Schulen", "desc": "Elternkommunikation, AG-Verwaltung, Aktivitätenprotokoll, Fotosharing und Umfragen." }
+        "0": { "title": "Sportteams", "desc": "Training- & Spielpläne, Schichtkoordination, Anwesenheit und Ranglisten.", "detail": "Von der Verwaltung von Training- und Spielplänen bis zur Anwesenheitsbestätigung und Beitragserhebung – alles was ein Sportteam braucht.", "benefits": ["Einfache Freigabe von Trainings- & Spielplänen", "Kommunikationsaufwand durch Anwesenheitserinnerungen reduzieren", "Keine Mühe bei der Beitragserhebung"], "features_used": ["Kalender", "Chat", "Beitragsverwaltung", "Schichtplanung"] },
+        "1": { "title": "Lokale Gemeinschaften", "desc": "Zentralisiere Veranstaltungsankündigungen, Rundschreiben und Gebührenverwaltung online. Auch ideal für Klassentreffen, Nachbarschaftsvereine und Freiwilligengruppen.", "detail": "Digitale Unterstützung für lokale Verbindungen wie Nachbarschaftsvereine, Bürgergruppen und Freiwilligenorganisationen. Von Ankündigungen bis zu Aktivitätsaufzeichnungen.", "benefits": ["Zentralisierte Ankündigungen und Kommunikation", "Archiv von Aktivitätsaufzeichnungen und Fotos", "Teilnehmerverwaltung und Kostenabrechnung"], "features_used": ["Pinnwand", "Galerie", "Beitragsverwaltung", "Umfragen"] },
+        "2": { "title": "Unternehmen & Arbeitsplatz", "desc": "Abteilungsübergreifendes Projektmanagement, Genehmigungs-Workflows und interne Kommunikation. Auch ideal für kleine Unternehmen wie Friseursalons und Praxen.", "detail": "Von abteilungsübergreifendem Informationsaustausch bis zur Schichtplanung. Ein flexibles Organisationsverwaltungstool für Unternehmen jeder Größe.", "benefits": ["Abteilungs- & teamübergreifender Informationsaustausch", "Digitalisierung von Schicht- & Anwesenheitsverwaltung", "Effizienz bei internen Umfragen & Antragsformularen"], "features_used": ["Teamverwaltung", "Chat", "Schichtplanung", "Formulare"] },
+        "3": { "title": "Bildung & Schulen", "desc": "Elternkommunikation, AG-Verwaltung, Aktivitätenprotokoll, Fotosharing und Umfragen.", "detail": "Unterstützung für alle schulbezogenen Gemeinschaften einschließlich Klassen, AGs, Elternbeiräte und Elterngruppen. Von Pinnwänden bis zur Veranstaltungsverwaltung.", "benefits": ["Reibungslose Kommunikation mit Eltern & Schüler*innen", "Freigabe von Veranstaltungs- & Unterrichtsplänen", "Verwaltung und Abrechnung von Elternbeiratsbeiträgen"], "features_used": ["Kalender", "Pinnwand", "Beitragsverwaltung", "Umfragen"] }
       }
     },
     "faq": {
@@ -86,6 +86,61 @@
       "skip_to_content": "Zum Hauptinhalt springen",
       "open_menu": "Menü öffnen",
       "nav_label": "Hauptnavigation"
+    },
+    "product": {
+      "title": "Mannschaft Produkt",
+      "desc": "Eine All-in-One-Verwaltungsplattform mit allem, was dein Team oder deine Organisation braucht",
+      "features_heading": "Hauptfunktionen",
+      "pricing_heading": "Preispläne",
+      "pricing": {
+        "free": { "name": "Kostenlos", "price": "€0", "desc": "Für Einzelpersonen & kleine Teams", "features": ["Alle Grundfunktionen", "Bis zu 10 Mitglieder", "1GB Speicher"] },
+        "pro": { "name": "Pro", "price": "€9,80/Mo.", "desc": "Für wachsende Teams", "features": ["Alle kostenlosen Funktionen", "Unbegrenzte Mitglieder", "50GB Speicher", "Prioritätssupport"] },
+        "enterprise": { "name": "Enterprise", "price": "Kontakt", "desc": "Für große Organisationen", "features": ["Alle Pro-Funktionen", "Benutzerdefinierte Integrationen", "Dedizierter Support", "SLA-Garantie"] }
+      }
+    },
+    "legal": {
+      "terms": {
+        "title": "Nutzungsbedingungen",
+        "last_updated": "Zuletzt aktualisiert",
+        "placeholder": "Der Inhalt der Nutzungsbedingungen wird hier platziert. Bitte ersetze es durch das tatsächliche Rechtsdokument.",
+        "section1_title": "Artikel 1 (Anwendung)",
+        "section1_content": "Diese Bedingungen legen die Nutzungsbedingungen für Mannschaft (den \"Dienst\") fest.",
+        "section2_title": "Artikel 2 (Registrierung)",
+        "section2_content": "Nutzer*innen registrieren sich nach Zustimmung zu diesen Bedingungen gemäß den vorgeschriebenen Verfahren.",
+        "section3_title": "Artikel 3 (Verbotene Aktivitäten)",
+        "section3_content": "Nutzer*innen dürfen keine Aktivitäten durchführen, die gegen Gesetze oder die öffentliche Ordnung verstoßen, oder sonstige vom Dienst als unangemessen erachtete Aktivitäten.",
+        "section4_title": "Artikel 4 (Haftungsausschluss)",
+        "section4_content": "Der Dienst übernimmt keine Haftung für Unterbrechung, Beendigung oder Änderung des Dienstes.",
+        "section5_title": "Artikel 5 (Anwendbares Recht & Gerichtsstand)",
+        "section5_content": "Diese Bedingungen unterliegen japanischem Recht. Das Bezirksgericht Tokio hat die ausschließliche Zuständigkeit für alle Streitigkeiten."
+      },
+      "privacy": {
+        "title": "Datenschutzerklärung",
+        "last_updated": "Zuletzt aktualisiert",
+        "placeholder": "Der Inhalt der Datenschutzerklärung wird hier platziert. Bitte ersetze es durch das tatsächliche Rechtsdokument.",
+        "section1_title": "1. Informationen, die wir sammeln",
+        "section1_content": "Wir sammeln Informationen wie E-Mail-Adresse und Name bei der Kontoregistrierung.",
+        "section2_title": "2. Wie wir Informationen verwenden",
+        "section2_content": "Gesammelte Informationen werden für Diensterbringung, -verbesserung und Kundensupport verwendet.",
+        "section3_title": "3. Weitergabe von Informationen",
+        "section3_content": "Wir geben personenbezogene Daten nicht ohne Einwilligung an Dritte weiter, außer wenn gesetzlich vorgeschrieben.",
+        "section4_title": "4. Sicherheit",
+        "section4_content": "Wir implementieren angemessene Sicherheitsmaßnahmen einschließlich SSL/TLS-Verschlüsselung und regelmäßiger Backups.",
+        "section5_title": "5. Kontakt",
+        "section5_content": "Für Anfragen zur Handhabung personenbezogener Daten kontaktiere uns bitte über das Kontaktformular."
+      }
+    },
+    "features_detail": {
+      "back_to_top": "← Zurück zur Startseite",
+      "cta_register": "Kostenlos starten",
+      "key_features": "Hauptfunktionen",
+      "use_cases": "Anwendungsfälle"
+    },
+    "use_cases_detail": {
+      "back_to_top": "← Zurück zur Startseite",
+      "cta_register": "Kostenlos starten",
+      "features_used": "Verwendete Funktionen",
+      "benefits": "Vorteile"
     },
     "seo": {
       "title": "Mannschaft - All-in-One-Team-Management-Plattform",
