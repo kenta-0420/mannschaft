@@ -14,7 +14,6 @@ import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -381,12 +380,6 @@ class SurveyVisibilityResolverTest {
     class StatusGuard {
 
         @Test
-        @Disabled("Phase D で AbstractContentVisibilityResolver を根治後に有効化する。"
-                + "現行 Abstract は status × visibility AND 条件のため、DRAFT × ADMINS_ONLY で"
-                + "作者本人でも visibility 軸 (ADMIN ロール要) で弾かれる。"
-                + "設計書 §7.5「DRAFT は作成者本人および SystemAdmin のみ閲覧可」(visibility 軸スキップ)"
-                + "の本来仕様を実装する根治は Phase D 別軍議で実施予定。"
-                + "メモリ: project_f00_phase_d_open_questions.md 参照。")
         @DisplayName("DRAFT は作成者本人に可視（visibility=ADMINS_ONLY であっても）")
         void draft_visible_to_author() {
             SurveyVisibilityProjection p = projection(
@@ -429,6 +422,70 @@ class SurveyVisibilityResolverTest {
             when(membershipBatchQueryService.snapshotForUser(eq(99L), anySet(), anySet()))
                     .thenReturn(UserScopeRoleSnapshot.forSystemAdmin());
             assertThat(resolver.canView(1L, 99L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("DRAFT × ADMINS_ONLY × 作者本人（MEMBER ロール無）→ 可視（visibility 軸スキップ確認）")
+        void draft_visible_to_author_with_admins_only_visibility() {
+            // 作者本人（userId=5L）が ADMIN ロールを持たなくても DRAFT 時は visibility スキップ
+            SurveyVisibilityProjection p = projection(
+                    2L, "TEAM", 100L, 5L, SurveyStatus.DRAFT,
+                    ResultsVisibility.ADMINS_ONLY, null);
+            when(surveyRepository.findVisibilityProjectionsByIdIn(any())).thenReturn(List.of(p));
+            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(new ScopeKey("TEAM", 100L), "MEMBER"),
+                            Map.of(), Set.of(), Set.of()));
+
+            // 修正前: MEMBER ロールのため ADMINS_ONLY で false に弾かれる（バグ）
+            // 修正後: DRAFT × 作者本人 → visibility 軸スキップ → true（根治）
+            assertThat(resolver.canView(2L, 5L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("DRAFT × VIEWERS_ONLY × 作者本人 → 可視（visibility 軸スキップ確認）")
+        void draft_visible_to_author_with_viewers_only_visibility() {
+            // VIEWERS_ONLY (CUSTOM) であっても DRAFT の作者本人は visibility 軸スキップ
+            SurveyVisibilityProjection p = projection(
+                    3L, "TEAM", 100L, 5L, SurveyStatus.DRAFT,
+                    ResultsVisibility.VIEWERS_ONLY, null);
+            when(surveyRepository.findVisibilityProjectionsByIdIn(any())).thenReturn(List.of(p));
+            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+
+            assertThat(resolver.canView(3L, 5L)).isTrue();
+            // visibility 軸をスキップするため surveyResultViewerRepository は呼ばれない
+            verify(surveyResultViewerRepository, never()).existsBySurveyIdAndUserId(any(), any());
+        }
+
+        @Test
+        @DisplayName("DRAFT × ADMINS_ONLY × 非作者 → 不可視（status ガードで弾かれる）")
+        void draft_not_visible_to_non_author() {
+            // authorUserId=99L に対して viewerUserId=5L（非作者・非SysAdmin）
+            SurveyVisibilityProjection p = projection(
+                    4L, "TEAM", 100L, 99L, SurveyStatus.DRAFT,
+                    ResultsVisibility.ADMINS_ONLY, null);
+            when(surveyRepository.findVisibilityProjectionsByIdIn(any())).thenReturn(List.of(p));
+            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+
+            assertThat(resolver.canView(4L, 5L)).isFalse();
+        }
+
+        @Test
+        @DisplayName("DRAFT × AFTER_RESPONSE × 作者本人 → 可視（visibility 軸スキップ確認）")
+        void draft_visible_to_author_with_after_response_visibility() {
+            // AFTER_RESPONSE (CUSTOM) であっても DRAFT の作者本人は visibility 軸スキップ
+            SurveyVisibilityProjection p = projection(
+                    5L, "TEAM", 100L, 5L, SurveyStatus.DRAFT,
+                    ResultsVisibility.AFTER_RESPONSE, null);
+            when(surveyRepository.findVisibilityProjectionsByIdIn(any())).thenReturn(List.of(p));
+            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+
+            assertThat(resolver.canView(5L, 5L)).isTrue();
+            // visibility 軸をスキップするため surveyResponseRepository は呼ばれない
+            verify(surveyResponseRepository, never()).existsBySurveyIdAndUserId(any(), any());
         }
 
         @Test

@@ -62,12 +62,21 @@ public record UserScopeRoleSnapshot(
 
     /**
      * スコープへの直接メンバーシップ（または SystemAdmin）を持つかを返す。
+     *
+     * <p>JOBBER 等の並行ロール（{@link RolePriority} マップ未登録）は、
+     * {@code user_roles} 行が存在しても通常のメンバーとは区別する。
+     * F13.1 §2.9 の仕様により、並行ロール保有者は MEMBERS_ONLY コンテンツを閲覧できない。</p>
      */
     public boolean isMemberOf(ScopeKey scope) {
         if (scope == null) {
             return false;
         }
-        return systemAdmin || roleByScope.containsKey(scope);
+        if (systemAdmin) {
+            return true;
+        }
+        String role = roleByScope.get(scope);
+        // JOBBER 等の並行ロール（RolePriority マップ未登録）は不可視
+        return role != null && RolePriority.isRegistered(role);
     }
 
     /**

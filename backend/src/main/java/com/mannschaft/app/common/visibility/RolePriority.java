@@ -62,4 +62,18 @@ public final class RolePriority {
     public static boolean isAtLeast(String actual, String required) {
         return priority(actual) <= priority(required);
     }
+
+    /**
+     * ロールが優先度マップに登録されているかを返す。
+     * JOBBER 等の並行ロールは登録されていないため {@code false} を返す。
+     *
+     * <p>MEMBERS_ONLY 判定において、{@code user_roles} 行に存在するが {@code PRIORITY_MAP}
+     * に未登録の並行ロール（F13.1 §2.9）を除外するために用いる。</p>
+     *
+     * @param roleName ロール名（{@code null} 許容）
+     * @return 優先度マップに登録されているなら {@code true}
+     */
+    public static boolean isRegistered(String roleName) {
+        return roleName != null && PRIORITY_MAP.containsKey(roleName);
+    }
 }
