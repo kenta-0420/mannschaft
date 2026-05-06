@@ -289,6 +289,23 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     List<Long> findAdminUserIdsByTeamIds(@Param("teamIds") List<Long> teamIds);
 
     /**
+     * 組織配下のアクティブチーム ID セットを取得する（F02.8 target_team_ids IDOR 対策用）。
+     *
+     * <p>組織告知で {@code target_team_ids} を指定する際に、各 team_id が確かに
+     * その組織の配下チームであることを検証するために使用する。</p>
+     *
+     * @param organizationId 組織 ID
+     * @return 組織配下のチーム ID リスト（重複なし）
+     */
+    @Query(value = "SELECT DISTINCT ur.team_id FROM user_roles ur " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.organization_id = :organizationId " +
+            "AND ur.team_id IS NOT NULL " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findTeamIdsByOrganizationId(@Param("organizationId") Long organizationId);
+
+    /**
      * 複数チームの ADMIN/DEPUTY_ADMIN を (team_id, user_id) ペアで返す（通知ループのN+1回避用）。
      * 戻り値は Object[]{teamId, userId} の配列リスト。
      */

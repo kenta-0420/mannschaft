@@ -15,6 +15,8 @@ package com.mannschaft.app.social.announcement;
  *   <li>{@link #TIMELINE_POST} — タイムライン投稿（F04.1）</li>
  *   <li>{@link #CIRCULATION_DOCUMENT} — 回覧板（F05.2）</li>
  *   <li>{@link #SURVEY} — アンケート・投票（F05.4）</li>
+ *   <li>{@link #TODO} — TODO タスク（F02.3）F02.8 告知ウィザード用</li>
+ *   <li>{@link #SCHEDULE} — スケジュール（F03.1）F02.8 告知ウィザード用</li>
  *   <li>{@link #COMMITTEE_DECISION} — 委員会決議（F04.10）</li>
  *   <li>{@link #COMMITTEE_MINUTES} — 委員会議事録（F04.10）</li>
  *   <li>{@link #TODO} — チーム/組織共有 TODO（F02.8）</li>
@@ -37,6 +39,12 @@ public enum AnnouncementSourceType {
 
     /** アンケート・投票 */
     SURVEY,
+
+    /** TODO タスク（F02.8 告知ウィザード用） */
+    TODO,
+
+    /** スケジュール（F02.8 告知ウィザード用） */
+    SCHEDULE,
 
     /** 委員会決議（委員会伝達コンテンツ） */
     COMMITTEE_DECISION,
