@@ -63,10 +63,15 @@ onMounted(() => {
     <h1 class="mb-2 text-2xl font-bold">{{ $t('beta_restriction.title') }}</h1>
     <p class="mb-6 text-surface-500">{{ $t('beta_restriction.description') }}</p>
 
-    <PageLoading v-if="loading" />
-
-    <template v-else>
-      <div class="mb-6 rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-800">
+    <!-- 設定フォームカード -->
+    <DashboardWidgetCard
+      title="ベータ登録制限設定"
+      icon="pi pi-lock"
+      :loading="loading"
+      :scrollable="false"
+      class="mb-6"
+    >
+      <div class="pt-1">
         <div class="mb-4 flex items-center gap-3">
           <ToggleSwitch v-model="formEnabled" input-id="betaEnabled" />
           <label for="betaEnabled" class="cursor-pointer font-medium">
@@ -109,41 +114,40 @@ onMounted(() => {
           @click="save"
         />
       </div>
+    </DashboardWidgetCard>
 
-      <!-- 現在の設定表示 -->
-      <div
-        v-if="config"
-        class="rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-900"
-      >
-        <h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-surface-400">
-          {{ $t('beta_restriction.current_settings') }}
-        </h2>
-        <div class="space-y-2 text-sm">
-          <div class="flex items-center justify-between">
-            <span class="text-surface-500">制限</span>
-            <Tag
-              :value="config.isEnabled ? $t('beta_restriction.status_on') : $t('beta_restriction.status_off')"
-              :severity="config.isEnabled ? 'warn' : 'success'"
-            />
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-surface-500">{{ $t('beta_restriction.max_team_id_label') }}</span>
-            <span class="font-medium">
-              {{ config.maxTeamId ?? $t('beta_restriction.no_limit') }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-surface-500">{{ $t('beta_restriction.max_org_id_label') }}</span>
-            <span class="font-medium">
-              {{ config.maxOrgId ?? $t('beta_restriction.no_limit') }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-surface-500">{{ $t('beta_restriction.last_updated') }}</span>
-            <span class="font-medium">{{ formatDate(config.updatedAt) }}</span>
-          </div>
+    <!-- 現在の設定表示カード -->
+    <DashboardWidgetCard
+      v-if="config"
+      title="現在の設定"
+      icon="pi pi-info-circle"
+      :scrollable="false"
+    >
+      <div class="space-y-2 pt-1 text-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-surface-500">制限</span>
+          <Tag
+            :value="config.isEnabled ? $t('beta_restriction.status_on') : $t('beta_restriction.status_off')"
+            :severity="config.isEnabled ? 'warn' : 'success'"
+          />
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-surface-500">{{ $t('beta_restriction.max_team_id_label') }}</span>
+          <span class="font-medium">
+            {{ config.maxTeamId ?? $t('beta_restriction.no_limit') }}
+          </span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-surface-500">{{ $t('beta_restriction.max_org_id_label') }}</span>
+          <span class="font-medium">
+            {{ config.maxOrgId ?? $t('beta_restriction.no_limit') }}
+          </span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-surface-500">{{ $t('beta_restriction.last_updated') }}</span>
+          <span class="font-medium">{{ formatDate(config.updatedAt) }}</span>
         </div>
       </div>
-    </template>
+    </DashboardWidgetCard>
   </div>
 </template>

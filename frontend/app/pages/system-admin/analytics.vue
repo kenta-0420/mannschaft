@@ -256,194 +256,182 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <PageLoading v-if="loading" />
-
-    <template v-else>
-      <!-- KPIカード -->
-      <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <template #content>
-            <div class="flex items-start justify-between">
-              <div>
-                <p class="text-sm text-surface-500">月間収益 (MRR)</p>
-                <p class="mt-1 text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-                  ¥{{ mrr }}
-                </p>
-              </div>
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/20"
-              >
-                <i class="pi pi-dollar text-lg text-indigo-500" />
-              </div>
-            </div>
-            <div
-              v-if="mrrGrowthRate !== null"
-              class="mt-2 text-xs"
-              :class="mrrGrowthRate >= 0 ? 'text-green-600' : 'text-red-500'"
-            >
-              <i :class="mrrGrowthRate >= 0 ? 'pi pi-arrow-up' : 'pi pi-arrow-down'" />
-              前月比 {{ Math.abs(mrrGrowthRate * 100).toFixed(1) }}%
-            </div>
-          </template>
-        </Card>
-
-        <Card>
-          <template #content>
-            <div class="flex items-start justify-between">
-              <div>
-                <p class="text-sm text-surface-500">アクティブユーザー</p>
-                <p class="mt-1 text-3xl font-bold text-green-600 dark:text-green-400">
-                  {{ totalUsers }}
-                </p>
-              </div>
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/20"
-              >
-                <i class="pi pi-users text-lg text-green-500" />
-              </div>
-            </div>
-            <div class="mt-2 text-xs text-surface-400">有料ユーザー: {{ payingUsers }}名</div>
-          </template>
-        </Card>
-
-        <Card>
-          <template #content>
-            <div class="flex items-start justify-between">
-              <div>
-                <p class="text-sm text-surface-500">解約率（直近）</p>
-                <p class="mt-1 text-3xl font-bold text-red-600 dark:text-red-400">
-                  {{ churnRate }}
-                </p>
-              </div>
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20"
-              >
-                <i class="pi pi-user-minus text-lg text-red-500" />
-              </div>
-            </div>
-            <div class="mt-2 text-xs text-surface-400">ユーザーチャーンレート</div>
-          </template>
-        </Card>
-
-        <Card>
-          <template #content>
-            <div class="flex items-start justify-between">
-              <div>
-                <p class="text-sm text-surface-500">有料転換ユーザー数</p>
-                <p class="mt-1 text-3xl font-bold text-amber-600 dark:text-amber-400">
-                  {{ payingUsers }}
-                </p>
-              </div>
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-900/20"
-              >
-                <i class="pi pi-credit-card text-lg text-amber-500" />
-              </div>
-            </div>
-            <div class="mt-2 text-xs text-surface-400">
-              転換率:
-              {{
-                revenueSummary?.payingRatio !== undefined
-                  ? (Number(revenueSummary.payingRatio) * 100).toFixed(1) + '%'
-                  : '—'
-              }}
-            </div>
-          </template>
-        </Card>
-      </div>
-
-      <!-- グラフエリア -->
-      <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <!-- 収益トレンド -->
-        <div
-          class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
-        >
-          <h2 class="mb-4 text-base font-semibold text-surface-700 dark:text-surface-200">
-            収益トレンド
-          </h2>
-          <div class="relative h-64">
-            <canvas ref="revenueChartRef" />
-            <div
-              v-if="!revenueTrend || ((revenueTrend.points as unknown[])?.length ?? 0) === 0"
-              class="absolute inset-0 flex items-center justify-center text-sm text-surface-400"
-            >
-              データがありません
-            </div>
+    <!-- KPIカード -->
+    <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <DashboardWidgetCard :loading="loading" :scrollable="false">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-sm text-surface-500">月間収益 (MRR)</p>
+            <p class="mt-1 text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+              ¥{{ mrr }}
+            </p>
+          </div>
+          <div
+            class="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/20"
+          >
+            <i class="pi pi-dollar text-lg text-indigo-500" />
           </div>
         </div>
-
-        <!-- ユーザー増減 -->
         <div
-          class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
+          v-if="mrrGrowthRate !== null"
+          class="mt-2 text-xs"
+          :class="mrrGrowthRate >= 0 ? 'text-green-600' : 'text-red-500'"
         >
-          <h2 class="mb-4 text-base font-semibold text-surface-700 dark:text-surface-200">
-            ユーザー増減
-          </h2>
-          <div class="relative h-64">
-            <canvas ref="usersChartRef" />
-            <div
-              v-if="!usersTrend || ((usersTrend.points as unknown[])?.length ?? 0) === 0"
-              class="absolute inset-0 flex items-center justify-center text-sm text-surface-400"
-            >
-              データがありません
-            </div>
+          <i :class="mrrGrowthRate >= 0 ? 'pi pi-arrow-up' : 'pi pi-arrow-down'" />
+          前月比 {{ Math.abs(mrrGrowthRate * 100).toFixed(1) }}%
+        </div>
+      </DashboardWidgetCard>
+
+      <DashboardWidgetCard :loading="loading" :scrollable="false">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-sm text-surface-500">アクティブユーザー</p>
+            <p class="mt-1 text-3xl font-bold text-green-600 dark:text-green-400">
+              {{ totalUsers }}
+            </p>
+          </div>
+          <div
+            class="flex h-10 w-10 items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/20"
+          >
+            <i class="pi pi-users text-lg text-green-500" />
           </div>
         </div>
-      </div>
+        <div class="mt-2 text-xs text-surface-400">有料ユーザー: {{ payingUsers }}名</div>
+      </DashboardWidgetCard>
 
-      <!-- モジュール別収益ランキング -->
-      <div
-        class="rounded-xl border border-surface-300 bg-surface-0 p-6 dark:border-surface-600 dark:bg-surface-800"
+      <DashboardWidgetCard :loading="loading" :scrollable="false">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-sm text-surface-500">解約率（直近）</p>
+            <p class="mt-1 text-3xl font-bold text-red-600 dark:text-red-400">
+              {{ churnRate }}
+            </p>
+          </div>
+          <div
+            class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20"
+          >
+            <i class="pi pi-user-minus text-lg text-red-500" />
+          </div>
+        </div>
+        <div class="mt-2 text-xs text-surface-400">ユーザーチャーンレート</div>
+      </DashboardWidgetCard>
+
+      <DashboardWidgetCard :loading="loading" :scrollable="false">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-sm text-surface-500">有料転換ユーザー数</p>
+            <p class="mt-1 text-3xl font-bold text-amber-600 dark:text-amber-400">
+              {{ payingUsers }}
+            </p>
+          </div>
+          <div
+            class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-900/20"
+          >
+            <i class="pi pi-credit-card text-lg text-amber-500" />
+          </div>
+        </div>
+        <div class="mt-2 text-xs text-surface-400">
+          転換率:
+          {{
+            revenueSummary?.payingRatio !== undefined
+              ? (Number(revenueSummary.payingRatio) * 100).toFixed(1) + '%'
+              : '—'
+          }}
+        </div>
+      </DashboardWidgetCard>
+    </div>
+
+    <!-- グラフエリア -->
+    <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <!-- 収益トレンド -->
+      <DashboardWidgetCard
+        title="収益トレンド"
+        icon="pi pi-chart-line"
+        :loading="loading"
+        :scrollable="false"
       >
-        <h2 class="mb-4 text-base font-semibold text-surface-700 dark:text-surface-200">
-          モジュール別収益ランキング
-        </h2>
-        <DataTable
-          :value="moduleRows"
-          striped-rows
-          class="text-sm"
-          :rows="10"
-        >
-          <template #empty>
-            <div class="py-6 text-center text-surface-400">データがありません</div>
+        <div class="relative h-64 pt-2">
+          <canvas ref="revenueChartRef" />
+          <div
+            v-if="!revenueTrend || ((revenueTrend.points as unknown[])?.length ?? 0) === 0"
+            class="absolute inset-0 flex items-center justify-center text-sm text-surface-400"
+          >
+            データがありません
+          </div>
+        </div>
+      </DashboardWidgetCard>
+
+      <!-- ユーザー増減 -->
+      <DashboardWidgetCard
+        title="ユーザー増減"
+        icon="pi pi-chart-bar"
+        :loading="loading"
+        :scrollable="false"
+      >
+        <div class="relative h-64 pt-2">
+          <canvas ref="usersChartRef" />
+          <div
+            v-if="!usersTrend || ((usersTrend.points as unknown[])?.length ?? 0) === 0"
+            class="absolute inset-0 flex items-center justify-center text-sm text-surface-400"
+          >
+            データがありません
+          </div>
+        </div>
+      </DashboardWidgetCard>
+    </div>
+
+    <!-- モジュール別収益ランキング -->
+    <DashboardWidgetCard
+      title="モジュール別収益ランキング"
+      icon="pi pi-list-check"
+      :loading="loading"
+      :scrollable="false"
+    >
+      <DataTable
+        :value="moduleRows"
+        striped-rows
+        class="pt-2 text-sm"
+        :rows="10"
+      >
+        <template #empty>
+          <div class="py-6 text-center text-surface-400">データがありません</div>
+        </template>
+        <Column header="#" style="width: 3rem">
+          <template #body="{ index }">
+            <span class="font-semibold text-surface-500">{{ index + 1 }}</span>
           </template>
-          <Column header="#" style="width: 3rem">
-            <template #body="{ index }">
-              <span class="font-semibold text-surface-500">{{ index + 1 }}</span>
-            </template>
-          </Column>
-          <Column field="moduleName" header="モジュール名" />
-          <Column field="activeTeams" header="利用チーム数">
-            <template #body="{ data: row }">
-              {{ Number(row.activeTeams ?? 0).toLocaleString() }}
-            </template>
-          </Column>
-          <Column field="revenue" header="収益（円）">
-            <template #body="{ data: row }">
-              ¥{{ Number(row.revenue ?? 0).toLocaleString() }}
-            </template>
-          </Column>
-          <Column field="revenueSharePct" header="収益シェア">
-            <template #body="{ data: row }">
-              {{ row.revenueSharePct !== undefined ? (Number(row.revenueSharePct) * 100).toFixed(1) + '%' : '—' }}
-            </template>
-          </Column>
-          <Column field="growthRate" header="成長率">
-            <template #body="{ data: row }">
-              <span
-                :class="Number(row.growthRate ?? 0) >= 0 ? 'text-green-600' : 'text-red-500'"
-              >
-                {{ row.growthRate !== undefined ? (Number(row.growthRate) * 100).toFixed(1) + '%' : '—' }}
-              </span>
-            </template>
-          </Column>
-          <Column field="churnRate" header="解約率">
-            <template #body="{ data: row }">
-              {{ row.churnRate !== undefined ? (Number(row.churnRate) * 100).toFixed(1) + '%' : '—' }}
-            </template>
-          </Column>
-        </DataTable>
-      </div>
-    </template>
+        </Column>
+        <Column field="moduleName" header="モジュール名" />
+        <Column field="activeTeams" header="利用チーム数">
+          <template #body="{ data: row }">
+            {{ Number(row.activeTeams ?? 0).toLocaleString() }}
+          </template>
+        </Column>
+        <Column field="revenue" header="収益（円）">
+          <template #body="{ data: row }">
+            ¥{{ Number(row.revenue ?? 0).toLocaleString() }}
+          </template>
+        </Column>
+        <Column field="revenueSharePct" header="収益シェア">
+          <template #body="{ data: row }">
+            {{ row.revenueSharePct !== undefined ? (Number(row.revenueSharePct) * 100).toFixed(1) + '%' : '—' }}
+          </template>
+        </Column>
+        <Column field="growthRate" header="成長率">
+          <template #body="{ data: row }">
+            <span
+              :class="Number(row.growthRate ?? 0) >= 0 ? 'text-green-600' : 'text-red-500'"
+            >
+              {{ row.growthRate !== undefined ? (Number(row.growthRate) * 100).toFixed(1) + '%' : '—' }}
+            </span>
+          </template>
+        </Column>
+        <Column field="churnRate" header="解約率">
+          <template #body="{ data: row }">
+            {{ row.churnRate !== undefined ? (Number(row.churnRate) * 100).toFixed(1) + '%' : '—' }}
+          </template>
+        </Column>
+      </DataTable>
+    </DashboardWidgetCard>
   </div>
 </template>
