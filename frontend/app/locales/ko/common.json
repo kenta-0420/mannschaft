@@ -468,7 +468,35 @@
       "priority": "優先度",
       "dueDate": "期限",
       "creator": "作成者",
-      "description": "説明"
+      "description": "説明",
+      "title": "タイトル",
+      "descriptionOptional": "説明（任意）",
+      "startDate": "開始日",
+      "startDateOptional": "開始日（任意）",
+      "dueDateOptional": "期限（任意）"
+    },
+    "detail": {
+      "loadFailed": "TODOの取得に失敗しました",
+      "assigneesSection": "担当者",
+      "noAssignees": "担当者未割り当て",
+      "unknownUser": "不明",
+      "completedByAt": "{name} が {at} に完了",
+      "editButton": "編集"
+    },
+    "action": {
+      "save": "保存",
+      "cancel": "キャンセル",
+      "updated": "更新しました",
+      "updateFailed": "更新に失敗しました"
+    },
+    "priorityValue": {
+      "HIGH": "高",
+      "MEDIUM": "中",
+      "LOW": "低"
+    },
+    "progress": {
+      "updateRateFailed": "進捗率の更新に失敗しました",
+      "updateModeFailed": "進捗モードの切替に失敗しました"
     },
     "statusLabel": {
       "management": {
@@ -942,7 +970,9 @@
     "confirm": {
       "title": "確認",
       "body": "{names} に「{title}」を渡します。ステータス: 「{label}」。よろしいですか？",
-      "button": "渡す"
+      "button": "渡す",
+      "recipientSingle": "{name}さん",
+      "recipientWithOthers": "{name}さん 他{count}名"
     },
     "success": "TODO を渡しました",
     "error": {

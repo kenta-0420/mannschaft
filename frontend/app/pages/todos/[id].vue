@@ -118,31 +118,34 @@ async function saveEdit() {
       startDate: editForm.value.startDate ? editForm.value.startDate.toISOString().slice(0, 10) : null,
       dueDate: editForm.value.dueDate ? editForm.value.dueDate.toISOString().slice(0, 10) : null,
     })
-    notification.success('更新しました')
+    notification.success(t('todo.action.updated'))
     editing.value = false
     await loadTodo()
   }
   catch {
-    notification.error('更新に失敗しました')
+    notification.error(t('todo.action.updateFailed'))
   }
   finally {
     saving.value = false
   }
 }
 
-const priorityOptions = [
-  { label: '高', value: 'HIGH' },
-  { label: '中', value: 'MEDIUM' },
-  { label: '低', value: 'LOW' },
-]
+const { locale } = useI18n()
+
+const priorityOptions = computed(() => [
+  { label: t('todo.priorityValue.HIGH'), value: 'HIGH' },
+  { label: t('todo.priorityValue.MEDIUM'), value: 'MEDIUM' },
+  { label: t('todo.priorityValue.LOW'), value: 'LOW' },
+])
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+  // i18n locale を toLocaleDateString に渡す（ja → ja-JP, en → en-US 等の自動判定で OK）
+  return new Date(dateStr).toLocaleDateString(locale.value)
 }
 
 function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('ja-JP')
+  return new Date(dateStr).toLocaleString(locale.value)
 }
 
 onMounted(loadTodo)
@@ -189,7 +192,7 @@ onMounted(loadTodo)
           </div>
         </div>
         <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
-          <p class="text-xs text-surface-500">開始日</p>
+          <p class="text-xs text-surface-500">{{ t('todo.field.startDate') }}</p>
           <p class="mt-1 text-sm font-medium">
             {{ formatDate(todo.startDate) }}
           </p>
@@ -251,17 +254,17 @@ onMounted(loadTodo)
     <SectionCard v-else class="max-w-2xl">
       <div class="space-y-4">
         <div>
-          <label class="mb-1 block text-sm font-medium">タイトル <span class="text-red-500">*</span></label>
+          <label class="mb-1 block text-sm font-medium">{{ t('todo.field.title') }} <span class="text-red-500">*</span></label>
           <InputText v-model="editForm.title" class="w-full" autofocus />
         </div>
 
         <div>
-          <label class="mb-1 block text-sm font-medium">説明（任意）</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('todo.field.descriptionOptional') }}</label>
           <Textarea v-model="editForm.description" class="w-full" rows="3" auto-resize />
         </div>
 
         <div>
-          <label class="mb-1 block text-sm font-medium">優先度</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('todo.field.priority') }}</label>
           <Select
             v-model="editForm.priority"
             :options="priorityOptions"
@@ -273,7 +276,7 @@ onMounted(loadTodo)
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="mb-1 block text-sm font-medium">開始日（任意）</label>
+            <label class="mb-1 block text-sm font-medium">{{ t('todo.field.startDateOptional') }}</label>
             <DatePicker
               v-model="editForm.startDate"
               class="w-full"
@@ -282,7 +285,7 @@ onMounted(loadTodo)
             />
           </div>
           <div>
-            <label class="mb-1 block text-sm font-medium">期限（任意）</label>
+            <label class="mb-1 block text-sm font-medium">{{ t('todo.field.dueDateOptional') }}</label>
             <DatePicker
               v-model="editForm.dueDate"
               class="w-full"
@@ -293,9 +296,9 @@ onMounted(loadTodo)
         </div>
 
         <div class="flex justify-end gap-2">
-          <Button label="キャンセル" text severity="secondary" @click="cancelEdit" />
+          <Button :label="t('todo.action.cancel')" text severity="secondary" @click="cancelEdit" />
           <Button
-            label="保存"
+            :label="t('todo.action.save')"
             icon="pi pi-check"
             :loading="saving"
             :disabled="!editForm.title.trim()"

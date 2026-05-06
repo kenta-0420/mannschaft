@@ -99,8 +99,11 @@ const selectedUserNames = computed(() => {
 const confirmBody = computed(() => {
   if (selectedUserNames.value.length === 0) return ''
   const namesStr = selectedUserNames.value.length === 1
-    ? `${selectedUserNames.value[0]}さん`
-    : `${selectedUserNames.value[0]}さん 他${selectedUserNames.value.length - 1}名`
+    ? t('handoff.confirm.recipientSingle', { name: selectedUserNames.value[0] })
+    : t('handoff.confirm.recipientWithOthers', {
+      name: selectedUserNames.value[0],
+      count: selectedUserNames.value.length - 1,
+    })
   return t('handoff.confirm.body', {
     names: namesStr,
     title: props.todoTitle,

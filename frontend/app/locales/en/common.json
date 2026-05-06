@@ -468,7 +468,35 @@
       "priority": "Priority",
       "dueDate": "Due Date",
       "creator": "Created by",
-      "description": "Description"
+      "description": "Description",
+      "title": "Title",
+      "descriptionOptional": "Description (optional)",
+      "startDate": "Start date",
+      "startDateOptional": "Start date (optional)",
+      "dueDateOptional": "Due date (optional)"
+    },
+    "detail": {
+      "loadFailed": "Failed to load TODO",
+      "assigneesSection": "Assignees",
+      "noAssignees": "No assignee",
+      "unknownUser": "Unknown",
+      "completedByAt": "{name} completed at {at}",
+      "editButton": "Edit"
+    },
+    "action": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "updated": "Updated",
+      "updateFailed": "Failed to update"
+    },
+    "priorityValue": {
+      "HIGH": "High",
+      "MEDIUM": "Medium",
+      "LOW": "Low"
+    },
+    "progress": {
+      "updateRateFailed": "Failed to update progress rate",
+      "updateModeFailed": "Failed to switch progress mode"
     },
     "statusLabel": {
       "management": {
@@ -942,7 +970,9 @@
     "confirm": {
       "title": "Confirm",
       "body": "Pass \"{title}\" to {names}. Status: \"{label}\". Continue?",
-      "button": "Pass"
+      "button": "Pass",
+      "recipientSingle": "{name}",
+      "recipientWithOthers": "{name} and {count} others"
     },
     "success": "TODO passed",
     "error": {

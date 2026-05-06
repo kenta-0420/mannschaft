@@ -5,7 +5,7 @@ definePageMeta({
   middleware: 'auth',
 })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const orgId = Number(route.params.id)
 const todoId = Number(route.params.todoId)
@@ -71,7 +71,7 @@ async function loadTodo() {
     }
     newLabelId.value = data.statusLabel?.id ?? null
   } catch {
-    notification.error('TODOの取得に失敗しました')
+    notification.error(t('todo.detail.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -115,7 +115,7 @@ async function onProgressRateUpdate(rate: string) {
     await progressApi.updateProgress('organization', orgId, todoId, { progressRate: rate })
     todo.value.progressRate = rate
   } catch {
-    notification.error('進捗率の更新に失敗しました')
+    notification.error(t('todo.progress.updateRateFailed'))
   }
 }
 
@@ -128,17 +128,17 @@ async function onProgressManualUpdate(manual: boolean) {
       await loadTodo()
     }
   } catch {
-    notification.error('進捗モードの切替に失敗しました')
+    notification.error(t('todo.progress.updateModeFailed'))
   }
 }
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+  return new Date(dateStr).toLocaleDateString(locale.value)
 }
 
 function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('ja-JP')
+  return new Date(dateStr).toLocaleString(locale.value)
 }
 
 onMounted(async () => {
@@ -170,7 +170,7 @@ onMounted(async () => {
           />
           <Button
             v-if="isAdminOrDeputy"
-            label="編集"
+            :label="t('todo.detail.editButton')"
             icon="pi pi-pencil"
             outlined
             size="small"
@@ -238,7 +238,7 @@ onMounted(async () => {
     </SectionCard>
 
     <!-- 担当者 -->
-    <SectionCard title="担当者" class="mb-6">
+    <SectionCard :title="t('todo.detail.assigneesSection')" class="mb-6">
       <div v-if="todo.assignees.length > 0" class="flex flex-wrap gap-2">
         <div
           v-for="a in todo.assignees"
@@ -254,7 +254,7 @@ onMounted(async () => {
           <span class="text-sm">{{ a.displayName }}</span>
         </div>
       </div>
-      <p v-else class="text-sm text-surface-400">担当者未割り当て</p>
+      <p v-else class="text-sm text-surface-400">{{ t('todo.detail.noAssignees') }}</p>
     </SectionCard>
 
     <!-- 完了情報 -->
@@ -264,8 +264,7 @@ onMounted(async () => {
     >
       <p class="text-sm">
         <i class="pi pi-check-circle mr-1 text-green-600" />
-        {{ todo.completedBy?.displayName ?? '不明' }} が
-        {{ formatDateTime(todo.completedAt) }} に完了
+        {{ t('todo.detail.completedByAt', { name: todo.completedBy?.displayName ?? t('todo.detail.unknownUser'), at: formatDateTime(todo.completedAt) }) }}
       </p>
     </div>
 

@@ -5,7 +5,7 @@ definePageMeta({
   middleware: 'auth',
 })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const teamId = Number(route.params.id)
 const todoId = Number(route.params.todoId)
@@ -70,7 +70,7 @@ async function loadTodo() {
     newLabelId.value = data.statusLabel?.id ?? null
   }
   catch {
-    notification.error('TODOの取得に失敗しました')
+    notification.error(t('todo.detail.loadFailed'))
   }
   finally {
     loading.value = false
@@ -119,7 +119,7 @@ async function onProgressRateUpdate(rate: string) {
     await progressApi.updateProgress('team', teamId, todoId, { progressRate: rate })
     todo.value.progressRate = rate
   } catch {
-    notification.error('進捗率の更新に失敗しました')
+    notification.error(t('todo.progress.updateRateFailed'))
   }
 }
 
@@ -133,17 +133,17 @@ async function onProgressManualUpdate(manual: boolean) {
       await loadTodo()
     }
   } catch {
-    notification.error('進捗モードの切替に失敗しました')
+    notification.error(t('todo.progress.updateModeFailed'))
   }
 }
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+  return new Date(dateStr).toLocaleDateString(locale.value)
 }
 
 function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('ja-JP')
+  return new Date(dateStr).toLocaleString(locale.value)
 }
 
 onMounted(async () => {
@@ -161,7 +161,7 @@ onMounted(async () => {
   <div v-else-if="todo" class="mx-auto max-w-3xl">
     <!-- ヘッダー -->
     <div class="mb-6">
-      <BackButton :to="`/teams/${teamId}/todos`" label="TODO一覧" />
+      <BackButton :to="`/teams/${teamId}/todos`" :label="t('todo.backToList')" />
       <div class="flex items-start justify-between">
         <PageHeader :title="todo.title" />
         <div class="flex gap-2">
@@ -173,7 +173,7 @@ onMounted(async () => {
             size="small"
             @click="showHandoffDialog = true"
           />
-          <Button v-if="isAdminOrDeputy" label="編集" icon="pi pi-pencil" outlined size="small" @click="showEditDialog = true" />
+          <Button v-if="isAdminOrDeputy" :label="t('todo.detail.editButton')" icon="pi pi-pencil" outlined size="small" @click="showEditDialog = true" />
         </div>
       </div>
     </div>
@@ -223,12 +223,12 @@ onMounted(async () => {
     </SectionCard>
 
     <!-- 説明 -->
-    <SectionCard v-if="todo.description" title="説明" class="mb-6">
+    <SectionCard v-if="todo.description" :title="t('todo.field.description')" class="mb-6">
       <p class="whitespace-pre-wrap text-sm text-surface-700 dark:text-surface-300">{{ todo.description }}</p>
     </SectionCard>
 
     <!-- 担当者 -->
-    <SectionCard title="担当者" class="mb-6">
+    <SectionCard :title="t('todo.detail.assigneesSection')" class="mb-6">
       <div v-if="todo.assignees.length > 0" class="flex flex-wrap gap-2">
         <div v-for="a in todo.assignees" :key="a.userId" class="flex items-center gap-2 rounded-full bg-surface-100 px-3 py-1 dark:bg-surface-700">
           <Avatar
@@ -240,14 +240,14 @@ onMounted(async () => {
           <span class="text-sm">{{ a.displayName }}</span>
         </div>
       </div>
-      <p v-else class="text-sm text-surface-400">担当者未割り当て</p>
+      <p v-else class="text-sm text-surface-400">{{ t('todo.detail.noAssignees') }}</p>
     </SectionCard>
 
     <!-- 完了情報 -->
     <div v-if="todo.completedAt" class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
       <p class="text-sm">
         <i class="pi pi-check-circle mr-1 text-green-600" />
-        {{ todo.completedBy?.displayName ?? '不明' }} が {{ formatDateTime(todo.completedAt) }} に完了
+        {{ t('todo.detail.completedByAt', { name: todo.completedBy?.displayName ?? t('todo.detail.unknownUser'), at: formatDateTime(todo.completedAt) }) }}
       </p>
     </div>
 
