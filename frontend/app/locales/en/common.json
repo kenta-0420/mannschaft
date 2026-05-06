@@ -874,5 +874,44 @@
       "allTeamsOrgs": "Teams & Orgs (All)",
       "selectScope": "Select destination"
     },
-  }
+  },
+  "handoff": {
+    "button": { "passToOther": "Pass to another member" },
+    "dialog": { "title": "Pass TODO" },
+    "field": {
+      "recipients": "Recipients",
+      "recipientsPlaceholder": "Select members",
+      "statusLabel": "Status",
+      "message": "Message (optional)",
+      "messagePlaceholder": "Optional message (up to 500 chars)"
+    },
+    "confirm": {
+      "title": "Confirm",
+      "body": "Pass \"{title}\" to {names}. Status: \"{label}\". Continue?",
+      "button": "Pass"
+    },
+    "success": "TODO passed",
+    "error": {
+      "loadMembers": "Failed to load members",
+      "loadLabels": "Failed to load status labels",
+      "loadHistory": "Failed to load history",
+      "recipientsRequired": "Please select recipients",
+      "labelRequired": "Please select a status label",
+      "notAllowedPersonal": "Personal TODOs cannot be passed",
+      "invalidRecipient": "Recipient not found",
+      "generic": "Failed to pass TODO"
+    },
+    "timeline": {
+      "title": "Handoff history",
+      "empty": "No history yet",
+      "deletedLabel": "(deleted)"
+    }
+  },
+  "notification": {
+    "todoHandedOff": {
+      "title": "A TODO was passed to you",
+      "body": "{from} passed \"{title}\" to you (status: {label})"
+    }
+  },
+  "common": { "cancel": "Cancel" }
 }

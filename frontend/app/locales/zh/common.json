@@ -874,5 +874,44 @@
       "allTeamsOrgs": "团队・组织（全部）",
       "selectScope": "选择创建目标"
     },
-  }
+  },
+  "handoff": {
+    "button": { "passToOther": "他のメンバーに渡す" },
+    "dialog": { "title": "TODO を渡す" },
+    "field": {
+      "recipients": "宛先メンバー",
+      "recipientsPlaceholder": "メンバーを選択",
+      "statusLabel": "ステータス",
+      "message": "メッセージ（任意）",
+      "messagePlaceholder": "添えメッセージを入力（任意・500文字まで）"
+    },
+    "confirm": {
+      "title": "確認",
+      "body": "{names} に「{title}」を渡します。ステータス: 「{label}」。よろしいですか？",
+      "button": "渡す"
+    },
+    "success": "TODO を渡しました",
+    "error": {
+      "loadMembers": "メンバー一覧の取得に失敗しました",
+      "loadLabels": "ステータスラベルの取得に失敗しました",
+      "loadHistory": "履歴の取得に失敗しました",
+      "recipientsRequired": "宛先メンバーを選択してください",
+      "labelRequired": "ステータスラベルを選択してください",
+      "notAllowedPersonal": "個人 TODO はキャッチボールできません",
+      "invalidRecipient": "宛先メンバーが見つかりません",
+      "generic": "TODO の引き渡しに失敗しました"
+    },
+    "timeline": {
+      "title": "キャッチボール履歴",
+      "empty": "まだ履歴はありません",
+      "deletedLabel": "（削除済み）"
+    }
+  },
+  "notification": {
+    "todoHandedOff": {
+      "title": "TODOが渡されました",
+      "body": "{from}さんから「{title}」を渡されました（ステータス: {label}）"
+    }
+  },
+  "common": { "cancel": "キャンセル" }
 }

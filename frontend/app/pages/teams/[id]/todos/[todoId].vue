@@ -34,6 +34,9 @@ interface TodoDetail {
 const todo = ref<TodoDetail | null>(null)
 const loading = ref(true)
 const showEditDialog = ref(false)
+// F02.3.1 Phase 2 — キャッチボール
+const showHandoffDialog = ref(false)
+const timelineRef = ref<{ reload: () => void } | null>(null)
 
 // 拡張タブ: 'progress' | 'shared_memo' | 'personal_memo'
 type DetailTab = 'progress' | 'shared_memo' | 'personal_memo'
@@ -122,6 +125,14 @@ onMounted(async () => {
       <div class="flex items-start justify-between">
         <PageHeader :title="todo.title" />
         <div class="flex gap-2">
+          <Button
+            :label="t('handoff.button.passToOther')"
+            icon="pi pi-send"
+            severity="info"
+            outlined
+            size="small"
+            @click="showHandoffDialog = true"
+          />
           <Button v-if="isAdminOrDeputy" label="編集" icon="pi pi-pencil" outlined size="small" @click="showEditDialog = true" />
         </div>
       </div>
@@ -257,6 +268,16 @@ onMounted(async () => {
       <TodoComments scope-type="team" :scope-id="teamId" :todo-id="todoId" />
     </SectionCard>
 
+    <!-- F02.3.1 Phase 2 — キャッチボール履歴タイムライン -->
+    <SectionCard class="mb-6">
+      <TodoHandoffTimeline
+        ref="timelineRef"
+        scope-type="team"
+        :scope-id="teamId"
+        :todo-id="todoId"
+      />
+    </SectionCard>
+
     <!-- 編集ダイアログ -->
     <TodoForm
       v-model:visible="showEditDialog"
@@ -264,6 +285,16 @@ onMounted(async () => {
       :scope-id="teamId"
       :todo-id="todoId"
       @saved="loadTodo"
+    />
+
+    <!-- F02.3.1 Phase 2 — キャッチボールダイアログ -->
+    <TodoHandoffDialog
+      v-model:visible="showHandoffDialog"
+      scope-type="team"
+      :scope-id="teamId"
+      :todo-id="todoId"
+      :todo-title="todo.title"
+      @handoff-complete="async () => { await loadTodo(); timelineRef?.reload() }"
     />
   </div>
 </template>
