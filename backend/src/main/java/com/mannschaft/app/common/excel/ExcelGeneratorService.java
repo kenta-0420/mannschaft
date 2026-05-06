@@ -202,12 +202,15 @@ public class ExcelGeneratorService {
 
         CellStyle dateStyle = workbook.createCellStyle();
         dateStyle.setFont(baseFont);
-        dateStyle.setDataFormat(dataFormat.getFormat("yyyy/mm/dd"));
+        // POI の日付書式: 月は MM（大文字）、分は mm（小文字）。
+        // 旧コードの "yyyy/mm/dd" は月の代わりに分を埋め込むバグになるため修正。
+        dateStyle.setDataFormat(dataFormat.getFormat("yyyy/MM/dd"));
         applyThinBorder(dateStyle);
 
         CellStyle dateTimeStyle = workbook.createCellStyle();
         dateTimeStyle.setFont(baseFont);
-        dateTimeStyle.setDataFormat(dataFormat.getFormat("yyyy/mm/dd hh:mm"));
+        // 時は HH（24時間制大文字）、分は mm（小文字）。
+        dateTimeStyle.setDataFormat(dataFormat.getFormat("yyyy/MM/dd HH:mm"));
         applyThinBorder(dateTimeStyle);
 
         return new CellStyles(headerStyle, bodyStyle, numberStyle, dateStyle, dateTimeStyle);
