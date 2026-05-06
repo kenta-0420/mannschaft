@@ -94,7 +94,7 @@ defineProps<{
           <span
             class="ml-3 shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600 dark:bg-red-900/30 dark:text-red-400"
           >
-            {{ err.count }}件
+            {{ err.occurrenceCount }}件
           </span>
         </NuxtLink>
       </div>
