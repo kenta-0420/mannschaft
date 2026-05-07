@@ -1,15 +1,33 @@
 package com.mannschaft.app.config;
 
-import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.ProxyInputContextFilter;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration;
+import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -24,16 +42,93 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>SYSTEM_ADMIN ロール保持者であれば上記 metrics / prometheus も 200</li>
  * </ul>
  *
- * <p>本テストは Spring Security のロジック検証なので Mock 認証 (WithMockUser) を使用する。
- * JWT トークン発行や DB 認証は対象外。</p>
+ * <p><b>テスト境界の方針</b>: 本テストは Spring Security のロジック検証なので
+ * Mock 認証 ({@code @WithMockUser}) を使用し、JWT 発行や DB 認証は対象外。
+ * F10.5 Phase 10-α 検分指摘 ① の根治治療として、Docker / DB / Redis / Testcontainers に
+ * 依存しない構成へ書き換えた。これによりローカル Docker の起動有無に関係なく
+ * 常時実行可能となる。</p>
+ *
+ * <p><b>ロード戦略</b>: 業務 {@code @ComponentScan} を回避するため、本テスト専用の
+ * 最小 {@code @Configuration} ({@link MinimalActuatorTestConfig}) を {@code classes} に渡す。
+ * {@code @EnableAutoConfiguration} で Spring Boot の通常の自動構成を有効化しつつ、
+ * Datasource / JPA / Flyway / Redis 系を {@code exclude} で除外することで Docker 不要にする。
+ * SecurityConfig が必要とする {@code JwtAuthenticationFilter} / {@code ProxyInputContextFilter} は
+ * 本物のインスタンスを構築し、その内部依存だけ Mockito でモック化する（フィルタ自身の
+ * doFilter 実装が chain.doFilter を呼んで AuthorizationFilter まで到達できるようにする）。</p>
+ *
+ * <p><b>application-test.yml</b>: {@code management.health.db.enabled=false} /
+ * {@code management.health.redis.enabled=false} 等の既存設定により、Health Indicator は
+ * アプリ自身の死活のみ評価する。</p>
  */
+@SpringBootTest(
+        classes = ActuatorEndpointSecurityTest.MinimalActuatorTestConfig.class,
+        webEnvironment = SpringBootTest.WebEnvironment.MOCK
+)
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 @DisplayName("Actuator エンドポイントのセキュリティ (F10.5 Phase 10-α)")
-@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-class ActuatorEndpointSecurityTest extends AbstractMySqlIntegrationTest {
+class ActuatorEndpointSecurityTest {
+
+    /**
+     * 本テスト用の最小コンテキスト構成。MannschaftApplication の {@code @ComponentScan} を
+     * 経由せず、SecurityConfig と Spring Boot 自動構成のみを取り込む。
+     * Datasource / JPA / Flyway / Redis 系の自動構成は明示的に除外する
+     * （Docker 起動を不要にし常時実行可能とする）。Actuator / Web MVC / Security の
+     * 自動構成は通常通り効くため、{@code EndpointRequest.toAnyEndpoint()} 等の
+     * 標準 API もそのまま動作する。
+     *
+     * <p>SecurityConfig が依存する 2 つのフィルタは本構成で本物のインスタンスを供給する。
+     * フィルタ内部の依存（{@code AuthTokenService} 等）はモック化するため、
+     * Authorization ヘッダーが空（テストの匿名・WithMockUser）であれば各フィルタは
+     * 単純に chain.doFilter に通す挙動になり、AuthorizationFilter まで処理が到達する。</p>
+     */
+    @Configuration
+    @EnableAutoConfiguration(exclude = {
+            DataSourceAutoConfiguration.class,
+            DataSourceTransactionManagerAutoConfiguration.class,
+            HibernateJpaAutoConfiguration.class,
+            JpaRepositoriesAutoConfiguration.class,
+            FlywayAutoConfiguration.class,
+            RedisAutoConfiguration.class,
+            RedisRepositoriesAutoConfiguration.class
+    })
+    @Import(SecurityConfig.class)
+    static class MinimalActuatorTestConfig {
+
+        /**
+         * JwtAuthenticationFilter の本物インスタンス。{@code AuthTokenService} はモック化。
+         * Authorization ヘッダーが無いリクエスト（本テストの全ケース）では何もせず chain に通す。
+         */
+        @Bean
+        JwtAuthenticationFilter jwtAuthenticationFilter() {
+            return new JwtAuthenticationFilter(mock(AuthTokenService.class));
+        }
+
+        /**
+         * ProxyInputContextFilter の本物インスタンス。内部依存はモック化。
+         * X-Proxy-For-User-Id ヘッダーが無いリクエストでは何もせず chain に通す。
+         */
+        @Bean
+        ProxyInputContextFilter proxyInputContextFilter() {
+            return new ProxyInputContextFilter(
+                    mock(ProxyInputConsentRepository.class),
+                    mock(ProxyInputContext.class),
+                    mock(ObjectMapper.class));
+        }
+    }
 
     @Autowired
     private MockMvc mockMvc;
+
+    /**
+     * SecurityConfig は不要。{@link MinimalActuatorTestConfig} 内の {@code @Bean} で
+     * 本物のフィルタが供給されるため、Authorization 評価が中断されることなく
+     * AuthorizationFilter まで処理が到達する。フィルタ自身の挙動は別テスト
+     * ({@code JwtAuthenticationFilterTest} 等) で担保する。
+     */
+    @MockitoBean
+    @SuppressWarnings("unused")
+    private ProxyInputConsentRepository proxyInputConsentRepository;
 
     @Test
     @WithAnonymousUser
