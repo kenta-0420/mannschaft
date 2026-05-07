@@ -6,6 +6,9 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PlainTextValidator;
 import com.mannschaft.app.common.ProfileUrlValidator;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.organization.ProfileVisibility;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.team.dto.CreateTeamCustomFieldRequest;
@@ -47,6 +50,7 @@ public class TeamExtendedProfileService {
     private final TeamCustomFieldRepository customFieldRepository;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     // 文字数上限
     private static final int MAX_PHILOSOPHY_LENGTH = 2000;
@@ -71,11 +75,10 @@ public class TeamExtendedProfileService {
      * @return 現在のプロフィール
      */
     public ApiResponse<TeamProfileResponse> getProfile(Long userId, Long teamId) {
+        // ContentVisibilityChecker 経由で可視性チェック（存在しない場合は 404、PRIVATE 非メンバーは 403）
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        contentVisibilityChecker.assertCanView(ReferenceType.TEAM, teamId, viewerUserId);
         TeamEntity team = findTeamOrThrow(teamId);
-        boolean isMember = accessControlService.isMember(userId, teamId, "TEAM");
-        if (team.getVisibility() == TeamEntity.Visibility.PRIVATE && !isMember) {
-            throw new BusinessException(TeamErrorCode.TEAM_048);
-        }
         return ApiResponse.of(toProfileResponse(team));
     }
 
@@ -168,10 +171,9 @@ public class TeamExtendedProfileService {
         boolean isMember = accessControlService.isMember(userId, teamId, "TEAM");
         boolean isAdminOrAbove = accessControlService.isAdminOrAbove(userId, teamId, "TEAM");
 
-        // PRIVATE チームかつ非メンバー → 403
-        if (team.getVisibility() == TeamEntity.Visibility.PRIVATE && !isMember) {
-            throw new BusinessException(TeamErrorCode.TEAM_048);
-        }
+        // PRIVATE チームかつ非メンバー → 403（ContentVisibilityChecker 経由）
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        contentVisibilityChecker.assertCanView(ReferenceType.TEAM, teamId, viewerUserId);
 
         // profile_visibility.officers == false かつ非メンバー → 空リスト
         ProfileVisibility visibility = team.getProfileVisibility();
@@ -387,10 +389,9 @@ public class TeamExtendedProfileService {
         boolean isMember = accessControlService.isMember(userId, teamId, "TEAM");
         boolean isAdminOrAbove = accessControlService.isAdminOrAbove(userId, teamId, "TEAM");
 
-        // PRIVATE チームかつ非メンバー → 403
-        if (team.getVisibility() == TeamEntity.Visibility.PRIVATE && !isMember) {
-            throw new BusinessException(TeamErrorCode.TEAM_048);
-        }
+        // PRIVATE チームかつ非メンバー → 403（ContentVisibilityChecker 経由）
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        contentVisibilityChecker.assertCanView(ReferenceType.TEAM, teamId, viewerUserId);
 
         // profile_visibility.custom_fields == false かつ非メンバー → 空リスト
         ProfileVisibility visibility = team.getProfileVisibility();
