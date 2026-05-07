@@ -80,17 +80,17 @@ public class ScheduleService {
     /**
      * 閲覧権限チェック付きでスケジュールを取得する。
      *
-     * <p>F00 Phase B: 試験的に {@link ContentVisibilityChecker} 経由の判定へ切り替えた
-     * （設計書 §12.6.1 / 任務「既存 ScheduleService の主要 canView 系メソッド 1 つを
-     * ContentVisibilityChecker 経由に切替」）。本ファサードは可視性が無い場合
+     * <p>F00 Phase E: {@link ContentVisibilityChecker} 経由の判定を正規化完了
+     * （Phase B で試験的導入 → Phase E で旧可視性ロジックが存在しないことを確認し正式化）。
+     * 本ファサードは可視性が無い場合
      * {@link com.mannschaft.app.common.visibility.VisibilityErrorCode} ベースの
      * {@link BusinessException} をスローする。</p>
      *
-     * <p>従来の {@code AccessControlService.checkMembership} 直接呼び出しは廃止。
-     * これにより以下が新たに統一される:</p>
+     * <p>旧 {@code AccessControlService.checkMembership} 直接呼び出しは廃止済み。
+     * 統一された可視性判定ルール:</p>
      * <ul>
      *   <li>PERSONAL スコープのスケジュールは作成者本人のみ可視
-     *       （{@link ScheduleVisibilityResolver} が DRAFT に正規化）。</li>
+     *       （{@link com.mannschaft.app.schedule.visibility.ScheduleVisibilityResolver} が DRAFT に正規化）。</li>
      *   <li>{@link ScheduleVisibility#ORGANIZATION} は親 ORG メンバーまで可視範囲拡張
      *       （{@link com.mannschaft.app.common.visibility.StandardVisibility#ORGANIZATION_WIDE}）。</li>
      *   <li>{@link ScheduleVisibility#CUSTOM_TEMPLATE} は F01.7 テンプレート評価へ委譲。</li>
