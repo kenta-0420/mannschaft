@@ -20,6 +20,8 @@ import com.mannschaft.app.cms.repository.BlogPostTagRepository;
 import com.mannschaft.app.cms.service.BlogPostService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,11 +36,13 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -540,6 +544,53 @@ class BlogPostServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CMS_008"));
+        }
+    }
+
+    // ========================================
+    // listPublicPostsForFeed
+    // ========================================
+
+    @Nested
+    @DisplayName("listPublicPostsForFeed")
+    class ListPublicPostsForFeed {
+
+        @Test
+        @DisplayName("正常系: ContentVisibilityChecker が通過した記事のみ返る")
+        void フィード用記事取得_Checker通過のみ返却() {
+            // Given
+            BlogPostEntity pub = createPostEntity(PostStatus.PUBLISHED);
+            BlogPostEntity priv = createPostEntity(PostStatus.PUBLISHED);
+            ReflectionTestUtils.setField(pub, "id", 1L);
+            ReflectionTestUtils.setField(priv, "id", 2L);
+
+            given(postRepository.findTop20ByTeamIdAndStatusOrderByPublishedAtDesc(
+                    TEAM_ID, PostStatus.PUBLISHED)).willReturn(List.of(pub, priv));
+            // Checker: id=1 のみ通過（PUBLIC）、id=2 は拒否（MEMBERS_ONLY 等）
+            given(contentVisibilityChecker.filterAccessible(
+                    ReferenceType.BLOG_POST, Set.of(1L, 2L), null)).willReturn(Set.of(1L));
+            given(cmsMapper.toBlogPostResponseList(List.of(pub))).willReturn(List.of(createPostResponse()));
+
+            // When
+            List<BlogPostResponse> result = service.listPublicPostsForFeed(TEAM_ID, null);
+
+            // Then
+            assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("空ページ: リポジトリが空ならCheckerを呼ばず空リストを返す")
+        void フィード用記事取得_空_Checker不呼び出し() {
+            // Given
+            given(postRepository.findTop20ByTeamIdAndStatusOrderByPublishedAtDesc(
+                    TEAM_ID, PostStatus.PUBLISHED)).willReturn(List.of());
+
+            // When
+            List<BlogPostResponse> result = service.listPublicPostsForFeed(TEAM_ID, null);
+
+            // Then
+            assertThat(result).isEmpty();
+            verify(contentVisibilityChecker, never()).filterAccessible(any(), any(), any());
         }
     }
 }
