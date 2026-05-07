@@ -167,6 +167,31 @@ public class ErrorReportNotifier {
     }
 
     /**
+     * F12.5 Phase 2 — エラーレポート担当者割り当て通知。
+     * 割り当てられた管理者にプッシュ通知を送信する（解除時は呼ばない）。
+     *
+     * @param report         エラーレポートエンティティ
+     * @param newAssigneeId  新しい担当者ユーザーID（NULL の場合は何もしない）
+     */
+    @Async("event-pool")
+    public void notifyAssignment(ErrorReportEntity report, Long newAssigneeId) {
+        if (newAssigneeId == null) return;
+        try {
+            notificationService.createNotification(
+                    newAssigneeId, "ERROR_REPORT_ASSIGNED", NotificationPriority.NORMAL,
+                    "エラーレポートが割り当てられました",
+                    ErrorReportService.truncate(report.getErrorMessage(), 50),
+                    "ERROR_REPORT", report.getId(),
+                    NotificationScopeType.PERSONAL, null,
+                    "/system-admin/error-reports/" + report.getId(), null
+            );
+        } catch (Exception e) {
+            log.warn("担当者割り当て通知送信失敗: errorReportId={}, assigneeId={}",
+                    report.getId(), newAssigneeId, e);
+        }
+    }
+
+    /**
      * エラーレポート解決時の報告者通知。user_id が非NULLのレポートに対してプッシュ通知を送信する。
      *
      * @param report エラーレポートエンティティ

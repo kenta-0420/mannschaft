@@ -1,20 +1,33 @@
 package com.mannschaft.app.errorreport.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.errorreport.ErrorReportActivityType;
 import com.mannschaft.app.errorreport.ErrorReportErrorCode;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
+import com.mannschaft.app.errorreport.ErrorReportWorkflowStage;
 import com.mannschaft.app.errorreport.dto.ActiveIncidentResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportBulkUpdateRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportStatsResponse;
+import com.mannschaft.app.errorreport.dto.ErrorReportTimelineResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportUpdateRequest;
+import com.mannschaft.app.errorreport.entity.ErrorReportActivityEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
+import com.mannschaft.app.errorreport.entity.ErrorReportOccurrenceEntity;
+import com.mannschaft.app.errorreport.repository.ErrorReportActivityRepository;
+import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -27,9 +40,15 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HexFormat;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * エラーレポートの作成・重複集約・検索を担当するサービス。
@@ -43,6 +62,12 @@ public class ErrorReportService {
     private final ErrorReportRepository errorReportRepository;
     private final ErrorReportNotifier errorReportNotifier;
     private final StringRedisTemplate redisTemplate;
+    private final ErrorReportActivityRepository activityRepository;
+    private final ErrorReportOccurrenceRepository occurrenceRepository;
+    private final ErrorReportActivityService activityService;
+    private final AccessControlService accessControlService;
+    private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * エラーレポートを受信し、重複集約または新規作成する。
@@ -70,6 +95,9 @@ public class ErrorReportService {
             if (report.getStatus() == ErrorReportStatus.RESOLVED) {
                 // リグレッション: REOPENED に変更
                 report.reopen(request.getOccurredAt());
+                // F12.5 Phase 2 — リグレッション時に workflow_stage / assignee_id をリセット
+                report.setWorkflowStage(null);
+                report.setAssigneeId(null);
                 int affectedCount = trackAffectedUser(errorHash, request.getUserId());
                 if (affectedCount > 0) {
                     report.setAffectedUserCount(affectedCount);
@@ -329,6 +357,264 @@ public class ErrorReportService {
                     from.atStartOfDay(), to.plusDays(1).atStartOfDay(), pageable);
         }
         return errorReportRepository.findAll(pageable);
+    }
+
+    // ========================================
+    // F12.5 Phase 2 — ワークフロー / 担当者 / コメント
+    // ========================================
+
+    /**
+     * F12.5 Phase 2 — エラーレポートのワークフロー段階を更新する。
+     * status と workflow_stage の業務ルール整合性を検証してから更新する。
+     *
+     * @param id       エラーレポートID
+     * @param newStage 新しいワークフロー段階（NULL は未着手にリセット）
+     * @param actorId  操作者ユーザーID
+     * @return 更新後のエラーレポートエンティティ
+     */
+    public ErrorReportEntity updateWorkflowStage(Long id, ErrorReportWorkflowStage newStage, Long actorId) {
+        accessControlService.checkSystemAdmin(actorId);
+        ErrorReportEntity report = findByIdOrThrow(id);
+        ErrorReportWorkflowStage oldStage = report.getWorkflowStage();
+
+        // 業務ルールバリデーション（plan §1.2）
+        validateWorkflowTransition(report.getStatus(), newStage);
+
+        report.setWorkflowStage(newStage);
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("from", oldStage != null ? oldStage.name() : null);
+        metadata.put("to", newStage != null ? newStage.name() : null);
+        activityService.record(id, actorId, ErrorReportActivityType.WORKFLOW_CHANGED, null, metadata);
+
+        log.info("エラーレポートワークフロー更新: id={}, from={}, to={}, actorId={}",
+                id, oldStage, newStage, actorId);
+        return report;
+    }
+
+    /**
+     * F12.5 Phase 2 — エラーレポートに担当者を割り当てる/解除する。
+     * 担当者は SYSTEM_ADMIN 権限保有者のみ許可。
+     *
+     * @param id          エラーレポートID
+     * @param assigneeId  担当者ユーザーID（NULL で解除）
+     * @param actorId     操作者ユーザーID
+     * @return 更新後のエラーレポートエンティティ
+     */
+    public ErrorReportEntity assign(Long id, Long assigneeId, Long actorId) {
+        accessControlService.checkSystemAdmin(actorId);
+        ErrorReportEntity report = findByIdOrThrow(id);
+        Long oldAssigneeId = report.getAssigneeId();
+
+        if (assigneeId != null) {
+            if (!accessControlService.isSystemAdmin(assigneeId)) {
+                throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_006);
+            }
+        }
+
+        report.setAssigneeId(assigneeId);
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("from", oldAssigneeId);
+        metadata.put("to", assigneeId);
+        activityService.record(id, actorId, ErrorReportActivityType.ASSIGNEE_CHANGED, null, metadata);
+
+        if (assigneeId != null) {
+            errorReportNotifier.notifyAssignment(report, assigneeId);
+        }
+
+        log.info("エラーレポート担当者更新: id={}, from={}, to={}, actorId={}",
+                id, oldAssigneeId, assigneeId, actorId);
+        return report;
+    }
+
+    /**
+     * F12.5 Phase 2 — エラーレポートに管理者コメントを追加する。
+     *
+     * @param id      エラーレポートID
+     * @param content コメント本文（最大2000文字）
+     * @param actorId 操作者ユーザーID
+     */
+    public void addComment(Long id, String content, Long actorId) {
+        accessControlService.checkSystemAdmin(actorId);
+        // 存在チェック
+        findByIdOrThrow(id);
+        activityService.record(id, actorId, ErrorReportActivityType.COMMENT_ADDED, content, null);
+        log.info("エラーレポートコメント追加: id={}, actorId={}, length={}",
+                id, actorId, content != null ? content.length() : 0);
+    }
+
+    /**
+     * F12.5 Phase 2 — タイムラインを取得する。
+     * occurrences と activities をマージして {@code occurredAt} 降順で返す。
+     *
+     * @param id     エラーレポートID
+     * @param cursor ページングカーソル（{@code "epochMillis:type:id"} 形式、NULL は先頭）
+     * @param limit  取得上限件数（呼び出し元で 100 にキャップ済み想定）
+     * @return タイムラインレスポンス
+     */
+    @Transactional(readOnly = true)
+    public ErrorReportTimelineResponse fetchTimeline(Long id, String cursor, int limit) {
+        // 存在チェック
+        findByIdOrThrow(id);
+
+        // 単純実装: 各 50 件取得 → メモリ上でマージ・ソート → cursor 適用
+        // 件数が多い場合の最適化は P2-E（仮想スクロール導入）で実施
+        int fetchSize = Math.max(limit * 2, 100);
+        Pageable pageable = PageRequest.of(0, fetchSize);
+
+        Page<ErrorReportOccurrenceEntity> occurrences =
+                occurrenceRepository.findByErrorReportIdOrderByOccurredAtDesc(id, pageable);
+        Page<ErrorReportActivityEntity> activities =
+                activityRepository.findByErrorReportIdOrderByCreatedAtDesc(id, pageable);
+
+        // ユーザー名解決（バルク、N+1 防止）
+        Set<Long> userIds = new HashSet<>();
+        occurrences.getContent().forEach(o -> {
+            if (o.getUserId() != null) userIds.add(o.getUserId());
+        });
+        activities.getContent().forEach(a -> {
+            if (a.getActorId() != null) userIds.add(a.getActorId());
+        });
+        Map<Long, String> nameByUserId = resolveUserNames(userIds);
+
+        List<ErrorReportTimelineResponse.TimelineItem> items = new ArrayList<>();
+
+        for (ErrorReportOccurrenceEntity o : occurrences.getContent()) {
+            items.add(ErrorReportTimelineResponse.TimelineItem.builder()
+                    .type("OCCURRENCE")
+                    .occurredAt(o.getOccurredAt())
+                    .pageUrl(o.getPageUrl())
+                    .userId(o.getUserId())
+                    .userAgent(o.getUserAgent())
+                    .build());
+        }
+
+        for (ErrorReportActivityEntity a : activities.getContent()) {
+            Map<String, Object> metadata = parseMetadata(a.getMetadataJson());
+            boolean systemActor = a.getActorId() == null
+                    && metadata != null && Boolean.TRUE.equals(metadata.get("system"));
+            String actorName = a.getActorId() != null ? nameByUserId.get(a.getActorId()) : null;
+
+            items.add(ErrorReportTimelineResponse.TimelineItem.builder()
+                    .type("ACTIVITY")
+                    .occurredAt(a.getCreatedAt())
+                    .activityType(a.getActivityType())
+                    .actorId(a.getActorId())
+                    .actorName(actorName)
+                    .systemActor(systemActor)
+                    .content(a.getContent())
+                    .metadata(metadata)
+                    .build());
+        }
+
+        // occurredAt 降順、タイ時は ACTIVITY → OCCURRENCE の順
+        items.sort(Comparator
+                .comparing(ErrorReportTimelineResponse.TimelineItem::getOccurredAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())));
+
+        // cursor 適用（"epochMillis" 形式、その時刻より前のアイテムを返す）
+        if (cursor != null && !cursor.isBlank()) {
+            try {
+                long cursorMillis = Long.parseLong(cursor);
+                LocalDateTime cursorTime = LocalDateTime.ofEpochSecond(cursorMillis / 1000,
+                        (int) ((cursorMillis % 1000) * 1_000_000),
+                        java.time.ZoneOffset.UTC);
+                items = items.stream()
+                        .filter(i -> i.getOccurredAt() != null && i.getOccurredAt().isBefore(cursorTime))
+                        .toList();
+            } catch (NumberFormatException e) {
+                log.warn("不正な cursor 値: {}", cursor);
+            }
+        }
+
+        boolean hasMore = items.size() > limit;
+        List<ErrorReportTimelineResponse.TimelineItem> page = hasMore
+                ? new ArrayList<>(items.subList(0, limit))
+                : new ArrayList<>(items);
+
+        String nextCursor = null;
+        if (hasMore && !page.isEmpty()) {
+            LocalDateTime last = page.get(page.size() - 1).getOccurredAt();
+            if (last != null) {
+                long millis = last.toInstant(java.time.ZoneOffset.UTC).toEpochMilli();
+                nextCursor = String.valueOf(millis);
+            }
+        }
+
+        return ErrorReportTimelineResponse.builder()
+                .items(page)
+                .hasMore(hasMore)
+                .nextCursor(nextCursor)
+                .build();
+    }
+
+    /**
+     * status と workflow_stage の業務ルール整合性を検証する。
+     */
+    private void validateWorkflowTransition(ErrorReportStatus status, ErrorReportWorkflowStage stage) {
+        switch (status) {
+            case NEW:
+            case IGNORED:
+            case REOPENED:
+                if (stage != null) {
+                    throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_005);
+                }
+                break;
+            case INVESTIGATING:
+                // INVESTIGATION_STARTED〜FIX_IN_PROGRESS のみ
+                if (stage != null
+                        && stage != ErrorReportWorkflowStage.INVESTIGATION_STARTED
+                        && stage != ErrorReportWorkflowStage.ROOT_CAUSE_IDENTIFIED
+                        && stage != ErrorReportWorkflowStage.FIX_IN_PROGRESS) {
+                    throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_005);
+                }
+                break;
+            case RESOLVED:
+                // TEST_COMPLETED または RELEASED のみ
+                if (stage != ErrorReportWorkflowStage.TEST_COMPLETED
+                        && stage != ErrorReportWorkflowStage.RELEASED) {
+                    throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_005);
+                }
+                break;
+            default:
+                // 想定外
+                throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_005);
+        }
+    }
+
+    /**
+     * 内部用: ID で取得し、未存在なら BusinessException を投げる。
+     */
+    private ErrorReportEntity findByIdOrThrow(Long id) {
+        return errorReportRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorReportErrorCode.ERROR_REPORT_NOT_FOUND));
+    }
+
+    /**
+     * ユーザーIDから表示名を一括解決する（N+1 防止）。
+     */
+    private Map<Long, String> resolveUserNames(Set<Long> userIds) {
+        if (userIds.isEmpty()) return Map.of();
+        Map<Long, String> result = new HashMap<>();
+        List<UserEntity> users = userRepository.findByIdIn(userIds);
+        for (UserEntity u : users) {
+            result.put(u.getId(), u.getDisplayName());
+        }
+        return result;
+    }
+
+    /**
+     * metadata_json をパースする。失敗時は null を返す（タイムライン表示は継続）。
+     */
+    private Map<String, Object> parseMetadata(String metadataJson) {
+        if (metadataJson == null || metadataJson.isBlank()) return null;
+        try {
+            return objectMapper.readValue(metadataJson, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.warn("metadata_json のパースに失敗: {}", metadataJson, e);
+            return null;
+        }
     }
 
     /**

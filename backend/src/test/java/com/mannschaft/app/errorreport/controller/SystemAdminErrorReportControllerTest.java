@@ -1,0 +1,159 @@
+package com.mannschaft.app.errorreport.controller;
+
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.errorreport.ErrorReportMapper;
+import com.mannschaft.app.errorreport.ErrorReportSeverity;
+import com.mannschaft.app.errorreport.ErrorReportStatus;
+import com.mannschaft.app.errorreport.ErrorReportWorkflowStage;
+import com.mannschaft.app.errorreport.dto.ErrorReportAssigneeRequest;
+import com.mannschaft.app.errorreport.dto.ErrorReportCommentRequest;
+import com.mannschaft.app.errorreport.dto.ErrorReportResponse;
+import com.mannschaft.app.errorreport.dto.ErrorReportTimelineResponse;
+import com.mannschaft.app.errorreport.dto.ErrorReportWorkflowStageRequest;
+import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
+import com.mannschaft.app.errorreport.service.ErrorReportService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+
+/**
+ * F12.5 Phase 2 — {@link SystemAdminErrorReportController} の単体テスト。
+ * P2-B 範囲の 4 エンドポイントを検証する。
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("SystemAdminErrorReportController Phase2 単体テスト")
+class SystemAdminErrorReportControllerTest {
+
+    @Mock
+    private ErrorReportService errorReportService;
+    @Mock
+    private ErrorReportMapper errorReportMapper;
+    @Mock
+    private AccessControlService accessControlService;
+
+    @InjectMocks
+    private SystemAdminErrorReportController controller;
+
+    private static final Long ACTOR_ID = 1L;
+    private static final Long REPORT_ID = 100L;
+
+    private MockedStatic<SecurityUtils> securityUtilsMock;
+
+    @BeforeEach
+    void setUp() {
+        securityUtilsMock = Mockito.mockStatic(SecurityUtils.class);
+        securityUtilsMock.when(SecurityUtils::getCurrentUserId).thenReturn(ACTOR_ID);
+    }
+
+    @AfterEach
+    void tearDown() {
+        securityUtilsMock.close();
+    }
+
+    private ErrorReportEntity sampleEntity() {
+        return ErrorReportEntity.builder()
+                .errorMessage("test")
+                .pageUrl("/x")
+                .occurredAt(LocalDateTime.now())
+                .status(ErrorReportStatus.NEW)
+                .severity(ErrorReportSeverity.MEDIUM)
+                .errorHash("h")
+                .occurrenceCount(1)
+                .affectedUserCount(1)
+                .firstOccurredAt(LocalDateTime.now())
+                .lastOccurredAt(LocalDateTime.now())
+                .build();
+    }
+
+    @Test
+    @DisplayName("PATCH /workflow-stage: Service.updateWorkflowStage を呼び出す")
+    void updateWorkflowStage_callsService() {
+        ErrorReportWorkflowStageRequest req = new ErrorReportWorkflowStageRequest();
+        req.setWorkflowStage(ErrorReportWorkflowStage.INVESTIGATION_STARTED);
+        ErrorReportEntity entity = sampleEntity();
+        ErrorReportResponse response = ErrorReportResponse.builder().id(REPORT_ID).build();
+
+        given(errorReportService.updateWorkflowStage(eq(REPORT_ID),
+                eq(ErrorReportWorkflowStage.INVESTIGATION_STARTED), eq(ACTOR_ID)))
+                .willReturn(entity);
+        given(errorReportMapper.toResponse(entity)).willReturn(response);
+
+        controller.updateWorkflowStage(REPORT_ID, req);
+
+        verify(errorReportService).updateWorkflowStage(REPORT_ID,
+                ErrorReportWorkflowStage.INVESTIGATION_STARTED, ACTOR_ID);
+    }
+
+    @Test
+    @DisplayName("PATCH /assignee: Service.assign を呼び出す")
+    void assign_callsService() {
+        ErrorReportAssigneeRequest req = new ErrorReportAssigneeRequest();
+        req.setAssigneeId(99L);
+        ErrorReportEntity entity = sampleEntity();
+        ErrorReportResponse response = ErrorReportResponse.builder().id(REPORT_ID).build();
+
+        given(errorReportService.assign(REPORT_ID, 99L, ACTOR_ID)).willReturn(entity);
+        given(errorReportMapper.toResponse(entity)).willReturn(response);
+
+        controller.assign(REPORT_ID, req);
+
+        verify(errorReportService).assign(REPORT_ID, 99L, ACTOR_ID);
+    }
+
+    @Test
+    @DisplayName("POST /comments: Service.addComment を呼び出す")
+    void addComment_callsService() {
+        ErrorReportCommentRequest req = new ErrorReportCommentRequest();
+        req.setContent("コメント本文");
+
+        controller.addComment(REPORT_ID, req);
+
+        verify(errorReportService).addComment(REPORT_ID, "コメント本文", ACTOR_ID);
+    }
+
+    @Test
+    @DisplayName("GET /timeline: 認可チェックの上で Service.fetchTimeline を呼び出す")
+    void timeline_callsService() {
+        ErrorReportTimelineResponse stub = ErrorReportTimelineResponse.builder()
+                .items(List.of())
+                .hasMore(false)
+                .build();
+        given(errorReportService.fetchTimeline(eq(REPORT_ID), any(), eq(50))).willReturn(stub);
+
+        ResponseEntity<?> entity = controller.timeline(REPORT_ID, null, 50);
+
+        verify(accessControlService).checkSystemAdmin(ACTOR_ID);
+        verify(errorReportService).fetchTimeline(REPORT_ID, null, 50);
+        assertThat(entity.getStatusCode().value()).isEqualTo(200);
+    }
+
+    @Test
+    @DisplayName("GET /timeline: limit が 100 を超えた場合は 100 にキャップされる")
+    void timeline_capsLimitTo100() {
+        ErrorReportTimelineResponse stub = ErrorReportTimelineResponse.builder()
+                .items(List.of()).hasMore(false).build();
+        given(errorReportService.fetchTimeline(eq(REPORT_ID), any(), eq(100))).willReturn(stub);
+
+        controller.timeline(REPORT_ID, null, 9999);
+
+        verify(errorReportService).fetchTimeline(REPORT_ID, null, 100);
+    }
+}

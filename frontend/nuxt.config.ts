@@ -164,6 +164,7 @@ export default defineNuxtConfig({
           'ja/settings.json',
           'ja/timetable.json',
           'ja/member-info.json',
+          'ja/error_report.json',
         ],
       },
       {
@@ -201,6 +202,7 @@ export default defineNuxtConfig({
           'en/settings.json',
           'en/timetable.json',
           'en/member-info.json',
+          'en/error_report.json',
         ],
       },
       {
@@ -238,6 +240,7 @@ export default defineNuxtConfig({
           'zh/settings.json',
           'zh/timetable.json',
           'zh/member-info.json',
+          'zh/error_report.json',
         ],
       },
       {
@@ -275,6 +278,7 @@ export default defineNuxtConfig({
           'ko/settings.json',
           'ko/timetable.json',
           'ko/member-info.json',
+          'ko/error_report.json',
         ],
       },
       {
@@ -312,6 +316,7 @@ export default defineNuxtConfig({
           'es/settings.json',
           'es/timetable.json',
           'es/member-info.json',
+          'es/error_report.json',
         ],
       },
       {
@@ -349,6 +354,7 @@ export default defineNuxtConfig({
           'de/settings.json',
           'de/timetable.json',
           'de/member-info.json',
+          'de/error_report.json',
         ],
       },
     ],

@@ -1,13 +1,18 @@
 package com.mannschaft.app.errorreport.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.errorreport.ErrorReportMapper;
+import com.mannschaft.app.errorreport.dto.ErrorReportAssigneeRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportBulkUpdateRequest;
+import com.mannschaft.app.errorreport.dto.ErrorReportCommentRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportStatsResponse;
+import com.mannschaft.app.errorreport.dto.ErrorReportTimelineResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportUpdateRequest;
+import com.mannschaft.app.errorreport.dto.ErrorReportWorkflowStageRequest;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +27,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -41,6 +47,7 @@ public class SystemAdminErrorReportController {
 
     private final ErrorReportService errorReportService;
     private final ErrorReportMapper errorReportMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * エラーレポート一覧を取得する（ページネーション・フィルタ付き）。
@@ -110,6 +117,68 @@ public class SystemAdminErrorReportController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ErrorReportStatsResponse>> stats() {
         return ResponseEntity.ok(ApiResponse.of(errorReportService.getStats()));
+    }
+
+    // ========================================
+    // F12.5 Phase 2 — ワークフロー / 担当者 / コメント / タイムライン
+    // ========================================
+
+    /**
+     * F12.5 Phase 2 — エラーレポートのワークフロー段階を更新する。
+     */
+    @PatchMapping("/{id}/workflow-stage")
+    @Operation(summary = "ワークフロー段階更新")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<ErrorReportResponse>> updateWorkflowStage(
+            @PathVariable Long id,
+            @Valid @RequestBody ErrorReportWorkflowStageRequest req) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        ErrorReportEntity entity = errorReportService.updateWorkflowStage(id, req.getWorkflowStage(), actorId);
+        return ResponseEntity.ok(ApiResponse.of(errorReportMapper.toResponse(entity)));
+    }
+
+    /**
+     * F12.5 Phase 2 — 担当者を割り当て/解除する。
+     */
+    @PatchMapping("/{id}/assignee")
+    @Operation(summary = "担当者割り当て/解除")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<ErrorReportResponse>> assign(
+            @PathVariable Long id,
+            @Valid @RequestBody ErrorReportAssigneeRequest req) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        ErrorReportEntity entity = errorReportService.assign(id, req.getAssigneeId(), actorId);
+        return ResponseEntity.ok(ApiResponse.of(errorReportMapper.toResponse(entity)));
+    }
+
+    /**
+     * F12.5 Phase 2 — 管理者コメントを追加する。
+     */
+    @PostMapping("/{id}/comments")
+    @Operation(summary = "コメント追加")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "追加成功")
+    public ResponseEntity<ApiResponse<Void>> addComment(
+            @PathVariable Long id,
+            @Valid @RequestBody ErrorReportCommentRequest req) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        errorReportService.addComment(id, req.getContent(), actorId);
+        return ResponseEntity.ok(ApiResponse.of(null));
+    }
+
+    /**
+     * F12.5 Phase 2 — タイムライン（occurrences + activities）を取得する。
+     */
+    @GetMapping("/{id}/timeline")
+    @Operation(summary = "タイムライン取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<ErrorReportTimelineResponse>> timeline(
+            @PathVariable Long id,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "50") int limit) {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
+        int cappedLimit = Math.min(Math.max(limit, 1), 100);
+        ErrorReportTimelineResponse response = errorReportService.fetchTimeline(id, cursor, cappedLimit);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**

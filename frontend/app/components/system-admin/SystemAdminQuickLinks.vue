@@ -108,6 +108,14 @@ const quickLinks: QuickLink[] = [
     color: 'text-rose-500',
     bg: 'bg-rose-50 dark:bg-rose-900/20',
   },
+  // F12.5 Phase 2: エラーレポート（システム管理者向け）
+  {
+    label: 'エラーレポート',
+    icon: 'pi pi-exclamation-triangle',
+    to: '/system-admin/error-reports',
+    color: 'text-red-500',
+    bg: 'bg-red-50 dark:bg-red-900/20',
+  },
 ]
 </script>
 
