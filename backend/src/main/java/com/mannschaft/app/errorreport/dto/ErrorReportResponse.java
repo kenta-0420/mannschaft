@@ -40,4 +40,40 @@ public class ErrorReportResponse {
     private LocalDateTime lastOccurredAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // ===== F12.5 Phase 2 追加 =====
+
+    /** ワークフロー段階（NULL は未着手）。 */
+    private String workflowStage;
+
+    /** 担当管理者ユーザーID。 */
+    private Long assigneeId;
+
+    /** 担当管理者の表示名（解決済み）。 */
+    private String assigneeName;
+
+    /** 連携した GitHub Issue の URL。 */
+    private String githubIssueUrl;
+
+    /** 最終 AI 分析実行日時。 */
+    private LocalDateTime lastAiAnalysisAt;
+
+    /** 最新 SUCCESS の AI 分析サマリー（P2-C で実装、本フェーズでは null）。 */
+    private ErrorReportAiAnalysisSummary latestAiAnalysis;
+
+    /**
+     * 最新 SUCCESS AI 分析の表示用サマリー。P2-C で実装。
+     */
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ErrorReportAiAnalysisSummary {
+        private Long id;
+        private String estimatedCause;
+        private String fixProposal;
+        private String impactAssessment;
+        private String suggestedFiles;
+        private LocalDateTime createdAt;
+    }
 }

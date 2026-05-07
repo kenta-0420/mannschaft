@@ -21,7 +21,13 @@ public enum ErrorReportErrorCode implements ErrorCode {
     ERROR_REPORT_BULK_LIMIT_EXCEEDED("ERROR_REPORT_003", "一括更新の上限（100件）を超えています", Severity.WARN),
 
     /** 無効なステータス遷移 */
-    ERROR_REPORT_INVALID_STATUS_TRANSITION("ERROR_REPORT_004", "無効なステータス遷移です", Severity.WARN);
+    ERROR_REPORT_INVALID_STATUS_TRANSITION("ERROR_REPORT_004", "無効なステータス遷移です", Severity.WARN),
+
+    /** 無効なワークフロー遷移 */
+    ERROR_REPORT_005("ERROR_REPORT_005", "無効なワークフロー遷移です", Severity.WARN),
+
+    /** 担当者の権限不正 */
+    ERROR_REPORT_006("ERROR_REPORT_006", "指定された担当者は SYSTEM_ADMIN 権限を持ちません", Severity.WARN);
 
     private final String code;
     private final String message;
