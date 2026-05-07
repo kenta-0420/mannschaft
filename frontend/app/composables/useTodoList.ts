@@ -209,6 +209,9 @@ export function useTodoList() {
    *
    * F02.3.1: status または statusLabelId（あるいは両方）で更新できる。
    * 後方互換のため文字列を受け取った場合は status として扱う。
+   *
+   * マイ TODO 一覧 UX 補強: statusLabelId 指定時は完全な statusLabel オブジェクトを
+   * 即時に楽観更新できないため、API 成功後にリストを再取得して同期する。
    */
   async function changeStatus(
     todo: MyTodo,
@@ -220,6 +223,10 @@ export function useTodoList() {
       // 楽観更新: ローカル状態を即時更新（厳密な statusLabel 同期はリロード時）
       if (body.status) {
         todo.status = body.status
+      }
+      // statusLabelId 指定時はラベル情報を新しく取り直す必要があるため再ロード
+      if (body.statusLabelId !== undefined) {
+        await load()
       }
     } catch {
       notification.error('ステータスの更新に失敗しました')
