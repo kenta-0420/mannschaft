@@ -3,6 +3,7 @@ package com.mannschaft.app.errorreport.entity;
 import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
+import com.mannschaft.app.errorreport.ErrorReportWorkflowStage;
 import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -64,6 +65,14 @@ public class ErrorReportEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     private ErrorReportStatus status;
 
+    /**
+     * F12.5 Phase 2 — ワークフロー進捗段階。NULL は「未着手」。
+     */
+    @Setter
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private ErrorReportWorkflowStage workflowStage;
+
     @Setter
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
@@ -73,9 +82,28 @@ public class ErrorReportEntity extends BaseEntity {
 
     private LocalDateTime resolvedAt;
 
+    /**
+     * F12.5 Phase 2 — 担当管理者ユーザーID。
+     */
+    @Setter
+    private Long assigneeId;
+
     @Setter
     @Column(length = 2000)
     private String adminNote;
+
+    /**
+     * F12.5 Phase 2 — 連携した GitHub Issue の URL。
+     */
+    @Setter
+    @Column(length = 500)
+    private String githubIssueUrl;
+
+    /**
+     * F12.5 Phase 2 — 最終 AI 分析実行日時（バッチ重複実行防止）。
+     */
+    @Setter
+    private LocalDateTime lastAiAnalysisAt;
 
     @Setter
     @Column(length = 1000)
