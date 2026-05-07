@@ -1,5 +1,7 @@
 package com.mannschaft.app.support.test;
 
+import java.util.TimeZone;
+
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -76,6 +78,10 @@ public abstract class AbstractMySqlIntegrationTest {
             .withReuse(false);
 
     static {
+        // java.sql.Date.toLocalDate() はJVMデフォルトタイムゾーンを参照する。
+        // jvmArgs("-Duser.timezone=UTC") は JVM 起動後に参照される場合があるため、
+        // ここで明示的に UTC を設定して DATE ↔ LocalDate の off-by-one を防ぐ。
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         if (isDockerAvailable()) {
             MYSQL.start();
         }
