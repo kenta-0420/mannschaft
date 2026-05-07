@@ -10,9 +10,17 @@ const { relativeTime } = useRelativeTime()
 </script>
 
 <template>
-  <DashboardWidgetCard :title="title" icon="pi pi-clock" :to="linkTo" :scrollable="true">
+  <div
+    class="rounded-xl border border-surface-300 bg-surface-0 dark:border-surface-600 dark:bg-surface-800"
+  >
+    <div
+      class="flex items-center justify-between border-b border-surface-100 px-4 py-3 dark:border-surface-600"
+    >
+      <span class="text-sm font-semibold">{{ title }}</span>
+      <NuxtLink :to="linkTo" class="text-xs text-primary hover:underline">すべて表示</NuxtLink>
+    </div>
     <div v-if="items.length > 0" class="divide-y divide-surface-100 dark:divide-surface-700">
-      <div v-for="r in items" :key="r.id" class="py-3">
+      <div v-for="r in items" :key="r.id" class="px-4 py-3">
         <div class="flex items-start justify-between gap-2">
           <p class="min-w-0 flex-1 truncate text-sm text-surface-700 dark:text-surface-200">
             ユーザー #{{ r.userId }}
@@ -24,6 +32,9 @@ const { relativeTime } = useRelativeTime()
         <p class="mt-0.5 line-clamp-1 text-xs text-surface-500">{{ r.reason }}</p>
       </div>
     </div>
-    <DashboardEmptyState v-else icon="pi pi-check-circle" :message="emptyMessage" />
-  </DashboardWidgetCard>
+    <div v-else class="px-4 py-8 text-center text-sm text-surface-400">
+      <i class="pi pi-check-circle mb-2 text-2xl text-green-400" />
+      <p>{{ emptyMessage }}</p>
+    </div>
+  </div>
 </template>

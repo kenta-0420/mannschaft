@@ -38,6 +38,7 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -559,29 +560,62 @@ class BlogPostServiceAdditionalTest {
     class ListPublicPostsForFeed {
 
         @Test
-        @DisplayName("正常系: チームIDで公開記事が取得される")
-        void フィード用記事取得_チームID_正常() {
-            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
-            given(postRepository.findTop20ByTeamIdAndStatusAndVisibilityOrderByPublishedAtDesc(
-                    TEAM_ID, PostStatus.PUBLISHED, Visibility.PUBLIC)).willReturn(List.of(entity));
-            given(cmsMapper.toBlogPostResponseList(any())).willReturn(List.of(createPostResponse()));
+        @DisplayName("正常系: チームIDでContentVisibilityCheckerが通過した記事のみ返る")
+        void フィード用記事取得_チームID_Checker経由_正常() {
+            // Given
+            BlogPostEntity pub = createPostEntity(PostStatus.PUBLISHED);
+            BlogPostEntity priv = createPostEntity(PostStatus.PUBLISHED);
+            org.springframework.test.util.ReflectionTestUtils.setField(pub, "id", 1L);
+            org.springframework.test.util.ReflectionTestUtils.setField(priv, "id", 2L);
 
+            given(postRepository.findTop20ByTeamIdAndStatusOrderByPublishedAtDesc(
+                    TEAM_ID, PostStatus.PUBLISHED)).willReturn(List.of(pub, priv));
+            // Checker: 1L(PUBLIC)のみ通過、2L(MEMBERS_ONLY)は拒否
+            given(contentVisibilityChecker.filterAccessible(
+                    ReferenceType.BLOG_POST, Set.of(1L, 2L), null)).willReturn(Set.of(1L));
+            given(cmsMapper.toBlogPostResponseList(List.of(pub))).willReturn(List.of(createPostResponse()));
+
+            // When
             List<BlogPostResponse> result = service.listPublicPostsForFeed(TEAM_ID, null);
 
+            // Then
             assertThat(result).hasSize(1);
         }
 
         @Test
-        @DisplayName("正常系: 組織IDで公開記事が取得される")
-        void フィード用記事取得_組織ID_正常() {
+        @DisplayName("正常系: 組織IDでContentVisibilityCheckerが通過した記事のみ返る")
+        void フィード用記事取得_組織ID_Checker経由_正常() {
+            // Given
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
-            given(postRepository.findTop20ByOrganizationIdAndStatusAndVisibilityOrderByPublishedAtDesc(
-                    ORG_ID, PostStatus.PUBLISHED, Visibility.PUBLIC)).willReturn(List.of(entity));
-            given(cmsMapper.toBlogPostResponseList(any())).willReturn(List.of(createPostResponse()));
+            org.springframework.test.util.ReflectionTestUtils.setField(entity, "id", 10L);
 
+            given(postRepository.findTop20ByOrganizationIdAndStatusOrderByPublishedAtDesc(
+                    ORG_ID, PostStatus.PUBLISHED)).willReturn(List.of(entity));
+            given(contentVisibilityChecker.filterAccessible(
+                    ReferenceType.BLOG_POST, Set.of(10L), null)).willReturn(Set.of(10L));
+            given(cmsMapper.toBlogPostResponseList(List.of(entity))).willReturn(List.of(createPostResponse()));
+
+            // When
             List<BlogPostResponse> result = service.listPublicPostsForFeed(null, ORG_ID);
 
+            // Then
             assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("空ページ: リポジトリが空ならCheckerを呼ばず空リストを返す")
+        void フィード用記事取得_空_Checker不呼び出し() {
+            // Given
+            given(postRepository.findTop20ByTeamIdAndStatusOrderByPublishedAtDesc(
+                    TEAM_ID, PostStatus.PUBLISHED)).willReturn(List.of());
+
+            // When
+            List<BlogPostResponse> result = service.listPublicPostsForFeed(TEAM_ID, null);
+
+            // Then
+            assertThat(result).isEmpty();
+            org.mockito.Mockito.verify(contentVisibilityChecker, org.mockito.Mockito.never())
+                    .filterAccessible(any(), any(), any());
         }
     }
 

@@ -9,6 +9,8 @@ import com.mannschaft.app.activity.repository.ActivityResultRepository;
 import com.mannschaft.app.activity.service.ActivityResultService;
 import com.mannschaft.app.activity.service.ActivityTemplateService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -17,11 +19,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -38,6 +45,7 @@ class ActivityResultServiceTest {
     @Mock private ActivityTemplateService templateService;
     @Mock private ActivityMapper activityMapper;
     @Mock private ObjectMapper objectMapper;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private ActivityResultService service;
@@ -97,6 +105,52 @@ class ActivityResultServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ACTIVITY_001"));
+        }
+    }
+
+    @Nested
+    @DisplayName("listPublicActivities")
+    class ListPublicActivities {
+
+        @Test
+        @DisplayName("未認証: ContentVisibilityChecker が公開と判定した活動のみ返す")
+        void 未認証_公開判定済みのみ返す() {
+            ActivityResultEntity pub = ActivityResultEntity.builder()
+                    .scopeType(ActivityScopeType.TEAM).scopeId(SCOPE_ID).title("公開活動").build();
+            ActivityResultEntity priv = ActivityResultEntity.builder()
+                    .scopeType(ActivityScopeType.TEAM).scopeId(SCOPE_ID).title("非公開活動").build();
+            ReflectionTestUtils.setField(pub, "id", 1L);
+            ReflectionTestUtils.setField(priv, "id", 2L);
+
+            Page<ActivityResultEntity> allPage = new PageImpl<>(List.of(pub, priv));
+            given(resultRepository.findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
+                    ActivityScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10)))
+                    .willReturn(allPage);
+            // userId=null（未認証）で PUBLIC(1L) のみ通過、MEMBERS_ONLY(2L) は拒否
+            given(contentVisibilityChecker.filterAccessible(
+                    ReferenceType.ACTIVITY_RESULT, Set.of(1L, 2L), null))
+                    .willReturn(Set.of(1L));
+
+            Page<ActivityResultEntity> result = service.listPublicActivities(
+                    ActivityScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10));
+
+            assertThat(result.getContent())
+                    .hasSize(1)
+                    .extracting(ActivityResultEntity::getId)
+                    .containsExactly(1L);
+        }
+
+        @Test
+        @DisplayName("空ページ: リポジトリが空なら Checker を呼ばず空ページを返す")
+        void 空ページ_Checker不呼び出し_空返却() {
+            given(resultRepository.findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
+                    ActivityScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10)))
+                    .willReturn(Page.empty());
+
+            Page<ActivityResultEntity> result = service.listPublicActivities(
+                    ActivityScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10));
+
+            assertThat(result.getContent()).isEmpty();
         }
     }
 

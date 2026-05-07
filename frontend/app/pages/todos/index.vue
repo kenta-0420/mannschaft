@@ -2,6 +2,7 @@
 definePageMeta({ middleware: 'auth' })
 
 const router = useRouter()
+const { t } = useI18n()
 const {
   todos,
   loading,
@@ -12,8 +13,6 @@ const {
   kanbanCols,
   load,
   changeStatus,
-  nextStatus,
-  nextStatusLabel,
   scopeDisplayName,
   scopeColor,
   formatDate,
@@ -56,6 +55,14 @@ onMounted(load)
             <i :class="option.icon" />
           </template>
         </SelectButton>
+        <Button
+          :label="t('todo.enhancement.gantt.gantt_view_link')"
+          icon="pi pi-chart-bar"
+          text
+          size="small"
+          severity="secondary"
+          @click="router.push('/calendar?tab=gantt')"
+        />
         <Button label="作成" icon="pi pi-plus" @click="showCreateDialog = true" />
       </div>
     </div>
@@ -114,9 +121,6 @@ onMounted(load)
       :scope-color="scopeColor"
       :format-date="formatDate"
       :is-overdue="isOverdue"
-      :next-status="nextStatus"
-      :next-status-label="nextStatusLabel"
-      @change-status="changeStatus"
     />
 
     <TodoKanbanView

@@ -108,8 +108,8 @@ public class SystemAdminErrorReportController {
     @GetMapping("/stats")
     @Operation(summary = "エラーレポート統計取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ErrorReportStatsResponse> stats() {
-        return ResponseEntity.ok(errorReportService.getStats());
+    public ResponseEntity<ApiResponse<ErrorReportStatsResponse>> stats() {
+        return ResponseEntity.ok(ApiResponse.of(errorReportService.getStats()));
     }
 
     /**

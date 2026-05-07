@@ -379,7 +379,14 @@ export interface ErrorReportStatsResponse {
   totalInvestigating: number
   totalReopened: number
   totalToday: number
-  topErrors: Array<{ errorHash: string; errorMessage: string; count: number }>
+  topErrors: Array<{
+    errorHash: string
+    errorMessage: string
+    pageUrl: string
+    occurrenceCount: number
+    affectedUserCount: number
+    lastOccurredAt: string
+  }>
 }
 
 // ===== Beta Restriction (F00.6) =====

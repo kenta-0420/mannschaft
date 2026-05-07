@@ -1,3 +1,5 @@
+import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
+
 export interface MyTodo {
   id: number
   scopeType: string
@@ -5,6 +7,8 @@ export interface MyTodo {
   title: string
   description: string | null
   status: string
+  /** F02.3.1 — カスタムステータスラベル（NULL の場合は SYSTEM 既定にフォールバック） */
+  statusLabel: TodoStatusLabelInfo | null
   priority: string
   startDate: string | null
   dueDate: string | null
@@ -200,10 +204,23 @@ export function useTodoList() {
     }
   }
 
-  async function changeStatus(todo: MyTodo, status: string) {
+  /**
+   * ステータス変更
+   *
+   * F02.3.1: status または statusLabelId（あるいは両方）で更新できる。
+   * 後方互換のため文字列を受け取った場合は status として扱う。
+   */
+  async function changeStatus(
+    todo: MyTodo,
+    payload: string | { status?: string; statusLabelId?: number },
+  ) {
     try {
-      await todoApi.changeTodoStatusById(todo.scopeType, todo.scopeId, todo.id, status)
-      todo.status = status
+      const body = typeof payload === 'string' ? { status: payload } : payload
+      await todoApi.changeTodoStatusById(todo.scopeType, todo.scopeId, todo.id, body)
+      // 楽観更新: ローカル状態を即時更新（厳密な statusLabel 同期はリロード時）
+      if (body.status) {
+        todo.status = body.status
+      }
     } catch {
       notification.error('ステータスの更新に失敗しました')
     }

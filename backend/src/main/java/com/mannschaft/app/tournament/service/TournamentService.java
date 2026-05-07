@@ -41,6 +41,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 大会・リーグ管理サービス。CRUD・ステータス管理・シーズン継続を担当する。
@@ -77,10 +78,19 @@ public class TournamentService {
 
     /**
      * 公開大会一覧を取得する。
+     *
+     * <p>F00 Phase E-2 正規化: 旧実装は {@code status != DRAFT} で絞っていたが、
+     * CANCELLED / ARCHIVED の PUBLIC 大会も返してしまうバグがあった。
+     * {@link com.mannschaft.app.common.visibility.mapping.TournamentStatusMapper} の
+     * PUBLISHED 区分（OPEN / IN_PROGRESS / COMPLETED）のみを対象にすることで、
+     * {@link com.mannschaft.app.tournament.visibility.TournamentVisibilityResolver} の
+     * 判定ロジック（PUBLIC × PUBLISHED → 全員閲覧可）と完全一致させる。</p>
      */
     public Page<TournamentResponse> listPublicTournaments(Long orgId, Pageable pageable) {
-        return tournamentRepository.findByOrganizationIdAndVisibilityAndStatusNotOrderByCreatedAtDesc(
-                orgId, TournamentVisibility.PUBLIC, TournamentStatus.DRAFT, pageable)
+        return tournamentRepository.findByOrganizationIdAndVisibilityAndStatusInOrderByCreatedAtDesc(
+                orgId, TournamentVisibility.PUBLIC,
+                Set.of(TournamentStatus.OPEN, TournamentStatus.IN_PROGRESS, TournamentStatus.COMPLETED),
+                pageable)
                 .map(mapper::toTournamentSummaryResponse);
     }
 
@@ -102,8 +112,7 @@ public class TournamentService {
      * 公開アクセス可能か検証する。指定組織に所属し、かつ匿名閲覧者として
      * F00 共通可視性 Resolver で閲覧可能であることを確認する。
      *
-     * <p>F00 Phase C 試験的置換: 旧実装は {@code visibility == PUBLIC} を直接判定していたが、
-     * 本メソッドは {@link ContentVisibilityChecker#canView(ReferenceType, Long, Long)} に
+     * <p>F00 Phase C/E-2 正規化: {@link ContentVisibilityChecker#canView(ReferenceType, Long, Long)} に
      * {@code userId=null}（匿名）を渡し、Resolver の status × visibility 合成判定に委譲する。
      * これにより DRAFT / CANCELLED / ARCHIVED 等の status × PUBLIC が誤って通る既存バグも
      * 同時に塞がれる。</p>

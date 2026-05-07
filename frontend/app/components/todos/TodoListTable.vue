@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
+
 const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: number
@@ -18,6 +20,8 @@ interface Todo {
   id: number
   title: string
   status: string
+  /** F02.3.1 — カスタムステータスラベル */
+  statusLabel: TodoStatusLabelInfo | null
   priority: string
   dueDate: string | null
   daysRemaining: number | null
@@ -68,9 +72,13 @@ async function loadTodos() {
   finally { loading.value = false }
 }
 
-async function onStatusChange(todoId: number, newStatus: string) {
+async function onStatusChange(
+  todoId: number,
+  payload: string | { status?: string; statusLabelId?: number },
+) {
   try {
-    await todoApi.changeTodoStatus(props.scopeType, props.scopeId, todoId, newStatus)
+    const body = typeof payload === 'string' ? { status: payload } : payload
+    await todoApi.changeTodoStatus(props.scopeType, props.scopeId, todoId, body)
     notification.success('ステータスを変更しました')
     await loadTodos()
   }
@@ -137,11 +145,10 @@ defineExpose({ refresh: loadTodos, changeStatus: onStatusChange })
         <label class="mb-1 block text-xs font-medium">優先度</label>
         <Select v-model="priorityFilter" :options="priorityOptions" option-label="label" option-value="value" class="w-full" />
       </div>
-      <!-- 一括操作 -->
+      <!-- 一括操作（バケット単位の一括変更のみ。ラベル変更は詳細ページで行う） -->
       <div v-if="selectedTodos.length > 0" class="flex items-center gap-2">
         <span class="text-sm text-surface-500">{{ selectedTodos.length }}件選択中</span>
         <Button label="完了にする" size="small" severity="success" @click="onBulkStatusChange('COMPLETED')" />
-        <Button label="進行中にする" size="small" severity="info" @click="onBulkStatusChange('IN_PROGRESS')" />
       </div>
     </div>
 
@@ -186,9 +193,9 @@ defineExpose({ refresh: loadTodos, changeStatus: onStatusChange })
           </div>
         </template>
       </Column>
-      <Column header="ステータス" field="status" style="width: 120px">
+      <Column header="ステータス" field="status" style="width: 140px">
         <template #body="{ data }">
-          <TodoStatusBadge :status="data.status" />
+          <TodoStatusLabelBadge :label="data.statusLabel" :fallback-bucket="data.status" />
         </template>
       </Column>
       <Column header="優先度" field="priority" style="width: 100px">

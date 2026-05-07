@@ -1,0 +1,150 @@
+{
+  "property": {
+    "title": "物业历史台账",
+    "subtitle": "集中管理改修・维修・检查・事故应对等工程履历",
+    "newPackage": "新增工程",
+    "editPackage": "编辑工程",
+    "exportPdf": "导出 PDF",
+    "exportExcel": "导出 Excel",
+    "exportList": "导出履历台账",
+    "noPackages": "尚未登记工程履历",
+    "loading": "载入中…",
+    "saving": "保存中…",
+    "saved": "已保存",
+    "deleted": "已删除",
+    "deleteConfirm": "确定要删除吗？（逻辑删除）",
+    "view": {
+      "list": "列表",
+      "timeline": "时间轴",
+      "gantt": "甘特图"
+    },
+    "filter": {
+      "title": "筛选",
+      "workType": "工程类型",
+      "status": "状态",
+      "vendor": "承包商",
+      "from": "起始日期",
+      "to": "结束日期",
+      "all": "全部",
+      "clear": "清除筛选"
+    },
+    "workType": {
+      "RENOVATION": "改修",
+      "REPAIR": "维修",
+      "INCIDENT": "事故应对",
+      "INSPECTION": "检查",
+      "DISASTER": "灾害",
+      "MEETING": "会议",
+      "OTHER": "其他"
+    },
+    "status": {
+      "PLANNED": "计划中",
+      "IN_PROGRESS": "施工中",
+      "COMPLETED": "已完成",
+      "CLOSED": "关闭",
+      "CANCELLED": "中止"
+    },
+    "visibility": {
+      "title": "可见范围",
+      "ADMINS_ONLY": "仅管理员",
+      "MEMBERS_ONLY": "全体成员",
+      "MEMBERS_MASKED": "全体成员（金额遮蔽）",
+      "PUBLIC_MASKED": "公开（金额遮蔽）"
+    },
+    "documentKind": {
+      "MINUTES": "会议记录",
+      "QUOTE": "报价单",
+      "CONTRACT": "合同",
+      "REPORT": "报告",
+      "PHOTO": "照片",
+      "DRAWING": "图纸",
+      "INVOICE": "发票",
+      "RECEIPT": "收据",
+      "OTHER": "其他"
+    },
+    "fields": {
+      "title": "工程名称",
+      "category": "类别",
+      "description": "说明",
+      "vendor": "承包商",
+      "estimatedAmount": "预估金额",
+      "contractAmount": "合同金额",
+      "actualAmount": "实际金额",
+      "currency": "币种",
+      "plannedStartDate": "计划开工日",
+      "plannedEndDate": "计划完成日",
+      "actualStartDate": "实际开工日",
+      "actualEndDate": "实际完成日",
+      "warrantyUntil": "保修期限",
+      "incidentId": "关联事故",
+      "incidentDate": "事故/发现日",
+      "incidentNarrative": "事故经过",
+      "isDisclosable": "可在重要事项说明书中披露",
+      "tags": "标签",
+      "attachmentCount": "附件数",
+      "commentCount": "评论数"
+    },
+    "documents": {
+      "title": "附件文档",
+      "empty": "尚未附加文档",
+      "attach": "附加文档",
+      "detach": "解除关联",
+      "detachConfirm": "解除该文档关联？（文件本体不会被删除）"
+    },
+    "vendor": {
+      "title": "承包商主数据",
+      "subtitle": "施工・检查等承包商管理",
+      "newVendor": "新增承包商",
+      "editVendor": "编辑承包商",
+      "deleteConfirm": "确定逻辑删除该承包商？",
+      "search": "搜索承包商…",
+      "noVendors": "尚未登记承包商",
+      "isActive": "启用",
+      "isInactive": "停用",
+      "category": {
+        "title": "业种",
+        "CONSTRUCTION": "建设",
+        "INSPECTION": "检查",
+        "CONSULTING": "咨询",
+        "CLEANING": "清洁",
+        "SECURITY": "安保",
+        "OTHER": "其他"
+      },
+      "fields": {
+        "name": "名称",
+        "nameKana": "假名",
+        "phone": "电话",
+        "email": "邮箱",
+        "website": "网站",
+        "postalCode": "邮编",
+        "address": "地址",
+        "representative": "代表",
+        "contactPerson": "联系人",
+        "licenseNumber": "许可号",
+        "licenseExpiry": "许可到期日",
+        "note": "备注"
+      }
+    },
+    "permissions": {
+      "viewOnly": "仅可查看",
+      "amountMasked": "无权限查看金额信息"
+    },
+    "masked": "●●●",
+    "actions": {
+      "edit": "编辑",
+      "delete": "删除",
+      "save": "保存",
+      "cancel": "取消",
+      "close": "关闭",
+      "back": "返回列表",
+      "changeStatus": "更改状态"
+    },
+    "errors": {
+      "loadFailed": "载入失败",
+      "saveFailed": "保存失败",
+      "deleteFailed": "删除失败",
+      "exportFailed": "导出失败",
+      "versionConflict": "其他用户已更新此记录。请重新载入最新内容。"
+    }
+  }
+}
