@@ -88,7 +88,18 @@ public class TimelinePostService {
             throw new BusinessException(TimelineErrorCode.MAX_ATTACHMENTS_EXCEEDED);
         }
 
-        PostStatus status = req.getScheduledAt() != null ? PostStatus.SCHEDULED : PostStatus.PUBLISHED;
+        // F09.13 Phase 2-α-2: 呼び出し元が明示的に DRAFT を指定した場合は尊重する。
+        // それ以外は従来通り scheduledAt の有無で SCHEDULED / PUBLISHED を決定する。
+        // DRAFT 投稿は TimelinePostRepository の各クエリが status='PUBLISHED' で絞っているため
+        // 通常一覧・検索・ピン留め一覧から自動除外される。
+        PostStatus status;
+        if (req.getStatus() == PostStatus.DRAFT) {
+            status = PostStatus.DRAFT;
+        } else if (req.getScheduledAt() != null) {
+            status = PostStatus.SCHEDULED;
+        } else {
+            status = PostStatus.PUBLISHED;
+        }
 
         TimelinePostEntity post = TimelinePostEntity.builder()
                 .scopeType(PostScopeType.valueOf(req.getScopeTypeOrDefault()))

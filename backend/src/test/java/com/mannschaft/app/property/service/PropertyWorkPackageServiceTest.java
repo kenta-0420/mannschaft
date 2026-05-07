@@ -11,6 +11,7 @@ import com.mannschaft.app.property.entity.PropertyWorkPackageEntity;
 import com.mannschaft.app.property.entity.VendorEntity;
 import com.mannschaft.app.property.repository.PropertyWorkPackageRepository;
 import com.mannschaft.app.property.service.PropertyWorkPackageService.WorkPackageRequest;
+import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.dto.CreatePostRequest;
 import com.mannschaft.app.timeline.dto.PostResponse;
 import com.mannschaft.app.timeline.service.TimelinePostService;
@@ -224,6 +225,64 @@ class PropertyWorkPackageServiceTest {
             verify(timelinePostService).createPost(cap.capture(), any(Long.class));
             assertThat(cap.getValue().getScopeType()).isEqualTo("ORGANIZATION");
             assertThat(cap.getValue().getScopeId()).isEqualTo(ORG_ID);
+        }
+
+        // F09.13 Phase 2-α-2: visibility による status 分岐
+        @Test
+        @DisplayName("正常系: visibility=ADMINS_ONLY のパッケージは TimelinePost を DRAFT で起票")
+        void create_adminsOnly_timelineDraft() {
+            given(packageRepository.save(any(PropertyWorkPackageEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(timelinePostService.createPost(any(CreatePostRequest.class), any(Long.class)))
+                    .willReturn(stubPostResponse(910L));
+
+            WorkPackageRequest req = new WorkPackageRequest(
+                    WorkType.RENOVATION, null, "管理者限定", null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, "JPY", null, null, null,
+                    WorkPackageVisibility.ADMINS_ONLY, null);
+
+            service.create(SCOPE_TEAM, TEAM_ID, USER_ID, req);
+
+            ArgumentCaptor<CreatePostRequest> cap = ArgumentCaptor.forClass(CreatePostRequest.class);
+            verify(timelinePostService).createPost(cap.capture(), any(Long.class));
+            assertThat(cap.getValue().getStatus()).isEqualTo(PostStatus.DRAFT);
+        }
+
+        @Test
+        @DisplayName("正常系: visibility=MEMBERS_MASKED のパッケージは TimelinePost を PUBLISHED 相当（status=null）で起票")
+        void create_membersMasked_timelinePublished() {
+            given(packageRepository.save(any(PropertyWorkPackageEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(timelinePostService.createPost(any(CreatePostRequest.class), any(Long.class)))
+                    .willReturn(stubPostResponse(911L));
+
+            // baseRequest は visibility=MEMBERS_MASKED
+            service.create(SCOPE_TEAM, TEAM_ID, USER_ID, baseRequest(WorkType.RENOVATION));
+
+            ArgumentCaptor<CreatePostRequest> cap = ArgumentCaptor.forClass(CreatePostRequest.class);
+            verify(timelinePostService).createPost(cap.capture(), any(Long.class));
+            // ADMINS_ONLY 以外は status=null（TimelinePostService 側で PUBLISHED に解決）
+            assertThat(cap.getValue().getStatus()).isNull();
+        }
+
+        @Test
+        @DisplayName("正常系: visibility=MEMBERS_ONLY のパッケージは TimelinePost を PUBLISHED 相当で起票")
+        void create_membersOnly_timelinePublished() {
+            given(packageRepository.save(any(PropertyWorkPackageEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(timelinePostService.createPost(any(CreatePostRequest.class), any(Long.class)))
+                    .willReturn(stubPostResponse(912L));
+
+            WorkPackageRequest req = new WorkPackageRequest(
+                    WorkType.RENOVATION, null, "メンバー公開", null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, "JPY", null, null, null,
+                    WorkPackageVisibility.MEMBERS_ONLY, null);
+
+            service.create(SCOPE_TEAM, TEAM_ID, USER_ID, req);
+
+            ArgumentCaptor<CreatePostRequest> cap = ArgumentCaptor.forClass(CreatePostRequest.class);
+            verify(timelinePostService).createPost(cap.capture(), any(Long.class));
+            assertThat(cap.getValue().getStatus()).isNull();
         }
 
         @Test

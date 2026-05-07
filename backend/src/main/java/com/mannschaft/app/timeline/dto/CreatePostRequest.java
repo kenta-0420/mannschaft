@@ -1,18 +1,21 @@
 package com.mannschaft.app.timeline.dto;
 
+import com.mannschaft.app.timeline.PostStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 /**
  * タイムライン投稿作成リクエストDTO。
+ *
+ * <p><b>F09.13 Phase 2-α-2</b>: {@link #status} フィールドを追加し、呼び出し元から
+ * {@link PostStatus#DRAFT} を明示的に指定可能にした。null の場合は従来通り
+ * {@code scheduledAt} の有無で SCHEDULED / PUBLISHED が決まる。</p>
  */
 @Getter
-@RequiredArgsConstructor
 public class CreatePostRequest {
 
     @NotBlank
@@ -37,6 +40,45 @@ public class CreatePostRequest {
 
     @Size(max = 10)
     private final List<CreateAttachmentRequest> attachments;
+
+    /**
+     * 投稿ステータスの希望値。null の場合は scheduledAt の有無で SCHEDULED / PUBLISHED が決まる。
+     * {@link PostStatus#DRAFT} を指定すると下書き保存（タイムライン一覧から除外）となる。
+     */
+    private final PostStatus status;
+
+    /**
+     * 既存呼び出し元との後方互換のため、status を取らない 10 引数コンストラクタを残す。
+     * 新規実装では {@link #CreatePostRequest(String, String, Long, String, Long, Long, Long,
+     * LocalDateTime, CreatePollRequest, List, PostStatus)} を利用すること。
+     */
+    public CreatePostRequest(String content, String scopeType, Long scopeId, String postedAsType,
+                             Long postedAsId, Long parentId, Long repostOfId,
+                             LocalDateTime scheduledAt, CreatePollRequest poll,
+                             List<CreateAttachmentRequest> attachments) {
+        this(content, scopeType, scopeId, postedAsType, postedAsId, parentId, repostOfId,
+                scheduledAt, poll, attachments, null);
+    }
+
+    /**
+     * F09.13 Phase 2-α-2: status を明示指定する完全コンストラクタ。
+     */
+    public CreatePostRequest(String content, String scopeType, Long scopeId, String postedAsType,
+                             Long postedAsId, Long parentId, Long repostOfId,
+                             LocalDateTime scheduledAt, CreatePollRequest poll,
+                             List<CreateAttachmentRequest> attachments, PostStatus status) {
+        this.content = content;
+        this.scopeType = scopeType;
+        this.scopeId = scopeId;
+        this.postedAsType = postedAsType;
+        this.postedAsId = postedAsId;
+        this.parentId = parentId;
+        this.repostOfId = repostOfId;
+        this.scheduledAt = scheduledAt;
+        this.poll = poll;
+        this.attachments = attachments;
+        this.status = status;
+    }
 
     /**
      * scopeType のデフォルト値を返す。null の場合は PUBLIC を返す。

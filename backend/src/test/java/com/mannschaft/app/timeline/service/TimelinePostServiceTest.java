@@ -30,6 +30,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -248,6 +249,76 @@ class TimelinePostServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimelineErrorCode.MAX_ATTACHMENTS_EXCEEDED));
+        }
+
+        // F09.13 Phase 2-α-2: status 指定による DRAFT 起票
+        @Test
+        @DisplayName("正常系: status=DRAFT を指定するとDRAFTで保存される")
+        void status_DRAFT指定でDRAFT保存() {
+            // given
+            CreatePostRequest req = new CreatePostRequest("下書き投稿", "TEAM", 50L,
+                    "USER", null, null, null, /* scheduledAt */ null, null, null,
+                    /* status */ PostStatus.DRAFT);
+            TimelinePostEntity savedPost = createPost();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            timelinePostService.createPost(req, USER_ID);
+
+            // then: save に渡されたエンティティの status が DRAFT であること
+            ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
+            verify(postRepository).save(cap.capture());
+            assertThat(cap.getValue().getStatus()).isEqualTo(PostStatus.DRAFT);
+
+            // DRAFT 起票時は TimelinePostCreatedEvent が発行されないこと
+            verify(domainEventPublisher, org.mockito.Mockito.never())
+                    .publish(any(com.mannschaft.app.timeline.event.TimelinePostCreatedEvent.class));
+        }
+
+        @Test
+        @DisplayName("正常系: status=DRAFT は scheduledAt より優先される")
+        void status_DRAFTはscheduledAtより優先() {
+            // given: scheduledAt があっても status=DRAFT を尊重する
+            LocalDateTime scheduledAt = LocalDateTime.now().plusDays(1);
+            CreatePostRequest req = new CreatePostRequest("下書き優先", "TEAM", 50L,
+                    "USER", null, null, null, scheduledAt, null, null, PostStatus.DRAFT);
+            TimelinePostEntity savedPost = createPost();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            timelinePostService.createPost(req, USER_ID);
+
+            // then
+            ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
+            verify(postRepository).save(cap.capture());
+            assertThat(cap.getValue().getStatus()).isEqualTo(PostStatus.DRAFT);
+        }
+
+        @Test
+        @DisplayName("正常系: status=null + scheduledAt なし は PUBLISHED で保存される（既存挙動）")
+        void status_null_PUBLISHED維持() {
+            // given
+            CreatePostRequest req = new CreatePostRequest("通常投稿", "PUBLIC", 0L,
+                    "USER", null, null, null, null, null, null, /* status */ null);
+            TimelinePostEntity savedPost = createPost();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            timelinePostService.createPost(req, USER_ID);
+
+            // then
+            ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
+            verify(postRepository).save(cap.capture());
+            assertThat(cap.getValue().getStatus()).isEqualTo(PostStatus.PUBLISHED);
         }
     }
 
