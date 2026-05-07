@@ -6,6 +6,8 @@ import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.auth.entity.AuditLogEntity;
 import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.PagedResponse;
 import lombok.RequiredArgsConstructor;
@@ -178,22 +180,25 @@ public class AuditLogService {
     /**
      * 自分の監査ログ一覧をカーソルベースで取得する。
      *
-     * @param userId     ログインユーザーID
-     * @param eventTypes 絞り込みイベント種別リスト（null可）
-     * @param from       開始日時（null可）
-     * @param to         終了日時（null可）
-     * @param cursor     カーソル（前ページ末尾の id 文字列。null で先頭から）
-     * @param limit      取得件数（最大50）
+     * @param userId          ログインユーザーID
+     * @param eventTypes      絞り込みイベント種別リスト（null可）
+     * @param eventCategories 絞り込みイベントカテゴリリスト（null可）。種別リストに OR でマージされる
+     * @param from            開始日時（null可）
+     * @param to              終了日時（null可）
+     * @param cursor          カーソル（前ページ末尾の id 文字列。null で先頭から）
+     * @param limit           取得件数（最大50）
      * @return カーソルページネーション付きレスポンス
      */
     @Transactional(readOnly = true)
     public CursorPagedResponse<AuditLogResponse> getMyLogs(
             Long userId, List<String> eventTypes,
+            List<AuditEventCategory> eventCategories,
             LocalDateTime from, LocalDateTime to,
             String cursor, int limit) {
 
         int safeLimit = Math.min(limit, 50);
         Long cursorId = (cursor != null && !cursor.isBlank()) ? Long.parseLong(cursor) : null;
+        List<String> mergedEventTypes = resolveEventTypes(eventTypes, eventCategories);
 
         StringBuilder where = new StringBuilder(" WHERE user_id = ?");
         List<Object> params = new ArrayList<>();
@@ -203,12 +208,12 @@ public class AuditLogService {
             where.append(" AND id < ?");
             params.add(cursorId);
         }
-        if (eventTypes != null && !eventTypes.isEmpty()) {
-            String placeholders = "?,".repeat(eventTypes.size());
+        if (mergedEventTypes != null && !mergedEventTypes.isEmpty()) {
+            String placeholders = "?,".repeat(mergedEventTypes.size());
             where.append(" AND event_type IN (")
                  .append(placeholders, 0, placeholders.length() - 1)
                  .append(")");
-            params.addAll(eventTypes);
+            params.addAll(mergedEventTypes);
         }
         if (from != null) {
             where.append(" AND created_at >= ?");
@@ -232,6 +237,194 @@ public class AuditLogService {
         List<AuditLogResponse> data = rows.stream()
                 .limit(safeLimit)
                 .map(this::mapRow)
+                .toList();
+
+        String nextCursor = null;
+        if (hasNext && !data.isEmpty()) {
+            nextCursor = String.valueOf(data.get(data.size() - 1).getId());
+        }
+
+        return CursorPagedResponse.of(
+                data,
+                new CursorPagedResponse.CursorMeta(nextCursor, hasNext, safeLimit));
+    }
+
+    // ─────────────────────────────────────────────
+    // チームADMIN 向けスコープ付き監査ログ参照（カーソルページング）
+    // ─────────────────────────────────────────────
+
+    /**
+     * 指定チームの監査ログ一覧をカーソルベースで取得する（チームADMIN以上）。
+     * 機密メタデータ（メールアドレス等）はマスクして返す。
+     *
+     * @param requestUserId   リクエストユーザーID（チームADMINチェック用）
+     * @param teamId          対象チームID
+     * @param filterUserId    絞り込みユーザーID（null可）
+     * @param eventTypes      絞り込みイベント種別リスト（null可）
+     * @param eventCategories 絞り込みイベントカテゴリリスト（null可）。種別リストに OR でマージされる
+     * @param from            開始日時（null可）
+     * @param to              終了日時（null可）
+     * @param cursor          カーソル（前ページ末尾の id 文字列。null で先頭から）
+     * @param limit           取得件数（最大100）
+     * @return カーソルページネーション付きレスポンス
+     */
+    @Transactional(readOnly = true)
+    public CursorPagedResponse<AuditLogResponse> getTeamAuditLogs(
+            Long requestUserId,
+            Long teamId,
+            Long filterUserId,
+            List<String> eventTypes,
+            List<AuditEventCategory> eventCategories,
+            LocalDateTime from,
+            LocalDateTime to,
+            String cursor,
+            int limit) {
+
+        accessControlService.checkAdminOrAbove(requestUserId, teamId, "TEAM");
+
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new BusinessException(CommonErrorCode.COMMON_001); // VALIDATION_ERROR
+        }
+
+        int safeLimit = Math.min(limit, 100);
+        Long cursorId = (cursor != null && !cursor.isBlank()) ? Long.parseLong(cursor) : null;
+        List<String> mergedEventTypes = resolveEventTypes(eventTypes, eventCategories);
+
+        StringBuilder where = new StringBuilder(" WHERE team_id = ?");
+        List<Object> params = new ArrayList<>();
+        params.add(teamId);
+
+        if (cursorId != null) {
+            where.append(" AND id < ?");
+            params.add(cursorId);
+        }
+        if (filterUserId != null) {
+            where.append(" AND user_id = ?");
+            params.add(filterUserId);
+        }
+        if (mergedEventTypes != null && !mergedEventTypes.isEmpty()) {
+            String placeholders = "?,".repeat(mergedEventTypes.size());
+            where.append(" AND event_type IN (")
+                 .append(placeholders, 0, placeholders.length() - 1)
+                 .append(")");
+            params.addAll(mergedEventTypes);
+        }
+        if (from != null) {
+            where.append(" AND created_at >= ?");
+            params.add(from);
+        }
+        if (to != null) {
+            where.append(" AND created_at <= ?");
+            params.add(to);
+        }
+
+        String sql = "SELECT id, user_id, target_user_id, team_id, organization_id,"
+                + " event_type, ip_address, user_agent, session_hash, metadata, created_at"
+                + " FROM audit_logs" + where
+                + " ORDER BY id DESC"
+                + " LIMIT ?";
+        params.add(safeLimit + 1);
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
+        boolean hasNext = rows.size() > safeLimit;
+        List<AuditLogResponse> data = rows.stream()
+                .limit(safeLimit)
+                .map(this::mapRow)
+                .map(this::maskSensitiveMetadata)
+                .toList();
+
+        String nextCursor = null;
+        if (hasNext && !data.isEmpty()) {
+            nextCursor = String.valueOf(data.get(data.size() - 1).getId());
+        }
+
+        return CursorPagedResponse.of(
+                data,
+                new CursorPagedResponse.CursorMeta(nextCursor, hasNext, safeLimit));
+    }
+
+    // ─────────────────────────────────────────────
+    // 組織ADMIN 向けスコープ付き監査ログ参照（カーソルページング）
+    // ─────────────────────────────────────────────
+
+    /**
+     * 指定組織の監査ログ一覧をカーソルベースで取得する（組織ADMIN以上）。
+     * 機密メタデータ（メールアドレス等）はマスクして返す。
+     *
+     * @param requestUserId   リクエストユーザーID（組織ADMINチェック用）
+     * @param orgId           対象組織ID
+     * @param filterUserId    絞り込みユーザーID（null可）
+     * @param eventTypes      絞り込みイベント種別リスト（null可）
+     * @param eventCategories 絞り込みイベントカテゴリリスト（null可）。種別リストに OR でマージされる
+     * @param from            開始日時（null可）
+     * @param to              終了日時（null可）
+     * @param cursor          カーソル（前ページ末尾の id 文字列。null で先頭から）
+     * @param limit           取得件数（最大100）
+     * @return カーソルページネーション付きレスポンス
+     */
+    @Transactional(readOnly = true)
+    public CursorPagedResponse<AuditLogResponse> getOrganizationAuditLogs(
+            Long requestUserId,
+            Long orgId,
+            Long filterUserId,
+            List<String> eventTypes,
+            List<AuditEventCategory> eventCategories,
+            LocalDateTime from,
+            LocalDateTime to,
+            String cursor,
+            int limit) {
+
+        accessControlService.checkAdminOrAbove(requestUserId, orgId, "ORGANIZATION");
+
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new BusinessException(CommonErrorCode.COMMON_001); // VALIDATION_ERROR
+        }
+
+        int safeLimit = Math.min(limit, 100);
+        Long cursorId = (cursor != null && !cursor.isBlank()) ? Long.parseLong(cursor) : null;
+        List<String> mergedEventTypes = resolveEventTypes(eventTypes, eventCategories);
+
+        StringBuilder where = new StringBuilder(" WHERE organization_id = ?");
+        List<Object> params = new ArrayList<>();
+        params.add(orgId);
+
+        if (cursorId != null) {
+            where.append(" AND id < ?");
+            params.add(cursorId);
+        }
+        if (filterUserId != null) {
+            where.append(" AND user_id = ?");
+            params.add(filterUserId);
+        }
+        if (mergedEventTypes != null && !mergedEventTypes.isEmpty()) {
+            String placeholders = "?,".repeat(mergedEventTypes.size());
+            where.append(" AND event_type IN (")
+                 .append(placeholders, 0, placeholders.length() - 1)
+                 .append(")");
+            params.addAll(mergedEventTypes);
+        }
+        if (from != null) {
+            where.append(" AND created_at >= ?");
+            params.add(from);
+        }
+        if (to != null) {
+            where.append(" AND created_at <= ?");
+            params.add(to);
+        }
+
+        String sql = "SELECT id, user_id, target_user_id, team_id, organization_id,"
+                + " event_type, ip_address, user_agent, session_hash, metadata, created_at"
+                + " FROM audit_logs" + where
+                + " ORDER BY id DESC"
+                + " LIMIT ?";
+        params.add(safeLimit + 1);
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
+        boolean hasNext = rows.size() > safeLimit;
+        List<AuditLogResponse> data = rows.stream()
+                .limit(safeLimit)
+                .map(this::mapRow)
+                .map(this::maskSensitiveMetadata)
                 .toList();
 
         String nextCursor = null;
@@ -325,6 +518,36 @@ public class AuditLogService {
                 .sessionHash((String) row.get("session_hash"))
                 .metadata((String) row.get("metadata"))
                 .createdAt(toLocalDateTime(row.get("created_at")))
+                .build();
+    }
+
+    /**
+     * EMAIL_CHANGE 系イベントの metadata から new_email / old_email をマスクして返す。
+     * ADMIN スコープ API でも平文メールアドレスが漏れないようにするため。
+     */
+    private AuditLogResponse maskSensitiveMetadata(AuditLogResponse response) {
+        if (response.getMetadata() == null) return response;
+        String eventType = response.getEventType();
+        if (!"EMAIL_CHANGE_REQUESTED".equals(eventType)
+                && !"EMAIL_CHANGED".equals(eventType)) {
+            return response;
+        }
+        // new_email / old_email の値をマスク
+        String masked = response.getMetadata()
+                .replaceAll("\"new_email\"\\s*:\\s*\"[^\"]*\"", "\"new_email\":\"***\"")
+                .replaceAll("\"old_email\"\\s*:\\s*\"[^\"]*\"", "\"old_email\":\"***\"");
+        return AuditLogResponse.builder()
+                .id(response.getId())
+                .userId(response.getUserId())
+                .targetUserId(response.getTargetUserId())
+                .teamId(response.getTeamId())
+                .organizationId(response.getOrganizationId())
+                .eventType(response.getEventType())
+                .ipAddress(response.getIpAddress())
+                .userAgent(response.getUserAgent())
+                .sessionHash(response.getSessionHash())
+                .metadata(masked)
+                .createdAt(response.getCreatedAt())
                 .build();
     }
 
