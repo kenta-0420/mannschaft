@@ -3,6 +3,7 @@ package com.mannschaft.app.auth.event;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -39,7 +40,7 @@ public class AuditLogEventListener {
             null,
             event.getIpAddress(),
             event.getUserAgent(),
-            null,
+            event.getSessionHash(),
             null
         );
     }
@@ -81,7 +82,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            event.getSessionHash(),
             metadata
         );
     }
@@ -165,7 +166,7 @@ public class AuditLogEventListener {
             null,
             event.getIpAddress(),
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             null
         );
     }
@@ -181,7 +182,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             toJson(Map.of("new_email", event.getNewEmail()))
         );
     }
@@ -197,7 +198,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             toJson(Map.of("old_email", event.getOldEmail(), "new_email", event.getNewEmail()))
         );
     }
@@ -213,7 +214,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             null
         );
     }
@@ -229,7 +230,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             null
         );
     }
@@ -268,7 +269,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             toJson(Map.of("provider", event.getProvider()))
         );
     }
@@ -284,7 +285,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             toJson(Map.of("provider", event.getProvider()))
         );
     }
@@ -304,7 +305,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             null
         );
     }
@@ -320,7 +321,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             null
         );
     }
@@ -328,6 +329,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaRecoveryRequested(MfaRecoveryRequestedEvent event) {
+        // 未認証フロー（MFA リカバリーはセッション外で発生）: session_hash は null のまま
         auditLogService.record(
             AuditEventType.MFA_RECOVERY_REQUESTED.name(),
             event.getUserId(),
@@ -352,7 +354,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             null
         );
     }
@@ -360,6 +362,7 @@ public class AuditLogEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaRecoveryCompleted(MfaRecoveryCompletedEvent event) {
+        // 未認証フロー（MFA リカバリー完了はセッション確立前）: session_hash は null のまま
         auditLogService.record(
             AuditEventType.MFA_RECOVERY_COMPLETED.name(),
             event.getUserId(),
@@ -388,7 +391,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             toJson(Map.of("device_name", event.getDeviceName()))
         );
     }
@@ -408,7 +411,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             toJson(Map.of("reason", "ADMIN_ACTION"))
         );
     }
@@ -424,7 +427,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             toJson(Map.of("reason", event.getReason()))
         );
     }
@@ -440,7 +443,7 @@ public class AuditLogEventListener {
             null,
             null,
             null,
-            null,
+            SecurityUtils.getCurrentSessionHash(),
             null
         );
     }
