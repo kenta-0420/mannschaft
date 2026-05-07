@@ -121,6 +121,7 @@ onMounted(load)
       :scope-color="scopeColor"
       :format-date="formatDate"
       :is-overdue="isOverdue"
+      @change-status="changeStatus"
     />
 
     <TodoKanbanView

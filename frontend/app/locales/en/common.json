@@ -463,6 +463,17 @@
   },
   "todo": {
     "backToList": "Back to TODO list",
+    "list": {
+      "allDone": "All TODOs are completed",
+      "overdueSuffix": " (overdue)",
+      "toggleCompleteHint": "Click to toggle completed state",
+      "toggleCompleteAria": "Toggle completed state",
+      "changeLabelHint": "Click to change status label",
+      "changeLabelAria": "Change status label",
+      "popoverTitle": "Change status",
+      "popoverLoading": "Loading...",
+      "popoverEmpty": "No labels available"
+    },
     "field": {
       "status": "Status",
       "priority": "Priority",
