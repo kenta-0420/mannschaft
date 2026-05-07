@@ -168,11 +168,20 @@ tasks.withType<Test> {
     //   connection-cleanup」スレッド由来の OutOfMemoryError を引き起こす（実際に CI で 27 分の沈黙
     //   後に発生）。本フラグで cleanup スレッド自体の起動を抑止し、Hikari に Connection ライフサイクル
     //   を完全に委譲する。これは MySQL Connector/J 公式の HikariCP 連携推奨設定。
+    //
+    // -Duser.timezone=Asia/Tokyo:
+    //   テスト JVM のデフォルトタイムゾーンを Asia/Tokyo に明示固定する。
+    //   forkEvery(100L) でフレッシュ JVM が起動するたび、CI ランナー (UTC) のデフォルト TZ が
+    //   採用され、JDBC URL の serverTimezone=Asia/Tokyo と不整合となり、LocalDate が 1 日ずれる
+    //   問題が発生していた（ShiftBudgetAllocationRepositoryTest で expected 2026-06-01 / but was
+    //   2026-05-31）。JVM 側で TZ を JST に固定することで JDBC との一貫性を保証し、テスト結果が
+    //   実行時刻・実行環境（ローカル/CI）に依存しないようにする。
     jvmArgs(
         "-XX:+UseG1GC",
         "-XX:+HeapDumpOnOutOfMemoryError",
         "-XX:HeapDumpPath=build/heap-dump.hprof",
-        "-Dcom.mysql.cj.disableAbandonedConnectionCleanup=true"
+        "-Dcom.mysql.cj.disableAbandonedConnectionCleanup=true",
+        "-Duser.timezone=Asia/Tokyo"
     )
     finalizedBy(tasks.jacocoTestReport)
     testLogging {
