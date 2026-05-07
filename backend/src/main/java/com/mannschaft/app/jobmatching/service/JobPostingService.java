@@ -282,14 +282,12 @@ public class JobPostingService {
     }
 
     /**
-     * チーム配下の求人一覧をページング取得する。status が null の場合は全ステータス対象。
+     * チーム配下の求人一覧をページング取得する内部ヘルパー。status が null の場合は全ステータス対象。
      *
-     * <p><strong>注意</strong>: 本メソッドは可視性フィルタリングを行わない。viewer 視点で
-     * 閲覧可能な求人のみに絞り込みたい場合は
-     * {@link #listByTeamForViewer(Long, JobPostingStatus, Long, Pageable)} を使うこと。
-     * Phase E で本メソッドの呼び出し点をすべて Resolver 経由に切り替えた後、削除予定。</p>
+     * <p>可視性フィルタリングは行わない。外部からは
+     * {@link #listByTeamForViewer(Long, JobPostingStatus, Long, Pageable)} を使うこと。</p>
      */
-    public Page<JobPostingEntity> listByTeam(Long teamId, JobPostingStatus status, Pageable pageable) {
+    private Page<JobPostingEntity> listByTeam(Long teamId, JobPostingStatus status, Pageable pageable) {
         if (status == null) {
             return postingRepository.findByTeamId(teamId, pageable);
         }
