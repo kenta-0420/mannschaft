@@ -141,6 +141,17 @@ public class AccountPurgeService {
         int anonymizedCharts = chartRecordRepository.anonymizeCustomerUserId(userId);
         log.debug("chart_records匿名化: userId={}, 件数={}", userId, anonymizedCharts);
 
+        // F12.5 Phase 2 (P2-F で実装予定):
+        // error_report_occurrences の ip_address / user_agent を NULL 化する。
+        // user_id 自体は ON DELETE SET NULL の FK 制約があるため、ユーザー物理削除時に
+        // 自動で NULL 化される。ip_address / user_agent は退会時点でアプリ層から
+        // 明示的に NULL 化することでログ復元を防ぐ。
+        // 実装例:
+        //   int anonymizedOccurrences =
+        //       errorReportOccurrenceRepository.anonymizeByUserId(userId);
+        //   log.debug("error_report_occurrences匿名化: userId={}, 件数={}",
+        //             userId, anonymizedOccurrences);
+
         // Phase 3: メンバーシップ
         // user_roles: granted_byをNULL化してからDELETE
         userRoleRepository.nullifyGrantedBy(userId);

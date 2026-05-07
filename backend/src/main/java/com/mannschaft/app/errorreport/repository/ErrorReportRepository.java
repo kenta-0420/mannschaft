@@ -2,6 +2,7 @@ package com.mannschaft.app.errorreport.repository;
 
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
+import com.mannschaft.app.errorreport.ErrorReportWorkflowStage;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -143,4 +144,29 @@ public interface ErrorReportRepository extends JpaRepository<ErrorReportEntity, 
      * 管理者一覧用: 作成日時の範囲でフィルタしてページング取得する。
      */
     Page<ErrorReportEntity> findByCreatedAtBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
+
+    /**
+     * F12.5 Phase 2 — AI 自動分析バッチ用。
+     * {@code last_ai_analysis_at} が NULL かつ {@code created_at} が cutoff より前のレポートを
+     * 古い順に取得する。
+     */
+    @Query("SELECT e FROM ErrorReportEntity e "
+            + "WHERE e.lastAiAnalysisAt IS NULL AND e.createdAt < :cutoff "
+            + "ORDER BY e.createdAt ASC")
+    List<ErrorReportEntity> findByLastAiAnalysisAtIsNullAndCreatedAtBefore(
+            @Param("cutoff") LocalDateTime cutoff, Pageable pageable);
+
+    /**
+     * F12.5 Phase 2 — Kanban ビュー用。
+     * status と workflow_stage（NULL も含む）でフィルタしてページング取得する。
+     * stage が null の場合は workflow_stage IS NULL のレコードを返す。
+     */
+    @Query("SELECT e FROM ErrorReportEntity e "
+            + "WHERE e.status = :status "
+            + "AND (e.workflowStage = :stage OR (:stage IS NULL AND e.workflowStage IS NULL)) "
+            + "ORDER BY e.lastOccurredAt DESC")
+    Page<ErrorReportEntity> findByStatusAndWorkflowStage(
+            @Param("status") ErrorReportStatus status,
+            @Param("stage") ErrorReportWorkflowStage stage,
+            Pageable pageable);
 }
