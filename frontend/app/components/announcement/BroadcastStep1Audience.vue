@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { AnnouncementScopeType } from '~/types/announcement'
 import type { AnnouncementTemplate, BroadcastTargetRole, WizardFormState } from '~/types/announcement_broadcast'
-import type { TeamSummaryResponse } from '~/types/team'
 
 const props = defineProps<{
   modelValue: WizardFormState
@@ -46,8 +45,8 @@ const allTeams = computed({
   },
 })
 
-/** 組織配下のチーム一覧（ORGANIZATION スコープのみ使用） */
-const orgTeams = ref<TeamSummaryResponse[]>([])
+/** 組織配下のチーム一覧（ORGANIZATION スコープのみ使用。id と name のみ利用） */
+const orgTeams = ref<Array<{ id: number; name: string }>>([])
 
 // scopeType === 'ORGANIZATION' のときにチーム一覧を取得
 watchEffect(async () => {
