@@ -19,6 +19,7 @@ import com.mannschaft.app.property.entity.PropertyWorkPackageEntity;
 import com.mannschaft.app.property.entity.VendorEntity;
 import com.mannschaft.app.property.repository.PropertyWorkDocumentRepository;
 import com.mannschaft.app.property.repository.PropertyWorkPackageRepository;
+import com.mannschaft.app.property.service.PropertyWorkDocumentService;
 import com.mannschaft.app.property.service.PropertyWorkExportService;
 import com.mannschaft.app.property.service.PropertyWorkPackageMaskingService;
 import com.mannschaft.app.property.service.PropertyWorkPackageMaskingService.MaskedView;
@@ -65,6 +66,7 @@ import java.util.Set;
 public class PropertyWorkPackageController {
 
     private final PropertyWorkPackageService packageService;
+    private final PropertyWorkDocumentService documentService;
     private final PropertyWorkPackageMaskingService maskingService;
     private final PropertyWorkExportService exportService;
     private final PropertyWorkPackageRepository packageRepository;
@@ -250,23 +252,18 @@ public class PropertyWorkPackageController {
             @PathVariable("scopeId") Long scopeId,
             @PathVariable("packageId") Long packageId,
             @Valid @RequestBody PropertyWorkDocumentRequest request) {
-        // 1-δ 範囲: PropertyWorkDocumentService が未実装のため、本コントローラ内で
-        // 直接 Repository に insert + service.attachDocument(packageId) でカウンタ加算。
-        // F05.5 SharedFile の実体検証（同スコープ確認 PROPERTY_008）は Phase 2 で
-        // PropertyWorkDocumentService に集約する。
+        // F09.13 Phase 2-α-1: PropertyWorkDocumentService に集約。
+        // SharedFile の同スコープ検証（PROPERTY_008）と添付上限（PROPERTY_009）は
+        // Service 内で実施し、Controller はリクエスト → Service 呼出 → DTO 変換のみ担う。
         Long userId = SecurityUtils.getCurrentUserId();
-        com.mannschaft.app.property.entity.PropertyWorkDocumentEntity doc =
-                com.mannschaft.app.property.entity.PropertyWorkDocumentEntity.builder()
-                        .packageId(packageId)
-                        .sharedFileId(request.sharedFileId())
-                        .documentKind(request.documentKind())
-                        .displayOrder(request.displayOrder() != null ? request.displayOrder() : 0)
-                        .note(request.note())
-                        .createdBy(userId)
-                        .build();
         com.mannschaft.app.property.entity.PropertyWorkDocumentEntity saved =
-                documentRepository.save(doc);
-        packageService.attachDocument(packageId);
+                documentService.attach(
+                        packageId,
+                        request.sharedFileId(),
+                        request.documentKind(),
+                        request.displayOrder(),
+                        request.note(),
+                        userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.of(PropertyWorkDocumentResponse.from(saved)));
     }
@@ -277,8 +274,9 @@ public class PropertyWorkPackageController {
             @PathVariable("scopeId") Long scopeId,
             @PathVariable("packageId") Long packageId,
             @PathVariable("documentId") Long documentId) {
-        documentRepository.deleteById(documentId);
-        packageService.detachDocument(packageId);
+        // F09.13 Phase 2-α-1: PropertyWorkDocumentService.detach に集約。
+        Long userId = SecurityUtils.getCurrentUserId();
+        documentService.detach(packageId, documentId, userId);
         return ResponseEntity.noContent().build();
     }
 
