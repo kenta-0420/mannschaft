@@ -9,16 +9,16 @@
 -- スナップショット名 (previous/new_status_label_name) を併存させる。
 
 CREATE TABLE todo_handoffs (
-  id                          BIGINT PRIMARY KEY AUTO_INCREMENT,
-  todo_id                     BIGINT NOT NULL,
-  from_user_id                BIGINT NOT NULL,
+  id                          BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  todo_id                     BIGINT UNSIGNED NOT NULL,
+  from_user_id                BIGINT UNSIGNED NOT NULL,
   from_assignee_user_ids      JSON NOT NULL,
   to_assignee_user_ids        JSON NOT NULL,
   previous_status             VARCHAR(20) NOT NULL,
-  previous_status_label_id    BIGINT NULL,
+  previous_status_label_id    BIGINT UNSIGNED NULL,
   previous_status_label_name  VARCHAR(50) NULL,
   new_status                  VARCHAR(20) NOT NULL,
-  new_status_label_id         BIGINT NULL,
+  new_status_label_id         BIGINT UNSIGNED NULL,
   new_status_label_name       VARCHAR(50) NULL,
   message                     VARCHAR(500) NULL,
   created_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
