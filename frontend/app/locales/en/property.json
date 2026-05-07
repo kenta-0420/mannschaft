@@ -1,0 +1,150 @@
+{
+  "property": {
+    "title": "Property Work History",
+    "subtitle": "Centralized records for renovations, repairs, inspections and incidents",
+    "newPackage": "Add work package",
+    "editPackage": "Edit work package",
+    "exportPdf": "Export as PDF",
+    "exportExcel": "Export as Excel",
+    "exportList": "Export ledger",
+    "noPackages": "No work packages yet",
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "deleted": "Deleted",
+    "deleteConfirm": "Are you sure you want to delete this? (soft delete)",
+    "view": {
+      "list": "List",
+      "timeline": "Timeline",
+      "gantt": "Gantt"
+    },
+    "filter": {
+      "title": "Filters",
+      "workType": "Work type",
+      "status": "Status",
+      "vendor": "Vendor",
+      "from": "From",
+      "to": "To",
+      "all": "All",
+      "clear": "Clear"
+    },
+    "workType": {
+      "RENOVATION": "Renovation",
+      "REPAIR": "Repair",
+      "INCIDENT": "Incident response",
+      "INSPECTION": "Inspection",
+      "DISASTER": "Disaster",
+      "MEETING": "Meeting",
+      "OTHER": "Other"
+    },
+    "status": {
+      "PLANNED": "Planned",
+      "IN_PROGRESS": "In progress",
+      "COMPLETED": "Completed",
+      "CLOSED": "Closed",
+      "CANCELLED": "Cancelled"
+    },
+    "visibility": {
+      "title": "Visibility",
+      "ADMINS_ONLY": "Admins only",
+      "MEMBERS_ONLY": "All members",
+      "MEMBERS_MASKED": "Members (amounts masked)",
+      "PUBLIC_MASKED": "Public (amounts masked)"
+    },
+    "documentKind": {
+      "MINUTES": "Minutes",
+      "QUOTE": "Quote",
+      "CONTRACT": "Contract",
+      "REPORT": "Report",
+      "PHOTO": "Photo",
+      "DRAWING": "Drawing",
+      "INVOICE": "Invoice",
+      "RECEIPT": "Receipt",
+      "OTHER": "Other"
+    },
+    "fields": {
+      "title": "Title",
+      "category": "Category",
+      "description": "Description",
+      "vendor": "Vendor",
+      "estimatedAmount": "Estimated amount",
+      "contractAmount": "Contract amount",
+      "actualAmount": "Actual amount",
+      "currency": "Currency",
+      "plannedStartDate": "Planned start",
+      "plannedEndDate": "Planned end",
+      "actualStartDate": "Actual start",
+      "actualEndDate": "Actual end",
+      "warrantyUntil": "Warranty until",
+      "incidentId": "Linked incident",
+      "incidentDate": "Incident date",
+      "incidentNarrative": "Incident narrative",
+      "isDisclosable": "Disclose in property statement",
+      "tags": "Tags",
+      "attachmentCount": "Attachments",
+      "commentCount": "Comments"
+    },
+    "documents": {
+      "title": "Attached documents",
+      "empty": "No documents attached yet",
+      "attach": "Attach document",
+      "detach": "Detach",
+      "detachConfirm": "Detach this document? (the file itself will not be deleted)"
+    },
+    "vendor": {
+      "title": "Vendors",
+      "subtitle": "Master data for construction / inspection contractors",
+      "newVendor": "Add vendor",
+      "editVendor": "Edit vendor",
+      "deleteConfirm": "Soft-delete this vendor?",
+      "search": "Search vendors…",
+      "noVendors": "No vendors registered yet",
+      "isActive": "Active",
+      "isInactive": "Inactive",
+      "category": {
+        "title": "Category",
+        "CONSTRUCTION": "Construction",
+        "INSPECTION": "Inspection",
+        "CONSULTING": "Consulting",
+        "CLEANING": "Cleaning",
+        "SECURITY": "Security",
+        "OTHER": "Other"
+      },
+      "fields": {
+        "name": "Name",
+        "nameKana": "Phonetic",
+        "phone": "Phone",
+        "email": "Email",
+        "website": "Website",
+        "postalCode": "Postal code",
+        "address": "Address",
+        "representative": "Representative",
+        "contactPerson": "Contact person",
+        "licenseNumber": "License number",
+        "licenseExpiry": "License expiry",
+        "note": "Note"
+      }
+    },
+    "permissions": {
+      "viewOnly": "View only",
+      "amountMasked": "You don't have permission to view amounts"
+    },
+    "masked": "●●●",
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "save": "Save",
+      "cancel": "Cancel",
+      "close": "Close",
+      "back": "Back to list",
+      "changeStatus": "Change status"
+    },
+    "errors": {
+      "loadFailed": "Failed to load",
+      "saveFailed": "Failed to save",
+      "deleteFailed": "Failed to delete",
+      "exportFailed": "Failed to export",
+      "versionConflict": "Another user updated this record. Please reload the latest version."
+    }
+  }
+}

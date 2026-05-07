@@ -1,0 +1,150 @@
+{
+  "property": {
+    "title": "Historial de obras del inmueble",
+    "subtitle": "Gestión centralizada de reformas, reparaciones, inspecciones e incidencias",
+    "newPackage": "Añadir obra",
+    "editPackage": "Editar obra",
+    "exportPdf": "Exportar PDF",
+    "exportExcel": "Exportar Excel",
+    "exportList": "Exportar historial",
+    "noPackages": "Aún no hay obras registradas",
+    "loading": "Cargando…",
+    "saving": "Guardando…",
+    "saved": "Guardado",
+    "deleted": "Eliminado",
+    "deleteConfirm": "¿Eliminar este registro? (eliminación lógica)",
+    "view": {
+      "list": "Lista",
+      "timeline": "Cronología",
+      "gantt": "Gantt"
+    },
+    "filter": {
+      "title": "Filtros",
+      "workType": "Tipo de obra",
+      "status": "Estado",
+      "vendor": "Proveedor",
+      "from": "Desde",
+      "to": "Hasta",
+      "all": "Todos",
+      "clear": "Limpiar"
+    },
+    "workType": {
+      "RENOVATION": "Reforma",
+      "REPAIR": "Reparación",
+      "INCIDENT": "Incidencia",
+      "INSPECTION": "Inspección",
+      "DISASTER": "Desastre",
+      "MEETING": "Reunión",
+      "OTHER": "Otro"
+    },
+    "status": {
+      "PLANNED": "Planificada",
+      "IN_PROGRESS": "En curso",
+      "COMPLETED": "Completada",
+      "CLOSED": "Cerrada",
+      "CANCELLED": "Cancelada"
+    },
+    "visibility": {
+      "title": "Visibilidad",
+      "ADMINS_ONLY": "Solo administradores",
+      "MEMBERS_ONLY": "Todos los miembros",
+      "MEMBERS_MASKED": "Miembros (importes ocultos)",
+      "PUBLIC_MASKED": "Público (importes ocultos)"
+    },
+    "documentKind": {
+      "MINUTES": "Acta",
+      "QUOTE": "Presupuesto",
+      "CONTRACT": "Contrato",
+      "REPORT": "Informe",
+      "PHOTO": "Foto",
+      "DRAWING": "Plano",
+      "INVOICE": "Factura",
+      "RECEIPT": "Recibo",
+      "OTHER": "Otro"
+    },
+    "fields": {
+      "title": "Título",
+      "category": "Categoría",
+      "description": "Descripción",
+      "vendor": "Proveedor",
+      "estimatedAmount": "Importe estimado",
+      "contractAmount": "Importe contractual",
+      "actualAmount": "Importe real",
+      "currency": "Moneda",
+      "plannedStartDate": "Inicio previsto",
+      "plannedEndDate": "Fin previsto",
+      "actualStartDate": "Inicio real",
+      "actualEndDate": "Fin real",
+      "warrantyUntil": "Garantía hasta",
+      "incidentId": "Incidencia vinculada",
+      "incidentDate": "Fecha de incidencia",
+      "incidentNarrative": "Descripción de la incidencia",
+      "isDisclosable": "Divulgable en hoja de propiedad",
+      "tags": "Etiquetas",
+      "attachmentCount": "Adjuntos",
+      "commentCount": "Comentarios"
+    },
+    "documents": {
+      "title": "Documentos adjuntos",
+      "empty": "Aún no hay documentos adjuntos",
+      "attach": "Adjuntar documento",
+      "detach": "Desvincular",
+      "detachConfirm": "¿Desvincular este documento? (el archivo no se eliminará)"
+    },
+    "vendor": {
+      "title": "Proveedores",
+      "subtitle": "Datos maestros de contratistas e inspectores",
+      "newVendor": "Añadir proveedor",
+      "editVendor": "Editar proveedor",
+      "deleteConfirm": "¿Eliminar lógicamente este proveedor?",
+      "search": "Buscar proveedores…",
+      "noVendors": "Aún no hay proveedores",
+      "isActive": "Activo",
+      "isInactive": "Inactivo",
+      "category": {
+        "title": "Categoría",
+        "CONSTRUCTION": "Construcción",
+        "INSPECTION": "Inspección",
+        "CONSULTING": "Consultoría",
+        "CLEANING": "Limpieza",
+        "SECURITY": "Seguridad",
+        "OTHER": "Otro"
+      },
+      "fields": {
+        "name": "Nombre",
+        "nameKana": "Lectura",
+        "phone": "Teléfono",
+        "email": "Email",
+        "website": "Sitio web",
+        "postalCode": "Código postal",
+        "address": "Dirección",
+        "representative": "Representante",
+        "contactPerson": "Persona de contacto",
+        "licenseNumber": "Nº de licencia",
+        "licenseExpiry": "Caducidad de licencia",
+        "note": "Notas"
+      }
+    },
+    "permissions": {
+      "viewOnly": "Solo lectura",
+      "amountMasked": "Sin permiso para ver importes"
+    },
+    "masked": "●●●",
+    "actions": {
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "back": "Volver al listado",
+      "changeStatus": "Cambiar estado"
+    },
+    "errors": {
+      "loadFailed": "Error al cargar",
+      "saveFailed": "Error al guardar",
+      "deleteFailed": "Error al eliminar",
+      "exportFailed": "Error al exportar",
+      "versionConflict": "Otro usuario ha editado este registro. Recargue la última versión."
+    }
+  }
+}
