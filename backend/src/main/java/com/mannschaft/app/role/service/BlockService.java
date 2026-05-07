@@ -14,6 +14,7 @@ import com.mannschaft.app.organization.repository.OrganizationBlockRepository;
 import com.mannschaft.app.role.dto.BlockRequest;
 import com.mannschaft.app.role.dto.BlockResponse;
 import com.mannschaft.app.team.entity.TeamBlockEntity;
+import com.mannschaft.app.organization.event.OrganizationMemberAuditEvent;
 import com.mannschaft.app.team.event.TeamMemberAuditEvent;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import lombok.RequiredArgsConstructor;
@@ -77,10 +78,13 @@ public class BlockService {
         findUserRole(req.getUserId(), scopeId, scopeType)
                 .ifPresent(userRoleRepository::delete);
 
-        // 監査ログ用イベント発行（TEAM のみ対応）
+        // 監査ログ用イベント発行
         if ("TEAM".equals(scopeType)) {
             eventPublisher.publishEvent(new TeamMemberAuditEvent(
                     blockedBy, req.getUserId(), scopeId, TeamMemberAuditEvent.SubType.BLOCKED));
+        } else {
+            eventPublisher.publishEvent(new OrganizationMemberAuditEvent(
+                    blockedBy, req.getUserId(), scopeId, OrganizationMemberAuditEvent.SubType.BLOCKED));
         }
 
         log.info("ユーザーブロック完了: scopeType={}, scopeId={}, userId={}, blockedBy={}",
@@ -102,6 +106,9 @@ public class BlockService {
         } else {
             organizationBlockRepository.findByOrganizationIdAndUserId(scopeId, userId)
                     .ifPresent(organizationBlockRepository::delete);
+            // 監査ログ用イベント発行
+            eventPublisher.publishEvent(new OrganizationMemberAuditEvent(
+                    unblockedBy, userId, scopeId, OrganizationMemberAuditEvent.SubType.UNBLOCKED));
         }
         log.info("ユーザーブロック解除完了: scopeType={}, scopeId={}, userId={}", scopeType, scopeId, userId);
     }

@@ -136,6 +136,8 @@ public class TeamOrgAuditEventListener {
             case JOINED       -> AuditEventType.ORGANIZATION_MEMBER_JOINED;
             case ROLE_CHANGED -> AuditEventType.ORGANIZATION_MEMBER_ROLE_CHANGED;
             case REMOVED      -> AuditEventType.ORGANIZATION_MEMBER_REMOVED;
+            case BLOCKED      -> AuditEventType.ORGANIZATION_MEMBER_BLOCKED;
+            case UNBLOCKED    -> AuditEventType.ORGANIZATION_MEMBER_UNBLOCKED;
         };
         auditLogService.record(
                 type.name(),

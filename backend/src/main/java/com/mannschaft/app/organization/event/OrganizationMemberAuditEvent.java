@@ -15,7 +15,9 @@ public class OrganizationMemberAuditEvent extends BaseEvent {
     public enum SubType {
         JOINED,
         ROLE_CHANGED,
-        REMOVED
+        REMOVED,
+        BLOCKED,
+        UNBLOCKED
     }
 
     /** 操作者ユーザーID */
