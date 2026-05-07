@@ -71,6 +71,7 @@ public enum AuditEventType {
     TEAM_DELETED(AuditEventCategory.TEAM),
     TEAM_MEMBER_BLOCKED(AuditEventCategory.TEAM),
     TEAM_MEMBER_UNBLOCKED(AuditEventCategory.TEAM),
+    TEAM_INVITE_TOKEN_CREATED(AuditEventCategory.TEAM),
 
     // ─── ORGANIZATION (Phase 2+) ──────────────────────────────
     ORGANIZATION_CREATED(AuditEventCategory.ORGANIZATION),
@@ -78,6 +79,7 @@ public enum AuditEventType {
     ORGANIZATION_MEMBER_JOINED(AuditEventCategory.ORGANIZATION),
     ORGANIZATION_MEMBER_ROLE_CHANGED(AuditEventCategory.ORGANIZATION),
     ORGANIZATION_MEMBER_REMOVED(AuditEventCategory.ORGANIZATION),
+    ORGANIZATION_INVITE_TOKEN_CREATED(AuditEventCategory.ORGANIZATION),
 
     // ─── PAYMENT (Phase 3+) ───────────────────────────────────
     PAYMENT_COMPLETED(AuditEventCategory.PAYMENT),

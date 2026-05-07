@@ -23,11 +23,14 @@ import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.role.dto.InviteTokenResponse;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.event.TeamInviteTokenCreatedEvent;
+import com.mannschaft.app.organization.event.OrganizationInviteTokenCreatedEvent;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.organization.repository.OrganizationBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,6 +66,7 @@ public class InviteService {
     private final TeamRepository teamRepository;
     private final TeamBlockRepository teamBlockRepository;
     private final OrganizationBlockRepository organizationBlockRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 招待トークンを作成する。
@@ -86,6 +90,13 @@ public class InviteService {
         setScopeFieldOnInvite(builder, scopeId, scopeType);
         InviteTokenEntity token = builder.build();
         inviteTokenRepository.save(token);
+
+        // 監査ログ用イベント発行
+        if ("TEAM".equals(scopeType)) {
+            eventPublisher.publishEvent(new TeamInviteTokenCreatedEvent(createdBy, scopeId, token.getId()));
+        } else {
+            eventPublisher.publishEvent(new OrganizationInviteTokenCreatedEvent(createdBy, scopeId, token.getId()));
+        }
 
         log.info("招待トークン作成完了: scopeType={}, scopeId={}, roleId={}", scopeType, scopeId, req.getRoleId());
         return ApiResponse.of(toResponse(token, role.getName()));
@@ -183,6 +194,17 @@ public class InviteService {
 
         // 使用回数をインクリメント
         token.incrementUsedCount();
+
+        // 監査ログ用イベント発行（招待者 = トークン作成者、参加者 = userId）
+        if ("TEAM".equals(scopeType)) {
+            eventPublisher.publishEvent(new com.mannschaft.app.team.event.TeamMemberAuditEvent(
+                    token.getCreatedBy(), userId, scopeId,
+                    com.mannschaft.app.team.event.TeamMemberAuditEvent.SubType.INVITED));
+        } else {
+            eventPublisher.publishEvent(new com.mannschaft.app.organization.event.OrganizationMemberAuditEvent(
+                    token.getCreatedBy(), userId, scopeId,
+                    com.mannschaft.app.organization.event.OrganizationMemberAuditEvent.SubType.JOINED));
+        }
 
         log.info("招待トークンによる参加完了: userId={}, scopeType={}, scopeId={}",
                 userId, scopeType, scopeId);

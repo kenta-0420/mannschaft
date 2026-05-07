@@ -40,9 +40,12 @@ import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.dto.MemberResponse;
+import com.mannschaft.app.organization.event.OrganizationCreatedEvent;
+import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -75,6 +78,7 @@ public class OrganizationService {
     private final MemberQueryDispatcher memberQueryDispatcher;
     private final MembershipService membershipService;
     private final MembershipRepository membershipRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** 祖先チェーン探索の最大深度。これを超える祖先は返さず {@code truncated: true} を立てる。 */
     @Value("${app.org.max-depth:5}")
@@ -119,6 +123,9 @@ public class OrganizationService {
                 .organizationId(org.getId())
                 .build();
         userRoleRepository.save(userRole);
+
+        // 監査ログ用イベント発行
+        eventPublisher.publishEvent(new OrganizationCreatedEvent(userId, org.getId(), org.getName()));
 
         log.info("組織作成完了: orgId={}, userId={}", org.getId(), userId);
         return ApiResponse.of(toResponse(org, 1));
@@ -168,14 +175,18 @@ public class OrganizationService {
      * 組織を論理削除する。招待トークンも一括失効。
      */
     @Transactional
-    public void deleteOrganization(Long orgId) {
+    public void deleteOrganization(Long orgId, Long userId) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         org.softDelete();
 
         // 招待トークン一括失効
         inviteTokenRepository.findByOrganizationIdAndRevokedAtIsNull(orgId)
                 .forEach(InviteTokenEntity::revoke);
-        log.info("組織削除完了: orgId={}", orgId);
+
+        // 監査ログ用イベント発行
+        eventPublisher.publishEvent(new OrganizationDeletedEvent(userId, orgId));
+
+        log.info("組織削除完了: orgId={}, userId={}", orgId, userId);
     }
 
     /**

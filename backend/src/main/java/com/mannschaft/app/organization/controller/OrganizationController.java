@@ -116,7 +116,8 @@ public class OrganizationController {
     @Operation(summary = "組織削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteOrganization(@PathVariable Long id) {
-        organizationService.deleteOrganization(id);
+        Long userId = SecurityUtils.getCurrentUserIdOrNull();
+        organizationService.deleteOrganization(id, userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -366,7 +367,8 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "ブロック解除成功")
     public ResponseEntity<Void> unblockUser(
             @PathVariable Long id, @PathVariable Long userId) {
-        blockService.unblockUser(id, SCOPE_TYPE, userId);
+        Long unblockedBy = SecurityUtils.getCurrentUserIdOrNull();
+        blockService.unblockUser(id, SCOPE_TYPE, userId, unblockedBy);
         return ResponseEntity.noContent().build();
     }
 

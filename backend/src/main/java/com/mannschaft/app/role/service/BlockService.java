@@ -14,9 +14,11 @@ import com.mannschaft.app.organization.repository.OrganizationBlockRepository;
 import com.mannschaft.app.role.dto.BlockRequest;
 import com.mannschaft.app.role.dto.BlockResponse;
 import com.mannschaft.app.team.entity.TeamBlockEntity;
+import com.mannschaft.app.team.event.TeamMemberAuditEvent;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +39,7 @@ public class BlockService {
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * ユーザーをブロックする。上位ロールのユーザーはブロック不可。ブロック時は自動除名。
@@ -74,6 +77,12 @@ public class BlockService {
         findUserRole(req.getUserId(), scopeId, scopeType)
                 .ifPresent(userRoleRepository::delete);
 
+        // 監査ログ用イベント発行（TEAM のみ対応）
+        if ("TEAM".equals(scopeType)) {
+            eventPublisher.publishEvent(new TeamMemberAuditEvent(
+                    blockedBy, req.getUserId(), scopeId, TeamMemberAuditEvent.SubType.BLOCKED));
+        }
+
         log.info("ユーザーブロック完了: scopeType={}, scopeId={}, userId={}, blockedBy={}",
                 scopeType, scopeId, req.getUserId(), blockedBy);
         return ApiResponse.of(response);
@@ -83,10 +92,13 @@ public class BlockService {
      * ユーザーのブロックを解除する。
      */
     @Transactional
-    public void unblockUser(Long scopeId, String scopeType, Long userId) {
+    public void unblockUser(Long scopeId, String scopeType, Long userId, Long unblockedBy) {
         if ("TEAM".equals(scopeType)) {
             teamBlockRepository.findByTeamIdAndUserId(scopeId, userId)
                     .ifPresent(teamBlockRepository::delete);
+            // 監査ログ用イベント発行（TEAM のみ対応）
+            eventPublisher.publishEvent(new TeamMemberAuditEvent(
+                    unblockedBy, userId, scopeId, TeamMemberAuditEvent.SubType.UNBLOCKED));
         } else {
             organizationBlockRepository.findByOrganizationIdAndUserId(scopeId, userId)
                     .ifPresent(organizationBlockRepository::delete);

@@ -21,6 +21,8 @@ import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.event.TeamMemberAuditEvent;
+import com.mannschaft.app.organization.event.OrganizationMemberAuditEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -101,6 +103,25 @@ public class MembershipService {
                 req.getUserId(), req.getScopeType().name(), req.getScopeId(),
                 MembershipChangedEvent.ChangeType.ASSIGNED));
 
+        // 監査ログ用イベント発行（SUPPORTER のフォロー参加は対象外 — MEMBER/ADMIN 等のみ）
+        if (saved.getRoleKind() != RoleKind.SUPPORTER) {
+            if (req.getScopeType() == ScopeType.TEAM) {
+                Long invitedBy = req.getInvitedBy();
+                eventPublisher.publishEvent(new TeamMemberAuditEvent(
+                        invitedBy != null ? invitedBy : req.getUserId(),
+                        req.getUserId(),
+                        req.getScopeId(),
+                        TeamMemberAuditEvent.SubType.JOINED));
+            } else if (req.getScopeType() == ScopeType.ORGANIZATION) {
+                Long invitedBy = req.getInvitedBy();
+                eventPublisher.publishEvent(new OrganizationMemberAuditEvent(
+                        invitedBy != null ? invitedBy : req.getUserId(),
+                        req.getUserId(),
+                        req.getScopeId(),
+                        OrganizationMemberAuditEvent.SubType.JOINED));
+            }
+        }
+
         log.info("入会完了: membershipId={}, userId={}, scopeType={}, scopeId={}, roleKind={}, isRejoin={}, source={}",
                 saved.getId(), req.getUserId(), req.getScopeType(), req.getScopeId(),
                 saved.getRoleKind(), isRejoin, req.getSource());
@@ -152,6 +173,24 @@ public class MembershipService {
             eventPublisher.publishEvent(new MembershipChangedEvent(
                     entity.getUserId(), entity.getScopeType().name(), entity.getScopeId(),
                     MembershipChangedEvent.ChangeType.REMOVED));
+        }
+
+        // 監査ログ用イベント発行（SUPPORTER の退会は対象外 — MEMBER/ADMIN 等のみ）
+        if (entity.getUserId() != null && entity.getRoleKind() != RoleKind.SUPPORTER) {
+            Long actorId = req.getRemovedBy() != null ? req.getRemovedBy() : entity.getUserId();
+            if (entity.getScopeType() == ScopeType.TEAM) {
+                eventPublisher.publishEvent(new TeamMemberAuditEvent(
+                        actorId,
+                        entity.getUserId(),
+                        entity.getScopeId(),
+                        TeamMemberAuditEvent.SubType.REMOVED));
+            } else if (entity.getScopeType() == ScopeType.ORGANIZATION) {
+                eventPublisher.publishEvent(new OrganizationMemberAuditEvent(
+                        actorId,
+                        entity.getUserId(),
+                        entity.getScopeId(),
+                        OrganizationMemberAuditEvent.SubType.REMOVED));
+            }
         }
 
         log.info("退会完了: membershipId={}, userId={}, scopeType={}, scopeId={}, leaveReason={}, removedBy={}",

@@ -115,7 +115,8 @@ public class TeamController {
     @Operation(summary = "チーム削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteTeam(@PathVariable Long id) {
-        teamService.deleteTeam(id);
+        Long userId = SecurityUtils.getCurrentUserIdOrNull();
+        teamService.deleteTeam(id, userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -365,7 +366,8 @@ public class TeamController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "ブロック解除成功")
     public ResponseEntity<Void> unblockUser(
             @PathVariable Long id, @PathVariable Long userId) {
-        blockService.unblockUser(id, SCOPE_TYPE, userId);
+        Long unblockedBy = SecurityUtils.getCurrentUserIdOrNull();
+        blockService.unblockUser(id, SCOPE_TYPE, userId, unblockedBy);
         return ResponseEntity.noContent().build();
     }
 

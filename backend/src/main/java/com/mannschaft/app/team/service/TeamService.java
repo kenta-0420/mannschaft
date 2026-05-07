@@ -1,6 +1,8 @@
 package com.mannschaft.app.team.service;
 
 import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.event.TeamCreatedEvent;
+import com.mannschaft.app.team.event.TeamDeletedEvent;
 import com.mannschaft.app.team.event.TeamMemberRemovedEvent;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
@@ -99,6 +101,9 @@ public class TeamService {
         // チームシフト設定をデフォルト値で初期化
         teamShiftSettingsService.initializeDefaultSettings(team.getId());
 
+        // 監査ログ用イベント発行
+        eventPublisher.publishEvent(new TeamCreatedEvent(userId, team.getId(), team.getName()));
+
         log.info("チーム作成完了: teamId={}, userId={}", team.getId(), userId);
         long teamFriendCount = teamFriendRepository.countFriendsByTeamId(team.getId());
         // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
@@ -156,10 +161,14 @@ public class TeamService {
      * チームを論理削除する。
      */
     @Transactional
-    public void deleteTeam(Long teamId) {
+    public void deleteTeam(Long teamId, Long userId) {
         TeamEntity team = findTeamOrThrow(teamId);
         team.softDelete();
-        log.info("チーム削除完了: teamId={}", teamId);
+
+        // 監査ログ用イベント発行
+        eventPublisher.publishEvent(new TeamDeletedEvent(userId, teamId));
+
+        log.info("チーム削除完了: teamId={}, userId={}", teamId, userId);
     }
 
     /**
