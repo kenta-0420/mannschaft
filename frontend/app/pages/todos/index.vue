@@ -2,6 +2,7 @@
 definePageMeta({ middleware: 'auth' })
 
 const router = useRouter()
+const { t } = useI18n()
 const {
   todos,
   loading,
@@ -54,6 +55,14 @@ onMounted(load)
             <i :class="option.icon" />
           </template>
         </SelectButton>
+        <Button
+          :label="t('todo.enhancement.gantt.gantt_view_link')"
+          icon="pi pi-chart-bar"
+          text
+          size="small"
+          severity="secondary"
+          @click="router.push('/calendar?tab=gantt')"
+        />
         <Button label="作成" icon="pi pi-plus" @click="showCreateDialog = true" />
       </div>
     </div>

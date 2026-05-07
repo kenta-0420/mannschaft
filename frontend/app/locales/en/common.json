@@ -547,7 +547,8 @@
     "enhancement": {
       "gantt": {
         "title": "Gantt View",
-        "no_data": "No tasks with date ranges to display in the Gantt chart"
+        "no_data": "No tasks with date ranges to display in the Gantt chart",
+        "gantt_view_link": "Gantt View"
       },
       "progress": {
         "tab_label": "Progress",
@@ -1014,7 +1015,8 @@
     "supporterRegistered": "Supporter registered",
     "becomeSupporter": "Become a supporter",
     "supporterSuccess": "Registered as a supporter",
-    "supporterError": "Failed to follow"
+    "supporterError": "Failed to follow",
+    "folders": "Folder Organization"
   },
   "orgHub": {
     "pageTitle": "My Organizations",
@@ -1032,6 +1034,23 @@
     "supporterRegistered": "Supporter registered",
     "becomeSupporter": "Become a supporter",
     "supporterSuccess": "Registered as a supporter",
-    "supporterError": "Failed to follow"
+    "supporterError": "Failed to follow",
+    "folders": "Folder Organization"
+  },
+  "scopeFolder": {
+    "folders": "Folders",
+    "addFolder": "Add Folder",
+    "editFolder": "Edit Folder",
+    "deleteFolder": "Delete Folder",
+    "deleteConfirm": "Delete this folder? Teams will be removed from the folder but will not be deleted.",
+    "folderName": "Folder Name",
+    "folderColor": "Folder Color",
+    "uncategorized": "Uncategorized",
+    "moveToFolder": "Move to Folder",
+    "removeFromFolder": "Remove from Folder",
+    "noFolders": "No folders yet",
+    "emptyFolder": "This folder is empty",
+    "limitExceeded": "You can create up to 20 folders",
+    "nameDuplicate": "A folder with the same name already exists"
   }
 }

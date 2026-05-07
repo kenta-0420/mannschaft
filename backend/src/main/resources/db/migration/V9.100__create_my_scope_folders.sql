@@ -1,6 +1,6 @@
 CREATE TABLE my_scope_folders (
-  id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-  user_id    BIGINT       NOT NULL,
+  id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id    BIGINT UNSIGNED NOT NULL,
   scope_type VARCHAR(20)  NOT NULL COMMENT 'TEAM or ORGANIZATION',
   name       VARCHAR(100) NOT NULL,
   color      VARCHAR(7)   NULL     COMMENT 'HEX color (#RRGGBB)',

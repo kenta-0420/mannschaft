@@ -3,6 +3,7 @@
 # =============================================================================
 # Runs compile + test on every PR targeting main.
 # No AWS credentials required — build and deploy are intentionally omitted.
+# 2026-05-07: maxHeapSize 4g / user.timezone=UTC / hibernate.jdbc.time_zone=UTC
 # =============================================================================
 
 name: Backend — CI (PR Check)

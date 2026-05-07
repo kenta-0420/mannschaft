@@ -142,6 +142,17 @@ function onOrgCreated(entity: { id: number; name: string }) {
       </div>
     </div>
 
+    <!-- フォルダセクション -->
+    <div class="mt-8">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-lg font-semibold">{{ $t('orgHub.folders') }}</h2>
+      </div>
+      <ScopeFolderSection
+        scope-type="ORGANIZATION"
+        :items="orgStore.myOrganizations"
+      />
+    </div>
+
     <EntityCreateDialog
       entity-type="organization"
       :visible="showCreateDialog"

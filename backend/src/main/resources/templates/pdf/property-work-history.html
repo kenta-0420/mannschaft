@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+    <style>
+        h2.section-title {
+            font-size: 12pt;
+            margin: 16px 0 6px 0;
+            padding: 4px 8px;
+            background-color: #f0f0f0;
+            border-left: 4px solid #555;
+        }
+        table.summary { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 10pt; }
+        table.summary th { width: 28%; background-color: #f5f5f5; text-align: left; }
+        table.summary td { background-color: #ffffff; }
+        table.documents { width: 100%; border-collapse: collapse; font-size: 9pt; }
+        table.documents th { background-color: #f0f0f0; }
+        .doc-kind-row td {
+            background-color: #fafafa;
+            font-weight: bold;
+        }
+        .masked {
+            color: #999;
+            font-style: italic;
+        }
+        .meta-line {
+            font-size: 9pt;
+            color: #666;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- ヘッダー -->
+    <div class="pdf-header">
+        <h1>物件履歴台帳</h1>
+        <p class="meta-line">
+            <span th:if="${organizationName}" th:text="'組織: ' + ${organizationName}">組織名</span>
+            <span th:if="${organizationName}"> ／ </span>
+            <span th:text="'出力日時: ' + ${#temporals.format(exportedAt, 'yyyy年MM月dd日 HH:mm')}">出力日時</span>
+            <span th:if="${exportedByName}" th:text="' ／ 出力者: ' + ${exportedByName}"></span>
+            <span th:if="${maskedFlag}" class="masked"> ／ 金額マスク版</span>
+        </p>
+    </div>
+
+    <div class="pdf-body">
+        <!-- 案件サマリ -->
+        <h2 class="section-title">案件概要</h2>
+        <table class="summary">
+            <tr>
+                <th>タイトル</th>
+                <td th:text="${package.title}">タイトル</td>
+            </tr>
+            <tr>
+                <th>工事種別</th>
+                <td th:text="${package.workType}">RENOVATION</td>
+            </tr>
+            <tr>
+                <th>カテゴリ</th>
+                <td th:text="${package.category} ?: '—'">—</td>
+            </tr>
+            <tr>
+                <th>ステータス</th>
+                <td th:text="${package.status}">PLANNED</td>
+            </tr>
+            <tr>
+                <th>業者名</th>
+                <td th:text="${package.vendorNameSnapshot} ?: '—'">—</td>
+            </tr>
+            <tr>
+                <th>事故/発覚日</th>
+                <td th:text="${package.incidentDate} != null ? ${#temporals.format(package.incidentDate, 'yyyy年MM月dd日')} : '—'">—</td>
+            </tr>
+            <tr>
+                <th>着手日</th>
+                <td th:text="${package.startedAt} != null ? ${#temporals.format(package.startedAt, 'yyyy年MM月dd日')} : '—'">—</td>
+            </tr>
+            <tr>
+                <th>完了日</th>
+                <td th:text="${package.completedAt} != null ? ${#temporals.format(package.completedAt, 'yyyy年MM月dd日')} : '—'">—</td>
+            </tr>
+        </table>
+
+        <!-- 金額 -->
+        <h2 class="section-title">金額情報</h2>
+        <table class="summary">
+            <tr>
+                <th>見積金額</th>
+                <td th:if="${maskedFlag}" class="masked">●●●</td>
+                <td th:unless="${maskedFlag}" class="amount"
+                    th:text="${package.estimatedAmount} != null ? '¥ ' + ${#numbers.formatInteger(package.estimatedAmount, 1, 'COMMA')} : '—'">—</td>
+            </tr>
+            <tr>
+                <th>契約金額</th>
+                <td th:if="${maskedFlag}" class="masked">●●●</td>
+                <td th:unless="${maskedFlag}" class="amount"
+                    th:text="${package.contractAmount} != null ? '¥ ' + ${#numbers.formatInteger(package.contractAmount, 1, 'COMMA')} : '—'">—</td>
+            </tr>
+            <tr>
+                <th>実施金額</th>
+                <td th:if="${maskedFlag}" class="masked">●●●</td>
+                <td th:unless="${maskedFlag}" class="amount"
+                    th:text="${package.actualAmount} != null ? '¥ ' + ${#numbers.formatInteger(package.actualAmount, 1, 'COMMA')} : '—'">—</td>
+            </tr>
+        </table>
+
+        <!-- 説明 -->
+        <div th:if="${package.description}">
+            <h2 class="section-title">説明</h2>
+            <p th:text="${package.description}" style="white-space: pre-wrap;">説明</p>
+        </div>
+
+        <!-- 事故いきさつ -->
+        <div th:if="${package.incidentNarrative}">
+            <h2 class="section-title">事故いきさつ</h2>
+            <p th:text="${package.incidentNarrative}" style="white-space: pre-wrap;">いきさつ</p>
+        </div>
+
+        <!-- 文書一覧（document_kind 別グループ） -->
+        <h2 class="section-title">関連文書</h2>
+        <div th:if="${#lists.isEmpty(documents)}">
+            <p style="color: #999;">登録された文書はありません。</p>
+        </div>
+        <table class="documents" th:unless="${#lists.isEmpty(documents)}">
+            <thead>
+                <tr>
+                    <th style="width: 20%;">種別</th>
+                    <th style="width: 60%;">ファイル名</th>
+                    <th style="width: 20%;" class="text-center">表示順</th>
+                </tr>
+            </thead>
+            <tbody>
+                <th:block th:each="doc : ${documents}">
+                    <tr>
+                        <td th:text="${doc.documentKind}">MINUTES</td>
+                        <td th:text="${doc.fileName}">file.pdf</td>
+                        <td class="text-center" th:text="${doc.displayOrder}">0</td>
+                    </tr>
+                </th:block>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- フッター（pdf-common.css の @page bottom-center でページ番号自動付与） -->
+    <div class="pdf-footer">
+        <span>物件履歴台帳 — Mannschaft</span>
+    </div>
+</body>
+</html>

@@ -2,21 +2,15 @@ package com.mannschaft.app.survey.visibility;
 
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -38,32 +32,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * すなわち {@code @Transactional} ロールバック方式 + {@code em.createNativeQuery}
  * で users / organizations / teams / team_org_memberships / roles / user_roles
  * および surveys / survey_responses / survey_result_viewers を直接 INSERT する。</p>
+ *
+ * <p>Docker が利用できない環境（ローカル Docker 未起動時など）では {@code @EnabledIf}
+ * によりスキップされる。CI 環境では Docker が利用可能なため全テストが実行される。</p>
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
 @Transactional
 @DisplayName("SurveyVisibilityResolver 結合テスト")
-class SurveyVisibilityResolverIntegrationTest {
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
+class SurveyVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTest {
 
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
     @Autowired
     private ContentVisibilityChecker checker;
@@ -85,15 +63,15 @@ class SurveyVisibilityResolverIntegrationTest {
     @BeforeEach
     void setUp() {
         em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                         + "VALUES ('SYSTEM_ADMIN', 'システム管理者', 1, 1, NOW(), NOW())")
                 .executeUpdate();
         em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                         + "VALUES ('ADMIN', '管理者', 2, 0, NOW(), NOW())")
                 .executeUpdate();
         em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                         + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
                 .executeUpdate();
         em.flush();

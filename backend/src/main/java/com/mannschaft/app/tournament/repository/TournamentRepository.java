@@ -30,6 +30,24 @@ public interface TournamentRepository extends JpaRepository<TournamentEntity, Lo
             Long organizationId, TournamentVisibility visibility, TournamentStatus excludeStatus, Pageable pageable);
 
     /**
+     * F00 Phase E-2: 公開大会一覧の Resolver 正規化クエリ。
+     *
+     * <p>{@link com.mannschaft.app.common.visibility.mapping.TournamentStatusMapper} の
+     * PUBLISHED 区分（OPEN / IN_PROGRESS / COMPLETED）に限定することで、
+     * 旧 {@code status != DRAFT} クエリが CANCELLED / ARCHIVED の PUBLIC も
+     * 返してしまっていた既存バグを根治する。
+     *
+     * @param organizationId 組織 ID
+     * @param visibility     公開設定（常に {@code TournamentVisibility.PUBLIC} を渡す）
+     * @param statuses       許容ステータス集合（OPEN / IN_PROGRESS / COMPLETED）
+     * @param pageable       ページネーション情報
+     * @return ページネーション済み大会エンティティ
+     */
+    Page<TournamentEntity> findByOrganizationIdAndVisibilityAndStatusInOrderByCreatedAtDesc(
+            Long organizationId, TournamentVisibility visibility,
+            java.util.Collection<TournamentStatus> statuses, Pageable pageable);
+
+    /**
      * F00 共通可視性基盤の射影取得。
      *
      * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §4.6 / §7.5。
