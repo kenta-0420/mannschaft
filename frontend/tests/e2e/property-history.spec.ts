@@ -24,7 +24,6 @@ import { waitForHydration } from './helpers/wait'
  */
 
 const SCOPE_PREFIX = '**/api/v1/organizations/1'
-const PACKAGES_API = `${SCOPE_PREFIX}/property-history`
 const PACKAGES_API_REGEX =
   /\/api\/v1\/organizations\/1\/property-history(\?|$|\/)/
 const VENDORS_API = `${SCOPE_PREFIX}/vendors**`
