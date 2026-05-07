@@ -30,6 +30,7 @@ import com.mannschaft.app.todo.repository.ProjectRepository;
 import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
 import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -80,6 +81,7 @@ public class TodoService {
      * @param size      ページサイズ
      * @return TODO一覧
      */
+    @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "TodoService.listTodos"})
     public PagedResponse<TodoResponse> listTodos(TodoScopeType scopeType, Long scopeId,
                                                   TodoStatus status, int page, int size) {
         PageRequest pageable = PageRequest.of(page - 1, size,

@@ -28,6 +28,7 @@ import com.mannschaft.app.schedule.event.ScheduleUpdatedEvent;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -295,6 +296,7 @@ public class ScheduleService {
      * @param to     期間終了
      * @return カレンダーエントリー一覧
      */
+    @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "ScheduleService.getMyCalendar"})
     public List<CalendarEntryResponse> getMyCalendar(Long userId, LocalDateTime from, LocalDateTime to) {
         List<CalendarEntryResponse> entries = new ArrayList<>();
 
