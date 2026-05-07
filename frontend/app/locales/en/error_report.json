@@ -135,6 +135,19 @@
       "update_failed": "更新に失敗しました",
       "invalid_transition": "そのステータスへの遷移は不可です",
       "comment_required": "コメント本文は必須です"
+    },
+    "kanban": {
+      "title": "Kanban ビュー",
+      "load_more": "もっと表示...",
+      "drop_here": "ここにドロップ",
+      "mobile_unsupported": "Kanban ビューはモバイル端末では利用できません。リストタブをご利用ください。",
+      "empty_column": "カードがありません",
+      "card": {
+        "occurrences": "{count} 回",
+        "affected": "{count} 名",
+        "has_github": "GitHub",
+        "has_ai": "AI"
+      }
     }
   }
 }

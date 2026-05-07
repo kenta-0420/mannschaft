@@ -17,6 +17,7 @@ import com.mannschaft.app.errorreport.dto.ErrorReportTimelineResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportUpdateRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportWorkflowStageRequest;
 import com.mannschaft.app.errorreport.dto.GitHubIssueCreateResponse;
+import com.mannschaft.app.errorreport.dto.KanbanResponse;
 import com.mannschaft.app.errorreport.entity.ErrorReportAiAnalysisEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository;
@@ -137,6 +138,23 @@ public class SystemAdminErrorReportController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ErrorReportStatsResponse>> stats() {
         return ResponseEntity.ok(ApiResponse.of(errorReportService.getStats()));
+    }
+
+    // ========================================
+    // F12.5 Phase 2-E — Kanban ビュー
+    // ========================================
+
+    /**
+     * F12.5 Phase 2-E — Kanban ビュー（6 カラム）を取得する。
+     * 各カラム最大 50 件、{@code last_occurred_at DESC}。IGNORED は対象外。
+     */
+    @GetMapping("/kanban")
+    @Operation(summary = "Kanban ビュー取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<KanbanResponse>> kanban() {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
+        KanbanResponse response = errorReportService.fetchKanban();
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     // ========================================
