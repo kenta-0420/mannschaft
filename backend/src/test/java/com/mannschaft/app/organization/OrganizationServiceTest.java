@@ -30,6 +30,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -93,6 +94,9 @@ class OrganizationServiceTest {
 
     @Mock
     private MembershipRepository membershipRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private OrganizationService organizationService;
@@ -345,7 +349,7 @@ class OrganizationServiceTest {
             given(inviteTokenRepository.findByOrganizationIdAndRevokedAtIsNull(ORG_ID))
                     .willReturn(List.of(token));
 
-            organizationService.deleteOrganization(ORG_ID);
+            organizationService.deleteOrganization(ORG_ID, USER_ID);
 
             assertThat(org.getDeletedAt()).isNotNull();
             assertThat(token.getRevokedAt()).isNotNull();
@@ -356,7 +360,7 @@ class OrganizationServiceTest {
         void 組織不在_ORG_001例外() {
             given(organizationRepository.findById(999L)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> organizationService.deleteOrganization(999L))
+            assertThatThrownBy(() -> organizationService.deleteOrganization(999L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ORG_001"));
@@ -370,7 +374,7 @@ class OrganizationServiceTest {
             given(inviteTokenRepository.findByOrganizationIdAndRevokedAtIsNull(ORG_ID))
                     .willReturn(List.of());
 
-            organizationService.deleteOrganization(ORG_ID);
+            organizationService.deleteOrganization(ORG_ID, USER_ID);
 
             assertThat(org.getDeletedAt()).isNotNull();
         }
