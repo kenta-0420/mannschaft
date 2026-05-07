@@ -113,6 +113,20 @@ public class PropertyWorkExportService {
             String scopeType, Long scopeId,
             LocalDate from, LocalDate to, WorkType workType, Long vendorId, WorkPackageStatus status,
             String format, UserScopeRoleSnapshot viewer) {
+        return exportList(scopeType, scopeId, from, to, workType, vendorId, status, format, viewer, null);
+    }
+
+    /**
+     * フィルタ条件で抽出した一覧の PDF / Excel を出力する（フィルタ条件文字列付き）。
+     *
+     * <p>{@code filterSummary} は PDF ヘッダに「フィルタ条件: ...」として表示するための
+     * 既に整形済の文字列。null の場合は本サービス内で from/to/workType/status/vendorId から
+     * 自動生成する。</p>
+     */
+    public ResponseEntity<byte[]> exportList(
+            String scopeType, Long scopeId,
+            LocalDate from, LocalDate to, WorkType workType, Long vendorId, WorkPackageStatus status,
+            String format, UserScopeRoleSnapshot viewer, String filterSummary) {
         // 1-δ: Specification を組まず Repository の汎用 list 経由で取得して
         // メモリ上でフィルタする（件数が多くなる組織はガード値で弾く）。
         List<PropertyWorkPackageEntity> all = packageRepository
@@ -151,8 +165,12 @@ public class PropertyWorkExportService {
             }
         }
 
+        String summary = filterSummary != null
+                ? filterSummary
+                : buildFilterSummary(from, to, workType, vendorId, status);
+
         return switch (fmt) {
-            case "pdf" -> renderListPdf(rows);
+            case "pdf" -> renderListPdf(rows, summary);
             case "xlsx" -> renderListExcel(rows);
             default -> throw new BusinessException(PropertyHistoryErrorCode.PROPERTY_004);
         };
@@ -179,18 +197,75 @@ public class PropertyWorkExportService {
         return PdfResponseHelper.toResponse(pdf, fileName);
     }
 
-    private ResponseEntity<byte[]> renderListPdf(List<MaskedRow> rows) {
-        // 一覧 PDF はテンプレート未準備のため、Phase 2 で property-work-history-list.html を作成して
-        // 切替予定。本フェーズでは既存テンプレートを最大件数 1 で代替するのは無理筋なので、
-        // 一覧 PDF が呼ばれた場合は最初の 1 件分のテンプレートを使った詳細 PDF として返す
-        // 暫定実装。フロントは「件数が多い時は Excel を使ってください」案内を出す前提とする。
-        if (rows.isEmpty()) {
-            throw new BusinessException(PropertyHistoryErrorCode.PROPERTY_004);
+    /**
+     * 一覧 PDF 本実装（F09.13 Phase 2-α-4）。
+     *
+     * <p>{@code templates/pdf/property-work-history-list.html} を呼び出し、
+     * テーブル形式で全件を出力する。各行のマスキング状態は {@link MaskedView#canViewAmount()}
+     * 単位で個別判定し、行ごとに金額表示／"●●●" 表示を切り替える。</p>
+     */
+    private ResponseEntity<byte[]> renderListPdf(List<MaskedRow> rows, String filterSummary) {
+        List<PackageRow> packageRows = new ArrayList<>(rows.size());
+        boolean anyMasked = false;
+        for (MaskedRow r : rows) {
+            PropertyWorkPackageEntity e = r.entity();
+            MaskedView m = r.masked();
+            boolean amountMasked = !m.canViewAmount();
+            if (amountMasked) {
+                anyMasked = true;
+            }
+            packageRows.add(new PackageRow(
+                    e.getId(),
+                    e.getWorkType() != null ? e.getWorkType().name() : null,
+                    e.getTitle(),
+                    e.getStatus() != null ? e.getStatus().name() : null,
+                    e.getVendorNameSnapshot(),
+                    e.getPlannedStartDate(),
+                    e.getPlannedEndDate(),
+                    e.getActualEndDate(),
+                    m.actualAmount(),
+                    e.getCategory(),
+                    amountMasked));
         }
-        log.warn("一覧 PDF は Phase 1-δ では最初の 1 件のみ詳細表示する暫定実装。完全対応は Phase 2 で実装予定。 件数={}",
-                rows.size());
-        MaskedRow head = rows.get(0);
-        return renderSinglePdf(head.entity(), head.masked());
+
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("packages", packageRows);
+        vars.put("exportedAt", LocalDateTime.now());
+        vars.put("maskedFlag", anyMasked);
+        vars.put("organizationName", null);
+        vars.put("exportedByName", null);
+        vars.put("filterSummary", filterSummary);
+
+        byte[] pdf = pdfGenerator.generateFromTemplate("pdf/property-work-history-list", vars);
+        String fileName = PdfFileNameBuilder.of("物件履歴台帳一覧")
+                .date(LocalDate.now())
+                .build();
+        return PdfResponseHelper.toResponse(pdf, fileName);
+    }
+
+    /**
+     * フィルタ条件を 1 行の文字列に整形する。null/未指定の項目は省略。
+     */
+    private String buildFilterSummary(
+            LocalDate from, LocalDate to, WorkType workType, Long vendorId, WorkPackageStatus status) {
+        List<String> parts = new ArrayList<>();
+        if (from != null && to != null) {
+            parts.add("期間: " + from + " 〜 " + to);
+        } else if (from != null) {
+            parts.add("期間: " + from + " 以降");
+        } else if (to != null) {
+            parts.add("期間: " + to + " 以前");
+        }
+        if (workType != null) {
+            parts.add("工事種別: " + workType.name());
+        }
+        if (status != null) {
+            parts.add("ステータス: " + status.name());
+        }
+        if (vendorId != null) {
+            parts.add("業者ID: " + vendorId);
+        }
+        return parts.isEmpty() ? null : String.join(" ／ ", parts);
     }
 
     private Map<String, Object> buildPdfPackageMap(PropertyWorkPackageEntity entity, MaskedView masked) {
@@ -416,5 +491,25 @@ public class PropertyWorkExportService {
             PropertyWorkPackageEntity entity,
             VendorEntity vendor,
             MaskedView masked) {
+    }
+
+    /**
+     * 一覧 PDF テンプレートに渡す 1 行分のデータ（F09.13 Phase 2-α-4）。
+     *
+     * <p>Thymeleaf からは {@code row.id}, {@code row.workType} 等のプロパティアクセスで参照する。
+     * {@code amountMasked=true} の行はテンプレート側で "●●●" を表示する。</p>
+     */
+    public record PackageRow(
+            Long id,
+            String workType,
+            String title,
+            String status,
+            String vendorName,
+            LocalDate plannedStartDate,
+            LocalDate plannedEndDate,
+            LocalDate actualEndDate,
+            Long actualAmount,
+            String category,
+            boolean amountMasked) {
     }
 }

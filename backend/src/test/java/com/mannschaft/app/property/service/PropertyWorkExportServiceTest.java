@@ -198,6 +198,48 @@ class PropertyWorkExportServiceTest {
         }
 
         @Test
+        @DisplayName("exportList(format=pdf): 一覧 PDF テンプレ呼び出しで PDF byte[] が返る")
+        void exportListPdf_callsListTemplate() {
+            PropertyWorkPackageEntity pkg = packageOf(WorkPackageVisibility.ADMINS_ONLY);
+            Page<PropertyWorkPackageEntity> page = new PageImpl<>(List.of(pkg));
+            given(packageRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    eq(SCOPE_TEAM), eq(TEAM_ID), any(Pageable.class))).willReturn(page);
+            given(vendorService.getVendor(SCOPE_TEAM, TEAM_ID, VENDOR_ID)).willReturn(vendor());
+
+            byte[] fakePdf = new byte[]{0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x37}; // "%PDF-1.7"
+            given(pdfGenerator.generateFromTemplate(eq("pdf/property-work-history-list"), any()))
+                    .willReturn(fakePdf);
+
+            ResponseEntity<byte[]> resp = service.exportList(
+                    SCOPE_TEAM, TEAM_ID, null, null, null, null, null,
+                    "pdf", snapshotWith("ADMIN"));
+
+            assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
+            assertThat(resp.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PDF);
+            assertThat(resp.getBody()).startsWith(PDF_SIGNATURE);
+            assertThat(resp.getBody().length).isGreaterThan(0);
+        }
+
+        @Test
+        @DisplayName("exportList(format=pdf): 0 件でも一覧 PDF テンプレに委譲（空テーブル表示）")
+        void exportListPdf_emptyRows_stillRendersTemplate() {
+            Page<PropertyWorkPackageEntity> page = new PageImpl<>(List.of());
+            given(packageRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    eq(SCOPE_TEAM), eq(TEAM_ID), any(Pageable.class))).willReturn(page);
+
+            byte[] fakePdf = new byte[]{0x25, 0x50, 0x44, 0x46, 0x2D};
+            given(pdfGenerator.generateFromTemplate(eq("pdf/property-work-history-list"), any()))
+                    .willReturn(fakePdf);
+
+            ResponseEntity<byte[]> resp = service.exportList(
+                    SCOPE_TEAM, TEAM_ID, null, null, null, null, null,
+                    "pdf", snapshotWith("ADMIN"));
+
+            assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
+            assertThat(resp.getBody()).startsWith(PDF_SIGNATURE);
+        }
+
+        @Test
         @DisplayName("不可視 viewer（visibility が SUPPORTER しか見えないが MEMBER でない）→ PROPERTY_002")
         void notVisible_throws() {
             PropertyWorkPackageEntity pkg = packageOf(WorkPackageVisibility.ADMINS_ONLY);
