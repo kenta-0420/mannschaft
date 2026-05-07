@@ -157,8 +157,15 @@ tasks.withType<Test> {
     useJUnitPlatform()
     // F09.13 Phase 1-γ: Apache POI 5.2.5 導入による Spring 起動時の Jackson Mixin OOM 対策で 2g → 4g。
     // POI は内部で大量の XSD スキーマをロードしてヒープ・メタスペースを圧迫する。
-    // GitHub Actions ubuntu-latest は 16GB RAM のため 4g は十分安全。
+    // ubuntu-latest は 7GB RAM。G1GC と SoftRef 積極解放で長時間テストのヒープ枯渇を防ぐ。
     maxHeapSize = "4g"
+    jvmArgs(
+        "-XX:+UseG1GC",
+        // Spring コンテキストキャッシュの Soft 参照を GC 時に積極的に解放する（キャッシュ蓄積 OOM 防止）
+        "-XX:SoftRefLRUPolicyMSPerMB=0",
+        // 同時キャッシュ上限を 5 に制限（デフォルト 32 は GC に残り過ぎる）
+        "-Dspring.test.context.cache.maxSize=5"
+    )
     finalizedBy(tasks.jacocoTestReport)
     testLogging {
         // 失敗時に完全スタックトレースを出力する。CI ログのみで NPE 起源を追跡できるようにする。
