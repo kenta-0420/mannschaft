@@ -86,6 +86,8 @@ const DATA_WIDGET_KEYS = new Set([
   'schedule',
   // F09.8.1 Phase 4: マイコルクボードはデータ表示型ウィジェット
   'my-corkboard',
+  // F14.2: チームメンバー定期更新フォーム
+  'member-info',
 ])
 
 function isDataWidget(key: string): boolean {
@@ -129,6 +131,8 @@ function linkTo(widgetKey: string): string | undefined {
     surveys: `${base}/surveys`,
     'survey-results': `${base}/surveys`,
     'attendance-results': `${base}/schedule`,
+    // F14.2: チームメンバー定期更新フォーム
+    'member-info': `${base}/member-info`,
   }
   return scopeLinks[widgetKey]
 }
@@ -326,6 +330,12 @@ function onDragEnd() {
             />
             <!-- F09.8.1 Phase 4: マイコルクボード -->
             <WidgetMyCorkboard v-else-if="w.key === 'my-corkboard' && scopeType === 'personal'" />
+            <!-- F14.2: チームメンバー定期更新フォーム -->
+            <WidgetMemberInfo
+              v-else-if="w.key === 'member-info' && scopeId && scopeType === 'team'"
+              :scope-type="scopeType"
+              :scope-id="scopeId"
+            />
           </div>
         </template>
       </DashboardWidgetCard>

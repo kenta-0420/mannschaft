@@ -7,6 +7,8 @@ import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.testcontainers.DockerClientFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -21,7 +23,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * F00 Phase D-γ — {@link TeamVisibilityResolver} 結合テスト。
+ * F00 Phase D-3 — {@link TeamVisibilityResolver} 結合テスト。
  *
  * <p>実 MySQL（Testcontainers）に対し最小限の seed を投入し、
  * {@link ContentVisibilityChecker} 経由で TEAM の可視性評価を包括的に検証する。</p>
@@ -31,14 +33,31 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>{@code SurveyVisibilityResolverIntegrationTest} の方式を踏襲し、
  * {@code @Transactional} ロールバック方式 + {@code em.createNativeQuery}
- * で users / roles / user_roles / teams を直接 INSERT する。</p>
+ * で users / roles / user_roles / teams / organizations / team_org_memberships を直接 INSERT する。</p>
+ *
+ * <p>D-3 で追加されたマッピング:
+ * <ul>
+ *   <li>ORGANIZATION_ONLY → ORGANIZATION_WIDE（親 ORG メンバーまで公開）のシナリオを検証</li>
+ *   <li>PRIVATE → MEMBERS_ONLY（チームメンバーのみ可視。{@code TeamEntity} に {@code created_by}
+ *       がないため {@code PRIVATE}（作成者本人のみ）は実質 fail-closed となる。
+ *       チームの「非公開」の意図は「メンバーだけ見える」であるため MEMBERS_ONLY を使用）のシナリオを検証</li>
+ * </ul>
  */
 @SpringBootTest(properties = {"feature.visibility-resolver.team=true"})
 @Testcontainers
 @ActiveProfiles("test")
 @Transactional
+@EnabledIf("com.mannschaft.app.team.visibility.TeamVisibilityResolverIntegrationTest#isDockerAvailable")
 @DisplayName("TeamVisibilityResolver 結合テスト")
 class TeamVisibilityResolverIntegrationTest {
+
+    public static boolean isDockerAvailable() {
+        try {
+            return DockerClientFactory.instance().isDockerAvailable();
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
     @Container
     @SuppressWarnings("resource")
@@ -68,8 +87,11 @@ class TeamVisibilityResolverIntegrationTest {
     private Long memberUserId;
     private Long nonMemberUserId;
     private Long sysAdminUserId;
+    private Long orgMemberUserId;
     private Long publicTeamId;
     private Long privateTeamId;
+    private Long orgOnlyTeamId;
+    private Long orgId;
 
     @BeforeEach
     void setUp() {
@@ -93,14 +115,25 @@ class TeamVisibilityResolverIntegrationTest {
         memberUserId = insertUser("tv.member@example.com", "田中", "一郎");
         nonMemberUserId = insertUser("tv.nonmember@example.com", "山田", "花子");
         sysAdminUserId = insertUser("tv.sysadmin@example.com", "管理", "者");
+        orgMemberUserId = insertUser("tv.orgmember@example.com", "組織", "メンバー");
 
-        // teams 挿入（PUBLIC / PRIVATE の 2 種）
+        // 組織挿入（ORGANIZATION_ONLY チームの親 ORG）
+        orgId = insertOrganization("TV結合テスト組織");
+
+        // teams 挿入（PUBLIC / PRIVATE / ORGANIZATION_ONLY の 3 種）
         publicTeamId = insertTeam("TV結合テストチーム_PUBLIC", "PUBLIC");
         privateTeamId = insertTeam("TV結合テストチーム_PRIVATE", "PRIVATE");
+        orgOnlyTeamId = insertTeam("TV結合テストチーム_ORGANIZATION_ONLY", "ORGANIZATION_ONLY");
+
+        // team_org_memberships: orgOnlyTeamId を orgId に所属させる（ORGANIZATION_WIDE 解決用）
+        insertTeamOrgMembership(orgOnlyTeamId, orgId);
 
         // memberships: memberUserId を publicTeamId / privateTeamId の MEMBER として登録
         insertUserRole(memberUserId, memberRoleId, publicTeamId, null);
         insertUserRole(memberUserId, memberRoleId, privateTeamId, null);
+
+        // orgMemberUserId を org の MEMBER として登録（ORGANIZATION_WIDE 評価対象）
+        insertUserRole(orgMemberUserId, memberRoleId, null, orgId);
 
         // sysAdmin を SYSTEM_ADMIN として登録
         insertUserRole(sysAdminUserId, systemAdminRoleId, null, null);
@@ -127,18 +160,18 @@ class TeamVisibilityResolverIntegrationTest {
     }
 
     // =========================================================================
-    // シナリオ 2: PRIVATE チームは非管理者には不可視
+    // シナリオ 2: PRIVATE チームはメンバーに可視、非メンバーには不可視
     // =========================================================================
 
     @Test
-    @DisplayName("private_team_invisible_to_non_admin: PRIVATE チームは非管理者は false")
-    void private_team_invisible_to_non_admin() {
-        // 非メンバー
+    @DisplayName("private_team_visible_to_members_only: PRIVATE チームはメンバーに true、非メンバーに false")
+    void private_team_visible_to_members_only() {
+        // チームメンバー（setUp で privateTeamId に MEMBER として登録済み）→ 可視
+        assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, memberUserId)).isTrue();
+        // 非メンバー → 不可視
         assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, nonMemberUserId)).isFalse();
-        // 匿名ユーザー
+        // 匿名ユーザー → 不可視
         assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, null)).isFalse();
-        // MEMBER ロールのみでは ADMINS_ONLY に届かない
-        assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, memberUserId)).isFalse();
         // SystemAdmin は高速パスで可視
         assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, sysAdminUserId)).isTrue();
     }
@@ -153,6 +186,40 @@ class TeamVisibilityResolverIntegrationTest {
         assertThat(checker.canView(ReferenceType.TEAM, 999_999L, memberUserId)).isFalse();
         assertThat(checker.canView(ReferenceType.TEAM, 999_999L, sysAdminUserId)).isFalse();
         assertThat(checker.canView(ReferenceType.TEAM, 999_999L, null)).isFalse();
+    }
+
+    // =========================================================================
+    // シナリオ 4: ORGANIZATION_ONLY チームは親 ORG メンバーのみ閲覧可
+    // =========================================================================
+
+    @Test
+    @DisplayName("org_only_team_visible_to_org_member: ORGANIZATION_ONLY チームは親 ORG メンバーに true")
+    void org_only_team_visible_to_org_member() {
+        // 親 ORG メンバー (orgMemberUserId) は ORGANIZATION_WIDE 経由で可視
+        assertThat(checker.canView(ReferenceType.TEAM, orgOnlyTeamId, orgMemberUserId)).isTrue();
+        // SystemAdmin は常に可視
+        assertThat(checker.canView(ReferenceType.TEAM, orgOnlyTeamId, sysAdminUserId)).isTrue();
+        // チームメンバーでも ORG メンバーでもないユーザーは不可視
+        assertThat(checker.canView(ReferenceType.TEAM, orgOnlyTeamId, nonMemberUserId)).isFalse();
+        // 匿名ユーザーは不可視
+        assertThat(checker.canView(ReferenceType.TEAM, orgOnlyTeamId, null)).isFalse();
+    }
+
+    // =========================================================================
+    // シナリオ 5: PRIVATE チームは MEMBERS_ONLY として評価される
+    // =========================================================================
+
+    @Test
+    @DisplayName("private_team_members_only: PRIVATE は MEMBERS_ONLY にマップ — メンバーは可視、非メンバーは不可視")
+    void private_team_members_only() {
+        // PRIVATE → MEMBERS_ONLY: チームメンバーは可視
+        assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, memberUserId)).isTrue();
+        // チームメンバーではないユーザーは不可視
+        assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, nonMemberUserId)).isFalse();
+        // 匿名ユーザーは不可視
+        assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, null)).isFalse();
+        // SystemAdmin は高速パスで可視
+        assertThat(checker.canView(ReferenceType.TEAM, privateTeamId, sysAdminUserId)).isTrue();
     }
 
     // =========================================================================
@@ -196,6 +263,29 @@ class TeamVisibilityResolverIntegrationTest {
                 "SELECT id FROM teams WHERE name = :name")
                 .setParameter("name", name)
                 .getSingleResult()).longValue();
+    }
+
+    private Long insertOrganization(String name) {
+        em.createNativeQuery(
+                "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
+                        + "supporter_enabled, version, created_at, updated_at) "
+                        + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW())")
+                .setParameter("name", name)
+                .executeUpdate();
+        return ((Number) em.createNativeQuery(
+                "SELECT id FROM organizations WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult()).longValue();
+    }
+
+    private void insertTeamOrgMembership(Long teamId, Long organizationId) {
+        em.createNativeQuery(
+                "INSERT INTO team_org_memberships "
+                        + "(team_id, organization_id, status, invited_at, created_at) "
+                        + "VALUES (:teamId, :orgId, 'ACTIVE', NOW(), NOW())")
+                .setParameter("teamId", teamId)
+                .setParameter("orgId", organizationId)
+                .executeUpdate();
     }
 
     private void insertUserRole(Long uid, Long roleId, Long teamIdParam, Long orgIdParam) {

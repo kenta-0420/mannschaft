@@ -73,6 +73,17 @@ public enum ReferenceType {
     /** 組織 (Phase D / 既存 enum: {@code OrganizationEntity.Visibility}). */
     ORGANIZATION,
 
+    /**
+     * 物件履歴パッケージ (F09.13 Phase 1 / 既存 enum: {@code property.WorkPackageVisibility}).
+     *
+     * <p>マンション管理組合等の改修・修繕・点検・事故・打合せ等を集約する
+     * パッケージ単位の可視性判定に用いる。MEMBERS_MASKED / PUBLIC_MASKED などの
+     * マスキング系 visibility は MEMBERS_ONLY / PUBLIC として正規化し、
+     * 金額マスキング自体は本基盤外の {@code PropertyWorkPackageMaskingService}
+     * で処理する（責務分離）。</p>
+     */
+    PROPERTY_WORK_PACKAGE,
+
     // ---------------------------------------------------------------------
     // Phase 2 予約 (設計書 §3.3)
     // Phase 1 では Resolver 未実装のため fail-closed。

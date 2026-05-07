@@ -9,6 +9,7 @@ import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.StandardVisibility;
 import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
+import com.mannschaft.app.common.visibility.mapping.TeamVisibilityMapper;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
@@ -33,14 +34,14 @@ import java.util.List;
  * <p><strong>機能側 visibility との StandardVisibility マッピング</strong>（§5.2）:</p>
  * <ul>
  *   <li>{@link TeamEntity.Visibility#PUBLIC} → {@link StandardVisibility#PUBLIC}
- *       （誰でも閲覧可）</li>
- *   <li>{@link TeamEntity.Visibility#ORGANIZATION_ONLY} → {@link StandardVisibility#MEMBERS_ONLY}
- *       （保守的マッピング: 現時点ではチームメンバーのみ。
- *       Phase D 以降で ORGANIZATION_WIDE へ昇格し「所属組織メンバー全体」に公開する想定。
- *       今は Resolver が稼働していない状態から切り替えるため、制限的な MEMBERS_ONLY を採用し
- *       誤公開リスクを最小化する設計判断（軍議裁可 D-γ 設計方針）。）</li>
- *   <li>{@link TeamEntity.Visibility#PRIVATE} → {@link StandardVisibility#ADMINS_ONLY}
- *       （チーム管理者のみ閲覧可）</li>
+ *       （未認証ユーザーも含め誰でも閲覧可）</li>
+ *   <li>{@link TeamEntity.Visibility#ORGANIZATION_ONLY} → {@link StandardVisibility#ORGANIZATION_WIDE}
+ *       （スコープの親 ORG 所属メンバーまで公開。
+ *       {@link com.mannschaft.app.common.visibility.UserScopeRoleSnapshot#isMemberOfParentOrg} で評価。
+ *       親 ORG 非アクティブ時の連鎖ガードは §11.6 参照。）</li>
+ *   <li>{@link TeamEntity.Visibility#PRIVATE} → {@link StandardVisibility#PRIVATE}
+ *       （作成者本人のみ。チームに作成者概念（{@code created_by}）がないため
+ *       authorUserId=null として実質的に fail-closed となる。）</li>
  * </ul>
  *
  * <p><strong>status × visibility 合成</strong>（§7.5）:</p>
@@ -89,12 +90,7 @@ public class TeamVisibilityResolver
 
     @Override
     protected StandardVisibility toStandard(TeamEntity.Visibility visibility) {
-        return switch (visibility) {
-            case PUBLIC -> StandardVisibility.PUBLIC;
-            // 保守的マッピング: 全組織メンバーへの公開は Phase D-δ 以降で ORGANIZATION_WIDE に昇格予定
-            case ORGANIZATION_ONLY -> StandardVisibility.MEMBERS_ONLY;
-            case PRIVATE -> StandardVisibility.ADMINS_ONLY;
-        };
+        return TeamVisibilityMapper.toStandard(visibility);
     }
 
     @Override

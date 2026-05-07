@@ -106,7 +106,7 @@ function isActive(path: string): boolean {
 
   <div v-else class="min-h-screen dark:bg-surface-ground" style="background-color: var(--bg-color, #f3efe0)">
     <!-- ヘッダー -->
-    <header class="bg-surface-0 border-b border-surface shadow-sm">
+    <header class="sticky top-0 z-50 bg-surface-0 border-b border-surface shadow-sm">
       <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4">
         <!-- 左: ロゴ + ナビゲーション -->
         <div class="flex min-w-0 flex-1 items-center gap-6">
