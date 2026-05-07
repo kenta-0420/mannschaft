@@ -5,24 +5,29 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.errorreport.ErrorReportMapper;
+import com.mannschaft.app.errorreport.ErrorReportProperties;
 import com.mannschaft.app.errorreport.dto.ErrorReportAiAnalysisResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportAssigneeRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportBulkUpdateRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportCommentRequest;
+import com.mannschaft.app.errorreport.dto.ErrorReportConfigResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportStatsResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportTimelineResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportUpdateRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportWorkflowStageRequest;
+import com.mannschaft.app.errorreport.dto.GitHubIssueCreateResponse;
 import com.mannschaft.app.errorreport.entity.ErrorReportAiAnalysisEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository;
 import com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisService;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
+import com.mannschaft.app.errorreport.service.GitHubIssueService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -54,6 +59,11 @@ public class SystemAdminErrorReportController {
     private final AccessControlService accessControlService;
     private final ErrorReportAiAnalysisService aiAnalysisService;
     private final ErrorReportAiAnalysisRepository aiAnalysisRepository;
+    private final GitHubIssueService gitHubIssueService;
+    private final ErrorReportProperties errorReportProperties;
+
+    @Value("${mannschaft.claude.api-key:}")
+    private String claudeApiKey;
 
     /**
      * エラーレポート一覧を取得する（ページネーション・フィルタ付き）。
@@ -229,6 +239,44 @@ public class SystemAdminErrorReportController {
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(data, meta));
+    }
+
+    // ========================================
+    // F12.5 Phase 2-D — GitHub Issue 連携
+    // ========================================
+
+    /**
+     * F12.5 Phase 2-D — GitHub Issue を作成し、エラーレポートに URL を保存する。
+     */
+    @PostMapping("/{id}/github-issue")
+    @Operation(summary = "GitHub Issue 作成")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "作成成功")
+    public ResponseEntity<ApiResponse<GitHubIssueCreateResponse>> createGithubIssue(@PathVariable Long id) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkSystemAdmin(actorId);
+        String url = gitHubIssueService.createIssue(id, actorId);
+        return ResponseEntity.ok(ApiResponse.of(
+                GitHubIssueCreateResponse.builder().url(url).build()));
+    }
+
+    /**
+     * F12.5 Phase 2-D — エラーレポート機能の運用設定（GitHub/AI 有効状態）を返す。
+     * フロントエンドのボタン状態判定に使用される。
+     */
+    @GetMapping("/config")
+    @Operation(summary = "エラーレポート機能設定取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<ErrorReportConfigResponse>> config() {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
+        boolean aiEnabled = errorReportProperties.getAi().isEnabled()
+                && claudeApiKey != null && !claudeApiKey.isBlank();
+        ErrorReportConfigResponse response = ErrorReportConfigResponse.builder()
+                .githubEnabled(gitHubIssueService.isAvailable())
+                .aiEnabled(aiEnabled)
+                .aiModel(errorReportProperties.getAi().getModel())
+                .aiMonthlyBudgetJpy(errorReportProperties.getAi().getMonthlyBudgetJpy())
+                .build();
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**

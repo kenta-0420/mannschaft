@@ -52,6 +52,10 @@ class SystemAdminErrorReportControllerTest {
     private com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisService aiAnalysisService;
     @Mock
     private com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository aiAnalysisRepository;
+    @Mock
+    private com.mannschaft.app.errorreport.service.GitHubIssueService gitHubIssueService;
+    @Mock
+    private com.mannschaft.app.errorreport.ErrorReportProperties errorReportProperties;
 
     @InjectMocks
     private SystemAdminErrorReportController controller;
@@ -159,5 +163,42 @@ class SystemAdminErrorReportControllerTest {
         controller.timeline(REPORT_ID, null, 9999);
 
         verify(errorReportService).fetchTimeline(REPORT_ID, null, 100);
+    }
+
+    // ========================================
+    // F12.5 Phase 2-D — GitHub Issue / config
+    // ========================================
+
+    @Test
+    @DisplayName("POST /github-issue: 認可チェックの上で GitHubIssueService.createIssue を呼び出す")
+    void createGithubIssue_callsService() {
+        String issueUrl = "https://github.com/octocat/hello-world/issues/42";
+        given(gitHubIssueService.createIssue(REPORT_ID, ACTOR_ID)).willReturn(issueUrl);
+
+        ResponseEntity<?> entity = controller.createGithubIssue(REPORT_ID);
+
+        verify(accessControlService).checkSystemAdmin(ACTOR_ID);
+        verify(gitHubIssueService).createIssue(REPORT_ID, ACTOR_ID);
+        assertThat(entity.getStatusCode().value()).isEqualTo(200);
+    }
+
+    @Test
+    @DisplayName("GET /config: 認可チェック + GitHub/AI 有効状態を返す")
+    void config_returnsConfigStatus() {
+        com.mannschaft.app.errorreport.ErrorReportProperties.Ai aiProps =
+                new com.mannschaft.app.errorreport.ErrorReportProperties.Ai();
+        aiProps.setEnabled(true);
+        aiProps.setModel("claude-haiku-4-5");
+        aiProps.setMonthlyBudgetJpy(5000);
+        given(errorReportProperties.getAi()).willReturn(aiProps);
+        given(gitHubIssueService.isAvailable()).willReturn(true);
+
+        // claude-api-key を設定（@Value 経由）
+        org.springframework.test.util.ReflectionTestUtils.setField(controller, "claudeApiKey", "sk-ant-dummy");
+
+        ResponseEntity<?> entity = controller.config();
+
+        verify(accessControlService).checkSystemAdmin(ACTOR_ID);
+        assertThat(entity.getStatusCode().value()).isEqualTo(200);
     }
 }

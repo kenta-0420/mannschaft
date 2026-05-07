@@ -116,6 +116,20 @@
       "last_analyzed": "最終分析",
       "tokens_summary": "{prompt} / {completion}"
     },
+    "github": {
+      "tab": "GitHub",
+      "loading": "読み込み中…",
+      "not_configured": "GitHub 連携が設定されていません",
+      "create_issue": "GitHub Issue を作成",
+      "create_description": "このエラーレポートを GitHub の Issue として登録します。本文には PII 除去済みのエラー情報・AI 分析結果（あれば）・内部管理画面リンクが含まれます。",
+      "creating": "作成中…",
+      "view_issue": "GitHub で見る",
+      "already_created": "GitHub Issue は作成済みです",
+      "url_label": "Issue URL",
+      "labels_help": "ラベル: frontend-error, severity:{severity}, regression（再発時のみ）",
+      "created_message": "GitHub Issue を作成しました",
+      "create_failed": "GitHub Issue の作成に失敗しました"
+    },
     "errors": {
       "load_failed": "読み込みに失敗しました",
       "update_failed": "更新に失敗しました",
