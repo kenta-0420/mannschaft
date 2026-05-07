@@ -56,8 +56,12 @@ function navigateTo(todo: MyTodo) {
 // === チェックボックス（完了トグル） =========================================
 
 function isCompleted(todo: MyTodo): boolean {
-  // bucket 優先（カスタムラベルでも bucket=COMPLETED は完了扱い）
-  if (todo.statusLabel?.bucket === 'COMPLETED') return true
+  // 判定は todo.status のみで行う。
+  // statusLabel.bucket は status から導出される（B-6 修正により
+  // status_label_id NULL 時はサーバ側で SYSTEM 既定にフォールバック）ため、
+  // bucket を優先すると楽観更新（status='OPEN'）と statusLabel（bucket='COMPLETED'）が
+  // 一時的に食い違ったときに UI が COMPLETED に見えるバグが発生する。
+  // 単一の真実源として status のみを参照することで楽観更新の整合性を保つ。
   return todo.status === 'COMPLETED'
 }
 
