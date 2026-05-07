@@ -12,6 +12,11 @@ import java.util.Optional;
 
 /**
  * 時間割リポジトリ。
+ *
+ * <p><strong>F00 Phase E 確認メモ（2026-05-07）:</strong>
+ * {@code findByVisibility...} 系クエリは存在しない。
+ * visibility によるフィルタリングは Service 層でも行われておらず、
+ * 旧可視性ロジック除去の対象となるメソッドはなし。変更不要を確認済み。</p>
  */
 public interface TimetableRepository extends JpaRepository<TimetableEntity, Long> {
 

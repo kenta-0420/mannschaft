@@ -12,6 +12,11 @@ import java.util.Optional;
 
 /**
  * F03.15 個人時間割リポジトリ。
+ *
+ * <p><strong>F00 Phase E 確認メモ（2026-05-07）:</strong>
+ * {@code findByVisibility...} 系クエリは存在しない。
+ * {@code ReferenceType.PERSONAL_TIMETABLE} は Phase 2 予約で Resolver 未実装のため、
+ * 現時点で {@code ContentVisibilityChecker} 経由化の対象外。変更不要を確認済み。</p>
  */
 public interface PersonalTimetableRepository extends JpaRepository<PersonalTimetableEntity, Long> {
 
