@@ -672,7 +672,17 @@
       "PowerShell(try { $tcp = New-Object System.Net.Sockets.TcpClient; $tcp.Connect\\(\"127.0.0.1\", 3306\\); Write-Host \"MySQL 3306: Connected\"; $tcp.Close\\(\\) } catch { Write-Host \"MySQL 3306: Failed - $_\" }; try { $tcp2 = New-Object System.Net.Sockets.TcpClient; $tcp2.Connect\\(\"127.0.0.1\", 6379\\); Write-Host \"Valkey 6379: Connected\"; $tcp2.Close\\(\\) } catch { Write-Host \"Valkey 6379: Failed - $_\" })",
       "Bash(rtk config *)",
       "Bash(rtk filter *)",
-      "Bash(rtk --help)"
+      "Bash(rtk --help)",
+      "Bash(findstr \":8080\")",
+      "Bash(findstr LISTENING)",
+      "Bash(./gradlew compileJava compileTestJava --no-daemon -q)",
+      "Bash(./gradlew :backend:test --tests \"com.mannschaft.app.schedule.ScheduleServiceTest\" --no-daemon -q)",
+      "Bash(node_modules/.bin/tsc --version)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('state:', d['state']\\); print\\('mergeable:', d['mergeable']\\); checks=d.get\\('statusCheckRollup',[]\\); [print\\(c['name'],c['status'],c.get\\('conclusion',''\\)\\) for c in checks]\")",
+      "Bash(cat)",
+      "Bash(bash /tmp/check_events.sh)",
+      "Bash(bash /tmp/check_handlers.sh)",
+      "Bash(bash /tmp/final_check.sh)"
     ],
     "deny": [
       "Write(**/.env)",
