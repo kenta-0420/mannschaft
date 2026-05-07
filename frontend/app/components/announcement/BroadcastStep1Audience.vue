@@ -14,6 +14,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { getTeamsInOrg } = useOrganizationApi()
 
 const targetRole = computed({
   get() {
@@ -43,6 +44,31 @@ const allTeams = computed({
     }
   },
 })
+
+/** 組織配下のチーム一覧（ORGANIZATION スコープのみ使用。id と name のみ利用） */
+const orgTeams = ref<Array<{ id: number; name: string }>>([])
+
+// scopeType === 'ORGANIZATION' のときにチーム一覧を取得
+watchEffect(async () => {
+  if (props.scopeType === 'ORGANIZATION') {
+    const res = await getTeamsInOrg(props.scopeId)
+    orgTeams.value = res.data
+  }
+})
+
+/** 個別チームのチェック状態 */
+function isTeamChecked(teamId: number): boolean {
+  return props.modelValue.targetTeamIds?.includes(teamId) ?? false
+}
+
+/** 個別チームのチェックを切り替える */
+function toggleTeam(teamId: number, checked: boolean) {
+  const current = props.modelValue.targetTeamIds ?? []
+  const next = checked
+    ? [...current, teamId]
+    : current.filter((id) => id !== teamId)
+  emit('update:modelValue', { ...props.modelValue, targetTeamIds: next })
+}
 
 /** テンプレート適用時にフォーム状態を上書き */
 function onTemplateApply(template: AnnouncementTemplate) {
@@ -97,8 +123,24 @@ const templateId = computed({
             {{ t('announcement.target_teams_all') }}
           </label>
         </div>
-        <!-- TODO: チーム一覧取得後にチェックボックスを追加 -->
-        <!-- GET /api/v1/organizations/{orgId}/teams で取得する必要がある -->
+        <!-- チーム個別選択（allTeams=false のときのみ表示） -->
+        <template v-if="!allTeams && orgTeams.length > 0">
+          <div
+            v-for="team in orgTeams"
+            :key="team.id"
+            class="flex items-center gap-2 pl-6"
+          >
+            <Checkbox
+              :input-id="`team_${team.id}`"
+              :model-value="isTeamChecked(team.id)"
+              :binary="true"
+              @update:model-value="(val) => toggleTeam(team.id, val as boolean)"
+            />
+            <label :for="`team_${team.id}`" class="cursor-pointer text-sm">
+              {{ team.name }}
+            </label>
+          </div>
+        </template>
       </div>
     </div>
 
