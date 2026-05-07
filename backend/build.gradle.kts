@@ -36,6 +36,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    // F10.5 Phase 10-α: Micrometer Prometheus registry — /actuator/prometheus 公開と
+    // http.server.requests / cache.gets / hikaricp.* 等の自動計測点を有効化
+    implementation("io.micrometer:micrometer-registry-prometheus")
     implementation("org.springframework.boot:spring-boot-starter-aop")
     implementation("org.springframework.retry:spring-retry")
 

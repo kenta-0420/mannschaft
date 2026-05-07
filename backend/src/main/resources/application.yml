@@ -105,6 +105,30 @@ mannschaft:
           secret: ${JOB_QR_SIGNING_SECRET:}
           active: true
 
+# F10.5 Phase 10-α: Spring Boot Actuator + Micrometer 計測軸の整備
+# - 共通プロファイルでは健診系 + メトリクス系を広めに公開する
+# - prod では application-prod.yml で `health` のみに絞り、内部 NW 経由で別途有効化する運用
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,caches,threaddump,loggers
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: mannschaft
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
+      slo:
+        http.server.requests: 100ms,500ms,1s,2s
+
 # 備品ランキング集計バッチ設定（F09.12）
 equipment:
   ranking:

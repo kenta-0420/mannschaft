@@ -15,6 +15,7 @@ import com.mannschaft.app.notification.dto.UnreadCountResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -54,6 +55,7 @@ public class NotificationService {
      * @param pageable ページング情報
      * @return 通知レスポンスのページ
      */
+    @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "NotificationService.listNotifications"})
     public Page<NotificationResponse> listNotifications(Long userId, Pageable pageable) {
         Page<NotificationEntity> page = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
         return page.map(notificationMapper::toNotificationResponse);

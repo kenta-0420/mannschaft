@@ -1,0 +1,42 @@
+# Staging プロファイル
+#
+# F10.5 Phase 10-α でパフォーマンス監視の前線環境として整備する。
+# - Hibernate 統計を有効化し、500ms 超のクエリを INFO ログに残す
+# - prod に近い構成を保ちつつ Actuator 全エンドポイントを SYSTEM_ADMIN 認証下で公開
+# - 本ファイル新規作成時点では DataSource 等の接続情報は環境変数から注入（プレースホルダなし）
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST}
+      port: ${SPRING_REDIS_PORT:6379}
+
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        # F10.5 §5.1.3: スロークエリ早期検知のため Hibernate 統計を有効化
+        generate_statistics: true
+        # 500ms 超のクエリをログ出力対象とする
+        session.events.log.LOG_QUERIES_SLOWER_THAN_MS: 500
+
+logging:
+  level:
+    # Hibernate 統計初期化ログを INFO で表示
+    org.hibernate.stat.internal.StatisticsInitiator: INFO
+
+# F10.5 Phase 10-α: staging では全 Actuator メトリクスを SYSTEM_ADMIN 認証下で公開
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,caches,threaddump,loggers
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
