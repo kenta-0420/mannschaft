@@ -143,9 +143,10 @@ public class PropertyWorkPackageService {
         validateRequest(req);
 
         // 業者割当: vendorId が指定されている場合は snapshot も同時保存
+        // IDOR 防止: 同一 scope の vendor のみ参照可（VendorService 側で検証）
         String vendorNameSnapshot = null;
         if (req.vendorId() != null) {
-            VendorEntity vendor = vendorService.getVendor(req.vendorId());
+            VendorEntity vendor = vendorService.getVendor(scopeType, scopeId, req.vendorId());
             vendorNameSnapshot = vendor.getName();
         }
 
@@ -222,9 +223,11 @@ public class PropertyWorkPackageService {
         }
 
         // 業者変更: vendorId が変わった場合のみ snapshot を更新（同一ならそのまま）
+        // IDOR 防止: パッケージ自身の scope と vendor の scope の一致を VendorService 側で検証
         if (!java.util.Objects.equals(entity.getVendorId(), req.vendorId())) {
             if (req.vendorId() != null) {
-                VendorEntity vendor = vendorService.getVendor(req.vendorId());
+                VendorEntity vendor = vendorService.getVendor(
+                        entity.getScopeType(), entity.getScopeId(), req.vendorId());
                 entity.assignVendor(req.vendorId(), vendor.getName());
             } else {
                 // vendorId が null へ変更された場合は snapshot もクリア
@@ -306,7 +309,9 @@ public class PropertyWorkPackageService {
         if (vendorId == null) {
             entity.assignVendor(null, null);
         } else {
-            VendorEntity vendor = vendorService.getVendor(vendorId);
+            // IDOR 防止: パッケージ自身の scope と一致する vendor のみ参照可
+            VendorEntity vendor = vendorService.getVendor(
+                    entity.getScopeType(), entity.getScopeId(), vendorId);
             entity.assignVendor(vendorId, vendor.getName());
         }
         return packageRepository.save(entity);

@@ -119,9 +119,9 @@ public class VendorController {
             @PathVariable("scope") String scope,
             @PathVariable("scopeId") Long scopeId,
             @PathVariable("vendorId") Long vendorId) {
-        // scope/scopeId はパスマッチング用（Service 層は ID から直接取得し、IDOR 防止のため
-        // 取得した entity の scope と一致確認を行う必要がある — 暫定では service.getVendor のみ）
-        VendorEntity vendor = vendorService.getVendor(vendorId);
+        String scopeType = toScopeType(scope);
+        // IDOR 防止: VendorService 側で scope 一致を検証する
+        VendorEntity vendor = vendorService.getVendor(scopeType, scopeId, vendorId);
         return ApiResponse.of(VendorResponse.from(vendor));
     }
 
@@ -143,7 +143,8 @@ public class VendorController {
             @PathVariable("scopeId") Long scopeId,
             @PathVariable("vendorId") Long vendorId,
             @Valid @RequestBody VendorRequest request) {
-        VendorEntity updated = vendorService.updateVendor(vendorId, toUpsert(request));
+        String scopeType = toScopeType(scope);
+        VendorEntity updated = vendorService.updateVendor(scopeType, scopeId, vendorId, toUpsert(request));
         return ApiResponse.of(VendorResponse.from(updated));
     }
 
@@ -152,7 +153,8 @@ public class VendorController {
             @PathVariable("scope") String scope,
             @PathVariable("scopeId") Long scopeId,
             @PathVariable("vendorId") Long vendorId) {
-        vendorService.softDelete(vendorId);
+        String scopeType = toScopeType(scope);
+        vendorService.softDelete(scopeType, scopeId, vendorId);
         return ResponseEntity.noContent().build();
     }
 

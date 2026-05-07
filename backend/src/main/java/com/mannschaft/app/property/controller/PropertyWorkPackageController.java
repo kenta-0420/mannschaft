@@ -364,7 +364,7 @@ public class PropertyWorkPackageController {
     private PropertyWorkPackageResponse toDetail(PropertyWorkPackageEntity entity,
                                                  UserScopeRoleSnapshot snapshot) {
         VendorEntity vendor = entity.getVendorId() != null
-                ? safeLoadVendor(entity.getVendorId())
+                ? safeLoadVendor(entity.getScopeType(), entity.getScopeId(), entity.getVendorId())
                 : null;
         MaskedView masked = maskingService.applyMasking(entity, vendor, snapshot);
         List<PropertyWorkDocumentResponse> docs =
@@ -381,7 +381,7 @@ public class PropertyWorkPackageController {
     private PropertyWorkPackageSummaryResponse toSummary(PropertyWorkPackageEntity entity,
                                                          UserScopeRoleSnapshot snapshot) {
         VendorEntity vendor = entity.getVendorId() != null
-                ? safeLoadVendor(entity.getVendorId())
+                ? safeLoadVendor(entity.getScopeType(), entity.getScopeId(), entity.getVendorId())
                 : null;
         MaskedView masked = maskingService.applyMasking(entity, vendor, snapshot);
         if (!masked.visible()) {
@@ -390,10 +390,11 @@ public class PropertyWorkPackageController {
         return PropertyWorkPackageSummaryResponse.from(entity, masked);
     }
 
-    /** 業者取得失敗（削除済 vendor の場合等）でも一覧表示が壊れないよう null フォールバック。 */
-    private VendorEntity safeLoadVendor(Long vendorId) {
+    /** 業者取得失敗（削除済 vendor / scope 不一致の場合等）でも一覧表示が壊れないよう null フォールバック。
+     *  IDOR 防止のため、パッケージ自身の scope を渡して vendor が同一スコープか検証する。 */
+    private VendorEntity safeLoadVendor(String scopeType, Long scopeId, Long vendorId) {
         try {
-            return vendorService.getVendor(vendorId);
+            return vendorService.getVendor(scopeType, scopeId, vendorId);
         } catch (Exception e) {
             return null;
         }

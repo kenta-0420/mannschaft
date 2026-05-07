@@ -123,8 +123,10 @@ public class VendorService {
      * @throws BusinessException PROPERTY_005（業者なし）/ PROPERTY_006（名称重複）
      */
     @Transactional
-    public VendorEntity updateVendor(Long vendorId, VendorUpsertRequest req) {
+    public VendorEntity updateVendor(String scopeType, Long scopeId, Long vendorId, VendorUpsertRequest req) {
         VendorEntity vendor = findVendorOrThrow(vendorId);
+        // IDOR 防止: パスから受け取った scope と vendor の所属 scope が一致することを確認
+        ensureScopeMatches(vendor, scopeType, scopeId);
         validateName(req.name());
 
         if (!vendor.getName().equals(req.name())) {
@@ -151,10 +153,24 @@ public class VendorService {
     /**
      * 業者を 1 件取得する（未削除のみ）。
      *
+     * <p>IDOR 防止のため、パスから受け取った scope と vendor の所属 scope の一致を必ず確認する。
+     * 不一致の場合は PROPERTY_005（業者なし）扱いとして 404 を返し、他スコープの存在を漏らさない。</p>
+     *
      * @throws BusinessException PROPERTY_005
      */
-    public VendorEntity getVendor(Long vendorId) {
-        return findVendorOrThrow(vendorId);
+    public VendorEntity getVendor(String scopeType, Long scopeId, Long vendorId) {
+        VendorEntity vendor = findVendorOrThrow(vendorId);
+        ensureScopeMatches(vendor, scopeType, scopeId);
+        return vendor;
+    }
+
+    /**
+     * 業者の所属 scope と引数の scope が一致することを確認する（IDOR 防止）。
+     */
+    private void ensureScopeMatches(VendorEntity vendor, String scopeType, Long scopeId) {
+        if (!vendor.getScopeType().equals(scopeType) || !vendor.getScopeId().equals(scopeId)) {
+            throw new BusinessException(PropertyHistoryErrorCode.PROPERTY_005);
+        }
     }
 
     /**
@@ -196,8 +212,10 @@ public class VendorService {
      * <p>削除しても既存パッケージの {@code vendor_name_snapshot} で業者名表示は維持される。</p>
      */
     @Transactional
-    public void softDelete(Long vendorId) {
+    public void softDelete(String scopeType, Long scopeId, Long vendorId) {
         VendorEntity vendor = findVendorOrThrow(vendorId);
+        // IDOR 防止
+        ensureScopeMatches(vendor, scopeType, scopeId);
         vendor.softDelete();
         vendorRepository.save(vendor);
         log.info("業者論理削除: id={}", vendorId);

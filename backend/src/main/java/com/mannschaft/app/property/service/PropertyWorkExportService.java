@@ -89,7 +89,7 @@ public class PropertyWorkExportService {
         }
 
         VendorEntity vendor = entity.getVendorId() != null
-                ? safeLoadVendor(entity.getVendorId())
+                ? safeLoadVendor(entity.getScopeType(), entity.getScopeId(), entity.getVendorId())
                 : null;
         MaskedView masked = maskingService.applyMasking(entity, vendor, viewer);
         if (!masked.visible()) {
@@ -142,7 +142,9 @@ public class PropertyWorkExportService {
         // パッケージごとに MaskedView を作って可視のみ残す
         List<MaskedRow> rows = new ArrayList<>(filtered.size());
         for (PropertyWorkPackageEntity e : filtered) {
-            VendorEntity vendor = e.getVendorId() != null ? safeLoadVendor(e.getVendorId()) : null;
+            VendorEntity vendor = e.getVendorId() != null
+                    ? safeLoadVendor(e.getScopeType(), e.getScopeId(), e.getVendorId())
+                    : null;
             MaskedView mv = maskingService.applyMasking(e, vendor, viewer);
             if (mv.visible()) {
                 rows.add(new MaskedRow(e, vendor, mv));
@@ -230,7 +232,9 @@ public class PropertyWorkExportService {
 
     private ResponseEntity<byte[]> renderSingleExcel(PropertyWorkPackageEntity entity, MaskedView masked) {
         return renderListExcel(List.of(new MaskedRow(entity,
-                entity.getVendorId() != null ? safeLoadVendor(entity.getVendorId()) : null,
+                entity.getVendorId() != null
+                        ? safeLoadVendor(entity.getScopeType(), entity.getScopeId(), entity.getVendorId())
+                        : null,
                 masked)));
     }
 
@@ -363,9 +367,10 @@ public class PropertyWorkExportService {
     // 内部ヘルパー
     // =========================================================================
 
-    private VendorEntity safeLoadVendor(Long vendorId) {
+    /** IDOR 防止のため、scope を渡して vendor が同一スコープか検証する。 */
+    private VendorEntity safeLoadVendor(String scopeType, Long scopeId, Long vendorId) {
         try {
-            return vendorService.getVendor(vendorId);
+            return vendorService.getVendor(scopeType, scopeId, vendorId);
         } catch (Exception e) {
             return null;
         }
