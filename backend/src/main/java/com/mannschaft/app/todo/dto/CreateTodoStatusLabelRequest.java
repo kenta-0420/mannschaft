@@ -20,6 +20,8 @@ public class CreateTodoStatusLabelRequest {
 
     /** OPEN / IN_PROGRESS / COMPLETED のいずれか。 */
     @NotBlank
+    @Pattern(regexp = "OPEN|IN_PROGRESS|COMPLETED",
+            message = "bucket は OPEN / IN_PROGRESS / COMPLETED のいずれかである必要があります")
     private final String bucket;
 
     /** #RRGGBB 形式（任意）。 */
