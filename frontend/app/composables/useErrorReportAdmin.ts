@@ -11,6 +11,7 @@ import type {
   ErrorReportConfig,
   ErrorReportDetail,
   GitHubIssueCreateResponse,
+  KanbanResponse,
   ListParams,
   ListResponse,
   TimelineResponse,
@@ -106,6 +107,13 @@ export function useErrorReportAdmin() {
     return api<ApiResponse<ErrorReportConfig>>(`${BASE_URL}/config`)
   }
 
+  /**
+   * F12.5 Phase 2-E — Kanban ビュー（6 カラム）を取得する。
+   */
+  function fetchKanban() {
+    return api<ApiResponse<KanbanResponse>>(`${BASE_URL}/kanban`)
+  }
+
   return {
     list,
     get,
@@ -117,5 +125,6 @@ export function useErrorReportAdmin() {
     fetchAiAnalyses,
     createGithubIssue,
     fetchConfig,
+    fetchKanban,
   }
 }

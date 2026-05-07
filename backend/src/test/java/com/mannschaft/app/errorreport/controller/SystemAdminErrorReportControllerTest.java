@@ -138,6 +138,22 @@ class SystemAdminErrorReportControllerTest {
     }
 
     @Test
+    @DisplayName("GET /kanban: 認可チェックの上で Service.fetchKanban を呼び出す")
+    void kanban_callsService() {
+        com.mannschaft.app.errorreport.dto.KanbanResponse stub =
+                com.mannschaft.app.errorreport.dto.KanbanResponse.builder()
+                        .columns(List.of())
+                        .build();
+        given(errorReportService.fetchKanban()).willReturn(stub);
+
+        ResponseEntity<?> entity = controller.kanban();
+
+        verify(accessControlService).checkSystemAdmin(ACTOR_ID);
+        verify(errorReportService).fetchKanban();
+        assertThat(entity.getStatusCode().value()).isEqualTo(200);
+    }
+
+    @Test
     @DisplayName("GET /timeline: 認可チェックの上で Service.fetchTimeline を呼び出す")
     void timeline_callsService() {
         ErrorReportTimelineResponse stub = ErrorReportTimelineResponse.builder()

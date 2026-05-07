@@ -149,3 +149,36 @@ export interface ErrorReportConfig {
   aiModel: string
   aiMonthlyBudgetJpy: number
 }
+
+// ===== F12.5 Phase 2-E — Kanban =====
+
+/**
+ * Kanban カラムの key。"NULL" は未着手カラムを表す。
+ */
+export type KanbanStageKey = 'NULL' | WorkflowStage
+
+export interface KanbanCard {
+  id: number
+  errorMessage: string
+  severity: ErrorReportSeverity
+  status: ErrorReportStatus
+  occurrenceCount: number
+  affectedUserCount: number
+  lastOccurredAt: string
+  assigneeId: number | null
+  assigneeName: string | null
+  pageUrl: string
+  hasGithubIssue: boolean
+  hasAiAnalysis: boolean
+}
+
+export interface KanbanColumn {
+  stageKey: KanbanStageKey
+  totalCount: number
+  cards: KanbanCard[]
+  hasMore: boolean
+}
+
+export interface KanbanResponse {
+  columns: KanbanColumn[]
+}
