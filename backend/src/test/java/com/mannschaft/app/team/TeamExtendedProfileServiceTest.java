@@ -4,6 +4,10 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.common.visibility.VisibilityErrorCode;
 import com.mannschaft.app.organization.EstablishedDatePrecision;
 import com.mannschaft.app.organization.ProfileVisibility;
 import com.mannschaft.app.team.dto.CreateTeamCustomFieldRequest;
@@ -27,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
@@ -37,7 +42,11 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -69,8 +78,61 @@ class TeamExtendedProfileServiceTest {
     @Mock
     private AuditLogService auditLogService;
 
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
+
     @InjectMocks
     private TeamExtendedProfileService service;
+
+    // ========================================
+    // getProfile
+    // ========================================
+
+    @Nested
+    @DisplayName("getProfile")
+    class GetProfile {
+
+        @Test
+        @DisplayName("PUBLIC チームのプロフィールを正常取得できる（ContentVisibilityChecker.assertCanView が呼ばれる）")
+        void 正常取得_assertCanViewが呼ばれる() {
+            // Arrange
+            TeamEntity team = buildTeam(TeamEntity.Visibility.PUBLIC, null);
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+            // contentVisibilityChecker.assertCanView は何もしない（デフォルト動作）
+
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+
+                // Act
+                ApiResponse<TeamProfileResponse> result = service.getProfile(USER_ID, TEAM_ID);
+
+                // Assert
+                assertThat(result.getData()).isNotNull();
+                verify(contentVisibilityChecker).assertCanView(
+                        eq(ReferenceType.TEAM), eq(TEAM_ID), eq(USER_ID));
+            }
+        }
+
+        @Test
+        @DisplayName("PRIVATE チームかつ非メンバーの場合、ContentVisibilityChecker が VISIBILITY_001 をスローする")
+        void PRIVATE_TEAM非メンバー_VISIBILITY001() {
+            // Arrange
+            // contentVisibilityChecker.assertCanView が VISIBILITY_001 をスロー
+            doThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
+                    .when(contentVisibilityChecker)
+                    .assertCanView(eq(ReferenceType.TEAM), eq(TEAM_ID), isNull());
+
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(null);
+
+                // Act & Assert
+                assertThatThrownBy(() -> service.getProfile(null, TEAM_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo("VISIBILITY_001"));
+            }
+        }
+    }
 
     // ========================================
     // updateProfile
@@ -236,19 +298,26 @@ class TeamExtendedProfileServiceTest {
     class GetOfficers {
 
         @Test
-        @DisplayName("PRIVATE チームかつ非メンバーの場合 TEAM_048 をスローする")
-        void PRIVATE_TEAM非メンバー_TEAM048() {
+        @DisplayName("PRIVATE チームかつ非メンバーの場合、ContentVisibilityChecker が VISIBILITY_001 をスローする")
+        void PRIVATE_TEAM非メンバー_VISIBILITY001() {
             // Arrange
             TeamEntity team = buildTeam(TeamEntity.Visibility.PRIVATE, null);
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
             given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            doThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
+                    .when(contentVisibilityChecker)
+                    .assertCanView(eq(ReferenceType.TEAM), eq(TEAM_ID), eq(USER_ID));
 
-            // Act & Assert
-            assertThatThrownBy(() -> service.getOfficers(USER_ID, TEAM_ID, false))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("TEAM_048"));
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+
+                // Act & Assert
+                assertThatThrownBy(() -> service.getOfficers(USER_ID, TEAM_ID, false))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo("VISIBILITY_001"));
+            }
         }
 
         @Test
@@ -260,12 +329,17 @@ class TeamExtendedProfileServiceTest {
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
             given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            // contentVisibilityChecker.assertCanView は何もしない（PUBLIC チームは通過）
 
-            // Act
-            ApiResponse<List<TeamOfficerResponse>> result = service.getOfficers(USER_ID, TEAM_ID, false);
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
 
-            // Assert
-            assertThat(result.getData()).isEmpty();
+                // Act
+                ApiResponse<List<TeamOfficerResponse>> result = service.getOfficers(USER_ID, TEAM_ID, false);
+
+                // Assert
+                assertThat(result.getData()).isEmpty();
+            }
         }
 
         @Test
@@ -276,12 +350,17 @@ class TeamExtendedProfileServiceTest {
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
             given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            // contentVisibilityChecker.assertCanView は何もしない（PUBLIC チームは通過）
 
-            // Act & Assert
-            assertThatThrownBy(() -> service.getOfficers(USER_ID, TEAM_ID, true))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("TEAM_048"));
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+
+                // Act & Assert
+                assertThatThrownBy(() -> service.getOfficers(USER_ID, TEAM_ID, true))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo("TEAM_048"));
+            }
         }
 
         @Test
@@ -297,12 +376,17 @@ class TeamExtendedProfileServiceTest {
             TeamOfficerEntity hiddenOfficer = buildOfficer(OFFICER_ID + 1, TEAM_ID, "鈴木", 2, false);
             given(officerRepository.findByTeamIdOrderByDisplayOrderAsc(TEAM_ID))
                     .willReturn(List.of(visibleOfficer, hiddenOfficer));
+            // contentVisibilityChecker.assertCanView は何もしない（PUBLIC チームは通過）
 
-            // Act
-            ApiResponse<List<TeamOfficerResponse>> result = service.getOfficers(USER_ID, TEAM_ID, true);
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
 
-            // Assert
-            assertThat(result.getData()).hasSize(2);
+                // Act
+                ApiResponse<List<TeamOfficerResponse>> result = service.getOfficers(USER_ID, TEAM_ID, true);
+
+                // Assert
+                assertThat(result.getData()).hasSize(2);
+            }
         }
 
         @Test
@@ -318,13 +402,18 @@ class TeamExtendedProfileServiceTest {
             TeamOfficerEntity hiddenOfficer = buildOfficer(OFFICER_ID + 1, TEAM_ID, "鈴木", 2, false);
             given(officerRepository.findByTeamIdOrderByDisplayOrderAsc(TEAM_ID))
                     .willReturn(List.of(visibleOfficer, hiddenOfficer));
+            // contentVisibilityChecker.assertCanView は何もしない（PUBLIC チームは通過）
 
-            // Act
-            ApiResponse<List<TeamOfficerResponse>> result = service.getOfficers(USER_ID, TEAM_ID, false);
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
 
-            // Assert
-            assertThat(result.getData()).hasSize(1);
-            assertThat(result.getData().get(0).getName()).isEqualTo("田中");
+                // Act
+                ApiResponse<List<TeamOfficerResponse>> result = service.getOfficers(USER_ID, TEAM_ID, false);
+
+                // Assert
+                assertThat(result.getData()).hasSize(1);
+                assertThat(result.getData().get(0).getName()).isEqualTo("田中");
+            }
         }
     }
 
@@ -591,12 +680,17 @@ class TeamExtendedProfileServiceTest {
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(customFieldRepository.findByTeamIdOrderByDisplayOrderAsc(TEAM_ID))
                     .willReturn(List.of());
+            // contentVisibilityChecker.assertCanView は何もしない（PUBLIC チームは通過）
 
-            // Act
-            ApiResponse<List<TeamCustomFieldResponse>> result = service.getCustomFields(USER_ID, TEAM_ID, false);
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
 
-            // Assert
-            assertThat(result.getData()).isEmpty();
+                // Act
+                ApiResponse<List<TeamCustomFieldResponse>> result = service.getCustomFields(USER_ID, TEAM_ID, false);
+
+                // Assert
+                assertThat(result.getData()).isEmpty();
+            }
         }
     }
 
