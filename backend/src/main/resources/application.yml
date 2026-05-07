@@ -152,3 +152,4 @@ care:
   # F03.12 §16 イベント終了後解散通知リマインドバッチ設定
   dismissal-reminder:
     enabled: true
+
