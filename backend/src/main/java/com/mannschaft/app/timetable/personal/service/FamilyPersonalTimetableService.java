@@ -45,6 +45,12 @@ import java.util.Map;
  * <p>レスポンス DTO は {@code FamilyPersonalTimetableResponse} と
  * {@code FamilyWeeklyViewResponse} を使用し、メモ・添付・カスタムフィールド・
  * リンク先情報をすべて除外する（DTO レイヤーで強制）。</p>
+ *
+ * <p><strong>F00 Phase E 確認メモ（2026-05-07）:</strong>
+ * {@code PersonalTimetableVisibility.FAMILY_SHARED} チェックは家族閲覧専用の ACL 判定であり、
+ * 汎用コンテンツ可視性基盤（{@code ContentVisibilityChecker}）が対象とするフィルタリングとは
+ * 責務が異なる。{@code ReferenceType.PERSONAL_TIMETABLE} は Phase 2 予約で Resolver 未実装のため、
+ * 現時点で {@code ContentVisibilityChecker} 経由化の対象外。変更不要を確認済み。</p>
  */
 @Slf4j
 @Service

@@ -23,6 +23,13 @@ import java.util.Optional;
 
 /**
  * 時間割サービス。時間割のCRUD・ステータス遷移・複製を担当する。
+ *
+ * <p><strong>F00 Phase E 確認メモ（2026-05-07）:</strong>
+ * 本サービスは {@code TimetableVisibility}（MEMBERS_ONLY / PUBLIC）を CRUD データとして
+ * 保持・更新するが、visibility でリストをフィルタリングする旧可視性ロジックは存在しない。
+ * チーム時間割に対応する {@code ReferenceType.TIMETABLE} は未定義（Phase 2 予約の
+ * {@code PERSONAL_TIMETABLE} は別概念）であるため、{@code ContentVisibilityChecker}
+ * 経由化の対象外。変更不要を確認済み。</p>
  */
 @Slf4j
 @Service
