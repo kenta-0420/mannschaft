@@ -188,8 +188,18 @@ export function useTodoList() {
     },
   ])
 
-  async function load() {
-    loading.value = true
+  /**
+   * TODO 一覧を取得する。
+   *
+   * @param options.silent true の場合、`loading.value` をトグルせず、
+   *   背後でデータだけを差し替える。`PageLoading` の発動による全画面ちらつきを避けたい
+   *   場面（ラベル変更後の同期取得など）で使用する。
+   */
+  async function load(options: { silent?: boolean } = {}) {
+    const silent = options.silent === true
+    if (!silent) {
+      loading.value = true
+    }
     try {
       const [todosRes] = await Promise.all([
         todoApi.getMyTodos(),
@@ -198,9 +208,14 @@ export function useTodoList() {
       ])
       todos.value = todosRes.data
     } catch {
-      todos.value = []
+      // silent モードのときは既存の todos を維持し、画面のちらつきを避ける
+      if (!silent) {
+        todos.value = []
+      }
     } finally {
-      loading.value = false
+      if (!silent) {
+        loading.value = false
+      }
     }
   }
 
@@ -224,9 +239,10 @@ export function useTodoList() {
       if (body.status) {
         todo.status = body.status
       }
-      // statusLabelId 指定時はラベル情報を新しく取り直す必要があるため再ロード
+      // statusLabelId 指定時はラベル情報を新しく取り直す必要があるため再ロード。
+      // silent=true で再取得することで PageLoading が発動せず、行単位の差し替えになる。
       if (body.statusLabelId !== undefined) {
-        await load()
+        await load({ silent: true })
       }
     } catch {
       notification.error('ステータスの更新に失敗しました')
