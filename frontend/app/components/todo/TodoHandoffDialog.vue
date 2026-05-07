@@ -139,10 +139,26 @@ async function execute() {
   } catch (e: unknown) {
     const errObj = e as { data?: { error?: { code?: string } } }
     const code = errObj?.data?.error?.code
+    // F02.3.1 後続 C-6: サーバ側のエラーコードを UI に適切にマッピング。
+    // 番号方式 (TODO_xxx / COMMON_xxx) と固定文字列方式 (MILESTONE_LOCKED) の両方に対応。
     if (code === 'TODO_080') {
+      // HANDOFF_NOT_ALLOWED_FOR_PERSONAL — 個人 TODO への handoff
       notification.error(t('handoff.error.notAllowedPersonal'))
     } else if (code === 'TODO_081') {
+      // HANDOFF_RECIPIENT_NOT_MEMBER — 宛先がスコープのメンバーではない
       notification.error(t('handoff.error.invalidRecipient'))
+    } else if (code === 'TODO_074') {
+      // LABEL_SCOPE_MISMATCH — ラベルが TODO のスコープ・SYSTEM のいずれでもない
+      notification.error(t('handoff.error.labelScopeMismatch'))
+    } else if (code === 'MILESTONE_LOCKED') {
+      // F02.7 マイルストーンロック中の TODO への handoff
+      notification.error(t('handoff.error.milestoneLocked'))
+    } else if (code === 'COMMON_001') {
+      // VALIDATION_ERROR — Bean Validation 失敗
+      notification.error(t('handoff.error.validation'))
+    } else if (code === 'TODO_010') {
+      // TODO_NOT_FOUND — IDOR 対策で 404
+      notification.error(t('handoff.error.notFound'))
     } else {
       notification.error(t('handoff.error.generic'))
     }

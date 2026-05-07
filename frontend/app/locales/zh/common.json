@@ -984,6 +984,10 @@
       "labelRequired": "ステータスラベルを選択してください",
       "notAllowedPersonal": "個人 TODO はキャッチボールできません",
       "invalidRecipient": "宛先メンバーが見つかりません",
+      "labelScopeMismatch": "指定したラベルはこの TODO のスコープでは使用できません",
+      "milestoneLocked": "マイルストーンロック中の TODO は渡せません",
+      "validation": "入力内容に不備があります",
+      "notFound": "TODO が見つかりません（削除されたか、権限がない可能性があります）",
       "generic": "TODO の引き渡しに失敗しました"
     },
     "timeline": {
