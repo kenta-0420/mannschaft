@@ -51,19 +51,26 @@ export interface TodoContent {
 /** チャネル別コンテンツ入力 — スケジュール */
 export interface ScheduleContent {
   title: string
-  startAt: string
-  endAt: string
-  allDay?: boolean
+  /** 説明（任意・最大5000文字） */
+  description: string | null
+  /** ISO 8601 形式。allDay が true の場合も必須 */
+  startAt: string | null
+  /** ISO 8601 形式（任意） */
+  endAt: string | null
+  allDay: boolean
   attendanceRequired?: boolean
-  location?: string
+  /** 場所（任意・最大300文字） */
+  location: string | null
 }
 
 /** チャネル別コンテンツ入力 — アンケート */
 export interface SurveyContent {
   title: string
-  description?: string
+  /** 説明（任意・最大5000文字） */
+  description: string | null
   questions: unknown[]
-  closesAt?: string
+  /** 締切日時（任意・ISO 8601 形式） */
+  closesAt: string | null
 }
 
 /** チャネル別コンテンツ入力（ユニオン型） */

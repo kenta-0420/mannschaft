@@ -1,6 +1,7 @@
 package com.mannschaft.app.social.announcement;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -46,4 +47,18 @@ public class AnnouncementContentRequest {
     /** 終日フラグ（スケジュールで使用）。 */
     @JsonProperty("all_day")
     private Boolean allDay;
+
+    /** スケジュール会場・場所（SCHEDULE チャネル用。最大300文字）*/
+    @JsonProperty("location")
+    @Size(max = 300)
+    private String location;
+
+    /** 説明文（SURVEY/SCHEDULE チャネル用。最大5000文字）*/
+    @JsonProperty("description")
+    @Size(max = 5000)
+    private String description;
+
+    /** アンケート締切日時（SURVEY チャネル用。null = 無期限）*/
+    @JsonProperty("closes_at")
+    private LocalDateTime closesAt;
 }

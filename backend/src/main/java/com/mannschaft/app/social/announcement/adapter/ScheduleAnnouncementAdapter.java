@@ -39,8 +39,8 @@ public class ScheduleAnnouncementAdapter implements AnnouncementChannelAdapter {
 
         CreateScheduleRequest request = new CreateScheduleRequest(
                 content.getTitle(),
-                content.getBody(),   // description
-                null,                // location
+                content.getDescription(),   // description
+                content.getLocation(),      // location
                 content.getStartAt(),
                 content.getEndAt(),  // null 可（終日の場合は開始日と同日）
                 allDay,

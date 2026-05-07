@@ -37,7 +37,7 @@ public class SurveyAnnouncementAdapter implements AnnouncementChannelAdapter {
                               Long scopeId, String visibility, Long userId) {
         CreateSurveyRequest request = new CreateSurveyRequest(
                 content.getTitle(),
-                content.getBody(),   // description
+                content.getDescription(),   // description
                 false,               // isAnonymous（デフォルト false）
                 false,               // allowMultipleSubmissions（デフォルト false）
                 "ALL_MEMBERS",       // resultsVisibility
@@ -46,8 +46,8 @@ public class SurveyAnnouncementAdapter implements AnnouncementChannelAdapter {
                 false,               // autoPostToTimeline
                 null,                // seriesId
                 null,                // remindBeforeHours
-                null,                // startsAt（即時開始）
-                content.getEndAt(),  // expiresAt（expires_at として使用）
+                null,                    // startsAt（即時開始）
+                content.getClosesAt(),   // expiresAt（closes_at として使用）
                 Collections.emptyList(), // questions（告知ウィザードは設問なしで作成）
                 null,                // targetUserIds（全対象）
                 null                 // resultViewerUserIds
