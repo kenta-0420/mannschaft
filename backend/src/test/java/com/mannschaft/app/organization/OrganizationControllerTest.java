@@ -44,6 +44,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -127,7 +129,7 @@ class OrganizationControllerTest {
     @DisplayName("deleteOrganization: 204 No Content")
     void deleteOrganization_204() {
         assertThat(controller.deleteOrganization(ORG_ID).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(organizationService).deleteOrganization(ORG_ID);
+        verify(organizationService).deleteOrganization(eq(ORG_ID), any());
     }
 
     @Test
@@ -268,7 +270,7 @@ class OrganizationControllerTest {
     @DisplayName("unblockUser: 204 No Content")
     void unblockUser_204() {
         assertThat(controller.unblockUser(ORG_ID, 300L).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        verify(blockService).unblockUser(ORG_ID, "ORGANIZATION", 300L);
+        verify(blockService).unblockUser(eq(ORG_ID), eq("ORGANIZATION"), eq(300L), any());
     }
 
     @Test

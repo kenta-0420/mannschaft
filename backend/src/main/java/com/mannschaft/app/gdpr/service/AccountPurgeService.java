@@ -1,5 +1,6 @@
 package com.mannschaft.app.gdpr.service;
 
+import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.UserConstants;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.EmailChangeTokenRepository;
@@ -12,8 +13,10 @@ import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.util.SessionHashUtil;
 import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
@@ -73,6 +76,7 @@ public class AccountPurgeService {
     private final ProxyInputConsentRepository proxyInputConsentRepository;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
     private final ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
+    private final AuditLogService auditLogService;
 
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "accountPurgeBatch", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
@@ -197,6 +201,21 @@ public class AccountPurgeService {
         // purged_atを記録してからsave（論理削除時刻を保存するため）
         user.setPurgedAt(LocalDateTime.now());
         userRepository.save(user);
+
+        // Phase 6: WITHDRAWAL_COMPLETED 監査ログ記録（メールアドレスはSHA-256ハッシュ化して保存）
+        // ユーザー本体削除前に記録する（削除後はメールアドレスを取得できないため）
+        String emailHash = SessionHashUtil.hash(user.getEmail());
+        auditLogService.record(
+                AuditEventType.WITHDRAWAL_COMPLETED.name(),
+                null,         // userId: 退会完了バッチはシステムトリガーのため null
+                userId,       // targetUserId: 削除されるユーザー
+                null,
+                null,
+                null,
+                null,
+                null,         // session_hash: バッチ処理のため null
+                "{\"email_hash\":\"" + emailHash + "\"}"
+        );
 
         // ユーザー本体を物理削除
         userRepository.delete(user);

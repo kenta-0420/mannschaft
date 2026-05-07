@@ -682,7 +682,10 @@
       "Bash(cat)",
       "Bash(bash /tmp/check_events.sh)",
       "Bash(bash /tmp/check_handlers.sh)",
-      "Bash(bash /tmp/final_check.sh)"
+      "Bash(bash /tmp/final_check.sh)",
+      "Bash(Remove-Item *)",
+      "Bash(./gradlew cleanTest test --tests \"com.mannschaft.app.auth.*\" --tests \"com.mannschaft.app.todo.*\")",
+      "PowerShell(netsh interface *)"
     ],
     "deny": [
       "Write(**/.env)",

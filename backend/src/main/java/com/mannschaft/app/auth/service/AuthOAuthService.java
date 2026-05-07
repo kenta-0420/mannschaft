@@ -16,7 +16,9 @@ import com.mannschaft.app.auth.dto.OAuthProviderResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.auth.event.LoginSuccessEvent;
 import com.mannschaft.app.auth.event.OAuthLinkedEvent;
+import com.mannschaft.app.auth.event.OAuthLinkRequestedEvent;
 import com.mannschaft.app.auth.event.OAuthUnlinkedEvent;
+import com.mannschaft.app.auth.event.OAuthUserRegisteredEvent;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
@@ -147,6 +149,9 @@ public class AuthOAuthService {
                     oauthUserInfo.email(),
                     provider);
 
+            // イベント発行: OAuth連携確認メール送信
+            eventPublisher.publish(new OAuthLinkRequestedEvent(userId, ipAddress, userAgent, provider));
+
             return ApiResponse.of(conflictResponse);
         }
 
@@ -178,8 +183,9 @@ public class AuthOAuthService {
 
         TokenResponse tokenResponse = issueTokenPair(newUser.getId(), ipAddress, userAgent);
 
-        // イベント発行
+        // イベント発行: LoginSuccess + OAuth新規ユーザー登録
         eventPublisher.publish(new LoginSuccessEvent(newUser.getId(), "OAUTH_" + provider.toUpperCase(), ipAddress, userAgent));
+        eventPublisher.publish(new OAuthUserRegisteredEvent(newUser.getId(), ipAddress, userAgent, provider.toUpperCase()));
 
         return ApiResponse.of(tokenResponse);
     }

@@ -1,6 +1,8 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.auth.event.NewDeviceLoginEvent;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
+import com.mannschaft.app.common.DomainEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -21,6 +23,7 @@ public class NewDeviceDetectionService {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final MessageSource messageSource;
+    private final DomainEventPublisher eventPublisher;
 
     /**
      * 新規デバイスからのログインかを判定し、必要に応じて通知・監査ログを記録する。
@@ -46,8 +49,9 @@ public class NewDeviceDetectionService {
                 return;
             }
 
-            // 3. 新規デバイス検出 — ログ記録
+            // 3. 新規デバイス検出 — ログ記録 + 監査ログイベント発行
             log.info("新規デバイスログイン検知: userId={}, device={}, ip={}", userId, deviceName, ipAddress);
+            eventPublisher.publish(new NewDeviceLoginEvent(userId, ipAddress, deviceFingerprint, deviceName));
 
             // 4. 通知メッセージ生成
             Locale userLocale = Locale.forLanguageTag(locale != null ? locale : "ja");

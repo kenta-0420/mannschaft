@@ -16,6 +16,8 @@ import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
+import com.mannschaft.app.team.event.TeamMemberAuditEvent;
+import com.mannschaft.app.organization.event.OrganizationMemberAuditEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -110,6 +112,15 @@ public class RoleService {
         // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
         eventPublisher.publishEvent(new MembershipChangedEvent(
                 targetUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.CHANGED));
+
+        // 監査ログ用イベント発行
+        if ("TEAM".equals(scopeType)) {
+            eventPublisher.publishEvent(new TeamMemberAuditEvent(
+                    changedBy, targetUserId, scopeId, TeamMemberAuditEvent.SubType.ROLE_CHANGED));
+        } else if ("ORGANIZATION".equals(scopeType)) {
+            eventPublisher.publishEvent(new OrganizationMemberAuditEvent(
+                    changedBy, targetUserId, scopeId, OrganizationMemberAuditEvent.SubType.ROLE_CHANGED));
+        }
     }
 
     /**

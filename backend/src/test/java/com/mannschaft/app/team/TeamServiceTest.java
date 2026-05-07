@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -51,6 +52,7 @@ class TeamServiceTest {
     @Mock private TeamShiftSettingsService teamShiftSettingsService;
     @Mock private MembershipService membershipService;
     @Mock private MembershipRepository membershipRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;

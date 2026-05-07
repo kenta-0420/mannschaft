@@ -1,9 +1,11 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
 import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.util.SessionHashUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -27,6 +29,7 @@ public class AuthCleanupBatchService {
 
     private final UserRepository userRepository;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final AuditLogService auditLogService;
 
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "authCleanupBatch", lockAtMostFor = "PT15M", lockAtLeastFor = "PT1M")
@@ -48,6 +51,23 @@ public class AuthCleanupBatchService {
 
         // FK制約のため、ユーザー論理削除前にトークンを先に物理削除
         emailVerificationTokenRepository.deleteByUserIdIn(userIds);
+
+        // 論理削除前にメールアドレスをハッシュ化して監査ログ記録
+        // （論理削除後はメールアドレスへのアクセスが困難になるため先に記録）
+        expiredUsers.forEach(user -> {
+            String emailHash = SessionHashUtil.hash(user.getEmail());
+            auditLogService.record(
+                    AuditEventType.PENDING_USER_CLEANED_UP.name(),
+                    null,           // userId: バッチ処理のためシステムトリガー
+                    user.getId(),   // targetUserId: 削除対象ユーザー
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,           // session_hash: バッチ処理のため null
+                    "{\"email_hash\":\"" + emailHash + "\",\"batch_job_name\":\"PendingUserCleanupJob\"}"
+            );
+        });
 
         expiredUsers.forEach(user -> user.requestDeletion());
 

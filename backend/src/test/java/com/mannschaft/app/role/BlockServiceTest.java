@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -55,6 +56,9 @@ class BlockServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private BlockService blockService;
@@ -278,7 +282,7 @@ class BlockServiceTest {
                     .willReturn(Optional.of(block));
 
             // When
-            blockService.unblockUser(TEAM_ID, "TEAM", TARGET_USER_ID);
+            blockService.unblockUser(TEAM_ID, "TEAM", TARGET_USER_ID, ADMIN_USER_ID);
 
             // Then
             verify(teamBlockRepository).delete(block);
@@ -298,7 +302,7 @@ class BlockServiceTest {
                     .willReturn(Optional.of(block));
 
             // When
-            blockService.unblockUser(ORG_ID, "ORGANIZATION", TARGET_USER_ID);
+            blockService.unblockUser(ORG_ID, "ORGANIZATION", TARGET_USER_ID, ADMIN_USER_ID);
 
             // Then
             verify(organizationBlockRepository).delete(block);
@@ -312,7 +316,7 @@ class BlockServiceTest {
                     .willReturn(Optional.empty());
 
             // When
-            blockService.unblockUser(TEAM_ID, "TEAM", TARGET_USER_ID);
+            blockService.unblockUser(TEAM_ID, "TEAM", TARGET_USER_ID, ADMIN_USER_ID);
 
             // Then
             verify(teamBlockRepository, never()).delete(any(TeamBlockEntity.class));

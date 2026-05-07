@@ -22,6 +22,7 @@ import com.mannschaft.app.auth.dto.RegisterRequest;
 import com.mannschaft.app.auth.dto.SessionResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.auth.event.AccountLockedEvent;
+import com.mannschaft.app.auth.event.DeviceFingerprintMismatchEvent;
 import com.mannschaft.app.auth.event.EmailVerificationResentEvent;
 import com.mannschaft.app.auth.event.EmailVerifiedEvent;
 import com.mannschaft.app.auth.event.LoginFailedEvent;
@@ -30,6 +31,7 @@ import com.mannschaft.app.auth.event.LogoutEvent;
 import com.mannschaft.app.auth.event.LogoutEvent.LogoutType;
 import com.mannschaft.app.auth.event.PasswordResetCompletedEvent;
 import com.mannschaft.app.auth.event.PasswordResetRequestedEvent;
+import com.mannschaft.app.auth.event.TokenReuseDetectedEvent;
 import com.mannschaft.app.auth.event.UserRegisteredEvent;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -596,6 +598,7 @@ public class AuthService {
         if (existingToken.getRevokedAt() != null) {
             log.warn("リプレイ攻撃の疑い検出: userId={}, tokenId={}",
                     existingToken.getUserId(), existingToken.getId());
+            eventPublisher.publish(new TokenReuseDetectedEvent(existingToken.getUserId(), existingToken.getId()));
             logoutAllDevices(existingToken.getUserId());
             throw new BusinessException(AuthErrorCode.AUTH_029);
         }
@@ -605,11 +608,12 @@ public class AuthService {
             throw new BusinessException(AuthErrorCode.AUTH_032);
         }
 
-        // 3. デバイスフィンガープリント不一致 → WARNログのみ（ソフトモード）
+        // 3. デバイスフィンガープリント不一致 → WARNログ + 監査ログイベント発行（ソフトモード）
         if (deviceFingerprint != null && existingToken.getDeviceFingerprint() != null
                 && !deviceFingerprint.equals(existingToken.getDeviceFingerprint())) {
             log.warn("デバイスフィンガープリント不一致: userId={}, tokenId={}",
                     existingToken.getUserId(), existingToken.getId());
+            eventPublisher.publish(new DeviceFingerprintMismatchEvent(existingToken.getUserId(), existingToken.getId()));
         }
 
         // 4. 旧トークンを失効
