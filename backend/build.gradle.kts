@@ -106,6 +106,11 @@ dependencies {
     // PDF内容検証用（テストスコープのみ）
     testImplementation("org.apache.pdfbox:pdfbox:3.0.3")
 
+    // === F09.13 Phase 1-γ Excel生成共通基盤（Apache POI） ===
+    // SXSSFWorkbook によるストリーミング生成で大量レコード（〜20,000件）に対応
+    implementation("org.apache.poi:poi:5.2.5")
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
+
     // === Markdown → HTML 変換 ===
     implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
 
@@ -150,7 +155,10 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-    maxHeapSize = "2g"
+    // F09.13 Phase 1-γ: Apache POI 5.2.5 導入による Spring 起動時の Jackson Mixin OOM 対策で 2g → 4g。
+    // POI は内部で大量の XSD スキーマをロードしてヒープ・メタスペースを圧迫する。
+    // GitHub Actions ubuntu-latest は 16GB RAM のため 4g は十分安全。
+    maxHeapSize = "4g"
     finalizedBy(tasks.jacocoTestReport)
     testLogging {
         // 失敗時に完全スタックトレースを出力する。CI ログのみで NPE 起源を追跡できるようにする。
