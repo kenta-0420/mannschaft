@@ -23,9 +23,16 @@ ALTER TABLE todo_status_labels
   ADD CONSTRAINT chk_tsl_scope_id_for_system
   CHECK (scope_type <> 'SYSTEM' OR scope_id IS NULL);
 
--- created_by の型を BIGINT UNSIGNED に変更（users.id との整合）
+-- id/created_by/scope_id の型を BIGINT UNSIGNED に変更（todos/users.id との整合）
+-- ※ V19.007/008/010 が旧版で適用済みの環境向け補正
 ALTER TABLE todo_status_labels
+  MODIFY COLUMN id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  MODIFY COLUMN scope_id BIGINT UNSIGNED NULL,
   MODIFY COLUMN created_by BIGINT UNSIGNED NULL;
+
+-- todos.status_label_id も BIGINT UNSIGNED に変更（todo_status_labels.id との整合）
+ALTER TABLE todos
+  MODIFY COLUMN status_label_id BIGINT UNSIGNED NULL;
 
 -- created_by → users(id) (ON DELETE SET NULL: ユーザー削除時もラベルは残す)
 ALTER TABLE todo_status_labels
