@@ -150,7 +150,10 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-    maxHeapSize = "2g"
+    maxHeapSize = "4g"
+    // CI ランナーのシステムタイムゾーンに依存しないよう UTC を強制する。
+    // LocalDate を MySQL に保存/読み出す際、JDBC ドライバが JVM タイムゾーンを参照するため必須。
+    jvmArgs("-Duser.timezone=UTC")
     finalizedBy(tasks.jacocoTestReport)
     testLogging {
         // 失敗時に完全スタックトレースを出力する。CI ログのみで NPE 起源を追跡できるようにする。
