@@ -6,6 +6,8 @@
  */
 
 import type {
+  AiAnalysisListResponse,
+  AiAnalysisResponse,
   ErrorReportDetail,
   ListParams,
   ListResponse,
@@ -68,6 +70,24 @@ export function useErrorReportAdmin() {
     return api<ApiResponse<TimelineResponse>>(`${BASE_URL}/${id}/timeline`, { params: query })
   }
 
+  /**
+   * F12.5 Phase 2-C — AI 再分析を即時実行する。
+   */
+  function reanalyze(id: number) {
+    return api<ApiResponse<AiAnalysisResponse>>(`${BASE_URL}/${id}/ai-analyses`, {
+      method: 'POST',
+    })
+  }
+
+  /**
+   * F12.5 Phase 2-C — AI 分析履歴を取得する。
+   */
+  function fetchAiAnalyses(id: number, page = 0, size = 20) {
+    return api<AiAnalysisListResponse>(`${BASE_URL}/${id}/ai-analyses`, {
+      params: { page, size },
+    })
+  }
+
   return {
     list,
     get,
@@ -75,5 +95,7 @@ export function useErrorReportAdmin() {
     assign,
     addComment,
     fetchTimeline,
+    reanalyze,
+    fetchAiAnalyses,
   }
 }
