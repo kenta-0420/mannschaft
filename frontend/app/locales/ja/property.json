@@ -1,0 +1,150 @@
+{
+  "property": {
+    "title": "物件履歴台帳",
+    "subtitle": "改修・修繕・点検・事故対応などの工事履歴を一元管理",
+    "newPackage": "新規工事を追加",
+    "editPackage": "工事を編集",
+    "exportPdf": "PDFで出力",
+    "exportExcel": "Excelで出力",
+    "exportList": "履歴台帳をエクスポート",
+    "noPackages": "履歴がまだ登録されていません",
+    "loading": "読み込み中…",
+    "saving": "保存中…",
+    "saved": "保存しました",
+    "deleted": "削除しました",
+    "deleteConfirm": "本当に削除しますか？（論理削除）",
+    "view": {
+      "list": "一覧",
+      "timeline": "タイムライン",
+      "gantt": "ガント"
+    },
+    "filter": {
+      "title": "絞り込み",
+      "workType": "工事種別",
+      "status": "ステータス",
+      "vendor": "業者",
+      "from": "期間（開始）",
+      "to": "期間（終了）",
+      "all": "すべて",
+      "clear": "条件をクリア"
+    },
+    "workType": {
+      "RENOVATION": "改修",
+      "REPAIR": "修繕",
+      "INCIDENT": "事故対応",
+      "INSPECTION": "点検",
+      "DISASTER": "災害",
+      "MEETING": "打合せ",
+      "OTHER": "その他"
+    },
+    "status": {
+      "PLANNED": "計画中",
+      "IN_PROGRESS": "施工中",
+      "COMPLETED": "完了",
+      "CLOSED": "クローズ",
+      "CANCELLED": "中止"
+    },
+    "visibility": {
+      "title": "閲覧範囲",
+      "ADMINS_ONLY": "管理者のみ",
+      "MEMBERS_ONLY": "メンバー全員",
+      "MEMBERS_MASKED": "メンバー全員（金額マスク）",
+      "PUBLIC_MASKED": "全員公開（金額マスク）"
+    },
+    "documentKind": {
+      "MINUTES": "議事録",
+      "QUOTE": "見積書",
+      "CONTRACT": "契約書",
+      "REPORT": "報告書",
+      "PHOTO": "写真",
+      "DRAWING": "図面",
+      "INVOICE": "請求書",
+      "RECEIPT": "領収書",
+      "OTHER": "その他"
+    },
+    "fields": {
+      "title": "案件名",
+      "category": "カテゴリ",
+      "description": "説明",
+      "vendor": "業者",
+      "estimatedAmount": "見積金額",
+      "contractAmount": "契約金額",
+      "actualAmount": "実施金額",
+      "currency": "通貨",
+      "plannedStartDate": "着工予定日",
+      "plannedEndDate": "完了予定日",
+      "actualStartDate": "実着工日",
+      "actualEndDate": "実完了日",
+      "warrantyUntil": "保証期限",
+      "incidentId": "関連事故",
+      "incidentDate": "事故/発覚日",
+      "incidentNarrative": "事故の経緯",
+      "isDisclosable": "重要事項説明書での開示可",
+      "tags": "タグ",
+      "attachmentCount": "添付文書数",
+      "commentCount": "コメント数"
+    },
+    "documents": {
+      "title": "添付文書",
+      "empty": "添付文書はまだありません",
+      "attach": "文書を添付",
+      "detach": "紐付けを解除",
+      "detachConfirm": "この文書の紐付けを解除しますか？（ファイル本体は削除されません）"
+    },
+    "vendor": {
+      "title": "業者マスタ",
+      "subtitle": "工事業者・点検業者などのマスタ管理",
+      "newVendor": "新規業者を追加",
+      "editVendor": "業者を編集",
+      "deleteConfirm": "業者を論理削除します。よろしいですか？",
+      "search": "業者を検索…",
+      "noVendors": "業者がまだ登録されていません",
+      "isActive": "有効",
+      "isInactive": "無効",
+      "category": {
+        "title": "業種",
+        "CONSTRUCTION": "建設",
+        "INSPECTION": "点検",
+        "CONSULTING": "コンサル",
+        "CLEANING": "清掃",
+        "SECURITY": "警備",
+        "OTHER": "その他"
+      },
+      "fields": {
+        "name": "業者名",
+        "nameKana": "カナ",
+        "phone": "電話番号",
+        "email": "メールアドレス",
+        "website": "Webサイト",
+        "postalCode": "郵便番号",
+        "address": "住所",
+        "representative": "代表者",
+        "contactPerson": "担当者",
+        "licenseNumber": "建設業許可番号",
+        "licenseExpiry": "許可更新期限",
+        "note": "備考"
+      }
+    },
+    "permissions": {
+      "viewOnly": "閲覧のみ可能です",
+      "amountMasked": "金額情報は閲覧権限がありません"
+    },
+    "masked": "●●●円",
+    "actions": {
+      "edit": "編集",
+      "delete": "削除",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "close": "閉じる",
+      "back": "一覧に戻る",
+      "changeStatus": "ステータスを変更"
+    },
+    "errors": {
+      "loadFailed": "読み込みに失敗しました",
+      "saveFailed": "保存に失敗しました",
+      "deleteFailed": "削除に失敗しました",
+      "exportFailed": "エクスポートに失敗しました",
+      "versionConflict": "他のユーザーが編集を行いました。最新内容を再読み込みしてください。"
+    }
+  }
+}
