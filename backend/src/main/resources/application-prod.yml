@@ -47,3 +47,12 @@ management:
   endpoint:
     health:
       show-details: never
+  # F10.5 Phase 10-α 検分指摘 ④ 根治: prod でも PrometheusMeterRegistry を有効にする。
+  # registry は計測（メトリクス収集）を担当するだけで、エンドポイント公開とは独立しているため
+  # ここで true にしても外部から /actuator/prometheus を叩ける訳ではない（exposure.include に
+  # `prometheus` を追加した場合に限り SYSTEM_ADMIN 経由で取得可能）。
+  # 内部ネットワーク経由のスクレイプを開始する際は exposure.include に prometheus を追記する。
+  prometheus:
+    metrics:
+      export:
+        enabled: true
