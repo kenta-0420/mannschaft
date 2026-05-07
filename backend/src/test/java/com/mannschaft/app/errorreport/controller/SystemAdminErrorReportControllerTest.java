@@ -48,6 +48,10 @@ class SystemAdminErrorReportControllerTest {
     private ErrorReportMapper errorReportMapper;
     @Mock
     private AccessControlService accessControlService;
+    @Mock
+    private com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisService aiAnalysisService;
+    @Mock
+    private com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository aiAnalysisRepository;
 
     @InjectMocks
     private SystemAdminErrorReportController controller;

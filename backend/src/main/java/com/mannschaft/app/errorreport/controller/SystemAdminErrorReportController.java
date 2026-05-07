@@ -5,6 +5,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.errorreport.ErrorReportMapper;
+import com.mannschaft.app.errorreport.dto.ErrorReportAiAnalysisResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportAssigneeRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportBulkUpdateRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportCommentRequest;
@@ -13,7 +14,10 @@ import com.mannschaft.app.errorreport.dto.ErrorReportStatsResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportTimelineResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportUpdateRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportWorkflowStageRequest;
+import com.mannschaft.app.errorreport.entity.ErrorReportAiAnalysisEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
+import com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository;
+import com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisService;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -48,6 +52,8 @@ public class SystemAdminErrorReportController {
     private final ErrorReportService errorReportService;
     private final ErrorReportMapper errorReportMapper;
     private final AccessControlService accessControlService;
+    private final ErrorReportAiAnalysisService aiAnalysisService;
+    private final ErrorReportAiAnalysisRepository aiAnalysisRepository;
 
     /**
      * エラーレポート一覧を取得する（ページネーション・フィルタ付き）。
@@ -80,7 +86,11 @@ public class SystemAdminErrorReportController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ErrorReportResponse>> get(@PathVariable Long id) {
         ErrorReportEntity entity = errorReportService.findById(id);
-        return ResponseEntity.ok(ApiResponse.of(errorReportMapper.toResponse(entity)));
+        ErrorReportResponse response = errorReportMapper.toResponse(entity);
+        // F12.5 Phase 2-C — 最新 SUCCESS の AI 分析サマリを埋める
+        aiAnalysisRepository.findFirstByErrorReportIdAndStatusOrderByCreatedAtDesc(id, "SUCCESS")
+                .ifPresent(latest -> response.setLatestAiAnalysis(toSummary(latest)));
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
@@ -179,6 +189,85 @@ public class SystemAdminErrorReportController {
         int cappedLimit = Math.min(Math.max(limit, 1), 100);
         ErrorReportTimelineResponse response = errorReportService.fetchTimeline(id, cursor, cappedLimit);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    // ========================================
+    // F12.5 Phase 2-C — AI 分析
+    // ========================================
+
+    /**
+     * F12.5 Phase 2-C — AI 再分析を即時実行する。
+     */
+    @PostMapping("/{id}/ai-analyses")
+    @Operation(summary = "AI 再分析実行")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "分析成功")
+    public ResponseEntity<ApiResponse<ErrorReportAiAnalysisResponse>> reanalyze(
+            @PathVariable Long id) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkSystemAdmin(actorId);
+        ErrorReportAiAnalysisEntity entity = aiAnalysisService.analyzeSync(id, actorId);
+        return ResponseEntity.ok(ApiResponse.of(toResponse(entity)));
+    }
+
+    /**
+     * F12.5 Phase 2-C — AI 分析履歴を取得する。
+     */
+    @GetMapping("/{id}/ai-analyses")
+    @Operation(summary = "AI 分析履歴取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<PagedResponse<ErrorReportAiAnalysisResponse>> aiAnalyses(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
+        int cappedSize = Math.min(Math.max(size, 1), 50);
+        Page<ErrorReportAiAnalysisEntity> result = aiAnalysisRepository
+                .findByErrorReportIdOrderByCreatedAtDesc(id, PageRequest.of(page, cappedSize));
+        java.util.List<ErrorReportAiAnalysisResponse> data = result.getContent().stream()
+                .map(this::toResponse)
+                .toList();
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
+        return ResponseEntity.ok(PagedResponse.of(data, meta));
+    }
+
+    /**
+     * Entity → Response 変換。
+     */
+    private ErrorReportAiAnalysisResponse toResponse(ErrorReportAiAnalysisEntity entity) {
+        java.util.List<String> files = entity.getSuggestedFiles() != null && !entity.getSuggestedFiles().isBlank()
+                ? java.util.Arrays.stream(entity.getSuggestedFiles().split(","))
+                    .map(String::trim).filter(s -> !s.isEmpty()).toList()
+                : java.util.List.of();
+        return ErrorReportAiAnalysisResponse.builder()
+                .id(entity.getId())
+                .errorReportId(entity.getErrorReportId())
+                .modelName(entity.getModelName())
+                .promptTokens(entity.getPromptTokens() != null ? entity.getPromptTokens() : 0)
+                .completionTokens(entity.getCompletionTokens() != null ? entity.getCompletionTokens() : 0)
+                .estimatedCause(entity.getEstimatedCause())
+                .fixProposal(entity.getFixProposal())
+                .impactAssessment(entity.getImpactAssessment())
+                .suggestedFiles(files)
+                .status(entity.getStatus())
+                .errorMessage(entity.getErrorMessage())
+                .createdBy(entity.getCreatedBy())
+                .createdAt(entity.getCreatedAt())
+                .build();
+    }
+
+    /**
+     * Entity → ErrorReportResponse の latestAiAnalysis サマリ変換。
+     */
+    private ErrorReportResponse.ErrorReportAiAnalysisSummary toSummary(ErrorReportAiAnalysisEntity entity) {
+        return ErrorReportResponse.ErrorReportAiAnalysisSummary.builder()
+                .id(entity.getId())
+                .estimatedCause(entity.getEstimatedCause())
+                .fixProposal(entity.getFixProposal())
+                .impactAssessment(entity.getImpactAssessment())
+                .suggestedFiles(entity.getSuggestedFiles())
+                .createdAt(entity.getCreatedAt())
+                .build();
     }
 
     /**
