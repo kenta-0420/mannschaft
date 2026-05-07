@@ -106,4 +106,19 @@ public class AnnouncementFeedQueryRepository {
         query.setMaxResults(limit);
         return query.getResultList();
     }
+
+    /**
+     * チームダッシュボード向けに、組織スコープのお知らせフィードを取得する。
+     *
+     * <p>target_team_ids のフィルタリングは Service 層（Java Stream）で行う。
+     * {@code DashboardService.getTeamDashboard()} から呼び出される。</p>
+     *
+     * @param orgId      組織 ID
+     * @param visibility 閲覧者ロールに応じた visibility 文字列
+     * @param limit      取得上限件数（Java 層でフィルタするため多めに取得）
+     * @return 組織スコープのお知らせフィードリスト（ピン留め優先 → 新着順）
+     */
+    public List<AnnouncementFeedEntity> findByOrgScopeForTeamDashboard(Long orgId, String visibility, int limit) {
+        return findByScope(AnnouncementScopeType.ORGANIZATION, orgId, visibility, null, limit);
+    }
 }

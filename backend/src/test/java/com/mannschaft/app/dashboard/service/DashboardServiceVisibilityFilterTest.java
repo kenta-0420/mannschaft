@@ -15,6 +15,7 @@ import com.mannschaft.app.dashboard.dto.WidgetVisibilityRowDto;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,6 +75,7 @@ class DashboardServiceVisibilityFilterTest {
     @Mock private ChatChannelMemberRepository chatChannelMemberRepository;
     @Mock private PlatformAnnouncementRepository platformAnnouncementRepository;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
 
     @InjectMocks
     private DashboardService dashboardService;

@@ -29,6 +29,9 @@ import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
+import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
+import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
+import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
@@ -74,6 +77,7 @@ public class DashboardService {
     private final ChatChannelMemberRepository chatChannelMemberRepository;
     private final PlatformAnnouncementRepository platformAnnouncementRepository;
     private final UserRoleRepository userRoleRepository;
+    private final AnnouncementFeedQueryRepository announcementFeedQueryRepository;
 
     /** スコープ横断取得の上限スコープ数 */
     private static final int MAX_DISPLAY_SCOPES = 20;
@@ -341,6 +345,28 @@ public class DashboardService {
                 .map(this::toAnnouncementMap)
                 .toList();
 
+        // F02.8: チームスコープの告知フィードを取得
+        String visibilityStr = resolveVisibilityParam(viewerRole);
+        List<AnnouncementFeedEntity> teamAnnouncementFeeds = announcementFeedQueryRepository
+                .findByScope(AnnouncementScopeType.TEAM, teamId, visibilityStr, null, 10);
+
+        // F02.8: 親組織の告知フィードを取得（target_team_ids フィルタ付き）
+        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
+        List<AnnouncementFeedEntity> orgAnnouncementFeeds = orgRoles.stream()
+                .flatMap(role -> announcementFeedQueryRepository
+                        .findByOrgScopeForTeamDashboard(role.getOrganizationId(), visibilityStr, 20).stream())
+                .filter(feed -> isTargetedToTeam(feed, teamId))
+                .toList();
+
+        // 結合して createdAt 降順で上位5件
+        List<Map<String, Object>> teamNoticeItems = java.util.stream.Stream.concat(
+                        teamAnnouncementFeeds.stream(), orgAnnouncementFeeds.stream())
+                .sorted(java.util.Comparator.comparing(AnnouncementFeedEntity::getCreatedAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .limit(DASHBOARD_ITEM_LIMIT)
+                .map(this::toAnnouncementFeedMap)
+                .toList();
+
         // F02.2.1: 各ウィジェットを viewerRole.isAtLeast(min_role) で判定し、不可視は null にする
         // 管理者（DEPUTY_ADMIN/ADMIN/SYSTEM_ADMIN）は全ウィジェットをバイパスして閲覧可
         Map<String, Object> teamTodoData = Map.of("items", teamTodoItems, "overdue_count", teamOverdue,
@@ -355,7 +381,7 @@ public class DashboardService {
         Map<String, Object> teamAttendanceData = Map.of("attending", 0, "absent", 0, "pending", 0);
 
         return TeamDashboardResponse.builder()
-                .teamNotices(filterIfVisible(viewerRole, visibilityMap, WidgetKey.TEAM_NOTICES, List.of()))
+                .teamNotices(filterIfVisible(viewerRole, visibilityMap, WidgetKey.TEAM_NOTICES, teamNoticeItems))
                 .teamUpcomingEvents(filterIfVisible(
                         viewerRole, visibilityMap, WidgetKey.TEAM_UPCOMING_EVENTS, teamUpcomingItems))
                 .teamTodo(filterIfVisible(viewerRole, visibilityMap, WidgetKey.TEAM_TODO, teamTodoData))
@@ -414,13 +440,14 @@ public class DashboardService {
         // 組織統計
         long totalMembers = userRoleRepository.countByOrganizationId(orgId);
 
-        // 組織お知らせ: 組織スコープのスケジュール
+        // F02.8: 組織スコープの告知フィードを取得してお知らせウィジェットに連携
         LocalDateTime now = LocalDateTime.now();
-        List<ScheduleEntity> orgSchedules = scheduleRepository
-                .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, now, now.plusDays(7));
-        List<Map<String, Object>> orgNoticeItems = orgSchedules.stream()
+        String orgVisibilityStr = resolveVisibilityParam(viewerRole);
+        List<AnnouncementFeedEntity> orgAnnouncementFeeds = announcementFeedQueryRepository
+                .findByScope(AnnouncementScopeType.ORGANIZATION, orgId, orgVisibilityStr, null, 10);
+        List<Map<String, Object>> orgNoticeItems = orgAnnouncementFeeds.stream()
                 .limit(DASHBOARD_ITEM_LIMIT)
-                .map(this::toScheduleMap)
+                .map(this::toAnnouncementFeedMap)
                 .toList();
 
         // platform_announcements
@@ -619,6 +646,58 @@ public class DashboardService {
         map.put("title", entity.getTitle());
         map.put("body", entity.getBody());
         map.put("priority", entity.getPriority());
+        return map;
+    }
+
+    /**
+     * F02.8: ViewerRole から AnnouncementFeedQueryRepository の visibility パラメータ文字列を解決する。
+     *
+     * <p>MEMBER/ADMIN/DEPUTY_ADMIN/SYSTEM_ADMIN は "MEMBERS_ONLY"（最も内輪向けの告知を含む全件）を返す。
+     * SUPPORTER は "SUPPORTERS_AND_ABOVE"（サポーター向け告知のみ）を返す。
+     * PUBLIC は null（フィルタなし）を返す。</p>
+     */
+    private String resolveVisibilityParam(ViewerRole viewerRole) {
+        if (viewerRole == null) {
+            return null;
+        }
+        return switch (viewerRole) {
+            case MEMBER, ADMIN, DEPUTY_ADMIN, SYSTEM_ADMIN -> "MEMBERS_ONLY";
+            case SUPPORTER -> "SUPPORTERS_AND_ABOVE";
+            default -> null;
+        };
+    }
+
+    /**
+     * F02.8: 組織告知フィードがチームに向けられているか判定する。
+     *
+     * <p>target_team_ids IS NULL（全チーム対象）または teamId を含む場合に true を返す。</p>
+     */
+    private boolean isTargetedToTeam(AnnouncementFeedEntity feed, Long teamId) {
+        String targetTeamIds = feed.getTargetTeamIds();
+        if (targetTeamIds == null || targetTeamIds.isBlank() || "null".equals(targetTeamIds)) {
+            return true; // 全チーム対象
+        }
+        // JSON 配列文字列から teamId が含まれるか判定
+        // "[3,5,12]" から "3" を探す（前後の区切り文字を考慮）
+        String needle = teamId.toString();
+        return targetTeamIds.contains("\"" + needle + "\"")
+                || targetTeamIds.matches(".*[\\[,]" + needle + "[,\\]].*");
+    }
+
+    /**
+     * F02.8: AnnouncementFeedEntity をダッシュボード表示用 Map に変換する。
+     */
+    private Map<String, Object> toAnnouncementFeedMap(AnnouncementFeedEntity feed) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", feed.getId());
+        map.put("source_type", feed.getSourceType() != null ? feed.getSourceType().name() : null);
+        map.put("title_cache", feed.getTitleCache());
+        map.put("excerpt_cache", feed.getExcerptCache());
+        map.put("priority", feed.getPriority());
+        map.put("is_pinned", feed.getIsPinned());
+        map.put("expires_at", feed.getExpiresAt());
+        map.put("created_at", feed.getCreatedAt());
+        map.put("target_team_ids", feed.getTargetTeamIds());
         return map;
     }
 }

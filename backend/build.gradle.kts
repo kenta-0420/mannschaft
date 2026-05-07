@@ -158,7 +158,7 @@ tasks.withType<Test> {
     // テスト数が 180+ の SpringBootTest を含み、累積でヒープが膨らむ。
     // 2g → 3g（OOM 対策） → 4g（F09.13 Phase 1-γ: Apache POI 5.2.5 導入による Jackson Mixin OOM 対策）。
     // POI は内部で大量の XSD スキーマをロードしてヒープ・メタスペースを圧迫する。
-    // GitHub Actions ubuntu-latest は 16GB RAM のため 4g は十分安全。
+    // ubuntu-latest は 7GB RAM。G1GC と SoftRef 積極解放で長時間テストのヒープ枯渇を防ぐ。
     maxHeapSize = "4g"
     // 100 テストごとに JVM を fork し直し、累積メモリ（特に MySQL Connector の AbandonedConnectionCleanup が
     // WeakReference 監視している放置 Connection オブジェクトの累積）をリセットする。
