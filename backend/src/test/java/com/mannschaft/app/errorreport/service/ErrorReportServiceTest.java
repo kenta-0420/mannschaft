@@ -61,6 +61,8 @@ class ErrorReportServiceTest {
     private UserRepository userRepository;
     @Mock
     private ObjectMapper objectMapper;
+    @Mock
+    private ErrorReportAiAnalysisService aiAnalysisService;
 
     @InjectMocks
     private ErrorReportService service;

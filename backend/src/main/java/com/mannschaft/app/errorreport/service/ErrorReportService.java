@@ -68,6 +68,8 @@ public class ErrorReportService {
     private final AccessControlService accessControlService;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    /** F12.5 Phase 2-C — CRITICAL/HIGH 新規 / REOPEN 時に AI 即時分析をキックする。 */
+    private final ErrorReportAiAnalysisService aiAnalysisService;
 
     /**
      * エラーレポートを受信し、重複集約または新規作成する。
@@ -106,6 +108,10 @@ public class ErrorReportService {
                     report.setLatestUserComment(request.getUserComment());
                 }
                 errorReportNotifier.notifyRegression(report);
+                // F12.5 Phase 2-C — REOPEN かつ severity HIGH 以上なら AI 即時分析をキック
+                if (report.getSeverity().ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
+                    aiAnalysisService.analyzeAfterCommit(report.getId(), null);
+                }
                 log.info("エラーレポートリグレッション検知: id={}, hash={}", report.getId(), errorHash);
                 return report;
             }
@@ -175,6 +181,8 @@ public class ErrorReportService {
         if (severity.ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
             errorReportNotifier.notifySlack(saved);
             errorReportNotifier.notifySystemAdmins(saved);
+            // F12.5 Phase 2-C — 新規 HIGH/CRITICAL は AI 即時分析をキック
+            aiAnalysisService.analyzeAfterCommit(saved.getId(), null);
         }
 
         log.info("エラーレポート新規作成: id={}, hash={}, severity={}", saved.getId(), errorHash, severity);

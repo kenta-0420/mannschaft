@@ -27,7 +27,16 @@ public enum ErrorReportErrorCode implements ErrorCode {
     ERROR_REPORT_005("ERROR_REPORT_005", "無効なワークフロー遷移です", Severity.WARN),
 
     /** 担当者の権限不正 */
-    ERROR_REPORT_006("ERROR_REPORT_006", "指定された担当者は SYSTEM_ADMIN 権限を持ちません", Severity.WARN);
+    ERROR_REPORT_006("ERROR_REPORT_006", "指定された担当者は SYSTEM_ADMIN 権限を持ちません", Severity.WARN),
+
+    /** AI 分析機能が無効 */
+    ERROR_REPORT_007("ERROR_REPORT_007", "AI 分析機能が無効です", Severity.WARN),
+
+    /** AI 月次予算上限到達 */
+    ERROR_REPORT_008("ERROR_REPORT_008", "AI 月次予算上限に達しました", Severity.WARN),
+
+    /** AI 分析が既に進行中 */
+    ERROR_REPORT_009("ERROR_REPORT_009", "AI 分析が既に進行中です", Severity.INFO);
 
     private final String code;
     private final String message;

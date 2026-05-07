@@ -1,12 +1,25 @@
 <script setup lang="ts">
-import type { ErrorReportDetail, TimelineItem, WorkflowStage } from '~/types/error-report'
+import type {
+  AiAnalysisResponse,
+  ErrorReportDetail,
+  TimelineItem,
+  WorkflowStage,
+} from '~/types/error-report'
 
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
-const { get, updateWorkflowStage, assign, addComment, fetchTimeline } = useErrorReportAdmin()
+const {
+  get,
+  updateWorkflowStage,
+  assign,
+  addComment,
+  fetchTimeline,
+  reanalyze,
+  fetchAiAnalyses,
+} = useErrorReportAdmin()
 const { error: showError, success: showSuccess } = useNotification()
 
 const reportId = computed(() => Number(route.params.id))
@@ -20,6 +33,14 @@ const timelineItems = ref<TimelineItem[]>([])
 const timelineLoading = ref(false)
 const timelineHasMore = ref(false)
 const timelineCursor = ref<string | null>(null)
+
+// F12.5 Phase 2-C — AI 分析関連状態
+const latestAiAnalysis = ref<AiAnalysisResponse | null>(null)
+const aiHistory = ref<AiAnalysisResponse[]>([])
+const aiHistoryHasMore = ref(false)
+const aiHistoryPage = ref(0)
+const aiHistoryLoading = ref(false)
+const aiReanalyzing = ref(false)
 
 async function loadReport() {
   loading.value = true
@@ -105,14 +126,84 @@ async function onCommentSubmit(content: string) {
   }
 }
 
+// F12.5 Phase 2-C — AI 分析タブが開かれたときに履歴を読み込む
+async function loadAiHistory(append = false) {
+  aiHistoryLoading.value = true
+  try {
+    const page = append ? aiHistoryPage.value + 1 : 0
+    const res = await fetchAiAnalyses(reportId.value, page, 20)
+    if (append) {
+      aiHistory.value.push(...res.data)
+    } else {
+      aiHistory.value = res.data
+      // 最新 SUCCESS を latest に
+      const success = res.data.find((a) => a.status === 'SUCCESS')
+      if (success) {
+        latestAiAnalysis.value = success
+      }
+    }
+    aiHistoryPage.value = page
+    aiHistoryHasMore.value = page + 1 < res.meta.totalPages
+  } catch (e) {
+    console.error(e)
+    showError(t('error_report.errors.load_failed'))
+  } finally {
+    aiHistoryLoading.value = false
+  }
+}
+
+async function onReanalyze() {
+  aiReanalyzing.value = true
+  try {
+    const res = await reanalyze(reportId.value)
+    latestAiAnalysis.value = res.data
+    aiHistory.value = [res.data, ...aiHistory.value]
+    showSuccess(t('error_report.messages.ai_completed'))
+  } catch (e) {
+    console.error(e)
+    showError(t('error_report.errors.update_failed'))
+  } finally {
+    aiReanalyzing.value = false
+  }
+}
+
 watch(activeTab, (val) => {
   if (val === 'timeline' && timelineItems.value.length === 0) {
     void loadTimeline(false)
+  }
+  if (val === 'ai' && aiHistory.value.length === 0) {
+    void loadAiHistory(false)
   }
 })
 
 onMounted(() => {
   void loadReport()
+})
+
+// レポート読み込み完了後に latest を初期化
+watch(report, (val) => {
+  if (val?.latestAiAnalysis) {
+    // ErrorReportResponse の summary 型 → AiAnalysisResponse 型への簡易マッピング
+    const s = val.latestAiAnalysis
+    latestAiAnalysis.value = {
+      id: s.id,
+      errorReportId: val.id,
+      modelName: '',
+      promptTokens: 0,
+      completionTokens: 0,
+      estimatedCause: s.estimatedCause,
+      fixProposal: s.fixProposal,
+      impactAssessment: s.impactAssessment,
+      suggestedFiles: s.suggestedFiles
+        ? s.suggestedFiles.split(',').map((f) => f.trim()).filter((f) => f.length > 0)
+        : [],
+      status: 'SUCCESS',
+      errorMessage: null,
+      createdBy: null,
+      createdByName: null,
+      createdAt: s.createdAt,
+    }
+  }
 })
 </script>
 
@@ -191,10 +282,18 @@ onMounted(() => {
             />
           </TabPanel>
           <TabPanel value="ai">
-            <div
-              class="rounded-xl border border-dashed border-surface-300 p-8 text-center text-sm text-surface-500 dark:border-surface-600"
-            >
-              {{ t('error_report.tabs.coming_soon') }}
+            <div class="space-y-4">
+              <ErrorReportAiAnalysisCard
+                :analysis="latestAiAnalysis"
+                :loading="aiReanalyzing"
+                @reanalyze="onReanalyze"
+              />
+              <ErrorReportAiAnalysisHistory
+                :items="aiHistory"
+                :loading="aiHistoryLoading"
+                :has-more="aiHistoryHasMore"
+                @load-more="loadAiHistory(true)"
+              />
             </div>
           </TabPanel>
           <TabPanel value="github">

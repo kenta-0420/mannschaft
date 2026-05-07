@@ -2,6 +2,7 @@ package com.mannschaft.app.errorreport.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
+import com.mannschaft.app.errorreport.entity.ErrorReportAiAnalysisEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -188,6 +189,103 @@ public class ErrorReportNotifier {
         } catch (Exception e) {
             log.warn("担当者割り当て通知送信失敗: errorReportId={}, assigneeId={}",
                     report.getId(), newAssigneeId, e);
+        }
+    }
+
+    /**
+     * F12.5 Phase 2-C — AI 分析完了通知。
+     * CRITICAL レポートのみ Slack + SYSTEM_ADMIN プッシュ通知を送信する。
+     *
+     * @param report   エラーレポートエンティティ
+     * @param analysis 分析履歴エンティティ（SUCCESS のみ想定）
+     */
+    @Async("event-pool")
+    public void notifyAiAnalysisCompleted(ErrorReportEntity report,
+                                          ErrorReportAiAnalysisEntity analysis) {
+        try {
+            String summary = ErrorReportService.truncate(analysis.getEstimatedCause(), 200);
+            // Slack 通知
+            if (slackWebhookUrl != null && !slackWebhookUrl.isBlank()) {
+                String text = String.format(
+                        ":robot_face: *[AI分析] %s*\n> %s\n推定原因: %s",
+                        report.getSeverity(),
+                        ErrorReportService.truncate(report.getErrorMessage(), 100),
+                        summary != null ? summary : "(分析結果なし)");
+                String payload = objectMapper.writeValueAsString(Map.of("text", text));
+                restClient.post().uri(slackWebhookUrl)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(payload)
+                        .retrieve().toBodilessEntity();
+            }
+
+            // SYSTEM_ADMIN プッシュ通知
+            List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
+            for (Long adminUserId : adminIds) {
+                notificationService.createNotification(
+                        adminUserId, "ERROR_REPORT_AI_ANALYZED", NotificationPriority.NORMAL,
+                        "エラーレポートの AI 分析が完了しました",
+                        ErrorReportService.truncate(report.getErrorMessage(), 50),
+                        "ERROR_REPORT", report.getId(),
+                        NotificationScopeType.SYSTEM, null,
+                        "/system-admin/error-reports/" + report.getId(), null
+                );
+            }
+        } catch (Exception e) {
+            log.warn("AI 分析完了通知送信失敗: errorReportId={}", report.getId(), e);
+        }
+    }
+
+    /**
+     * F12.5 Phase 2-C — AI 月次予算 80% 到達警告通知。
+     *
+     * @param budgetJpy  月次予算（円）
+     * @param currentJpy 現在の累計支出（円）
+     */
+    @Async("event-pool")
+    public void notifyBudgetWarning(int budgetJpy, long currentJpy) {
+        sendBudgetSlack(":warning:", "AI 月次予算 80% 到達",
+                budgetJpy, currentJpy);
+    }
+
+    /**
+     * F12.5 Phase 2-C — AI 月次予算 100% 到達アラート通知。
+     *
+     * @param budgetJpy  月次予算（円）
+     * @param currentJpy 現在の累計支出（円）
+     */
+    @Async("event-pool")
+    public void notifyBudgetExceeded(int budgetJpy, long currentJpy) {
+        sendBudgetSlack(":no_entry:", "AI 月次予算上限到達（以降の AI 分析は停止）",
+                budgetJpy, currentJpy);
+    }
+
+    /**
+     * 予算アラート用 Slack + SYSTEM_ADMIN 通知の共通処理。
+     */
+    private void sendBudgetSlack(String emoji, String title, int budgetJpy, long currentJpy) {
+        try {
+            if (slackWebhookUrl != null && !slackWebhookUrl.isBlank()) {
+                String text = String.format("%s *%s*\n月次予算: ¥%d / 累計: ¥%d",
+                        emoji, title, budgetJpy, currentJpy);
+                String payload = objectMapper.writeValueAsString(Map.of("text", text));
+                restClient.post().uri(slackWebhookUrl)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(payload)
+                        .retrieve().toBodilessEntity();
+            }
+            List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
+            for (Long adminUserId : adminIds) {
+                notificationService.createNotification(
+                        adminUserId, "ERROR_REPORT_AI_BUDGET", NotificationPriority.HIGH,
+                        title,
+                        String.format("月次予算 ¥%d / 累計 ¥%d", budgetJpy, currentJpy),
+                        "ERROR_REPORT", null,
+                        NotificationScopeType.SYSTEM, null,
+                        "/system-admin/error-reports", null
+                );
+            }
+        } catch (Exception e) {
+            log.warn("AI 予算アラート通知送信失敗: budget={}, current={}", budgetJpy, currentJpy, e);
         }
     }
 

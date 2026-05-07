@@ -152,3 +152,16 @@ care:
   # F03.12 §16 イベント終了後解散通知リマインドバッチ設定
   dismissal-reminder:
     enabled: true
+
+# F12.5 Phase 2-C エラーレポート AI 分析 / GitHub 連携設定
+# 設計書: docs/features/F12.5_frontend_error_tracking.md §12
+mannschaft.error-report:
+  ai:
+    enabled: ${ERROR_REPORT_AI_ENABLED:true}
+    model: ${ERROR_REPORT_AI_MODEL:claude-haiku-4-5}
+    max-tokens: 1500
+    temperature: 0.2
+    monthly-budget-jpy: ${ERROR_REPORT_AI_BUDGET_JPY:5000}
+    auto-batch-delay-minutes: 30
+  github:
+    enabled: ${ERROR_REPORT_GITHUB_ENABLED:false}

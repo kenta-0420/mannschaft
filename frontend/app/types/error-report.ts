@@ -112,3 +112,27 @@ export interface ListResponse {
   data: ErrorReportDetail[]
   meta: PageMeta
 }
+
+// ===== F12.5 Phase 2-C — AI 分析関連 =====
+
+export interface AiAnalysisResponse {
+  id: number
+  errorReportId: number
+  modelName: string
+  promptTokens: number
+  completionTokens: number
+  estimatedCause: string | null
+  fixProposal: string | null
+  impactAssessment: string | null
+  suggestedFiles: string[]
+  status: 'SUCCESS' | 'FAILED'
+  errorMessage: string | null
+  createdBy: number | null
+  createdByName: string | null
+  createdAt: string
+}
+
+export interface AiAnalysisListResponse {
+  data: AiAnalysisResponse[]
+  meta: PageMeta
+}

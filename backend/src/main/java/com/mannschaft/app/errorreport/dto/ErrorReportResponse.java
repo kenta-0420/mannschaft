@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -58,7 +59,8 @@ public class ErrorReportResponse {
     /** 最終 AI 分析実行日時。 */
     private LocalDateTime lastAiAnalysisAt;
 
-    /** 最新 SUCCESS の AI 分析サマリー（P2-C で実装、本フェーズでは null）。 */
+    /** 最新 SUCCESS の AI 分析サマリー。 */
+    @Setter
     private ErrorReportAiAnalysisSummary latestAiAnalysis;
 
     /**

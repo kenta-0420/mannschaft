@@ -97,7 +97,24 @@
       "updated": "更新しました",
       "assigned": "{name} に割り当てました",
       "unassigned": "担当者を解除しました",
-      "comment_added": "コメントを追加しました"
+      "comment_added": "コメントを追加しました",
+      "ai_completed": "AI 分析が完了しました"
+    },
+    "ai": {
+      "estimated_cause": "推定原因",
+      "fix_proposal": "修正案",
+      "impact": "影響評価",
+      "files": "関連ファイル候補",
+      "no_analysis": "分析履歴なし",
+      "in_progress": "分析中…",
+      "model": "モデル",
+      "tokens": "トークン",
+      "history_title": "過去の分析",
+      "reanalyze": "再分析",
+      "failed": "分析失敗",
+      "retry": "再試行",
+      "last_analyzed": "最終分析",
+      "tokens_summary": "{prompt} / {completion}"
     },
     "errors": {
       "load_failed": "読み込みに失敗しました",
