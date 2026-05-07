@@ -13,6 +13,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.gdpr.service.AccountPurgeService;
@@ -83,6 +84,8 @@ class AccountPurgeServiceTest {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @Mock
     private ProxyInputRecordRepository proxyInputRecordRepository;
+    @Mock
+    private ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
 
     @InjectMocks
     private AccountPurgeService service;
@@ -186,6 +189,29 @@ class AccountPurgeServiceTest {
             service.purgeExpiredAccounts();
 
             verify(memberPaymentRepository).anonymizeUserId(any(), any());
+        }
+
+        @Test
+        @DisplayName("正常系: error_report_occurrencesの匿名化が呼ばれる（P2-F）")
+        void 正常_errorReportOccurrences匿名化() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+            given(oAuthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webAuthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(chartRecordRepository.anonymizeCustomerUserId(USER_ID)).willReturn(0);
+            given(errorReportOccurrenceRepository.anonymizeByUserId(USER_ID)).willReturn(3);
+            given(memberPaymentRepository.anonymizeUserId(any(), any())).willReturn(0);
+            given(stripeCustomerRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any())).willReturn(List.of());
+
+            service.purgeExpiredAccounts();
+
+            // 物理削除前に anonymizeByUserId が呼ばれていることを検証する
+            verify(errorReportOccurrenceRepository).anonymizeByUserId(USER_ID);
+            verify(userRepository).delete(user);
         }
 
         @Test
