@@ -10,6 +10,7 @@ import com.mannschaft.app.gallery.dto.MediaUploadUrlRequest;
 import com.mannschaft.app.gallery.dto.MediaUploadUrlResponse;
 import com.mannschaft.app.gallery.entity.PhotoAlbumEntity;
 import com.mannschaft.app.gallery.repository.PhotoAlbumRepository;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.gallery.service.GalleryMediaUploadService;
 import com.mannschaft.app.gallery.service.PhotoAlbumService;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +47,8 @@ class GalleryMediaUploadServiceTest {
     @Mock private PhotoAlbumRepository albumRepository;
     @Mock private GalleryMapper galleryMapper;
     @Mock private StorageQuotaService storageQuotaService;
+    /** F00 Phase E-5: ContentVisibilityChecker モック追加。 */
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     private PhotoAlbumService albumService;
     private GalleryMediaUploadService service;
@@ -55,7 +58,7 @@ class GalleryMediaUploadServiceTest {
 
     @BeforeEach
     void setUp() {
-        albumService = new PhotoAlbumService(albumRepository, galleryMapper);
+        albumService = new PhotoAlbumService(albumRepository, galleryMapper, contentVisibilityChecker);
         service = new GalleryMediaUploadService(r2StorageService, albumService, storageQuotaService);
     }
 

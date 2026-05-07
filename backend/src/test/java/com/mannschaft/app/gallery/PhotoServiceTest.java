@@ -11,6 +11,7 @@ import com.mannschaft.app.gallery.entity.PhotoAlbumEntity;
 import com.mannschaft.app.gallery.entity.PhotoEntity;
 import com.mannschaft.app.gallery.repository.PhotoAlbumRepository;
 import com.mannschaft.app.gallery.repository.PhotoRepository;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.gallery.service.PhotoAlbumService;
 import com.mannschaft.app.gallery.service.PhotoService;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,13 +51,15 @@ class PhotoServiceTest {
     @Mock private R2StorageService r2StorageService;
     @Mock private DomainEventPublisher eventPublisher;
     @Mock private StorageQuotaService storageQuotaService;
+    /** F00 Phase E-5: ContentVisibilityChecker モック追加。 */
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     private PhotoAlbumService albumService;
     private PhotoService service;
 
     @BeforeEach
     void setUp() {
-        albumService = new PhotoAlbumService(albumRepository, galleryMapper);
+        albumService = new PhotoAlbumService(albumRepository, galleryMapper, contentVisibilityChecker);
         service = new PhotoService(photoRepository, albumRepository, albumService,
                 galleryMapper, r2StorageService, eventPublisher, storageQuotaService);
     }
