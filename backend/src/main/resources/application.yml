@@ -153,8 +153,8 @@ care:
   dismissal-reminder:
     enabled: true
 
-# F12.5 Phase 2-C エラーレポート AI 分析 / GitHub 連携設定
-# 設計書: docs/features/F12.5_frontend_error_tracking.md §12
+# F12.5 Phase 2-C/D エラーレポート AI 分析 / GitHub 連携設定
+# 設計書: docs/features/F12.5_frontend_error_tracking.md §12-§13
 mannschaft.error-report:
   ai:
     enabled: ${ERROR_REPORT_AI_ENABLED:true}
@@ -164,4 +164,8 @@ mannschaft.error-report:
     monthly-budget-jpy: ${ERROR_REPORT_AI_BUDGET_JPY:5000}
     auto-batch-delay-minutes: 30
   github:
+    # GH_TOKEN / GH_OWNER / GH_REPO は環境変数から直接 @Value で注入される
     enabled: ${ERROR_REPORT_GITHUB_ENABLED:false}
+
+# F12.5 Phase 2-D — GitHub Issue 本文の「内部管理画面」リンクの基底 URL
+mannschaft.app-base-url: ${APP_BASE_URL:http://localhost:3000}

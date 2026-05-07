@@ -19,6 +19,7 @@ const {
   fetchTimeline,
   reanalyze,
   fetchAiAnalyses,
+  fetchConfig,
 } = useErrorReportAdmin()
 const { error: showError, success: showSuccess } = useNotification()
 
@@ -41,6 +42,9 @@ const aiHistoryHasMore = ref(false)
 const aiHistoryPage = ref(0)
 const aiHistoryLoading = ref(false)
 const aiReanalyzing = ref(false)
+
+// F12.5 Phase 2-D — GitHub 連携の有効状態（NULL は未取得）
+const githubEnabled = ref<boolean | null>(null)
 
 async function loadReport() {
   loading.value = true
@@ -167,6 +171,23 @@ async function onReanalyze() {
   }
 }
 
+// F12.5 Phase 2-D — GitHub 連携の有効状態を取得する
+async function loadConfig() {
+  try {
+    const res = await fetchConfig()
+    githubEnabled.value = res.data.githubEnabled
+  } catch (e) {
+    console.error(e)
+    githubEnabled.value = false
+  }
+}
+
+// F12.5 Phase 2-D — GitHub Issue 作成成功時のハンドラ
+async function onGithubIssueCreated() {
+  // レポート情報を再取得（githubIssueUrl が反映される）
+  await loadReport()
+}
+
 watch(activeTab, (val) => {
   if (val === 'timeline' && timelineItems.value.length === 0) {
     void loadTimeline(false)
@@ -178,6 +199,7 @@ watch(activeTab, (val) => {
 
 onMounted(() => {
   void loadReport()
+  void loadConfig()
 })
 
 // レポート読み込み完了後に latest を初期化
@@ -297,11 +319,11 @@ watch(report, (val) => {
             </div>
           </TabPanel>
           <TabPanel value="github">
-            <div
-              class="rounded-xl border border-dashed border-surface-300 p-8 text-center text-sm text-surface-500 dark:border-surface-600"
-            >
-              {{ t('error_report.tabs.coming_soon') }}
-            </div>
+            <ErrorReportGitHubIssueButton
+              :report="report"
+              :github-enabled="githubEnabled"
+              @created="onGithubIssueCreated"
+            />
           </TabPanel>
         </TabPanels>
       </Tabs>

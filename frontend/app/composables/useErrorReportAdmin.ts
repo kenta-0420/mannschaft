@@ -8,7 +8,9 @@
 import type {
   AiAnalysisListResponse,
   AiAnalysisResponse,
+  ErrorReportConfig,
   ErrorReportDetail,
+  GitHubIssueCreateResponse,
   ListParams,
   ListResponse,
   TimelineResponse,
@@ -88,6 +90,22 @@ export function useErrorReportAdmin() {
     })
   }
 
+  /**
+   * F12.5 Phase 2-D — GitHub Issue を作成する。
+   */
+  function createGithubIssue(id: number) {
+    return api<ApiResponse<GitHubIssueCreateResponse>>(`${BASE_URL}/${id}/github-issue`, {
+      method: 'POST',
+    })
+  }
+
+  /**
+   * F12.5 Phase 2-D — エラーレポート機能の運用設定（GitHub/AI 有効状態）を取得する。
+   */
+  function fetchConfig() {
+    return api<ApiResponse<ErrorReportConfig>>(`${BASE_URL}/config`)
+  }
+
   return {
     list,
     get,
@@ -97,5 +115,7 @@ export function useErrorReportAdmin() {
     fetchTimeline,
     reanalyze,
     fetchAiAnalyses,
+    createGithubIssue,
+    fetchConfig,
   }
 }

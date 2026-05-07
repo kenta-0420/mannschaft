@@ -35,8 +35,17 @@ public enum ErrorReportErrorCode implements ErrorCode {
     /** AI 月次予算上限到達 */
     ERROR_REPORT_008("ERROR_REPORT_008", "AI 月次予算上限に達しました", Severity.WARN),
 
-    /** AI 分析が既に進行中 */
-    ERROR_REPORT_009("ERROR_REPORT_009", "AI 分析が既に進行中です", Severity.INFO);
+    /** 関連処理が既に進行中（AI 分析 / GitHub Issue 作成等の重複ロック） */
+    ERROR_REPORT_009("ERROR_REPORT_009", "処理が進行中です", Severity.INFO),
+
+    /** GitHub 連携が設定されていない */
+    ERROR_REPORT_010("ERROR_REPORT_010", "GitHub 連携が設定されていません", Severity.WARN),
+
+    /** GitHub Issue の作成に失敗した */
+    ERROR_REPORT_011("ERROR_REPORT_011", "GitHub Issue の作成に失敗しました", Severity.ERROR),
+
+    /** GitHub Issue は既に作成済み */
+    ERROR_REPORT_012("ERROR_REPORT_012", "GitHub Issue は既に作成されています", Severity.WARN);
 
     private final String code;
     private final String message;
