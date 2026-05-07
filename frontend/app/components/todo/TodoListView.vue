@@ -6,10 +6,12 @@ import type { TodoStatusLabel, TodoStatusLabelInfo } from '~/types/todoStatusLab
 /**
  * F02.3.1 + マイTODO UX 改善:
  *
- * - 行全体クリックで詳細ページへ遷移（NuxtLink で行ラッパ全体を覆う）。
+ * - 行全体クリックで詳細ページへ遷移（行ラッパは div + role=link、Enter/Space でも遷移）。
+ *   `<a>` 内に `<button>`/`<input>` を入れる HTML 仕様違反を避けるため、`<NuxtLink>` ではなく
+ *   `useRouter().push()` を呼ぶ div ラッパとして実装する。
  * - 行頭にチェックボックスを配置: COMPLETED トグル（OPEN <-> COMPLETED）。
  * - 行末ステータスラベルバッジクリックで Popover 表示 → 任意ラベルを直接選択して変更可。
- * - クリック競合は @click.stop / @click.prevent で個別に処理。
+ * - クリック競合は内側コントロールへの @click.stop で個別に処理。
  *
  * 設計書 §10 「マイ TODO 一覧 UX 補強」を参照。
  * 一覧での運用効率を優先し、詳細画面の Select+変更ボタン UI と二段構えで提供する。
@@ -35,6 +37,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const labelApi = useTodoStatusLabelApi()
+const router = useRouter()
 
 function todoLink(todo: MyTodo): string {
   if (todo.scopeType === 'TEAM' && todo.scopeId) {
@@ -44,6 +47,10 @@ function todoLink(todo: MyTodo): string {
     return `/organizations/${todo.scopeId}/todos/${todo.id}`
   }
   return `/todos/${todo.id}`
+}
+
+function navigateTo(todo: MyTodo) {
+  router.push(todoLink(todo))
 }
 
 // === チェックボックス（完了トグル） =========================================
@@ -145,12 +152,17 @@ void props
       </div>
 
       <div class="space-y-2">
-        <NuxtLink
+        <div
           v-for="todo in group.todos"
           :key="todo.id"
-          :to="todoLink(todo)"
-          class="block rounded-xl border-2 border-surface-400 bg-surface-0 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary dark:border-surface-500 dark:bg-surface-800"
+          role="link"
+          tabindex="0"
+          :aria-label="todo.title"
+          class="block cursor-pointer rounded-xl border-2 border-surface-400 bg-surface-0 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary dark:border-surface-500 dark:bg-surface-800"
           :class="priorityBorder[todo.priority]"
+          @click="navigateTo(todo)"
+          @keydown.enter="navigateTo(todo)"
+          @keydown.space.prevent="navigateTo(todo)"
         >
           <div class="flex items-center gap-3 px-4 py-3">
             <!-- 完了トグル チェックボックス -->
@@ -228,7 +240,7 @@ void props
               {{ priorityLabel[todo.priority] }}
             </span>
           </div>
-        </NuxtLink>
+        </div>
       </div>
     </div>
     </div>
