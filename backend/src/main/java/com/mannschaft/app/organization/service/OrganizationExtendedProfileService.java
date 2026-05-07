@@ -6,6 +6,9 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PlainTextValidator;
 import com.mannschaft.app.common.ProfileUrlValidator;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.ProfileVisibility;
 import com.mannschaft.app.organization.dto.CreateCustomFieldRequest;
@@ -47,6 +50,7 @@ public class OrganizationExtendedProfileService {
     private final OrganizationCustomFieldRepository customFieldRepository;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     // 文字数上限
     private static final int MAX_PHILOSOPHY_LENGTH = 2000;
@@ -71,11 +75,10 @@ public class OrganizationExtendedProfileService {
      * @return 現在のプロフィール
      */
     public ApiResponse<OrganizationProfileResponse> getProfile(Long userId, Long orgId) {
+        // ContentVisibilityChecker 経由で可視性チェック（存在しない場合は 404、PRIVATE 非メンバーは 403）
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        contentVisibilityChecker.assertCanView(ReferenceType.ORGANIZATION, orgId, viewerUserId);
         OrganizationEntity org = findOrgOrThrow(orgId);
-        boolean isMember = accessControlService.isMember(userId, orgId, "ORGANIZATION");
-        if (org.getVisibility() == OrganizationEntity.Visibility.PRIVATE && !isMember) {
-            throw new BusinessException(OrgErrorCode.ORG_048);
-        }
         return ApiResponse.of(toProfileResponse(org));
     }
 
@@ -168,10 +171,9 @@ public class OrganizationExtendedProfileService {
         boolean isMember = accessControlService.isMember(userId, orgId, "ORGANIZATION");
         boolean isAdminOrAbove = accessControlService.isAdminOrAbove(userId, orgId, "ORGANIZATION");
 
-        // PRIVATE 組織かつ非メンバー → 403
-        if (org.getVisibility() == OrganizationEntity.Visibility.PRIVATE && !isMember) {
-            throw new BusinessException(OrgErrorCode.ORG_048);
-        }
+        // PRIVATE 組織かつ非メンバー → 403（ContentVisibilityChecker 経由）
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        contentVisibilityChecker.assertCanView(ReferenceType.ORGANIZATION, orgId, viewerUserId);
 
         // profile_visibility.officers == false かつ非メンバー → 空リスト
         ProfileVisibility visibility = org.getProfileVisibility();
@@ -387,10 +389,9 @@ public class OrganizationExtendedProfileService {
         boolean isMember = accessControlService.isMember(userId, orgId, "ORGANIZATION");
         boolean isAdminOrAbove = accessControlService.isAdminOrAbove(userId, orgId, "ORGANIZATION");
 
-        // PRIVATE 組織かつ非メンバー → 403
-        if (org.getVisibility() == OrganizationEntity.Visibility.PRIVATE && !isMember) {
-            throw new BusinessException(OrgErrorCode.ORG_048);
-        }
+        // PRIVATE 組織かつ非メンバー → 403（ContentVisibilityChecker 経由）
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        contentVisibilityChecker.assertCanView(ReferenceType.ORGANIZATION, orgId, viewerUserId);
 
         // profile_visibility.custom_fields == false かつ非メンバー → 空リスト
         ProfileVisibility visibility = org.getProfileVisibility();
