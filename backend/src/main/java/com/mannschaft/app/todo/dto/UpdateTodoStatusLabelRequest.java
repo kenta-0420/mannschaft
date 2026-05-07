@@ -18,7 +18,9 @@ public class UpdateTodoStatusLabelRequest {
     @Size(max = 50)
     private final String name;
 
-    /** OPEN / IN_PROGRESS / COMPLETED のいずれか。 */
+    /** OPEN / IN_PROGRESS / COMPLETED のいずれか（NULL 可。NULL のときは更新対象外）。 */
+    @Pattern(regexp = "OPEN|IN_PROGRESS|COMPLETED",
+            message = "bucket は OPEN / IN_PROGRESS / COMPLETED のいずれかである必要があります")
     private final String bucket;
 
     /** #RRGGBB 形式。 */

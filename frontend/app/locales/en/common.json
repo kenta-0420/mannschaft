@@ -984,6 +984,10 @@
       "labelRequired": "Please select a status label",
       "notAllowedPersonal": "Personal TODOs cannot be passed",
       "invalidRecipient": "Recipient not found",
+      "labelScopeMismatch": "The selected label cannot be used in this TODO's scope",
+      "milestoneLocked": "Cannot pass a TODO while its milestone is locked",
+      "validation": "Input validation failed",
+      "notFound": "TODO not found (it may have been deleted or you may lack permission)",
       "generic": "Failed to pass TODO"
     },
     "timeline": {

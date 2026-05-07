@@ -111,6 +111,8 @@ public class OrgTodoController {
     public ResponseEntity<ApiResponse<TodoResponse>> getTodo(
             @PathVariable Long orgId,
             @PathVariable Long id) {
+        // F02.3.1 後続 C-7: IDOR 対策 — path scope と TODO scope の整合確認
+        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
         return ResponseEntity.ok(todoService.getTodo(id));
     }
 
@@ -136,6 +138,8 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateTodoRequest request) {
+        // F02.3.1 後続 C-7: IDOR 対策
+        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
         return ResponseEntity.ok(todoService.updateTodo(id, request));
     }
 
@@ -149,6 +153,8 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody PatchTodoRequest request) {
+        // F02.3.1 後続 C-7: IDOR 対策
+        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(todoService.patchTodo(id, userId, request));
     }
@@ -162,6 +168,8 @@ public class OrgTodoController {
     public ResponseEntity<Void> deleteTodo(
             @PathVariable Long orgId,
             @PathVariable Long id) {
+        // F02.3.1 後続 C-7: IDOR 対策
+        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
         todoService.deleteTodo(id);
         return ResponseEntity.noContent().build();
     }
@@ -176,6 +184,8 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody TodoStatusChangeRequest request) {
+        // F02.3.1 後続 C-7: IDOR 対策
+        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
         return ResponseEntity.ok(todoService.changeStatus(id, request, SecurityUtils.getCurrentUserId()));
     }
 
@@ -204,6 +214,8 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody AddAssigneeRequest request) {
+        // F02.3.1 後続 C-7: IDOR 対策
+        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(todoService.addAssignee(id, request, SecurityUtils.getCurrentUserId()));
     }
@@ -218,6 +230,8 @@ public class OrgTodoController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @PathVariable Long userId) {
+        // F02.3.1 後続 C-7: IDOR 対策
+        todoService.assertTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
         todoService.removeAssignee(id, userId);
         return ResponseEntity.noContent().build();
     }

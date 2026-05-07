@@ -665,6 +665,29 @@ public class TodoService {
     }
 
     /**
+     * path で指定された scope と、対象 TODO の scope が一致することを検証する（F02.3.1 後続 C-7）。
+     *
+     * <p>IDOR 対策。{@code /api/v1/teams/{teamId}/todos/{id}} などのエンドポイントで、
+     * path の {@code teamId} と todo の {@code scopeId} が不一致のとき
+     * {@link TodoErrorCode#TODO_NOT_FOUND}（404）で返す（403 ではなく 404 — 他スコープでの ID 存在を漏らさない）。</p>
+     *
+     * <p>論理削除済み TODO も TODO_NOT_FOUND として扱う。</p>
+     *
+     * @param todoId    検証する TODO の ID
+     * @param scopeType path のスコープ種別
+     * @param scopeId   path のスコープ ID
+     * @throws BusinessException 不一致 / 削除済み / 不存在のとき TODO_NOT_FOUND
+     */
+    public void assertTodoScope(Long todoId, TodoScopeType scopeType, Long scopeId) {
+        TodoEntity todo = todoRepository.findByIdAndDeletedAtIsNull(todoId)
+                .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
+        if (todo.getScopeType() != scopeType
+                || !java.util.Objects.equals(todo.getScopeId(), scopeId)) {
+            throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
+        }
+    }
+
+    /**
      * マイルストーンロック中 TODO に対する操作を拒否する（F02.7）。
      *
      * <p>論理削除は分母を減らすだけで達成判定を不当に早めないため例外許可（呼び出し側で
@@ -706,14 +729,18 @@ public class TodoService {
     /**
      * エンティティをレスポンスDTOに変換する（一覧用、N+1防止のため統計なし）。
      * <p>F02.3.1: ラベル情報は単発で1件取得する。一覧経路では {@link #toTodoResponseList(List)} を使うこと。</p>
+     * <p>F02.3.1 後続 B-6: {@code statusLabelId} が NULL の場合は {@code status} enum から
+     * SYSTEM 既定ラベルを埋めて返す。これによりフロント側のフォールバック実装に依存しない。</p>
      */
     private TodoResponse toTodoResponse(TodoEntity entity) {
-        TodoResponse.TodoStatusLabelInfo labelInfo = resolveLabelInfo(entity.getStatusLabelId());
+        TodoResponse.TodoStatusLabelInfo labelInfo = resolveLabelInfo(
+                entity.getStatusLabelId(), entity.getStatus());
         return toTodoResponseInternal(entity, labelInfo);
     }
 
     /**
      * TODO リストを TodoResponse リストに変換する（F02.3.1: ラベル情報を一括取得して N+1 を防ぐ）。
+     * <p>F02.3.1 後続 B-6: {@code statusLabelId} が NULL の TODO には SYSTEM 既定ラベルを埋める。</p>
      */
     private List<TodoResponse> toTodoResponseList(List<TodoEntity> entities) {
         if (entities == null || entities.isEmpty()) {
@@ -733,17 +760,45 @@ public class TodoService {
                                 l.getId(), l.getName(), l.getBucket().name(), l.getColor())));
 
         return entities.stream()
-                .map(e -> toTodoResponseInternal(e, e.getStatusLabelId() == null
-                        ? null : labelMap.get(e.getStatusLabelId())))
+                .map(e -> {
+                    TodoResponse.TodoStatusLabelInfo info = e.getStatusLabelId() == null
+                            ? systemDefaultLabelInfo(e.getStatus())
+                            : labelMap.get(e.getStatusLabelId());
+                    return toTodoResponseInternal(e, info);
+                })
                 .toList();
     }
 
-    private TodoResponse.TodoStatusLabelInfo resolveLabelInfo(Long labelId) {
+    /**
+     * ラベル情報を解決する。{@code labelId} が NULL の場合は {@code status} から SYSTEM 既定ラベルを返す。
+     * 単発取得経路で使用する。
+     */
+    private TodoResponse.TodoStatusLabelInfo resolveLabelInfo(Long labelId, TodoStatus fallbackStatus) {
         if (labelId == null) {
-            return null;
+            return systemDefaultLabelInfo(fallbackStatus);
         }
         return todoStatusLabelService.findActiveByIds(java.util.List.of(labelId)).stream()
                 .findFirst()
+                .map(l -> new TodoResponse.TodoStatusLabelInfo(
+                        l.getId(), l.getName(), l.getBucket().name(), l.getColor()))
+                .orElseGet(() -> systemDefaultLabelInfo(fallbackStatus));
+    }
+
+    /**
+     * {@code TodoStatus} に対応する SYSTEM 既定ラベルの {@link TodoResponse.TodoStatusLabelInfo} を返す。
+     * F02.3.1 後続 B-6 で導入。バケット非対応の {@code TodoStatus.CANCELLED} は NULL を返す。
+     */
+    private TodoResponse.TodoStatusLabelInfo systemDefaultLabelInfo(TodoStatus status) {
+        if (status == null || status == TodoStatus.CANCELLED) {
+            return null;
+        }
+        TodoStatusBucket bucket;
+        try {
+            bucket = TodoStatusBucket.fromTodoStatus(status);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+        return todoStatusLabelService.findSystemDefaultByBucket(bucket)
                 .map(l -> new TodoResponse.TodoStatusLabelInfo(
                         l.getId(), l.getName(), l.getBucket().name(), l.getColor()))
                 .orElse(null);
@@ -793,6 +848,7 @@ public class TodoService {
 
     /**
      * エンティティをレスポンスDTOに変換する（詳細用、子TODO統計含む）。
+     * <p>F02.3.1 後続 B-7: children のラベル情報を一括取得（N+1 解消）。</p>
      */
     private TodoResponse toTodoResponseWithStats(TodoEntity entity) {
         long childCount = todoRepository.countByParentIdAndDeletedAtIsNull(entity.getId());
@@ -800,9 +856,8 @@ public class TodoService {
         long descendantCompleted = todoRepository.countCompletedDescendants(entity.getId());
         List<TodoEntity> childEntities = todoRepository
                 .findByParentIdAndDeletedAtIsNullOrderBySortOrderAsc(entity.getId());
-        List<TodoResponse> children = childEntities.stream()
-                .map(this::toTodoResponse)
-                .toList();
+        // F02.3.1 後続 B-7: 一括変換で N+1 を解消
+        List<TodoResponse> children = toTodoResponseList(childEntities);
 
         List<TodoAssigneeEntity> assigneeEntities = assigneeRepository.findByTodoId(entity.getId());
         Set<Long> userIds = Stream.concat(
@@ -821,7 +876,8 @@ public class TodoService {
                 ? new ProjectResponse.UserInfo(entity.getCompletedBy(), nameMap.getOrDefault(entity.getCompletedBy(), ""))
                 : null;
 
-        TodoResponse.TodoStatusLabelInfo labelInfo = resolveLabelInfo(entity.getStatusLabelId());
+        TodoResponse.TodoStatusLabelInfo labelInfo = resolveLabelInfo(
+                entity.getStatusLabelId(), entity.getStatus());
 
         return new TodoResponse(
                 entity.getId(), entity.getScopeType().name(), entity.getScopeId(),

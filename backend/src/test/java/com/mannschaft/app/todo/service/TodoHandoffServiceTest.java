@@ -181,7 +181,7 @@ class TodoHandoffServiceTest {
     }
 
     @Test
-    @DisplayName("宛先がスコープ非メンバーなら HANDOFF_INVALID_RECIPIENT")
+    @DisplayName("宛先がスコープ非メンバーなら HANDOFF_RECIPIENT_NOT_MEMBER")
     void handoff_invalid_recipient() {
         Long invalidUser = 999L;
         TodoHandoffRequest req = new TodoHandoffRequest(List.of(invalidUser), 10L, null);
@@ -193,7 +193,7 @@ class TodoHandoffServiceTest {
         assertThatThrownBy(() -> handoffService.handoff(
                 TodoScopeType.TEAM, TEAM_ID, TODO_ID, req, ACTOR_ID))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(TodoErrorCode.HANDOFF_INVALID_RECIPIENT);
+                .extracting("errorCode").isEqualTo(TodoErrorCode.HANDOFF_RECIPIENT_NOT_MEMBER);
 
         verify(handoffRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any());
@@ -225,7 +225,7 @@ class TodoHandoffServiceTest {
     }
 
     @Test
-    @DisplayName("ラベルが TODO スコープと不一致なら STATUS_LABEL_SCOPE_MISMATCH")
+    @DisplayName("ラベルが TODO スコープと不一致なら LABEL_SCOPE_MISMATCH")
     void handoff_label_scope_mismatch() {
         Long toUser = 2L;
         TodoHandoffRequest req = new TodoHandoffRequest(List.of(toUser), 10L, null);
@@ -235,13 +235,13 @@ class TodoHandoffServiceTest {
         given(accessControlService.isMember(toUser, TEAM_ID, "TEAM")).willReturn(true);
         given(labelService.findActiveById(10L)).willReturn(inProgressLabel);
         // labelService 側に validateLabelForScope の例外を投げさせる
-        org.mockito.BDDMockito.willThrow(new BusinessException(TodoErrorCode.STATUS_LABEL_SCOPE_MISMATCH))
+        org.mockito.BDDMockito.willThrow(new BusinessException(TodoErrorCode.LABEL_SCOPE_MISMATCH))
                 .given(labelService).validateLabelForScope(inProgressLabel, TodoScopeType.TEAM, TEAM_ID);
 
         assertThatThrownBy(() -> handoffService.handoff(
                 TodoScopeType.TEAM, TEAM_ID, TODO_ID, req, ACTOR_ID))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(TodoErrorCode.STATUS_LABEL_SCOPE_MISMATCH);
+                .extracting("errorCode").isEqualTo(TodoErrorCode.LABEL_SCOPE_MISMATCH);
 
         verify(handoffRepository, never()).save(any());
     }

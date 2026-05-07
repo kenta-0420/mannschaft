@@ -15,11 +15,14 @@ import com.mannschaft.app.todo.entity.TodoStatusLabelEntity;
 import com.mannschaft.app.todo.repository.TodoStatusLabelRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * TODO カスタムステータスラベルサービス（F02.3.1 Phase 1a）。
@@ -78,7 +81,7 @@ public class TodoStatusLabelService {
 
         // 同名重複チェック
         if (labelRepository.existsActiveByScopeAndName(scopeType, scopeId, request.getName())) {
-            throw new BusinessException(TodoErrorCode.LABEL_NAME_DUPLICATE);
+            throw new BusinessException(TodoErrorCode.LABEL_NAME_DUPLICATED);
         }
 
         // 上限チェック（SYSTEM は除外）
@@ -146,7 +149,7 @@ public class TodoStatusLabelService {
         if (request.getName() != null && !request.getName().equals(entity.getName())) {
             if (labelRepository.existsActiveByScopeAndNameExcludingId(
                     entity.getScopeType(), entity.getScopeId(), request.getName(), labelId)) {
-                throw new BusinessException(TodoErrorCode.LABEL_NAME_DUPLICATE);
+                throw new BusinessException(TodoErrorCode.LABEL_NAME_DUPLICATED);
             }
             entity.rename(request.getName());
         }
@@ -221,7 +224,7 @@ public class TodoStatusLabelService {
      * @param label     対象ラベル
      * @param scopeType TODO のスコープ種別
      * @param scopeId   TODO のスコープ ID
-     * @throws BusinessException スコープ不一致のとき STATUS_LABEL_SCOPE_MISMATCH
+     * @throws BusinessException スコープ不一致のとき LABEL_SCOPE_MISMATCH
      */
     public void validateLabelForScope(TodoStatusLabelEntity label, TodoScopeType scopeType, Long scopeId) {
         if (label.getScopeType() == TodoStatusLabelScope.SYSTEM) {
@@ -229,7 +232,7 @@ public class TodoStatusLabelService {
         }
         TodoStatusLabelScope expectedScope = mapTodoScope(scopeType);
         if (label.getScopeType() != expectedScope || !java.util.Objects.equals(label.getScopeId(), scopeId)) {
-            throw new BusinessException(TodoErrorCode.STATUS_LABEL_SCOPE_MISMATCH);
+            throw new BusinessException(TodoErrorCode.LABEL_SCOPE_MISMATCH);
         }
     }
 
@@ -252,6 +255,38 @@ public class TodoStatusLabelService {
         return labelRepository.findAllById(ids).stream()
                 .filter(l -> l.getDeletedAt() == null)
                 .toList();
+    }
+
+    /**
+     * SYSTEM 既定ラベルを bucket → entity の Map で取得する（F02.3.1 後続 B-6）。
+     *
+     * <p>{@link TodoStatusBucket} ごとに1件ずつ存在することを想定。SYSTEM 既定ラベルは
+     * V19.003 マイグレーションで投入され、論理削除も改名も発生しないため
+     * {@link Cacheable} でキャッシュする。バケット → ラベル の即時参照に使用。</p>
+     *
+     * @return bucket をキーとした SYSTEM 既定ラベルのマップ（空はあり得ないが、欠落時は空の Map を返す）
+     */
+    @Cacheable("systemDefaultLabels")
+    public Map<TodoStatusBucket, TodoStatusLabelEntity> getSystemDefaultsByBucket() {
+        Map<TodoStatusBucket, TodoStatusLabelEntity> result = new java.util.EnumMap<>(TodoStatusBucket.class);
+        for (TodoStatusLabelEntity entity : labelRepository.findAllSystemDefaults()) {
+            // 同一 bucket が複数あった場合は sort_order が小さい方を優先（findAllSystemDefaults が ASC 順）
+            result.putIfAbsent(entity.getBucket(), entity);
+        }
+        return Map.copyOf(result);
+    }
+
+    /**
+     * 指定 bucket の SYSTEM 既定ラベルを取得する（F02.3.1 後続 B-6）。
+     *
+     * @param bucket 取得したいバケット
+     * @return SYSTEM 既定ラベル（マイグレーション欠落時は empty）
+     */
+    public Optional<TodoStatusLabelEntity> findSystemDefaultByBucket(TodoStatusBucket bucket) {
+        if (bucket == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(getSystemDefaultsByBucket().get(bucket));
     }
 
     // ─────────────────────────────────────────────
@@ -325,7 +360,7 @@ public class TodoStatusLabelService {
             case ORGANIZATION:
                 return TodoStatusLabelScope.ORGANIZATION;
             default:
-                throw new BusinessException(TodoErrorCode.STATUS_LABEL_SCOPE_MISMATCH);
+                throw new BusinessException(TodoErrorCode.LABEL_SCOPE_MISMATCH);
         }
     }
 
