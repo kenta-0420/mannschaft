@@ -87,13 +87,23 @@ public abstract class AbstractMySqlIntegrationTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        // getJdbcUrl() already contains '?useSSL=false&...' — use '&' to avoid double '?'.
-        // Connector/J 9.x renamed serverTimezone → connectionTimeZone.
-        // forceConnectionTimeZoneToSession=true executes SET time_zone='UTC' on each connection,
-        // preventing DATE column off-by-one errors when dates are near midnight UTC.
-        registry.add("spring.datasource.url", () -> MYSQL.getJdbcUrl() + "&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true");
+        registry.add("spring.datasource.url", () -> buildJdbcUrl());
         registry.add("spring.datasource.username", MYSQL::getUsername);
         registry.add("spring.datasource.password", MYSQL::getPassword);
+    }
+
+    /**
+     * Testcontainers の getJdbcUrl() は '?useSSL=false&...' を含む場合と含まない場合がある。
+     * '?' の有無を判定して適切なセパレータで接続し、Connector/J 9.x に対応した
+     * connectionTimeZone=UTC を付加する。
+     *
+     * <p>forceConnectionTimeZoneToSession=true は各接続で SET time_zone='UTC' を実行し、
+     * DATE カラムの LocalDate 読み書き時の off-by-one（2026-06-01→2026-05-31）を防ぐ。</p>
+     */
+    private static String buildJdbcUrl() {
+        String base = MYSQL.getJdbcUrl();
+        String sep = base.contains("?") ? "&" : "?";
+        return base + sep + "connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true";
     }
 
     /**
