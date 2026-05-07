@@ -3,23 +3,17 @@ package com.mannschaft.app.shiftbudget.repository;
 import com.mannschaft.app.shiftbudget.ShiftBudgetCancelReason;
 import com.mannschaft.app.shiftbudget.ShiftBudgetConsumptionStatus;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetConsumptionEntity;
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -36,29 +30,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p>設計書 §5.3 / §11.1 に対応。
  * 同一 (slot, user, status) の UNIQUE 制約・HAS_CONSUMPTIONS 判定を検証する。</p>
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
 @Transactional
 @DisplayName("ShiftBudgetConsumptionRepository 結合テスト")
-class ShiftBudgetConsumptionRepositoryTest {
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
+class ShiftBudgetConsumptionRepositoryTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ShiftBudgetConsumptionRepository repository;
