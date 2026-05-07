@@ -133,7 +133,7 @@ feature:
   # 有効化したい環境では application-{profile}.yml で true を設定すること。
   visibility-resolver:
     team: true   # F00 Phase E-6: ContentVisibilityChecker 経由化で有効化
-    organization: false  # D-δ: 段階展開フラグ
+    organization: true   # F00 Phase E-7: ContentVisibilityChecker 経由化で有効化
   # F00.5 メンバーシップ基盤再設計
   # dualWrite.enabled: Phase 4 完了で false に変更済み（二重書き込みコード自体は Phase 4 で物理削除）
   # shadowComparison.enabled: GET /teams/{id}/members の旧実装と新実装を Shadow 比較する
