@@ -3,6 +3,7 @@ package com.mannschaft.app.support.test;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
 
 /**
  * 統合テスト用 memberships / user_roles INSERT ヘルパー。
@@ -100,9 +101,25 @@ public final class MembershipTestHelper {
      * <p>seed 投入されていない（または重複している）場合は {@link IllegalStateException} を投げる。</p>
      */
     private static Long resolveRoleIdByName(EntityManager em, String roleName) {
-        Object result = em.createNativeQuery("SELECT id FROM roles WHERE name = :name")
-                .setParameter("name", roleName)
-                .getSingleResult();
-        return ((Number) result).longValue();
+        try {
+            Object result = em.createNativeQuery("SELECT id FROM roles WHERE name = :name")
+                    .setParameter("name", roleName)
+                    .getSingleResult();
+            return ((Number) result).longValue();
+        } catch (NoResultException e) {
+            // 統合テスト環境では application-test.yml で flyway.enabled=false のため
+            // V2.014__seed_roles.sql の固定 role が投入されない。
+            // 必要に応じてオンデマンドで INSERT してから再取得する。
+            em.createNativeQuery(
+                    "INSERT INTO roles (name, display_name, priority, is_system, "
+                            + "created_at, updated_at) "
+                            + "VALUES (:name, :name, 99, 0, NOW(), NOW())")
+                    .setParameter("name", roleName)
+                    .executeUpdate();
+            Object result = em.createNativeQuery("SELECT id FROM roles WHERE name = :name")
+                    .setParameter("name", roleName)
+                    .getSingleResult();
+            return ((Number) result).longValue();
+        }
     }
 }
