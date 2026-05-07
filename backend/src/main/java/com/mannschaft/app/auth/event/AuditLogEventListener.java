@@ -460,4 +460,181 @@ public class AuditLogEventListener {
             return null;
         }
     }
+
+    // ─────────────────────────────────────────────
+    // WEBAUTHN (追加分)
+    // ─────────────────────────────────────────────
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleWebAuthnLogin(WebAuthnLoginEvent event) {
+        auditLogService.record(
+            AuditEventType.WEBAUTHN_LOGIN.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            event.getIpAddress(),
+            event.getUserAgent(),
+            SecurityUtils.getCurrentSessionHash(),
+            event.getCredentialId() != null
+                ? toJson(Map.of("credential_id", event.getCredentialId()))
+                : null
+        );
+    }
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleWebAuthnLoginFailed(WebAuthnLoginFailedEvent event) {
+        auditLogService.record(
+            AuditEventType.WEBAUTHN_LOGIN_FAILED.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            event.getIpAddress(),
+            event.getUserAgent(),
+            null,
+            event.getCredentialId() != null
+                ? toJson(Map.of("credential_id", event.getCredentialId()))
+                : null
+        );
+    }
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleWebAuthnCredentialRemoved(WebAuthnCredentialRemovedEvent event) {
+        auditLogService.record(
+            AuditEventType.WEBAUTHN_CREDENTIAL_REMOVED.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            SecurityUtils.getCurrentSessionHash(),
+            event.getCredentialId() != null
+                ? toJson(Map.of("credential_id", event.getCredentialId()))
+                : null
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // TOKEN / DEVICE (追加分)
+    // ─────────────────────────────────────────────
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleTokenReuseDetected(TokenReuseDetectedEvent event) {
+        auditLogService.record(
+            AuditEventType.TOKEN_REUSE_DETECTED.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            event.getTokenId() != null
+                ? toJson(Map.of("token_id", event.getTokenId()))
+                : null
+        );
+    }
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleDeviceFingerprintMismatch(DeviceFingerprintMismatchEvent event) {
+        auditLogService.record(
+            AuditEventType.DEVICE_FINGERPRINT_MISMATCH.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            SecurityUtils.getCurrentSessionHash(),
+            event.getTokenId() != null
+                ? toJson(Map.of("token_id", event.getTokenId()))
+                : null
+        );
+    }
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleNewDeviceLogin(NewDeviceLoginEvent event) {
+        auditLogService.record(
+            AuditEventType.NEW_DEVICE_LOGIN.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            event.getIpAddress(),
+            null,
+            SecurityUtils.getCurrentSessionHash(),
+            toJson(Map.of(
+                "device_fingerprint", event.getDeviceFingerprint() != null ? event.getDeviceFingerprint() : "",
+                "device_name", event.getDeviceName() != null ? event.getDeviceName() : ""
+            ))
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // ACCOUNT (追加分)
+    // ─────────────────────────────────────────────
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handlePasswordSetup(PasswordSetupEvent event) {
+        auditLogService.record(
+            AuditEventType.PASSWORD_SETUP.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            SecurityUtils.getCurrentSessionHash(),
+            null
+        );
+    }
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleOAuthUserRegistered(OAuthUserRegisteredEvent event) {
+        auditLogService.record(
+            AuditEventType.OAUTH_USER_REGISTERED.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            event.getIpAddress(),
+            event.getUserAgent(),
+            null,
+            event.getProvider() != null
+                ? toJson(Map.of("provider", event.getProvider()))
+                : null
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // OAUTH (追加分)
+    // ─────────────────────────────────────────────
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleOAuthLinkRequested(OAuthLinkRequestedEvent event) {
+        auditLogService.record(
+            AuditEventType.OAUTH_LINK_REQUESTED.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            event.getIpAddress(),
+            event.getUserAgent(),
+            null,
+            event.getProvider() != null
+                ? toJson(Map.of("provider", event.getProvider()))
+                : null
+        );
+    }
 }

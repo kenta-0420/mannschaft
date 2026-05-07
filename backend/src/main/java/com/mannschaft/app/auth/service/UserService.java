@@ -21,6 +21,7 @@ import com.mannschaft.app.auth.dto.UserProfileResponse;
 import com.mannschaft.app.auth.event.EmailChangedEvent;
 import com.mannschaft.app.auth.event.EmailChangeRequestedEvent;
 import com.mannschaft.app.auth.event.PasswordChangedEvent;
+import com.mannschaft.app.auth.event.PasswordSetupEvent;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -189,6 +190,9 @@ public class UserService {
                 .passwordHash(passwordEncoder.encode(newPassword))
                 .build();
         userRepository.save(updated);
+
+        // イベント発行
+        eventPublisher.publish(new PasswordSetupEvent(userId));
 
         return ApiResponse.of(MessageResponse.of("パスワードを設定しました"));
     }

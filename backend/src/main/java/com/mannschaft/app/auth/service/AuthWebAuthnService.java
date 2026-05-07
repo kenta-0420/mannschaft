@@ -16,6 +16,9 @@ import com.mannschaft.app.auth.dto.WebAuthnLoginCompleteRequest;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterBeginResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterCompleteRequest;
 import com.mannschaft.app.auth.event.LoginSuccessEvent;
+import com.mannschaft.app.auth.event.WebAuthnCredentialRemovedEvent;
+import com.mannschaft.app.auth.event.WebAuthnLoginEvent;
+import com.mannschaft.app.auth.event.WebAuthnLoginFailedEvent;
 import com.mannschaft.app.auth.event.WebAuthnRegisteredEvent;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -279,6 +282,7 @@ public class AuthWebAuthnService {
             webAuthnManager.validate(authenticationData, authenticationParameters);
         } catch (DataConversionException | VerificationException e) {
             log.warn("WebAuthn署名検証失敗: credentialId={}", req.getCredentialId(), e);
+            eventPublisher.publish(new WebAuthnLoginFailedEvent(userId, ipAddress, userAgent, req.getCredentialId()));
             throw new BusinessException(AuthErrorCode.AUTH_024, e);
         }
 
@@ -300,6 +304,8 @@ public class AuthWebAuthnService {
 
         // 6. イベント発行
         eventPublisher.publish(new LoginSuccessEvent(userId, "WEBAUTHN", ipAddress, userAgent));
+        // WEBAUTHN_LOGIN として別途監査ログを記録する
+        eventPublisher.publish(new WebAuthnLoginEvent(userId, ipAddress, userAgent, req.getCredentialId()));
 
         return ApiResponse.of(tokenResponse);
     }
@@ -363,6 +369,9 @@ public class AuthWebAuthnService {
         }
 
         webAuthnCredentialRepository.delete(credential);
+
+        // イベント発行
+        eventPublisher.publish(new WebAuthnCredentialRemovedEvent(userId, credentialId));
     }
 
     // === ヘルパーメソッド ===
