@@ -150,11 +150,29 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // テスト数が増加に伴いヒープが膨らむため 4g を確保。ubuntu-latest は 7GB RAM。
     maxHeapSize = "4g"
-    // CI ランナーのシステムタイムゾーンに依存しないよう UTC を強制する。
-    // LocalDate を MySQL に保存/読み出す際、JDBC ドライバが JVM タイムゾーンを参照するため必須。
-    // OOM 対策: 複数 SpringBootTest コンテキストが積み上がる場合に 2g では不足する。
-    jvmArgs("-Duser.timezone=UTC")
+    // 100 テストごとに JVM を fork し直し、累積メモリ（特に MySQL Connector の
+    // AbandonedConnectionCleanup による WeakReference 蓄積）をリセットする。
+    setForkEvery(100L)
+    // -Dcom.mysql.cj.disableAbandonedConnectionCleanup=true:
+    //   MySQL Connector/J の AbandonedConnectionCleanupThread を無効化する。
+    //   HikariCP は必ず Connection.close() を保証するため cleanup 対象は発生しないが、
+    //   WeakReference が積まれ続けて OOM を引き起こす（CI で実際に発生）。
+    //   本フラグで cleanup スレッド起動を抑止し、Hikari に Connection ライフサイクルを委譲する。
+    //
+    // -Duser.timezone=Asia/Tokyo:
+    //   テスト JVM のデフォルト TZ を JST に固定する。
+    //   本番 JDBC URL に serverTimezone=Asia/Tokyo が設定されており、CI ランナー (UTC) のデフォルト
+    //   TZ と不整合になると LocalDate が 1 日ずれる（expected 2026-06-01 / but was 2026-05-31）。
+    //   JVM 側を JST に揃えることで JDBC との一貫性を保証し、ローカル/CI で結果が一致する。
+    jvmArgs(
+        "-XX:+UseG1GC",
+        "-XX:+HeapDumpOnOutOfMemoryError",
+        "-XX:HeapDumpPath=build/heap-dump.hprof",
+        "-Dcom.mysql.cj.disableAbandonedConnectionCleanup=true",
+        "-Duser.timezone=Asia/Tokyo"
+    )
     finalizedBy(tasks.jacocoTestReport)
     testLogging {
         // 失敗時に完全スタックトレースを出力する。CI ログのみで NPE 起源を追跡できるようにする。
