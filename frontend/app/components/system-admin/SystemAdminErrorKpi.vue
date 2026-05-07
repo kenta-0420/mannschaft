@@ -85,7 +85,7 @@ defineProps<{
         <NuxtLink
           v-for="err in stats.topErrors"
           :key="err.errorHash"
-          to="/admin/reports"
+          to="/system-admin/error-reports"
           class="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-surface-50 dark:hover:bg-surface-700"
         >
           <span class="min-w-0 flex-1 truncate text-surface-600 dark:text-surface-300">{{
