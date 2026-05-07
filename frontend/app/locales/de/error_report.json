@@ -1,0 +1,153 @@
+{
+  "error_report": {
+    "title": "エラーレポート",
+    "tabs": {
+      "list": "リスト",
+      "kanban": "ボード",
+      "stats": "統計",
+      "coming_soon": "準備中"
+    },
+    "filters": {
+      "status": "ステータス",
+      "severity": "重要度",
+      "assignee": "担当者",
+      "keyword": "キーワード",
+      "from": "開始日",
+      "to": "終了日",
+      "all": "すべて",
+      "clear": "クリア"
+    },
+    "table": {
+      "id": "#",
+      "message": "メッセージ",
+      "page": "ページ",
+      "occurrences": "発生",
+      "affected": "影響",
+      "severity": "重要度",
+      "status": "状態",
+      "stage": "工程",
+      "assignee": "担当",
+      "last_occurred": "最終発生"
+    },
+    "stage": {
+      "null": "未着手",
+      "INVESTIGATION_STARTED": "調査開始",
+      "ROOT_CAUSE_IDENTIFIED": "原因特定",
+      "FIX_IN_PROGRESS": "修正中",
+      "TEST_COMPLETED": "テスト完了",
+      "RELEASED": "リリース済"
+    },
+    "status": {
+      "NEW": "新規",
+      "INVESTIGATING": "調査中",
+      "RESOLVED": "解決済",
+      "REOPENED": "再オープン",
+      "IGNORED": "無視"
+    },
+    "severity_label": {
+      "LOW": "低",
+      "MEDIUM": "中",
+      "HIGH": "高",
+      "CRITICAL": "重大"
+    },
+    "actions": {
+      "assign": "担当者を選択",
+      "unassign": "担当者解除",
+      "open_detail": "詳細を開く",
+      "back": "一覧に戻る",
+      "save_comment": "コメント追加",
+      "change_workflow": "工程を変更",
+      "select_assignee": "担当者を検索"
+    },
+    "detail": {
+      "summary": "概要",
+      "timeline": "タイムライン",
+      "ai": "AI分析",
+      "github": "GitHub",
+      "occurrence_count": "発生回数",
+      "affected_users": "影響ユーザー",
+      "first_occurred": "初回発生",
+      "last_occurred": "最終発生",
+      "page_url": "発生ページ",
+      "stack_trace": "スタックトレース",
+      "admin_note": "管理者メモ",
+      "comments": "コメント",
+      "no_comments": "まだコメントはありません",
+      "comment_placeholder": "コメントを入力（最大2000文字）"
+    },
+    "timeline": {
+      "deleted_actor": "退会した管理者",
+      "system_actor": "システム自動",
+      "occurrence": "発生",
+      "load_more": "もっと表示",
+      "no_items": "タイムラインデータがありません",
+      "activity": {
+        "STATUS_CHANGED": "ステータスを変更",
+        "WORKFLOW_CHANGED": "工程を変更",
+        "ASSIGNEE_CHANGED": "担当者を変更",
+        "SEVERITY_CHANGED": "重要度を変更",
+        "COMMENT_ADDED": "コメント追加",
+        "AI_ANALYZED": "AI分析",
+        "GITHUB_ISSUE_CREATED": "GitHub Issue 作成",
+        "REOPENED": "再オープン",
+        "RESOLVED": "解決"
+      }
+    },
+    "messages": {
+      "updated": "更新しました",
+      "assigned": "{name} に割り当てました",
+      "unassigned": "担当者を解除しました",
+      "comment_added": "コメントを追加しました",
+      "ai_completed": "AI 分析が完了しました"
+    },
+    "ai": {
+      "estimated_cause": "推定原因",
+      "fix_proposal": "修正案",
+      "impact": "影響評価",
+      "files": "関連ファイル候補",
+      "no_analysis": "分析履歴なし",
+      "in_progress": "分析中…",
+      "model": "モデル",
+      "tokens": "トークン",
+      "history_title": "過去の分析",
+      "reanalyze": "再分析",
+      "failed": "分析失敗",
+      "retry": "再試行",
+      "last_analyzed": "最終分析",
+      "tokens_summary": "{prompt} / {completion}"
+    },
+    "github": {
+      "tab": "GitHub",
+      "loading": "読み込み中…",
+      "not_configured": "GitHub 連携が設定されていません",
+      "create_issue": "GitHub Issue を作成",
+      "create_description": "このエラーレポートを GitHub の Issue として登録します。本文には PII 除去済みのエラー情報・AI 分析結果（あれば）・内部管理画面リンクが含まれます。",
+      "creating": "作成中…",
+      "view_issue": "GitHub で見る",
+      "already_created": "GitHub Issue は作成済みです",
+      "url_label": "Issue URL",
+      "labels_help": "ラベル: frontend-error, severity:{severity}, regression（再発時のみ）",
+      "created_message": "GitHub Issue を作成しました",
+      "create_failed": "GitHub Issue の作成に失敗しました"
+    },
+    "errors": {
+      "load_failed": "読み込みに失敗しました",
+      "update_failed": "更新に失敗しました",
+      "invalid_transition": "そのステータスへの遷移は不可です",
+      "comment_required": "コメント本文は必須です"
+    },
+    "kanban": {
+      "title": "Kanban ビュー",
+      "load_more": "もっと表示...",
+      "drop_here": "ここにドロップ",
+      "mobile_unsupported": "Kanban ビューはモバイル端末では利用できません。リストタブをご利用ください。",
+      "empty_column": "カードがありません",
+      "card": {
+        "occurrences": "{count} 回",
+        "affected": "{count} 名",
+        "has_github": "GitHub",
+        "has_ai": "AI"
+      }
+    }
+  }
+}

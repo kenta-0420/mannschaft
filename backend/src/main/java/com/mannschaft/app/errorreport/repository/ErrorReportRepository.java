@@ -169,4 +169,20 @@ public interface ErrorReportRepository extends JpaRepository<ErrorReportEntity, 
             @Param("status") ErrorReportStatus status,
             @Param("stage") ErrorReportWorkflowStage stage,
             Pageable pageable);
+
+    /**
+     * F12.5 Phase 2-E — Kanban の「未着手」カラム用。
+     * 指定ステータスリストに該当し、かつ workflow_stage が NULL のレポートを
+     * {@code last_occurred_at DESC} 順にページング取得する。
+     */
+    Page<ErrorReportEntity> findByStatusInAndWorkflowStageIsNullOrderByLastOccurredAtDesc(
+            List<ErrorReportStatus> statuses, Pageable pageable);
+
+    /**
+     * F12.5 Phase 2-E — Kanban の特定ステージカラム用。
+     * 指定 workflow_stage に該当するレポートを {@code last_occurred_at DESC} 順に
+     * ページング取得する。
+     */
+    Page<ErrorReportEntity> findByWorkflowStageOrderByLastOccurredAtDesc(
+            ErrorReportWorkflowStage stage, Pageable pageable);
 }

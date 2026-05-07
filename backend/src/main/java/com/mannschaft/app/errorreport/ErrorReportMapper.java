@@ -15,6 +15,11 @@ public interface ErrorReportMapper {
 
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
     @Mapping(target = "severity", expression = "java(entity.getSeverity().name())")
+    @Mapping(target = "workflowStage",
+            expression = "java(entity.getWorkflowStage() != null ? entity.getWorkflowStage().name() : null)")
+    // assigneeName / latestAiAnalysis はサービス層で別途解決する
+    @Mapping(target = "assigneeName", ignore = true)
+    @Mapping(target = "latestAiAnalysis", ignore = true)
     ErrorReportResponse toResponse(ErrorReportEntity entity);
 
     List<ErrorReportResponse> toResponseList(List<ErrorReportEntity> entities);

@@ -32,3 +32,6 @@ docker-compose.override.yml
 
 # --- ローカルログ ---
 *.log
+
+# --- F10.5 Phase 10-α: MySQL スロークエリログ ---
+logs/mysql-slow/

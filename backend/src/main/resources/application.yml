@@ -105,6 +105,30 @@ mannschaft:
           secret: ${JOB_QR_SIGNING_SECRET:}
           active: true
 
+# F10.5 Phase 10-α: Spring Boot Actuator + Micrometer 計測軸の整備
+# - 共通プロファイルでは健診系 + メトリクス系を広めに公開する
+# - prod では application-prod.yml で `health` のみに絞り、内部 NW 経由で別途有効化する運用
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,caches,threaddump,loggers
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: mannschaft
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
+      slo:
+        http.server.requests: 100ms,500ms,1s,2s
+
 # 備品ランキング集計バッチ設定（F09.12）
 equipment:
   ranking:
@@ -133,7 +157,7 @@ feature:
   # 有効化したい環境では application-{profile}.yml で true を設定すること。
   visibility-resolver:
     team: true   # F00 Phase E-6: ContentVisibilityChecker 経由化で有効化
-    organization: false  # D-δ: 段階展開フラグ
+    organization: true   # F00 Phase E-7: ContentVisibilityChecker 経由化で有効化
   # F00.5 メンバーシップ基盤再設計
   # dualWrite.enabled: Phase 4 完了で false に変更済み（二重書き込みコード自体は Phase 4 で物理削除）
   # shadowComparison.enabled: GET /teams/{id}/members の旧実装と新実装を Shadow 比較する
@@ -152,3 +176,20 @@ care:
   # F03.12 §16 イベント終了後解散通知リマインドバッチ設定
   dismissal-reminder:
     enabled: true
+
+# F12.5 Phase 2-C/D エラーレポート AI 分析 / GitHub 連携設定
+# 設計書: docs/features/F12.5_frontend_error_tracking.md §12-§13
+mannschaft.error-report:
+  ai:
+    enabled: ${ERROR_REPORT_AI_ENABLED:true}
+    model: ${ERROR_REPORT_AI_MODEL:claude-haiku-4-5}
+    max-tokens: 1500
+    temperature: 0.2
+    monthly-budget-jpy: ${ERROR_REPORT_AI_BUDGET_JPY:5000}
+    auto-batch-delay-minutes: 30
+  github:
+    # GH_TOKEN / GH_OWNER / GH_REPO は環境変数から直接 @Value で注入される
+    enabled: ${ERROR_REPORT_GITHUB_ENABLED:false}
+
+# F12.5 Phase 2-D — GitHub Issue 本文の「内部管理画面」リンクの基底 URL
+mannschaft.app-base-url: ${APP_BASE_URL:http://localhost:3000}

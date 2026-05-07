@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -38,4 +39,18 @@ public interface ErrorReportAiAnalysisRepository
             + "SET a.rawResponse = NULL "
             + "WHERE a.createdAt < :cutoff AND a.rawResponse IS NOT NULL")
     int updateRawResponseToNullByCreatedAtBefore(@Param("cutoff") LocalDateTime cutoff);
+
+    /**
+     * F12.5 Phase 2-E — Kanban カードに「AI 分析あり」バッジを描画するための判定用。
+     * 指定 errorReportId のうち、SUCCESS な分析が 1 件以上存在するものを返す。
+     */
+    @Query("SELECT DISTINCT a.errorReportId FROM ErrorReportAiAnalysisEntity a "
+            + "WHERE a.errorReportId IN :ids AND a.status = 'SUCCESS'")
+    List<Long> findIdsHavingSuccessfulAnalysis(@Param("ids") List<Long> ids);
+
+    /**
+     * F12.5 Phase 2-F — AI ヘルスモニタ用。
+     * 指定ステータス（"FAILED" 等）かつ {@code created_at} が {@code since} より後の件数を返す。
+     */
+    long countByStatusAndCreatedAtAfter(String status, LocalDateTime since);
 }

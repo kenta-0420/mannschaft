@@ -18,6 +18,32 @@ spring:
   cache:
     type: none
 
+# F10.5 Phase 10-α: テスト環境での Actuator 設定。
+# - `/actuator/health` は DB component を含めると Testcontainer 起動タイミング次第で
+#   503 を返してしまうため、テスト環境では DB indicator を無効化してアプリ自身の死活のみ評価する。
+#   セキュリティ層 (SYSTEM_ADMIN 限定) の検証が本テストの責務であり、DB 疎通は別テストで担保する。
+# - `/actuator/prometheus` を確実に公開し、PrometheusMeterRegistry の auto-config が
+#   動くようにする（@ConditionalOnAvailableEndpoint が exposure を見るため）。
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,caches,threaddump,loggers
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: false
+    redis:
+      enabled: false
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
 mannschaft:
   jwt:
     secret: test-secret-key-that-is-at-least-256-bits-long-for-hmac-sha256-algorithm

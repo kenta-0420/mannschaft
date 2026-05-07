@@ -17,6 +17,7 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.util.SessionHashUtil;
+import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
@@ -74,6 +75,7 @@ public class AccountPurgeService {
     private final WebAuthnCredentialRepository webAuthnCredentialRepository;
     private final ProxyInputConsentRepository proxyInputConsentRepository;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
+    private final ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
     private final AuditLogService auditLogService;
 
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
@@ -145,16 +147,16 @@ public class AccountPurgeService {
         int anonymizedCharts = chartRecordRepository.anonymizeCustomerUserId(userId);
         log.debug("chart_records匿名化: userId={}, 件数={}", userId, anonymizedCharts);
 
-        // F12.5 Phase 2 (P2-F で実装予定):
-        // error_report_occurrences の ip_address / user_agent を NULL 化する。
+        // F12.5 Phase 2-F: error_report_occurrences の ip_address / user_agent を NULL 化する。
         // user_id 自体は ON DELETE SET NULL の FK 制約があるため、ユーザー物理削除時に
-        // 自動で NULL 化される。ip_address / user_agent は退会時点でアプリ層から
-        // 明示的に NULL 化することでログ復元を防ぐ。
-        // 実装例:
-        //   int anonymizedOccurrences =
-        //       errorReportOccurrenceRepository.anonymizeByUserId(userId);
-        //   log.debug("error_report_occurrences匿名化: userId={}, 件数={}",
-        //             userId, anonymizedOccurrences);
+        // 自動で NULL 化されるが、ip_address / user_agent はアプリ層で明示的に NULL 化
+        // しないと退会後もログ復元の手がかりとして残ってしまう。
+        // ※ 必ず user_id を絞り込みキーとして使うため、ユーザー本体削除（FK SET NULL 発火）
+        //   よりも前に呼び出す必要がある。
+        int anonymizedOccurrences =
+                errorReportOccurrenceRepository.anonymizeByUserId(userId);
+        log.debug("error_report_occurrences匿名化: userId={}, 件数={}",
+                userId, anonymizedOccurrences);
 
         // Phase 3: メンバーシップ
         // user_roles: granted_byをNULL化してからDELETE

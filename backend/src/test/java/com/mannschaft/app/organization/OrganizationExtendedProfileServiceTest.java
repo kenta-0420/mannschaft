@@ -4,6 +4,10 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.common.visibility.VisibilityErrorCode;
 import com.mannschaft.app.organization.dto.CreateCustomFieldRequest;
 import com.mannschaft.app.organization.dto.CreateOfficerRequest;
 import com.mannschaft.app.organization.dto.CustomFieldResponse;
@@ -25,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
@@ -34,7 +39,11 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -66,8 +75,61 @@ class OrganizationExtendedProfileServiceTest {
     @Mock
     private AuditLogService auditLogService;
 
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
+
     @InjectMocks
     private OrganizationExtendedProfileService service;
+
+    // ========================================
+    // getProfile
+    // ========================================
+
+    @Nested
+    @DisplayName("getProfile")
+    class GetProfile {
+
+        @Test
+        @DisplayName("PUBLIC 組織のプロフィールを正常取得できる（ContentVisibilityChecker.assertCanView が呼ばれる）")
+        void 正常取得_assertCanViewが呼ばれる() {
+            // Arrange
+            OrganizationEntity org = buildOrg(OrganizationEntity.Visibility.PUBLIC, null);
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            // contentVisibilityChecker.assertCanView は何もしない（デフォルト動作）
+
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+
+                // Act
+                ApiResponse<OrganizationProfileResponse> result = service.getProfile(USER_ID, ORG_ID);
+
+                // Assert
+                assertThat(result.getData()).isNotNull();
+                verify(contentVisibilityChecker).assertCanView(
+                        eq(ReferenceType.ORGANIZATION), eq(ORG_ID), eq(USER_ID));
+            }
+        }
+
+        @Test
+        @DisplayName("PRIVATE 組織かつ非メンバーの場合、ContentVisibilityChecker が VISIBILITY_001 をスローする")
+        void PRIVATE組織非メンバー_VISIBILITY001() {
+            // Arrange
+            // contentVisibilityChecker.assertCanView が VISIBILITY_001 をスロー
+            doThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
+                    .when(contentVisibilityChecker)
+                    .assertCanView(eq(ReferenceType.ORGANIZATION), eq(ORG_ID), isNull());
+
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(null);
+
+                // Act & Assert
+                assertThatThrownBy(() -> service.getProfile(null, ORG_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo("VISIBILITY_001"));
+            }
+        }
+    }
 
     // ========================================
     // updateProfile
@@ -233,19 +295,26 @@ class OrganizationExtendedProfileServiceTest {
     class GetOfficers {
 
         @Test
-        @DisplayName("PRIVATE 組織かつ非メンバーの場合 ORG_048 をスローする")
-        void PRIVATE組織非メンバー_ORG048() {
+        @DisplayName("PRIVATE 組織かつ非メンバーの場合、ContentVisibilityChecker が VISIBILITY_001 をスローする")
+        void PRIVATE組織非メンバー_VISIBILITY001() {
             // Arrange
             OrganizationEntity org = buildOrg(OrganizationEntity.Visibility.PRIVATE, null);
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
             given(accessControlService.isMember(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            doThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
+                    .when(contentVisibilityChecker)
+                    .assertCanView(eq(ReferenceType.ORGANIZATION), eq(ORG_ID), eq(USER_ID));
 
-            // Act & Assert
-            assertThatThrownBy(() -> service.getOfficers(USER_ID, ORG_ID, false))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ORG_048"));
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+
+                // Act & Assert
+                assertThatThrownBy(() -> service.getOfficers(USER_ID, ORG_ID, false))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo("VISIBILITY_001"));
+            }
         }
 
         @Test
@@ -257,12 +326,17 @@ class OrganizationExtendedProfileServiceTest {
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
             given(accessControlService.isMember(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            // contentVisibilityChecker.assertCanView は何もしない（PUBLIC 組織）
 
-            // Act
-            ApiResponse<List<OfficerResponse>> result = service.getOfficers(USER_ID, ORG_ID, false);
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
 
-            // Assert
-            assertThat(result.getData()).isEmpty();
+                // Act
+                ApiResponse<List<OfficerResponse>> result = service.getOfficers(USER_ID, ORG_ID, false);
+
+                // Assert
+                assertThat(result.getData()).isEmpty();
+            }
         }
 
         @Test
@@ -273,12 +347,17 @@ class OrganizationExtendedProfileServiceTest {
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
             given(accessControlService.isMember(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            // contentVisibilityChecker.assertCanView は何もしない（PUBLIC 組織）
 
-            // Act & Assert
-            assertThatThrownBy(() -> service.getOfficers(USER_ID, ORG_ID, true))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ORG_048"));
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+
+                // Act & Assert
+                assertThatThrownBy(() -> service.getOfficers(USER_ID, ORG_ID, true))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo("ORG_048"));
+            }
         }
 
         @Test
@@ -289,17 +368,22 @@ class OrganizationExtendedProfileServiceTest {
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
             given(accessControlService.isMember(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+            // contentVisibilityChecker.assertCanView は何もしない（PUBLIC 組織）
 
             OrganizationOfficerEntity visibleOfficer = buildOfficer(OFFICER_ID, ORG_ID, "田中", 1, true);
             OrganizationOfficerEntity hiddenOfficer = buildOfficer(OFFICER_ID + 1, ORG_ID, "鈴木", 2, false);
             given(officerRepository.findByOrganizationIdOrderByDisplayOrderAsc(ORG_ID))
                     .willReturn(List.of(visibleOfficer, hiddenOfficer));
 
-            // Act
-            ApiResponse<List<OfficerResponse>> result = service.getOfficers(USER_ID, ORG_ID, true);
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
 
-            // Assert
-            assertThat(result.getData()).hasSize(2);
+                // Act
+                ApiResponse<List<OfficerResponse>> result = service.getOfficers(USER_ID, ORG_ID, true);
+
+                // Assert
+                assertThat(result.getData()).hasSize(2);
+            }
         }
 
         @Test
@@ -310,18 +394,23 @@ class OrganizationExtendedProfileServiceTest {
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
             given(accessControlService.isMember(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            // contentVisibilityChecker.assertCanView は何もしない（PUBLIC 組織）
 
             OrganizationOfficerEntity visibleOfficer = buildOfficer(OFFICER_ID, ORG_ID, "田中", 1, true);
             OrganizationOfficerEntity hiddenOfficer = buildOfficer(OFFICER_ID + 1, ORG_ID, "鈴木", 2, false);
             given(officerRepository.findByOrganizationIdOrderByDisplayOrderAsc(ORG_ID))
                     .willReturn(List.of(visibleOfficer, hiddenOfficer));
 
-            // Act
-            ApiResponse<List<OfficerResponse>> result = service.getOfficers(USER_ID, ORG_ID, false);
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
 
-            // Assert
-            assertThat(result.getData()).hasSize(1);
-            assertThat(result.getData().get(0).getName()).isEqualTo("田中");
+                // Act
+                ApiResponse<List<OfficerResponse>> result = service.getOfficers(USER_ID, ORG_ID, false);
+
+                // Assert
+                assertThat(result.getData()).hasSize(1);
+                assertThat(result.getData().get(0).getName()).isEqualTo("田中");
+            }
         }
     }
 
@@ -588,12 +677,17 @@ class OrganizationExtendedProfileServiceTest {
             given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             given(customFieldRepository.findByOrganizationIdOrderByDisplayOrderAsc(ORG_ID))
                     .willReturn(List.of());
+            // contentVisibilityChecker.assertCanView は何もしない（PUBLIC 組織）
 
-            // Act
-            ApiResponse<List<CustomFieldResponse>> result = service.getCustomFields(USER_ID, ORG_ID, false);
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
 
-            // Assert
-            assertThat(result.getData()).isEmpty();
+                // Act
+                ApiResponse<List<CustomFieldResponse>> result = service.getCustomFields(USER_ID, ORG_ID, false);
+
+                // Assert
+                assertThat(result.getData()).isEmpty();
+            }
         }
     }
 

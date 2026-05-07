@@ -1,19 +1,34 @@
 package com.mannschaft.app.errorreport.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.errorreport.ErrorReportMapper;
+import com.mannschaft.app.errorreport.ErrorReportProperties;
+import com.mannschaft.app.errorreport.dto.ErrorReportAiAnalysisResponse;
+import com.mannschaft.app.errorreport.dto.ErrorReportAssigneeRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportBulkUpdateRequest;
+import com.mannschaft.app.errorreport.dto.ErrorReportCommentRequest;
+import com.mannschaft.app.errorreport.dto.ErrorReportConfigResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportStatsResponse;
+import com.mannschaft.app.errorreport.dto.ErrorReportTimelineResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportUpdateRequest;
+import com.mannschaft.app.errorreport.dto.ErrorReportWorkflowStageRequest;
+import com.mannschaft.app.errorreport.dto.GitHubIssueCreateResponse;
+import com.mannschaft.app.errorreport.dto.KanbanResponse;
+import com.mannschaft.app.errorreport.entity.ErrorReportAiAnalysisEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
+import com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository;
+import com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisService;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
+import com.mannschaft.app.errorreport.service.GitHubIssueService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +37,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -41,6 +57,14 @@ public class SystemAdminErrorReportController {
 
     private final ErrorReportService errorReportService;
     private final ErrorReportMapper errorReportMapper;
+    private final AccessControlService accessControlService;
+    private final ErrorReportAiAnalysisService aiAnalysisService;
+    private final ErrorReportAiAnalysisRepository aiAnalysisRepository;
+    private final GitHubIssueService gitHubIssueService;
+    private final ErrorReportProperties errorReportProperties;
+
+    @Value("${mannschaft.claude.api-key:}")
+    private String claudeApiKey;
 
     /**
      * エラーレポート一覧を取得する（ページネーション・フィルタ付き）。
@@ -73,7 +97,11 @@ public class SystemAdminErrorReportController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ErrorReportResponse>> get(@PathVariable Long id) {
         ErrorReportEntity entity = errorReportService.findById(id);
-        return ResponseEntity.ok(ApiResponse.of(errorReportMapper.toResponse(entity)));
+        ErrorReportResponse response = errorReportMapper.toResponse(entity);
+        // F12.5 Phase 2-C — 最新 SUCCESS の AI 分析サマリを埋める
+        aiAnalysisRepository.findFirstByErrorReportIdAndStatusOrderByCreatedAtDesc(id, "SUCCESS")
+                .ifPresent(latest -> response.setLatestAiAnalysis(toSummary(latest)));
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
@@ -110,6 +138,202 @@ public class SystemAdminErrorReportController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ErrorReportStatsResponse>> stats() {
         return ResponseEntity.ok(ApiResponse.of(errorReportService.getStats()));
+    }
+
+    // ========================================
+    // F12.5 Phase 2-E — Kanban ビュー
+    // ========================================
+
+    /**
+     * F12.5 Phase 2-E — Kanban ビュー（6 カラム）を取得する。
+     * 各カラム最大 50 件、{@code last_occurred_at DESC}。IGNORED は対象外。
+     */
+    @GetMapping("/kanban")
+    @Operation(summary = "Kanban ビュー取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<KanbanResponse>> kanban() {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
+        KanbanResponse response = errorReportService.fetchKanban();
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    // ========================================
+    // F12.5 Phase 2 — ワークフロー / 担当者 / コメント / タイムライン
+    // ========================================
+
+    /**
+     * F12.5 Phase 2 — エラーレポートのワークフロー段階を更新する。
+     */
+    @PatchMapping("/{id}/workflow-stage")
+    @Operation(summary = "ワークフロー段階更新")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<ErrorReportResponse>> updateWorkflowStage(
+            @PathVariable Long id,
+            @Valid @RequestBody ErrorReportWorkflowStageRequest req) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        ErrorReportEntity entity = errorReportService.updateWorkflowStage(id, req.getWorkflowStage(), actorId);
+        return ResponseEntity.ok(ApiResponse.of(errorReportMapper.toResponse(entity)));
+    }
+
+    /**
+     * F12.5 Phase 2 — 担当者を割り当て/解除する。
+     */
+    @PatchMapping("/{id}/assignee")
+    @Operation(summary = "担当者割り当て/解除")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<ErrorReportResponse>> assign(
+            @PathVariable Long id,
+            @Valid @RequestBody ErrorReportAssigneeRequest req) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        ErrorReportEntity entity = errorReportService.assign(id, req.getAssigneeId(), actorId);
+        return ResponseEntity.ok(ApiResponse.of(errorReportMapper.toResponse(entity)));
+    }
+
+    /**
+     * F12.5 Phase 2 — 管理者コメントを追加する。
+     */
+    @PostMapping("/{id}/comments")
+    @Operation(summary = "コメント追加")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "追加成功")
+    public ResponseEntity<ApiResponse<Void>> addComment(
+            @PathVariable Long id,
+            @Valid @RequestBody ErrorReportCommentRequest req) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        errorReportService.addComment(id, req.getContent(), actorId);
+        return ResponseEntity.ok(ApiResponse.of(null));
+    }
+
+    /**
+     * F12.5 Phase 2 — タイムライン（occurrences + activities）を取得する。
+     */
+    @GetMapping("/{id}/timeline")
+    @Operation(summary = "タイムライン取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<ErrorReportTimelineResponse>> timeline(
+            @PathVariable Long id,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "50") int limit) {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
+        int cappedLimit = Math.min(Math.max(limit, 1), 100);
+        ErrorReportTimelineResponse response = errorReportService.fetchTimeline(id, cursor, cappedLimit);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    // ========================================
+    // F12.5 Phase 2-C — AI 分析
+    // ========================================
+
+    /**
+     * F12.5 Phase 2-C — AI 再分析を即時実行する。
+     */
+    @PostMapping("/{id}/ai-analyses")
+    @Operation(summary = "AI 再分析実行")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "分析成功")
+    public ResponseEntity<ApiResponse<ErrorReportAiAnalysisResponse>> reanalyze(
+            @PathVariable Long id) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkSystemAdmin(actorId);
+        ErrorReportAiAnalysisEntity entity = aiAnalysisService.analyzeSync(id, actorId);
+        return ResponseEntity.ok(ApiResponse.of(toResponse(entity)));
+    }
+
+    /**
+     * F12.5 Phase 2-C — AI 分析履歴を取得する。
+     */
+    @GetMapping("/{id}/ai-analyses")
+    @Operation(summary = "AI 分析履歴取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<PagedResponse<ErrorReportAiAnalysisResponse>> aiAnalyses(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
+        int cappedSize = Math.min(Math.max(size, 1), 50);
+        Page<ErrorReportAiAnalysisEntity> result = aiAnalysisRepository
+                .findByErrorReportIdOrderByCreatedAtDesc(id, PageRequest.of(page, cappedSize));
+        java.util.List<ErrorReportAiAnalysisResponse> data = result.getContent().stream()
+                .map(this::toResponse)
+                .toList();
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
+        return ResponseEntity.ok(PagedResponse.of(data, meta));
+    }
+
+    // ========================================
+    // F12.5 Phase 2-D — GitHub Issue 連携
+    // ========================================
+
+    /**
+     * F12.5 Phase 2-D — GitHub Issue を作成し、エラーレポートに URL を保存する。
+     */
+    @PostMapping("/{id}/github-issue")
+    @Operation(summary = "GitHub Issue 作成")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "作成成功")
+    public ResponseEntity<ApiResponse<GitHubIssueCreateResponse>> createGithubIssue(@PathVariable Long id) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkSystemAdmin(actorId);
+        String url = gitHubIssueService.createIssue(id, actorId);
+        return ResponseEntity.ok(ApiResponse.of(
+                GitHubIssueCreateResponse.builder().url(url).build()));
+    }
+
+    /**
+     * F12.5 Phase 2-D — エラーレポート機能の運用設定（GitHub/AI 有効状態）を返す。
+     * フロントエンドのボタン状態判定に使用される。
+     */
+    @GetMapping("/config")
+    @Operation(summary = "エラーレポート機能設定取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<ErrorReportConfigResponse>> config() {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
+        boolean aiEnabled = errorReportProperties.getAi().isEnabled()
+                && claudeApiKey != null && !claudeApiKey.isBlank();
+        ErrorReportConfigResponse response = ErrorReportConfigResponse.builder()
+                .githubEnabled(gitHubIssueService.isAvailable())
+                .aiEnabled(aiEnabled)
+                .aiModel(errorReportProperties.getAi().getModel())
+                .aiMonthlyBudgetJpy(errorReportProperties.getAi().getMonthlyBudgetJpy())
+                .build();
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * Entity → Response 変換。
+     */
+    private ErrorReportAiAnalysisResponse toResponse(ErrorReportAiAnalysisEntity entity) {
+        java.util.List<String> files = entity.getSuggestedFiles() != null && !entity.getSuggestedFiles().isBlank()
+                ? java.util.Arrays.stream(entity.getSuggestedFiles().split(","))
+                    .map(String::trim).filter(s -> !s.isEmpty()).toList()
+                : java.util.List.of();
+        return ErrorReportAiAnalysisResponse.builder()
+                .id(entity.getId())
+                .errorReportId(entity.getErrorReportId())
+                .modelName(entity.getModelName())
+                .promptTokens(entity.getPromptTokens() != null ? entity.getPromptTokens() : 0)
+                .completionTokens(entity.getCompletionTokens() != null ? entity.getCompletionTokens() : 0)
+                .estimatedCause(entity.getEstimatedCause())
+                .fixProposal(entity.getFixProposal())
+                .impactAssessment(entity.getImpactAssessment())
+                .suggestedFiles(files)
+                .status(entity.getStatus())
+                .errorMessage(entity.getErrorMessage())
+                .createdBy(entity.getCreatedBy())
+                .createdAt(entity.getCreatedAt())
+                .build();
+    }
+
+    /**
+     * Entity → ErrorReportResponse の latestAiAnalysis サマリ変換。
+     */
+    private ErrorReportResponse.ErrorReportAiAnalysisSummary toSummary(ErrorReportAiAnalysisEntity entity) {
+        return ErrorReportResponse.ErrorReportAiAnalysisSummary.builder()
+                .id(entity.getId())
+                .estimatedCause(entity.getEstimatedCause())
+                .fixProposal(entity.getFixProposal())
+                .impactAssessment(entity.getImpactAssessment())
+                .suggestedFiles(entity.getSuggestedFiles())
+                .createdAt(entity.getCreatedAt())
+                .build();
     }
 
     /**

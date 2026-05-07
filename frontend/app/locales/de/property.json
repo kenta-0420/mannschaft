@@ -18,6 +18,10 @@
       "timeline": "Zeitachse",
       "gantt": "Gantt"
     },
+    "gantt": {
+      "empty": "Keine Maßnahmen mit Plan-Start- und Plan-Enddatum für das Gantt-Diagramm vorhanden.",
+      "excludedNote": "{count} Maßnahme(n) ohne Plandaten werden vom Gantt-Diagramm ausgeschlossen."
+    },
     "filter": {
       "title": "Filter",
       "workType": "Art der Maßnahme",

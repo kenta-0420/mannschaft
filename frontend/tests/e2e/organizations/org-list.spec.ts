@@ -73,7 +73,7 @@ test.describe('ORG-001〜002: 組織一覧', () => {
       })
     })
 
-    await page.goto('/organizations')
+    await page.goto('/organizations/search')
     await waitForHydration(page)
 
     await expect(page.getByRole('heading', { name: '組織検索' })).toBeVisible({ timeout: 10_000 })
@@ -93,7 +93,7 @@ test.describe('ORG-001〜002: 組織一覧', () => {
       })
     })
 
-    await page.goto('/organizations')
+    await page.goto('/organizations/search')
     await waitForHydration(page)
 
     await expect(page.getByRole('heading', { name: '組織検索' })).toBeVisible({ timeout: 10_000 })

@@ -18,6 +18,10 @@
       "timeline": "Cronología",
       "gantt": "Gantt"
     },
+    "gantt": {
+      "empty": "No hay obras con fechas planificadas para mostrar en el diagrama de Gantt.",
+      "excludedNote": "{count} obra(s) sin fechas planificadas se excluyen del diagrama de Gantt."
+    },
     "filter": {
       "title": "Filtros",
       "workType": "Tipo de obra",
