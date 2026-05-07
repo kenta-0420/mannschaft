@@ -1,0 +1,150 @@
+{
+  "property": {
+    "title": "부동산 이력 대장",
+    "subtitle": "리노베이션・수리・점검・사고 대응 등 공사 이력의 통합 관리",
+    "newPackage": "신규 공사 추가",
+    "editPackage": "공사 편집",
+    "exportPdf": "PDF로 출력",
+    "exportExcel": "Excel로 출력",
+    "exportList": "이력 대장 내보내기",
+    "noPackages": "등록된 이력이 없습니다",
+    "loading": "불러오는 중…",
+    "saving": "저장 중…",
+    "saved": "저장했습니다",
+    "deleted": "삭제했습니다",
+    "deleteConfirm": "정말로 삭제하시겠습니까? (논리 삭제)",
+    "view": {
+      "list": "목록",
+      "timeline": "타임라인",
+      "gantt": "간트"
+    },
+    "filter": {
+      "title": "필터",
+      "workType": "공사 종류",
+      "status": "상태",
+      "vendor": "업체",
+      "from": "시작일",
+      "to": "종료일",
+      "all": "전체",
+      "clear": "조건 지우기"
+    },
+    "workType": {
+      "RENOVATION": "리노베이션",
+      "REPAIR": "수리",
+      "INCIDENT": "사고 대응",
+      "INSPECTION": "점검",
+      "DISASTER": "재해",
+      "MEETING": "회의",
+      "OTHER": "기타"
+    },
+    "status": {
+      "PLANNED": "계획 중",
+      "IN_PROGRESS": "시공 중",
+      "COMPLETED": "완료",
+      "CLOSED": "종료",
+      "CANCELLED": "중단"
+    },
+    "visibility": {
+      "title": "공개 범위",
+      "ADMINS_ONLY": "관리자 전용",
+      "MEMBERS_ONLY": "전체 회원",
+      "MEMBERS_MASKED": "회원 (금액 마스킹)",
+      "PUBLIC_MASKED": "전체 공개 (금액 마스킹)"
+    },
+    "documentKind": {
+      "MINUTES": "회의록",
+      "QUOTE": "견적서",
+      "CONTRACT": "계약서",
+      "REPORT": "보고서",
+      "PHOTO": "사진",
+      "DRAWING": "도면",
+      "INVOICE": "청구서",
+      "RECEIPT": "영수증",
+      "OTHER": "기타"
+    },
+    "fields": {
+      "title": "건명",
+      "category": "카테고리",
+      "description": "설명",
+      "vendor": "업체",
+      "estimatedAmount": "견적 금액",
+      "contractAmount": "계약 금액",
+      "actualAmount": "실시 금액",
+      "currency": "통화",
+      "plannedStartDate": "착공 예정일",
+      "plannedEndDate": "완료 예정일",
+      "actualStartDate": "실제 착공일",
+      "actualEndDate": "실제 완료일",
+      "warrantyUntil": "보증 기한",
+      "incidentId": "관련 사고",
+      "incidentDate": "사고/발견일",
+      "incidentNarrative": "사고 경위",
+      "isDisclosable": "중요 사항 설명서 공개 가능",
+      "tags": "태그",
+      "attachmentCount": "첨부 문서 수",
+      "commentCount": "댓글 수"
+    },
+    "documents": {
+      "title": "첨부 문서",
+      "empty": "첨부된 문서가 없습니다",
+      "attach": "문서 첨부",
+      "detach": "연결 해제",
+      "detachConfirm": "이 문서의 연결을 해제할까요? (파일 자체는 삭제되지 않습니다)"
+    },
+    "vendor": {
+      "title": "업체 마스터",
+      "subtitle": "시공・점검 업체 마스터 관리",
+      "newVendor": "신규 업체 추가",
+      "editVendor": "업체 편집",
+      "deleteConfirm": "이 업체를 논리 삭제할까요?",
+      "search": "업체 검색…",
+      "noVendors": "등록된 업체가 없습니다",
+      "isActive": "활성",
+      "isInactive": "비활성",
+      "category": {
+        "title": "업종",
+        "CONSTRUCTION": "건설",
+        "INSPECTION": "점검",
+        "CONSULTING": "컨설팅",
+        "CLEANING": "청소",
+        "SECURITY": "보안",
+        "OTHER": "기타"
+      },
+      "fields": {
+        "name": "업체명",
+        "nameKana": "발음",
+        "phone": "전화번호",
+        "email": "이메일",
+        "website": "웹사이트",
+        "postalCode": "우편번호",
+        "address": "주소",
+        "representative": "대표자",
+        "contactPerson": "담당자",
+        "licenseNumber": "허가 번호",
+        "licenseExpiry": "허가 만료일",
+        "note": "비고"
+      }
+    },
+    "permissions": {
+      "viewOnly": "조회만 가능합니다",
+      "amountMasked": "금액 정보 조회 권한이 없습니다"
+    },
+    "masked": "●●●",
+    "actions": {
+      "edit": "편집",
+      "delete": "삭제",
+      "save": "저장",
+      "cancel": "취소",
+      "close": "닫기",
+      "back": "목록으로",
+      "changeStatus": "상태 변경"
+    },
+    "errors": {
+      "loadFailed": "불러오기에 실패했습니다",
+      "saveFailed": "저장에 실패했습니다",
+      "deleteFailed": "삭제에 실패했습니다",
+      "exportFailed": "내보내기에 실패했습니다",
+      "versionConflict": "다른 사용자가 편집했습니다. 최신 내용을 다시 불러오세요."
+    }
+  }
+}

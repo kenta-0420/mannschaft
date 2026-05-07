@@ -12,6 +12,11 @@ import com.mannschaft.app.property.WorkType;
 import com.mannschaft.app.property.entity.PropertyWorkPackageEntity;
 import com.mannschaft.app.property.entity.VendorEntity;
 import com.mannschaft.app.property.repository.PropertyWorkPackageRepository;
+import com.mannschaft.app.timeline.PostScopeType;
+import com.mannschaft.app.timeline.PostStatus;
+import com.mannschaft.app.timeline.dto.CreatePostRequest;
+import com.mannschaft.app.timeline.dto.PostResponse;
+import com.mannschaft.app.timeline.service.TimelinePostService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -84,6 +89,14 @@ public class PropertyWorkPackageService {
     private final PropertyWorkPackageRepository packageRepository;
     private final VendorService vendorService;
     private final ObjectMapper objectMapper;
+    /**
+     * F04.1 タイムライン投稿サービス。1-δ で配線。
+     *
+     * <p>新規パッケージ作成時に「【物件履歴】タイトル / 工事種別 / 業者名」形式の
+     * テキスト投稿を自動作成し、{@link PropertyWorkPackageEntity#linkTimelinePost(Long)}
+     * で双方向リンクを張る（設計書 §5.4）。</p>
+     */
+    private final TimelinePostService timelinePostService;
 
     // =========================================================================
     // DTO（Service 内 record）— Controller/DTO 層導入前の共通リクエスト形
@@ -130,9 +143,10 @@ public class PropertyWorkPackageService {
         validateRequest(req);
 
         // 業者割当: vendorId が指定されている場合は snapshot も同時保存
+        // IDOR 防止: 同一 scope の vendor のみ参照可（VendorService 側で検証）
         String vendorNameSnapshot = null;
         if (req.vendorId() != null) {
-            VendorEntity vendor = vendorService.getVendor(req.vendorId());
+            VendorEntity vendor = vendorService.getVendor(scopeType, scopeId, req.vendorId());
             vendorNameSnapshot = vendor.getName();
         }
 
@@ -209,9 +223,11 @@ public class PropertyWorkPackageService {
         }
 
         // 業者変更: vendorId が変わった場合のみ snapshot を更新（同一ならそのまま）
+        // IDOR 防止: パッケージ自身の scope と vendor の scope の一致を VendorService 側で検証
         if (!java.util.Objects.equals(entity.getVendorId(), req.vendorId())) {
             if (req.vendorId() != null) {
-                VendorEntity vendor = vendorService.getVendor(req.vendorId());
+                VendorEntity vendor = vendorService.getVendor(
+                        entity.getScopeType(), entity.getScopeId(), req.vendorId());
                 entity.assignVendor(req.vendorId(), vendor.getName());
             } else {
                 // vendorId が null へ変更された場合は snapshot もクリア
@@ -293,7 +309,9 @@ public class PropertyWorkPackageService {
         if (vendorId == null) {
             entity.assignVendor(null, null);
         } else {
-            VendorEntity vendor = vendorService.getVendor(vendorId);
+            // IDOR 防止: パッケージ自身の scope と一致する vendor のみ参照可
+            VendorEntity vendor = vendorService.getVendor(
+                    entity.getScopeType(), entity.getScopeId(), vendorId);
             entity.assignVendor(vendorId, vendor.getName());
         }
         return packageRepository.save(entity);
@@ -362,6 +380,10 @@ public class PropertyWorkPackageService {
         PropertyWorkPackageEntity saved = packageRepository.save(entity);
         log.info("F07.6 Incident 起点パッケージ自動生成: id={}, incidentId={}, scope={}/{}",
                 saved.getId(), incidentId, scopeType, scopeId);
+
+        // 設計書 §5.4: 新規作成時に F04.1 TimelinePost を自動投稿
+        publishToTimeline(saved);
+
         return Optional.of(saved);
     }
 
@@ -397,18 +419,73 @@ public class PropertyWorkPackageService {
     }
 
     /**
-     * F04.1 TimelinePost 自動投稿のフックメソッド。
+     * F04.1 TimelinePost 自動投稿のフックメソッド（1-δ 実装）。
      *
-     * <p><strong>本フェーズ未実装</strong>。1-δ で {@code TimelinePostService} を
-     * inject し、{@code scopeType}/{@code scopeId} を一致させたテキスト投稿を生成
-     * （ADMINS_ONLY → DRAFT、それ以外 → PUBLISHED）して、得られた投稿 ID を
-     * {@link PropertyWorkPackageEntity#linkTimelinePost(Long)} で紐付ける。
-     * 設計書 §5.4 参照。</p>
+     * <p>設計書 §5.4 に基づき、新規パッケージ作成時に「【物件履歴】タイトル / 工事種別 /
+     * 業者名」形式のテキスト投稿を自動生成して紐付ける。{@code scopeType}/{@code scopeId}
+     * はパッケージと一致させ、F00 ContentVisibilityResolver の可視性ガードと整合する。</p>
+     *
+     * <p><strong>暫定扱い（1-δ）</strong>: 設計書では visibility=ADMINS_ONLY の場合
+     * {@link PostStatus#DRAFT} で投稿することになっているが、現行
+     * {@link TimelinePostService#createPost} は {@code scheduledAt} 有無で
+     * SCHEDULED/PUBLISHED に二択固定するため、DRAFT 指定の口がない。よって本フェーズでは
+     * <em>ステータス指定なし（PUBLISHED 固定）で起票する</em>暫定実装とし、
+     * Phase 2 で TimelinePostService に DRAFT 起票 API を追加した時点で厳密化する。
+     * この独自判断は申し送り事項としてコミットメッセージに明記する。</p>
+     *
+     * <p>{@code createFromIncident()} 経由でも本メソッドを呼ぶ。リスナー/イベント発火元から
+     * 同一トランザクション内で実行されるため、TimelinePost 生成失敗はパッケージ生成自体を
+     * ロールバックさせる（fail-closed）。</p>
      */
     private void publishToTimeline(PropertyWorkPackageEntity entity) {
-        // TODO(F09.13 1-δ): TimelinePostService 経由で自動投稿し linkTimelinePost で紐付ける。
-        log.debug("publishToTimeline: id={} は 1-δ で実装予定（現時点ではスキップ）",
-                entity.getId());
+        // 設計書 §5.4: scopeType / scopeId はパッケージと一致させる
+        PostScopeType scopeType = "ORGANIZATION".equals(entity.getScopeType())
+                ? PostScopeType.ORGANIZATION
+                : PostScopeType.TEAM;
+
+        String content = buildTimelineContent(entity);
+
+        CreatePostRequest req = new CreatePostRequest(
+                content,
+                scopeType.name(),
+                entity.getScopeId(),
+                /* postedAsType */ null,
+                /* postedAsId */ null,
+                /* parentId */ null,
+                /* repostOfId */ null,
+                /* scheduledAt */ null,
+                /* poll */ null,
+                /* attachments */ null);
+
+        try {
+            PostResponse posted = timelinePostService.createPost(req, entity.getCreatedBy());
+            entity.linkTimelinePost(posted.getId());
+            log.info("F04.1 TimelinePost 自動投稿成功: packageId={}, postId={}",
+                    entity.getId(), posted.getId());
+        } catch (RuntimeException e) {
+            // 設計書 §5.4 整合: TimelinePost 生成失敗時はパッケージ作成自体を中断する
+            log.error("F04.1 TimelinePost 自動投稿失敗: packageId={}", entity.getId(), e);
+            throw e;
+        }
+    }
+
+    /**
+     * タイムライン投稿の本文を組み立てる（設計書 §5.4「【物件履歴】タイトル / 工事種別 / 業者名」）。
+     *
+     * <p>本文末尾にパッケージへのディープリンクを埋め込む要件は設計書 §5.4 に記載があるが、
+     * 本フェーズではフロント URL の合成を Service 層で持たない方針とし、
+     * {@code 【物件履歴】タイトル / 工事種別 (/ 業者名) (パッケージID: id)} の形で
+     * 後方互換的にディープリンクできる識別子を末尾付与する。完全 URL 形式の deeplink は
+     * Phase 2 でフロントベース URL 設定（{@code app.frontend.base-url} 等）と併せて実装する。</p>
+     */
+    private String buildTimelineContent(PropertyWorkPackageEntity entity) {
+        StringBuilder sb = new StringBuilder("【物件履歴】");
+        sb.append(entity.getTitle()).append(" / ").append(entity.getWorkType());
+        if (entity.getVendorNameSnapshot() != null && !entity.getVendorNameSnapshot().isBlank()) {
+            sb.append(" / ").append(entity.getVendorNameSnapshot());
+        }
+        sb.append(" (パッケージID: ").append(entity.getId()).append(")");
+        return sb.toString();
     }
 
     // =========================================================================

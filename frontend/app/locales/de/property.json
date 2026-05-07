@@ -1,0 +1,150 @@
+{
+  "property": {
+    "title": "Objektverlauf",
+    "subtitle": "Zentrale Verwaltung von Renovierungen, Reparaturen, Inspektionen und Vorfällen",
+    "newPackage": "Neue Maßnahme",
+    "editPackage": "Maßnahme bearbeiten",
+    "exportPdf": "Als PDF exportieren",
+    "exportExcel": "Als Excel exportieren",
+    "exportList": "Verlauf exportieren",
+    "noPackages": "Noch keine Maßnahmen erfasst",
+    "loading": "Lade…",
+    "saving": "Speichere…",
+    "saved": "Gespeichert",
+    "deleted": "Gelöscht",
+    "deleteConfirm": "Wirklich löschen? (logisches Löschen)",
+    "view": {
+      "list": "Liste",
+      "timeline": "Zeitachse",
+      "gantt": "Gantt"
+    },
+    "filter": {
+      "title": "Filter",
+      "workType": "Art der Maßnahme",
+      "status": "Status",
+      "vendor": "Auftragnehmer",
+      "from": "Von",
+      "to": "Bis",
+      "all": "Alle",
+      "clear": "Zurücksetzen"
+    },
+    "workType": {
+      "RENOVATION": "Renovierung",
+      "REPAIR": "Reparatur",
+      "INCIDENT": "Vorfallreaktion",
+      "INSPECTION": "Inspektion",
+      "DISASTER": "Katastrophe",
+      "MEETING": "Besprechung",
+      "OTHER": "Sonstiges"
+    },
+    "status": {
+      "PLANNED": "Geplant",
+      "IN_PROGRESS": "In Arbeit",
+      "COMPLETED": "Abgeschlossen",
+      "CLOSED": "Geschlossen",
+      "CANCELLED": "Abgebrochen"
+    },
+    "visibility": {
+      "title": "Sichtbarkeit",
+      "ADMINS_ONLY": "Nur Admins",
+      "MEMBERS_ONLY": "Alle Mitglieder",
+      "MEMBERS_MASKED": "Mitglieder (Beträge maskiert)",
+      "PUBLIC_MASKED": "Öffentlich (Beträge maskiert)"
+    },
+    "documentKind": {
+      "MINUTES": "Protokoll",
+      "QUOTE": "Angebot",
+      "CONTRACT": "Vertrag",
+      "REPORT": "Bericht",
+      "PHOTO": "Foto",
+      "DRAWING": "Plan",
+      "INVOICE": "Rechnung",
+      "RECEIPT": "Quittung",
+      "OTHER": "Sonstiges"
+    },
+    "fields": {
+      "title": "Bezeichnung",
+      "category": "Kategorie",
+      "description": "Beschreibung",
+      "vendor": "Auftragnehmer",
+      "estimatedAmount": "Geschätzter Betrag",
+      "contractAmount": "Vertragsbetrag",
+      "actualAmount": "Tatsächlicher Betrag",
+      "currency": "Währung",
+      "plannedStartDate": "Geplanter Beginn",
+      "plannedEndDate": "Geplantes Ende",
+      "actualStartDate": "Tatsächlicher Beginn",
+      "actualEndDate": "Tatsächliches Ende",
+      "warrantyUntil": "Garantie bis",
+      "incidentId": "Verknüpfter Vorfall",
+      "incidentDate": "Vorfall-/Erkennungsdatum",
+      "incidentNarrative": "Hergang",
+      "isDisclosable": "Im Objektprotokoll offenlegbar",
+      "tags": "Tags",
+      "attachmentCount": "Anhänge",
+      "commentCount": "Kommentare"
+    },
+    "documents": {
+      "title": "Anhänge",
+      "empty": "Noch keine Anhänge",
+      "attach": "Dokument anhängen",
+      "detach": "Verknüpfung lösen",
+      "detachConfirm": "Verknüpfung dieses Dokuments lösen? (Datei wird nicht gelöscht)"
+    },
+    "vendor": {
+      "title": "Auftragnehmer-Stammdaten",
+      "subtitle": "Stammdaten für Bau- und Inspektionsfirmen",
+      "newVendor": "Neuer Auftragnehmer",
+      "editVendor": "Auftragnehmer bearbeiten",
+      "deleteConfirm": "Auftragnehmer logisch löschen?",
+      "search": "Auftragnehmer suchen…",
+      "noVendors": "Noch keine Auftragnehmer erfasst",
+      "isActive": "Aktiv",
+      "isInactive": "Inaktiv",
+      "category": {
+        "title": "Branche",
+        "CONSTRUCTION": "Bau",
+        "INSPECTION": "Inspektion",
+        "CONSULTING": "Beratung",
+        "CLEANING": "Reinigung",
+        "SECURITY": "Sicherheit",
+        "OTHER": "Sonstiges"
+      },
+      "fields": {
+        "name": "Name",
+        "nameKana": "Phonetisch",
+        "phone": "Telefon",
+        "email": "E-Mail",
+        "website": "Website",
+        "postalCode": "PLZ",
+        "address": "Adresse",
+        "representative": "Vertretung",
+        "contactPerson": "Ansprechpartner",
+        "licenseNumber": "Lizenznummer",
+        "licenseExpiry": "Lizenz gültig bis",
+        "note": "Notiz"
+      }
+    },
+    "permissions": {
+      "viewOnly": "Nur Lesezugriff",
+      "amountMasked": "Keine Berechtigung zur Anzeige von Beträgen"
+    },
+    "masked": "●●●",
+    "actions": {
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "back": "Zurück zur Liste",
+      "changeStatus": "Status ändern"
+    },
+    "errors": {
+      "loadFailed": "Laden fehlgeschlagen",
+      "saveFailed": "Speichern fehlgeschlagen",
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "exportFailed": "Export fehlgeschlagen",
+      "versionConflict": "Datensatz wurde von einem anderen Benutzer geändert. Bitte neu laden."
+    }
+  }
+}

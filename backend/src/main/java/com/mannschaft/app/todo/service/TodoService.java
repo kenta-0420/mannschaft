@@ -18,10 +18,12 @@ import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
 import com.mannschaft.app.todo.dto.PatchTodoRequest;
 import com.mannschaft.app.todo.dto.UpdateTodoRequest;
+import com.mannschaft.app.todo.TodoStatusBucket;
 import com.mannschaft.app.todo.entity.ProjectEntity;
 import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
 import com.mannschaft.app.todo.entity.TodoAssigneeEntity;
 import com.mannschaft.app.todo.entity.TodoEntity;
+import com.mannschaft.app.todo.entity.TodoStatusLabelEntity;
 import com.mannschaft.app.todo.event.TodoStatusChangedEvent;
 import com.mannschaft.app.todo.exception.MilestoneLockedException;
 import com.mannschaft.app.todo.repository.ProjectRepository;
@@ -66,6 +68,7 @@ public class TodoService {
     private final ApplicationEventPublisher eventPublisher;
     private final TodoProgressService todoProgressService;
     private final MilestoneGateService milestoneGateService;
+    private final TodoStatusLabelService todoStatusLabelService;
 
     /**
      * TODO一覧を取得する。
@@ -91,9 +94,7 @@ public class TodoService {
                     scopeType, scopeId, pageable);
         }
 
-        List<TodoResponse> responses = pageResult.getContent().stream()
-                .map(this::toTodoResponse)
-                .toList();
+        List<TodoResponse> responses = toTodoResponseList(pageResult.getContent());
 
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 pageResult.getTotalElements(), page, size, pageResult.getTotalPages());
@@ -108,11 +109,9 @@ public class TodoService {
      */
     public ApiResponse<List<TodoResponse>> listProjectTodos(Long projectId) {
         projectService.findProjectOrThrow(projectId);
-        List<TodoResponse> responses = todoRepository
-                .findByProjectIdAndDeletedAtIsNullOrderBySortOrderAsc(projectId).stream()
-                .map(this::toTodoResponse)
-                .toList();
-        return ApiResponse.of(responses);
+        List<TodoEntity> entities = todoRepository
+                .findByProjectIdAndDeletedAtIsNullOrderBySortOrderAsc(projectId);
+        return ApiResponse.of(toTodoResponseList(entities));
     }
 
     /**
@@ -359,9 +358,31 @@ public class TodoService {
         assertNotMilestoneLocked(todo);
 
         TodoStatus oldStatus = todo.getStatus();
-        TodoStatus newStatus = TodoStatus.valueOf(request.getStatus());
 
-        todo.changeStatus(newStatus, userId);
+        // F02.3.1: status / statusLabelId のいずれか（または両方）を受理
+        Long labelId = request.getStatusLabelId();
+        TodoStatus newStatus;
+
+        if (labelId != null) {
+            // ラベル指定がある場合: ラベルからバケット → status を導出
+            TodoStatusLabelEntity label = todoStatusLabelService.findActiveById(labelId);
+            todoStatusLabelService.validateLabelForScope(label, todo.getScopeType(), todo.getScopeId());
+            newStatus = label.getBucket().toTodoStatus();
+
+            // status も同時に指定されている場合は整合チェック
+            if (request.getStatus() != null && !request.getStatus().isBlank()) {
+                TodoStatus requested = TodoStatus.valueOf(request.getStatus());
+                if (requested != newStatus) {
+                    throw new BusinessException(TodoErrorCode.STATUS_LABEL_BUCKET_MISMATCH);
+                }
+            }
+            todo.changeStatusWithLabel(newStatus, labelId, userId);
+        } else {
+            // 後方互換: status のみ指定。ラベルは更新しない。
+            newStatus = TodoStatus.valueOf(request.getStatus());
+            todo.changeStatus(newStatus, userId);
+        }
+
         todo = todoRepository.save(todo);
 
         // プロジェクト進捗再計算
@@ -510,10 +531,8 @@ public class TodoService {
      * @return 自分のTODO一覧
      */
     public ApiResponse<List<TodoResponse>> getMyTodos(Long userId) {
-        List<TodoResponse> responses = todoRepository.findMyTodos(userId).stream()
-                .map(this::toTodoResponse)
-                .toList();
-        return ApiResponse.of(responses);
+        List<TodoEntity> entities = todoRepository.findMyTodos(userId);
+        return ApiResponse.of(toTodoResponseList(entities));
     }
 
     /**
@@ -533,7 +552,7 @@ public class TodoService {
 
         List<TodoEntity> children = todoRepository
                 .findByParentIdAndDeletedAtIsNullOrderBySortOrderAsc(parent.getId());
-        return ApiResponse.of(children.stream().map(this::toTodoResponse).toList());
+        return ApiResponse.of(toTodoResponseList(children));
     }
 
     // --- 進捗率管理 ---
@@ -646,15 +665,42 @@ public class TodoService {
     }
 
     /**
+     * path で指定された scope と、対象 TODO の scope が一致することを検証する（F02.3.1 後続 C-7）。
+     *
+     * <p>IDOR 対策。{@code /api/v1/teams/{teamId}/todos/{id}} などのエンドポイントで、
+     * path の {@code teamId} と todo の {@code scopeId} が不一致のとき
+     * {@link TodoErrorCode#TODO_NOT_FOUND}（404）で返す（403 ではなく 404 — 他スコープでの ID 存在を漏らさない）。</p>
+     *
+     * <p>論理削除済み TODO も TODO_NOT_FOUND として扱う。</p>
+     *
+     * @param todoId    検証する TODO の ID
+     * @param scopeType path のスコープ種別
+     * @param scopeId   path のスコープ ID
+     * @throws BusinessException 不一致 / 削除済み / 不存在のとき TODO_NOT_FOUND
+     */
+    public void assertTodoScope(Long todoId, TodoScopeType scopeType, Long scopeId) {
+        TodoEntity todo = todoRepository.findByIdAndDeletedAtIsNull(todoId)
+                .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
+        if (todo.getScopeType() != scopeType
+                || !java.util.Objects.equals(todo.getScopeId(), scopeId)) {
+            throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
+        }
+    }
+
+    /**
      * マイルストーンロック中 TODO に対する操作を拒否する（F02.7）。
      *
      * <p>論理削除は分母を減らすだけで達成判定を不当に早めないため例外許可（呼び出し側で
      * 本メソッドを呼ばないことで実現）。本メソッドはステータス変更・編集・担当者変更で使用する。</p>
      *
+     * <p>F02.3.1 Phase 2: TODO キャッチボール（{@link TodoHandoffService}）からも呼び出すため
+     * public 化している。Handoff はステータス変更を伴うので、ロック中の TODO への引き渡しは
+     * {@code MilestoneLockedException}（HTTP 423 Locked）で拒否される。</p>
+     *
      * @param todo 対象 TODO
      * @throws MilestoneLockedException ロック中の場合
      */
-    private void assertNotMilestoneLocked(TodoEntity todo) {
+    public void assertNotMilestoneLocked(TodoEntity todo) {
         if (!Boolean.TRUE.equals(todo.getMilestoneLocked())) {
             return;
         }
@@ -682,8 +728,84 @@ public class TodoService {
 
     /**
      * エンティティをレスポンスDTOに変換する（一覧用、N+1防止のため統計なし）。
+     * <p>F02.3.1: ラベル情報は単発で1件取得する。一覧経路では {@link #toTodoResponseList(List)} を使うこと。</p>
+     * <p>F02.3.1 後続 B-6: {@code statusLabelId} が NULL の場合は {@code status} enum から
+     * SYSTEM 既定ラベルを埋めて返す。これによりフロント側のフォールバック実装に依存しない。</p>
      */
     private TodoResponse toTodoResponse(TodoEntity entity) {
+        TodoResponse.TodoStatusLabelInfo labelInfo = resolveLabelInfo(
+                entity.getStatusLabelId(), entity.getStatus());
+        return toTodoResponseInternal(entity, labelInfo);
+    }
+
+    /**
+     * TODO リストを TodoResponse リストに変換する（F02.3.1: ラベル情報を一括取得して N+1 を防ぐ）。
+     * <p>F02.3.1 後続 B-6: {@code statusLabelId} が NULL の TODO には SYSTEM 既定ラベルを埋める。</p>
+     */
+    private List<TodoResponse> toTodoResponseList(List<TodoEntity> entities) {
+        if (entities == null || entities.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> labelIds = entities.stream()
+                .map(TodoEntity::getStatusLabelId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, TodoResponse.TodoStatusLabelInfo> labelMap = labelIds.isEmpty()
+                ? Map.of()
+                : todoStatusLabelService.findActiveByIds(labelIds).stream()
+                .collect(Collectors.toMap(
+                        TodoStatusLabelEntity::getId,
+                        l -> new TodoResponse.TodoStatusLabelInfo(
+                                l.getId(), l.getName(), l.getBucket().name(), l.getColor())));
+
+        return entities.stream()
+                .map(e -> {
+                    TodoResponse.TodoStatusLabelInfo info = e.getStatusLabelId() == null
+                            ? systemDefaultLabelInfo(e.getStatus())
+                            : labelMap.get(e.getStatusLabelId());
+                    return toTodoResponseInternal(e, info);
+                })
+                .toList();
+    }
+
+    /**
+     * ラベル情報を解決する。{@code labelId} が NULL の場合は {@code status} から SYSTEM 既定ラベルを返す。
+     * 単発取得経路で使用する。
+     */
+    private TodoResponse.TodoStatusLabelInfo resolveLabelInfo(Long labelId, TodoStatus fallbackStatus) {
+        if (labelId == null) {
+            return systemDefaultLabelInfo(fallbackStatus);
+        }
+        return todoStatusLabelService.findActiveByIds(java.util.List.of(labelId)).stream()
+                .findFirst()
+                .map(l -> new TodoResponse.TodoStatusLabelInfo(
+                        l.getId(), l.getName(), l.getBucket().name(), l.getColor()))
+                .orElseGet(() -> systemDefaultLabelInfo(fallbackStatus));
+    }
+
+    /**
+     * {@code TodoStatus} に対応する SYSTEM 既定ラベルの {@link TodoResponse.TodoStatusLabelInfo} を返す。
+     * F02.3.1 後続 B-6 で導入。バケット非対応の {@code TodoStatus.CANCELLED} は NULL を返す。
+     */
+    private TodoResponse.TodoStatusLabelInfo systemDefaultLabelInfo(TodoStatus status) {
+        if (status == null || status == TodoStatus.CANCELLED) {
+            return null;
+        }
+        TodoStatusBucket bucket;
+        try {
+            bucket = TodoStatusBucket.fromTodoStatus(status);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+        return todoStatusLabelService.findSystemDefaultByBucket(bucket)
+                .map(l -> new TodoResponse.TodoStatusLabelInfo(
+                        l.getId(), l.getName(), l.getBucket().name(), l.getColor()))
+                .orElse(null);
+    }
+
+    private TodoResponse toTodoResponseInternal(TodoEntity entity,
+                                                 TodoResponse.TodoStatusLabelInfo labelInfo) {
         List<TodoAssigneeEntity> assigneeEntities = assigneeRepository.findByTodoId(entity.getId());
 
         // 関連ユーザーIDを一括収集して名前解決
@@ -719,11 +841,14 @@ public class TodoService {
                 java.util.List.of(), 0, 0, 0,  // 一覧では統計なし
                 // Phase 2 フィールド
                 entity.getStartDate(), entity.getLinkedScheduleId(),
-                entity.getProgressRate(), entity.getProgressManual());
+                entity.getProgressRate(), entity.getProgressManual(),
+                // F02.3.1 カスタムステータスラベル
+                labelInfo);
     }
 
     /**
      * エンティティをレスポンスDTOに変換する（詳細用、子TODO統計含む）。
+     * <p>F02.3.1 後続 B-7: children のラベル情報を一括取得（N+1 解消）。</p>
      */
     private TodoResponse toTodoResponseWithStats(TodoEntity entity) {
         long childCount = todoRepository.countByParentIdAndDeletedAtIsNull(entity.getId());
@@ -731,9 +856,8 @@ public class TodoService {
         long descendantCompleted = todoRepository.countCompletedDescendants(entity.getId());
         List<TodoEntity> childEntities = todoRepository
                 .findByParentIdAndDeletedAtIsNullOrderBySortOrderAsc(entity.getId());
-        List<TodoResponse> children = childEntities.stream()
-                .map(this::toTodoResponse)
-                .toList();
+        // F02.3.1 後続 B-7: 一括変換で N+1 を解消
+        List<TodoResponse> children = toTodoResponseList(childEntities);
 
         List<TodoAssigneeEntity> assigneeEntities = assigneeRepository.findByTodoId(entity.getId());
         Set<Long> userIds = Stream.concat(
@@ -752,6 +876,9 @@ public class TodoService {
                 ? new ProjectResponse.UserInfo(entity.getCompletedBy(), nameMap.getOrDefault(entity.getCompletedBy(), ""))
                 : null;
 
+        TodoResponse.TodoStatusLabelInfo labelInfo = resolveLabelInfo(
+                entity.getStatusLabelId(), entity.getStatus());
+
         return new TodoResponse(
                 entity.getId(), entity.getScopeType().name(), entity.getScopeId(),
                 entity.getProjectId(), entity.getMilestoneId(),
@@ -768,7 +895,9 @@ public class TodoService {
                 (int) descendantCompleted, (int) descendantTotal,
                 // Phase 2 フィールド
                 entity.getStartDate(), entity.getLinkedScheduleId(),
-                entity.getProgressRate(), entity.getProgressManual());
+                entity.getProgressRate(), entity.getProgressManual(),
+                // F02.3.1 カスタムステータスラベル
+                labelInfo);
     }
 
     /**

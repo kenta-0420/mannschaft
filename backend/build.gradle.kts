@@ -155,16 +155,40 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-    // F09.13 Phase 1-γ: Apache POI 5.2.5 導入による Spring 起動時の Jackson Mixin OOM 対策で 2g → 4g。
+    // テスト数が 180+ の SpringBootTest を含み、累積でヒープが膨らむ。
+    // 2g → 3g（OOM 対策） → 4g（F09.13 Phase 1-γ: Apache POI 5.2.5 導入による Jackson Mixin OOM 対策）。
     // POI は内部で大量の XSD スキーマをロードしてヒープ・メタスペースを圧迫する。
     // ubuntu-latest は 7GB RAM。G1GC と SoftRef 積極解放で長時間テストのヒープ枯渇を防ぐ。
     maxHeapSize = "4g"
+    // 100 テストごとに JVM を fork し直し、累積メモリ（特に MySQL Connector の AbandonedConnectionCleanup が
+    // WeakReference 監視している放置 Connection オブジェクトの累積）をリセットする。
+    // forkEvery を入れないと全 ~1500 テストを 1 JVM で走らせるため、後半でヒープが枯渇する。
+    setForkEvery(100L)
+    // GC を明示し OOM 時にヒープダンプを残す（CI で再発時の調査用）
+    //
+    // -Dcom.mysql.cj.disableAbandonedConnectionCleanup=true:
+    //   MySQL Connector/J の AbandonedConnectionCleanupThread を無効化する。
+    //   このスレッドは「close() を呼ばずに参照を捨てた Connection」を WeakReference で監視し
+    //   GC 後に物理 close するためのものだが、HikariCP は必ず Connection.close() を保証するため
+    //   本来クリーンアップ対象は発生しない。にもかかわらず Connection 取得のたびに WeakReference
+    //   が内部 Set に積まれ続け、GC 跡地が AbandonedConnectionCleanupThread の「mysql-cj-abandoned-
+    //   connection-cleanup」スレッド由来の OutOfMemoryError を引き起こす（実際に CI で 27 分の沈黙
+    //   後に発生）。本フラグで cleanup スレッド自体の起動を抑止し、Hikari に Connection ライフサイクル
+    //   を完全に委譲する。これは MySQL Connector/J 公式の HikariCP 連携推奨設定。
+    //
+    // -Duser.timezone=Asia/Tokyo:
+    //   テスト JVM のデフォルトタイムゾーンを Asia/Tokyo に明示固定する。
+    //   forkEvery(100L) でフレッシュ JVM が起動するたび、CI ランナー (UTC) のデフォルト TZ が
+    //   採用され、JDBC URL の serverTimezone=Asia/Tokyo と不整合となり、LocalDate が 1 日ずれる
+    //   問題が発生していた（ShiftBudgetAllocationRepositoryTest で expected 2026-06-01 / but was
+    //   2026-05-31）。JVM 側で TZ を JST に固定することで JDBC との一貫性を保証し、テスト結果が
+    //   実行時刻・実行環境（ローカル/CI）に依存しないようにする。
     jvmArgs(
         "-XX:+UseG1GC",
-        // Spring コンテキストキャッシュの Soft 参照を GC 時に積極的に解放する（キャッシュ蓄積 OOM 防止）
-        "-XX:SoftRefLRUPolicyMSPerMB=0",
-        // 同時キャッシュ上限を 5 に制限（デフォルト 32; ubuntu-latest は 7GB のため残存コンテキストが OOM を招く）
-        "-Dspring.test.context.cache.maxSize=5"
+        "-XX:+HeapDumpOnOutOfMemoryError",
+        "-XX:HeapDumpPath=build/heap-dump.hprof",
+        "-Dcom.mysql.cj.disableAbandonedConnectionCleanup=true",
+        "-Duser.timezone=Asia/Tokyo"
     )
     finalizedBy(tasks.jacocoTestReport)
     testLogging {

@@ -3,7 +3,7 @@
 # =============================================================================
 # Runs compile + test on every PR targeting main.
 # No AWS credentials required — build and deploy are intentionally omitted.
-# 2026-05-07: G1GC + SoftRefLRU=0 + Spring context cache maxSize=5 で OOM 対策
+# 2026-05-07: forkEvery(100) + G1GC + AbandonedConnectionCleanup 無効化 + timezone=Asia/Tokyo
 # =============================================================================
 
 name: Backend — CI (PR Check)
