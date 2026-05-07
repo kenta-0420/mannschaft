@@ -11,7 +11,7 @@
  *   チーム個別選択 UI が実装された際は以下コメントのセクションを有効化すること。
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 import { fillInput } from '../helpers/form'
 
@@ -71,7 +71,7 @@ const MOCK_BROADCAST_RESPONSE = {
 /**
  * 組織ダッシュボード表示に必要な API 群をモックする
  */
-async function mockOrgApis(page: import('@playwright/test').Page) {
+async function mockOrgApis(page: Page) {
   // 組織基本情報
   await page.route(`**/api/v1/organizations/${ORG_ID}`, async (route) => {
     await route.fulfill({
@@ -164,7 +164,7 @@ async function mockOrgApis(page: import('@playwright/test').Page) {
  * @returns capturedBody を保持するオブジェクト
  */
 async function mockBroadcastApi(
-  page: import('@playwright/test').Page,
+  page: Page,
   orgId: number,
 ): Promise<{ getBody: () => Record<string, unknown> | null }> {
   let capturedBody: Record<string, unknown> | null = null
@@ -190,6 +190,8 @@ async function mockBroadcastApi(
 // ---- テストスイート ----
 
 test.describe('ORG-BROADCAST-001〜002: 組織スコープ告知ウィザード', () => {
+  test.use({ storageState: 'tests/e2e/.auth/admin.json' })
+
   test.beforeEach(async ({ page }) => {
     await mockOrgApis(page)
   })
@@ -259,19 +261,19 @@ test.describe('ORG-BROADCAST-001〜002: 組織スコープ告知ウィザード'
     const titleInput = page.locator('input').first()
     await fillInput(titleInput, 'E2Eテスト告知タイトル001')
 
-    // 「告知を送る」をクリック
+    // 「告知を送る」をクリックし、API レスポンスを待つ
     const submitButton = page.getByRole('button', { name: '告知を送る' })
     await expect(submitButton).toBeEnabled({ timeout: 5_000 })
+    const responsePromise = page.waitForResponse(
+      (resp) => resp.url().includes(`/api/v1/organizations/${ORG_ID}/broadcast`) && resp.status() === 201,
+      { timeout: 10_000 },
+    )
     await submitButton.click()
+    await responsePromise
 
-    // API リクエストが送信されたことを確認
-    await page.waitForTimeout(1_000) // リクエスト処理の完了を待つ
     const body = captured.getBody()
     expect(body).not.toBeNull()
-    // すべてのチームOFF → targetTeamIds は null でなく [] （または null でもよい実装の場合は修正）
-    // BroadcastWizard.vue: targetTeamIds: targetTeamIds ?? null — allTeams OFF → [] → ?? null が適用されないため []
-    expect(body?.targetTeamIds).not.toBeUndefined()
-    // targetTeamIds が [] または null の場合は「全員対象でない」意図が送られていることを確認
+    // すべてのチームOFF → targetTeamIds は [] または null（BroadcastWizard.vue 実装依存）
     const teamIds = body?.targetTeamIds
     expect(teamIds === null || (Array.isArray(teamIds) && teamIds.length === 0)).toBe(true)
   })
@@ -336,17 +338,19 @@ test.describe('ORG-BROADCAST-001〜002: 組織スコープ告知ウィザード'
     const bodyTextarea = page.locator('textarea').first()
     await fillInput(bodyTextarea, 'E2Eテスト告知本文002 全チーム対象')
 
-    // 「告知を送る」をクリック
+    // 「告知を送る」をクリックし、API レスポンスを待つ
     const submitButton = page.getByRole('button', { name: '告知を送る' })
     await expect(submitButton).toBeEnabled({ timeout: 5_000 })
+    const responsePromise = page.waitForResponse(
+      (resp) => resp.url().includes(`/api/v1/organizations/${ORG_ID}/broadcast`) && resp.status() === 201,
+      { timeout: 10_000 },
+    )
     await submitButton.click()
+    await responsePromise
 
-    // API リクエストが送信されたことを確認
-    await page.waitForTimeout(1_000) // リクエスト処理の完了を待つ
     const body = captured.getBody()
     expect(body).not.toBeNull()
     // 「すべてのチーム」ON → targetTeamIds は null
-    // BroadcastWizard.vue: targetTeamIds: targetTeamIds ?? null → null ?? null = null
     expect(body?.targetTeamIds).toBeNull()
   })
 })
