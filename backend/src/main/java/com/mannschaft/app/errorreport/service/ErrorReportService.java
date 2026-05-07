@@ -17,10 +17,12 @@ import com.mannschaft.app.errorreport.dto.ErrorReportRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportStatsResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportTimelineResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportUpdateRequest;
+import com.mannschaft.app.errorreport.dto.KanbanResponse;
 import com.mannschaft.app.errorreport.entity.ErrorReportActivityEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportOccurrenceEntity;
 import com.mannschaft.app.errorreport.repository.ErrorReportActivityRepository;
+import com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import lombok.RequiredArgsConstructor;
@@ -70,6 +72,8 @@ public class ErrorReportService {
     private final ObjectMapper objectMapper;
     /** F12.5 Phase 2-C — CRITICAL/HIGH 新規 / REOPEN 時に AI 即時分析をキックする。 */
     private final ErrorReportAiAnalysisService aiAnalysisService;
+    /** F12.5 Phase 2-E — Kanban カードに AI 分析バッジを描画するための判定用。 */
+    private final ErrorReportAiAnalysisRepository aiAnalysisRepository;
 
     /**
      * エラーレポートを受信し、重複集約または新規作成する。
@@ -373,7 +377,22 @@ public class ErrorReportService {
 
     /**
      * F12.5 Phase 2 — エラーレポートのワークフロー段階を更新する。
-     * status と workflow_stage の業務ルール整合性を検証してから更新する。
+     * Kanban DnD（P2-E）からの呼び出しに対応するため、status と workflow_stage の
+     * 整合性は「不正な組み合わせは拒否」かつ「自然な遷移は status を自動昇格／復帰」
+     * の方針に変更する。
+     *
+     * <ul>
+     *   <li>status=IGNORED は対象外（操作不可）</li>
+     *   <li>NEW/INVESTIGATING/REOPENED → INVESTIGATION_STARTED〜FIX_IN_PROGRESS：
+     *       status を INVESTIGATING に昇格</li>
+     *   <li>NEW/INVESTIGATING/REOPENED → TEST_COMPLETED/RELEASED：
+     *       status を RESOLVED に昇格</li>
+     *   <li>RESOLVED → INVESTIGATION_STARTED〜FIX_IN_PROGRESS：
+     *       status を REOPENED に復帰</li>
+     *   <li>RESOLVED → TEST_COMPLETED/RELEASED：そのまま RESOLVED 維持</li>
+     *   <li>newStage=NULL（未着手）：status=NEW にリセット
+     *       （RESOLVED の場合は REOPENED に復帰）</li>
+     * </ul>
      *
      * @param id       エラーレポートID
      * @param newStage 新しいワークフロー段階（NULL は未着手にリセット）
@@ -384,9 +403,27 @@ public class ErrorReportService {
         accessControlService.checkSystemAdmin(actorId);
         ErrorReportEntity report = findByIdOrThrow(id);
         ErrorReportWorkflowStage oldStage = report.getWorkflowStage();
+        ErrorReportStatus oldStatus = report.getStatus();
 
-        // 業務ルールバリデーション（plan §1.2）
-        validateWorkflowTransition(report.getStatus(), newStage);
+        // P2-E — IGNORED に対する Kanban / 工程更新は引き続き拒否（誤操作防止）
+        if (oldStatus == ErrorReportStatus.IGNORED) {
+            throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_005);
+        }
+
+        // status を新ステージに合わせて自動遷移
+        ErrorReportStatus newStatus = inferStatusFromStage(oldStatus, newStage);
+
+        if (newStatus != oldStatus) {
+            report.setStatus(newStatus);
+            // RESOLVED に昇格する場合は resolve() で resolvedBy/resolvedAt も更新
+            if (newStatus == ErrorReportStatus.RESOLVED) {
+                report.resolve(actorId);
+            }
+            Map<String, Object> statusMetadata = new HashMap<>();
+            statusMetadata.put("from", oldStatus.name());
+            statusMetadata.put("to", newStatus.name());
+            activityService.record(id, actorId, ErrorReportActivityType.STATUS_CHANGED, null, statusMetadata);
+        }
 
         report.setWorkflowStage(newStage);
 
@@ -395,9 +432,42 @@ public class ErrorReportService {
         metadata.put("to", newStage != null ? newStage.name() : null);
         activityService.record(id, actorId, ErrorReportActivityType.WORKFLOW_CHANGED, null, metadata);
 
-        log.info("エラーレポートワークフロー更新: id={}, from={}, to={}, actorId={}",
-                id, oldStage, newStage, actorId);
+        log.info("エラーレポートワークフロー更新: id={}, from={}, to={}, status={}→{}, actorId={}",
+                id, oldStage, newStage, oldStatus, newStatus, actorId);
         return report;
+    }
+
+    /**
+     * 新しい workflow_stage に応じた status を推定する。
+     * 詳細は {@link #updateWorkflowStage} の Javadoc を参照。
+     *
+     * @param current  現在の status（IGNORED は事前に弾く想定）
+     * @param newStage 新しい workflow_stage（NULL は「未着手」へ戻す）
+     * @return 適用すべき status
+     */
+    private ErrorReportStatus inferStatusFromStage(ErrorReportStatus current,
+                                                    ErrorReportWorkflowStage newStage) {
+        if (newStage == null) {
+            // 未着手へ戻す
+            if (current == ErrorReportStatus.RESOLVED) {
+                return ErrorReportStatus.REOPENED;
+            }
+            // NEW / INVESTIGATING / REOPENED → NEW にリセット
+            return ErrorReportStatus.NEW;
+        }
+        return switch (newStage) {
+            case INVESTIGATION_STARTED, ROOT_CAUSE_IDENTIFIED, FIX_IN_PROGRESS -> {
+                if (current == ErrorReportStatus.RESOLVED) {
+                    yield ErrorReportStatus.REOPENED;
+                }
+                if (current == ErrorReportStatus.NEW) {
+                    yield ErrorReportStatus.INVESTIGATING;
+                }
+                // INVESTIGATING / REOPENED はそのまま
+                yield current;
+            }
+            case TEST_COMPLETED, RELEASED -> ErrorReportStatus.RESOLVED;
+        };
     }
 
     /**
@@ -557,38 +627,130 @@ public class ErrorReportService {
                 .build();
     }
 
+    // F12.5 Phase 2-E — Kanban DnD で柔軟な遷移を許すため、
+    // 厳密な validateWorkflowTransition は廃止し、inferStatusFromStage で
+    // status を自動遷移させる方式に置換済み。
+
+    // ========================================
+    // F12.5 Phase 2-E — Kanban ビュー
+    // ========================================
+
+    /** Kanban カラムあたりの最大カード件数。 */
+    private static final int KANBAN_COLUMN_CARD_LIMIT = 50;
+    /** Kanban カードのエラーメッセージ表示上限。 */
+    private static final int KANBAN_MESSAGE_MAX_LENGTH = 80;
+    /** Kanban カードのページURL表示上限。 */
+    private static final int KANBAN_PAGE_URL_MAX_LENGTH = 80;
+
     /**
-     * status と workflow_stage の業務ルール整合性を検証する。
+     * F12.5 Phase 2-E — Kanban ビュー用の 6 カラムを取得する。
+     *
+     * <p>カラム順:</p>
+     * <ol>
+     *   <li>NULL（未着手） — status IN (NEW, INVESTIGATING, REOPENED) AND workflow_stage IS NULL</li>
+     *   <li>INVESTIGATION_STARTED</li>
+     *   <li>ROOT_CAUSE_IDENTIFIED</li>
+     *   <li>FIX_IN_PROGRESS</li>
+     *   <li>TEST_COMPLETED</li>
+     *   <li>RELEASED</li>
+     * </ol>
+     *
+     * <p>各カラム最大 50 件、{@code last_occurred_at DESC}。
+     * IGNORED は対象外。assignee 名と AI 分析の有無はバルク解決して N+1 を防ぐ。</p>
      */
-    private void validateWorkflowTransition(ErrorReportStatus status, ErrorReportWorkflowStage stage) {
-        switch (status) {
-            case NEW:
-            case IGNORED:
-            case REOPENED:
-                if (stage != null) {
-                    throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_005);
-                }
-                break;
-            case INVESTIGATING:
-                // INVESTIGATION_STARTED〜FIX_IN_PROGRESS のみ
-                if (stage != null
-                        && stage != ErrorReportWorkflowStage.INVESTIGATION_STARTED
-                        && stage != ErrorReportWorkflowStage.ROOT_CAUSE_IDENTIFIED
-                        && stage != ErrorReportWorkflowStage.FIX_IN_PROGRESS) {
-                    throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_005);
-                }
-                break;
-            case RESOLVED:
-                // TEST_COMPLETED または RELEASED のみ
-                if (stage != ErrorReportWorkflowStage.TEST_COMPLETED
-                        && stage != ErrorReportWorkflowStage.RELEASED) {
-                    throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_005);
-                }
-                break;
-            default:
-                // 想定外
-                throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_005);
+    @Transactional(readOnly = true)
+    public KanbanResponse fetchKanban() {
+        // 各カラムごとに Page を取得し、key→content と totalCount を保持する
+        Pageable pageable = PageRequest.of(0, KANBAN_COLUMN_CARD_LIMIT);
+
+        // NULL（未着手）カラム
+        Page<ErrorReportEntity> nullPage = errorReportRepository
+                .findByStatusInAndWorkflowStageIsNullOrderByLastOccurredAtDesc(
+                        List.of(ErrorReportStatus.NEW,
+                                ErrorReportStatus.INVESTIGATING,
+                                ErrorReportStatus.REOPENED),
+                        pageable);
+
+        // 各 workflow_stage カラム
+        Map<ErrorReportWorkflowStage, Page<ErrorReportEntity>> stagePages = new HashMap<>();
+        for (ErrorReportWorkflowStage stage : ErrorReportWorkflowStage.values()) {
+            stagePages.put(stage, errorReportRepository
+                    .findByWorkflowStageOrderByLastOccurredAtDesc(stage, pageable));
         }
+
+        // バルク解決のため、全カードのレポートを集める
+        List<ErrorReportEntity> allReports = new ArrayList<>(nullPage.getContent());
+        for (ErrorReportWorkflowStage stage : ErrorReportWorkflowStage.values()) {
+            allReports.addAll(stagePages.get(stage).getContent());
+        }
+
+        Set<Long> assigneeIds = new HashSet<>();
+        List<Long> reportIds = new ArrayList<>(allReports.size());
+        for (ErrorReportEntity r : allReports) {
+            reportIds.add(r.getId());
+            if (r.getAssigneeId() != null) {
+                assigneeIds.add(r.getAssigneeId());
+            }
+        }
+        Map<Long, String> assigneeNames = resolveUserNames(assigneeIds);
+        Set<Long> aiAnalyzedIds = reportIds.isEmpty()
+                ? Set.of()
+                : new HashSet<>(aiAnalysisRepository.findIdsHavingSuccessfulAnalysis(reportIds));
+
+        // カラム組み立て
+        List<KanbanResponse.KanbanColumn> columns = new ArrayList<>();
+        columns.add(buildColumn("NULL",
+                nullPage.getTotalElements(),
+                nullPage.getTotalElements() > KANBAN_COLUMN_CARD_LIMIT,
+                nullPage.getContent(),
+                assigneeNames,
+                aiAnalyzedIds));
+        for (ErrorReportWorkflowStage stage : ErrorReportWorkflowStage.values()) {
+            Page<ErrorReportEntity> p = stagePages.get(stage);
+            columns.add(buildColumn(stage.name(),
+                    p.getTotalElements(),
+                    p.getTotalElements() > KANBAN_COLUMN_CARD_LIMIT,
+                    p.getContent(),
+                    assigneeNames,
+                    aiAnalyzedIds));
+        }
+
+        return KanbanResponse.builder().columns(columns).build();
+    }
+
+    /**
+     * Kanban カラムを組み立てる。エンティティ → カードに変換し、
+     * バルク解決済みの assignee 名と AI 分析判定を埋め込む。
+     */
+    private KanbanResponse.KanbanColumn buildColumn(String stageKey,
+                                                     long totalCount,
+                                                     boolean hasMore,
+                                                     List<ErrorReportEntity> reports,
+                                                     Map<Long, String> assigneeNames,
+                                                     Set<Long> aiAnalyzedIds) {
+        List<KanbanResponse.KanbanCard> cards = new ArrayList<>(reports.size());
+        for (ErrorReportEntity r : reports) {
+            cards.add(KanbanResponse.KanbanCard.builder()
+                    .id(r.getId())
+                    .errorMessage(truncate(r.getErrorMessage(), KANBAN_MESSAGE_MAX_LENGTH))
+                    .severity(r.getSeverity().name())
+                    .status(r.getStatus().name())
+                    .occurrenceCount(r.getOccurrenceCount() != null ? r.getOccurrenceCount() : 0)
+                    .affectedUserCount(r.getAffectedUserCount() != null ? r.getAffectedUserCount() : 0)
+                    .lastOccurredAt(r.getLastOccurredAt())
+                    .assigneeId(r.getAssigneeId())
+                    .assigneeName(r.getAssigneeId() != null ? assigneeNames.get(r.getAssigneeId()) : null)
+                    .pageUrl(truncate(r.getPageUrl(), KANBAN_PAGE_URL_MAX_LENGTH))
+                    .hasGithubIssue(r.getGithubIssueUrl() != null && !r.getGithubIssueUrl().isBlank())
+                    .hasAiAnalysis(aiAnalyzedIds.contains(r.getId()))
+                    .build());
+        }
+        return KanbanResponse.KanbanColumn.builder()
+                .stageKey(stageKey)
+                .totalCount(totalCount)
+                .hasMore(hasMore)
+                .cards(cards)
+                .build();
     }
 
     /**
