@@ -153,6 +153,7 @@ tasks.withType<Test> {
     maxHeapSize = "4g"
     // CI ランナーのシステムタイムゾーンに依存しないよう UTC を強制する。
     // LocalDate を MySQL に保存/読み出す際、JDBC ドライバが JVM タイムゾーンを参照するため必須。
+    // OOM 対策: 複数 SpringBootTest コンテキストが積み上がる場合に 2g では不足する。
     jvmArgs("-Duser.timezone=UTC")
     finalizedBy(tasks.jacocoTestReport)
     testLogging {
