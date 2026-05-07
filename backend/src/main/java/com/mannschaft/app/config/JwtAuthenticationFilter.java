@@ -19,6 +19,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * JWT認証フィルター。Authorization ヘッダーの Bearer トークンを検証し、
@@ -53,6 +54,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String userId = claims.getSubject();
             @SuppressWarnings("unchecked")
             List<String> roles = claims.get("roles", List.class);
+            // access token の jti を取得（SecurityUtils.getCurrentSessionHash() で session_hash 計算に使用）
+            String jtiClaim = claims.getId();
 
             List<SimpleGrantedAuthority> authorities = roles != null
                     ? roles.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role)).toList()
@@ -60,7 +63,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userId, null, authorities);
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            // jti を details に格納して SecurityUtils から取得可能にする
+            if (jtiClaim != null && !jtiClaim.isBlank()) {
+                authentication.setDetails(Map.of("jti", jtiClaim));
+            } else {
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            }
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (BusinessException e) {

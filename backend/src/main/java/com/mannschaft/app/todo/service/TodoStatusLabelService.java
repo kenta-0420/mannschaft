@@ -1,5 +1,6 @@
 package com.mannschaft.app.todo.service;
 
+import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
@@ -107,7 +108,7 @@ public class TodoStatusLabelService {
 
         log.info("TODOステータスラベル作成: id={}, scope={}:{}, name={}",
                 entity.getId(), scopeType, scopeId, entity.getName());
-        recordAuditLog("TODO_STATUS_LABEL_CREATED", scopeType, scopeId, actorId, entity);
+        recordAuditLog(AuditEventType.TODO_STATUS_LABEL_CREATED.name(), scopeType, scopeId, actorId, entity);
 
         return toResponse(entity);
     }
@@ -170,7 +171,7 @@ public class TodoStatusLabelService {
 
         log.info("TODOステータスラベル更新: id={}, scope={}:{}",
                 entity.getId(), entity.getScopeType(), entity.getScopeId());
-        recordAuditLog("TODO_STATUS_LABEL_UPDATED", entity.getScopeType(), entity.getScopeId(), actorId, entity);
+        recordAuditLog(AuditEventType.TODO_STATUS_LABEL_UPDATED.name(), entity.getScopeType(), entity.getScopeId(), actorId, entity);
 
         return toResponse(entity);
     }
@@ -214,7 +215,7 @@ public class TodoStatusLabelService {
 
         log.info("TODOステータスラベル削除: id={}, scope={}:{}",
                 entity.getId(), entity.getScopeType(), entity.getScopeId());
-        recordAuditLog("TODO_STATUS_LABEL_DELETED", entity.getScopeType(), entity.getScopeId(), actorId, entity);
+        recordAuditLog(AuditEventType.TODO_STATUS_LABEL_DELETED.name(), entity.getScopeType(), entity.getScopeId(), actorId, entity);
     }
 
     /**

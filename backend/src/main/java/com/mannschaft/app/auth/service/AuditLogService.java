@@ -1,9 +1,12 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.auth.AuditEventCategory;
+import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.auth.entity.AuditLogEntity;
 import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.PagedResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,8 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 監査ログサービス。書き込みは非同期 fire-and-forget、参照は SYSTEM_ADMIN 専用。
@@ -82,6 +87,7 @@ public class AuditLogService {
      * @param filterTeamId   絞り込みチームID（null可）
      * @param filterOrgId    絞り込み組織ID（null可）
      * @param eventTypes     絞り込みイベント種別リスト（null可）
+     * @param eventCategories 絞り込みイベントカテゴリリスト（null可）。種別リストに OR でマージされる
      * @param sessionHash    セッションハッシュ完全一致（null可）
      * @param from           開始日時（null可）
      * @param to             終了日時（null可）
@@ -92,7 +98,7 @@ public class AuditLogService {
     public PagedResponse<AuditLogResponse> getAdminLogs(
             Long requestUserId,
             Long filterUserId, Long filterTargetId, Long filterTeamId, Long filterOrgId,
-            List<String> eventTypes, String sessionHash,
+            List<String> eventTypes, List<AuditEventCategory> eventCategories, String sessionHash,
             LocalDateTime from, LocalDateTime to,
             int page, int size) {
 
@@ -100,6 +106,9 @@ public class AuditLogService {
 
         int safeSize = Math.min(size, 100);
         int offset = page * safeSize;
+
+        // カテゴリから対応するイベント種別を解決して eventTypes にマージ
+        List<String> mergedEventTypes = resolveEventTypes(eventTypes, eventCategories);
 
         // 動的 WHERE 句の構築
         StringBuilder where = new StringBuilder(" WHERE 1=1");
@@ -121,12 +130,12 @@ public class AuditLogService {
             where.append(" AND organization_id = ?");
             params.add(filterOrgId);
         }
-        if (eventTypes != null && !eventTypes.isEmpty()) {
-            String placeholders = "?,".repeat(eventTypes.size());
+        if (mergedEventTypes != null && !mergedEventTypes.isEmpty()) {
+            String placeholders = "?,".repeat(mergedEventTypes.size());
             where.append(" AND event_type IN (")
                  .append(placeholders, 0, placeholders.length() - 1)
                  .append(")");
-            params.addAll(eventTypes);
+            params.addAll(mergedEventTypes);
         }
         if (sessionHash != null && !sessionHash.isBlank()) {
             where.append(" AND session_hash = ?");
@@ -175,9 +184,10 @@ public class AuditLogService {
      * @param to         終了日時（null可）
      * @param cursor     カーソル（前ページ末尾の id 文字列。null で先頭から）
      * @param limit      取得件数（最大50）
+     * @return カーソルページネーション付きレスポンス
      */
     @Transactional(readOnly = true)
-    public List<AuditLogResponse> getMyLogs(
+    public CursorPagedResponse<AuditLogResponse> getMyLogs(
             Long userId, List<String> eventTypes,
             LocalDateTime from, LocalDateTime to,
             String cursor, int limit) {
@@ -209,15 +219,29 @@ public class AuditLogService {
             params.add(to);
         }
 
+        // limit+1 件取得して hasNext を判定する
         String sql = "SELECT id, user_id, target_user_id, team_id, organization_id,"
                 + " event_type, ip_address, user_agent, session_hash, metadata, created_at"
                 + " FROM audit_logs" + where
                 + " ORDER BY id DESC"
                 + " LIMIT ?";
-        params.add(safeLimit);
+        params.add(safeLimit + 1);
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
-        return rows.stream().map(this::mapRow).toList();
+        boolean hasNext = rows.size() > safeLimit;
+        List<AuditLogResponse> data = rows.stream()
+                .limit(safeLimit)
+                .map(this::mapRow)
+                .toList();
+
+        String nextCursor = null;
+        if (hasNext && !data.isEmpty()) {
+            nextCursor = String.valueOf(data.get(data.size() - 1).getId());
+        }
+
+        return CursorPagedResponse.of(
+                data,
+                new CursorPagedResponse.CursorMeta(nextCursor, hasNext, safeLimit));
     }
 
     // ─────────────────────────────────────────────
@@ -251,6 +275,42 @@ public class AuditLogService {
     // ─────────────────────────────────────────────
     // ヘルパー
     // ─────────────────────────────────────────────
+
+    /**
+     * イベント種別リストとカテゴリリストをマージして統合イベント種別リストを返す。
+     *
+     * <p>eventCategories に指定されたカテゴリに属する AuditEventType を列挙し、
+     * eventTypes に OR 条件でマージする。両方 null/空の場合は null を返す（フィルタなし）。</p>
+     */
+    private List<String> resolveEventTypes(List<String> eventTypes,
+                                           List<AuditEventCategory> eventCategories) {
+        if ((eventCategories == null || eventCategories.isEmpty())) {
+            return eventTypes;
+        }
+
+        // カテゴリに対応するイベント種別名を列挙
+        List<String> fromCategories = Arrays.stream(AuditEventType.values())
+                .filter(et -> eventCategories.contains(et.getCategory()))
+                .map(AuditEventType::name)
+                .collect(Collectors.toList());
+
+        if (fromCategories.isEmpty()) {
+            return eventTypes;
+        }
+
+        if (eventTypes == null || eventTypes.isEmpty()) {
+            return fromCategories;
+        }
+
+        // 重複を除いてマージ
+        List<String> merged = new ArrayList<>(eventTypes);
+        for (String type : fromCategories) {
+            if (!merged.contains(type)) {
+                merged.add(type);
+            }
+        }
+        return merged;
+    }
 
     private AuditLogResponse mapRow(Map<String, Object> row) {
         return AuditLogResponse.builder()

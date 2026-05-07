@@ -10,5 +10,6 @@ public enum AuditEventCategory {
     TEAM,
     ORGANIZATION,
     PAYMENT,
-    SCHEDULE
+    SCHEDULE,
+    TODO
 }

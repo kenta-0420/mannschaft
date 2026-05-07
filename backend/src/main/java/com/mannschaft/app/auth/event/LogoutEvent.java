@@ -26,6 +26,8 @@ public class LogoutEvent extends BaseEvent {
     private final LogoutType logoutType;
     /** SESSION logout 時のセッションID（LOGOUT_SESSION eventのmetadataに使用）。ALL_SESSIONS の場合は null */
     private final Long sessionId;
+    /** SHA-256(refresh_token_jti)。監査ログの session_hash に記録する。SESSION logout 時のみ設定。 */
+    private final String sessionHash;
 
     public LogoutEvent(Long userId, int deviceCount, LogoutType logoutType) {
         super();
@@ -33,6 +35,7 @@ public class LogoutEvent extends BaseEvent {
         this.deviceCount = deviceCount;
         this.logoutType = logoutType;
         this.sessionId = null;
+        this.sessionHash = null;
     }
 
     public LogoutEvent(Long userId, int deviceCount, LogoutType logoutType, Long sessionId) {
@@ -41,5 +44,15 @@ public class LogoutEvent extends BaseEvent {
         this.deviceCount = deviceCount;
         this.logoutType = logoutType;
         this.sessionId = sessionId;
+        this.sessionHash = null;
+    }
+
+    public LogoutEvent(Long userId, int deviceCount, LogoutType logoutType, Long sessionId, String sessionHash) {
+        super();
+        this.userId = userId;
+        this.deviceCount = deviceCount;
+        this.logoutType = logoutType;
+        this.sessionId = sessionId;
+        this.sessionHash = sessionHash;
     }
 }
