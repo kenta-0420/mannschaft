@@ -1,5 +1,6 @@
 package com.mannschaft.app.todo.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuditLogService;
@@ -299,14 +300,17 @@ public class TodoHandoffService {
     }
 
     private TodoStatus bucketToStatus(TodoStatusBucket bucket) {
-        switch (bucket) {
-            case OPEN: return TodoStatus.OPEN;
-            case IN_PROGRESS: return TodoStatus.IN_PROGRESS;
-            case COMPLETED: return TodoStatus.COMPLETED;
-            default:
-                // 想定外は OPEN にフォールバック（enum 拡張時の安全側）
-                return TodoStatus.OPEN;
+        if (bucket == null) {
+            // F02.3.1 後続 C-2: 想定外の値（NULL 含む）は fail-fast で気付ける形にする
+            throw new IllegalStateException("bucket は必須です");
         }
+        return switch (bucket) {
+            case OPEN -> TodoStatus.OPEN;
+            case IN_PROGRESS -> TodoStatus.IN_PROGRESS;
+            case COMPLETED -> TodoStatus.COMPLETED;
+            // F02.3.1 後続 C-2: 静かな OPEN フォールバックを排除し、enum 拡張時に必ず気付く
+            // ようにコンパイラの網羅性チェックに頼る（switch expression なので default 不要）。
+        };
     }
 
     private String mapScopeTypeKey(TodoScopeType scopeType) {
@@ -317,19 +321,35 @@ public class TodoHandoffService {
         };
     }
 
+    /**
+     * Long のリストを JSON 配列文字列に変換する。
+     *
+     * <p>F02.3.1 後続 C-1: 旧実装は {@code catch (Exception)} で空配列にフォールバックしていたが、
+     * {@code List<Long>} の serialize は通常失敗しないため、失敗したら本当の異常事態。
+     * {@link JsonProcessingException} のみを catch し、{@link IllegalStateException} で fail-fast する。</p>
+     */
     private String toJsonArray(List<Long> ids) {
         try {
             return JSON.writeValueAsString(ids == null ? List.of() : ids);
-        } catch (Exception e) {
-            return "[]";
+        } catch (JsonProcessingException e) {
+            log.error("List<Long> の JSON serialize に失敗: ids={}", ids, e);
+            throw new IllegalStateException("List<Long> の JSON serialize に失敗しました", e);
         }
     }
 
+    /**
+     * JSON 配列文字列を Long のリストにパースする。
+     *
+     * <p>履歴行から旧 assignees / 新 assignees を復元する際に使用。スナップショットなので
+     * 不正な JSON が保存されている可能性は本来ゼロだが、万一壊れていても履歴表示が落ちないよう
+     * 空リストにフォールバックし WARN ログを残す（読み取り側はベストエフォート）。</p>
+     */
     private List<Long> parseJsonArray(String json) {
         if (json == null || json.isBlank()) return List.of();
         try {
             return JSON.readValue(json, new TypeReference<List<Long>>() {});
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
+            log.warn("handoff スナップショット JSON のパースに失敗: json={}, cause={}", json, e.toString());
             return List.of();
         }
     }
@@ -338,6 +358,13 @@ public class TodoHandoffService {
         return (s == null || s.isBlank()) ? null : s;
     }
 
+    /**
+     * 監査ログ用 metadata 文字列を生成する。
+     *
+     * <p>F02.3.1 後続 C-1: 旧実装は {@code catch (Exception)} で {@code "{}"} を返していたが、
+     * 監査ログが空オブジェクトで記録されると後追い不能になり監査の意義が失われる。
+     * {@link JsonProcessingException} のみを catch し、{@link IllegalStateException} で fail-fast する。</p>
+     */
     private String buildAuditMetadata(Long todoId, Collection<Long> fromIds, Collection<Long> toIds,
                                        TodoStatus previousStatus, TodoStatus newStatus,
                                        TodoStatusLabelEntity label) {
@@ -351,8 +378,9 @@ public class TodoHandoffService {
             map.put("statusLabelId", label.getId());
             map.put("statusLabelName", label.getName());
             return JSON.writeValueAsString(map);
-        } catch (Exception e) {
-            return "{}";
+        } catch (JsonProcessingException e) {
+            log.error("監査メタデータの JSON serialize に失敗: todoId={}", todoId, e);
+            throw new IllegalStateException("監査メタデータの JSON serialize に失敗しました", e);
         }
     }
 }
