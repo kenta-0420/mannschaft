@@ -18,6 +18,10 @@
       "timeline": "时间轴",
       "gantt": "甘特图"
     },
+    "gantt": {
+      "empty": "没有可在甘特图中显示的工程（需要计划开始日期和计划结束日期）。",
+      "excludedNote": "{count} 个未设置计划日期的工程已从甘特图中排除。"
+    },
     "filter": {
       "title": "筛选",
       "workType": "工程类型",

@@ -319,6 +319,16 @@ function onSelect(packageId: number) {
       >
         {{ t('property.noPackages') }}
       </div>
+      <ClientOnly v-else-if="view === 'gantt'">
+        <PropertyWorkGanttView :packages="items" @select="onSelect" />
+        <template #fallback>
+          <div
+            class="rounded-md border border-surface-200 p-8 text-center text-sm text-surface-500 dark:border-surface-700"
+          >
+            {{ t('property.loading') }}
+          </div>
+        </template>
+      </ClientOnly>
       <div v-else class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
         <PropertyWorkPackageCard
           v-for="pkg in items"

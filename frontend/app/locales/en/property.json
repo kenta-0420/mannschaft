@@ -18,6 +18,10 @@
       "timeline": "Timeline",
       "gantt": "Gantt"
     },
+    "gantt": {
+      "empty": "No work packages with planned start and end dates to show in the Gantt chart.",
+      "excludedNote": "{count} package(s) without planned dates are excluded from the Gantt chart."
+    },
     "filter": {
       "title": "Filters",
       "workType": "Work type",

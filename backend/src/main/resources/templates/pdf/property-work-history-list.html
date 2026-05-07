@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+    <style>
+        h2.section-title {
+            font-size: 11pt;
+            margin: 12px 0 6px 0;
+            padding: 4px 8px;
+            background-color: #f0f0f0;
+            border-left: 4px solid #555;
+        }
+        table.list { width: 100%; border-collapse: collapse; font-size: 8pt; table-layout: fixed; }
+        table.list th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            padding: 4px 3px;
+            text-align: left;
+            border: 1px solid #ccc;
+        }
+        table.list td {
+            padding: 3px;
+            border: 1px solid #ddd;
+            word-wrap: break-word;
+            vertical-align: top;
+        }
+        table.list tr:nth-child(even) td { background-color: #fafafa; }
+        .col-id { width: 6%; }
+        .col-worktype { width: 8%; }
+        .col-title { width: 22%; }
+        .col-status { width: 8%; }
+        .col-vendor { width: 14%; }
+        .col-planned-start { width: 9%; }
+        .col-planned-end { width: 9%; }
+        .col-actual-end { width: 9%; }
+        .col-amount { width: 9%; text-align: right; }
+        .col-category { width: 6%; }
+        .masked {
+            color: #999;
+            font-style: italic;
+        }
+        .meta-line {
+            font-size: 9pt;
+            color: #666;
+            margin-top: 2px;
+        }
+        .filter-line {
+            font-size: 8pt;
+            color: #555;
+            margin-top: 2px;
+        }
+        .footer-note {
+            font-size: 8pt;
+            color: #888;
+            margin-top: 6px;
+        }
+        .empty {
+            padding: 30px;
+            text-align: center;
+            color: #999;
+            font-style: italic;
+        }
+        .amount { text-align: right; font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body>
+    <!-- ヘッダー -->
+    <div class="pdf-header">
+        <h1>物件履歴台帳 一覧</h1>
+        <p class="meta-line">
+            <span th:if="${organizationName}" th:text="'組織: ' + ${organizationName}">組織名</span>
+            <span th:if="${organizationName}"> ／ </span>
+            <span th:text="'出力日時: ' + ${#temporals.format(exportedAt, 'yyyy年MM月dd日 HH:mm')}">出力日時</span>
+            <span th:if="${exportedByName}" th:text="' ／ 出力者: ' + ${exportedByName}"></span>
+            <span th:if="${maskedFlag}" class="masked"> ／ 金額マスク版</span>
+        </p>
+        <p class="filter-line" th:if="${filterSummary}" th:text="'フィルタ条件: ' + ${filterSummary}">フィルタ条件</p>
+    </div>
+
+    <div class="pdf-body">
+        <h2 class="section-title">
+            <span th:text="'件数: ' + ${#lists.size(packages)} + ' 件'">件数</span>
+        </h2>
+
+        <div th:if="${#lists.isEmpty(packages)}" class="empty">
+            <p>該当する履歴はありません。</p>
+        </div>
+
+        <table class="list" th:unless="${#lists.isEmpty(packages)}">
+            <thead>
+                <tr>
+                    <th class="col-id">ID</th>
+                    <th class="col-worktype">種別</th>
+                    <th class="col-title">タイトル</th>
+                    <th class="col-status">状態</th>
+                    <th class="col-vendor">業者</th>
+                    <th class="col-planned-start">計画開始</th>
+                    <th class="col-planned-end">計画終了</th>
+                    <th class="col-actual-end">実完了</th>
+                    <th class="col-amount">実施金額</th>
+                    <th class="col-category">カテゴリ</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="row : ${packages}">
+                    <td th:text="${row.id}">1</td>
+                    <td th:text="${row.workType}">RENOVATION</td>
+                    <td th:text="${row.title}">タイトル</td>
+                    <td th:text="${row.status}">PLANNED</td>
+                    <td th:text="${row.vendorName} ?: '—'">—</td>
+                    <td th:text="${row.plannedStartDate} != null ? ${#temporals.format(row.plannedStartDate, 'yyyy-MM-dd')} : '—'">—</td>
+                    <td th:text="${row.plannedEndDate} != null ? ${#temporals.format(row.plannedEndDate, 'yyyy-MM-dd')} : '—'">—</td>
+                    <td th:text="${row.actualEndDate} != null ? ${#temporals.format(row.actualEndDate, 'yyyy-MM-dd')} : '—'">—</td>
+                    <td class="amount">
+                        <span th:if="${row.amountMasked}" class="masked">●●●</span>
+                        <span th:unless="${row.amountMasked}"
+                              th:text="${row.actualAmount} != null ? '¥' + ${#numbers.formatInteger(row.actualAmount, 1, 'COMMA')} : '—'">—</span>
+                    </td>
+                    <td th:text="${row.category} ?: '—'">—</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p class="footer-note">
+            ※本一覧は参考情報です。詳細・関連文書は各案件の単票 PDF をご参照ください。
+        </p>
+    </div>
+
+    <!-- フッター（pdf-common.css の @page bottom-center でページ番号自動付与） -->
+    <div class="pdf-footer">
+        <span>物件履歴台帳 一覧 — Mannschaft</span>
+    </div>
+</body>
+</html>
