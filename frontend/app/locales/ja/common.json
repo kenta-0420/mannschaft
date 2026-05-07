@@ -463,6 +463,17 @@
   },
   "todo": {
     "backToList": "TODO一覧",
+    "list": {
+      "allDone": "TODOはすべて完了しています",
+      "overdueSuffix": "（期限切れ）",
+      "toggleCompleteHint": "クリックで完了状態を切り替え",
+      "toggleCompleteAria": "完了状態を切り替え",
+      "changeLabelHint": "クリックでステータスラベルを変更",
+      "changeLabelAria": "ステータスラベルを変更",
+      "popoverTitle": "ステータスを変更",
+      "popoverLoading": "読み込み中...",
+      "popoverEmpty": "ラベルがありません"
+    },
     "field": {
       "status": "ステータス",
       "priority": "優先度",
