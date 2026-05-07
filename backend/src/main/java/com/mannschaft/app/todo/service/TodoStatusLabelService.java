@@ -81,7 +81,7 @@ public class TodoStatusLabelService {
 
         // 同名重複チェック
         if (labelRepository.existsActiveByScopeAndName(scopeType, scopeId, request.getName())) {
-            throw new BusinessException(TodoErrorCode.LABEL_NAME_DUPLICATE);
+            throw new BusinessException(TodoErrorCode.LABEL_NAME_DUPLICATED);
         }
 
         // 上限チェック（SYSTEM は除外）
@@ -149,7 +149,7 @@ public class TodoStatusLabelService {
         if (request.getName() != null && !request.getName().equals(entity.getName())) {
             if (labelRepository.existsActiveByScopeAndNameExcludingId(
                     entity.getScopeType(), entity.getScopeId(), request.getName(), labelId)) {
-                throw new BusinessException(TodoErrorCode.LABEL_NAME_DUPLICATE);
+                throw new BusinessException(TodoErrorCode.LABEL_NAME_DUPLICATED);
             }
             entity.rename(request.getName());
         }
@@ -224,7 +224,7 @@ public class TodoStatusLabelService {
      * @param label     対象ラベル
      * @param scopeType TODO のスコープ種別
      * @param scopeId   TODO のスコープ ID
-     * @throws BusinessException スコープ不一致のとき STATUS_LABEL_SCOPE_MISMATCH
+     * @throws BusinessException スコープ不一致のとき LABEL_SCOPE_MISMATCH
      */
     public void validateLabelForScope(TodoStatusLabelEntity label, TodoScopeType scopeType, Long scopeId) {
         if (label.getScopeType() == TodoStatusLabelScope.SYSTEM) {
@@ -232,7 +232,7 @@ public class TodoStatusLabelService {
         }
         TodoStatusLabelScope expectedScope = mapTodoScope(scopeType);
         if (label.getScopeType() != expectedScope || !java.util.Objects.equals(label.getScopeId(), scopeId)) {
-            throw new BusinessException(TodoErrorCode.STATUS_LABEL_SCOPE_MISMATCH);
+            throw new BusinessException(TodoErrorCode.LABEL_SCOPE_MISMATCH);
         }
     }
 
@@ -360,7 +360,7 @@ public class TodoStatusLabelService {
             case ORGANIZATION:
                 return TodoStatusLabelScope.ORGANIZATION;
             default:
-                throw new BusinessException(TodoErrorCode.STATUS_LABEL_SCOPE_MISMATCH);
+                throw new BusinessException(TodoErrorCode.LABEL_SCOPE_MISMATCH);
         }
     }
 

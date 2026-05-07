@@ -248,7 +248,7 @@ public class GlobalExceptionHandler {
             // F05.5 ファイル共有（F13 Phase 4-epsilon）
             Map.entry("FILE_SHARING_016", HttpStatus.CONFLICT),              // STORAGE_QUOTA_EXCEEDED (F13 統合クォータ超過)
             // F02.3.1 TODO カスタムステータスラベル
-            Map.entry("TODO_070", HttpStatus.CONFLICT),                      // LABEL_NAME_DUPLICATE
+            Map.entry("TODO_070", HttpStatus.CONFLICT),                      // LABEL_NAME_DUPLICATED
             Map.entry("TODO_071", HttpStatus.CONFLICT),                      // LABEL_LIMIT_EXCEEDED
             Map.entry("TODO_072", HttpStatus.CONFLICT),                      // LABEL_IN_USE
             Map.entry("TODO_073", HttpStatus.FORBIDDEN),                     // SYSTEM_LABEL_IMMUTABLE（書き込み禁止リソース → 403）

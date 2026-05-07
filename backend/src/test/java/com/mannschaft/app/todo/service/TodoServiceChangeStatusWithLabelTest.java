@@ -39,7 +39,7 @@ import static org.mockito.BDDMockito.willThrow;
  *
  * <ul>
  *   <li>statusLabelId 指定 → ラベルからバケット導出</li>
- *   <li>他スコープラベル指定 → STATUS_LABEL_SCOPE_MISMATCH</li>
+ *   <li>他スコープラベル指定 → LABEL_SCOPE_MISMATCH</li>
  *   <li>status と statusLabelId 両方指定 + バケット不一致 → STATUS_LABEL_BUCKET_MISMATCH</li>
  *   <li>status のみ指定（後方互換） → 従来通り動作、ラベル更新なし</li>
  * </ul>
@@ -95,7 +95,7 @@ class TodoServiceChangeStatusWithLabelTest {
     }
 
     @Test
-    @DisplayName("異常系: 他スコープのラベル指定は STATUS_LABEL_SCOPE_MISMATCH")
+    @DisplayName("異常系: 他スコープのラベル指定は LABEL_SCOPE_MISMATCH")
     void changeStatus_他スコープラベル拒否() {
         TodoEntity todo = createOpenPersonalTodo();
         TodoStatusLabelEntity teamLabel = TodoStatusLabelEntity.builder()
@@ -111,7 +111,7 @@ class TodoServiceChangeStatusWithLabelTest {
                 .build();
         given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
         given(todoStatusLabelService.findActiveById(LABEL_ID)).willReturn(teamLabel);
-        willThrow(new BusinessException(TodoErrorCode.STATUS_LABEL_SCOPE_MISMATCH))
+        willThrow(new BusinessException(TodoErrorCode.LABEL_SCOPE_MISMATCH))
                 .given(todoStatusLabelService).validateLabelForScope(teamLabel,
                         TodoScopeType.PERSONAL, USER_ID);
 
@@ -120,7 +120,7 @@ class TodoServiceChangeStatusWithLabelTest {
         assertThatThrownBy(() -> todoService.changeStatus(TODO_ID, request, USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(TodoErrorCode.STATUS_LABEL_SCOPE_MISMATCH);
+                .isEqualTo(TodoErrorCode.LABEL_SCOPE_MISMATCH);
     }
 
     @Test

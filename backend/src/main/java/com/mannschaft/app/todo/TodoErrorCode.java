@@ -108,8 +108,10 @@ public enum TodoErrorCode implements ErrorCode {
     PERSONAL_MEMO_NOT_FOUND("TODO_060", "個人メモが見つかりません", Severity.WARN),
 
     // F02.3.1 カスタムステータスラベル
+    // ※ 名称は設計書 docs/features/F02.3.1_todo_status_labels_and_handoff.md を正とする。
+    //    F02.3.1 後続-⑥ C-4 で実装側を設計書に揃えた（エラーコード文字列 "TODO_xxx" は変更なし）。
     /** ラベル名がスコープ内で重複 */
-    LABEL_NAME_DUPLICATE("TODO_070", "同じスコープ内に同名のステータスラベルが既に存在します", Severity.WARN),
+    LABEL_NAME_DUPLICATED("TODO_070", "同じスコープ内に同名のステータスラベルが既に存在します", Severity.WARN),
 
     /** スコープあたりのラベル数上限超過（20件） */
     LABEL_LIMIT_EXCEEDED("TODO_071", "ステータスラベルの上限（20件）に達しています", Severity.WARN),
@@ -121,7 +123,7 @@ public enum TodoErrorCode implements ErrorCode {
     SYSTEM_LABEL_IMMUTABLE("TODO_073", "システム既定ラベルは編集・削除できません", Severity.WARN),
 
     /** ラベルのスコープが TODO のスコープと一致しない */
-    STATUS_LABEL_SCOPE_MISMATCH("TODO_074", "指定したラベルはこの TODO のスコープでは使用できません", Severity.WARN),
+    LABEL_SCOPE_MISMATCH("TODO_074", "指定したラベルはこの TODO のスコープでは使用できません", Severity.WARN),
 
     /** status と statusLabelId のバケットが一致しない */
     STATUS_LABEL_BUCKET_MISMATCH("TODO_075", "指定された status とラベルのバケットが一致しません", Severity.WARN),
@@ -134,7 +136,7 @@ public enum TodoErrorCode implements ErrorCode {
     HANDOFF_NOT_ALLOWED_FOR_PERSONAL("TODO_080", "個人TODOはキャッチボールできません", Severity.WARN),
 
     /** 宛先メンバーがスコープに属していない */
-    HANDOFF_INVALID_RECIPIENT("TODO_081", "宛先メンバーが見つかりません", Severity.WARN);
+    HANDOFF_RECIPIENT_NOT_MEMBER("TODO_081", "宛先メンバーが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

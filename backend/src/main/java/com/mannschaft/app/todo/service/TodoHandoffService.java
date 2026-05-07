@@ -108,7 +108,7 @@ public class TodoHandoffService {
         List<Long> toUserIds = new ArrayList<>(new java.util.LinkedHashSet<>(request.getToUserIds()));
         for (Long uid : toUserIds) {
             if (!accessControlService.isMember(uid, scopeId, scopeKey)) {
-                throw new BusinessException(TodoErrorCode.HANDOFF_INVALID_RECIPIENT);
+                throw new BusinessException(TodoErrorCode.HANDOFF_RECIPIENT_NOT_MEMBER);
             }
         }
 

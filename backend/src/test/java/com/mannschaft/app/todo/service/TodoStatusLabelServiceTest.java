@@ -161,7 +161,7 @@ class TodoStatusLabelServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 同名重複は LABEL_NAME_DUPLICATE")
+        @DisplayName("異常系: 同名重複は LABEL_NAME_DUPLICATED")
         void create_異常_同名重複() {
             CreateTodoStatusLabelRequest request = new CreateTodoStatusLabelRequest(
                     "レビュー中", "IN_PROGRESS", null, 0);
@@ -172,7 +172,7 @@ class TodoStatusLabelServiceTest {
                     TodoStatusLabelScope.PERSONAL, ACTOR_ID, request, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(TodoErrorCode.LABEL_NAME_DUPLICATE);
+                    .isEqualTo(TodoErrorCode.LABEL_NAME_DUPLICATED);
         }
 
         @Test
@@ -256,7 +256,7 @@ class TodoStatusLabelServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 同名重複は LABEL_NAME_DUPLICATE")
+        @DisplayName("異常系: 同名重複は LABEL_NAME_DUPLICATED")
         void update_異常_同名重複() {
             TodoStatusLabelEntity existing = personalLabel(10L, "旧名", TodoStatusBucket.OPEN, 0);
             given(labelRepository.findActiveById(10L)).willReturn(Optional.of(existing));
@@ -270,7 +270,7 @@ class TodoStatusLabelServiceTest {
                     10L, TodoStatusLabelScope.PERSONAL, ACTOR_ID, request, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(TodoErrorCode.LABEL_NAME_DUPLICATE);
+                    .isEqualTo(TodoErrorCode.LABEL_NAME_DUPLICATED);
         }
     }
 
@@ -352,7 +352,7 @@ class TodoStatusLabelServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 他スコープのラベルは STATUS_LABEL_SCOPE_MISMATCH")
+        @DisplayName("異常系: 他スコープのラベルは LABEL_SCOPE_MISMATCH")
         void validate_異常_他スコープ() {
             TodoStatusLabelEntity team = TodoStatusLabelEntity.builder()
                     .id(20L).scopeType(TodoStatusLabelScope.TEAM).scopeId(TEAM_ID)
@@ -364,18 +364,18 @@ class TodoStatusLabelServiceTest {
                     team, TodoScopeType.PERSONAL, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(TodoErrorCode.STATUS_LABEL_SCOPE_MISMATCH);
+                    .isEqualTo(TodoErrorCode.LABEL_SCOPE_MISMATCH);
         }
 
         @Test
-        @DisplayName("異常系: 同一スコープ種別でも別 ID は STATUS_LABEL_SCOPE_MISMATCH")
+        @DisplayName("異常系: 同一スコープ種別でも別 ID は LABEL_SCOPE_MISMATCH")
         void validate_異常_別ID() {
             TodoStatusLabelEntity personal = personalLabel(10L, "X", TodoStatusBucket.OPEN, 0);
             assertThatThrownBy(() -> labelService.validateLabelForScope(
                     personal, TodoScopeType.PERSONAL, 999L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(TodoErrorCode.STATUS_LABEL_SCOPE_MISMATCH);
+                    .isEqualTo(TodoErrorCode.LABEL_SCOPE_MISMATCH);
         }
     }
 
