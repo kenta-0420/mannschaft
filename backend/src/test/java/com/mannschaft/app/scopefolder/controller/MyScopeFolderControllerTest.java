@@ -107,8 +107,8 @@ class MyScopeFolderControllerTest {
                     .andExpect(jsonPath("$.data[0].id").value(FOLDER_ID))
                     .andExpect(jsonPath("$.data[0].name").value("チームA"))
                     .andExpect(jsonPath("$.data[0].color").value("#FF0000"))
-                    .andExpect(jsonPath("$.data[0].sort_order").value(0))
-                    .andExpect(jsonPath("$.data[0].item_scope_ids[0]").value(SCOPE_ID));
+                    .andExpect(jsonPath("$.data[0].sortOrder").value(0))
+                    .andExpect(jsonPath("$.data[0].itemScopeIds[0]").value(SCOPE_ID));
         }
 
         @Test
@@ -207,7 +207,7 @@ class MyScopeFolderControllerTest {
 
             String body = """
                     {
-                      "ordered_ids": [3, 1, 2]
+                      "orderedIds": [3, 1, 2]
                     }
                     """;
 
@@ -225,7 +225,7 @@ class MyScopeFolderControllerTest {
         void reorderFolders_バリデーション違反_空リスト_400() throws Exception {
             String body = """
                     {
-                      "ordered_ids": []
+                      "orderedIds": []
                     }
                     """;
 
@@ -321,7 +321,7 @@ class MyScopeFolderControllerTest {
 
             String body = """
                     {
-                      "scope_id": 100
+                      "scopeId": 100
                     }
                     """;
 
@@ -330,7 +330,7 @@ class MyScopeFolderControllerTest {
                             .content(body))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.id").value(FOLDER_ID))
-                    .andExpect(jsonPath("$.data.item_scope_ids[0]").value(SCOPE_ID));
+                    .andExpect(jsonPath("$.data.itemScopeIds[0]").value(SCOPE_ID));
         }
 
         @Test
