@@ -665,6 +665,29 @@ public class TodoService {
     }
 
     /**
+     * path で指定された scope と、対象 TODO の scope が一致することを検証する（F02.3.1 後続 C-7）。
+     *
+     * <p>IDOR 対策。{@code /api/v1/teams/{teamId}/todos/{id}} などのエンドポイントで、
+     * path の {@code teamId} と todo の {@code scopeId} が不一致のとき
+     * {@link TodoErrorCode#TODO_NOT_FOUND}（404）で返す（403 ではなく 404 — 他スコープでの ID 存在を漏らさない）。</p>
+     *
+     * <p>論理削除済み TODO も TODO_NOT_FOUND として扱う。</p>
+     *
+     * @param todoId    検証する TODO の ID
+     * @param scopeType path のスコープ種別
+     * @param scopeId   path のスコープ ID
+     * @throws BusinessException 不一致 / 削除済み / 不存在のとき TODO_NOT_FOUND
+     */
+    public void assertTodoScope(Long todoId, TodoScopeType scopeType, Long scopeId) {
+        TodoEntity todo = todoRepository.findByIdAndDeletedAtIsNull(todoId)
+                .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
+        if (todo.getScopeType() != scopeType
+                || !java.util.Objects.equals(todo.getScopeId(), scopeId)) {
+            throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
+        }
+    }
+
+    /**
      * マイルストーンロック中 TODO に対する操作を拒否する（F02.7）。
      *
      * <p>論理削除は分母を減らすだけで達成判定を不当に早めないため例外許可（呼び出し側で
