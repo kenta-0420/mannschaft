@@ -87,7 +87,11 @@ public abstract class AbstractMySqlIntegrationTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> MYSQL.getJdbcUrl() + "?serverTimezone=UTC");
+        // getJdbcUrl() already contains '?useSSL=false&...' — use '&' to avoid double '?'.
+        // Connector/J 9.x renamed serverTimezone → connectionTimeZone.
+        // forceConnectionTimeZoneToSession=true executes SET time_zone='UTC' on each connection,
+        // preventing DATE column off-by-one errors when dates are near midnight UTC.
+        registry.add("spring.datasource.url", () -> MYSQL.getJdbcUrl() + "&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true");
         registry.add("spring.datasource.username", MYSQL::getUsername);
         registry.add("spring.datasource.password", MYSQL::getPassword);
     }
