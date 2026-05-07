@@ -11,6 +11,7 @@ import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
@@ -37,6 +38,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -83,6 +86,8 @@ class AccountPurgeServiceTest {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @Mock
     private ProxyInputRecordRepository proxyInputRecordRepository;
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private AccountPurgeService service;
@@ -146,6 +151,33 @@ class AccountPurgeServiceTest {
             service.purgeExpiredAccounts();
 
             verify(userRepository).delete(user);
+        }
+
+        @Test
+        @DisplayName("正常系: WITHDRAWAL_COMPLETED 監査ログが記録される")
+        void 正常_WITHDRAWAL_COMPLETED監査ログ記録() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+            given(oAuthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webAuthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(chartRecordRepository.anonymizeCustomerUserId(USER_ID)).willReturn(0);
+            given(memberPaymentRepository.anonymizeUserId(any(), any())).willReturn(0);
+            given(stripeCustomerRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any())).willReturn(List.of());
+
+            service.purgeExpiredAccounts();
+
+            // WITHDRAWAL_COMPLETED 監査ログが targetUserId=USER_ID で記録されること
+            verify(auditLogService).record(
+                    eq("WITHDRAWAL_COMPLETED"),
+                    isNull(),
+                    eq(USER_ID),
+                    isNull(), isNull(), isNull(), isNull(), isNull(),
+                    any()
+            );
         }
 
         @Test

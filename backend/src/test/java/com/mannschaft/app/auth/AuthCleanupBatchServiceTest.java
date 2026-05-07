@@ -3,6 +3,7 @@ package com.mannschaft.app.auth;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.auth.service.AuthCleanupBatchService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -18,6 +19,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,6 +33,9 @@ class AuthCleanupBatchServiceTest {
 
     @Mock
     private EmailVerificationTokenRepository emailVerificationTokenRepository;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private AuthCleanupBatchService authCleanupBatchService;
@@ -55,6 +60,15 @@ class AuthCleanupBatchServiceTest {
             assertThat(pendingUser.getDeletedAt()).isNotNull();
             verify(emailVerificationTokenRepository).deleteByUserIdIn(List.of(pendingUser.getId()));
             verify(emailVerificationTokenRepository).deleteByExpiresAtBeforeAndUsedAtIsNull(any());
+
+            // PENDING_USER_CLEANED_UP 監査ログが記録されること
+            verify(auditLogService).record(
+                    eq("PENDING_USER_CLEANED_UP"),
+                    isNull(),
+                    eq(pendingUser.getId()),
+                    isNull(), isNull(), isNull(), isNull(), isNull(),
+                    any()
+            );
         }
 
         @Test
