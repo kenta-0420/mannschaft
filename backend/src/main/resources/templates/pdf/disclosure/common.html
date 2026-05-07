@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+    <style>
+        h2.section-title {
+            font-size: 12pt;
+            margin: 16px 0 6px 0;
+            padding: 4px 8px;
+            background-color: #f0f0f0;
+            border-left: 4px solid #555;
+        }
+        table.fields { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 10pt; }
+        table.fields th { width: 30%; background-color: #f5f5f5; text-align: left; padding: 4px 8px; }
+        table.fields td { background-color: #ffffff; padding: 4px 8px; }
+        table.auto-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 8px; }
+        table.auto-table th { background-color: #f0f0f0; padding: 3px 6px; text-align: left; }
+        table.auto-table td { padding: 3px 6px; border: 1px solid #ddd; }
+        .meta-line {
+            font-size: 9pt;
+            color: #666;
+            margin-top: 2px;
+        }
+        .reference-notice {
+            margin-top: 24px;
+            padding: 8px 12px;
+            background-color: #fff5f5;
+            border: 1.5px solid #c44;
+            color: #a00;
+            font-weight: bold;
+            font-size: 10pt;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- ヘッダー -->
+    <div class="pdf-header">
+        <h1>重要事項説明書（参考）</h1>
+        <p class="meta-line">
+            <span th:if="${templateName}" th:text="'様式: ' + ${templateName}">様式名</span>
+            <span th:if="${prefectureCode}" th:text="' ／ 都道府県コード: ' + ${prefectureCode}"></span>
+            <span th:if="${effectiveDate}" th:text="' ／ 適用日: ' + ${#temporals.format(effectiveDate, 'yyyy年MM月dd日')}"></span>
+        </p>
+        <p class="meta-line">
+            <span th:text="'出力日時: ' + ${#temporals.format(outputDate, 'yyyy年MM月dd日 HH:mm')}">出力日時</span>
+            <span th:if="${outputUserName}" th:text="' ／ 出力者: ' + ${outputUserName}"></span>
+        </p>
+    </div>
+
+    <div class="pdf-body">
+        <!-- form_schema の sections を走査 -->
+        <th:block th:each="section : ${formSchema.sections}">
+            <h2 class="section-title" th:text="${section.title}">セクション名</h2>
+
+            <!-- 通常フィールド: TEXT/NUMBER/DATE/SELECT 等は fields テーブルに集約 -->
+            <table class="fields"
+                   th:if="${section.fields != null and #lists.size(section.fields) > 0}">
+                <th:block th:each="field : ${section.fields}">
+                    <!-- AUTO_TABLE 以外（単一値フィールド） -->
+                    <tr th:unless="${field.type == 'AUTO_TABLE'}">
+                        <th th:text="${field.label}">ラベル</th>
+                        <td>
+                            <span th:if="${formData.containsKey(field.id) and formData.get(field.id) != null}"
+                                  th:text="${formData.get(field.id)}">値</span>
+                            <span th:unless="${formData.containsKey(field.id) and formData.get(field.id) != null}"
+                                  style="color:#bbb;">（未入力）</span>
+                        </td>
+                    </tr>
+                </th:block>
+            </table>
+
+            <!-- AUTO_TABLE: 自動引用テーブル -->
+            <th:block th:each="field : ${section.fields}">
+                <div th:if="${field.type == 'AUTO_TABLE'}">
+                    <p style="font-size:10pt; margin: 6px 0 4px 0;" th:text="${field.label}">テーブル名</p>
+                    <table class="auto-table">
+                        <thead>
+                            <tr>
+                                <th th:each="col : ${field.columns}" th:text="${col}">列</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="row : ${formData.get(field.id)}">
+                                <td th:each="col : ${field.columns}"
+                                    th:text="${row.get(col) != null ? row.get(col) : '-'}">値</td>
+                            </tr>
+                            <tr th:if="${formData.get(field.id) == null or #lists.isEmpty(formData.get(field.id))}">
+                                <td th:attr="colspan=${#lists.size(field.columns)}"
+                                    style="color:#bbb; text-align:center;">（該当なし）</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </th:block>
+        </th:block>
+
+        <!-- 注意書き（必須） -->
+        <div class="reference-notice">
+            本書類は管理組合が物件調査に応じて作成した参考情報です。<br/>
+            実際の取引では宅地建物取引士による説明・記名押印が必須です。
+        </div>
+    </div>
+</body>
+</html>

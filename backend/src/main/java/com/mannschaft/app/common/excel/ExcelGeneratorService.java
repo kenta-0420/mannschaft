@@ -16,16 +16,21 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.WorkbookUtil;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 汎用 Excel 生成共通基盤。
@@ -247,5 +252,134 @@ public class ExcelGeneratorService {
         public ExcelGenerationException(String message, Throwable cause) {
             super(message, cause);
         }
+    }
+
+    // ========================================================================
+    // テンプレート差し込み（F09.14 Phase 2-β-3）
+    // ========================================================================
+
+    /** プレースホルダ {@code ${key}} を抽出する正規表現。 */
+    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([^}]+)\\}");
+
+    /**
+     * 既存 Excel テンプレートのセルに含まれる {@code ${key}} プレースホルダを
+     * 渡された {@code data} の値で置換し、新しい byte[] として返す。
+     *
+     * <p>SXSSF ではなく {@link XSSFWorkbook} を用いる（テンプレ読み込み + ランダムアクセスのため）。
+     * 大量データ向けの一覧出力には {@link #generateMultiSheetExcel(List)} を使うこと。
+     *
+     * <p>サポートする data 値の型と書式:
+     * <ul>
+     *   <li>{@code Number}（Long/Integer/BigDecimal 等）→ 数値書式 {@code #,##0}</li>
+     *   <li>{@link LocalDate} → 日付書式 {@code yyyy/MM/dd}</li>
+     *   <li>{@link LocalDateTime} → 日時書式 {@code yyyy/MM/dd HH:mm}</li>
+     *   <li>その他 → そのまま {@code toString()} で文字列化</li>
+     * </ul>
+     *
+     * <p>セル文字列内に複数のプレースホルダがある場合（例: {@code "氏名: ${name}"}）も置換する。
+     * data に存在しないキーは元の {@code ${key}} 表記のまま残す（誤データ消失を防ぐため）。
+     *
+     * @param templateStream xlsx テンプレートの InputStream（呼び出し側で close 不要）
+     * @param data プレースホルダ名 → 値の Map
+     * @return 置換後の xlsx byte 配列
+     */
+    public byte[] fillTemplate(InputStream templateStream, Map<String, Object> data) {
+        if (templateStream == null) {
+            throw new ExcelGenerationException("templateStream が null", null);
+        }
+        if (data == null) {
+            throw new ExcelGenerationException("data が null", null);
+        }
+        try (XSSFWorkbook workbook = new XSSFWorkbook(templateStream);
+                ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            CellStyle numberStyle = createNumberStyle(workbook);
+            CellStyle dateStyle = createDateStyleForTemplate(workbook);
+            CellStyle dateTimeStyle = createDateTimeStyleForTemplate(workbook);
+
+            for (int sheetIdx = 0; sheetIdx < workbook.getNumberOfSheets(); sheetIdx++) {
+                Sheet sheet = workbook.getSheetAt(sheetIdx);
+                for (Row row : sheet) {
+                    for (Cell cell : row) {
+                        if (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING) {
+                            String original = cell.getStringCellValue();
+                            if (original != null && original.contains("${")) {
+                                replacePlaceholders(cell, original, data,
+                                        numberStyle, dateStyle, dateTimeStyle);
+                            }
+                        }
+                    }
+                }
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new ExcelGenerationException("Excel テンプレート差し込み失敗", e);
+        }
+    }
+
+    /**
+     * 1セル内のプレースホルダを置換する。
+     * 単一プレースホルダで型情報を保つ場合は数値/日付として書式付きセル化する。
+     * 複数プレースホルダ混在の場合は文字列として連結する。
+     */
+    private void replacePlaceholders(Cell cell, String original, Map<String, Object> data,
+            CellStyle numberStyle, CellStyle dateStyle, CellStyle dateTimeStyle) {
+        Matcher matcher = PLACEHOLDER_PATTERN.matcher(original);
+        // 単一プレースホルダかつ前後に他文字なし → 型を保ったままセル化
+        if (matcher.matches()) {
+            String key = matcher.group(1);
+            Object value = data.get(key);
+            if (value == null) {
+                // データ未提供は元のプレースホルダを残す
+                return;
+            }
+            if (value instanceof Number num) {
+                cell.setCellValue(num.doubleValue());
+                cell.setCellStyle(numberStyle);
+            } else if (value instanceof LocalDate ld) {
+                cell.setCellValue(Date.from(ld.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+                cell.setCellStyle(dateStyle);
+            } else if (value instanceof LocalDateTime ldt) {
+                cell.setCellValue(Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant()));
+                cell.setCellStyle(dateTimeStyle);
+            } else {
+                cell.setCellValue(value.toString());
+            }
+            return;
+        }
+        // 複数プレースホルダ混在 → 文字列連結
+        matcher.reset();
+        StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            String key = matcher.group(1);
+            Object value = data.get(key);
+            String replacement = (value == null) ? matcher.group(0) : value.toString();
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(sb);
+        cell.setCellValue(sb.toString());
+    }
+
+    private CellStyle createNumberStyle(XSSFWorkbook workbook) {
+        CreationHelper helper = workbook.getCreationHelper();
+        CellStyle style = workbook.createCellStyle();
+        style.setDataFormat(helper.createDataFormat().getFormat("#,##0"));
+        return style;
+    }
+
+    private CellStyle createDateStyleForTemplate(XSSFWorkbook workbook) {
+        CreationHelper helper = workbook.getCreationHelper();
+        CellStyle style = workbook.createCellStyle();
+        style.setDataFormat(helper.createDataFormat().getFormat("yyyy/MM/dd"));
+        return style;
+    }
+
+    private CellStyle createDateTimeStyleForTemplate(XSSFWorkbook workbook) {
+        CreationHelper helper = workbook.getCreationHelper();
+        CellStyle style = workbook.createCellStyle();
+        style.setDataFormat(helper.createDataFormat().getFormat("yyyy/MM/dd HH:mm"));
+        return style;
     }
 }
