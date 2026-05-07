@@ -32,6 +32,7 @@ class RequestLoggingFilterTest {
     private RequestLoggingFilter filter;
     private ListAppender<ILoggingEvent> appender;
     private Logger filterLogger;
+    private Level originalLevel;
 
     @BeforeEach
     void setUp() {
@@ -40,11 +41,17 @@ class RequestLoggingFilterTest {
         appender = new ListAppender<>();
         appender.start();
         filterLogger.addAppender(appender);
-        // テスト中の MDC 状態を確認するために自前で Appender を追加
+        // ルートロガーが test プロファイル（logback-spring.xml）で WARN に固定されているため、
+        // INFO ログ (request_completed) が ListAppender に到達しない。テスト対象ロガーの
+        // レベルを明示的に INFO に下げて、appender 側で全 level を捕捉できるようにする。
+        // tearDown() で元に戻す。
+        originalLevel = filterLogger.getLevel();
+        filterLogger.setLevel(Level.INFO);
     }
 
     @AfterEach
     void tearDown() {
+        filterLogger.setLevel(originalLevel);
         filterLogger.detachAppender(appender);
         MDC.clear();
     }
