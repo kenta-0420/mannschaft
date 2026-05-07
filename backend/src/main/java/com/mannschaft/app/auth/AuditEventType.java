@@ -85,7 +85,13 @@ public enum AuditEventType {
 
     // ─── SCHEDULE (Phase 3+) ──────────────────────────────────
     SCHEDULE_CREATED(AuditEventCategory.SCHEDULE),
-    SCHEDULE_UPDATED(AuditEventCategory.SCHEDULE);
+    SCHEDULE_UPDATED(AuditEventCategory.SCHEDULE),
+
+    // ─── TODO (F10.3+) ────────────────────────────────────────
+    TODO_STATUS_LABEL_CREATED(AuditEventCategory.TODO),
+    TODO_STATUS_LABEL_UPDATED(AuditEventCategory.TODO),
+    TODO_STATUS_LABEL_DELETED(AuditEventCategory.TODO),
+    TODO_HANDED_OFF(AuditEventCategory.TODO);
 
     private final AuditEventCategory category;
 }

@@ -3,6 +3,7 @@ package com.mannschaft.app.todo.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
@@ -180,7 +181,7 @@ public class TodoHandoffService {
         // (10) 監査ログ
         Long teamId = scopeType == TodoScopeType.TEAM ? scopeId : null;
         Long orgId = scopeType == TodoScopeType.ORGANIZATION ? scopeId : null;
-        auditLogService.record("TODO_HANDED_OFF", actorId, null, teamId, orgId, null, null, null,
+        auditLogService.record(AuditEventType.TODO_HANDED_OFF.name(), actorId, null, teamId, orgId, null, null, null,
                 buildAuditMetadata(todoId, previousUserIds, toUserIds, previousStatus, newStatus, label));
 
         log.info("TODO キャッチボール: todoId={}, from={}, to={}, label={}",
