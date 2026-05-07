@@ -2,6 +2,8 @@ package com.mannschaft.app.config;
 
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
+import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -50,8 +52,13 @@ public class SecurityConfig {
                     "/swagger-ui.html",
                     "/v3/api-docs/**"
                 ).permitAll()
-                // ヘルスチェック
-                .requestMatchers("/actuator/health").permitAll()
+                // ヘルスチェック（匿名公開）
+                .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
+                // F10.5 Phase 10-α: それ以外の Actuator エンドポイントは SYSTEM_ADMIN 限定
+                // info / metrics / prometheus / caches / threaddump / loggers が対象
+                // JwtAuthenticationFilter が "ROLE_SYSTEM_ADMIN" として authority を付与するため hasRole を使用
+                .requestMatchers(EndpointRequest.toAnyEndpoint().excluding(HealthEndpoint.class))
+                    .hasRole("SYSTEM_ADMIN")
                 // 認証不要エンドポイント
                 .requestMatchers(
                     "/api/v1/auth/login",
