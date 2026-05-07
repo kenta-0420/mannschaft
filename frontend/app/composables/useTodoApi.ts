@@ -1,3 +1,10 @@
+import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
+import type {
+  HandoffApiResponse,
+  HandoffHistoryResponse,
+  HandoffRequest,
+} from '~/types/todoHandoff'
+
 interface TodoListParams {
   status?: string
   priority?: string
@@ -8,50 +15,37 @@ interface TodoListParams {
   sort?: string
 }
 
+interface TodoBase {
+  id: number
+  scopeType: string
+  scopeId: number
+  title: string
+  description: string | null
+  status: string
+  /** F02.3.1 — カスタムステータスラベル情報（バックエンド側で SYSTEM 既定にフォールバック済み） */
+  statusLabel: TodoStatusLabelInfo | null
+  priority: string
+  /** main 由来 — TODO 開始日 */
+  startDate: string | null
+  dueDate: string | null
+  dueTime: string | null
+  daysRemaining: number | null
+  completedAt: string | null
+  completedBy: { id: number; displayName: string } | null
+  createdBy: { id: number; displayName: string }
+  sortOrder: number
+  assignees: Array<{ id: number; userId: number; displayName: string; avatarUrl: string | null }>
+  createdAt: string
+  updatedAt: string
+}
+
 interface PagedTodos {
-  data: Array<{
-    id: number
-    scopeType: string
-    scopeId: number
-    title: string
-    description: string | null
-    status: string
-    priority: string
-    startDate: string | null
-    dueDate: string | null
-    dueTime: string | null
-    daysRemaining: number | null
-    completedAt: string | null
-    completedBy: { id: number; displayName: string } | null
-    createdBy: { id: number; displayName: string }
-    sortOrder: number
-    assignees: Array<{ id: number; userId: number; displayName: string; avatarUrl: string | null }>
-    createdAt: string
-    updatedAt: string
-  }>
+  data: TodoBase[]
   meta: { page: number; size: number; totalElements: number; totalPages: number }
 }
 
 interface TodoDetail {
-  data: {
-    id: number
-    scopeType: string
-    scopeId: number
-    title: string
-    description: string | null
-    status: string
-    priority: string
-    dueDate: string | null
-    dueTime: string | null
-    daysRemaining: number | null
-    completedAt: string | null
-    completedBy: { id: number; displayName: string } | null
-    createdBy: { id: number; displayName: string }
-    sortOrder: number
-    assignees: Array<{ id: number; userId: number; displayName: string; avatarUrl: string | null }>
-    createdAt: string
-    updatedAt: string
-  }
+  data: TodoBase
 }
 
 interface CommentList {
@@ -76,6 +70,13 @@ export function useTodoApi() {
     return api<{ data: PagedTodos['data'] }>('/api/v1/todos/my')
   }
 
+  /**
+   * 個人 TODO 詳細取得（F02.3.1 Phase 1b で追加）
+   */
+  async function getPersonalTodo(todoId: number) {
+    return api<TodoDetail>(`/api/v1/todos/${todoId}`)
+  }
+
   async function createPersonalTodo(body: Record<string, unknown>) {
     return api<TodoDetail>('/api/v1/todos', {
       method: 'POST',
@@ -83,28 +84,31 @@ export function useTodoApi() {
     })
   }
 
-  async function getPersonalTodo(todoId: number) {
-    return api<TodoDetail>(`/api/v1/todos/${todoId}`)
-  }
-
   async function updatePersonalTodo(todoId: number, body: Record<string, unknown>) {
     return api<TodoDetail>(`/api/v1/todos/${todoId}`, { method: 'PUT', body })
   }
 
-  // スコープを問わず使える汎用ステータス変更
+  /**
+   * スコープを問わず使える汎用ステータス変更
+   *
+   * F02.3.1 でリクエストボディが拡張され、`status` / `statusLabelId` のいずれか（または両方）を指定可能。
+   * 後方互換のため、status のみの呼び出しも引き続きサポート。
+   */
   async function changeTodoStatusById(
     scopeType: string,
     scopeId: number | null,
     todoId: number,
-    status: string,
+    payload: { status?: string; statusLabelId?: number } | string,
   ) {
+    const body =
+      typeof payload === 'string' ? { status: payload } : payload
     if (scopeType === 'PERSONAL' || !scopeId) {
-      return api(`/api/v1/todos/${todoId}/status`, { method: 'PATCH', body: { status } })
+      return api(`/api/v1/todos/${todoId}/status`, { method: 'PATCH', body })
     }
     const type = scopeType === 'TEAM' ? ('team' as const) : ('organization' as const)
     return api(`${buildBase(type, scopeId)}/todos/${todoId}/status`, {
       method: 'PATCH',
-      body: { status },
+      body,
     })
   }
 
@@ -158,15 +162,23 @@ export function useTodoApi() {
   }
 
   // === Status ===
+  /**
+   * チーム / 組織 TODO のステータス変更
+   *
+   * F02.3.1 でリクエストボディが `{ status?, statusLabelId? }` に拡張。
+   * 後方互換のため、status のみの呼び出しも従来通り受け付ける。
+   */
   async function changeTodoStatus(
     scopeType: 'team' | 'organization',
     scopeId: number,
     todoId: number,
-    status: string,
+    payload: { status?: string; statusLabelId?: number } | string,
   ) {
+    const body =
+      typeof payload === 'string' ? { status: payload } : payload
     return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/status`, {
       method: 'PATCH',
-      body: { status },
+      body,
     })
   }
 
@@ -254,10 +266,40 @@ export function useTodoApi() {
     })
   }
 
+  // === Handoff (キャッチボール) — F02.3.1 Phase 2 ===
+  /**
+   * チーム/組織 TODO を別メンバーへ渡す。
+   * 個人 TODO では呼び出してはいけない（バックエンドが 400 を返す）。
+   */
+  async function handoff(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoId: number,
+    body: HandoffRequest,
+  ) {
+    return api<HandoffApiResponse>(
+      `${buildBase(scopeType, scopeId)}/todos/${todoId}/handoff`,
+      { method: 'POST', body },
+    )
+  }
+
+  /**
+   * チーム/組織 TODO のキャッチボール履歴を新しい順で取得する。
+   */
+  async function getHandoffHistory(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    todoId: number,
+  ) {
+    return api<HandoffHistoryResponse>(
+      `${buildBase(scopeType, scopeId)}/todos/${todoId}/handoffs`,
+    )
+  }
+
   return {
     getMyTodos,
-    createPersonalTodo,
     getPersonalTodo,
+    createPersonalTodo,
     updatePersonalTodo,
     changeTodoStatusById,
     listTodos,
@@ -273,5 +315,7 @@ export function useTodoApi() {
     addComment,
     updateComment,
     deleteComment,
+    handoff,
+    getHandoffHistory,
   }
 }

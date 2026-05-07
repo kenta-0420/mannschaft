@@ -462,6 +462,88 @@
     }
   },
   "todo": {
+    "backToList": "TODO一覧",
+    "field": {
+      "status": "ステータス",
+      "priority": "優先度",
+      "dueDate": "期限",
+      "creator": "作成者",
+      "description": "説明",
+      "title": "タイトル",
+      "descriptionOptional": "説明（任意）",
+      "startDate": "開始日",
+      "startDateOptional": "開始日（任意）",
+      "dueDateOptional": "期限（任意）"
+    },
+    "detail": {
+      "loadFailed": "TODOの取得に失敗しました",
+      "assigneesSection": "担当者",
+      "noAssignees": "担当者未割り当て",
+      "unknownUser": "不明",
+      "completedByAt": "{name} が {at} に完了",
+      "editButton": "編集"
+    },
+    "action": {
+      "save": "保存",
+      "cancel": "キャンセル",
+      "updated": "更新しました",
+      "updateFailed": "更新に失敗しました"
+    },
+    "priorityValue": {
+      "HIGH": "高",
+      "MEDIUM": "中",
+      "LOW": "低"
+    },
+    "progress": {
+      "updateRateFailed": "進捗率の更新に失敗しました",
+      "updateModeFailed": "進捗モードの切替に失敗しました"
+    },
+    "statusLabel": {
+      "management": {
+        "title": "ステータスラベル管理",
+        "create": "ラベルを追加",
+        "edit": "編集",
+        "delete": "削除",
+        "createSuccess": "ラベルを作成しました",
+        "updateSuccess": "ラベルを更新しました",
+        "deleteSuccess": "ラベルを削除しました",
+        "systemSection": "システム既定（編集不可）",
+        "userSection": "個人ラベル",
+        "teamSection": "チームラベル",
+        "organizationSection": "組織ラベル",
+        "empty": "まだラベルがありません",
+        "readOnlyForNonAdmin": "ラベルの作成・編集は管理者のみ可能です（閲覧のみ）"
+      },
+      "field": {
+        "name": "名前",
+        "bucket": "区分",
+        "color": "色",
+        "sortOrder": "並び順"
+      },
+      "bucket": {
+        "OPEN": "未着手",
+        "IN_PROGRESS": "着手中",
+        "COMPLETED": "完了"
+      },
+      "error": {
+        "duplicate": "同じ名前のラベルが既に存在します",
+        "limitExceeded": "ラベルは最大20件まで作成できます",
+        "inUse": "使用中のため削除できません",
+        "inUseWithCount": "このラベルは現在 {n} 件のTODOで使用されているため削除できません",
+        "systemImmutable": "システム既定ラベルは変更できません"
+      },
+      "systemDefault": "（システム既定）",
+      "confirmDelete": "本当に削除しますか？"
+    },
+    "statusChange": {
+      "section": "ステータス変更",
+      "applyButton": "変更",
+      "confirmTitle": "ステータス変更の確認",
+      "confirmBody": "ステータスを『{from}』から『{to}』に変更します。よろしいですか？",
+      "confirmButton": "変更する",
+      "cancelButton": "キャンセル",
+      "success": "ステータスを『{name}』に変更しました"
+    },
     "enhancement": {
       "gantt": {
         "title": "ガントビュー",
@@ -876,6 +958,47 @@
       "selectScope": "Ziel auswählen"
     }
   },
+  "handoff": {
+    "button": { "passToOther": "他のメンバーに渡す" },
+    "dialog": { "title": "TODO を渡す" },
+    "field": {
+      "recipients": "宛先メンバー",
+      "recipientsPlaceholder": "メンバーを選択",
+      "statusLabel": "ステータス",
+      "message": "メッセージ（任意）",
+      "messagePlaceholder": "添えメッセージを入力（任意・500文字まで）"
+    },
+    "confirm": {
+      "title": "確認",
+      "body": "{names} に「{title}」を渡します。ステータス: 「{label}」。よろしいですか？",
+      "button": "渡す",
+      "recipientSingle": "{name}さん",
+      "recipientWithOthers": "{name}さん 他{count}名"
+    },
+    "success": "TODO を渡しました",
+    "error": {
+      "loadMembers": "メンバー一覧の取得に失敗しました",
+      "loadLabels": "ステータスラベルの取得に失敗しました",
+      "loadHistory": "履歴の取得に失敗しました",
+      "recipientsRequired": "宛先メンバーを選択してください",
+      "labelRequired": "ステータスラベルを選択してください",
+      "notAllowedPersonal": "個人 TODO はキャッチボールできません",
+      "invalidRecipient": "宛先メンバーが見つかりません",
+      "generic": "TODO の引き渡しに失敗しました"
+    },
+    "timeline": {
+      "title": "キャッチボール履歴",
+      "empty": "まだ履歴はありません",
+      "deletedLabel": "（削除済み）"
+    }
+  },
+  "notification": {
+    "todoHandedOff": {
+      "title": "TODOが渡されました",
+      "body": "{from}さんから「{title}」を渡されました（ステータス: {label}）"
+    }
+  },
+  "common": { "cancel": "キャンセル" },
   "teamHub": {
     "pageTitle": "Meine Teams",
     "createTeam": "Team erstellen",
