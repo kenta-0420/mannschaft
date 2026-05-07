@@ -163,7 +163,7 @@ tasks.withType<Test> {
         "-XX:+UseG1GC",
         // Spring コンテキストキャッシュの Soft 参照を GC 時に積極的に解放する（キャッシュ蓄積 OOM 防止）
         "-XX:SoftRefLRUPolicyMSPerMB=0",
-        // 同時キャッシュ上限を 5 に制限（デフォルト 32 は GC に残り過ぎる。ubuntu-latest 7GB 制約）
+        // 同時キャッシュ上限を 5 に制限（デフォルト 32; ubuntu-latest は 7GB のため残存コンテキストが OOM を招く）
         "-Dspring.test.context.cache.maxSize=5"
     )
     finalizedBy(tasks.jacocoTestReport)
