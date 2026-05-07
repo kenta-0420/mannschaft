@@ -47,4 +47,10 @@ public interface ErrorReportAiAnalysisRepository
     @Query("SELECT DISTINCT a.errorReportId FROM ErrorReportAiAnalysisEntity a "
             + "WHERE a.errorReportId IN :ids AND a.status = 'SUCCESS'")
     List<Long> findIdsHavingSuccessfulAnalysis(@Param("ids") List<Long> ids);
+
+    /**
+     * F12.5 Phase 2-F — AI ヘルスモニタ用。
+     * 指定ステータス（"FAILED" 等）かつ {@code created_at} が {@code since} より後の件数を返す。
+     */
+    long countByStatusAndCreatedAtAfter(String status, LocalDateTime since);
 }

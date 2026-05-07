@@ -290,6 +290,42 @@ public class ErrorReportNotifier {
     }
 
     /**
+     * F12.5 Phase 2-F — AI 分析失敗連続検知通知。
+     * 24h 以内に閾値以上の FAILED 分析が観測された場合に Slack + SYSTEM_ADMIN 通知を送信する。
+     *
+     * @param failureCount 24h 以内の FAILED 件数
+     */
+    @Async("event-pool")
+    public void notifyAiHealthDegraded(long failureCount) {
+        try {
+            if (slackWebhookUrl != null && !slackWebhookUrl.isBlank()) {
+                String text = String.format(
+                        ":warning: *AI 分析サービス異常検知*\n直近 24 時間で %d 件の AI 分析が失敗しました。"
+                                + "Claude API キーや残高、レート制限の状況を確認してください。",
+                        failureCount);
+                String payload = objectMapper.writeValueAsString(Map.of("text", text));
+                restClient.post().uri(slackWebhookUrl)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(payload)
+                        .retrieve().toBodilessEntity();
+            }
+            List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
+            for (Long adminUserId : adminIds) {
+                notificationService.createNotification(
+                        adminUserId, "ERROR_REPORT_AI_HEALTH", NotificationPriority.HIGH,
+                        "AI 分析サービスの異常を検知しました",
+                        String.format("直近 24 時間で AI 分析が %d 件失敗しています", failureCount),
+                        "ERROR_REPORT", null,
+                        NotificationScopeType.SYSTEM, null,
+                        "/system-admin/error-reports", null
+                );
+            }
+        } catch (Exception e) {
+            log.warn("AI ヘルス劣化通知送信失敗: failureCount={}", failureCount, e);
+        }
+    }
+
+    /**
      * エラーレポート解決時の報告者通知。user_id が非NULLのレポートに対してプッシュ通知を送信する。
      *
      * @param report エラーレポートエンティティ
