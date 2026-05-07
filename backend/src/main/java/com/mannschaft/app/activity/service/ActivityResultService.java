@@ -15,11 +15,14 @@ import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.repository.ActivityParticipantRepository;
 import com.mannschaft.app.activity.repository.ActivityResultRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 活動記録サービス。活動記録のCRUD・参加者管理を担当する。
@@ -42,6 +47,7 @@ public class ActivityResultService {
     private final ActivityTemplateService templateService;
     private final ActivityMapper activityMapper;
     private final ObjectMapper objectMapper;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * 活動記録一覧をページング取得する。
@@ -58,11 +64,35 @@ public class ActivityResultService {
 
     /**
      * 公開活動記録一覧をページング取得する。
+     *
+     * <p>F00 Phase E-1: 旧 {@code visibility = PUBLIC} 直接フィルタを廃止し、
+     * {@link ContentVisibilityChecker#filterAccessible(ReferenceType, java.util.Collection, Long)}
+     * 経由（未認証 userId=null）に一本化。PUBLIC のみが Resolver を通過するため
+     * 動作は旧実装と等価だが、可視性判定の一元管理が実現される。</p>
      */
     public Page<ActivityResultEntity> listPublicActivities(ActivityScopeType scopeType, Long scopeId,
                                                             Pageable pageable) {
-        return resultRepository.findByScopeTypeAndScopeIdAndVisibilityOrderByActivityDateDescIdDesc(
-                scopeType, scopeId, ActivityVisibility.PUBLIC, pageable);
+        // scopeType + scopeId 配下の全活動記録を取得（ページング上限は呼び出し元が制御）
+        Page<ActivityResultEntity> allPage =
+                resultRepository.findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
+                        scopeType, scopeId, pageable);
+        List<ActivityResultEntity> all = allPage.getContent();
+
+        if (all.isEmpty()) {
+            return allPage;
+        }
+
+        // F00 ContentVisibilityChecker 経由で公開判定（userId=null = 未認証）
+        Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
+                ReferenceType.ACTIVITY_RESULT,
+                all.stream().map(ActivityResultEntity::getId).collect(Collectors.toSet()),
+                null);
+
+        List<ActivityResultEntity> filtered = all.stream()
+                .filter(e -> accessibleIds.contains(e.getId()))
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(filtered, pageable, filtered.size());
     }
 
     /**

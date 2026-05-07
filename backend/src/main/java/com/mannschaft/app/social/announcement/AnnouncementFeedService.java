@@ -464,6 +464,82 @@ public class AnnouncementFeedService {
     }
 
     // ═════════════════════════════════════════════════════════════
+    // 2.8 告知ウィザード経由お知らせ化（F02.8）
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 告知ウィザード（F02.8）経由でお知らせフィードを登録する。
+     *
+     * <p>{@link #createFromSource} に加えて priority / expiresAt / targetTeamIds を設定する。
+     * コンテンツは告知ウィザードが事前に作成しているため、IDOR 検証は
+     * {@link com.mannschaft.app.social.announcement.AnnouncementBroadcastService} が担保する。</p>
+     *
+     * <p>タイトルキャッシュは告知コンテンツのタイトルから直接設定する。
+     * {@link AnnouncementSourceType#TODO} / {@link AnnouncementSourceType#SCHEDULE} は
+     * F02.8 告知ウィザード専用であるため、{@link #createFromSource} 経由ではなく
+     * 本メソッドで直接エンティティを構築する。</p>
+     *
+     * @param sourceType    ソース種別
+     * @param sourceId      ソース ID（告知ウィザードが作成したコンテンツの ID）
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープ ID
+     * @param authorId      作成者ユーザー ID
+     * @param priority      優先度（NORMAL / IMPORTANT / URGENT）
+     * @param expiresAt     表示期限（null = 期限なし）
+     * @param targetTeamIds 組織告知でのチーム絞り込み（null = 全チーム対象）
+     * @param titleCache    タイトルキャッシュ（告知コンテンツのタイトルから設定）
+     * @param visibility    閲覧可能範囲（target_role から設定）
+     * @return 作成されたお知らせフィードエンティティ
+     */
+    @Transactional
+    public AnnouncementFeedEntity createFromBroadcast(
+            AnnouncementSourceType sourceType,
+            Long sourceId,
+            AnnouncementScopeType scopeType,
+            Long scopeId,
+            Long authorId,
+            String priority,
+            java.time.LocalDateTime expiresAt,
+            String targetTeamIds,
+            String titleCache,
+            String visibility) {
+
+        // 重複チェック: 既存レコードがあれば priority / expiresAt / targetTeamIds を上書きして返す
+        Optional<AnnouncementFeedEntity> existing = feedRepository
+                .findBySourceTypeAndSourceIdAndScopeTypeAndScopeId(sourceType, sourceId, scopeType, scopeId);
+        if (existing.isPresent()) {
+            AnnouncementFeedEntity updated = existing.get().toBuilder()
+                    .priority(priority != null ? priority : "NORMAL")
+                    .expiresAt(expiresAt)
+                    .targetTeamIds(targetTeamIds)
+                    .build();
+            return feedRepository.save(updated);
+        }
+
+        // 告知ウィザードは事前にコンテンツ作成済み。タイトルキャッシュはリクエストから直接設定する。
+        String effectiveTitleCache = truncate(
+                titleCache != null ? titleCache : "(告知コンテンツ)", MAX_TITLE_CACHE_LENGTH);
+
+        AnnouncementFeedEntity entity = AnnouncementFeedEntity.builder()
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .sourceType(sourceType)
+                .sourceId(sourceId)
+                .authorId(authorId)
+                .titleCache(effectiveTitleCache)
+                .priority(priority != null ? priority : "NORMAL")
+                .visibility(visibility != null ? visibility : "MEMBERS_ONLY")
+                .expiresAt(expiresAt)
+                .targetTeamIds(targetTeamIds)
+                .build();
+
+        AnnouncementFeedEntity saved = feedRepository.save(entity);
+        log.info("告知ウィザード経由フィード登録完了 feedId={}, sourceType={}, sourceId={}, priority={}",
+                saved.getId(), sourceType, sourceId, priority);
+        return saved;
+    }
+
+    // ═════════════════════════════════════════════════════════════
     // ヘルパー: 代理入力記録作成
     // ═════════════════════════════════════════════════════════════
 
@@ -522,6 +598,9 @@ public class AnnouncementFeedService {
             case SURVEY -> resolveSurvey(scopeType, scopeId, sourceId);
             case COMMITTEE_DECISION, COMMITTEE_MINUTES ->
                     resolveCommitteeDistributionLog(scopeType, scopeId, sourceId, requestUserId);
+            // TODO / SCHEDULE は F02.8 告知ウィザード専用。
+            // createFromBroadcast() 経由で登録するためここには到達しない。
+            case TODO, SCHEDULE -> throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_006);
         };
     }
 

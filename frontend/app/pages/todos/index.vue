@@ -13,8 +13,6 @@ const {
   kanbanCols,
   load,
   changeStatus,
-  nextStatus,
-  nextStatusLabel,
   scopeDisplayName,
   scopeColor,
   formatDate,
@@ -123,8 +121,6 @@ onMounted(load)
       :scope-color="scopeColor"
       :format-date="formatDate"
       :is-overdue="isOverdue"
-      :next-status="nextStatus"
-      :next-status-label="nextStatusLabel"
       @change-status="changeStatus"
     />
 

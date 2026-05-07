@@ -477,6 +477,14 @@
 - ロール変更、メンバー追加/削除、設定変更等を自動記録
 - SYSTEM_ADMINによる監査ログ閲覧・検索
 
+#### 12.1 パフォーマンス監視 / エラー監視
+
+> 📄 詳細設計: [docs/features/F10.5_performance_monitoring.md](docs/features/F10.5_performance_monitoring.md) | [docs/features/F10.6_error_monitoring.md](docs/features/F10.6_error_monitoring.md)
+
+- スロークエリ・APIレスポンスタイム・キャッシュヒット率・JVM/DBプールの継続観測（F10.5）
+- バックエンド例外・インフラ障害の自動集約とSlack/Email/WebPush通知（F10.6）
+- Micrometer + Actuator + 既存 `error_reports`（F12.5）の活用で、外部APM導入は段階導入
+
 #### 13. データエクスポート
 - チーム解散時や移行時にデータをまとめて出力（CSV / JSON）
 - メンバー一覧、活動記録、スケジュール等の一括エクスポート
@@ -856,7 +864,7 @@
 | 7 | サービス記録、パフォーマンス管理、備品管理、カルテ、スキル・資格管理、インシデント管理 | [F07.1](docs/features/F07.1_service_records.md), [F07.2](docs/features/F07.2_performance.md), [F07.3](docs/features/F07.3_equipment.md), [F07.4](docs/features/F07.4_chart.md), [F07.5](docs/features/F07.5_skill_certification.md), [F07.6](docs/features/F07.6_incident_management.md) |
 | 8 | マッチング、大会・リーグ管理、決済・会費・入退室、議決権行使・委任状、領収書、回数券、予算・会計管理 | [F08.1](docs/features/F08.1_matching.md), [F08.2](docs/features/F08.2_payments_access_control.md), [F08.3](docs/features/F08.3_voting_proxy.md), [F08.4](docs/features/F08.4_receipt.md), [F08.5](docs/features/F08.5_ticket_book.md), [F08.6](docs/features/F08.6_budget_accounting.md), [F08.7](docs/features/F08.7_tournament_league.md) |
 | 9 | 住民台帳、プロモーション配信、駐車場区画、LINE/SNS連携、施設予約、ダイレクトメール、広告、コルクボード、Webhook/外部API、デジタルサイネージ | [F09.1](docs/features/F09.1_resident_registry.md), [F09.2](docs/features/F09.2_promotion_targeting.md), [F09.3](docs/features/F09.3_parking.md), [F09.4](docs/features/F09.4_line_sns.md), [F09.5](docs/features/F09.5_facility_booking.md), [F09.6](docs/features/F09.6_direct_mail.md), [F09.7](docs/features/F09.7_advertising.md), [F09.8](docs/features/F09.8_corkboard.md), [F09.9](docs/features/F09.9_webhook_api.md), [F09.10](docs/features/F09.10_digital_signage.md) |
-| 10 | 管理者ダッシュボード、通報モデレーション、監査ログ | [F10.1](docs/features/F10.1_admin_dashboard.md), [F10.2](docs/features/F10.2_moderation.md), [F10.3](docs/features/F10.3_audit_logs.md) |
+| 10 | 管理者ダッシュボード、通報モデレーション、監査ログ、経営分析、パフォーマンス監視、エラー監視 | [F10.1](docs/features/F10.1_admin_dashboard.md), [F10.2](docs/features/F10.2_moderation.md), [F10.3](docs/features/F10.3_audit_logs.md), [F10.4](docs/features/F10.4_business_analytics.md), [F10.5](docs/features/F10.5_performance_monitoring.md), [F10.6](docs/features/F10.6_error_monitoring.md) |
 | 11 | オフライン対応/PWA、多言語コンテンツ、ポリッシュ・テスト・Docker化 | [F11.1](docs/features/F11.1_offline_pwa.md), [F11.2](docs/features/F11.2_multilingual_content.md) |
 
 ---

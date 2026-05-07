@@ -1,19 +1,31 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' })
+import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
 
+definePageMeta({
+  middleware: 'auth',
+})
+
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const todoId = Number(route.params.id)
 const todoApi = useTodoApi()
 const notification = useNotification()
+const errorHandler = useErrorHandler()
+const authStore = useAuthStore()
 
-interface TodoDetail {
+interface PersonalTodoDetail {
   id: number
+  scopeType: string
+  scopeId: number
   title: string
   description: string | null
   status: string
+  /** F02.3.1 — カスタムステータスラベル */
+  statusLabel: TodoStatusLabelInfo | null
   priority: string
   dueDate: string | null
+  dueTime: string | null
   startDate: string | null
   daysRemaining: number | null
   completedAt: string | null
@@ -24,11 +36,14 @@ interface TodoDetail {
   updatedAt: string
 }
 
-const todo = ref<TodoDetail | null>(null)
+const todo = ref<PersonalTodoDetail | null>(null)
 const loading = ref(true)
+const newLabelId = ref<number | null>(null)
+const changing = ref(false)
+
+// 編集モード（main 由来 — 個人 TODO の項目編集）
 const editing = ref(false)
 const saving = ref(false)
-
 const editForm = ref({
   title: '',
   description: '',
@@ -37,18 +52,42 @@ const editForm = ref({
   dueDate: null as Date | null,
 })
 
+const userId = computed<number | null>(() => authStore.user?.id ?? null)
+
 async function loadTodo() {
   loading.value = true
   try {
     const res = await todoApi.getPersonalTodo(todoId)
-    todo.value = res.data as unknown as TodoDetail
+    todo.value = res.data as unknown as PersonalTodoDetail
+    newLabelId.value = todo.value?.statusLabel?.id ?? null
   }
-  catch {
-    notification.error('TODOの取得に失敗しました')
-    router.replace('/todos')
+  catch (e) {
+    errorHandler.handleApiError(e, 'personal-todo:load')
+    todo.value = null
   }
   finally {
     loading.value = false
+  }
+}
+
+async function applyStatusChange() {
+  if (!todo.value) return
+  if (newLabelId.value === null) return
+  if (newLabelId.value === todo.value.statusLabel?.id) return
+  changing.value = true
+  try {
+    await todoApi.changeTodoStatusById('PERSONAL', null, todoId, {
+      statusLabelId: newLabelId.value,
+    })
+    await loadTodo()
+    const labelName = todo.value?.statusLabel?.name ?? ''
+    notification.success(t('todo.statusChange.success', { name: labelName }))
+  }
+  catch (e) {
+    errorHandler.handleApiError(e, 'personal-todo:status')
+  }
+  finally {
+    changing.value = false
   }
 }
 
@@ -79,171 +118,198 @@ async function saveEdit() {
       startDate: editForm.value.startDate ? editForm.value.startDate.toISOString().slice(0, 10) : null,
       dueDate: editForm.value.dueDate ? editForm.value.dueDate.toISOString().slice(0, 10) : null,
     })
-    notification.success('更新しました')
+    notification.success(t('todo.action.updated'))
     editing.value = false
     await loadTodo()
   }
   catch {
-    notification.error('更新に失敗しました')
+    notification.error(t('todo.action.updateFailed'))
   }
   finally {
     saving.value = false
   }
 }
 
-const statusConfig: Record<string, { label: string; severity: string }> = {
-  OPEN: { label: '未着手', severity: 'secondary' },
-  IN_PROGRESS: { label: '進行中', severity: 'info' },
-  COMPLETED: { label: '完了', severity: 'success' },
-  CANCELLED: { label: 'キャンセル', severity: 'danger' },
+const { locale } = useI18n()
+
+const priorityOptions = computed(() => [
+  { label: t('todo.priorityValue.HIGH'), value: 'HIGH' },
+  { label: t('todo.priorityValue.MEDIUM'), value: 'MEDIUM' },
+  { label: t('todo.priorityValue.LOW'), value: 'LOW' },
+])
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return '—'
+  // i18n locale を toLocaleDateString に渡す（ja → ja-JP, en → en-US 等の自動判定で OK）
+  return new Date(dateStr).toLocaleDateString(locale.value)
 }
 
-const priorityOptions = [
-  { label: '高', value: 'HIGH' },
-  { label: '中', value: 'MEDIUM' },
-  { label: '低', value: 'LOW' },
-]
-
-const priorityConfig: Record<string, { label: string; severity: string }> = {
-  HIGH: { label: '高', severity: 'danger' },
-  MEDIUM: { label: '中', severity: 'warn' },
-  LOW: { label: '低', severity: 'success' },
+function formatDateTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleString(locale.value)
 }
-
-function formatDate(d: string | null) {
-  if (!d) return null
-  return new Date(d).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })
-}
-
-const isOverdue = computed(() =>
-  todo.value?.dueDate && new Date(todo.value.dueDate) < new Date() && todo.value.status !== 'COMPLETED',
-)
 
 onMounted(loadTodo)
 </script>
 
 <template>
-  <div>
-    <div class="mb-5 flex items-center gap-3">
-      <Button icon="pi pi-arrow-left" text rounded @click="router.push('/todos')" />
-      <h1 class="text-2xl font-bold">TODO詳細</h1>
+  <div v-if="loading" class="space-y-4">
+    <Skeleton height="2rem" width="60%" />
+    <Skeleton height="8rem" />
+    <Skeleton height="4rem" />
+  </div>
+
+  <div v-else-if="todo" class="mx-auto max-w-3xl">
+    <!-- ヘッダー -->
+    <div class="mb-6">
+      <BackButton to="/todos" :label="t('todo.backToList')" />
+      <div class="flex items-center justify-between gap-3">
+        <PageHeader :title="todo.title" />
+        <Button
+          v-if="!editing"
+          icon="pi pi-pencil"
+          text
+          rounded
+          size="small"
+          @click="startEdit"
+        />
+      </div>
     </div>
 
-    <PageLoading v-if="loading" />
-
-    <SectionCard v-else-if="todo" class="max-w-2xl">
-      <!-- 閲覧モード -->
-      <template v-if="!editing">
-        <div class="space-y-4">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <h2 class="text-xl font-bold">{{ todo.title }}</h2>
-            <div class="flex gap-2">
-              <Tag
-                :value="priorityConfig[todo.priority]?.label ?? todo.priority"
-                :severity="priorityConfig[todo.priority]?.severity ?? 'secondary'"
-                rounded
-              />
-              <Tag
-                :value="statusConfig[todo.status]?.label ?? todo.status"
-                :severity="statusConfig[todo.status]?.severity ?? 'secondary'"
-                rounded
-              />
-              <Button icon="pi pi-pencil" text rounded size="small" @click="startEdit" />
-            </div>
-          </div>
-
-          <div class="space-y-1.5 text-sm">
-            <div v-if="todo.startDate" class="flex items-center gap-2">
-              <i class="pi pi-calendar-plus text-surface-400" />
-              <span>開始: {{ formatDate(todo.startDate) }}</span>
-            </div>
-            <div v-if="todo.dueDate" class="flex items-center gap-2">
-              <i class="pi pi-calendar text-surface-400" />
-              <span :class="isOverdue ? 'font-semibold text-red-600' : ''">
-                期限: {{ formatDate(todo.dueDate) }}
-                <span v-if="isOverdue" class="text-red-500">（期限切れ）</span>
-                <span v-else-if="todo.daysRemaining !== null" class="text-surface-400">（あと{{ todo.daysRemaining }}日）</span>
-              </span>
-            </div>
-            <div v-if="todo.assignees?.length" class="flex items-center gap-2">
-              <i class="pi pi-users text-surface-400" />
-              <span>{{ todo.assignees.map((a) => a.displayName).join(', ') }}</span>
-            </div>
-            <div v-if="todo.createdBy" class="flex items-center gap-2">
-              <i class="pi pi-user text-surface-400" />
-              <span>作成: {{ todo.createdBy.displayName }}</span>
-            </div>
-            <div v-if="todo.completedAt" class="flex items-center gap-2">
-              <i class="pi pi-check-circle text-green-500" />
-              <span>{{ formatDate(todo.completedAt) }} に完了
-                <span v-if="todo.completedBy">（{{ todo.completedBy.displayName }}）</span>
-              </span>
-            </div>
-          </div>
-
-          <div v-if="todo.description" class="rounded-lg bg-surface-50 p-3 dark:bg-surface-700/50">
-            <p class="whitespace-pre-wrap text-sm">{{ todo.description }}</p>
+    <!-- 閲覧モード -->
+    <template v-if="!editing">
+      <!-- メタ情報 -->
+      <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
+          <p class="text-xs text-surface-500">{{ t('todo.field.status') }}</p>
+          <div class="mt-1">
+            <TodoStatusLabelBadge :label="todo.statusLabel" :fallback-bucket="todo.status" />
           </div>
         </div>
-      </template>
-
-      <!-- 編集モード -->
-      <template v-else>
-        <div class="space-y-4">
-          <div>
-            <label class="mb-1 block text-sm font-medium">タイトル <span class="text-red-500">*</span></label>
-            <InputText v-model="editForm.title" class="w-full" autofocus />
+        <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
+          <p class="text-xs text-surface-500">{{ t('todo.field.priority') }}</p>
+          <div class="mt-1">
+            <TodoPriorityBadge :priority="todo.priority" />
           </div>
+        </div>
+        <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
+          <p class="text-xs text-surface-500">{{ t('todo.field.startDate') }}</p>
+          <p class="mt-1 text-sm font-medium">
+            {{ formatDate(todo.startDate) }}
+          </p>
+        </div>
+        <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
+          <p class="text-xs text-surface-500">{{ t('todo.field.dueDate') }}</p>
+          <p
+            class="mt-1 text-sm font-medium"
+            :class="{
+              'text-red-500':
+                todo.daysRemaining !== null && todo.daysRemaining < 0 && todo.status !== 'COMPLETED',
+            }"
+          >
+            {{ formatDate(todo.dueDate) }}
+          </p>
+        </div>
+      </div>
 
-          <div>
-            <label class="mb-1 block text-sm font-medium">説明（任意）</label>
-            <Textarea v-model="editForm.description" class="w-full" rows="3" auto-resize />
+      <!-- ステータス変更 UI -->
+      <SectionCard :title="t('todo.statusChange.section')" class="mb-6">
+        <div class="flex items-center gap-3">
+          <div class="max-w-xs flex-1">
+            <TodoStatusLabelSelect
+              v-if="userId"
+              v-model="newLabelId"
+              scope-type="PERSONAL"
+              :scope-id="userId"
+            />
           </div>
+          <Button
+            :label="t('todo.statusChange.applyButton')"
+            :loading="changing"
+            :disabled="newLabelId === null || newLabelId === todo.statusLabel?.id"
+            @click="applyStatusChange"
+          />
+        </div>
+      </SectionCard>
 
+      <!-- 説明 -->
+      <SectionCard v-if="todo.description" :title="t('todo.field.description')" class="mb-6">
+        <p class="whitespace-pre-wrap text-sm text-surface-700 dark:text-surface-300">
+          {{ todo.description }}
+        </p>
+      </SectionCard>
+
+      <!-- 完了情報 -->
+      <div
+        v-if="todo.completedAt"
+        class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20"
+      >
+        <p class="text-sm">
+          <i class="pi pi-check-circle mr-1 text-green-600" />
+          {{ todo.completedBy?.displayName ?? '-' }} / {{ formatDateTime(todo.completedAt) }}
+        </p>
+      </div>
+    </template>
+
+    <!-- 編集モード -->
+    <SectionCard v-else class="max-w-2xl">
+      <div class="space-y-4">
+        <div>
+          <label class="mb-1 block text-sm font-medium">{{ t('todo.field.title') }} <span class="text-red-500">*</span></label>
+          <InputText v-model="editForm.title" class="w-full" autofocus />
+        </div>
+
+        <div>
+          <label class="mb-1 block text-sm font-medium">{{ t('todo.field.descriptionOptional') }}</label>
+          <Textarea v-model="editForm.description" class="w-full" rows="3" auto-resize />
+        </div>
+
+        <div>
+          <label class="mb-1 block text-sm font-medium">{{ t('todo.field.priority') }}</label>
+          <Select
+            v-model="editForm.priority"
+            :options="priorityOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="mb-1 block text-sm font-medium">優先度</label>
-            <Select
-              v-model="editForm.priority"
-              :options="priorityOptions"
-              option-label="label"
-              option-value="value"
+            <label class="mb-1 block text-sm font-medium">{{ t('todo.field.startDateOptional') }}</label>
+            <DatePicker
+              v-model="editForm.startDate"
               class="w-full"
+              date-format="yy/mm/dd"
+              show-icon
             />
           </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="mb-1 block text-sm font-medium">開始日（任意）</label>
-              <DatePicker
-                v-model="editForm.startDate"
-                class="w-full"
-                date-format="yy/mm/dd"
-                show-icon
-              />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium">期限（任意）</label>
-              <DatePicker
-                v-model="editForm.dueDate"
-                class="w-full"
-                date-format="yy/mm/dd"
-                show-icon
-              />
-            </div>
-          </div>
-
-          <div class="flex justify-end gap-2">
-            <Button label="キャンセル" text severity="secondary" @click="cancelEdit" />
-            <Button
-              label="保存"
-              icon="pi pi-check"
-              :loading="saving"
-              :disabled="!editForm.title.trim()"
-              @click="saveEdit"
+          <div>
+            <label class="mb-1 block text-sm font-medium">{{ t('todo.field.dueDateOptional') }}</label>
+            <DatePicker
+              v-model="editForm.dueDate"
+              class="w-full"
+              date-format="yy/mm/dd"
+              show-icon
             />
           </div>
         </div>
-      </template>
+
+        <div class="flex justify-end gap-2">
+          <Button :label="t('todo.action.cancel')" text severity="secondary" @click="cancelEdit" />
+          <Button
+            :label="t('todo.action.save')"
+            icon="pi pi-check"
+            :loading="saving"
+            :disabled="!editForm.title.trim()"
+            @click="saveEdit"
+          />
+        </div>
+      </div>
     </SectionCard>
+  </div>
+
+  <div v-else class="mx-auto max-w-3xl">
+    <Button icon="pi pi-arrow-left" text rounded @click="router.push('/todos')" />
   </div>
 </template>

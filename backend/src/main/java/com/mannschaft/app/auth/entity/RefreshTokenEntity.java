@@ -39,6 +39,10 @@ public class RefreshTokenEntity {
     @Column(nullable = false)
     private Boolean rememberMe;
 
+    /** リフレッシュトークンの JWT ID。session_hash 計算の基点として使用する。 */
+    @Column(name = "jti", nullable = false, length = 36)
+    private String jti;
+
     @Column(length = 64)
     private String deviceFingerprint;
 

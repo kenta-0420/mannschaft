@@ -76,6 +76,13 @@ public class TodoEntity {
     @Column(nullable = false, length = 20)
     private TodoStatus status;
 
+    /**
+     * カスタムステータスラベル ID（F02.3.1）。
+     * NULL の場合はフロント側でバケットから SYSTEM 既定ラベルにフォールバック表示する。
+     */
+    @Column(name = "status_label_id")
+    private Long statusLabelId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private TodoPriority priority;
@@ -175,6 +182,18 @@ public class TodoEntity {
             }
             this.status = newStatus;
         }
+    }
+
+    /**
+     * ステータスとカスタムステータスラベルを同時に変更する（F02.3.1）。
+     *
+     * @param newStatus 新しいステータス
+     * @param labelId   新しいステータスラベル ID（NULL 可。NULL の場合はラベルクリア扱い）
+     * @param userId    操作ユーザーID
+     */
+    public void changeStatusWithLabel(TodoStatus newStatus, Long labelId, Long userId) {
+        changeStatus(newStatus, userId);
+        this.statusLabelId = labelId;
     }
 
     /**

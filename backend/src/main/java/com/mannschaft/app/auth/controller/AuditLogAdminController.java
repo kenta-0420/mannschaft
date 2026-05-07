@@ -1,8 +1,8 @@
 package com.mannschaft.app.auth.controller;
 
+import com.mannschaft.app.auth.AuditEventCategory;
 import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
@@ -37,6 +37,7 @@ public class AuditLogAdminController {
      * @param teamId         絞り込みチームID
      * @param organizationId 絞り込み組織ID
      * @param eventType      イベント種別（カンマ区切りで複数指定可）
+     * @param eventCategory  イベントカテゴリ（複数指定可。eventType と OR 条件でマージ）
      * @param sessionHash    セッションハッシュ完全一致
      * @param from           開始日時（ISO 8601）
      * @param to             終了日時（ISO 8601）
@@ -51,6 +52,7 @@ public class AuditLogAdminController {
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) Long organizationId,
             @RequestParam(required = false) String eventType,
+            @RequestParam(required = false) List<AuditEventCategory> eventCategory,
             @RequestParam(required = false) String sessionHash,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
@@ -65,7 +67,7 @@ public class AuditLogAdminController {
         return auditLogService.getAdminLogs(
                 requestUserId,
                 userId, targetUserId, teamId, organizationId,
-                eventTypes, sessionHash,
+                eventTypes, eventCategory, sessionHash,
                 from, to, page, size);
     }
 
@@ -80,7 +82,7 @@ public class AuditLogAdminController {
      */
     @Operation(summary = "自分の監査ログ一覧")
     @GetMapping("/api/v1/users/me/audit-logs")
-    public ApiResponse<List<AuditLogResponse>> getMyLogs(
+    public CursorPagedResponse<AuditLogResponse> getMyLogs(
             @RequestParam(required = false) String eventType,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
@@ -92,9 +94,8 @@ public class AuditLogAdminController {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         List<String> eventTypes = parseEventTypes(eventType);
 
-        List<AuditLogResponse> logs = auditLogService.getMyLogs(
+        return auditLogService.getMyLogs(
                 currentUserId, eventTypes, from, to, cursor, limit);
-        return ApiResponse.of(logs);
     }
 
     private List<String> parseEventTypes(String eventType) {

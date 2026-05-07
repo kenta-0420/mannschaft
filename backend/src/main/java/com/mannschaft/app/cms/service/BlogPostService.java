@@ -38,6 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * ブログ記事サービス。記事のCRUD・公開制御・リビジョン管理を担当する。
@@ -408,18 +410,31 @@ public class BlogPostService {
     }
 
     /**
-     * RSS/Atomフィード用の公開記事一覧を取得する。
+     * RSS/Atom フィード用の公開記事一覧を取得する。
+     *
+     * <p>F00 Phase E: 旧 Visibility.PUBLIC 直接フィルタを廃止し、
+     * {@link ContentVisibilityChecker#filterAccessible} に可視性判定を委譲する。
+     * これにより VisibilityTemplate による細粒度アクセス制御が正しく適用される。
      */
     public List<BlogPostResponse> listPublicPostsForFeed(Long teamId, Long organizationId) {
-        List<BlogPostEntity> entities;
+        List<BlogPostEntity> all;
         if (teamId != null) {
-            entities = postRepository.findTop20ByTeamIdAndStatusAndVisibilityOrderByPublishedAtDesc(
-                    teamId, PostStatus.PUBLISHED, Visibility.PUBLIC);
+            all = postRepository.findTop20ByTeamIdAndStatusOrderByPublishedAtDesc(
+                    teamId, PostStatus.PUBLISHED);
         } else {
-            entities = postRepository.findTop20ByOrganizationIdAndStatusAndVisibilityOrderByPublishedAtDesc(
-                    organizationId, PostStatus.PUBLISHED, Visibility.PUBLIC);
+            all = postRepository.findTop20ByOrganizationIdAndStatusOrderByPublishedAtDesc(
+                    organizationId, PostStatus.PUBLISHED);
         }
-        return cmsMapper.toBlogPostResponseList(entities);
+        if (all.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> ids = all.stream().map(BlogPostEntity::getId).collect(Collectors.toSet());
+        Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
+                ReferenceType.BLOG_POST, ids, null);
+        List<BlogPostEntity> filtered = all.stream()
+                .filter(e -> accessibleIds.contains(e.getId()))
+                .collect(Collectors.toList());
+        return cmsMapper.toBlogPostResponseList(filtered);
     }
 
     /**

@@ -37,6 +37,7 @@ import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.auth.util.UserAgentParser;
+import com.mannschaft.app.common.util.SessionHashUtil;
 import com.mannschaft.app.role.service.InviteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -403,8 +404,12 @@ public class AuthService {
                     long remainingTtl = expEpoch - (LocalDateTime.now().toEpochSecond(java.time.ZoneOffset.UTC));
                     authTokenService.addJtiToBlacklist(jti, remainingTtl);
 
-                    // 3. イベント発行
-                    eventPublisher.publish(new LogoutEvent(userId, 1, LogoutType.SESSION));
+                    // 3. session_hash 計算（refresh_token の jti から）
+                    String sessionHash = token.getJti() != null && !token.getJti().isBlank()
+                            ? SessionHashUtil.hash(token.getJti()) : null;
+
+                    // 4. イベント発行
+                    eventPublisher.publish(new LogoutEvent(userId, 1, LogoutType.SESSION, null, sessionHash));
                 });
     }
 
@@ -619,10 +624,13 @@ public class AuthService {
         String newAccessToken = authTokenService.issueAccessToken(userId, List.of("MEMBER"));
         String newRawRefreshToken = authTokenService.generateRefreshToken();
         String newTokenHash = authTokenService.hashToken(newRawRefreshToken);
+        // ローテーション時も新しい jti を生成する
+        String newRefreshTokenJti = UUID.randomUUID().toString();
 
         RefreshTokenEntity newToken = RefreshTokenEntity.builder()
                 .userId(userId)
                 .tokenHash(newTokenHash)
+                .jti(newRefreshTokenJti)
                 .rememberMe(existingToken.getRememberMe())
                 .deviceFingerprint(existingToken.getDeviceFingerprint())
                 .ipAddress(existingToken.getIpAddress())
@@ -865,10 +873,13 @@ public class AuthService {
         // Refresh Token発行（DB保存）
         String rawRefreshToken = authTokenService.generateRefreshToken();
         String refreshTokenHash = authTokenService.hashToken(rawRefreshToken);
+        // jti を生成して RefreshToken に紐付ける（session_hash の基点）
+        String refreshTokenJti = UUID.randomUUID().toString();
 
         RefreshTokenEntity refreshToken = RefreshTokenEntity.builder()
                 .userId(user.getId())
                 .tokenHash(refreshTokenHash)
+                .jti(refreshTokenJti)
                 .rememberMe(req.isRememberMe())
                 .deviceFingerprint(req.getDeviceFingerprint())
                 .ipAddress(ipAddress)
@@ -876,6 +887,8 @@ public class AuthService {
                 .expiresAt(LocalDateTime.now().plusSeconds(authTokenService.getRefreshTokenExpirationSeconds()))
                 .build();
         RefreshTokenEntity savedToken = refreshTokenRepository.save(refreshToken);
+        // session_hash を計算（SHA-256(refresh_token_jti)）
+        String sessionHash = SessionHashUtil.hash(refreshTokenJti);
 
         // セッション上限チェック（F12.4 §5.7）
         enforceMaxActiveSessions(user.getId());
@@ -891,9 +904,9 @@ public class AuthService {
         // 最終ログイン日時更新
         user.updateLastLoginAt();
 
-        // ログイン成功イベント発行
+        // ログイン成功イベント発行（sessionHash = SHA-256(refresh_token_jti)）
         eventPublisher.publish(new LoginSuccessEvent(
-                user.getId(), user.getEmail(), ipAddress, userAgent));
+                user.getId(), user.getEmail(), ipAddress, userAgent, sessionHash));
 
         // deleted_at設定済みの場合はpendingDeletionUntilを含める
         LocalDateTime pendingDeletionUntil = user.getDeletedAt() != null

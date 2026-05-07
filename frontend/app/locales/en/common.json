@@ -462,6 +462,99 @@
     }
   },
   "todo": {
+    "backToList": "Back to TODO list",
+    "list": {
+      "allDone": "All TODOs are completed",
+      "overdueSuffix": " (overdue)",
+      "toggleCompleteHint": "Click to toggle completed state",
+      "toggleCompleteAria": "Toggle completed state",
+      "changeLabelHint": "Click to change status label",
+      "changeLabelAria": "Change status label",
+      "popoverTitle": "Change status",
+      "popoverLoading": "Loading...",
+      "popoverEmpty": "No labels available"
+    },
+    "field": {
+      "status": "Status",
+      "priority": "Priority",
+      "dueDate": "Due Date",
+      "creator": "Created by",
+      "description": "Description",
+      "title": "Title",
+      "descriptionOptional": "Description (optional)",
+      "startDate": "Start date",
+      "startDateOptional": "Start date (optional)",
+      "dueDateOptional": "Due date (optional)"
+    },
+    "detail": {
+      "loadFailed": "Failed to load TODO",
+      "assigneesSection": "Assignees",
+      "noAssignees": "No assignee",
+      "unknownUser": "Unknown",
+      "completedByAt": "{name} completed at {at}",
+      "editButton": "Edit"
+    },
+    "action": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "updated": "Updated",
+      "updateFailed": "Failed to update"
+    },
+    "priorityValue": {
+      "HIGH": "High",
+      "MEDIUM": "Medium",
+      "LOW": "Low"
+    },
+    "progress": {
+      "updateRateFailed": "Failed to update progress rate",
+      "updateModeFailed": "Failed to switch progress mode"
+    },
+    "statusLabel": {
+      "management": {
+        "title": "Status Label Management",
+        "create": "Add Label",
+        "edit": "Edit",
+        "delete": "Delete",
+        "createSuccess": "Label created",
+        "updateSuccess": "Label updated",
+        "deleteSuccess": "Label deleted",
+        "systemSection": "System defaults (read-only)",
+        "userSection": "Personal labels",
+        "teamSection": "Team labels",
+        "organizationSection": "Organization labels",
+        "empty": "No labels yet",
+        "readOnlyForNonAdmin": "Only admins can create or edit labels (read-only view)"
+      },
+      "field": {
+        "name": "Name",
+        "bucket": "Category",
+        "color": "Color",
+        "sortOrder": "Sort Order"
+      },
+      "bucket": {
+        "OPEN": "Open",
+        "IN_PROGRESS": "In Progress",
+        "COMPLETED": "Completed"
+      },
+      "error": {
+        "duplicate": "A label with the same name already exists",
+        "limitExceeded": "You can create at most 20 labels",
+        "inUse": "Cannot delete: this label is in use",
+        "inUseWithCount": "Cannot delete: this label is currently used by {n} TODO(s)",
+        "systemImmutable": "System default labels cannot be modified"
+      },
+      "systemDefault": "(system default)",
+      "confirmDelete": "Are you sure you want to delete this?"
+    },
+    "statusChange": {
+      "section": "Change Status",
+      "applyButton": "Apply",
+      "confirmTitle": "Confirm Status Change",
+      "confirmBody": "Change status from \"{from}\" to \"{to}\". Continue?",
+      "confirmButton": "Apply",
+      "cancelButton": "Cancel",
+      "success": "Status changed to \"{name}\""
+    },
     "enhancement": {
       "gantt": {
         "title": "Gantt View",
@@ -876,6 +969,51 @@
       "selectScope": "Select destination"
     }
   },
+  "handoff": {
+    "button": { "passToOther": "Pass to another member" },
+    "dialog": { "title": "Pass TODO" },
+    "field": {
+      "recipients": "Recipients",
+      "recipientsPlaceholder": "Select members",
+      "statusLabel": "Status",
+      "message": "Message (optional)",
+      "messagePlaceholder": "Optional message (up to 500 chars)"
+    },
+    "confirm": {
+      "title": "Confirm",
+      "body": "Pass \"{title}\" to {names}. Status: \"{label}\". Continue?",
+      "button": "Pass",
+      "recipientSingle": "{name}",
+      "recipientWithOthers": "{name} and {count} others"
+    },
+    "success": "TODO passed",
+    "error": {
+      "loadMembers": "Failed to load members",
+      "loadLabels": "Failed to load status labels",
+      "loadHistory": "Failed to load history",
+      "recipientsRequired": "Please select recipients",
+      "labelRequired": "Please select a status label",
+      "notAllowedPersonal": "Personal TODOs cannot be passed",
+      "invalidRecipient": "Recipient not found",
+      "labelScopeMismatch": "The selected label cannot be used in this TODO's scope",
+      "milestoneLocked": "Cannot pass a TODO while its milestone is locked",
+      "validation": "Input validation failed",
+      "notFound": "TODO not found (it may have been deleted or you may lack permission)",
+      "generic": "Failed to pass TODO"
+    },
+    "timeline": {
+      "title": "Handoff history",
+      "empty": "No history yet",
+      "deletedLabel": "(deleted)"
+    }
+  },
+  "notification": {
+    "todoHandedOff": {
+      "title": "A TODO was passed to you",
+      "body": "{from} passed \"{title}\" to you (status: {label})"
+    }
+  },
+  "common": { "cancel": "Cancel" },
   "teamHub": {
     "pageTitle": "My Teams",
     "createTeam": "Create Team",

@@ -22,6 +22,9 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
+import com.mannschaft.app.social.announcement.AnnouncementScopeType;
+import com.mannschaft.app.social.announcement.AnnouncementSourceType;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.entity.TodoEntity;
@@ -93,6 +96,9 @@ class DashboardServiceTest {
 
     @Mock
     private UserRoleRepository userRoleRepository;
+
+    @Mock
+    private com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository announcementFeedQueryRepository;
 
     @Mock
     private com.mannschaft.app.dashboard.service.RoleResolver roleResolver;
@@ -615,8 +621,6 @@ class DashboardServiceTest {
             given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(ORG_ID), any(PageRequest.class)))
                     .willReturn(new PageImpl<>(List.of()));
             given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(50L);
-            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(eq(ORG_ID), any(), any()))
-                    .willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
             // When
@@ -640,8 +644,6 @@ class DashboardServiceTest {
             given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(ORG_ID), any(PageRequest.class)))
                     .willReturn(new PageImpl<>(List.of()));
             given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(50L);
-            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(eq(ORG_ID), any(), any()))
-                    .willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
             // When
@@ -688,8 +690,6 @@ class DashboardServiceTest {
             given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(ORG_ID), any(PageRequest.class)))
                     .willReturn(new PageImpl<>(List.of(overdueTodo, activeTodo)));
             given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(10L);
-            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(eq(ORG_ID), any(), any()))
-                    .willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
             // When
@@ -702,8 +702,8 @@ class DashboardServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: 組織スケジュールがorgNoticesに含まれる")
-        void getOrgDashboard_スケジュール_orgNotices含む() {
+        @DisplayName("正常系: F02.8告知フィードがorgNoticesに含まれる")
+        void getOrgDashboard_告知フィード_orgNotices含む() {
             // Given
             given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             given(widgetService.getWidgetSettings(eq(USER_ID), eq(ScopeType.ORGANIZATION), eq(ORG_ID), eq(false)))
@@ -712,15 +712,16 @@ class DashboardServiceTest {
                     .willReturn(new PageImpl<>(List.of()));
             given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(10L);
 
-            ScheduleEntity schedule = ScheduleEntity.builder()
-                    .title("組織イベント")
-                    .startAt(LocalDateTime.now().plusDays(1))
-                    .endAt(LocalDateTime.now().plusDays(1).plusHours(2))
-                    .location("東京")
-                    .allDay(false)
+            AnnouncementFeedEntity feed = AnnouncementFeedEntity.builder()
+                    .scopeType(AnnouncementScopeType.ORGANIZATION)
+                    .scopeId(ORG_ID)
+                    .sourceType(AnnouncementSourceType.BULLETIN_THREAD)
+                    .sourceId(1L)
+                    .titleCache("組織告知")
                     .build();
-            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(eq(ORG_ID), any(), any()))
-                    .willReturn(List.of(schedule));
+            given(announcementFeedQueryRepository.findByScope(
+                    eq(AnnouncementScopeType.ORGANIZATION), eq(ORG_ID), any(), isNull(), anyInt()))
+                    .willReturn(List.of(feed));
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
             // When

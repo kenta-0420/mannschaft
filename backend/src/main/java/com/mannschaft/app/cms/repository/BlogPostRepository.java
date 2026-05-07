@@ -1,7 +1,6 @@
 package com.mannschaft.app.cms.repository;
 
 import com.mannschaft.app.cms.PostStatus;
-import com.mannschaft.app.cms.Visibility;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.visibility.BlogPostVisibilityProjection;
 import org.springframework.data.domain.Page;
@@ -51,11 +50,21 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
 
     long countBySeriesId(Long seriesId);
 
-    List<BlogPostEntity> findTop20ByTeamIdAndStatusAndVisibilityOrderByPublishedAtDesc(
-            Long teamId, PostStatus status, Visibility visibility);
+    /**
+     * RSS/Atom フィード向け: チームスコープで公開済み記事を最大20件取得する。
+     * 可視性フィルタリングは {@link com.mannschaft.app.common.visibility.ContentVisibilityChecker} に委譲するため
+     * Visibility 条件を含まない。
+     */
+    List<BlogPostEntity> findTop20ByTeamIdAndStatusOrderByPublishedAtDesc(
+            Long teamId, PostStatus status);
 
-    List<BlogPostEntity> findTop20ByOrganizationIdAndStatusAndVisibilityOrderByPublishedAtDesc(
-            Long organizationId, PostStatus status, Visibility visibility);
+    /**
+     * RSS/Atom フィード向け: 組織スコープで公開済み記事を最大20件取得する。
+     * 可視性フィルタリングは {@link com.mannschaft.app.common.visibility.ContentVisibilityChecker} に委譲するため
+     * Visibility 条件を含まない。
+     */
+    List<BlogPostEntity> findTop20ByOrganizationIdAndStatusOrderByPublishedAtDesc(
+            Long organizationId, PostStatus status);
 
     /**
      * F00 共通可視性基盤 (BlogPostVisibilityResolver) 向けバルク射影取得。

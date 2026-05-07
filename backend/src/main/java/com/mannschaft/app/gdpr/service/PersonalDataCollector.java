@@ -17,6 +17,8 @@ import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.errorreport.entity.ErrorReportOccurrenceEntity;
+import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
@@ -59,6 +61,7 @@ public class PersonalDataCollector {
     private final ActionMemoTagLinkRepository actionMemoTagLinkRepository;
     private final UserActionMemoSettingsRepository userActionMemoSettingsRepository;
     private final ErrorReportRepository errorReportRepository;
+    private final ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
     private final ProxyInputConsentRepository proxyInputConsentRepository;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
     private final EncryptionService encryptionService;
@@ -232,10 +235,22 @@ public class PersonalDataCollector {
     /**
      * F12.5 エラーレポートを収集する。
      * stackTrace, ipAddress, requestId 等の内部情報は含めず、ユーザーが知り得る情報のみ返す。
+     *
+     * <p>F12.5 Phase 2 — 個別発生ログ（error_report_occurrences）も同じ
+     * カテゴリでまとめてエクスポートする。activities / ai_analyses は管理者作成データ
+     * または AI 出力のため個人データ非該当としてエクスポート対象外。</p>
+     *
+     * <p>返される JSON の構造:</p>
+     * <pre>
+     * {
+     *   "error_reports": [ ... ],
+     *   "error_report_occurrences": [ ... ]
+     * }
+     * </pre>
      */
     private String collectErrorReports(Long userId) throws Exception {
-        return OBJECT_MAPPER.writeValueAsString(
-                errorReportRepository.findByUserIdOrderByCreatedAtDesc(userId).stream().map(er -> {
+        List<Map<String, Object>> reports = errorReportRepository
+                .findByUserIdOrderByCreatedAtDesc(userId).stream().map(er -> {
                     Map<String, Object> entry = new LinkedHashMap<>();
                     entry.put("id", er.getId());
                     entry.put("errorMessage", er.getErrorMessage());
@@ -246,7 +261,27 @@ public class PersonalDataCollector {
                     entry.put("severity", er.getSeverity());
                     entry.put("createdAt", er.getCreatedAt());
                     return entry;
-                }).toList());
+                }).toList();
+
+        List<ErrorReportOccurrenceEntity> occurrences =
+                errorReportOccurrenceRepository.findByUserIdOrderByOccurredAtDesc(userId);
+        List<Map<String, Object>> occurrenceList = occurrences.stream().map(o -> {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("id", o.getId());
+            entry.put("errorReportId", o.getErrorReportId());
+            entry.put("pageUrl", o.getPageUrl());
+            entry.put("userAgent", o.getUserAgent());
+            entry.put("ipAddress", o.getIpAddress());
+            entry.put("requestId", o.getRequestId());
+            entry.put("occurredAt", o.getOccurredAt());
+            entry.put("createdAt", o.getCreatedAt());
+            return entry;
+        }).toList();
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("error_reports", reports);
+        payload.put("error_report_occurrences", occurrenceList);
+        return OBJECT_MAPPER.writeValueAsString(payload);
     }
 
     /**
