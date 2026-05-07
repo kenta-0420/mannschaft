@@ -136,3 +136,16 @@ export interface AiAnalysisListResponse {
   data: AiAnalysisResponse[]
   meta: PageMeta
 }
+
+// ===== F12.5 Phase 2-D — GitHub Issue / Config =====
+
+export interface GitHubIssueCreateResponse {
+  url: string
+}
+
+export interface ErrorReportConfig {
+  githubEnabled: boolean
+  aiEnabled: boolean
+  aiModel: string
+  aiMonthlyBudgetJpy: number
+}
