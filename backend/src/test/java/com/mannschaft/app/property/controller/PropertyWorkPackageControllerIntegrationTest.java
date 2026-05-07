@@ -1,6 +1,8 @@
 package com.mannschaft.app.property.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.property.WorkPackageStatus;
 import com.mannschaft.app.property.WorkPackageVisibility;
 import com.mannschaft.app.property.WorkType;
@@ -8,6 +10,7 @@ import com.mannschaft.app.property.dto.ChangeStatusRequest;
 import com.mannschaft.app.property.dto.PropertyWorkPackageRequest;
 import com.mannschaft.app.property.dto.PropertyWorkPackageResponse;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -170,21 +173,29 @@ class PropertyWorkPackageControllerIntegrationTest extends AbstractMySqlIntegrat
     }
 
     /**
-     * Export 系統合テストはテスト用ユーザーに team の role を付与する必要があり
-     * （現状の memberships テーブル直接 INSERT 処理が複雑なため）、
-     * Phase 1-ζ では同等のロジックを {@code PropertyWorkExportServiceTest}（unit test、
-     * 10件）で MaskingService のモックを通じて検証している。
+     * Export 系統合テストでは、テスト用ユーザーに対して
+     * <ul>
+     *   <li>{@code user_roles} に当該チームの ADMIN ロール（マスキングサービスが
+     *       role_name で判定するため）</li>
+     *   <li>{@code memberships} に当該チームのアクティブな MEMBER 区分</li>
+     * </ul>
+     * を付与する。これにより {@code PropertyWorkPackageMaskingService.isVisible()} が
+     * true を返し、ADMINS_ONLY/MEMBERS_MASKED/PUBLIC_MASKED いずれの可視性でも
+     * export が正常に応答するようになる。
      *
-     * <p>本統合テストでの実 DB 経由検証は Phase 2 の test fixtures 整備時に
-     * memberships INSERT ヘルパーを追加して再有効化する予定。</p>
-     *
-     * <p>FIXME(Phase 2): insertMembership(userId, teamId, "ADMIN") ヘルパー追加 →
-     * 本テストで ADMIN role を付与してから export を呼び、@Disabled を解除する。</p>
+     * <p>ヘルパは {@link MembershipTestHelper} に集約してある（F09.13 Phase 2-α-1）。</p>
      */
+    private void grantTeamAdminToCurrentUser() {
+        MembershipTestHelper.insertUserRole(em, userId, "ADMIN", TEAM_ID, null);
+        MembershipTestHelper.insertMembership(em, userId, ScopeType.TEAM, TEAM_ID, RoleKind.MEMBER);
+        em.flush();
+        em.clear();
+    }
+
     @Test
     @DisplayName("POST /property-history/{id}/export?format=pdf → application/pdf + %PDF- 始まり")
-    @org.junit.jupiter.api.Disabled("Phase 2 で memberships INSERT ヘルパー整備後に有効化（unit test PropertyWorkExportServiceTest でカバー済）")
     void exportSinglePdf() {
+        grantTeamAdminToCurrentUser();
         Long id = createPackage(WorkPackageVisibility.MEMBERS_MASKED);
 
         ResponseEntity<byte[]> resp = controller.exportSingle(
@@ -199,8 +210,8 @@ class PropertyWorkPackageControllerIntegrationTest extends AbstractMySqlIntegrat
 
     @Test
     @DisplayName("POST /property-history/{id}/export?format=xlsx → xlsx Content-Type + PK 始まり")
-    @org.junit.jupiter.api.Disabled("Phase 2 で memberships INSERT ヘルパー整備後に有効化（unit test PropertyWorkExportServiceTest でカバー済）")
     void exportSingleXlsx() {
+        grantTeamAdminToCurrentUser();
         Long id = createPackage(WorkPackageVisibility.MEMBERS_MASKED);
 
         ResponseEntity<byte[]> resp = controller.exportSingle(
