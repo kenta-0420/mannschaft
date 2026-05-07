@@ -1,14 +1,8 @@
 /**
  * F02.8 ダッシュボード告知ウィザード — 組織スコープ E2E テスト
  *
- * ORG-BROADCAST-001: 特定チームを対象にした告知
- * ORG-BROADCAST-002: 全チーム対象の告知
- *
- * 注意事項:
- * - BroadcastStep1Audience.vue でチーム個別チェックボックスは
- *   現時点では TODO コメントのみ（未実装）のため、ORG-BROADCAST-001 では
- *   targetTeamIds: [] の状態（「すべてのチーム」チェックを外した状態）を確認する。
- *   チーム個別選択 UI が実装された際は以下コメントのセクションを有効化すること。
+ * ORG-BROADCAST-001: チームAのみ選択して告知（targetTeamIds: [1]）
+ * ORG-BROADCAST-002: 全チーム対象の告知（targetTeamIds: null）
  */
 
 import { test, expect, type Page } from '@playwright/test'
@@ -198,23 +192,19 @@ test.describe('ORG-BROADCAST-001〜002: 組織スコープ告知ウィザード'
 
   /**
    * ORG-BROADCAST-001:
-   * 組織ダッシュボードで「すべてのチーム」チェックを外した状態で告知し、
-   * targetTeamIds: [] がリクエストに含まれること。
-   *
-   * 注意: BroadcastStep1Audience.vue のチーム個別チェックボックスは
-   * 現時点で未実装のため、「すべてのチーム」を OFF にした状態
-   * （targetTeamIds が空配列）を ORG-BROADCAST-001 の検証対象とする。
-   * チーム個別選択 UI 実装後は targetTeamIds: [1] の検証に更新すること。
+   * 組織ダッシュボードで「すべてのチーム」チェックを外し、
+   * チームA（id=1）だけチェックして告知すると targetTeamIds: [1] になること。
    *
    * 想定する selector:
    *   - 「組織内告知」ボタン: getByRole('button', { name: '組織内告知' })
    *   - 「すべてのチーム」チェックボックス: label[for="all_teams"] または #all_teams
    *   - 「メンバーのみ」ラジオ: label[for="target_role_MEMBERS_ONLY"]
+   *   - チームAチェックボックス: label[for="team_1"]
    *   - チャネル「掲示板」: button[text="掲示板"]（BroadcastStep2Channel 内の grid button）
    *   - タイトル入力: InputText（label「タイトル」の次の input）
    *   - 送信ボタン: getByRole('button', { name: '告知を送る' })
    */
-  test('ORG-BROADCAST-001: すべてのチームOFF状態で告知するとtargetTeamIdsが空配列になること', async ({ page }) => {
+  test('ORG-BROADCAST-001: チームAのみ選択して告知するとtargetTeamIdsが[1]になること', async ({ page }) => {
     const captured = await mockBroadcastApi(page, ORG_ID)
 
     await page.goto(`/organizations/${ORG_ID}`)
@@ -246,6 +236,11 @@ test.describe('ORG-BROADCAST-001〜002: 組織スコープ告知ウィザード'
       }
     }
 
+    // チームA（id=1）のチェックボックスをクリックして選択
+    const teamALabel = page.locator('label[for="team_1"]')
+    await expect(teamALabel).toBeVisible({ timeout: 5_000 })
+    await teamALabel.click()
+
     // 「次へ」クリック → Step 2
     await page.getByRole('button', { name: '次へ' }).click()
 
@@ -273,9 +268,11 @@ test.describe('ORG-BROADCAST-001〜002: 組織スコープ告知ウィザード'
 
     const body = captured.getBody()
     expect(body).not.toBeNull()
-    // すべてのチームOFF → targetTeamIds は [] または null（BroadcastWizard.vue 実装依存）
-    const teamIds = body?.targetTeamIds
-    expect(teamIds === null || (Array.isArray(teamIds) && teamIds.length === 0)).toBe(true)
+    // チームAのみ選択 → targetTeamIds は [1]
+    const teamIds = body?.targetTeamIds as number[] | null
+    expect(Array.isArray(teamIds)).toBe(true)
+    expect(teamIds).toContain(1)
+    expect(teamIds).not.toContain(2)
   })
 
   /**
