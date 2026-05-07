@@ -1,7 +1,6 @@
 package com.mannschaft.app.activity.repository;
 
 import com.mannschaft.app.activity.ActivityScopeType;
-import com.mannschaft.app.activity.ActivityVisibility;
 import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.visibility.ActivityResultVisibilityProjection;
 import org.springframework.data.domain.Page;
@@ -22,9 +21,6 @@ public interface ActivityResultRepository extends JpaRepository<ActivityResultEn
 
     Page<ActivityResultEntity> findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
             ActivityScopeType scopeType, Long scopeId, Pageable pageable);
-
-    Page<ActivityResultEntity> findByScopeTypeAndScopeIdAndVisibilityOrderByActivityDateDescIdDesc(
-            ActivityScopeType scopeType, Long scopeId, ActivityVisibility visibility, Pageable pageable);
 
     Page<ActivityResultEntity> findByScopeTypeAndScopeIdAndTemplateIdOrderByActivityDateDescIdDesc(
             ActivityScopeType scopeType, Long scopeId, Long templateId, Pageable pageable);

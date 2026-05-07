@@ -159,6 +159,7 @@ tasks.withType<Test> {
     // POI は内部で大量の XSD スキーマをロードしてヒープ・メタスペースを圧迫する。
     // GitHub Actions ubuntu-latest は 16GB RAM のため 4g は十分安全。
     maxHeapSize = "4g"
+    systemProperty("user.timezone", "UTC")
     finalizedBy(tasks.jacocoTestReport)
     testLogging {
         // 失敗時に完全スタックトレースを出力する。CI ログのみで NPE 起源を追跡できるようにする。
