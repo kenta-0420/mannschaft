@@ -419,19 +419,18 @@ public class PropertyWorkPackageService {
     }
 
     /**
-     * F04.1 TimelinePost 自動投稿のフックメソッド（1-δ 実装）。
+     * F04.1 TimelinePost 自動投稿のフックメソッド（F09.13 Phase 2-α-2 で厳密化）。
      *
      * <p>設計書 §5.4 に基づき、新規パッケージ作成時に「【物件履歴】タイトル / 工事種別 /
      * 業者名」形式のテキスト投稿を自動生成して紐付ける。{@code scopeType}/{@code scopeId}
      * はパッケージと一致させ、F00 ContentVisibilityResolver の可視性ガードと整合する。</p>
      *
-     * <p><strong>暫定扱い（1-δ）</strong>: 設計書では visibility=ADMINS_ONLY の場合
-     * {@link PostStatus#DRAFT} で投稿することになっているが、現行
-     * {@link TimelinePostService#createPost} は {@code scheduledAt} 有無で
-     * SCHEDULED/PUBLISHED に二択固定するため、DRAFT 指定の口がない。よって本フェーズでは
-     * <em>ステータス指定なし（PUBLISHED 固定）で起票する</em>暫定実装とし、
-     * Phase 2 で TimelinePostService に DRAFT 起票 API を追加した時点で厳密化する。
-     * この独自判断は申し送り事項としてコミットメッセージに明記する。</p>
+     * <p><strong>F09.13 Phase 2-α-2 改修</strong>: パッケージ可視性が
+     * {@link WorkPackageVisibility#ADMINS_ONLY} の場合は {@link PostStatus#DRAFT} で起票し、
+     * タイムライン一覧・検索結果から除外する。それ以外は従来通り PUBLISHED で起票する。
+     * これにより設計書 §5.4 の要求「ADMINS_ONLY の物件履歴はタイムラインに公開せず管理者のみ閲覧」
+     * を満たす（DRAFT は {@code TimelinePostRepository} のクエリで status='PUBLISHED' 絞り込みにより
+     * 一覧から自動除外される）。</p>
      *
      * <p>{@code createFromIncident()} 経由でも本メソッドを呼ぶ。リスナー/イベント発火元から
      * 同一トランザクション内で実行されるため、TimelinePost 生成失敗はパッケージ生成自体を
@@ -445,6 +444,11 @@ public class PropertyWorkPackageService {
 
         String content = buildTimelineContent(entity);
 
+        // F09.13 Phase 2-α-2: ADMINS_ONLY は DRAFT、それ以外は PUBLISHED（status=null で従来挙動）
+        PostStatus initialStatus = entity.getVisibility() == WorkPackageVisibility.ADMINS_ONLY
+                ? PostStatus.DRAFT
+                : null;
+
         CreatePostRequest req = new CreatePostRequest(
                 content,
                 scopeType.name(),
@@ -455,13 +459,15 @@ public class PropertyWorkPackageService {
                 /* repostOfId */ null,
                 /* scheduledAt */ null,
                 /* poll */ null,
-                /* attachments */ null);
+                /* attachments */ null,
+                /* status */ initialStatus);
 
         try {
             PostResponse posted = timelinePostService.createPost(req, entity.getCreatedBy());
             entity.linkTimelinePost(posted.getId());
-            log.info("F04.1 TimelinePost 自動投稿成功: packageId={}, postId={}",
-                    entity.getId(), posted.getId());
+            log.info("F04.1 TimelinePost 自動投稿成功: packageId={}, postId={}, visibility={}, status={}",
+                    entity.getId(), posted.getId(), entity.getVisibility(),
+                    initialStatus != null ? initialStatus : "PUBLISHED");
         } catch (RuntimeException e) {
             // 設計書 §5.4 整合: TimelinePost 生成失敗時はパッケージ作成自体を中断する
             log.error("F04.1 TimelinePost 自動投稿失敗: packageId={}", entity.getId(), e);
