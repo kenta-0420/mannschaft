@@ -9,27 +9,27 @@ export function useScopeFolderApi() {
   const base = '/api/v1/me/scope-folders'
 
   async function getFolders(scopeType: 'TEAM' | 'ORGANIZATION'): Promise<ScopeFolder[]> {
-    const res = await api<ScopeFolder[]>(`${base}?scopeType=${scopeType}`)
-    return res
+    const res = await api<{ data: ScopeFolder[] }>(`${base}?scopeType=${scopeType}`)
+    return res.data
   }
 
   async function createFolder(
     scopeType: 'TEAM' | 'ORGANIZATION',
     req: CreateFolderRequest,
   ): Promise<ScopeFolder> {
-    const res = await api<ScopeFolder>(`${base}?scopeType=${scopeType}`, {
+    const res = await api<{ data: ScopeFolder }>(`${base}?scopeType=${scopeType}`, {
       method: 'POST',
       body: req,
     })
-    return res
+    return res.data
   }
 
   async function updateFolder(folderId: number, req: UpdateFolderRequest): Promise<ScopeFolder> {
-    const res = await api<ScopeFolder>(`${base}/${folderId}`, {
+    const res = await api<{ data: ScopeFolder }>(`${base}/${folderId}`, {
       method: 'PUT',
       body: req,
     })
-    return res
+    return res.data
   }
 
   async function deleteFolder(folderId: number): Promise<void> {

@@ -14,14 +14,23 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
  * {@link TournamentService} の単体テスト。
@@ -129,6 +138,39 @@ class TournamentServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TournamentErrorCode.INVALID_TOURNAMENT_STATUS);
+        }
+    }
+
+    @Nested
+    @DisplayName("listPublicTournaments")
+    class ListPublicTournaments {
+
+        @Test
+        @DisplayName("正常系: OPEN/IN_PROGRESS/COMPLETED の PUBLIC 大会のみ返却される")
+        @SuppressWarnings("unchecked")
+        void 公開ステータスのみ返却() {
+            TournamentEntity entity = TournamentEntity.builder()
+                    .organizationId(ORG_ID).name("公開大会").build();
+            setVisibility(entity, TournamentVisibility.PUBLIC);
+            setStatus(entity, TournamentStatus.OPEN);
+
+            Pageable pageable = PageRequest.of(0, 20);
+            Page<TournamentEntity> page = new PageImpl<>(List.of(entity));
+
+            given(tournamentRepository.findByOrganizationIdAndVisibilityAndStatusInOrderByCreatedAtDesc(
+                    eq(ORG_ID),
+                    eq(TournamentVisibility.PUBLIC),
+                    any(Collection.class),
+                    eq(pageable)))
+                    .willReturn(page);
+            given(mapper.toTournamentSummaryResponse(entity)).willReturn(null);
+
+            Page<?> result = service.listPublicTournaments(ORG_ID, pageable);
+
+            assertThat(result.getTotalElements()).isEqualTo(1);
+            // 旧メソッド（findByOrganizationIdAndVisibilityAndStatusNotOrderByCreatedAtDesc）が
+            // 呼ばれていないことを確認（CANCELLED/ARCHIVED を誤返却するバグの根治確認）
+            verifyNoMoreInteractions(contentVisibilityChecker);
         }
     }
 

@@ -9,7 +9,11 @@ const scheduleApi = useScheduleApi()
 const ganttApi = useTodoGantt()
 
 type CalendarTab = 'calendar' | 'gantt'
-const activeTab = ref<CalendarTab>('calendar')
+const route = useRoute()
+const activeTab = ref<CalendarTab>(route.query.tab === 'gantt' ? 'gantt' : 'calendar')
+
+// スコープ変更時にガントビューをフェードで再描画するためのキー
+const ganttKey = ref(0)
 
 const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
@@ -291,8 +295,9 @@ watch(createScopeKey, (key) => {
   } else {
     selectedScopes.value = [PERSONAL_KEY, key]
   }
-  // ガントタブが表示中であればスコープ変更に合わせて再読み込み
+  // ガントタブが表示中であればスコープ変更に合わせて再読み込みとフェードアニメーション
   if (activeTab.value === 'gantt') {
+    ganttKey.value++
     loadGantt()
   }
 })
@@ -369,6 +374,10 @@ onMounted(() => {
     }
   } catch { /* 無視 */ }
   loadEvents()
+  // クエリパラメータ ?tab=gantt で直接ガントタブを開いた場合は初期読み込みを行う
+  if (activeTab.value === 'gantt') {
+    loadGantt()
+  }
 })
 
 watch(selectedScopes, (val) => {
@@ -571,12 +580,14 @@ watch(allScopeOptions, (opts) => {
         <div v-if="ganttLoading" class="space-y-3">
           <Skeleton v-for="i in 5" :key="i" height="2rem" />
         </div>
-        <TodoGanttView
-          v-else
-          :todos="ganttTodos"
-          :from-date="ganttFromDate"
-          :to-date="ganttToDate"
-        />
+        <Transition v-else name="fade">
+          <TodoGanttView
+            :key="ganttKey"
+            :todos="ganttTodos"
+            :from-date="ganttFromDate"
+            :to-date="ganttToDate"
+          />
+        </Transition>
       </div>
     </template>
 
@@ -603,3 +614,14 @@ watch(allScopeOptions, (opts) => {
     />
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
