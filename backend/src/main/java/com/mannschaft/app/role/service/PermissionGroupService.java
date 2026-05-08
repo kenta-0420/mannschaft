@@ -136,6 +136,64 @@ public class PermissionGroupService {
     }
 
     /**
+     * ユーザーが指定スコープ内で特定のパーミッションを保有しているかを判定する。
+     *
+     * <p>F09.13 Phase 2-α-3: DEPUTY_ADMIN の MANAGE/VIEW 区別など、
+     * 権限グループ経由で個別ユーザーに割り当てられたパーミッションの有無を照会する。</p>
+     *
+     * <p><strong>判定アルゴリズム</strong>:</p>
+     * <ol>
+     *   <li>当該 scope（TEAM/ORGANIZATION）の {@link PermissionGroupEntity} を全件取得</li>
+     *   <li>そのうちユーザーに割当られている group のみに絞り込み（{@code user_permission_groups}）</li>
+     *   <li>それら group に紐付く {@code permission_group_permissions} を辿り、{@code permissionName} と一致する {@link PermissionEntity} が含まれるかを判定</li>
+     * </ol>
+     *
+     * <p>ロール直付けの permission（{@code role_permissions} の {@code is_default=1} 等）は
+     * 本メソッドでは判定しない。本メソッドは「権限グループ経由の明示付与」のみを対象とする。
+     * SystemAdmin / ADMIN への自動付与判定は呼び出し側（例: {@code PropertyWorkPackageMaskingService}）で
+     * ロールベースに別途行うこと。</p>
+     *
+     * @param userId         ユーザーID（null の場合は false）
+     * @param scopeType      スコープ種別（"TEAM" / "ORGANIZATION"）
+     * @param scopeId        スコープID
+     * @param permissionName パーミッション名（例: "PROPERTY_HISTORY_MANAGE"）
+     * @return 当該スコープ内で当該パーミッションを保有していれば true
+     */
+    public boolean hasPermission(Long userId, String scopeType, Long scopeId, String permissionName) {
+        if (userId == null || scopeType == null || scopeId == null || permissionName == null) {
+            return false;
+        }
+        // 1. 当該 scope の権限グループを取得
+        List<PermissionGroupEntity> scopeGroups = findByScope(scopeId, scopeType);
+        if (scopeGroups.isEmpty()) {
+            return false;
+        }
+        List<Long> scopeGroupIds = scopeGroups.stream().map(PermissionGroupEntity::getId).toList();
+
+        // 2. ユーザーに割当られている group のみに絞り込み
+        List<UserPermissionGroupEntity> userAssignments = userPermissionGroupRepository.findByUserId(userId);
+        List<Long> userGroupIds = userAssignments.stream()
+                .map(UserPermissionGroupEntity::getGroupId)
+                .filter(scopeGroupIds::contains)
+                .toList();
+        if (userGroupIds.isEmpty()) {
+            return false;
+        }
+
+        // 3. それら group に紐付く permission を辿り、permissionName と一致するか判定
+        for (Long groupId : userGroupIds) {
+            List<PermissionGroupPermissionEntity> pgps = permissionGroupPermissionRepository.findByGroupId(groupId);
+            for (PermissionGroupPermissionEntity pgp : pgps) {
+                PermissionEntity perm = permissionRepository.findById(pgp.getPermissionId()).orElse(null);
+                if (perm != null && permissionName.equals(perm.getName())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * ユーザーに権限グループを割り当てる。
      */
     @Transactional

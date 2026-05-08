@@ -9,6 +9,7 @@ import com.mannschaft.app.property.WorkType;
 import com.mannschaft.app.property.entity.PropertyWorkPackageEntity;
 import com.mannschaft.app.property.entity.VendorEntity;
 import com.mannschaft.app.property.service.PropertyWorkPackageMaskingService.MaskedView;
+import com.mannschaft.app.role.service.PermissionGroupService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,42 +20,50 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
- * {@link PropertyWorkPackageMaskingService} 単体テスト（F09.13 Phase 1-ζ-A）。
+ * {@link PropertyWorkPackageMaskingService} 単体テスト（F09.13 Phase 2-α-3 厳密化版）。
  *
- * <p>設計書 §5.5 マスキング処理マトリクス全 16 セルを網羅。</p>
+ * <p>設計書 §5.5 マスキング処理マトリクス全 20 セルを網羅
+ * （ADMIN / DEPUTY_ADMIN(MANAGE) / DEPUTY_ADMIN(VIEW) / MEMBER / SUPPORTER × 4 visibility）。</p>
  *
- * <p><b>FIXME — DEPUTY_ADMIN(MANAGE)/(VIEW) 区別について</b>:
- * 1-β 時点では {@code permissionGroupService} 未配線のため、
- * {@code DEPUTY_ADMIN} は MANAGE 相当（金額マスクなし）として動作する。
- * 設計書 §5.5 で求める「VIEW のみ → 金額マスク」は本サービスでは未実装。
- * よって本テストは「DEPUTY_ADMIN は MANAGE と同じ動作」として書き、
- * 1-δ で permissionGroupService 配線後に VIEW シナリオを別途追加する想定。</p>
+ * <p><b>Phase 2-α-3 厳密化</b>: DEPUTY_ADMIN は {@link PermissionGroupService#hasPermission}
+ * で {@code PROPERTY_HISTORY_MANAGE} 保有有無を照会し、保有時は MANAGE / 非保有時は VIEW として動作する。
+ * 1-β 暫定で「DEPUTY_ADMIN は常に MANAGE 相当」だった挙動から完全に切替。</p>
  *
  * <p>マトリクス（設計書 §5.5）:</p>
  * <table>
  *   <caption>visibility × ロール × マスク</caption>
- *   <tr><th>visibility</th><th>ADMIN</th><th>DEPUTY_ADMIN(MANAGE)</th><th>DEPUTY_ADMIN(VIEW)*</th><th>MEMBER</th><th>SUPPORTER</th></tr>
- *   <tr><td>ADMINS_ONLY</td><td>全表示</td><td>全表示</td><td>金額マスク*</td><td>不可視</td><td>不可視</td></tr>
- *   <tr><td>MEMBERS_ONLY</td><td>全表示</td><td>全表示</td><td>金額マスク*</td><td>全表示</td><td>不可視</td></tr>
- *   <tr><td>MEMBERS_MASKED</td><td>全表示</td><td>全表示</td><td>金額マスク*</td><td>金額マスク</td><td>不可視</td></tr>
- *   <tr><td>PUBLIC_MASKED</td><td>全表示</td><td>全表示</td><td>金額マスク*</td><td>金額マスク</td><td>金額マスク</td></tr>
+ *   <tr><th>visibility</th><th>ADMIN</th><th>DEPUTY_ADMIN(MANAGE)</th><th>DEPUTY_ADMIN(VIEW)</th><th>MEMBER</th><th>SUPPORTER</th></tr>
+ *   <tr><td>ADMINS_ONLY</td><td>全表示</td><td>全表示</td><td>金額マスク</td><td>不可視</td><td>不可視</td></tr>
+ *   <tr><td>MEMBERS_ONLY</td><td>全表示</td><td>全表示</td><td>金額マスク</td><td>全表示</td><td>不可視</td></tr>
+ *   <tr><td>MEMBERS_MASKED</td><td>全表示</td><td>全表示</td><td>金額マスク</td><td>金額マスク</td><td>不可視</td></tr>
+ *   <tr><td>PUBLIC_MASKED</td><td>全表示</td><td>全表示</td><td>金額マスク</td><td>金額マスク</td><td>金額マスク</td></tr>
  * </table>
- * <p>* DEPUTY_ADMIN(VIEW) は permissionGroupService 配線後に検証する。</p>
  */
-@DisplayName("PropertyWorkPackageMaskingService 単体テスト（F09.13 §5.5 マスキングマトリクス全16セル）")
+@DisplayName("PropertyWorkPackageMaskingService 単体テスト（F09.13 §5.5 マスキングマトリクス全20セル）")
 class PropertyWorkPackageMaskingServiceTest {
 
+    private PermissionGroupService permissionGroupService;
     private PropertyWorkPackageMaskingService service;
 
     private static final String SCOPE_TEAM = "TEAM";
     private static final Long TEAM_ID = 100L;
     private static final ScopeKey SCOPE = new ScopeKey(SCOPE_TEAM, TEAM_ID);
+    private static final Long VIEWER_USER_ID = 7L;
+    private static final String PERM_PROPERTY_HISTORY_MANAGE = "PROPERTY_HISTORY_MANAGE";
 
     @BeforeEach
     void setUp() {
-        service = new PropertyWorkPackageMaskingService();
+        permissionGroupService = mock(PermissionGroupService.class);
+        service = new PropertyWorkPackageMaskingService(permissionGroupService);
     }
 
     private PropertyWorkPackageEntity packageOf(WorkPackageVisibility v) {
@@ -106,8 +115,6 @@ class PropertyWorkPackageMaskingServiceTest {
     }
 
     private UserScopeRoleSnapshot deputyAdminSnapshot() {
-        // FIXME: 1-β 時点では DEPUTY_ADMIN は MANAGE 相当（金額マスクなし）として扱われる。
-        // permissionGroupService 配線後に VIEW シナリオも検証可能になる想定。
         return snapshotWithRole("DEPUTY_ADMIN");
     }
 
@@ -119,8 +126,22 @@ class PropertyWorkPackageMaskingServiceTest {
         return snapshotWithRole("SUPPORTER");
     }
 
+    /** PROPERTY_HISTORY_MANAGE 権限グループ保有あり（MANAGE 相当） */
+    private void grantManagePermission() {
+        given(permissionGroupService.hasPermission(
+                eq(VIEWER_USER_ID), eq(SCOPE_TEAM), eq(TEAM_ID), eq(PERM_PROPERTY_HISTORY_MANAGE)))
+                .willReturn(true);
+    }
+
+    /** PROPERTY_HISTORY_MANAGE 権限グループ保有なし（VIEW 相当 / 暗黙のデフォルト動作） */
+    private void denyManagePermission() {
+        given(permissionGroupService.hasPermission(
+                eq(VIEWER_USER_ID), eq(SCOPE_TEAM), eq(TEAM_ID), eq(PERM_PROPERTY_HISTORY_MANAGE)))
+                .willReturn(false);
+    }
+
     // =========================================================================
-    // ADMINS_ONLY 行（4 セル）
+    // ADMINS_ONLY 行（5 セル）
     // =========================================================================
 
     @Nested
@@ -137,41 +158,58 @@ class PropertyWorkPackageMaskingServiceTest {
         @Test
         @DisplayName("ADMIN → 全表示（金額・連絡先）")
         void admin_full() {
-            MaskedView m = service.applyMasking(pkg, vendor(), adminSnapshot());
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, adminSnapshot());
             assertThat(m.visible()).isTrue();
             assertThat(m.canViewAmount()).isTrue();
             assertThat(m.estimatedAmount()).isEqualTo(12_000_000L);
             assertThat(m.contractAmount()).isEqualTo(11_500_000L);
             assertThat(m.vendor().phone()).isEqualTo("03-1234-5678");
             assertThat(m.vendor().email()).isEqualTo("info@example.jp");
+            // ADMIN 路線では permissionGroupService 照会は行わぬ（不要呼出し回避）
+            verify(permissionGroupService, never()).hasPermission(anyLong(), any(), any(), any());
         }
 
         @Test
-        @DisplayName("DEPUTY_ADMIN(MANAGE) → 全表示（1-β 暫定）")
-        void deputyAdmin_full() {
-            MaskedView m = service.applyMasking(pkg, vendor(), deputyAdminSnapshot());
+        @DisplayName("DEPUTY_ADMIN(MANAGE) → 全表示")
+        void deputyAdminManage_full() {
+            grantManagePermission();
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, deputyAdminSnapshot());
             assertThat(m.visible()).isTrue();
             assertThat(m.canViewAmount()).isTrue();
             assertThat(m.estimatedAmount()).isEqualTo(12_000_000L);
         }
 
         @Test
+        @DisplayName("DEPUTY_ADMIN(VIEW) → 可視・金額マスク（連絡先 ●●●）")
+        void deputyAdminView_masked() {
+            denyManagePermission();
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, deputyAdminSnapshot());
+            assertThat(m.visible()).isTrue();
+            assertThat(m.canViewAmount()).isFalse();
+            assertThat(m.estimatedAmount()).isNull();
+            assertThat(m.contractAmount()).isNull();
+            assertThat(m.actualAmount()).isNull();
+            assertThat(m.vendor().phone()).isEqualTo("●●●");
+            assertThat(m.vendor().email()).isEqualTo("●●●");
+        }
+
+        @Test
         @DisplayName("MEMBER → 不可視（visible=false）")
         void member_hidden() {
-            MaskedView m = service.applyMasking(pkg, vendor(), memberSnapshot());
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, memberSnapshot());
             assertThat(m.visible()).isFalse();
         }
 
         @Test
         @DisplayName("SUPPORTER → 不可視")
         void supporter_hidden() {
-            MaskedView m = service.applyMasking(pkg, vendor(), supporterSnapshot());
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, supporterSnapshot());
             assertThat(m.visible()).isFalse();
         }
     }
 
     // =========================================================================
-    // MEMBERS_ONLY 行（4 セル）
+    // MEMBERS_ONLY 行（5 セル）
     // =========================================================================
 
     @Nested
@@ -188,7 +226,7 @@ class PropertyWorkPackageMaskingServiceTest {
         @Test
         @DisplayName("ADMIN → 全表示")
         void admin_full() {
-            MaskedView m = service.applyMasking(pkg, vendor(), adminSnapshot());
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, adminSnapshot());
             assertThat(m.visible()).isTrue();
             assertThat(m.canViewAmount()).isTrue();
             assertThat(m.contractAmount()).isEqualTo(11_500_000L);
@@ -196,15 +234,27 @@ class PropertyWorkPackageMaskingServiceTest {
 
         @Test
         @DisplayName("DEPUTY_ADMIN(MANAGE) → 全表示")
-        void deputy_full() {
-            MaskedView m = service.applyMasking(pkg, vendor(), deputyAdminSnapshot());
+        void deputyAdminManage_full() {
+            grantManagePermission();
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, deputyAdminSnapshot());
             assertThat(m.canViewAmount()).isTrue();
+        }
+
+        @Test
+        @DisplayName("DEPUTY_ADMIN(VIEW) → 可視・金額マスク")
+        void deputyAdminView_masked() {
+            denyManagePermission();
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, deputyAdminSnapshot());
+            assertThat(m.visible()).isTrue();
+            assertThat(m.canViewAmount()).isFalse();
+            assertThat(m.estimatedAmount()).isNull();
+            assertThat(m.vendor().phone()).isEqualTo("●●●");
         }
 
         @Test
         @DisplayName("MEMBER → 全表示（MEMBERS_ONLY のみ MEMBER に金額開示）")
         void member_full() {
-            MaskedView m = service.applyMasking(pkg, vendor(), memberSnapshot());
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, memberSnapshot());
             assertThat(m.visible()).isTrue();
             assertThat(m.canViewAmount()).isTrue();
             assertThat(m.contractAmount()).isEqualTo(11_500_000L);
@@ -214,13 +264,13 @@ class PropertyWorkPackageMaskingServiceTest {
         @Test
         @DisplayName("SUPPORTER → 不可視")
         void supporter_hidden() {
-            MaskedView m = service.applyMasking(pkg, vendor(), supporterSnapshot());
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, supporterSnapshot());
             assertThat(m.visible()).isFalse();
         }
     }
 
     // =========================================================================
-    // MEMBERS_MASKED 行（4 セル）
+    // MEMBERS_MASKED 行（5 セル）
     // =========================================================================
 
     @Nested
@@ -237,21 +287,32 @@ class PropertyWorkPackageMaskingServiceTest {
         @Test
         @DisplayName("ADMIN → 全表示")
         void admin_full() {
-            MaskedView m = service.applyMasking(pkg, vendor(), adminSnapshot());
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, adminSnapshot());
             assertThat(m.canViewAmount()).isTrue();
         }
 
         @Test
         @DisplayName("DEPUTY_ADMIN(MANAGE) → 全表示")
-        void deputy_full() {
-            MaskedView m = service.applyMasking(pkg, vendor(), deputyAdminSnapshot());
+        void deputyAdminManage_full() {
+            grantManagePermission();
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, deputyAdminSnapshot());
             assertThat(m.canViewAmount()).isTrue();
+        }
+
+        @Test
+        @DisplayName("DEPUTY_ADMIN(VIEW) → 金額マスク")
+        void deputyAdminView_masked() {
+            denyManagePermission();
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, deputyAdminSnapshot());
+            assertThat(m.canViewAmount()).isFalse();
+            assertThat(m.contractAmount()).isNull();
+            assertThat(m.vendor().phone()).isEqualTo("●●●");
         }
 
         @Test
         @DisplayName("MEMBER → 金額マスク（金額 null + 連絡先 ●●●）")
         void member_masked() {
-            MaskedView m = service.applyMasking(pkg, vendor(), memberSnapshot());
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, memberSnapshot());
             assertThat(m.visible()).isTrue();
             assertThat(m.canViewAmount()).isFalse();
             assertThat(m.estimatedAmount()).isNull();
@@ -267,13 +328,13 @@ class PropertyWorkPackageMaskingServiceTest {
         @Test
         @DisplayName("SUPPORTER → 不可視")
         void supporter_hidden() {
-            MaskedView m = service.applyMasking(pkg, vendor(), supporterSnapshot());
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, supporterSnapshot());
             assertThat(m.visible()).isFalse();
         }
     }
 
     // =========================================================================
-    // PUBLIC_MASKED 行（4 セル）
+    // PUBLIC_MASKED 行（5 セル）
     // =========================================================================
 
     @Nested
@@ -290,21 +351,30 @@ class PropertyWorkPackageMaskingServiceTest {
         @Test
         @DisplayName("ADMIN → 全表示")
         void admin_full() {
-            MaskedView m = service.applyMasking(pkg, vendor(), adminSnapshot());
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, adminSnapshot());
             assertThat(m.canViewAmount()).isTrue();
         }
 
         @Test
         @DisplayName("DEPUTY_ADMIN(MANAGE) → 全表示")
-        void deputy_full() {
-            MaskedView m = service.applyMasking(pkg, vendor(), deputyAdminSnapshot());
+        void deputyAdminManage_full() {
+            grantManagePermission();
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, deputyAdminSnapshot());
             assertThat(m.canViewAmount()).isTrue();
+        }
+
+        @Test
+        @DisplayName("DEPUTY_ADMIN(VIEW) → 金額マスク")
+        void deputyAdminView_masked() {
+            denyManagePermission();
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, deputyAdminSnapshot());
+            assertThat(m.canViewAmount()).isFalse();
         }
 
         @Test
         @DisplayName("MEMBER → 金額マスク")
         void member_masked() {
-            MaskedView m = service.applyMasking(pkg, vendor(), memberSnapshot());
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, memberSnapshot());
             assertThat(m.visible()).isTrue();
             assertThat(m.canViewAmount()).isFalse();
             assertThat(m.contractAmount()).isNull();
@@ -313,7 +383,7 @@ class PropertyWorkPackageMaskingServiceTest {
         @Test
         @DisplayName("SUPPORTER → 金額マスク（可視だが連絡先 ●●●）")
         void supporter_masked() {
-            MaskedView m = service.applyMasking(pkg, vendor(), supporterSnapshot());
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, supporterSnapshot());
             assertThat(m.visible()).isTrue();
             assertThat(m.canViewAmount()).isFalse();
             assertThat(m.estimatedAmount()).isNull();
@@ -355,29 +425,39 @@ class PropertyWorkPackageMaskingServiceTest {
         @DisplayName("applyMasking: vendor=null でも空 vendor view を返して visible 判定は維持")
         void apply_vendorNull() {
             PropertyWorkPackageEntity pkg = packageOf(WorkPackageVisibility.MEMBERS_ONLY);
-            MaskedView m = service.applyMasking(pkg, null, memberSnapshot());
+            MaskedView m = service.applyMasking(pkg, null, VIEWER_USER_ID, memberSnapshot());
             assertThat(m.visible()).isTrue();
             assertThat(m.vendor().id()).isNull();
             assertThat(m.vendor().name()).isNull();
         }
 
         @Test
-        @DisplayName("applyMasking: SystemAdmin はすべて全表示")
+        @DisplayName("applyMasking: SystemAdmin はすべて全表示で permissionGroupService を呼ばない")
         void apply_systemAdmin_all() {
             for (WorkPackageVisibility v : WorkPackageVisibility.values()) {
                 PropertyWorkPackageEntity pkg = packageOf(v);
-                MaskedView m = service.applyMasking(pkg, vendor(),
+                MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID,
                         UserScopeRoleSnapshot.forSystemAdmin());
                 assertThat(m.visible()).as("visibility=%s", v).isTrue();
                 assertThat(m.canViewAmount()).as("visibility=%s", v).isTrue();
             }
+            verify(permissionGroupService, never()).hasPermission(anyLong(), any(), any(), any());
         }
 
         @Test
         @DisplayName("applyMasking: entity null は hidden")
         void apply_entityNull() {
-            MaskedView m = service.applyMasking(null, null, adminSnapshot());
+            MaskedView m = service.applyMasking(null, null, VIEWER_USER_ID, adminSnapshot());
             assertThat(m.visible()).isFalse();
+        }
+
+        @Test
+        @DisplayName("applyMasking: MEMBER 路線では permissionGroupService を呼ばない（不要呼出し回避）")
+        void apply_member_skipsPermissionLookup() {
+            PropertyWorkPackageEntity pkg = packageOf(WorkPackageVisibility.MEMBERS_ONLY);
+            MaskedView m = service.applyMasking(pkg, vendor(), VIEWER_USER_ID, memberSnapshot());
+            assertThat(m.canViewAmount()).isTrue();
+            verify(permissionGroupService, never()).hasPermission(anyLong(), any(), any(), any());
         }
     }
 }

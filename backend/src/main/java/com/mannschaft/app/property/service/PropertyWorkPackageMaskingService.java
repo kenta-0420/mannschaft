@@ -5,6 +5,8 @@ import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.property.WorkPackageVisibility;
 import com.mannschaft.app.property.entity.PropertyWorkPackageEntity;
 import com.mannschaft.app.property.entity.VendorEntity;
+import com.mannschaft.app.role.service.PermissionGroupService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -18,12 +20,14 @@ import org.springframework.stereotype.Service;
  * <p>判定マトリクス（設計書 §5.5）:</p>
  * <table>
  *   <caption>visibility × ロール × マスク</caption>
- *   <tr><th>visibility</th><th>ADMIN</th><th>DEPUTY_ADMIN(MANAGE)</th><th>DEPUTY_ADMIN(VIEW)</th><th>MEMBER</th><th>SUPPORTER</th></tr>
+ *   <tr><th>visibility</th><th>ADMIN</th><th>DEPUTY_ADMIN(MANAGE)†</th><th>DEPUTY_ADMIN(VIEW)†</th><th>MEMBER</th><th>SUPPORTER</th></tr>
  *   <tr><td>ADMINS_ONLY</td><td>全表示</td><td>全表示</td><td>金額マスク</td><td>不可視</td><td>不可視</td></tr>
  *   <tr><td>MEMBERS_ONLY</td><td>全表示</td><td>全表示</td><td>金額マスク</td><td>全表示</td><td>不可視</td></tr>
  *   <tr><td>MEMBERS_MASKED</td><td>全表示</td><td>全表示</td><td>金額マスク</td><td>金額マスク</td><td>不可視</td></tr>
  *   <tr><td>PUBLIC_MASKED</td><td>全表示</td><td>全表示</td><td>金額マスク</td><td>金額マスク</td><td>金額マスク</td></tr>
  * </table>
+ * <p>† DEPUTY_ADMIN の MANAGE / VIEW 区別は、{@link PermissionGroupService#hasPermission}
+ * で {@code PROPERTY_HISTORY_MANAGE} 権限保有有無を照会して判定する（Phase 2-α-3）。</p>
  *
  * <p><strong>本サービスの役割範囲</strong>:</p>
  * <ul>
@@ -36,18 +40,24 @@ import org.springframework.stereotype.Service;
  * は「閲覧可能か」までしか扱わない（IDOR 防止と DRAFT/SCHEDULED ガード）。本サービスは
  * 閲覧可能と判定された後の「金額マスクの有無」を決定する補助層である。</p>
  *
- * <p><strong>DEPUTY_ADMIN(VIEW) の判定について</strong>: {@code UserScopeRoleSnapshot}
- * は「DEPUTY_ADMIN(MANAGE) 系」と「DEPUTY_ADMIN(VIEW) 系」を区別しない。よって
- * 設計書 §5.5 で求められる「VIEW のみ → 金額マスク」を完全再現するには、別途
- * 「権限グループ {@code PROPERTY_HISTORY_MANAGE} を保有するか」の照会が必要。
- * 1-β 時点では権限グループ照会サービスが未配線のため、{@code DEPUTY_ADMIN} は
- * 暫定的に MANAGE 相当（金額マスクなし）として扱う。1-δ Controller 層で
- * 権限グループサービス導入後に本サービスのコンストラクタへ inject し、判定を厳密化する。
- * 本独自判断は申し送り事項として §申し送り に明記する。</p>
+ * <p><strong>DEPUTY_ADMIN(VIEW) の判定について（Phase 2-α-3 厳密化済）</strong>:
+ * {@code UserScopeRoleSnapshot} は「DEPUTY_ADMIN(MANAGE) 系」と「DEPUTY_ADMIN(VIEW) 系」を
+ * 区別しないため、設計書 §5.5 で求められる「VIEW のみ → 金額マスク」を完全再現するには、
+ * 別途「権限グループ {@code PROPERTY_HISTORY_MANAGE} を保有するか」の照会が必要となる。
+ * 本サービスは {@link PermissionGroupService#hasPermission(Long, String, Long, String)} を
+ * 経由して当該パーミッション保有有無を判定し、保有時は全表示・非保有時は金額マスクへ分岐する。
+ * permission 定義は Flyway V61.015 で {@code PROPERTY_HISTORY_MANAGE} /
+ * {@code PROPERTY_HISTORY_VIEW} を投入済（DEPUTY_ADMIN は天井のみ、ADMIN は is_default=1）。</p>
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PropertyWorkPackageMaskingService {
+
+    /** F09.13 物件履歴台帳 — 全表示権限のパーミッション名（V61.015 で投入）。 */
+    private static final String PERMISSION_PROPERTY_HISTORY_MANAGE = "PROPERTY_HISTORY_MANAGE";
+
+    private final PermissionGroupService permissionGroupService;
 
     /** マスク文字列（金額以外の文字列フィールド用）。設計書 §5.5「●●●円」の表示形式に準拠。 */
     private static final String MASK_STRING = "●●●";
@@ -80,11 +90,12 @@ public class PropertyWorkPackageMaskingService {
      *
      * @param entity         対象パッケージ
      * @param vendor         紐付く業者（null 可。null の場合は vendor フィールドがすべて null）
+     * @param viewerUserId   閲覧者のユーザーID（DEPUTY_ADMIN MANAGE 権限照会で利用、null 可: 匿名相当）
      * @param viewerSnapshot 閲覧者のスコープロールスナップショット
      * @return マスク後のビュー
      */
     public MaskedView applyMasking(PropertyWorkPackageEntity entity, VendorEntity vendor,
-                                   UserScopeRoleSnapshot viewerSnapshot) {
+                                   Long viewerUserId, UserScopeRoleSnapshot viewerSnapshot) {
         if (entity == null) {
             return MaskedView.hidden();
         }
@@ -93,7 +104,7 @@ public class PropertyWorkPackageMaskingService {
             return MaskedView.hidden();
         }
         boolean canViewAmount = canViewAmount(entity.getVisibility(), entity.getScopeType(),
-                entity.getScopeId(), viewerSnapshot);
+                entity.getScopeId(), viewerUserId, viewerSnapshot);
 
         Long estimated = canViewAmount ? entity.getEstimatedAmount() : null;
         Long contract = canViewAmount ? entity.getContractAmount() : null;
@@ -149,13 +160,14 @@ public class PropertyWorkPackageMaskingService {
     /**
      * 金額閲覧可否を判定する。設計書 §5.5 マトリクス完全準拠。
      *
-     * <p>SystemAdmin / ADMIN は常に閲覧可。DEPUTY_ADMIN は MANAGE 権限グループ保有時のみ
-     * 全表示（1-β 時点では暫定的に MANAGE 相当として扱う、本ヘッダ JavaDoc 参照）。
+     * <p>SystemAdmin / ADMIN は常に閲覧可。DEPUTY_ADMIN は権限グループ経由で
+     * {@code PROPERTY_HISTORY_MANAGE} を保有する場合のみ全表示、保有しない（VIEW 相当）場合は
+     * 金額マスク（Phase 2-α-3 で {@link PermissionGroupService#hasPermission} により厳密判定）。
      * MEMBER は visibility=MEMBERS_ONLY 時のみ全表示、それ以外はマスク。
      * SUPPORTER は MEMBER に準じるが MEMBERS_ONLY/MEMBERS_MASKED は不可視（{@link #isVisible} で除外）。</p>
      */
     private boolean canViewAmount(WorkPackageVisibility visibility, String scopeType, Long scopeId,
-                                  UserScopeRoleSnapshot snapshot) {
+                                  Long userId, UserScopeRoleSnapshot snapshot) {
         if (snapshot.isSystemAdmin()) {
             return true;
         }
@@ -168,9 +180,10 @@ public class PropertyWorkPackageMaskingService {
             return true;
         }
         if (ROLE_DEPUTY_ADMIN.equals(role)) {
-            // 1-β 時点では権限グループサービス未配線のため、MANAGE 相当として扱う暫定実装。
-            // 1-δ で {@code permissionGroupService.has(...) ? true : false} に差し替える。
-            return true;
+            // Phase 2-α-3: 権限グループ経由で PROPERTY_HISTORY_MANAGE を保有する場合のみ全表示。
+            // 保有しない（VIEW のみ）場合は金額マスクとし、設計書 §5.5 マトリクスを忠実に再現する。
+            return permissionGroupService.hasPermission(userId, scopeType, scopeId,
+                    PERMISSION_PROPERTY_HISTORY_MANAGE);
         }
         if (ROLE_MEMBER.equals(role)) {
             // MEMBER は MEMBERS_ONLY のみ全表示、それ以外（MEMBERS_MASKED/PUBLIC_MASKED）はマスク。
