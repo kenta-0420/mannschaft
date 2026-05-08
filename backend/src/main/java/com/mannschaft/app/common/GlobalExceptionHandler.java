@@ -1,8 +1,12 @@
 package com.mannschaft.app.common;
 
+import com.mannschaft.app.errorreport.ErrorReportSeverity;
+import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
+import com.mannschaft.app.errorreport.service.ErrorReportService;
 import com.mannschaft.app.todo.exception.MilestoneLockedException;
-import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -25,10 +29,38 @@ import java.util.Map;
  */
 @Slf4j
 @RestControllerAdvice
-@RequiredArgsConstructor
 public class GlobalExceptionHandler {
 
     private final MessageSource messageSource;
+
+    /**
+     * F10.6 Phase 10-β-1 — error_reports への記録経路。
+     * ObjectProvider 経由で遅延解決し、未配線時（既存ユニットテストなど）はスキップする。
+     */
+    private final ObjectProvider<ErrorReportService> errorReportServiceProvider;
+
+    /**
+     * F10.6 Phase 10-β-1 — Slack エスカレーション通知。
+     */
+    private final ObjectProvider<ErrorReportNotifier> errorReportNotifierProvider;
+
+    /**
+     * 既存ユニットテスト互換コンストラクタ（@RequiredArgsConstructor 同等）。
+     */
+    public GlobalExceptionHandler(MessageSource messageSource) {
+        this(messageSource, null, null);
+    }
+
+    /**
+     * Spring が自動配線するコンストラクタ。
+     */
+    public GlobalExceptionHandler(MessageSource messageSource,
+                                  ObjectProvider<ErrorReportService> errorReportServiceProvider,
+                                  ObjectProvider<ErrorReportNotifier> errorReportNotifierProvider) {
+        this.messageSource = messageSource;
+        this.errorReportServiceProvider = errorReportServiceProvider;
+        this.errorReportNotifierProvider = errorReportNotifierProvider;
+    }
 
     /**
      * ErrorCode ごとの HttpStatus 個別マッピング。
@@ -267,12 +299,24 @@ public class GlobalExceptionHandler {
     /**
      * 業務例外ハンドラー。
      * F11.3: resolveMessage() でロケールに応じた多言語メッセージに解決する。
+     *
+     * <p>F10.6 Phase 10-β-1: HTTP 5xx を返すケース（ErrorCode.severity=ERROR で
+     * 個別マッピングが存在しないか 500 を返す場合）のみ error_reports に severity=MEDIUM で
+     * 記録する。4xx を返す通常の業務エラーは記録しない（設計書 §5.2）。</p>
      */
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex) {
+    public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex,
+                                                                  HttpServletRequest request) {
         ErrorCode errorCode = ex.getErrorCode();
         String message = resolveMessage(errorCode);
         log.warn("BusinessException: code={}, message={}", errorCode.getCode(), message);
+
+        HttpStatus status = resolveHttpStatus(errorCode);
+
+        // F10.6: 5xx を返す BusinessException のみ記録対象（severity=MEDIUM）
+        if (status.is5xxServerError()) {
+            recordBackendException(ex, request, ErrorReportSeverity.MEDIUM);
+        }
 
         ErrorResponse body;
         if (ex.getFieldErrors().isEmpty()) {
@@ -283,8 +327,16 @@ public class GlobalExceptionHandler {
                     new ErrorResponse.ErrorDetail(errorCode.getCode(), message, ex.getFieldErrors()));
         }
         return ResponseEntity
-                .status(resolveHttpStatus(errorCode))
+                .status(status)
                 .body(body);
+    }
+
+    /**
+     * 既存ユニットテスト互換用 overload。HttpServletRequest を渡せない既存呼び出し向け。
+     * 内部的に request=null で本体ハンドラに委譲する。
+     */
+    public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex) {
+        return handleBusinessException(ex, null);
     }
 
     /**
@@ -380,9 +432,12 @@ public class GlobalExceptionHandler {
      * <p>{@link com.mannschaft.app.todo.service.MilestoneGateService} が
      * リトライ 1 回でも競合を解消できなかった場合 {@link IllegalStateException} を送出する。
      * メッセージに "競合" を含む場合のみ 409 として扱い、それ以外は上位の予期せぬ例外に委ねる。</p>
+     *
+     * <p>F10.6 Phase 10-β-1: 競合以外（500 を返すケース）は error_reports に記録する（HIGH）。</p>
      */
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
+    public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex,
+                                                             HttpServletRequest request) {
         String msg = ex.getMessage() != null ? ex.getMessage() : "";
         if (msg.contains("競合") || msg.contains("conflict")) {
             log.warn("ゲート更新競合: {}", msg);
@@ -391,20 +446,60 @@ public class GlobalExceptionHandler {
                     .body(ErrorResponse.of(CommonErrorCode.COMMON_003));
         }
         log.error("IllegalStateException", ex);
+        recordBackendException(ex, request, ErrorReportSeverity.HIGH);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_999));
     }
 
     /**
+     * 既存ユニットテスト互換用 overload。
+     */
+    public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
+        return handleIllegalState(ex, null);
+    }
+
+    /**
      * その他の予期しない例外。
+     *
+     * <p>F10.6 Phase 10-β-1: error_reports に severity=HIGH で記録し、Slack エスカレーション通知を送る。</p>
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleUnexpectedException(Exception ex) {
+    public ResponseEntity<ErrorResponse> handleUnexpectedException(Exception ex,
+                                                                    HttpServletRequest request) {
         log.error("Unexpected error occurred", ex);
+        recordBackendException(ex, request, ErrorReportSeverity.HIGH);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_999));
+    }
+
+    /**
+     * 既存ユニットテスト互換用 overload。
+     */
+    public ResponseEntity<ErrorResponse> handleUnexpectedException(Exception ex) {
+        return handleUnexpectedException(ex, null);
+    }
+
+    /**
+     * F10.6 Phase 10-β-1 — error_reports への記録ヘルパー。
+     * Bean 未配線時は静かにスキップする。記録時の例外は元のレスポンスに影響させない。
+     *
+     * <p>バリデーション系（{@link MethodArgumentNotValidException} /
+     * {@link HttpMessageNotReadableException} / {@link MethodArgumentTypeMismatchException} /
+     * {@link MissingServletRequestParameterException}）は呼び出し側でこのメソッドを呼ばないことで
+     * 設計書 §5.2 「バリデーションエラーは記録しない」方針を実現する。</p>
+     */
+    private void recordBackendException(Throwable ex, HttpServletRequest request, ErrorReportSeverity severity) {
+        if (errorReportServiceProvider == null) return;
+        try {
+            ErrorReportService service = errorReportServiceProvider.getIfAvailable();
+            if (service != null) {
+                service.recordBackendException(ex, request, severity);
+            }
+        } catch (Exception inner) {
+            log.warn("recordBackendException failed: severity={}, ex={}", severity, ex.getClass().getName(), inner);
+        }
     }
 
     /**
