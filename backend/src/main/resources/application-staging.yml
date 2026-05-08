@@ -40,3 +40,9 @@ management:
       show-details: when-authorized
       probes:
         enabled: true
+  # F10.5 Phase 10-α 検分指摘 ④ 根治: PrometheusMeterRegistry の登録を明示。
+  # Spring Boot バージョン違いの auto-config 挙動に依存しないよう全環境で明示化する。
+  prometheus:
+    metrics:
+      export:
+        enabled: true

@@ -128,6 +128,14 @@ management:
         http.server.requests: 0.5,0.95,0.99
       slo:
         http.server.requests: 100ms,500ms,1s,2s
+  # F10.5 Phase 10-α 検分指摘 ④ 根治: PrometheusMeterRegistry の登録を全環境で明示する。
+  # 既定で true だが Spring Boot バージョン違いの auto-config 挙動に依存しないよう明示化。
+  # ※ registry を有効にしても endpoint 公開は management.endpoints.web.exposure.include で
+  #   別途制御する（prod では `health` のみに絞る運用を維持）。
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 # 備品ランキング集計バッチ設定（F09.12）
 equipment:

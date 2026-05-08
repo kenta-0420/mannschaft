@@ -38,6 +38,36 @@ public class CacheConfig {
      *
      * <p>個別キャッシュで TTL を変えたい場合は、利用側で {@code Caffeine.newBuilder()} を呼び直すか
      * 本 Bean を {@code @Autowired} した上で再度設定を上書きする。</p>
+     *
+     * <h3>利用ガイド（F10.5 Phase 10-α 検分指摘 ③ 対応）</h3>
+     *
+     * <p>本 Bean が登録されているコンテキストで {@code spring-boot-starter-cache} の
+     * 自動構成 ({@code CacheAutoConfiguration} → {@code CaffeineCacheConfiguration}) が起動すると、
+     * Spring が {@code CacheManager} (CaffeineCacheManager) を自動構築する際に
+     * 本 Bean ({@code Caffeine<Object, Object>}) を Default Builder として採用する。
+     * したがって個別の利用クラスは下記のように {@code @Cacheable} を貼るだけで、
+     * 本 Bean の {@code recordStats()} と {@code expireAfterWrite(10 minutes)} が
+     * そのまま適用された Caffeine Cache を取得できる:</p>
+     *
+     * <pre>{@code
+     * @Service
+     * public class MyService {
+     *     @Cacheable("myCacheName")
+     *     public Foo lookup(String key) { ... }
+     * }
+     * }</pre>
+     *
+     * <p>利用側で個別の TTL や maximumSize を指定したい場合は、
+     * {@code @Cacheable} とは別に {@code CaffeineCacheManager} を {@code @Bean} で
+     * 自前定義し、{@code .setCaffeine(Caffeine.newBuilder().recordStats()....)} のように
+     * 本 Bean をベースに更にビルダーチェインを足す形で上書きする。</p>
+     *
+     * <p>2026-05-07 時点では業務コードに {@code @Cacheable} は未配置である。
+     * 設計書 F10.5 §5.1.4 の方針に従い、Phase 10-β で Redis (Valkey) キャッシュ計測の追加と
+     * 合わせて、業務側で実際に {@code @Cacheable} を貼る対象（Todo/Schedule など読み取り頻度の
+     * 高いマスタ系クエリ）を確定し、具体的な実装ガイドを別途追補する予定。</p>
+     *
+     * @see io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics
      */
     @Bean
     public Caffeine<Object, Object> caffeineConfig() {
