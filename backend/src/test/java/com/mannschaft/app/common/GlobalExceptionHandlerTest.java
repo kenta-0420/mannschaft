@@ -4,6 +4,9 @@ import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Path;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -21,12 +24,15 @@ import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -483,6 +489,51 @@ class GlobalExceptionHandlerTest {
             GlobalExceptionHandler unwired = new GlobalExceptionHandler(messageSource);
             ResponseEntity<ErrorResponse> resp = unwired.handleUnexpectedException(new RuntimeException("x"));
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        @Test
+        @DisplayName("F10.6 後続-①: ConstraintViolationException は recordBackendException が呼ばれない")
+        void constraintViolation_isNotRecorded() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
+
+            // jakarta.validation.ConstraintViolation は final な実装なので mock する
+            ConstraintViolation<?> v = mock(ConstraintViolation.class);
+            Path path = mock(Path.class);
+            when(path.toString()).thenReturn("listJobs.page");
+            when(v.getPropertyPath()).thenReturn(path);
+            when(v.getMessage()).thenReturn("must be greater than or equal to 1");
+
+            ConstraintViolationException ex =
+                    new ConstraintViolationException("validation failed", Set.of(v));
+
+            ResponseEntity<ErrorResponse> resp = handler.handleConstraintViolation(ex);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(resp.getBody()).isNotNull();
+            assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_001");
+            assertThat(resp.getBody().getError().getFieldErrors()).hasSize(1);
+            assertThat(resp.getBody().getError().getFieldErrors().get(0).getField()).isEqualTo("page");
+            // 設計書 F10.6 §5.2: バリデーションエラーは error_reports に記録しない
+            verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
+            verify(service, never()).recordBackendException(any(), anyString(), anyString(), anyString(), anyString(), any());
+        }
+
+        @Test
+        @DisplayName("F10.6 後続-①: HandlerMethodValidationException も recordBackendException が呼ばれない")
+        void handlerMethodValidation_isNotRecorded() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
+
+            HandlerMethodValidationException ex = mock(HandlerMethodValidationException.class);
+            when(ex.getMessage()).thenReturn("validation failed");
+
+            ResponseEntity<ErrorResponse> resp = handler.handleHandlerMethodValidation(ex);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_001");
+            verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
+            verify(service, never()).recordBackendException(any(), anyString(), anyString(), anyString(), anyString(), any());
         }
     }
 }

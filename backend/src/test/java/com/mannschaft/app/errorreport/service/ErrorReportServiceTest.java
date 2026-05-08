@@ -71,6 +71,8 @@ class ErrorReportServiceTest {
     private ErrorReportAiAnalysisService aiAnalysisService;
     @Mock
     private com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository aiAnalysisRepository;
+    @Mock
+    private ErrorReportAsyncExecutor asyncExecutor;
 
     @InjectMocks
     private ErrorReportService service;
@@ -373,141 +375,56 @@ class ErrorReportServiceTest {
     }
 
     // ========================================
-    // F10.6 Phase 10-β-1 — recordBackendException
+    // F10.6 Phase 10-β-1 — recordBackendException 公開 API（Executor 委譲）
+    //
+    // F10.5/F10.6 Phase 10-β 後続-⑥: 集約ロジック本体は ErrorReportAsyncExecutor に
+    // 切り出された（@Async self-invocation バグ根治）。本テストでは公開 API が
+    // Executor へ正しく委譲することのみを検証する。集約ロジックの単体テストは
+    // {@link ErrorReportAsyncExecutorTest} を参照。
     // ========================================
 
     @Nested
-    @DisplayName("recordBackendException (F10.6 Phase 10-β-1)")
+    @DisplayName("recordBackendException 公開 API (F10.6 Phase 10-β-1 / 後続-⑥)")
     class RecordBackendException {
 
         @Test
-        @DisplayName("新規例外: status=NEW で error_reports に保存され、HIGH 以上は Slack 通知される")
-        void newException_savedAsNewAndNotifiedWhenHigh() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
-                    .willReturn(Optional.empty());
-            given(errorReportRepository.save(any(ErrorReportEntity.class)))
-                    .willAnswer(inv -> inv.getArgument(0));
-
-            RuntimeException ex = new RuntimeException("boom");
-            ErrorReportEntity result = service.recordBackendException(ex, null, ErrorReportSeverity.HIGH);
-
-            assertThat(result.getStatus()).isEqualTo(ErrorReportStatus.NEW);
-            assertThat(result.getSeverity()).isEqualTo(ErrorReportSeverity.HIGH);
-            assertThat(result.getErrorMessage()).contains("RuntimeException");
-            assertThat(result.getErrorMessage()).contains("boom");
-            assertThat(result.getErrorHash()).isNotBlank();
-            assertThat(result.getErrorHash()).hasSize(64); // SHA-256 hex
-            assertThat(result.getOccurrenceCount()).isEqualTo(1);
-            assertThat(result.getAffectedUserCount()).isZero();
-            // HIGH 以上は Slack + SYSTEM_ADMIN 通知
-            verify(errorReportNotifier).notifySlack(any(ErrorReportEntity.class));
-            verify(errorReportNotifier).notifySystemAdmins(any(ErrorReportEntity.class));
-        }
-
-        @Test
-        @DisplayName("MEDIUM severity の新規例外は Slack/SYSTEM_ADMIN 通知が走らない")
-        void newException_notNotifiedWhenMedium() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
-                    .willReturn(Optional.empty());
-            given(errorReportRepository.save(any(ErrorReportEntity.class)))
-                    .willAnswer(inv -> inv.getArgument(0));
-
-            service.recordBackendException(new IllegalArgumentException("bad"),
-                    null, ErrorReportSeverity.MEDIUM);
-
-            verify(errorReportNotifier, never()).notifySlack(any());
-            verify(errorReportNotifier, never()).notifySystemAdmins(any());
-        }
-
-        @Test
-        @DisplayName("requestId は MDC から取得して error_reports.request_id に積まれる")
-        void requestId_isReadFromMdc() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
-                    .willReturn(Optional.empty());
-            given(errorReportRepository.save(any(ErrorReportEntity.class)))
-                    .willAnswer(inv -> inv.getArgument(0));
-
-            org.slf4j.MDC.put("requestId", "req-xyz");
-            try {
-                ErrorReportEntity saved = service.recordBackendException(
-                        new RuntimeException("x"), null, ErrorReportSeverity.MEDIUM);
-                assertThat(saved.getRequestId()).isEqualTo("req-xyz");
-            } finally {
-                org.slf4j.MDC.clear();
-            }
-        }
-
-        @Test
-        @DisplayName("エラーハッシュは ex クラス名 + 先頭スタックフレームから計算される（同一例外で同一ハッシュ）")
-        void errorHash_isStable() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
-                    .willReturn(Optional.empty());
-            given(errorReportRepository.save(any(ErrorReportEntity.class)))
-                    .willAnswer(inv -> inv.getArgument(0));
-
-            // 同じスタックトレースを持つ 2 つの例外を作る
-            RuntimeException ex1 = makeException("at A");
-            RuntimeException ex2 = makeException("at A");
-
-            ErrorReportEntity r1 = service.recordBackendException(ex1, null, ErrorReportSeverity.LOW);
-            ErrorReportEntity r2 = service.recordBackendException(ex2, null, ErrorReportSeverity.LOW);
-
-            assertThat(r1.getErrorHash()).isEqualTo(r2.getErrorHash());
-        }
-
-        private RuntimeException makeException(String msg) {
-            RuntimeException ex = new RuntimeException(msg);
-            ex.setStackTrace(new StackTraceElement[]{
-                    new StackTraceElement("com.mannschaft.app.Foo", "bar", "Foo.java", 10)
-            });
-            return ex;
-        }
-
-        @Test
-        @DisplayName("HttpServletRequest 経由で pageUrl/userAgent/ipAddress が取得される")
-        void requestFields_areExtracted() {
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
-                    .willReturn(Optional.empty());
-            given(errorReportRepository.save(any(ErrorReportEntity.class)))
-                    .willAnswer(inv -> inv.getArgument(0));
-
-            jakarta.servlet.http.HttpServletRequest req =
-                    org.mockito.Mockito.mock(jakarta.servlet.http.HttpServletRequest.class);
-            given(req.getRequestURI()).willReturn("/api/v1/foo");
-            given(req.getHeader("User-Agent")).willReturn("UA-1");
-            given(req.getHeader("X-Forwarded-For")).willReturn("203.0.113.1, 10.0.0.1");
-
-            ErrorReportEntity saved = service.recordBackendException(
-                    new RuntimeException("e"), req, ErrorReportSeverity.MEDIUM);
-
-            assertThat(saved.getPageUrl()).isEqualTo("/api/v1/foo");
-            assertThat(saved.getUserAgent()).isEqualTo("UA-1");
-            assertThat(saved.getIpAddress()).isEqualTo("203.0.113.1");
-        }
-
-        @Test
-        @DisplayName("既存 RESOLVED と同一ハッシュ: REOPENED に遷移し regression 通知が走る")
-        void existing_resolved_triggersRegression() {
-            ErrorReportEntity existing = ErrorReportEntity.builder()
-                    .errorMessage("dup")
-                    .pageUrl("/p")
-                    .occurredAt(LocalDateTime.now())
-                    .status(ErrorReportStatus.RESOLVED)
-                    .severity(ErrorReportSeverity.HIGH)
-                    .errorHash("h")
-                    .occurrenceCount(5)
-                    .affectedUserCount(1)
-                    .firstOccurredAt(LocalDateTime.now())
-                    .lastOccurredAt(LocalDateTime.now())
-                    .build();
-            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
-                    .willReturn(Optional.of(existing));
-
+        @DisplayName("F10.5/F10.6 後続-⑥: 公開 API recordBackendException(HttpServletRequest) は戻り値 null かつ Executor へ委譲する")
+        void publicApi_returnsNull_andDelegatesToExecutor() {
+            // 単体テストでは @Async は意味を持たないため、Executor をモック化して委譲のみ検証する。
             ErrorReportEntity result = service.recordBackendException(
-                    new RuntimeException("re"), null, ErrorReportSeverity.HIGH);
+                    new RuntimeException("e"), null, ErrorReportSeverity.MEDIUM);
 
-            assertThat(result.getStatus()).isEqualTo(ErrorReportStatus.REOPENED);
-            verify(errorReportNotifier).notifyRegression(any(ErrorReportEntity.class));
+            assertThat(result).isNull();
+            verify(asyncExecutor).recordBackendException(
+                    any(Throwable.class),
+                    isNull(),    // pageUrl
+                    isNull(),    // userAgent
+                    isNull(),    // ipAddress
+                    org.mockito.ArgumentMatchers.any(),  // requestId（MDC 経由、空なら null）
+                    eq(ErrorReportSeverity.MEDIUM));
+            // 集約・保存ロジックは Executor 内に移動済み: Service 側で Repository は呼ばない
+            verify(errorReportRepository, never()).save(any(ErrorReportEntity.class));
+        }
+
+        @Test
+        @DisplayName("F10.5/F10.6 後続-⑥: pageUrl 直渡しオーバーロードも Executor へそのまま委譲する")
+        void publicApi_directOverload_delegatesToExecutor() {
+            service.recordBackendException(
+                    new RuntimeException("slow"),
+                    "/api/v1/users/{id}",
+                    "UA-1",
+                    "203.0.113.1",
+                    "rid-99",
+                    ErrorReportSeverity.HIGH);
+
+            verify(asyncExecutor).recordBackendException(
+                    any(Throwable.class),
+                    eq("/api/v1/users/{id}"),
+                    eq("UA-1"),
+                    eq("203.0.113.1"),
+                    eq("rid-99"),
+                    eq(ErrorReportSeverity.HIGH));
+            verify(errorReportRepository, never()).save(any(ErrorReportEntity.class));
         }
     }
 }

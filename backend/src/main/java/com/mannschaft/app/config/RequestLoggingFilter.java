@@ -13,6 +13,7 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerMapping;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -149,24 +150,48 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             // F10.5 Phase 10-β: error_ms 超過は Slack 通知 + error_reports に severity=HIGH で記録
             // ログ出力後・MDC クリア後に実施することで、内部処理の例外で MDC が漏れないようにする
             if (durationMs >= errorMs) {
-                fireSlowRequestAlert(method, path, durationMs, requestId);
+                // F10.5 Phase 10-β 後続-②: Slow リクエストのクールダウンキー / error_reports.page_url
+                // を URI テンプレート化（/api/v1/users/{id}）してから notifier / service に渡す。
+                // これにより同一エンドポイントが ID 違いで連続発生しても 1 分間にアラートが氾濫しない。
+                String templatePath = resolveTemplatePath(request, path);
+                fireSlowRequestAlert(method, templatePath, durationMs, requestId, request);
             }
         }
     }
 
     /**
+     * F10.5 Phase 10-β 後続-②: Spring MVC の {@code BEST_MATCHING_PATTERN_ATTRIBUTE} 属性から
+     * URI テンプレート（{@code /api/v1/users/{id}}）を取り出す。フィルターは MVC 処理後に finally で
+     * 走るため通常は属性がセット済みだが、handler 解決前にレスポンスが書かれた場合や 404 等の
+     * static resource 経路では属性が無いため raw path にフォールバックする。
+     */
+    static String resolveTemplatePath(HttpServletRequest request, String rawPath) {
+        Object attr = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        if (attr instanceof String s && !s.isBlank()) {
+            return s;
+        }
+        // フォールバック: raw path のまま使う（404 / 静的リソース等のケース）
+        log.debug("BEST_MATCHING_PATTERN_ATTRIBUTE 未セット、raw path にフォールバック: {}", rawPath);
+        return rawPath;
+    }
+
+    /**
      * F10.5 Phase 10-β: 10秒超のリクエストに対して
      * {@link ErrorReportNotifier#notifySlowRequest(String, String, long, String)} と
-     * {@link ErrorReportService#recordBackendException(Throwable, HttpServletRequest, ErrorReportSeverity)}
-     * を呼び出す。Bean 未配線（テストなど）の場合は静かにスキップする。
+     * {@link ErrorReportService#recordBackendException} を呼び出す。
+     * Bean 未配線（テストなど）の場合は静かにスキップする。
+     *
+     * <p>F10.5 Phase 10-β 後続-④: pageUrl は URI テンプレート化済みの値を直接渡し、
+     * {@code error_reports.page_url} が "backend" 固定で保存されないようにする。</p>
      */
-    private void fireSlowRequestAlert(String method, String path, long durationMs, String requestId) {
+    private void fireSlowRequestAlert(String method, String templatePath, long durationMs,
+                                       String requestId, HttpServletRequest request) {
         try {
             ErrorReportNotifier notifier = errorReportNotifierProvider != null
                     ? errorReportNotifierProvider.getIfAvailable()
                     : null;
             if (notifier != null) {
-                notifier.notifySlowRequest(method, path, durationMs, requestId);
+                notifier.notifySlowRequest(method, templatePath, durationMs, requestId);
             }
 
             ErrorReportService service = errorReportServiceProvider != null
@@ -176,13 +201,24 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                 // 設計書 F10.5 §5.1.2 / F10.6 §5.2: 遅延リクエストは severity=HIGH で記録
                 SlowRequestException synthetic = new SlowRequestException(
                         String.format("Request took %d ms (threshold=%d): %s %s",
-                                durationMs, properties.getRequest().getErrorMs(), method, path));
-                service.recordBackendException(synthetic, null, ErrorReportSeverity.HIGH);
+                                durationMs, properties.getRequest().getErrorMs(), method, templatePath));
+                String userAgent = request != null ? request.getHeader("User-Agent") : null;
+                String forwarded = request != null ? request.getHeader("X-Forwarded-For") : null;
+                String ipAddress = null;
+                if (request != null) {
+                    ipAddress = (forwarded != null && !forwarded.isBlank())
+                            ? forwarded.split(",")[0].trim()
+                            : request.getRemoteAddr();
+                }
+                // F10.5 Phase 10-β 後続-④: pageUrl 直渡しオーバーロードを使い、URI テンプレートで保存する
+                service.recordBackendException(
+                        synthetic, templatePath, userAgent, ipAddress, requestId,
+                        ErrorReportSeverity.HIGH);
             }
         } catch (Exception e) {
             // 通知・記録の失敗でリクエスト本体に影響を出さない
             log.warn("Slow request alert failed: method={}, path={}, durationMs={}",
-                    method, path, durationMs, e);
+                    method, templatePath, durationMs, e);
         }
     }
 
