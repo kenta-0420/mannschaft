@@ -415,6 +415,57 @@ public class ErrorReportNotifier {
     }
 
     /**
+     * F10.6 §5.6-③ — 集約サマリ通知。
+     *
+     * <p>{@link com.mannschaft.app.errorreport.batch.ErrorAggregationFlushBatch} が 5 分毎に呼び、
+     * 「直近 5 分で N 件発生」と 1 通の Slack メッセージにまとめて送信する。
+     * 本メソッドはクールダウンチェックをしない（バッチ自身が 5 分間隔のため重複は発生しない）。</p>
+     *
+     * <p>渡された Map が空の場合は何もしない（バッチ側でフィルタ済み想定だが二重防衛）。
+     * Slack Webhook URL が空の場合も送信しない。</p>
+     *
+     * @param entries error_hash → AggregatedEntry のマップ（occurrenceCount &gt;= 2 の entry のみ想定）
+     */
+    @Async("event-pool")
+    public void notifyAggregatedSummary(Map<String, com.mannschaft.app.errorreport.service.ErrorReportAggregator.AggregatedEntry> entries) {
+        if (entries == null || entries.isEmpty()) return;
+        if (slackWebhookUrl == null || slackWebhookUrl.isBlank()) return;
+        try {
+            int errorTypeCount = entries.size();
+            long totalOccurrences = entries.values().stream()
+                    .mapToLong(com.mannschaft.app.errorreport.service.ErrorReportAggregator.AggregatedEntry::occurrenceCount)
+                    .sum();
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format(":bar_chart: *直近5分のエラー集約: %d種のエラーが計%d回発生*%n",
+                    errorTypeCount, totalOccurrences));
+            // 詳細は最大 10 件まで（Slack メッセージ過大化防止）
+            int shown = 0;
+            for (Map.Entry<String, com.mannschaft.app.errorreport.service.ErrorReportAggregator.AggregatedEntry> e : entries.entrySet()) {
+                if (shown >= 10) {
+                    sb.append(String.format("  …他 %d 種省略%n", entries.size() - shown));
+                    break;
+                }
+                com.mannschaft.app.errorreport.service.ErrorReportAggregator.AggregatedEntry entry = e.getValue();
+                String hashShort = entry.errorHash() != null && entry.errorHash().length() >= 8
+                        ? entry.errorHash().substring(0, 8) : entry.errorHash();
+                String severityLabel = entry.severity() != null ? entry.severity().name() : "-";
+                String message = ErrorReportService.truncate(entry.message(), 120);
+                sb.append(String.format("  - [%s] hash:%s (%d回): %s%n",
+                        severityLabel, hashShort, entry.occurrenceCount(),
+                        message != null ? message : "(no message)"));
+                shown++;
+            }
+            String payload = objectMapper.writeValueAsString(Map.of("text", sb.toString()));
+            restClient.post().uri(slackWebhookUrl)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(payload)
+                    .retrieve().toBodilessEntity();
+        } catch (Exception e) {
+            log.warn("集約サマリ通知送信失敗: entryCount={}", entries.size(), e);
+        }
+    }
+
+    /**
      * エラーレポート解決時の報告者通知。user_id が非NULLのレポートに対してプッシュ通知を送信する。
      *
      * @param report エラーレポートエンティティ
