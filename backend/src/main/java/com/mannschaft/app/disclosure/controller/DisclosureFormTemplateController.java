@@ -20,8 +20,13 @@ import java.util.List;
  * カスタム様式の作成 / 更新 / 削除は Phase 3 で別途実装する。</p>
  *
  * <p>ベース URL: {@code /api/v1/disclosure-templates}（システム提供 + ユーザー組織のカスタム統合）。
- * 当該ユーザーの所属組織コンテキストは {@code organizationId} クエリで明示する。
+ * 当該ユーザーの所属組織コンテキストは {@code organizationId} クエリで明示する（必須）。
  * 認証だけ通れば呼べるが、Service 層で当該組織のメンバーシップが検証される。</p>
+ *
+ * <p><strong>権限制御</strong>: 本フェーズでは {@link SecurityUtils#getCurrentUserId()} による認証ガードのみ。
+ * 設計書 §2 で要求される ADMIN / DEPUTY_ADMIN(DISCLOSURE_VIEW) 判定は Phase 2-β-5 以降で
+ * permissionGroupService 経由で実装する。
+ * FIXME(Phase 2-β-5): role/permission チェックを追加すること。</p>
  */
 @RestController
 @RequestMapping("/api/v1/disclosure-templates")
@@ -33,32 +38,28 @@ public class DisclosureFormTemplateController {
     /**
      * 利用可能な様式一覧を取得する。
      *
-     * <p>{@code organizationId} 指定時は当該組織のカスタム様式を含む。未指定時はシステム提供のみ。
-     * FIXME: Phase 2-β-5 以降、ログインユーザーの所属組織から自動解決する仕組みを追加する。
-     * 本フェーズでは ADMIN フロント側で明示指定する想定。</p>
+     * <p>{@code organizationId} は必須。当該組織のカスタム様式 + システム提供様式を返す。
+     * クロステナント遮断のため必ず明示指定すること。</p>
      */
     @GetMapping
     public ApiResponse<List<DisclosureFormTemplateResponse>> listAvailable(
             @RequestParam(value = "prefectureCode", required = false) String prefectureCode,
-            @RequestParam(value = "organizationId", required = false) Long organizationId) {
+            @RequestParam(value = "organizationId") Long organizationId) {
         // 認証ガード（未認証は SecurityUtils が COMMON_000 を投げる）
         SecurityUtils.getCurrentUserId();
-        String scopeType = organizationId != null ? "ORGANIZATION" : null;
-        return ApiResponse.of(templateService.listAvailable(scopeType, organizationId, prefectureCode));
+        return ApiResponse.of(templateService.listAvailable("ORGANIZATION", organizationId, prefectureCode));
     }
 
     /**
      * 様式テンプレート詳細を取得する。
      *
-     * <p>カスタム様式の場合、 {@code organizationId} を明示することで Service 層が
-     * クロステナント遮断を行う。指定なしの場合システム提供のみ閲覧可。</p>
+     * <p>{@code organizationId} は必須。Service 層でクロステナント遮断を行う。</p>
      */
     @GetMapping("/{templateId}")
     public ApiResponse<DisclosureFormTemplateResponse> get(
             @PathVariable("templateId") Long templateId,
-            @RequestParam(value = "organizationId", required = false) Long organizationId) {
+            @RequestParam(value = "organizationId") Long organizationId) {
         SecurityUtils.getCurrentUserId();
-        String scopeType = organizationId != null ? "ORGANIZATION" : null;
-        return ApiResponse.of(templateService.get(scopeType, organizationId, templateId));
+        return ApiResponse.of(templateService.get("ORGANIZATION", organizationId, templateId));
     }
 }

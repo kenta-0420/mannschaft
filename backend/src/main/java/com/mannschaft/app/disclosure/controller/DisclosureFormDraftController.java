@@ -28,6 +28,11 @@ import org.springframework.web.bind.annotation.RestController;
  * 重要事項説明書 ドラフト コントローラ（F09.14 Phase 2-β-4）。
  *
  * <p>設計書 §4 ドラフト API に対応。組織スコープのみ提供（{@code /api/v1/organizations/{id}/disclosure-drafts}）。</p>
+ *
+ * <p><strong>権限制御</strong>: 本フェーズでは {@link SecurityUtils#getCurrentUserId()} による認証ガードのみ。
+ * 設計書 §2 で要求される ADMIN / DEPUTY_ADMIN(DISCLOSURE_VIEW) 判定は Phase 2-β-5 以降で
+ * permissionGroupService 経由で実装する。
+ * FIXME(Phase 2-β-5): role/permission チェックを追加すること。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{organizationId}/disclosure-drafts")

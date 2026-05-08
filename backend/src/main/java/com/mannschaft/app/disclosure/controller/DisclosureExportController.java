@@ -38,8 +38,10 @@ import org.springframework.web.bind.annotation.RestController;
  * </ul>
  * </p>
  *
- * <p>FIXME: 権限制御は本フェーズでは認証ガードのみ。Phase 2-β-5 以降で
- * ADMIN / DEPUTY_ADMIN(DISCLOSURE_EXPORT) の判定を組込む。</p>
+ * <p><strong>権限制御</strong>: 本フェーズでは {@link SecurityUtils#getCurrentUserId()} による認証ガードのみ。
+ * 設計書 §2 で要求される ADMIN / DEPUTY_ADMIN(DISCLOSURE_EXPORT/DISCLOSURE_VIEW) 判定は
+ * Phase 2-β-5 以降で permissionGroupService 経由で実装する。
+ * FIXME(Phase 2-β-5): role/permission チェックを追加すること。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{organizationId}")
