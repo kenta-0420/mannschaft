@@ -389,7 +389,10 @@ class ErrorReportServiceTest {
                     .willAnswer(inv -> inv.getArgument(0));
 
             RuntimeException ex = new RuntimeException("boom");
-            ErrorReportEntity result = service.recordBackendException(ex, null, ErrorReportSeverity.HIGH);
+            // F10.5/F10.6 Phase 10-β 後続-⑥: recordBackendException は @Async 化されたため
+            // 戻り値を取りたい単体テストでは内部実装の doRecordBackendException を直接呼ぶ。
+            ErrorReportEntity result = service.doRecordBackendException(
+                    ex, null, null, null, null, ErrorReportSeverity.HIGH);
 
             assertThat(result.getStatus()).isEqualTo(ErrorReportStatus.NEW);
             assertThat(result.getSeverity()).isEqualTo(ErrorReportSeverity.HIGH);
@@ -412,8 +415,8 @@ class ErrorReportServiceTest {
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
-            service.recordBackendException(new IllegalArgumentException("bad"),
-                    null, ErrorReportSeverity.MEDIUM);
+            service.doRecordBackendException(new IllegalArgumentException("bad"),
+                    null, null, null, null, ErrorReportSeverity.MEDIUM);
 
             verify(errorReportNotifier, never()).notifySlack(any());
             verify(errorReportNotifier, never()).notifySystemAdmins(any());
@@ -429,8 +432,8 @@ class ErrorReportServiceTest {
 
             org.slf4j.MDC.put("requestId", "req-xyz");
             try {
-                ErrorReportEntity saved = service.recordBackendException(
-                        new RuntimeException("x"), null, ErrorReportSeverity.MEDIUM);
+                ErrorReportEntity saved = service.doRecordBackendException(
+                        new RuntimeException("x"), null, null, null, null, ErrorReportSeverity.MEDIUM);
                 assertThat(saved.getRequestId()).isEqualTo("req-xyz");
             } finally {
                 org.slf4j.MDC.clear();
@@ -449,8 +452,8 @@ class ErrorReportServiceTest {
             RuntimeException ex1 = makeException("at A");
             RuntimeException ex2 = makeException("at A");
 
-            ErrorReportEntity r1 = service.recordBackendException(ex1, null, ErrorReportSeverity.LOW);
-            ErrorReportEntity r2 = service.recordBackendException(ex2, null, ErrorReportSeverity.LOW);
+            ErrorReportEntity r1 = service.doRecordBackendException(ex1, null, null, null, null, ErrorReportSeverity.LOW);
+            ErrorReportEntity r2 = service.doRecordBackendException(ex2, null, null, null, null, ErrorReportSeverity.LOW);
 
             assertThat(r1.getErrorHash()).isEqualTo(r2.getErrorHash());
         }
@@ -464,25 +467,58 @@ class ErrorReportServiceTest {
         }
 
         @Test
-        @DisplayName("HttpServletRequest 経由で pageUrl/userAgent/ipAddress が取得される")
+        @DisplayName("pageUrl/userAgent/ipAddress 直渡し: error_reports に正しく保存される（後続-④）")
         void requestFields_areExtracted() {
             given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
-            jakarta.servlet.http.HttpServletRequest req =
-                    org.mockito.Mockito.mock(jakarta.servlet.http.HttpServletRequest.class);
-            given(req.getRequestURI()).willReturn("/api/v1/foo");
-            given(req.getHeader("User-Agent")).willReturn("UA-1");
-            given(req.getHeader("X-Forwarded-For")).willReturn("203.0.113.1, 10.0.0.1");
-
-            ErrorReportEntity saved = service.recordBackendException(
-                    new RuntimeException("e"), req, ErrorReportSeverity.MEDIUM);
+            // F10.5/F10.6 Phase 10-β 後続-④: pageUrl 直渡しオーバーロード相当のフィールド設定
+            // を doRecordBackendException で検証する（@Async 化により公開 API は戻り値を返さない）
+            ErrorReportEntity saved = service.doRecordBackendException(
+                    new RuntimeException("e"),
+                    "/api/v1/foo",
+                    "UA-1",
+                    "203.0.113.1",
+                    null,
+                    ErrorReportSeverity.MEDIUM);
 
             assertThat(saved.getPageUrl()).isEqualTo("/api/v1/foo");
             assertThat(saved.getUserAgent()).isEqualTo("UA-1");
             assertThat(saved.getIpAddress()).isEqualTo("203.0.113.1");
+        }
+
+        @Test
+        @DisplayName("F10.5/F10.6 後続-④: pageUrl が null/空のときは 'backend' フォールバック")
+        void pageUrl_fallbackToBackend_whenNull() {
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.empty());
+            given(errorReportRepository.save(any(ErrorReportEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            ErrorReportEntity saved = service.doRecordBackendException(
+                    new RuntimeException("e"), null, null, null, null,
+                    ErrorReportSeverity.MEDIUM);
+
+            assertThat(saved.getPageUrl()).isEqualTo("backend");
+        }
+
+        @Test
+        @DisplayName("F10.5/F10.6 後続-④: URI テンプレート pageUrl が保存される（slow request 想定）")
+        void pageUrl_templateIsPersisted() {
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.empty());
+            given(errorReportRepository.save(any(ErrorReportEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            ErrorReportEntity saved = service.doRecordBackendException(
+                    new RuntimeException("slow"),
+                    "/api/v1/users/{id}",
+                    null, null, "rid-99", ErrorReportSeverity.HIGH);
+
+            assertThat(saved.getPageUrl()).isEqualTo("/api/v1/users/{id}");
+            assertThat(saved.getRequestId()).isEqualTo("rid-99");
         }
 
         @Test
@@ -503,11 +539,30 @@ class ErrorReportServiceTest {
             given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.of(existing));
 
-            ErrorReportEntity result = service.recordBackendException(
-                    new RuntimeException("re"), null, ErrorReportSeverity.HIGH);
+            ErrorReportEntity result = service.doRecordBackendException(
+                    new RuntimeException("re"), null, null, null, null, ErrorReportSeverity.HIGH);
 
             assertThat(result.getStatus()).isEqualTo(ErrorReportStatus.REOPENED);
             verify(errorReportNotifier).notifyRegression(any(ErrorReportEntity.class));
+        }
+
+        @Test
+        @DisplayName("F10.5/F10.6 後続-⑥: 公開 API recordBackendException(HttpServletRequest) は戻り値 null（@Async 化）")
+        void publicApi_returnsNull_dueToAsync() {
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.empty());
+            given(errorReportRepository.save(any(ErrorReportEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            // 単体テストでは @Async は同期実行（プロキシなし）。
+            // ただし戻り値仕様としては「呼び出し側スレッドからは結果を取れない」ことを担保する。
+            ErrorReportEntity result = service.recordBackendException(
+                    new RuntimeException("e"), null, ErrorReportSeverity.MEDIUM);
+
+            assertThat(result).isNull();
+            // 内部の非同期メソッドは呼ばれて save まで進んでいる（同期テスト時）
+            verify(errorReportRepository, org.mockito.Mockito.atLeastOnce())
+                    .save(any(ErrorReportEntity.class));
         }
     }
 }

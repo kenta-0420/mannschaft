@@ -28,9 +28,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -171,7 +171,7 @@ class RequestLoggingFilterTest {
     // ============================================================
 
     @Test
-    @DisplayName("ERROR 閾値超過: notifySlowRequest と recordBackendException(HIGH) が呼ばれる")
+    @DisplayName("ERROR 閾値超過: notifySlowRequest と recordBackendException(HIGH) が URI テンプレートで呼ばれる")
     void error_threshold_triggers_notifier_and_service() throws ServletException, IOException {
         // 閾値を低くして発火しやすくする（warn=10, error=20 ms）
         PerformanceMonitoringProperties props = new PerformanceMonitoringProperties();
@@ -189,18 +189,94 @@ class RequestLoggingFilterTest {
 
         RequestLoggingFilter wired = new RequestLoggingFilter(props, notifierProvider, serviceProvider);
 
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/very-very-heavy");
+        // F10.5 Phase 10-β 後続-②: BEST_MATCHING_PATTERN_ATTRIBUTE をセットしてテンプレート化が効くか検証
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/users/123");
+        request.setAttribute(
+                org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE,
+                "/api/v1/users/{id}");
         request.addHeader("X-Request-Id", "rid-100");
+        request.addHeader("User-Agent", "test-agent/1.0");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         FilterChain chain = (req, res) -> sleepQuietly(50); // > error_ms=20
 
         wired.doFilter(request, response, chain);
 
-        verify(notifier).notifySlowRequest(eq("GET"), eq("/api/v1/very-very-heavy"),
+        // ②: notifier には URI テンプレート（/api/v1/users/{id}）が渡る
+        verify(notifier).notifySlowRequest(eq("GET"), eq("/api/v1/users/{id}"),
                 anyLong(), eq("rid-100"));
-        verify(service).recordBackendException(any(RequestLoggingFilter.SlowRequestException.class),
-                isNull(), eq(ErrorReportSeverity.HIGH));
+        // ④: service は新オーバーロードで pageUrl=テンプレート / userAgent / requestId を直渡し
+        verify(service).recordBackendException(
+                any(RequestLoggingFilter.SlowRequestException.class),
+                eq("/api/v1/users/{id}"),
+                eq("test-agent/1.0"),
+                anyString(), // ipAddress（MockHttpServletRequest が 127.0.0.1 を返す）
+                eq("rid-100"),
+                eq(ErrorReportSeverity.HIGH));
+    }
+
+    @Test
+    @DisplayName("F10.5 Phase 10-β 後続-②: 同一テンプレートの異なる ID 間でクールダウンキーが共通化される")
+    void cooldown_key_is_normalized_to_template() throws ServletException, IOException {
+        // 実際の Caffeine クールダウンは ErrorReportNotifier 側に閉じている。
+        // ここでは Filter が「URI テンプレートを notifier に渡す」ことを検証する
+        // （= notifier 側で同一キーになり 1 分以内 2 回目以降は早期 return される）。
+        PerformanceMonitoringProperties props = new PerformanceMonitoringProperties();
+        props.getRequest().setWarnMs(10L);
+        props.getRequest().setErrorMs(20L);
+
+        ErrorReportNotifier notifier = mock(ErrorReportNotifier.class);
+        ErrorReportService service = mock(ErrorReportService.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<ErrorReportNotifier> notifierProvider = mock(ObjectProvider.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<ErrorReportService> serviceProvider = mock(ObjectProvider.class);
+        when(notifierProvider.getIfAvailable()).thenReturn(notifier);
+        when(serviceProvider.getIfAvailable()).thenReturn(service);
+
+        RequestLoggingFilter wired = new RequestLoggingFilter(props, notifierProvider, serviceProvider);
+
+        MockHttpServletRequest req1 = new MockHttpServletRequest("GET", "/api/v1/users/123");
+        req1.setAttribute(
+                org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE,
+                "/api/v1/users/{id}");
+        wired.doFilter(req1, new MockHttpServletResponse(), (q, s) -> sleepQuietly(50));
+
+        MockHttpServletRequest req2 = new MockHttpServletRequest("GET", "/api/v1/users/456");
+        req2.setAttribute(
+                org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE,
+                "/api/v1/users/{id}");
+        wired.doFilter(req2, new MockHttpServletResponse(), (q, s) -> sleepQuietly(50));
+
+        // 2 回とも同じテンプレート文字列で notifier が呼ばれた（=クールダウンキーが共通化される）ことを検証
+        verify(notifier, times(2))
+                .notifySlowRequest(eq("GET"), eq("/api/v1/users/{id}"), anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("F10.5 Phase 10-β 後続-②: BEST_MATCHING_PATTERN_ATTRIBUTE 未セット時は raw path にフォールバック")
+    void fallback_to_raw_path_when_no_pattern_attribute() throws ServletException, IOException {
+        PerformanceMonitoringProperties props = new PerformanceMonitoringProperties();
+        props.getRequest().setWarnMs(10L);
+        props.getRequest().setErrorMs(20L);
+
+        ErrorReportNotifier notifier = mock(ErrorReportNotifier.class);
+        ErrorReportService service = mock(ErrorReportService.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<ErrorReportNotifier> notifierProvider = mock(ObjectProvider.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<ErrorReportService> serviceProvider = mock(ObjectProvider.class);
+        when(notifierProvider.getIfAvailable()).thenReturn(notifier);
+        when(serviceProvider.getIfAvailable()).thenReturn(service);
+
+        RequestLoggingFilter wired = new RequestLoggingFilter(props, notifierProvider, serviceProvider);
+
+        // BEST_MATCHING_PATTERN_ATTRIBUTE 未セット
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/static/asset.png");
+        wired.doFilter(request, new MockHttpServletResponse(), (q, s) -> sleepQuietly(50));
+
+        // raw path にフォールバック
+        verify(notifier).notifySlowRequest(eq("GET"), eq("/static/asset.png"), anyLong(), any());
     }
 
     @Test
@@ -226,7 +302,7 @@ class RequestLoggingFilterTest {
 
         verify(notifier, never()).notifySlowRequest(anyString(), anyString(), anyLong(), any());
         verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
-        verify(service, never()).recordBackendException(any(), isNull(), any());
+        verify(service, never()).recordBackendException(any(), anyString(), anyString(), anyString(), anyString(), any());
     }
 
     @Test
