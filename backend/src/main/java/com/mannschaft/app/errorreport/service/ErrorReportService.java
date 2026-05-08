@@ -34,7 +34,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,6 +76,13 @@ public class ErrorReportService {
     private final ErrorReportAiAnalysisService aiAnalysisService;
     /** F12.5 Phase 2-E — Kanban カードに AI 分析バッジを描画するための判定用。 */
     private final ErrorReportAiAnalysisRepository aiAnalysisRepository;
+    /**
+     * F10.5/F10.6 Phase 10-β 後続-⑥ — @Async プロキシバイパス回避のため、
+     * バックエンド例外の非同期記録処理は別 Bean に切り出している。
+     * 同一クラス内の @Async self-invocation は Spring AOP プロキシをバイパスするため、
+     * 本サービスから DI 経由で Executor を呼ぶことで proxy を確実に通す。
+     */
+    private final ErrorReportAsyncExecutor asyncExecutor;
 
     /**
      * エラーレポートを受信し、重複集約または新規作成する。
@@ -207,22 +213,22 @@ public class ErrorReportService {
      * <p>記録対象は設計書 F10.6 §5.2 の方針に従う:
      * バリデーションエラー（4xx）/ ビジネスエラー（4xx）は呼び出し側で除外すること。</p>
      *
-     * <p>F10.5/F10.6 Phase 10-β 後続フォローアップ:
-     * 内部的に {@link #recordBackendException(Throwable, String, String, String, String, ErrorReportSeverity)}
-     * へ委譲する。本メソッドは同期で {@link HttpServletRequest} から各種属性を抽出し、
-     * 抽出後の値を引数として非同期メソッドへ渡す（HttpServletRequest は非同期スレッドで参照不可のため）。</p>
+     * <p>F10.5/F10.6 Phase 10-β 後続-⑥:
+     * 同期で {@link HttpServletRequest} から各種属性を抽出し、抽出後の値を {@link ErrorReportAsyncExecutor}
+     * へ渡して非同期記録を依頼する（HttpServletRequest は非同期スレッドで参照不可のため）。
+     * Executor を別 Bean として切り出すことで Spring AOP プロキシを確実に通し、
+     * @Async が proxy バイパスで無視される問題を根治した。</p>
      *
      * @param ex       記録対象の例外
      * @param request  HTTP リクエスト（pageUrl / userAgent / ipAddress 抽出用、NULL 可）
      * @param severity 重要度
-     * @return 同期分岐との互換のため、即時に {@code null} を返すことがある
-     *         （実際の記録は非同期スレッドで行われる）
+     * @return 互換のため常に {@code null} を返す（実際の記録は非同期スレッドで行われ、戻り値は取得不可）
      */
     public ErrorReportEntity recordBackendException(Throwable ex,
                                                     HttpServletRequest request,
                                                     ErrorReportSeverity severity) {
         // HttpServletRequest は非同期スレッドへ持ち越せない（リクエストライフサイクル外で属性が無効化される）
-        // ため、呼び出し側スレッドで属性を抽出してから @Async メソッドへ渡す。
+        // ため、呼び出し側スレッドで属性を抽出してから Executor へ渡す。
         String pageUrl = null;
         String userAgent = null;
         String ipAddress = null;
@@ -237,7 +243,7 @@ public class ErrorReportService {
         // requestId は MDC から呼び出し側スレッドで取得しておく
         // （@Async + MdcTaskDecorator で伝播されるが、ここで明示的に拾うことで疎通を保証する）
         String requestId = MDC.get("requestId");
-        recordBackendExceptionAsync(ex, pageUrl, userAgent, ipAddress, requestId, severity);
+        asyncExecutor.recordBackendException(ex, pageUrl, userAgent, ipAddress, requestId, severity);
         return null;
     }
 
@@ -248,6 +254,9 @@ public class ErrorReportService {
      * URI テンプレート化済みの {@code pageUrl} を渡したいケースで使う。
      * {@code HttpServletRequest} を {@code null} で渡す代わりにこちらを使うと、
      * {@code error_reports.page_url} が "backend" 固定にならず実 path で保存される。</p>
+     *
+     * <p>F10.5/F10.6 Phase 10-β 後続-⑥: {@link ErrorReportAsyncExecutor} へ委譲する薄いラッパー。
+     * Executor 側で {@code @Async} が proxy 経由で適用され、別スレッドで実行される。</p>
      *
      * @param ex         記録対象の例外
      * @param pageUrl    pageUrl（URI テンプレートまたは raw path、NULL 可）
@@ -262,146 +271,7 @@ public class ErrorReportService {
                                         String ipAddress,
                                         String requestId,
                                         ErrorReportSeverity severity) {
-        recordBackendExceptionAsync(ex, pageUrl, userAgent, ipAddress, requestId, severity);
-    }
-
-    /**
-     * F10.5/F10.6 Phase 10-β 後続 — 非同期で error_reports に書き込むコア実装。
-     *
-     * <p>{@code @Async("event-pool")} により別スレッドで実行され、本体リクエストの応答を遅らせない。
-     * MDC は {@link com.mannschaft.app.config.AsyncConfig.MdcTaskDecorator} で呼び出し側から伝播される。
-     * 念のため呼び出し側で抽出した {@code requestId} を引数で受け取り、
-     * MDC が空でも記録に残せるようフォールバックさせる。</p>
-     */
-    @Async("event-pool")
-    public void recordBackendExceptionAsync(Throwable ex,
-                                             String pageUrl,
-                                             String userAgent,
-                                             String ipAddress,
-                                             String requestId,
-                                             ErrorReportSeverity severity) {
-        try {
-            doRecordBackendException(ex, pageUrl, userAgent, ipAddress, requestId, severity);
-        } catch (Exception inner) {
-            // 非同期スレッドで投げると拾える人がいないため、ここで握って構造化ログだけ残す。
-            log.warn("非同期 recordBackendException 失敗: severity={}, ex={}",
-                    severity, ex.getClass().getName(), inner);
-        }
-    }
-
-    /**
-     * 旧シグネチャ（HttpServletRequest 経由）と新シグネチャ（属性値直渡し）の共通本体。
-     *
-     * @return 作成または更新されたエラーレポートエンティティ（テスト容易性のため戻り値を保持）
-     */
-    ErrorReportEntity doRecordBackendException(Throwable ex,
-                                                String pageUrl,
-                                                String userAgent,
-                                                String ipAddress,
-                                                String requestId,
-                                                ErrorReportSeverity severity) {
-        String exClassName = ex.getClass().getName();
-        String errorMessage = ex.getMessage() != null
-                ? exClassName + ": " + ex.getMessage()
-                : exClassName;
-        // error_message カラム上限 1000 字
-        if (errorMessage.length() > 1000) {
-            errorMessage = errorMessage.substring(0, 1000);
-        }
-
-        // ハッシュ対象: 例外クラス名 + 先頭スタックフレーム（メソッド単位の集約）
-        String firstFrame = "";
-        StackTraceElement[] stack = ex.getStackTrace();
-        if (stack != null && stack.length > 0) {
-            firstFrame = stack[0].toString();
-        }
-        String errorHash = sha256(exClassName + "|" + firstFrame);
-
-        // pageUrl は呼び出し側で抽出済み（URI テンプレート / raw path / null）。
-        // 設計書 F10.6 §5.2: スロー検知 / 想定外例外いずれの場合も実 path / テンプレートが入る想定。
-        // NULL なら "backend" を入れる（バッチ・スケジューラ等から呼ばれた場合のフォールバック）。
-        String resolvedPageUrl = (pageUrl != null && !pageUrl.isBlank()) ? pageUrl : "backend";
-        // pageUrl カラム上限 2048
-        if (resolvedPageUrl.length() > 2048) {
-            resolvedPageUrl = resolvedPageUrl.substring(0, 2048);
-        }
-        String resolvedUserAgent = userAgent;
-        if (resolvedUserAgent != null && resolvedUserAgent.length() > 500) {
-            resolvedUserAgent = resolvedUserAgent.substring(0, 500);
-        }
-        String resolvedIpAddress = ipAddress;
-        if (resolvedIpAddress != null && resolvedIpAddress.length() > 45) {
-            resolvedIpAddress = resolvedIpAddress.substring(0, 45);
-        }
-
-        // requestId: 引数で渡されていればそちらを優先、無ければ MDC（@Async + MdcTaskDecorator で伝播される）から拾う
-        String resolvedRequestId = (requestId != null && !requestId.isBlank())
-                ? requestId
-                : MDC.get("requestId");
-
-        // stack_trace を 2000 字に切り詰め
-        String stackTrace = renderStackTrace(ex);
-
-        LocalDateTime now = LocalDateTime.now();
-
-        Optional<ErrorReportEntity> existing = errorReportRepository.findByErrorHash(errorHash);
-        if (existing.isPresent()) {
-            ErrorReportEntity report = existing.get();
-
-            if (report.getStatus() == ErrorReportStatus.RESOLVED) {
-                report.reopen(now);
-                report.setWorkflowStage(null);
-                report.setAssigneeId(null);
-                errorReportNotifier.notifyRegression(report);
-                log.info("バックエンド例外リグレッション検知: id={}, hash={}, ex={}",
-                        report.getId(), errorHash, exClassName);
-                return report;
-            }
-
-            if (report.getStatus() != ErrorReportStatus.IGNORED) {
-                ErrorReportSeverity oldSeverity = report.getSeverity();
-                errorReportRepository.incrementOccurrence(errorHash, now, null);
-                ErrorReportEntity updated = errorReportRepository.findByErrorHash(errorHash).orElseThrow();
-                ErrorReportSeverity newSeverity = updated.getSeverity();
-                if (newSeverity.ordinal() > oldSeverity.ordinal()) {
-                    errorReportNotifier.notifyEscalation(updated, oldSeverity, newSeverity);
-                }
-                log.info("バックエンド例外重複集約: id={}, hash={}, count={}, ex={}",
-                        updated.getId(), errorHash, updated.getOccurrenceCount(), exClassName);
-                return updated;
-            }
-        }
-
-        // 新規作成
-        ErrorReportEntity newReport = ErrorReportEntity.builder()
-                .errorMessage(errorMessage)
-                .stackTrace(stackTrace)
-                .pageUrl(resolvedPageUrl)
-                .userAgent(resolvedUserAgent)
-                .userId(null)
-                .organizationId(null)
-                .requestId(resolvedRequestId)
-                .ipAddress(resolvedIpAddress)
-                .occurredAt(now)
-                .status(ErrorReportStatus.NEW)
-                .severity(severity)
-                .errorHash(errorHash)
-                .occurrenceCount(1)
-                .affectedUserCount(0)
-                .firstOccurredAt(now)
-                .lastOccurredAt(now)
-                .build();
-        ErrorReportEntity saved = errorReportRepository.save(newReport);
-
-        // HIGH 以上は Slack + SYSTEM_ADMIN 通知（フロント由来と同じ閾値）
-        if (severity.ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
-            errorReportNotifier.notifySlack(saved);
-            errorReportNotifier.notifySystemAdmins(saved);
-        }
-
-        log.info("バックエンド例外記録: id={}, hash={}, severity={}, ex={}",
-                saved.getId(), errorHash, severity, exClassName);
-        return saved;
+        asyncExecutor.recordBackendException(ex, pageUrl, userAgent, ipAddress, requestId, severity);
     }
 
     /**
@@ -421,29 +291,6 @@ public class ErrorReportService {
         }
         String uri = request.getRequestURI();
         return (uri != null && !uri.isBlank()) ? uri : null;
-    }
-
-    /**
-     * Throwable のスタックトレースを文字列化し、2000 字までに切り詰める。
-     */
-    private String renderStackTrace(Throwable ex) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(ex.getClass().getName());
-        if (ex.getMessage() != null) {
-            sb.append(": ").append(ex.getMessage());
-        }
-        sb.append('\n');
-        StackTraceElement[] stack = ex.getStackTrace();
-        if (stack != null) {
-            for (StackTraceElement frame : stack) {
-                sb.append("\tat ").append(frame.toString()).append('\n');
-                if (sb.length() > 2000) break;
-            }
-        }
-        if (sb.length() > 2000) {
-            return sb.substring(0, 2000);
-        }
-        return sb.toString();
     }
 
     /**
