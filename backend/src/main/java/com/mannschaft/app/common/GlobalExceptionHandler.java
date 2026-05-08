@@ -5,6 +5,8 @@ import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
 import com.mannschaft.app.todo.exception.MilestoneLockedException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
@@ -373,6 +376,40 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * F10.6 Phase 10-β 後続-① — {@code @Validated} 付き controller の引数（path / query / body）の
+     * バリデーション失敗で投げられる {@link ConstraintViolationException} のハンドラ。
+     *
+     * <p>設計書 F10.6 §5.2 表で「バリデーションエラーは error_reports に記録しない」と明示されているため、
+     * 既存の {@link MethodArgumentNotValidException} と同じく {@link #recordBackendException} は呼ばない。
+     * デフォルトの {@link #handleUnexpectedException} に流して severity=HIGH で記録される事故を防ぐ。</p>
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+        List<ErrorResponse.FieldError> fieldErrors = ex.getConstraintViolations()
+                .stream()
+                .map(GlobalExceptionHandler::toFieldError)
+                .toList();
+        log.warn("ConstraintViolationException: {} field error(s)", fieldErrors.size());
+        ErrorResponse body = ErrorResponse.of(CommonErrorCode.COMMON_001, fieldErrors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
+     * Spring 6.1+ の宣言的メソッドパラメータ検証で投げられる
+     * {@link HandlerMethodValidationException} のハンドラ。
+     * controller メソッド引数の {@code @Min} / {@code @NotBlank} 等で発火する。
+     *
+     * <p>{@link ConstraintViolationException} と同じく error_reports には記録しない。</p>
+     */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ErrorResponse> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
+        log.warn("HandlerMethodValidationException: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
+    }
+
+    /**
      * パスパラメータ・リクエストパラメータの型変換エラー。
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
@@ -503,6 +540,20 @@ public class GlobalExceptionHandler {
         } catch (Exception inner) {
             log.warn("recordBackendException failed: severity={}, ex={}", severity, ex.getClass().getName(), inner);
         }
+    }
+
+    /**
+     * {@link ConstraintViolation} を {@link ErrorResponse.FieldError} に変換する。
+     * {@code property path} の最後のノード名をフィールド名として採用する
+     * （例: {@code listJobs.page} → {@code page}）。
+     */
+    private static ErrorResponse.FieldError toFieldError(ConstraintViolation<?> v) {
+        String path = v.getPropertyPath() != null ? v.getPropertyPath().toString() : "";
+        int lastDot = path.lastIndexOf('.');
+        String field = (lastDot >= 0 && lastDot < path.length() - 1)
+                ? path.substring(lastDot + 1)
+                : path;
+        return new ErrorResponse.FieldError(field, v.getMessage());
     }
 
     /**
