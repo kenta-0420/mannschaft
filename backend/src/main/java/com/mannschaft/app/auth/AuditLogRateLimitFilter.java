@@ -24,8 +24,10 @@ import java.util.Map;
  *
  * <p>以下のエンドポイントに対してレートリミットを適用する:</p>
  * <ul>
- *   <li>{@code GET /api/v1/admin/audit-logs}      — 60 req/分（SYSTEM_ADMIN 向け）</li>
- *   <li>{@code GET /api/v1/users/me/audit-logs}   — 30 req/分（一般ユーザー向け）</li>
+ *   <li>{@code GET /api/v1/admin/audit-logs}                  — 60 req/分（SYSTEM_ADMIN 向け）</li>
+ *   <li>{@code GET /api/v1/users/me/audit-logs}               — 30 req/分（一般ユーザー向け）</li>
+ *   <li>{@code GET /api/v1/teams/{teamId}/audit-logs}         — 30 req/分（チームADMIN向け）</li>
+ *   <li>{@code GET /api/v1/organizations/{orgId}/audit-logs}  — 30 req/分（組織ADMIN向け）</li>
  * </ul>
  *
  * <p><b>キャッシュ戦略</b>: Caffeine の {@code expireAfterAccess=10分} + {@code maximumSize=10000}。
@@ -37,7 +39,9 @@ public class AuditLogRateLimitFilter extends OncePerRequestFilter {
     /** エンドポイント別の設定 */
     private enum Endpoint {
         ADMIN_AUDIT_LOGS("/api/v1/admin/audit-logs", "GET", 60),
-        MY_AUDIT_LOGS("/api/v1/users/me/audit-logs", "GET", 30);
+        MY_AUDIT_LOGS("/api/v1/users/me/audit-logs", "GET", 30),
+        TEAM_AUDIT_LOGS("/api/v1/teams/*/audit-logs", "GET", 30),
+        ORGANIZATION_AUDIT_LOGS("/api/v1/organizations/*/audit-logs", "GET", 30);
 
         final String path;
         final String method;
@@ -50,8 +54,17 @@ public class AuditLogRateLimitFilter extends OncePerRequestFilter {
         }
 
         boolean matches(HttpServletRequest request) {
-            return this.path.equals(request.getServletPath())
-                    && this.method.equalsIgnoreCase(request.getMethod());
+            if (!this.method.equalsIgnoreCase(request.getMethod())) return false;
+            String servletPath = request.getServletPath();
+            if (!this.path.contains("*")) {
+                return this.path.equals(servletPath);
+            }
+            // ワイルドカード: prefix*suffix 形式のみサポート
+            int starIdx = this.path.indexOf('*');
+            String prefix = this.path.substring(0, starIdx);
+            String suffix = this.path.substring(starIdx + 1);
+            return servletPath.startsWith(prefix) && servletPath.endsWith(suffix)
+                    && servletPath.length() > prefix.length() + suffix.length();
         }
     }
 

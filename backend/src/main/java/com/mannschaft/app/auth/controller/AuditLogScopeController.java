@@ -4,13 +4,13 @@ import com.mannschaft.app.auth.AuditEventCategory;
 import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.CursorPagedResponse;
-import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,70 +19,33 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 監査ログ参照コントローラー。
- * SYSTEM_ADMIN 向け全ログ参照（オフセット）と一般ユーザー向け自分のログ参照（カーソル）を提供する。
+ * チーム・組織ADMINスコープ監査ログ参照コントローラー。
+ * TEAM/ORGのADMIN以上が自スコープのログのみ参照できる。
  */
 @Tag(name = "監査ログ", description = "F10.3 監査ログ参照")
 @RestController
 @RequiredArgsConstructor
-public class AuditLogAdminController {
+public class AuditLogScopeController {
 
     private final AuditLogService auditLogService;
 
     /**
-     * 全監査ログ一覧を取得する（SYSTEM_ADMIN 専用・オフセットページング）。
+     * チームの監査ログ一覧を取得する（チームADMIN以上・カーソルページング）。
      *
+     * @param teamId         対象チームID
      * @param userId         絞り込みユーザーID
-     * @param targetUserId   絞り込み対象ユーザーID
-     * @param teamId         絞り込みチームID
-     * @param organizationId 絞り込み組織ID
      * @param eventType      イベント種別（カンマ区切りで複数指定可）
-     * @param eventCategory  イベントカテゴリ（複数指定可。eventType と OR 条件でマージ）
-     * @param sessionHash    セッションハッシュ完全一致
+     * @param eventCategory  イベントカテゴリ（複数指定可）
      * @param from           開始日時（ISO 8601）
      * @param to             終了日時（ISO 8601）
-     * @param page           ページ番号（0始まり、デフォルト0）
-     * @param size           ページサイズ（デフォルト20・最大100）
+     * @param cursor         カーソル（前ページ末尾の id 文字列）
+     * @param limit          取得件数（デフォルト20・最大100）
      */
-    @Operation(summary = "監査ログ一覧（SYSTEM_ADMIN）")
-    @GetMapping("/api/v1/admin/audit-logs")
-    public PagedResponse<AuditLogResponse> getAdminLogs(
+    @Operation(summary = "チーム監査ログ一覧（チームADMIN）")
+    @GetMapping("/api/v1/teams/{teamId}/audit-logs")
+    public CursorPagedResponse<AuditLogResponse> getTeamAuditLogs(
+            @PathVariable Long teamId,
             @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) Long targetUserId,
-            @RequestParam(required = false) Long teamId,
-            @RequestParam(required = false) Long organizationId,
-            @RequestParam(required = false) String eventType,
-            @RequestParam(required = false) List<AuditEventCategory> eventCategory,
-            @RequestParam(required = false) String sessionHash,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-
-        Long requestUserId = SecurityUtils.getCurrentUserId();
-        List<String> eventTypes = parseEventTypes(eventType);
-
-        return auditLogService.getAdminLogs(
-                requestUserId,
-                userId, targetUserId, teamId, organizationId,
-                eventTypes, eventCategory, sessionHash,
-                from, to, page, size);
-    }
-
-    /**
-     * 自分の監査ログ一覧を取得する（カーソルページング）。
-     *
-     * @param eventType イベント種別（カンマ区切りで複数指定可）
-     * @param from      開始日時
-     * @param to        終了日時
-     * @param cursor    カーソル（前ページ末尾の id 文字列）
-     * @param limit     取得件数（デフォルト20・最大50）
-     */
-    @Operation(summary = "自分の監査ログ一覧")
-    @GetMapping("/api/v1/users/me/audit-logs")
-    public CursorPagedResponse<AuditLogResponse> getMyLogs(
             @RequestParam(required = false) String eventType,
             @RequestParam(required = false) List<AuditEventCategory> eventCategory,
             @RequestParam(required = false)
@@ -92,11 +55,48 @@ public class AuditLogAdminController {
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") int limit) {
 
-        Long currentUserId = SecurityUtils.getCurrentUserId();
+        Long requestUserId = SecurityUtils.getCurrentUserId();
         List<String> eventTypes = parseEventTypes(eventType);
 
-        return auditLogService.getMyLogs(
-                currentUserId, eventTypes, eventCategory, from, to, cursor, limit);
+        return auditLogService.getTeamAuditLogs(
+                requestUserId, teamId, userId,
+                eventTypes, eventCategory,
+                from, to, cursor, limit);
+    }
+
+    /**
+     * 組織の監査ログ一覧を取得する（組織ADMIN以上・カーソルページング）。
+     *
+     * @param orgId          対象組織ID
+     * @param userId         絞り込みユーザーID
+     * @param eventType      イベント種別（カンマ区切りで複数指定可）
+     * @param eventCategory  イベントカテゴリ（複数指定可）
+     * @param from           開始日時（ISO 8601）
+     * @param to             終了日時（ISO 8601）
+     * @param cursor         カーソル
+     * @param limit          取得件数
+     */
+    @Operation(summary = "組織監査ログ一覧（組織ADMIN）")
+    @GetMapping("/api/v1/organizations/{orgId}/audit-logs")
+    public CursorPagedResponse<AuditLogResponse> getOrganizationAuditLogs(
+            @PathVariable Long orgId,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String eventType,
+            @RequestParam(required = false) List<AuditEventCategory> eventCategory,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int limit) {
+
+        Long requestUserId = SecurityUtils.getCurrentUserId();
+        List<String> eventTypes = parseEventTypes(eventType);
+
+        return auditLogService.getOrganizationAuditLogs(
+                requestUserId, orgId, userId,
+                eventTypes, eventCategory,
+                from, to, cursor, limit);
     }
 
     private List<String> parseEventTypes(String eventType) {
