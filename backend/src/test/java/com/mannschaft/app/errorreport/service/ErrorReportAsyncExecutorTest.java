@@ -40,6 +40,9 @@ class ErrorReportAsyncExecutorTest {
     private ErrorReportRepository errorReportRepository;
     @Mock
     private ErrorReportNotifier errorReportNotifier;
+    /** F10.6 §5.6-③ — 集約バッファ。テストでは Mock を注入し、addOccurrence の呼び出し回数を検証する。 */
+    @Mock
+    private ErrorReportAggregator aggregator;
 
     @InjectMocks
     private ErrorReportAsyncExecutor executor;
@@ -55,6 +58,11 @@ class ErrorReportAsyncExecutorTest {
                     .willReturn(Optional.empty());
             given(errorReportRepository.save(any(ErrorReportEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
+            // F10.6 §5.6-③ — 新規発火は FIRST_OCCURRENCE を返す（即時 Slack 通知が走る分岐）
+            given(aggregator.addOccurrence(org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any()))
+                    .willReturn(ErrorReportAggregator.AggregationResult.FIRST_OCCURRENCE);
 
             RuntimeException ex = new RuntimeException("boom");
             ErrorReportEntity result = executor.doRecordBackendException(
@@ -68,8 +76,28 @@ class ErrorReportAsyncExecutorTest {
             assertThat(result.getErrorHash()).hasSize(64); // SHA-256 hex
             assertThat(result.getOccurrenceCount()).isEqualTo(1);
             assertThat(result.getAffectedUserCount()).isZero();
-            // HIGH 以上は Slack + SYSTEM_ADMIN 通知
+            // HIGH 以上は Slack + SYSTEM_ADMIN 通知（FIRST_OCCURRENCE のとき Slack も走る）
             verify(errorReportNotifier).notifySlack(any(ErrorReportEntity.class));
+            verify(errorReportNotifier).notifySystemAdmins(any(ErrorReportEntity.class));
+        }
+
+        @Test
+        @DisplayName("F10.6 §5.6-③: 新規 HIGH でも Aggregator が BUFFERED を返したら Slack 即時通知は抑制される")
+        void newException_high_butBuffered_skipsSlack() {
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.empty());
+            given(errorReportRepository.save(any(ErrorReportEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(aggregator.addOccurrence(org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any()))
+                    .willReturn(ErrorReportAggregator.AggregationResult.BUFFERED);
+
+            executor.doRecordBackendException(
+                    new RuntimeException("boom"), null, null, null, null, ErrorReportSeverity.HIGH);
+
+            // Slack 抑制（5分毎の集約サマリで送信される）、SYSTEM_ADMIN プッシュは埋没防止のため維持
+            verify(errorReportNotifier, never()).notifySlack(any());
             verify(errorReportNotifier).notifySystemAdmins(any(ErrorReportEntity.class));
         }
 
@@ -183,6 +211,34 @@ class ErrorReportAsyncExecutorTest {
 
             assertThat(saved.getPageUrl()).isEqualTo("/api/v1/users/{id}");
             assertThat(saved.getRequestId()).isEqualTo("rid-99");
+        }
+
+        @Test
+        @DisplayName("F10.6 §5.6-③: 既存 NEW レコードへの重複集約は Aggregator.addOccurrence(BUFFERED 想定) を呼ぶ")
+        void existing_active_increments_aggregator() {
+            ErrorReportEntity existing = ErrorReportEntity.builder()
+                    .errorMessage("dup")
+                    .pageUrl("/p")
+                    .occurredAt(LocalDateTime.now())
+                    .status(ErrorReportStatus.NEW)
+                    .severity(ErrorReportSeverity.MEDIUM)
+                    .errorHash("h")
+                    .occurrenceCount(2)
+                    .affectedUserCount(1)
+                    .firstOccurredAt(LocalDateTime.now())
+                    .lastOccurredAt(LocalDateTime.now())
+                    .build();
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.of(existing));
+
+            executor.doRecordBackendException(
+                    new RuntimeException("dup"), null, null, null, null, ErrorReportSeverity.MEDIUM);
+
+            // Aggregator が呼ばれることだけ検証（戻り値は BUFFERED 想定だが厳密判定は本体テストに譲る）
+            verify(aggregator).addOccurrence(
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any());
         }
 
         @Test

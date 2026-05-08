@@ -330,4 +330,68 @@ class ErrorReportNotifierTest {
             org.mockito.Mockito.verify(objectMapper, times(2)).writeValueAsString(any());
         }
     }
+
+    // ============================================================
+    // notifyAggregatedSummary (F10.6 §5.6-③)
+    // ============================================================
+
+    @org.junit.jupiter.api.Nested
+    @DisplayName("notifyAggregatedSummary (F10.6 §5.6-③)")
+    class NotifyAggregatedSummary {
+
+        @Test
+        @DisplayName("Slack URL 未設定時は writeValueAsString が呼ばれない")
+        void noSlackUrl_skipsSerialization() throws Exception {
+            ReflectionTestUtils.setField(notifier, "slackWebhookUrl", "");
+            ErrorReportAggregator.AggregatedEntry entry = newEntry("h", "msg", ErrorReportSeverity.HIGH, 5L);
+
+            notifier.notifyAggregatedSummary(java.util.Map.of("h", entry));
+
+            org.mockito.Mockito.verify(objectMapper, never()).writeValueAsString(any());
+        }
+
+        @Test
+        @DisplayName("空 Map の場合は writeValueAsString が呼ばれない")
+        void emptyMap_skipsSerialization() throws Exception {
+            ReflectionTestUtils.setField(notifier, "slackWebhookUrl", "https://example.invalid/hook");
+
+            notifier.notifyAggregatedSummary(java.util.Map.of());
+            notifier.notifyAggregatedSummary(null);
+
+            org.mockito.Mockito.verify(objectMapper, never()).writeValueAsString(any());
+        }
+
+        @Test
+        @DisplayName("Slack URL 設定済み + entries あり → JSON シリアライズが呼ばれる（HTTP は副作用扱い）")
+        void withEntries_serializesPayload() throws Exception {
+            ReflectionTestUtils.setField(notifier, "slackWebhookUrl", "https://example.invalid/hook");
+            // HTTP 送信を発火させないため、シリアライズ段階で例外を投げて握らせる
+            given(objectMapper.writeValueAsString(any())).willThrow(new RuntimeException("stop"));
+
+            notifier.notifyAggregatedSummary(java.util.Map.of(
+                    "h1", newEntry("h1", "msg1", ErrorReportSeverity.HIGH, 5L),
+                    "h2", newEntry("h2", "msg2", ErrorReportSeverity.MEDIUM, 3L)));
+
+            org.mockito.Mockito.verify(objectMapper, times(1)).writeValueAsString(any());
+        }
+    }
+
+    /**
+     * AggregatedEntry をリフレクションで生成する（package-private コンストラクタ + recordOccurrence）。
+     */
+    private static ErrorReportAggregator.AggregatedEntry newEntry(
+            String hash, String msg, ErrorReportSeverity sev, long count) throws Exception {
+        java.lang.reflect.Constructor<ErrorReportAggregator.AggregatedEntry> ctor =
+                ErrorReportAggregator.AggregatedEntry.class
+                        .getDeclaredConstructor(String.class, String.class, ErrorReportSeverity.class, java.time.Instant.class);
+        ctor.setAccessible(true);
+        ErrorReportAggregator.AggregatedEntry e = ctor.newInstance(hash, msg, sev, java.time.Instant.now());
+        for (long i = 1; i < count; i++) {
+            java.lang.reflect.Method m = ErrorReportAggregator.AggregatedEntry.class
+                    .getDeclaredMethod("recordOccurrence", java.time.Instant.class);
+            m.setAccessible(true);
+            m.invoke(e, java.time.Instant.now());
+        }
+        return e;
+    }
 }
