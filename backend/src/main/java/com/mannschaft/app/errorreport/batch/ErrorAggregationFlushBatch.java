@@ -1,0 +1,98 @@
+package com.mannschaft.app.errorreport.batch;
+
+import com.mannschaft.app.errorreport.service.ErrorReportAggregator;
+import com.mannschaft.app.errorreport.service.ErrorReportAggregator.AggregatedEntry;
+import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * F10.6 §5.6-② — {@link ErrorReportAggregator} のバッファを定期的にドレインし、
+ * 集約サマリを Slack に流すバッチ。
+ *
+ * <p>5 分毎（既定 {@code 300_000ms}）に {@link ErrorReportAggregator#drainAndClear()} を呼び、
+ * 「直近 5 分で N 件発生」と 1 通の集約サマリを {@link ErrorReportNotifier#notifyAggregatedSummary}
+ * 経由で Slack に送信する。</p>
+ *
+ * <p><b>self-invocation 罠回避:</b>
+ * 本バッチは {@link ErrorReportAggregator} とは別 Bean として切り出されており、
+ * {@code @Scheduled} の Spring AOP プロキシは確実に適用される。
+ * 同一クラス内 self-invocation で {@code @Scheduled} がバイパスされる事故を未然に回避する。</p>
+ *
+ * <p>サマリに載せる対象は <b>occurrenceCount &gt;= 2</b> の entry のみ。
+ * 1 通目（FIRST_OCCURRENCE）は別経路で即時通知済みのため、ここでは「2 通目以降だけが
+ * 何件発生していたか」を報告する。</p>
+ *
+ * @see ErrorReportAggregator
+ * @see ErrorReportNotifier#notifyAggregatedSummary(Map)
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class ErrorAggregationFlushBatch {
+
+    private final ErrorReportAggregator aggregator;
+    private final ErrorReportNotifier notifier;
+
+    @Value("${mannschaft.error-monitoring.aggregation.enabled:true}")
+    private boolean enabled;
+
+    /**
+     * 5 分毎に集約バッファをドレインしてサマリ送信する。
+     *
+     * <p>{@code fixedRateString} で指定した間隔は {@code application.yml} で上書き可能。
+     * バッチ実行が遅延しても次回は予定通り走る（fixedRate）。</p>
+     */
+    @Scheduled(fixedRateString = "${mannschaft.error-monitoring.aggregation.flush-interval-ms:300000}",
+               initialDelayString = "${mannschaft.error-monitoring.aggregation.flush-interval-ms:300000}")
+    public void flush() {
+        if (!enabled) return;
+        try {
+            doFlush();
+        } catch (Exception e) {
+            // バッチが落ちると後続が止まるので必ず握る
+            log.warn("ErrorAggregationFlushBatch: 集約サマリ送信失敗", e);
+        }
+    }
+
+    /**
+     * 実フラッシュ処理。テスト容易性のため public で切り出している。
+     */
+    public void doFlush() {
+        Map<String, AggregatedEntry> drained = aggregator.drainAndClear();
+        if (drained.isEmpty()) {
+            return;
+        }
+        // 2 通目以降のみサマリ対象（occurrenceCount >= 2）
+        Map<String, AggregatedEntry> filtered = new LinkedHashMap<>();
+        long totalOccurrences = 0;
+        for (Map.Entry<String, AggregatedEntry> entry : drained.entrySet()) {
+            AggregatedEntry e = entry.getValue();
+            if (e.occurrenceCount() >= 2L) {
+                filtered.put(entry.getKey(), e);
+                totalOccurrences += e.occurrenceCount();
+            }
+        }
+        if (filtered.isEmpty()) {
+            log.debug("ErrorAggregationFlushBatch: 全 {} エントリは初回発火のみ。サマリ送信スキップ。", drained.size());
+            return;
+        }
+        log.info("ErrorAggregationFlushBatch: {} 種のエラーが計 {} 回発生。集約サマリを送信。",
+                filtered.size(), totalOccurrences);
+        notifier.notifyAggregatedSummary(filtered);
+    }
+
+    /**
+     * テスト容易性のためのドレイン件数参照（送信前のフィルタ後件数）。
+     */
+    static int countAggregatedEntries(List<AggregatedEntry> entries) {
+        return entries == null ? 0 : entries.size();
+    }
+}

@@ -41,6 +41,13 @@ public class ErrorReportAsyncExecutor {
 
     private final ErrorReportRepository errorReportRepository;
     private final ErrorReportNotifier errorReportNotifier;
+    /**
+     * F10.6 §5.6-③ — 集約バッファ。
+     * バックエンド由来エラーの 2 通目以降は Slack 即時通知を抑制し、
+     * 5 分毎の集約サマリ（{@link com.mannschaft.app.errorreport.batch.ErrorAggregationFlushBatch}）
+     * に流す。
+     */
+    private final ErrorReportAggregator aggregator;
 
     /**
      * F10.5 Phase 10-β / F10.6 Phase 10-β-1 — バックエンド由来の例外を error_reports に非同期で記録する。
@@ -154,6 +161,10 @@ public class ErrorReportAsyncExecutor {
                 if (newSeverity.ordinal() > oldSeverity.ordinal()) {
                     errorReportNotifier.notifyEscalation(updated, oldSeverity, newSeverity);
                 }
+                // F10.6 §5.6-③ — 重複発火を集約バッファに蓄積（severity 昇格通知とは独立）。
+                // 既存レポートの 2 回目以降の発火なので必ず BUFFERED 扱いになる想定。
+                aggregator.addOccurrence(errorHash,
+                        updated.getErrorMessage(), updated.getSeverity());
                 log.info("バックエンド例外重複集約: id={}, hash={}, count={}, ex={}",
                         updated.getId(), errorHash, updated.getOccurrenceCount(), exClassName);
                 return updated;
@@ -181,14 +192,25 @@ public class ErrorReportAsyncExecutor {
                 .build();
         ErrorReportEntity saved = errorReportRepository.save(newReport);
 
-        // HIGH 以上は Slack + SYSTEM_ADMIN 通知（フロント由来と同じ閾値）
+        // F10.6 §5.6-③ — 新規発火を集約バッファに記録。
+        // FIRST_OCCURRENCE が返るのが期待値（同一プロセス内で初回発火）。
+        // 2 通目以降のフロー（既存レコード or バッファ entry あり）は上の重複集約ブロックで処理済み。
+        ErrorReportAggregator.AggregationResult aggResult = aggregator.addOccurrence(
+                errorHash, saved.getErrorMessage(), severity);
+
+        // HIGH 以上は Slack + SYSTEM_ADMIN 通知（フロント由来と同じ閾値）。
+        // 集約バッファが BUFFERED を返した場合（極稀: 同じ error_hash の新規 ErrorReport 行が
+        // 前の expire 内に再生成されたケース）は Slack 即時通知を抑制し、5 分毎の集約サマリ送りにする。
+        // SYSTEM_ADMIN プッシュ通知は既存仕様通り送る（重要インシデントの埋没防止）。
         if (severity.ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
-            errorReportNotifier.notifySlack(saved);
+            if (aggResult == ErrorReportAggregator.AggregationResult.FIRST_OCCURRENCE) {
+                errorReportNotifier.notifySlack(saved);
+            }
             errorReportNotifier.notifySystemAdmins(saved);
         }
 
-        log.info("バックエンド例外記録: id={}, hash={}, severity={}, ex={}",
-                saved.getId(), errorHash, severity, exClassName);
+        log.info("バックエンド例外記録: id={}, hash={}, severity={}, aggResult={}, ex={}",
+                saved.getId(), errorHash, severity, aggResult, exClassName);
         return saved;
     }
 

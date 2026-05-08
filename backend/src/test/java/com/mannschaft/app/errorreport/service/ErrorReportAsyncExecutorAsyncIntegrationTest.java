@@ -54,6 +54,9 @@ class ErrorReportAsyncExecutorAsyncIntegrationTest {
     private ErrorReportRepository errorReportRepository;
     @MockitoBean
     private ErrorReportNotifier errorReportNotifier;
+    /** F10.6 §5.6-③ — 集約バッファ。プロキシ統合テストでは Mock 化して呼び出し回数のみ検証。 */
+    @MockitoBean
+    private ErrorReportAggregator aggregator;
 
     @Test
     @DisplayName("recordBackendException は呼び出し側スレッドとは別スレッド（event-pool）で実行される")
