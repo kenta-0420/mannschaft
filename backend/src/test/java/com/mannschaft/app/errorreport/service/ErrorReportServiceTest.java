@@ -371,4 +371,143 @@ class ErrorReportServiceTest {
             });
         }
     }
+
+    // ========================================
+    // F10.6 Phase 10-β-1 — recordBackendException
+    // ========================================
+
+    @Nested
+    @DisplayName("recordBackendException (F10.6 Phase 10-β-1)")
+    class RecordBackendException {
+
+        @Test
+        @DisplayName("新規例外: status=NEW で error_reports に保存され、HIGH 以上は Slack 通知される")
+        void newException_savedAsNewAndNotifiedWhenHigh() {
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.empty());
+            given(errorReportRepository.save(any(ErrorReportEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            RuntimeException ex = new RuntimeException("boom");
+            ErrorReportEntity result = service.recordBackendException(ex, null, ErrorReportSeverity.HIGH);
+
+            assertThat(result.getStatus()).isEqualTo(ErrorReportStatus.NEW);
+            assertThat(result.getSeverity()).isEqualTo(ErrorReportSeverity.HIGH);
+            assertThat(result.getErrorMessage()).contains("RuntimeException");
+            assertThat(result.getErrorMessage()).contains("boom");
+            assertThat(result.getErrorHash()).isNotBlank();
+            assertThat(result.getErrorHash()).hasSize(64); // SHA-256 hex
+            assertThat(result.getOccurrenceCount()).isEqualTo(1);
+            assertThat(result.getAffectedUserCount()).isZero();
+            // HIGH 以上は Slack + SYSTEM_ADMIN 通知
+            verify(errorReportNotifier).notifySlack(any(ErrorReportEntity.class));
+            verify(errorReportNotifier).notifySystemAdmins(any(ErrorReportEntity.class));
+        }
+
+        @Test
+        @DisplayName("MEDIUM severity の新規例外は Slack/SYSTEM_ADMIN 通知が走らない")
+        void newException_notNotifiedWhenMedium() {
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.empty());
+            given(errorReportRepository.save(any(ErrorReportEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            service.recordBackendException(new IllegalArgumentException("bad"),
+                    null, ErrorReportSeverity.MEDIUM);
+
+            verify(errorReportNotifier, never()).notifySlack(any());
+            verify(errorReportNotifier, never()).notifySystemAdmins(any());
+        }
+
+        @Test
+        @DisplayName("requestId は MDC から取得して error_reports.request_id に積まれる")
+        void requestId_isReadFromMdc() {
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.empty());
+            given(errorReportRepository.save(any(ErrorReportEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            org.slf4j.MDC.put("requestId", "req-xyz");
+            try {
+                ErrorReportEntity saved = service.recordBackendException(
+                        new RuntimeException("x"), null, ErrorReportSeverity.MEDIUM);
+                assertThat(saved.getRequestId()).isEqualTo("req-xyz");
+            } finally {
+                org.slf4j.MDC.clear();
+            }
+        }
+
+        @Test
+        @DisplayName("エラーハッシュは ex クラス名 + 先頭スタックフレームから計算される（同一例外で同一ハッシュ）")
+        void errorHash_isStable() {
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.empty());
+            given(errorReportRepository.save(any(ErrorReportEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            // 同じスタックトレースを持つ 2 つの例外を作る
+            RuntimeException ex1 = makeException("at A");
+            RuntimeException ex2 = makeException("at A");
+
+            ErrorReportEntity r1 = service.recordBackendException(ex1, null, ErrorReportSeverity.LOW);
+            ErrorReportEntity r2 = service.recordBackendException(ex2, null, ErrorReportSeverity.LOW);
+
+            assertThat(r1.getErrorHash()).isEqualTo(r2.getErrorHash());
+        }
+
+        private RuntimeException makeException(String msg) {
+            RuntimeException ex = new RuntimeException(msg);
+            ex.setStackTrace(new StackTraceElement[]{
+                    new StackTraceElement("com.mannschaft.app.Foo", "bar", "Foo.java", 10)
+            });
+            return ex;
+        }
+
+        @Test
+        @DisplayName("HttpServletRequest 経由で pageUrl/userAgent/ipAddress が取得される")
+        void requestFields_areExtracted() {
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.empty());
+            given(errorReportRepository.save(any(ErrorReportEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            jakarta.servlet.http.HttpServletRequest req =
+                    org.mockito.Mockito.mock(jakarta.servlet.http.HttpServletRequest.class);
+            given(req.getRequestURI()).willReturn("/api/v1/foo");
+            given(req.getHeader("User-Agent")).willReturn("UA-1");
+            given(req.getHeader("X-Forwarded-For")).willReturn("203.0.113.1, 10.0.0.1");
+
+            ErrorReportEntity saved = service.recordBackendException(
+                    new RuntimeException("e"), req, ErrorReportSeverity.MEDIUM);
+
+            assertThat(saved.getPageUrl()).isEqualTo("/api/v1/foo");
+            assertThat(saved.getUserAgent()).isEqualTo("UA-1");
+            assertThat(saved.getIpAddress()).isEqualTo("203.0.113.1");
+        }
+
+        @Test
+        @DisplayName("既存 RESOLVED と同一ハッシュ: REOPENED に遷移し regression 通知が走る")
+        void existing_resolved_triggersRegression() {
+            ErrorReportEntity existing = ErrorReportEntity.builder()
+                    .errorMessage("dup")
+                    .pageUrl("/p")
+                    .occurredAt(LocalDateTime.now())
+                    .status(ErrorReportStatus.RESOLVED)
+                    .severity(ErrorReportSeverity.HIGH)
+                    .errorHash("h")
+                    .occurrenceCount(5)
+                    .affectedUserCount(1)
+                    .firstOccurredAt(LocalDateTime.now())
+                    .lastOccurredAt(LocalDateTime.now())
+                    .build();
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.of(existing));
+
+            ErrorReportEntity result = service.recordBackendException(
+                    new RuntimeException("re"), null, ErrorReportSeverity.HIGH);
+
+            assertThat(result.getStatus()).isEqualTo(ErrorReportStatus.REOPENED);
+            verify(errorReportNotifier).notifyRegression(any(ErrorReportEntity.class));
+        }
+    }
 }

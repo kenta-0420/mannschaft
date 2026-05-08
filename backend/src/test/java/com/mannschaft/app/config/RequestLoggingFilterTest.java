@@ -4,8 +4,12 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.mannschaft.app.errorreport.ErrorReportSeverity;
+import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
+import com.mannschaft.app.errorreport.service.ErrorReportService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,12 +17,22 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * {@link RequestLoggingFilter} の単体テスト。
@@ -150,5 +164,79 @@ class RequestLoggingFilterTest {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    // ============================================================
+    // F10.5 Phase 10-β: ERROR 閾値超過時の Notifier / Service 連携
+    // ============================================================
+
+    @Test
+    @DisplayName("ERROR 閾値超過: notifySlowRequest と recordBackendException(HIGH) が呼ばれる")
+    void error_threshold_triggers_notifier_and_service() throws ServletException, IOException {
+        // 閾値を低くして発火しやすくする（warn=10, error=20 ms）
+        PerformanceMonitoringProperties props = new PerformanceMonitoringProperties();
+        props.getRequest().setWarnMs(10L);
+        props.getRequest().setErrorMs(20L);
+
+        ErrorReportNotifier notifier = mock(ErrorReportNotifier.class);
+        ErrorReportService service = mock(ErrorReportService.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<ErrorReportNotifier> notifierProvider = mock(ObjectProvider.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<ErrorReportService> serviceProvider = mock(ObjectProvider.class);
+        when(notifierProvider.getIfAvailable()).thenReturn(notifier);
+        when(serviceProvider.getIfAvailable()).thenReturn(service);
+
+        RequestLoggingFilter wired = new RequestLoggingFilter(props, notifierProvider, serviceProvider);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/very-very-heavy");
+        request.addHeader("X-Request-Id", "rid-100");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        FilterChain chain = (req, res) -> sleepQuietly(50); // > error_ms=20
+
+        wired.doFilter(request, response, chain);
+
+        verify(notifier).notifySlowRequest(eq("GET"), eq("/api/v1/very-very-heavy"),
+                anyLong(), eq("rid-100"));
+        verify(service).recordBackendException(any(RequestLoggingFilter.SlowRequestException.class),
+                isNull(), eq(ErrorReportSeverity.HIGH));
+    }
+
+    @Test
+    @DisplayName("ERROR 閾値未満: notifier / service は呼ばれない")
+    void below_threshold_does_not_trigger() throws ServletException, IOException {
+        PerformanceMonitoringProperties props = new PerformanceMonitoringProperties();
+        props.getRequest().setWarnMs(2_000L);
+        props.getRequest().setErrorMs(10_000L); // 既定
+
+        ErrorReportNotifier notifier = mock(ErrorReportNotifier.class);
+        ErrorReportService service = mock(ErrorReportService.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<ErrorReportNotifier> notifierProvider = mock(ObjectProvider.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<ErrorReportService> serviceProvider = mock(ObjectProvider.class);
+        when(notifierProvider.getIfAvailable()).thenReturn(notifier);
+        when(serviceProvider.getIfAvailable()).thenReturn(service);
+
+        RequestLoggingFilter wired = new RequestLoggingFilter(props, notifierProvider, serviceProvider);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/light");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        wired.doFilter(request, response, (req, res) -> {});
+
+        verify(notifier, never()).notifySlowRequest(anyString(), anyString(), anyLong(), any());
+        verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
+        verify(service, never()).recordBackendException(any(), isNull(), any());
+    }
+
+    @Test
+    @DisplayName("Bean 未配線（既定コンストラクタ）でも例外なく完走する")
+    void unwired_filter_still_works() throws ServletException, IOException {
+        // デフォルトコンストラクタ（既存テストと同等）
+        RequestLoggingFilter unwired = new RequestLoggingFilter();
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/foo");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        unwired.doFilter(request, response, (req, res) -> {});
+        // 例外を投げなければ OK
     }
 }

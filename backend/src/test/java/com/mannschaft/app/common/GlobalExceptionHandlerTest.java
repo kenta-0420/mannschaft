@@ -1,5 +1,9 @@
 package com.mannschaft.app.common;
 
+import com.mannschaft.app.errorreport.ErrorReportSeverity;
+import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
+import com.mannschaft.app.errorreport.service.ErrorReportService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -7,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,8 +26,13 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * {@link GlobalExceptionHandler} の単体テスト。
@@ -334,6 +344,145 @@ class GlobalExceptionHandlerTest {
 
             // Then
             assertThat(result).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+    }
+
+    // ========================================
+    // F10.6 Phase 10-β-1 — recordBackendException 連携
+    // ========================================
+
+    @Nested
+    @DisplayName("recordBackendException 連携 (F10.6 Phase 10-β-1)")
+    class RecordBackendExceptionWiring {
+
+        /**
+         * F10.6 連携用に明示的に DI したハンドラ。
+         * @InjectMocks 配下の globalExceptionHandler は引数1個のコンストラクタで生成されるため、
+         * 連携テストはここで自前生成する。
+         */
+        @SuppressWarnings("unchecked")
+        private GlobalExceptionHandler newHandlerWith(ErrorReportService service, ErrorReportNotifier notifier) {
+            ObjectProvider<ErrorReportService> serviceProvider = mock(ObjectProvider.class);
+            ObjectProvider<ErrorReportNotifier> notifierProvider = mock(ObjectProvider.class);
+            // lenient: テストにより呼ばれない経路もあるため Strictness を緩める
+            org.mockito.Mockito.lenient().when(serviceProvider.getIfAvailable()).thenReturn(service);
+            org.mockito.Mockito.lenient().when(notifierProvider.getIfAvailable()).thenReturn(notifier);
+            return new GlobalExceptionHandler(messageSource, serviceProvider, notifierProvider);
+        }
+
+        @Test
+        @DisplayName("handleUnexpectedException: severity=HIGH で recordBackendException が呼ばれる")
+        void unexpected_recordsAsHigh() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            ErrorReportNotifier notifier = mock(ErrorReportNotifier.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, notifier);
+
+            HttpServletRequest req = mock(HttpServletRequest.class);
+            RuntimeException ex = new RuntimeException("boom");
+
+            ResponseEntity<ErrorResponse> resp = handler.handleUnexpectedException(ex, req);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            verify(service).recordBackendException(eq(ex), eq(req), eq(ErrorReportSeverity.HIGH));
+        }
+
+        @Test
+        @DisplayName("handleBusinessException: 5xx を返すコードでは MEDIUM で記録される")
+        void businessException_5xx_recordsAsMedium() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
+
+            HttpServletRequest req = mock(HttpServletRequest.class);
+            // COMMON_999 は ERROR severity → 500
+            BusinessException ex = new BusinessException(CommonErrorCode.COMMON_999);
+
+            ResponseEntity<ErrorResponse> resp = handler.handleBusinessException(ex, req);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            verify(service).recordBackendException(eq(ex), eq(req), eq(ErrorReportSeverity.MEDIUM));
+        }
+
+        @Test
+        @DisplayName("handleBusinessException: 4xx を返すコードでは記録されない（バリデーション含む通常エラー）")
+        void businessException_4xx_isNotRecorded() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
+
+            // COMMON_001 は WARN → 400
+            BusinessException ex = new BusinessException(CommonErrorCode.COMMON_001);
+
+            handler.handleBusinessException(ex, mock(HttpServletRequest.class));
+
+            verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
+        }
+
+        @Test
+        @DisplayName("handleValidationException: バリデーションエラーは recordBackendException が呼ばれない")
+        void validation_isNotRecorded() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
+
+            // バリデーション例外を組み立てる
+            BindingResult bindingResult = mock(BindingResult.class);
+            given(bindingResult.getFieldErrors()).willReturn(List.of(
+                    new FieldError("obj", "field", "must not be null")));
+            MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
+            given(ex.getBindingResult()).willReturn(bindingResult);
+
+            ResponseEntity<ErrorResponse> resp = handler.handleValidationException(ex);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
+        }
+
+        @Test
+        @DisplayName("handleHttpMessageNotReadable: バリデーション系として記録されない")
+        void httpMessageNotReadable_isNotRecorded() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
+
+            HttpMessageNotReadableException ex = mock(HttpMessageNotReadableException.class);
+            given(ex.getMessage()).willReturn("invalid json");
+
+            handler.handleHttpMessageNotReadable(ex);
+
+            verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
+        }
+
+        @Test
+        @DisplayName("handleIllegalState: 競合（409）は記録されない")
+        void illegalState_conflict_isNotRecorded() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
+
+            IllegalStateException ex = new IllegalStateException("リトライ後も競合が解消しない");
+            ResponseEntity<ErrorResponse> resp = handler.handleIllegalState(ex, mock(HttpServletRequest.class));
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
+        }
+
+        @Test
+        @DisplayName("handleIllegalState: 競合以外（500）は HIGH で記録される")
+        void illegalState_500_isRecordedAsHigh() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
+
+            IllegalStateException ex = new IllegalStateException("想定外の状態");
+            HttpServletRequest req = mock(HttpServletRequest.class);
+            ResponseEntity<ErrorResponse> resp = handler.handleIllegalState(ex, req);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            verify(service).recordBackendException(eq(ex), eq(req), eq(ErrorReportSeverity.HIGH));
+        }
+
+        @Test
+        @DisplayName("Bean 未配線（既存コンストラクタ）でも例外なく完走する")
+        void unwired_handler_works() {
+            // 既存ユニットテスト互換コンストラクタ（messageSource のみ）
+            GlobalExceptionHandler unwired = new GlobalExceptionHandler(messageSource);
+            ResponseEntity<ErrorResponse> resp = unwired.handleUnexpectedException(new RuntimeException("x"));
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
