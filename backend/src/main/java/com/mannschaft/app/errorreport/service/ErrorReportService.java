@@ -34,6 +34,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -206,14 +207,99 @@ public class ErrorReportService {
      * <p>記録対象は設計書 F10.6 §5.2 の方針に従う:
      * バリデーションエラー（4xx）/ ビジネスエラー（4xx）は呼び出し側で除外すること。</p>
      *
+     * <p>F10.5/F10.6 Phase 10-β 後続フォローアップ:
+     * 内部的に {@link #recordBackendException(Throwable, String, String, String, String, ErrorReportSeverity)}
+     * へ委譲する。本メソッドは同期で {@link HttpServletRequest} から各種属性を抽出し、
+     * 抽出後の値を引数として非同期メソッドへ渡す（HttpServletRequest は非同期スレッドで参照不可のため）。</p>
+     *
      * @param ex       記録対象の例外
      * @param request  HTTP リクエスト（pageUrl / userAgent / ipAddress 抽出用、NULL 可）
      * @param severity 重要度
-     * @return 作成または更新されたエラーレポートエンティティ
+     * @return 同期分岐との互換のため、即時に {@code null} を返すことがある
+     *         （実際の記録は非同期スレッドで行われる）
      */
     public ErrorReportEntity recordBackendException(Throwable ex,
                                                     HttpServletRequest request,
                                                     ErrorReportSeverity severity) {
+        // HttpServletRequest は非同期スレッドへ持ち越せない（リクエストライフサイクル外で属性が無効化される）
+        // ため、呼び出し側スレッドで属性を抽出してから @Async メソッドへ渡す。
+        String pageUrl = null;
+        String userAgent = null;
+        String ipAddress = null;
+        if (request != null) {
+            pageUrl = resolvePageUrl(request);
+            userAgent = request.getHeader("User-Agent");
+            String forwarded = request.getHeader("X-Forwarded-For");
+            ipAddress = (forwarded != null && !forwarded.isBlank())
+                    ? forwarded.split(",")[0].trim()
+                    : request.getRemoteAddr();
+        }
+        // requestId は MDC から呼び出し側スレッドで取得しておく
+        // （@Async + MdcTaskDecorator で伝播されるが、ここで明示的に拾うことで疎通を保証する）
+        String requestId = MDC.get("requestId");
+        recordBackendExceptionAsync(ex, pageUrl, userAgent, ipAddress, requestId, severity);
+        return null;
+    }
+
+    /**
+     * F10.5/F10.6 Phase 10-β 後続フォローアップ — pageUrl 等を直接受け取るオーバーロード。
+     *
+     * <p>{@link com.mannschaft.app.config.RequestLoggingFilter} のスローリクエスト検知時など、
+     * URI テンプレート化済みの {@code pageUrl} を渡したいケースで使う。
+     * {@code HttpServletRequest} を {@code null} で渡す代わりにこちらを使うと、
+     * {@code error_reports.page_url} が "backend" 固定にならず実 path で保存される。</p>
+     *
+     * @param ex         記録対象の例外
+     * @param pageUrl    pageUrl（URI テンプレートまたは raw path、NULL 可）
+     * @param userAgent  User-Agent ヘッダ（NULL 可）
+     * @param ipAddress  クライアント IP（X-Forwarded-For 優先、NULL 可）
+     * @param requestId  MDC requestId（NULL 可、@Async 伝播されない場合のフォールバック）
+     * @param severity   重要度
+     */
+    public void recordBackendException(Throwable ex,
+                                        String pageUrl,
+                                        String userAgent,
+                                        String ipAddress,
+                                        String requestId,
+                                        ErrorReportSeverity severity) {
+        recordBackendExceptionAsync(ex, pageUrl, userAgent, ipAddress, requestId, severity);
+    }
+
+    /**
+     * F10.5/F10.6 Phase 10-β 後続 — 非同期で error_reports に書き込むコア実装。
+     *
+     * <p>{@code @Async("event-pool")} により別スレッドで実行され、本体リクエストの応答を遅らせない。
+     * MDC は {@link com.mannschaft.app.config.AsyncConfig.MdcTaskDecorator} で呼び出し側から伝播される。
+     * 念のため呼び出し側で抽出した {@code requestId} を引数で受け取り、
+     * MDC が空でも記録に残せるようフォールバックさせる。</p>
+     */
+    @Async("event-pool")
+    public void recordBackendExceptionAsync(Throwable ex,
+                                             String pageUrl,
+                                             String userAgent,
+                                             String ipAddress,
+                                             String requestId,
+                                             ErrorReportSeverity severity) {
+        try {
+            doRecordBackendException(ex, pageUrl, userAgent, ipAddress, requestId, severity);
+        } catch (Exception inner) {
+            // 非同期スレッドで投げると拾える人がいないため、ここで握って構造化ログだけ残す。
+            log.warn("非同期 recordBackendException 失敗: severity={}, ex={}",
+                    severity, ex.getClass().getName(), inner);
+        }
+    }
+
+    /**
+     * 旧シグネチャ（HttpServletRequest 経由）と新シグネチャ（属性値直渡し）の共通本体。
+     *
+     * @return 作成または更新されたエラーレポートエンティティ（テスト容易性のため戻り値を保持）
+     */
+    ErrorReportEntity doRecordBackendException(Throwable ex,
+                                                String pageUrl,
+                                                String userAgent,
+                                                String ipAddress,
+                                                String requestId,
+                                                ErrorReportSeverity severity) {
         String exClassName = ex.getClass().getName();
         String errorMessage = ex.getMessage() != null
                 ? exClassName + ": " + ex.getMessage()
@@ -231,35 +317,27 @@ public class ErrorReportService {
         }
         String errorHash = sha256(exClassName + "|" + firstFrame);
 
-        // pageUrl は request URI を採用（NULL なら "backend"）
-        String pageUrl = "backend";
-        String userAgent = null;
-        String ipAddress = null;
-        if (request != null) {
-            String uri = request.getRequestURI();
-            if (uri != null && !uri.isBlank()) {
-                pageUrl = uri;
-            }
-            userAgent = request.getHeader("User-Agent");
-            // IP は X-Forwarded-For があればそちらを優先
-            String forwarded = request.getHeader("X-Forwarded-For");
-            ipAddress = (forwarded != null && !forwarded.isBlank())
-                    ? forwarded.split(",")[0].trim()
-                    : request.getRemoteAddr();
-        }
+        // pageUrl は呼び出し側で抽出済み（URI テンプレート / raw path / null）。
+        // 設計書 F10.6 §5.2: スロー検知 / 想定外例外いずれの場合も実 path / テンプレートが入る想定。
+        // NULL なら "backend" を入れる（バッチ・スケジューラ等から呼ばれた場合のフォールバック）。
+        String resolvedPageUrl = (pageUrl != null && !pageUrl.isBlank()) ? pageUrl : "backend";
         // pageUrl カラム上限 2048
-        if (pageUrl != null && pageUrl.length() > 2048) {
-            pageUrl = pageUrl.substring(0, 2048);
+        if (resolvedPageUrl.length() > 2048) {
+            resolvedPageUrl = resolvedPageUrl.substring(0, 2048);
         }
-        if (userAgent != null && userAgent.length() > 500) {
-            userAgent = userAgent.substring(0, 500);
+        String resolvedUserAgent = userAgent;
+        if (resolvedUserAgent != null && resolvedUserAgent.length() > 500) {
+            resolvedUserAgent = resolvedUserAgent.substring(0, 500);
         }
-        if (ipAddress != null && ipAddress.length() > 45) {
-            ipAddress = ipAddress.substring(0, 45);
+        String resolvedIpAddress = ipAddress;
+        if (resolvedIpAddress != null && resolvedIpAddress.length() > 45) {
+            resolvedIpAddress = resolvedIpAddress.substring(0, 45);
         }
 
-        // requestId は MDC から取得（RequestLoggingFilter が設定済み）
-        String requestId = MDC.get("requestId");
+        // requestId: 引数で渡されていればそちらを優先、無ければ MDC（@Async + MdcTaskDecorator で伝播される）から拾う
+        String resolvedRequestId = (requestId != null && !requestId.isBlank())
+                ? requestId
+                : MDC.get("requestId");
 
         // stack_trace を 2000 字に切り詰め
         String stackTrace = renderStackTrace(ex);
@@ -298,12 +376,12 @@ public class ErrorReportService {
         ErrorReportEntity newReport = ErrorReportEntity.builder()
                 .errorMessage(errorMessage)
                 .stackTrace(stackTrace)
-                .pageUrl(pageUrl)
-                .userAgent(userAgent)
+                .pageUrl(resolvedPageUrl)
+                .userAgent(resolvedUserAgent)
                 .userId(null)
                 .organizationId(null)
-                .requestId(requestId)
-                .ipAddress(ipAddress)
+                .requestId(resolvedRequestId)
+                .ipAddress(resolvedIpAddress)
                 .occurredAt(now)
                 .status(ErrorReportStatus.NEW)
                 .severity(severity)
@@ -324,6 +402,25 @@ public class ErrorReportService {
         log.info("バックエンド例外記録: id={}, hash={}, severity={}, ex={}",
                 saved.getId(), errorHash, severity, exClassName);
         return saved;
+    }
+
+    /**
+     * F10.5/F10.6 Phase 10-β 後続フォローアップ — HttpServletRequest から pageUrl を解決する。
+     *
+     * <p>Spring MVC の {@code HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE} 属性が
+     * セットされていればそれ（URI テンプレート: {@code /api/v1/users/{id}}）を採用し、
+     * フィルター段階等で未セットなら raw {@code requestURI} にフォールバックする。
+     * これにより同一エンドポイントが ID 違いで連続発生しても集約キーが分裂しない。</p>
+     */
+    private String resolvePageUrl(HttpServletRequest request) {
+        if (request == null) return null;
+        Object pattern = request.getAttribute(
+                org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        if (pattern instanceof String s && !s.isBlank()) {
+            return s;
+        }
+        String uri = request.getRequestURI();
+        return (uri != null && !uri.isBlank()) ? uri : null;
     }
 
     /**
