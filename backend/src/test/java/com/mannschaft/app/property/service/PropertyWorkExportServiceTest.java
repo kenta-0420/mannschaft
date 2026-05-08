@@ -16,6 +16,7 @@ import com.mannschaft.app.property.entity.PropertyWorkPackageEntity;
 import com.mannschaft.app.property.entity.VendorEntity;
 import com.mannschaft.app.property.repository.PropertyWorkDocumentRepository;
 import com.mannschaft.app.property.repository.PropertyWorkPackageRepository;
+import com.mannschaft.app.role.service.PermissionGroupService;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,6 +69,7 @@ class PropertyWorkExportServiceTest {
     private PdfGeneratorService pdfGenerator;
 
     private PropertyWorkPackageMaskingService maskingService;
+    private PermissionGroupService permissionGroupService;
     private ExcelGeneratorService excelGenerator;
     private ExcelResponseHelper excelResponseHelper;
 
@@ -77,14 +79,17 @@ class PropertyWorkExportServiceTest {
     private static final Long TEAM_ID = 100L;
     private static final Long PACKAGE_ID = 555L;
     private static final Long VENDOR_ID = 11L;
+    private static final Long VIEWER_USER_ID = 7L;
 
     /** PDF シグネチャ: %PDF-。 */
     private static final byte[] PDF_SIGNATURE = {0x25, 0x50, 0x44, 0x46, 0x2D};
 
     @BeforeEach
     void setUp() {
-        // マスキングサービスは実体（Service 本体の動作と整合）
-        maskingService = new PropertyWorkPackageMaskingService();
+        // マスキングサービスは実体（Service 本体の動作と整合）。
+        // PermissionGroupService は ADMIN/MEMBER 路線では呼ばれないため lenient な mock で十分。
+        permissionGroupService = org.mockito.Mockito.mock(PermissionGroupService.class);
+        maskingService = new PropertyWorkPackageMaskingService(permissionGroupService);
         // Excel は本物を使い、生成バイト列を実際に検証する
         excelGenerator = new ExcelGeneratorService(new ExcelFontConfig());
         excelResponseHelper = new ExcelResponseHelper();
@@ -165,7 +170,7 @@ class PropertyWorkExportServiceTest {
                     .willReturn(fakePdf);
 
             ResponseEntity<byte[]> resp = service.exportSinglePackage(
-                    SCOPE_TEAM, TEAM_ID, PACKAGE_ID, "pdf", snapshotWith("ADMIN"));
+                    SCOPE_TEAM, TEAM_ID, PACKAGE_ID, "pdf", VIEWER_USER_ID, snapshotWith("ADMIN"));
 
             assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
             assertThat(resp.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PDF);
@@ -177,7 +182,7 @@ class PropertyWorkExportServiceTest {
         void notFound_throws() {
             given(packageRepository.findByIdAndDeletedAtIsNull(PACKAGE_ID)).willReturn(Optional.empty());
             assertThatThrownBy(() -> service.exportSinglePackage(
-                    SCOPE_TEAM, TEAM_ID, PACKAGE_ID, "pdf", snapshotWith("ADMIN")))
+                    SCOPE_TEAM, TEAM_ID, PACKAGE_ID, "pdf", VIEWER_USER_ID, snapshotWith("ADMIN")))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", PropertyHistoryErrorCode.PROPERTY_001);
         }
@@ -192,7 +197,7 @@ class PropertyWorkExportServiceTest {
                     .willReturn(Optional.of(otherScope));
 
             assertThatThrownBy(() -> service.exportSinglePackage(
-                    SCOPE_TEAM, TEAM_ID, PACKAGE_ID, "pdf", snapshotWith("ADMIN")))
+                    SCOPE_TEAM, TEAM_ID, PACKAGE_ID, "pdf", VIEWER_USER_ID, snapshotWith("ADMIN")))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", PropertyHistoryErrorCode.PROPERTY_001);
         }
@@ -212,7 +217,7 @@ class PropertyWorkExportServiceTest {
 
             ResponseEntity<byte[]> resp = service.exportList(
                     SCOPE_TEAM, TEAM_ID, null, null, null, null, null,
-                    "pdf", snapshotWith("ADMIN"));
+                    "pdf", VIEWER_USER_ID, snapshotWith("ADMIN"));
 
             assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
             assertThat(resp.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PDF);
@@ -233,7 +238,7 @@ class PropertyWorkExportServiceTest {
 
             ResponseEntity<byte[]> resp = service.exportList(
                     SCOPE_TEAM, TEAM_ID, null, null, null, null, null,
-                    "pdf", snapshotWith("ADMIN"));
+                    "pdf", VIEWER_USER_ID, snapshotWith("ADMIN"));
 
             assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
             assertThat(resp.getBody()).startsWith(PDF_SIGNATURE);
@@ -248,7 +253,7 @@ class PropertyWorkExportServiceTest {
             given(vendorService.getVendor(SCOPE_TEAM, TEAM_ID, VENDOR_ID)).willReturn(vendor());
 
             assertThatThrownBy(() -> service.exportSinglePackage(
-                    SCOPE_TEAM, TEAM_ID, PACKAGE_ID, "pdf", snapshotWith("MEMBER")))
+                    SCOPE_TEAM, TEAM_ID, PACKAGE_ID, "pdf", VIEWER_USER_ID, snapshotWith("MEMBER")))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", PropertyHistoryErrorCode.PROPERTY_002);
         }
@@ -271,7 +276,7 @@ class PropertyWorkExportServiceTest {
             given(vendorService.getVendor(SCOPE_TEAM, TEAM_ID, VENDOR_ID)).willReturn(vendor());
 
             ResponseEntity<byte[]> resp = service.exportSinglePackage(
-                    SCOPE_TEAM, TEAM_ID, PACKAGE_ID, "xlsx", snapshotWith("ADMIN"));
+                    SCOPE_TEAM, TEAM_ID, PACKAGE_ID, "xlsx", VIEWER_USER_ID, snapshotWith("ADMIN"));
 
             assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
             assertThat(resp.getHeaders().getContentType().toString())
@@ -293,7 +298,7 @@ class PropertyWorkExportServiceTest {
 
             ResponseEntity<byte[]> resp = service.exportList(
                     SCOPE_TEAM, TEAM_ID, null, null, null, null, null,
-                    "xlsx", snapshotWith("ADMIN"));
+                    "xlsx", VIEWER_USER_ID, snapshotWith("ADMIN"));
 
             try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(resp.getBody()))) {
                 assertThat(wb.getNumberOfSheets()).isEqualTo(4);
@@ -315,7 +320,7 @@ class PropertyWorkExportServiceTest {
 
             ResponseEntity<byte[]> resp = service.exportList(
                     SCOPE_TEAM, TEAM_ID, null, null, null, null, null,
-                    "xlsx", snapshotWith("MEMBER"));
+                    "xlsx", VIEWER_USER_ID, snapshotWith("MEMBER"));
 
             try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(resp.getBody()))) {
                 XSSFSheet detail = wb.getSheet("履歴一覧");
@@ -351,7 +356,7 @@ class PropertyWorkExportServiceTest {
 
             ResponseEntity<byte[]> resp = service.exportList(
                     SCOPE_TEAM, TEAM_ID, null, null, null, null, null,
-                    "xlsx", snapshotWith("ADMIN"));
+                    "xlsx", VIEWER_USER_ID, snapshotWith("ADMIN"));
 
             try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(resp.getBody()))) {
                 XSSFSheet detail = wb.getSheet("履歴一覧");
@@ -381,7 +386,7 @@ class PropertyWorkExportServiceTest {
 
             ResponseEntity<byte[]> resp = service.exportList(
                     SCOPE_TEAM, TEAM_ID, null, null, null, null, null,
-                    "xlsx", snapshotWith("MEMBER"));
+                    "xlsx", VIEWER_USER_ID, snapshotWith("MEMBER"));
 
             try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(resp.getBody()))) {
                 XSSFSheet detail = wb.getSheet("履歴一覧");
@@ -403,7 +408,7 @@ class PropertyWorkExportServiceTest {
         given(vendorService.getVendor(SCOPE_TEAM, TEAM_ID, VENDOR_ID)).willReturn(vendor());
 
         assertThatThrownBy(() -> service.exportSinglePackage(
-                SCOPE_TEAM, TEAM_ID, PACKAGE_ID, "csv", snapshotWith("ADMIN")))
+                SCOPE_TEAM, TEAM_ID, PACKAGE_ID, "csv", VIEWER_USER_ID, snapshotWith("ADMIN")))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", PropertyHistoryErrorCode.PROPERTY_004);
     }

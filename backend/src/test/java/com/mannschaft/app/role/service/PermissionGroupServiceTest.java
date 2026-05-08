@@ -325,4 +325,141 @@ class PermissionGroupServiceTest {
                             .isEqualTo("ROLE_006"));
         }
     }
+
+    // ========================================
+    // hasPermission（F09.13 Phase 2-α-3 で追加）
+    // ========================================
+
+    @Nested
+    @DisplayName("hasPermission")
+    class HasPermission {
+
+        private static final String PERM_NAME = "PROPERTY_HISTORY_MANAGE";
+
+        @Test
+        @DisplayName("正常系: ユーザーが権限グループ経由で当該パーミッションを保有 → true")
+        void hasPermission_保有あり_true() {
+            // Given: scope 内に group が存在し、ユーザー割当もあり、その group に PERM_NAME が含まれる
+            PermissionGroupEntity group = createGroupEntity(GROUP_ID, "管理者グループ");
+            given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of(group));
+
+            UserPermissionGroupEntity assignment = UserPermissionGroupEntity.builder()
+                    .userId(USER_ID).groupId(GROUP_ID).build();
+            given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of(assignment));
+
+            PermissionGroupPermissionEntity pgp = PermissionGroupPermissionEntity.builder()
+                    .groupId(GROUP_ID).permissionId(PERM_ID_1).build();
+            given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of(pgp));
+
+            given(permissionRepository.findById(PERM_ID_1))
+                    .willReturn(Optional.of(createPermissionEntity(PERM_ID_1, PERM_NAME)));
+
+            // When
+            boolean result = permissionGroupService.hasPermission(USER_ID, "TEAM", SCOPE_ID, PERM_NAME);
+
+            // Then
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        @DisplayName("正常系: ユーザーは group に割当られているが当該 permission を持たない → false")
+        void hasPermission_別パーミッションのみ_false() {
+            // Given
+            PermissionGroupEntity group = createGroupEntity(GROUP_ID, "閲覧者グループ");
+            given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of(group));
+
+            UserPermissionGroupEntity assignment = UserPermissionGroupEntity.builder()
+                    .userId(USER_ID).groupId(GROUP_ID).build();
+            given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of(assignment));
+
+            PermissionGroupPermissionEntity pgp = PermissionGroupPermissionEntity.builder()
+                    .groupId(GROUP_ID).permissionId(PERM_ID_2).build();
+            given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of(pgp));
+
+            given(permissionRepository.findById(PERM_ID_2))
+                    .willReturn(Optional.of(createPermissionEntity(PERM_ID_2, "PROPERTY_HISTORY_VIEW")));
+
+            // When
+            boolean result = permissionGroupService.hasPermission(USER_ID, "TEAM", SCOPE_ID, PERM_NAME);
+
+            // Then: VIEW のみで MANAGE は持たない → false
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        @DisplayName("異常系: scope 内に当該ユーザーの group 割当が皆無 → false（早期 return）")
+        void hasPermission_ユーザー未割当_false() {
+            // Given: scope に group は存在するが、ユーザーには別 scope の group しか割当られていない
+            PermissionGroupEntity group = createGroupEntity(GROUP_ID, "管理者グループ");
+            given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of(group));
+
+            UserPermissionGroupEntity otherAssignment = UserPermissionGroupEntity.builder()
+                    .userId(USER_ID).groupId(999L).build(); // 当該 scope 外の group ID
+            given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of(otherAssignment));
+
+            // When
+            boolean result = permissionGroupService.hasPermission(USER_ID, "TEAM", SCOPE_ID, PERM_NAME);
+
+            // Then
+            assertThat(result).isFalse();
+            // 早期 return により permissionGroupPermissionRepository は呼ばれない
+            verify(permissionGroupPermissionRepository, never()).findByGroupId(anyLong());
+        }
+
+        @Test
+        @DisplayName("異常系: scope に group が皆無 → false（早期 return）")
+        void hasPermission_scope内グループ皆無_false() {
+            // Given
+            given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of());
+
+            // When
+            boolean result = permissionGroupService.hasPermission(USER_ID, "TEAM", SCOPE_ID, PERM_NAME);
+
+            // Then
+            assertThat(result).isFalse();
+            // 早期 return により後続の repository は呼ばれない
+            verify(userPermissionGroupRepository, never()).findByUserId(anyLong());
+        }
+
+        @Test
+        @DisplayName("異常系: userId / scopeType / scopeId / permissionName のいずれかが null → false")
+        void hasPermission_引数null_false() {
+            assertThat(permissionGroupService.hasPermission(null, "TEAM", SCOPE_ID, PERM_NAME)).isFalse();
+            assertThat(permissionGroupService.hasPermission(USER_ID, null, SCOPE_ID, PERM_NAME)).isFalse();
+            assertThat(permissionGroupService.hasPermission(USER_ID, "TEAM", null, PERM_NAME)).isFalse();
+            assertThat(permissionGroupService.hasPermission(USER_ID, "TEAM", SCOPE_ID, null)).isFalse();
+            // null 引数では一切 repository 呼出ししない
+            verifyNoInteractions(permissionGroupRepository);
+        }
+
+        @Test
+        @DisplayName("正常系: ORGANIZATION スコープでも判定できる")
+        void hasPermission_ORGANIZATION_正常() {
+            // Given
+            PermissionGroupEntity group = PermissionGroupEntity.builder()
+                    .id(GROUP_ID).organizationId(SCOPE_ID).name("組織管理者")
+                    .targetRole(PermissionGroupEntity.TargetRole.DEPUTY_ADMIN)
+                    .createdBy(CREATED_BY).createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
+                    .build();
+            given(permissionGroupRepository.findByOrganizationId(SCOPE_ID)).willReturn(List.of(group));
+
+            UserPermissionGroupEntity assignment = UserPermissionGroupEntity.builder()
+                    .userId(USER_ID).groupId(GROUP_ID).build();
+            given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of(assignment));
+
+            PermissionGroupPermissionEntity pgp = PermissionGroupPermissionEntity.builder()
+                    .groupId(GROUP_ID).permissionId(PERM_ID_1).build();
+            given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of(pgp));
+
+            given(permissionRepository.findById(PERM_ID_1))
+                    .willReturn(Optional.of(createPermissionEntity(PERM_ID_1, PERM_NAME)));
+
+            // When
+            boolean result = permissionGroupService.hasPermission(USER_ID, "ORGANIZATION", SCOPE_ID, PERM_NAME);
+
+            // Then
+            assertThat(result).isTrue();
+            verify(permissionGroupRepository).findByOrganizationId(SCOPE_ID);
+        }
+    }
 }

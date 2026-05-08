@@ -292,7 +292,9 @@ public class PropertyWorkPackageController {
             @RequestParam(value = "format", defaultValue = "pdf") String format) {
         String scopeType = toScopeType(scope);
         UserScopeRoleSnapshot snapshot = loadSnapshot(scopeType, scopeId);
-        return exportService.exportSinglePackage(scopeType, scopeId, packageId, format, snapshot);
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        return exportService.exportSinglePackage(scopeType, scopeId, packageId, format,
+                viewerUserId, snapshot);
     }
 
     @PostMapping("/export")
@@ -309,8 +311,9 @@ public class PropertyWorkPackageController {
             @RequestParam(value = "status", required = false) WorkPackageStatus status) {
         String scopeType = toScopeType(scope);
         UserScopeRoleSnapshot snapshot = loadSnapshot(scopeType, scopeId);
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         return exportService.exportList(scopeType, scopeId, from, to, workType, vendorId, status,
-                format, snapshot);
+                format, viewerUserId, snapshot);
     }
 
     // =========================================================================
@@ -364,7 +367,8 @@ public class PropertyWorkPackageController {
         VendorEntity vendor = entity.getVendorId() != null
                 ? safeLoadVendor(entity.getScopeType(), entity.getScopeId(), entity.getVendorId())
                 : null;
-        MaskedView masked = maskingService.applyMasking(entity, vendor, snapshot);
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        MaskedView masked = maskingService.applyMasking(entity, vendor, viewerUserId, snapshot);
         List<PropertyWorkDocumentResponse> docs =
                 documentRepository.findByPackageIdOrderByDisplayOrderAscIdAsc(entity.getId())
                         .stream()
@@ -381,7 +385,8 @@ public class PropertyWorkPackageController {
         VendorEntity vendor = entity.getVendorId() != null
                 ? safeLoadVendor(entity.getScopeType(), entity.getScopeId(), entity.getVendorId())
                 : null;
-        MaskedView masked = maskingService.applyMasking(entity, vendor, snapshot);
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        MaskedView masked = maskingService.applyMasking(entity, vendor, viewerUserId, snapshot);
         if (!masked.visible()) {
             return null;
         }

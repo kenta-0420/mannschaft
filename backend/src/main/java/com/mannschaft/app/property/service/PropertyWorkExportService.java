@@ -40,7 +40,7 @@ import java.util.Map;
  * 未実装。Rate Limiter 基盤導入時に Phase 4 で対応する旨を申し送り事項に記載する。</p>
  *
  * <p><strong>マスキング統合</strong>: パッケージごとに
- * {@link PropertyWorkPackageMaskingService#applyMasking(PropertyWorkPackageEntity, VendorEntity, UserScopeRoleSnapshot)}
+ * {@link PropertyWorkPackageMaskingService#applyMasking(PropertyWorkPackageEntity, VendorEntity, Long, UserScopeRoleSnapshot)}
  * を呼び、{@link MaskedView#visible()} が false のパッケージはエクスポートから除外する
  * （fail-closed）。金額閲覧不可の場合は金額カラムを {@code null}、業者連絡先カラムを
  * "●●●" として出力する。</p>
@@ -79,7 +79,7 @@ public class PropertyWorkExportService {
      */
     public ResponseEntity<byte[]> exportSinglePackage(
             String scopeType, Long scopeId, Long packageId, String format,
-            UserScopeRoleSnapshot viewer) {
+            Long viewerUserId, UserScopeRoleSnapshot viewer) {
         PropertyWorkPackageEntity entity = packageRepository.findByIdAndDeletedAtIsNull(packageId)
                 .orElseThrow(() -> new BusinessException(PropertyHistoryErrorCode.PROPERTY_001));
 
@@ -91,7 +91,7 @@ public class PropertyWorkExportService {
         VendorEntity vendor = entity.getVendorId() != null
                 ? safeLoadVendor(entity.getScopeType(), entity.getScopeId(), entity.getVendorId())
                 : null;
-        MaskedView masked = maskingService.applyMasking(entity, vendor, viewer);
+        MaskedView masked = maskingService.applyMasking(entity, vendor, viewerUserId, viewer);
         if (!masked.visible()) {
             throw new BusinessException(PropertyHistoryErrorCode.PROPERTY_002);
         }
@@ -112,8 +112,9 @@ public class PropertyWorkExportService {
     public ResponseEntity<byte[]> exportList(
             String scopeType, Long scopeId,
             LocalDate from, LocalDate to, WorkType workType, Long vendorId, WorkPackageStatus status,
-            String format, UserScopeRoleSnapshot viewer) {
-        return exportList(scopeType, scopeId, from, to, workType, vendorId, status, format, viewer, null);
+            String format, Long viewerUserId, UserScopeRoleSnapshot viewer) {
+        return exportList(scopeType, scopeId, from, to, workType, vendorId, status, format,
+                viewerUserId, viewer, null);
     }
 
     /**
@@ -126,7 +127,7 @@ public class PropertyWorkExportService {
     public ResponseEntity<byte[]> exportList(
             String scopeType, Long scopeId,
             LocalDate from, LocalDate to, WorkType workType, Long vendorId, WorkPackageStatus status,
-            String format, UserScopeRoleSnapshot viewer, String filterSummary) {
+            String format, Long viewerUserId, UserScopeRoleSnapshot viewer, String filterSummary) {
         // 1-δ: Specification を組まず Repository の汎用 list 経由で取得して
         // メモリ上でフィルタする（件数が多くなる組織はガード値で弾く）。
         List<PropertyWorkPackageEntity> all = packageRepository
@@ -159,7 +160,7 @@ public class PropertyWorkExportService {
             VendorEntity vendor = e.getVendorId() != null
                     ? safeLoadVendor(e.getScopeType(), e.getScopeId(), e.getVendorId())
                     : null;
-            MaskedView mv = maskingService.applyMasking(e, vendor, viewer);
+            MaskedView mv = maskingService.applyMasking(e, vendor, viewerUserId, viewer);
             if (mv.visible()) {
                 rows.add(new MaskedRow(e, vendor, mv));
             }
