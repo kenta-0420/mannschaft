@@ -7,6 +7,7 @@ import com.mannschaft.app.todo.exception.MilestoneLockedException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -53,7 +54,9 @@ public class GlobalExceptionHandler {
 
     /**
      * Spring が自動配線するコンストラクタ。
+     * 複数コンストラクタがある場合、@Autowired を明示しないと Spring が default constructor を探してしまうため必須。
      */
+    @Autowired
     public GlobalExceptionHandler(MessageSource messageSource,
                                   ObjectProvider<ErrorReportService> errorReportServiceProvider,
                                   ObjectProvider<ErrorReportNotifier> errorReportNotifierProvider) {
