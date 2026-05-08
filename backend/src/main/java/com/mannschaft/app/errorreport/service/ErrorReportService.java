@@ -25,8 +25,10 @@ import com.mannschaft.app.errorreport.repository.ErrorReportActivityRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -191,6 +193,160 @@ public class ErrorReportService {
 
         log.info("エラーレポート新規作成: id={}, hash={}, severity={}", saved.getId(), errorHash, severity);
         return saved;
+    }
+
+    /**
+     * F10.5 Phase 10-β / F10.6 Phase 10-β-1 — バックエンド由来の例外を error_reports に記録する。
+     *
+     * <p>{@link com.mannschaft.app.common.GlobalExceptionHandler} および
+     * {@link com.mannschaft.app.config.RequestLoggingFilter}（10秒超のスローリクエスト）から呼ばれる。
+     * 既存の {@link #createOrAggregate(ErrorReportRequest, String)} と同じ集約ロジック（SHA-256 ハッシュ）を
+     * 使い、繰り返し発生時は occurrence_count をインクリメントする。</p>
+     *
+     * <p>記録対象は設計書 F10.6 §5.2 の方針に従う:
+     * バリデーションエラー（4xx）/ ビジネスエラー（4xx）は呼び出し側で除外すること。</p>
+     *
+     * @param ex       記録対象の例外
+     * @param request  HTTP リクエスト（pageUrl / userAgent / ipAddress 抽出用、NULL 可）
+     * @param severity 重要度
+     * @return 作成または更新されたエラーレポートエンティティ
+     */
+    public ErrorReportEntity recordBackendException(Throwable ex,
+                                                    HttpServletRequest request,
+                                                    ErrorReportSeverity severity) {
+        String exClassName = ex.getClass().getName();
+        String errorMessage = ex.getMessage() != null
+                ? exClassName + ": " + ex.getMessage()
+                : exClassName;
+        // error_message カラム上限 1000 字
+        if (errorMessage.length() > 1000) {
+            errorMessage = errorMessage.substring(0, 1000);
+        }
+
+        // ハッシュ対象: 例外クラス名 + 先頭スタックフレーム（メソッド単位の集約）
+        String firstFrame = "";
+        StackTraceElement[] stack = ex.getStackTrace();
+        if (stack != null && stack.length > 0) {
+            firstFrame = stack[0].toString();
+        }
+        String errorHash = sha256(exClassName + "|" + firstFrame);
+
+        // pageUrl は request URI を採用（NULL なら "backend"）
+        String pageUrl = "backend";
+        String userAgent = null;
+        String ipAddress = null;
+        if (request != null) {
+            String uri = request.getRequestURI();
+            if (uri != null && !uri.isBlank()) {
+                pageUrl = uri;
+            }
+            userAgent = request.getHeader("User-Agent");
+            // IP は X-Forwarded-For があればそちらを優先
+            String forwarded = request.getHeader("X-Forwarded-For");
+            ipAddress = (forwarded != null && !forwarded.isBlank())
+                    ? forwarded.split(",")[0].trim()
+                    : request.getRemoteAddr();
+        }
+        // pageUrl カラム上限 2048
+        if (pageUrl != null && pageUrl.length() > 2048) {
+            pageUrl = pageUrl.substring(0, 2048);
+        }
+        if (userAgent != null && userAgent.length() > 500) {
+            userAgent = userAgent.substring(0, 500);
+        }
+        if (ipAddress != null && ipAddress.length() > 45) {
+            ipAddress = ipAddress.substring(0, 45);
+        }
+
+        // requestId は MDC から取得（RequestLoggingFilter が設定済み）
+        String requestId = MDC.get("requestId");
+
+        // stack_trace を 2000 字に切り詰め
+        String stackTrace = renderStackTrace(ex);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        Optional<ErrorReportEntity> existing = errorReportRepository.findByErrorHash(errorHash);
+        if (existing.isPresent()) {
+            ErrorReportEntity report = existing.get();
+
+            if (report.getStatus() == ErrorReportStatus.RESOLVED) {
+                report.reopen(now);
+                report.setWorkflowStage(null);
+                report.setAssigneeId(null);
+                errorReportNotifier.notifyRegression(report);
+                log.info("バックエンド例外リグレッション検知: id={}, hash={}, ex={}",
+                        report.getId(), errorHash, exClassName);
+                return report;
+            }
+
+            if (report.getStatus() != ErrorReportStatus.IGNORED) {
+                ErrorReportSeverity oldSeverity = report.getSeverity();
+                errorReportRepository.incrementOccurrence(errorHash, now, null);
+                ErrorReportEntity updated = errorReportRepository.findByErrorHash(errorHash).orElseThrow();
+                ErrorReportSeverity newSeverity = updated.getSeverity();
+                if (newSeverity.ordinal() > oldSeverity.ordinal()) {
+                    errorReportNotifier.notifyEscalation(updated, oldSeverity, newSeverity);
+                }
+                log.info("バックエンド例外重複集約: id={}, hash={}, count={}, ex={}",
+                        updated.getId(), errorHash, updated.getOccurrenceCount(), exClassName);
+                return updated;
+            }
+        }
+
+        // 新規作成
+        ErrorReportEntity newReport = ErrorReportEntity.builder()
+                .errorMessage(errorMessage)
+                .stackTrace(stackTrace)
+                .pageUrl(pageUrl)
+                .userAgent(userAgent)
+                .userId(null)
+                .organizationId(null)
+                .requestId(requestId)
+                .ipAddress(ipAddress)
+                .occurredAt(now)
+                .status(ErrorReportStatus.NEW)
+                .severity(severity)
+                .errorHash(errorHash)
+                .occurrenceCount(1)
+                .affectedUserCount(0)
+                .firstOccurredAt(now)
+                .lastOccurredAt(now)
+                .build();
+        ErrorReportEntity saved = errorReportRepository.save(newReport);
+
+        // HIGH 以上は Slack + SYSTEM_ADMIN 通知（フロント由来と同じ閾値）
+        if (severity.ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
+            errorReportNotifier.notifySlack(saved);
+            errorReportNotifier.notifySystemAdmins(saved);
+        }
+
+        log.info("バックエンド例外記録: id={}, hash={}, severity={}, ex={}",
+                saved.getId(), errorHash, severity, exClassName);
+        return saved;
+    }
+
+    /**
+     * Throwable のスタックトレースを文字列化し、2000 字までに切り詰める。
+     */
+    private String renderStackTrace(Throwable ex) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(ex.getClass().getName());
+        if (ex.getMessage() != null) {
+            sb.append(": ").append(ex.getMessage());
+        }
+        sb.append('\n');
+        StackTraceElement[] stack = ex.getStackTrace();
+        if (stack != null) {
+            for (StackTraceElement frame : stack) {
+                sb.append("\tat ").append(frame.toString()).append('\n');
+                if (sb.length() > 2000) break;
+            }
+        }
+        if (sb.length() > 2000) {
+            return sb.substring(0, 2000);
+        }
+        return sb.toString();
     }
 
     /**
