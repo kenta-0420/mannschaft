@@ -5,9 +5,9 @@ import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.auth.entity.AuditLogEntity;
 import com.mannschaft.app.auth.repository.AuditLogRepository;
+import com.mannschaft.app.auth.AuditLogErrorCode;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.PagedResponse;
 import lombok.RequiredArgsConstructor;
@@ -105,6 +105,10 @@ public class AuditLogService {
             int page, int size) {
 
         accessControlService.checkSystemAdmin(requestUserId);
+
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new BusinessException(AuditLogErrorCode.INVALID_DATE_RANGE);
+        }
 
         int safeSize = Math.min(size, 100);
         int offset = page * safeSize;
@@ -283,7 +287,7 @@ public class AuditLogService {
         accessControlService.checkAdminOrAbove(requestUserId, teamId, "TEAM");
 
         if (from != null && to != null && from.isAfter(to)) {
-            throw new BusinessException(CommonErrorCode.COMMON_001); // VALIDATION_ERROR
+            throw new BusinessException(AuditLogErrorCode.INVALID_DATE_RANGE);
         }
 
         int safeLimit = Math.min(limit, 100);
@@ -377,7 +381,7 @@ public class AuditLogService {
         accessControlService.checkAdminOrAbove(requestUserId, orgId, "ORGANIZATION");
 
         if (from != null && to != null && from.isAfter(to)) {
-            throw new BusinessException(CommonErrorCode.COMMON_001); // VALIDATION_ERROR
+            throw new BusinessException(AuditLogErrorCode.INVALID_DATE_RANGE);
         }
 
         int safeLimit = Math.min(limit, 100);

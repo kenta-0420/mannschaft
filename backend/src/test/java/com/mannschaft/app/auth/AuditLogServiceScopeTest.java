@@ -92,14 +92,16 @@ class AuditLogServiceScopeTest {
         }
 
         @Test
-        @DisplayName("異常: from > to の場合は400を返す")
+        @DisplayName("異常: from > to の場合は AUDIT_001 エラーコードで400を返す")
         void invalidDateRange() {
             LocalDateTime from = LocalDateTime.now();
             LocalDateTime to = from.minusDays(1);
 
             assertThatThrownBy(() -> auditLogService.getTeamAuditLogs(
                     USER_ID, TEAM_ID, null, null, null, from, to, null, 20))
-                    .isInstanceOf(BusinessException.class);
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(AuditLogErrorCode.INVALID_DATE_RANGE));
         }
 
         @Test
@@ -143,14 +145,16 @@ class AuditLogServiceScopeTest {
         }
 
         @Test
-        @DisplayName("異常: from > to の場合は400を返す")
+        @DisplayName("異常: from > to の場合は AUDIT_001 エラーコードで400を返す")
         void invalidDateRange() {
             LocalDateTime from = LocalDateTime.now();
             LocalDateTime to = from.minusHours(1);
 
             assertThatThrownBy(() -> auditLogService.getOrganizationAuditLogs(
                     USER_ID, ORG_ID, null, null, null, from, to, null, 20))
-                    .isInstanceOf(BusinessException.class);
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(AuditLogErrorCode.INVALID_DATE_RANGE));
         }
     }
 
