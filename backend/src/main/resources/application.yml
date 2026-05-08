@@ -217,3 +217,17 @@ mannschaft.performance-monitoring:
   cache-hit-rate:
     warn-threshold: ${MANNSCHAFT_PERF_CACHE_HIT_WARN:0.80}
     error-threshold: ${MANNSCHAFT_PERF_CACHE_HIT_ERROR:0.50}
+
+# F10.5 Phase 10-β-2 / F10.6 §5.4 / §5.6 — エラー監視のヘルスポーリングと集約バッファ
+# 設計書: docs/features/F10.5_performance_monitoring.md §5.4 / docs/features/F10.6_error_monitoring.md §5.4 / §5.6
+# - aggregation: 同一 error_hash の 2 通目以降を 5 分間蓄積し、まとめて 1 通の Slack サマリで送信する
+# - aggregation.max-occurrences-per-hash: 1 entry あたりの上限（OOM 防止、殿様御裁可で 100）
+# - health-polling: Spring Boot Actuator HealthEndpoint を 30 秒毎にポーリングし、UP→DOWN 遷移を検知して通知
+mannschaft.error-monitoring:
+  aggregation:
+    enabled: ${MANNSCHAFT_ERROR_AGG_ENABLED:true}
+    flush-interval-ms: ${MANNSCHAFT_ERROR_AGG_FLUSH_MS:300000}
+    max-occurrences-per-hash: ${MANNSCHAFT_ERROR_AGG_MAX_PER_HASH:100}
+  health-polling:
+    enabled: ${MANNSCHAFT_HEALTH_POLL_ENABLED:true}
+    interval-ms: ${MANNSCHAFT_HEALTH_POLL_INTERVAL_MS:30000}
