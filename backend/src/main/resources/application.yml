@@ -201,3 +201,19 @@ mannschaft.error-report:
 
 # F12.5 Phase 2-D — GitHub Issue 本文の「内部管理画面」リンクの基底 URL
 mannschaft.app-base-url: ${APP_BASE_URL:http://localhost:3000}
+
+# F10.5 Phase 10-β — パフォーマンス監視のアラート閾値
+# 設計書: docs/features/F10.5_performance_monitoring.md §5.2.3
+# - request.error-ms 超過時に RequestLoggingFilter から
+#   ErrorReportNotifier.notifySlowRequest + ErrorReportService.recordBackendException(HIGH) を呼ぶ
+# - slow-query / cache-hit-rate は Phase 10-β 段階では値の保持のみ（集計バッチは Phase 10-γ）
+mannschaft.performance-monitoring:
+  request:
+    warn-ms: ${MANNSCHAFT_PERF_REQUEST_WARN_MS:2000}
+    error-ms: ${MANNSCHAFT_PERF_REQUEST_ERROR_MS:10000}
+  slow-query:
+    warn-per-minute: ${MANNSCHAFT_PERF_SLOW_QUERY_WARN_PER_MIN:5}
+    error-per-minute: ${MANNSCHAFT_PERF_SLOW_QUERY_ERROR_PER_MIN:30}
+  cache-hit-rate:
+    warn-threshold: ${MANNSCHAFT_PERF_CACHE_HIT_WARN:0.80}
+    error-threshold: ${MANNSCHAFT_PERF_CACHE_HIT_ERROR:0.50}

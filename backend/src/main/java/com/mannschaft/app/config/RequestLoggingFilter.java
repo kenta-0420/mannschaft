@@ -1,5 +1,8 @@
 package com.mannschaft.app.config;
 
+import com.mannschaft.app.errorreport.ErrorReportSeverity;
+import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
+import com.mannschaft.app.errorreport.service.ErrorReportService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -7,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -45,12 +49,48 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     private static final String MDC_STATUS = "status";
     private static final String MDC_SLOW_FLAG = "slow";
 
-    /** 500ms 以上で slow フラグを立てる閾値 */
+    /** 500ms 以上で slow フラグを立てる閾値（INFO + slow=true） */
     static final long SLOW_THRESHOLD_MS = 500L;
-    /** 2000ms 以上で WARN にエスカレートする閾値 */
-    static final long WARN_THRESHOLD_MS = 2_000L;
-    /** 10000ms 以上で ERROR にエスカレートする閾値 */
-    static final long ERROR_THRESHOLD_MS = 10_000L;
+
+    /**
+     * F10.5 Phase 10-β — WARN / ERROR 閾値は {@link PerformanceMonitoringProperties} から注入。
+     * Phase 10-α 時の固定値（2000 / 10000）は同 properties のデフォルトとして維持。
+     */
+    private final PerformanceMonitoringProperties properties;
+
+    /**
+     * F10.5 Phase 10-β / F10.6 Phase 10-β-1 — スローリクエスト Slack 通知。
+     * フィルターは {@link OncePerRequestFilter} として早期に Bean 化される一方、
+     * {@link ErrorReportNotifier} / {@link ErrorReportService} は重い依存を持つ可能性があるため
+     * {@link ObjectProvider} 経由で遅延解決する（循環参照の予防）。
+     */
+    private final ObjectProvider<ErrorReportNotifier> errorReportNotifierProvider;
+
+    /**
+     * F10.5 Phase 10-β / F10.6 Phase 10-β-1 — error_reports への記録。
+     */
+    private final ObjectProvider<ErrorReportService> errorReportServiceProvider;
+
+    /**
+     * Phase 10-α 互換コンストラクタ（テスト用：notifier/service を使わないケース）。
+     * Spring の自動配線では使用されない。
+     */
+    public RequestLoggingFilter() {
+        this.properties = new PerformanceMonitoringProperties();
+        this.errorReportNotifierProvider = null;
+        this.errorReportServiceProvider = null;
+    }
+
+    /**
+     * Spring から自動配線されるコンストラクタ。
+     */
+    public RequestLoggingFilter(PerformanceMonitoringProperties properties,
+                                ObjectProvider<ErrorReportNotifier> errorReportNotifierProvider,
+                                ObjectProvider<ErrorReportService> errorReportServiceProvider) {
+        this.properties = properties;
+        this.errorReportNotifierProvider = errorReportNotifierProvider;
+        this.errorReportServiceProvider = errorReportServiceProvider;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -77,17 +117,24 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } finally {
             long durationMs = (System.nanoTime() - startNanos) / 1_000_000L;
+            String method = request.getMethod();
+            String path = request.getRequestURI();
+            String requestId = MDC.get(MDC_REQUEST_ID);
+
+            long warnMs = properties.getRequest().getWarnMs();
+            long errorMs = properties.getRequest().getErrorMs();
+
             try {
                 // F10.5 Phase 10-α: 計測結果を MDC に積み、構造化ログとして出力
                 MDC.put(MDC_DURATION_MS, Long.toString(durationMs));
-                MDC.put(MDC_METHOD, request.getMethod());
+                MDC.put(MDC_METHOD, method);
                 // クエリ文字列は PII リーク防止のため記録しない（設計書 §6.2）
-                MDC.put(MDC_PATH, request.getRequestURI());
+                MDC.put(MDC_PATH, path);
                 MDC.put(MDC_STATUS, Integer.toString(response.getStatus()));
 
-                if (durationMs >= ERROR_THRESHOLD_MS) {
+                if (durationMs >= errorMs) {
                     log.error("request_completed");
-                } else if (durationMs >= WARN_THRESHOLD_MS) {
+                } else if (durationMs >= warnMs) {
                     log.warn("request_completed");
                 } else if (durationMs >= SLOW_THRESHOLD_MS) {
                     MDC.put(MDC_SLOW_FLAG, "true");
@@ -98,6 +145,54 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             } finally {
                 MDC.clear();
             }
+
+            // F10.5 Phase 10-β: error_ms 超過は Slack 通知 + error_reports に severity=HIGH で記録
+            // ログ出力後・MDC クリア後に実施することで、内部処理の例外で MDC が漏れないようにする
+            if (durationMs >= errorMs) {
+                fireSlowRequestAlert(method, path, durationMs, requestId);
+            }
+        }
+    }
+
+    /**
+     * F10.5 Phase 10-β: 10秒超のリクエストに対して
+     * {@link ErrorReportNotifier#notifySlowRequest(String, String, long, String)} と
+     * {@link ErrorReportService#recordBackendException(Throwable, HttpServletRequest, ErrorReportSeverity)}
+     * を呼び出す。Bean 未配線（テストなど）の場合は静かにスキップする。
+     */
+    private void fireSlowRequestAlert(String method, String path, long durationMs, String requestId) {
+        try {
+            ErrorReportNotifier notifier = errorReportNotifierProvider != null
+                    ? errorReportNotifierProvider.getIfAvailable()
+                    : null;
+            if (notifier != null) {
+                notifier.notifySlowRequest(method, path, durationMs, requestId);
+            }
+
+            ErrorReportService service = errorReportServiceProvider != null
+                    ? errorReportServiceProvider.getIfAvailable()
+                    : null;
+            if (service != null) {
+                // 設計書 F10.5 §5.1.2 / F10.6 §5.2: 遅延リクエストは severity=HIGH で記録
+                SlowRequestException synthetic = new SlowRequestException(
+                        String.format("Request took %d ms (threshold=%d): %s %s",
+                                durationMs, properties.getRequest().getErrorMs(), method, path));
+                service.recordBackendException(synthetic, null, ErrorReportSeverity.HIGH);
+            }
+        } catch (Exception e) {
+            // 通知・記録の失敗でリクエスト本体に影響を出さない
+            log.warn("Slow request alert failed: method={}, path={}, durationMs={}",
+                    method, path, durationMs, e);
+        }
+    }
+
+    /**
+     * F10.5 Phase 10-β — スローリクエスト記録用の合成例外。
+     * {@code error_reports.error_message} に専用識別を残すため独立クラスとする。
+     */
+    public static class SlowRequestException extends RuntimeException {
+        public SlowRequestException(String message) {
+            super(message);
         }
     }
 }

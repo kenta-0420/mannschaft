@@ -1,6 +1,8 @@
 package com.mannschaft.app.errorreport.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.entity.ErrorReportAiAnalysisEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
@@ -16,6 +18,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -39,6 +42,25 @@ public class ErrorReportNotifier {
 
     @Value("${mannschaft.error-report.notify-threshold:HIGH}")
     private String notifyThreshold;
+
+    /**
+     * F10.5 Phase 10-β / F10.6 Phase 10-β-1 — スローリクエスト通知のクールダウンキャッシュ。
+     * 同一 method+path で 1 分間に 1 回だけ Slack 通知する。
+     * 設計書 F10.5 §5.2.2 / F10.6 §5.6 で要求される重複アラート抑制。
+     */
+    private final Cache<String, Boolean> slowRequestCooldown = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(1))
+            .maximumSize(1000)
+            .build();
+
+    /**
+     * F10.5 Phase 10-β / F10.6 Phase 10-β-1 — Health DOWN 通知のクールダウンキャッシュ。
+     * component 単位で 5 分に 1 回だけ通知する。
+     */
+    private final Cache<String, Boolean> healthDownCooldown = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(5))
+            .maximumSize(100)
+            .build();
 
     /**
      * Slack Webhook でエラーレポートを通知する。
@@ -322,6 +344,73 @@ public class ErrorReportNotifier {
             }
         } catch (Exception e) {
             log.warn("AI ヘルス劣化通知送信失敗: failureCount={}", failureCount, e);
+        }
+    }
+
+    /**
+     * F10.5 Phase 10-β / F10.6 Phase 10-β-1 — スローリクエスト Slack 通知。
+     *
+     * <p>{@link com.mannschaft.app.config.RequestLoggingFilter} が ERROR_THRESHOLD_MS（10秒）
+     * を超えるリクエストを検知した際に呼ばれる。同一 method+path について 1 分間に 1 回だけ
+     * Slack に通知する（設計書 F10.5 §5.2.2 / F10.6 §5.6 重複抑制）。</p>
+     *
+     * @param method      HTTP メソッド
+     * @param path        リクエスト URI
+     * @param durationMs  経過ミリ秒
+     * @param requestId   MDC requestId（NULL 可）
+     */
+    @Async("event-pool")
+    public void notifySlowRequest(String method, String path, long durationMs, String requestId) {
+        if (slackWebhookUrl == null || slackWebhookUrl.isBlank()) return;
+        String cooldownKey = "slow-request:" + method + ":" + path;
+        if (slowRequestCooldown.getIfPresent(cooldownKey) != null) {
+            // 1 分以内に同じ key で通知済み → スキップ
+            return;
+        }
+        slowRequestCooldown.put(cooldownKey, Boolean.TRUE);
+        try {
+            String text = String.format(
+                    ":warning: *Slow Request*\n%s %s took %d ms (requestId=%s)",
+                    method, path, durationMs,
+                    requestId != null ? requestId : "-");
+            String payload = objectMapper.writeValueAsString(Map.of("text", text));
+            restClient.post().uri(slackWebhookUrl)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(payload)
+                    .retrieve().toBodilessEntity();
+        } catch (Exception e) {
+            log.warn("スローリクエスト通知送信失敗: method={}, path={}, durationMs={}",
+                    method, path, durationMs, e);
+        }
+    }
+
+    /**
+     * F10.5 Phase 10-β / F10.6 Phase 10-β-1 — Health Indicator DOWN 通知。
+     *
+     * <p>Spring Boot Actuator の {@code /actuator/health} で DB / Redis 等のコンポーネントが
+     * DOWN になった際に呼ばれる。同一 component について 5 分に 1 回だけ Slack に通知する。</p>
+     *
+     * @param component  コンポーネント名（"db" / "redis" など）
+     * @param detail     詳細メッセージ（例外メッセージ等）
+     */
+    @Async("event-pool")
+    public void notifyHealthDown(String component, String detail) {
+        if (slackWebhookUrl == null || slackWebhookUrl.isBlank()) return;
+        if (healthDownCooldown.getIfPresent(component) != null) {
+            return;
+        }
+        healthDownCooldown.put(component, Boolean.TRUE);
+        try {
+            String text = String.format(
+                    ":rotating_light: *Health DOWN*\ncomponent: `%s`\ndetail: %s",
+                    component, detail != null ? detail : "(no detail)");
+            String payload = objectMapper.writeValueAsString(Map.of("text", text));
+            restClient.post().uri(slackWebhookUrl)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(payload)
+                    .retrieve().toBodilessEntity();
+        } catch (Exception e) {
+            log.warn("Health DOWN 通知送信失敗: component={}", component, e);
         }
     }
 
