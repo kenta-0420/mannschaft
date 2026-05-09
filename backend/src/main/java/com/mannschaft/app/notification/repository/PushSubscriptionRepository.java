@@ -35,4 +35,9 @@ public interface PushSubscriptionRepository extends JpaRepository<PushSubscripti
      * ユーザーのプッシュ購読件数を取得する。
      */
     long countByUserId(Long userId);
+
+    /**
+     * ユーザーIDに紐づくプッシュ購読をすべて削除する（退会匿名化用）。
+     */
+    void deleteByUserId(Long userId);
 }
