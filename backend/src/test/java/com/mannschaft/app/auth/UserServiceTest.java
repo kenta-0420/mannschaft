@@ -823,7 +823,8 @@ class UserServiceTest {
             // When / Then
             assertThatThrownBy(() -> userService.withdrawUser(USER_ID))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("GDPR_006");
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("GDPR_006"));
 
             // PII消去は呼ばれない
             verify(userRepository, org.mockito.Mockito.never()).save(any());
