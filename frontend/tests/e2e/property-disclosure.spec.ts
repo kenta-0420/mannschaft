@@ -352,6 +352,8 @@ async function setupDraftMock(page: Page, state: MockState): Promise<void> {
       }
       const cur = state.drafts[idx]!
       // AUTO_TABLE は常に更新、AUTO_FIELD（ownerName）は allow=true 時のみ
+      // historyTable は AUTO_TABLE フィールド。formSchema 側の columns
+      // (title/workType/plannedEndDate) と整合するキーで返却する。
       cur.formData = {
         ...cur.formData,
         ownerName: allow ? '山田太郎' : null,
