@@ -1,0 +1,189 @@
+<script setup lang="ts">
+/**
+ * 重要事項説明書（参考） 出力履歴一覧（F09.14 Phase 2-β-5）。
+ *
+ * URL: /property-disclosure/exports?organizationId=N
+ *
+ * - DataTable: createdAt / templateCodeSnapshot / outputFormat / sha256（短縮） / アクション
+ * - ダウンロードボタン → GET /{exportId}/download → presigned URL → window.open
+ * - SHA-256 検証失敗時（DISCLOSURE_010 / 503）はトーストでエラー通知
+ */
+import type { DisclosureExport } from '~/types/disclosure'
+
+definePageMeta({ middleware: 'auth' })
+
+const route = useRoute()
+const { t, locale } = useI18n()
+const { error: showError } = useNotification()
+
+const organizationId = computed<number>(() => {
+  const raw = route.query.organizationId
+  const n = Number(Array.isArray(raw) ? raw[0] : raw)
+  return Number.isFinite(n) && n > 0 ? n : 0
+})
+
+const api = computed(() => useDisclosureApi(organizationId.value))
+
+const exports_ = ref<DisclosureExport[]>([])
+const totalElements = ref(0)
+const loading = ref(false)
+const page = ref(0)
+const size = ref(20)
+
+async function load() {
+  if (organizationId.value === 0) return
+  loading.value = true
+  try {
+    const res = await api.value.listExports({ page: page.value, size: size.value })
+    exports_.value = res.data
+    totalElements.value = res.meta?.total ?? res.data.length
+  } catch {
+    showError(t('disclosure.errors.loadFailed'))
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(() => organizationId.value, () => {
+  page.value = 0
+  load()
+})
+
+watch(page, () => load())
+
+onMounted(load)
+
+async function download(item: DisclosureExport) {
+  try {
+    const refreshed = await api.value.getExportDownloadUrl(item.id)
+    if (refreshed.downloadUrl) {
+      window.open(refreshed.downloadUrl, '_blank', 'noopener,noreferrer')
+    } else {
+      showError(t('disclosure.errors.downloadFailed'))
+    }
+  } catch (err) {
+    const status = (err as { response?: { status?: number } })?.response?.status
+    if (status === 503) {
+      showError(t('disclosure.errors.tampered'))
+    } else {
+      showError(t('disclosure.errors.downloadFailed'))
+    }
+  }
+}
+
+function back() {
+  navigateTo({
+    path: '/property-disclosure',
+    query: { organizationId: String(organizationId.value) },
+  })
+}
+
+function formatDate(iso: string): string {
+  if (!iso) return '-'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleString(locale.value)
+}
+
+function shortSha(sha: string): string {
+  if (!sha) return '-'
+  return sha.length > 16 ? `${sha.slice(0, 8)}…${sha.slice(-8)}` : sha
+}
+
+function formatSeverity(format: string): 'info' | 'success' | 'secondary' {
+  if (format === 'PDF') return 'info'
+  if (format === 'EXCEL') return 'success'
+  return 'secondary'
+}
+</script>
+
+<template>
+  <div class="space-y-4 p-4 md:p-6">
+    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <Button
+          icon="pi pi-arrow-left"
+          :label="t('disclosure.back')"
+          severity="secondary"
+          text
+          @click="back"
+        />
+        <PageHeader :title="t('disclosure.exportHistory')" class="mt-2" />
+      </div>
+    </header>
+
+    <p
+      v-if="organizationId === 0"
+      class="rounded-md border border-dashed border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200"
+    >
+      ?organizationId=N
+    </p>
+
+    <section v-else class="space-y-4">
+      <div
+        v-if="loading"
+        class="rounded-md border border-surface-200 p-8 text-center text-sm text-surface-500 dark:border-surface-700"
+      >
+        {{ t('disclosure.loading') }}
+      </div>
+
+      <div
+        v-else-if="exports_.length === 0"
+        class="rounded-md border border-dashed border-surface-300 p-8 text-center text-sm text-surface-500 dark:border-surface-700"
+        data-testid="disclosure-exports-empty"
+      >
+        {{ t('disclosure.noExports') }}
+      </div>
+
+      <DataTable
+        v-else
+        :value="exports_"
+        striped-rows
+        :data-key="'id'"
+        responsive-layout="scroll"
+        data-testid="disclosure-exports-table"
+      >
+        <Column :header="t('disclosure.fields.createdAt')" sortable>
+          <template #body="{ data }: { data: DisclosureExport }">
+            {{ formatDate(data.createdAt) }}
+          </template>
+        </Column>
+        <Column field="templateCodeSnapshot" :header="t('disclosure.fields.templateCode')" />
+        <Column :header="t('disclosure.fields.outputFormat')">
+          <template #body="{ data }: { data: DisclosureExport }">
+            <Tag
+              :severity="formatSeverity(data.outputFormat)"
+              :value="t(`disclosure.outputFormat.${data.outputFormat}`)"
+            />
+          </template>
+        </Column>
+        <Column :header="t('disclosure.fields.sha256')">
+          <template #body="{ data }: { data: DisclosureExport }">
+            <code class="text-xs">{{ shortSha(data.sha256) }}</code>
+          </template>
+        </Column>
+        <Column :header="''">
+          <template #body="{ data }: { data: DisclosureExport }">
+            <Button
+              icon="pi pi-download"
+              :label="t('disclosure.actions.download')"
+              size="small"
+              severity="primary"
+              :data-testid="`disclosure-download-${data.id}`"
+              @click="download(data)"
+            />
+          </template>
+        </Column>
+      </DataTable>
+
+      <Paginator
+        v-if="totalElements > size"
+        v-model:first="page"
+        :rows="size"
+        :total-records="totalElements"
+        :rows-per-page-options="[10, 20, 50]"
+        @update:rows="(v: number) => (size = v)"
+      />
+    </section>
+  </div>
+</template>
