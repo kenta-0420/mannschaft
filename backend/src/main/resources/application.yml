@@ -231,3 +231,17 @@ mannschaft.error-monitoring:
   health-polling:
     enabled: ${MANNSCHAFT_HEALTH_POLL_ENABLED:true}
     interval-ms: ${MANNSCHAFT_HEALTH_POLL_INTERVAL_MS:30000}
+
+# F10.6 Phase 10-γ-② — MySQL DB サイズ監視設定
+# 設計書: docs/features/F10.6_error_monitoring.md §5.7
+# - MySQL データディレクトリは Docker 名前付きボリューム (mysql-data) でマウントされており
+#   ホスト側から java.io.File で参照できないため、JDBC 経由で information_schema から
+#   DB データサイズを取得する方式（方式 B）を採用する
+# - max-gb: MySQL DB の上限容量 (GB)。環境変数 MYSQL_MAX_SIZE_GB で上書き可能
+# - warn-threshold: 使用率がこの値以上で Health.unknown() (WARN) を返す
+# - error-threshold: 使用率がこの値以上で Health.down() (CRITICAL) を返す
+# - HealthStatusListener が 30 秒毎にポーリングし DOWN 遷移を Slack 通知する（追加設定不要）
+mannschaft.disk-monitor:
+  max-gb: ${MYSQL_MAX_SIZE_GB:10.0}
+  warn-threshold: 0.75
+  error-threshold: 0.90
