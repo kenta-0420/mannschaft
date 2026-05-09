@@ -22,6 +22,7 @@ import com.mannschaft.app.auth.event.EmailChangedEvent;
 import com.mannschaft.app.auth.event.EmailChangeRequestedEvent;
 import com.mannschaft.app.auth.event.PasswordChangedEvent;
 import com.mannschaft.app.auth.event.PasswordSetupEvent;
+import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -30,6 +31,7 @@ import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +46,7 @@ import java.util.stream.Collectors;
 /**
  * ユーザー管理サービス。プロフィール操作・パスワード変更・メール変更・退会を担当する。
  */
+@Slf4j
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -439,6 +442,46 @@ public class UserService {
         userRepository.save(user);
 
         return ApiResponse.of(MessageResponse.of("退会リクエストを取り消しました"));
+    }
+
+    /**
+     * ユーザー退会処理（即時匿名化）。
+     * <p>
+     * 氏名・メールアドレス・アイコン等の個人情報（PII）を即時消去し論理削除する。
+     * 投稿・履歴・統計データは user_id を保持したまま残す（統計価値 + GDPR対応の両立）。
+     * </p>
+     * <ol>
+     *   <li>唯一の SYSTEM_ADMIN であれば退会をブロック</li>
+     *   <li>全Refresh Token失効 + user_invalidated_at（セッション即時無効化）</li>
+     *   <li>個人情報の匿名化 + 論理削除（email を UUID ダミー値で上書き）</li>
+     *   <li>UserAnonymizedEvent 発行（監査ログ・後処理用）</li>
+     * </ol>
+     *
+     * @param userId 退会対象ユーザーID
+     */
+    @Transactional
+    public void withdrawUser(Long userId) {
+        // 唯一の SYSTEM_ADMIN であれば退会をブロック
+        checkNotLastSystemAdmin(userId);
+
+        UserEntity user = findUserOrThrow(userId);
+
+        // 匿名化前にメールアドレスを保持（イベント発行用）
+        String originalEmail = user.getEmail();
+
+        // セッション・トークン類を即時無効化（一時データは削除してよい）
+        revokeAllRefreshTokens(userId);
+        authTokenService.setUserInvalidationTimestamp(userId);
+
+        // 個人情報の匿名化 + 論理削除（CLAUDE.md「DB設計の原則 §4」二段階呼出）
+        user.anonymize();
+        user.softDelete();
+        userRepository.save(user);
+
+        // 監査ログ・後処理用イベント発行
+        eventPublisher.publish(new UserAnonymizedEvent(userId, originalEmail));
+
+        log.info("ユーザー退会（即時匿名化）完了: userId={}", userId);
     }
 
     // === ヘルパーメソッド ===
