@@ -442,7 +442,7 @@ test.describe('FRIEND-007〜012: フレンドフォルダ管理', () => {
       `/api/v1/teams/${TEAM_ID}/friend-folders/1/members`,
       {
         failOnStatusCode: false,
-        data: { teamFriendId: MOCK_FRIEND_TEAMS[0].id },
+        data: { teamFriendId: MOCK_FRIEND_TEAMS[0]!.id },
       },
     )
     expect([200, 201, 400, 401, 403, 404, 409]).toContain(response.status())
