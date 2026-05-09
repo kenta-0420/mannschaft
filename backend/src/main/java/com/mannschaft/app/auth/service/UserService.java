@@ -473,8 +473,9 @@ public class UserService {
         revokeAllRefreshTokens(userId);
         authTokenService.setUserInvalidationTimestamp(userId);
 
-        // 個人情報の匿名化 + 論理削除
+        // 個人情報の匿名化 + 論理削除（CLAUDE.md「DB設計の原則 §4」二段階呼出）
         user.anonymize();
+        user.softDelete();
         userRepository.save(user);
 
         // 監査ログ・後処理用イベント発行

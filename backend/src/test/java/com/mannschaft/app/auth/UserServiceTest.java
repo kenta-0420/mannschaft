@@ -770,4 +770,94 @@ class UserServiceTest {
             assertThat(profile.getOauthProviders()).containsExactly("GOOGLE");
         }
     }
+
+    // ========================================
+    // withdrawUser — Phase 0-α: 退会匿名化 + 論理削除
+    // CLAUDE.md「DB設計の原則 §4」準拠
+    // ========================================
+
+    @Nested
+    @DisplayName("withdrawUser")
+    class WithdrawUser {
+
+        @Test
+        @DisplayName("正常系: PII消去 + deletedAt設定 + UserAnonymizedEvent発行")
+        void withdrawUser_正常_PII消去とdeletedAt設定とイベント発行() {
+            // Given
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(userRoleRepository.countSystemAdmins()).willReturn(2L); // 唯一でない
+            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            userService.withdrawUser(USER_ID);
+
+            // Then: PII が匿名化されている
+            assertThat(user.getEmail()).startsWith("withdrawn-").endsWith("@deleted.mannschaft.internal");
+            assertThat(user.getPasswordHash()).isNull();
+            assertThat(user.getLastName()).isEqualTo("退会済み");
+            assertThat(user.getFirstName()).isEqualTo("ユーザー");
+            assertThat(user.getDisplayName()).isEqualTo("退会済みユーザー");
+            assertThat(user.getAvatarUrl()).isNull();
+            assertThat(user.getPhoneNumber()).isNull();
+            assertThat(user.isSearchable()).isFalse();
+
+            // Then: 論理削除されている
+            assertThat(user.getDeletedAt()).isNotNull();
+
+            // Then: トークン無効化が呼ばれた
+            verify(refreshTokenRepository).findByUserIdAndRevokedAtIsNull(USER_ID);
+            verify(authTokenService).setUserInvalidationTimestamp(USER_ID);
+
+            // Then: UserAnonymizedEvent が発行されている
+            verify(eventPublisher).publish(any(com.mannschaft.app.auth.event.UserAnonymizedEvent.class));
+        }
+
+        @Test
+        @DisplayName("異常系: 唯一の SYSTEM_ADMIN 退会はブロックされる (GDPR_006)")
+        void withdrawUser_唯一のSYSTEM_ADMIN_例外() {
+            // Given
+            given(userRoleRepository.countSystemAdmins()).willReturn(1L);
+            given(userRoleRepository.isSystemAdmin(USER_ID)).willReturn(1);
+
+            // When / Then
+            assertThatThrownBy(() -> userService.withdrawUser(USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("GDPR_006");
+
+            // PII消去は呼ばれない
+            verify(userRepository, org.mockito.Mockito.never()).save(any());
+            verify(eventPublisher, org.mockito.Mockito.never()).publish(any());
+        }
+
+        @Test
+        @DisplayName("冪等性: softDelete() を再度呼んでも deletedAt は変わらない")
+        void softDelete_冪等() {
+            // Given
+            UserEntity user = createActiveUser();
+            user.softDelete();
+            LocalDateTime first = user.getDeletedAt();
+
+            // When: 再度呼ぶ
+            user.softDelete();
+
+            // Then: 同じインスタンスのまま
+            assertThat(user.getDeletedAt()).isEqualTo(first);
+        }
+
+        @Test
+        @DisplayName("責任分離: anonymize() 単独では deletedAt は変化しない")
+        void anonymize_単独ではdeletedAt変化なし() {
+            // Given
+            UserEntity user = createActiveUser();
+            assertThat(user.getDeletedAt()).isNull();
+
+            // When
+            user.anonymize();
+
+            // Then: anonymize は PII 消去のみ。deletedAt は softDelete() の責務。
+            assertThat(user.getDeletedAt()).isNull();
+            assertThat(user.getDisplayName()).isEqualTo("退会済みユーザー");
+        }
+    }
 }

@@ -296,8 +296,19 @@ public class UserEntity extends BaseEntity {
         this.careCategory = null;
         // 検索不可に設定
         this.isSearchable = false;
-        // 論理削除
-        this.deletedAt = LocalDateTime.now();
+        // 論理削除フラグ自体は softDelete() に分離している（責任分離）。
+        // CLAUDE.md「DB設計の原則 §4」で `user.anonymize(); user.softDelete();` の二段階呼出を規定。
+    }
+
+    /**
+     * 論理削除（soft delete）— deleted_at にタイムスタンプを設定する。
+     *
+     * <p>退会フローでは {@link #anonymize()} の直後に呼び出す。冪等。</p>
+     */
+    public void softDelete() {
+        if (this.deletedAt == null) {
+            this.deletedAt = LocalDateTime.now();
+        }
     }
 
     /**
