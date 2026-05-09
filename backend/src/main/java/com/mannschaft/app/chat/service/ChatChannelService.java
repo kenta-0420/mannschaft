@@ -77,6 +77,7 @@ public class ChatChannelService {
      * @param createdBy 作成者ユーザーID
      * @return 作成されたチャンネルレスポンス
      */
+    // TODO: chatドメインがauthドメイン（UserRepository）・userドメイン（UserBlockRepository）・roleドメイン（UserRoleRepository）・dashboardドメイン（ChatContactFolderItemRepository）をまたいでいる。将来はそれぞれのQueryService/Eventで分離予定。Phase1-E: 2026-05-09
     @Transactional
     public ChannelResponse createChannel(CreateChannelRequest request, Long createdBy) {
         ChannelType channelType = ChannelType.valueOf(request.getChannelType());
@@ -194,6 +195,7 @@ public class ChatChannelService {
      * @param userIds  会話相手のユーザーIDリスト（1〜9名、自分自身を含まない）
      * @return 会話チャンネルレスポンスと新規作成フラグ
      */
+    // TODO: chatドメインがauthドメイン（UserRepository）・userドメイン（UserBlockRepository）・roleドメイン（UserRoleRepository）・dashboardドメイン（ChatContactFolderItemRepository）をまたいでいる。将来はそれぞれのQueryService/Eventで分離予定。Phase1-E: 2026-05-09
     @Transactional
     public ConversationResult startConversation(Long callerId, List<Long> userIds) {
         // 自分自身が含まれていないか検証
@@ -306,6 +308,7 @@ public class ChatChannelService {
      * @param request   招待リクエスト
      * @return 新しく作成されたZimmerのチャンネルレスポンス
      */
+    // TODO: chatドメインがauthドメイン（UserRepository）・userドメイン（UserBlockRepository）・roleドメイン（UserRoleRepository）・dashboardドメイン（ChatContactFolderItemRepository）をまたいでいる。将来はそれぞれのQueryService/Eventで分離予定。Phase1-E: 2026-05-09
     @Transactional
     public ChannelResponse inviteToZimmer(Long channelId, Long callerId, InviteToZimmerRequest request) {
         ChatChannelEntity kabine = findChannelOrThrow(channelId);

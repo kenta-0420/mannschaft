@@ -72,6 +72,7 @@ public class ShiftRequestService {
      * @param userId ユーザーID
      * @return 提出されたシフト希望
      */
+    // TODO: shiftドメインとproxyドメインをまたいでいる（ProxyInputRecordRepositoryを直接参照）。将来はProxyInputServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @Transactional
     public ShiftRequestResponse submitRequest(CreateShiftRequestRequest req, Long userId) {
         ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(req.getScheduleId());
@@ -152,6 +153,7 @@ public class ShiftRequestService {
      * @param scheduleId スケジュールID
      * @return 提出サマリー
      */
+    // TODO: shiftドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public ShiftRequestSummaryResponse getRequestSummary(Long scheduleId) {
         long submittedCount = requestRepository.countDistinctUserIdByScheduleId(scheduleId);
         ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(scheduleId);

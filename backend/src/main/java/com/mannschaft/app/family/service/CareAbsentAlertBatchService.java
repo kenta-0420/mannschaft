@@ -96,6 +96,7 @@ public class CareAbsentAlertBatchService {
      *
      * <p>冪等チェックは {@link CareEventNotificationService#sendNoContactCheck} に委譲する。</p>
      */
+    // TODO: familyドメインとeventドメインをまたいでいる（EventRepository・EventRsvpResponseRepository・EventCheckinRepositoryを直接参照）。将来はEventQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @Scheduled(fixedDelay = 180_000)
     @Transactional
     public void runNoContactCheck() {
@@ -139,6 +140,7 @@ public class CareAbsentAlertBatchService {
      *
      * <p>冪等チェックは {@link CareEventNotificationService#sendAbsentAlert} に委譲する。</p>
      */
+    // TODO: familyドメインとeventドメインをまたいでいる（EventRepository・EventRsvpResponseRepository・EventCheckinRepositoryを直接参照）。将来はEventQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @Scheduled(fixedDelay = 180_000)
     @Transactional
     public void runAbsentAlertCheck() {

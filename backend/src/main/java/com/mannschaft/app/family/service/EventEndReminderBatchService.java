@@ -85,6 +85,7 @@ public class EventEndReminderBatchService {
      * <p>冪等性: 同一イベントに対して1回のバッチ実行で複数回通知しない。
      * カウント値を確認してから段階を判定する。</p>
      */
+    // TODO: familyドメインがeventドメイン（EventRepository）とroleドメイン（UserRoleRepository）をまたいでいる。将来はEventQueryServiceとUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @Scheduled(fixedDelay = 300_000) // 5分間隔
     @Transactional
     public void runEndReminderCheck() {
