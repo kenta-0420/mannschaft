@@ -24,6 +24,7 @@ public class ShiftPublishedNotificationListener {
     private final NotificationHelper notificationHelper;
     private final UserRoleRepository userRoleRepository;
 
+    // TODO: shiftドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onShiftPublished(ShiftPublishedEvent event) {

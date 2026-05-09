@@ -90,9 +90,9 @@ public class DisclosureExportEntity {
     @Column(columnDefinition = "JSON", nullable = false)
     private String dataSnapshot;
 
-    /** 出力 PDF の SHA-256（改ざん検出用）。 */
-    @Column(length = 64)
-    private String pdfSha256;
+    /** 出力ファイル（PDF/Excel/Word）の SHA-256（改ざん検出用）。Phase 3-A で pdfSha256 から汎用化。 */
+    @Column(name = "output_sha256", length = 64)
+    private String outputSha256;
 
     /** Phase 3 — 電子印鑑承認回覧 ID。 */
     private Long circulationDocumentId;

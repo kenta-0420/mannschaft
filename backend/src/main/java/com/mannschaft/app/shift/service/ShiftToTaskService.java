@@ -40,6 +40,7 @@ public class ShiftToTaskService {
      * @param teamId            チームID（ログ用）
      * @param triggeredByUserId 操作ユーザーID
      */
+    // TODO: shiftドメインとtodoドメインをまたいでいる（TodoRepositoryを直接参照）。将来はTodoCommandServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @Transactional
     public void createTodosForSchedule(Long scheduleId, Long teamId, Long triggeredByUserId) {
         List<ShiftSlotEntity> slots = slotRepository

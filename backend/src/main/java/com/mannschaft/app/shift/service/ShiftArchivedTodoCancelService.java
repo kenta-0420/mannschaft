@@ -18,6 +18,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// TODO: shiftドメインとtodoドメインをまたいでいる（TodoRepositoryを直接参照）。将来はTodoCommandServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
 @Transactional
 public class ShiftArchivedTodoCancelService {
 

@@ -25,6 +25,25 @@ services:
       --log_queries_not_using_indexes=0
       --log_slow_admin_statements=1
 
+  backend:
+    # Spring Boot バックエンドコンテナ（ローカル開発用）
+    # F10.6 Phase 10-γ-③-a: スロークエリログをコンテナ内から読み取るため
+    # MySQL コンテナが出力したスロークエリログディレクトリを読み取り専用でマウントする
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mannschaft-backend
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - valkey
+    ports:
+      - "8080:8080"
+    environment:
+      SLOW_QUERY_LOG_PATH: /app/logs/mysql-slow/mannschaft-slow.log
+    volumes:
+      - ./logs/mysql-slow:/app/logs/mysql-slow:ro
+
   valkey:
     image: valkey/valkey:8-alpine
     container_name: mannschaft-valkey

@@ -117,6 +117,7 @@ public class IcalService {
      * @param scopeId スコープID（scope指定時に必須）
      * @return iCal文字列
      */
+    // TODO: scheduleドメインとroleドメインをまたいでいる（fetchSchedulesForFeed内でUserRoleRepositoryを参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public String generateIcalFeed(String token, String scope, Long scopeId) {
         var tokenEntity = icalTokenRepository.findByToken(token)
                 .orElseThrow(() -> new BusinessException(GoogleCalendarErrorCode.ICAL_TOKEN_INVALID));
@@ -153,6 +154,7 @@ public class IcalService {
      * @param scopeId スコープID
      * @return ETag文字列
      */
+    // TODO: scheduleドメインとroleドメインをまたいでいる（fetchSchedulesForFeed内でUserRoleRepositoryを参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public String calculateETag(String token, String scope, Long scopeId) {
         var tokenEntity = icalTokenRepository.findByToken(token)
                 .orElseThrow(() -> new BusinessException(GoogleCalendarErrorCode.ICAL_TOKEN_INVALID));

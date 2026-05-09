@@ -53,6 +53,7 @@ public class CareEventNotificationService {
      * @param recipientUserId ケア対象者のユーザーID
      * @param eventId         対象イベントID
      */
+    // TODO: familyドメインがeventドメイン（EventRepository・EventCareNotificationLogRepository）とauthドメイン（UserRepository）をまたいでいる。将来はEventQueryServiceとUserQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @Transactional
     public void notifyRsvpConfirmed(Long recipientUserId, Long eventId) {
         if (!careLinkService.isUnderCare(recipientUserId)) return;
