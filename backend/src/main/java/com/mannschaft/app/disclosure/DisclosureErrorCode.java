@@ -49,7 +49,15 @@ public enum DisclosureErrorCode implements ErrorCode {
 
     /** 設計書 §4: 503 — PDF/Excel/Word 生成サービス一時障害。 */
     DISCLOSURE_010("DISCLOSURE_010", "ファイル生成サービスが一時的に利用できません。再度お試しください",
-            Severity.ERROR);
+            Severity.ERROR),
+
+    /**
+     * 設計書 §5.7: 422 — 自動削除予定日（{@code expires_at}）の延長範囲違反。
+     * 過去日時、または本日から 7 年超を指定した場合に投げる。
+     */
+    DISCLOSURE_011("DISCLOSURE_011",
+            "自動削除予定日は現在時刻より未来かつ本日から最大7年以内である必要があります",
+            Severity.WARN);
 
     private final String code;
     private final String message;

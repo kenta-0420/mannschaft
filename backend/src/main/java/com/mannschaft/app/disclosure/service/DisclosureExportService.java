@@ -366,6 +366,71 @@ public class DisclosureExportService {
                 .orElseThrow(() -> new BusinessException(DisclosureErrorCode.DISCLOSURE_001));
     }
 
+    /**
+     * 出力履歴の自動削除予定日（{@code expires_at}）を延長する（F09.14 Phase 3-E、設計書 §5.7）。
+     *
+     * <p>制約:</p>
+     * <ul>
+     *   <li>{@code newExpiresAt} は <strong>現在時刻より未来</strong> であること</li>
+     *   <li>{@code newExpiresAt} は <strong>本日から 7 年</strong> を超えないこと
+     *       （F12.3 GDPR 整合: 最大保管期間）</li>
+     * </ul>
+     *
+     * @param scopeId       組織 ID（テナント分離）
+     * @param exportId      対象出力履歴 ID
+     * @param newExpiresAt  新しい自動削除予定日時
+     * @return 更新後の {@link DisclosureExportResponse}（download URL は含めない）
+     * @throws BusinessException {@link DisclosureErrorCode#DISCLOSURE_001} (404) 出力履歴未発見、
+     *                           {@link DisclosureErrorCode#DISCLOSURE_002} (403) スコープ不一致、
+     *                           {@link DisclosureErrorCode#DISCLOSURE_011} (422) 延長範囲違反
+     */
+    @Transactional
+    public DisclosureExportResponse extendExpiry(Long scopeId, Long exportId,
+                                                 LocalDateTime newExpiresAt) {
+        if (newExpiresAt == null) {
+            throw new BusinessException(DisclosureErrorCode.DISCLOSURE_011);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        // 過去日時は禁止
+        if (!newExpiresAt.isAfter(now)) {
+            throw new BusinessException(DisclosureErrorCode.DISCLOSURE_011);
+        }
+        // 本日から 7 年超は禁止（最大保管期間、F12.3 GDPR 整合）
+        LocalDateTime maxAllowed = now.toLocalDate().plusYears(7).atStartOfDay();
+        if (newExpiresAt.isAfter(maxAllowed)) {
+            throw new BusinessException(DisclosureErrorCode.DISCLOSURE_011);
+        }
+
+        DisclosureExportEntity entity = findExportOrThrow(exportId);
+        ensureScope(entity.getScopeType(), entity.getScopeId(), scopeId);
+
+        entity.extendExpiresAt(newExpiresAt);
+        DisclosureExportEntity saved = exportRepository.save(entity);
+
+        log.info("重説書 expires_at 延長: exportId={}, newExpiresAt={}", exportId, newExpiresAt);
+
+        return new DisclosureExportResponse(
+                saved.getId(),
+                saved.getScopeType(),
+                saved.getScopeId(),
+                saved.getDraftId(),
+                saved.getTemplateId(),
+                saved.getTemplateCodeSnapshot(),
+                saved.getTemplateVersionSnapshot(),
+                saved.getOutputFormat(),
+                saved.getSharedFileId(),
+                saved.getTargetDwellingUnitId(),
+                saved.getRequesterUserId(),
+                saved.getRecipientNote(),
+                deserializeIds(saved.getReferencedPackageIds()),
+                saved.getOutputSha256(),
+                null,
+                null,
+                saved.getExpiresAt(),
+                saved.getCreatedAt(),
+                List.of());
+    }
+
     // =========================================================================
     // 内部ヘルパー
     // =========================================================================
