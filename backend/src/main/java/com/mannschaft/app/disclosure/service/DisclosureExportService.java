@@ -503,7 +503,9 @@ public class DisclosureExportService {
             variables.put("outputDate", LocalDateTime.now());
             variables.put("outputUserName", outputUserName);
             variables.put("organizationName", organization != null ? organization.getName() : null);
-            variables.put("formSchema", formSchema);
+            // Thymeleaf テンプレ (templates/pdf/disclosure/common.html) は Map で sections/fields を
+            // th:each するため、JsonNode のままだと Iterable とみなされず PDF_001 を投げる。
+            variables.put("formSchema", jsonNodeToMap(formSchema));
             variables.put("formData", jsonNodeToMap(formData));
             String templatePath = template.getPdfTemplatePath() != null
                     ? template.getPdfTemplatePath() : PDF_TEMPLATE_COMMON;

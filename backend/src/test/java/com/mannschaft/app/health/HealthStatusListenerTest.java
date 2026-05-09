@@ -1,6 +1,9 @@
 package com.mannschaft.app.health;
 
+import com.mannschaft.app.errorreport.ErrorReportActivityType;
+import com.mannschaft.app.errorreport.service.ErrorReportActivityService;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
+import com.mannschaft.app.errorreport.service.ErrorReportService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,26 +27,33 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * F10.5 Phase 10-β-2 — {@link HealthStatusListener} の単体テスト。
+ * F10.5 Phase 10-β-2 / F10.6 Phase 10-γ-① — {@link HealthStatusListener} の単体テスト。
  *
  * <p>HealthEndpoint をモック化し、UP → DOWN 遷移検知時のみ
- * {@link ErrorReportNotifier#notifyHealthDown} が呼ばれることを検証する。
+ * {@link ErrorReportNotifier#notifyHealthDown} が呼ばれること、および
+ * DOWN → UP 復旧時に {@link ErrorReportActivityService#recordSystemActivity} が
+ * {@link ErrorReportActivityType#HEALTH_RECOVERED} で呼ばれることを検証する。
  * {@code @Scheduled} の時間進行はテストせず、{@code doPoll()} を直接呼ぶ。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("HealthStatusListener 単体テスト (F10.5 Phase 10-β-2)")
+@DisplayName("HealthStatusListener 単体テスト (F10.5 Phase 10-β-2 / F10.6 Phase 10-γ-①)")
 class HealthStatusListenerTest {
 
     @Mock
     private HealthEndpoint healthEndpoint;
     @Mock
     private ErrorReportNotifier errorReportNotifier;
+    @Mock
+    private ErrorReportService errorReportService;
+    @Mock
+    private ErrorReportActivityService errorReportActivityService;
 
     private HealthStatusListener listener;
 
     @BeforeEach
     void setUp() {
-        listener = new HealthStatusListener(healthEndpoint, errorReportNotifier, true);
+        listener = new HealthStatusListener(healthEndpoint, errorReportNotifier,
+                errorReportService, errorReportActivityService, true);
     }
 
     /**
@@ -153,7 +163,8 @@ class HealthStatusListenerTest {
     @Test
     @DisplayName("enabled=false の場合は HealthEndpoint も呼ばない")
     void disabled_doesNothing() {
-        HealthStatusListener disabled = new HealthStatusListener(healthEndpoint, errorReportNotifier, false);
+        HealthStatusListener disabled = new HealthStatusListener(healthEndpoint, errorReportNotifier,
+                errorReportService, errorReportActivityService, false);
         disabled.pollHealthStatus();
 
         verify(healthEndpoint, never()).health();
@@ -169,5 +180,104 @@ class HealthStatusListenerTest {
         listener.pollHealthStatus();
 
         verify(errorReportNotifier, never()).notifyHealthDown(any(), any());
+    }
+
+    // ——— Phase 10-γ-① 追加テスト ———
+
+    @Test
+    @DisplayName("UP→DOWN 遷移時: findOrCreateHealthDownReport が呼ばれ reportId がキャッシュされる")
+    void upToDown_recordsHealthDownReport() {
+        given(errorReportService.findOrCreateHealthDownReport("db")).willReturn(42L);
+
+        // 1 周目: UP（記録のみ）
+        given(healthEndpoint.health())
+                .willReturn(composite(Map.of("db", Status.UP)));
+        listener.doPoll();
+        // 2 周目: DOWN（遷移検知）
+        given(healthEndpoint.health())
+                .willReturn(composite(Map.of("db", Status.DOWN)));
+        listener.doPoll();
+
+        verify(errorReportService, times(1)).findOrCreateHealthDownReport(eq("db"));
+    }
+
+    @Test
+    @DisplayName("DOWN→UP 復旧時: recordSystemActivity が HEALTH_RECOVERED で呼ばれる")
+    void downToUp_recordsHealthRecoveredActivity() {
+        long expectedReportId = 99L;
+        given(errorReportService.findOrCreateHealthDownReport("db")).willReturn(expectedReportId);
+
+        // 1 周目: UP（記録のみ）
+        given(healthEndpoint.health())
+                .willReturn(composite(Map.of("db", Status.UP)));
+        listener.doPoll();
+        // 2 周目: DOWN（遷移 → findOrCreate 呼び出し・reportId キャッシュ）
+        given(healthEndpoint.health())
+                .willReturn(composite(Map.of("db", Status.DOWN)));
+        listener.doPoll();
+        // 3 周目: UP 復旧
+        given(healthEndpoint.health())
+                .willReturn(composite(Map.of("db", Status.UP)));
+        listener.doPoll();
+
+        verify(errorReportActivityService, times(1)).recordSystemActivity(
+                eq(expectedReportId),
+                eq(ErrorReportActivityType.HEALTH_RECOVERED),
+                any()
+        );
+        // 復旧時は notifyHealthDown を呼ばない
+        verify(errorReportNotifier, times(1)).notifyHealthDown(eq("db"), any());
+    }
+
+    @Test
+    @DisplayName("DOWN→UP 復旧時に reportId キャッシュがない場合: recordSystemActivity は呼ばれない（警告ログのみ）")
+    void downToUp_noReportIdCached_doesNotThrow() {
+        // findOrCreateHealthDownReport が例外を投げた場合などキャッシュが空のシナリオ
+        given(errorReportService.findOrCreateHealthDownReport("db"))
+                .willThrow(new RuntimeException("DB 接続エラー"));
+
+        // 1 周目: UP（記録のみ）
+        given(healthEndpoint.health())
+                .willReturn(composite(Map.of("db", Status.UP)));
+        listener.doPoll();
+        // 2 周目: DOWN（エラー発生で reportId はキャッシュされない）
+        given(healthEndpoint.health())
+                .willReturn(composite(Map.of("db", Status.DOWN)));
+        listener.doPoll();
+        // 3 周目: UP 復旧（reportId なし → recordSystemActivity 呼ばれない、例外も伝搬しない）
+        given(healthEndpoint.health())
+                .willReturn(composite(Map.of("db", Status.UP)));
+        listener.doPoll();
+
+        verify(errorReportActivityService, never()).recordSystemActivity(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("DOWN→DOWN 継続後に UP 復旧: recordSystemActivity は 1 回のみ呼ばれる")
+    void downDownToUp_recordsActivityOnce() {
+        given(errorReportService.findOrCreateHealthDownReport("db")).willReturn(55L);
+
+        // 1 周目: UP（記録のみ）
+        given(healthEndpoint.health())
+                .willReturn(composite(Map.of("db", Status.UP)));
+        listener.doPoll();
+        // 2 周目: DOWN（遷移 → reportId キャッシュ）
+        given(healthEndpoint.health())
+                .willReturn(composite(Map.of("db", Status.DOWN)));
+        listener.doPoll();
+        // 3 周目: DOWN 継続（遷移なし）
+        given(healthEndpoint.health())
+                .willReturn(composite(Map.of("db", Status.DOWN)));
+        listener.doPoll();
+        // 4 周目: UP 復旧
+        given(healthEndpoint.health())
+                .willReturn(composite(Map.of("db", Status.UP)));
+        listener.doPoll();
+
+        verify(errorReportActivityService, times(1)).recordSystemActivity(
+                eq(55L),
+                eq(ErrorReportActivityType.HEALTH_RECOVERED),
+                any()
+        );
     }
 }
