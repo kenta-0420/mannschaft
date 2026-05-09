@@ -1,7 +1,7 @@
 # Phase 1-A クロスドメインFK 撤廃 — 残波 TODO
 
-第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。
-残りは `users` 参照 多数 + `teams` 多数 + `organizations` 7 + その他多数。
+第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第四波（V62.004）で 13 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。
+残りは `users` 参照 多数 + `teams` 多数 + `organizations` 残件 + その他多数。
 
 ## 完了済み（user_id 参照）
 
@@ -36,32 +36,45 @@
 - `schedule_event_categories.fk_sec_team` (schedule)
 - `job_postings.fk_jp_team` (jobmatching)
 
-## 次波（user_id 参照 / 第四波 想定）
+### 第四波（V62.004）— 13件（user_id 6件 + team_id 7件）
 
-残存する user_id 越境FK の主な候補（V11.x, V13.x, V14.x, V16.x〜V19.x 系列から）：
-
-- `safety_responses.fk_safety_resp_user` (safety)
+#### user_id 参照（6件）
+- `safety_responses.fk_safety_resp_user` (safety) ※ idx_safety_resp_user_id 追加
 - `schedule_attendances.fk_sa_user` (schedule)
-- `schedules.fk_sch_user` / `schedules.fk_sch_created_by` (schedule)
-- `shift_requests.fk_sr_user` (shift)
+- `shift_requests.fk_sr_user` (shift) ※ idx_shift_requests_user_id 追加
 - `member_cards.fk_mc_user` (member)
 - `visibility_templates.fk_vt_owner` (visibility)
 - `confirmable_notification_recipients.fk_cnr_user` (notification)
-- その他 V2.x, V10.x 系列多数（report_actions, moderation_appeals など admin 系）
 
-第四波 PR 開始時に全件 grep で確認し残対象を確定すること。
-
-## 次々波（team_id 参照 / 第四波 以降）
-
-残存 team_id 越境FK の主な候補：
+#### team_id 参照（7件）
 - `timetables.fk_tm_team` (timetable → team)
 - `schedules.fk_sch_team` (schedule → team)
 - `shift_schedules.fk_ss_team` (shift → team)
 - `shift_positions.fk_sp_team` (shift → team)
-- `shared_folders.fk_shared_folders_team` (storage → team)
-- `blog_posts.fk_bp_team`, `blog_post_series.fk_bps_team` (blog → team)
+- `shared_folders.fk_shared_folders_team` (storage → team) ※ idx_shared_folders_team_id 追加
+- `blog_posts.fk_bp_team` (blog → team)
+- `blog_post_series.fk_bps_team` (blog → team)
+
+## 第五波以降（user_id 参照 残件）
+
+主な候補（V2.x, V3.x, V10.x, V11.x 系列）：
+- `schedules.fk_sch_user` / `schedules.fk_sch_created_by` (schedule)
+- `report_actions.fk_report_actions_user` (admin)
+- `moderation_appeals.fk_ma_user` (admin)
+- `user_roles.fk_user_roles_user` / `fk_user_roles_granted_by` (auth/role)
+- `team_org_memberships.fk_team_org_memberships_invited_by` 等 (team)
+- `presence_events.fk_pe_user` (team)
+- V11.x 系列（budget, skill, kb等）多数
+- V18.x 系列（attendance等）多数
+
+## 第五波以降（team_id 参照 残件）
+
+主な候補：
 - `reservation_lines/slots/reservations` (reservation → team)
 - `match_requests`, `match_proposals` (matching → team)
+- `service_records`, `performance_metrics` (service → team)
+- `equipment_items` (equipment → team)
+- `payment_items`, `ticket_products` 等 (payment → team)
 - その他多数
 
 ## 完了済み（organization_id 参照）
@@ -88,7 +101,7 @@
 - `organizations.fk_organizations_parent` — **同一ドメイン内のため撤廃不要**
 - V8.x / V9.x 系列（committees, proxy_vote_sessions, payment_items など）
 
-## 第五波以降（Phase 1-B: CASCADE 整理）
+## Phase 1-B（CASCADE 整理）
 
 CLAUDE.md 原則 §2 に従い、クロスドメイン CASCADE 78 件は
 `SET NULL` / `RESTRICT` / アプリ層整合性に置換。
