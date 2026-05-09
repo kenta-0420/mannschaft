@@ -101,14 +101,6 @@ const MOCK_TEAM_MODULES = [
   },
 ]
 
-const MOCK_SYSTEM_ADMIN_PERMISSIONS = {
-  roleName: 'SYSTEM_ADMIN',
-  permissions: [
-    'system.manage',
-    'template.manage',
-    'module.manage',
-  ],
-}
 
 // ────────────────────────────
 // テストケース
@@ -257,10 +249,7 @@ test.describe('TMPMOD-006〜010: チームモジュール管理', () => {
 
 test.describe('TMPMOD-011〜014: テンプレート選択とチーム作成', () => {
   test('TMPMOD-011: テンプレート一覧APIが存在する', async ({ page }) => {
-    let templateApiCalled = false
-
     await page.route('**/api/v1/templates', async (route) => {
-      templateApiCalled = true
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
