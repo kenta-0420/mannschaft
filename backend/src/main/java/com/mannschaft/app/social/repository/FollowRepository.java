@@ -72,6 +72,20 @@ public interface FollowRepository extends JpaRepository<FollowEntity, Long> {
             FollowerType followerType, Long followerId, FollowerType followedType, Pageable pageable);
 
     /**
+     * ユーザーが絡む全フォロー関係を削除する（退会匿名化用）。
+     * フォロワー側・フォロー対象側の両方を削除する。
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            DELETE FROM FollowEntity f
+            WHERE (f.followerType = :userType AND f.followerId = :userId)
+               OR (f.followedType = :userType AND f.followedId = :userId)
+            """)
+    @org.springframework.data.jpa.repository.Modifying
+    void deleteAllByUserId(
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("userType") FollowerType userType);
+
+    /**
      * フォロー数を取得する。
      */
     long countByFollowerTypeAndFollowerId(FollowerType followerType, Long followerId);

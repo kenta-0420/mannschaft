@@ -11,4 +11,9 @@ import java.util.Optional;
 public interface TwoFactorAuthRepository extends JpaRepository<TwoFactorAuthEntity, Long> {
 
     Optional<TwoFactorAuthEntity> findByUserId(Long userId);
+
+    /**
+     * ユーザーIDに紐づく2FA設定を削除する（退会匿名化用）。
+     */
+    void deleteByUserId(Long userId);
 }

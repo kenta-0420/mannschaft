@@ -15,4 +15,9 @@ public interface OAuthAccountRepository extends JpaRepository<OAuthAccountEntity
             OAuthAccountEntity.OAuthProvider provider, String providerUserId);
 
     List<OAuthAccountEntity> findByUserId(Long userId);
+
+    /**
+     * ユーザーIDに紐づくOAuth連携をすべて削除する（退会匿名化用）。
+     */
+    void deleteByUserId(Long userId);
 }
