@@ -49,7 +49,21 @@ public enum DisclosureErrorCode implements ErrorCode {
 
     /** 設計書 §4: 503 — PDF/Excel/Word 生成サービス一時障害。 */
     DISCLOSURE_010("DISCLOSURE_010", "ファイル生成サービスが一時的に利用できません。再度お試しください",
-            Severity.ERROR);
+            Severity.ERROR),
+
+    /**
+     * 設計書 §3 disclosure_form_templates: 422 — 組織あたりカスタム様式件数上限超過（10 件）。
+     * Phase 3-C で追加。CHECK 制約ではなく Service 層で計数してから保存前に弾く。
+     * <p>※ 011/012 は Phase 3-E（自動削除バッチ・期限延長）が先行採番したため 013/014 に振り直し。</p>
+     */
+    DISCLOSURE_013("DISCLOSURE_013", "カスタム様式の登録件数が上限（10件）を超えています", Severity.WARN),
+
+    /**
+     * 403 — システム提供（{@code is_system_template=true}）テンプレートに対する更新／削除操作。
+     * Phase 3-C で追加。これらは {@code disclosure_form_templates} シードで投入されるため
+     * ユーザーは編集不可。
+     */
+    DISCLOSURE_014("DISCLOSURE_014", "システム提供の様式は編集／削除できません", Severity.WARN);
 
     private final String code;
     private final String message;
