@@ -270,6 +270,86 @@ rmdir .claude/worktrees/agent-* 2>/dev/null || true
 
 ---
 
+## アーキテクチャ思想 **【実装時必読】**
+
+Mannschaftは将来のマイクロサービス分割を見据えた**モジュラーモノリス**として設計する。
+以下の原則は新機能実装・DB変更時に必ず遵守すること。
+
+### ドメイン境界の原則
+
+パッケージはドメイン単位で分割し、ドメイン間の直接依存を最小化する。
+
+```
+com.mannschaft.app.user/
+com.mannschaft.app.team/
+com.mannschaft.app.schedule/
+com.mannschaft.app.shift/
+...
+```
+
+- 異なるドメインのEntityを直接参照しない（IDのみ保持する）
+- ドメイン間のデータ取得はServiceのメソッド呼び出し経由で行う
+
+### DB設計の原則
+
+#### 1. クロスドメインFKは作らない
+異なるドメインのテーブル間にForeign Key制約を追加してはならない。
+参照整合性はアプリケーション層で保証する。
+
+```sql
+-- NG: クロスドメインFK
+ALTER TABLE shift_assignments
+  ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id);
+
+-- OK: インデックスのみ（整合性はアプリ側で保証）
+CREATE INDEX idx_shift_assignments_user_id ON shift_assignments(user_id);
+```
+
+#### 2. CASCADE DELETE は同一ドメイン内のみ許可
+`ON DELETE CASCADE` は**親子が同一ドメインに属する場合のみ**許可する。
+クロスドメインの削除連鎖は禁止。
+
+```sql
+-- OK: 同一ドメイン内（chat_channelとchat_messageは同じchatドメイン）
+FOREIGN KEY (channel_id) REFERENCES chat_channels(id) ON DELETE CASCADE
+
+-- NG: クロスドメイン（scheduleドメイン → teamドメイン）
+FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+```
+
+#### 3. コアエンティティは論理削除（soft delete）を使う
+`users` / `teams` / `organizations` は物理削除せず `deleted_at` カラムで論理削除する。
+これらはすでに `deleted_at` カラムを持っている。
+
+#### 4. ユーザー退会時は匿名化（削除しない）
+ユーザーが退会しても投稿・履歴・統計データは保持し、個人情報のみ消去する。
+
+```java
+// ユーザー退会処理の方針
+user.anonymize();        // 氏名・メール・アイコンを匿名化
+user.softDelete();       // deleted_at をセット
+// 投稿・ログ・ポイント等のデータは user_id=NULL にせずそのまま残す
+// → 統計・履歴の価値を保持しつつ個人情報を保護（GDPR対応）
+```
+
+#### 5. @Transactional はドメイン内に閉じる
+`@Transactional` メソッドが複数ドメインのRepositoryをまたぐ場合は設計を見直す。
+やむを得ずまたぐ場合はコメントで理由を明記し、将来のイベント駆動化候補として記録する。
+
+```java
+@Transactional
+// TODO: ScheduleドメインとUserドメインをまたいでいる。将来はUserUpdatedEventで分離予定
+public void createSchedule(...) { ... }
+```
+
+### なぜこの設計か
+
+将来10万〜100万ユーザー規模でマイクロサービス分割が必要になったとき、
+ドメイン間のFK・CASCADE・クロストランザクションが残っていると分割が極めて困難になる。
+今のうちにドメイン境界を守り、分割コストを最小化しておくことが目的。
+
+---
+
 ## カスタムスキル
 
 | スキル | 用途 |
