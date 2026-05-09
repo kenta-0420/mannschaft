@@ -1087,5 +1087,24 @@
       "empty": "No se encontraron archivos de registro",
       "downloadButton": "Descargar"
     }
+  },
+  "admin": {
+    "quickLinks": {
+      "announcements": "Gestión de anuncios",
+      "featureFlags": "Indicadores de función",
+      "maintenance": "Mantenimiento",
+      "modules": "Gestión de módulos",
+      "templates": "Plantillas",
+      "moderation": "Moderación",
+      "users": "Gestión de usuarios",
+      "organizations": "Gestión de organizaciones",
+      "feedback": "Comentarios",
+      "reports": "Informes",
+      "advertisers": "Gestión de anunciantes",
+      "auditLogs": "Registros de auditoría",
+      "shiftBudget": "Presupuesto de turno",
+      "betaRestriction": "Restricción beta",
+      "errorReports": "Informes de errores"
+    }
   }
 }

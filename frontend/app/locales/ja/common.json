@@ -1087,5 +1087,24 @@
       "empty": "ログファイルが見つかりませんでした",
       "downloadButton": "ダウンロード"
     }
+  },
+  "admin": {
+    "quickLinks": {
+      "announcements": "お知らせ管理",
+      "featureFlags": "フィーチャーフラグ",
+      "maintenance": "メンテナンス",
+      "modules": "モジュール管理",
+      "templates": "テンプレート",
+      "moderation": "モデレーション",
+      "users": "ユーザー管理",
+      "organizations": "組織管理",
+      "feedback": "フィードバック",
+      "reports": "レポート",
+      "advertisers": "広告主管理",
+      "auditLogs": "監査ログ",
+      "shiftBudget": "シフト予算",
+      "betaRestriction": "ベータ制限",
+      "errorReports": "エラーレポート"
+    }
   }
 }

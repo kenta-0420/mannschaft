@@ -1087,5 +1087,24 @@
       "empty": "No log files found",
       "downloadButton": "Download"
     }
+  },
+  "admin": {
+    "quickLinks": {
+      "announcements": "Announcements",
+      "featureFlags": "Feature Flags",
+      "maintenance": "Maintenance",
+      "modules": "Module Management",
+      "templates": "Templates",
+      "moderation": "Moderation",
+      "users": "User Management",
+      "organizations": "Organization Management",
+      "feedback": "Feedback",
+      "reports": "Reports",
+      "advertisers": "Advertiser Management",
+      "auditLogs": "Audit Logs",
+      "shiftBudget": "Shift Budget",
+      "betaRestriction": "Beta Restriction",
+      "errorReports": "Error Reports"
+    }
   }
 }

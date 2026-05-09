@@ -1087,5 +1087,24 @@
       "empty": "Keine Protokolldateien gefunden",
       "downloadButton": "Herunterladen"
     }
+  },
+  "admin": {
+    "quickLinks": {
+      "announcements": "Ankündigungsverwaltung",
+      "featureFlags": "Feature-Flags",
+      "maintenance": "Wartung",
+      "modules": "Modulverwaltung",
+      "templates": "Vorlagen",
+      "moderation": "Moderation",
+      "users": "Benutzerverwaltung",
+      "organizations": "Organisationsverwaltung",
+      "feedback": "Feedback",
+      "reports": "Berichte",
+      "advertisers": "Werbeverwaltung",
+      "auditLogs": "Audit-Protokolle",
+      "shiftBudget": "Schichtbudget",
+      "betaRestriction": "Beta-Einschränkung",
+      "errorReports": "Fehlerberichte"
+    }
   }
 }
