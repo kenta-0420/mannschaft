@@ -1,7 +1,9 @@
 package com.mannschaft.app.disclosure.controller;
 
+import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
@@ -39,4 +41,18 @@ public abstract class AbstractDisclosureIntegrationTest extends AbstractMySqlInt
      */
     @MockitoBean
     protected R2StorageService r2StorageService;
+
+    /**
+     * UserEntity の暗号化フィールド ({@code last_name}/{@code first_name} 等) を
+     * 平文 INSERT すると JPA 復号で {@code IllegalArgumentException: Illegal base64} を投げる。
+     * テスト用ユーザーを native query で投入する際は {@link #encryptForTest(String)} で
+     * 値を暗号化してから INSERT すること。
+     */
+    @Autowired
+    protected EncryptionService encryptionService;
+
+    /** テストの native INSERT で UserEntity 暗号化フィールドに格納する値を暗号化する。 */
+    protected String encryptForTest(String plain) {
+        return encryptionService.encrypt(plain);
+    }
 }

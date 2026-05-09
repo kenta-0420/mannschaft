@@ -157,13 +157,15 @@ class DisclosureFormTemplateControllerIntegrationTest extends AbstractDisclosure
                         + "locale, timezone, reporting_restricted, follow_list_visibility, "
                         + "care_notification_enabled, offline_only, "
                         + "created_at, updated_at) "
-                        + "VALUES (:email, '様式', '太郎', '様式 太郎', 'ACTIVE', "
+                        + "VALUES (:email, :ln, :fn, '様式 太郎', 'ACTIVE', "
                         + "1, 1, 1, "
                         + "'NOBODY', 'ANYONE', 1, "
                         + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
                         + "1, 0, "
                         + "NOW(), NOW())")
                 .setParameter("email", email)
+                .setParameter("ln", encryptForTest("様式"))
+                .setParameter("fn", encryptForTest("太郎"))
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
                 "SELECT id FROM users WHERE email = :email")
