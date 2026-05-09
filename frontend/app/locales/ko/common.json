@@ -1067,5 +1067,25 @@
     "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
     "nameDuplicate": "同じ名前のフォルダが既に存在します"
+  },
+  "systemAdmin": {
+    "logs": {
+      "title": "시스템 로그",
+      "quickLink": "시스템 로그",
+      "typeAll": "전체",
+      "typeSlowQuery": "슬로우 쿼리",
+      "typeSsrError": "SSR 오류",
+      "dateLabel": "날짜",
+      "fetchButton": "가져오기",
+      "columns": {
+        "type": "유형",
+        "date": "날짜",
+        "fileName": "파일명",
+        "sizeKb": "크기 (KB)",
+        "download": "다운로드"
+      },
+      "empty": "로그 파일을 찾을 수 없습니다",
+      "downloadButton": "다운로드"
+    }
   }
 }

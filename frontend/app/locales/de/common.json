@@ -1067,5 +1067,25 @@
     "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
     "nameDuplicate": "同じ名前のフォルダが既に存在します"
+  },
+  "systemAdmin": {
+    "logs": {
+      "title": "Systemprotokolle",
+      "quickLink": "Systemprotokolle",
+      "typeAll": "Alle",
+      "typeSlowQuery": "Langsame Abfrage",
+      "typeSsrError": "SSR-Fehler",
+      "dateLabel": "Datum",
+      "fetchButton": "Abrufen",
+      "columns": {
+        "type": "Typ",
+        "date": "Datum",
+        "fileName": "Dateiname",
+        "sizeKb": "Größe (KB)",
+        "download": "Herunterladen"
+      },
+      "empty": "Keine Protokolldateien gefunden",
+      "downloadButton": "Herunterladen"
+    }
   }
 }

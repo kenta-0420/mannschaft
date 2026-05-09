@@ -116,6 +116,14 @@ const quickLinks: QuickLink[] = [
     color: 'text-red-500',
     bg: 'bg-red-50 dark:bg-red-900/20',
   },
+  // F10.6 Phase 10-γ-③-b: システムログ（MySQLスロークエリ・NuxtSSRエラー）
+  {
+    label: 'システムログ', // TODO: i18n対応（systemAdmin.logs.quickLink）
+    icon: 'pi pi-file-export',
+    to: '/system-admin/logs',
+    color: 'text-gray-500',
+    bg: 'bg-gray-50 dark:bg-gray-900/20',
+  },
 ]
 </script>
 

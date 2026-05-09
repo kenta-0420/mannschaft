@@ -1067,5 +1067,25 @@
     "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
     "nameDuplicate": "同じ名前のフォルダが既に存在します"
+  },
+  "systemAdmin": {
+    "logs": {
+      "title": "Registros del sistema",
+      "quickLink": "Registros del sistema",
+      "typeAll": "Todos",
+      "typeSlowQuery": "Consulta lenta",
+      "typeSsrError": "Error SSR",
+      "dateLabel": "Fecha",
+      "fetchButton": "Obtener",
+      "columns": {
+        "type": "Tipo",
+        "date": "Fecha",
+        "fileName": "Nombre de archivo",
+        "sizeKb": "Tamaño (KB)",
+        "download": "Descargar"
+      },
+      "empty": "No se encontraron archivos de registro",
+      "downloadButton": "Descargar"
+    }
   }
 }
