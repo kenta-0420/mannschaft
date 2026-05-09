@@ -205,7 +205,7 @@ class DisclosureExportServiceTest {
                 .sharedFileId(999L)
                 .requesterUserId(200L)
                 .dataSnapshot("{}")
-                .pdfSha256("0".repeat(64))
+                .outputSha256("0".repeat(64))
                 .build();
         setEntityIdViaReflection(e, 7L);
         when(exportRepository.findByIdAndDeletedAtIsNull(7L)).thenReturn(Optional.of(e));
@@ -241,7 +241,7 @@ class DisclosureExportServiceTest {
                 .sharedFileId(999L)
                 .requesterUserId(200L)
                 .dataSnapshot("{}")
-                .pdfSha256(expectedSha)
+                .outputSha256(expectedSha)
                 .build();
         setEntityIdViaReflection(e, 7L);
         when(exportRepository.findByIdAndDeletedAtIsNull(7L)).thenReturn(Optional.of(e));

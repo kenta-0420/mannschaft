@@ -245,7 +245,7 @@ public class DisclosureExportService {
                                 ? serializeListOrNull(List.of(draft.getTargetDwellingUnitId()))
                                 : null)
                 .dataSnapshot(draft.getFormData())
-                .pdfSha256(sha256)
+                .outputSha256(sha256)
                 .expiresAt(now.plus(EXPIRES_AFTER))
                 .build();
         DisclosureExportEntity savedExport = exportRepository.save(exportEntity);
@@ -320,13 +320,13 @@ public class DisclosureExportService {
                 .orElseThrow(() -> new BusinessException(DisclosureErrorCode.DISCLOSURE_001));
 
         // 改ざん検出: R2 から再ダウンロードして SHA-256 を比較
-        if (entity.getPdfSha256() != null) {
+        if (entity.getOutputSha256() != null) {
             try {
                 byte[] data = r2StorageService.download(sharedFile.getFileKey());
                 String actualSha = sha256Hex(data);
-                if (!actualSha.equals(entity.getPdfSha256())) {
+                if (!actualSha.equals(entity.getOutputSha256())) {
                     log.error("重説書 SHA-256 不一致（改ざんの可能性）: exportId={}, expected={}, actual={}",
-                            exportId, entity.getPdfSha256(), actualSha);
+                            exportId, entity.getOutputSha256(), actualSha);
                     throw new BusinessException(DisclosureErrorCode.DISCLOSURE_010);
                 }
             } catch (BusinessException e) {
@@ -353,7 +353,7 @@ public class DisclosureExportService {
                 entity.getRequesterUserId(),
                 entity.getRecipientNote(),
                 deserializeIds(entity.getReferencedPackageIds()),
-                entity.getPdfSha256(),
+                entity.getOutputSha256(),
                 url,
                 expiresAt,
                 entity.getExpiresAt(),
