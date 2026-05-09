@@ -221,3 +221,16 @@ tasks.withType<JavaCompile> {
         "-parameters"
     ))
 }
+
+// F09.14 Phase 3-B: 重要事項説明書 Word テンプレート docx 生成タスク。
+// `./gradlew generateDisclosureWordTemplates` で 6 種の docx を
+// src/main/resources/docx/disclosure/ および src/test/resources/docx/disclosure/ に出力する。
+// テンプレ更新時に再生成して git にコミットすること。
+tasks.register<JavaExec>("generateDisclosureWordTemplates") {
+    group = "build setup"
+    description = "F09.14 Phase 3-B 用 重要事項説明書 Word テンプレート docx を 6 種出力する"
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("com.mannschaft.app.disclosure.support.WordTemplateGenerator")
+    workingDir = projectDir
+    dependsOn("compileTestJava")
+}

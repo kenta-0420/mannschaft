@@ -62,6 +62,7 @@ class DisclosureExportServiceTest {
     @Mock private DisclosureFormTemplateValidator templateValidator;
     @Mock private PdfGeneratorService pdfGeneratorService;
     @Mock private ExcelGeneratorService excelGeneratorService;
+    @Mock private WordGeneratorService wordGeneratorService;
     @Mock private R2StorageService r2StorageService;
     @Mock private SharedFolderRepository folderRepository;
     @Mock private SharedFileRepository sharedFileRepository;
@@ -79,7 +80,8 @@ class DisclosureExportServiceTest {
     void setUp() {
         service = new DisclosureExportService(
                 exportRepository, draftService, templateService, templateValidator,
-                pdfGeneratorService, excelGeneratorService, r2StorageService,
+                pdfGeneratorService, excelGeneratorService, wordGeneratorService,
+                r2StorageService,
                 folderRepository, sharedFileRepository, sharedFileVersionRepository,
                 organizationRepository, dwellingUnitRepository,
                 propertyWorkPackageRepository, userRepository, objectMapper);
@@ -186,13 +188,55 @@ class DisclosureExportServiceTest {
     }
 
     @Test
-    @DisplayName("exportDraft(): WORD は Phase 3 のため DISCLOSURE_004")
-    void exportDraft_wordRejected() {
-        assertThatThrownBy(() -> service.exportDraft(
-                100L, 10L, DisclosureOutputFormat.WORD, 200L, null, false))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(DisclosureErrorCode.DISCLOSURE_004);
+    @DisplayName("exportDraft(WORD): F09.14 Phase 3-B — docx バイナリが SharedFile/R2 に保存される")
+    void exportDraft_wordSuccess() throws Exception {
+        // given
+        DisclosureFormTemplateEntity tpl = template("MLIT_STANDARD_2024", "2024.1",
+                "{\"sections\":[{\"id\":\"s1\",\"title\":\"概要\",\"fields\":[]}]}");
+        DisclosureFormDraftEntity draft = draft(100L, 1L, "2024.1", "{}");
+        when(draftService.findDraftOrThrow(10L)).thenReturn(draft);
+        when(templateService.getEntityOrThrow(1L)).thenReturn(tpl);
+        when(organizationRepository.findById(100L))
+                .thenReturn(Optional.of(organization(100L, "サンプルマンション")));
+
+        byte[] docx = "DOCXCONTENT".getBytes();
+        when(wordGeneratorService.generate(eq(draft), eq(tpl))).thenReturn(docx);
+
+        SharedFolderEntity folder = SharedFolderEntity.builder()
+                .scopeType(com.mannschaft.app.filesharing.FileScopeType.ORGANIZATION)
+                .organizationId(100L).name("disclosure-exports").build();
+        setBaseEntityId(folder, 50L);
+        when(folderRepository.findByOrganizationIdAndParentIdIsNullOrderByNameAsc(100L))
+                .thenReturn(List.of(folder));
+
+        when(sharedFileRepository.save(any())).thenAnswer(inv -> {
+            SharedFileEntity e = inv.getArgument(0);
+            setBaseEntityId(e, 999L);
+            return e;
+        });
+        when(exportRepository.save(any())).thenAnswer(inv -> {
+            DisclosureExportEntity e = inv.getArgument(0);
+            setEntityIdViaReflection(e, 8L);
+            return e;
+        });
+        when(r2StorageService.generateDownloadUrl(anyString(), any())).thenReturn("https://r2/word");
+
+        // when
+        DisclosureExportResponse res = service.exportDraft(
+                100L, 10L, DisclosureOutputFormat.WORD, 200L, null, false);
+
+        // then
+        assertThat(res.exportId()).isEqualTo(8L);
+        assertThat(res.outputFormat()).isEqualTo(DisclosureOutputFormat.WORD);
+        assertThat(res.sha256()).hasSize(64);
+        assertThat(res.downloadUrl()).isEqualTo("https://r2/word");
+
+        ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(r2StorageService).upload(keyCaptor.capture(), eq(docx),
+                eq("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+        assertThat(keyCaptor.getValue()).startsWith("files/ORGANIZATION/100/").endsWith(".docx");
+
+        verify(draftService).markExported(eq(draft), eq(200L));
     }
 
     @Test
