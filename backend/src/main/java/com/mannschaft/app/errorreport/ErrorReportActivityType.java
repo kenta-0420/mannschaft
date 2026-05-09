@@ -13,5 +13,7 @@ public enum ErrorReportActivityType {
     AI_ANALYZED,
     GITHUB_ISSUE_CREATED,
     REOPENED,
-    RESOLVED
+    RESOLVED,
+    /** F10.6 Phase 10-γ-① — インフラコンポーネントの Health DOWN→UP 復旧を記録する。 */
+    HEALTH_RECOVERED
 }

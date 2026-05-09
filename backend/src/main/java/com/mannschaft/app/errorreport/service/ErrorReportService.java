@@ -275,6 +275,56 @@ public class ErrorReportService {
     }
 
     /**
+     * F10.6 Phase 10-γ-① — インフラコンポーネントの Health DOWN を error_reports に記録する。
+     *
+     * <p>component 固有の固定 error_hash（{@code sha256("HealthDown:" + component)}）で既存レコードを
+     * 検索し、なければ新規作成、あれば occurrence_count をインクリメントする。
+     * これにより同一コンポーネントの DOWN が繰り返されても同一レコードに集約される。</p>
+     *
+     * <p>DOWN 時に呼ばれ、返却された error_report_id を {@code componentToReportId} に保存する。
+     * 復旧（DOWN→UP）時に {@code HEALTH_RECOVERED} アクティビティに紐付けるために使用する。</p>
+     *
+     * <p>本メソッドは {@code @Scheduled} スレッド（{@link com.mannschaft.app.health.HealthStatusListener}）
+     * から同期的に呼ばれる。HealthStatusListener は healthドメインのため、errorreportドメインの
+     * Service を呼ぶクロスドメイン依存になるが、インフラ横断的な性質上やむを得ない。
+     * TODO: 将来的には HealthDownEvent を発行し errorreport ドメインが購読する形に分離予定。</p>
+     *
+     * @param component Health component 名（"db" / "redis" 等）
+     * @return 作成または更新された error_report_id
+     */
+    @Transactional
+    public Long findOrCreateHealthDownReport(String component) {
+        String errorHash = sha256("HealthDown:" + component);
+        LocalDateTime now = LocalDateTime.now();
+
+        Optional<ErrorReportEntity> existing = errorReportRepository.findByErrorHash(errorHash);
+        if (existing.isPresent()) {
+            ErrorReportEntity report = existing.get();
+            // 既存レコードを occurrence_count インクリメントして更新
+            errorReportRepository.incrementOccurrence(errorHash, now, null);
+            log.info("Health DOWN 集約: component={}, reportId={}", component, report.getId());
+            return report.getId();
+        }
+
+        // 新規作成
+        ErrorReportEntity newReport = ErrorReportEntity.builder()
+                .errorMessage("Health DOWN: " + component)
+                .pageUrl("health:" + component)
+                .occurredAt(now)
+                .status(ErrorReportStatus.NEW)
+                .severity(ErrorReportSeverity.CRITICAL)
+                .errorHash(errorHash)
+                .occurrenceCount(1)
+                .affectedUserCount(0)
+                .firstOccurredAt(now)
+                .lastOccurredAt(now)
+                .build();
+        ErrorReportEntity saved = errorReportRepository.save(newReport);
+        log.info("Health DOWN 新規記録: component={}, reportId={}", component, saved.getId());
+        return saved.getId();
+    }
+
+    /**
      * F10.5/F10.6 Phase 10-β 後続フォローアップ — HttpServletRequest から pageUrl を解決する。
      *
      * <p>Spring MVC の {@code HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE} 属性が
