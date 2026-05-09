@@ -21,6 +21,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * ユーザーマスターエンティティ。認証・プロフィール情報を管理する。
@@ -254,6 +255,49 @@ public class UserEntity extends BaseEntity {
      */
     public void cancelDeletion() {
         this.deletedAt = null;
+    }
+
+    /**
+     * ユーザー退会時の匿名化処理。個人情報（PII）を消去し論理削除する。
+     * 投稿・履歴・統計データは保持する（統計価値 + GDPR対応の両立）。
+     *
+     * <p>email は UNIQUE 制約かつ NOT NULL のため、衝突を避けるために
+     * 「withdrawn-{UUID}@deleted.mannschaft.internal」形式のダミー値で上書きする。
+     * contactHandle は UNIQUE かつ NULL 許容のため null にする。</p>
+     */
+    public void anonymize() {
+        // メールアドレスは UNIQUE + NOT NULL のためダミー値で上書き（null 不可）
+        this.email = "withdrawn-" + UUID.randomUUID() + "@deleted.mannschaft.internal";
+        // パスワードハッシュを消去（ログイン不可にする）
+        this.passwordHash = null;
+        // 氏名（暗号化 PII）を固定値で上書き
+        this.lastName = "退会済み";
+        this.firstName = "ユーザー";
+        this.lastNameKana = null;
+        this.firstNameKana = null;
+        // 表示名・ニックネームを匿名化
+        this.displayName = "退会済みユーザー";
+        this.nickname2 = null;
+        // @ハンドルは UNIQUE なため null にする
+        this.contactHandle = null;
+        this.handleSearchable = false;
+        // アバター・バナー画像を消去
+        this.avatarUrl = null;
+        this.bannerUrl = null;
+        // 電話番号・郵便番号（暗号化 PII）を消去
+        this.phoneNumber = null;
+        this.postalCode = null;
+        // 検索用ハッシュを消去
+        this.lastNameHash = null;
+        this.firstNameHash = null;
+        this.phoneNumberHash = null;
+        // 生年月日・ケアカテゴリ（暗号化 PII）を消去
+        this.birthDate = null;
+        this.careCategory = null;
+        // 検索不可に設定
+        this.isSearchable = false;
+        // 論理削除
+        this.deletedAt = LocalDateTime.now();
     }
 
     /**
