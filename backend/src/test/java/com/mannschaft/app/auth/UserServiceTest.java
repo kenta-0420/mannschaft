@@ -800,7 +800,7 @@ class UserServiceTest {
             assertThat(user.getDisplayName()).isEqualTo("退会済みユーザー");
             assertThat(user.getAvatarUrl()).isNull();
             assertThat(user.getPhoneNumber()).isNull();
-            assertThat(user.isSearchable()).isFalse();
+            assertThat(user.getIsSearchable()).isFalse();
 
             // Then: 論理削除されている
             assertThat(user.getDeletedAt()).isNotNull();
@@ -818,7 +818,7 @@ class UserServiceTest {
         void withdrawUser_唯一のSYSTEM_ADMIN_例外() {
             // Given
             given(userRoleRepository.countSystemAdmins()).willReturn(1L);
-            given(userRoleRepository.isSystemAdmin(USER_ID)).willReturn(1);
+            given(userRoleRepository.isSystemAdmin(USER_ID)).willReturn(1L);
 
             // When / Then
             assertThatThrownBy(() -> userService.withdrawUser(USER_ID))
