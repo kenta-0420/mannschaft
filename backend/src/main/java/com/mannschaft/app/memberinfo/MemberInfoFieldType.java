@@ -6,3 +6,4 @@ public enum MemberInfoFieldType {
     EMAIL,
     DATE
 }
+
