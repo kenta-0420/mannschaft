@@ -32,9 +32,29 @@ user / team / organization ドメインへの越境 FK を全件撤廃する。
 | 8 | `contact_request_blocks`     | `fk_crb_blocked` | `blocked_id`  | CASCADE | contact      |
 | 9 | `contact_invite_tokens`      | `fk_cit_user`    | `user_id`     | CASCADE | contact      |
 
+## 第二波（V62.002）— feature/db-phase1a-wave2-user-fk PR で処理
+
+admin / onboarding / timetable / sync / social / todo ドメインから低リスク 9 制約を撤廃。
+
+| # | テーブル | 制約名 | カラム | 元のON DELETE | 所属ドメイン |
+|---|---|---|---|---|---|
+| 10 | `feedback_votes`          | `fk_fv_user`                    | `user_id`    | CASCADE | admin        |
+| 11 | `user_violations`         | `fk_uv_user`                    | `user_id`    | CASCADE | admin        |
+| 12 | `onboarding_progresses`   | `fk_op_user`                    | `user_id`    | CASCADE | onboarding   |
+| 13 | `data_exports`            | `fk_data_exports_user`          | `user_id`    | CASCADE | data         |
+| 14 | `personal_timetables`     | `fk_personal_timetable_user`    | `user_id`    | CASCADE | timetable    |
+| 15 | `offline_sync_conflicts`  | `fk_offline_sync_conflicts_user`| `user_id`    | CASCADE | sync         |
+| 16 | `user_blocks`             | `fk_ub_blocker`                 | `blocker_id` | CASCADE | social       |
+| 17 | `user_blocks`             | `fk_ub_blocked`                 | `blocked_id` | CASCADE | social       |
+| 18 | `todo_personal_memos`     | `fk_tpm_user`                   | `user_id`    | CASCADE | todo         |
+
+index 追加:
+- `feedback_votes`: `idx_fv_user_id(user_id)` — UNIQUE の第2列のため単独検索用に追加
+- `todo_personal_memos`: `idx_tpm_user_id(user_id)` — UNIQUE の第2列のため単独検索用に追加
+
 ## 残波の見通し
 
-第二波以降の対象は `PHASE1A_TODO.md` 参照。
+第三波以降の対象は `PHASE1A_TODO.md` 参照。
 波ごとに 5〜10 件で PR を切り、CI を確実に通しながら段階的に進める。
 
 ## 注意
