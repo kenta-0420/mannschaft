@@ -1,0 +1,99 @@
+{
+  "disclosure": {
+    "title": "Property Disclosure Statement (Reference)",
+    "subtitle": "Reference information prepared by the management association. Not a statutory form.",
+    "newDraft": "New Draft",
+    "editDraft": "Edit Draft",
+    "exportHistory": "Export History",
+    "exportPdf": "Export as PDF",
+    "exportExcel": "Export as Excel",
+    "exportWord": "Export as Word",
+    "noDrafts": "No drafts have been created yet.",
+    "noExports": "No export history yet.",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "deleted": "Deleted",
+    "deleteConfirm": "Are you sure you want to delete this?",
+    "back": "Back to list",
+    "templatePicker": {
+      "title": "Select a Template",
+      "prefecture": "Prefecture",
+      "allPrefectures": "Nationwide",
+      "systemTemplates": "MLIT Standard Forms",
+      "customTemplates": "Organization Custom",
+      "select": "Use this template",
+      "noTemplates": "No templates available",
+      "version": "Version {version}"
+    },
+    "draftStatus": {
+      "DRAFT": "Draft",
+      "READY": "Ready",
+      "EXPORTED": "Exported"
+    },
+    "outputFormat": {
+      "PDF": "PDF",
+      "EXCEL": "Excel",
+      "WORD": "Word"
+    },
+    "fields": {
+      "title": "Draft Title",
+      "template": "Template",
+      "prefecture": "Prefecture",
+      "version": "Version",
+      "targetDwelling": "Target Unit",
+      "targetDwellingPlaceholder": "Unit number (e.g., 101)",
+      "status": "Status",
+      "createdAt": "Created",
+      "updatedAt": "Updated",
+      "outputFormat": "Format",
+      "templateCode": "Template Code",
+      "sha256": "SHA-256",
+      "expiresAt": "Expires"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "save": "Save",
+      "cancel": "Cancel",
+      "create": "Create",
+      "download": "Download",
+      "viewExports": "View Export History"
+    },
+    "autoFill": {
+      "title": "Personal Information Auto-fill",
+      "allowPersonalInfo": "Allow auto-fill of personal information",
+      "refresh": "Refresh Auto-fill",
+      "note": "Check only if you intend to include personal data such as owner names.",
+      "refreshed": "Auto-fill refreshed",
+      "refreshFailed": "Failed to refresh auto-fill"
+    },
+    "exported": {
+      "lockedTitle": "Exported Draft",
+      "lockedMessage": "This draft has already been exported and cannot be edited. Please duplicate it as a new draft (Phase 3)."
+    },
+    "warnings": {
+      "title": "Export Warnings",
+      "close": "Close"
+    },
+    "errors": {
+      "loadFailed": "Failed to load",
+      "saveFailed": "Failed to save",
+      "deleteFailed": "Failed to delete",
+      "versionConflict": "Another user has edited this draft. Reloading the latest version.",
+      "exportFailed": "Export failed",
+      "downloadFailed": "Download failed",
+      "tampered": "File integrity check failed (DISCLOSURE_010)"
+    },
+    "limit": {
+      "warning": "Up to 50 drafts per organization ({remaining} remaining)",
+      "exceeded": "Reached the draft limit (50). Please delete unused drafts."
+    },
+    "validation": {
+      "required": "This field is required",
+      "maxLength": "Must be {max} characters or fewer",
+      "title": "Draft title is required",
+      "templateRequired": "Please select a template"
+    }
+  }
+}
