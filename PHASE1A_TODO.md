@@ -1,7 +1,7 @@
 # Phase 1-A クロスドメインFK 撤廃 — 残波 TODO
 
-第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。
-残りは `users` 参照 約 多数 + `teams` 多数 + `organizations` 18 + その他多数。
+第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。
+残りは `users` 参照 多数 + `teams` 多数 + `organizations` 7 + その他多数。
 
 ## 完了済み（user_id 参照）
 
@@ -64,13 +64,29 @@
 - `match_requests`, `match_proposals` (matching → team)
 - その他多数
 
-## 第四波以降（organization_id 参照）
+## 完了済み（organization_id 参照）
 
-- `chat_channels.fk_channel_org` (chat → organization)
-- `timetable_terms.fk_timetable_term_org` (timetable → organization)
-- `schedule_event_categories.fk_sec_organization` (schedule → organization)
-- `shift_budget_allocations` (shift → organization)
-…他多数
+### 第五波（V62.005）— 11件（organization_id 第一波）
+- `chat_channels.fk_channel_org` (chat)
+- `timetable_period_templates.fk_tpt_organization` (timetable)
+- `timetable_terms.fk_timetable_term_org` (timetable)
+- `schedule_event_categories.fk_sec_organization` (schedule)
+- `shift_budget_allocations.fk_sba_organization` (shift)
+- `shift_budget_failed_events.fk_sbfe_organization` (shift)
+- `ad_campaigns.fk_ad_campaigns_org` (advertising)
+- `advertiser_accounts.fk_advertiser_accounts_organization` (advertising) ※idx_advertiser_accounts_org 追加
+- `proxy_input_consents.fk_pic_org` (proxy)
+- `user_roles.fk_user_roles_org` (role)
+- `permission_groups.fk_permission_groups_org` (role) ※idx_permission_groups_org 追加
+
+## 次波（organization_id 参照 残件 — 第六波以降）
+
+- `schedule_annual_copy_logs.fk_sacl_organization` (schedule → organization, ON DELETE SET NULL)
+- `audit_logs.fk_al_org` (audit → organization, ON DELETE SET NULL)
+- `error_reports` (error → organization, ON DELETE SET NULL)
+- `action_memos` org FK (memo → organization)
+- `organizations.fk_organizations_parent` — **同一ドメイン内のため撤廃不要**
+- V8.x / V9.x 系列（committees, proxy_vote_sessions, payment_items など）
 
 ## 第五波以降（Phase 1-B: CASCADE 整理）
 
