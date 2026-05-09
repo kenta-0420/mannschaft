@@ -66,6 +66,7 @@ public class ScheduleAttendanceService {
      * @param req        出欠回答リクエスト
      * @return 出欠回答レスポンス
      */
+    // TODO: scheduleドメインとproxyドメインをまたいでいる（ProxyInputRecordRepositoryを直接参照）。将来はProxyInputServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @Transactional
     public AttendanceResponse respondAttendance(Long scheduleId, Long userId, AttendanceRequest req) {
         ScheduleEntity schedule = scheduleService.getSchedule(scheduleId);
@@ -240,6 +241,7 @@ public class ScheduleAttendanceService {
      * @param to     期間終了
      * @return 出席率統計（ユーザー別）
      */
+    // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public List<AttendanceStatsResponse> getTeamAttendanceStats(Long teamId,
                                                                   LocalDateTime from, LocalDateTime to) {
         // チームメンバーのユーザーIDリストを取得
@@ -268,6 +270,7 @@ public class ScheduleAttendanceService {
      * @param to    期間終了
      * @return 出席率統計（ユーザー別）
      */
+    // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public List<AttendanceStatsResponse> getOrgAttendanceStats(Long orgId,
                                                                  LocalDateTime from, LocalDateTime to) {
         // 組織メンバーのユーザーIDリストを取得
@@ -296,6 +299,7 @@ public class ScheduleAttendanceService {
      * @param to     期間終了
      * @return 出席率統計
      */
+    // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public AttendanceStatsResponse getMyAttendanceStats(Long userId, LocalDateTime from, LocalDateTime to) {
         // ユーザーが所属するチームのスケジュールIDを収集
         List<Long> allScheduleIds = new ArrayList<>();

@@ -41,6 +41,7 @@ public class ShiftPreferenceReminderBatchService {
     /**
      * 10 分ごとに実行。48h前・24h前リマインドを未提出メンバーに送信する。
      */
+    // TODO: shiftドメインがroleドメイン（UserRoleRepository）とteamドメイン（TeamShiftSettingsRepository）をまたいでいる。将来はそれぞれのQueryService経由で分離予定。Phase1-E: 2026-05-09
     @Scheduled(cron = "0 */10 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "shift_preference_reminder", lockAtMostFor = "15m", lockAtLeastFor = "2m")
     @Transactional

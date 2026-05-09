@@ -296,6 +296,7 @@ public class ScheduleService {
      * @param to     期間終了
      * @return カレンダーエントリー一覧
      */
+    // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "ScheduleService.getMyCalendar"})
     public List<CalendarEntryResponse> getMyCalendar(Long userId, LocalDateTime from, LocalDateTime to) {
         List<CalendarEntryResponse> entries = new ArrayList<>();
