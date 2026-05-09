@@ -1067,5 +1067,44 @@
     "emptyFolder": "This folder is empty",
     "limitExceeded": "You can create up to 20 folders",
     "nameDuplicate": "A folder with the same name already exists"
+  },
+  "systemAdmin": {
+    "logs": {
+      "title": "System Logs",
+      "quickLink": "System Logs",
+      "typeAll": "All",
+      "typeSlowQuery": "Slow Query",
+      "typeSsrError": "SSR Error",
+      "dateLabel": "Date",
+      "fetchButton": "Fetch",
+      "columns": {
+        "type": "Type",
+        "date": "Date",
+        "fileName": "File Name",
+        "sizeKb": "Size (KB)",
+        "download": "Download"
+      },
+      "empty": "No log files found",
+      "downloadButton": "Download"
+    }
+  },
+  "admin": {
+    "quickLinks": {
+      "announcements": "Announcements",
+      "featureFlags": "Feature Flags",
+      "maintenance": "Maintenance",
+      "modules": "Module Management",
+      "templates": "Templates",
+      "moderation": "Moderation",
+      "users": "User Management",
+      "organizations": "Organization Management",
+      "feedback": "Feedback",
+      "reports": "Reports",
+      "advertisers": "Advertiser Management",
+      "auditLogs": "Audit Logs",
+      "shiftBudget": "Shift Budget",
+      "betaRestriction": "Beta Restriction",
+      "errorReports": "Error Reports"
+    }
   }
 }

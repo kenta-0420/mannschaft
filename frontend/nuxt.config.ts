@@ -116,6 +116,8 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
+    // F10.6 Phase 10-γ-③-b: SSRエラー転送用内部トークン（サーバーサイドのみ）
+    internalLogToken: process.env.NUXT_INTERNAL_LOG_TOKEN || 'dev-internal-token',
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080',
     },
