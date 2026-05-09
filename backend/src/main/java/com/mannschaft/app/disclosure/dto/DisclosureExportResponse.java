@@ -75,7 +75,7 @@ public record DisclosureExportResponse(
                 entity.getRequesterUserId(),
                 entity.getRecipientNote(),
                 referencedPackageIds,
-                entity.getPdfSha256(),
+                entity.getOutputSha256(),
                 null,
                 null,
                 entity.getExpiresAt(),
