@@ -1,6 +1,9 @@
 package com.mannschaft.app.health;
 
+import com.mannschaft.app.errorreport.ErrorReportActivityType;
+import com.mannschaft.app.errorreport.service.ErrorReportActivityService;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
+import com.mannschaft.app.errorreport.service.ErrorReportService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.CompositeHealth;
@@ -10,6 +13,7 @@ import org.springframework.boot.actuate.health.Status;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -29,9 +33,11 @@ import java.util.concurrent.ConcurrentHashMap;
  *       自動的に監視対象に入る。</li>
  *   <li>初回ポーリングは状態を記録するだけで通知しない（起動直後にすべての component が
  *       「UP に遷移した」と誤検知してしまうのを防ぐ）。</li>
- *   <li>DOWN → UP 復旧通知は本フェーズでは送らない（ノイズ削減）。
- *       設計書 F10.6 §5.4 に従い、復旧記録は将来 Phase 10-γ で {@code error_report_activities}
- *       に追記する形で対応予定。</li>
+ *   <li>DOWN → UP 復旧通知は送らない（ノイズ削減）。代わりに {@code error_report_activities} に
+ *       {@link ErrorReportActivityType#HEALTH_RECOVERED} を記録する（Phase 10-γ-① 実装済み）。</li>
+ *   <li>DOWN 検知時に {@link ErrorReportService#findOrCreateHealthDownReport(String)} を呼んで
+ *       {@code error_reports} にレコードを作成／集約し、その ID を {@code componentToReportId} に保存する。
+ *       復旧時はこの ID を使って {@code HEALTH_RECOVERED} アクティビティを記録する。</li>
  *   <li>self-invocation 罠を避けるため、{@code @Async} の付いた
  *       {@link ErrorReportNotifier#notifyHealthDown} は別 Bean (Notifier) 経由で呼ぶ。
  *       本クラスは {@code @Scheduled} のみで、self-invocation はしない。</li>
@@ -45,19 +51,31 @@ public class HealthStatusListener {
 
     private final HealthEndpoint healthEndpoint;
     private final ErrorReportNotifier errorReportNotifier;
+    private final ErrorReportService errorReportService;
+    private final ErrorReportActivityService errorReportActivityService;
     private final boolean enabled;
 
     /** 前回ポーリング時の component 別 status（component 名 → Status）。 */
     private final Map<String, Status> previousStatus = new ConcurrentHashMap<>();
+
+    /**
+     * DOWN 検知時に作成した error_report_id のキャッシュ（component 名 → error_report_id）。
+     * 復旧（DOWN→UP）時の {@link ErrorReportActivityType#HEALTH_RECOVERED} 記録に使用する。
+     */
+    private final Map<String, Long> componentToReportId = new ConcurrentHashMap<>();
 
     /** 初回ポーリング判定。{@code true} の間は遷移検知を行わず、状態の記録のみを行う。 */
     private volatile boolean firstPoll = true;
 
     public HealthStatusListener(HealthEndpoint healthEndpoint,
                                  ErrorReportNotifier errorReportNotifier,
+                                 ErrorReportService errorReportService,
+                                 ErrorReportActivityService errorReportActivityService,
                                  @Value("${mannschaft.error-monitoring.health-polling.enabled:true}") boolean enabled) {
         this.healthEndpoint = healthEndpoint;
         this.errorReportNotifier = errorReportNotifier;
+        this.errorReportService = errorReportService;
+        this.errorReportActivityService = errorReportActivityService;
         this.enabled = enabled;
     }
 
@@ -65,7 +83,8 @@ public class HealthStatusListener {
      * 30 秒間隔で /actuator/health の component 状態をポーリングする。
      *
      * <p>UP → DOWN 遷移を検知した component について {@link ErrorReportNotifier#notifyHealthDown}
-     * を呼び出す。DOWN → UP 復旧は記録のみで通知しない。</p>
+     * を呼び出す。DOWN → UP 復旧は通知しないが、{@code error_report_activities} に
+     * {@link ErrorReportActivityType#HEALTH_RECOVERED} を記録する（Phase 10-γ-① 実装済み）。</p>
      *
      * <p>{@code fixedDelay} を採用しているため、前回呼び出しが遅延しても呼び出しが重ならない。
      * Health の取得自体が遅い場合（DB 接続タイムアウト等）でも safe。</p>
@@ -126,9 +145,33 @@ public class HealthStatusListener {
         if (wasUp && isDown) {
             log.warn("Health 状態遷移 UP→DOWN 検知: component={}, status={}", component, currentStatus);
             errorReportNotifier.notifyHealthDown(component, detail);
+            // error_reports にレコードを作成し、復旧時の activity 記録用に ID を保持する
+            try {
+                Long reportId = errorReportService.findOrCreateHealthDownReport(component);
+                if (reportId != null) {
+                    componentToReportId.put(component, reportId);
+                }
+            } catch (Exception e) {
+                log.warn("Health DOWN error_reports 記録失敗: component={}", component, e);
+            }
         } else if (Status.DOWN.equals(prev) && Status.UP.equals(currentStatus)) {
-            // 復旧は記録のみ（Phase 10-γ で activities にログする予定）
+            // F10.6 Phase 10-γ-① — 復旧を error_report_activities に HEALTH_RECOVERED として記録する
             log.info("Health 状態遷移 DOWN→UP 復旧: component={}", component);
+            Long reportId = componentToReportId.get(component);
+            if (reportId != null) {
+                try {
+                    Map<String, Object> metadata = Map.of(
+                            "component", component,
+                            "restoredAt", LocalDateTime.now().toString()
+                    );
+                    errorReportActivityService.recordSystemActivity(reportId, ErrorReportActivityType.HEALTH_RECOVERED, metadata);
+                    log.info("Health 復旧アクティビティ記録完了: component={}, reportId={}", component, reportId);
+                } catch (Exception e) {
+                    log.warn("Health 復旧 activity 記録失敗: component={}, reportId={}", component, reportId, e);
+                }
+            } else {
+                log.warn("Health 復旧時の error_report_id が見つからない（初回復旧または再起動後）: component={}", component);
+            }
         }
     }
 
