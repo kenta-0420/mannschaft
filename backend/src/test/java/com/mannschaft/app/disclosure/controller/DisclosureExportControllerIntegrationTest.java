@@ -167,15 +167,19 @@ class DisclosureExportControllerIntegrationTest extends AbstractDisclosureIntegr
     }
 
     @Test
-    @DisplayName("POST /{draftId}/export?format=docx → DISCLOSURE_004（Word は Phase 3）")
-    void export_docx_throwsDisclosure004() {
+    @DisplayName("POST /{draftId}/export?format=docx → 201 + Word (.docx) 形式で出力される（Phase 3-B）")
+    void export_docx_returns201() {
         Long draftId = createDraft();
 
-        assertThatThrownBy(() -> controller.exportDraft(ORG_ID, draftId, "docx",
-                new DisclosureExportRequest(null, null)))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(DisclosureErrorCode.DISCLOSURE_004);
+        ResponseEntity<ApiResponse<DisclosureExportResponse>> resp =
+                controller.exportDraft(ORG_ID, draftId, "docx",
+                        new DisclosureExportRequest("Word 出力テスト", null));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        DisclosureExportResponse body = resp.getBody().getData();
+        assertThat(body.outputFormat()).isEqualTo(DisclosureOutputFormat.WORD);
+        assertThat(body.sha256()).hasSize(64).matches("[0-9a-f]{64}");
+        assertThat(body.recipientNote()).isEqualTo("Word 出力テスト");
     }
 
     @Test

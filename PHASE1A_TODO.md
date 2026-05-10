@@ -1,7 +1,7 @@
 # Phase 1-A クロスドメインFK 撤廃 — 残波 TODO
 
-第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。
-残りは `users` 参照 約 20 件 + `teams` 24 + `organizations` 18 + その他 32。
+第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第四波（V62.004）で 13 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。
+残りは `users` 参照 多数 + `teams` 多数 + `organizations` 残件 + その他多数。
 
 ## 完了済み（user_id 参照）
 
@@ -18,39 +18,90 @@
 - `user_blocks`(×2) (social)
 - `todo_personal_memos` (todo)
 
-## 次波（user_id 参照 / 第三波 想定）
-
-残存する user_id 越境FK の主な候補（grep 結果より抜粋）：
-
+### 第三波（V62.003）— 7件（user_id）
 - `kb_page_favorites.fk_kbpf_user` (knowledge)
 - `user_google_calendar_connections.fk_ugcc_user` (calendar)
 - `user_calendar_sync_settings.fk_ucss_user` (calendar)
 - `user_ical_tokens.fk_uit_user` (calendar)
-- `personal_timetable_settings.fk_pts_settings_user` (timetable)
 - `announcement_read_status.fk_ars_user` (announcement)
-- `event_rsvp_responses.fk_rsvp_user` (event)
-- `safety_responses.fk_safety_resp_user` (safety)
-- その他多数（V3.x, V11.x, V13.x, V14.x, V16.x〜V19.x 系列）
+- `event_rsvp_responses.fk_rsvp_user` (event) ※ idx_rsvp_user_id 追加
+- `personal_timetable_settings.fk_pts_settings_user` (timetable)
 
-第三波 PR 開始時に、上記に加えて全件 grep で確認し残対象を確定すること。
+## 完了済み（team_id 参照）
 
-## 次々波 (team_id 参照 / 第三波 想定)
+### 第三波（V62.003）— 5件（team_id 第一波）
+- `chat_channels.fk_channel_team` (chat)
+- `timetable_terms.fk_tt_team` (timetable)
+- `personal_timetable_share_targets.fk_ptst_team` (timetable)
+- `schedule_event_categories.fk_sec_team` (schedule)
+- `job_postings.fk_jp_team` (jobmatching)
 
-家老C 代表例：
-- `chat_channels` (chat → team)
-- `timetable_terms` (timetable → team)
-- `schedule_event_categories` (schedule → team)
-- `personal_timetable_share_targets` (timetable → team)
-- `job_postings` (jobmatching → team)
+### 第四波（V62.004）— 13件（user_id 6件 + team_id 7件）
 
-## 第四波 (organization_id 参照)
+#### user_id 参照（6件）
+- `safety_responses.fk_safety_resp_user` (safety) ※ idx_safety_resp_user_id 追加
+- `schedule_attendances.fk_sa_user` (schedule)
+- `shift_requests.fk_sr_user` (shift) ※ idx_shift_requests_user_id 追加
+- `member_cards.fk_mc_user` (member)
+- `visibility_templates.fk_vt_owner` (visibility)
+- `confirmable_notification_recipients.fk_cnr_user` (notification)
 
-- `chat_channels` (chat → organization)
-- `timetable_period_templates` (timetable → organization)
-- `shift_budget_allocations` (shift → organization)
-…他
+#### team_id 参照（7件）
+- `timetables.fk_tm_team` (timetable → team)
+- `schedules.fk_sch_team` (schedule → team)
+- `shift_schedules.fk_ss_team` (shift → team)
+- `shift_positions.fk_sp_team` (shift → team)
+- `shared_folders.fk_shared_folders_team` (storage → team) ※ idx_shared_folders_team_id 追加
+- `blog_posts.fk_bp_team` (blog → team)
+- `blog_post_series.fk_bps_team` (blog → team)
 
-## 第五波以降 (Phase 1-B: CASCADE 整理)
+## 第五波以降（user_id 参照 残件）
+
+主な候補（V2.x, V3.x, V10.x, V11.x 系列）：
+- `schedules.fk_sch_user` / `schedules.fk_sch_created_by` (schedule)
+- `report_actions.fk_report_actions_user` (admin)
+- `moderation_appeals.fk_ma_user` (admin)
+- `user_roles.fk_user_roles_user` / `fk_user_roles_granted_by` (auth/role)
+- `team_org_memberships.fk_team_org_memberships_invited_by` 等 (team)
+- `presence_events.fk_pe_user` (team)
+- V11.x 系列（budget, skill, kb等）多数
+- V18.x 系列（attendance等）多数
+
+## 第五波以降（team_id 参照 残件）
+
+主な候補：
+- `reservation_lines/slots/reservations` (reservation → team)
+- `match_requests`, `match_proposals` (matching → team)
+- `service_records`, `performance_metrics` (service → team)
+- `equipment_items` (equipment → team)
+- `payment_items`, `ticket_products` 等 (payment → team)
+- その他多数
+
+## 完了済み（organization_id 参照）
+
+### 第五波（V62.005）— 11件（organization_id 第一波）
+- `chat_channels.fk_channel_org` (chat)
+- `timetable_period_templates.fk_tpt_organization` (timetable)
+- `timetable_terms.fk_timetable_term_org` (timetable)
+- `schedule_event_categories.fk_sec_organization` (schedule)
+- `shift_budget_allocations.fk_sba_organization` (shift)
+- `shift_budget_failed_events.fk_sbfe_organization` (shift)
+- `ad_campaigns.fk_ad_campaigns_org` (advertising)
+- `advertiser_accounts.fk_advertiser_accounts_organization` (advertising) ※idx_advertiser_accounts_org 追加
+- `proxy_input_consents.fk_pic_org` (proxy)
+- `user_roles.fk_user_roles_org` (role)
+- `permission_groups.fk_permission_groups_org` (role) ※idx_permission_groups_org 追加
+
+## 次波（organization_id 参照 残件 — 第六波以降）
+
+- `schedule_annual_copy_logs.fk_sacl_organization` (schedule → organization, ON DELETE SET NULL)
+- `audit_logs.fk_al_org` (audit → organization, ON DELETE SET NULL)
+- `error_reports` (error → organization, ON DELETE SET NULL)
+- `action_memos` org FK (memo → organization)
+- `organizations.fk_organizations_parent` — **同一ドメイン内のため撤廃不要**
+- V8.x / V9.x 系列（committees, proxy_vote_sessions, payment_items など）
+
+## Phase 1-B（CASCADE 整理）
 
 CLAUDE.md 原則 §2 に従い、クロスドメイン CASCADE 78 件は
 `SET NULL` / `RESTRICT` / アプリ層整合性に置換。

@@ -103,6 +103,7 @@ public class DisclosureExportService {
     private final DisclosureFormTemplateValidator templateValidator;
     private final PdfGeneratorService pdfGeneratorService;
     private final ExcelGeneratorService excelGeneratorService;
+    private final WordGeneratorService wordGeneratorService;
     private final R2StorageService r2StorageService;
     private final SharedFolderRepository folderRepository;
     private final SharedFileRepository sharedFileRepository;
@@ -132,10 +133,6 @@ public class DisclosureExportService {
                                                 DisclosureOutputFormat format, Long userId,
                                                 String recipientNote, boolean allowPersonalInfo) {
         if (format == null) {
-            throw new BusinessException(DisclosureErrorCode.DISCLOSURE_004);
-        }
-        if (format == DisclosureOutputFormat.WORD) {
-            // 設計書 §5.4: Word は Phase 3
             throw new BusinessException(DisclosureErrorCode.DISCLOSURE_004);
         }
 
@@ -179,14 +176,23 @@ public class DisclosureExportService {
         byte[] payload;
         String contentType;
         String extension;
-        if (format == DisclosureOutputFormat.PDF) {
-            payload = generatePdf(template, formSchema, formData, organization, outputUserName);
-            contentType = "application/pdf";
-            extension = "pdf";
-        } else {
-            payload = generateExcel(template, formSchema, formData, organization, outputUserName);
-            contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-            extension = "xlsx";
+        switch (format) {
+            case PDF -> {
+                payload = generatePdf(template, formSchema, formData, organization, outputUserName);
+                contentType = "application/pdf";
+                extension = "pdf";
+            }
+            case EXCEL -> {
+                payload = generateExcel(template, formSchema, formData, organization, outputUserName);
+                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                extension = "xlsx";
+            }
+            case WORD -> {
+                payload = generateWord(draft, template);
+                contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                extension = "docx";
+            }
+            default -> throw new BusinessException(DisclosureErrorCode.DISCLOSURE_004);
         }
 
         // 7. SHA-256
@@ -364,6 +370,71 @@ public class DisclosureExportService {
     DisclosureExportEntity findExportOrThrow(Long exportId) {
         return exportRepository.findByIdAndDeletedAtIsNull(exportId)
                 .orElseThrow(() -> new BusinessException(DisclosureErrorCode.DISCLOSURE_001));
+    }
+
+    /**
+     * 出力履歴の自動削除予定日（{@code expires_at}）を延長する（F09.14 Phase 3-E、設計書 §5.7）。
+     *
+     * <p>制約:</p>
+     * <ul>
+     *   <li>{@code newExpiresAt} は <strong>現在時刻より未来</strong> であること</li>
+     *   <li>{@code newExpiresAt} は <strong>本日から 7 年</strong> を超えないこと
+     *       （F12.3 GDPR 整合: 最大保管期間）</li>
+     * </ul>
+     *
+     * @param scopeId       組織 ID（テナント分離）
+     * @param exportId      対象出力履歴 ID
+     * @param newExpiresAt  新しい自動削除予定日時
+     * @return 更新後の {@link DisclosureExportResponse}（download URL は含めない）
+     * @throws BusinessException {@link DisclosureErrorCode#DISCLOSURE_001} (404) 出力履歴未発見、
+     *                           {@link DisclosureErrorCode#DISCLOSURE_002} (403) スコープ不一致、
+     *                           {@link DisclosureErrorCode#DISCLOSURE_011} (422) 延長範囲違反
+     */
+    @Transactional
+    public DisclosureExportResponse extendExpiry(Long scopeId, Long exportId,
+                                                 LocalDateTime newExpiresAt) {
+        if (newExpiresAt == null) {
+            throw new BusinessException(DisclosureErrorCode.DISCLOSURE_011);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        // 過去日時は禁止
+        if (!newExpiresAt.isAfter(now)) {
+            throw new BusinessException(DisclosureErrorCode.DISCLOSURE_011);
+        }
+        // 本日から 7 年超は禁止（最大保管期間、F12.3 GDPR 整合）
+        LocalDateTime maxAllowed = now.toLocalDate().plusYears(7).atStartOfDay();
+        if (newExpiresAt.isAfter(maxAllowed)) {
+            throw new BusinessException(DisclosureErrorCode.DISCLOSURE_011);
+        }
+
+        DisclosureExportEntity entity = findExportOrThrow(exportId);
+        ensureScope(entity.getScopeType(), entity.getScopeId(), scopeId);
+
+        entity.extendExpiresAt(newExpiresAt);
+        DisclosureExportEntity saved = exportRepository.save(entity);
+
+        log.info("重説書 expires_at 延長: exportId={}, newExpiresAt={}", exportId, newExpiresAt);
+
+        return new DisclosureExportResponse(
+                saved.getId(),
+                saved.getScopeType(),
+                saved.getScopeId(),
+                saved.getDraftId(),
+                saved.getTemplateId(),
+                saved.getTemplateCodeSnapshot(),
+                saved.getTemplateVersionSnapshot(),
+                saved.getOutputFormat(),
+                saved.getSharedFileId(),
+                saved.getTargetDwellingUnitId(),
+                saved.getRequesterUserId(),
+                saved.getRecipientNote(),
+                deserializeIds(saved.getReferencedPackageIds()),
+                saved.getOutputSha256(),
+                null,
+                null,
+                saved.getExpiresAt(),
+                saved.getCreatedAt(),
+                List.of());
     }
 
     // =========================================================================
@@ -546,6 +617,25 @@ public class DisclosureExportService {
                     template, formSchema, formData, organization, outputUserName));
         } catch (IOException | RuntimeException e) {
             log.error("重説書 Excel 生成失敗: templateId={}", template.getId(), e);
+            throw new BusinessException(DisclosureErrorCode.DISCLOSURE_010, e);
+        }
+    }
+
+    /**
+     * Word 出力（F09.14 Phase 3-B）。
+     *
+     * <p>WordGeneratorService に委譲し、テンプレート (docx/disclosure/{templateCode}.docx)
+     * 配下の docx を読み込んで {@code ${key}} プレースホルダーを置換する。テンプレート
+     * 未配置の場合は WordGeneratorService 側のフォールバックで最低限の docx を生成する。</p>
+     */
+    private byte[] generateWord(DisclosureFormDraftEntity draft,
+                                DisclosureFormTemplateEntity template) {
+        try {
+            return wordGeneratorService.generate(draft, template);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("重説書 Word 生成失敗: templateId={}", template.getId(), e);
             throw new BusinessException(DisclosureErrorCode.DISCLOSURE_010, e);
         }
     }

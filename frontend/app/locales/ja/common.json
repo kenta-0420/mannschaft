@@ -1067,5 +1067,44 @@
     "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
     "nameDuplicate": "同じ名前のフォルダが既に存在します"
+  },
+  "systemAdmin": {
+    "logs": {
+      "title": "システムログ",
+      "quickLink": "システムログ",
+      "typeAll": "すべて",
+      "typeSlowQuery": "スロークエリ",
+      "typeSsrError": "SSRエラー",
+      "dateLabel": "日付",
+      "fetchButton": "取得",
+      "columns": {
+        "type": "種別",
+        "date": "日付",
+        "fileName": "ファイル名",
+        "sizeKb": "サイズ(KB)",
+        "download": "ダウンロード"
+      },
+      "empty": "ログファイルが見つかりませんでした",
+      "downloadButton": "ダウンロード"
+    }
+  },
+  "admin": {
+    "quickLinks": {
+      "announcements": "お知らせ管理",
+      "featureFlags": "フィーチャーフラグ",
+      "maintenance": "メンテナンス",
+      "modules": "モジュール管理",
+      "templates": "テンプレート",
+      "moderation": "モデレーション",
+      "users": "ユーザー管理",
+      "organizations": "組織管理",
+      "feedback": "フィードバック",
+      "reports": "レポート",
+      "advertisers": "広告主管理",
+      "auditLogs": "監査ログ",
+      "shiftBudget": "シフト予算",
+      "betaRestriction": "ベータ制限",
+      "errorReports": "エラーレポート"
+    }
   }
 }

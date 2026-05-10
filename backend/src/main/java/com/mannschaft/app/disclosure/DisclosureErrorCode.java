@@ -52,6 +52,14 @@ public enum DisclosureErrorCode implements ErrorCode {
             Severity.ERROR),
 
     /**
+     * 設計書 §5.7: 422 — 自動削除予定日（{@code expires_at}）の延長範囲違反。
+     * 過去日時、または本日から 7 年超を指定した場合に投げる。
+     */
+    DISCLOSURE_011("DISCLOSURE_011",
+            "自動削除予定日は現在時刻より未来かつ本日から最大7年以内である必要があります",
+            Severity.WARN),
+
+    /**
      * 設計書 §3 disclosure_form_templates: 422 — 組織あたりカスタム様式件数上限超過（10 件）。
      * Phase 3-C で追加。CHECK 制約ではなく Service 層で計数してから保存前に弾く。
      * <p>※ 011/012 は Phase 3-E（自動削除バッチ・期限延長）が先行採番したため 013/014 に振り直し。</p>

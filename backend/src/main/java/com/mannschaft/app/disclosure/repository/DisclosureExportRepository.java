@@ -46,6 +46,15 @@ public interface DisclosureExportRepository
     long countByTemplateIdAndDeletedAtIsNull(Long templateId);
 
     /**
+     * 指定の回覧文書 ID を参照する出力履歴を取得（Phase 3-D クリーンアップ用）。
+     *
+     * <p>{@code disclosure_exports.circulation_document_id} は FK 無し index のみのため、
+     * 回覧文書削除時にアプリ層で参照を NULL 化するために使用する。</p>
+     */
+    List<DisclosureExportEntity> findByCirculationDocumentIdAndDeletedAtIsNull(
+            Long circulationDocumentId);
+
+    /**
      * TTL 失効分の出力履歴を取得（自動削除バッチ用）。
      */
     @Query("""

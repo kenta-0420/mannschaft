@@ -6,8 +6,12 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.disclosure.DisclosureErrorCode;
 import com.mannschaft.app.disclosure.DisclosureOutputFormat;
+import com.mannschaft.app.disclosure.dto.DisclosureCirculationStartRequest;
+import com.mannschaft.app.disclosure.dto.DisclosureCirculationStartResponse;
 import com.mannschaft.app.disclosure.dto.DisclosureExportRequest;
 import com.mannschaft.app.disclosure.dto.DisclosureExportResponse;
+import com.mannschaft.app.disclosure.dto.ExtendExpiryRequest;
+import com.mannschaft.app.disclosure.service.DisclosureCirculationService;
 import com.mannschaft.app.disclosure.service.DisclosureExportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,6 +54,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class DisclosureExportController {
 
     private final DisclosureExportService exportService;
+    private final DisclosureCirculationService circulationService;
 
     /**
      * ドラフトを出力する。{@code format} は {@code pdf} / {@code xlsx} を受け付ける（大文字小文字無視）。
@@ -103,6 +109,46 @@ public class DisclosureExportController {
             @PathVariable("exportId") Long exportId) {
         SecurityUtils.getCurrentUserId();
         return ApiResponse.of(exportService.generateDownloadUrl(organizationId, exportId));
+    }
+
+    /**
+     * 出力履歴の自動削除予定日（{@code expires_at}）を延長する（F09.14 Phase 3-E、設計書 §5.7）。
+     *
+     * <p>本日から最大 7 年まで延長可能。過去日時は {@link DisclosureErrorCode#DISCLOSURE_011}
+     * (422) を返す。</p>
+     *
+     * <p><strong>権限制御</strong>: ADMIN のみ許可する想定（設計書 §5.7）。
+     * 現状 Phase 2-β-5 以降に持ち越されている role/permission チェック（{@link #exportDraft}
+     * 同様）と整合させ、{@link SecurityUtils#getCurrentUserId()} による認証ガードのみで実装する。
+     * FIXME(Phase 2-β-5/3-E 後続): role=ADMIN チェックを追加すること。</p>
+     */
+    @PatchMapping("/disclosure-exports/{exportId}/extend-expiry")
+    public ApiResponse<DisclosureExportResponse> extendExpiry(
+            @PathVariable("organizationId") Long organizationId,
+            @PathVariable("exportId") Long exportId,
+            @Valid @RequestBody ExtendExpiryRequest request) {
+        SecurityUtils.getCurrentUserId();
+        DisclosureExportResponse response = exportService.extendExpiry(
+                organizationId, exportId, request.newExpiresAt());
+        return ApiResponse.of(response);
+    }
+
+    /**
+     * 出力履歴に対する電子印鑑承認回覧を開始する（F09.14 Phase 3-D）。
+     *
+     * <p>設計書 §4 / §5.6 に対応。手動クリック方式（自動開始ではない）。
+     * F05.2 {@code CirculationDocumentEntity} を作成し、{@code disclosure_exports.circulation_document_id}
+     * へ保存する。</p>
+     */
+    @PostMapping("/disclosure-exports/{exportId}/circulation")
+    public ResponseEntity<ApiResponse<DisclosureCirculationStartResponse>> startCirculation(
+            @PathVariable("organizationId") Long organizationId,
+            @PathVariable("exportId") Long exportId,
+            @Valid @RequestBody DisclosureCirculationStartRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        DisclosureCirculationStartResponse response = circulationService.startCirculation(
+                organizationId, exportId, userId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     private DisclosureOutputFormat parseFormat(String format) {

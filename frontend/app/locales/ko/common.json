@@ -1067,5 +1067,44 @@
     "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
     "nameDuplicate": "同じ名前のフォルダが既に存在します"
+  },
+  "systemAdmin": {
+    "logs": {
+      "title": "시스템 로그",
+      "quickLink": "시스템 로그",
+      "typeAll": "전체",
+      "typeSlowQuery": "슬로우 쿼리",
+      "typeSsrError": "SSR 오류",
+      "dateLabel": "날짜",
+      "fetchButton": "가져오기",
+      "columns": {
+        "type": "유형",
+        "date": "날짜",
+        "fileName": "파일명",
+        "sizeKb": "크기 (KB)",
+        "download": "다운로드"
+      },
+      "empty": "로그 파일을 찾을 수 없습니다",
+      "downloadButton": "다운로드"
+    }
+  },
+  "admin": {
+    "quickLinks": {
+      "announcements": "공지 관리",
+      "featureFlags": "기능 플래그",
+      "maintenance": "유지보수",
+      "modules": "모듈 관리",
+      "templates": "템플릿",
+      "moderation": "모더레이션",
+      "users": "사용자 관리",
+      "organizations": "조직 관리",
+      "feedback": "피드백",
+      "reports": "리포트",
+      "advertisers": "광고주 관리",
+      "auditLogs": "감사 로그",
+      "shiftBudget": "교대 예산",
+      "betaRestriction": "베타 제한",
+      "errorReports": "오류 보고서"
+    }
   }
 }
