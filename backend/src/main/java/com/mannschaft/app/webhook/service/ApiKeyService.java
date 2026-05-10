@@ -162,10 +162,8 @@ public class ApiKeyService {
      * @return APIキー一覧
      */
     public ApiResponse<List<ApiKeyResponse>> listApiKeys(String scopeType, Long scopeId) {
-        // JPA の @SQLRestriction により deleted_at IS NULL は自動適用
-        List<ApiKeyEntity> entities = apiKeyRepository.findAll().stream()
-                .filter(k -> k.getScopeType().equals(scopeType) && k.getScopeId().equals(scopeId))
-                .collect(Collectors.toList());
+        // スコープに紐づくAPIキー一覧を直接取得（論理削除済みを除く）
+        List<ApiKeyEntity> entities = apiKeyRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId);
         List<ApiKeyResponse> responses = entities.stream()
                 .map(e -> toResponse(e, null, null))
                 .collect(Collectors.toList());
