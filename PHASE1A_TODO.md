@@ -1,7 +1,7 @@
 # Phase 1-A クロスドメインFK 撤廃 — 残波 TODO
 
-第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第四波（V62.004）で 13 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。第六波（V62.006）で 20 件処理（organization_id 参照 残件全件 — **org_id 完全クローズ**）。
-残りは `users` 参照 多数 + `teams` 多数 + その他多数。
+第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第四波（V62.004）で 13 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。第六波（V62.006）で 20 件処理（org_id 完全クローズ）。第七波（V62.007）で 35 件処理（team_id 参照 前半）。
+残りは `users` 参照 多数 + `teams` 残件 + その他多数。
 
 ## 完了済み（user_id 参照）
 
@@ -67,15 +67,50 @@
 - V11.x 系列（budget, skill, kb等）多数
 - V18.x 系列（attendance等）多数
 
-## 第五波以降（team_id 参照 残件）
+## 完了済み（team_id 参照 — 続き）
+
+### 第七波（V62.007）— 35件（team_id 前半）
+- `chart_record_templates.fk_crt_team` (chart → team)
+- `match_requests.fk_mr_team` (matching → team)
+- `chart_section_settings.fk_css_team` (chart → team)
+- `chart_intake_form_templates.fk_cift_team` (chart → team)
+- `match_reviews.fk_mrev_reviewer` (matching → team) ※idx_mrev_reviewer_team 追加
+- `match_reviews.fk_mrev_reviewee` (matching → team)
+- `match_proposals.fk_mp_proposing_team` (matching → team)
+- `match_proposals.fk_mp_cancelled_by` (matching → team) ※idx_mp_cancelled_by_team 追加
+- `equipment_items.fk_ei_team` (equipment → team)
+- `service_records.fk_sr_team` (service → team)
+- `service_record_settings.fk_srs_team` (service → team)
+- `team_member_info_fields.fk_tmif_team` (member → team)
+- `service_record_fields.fk_srf_team` (service → team)
+- `chart_custom_fields.fk_ccf_team` (chart → team)
+- `chart_records.fk_cr_team` (chart → team)
+- `service_record_templates.fk_srt_team` (service → team)
+- `performance_metrics.fk_pm_team` (performance → team)
+- `tournament_promotion_records.fk_tpr_team` (tournament → team)
+- `team_friend_folders.fk_tff_team` (social → team)
+- `ticket_books.fk_tb_team` (ticket → team)
+- `tournament_participants.fk_tourn_part_team` (tournament → team)
+- `friend_content_forwards.fk_fcf_source_team` (social → team)
+- `friend_content_forwards.fk_fcf_forwarding_team` (social → team)
+- `team_friends.fk_tf_team_a` (social → team)
+- `team_friends.fk_tf_team_b` (social → team)
+- `ticket_payments.fk_tpay_team` (ticket → team)
+- `ng_teams.fk_ng_blocked` (matching → team)
+- `ng_teams.fk_ng_team` (matching → team)
+- `payment_items.fk_pi_team` (payment → team)
+- `match_request_templates.fk_mrt_team` (matching → team)
+- `team_access_requirements.fk_tar_team` (payment → team)
+- `ticket_products.fk_ticket_prod_team` (ticket → team)
+- `match_notification_preferences.fk_mnp_team` (matching → team)
+- `proxy_vote_sessions.fk_pvs_team` (proxy → team) ※idx_pvs_team_id 追加
+- `daily_attendance_records.fk_dar_team` (attendance → team)
+
+## 第八波以降（team_id 参照 残件）
 
 主な候補：
 - `reservation_lines/slots/reservations` (reservation → team)
-- `match_requests`, `match_proposals` (matching → team)
-- `service_records`, `performance_metrics` (service → team)
-- `equipment_items` (equipment → team)
-- `payment_items`, `ticket_products` 等 (payment → team)
-- その他多数
+- その他 team_id FK 残件
 
 ## 完了済み（organization_id 参照）
 
