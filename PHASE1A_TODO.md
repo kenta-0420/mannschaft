@@ -1,7 +1,7 @@
 # Phase 1-A クロスドメインFK 撤廃 — 残波 TODO
 
-第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第四波（V62.004）で 13 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。第六波（V62.006）で 20 件処理（org_id 完全クローズ）。第七波（V62.007）で 35 件処理（team_id 参照 前半）。
-残りは `users` 参照 多数 + `teams` 残件 + その他多数。
+第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第四波（V62.004）で 13 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。第九波（V62.009）で 30 件処理（role/team/social/moderation/shift ドメインの user_id 参照）。
+残りは `users` 参照 残件 + `teams` 多数 + `organizations` 残件 + その他多数。
 
 ## 完了済み（user_id 参照）
 
@@ -55,62 +55,68 @@
 - `blog_posts.fk_bp_team` (blog → team)
 - `blog_post_series.fk_bps_team` (blog → team)
 
-## 第五波以降（user_id 参照 残件）
+## 完了済み（user_id 参照）— 第九波
 
-主な候補（V2.x, V3.x, V10.x, V11.x 系列）：
+### 第九波（V62.009）— 30件（role/team/social/moderation/shift 系）
+
+#### role ドメイン（5件）
+- `user_roles.fk_user_roles_user` ※ UNIQUE(user_id, scope_key) でカバー済み
+- `user_roles.fk_user_roles_granted_by` ※ idx_user_roles_granted_by 追加
+- `user_permission_groups.fk_upg_user` ※ idx_upg_user_id 追加
+- `user_permission_groups.fk_upg_assigned_by` ※ idx_upg_assigned_by 追加
+- `permission_groups.fk_permission_groups_created_by` ※ idx_permission_groups_created_by 追加
+
+#### team ドメイン（13件）
+- `team_org_memberships.fk_team_org_memberships_invited_by` ※ idx_team_org_memberships_invited_by 追加
+- `team_org_memberships.fk_team_org_memberships_responded_by` ※ idx_team_org_memberships_responded_by 追加
+- `invite_tokens.fk_invite_tokens_created_by` ※ idx_invite_tokens_created_by 追加
+- `presence_events.fk_pe_user` ※ idx_presence_events_user_id 追加
+- `team_presence_icons.fk_tpi_user` ※ idx_tpi_updated_by 追加
+- `organization_blocks.fk_org_blocks_user` ※ idx_org_blocks_user_id 追加
+- `organization_blocks.fk_org_blocks_blocked_by` ※ idx_org_blocks_blocked_by 追加
+- `team_blocks.fk_team_blocks_user` ※ idx_team_blocks_user_id 追加
+- `team_blocks.fk_team_blocks_blocked_by` ※ idx_team_blocks_blocked_by 追加
+- `team_anniversaries.fk_ta_user` ※ idx_ta_created_by 追加
+- `duty_rotations.fk_dr_user` ※ idx_dr_created_by 追加
+- `coin_toss_results.fk_ctr_user` ※ idx_ctr_user_id 追加
+- `team_role_aliases.fk_tra_user` ※ idx_tra_updated_by 追加
+
+#### care ドメイン（4件）
+- `user_care_links.fk_ucl_recipient` ※ idx_ucl_recipient_status でカバー済み
+- `user_care_links.fk_ucl_watcher` ※ idx_ucl_watcher_status でカバー済み
+- `user_care_links.fk_ucl_created_by` ※ idx_ucl_created_by 追加
+- `user_care_links.fk_ucl_revoked_by` ※ idx_ucl_revoked_by 追加
+
+#### social ドメイン（1件）
+- `user_social_profiles.fk_social_profiles_user` ※ idx_social_profiles_user_id 追加
+
+#### moderation ドメイン（4件）
+- `report_actions.fk_report_actions_user` ※ idx_report_actions_action_by 追加
+- `moderation_appeals.fk_ma_user` ※ UNIQUE(user_id, action_id) でカバー済み
+- `report_internal_notes.fk_rin_author` ※ idx_rin_author_id 追加
+- `moderation_settings_history.fk_msh_user` ※ idx_msh_changed_by 追加
+
+#### shift ドメイン（3件）
+- `member_work_constraints.fk_mwc_user` ※ idx_mwc_user_id 追加
+- `member_availability_defaults.fk_mad_user` ※ UNIQUE(user_id, ...) でカバー済み
+- `shift_hourly_rates.fk_shr_user` ※ UNIQUE(user_id, ...) でカバー済み
+
+## 第十波以降（user_id 参照 残件）
+
+主な候補（V2.x, V3.x, V11.x 系列）：
 - `schedules.fk_sch_user` / `schedules.fk_sch_created_by` (schedule)
-- `report_actions.fk_report_actions_user` (admin)
-- `moderation_appeals.fk_ma_user` (admin)
-- `user_roles.fk_user_roles_user` / `fk_user_roles_granted_by` (auth/role)
-- `team_org_memberships.fk_team_org_memberships_invited_by` 等 (team)
-- `presence_events.fk_pe_user` (team)
 - V11.x 系列（budget, skill, kb等）多数
 - V18.x 系列（attendance等）多数
 
-## 完了済み（team_id 参照 — 続き）
-
-### 第七波（V62.007）— 35件（team_id 前半）
-- `chart_record_templates.fk_crt_team` (chart → team)
-- `match_requests.fk_mr_team` (matching → team)
-- `chart_section_settings.fk_css_team` (chart → team)
-- `chart_intake_form_templates.fk_cift_team` (chart → team)
-- `match_reviews.fk_mrev_reviewer` (matching → team) ※idx_mrev_reviewer_team 追加
-- `match_reviews.fk_mrev_reviewee` (matching → team)
-- `match_proposals.fk_mp_proposing_team` (matching → team)
-- `match_proposals.fk_mp_cancelled_by` (matching → team) ※idx_mp_cancelled_by_team 追加
-- `equipment_items.fk_ei_team` (equipment → team)
-- `service_records.fk_sr_team` (service → team)
-- `service_record_settings.fk_srs_team` (service → team)
-- `team_member_info_fields.fk_tmif_team` (member → team)
-- `service_record_fields.fk_srf_team` (service → team)
-- `chart_custom_fields.fk_ccf_team` (chart → team)
-- `chart_records.fk_cr_team` (chart → team)
-- `service_record_templates.fk_srt_team` (service → team)
-- `performance_metrics.fk_pm_team` (performance → team)
-- `tournament_promotion_records.fk_tpr_team` (tournament → team)
-- `team_friend_folders.fk_tff_team` (social → team)
-- `ticket_books.fk_tb_team` (ticket → team)
-- `tournament_participants.fk_tourn_part_team` (tournament → team)
-- `friend_content_forwards.fk_fcf_source_team` (social → team)
-- `friend_content_forwards.fk_fcf_forwarding_team` (social → team)
-- `team_friends.fk_tf_team_a` (social → team)
-- `team_friends.fk_tf_team_b` (social → team)
-- `ticket_payments.fk_tpay_team` (ticket → team)
-- `ng_teams.fk_ng_blocked` (matching → team)
-- `ng_teams.fk_ng_team` (matching → team)
-- `payment_items.fk_pi_team` (payment → team)
-- `match_request_templates.fk_mrt_team` (matching → team)
-- `team_access_requirements.fk_tar_team` (payment → team)
-- `ticket_products.fk_ticket_prod_team` (ticket → team)
-- `match_notification_preferences.fk_mnp_team` (matching → team)
-- `proxy_vote_sessions.fk_pvs_team` (proxy → team) ※idx_pvs_team_id 追加
-- `daily_attendance_records.fk_dar_team` (attendance → team)
-
-## 第八波以降（team_id 参照 残件）
+## 第五波以降（team_id 参照 残件）
 
 主な候補：
 - `reservation_lines/slots/reservations` (reservation → team)
-- その他 team_id FK 残件
+- `match_requests`, `match_proposals` (matching → team)
+- `service_records`, `performance_metrics` (service → team)
+- `equipment_items` (equipment → team)
+- `payment_items`, `ticket_products` 等 (payment → team)
+- その他多数
 
 ## 完了済み（organization_id 参照）
 
@@ -127,31 +133,14 @@
 - `user_roles.fk_user_roles_org` (role)
 - `permission_groups.fk_permission_groups_org` (role) ※idx_permission_groups_org 追加
 
-### 第六波（V62.006）— 20件（organization_id 残件全件 — **org_id 完全クローズ**）
-- `equipment_items.fk_ei_org` (equipment)
-- `payment_items.fk_pi_organization` (payment)
-- `service_record_templates.fk_srt_org` (service)
-- `team_pages.fk_tp_organization` (team)
-- `team_org_memberships.fk_team_org_memberships_org` (team) ※idx_team_org_memberships_org 追加
-- `photo_albums.fk_pa_organization` (photo)
-- `tournaments.fk_t_organization` (tournament)
-- `tournament_templates.fk_tt_organization` (tournament)
-- `committees.fk_committees_org` (committee)
-- `proxy_vote_sessions.fk_pvs_organization` (proxy)
-- `organization_access_requirements.fk_oar_organization` (payment)
-- `invite_tokens.fk_invite_tokens_org` (auth) ※idx_invite_tokens_org 追加
-- `organization_blocks.fk_org_blocks_org` (social)
-- `schedule_annual_copy_logs.fk_sacl_organization` (schedule)
-- `audit_logs.fk_al_org` (audit)
-- `blog_post_shares.fk_blog_share_org` (blog)
-- `blog_tags.fk_bt_org` (blog)
-- `member_profile_fields.fk_mpf_organization` (profile)
-- `organization_custom_fields.fk_org_custom_fields_org` (organization)
-- `organization_officers.fk_org_officers_org` (organization)
+## 次波（organization_id 参照 残件 — 第六波以降）
 
-**除外**: `organizations.fk_organizations_parent` は同一ドメイン内（自己参照）のため撤廃しない
-
-## organization_id 参照 — 完全クローズ（V62.005 + V62.006 で全件撤廃済）
+- `schedule_annual_copy_logs.fk_sacl_organization` (schedule → organization, ON DELETE SET NULL)
+- `audit_logs.fk_al_org` (audit → organization, ON DELETE SET NULL)
+- `error_reports` (error → organization, ON DELETE SET NULL)
+- `action_memos` org FK (memo → organization)
+- `organizations.fk_organizations_parent` — **同一ドメイン内のため撤廃不要**
+- V8.x / V9.x 系列（committees, proxy_vote_sessions, payment_items など）
 
 ## Phase 1-B（CASCADE 整理）
 
