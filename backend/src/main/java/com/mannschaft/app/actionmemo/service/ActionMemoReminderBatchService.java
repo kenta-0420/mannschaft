@@ -44,6 +44,7 @@ public class ActionMemoReminderBatchService {
     /**
      * スケジュール起動エントリポイント（毎分実行）。
      */
+    // TODO: actionmemoドメインとnotificationドメイン・authドメイン(AuditLogService)をまたいでいる。将来はActionMemoReminderTriggeredEventで分離予定
     @Scheduled(cron = "0 * * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "actionMemoReminderBatch", lockAtMostFor = "PT50S", lockAtLeastFor = "PT0S")
     @Transactional(readOnly = true)

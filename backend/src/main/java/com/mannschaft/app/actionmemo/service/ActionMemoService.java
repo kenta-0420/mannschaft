@@ -123,6 +123,7 @@ public class ActionMemoService {
      *
      * <p>Phase 3 拡張: category / duration_minutes / progress_rate / completes_todo に対応。</p>
      */
+    // TODO: actionmemoドメインがtodoドメイン(TodoRepository/TodoService)・timelineドメイン(TimelinePostRepository)・roleドメイン(UserRoleRepository)・organizationドメイン(OrganizationRepository)・authドメイン(AuditLogService)をまたいでいる。将来はイベント駆動で分離予定
     @Transactional
     public ActionMemoResponse createMemo(CreateActionMemoRequest request, Long userId) {
         // 1. 本文の空チェック（@NotBlank に加えて Service 層でも保険）
@@ -335,6 +336,7 @@ public class ActionMemoService {
      *
      * <p>Phase 3 拡張: category / duration_minutes / progress_rate / completes_todo に対応。</p>
      */
+    // TODO: actionmemoドメインがtodoドメイン(TodoService)・roleドメイン(UserRoleRepository)・authドメイン(AuditLogService)をまたいでいる。将来はイベント駆動で分離予定
     @Transactional
     public ActionMemoResponse updateMemo(Long memoId, UpdateActionMemoRequest request, Long userId) {
         ActionMemoEntity memo = findOwnMemoOrThrow(memoId, userId);
@@ -475,6 +477,7 @@ public class ActionMemoService {
     /**
      * 自分のメモを論理削除する。他人のメモは 404。
      */
+    // TODO: actionmemoドメインとauthドメイン(AuditLogService)をまたいでいる。将来はActionMemoDeletedEventで分離予定
     @Transactional
     public void deleteMemo(Long memoId, Long userId) {
         ActionMemoEntity memo = findOwnMemoOrThrow(memoId, userId);
@@ -503,6 +506,7 @@ public class ActionMemoService {
     /**
      * 自分のメモに TODO を紐付ける。他人の TODO / スコープ違反は 404。
      */
+    // TODO: actionmemoドメインとtodoドメイン(TodoRepository)をまたいでいる。将来はTodoLinkedEventで分離予定
     @Transactional
     public ActionMemoResponse linkTodo(Long memoId, LinkTodoRequest request, Long userId) {
         ActionMemoEntity memo = findOwnMemoOrThrow(memoId, userId);
@@ -557,6 +561,7 @@ public class ActionMemoService {
      * <p><b>ログ方針</b>: 設計書 §6 運用・監視に従い、本文そのもの（content）は出力しない。
      * {@code timelinePostId / memoCount / userId / memoDate} のみ INFO で記録する。</p>
      */
+    // TODO: actionmemoドメインとtimelineドメイン(TimelinePostRepository)をまたいでいる。将来はActionMemoPublishedEvent(PERSONAL)で分離予定
     @Transactional
     public PublishDailyResponse publishDaily(PublishDailyRequest request, Long userId) {
         try {
@@ -714,6 +719,7 @@ public class ActionMemoService {
      * @param userId  現在のユーザー ID
      * @return 投稿レスポンス
      */
+    // TODO: actionmemoドメインがtimelineドメイン(TimelinePostRepository)・roleドメイン(UserRoleRepository)をまたいでいる。将来はActionMemoPublishedEvent(TEAM)で分離予定
     @Transactional
     public PublishToTeamResponse publishToTeam(Long memoId, PublishToTeamRequest request, Long userId) {
         // 1. メモ所有者検証
@@ -773,6 +779,7 @@ public class ActionMemoService {
      * @param userId  現在のユーザー ID
      * @return 投稿レスポンス
      */
+    // TODO: actionmemoドメインがroleドメイン(UserRoleRepository)・timelineドメイン(TimelinePostRepository)をまたいでいる。将来はイベント駆動で分離予定
     @Transactional
     public PublishDailyToTeamResponse publishDailyToTeam(PublishDailyToTeamRequest request, Long userId) {
         LocalDate today = LocalDate.now(ZONE_JST);
@@ -1095,6 +1102,7 @@ public class ActionMemoService {
      * @param memoId        対象メモ ID
      * @param callerUserId  呼び出し者 ID（管理者）
      */
+    // TODO: actionmemoドメインがtodoドメイン(TodoRepository/TodoService)・roleドメイン(UserRoleRepository)・authドメイン(AuditLogService)をまたいでいる。将来はTodoRevertedByAdminEventで分離予定
     @Transactional
     public void revertTodoCompletion(Long memoId, Long callerUserId) {
         // メモ取得（@SQLRestriction で論理削除済みは除外）

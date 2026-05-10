@@ -287,6 +287,7 @@ public class MemberPaymentService {
     /**
      * 未払いリマインドを送信する。
      */
+    // TODO: paymentドメインとnotificationドメインをまたいでいる。将来はPaymentReminderRequestedEventで分離予定
     @Transactional
     public RemindResponse sendRemind(Long paymentItemId) {
         PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(paymentItemId);

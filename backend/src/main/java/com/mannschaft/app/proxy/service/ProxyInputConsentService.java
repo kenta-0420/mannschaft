@@ -49,6 +49,7 @@ public class ProxyInputConsentService {
      *   <li>監査ログ記録（PROXY_CONSENT_CREATED）</li>
      * </ul>
      */
+    // TODO: proxyドメインとauthドメイン(AuditLogService)をまたいでいる。将来はProxyConsentCreatedEventで分離予定
     public ProxyInputConsentEntity createConsent(Long requestUserId, Long organizationId,
                                                   CreateProxyConsentCommand command) {
         // 有効期間の上限チェック（最長1年）
@@ -119,6 +120,7 @@ public class ProxyInputConsentService {
      *   <li>監査ログ記録（PROXY_CONSENT_APPROVED）</li>
      * </ul>
      */
+    // TODO: proxyドメインとauthドメイン(AuditLogService)をまたいでいる。将来はProxyConsentApprovedEventで分離予定
     public ProxyInputConsentEntity approveConsent(Long requestUserId, Long consentId) {
         ProxyInputConsentEntity consent = consentRepository.findById(consentId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
@@ -157,6 +159,7 @@ public class ProxyInputConsentService {
      *   <li>監査ログ記録（PROXY_CONSENT_REVOKED）</li>
      * </ul>
      */
+    // TODO: proxyドメインとauthドメイン(AuditLogService)をまたいでいる。将来はProxyConsentRevokedEventで分離予定
     public void revokeConsent(Long requestUserId, Long consentId, RevokeConsentCommand command) {
         ProxyInputConsentEntity consent = consentRepository.findById(consentId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
