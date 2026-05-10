@@ -90,7 +90,13 @@ public class DisclosureExportEntity {
     @Column(columnDefinition = "JSON", nullable = false)
     private String dataSnapshot;
 
-    /** 出力ファイル（PDF/Excel/Word）の SHA-256（改ざん検出用）。Phase 3-A で pdfSha256 から汎用化。 */
+    /**
+     * 出力ファイル（PDF/Excel/Word）の SHA-256（改ざん検出用）。
+     * <p>Phase 3-A で pdfSha256 から汎用化。Word 出力（Phase 3-B 完了）も本カラムを共通利用する。
+     * Phase 3-D で `circulation_document_id` を介した F05.2 電子印鑑連携時、本ハッシュと
+     * F05.3 seal_stamp_logs の証跡ログとの照合により改ざん検出を多層化する設計（§6.3）。
+     * F05.3 連携の実装は Phase 4 以降。</p>
+     */
     @Column(name = "output_sha256", length = 64)
     private String outputSha256;
 
