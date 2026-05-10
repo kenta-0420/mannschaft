@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 @Transactional
+// TODO: TodoドメインとScheduleドメインをまたいでいる。将来はScheduleLinkedEventで分離予定
 public class TodoScheduleLinkService {
 
     private final TodoRepository todoRepository;

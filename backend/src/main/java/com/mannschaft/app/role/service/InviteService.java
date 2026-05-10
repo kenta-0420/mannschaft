@@ -154,6 +154,7 @@ public class InviteService {
      * FOR UPDATEでロック取得し、ブロック・重複・有効性をチェック。
      */
     @Transactional
+    // TODO: RoleドメインとOrganizationドメイン・Teamドメインをまたいでいる。将来はInviteJoinedEventで分離予定
     public void joinByInvite(String tokenStr, Long userId) {
         // FOR UPDATEでロック取得（同時参加の排他制御）
         InviteTokenEntity token = inviteTokenRepository.findByTokenForUpdate(tokenStr)

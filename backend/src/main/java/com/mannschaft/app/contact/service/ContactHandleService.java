@@ -52,6 +52,7 @@ public class ContactHandleService {
      * @ハンドルを設定・変更する。
      */
     @Transactional
+    // TODO: ContactドメインとAuthドメイン・Userドメインをまたいでいる。将来はContactHandleUpdatedEventで分離予定
     public ContactHandleResponse updateHandle(Long userId, UpdateHandleRequest req) {
         String handle = req.getContactHandle();
 

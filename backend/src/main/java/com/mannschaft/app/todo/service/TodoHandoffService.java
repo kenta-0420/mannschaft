@@ -83,6 +83,7 @@ public class TodoHandoffService {
      * @return 履歴レスポンス
      */
     @Transactional
+    // TODO: TodoドメインとAuthドメインをまたいでいる。将来はTodoHandoffAuditEventで分離予定
     public ApiResponse<TodoHandoffResponse> handoff(TodoScopeType scopeType, Long scopeId,
                                                      Long todoId, TodoHandoffRequest request, Long actorId) {
         // (1) 個人スコープ拒否

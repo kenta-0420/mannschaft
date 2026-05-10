@@ -40,6 +40,7 @@ public class OnboardingReminderBatchService {
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "onboardingReminderBatch", lockAtMostFor = "30m", lockAtLeastFor = "5m")
     @Transactional
+    // TODO: OnboardingドメインとNotificationドメインをまたいでいる。将来はOnboardingOverdueNotificationEventで分離予定
     public void processReminders() {
         log.info("オンボーディングリマインダーバッチ開始");
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Tokyo"));

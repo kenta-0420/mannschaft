@@ -121,6 +121,7 @@ public class TeamFriendsService {
      * @throws BusinessException 自己フォロー・権限不足・対象チーム不存在・フォロー重複時
      */
     @Transactional(isolation = Isolation.REPEATABLE_READ)
+    // TODO: SocialドメインとAuthドメイン・Notificationドメイン・Roleドメイン・Teamドメイン・Timelineドメインをまたいでいる。将来はTeamFriendEstablishedEventで分離予定
     @Caching(evict = {
             @CacheEvict(value = "teamFriendList", key = "#teamId"),
             @CacheEvict(value = "teamFriendList", key = "#targetTeamId")
@@ -287,6 +288,7 @@ public class TeamFriendsService {
      * @throws BusinessException 権限不足・フォロー関係不存在時
      */
     @Transactional
+    // TODO: SocialドメインとAuthドメイン・Notificationドメイン・Roleドメイン・Teamドメイン・Timelineドメインをまたいでいる。将来はTeamFriendDissolvedEventで分離予定
     @Caching(evict = {
             @CacheEvict(value = "teamFriendList", key = "#teamId"),
             @CacheEvict(value = "teamFriendList", key = "#targetTeamId")

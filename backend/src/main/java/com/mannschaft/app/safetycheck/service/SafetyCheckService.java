@@ -60,6 +60,7 @@ public class SafetyCheckService {
      * @return 作成された安否確認
      */
     @Transactional
+    // TODO: SafetycheckドメインとRoleドメイン・Notificationドメインをまたいでいる。将来はMemberCountResolvedEventとNotificationRequestedEventで分離予定
     public SafetyCheckResponse createSafetyCheck(CreateSafetyCheckRequest req, Long userId) {
         SafetyCheckScopeType scopeType = parseScopeType(req.getScopeType());
 
@@ -248,6 +249,7 @@ public class SafetyCheckService {
      * @param userId        操作者ID
      */
     @Transactional
+    // TODO: SafetycheckドメインとNotificationドメインをまたいでいる。将来はReminderRequestedEventで分離予定
     public void sendReminder(Long safetyCheckId, Long userId) {
         SafetyCheckEntity entity = findSafetyCheckOrThrow(safetyCheckId);
         validateActive(entity);

@@ -249,6 +249,7 @@ public class FollowService {
      * @param visibility 新しい公開設定
      */
     @Transactional
+    // TODO: SocialドメインとAuthドメインをまたいでいる。将来はFollowListVisibilityUpdatedEventで分離予定
     public void updateFollowListVisibility(Long userId, FollowListVisibility visibility) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(SocialErrorCode.FOLLOW_USER_NOT_FOUND));

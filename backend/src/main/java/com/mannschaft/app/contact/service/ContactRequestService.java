@@ -47,6 +47,7 @@ public class ContactRequestService {
      * ブロック・事前拒否の場合もサイレントに 200 OK を返す（セキュリティ）。
      */
     @Transactional
+    // TODO: ContactドメインとAuthドメイン・Notificationドメイン・Userドメインをまたいでいる。将来はContactRequestSentEventで分離予定
     public SendContactRequestResponse sendRequest(Long requesterId, SendContactRequestBody req) {
         Long targetId = req.getTargetUserId();
 
@@ -144,6 +145,7 @@ public class ContactRequestService {
      * 申請を承認する。
      */
     @Transactional
+    // TODO: ContactドメインとAuthドメイン・Notificationドメインをまたいでいる。将来はContactRequestAcceptedEventで分離予定
     public void acceptRequest(Long userId, Long requestId) {
         ContactRequestEntity request = contactRequestRepository.findById(requestId)
                 .orElseThrow(() -> new BusinessException(ContactErrorCode.CONTACT_006));
