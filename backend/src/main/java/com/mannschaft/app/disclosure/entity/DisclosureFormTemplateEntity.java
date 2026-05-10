@@ -125,4 +125,23 @@ public class DisclosureFormTemplateEntity extends BaseEntity {
     public void rename(String name) {
         this.name = name;
     }
+
+    /**
+     * 様式メタデータ（version 文字列・都道府県コード・テンプレートパス類）を更新する。
+     *
+     * <p>更新時に {@code toBuilder().build()} で新インスタンスを生成して saveAndFlush すると、
+     * Hibernate は当該インスタンスを detached entity と判定し {@code merge} 経路に切り替わる。
+     * その際、同 ID の managed entity が PersistenceContext に既存（{@link #rename(String)} 等で
+     * dirty 化済み）だと、merge 結果が managed entity に上書きコピーされて
+     * {@code @Version} の検出・インクリメントが期待どおり起こらない事故が発生する
+     * （F09.14 Phase 3-G で根治治療）。本メソッドで managed entity 自身を直接更新し、
+     * Hibernate の dirty checking → UPDATE → {@code version_lock} +1 の素直な経路に統一する。</p>
+     */
+    public void updateMetadata(String version, String prefectureCode,
+                               String pdfTemplatePath, String excelTemplateKey) {
+        this.version = version;
+        this.prefectureCode = prefectureCode;
+        this.pdfTemplatePath = pdfTemplatePath;
+        this.excelTemplateKey = excelTemplateKey;
+    }
 }

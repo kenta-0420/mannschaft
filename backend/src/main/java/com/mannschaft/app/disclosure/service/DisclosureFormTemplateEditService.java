@@ -184,26 +184,28 @@ public class DisclosureFormTemplateEditService {
                     throw new BusinessException(DisclosureErrorCode.DISCLOSURE_004);
                 });
 
-        // Entity の更新メソッド経由で各フィールドを書き換える
+        // Entity の更新メソッド経由で managed entity 自身を書き換える。
+        // 旧実装は最後に entity.toBuilder().build() で新インスタンスを生成し saveAndFlush していたが、
+        // 同一 ID の managed entity が既に PersistenceContext にいる状態で merge 経路に乗るため
+        // @Version (versionLock) のインクリメントが期待通り発火しなかった
+        // （F09.14 Phase 3-G 根治治療: F-2 PR #521 統合テストで検出）。
+        // managed entity 直接更新 → dirty checking → UPDATE で version_lock +1 が確実に走る。
         entity.rename(request.name());
         entity.updateFormSchema(serializeSchema(request.formSchema()));
         entity.updateEffectivePeriod(request.effectiveFrom(), request.effectiveUntil());
         if (request.isActive() != null) {
             entity.changeActive(request.isActive());
         }
-        // version / prefectureCode / pdfTemplatePath / excelTemplateKey は専用 setter が無いため
-        // toBuilder で再構成（Lombok @Builder(toBuilder=true)）。@Version 値・id は維持される。
-        DisclosureFormTemplateEntity rebuilt = entity.toBuilder()
-                .version(request.version())
-                .prefectureCode(request.prefectureCode())
-                .pdfTemplatePath(request.pdfTemplatePath())
-                .excelTemplateKey(request.excelTemplateKey())
-                .build();
+        entity.updateMetadata(
+                request.version(),
+                request.prefectureCode(),
+                request.pdfTemplatePath(),
+                request.excelTemplateKey());
 
         try {
-            DisclosureFormTemplateEntity saved = templateRepository.saveAndFlush(rebuilt);
-            log.info("カスタム様式テンプレート更新: organizationId={}, templateId={}, newVersion={}",
-                    organizationId, saved.getId(), saved.getVersion());
+            DisclosureFormTemplateEntity saved = templateRepository.saveAndFlush(entity);
+            log.info("カスタム様式テンプレート更新: organizationId={}, templateId={}, newVersion={}, versionLock={}",
+                    organizationId, saved.getId(), saved.getVersion(), saved.getVersionLock());
             return DisclosureFormTemplateResponse.from(saved, request.formSchema());
         } catch (OptimisticLockException | OptimisticLockingFailureException e) {
             throw new BusinessException(DisclosureErrorCode.DISCLOSURE_003, e);

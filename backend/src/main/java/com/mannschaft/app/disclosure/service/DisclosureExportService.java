@@ -389,6 +389,8 @@ public class DisclosureExportService {
      * @throws BusinessException {@link DisclosureErrorCode#DISCLOSURE_001} (404) 出力履歴未発見、
      *                           {@link DisclosureErrorCode#DISCLOSURE_002} (403) スコープ不一致、
      *                           {@link DisclosureErrorCode#DISCLOSURE_011} (422) 延長範囲違反
+     * @implNote 上限は <strong>本日 00:00 (Asia/Tokyo) 基準</strong>で
+     *           {@code LocalDate.now().plusYears(7).atStartOfDay()}（境界値は含む）。
      */
     @Transactional
     public DisclosureExportResponse extendExpiry(Long scopeId, Long exportId,
