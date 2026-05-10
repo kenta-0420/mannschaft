@@ -388,15 +388,11 @@ public class DigestGenerationService {
         String effectivePeriod = period != null ? period : "30d";
         log.info("AI 利用量統計を取得: period={}", effectivePeriod);
 
-        // ステータス別のダイジェスト件数をリポジトリから集計
-        long generated = digestRepository.findAll().stream()
-                .filter(d -> d.getStatus() == DigestStatus.GENERATED).count();
-        long published = digestRepository.findAll().stream()
-                .filter(d -> d.getStatus() == DigestStatus.PUBLISHED).count();
-        long discarded = digestRepository.findAll().stream()
-                .filter(d -> d.getStatus() == DigestStatus.DISCARDED).count();
-        long failed = digestRepository.findAll().stream()
-                .filter(d -> d.getStatus() == DigestStatus.FAILED).count();
+        // ステータス別のダイジェスト件数をDB側で集計（全件ロードを回避）
+        long generated = digestRepository.countByStatus(DigestStatus.GENERATED);
+        long published = digestRepository.countByStatus(DigestStatus.PUBLISHED);
+        long discarded = digestRepository.countByStatus(DigestStatus.DISCARDED);
+        long failed    = digestRepository.countByStatus(DigestStatus.FAILED);
         long totalDigests = generated + published + discarded + failed;
 
         Map<String, Long> byStatus = new HashMap<>();

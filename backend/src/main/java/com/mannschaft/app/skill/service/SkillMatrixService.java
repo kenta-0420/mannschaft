@@ -58,14 +58,11 @@ public class SkillMatrixService {
         // 行定義: スコープ内の全メンバーのユーザーID一覧
         List<Long> memberUserIds = resolveMemberUserIds(scopeType, scopeId);
 
-        // スコープ内の全 member_skills（deleted_at IS NULL）を取得
-        // ACTIVE / EXPIRED のみ（PENDING_REVIEW 除外）
-        List<MemberSkillEntity> allSkills = memberSkillRepository.findAll().stream()
-                .filter(s -> s.getScopeType().equals(scopeType)
-                        && s.getScopeId().equals(scopeId)
-                        && s.getDeletedAt() == null
-                        && (s.getStatus() == SkillStatus.ACTIVE || s.getStatus() == SkillStatus.EXPIRED))
-                .toList();
+        // スコープ内の ACTIVE / EXPIRED スキル（deleted_at IS NULL）をDB側でフィルタして取得
+        // PENDING_REVIEW はマトリクス表示対象外のためクエリで除外する
+        List<MemberSkillEntity> allSkills = memberSkillRepository
+                .findByScopeTypeAndScopeIdAndStatusInAndDeletedAtIsNull(
+                        scopeType, scopeId, List.of(SkillStatus.ACTIVE, SkillStatus.EXPIRED));
 
         // ユーザーID → カテゴリID → 代表スキル のマップを構築
         // 同一カテゴリで複数資格 → ACTIVE 優先、expires_at DESC で1件

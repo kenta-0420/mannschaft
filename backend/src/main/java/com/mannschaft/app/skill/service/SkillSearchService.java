@@ -44,11 +44,10 @@ public class SkillSearchService {
             String scopeType, Long scopeId,
             Long categoryId, SkillStatus status, boolean includeExpired, String keyword) {
 
-        // スコープ内の全 member_skills（deleted_at IS NULL）を取得してフィルタ
-        Stream<MemberSkillEntity> stream = memberSkillRepository.findAll().stream()
-                .filter(s -> s.getScopeType().equals(scopeType)
-                        && s.getScopeId().equals(scopeId)
-                        && s.getDeletedAt() == null);
+        // スコープに紐づく全スキル（deleted_at IS NULL）をDB側でフィルタして取得
+        Stream<MemberSkillEntity> stream = memberSkillRepository
+                .findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
+                .stream();
 
         // カテゴリフィルタ
         if (categoryId != null) {
