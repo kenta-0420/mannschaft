@@ -21,4 +21,9 @@ public interface NotificationTypePreferenceRepository extends JpaRepository<Noti
      */
     Optional<NotificationTypePreferenceEntity> findByUserIdAndNotificationType(
             Long userId, String notificationType);
+
+    /**
+     * ユーザーIDに紐づく通知種別設定をすべて削除する（退会匿名化用）。
+     */
+    void deleteByUserId(Long userId);
 }

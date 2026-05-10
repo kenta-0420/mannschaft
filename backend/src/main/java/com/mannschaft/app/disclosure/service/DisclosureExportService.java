@@ -103,6 +103,7 @@ public class DisclosureExportService {
     private final DisclosureFormTemplateValidator templateValidator;
     private final PdfGeneratorService pdfGeneratorService;
     private final ExcelGeneratorService excelGeneratorService;
+    private final WordGeneratorService wordGeneratorService;
     private final R2StorageService r2StorageService;
     private final SharedFolderRepository folderRepository;
     private final SharedFileRepository sharedFileRepository;
@@ -132,10 +133,6 @@ public class DisclosureExportService {
                                                 DisclosureOutputFormat format, Long userId,
                                                 String recipientNote, boolean allowPersonalInfo) {
         if (format == null) {
-            throw new BusinessException(DisclosureErrorCode.DISCLOSURE_004);
-        }
-        if (format == DisclosureOutputFormat.WORD) {
-            // 設計書 §5.4: Word は Phase 3
             throw new BusinessException(DisclosureErrorCode.DISCLOSURE_004);
         }
 
@@ -179,14 +176,23 @@ public class DisclosureExportService {
         byte[] payload;
         String contentType;
         String extension;
-        if (format == DisclosureOutputFormat.PDF) {
-            payload = generatePdf(template, formSchema, formData, organization, outputUserName);
-            contentType = "application/pdf";
-            extension = "pdf";
-        } else {
-            payload = generateExcel(template, formSchema, formData, organization, outputUserName);
-            contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-            extension = "xlsx";
+        switch (format) {
+            case PDF -> {
+                payload = generatePdf(template, formSchema, formData, organization, outputUserName);
+                contentType = "application/pdf";
+                extension = "pdf";
+            }
+            case EXCEL -> {
+                payload = generateExcel(template, formSchema, formData, organization, outputUserName);
+                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                extension = "xlsx";
+            }
+            case WORD -> {
+                payload = generateWord(draft, template);
+                contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                extension = "docx";
+            }
+            default -> throw new BusinessException(DisclosureErrorCode.DISCLOSURE_004);
         }
 
         // 7. SHA-256
@@ -611,6 +617,25 @@ public class DisclosureExportService {
                     template, formSchema, formData, organization, outputUserName));
         } catch (IOException | RuntimeException e) {
             log.error("重説書 Excel 生成失敗: templateId={}", template.getId(), e);
+            throw new BusinessException(DisclosureErrorCode.DISCLOSURE_010, e);
+        }
+    }
+
+    /**
+     * Word 出力（F09.14 Phase 3-B）。
+     *
+     * <p>WordGeneratorService に委譲し、テンプレート (docx/disclosure/{templateCode}.docx)
+     * 配下の docx を読み込んで {@code ${key}} プレースホルダーを置換する。テンプレート
+     * 未配置の場合は WordGeneratorService 側のフォールバックで最低限の docx を生成する。</p>
+     */
+    private byte[] generateWord(DisclosureFormDraftEntity draft,
+                                DisclosureFormTemplateEntity template) {
+        try {
+            return wordGeneratorService.generate(draft, template);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("重説書 Word 生成失敗: templateId={}", template.getId(), e);
             throw new BusinessException(DisclosureErrorCode.DISCLOSURE_010, e);
         }
     }

@@ -1067,5 +1067,44 @@
     "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
     "nameDuplicate": "同じ名前のフォルダが既に存在します"
+  },
+  "systemAdmin": {
+    "logs": {
+      "title": "系统日志",
+      "quickLink": "系统日志",
+      "typeAll": "全部",
+      "typeSlowQuery": "慢查询",
+      "typeSsrError": "SSR错误",
+      "dateLabel": "日期",
+      "fetchButton": "获取",
+      "columns": {
+        "type": "类型",
+        "date": "日期",
+        "fileName": "文件名",
+        "sizeKb": "大小 (KB)",
+        "download": "下载"
+      },
+      "empty": "未找到日志文件",
+      "downloadButton": "下载"
+    }
+  },
+  "admin": {
+    "quickLinks": {
+      "announcements": "公告管理",
+      "featureFlags": "功能标志",
+      "maintenance": "维护",
+      "modules": "模块管理",
+      "templates": "模板",
+      "moderation": "审核",
+      "users": "用户管理",
+      "organizations": "组织管理",
+      "feedback": "反馈",
+      "reports": "报告",
+      "advertisers": "广告主管理",
+      "auditLogs": "审计日志",
+      "shiftBudget": "班次预算",
+      "betaRestriction": "测试版限制",
+      "errorReports": "错误报告"
+    }
   }
 }

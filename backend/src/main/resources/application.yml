@@ -232,6 +232,17 @@ mannschaft.error-monitoring:
     enabled: ${MANNSCHAFT_HEALTH_POLL_ENABLED:true}
     interval-ms: ${MANNSCHAFT_HEALTH_POLL_INTERVAL_MS:30000}
 
+# F10.6 Phase 10-γ-③-a — システムログ（スロークエリ・SSR エラー）R2 保存設定
+# - slow-query-log-path: Spring Boot コンテナからスロークエリログを読むパス
+# - slow-query-cron: スロークエリログアップロードバッチの cron スケジュール（デフォルト: 毎日 1:00 AM）
+# - ssr-flush-interval-ms: SSR エラーバッファのフラッシュ間隔（デフォルト: 5 分）
+# - internal-token: /api/internal/ssr-logs エンドポイントの内部認証トークン（本番は必ず変更）
+mannschaft.system-log:
+  slow-query-log-path: ${SLOW_QUERY_LOG_PATH:./logs/mysql-slow/mannschaft-slow.log}
+  slow-query-cron: "0 0 1 * * *"
+  ssr-flush-interval-ms: 300000
+  internal-token: ${INTERNAL_LOG_TOKEN:dev-internal-token}
+
 # F10.6 Phase 10-γ-② — MySQL DB サイズ監視設定
 # 設計書: docs/features/F10.6_error_monitoring.md §5.7
 # - MySQL データディレクトリは Docker 名前付きボリューム (mysql-data) でマウントされており

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 interface QuickLink {
   label: string
   icon: string
@@ -9,84 +13,84 @@ interface QuickLink {
 
 const quickLinks: QuickLink[] = [
   {
-    label: 'お知らせ管理',
+    label: t('admin.quickLinks.announcements'),
     icon: 'pi pi-megaphone',
     to: '/admin/announcements',
     color: 'text-blue-500',
     bg: 'bg-blue-50 dark:bg-blue-900/20',
   },
   {
-    label: 'フィーチャーフラグ',
+    label: t('admin.quickLinks.featureFlags'),
     icon: 'pi pi-flag',
     to: '/admin/feature-flags',
     color: 'text-purple-500',
     bg: 'bg-purple-50 dark:bg-purple-900/20',
   },
   {
-    label: 'メンテナンス',
+    label: t('admin.quickLinks.maintenance'),
     icon: 'pi pi-wrench',
     to: '/admin/maintenance',
     color: 'text-orange-500',
     bg: 'bg-orange-50 dark:bg-orange-900/20',
   },
   {
-    label: 'モジュール管理',
+    label: t('admin.quickLinks.modules'),
     icon: 'pi pi-th-large',
     to: '/admin/modules',
     color: 'text-teal-500',
     bg: 'bg-teal-50 dark:bg-teal-900/20',
   },
   {
-    label: 'テンプレート',
+    label: t('admin.quickLinks.templates'),
     icon: 'pi pi-file',
     to: '/admin/templates',
     color: 'text-cyan-500',
     bg: 'bg-cyan-50 dark:bg-cyan-900/20',
   },
   {
-    label: 'モデレーション',
+    label: t('admin.quickLinks.moderation'),
     icon: 'pi pi-shield',
     to: '/admin/moderation',
     color: 'text-red-500',
     bg: 'bg-red-50 dark:bg-red-900/20',
   },
   {
-    label: 'ユーザー管理',
+    label: t('admin.quickLinks.users'),
     icon: 'pi pi-users',
     to: '/admin/users',
     color: 'text-indigo-500',
     bg: 'bg-indigo-50 dark:bg-indigo-900/20',
   },
   {
-    label: '組織管理',
+    label: t('admin.quickLinks.organizations'),
     icon: 'pi pi-building',
     to: '/admin/organizations',
     color: 'text-green-500',
     bg: 'bg-green-50 dark:bg-green-900/20',
   },
   {
-    label: 'フィードバック',
+    label: t('admin.quickLinks.feedback'),
     icon: 'pi pi-comments',
     to: '/admin/feedbacks',
     color: 'text-yellow-500',
     bg: 'bg-yellow-50 dark:bg-yellow-900/20',
   },
   {
-    label: 'レポート',
+    label: t('admin.quickLinks.reports'),
     icon: 'pi pi-chart-bar',
     to: '/admin/reports',
     color: 'text-pink-500',
     bg: 'bg-pink-50 dark:bg-pink-900/20',
   },
   {
-    label: '広告主管理',
+    label: t('admin.quickLinks.advertisers'),
     icon: 'pi pi-tag',
     to: '/admin/advertiser-accounts',
     color: 'text-amber-500',
     bg: 'bg-amber-50 dark:bg-amber-900/20',
   },
   {
-    label: '監査ログ',
+    label: t('admin.quickLinks.auditLogs'),
     icon: 'pi pi-list',
     to: '/admin/audit-logs',
     color: 'text-slate-500',
@@ -94,7 +98,7 @@ const quickLinks: QuickLink[] = [
   },
   // F08.7 Phase 10-γ: シフト予算管理（BUDGET_VIEW/ADMIN 保有者向け、Service 層で 403）
   {
-    label: 'シフト予算',
+    label: t('admin.quickLinks.shiftBudget'),
     icon: 'pi pi-wallet',
     to: '/admin/shift-budget/dashboard',
     color: 'text-emerald-500',
@@ -102,7 +106,7 @@ const quickLinks: QuickLink[] = [
   },
   // F00.6: ベータ登録制限
   {
-    label: 'ベータ制限',
+    label: t('admin.quickLinks.betaRestriction'),
     icon: 'pi pi-lock',
     to: '/system-admin/beta-restriction',
     color: 'text-rose-500',
@@ -110,11 +114,19 @@ const quickLinks: QuickLink[] = [
   },
   // F12.5 Phase 2: エラーレポート（システム管理者向け）
   {
-    label: 'エラーレポート',
+    label: t('admin.quickLinks.errorReports'),
     icon: 'pi pi-exclamation-triangle',
     to: '/system-admin/error-reports',
     color: 'text-red-500',
     bg: 'bg-red-50 dark:bg-red-900/20',
+  },
+  // F10.6 Phase 10-γ-③-b: システムログ（MySQLスロークエリ・NuxtSSRエラー）
+  {
+    label: t('systemAdmin.logs.quickLink'),
+    icon: 'pi pi-file-export',
+    to: '/system-admin/logs',
+    color: 'text-gray-500',
+    bg: 'bg-gray-50 dark:bg-gray-900/20',
   },
 ]
 </script>

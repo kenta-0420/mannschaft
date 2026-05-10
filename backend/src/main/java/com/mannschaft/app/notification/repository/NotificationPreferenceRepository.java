@@ -26,4 +26,9 @@ public interface NotificationPreferenceRepository extends JpaRepository<Notifica
      * ユーザーIDとスコープタイプで通知設定一覧を取得する。
      */
     List<NotificationPreferenceEntity> findByUserIdAndScopeType(Long userId, String scopeType);
+
+    /**
+     * ユーザーIDに紐づく通知設定をすべて削除する（退会匿名化用）。
+     */
+    void deleteByUserId(Long userId);
 }

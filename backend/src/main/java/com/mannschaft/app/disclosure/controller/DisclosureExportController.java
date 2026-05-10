@@ -6,9 +6,12 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.disclosure.DisclosureErrorCode;
 import com.mannschaft.app.disclosure.DisclosureOutputFormat;
+import com.mannschaft.app.disclosure.dto.DisclosureCirculationStartRequest;
+import com.mannschaft.app.disclosure.dto.DisclosureCirculationStartResponse;
 import com.mannschaft.app.disclosure.dto.DisclosureExportRequest;
 import com.mannschaft.app.disclosure.dto.DisclosureExportResponse;
 import com.mannschaft.app.disclosure.dto.ExtendExpiryRequest;
+import com.mannschaft.app.disclosure.service.DisclosureCirculationService;
 import com.mannschaft.app.disclosure.service.DisclosureExportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +54,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class DisclosureExportController {
 
     private final DisclosureExportService exportService;
+    private final DisclosureCirculationService circulationService;
 
     /**
      * ドラフトを出力する。{@code format} は {@code pdf} / {@code xlsx} を受け付ける（大文字小文字無視）。
@@ -127,6 +131,24 @@ public class DisclosureExportController {
         DisclosureExportResponse response = exportService.extendExpiry(
                 organizationId, exportId, request.newExpiresAt());
         return ApiResponse.of(response);
+    }
+
+    /**
+     * 出力履歴に対する電子印鑑承認回覧を開始する（F09.14 Phase 3-D）。
+     *
+     * <p>設計書 §4 / §5.6 に対応。手動クリック方式（自動開始ではない）。
+     * F05.2 {@code CirculationDocumentEntity} を作成し、{@code disclosure_exports.circulation_document_id}
+     * へ保存する。</p>
+     */
+    @PostMapping("/disclosure-exports/{exportId}/circulation")
+    public ResponseEntity<ApiResponse<DisclosureCirculationStartResponse>> startCirculation(
+            @PathVariable("organizationId") Long organizationId,
+            @PathVariable("exportId") Long exportId,
+            @Valid @RequestBody DisclosureCirculationStartRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        DisclosureCirculationStartResponse response = circulationService.startCirculation(
+                organizationId, exportId, userId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     private DisclosureOutputFormat parseFormat(String format) {

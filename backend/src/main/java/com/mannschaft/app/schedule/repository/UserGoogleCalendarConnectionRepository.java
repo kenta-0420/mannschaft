@@ -60,4 +60,9 @@ public interface UserGoogleCalendarConnectionRepository extends JpaRepository<Us
     @Modifying
     @Query("UPDATE UserGoogleCalendarConnectionEntity c SET c.personalSyncEnabled = :isEnabled WHERE c.userId = :userId")
     void updatePersonalSyncEnabled(@Param("userId") Long userId, @Param("isEnabled") boolean isEnabled);
+
+    /**
+     * ユーザーIDに紐づくGoogle Calendar連携をすべて削除する（退会匿名化・GDPR対応）。
+     */
+    void deleteByUserId(Long userId);
 }
