@@ -260,6 +260,7 @@ public class OnboardingProgressService {
      * 手動一括リマインダーを送信する。
      */
     @Transactional
+    // TODO: OnboardingドメインとNotificationドメインをまたいでいる。将来はOnboardingReminderRequestedEventで分離予定
     public RemindResponse sendReminders(String scopeType, Long scopeId) {
         List<OnboardingProgressEntity> inProgress = progressRepository
                 .findByScopeTypeAndScopeIdAndStatus(scopeType, scopeId, OnboardingProgressStatus.IN_PROGRESS);

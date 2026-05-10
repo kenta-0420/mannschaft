@@ -102,6 +102,7 @@ public class FriendNotificationService {
      * @return 配信サマリ（202 Accepted 用）
      */
     @Transactional
+    // TODO: SocialドメインとNotificationドメイン・Roleドメインをまたいでいる。将来はFriendNotificationDispatchedEventで分離予定
     public FriendNotificationDeliveryResponse sendFriendNotification(
             Long sourceTeamId, Long userId, FriendNotificationSendRequest request) {
 

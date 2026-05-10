@@ -94,6 +94,7 @@ public class OrganizationService {
      * 組織を作成し、作成者をADMINロールで紐付ける。
      */
     @Transactional
+    // TODO: OrganizationドメインとAuthドメイン・Roleドメインをまたいでいる。将来はOrganizationCreatedEventで分離予定
     public ApiResponse<OrganizationResponse> createOrganization(Long userId, CreateOrganizationRequest req) {
         // 組織名の重複チェック
         if (organizationRepository.existsByName(req.getName())) {
@@ -175,6 +176,7 @@ public class OrganizationService {
      * 組織を論理削除する。招待トークンも一括失効。
      */
     @Transactional
+    // TODO: OrganizationドメインとRoleドメインをまたいでいる。将来はOrganizationDeletedEventで分離予定
     public void deleteOrganization(Long orgId, Long userId) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         org.softDelete();
@@ -342,6 +344,7 @@ public class OrganizationService {
      * 組織配下の全メンバーを取得する。
      * scope: ORGANIZATION=直属のみ / TEAM=チームメンバーのみ / INDIVIDUAL=全員
      */
+    // TODO: OrganizationドメインとAuthドメイン・Roleドメイン・Teamドメインをまたいでいる。将来はMemberQueryServiceで分離予定
     public List<OrgAllMembersResponse> getAllMembers(Long orgId, String scope) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         List<OrgAllMembersResponse> result = new ArrayList<>();
