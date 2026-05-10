@@ -1,7 +1,7 @@
 # Phase 1-A クロスドメインFK 撤廃 — 残波 TODO
 
-第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第四波（V62.004）で 13 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。第六波（V62.006）で 20 件処理（organization_id 参照 残件全件 — **org_id 完全クローズ**）。第七波（V62.007）で 35 件処理（team_id 前半）。第八波（V62.008）で 33 件処理（team_id 後半 — **team_id 完全クローズ**）。第九波（V62.009）で 30 件処理（user_id 第一陣）。第十波（V62.010）で 30 件処理（user_id 第二陣）。第十一波（V62.011）で 30 件処理（user_id 第三陣）。第十二波（V62.012）で 30 件処理（user_id 第四陣）。第十三波（V62.013）で 30 件処理（user_id 第五陣 — committee/facility/chart/service 系）。
-残りは `users` 参照 多数 + その他多数。
+第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第四波（V62.004）で 13 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。第六波（V62.006）で 20 件処理（organization_id 参照 残件全件 — **org_id 完全クローズ**）。第十五波（V62.015）で 30 件処理（job/timetable/incident/ad 系）。
+残りは `users` 参照 多数 + `teams` 多数 + その他多数。
 
 ## 完了済み（user_id 参照）
 
@@ -55,37 +55,79 @@
 - `blog_posts.fk_bp_team` (blog → team)
 - `blog_post_series.fk_bps_team` (blog → team)
 
-### 第十三波（V62.013）— 30件（user_id 第五陣）
-- `committee_invitations.fk_ci_invitee` (committee) ※idx_committee_invitations_invitee 既存
-- `committee_invitations.fk_ci_invited_by` (committee) ※idx_committee_invitations_invited_by 追加
-- `committees.fk_committees_created_by` (committee) ※idx_committees_created_by 追加
-- `blog_post_reactions.fk_bpreact_user` (blog) ※idx_bpreact_user 既存
-- `my_scope_folders.fk_msf_user` (scoping) ※idx_msf_user_scope 既存
-- `facility_bookings.fk_fb_booked_by` (facility) ※idx_fb_user 既存
-- `facility_bookings.fk_fb_created_by_admin` (facility) ※idx_fb_created_by_admin 追加
-- `facility_bookings.fk_fb_approved_by` (facility) ※idx_fb_approved_by 追加
-- `facility_bookings.fk_fb_cancelled_by` (facility) ※idx_fb_cancelled_by 追加
-- `facility_booking_payments.fk_fbp_payer` (facility) ※idx_fbp_payer 既存
-- `shared_facilities.fk_sf_created_by` (facility) ※idx_sf_created_by 追加
-- `storage_usage_logs.fk_sul_actor` (storage) ※idx_sul_actor 追加
-- `team_friend_folder_members.fk_tffm_added_by` (social) ※idx_tffm_added_by 既存
-- `multipart_upload_sessions.fk_mup_uploader` (storage) ※idx_mup_uploader 既存
-- `performance_monthly_summaries.fk_pms_user` (performance) ※idx_pms_user_month 既存
-- `chart_records.fk_cr_customer` (service) ※idx_cr_customer 既存
-- `chart_records.fk_cr_staff` (service) ※idx_cr_staff 既存
-- `equipment_assignments.fk_ea_assigned_to` (equipment) ※idx_ea_user 既存
-- `equipment_assignments.fk_ea_assigned_by` (equipment) ※idx_ea_assigned_by 追加
-- `equipment_assignments.fk_ea_returned_by` (equipment) ※idx_ea_returned_by 追加
-- `member_payments.fk_member_pay_user` (payment) ※idx_mp_user_item 既存
-- `member_payments.fk_mp_recorded_by` (payment) ※idx_mp_recorded_by 追加
-- `stripe_customers.fk_sc_user` (payment) ※uq_sc_user UNIQUE 既存
-- `payment_items.fk_pi_created_by` (payment) ※idx_pi_created_by 追加
-- `service_records.fk_sr_member` (service) ※idx_sr_member 既存
-- `service_records.fk_sr_staff` (service) ※idx_sr_staff 追加
-- `property_work_packages.fk_pwp_updated_by` (property) ※idx_pwp_updated_by 追加
-- `team_member_info_responses.fk_tmir_user` (team) ※uq_tmir_user_field UNIQUE 既存
-- `service_record_reactions.fk_srr_user` (service) ※uq_srr_record_user UNIQUE 既存
-- `performance_records.fk_pr_recorded_by` (performance) ※idx_pr_recorded_by 追加
+### 第十五波（V62.015）— 30件（user_id 参照 第七陣）
+
+#### translation ドメイン
+- `content_translations.fk_ct_translator` (translator_id) ※ index 既存
+- `content_translations.fk_ct_reviewer` (reviewer_id) ※ idx_ct_reviewer 追加
+- `translation_assignments.fk_transassign_user` (user_id) ※ index 既存
+
+#### incident ドメイン
+- `incident_attachments.fk_ia_created_by` (created_by) ※ idx_ia_created_by 追加
+
+#### knowledge ドメイン
+- `kb_image_uploads.fk_kbiu_uploader` (uploader_id) ※ index 既存
+
+#### equipment ドメイン
+- `equipment_ranking_exclusions.fk_ere_user` (excluded_by_user_id) ※ idx_ere_excluded_by_user_id 追加
+
+#### auth ドメイン
+- `otp_challenges.fk_otp_challenges_user` (user_id) ※ index 既存
+
+#### api ドメイン
+- `api_keys.fk_ak_created_by` (created_by) ※ idx_ak_created_by 追加
+
+#### signage ドメイン
+- `signage_access_tokens.fk_sat_created_by` (created_by) ※ idx_sat_created_by 追加
+
+#### jobmatching ドメイン
+- `job_contracts.fk_jc_worker` (worker_user_id) ※ index 既存
+- `job_contracts.fk_jc_requester` (requester_user_id) ※ index 既存
+- `job_applications.fk_ja_applicant` (applicant_user_id) ※ index 既存
+- `job_applications.fk_ja_decider` (decided_by_user_id) ※ idx_ja_decided_by_user_id 追加
+- `job_qr_tokens.fk_jqt_issuer` (issued_by_user_id) ※ idx_jqt_issued_by_user_id 追加
+- `job_check_ins.fk_jci_worker` (worker_user_id) ※ index 既存
+
+#### timetable ドメイン
+- `timetable_slot_user_notes.fk_tsun_user` (user_id) ※ index 既存
+- `timetable_slot_user_note_fields.fk_tsunf_user` (user_id) ※ index 既存
+- `timetable_slot_user_note_attachments.fk_tsuna_user` (user_id) ※ index 既存
+
+#### team ドメイン
+- `team_enabled_modules.fk_team_enabled_modules_user` (enabled_by) ※ idx_team_enabled_modules_enabled_by 追加
+
+#### attendance ドメイン
+- `attendance_requirement_evaluations.fk_are_student` (student_user_id) ※ index 既存
+
+#### committee ドメイン
+- `committee_distribution_logs.fk_cdl_created_by` (created_by) ※ idx_cdl_created_by 追加
+
+#### error_report ドメイン
+- `error_report_occurrences.fk_ero_user_id` (user_id) ※ idx_ero_user_id 追加
+
+#### notification ドメイン
+- `confirmable_notifications.fk_cn_cancelled_by` (cancelled_by) ※ idx_cn_cancelled_by 追加
+- `confirmable_notifications.fk_cn_created_by` (created_by) ※ index 既存
+
+#### webhook ドメイン
+- `webhook_endpoints.fk_we_created_by` (created_by) ※ idx_we_created_by 追加
+
+#### announcement ドメイン
+- `announcement_feeds.fk_af_author` (author_id) ※ index 既存
+
+#### feedback ドメイン
+- `feedback_submissions.fk_fs_submitted_by` (submitted_by) ※ index 既存
+
+#### schedule ドメイン
+- `schedule_annual_copy_logs.fk_sacl_executed_by` (executed_by) ※ idx_sacl_executed_by 追加
+
+#### advertising ドメイン
+- `ad_report_schedules.fk_ad_report_schedules_user` (created_by) ※ idx_ad_report_schedules_created_by 追加
+
+#### admin ドメイン
+- `warning_re_reviews.fk_wrr_user` (user_id) ※ UNIQUE KEY uq_wrr_user_action でカバー済み
+
+**残件**: `attendance_requirement_evaluations.fk_are_resolver` は次波で処理
 
 ## 第五波以降（user_id 参照 残件）
 
