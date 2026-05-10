@@ -267,6 +267,82 @@ class DisclosureExportServiceTest {
                 .isEqualTo(DisclosureErrorCode.DISCLOSURE_010);
     }
 
+    // ===========================================================================
+    // F09.14 Phase 3-E: extendExpiry
+    // ===========================================================================
+
+    @Test
+    @DisplayName("extendExpiry(): 未来日時で正常に更新される")
+    void extendExpiry_success() throws Exception {
+        DisclosureExportEntity e = DisclosureExportEntity.builder()
+                .scopeType("ORGANIZATION").scopeId(100L)
+                .templateId(1L).templateCodeSnapshot("MLIT").templateVersionSnapshot("v1")
+                .outputFormat(DisclosureOutputFormat.PDF)
+                .sharedFileId(999L)
+                .requesterUserId(200L)
+                .dataSnapshot("{}")
+                .expiresAt(java.time.LocalDateTime.now().plusDays(30))
+                .build();
+        setEntityIdViaReflection(e, 7L);
+        when(exportRepository.findByIdAndDeletedAtIsNull(7L)).thenReturn(Optional.of(e));
+        when(exportRepository.save(any(DisclosureExportEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        java.time.LocalDateTime newExpiresAt = java.time.LocalDateTime.now().plusYears(1);
+        DisclosureExportResponse res = service.extendExpiry(100L, 7L, newExpiresAt);
+
+        assertThat(res.expiresAt()).isEqualTo(newExpiresAt);
+        verify(exportRepository).save(e);
+        assertThat(e.getExpiresAt()).isEqualTo(newExpiresAt);
+    }
+
+    @Test
+    @DisplayName("extendExpiry(): 過去日時は DISCLOSURE_011")
+    void extendExpiry_past() {
+        java.time.LocalDateTime past = java.time.LocalDateTime.now().minusDays(1);
+        assertThatThrownBy(() -> service.extendExpiry(100L, 7L, past))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(DisclosureErrorCode.DISCLOSURE_011);
+    }
+
+    @Test
+    @DisplayName("extendExpiry(): 7年超は DISCLOSURE_011")
+    void extendExpiry_over7Years() {
+        java.time.LocalDateTime tooFar = java.time.LocalDateTime.now().plusYears(7).plusDays(2);
+        assertThatThrownBy(() -> service.extendExpiry(100L, 7L, tooFar))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(DisclosureErrorCode.DISCLOSURE_011);
+    }
+
+    @Test
+    @DisplayName("extendExpiry(): null は DISCLOSURE_011")
+    void extendExpiry_null() {
+        assertThatThrownBy(() -> service.extendExpiry(100L, 7L, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(DisclosureErrorCode.DISCLOSURE_011);
+    }
+
+    @Test
+    @DisplayName("extendExpiry(): スコープ不一致は DISCLOSURE_002")
+    void extendExpiry_scopeMismatch() throws Exception {
+        DisclosureExportEntity e = DisclosureExportEntity.builder()
+                .scopeType("ORGANIZATION").scopeId(999L)  // 別組織
+                .templateId(1L).templateCodeSnapshot("MLIT").templateVersionSnapshot("v1")
+                .outputFormat(DisclosureOutputFormat.PDF)
+                .sharedFileId(999L).requesterUserId(200L).dataSnapshot("{}")
+                .build();
+        setEntityIdViaReflection(e, 7L);
+        when(exportRepository.findByIdAndDeletedAtIsNull(7L)).thenReturn(Optional.of(e));
+
+        java.time.LocalDateTime newExpiresAt = java.time.LocalDateTime.now().plusYears(1);
+        assertThatThrownBy(() -> service.extendExpiry(100L, 7L, newExpiresAt))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(DisclosureErrorCode.DISCLOSURE_002);
+    }
+
     @Test
     @DisplayName("generateDownloadUrl(): SHA-256 一致時は presigned URL を返す")
     void generateDownloadUrl_sha256Match() throws Exception {

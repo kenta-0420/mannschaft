@@ -10,6 +10,7 @@ import com.mannschaft.app.disclosure.dto.DisclosureCirculationStartRequest;
 import com.mannschaft.app.disclosure.dto.DisclosureCirculationStartResponse;
 import com.mannschaft.app.disclosure.dto.DisclosureExportRequest;
 import com.mannschaft.app.disclosure.dto.DisclosureExportResponse;
+import com.mannschaft.app.disclosure.dto.ExtendExpiryRequest;
 import com.mannschaft.app.disclosure.service.DisclosureCirculationService;
 import com.mannschaft.app.disclosure.service.DisclosureExportService;
 import jakarta.validation.Valid;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -107,6 +109,28 @@ public class DisclosureExportController {
             @PathVariable("exportId") Long exportId) {
         SecurityUtils.getCurrentUserId();
         return ApiResponse.of(exportService.generateDownloadUrl(organizationId, exportId));
+    }
+
+    /**
+     * 出力履歴の自動削除予定日（{@code expires_at}）を延長する（F09.14 Phase 3-E、設計書 §5.7）。
+     *
+     * <p>本日から最大 7 年まで延長可能。過去日時は {@link DisclosureErrorCode#DISCLOSURE_011}
+     * (422) を返す。</p>
+     *
+     * <p><strong>権限制御</strong>: ADMIN のみ許可する想定（設計書 §5.7）。
+     * 現状 Phase 2-β-5 以降に持ち越されている role/permission チェック（{@link #exportDraft}
+     * 同様）と整合させ、{@link SecurityUtils#getCurrentUserId()} による認証ガードのみで実装する。
+     * FIXME(Phase 2-β-5/3-E 後続): role=ADMIN チェックを追加すること。</p>
+     */
+    @PatchMapping("/disclosure-exports/{exportId}/extend-expiry")
+    public ApiResponse<DisclosureExportResponse> extendExpiry(
+            @PathVariable("organizationId") Long organizationId,
+            @PathVariable("exportId") Long exportId,
+            @Valid @RequestBody ExtendExpiryRequest request) {
+        SecurityUtils.getCurrentUserId();
+        DisclosureExportResponse response = exportService.extendExpiry(
+                organizationId, exportId, request.newExpiresAt());
+        return ApiResponse.of(response);
     }
 
     /**
