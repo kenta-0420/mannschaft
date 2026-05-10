@@ -95,6 +95,7 @@ public class ActionMemoSettingsService {
      * @param request 更新リクエスト（送信された項目のみ更新）
      * @return 更新後の設定
      */
+    // TODO: actionmemoドメインとroleドメイン(UserRoleRepository)をまたいでいる。将来はUserRoleVerifiedEventで分離予定
     @Transactional
     public ActionMemoSettingsResponse updateSettings(Long userId, UpdateActionMemoSettingsRequest request) {
         UserActionMemoSettingsEntity entity = settingsRepository.findById(userId)

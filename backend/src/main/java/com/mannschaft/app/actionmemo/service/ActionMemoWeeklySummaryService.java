@@ -163,6 +163,7 @@ public class ActionMemoWeeklySummaryService {
      * @param to     集計終了日（含む）
      * @return 生成した場合 {@code true}、スキップした場合 {@code false}
      */
+    // TODO: actionmemoドメインとcmsドメイン(BlogPostRepository)をまたいでいる。将来はWeeklySummaryGeneratedEventで分離予定
     @Transactional
     public boolean regenerateForUser(Long userId, LocalDate from, LocalDate to) {
         return generateForUser(userId, from, to);
@@ -218,6 +219,7 @@ public class ActionMemoWeeklySummaryService {
      *
      * @return 生成した場合 {@code true}、スキップ（メモ0件）した場合 {@code false}
      */
+    // TODO: actionmemoドメインとcmsドメイン(BlogPostRepository)をまたいでいる。将来はWeeklySummaryGeneratedEventで分離予定
     @Transactional
     protected boolean generateForUser(Long userId, LocalDate from, LocalDate to) {
         List<ActionMemoEntity> memos = memoRepository
