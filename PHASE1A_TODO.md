@@ -1,7 +1,7 @@
 # Phase 1-A クロスドメインFK 撤廃 — 残波 TODO
 
-第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第四波（V62.004）で 13 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。
-残りは `users` 参照 多数 + `teams` 多数 + `organizations` 残件 + その他多数。
+第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第四波（V62.004）で 13 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。第六波（V62.006）で 20 件処理（organization_id 参照 残件全件 — **org_id 完全クローズ**）。
+残りは `users` 参照 多数 + `teams` 多数 + その他多数。
 
 ## 完了済み（user_id 参照）
 
@@ -92,14 +92,31 @@
 - `user_roles.fk_user_roles_org` (role)
 - `permission_groups.fk_permission_groups_org` (role) ※idx_permission_groups_org 追加
 
-## 次波（organization_id 参照 残件 — 第六波以降）
+### 第六波（V62.006）— 20件（organization_id 残件全件 — **org_id 完全クローズ**）
+- `equipment_items.fk_ei_org` (equipment)
+- `payment_items.fk_pi_organization` (payment)
+- `service_record_templates.fk_srt_org` (service)
+- `team_pages.fk_tp_organization` (team)
+- `team_org_memberships.fk_team_org_memberships_org` (team) ※idx_team_org_memberships_org 追加
+- `photo_albums.fk_pa_organization` (photo)
+- `tournaments.fk_t_organization` (tournament)
+- `tournament_templates.fk_tt_organization` (tournament)
+- `committees.fk_committees_org` (committee)
+- `proxy_vote_sessions.fk_pvs_organization` (proxy)
+- `organization_access_requirements.fk_oar_organization` (payment)
+- `invite_tokens.fk_invite_tokens_org` (auth) ※idx_invite_tokens_org 追加
+- `organization_blocks.fk_org_blocks_org` (social)
+- `schedule_annual_copy_logs.fk_sacl_organization` (schedule)
+- `audit_logs.fk_al_org` (audit)
+- `blog_post_shares.fk_blog_share_org` (blog)
+- `blog_tags.fk_bt_org` (blog)
+- `member_profile_fields.fk_mpf_organization` (profile)
+- `organization_custom_fields.fk_org_custom_fields_org` (organization)
+- `organization_officers.fk_org_officers_org` (organization)
 
-- `schedule_annual_copy_logs.fk_sacl_organization` (schedule → organization, ON DELETE SET NULL)
-- `audit_logs.fk_al_org` (audit → organization, ON DELETE SET NULL)
-- `error_reports` (error → organization, ON DELETE SET NULL)
-- `action_memos` org FK (memo → organization)
-- `organizations.fk_organizations_parent` — **同一ドメイン内のため撤廃不要**
-- V8.x / V9.x 系列（committees, proxy_vote_sessions, payment_items など）
+**除外**: `organizations.fk_organizations_parent` は同一ドメイン内（自己参照）のため撤廃しない
+
+## organization_id 参照 — 完全クローズ（V62.005 + V62.006 で全件撤廃済）
 
 ## Phase 1-B（CASCADE 整理）
 
