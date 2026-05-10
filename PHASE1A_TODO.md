@@ -1,7 +1,7 @@
 # Phase 1-A クロスドメインFK 撤廃 — 残波 TODO
 
-第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第四波（V62.004）で 13 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。第六波（V62.006）で 20 件処理（organization_id 残件全件クローズ）。第七波（V62.007）で 35 件処理（team_id 前半）。第八波（V62.008）で 33 件処理（team_id 後半）。第九波（V62.009）で 30 件処理（role/team/social/moderation/shift 系 user_id）。第十波（V62.010）で 30 件処理（workflow/activity/blog/form/property 系 user_id）。
-残りは `users` 参照 多数（schedule系・V18.x attendance系 等）。
+第一波（V62.001）で 9 件処理。第二波（V62.002）で 9 件処理。第三波（V62.003）で 12 件処理。第四波（V62.004）で 13 件処理。第五波（V62.005）で 11 件処理（organization_id 参照初波）。第六波（V62.006）で 20 件処理（organization_id 残件）。第七波（V62.007）で 35 件処理（team_id 前半）。第八波（V62.008）で 33 件処理（team_id 後半、team_id 完全クローズ）。第九波（V62.009）で 30 件処理（role/team/social/moderation/shift 系）。第十波（V62.010）で 30 件処理（workflow/activity/blog/form/property 系）。第十一波（V62.011）で 30 件処理（chat/timeline/bulletin/seal/shift 系）。
+残りは `users` 参照 残件多数。
 
 ## 完了済み（user_id 参照）
 
@@ -55,55 +55,44 @@
 - `blog_posts.fk_bp_team` (blog → team)
 - `blog_post_series.fk_bps_team` (blog → team)
 
-### 第十波（V62.010）— 30件（user_id 第九波）
-#### activity ドメイン（3件）
-- `activity_templates.fk_at_created_by` (activity)
-- `activity_participants.fk_ap_user` (activity)
-- `activity_comments.fk_ac_user` (activity)
+### 第六波（V62.006）— 20件（organization_id 残件）
+- wave6 相当。第五波に続く org FK 撤廃。
 
-#### workflow ドメイン（5件）
-- `workflow_request_comments.fk_wf_request_comments_user` (workflow)
-- `workflow_request_attachments.fk_wf_request_attachments_uploaded_by` (workflow)
-- `workflow_requests.fk_workflow_requests_requested_by` (workflow)
-- `workflow_request_approvers.fk_wf_request_approvers_user` (workflow)
-- `workflow_templates.fk_workflow_templates_created_by` (workflow)
+### 第七波（V62.007）— 35件（team_id 前半）
+- wave7 相当。team_id FK 撤廃前半。
 
-#### blog ドメイン（4件）
-- `blog_post_revisions.fk_bpr_editor` (blog)
-- `blog_post_shares.fk_bps_shared_by` (blog)
-- `user_blog_settings.fk_ubs_user` (blog)
-- `blog_image_uploads.fk_biu_uploader` (blog)
+### 第八波（V62.008）— 33件（team_id 後半）
+- wave8 相当。team_id FK 撤廃後半。team_id 完全クローズ。
 
-#### form ドメイン（4件）
-- `survey_targets.fk_survey_targets_user` (form)
-- `form_submissions.fk_form_submissions_submitted_by` (form)
-- `form_templates.fk_form_templates_created_by` (form)
-- `system_form_presets.fk_system_form_presets_created_by` (form)
+### 第九波（V62.009）— 30件（role/team/social/moderation/shift 系）
+- wave9 相当。user_id FK 撤廃第一陣 30件。
 
-#### storage ドメイン（4件）
-- `shared_file_stars.fk_file_stars_user` (storage)
-- `shared_file_links.fk_file_links_created` (storage)
-- `shared_file_comments.fk_file_comments_user` (storage)
-- `shared_file_tags.fk_file_tags_user` (storage)
+### 第十波（V62.010）— 30件（workflow/activity/blog/form/property 系）
+- wave10 相当。user_id FK 撤廃第二陣 30件。
 
-#### membership ドメイン（1件）
-- `member_positions.fk_member_positions_assigned_by` (membership)
+### 第十一波（V62.011）— 30件（chat/timeline/bulletin/seal/shift 系）
+- `activity_results.fk_ar_created_by` (activity)
+- `photos.fk_ph_uploaded_by` (photo)
+- `memberships.fk_memberships_invited_by`, `fk_memberships_user` (membership)
+- `team_pages.fk_tp_created_by`, `member_profiles.fk_mp_user` (team)
+- `chat_channels.fk_channel_creator`, `chat_channel_members.fk_member_user`, `chat_message_reactions.fk_reaction_user`, `chat_message_bookmarks.fk_bookmark_user`, `chat_messages.fk_msg_sender` (chat)
+- `timeline_poll_votes.fk_poll_votes_user`, `timeline_posts.fk_timeline_posts_user`, `timeline_post_reactions.fk_post_reactions_user` (timeline)
+- `content_reports.fk_content_reports_reviewer`, `user_mutes.fk_user_mutes_user` (moderation)
+- `bulletin_reactions.fk_bulletin_reactions_user`, `bulletin_categories.fk_bulletin_categories_created_by`, `bulletin_attachments.fk_bulletin_attachments_created_by` (bulletin)
+- `seal_stamp_logs.fk_seal_stamp_logs_user`, `seal_scope_defaults.fk_seal_scope_defaults_user`, `electronic_seals.fk_electronic_seals_user` (seal)
+- `shift_swap_requests.fk_shift_swap_requests_target_user`, `fk_shift_swap_requests_claimed_by`, `shift_assignment_runs.fk_shift_assignment_runs_visual_review`, `shift_change_requests.fk_shift_change_requests_requested_by`, `fk_shift_change_requests_reviewer` (shift)
+- `survey_responses.fk_survey_responses_user`, `survey_result_viewers.fk_survey_result_viewers_user` (survey)
+- `shared_files.fk_shared_files_created` (storage)
 
-#### property / disclosure ドメイン（9件）
-- `property_work_history_views.fk_pwhv_user` (property)
-- `disclosure_form_drafts.fk_dfd_created_by` (property)
-- `disclosure_form_drafts.fk_dfd_updated_by` (property)
-- `photo_albums.fk_pa_created_by` (photo)
-- `disclosure_exports.fk_de_requester` (property)
-- `disclosure_form_templates.fk_dft_created_by` (property)
-- `property_work_packages.fk_pwp_created_by` (property)
-- `vendors.fk_vendors_created_by` (property)
-- `property_work_documents.fk_pwd_created_by` (property)
-
-## 第十一波以降（user_id 参照 残件）
+## 第十二波以降（user_id 参照 残件）
 
 主な候補（V2.x, V3.x, V10.x, V11.x 系列）：
 - `schedules.fk_sch_user` / `schedules.fk_sch_created_by` (schedule)
+- `report_actions.fk_report_actions_user` (admin)
+- `moderation_appeals.fk_ma_user` (admin)
+- `user_roles.fk_user_roles_user` / `fk_user_roles_granted_by` (auth/role)
+- `team_org_memberships.fk_team_org_memberships_invited_by` 等 (team)
+- `presence_events.fk_pe_user` (team)
 - V11.x 系列（budget, skill, kb等）多数
 - V18.x 系列（attendance等）多数
 
