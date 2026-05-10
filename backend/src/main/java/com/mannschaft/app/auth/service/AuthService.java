@@ -126,6 +126,7 @@ public class AuthService {
      * @return 登録完了メッセージ
      */
     @Transactional
+    // TODO: authドメインとroleドメインをまたいでいる（InviteService.joinByInviteを直接呼び出し）。将来はUserRegisteredEventで分離予定
     public ApiResponse<MessageResponse> register(RegisterRequest req, String ipAddress) {
         // 1. レートリミットチェック
         String rateLimitKey = "mannschaft:auth:register_attempt:" + ipAddress;

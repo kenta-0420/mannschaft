@@ -43,6 +43,7 @@ public class UserBlockService {
      * @param targetId  ブロックされるユーザーID
      */
     @Transactional
+    // TODO: userドメインがcontactドメイン(ContactService/ContactRequestRepository/ContactRequestBlockRepository)・chatドメイン(ChatChannelRepository)・authドメイン(UserRepository)をまたいでいる。将来はUserBlockedEventで分離予定
     public void block(Long blockerId, Long targetId) {
         // 自分自身チェック
         if (blockerId.equals(targetId)) {
@@ -89,6 +90,7 @@ public class UserBlockService {
      * @param targetId  ブロック解除されるユーザーID
      */
     @Transactional
+    // TODO: userドメインとcontactドメイン(ContactRequestBlockRepository)をまたいでいる。将来はUserUnblockedEventで分離予定
     public void unblock(Long blockerId, Long targetId) {
         // 存在チェック
         if (!userBlockRepository.existsByBlockerIdAndBlockedId(blockerId, targetId)) {

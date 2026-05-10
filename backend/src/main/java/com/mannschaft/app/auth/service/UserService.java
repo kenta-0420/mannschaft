@@ -391,6 +391,7 @@ public class UserService {
      * @param req    退会リクエスト
      */
     @Transactional
+    // TODO: authドメインとroleドメインをまたいでいる（UserRoleRepository.countSystemAdmins/isSystemAdminを直接呼び出し）。将来はUserWithdrawalRequestedEventで分離予定
     public void requestWithdrawal(Long userId, RequestWithdrawalRequest req) {
         // 唯一の SYSTEM_ADMIN であれば退会をブロック
         checkNotLastSystemAdmin(userId);
@@ -460,6 +461,7 @@ public class UserService {
      * @param userId 退会対象ユーザーID
      */
     @Transactional
+    // TODO: authドメインとroleドメインをまたいでいる（UserRoleRepository.countSystemAdmins/isSystemAdminを直接呼び出し）。将来はUserWithdrawnEventで分離予定
     public void withdrawUser(Long userId) {
         // 唯一の SYSTEM_ADMIN であれば退会をブロック
         checkNotLastSystemAdmin(userId);

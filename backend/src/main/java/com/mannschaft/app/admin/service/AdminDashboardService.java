@@ -35,6 +35,7 @@ public class AdminDashboardService {
      * @param scopeId   スコープID
      * @return ダッシュボード情報
      */
+    // TODO: adminドメインがmoderationドメイン(ContentReportRepository)・roleドメイン(UserRoleRepository)・scheduleドメイン(ScheduleRepository)をまたいでいる。将来はドメインイベント集約またはQuery Serviceで分離予定
     public AdminDashboardResponse getDashboard(String scopeType, Long scopeId) {
         long pendingFeedbacks = feedbackRepository.countByScopeTypeAndScopeIdAndStatus(
                 scopeType, scopeId, FeedbackStatus.OPEN);

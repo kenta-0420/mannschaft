@@ -75,6 +75,7 @@ public class TeamService {
      * チームを作成し、作成者をADMINロールで紐付ける。
      */
     @Transactional
+    // TODO: teamドメインがroleドメイン(RoleRepository/UserRoleRepository)・socialドメイン(TeamFriendRepository)・membershipドメイン(MembershipRepository/MembershipService)・shiftドメイン(TeamShiftSettingsService)をまたいでいる。将来はTeamCreatedEventで分離予定
     public ApiResponse<TeamResponse> createTeam(Long userId, CreateTeamRequest req) {
         TeamEntity team = TeamEntity.builder()
                 .name(req.getName())
@@ -129,6 +130,7 @@ public class TeamService {
      * チームを更新する。
      */
     @Transactional
+    // TODO: teamドメインがroleドメイン(UserRoleRepository)・socialドメイン(TeamFriendRepository)・membershipドメイン(MembershipRepository)をまたいでいる。将来はTeamUpdatedEventで分離予定
     public ApiResponse<TeamResponse> updateTeam(Long teamId, UpdateTeamRequest req) {
         TeamEntity team = findTeamOrThrow(teamId);
         checkNotArchived(team);
@@ -265,6 +267,7 @@ public class TeamService {
      * 冪等性保証・イベント発火を一本化する。</p>
      */
     @Transactional
+    // TODO: teamドメインとmembershipドメイン(MembershipRepository/MembershipService)をまたいでいる。将来はTeamFollowRequestedEventで分離予定
     public void followTeam(Long userId, Long teamId) {
         findTeamOrThrow(teamId);
 
@@ -298,6 +301,7 @@ public class TeamService {
      * 退会履歴・イベント発火を一本化する。</p>
      */
     @Transactional
+    // TODO: teamドメインとmembershipドメイン(MembershipRepository/MembershipService)をまたいでいる。将来はTeamUnfollowedEventで分離予定
     public void unfollowTeam(Long userId, Long teamId) {
         findTeamOrThrow(teamId);
 

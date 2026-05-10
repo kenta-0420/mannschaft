@@ -131,6 +131,7 @@ public class ContentReportService {
      * ユーザーの通報権限を制限/解除する。
      */
     @Transactional
+    // TODO: moderationドメインとauthドメインをまたいでいる（UserRepositoryを直接参照）。将来はUserReportingRestrictionChangedEventで分離予定
     public void restrictReporting(Long userId, boolean restricted) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ModerationErrorCode.REPORT_NOT_FOUND));
