@@ -29,6 +29,15 @@ public interface ApiKeyRepository extends JpaRepository<ApiKeyEntity, Long> {
     int countByScopeTypeAndScopeIdAndDeletedAtIsNull(String scopeType, Long scopeId);
 
     /**
+     * スコープに紐づくAPIキー一覧を取得する（論理削除済みを除く）。
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープID
+     * @return APIキーEntityリスト
+     */
+    List<ApiKeyEntity> findByScopeTypeAndScopeIdAndDeletedAtIsNull(String scopeType, Long scopeId);
+
+    /**
      * 指定日時以前に有効期限が切れるアクティブなAPIキーを返す（期限切れ検出バッチ用）。
      *
      * @param threshold 有効期限の閾値

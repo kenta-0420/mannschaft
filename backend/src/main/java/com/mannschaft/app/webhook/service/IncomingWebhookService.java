@@ -109,10 +109,8 @@ public class IncomingWebhookService {
      * @return トークン一覧
      */
     public ApiResponse<List<IncomingWebhookTokenResponse>> listTokens(String scopeType, Long scopeId) {
-        // JPA の @SQLRestriction により deleted_at IS NULL は自動適用
-        List<IncomingWebhookTokenEntity> entities = tokenRepository.findAll().stream()
-                .filter(t -> t.getScopeType().equals(scopeType) && t.getScopeId().equals(scopeId))
-                .collect(Collectors.toList());
+        // スコープに紐づくトークン一覧を直接取得（論理削除済みを除く）
+        List<IncomingWebhookTokenEntity> entities = tokenRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId);
         List<IncomingWebhookTokenResponse> responses = entities.stream()
                 .map(e -> toResponse(e, null))
                 .collect(Collectors.toList());
