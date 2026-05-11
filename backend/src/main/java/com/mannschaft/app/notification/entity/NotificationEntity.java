@@ -37,6 +37,10 @@ public class NotificationEntity {
     @Column(nullable = false)
     private Long userId;
 
+    /** テナントシャーディング布石。NULL許容（既存データ後方互換）。クロスドメインFKは持たない。 */
+    @Column(name = "organization_id")
+    private Long organizationId;
+
     @Column(nullable = false, length = 50)
     private String notificationType;
 

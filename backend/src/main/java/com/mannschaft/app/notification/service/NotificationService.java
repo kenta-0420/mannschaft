@@ -150,7 +150,7 @@ public class NotificationService {
     }
 
     /**
-     * 通知を作成する（内部利用）。
+     * 通知を作成する（内部利用）。organizationId なし版（後方互換）。
      *
      * @param userId           宛先ユーザーID
      * @param notificationType 通知種別
@@ -171,6 +171,36 @@ public class NotificationService {
                                                   String sourceType, Long sourceId,
                                                   NotificationScopeType scopeType, Long scopeId,
                                                   String actionUrl, Long actorId) {
+        return createNotification(userId, notificationType, priority, title, body,
+                sourceType, sourceId, scopeType, scopeId, actionUrl, actorId, null);
+    }
+
+    /**
+     * 通知を作成する（内部利用）。organizationId あり版。
+     *
+     * <p>Phase 4-B: テナントシャーディング布石として organizationId を保持する。
+     * 既存の呼び出し元との後方互換は organizationId=null で維持する。</p>
+     *
+     * @param userId           宛先ユーザーID
+     * @param notificationType 通知種別
+     * @param priority         優先度
+     * @param title            タイトル
+     * @param body             本文
+     * @param sourceType       ソース種別
+     * @param sourceId         ソースID
+     * @param scopeType        スコープ種別
+     * @param scopeId          スコープID
+     * @param actionUrl        アクションURL
+     * @param actorId          実行者ID
+     * @param organizationId   組織ID（NULL許容・テナント絞り込み用）
+     * @return 作成された通知エンティティ
+     */
+    @Transactional
+    public NotificationEntity createNotification(Long userId, String notificationType,
+                                                  NotificationPriority priority, String title, String body,
+                                                  String sourceType, Long sourceId,
+                                                  NotificationScopeType scopeType, Long scopeId,
+                                                  String actionUrl, Long actorId, Long organizationId) {
         // ----------------------------------------------------------------
         // F00 Phase F: 通知発行前の visibility ガード (§11.1)
         // ----------------------------------------------------------------
@@ -189,6 +219,7 @@ public class NotificationService {
 
         NotificationEntity entity = NotificationEntity.builder()
                 .userId(userId)
+                .organizationId(organizationId)
                 .notificationType(notificationType)
                 .priority(priority)
                 .title(title)
@@ -202,7 +233,8 @@ public class NotificationService {
                 .build();
 
         NotificationEntity saved = notificationRepository.save(entity);
-        log.info("通知作成: userId={}, type={}, notificationId={}", userId, notificationType, saved.getId());
+        log.info("通知作成: userId={}, type={}, orgId={}, notificationId={}",
+                userId, notificationType, organizationId, saved.getId());
         return saved;
     }
 
