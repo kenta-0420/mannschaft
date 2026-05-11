@@ -31,7 +31,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -107,8 +109,12 @@ public class AnalyticsAlertService {
         } else {
             page = historyRepository.findByTriggeredAtBetweenOrderByTriggeredAtDesc(fromDt, toDt, pageable);
         }
-        // ルール名を引くためルールを一括取得
-        Map<Long, String> ruleNames = ruleRepository.findAll().stream()
+        // ページ内のルールIDのみ取得（全件 findAll 回避）
+        Set<Long> ruleIds = page.getContent().stream()
+                .map(AnalyticsAlertHistoryEntity::getRuleId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> ruleNames = ruleRepository.findAllById(ruleIds).stream()
                 .collect(Collectors.toMap(AnalyticsAlertRuleEntity::getId, AnalyticsAlertRuleEntity::getName));
         return page.map(h -> toHistoryResponse(h, ruleNames));
     }
