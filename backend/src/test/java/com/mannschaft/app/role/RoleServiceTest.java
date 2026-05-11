@@ -245,7 +245,7 @@ class RoleServiceTest {
             PermissionEntity perm = PermissionEntity.builder()
                     .id(1L).name("MEMBER_MANAGE").displayName("メンバー管理")
                     .scope(PermissionEntity.Scope.ORGANIZATION).build();
-            given(permissionRepository.findById(1L)).willReturn(Optional.of(perm));
+            given(permissionRepository.findByIdIn(List.of(1L))).willReturn(List.of(perm));
 
             given(permissionGroupRepository.findByOrganizationId(SCOPE_ID)).willReturn(List.of());
 
@@ -290,7 +290,7 @@ class RoleServiceTest {
             PermissionEntity perm = PermissionEntity.builder()
                     .id(1L).name("MEMBER_MANAGE").displayName("メンバー管理")
                     .scope(PermissionEntity.Scope.ORGANIZATION).build();
-            given(permissionRepository.findById(1L)).willReturn(Optional.of(perm));
+            given(permissionRepository.findByIdIn(List.of(1L))).willReturn(List.of(perm));
             given(permissionGroupRepository.findByOrganizationId(SCOPE_ID)).willReturn(List.of());
 
             boolean result = roleService.hasPermission(USER_ID, SCOPE_ID, "ORGANIZATION", "MEMBER_MANAGE");

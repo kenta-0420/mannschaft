@@ -2,7 +2,9 @@ package com.mannschaft.app.role.service;
 
 import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.PermissionGroupEntity;
+import com.mannschaft.app.role.entity.PermissionGroupPermissionEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.entity.RolePermissionEntity;
 import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -20,6 +22,8 @@ import com.mannschaft.app.team.event.TeamMemberAuditEvent;
 import com.mannschaft.app.organization.event.OrganizationMemberAuditEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +56,7 @@ public class RoleService {
      * ユーザーにロールを割り当てる。
      */
     @Transactional
+    @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void assignRole(Long scopeId, String scopeType, Long targetUserId, Long roleId, Long grantedBy) {
         // ロール存在確認
         roleRepository.findById(roleId)
@@ -80,6 +85,7 @@ public class RoleService {
      * ユーザーのロールを変更する。最後のADMIN保護チェック付き。
      */
     @Transactional
+    @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void changeRole(Long scopeId, String scopeType, Long targetUserId,
                            RoleChangeRequest req, Long changedBy) {
         UserRoleEntity current = findUserRole(targetUserId, scopeId, scopeType)
@@ -127,6 +133,7 @@ public class RoleService {
      * メンバーを除名する。最後のADMIN保護チェック付き。
      */
     @Transactional
+    @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void removeMember(Long scopeId, String scopeType, Long targetUserId) {
         UserRoleEntity current = findUserRole(targetUserId, scopeId, scopeType)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
@@ -146,6 +153,7 @@ public class RoleService {
      * ユーザーが自主退会する。最後のADMIN保護チェック付き。
      */
     @Transactional
+    @CacheEvict(value = "role-permissions", key = "#userId + ':' + #scopeType + ':' + #scopeId")
     public void leaveScope(Long userId, Long scopeId, String scopeType) {
         UserRoleEntity current = findUserRole(userId, scopeId, scopeType)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
@@ -164,19 +172,26 @@ public class RoleService {
     /**
      * ユーザーの有効権限リストを解決する。
      * ロール由来 + 権限グループ由来の統合リスト。
+     *
+     * <p>Phase 4-E: Valkey にて 5 分キャッシュ。同一クラス内からの this. 呼び出し（hasPermission 等）は
+     * Spring AOP を迂回するためキャッシュが効かない点に注意（hasPermission 自体はキャッシュ対象外）。</p>
      */
+    @Cacheable(value = "role-permissions", key = "#userId + ':' + #scopeType + ':' + #scopeId")
     public List<String> resolveEffectivePermissions(Long userId, Long scopeId, String scopeType) {
-        // 1. ロール由来の権限
+        // 1. ロール由来の権限（N+1根治: permissionId をバッチ取得）
         List<String> rolePermissions = findUserRole(userId, scopeId, scopeType)
-                .map(ur -> rolePermissionRepository.findByRoleId(ur.getRoleId()))
+                .map(ur -> {
+                    List<Long> permissionIds = rolePermissionRepository.findByRoleId(ur.getRoleId())
+                            .stream().map(RolePermissionEntity::getPermissionId).toList();
+                    return permissionIds.isEmpty() ? List.<PermissionEntity>of()
+                            : permissionRepository.findByIdIn(permissionIds);
+                })
                 .orElse(List.of())
                 .stream()
-                .map(rp -> permissionRepository.findById(rp.getPermissionId()).orElse(null))
-                .filter(p -> p != null)
                 .map(PermissionEntity::getName)
                 .toList();
 
-        // 2. 権限グループ由来の権限
+        // 2. 権限グループ由来の権限（N+1根治: permissionId をバッチ取得）
         List<PermissionGroupEntity> groups = findPermissionGroups(scopeId, scopeType);
         List<Long> groupIds = groups.stream().map(PermissionGroupEntity::getId).toList();
 
@@ -188,12 +203,13 @@ public class RoleService {
                     .filter(ug -> groupIds.contains(ug.getGroupId()))
                     .toList();
             for (UserPermissionGroupEntity ug : userGroups) {
-                permissionGroupPermissionRepository.findByGroupId(ug.getGroupId())
-                        .stream()
-                        .map(pgp -> permissionRepository.findById(pgp.getPermissionId()).orElse(null))
-                        .filter(p -> p != null)
-                        .map(PermissionEntity::getName)
-                        .forEach(groupPermissions::add);
+                List<Long> pgpPermIds = permissionGroupPermissionRepository.findByGroupId(ug.getGroupId())
+                        .stream().map(PermissionGroupPermissionEntity::getPermissionId).toList();
+                if (!pgpPermIds.isEmpty()) {
+                    permissionRepository.findByIdIn(pgpPermIds)
+                            .stream().map(PermissionEntity::getName)
+                            .forEach(groupPermissions::add);
+                }
             }
         }
 
@@ -214,12 +230,15 @@ public class RoleService {
      * オーナー（ADMIN）権限を譲渡する。
      * 現オーナーは MEMBER にダウングレードされ、対象ユーザーが ADMIN に昇格する。
      *
+     * <p>2ユーザー分のキャッシュを一括無効化するため allEntries = true を使用する。</p>
+     *
      * @param scopeId      スコープID（チームID or 組織ID）
      * @param scopeType    スコープ種別（TEAM or ORGANIZATION）
      * @param currentUserId 現オーナーのユーザーID
      * @param targetUserId  譲渡先ユーザーID
      */
     @Transactional
+    @CacheEvict(value = "role-permissions", allEntries = true)
     public void transferOwnership(Long scopeId, String scopeType, Long currentUserId, Long targetUserId) {
         if (currentUserId.equals(targetUserId)) {
             throw new BusinessException(RoleErrorCode.ROLE_001);

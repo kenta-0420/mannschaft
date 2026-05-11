@@ -41,6 +41,8 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -115,7 +117,10 @@ public class TeamService {
 
     /**
      * チームを取得する。
+     *
+     * <p>Phase 4-E: Valkey にて 10 分キャッシュ。更新・削除時に自動無効化される。</p>
      */
+    @Cacheable(value = "team-detail", key = "#teamId")
     public ApiResponse<TeamResponse> getTeam(Long teamId) {
         TeamEntity team = findTeamOrThrow(teamId);
         int memberCount = (int) userRoleRepository.countByTeamId(teamId);
@@ -131,6 +136,7 @@ public class TeamService {
      */
     @Transactional
     // TODO: teamドメインがroleドメイン(UserRoleRepository)・socialドメイン(TeamFriendRepository)・membershipドメイン(MembershipRepository)をまたいでいる。将来はTeamUpdatedEventで分離予定
+    @CacheEvict(value = "team-detail", key = "#teamId")
     public ApiResponse<TeamResponse> updateTeam(Long teamId, UpdateTeamRequest req) {
         TeamEntity team = findTeamOrThrow(teamId);
         checkNotArchived(team);
@@ -163,6 +169,7 @@ public class TeamService {
      * チームを論理削除する。
      */
     @Transactional
+    @CacheEvict(value = "team-detail", key = "#teamId")
     public void deleteTeam(Long teamId, Long userId) {
         TeamEntity team = findTeamOrThrow(teamId);
         team.softDelete();
