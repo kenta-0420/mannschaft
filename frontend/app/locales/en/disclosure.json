@@ -94,6 +94,15 @@
       "maxLength": "Must be {max} characters or fewer",
       "title": "Draft title is required",
       "templateRequired": "Please select a template"
-    }
+    },
+    "extend_expiry": "Extend retention",
+    "extend_expiry_dialog_title": "Extend retention period",
+    "extend_expiry_date_label": "New retention deadline",
+    "extend_expiry_current_label": "Current deadline",
+    "extend_expiry_hint": "Up to 7 years from today",
+    "extend_expiry_validation_future": "Please choose a date/time in the future",
+    "extend_expiry_validation_max_7_years": "Please choose a date/time within 7 years from today",
+    "extend_expiry_success": "Retention extended until {date}",
+    "extend_expiry_error": "Failed to extend retention period"
   }
 }

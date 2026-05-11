@@ -94,6 +94,15 @@
       "maxLength": "{max} 文字以内で入力してください",
       "title": "ドラフト名は必須です",
       "templateRequired": "様式を選択してください"
-    }
+    },
+    "extend_expiry": "保管期限を延長",
+    "extend_expiry_dialog_title": "保管期限の延長",
+    "extend_expiry_date_label": "新しい保管期限",
+    "extend_expiry_current_label": "現在の保管期限",
+    "extend_expiry_hint": "本日から最大 7 年先まで指定できます",
+    "extend_expiry_validation_future": "現在より未来の日時を指定してください",
+    "extend_expiry_validation_max_7_years": "本日から 7 年以内の日時を指定してください",
+    "extend_expiry_success": "保管期限を {date} まで延長しました",
+    "extend_expiry_error": "保管期限の延長に失敗しました"
   }
 }

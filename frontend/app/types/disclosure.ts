@@ -152,6 +152,23 @@ export interface DisclosureExportListFilter {
   size?: number
 }
 
+/**
+ * 出力履歴の自動削除予定日を延長するリクエスト（F09.14 Phase 3-E / 4-B）。
+ *
+ * バックエンド DTO: {@code com.mannschaft.app.disclosure.dto.ExtendExpiryRequest}
+ *  - newExpiresAt: ISO-8601 形式の LocalDateTime 文字列（例: "2026-12-31T23:59:00"）。
+ *    秒以下まで含めて送信し、バックエンド側で本日から 7 年以内かどうかを再検証する。
+ */
+export interface ExtendExpiryRequest {
+  newExpiresAt: string
+}
+
+/**
+ * 出力履歴の自動削除予定日延長レスポンス。
+ * 更新後の {@link DisclosureExport} を返す（download URL は付与されない）。
+ */
+export type ExtendExpiryResponse = DisclosureExport
+
 /** 一覧 API のページングメタ情報。 */
 export interface DisclosureListMeta {
   total: number
