@@ -342,11 +342,68 @@ user.softDelete();       // deleted_at をセット
 public void createSchedule(...) { ... }
 ```
 
+#### 6. 新規テーブルの主キーは UuidV7Entity を継承する（2026-05-11〜）
+**新規に作成するテーブルの Entity** は `UuidV7Entity` を継承し、主キーを UUIDv7 にすること。
+既存テーブルの BIGINT ID は変更しない。
+
+```java
+// 新規 Entity はこれを継承する
+public class MyNewEntity extends UuidV7Entity {
+    // id フィールドは UuidV7Entity が持つ（UUID型、自動生成）
+    ...
+}
+```
+
+```sql
+-- 新規テーブルの DDL も UUID に合わせる
+CREATE TABLE my_new_table (
+    id BINARY(16) NOT NULL,  -- または CHAR(36)
+    ...
+    PRIMARY KEY (id)
+);
+```
+
+**なぜ変更したか:**
+BIGINT AUTO_INCREMENT は単一の発番サーバーが必要なため、水平分割（シャーディング）ができない。
+UUIDv7 は時刻順ソート可能でインデックス効率が高く、複数DBノードで独立して発番できる。
+1000万ユーザー規模でシャーディングが必要になったとき、既存テーブルのID変更は超侵襲的な作業になるため、
+**新規テーブルから先行して UUIDv7 に移行することで、段階的にシャーディング対応を進める**方針とした。
+
+#### 7. テナントスコープのリポジトリは AbstractTenantAwareRepository を実装する（2026-05-11〜）
+`organization_id` で絞り込む Repository は `AbstractTenantAwareRepository<T, ID>` を継承すること。
+
+```java
+// Before
+public interface MyRepository extends JpaRepository<MyEntity, Long> {
+
+// After（organization_id カラムを持つ Entity の場合）
+public interface MyRepository extends AbstractTenantAwareRepository<MyEntity, Long> {
+```
+
+`AbstractTenantAwareRepository` が提供するメソッド:
+- `findByOrganizationIdAndDeletedAtIsNull(Long organizationId)`
+- `findByOrganizationIdAndDeletedAtIsNull(Long organizationId, Pageable pageable)`
+- `findByIdAndOrganizationIdAndDeletedAtIsNull(ID id, Long organizationId)`
+- `countByOrganizationIdAndDeletedAtIsNull(Long organizationId)`
+
+**なぜ変更したか:**
+将来の水平シャーディングでは `organization_id` をシャードキーとして使う。
+リポジトリ層で `organization_id` 絞り込みを統一しておくことで、シャーディング導入時にルーティングロジックを
+一箇所（基底クラス）に追加するだけで全テナント対応が完了する設計とした。
+
 ### なぜこの設計か
 
-将来10万〜100万ユーザー規模でマイクロサービス分割が必要になったとき、
-ドメイン間のFK・CASCADE・クロストランザクションが残っていると分割が極めて困難になる。
-今のうちにドメイン境界を守り、分割コストを最小化しておくことが目的。
+**1000万ユーザー規模**で発生する具体的な問題を防ぐために段階的に設計を整備している。
+
+| 問題 | 対応原則 |
+|---|---|
+| クロスドメインFK でシャード分割不能 | 原則1・2（FK撤廃、CASCADE制限）|
+| 退会トリガーの連鎖削除で統計破壊 | 原則2・3・4（CASCADE制限、論理削除、匿名化）|
+| 巨大テーブルの B-Tree 破綻 | Phase 3（パーティショニング・アーカイブ）|
+| 単一 DB ノードの書き込み上限 | 原則6・7 + Phase 4（UUID・テナント設計・レプリカ）|
+| @Transactional 越境でデッドロック頻発 | 原則5（ドメイン内 @Transactional）|
+
+詳細な実装記録は `docs/architecture/db_scalability.md` を参照。
 
 ---
 
