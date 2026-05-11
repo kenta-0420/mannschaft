@@ -51,6 +51,54 @@ java -jar -Dspring.profiles.active=prod backend.jar
 | `MANNSCHAFT_HMAC_KEY` | HMAC 鍵 | 未設定で機能 OFF |
 | `JOB_QR_SIGNING_KID` | QR 署名鍵 ID | `v1` |
 
+#### リードレプリカ（読み取り分散 — Phase 4-D）
+
+MySQL の読み取り専用レプリカを用意した際に有効化する。**コードは実装済み・デフォルト無効。**
+
+| 環境変数 | 用途 |
+|---|---|
+| `DB_REPLICA_URL` | レプリカの JDBC URL（例: `jdbc:mysql://replica.xxxx.rds.amazonaws.com:3306/mannschaft?useSSL=true&serverTimezone=Asia/Tokyo`） |
+| `DB_REPLICA_USER` | レプリカ用 MySQL ユーザー名 |
+| `DB_REPLICA_PASSWORD` | レプリカ用 MySQL パスワード |
+
+有効化手順（`application-prod.yml` に追記してアプリ再起動）：
+
+```yaml
+app:
+  datasource:
+    replica:
+      enabled: true
+      jdbc-url: ${DB_REPLICA_URL}
+      username: ${DB_REPLICA_USER}
+      password: ${DB_REPLICA_PASSWORD}
+```
+
+有効化すると `@Transactional(readOnly = true)` の SELECT が自動的にレプリカへルーティングされる。
+
+#### アーカイブDB（監査ログ長期保存 — Phase 3-D）
+
+監査ログを専用の読み取り専用 RDS へ長期保存する際に有効化する。**コードは実装済み・デフォルト無効。**
+
+| 環境変数 | 用途 |
+|---|---|
+| `ARCHIVE_DB_URL` | アーカイブDB の JDBC URL（例: `jdbc:mysql://archive.xxxx.rds.amazonaws.com:3306/mannschaft_archive?useSSL=true&serverTimezone=Asia/Tokyo`） |
+| `ARCHIVE_DB_USER` | アーカイブDB 用 MySQL ユーザー名 |
+| `ARCHIVE_DB_PASSWORD` | アーカイブDB 用 MySQL パスワード |
+
+有効化手順（`application-prod.yml` に追記してアプリ再起動）：
+
+```yaml
+app:
+  archive:
+    db:
+      enabled: true
+      jdbc-url: ${ARCHIVE_DB_URL}
+      username: ${ARCHIVE_DB_USER}
+      password: ${ARCHIVE_DB_PASSWORD}
+```
+
+有効化すると `AuditLogArchiveBatchService` が R2 アップロード後にアーカイブDBへも INSERT するようになる。
+
 #### Cloudflare R2（ストレージ）
 
 | 環境変数 | 用途 |
@@ -151,6 +199,16 @@ JOB_QR_SIGNING_SECRET=__REPLACE__
 # MANNSCHAFT_APPLE_CLIENT_ID=
 # MANNSCHAFT_APPLE_CLIENT_SECRET=
 # MANNSCHAFT_STRIPE_SECRET_KEY=
+
+# ===== リードレプリカ（RDS レプリカを用意したら有効化） =====
+# DB_REPLICA_URL=jdbc:mysql://replica.xxxx.rds.amazonaws.com:3306/mannschaft?useSSL=true&serverTimezone=Asia/Tokyo
+# DB_REPLICA_USER=
+# DB_REPLICA_PASSWORD=
+
+# ===== アーカイブDB（監査ログ長期保存 RDS を用意したら有効化） =====
+# ARCHIVE_DB_URL=jdbc:mysql://archive.xxxx.rds.amazonaws.com:3306/mannschaft_archive?useSSL=true&serverTimezone=Asia/Tokyo
+# ARCHIVE_DB_USER=
+# ARCHIVE_DB_PASSWORD=
 ```
 
 **シークレット生成コマンド（Linux / macOS / WSL）**:
