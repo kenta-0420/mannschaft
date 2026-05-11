@@ -19,6 +19,8 @@ import type {
   DisclosureFormTemplate,
   DisclosureListMeta,
   DisclosureOutputFormat,
+  ExtendExpiryRequest,
+  ExtendExpiryResponse,
 } from '~/types/disclosure'
 
 /**
@@ -162,6 +164,28 @@ export function useDisclosureApi(organizationId: number) {
     return res.data
   }
 
+  /**
+   * 出力履歴の自動削除予定日（{@code expires_at}）を延長する（F09.14 Phase 3-E / 4-B、設計書 §5.7）。
+   *
+   * @param exportId       出力履歴 ID
+   * @param newExpiresAt   新しい自動削除予定日時（ISO-8601 LocalDateTime 文字列。例: "2026-12-31T23:59:00"）
+   * @returns 更新後の {@link DisclosureExport}
+   *
+   * バックエンド側でも検証されるが、過去日時 / 本日から 7 年超は呼び出し前に弾くこと。
+   * 422 で {@code DISCLOSURE_011} が返ると延長不可。
+   */
+  async function extendExpiry(
+    exportId: number,
+    newExpiresAt: string,
+  ): Promise<ExtendExpiryResponse> {
+    const body: ExtendExpiryRequest = { newExpiresAt }
+    const res = await api<{ data: DisclosureExport }>(
+      `${exportBase}/${exportId}/extend-expiry`,
+      { method: 'PATCH', body },
+    )
+    return res.data
+  }
+
   return {
     // テンプレート
     listTemplates,
@@ -177,5 +201,6 @@ export function useDisclosureApi(organizationId: number) {
     // 出力履歴
     listExports,
     getExportDownloadUrl,
+    extendExpiry,
   }
 }

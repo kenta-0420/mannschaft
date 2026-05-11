@@ -24,6 +24,34 @@ const organizationId = computed<number>(() => {
 
 const api = computed(() => useDisclosureApi(organizationId.value))
 
+// ADMIN のみ「保管延長」ボタンを表示する（バックエンドでも認可される）
+const { isAdmin, loadPermissions } = useRoleAccess('organization', organizationId)
+watch(
+  () => organizationId.value,
+  (id) => {
+    if (id > 0) loadPermissions()
+  },
+  { immediate: true },
+)
+
+// 保管期限延長ダイアログ制御
+const extendDialogOpen = ref(false)
+const extendTargetExport = ref<DisclosureExport | null>(null)
+
+function openExtendDialog(item: DisclosureExport) {
+  extendTargetExport.value = item
+  extendDialogOpen.value = true
+}
+
+function onExtended(updated: DisclosureExport) {
+  // 一覧の expiresAt を即時反映
+  const idx = exports_.value.findIndex(e => e.id === updated.id)
+  if (idx >= 0) {
+    const cur = exports_.value[idx]
+    if (cur) exports_.value[idx] = { ...cur, expiresAt: updated.expiresAt }
+  }
+}
+
 const exports_ = ref<DisclosureExport[]>([])
 const totalElements = ref(0)
 const loading = ref(false)
@@ -162,19 +190,44 @@ function formatSeverity(format: string): 'info' | 'success' | 'secondary' {
             <code class="text-xs">{{ shortSha(data.sha256) }}</code>
           </template>
         </Column>
+        <Column :header="t('disclosure.fields.expiresAt')">
+          <template #body="{ data }: { data: DisclosureExport }">
+            <span data-testid="disclosure-expires-at">{{ data.expiresAt ? formatDate(data.expiresAt) : '-' }}</span>
+          </template>
+        </Column>
         <Column :header="''">
           <template #body="{ data }: { data: DisclosureExport }">
-            <Button
-              icon="pi pi-download"
-              :label="t('disclosure.actions.download')"
-              size="small"
-              severity="primary"
-              :data-testid="`disclosure-download-${data.id}`"
-              @click="download(data)"
-            />
+            <div class="flex flex-wrap gap-2">
+              <Button
+                icon="pi pi-download"
+                :label="t('disclosure.actions.download')"
+                size="small"
+                severity="primary"
+                :data-testid="`disclosure-download-${data.id}`"
+                @click="download(data)"
+              />
+              <Button
+                v-if="isAdmin"
+                icon="pi pi-clock"
+                :label="t('disclosure.extend_expiry')"
+                size="small"
+                severity="secondary"
+                outlined
+                :data-testid="`disclosure-extend-expiry-${data.id}`"
+                @click="openExtendDialog(data)"
+              />
+            </div>
           </template>
         </Column>
       </DataTable>
+
+      <ExtendExpiryDialog
+        v-if="extendTargetExport"
+        v-model:open="extendDialogOpen"
+        :organization-id="organizationId"
+        :export="extendTargetExport"
+        @extended="onExtended"
+      />
 
       <Paginator
         v-if="totalElements > size"
