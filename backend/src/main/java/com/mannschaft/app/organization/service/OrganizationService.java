@@ -47,6 +47,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -134,7 +136,10 @@ public class OrganizationService {
 
     /**
      * 組織を取得する。
+     *
+     * <p>Phase 4-E: Valkey にて 10 分キャッシュ。更新・削除時に自動無効化される。</p>
      */
+    @Cacheable(value = "org-detail", key = "#orgId")
     public ApiResponse<OrganizationResponse> getOrganization(Long orgId) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
@@ -145,6 +150,7 @@ public class OrganizationService {
      * 組織を更新する。
      */
     @Transactional
+    @CacheEvict(value = "org-detail", key = "#orgId")
     public ApiResponse<OrganizationResponse> updateOrganization(Long orgId, UpdateOrganizationRequest req) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         checkNotArchived(org);
@@ -177,6 +183,7 @@ public class OrganizationService {
      */
     @Transactional
     // TODO: OrganizationドメインとRoleドメインをまたいでいる。将来はOrganizationDeletedEventで分離予定
+    @CacheEvict(value = "org-detail", key = "#orgId")
     public void deleteOrganization(Long orgId, Long userId) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         org.softDelete();
@@ -195,6 +202,7 @@ public class OrganizationService {
      * 組織をアーカイブする。
      */
     @Transactional
+    @CacheEvict(value = "org-detail", key = "#orgId")
     public void archiveOrganization(Long orgId) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         if (org.getArchivedAt() != null) {
