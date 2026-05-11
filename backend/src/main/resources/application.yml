@@ -243,6 +243,19 @@ mannschaft.system-log:
   ssr-flush-interval-ms: 300000
   internal-token: ${INTERNAL_LOG_TOKEN:dev-internal-token}
 
+# Phase 4-D — リードレプリカ自動ルーティング設定
+# app.datasource.replica.enabled=true のとき DataSourceConfig が有効化される。
+# デフォルト false のため既存テストへの影響はゼロ。
+# 本番でリードレプリカを有効化する場合は環境変数 DB_REPLICA_URL / DB_REPLICA_USER / DB_REPLICA_PASSWORD を設定し、
+# application-prod.yml（または環境変数）で app.datasource.replica.enabled=true に変更すること。
+app:
+  datasource:
+    replica:
+      enabled: false
+      # jdbc-url: ${DB_REPLICA_URL:${spring.datasource.url}}
+      # username: ${DB_REPLICA_USER:${spring.datasource.username}}
+      # password: ${DB_REPLICA_PASSWORD:${spring.datasource.password}}
+
 # F10.6 Phase 10-γ-② — MySQL DB サイズ監視設定
 # 設計書: docs/features/F10.6_error_monitoring.md §5.7
 # - MySQL データディレクトリは Docker 名前付きボリューム (mysql-data) でマウントされており
