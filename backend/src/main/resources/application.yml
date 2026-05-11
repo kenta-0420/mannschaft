@@ -255,6 +255,15 @@ app:
       # jdbc-url: ${DB_REPLICA_URL:${spring.datasource.url}}
       # username: ${DB_REPLICA_USER:${spring.datasource.username}}
       # password: ${DB_REPLICA_PASSWORD:${spring.datasource.password}}
+  archive:
+    db:
+      enabled: false  # 本番で ARCHIVE_DB_URL 設定時に true にする
+      # jdbc-url: ${ARCHIVE_DB_URL:}
+      # username: ${ARCHIVE_DB_USER:}
+      # password: ${ARCHIVE_DB_PASSWORD:}
+      # hikari:
+      #   maximum-pool-size: 5
+      #   read-only: true
 
 # F10.6 Phase 10-γ-② — MySQL DB サイズ監視設定
 # 設計書: docs/features/F10.6_error_monitoring.md §5.7
