@@ -24,6 +24,11 @@ import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.property.repository.PropertyWorkPackageRepository;
 import com.mannschaft.app.resident.repository.DwellingUnitRepository;
+import com.mannschaft.app.seal.StampTargetType;
+import com.mannschaft.app.seal.dto.StampVerifyResponse;
+import com.mannschaft.app.seal.entity.SealStampLogEntity;
+import com.mannschaft.app.seal.repository.SealStampLogRepository;
+import com.mannschaft.app.seal.service.SealStampService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -71,6 +76,8 @@ class DisclosureExportServiceTest {
     @Mock private DwellingUnitRepository dwellingUnitRepository;
     @Mock private PropertyWorkPackageRepository propertyWorkPackageRepository;
     @Mock private UserRepository userRepository;
+    @Mock private SealStampService sealStampService;
+    @Mock private SealStampLogRepository sealStampLogRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -84,7 +91,8 @@ class DisclosureExportServiceTest {
                 r2StorageService,
                 folderRepository, sharedFileRepository, sharedFileVersionRepository,
                 organizationRepository, dwellingUnitRepository,
-                propertyWorkPackageRepository, userRepository, objectMapper);
+                propertyWorkPackageRepository, userRepository, objectMapper,
+                sealStampService, sealStampLogRepository);
     }
 
     @Test
@@ -376,6 +384,184 @@ class DisclosureExportServiceTest {
         DisclosureExportResponse res = service.generateDownloadUrl(100L, 7L);
         assertThat(res.downloadUrl()).isEqualTo("https://r2/url");
         assertThat(res.sha256()).isEqualTo(expectedSha);
+    }
+
+    // ===========================================================================
+    // F09.14 Phase 4-A: F05.3 seal_stamp_logs 連携による改ざん検出多層化（§6.3）
+    // ===========================================================================
+
+    /** Phase 4-A 共通: SHA-256 と shared_file をモック設定し、データを返す。 */
+    private byte[] setupValidSha256Download(String fileKey,
+                                            DisclosureExportEntity entity) throws Exception {
+        byte[] data = "PDFCONTENT".getBytes();
+        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+        byte[] digest = md.digest(data);
+        StringBuilder sb = new StringBuilder();
+        for (byte b : digest) sb.append(String.format("%02x", b));
+        Field f = DisclosureExportEntity.class.getDeclaredField("outputSha256");
+        f.setAccessible(true);
+        f.set(entity, sb.toString());
+
+        when(exportRepository.findByIdAndDeletedAtIsNull(7L)).thenReturn(Optional.of(entity));
+
+        SharedFileEntity sf = SharedFileEntity.builder()
+                .folderId(50L).name("f.pdf").fileKey(fileKey)
+                .fileSize(10L).contentType("application/pdf").build();
+        when(sharedFileRepository.findById(999L)).thenReturn(Optional.of(sf));
+        when(r2StorageService.download(fileKey)).thenReturn(data);
+        lenient().when(r2StorageService.generateDownloadUrl(anyString(), any()))
+                .thenReturn("https://r2/url");
+        return data;
+    }
+
+    @Test
+    @DisplayName("Phase 4-A generateDownloadUrl(): 電子印鑑なし出力（circulationDocumentId=null）はSHA-256のみで成功")
+    void generateDownloadUrl_phase4a_noCirculation_success() throws Exception {
+        DisclosureExportEntity e = DisclosureExportEntity.builder()
+                .scopeType("ORGANIZATION").scopeId(100L)
+                .templateId(1L).templateCodeSnapshot("MLIT").templateVersionSnapshot("v1")
+                .outputFormat(DisclosureOutputFormat.PDF)
+                .sharedFileId(999L).requesterUserId(200L).dataSnapshot("{}")
+                // circulationDocumentId は明示的に未設定（null）
+                .build();
+        setEntityIdViaReflection(e, 7L);
+        setupValidSha256Download("files/ORGANIZATION/100/x.pdf", e);
+
+        DisclosureExportResponse res = service.generateDownloadUrl(100L, 7L);
+
+        assertThat(res.downloadUrl()).isEqualTo("https://r2/url");
+        // seal_stamp_logs の照合は呼ばれていないこと
+        verify(sealStampLogRepository, org.mockito.Mockito.never())
+                .findByTargetTypeAndTargetIdOrderByStampedAtDesc(any(), anyLong());
+    }
+
+    @Test
+    @DisplayName("Phase 4-A generateDownloadUrl(): 電子印鑑あり + 両 hash OK で成功")
+    void generateDownloadUrl_phase4a_withCirculation_bothValid() throws Exception {
+        DisclosureExportEntity e = DisclosureExportEntity.builder()
+                .scopeType("ORGANIZATION").scopeId(100L)
+                .templateId(1L).templateCodeSnapshot("MLIT").templateVersionSnapshot("v1")
+                .outputFormat(DisclosureOutputFormat.PDF)
+                .sharedFileId(999L).requesterUserId(200L).dataSnapshot("{}")
+                .circulationDocumentId(555L)
+                .build();
+        setEntityIdViaReflection(e, 7L);
+        setupValidSha256Download("files/ORGANIZATION/100/x.pdf", e);
+
+        SealStampLogEntity log1 = SealStampLogEntity.builder()
+                .userId(1L).sealId(11L).sealHashAtStamp("a".repeat(64))
+                .targetType(StampTargetType.CIRCULATION).targetId(555L)
+                .isRevoked(false).build();
+        Field idF = SealStampLogEntity.class.getDeclaredField("id");
+        idF.setAccessible(true);
+        idF.set(log1, 901L);
+
+        when(sealStampLogRepository.findByTargetTypeAndTargetIdOrderByStampedAtDesc(
+                StampTargetType.CIRCULATION, 555L))
+                .thenReturn(List.of(log1));
+        when(sealStampService.verifyStamp(901L))
+                .thenReturn(new StampVerifyResponse(901L, true, false, "OK"));
+
+        DisclosureExportResponse res = service.generateDownloadUrl(100L, 7L);
+
+        assertThat(res.downloadUrl()).isEqualTo("https://r2/url");
+        verify(sealStampService).verifyStamp(901L);
+    }
+
+    @Test
+    @DisplayName("Phase 4-A generateDownloadUrl(): 電子印鑑あり + output_sha256 不一致 → DISCLOSURE_010")
+    void generateDownloadUrl_phase4a_sha256MismatchEvenWithCirculation() throws Exception {
+        DisclosureExportEntity e = DisclosureExportEntity.builder()
+                .scopeType("ORGANIZATION").scopeId(100L)
+                .templateId(1L).templateCodeSnapshot("MLIT").templateVersionSnapshot("v1")
+                .outputFormat(DisclosureOutputFormat.PDF)
+                .sharedFileId(999L).requesterUserId(200L).dataSnapshot("{}")
+                .outputSha256("0".repeat(64))
+                .circulationDocumentId(555L)
+                .build();
+        setEntityIdViaReflection(e, 7L);
+        when(exportRepository.findByIdAndDeletedAtIsNull(7L)).thenReturn(Optional.of(e));
+
+        SharedFileEntity sf = SharedFileEntity.builder()
+                .folderId(50L).name("f.pdf").fileKey("files/ORGANIZATION/100/y.pdf")
+                .fileSize(10L).contentType("application/pdf").build();
+        when(sharedFileRepository.findById(999L)).thenReturn(Optional.of(sf));
+        when(r2StorageService.download("files/ORGANIZATION/100/y.pdf"))
+                .thenReturn("DIFFERENT".getBytes());
+
+        assertThatThrownBy(() -> service.generateDownloadUrl(100L, 7L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(DisclosureErrorCode.DISCLOSURE_010);
+        // SHA-256 NG で短絡。seal_stamp_logs は照合されない
+        verify(sealStampLogRepository, org.mockito.Mockito.never())
+                .findByTargetTypeAndTargetIdOrderByStampedAtDesc(any(), anyLong());
+    }
+
+    @Test
+    @DisplayName("Phase 4-A generateDownloadUrl(): 電子印鑑あり + seal_stamp_logs 不一致 → DISCLOSURE_010")
+    void generateDownloadUrl_phase4a_sealHashMismatch() throws Exception {
+        DisclosureExportEntity e = DisclosureExportEntity.builder()
+                .scopeType("ORGANIZATION").scopeId(100L)
+                .templateId(1L).templateCodeSnapshot("MLIT").templateVersionSnapshot("v1")
+                .outputFormat(DisclosureOutputFormat.PDF)
+                .sharedFileId(999L).requesterUserId(200L).dataSnapshot("{}")
+                .circulationDocumentId(555L)
+                .build();
+        setEntityIdViaReflection(e, 7L);
+        setupValidSha256Download("files/ORGANIZATION/100/x.pdf", e);
+
+        SealStampLogEntity log1 = SealStampLogEntity.builder()
+                .userId(1L).sealId(11L).sealHashAtStamp("a".repeat(64))
+                .targetType(StampTargetType.CIRCULATION).targetId(555L)
+                .isRevoked(false).build();
+        Field idF = SealStampLogEntity.class.getDeclaredField("id");
+        idF.setAccessible(true);
+        idF.set(log1, 901L);
+
+        when(sealStampLogRepository.findByTargetTypeAndTargetIdOrderByStampedAtDesc(
+                StampTargetType.CIRCULATION, 555L))
+                .thenReturn(List.of(log1));
+        // 印鑑が押印後に変更されたシナリオ
+        when(sealStampService.verifyStamp(901L))
+                .thenReturn(new StampVerifyResponse(901L, false, false, "印鑑が押印後に変更されています"));
+
+        assertThatThrownBy(() -> service.generateDownloadUrl(100L, 7L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(DisclosureErrorCode.DISCLOSURE_010);
+    }
+
+    @Test
+    @DisplayName("Phase 4-A generateDownloadUrl(): 取消済みの押印は照合スキップして成功する")
+    void generateDownloadUrl_phase4a_revokedStampSkipped() throws Exception {
+        DisclosureExportEntity e = DisclosureExportEntity.builder()
+                .scopeType("ORGANIZATION").scopeId(100L)
+                .templateId(1L).templateCodeSnapshot("MLIT").templateVersionSnapshot("v1")
+                .outputFormat(DisclosureOutputFormat.PDF)
+                .sharedFileId(999L).requesterUserId(200L).dataSnapshot("{}")
+                .circulationDocumentId(555L)
+                .build();
+        setEntityIdViaReflection(e, 7L);
+        setupValidSha256Download("files/ORGANIZATION/100/x.pdf", e);
+
+        SealStampLogEntity revoked = SealStampLogEntity.builder()
+                .userId(1L).sealId(11L).sealHashAtStamp("a".repeat(64))
+                .targetType(StampTargetType.CIRCULATION).targetId(555L)
+                .isRevoked(true).build();
+        Field idF = SealStampLogEntity.class.getDeclaredField("id");
+        idF.setAccessible(true);
+        idF.set(revoked, 902L);
+
+        when(sealStampLogRepository.findByTargetTypeAndTargetIdOrderByStampedAtDesc(
+                StampTargetType.CIRCULATION, 555L))
+                .thenReturn(List.of(revoked));
+
+        DisclosureExportResponse res = service.generateDownloadUrl(100L, 7L);
+
+        assertThat(res.downloadUrl()).isEqualTo("https://r2/url");
+        // 取消済はスキップ → verifyStamp は呼ばれない
+        verify(sealStampService, org.mockito.Mockito.never()).verifyStamp(anyLong());
     }
 
     // ----- ヘルパー -----

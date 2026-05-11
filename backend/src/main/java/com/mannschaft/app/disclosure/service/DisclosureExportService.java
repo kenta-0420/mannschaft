@@ -31,6 +31,11 @@ import com.mannschaft.app.property.entity.PropertyWorkPackageEntity;
 import com.mannschaft.app.property.repository.PropertyWorkPackageRepository;
 import com.mannschaft.app.resident.entity.DwellingUnitEntity;
 import com.mannschaft.app.resident.repository.DwellingUnitRepository;
+import com.mannschaft.app.seal.StampTargetType;
+import com.mannschaft.app.seal.dto.StampVerifyResponse;
+import com.mannschaft.app.seal.entity.SealStampLogEntity;
+import com.mannschaft.app.seal.repository.SealStampLogRepository;
+import com.mannschaft.app.seal.service.SealStampService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -113,6 +118,24 @@ public class DisclosureExportService {
     private final PropertyWorkPackageRepository propertyWorkPackageRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+
+    /**
+     * F05.3 押印検証サービス（Phase 4-A 改ざん検出多層化）。
+     * <p>seal ドメインへのクロスドメイン参照。{@code circulation_document_id} を介した
+     * 電子印鑑承認回覧（F05.2）で押印された出力ファイルについて、
+     * {@code seal_stamp_logs} の証跡ログと照合し改ざんを検出する。</p>
+     *
+     * <p>TODO: 将来イベント駆動化候補。本来はイベント連携 (例: {@code DocumentDownloadRequestedEvent})
+     * 経由で seal ドメインに検証を委譲し、結果を集約する形が望ましいが、
+     * Phase 4-A ではモノリス前提で直接呼出を採用する。</p>
+     */
+    private final SealStampService sealStampService;
+
+    /**
+     * F05.3 押印ログリポジトリ（Phase 4-A 改ざん検出多層化）。
+     * <p>TODO: 将来イベント駆動化候補。読込専用利用（{@code targetType=CIRCULATION} 検索のみ）。</p>
+     */
+    private final SealStampLogRepository sealStampLogRepository;
 
     // =========================================================================
     // 出力実行
@@ -314,9 +337,21 @@ public class DisclosureExportService {
     }
 
     /**
-     * presigned ダウンロード URL を発行する。設計書 §6.3 改ざん検出に従い、
-     * R2 から再 download → SHA-256 を再計算 → 保存値と比較し、不一致なら
-     * {@link DisclosureErrorCode#DISCLOSURE_010}（HTTP 410 相当）を投げる。
+     * presigned ダウンロード URL を発行する。設計書 §6.3 改ざん検出（Phase 4-A 多層化）に従い、
+     * 以下の 2 層検証を実施する。両層が PASS した場合のみ presigned URL を返す。
+     *
+     * <ol>
+     *   <li><strong>SHA-256 検証</strong>: R2 から再ダウンロードして {@code output_sha256} と比較。</li>
+     *   <li><strong>F05.3 seal_stamp_logs 検証</strong>（Phase 4-A 追加）:
+     *       {@code circulation_document_id} が NULL でない場合、当該回覧の押印ログ
+     *       ({@code targetType=CIRCULATION}) を取得し、{@link SealStampService#verifyStamp}
+     *       で印鑑ハッシュを照合する。1 件でもハッシュ不一致があれば NG。
+     *       取消済（{@code is_revoked=true}）はスキップする（押印取消は改ざんではない）。</li>
+     * </ol>
+     *
+     * <p><strong>AND 検証</strong>: 上記 2 層のいずれかが NG なら
+     * {@link DisclosureErrorCode#DISCLOSURE_010}（HTTP 503 相当）を投げる。
+     * {@code circulation_document_id} が NULL の場合（電子印鑑なし出力）は SHA-256 のみ検証。</p>
      */
     public DisclosureExportResponse generateDownloadUrl(Long scopeId, Long exportId) {
         DisclosureExportEntity entity = findExportOrThrow(exportId);
@@ -325,23 +360,8 @@ public class DisclosureExportService {
         SharedFileEntity sharedFile = sharedFileRepository.findById(entity.getSharedFileId())
                 .orElseThrow(() -> new BusinessException(DisclosureErrorCode.DISCLOSURE_001));
 
-        // 改ざん検出: R2 から再ダウンロードして SHA-256 を比較
-        if (entity.getOutputSha256() != null) {
-            try {
-                byte[] data = r2StorageService.download(sharedFile.getFileKey());
-                String actualSha = sha256Hex(data);
-                if (!actualSha.equals(entity.getOutputSha256())) {
-                    log.error("重説書 SHA-256 不一致（改ざんの可能性）: exportId={}, expected={}, actual={}",
-                            exportId, entity.getOutputSha256(), actualSha);
-                    throw new BusinessException(DisclosureErrorCode.DISCLOSURE_010);
-                }
-            } catch (BusinessException e) {
-                throw e;
-            } catch (Exception e) {
-                log.error("重説書ダウンロード時の SHA-256 検証失敗: exportId={}", exportId, e);
-                throw new BusinessException(DisclosureErrorCode.DISCLOSURE_010, e);
-            }
-        }
+        // 改ざん検出（2 層）: SHA-256 + F05.3 seal_stamp_logs
+        verifyOutputIntegrity(entity, sharedFile);
 
         String url = r2StorageService.generateDownloadUrl(sharedFile.getFileKey(), PRESIGN_TTL);
         LocalDateTime expiresAt = LocalDateTime.now().plus(PRESIGN_TTL);
@@ -365,6 +385,74 @@ public class DisclosureExportService {
                 entity.getExpiresAt(),
                 entity.getCreatedAt(),
                 List.of());
+    }
+
+    /**
+     * 出力ファイルの改ざん検出（2 層検証、設計書 §6.3 / Phase 4-A）。
+     *
+     * <p>第 1 層: R2 からダウンロードしたファイルの SHA-256 を再計算し、
+     * {@code disclosure_exports.output_sha256} と比較する。</p>
+     *
+     * <p>第 2 層: {@code circulation_document_id} が NULL でない場合、
+     * 当該回覧（{@code targetType=CIRCULATION}）に紐づく {@code seal_stamp_logs}
+     * 全件について、{@link SealStampService#verifyStamp} で印鑑ハッシュ
+     * （{@code seal_hash_at_stamp} と現在の {@code electronic_seals.seal_hash}）の
+     * 一致を確認する。取消済（{@code is_revoked=true}）はスキップする。</p>
+     *
+     * <p>AND 検証: いずれかの層で NG が出れば {@link DisclosureErrorCode#DISCLOSURE_010}
+     * （HTTP 503 相当）を投げる。</p>
+     *
+     * @param entity     対象の出力履歴エンティティ
+     * @param sharedFile R2 上の実体ファイルメタ
+     * @throws BusinessException {@link DisclosureErrorCode#DISCLOSURE_010} 改ざん検出
+     */
+    private void verifyOutputIntegrity(DisclosureExportEntity entity, SharedFileEntity sharedFile) {
+        // 第 1 層: SHA-256 検証
+        if (entity.getOutputSha256() != null) {
+            try {
+                byte[] data = r2StorageService.download(sharedFile.getFileKey());
+                String actualSha = sha256Hex(data);
+                if (!actualSha.equals(entity.getOutputSha256())) {
+                    log.error("重説書 SHA-256 不一致（改ざんの可能性）: exportId={}, expected={}, actual={}",
+                            entity.getId(), entity.getOutputSha256(), actualSha);
+                    throw new BusinessException(DisclosureErrorCode.DISCLOSURE_010);
+                }
+            } catch (BusinessException e) {
+                throw e;
+            } catch (Exception e) {
+                log.error("重説書ダウンロード時の SHA-256 検証失敗: exportId={}", entity.getId(), e);
+                throw new BusinessException(DisclosureErrorCode.DISCLOSURE_010, e);
+            }
+        }
+
+        // 第 2 層: F05.3 seal_stamp_logs 検証（電子印鑑承認回覧あり時のみ）
+        Long circulationId = entity.getCirculationDocumentId();
+        if (circulationId == null) {
+            return;
+        }
+        try {
+            List<SealStampLogEntity> stampLogs = sealStampLogRepository
+                    .findByTargetTypeAndTargetIdOrderByStampedAtDesc(
+                            StampTargetType.CIRCULATION, circulationId);
+            for (SealStampLogEntity stampLog : stampLogs) {
+                // 取消済の押印は照合対象外（取消は改ざんではなく業務操作）
+                if (stampLog.isAlreadyRevoked()) {
+                    continue;
+                }
+                StampVerifyResponse verify = sealStampService.verifyStamp(stampLog.getId());
+                if (!Boolean.TRUE.equals(verify.getIsValid())) {
+                    log.error("重説書 seal_stamp_logs 検証 NG（改ざんの可能性）: exportId={}, stampLogId={}, message={}",
+                            entity.getId(), stampLog.getId(), verify.getMessage());
+                    throw new BusinessException(DisclosureErrorCode.DISCLOSURE_010);
+                }
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("重説書ダウンロード時の seal_stamp_logs 検証失敗: exportId={}, circulationId={}",
+                    entity.getId(), circulationId, e);
+            throw new BusinessException(DisclosureErrorCode.DISCLOSURE_010, e);
+        }
     }
 
     DisclosureExportEntity findExportOrThrow(Long exportId) {
