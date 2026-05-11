@@ -27,4 +27,15 @@ public interface MemberSkillRepository extends JpaRepository<MemberSkillEntity, 
      * 指定日以前に有効期限が切れたACTIVE資格を取得する（期限切れ自動更新バッチ用）。
      */
     List<MemberSkillEntity> findByExpiresAtBeforeAndStatusAndDeletedAtIsNull(LocalDate date, SkillStatus status);
+
+    /**
+     * スコープに紐づく全スキル（未削除）を取得する。
+     */
+    List<MemberSkillEntity> findByScopeTypeAndScopeIdAndDeletedAtIsNull(String scopeType, Long scopeId);
+
+    /**
+     * スコープに紐づく指定ステータスのスキル（未削除）を取得する（マトリクス表示用）。
+     */
+    List<MemberSkillEntity> findByScopeTypeAndScopeIdAndStatusInAndDeletedAtIsNull(
+            String scopeType, Long scopeId, List<SkillStatus> statuses);
 }

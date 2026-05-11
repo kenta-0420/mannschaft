@@ -94,6 +94,11 @@ public interface TimelineDigestRepository extends JpaRepository<TimelineDigestEn
     Optional<TimelineDigestEntity> findByBlogPostId(Long blogPostId);
 
     /**
+     * ステータス別のダイジェスト件数を返す（利用量統計用）。
+     */
+    long countByStatus(DigestStatus status);
+
+    /**
      * 同一スコープ・同一 schedule_type の直前の PUBLISHED ダイジェストを取得する（差分ハイライト用）。
      */
     @Query("SELECT d FROM TimelineDigestEntity d " +

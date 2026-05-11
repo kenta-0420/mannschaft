@@ -48,12 +48,9 @@ public class SkillCsvService {
         log.info("スキルCSVエクスポート開始: scope={}/{}, requestedBy={}", scopeType, scopeId, requestedBy);
 
         try {
-            // 1. スコープ内の全 member_skills 取得（deleted_at IS NULL）
-            List<MemberSkillEntity> skills = memberSkillRepository.findAll().stream()
-                    .filter(s -> s.getScopeType().equals(scopeType)
-                            && s.getScopeId().equals(scopeId)
-                            && s.getDeletedAt() == null)
-                    .toList();
+            // 1. スコープ内の全 member_skills 取得（deleted_at IS NULL）— DB側でフィルタ
+            List<MemberSkillEntity> skills = memberSkillRepository
+                    .findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId);
 
             // 2. ユーザー表示名を一括解決（N+1 回避）
             List<Long> userIds = skills.stream().map(MemberSkillEntity::getUserId).distinct().toList();
