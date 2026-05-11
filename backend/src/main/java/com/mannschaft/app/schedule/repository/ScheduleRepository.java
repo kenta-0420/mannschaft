@@ -1,8 +1,8 @@
 package com.mannschaft.app.schedule.repository;
 
+import com.mannschaft.app.common.repository.AbstractTenantAwareRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.visibility.ScheduleVisibilityProjection;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,7 +14,7 @@ import java.util.Optional;
 /**
  * スケジュールリポジトリ。
  */
-public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> {
+public interface ScheduleRepository extends AbstractTenantAwareRepository<ScheduleEntity, Long> {
 
     /**
      * チームスコープのスケジュールを期間指定で取得する。
