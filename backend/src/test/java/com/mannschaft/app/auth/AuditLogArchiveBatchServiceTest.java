@@ -14,9 +14,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.SliceImpl;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
@@ -25,7 +25,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -41,6 +40,9 @@ class AuditLogArchiveBatchServiceTest {
 
     @Mock
     private StorageService storageService;
+
+    @Mock
+    private JdbcTemplate jdbcTemplate;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -69,11 +71,12 @@ class AuditLogArchiveBatchServiceTest {
             // then
             verify(storageService, never()).upload(any(), any(byte[].class), any());
             verify(auditLogRepository, never()).deleteArchivedLogs(any(), any());
+            verify(jdbcTemplate, never()).execute(any(String.class));
         }
 
         @Test
-        @DisplayName("対象あり_R2にアップロードしてDB削除される")
-        void 対象あり_R2にアップロードしてDB削除される() {
+        @DisplayName("対象あり_R2にアップロードしてパーティションDROPされる")
+        void 対象あり_R2にアップロードしてパーティションDROPされる() {
             // given
             AuditLogEntity log1 = createAuditLog(1L, LocalDateTime.of(2024, 1, 15, 10, 0));
             AuditLogEntity log2 = createAuditLog(2L, LocalDateTime.of(2024, 1, 20, 12, 0));
@@ -81,7 +84,6 @@ class AuditLogArchiveBatchServiceTest {
 
             when(auditLogRepository.findOlderThan(any(), any()))
                     .thenReturn(new SliceImpl<>(List.of(log1, log2, log3), Pageable.unpaged(), false));
-            when(auditLogRepository.deleteArchivedLogs(any(), any())).thenReturn(3);
 
             // when
             sut.archiveOldLogs();
@@ -97,8 +99,9 @@ class AuditLogArchiveBatchServiceTest {
                     "audit-archive/2024/02/audit-2024-02.json"
             );
 
-            // DB削除が最大 ID で呼ばれる
-            verify(auditLogRepository).deleteArchivedLogs(eq(3L), any());
+            // パーティション DROP が月ごとに呼ばれる
+            verify(jdbcTemplate).execute(contains("p_2024_01"));
+            verify(jdbcTemplate).execute(contains("p_2024_02"));
         }
 
         @Test
@@ -115,8 +118,9 @@ class AuditLogArchiveBatchServiceTest {
             // when: 例外はキャッチされてバッチが完了する（ログのみ）
             sut.archiveOldLogs();
 
-            // then: DB削除は実行されない
+            // then: パーティション DROP は実行されない
             verify(auditLogRepository, never()).deleteArchivedLogs(any(), any());
+            verify(jdbcTemplate, never()).execute(any(String.class));
         }
     }
 

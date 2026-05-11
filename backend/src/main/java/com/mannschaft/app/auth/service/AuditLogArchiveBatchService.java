@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +61,7 @@ public class AuditLogArchiveBatchService {
     private final AuditLogRepository auditLogRepository;
     private final StorageService storageService;
     private final ObjectMapper objectMapper;
+    private final JdbcTemplate jdbcTemplate;
 
     @Scheduled(cron = "0 0 2 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "auditLogArchiveBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")
@@ -69,12 +71,10 @@ public class AuditLogArchiveBatchService {
 
         long totalArchived = 0;
         long totalDeleted = 0;
-        Long maxArchivedId = null;
 
         try {
             // グループ化用バッファ: 年月 → ログリスト
             Map<YearMonth, List<AuditLogEntity>> groupedByMonth = new TreeMap<>();
-            Long lastMaxId = null;
 
             boolean hasMore = true;
             while (hasMore) {
@@ -90,9 +90,6 @@ public class AuditLogArchiveBatchService {
                 for (AuditLogEntity entry : logs) {
                     YearMonth ym = YearMonth.from(entry.getCreatedAt().toLocalDate());
                     groupedByMonth.computeIfAbsent(ym, k -> new ArrayList<>()).add(entry);
-                    if (lastMaxId == null || entry.getId() > lastMaxId) {
-                        lastMaxId = entry.getId();
-                    }
                 }
 
                 totalArchived += logs.size();
@@ -118,11 +115,10 @@ public class AuditLogArchiveBatchService {
                 log.info("[AuditLogArchiveBatch] R2アップロード完了: {}, {}件", ym, monthLogs.size());
             }
 
-            maxArchivedId = lastMaxId;
-
-            // R2 アップロード完了後に DB から物理削除
-            if (maxArchivedId != null) {
-                totalDeleted = deleteArchivedFromDb(maxArchivedId, threshold);
+            // R2 アップロード完了後、対象年月のパーティションを DROP（瞬時削除）
+            for (Map.Entry<YearMonth, List<AuditLogEntity>> monthEntry : groupedByMonth.entrySet()) {
+                dropPartition(monthEntry.getKey());
+                totalDeleted += monthEntry.getValue().size();
             }
 
             log.info("[AuditLogArchiveBatch] アーカイブ完了: アーカイブ={}件, DB削除={}件",
@@ -164,7 +160,8 @@ public class AuditLogArchiveBatchService {
     }
 
     /**
-     * アーカイブ済みのログを DB から物理削除する。
+     * アーカイブ済みのログを DB から物理削除する（パーティション DROP の代替手段）。
+     * パーティション導入後は通常 {@link #dropPartition(YearMonth)} を使用する。
      *
      * @param maxId     削除対象の最大 ID
      * @param threshold 基準日時（二重チェック用）
@@ -173,6 +170,25 @@ public class AuditLogArchiveBatchService {
     @Transactional
     public int deleteArchivedFromDb(Long maxId, LocalDateTime threshold) {
         return auditLogRepository.deleteArchivedLogs(maxId, threshold);
+    }
+
+    /**
+     * アーカイブ完了後、指定年月のパーティションを DROP する（瞬時削除）。
+     *
+     * <p>パーティション名の形式: {@code p_YYYY_MM}（例: p_2024_01）</p>
+     * <p>p_future パーティションは絶対に DROP しない。</p>
+     *
+     * @param ym 対象年月
+     */
+    public void dropPartition(YearMonth ym) {
+        String partitionName = String.format("p_%d_%02d", ym.getYear(), ym.getMonthValue());
+        if ("p_future".equals(partitionName)) {
+            log.warn("[AuditLogArchiveBatch] p_future パーティションのDROPはスキップします");
+            return;
+        }
+        String sql = "ALTER TABLE audit_logs DROP PARTITION " + partitionName;
+        jdbcTemplate.execute(sql);
+        log.info("[AuditLogArchiveBatch] パーティションDROP完了: {}", partitionName);
     }
 
     /**
