@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -74,6 +75,23 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
      */
     Page<NotificationEntity> findByScopeTypeAndScopeIdAndIsReadOrderByCreatedAtDesc(
             String scopeType, Long scopeId, Boolean isRead, Pageable pageable);
+
+    /**
+     * 組織に紐づく通知一覧を取得する（テナント絞り込み用）。
+     *
+     * @param organizationId 組織ID
+     * @param userId         ユーザーID
+     * @return 通知エンティティのリスト
+     */
+    List<NotificationEntity> findByOrganizationIdAndUserId(Long organizationId, Long userId);
+
+    /**
+     * 組織の通知数を返す（シャーディングキー確認用）。
+     *
+     * @param organizationId 組織ID
+     * @return 通知件数
+     */
+    long countByOrganizationId(Long organizationId);
 
     /**
      * 指定ユーザー向けに、同一の notification_type / source_type / source_id の通知が

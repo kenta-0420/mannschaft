@@ -506,6 +506,73 @@ class NotificationServiceTest {
     }
 
     // ========================================
+    // createNotification（organizationId あり版）
+    // ========================================
+
+    @Nested
+    @DisplayName("createNotification_organizationId")
+    class CreateNotificationWithOrganizationId {
+
+        @Test
+        @DisplayName("organizationId あり_通知が組織IDつきで保存される")
+        void organizationIdあり_通知が組織IDつきで保存される() {
+            // Given
+            Long organizationId = 99L;
+            given(notificationRepository.save(any(NotificationEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            NotificationEntity result = notificationService.createNotification(
+                    USER_ID, "ORG_ANNOUNCEMENT", NotificationPriority.NORMAL,
+                    "組織からのお知らせ", "本文テスト", "ORGANIZATION", 99L,
+                    NotificationScopeType.ORGANIZATION, 99L, "/orgs/99/announcements", 3L,
+                    organizationId);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getOrganizationId()).isEqualTo(organizationId);
+            assertThat(result.getUserId()).isEqualTo(USER_ID);
+            verify(notificationRepository).save(any(NotificationEntity.class));
+        }
+
+        @Test
+        @DisplayName("organizationId なし_通知が保存される（後方互換）")
+        void organizationIdなし_通知が保存される後方互換() {
+            // Given
+            given(notificationRepository.save(any(NotificationEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // When（organizationId を受け取らない既存オーバーロードを呼ぶ）
+            NotificationEntity result = notificationService.createNotification(
+                    USER_ID, "SCHEDULE_REMINDER", NotificationPriority.NORMAL,
+                    "リマインド", "出欠未回答です", "SCHEDULE", 10L,
+                    NotificationScopeType.TEAM, 5L, "/schedules/10", 2L);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getOrganizationId()).isNull();
+            verify(notificationRepository).save(any(NotificationEntity.class));
+        }
+
+        @Test
+        @DisplayName("organizationId あり_visibilityDeny_通知作成スキップ")
+        void organizationIdあり_visibilityDeny_通知作成スキップ() {
+            // Given（visibility 拒否）
+            given(visibilityChecker.canView(any(ReferenceType.class), any(), any())).willReturn(false);
+
+            // When
+            NotificationEntity result = notificationService.createNotification(
+                    USER_ID, "ORG_UPDATE", NotificationPriority.LOW,
+                    "組織更新", "本文", "ORGANIZATION", 99L,
+                    NotificationScopeType.ORGANIZATION, 99L, "/orgs/99", 3L,
+                    99L);
+
+            // Then
+            assertThat(result).isNull();
+        }
+    }
+
+    // ========================================
     // getStats
     // ========================================
 
