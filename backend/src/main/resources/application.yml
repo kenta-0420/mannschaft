@@ -283,3 +283,17 @@ mannschaft.disk-monitor:
   max-gb: ${MYSQL_MAX_SIZE_GB:10.0}
   warn-threshold: 0.75
   error-threshold: 0.90
+
+# F02.10 個人ダッシュボード天気ウィジェット — WeatherAPI.com クライアント設定
+# 設計書: docs/features/F02.10_weather_widget.md §3 / §7.3 / §7.3.1 / §8
+# - base-url は SSRF 対策のためここで固定値として記述する（環境変数で上書きしない）
+# - api-key は環境変数 WEATHER_API_KEY から注入する（リポジトリにコミットしない）
+# - timeout-ms は WeatherAPI.com 応答タイムアウト（既定 3 秒、超過時はリトライ対象）
+# - cache-ttl-seconds は通常 TTL（1 時間）、stale-ttl-seconds は障害時延命 TTL（6 時間）
+weather:
+  api:
+    base-url: https://api.weatherapi.com/v1
+    api-key: ${WEATHER_API_KEY:}
+    timeout-ms: 3000
+    cache-ttl-seconds: 3600
+    stale-ttl-seconds: 21600
