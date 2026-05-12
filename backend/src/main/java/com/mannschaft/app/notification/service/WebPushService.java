@@ -145,8 +145,9 @@ public class WebPushService {
 
     /**
      * 実際の HTTP Push 送信を行い、レスポンスのステータスコードを返す。
+     * package-private: テストで Mockito spy による差し替えを許容するために可視性を緩める。
      */
-    private int doSend(PushSubscriptionEntity subscription, String jsonPayload) throws Exception {
+    int doSend(PushSubscriptionEntity subscription, String jsonPayload) throws Exception {
         Keys keys = new Keys(subscription.getP256dhKey(), subscription.getAuthKey());
         Subscription webPushSubscription = new Subscription(subscription.getEndpoint(), keys);
         Notification notification = new Notification(webPushSubscription, jsonPayload);

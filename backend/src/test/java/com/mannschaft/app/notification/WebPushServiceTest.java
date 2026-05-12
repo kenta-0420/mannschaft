@@ -4,32 +4,28 @@ import com.mannschaft.app.notification.config.VapidConfig;
 import com.mannschaft.app.notification.entity.PushSubscriptionEntity;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
 import com.mannschaft.app.notification.service.WebPushService;
-import nl.martijndwars.webpush.Notification;
-import nl.martijndwars.webpush.PushService;
-import org.apache.http.HttpResponse;
-import org.apache.http.ProtocolVersion;
-import org.apache.http.StatusLine;
-import org.apache.http.message.BasicStatusLine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
  * {@link WebPushService} の単体テスト。
- * PushService をモック化して HTTP Push 送信ロジックを検証する。
+ * doSend を Mockito spy で差し替え、Notification 生成の EC 暗号依存を排除して
+ * ステータスコード別の分岐ロジック・リトライ・削除処理を検証する。
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("WebPushService 単体テスト")
 class WebPushServiceTest {
 
@@ -39,28 +35,24 @@ class WebPushServiceTest {
     @Mock
     private PushSubscriptionRepository pushSubscriptionRepository;
 
-    @Mock
-    private PushService mockPushService;
-
-    @Mock
-    private HttpResponse mockHttpResponse;
-
     private WebPushService webPushService;
 
     private PushSubscriptionEntity buildSubscription() {
         return PushSubscriptionEntity.builder()
                 .userId(1L)
                 .endpoint("https://fcm.googleapis.com/fcm/send/test-endpoint-123456789")
-                .p256dhKey("BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4=")
-                .authKey("BTBZMqHH6r4Tts7J_aSIgg==")
+                .p256dhKey("dummy-p256dh")
+                .authKey("dummy-auth")
                 .build();
     }
 
     @BeforeEach
     void setUp() {
-        webPushService = new WebPushService(vapidConfig, pushSubscriptionRepository);
-        // PushService のモックを直接注入（@PostConstruct をバイパス）
-        ReflectionTestUtils.setField(webPushService, "pushService", mockPushService);
+        WebPushService base = new WebPushService(vapidConfig, pushSubscriptionRepository);
+        // pushService に非 null を設定して「VAPID 設定済み」状態にする
+        ReflectionTestUtils.setField(base, "pushService", new Object());
+        // spy で doSend を差し替え可能にする（EC 暗号依存を排除）
+        webPushService = spy(base);
     }
 
     @Nested
@@ -70,18 +62,12 @@ class WebPushServiceTest {
         @Test
         @DisplayName("201 が返れば送信成功としてそのまま終了する")
         void sendPushNotification_returns201_success() throws Exception {
-            // Arrange
-            StatusLine statusLine = new BasicStatusLine(new ProtocolVersion("HTTP", 1, 1), 201, "Created");
-            given(mockHttpResponse.getStatusLine()).willReturn(statusLine);
-            given(mockPushService.send(any(Notification.class))).willReturn(mockHttpResponse);
-
+            doReturn(201).when(webPushService).doSend(any(PushSubscriptionEntity.class), anyString());
             PushSubscriptionEntity subscription = buildSubscription();
 
-            // Act
             webPushService.sendPushNotification(subscription, "{\"type\":\"TEST\"}");
 
-            // Assert
-            verify(mockPushService, times(1)).send(any(Notification.class));
+            verify(webPushService, times(1)).doSend(any(PushSubscriptionEntity.class), anyString());
             verify(pushSubscriptionRepository, never()).deleteByEndpoint(any());
         }
     }
@@ -93,37 +79,23 @@ class WebPushServiceTest {
         @Test
         @DisplayName("410 が返れば購読を DB から削除する")
         void sendPushNotification_returns410_deletesSubscription() throws Exception {
-            // Arrange
-            StatusLine statusLine = new BasicStatusLine(new ProtocolVersion("HTTP", 1, 1), 410, "Gone");
-            given(mockHttpResponse.getStatusLine()).willReturn(statusLine);
-            given(mockPushService.send(any(Notification.class))).willReturn(mockHttpResponse);
-
             PushSubscriptionEntity subscription = buildSubscription();
+            doReturn(410).when(webPushService).doSend(any(PushSubscriptionEntity.class), anyString());
 
-            // Act
             webPushService.sendPushNotification(subscription, "{\"type\":\"TEST\"}");
 
-            // Assert
-            verify(mockPushService, times(1)).send(any(Notification.class));
-            ArgumentCaptor<String> endpointCaptor = ArgumentCaptor.forClass(String.class);
-            verify(pushSubscriptionRepository).deleteByEndpoint(endpointCaptor.capture());
-            assert endpointCaptor.getValue().equals(subscription.getEndpoint());
+            verify(webPushService, times(1)).doSend(any(PushSubscriptionEntity.class), anyString());
+            verify(pushSubscriptionRepository).deleteByEndpoint(subscription.getEndpoint());
         }
 
         @Test
         @DisplayName("404 が返れば購読を DB から削除する")
         void sendPushNotification_returns404_deletesSubscription() throws Exception {
-            // Arrange
-            StatusLine statusLine = new BasicStatusLine(new ProtocolVersion("HTTP", 1, 1), 404, "Not Found");
-            given(mockHttpResponse.getStatusLine()).willReturn(statusLine);
-            given(mockPushService.send(any(Notification.class))).willReturn(mockHttpResponse);
-
             PushSubscriptionEntity subscription = buildSubscription();
+            doReturn(404).when(webPushService).doSend(any(PushSubscriptionEntity.class), anyString());
 
-            // Act
             webPushService.sendPushNotification(subscription, "{\"type\":\"TEST\"}");
 
-            // Assert
             verify(pushSubscriptionRepository).deleteByEndpoint(subscription.getEndpoint());
         }
     }
@@ -135,43 +107,29 @@ class WebPushServiceTest {
         @Test
         @DisplayName("5xx が返れば最大3回リトライしてすべて失敗したら諦める")
         void sendPushNotification_returns500_retriesAndGivesUp() throws Exception {
-            // Arrange
-            StatusLine statusLine500 = new BasicStatusLine(new ProtocolVersion("HTTP", 1, 1), 500, "Internal Server Error");
-            given(mockHttpResponse.getStatusLine()).willReturn(statusLine500);
-            // send を何度呼んでも 500 を返す
-            given(mockPushService.send(any(Notification.class))).willReturn(mockHttpResponse);
+            doReturn(500).when(webPushService).doSend(any(PushSubscriptionEntity.class), anyString());
+            // BACKOFF_DELAYS_MS は non-final なので setField で置換可能
+            ReflectionTestUtils.setField(WebPushService.class, "BACKOFF_DELAYS_MS", new long[]{0L, 0L, 0L});
 
-            PushSubscriptionEntity subscription = buildSubscription();
+            webPushService.sendPushNotification(buildSubscription(), "{\"type\":\"TEST\"}");
 
-            // WebPushService の BACKOFF_DELAYS_MS を 0 に置き換えてテストを高速化
-            ReflectionTestUtils.setField(WebPushService.class, "BACKOFF_DELAYS_MS",
-                    new long[]{0L, 0L, 0L});
-
-            // Act
-            webPushService.sendPushNotification(subscription, "{\"type\":\"TEST\"}");
-
-            // Assert: 初回 + 最大3回リトライ = 合計4回
-            verify(mockPushService, times(4)).send(any(Notification.class));
+            // 初回 + 最大3回リトライ = 合計4回
+            verify(webPushService, times(4)).doSend(any(PushSubscriptionEntity.class), anyString());
             verify(pushSubscriptionRepository, never()).deleteByEndpoint(any());
         }
 
         @Test
         @DisplayName("例外が発生した場合もリトライして最終的に諦める")
         void sendPushNotification_throwsException_retriesAndGivesUp() throws Exception {
-            // Arrange
-            given(mockPushService.send(any(Notification.class)))
-                    .willThrow(new RuntimeException("接続タイムアウト"));
+            doThrow(new RuntimeException("接続タイムアウト"))
+                    .when(webPushService).doSend(any(PushSubscriptionEntity.class), anyString());
+            ReflectionTestUtils.setField(WebPushService.class, "BACKOFF_DELAYS_MS", new long[]{0L, 0L, 0L});
 
-            PushSubscriptionEntity subscription = buildSubscription();
+            // 例外が外に漏れないことも確認
+            webPushService.sendPushNotification(buildSubscription(), "{\"type\":\"TEST\"}");
 
-            ReflectionTestUtils.setField(WebPushService.class, "BACKOFF_DELAYS_MS",
-                    new long[]{0L, 0L, 0L});
-
-            // Act（例外が外に漏れないことも確認）
-            webPushService.sendPushNotification(subscription, "{\"type\":\"TEST\"}");
-
-            // Assert: 初回 + 最大3回リトライ = 合計4回
-            verify(mockPushService, times(4)).send(any(Notification.class));
+            // 初回 + 最大3回リトライ = 合計4回
+            verify(webPushService, times(4)).doSend(any(PushSubscriptionEntity.class), anyString());
         }
     }
 
@@ -180,17 +138,14 @@ class WebPushServiceTest {
     class VapidNotConfiguredCase {
 
         @Test
-        @DisplayName("pushService が null の場合はスキップして PushService を呼ばない")
+        @DisplayName("pushService が null の場合はスキップして doSend を呼ばない")
         void sendPushNotification_pushServiceNull_skips() {
-            // Arrange: pushService を null に設定
             ReflectionTestUtils.setField(webPushService, "pushService", null);
             PushSubscriptionEntity subscription = buildSubscription();
 
-            // Act
             webPushService.sendPushNotification(subscription, "{\"type\":\"TEST\"}");
 
-            // Assert
-            verifyNoInteractions(mockPushService);
+            verify(webPushService, never()).doSend(any(PushSubscriptionEntity.class), anyString());
             verifyNoInteractions(pushSubscriptionRepository);
         }
     }
