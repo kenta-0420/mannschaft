@@ -144,6 +144,12 @@ dependencies {
 
     // === HTML サニタイズ（F02.5 publish-daily extra_comment 用。将来 F04.1 統合検討） ===
     implementation("org.jsoup:jsoup:1.18.1")
+
+    // === F04.3 PWA Push: VAPID署名 + Web Push HTTP送信 ===
+    // web-push-java: VAPID鍵ペア署名・暗号化ペイロード送信の実装ライブラリ
+    // bcprov: BouncyCastle暗号プロバイダー（web-push-javaが内部で使用するEC鍵操作の依存）
+    implementation("nl.martijndwars:web-push:5.1.1")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
