@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.PaymentStatus;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
@@ -26,6 +27,8 @@ public class StripeWebhookService {
     private final MemberPaymentRepository memberPaymentRepository;
     private final PaymentItemService paymentItemService;
     private final StripePaymentProvider stripePaymentProvider;
+    // TODO: notificationドメイン → paymentドメインの依存。将来はWebhookEventで分離予定
+    private final NotificationCreditCheckoutService notificationCreditCheckoutService;
 
     /**
      * Stripe Webhook を処理する。
@@ -47,12 +50,23 @@ public class StripeWebhookService {
             case "charge.refunded" -> handleChargeRefunded(event);
             default -> log.info("未対応の Webhook イベント: type={}", event.type());
         }
+
     }
 
     /**
      * checkout.session.completed を処理する。
+     *
+     * <p>F09.13: {@code notificationCreditPurchaseId} が含まれる場合は通知クレジット購入として
+     * {@link NotificationCreditCheckoutService#handlePurchaseCompleted} に委譲する。
+     * それ以外は通常の会員費支払いとして処理する。</p>
      */
     private void handleCheckoutCompleted(StripePaymentProvider.WebhookEventInfo event) {
+        // F09.13: 通知クレジット購入の場合は専用サービスへ委譲
+        if (event.notificationCreditPurchaseId() != null) {
+            notificationCreditCheckoutService.handlePurchaseCompleted(event);
+            return;
+        }
+
         if (event.memberPaymentId() == null) {
             log.warn("memberPaymentId が metadata に含まれていません");
             return;

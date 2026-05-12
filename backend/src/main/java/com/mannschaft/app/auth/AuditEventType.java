@@ -115,7 +115,15 @@ public enum AuditEventType {
     // F08.8 Phase 1 案5: 修繕計画項目 CRUD
     PLAN_ITEM_CREATED(AuditEventCategory.REPAIR_PLAN),
     PLAN_ITEM_UPDATED(AuditEventCategory.REPAIR_PLAN),
-    PLAN_ITEM_DELETED(AuditEventCategory.REPAIR_PLAN);
+    PLAN_ITEM_DELETED(AuditEventCategory.REPAIR_PLAN),
+
+    // ─── NOTIFICATION_CREDIT (F09.13+) ────────────────────────
+    /** 通知クレジット購入完了 */
+    NOTIFICATION_CREDIT_PURCHASED(AuditEventCategory.PAYMENT),
+    /** 通知クレジット有効期限失効 */
+    NOTIFICATION_CREDIT_EXPIRED(AuditEventCategory.PAYMENT),
+    /** 通知クレジット残高低下警告 */
+    NOTIFICATION_CREDIT_LOW_BALANCE(AuditEventCategory.PAYMENT);
 
     private final AuditEventCategory category;
 }
