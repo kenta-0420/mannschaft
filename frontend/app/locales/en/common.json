@@ -1138,5 +1138,23 @@
       "cancelled": "Cancelled",
       "refunded": "Refunded"
     }
+  },
+  "share": {
+    "title": "Share",
+    "copyLink": "Copy Link",
+    "copied": "Copied!",
+    "shareVia": "Share via",
+    "openInApp": "Open in App",
+    "mail": "Send via Email",
+    "x": "Share on X",
+    "threads": "Share on Threads",
+    "line": "Share on LINE"
+  },
+  "activity": {
+    "pageTitle": "Activity Records",
+    "addRecord": "Add Record",
+    "participantCount": "{count} participants",
+    "noRecords": "No activity records",
+    "loadError": "Failed to load activity records"
   }
 }

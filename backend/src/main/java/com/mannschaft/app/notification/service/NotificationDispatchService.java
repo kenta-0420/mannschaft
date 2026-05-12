@@ -1,5 +1,7 @@
 package com.mannschaft.app.notification.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.NotificationSourceTypeMapper;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -28,6 +30,8 @@ public class NotificationDispatchService {
     private final NotificationPreferenceService preferenceService;
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationMapper notificationMapper;
+    private final WebPushService webPushService;
+    private final ObjectMapper objectMapper;
 
     /**
      * F00 Phase F セキュリティ漏れ修正で導入。配信直前の二重防御として
@@ -149,7 +153,14 @@ public class NotificationDispatchService {
     /**
      * PWA Push (Web Push API) 経由で通知を送信する。
      * VAPID署名によるHTTP Pushプロトコルを使用する。
-     * 本番環境ではweb-push-javaライブラリを統合して実装する。
+     *
+     * <p>F04.3: web-push-java ライブラリ（{@link WebPushService}）を使って
+     * 各購読エンドポイントへ実際の HTTP Push を送信する。
+     * 購読失効（410/404）時は {@link WebPushService} が自動で DB 削除を行う。
+     *
+     * <p>このメソッドは {@link #dispatch} から呼ばれる。{@code dispatch} 自体が
+     * {@code @Async} で非同期実行されるため、このメソッドに {@code @Async} を付けると
+     * 同一クラス内呼び出しで AOP プロキシが効かない問題が発生する。意図的に省略している。
      */
     private void sendViaPush(NotificationEntity notification) {
         List<PushSubscriptionEntity> subscriptions =
@@ -160,22 +171,26 @@ public class NotificationDispatchService {
             return;
         }
 
+        String jsonPayload = buildPushPayload(notification);
+
         for (PushSubscriptionEntity subscription : subscriptions) {
-            try {
-                // NOTE: 本番環境ではVAPIDライブラリ（web-push-java）で実際のHTTP Push送信を行う
-                // 現在はログ記録のみ。ライブラリ統合時に以下を実装:
-                // 1. VAPID鍵ペアで署名
-                // 2. subscription.getEndpoint() に暗号化ペイロードをPOST
-                // 3. レスポンスコード410/404の場合は購読を自動削除
-                subscription.updateLastUsedAt();
-                log.info("WebPush送信: userId={}, endpoint={}...{}",
-                        notification.getUserId(),
-                        subscription.getEndpoint().substring(0, Math.min(50, subscription.getEndpoint().length())),
-                        subscription.getEndpoint().length() > 50 ? "..." : "");
-            } catch (Exception e) {
-                log.warn("WebPush送信失敗: userId={}, endpoint={}, error={}",
-                        notification.getUserId(), subscription.getEndpoint(), e.getMessage());
-            }
+            webPushService.sendPushNotification(subscription, jsonPayload);
+        }
+    }
+
+    /**
+     * 通知エンティティから Web Push ペイロード JSON を生成する。
+     * 生成に失敗した場合はシンプルな代替 JSON を返す。
+     */
+    private String buildPushPayload(NotificationEntity notification) {
+        try {
+            NotificationResponse response = notificationMapper.toNotificationResponse(notification);
+            return objectMapper.writeValueAsString(response);
+        } catch (JsonProcessingException e) {
+            log.warn("WebPushペイロードJSON生成失敗: notificationId={}, error={}",
+                    notification.getId(), e.getMessage());
+            // フォールバック: 最低限の情報を含む JSON
+            return "{\"type\":\"" + notification.getNotificationType() + "\"}";
         }
     }
 }

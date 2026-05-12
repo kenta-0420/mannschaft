@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -100,6 +101,20 @@ public class ActivityResultService {
      */
     public ActivityResultEntity getActivity(Long id) {
         return findActivityOrThrow(id);
+    }
+
+    /**
+     * 公開活動記録を ID で取得する（スコープ不問）。
+     *
+     * <p>F06.4 SNS シェア用。フロントエンドがスコープ（team/org）を意識せずに
+     * ID 直引きで PUBLIC な記録を取得するために使用する。
+     * visibility が PUBLIC でない場合、または存在しない場合は空を返す。</p>
+     *
+     * @param id 活動記録 ID
+     * @return visibility=PUBLIC の活動記録（存在しない/PUBLIC でない場合は空）
+     */
+    public Optional<ActivityResultEntity> findPublicActivityById(Long id) {
+        return resultRepository.findByIdAndVisibility(id, ActivityVisibility.PUBLIC);
     }
 
     /**

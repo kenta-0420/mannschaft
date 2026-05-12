@@ -1138,5 +1138,23 @@
       "cancelled": "キャンセル",
       "refunded": "返金済み"
     }
+  },
+  "share": {
+    "title": "シェア",
+    "copyLink": "リンクをコピー",
+    "copied": "コピーしました",
+    "shareVia": "シェアする",
+    "openInApp": "アプリで開く",
+    "mail": "メールで送る",
+    "x": "X でシェア",
+    "threads": "Threads でシェア",
+    "line": "LINE でシェア"
+  },
+  "activity": {
+    "pageTitle": "活動記録",
+    "addRecord": "記録を追加",
+    "participantCount": "参加者 {count}名",
+    "noRecords": "活動記録がありません",
+    "loadError": "活動記録の取得に失敗しました"
   }
 }

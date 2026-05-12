@@ -69,4 +69,18 @@ public interface ConfirmableNotificationRecipientRepository
      * @return 除外されていない受信者数
      */
     long countByConfirmableNotificationIdAndExcludedAtIsNull(Long notificationId);
+
+    /**
+     * 通知IDに紐づく受信者のユーザーIDと確認トークンのペアを取得する（メール送信用）。
+     *
+     * <p>メール送信リスナーが AFTER_COMMIT 後の非同期コンテキストで呼び出すため、
+     * Lazy ロードを避けてスカラー値のみを射影する。</p>
+     *
+     * @param notificationId 確認通知ID
+     * @return ユーザーID・confirmToken ペアのリスト（[userId, confirmToken] 形式）
+     */
+    @Query("SELECT r.user.id, r.confirmToken FROM ConfirmableNotificationRecipientEntity r " +
+           "WHERE r.confirmableNotification.id = :notificationId AND r.user IS NOT NULL")
+    List<Object[]> findUserIdAndConfirmTokenByNotificationId(
+            @Param("notificationId") Long notificationId);
 }

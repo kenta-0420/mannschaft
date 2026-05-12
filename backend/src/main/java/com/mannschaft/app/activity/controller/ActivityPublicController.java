@@ -38,6 +38,24 @@ public class ActivityPublicController {
     private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
+     * 活動記録をIDで取得する（スコープ不問・PUBLIC のみ）。
+     *
+     * <p>F06.4 SNS シェア用。フロントエンドがスコープ（team/org）を意識せずに
+     * {@code /activity/{id}} 形式の公開 URL から直接詳細を取得するためのエンドポイント。
+     * visibility が PUBLIC でない記録および存在しない ID には 404 を返す。</p>
+     */
+    @GetMapping("/activities/{id}")
+    @Operation(summary = "公開活動記録詳細（ID直引き）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "存在しないまたは非公開")
+    public ResponseEntity<ApiResponse<ActivityResultEntity>> getPublicActivityById(
+            @PathVariable Long id) {
+        return activityService.findPublicActivityById(id)
+                .map(entity -> ResponseEntity.ok(ApiResponse.of(entity)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
      * チーム公開活動記録一覧を取得する。
      */
     @GetMapping("/teams/{teamId}/activities")

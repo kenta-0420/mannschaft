@@ -26,6 +26,9 @@ feature:
     retry-batch-enabled: false
 
 mannschaft:
+  # F12.1 §5.14 / F09.15 §9.4 — テスト環境では内部 PDF 署名鍵を固定値で設定
+  security:
+    internal-signing-key: test-internal-pdf-signing-key-fixed-32bytes-xxxxx
   # F10.5 Phase 10-β-2 / F10.6 §5.6 — テスト環境ではヘルスポーリングと集約バッチの自動起動を無効化
   # （SpringBootTest 中に @Scheduled が走ると Health 取得 / Slack 送信が試行されて副作用が出るため）
   # 個別テストでは enabled=true を明示するか、Bean を直接呼んで検証する。

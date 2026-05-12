@@ -1138,5 +1138,23 @@
       "cancelled": "Cancelado",
       "refunded": "Reembolsado"
     }
+  },
+  "share": {
+    "title": "Compartir",
+    "copyLink": "Copiar enlace",
+    "copied": "¡Copiado!",
+    "shareVia": "Compartir en",
+    "openInApp": "Abrir en la app",
+    "mail": "Enviar por correo",
+    "x": "Compartir en X",
+    "threads": "Compartir en Threads",
+    "line": "Compartir en LINE"
+  },
+  "activity": {
+    "pageTitle": "Registros de actividad",
+    "addRecord": "Agregar registro",
+    "participantCount": "{count} participantes",
+    "noRecords": "No hay registros de actividad",
+    "loadError": "Error al cargar los registros de actividad"
   }
 }

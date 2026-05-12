@@ -123,7 +123,13 @@ public enum AuditEventType {
     /** 通知クレジット有効期限失効 */
     NOTIFICATION_CREDIT_EXPIRED(AuditEventCategory.PAYMENT),
     /** 通知クレジット残高低下警告 */
-    NOTIFICATION_CREDIT_LOW_BALANCE(AuditEventCategory.PAYMENT);
+    NOTIFICATION_CREDIT_LOW_BALANCE(AuditEventCategory.PAYMENT),
+
+    // ─── RESIDENT (F09.15 居住者死亡管理 / F09.16 居住実態管理) ─────────
+    DEATH_STATUS_CHANGED_TO_SUSPECTED(AuditEventCategory.RESIDENT),
+    DEATH_STATUS_CHANGED_TO_CONFIRMED(AuditEventCategory.RESIDENT),
+    DEATH_STATUS_CHANGED_TO_CANCELLED(AuditEventCategory.RESIDENT),
+    OCCUPANCY_STATUS_CHANGED(AuditEventCategory.RESIDENT);
 
     private final AuditEventCategory category;
 }

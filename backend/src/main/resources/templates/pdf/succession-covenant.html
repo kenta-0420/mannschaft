@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+    <style>
+        /*
+         * 誓約書専用スタイル（pdf-common.css への汚染を避けるためテンプレ内に閉じる）。
+         * Flying Saucer は flexbox/grid 未対応のため float / table レイアウトを採用。
+         */
+        .covenant-title {
+            text-align: center;
+            font-size: 18pt;
+            font-weight: bold;
+            margin-bottom: 20px;
+            font-family: 'NotoSerifJP', 'NotoSansJP', serif;
+        }
+        .covenant-subtitle {
+            text-align: center;
+            font-size: 11pt;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .covenant-section {
+            margin: 16px 0;
+        }
+        .covenant-section h2 {
+            font-size: 12pt;
+            border-left: 4px solid #444;
+            padding-left: 8px;
+            margin-bottom: 8px;
+        }
+        .resident-info-table td {
+            border: 1px solid #999;
+            padding: 6px 10px;
+            font-size: 10pt;
+        }
+        .resident-info-table .label {
+            background-color: #f0f0f0;
+            width: 25%;
+            font-weight: bold;
+        }
+        .consent-block {
+            border: 1px solid #ccc;
+            padding: 10px 14px;
+            margin: 10px 0;
+            background-color: #fafafa;
+        }
+        .consent-block .heading {
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        .signature-area {
+            margin-top: 40px;
+        }
+        .signature-area table td {
+            border: none;
+            padding: 6px 10px;
+            font-size: 10pt;
+        }
+        .signature-area .line {
+            border-bottom: 1px solid #333;
+            display: inline-block;
+            min-width: 200px;
+            padding-bottom: 2px;
+        }
+        .legal-warning {
+            border: 2px solid #c00;
+            color: #c00;
+            padding: 10px;
+            margin: 20px 0;
+            font-size: 9pt;
+            background-color: #fff8f8;
+        }
+        .integrity-footer {
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #999;
+            font-size: 8pt;
+            color: #555;
+            word-break: break-all;
+        }
+        .integrity-footer .row {
+            margin: 3px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="pdf-body">
+        <!-- タイトル -->
+        <div class="covenant-title">もしもの備え誓約書</div>
+        <div class="covenant-subtitle">
+            <span th:text="${covenantTypeLabel}">入居時誓約</span>
+            <span> ／ </span>
+            <span>テンプレート版数: </span>
+            <span th:text="${covenantVersion}">v1.0.0</span>
+        </div>
+
+        <!-- ⚠ 法的注意（F09.15 §11.1）-->
+        <div class="legal-warning">
+            ⚠ 本誓約書はマンション管理組合の実務に基づき作成されていますが、
+            <strong>2026 年 5 月時点で弁護士監修を受けていません</strong>。
+            本書面は管理組合と居住者間の合意形成を目的とした内部文書であり、
+            個別の法的紛争に際しては、必ず弁護士・司法書士にご相談ください。
+            収益化後の v2 で正式な弁護士監修を実施する予定です。
+        </div>
+
+        <!-- 居住者情報 -->
+        <div class="covenant-section">
+            <h2>1. 居住者情報</h2>
+            <table class="resident-info-table">
+                <tr>
+                    <td class="label">氏名</td>
+                    <td th:text="${residentName}">山田 太郎</td>
+                </tr>
+                <tr>
+                    <td class="label">居室番号</td>
+                    <td th:text="${dwellingUnitLabel}">301 号室</td>
+                </tr>
+                <tr>
+                    <td class="label">区分所有者属性</td>
+                    <td th:text="${residentType}">OWNER（区分所有者）</td>
+                </tr>
+                <tr>
+                    <td class="label">契約日 / 入居日</td>
+                    <td th:text="${#temporals.format(contractDate, 'yyyy年MM月dd日')}">2026年05月09日</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 同意内容（v1.0.0 固定） -->
+        <div class="covenant-section">
+            <h2>2. 同意内容（v1.0.0）</h2>
+
+            <div class="consent-block">
+                <div class="heading">① 死亡情報の理事会取扱に関する同意（要配慮個人情報）</div>
+                <p>
+                    本人は、自身の死亡情報が要配慮個人情報に該当することを理解した上で、
+                    管理組合（理事会）が以下の目的でこれを取扱うことに同意します:
+                </p>
+                <ul>
+                    <li>死亡確認の事実の記録および保管</li>
+                    <li>事前登録された緊急連絡先・相続人候補・遺言メモを、理事長・副理事長の二者承認を経て封緘解除すること</li>
+                    <li>関係機関への通知に必要な範囲での情報共有</li>
+                </ul>
+            </div>
+
+            <div class="consent-block">
+                <div class="heading">② 事前登録・封緘運用に関する理解</div>
+                <p>
+                    本人は、事前登録した緊急連絡先・相続人候補・遺言メモが
+                    AES-256-GCM 方式で暗号化（封緘）された状態で保管され、
+                    本人の生前は本人のみが閲覧可能であり、
+                    本人の死亡時のみ理事長・副理事長の二者承認により封緘解除されることを理解しました。
+                    開封後 72 時間で自動再封されることも併せて理解しました。
+                </p>
+            </div>
+
+            <div class="consent-block">
+                <div class="heading">③ 滞納＋連絡不通時の段階的エスカレーション通知への理解</div>
+                <p>
+                    管理費・修繕積立金の滞納が継続し、かつ本人との連絡が一定期間途絶した場合、
+                    管理組合は次の段階に従って通知・調査・法的手続きを行うことに同意します:
+                </p>
+                <ol>
+                    <li>D+30 日 — 一次督促通知</li>
+                    <li>D+60 日 — 二次督促＋緊急連絡先への確認</li>
+                    <li>D+90 日 — 訪問・安否確認</li>
+                    <li>D+120 日 — 推定スコア 80 以上で死亡疑い（SUSPECTED）状態に自動遷移</li>
+                    <li>D+150 日 — 法的手続き（不在者財産管理人選任申立・相続財産清算人選任申立等）の起票</li>
+                </ol>
+            </div>
+
+            <div class="consent-block">
+                <div class="heading">④ 弁護士監修なし v1 仕様への了解</div>
+                <p>
+                    本機能の DB 設計・帳票テンプレートは現時点で弁護士監修を受けておりません。
+                    本人は v1 仕様の制約を了解し、収益化後に正式な弁護士監修が行われ、
+                    必要に応じて誓約版数（covenant_version）が更新され、再同意フローが提供されることを理解しました。
+                </p>
+            </div>
+        </div>
+
+        <!-- 署名欄 -->
+        <div class="signature-area">
+            <h2 style="font-size: 12pt; border-left: 4px solid #444; padding-left: 8px;">3. 署名</h2>
+            <table>
+                <tr>
+                    <td style="width: 60%;">
+                        居住者氏名:
+                        <span class="line" th:text="${residentName}">山田 太郎</span>
+                    </td>
+                    <td style="width: 40%;">
+                        署名日:
+                        <span class="line" th:text="${#temporals.format(signedAt, 'yyyy年MM月dd日')}">2026年05月09日</span>
+                    </td>
+                </tr>
+            </table>
+
+            <table style="margin-top: 20px;">
+                <tr>
+                    <td style="width: 60%;">
+                        管理組合（団体名）:
+                        <span class="line" th:text="${organizationName}">○○マンション管理組合</span>
+                    </td>
+                    <td style="width: 40%;">
+                        代表者:
+                        <span class="line" th:text="${representativeName}">理事長 鈴木 一郎</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 改ざん検知用フッター（content_hash_sha256 / timestamp_token） -->
+        <div class="integrity-footer">
+            <div class="row">covenant_version: <span th:text="${covenantVersion}">v1.0.0</span></div>
+            <div class="row">content_hash_sha256:
+                <span th:text="${contentHashSha256 != null} ? ${contentHashSha256} : '（PDF 生成後に付与）'">（PDF 生成後に付与）</span>
+            </div>
+            <div class="row">timestamp_token:
+                <span th:text="${timestampToken != null} ? ${timestampToken} : '（PDF 生成後に付与）'">（PDF 生成後に付与）</span>
+            </div>
+            <div class="row">issued_at:
+                <span th:text="${issuedAt != null} ? ${#temporals.format(issuedAt, 'yyyy-MM-dd HH:mm:ss')} : '（PDF 生成後に付与）'">（PDF 生成後に付与）</span>
+            </div>
+            <div class="row">subject_id: <span th:text="${subjectId}">N/A</span></div>
+        </div>
+    </div>
+</body>
+</html>

@@ -3,6 +3,7 @@ package com.mannschaft.app.repairplan.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.repairplan.dto.CsvImportConfirmRequest;
+import com.mannschaft.app.repairplan.module.RequireRepairPlanModule;
 import com.mannschaft.app.repairplan.dto.CsvImportConfirmResponse;
 import com.mannschaft.app.repairplan.dto.CsvImportPreviewResponse;
 import com.mannschaft.app.repairplan.service.RepairPlanItemCsvService;
@@ -23,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
  * <p>足軽2 が作成する {@code RepairPlanItemController}（CRUD 系）と分離してファイル衝突を避ける。
  * 同じパス階層下に CSV インポート専用エンドポイント 2 本を提供する。</p>
  */
+@RequireRepairPlanModule
 @RestController
 @RequestMapping("/api/v1/{scopeType}/{scopeId}/repair-plan/items")
 @RequiredArgsConstructor

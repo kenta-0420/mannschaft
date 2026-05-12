@@ -41,7 +41,22 @@ public enum RepairPlanErrorCode implements ErrorCode {
     /** バリデーションエラー行が含まれているため確定できない */
     REPAIR_PLAN_CSV_004("REPAIR_PLAN_CSV_004",
             "バリデーションエラー行が含まれているため取り込みを確定できません",
-            Severity.WARN);
+            Severity.WARN),
+
+    /** シナリオ保存上限（1スコープ50件）超過。 */
+    SCENARIO_LIMIT_EXCEEDED("REPAIR_PLAN_005", "シナリオの保存上限（50件）に達しています", Severity.WARN),
+
+    /** ロック済みシナリオへの更新／削除試図（locked_at != null）。 */
+    SCENARIO_ALREADY_LOCKED("REPAIR_PLAN_006", "このシナリオは議案変換済みのため変更できません", Severity.WARN),
+
+    /** engine_version ミスマッチ（保存済みシナリオのエンジンバージョンが一致しない）。 */
+    ENGINE_VERSION_MISMATCH("REPAIR_PLAN_007", "計算エンジンバージョンが一致しません。シナリオを再計算してください", Severity.WARN),
+
+    /** simulate レートリミット超過。 */
+    RATE_LIMIT_EXCEEDED("REPAIR_PLAN_009", "リクエスト頻度が上限を超えています。しばらく待ってから再試行してください", Severity.WARN),
+
+    /** baseline_at から30日以上経過（再計算を推奨）。 */
+    SIMULATION_BASELINE_STALE("REPAIR_PLAN_012", "シミュレーションの基準日から30日以上経過しています。再計算を推奨します", Severity.WARN);
 
     private final String code;
     private final String message;

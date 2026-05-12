@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+</head>
+<!--
+    F09.15 §5.13 区分所有法 8 条 証拠 ZIP 表紙 PDF テンプレート（skeleton）
+    根拠条文: 区分所有法 8 条（管理費等の先取特権実行）
+
+    TODO: S6 で本実装。本テンプレは S1 第三陣A の予約 skeleton。
+    本実装時は以下を含めること:
+      - ZIP 内容物一覧
+      - ZIP 全体および各ファイルの SHA-256 ハッシュ
+      - 生成日時・生成者
+      - ⚠ 弁護士監修なし v1 注意書きを表紙に明示
+-->
+<body>
+    <div class="pdf-body">
+        <h1 style="text-align: center;">区分所有法 8 条 証拠パッケージ 表紙</h1>
+        <p style="text-align: center; color: #c00;">
+            ⚠ skeleton（S6 で本実装予定）
+        </p>
+        <div style="border: 2px solid #c00; padding: 12px; margin: 20px 0; color: #c00;">
+            本テンプレートは S6 で本実装予定の skeleton です。
+            実装時は <code>docs/features/F09.15_resident_succession_support.md §5.13</code> 参照。
+        </div>
+        <p>部屋番号: <span th:text="${dwellingUnitLabel}">N/A</span></p>
+        <p>ZIP 生成日: <span th:text="${#temporals.format(packageGeneratedAt, 'yyyy年MM月dd日')}">N/A</span></p>
+    </div>
+</body>
+</html>

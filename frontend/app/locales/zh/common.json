@@ -1138,5 +1138,23 @@
       "cancelled": "已取消",
       "refunded": "已退款"
     }
+  },
+  "share": {
+    "title": "分享",
+    "copyLink": "复制链接",
+    "copied": "已复制",
+    "shareVia": "分享至",
+    "openInApp": "在应用中打开",
+    "mail": "通过邮件发送",
+    "x": "分享到 X",
+    "threads": "分享到 Threads",
+    "line": "分享到 LINE"
+  },
+  "activity": {
+    "pageTitle": "活动记录",
+    "addRecord": "添加记录",
+    "participantCount": "{count} 名参与者",
+    "noRecords": "暂无活动记录",
+    "loadError": "获取活动记录失败"
   }
 }

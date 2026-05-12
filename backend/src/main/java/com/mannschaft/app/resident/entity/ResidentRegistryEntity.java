@@ -5,6 +5,8 @@ import com.mannschaft.app.common.EncryptedStringConverter;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -99,6 +101,89 @@ public class ResidentRegistryEntity extends BaseEntity {
     private String notes;
 
     private LocalDateTime deletedAt;
+
+    // ─── F09.15 居住者死亡管理（V9.102 で追加）────────────────────────────
+    /**
+     * 死亡状態。デフォルト ALIVE。状態遷移時に監査ログ発火（10 年保持）。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private DeathStatus deathStatus = DeathStatus.ALIVE;
+
+    /** 死亡状態の最終変更日時。 */
+    private LocalDateTime deathStatusChangedAt;
+
+    /** 死亡状態を変更した user の ID（クロスドメイン弱参照・FKなし）。 */
+    private Long deathStatusChangedBy;
+
+    /**
+     * 居住実態推定スコア（0〜100）。F09.16 が ResidentActivityUpdatedEvent で更新する。
+     * 本人非開示（管理者のみ閲覧可）。
+     */
+    private Integer presumedDeathScore;
+
+    /** 直近アクティビティ日時のキャッシュ。F09.16 ActivitySnapshotAggregator が更新する。 */
+    private LocalDateTime activityLastSeenAt;
+
+    // ─── F09.16 居住実態管理（V9.103 で追加）─────────────────────────────
+    /** 居住実態区分。デフォルト UNKNOWN。 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private OccupancyStatus occupancyStatus = OccupancyStatus.UNKNOWN;
+
+    /** 直近の年次居住実態更新日時（annual_review_responses からの派生キャッシュ）。 */
+    private LocalDateTime lastAnnualReviewAt;
+
+    /** 次回年次居住実態更新の期限日。 */
+    private LocalDate annualReviewDueAt;
+
+    /** セカンドハウス・別荘扱いフラグ（通常の見守り対象から除外）。 */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isSecondaryHome = false;
+
+    /** 推定年齢（0〜200、自己申告ベース）。 */
+    private Integer ageEstimated;
+
+    /**
+     * 死亡状態を更新する（F09.15）。
+     *
+     * @param status      新しい死亡状態
+     * @param changedBy   状態変更を行った user の ID
+     */
+    public void updateDeathStatus(DeathStatus status, Long changedBy) {
+        this.deathStatus = status;
+        this.deathStatusChangedAt = LocalDateTime.now();
+        this.deathStatusChangedBy = changedBy;
+    }
+
+    /**
+     * 居住実態推定スコアと直近アクティビティ日時を更新する（F09.16 ActivitySnapshotAggregator から）。
+     */
+    public void updatePresumedDeathScore(Integer score, LocalDateTime activityLastSeenAt) {
+        this.presumedDeathScore = score;
+        this.activityLastSeenAt = activityLastSeenAt;
+    }
+
+    /**
+     * 居住実態区分を更新する（F09.16）。
+     */
+    public void updateOccupancyStatus(OccupancyStatus status, Boolean isSecondaryHome) {
+        this.occupancyStatus = status;
+        if (isSecondaryHome != null) {
+            this.isSecondaryHome = isSecondaryHome;
+        }
+    }
+
+    /**
+     * 年次居住実態更新を記録する（F09.16）。
+     */
+    public void recordAnnualReview(LocalDateTime reviewedAt, LocalDate nextDueAt) {
+        this.lastAnnualReviewAt = reviewedAt;
+        this.annualReviewDueAt = nextDueAt;
+    }
 
     /**
      * 居住者情報を更新する。
