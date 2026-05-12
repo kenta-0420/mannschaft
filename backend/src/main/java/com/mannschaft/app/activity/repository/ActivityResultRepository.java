@@ -1,6 +1,7 @@
 package com.mannschaft.app.activity.repository;
 
 import com.mannschaft.app.activity.ActivityScopeType;
+import com.mannschaft.app.activity.ActivityVisibility;
 import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.visibility.ActivityResultVisibilityProjection;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,18 @@ public interface ActivityResultRepository extends JpaRepository<ActivityResultEn
             ActivityScopeType scopeType, Long scopeId, Long templateId, Pageable pageable);
 
     Optional<ActivityResultEntity> findByScheduleId(Long scheduleId);
+
+    /**
+     * ID と visibility で活動記録を取得する（スコープ不問）。
+     *
+     * <p>SNS シェア用の公開ページが ID 直引きで PUBLIC な記録を取得するために使用する。
+     * {@code @SQLRestriction("deleted_at IS NULL")} により論理削除済は自動除外される。</p>
+     *
+     * @param id 活動記録 ID
+     * @param visibility 公開範囲
+     * @return 条件を満たす活動記録（存在しない場合は空）
+     */
+    Optional<ActivityResultEntity> findByIdAndVisibility(Long id, ActivityVisibility visibility);
 
     long countByScopeTypeAndScopeId(ActivityScopeType scopeType, Long scopeId);
 
