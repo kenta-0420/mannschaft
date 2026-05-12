@@ -121,7 +121,15 @@ public enum AuditEventType {
     DEATH_STATUS_CHANGED_TO_SUSPECTED(AuditEventCategory.RESIDENT),
     DEATH_STATUS_CHANGED_TO_CONFIRMED(AuditEventCategory.RESIDENT),
     DEATH_STATUS_CHANGED_TO_CANCELLED(AuditEventCategory.RESIDENT),
-    OCCUPANCY_STATUS_CHANGED(AuditEventCategory.RESIDENT);
+    OCCUPANCY_STATUS_CHANGED(AuditEventCategory.RESIDENT),
+
+    // ─── SUCCESSION (F09.15 入居時誓約 / 事前登録 / 封緘解除) ─────────
+    /** 入居時誓約 PDF を発行（PDF 生成 + 内部署名トークン付与）。 */
+    COVENANT_ISSUED(AuditEventCategory.SUCCESSION),
+    /** 入居時誓約に署名（同意項目を確認した上で succession_covenants へ INSERT）。 */
+    COVENANT_SIGNED(AuditEventCategory.SUCCESSION),
+    /** 入居時誓約を撤回（revoked_at セット）。 */
+    COVENANT_REVOKED(AuditEventCategory.SUCCESSION);
 
     private final AuditEventCategory category;
 }
