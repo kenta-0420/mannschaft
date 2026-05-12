@@ -1,9 +1,8 @@
-package com.mannschaft.app.notification;
+package com.mannschaft.app.notification.service;
 
 import com.mannschaft.app.notification.config.VapidConfig;
 import com.mannschaft.app.notification.entity.PushSubscriptionEntity;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
-import com.mannschaft.app.notification.service.WebPushService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
