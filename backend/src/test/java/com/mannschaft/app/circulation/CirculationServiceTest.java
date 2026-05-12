@@ -4,6 +4,7 @@ import com.mannschaft.app.circulation.dto.DocumentResponse;
 import com.mannschaft.app.circulation.dto.DocumentStatsResponse;
 import com.mannschaft.app.circulation.dto.UpdateDocumentRequest;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
+import com.mannschaft.app.circulation.event.CirculationDocumentDeletedEvent;
 import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
@@ -14,9 +15,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -49,6 +52,10 @@ class CirculationServiceTest {
     /** F13 Phase 5-a: presignAttachmentUpload メソッド追加に伴い @Mock 追加（他テストへの影響なし）。 */
     @Mock
     private R2StorageService r2StorageService;
+
+    /** F09.14 Phase 4-C: deleteDocument 時のイベント発行検証用。 */
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private CirculationService circulationService;
@@ -242,6 +249,25 @@ class CirculationServiceTest {
             // Then
             assertThat(entity.getDeletedAt()).isNotNull();
             verify(documentRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("文書削除_正常_CirculationDocumentDeletedEvent発行")
+        void 文書削除_正常_イベント発行() {
+            // Given
+            CirculationDocumentEntity entity = createDraftDocument();
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            // When
+            circulationService.deleteDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            // Then: F09.14 Phase 4-C — DisclosureCirculationCleanupHandler 等の購読側のために
+            // CirculationDocumentDeletedEvent(documentId) が発行されること
+            ArgumentCaptor<CirculationDocumentDeletedEvent> captor =
+                    ArgumentCaptor.forClass(CirculationDocumentDeletedEvent.class);
+            verify(applicationEventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().documentId()).isEqualTo(DOCUMENT_ID);
         }
     }
 

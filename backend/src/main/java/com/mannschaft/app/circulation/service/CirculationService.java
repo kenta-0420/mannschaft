@@ -20,6 +20,7 @@ import com.mannschaft.app.circulation.dto.UpdateDocumentRequest;
 import com.mannschaft.app.circulation.entity.CirculationAttachmentEntity;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
+import com.mannschaft.app.circulation.event.CirculationDocumentDeletedEvent;
 import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
@@ -31,6 +32,7 @@ import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -65,6 +67,13 @@ public class CirculationService {
 
     /** F13 Phase 5-a: R2 presigned URL 発行に使用。 */
     private final R2StorageService r2StorageService;
+
+    /**
+     * F09.14 Phase 4-C: 回覧文書削除イベントを発行するためのパブリッシャー。
+     * 購読側（{@code DisclosureCirculationCleanupHandler} 等）が
+     * クロスドメイン参照のクリーンアップを行う。
+     */
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
      * 文書一覧をページング取得する。
@@ -250,6 +259,12 @@ public class CirculationService {
     /**
      * 文書を論理削除する。
      *
+     * <p>F09.14 Phase 4-C: 削除時に {@link CirculationDocumentDeletedEvent} を発行し、
+     * F09.14 等の購読側で参照を自動クリーンアップする（クロスドメイン FK 撤去後の
+     * アプリケーション層整合性保証）。イベントは {@code @TransactionalEventListener}
+     * の {@code AFTER_COMMIT} フェーズで非同期処理されるため、本トランザクション失敗時は
+     * 購読側処理も発火しない。</p>
+     *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
      * @param documentId 文書ID
@@ -259,6 +274,7 @@ public class CirculationService {
         CirculationDocumentEntity entity = findDocumentOrThrow(scopeType, scopeId, documentId);
         entity.softDelete();
         documentRepository.save(entity);
+        applicationEventPublisher.publishEvent(new CirculationDocumentDeletedEvent(documentId));
         log.info("回覧文書削除: documentId={}", documentId);
     }
 
