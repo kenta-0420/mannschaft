@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.notification.dto.NotificationResponse;
@@ -8,6 +9,7 @@ import com.mannschaft.app.notification.entity.PushSubscriptionEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationPreferenceService;
 import com.mannschaft.app.notification.service.PushSubscriptionService;
+import com.mannschaft.app.notification.service.WebPushService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -57,6 +59,12 @@ class NotificationDispatchServiceTest {
      */
     @Mock
     private ContentVisibilityChecker visibilityChecker;
+
+    @Mock
+    private WebPushService webPushService;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private NotificationDispatchService dispatchService;

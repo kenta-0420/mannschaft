@@ -25,4 +25,15 @@ public interface PostalCodeRepository extends JpaRepository<PostalCodeEntity, Po
      * @return ヒットした地点マスタ（存在しなければ空）
      */
     Optional<PostalCodeEntity> findByCountryCodeAndPostalCode(String countryCode, String postalCode);
+
+    /**
+     * 指定国コードの郵便番号マスタが 1 件でも存在するかを判定する。
+     *
+     * <p>{@code WeatherLocationDeriver} が {@code COUNTRY_NOT_SUPPORTED} と
+     * {@code POSTAL_CODE_NOT_FOUND} を切り分けるために使用する。</p>
+     *
+     * @param countryCode ISO 3166-1 alpha-2
+     * @return 存在すれば true
+     */
+    boolean existsByCountryCode(String countryCode);
 }
