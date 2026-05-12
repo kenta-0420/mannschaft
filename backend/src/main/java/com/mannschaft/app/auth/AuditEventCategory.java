@@ -12,5 +12,6 @@ public enum AuditEventCategory {
     PAYMENT,
     SCHEDULE,
     TODO,
-    REPAIR_PLAN
+    REPAIR_PLAN,
+    RESIDENT
 }
