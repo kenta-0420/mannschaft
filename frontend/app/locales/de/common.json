@@ -1107,6 +1107,38 @@
       "errorReports": "Fehlerberichte"
     }
   },
+  "notificationCredit": {
+    "title": "Benachrichtigungsguthaben-Verwaltung",
+    "balanceTitle": "Guthaben & Nutzung",
+    "packageTitle": "Guthaben kaufen",
+    "historyTitle": "Kaufhistorie",
+    "freeUsage": "Nutzung des kostenlosen Kontingents diesen Monat",
+    "creditBalance": "Guthabenstand",
+    "unit": "Nachrichten",
+    "credits": "Gewährte Nachrichten",
+    "price": "Preis",
+    "purchaseButton": "Kaufen",
+    "purchaseSuccess": "Guthabenkauf abgeschlossen",
+    "purchaseCancelled": "Kauf abgebrochen",
+    "checkoutFailed": "Fehler beim Erstellen der Checkout-Sitzung",
+    "noHistory": "Keine Kaufhistorie",
+    "gracePeriodAlert": "Unzureichendes Guthaben: Kulanzzeit aktiv",
+    "gracePeriodDescription": "Kulanzzeit endet: {endsAt}. Überschuss von {debt} Nachrichten wird am 1. des nächsten Monats verrechnet.",
+    "table": {
+      "paidAt": "Zahlungsdatum",
+      "packageName": "Paketname",
+      "priceJpy": "Betrag",
+      "credits": "Nachrichten",
+      "expiresAt": "Ablaufdatum",
+      "status": "Status"
+    },
+    "status": {
+      "pending": "Ausstehend",
+      "paid": "Bezahlt",
+      "cancelled": "Abgebrochen",
+      "refunded": "Erstattet"
+    }
+  },
   "share": {
     "title": "Teilen",
     "copyLink": "Link kopieren",

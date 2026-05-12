@@ -1107,6 +1107,38 @@
       "errorReports": "エラーレポート"
     }
   },
+  "notificationCredit": {
+    "title": "通知クレジット管理",
+    "balanceTitle": "残高・使用状況",
+    "packageTitle": "クレジットを購入",
+    "historyTitle": "購入履歴",
+    "freeUsage": "今月の無料枠使用量",
+    "creditBalance": "クレジット残高",
+    "unit": "通",
+    "credits": "付与通数",
+    "price": "価格",
+    "purchaseButton": "購入する",
+    "purchaseSuccess": "クレジットの購入が完了しました",
+    "purchaseCancelled": "購入がキャンセルされました",
+    "checkoutFailed": "決済セッションの作成に失敗しました",
+    "noHistory": "購入履歴がありません",
+    "gracePeriodAlert": "残高不足: 猶予期間中です",
+    "gracePeriodDescription": "猶予期間終了: {endsAt}。超過分 {debt} 通は翌月1日に相殺されます。",
+    "table": {
+      "paidAt": "決済日",
+      "packageName": "パッケージ名",
+      "priceJpy": "金額",
+      "credits": "通数",
+      "expiresAt": "有効期限",
+      "status": "状態"
+    },
+    "status": {
+      "pending": "決済待ち",
+      "paid": "決済完了",
+      "cancelled": "キャンセル",
+      "refunded": "返金済み"
+    }
+  },
   "share": {
     "title": "シェア",
     "copyLink": "リンクをコピー",

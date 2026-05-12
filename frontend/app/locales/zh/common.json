@@ -1107,6 +1107,38 @@
       "errorReports": "错误报告"
     }
   },
+  "notificationCredit": {
+    "title": "通知积分管理",
+    "balanceTitle": "余额与使用情况",
+    "packageTitle": "购买积分",
+    "historyTitle": "购买历史",
+    "freeUsage": "本月免费额度使用量",
+    "creditBalance": "积分余额",
+    "unit": "条",
+    "credits": "赠送条数",
+    "price": "价格",
+    "purchaseButton": "购买",
+    "purchaseSuccess": "积分购买完成",
+    "purchaseCancelled": "购买已取消",
+    "checkoutFailed": "创建结账会话失败",
+    "noHistory": "暂无购买记录",
+    "gracePeriodAlert": "余额不足：宽限期中",
+    "gracePeriodDescription": "宽限期结束：{endsAt}。超额 {debt} 条将在下月1日抵扣。",
+    "table": {
+      "paidAt": "付款日期",
+      "packageName": "套餐名称",
+      "priceJpy": "金额",
+      "credits": "条数",
+      "expiresAt": "有效期",
+      "status": "状态"
+    },
+    "status": {
+      "pending": "待付款",
+      "paid": "已付款",
+      "cancelled": "已取消",
+      "refunded": "已退款"
+    }
+  },
   "share": {
     "title": "分享",
     "copyLink": "复制链接",

@@ -5,6 +5,8 @@ import com.mannschaft.app.common.visibility.NotificationSourceTypeMapper;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
+import com.mannschaft.app.notification.credit.service.NotificationCreditService;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +44,9 @@ public class NotificationHelper {
      * 受信者リスト全件をそのまま通過させる (既存挙動の互換性確保)。
      */
     private final ContentVisibilityChecker visibilityChecker;
+
+    /** F09.13 通知クレジットサービス（課金対象通知のカウント用） */
+    private final NotificationCreditService notificationCreditService;
 
     /**
      * 単一ユーザーに通知を作成・配信する。
@@ -94,7 +99,31 @@ public class NotificationHelper {
                           String sourceType, Long sourceId,
                           NotificationScopeType scopeType, Long scopeId,
                           String actionUrl, Long actorId) {
+        notifyAll(userIds, notificationType, title, body, sourceType, sourceId,
+                scopeType, scopeId, actionUrl, actorId, false, null);
+    }
+
+    /**
+     * 複数ユーザーに一括通知を作成・配信する（課金フラグ付き）。
+     *
+     * <p>F09.13: {@code isBillable=true} かつ {@code organizationId} が指定された場合、
+     * 送信前に {@link NotificationCreditService#consume} を呼び出してクレジットを消費する。</p>
+     *
+     * @param isBillable     課金対象フラグ（告知通知のみ true）
+     * @param organizationId 課金対象の組織ID（isBillable=true の場合は必須）
+     */
+    public void notifyAll(List<Long> userIds, String notificationType, String title, String body,
+                          String sourceType, Long sourceId,
+                          NotificationScopeType scopeType, Long scopeId,
+                          String actionUrl, Long actorId,
+                          boolean isBillable, Long organizationId) {
         List<Long> filtered = filterAccessibleRecipients(userIds, sourceType, sourceId);
+
+        // F09.13: 課金対象の場合はクレジット消費を先行実行（送信前ゲート）
+        if (isBillable && organizationId != null && !filtered.isEmpty()) {
+            notificationCreditService.consume(organizationId, filtered.size(), NotificationSourceType.NOTIFY_ALL);
+        }
+
         for (Long userId : filtered) {
             try {
                 notify(userId, notificationType, title, body,
@@ -104,7 +133,8 @@ public class NotificationHelper {
                         userId, notificationType, e.getMessage());
             }
         }
-        log.info("一括通知送信: type={}, userCount={}（visibility絞込後）", notificationType, filtered.size());
+        log.info("一括通知送信: type={}, userCount={}（visibility絞込後）, isBillable={}",
+                notificationType, filtered.size(), isBillable);
     }
 
     /**
@@ -120,7 +150,32 @@ public class NotificationHelper {
                           String sourceType, Long sourceId,
                           NotificationScopeType scopeType, Long scopeId,
                           String actionUrl, Long actorId) {
+        notifyAll(userIds, notificationType, priority, title, body, sourceType, sourceId,
+                scopeType, scopeId, actionUrl, actorId, false, null);
+    }
+
+    /**
+     * 複数ユーザーに優先度指定で一括通知を作成・配信する（課金フラグ付き）。
+     *
+     * <p>F09.13: {@code isBillable=true} かつ {@code organizationId} が指定された場合、
+     * 送信前に {@link NotificationCreditService#consume} を呼び出してクレジットを消費する。</p>
+     *
+     * @param isBillable     課金対象フラグ（告知通知のみ true）
+     * @param organizationId 課金対象の組織ID（isBillable=true の場合は必須）
+     */
+    public void notifyAll(List<Long> userIds, String notificationType, NotificationPriority priority,
+                          String title, String body,
+                          String sourceType, Long sourceId,
+                          NotificationScopeType scopeType, Long scopeId,
+                          String actionUrl, Long actorId,
+                          boolean isBillable, Long organizationId) {
         List<Long> filtered = filterAccessibleRecipients(userIds, sourceType, sourceId);
+
+        // F09.13: 課金対象の場合はクレジット消費を先行実行（送信前ゲート）
+        if (isBillable && organizationId != null && !filtered.isEmpty()) {
+            notificationCreditService.consume(organizationId, filtered.size(), NotificationSourceType.NOTIFY_ALL);
+        }
+
         for (Long userId : filtered) {
             try {
                 notify(userId, notificationType, priority, title, body,
@@ -130,8 +185,8 @@ public class NotificationHelper {
                         userId, notificationType, e.getMessage());
             }
         }
-        log.info("一括通知送信: type={}, priority={}, userCount={}（visibility絞込後）",
-                notificationType, priority, filtered.size());
+        log.info("一括通知送信: type={}, priority={}, userCount={}（visibility絞込後）, isBillable={}",
+                notificationType, priority, filtered.size(), isBillable);
     }
 
     /**

@@ -1107,6 +1107,38 @@
       "errorReports": "Error Reports"
     }
   },
+  "notificationCredit": {
+    "title": "Notification Credit Management",
+    "balanceTitle": "Balance & Usage",
+    "packageTitle": "Purchase Credits",
+    "historyTitle": "Purchase History",
+    "freeUsage": "Free Tier Usage This Month",
+    "creditBalance": "Credit Balance",
+    "unit": "messages",
+    "credits": "Credits Granted",
+    "price": "Price",
+    "purchaseButton": "Purchase",
+    "purchaseSuccess": "Credit purchase completed",
+    "purchaseCancelled": "Purchase was cancelled",
+    "checkoutFailed": "Failed to create checkout session",
+    "noHistory": "No purchase history",
+    "gracePeriodAlert": "Insufficient balance: Grace period active",
+    "gracePeriodDescription": "Grace period ends: {endsAt}. Excess {debt} messages will be offset on the 1st of next month.",
+    "table": {
+      "paidAt": "Payment Date",
+      "packageName": "Package Name",
+      "priceJpy": "Amount",
+      "credits": "Messages",
+      "expiresAt": "Expiry",
+      "status": "Status"
+    },
+    "status": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "cancelled": "Cancelled",
+      "refunded": "Refunded"
+    }
+  },
   "share": {
     "title": "Share",
     "copyLink": "Copy Link",

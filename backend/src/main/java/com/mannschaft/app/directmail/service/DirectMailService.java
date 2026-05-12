@@ -21,6 +21,8 @@ import com.mannschaft.app.directmail.entity.DirectMailLogEntity;
 import com.mannschaft.app.directmail.entity.DirectMailRecipientEntity;
 import com.mannschaft.app.directmail.repository.DirectMailLogRepository;
 import com.mannschaft.app.directmail.repository.DirectMailRecipientRepository;
+import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
+import com.mannschaft.app.notification.credit.service.NotificationCreditService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +47,8 @@ public class DirectMailService {
     private final DirectMailMapper directMailMapper;
     private final UserRoleRepository userRoleRepository;
     private final DomainEventPublisher eventPublisher;
+    /** F09.13 通知クレジット消費（ダイレクトメールは課金対象） */
+    private final NotificationCreditService notificationCreditService;
 
     /**
      * メールを作成する（下書き保存）。
@@ -116,12 +120,22 @@ public class DirectMailService {
 
     /**
      * メールを即時送信する。
+     *
+     * <p>F09.13: 組織スコープのダイレクトメールは課金対象。
+     * {@code estimatedRecipients} が設定されている場合はその値でクレジット消費する。</p>
      */
     @Transactional
     public DirectMailResponse sendMail(String scopeType, Long scopeId, Long mailId) {
         DirectMailLogEntity entity = findMailOrThrow(scopeType, scopeId, mailId);
         if (!"DRAFT".equals(entity.getStatus()) && !"SCHEDULED".equals(entity.getStatus())) {
             throw new BusinessException(DirectMailErrorCode.ALREADY_SENT);
+        }
+
+        // F09.13: 組織スコープのダイレクトメールはクレジット消費（送信前ゲート）
+        if ("ORGANIZATION".equals(scopeType) && entity.getEstimatedRecipients() != null
+                && entity.getEstimatedRecipients() > 0) {
+            notificationCreditService.consume(scopeId, entity.getEstimatedRecipients(),
+                    NotificationSourceType.DIRECT_MAIL);
         }
 
         entity.markSending();

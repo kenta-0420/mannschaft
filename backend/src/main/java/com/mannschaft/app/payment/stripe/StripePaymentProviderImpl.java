@@ -175,6 +175,40 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     }
 
     @Override
+    public CheckoutSessionInfo createNotificationCreditCheckoutSession(String stripePriceId,
+                                                                       String stripeCustomerId,
+                                                                       Long notificationCreditPurchaseId,
+                                                                       String successUrl,
+                                                                       String cancelUrl) {
+        try {
+            SessionCreateParams params = SessionCreateParams.builder()
+                    .setMode(SessionCreateParams.Mode.PAYMENT)
+                    .setCustomer(stripeCustomerId)
+                    .setSuccessUrl(successUrl)
+                    .setCancelUrl(cancelUrl)
+                    .addLineItem(SessionCreateParams.LineItem.builder()
+                            .setPrice(stripePriceId)
+                            .setQuantity(1L)
+                            .build())
+                    .putMetadata("notificationCreditPurchaseId", notificationCreditPurchaseId.toString())
+                    .build();
+            Session session = Session.create(params);
+
+            LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                    Instant.ofEpochSecond(session.getExpiresAt()),
+                    ZoneId.systemDefault());
+
+            log.info("通知クレジット Checkout Session 作成: sessionId={}, notificationCreditPurchaseId={}",
+                    session.getId(), notificationCreditPurchaseId);
+            return new CheckoutSessionInfo(session.getId(), session.getUrl(), expiresAt);
+        } catch (StripeException e) {
+            log.error("通知クレジット Checkout Session 作成失敗: priceId={}, notificationCreditPurchaseId={}",
+                    stripePriceId, notificationCreditPurchaseId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
     public String createRefund(String stripePaymentIntentId, Long memberPaymentId, Long refundedBy) {
         try {
             RefundCreateParams params = RefundCreateParams.builder()
@@ -239,6 +273,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         String refundId = null;
         BigDecimal refundAmount = null;
         BigDecimal paymentIntentAmount = null;
+        Long notificationCreditPurchaseId = null;
 
         if (stripeObject instanceof Session session) {
             sessionId = session.getId();
@@ -247,6 +282,15 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             Map<String, String> metadata = session.getMetadata();
             if (metadata != null) {
                 memberPaymentId = metadata.get("memberPaymentId");
+                // F09.13: 通知クレジット購入のメタデータを取得
+                String ncpId = metadata.get("notificationCreditPurchaseId");
+                if (ncpId != null) {
+                    try {
+                        notificationCreditPurchaseId = Long.parseLong(ncpId);
+                    } catch (NumberFormatException e) {
+                        log.warn("notificationCreditPurchaseId のパース失敗: value={}", ncpId);
+                    }
+                }
             }
         } else if (stripeObject instanceof com.stripe.model.PaymentIntent pi) {
             paymentIntentId = pi.getId();
@@ -277,7 +321,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
         return new WebhookEventInfo(eventType, sessionId, paymentIntentId,
                 memberPaymentId, subscriptionId, amountReceived, receiptUrl,
-                refundId, refundAmount, paymentIntentAmount);
+                refundId, refundAmount, paymentIntentAmount, notificationCreditPurchaseId);
     }
 
     /**

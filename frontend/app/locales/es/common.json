@@ -1107,6 +1107,38 @@
       "errorReports": "Informes de errores"
     }
   },
+  "notificationCredit": {
+    "title": "Gestión de créditos de notificación",
+    "balanceTitle": "Saldo y uso",
+    "packageTitle": "Comprar créditos",
+    "historyTitle": "Historial de compras",
+    "freeUsage": "Uso de cuota gratuita este mes",
+    "creditBalance": "Saldo de créditos",
+    "unit": "mensajes",
+    "credits": "Créditos otorgados",
+    "price": "Precio",
+    "purchaseButton": "Comprar",
+    "purchaseSuccess": "Compra de créditos completada",
+    "purchaseCancelled": "Compra cancelada",
+    "checkoutFailed": "Error al crear la sesión de pago",
+    "noHistory": "Sin historial de compras",
+    "gracePeriodAlert": "Saldo insuficiente: período de gracia activo",
+    "gracePeriodDescription": "El período de gracia termina: {endsAt}. El exceso de {debt} mensajes se compensará el 1 del próximo mes.",
+    "table": {
+      "paidAt": "Fecha de pago",
+      "packageName": "Nombre del paquete",
+      "priceJpy": "Monto",
+      "credits": "Mensajes",
+      "expiresAt": "Vencimiento",
+      "status": "Estado"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "paid": "Pagado",
+      "cancelled": "Cancelado",
+      "refunded": "Reembolsado"
+    }
+  },
   "share": {
     "title": "Compartir",
     "copyLink": "Copiar enlace",
