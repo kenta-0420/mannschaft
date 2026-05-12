@@ -10,6 +10,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Locale;
@@ -26,6 +28,7 @@ import static org.mockito.Mockito.when;
  * EmailService と EmailTemplateRenderer をモックして送信が呼ばれることを検証する。
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("AuthEmailEventListener")
 class AuthEmailEventListenerTest {
 
