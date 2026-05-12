@@ -300,6 +300,10 @@ public class GlobalExceptionHandler {
             Map.entry("SCOPE_FOLDER_LIMIT_EXCEEDED", HttpStatus.CONFLICT),   // フォルダ上限超過
             Map.entry("SCOPE_FOLDER_NAME_DUPLICATE", HttpStatus.CONFLICT),   // 同名フォルダ重複
             Map.entry("SCOPE_FOLDER_NOT_MEMBER", HttpStatus.FORBIDDEN),      // スコープ非所属
+            // F08.8 Phase 1 案5 修繕計画項目（IDOR 対策で 404、楽観ロック競合は 409）
+            Map.entry("REPAIR_PLAN_001", HttpStatus.NOT_FOUND),              // ITEM_NOT_FOUND
+            Map.entry("REPAIR_PLAN_002", HttpStatus.CONFLICT),               // ITEM_VERSION_CONFLICT
+            Map.entry("REPAIR_PLAN_003", HttpStatus.BAD_REQUEST),            // INVALID_SCOPE
             // F08.8 修繕長期計画ダッシュボード — テンプレ/モジュール判定（足軽5）
             Map.entry("REPAIR_PLAN_013", HttpStatus.UNPROCESSABLE_ENTITY),   // TEMPLATE_NOT_APARTMENT
             Map.entry("REPAIR_PLAN_014", HttpStatus.UNPROCESSABLE_ENTITY)    // MODULE_NOT_ENABLED

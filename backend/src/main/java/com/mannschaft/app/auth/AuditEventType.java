@@ -111,7 +111,11 @@ public enum AuditEventType {
     TIMELINE_EXPORTED(AuditEventCategory.REPAIR_PLAN),
     EXTERNAL_AGENT_DELEGATION_GRANTED(AuditEventCategory.REPAIR_PLAN),
     EXTERNAL_AGENT_DELEGATION_REVOKED(AuditEventCategory.REPAIR_PLAN),
-    PLAN_ITEM_CSV_IMPORTED(AuditEventCategory.REPAIR_PLAN);
+    PLAN_ITEM_CSV_IMPORTED(AuditEventCategory.REPAIR_PLAN),
+    // F08.8 Phase 1 案5: 修繕計画項目 CRUD
+    PLAN_ITEM_CREATED(AuditEventCategory.REPAIR_PLAN),
+    PLAN_ITEM_UPDATED(AuditEventCategory.REPAIR_PLAN),
+    PLAN_ITEM_DELETED(AuditEventCategory.REPAIR_PLAN);
 
     private final AuditEventCategory category;
 }
