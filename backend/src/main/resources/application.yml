@@ -51,6 +51,11 @@ mannschaft:
   encryption:
     key: ${MANNSCHAFT_ENCRYPTION_KEY:}
     hmac-key: ${MANNSCHAFT_HMAC_KEY:}
+  # F12.1 §5.14 / F09.15 §9.4 — 内部 PDF 署名トークン用秘密鍵（v1 簡易方式 HMAC-SHA256）
+  # 本番は MANNSCHAFT_INTERNAL_SIGNING_KEY を必ず設定（256bit 以上推奨）。
+  # 未設定でも起動自体は成功するが、誓約 PDF 生成 / 検証時に PDF_007 例外で fail-fast する。
+  security:
+    internal-signing-key: ${MANNSCHAFT_INTERNAL_SIGNING_KEY:}
   storage:
     bucket: ${MANNSCHAFT_R2_BUCKET:mannschaft-storage}
     endpoint: ${MANNSCHAFT_R2_ENDPOINT:}        # https://{accountId}.r2.cloudflarestorage.com

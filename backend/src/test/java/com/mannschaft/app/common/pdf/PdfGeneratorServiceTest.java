@@ -2,16 +2,17 @@ package com.mannschaft.app.common.pdf;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.config.PdfFontConfig;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -35,8 +36,20 @@ class PdfGeneratorServiceTest {
     @Mock
     private PdfFontConfig pdfFontConfig;
 
-    @InjectMocks
     private PdfGeneratorService pdfGeneratorService;
+
+    /**
+     * F12.1 §5.14 / F09.15 §9.4 — 単体テスト用の固定鍵。本番では環境変数で注入される。
+     */
+    private static final String TEST_SIGNING_KEY = "unit-test-signing-key-fixed-32bytes-xxxxx";
+
+    @BeforeEach
+    void setUp() {
+        pdfGeneratorService = new PdfGeneratorService(
+                templateEngine,
+                pdfFontConfig,
+                new InternalPdfSigningProperties(TEST_SIGNING_KEY));
+    }
 
     // ========================================
     // テスト用定数・ヘルパー
@@ -117,5 +130,166 @@ class PdfGeneratorServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PDF_001"));
         }
+    }
+
+    // ========================================
+    // signWithInternalToken（F12.1 §5.14）
+    // ========================================
+
+    @Nested
+    @DisplayName("signWithInternalToken")
+    class SignWithInternalToken {
+
+        @Test
+        @DisplayName("正常系: PDF + subjectId に対し SHA-256 と内部署名トークンが計算される")
+        void 正常系_SHA256とトークンが返る() {
+            byte[] pdfBytes = "dummy-pdf-content".getBytes();
+            String subjectId = "covenant-uuid-123";
+
+            SignedPdfResult result = pdfGeneratorService.signWithInternalToken(pdfBytes, subjectId);
+
+            assertThat(result.pdf()).isEqualTo(pdfBytes);
+            assertThat(result.subjectId()).isEqualTo(subjectId);
+            // SHA-256 hex は 64 桁
+            assertThat(result.hashSha256()).hasSize(64).matches("[0-9a-f]{64}");
+            // token は "<HMAC_B64URL>.<epochMs>" 形式
+            assertThat(result.timestampToken()).contains(".");
+            assertThat(result.signedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("正常系: 同じ入力でも署名時刻が違えばトークンが異なる")
+        void 同じ入力_時刻違いでトークン異なる() throws InterruptedException {
+            byte[] pdfBytes = "abc".getBytes();
+            SignedPdfResult r1 = pdfGeneratorService.signWithInternalToken(pdfBytes, "s1");
+            Thread.sleep(2);
+            SignedPdfResult r2 = pdfGeneratorService.signWithInternalToken(pdfBytes, "s1");
+
+            assertThat(r1.hashSha256()).isEqualTo(r2.hashSha256());
+            assertThat(r1.timestampToken()).isNotEqualTo(r2.timestampToken());
+        }
+
+        @Test
+        @DisplayName("異常系: 鍵未設定で PDF_007 例外")
+        void 鍵未設定_PDF007例外() {
+            PdfGeneratorService unsigned = new PdfGeneratorService(
+                    templateEngine, pdfFontConfig, new InternalPdfSigningProperties(null));
+
+            assertThatThrownBy(() -> unsigned.signWithInternalToken(new byte[]{1, 2, 3}, "subj"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("PDF_007"));
+        }
+
+        @Test
+        @DisplayName("異常系: 鍵空文字でも PDF_007 例外")
+        void 鍵空文字_PDF007例外() {
+            PdfGeneratorService unsigned = new PdfGeneratorService(
+                    templateEngine, pdfFontConfig, new InternalPdfSigningProperties("  "));
+
+            assertThatThrownBy(() -> unsigned.signWithInternalToken(new byte[]{1, 2, 3}, "subj"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("PDF_007"));
+        }
+    }
+
+    // ========================================
+    // recomputeInternalToken / sha256Hex（検証 Service との共通利用）
+    // ========================================
+
+    @Nested
+    @DisplayName("recomputeInternalToken / sha256Hex")
+    class TokenRecompute {
+
+        @Test
+        @DisplayName("正常系: 同一入力で sign と recompute は一致する")
+        void sign結果とrecomputeが一致() {
+            byte[] pdfBytes = "verify-me".getBytes();
+            SignedPdfResult signed = pdfGeneratorService.signWithInternalToken(pdfBytes, "s-abc");
+
+            String recomputed = pdfGeneratorService.recomputeInternalToken(
+                    signed.hashSha256(), signed.subjectId(), signed.signedAt());
+
+            assertThat(recomputed).isEqualTo(signed.timestampToken());
+        }
+
+        @Test
+        @DisplayName("異常系: subjectId が異なれば token が変わる（改ざん検知）")
+        void subjectId改ざんでtoken不一致() {
+            byte[] pdfBytes = "verify-me".getBytes();
+            SignedPdfResult signed = pdfGeneratorService.signWithInternalToken(pdfBytes, "s-abc");
+
+            String tampered = pdfGeneratorService.recomputeInternalToken(
+                    signed.hashSha256(), "s-different", signed.signedAt());
+
+            assertThat(tampered).isNotEqualTo(signed.timestampToken());
+        }
+
+        @Test
+        @DisplayName("正常系: sha256Hex は 64 桁 hex を返す")
+        void sha256Hex_64桁hex() {
+            String hex = pdfGeneratorService.sha256Hex(new byte[]{0});
+            assertThat(hex).hasSize(64).matches("[0-9a-f]{64}");
+        }
+    }
+
+    // ========================================
+    // generateSignedCovenantPdf（F09.15 §7.1）
+    // ========================================
+
+    @Nested
+    @DisplayName("generateSignedCovenantPdf")
+    class GenerateSignedCovenantPdf {
+
+        @Test
+        @DisplayName("異常系: テンプレートエンジン失敗で PDF_001 例外")
+        void テンプレート失敗_PDF001例外() {
+            given(templateEngine.process(eq("pdf/succession-covenant"), any(Context.class)))
+                    .willThrow(new RuntimeException("template not found"));
+
+            SuccessionCovenantContext ctx = new SuccessionCovenantContext(
+                    "covenant-1",
+                    "SUCCESSION_PRE_REGISTRATION",
+                    "事前登録誓約",
+                    "v1.0.0",
+                    "山田 太郎",
+                    "301 号室",
+                    "OWNER",
+                    java.time.LocalDate.of(2026, 5, 9),
+                    java.time.LocalDateTime.of(2026, 5, 9, 10, 0),
+                    "○○マンション管理組合",
+                    "理事長 鈴木 一郎");
+
+            assertThatThrownBy(() -> pdfGeneratorService.generateSignedCovenantPdf(ctx))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("PDF_001"));
+        }
+
+        @Test
+        @DisplayName("異常系: 鍵未設定で PDF_007 例外")
+        void 鍵未設定_PDF007例外() {
+            PdfGeneratorService unsigned = new PdfGeneratorService(
+                    templateEngine, pdfFontConfig, new InternalPdfSigningProperties(null));
+
+            SuccessionCovenantContext ctx = new SuccessionCovenantContext(
+                    "covenant-1", "PRIVACY_CONSENT", "プライバシー同意", "v1.0.0",
+                    "佐藤 花子", "201 号室", "OWNER",
+                    java.time.LocalDate.of(2026, 5, 9),
+                    java.time.LocalDateTime.of(2026, 5, 9, 10, 0),
+                    "○○組合", "理事長");
+
+            assertThatThrownBy(() -> unsigned.generateSignedCovenantPdf(ctx))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("PDF_007"));
+        }
+    }
+
+    // signedAt 引数で時刻を固定するヘルパ（将来テストで利用）
+    @SuppressWarnings("unused")
+    private Instant fixedSignedAt() {
+        return Instant.parse("2026-05-09T10:00:00Z");
     }
 }
