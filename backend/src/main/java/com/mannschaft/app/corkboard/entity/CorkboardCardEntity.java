@@ -4,6 +4,8 @@ import com.mannschaft.app.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,6 +14,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * コルクボードカードエンティティ。ボード上の各カード（参照・メモ・URL・見出し）を管理する。
@@ -43,6 +46,34 @@ public class CorkboardCardEntity extends BaseEntity {
     private String referenceType;
 
     private Long referenceId;
+
+    /**
+     * F09.15/16 S0: UUIDv7 主キー reference 系の参照 ID（V66.001 で追加）。
+     *
+     * <p>F00 設計書 §3.4 (F00-A 案) に基づく並列カラム。
+     * {@link com.mannschaft.app.common.visibility.ReferenceType#idKind()}
+     * が {@code UUID_V7} を返す reference_type のときに本カラムを使う。</p>
+     *
+     * <p><strong>XOR 制約 (DB レイヤ + アプリレイヤの二重防御)</strong>:
+     * {@code reference_id} と {@code reference_id_uuid} は両方 NOT NULL に
+     * なってはならない。「両方 NULL」は許容（純メモ / URL / HEADING カード）。</p>
+     */
+    @Column(name = "reference_id_uuid", columnDefinition = "BINARY(16)")
+    private UUID referenceIdUuid;
+
+    /**
+     * F09.15/16 S0: XOR 制約のアプリレイヤ検証。
+     *
+     * <p>DB 側で {@code chk_cc_reference_xor} を持つが、Hibernate flush 前の
+     * Service 層バリデーションで早期に弾けるよう {@code @AssertTrue} で二重防御する。</p>
+     *
+     * @return 不正な状態（両方 NOT NULL）でなければ true
+     */
+    @Transient
+    @AssertTrue(message = "reference_id と reference_id_uuid は両方を同時に設定できない")
+    public boolean isReferenceIdXorValid() {
+        return referenceId == null || referenceIdUuid == null;
+    }
 
     @Column(columnDefinition = "TEXT")
     private String contentSnapshot;

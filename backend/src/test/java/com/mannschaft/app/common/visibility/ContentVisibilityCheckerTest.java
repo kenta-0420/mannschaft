@@ -15,6 +15,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -549,6 +550,129 @@ class ContentVisibilityCheckerTest {
         }
     }
 
+    @Nested
+    @DisplayName("UUIDv7 reference 経路 (F09.15/16 S0)")
+    class UuidPath {
+
+        private final UUID UUID_ALLOWED = UUID.fromString("00000000-0000-7000-8000-000000000001");
+        private final UUID UUID_DENIED = UUID.fromString("00000000-0000-7000-8000-000000000002");
+
+        @Test
+        @DisplayName("UUID 系 type に Resolver が登録されている場合、canView(UUID) で許可される")
+        void canView_uuid_returnsTrueWhenResolverAllows() {
+            UuidStubResolver resolver = new UuidStubResolver(
+                ReferenceType.SUCCESSION_PRE_REGISTRATION, Set.of(UUID_ALLOWED));
+            ContentVisibilityChecker checker = new ContentVisibilityChecker(
+                List.of(resolver), metrics);
+
+            assertThat(checker.canViewUuid(
+                ReferenceType.SUCCESSION_PRE_REGISTRATION, UUID_ALLOWED, 100L))
+                .isTrue();
+            assertThat(checker.canViewUuid(
+                ReferenceType.SUCCESSION_PRE_REGISTRATION, UUID_DENIED, 100L))
+                .isFalse();
+        }
+
+        @Test
+        @DisplayName("UUID 系 type の Resolver 未登録は fail-closed (false)")
+        void canView_uuid_failClosedWhenResolverMissing() {
+            ContentVisibilityChecker checker =
+                new ContentVisibilityChecker(List.of(), metrics);
+
+            assertThat(checker.canViewUuid(
+                ReferenceType.SUCCESSION_PRE_REGISTRATION, UUID_ALLOWED, 100L))
+                .isFalse();
+        }
+
+        @Test
+        @DisplayName("BIGINT 系 type に UUID API を呼ぶと fail-closed (経路不一致)")
+        void canView_uuid_failClosedOnBigintType() {
+            // BLOG_POST は BIGINT 経路。UUID API で呼ぶこと自体が誤用。
+            UuidStubResolver wrongResolver = new UuidStubResolver(
+                ReferenceType.SUCCESSION_PRE_REGISTRATION, Set.of(UUID_ALLOWED));
+            ContentVisibilityChecker checker = new ContentVisibilityChecker(
+                List.of(wrongResolver), metrics);
+
+            assertThat(checker.canViewUuid(
+                ReferenceType.BLOG_POST, UUID_ALLOWED, 100L))
+                .isFalse();
+        }
+
+        @Test
+        @DisplayName("filterAccessibleUuid は許可された UUID のみ返す")
+        void filterAccessibleUuid_returnsAllowedOnly() {
+            UuidStubResolver resolver = new UuidStubResolver(
+                ReferenceType.SUCCESSION_COVENANTS, Set.of(UUID_ALLOWED));
+            ContentVisibilityChecker checker = new ContentVisibilityChecker(
+                List.of(resolver), metrics);
+
+            Set<UUID> result = checker.filterAccessibleUuid(
+                ReferenceType.SUCCESSION_COVENANTS,
+                List.of(UUID_ALLOWED, UUID_DENIED), 100L);
+
+            assertThat(result).containsExactly(UUID_ALLOWED);
+        }
+
+        @Test
+        @DisplayName("filterAccessibleUuid は BIGINT 系 type で空 Set を返す")
+        void filterAccessibleUuid_failClosedOnBigintType() {
+            ContentVisibilityChecker checker =
+                new ContentVisibilityChecker(List.of(), metrics);
+
+            Set<UUID> result = checker.filterAccessibleUuid(
+                ReferenceType.BLOG_POST,
+                List.of(UUID_ALLOWED, UUID_DENIED), 100L);
+
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("decide(UUID) は Resolver 未登録時に UNSUPPORTED_REFERENCE_TYPE を返す")
+        void decide_uuid_returnsUnsupportedWhenResolverMissing() {
+            ContentVisibilityChecker checker =
+                new ContentVisibilityChecker(List.of(), metrics);
+
+            VisibilityDecision decision = checker.decideUuid(
+                ReferenceType.RESIDENT_ACTIVITY_SNAPSHOT, UUID_ALLOWED, 100L);
+
+            assertThat(decision.allowed()).isFalse();
+            assertThat(decision.denyReason())
+                .isEqualTo(DenyReason.UNSUPPORTED_REFERENCE_TYPE);
+            assertThat(decision.referenceType())
+                .isEqualTo(ReferenceType.RESIDENT_ACTIVITY_SNAPSHOT);
+        }
+
+        @Test
+        @DisplayName("decide(UUID) を BIGINT 系 type で呼ぶと UNSUPPORTED_REFERENCE_TYPE")
+        void decide_uuid_failClosedOnBigintType() {
+            ContentVisibilityChecker checker =
+                new ContentVisibilityChecker(List.of(), metrics);
+
+            VisibilityDecision decision = checker.decideUuid(
+                ReferenceType.EVENT, UUID_ALLOWED, 100L);
+
+            assertThat(decision.allowed()).isFalse();
+            assertThat(decision.denyReason())
+                .isEqualTo(DenyReason.UNSUPPORTED_REFERENCE_TYPE);
+        }
+
+        @Test
+        @DisplayName("Long 経路の Resolver が UUID API を呼ばれると UnsupportedOperationException")
+        void resolver_defaultUuidPathThrows() {
+            // BIGINT 経路の Resolver が誤って UUID API を呼ばれた場合の防御。
+            // 仕様: ContentVisibilityResolver のデフォルト実装が UOE を投げる。
+            StubResolver resolver =
+                new StubResolver(ReferenceType.BLOG_POST, Set.of(1L));
+
+            assertThatThrownBy(() -> resolver.canViewUuid(UUID_ALLOWED, 100L))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("does not implement UUID-based canView");
+
+            assertThatThrownBy(() -> resolver.filterAccessibleUuid(List.of(UUID_ALLOWED), 100L))
+                .isInstanceOf(UnsupportedOperationException.class);
+        }
+    }
+
     // ---------------------------------------------------------------------
     // テスト用 Resolver スタブ — 「許可される ID 集合」を渡して挙動を制御
     // ---------------------------------------------------------------------
@@ -583,6 +707,55 @@ class ContentVisibilityCheckerTest {
                 Collection<Long> contentIds, Long viewerUserId) {
             return contentIds.stream()
                 .filter(allowedIds::contains)
+                .collect(java.util.stream.Collectors.toSet());
+        }
+    }
+
+    /**
+     * UUIDv7 reference 経路の Resolver スタブ (F09.15/16 S0)。
+     *
+     * <p>本スタブが受け持つ {@link ReferenceType} は UUID 経路前提のため、
+     * Long 経路の {@link #canView(Long, Long)} / {@link #filterAccessible(Collection, Long)}
+     * はデフォルト挙動 (空集合 / false) を返す。テスト目的で UUID 経路のみ実装する。</p>
+     */
+    private static class UuidStubResolver
+            implements ContentVisibilityResolver<String> {
+
+        private final ReferenceType type;
+        private final Set<UUID> allowedUuids;
+
+        UuidStubResolver(ReferenceType type, Set<UUID> allowedUuids) {
+            this.type = type;
+            this.allowedUuids = allowedUuids;
+        }
+
+        @Override
+        public ReferenceType referenceType() {
+            return type;
+        }
+
+        @Override
+        public boolean canView(Long contentId, Long viewerUserId) {
+            // UUID 経路 Resolver のためデフォルトでは false (誤用検知)
+            return false;
+        }
+
+        @Override
+        public Set<Long> filterAccessible(
+                Collection<Long> contentIds, Long viewerUserId) {
+            return Set.of();
+        }
+
+        @Override
+        public boolean canViewUuid(UUID contentId, Long viewerUserId) {
+            return allowedUuids.contains(contentId);
+        }
+
+        @Override
+        public Set<UUID> filterAccessibleUuid(
+                Collection<UUID> contentIds, Long viewerUserId) {
+            return contentIds.stream()
+                .filter(allowedUuids::contains)
                 .collect(java.util.stream.Collectors.toSet());
         }
     }

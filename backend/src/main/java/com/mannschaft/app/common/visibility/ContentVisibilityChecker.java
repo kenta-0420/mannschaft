@@ -13,6 +13,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * F00 共通可視性判定ファサード。
@@ -306,6 +307,137 @@ public class ContentVisibilityChecker {
             // 監査ログ記録失敗で本処理を止めない (auditLogService 自身も内部で握り潰しているが二重防御)
             log.warn("VISIBILITY_DENIED 監査ログ記録失敗: referenceType={}, contentId={}",
                 decision.referenceType(), decision.contentId(), e);
+        }
+    }
+
+    // ----------------------------------------------------------------------
+    // F09.15/16 S0 (2026-05-12): UUIDv7 reference 系 API。
+    //
+    // 設計書: docs/features/F00_content_visibility_resolver.md §3.4 (F00-A 案)
+    // - {@link ReferenceType#idKind()} == UUID_V7 の reference_type 用
+    // - {@link ReferenceType#idKind()} == BIGINT の type に対して UUID API が呼ばれた
+    //   場合は fail-closed (false / 空 Set / UNSUPPORTED_REFERENCE_TYPE) で返す
+    // - Resolver が UUID 経路を未実装の場合は UnsupportedOperationException が
+    //   伝播するため、メトリクス上に発火元を残せるよう本ファサードでログのみ拾う
+    // ----------------------------------------------------------------------
+
+    /**
+     * 単発判定 (UUIDv7 reference 系).
+     *
+     * <p><strong>命名規約</strong>: Long 版の {@link #canView(ReferenceType, Long, Long)}
+     * と同名にすると Mockito {@code any()} 等でオーバーロード解決があいまいになるため、
+     * 別名 {@code canViewUuid} とした (F09.15/16 S0)。</p>
+     *
+     * @param type      対象の reference_type ({@code idKind() == UUID_V7} 必須)
+     * @param contentId 対象 UUIDv7 contentId
+     * @param userId    閲覧者 userId ({@code null} 可)
+     * @return 閲覧可能なら true。未対応 type / 経路不一致は fail-closed で false
+     */
+    public boolean canViewUuid(ReferenceType type, UUID contentId, Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            if (type.idKind() != ReferenceType.IdKind.UUID_V7) {
+                // 経路不一致: BIGINT 系 type に UUID API が呼ばれた → fail-closed
+                log.warn("canViewUuid called for BIGINT-keyed referenceType={} (fail-closed)", type);
+                recordUnsupported(type);
+                return false;
+            }
+            ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+            if (resolver == null) {
+                recordUnsupported(type);
+                return false;
+            }
+            return resolver.canViewUuid(contentId, userId);
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_CAN_VIEW);
+        }
+    }
+
+    /**
+     * 同一 reference_type のバッチ判定 (UUIDv7 reference 系).
+     *
+     * @param type   対象の reference_type ({@code idKind() == UUID_V7} 必須)
+     * @param ids    判定対象の UUIDv7 contentId 集合
+     * @param userId 閲覧者 userId ({@code null} 可)
+     * @return アクセス可能な contentId の Set。未対応 type / 経路不一致は fail-closed で空 Set
+     */
+    public Set<UUID> filterAccessibleUuid(
+            ReferenceType type, Collection<UUID> ids, Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        int inputSize = ids == null ? 0 : ids.size();
+        try {
+            visibilityMetrics.recordBatchSize(type, inputSize);
+            if (type.idKind() != ReferenceType.IdKind.UUID_V7) {
+                log.warn("filterAccessibleUuid called for BIGINT-keyed referenceType={} (fail-closed)", type);
+                recordUnsupported(type);
+                if (inputSize > 0) {
+                    visibilityMetrics.recordAccessRatio(type, 0.0);
+                }
+                return Set.of();
+            }
+            ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+            if (resolver == null) {
+                recordUnsupported(type);
+                if (inputSize > 0) {
+                    visibilityMetrics.recordAccessRatio(type, 0.0);
+                }
+                return Set.of();
+            }
+            @SuppressWarnings("unchecked")
+            Set<UUID> result = ((ContentVisibilityResolver<?>) resolver).filterAccessibleUuid(ids, userId);
+            if (inputSize > 0) {
+                double ratio = (double) result.size() / (double) inputSize;
+                visibilityMetrics.recordAccessRatio(type, ratio);
+            }
+            return result;
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_FILTER_ACCESSIBLE);
+        }
+    }
+
+    /**
+     * 詳細判定 (UUIDv7 reference 系).
+     *
+     * <p>未対応 / 経路不一致 type は
+     * {@link DenyReason#UNSUPPORTED_REFERENCE_TYPE} を返す。</p>
+     *
+     * <p><strong>命名規約</strong>: Long 版の {@link #decide(ReferenceType, Long, Long)} と
+     * 同名にするとオーバーロード解決があいまいになるため別名 {@code decideUuid} にした
+     * (F09.15/16 S0)。</p>
+     *
+     * @param type      対象の reference_type ({@code idKind() == UUID_V7} 必須)
+     * @param contentId 対象 UUIDv7 contentId
+     * @param userId    閲覧者 userId
+     * @return 判定結果
+     */
+    public VisibilityDecision decideUuid(ReferenceType type, UUID contentId, Long userId) {
+        Timer.Sample sample = visibilityMetrics.startCheckTimer();
+        try {
+            if (type.idKind() != ReferenceType.IdKind.UUID_V7) {
+                log.warn("decideUuid called for BIGINT-keyed referenceType={} (fail-closed)", type);
+                recordUnsupported(type);
+                VisibilityDecision denied = VisibilityDecision.deny(
+                    type, null, DenyReason.UNSUPPORTED_REFERENCE_TYPE,
+                    "UUID path called for BIGINT-keyed referenceType=" + type);
+                visibilityMetrics.recordDenied(type, DenyReason.UNSUPPORTED_REFERENCE_TYPE);
+                return denied;
+            }
+            ContentVisibilityResolver<?> resolver = resolverMap.get(type);
+            if (resolver == null) {
+                recordUnsupported(type);
+                VisibilityDecision denied = VisibilityDecision.deny(
+                    type, null, DenyReason.UNSUPPORTED_REFERENCE_TYPE,
+                    "no resolver registered for referenceType=" + type);
+                visibilityMetrics.recordDenied(type, DenyReason.UNSUPPORTED_REFERENCE_TYPE);
+                return denied;
+            }
+            VisibilityDecision decision = resolver.decideUuid(contentId, userId);
+            if (!decision.allowed()) {
+                visibilityMetrics.recordDenied(type, decision.denyReason());
+            }
+            return decision;
+        } finally {
+            visibilityMetrics.stopCheckTimer(sample, type, OP_DECIDE);
         }
     }
 

@@ -213,6 +213,18 @@ ALTER TABLE <related_table>
 
 これらは v0.2 時点では Resolver 未実装のため `ContentVisibilityChecker.canView(...)` を呼ぶことを ArchUnit ルールで禁止する（§13.5）。
 
+**S0 実装完了（2026-05-12 / V66.001）**:
+
+F09.15/16 第二陣の前提整備として、本節の F00-A 案を以下のとおり実装した:
+
+- **DDL (V66.001)**: `corkboard_cards` テーブルに `reference_id_uuid BINARY(16) NULL` を並列カラム追加。複合 INDEX `idx_cc_reference_uuid (reference_type, reference_id_uuid)` を新設。CHECK 制約 `chk_cc_reference_xor` で `reference_id` と `reference_id_uuid` の両方 NOT NULL を禁止（両方 NULL は許容 = 純メモ/URL/HEADING カード）
+- **ReferenceType enum**: `SUCCESSION_PRE_REGISTRATION` / `SUCCESSION_COVENANTS` / `RESIDENT_ACTIVITY_SNAPSHOT` の 3 値を予約追加。`idKind()` メソッドで `BIGINT` / `UUID_V7` を判定可能
+- **ContentVisibilityResolver IF**: `canViewUuid(UUID, Long)` / `filterAccessibleUuid(Collection<UUID>, Long)` / `decideUuid(UUID, Long)` のデフォルトメソッドを追加。デフォルト実装は `UnsupportedOperationException` で fail-fast し、各 Resolver は `idKind()` に応じて片方のみオーバーライドする。**Long 版と同名にしない別名にした理由**: Java のオーバーロード解決が `null` 引数や Mockito `any()` 呼び出しで曖昧になるのを避けるため
+- **ContentVisibilityChecker ファサード**: `canViewUuid(ReferenceType, UUID, Long)` / `filterAccessibleUuid(...)` / `decideUuid(ReferenceType, UUID, Long)` を追加。経路不一致（BIGINT 系 type に UUID API、または UUID 系 type に BIGINT API）は fail-closed
+- **CorkboardCardEntity**: `referenceIdUuid` フィールドを追加。`@AssertTrue` でアプリ層 XOR バリデーションを二重防御
+
+S0 時点では SUCCESSION_* / RESIDENT_* の Resolver は未実装。S1 で `SUCCESSION_COVENANTS`、S2 で `SUCCESSION_PRE_REGISTRATION`、S3〜S4 で `RESIDENT_ACTIVITY_SNAPSHOT` を本登録する。
+
 **意図的に対象外** とする visibility:
 - `OnlineVisibility`（オンライン状態。コンテンツではなくユーザー属性）
 - `OrganizationProfileVisibility`（フィールド別フラグの Record。設計が異質）

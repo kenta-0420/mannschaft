@@ -104,5 +104,87 @@ public enum ReferenceType {
      * <p>フォロー一覧自体を corkboard カードとして引用するユースケース対応。
      * Phase 1 では Resolver 未実装。
      */
-    FOLLOW_LIST
+    FOLLOW_LIST,
+
+    // ---------------------------------------------------------------------
+    // F09.15 / F09.16 系 UUIDv7 reference 予約 (2026-05-12 S0 で追加)
+    // CLAUDE.md 原則 6 により F09.15/16 の新規テーブルは UUIDv7 主キーであり、
+    // F00 設計書 §3.4 の F00-A 案（並列カラム追加）に基づき、
+    // 本セクションの reference_type は corkboard_cards.reference_id_uuid を使う。
+    //
+    // 規約: 「使用カラム」マッピング表 (本 enum コメント内が真値)
+    //   - 上方 (BLOG_POST 〜 FOLLOW_LIST): reference_id (BIGINT) を使う
+    //   - 下方 (SUCCESSION_* / RESIDENT_*): reference_id_uuid (BINARY(16)) を使う
+    //
+    // S0 時点では Resolver 未実装。Phase A-2 以降の S1/S2 で本登録する。
+    // ContentVisibilityChecker.canView(...) を呼ぶことを ArchUnit ルールで禁止する (§13.5)。
+    // ---------------------------------------------------------------------
+
+    /**
+     * 区分所有者の事前登録 (F09.15 / S2 で実装予定).
+     *
+     * <p>「もしもの備え」事前登録レコード。封緘状態 (SEALED / UNSEAL_REQUESTED /
+     * UNSEALED / RE_SEALED) に応じて状態遷移ベースで可視性を判定する。
+     * Resolver 未実装のため S0 時点では fail-closed。
+     *
+     * <p>使用カラム: {@code corkboard_cards.reference_id_uuid} (UUIDv7)
+     */
+    SUCCESSION_PRE_REGISTRATION,
+
+    /**
+     * 入居時誓約 (F09.15 / S1 で実装予定).
+     *
+     * <p>SUCCESSION_PRE_REGISTRATION / PRIVACY_CONSENT / MONITORING_CONSENT の
+     * 3 種誓約を保存する succession_covenants テーブルのレコード可視性。
+     * S0 時点では Resolver 未実装。
+     *
+     * <p>使用カラム: {@code corkboard_cards.reference_id_uuid} (UUIDv7)
+     */
+    SUCCESSION_COVENANTS,
+
+    /**
+     * 居住実態スナップショット (F09.16 / S3〜S4 で実装予定).
+     *
+     * <p>resident_activity_snapshots テーブルの推定スコア・最終活動日時等の
+     * メタデータ可視性。本人 + ADMIN + WATCHER のみ閲覧可能。
+     * S0 時点では Resolver 未実装。
+     *
+     * <p>使用カラム: {@code corkboard_cards.reference_id_uuid} (UUIDv7)
+     */
+    RESIDENT_ACTIVITY_SNAPSHOT;
+
+    /**
+     * 本 reference_type が参照する主キー型を返す。
+     *
+     * <p>F00 設計書 §3.4 (F00-A 案) に基づくマッピング規約:
+     * <ul>
+     *   <li>{@link IdKind#BIGINT} — corkboard_cards.reference_id (BIGINT UNSIGNED) を使う</li>
+     *   <li>{@link IdKind#UUID_V7} — corkboard_cards.reference_id_uuid (BINARY(16)) を使う</li>
+     * </ul>
+     *
+     * <p>Resolver 実装側はこの判定により、機能側 Repository に Long ID を渡すか
+     * UUID ID を渡すかを切り替える。
+     *
+     * @return この reference_type が使う主キー型
+     */
+    public IdKind idKind() {
+        return switch (this) {
+            case SUCCESSION_PRE_REGISTRATION,
+                 SUCCESSION_COVENANTS,
+                 RESIDENT_ACTIVITY_SNAPSHOT -> IdKind.UUID_V7;
+            default -> IdKind.BIGINT;
+        };
+    }
+
+    /**
+     * reference_type が参照する主キー型の区分。
+     *
+     * <p>F00-A 案（並列カラム追加）の運用規約を enum 値ごとに表現する。
+     */
+    public enum IdKind {
+        /** BIGINT UNSIGNED 主キー (corkboard_cards.reference_id 経路). */
+        BIGINT,
+        /** UUIDv7 主キー (corkboard_cards.reference_id_uuid 経路). */
+        UUID_V7
+    }
 }
