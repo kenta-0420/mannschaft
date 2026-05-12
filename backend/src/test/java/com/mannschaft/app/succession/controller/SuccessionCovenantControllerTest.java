@@ -13,8 +13,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -55,9 +57,11 @@ class SuccessionCovenantControllerTest {
 
     @BeforeEach
     void setUp() {
-        objectMapper.findAndRegisterModules();  // JSR310 LocalDateTime 等
+        objectMapper.findAndRegisterModules();  // JSR310 LocalDateTime / Page等
         SuccessionCovenantController controller = new SuccessionCovenantController(covenantService);
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
+                .build();
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(String.valueOf(USER_ID), null,
                         List.of(new SimpleGrantedAuthority("ROLE_USER"))));
@@ -158,7 +162,8 @@ class SuccessionCovenantControllerTest {
                 .covenantType("PRIVACY_CONSENT").covenantVersion("v1.0.0")
                 .pdfS3Key("k").pdfSha256("h").internalSignatureToken("t")
                 .signedAt(LocalDateTime.now()).build();
-        Page<SuccessionCovenantResponse> page = new PageImpl<>(List.of(response));
+        Page<SuccessionCovenantResponse> page = new PageImpl<>(
+                List.of(response), PageRequest.of(0, 20), 1);
         given(covenantService.listOrgCovenants(eq(ORG_ID), any(Pageable.class), eq(USER_ID)))
                 .willReturn(page);
 
