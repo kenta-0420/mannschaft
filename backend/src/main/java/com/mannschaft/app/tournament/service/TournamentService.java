@@ -357,6 +357,8 @@ public class TournamentService {
                     .relegationSlots(prevDiv.getRelegationSlots())
                     .playoffPromotionSlots(prevDiv.getPlayoffPromotionSlots())
                     .maxParticipants(prevDiv.getMaxParticipants())
+                    .minEntryCount(prevDiv.getMinEntryCount())
+                    .maxEntryCount(prevDiv.getMaxEntryCount())
                     .sortOrder(prevDiv.getSortOrder())
                     .build());
         }

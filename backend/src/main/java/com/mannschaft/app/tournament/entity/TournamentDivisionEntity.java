@@ -45,6 +45,10 @@ public class TournamentDivisionEntity extends BaseEntity {
 
     private Integer maxParticipants;
 
+    private Integer minEntryCount;
+
+    private Integer maxEntryCount;
+
     @Column(nullable = false)
     @Builder.Default
     private Integer sortOrder = 0;
@@ -54,13 +58,16 @@ public class TournamentDivisionEntity extends BaseEntity {
      */
     public void update(String name, Integer level, Integer promotionSlots,
                        Integer relegationSlots, Integer playoffPromotionSlots,
-                       Integer maxParticipants, Integer sortOrder) {
+                       Integer maxParticipants, Integer minEntryCount, Integer maxEntryCount,
+                       Integer sortOrder) {
         this.name = name;
         this.level = level;
         this.promotionSlots = promotionSlots;
         this.relegationSlots = relegationSlots;
         this.playoffPromotionSlots = playoffPromotionSlots;
         this.maxParticipants = maxParticipants;
+        this.minEntryCount = minEntryCount;
+        this.maxEntryCount = maxEntryCount;
         this.sortOrder = sortOrder;
     }
 }

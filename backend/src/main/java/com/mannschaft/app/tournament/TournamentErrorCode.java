@@ -63,7 +63,37 @@ public enum TournamentErrorCode implements ErrorCode {
     PARTICIPANT_NOT_ACTIVE("TOUR_017", "参加チームのステータスがACTIVEでないため操作できません", Severity.WARN),
 
     /** 参加チームが見つからない */
-    PARTICIPANT_NOT_FOUND("TOUR_018", "参加チームが見つかりません", Severity.WARN);
+    PARTICIPANT_NOT_FOUND("TOUR_018", "参加チームが見つかりません", Severity.WARN),
+
+    /** 大会ステータスによりエントリー変更がロック */
+    ENTRY_LOCKED("TOUR_019", "大会ステータスによりエントリーの変更はできません", Severity.WARN),
+
+    /** max_entry_count を超過 */
+    MAX_ENTRY_COUNT_EXCEEDED("TOUR_020", "エントリー最大人数を超過しています", Severity.WARN),
+
+    /** 指定ユーザーがチームのメンバーではない */
+    USER_NOT_TEAM_MEMBER("TOUR_021", "指定されたユーザーはチームのメンバーではありません", Severity.WARN),
+
+    /** エントリーメンバーが見つからない */
+    ENTRY_MEMBER_NOT_FOUND("TOUR_022", "エントリーメンバーが見つかりません", Severity.WARN),
+
+    /** min_entry_count を下回る */
+    MIN_ENTRY_COUNT_VIOLATION("TOUR_023", "エントリー最少人数を下回っています", Severity.WARN),
+
+    /** 同一選手が既にエントリー済み */
+    ENTRY_MEMBER_DUPLICATE("TOUR_024", "この選手は既にエントリー済みです", Severity.WARN),
+
+    /** ロード対象のチームメンバーが存在しない */
+    ENTRY_LOAD_NO_MEMBERS("TOUR_025", "ロード対象のチームメンバーが存在しません", Severity.WARN),
+
+    /** エントリーテンプレートが見つからない */
+    ENTRY_TEMPLATE_NOT_FOUND("TOUR_026", "エントリーテンプレートが見つかりません", Severity.WARN),
+
+    /** テンプレートは最大5件まで */
+    MAX_TEMPLATE_COUNT_EXCEEDED("TOUR_027", "エントリーテンプレートは最大5件まで作成できます", Severity.WARN),
+
+    /** 適用テンプレートが参加チームのものではない */
+    TEMPLATE_TEAM_MISMATCH("TOUR_028", "このテンプレートは参加チームのものではありません", Severity.WARN);
 
     private final String code;
     private final String message;
