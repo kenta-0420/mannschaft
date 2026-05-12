@@ -170,8 +170,9 @@ class RepairPlanItemCsvServiceTest {
     @Test
     @DisplayName("preview で発行された importToken で confirm すると INSERT 件数が返り Valkey から削除される")
     void preview_and_confirm_happyPath() {
+        // tags カラム内に複数値を入れる場合は RFC 4180 通り引用符でくくる
         String csv = "カテゴリ,項目名,説明,計画年度,計画月,見積金額,CPI基準年度,ステータス,タグ\n"
-                + "外壁塗装,1回目,大規模1,2030,3,15000000,2024,PLANNED,築古,築20年\n"
+                + "外壁塗装,1回目,大規模1,2030,3,15000000,2024,PLANNED,\"築古,築20年\"\n"
                 + "防水工事,屋上防水,12年周期,2032,6,8000000,2024,RESERVED,\n";
         MockMultipartFile file = new MockMultipartFile("file", "items.csv", "text/csv",
                 csv.getBytes(StandardCharsets.UTF_8));
