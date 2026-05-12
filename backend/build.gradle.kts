@@ -234,3 +234,31 @@ tasks.register<JavaExec>("generateDisclosureWordTemplates") {
     workingDir = projectDir
     dependsOn("compileTestJava")
 }
+
+// F02.10 Phase 3: GeoNames Postal Codes 取り込みタスク。
+// 設計書 §10.3 / docs/features/F02.10_weather_widget.md
+// 使い方:
+//   ./gradlew importPostalCodes
+//   ./gradlew importPostalCodes --args="--country=ALL"
+//   ./gradlew importPostalCodes --args="--country=JP"
+// 仕組み:
+//   weather-import プロファイルで Spring Boot Application を起動し、
+//   PostalCodesImportRunner が GeonamesImportService.importAll を呼び出す。
+//   完了後 ApplicationContext を閉じて JVM を終了する。
+tasks.register<JavaExec>("importPostalCodes") {
+    group = "application"
+    description = "GeoNames Postal Codes（allCountries.zip）を取り込み postal_codes テーブルへ upsert する"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.mannschaft.app.MannschaftApplication")
+    workingDir = projectDir
+    // 既定で weather-import プロファイルを有効化
+    systemProperty("spring.profiles.active", "weather-import")
+    // ヒープと GC は bootRun と同じ
+    jvmArgs(
+        "-Xmx1g",
+        "-XX:+UseG1GC",
+        "-XX:+HeapDumpOnOutOfMemoryError",
+        "-XX:HeapDumpPath=logs/heap-dump.hprof"
+    )
+    dependsOn("compileJava")
+}

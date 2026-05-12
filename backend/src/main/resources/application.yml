@@ -265,6 +265,19 @@ app:
       #   maximum-pool-size: 5
       #   read-only: true
 
+# F02.10 天気ウィジェット — 座標導出・GeoNames 取り込み・ブートストラップ設定
+# 設計書: docs/features/F02.10_weather_widget.md §10.3 / §8.3
+# - geonames.download-url: allCountries.zip の取得 URL（テスト環境では WireMock URL に差し替え）
+# - geonames.cron: 月次取り込みの cron 式（デフォルト: 毎月 5 日 02:00 UTC）
+# - bootstrap.chunk-size: 既存ユーザー初回導出ジョブの 1 ページあたり件数
+weather:
+  location:
+    geonames:
+      download-url: ${GEONAMES_DOWNLOAD_URL:https://download.geonames.org/export/zip/allCountries.zip}
+      cron: ${GEONAMES_IMPORT_CRON:0 0 2 5 * ?}
+    bootstrap:
+      chunk-size: ${WEATHER_BOOTSTRAP_CHUNK_SIZE:1000}
+
 # F10.6 Phase 10-γ-② — MySQL DB サイズ監視設定
 # 設計書: docs/features/F10.6_error_monitoring.md §5.7
 # - MySQL データディレクトリは Docker 名前付きボリューム (mysql-data) でマウントされており
