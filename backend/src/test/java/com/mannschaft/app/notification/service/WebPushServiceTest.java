@@ -3,6 +3,7 @@ package com.mannschaft.app.notification.service;
 import com.mannschaft.app.notification.config.VapidConfig;
 import com.mannschaft.app.notification.entity.PushSubscriptionEntity;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
+import nl.martijndwars.webpush.PushService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,6 +35,9 @@ class WebPushServiceTest {
     @Mock
     private PushSubscriptionRepository pushSubscriptionRepository;
 
+    @Mock
+    private PushService pushService;
+
     private WebPushService webPushService;
 
     private PushSubscriptionEntity buildSubscription() {
@@ -48,8 +52,8 @@ class WebPushServiceTest {
     @BeforeEach
     void setUp() {
         WebPushService base = new WebPushService(vapidConfig, pushSubscriptionRepository);
-        // pushService に非 null を設定して「VAPID 設定済み」状態にする
-        ReflectionTestUtils.setField(base, "pushService", new Object());
+        // pushService に mock を注入して「VAPID 設定済み」状態にする（型一致が必要）
+        ReflectionTestUtils.setField(base, "pushService", pushService);
         // spy で doSend を差し替え可能にする（EC 暗号依存を排除）
         webPushService = spy(base);
     }
