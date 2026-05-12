@@ -37,7 +37,7 @@ import org.springframework.util.StringUtils;
 public class WebPushService {
 
     private static final int MAX_RETRY_COUNT = 3;
-    private static final long[] BACKOFF_DELAYS_MS = {1_000L, 4_000L, 16_000L};
+    private static long[] BACKOFF_DELAYS_MS = {1_000L, 4_000L, 16_000L};
 
     private final VapidConfig vapidConfig;
     private final PushSubscriptionRepository pushSubscriptionRepository;

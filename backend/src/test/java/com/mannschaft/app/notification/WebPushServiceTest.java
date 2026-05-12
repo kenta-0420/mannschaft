@@ -51,8 +51,8 @@ class WebPushServiceTest {
         return PushSubscriptionEntity.builder()
                 .userId(1L)
                 .endpoint("https://fcm.googleapis.com/fcm/send/test-endpoint-123456789")
-                .p256dhKey("BPaKJbCK3lfRqP256dhKeyBase64EncodedDummyValue==")
-                .authKey("authKeyBase64EncodedDummy==")
+                .p256dhKey("BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4=")
+                .authKey("BTBZMqHH6r4Tts7J_aSIgg==")
                 .build();
     }
 
