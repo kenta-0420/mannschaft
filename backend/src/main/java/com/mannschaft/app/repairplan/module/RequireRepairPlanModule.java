@@ -23,7 +23,7 @@ import java.lang.annotation.Target;
  * Controller メソッドのパラメータ名は Spring 側で {@code -parameters} コンパイルオプションで
  * 保持される。</p>
  */
-@Target(ElementType.METHOD)
+@Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RequireRepairPlanModule {
 

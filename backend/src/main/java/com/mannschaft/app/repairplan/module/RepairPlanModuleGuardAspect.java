@@ -36,6 +36,7 @@ public class RepairPlanModuleGuardAspect {
     private final RepairPlanModuleGuard guard;
 
     @Around("@annotation(com.mannschaft.app.repairplan.module.RequireRepairPlanModule)"
+            + " || @within(com.mannschaft.app.repairplan.module.RequireRepairPlanModule)"
             + " || execution(@com.mannschaft.app.repairplan.module.RequireRepairPlanModule * *(..))")
     public Object guard(ProceedingJoinPoint pjp) throws Throwable {
         MethodSignature signature = (MethodSignature) pjp.getSignature();
@@ -43,8 +44,12 @@ public class RepairPlanModuleGuardAspect {
         // JDK プロキシではインターフェースのメソッドが渡るためアノテーションが取れない。
         // 実装クラスの対応メソッドを解決してから探す。
         Method targetMethod = AopUtils.getMostSpecificMethod(method, pjp.getTarget().getClass());
+        // メソッドレベル → クラスレベルの順でアノテーションを探す
         RequireRepairPlanModule annotation =
                 AnnotationUtils.findAnnotation(targetMethod, RequireRepairPlanModule.class);
+        if (annotation == null) {
+            annotation = AnnotationUtils.findAnnotation(pjp.getTarget().getClass(), RequireRepairPlanModule.class);
+        }
         // インターフェースのみアノテーションが付いている場合は targetMethod 経由でも null になる。
         // その場合はデフォルト値（{@code "scopeType"} / {@code "scopeId"}）を使う。
         String scopeTypeParam = (annotation != null) ? annotation.scopeTypeParam() : "scopeType";

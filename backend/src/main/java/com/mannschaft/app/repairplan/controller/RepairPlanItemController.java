@@ -9,6 +9,7 @@ import com.mannschaft.app.repairplan.dto.CreateRepairPlanItemRequest;
 import com.mannschaft.app.repairplan.dto.RepairPlanItemDto;
 import com.mannschaft.app.repairplan.dto.RepairPlanItemFilter;
 import com.mannschaft.app.repairplan.dto.UpdateRepairPlanItemRequest;
+import com.mannschaft.app.repairplan.module.RequireRepairPlanModule;
 import com.mannschaft.app.repairplan.service.RepairPlanItemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -49,6 +50,7 @@ import java.util.UUID;
  * <p>PATCH / DELETE は {@code If-Match} ヘッダで {@code version} 値を渡す。
  * サーバ側の {@code version} と異なる場合は 409 を返す。</p>
  */
+@RequireRepairPlanModule
 @RestController
 @RequestMapping("/api/v1/{scopeType}/{scopeId}/repair-plan/items")
 @Tag(name = "修繕計画項目", description = "F08.8 Phase 1 案5 — 修繕計画項目リスト CRUD")

@@ -6,6 +6,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.repairplan.dto.RepairPlanDashboardResponse;
+import com.mannschaft.app.repairplan.module.RequireRepairPlanModule;
 import com.mannschaft.app.repairplan.service.RepairPlanDashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 個別ウィジェットの可視性はサービスで {@code widget_visibility[]} に反映される。
  * 監査ログは読み取り API のため記録しない（既存 read API 流儀）。</p>
  */
+@RequireRepairPlanModule
 @RestController
 @RequestMapping("/api/v1/{scope}/{scopeId}/repair-plan")
 @Tag(name = "修繕計画ダッシュボード", description = "F08.8 マンション修繕長期計画ダッシュボード")
