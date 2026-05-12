@@ -5,6 +5,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -30,6 +31,11 @@ import java.util.UUID;
  * }
  * }</pre>
  *
+ * <h2>equals / hashCode について</h2>
+ * <p>本クラスは ID ベースで {@link #equals(Object)} と {@link #hashCode()} を実装する。
+ * サブクラスは {@code @EqualsAndHashCode(callSuper = true)} を指定することで
+ * ID ベースの同値性判定を継承できる。</p>
+ *
  * @see org.hibernate.annotations.UuidGenerator
  */
 @MappedSuperclass
@@ -42,5 +48,27 @@ public abstract class UuidV7Entity {
 
     public UUID getId() {
         return id;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof UuidV7Entity that)) {
+            return false;
+        }
+        // ID が両方とも未採番（永続化前）の場合は同一インスタンスでない限り別個体として扱う
+        if (this.id == null || that.id == null) {
+            return false;
+        }
+        return Objects.equals(this.id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        // 永続化前後で hash が変化しないよう、クラスベースの hash を返す
+        // （Hibernate でも推奨されるプロキシ対応パターン）
+        return getClass().hashCode();
     }
 }

@@ -95,7 +95,22 @@ public enum AuditEventType {
     TODO_STATUS_LABEL_CREATED(AuditEventCategory.TODO),
     TODO_STATUS_LABEL_UPDATED(AuditEventCategory.TODO),
     TODO_STATUS_LABEL_DELETED(AuditEventCategory.TODO),
-    TODO_HANDED_OFF(AuditEventCategory.TODO);
+    TODO_HANDED_OFF(AuditEventCategory.TODO),
+
+    // ─── REPAIR_PLAN (F08.8+) ─────────────────────────────────
+    SCENARIO_CREATED(AuditEventCategory.REPAIR_PLAN),
+    SCENARIO_UPDATED(AuditEventCategory.REPAIR_PLAN),
+    SCENARIO_LOCKED_FOR_PROPOSAL(AuditEventCategory.REPAIR_PLAN),
+    SCENARIO_PROPOSAL_CONVERTED(AuditEventCategory.REPAIR_PLAN),
+    BID_CARD_CREATED(AuditEventCategory.REPAIR_PLAN),
+    BID_CARD_MOVED(AuditEventCategory.REPAIR_PLAN),
+    BID_DEADLINE_OPENED(AuditEventCategory.REPAIR_PLAN),
+    BID_VENDOR_SELECTED(AuditEventCategory.REPAIR_PLAN),
+    PACK_GENERATED(AuditEventCategory.REPAIR_PLAN),
+    PACK_DOWNLOADED(AuditEventCategory.REPAIR_PLAN),
+    TIMELINE_EXPORTED(AuditEventCategory.REPAIR_PLAN),
+    EXTERNAL_AGENT_DELEGATION_GRANTED(AuditEventCategory.REPAIR_PLAN),
+    EXTERNAL_AGENT_DELEGATION_REVOKED(AuditEventCategory.REPAIR_PLAN);
 
     private final AuditEventCategory category;
 }
