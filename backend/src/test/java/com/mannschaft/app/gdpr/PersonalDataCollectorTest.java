@@ -9,6 +9,7 @@ import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import com.mannschaft.app.gdpr.service.PersonalDataCollector;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
@@ -17,6 +18,7 @@ import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
+import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -66,9 +68,13 @@ class PersonalDataCollectorTest {
     @Mock
     private ErrorReportRepository errorReportRepository;
     @Mock
+    private ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
+    @Mock
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @Mock
     private ProxyInputRecordRepository proxyInputRecordRepository;
+    @Mock
+    private UserWeatherLocationRepository userWeatherLocationRepository;
     @Mock
     private EncryptionService encryptionService;
 
@@ -80,7 +86,7 @@ class PersonalDataCollectorTest {
     class Collect {
 
         @Test
-        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（14カテゴリ）")
+        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（15カテゴリ）")
         void 正常_nullカテゴリ_全カテゴリ収集() {
             given(userRepository.findById(anyLong())).willReturn(Optional.empty());
             given(oAuthAccountRepository.findByUserId(anyLong())).willReturn(List.of());
@@ -102,19 +108,24 @@ class PersonalDataCollectorTest {
                     .willReturn(Optional.empty());
             given(errorReportRepository.findByUserIdOrderByCreatedAtDesc(anyLong()))
                     .willReturn(List.of());
+            given(errorReportOccurrenceRepository.findByUserIdOrderByOccurredAtDesc(anyLong()))
+                    .willReturn(List.of());
             given(proxyInputConsentRepository.findAllBySubjectUserIdForExport(anyLong()))
                     .willReturn(List.of());
             given(proxyInputRecordRepository.findBySubjectUserId(anyLong()))
                     .willReturn(List.of());
+            given(userWeatherLocationRepository.findByUserId(anyLong()))
+                    .willReturn(List.of());
 
             Map<String, String> result = collector.collect(1L, null);
 
-            assertThat(result).hasSize(14);
+            assertThat(result).hasSize(15);
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     "account.json", "oauth_accounts.json", "memberships.json", "profiles.json",
                     "payments.json", "charts.json", "chat_messages.json", "timeline_posts.json",
                     "audit_logs.json", "notifications.json", "action_memos.json",
-                    "error_reports.json", "proxy_input_consents.json", "proxy_input_records.json"
+                    "error_reports.json", "proxy_input_consents.json", "proxy_input_records.json",
+                    "weather_locations.json"
             );
         }
 
@@ -147,15 +158,16 @@ class PersonalDataCollectorTest {
     class GetCategoryKeys {
 
         @Test
-        @DisplayName("正常系: 14カテゴリキーが返る")
-        void 正常_14カテゴリキー返却() {
+        @DisplayName("正常系: 15カテゴリキーが返る")
+        void 正常_15カテゴリキー返却() {
             Set<String> keys = collector.getCategoryKeys();
 
-            assertThat(keys).hasSize(14);
+            assertThat(keys).hasSize(15);
             assertThat(keys).containsExactlyInAnyOrder(
                     "account", "oauth", "memberships", "profiles", "payments",
                     "charts", "chat_messages", "timeline", "audit_logs", "notifications",
-                    "action_memos", "error_reports", "proxy_consents", "proxy_records"
+                    "action_memos", "error_reports", "proxy_consents", "proxy_records",
+                    "location_preference"
             );
         }
     }
@@ -205,16 +217,21 @@ class PersonalDataCollectorTest {
     class ErrorReportsCategory {
 
         @Test
-        @DisplayName("正常系: error_reports 指定でエラーレポートが収集される")
+        @DisplayName("正常系: error_reports 指定でエラーレポートと発生履歴が収集される")
         void 正常_error_reports_収集() {
             given(errorReportRepository.findByUserIdOrderByCreatedAtDesc(anyLong()))
+                    .willReturn(List.of());
+            given(errorReportOccurrenceRepository.findByUserIdOrderByOccurredAtDesc(anyLong()))
                     .willReturn(List.of());
 
             Map<String, String> result = collector.collect(1L, Set.of("error_reports"));
 
             assertThat(result).hasSize(1);
             assertThat(result).containsKey("error_reports.json");
-            assertThat(result.get("error_reports.json")).isEqualTo("[]");
+            // F12.5 Phase 2 — error_reports と error_report_occurrences を 1 ファイルに集約する仕様
+            assertThat(result.get("error_reports.json"))
+                    .contains("\"error_reports\":[]")
+                    .contains("\"error_report_occurrences\":[]");
         }
 
         @Test
