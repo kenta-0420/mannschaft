@@ -304,6 +304,12 @@ public class GlobalExceptionHandler {
             Map.entry("REPAIR_PLAN_001", HttpStatus.NOT_FOUND),              // ITEM_NOT_FOUND
             Map.entry("REPAIR_PLAN_002", HttpStatus.CONFLICT),               // ITEM_VERSION_CONFLICT
             Map.entry("REPAIR_PLAN_003", HttpStatus.BAD_REQUEST),            // INVALID_SCOPE
+            // F08.8 Phase 2 シミュレーションシナリオ（保存上限・ロック・エンジンバージョン・レートリミット）
+            Map.entry("REPAIR_PLAN_005", HttpStatus.CONFLICT),               // SCENARIO_LIMIT_EXCEEDED
+            Map.entry("REPAIR_PLAN_006", HttpStatus.CONFLICT),               // SCENARIO_ALREADY_LOCKED
+            Map.entry("REPAIR_PLAN_007", HttpStatus.CONFLICT),               // ENGINE_VERSION_MISMATCH
+            Map.entry("REPAIR_PLAN_009", HttpStatus.TOO_MANY_REQUESTS),      // RATE_LIMIT_EXCEEDED
+            Map.entry("REPAIR_PLAN_012", HttpStatus.UNPROCESSABLE_ENTITY),   // SIMULATION_BASELINE_STALE
             // F08.8 修繕長期計画ダッシュボード — テンプレ/モジュール判定（足軽5）
             Map.entry("REPAIR_PLAN_013", HttpStatus.UNPROCESSABLE_ENTITY),   // TEMPLATE_NOT_APARTMENT
             Map.entry("REPAIR_PLAN_014", HttpStatus.UNPROCESSABLE_ENTITY)    // MODULE_NOT_ENABLED
