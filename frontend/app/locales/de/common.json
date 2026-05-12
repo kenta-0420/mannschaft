@@ -1106,5 +1106,23 @@
       "betaRestriction": "Beta-Einschränkung",
       "errorReports": "Fehlerberichte"
     }
+  },
+  "share": {
+    "title": "Teilen",
+    "copyLink": "Link kopieren",
+    "copied": "Kopiert!",
+    "shareVia": "Teilen über",
+    "openInApp": "In App öffnen",
+    "mail": "Per E-Mail senden",
+    "x": "Auf X teilen",
+    "threads": "Auf Threads teilen",
+    "line": "Über LINE teilen"
+  },
+  "activity": {
+    "pageTitle": "Aktivitätsprotokolle",
+    "addRecord": "Eintrag hinzufügen",
+    "participantCount": "{count} Teilnehmer",
+    "noRecords": "Keine Aktivitätsprotokolle",
+    "loadError": "Fehler beim Laden der Aktivitätsprotokolle"
   }
 }

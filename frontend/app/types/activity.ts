@@ -45,3 +45,23 @@ export interface ActivityStats {
   averageParticipants: number
   monthlyBreakdown: Array<{ month: string; count: number }>
 }
+
+/**
+ * 公開活動記録レスポンス
+ * GET /api/v1/public/activities/{id} のレスポンス型（認証不要・PUBLIC のみ）
+ */
+export interface PublicActivityResponse {
+  id: number
+  scopeType: 'TEAM' | 'ORGANIZATION'
+  scopeId: number
+  title: string
+  activityDate: string
+  location: string | null
+  description: string | null
+  participantCount: number
+  customFields: Array<{ fieldId: number; fieldName: string; fieldType: string; value: string | null }>
+  imageUrl: string | null
+  organizationName: string | null
+  teamName: string | null
+  createdAt: string
+}
