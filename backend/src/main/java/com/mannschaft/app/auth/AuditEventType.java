@@ -110,7 +110,8 @@ public enum AuditEventType {
     PACK_DOWNLOADED(AuditEventCategory.REPAIR_PLAN),
     TIMELINE_EXPORTED(AuditEventCategory.REPAIR_PLAN),
     EXTERNAL_AGENT_DELEGATION_GRANTED(AuditEventCategory.REPAIR_PLAN),
-    EXTERNAL_AGENT_DELEGATION_REVOKED(AuditEventCategory.REPAIR_PLAN);
+    EXTERNAL_AGENT_DELEGATION_REVOKED(AuditEventCategory.REPAIR_PLAN),
+    PLAN_ITEM_CSV_IMPORTED(AuditEventCategory.REPAIR_PLAN);
 
     private final AuditEventCategory category;
 }
