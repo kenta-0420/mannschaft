@@ -7,12 +7,21 @@ import lombok.RequiredArgsConstructor;
 /**
  * 修繕計画機能のエラーコード（F08.8）。
  *
- * <p>足軽3 (CSV インポート) で利用する範囲のみを先行定義する。他フェーズで利用する
- * コードは別途追加してよい（番号衝突に注意）。</p>
+ * <p>REPAIR_PLAN_001〜003: 案5 修繕計画項目 CRUD 用。
+ * REPAIR_PLAN_CSV_001〜004: CSV インポート用。</p>
  */
 @Getter
 @RequiredArgsConstructor
 public enum RepairPlanErrorCode implements ErrorCode {
+
+    /** 計画項目が見つからない（テナント／スコープ不一致を含む。IDOR 対策で 404）。 */
+    ITEM_NOT_FOUND("REPAIR_PLAN_001", "計画項目が見つかりません", Severity.WARN),
+
+    /** 楽観ロック競合（If-Match の version 不一致）。 */
+    ITEM_VERSION_CONFLICT("REPAIR_PLAN_002", "計画項目が他のユーザーにより更新されています", Severity.WARN),
+
+    /** スコープ種別が不正（TEAM / ORGANIZATION 以外）。 */
+    INVALID_SCOPE("REPAIR_PLAN_003", "スコープ種別が不正です", Severity.WARN),
 
     /** CSV プレビューが見つからない／TTL 切れ */
     REPAIR_PLAN_CSV_001("REPAIR_PLAN_CSV_001",
