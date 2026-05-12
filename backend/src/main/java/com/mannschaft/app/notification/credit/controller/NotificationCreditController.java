@@ -1,6 +1,9 @@
 package com.mannschaft.app.notification.credit.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.notification.credit.dto.NotificationCreditBalanceResponse;
 import com.mannschaft.app.notification.credit.dto.NotificationCreditCheckoutRequest;
@@ -41,6 +44,7 @@ public class NotificationCreditController {
 
     private final NotificationCreditService creditService;
     private final NotificationCreditCheckoutService checkoutService;
+    private final AccessControlService accessControlService;
 
     /**
      * 組織の通知クレジット残高を取得する（ADMIN以上）。
@@ -52,7 +56,8 @@ public class NotificationCreditController {
     @Operation(summary = "通知クレジット残高取得")
     public ResponseEntity<ApiResponse<NotificationCreditBalanceResponse>> getBalance(
             @PathVariable Long orgId) {
-        // TODO: ADMIN権限チェックを追加（AccessControlService 利用）
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
         NotificationCreditBalanceResponse response = creditService.getBalance(orgId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -67,7 +72,8 @@ public class NotificationCreditController {
     @Operation(summary = "通知クレジット購入履歴")
     public ResponseEntity<ApiResponse<List<NotificationCreditPurchaseResponse>>> listPurchases(
             @PathVariable Long orgId) {
-        // TODO: ADMIN権限チェックを追加（AccessControlService 利用）
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
         List<NotificationCreditPurchaseResponse> response = creditService.listPurchases(orgId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -96,8 +102,10 @@ public class NotificationCreditController {
     public ResponseEntity<ApiResponse<NotificationCreditCheckoutResponse>> createCheckout(
             @PathVariable Long orgId,
             @Valid @RequestBody NotificationCreditCheckoutRequest request) {
-        // TODO: ADMINのみ権限チェックを追加（AccessControlService 利用）
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        if (!accessControlService.isAdmin(currentUserId, orgId, "ORGANIZATION")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
         NotificationCreditCheckoutResponse response =
                 checkoutService.createCheckout(orgId, request.packageId(), currentUserId);
         return ResponseEntity.ok(ApiResponse.of(response));
