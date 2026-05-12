@@ -277,12 +277,22 @@ app:
       #   maximum-pool-size: 5
       #   read-only: true
 
-# F02.10 天気ウィジェット — 座標導出・GeoNames 取り込み・ブートストラップ設定
-# 設計書: docs/features/F02.10_weather_widget.md §10.3 / §8.3
+# F02.10 天気ウィジェット — WeatherAPI.com クライアント + 座標導出・GeoNames 取り込み設定
+# 設計書: docs/features/F02.10_weather_widget.md §3 / §7.3 / §7.3.1 / §8 / §10.3
+# - base-url は SSRF 対策のためここで固定値として記述する（環境変数で上書きしない）
+# - api-key は環境変数 WEATHER_API_KEY から注入する（リポジトリにコミットしない）
+# - timeout-ms は WeatherAPI.com 応答タイムアウト（既定 3 秒、超過時はリトライ対象）
+# - cache-ttl-seconds は通常 TTL（1 時間）、stale-ttl-seconds は障害時延命 TTL（6 時間）
 # - geonames.download-url: allCountries.zip の取得 URL（テスト環境では WireMock URL に差し替え）
 # - geonames.cron: 月次取り込みの cron 式（デフォルト: 毎月 5 日 02:00 UTC）
 # - bootstrap.chunk-size: 既存ユーザー初回導出ジョブの 1 ページあたり件数
 weather:
+  api:
+    base-url: https://api.weatherapi.com/v1
+    api-key: ${WEATHER_API_KEY:}
+    timeout-ms: 3000
+    cache-ttl-seconds: 3600
+    stale-ttl-seconds: 21600
   location:
     geonames:
       download-url: ${GEONAMES_DOWNLOAD_URL:https://download.geonames.org/export/zip/allCountries.zip}
@@ -303,17 +313,3 @@ mannschaft.disk-monitor:
   max-gb: ${MYSQL_MAX_SIZE_GB:10.0}
   warn-threshold: 0.75
   error-threshold: 0.90
-
-# F02.10 個人ダッシュボード天気ウィジェット — WeatherAPI.com クライアント設定
-# 設計書: docs/features/F02.10_weather_widget.md §3 / §7.3 / §7.3.1 / §8
-# - base-url は SSRF 対策のためここで固定値として記述する（環境変数で上書きしない）
-# - api-key は環境変数 WEATHER_API_KEY から注入する（リポジトリにコミットしない）
-# - timeout-ms は WeatherAPI.com 応答タイムアウト（既定 3 秒、超過時はリトライ対象）
-# - cache-ttl-seconds は通常 TTL（1 時間）、stale-ttl-seconds は障害時延命 TTL（6 時間）
-weather:
-  api:
-    base-url: https://api.weatherapi.com/v1
-    api-key: ${WEATHER_API_KEY:}
-    timeout-ms: 3000
-    cache-ttl-seconds: 3600
-    stale-ttl-seconds: 21600
