@@ -1,61 +1,59 @@
 package com.mannschaft.app.tournament.entry;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * 大会エントリーメンバーリポジトリ。
+ * 大会エントリー表メンバーリポジトリ。
+ *
+ * <p>F08.7 Phase 9: tournament_entry_members テーブルへのアクセスを提供する。</p>
  */
-public interface TournamentEntryMemberRepository
-        extends JpaRepository<TournamentEntryMemberEntity, UUID> {
+public interface TournamentEntryMemberRepository extends JpaRepository<TournamentEntryMemberEntity, UUID> {
 
-    /**
-     * 参加チームIDに紐づくエントリーメンバーを並び順で取得する。
-     */
+    /** 参加チームのエントリーメンバー一覧をsort_order順で取得する */
     List<TournamentEntryMemberEntity> findByParticipantIdOrderBySortOrderAsc(Long participantId);
 
-    /**
-     * 参加チームIDに紐づく全エントリーメンバーを削除する。
-     */
-    void deleteAllByParticipantId(Long participantId);
+    /** 参加チームのエントリー人数を取得する */
+    long countByParticipantId(Long participantId);
 
-    /**
-     * 指定の参加チームに対して指定ユーザーが既にエントリー済みか確認する。
-     */
-    boolean existsByParticipantIdAndUserId(Long participantId, Long userId);
+    /** 参加チームの全エントリーを削除する（全置換時に使用） */
+    @Modifying
+    void deleteByParticipantId(Long participantId);
 
-    /**
-     * 参加チームIDに紐づくエントリー済みユーザーIDセットを取得する。
-     */
+    /** 参加チームにエントリー済みのuserIdセットを取得する */
     @Query("SELECT e.userId FROM TournamentEntryMemberEntity e WHERE e.participantId = :participantId")
     Set<Long> findUserIdsByParticipantId(@Param("participantId") Long participantId);
 
-    /**
-     * IDと参加チームIDの組み合わせでエントリーメンバーを取得する（IDOR対策）。
-     */
-    Optional<TournamentEntryMemberEntity> findByIdAndParticipantId(UUID id, Long participantId);
+    /** 参加チームとユーザーIDでエントリーを検索する */
+    boolean existsByParticipantIdAndUserId(Long participantId, Long userId);
 
     /**
-     * 複数の参加チームIDに対するエントリー数を一括集計する（N+1対策）。
+     * エントリーカウントProjection（主催者向けサマリー用）。
+     * ディビジョン単位で参加チームごとのエントリー数と最終更新日時を集計する。
      */
-    @Query("SELECT e.participantId AS participantId, COUNT(e) AS entryCount, MAX(e.updatedAt) AS lastUpdatedAt " +
-           "FROM TournamentEntryMemberEntity e WHERE e.participantId IN :participantIds " +
-           "GROUP BY e.participantId")
-    List<EntryCountProjection> countByParticipantIds(@Param("participantIds") List<Long> participantIds);
+    @Query("""
+            SELECT e.participantId AS participantId,
+                   COUNT(e.id) AS entryCount,
+                   MAX(e.updatedAt) AS lastUpdatedAt
+            FROM TournamentEntryMemberEntity e
+            WHERE e.participantId IN :participantIds
+            GROUP BY e.participantId
+            """)
+    List<EntryCountProjection> countByParticipantIdIn(@Param("participantIds") List<Long> participantIds);
 
     /**
-     * エントリー数集計用プロジェクション。
+     * エントリーカウントProjectionインターフェース。
      */
     interface EntryCountProjection {
         Long getParticipantId();
-        Long getEntryCount();
+        long getEntryCount();
         LocalDateTime getLastUpdatedAt();
     }
 }
