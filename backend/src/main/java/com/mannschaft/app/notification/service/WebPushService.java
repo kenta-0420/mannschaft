@@ -12,7 +12,6 @@ import nl.martijndwars.webpush.Subscription;
 import nl.martijndwars.webpush.Subscription.Keys;
 import org.apache.http.HttpResponse;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 /**
@@ -76,7 +75,6 @@ public class WebPushService {
      * @param subscription 送信先購読エンティティ
      * @param jsonPayload  送信する JSON ペイロード文字列（通知タイトル・本文等）
      */
-    @Transactional
     public void sendPushNotification(PushSubscriptionEntity subscription, String jsonPayload) {
         if (pushService == null) {
             log.debug("VAPID未設定のためWebPushをスキップ: endpoint={}",

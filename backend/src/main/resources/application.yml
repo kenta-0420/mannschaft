@@ -96,10 +96,6 @@ mannschaft:
   vapid:
     public-key: ${VAPID_PUBLIC_KEY:}
     private-key: ${VAPID_PRIVATE_KEY:}
-  # F04.3: メール送信設定（確認メール・通知メール共通）
-  email:
-    from-address: ${MANNSCHAFT_EMAIL_FROM:noreply@mannschaft.app}
-    frontend-url: ${MANNSCHAFT_FRONTEND_URL:http://localhost:3000}
   # F13.1 Phase 13.1.2: QR チェックイン／アウト トークン署名設定（設計書 §2.3.1 / §10.10）
   # 本番は JOB_QR_SIGNING_SECRET を必ず設定（256bit 以上）。未設定だと起動失敗。
   jobs:
