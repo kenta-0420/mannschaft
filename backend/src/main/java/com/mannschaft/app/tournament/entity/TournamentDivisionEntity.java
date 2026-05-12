@@ -45,6 +45,12 @@ public class TournamentDivisionEntity extends BaseEntity {
 
     private Integer maxParticipants;
 
+    /** エントリー最小人数（nullable: 未設定の場合は制限なし） */
+    private Integer minEntryCount;
+
+    /** エントリー最大人数（nullable: 未設定の場合は制限なし） */
+    private Integer maxEntryCount;
+
     @Column(nullable = false)
     @Builder.Default
     private Integer sortOrder = 0;
