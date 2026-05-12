@@ -2,6 +2,7 @@
 import type { ActivityRecordResponse } from '~/types/activity'
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
+const { t } = useI18n()
 const teamId = Number(route.params.id)
 
 const { getActivities } = useActivityApi()
@@ -16,10 +17,20 @@ async function load() {
     const res = await getActivities({ scope_type: 'TEAM', scope_id: teamId })
     activities.value = res.data
   } catch {
-    showError('活動記録の取得に失敗しました')
+    showError(t('activity.loadError'))
   } finally {
     loading.value = false
   }
+}
+
+/**
+ * 公開 URL を生成する（SNS シェア用）
+ */
+function getPublicUrl(activityId: number): string {
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/activity/${activityId}`
+  }
+  return `/activity/${activityId}`
 }
 
 onMounted(() => load())
@@ -30,9 +41,9 @@ onMounted(() => load())
     <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <BackButton />
-        <PageHeader title="活動記録" />
+        <PageHeader :title="$t('activity.pageTitle')" />
       </div>
-      <Button label="記録を追加" icon="pi pi-plus" />
+      <Button :label="$t('activity.addRecord')" icon="pi pi-plus" />
     </div>
 
     <PageLoading v-if="loading" size="40px" />
@@ -47,12 +58,26 @@ onMounted(() => load())
           <i class="pi pi-map-marker" /> {{ act.location }}
         </p>
         <p v-if="act.description" class="mt-1 text-sm text-surface-600">{{ act.description }}</p>
-        <div class="mt-2 text-xs text-surface-400">参加者 {{ act.participantCount }}名</div>
+        <div class="mt-2 flex items-center justify-between">
+          <div class="text-xs text-surface-400">
+            {{ $t('activity.participantCount', { count: act.participantCount }) }}
+          </div>
+          <!-- PUBLIC の活動記録のみシェアボタンを表示 -->
+          <Button
+            v-if="act.isPublic"
+            :label="$t('share.title')"
+            icon="pi pi-share-alt"
+            severity="secondary"
+            outlined
+            size="small"
+            @click="() => navigateTo(getPublicUrl(act.id))"
+          />
+        </div>
       </SectionCard>
       <DashboardEmptyState
         v-if="activities.length === 0"
         icon="pi pi-history"
-        message="活動記録がありません"
+        :message="$t('activity.noRecords')"
       />
     </div>
   </div>

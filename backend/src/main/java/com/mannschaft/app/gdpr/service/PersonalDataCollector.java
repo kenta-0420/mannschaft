@@ -28,6 +28,8 @@ import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
+import com.mannschaft.app.weather.entity.UserWeatherLocationEntity;
+import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -64,6 +66,7 @@ public class PersonalDataCollector {
     private final ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
     private final ProxyInputConsentRepository proxyInputConsentRepository;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
+    private final UserWeatherLocationRepository userWeatherLocationRepository;
     private final EncryptionService encryptionService;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
@@ -87,7 +90,9 @@ public class PersonalDataCollector {
             Map.entry("error_reports", "error_reports.json"),
             // F14.1 代理入力（Phase 13-γ で追加）
             Map.entry("proxy_consents", "proxy_input_consents.json"),
-            Map.entry("proxy_records", "proxy_input_records.json")
+            Map.entry("proxy_records", "proxy_input_records.json"),
+            // F02.10 天気ウィジェット — ユーザー地点キャッシュ（嗜好情報レベル）
+            Map.entry("location_preference", "weather_locations.json")
     );
 
     /**
@@ -140,8 +145,33 @@ public class PersonalDataCollector {
             case "error_reports" -> collectErrorReports(userId);
             case "proxy_consents" -> collectProxyConsents(userId);
             case "proxy_records" -> collectProxyRecords(userId);
+            case "location_preference" -> collectLocationPreference(userId);
             default -> "[]";
         };
+    }
+
+    /**
+     * F02.10 ユーザー地点キャッシュを収集する（GDPR エクスポート用）。
+     *
+     * <p>{@code country_code} / {@code postal_code_hash} はエクスポートに含めない
+     * （前者は users.country_code から取得可能・後者は片方向ハッシュで本人にも復元不能）。
+     * 0.5 度丸めの緯度経度・地名スナップショット・derived_at のみ JSON 化する。</p>
+     */
+    private String collectLocationPreference(Long userId) throws Exception {
+        List<UserWeatherLocationEntity> locations =
+                userWeatherLocationRepository.findByUserId(userId);
+        var result = new java.util.ArrayList<Map<String, Object>>();
+        for (UserWeatherLocationEntity loc : locations) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("id", loc.getId() != null ? loc.getId().toString() : null);
+            entry.put("label", loc.getLabel());
+            entry.put("latitudeRounded", loc.getLatitudeRounded());
+            entry.put("longitudeRounded", loc.getLongitudeRounded());
+            entry.put("placeNameSnapshot", loc.getPlaceNameSnapshot());
+            entry.put("derivedAt", loc.getDerivedAt());
+            result.add(entry);
+        }
+        return OBJECT_MAPPER.writeValueAsString(result);
     }
 
     private String collectAccount(Long userId) throws Exception {

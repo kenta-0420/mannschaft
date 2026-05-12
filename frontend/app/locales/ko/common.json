@@ -1106,5 +1106,23 @@
       "betaRestriction": "베타 제한",
       "errorReports": "오류 보고서"
     }
+  },
+  "share": {
+    "title": "공유",
+    "copyLink": "링크 복사",
+    "copied": "복사됨",
+    "shareVia": "공유하기",
+    "openInApp": "앱에서 열기",
+    "mail": "이메일로 보내기",
+    "x": "X에서 공유",
+    "threads": "Threads에서 공유",
+    "line": "LINE에서 공유"
+  },
+  "activity": {
+    "pageTitle": "활동 기록",
+    "addRecord": "기록 추가",
+    "participantCount": "참가자 {count}명",
+    "noRecords": "활동 기록이 없습니다",
+    "loadError": "활동 기록을 불러오지 못했습니다"
   }
 }

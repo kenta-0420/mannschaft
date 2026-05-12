@@ -9,6 +9,7 @@ import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import com.mannschaft.app.gdpr.service.PersonalDataCollector;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
@@ -19,6 +20,7 @@ import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
+import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,8 +58,10 @@ class PersonalDataCollectorProxyTest {
     @Mock private ActionMemoTagLinkRepository actionMemoTagLinkRepository;
     @Mock private UserActionMemoSettingsRepository userActionMemoSettingsRepository;
     @Mock private ErrorReportRepository errorReportRepository;
+    @Mock private ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
     @Mock private ProxyInputConsentRepository proxyInputConsentRepository;
     @Mock private ProxyInputRecordRepository proxyInputRecordRepository;
+    @Mock private UserWeatherLocationRepository userWeatherLocationRepository;
     @Mock private EncryptionService encryptionService;
 
     @InjectMocks private PersonalDataCollector sut;
