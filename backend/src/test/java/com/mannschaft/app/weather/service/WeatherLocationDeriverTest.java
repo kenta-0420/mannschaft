@@ -74,7 +74,7 @@ class WeatherLocationDeriverTest {
                 .admin1Name("東京都")
                 .admin2Name("千代田区")
                 .latitude(new BigDecimal("35.68190"))
-                .longitude(new BigDecimal("139.75300"))
+                .longitude(new BigDecimal("139.69300"))
                 .accuracy((short) 4)
                 .build();
 
@@ -96,7 +96,8 @@ class WeatherLocationDeriverTest {
         UserWeatherLocationEntity saved = captor.getValue();
         // 35.6819 → 0.5 度に丸めると 35.5
         assertThat(saved.getLatitudeRounded()).isEqualByComparingTo("35.5");
-        // 139.753 → 0.5 度に丸めると 139.5
+        // 139.693 → 0.5 度に丸めると 139.5（東京駅の実経度に近い値）
+        // NOTE: 139.75 は 0.5/140.0 グリッドの中間で HALF_UP では 140.0 になる
         assertThat(saved.getLongitudeRounded()).isEqualByComparingTo("139.5");
         assertThat(saved.getCountryCode()).isEqualTo("JP");
         assertThat(saved.getPlaceNameSnapshot()).isEqualTo("東京都千代田区");
@@ -216,7 +217,7 @@ class WeatherLocationDeriverTest {
                 .admin1Name("東京都")
                 .admin2Name("千代田区")
                 .latitude(new BigDecimal("35.68190"))
-                .longitude(new BigDecimal("139.75300"))
+                .longitude(new BigDecimal("139.69300"))
                 .build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(postalCodeRepository.findByCountryCodeAndPostalCode("JP", "1000001"))
@@ -236,7 +237,7 @@ class WeatherLocationDeriverTest {
             assertThat(formatted).doesNotContain("1000001");
             // 座標生値も出ないこと
             assertThat(formatted).doesNotContain("35.68190");
-            assertThat(formatted).doesNotContain("139.75300");
+            assertThat(formatted).doesNotContain("139.69300");
         }
         verify(userWeatherLocationRepository, times(1)).save(any());
     }
@@ -257,7 +258,7 @@ class WeatherLocationDeriverTest {
                 .admin1Name("東京都")
                 .admin2Name("千代田区")
                 .latitude(new BigDecimal("35.68190"))
-                .longitude(new BigDecimal("139.75300"))
+                .longitude(new BigDecimal("139.69300"))
                 .build();
         UserWeatherLocationEntity existing = UserWeatherLocationEntity.builder()
                 .userId(userId)
