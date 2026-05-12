@@ -138,7 +138,7 @@ class WebPushServiceTest {
 
         @Test
         @DisplayName("pushService が null の場合はスキップして doSend を呼ばない")
-        void sendPushNotification_pushServiceNull_skips() {
+        void sendPushNotification_pushServiceNull_skips() throws Exception {
             ReflectionTestUtils.setField(webPushService, "pushService", null);
             PushSubscriptionEntity subscription = buildSubscription();
 
