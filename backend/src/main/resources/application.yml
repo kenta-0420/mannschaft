@@ -69,6 +69,9 @@ mannschaft:
   ses:
     region: ${MANNSCHAFT_SES_REGION:ap-northeast-1}
     endpoint: ${MANNSCHAFT_SES_ENDPOINT:}
+  email:
+    from-address: ${MANNSCHAFT_EMAIL_FROM:noreply@mannschaft.app}
+    frontend-url: ${MANNSCHAFT_FRONTEND_URL:http://localhost:3000}
   webauthn:
     origin: ${MANNSCHAFT_WEBAUTHN_ORIGIN:https://mannschaft.app}
   google:
