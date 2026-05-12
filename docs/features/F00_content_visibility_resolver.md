@@ -174,6 +174,42 @@ F09.8.1 §4.3 の 11 種を起点に、本基盤としては以下 17 種を Pha
 **Phase 2 予約**（Phase 1 では fail-closed、ReferenceType enum には先行定義する）:
 - `PERSONAL_TIMETABLE` — F03.15 個人時間割が Mention 配信されるユースケース対応
 - `FOLLOW_LIST` — フォロー一覧自体を corkboard カードとして引用するユースケース対応
+- `SUCCESSION_PRE_REGISTRATION` — **F09.15 区分所有者承継支援の事前登録**（2026-05-12 追加）。状態遷移ベース可視性 Resolver の初例。
+  - `seal_status` enum（`SEALED` / `UNSEAL_REQUESTED` / `UNSEALED` / `RE_SEALED`）に基づき可視性を変化させる
+  - `SEALED` / `RE_SEALED`: 本人のみ（`MEMBERS_ONLY` 相当だが本人限定）
+  - `UNSEAL_REQUESTED`: 本人 + 申請者 + 一次承認者
+  - `UNSEALED`: 本人 + 申請者 + 一次承認者 + 二次承認者 + ADMIN（72h TTL 適用）
+  - `toStandard` は `CUSTOM` を返し、`evaluateCustom` で上記分岐を実装する
+  - UUIDv7 主キー対応のため後述「§3.4 UUIDv7 reference_id 対応」の `reference_id_uuid BINARY(16)` 並列カラムを使用する
+
+### 3.4 UUIDv7 reference_id 対応（2026-05-12 追記・F09.15 / F09.16 対応）
+
+CLAUDE.md 原則 6（2026-05-11 改訂）により、F09.15 / F09.16 等の新規テーブルは **UUIDv7 主キー（BINARY(16)）** で設計される。一方、本基盤の既存 `reference_id` カラムは `BIGINT UNSIGNED` であり、UUIDv7 を直接受けられない。
+
+**採用方針: F00-A 案 — 並列カラム追加**
+
+本基盤の `content_visibility` 等の関連テーブルに `reference_id_uuid BINARY(16) NULL` 並列カラムを追加し、`reference_type` ごとにどちらのカラムを使うかを規約化する。
+
+```sql
+ALTER TABLE <related_table>
+  ADD COLUMN reference_id_uuid BINARY(16) NULL,
+  ADD INDEX idx_<table>_ref_uuid (reference_type, reference_id_uuid);
+```
+
+**運用規約（§5.1.4 CUSTOM 値運用規約 への追補）**:
+- UUIDv7 主キーを持つ reference_type は **必ず `reference_id_uuid` を使う**（`reference_id` は NULL）
+- BIGINT 主キーを持つ reference_type は **従来どおり `reference_id` を使う**（`reference_id_uuid` は NULL）
+- いずれか一方が必ず NULL である CHECK 制約: `CHECK ((reference_id IS NULL) <> (reference_id_uuid IS NULL))`
+- 初期対象: `SUCCESSION_PRE_REGISTRATION` reference_type が `reference_id_uuid` を使用する初例
+- 将来 F09.15 / F09.16 以外で UUIDv7 reference を追加する場合も同並列カラムを流用する
+
+**他案の比較・却下理由**:
+- **F00-B（既存 reference_id を VARCHAR(36) に拡張）**: DDL マイグレーションが既存全レコード対象になり影響範囲が大きすぎる。インデックスサイズも増大
+- **F00-C（F09.15 を F00 経由させない）**: F00 統一基盤の意義が薄れる。技術的負債化のリスク
+
+**Resolver 実装側の対応**:
+- `AbstractContentVisibilityResolver` は reference_id を `Object` 抽象で受け取る（Long または UUID）
+- 各 Resolver の `evaluateCustom` 等は自身が担当する reference_type の主キー型を知っているため、内部キャストで吸収する
 
 これらは v0.2 時点では Resolver 未実装のため `ContentVisibilityChecker.canView(...)` を呼ぶことを ArchUnit ルールで禁止する（§13.5）。
 
@@ -775,6 +811,26 @@ public class ScopeAncestorResolver {
 - **メトリクス可視化**: `content_visibility.custom_dispatch_count{referenceType, customSubType}` を §9.4 に追加し、CUSTOM 利用の偏りを可視化
 
 これらは `BACKEND_CODING_CONVENTION.md` にも反映する (§19.4)。
+
+#### 状態遷移ベース可視性 運用規約（2026-05-12 追加・F09.15 対応）
+
+`SUCCESSION_PRE_REGISTRATION` のように、エンティティの **状態遷移 (state machine)** に応じて可視範囲が動的に変化する Resolver を実装する場合、以下を必ず満たすこと:
+
+1. **状態 enum を必ずカラムで持つ** — 暗黙の派生計算（タイムスタンプの比較等）だけで状態を決めない。Resolver は当該カラムを唯一の真実源として参照する
+2. **状態遷移は別 API に分離する** — 可視性判定 API（`canView`）からは状態を変更しない。状態変更は別の専用 Service / Controller が責務を負う
+3. **TTL ベースの状態自動遷移は @Scheduled バッチで実施** — Resolver 内で「期限切れ判定」を毎回行うのではなく、バッチで状態カラム自体を `RE_SEALED` 等に書き換える。Resolver は単純に状態カラムを読むだけにする
+4. **fail-closed 原則の徹底** — 不明な状態値・null 状態は **必ず `false` を返す**（既存 §11.2 と整合）
+5. **状態×可視範囲の対応表を Resolver 実装の Javadoc に明記** — 監査時のレビュー容易化のため
+
+`SuccessionPreRegistrationVisibilityResolver` の例:
+
+| seal_status | 可視ユーザー |
+|---|---|
+| `SEALED` | 本人のみ |
+| `UNSEAL_REQUESTED` | 本人 + 申請者 + 一次承認者 |
+| `UNSEALED` | 本人 + 申請者 + 一次承認者 + 二次承認者 + ADMIN（72h TTL 中のみ）|
+| `RE_SEALED` | 本人のみ |
+| `null` または未知の値 | **false（fail-closed）** |
 
 #### Survey 時間軸 CUSTOM の境界条件（fail-closed 原則）
 
