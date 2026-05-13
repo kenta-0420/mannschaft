@@ -71,13 +71,24 @@ class SuccessionCovenantControllerIntegrationTest extends AbstractSuccessionInte
         String encFirstNameKana = encryptForTest("テスト");
 
         // 1) users テーブルにテストユーザーを挿入
+        //    NOT NULL かつ DEFAULT なしのカラムは明示指定が必要（CI の MySQL strict mode 対策）
         em.createNativeQuery(
                 "INSERT INTO users (id, email, password_hash, last_name, first_name,"
                         + " last_name_kana, first_name_kana, display_name,"
-                        + " is_searchable, status, created_at, updated_at)"
+                        + " is_searchable, status,"
+                        + " handle_searchable, contact_approval_required,"
+                        + " online_visibility, dm_receive_from, encryption_key_version,"
+                        + " locale, timezone, reporting_restricted, follow_list_visibility,"
+                        + " care_notification_enabled, offline_only,"
+                        + " created_at, updated_at)"
                         + " VALUES (:userId, 'succession_test@example.com', 'hash',"
                         + " :encLastName, :encFirstName, :encLastNameKana, :encFirstNameKana,"
-                        + " 'テスト太郎', 1, 'ACTIVE', NOW(), NOW())")
+                        + " 'テスト太郎', 1, 'ACTIVE',"
+                        + " 1, 1,"
+                        + " 'NOBODY', 'ANYONE', 1,"
+                        + " 'ja', 'Asia/Tokyo', 0, 'PUBLIC',"
+                        + " 1, 0,"
+                        + " NOW(), NOW())")
                 .setParameter("userId", USER_ID)
                 .setParameter("encLastName", encLastName)
                 .setParameter("encFirstName", encFirstName)
