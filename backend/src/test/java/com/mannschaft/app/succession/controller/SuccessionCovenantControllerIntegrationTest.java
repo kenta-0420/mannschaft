@@ -105,22 +105,26 @@ class SuccessionCovenantControllerIntegrationTest extends AbstractSuccessionInte
                 .executeUpdate();
 
         // 3) dwelling_units テーブルにテスト居室を挿入
+        //    resident_count は DEFAULT 0 だが CI strict mode では明示必要
         em.createNativeQuery(
                 "INSERT INTO dwelling_units (id, scope_type, organization_id, unit_number, unit_type,"
-                        + " created_at, updated_at)"
-                        + " VALUES (:dwellingId, 'ORGANIZATION', :orgId, '101', 'STANDARD', NOW(), NOW())")
+                        + " resident_count, created_at, updated_at)"
+                        + " VALUES (:dwellingId, 'ORGANIZATION', :orgId, '101', 'STANDARD', 0, NOW(), NOW())")
                 .setParameter("dwellingId", DWELLING_ID)
                 .setParameter("orgId", ORG_ID)
                 .executeUpdate();
 
         // 4) resident_registry テーブルにテスト居住者を挿入
+        //    death_status/occupancy_status/is_secondary_home は DEFAULT あり列だが CI strict mode で明示必要
         em.createNativeQuery(
                 "INSERT INTO resident_registry (id, dwelling_unit_id, user_id, resident_type,"
                         + " last_name, first_name, last_name_kana, first_name_kana,"
-                        + " move_in_date, created_at, updated_at)"
+                        + " move_in_date, death_status, occupancy_status, is_secondary_home,"
+                        + " created_at, updated_at)"
                         + " VALUES (:residentId, :dwellingId, :userId, 'OWNER',"
                         + " :encLastName, :encFirstName, :encLastNameKana, :encFirstNameKana,"
-                        + " '2020-01-01', NOW(), NOW())")
+                        + " '2020-01-01', 'ALIVE', 'UNKNOWN', 0,"
+                        + " NOW(), NOW())")
                 .setParameter("residentId", RESIDENT_ID)
                 .setParameter("dwellingId", DWELLING_ID)
                 .setParameter("userId", USER_ID)
