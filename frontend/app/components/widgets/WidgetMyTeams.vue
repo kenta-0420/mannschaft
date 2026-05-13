@@ -10,8 +10,8 @@ onMounted(async () => {
   )
   const enabled: number[] = []
   results.forEach((result, idx) => {
-    if (result.status === 'fulfilled') {
-      const modules = (result.value?.data ?? []) as Array<{ slug: string; isEnabled: boolean }>
+    if (result.status === 'fulfilled' && result.value) {
+      const modules = result.value.data ?? []
       if (modules.some(m => m.slug === 'reservation' && m.isEnabled)) {
         enabled.push(teams[idx].id)
       }
