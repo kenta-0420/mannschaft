@@ -54,6 +54,38 @@ export default defineConfig({
       // dependencies: ['setup-admin'],
       testMatch: '**/admin/**/*.spec.ts',
     },
+
+    // ===== 実機テスト用プロジェクト（API モックなし・実バックエンド接続） =====
+    // Setup: 実機テスト用一般ユーザー認証状態を保存
+    {
+      name: 'setup-real-user',
+      testMatch: /.*real-user\.setup\.ts/,
+    },
+    // Setup: 実機テスト用管理者認証状態を保存
+    {
+      name: 'setup-real-admin',
+      testMatch: /.*real-admin\.setup\.ts/,
+    },
+    // 実機テスト: 一般ユーザー（real/ 配下のみ実行）
+    {
+      name: 'chromium-real',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/real-user.json',
+      },
+      testMatch: '**/real/**/*.spec.ts',
+      dependencies: ['setup-real-user'],
+    },
+    // 実機テスト: 管理者（real/admin/ 配下のみ実行）
+    {
+      name: 'chromium-real-admin',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/real-admin.json',
+      },
+      testMatch: '**/real/admin/**/*.spec.ts',
+      dependencies: ['setup-real-admin'],
+    },
   ],
 
   timeout: 60_000,
