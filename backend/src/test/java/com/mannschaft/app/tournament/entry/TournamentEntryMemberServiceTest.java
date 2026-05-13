@@ -291,14 +291,9 @@ class TournamentEntryMemberServiceTest {
             given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament));
             given(divisionRepository.findById(DIVISION_ID)).willReturn(Optional.of(buildDivision(null, null)));
 
-            // IN_PROGRESSに変更して確認
+            // IN_PROGRESSに変更して確認（checkEntryLockで即スロー → 以降のメソッドは呼ばれない）
             TournamentEntity inProgress = buildTournament(TournamentStatus.IN_PROGRESS);
             given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(inProgress));
-            given(memberQueryDispatcher.queryMembers(any(), any(), any())).willReturn(List.of());
-            given(entryMemberRepository.findUserIdsByParticipantId(any())).willReturn(Set.of());
-            given(entryMemberRepository.countByParticipantId(any())).willReturn(0L);
-            given(entryMemberRepository.findByParticipantIdOrderBySortOrderAsc(any())).willReturn(List.of());
-            given(entryMemberRepository.saveAll(any())).willReturn(List.of());
 
             LoadFromTeamRequest req = LoadFromTeamRequest.builder().build();
 
@@ -350,7 +345,6 @@ class TournamentEntryMemberServiceTest {
             setupIDORMocks(tournament);
             given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament));
             given(divisionRepository.findById(DIVISION_ID)).willReturn(Optional.of(buildDivision(null, null)));
-            given(entryMemberRepository.findUserIdsByParticipantId(PARTICIPANT_ID)).willReturn(Set.of());
 
             // アクティブメンバーは 1L のみ
             List<MemberDto> activeMembers = List.of(new MemberDto(1L, "user1", null, null, null));
