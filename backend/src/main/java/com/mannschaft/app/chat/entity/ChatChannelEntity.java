@@ -66,6 +66,10 @@ public class ChatChannelEntity extends BaseEntity {
     @Builder.Default
     private Boolean isArchived = false;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer activeThreadCount = 0;
+
     @Version
     @Column(nullable = false)
     @Builder.Default
@@ -109,6 +113,22 @@ public class ChatChannelEntity extends BaseEntity {
         this.name = name;
         this.description = description;
         this.iconKey = iconKey;
+    }
+
+    /**
+     * アクティブスレッド数をインクリメントする。
+     */
+    public void incrementActiveThreadCount() {
+        this.activeThreadCount++;
+    }
+
+    /**
+     * アクティブスレッド数をデクリメントする。0 以下にはならない。
+     */
+    public void decrementActiveThreadCount() {
+        if (this.activeThreadCount > 0) {
+            this.activeThreadCount--;
+        }
     }
 
     /**

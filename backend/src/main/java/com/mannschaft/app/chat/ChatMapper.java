@@ -30,6 +30,7 @@ public interface ChatMapper {
 
     @Mapping(target = "attachments", ignore = true)
     @Mapping(target = "reactions", ignore = true)
+    @Mapping(target = "suggestBoardMigration", ignore = true)
     MessageResponse toMessageResponse(ChatMessageEntity entity);
 
     List<MessageResponse> toMessageResponseList(List<ChatMessageEntity> entities);
@@ -51,6 +52,9 @@ public interface ChatMapper {
 
     List<BookmarkResponse> toBookmarkResponseList(List<ChatMessageBookmarkEntity> entities);
 
+    /** depth がこの値以上の場合、掲示板移行を促す */
+    int BOARD_MIGRATION_SUGGEST_DEPTH = 10;
+
     /**
      * メッセージエンティティに添付ファイルとリアクションを付与してレスポンスを構築する。
      */
@@ -58,11 +62,15 @@ public interface ChatMapper {
             ChatMessageEntity entity,
             List<AttachmentResponse> attachments,
             List<ReactionResponse> reactions) {
+        int depth = entity.getDepth() != null ? entity.getDepth() : 0;  // @Builder.Default により通常非null
         return new MessageResponse(
                 entity.getId(),
                 entity.getChannelId(),
                 entity.getSenderId(),
                 entity.getParentId(),
+                entity.getRootId(),
+                depth,
+                depth >= BOARD_MIGRATION_SUGGEST_DEPTH,
                 entity.getBody(),
                 entity.getForwardedFromId(),
                 entity.getIsEdited(),

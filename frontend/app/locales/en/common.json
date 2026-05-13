@@ -1,5 +1,33 @@
 {
   "chat": {
+    "contextMenu": {
+      "replyInThread": "Reply in Thread",
+      "react": "React",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "edit": "Edit",
+      "copy": "Copy",
+      "forward": "Forward",
+      "bookmark": "Bookmark",
+      "removeBookmark": "Remove Bookmark",
+      "delete": "Delete"
+    },
+    "thread": {
+      "activeThreads": "{count} active threads",
+      "replyCount": "{count} replies",
+      "reply": "Reply"
+    },
+    "boardMigration": {
+      "banner": "This topic is getting deep. Would you like to move it to a bulletin board thread?",
+      "createThread": "Create Board Thread",
+      "dialogTitle": "Migrate to Board Thread",
+      "titleLabel": "Thread Title",
+      "boardLabel": "Target Board",
+      "copyHistory": "Copy conversation history",
+      "confirm": "Migrate",
+      "success": "Board thread created",
+      "error": "Migration failed"
+    },
     "sidebar": {
       "chat": "Chat",
       "contacts": "Contacts",

@@ -9,6 +9,8 @@ import type {
   ChatChannelResponse,
   CreateChannelRequest,
   ChatChannelEvent,
+  ChatThreadResponse,
+  ChatActiveThreadItem,
 } from '~/types/chat'
 
 // ============================================================
@@ -146,9 +148,32 @@ export function useChatApi() {
     return api(`/api/v1/chat/messages/${messageId}`, { method: 'DELETE' })
   }
 
-  async function getThread(messageId: number, cursor?: string) {
-    const qs = buildQuery({ cursor })
-    return api<ChatMessageListResponse>(`/api/v1/chat/messages/${messageId}/thread?${qs}`)
+  async function getThread(messageId: number, cursor?: string, limit?: number) {
+    const qs = buildQuery({ cursor, limit })
+    return api<{ data: ChatThreadResponse }>(`/api/v1/chat/messages/${messageId}/thread?${qs}`)
+  }
+
+  async function getActiveThreads(channelId: number, cursor?: string, limit?: number) {
+    const qs = buildQuery({ cursor, limit })
+    return api<{
+      data: ChatActiveThreadItem[]
+      meta: { nextCursor: string | null; hasMore: boolean }
+    }>(`/api/v1/chat/channels/${channelId}/active-threads?${qs}`)
+  }
+
+  async function migrateToBoard(
+    messageId: number,
+    boardId: number,
+    title: string,
+    copyHistory: boolean,
+  ) {
+    return api<{ data: { bulletinThreadId: string; bulletinThreadUrl: string } }>(
+      `/api/v1/chat/messages/${messageId}/migrate-to-board`,
+      {
+        method: 'POST',
+        body: { boardId, title, copyHistory },
+      },
+    )
   }
 
   // === Reactions ===
@@ -439,6 +464,8 @@ export function useChatApi() {
     editMessage,
     deleteMessage,
     getThread,
+    getActiveThreads,
+    migrateToBoard,
     addReaction,
     removeReaction,
     togglePin,
