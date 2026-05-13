@@ -24,6 +24,7 @@ import com.mannschaft.app.auth.event.PasswordChangedEvent;
 import com.mannschaft.app.auth.event.PasswordSetupEvent;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
+import com.mannschaft.app.weather.event.UserPostalCodeUpdatedEvent;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
@@ -39,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -140,6 +142,10 @@ public class UserService {
             throw new BusinessException(AuthErrorCode.AUTH_040);
         }
 
+        // F02.10: postalCode / countryCode の変更前の値を記録
+        String oldPostalCode = user.getPostalCode();
+        String oldCountryCode = user.getCountryCode();
+
         // Builder パターンで更新（Entityに@Setterは使わない）
         String newLastName = req.getLastName() != null ? req.getLastName() : user.getLastName();
         String newFirstName = req.getFirstName() != null ? req.getFirstName() : user.getFirstName();
@@ -165,6 +171,13 @@ public class UserService {
                 .dmReceiveFrom(newDmReceiveFrom)
                 .build();
         userRepository.save(updated);
+
+        // F02.10: postalCode または countryCode が変化した場合に WeatherLocationEventListener を起動
+        if (!Objects.equals(oldPostalCode, updated.getPostalCode())
+                || !Objects.equals(oldCountryCode, updated.getCountryCode())) {
+            eventPublisher.publish(new UserPostalCodeUpdatedEvent(userId));
+            log.debug("UserPostalCodeUpdatedEvent 発行: userId={}", userId);
+        }
 
         return getUserProfile(userId);
     }

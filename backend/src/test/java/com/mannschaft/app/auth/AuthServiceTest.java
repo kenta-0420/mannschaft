@@ -204,7 +204,8 @@ class AuthServiceTest {
             assertThat(response.getData().getMessage()).contains("確認メール");
             verify(userRepository).save(any(UserEntity.class));
             verify(emailVerificationTokenRepository).save(any(EmailVerificationTokenEntity.class));
-            verify(eventPublisher).publish(any());
+            // F02.10: UserRegisteredEvent + UserPostalCodeUpdatedEvent の 2 イベントが発行される
+            verify(eventPublisher, times(2)).publish(any());
         }
 
         @Test

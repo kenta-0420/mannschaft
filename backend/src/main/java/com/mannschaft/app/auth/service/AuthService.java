@@ -33,6 +33,7 @@ import com.mannschaft.app.auth.event.PasswordResetCompletedEvent;
 import com.mannschaft.app.auth.event.PasswordResetRequestedEvent;
 import com.mannschaft.app.auth.event.TokenReuseDetectedEvent;
 import com.mannschaft.app.auth.event.UserRegisteredEvent;
+import com.mannschaft.app.weather.event.UserPostalCodeUpdatedEvent;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
@@ -189,6 +190,10 @@ public class AuthService {
         // 6. イベント発行（メール送信は非同期リスナーが処理）
         eventPublisher.publish(new UserRegisteredEvent(
                 user.getId(), user.getEmail(), user.getDisplayName(), rawToken));
+
+        // F02.10: 登録直後に郵便番号が設定されていれば地点導出を非同期でトリガーする
+        // @Transactional 内で発行 → コミット後に WeatherLocationEventListener が非同期実行される
+        eventPublisher.publish(new UserPostalCodeUpdatedEvent(user.getId()));
 
         // 7. レスポンス
         return ApiResponse.of(new MessageResponse("確認メールを送信しました"));
