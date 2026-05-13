@@ -36,7 +36,28 @@ public enum SuccessionErrorCode implements ErrorCode {
     COVENANT_ALREADY_REVOKED("SUCCESSION_007", "既に撤回済みの誓約です", Severity.WARN),
 
     /** 誓約の操作権限がない（本人 / ADMIN 以外） */
-    COVENANT_FORBIDDEN("SUCCESSION_008", "この誓約に対する権限がありません", Severity.WARN);
+    COVENANT_FORBIDDEN("SUCCESSION_008", "この誓約に対する権限がありません", Severity.WARN),
+
+    /** 事前登録レコードが見つからない */
+    PRE_REGISTRATION_NOT_FOUND("SUCCESSION_009", "事前登録が見つかりません", Severity.WARN),
+
+    /** 封緘解除申請レコードが見つからない */
+    UNSEAL_REQUEST_NOT_FOUND("SUCCESSION_010", "封緘解除申請が見つかりません", Severity.WARN),
+
+    /** 事前登録が SEALED 状態でないため解除申請できない */
+    PRE_REGISTRATION_NOT_SEALED("SUCCESSION_011", "封緘状態でないため解除申請できません", Severity.WARN),
+
+    /** 申請者と承認者が重複している（三者別人要件違反） */
+    APPROVER_CONFLICT("SUCCESSION_012", "申請者と承認者が重複しています", Severity.WARN),
+
+    /** 二次承認前に一次承認が完了していない */
+    FIRST_APPROVER_REQUIRED("SUCCESSION_013", "一次承認が完了していません", Severity.WARN),
+
+    /** 開封期間が終了しているか、未開封状態 */
+    UNSEAL_EXPIRED_OR_INACTIVE("SUCCESSION_014", "開封期間が終了しているか、未開封状態です", Severity.WARN),
+
+    /** 封緘解除中コンテンツへの閲覧権限がない */
+    UNSEAL_ACCESS_DENIED("SUCCESSION_015", "この事前登録への閲覧権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;
