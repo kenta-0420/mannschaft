@@ -116,10 +116,11 @@ onMounted(() => load())
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="grid gap-4 sm:grid-cols-2">
-      <div
+      <NuxtLink
         v-for="t in tournaments"
         :key="t.id"
-        class="rounded-xl border border-surface-300 bg-surface-0 p-4"
+        :to="`/organizations/${orgId}/tournaments/${t.id}`"
+        class="block rounded-xl border border-surface-300 bg-surface-0 p-4 transition hover:border-primary-400 hover:shadow-sm"
       >
         <div class="mb-2 flex items-center gap-2">
           <span :class="getStatusClass(t.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{
@@ -136,7 +137,7 @@ onMounted(() => load())
           <span>{{ t.divisions.length }}部門</span>
           <span>勝{{ t.winPoints }} 分{{ t.drawPoints }} 負{{ t.lossPoints }}</span>
         </div>
-      </div>
+      </NuxtLink>
       <DashboardEmptyState v-if="tournaments.length === 0" class="col-span-full" icon="pi pi-trophy" message="大会がありません" />
     </div>
 
