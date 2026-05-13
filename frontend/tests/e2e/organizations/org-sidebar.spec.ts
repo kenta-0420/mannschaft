@@ -1,9 +1,15 @@
+// F16.1 組織サイドバーナビゲーション E2E テスト
 import { test, expect } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 import { ORG_ID, mockOrg, mockOrgFeatureApis } from './helpers'
 
+interface PermissionsMock {
+  roleName: string
+  permissions: string[]
+}
+
 // ロール別パーミッションモック
-const MOCK_MEMBER_PERMISSIONS = {
+const MOCK_MEMBER_PERMISSIONS: PermissionsMock = {
   roleName: 'MEMBER',
   permissions: ['todo.create'],
 }
@@ -44,7 +50,7 @@ async function mockModules(page: import('@playwright/test').Page, modules = ALL_
 /** permissionsをオーバーライドするモック（goto前に設定すること） */
 async function mockPermissions(
   page: import('@playwright/test').Page,
-  permissions: typeof MOCK_ADMIN_PERMISSIONS,
+  permissions: PermissionsMock,
 ) {
   await page.route(`**/api/v1/organizations/${ORG_ID}/me/permissions`, async (route) => {
     await route.fulfill({
