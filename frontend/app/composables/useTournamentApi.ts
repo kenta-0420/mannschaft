@@ -412,10 +412,10 @@ export function useTournamentApi() {
 
   // PDF ダウンロード
   async function downloadEntryPdf(orgId: number, tId: number, divId: number, pId: number) {
-    return api<Blob>(
+    return api(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/participants/${pId}/entry-members/pdf`,
-      { responseType: 'blob' },
-    )
+      { responseType: 'blob' as const },
+    ) as Promise<Blob>
   }
 
   // ===== Phase 9-B: エントリーテンプレート =====
