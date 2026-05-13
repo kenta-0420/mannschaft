@@ -7,7 +7,7 @@ import type {
   EstablishedDatePrecision,
 } from '~/types/organization'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()

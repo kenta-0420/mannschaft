@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PricingModel, RateSimulatorResponse } from '~/types/advertiser'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
 void route.params.id // organizationId はシミュレーターでは未使用（認証のみ）
 const advertiserApi = useAdvertiserApi()

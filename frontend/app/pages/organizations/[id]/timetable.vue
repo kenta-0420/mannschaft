@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TimetablePeriod, TimetableTerm } from '~/types/timetable'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()

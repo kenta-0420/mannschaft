@@ -2,6 +2,7 @@
 import type { OnboardingTemplate, OnboardingProgress, OnboardingPreset } from '~/types/onboarding'
 
 definePageMeta({
+  layout: 'organization',
   middleware: 'auth',
 })
 

@@ -2,6 +2,7 @@
 import type { MemberCard } from '~/types/member-card'
 
 definePageMeta({
+  layout: 'organization',
   middleware: 'auth',
 })
 

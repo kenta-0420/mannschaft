@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { VoteSessionResponse } from '~/types/voting'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
 const orgId = Number(route.params.id)
 

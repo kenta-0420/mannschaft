@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { BillingMethod } from '~/types/advertiser'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
 const router = useRouter()
 const orgId = Number(route.params.id)
