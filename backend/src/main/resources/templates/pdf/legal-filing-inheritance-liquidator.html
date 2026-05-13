@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+</head>
+<!--
+    F09.15 §5.12 相続財産清算人選任申立書 PDF テンプレート（skeleton）
+    根拠条文: 民法 952 条
+
+    TODO: S6 で本実装。本テンプレは S1 第三陣A の予約 skeleton。
+    本実装時は以下を含めること:
+      - 申立人情報（管理組合・代表者）
+      - 被相続人（区分所有者）情報・死亡確認日
+      - 利害関係の説明（管理費等の債権）
+      - 申立の趣旨・理由
+      - 添付書類目録（戸籍・死亡診断書・債権資料等）
+      - 弁護士監修なし v1 注意書きを表紙に明示
+-->
+<body>
+    <div class="pdf-body">
+        <h1 style="text-align: center;">相続財産清算人選任申立書</h1>
+        <p style="text-align: center; color: #c00;">
+            ⚠ skeleton（S6 で本実装予定）
+        </p>
+        <div style="border: 2px solid #c00; padding: 12px; margin: 20px 0; color: #c00;">
+            本テンプレートは S6 で本実装予定の skeleton です。
+            実装時は <code>docs/features/F09.15_resident_succession_support.md §5.12</code> 参照。
+        </div>
+        <p>部屋番号: <span th:text="${dwellingUnitLabel}">N/A</span></p>
+        <p>起票日: <span th:text="${#temporals.format(draftedAt, 'yyyy年MM月dd日')}">N/A</span></p>
+    </div>
+</body>
+</html>

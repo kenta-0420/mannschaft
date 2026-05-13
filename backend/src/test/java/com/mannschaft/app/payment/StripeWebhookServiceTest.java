@@ -58,7 +58,7 @@ class StripeWebhookServiceTest {
         void 冪等処理_PAID済みスキップ() {
             StripePaymentProvider.WebhookEventInfo event = new StripePaymentProvider.WebhookEventInfo(
                     "checkout.session.completed", null, "pi_xxx", "1", null,
-                    new BigDecimal("5000"), "https://receipt.url", null, null, null);
+                    new BigDecimal("5000"), "https://receipt.url", null, null, null, null);
             given(stripePaymentProvider.constructEvent(any(), any())).willReturn(event);
 
             MemberPaymentEntity payment = MemberPaymentEntity.builder()

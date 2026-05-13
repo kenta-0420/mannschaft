@@ -73,6 +73,22 @@ public interface StripePaymentProvider {
                                               Long memberPaymentId, String successUrl, String cancelUrl);
 
     /**
+     * 通知クレジット購入用 Stripe Checkout Session を作成する（一回払い）。
+     *
+     * <p>F09.13: メタデータに {@code notificationCreditPurchaseId} を含める。</p>
+     *
+     * @param stripePriceId                  Stripe Price ID
+     * @param stripeCustomerId               Stripe Customer ID
+     * @param notificationCreditPurchaseId   通知クレジット購入ID（metadata 用）
+     * @param successUrl                     決済成功後の遷移先 URL
+     * @param cancelUrl                      決済キャンセル時の遷移先 URL
+     * @return Checkout Session 情報
+     */
+    CheckoutSessionInfo createNotificationCreditCheckoutSession(String stripePriceId, String stripeCustomerId,
+                                                                Long notificationCreditPurchaseId,
+                                                                String successUrl, String cancelUrl);
+
+    /**
      * Stripe Refund（全額返金）を実行する。
      *
      * @param stripePaymentIntentId Stripe Payment Intent ID
@@ -116,9 +132,13 @@ public interface StripePaymentProvider {
 
     /**
      * Webhook イベント情報。
+     *
+     * <p>{@code notificationCreditPurchaseId} は F09.13 通知クレジット購入のみセットされる。
+     * {@code memberPaymentId} と排他利用（どちらか一方のみ null でない）。</p>
      */
     record WebhookEventInfo(String type, String sessionId, String paymentIntentId,
                             String memberPaymentId, String subscriptionId,
                             BigDecimal amountReceived, String receiptUrl, String refundId,
-                            BigDecimal refundAmount, BigDecimal paymentIntentAmount) {}
+                            BigDecimal refundAmount, BigDecimal paymentIntentAmount,
+                            Long notificationCreditPurchaseId) {}
 }

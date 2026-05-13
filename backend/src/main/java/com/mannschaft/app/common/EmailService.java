@@ -2,6 +2,7 @@ package com.mannschaft.app.common;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
 import software.amazon.awssdk.services.sesv2.model.Body;
@@ -20,7 +21,8 @@ import software.amazon.awssdk.services.sesv2.model.SendEmailResponse;
 @RequiredArgsConstructor
 public class EmailService {
 
-    private static final String FROM_ADDRESS = "noreply@mannschaft.app";
+    @Value("${mannschaft.email.from-address:noreply@mannschaft.app}")
+    private String fromAddress;
 
     private final SesV2Client sesV2Client;
 
@@ -34,7 +36,7 @@ public class EmailService {
     public void sendEmail(String recipient, String subject, String htmlBody) {
         try {
             SendEmailResponse response = sesV2Client.sendEmail(SendEmailRequest.builder()
-                    .fromEmailAddress(FROM_ADDRESS)
+                    .fromEmailAddress(fromAddress)
                     .destination(Destination.builder().toAddresses(recipient).build())
                     .content(EmailContent.builder()
                             .simple(Message.builder()

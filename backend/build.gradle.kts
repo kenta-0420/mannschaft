@@ -144,6 +144,12 @@ dependencies {
 
     // === HTML サニタイズ（F02.5 publish-daily extra_comment 用。将来 F04.1 統合検討） ===
     implementation("org.jsoup:jsoup:1.18.1")
+
+    // === F04.3 PWA Push: VAPID署名 + Web Push HTTP送信 ===
+    // web-push-java: VAPID鍵ペア署名・暗号化ペイロード送信の実装ライブラリ
+    // bcprov: BouncyCastle暗号プロバイダー（web-push-javaが内部で使用するEC鍵操作の依存）
+    implementation("nl.martijndwars:web-push:5.1.1")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
@@ -233,4 +239,32 @@ tasks.register<JavaExec>("generateDisclosureWordTemplates") {
     mainClass.set("com.mannschaft.app.disclosure.support.WordTemplateGenerator")
     workingDir = projectDir
     dependsOn("compileTestJava")
+}
+
+// F02.10 Phase 3: GeoNames Postal Codes 取り込みタスク。
+// 設計書 §10.3 / docs/features/F02.10_weather_widget.md
+// 使い方:
+//   ./gradlew importPostalCodes
+//   ./gradlew importPostalCodes --args="--country=ALL"
+//   ./gradlew importPostalCodes --args="--country=JP"
+// 仕組み:
+//   weather-import プロファイルで Spring Boot Application を起動し、
+//   PostalCodesImportRunner が GeonamesImportService.importAll を呼び出す。
+//   完了後 ApplicationContext を閉じて JVM を終了する。
+tasks.register<JavaExec>("importPostalCodes") {
+    group = "application"
+    description = "GeoNames Postal Codes（allCountries.zip）を取り込み postal_codes テーブルへ upsert する"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.mannschaft.app.MannschaftApplication")
+    workingDir = projectDir
+    // 既定で weather-import プロファイルを有効化
+    systemProperty("spring.profiles.active", "weather-import")
+    // ヒープと GC は bootRun と同じ
+    jvmArgs(
+        "-Xmx1g",
+        "-XX:+UseG1GC",
+        "-XX:+HeapDumpOnOutOfMemoryError",
+        "-XX:HeapDumpPath=logs/heap-dump.hprof"
+    )
+    dependsOn("compileJava")
 }

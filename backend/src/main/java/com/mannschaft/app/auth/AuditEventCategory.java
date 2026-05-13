@@ -13,5 +13,7 @@ public enum AuditEventCategory {
     SCHEDULE,
     TODO,
     REPAIR_PLAN,
-    RESIDENT
+    RESIDENT,
+    /** F09.15 居住者継承支援（入居時誓約 / 事前登録 / 封緘解除）系。 */
+    SUCCESSION
 }

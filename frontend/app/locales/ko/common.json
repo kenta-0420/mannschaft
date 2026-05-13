@@ -1107,6 +1107,38 @@
       "errorReports": "오류 보고서"
     }
   },
+  "notificationCredit": {
+    "title": "알림 크레딧 관리",
+    "balanceTitle": "잔액 및 사용 현황",
+    "packageTitle": "크레딧 구매",
+    "historyTitle": "구매 내역",
+    "freeUsage": "이번 달 무료 할당량 사용량",
+    "creditBalance": "크레딧 잔액",
+    "unit": "건",
+    "credits": "제공 건수",
+    "price": "가격",
+    "purchaseButton": "구매",
+    "purchaseSuccess": "크레딧 구매가 완료되었습니다",
+    "purchaseCancelled": "구매가 취소되었습니다",
+    "checkoutFailed": "결제 세션 생성에 실패했습니다",
+    "noHistory": "구매 내역이 없습니다",
+    "gracePeriodAlert": "잔액 부족: 유예 기간 중",
+    "gracePeriodDescription": "유예 기간 종료: {endsAt}. 초과 {debt}건은 다음 달 1일에 차감됩니다.",
+    "table": {
+      "paidAt": "결제일",
+      "packageName": "패키지명",
+      "priceJpy": "금액",
+      "credits": "건수",
+      "expiresAt": "유효기간",
+      "status": "상태"
+    },
+    "status": {
+      "pending": "결제 대기",
+      "paid": "결제 완료",
+      "cancelled": "취소됨",
+      "refunded": "환불됨"
+    }
+  },
   "share": {
     "title": "공유",
     "copyLink": "링크 복사",
@@ -1124,5 +1156,8 @@
     "participantCount": "참가자 {count}명",
     "noRecords": "활동 기록이 없습니다",
     "loadError": "활동 기록을 불러오지 못했습니다"
+  },
+  "dashboard": {
+    "team_reservation_link": "예약 관리"
   }
 }

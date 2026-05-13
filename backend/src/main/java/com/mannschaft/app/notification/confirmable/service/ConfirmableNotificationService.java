@@ -19,6 +19,8 @@ import com.mannschaft.app.notification.confirmable.event.ConfirmableNotification
 import com.mannschaft.app.notification.confirmable.event.ConfirmableNotificationCreatedEvent;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
+import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
+import com.mannschaft.app.notification.credit.service.NotificationCreditService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +67,8 @@ public class ConfirmableNotificationService {
     private final UserRepository userRepository;
     private final NotificationHelper notificationHelper;
     private final ApplicationEventPublisher eventPublisher;
+    /** F09.13 通知クレジット消費（確認通知は課金対象） */
+    private final NotificationCreditService notificationCreditService;
 
     /**
      * 確認通知を送信する。
@@ -213,6 +217,12 @@ public class ConfirmableNotificationService {
 
         log.info("確認通知送信: notificationId={}, scopeType={}, scopeId={}, recipientCount={}",
                 savedNotification.getId(), scopeType, scopeId, recipientUserIds.size());
+
+        // F09.13: 確認通知は課金対象（組織スコープのみ）
+        // チームスコープの場合は組織IDが不明なためスキップ（将来はteam→org解決を追加）
+        if (ScopeType.ORGANIZATION == scopeType) {
+            notificationCreditService.consume(scopeId, recipientUserIds.size(), NotificationSourceType.CONFIRMABLE);
+        }
 
         // F04.3 通知基盤へのアプリ内通知（送信者には通知しない）
         NotificationPriority notifPriority = toNotificationPriority(savedNotification.getPriority());

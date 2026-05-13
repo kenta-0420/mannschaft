@@ -51,6 +51,11 @@ mannschaft:
   encryption:
     key: ${MANNSCHAFT_ENCRYPTION_KEY:}
     hmac-key: ${MANNSCHAFT_HMAC_KEY:}
+  # F12.1 §5.14 / F09.15 §9.4 — 内部 PDF 署名トークン用秘密鍵（v1 簡易方式 HMAC-SHA256）
+  # 本番は MANNSCHAFT_INTERNAL_SIGNING_KEY を必ず設定（256bit 以上推奨）。
+  # 未設定でも起動自体は成功するが、誓約 PDF 生成 / 検証時に PDF_007 例外で fail-fast する。
+  security:
+    internal-signing-key: ${MANNSCHAFT_INTERNAL_SIGNING_KEY:}
   storage:
     bucket: ${MANNSCHAFT_R2_BUCKET:mannschaft-storage}
     endpoint: ${MANNSCHAFT_R2_ENDPOINT:}        # https://{accountId}.r2.cloudflarestorage.com
@@ -64,6 +69,9 @@ mannschaft:
   ses:
     region: ${MANNSCHAFT_SES_REGION:ap-northeast-1}
     endpoint: ${MANNSCHAFT_SES_ENDPOINT:}
+  email:
+    from-address: ${MANNSCHAFT_EMAIL_FROM:noreply@mannschaft.app}
+    frontend-url: ${MANNSCHAFT_FRONTEND_URL:http://localhost:3000}
   webauthn:
     origin: ${MANNSCHAFT_WEBAUTHN_ORIGIN:https://mannschaft.app}
   google:
@@ -92,6 +100,10 @@ mannschaft:
     connect:
       return-url: ${MANNSCHAFT_STRIPE_CONNECT_RETURN_URL:https://app.mannschaft.com/settings/stripe/return}
       refresh-url: ${MANNSCHAFT_STRIPE_CONNECT_REFRESH_URL:https://app.mannschaft.com/settings/stripe/refresh}
+  # F04.3: VAPID鍵ペア（PWA Push VAPID署名）
+  vapid:
+    public-key: ${VAPID_PUBLIC_KEY:}
+    private-key: ${VAPID_PRIVATE_KEY:}
   # F13.1 Phase 13.1.2: QR チェックイン／アウト トークン署名設定（設計書 §2.3.1 / §10.10）
   # 本番は JOB_QR_SIGNING_SECRET を必ず設定（256bit 以上）。未設定だと起動失敗。
   jobs:
@@ -264,6 +276,29 @@ app:
       # hikari:
       #   maximum-pool-size: 5
       #   read-only: true
+
+# F02.10 天気ウィジェット — WeatherAPI.com クライアント + 座標導出・GeoNames 取り込み設定
+# 設計書: docs/features/F02.10_weather_widget.md §3 / §7.3 / §7.3.1 / §8 / §10.3
+# - base-url は SSRF 対策のためここで固定値として記述する（環境変数で上書きしない）
+# - api-key は環境変数 WEATHER_API_KEY から注入する（リポジトリにコミットしない）
+# - timeout-ms は WeatherAPI.com 応答タイムアウト（既定 3 秒、超過時はリトライ対象）
+# - cache-ttl-seconds は通常 TTL（1 時間）、stale-ttl-seconds は障害時延命 TTL（6 時間）
+# - geonames.download-url: allCountries.zip の取得 URL（テスト環境では WireMock URL に差し替え）
+# - geonames.cron: 月次取り込みの cron 式（デフォルト: 毎月 5 日 02:00 UTC）
+# - bootstrap.chunk-size: 既存ユーザー初回導出ジョブの 1 ページあたり件数
+weather:
+  api:
+    base-url: https://api.weatherapi.com/v1
+    api-key: ${WEATHER_API_KEY:}
+    timeout-ms: 3000
+    cache-ttl-seconds: 3600
+    stale-ttl-seconds: 21600
+  location:
+    geonames:
+      download-url: ${GEONAMES_DOWNLOAD_URL:https://download.geonames.org/export/zip/allCountries.zip}
+      cron: ${GEONAMES_IMPORT_CRON:0 0 2 5 * ?}
+    bootstrap:
+      chunk-size: ${WEATHER_BOOTSTRAP_CHUNK_SIZE:1000}
 
 # F10.6 Phase 10-γ-② — MySQL DB サイズ監視設定
 # 設計書: docs/features/F10.6_error_monitoring.md §5.7

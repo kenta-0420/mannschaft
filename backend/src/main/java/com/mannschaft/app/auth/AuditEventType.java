@@ -117,11 +117,27 @@ public enum AuditEventType {
     PLAN_ITEM_UPDATED(AuditEventCategory.REPAIR_PLAN),
     PLAN_ITEM_DELETED(AuditEventCategory.REPAIR_PLAN),
 
+    // ─── NOTIFICATION_CREDIT (F09.13+) ────────────────────────
+    /** 通知クレジット購入完了 */
+    NOTIFICATION_CREDIT_PURCHASED(AuditEventCategory.PAYMENT),
+    /** 通知クレジット有効期限失効 */
+    NOTIFICATION_CREDIT_EXPIRED(AuditEventCategory.PAYMENT),
+    /** 通知クレジット残高低下警告 */
+    NOTIFICATION_CREDIT_LOW_BALANCE(AuditEventCategory.PAYMENT),
+
     // ─── RESIDENT (F09.15 居住者死亡管理 / F09.16 居住実態管理) ─────────
     DEATH_STATUS_CHANGED_TO_SUSPECTED(AuditEventCategory.RESIDENT),
     DEATH_STATUS_CHANGED_TO_CONFIRMED(AuditEventCategory.RESIDENT),
     DEATH_STATUS_CHANGED_TO_CANCELLED(AuditEventCategory.RESIDENT),
-    OCCUPANCY_STATUS_CHANGED(AuditEventCategory.RESIDENT);
+    OCCUPANCY_STATUS_CHANGED(AuditEventCategory.RESIDENT),
+
+    // ─── SUCCESSION (F09.15 入居時誓約 / 事前登録 / 封緘解除) ─────────
+    /** 入居時誓約 PDF を発行（PDF 生成 + 内部署名トークン付与）。 */
+    COVENANT_ISSUED(AuditEventCategory.SUCCESSION),
+    /** 入居時誓約に署名（同意項目を確認した上で succession_covenants へ INSERT）。 */
+    COVENANT_SIGNED(AuditEventCategory.SUCCESSION),
+    /** 入居時誓約を撤回（revoked_at セット）。 */
+    COVENANT_REVOKED(AuditEventCategory.SUCCESSION);
 
     private final AuditEventCategory category;
 }
