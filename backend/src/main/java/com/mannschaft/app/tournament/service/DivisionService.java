@@ -51,6 +51,8 @@ public class DivisionService {
                 .relegationSlots(request.getRelegationSlots() != null ? request.getRelegationSlots() : 0)
                 .playoffPromotionSlots(request.getPlayoffPromotionSlots() != null ? request.getPlayoffPromotionSlots() : 0)
                 .maxParticipants(request.getMaxParticipants())
+                .minEntryCount(request.getMinEntryCount())
+                .maxEntryCount(request.getMaxEntryCount())
                 .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0)
                 .build();
         return mapper.toDivisionResponse(divisionRepository.save(division));
@@ -66,6 +68,8 @@ public class DivisionService {
                 request.getRelegationSlots() != null ? request.getRelegationSlots() : division.getRelegationSlots(),
                 request.getPlayoffPromotionSlots() != null ? request.getPlayoffPromotionSlots() : division.getPlayoffPromotionSlots(),
                 request.getMaxParticipants(),
+                request.getMinEntryCount(),
+                request.getMaxEntryCount(),
                 request.getSortOrder() != null ? request.getSortOrder() : division.getSortOrder());
         return mapper.toDivisionResponse(divisionRepository.save(division));
     }

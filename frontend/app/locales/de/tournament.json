@@ -1,0 +1,46 @@
+{
+  "entry": {
+    "title": "Meldungsverwaltung",
+    "memberCount": "{count} Mitglieder",
+    "countRange": "{min}〜{max} Mitglieder",
+    "noLimit": "Kein Limit",
+    "loadFromTeam": "Alle Teammitglieder laden",
+    "loadSuccess": "{added} Mitglieder hinzugefügt ({skipped} übersprungen)",
+    "saveMembers": "Meldung speichern",
+    "saveSuccess": "Meldung gespeichert",
+    "downloadPdf": "Meldeliste als PDF herunterladen",
+    "jersey": "Trikotnr.",
+    "position": "Position",
+    "notes": "Hinweise",
+    "alreadyEntered": "Registriert",
+    "template": {
+      "title": "Meldungsvorlagen",
+      "select": "Vorlage auswählen",
+      "apply": "Anwenden",
+      "applySuccess": "{applied} Mitglieder hinzugefügt ({skipped} übersprungen)",
+      "skippedInactive": "{count} Mitglieder übersprungen (inaktiv)",
+      "create": "Vorlage erstellen",
+      "edit": "Vorlage bearbeiten",
+      "delete": "Vorlage löschen",
+      "maxCount": "Bis zu 5 Vorlagen können erstellt werden",
+      "noTemplates": "Keine Vorlagen vorhanden",
+      "name": "Vorlagenname",
+      "description": "Beschreibung",
+      "members": "Spieler",
+      "error": {
+        "TOUR_026": "Vorlage nicht gefunden",
+        "TOUR_027": "Bis zu 5 Vorlagen können erstellt werden",
+        "TOUR_028": "Diese Vorlage gehört einem anderen Team"
+      }
+    },
+    "error": {
+      "TOUR_019": "Meldung kann aufgrund des Turnierstatus nicht geändert werden",
+      "TOUR_020": "Maximale Teilnehmerzahl überschritten",
+      "TOUR_021": "Kein Mitglied des Teams",
+      "TOUR_022": "Gemeldetes Mitglied nicht gefunden",
+      "TOUR_023": "Unter der Mindestanzahl der Gemeldeten",
+      "TOUR_024": "Dieser Spieler ist bereits gemeldet",
+      "TOUR_025": "Keine Mitglieder zum Laden vorhanden"
+    }
+  }
+}

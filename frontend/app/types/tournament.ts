@@ -163,3 +163,92 @@ export interface TournamentTeamStats {
   goalsFor: number
   goalsAgainst: number
 }
+
+// ===== Phase 9: 大会エントリー表機能 =====
+
+export interface TournamentEntryMember {
+  id: string
+  participantId: number
+  userId: number
+  displayName: string
+  memberNumber: string | null
+  position: string | null
+  jerseyNumber: number | null
+  notes: string | null
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TeamMemberCandidate {
+  userId: number
+  displayName: string
+  memberNumber: string | null
+  position: string | null
+  isAlreadyEntered: boolean
+}
+
+export interface EntryMemberListResponse {
+  entryMembers: TournamentEntryMember[]
+  teamMemberCandidates?: TeamMemberCandidate[]
+  entryCount: number
+  minEntryCount: number | null
+  maxEntryCount: number | null
+}
+
+export interface EntryLoadResponse {
+  added: number
+  skipped: number
+  total: number
+  entryMembers: TournamentEntryMember[]
+}
+
+export interface EntryMemberSummaryItem {
+  participantId: number
+  teamId: number
+  displayName: string
+  entryCount: number
+  isMinMet: boolean
+  isMaxExceeded: boolean
+  lastUpdatedAt: string | null
+}
+
+export interface EntryMemberSummary {
+  divisionId: number
+  divisionName: string
+  minEntryCount: number | null
+  maxEntryCount: number | null
+  summary: EntryMemberSummaryItem[]
+}
+
+// ===== Phase 9-B: エントリーテンプレート管理 =====
+
+export interface EntryTemplate {
+  id: string
+  name: string
+  description: string | null
+  sortOrder: number
+  memberCount: number
+  updatedAt: string
+}
+
+export interface EntryTemplateMember {
+  id: string
+  userId: number
+  displayName: string
+  jerseyNumber: number | null
+  position: string | null
+  sortOrder: number
+}
+
+export interface EntryTemplateDetail extends Omit<EntryTemplate, 'memberCount'> {
+  members: EntryTemplateMember[]
+}
+
+export interface ApplyTemplateResponse {
+  applied: number
+  skipped: number
+  skippedInactive: number
+  total: number
+  entryMembers: TournamentEntryMember[]
+}

@@ -20,5 +20,7 @@ public class CreateDivisionRequest {
     private final Integer relegationSlots;
     private final Integer playoffPromotionSlots;
     private final Integer maxParticipants;
+    private final Integer minEntryCount;
+    private final Integer maxEntryCount;
     private final Integer sortOrder;
 }

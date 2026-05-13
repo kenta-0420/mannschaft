@@ -1,0 +1,46 @@
+{
+  "entry": {
+    "title": "Gestión de inscripción",
+    "memberCount": "{count} miembros",
+    "countRange": "{min}〜{max} miembros",
+    "noLimit": "Sin límite",
+    "loadFromTeam": "Cargar todos desde el equipo",
+    "loadSuccess": "Se añadieron {added} miembros ({skipped} omitidos)",
+    "saveMembers": "Guardar inscripción",
+    "saveSuccess": "Inscripción guardada",
+    "downloadPdf": "Descargar hoja de inscripción en PDF",
+    "jersey": "Dorsal",
+    "position": "Posición",
+    "notes": "Notas",
+    "alreadyEntered": "Registrado",
+    "template": {
+      "title": "Plantillas de inscripción",
+      "select": "Seleccionar plantilla",
+      "apply": "Aplicar",
+      "applySuccess": "Se añadieron {applied} miembros ({skipped} omitidos)",
+      "skippedInactive": "{count} miembros omitidos (inactivos)",
+      "create": "Crear plantilla",
+      "edit": "Editar plantilla",
+      "delete": "Eliminar plantilla",
+      "maxCount": "Se pueden crear hasta 5 plantillas",
+      "noTemplates": "No hay plantillas",
+      "name": "Nombre de la plantilla",
+      "description": "Descripción",
+      "members": "Jugadores",
+      "error": {
+        "TOUR_026": "Plantilla no encontrada",
+        "TOUR_027": "Se pueden crear hasta 5 plantillas",
+        "TOUR_028": "Esta plantilla pertenece a otro equipo"
+      }
+    },
+    "error": {
+      "TOUR_019": "No se puede cambiar la inscripción debido al estado del torneo",
+      "TOUR_020": "Se excede el número máximo de inscritos",
+      "TOUR_021": "No es miembro del equipo",
+      "TOUR_022": "Miembro inscrito no encontrado",
+      "TOUR_023": "Por debajo del número mínimo de inscritos",
+      "TOUR_024": "Este jugador ya está inscrito",
+      "TOUR_025": "No hay miembros para cargar"
+    }
+  }
+}
