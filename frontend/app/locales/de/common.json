@@ -1156,5 +1156,8 @@
     "participantCount": "{count} Teilnehmer",
     "noRecords": "Keine Aktivitätsprotokolle",
     "loadError": "Fehler beim Laden der Aktivitätsprotokolle"
+  },
+  "dashboard": {
+    "team_reservation_link": "Reservierungen"
   }
 }

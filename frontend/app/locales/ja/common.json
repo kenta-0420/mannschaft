@@ -1156,5 +1156,8 @@
     "participantCount": "参加者 {count}名",
     "noRecords": "活動記録がありません",
     "loadError": "活動記録の取得に失敗しました"
+  },
+  "dashboard": {
+    "team_reservation_link": "予約管理"
   }
 }

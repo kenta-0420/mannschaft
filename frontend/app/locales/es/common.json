@@ -1156,5 +1156,8 @@
     "participantCount": "{count} participantes",
     "noRecords": "No hay registros de actividad",
     "loadError": "Error al cargar los registros de actividad"
+  },
+  "dashboard": {
+    "team_reservation_link": "Gestión de reservas"
   }
 }

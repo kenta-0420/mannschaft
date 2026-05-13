@@ -1,3 +1,12 @@
+export interface TeamModuleItem {
+  id: number
+  name: string
+  slug: string
+  isEnabled: boolean
+  enabledAt: string | null
+  trialExpiresAt: string | null
+}
+
 export function useModuleApi() {
   const api = useApi()
 
@@ -12,7 +21,7 @@ export function useModuleApi() {
 
   // === チームモジュール管理 ===
   async function getTeamModules(teamId: number) {
-    return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/teams/${teamId}/modules`)
+    return api<{ data: TeamModuleItem[] }>(`/api/v1/teams/${teamId}/modules`)
   }
 
   async function applyTemplate(teamId: number, body: Record<string, unknown>) {
