@@ -20,6 +20,8 @@ import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,8 +63,13 @@ public class NotificationCreditService {
     private final NotificationCreditPurchaseRepository purchaseRepository;
     private final NotificationCreditPackageRepository packageRepository;
     private final NotificationMonthlyUsageRepository monthlyUsageRepository;
-    private final NotificationHelper notificationHelper;
     private final UserRoleRepository userRoleRepository;
+
+    // NotificationHelper ↔ NotificationCreditService の循環参照を @Lazy で解消
+    // アラート送信は @Async メソッドのみで使用するため遅延注入で問題なし
+    @Autowired
+    @Lazy
+    private NotificationHelper notificationHelper;
 
     // ─────────────────────────────────────────────────────────
     // 消費（送信ゲート）
