@@ -150,6 +150,10 @@ dependencies {
     // bcprov: BouncyCastle暗号プロバイダー（web-push-javaが内部で使用するEC鍵操作の依存）
     implementation("nl.martijndwars:web-push:5.1.1")
     implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+
+    // === F08.8 Phase 2: Resilience4j Bulkhead（シミュレーション計算の同時実行制限） ===
+    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.2.0")
+    implementation("io.github.resilience4j:resilience4j-bulkhead:2.2.0")
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {

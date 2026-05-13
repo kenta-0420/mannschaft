@@ -20,6 +20,8 @@ import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,8 +63,13 @@ public class NotificationCreditService {
     private final NotificationCreditPurchaseRepository purchaseRepository;
     private final NotificationCreditPackageRepository packageRepository;
     private final NotificationMonthlyUsageRepository monthlyUsageRepository;
-    private final NotificationHelper notificationHelper;
     private final UserRoleRepository userRoleRepository;
+    // NotificationHelper → NotificationCreditService → NotificationHelper の循環を断つ。
+    // sendFreeQuotaAlertAsync（@Async）でのみ使用するため @Lazy プロキシで遅延解決する。
+    @Lazy
+    @Autowired
+    private NotificationHelper notificationHelper;
+
 
     // ─────────────────────────────────────────────────────────
     // 消費（送信ゲート）
