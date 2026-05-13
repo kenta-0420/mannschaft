@@ -13,8 +13,6 @@ import type {
   TournamentMatch,
   TournamentHistory,
   TournamentTeamStats,
-  TournamentEntryMember,
-  TeamMemberCandidate,
   EntryMemberListResponse,
   EntryLoadResponse,
   EntryMemberSummary,
@@ -399,7 +397,7 @@ export function useTournamentApi() {
     force = false,
   ) {
     const query = force ? '?force=true' : ''
-    return api<void>(
+    return api(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/participants/${pId}/entry-members/${entryMemberId}${query}`,
       { method: 'DELETE' },
     )
@@ -469,7 +467,7 @@ export function useTournamentApi() {
 
   // テンプレート削除
   async function deleteEntryTemplate(orgId: number, teamId: number, templateId: string) {
-    return api<void>(`${b(orgId)}/teams/${teamId}/entry-templates/${templateId}`, {
+    return api(`${b(orgId)}/teams/${teamId}/entry-templates/${templateId}`, {
       method: 'DELETE',
     })
   }

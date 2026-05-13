@@ -27,8 +27,7 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'close'): void
-  (e: 'saved'): void
+  (e: 'close' | 'saved'): void
 }
 
 const props = defineProps<Props>()
