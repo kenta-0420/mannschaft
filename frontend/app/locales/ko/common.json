@@ -45,7 +45,8 @@
     "search": "검색",
     "loading": "로딩 중...",
     "confirm": "확인",
-    "logout": "로그아웃"
+    "logout": "로그아웃",
+    "update": "업데이트"
   },
   "label": {
     "required": "필수",

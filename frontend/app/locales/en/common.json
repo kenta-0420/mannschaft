@@ -45,7 +45,8 @@
     "search": "Search",
     "loading": "Loading...",
     "confirm": "Confirm",
-    "logout": "Logout"
+    "logout": "Logout",
+    "update": "Update"
   },
   "label": {
     "required": "Required",

@@ -45,7 +45,8 @@
     "search": "搜索",
     "loading": "加载中...",
     "confirm": "确认",
-    "logout": "退出登录"
+    "logout": "退出登录",
+    "update": "更新"
   },
   "label": {
     "required": "必填",
