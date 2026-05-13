@@ -13,7 +13,6 @@ const emit = defineEmits<{
   channelCreated: [channel: ChatChannelResponse]
 }>()
 
-const { t } = useI18n()
 const showInviteDialog = ref(false)
 
 const {
@@ -25,7 +24,6 @@ const {
   deleteMessage,
   bookmarkMessage,
   removeBookmark,
-  sendMessage,
   getActiveThreads,
 } = useChatApi()
 const { showSuccess, showError } = useNotification()
