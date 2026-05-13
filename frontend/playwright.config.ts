@@ -67,6 +67,7 @@ export default defineConfig({
       testMatch: /.*real-admin\.setup\.ts/,
     },
     // 実機テスト: 一般ユーザー（real/ 配下のみ実行）
+    // storageState が存在しない場合は各テスト内の loginIfNeeded() でフォールバックする
     {
       name: 'chromium-real',
       use: {
