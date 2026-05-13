@@ -18,6 +18,9 @@ public class TeamTournamentHistoryResponse {
     @Getter
     @RequiredArgsConstructor
     public static class TournamentHistoryEntry {
+        private final Long organizationId;
+        private final Long divisionId;
+        private final Long participantId;
         private final Long tournamentId;
         private final String tournamentName;
         private final String season;

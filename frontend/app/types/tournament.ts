@@ -152,6 +152,9 @@ export interface TournamentHistory {
   drawn: number
   lost: number
   points: number
+  organizationId: number
+  divisionId: number
+  participantId: number
 }
 
 export interface TournamentTeamStats {
