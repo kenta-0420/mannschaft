@@ -45,7 +45,8 @@
     "search": "Suchen",
     "loading": "Laden...",
     "confirm": "Bestatigen",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "update": "Aktualisieren"
   },
   "label": {
     "required": "Pflichtfeld",

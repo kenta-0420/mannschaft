@@ -1,0 +1,33 @@
+{
+  "repair_plan": {
+    "dashboard": {
+      "title": "修繕長期計画"
+    },
+    "timeline": {
+      "title": "修繕履歴・計画タイムライン",
+      "layer": {
+        "amount": "修繕費",
+        "chairperson": "理事長",
+        "cpi": "物価指数（CPI）",
+        "minutes": "議事録メモ"
+      },
+      "year_from": "開始年度",
+      "year_to": "終了年度",
+      "no_data": "修繕計画データがありません",
+      "total": "合計",
+      "cpi_note": "CPI: 2024年=100、国交省R5ガイドライン 1.5%/年"
+    },
+    "category": {
+      "EXTERIOR": "外壁・塗装",
+      "ROOF": "屋根・防水",
+      "PLUMBING": "給排水設備",
+      "ELECTRICAL": "電気設備",
+      "ELEVATOR": "エレベーター",
+      "COMMON_AREA": "共用部",
+      "FOUNDATION": "基礎・構造",
+      "PARKING": "駐車場",
+      "LANDSCAPING": "植栽・外構",
+      "OTHER": "その他"
+    }
+  }
+}

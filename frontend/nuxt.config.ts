@@ -170,6 +170,7 @@ export default defineNuxtConfig({
           'ja/disclosure.json',
           'ja/error_report.json',
           'ja/org_sidebar.json',
+          'ja/repair_plan.json',
         ],
       },
       {
@@ -211,6 +212,7 @@ export default defineNuxtConfig({
           'en/disclosure.json',
           'en/error_report.json',
           'en/org_sidebar.json',
+          'en/repair_plan.json',
         ],
       },
       {
@@ -252,6 +254,7 @@ export default defineNuxtConfig({
           'zh/disclosure.json',
           'zh/error_report.json',
           'zh/org_sidebar.json',
+          'zh/repair_plan.json',
         ],
       },
       {
@@ -293,6 +296,7 @@ export default defineNuxtConfig({
           'ko/disclosure.json',
           'ko/error_report.json',
           'ko/org_sidebar.json',
+          'ko/repair_plan.json',
         ],
       },
       {
@@ -334,6 +338,7 @@ export default defineNuxtConfig({
           'es/disclosure.json',
           'es/error_report.json',
           'es/org_sidebar.json',
+          'es/repair_plan.json',
         ],
       },
       {
@@ -375,6 +380,7 @@ export default defineNuxtConfig({
           'de/disclosure.json',
           'de/error_report.json',
           'de/org_sidebar.json',
+          'de/repair_plan.json',
         ],
       },
     ],

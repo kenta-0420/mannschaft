@@ -45,7 +45,8 @@
     "search": "Buscar",
     "loading": "Cargando...",
     "confirm": "Confirmar",
-    "logout": "Cerrar sesion"
+    "logout": "Cerrar sesion",
+    "update": "Actualizar"
   },
   "label": {
     "required": "Obligatorio",
