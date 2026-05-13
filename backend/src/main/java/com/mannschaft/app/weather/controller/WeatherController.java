@@ -128,7 +128,7 @@ public class WeatherController {
                 lang);
 
         // 5. レスポンス変換
-        WeatherForecastResponse response = toForecastResponse(result);
+        WeatherForecastResponse response = toForecastResponse(result, loc.getPlaceNameSnapshot());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -224,8 +224,11 @@ public class WeatherController {
 
     /**
      * WeatherForecastResult を WeatherForecastResponse に変換する。
+     *
+     * @param result      予報サービスの結果
+     * @param placeName   ユーザーの居住地点名スナップショット（UI 表示用）
      */
-    private WeatherForecastResponse toForecastResponse(WeatherForecastResult result) {
+    private WeatherForecastResponse toForecastResponse(WeatherForecastResult result, String placeName) {
         var data = result.data();
 
         DayForecastDto today = new DayForecastDto(
@@ -254,7 +257,7 @@ public class WeatherController {
         Instant fetchedAt = data.getFetchedAt() != null ? data.getFetchedAt() : Instant.now();
         String fetchedAtStr = ISO_UTC.format(fetchedAt);
 
-        return new WeatherForecastResponse(today, tomorrow, DATA_SOURCE, fetchedAtStr, result.stale());
+        return new WeatherForecastResponse(placeName, today, tomorrow, DATA_SOURCE, fetchedAtStr, result.stale());
     }
 
     /**

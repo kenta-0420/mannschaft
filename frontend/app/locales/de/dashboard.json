@@ -26,6 +26,36 @@
       "public_viewer_hint_dismiss": "Schließen",
       "join_request_link": "Mitgliedschaft beantragen"
     },
+    "weather": {
+      "title": "Wetter",
+      "today": "Heute",
+      "tomorrow": "Morgen",
+      "max": "Max.",
+      "min": "Min.",
+      "humidity": "Luftfeuchtigkeit",
+      "chance_of_rain": "Regen",
+      "fetched_at": "Daten abgerufen",
+      "stale_warning": "Die Vorhersage-Informationen könnten veraltet sein",
+      "error_postal_missing": "Postleitzahl ist nicht registriert",
+      "error_postal_not_found": "Ihre Postleitzahl wird für Wetterinformationen nicht unterstützt. Bitte überprüfen Sie Ihre Postleitzahl",
+      "error_country_not_supported": "Wetterinformationen für Ihr Land oder Ihre Region sind derzeit nicht verfügbar",
+      "error_provider_unavailable": "Wetterinformationen konnten nicht abgerufen werden",
+      "refresh": "Aktualisieren",
+      "powered_by": "Powered by WeatherAPI.com",
+      "edit_profile": "Profil bearbeiten",
+      "condition": {
+        "sunny": "Sonnig",
+        "partly_cloudy": "Teilweise bewölkt",
+        "cloudy": "Bewölkt",
+        "overcast": "Stark bewölkt",
+        "mist": "Nebel",
+        "rain": "Regen",
+        "heavy_rain": "Starkregen",
+        "snow": "Schnee",
+        "sleet": "Schneeregen",
+        "thunderstorm": "Gewitter"
+      }
+    },
     "myCorkboard": {
       "widgetTitle": "Meine Pinnwand",
       "viewAll": "Alle anzeigen",

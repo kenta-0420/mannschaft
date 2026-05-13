@@ -6,6 +6,8 @@ package com.mannschaft.app.weather.dto;
  * <p>設計書 §5.1「GET /api/v1/dashboard/weather レスポンス仕様」準拠。</p>
  */
 public record WeatherForecastResponse(
+        /** ユーザーの居住地点名スナップショット（例: 「東京都千代田区」）。 */
+        String placeName,
         /** 今日の予報。 */
         DayForecastDto today,
         /** 明日の予報。 */

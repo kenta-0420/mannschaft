@@ -26,6 +26,36 @@
       "public_viewer_hint_dismiss": "Dismiss",
       "join_request_link": "Request membership"
     },
+    "weather": {
+      "title": "Weather",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "max": "High",
+      "min": "Low",
+      "humidity": "Humidity",
+      "chance_of_rain": "Rain",
+      "fetched_at": "Data fetched",
+      "stale_warning": "Forecast data may be outdated",
+      "error_postal_missing": "Postal code is not registered",
+      "error_postal_not_found": "Your postal code is not supported for weather information. Please verify your postal code",
+      "error_country_not_supported": "Weather information for your country or region is currently unavailable",
+      "error_provider_unavailable": "Could not retrieve weather information",
+      "refresh": "Refresh",
+      "powered_by": "Powered by WeatherAPI.com",
+      "edit_profile": "Edit Profile",
+      "condition": {
+        "sunny": "Sunny",
+        "partly_cloudy": "Partly Cloudy",
+        "cloudy": "Cloudy",
+        "overcast": "Overcast",
+        "mist": "Mist",
+        "rain": "Rain",
+        "heavy_rain": "Heavy Rain",
+        "snow": "Snow",
+        "sleet": "Sleet",
+        "thunderstorm": "Thunderstorm"
+      }
+    },
     "myCorkboard": {
       "widgetTitle": "My Corkboard",
       "viewAll": "View all",
