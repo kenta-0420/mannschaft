@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { UnsealRequestResponse } from '~/types/succession'
+import type { UnsealRequestResponse, UnsealRequestStatus } from '~/types/succession'
 
 const emit = defineEmits<{
   select: [id: string]
@@ -29,7 +29,7 @@ async function refresh() {
 onMounted(refresh)
 defineExpose({ refresh })
 
-function statusSeverity(status: string) {
+function statusSeverity(status: UnsealRequestStatus) {
   const map: Record<string, string> = {
     PENDING: 'warn',
     FIRST_APPROVED: 'info',
