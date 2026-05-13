@@ -3,6 +3,7 @@ import { waitForHydration } from '../helpers/wait'
 import { ORG_ID, mockOrg, mockOrgFeatureApis } from './helpers'
 
 // ロール別パーミッションモック
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MOCK_ADMIN_PERMISSIONS = {
   roleName: 'ADMIN',
   permissions: [
