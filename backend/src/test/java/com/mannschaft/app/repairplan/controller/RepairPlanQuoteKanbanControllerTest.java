@@ -29,7 +29,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -76,6 +79,9 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
 
     @Autowired
     private AuditLogRepository auditLogRepository;
+
+    @Autowired
+    private PlatformTransactionManager txManager;
 
     @PersistenceContext
     private EntityManager em;
@@ -261,12 +267,17 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
 
         em.flush();
 
-        // 監査ログ: BID_VENDOR_SELECTED が非同期で記録される（少し待機）
-        Thread.sleep(200);
-        boolean auditRecorded = auditLogRepository.findAll().stream()
-                .anyMatch(log -> "BID_VENDOR_SELECTED".equals(log.getEventType())
-                        && ORG_ID.equals(log.getOrganizationId()));
-        assertThat(auditRecorded).isTrue();
+        // 監査ログ: BID_VENDOR_SELECTED が非同期（@Async）で記録される（少し待機）
+        // @Transactional テストでは REPEATABLE_READ により @Async スレッドの commit が見えないため
+        // REQUIRES_NEW で新トランザクションを開いて検証する
+        Thread.sleep(500);
+        TransactionTemplate newTx2 = new TransactionTemplate(txManager);
+        newTx2.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        Boolean auditRecorded2 = newTx2.execute(status ->
+                auditLogRepository.findAll().stream()
+                        .anyMatch(log -> "BID_VENDOR_SELECTED".equals(log.getEventType())
+                                && ORG_ID.equals(log.getOrganizationId())));
+        assertThat(auditRecorded2).isTrue();
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -368,11 +379,15 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
         em.flush();
 
         // 監査ログは非同期（@Async）のため少し待つ
-        Thread.sleep(200);
-
-        boolean auditRecorded = auditLogRepository.findAll().stream()
-                .anyMatch(log -> "BID_CARD_CREATED".equals(log.getEventType())
-                        && ORG_ID.equals(log.getOrganizationId()));
+        // @Transactional テストでは REPEATABLE_READ により @Async スレッドの commit が見えないため
+        // REQUIRES_NEW で新トランザクションを開いて検証する
+        Thread.sleep(500);
+        TransactionTemplate newTx = new TransactionTemplate(txManager);
+        newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        Boolean auditRecorded = newTx.execute(status ->
+                auditLogRepository.findAll().stream()
+                        .anyMatch(log -> "BID_CARD_CREATED".equals(log.getEventType())
+                                && ORG_ID.equals(log.getOrganizationId())));
         assertThat(auditRecorded).isTrue();
     }
 
