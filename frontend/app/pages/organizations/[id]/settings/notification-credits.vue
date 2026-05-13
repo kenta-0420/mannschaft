@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { NotificationCreditBalance, NotificationCreditPurchase } from '~/types/notification-credit'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()

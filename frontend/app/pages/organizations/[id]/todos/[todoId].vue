@@ -2,6 +2,7 @@
 import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
 
 definePageMeta({
+  layout: 'organization',
   middleware: 'auth',
 })
 
