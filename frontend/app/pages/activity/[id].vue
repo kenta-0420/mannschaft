@@ -69,8 +69,8 @@ onMounted(() => load())
     <!-- 活動記録詳細 -->
     <template v-else-if="activity">
       <div class="rounded-lg border border-surface-200 bg-white p-6 dark:border-surface-700 dark:bg-surface-800">
-        <!-- スコープ名（チーム or 組織） -->
-        <p class="mb-2 text-sm text-surface-400">
+        <!-- スコープ名（チーム or 組織：将来対応） -->
+        <p v-if="activity.teamName || activity.organizationName" class="mb-2 text-sm text-surface-400">
           {{ activity.teamName ?? activity.organizationName ?? '' }}
         </p>
 
@@ -87,7 +87,7 @@ onMounted(() => load())
           <span v-if="activity.location">
             <i class="pi pi-map-marker mr-1" />{{ activity.location }}
           </span>
-          <span>
+          <span v-if="activity.participantCount !== undefined && activity.participantCount !== null">
             <i class="pi pi-users mr-1" />
             {{ $t('activity.participantCount', { count: activity.participantCount }) }}
           </span>
@@ -110,9 +110,9 @@ onMounted(() => load())
           {{ activity.description }}
         </p>
 
-        <!-- カスタムフィールド -->
+        <!-- カスタムフィールド（将来対応：現在はバックエンドから返らない） -->
         <dl
-          v-if="activity.customFields.length > 0"
+          v-if="activity.customFields && activity.customFields.length > 0"
           class="mt-4 grid grid-cols-1 gap-2 rounded-lg bg-surface-50 p-4 dark:bg-surface-700 sm:grid-cols-2"
         >
           <template v-for="field in activity.customFields" :key="field.fieldId">
