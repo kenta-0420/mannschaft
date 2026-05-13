@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ja">
+<head>
+    <meta charset="UTF-8"/>
+    <title>申し送りパック</title>
+    <style>
+        /* PDF 生成のため外部参照不可 — inline CSS のみ使用 */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "IPAexMincho", "IPAMincho", "Noto Serif CJK JP", serif;
+            font-size: 10pt;
+            color: #222;
+            padding: 20mm 18mm;
+        }
+        @page { size: A4 portrait; margin: 15mm; }
+
+        /* ヘッダー */
+        .header { border-bottom: 2px solid #333; padding-bottom: 8pt; margin-bottom: 14pt; }
+        .header h1 { font-size: 16pt; color: #1a3050; }
+        .header .meta { font-size: 9pt; color: #555; margin-top: 4pt; }
+
+        /* セクション */
+        .section { margin-bottom: 16pt; }
+        .section h2 {
+            font-size: 12pt;
+            background-color: #e8eff8;
+            padding: 4pt 8pt;
+            border-left: 4pt solid #1a3050;
+            margin-bottom: 8pt;
+        }
+
+        /* テーブル */
+        table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+        table th {
+            background-color: #dce6f2;
+            border: 0.5pt solid #aab;
+            padding: 4pt 6pt;
+            text-align: left;
+        }
+        table td { border: 0.5pt solid #aab; padding: 4pt 6pt; }
+        tr:nth-child(even) td { background-color: #f7f9fb; }
+
+        /* 空データ */
+        .empty-row td { color: #999; font-style: italic; text-align: center; }
+
+        /* フッター */
+        .footer {
+            border-top: 1pt solid #999;
+            padding-top: 6pt;
+            margin-top: 20pt;
+            font-size: 8pt;
+            color: #666;
+        }
+        .watermark-label {
+            background-color: #fff3cd;
+            border: 0.5pt solid #ffc107;
+            padding: 3pt 8pt;
+            font-size: 8pt;
+            color: #856404;
+            display: inline-block;
+            margin-bottom: 6pt;
+        }
+        .confidential {
+            color: #c0392b;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<div class="header">
+    <h1>理事申し送りパック</h1>
+    <div class="meta">
+        <span>スコープ: <th:block th:text="${scopeType}">TEAM</th:block> / ID: <th:block th:text="${scopeId}">1</th:block></span>
+        &nbsp;|&nbsp;
+        <span>任期: <th:block th:text="${termStart}">2025-04-01</th:block> 〜 <th:block th:text="${termEnd}">2026-03-31</th:block></span>
+        &nbsp;|&nbsp;
+        <span>役職: <th:block th:text="${roleLabel}">理事長</th:block></span>
+        <br/>
+        <span>生成日時: <th:block th:text="${#temporals.format(generatedAt, 'yyyy年MM月dd日 HH:mm')}">2026-05-13 10:00</th:block></span>
+        &nbsp;|&nbsp;
+        <span>PII 区分: <th:block th:text="${piiLevel}">STANDARD</th:block></span>
+    </div>
+</div>
+
+<!-- ウォーターマーク -->
+<div class="watermark-label">
+    閲覧者: <th:block th:text="${watermarkFor}">requesterId=1 / 2026-05-13 10:00</th:block>
+</div>
+
+<!-- 任意メモ -->
+<div class="section" th:if="${memo != null and !#strings.isEmpty(memo)}">
+    <h2>引き継ぎメモ</h2>
+    <p th:text="${memo}" style="line-height: 1.6; white-space: pre-wrap;"></p>
+</div>
+
+<!-- セクション1: 確定済み修繕計画項目（COMPLETED） -->
+<div class="section">
+    <h2>セクション1: 完了済み修繕計画項目</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>年度</th>
+                <th>カテゴリ</th>
+                <th>名称</th>
+                <th style="text-align:right;">見積額（円）</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="item : ${completedItems}" th:object="${item}">
+                <td th:text="*{plannedYear}">2025</td>
+                <td th:text="*{category}">外壁</td>
+                <td>
+                    <span th:unless="${piiLevel == 'ANONYMIZED'}" th:text="*{title}">外壁塗装工事</span>
+                    <span th:if="${piiLevel == 'ANONYMIZED'}" th:text="*{title}">（匿名化済み）</span>
+                </td>
+                <td style="text-align:right;" th:text="${#numbers.formatInteger(item.estimatedAmount, 0, 'COMMA')}">1,000,000</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(completedItems)}" class="empty-row">
+                <td colspan="4">完了済み項目はありません</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- セクション2: 未解決項目（PLANNED / IN_PROGRESS） -->
+<div class="section">
+    <h2>セクション2: 未解決・進行中の修繕計画項目</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>年度</th>
+                <th>カテゴリ</th>
+                <th>名称</th>
+                <th>ステータス</th>
+                <th style="text-align:right;">見積額（円）</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="item : ${pendingItems}" th:object="${item}">
+                <td th:text="*{plannedYear}">2026</td>
+                <td th:text="*{category}">屋根</td>
+                <td>
+                    <span th:unless="${piiLevel == 'ANONYMIZED'}" th:text="*{title}">屋根防水工事</span>
+                    <span th:if="${piiLevel == 'ANONYMIZED'}">（匿名化済み）</span>
+                </td>
+                <td th:text="*{status}">PLANNED</td>
+                <td style="text-align:right;" th:text="${#numbers.formatInteger(item.estimatedAmount, 0, 'COMMA')}">2,000,000</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(pendingItems)}" class="empty-row">
+                <td colspan="5">未解決項目はありません</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- セクション3: 保存済みシナリオ（最新3件） -->
+<div class="section">
+    <h2>セクション3: 積立金シミュレーションシナリオ（最新3件）</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>シナリオ名</th>
+                <th>基準日</th>
+                <th>エンジンバージョン</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="scenario : ${recentScenarios}">
+                <td th:text="${scenario['name']}">シナリオ#1</td>
+                <td th:text="${scenario['baselineAt']}">2026-04-01</td>
+                <td th:text="${scenario['engineVersion']}">1.0.0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(recentScenarios)}" class="empty-row">
+                <td colspan="3">シナリオはありません</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- フッター -->
+<div class="footer">
+    <p class="confidential">【機密文書】本書は関係者外秘です。無断複製・転送を禁止します。</p>
+    <p style="margin-top:4pt;">
+        閲覧者情報: <th:block th:text="${watermarkFor}">requesterId=1 / 2026-05-13 10:00</th:block>
+        &nbsp;|&nbsp; パック ID: <th:block th:text="${packId}">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</th:block>
+    </p>
+</div>
+
+</body>
+</html>

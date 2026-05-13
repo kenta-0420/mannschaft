@@ -1,7 +1,10 @@
 {
   "repair_plan": {
     "dashboard": {
-      "title": "修繕長期計画"
+      "title": "장기 수선 계획",
+      "tab": {
+        "handover": "인수인계"
+      }
     },
     "timeline": {
       "title": "修繕履歴・計画タイムライン",
@@ -79,6 +82,44 @@
     },
     "error": {
       "compliance_expired": "이 업체의 반사회세력 점검이 만료되었습니다. 관리자에게 문의하세요."
+    },
+    "handover": {
+      "builder": {
+        "title": "인수인계 패키지 생성",
+        "select_term": "대상 임기 선택",
+        "pii_level": "개인정보 수준",
+        "pii_standard": "표준",
+        "pii_anonymized": "익명화（GDPR 준수）",
+        "memo": "메모（선택사항）",
+        "generate_button": "PDF 생성",
+        "generating": "생성 중...",
+        "download_button": "다운로드",
+        "regenerate_button": "재생성"
+      },
+      "history": {
+        "title": "생성 기록",
+        "col_generated_at": "생성 일시",
+        "col_status": "상태",
+        "col_pii_level": "PII 수준",
+        "col_file_size": "파일 크기",
+        "col_actions": "작업"
+      },
+      "status": {
+        "generating": "생성 중",
+        "ready": "완료",
+        "failed": "실패"
+      },
+      "term": {
+        "manager_title": "이사 임기 관리",
+        "col_name": "이름",
+        "col_role": "직책",
+        "col_period": "임기 기간",
+        "col_active": "현직",
+        "add_term": "임기 추가",
+        "role_placeholder": "예: 이사장, 이사 등"
+      },
+      "pdf_password_required": "이 PDF에는 비밀번호가 설정되어 있습니다",
+      "watermark_notice": "이 PDF에는 열람자 정보가 워터마크로 인쇄되어 있습니다"
     }
   }
 }

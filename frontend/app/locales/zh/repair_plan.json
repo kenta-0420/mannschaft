@@ -1,7 +1,10 @@
 {
   "repair_plan": {
     "dashboard": {
-      "title": "修繕長期計画"
+      "title": "长期修缮计划",
+      "tab": {
+        "handover": "工作交接"
+      }
     },
     "timeline": {
       "title": "修繕履歴・計画タイムライン",
@@ -79,6 +82,44 @@
     },
     "error": {
       "compliance_expired": "该供应商的合规检查已过期，请联系管理员。"
+    },
+    "handover": {
+      "builder": {
+        "title": "生成交接文件包",
+        "select_term": "选择目标任期",
+        "pii_level": "个人信息级别",
+        "pii_standard": "标准",
+        "pii_anonymized": "匿名化（符合GDPR）",
+        "memo": "备注（可选）",
+        "generate_button": "生成 PDF",
+        "generating": "生成中...",
+        "download_button": "下载",
+        "regenerate_button": "重新生成"
+      },
+      "history": {
+        "title": "生成历史",
+        "col_generated_at": "生成时间",
+        "col_status": "状态",
+        "col_pii_level": "PII 级别",
+        "col_file_size": "文件大小",
+        "col_actions": "操作"
+      },
+      "status": {
+        "generating": "生成中",
+        "ready": "完成",
+        "failed": "失败"
+      },
+      "term": {
+        "manager_title": "理事任期管理",
+        "col_name": "姓名",
+        "col_role": "职务",
+        "col_period": "任期",
+        "col_active": "在任",
+        "add_term": "添加任期",
+        "role_placeholder": "例：理事长、理事等"
+      },
+      "pdf_password_required": "此 PDF 已设置密码",
+      "watermark_notice": "此 PDF 包含查看者信息作为水印"
     }
   }
 }

@@ -1,7 +1,10 @@
 {
   "repair_plan": {
     "dashboard": {
-      "title": "修繕長期計画"
+      "title": "修繕長期計画",
+      "tab": {
+        "handover": "申し送り"
+      }
     },
     "timeline": {
       "title": "修繕履歴・計画タイムライン",
@@ -79,6 +82,44 @@
     },
     "error": {
       "compliance_expired": "この業者は反社チェックの有効期限が切れています。管理者に確認してください。"
+    },
+    "handover": {
+      "builder": {
+        "title": "申し送りパック生成",
+        "select_term": "対象任期を選択",
+        "pii_level": "個人情報レベル",
+        "pii_standard": "標準",
+        "pii_anonymized": "匿名化（GDPR対応）",
+        "memo": "メモ（任意）",
+        "generate_button": "PDF を生成",
+        "generating": "生成中...",
+        "download_button": "ダウンロード",
+        "regenerate_button": "再生成"
+      },
+      "history": {
+        "title": "生成履歴",
+        "col_generated_at": "生成日時",
+        "col_status": "ステータス",
+        "col_pii_level": "PII レベル",
+        "col_file_size": "ファイルサイズ",
+        "col_actions": "操作"
+      },
+      "status": {
+        "generating": "生成中",
+        "ready": "完成",
+        "failed": "失敗"
+      },
+      "term": {
+        "manager_title": "理事任期管理",
+        "col_name": "氏名",
+        "col_role": "役職",
+        "col_period": "在任期間",
+        "col_active": "現職",
+        "add_term": "任期追加",
+        "role_placeholder": "例: 理事長、理事 等"
+      },
+      "pdf_password_required": "PDF にはパスワードが設定されています",
+      "watermark_notice": "このPDFには閲覧者情報が透かし印刷されています"
     }
   }
 }

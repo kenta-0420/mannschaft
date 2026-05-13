@@ -1,0 +1,72 @@
+package com.mannschaft.app.succession.batch;
+
+import com.mannschaft.app.succession.entity.UnsealRequestEntity;
+import com.mannschaft.app.succession.repository.SuccessionPreRegistrationRepository;
+import com.mannschaft.app.succession.repository.UnsealRequestRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * 封緘解除 72h TTL 自動再封バッチ（F09.15 S2-B）。
+ *
+ * <p>5 分ごとに {@code auto_reseal_at < NOW()} な未再封の {@link UnsealRequestEntity} を検索し、
+ * {@link com.mannschaft.app.succession.entity.SuccessionPreRegistrationEntity#getSealStatus()} を
+ * {@code RE_SEALED} に遷移させる。
+ * 設計書 §9.3「自動再封バッチ」を参照。
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class AutoResealBatchService {
+
+    private final UnsealRequestRepository unsealRequestRepo;
+    private final SuccessionPreRegistrationRepository preRegRepo;
+
+    @Scheduled(cron = "0 */5 * * * *")
+    @Transactional
+    public void autoReseal() {
+        LocalDateTime now = LocalDateTime.now();
+        List<UnsealRequestEntity> expired = unsealRequestRepo
+                .findByAutoResealAtBeforeAndReSealedAtIsNullAndDeletedAtIsNull(now);
+
+        if (expired.isEmpty()) {
+            return;
+        }
+
+        log.info("自動再封バッチ開始: 対象件数={}", expired.size());
+        int count = 0;
+
+        for (UnsealRequestEntity req : expired) {
+            try {
+                req.setReSealedAt(now);
+                unsealRequestRepo.save(req);
+
+                UUID preRegId = req.getPreRegistrationId();
+                Long orgId = req.getOrganizationId();
+
+                preRegRepo.findByIdAndOrganizationIdAndDeletedAtIsNull(preRegId, orgId)
+                        .ifPresent(preReg -> {
+                            if ("UNSEALED".equals(preReg.getSealStatus())) {
+                                preReg.setSealStatus("RE_SEALED");
+                                preReg.setAutoResealAt(null);
+                                preRegRepo.save(preReg);
+                                log.info("自動再封完了: preRegId={}, organizationId={}", preRegId, orgId);
+                            }
+                        });
+                count++;
+            } catch (Exception e) {
+                log.error("自動再封エラー: unsealRequestId={}, organizationId={}",
+                        req.getId(), req.getOrganizationId(), e);
+            }
+        }
+
+        log.info("自動再封バッチ完了: 処理件数={}/{}", count, expired.size());
+    }
+}
