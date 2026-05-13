@@ -24,7 +24,10 @@ public enum TemplateErrorCode implements ErrorCode {
     TMPL_004("TMPL_004", "このモジュールは有料プランが必要です", Severity.WARN),
 
     /** このレベルではモジュールを利用できません */
-    TMPL_005("TMPL_005", "このレベルではモジュールを利用できません", Severity.WARN);
+    TMPL_005("TMPL_005", "このレベルではモジュールを利用できません", Severity.WARN),
+
+    /** DEFAULTモジュールは設定を変更できません */
+    TMPL_006("TMPL_006", "DEFAULTモジュールは設定を変更できません", Severity.WARN);
 
     private final String code;
     private final String message;

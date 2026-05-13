@@ -120,7 +120,7 @@ public class RepairPlanSimulationEngine {
 
     // --- SHA-256 ---
 
-    String calcContentSha256(SimulationParams params, List<YearlyBalance> balances, Integer depletionYear) {
+    public String calcContentSha256(SimulationParams params, List<YearlyBalance> balances, Integer depletionYear) {
         String raw = params.toString() + balances.toString() + depletionYear + ENGINE_VERSION;
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
