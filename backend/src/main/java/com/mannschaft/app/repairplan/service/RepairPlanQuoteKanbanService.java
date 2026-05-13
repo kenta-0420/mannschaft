@@ -2,6 +2,7 @@ package com.mannschaft.app.repairplan.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.property.entity.VendorEntity;
@@ -84,6 +85,7 @@ public class RepairPlanQuoteKanbanService {
     private final VendorRepository vendorRepository;
 
     private final AuditLogService auditLogService;
+    private final AccessControlService accessControlService;
 
     // ─────────────────────────────────────────────────────────────────────
     // カンバン CRUD
@@ -117,6 +119,8 @@ public class RepairPlanQuoteKanbanService {
     @Transactional
     public QuoteKanbanDto createKanban(String scopeType, Long scopeId, Long organizationId,
                                        CreateKanbanRequest request, Long userId) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
+
         RepairQuoteKanban kanban = RepairQuoteKanban.builder()
                 .organizationId(organizationId)
                 .scopeType(scopeType)
@@ -247,6 +251,9 @@ public class RepairPlanQuoteKanbanService {
 
         // kanban の組織帰属確認（二重チェック）
         RepairQuoteKanban kanban = findKanbanForOrg(card.getKanbanId(), organizationId);
+
+        // 認可チェック（ADMIN/DEPUTY_ADMIN 以上）
+        accessControlService.checkAdminOrAbove(userId, kanban.getScopeId(), kanban.getScopeType());
 
         String currentStage = card.getStage();
         String newStage = request.newStage();
