@@ -129,9 +129,11 @@ onMounted(() => load())
       <!-- 参加履歴タブ -->
       <template v-if="activeTab === 'history'">
         <div v-if="history.length > 0" class="grid gap-4 sm:grid-cols-2">
-          <SectionCard
+          <NuxtLink
             v-for="t in history"
             :key="`${t.tournamentId}-${t.divisionName}`"
+            :to="`/organizations/${t.organizationId}/tournaments/${t.tournamentId}`"
+            class="block rounded-xl border border-surface-300 bg-surface-0 p-4 transition hover:border-primary-400 hover:shadow-sm"
           >
             <div class="mb-2 flex items-center justify-between gap-2">
               <span class="rounded bg-surface-100 px-2 py-0.5 text-xs text-surface-600">
@@ -150,7 +152,7 @@ onMounted(() => load())
               <span class="text-red-500">{{ t.lost }}敗</span>
               <span class="ml-auto font-medium">{{ t.points }}pt</span>
             </div>
-          </SectionCard>
+          </NuxtLink>
         </div>
 
         <DashboardEmptyState
