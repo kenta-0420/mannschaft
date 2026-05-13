@@ -81,6 +81,9 @@ public class RepairPlanItem extends UuidV7Entity {
     @Column(name = "tags", columnDefinition = "JSON")
     private String tags;
 
+    @Column(name = "minutes_note", columnDefinition = "TINYTEXT")
+    private String minutesNote;
+
     @Column(name = "created_by", nullable = false)
     private Long createdBy;
 
