@@ -104,6 +104,7 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
 
         MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, ORG_ID, RoleKind.MEMBER);
+        MembershipTestHelper.insertUserRole(em, userId, "ADMIN", null, ORG_ID);
         insertOrganization(ORG_ID, "カンバンテスト組合");
 
         // vendors テーブルに反社チェック済み業者を INSERT
