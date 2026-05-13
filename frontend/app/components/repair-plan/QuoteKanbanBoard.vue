@@ -108,7 +108,7 @@ const allStages: KanbanStage[] = [...STAGE_ORDER, 'REJECTED']
           :cards="cardsByStage[stage] ?? []"
           :can-edit="canEdit"
           :stage-label="t(`repair_plan.kanban.stage.${stage.toLowerCase()}`)"
-          @card-move="(cardId, newStage) => $emit('cardMoved', cardId, newStage)"
+          @card-move="(cardId, newStage) => emit('cardMoved', cardId, newStage)"
         />
       </div>
     </div>
