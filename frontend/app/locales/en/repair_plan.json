@@ -1,7 +1,10 @@
 {
   "repair_plan": {
     "dashboard": {
-      "title": "修繕長期計画"
+      "title": "Long-Term Repair Plan",
+      "tab": {
+        "handover": "Handover"
+      }
     },
     "timeline": {
       "title": "修繕履歴・計画タイムライン",
@@ -79,6 +82,44 @@
     },
     "error": {
       "compliance_expired": "This vendor's compliance check has expired. Please contact an administrator."
+    },
+    "handover": {
+      "builder": {
+        "title": "Generate Handover Pack",
+        "select_term": "Select Target Term",
+        "pii_level": "Personal Information Level",
+        "pii_standard": "Standard",
+        "pii_anonymized": "Anonymized (GDPR compliant)",
+        "memo": "Memo (optional)",
+        "generate_button": "Generate PDF",
+        "generating": "Generating...",
+        "download_button": "Download",
+        "regenerate_button": "Regenerate"
+      },
+      "history": {
+        "title": "Generation History",
+        "col_generated_at": "Generated At",
+        "col_status": "Status",
+        "col_pii_level": "PII Level",
+        "col_file_size": "File Size",
+        "col_actions": "Actions"
+      },
+      "status": {
+        "generating": "Generating",
+        "ready": "Ready",
+        "failed": "Failed"
+      },
+      "term": {
+        "manager_title": "Board Member Terms",
+        "col_name": "Name",
+        "col_role": "Role",
+        "col_period": "Term Period",
+        "col_active": "Active",
+        "add_term": "Add Term",
+        "role_placeholder": "e.g. Chairperson, Director"
+      },
+      "pdf_password_required": "This PDF is password protected",
+      "watermark_notice": "This PDF contains viewer information as a watermark"
     }
   }
 }

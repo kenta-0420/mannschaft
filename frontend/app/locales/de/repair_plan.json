@@ -1,7 +1,10 @@
 {
   "repair_plan": {
     "dashboard": {
-      "title": "修繕長期計画"
+      "title": "Langfristiger Instandhaltungsplan",
+      "tab": {
+        "handover": "Übergabe"
+      }
     },
     "timeline": {
       "title": "修繕履歴・計画タイムライン",
@@ -79,6 +82,44 @@
     },
     "error": {
       "compliance_expired": "Die Compliance-Prüfung dieses Anbieters ist abgelaufen. Bitte wenden Sie sich an einen Administrator."
+    },
+    "handover": {
+      "builder": {
+        "title": "Übergabepaket generieren",
+        "select_term": "Zielamtszeit auswählen",
+        "pii_level": "Datenschutzstufe",
+        "pii_standard": "Standard",
+        "pii_anonymized": "Anonymisiert (DSGVO-konform)",
+        "memo": "Notiz (optional)",
+        "generate_button": "PDF generieren",
+        "generating": "Wird generiert...",
+        "download_button": "Herunterladen",
+        "regenerate_button": "Neu generieren"
+      },
+      "history": {
+        "title": "Generierungsverlauf",
+        "col_generated_at": "Generiert am",
+        "col_status": "Status",
+        "col_pii_level": "PII-Stufe",
+        "col_file_size": "Dateigröße",
+        "col_actions": "Aktionen"
+      },
+      "status": {
+        "generating": "Wird generiert",
+        "ready": "Fertig",
+        "failed": "Fehlgeschlagen"
+      },
+      "term": {
+        "manager_title": "Verwaltung der Vorstandsamtszeiten",
+        "col_name": "Name",
+        "col_role": "Funktion",
+        "col_period": "Amtszeit",
+        "col_active": "Aktiv",
+        "add_term": "Amtszeit hinzufügen",
+        "role_placeholder": "z.B. Vorsitzender, Vorstand"
+      },
+      "pdf_password_required": "Dieses PDF ist passwortgeschützt",
+      "watermark_notice": "Dieses PDF enthält Betrachterinformationen als Wasserzeichen"
     }
   }
 }
