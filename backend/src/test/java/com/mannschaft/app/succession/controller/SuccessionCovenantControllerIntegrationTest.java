@@ -115,15 +115,19 @@ class SuccessionCovenantControllerIntegrationTest extends AbstractSuccessionInte
                 .executeUpdate();
 
         // 4) resident_registry テーブルにテスト居住者を挿入
-        //    death_status/occupancy_status/is_secondary_home は DEFAULT あり列だが CI strict mode で明示必要
+        //    CI strict mode では DEFAULT あり NOT NULL 列も明示必要。全 NOT NULL 列を列挙する。
         em.createNativeQuery(
                 "INSERT INTO resident_registry (id, dwelling_unit_id, user_id, resident_type,"
                         + " last_name, first_name, last_name_kana, first_name_kana,"
-                        + " move_in_date, death_status, occupancy_status, is_secondary_home,"
+                        + " move_in_date, is_primary, is_verified,"
+                        + " encryption_key_version,"
+                        + " death_status, occupancy_status, is_secondary_home,"
                         + " created_at, updated_at)"
                         + " VALUES (:residentId, :dwellingId, :userId, 'OWNER',"
                         + " :encLastName, :encFirstName, :encLastNameKana, :encFirstNameKana,"
-                        + " '2020-01-01', 'ALIVE', 'UNKNOWN', 0,"
+                        + " '2020-01-01', 0, 0,"
+                        + " 1,"
+                        + " 'ALIVE', 'UNKNOWN', 0,"
                         + " NOW(), NOW())")
                 .setParameter("residentId", RESIDENT_ID)
                 .setParameter("dwellingId", DWELLING_ID)
