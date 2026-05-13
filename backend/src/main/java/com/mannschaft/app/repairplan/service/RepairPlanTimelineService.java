@@ -27,6 +27,8 @@ import java.util.stream.IntStream;
  * {@code UserRepository}（auth ドメイン）を read-only 目的で注入している。
  * 理事長名は displayName を返す。将来 UserQueryService に切り出す候補。
  */
+// TODO: TIMELINE_EXPORTED 監査ログ — エクスポートAPIが実装された時点で
+//       recordAudit(AuditEventType.TIMELINE_EXPORTED, ...) を追加すること
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

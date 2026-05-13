@@ -139,6 +139,17 @@ public class RepairPlanQuoteKanbanService {
                 null, null, null,
                 "{\"kanbanId\":\"" + saved.getId() + "\",\"title\":\"" + request.title() + "\"}");
 
+        // 入札締切日が設定されている場合は BID_DEADLINE_OPENED も記録する
+        if (saved.getBidDeadlineAt() != null) {
+            auditLogService.record(
+                    AuditEventType.BID_DEADLINE_OPENED.name(),
+                    userId, null,
+                    null, organizationId,
+                    null, null, null,
+                    "{\"kanbanId\":\"" + saved.getId() + "\",\"bidDeadlineAt\":\""
+                            + saved.getBidDeadlineAt() + "\"}");
+        }
+
         return toDto(saved, true);
     }
 
@@ -153,7 +164,8 @@ public class RepairPlanQuoteKanbanService {
             if (request.title() != null) {
                 kanban.setTitle(request.title());
             }
-            if (request.bidDeadlineAt() != null) {
+            boolean bidDeadlineUpdated = request.bidDeadlineAt() != null;
+            if (bidDeadlineUpdated) {
                 kanban.setBidDeadlineAt(toLocalDateTime(request.bidDeadlineAt()));
             }
             if (request.visibilityToMember() != null) {
@@ -163,6 +175,18 @@ public class RepairPlanQuoteKanbanService {
                 kanban.setStatus(request.status());
             }
             RepairQuoteKanban saved = kanbanRepository.save(kanban);
+
+            // 入札締切日が更新された場合は BID_DEADLINE_OPENED を記録する
+            if (bidDeadlineUpdated && saved.getBidDeadlineAt() != null) {
+                auditLogService.record(
+                        AuditEventType.BID_DEADLINE_OPENED.name(),
+                        userId, null,
+                        null, organizationId,
+                        null, null, null,
+                        "{\"kanbanId\":\"" + kanbanId + "\",\"bidDeadlineAt\":\""
+                                + saved.getBidDeadlineAt() + "\"}");
+            }
+
             return toDto(saved, true);
         } catch (ObjectOptimisticLockingFailureException e) {
             throw new BusinessException(RepairPlanErrorCode.ITEM_VERSION_CONFLICT, e);
