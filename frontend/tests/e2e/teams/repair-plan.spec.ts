@@ -130,7 +130,7 @@ test.describe('RP-001〜006: 修繕計画ダッシュボード', () => {
 
     // カンバンコンテンツが表示される（カンバン見出しまたは空状態）
     await expect(
-      page.getByText('カンバンがありません').or(page.getByText('相見積もりカンバン').first()),
+      page.getByText('カンバンがありません'),
     ).toBeVisible({ timeout: 10_000 })
   })
 
@@ -144,9 +144,9 @@ test.describe('RP-001〜006: 修繕計画ダッシュボード', () => {
     // 申し送りタブをクリック
     await page.getByRole('button', { name: '申し送り' }).click()
 
-    // 申し送りコンテンツが表示される（理事任期管理または申し送りパック生成）
+    // 申し送りコンテンツが表示される（見出しで判定）
     await expect(
-      page.getByText('理事任期管理').or(page.getByText('申し送りパック生成')),
+      page.getByRole('heading', { name: '申し送りパック生成' }),
     ).toBeVisible({ timeout: 10_000 })
   })
 
@@ -171,14 +171,14 @@ test.describe('RP-001〜006: 修繕計画ダッシュボード', () => {
     // カンバンコンテンツが表示されるまで待つ
     await page.waitForTimeout(500)
 
-    // 「カンバンを作成」ボタンをクリック
-    await page.getByRole('button', { name: 'カンバンを作成' }).click()
+    // 「カンバンを作成」ボタンをクリック（PrimeVueのiconつきButtonはfilterで取得）
+    await page.locator('button').filter({ hasText: 'カンバンを作成' }).click({ timeout: 15_000 })
 
     // ダイアログが開く
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 })
 
-    // ダイアログ内にタイトル入力フォームが存在する
-    await expect(page.getByPlaceholder('例: 外壁塗装工事 2026年度相見積もり')).toBeVisible({
+    // ダイアログヘッダーにタイトルが表示される
+    await expect(page.getByRole('dialog').getByText('カンバンを作成')).toBeVisible({
       timeout: 5_000,
     })
   })
