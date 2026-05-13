@@ -26,6 +26,36 @@
       "public_viewer_hint_dismiss": "关闭",
       "join_request_link": "申请加入会员"
     },
+    "weather": {
+      "title": "天气",
+      "today": "今天",
+      "tomorrow": "明天",
+      "max": "最高",
+      "min": "最低",
+      "humidity": "湿度",
+      "chance_of_rain": "降水",
+      "fetched_at": "数据获取",
+      "stale_warning": "预报信息可能已过期",
+      "error_postal_missing": "邮政编码未注册",
+      "error_postal_not_found": "您的邮政编码暂不支持天气信息。请确认正确的邮政编码",
+      "error_country_not_supported": "您所在国家或地区的天气信息目前尚未提供",
+      "error_provider_unavailable": "无法获取天气信息",
+      "refresh": "刷新",
+      "powered_by": "Powered by WeatherAPI.com",
+      "edit_profile": "编辑资料",
+      "condition": {
+        "sunny": "晴天",
+        "partly_cloudy": "局部多云",
+        "cloudy": "多云",
+        "overcast": "阴天",
+        "mist": "薄雾",
+        "rain": "雨",
+        "heavy_rain": "大雨",
+        "snow": "雪",
+        "sleet": "雨夹雪",
+        "thunderstorm": "雷暴"
+      }
+    },
     "myCorkboard": {
       "widgetTitle": "我的软木板",
       "viewAll": "查看全部",

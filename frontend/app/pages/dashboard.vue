@@ -64,6 +64,8 @@ onMounted(async () => {
         <WidgetNotices />
         <WidgetUpcomingEvents />
         <WidgetPersonalTodo />
+        <!-- F02.10: 天気ウィジェット（sort_order=3、NOTICES/UPCOMING_EVENTS/PERSONAL_TODO の次） -->
+        <WidgetWeather />
         <WidgetTodoCountdown />
         <!-- F03.15 Phase 3: 個人時間割「今日の時間割」「今日のメモ」ウィジェット -->
         <DashboardTimetableTodayWidget />

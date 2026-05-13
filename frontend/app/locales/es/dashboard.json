@@ -26,6 +26,36 @@
       "public_viewer_hint_dismiss": "Cerrar",
       "join_request_link": "Solicitar membresía"
     },
+    "weather": {
+      "title": "Clima",
+      "today": "Hoy",
+      "tomorrow": "Mañana",
+      "max": "Máx.",
+      "min": "Mín.",
+      "humidity": "Humedad",
+      "chance_of_rain": "Lluvia",
+      "fetched_at": "Datos obtenidos",
+      "stale_warning": "La información del pronóstico puede estar desactualizada",
+      "error_postal_missing": "El código postal no está registrado",
+      "error_postal_not_found": "Tu código postal no es compatible con la información meteorológica. Por favor, verifica tu código postal",
+      "error_country_not_supported": "La información meteorológica para tu país o región no está disponible actualmente",
+      "error_provider_unavailable": "No se pudo obtener información meteorológica",
+      "refresh": "Actualizar",
+      "powered_by": "Powered by WeatherAPI.com",
+      "edit_profile": "Editar perfil",
+      "condition": {
+        "sunny": "Soleado",
+        "partly_cloudy": "Parcialmente nublado",
+        "cloudy": "Nublado",
+        "overcast": "Muy nublado",
+        "mist": "Neblina",
+        "rain": "Lluvia",
+        "heavy_rain": "Lluvia intensa",
+        "snow": "Nieve",
+        "sleet": "Aguanieve",
+        "thunderstorm": "Tormenta eléctrica"
+      }
+    },
     "myCorkboard": {
       "widgetTitle": "Mi tablero de corcho",
       "viewAll": "Ver todo",
