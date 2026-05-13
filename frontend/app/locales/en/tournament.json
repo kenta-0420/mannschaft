@@ -1,0 +1,46 @@
+{
+  "entry": {
+    "title": "Entry Management",
+    "memberCount": "{count} members",
+    "countRange": "{min}〜{max} members",
+    "noLimit": "No limit",
+    "loadFromTeam": "Load all from team members",
+    "loadSuccess": "Added {added} members ({skipped} skipped)",
+    "saveMembers": "Save entry",
+    "saveSuccess": "Entry saved",
+    "downloadPdf": "Download entry sheet as PDF",
+    "jersey": "Jersey #",
+    "position": "Position",
+    "notes": "Notes",
+    "alreadyEntered": "Registered",
+    "template": {
+      "title": "Entry Templates",
+      "select": "Select a template",
+      "apply": "Apply",
+      "applySuccess": "Added {applied} members ({skipped} skipped)",
+      "skippedInactive": "{count} members skipped (inactive)",
+      "create": "Create template",
+      "edit": "Edit template",
+      "delete": "Delete template",
+      "maxCount": "Up to 5 templates can be created",
+      "noTemplates": "No templates",
+      "name": "Template name",
+      "description": "Description",
+      "members": "Players",
+      "error": {
+        "TOUR_026": "Template not found",
+        "TOUR_027": "Up to 5 templates can be created",
+        "TOUR_028": "This template belongs to another team"
+      }
+    },
+    "error": {
+      "TOUR_019": "Cannot change entry due to tournament status",
+      "TOUR_020": "Exceeds maximum entry count",
+      "TOUR_021": "Not a member of the team",
+      "TOUR_022": "Entry member not found",
+      "TOUR_023": "Below minimum entry count",
+      "TOUR_024": "This player is already entered",
+      "TOUR_025": "No members to load"
+    }
+  }
+}

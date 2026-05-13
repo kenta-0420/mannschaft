@@ -1,0 +1,46 @@
+{
+  "entry": {
+    "title": "エントリー管理",
+    "memberCount": "{count}名",
+    "countRange": "{min}〜{max}名",
+    "noLimit": "人数制限なし",
+    "loadFromTeam": "チームメンバーから一括読み込み",
+    "loadSuccess": "{added}名を追加しました（{skipped}名スキップ）",
+    "saveMembers": "エントリーを保存",
+    "saveSuccess": "エントリーを保存しました",
+    "downloadPdf": "エントリー表をPDFで出力",
+    "jersey": "背番号",
+    "position": "ポジション",
+    "notes": "備考",
+    "alreadyEntered": "登録済み",
+    "template": {
+      "title": "エントリーテンプレート",
+      "select": "テンプレートを選択",
+      "apply": "一括適用",
+      "applySuccess": "{applied}名を追加しました（{skipped}名スキップ）",
+      "skippedInactive": "{count}名は非アクティブメンバーのためスキップ",
+      "create": "テンプレートを作成",
+      "edit": "テンプレートを編集",
+      "delete": "テンプレートを削除",
+      "maxCount": "最大5件まで作成できます",
+      "noTemplates": "テンプレートがありません",
+      "name": "テンプレート名",
+      "description": "説明",
+      "members": "選手一覧",
+      "error": {
+        "TOUR_026": "テンプレートが見つかりません",
+        "TOUR_027": "テンプレートは最大5件まで作成できます",
+        "TOUR_028": "このテンプレートは別チームのものです"
+      }
+    },
+    "error": {
+      "TOUR_019": "大会の状態によりエントリーを変更できません",
+      "TOUR_020": "エントリー最大人数を超過しています",
+      "TOUR_021": "チームのメンバーではありません",
+      "TOUR_022": "エントリーメンバーが見つかりません",
+      "TOUR_023": "エントリー最少人数を下回っています",
+      "TOUR_024": "この選手は既にエントリー済みです",
+      "TOUR_025": "ロード対象のメンバーが存在しません"
+    }
+  }
+}
