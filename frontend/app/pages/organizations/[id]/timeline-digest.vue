@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DigestSummaryResponse } from '~/types/timeline-digest'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
 const orgId = computed(() => Number(route.params.id))
