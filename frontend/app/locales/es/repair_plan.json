@@ -1,7 +1,10 @@
 {
   "repair_plan": {
     "dashboard": {
-      "title": "修繕長期計画"
+      "title": "Plan de Reparación a Largo Plazo",
+      "tab": {
+        "handover": "Traspaso"
+      }
     },
     "timeline": {
       "title": "修繕履歴・計画タイムライン",
@@ -79,6 +82,44 @@
     },
     "error": {
       "compliance_expired": "La verificación de cumplimiento de este proveedor ha expirado. Contacte a un administrador."
+    },
+    "handover": {
+      "builder": {
+        "title": "Generar Paquete de Traspaso",
+        "select_term": "Seleccionar Período",
+        "pii_level": "Nivel de Información Personal",
+        "pii_standard": "Estándar",
+        "pii_anonymized": "Anonimizado (compatible con GDPR)",
+        "memo": "Nota (opcional)",
+        "generate_button": "Generar PDF",
+        "generating": "Generando...",
+        "download_button": "Descargar",
+        "regenerate_button": "Regenerar"
+      },
+      "history": {
+        "title": "Historial de Generación",
+        "col_generated_at": "Generado el",
+        "col_status": "Estado",
+        "col_pii_level": "Nivel PII",
+        "col_file_size": "Tamaño del archivo",
+        "col_actions": "Acciones"
+      },
+      "status": {
+        "generating": "Generando",
+        "ready": "Listo",
+        "failed": "Fallido"
+      },
+      "term": {
+        "manager_title": "Gestión de Mandatos de Directivos",
+        "col_name": "Nombre",
+        "col_role": "Cargo",
+        "col_period": "Período de Mandato",
+        "col_active": "Activo",
+        "add_term": "Agregar Mandato",
+        "role_placeholder": "Ej.: Presidente, Director"
+      },
+      "pdf_password_required": "Este PDF tiene contraseña",
+      "watermark_notice": "Este PDF contiene información del visualizador como marca de agua"
     }
   }
 }

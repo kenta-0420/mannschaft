@@ -11,10 +11,10 @@ const { getTimeline } = useRepairPlanTimelineApi()
 const { listKanbans, createKanban, moveCard } = useRepairPlanKanbanApi()
 const notification = useNotification()
 const teamApi = useTeamApi()
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdminOrDeputy, isAdmin, loadPermissions } = useRoleAccess('team', teamId)
 
 // タブ管理
-type Tab = 'timeline' | 'kanban'
+type Tab = 'timeline' | 'kanban' | 'handover'
 const activeTab = ref<Tab>('timeline')
 
 // --- タイムライン ---
@@ -86,6 +86,14 @@ async function handleTabChange(tab: Tab) {
     await loadOrganizationId()
     await loadKanbans()
   }
+}
+
+// 申し送りパック生成後に履歴リストを再ロードするための ref
+const handoverHistoryRef = ref<{ reload: () => Promise<void> } | null>(null)
+
+async function handlePackGenerated() {
+  // 少し待ってから履歴をリロード（バックグラウンド生成の開始を反映）
+  await handoverHistoryRef.value?.reload()
 }
 
 async function handleTimelineRefresh() {
@@ -169,6 +177,17 @@ onMounted(async () => {
         @click="handleTabChange('kanban')"
       >
         {{ $t('repair_plan.kanban.title') }}
+      </button>
+      <button
+        class="border-b-2 px-4 py-2 text-sm font-medium transition"
+        :class="
+          activeTab === 'handover'
+            ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+            : 'border-transparent text-surface-500 hover:text-surface-700'
+        "
+        @click="handleTabChange('handover')"
+      >
+        {{ $t('repair_plan.dashboard.tab.handover') }}
       </button>
     </div>
 
@@ -316,6 +335,23 @@ onMounted(async () => {
           @card-moved="handleCardMoved"
         />
       </div>
+    </div>
+
+    <!-- ===== 申し送りタブ ===== -->
+    <div v-if="activeTab === 'handover'" class="space-y-6">
+      <MemberTermManager :team-id="teamId" :is-admin="isAdmin" />
+      <HandoverPackBuilder
+        scope-type="teams"
+        :scope-id="teamId"
+        :team-id="teamId"
+        @generated="handlePackGenerated"
+      />
+      <HandoverPackHistoryList
+        ref="handoverHistoryRef"
+        scope-type="teams"
+        :scope-id="teamId"
+        :is-admin="isAdmin"
+      />
     </div>
 
     <!-- カンバン作成ダイアログ -->
