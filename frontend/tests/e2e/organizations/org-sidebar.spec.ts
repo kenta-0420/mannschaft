@@ -3,18 +3,6 @@ import { waitForHydration } from '../helpers/wait'
 import { ORG_ID, mockOrg, mockOrgFeatureApis } from './helpers'
 
 // ロール別パーミッションモック
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const MOCK_ADMIN_PERMISSIONS = {
-  roleName: 'ADMIN',
-  permissions: [
-    'schedule.create', 'schedule.edit', 'schedule.delete',
-    'todo.create', 'todo.edit', 'todo.delete',
-    'event.create', 'event.edit', 'event.delete',
-    'member.manage', 'bulletin.create', 'bulletin.edit',
-    'form.create', 'form.edit', 'survey.create', 'survey.edit',
-  ],
-}
-
 const MOCK_MEMBER_PERMISSIONS = {
   roleName: 'MEMBER',
   permissions: ['todo.create'],
