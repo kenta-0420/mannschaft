@@ -64,6 +64,11 @@ public class NotificationCreditService {
     private final NotificationCreditPackageRepository packageRepository;
     private final NotificationMonthlyUsageRepository monthlyUsageRepository;
     private final UserRoleRepository userRoleRepository;
+    // NotificationHelper → NotificationCreditService → NotificationHelper の循環を断つ。
+    // sendFreeQuotaAlertAsync（@Async）でのみ使用するため @Lazy プロキシで遅延解決する。
+    @Lazy
+    @Autowired
+    private NotificationHelper notificationHelper;
 
     // NotificationHelper ↔ NotificationCreditService の循環参照を @Lazy で解消
     // アラート送信は @Async メソッドのみで使用するため遅延注入で問題なし

@@ -62,4 +62,22 @@ public interface RepairPlanItemRepository extends AbstractTenantAwareRepository<
             @Param("category") String category,
             @Param("status") String status,
             Pageable pageable);
+
+    /**
+     * スコープ単位で計画年度別の修繕費見積合計を集計する（シミュレーション入力用）。
+     *
+     * <p>返却値は {@code Object[]{Integer plannedYear, BigDecimal sum}} の形式。
+     * Service 層で {@code Map<Integer, BigDecimal>} に変換して使用する。</p>
+     *
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID
+     * @return [plannedYear, sumEstimatedAmount] のリスト（年度昇順）
+     */
+    @Query("SELECT r.plannedYear, CAST(SUM(r.estimatedAmount) AS java.math.BigDecimal) " +
+           "FROM RepairPlanItem r " +
+           "WHERE r.scopeType = :scopeType AND r.scopeId = :scopeId AND r.deletedAt IS NULL " +
+           "GROUP BY r.plannedYear " +
+           "ORDER BY r.plannedYear ASC")
+    List<Object[]> sumEstimatedAmountByYear(@Param("scopeType") String scopeType,
+                                             @Param("scopeId") Long scopeId);
 }
