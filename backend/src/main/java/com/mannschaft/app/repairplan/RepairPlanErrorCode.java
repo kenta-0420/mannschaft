@@ -70,7 +70,21 @@ public enum RepairPlanErrorCode implements ErrorCode {
     KANBAN_NOT_FOUND("REPAIR_PLAN_017", "カンバンが見つかりません", Severity.WARN),
 
     /** 指定されたカードが見つからない（テナント／スコープ不一致を含む。IDOR 対策で 404）。 */
-    CARD_NOT_FOUND("REPAIR_PLAN_018", "カードが見つかりません", Severity.WARN);
+    CARD_NOT_FOUND("REPAIR_PLAN_018", "カードが見つかりません", Severity.WARN),
+
+    // ─── F08.8 Phase 5: 申し送りパック ───────────────────────────────────
+
+    /** 指定された申し送りパックが見つからない（IDOR 対策で 404）。 */
+    PACK_NOT_FOUND("REPAIR_PLAN_020", "申し送りパックが見つかりません", Severity.WARN),
+
+    /** 指定された任期が見つからない（IDOR 対策で 404）。 */
+    TERM_NOT_FOUND("REPAIR_PLAN_021", "理事任期が見つかりません", Severity.WARN),
+
+    /** PDF 生成失敗（R2 アップロード失敗など）。 */
+    PACK_GENERATION_FAILED("REPAIR_PLAN_022", "申し送りパックの生成に失敗しました", Severity.ERROR),
+
+    /** 申し送りパックがまだ生成中（GENERATING 状態）のためダウンロード不可。 */
+    PACK_NOT_READY("REPAIR_PLAN_023", "申し送りパックはまだ生成中です", Severity.WARN);
 
     private final String code;
     private final String message;

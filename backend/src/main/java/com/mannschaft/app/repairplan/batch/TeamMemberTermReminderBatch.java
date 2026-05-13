@@ -1,0 +1,92 @@
+package com.mannschaft.app.repairplan.batch;
+
+import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.repairplan.entity.TeamMemberTerm;
+import com.mannschaft.app.repairplan.repository.TeamMemberTermRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * 任期終了リマインドバッチ（F08.8 Phase 5）。
+ *
+ * <p>毎朝 9:00 JST に起動し、30 日以内に任期終了を迎えるアクティブな理事に通知を送る。
+ * テスト可能なよう {@link #executeAt(LocalDate)} で日付注入できる設計にしている。</p>
+ *
+ * <p>TODO: repairplan ドメインと notification / auth ドメインをまたいでいる。
+ * 将来は TeamMemberTermReminderTriggeredEvent で分離予定。</p>
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class TeamMemberTermReminderBatch {
+
+    /** 何日前から通知を送るか。 */
+    private static final int REMINDER_DAYS = 30;
+
+    private final TeamMemberTermRepository termRepository;
+    private final NotificationService notificationService;
+    private final AuditLogService auditLogService;
+
+    /**
+     * スケジュール起動エントリポイント（毎朝 9:00 JST）。
+     */
+    @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
+    @SchedulerLock(name = "TeamMemberTermReminderBatch", lockAtMostFor = "PT55M")
+    @Transactional(readOnly = true)
+    public void execute() {
+        executeAt(LocalDate.now(java.time.ZoneId.of("Asia/Tokyo")));
+    }
+
+    /**
+     * テスト可能な実装本体。対象日付を引数で受け取る。
+     *
+     * @param today 基準日（JST 今日）
+     */
+    void executeAt(LocalDate today) {
+        LocalDate deadline = today.plusDays(REMINDER_DAYS);
+        List<TeamMemberTerm> targets = termRepository.findByIsActiveTrueAndTermEndBetween(today, deadline);
+
+        if (targets.isEmpty()) {
+            log.debug("任期終了リマインド: 対象なし (today={}, deadline={})", today, deadline);
+            return;
+        }
+
+        int notified = 0;
+        for (TeamMemberTerm term : targets) {
+            try {
+                notificationService.createNotification(
+                        term.getUserId(),
+                        "TERM_ENDING_REMINDER",
+                        NotificationPriority.NORMAL,
+                        "理事任期終了のお知らせ",
+                        String.format("あなたの理事任期（%s 〜 %s）が %d 日以内に終了します。申し送り準備をお忘れなく。",
+                                term.getTermStart(), term.getTermEnd(),
+                                java.time.temporal.ChronoUnit.DAYS.between(today, term.getTermEnd())),
+                        "REPAIR_PLAN",
+                        term.getScopeId(),
+                        NotificationScopeType.TEAM,
+                        term.getScopeId(),
+                        "/teams/" + term.getScopeId() + "/repair-plan/handover-packs",
+                        null
+                );
+                notified++;
+            } catch (Exception e) {
+                log.error("任期終了リマインド送信失敗: termId={}, userId={}", term.getId(), term.getUserId(), e);
+            }
+        }
+
+        log.info("任期終了リマインドバッチ完了: 対象{}件, 通知{}件 (today={})", targets.size(), notified, today);
+        auditLogService.record("TEAM_MEMBER_TERM_REMINDER_BATCH", null, null, null, null, null, null, null,
+                String.format("{\"targets\":%d,\"notified\":%d,\"today\":\"%s\"}", targets.size(), notified, today));
+    }
+}
