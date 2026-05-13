@@ -186,7 +186,9 @@ const bcrypt = require('bcryptjs');
     );
   }
 
-  // E2E admin: JFA ADMIN + FC東京U-18 ADMIN
+  // E2E admin: SYSTEM_ADMIN（プラットフォーム全体） + JFA ADMIN + FC東京U-18 ADMIN
+  // role_id=1 は SYSTEM_ADMIN（V2.014__seed_roles.sql で投入済み）
+  await assignRole(E2E_ADMIN, 1, null, null);
   await assignRole(E2E_ADMIN, 2, null, orgs.jfa);
   await assignRole(E2E_ADMIN, 2, teams.fcTokyoU18, null);
 
