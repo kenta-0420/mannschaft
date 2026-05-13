@@ -18,16 +18,67 @@
       "cpi_note": "CPI: 2024年=100、国交省R5ガイドライン 1.5%/年"
     },
     "category": {
-      "EXTERIOR": "外壁・塗装",
-      "ROOF": "屋根・防水",
-      "PLUMBING": "給排水設備",
-      "ELECTRICAL": "電気設備",
-      "ELEVATOR": "エレベーター",
-      "COMMON_AREA": "共用部",
-      "FOUNDATION": "基礎・構造",
-      "PARKING": "駐車場",
-      "LANDSCAPING": "植栽・外構",
-      "OTHER": "その他"
+      "EXTERIOR": "외벽・도장",
+      "ROOF": "지붕・방수",
+      "PLUMBING": "급배수설비",
+      "ELECTRICAL": "전기설비",
+      "ELEVATOR": "엘리베이터",
+      "COMMON_AREA": "공용부",
+      "FOUNDATION": "기초・구조",
+      "PARKING": "주차장",
+      "LANDSCAPING": "조경・외구",
+      "OTHER": "기타"
+    },
+    "kanban": {
+      "title": "비교견적 칸반",
+      "create": "칸반 만들기",
+      "created": "칸반이 생성되었습니다",
+      "no_kanbans": "칸반이 없습니다",
+      "no_organization": "이 팀은 조직에 소속되어 있지 않아 비교견적 칸반을 사용할 수 없습니다",
+      "card_count": "{count}개 업체",
+      "stage": {
+        "requested": "견적 요청",
+        "received": "수령 완료",
+        "under_review": "검토 중",
+        "shortlisted": "후보 선정",
+        "selected": "선정 확정",
+        "rejected": "거절"
+      },
+      "status": {
+        "open": "진행 중",
+        "closed": "마감",
+        "awarded": "낙찰",
+        "canceled": "취소"
+      },
+      "visibility": {
+        "label": "주민 공개 설정",
+        "hidden": "비공개",
+        "anonymized": "익명화",
+        "full": "전체 공개"
+      },
+      "anonymized": {
+        "vendor_label": "업체{index}"
+      },
+      "deadline": {
+        "label": "입찰 마감",
+        "past": "마감됨"
+      },
+      "card": {
+        "amount": "견적 금액",
+        "vendor": "업체명",
+        "vendor_hidden": "（비공개）",
+        "amount_hidden": "（비공개）",
+        "compliance_expired": "반사회세력 점검 만료"
+      },
+      "add_card": "업체 추가",
+      "no_cards": "아직 추가된 업체가 없습니다",
+      "form": {
+        "title": "칸반 제목",
+        "title_placeholder": "예: 2026년 외벽 도장 비교견적"
+      }
+    },
+    "error": {
+      "compliance_expired": "이 업체의 반사회세력 점검이 만료되었습니다. 관리자에게 문의하세요."
     }
   }
 }

@@ -28,6 +28,57 @@
       "PARKING": "駐車場",
       "LANDSCAPING": "植栽・外構",
       "OTHER": "その他"
+    },
+    "kanban": {
+      "title": "相見積もりカンバン",
+      "create": "カンバンを作成",
+      "created": "カンバンを作成しました",
+      "no_kanbans": "カンバンがありません",
+      "no_organization": "このチームは組織に所属していないため、相見積もりカンバンを使用できません",
+      "card_count": "{count}件の業者",
+      "stage": {
+        "requested": "見積依頼",
+        "received": "受領済",
+        "under_review": "審査中",
+        "shortlisted": "候補選定",
+        "selected": "採用確定",
+        "rejected": "却下"
+      },
+      "status": {
+        "open": "受付中",
+        "closed": "受付終了",
+        "awarded": "落札済",
+        "canceled": "中止"
+      },
+      "visibility": {
+        "label": "住民公開設定",
+        "hidden": "非表示",
+        "anonymized": "匿名化",
+        "full": "全開示"
+      },
+      "anonymized": {
+        "vendor_label": "業者{index}"
+      },
+      "deadline": {
+        "label": "入札締切",
+        "past": "締切済み（比較解放）"
+      },
+      "card": {
+        "amount": "見積金額",
+        "vendor": "業者名",
+        "vendor_hidden": "（非表示）",
+        "amount_hidden": "（非表示）",
+        "compliance_expired": "反社チェック期限切れ"
+      },
+      "add_card": "業者を追加",
+      "no_cards": "まだ業者が追加されていません",
+      "form": {
+        "title": "カンバンタイトル",
+        "title_placeholder": "例: 外壁塗装工事 2026年度相見積もり"
+      }
+    },
+    "error": {
+      "compliance_expired": "この業者は反社チェックの有効期限が切れています。管理者に確認してください。"
     }
   }
 }

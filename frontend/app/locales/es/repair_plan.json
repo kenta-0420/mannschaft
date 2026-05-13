@@ -18,16 +18,67 @@
       "cpi_note": "CPI: 2024年=100、国交省R5ガイドライン 1.5%/年"
     },
     "category": {
-      "EXTERIOR": "外壁・塗装",
-      "ROOF": "屋根・防水",
-      "PLUMBING": "給排水設備",
-      "ELECTRICAL": "電気設備",
-      "ELEVATOR": "エレベーター",
-      "COMMON_AREA": "共用部",
-      "FOUNDATION": "基礎・構造",
-      "PARKING": "駐車場",
-      "LANDSCAPING": "植栽・外構",
-      "OTHER": "その他"
+      "EXTERIOR": "Exterior / Pintura",
+      "ROOF": "Techo / Impermeabilización",
+      "PLUMBING": "Plomería",
+      "ELECTRICAL": "Electricidad",
+      "ELEVATOR": "Ascensor",
+      "COMMON_AREA": "Área Común",
+      "FOUNDATION": "Cimientos / Estructura",
+      "PARKING": "Estacionamiento",
+      "LANDSCAPING": "Jardinería",
+      "OTHER": "Otro"
+    },
+    "kanban": {
+      "title": "Kanban de Cotizaciones",
+      "create": "Crear Kanban",
+      "created": "Kanban creado",
+      "no_kanbans": "No hay kanbans",
+      "no_organization": "Este equipo no pertenece a ninguna organización. El Kanban de Cotizaciones no está disponible.",
+      "card_count": "{count} proveedor(es)",
+      "stage": {
+        "requested": "Solicitado",
+        "received": "Recibido",
+        "under_review": "En Revisión",
+        "shortlisted": "Preseleccionado",
+        "selected": "Seleccionado",
+        "rejected": "Rechazado"
+      },
+      "status": {
+        "open": "Abierto",
+        "closed": "Cerrado",
+        "awarded": "Adjudicado",
+        "canceled": "Cancelado"
+      },
+      "visibility": {
+        "label": "Visibilidad para Miembros",
+        "hidden": "Oculto",
+        "anonymized": "Anonimizado",
+        "full": "Divulgación Completa"
+      },
+      "anonymized": {
+        "vendor_label": "Proveedor {index}"
+      },
+      "deadline": {
+        "label": "Fecha Límite",
+        "past": "Licitación Cerrada"
+      },
+      "card": {
+        "amount": "Monto de Cotización",
+        "vendor": "Proveedor",
+        "vendor_hidden": "(Oculto)",
+        "amount_hidden": "(Oculto)",
+        "compliance_expired": "Verificación de Cumplimiento Expirada"
+      },
+      "add_card": "Agregar Proveedor",
+      "no_cards": "Aún no hay proveedores",
+      "form": {
+        "title": "Título del Kanban",
+        "title_placeholder": "Ej.: Cotización Pintura Exterior 2026"
+      }
+    },
+    "error": {
+      "compliance_expired": "La verificación de cumplimiento de este proveedor ha expirado. Contacte a un administrador."
     }
   }
 }
