@@ -159,25 +159,33 @@ test.describe('RP-001〜006: 修繕計画ダッシュボード', () => {
   })
 
   test('RP-006: カンバン作成ダイアログが開く', async ({ page }) => {
+    // isAdminOrDeputy は onMounted の loadPermissions() 完了後に true になるため、
+    // goto より前に waitForResponse promise を作成して permissions API の完了を確実に待つ
+    const permissionsResponsePromise = page.waitForResponse(
+      (res) => res.url().includes('/me/permissions') && res.status() === 200,
+      { timeout: 10_000 },
+    )
+
     await page.goto(`/teams/${TEAM_ID}/repair-plan`)
     await waitForHydration(page)
-
-    // ページ読み込み完了を待つ
     await expect(page.getByText('修繕長期計画')).toBeVisible({ timeout: 10_000 })
+
+    // permissions API の完了を待ってから isAdminOrDeputy ガード付き UI を操作する
+    await permissionsResponsePromise
 
     // カンバンタブに切り替え
     await page.getByRole('button', { name: '相見積もりカンバン' }).click()
 
-    // カンバンコンテンツが表示されるまで待つ
-    await page.waitForTimeout(500)
+    // カンバン空状態が表示される（モックが空配列を返すため）
+    await expect(page.getByText('カンバンがありません')).toBeVisible({ timeout: 10_000 })
 
-    // 「カンバンを作成」ボタンをクリック（PrimeVueのiconつきButtonはfilterで取得）
-    await page.locator('button').filter({ hasText: 'カンバンを作成' }).click({ timeout: 15_000 })
+    // 「カンバンを作成」ボタンが表示される（isAdminOrDeputy=true が確定済み）
+    const createBtn = page.locator('button').filter({ hasText: 'カンバンを作成' })
+    await expect(createBtn).toBeVisible({ timeout: 10_000 })
+    await createBtn.click()
 
     // ダイアログが開く
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 })
-
-    // ダイアログヘッダーにタイトルが表示される
     await expect(page.getByRole('dialog').getByText('カンバンを作成')).toBeVisible({
       timeout: 5_000,
     })
