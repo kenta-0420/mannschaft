@@ -76,6 +76,31 @@ export interface ChatMessageResponse {
   isDeleted: boolean
   createdAt: string
   updatedAt: string
+  /** スレッドルートメッセージID（null = 自身がルート） */
+  rootId: number | null
+  /** ネスト深度（0 = トップレベル） */
+  depth: number
+  /** depth >= 10 時に true（掲示板移行推奨） */
+  suggestBoardMigration: boolean
+}
+
+/** スレッド取得レスポンス (F04.2) */
+export interface ChatThreadResponse {
+  root: ChatMessageResponse
+  messages: ChatMessageResponse[]
+  totalCount: number
+  nextCursor: string | null
+  hasMore: boolean
+}
+
+/** アクティブスレッド一覧アイテム (F04.2) */
+export interface ChatActiveThreadItem {
+  id: number
+  body: string
+  replyCount: number
+  lastReplyAt: string | null
+  lastReplyPreview: string | null
+  createdAt: string
 }
 
 export interface CreateChannelRequest {

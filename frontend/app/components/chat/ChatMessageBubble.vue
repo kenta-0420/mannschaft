@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ChatMessageResponse } from '~/types/chat'
+import type { ChatContextMenuItem } from '~/components/chat/ChatContextMenu.vue'
 
 /** チャット用プリセット絵文字（タイムラインとは独立して定義） */
 const CHAT_PRESET_EMOJIS = ['👍', '👏', '🙏', '😊', '❤️', '🔥', '🙇'] as const
@@ -8,6 +9,8 @@ const props = defineProps<{
   message: ChatMessageResponse
   canPin?: boolean
   canDelete?: boolean
+  /** 投稿者本人かどうか（コンテキストメニュー出し分け用） */
+  isMine?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -18,21 +21,144 @@ const emit = defineEmits<{
   bookmark: [messageId: number]
 }>()
 
+const { t } = useI18n()
 const { relativeTime } = useRelativeTime()
 const showActions = ref(false)
 const showEmojiPicker = ref(false)
+
+// --- コンテキストメニュー ---
+const showContextMenu = ref(false)
+const contextMenuX = ref(0)
+const contextMenuY = ref(0)
+
+/** タッチ長押し検出用タイマー */
+let longPressTimer: ReturnType<typeof setTimeout> | null = null
+
+function onTouchStart(event: TouchEvent) {
+  longPressTimer = setTimeout(() => {
+    const touch = event.touches[0]
+    if (!touch) return
+    openContextMenu(touch.clientX, touch.clientY)
+  }, 500)
+}
+
+function onTouchEnd() {
+  if (longPressTimer !== null) {
+    clearTimeout(longPressTimer)
+    longPressTimer = null
+  }
+}
+
+function onContextMenu(event: MouseEvent) {
+  event.preventDefault()
+  openContextMenu(event.clientX, event.clientY)
+}
+
+function openContextMenu(x: number, y: number) {
+  contextMenuX.value = x
+  contextMenuY.value = y
+  showContextMenu.value = true
+}
+
+/** コンテキストメニュー項目（権限に応じて出し分け） */
+const contextMenuItems = computed<ChatContextMenuItem[]>(() => {
+  const items: ChatContextMenuItem[] = []
+
+  if (!props.message.parentId) {
+    items.push({ key: 'reply', label: t('chat.contextMenu.replyInThread'), icon: 'pi pi-reply' })
+  }
+  items.push({ key: 'react', label: t('chat.contextMenu.react'), icon: 'pi pi-face-smile' })
+
+  if (props.canPin) {
+    items.push({
+      key: props.message.isPinned ? 'unpin' : 'pin',
+      label: props.message.isPinned ? t('chat.contextMenu.unpin') : t('chat.contextMenu.pin'),
+      icon: 'pi pi-thumbtack',
+    })
+  }
+
+  // 24h 以内かつ本人のみ編集可
+  const isEditable =
+    props.isMine && Date.now() - new Date(props.message.createdAt).getTime() < 24 * 60 * 60 * 1000
+  if (isEditable) {
+    items.push({ key: 'edit', label: t('chat.contextMenu.edit'), icon: 'pi pi-pencil' })
+  }
+
+  items.push({ key: 'copy', label: t('chat.contextMenu.copy'), icon: 'pi pi-copy' })
+  items.push({ key: 'forward', label: t('chat.contextMenu.forward'), icon: 'pi pi-share-alt' })
+  items.push({
+    key: props.message.isBookmarked ? 'removeBookmark' : 'bookmark',
+    label: props.message.isBookmarked
+      ? t('chat.contextMenu.removeBookmark')
+      : t('chat.contextMenu.bookmark'),
+    icon: props.message.isBookmarked ? 'pi pi-bookmark-fill' : 'pi pi-bookmark',
+  })
+
+  if (props.isMine || props.canDelete) {
+    items.push({
+      key: 'delete',
+      label: t('chat.contextMenu.delete'),
+      icon: 'pi pi-trash',
+      danger: true,
+    })
+  }
+
+  return items
+})
+
+function onContextMenuSelect(key: string) {
+  switch (key) {
+    case 'reply':
+      emit('reply', props.message.id)
+      break
+    case 'react':
+      showEmojiPicker.value = true
+      break
+    case 'pin':
+    case 'unpin':
+      emit('pin', props.message.id)
+      break
+    case 'copy':
+      if (props.message.body) {
+        navigator.clipboard.writeText(props.message.body).catch(() => {})
+      }
+      break
+    case 'bookmark':
+    case 'removeBookmark':
+      emit('bookmark', props.message.id)
+      break
+    case 'delete':
+      emit('delete', props.message.id)
+      break
+    default:
+      break
+  }
+}
 
 function toggleReaction(emoji: string) {
   emit('reaction', props.message.id, emoji)
   showEmojiPicker.value = false
 }
+
+/** depth に基づくインデント（最大 200px = depth 10） */
+const indentStyle = computed(() => {
+  const depth = props.message.depth ?? 0
+  if (depth <= 0) return {}
+  const px = Math.min(depth * 20, 200)
+  return { paddingLeft: `${px + 16}px` }
+})
 </script>
 
 <template>
   <div
-    class="group relative px-4 py-1.5 transition-colors hover:bg-surface-50"
+    class="group relative py-1.5 pr-4 transition-colors hover:bg-surface-50"
+    :style="indentStyle"
     @mouseenter="showActions = true"
     @mouseleave="showActions = false; showEmojiPicker = false"
+    @touchstart.passive="onTouchStart"
+    @touchend.passive="onTouchEnd"
+    @touchcancel.passive="onTouchEnd"
+    @contextmenu="onContextMenu"
   >
     <!-- システムメッセージ -->
     <div v-if="message.isSystem" class="py-1 text-center text-xs text-surface-400">
@@ -46,6 +172,12 @@ function toggleReaction(emoji: string) {
 
     <!-- 通常メッセージ -->
     <template v-else>
+      <!-- 掲示板移行バナー（depth >= 10） -->
+      <ChatBoardMigrationBanner
+        v-if="message.suggestBoardMigration"
+        :message-id="message.id"
+      />
+
       <div class="flex gap-3">
         <Avatar
           :label="message.sender?.displayName?.charAt(0) || '?'"
@@ -107,19 +239,19 @@ function toggleReaction(emoji: string) {
             class="mt-1 text-xs font-medium text-primary hover:underline"
             @click="emit('reply', message.id)"
           >
-            {{ message.replyCount }}件の返信
+            {{ $t('chat.thread.replyCount', { count: message.replyCount }) }}
           </button>
         </div>
       </div>
 
-      <!-- ホバーアクション -->
+      <!-- ホバーアクション（PC: 右端クイックアクション） -->
       <div
         v-if="showActions"
         class="absolute -top-3 right-4 flex items-center gap-0.5 rounded-md border border-surface-300 bg-surface-0 shadow-sm"
       >
         <button
           class="p-1.5 text-surface-400 hover:text-surface-600"
-          title="リアクション"
+          :title="$t('chat.contextMenu.react')"
           @click="showEmojiPicker = !showEmojiPicker"
         >
           <i class="pi pi-face-smile text-xs" />
@@ -127,14 +259,14 @@ function toggleReaction(emoji: string) {
         <button
           v-if="!message.parentId"
           class="p-1.5 text-surface-400 hover:text-surface-600"
-          title="スレッド返信"
+          :title="$t('chat.contextMenu.replyInThread')"
           @click="emit('reply', message.id)"
         >
           <i class="pi pi-reply text-xs" />
         </button>
         <button
           class="p-1.5 text-surface-400 hover:text-surface-600"
-          title="ブックマーク"
+          :title="$t('chat.contextMenu.bookmark')"
           @click="emit('bookmark', message.id)"
         >
           <i :class="message.isBookmarked ? 'pi pi-bookmark-fill text-amber-500' : 'pi pi-bookmark'" class="text-xs" />
@@ -142,7 +274,7 @@ function toggleReaction(emoji: string) {
         <button
           v-if="canPin"
           class="p-1.5 text-surface-400 hover:text-surface-600"
-          title="ピン留め"
+          :title="$t('chat.contextMenu.pin')"
           @click="emit('pin', message.id)"
         >
           <i class="pi pi-thumbtack text-xs" />
@@ -150,10 +282,18 @@ function toggleReaction(emoji: string) {
         <button
           v-if="canDelete"
           class="p-1.5 text-surface-400 hover:text-red-500"
-          title="削除"
+          :title="$t('chat.contextMenu.delete')"
           @click="emit('delete', message.id)"
         >
           <i class="pi pi-trash text-xs" />
+        </button>
+        <!-- ⋯ ボタン（コンテキストメニュー表示） -->
+        <button
+          class="p-1.5 text-surface-400 hover:text-surface-600"
+          title="その他"
+          @click.stop="openContextMenu($event.clientX, $event.clientY)"
+        >
+          <i class="pi pi-ellipsis-h text-xs" />
         </button>
       </div>
 
@@ -172,5 +312,15 @@ function toggleReaction(emoji: string) {
         </button>
       </div>
     </template>
+
+    <!-- コンテキストメニュー -->
+    <ChatContextMenu
+      :items="contextMenuItems"
+      :visible="showContextMenu"
+      :x="contextMenuX"
+      :y="contextMenuY"
+      @select="onContextMenuSelect"
+      @close="showContextMenu = false"
+    />
   </div>
 </template>
