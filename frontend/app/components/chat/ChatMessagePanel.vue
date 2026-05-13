@@ -24,8 +24,7 @@ const {
   deleteMessage,
   bookmarkMessage,
   removeBookmark,
-  getThread,
-  sendMessage,
+  getActiveThreads,
 } = useChatApi()
 const { showSuccess, showError } = useNotification()
 
@@ -37,14 +36,65 @@ const nextCursor = ref<string | null>(null)
 const hasMore = ref(false)
 const scrollContainer = ref<HTMLElement | null>(null)
 
-// --- スレッド展開パネル ---
-const threadParent = ref<ChatMessageResponse | null>(null)
-const threadMessages = ref<ChatMessageResponse[]>([])
-const threadLoading = ref(false)
-const threadNextCursor = ref<string | null>(null)
-const threadHasMore = ref(false)
-const threadReplyBody = ref('')
-const threadReplySending = ref(false)
+// --- スレッド展開パネル（新版: ChatThreadPanel コンポーネントへ委譲） ---
+const threadRootMessageId = ref<number | null>(null)
+
+function openThread(messageId: number) {
+  threadRootMessageId.value = messageId
+}
+
+function closeThread() {
+  threadRootMessageId.value = null
+}
+
+// --- アクティブスレッドドロワー ---
+const showActiveThreadsDrawer = ref(false)
+const activeThreadCount = ref(0)
+
+/** チャンネルの active_thread_count を channel 拡張フィールドから取得（または API で別途取得） */
+const channelActiveThreadCount = computed(() => {
+  // ChatChannelResponse に active_thread_count が含まれる場合はそちらを優先
+  const ch = props.channel as ChatChannelResponse & { activeThreadCount?: number }
+  return ch.activeThreadCount ?? activeThreadCount.value
+})
+
+interface ActiveThreadItem {
+  id: number
+  body: string
+  replyCount: number
+  lastReplyAt: string | null
+  lastReplyPreview: string | null
+  createdAt: string
+}
+
+const activeThreads = ref<ActiveThreadItem[]>([])
+const activeThreadsLoading = ref(false)
+const activeThreadsNextCursor = ref<string | null>(null)
+const activeThreadsHasMore = ref(false)
+
+async function loadActiveThreads(cursor?: string) {
+  activeThreadsLoading.value = true
+  try {
+    const res = await getActiveThreads(props.channel.id, cursor)
+    if (!cursor) {
+      activeThreads.value = res.data
+    } else {
+      activeThreads.value.push(...res.data)
+    }
+    activeThreadCount.value = res.data.length
+    activeThreadsNextCursor.value = res.meta.nextCursor
+    activeThreadsHasMore.value = res.meta.hasMore
+  } catch {
+    // アクティブスレッド取得失敗はサイレント（バッジ非表示のみ）
+  } finally {
+    activeThreadsLoading.value = false
+  }
+}
+
+function openActiveThreadsDrawer() {
+  showActiveThreadsDrawer.value = true
+  loadActiveThreads()
+}
 
 async function loadMessages(cursor?: string) {
   loading.value = true
@@ -144,57 +194,6 @@ async function onBookmark(messageId: number) {
   }
 }
 
-// --- スレッド展開 ---
-async function openThread(messageId: number) {
-  const msg = messages.value.find((m) => m.id === messageId)
-  if (!msg) return
-  threadParent.value = msg
-  threadMessages.value = []
-  threadReplyBody.value = ''
-  await loadThread(messageId)
-}
-
-function closeThread() {
-  threadParent.value = null
-  threadMessages.value = []
-  threadNextCursor.value = null
-  threadHasMore.value = false
-}
-
-async function loadThread(messageId: number, cursor?: string) {
-  threadLoading.value = true
-  try {
-    const res = await getThread(messageId, cursor)
-    if (!cursor) {
-      threadMessages.value = res.data
-    } else {
-      threadMessages.value.push(...res.data)
-    }
-    threadNextCursor.value = res.meta.nextCursor
-    threadHasMore.value = res.meta.hasMore
-  } catch {
-    showError('スレッドの取得に失敗しました')
-  } finally {
-    threadLoading.value = false
-  }
-}
-
-async function sendThreadReply() {
-  if (!threadParent.value || !threadReplyBody.value.trim()) return
-  threadReplySending.value = true
-  try {
-    await sendMessage(props.channel.id, threadReplyBody.value.trim(), threadParent.value.id)
-    threadReplyBody.value = ''
-    await loadThread(threadParent.value.id)
-    const msg = messages.value.find((m) => m.id === threadParent.value!.id)
-    if (msg) msg.replyCount++
-  } catch {
-    showError('返信に失敗しました')
-  } finally {
-    threadReplySending.value = false
-  }
-}
-
 function onSent() {
   loadMessages()
 }
@@ -204,14 +203,17 @@ watch(
   () => {
     closeThread()
     loadMessages()
+    // アクティブスレッド数をリセット
+    activeThreadCount.value = 0
+    activeThreads.value = []
   },
 )
 onMounted(() => loadMessages())
 </script>
 
 <template>
-  <div class="flex h-full">
-    <!-- Zimmerヘッダー -->
+  <div class="flex h-full flex-col">
+    <!-- チャンネルヘッダー -->
     <div class="flex items-center gap-3 border-b border-surface-200 px-4 py-3">
       <i
         :class="
@@ -251,87 +253,111 @@ onMounted(() => loadMessages())
       </div>
     </div>
 
-    <!-- メインメッセージエリア -->
-    <div class="flex flex-1 flex-col" :class="threadParent ? 'border-r border-surface-200 dark:border-surface-700' : ''">
-
-    <!-- メッセージ一覧 -->
-    <div ref="scrollContainer" class="flex-1 overflow-y-auto">
-      <div v-if="hasMore" class="flex justify-center py-2">
-        <Button
-          label="過去のメッセージを読み込む"
-          text
-          size="small"
-          :loading="loading"
-          @click="loadMessages(nextCursor!)"
-        />
-      </div>
-      <ChatMessageBubble
-        v-for="msg in messages"
-        :key="msg.id"
-        :message="msg"
-        :can-pin="canPin"
-        :can-delete="canDelete"
-        @reaction="onReaction"
-        @pin="onPin"
-        @delete="onDelete"
-        @bookmark="onBookmark"
-      @reply="openThread"
-      />
-      <DashboardEmptyState v-if="messages.length === 0 && !loading" icon="pi pi-comments" message="まだメッセージがありません" />
+    <!-- アクティブスレッドバッジ -->
+    <div
+      v-if="channelActiveThreadCount > 0"
+      class="flex cursor-pointer items-center gap-1.5 border-b border-surface-100 bg-primary/5 px-4 py-1.5 text-xs text-primary hover:bg-primary/10"
+      @click="openActiveThreadsDrawer"
+    >
+      <i class="pi pi-comments text-xs" />
+      <span>{{ $t('chat.thread.activeThreads', { count: channelActiveThreadCount }) }}</span>
+      <i class="pi pi-chevron-right ml-auto text-xs" />
     </div>
 
-    <!-- 入力 -->
-    <ChatMessageInput :channel-id="channel.id" :disabled="channel.isArchived" @sent="onSent" />
-    </div>
+    <!-- メインコンテンツエリア（メッセージ + サイドスレッドパネル） -->
+    <div class="flex flex-1 overflow-hidden">
+      <!-- メッセージエリア -->
+      <div
+        class="flex flex-1 flex-col"
+        :class="threadRootMessageId ? 'border-r border-surface-200 dark:border-surface-700' : ''"
+      >
+        <!-- メッセージ一覧 -->
+        <div ref="scrollContainer" class="flex-1 overflow-y-auto">
+          <div v-if="hasMore" class="flex justify-center py-2">
+            <Button
+              label="過去のメッセージを読み込む"
+              text
+              size="small"
+              :loading="loading"
+              @click="loadMessages(nextCursor!)"
+            />
+          </div>
+          <ChatMessageBubble
+            v-for="msg in messages"
+            :key="msg.id"
+            :message="msg"
+            :can-pin="canPin"
+            :can-delete="canDelete"
+            @reaction="onReaction"
+            @pin="onPin"
+            @delete="onDelete"
+            @bookmark="onBookmark"
+            @reply="openThread"
+          />
+          <DashboardEmptyState
+            v-if="messages.length === 0 && !loading"
+            icon="pi pi-comments"
+            message="まだメッセージがありません"
+          />
+        </div>
 
-    <!-- スレッド展開パネル -->
-    <div v-if="threadParent" class="flex w-80 flex-shrink-0 flex-col bg-surface-50 dark:bg-surface-900">
-      <div class="flex items-center justify-between border-b border-surface-200 px-4 py-3 dark:border-surface-700">
-        <span class="text-sm font-semibold">スレッド</span>
-        <Button icon="pi pi-times" text rounded size="small" severity="secondary" @click="closeThread" />
+        <!-- 入力 -->
+        <ChatMessageInput :channel-id="channel.id" :disabled="channel.isArchived" @sent="onSent" />
       </div>
-      <div class="border-b border-surface-200 bg-surface-0 px-4 py-3 dark:border-surface-700 dark:bg-surface-800">
-        <span class="text-xs font-semibold">{{ threadParent.sender?.displayName || '不明' }}</span>
-        <p class="mt-0.5 text-sm text-surface-600 dark:text-surface-400">{{ threadParent.body }}</p>
-      </div>
-      <div class="flex-1 overflow-y-auto">
-        <div v-if="threadLoading && threadMessages.length === 0" class="flex justify-center py-6">
-          <ProgressSpinner style="width: 32px; height: 32px" />
-        </div>
-        <ChatMessageBubble
-          v-for="msg in threadMessages"
-          :key="msg.id"
-          :message="msg"
-          :can-pin="canPin"
-          :can-delete="canDelete"
-          @reaction="(id, emoji) => onReaction(id, emoji)"
-          @bookmark="onBookmark"
-          @delete="onDelete"
-          @pin="onPin"
-        />
-        <div v-if="threadHasMore" class="flex justify-center py-2">
-          <Button label="さらに読む" text size="small" :loading="threadLoading" @click="loadThread(threadParent!.id, threadNextCursor!)" />
-        </div>
-      </div>
-      <div class="border-t border-surface-200 p-3 dark:border-surface-700">
-        <div class="flex gap-2">
-          <InputText
-            v-model="threadReplyBody"
-            placeholder="返信を入力..."
-            class="flex-1 text-sm"
-            @keydown.enter.prevent="sendThreadReply"
-          />
-          <Button
-            icon="pi pi-send"
-            size="small"
-            :loading="threadReplySending"
-            :disabled="!threadReplyBody.trim()"
-            @click="sendThreadReply"
+
+      <!-- スレッドパネル（デスクトップ: 右スライドイン） -->
+      <Transition name="slide-right">
+        <div
+          v-if="threadRootMessageId"
+          class="w-80 shrink-0 bg-surface-50 dark:bg-surface-900"
+        >
+          <ChatThreadPanel
+            :root-message-id="threadRootMessageId"
+            :channel-id="channel.id"
+            @close="closeThread"
           />
         </div>
-      </div>
+      </Transition>
     </div>
   </div>
+
+  <!-- アクティブスレッドドロワー -->
+  <Drawer
+    v-model:visible="showActiveThreadsDrawer"
+    :header="$t('chat.thread.activeThreads', { count: channelActiveThreadCount })"
+    position="right"
+    style="width: 360px"
+  >
+    <div v-if="activeThreadsLoading && activeThreads.length === 0" class="flex justify-center py-8">
+      <ProgressSpinner style="width: 32px; height: 32px" />
+    </div>
+    <div v-else-if="activeThreads.length === 0" class="py-8 text-center text-sm text-surface-400">
+      進行中のスレッドはありません
+    </div>
+    <ul v-else class="divide-y divide-surface-100">
+      <li
+        v-for="thread in activeThreads"
+        :key="thread.id"
+        class="cursor-pointer px-4 py-3 hover:bg-surface-50"
+        @click="() => { openThread(thread.id); showActiveThreadsDrawer = false }"
+      >
+        <p class="line-clamp-2 text-sm">{{ thread.body }}</p>
+        <div class="mt-1 flex items-center gap-2 text-xs text-surface-400">
+          <span>{{ $t('chat.thread.replyCount', { count: thread.replyCount }) }}</span>
+          <span v-if="thread.lastReplyPreview" class="truncate">{{ thread.lastReplyPreview }}</span>
+        </div>
+      </li>
+    </ul>
+    <div v-if="activeThreadsHasMore" class="flex justify-center py-2">
+      <Button
+        :label="$t('label.loadMore')"
+        text
+        size="small"
+        :loading="activeThreadsLoading"
+        @click="loadActiveThreads(activeThreadsNextCursor!)"
+      />
+    </div>
+  </Drawer>
 
   <ChatInviteToZimmerDialog
     v-model:visible="showInviteDialog"
@@ -342,3 +368,15 @@ onMounted(() => loadMessages())
     @created="(ch) => emit('channelCreated', ch)"
   />
 </template>
+
+<style scoped>
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.slide-right-enter-from,
+.slide-right-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+</style>

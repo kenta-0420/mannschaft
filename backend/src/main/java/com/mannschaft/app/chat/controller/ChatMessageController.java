@@ -4,6 +4,7 @@ import com.mannschaft.app.chat.dto.EditMessageRequest;
 import com.mannschaft.app.chat.dto.ForwardMessageRequest;
 import com.mannschaft.app.chat.dto.MessageResponse;
 import com.mannschaft.app.chat.dto.SendMessageRequest;
+import com.mannschaft.app.chat.dto.ThreadResponse;
 import com.mannschaft.app.chat.service.ChatMessageService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
@@ -90,15 +91,17 @@ public class ChatMessageController {
     }
 
     /**
-     * スレッド返信一覧を取得する。
+     * スレッドの全返信をフラット取得する（無制限ネスト対応）。
      */
     @GetMapping("/messages/{messageId}/thread")
-    @Operation(summary = "スレッド返信一覧")
+    @Operation(summary = "スレッド取得（無制限ネスト対応）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<MessageResponse>>> listThreadReplies(
-            @PathVariable Long messageId) {
-        List<MessageResponse> responses = messageService.listThreadReplies(messageId);
-        return ResponseEntity.ok(ApiResponse.of(responses));
+    public ResponseEntity<ApiResponse<ThreadResponse>> getThread(
+            @PathVariable Long messageId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit) {
+        ThreadResponse response = messageService.getThread(messageId, cursor, limit);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**

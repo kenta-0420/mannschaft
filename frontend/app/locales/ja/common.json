@@ -1,5 +1,33 @@
 {
   "chat": {
+    "contextMenu": {
+      "replyInThread": "スレッドで返信",
+      "react": "リアクション",
+      "pin": "ピン留め",
+      "unpin": "ピン解除",
+      "edit": "編集",
+      "copy": "コピー",
+      "forward": "転送",
+      "bookmark": "ブックマーク",
+      "removeBookmark": "ブックマーク解除",
+      "delete": "削除"
+    },
+    "thread": {
+      "activeThreads": "{count}件のスレッドが進行中",
+      "replyCount": "{count}件の返信",
+      "reply": "返信する"
+    },
+    "boardMigration": {
+      "banner": "話題が深まっています。掲示板のスレッドに移行しませんか？",
+      "createThread": "掲示板スレッドを作成",
+      "dialogTitle": "掲示板スレッドに移行",
+      "titleLabel": "スレッドタイトル",
+      "boardLabel": "投稿先の掲示板",
+      "copyHistory": "過去のやり取りを引き継ぐ",
+      "confirm": "移行する",
+      "success": "掲示板スレッドを作成しました",
+      "error": "移行に失敗しました"
+    },
     "sidebar": {
       "chat": "チャット",
       "contacts": "連絡先",

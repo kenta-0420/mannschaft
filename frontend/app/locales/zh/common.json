@@ -1,5 +1,33 @@
 {
   "chat": {
+    "contextMenu": {
+      "replyInThread": "在话题中回复",
+      "react": "回应",
+      "pin": "置顶",
+      "unpin": "取消置顶",
+      "edit": "编辑",
+      "copy": "复制",
+      "forward": "转发",
+      "bookmark": "收藏",
+      "removeBookmark": "取消收藏",
+      "delete": "删除"
+    },
+    "thread": {
+      "activeThreads": "{count}个话题进行中",
+      "replyCount": "{count}条回复",
+      "reply": "回复"
+    },
+    "boardMigration": {
+      "banner": "话题越来越深入。要移到公告板话题吗？",
+      "createThread": "创建公告板话题",
+      "dialogTitle": "迁移到公告板话题",
+      "titleLabel": "话题标题",
+      "boardLabel": "目标公告板",
+      "copyHistory": "复制对话历史",
+      "confirm": "迁移",
+      "success": "公告板话题已创建",
+      "error": "迁移失败"
+    },
     "sidebar": {
       "chat": "聊天",
       "contacts": "联系人",
