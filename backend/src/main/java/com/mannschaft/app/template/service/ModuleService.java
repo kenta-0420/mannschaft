@@ -7,15 +7,18 @@ import com.mannschaft.app.template.TemplateErrorCode;
 import com.mannschaft.app.template.dto.LevelAvailabilityResponse;
 import com.mannschaft.app.template.dto.ModuleResponse;
 import com.mannschaft.app.template.dto.ModuleSummaryResponse;
+import com.mannschaft.app.template.dto.OrgModuleResponse;
 import com.mannschaft.app.template.dto.TeamModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
 import com.mannschaft.app.template.entity.ModuleDefinitionEntity;
 import com.mannschaft.app.template.entity.ModuleLevelAvailabilityEntity;
+import com.mannschaft.app.template.entity.OrganizationEnabledModuleEntity;
 import com.mannschaft.app.template.entity.TeamEnabledModuleEntity;
 import com.mannschaft.app.template.entity.TemplateModuleEntity;
 import com.mannschaft.app.template.repository.ModuleDefinitionRepository;
 import com.mannschaft.app.template.repository.ModuleLevelAvailabilityRepository;
 import com.mannschaft.app.template.repository.ModuleRecommendationRepository;
+import com.mannschaft.app.template.repository.OrganizationEnabledModuleRepository;
 import com.mannschaft.app.template.repository.TeamEnabledModuleRepository;
 import com.mannschaft.app.template.repository.TeamTemplateRepository;
 import com.mannschaft.app.template.repository.TemplateModuleRepository;
@@ -44,6 +47,7 @@ public class ModuleService {
     private final ModuleLevelAvailabilityRepository moduleLevelAvailabilityRepository;
     private final ModuleRecommendationRepository moduleRecommendationRepository;
     private final TeamEnabledModuleRepository teamEnabledModuleRepository;
+    private final OrganizationEnabledModuleRepository organizationEnabledModuleRepository;
     private final TemplateModuleRepository templateModuleRepository;
     private final TeamTemplateRepository teamTemplateRepository;
     private final TeamPlanService teamPlanService;
@@ -253,6 +257,125 @@ public class ModuleService {
         return teamEnabledModuleRepository.findByTeamIdAndModuleId(teamId, module.getId())
                 .map(tem -> tem.getIsEnabled() ? null : "このチームでは未有効化です")
                 .orElse("このチームでは未有効化です");
+    }
+
+    // ========================================
+    // 組織スコープ（組織モジュール管理）
+    // ========================================
+
+    /**
+     * 組織の有効モジュール一覧を返す（DEFAULTモジュール含む）。
+     *
+     * @param orgId 組織ID
+     * @return 組織モジュールレスポンスリスト
+     */
+    @Cacheable(value = "orgModules", key = "#orgId")
+    public List<OrgModuleResponse> getOrganizationModules(Long orgId) {
+        return organizationEnabledModuleRepository.findByOrganizationId(orgId).stream()
+                .map(oem -> {
+                    ModuleDefinitionEntity module = moduleDefinitionRepository.findById(oem.getModuleId())
+                            .orElse(null);
+                    if (module == null) {
+                        return null;
+                    }
+                    return new OrgModuleResponse(
+                            module.getId(),
+                            module.getName(),
+                            module.getSlug(),
+                            oem.getIsEnabled(),
+                            oem.getEnabledAt());
+                })
+                .filter(r -> r != null)
+                .toList();
+    }
+
+    /**
+     * 組織のモジュール有効/無効を切り替える。
+     * DEFAULTモジュールは切替不可（TMPL_006）。
+     * ORGANIZATIONスコープで is_available=0 のモジュールは切替不可（TMPL_005）。
+     * 無料プラン上限: 有効OPTIONALモジュールが10個に達している場合は切替不可（TMPL_003）。
+     *
+     * @param orgId   組織ID
+     * @param request トグルリクエスト
+     * @param userId  操作ユーザーID
+     */
+    @Transactional
+    @CacheEvict(value = "orgModules", key = "#orgId")
+    public void toggleOrganizationModule(Long orgId, ToggleModuleRequest request, Long userId) {
+        ModuleDefinitionEntity module = findModuleOrThrow(request.getModuleId());
+
+        // DEFAULTモジュールは設定変更不可
+        if (module.getModuleType() == ModuleDefinitionEntity.ModuleType.DEFAULT) {
+            throw new BusinessException(TemplateErrorCode.TMPL_006);
+        }
+
+        // レベルチェック（ORGANIZATIONレベルで利用可能か）
+        moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION)
+                .ifPresent(availability -> {
+                    if (!availability.getIsAvailable()) {
+                        throw new BusinessException(TemplateErrorCode.TMPL_005);
+                    }
+                });
+
+        if (request.isEnabled()) {
+            // 無料上限チェック
+            long enabledCount = organizationEnabledModuleRepository
+                    .countByOrganizationIdAndIsEnabledTrue(orgId);
+            if (enabledCount >= FREE_PLAN_MODULE_LIMIT) {
+                throw new BusinessException(TemplateErrorCode.TMPL_003);
+            }
+        }
+
+        OrganizationEnabledModuleEntity existing = organizationEnabledModuleRepository
+                .findByOrganizationIdAndModuleId(orgId, request.getModuleId())
+                .orElse(null);
+
+        LocalDateTime now = LocalDateTime.now();
+        if (existing != null) {
+            OrganizationEnabledModuleEntity updated = existing.toBuilder()
+                    .isEnabled(request.isEnabled())
+                    .enabledAt(request.isEnabled() ? now : existing.getEnabledAt())
+                    .disabledAt(!request.isEnabled() ? now : null)
+                    .enabledBy(userId)
+                    .build();
+            organizationEnabledModuleRepository.save(updated);
+        } else {
+            OrganizationEnabledModuleEntity newEntity = OrganizationEnabledModuleEntity.builder()
+                    .organizationId(orgId)
+                    .moduleId(request.getModuleId())
+                    .isEnabled(request.isEnabled())
+                    .enabledAt(request.isEnabled() ? now : null)
+                    .enabledBy(userId)
+                    .build();
+            organizationEnabledModuleRepository.save(newEntity);
+        }
+
+        log.info("組織モジュール切替完了: orgId={}, moduleId={}, enabled={}", orgId, request.getModuleId(), request.isEnabled());
+    }
+
+    /**
+     * 指定組織でモジュールが有効かどうかを判定する（サイドバー表示制御用）。
+     * DEFAULT型は常にtrue。OPTIONAL型はorganization_enabled_modulesを参照する。
+     *
+     * @param moduleSlug モジュールスラッグ
+     * @param orgId      組織ID
+     * @return 有効な場合 true
+     */
+    public boolean isModuleEnabledForOrg(String moduleSlug, Long orgId) {
+        ModuleDefinitionEntity module = moduleDefinitionRepository.findBySlug(moduleSlug).orElse(null);
+        if (module == null || !module.getIsActive()) {
+            return false;
+        }
+        // DEFAULTモジュールは常に有効
+        if (module.getModuleType() == ModuleDefinitionEntity.ModuleType.DEFAULT) {
+            return true;
+        }
+        // 選択式モジュールは組織有効化状態を確認
+        return organizationEnabledModuleRepository
+                .findByOrganizationIdAndModuleId(orgId, module.getId())
+                .map(OrganizationEnabledModuleEntity::getIsEnabled)
+                .orElse(false);
     }
 
     // ========================================
