@@ -769,7 +769,10 @@
       "PowerShell(& \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\resources\\\\bin\\\\docker.exe\" exec mannschaft-mysql mysql -u mannschaft -pmannschaft mannschaft -e \"SELECT version, description, success FROM flyway_schema_history WHERE version >= '66' ORDER BY version;\" 2>&1)",
       "PowerShell(wsl -e docker exec mannschaft-mysql mysql -u mannschaft -pmannschaft mannschaft -e \"SELECT version, description, success FROM flyway_schema_history WHERE version >= '66' ORDER BY version;\" 2>&1)",
       "PowerShell(wsl -e docker exec mannschaft-mysql mysql -u mannschaft -pmannschaft mannschaft -e \"DELETE FROM flyway_schema_history WHERE version = '66.006' AND success = 0;\" 2>&1)",
-      "PowerShell(wsl -e docker exec mannschaft-mysql mysql -u mannschaft -pmannschaft mannschaft -e \"SELECT version, success FROM flyway_schema_history WHERE version = '66.006';\" 2>&1)"
+      "PowerShell(wsl -e docker exec mannschaft-mysql mysql -u mannschaft -pmannschaft mannschaft -e \"SELECT version, success FROM flyway_schema_history WHERE version = '66.006';\" 2>&1)",
+      "PowerShell(wsl -e docker exec mannschaft-mysql mysql -u mannschaft -pmannschaft mannschaft -e \"SELECT id, email, display_name, status FROM users WHERE email LIKE '%e2e%' OR id IN \\(67,68\\) ORDER BY id;\" 2>&1)",
+      "Bash(node_modules/.bin/eslint app/types/chat.ts app/composables/useChatApi.ts app/components/chat/ChatContextMenu.vue app/components/chat/ChatBoardMigrationBanner.vue app/components/chat/ChatThreadPanel.vue app/components/chat/ChatMessageBubble.vue app/components/chat/ChatMessagePanel.vue)",
+      "Bash(/c/Claude/mannschaft/frontend/node_modules/.bin/eslint app/types/chat.ts app/composables/useChatApi.ts app/components/chat/ChatContextMenu.vue app/components/chat/ChatBoardMigrationBanner.vue app/components/chat/ChatThreadPanel.vue app/components/chat/ChatMessageBubble.vue app/components/chat/ChatMessagePanel.vue)"
     ],
     "deny": [
       "Write(**/.env)",
