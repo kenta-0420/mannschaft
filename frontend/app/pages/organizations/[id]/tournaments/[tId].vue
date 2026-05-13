@@ -121,7 +121,7 @@ onMounted(async () => {
     const res = await getTournament(orgId, tId)
     tournament.value = res.data
     if (res.data.divisions.length > 0) {
-      const firstDivId = res.data.divisions[0].id
+      const firstDivId = res.data.divisions[0]!.id
       activeDivisionId.value = firstDivId
       await loadParticipantsForDivision(firstDivId)
     }
@@ -179,7 +179,7 @@ onMounted(async () => {
       <!-- ディビジョンタブ -->
       <Tabs
         v-else
-        :value="activeDivisionId ?? tournament.divisions[0].id"
+        :value="activeDivisionId ?? tournament.divisions[0]!.id"
         @update:value="onTabChange($event as number)"
       >
         <TabList>
@@ -194,7 +194,7 @@ onMounted(async () => {
               <PageLoading v-if="participantsLoading[div.id]" size="32px" />
               <template v-else>
                 <DashboardEmptyState
-                  v-if="!participantsMap[div.id] || participantsMap[div.id].length === 0"
+                  v-if="!participantsMap[div.id] || participantsMap[div.id]!.length === 0"
                   icon="pi pi-users"
                   message="参加チームがいません"
                 />
