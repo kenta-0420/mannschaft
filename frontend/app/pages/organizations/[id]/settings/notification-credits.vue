@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NotificationCreditPurchase } from '~/types/notification-credit'
+import type { NotificationCreditBalance, NotificationCreditPurchase } from '~/types/notification-credit'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -11,7 +11,7 @@ const orgId = Number(route.params.id)
 const creditApi = useNotificationCreditApi()
 
 // ─── 状態 ───────────────────────────────────────────────────
-const balance = ref<Awaited<ReturnType<typeof creditApi.getBalance>> extends { data: infer T } ? T : never | null>(null)
+const balance = ref<NotificationCreditBalance | null>(null)
 const packages = ref<Awaited<ReturnType<typeof creditApi.listPackages>> extends { data: infer T } ? T : never[]>([])
 const purchases = ref<NotificationCreditPurchase[]>([])
 const purchasingId = ref<number | null>(null)
@@ -42,8 +42,9 @@ onMounted(async () => {
   // ?payment=success のクエリパラメータを検知して決済完了トースト表示
   if (route.query.payment === 'success') {
     toast.add({
-      title: t('notificationCredit.purchaseSuccess'),
-      color: 'green',
+      severity: 'success',
+      summary: t('notificationCredit.purchaseSuccess'),
+      life: 3000,
     })
     // クレジット残高を再取得
     await fetchAll()
@@ -54,8 +55,9 @@ onMounted(async () => {
     )
   } else if (route.query.payment === 'cancelled') {
     toast.add({
-      title: t('notificationCredit.purchaseCancelled'),
-      color: 'yellow',
+      severity: 'warn',
+      summary: t('notificationCredit.purchaseCancelled'),
+      life: 3000,
     })
     navigateTo(
       { path: route.path, query: {} },
@@ -86,8 +88,9 @@ async function handlePurchase(packageId: number) {
   } catch (e) {
     console.error('Checkout 作成失敗', e)
     toast.add({
-      title: t('notificationCredit.checkoutFailed'),
-      color: 'red',
+      severity: 'error',
+      summary: t('notificationCredit.checkoutFailed'),
+      life: 3000,
     })
     purchasingId.value = null
   }

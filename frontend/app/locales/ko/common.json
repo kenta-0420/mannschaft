@@ -1156,5 +1156,8 @@
     "participantCount": "참가자 {count}명",
     "noRecords": "활동 기록이 없습니다",
     "loadError": "활동 기록을 불러오지 못했습니다"
+  },
+  "dashboard": {
+    "team_reservation_link": "예약 관리"
   }
 }

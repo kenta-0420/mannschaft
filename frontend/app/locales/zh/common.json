@@ -1156,5 +1156,8 @@
     "participantCount": "{count} 名参与者",
     "noRecords": "暂无活动记录",
     "loadError": "获取活动记录失败"
+  },
+  "dashboard": {
+    "team_reservation_link": "预约管理"
   }
 }

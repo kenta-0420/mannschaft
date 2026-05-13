@@ -1156,5 +1156,8 @@
     "participantCount": "{count} participants",
     "noRecords": "No activity records",
     "loadError": "Failed to load activity records"
+  },
+  "dashboard": {
+    "team_reservation_link": "Reservations"
   }
 }
