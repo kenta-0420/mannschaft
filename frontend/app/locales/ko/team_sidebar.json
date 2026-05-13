@@ -1,0 +1,39 @@
+{
+  "teamSidebar": {
+    "category": {
+      "home": "홈",
+      "schedule": "일정",
+      "member": "멤버",
+      "ops": "업무 운영",
+      "facility": "시설 관리",
+      "data": "데이터",
+      "settings": "설정"
+    },
+    "item": {
+      "dashboard": "대시보드",
+      "announcements": "공지사항",
+      "chat": "채팅",
+      "bulletin": "게시판",
+      "feed": "피드",
+      "schedule": "캘린더",
+      "shifts": "교대 근무",
+      "duties": "당번",
+      "annual_plan": "연간 계획",
+      "members": "멤버",
+      "circulation": "회람",
+      "safety_check": "안전 확인",
+      "todos": "할 일",
+      "workflows": "워크플로우",
+      "forms": "설문",
+      "projects": "프로젝트",
+      "budget": "예산 관리",
+      "repair_plan": "수선 계획",
+      "equipment": "설비 관리",
+      "parking": "주차장",
+      "files": "파일",
+      "analytics": "분석",
+      "audit_logs": "감사 로그",
+      "settings": "설정"
+    }
+  }
+}

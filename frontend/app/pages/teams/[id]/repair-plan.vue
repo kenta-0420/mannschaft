@@ -2,7 +2,7 @@
 import type { CreateKanbanRequest, KanbanStage, QuoteKanban } from '~/types/repairPlanKanban'
 import type { RepairPlanTimelineResponse } from '~/types/repairPlanTimeline'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: 'auth', layout: 'team' })
 
 const { t } = useI18n()
 const route = useRoute()
