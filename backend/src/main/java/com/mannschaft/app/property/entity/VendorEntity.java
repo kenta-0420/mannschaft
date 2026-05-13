@@ -82,6 +82,18 @@ public class VendorEntity extends BaseEntity {
     @Builder.Default
     private Boolean isActive = true;
 
+    /**
+     * 反社チェック状態。UNCHECKED / PASSED / FAILED / EXPIRED。
+     * F08.8 Phase 4 でカンバンカード追加時に complianceCheckStatus スナップショット元として参照する。
+     */
+    @Column(name = "compliance_check_status", nullable = false, length = 20)
+    @Builder.Default
+    private String complianceCheckStatus = "UNCHECKED";
+
+    /** 反社チェック実施日時。未実施時は null。 */
+    @Column(name = "compliance_checked_at")
+    private LocalDateTime complianceCheckedAt;
+
     @Column(nullable = false)
     private Long createdBy;
 
@@ -153,5 +165,16 @@ public class VendorEntity extends BaseEntity {
      */
     public void updateNote(String note) {
         this.note = note;
+    }
+
+    /**
+     * 反社チェック状態を更新する（F08.8 Phase 4）。
+     *
+     * @param status UNCHECKED / PASSED / FAILED / EXPIRED
+     * @param checkedAt チェック実施日時（UNCHECKED 時は null 可）
+     */
+    public void updateComplianceStatus(String status, LocalDateTime checkedAt) {
+        this.complianceCheckStatus = status;
+        this.complianceCheckedAt = checkedAt;
     }
 }
