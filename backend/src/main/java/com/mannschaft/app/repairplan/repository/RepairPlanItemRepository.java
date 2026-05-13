@@ -80,4 +80,35 @@ public interface RepairPlanItemRepository extends AbstractTenantAwareRepository<
            "ORDER BY r.plannedYear ASC")
     List<Object[]> sumEstimatedAmountByYear(@Param("scopeType") String scopeType,
                                              @Param("scopeId") Long scopeId);
+
+    /**
+     * 地層タイムライン用: 年度×カテゴリ別修繕費合計集計。
+     *
+     * <p>返却値は {@code Object[]{Integer plannedYear, String category, Long sumAmount, String minutesNotes}}
+     * の形式。minutesNotes は該当年度・カテゴリの minutes_note を '|' 区切りで連結したもの。
+     * JPQL では {@code GROUP_CONCAT} が標準外のため nativeQuery=true で実装する。</p>
+     *
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID（BIGINT）
+     * @param yearFrom  集計開始年度（含む）
+     * @param yearTo    集計終了年度（含む）
+     */
+    @Query(nativeQuery = true, value = """
+            SELECT r.planned_year, r.category,
+                   CAST(SUM(r.estimated_amount) AS SIGNED),
+                   GROUP_CONCAT(r.minutes_note SEPARATOR '|')
+            FROM repair_plan_items r
+            WHERE r.scope_type = :scopeType
+              AND r.scope_id = :scopeId
+              AND r.planned_year >= :yearFrom
+              AND r.planned_year <= :yearTo
+              AND r.deleted_at IS NULL
+            GROUP BY r.planned_year, r.category
+            ORDER BY r.planned_year ASC, r.category ASC
+            """)
+    List<Object[]> aggregateByYearAndCategory(
+            @Param("scopeType") String scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("yearFrom") int yearFrom,
+            @Param("yearTo") int yearTo);
 }

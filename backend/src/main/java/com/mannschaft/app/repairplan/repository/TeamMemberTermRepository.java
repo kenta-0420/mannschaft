@@ -31,4 +31,7 @@ public interface TeamMemberTermRepository extends JpaRepository<TeamMemberTerm, 
 
     /** 90 日後 demote cron 用: 任期終了から 90 日経過した現役フラグ。 */
     List<TeamMemberTerm> findByIsActiveTrueAndTermEndBefore(LocalDate before);
+
+    /** タイムライン用: スコープの全任期を取得（期間昇順）。 */
+    List<TeamMemberTerm> findByScopeTypeAndScopeIdOrderByTermStartAsc(String scopeType, Long scopeId);
 }
