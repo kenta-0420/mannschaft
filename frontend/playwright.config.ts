@@ -50,7 +50,8 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: 'tests/e2e/.auth/admin.json',
       },
-      dependencies: ['setup-admin'],
+      // setup-admin は .env.test の認証情報が必要。既存 storageState を使うため一時的にコメントアウト
+      // dependencies: ['setup-admin'],
       testMatch: '**/admin/**/*.spec.ts',
     },
   ],

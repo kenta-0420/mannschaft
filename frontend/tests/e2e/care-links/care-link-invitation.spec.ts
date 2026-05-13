@@ -112,7 +112,8 @@ test.describe('CARE-007〜010: F03.12 Phase 6 招待フロー', () => {
     expect(acceptCalled).toBe(true)
 
     // 完了フェーズ（done 状態）が表示される（i18n care.message.acceptSuccess = "招待を承認しました"）
-    await expect(page.getByText('招待を承認しました')).toBeVisible({ timeout: 10_000 })
+    // h2 に限定してスコープ（toast と h2 が同テキストを同時表示するため strict mode 回避）
+    await expect(page.locator('h2').filter({ hasText: '招待を承認しました' })).toBeVisible({ timeout: 10_000 })
   })
 
   test('CARE-009: 招待を拒否できる', async ({ page }) => {
@@ -156,7 +157,8 @@ test.describe('CARE-007〜010: F03.12 Phase 6 招待フロー', () => {
     expect(rejectCalled).toBe(true)
 
     // 完了フェーズ（done 状態）が表示される（i18n care.message.rejectSuccess = "招待を拒否しました"）
-    await expect(page.getByText('招待を拒否しました')).toBeVisible({ timeout: 10_000 })
+    // h2 に限定してスコープ（toast と h2 が同テキストを同時表示するため strict mode 回避）
+    await expect(page.locator('h2').filter({ hasText: '招待を拒否しました' })).toBeVisible({ timeout: 10_000 })
   })
 
   test('CARE-010: 見守り者招待フォームが送信できる', async ({ page }) => {
