@@ -1,5 +1,33 @@
 {
   "chat": {
+    "contextMenu": {
+      "replyInThread": "Responder en hilo",
+      "react": "Reaccionar",
+      "pin": "Fijar",
+      "unpin": "Desfijar",
+      "edit": "Editar",
+      "copy": "Copiar",
+      "forward": "Reenviar",
+      "bookmark": "Marcar",
+      "removeBookmark": "Quitar marcador",
+      "delete": "Eliminar"
+    },
+    "thread": {
+      "activeThreads": "{count} hilos activos",
+      "replyCount": "{count} respuestas",
+      "reply": "Responder"
+    },
+    "boardMigration": {
+      "banner": "El tema se está profundizando. ¿Desea moverlo a un hilo del tablón?",
+      "createThread": "Crear hilo en tablón",
+      "dialogTitle": "Migrar al tablón",
+      "titleLabel": "Título del hilo",
+      "boardLabel": "Tablón destino",
+      "copyHistory": "Copiar historial de conversación",
+      "confirm": "Migrar",
+      "success": "Hilo del tablón creado",
+      "error": "Error al migrar"
+    },
     "sidebar": {
       "chat": "Chat",
       "contacts": "Contactos",
