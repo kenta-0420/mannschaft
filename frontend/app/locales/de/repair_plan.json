@@ -18,16 +18,67 @@
       "cpi_note": "CPI: 2024年=100、国交省R5ガイドライン 1.5%/年"
     },
     "category": {
-      "EXTERIOR": "外壁・塗装",
-      "ROOF": "屋根・防水",
-      "PLUMBING": "給排水設備",
-      "ELECTRICAL": "電気設備",
-      "ELEVATOR": "エレベーター",
-      "COMMON_AREA": "共用部",
-      "FOUNDATION": "基礎・構造",
-      "PARKING": "駐車場",
-      "LANDSCAPING": "植栽・外構",
-      "OTHER": "その他"
+      "EXTERIOR": "Außenfassade / Anstrich",
+      "ROOF": "Dach / Abdichtung",
+      "PLUMBING": "Sanitär",
+      "ELECTRICAL": "Elektrik",
+      "ELEVATOR": "Aufzug",
+      "COMMON_AREA": "Gemeinschaftsbereich",
+      "FOUNDATION": "Fundament / Struktur",
+      "PARKING": "Parkplatz",
+      "LANDSCAPING": "Begrünung",
+      "OTHER": "Sonstiges"
+    },
+    "kanban": {
+      "title": "Angebots-Kanban",
+      "create": "Kanban erstellen",
+      "created": "Kanban erstellt",
+      "no_kanbans": "Keine Kanbans vorhanden",
+      "no_organization": "Dieses Team gehört keiner Organisation an. Das Angebots-Kanban ist nicht verfügbar.",
+      "card_count": "{count} Anbieter",
+      "stage": {
+        "requested": "Angefragt",
+        "received": "Eingegangen",
+        "under_review": "In Prüfung",
+        "shortlisted": "Vorausgewählt",
+        "selected": "Ausgewählt",
+        "rejected": "Abgelehnt"
+      },
+      "status": {
+        "open": "Offen",
+        "closed": "Geschlossen",
+        "awarded": "Vergeben",
+        "canceled": "Abgebrochen"
+      },
+      "visibility": {
+        "label": "Sichtbarkeit für Mitglieder",
+        "hidden": "Verborgen",
+        "anonymized": "Anonymisiert",
+        "full": "Vollständige Offenlegung"
+      },
+      "anonymized": {
+        "vendor_label": "Anbieter {index}"
+      },
+      "deadline": {
+        "label": "Angebotsfrist",
+        "past": "Ausschreibung geschlossen"
+      },
+      "card": {
+        "amount": "Angebotsbetrag",
+        "vendor": "Anbieter",
+        "vendor_hidden": "(Verborgen)",
+        "amount_hidden": "(Verborgen)",
+        "compliance_expired": "Compliance-Prüfung abgelaufen"
+      },
+      "add_card": "Anbieter hinzufügen",
+      "no_cards": "Noch keine Anbieter hinzugefügt",
+      "form": {
+        "title": "Kanban-Titel",
+        "title_placeholder": "z.B. Fassadenanstrich 2026 Angebote"
+      }
+    },
+    "error": {
+      "compliance_expired": "Die Compliance-Prüfung dieses Anbieters ist abgelaufen. Bitte wenden Sie sich an einen Administrator."
     }
   }
 }

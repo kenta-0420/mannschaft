@@ -18,16 +18,67 @@
       "cpi_note": "CPI: 2024年=100、国交省R5ガイドライン 1.5%/年"
     },
     "category": {
-      "EXTERIOR": "外壁・塗装",
-      "ROOF": "屋根・防水",
-      "PLUMBING": "給排水設備",
-      "ELECTRICAL": "電気設備",
-      "ELEVATOR": "エレベーター",
-      "COMMON_AREA": "共用部",
-      "FOUNDATION": "基礎・構造",
-      "PARKING": "駐車場",
-      "LANDSCAPING": "植栽・外構",
-      "OTHER": "その他"
+      "EXTERIOR": "外墙・涂装",
+      "ROOF": "屋顶・防水",
+      "PLUMBING": "给排水设备",
+      "ELECTRICAL": "电气设备",
+      "ELEVATOR": "电梯",
+      "COMMON_AREA": "公共区域",
+      "FOUNDATION": "基础・结构",
+      "PARKING": "停车场",
+      "LANDSCAPING": "植栽・外构",
+      "OTHER": "其他"
+    },
+    "kanban": {
+      "title": "比价看板",
+      "create": "创建看板",
+      "created": "看板已创建",
+      "no_kanbans": "暂无看板",
+      "no_organization": "该团队不属于任何组织，无法使用比价看板",
+      "card_count": "{count}家供应商",
+      "stage": {
+        "requested": "已请报价",
+        "received": "已收到",
+        "under_review": "审核中",
+        "shortlisted": "入围",
+        "selected": "已选定",
+        "rejected": "已拒绝"
+      },
+      "status": {
+        "open": "开放中",
+        "closed": "已关闭",
+        "awarded": "已中标",
+        "canceled": "已取消"
+      },
+      "visibility": {
+        "label": "成员可见性",
+        "hidden": "隐藏",
+        "anonymized": "匿名化",
+        "full": "完全公开"
+      },
+      "anonymized": {
+        "vendor_label": "供应商{index}"
+      },
+      "deadline": {
+        "label": "投标截止",
+        "past": "已截止"
+      },
+      "card": {
+        "amount": "报价金额",
+        "vendor": "供应商名称",
+        "vendor_hidden": "（隐藏）",
+        "amount_hidden": "（隐藏）",
+        "compliance_expired": "合规检查已过期"
+      },
+      "add_card": "添加供应商",
+      "no_cards": "尚未添加供应商",
+      "form": {
+        "title": "看板标题",
+        "title_placeholder": "例：2026年外墙涂装工程比价"
+      }
+    },
+    "error": {
+      "compliance_expired": "该供应商的合规检查已过期，请联系管理员。"
     }
   }
 }
