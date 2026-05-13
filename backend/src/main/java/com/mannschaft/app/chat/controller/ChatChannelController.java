@@ -1,5 +1,6 @@
 package com.mannschaft.app.chat.controller;
 
+import com.mannschaft.app.chat.dto.ActiveThreadItemResponse;
 import com.mannschaft.app.chat.dto.AddMemberRequest;
 import com.mannschaft.app.chat.dto.ChangeRoleRequest;
 import com.mannschaft.app.chat.dto.ChannelResponse;
@@ -12,7 +13,9 @@ import com.mannschaft.app.chat.dto.UpdateChannelRequest;
 import com.mannschaft.app.chat.service.ChatChannelService.ConversationResult;
 import com.mannschaft.app.chat.service.ChatChannelService;
 import com.mannschaft.app.chat.service.ChatMemberService;
+import com.mannschaft.app.chat.service.ChatMessageService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.CursorPagedResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -42,6 +46,7 @@ public class ChatChannelController {
 
     private final ChatChannelService channelService;
     private final ChatMemberService memberService;
+    private final ChatMessageService messageService;
 
 
     /**
@@ -209,6 +214,21 @@ public class ChatChannelController {
     public ResponseEntity<ApiResponse<ChannelResponse>> convertToGroup(@PathVariable Long channelId) {
         ChannelResponse response = channelService.convertToGroup(channelId);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * チャンネルのアクティブスレッド一覧を取得する（reply_count > 0 のトップレベルメッセージ）。
+     */
+    @GetMapping("/{channelId}/threads")
+    @Operation(summary = "アクティブスレッド一覧")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<CursorPagedResponse<ActiveThreadItemResponse>> getActiveThreads(
+            @PathVariable Long channelId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit) {
+        CursorPagedResponse<ActiveThreadItemResponse> response =
+                messageService.getActiveThreads(channelId, cursor, limit);
+        return ResponseEntity.ok(response);
     }
 
     /**
