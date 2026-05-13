@@ -10,7 +10,7 @@ import type {
 } from '~/types/webhook'
 import type { WebhookEndpointResponse } from '~/composables/useWebhookApi'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()

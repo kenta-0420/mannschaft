@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { IncidentSummaryResponse } from '~/types/incident'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
 const orgId = Number(route.params.id)
