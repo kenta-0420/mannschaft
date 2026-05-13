@@ -9,8 +9,49 @@ const bcrypt = require('bcryptjs');
 
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
   const SYS = 1;
-  const E2E_USER = 5;
-  const E2E_ADMIN = 6;
+
+  // ============================================================
+  // 0. E2E テスト用ユーザー（E2E_USER / E2E_ADMIN）を作成
+  //    INSERT IGNORE でべき等化 → INSERT 後に SELECT で実際の ID を取得
+  // ============================================================
+  const hashStrength8 = (plain) => bcrypt.hashSync(plain, 8).replace('$2b$', '$2a$');
+
+  const e2eUserHash = hashStrength8('TestPass2026!');
+  const e2eAdminHash = hashStrength8('TestPass2026!');
+
+  await conn.execute(
+    `INSERT IGNORE INTO users
+      (email, password_hash, last_name, first_name, display_name,
+       is_searchable, encryption_key_version, locale, timezone,
+       status, reporting_restricted, created_at, updated_at)
+     VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)`,
+    ['e2e-user@test.mannschaft.local', e2eUserHash,
+     'E2Eユーザー', '一般', 'E2E一般ユーザー',
+     'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
+  );
+  const [[e2eUserRow]] = await conn.execute(
+    'SELECT id FROM users WHERE email = ?',
+    ['e2e-user@test.mannschaft.local']
+  );
+  const E2E_USER = Number(e2eUserRow.id);
+
+  await conn.execute(
+    `INSERT IGNORE INTO users
+      (email, password_hash, last_name, first_name, display_name,
+       is_searchable, encryption_key_version, locale, timezone,
+       status, reporting_restricted, created_at, updated_at)
+     VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)`,
+    ['e2e-admin@test.mannschaft.local', e2eAdminHash,
+     'E2E管理者', '管理', 'E2E管理者',
+     'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
+  );
+  const [[e2eAdminRow]] = await conn.execute(
+    'SELECT id FROM users WHERE email = ?',
+    ['e2e-admin@test.mannschaft.local']
+  );
+  const E2E_ADMIN = Number(e2eAdminRow.id);
+
+  console.log(`E2E users: E2E_USER id=${E2E_USER}, E2E_ADMIN id=${E2E_ADMIN}`);
 
   // ============================================================
   // 1. ダミーユーザー 20人
@@ -31,13 +72,17 @@ const bcrypt = require('bcryptjs');
     const [last, first, display] = userNames[i];
     const email = `e2e-dummy-${i + 1}@test.mannschaft.local`;
     await conn.execute(
-      'INSERT INTO users (email, password_hash, last_name, first_name, display_name, is_searchable, encryption_key_version, locale, timezone, status, reporting_restricted, created_at, updated_at) VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)',
+      `INSERT IGNORE INTO users
+        (email, password_hash, last_name, first_name, display_name,
+         is_searchable, encryption_key_version, locale, timezone,
+         status, reporting_restricted, created_at, updated_at)
+       VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)`,
       [email, hash, last, first, display, 'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
     );
-    const [[r]] = await conn.execute('SELECT LAST_INSERT_ID() as id');
+    const [[r]] = await conn.execute('SELECT id FROM users WHERE email = ?', [email]);
     userIds.push(Number(r.id));
   }
-  console.log(`Users created: ${userIds.length} (id ${userIds[0]}-${userIds[userIds.length - 1]})`);
+  console.log(`Users created/found: ${userIds.length} (id ${userIds[0]}-${userIds[userIds.length - 1]})`);
 
   // ============================================================
   // 2. 組織（JFA階層構造）
@@ -46,10 +91,13 @@ const bcrypt = require('bcryptjs');
 
   async function createOrg(name, orgType, parentId, pref, city) {
     await conn.execute(
-      'INSERT INTO organizations (name, org_type, parent_organization_id, prefecture, city, visibility, hierarchy_visibility, supporter_enabled, version, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,1,?,?)',
+      `INSERT IGNORE INTO organizations
+        (name, org_type, parent_organization_id, prefecture, city,
+         visibility, hierarchy_visibility, supporter_enabled, version, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,1,?,?)`,
       [name, orgType, parentId, pref, city, 'PUBLIC', 'FULL', 1, now, now]
     );
-    const [[r]] = await conn.execute('SELECT LAST_INSERT_ID() as id');
+    const [[r]] = await conn.execute('SELECT id FROM organizations WHERE name = ?', [name]);
     return Number(r.id);
   }
 
@@ -69,7 +117,7 @@ const bcrypt = require('bcryptjs');
   orgs.fcTokyo = await createOrg('FC東京ユースアカデミー（テスト）', 'COMMUNITY', orgs.tokyo, '東京都', '調布市');
   orgs.yokohamaFC = await createOrg('横浜FCジュニア（テスト）', 'COMMUNITY', orgs.kanagawa, '神奈川県', '横浜市');
 
-  console.log(`Organizations created: ${Object.keys(orgs).length}`, JSON.stringify(orgs));
+  console.log(`Organizations created/found: ${Object.keys(orgs).length}`, JSON.stringify(orgs));
 
   // ============================================================
   // 3. チーム
@@ -78,16 +126,20 @@ const bcrypt = require('bcryptjs');
 
   async function createTeam(name, template, pref, city) {
     await conn.execute(
-      'INSERT INTO teams (name, template, prefecture, city, visibility, supporter_enabled, version, created_at, updated_at) VALUES (?,?,?,?,?,?,1,?,?)',
+      `INSERT IGNORE INTO teams
+        (name, template, prefecture, city, visibility, supporter_enabled, version, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,1,?,?)`,
       [name, template, pref, city, 'PUBLIC', 1, now, now]
     );
-    const [[r]] = await conn.execute('SELECT LAST_INSERT_ID() as id');
+    const [[r]] = await conn.execute('SELECT id FROM teams WHERE name = ?', [name]);
     return Number(r.id);
   }
 
   async function linkTeamOrg(teamId, orgId) {
     await conn.execute(
-      'INSERT INTO team_org_memberships (team_id, organization_id, status, invited_at, created_at) VALUES (?,?,?,?,?)',
+      `INSERT IGNORE INTO team_org_memberships
+        (team_id, organization_id, status, invited_at, created_at)
+       VALUES (?,?,?,?,?)`,
       [teamId, orgId, 'ACTIVE', now, now]
     );
   }
@@ -120,14 +172,16 @@ const bcrypt = require('bcryptjs');
   teams.indieFC = await createTeam('インディーFC（テスト）', 'SPORTS', '千葉県', '船橋市');
   teams.sundayFC = await createTeam('日曜キッカーズ（テスト）', 'SPORTS', '東京都', '世田谷区');
 
-  console.log(`Teams created: ${Object.keys(teams).length}`, JSON.stringify(teams));
+  console.log(`Teams created/found: ${Object.keys(teams).length}`, JSON.stringify(teams));
 
   // ============================================================
   // 4. ロール配置
   // ============================================================
   async function assignRole(userId, roleId, teamId, orgId) {
     await conn.execute(
-      'INSERT INTO user_roles (user_id, role_id, team_id, organization_id, granted_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+      `INSERT IGNORE INTO user_roles
+        (user_id, role_id, team_id, organization_id, granted_by, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?)`,
       [userId, roleId, teamId || null, orgId || null, SYS, now, now]
     );
   }
@@ -181,9 +235,10 @@ const bcrypt = require('bcryptjs');
   // ============================================================
   async function createSchedule(teamId, orgId, title, eventType, startAt, endAt, location, createdBy) {
     await conn.execute(
-      `INSERT INTO schedules (team_id, organization_id, title, event_type, start_at, end_at, location,
-        all_day, visibility, min_view_role, min_response_role, status, attendance_required,
-        attendance_status, comment_option, is_exception, created_by, created_at, updated_at)
+      `INSERT IGNORE INTO schedules
+        (team_id, organization_id, title, event_type, start_at, end_at, location,
+         all_day, visibility, min_view_role, min_response_role, status, attendance_required,
+         attendance_status, comment_option, is_exception, created_by, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,0,?,?,?,?,?,?,?,0,?,?,?)`,
       [teamId, orgId, title, eventType, startAt, endAt, location,
        'PUBLIC', 'MEMBER', 'MEMBER', 'CONFIRMED', 1, 'READY', 'ALLOWED', createdBy, now, now]
@@ -219,10 +274,15 @@ const bcrypt = require('bcryptjs');
   // ============================================================
   async function createChannel(type, teamId, orgId, name, createdBy) {
     await conn.execute(
-      'INSERT INTO chat_channels (channel_type, team_id, organization_id, name, is_private, is_archived, version, created_by, created_at, updated_at) VALUES (?,?,?,?,0,0,1,?,?,?)',
+      `INSERT IGNORE INTO chat_channels
+        (channel_type, team_id, organization_id, name, is_private, is_archived, version, created_by, created_at, updated_at)
+       VALUES (?,?,?,?,0,0,1,?,?,?)`,
       [type, teamId, orgId, name, createdBy, now, now]
     );
-    const [[r]] = await conn.execute('SELECT LAST_INSERT_ID() as id');
+    const [[r]] = await conn.execute(
+      'SELECT id FROM chat_channels WHERE channel_type=? AND name=? AND COALESCE(team_id,0)=? AND COALESCE(organization_id,0)=?',
+      [type, name, teamId || 0, orgId || 0]
+    );
     return Number(r.id);
   }
 
@@ -243,7 +303,9 @@ const bcrypt = require('bcryptjs');
     console.log('chat_messages columns:', colNames.join(', '));
 
     if (colNames.includes('channel_id') && colNames.includes('sender_id') && colNames.includes('content')) {
-      const insertMsg = 'INSERT INTO chat_messages (channel_id, sender_id, content, message_type, created_at, updated_at) VALUES (?,?,?,?,?,?)';
+      const insertMsg = `INSERT IGNORE INTO chat_messages
+        (channel_id, sender_id, content, message_type, created_at, updated_at)
+       VALUES (?,?,?,?,?,?)`;
       await conn.execute(insertMsg, [ch1, userIds[0], '明日の練習は9時集合です。グラウンドシューズを忘れずに！', 'TEXT', '2026-04-04 20:00:00', '2026-04-04 20:00:00']);
       await conn.execute(insertMsg, [ch1, userIds[1], '了解です！', 'TEXT', '2026-04-04 20:05:00', '2026-04-04 20:05:00']);
       await conn.execute(insertMsg, [ch1, userIds[2], '承知しました', 'TEXT', '2026-04-04 20:10:00', '2026-04-04 20:10:00']);
@@ -253,28 +315,87 @@ const bcrypt = require('bcryptjs');
     }
   }
 
-  console.log(`Chat channels created: 8`);
+  console.log(`Chat channels created/found: 8`);
 
   // ============================================================
   // 7. 通知
   // ============================================================
   async function notify(userId, type, priority, title, body, srcType, srcId, scopeType, scopeId, url) {
     await conn.execute(
-      'INSERT INTO notifications (user_id, notification_type, priority, title, body, source_type, source_id, scope_type, scope_id, action_url, is_read, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,0,?)',
+      `INSERT INTO notifications
+        (user_id, notification_type, priority, title, body,
+         source_type, source_id, scope_type, scope_id, action_url, is_read, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,0,?)`,
       [userId, type, priority, title, body, srcType, srcId, scopeType, scopeId, url, now]
     );
   }
 
-  await notify(E2E_USER, 'SCHEDULE_CREATED', 'NORMAL', '新しい予定が追加されました', 'プリンスリーグ関東 第3節が追加されました', 'SCHEDULE', 1, 'TEAM', teams.fcTokyoU18, `/teams/${teams.fcTokyoU18}/schedules`);
-  await notify(E2E_USER, 'CHAT_MESSAGE', 'NORMAL', '田中太郎さんがメッセージを送信', '明日の練習は9時集合です', 'CHAT_CHANNEL', ch1, 'TEAM', teams.fcTokyoU18, `/chat/${ch1}`);
-  await notify(E2E_USER, 'SCHEDULE_REMINDER', 'HIGH', '明日の試合のリマインダー', 'プリンスリーグ関東 第3節 vs 横浜FCユース（14:00〜）', 'SCHEDULE', 1, 'TEAM', teams.fcTokyoU18, `/teams/${teams.fcTokyoU18}/schedules`);
-  await notify(E2E_USER, 'TEAM_ANNOUNCEMENT', 'NORMAL', 'チームからのお知らせ', '4月の練習スケジュールが更新されました', 'TEAM', teams.fcTokyoU18, 'TEAM', teams.fcTokyoU18, `/teams/${teams.fcTokyoU18}`);
+  // 通知はべき等化が難しいため、既存通知がなければ一括 INSERT
+  const [[notifCount]] = await conn.execute(
+    'SELECT COUNT(*) AS cnt FROM notifications WHERE user_id IN (?,?)',
+    [E2E_USER, E2E_ADMIN]
+  );
+  if (Number(notifCount.cnt) === 0) {
+    await notify(E2E_USER, 'SCHEDULE_CREATED', 'NORMAL', '新しい予定が追加されました', 'プリンスリーグ関東 第3節が追加されました', 'SCHEDULE', 1, 'TEAM', teams.fcTokyoU18, `/teams/${teams.fcTokyoU18}/schedules`);
+    await notify(E2E_USER, 'CHAT_MESSAGE', 'NORMAL', '田中太郎さんがメッセージを送信', '明日の練習は9時集合です', 'CHAT_CHANNEL', ch1, 'TEAM', teams.fcTokyoU18, `/chat/${ch1}`);
+    await notify(E2E_USER, 'SCHEDULE_REMINDER', 'HIGH', '明日の試合のリマインダー', 'プリンスリーグ関東 第3節 vs 横浜FCユース（14:00〜）', 'SCHEDULE', 1, 'TEAM', teams.fcTokyoU18, `/teams/${teams.fcTokyoU18}/schedules`);
+    await notify(E2E_USER, 'TEAM_ANNOUNCEMENT', 'NORMAL', 'チームからのお知らせ', '4月の練習スケジュールが更新されました', 'TEAM', teams.fcTokyoU18, 'TEAM', teams.fcTokyoU18, `/teams/${teams.fcTokyoU18}`);
+    await notify(E2E_ADMIN, 'MEMBER_JOINED', 'NORMAL', '新メンバーが参加しました', '佐藤花子さんがFC東京U-18に参加しました', 'TEAM', teams.fcTokyoU18, 'TEAM', teams.fcTokyoU18, `/teams/${teams.fcTokyoU18}/members`);
+    await notify(E2E_ADMIN, 'SYSTEM_ANNOUNCEMENT', 'HIGH', 'システムメンテナンスのお知らせ', '4/10 AM2:00〜4:00 にメンテナンスを実施します', 'SYSTEM', null, 'SYSTEM', null, '/announcements');
+    await notify(E2E_ADMIN, 'SCHEDULE_CREATED', 'NORMAL', '審判講習会が追加されました', '4/10 東京体育館にて4級審判講習会を実施', 'SCHEDULE', 1, 'ORGANIZATION', orgs.tokyo, `/organizations/${orgs.tokyo}/schedules`);
+    console.log('Notifications created: 7');
+  } else {
+    console.log(`Notifications skipped: already ${notifCount.cnt} rows for E2E users`);
+  }
 
-  await notify(E2E_ADMIN, 'MEMBER_JOINED', 'NORMAL', '新メンバーが参加しました', '佐藤花子さんがFC東京U-18に参加しました', 'TEAM', teams.fcTokyoU18, 'TEAM', teams.fcTokyoU18, `/teams/${teams.fcTokyoU18}/members`);
-  await notify(E2E_ADMIN, 'SYSTEM_ANNOUNCEMENT', 'HIGH', 'システムメンテナンスのお知らせ', '4/10 AM2:00〜4:00 にメンテナンスを実施します', 'SYSTEM', null, 'SYSTEM', null, '/announcements');
-  await notify(E2E_ADMIN, 'SCHEDULE_CREATED', 'NORMAL', '審判講習会が追加されました', '4/10 東京体育館にて4級審判講習会を実施', 'SCHEDULE', 1, 'ORGANIZATION', orgs.tokyo, `/organizations/${orgs.tokyo}/schedules`);
+  // ============================================================
+  // 8. 活動記録テンプレート + 活動記録（SNS シェアテスト用）
+  // ============================================================
 
-  console.log('Notifications created: 7');
+  // 8-a. FC東京U-18 用の活動記録テンプレートを作成（INSERT IGNORE）
+  await conn.execute(
+    `INSERT IGNORE INTO activity_templates
+      (scope_type, scope_id, name, description, icon, color,
+       is_participant_required, default_visibility, sort_order, created_by, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+    ['TEAM', teams.fcTokyoU18, '試合結果', 'チームの試合結果を記録するテンプレート',
+     '⚽', '#1565C0', true, 'PUBLIC', 1, userIds[0], now, now]
+  );
+  const [[tmplRow]] = await conn.execute(
+    'SELECT id FROM activity_templates WHERE scope_type=? AND scope_id=? AND name=?',
+    ['TEAM', teams.fcTokyoU18, '試合結果']
+  );
+  const activityTemplateId = Number(tmplRow.id);
+  console.log(`Activity template created/found: id=${activityTemplateId}`);
+
+  // 8-b. 活動記録本体（SNS シェアテスト用）
+  //      visibility='PUBLIC'、location あり
+  await conn.execute(
+    `INSERT IGNORE INTO activity_results
+      (scope_type, scope_id, template_id, title, activity_date,
+       activity_time_start, activity_time_end,
+       description, field_values, visibility, location,
+       created_by, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [
+      'TEAM', teams.fcTokyoU18, activityTemplateId,
+      '春季合宿2026',
+      '2026-03-25',
+      '09:00:00', '17:00:00',
+      '菅平高原での春季合宿。フィジカルトレーニングとチームビルディングを実施。',
+      JSON.stringify({ score: '3-1', opponent: 'テスト対戦チーム', result: 'WIN' }),
+      'PUBLIC',
+      '長野県・菅平高原',
+      userIds[0],
+      now, now
+    ]
+  );
+  const [[arRow]] = await conn.execute(
+    'SELECT id FROM activity_results WHERE scope_type=? AND scope_id=? AND title=?',
+    ['TEAM', teams.fcTokyoU18, '春季合宿2026']
+  );
+  const activityResultId = Number(arRow.id);
+  console.log(`Activity result created/found: id=${activityResultId}`);
 
   // ============================================================
   // サマリー
@@ -282,6 +403,8 @@ const bcrypt = require('bcryptjs');
   console.log('\n========================================');
   console.log('  E2E SEED DATA - COMPLETE');
   console.log('========================================');
+  console.log(`E2E_USER id:    ${E2E_USER}  (e2e-user@test.mannschaft.local)`);
+  console.log(`E2E_ADMIN id:   ${E2E_ADMIN}  (e2e-admin@test.mannschaft.local)`);
   console.log(`Users:         20 dummy (id ${userIds[0]}-${userIds[19]})`);
   console.log(`Organizations: 10`);
   console.log(`  JFA (top) -> 関東FA -> 東京FA, 神奈川FA`);
@@ -290,7 +413,7 @@ const bcrypt = require('bcryptjs');
   console.log(`  神奈川FA -> 横浜FCジュニア`);
   console.log(`  独立: NPOフットサル連盟, 地域スポーツクラブ協会`);
   console.log(`Teams:         10`);
-  console.log(`  FC東京U-18, U-15 -> FC東京ユースアカデミー`);
+  console.log(`  FC東京U-18 (id=${teams.fcTokyoU18}), U-15 -> FC東京ユースアカデミー`);
   console.log(`  横浜FCジュニアA -> 横浜FCジュニア`);
   console.log(`  東京都選抜U-16 -> 東京FA`);
   console.log(`  大阪府トレセンU-14 -> 大阪FA`);
@@ -300,6 +423,8 @@ const bcrypt = require('bcryptjs');
   console.log(`Schedules:     12`);
   console.log(`Chat channels: 8`);
   console.log(`Notifications: 7`);
+  console.log(`Activity template: id=${activityTemplateId} (試合結果)`);
+  console.log(`Activity result:   id=${activityResultId} (春季合宿2026, PUBLIC)`);
   console.log('========================================');
 
   await conn.end();
