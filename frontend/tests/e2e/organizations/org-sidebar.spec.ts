@@ -44,7 +44,7 @@ async function mockModules(page: import('@playwright/test').Page, modules = ALL_
 /** permissionsをオーバーライドするモック（goto前に設定すること） */
 async function mockPermissions(
   page: import('@playwright/test').Page,
-  permissions: typeof MOCK_ADMIN_PERMISSIONS,
+  permissions: PermissionsMock,
 ) {
   await page.route(`**/api/v1/organizations/${ORG_ID}/me/permissions`, async (route) => {
     await route.fulfill({
