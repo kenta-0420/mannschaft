@@ -54,6 +54,16 @@ export default defineConfig({
       // dependencies: ['setup-admin'],
       testMatch: '**/admin/**/*.spec.ts',
     },
+    // 実機テスト: モックなしで実バックエンドに接続（real/ 配下のみ実行）
+    // storageState が存在しない場合は各テスト内の loginIfNeeded() でフォールバックする
+    {
+      name: 'chromium-real',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/real-user.json',
+      },
+      testMatch: '**/real/**/*.spec.ts',
+    },
   ],
 
   timeout: 60_000,
