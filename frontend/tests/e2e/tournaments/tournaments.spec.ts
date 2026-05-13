@@ -281,9 +281,9 @@ test.describe('TOURNAMENT-001〜006: 大会・リーグ管理', () => {
     // 大会リストが表示される
     await expect(page.getByText('2026年度春季リーグ')).toBeVisible({ timeout: 5_000 })
 
-    // リーグ戦・トーナメントフォーマット表示確認
-    await expect(page.getByText('リーグ戦')).toBeVisible()
-    await expect(page.getByText('トーナメント')).toBeVisible()
+    // リーグ戦・トーナメントフォーマット表示確認（フォーマットバッジspanに絞る）
+    await expect(page.locator('span.bg-surface-100').filter({ hasText: 'リーグ戦' }).first()).toBeVisible()
+    await expect(page.locator('span.bg-surface-100').filter({ hasText: 'トーナメント' }).first()).toBeVisible()
 
     // 順位表API呼び出し確認
     await page.evaluate(
