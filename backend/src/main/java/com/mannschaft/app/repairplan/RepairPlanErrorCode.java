@@ -56,7 +56,21 @@ public enum RepairPlanErrorCode implements ErrorCode {
     RATE_LIMIT_EXCEEDED("REPAIR_PLAN_009", "リクエスト頻度が上限を超えています。しばらく待ってから再試行してください", Severity.WARN),
 
     /** baseline_at から30日以上経過（再計算を推奨）。 */
-    SIMULATION_BASELINE_STALE("REPAIR_PLAN_012", "シミュレーションの基準日から30日以上経過しています。再計算を推奨します", Severity.WARN);
+    SIMULATION_BASELINE_STALE("REPAIR_PLAN_012", "シミュレーションの基準日から30日以上経過しています。再計算を推奨します", Severity.WARN),
+
+    // ─── F08.8 Phase 4: 相見積もりカンバン ───────────────────────────────
+
+    /** 反社チェックの有効期限が切れているため、カードに追加できない。 */
+    COMPLIANCE_EXPIRED("REPAIR_PLAN_015", "反社チェックの有効期限が切れています", Severity.WARN),
+
+    /** ステージ遷移が規則に違反している（後戻り、終端ステージからの遷移など）。 */
+    INVALID_STAGE_TRANSITION("REPAIR_PLAN_016", "無効なステージ遷移です", Severity.WARN),
+
+    /** 指定されたカンバンが見つからない（テナント／スコープ不一致を含む。IDOR 対策で 404）。 */
+    KANBAN_NOT_FOUND("REPAIR_PLAN_017", "カンバンが見つかりません", Severity.WARN),
+
+    /** 指定されたカードが見つからない（テナント／スコープ不一致を含む。IDOR 対策で 404）。 */
+    CARD_NOT_FOUND("REPAIR_PLAN_018", "カードが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;
