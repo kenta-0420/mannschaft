@@ -393,6 +393,68 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // テスト 13: 監査ログ BID_DEADLINE_OPENED がカンバン作成時に記録される
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("カンバン作成（bidDeadlineAt あり）後 BID_DEADLINE_OPENED 監査ログが記録される")
+    void createKanban_withBidDeadline_logsAuditEvent() throws InterruptedException {
+        CreateKanbanRequest req = new CreateKanbanRequest(
+                "入札締切ログテスト相見積もり",
+                null,
+                null,
+                Instant.now().plus(14, ChronoUnit.DAYS), // bidDeadlineAt あり
+                "FULL"
+        );
+
+        controller.createKanban("ORGANIZATION", ORG_ID, ORG_ID, req);
+        em.flush();
+
+        // 監査ログは非同期（@Async）のため少し待つ
+        Thread.sleep(500);
+        TransactionTemplate newTx = new TransactionTemplate(txManager);
+        newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        Boolean auditRecorded = newTx.execute(status ->
+                auditLogRepository.findAll().stream()
+                        .anyMatch(log -> "BID_DEADLINE_OPENED".equals(log.getEventType())
+                                && ORG_ID.equals(log.getOrganizationId())));
+        assertThat(auditRecorded).isTrue();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // テスト 14: 監査ログ BID_DEADLINE_OPENED がカンバン更新時に記録される
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("カンバン更新（bidDeadlineAt 変更）後 BID_DEADLINE_OPENED 監査ログが記録される")
+    void updateKanban_withBidDeadline_logsAuditEvent() throws InterruptedException {
+        UUID kanbanId = createKanban("入札締切更新テスト", ORG_ID);
+        em.flush();
+
+        UpdateKanbanRequest updateReq = new UpdateKanbanRequest(
+                null,
+                Instant.now().plus(60, ChronoUnit.DAYS), // bidDeadlineAt を更新
+                null,
+                null
+        );
+
+        controller.updateKanban("ORGANIZATION", ORG_ID, kanbanId, ORG_ID, updateReq);
+        em.flush();
+
+        // 監査ログは非同期（@Async）のため少し待つ
+        Thread.sleep(500);
+        TransactionTemplate newTx = new TransactionTemplate(txManager);
+        newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        // createKanban 時 + updateKanban 時の計 2 件以上の BID_DEADLINE_OPENED が記録される
+        Boolean auditRecorded = newTx.execute(status ->
+                auditLogRepository.findAll().stream()
+                        .filter(log -> "BID_DEADLINE_OPENED".equals(log.getEventType())
+                                && ORG_ID.equals(log.getOrganizationId()))
+                        .count() >= 2);
+        assertThat(auditRecorded).isTrue();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // ヘルパーメソッド
     // ─────────────────────────────────────────────────────────────────────
 
