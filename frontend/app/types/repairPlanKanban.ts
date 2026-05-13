@@ -77,3 +77,4 @@ export const STAGE_ORDER: KanbanStage[] = [
 export const TERMINAL_STAGES: KanbanStage[] = ['SELECTED', 'REJECTED']
 
 export const ALL_STAGES: KanbanStage[] = [...STAGE_ORDER, 'REJECTED']
+// F08.8 Phase 4
