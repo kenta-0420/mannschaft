@@ -70,11 +70,6 @@ public class NotificationCreditService {
     @Autowired
     private NotificationHelper notificationHelper;
 
-    // NotificationHelper ↔ NotificationCreditService の循環参照を @Lazy で解消
-    // アラート送信は @Async メソッドのみで使用するため遅延注入で問題なし
-    @Autowired
-    @Lazy
-    private NotificationHelper notificationHelper;
 
     // ─────────────────────────────────────────────────────────
     // 消費（送信ゲート）
