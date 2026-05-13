@@ -1,6 +1,7 @@
 package com.mannschaft.app.chat.repository;
 
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -31,9 +32,20 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
             @Param("channelId") Long channelId, @Param("cursorId") Long cursorId, Pageable pageable);
 
     /**
-     * スレッド返信を取得する。
+     * スレッド返信を取得する（旧2階層ロジック用）。
      */
     List<ChatMessageEntity> findByParentIdOrderByCreatedAtAsc(Long parentId);
+
+    /**
+     * スレッド内の全返信をフラット取得する（root_id でページング）。
+     */
+    Page<ChatMessageEntity> findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(Long rootId, Pageable pageable);
+
+    /**
+     * アクティブスレッド一覧を取得する（reply_count > 0 のトップレベルメッセージ）。
+     */
+    @Query("SELECT m FROM ChatMessageEntity m WHERE m.channelId = :channelId AND m.depth = 0 AND m.replyCount > 0 AND m.deletedAt IS NULL ORDER BY m.createdAt DESC")
+    Page<ChatMessageEntity> findActiveThreadsByChannelId(@Param("channelId") Long channelId, Pageable pageable);
 
     /**
      * チャンネルのピン留めメッセージを取得する。

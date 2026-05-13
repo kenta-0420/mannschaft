@@ -49,6 +49,12 @@ public class ChatMessageEntity extends BaseEntity {
 
     private LocalDateTime scheduledAt;
 
+    private Long rootId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer depth = 0;
+
     @Column(nullable = false)
     @Builder.Default
     private Integer replyCount = 0;
@@ -108,6 +114,24 @@ public class ChatMessageEntity extends BaseEntity {
      */
     public void incrementReplyCount() {
         this.replyCount++;
+    }
+
+    /**
+     * 返信数をデクリメントする。0 以下にはならない。
+     */
+    public void decrementReplyCount() {
+        if (this.replyCount > 0) {
+            this.replyCount--;
+        }
+    }
+
+    /**
+     * トップレベルメッセージ（depth == 0）かどうかを判定する。
+     *
+     * @return depth が 0 の場合 true
+     */
+    public boolean isRootMessage() {
+        return this.depth == 0;
     }
 
     /**
