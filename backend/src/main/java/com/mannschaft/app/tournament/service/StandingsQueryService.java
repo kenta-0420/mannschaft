@@ -8,8 +8,10 @@ import com.mannschaft.app.tournament.dto.TeamTournamentStatsResponse;
 import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entity.TournamentStandingEntity;
+import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
 import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
+import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.tournament.repository.TournamentStandingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,8 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 順位表・対戦マトリクス・チーム成績の参照サービス。
@@ -32,6 +36,8 @@ public class StandingsQueryService {
 
     private final TournamentStandingRepository standingRepository;
     private final TournamentParticipantRepository participantRepository;
+    private final TournamentDivisionRepository divisionRepository;
+    private final TournamentRepository tournamentRepository;
     private final TournamentMatchRepository matchRepository;
     private final TournamentMapper mapper;
 
@@ -78,23 +84,91 @@ public class StandingsQueryService {
 
     /**
      * チームの大会参加履歴を取得する。
+     * <p>
+     * TODO: N+1改善候補（将来はJOINクエリへの移行を検討）
      */
     public TeamTournamentHistoryResponse getTeamHistory(Long teamId) {
-        // 全大会から参加履歴を構築（簡易実装）
-        List<TeamTournamentHistoryResponse.TournamentHistoryEntry> entries = new ArrayList<>();
+        List<TournamentParticipantEntity> participants =
+                participantRepository.findAllByTeamId(teamId);
 
-        // participant -> division -> tournament の逆引き
-        // 実際にはクエリ最適化が必要だが、ここではN+1を許容
-        // チームIDでの検索は ParticipantRepository の findByTeamId 的なメソッドが必要
-        // 簡易実装として空リストを返す
+        List<TeamTournamentHistoryResponse.TournamentHistoryEntry> entries = new ArrayList<>();
+        for (TournamentParticipantEntity p : participants) {
+            // divisionId → division → tournament の逆引き
+            var divisionOpt = divisionRepository.findById(p.getDivisionId());
+            if (divisionOpt.isEmpty()) continue;
+            var division = divisionOpt.get();
+
+            var tournamentOpt = tournamentRepository.findById(division.getTournamentId());
+            if (tournamentOpt.isEmpty()) continue;
+            var tournament = tournamentOpt.get();
+
+            // 順位表から成績取得（なければゼロ）
+            var standingOpt = standingRepository.findByDivisionIdAndParticipantId(
+                    p.getDivisionId(), p.getId());
+
+            Integer finalRank = standingOpt.map(TournamentStandingEntity::getRank).orElse(null);
+            int played = standingOpt.map(TournamentStandingEntity::getPlayed).orElse(0);
+            int wins   = standingOpt.map(TournamentStandingEntity::getWins).orElse(0);
+            int draws  = standingOpt.map(TournamentStandingEntity::getDraws).orElse(0);
+            int losses = standingOpt.map(TournamentStandingEntity::getLosses).orElse(0);
+            int points = standingOpt.map(TournamentStandingEntity::getPoints).orElse(0);
+
+            entries.add(new TeamTournamentHistoryResponse.TournamentHistoryEntry(
+                    tournament.getOrganizationId(),
+                    division.getId(),
+                    p.getId(),
+                    tournament.getId(),
+                    tournament.getName(),
+                    tournament.getSeason(),
+                    division.getName(),
+                    finalRank, played, wins, draws, losses, points
+            ));
+        }
         return new TeamTournamentHistoryResponse(teamId, entries);
     }
 
     /**
      * チームの通算成績を取得する。
+     * <p>
+     * TODO: N+1改善候補（将来はJOINクエリへの移行を検討）
      */
     public TeamTournamentStatsResponse getTeamStats(Long teamId) {
-        // 簡易実装: 全参加大会の順位表から集計
-        return new TeamTournamentStatsResponse(teamId, 0, 0, 0, 0, 0, 0, 0, 0);
+        List<TournamentParticipantEntity> participants =
+                participantRepository.findAllByTeamId(teamId);
+
+        int totalMatches = 0;
+        int wins = 0, draws = 0, losses = 0;
+        int goalsFor = 0, goalsAgainst = 0;
+        Integer bestRank = null; // 最高順位（数値が小さいほど上位）
+
+        // 大会数はユニークなtournamentIdで数える
+        Set<Long> tournamentIds = new HashSet<>();
+
+        for (TournamentParticipantEntity p : participants) {
+            var standingOpt = standingRepository.findByDivisionIdAndParticipantId(
+                    p.getDivisionId(), p.getId());
+            if (standingOpt.isEmpty()) continue;
+
+            var s = standingOpt.get();
+            // divisionId → tournament を逆引きして重複排除
+            var divisionOpt = divisionRepository.findById(p.getDivisionId());
+            if (divisionOpt.isPresent()) {
+                tournamentIds.add(divisionOpt.get().getTournamentId());
+            }
+            totalMatches += s.getPlayed();
+            wins         += s.getWins();
+            draws        += s.getDraws();
+            losses       += s.getLosses();
+            goalsFor     += s.getScoreFor();
+            goalsAgainst += s.getScoreAgainst();
+            if (s.getRank() != null && (bestRank == null || s.getRank() < bestRank)) {
+                bestRank = s.getRank();
+            }
+        }
+        int totalTournaments = tournamentIds.size();
+
+        return new TeamTournamentStatsResponse(
+                teamId, totalTournaments, totalMatches,
+                wins, draws, losses, goalsFor, goalsAgainst, bestRank);
     }
 }

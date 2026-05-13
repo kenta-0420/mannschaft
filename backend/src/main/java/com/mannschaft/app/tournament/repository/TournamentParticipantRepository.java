@@ -1,6 +1,8 @@
 package com.mannschaft.app.tournament.repository;
 
 import com.mannschaft.app.tournament.ParticipantStatus;
+import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
+import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -27,4 +29,11 @@ public interface TournamentParticipantRepository extends JpaRepository<Tournamen
            "WHERE d.tournamentId = :tournamentId AND p.teamId = :teamId")
     List<TournamentParticipantEntity> findByTournamentIdAndTeamId(
             @Param("tournamentId") Long tournamentId, @Param("teamId") Long teamId);
+
+    @Query("SELECT p FROM TournamentParticipantEntity p " +
+           "JOIN TournamentDivisionEntity d ON p.divisionId = d.id " +
+           "JOIN TournamentEntity t ON d.tournamentId = t.id " +
+           "WHERE p.teamId = :teamId " +
+           "ORDER BY t.createdAt DESC")
+    List<TournamentParticipantEntity> findAllByTeamId(@Param("teamId") Long teamId);
 }
