@@ -5,6 +5,7 @@ import com.mannschaft.app.bulletin.dto.CreateThreadRequest;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
+import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class ChatBoardMigrationService {
     private final ChatMessageRepository messageRepository;
     private final BulletinThreadService bulletinThreadService;
     private final ChatMessageService chatMessageService;
+    private final ChatChannelMemberRepository memberRepository;
 
     /**
      * チャットスレッドを掲示板スレッドに移行する。
@@ -71,6 +73,11 @@ public class ChatBoardMigrationService {
         // ルートメッセージの存在確認
         ChatMessageEntity root = messageRepository.findById(rootMessageId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND));
+
+        // チャンネルメンバーシップ確認
+        if (!memberRepository.existsByChannelIdAndUserId(root.getChannelId(), requesterId)) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        }
 
         // 本文の構築（コピーあり: チャット履歴を引用形式で結合）
         String body = buildBoardBody(root, copyHistory);

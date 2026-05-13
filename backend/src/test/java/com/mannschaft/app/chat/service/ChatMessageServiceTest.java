@@ -11,6 +11,7 @@ import com.mannschaft.app.chat.dto.ThreadResponse;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.ChannelType;
+import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
@@ -63,6 +64,9 @@ class ChatMessageServiceTest {
     /** F13 Phase 4-β: 添付の使用量計上連携。 */
     @Mock
     private ChatAttachmentService chatAttachmentService;
+
+    @Mock
+    private ChatChannelMemberRepository memberRepository;
 
     @InjectMocks
     private ChatMessageService chatMessageService;
@@ -693,8 +697,9 @@ class ChatMessageServiceTest {
             given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
             given(messageRepository.save(any(ChatMessageEntity.class))).willAnswer(invocation -> {
                 ChatMessageEntity arg = invocation.getArgument(0);
-                // 新規メッセージの場合、rootId と depth を検証
-                if (arg.getRootId() != null) {
+                // 新規メッセージ（"孫返信"）の場合のみ rootId と depth を検証
+                // 親の replyCount 更新保存は別途実行されるため body で識別する
+                if ("孫返信".equals(arg.getBody())) {
                     assertThat(arg.getRootId()).isEqualTo(rootId);
                     assertThat(arg.getDepth()).isEqualTo(2);
                 }

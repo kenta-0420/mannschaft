@@ -14,6 +14,7 @@ import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.entity.ChatMessageReactionEntity;
+import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
@@ -52,6 +53,7 @@ public class ChatMessageService {
     private final ChatMapper chatMapper;
     /** F13 Phase 4-β: 統合ストレージクォータ連携。添付の INSERT 時 / 論理削除時の使用量計上に使用。 */
     private final ChatAttachmentService chatAttachmentService;
+    private final ChatChannelMemberRepository memberRepository;
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
@@ -104,11 +106,12 @@ public class ChatMessageService {
         // スレッドネスト計算: 親メッセージが存在する場合に rootId・depth を設定
         Long rootId = null;
         int depth = 0;
+        ChatMessageEntity parentMessage = null;
         if (request.getParentId() != null) {
-            ChatMessageEntity parent = findMessageOrThrow(request.getParentId());
+            parentMessage = findMessageOrThrow(request.getParentId());
             // rootId: 親がルートなら親のID、親がネストなら親の rootId を継承
-            rootId = parent.getRootId() != null ? parent.getRootId() : parent.getId();
-            depth = (parent.getDepth() != null ? parent.getDepth() : 0) + 1;
+            rootId = parentMessage.getRootId() != null ? parentMessage.getRootId() : parentMessage.getId();
+            depth = (parentMessage.getDepth() != null ? parentMessage.getDepth() : 0) + 1;
         }
 
         ChatMessageEntity message = ChatMessageEntity.builder()
@@ -124,14 +127,13 @@ public class ChatMessageService {
         ChatMessageEntity saved = messageRepository.save(message);
 
         // 親メッセージの返信数をインクリメント + active_thread_count 管理
-        if (request.getParentId() != null) {
-            ChatMessageEntity parent = findMessageOrThrow(request.getParentId());
-            parent.incrementReplyCount();
+        if (parentMessage != null) {
+            parentMessage.incrementReplyCount();
             // 初回返信（depth==0のルートへの返信数が1になった）場合、チャンネルのアクティブスレッド数をインクリメント
-            if (parent.isRootMessage() && parent.getReplyCount() == 1) {
+            if (parentMessage.isRootMessage() && parentMessage.getReplyCount() == 1) {
                 channel.incrementActiveThreadCount();
             }
-            messageRepository.save(parent);
+            messageRepository.save(parentMessage);
         }
 
         // 添付ファイルを保存（F13 Phase 4-β: 同時に StorageQuotaService.recordUpload を発火）
@@ -267,7 +269,10 @@ public class ChatMessageService {
      * @return アクティブスレッドアイテムレスポンスのカーソルページ
      */
     public CursorPagedResponse<ActiveThreadItemResponse> getActiveThreads(
-            Long channelId, String cursor, Integer limit) {
+            Long channelId, Long userId, String cursor, Integer limit) {
+        if (!memberRepository.existsByChannelIdAndUserId(channelId, userId)) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        }
         int effectiveLimit = resolveLimit(limit);
         int page = parseCursorAsPage(cursor);
         Pageable pageable = PageRequest.of(page, effectiveLimit + 1);

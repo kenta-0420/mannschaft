@@ -227,7 +227,7 @@ public class ChatChannelController {
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
         CursorPagedResponse<ActiveThreadItemResponse> response =
-                messageService.getActiveThreads(channelId, cursor, limit);
+                messageService.getActiveThreads(channelId, SecurityUtils.getCurrentUserId(), cursor, limit);
         return ResponseEntity.ok(response);
     }
 
