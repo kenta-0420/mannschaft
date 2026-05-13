@@ -26,6 +26,36 @@
       "public_viewer_hint_dismiss": "閉じる",
       "join_request_link": "メンバーシップを申請する"
     },
+    "weather": {
+      "title": "天気",
+      "today": "今日",
+      "tomorrow": "明日",
+      "max": "最高",
+      "min": "最低",
+      "humidity": "湿度",
+      "chance_of_rain": "降水",
+      "fetched_at": "データ取得",
+      "stale_warning": "予報情報が古い可能性があります",
+      "error_postal_missing": "郵便番号が未登録です",
+      "error_postal_not_found": "お住まいの郵便番号は天気情報に対応していません。お手数ですが正しい郵便番号をご確認ください",
+      "error_country_not_supported": "お住まいの国・地域の天気情報は現在準備中です",
+      "error_provider_unavailable": "天気情報を取得できませんでした",
+      "refresh": "更新",
+      "powered_by": "Powered by WeatherAPI.com",
+      "edit_profile": "プロフィール編集",
+      "condition": {
+        "sunny": "晴れ",
+        "partly_cloudy": "一部曇り",
+        "cloudy": "曇り",
+        "overcast": "どんよりとした曇り",
+        "mist": "霧雨",
+        "rain": "雨",
+        "heavy_rain": "大雨",
+        "snow": "雪",
+        "sleet": "みぞれ",
+        "thunderstorm": "雷雨"
+      }
+    },
     "myCorkboard": {
       "widgetTitle": "マイコルクボード",
       "viewAll": "すべて見る",

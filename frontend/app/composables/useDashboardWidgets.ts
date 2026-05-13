@@ -214,6 +214,14 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     description: '連絡先・緊急連絡先等の定期更新フォーム',
     scope: ['team'],
   },
+  // F02.10: 天気ウィジェット
+  {
+    key: 'weather',
+    label: '天気',
+    icon: 'pi pi-cloud',
+    description: '登録郵便番号から導出した居住地点の今日・明日の予報',
+    scope: ['personal'],
+  },
 ]
 
 function hiddenStorageKey(scopeType: string, scopeId?: number): string {
