@@ -312,7 +312,18 @@ public class GlobalExceptionHandler {
             Map.entry("REPAIR_PLAN_012", HttpStatus.UNPROCESSABLE_ENTITY),   // SIMULATION_BASELINE_STALE
             // F08.8 修繕長期計画ダッシュボード — テンプレ/モジュール判定（足軽5）
             Map.entry("REPAIR_PLAN_013", HttpStatus.UNPROCESSABLE_ENTITY),   // TEMPLATE_NOT_APARTMENT
-            Map.entry("REPAIR_PLAN_014", HttpStatus.UNPROCESSABLE_ENTITY)    // MODULE_NOT_ENABLED
+            Map.entry("REPAIR_PLAN_014", HttpStatus.UNPROCESSABLE_ENTITY),   // MODULE_NOT_ENABLED
+            // F08.7 Phase 9/9-B エントリー表・テンプレート
+            Map.entry("TOUR_019", HttpStatus.NOT_FOUND),              // ENTRY_MEMBER_NOT_FOUND (IDOR対策で404)
+            Map.entry("TOUR_020", HttpStatus.CONFLICT),               // ENTRY_LOCKED
+            Map.entry("TOUR_021", HttpStatus.UNPROCESSABLE_ENTITY),   // USER_NOT_TEAM_MEMBER
+            Map.entry("TOUR_022", HttpStatus.UNPROCESSABLE_ENTITY),   // MIN_ENTRY_COUNT_VIOLATION
+            Map.entry("TOUR_023", HttpStatus.UNPROCESSABLE_ENTITY),   // MAX_ENTRY_COUNT_EXCEEDED
+            Map.entry("TOUR_024", HttpStatus.NOT_FOUND),              // ENTRY_TEMPLATE_NOT_FOUND (IDOR対策で404)
+            Map.entry("TOUR_025", HttpStatus.UNPROCESSABLE_ENTITY),   // MAX_TEMPLATE_COUNT_EXCEEDED
+            Map.entry("TOUR_026", HttpStatus.NOT_FOUND),              // TEAM_NOT_IN_ORGANIZATION (IDOR対策で404)
+            Map.entry("TOUR_027", HttpStatus.CONFLICT),               // DUPLICATE_ENTRY_MEMBER
+            Map.entry("TOUR_028", HttpStatus.FORBIDDEN)               // TEMPLATE_TEAM_MISMATCH
     );
 
     /**

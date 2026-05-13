@@ -132,7 +132,7 @@ class TournamentEntryTemplateControllerIntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").isArray())
                     .andExpect(jsonPath("$.data[0].name").value("定番20名リスト"))
-                    .andExpect(jsonPath("$.data[0].member_count").value(20));
+                    .andExpect(jsonPath("$.data[0].memberCount").value(20));
         }
     }
 

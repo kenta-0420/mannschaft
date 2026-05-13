@@ -138,9 +138,9 @@ class TournamentEntryMemberControllerIntegrationTest {
             mockMvc.perform(get(BASE_URL)
                             .param("includeTeamMembers", "false"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.entry_count").value(1))
-                    .andExpect(jsonPath("$.data.entry_members").isArray())
-                    .andExpect(jsonPath("$.data.entry_members[0].display_name").value("テストユーザー"));
+                    .andExpect(jsonPath("$.data.entryCount").value(1))
+                    .andExpect(jsonPath("$.data.entryMembers").isArray())
+                    .andExpect(jsonPath("$.data.entryMembers[0].displayName").value("テストユーザー"));
         }
     }
 
@@ -229,7 +229,7 @@ class TournamentEntryMemberControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.entry_count").value(0));
+                    .andExpect(jsonPath("$.data.entryCount").value(0));
         }
     }
 

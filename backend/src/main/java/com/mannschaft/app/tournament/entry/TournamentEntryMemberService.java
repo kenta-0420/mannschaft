@@ -71,7 +71,7 @@ public class TournamentEntryMemberService {
                 .filter(t -> orgId.equals(t.getOrganizationId()))
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.PARTICIPANT_NOT_FOUND));
 
-        divisionRepository.findByIdAndTournamentId(divId, tournament.getId())
+        divisionRepository.findByIdAndTournamentId(divId, tId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.PARTICIPANT_NOT_FOUND));
 
         return participantRepository.findById(pId)
