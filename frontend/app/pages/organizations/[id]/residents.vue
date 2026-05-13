@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DwellingUnit } from '~/types/resident'
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
 const orgId = Number(route.params.id)
 const { getUnits } = useResidentApi()
