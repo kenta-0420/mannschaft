@@ -118,7 +118,7 @@ class EventRollCallServiceTest {
             RollCallCandidateResponse taroRes = result.stream()
                     .filter(r -> USER_ID_TARO.equals(r.getUserId()))
                     .findFirst().orElseThrow();
-            assertThat(taroRes.getDisplayName()).isEqualTo("山田太郎");
+            assertThat(taroRes.getFullName()).isEqualTo("山田太郎");
             assertThat(taroRes.getRsvpStatus()).isEqualTo("ATTENDING");
             assertThat(taroRes.isAlreadyCheckedIn()).isFalse();
             assertThat(taroRes.isUnderCare()).isTrue();
