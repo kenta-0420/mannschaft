@@ -150,6 +150,15 @@ app:
 | `MANNSCHAFT_APPLE_CLIENT_SECRET` | Apple Sign In シークレット（JWT） |
 | `MANNSCHAFT_APPLE_REDIRECT_URI` | コールバック URL |
 
+#### WeatherAPI.com（天気ウィジェット — F02.10）
+
+| 環境変数 | 用途 |
+|---|---|
+| `WEATHER_API_KEY` | WeatherAPI.com の API キー（必須。未設定だと天気取得が 503 になる） |
+
+取得先: https://www.weatherapi.com/my/  
+ローテーション手順: `docs/operations/weather_api_key_rotation.md`
+
 #### Stripe（決済）
 
 | 環境変数 | 用途 |
@@ -218,7 +227,26 @@ openssl rand -base64 64   # JWT_SECRET / JOB_QR_SIGNING_SECRET 用
 openssl rand -base64 32   # DB パスワード用
 ```
 
-### 2. 本番用 docker-compose（任意）
+### 2. GeoNames 郵便番号データのインポート（F02.10 天気ウィジェット — **初回のみ必須**）
+
+天気ウィジェットは郵便番号 → 座標の変換に GeoNames データを使用する。  
+このデータは約 150MB のため Flyway マイグレーションには含まれず、**初回デプロイ後に手動で一度だけ実行が必要**。
+
+```bash
+# 全国データ（推奨）
+cd backend && ./gradlew importPostalCodes
+
+# 日本のみの場合（データ量を絞りたい場合）
+cd backend && ./gradlew importPostalCodes --args='--country=JP'
+```
+
+**注意**:
+- このタスクを実行しないと、`GET /api/v1/dashboard/weather` が `POSTAL_CODE_NOT_FOUND` エラーを返し続ける
+- 実行には数分かかる（全国データで約 5〜10 分）
+- 冪等処理（`INSERT ... ON DUPLICATE KEY UPDATE`）なので再実行しても安全
+- 以降は毎月 1 回 02:00 JST に自動実行される（`@Scheduled` バッチ）
+
+### 3. 本番用 docker-compose（任意）
 
 ローカルの `docker-compose.yml` は開発用。本番で Docker Compose を使うなら `docker-compose.prod.yml` を作る（`.gitignore` 済み）。
 

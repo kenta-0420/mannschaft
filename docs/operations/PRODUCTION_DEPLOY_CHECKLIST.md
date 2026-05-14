@@ -55,6 +55,15 @@ PR/migration ごとに該当セクションを追加し、デプロイ判断の�
 - [ ] ステージング環境で動作確認を完了
 - [ ] 関連ドキュメント（`README.md` / `docs/` / `BACKEND_CODING_CONVENTION.md` 等）を更新
 
+### 初回デプロイ時の追加手順
+
+- [ ] `WEATHER_API_KEY` 環境変数が設定されている（F02.10 天気ウィジェット）
+- [ ] GeoNames データを手動インポート済み（F02.10 天気ウィジェット）:
+  ```bash
+  cd backend && ./gradlew importPostalCodes
+  ```
+  ※ 未実行だと全ユーザーの天気ウィジェットが `POSTAL_CODE_NOT_FOUND` になる。約 5〜10 分かかる。
+
 ---
 
 ## PR別 個別チェック
