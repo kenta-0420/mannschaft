@@ -3,6 +3,7 @@ plugins {
     jacoco
     id("org.springframework.boot") version "3.5.13"
     id("io.spring.dependency-management") version "1.1.7"
+    id("org.springdoc.openapi-gradle-plugin") version "1.9.0"
 }
 
 group = "com.mannschaft"
@@ -86,6 +87,9 @@ dependencies {
 
     // MySQL
     runtimeOnly("com.mysql:mysql-connector-j")
+
+    // H2: openapi-gen プロファイルで MySQL なしの generateOpenApiDocs タスクを実行するためのインメモリDB
+    runtimeOnly("com.h2database:h2")
 
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -271,4 +275,22 @@ tasks.register<JavaExec>("importPostalCodes") {
         "-XX:HeapDumpPath=logs/heap-dump.hprof"
     )
     dependsOn("compileJava")
+}
+
+// OpenAPI JSON 静的生成
+// `./gradlew generateOpenApiDocs` で docs/openapi.json を生成する。
+// springdoc-openapi-gradle-plugin はプロジェクトをフォークした Spring Boot プロセスとして起動し、
+// /v3/api-docs エンドポイントから JSON を取得して outputDir に保存する。
+// openapi-gen プロファイル: MySQL 不要、H2 インメモリ DB + Flyway 無効 で起動する。
+openApi {
+    apiDocsUrl.set("http://localhost:8080/v3/api-docs")
+    // projectDir は backend/ ディレクトリを指すため、親（リポジトリルート）の docs/ を指定する
+    outputDir.set(file("${projectDir.parentFile}/docs"))
+    outputFileName.set("openapi.json")
+    // フォーク先 Spring Boot が完全起動するまで待機する秒数
+    waitTimeInSeconds.set(60)
+    customBootRun {
+        // openapi-gen プロファイルを有効化（H2 インメモリ DB + Flyway 無効）
+        args.add("--spring.profiles.active=openapi-gen")
+    }
 }
