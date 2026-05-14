@@ -1,0 +1,32 @@
+package com.mannschaft.app.residencestatus.batch;
+
+import com.mannschaft.app.residencestatus.service.AnnualReviewService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+/**
+ * 締切超過キャンペーン自動クローズバッチ（F09.16 S3-A）。
+ *
+ * <p>毎日 04:00 に実行し、deadlineAt を超過した未クローズのキャンペーンを自動クローズする。
+ * クローズ後は {@link com.mannschaft.app.residencestatus.event.AnnualReviewClosedEvent} が発火する。</p>
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class AnnualReviewDeadlineCloseBatch {
+
+    private final AnnualReviewService annualReviewService;
+
+    @Scheduled(cron = "0 0 4 * * *")
+    public void autoClose() {
+        log.info("[AnnualReviewDeadlineCloseBatch] 開始");
+        try {
+            annualReviewService.autoCloseExpiredReviews();
+            log.info("[AnnualReviewDeadlineCloseBatch] 完了");
+        } catch (Exception e) {
+            log.error("[AnnualReviewDeadlineCloseBatch] エラー", e);
+        }
+    }
+}
