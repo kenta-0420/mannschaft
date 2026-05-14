@@ -119,7 +119,7 @@ class ResidentActivityAggregatorServiceTest {
 
             ResidentActivitySnapshot snap =
                     buildSnapshot(REGISTRY_ID, SUBJECT_USER, LocalDate.now(), 30);
-            when(snapshotRepo.findByResidentRegistryIdAndDeletedAtIsNullOrderBySnapshotDateDesc(REGISTRY_ID))
+            when(snapshotRepo.findByResidentRegistryIdAndOrganizationIdAndDeletedAtIsNullOrderBySnapshotDateDesc(REGISTRY_ID, ORG_ID))
                     .thenReturn(List.of(snap));
 
             List<ActivitySnapshotDto> result = service.getSnapshots(ORG_ID, REGISTRY_ID, ADMIN_USER);
@@ -137,7 +137,7 @@ class ResidentActivityAggregatorServiceTest {
 
             ResidentActivitySnapshot snap =
                     buildSnapshot(REGISTRY_ID, SUBJECT_USER, LocalDate.now(), 30);
-            when(snapshotRepo.findByResidentRegistryIdAndDeletedAtIsNullOrderBySnapshotDateDesc(REGISTRY_ID))
+            when(snapshotRepo.findByResidentRegistryIdAndOrganizationIdAndDeletedAtIsNullOrderBySnapshotDateDesc(REGISTRY_ID, ORG_ID))
                     .thenReturn(List.of(snap));
 
             // SUBJECT_USER が自分自身のスナップショットにアクセス
@@ -160,7 +160,7 @@ class ResidentActivityAggregatorServiceTest {
 
             // 権限エラーの場合は snapshotRepo を呼ばない
             verify(snapshotRepo, never())
-                    .findByResidentRegistryIdAndDeletedAtIsNullOrderBySnapshotDateDesc(anyLong());
+                    .findByResidentRegistryIdAndOrganizationIdAndDeletedAtIsNullOrderBySnapshotDateDesc(anyLong(), anyLong());
         }
 
         @Test
@@ -168,7 +168,7 @@ class ResidentActivityAggregatorServiceTest {
         void getSnapshots_empty_list() {
             when(accessControlService.isAdminOrAbove(ADMIN_USER, ORG_ID, "ORGANIZATION"))
                     .thenReturn(true);
-            when(snapshotRepo.findByResidentRegistryIdAndDeletedAtIsNullOrderBySnapshotDateDesc(REGISTRY_ID))
+            when(snapshotRepo.findByResidentRegistryIdAndOrganizationIdAndDeletedAtIsNullOrderBySnapshotDateDesc(REGISTRY_ID, ORG_ID))
                     .thenReturn(List.of());
 
             List<ActivitySnapshotDto> result = service.getSnapshots(ORG_ID, REGISTRY_ID, ADMIN_USER);

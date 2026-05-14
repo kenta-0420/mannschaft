@@ -135,7 +135,8 @@ public class ResidentActivityAggregatorService {
         // 対象居住者の最新スナップショットから subjectUserId を特定して比較する
         // （クロスドメイン参照を避けるため residencestatus ドメイン内の subjectUserId を使用）
         List<ResidentActivitySnapshot> snapshots = snapshotRepo
-                .findByResidentRegistryIdAndDeletedAtIsNullOrderBySnapshotDateDesc(residentRegistryId);
+                .findByResidentRegistryIdAndOrganizationIdAndDeletedAtIsNullOrderBySnapshotDateDesc(
+                        residentRegistryId, organizationId);
 
         if (!snapshots.isEmpty()) {
             Long subjectUserId = snapshots.get(0).getSubjectUserId();
