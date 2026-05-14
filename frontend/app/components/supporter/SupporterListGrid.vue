@@ -35,11 +35,11 @@ function formatDate(dateStr: string) {
       >
         <Avatar
           :image="supporter.avatarUrl ?? undefined"
-          :label="supporter.avatarUrl ? undefined : supporter.displayName.charAt(0)"
+          :label="supporter.avatarUrl ? undefined : supporter.fullName.charAt(0)"
           shape="circle"
         />
         <div class="min-w-0 flex-1">
-          <p class="truncate font-medium">{{ supporter.displayName }}</p>
+          <p class="truncate font-medium">{{ supporter.fullName }}</p>
           <p class="text-xs text-gray-400">{{ formatDate(supporter.followedAt) }}から</p>
         </div>
       </div>

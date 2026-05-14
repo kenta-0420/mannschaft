@@ -52,7 +52,7 @@ async function handleLogin() {
         authStore.setUser({
           id: profile.data.id,
           email: profile.data.email,
-          displayName: profile.data.displayName,
+          fullName: profile.data.lastName + ' ' + profile.data.firstName,
           profileImageUrl: profile.data.avatarUrl,
           systemRole: profile.data.systemRole ?? undefined,
         })
@@ -64,7 +64,7 @@ async function handleLogin() {
         authStore.setUser({
           id: data.data.userId,
           email: data.data.email,
-          displayName: data.data.displayName,
+          fullName: data.data.fullName,
           profileImageUrl: null,
         })
       }

@@ -76,12 +76,12 @@ function formatDate(dateStr: string) {
         />
         <Avatar
           :image="app.avatarUrl ?? undefined"
-          :label="app.avatarUrl ? undefined : app.displayName.charAt(0)"
+          :label="app.avatarUrl ? undefined : app.fullName.charAt(0)"
           shape="circle"
           size="normal"
         />
         <div class="min-w-0 flex-1">
-          <p class="font-medium">{{ app.displayName }}</p>
+          <p class="font-medium">{{ app.fullName }}</p>
           <p v-if="app.message" class="truncate text-sm text-gray-500">{{ app.message }}</p>
           <p class="text-xs text-gray-400">申請日: {{ formatDate(app.createdAt) }}</p>
         </div>
