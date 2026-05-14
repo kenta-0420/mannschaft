@@ -350,7 +350,11 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_034", HttpStatus.FORBIDDEN),            // CREATION_REQUEST_REJECTED
             Map.entry("VILLAGE_035", HttpStatus.CONFLICT),             // CREATION_REQUEST_SLUG_TAKEN
             Map.entry("VILLAGE_036", HttpStatus.FORBIDDEN),            // OFFICIAL_VILLAGE_FORBIDDEN
-            Map.entry("VILLAGE_037", HttpStatus.FORBIDDEN)             // VILLAGE_CREATE_FORBIDDEN
+            Map.entry("VILLAGE_037", HttpStatus.FORBIDDEN),            // VILLAGE_CREATE_FORBIDDEN
+
+            // F18 個人ポイントカードウォレット
+            Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED
+            Map.entry("POINT_CARD_003", HttpStatus.NOT_FOUND)          // CARD_NOT_FOUND（IDOR 対策で 403→404）
     );
 
     /**
