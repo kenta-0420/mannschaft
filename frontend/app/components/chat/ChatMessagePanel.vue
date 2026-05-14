@@ -254,7 +254,7 @@ const offWsEvent = wsEventBus.on((event) => {
     const deleted = event.data as { id: number }
     const idx = messages.value.findIndex((m) => m.id === deleted.id)
     if (idx !== -1) {
-      messages.value[idx] = { ...messages.value[idx], isDeleted: true, body: null, sender: null }
+      messages.value[idx] = { ...messages.value[idx]!, isDeleted: true, body: null, sender: null }
     }
   } else if (event.type === 'REACTION_UPDATED') {
     const reaction = event.data as {
@@ -265,7 +265,7 @@ const offWsEvent = wsEventBus.on((event) => {
     const idx = messages.value.findIndex((m) => m.id === reaction.messageId)
     if (idx !== -1) {
       messages.value[idx] = {
-        ...messages.value[idx],
+        ...messages.value[idx]!,
         reactionSummary: reaction.reactionSummary,
         myReactions: reaction.myReactions,
       }
