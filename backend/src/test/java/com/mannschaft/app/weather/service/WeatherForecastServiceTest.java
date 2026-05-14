@@ -6,6 +6,7 @@ import com.mannschaft.app.weather.client.WeatherApiClient;
 import com.mannschaft.app.weather.client.WeatherForecastData;
 import com.mannschaft.app.weather.config.WeatherApiProperties;
 import com.mannschaft.app.weather.exception.WeatherProviderException;
+import com.mannschaft.app.weather.metrics.WeatherMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,7 @@ class WeatherForecastServiceTest {
     private WeatherApiClient client;
     private WeatherApiProperties props;
     private ObjectMapper objectMapper;
+    private WeatherMetrics weatherMetrics;
     private WeatherForecastService service;
 
     @BeforeEach
@@ -58,7 +60,8 @@ class WeatherForecastServiceTest {
         props.setCacheTtlSeconds(3600L);
         props.setStaleTtlSeconds(21600L);
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-        service = new WeatherForecastService(redisTemplate, client, props, objectMapper);
+        weatherMetrics = mock(WeatherMetrics.class);
+        service = new WeatherForecastService(redisTemplate, client, props, objectMapper, weatherMetrics);
     }
 
     @Test
