@@ -368,7 +368,7 @@ public class OrganizationService {
                         if (user != null) {
                             result.add(new OrgAllMembersResponse(
                                     user.getId(),
-                                    user.getDisplayName(),
+                                    user.getLastName() + " " + user.getFirstName(),
                                     user.getAvatarUrl(),
                                     new OrgAllMembersResponse.MemberOf("ORGANIZATION", org.getId(), org.getName()),
                                     roleName));
@@ -391,7 +391,7 @@ public class OrganizationService {
                                     if (user != null) {
                                         result.add(new OrgAllMembersResponse(
                                                 user.getId(),
-                                                user.getDisplayName(),
+                                                user.getLastName() + " " + user.getFirstName(),
                                                 user.getAvatarUrl(),
                                                 new OrgAllMembersResponse.MemberOf("TEAM", team.getId(), team.getName()),
                                                 roleName));

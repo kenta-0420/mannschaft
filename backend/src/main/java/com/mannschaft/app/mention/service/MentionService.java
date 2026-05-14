@@ -88,7 +88,7 @@ public class MentionService {
         if (mentionedByUser != null) {
             mentionedBy = new MentionedByUser(
                     mentionedByUser.getId(),
-                    mentionedByUser.getDisplayName(),
+                    mentionedByUser.getLastName() + " " + mentionedByUser.getFirstName(),
                     mentionedByUser.getAvatarUrl()
             );
         } else {

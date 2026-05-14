@@ -130,7 +130,7 @@ public class GlobalSearchService {
         var users = userRepository.searchByKeyword(query, limit);
         results.put("users", users.stream()
                 .map(u -> Map.<String, Object>of(
-                        "id", u.getId(), "displayName", u.getDisplayName()))
+                        "id", u.getId(), "fullName", u.getLastName() + " " + u.getFirstName()))
                 .collect(Collectors.toList()));
         counts.put("users", (long) users.size());
 
