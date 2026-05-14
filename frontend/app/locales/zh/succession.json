@@ -1,0 +1,47 @@
+{
+  "succession": {
+    "unseal": {
+      "title": "Unseal Request List",
+      "selectPrompt": "Select a request",
+      "field": {
+        "id": "Request ID",
+        "preRegistrationId": "Pre-registration ID",
+        "requestedBy": "Requested By",
+        "reason": "Reason",
+        "status": "Status",
+        "firstApprover": "First Approver",
+        "secondApprover": "Second Approver",
+        "autoResealAt": "Auto Re-seal At",
+        "createdAt": "Requested At"
+      },
+      "status": {
+        "PENDING": "Pending",
+        "FIRST_APPROVED": "First Approved",
+        "UNSEALED": "Unsealed",
+        "RE_SEALED": "Re-sealed",
+        "CANCELLED": "Cancelled"
+      },
+      "action": {
+        "firstApprove": "First Approve",
+        "secondApprove": "Second Approve (Unseal)",
+        "cancel": "Cancel"
+      },
+      "dialog": {
+        "comment": "Comment (optional)",
+        "FIRST_APPROVE": {
+          "title": "First Approval",
+          "submit": "Approve"
+        },
+        "SECOND_APPROVE": {
+          "title": "Second Approval (Unseal)",
+          "submit": "Unseal"
+        },
+        "CANCEL": {
+          "title": "Cancel Request",
+          "confirm": "Cancel this unseal request?",
+          "submit": "Cancel"
+        }
+      }
+    }
+  }
+}

@@ -6,13 +6,14 @@ import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.repairplan.module.RepairPlanModuleGuard;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 
 /**
  * F08.8 Phase 5 申し送りパック Controller / Service 統合テスト共通基底クラス。
@@ -54,6 +55,7 @@ public abstract class AbstractRepairPlanPhase5IntegrationTest extends AbstractMy
     }
 
     /** 全モックを no-op にセットアップする。派生クラスの {@code @BeforeEach} で呼ぶこと。 */
+    @SuppressWarnings("unchecked")
     protected void mockDependenciesNoop() {
         lenient().doNothing().when(repairPlanModuleGuard).requireEnabled(any(), anyLong());
 
@@ -69,5 +71,12 @@ public abstract class AbstractRepairPlanPhase5IntegrationTest extends AbstractMy
         // SHA-256 はダミーハッシュを返す
         lenient().when(pdfGeneratorService.sha256Hex(any(byte[].class)))
                 .thenReturn("a".repeat(64));
+
+        // StringRedisTemplate.opsForValue() が null を返すと simulate() で NPE が発生するため、
+        // ValueOperations モックをセットアップして get() が null（キャッシュミス）を返すようにする。
+        ValueOperations<String, String> valueOpsMock = mock(ValueOperations.class);
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOpsMock);
+        lenient().when(valueOpsMock.get(anyString())).thenReturn(null);
+        lenient().doNothing().when(valueOpsMock).set(anyString(), anyString(), any());
     }
 }

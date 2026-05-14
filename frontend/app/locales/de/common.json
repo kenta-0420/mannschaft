@@ -1,5 +1,33 @@
 {
   "chat": {
+    "contextMenu": {
+      "replyInThread": "Im Thread antworten",
+      "react": "Reagieren",
+      "pin": "Anheften",
+      "unpin": "Loslösen",
+      "edit": "Bearbeiten",
+      "copy": "Kopieren",
+      "forward": "Weiterleiten",
+      "bookmark": "Lesezeichen",
+      "removeBookmark": "Lesezeichen entfernen",
+      "delete": "Löschen"
+    },
+    "thread": {
+      "activeThreads": "{count} aktive Threads",
+      "replyCount": "{count} Antworten",
+      "reply": "Antworten"
+    },
+    "boardMigration": {
+      "banner": "Das Thema wird tiefer. Möchten Sie es in einen Pinnwand-Thread verschieben?",
+      "createThread": "Pinnwand-Thread erstellen",
+      "dialogTitle": "In Pinnwand-Thread migrieren",
+      "titleLabel": "Thread-Titel",
+      "boardLabel": "Zielpinnwand",
+      "copyHistory": "Gesprächsverlauf kopieren",
+      "confirm": "Migrieren",
+      "success": "Pinnwand-Thread erstellt",
+      "error": "Migration fehlgeschlagen"
+    },
     "sidebar": {
       "chat": "Chat",
       "contacts": "Kontakte",

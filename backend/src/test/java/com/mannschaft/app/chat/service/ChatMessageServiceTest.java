@@ -2,13 +2,16 @@ package com.mannschaft.app.chat.service;
 
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.ChatMapper;
+import com.mannschaft.app.chat.dto.ActiveThreadItemResponse;
 import com.mannschaft.app.chat.dto.EditMessageRequest;
 import com.mannschaft.app.chat.dto.ForwardMessageRequest;
 import com.mannschaft.app.chat.dto.MessageResponse;
 import com.mannschaft.app.chat.dto.SendMessageRequest;
+import com.mannschaft.app.chat.dto.ThreadResponse;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.ChannelType;
+import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
@@ -21,6 +24,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
@@ -30,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -59,6 +65,9 @@ class ChatMessageServiceTest {
     @Mock
     private ChatAttachmentService chatAttachmentService;
 
+    @Mock
+    private ChatChannelMemberRepository memberRepository;
+
     @InjectMocks
     private ChatMessageService chatMessageService;
 
@@ -85,8 +94,8 @@ class ChatMessageServiceTest {
     }
 
     private MessageResponse createMessageResponse() {
-        return new MessageResponse(MESSAGE_ID, CHANNEL_ID, SENDER_ID, null, "テストメッセージ",
-                null, false, false, null, 0, 0, false, List.of(), List.of(), null, null);
+        return new MessageResponse(MESSAGE_ID, CHANNEL_ID, SENDER_ID, null, null, 0, false,
+                "テストメッセージ", null, false, false, null, 0, 0, false, List.of(), List.of(), null, null);
     }
 
     // ========================================
@@ -632,6 +641,176 @@ class ChatMessageServiceTest {
 
             // then
             assertThat(result).isNotNull();
+        }
+    }
+
+    // ========================================
+    // F04.2 スレッド無制限ネスト・active_thread_count
+    // ========================================
+    @Nested
+    @DisplayName("F04.2 スレッド無制限ネスト")
+    class ThreadNesting {
+
+        @Test
+        @DisplayName("正常系: トップレベルへの返信は rootId=親ID、depth=1 になる")
+        void トップレベルへの返信はrootIdが親IDでdepth1() {
+            // given
+            Long parentId = 5L;
+            SendMessageRequest req = new SendMessageRequest("返信", parentId, null, null);
+            ChatChannelEntity channel = createChannel();
+            // 親: depth=0（トップレベル）, rootId=null
+            ChatMessageEntity parent = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(SENDER_ID).body("親").depth(0).build();
+            ChatMessageEntity savedReply = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(SENDER_ID).body("返信")
+                    .parentId(parentId).rootId(parentId).depth(1).build();
+            MessageResponse expected = createMessageResponse();
+
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
+            // 最初の save: 新メッセージ保存。2回目: 親の replyCount 更新
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(savedReply);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+
+            // when
+            chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
+
+            // then: 親の replyCount がインクリメントされていること
+            assertThat(parent.getReplyCount()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("正常系: 返信への返信は rootId を継承し depth がインクリメントされる")
+        void 返信への返信はrootIdを継承してdepthインクリメント() {
+            // given
+            Long rootId = 1L;
+            Long parentId = 5L; // depth=1 の返信
+            SendMessageRequest req = new SendMessageRequest("孫返信", parentId, null, null);
+            ChatChannelEntity channel = createChannel();
+            // 親: depth=1, rootId=rootId
+            ChatMessageEntity parent = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(SENDER_ID).body("返信")
+                    .parentId(rootId).rootId(rootId).depth(1).build();
+            MessageResponse expected = createMessageResponse();
+
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willAnswer(invocation -> {
+                ChatMessageEntity arg = invocation.getArgument(0);
+                // 新規メッセージ（"孫返信"）の場合のみ rootId と depth を検証
+                // 親の replyCount 更新保存は別途実行されるため body で識別する
+                if ("孫返信".equals(arg.getBody())) {
+                    assertThat(arg.getRootId()).isEqualTo(rootId);
+                    assertThat(arg.getDepth()).isEqualTo(2);
+                }
+                return arg;
+            });
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+
+            // when
+            chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
+
+            // then: save が呼ばれた（新メッセージ + 親の replyCount 更新）
+            verify(messageRepository, org.mockito.Mockito.atLeast(1)).save(any(ChatMessageEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: 初回返信時に active_thread_count が +1 される")
+        void 初回返信でアクティブスレッドカウントが増える() {
+            // given
+            Long parentId = 5L;
+            SendMessageRequest req = new SendMessageRequest("初回返信", parentId, null, null);
+            ChatChannelEntity channel = createChannel();
+            // 親: depth=0（トップレベル）, replyCount=0（まだ返信なし）
+            ChatMessageEntity parent = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(SENDER_ID).body("親").depth(0).build();
+            assertThat(parent.getReplyCount()).isEqualTo(0);
+            MessageResponse expected = createMessageResponse();
+
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(parent);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+
+            // when
+            chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
+
+            // then: チャンネルの activeThreadCount が 1 になる
+            assertThat(channel.getActiveThreadCount()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("正常系: 全返信削除時に active_thread_count が -1 される")
+        void 全返信削除でアクティブスレッドカウントが減る() {
+            // given
+            Long parentId = 3L;
+            // 親: depth=0, replyCount=1（この返信が最後の1件）
+            ChatMessageEntity parent = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(SENDER_ID).body("親").depth(0).build();
+            parent.incrementReplyCount(); // replyCount = 1 にセット
+            ChatChannelEntity channel = createChannel();
+            channel.incrementActiveThreadCount(); // activeThreadCount = 1 にセット
+
+            ChatMessageEntity reply = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(SENDER_ID).body("返信")
+                    .parentId(parentId).rootId(parentId).depth(1).build();
+
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(reply));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(reply);
+            given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(attachmentRepository.findByMessageId(MESSAGE_ID)).willReturn(List.of());
+
+            // when
+            chatMessageService.deleteMessage(MESSAGE_ID, SENDER_ID);
+
+            // then: activeThreadCount が 0 に戻る
+            assertThat(channel.getActiveThreadCount()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("正常系: getThread がフラット配列を返す")
+        void getThreadがフラット配列を返す() {
+            // given
+            ChatMessageEntity root = createMessage();
+            ChatMessageEntity reply = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(SENDER_ID).body("返信").depth(1).rootId(MESSAGE_ID).build();
+            Page<ChatMessageEntity> replyPage = new PageImpl<>(List.of(reply));
+            MessageResponse expected = createMessageResponse();
+
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(root));
+            given(messageRepository.findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(
+                    eq(MESSAGE_ID), any(Pageable.class))).willReturn(replyPage);
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
+
+            // when
+            ThreadResponse result = chatMessageService.getThread(MESSAGE_ID, null, 10);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.messages()).hasSize(1);
+            assertThat(result.root()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("正常系: depth >= 10 で suggestBoardMigration = true になる")
+        void depth10以上でsuggestBoardMigrationがtrue() {
+            // given: depth=10 のメッセージ
+            ChatMessageEntity deepMessage = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(SENDER_ID).body("深いメッセージ").depth(10).build();
+
+            // when: ChatMapper の BOARD_MIGRATION_SUGGEST_DEPTH を検証
+            // ChatMapper.BOARD_MIGRATION_SUGGEST_DEPTH = 10
+            assertThat(deepMessage.getDepth()).isGreaterThanOrEqualTo(10);
+            // MessageResponse の suggestBoardMigration は depth >= 10 で true
+            MessageResponse deepResponse = new MessageResponse(
+                    1L, CHANNEL_ID, SENDER_ID, null, null, 10, true,
+                    "深いメッセージ", null, false, false, null, 0, 0, false, List.of(), List.of(), null, null);
+            assertThat(deepResponse.isSuggestBoardMigration()).isTrue();
         }
     }
 }

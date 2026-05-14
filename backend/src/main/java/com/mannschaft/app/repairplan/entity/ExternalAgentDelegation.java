@@ -18,6 +18,7 @@ import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
+// TODO: EXTERNAL_AGENT_DELEGATION_GRANTED/REVOKED 監査ログ — 委任サービス実装時に追加すること
 /**
  * 外部エージェント委任（F08.8 Phase 1）。
  *

@@ -1,5 +1,33 @@
 {
   "chat": {
+    "contextMenu": {
+      "replyInThread": "스레드에서 답장",
+      "react": "반응",
+      "pin": "고정",
+      "unpin": "고정 해제",
+      "edit": "편집",
+      "copy": "복사",
+      "forward": "전달",
+      "bookmark": "북마크",
+      "removeBookmark": "북마크 해제",
+      "delete": "삭제"
+    },
+    "thread": {
+      "activeThreads": "{count}개의 스레드 진행 중",
+      "replyCount": "{count}개의 답장",
+      "reply": "답장"
+    },
+    "boardMigration": {
+      "banner": "주제가 깊어지고 있습니다. 게시판 스레드로 이동하시겠습니까?",
+      "createThread": "게시판 스레드 만들기",
+      "dialogTitle": "게시판 스레드로 이동",
+      "titleLabel": "스레드 제목",
+      "boardLabel": "대상 게시판",
+      "copyHistory": "대화 기록 복사",
+      "confirm": "이동",
+      "success": "게시판 스레드가 생성되었습니다",
+      "error": "이동 실패"
+    },
     "sidebar": {
       "chat": "채팅",
       "contacts": "연락처",

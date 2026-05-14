@@ -2,16 +2,19 @@ package com.mannschaft.app.chat.service;
 
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.ChatMapper;
+import com.mannschaft.app.chat.dto.ActiveThreadItemResponse;
 import com.mannschaft.app.chat.dto.AttachmentRequest;
 import com.mannschaft.app.chat.dto.AttachmentResponse;
 import com.mannschaft.app.chat.dto.EditMessageRequest;
 import com.mannschaft.app.chat.dto.ForwardMessageRequest;
 import com.mannschaft.app.chat.dto.MessageResponse;
 import com.mannschaft.app.chat.dto.SendMessageRequest;
+import com.mannschaft.app.chat.dto.ThreadResponse;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.entity.ChatMessageReactionEntity;
+import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
@@ -19,6 +22,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * チャットメッセージサービス。メッセージの送受信・編集・削除・検索を担当する。
@@ -48,6 +53,7 @@ public class ChatMessageService {
     private final ChatMapper chatMapper;
     /** F13 Phase 4-β: 統合ストレージクォータ連携。添付の INSERT 時 / 論理削除時の使用量計上に使用。 */
     private final ChatAttachmentService chatAttachmentService;
+    private final ChatChannelMemberRepository memberRepository;
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
@@ -97,21 +103,37 @@ public class ChatMessageService {
     public MessageResponse sendMessage(Long channelId, SendMessageRequest request, Long senderId) {
         ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
 
+        // スレッドネスト計算: 親メッセージが存在する場合に rootId・depth を設定
+        Long rootId = null;
+        int depth = 0;
+        ChatMessageEntity parentMessage = null;
+        if (request.getParentId() != null) {
+            parentMessage = findMessageOrThrow(request.getParentId());
+            // rootId: 親がルートなら親のID、親がネストなら親の rootId を継承
+            rootId = parentMessage.getRootId() != null ? parentMessage.getRootId() : parentMessage.getId();
+            depth = (parentMessage.getDepth() != null ? parentMessage.getDepth() : 0) + 1;
+        }
+
         ChatMessageEntity message = ChatMessageEntity.builder()
                 .channelId(channelId)
                 .senderId(senderId)
                 .parentId(request.getParentId())
+                .rootId(rootId)
+                .depth(depth)
                 .body(request.getBody())
                 .scheduledAt(request.getScheduledAt())
                 .build();
 
         ChatMessageEntity saved = messageRepository.save(message);
 
-        // 親メッセージの返信数をインクリメント
-        if (request.getParentId() != null) {
-            ChatMessageEntity parent = findMessageOrThrow(request.getParentId());
-            parent.incrementReplyCount();
-            messageRepository.save(parent);
+        // 親メッセージの返信数をインクリメント + active_thread_count 管理
+        if (parentMessage != null) {
+            parentMessage.incrementReplyCount();
+            // 初回返信（depth==0のルートへの返信数が1になった）場合、チャンネルのアクティブスレッド数をインクリメント
+            if (parentMessage.isRootMessage() && parentMessage.getReplyCount() == 1) {
+                channel.incrementActiveThreadCount();
+            }
+            messageRepository.save(parentMessage);
         }
 
         // 添付ファイルを保存（F13 Phase 4-β: 同時に StorageQuotaService.recordUpload を発火）
@@ -176,11 +198,24 @@ public class ChatMessageService {
 
         message.softDelete();
         messageRepository.save(message);
+
+        // 返信削除後: 親の replyCount を減らし、0 になった場合は active_thread_count をデクリメント
+        if (message.getParentId() != null) {
+            messageRepository.findById(message.getParentId()).ifPresent(parent -> {
+                parent.decrementReplyCount();
+                if (parent.isRootMessage() && parent.getReplyCount() == 0) {
+                    ChatChannelEntity parentChannel = channelService.findChannelOrThrow(parent.getChannelId());
+                    parentChannel.decrementActiveThreadCount();
+                }
+                messageRepository.save(parent);
+            });
+        }
+
         log.info("メッセージ削除完了: messageId={}", messageId);
     }
 
     /**
-     * スレッド返信一覧を取得する。
+     * スレッド返信一覧を取得する（後方互換のため残す）。
      *
      * @param parentId 親メッセージID
      * @return メッセージレスポンスリスト
@@ -189,6 +224,108 @@ public class ChatMessageService {
         findMessageOrThrow(parentId);
         List<ChatMessageEntity> replies = messageRepository.findByParentIdOrderByCreatedAtAsc(parentId);
         return enrichMessages(replies);
+    }
+
+    /**
+     * スレッドの全返信をフラット取得する（無制限ネスト対応）。
+     *
+     * @param messageId ルートメッセージID
+     * @param cursor    カーソル（ページネーション用）
+     * @param limit     取得件数
+     * @return スレッドレスポンス
+     */
+    public ThreadResponse getThread(Long messageId, String cursor, Integer limit) {
+        ChatMessageEntity root = findMessageOrThrow(messageId);
+        int effectiveLimit = resolveLimit(limit);
+
+        // カーソルをページ番号に変換（簡易実装: cursor は "page_N" 形式）
+        int page = parseCursorAsPage(cursor);
+        Pageable pageable = PageRequest.of(page, effectiveLimit);
+
+        Page<ChatMessageEntity> replyPage = messageRepository
+                .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(messageId, pageable);
+
+        List<MessageResponse> messages = enrichMessages(replyPage.getContent());
+
+        boolean hasMore = replyPage.hasNext();
+        String nextCursor = hasMore ? "page_" + (page + 1) : null;
+
+        MessageResponse rootResponse = enrichMessage(root);
+        return new ThreadResponse(
+                rootResponse,
+                messages,
+                (int) replyPage.getTotalElements(),
+                nextCursor,
+                hasMore
+        );
+    }
+
+    /**
+     * アクティブスレッド一覧を取得する（reply_count > 0 のトップレベルメッセージ）。
+     *
+     * @param channelId チャンネルID
+     * @param cursor    カーソル（ページネーション用）
+     * @param limit     取得件数
+     * @return アクティブスレッドアイテムレスポンスのカーソルページ
+     */
+    public CursorPagedResponse<ActiveThreadItemResponse> getActiveThreads(
+            Long channelId, Long userId, String cursor, Integer limit) {
+        if (!memberRepository.existsByChannelIdAndUserId(channelId, userId)) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        }
+        int effectiveLimit = resolveLimit(limit);
+        int page = parseCursorAsPage(cursor);
+        Pageable pageable = PageRequest.of(page, effectiveLimit + 1);
+
+        Page<ChatMessageEntity> threadPage = messageRepository.findActiveThreadsByChannelId(channelId, pageable);
+        List<ChatMessageEntity> threads = threadPage.getContent();
+
+        boolean hasNext = threads.size() > effectiveLimit;
+        List<ChatMessageEntity> pageItems = hasNext ? threads.subList(0, effectiveLimit) : threads;
+
+        List<ActiveThreadItemResponse> responses = pageItems.stream()
+                .map(m -> new ActiveThreadItemResponse(
+                        m.getId(),
+                        m.getSenderId(),
+                        null, // senderDisplayName は UserQueryService 経由で取得（現在は null）
+                        m.getBody(),
+                        m.getReplyCount(),
+                        m.getUpdatedAt(),
+                        truncate(m.getBody(), PREVIEW_LENGTH),
+                        m.getCreatedAt()
+                ))
+                .collect(Collectors.toList());
+
+        String nextCursor = hasNext ? "page_" + (page + 1) : null;
+        return CursorPagedResponse.of(
+                responses,
+                new CursorPagedResponse.CursorMeta(nextCursor, hasNext, effectiveLimit)
+        );
+    }
+
+    /**
+     * カーソル文字列をページ番号に変換する。
+     *
+     * @param cursor カーソル文字列（"page_N" 形式）。null の場合は 0 を返す
+     * @return ページ番号
+     */
+    private int parseCursorAsPage(String cursor) {
+        if (cursor == null) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(cursor.replace("page_", ""));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /**
+     * 文字列を指定長で切り詰める。
+     */
+    private String truncate(String text, int maxLength) {
+        if (text == null) return null;
+        return text.length() > maxLength ? text.substring(0, maxLength) : text;
     }
 
     /**
