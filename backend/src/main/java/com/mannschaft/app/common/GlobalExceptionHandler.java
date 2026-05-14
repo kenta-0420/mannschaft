@@ -324,21 +324,10 @@ public class GlobalExceptionHandler {
             Map.entry("TOUR_026", HttpStatus.NOT_FOUND),              // TEAM_NOT_IN_ORGANIZATION (IDOR対策で404)
             Map.entry("TOUR_027", HttpStatus.CONFLICT),               // DUPLICATE_ENTRY_MEMBER
             Map.entry("TOUR_028", HttpStatus.FORBIDDEN),              // TEMPLATE_TEAM_MISMATCH
-            // F17.1 村機能 Phase 1 — メンバーシップ系（B3 範囲、設計書 §10 準拠）
-            Map.entry("VILLAGE_001", HttpStatus.NOT_FOUND),           // VILLAGE_NOT_FOUND (IDOR 対策で 404)
-            Map.entry("VILLAGE_002", HttpStatus.FORBIDDEN),           // VILLAGE_UNLISTED
-            Map.entry("VILLAGE_006", HttpStatus.CONFLICT),            // ALREADY_MEMBER
-            Map.entry("VILLAGE_007", HttpStatus.NOT_FOUND),           // NOT_MEMBER (IDOR 対策で 404)
-            Map.entry("VILLAGE_012", HttpStatus.TOO_MANY_REQUESTS),   // PARTICIPATION_LIMIT_EXCEEDED
-            Map.entry("VILLAGE_015", HttpStatus.FORBIDDEN),           // REPRESENT_FORBIDDEN / SUBJECT_NOT_AUTHORIZED
-            Map.entry("VILLAGE_016", HttpStatus.FORBIDDEN),           // SUBJECT_NOT_MEMBER
-            Map.entry("VILLAGE_017", HttpStatus.CONFLICT),            // HEADMAN_CANNOT_LEAVE
-            Map.entry("VILLAGE_018", HttpStatus.CONFLICT),            // VERSION_CONFLICT
-            Map.entry("VILLAGE_019", HttpStatus.CONFLICT),            // VILLAGE_JOIN_REQUIRES_APPROVAL
-            Map.entry("VILLAGE_024", HttpStatus.FORBIDDEN),           // MODERATION_FORBIDDEN
-            Map.entry("VILLAGE_025", HttpStatus.CONFLICT),            // JOIN_RATE_EXCEEDED
-            Map.entry("VILLAGE_027", HttpStatus.CONFLICT),            // VILLAGE_ALREADY_ARCHIVED
-            Map.entry("VILLAGE_031", HttpStatus.FORBIDDEN)            // BANNED
+            // F17.1 村ニックネーム（B4）
+            Map.entry("VILLAGE_004", HttpStatus.CONFLICT),                // NICKNAME_TAKEN
+            Map.entry("VILLAGE_008", HttpStatus.UNPROCESSABLE_ENTITY),    // NICKNAME_INVALID
+            Map.entry("VILLAGE_013", HttpStatus.TOO_MANY_REQUESTS)        // NICKNAME_CHANGE_THROTTLED
     );
 
     /**
