@@ -1,0 +1,39 @@
+{
+  "teamSidebar": {
+    "category": {
+      "home": "Home",
+      "schedule": "Schedule",
+      "member": "Members",
+      "ops": "Operations",
+      "facility": "Facility",
+      "data": "Data",
+      "settings": "Settings"
+    },
+    "item": {
+      "dashboard": "Dashboard",
+      "announcements": "Announcements",
+      "chat": "Chat",
+      "bulletin": "Bulletin Board",
+      "feed": "Feed",
+      "schedule": "Calendar",
+      "shifts": "Shifts",
+      "duties": "Duties",
+      "annual_plan": "Annual Plan",
+      "members": "Members",
+      "circulation": "Circulation",
+      "safety_check": "Safety Check",
+      "todos": "Tasks",
+      "workflows": "Workflows",
+      "forms": "Surveys",
+      "projects": "Projects",
+      "budget": "Budget",
+      "repair_plan": "Repair Plan",
+      "equipment": "Equipment",
+      "parking": "Parking",
+      "files": "Files",
+      "analytics": "Analytics",
+      "audit_logs": "Audit Logs",
+      "settings": "Settings"
+    }
+  }
+}
