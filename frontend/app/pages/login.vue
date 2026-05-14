@@ -22,7 +22,7 @@ async function handleLogin() {
         accessToken: string
         refreshToken: string
         userId: number
-        displayName: string
+        fullName: string
         email: string
         mfaRequired?: boolean
         mfaSessionToken?: string
@@ -43,7 +43,8 @@ async function handleLogin() {
           data: {
             id: number
             email: string
-            displayName: string
+            lastName: string
+            firstName: string
             avatarUrl: string | null
             systemRole: string | null
             locale: string

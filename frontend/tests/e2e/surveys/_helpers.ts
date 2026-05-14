@@ -265,11 +265,11 @@ export function buildResultSummary(opts: BuildResultOptions): SurveyResultSummar
 
 /** RespondentItem の雛形を生成する。 */
 export function buildRespondent(
-  opts: Partial<RespondentItem> & { userId: number; displayName: string },
+  opts: Partial<RespondentItem> & { userId: number; fullName: string },
 ): RespondentItem {
   return {
     userId: opts.userId,
-    displayName: opts.displayName,
+    fullName: opts.fullName,
     avatarUrl: opts.avatarUrl ?? null,
     hasResponded: opts.hasResponded ?? false,
     respondedAt: opts.respondedAt ?? null,

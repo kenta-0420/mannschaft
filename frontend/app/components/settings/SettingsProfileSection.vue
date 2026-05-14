@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const profile = defineModel<{
-  displayName: string
+  nickname: string
   email: string
   phoneNumber: string
   postalCode: string
@@ -57,7 +57,7 @@ defineEmits<{
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">表示名</label>
-        <InputText v-model="profile.displayName" class="w-full" />
+        <InputText v-model="profile.nickname" class="w-full" />
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">電話番号</label>

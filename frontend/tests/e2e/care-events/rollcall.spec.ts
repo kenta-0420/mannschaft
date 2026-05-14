@@ -44,11 +44,11 @@ const ROLL_CALL_LABELS_EN = EN.event.rollCall
 /** 3 名構成の標準候補者セット（ID 101/102/103）。 */
 function buildStandardCandidates() {
   return [
-    buildRollCallCandidate({ userId: 101, displayName: '山田太郎' }),
-    buildRollCallCandidate({ userId: 102, displayName: '佐藤花子' }),
+    buildRollCallCandidate({ userId: 101, fullName: '山田太郎' }),
+    buildRollCallCandidate({ userId: 102, fullName: '佐藤花子' }),
     buildRollCallCandidate({
       userId: 103,
-      displayName: '鈴木一郎',
+      fullName: '鈴木一郎',
       isUnderCare: true,
       watcherCount: 1,
     }),

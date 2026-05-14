@@ -65,7 +65,7 @@ onMounted(async () => {
       firstName: d.firstName,
       lastNameKana: d.lastNameKana,
       firstNameKana: d.firstNameKana,
-      displayName: d.displayName,
+      nickname: d.nickname,
       nickname2: d.nickname2,
       isSearchable: d.isSearchable,
       avatarUrl: d.avatarUrl ?? undefined,
