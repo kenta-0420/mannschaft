@@ -18,7 +18,7 @@ import type { RollCallCandidate, RollCallEntry } from '~/types/care'
 function sampleCandidate(overrides: Partial<RollCallCandidate> = {}): RollCallCandidate {
   return {
     userId: 101,
-    displayName: '山田太郎',
+    fullName: '山田太郎',
     avatarUrl: null,
     rsvpStatus: 'ATTENDING',
     isAlreadyCheckedIn: false,

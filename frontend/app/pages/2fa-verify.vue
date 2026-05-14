@@ -28,7 +28,7 @@ async function handleVerify() {
       data: {
         accessToken: string
         refreshToken: string
-        user: { id: number; email: string; displayName: string; profileImageUrl: string | null }
+        user: { id: number; email: string; fullName: string; profileImageUrl: string | null }
       }
     }>('/api/v1/auth/2fa/validate', {
       method: 'POST',

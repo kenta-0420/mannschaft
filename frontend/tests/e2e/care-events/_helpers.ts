@@ -171,7 +171,7 @@ export function buildRollCallCandidate(
 ): RollCallCandidate {
   return {
     userId: 101,
-    displayName: '山田太郎',
+    fullName: '山田太郎',
     avatarUrl: null,
     rsvpStatus: 'ATTENDING',
     isAlreadyCheckedIn: false,
