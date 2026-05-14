@@ -24,7 +24,13 @@ public enum ScopeFolderErrorCode implements ErrorCode {
     SCOPE_FOLDER_NAME_DUPLICATE("SCOPE_FOLDER_NAME_DUPLICATE", "同じ名前のフォルダが既に存在します", Severity.WARN),
 
     /** 対象スコープ（チーム/組織）に所属していない */
-    SCOPE_FOLDER_NOT_MEMBER("SCOPE_FOLDER_NOT_MEMBER", "指定されたチーム/組織に所属していないため追加できません", Severity.WARN);
+    SCOPE_FOLDER_NOT_MEMBER("SCOPE_FOLDER_NOT_MEMBER", "指定されたチーム/組織に所属していないため追加できません", Severity.WARN),
+
+    /** フォルダのスコープ種別と要求スコープ種別が一致しない（F15.3 §5.3） */
+    SCOPE_FOLDER_TYPE_MISMATCH("SCOPE_FOLDER_TYPE_MISMATCH", "フォルダのスコープ種別が一致しません", Severity.WARN),
+
+    /** 未分類フォルダは改名・削除できない（F15.3 §5.3） */
+    SCOPE_FOLDER_DEFAULT_IMMUTABLE("SCOPE_FOLDER_DEFAULT_IMMUTABLE", "「未分類」フォルダは変更できません", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -94,6 +94,21 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
     long countByOrganizationId(Long organizationId);
 
     /**
+     * F15.3: 指定ユーザーの通知を scope_type + scope_id 集合で絞り込んでページング取得する。
+     *
+     * <p>マイスコープフォルダによるフィルタリングに使用する（設計書 §5.2.4）。
+     * scope_id IN (...) と scope_type 完全一致の AND 条件。</p>
+     *
+     * @param userId    ユーザーID
+     * @param scopeType スコープタイプ（"TEAM" / "ORGANIZATION"）
+     * @param scopeIds  scope_id 集合（フォルダ内のチーム/組織 ID）
+     * @param pageable  ページング
+     * @return 通知ページ
+     */
+    Page<NotificationEntity> findByUserIdAndScopeTypeAndScopeIdInOrderByCreatedAtDesc(
+            Long userId, String scopeType, List<Long> scopeIds, Pageable pageable);
+
+    /**
      * 指定ユーザー向けに、同一の notification_type / source_type / source_id の通知が
      * 指定時刻以降に既に作成されているか判定する（F04.3 期限リマインダー重複送信防止用）。
      *
