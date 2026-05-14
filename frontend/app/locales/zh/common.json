@@ -58,6 +58,10 @@
       "closed_kicked": "因您已从频道中被移除，标签已关闭",
       "closed_deleted": "因频道已被删除，标签已关闭",
       "closed_archived": "因频道已被归档，标签已关闭"
+    },
+    "typing": {
+      "single": "{name}正在输入…",
+      "multiple": "{names}正在输入…"
     }
   },
   "button": {

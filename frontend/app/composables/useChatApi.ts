@@ -322,6 +322,24 @@ export function useChatApi() {
   }
 
   /**
+   * タイピングインジケーターを STOMP で送信する（デバウンス用・2秒に1回を推奨）。
+   * タイピング通知は非クリティカルなため、送信失敗はサイレントに処理する。
+   *
+   * @param channelId 送信先チャンネル ID
+   */
+  function sendTyping(channelId: number): void {
+    ensureConnected()
+      .then(() => {
+        if (_stompClient === null || !_stompClient.connected) return
+        _stompClient.publish({
+          destination: '/app/chat.typing',
+          body: JSON.stringify({ channelId }),
+        })
+      })
+      .catch(() => {}) // サイレント失敗（タイピング通知は非クリティカル）
+  }
+
+  /**
    * 指定チャンネルの STOMP 購読を開始する（参照カウント方式）。
    * 同一 channelId を複数回呼んでも SUBSCRIBE は1回のみ実行される。
    *
@@ -341,8 +359,11 @@ export function useChatApi() {
             `/topic/channels/${channelId}`,
             (frame) => {
               try {
-                const message = JSON.parse(frame.body) as ChatMessageResponse
-                useEventBus<ChatMessageResponse>('chat:message').emit(message)
+                const payload = JSON.parse(frame.body) as { type: string; data: unknown }
+                useEventBus<{ type: string; data: unknown }>('chat:ws:event').emit({
+                  type: payload.type,
+                  data: payload.data,
+                })
               } catch (err: unknown) {
                 console.error(
                   `[useChatApi] チャンネル ${channelId} の受信メッセージのパースに失敗しました:`,
@@ -480,6 +501,7 @@ export function useChatApi() {
     getDownloadUrl,
     forwardMessage,
     updateChannelSettings,
+    sendTyping,
     subscribeChannel,
     unsubscribeChannel,
     subscribeChannelEvents,
