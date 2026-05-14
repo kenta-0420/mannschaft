@@ -29,6 +29,8 @@ public class ChatReactionService {
     private final ChatMessageRepository messageRepository;
     private final ChatMessageService messageService;
     private final ChatMapper chatMapper;
+    /** F04.2: WebSocket STOMP でリアクションイベントをチャンネル参加者に配信する。 */
+    private final ChatMessagePublisher chatMessagePublisher;
 
     /**
      * リアクションを追加する。
@@ -58,7 +60,13 @@ public class ChatReactionService {
         messageRepository.save(message);
 
         log.info("リアクション追加完了: messageId={}, emoji={}, userId={}", messageId, request.getEmoji(), userId);
-        return chatMapper.toReactionResponse(saved);
+        ReactionResponse result = chatMapper.toReactionResponse(saved);
+        // F04.2: WebSocket でチャンネル参加者全員にリアクション更新を配信
+        List<ChatMessageReactionEntity> allReactions =
+                reactionRepository.findByMessageId(messageId);
+        chatMessagePublisher.publishReactionUpdated(
+                message.getChannelId(), messageId, chatMapper.toReactionResponseList(allReactions));
+        return result;
     }
 
     /**
@@ -82,6 +90,11 @@ public class ChatReactionService {
         messageRepository.save(message);
 
         log.info("リアクション削除完了: messageId={}, emoji={}, userId={}", messageId, emoji, userId);
+        // F04.2: WebSocket でチャンネル参加者全員にリアクション更新を配信
+        List<ChatMessageReactionEntity> allReactions =
+                reactionRepository.findByMessageId(messageId);
+        chatMessagePublisher.publishReactionUpdated(
+                message.getChannelId(), messageId, chatMapper.toReactionResponseList(allReactions));
     }
 
     /**

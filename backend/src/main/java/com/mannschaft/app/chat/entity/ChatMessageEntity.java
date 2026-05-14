@@ -49,6 +49,9 @@ public class ChatMessageEntity extends BaseEntity {
 
     private LocalDateTime scheduledAt;
 
+    /** 予約送信バッチが配信を実行した日時。NULL の場合は未配信（または通常送信メッセージ）。 */
+    private LocalDateTime scheduledSentAt;
+
     private Long rootId;
 
     @Column(nullable = false)
@@ -157,5 +160,14 @@ public class ChatMessageEntity extends BaseEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 予約送信バッチによる配信完了をマークする。
+     *
+     * @param sentAt 配信実行日時
+     */
+    public void markScheduledSent(LocalDateTime sentAt) {
+        this.scheduledSentAt = sentAt;
     }
 }

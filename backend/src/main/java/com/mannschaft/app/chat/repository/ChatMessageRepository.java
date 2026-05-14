@@ -68,6 +68,22 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
     long countBySenderId(Long senderId);
 
     /**
+     * 予約送信バッチ対象メッセージを取得する。
+     * <p>
+     * 条件: scheduled_at &lt;= now かつ scheduled_sent_at IS NULL かつ deleted_at IS NULL
+     * </p>
+     * <p>
+     * {@code @SQLRestriction("deleted_at IS NULL")} が Entity に付与されているため、
+     * deleted_at IS NULL は自動的に適用される。
+     * </p>
+     *
+     * @param now バッチ実行時刻
+     * @return 未配信の予約送信メッセージ一覧
+     */
+    @Query("SELECT m FROM ChatMessageEntity m WHERE m.scheduledAt <= :now AND m.scheduledSentAt IS NULL")
+    List<ChatMessageEntity> findPendingScheduledMessages(@Param("now") java.time.LocalDateTime now);
+
+    /**
      * チャンネル内のメッセージを全文検索する。
      */
     @Query(value = SEARCH_BY_CHANNEL, nativeQuery = true)
