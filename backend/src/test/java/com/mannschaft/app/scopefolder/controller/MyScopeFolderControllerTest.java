@@ -5,8 +5,11 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.scopefolder.dto.BulkAssignResponse;
+import com.mannschaft.app.scopefolder.dto.FolderNotificationSummaryDto;
 import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
 import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.service.MyScopeFolderQueryService;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -62,6 +65,9 @@ class MyScopeFolderControllerTest {
     @MockitoBean
     private MyScopeFolderService folderService;
 
+    @MockitoBean
+    private MyScopeFolderQueryService folderQueryService;
+
     // JwtAuthenticationFilter の依存解決用
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -93,10 +99,11 @@ class MyScopeFolderControllerTest {
     class GetFolders {
 
         @Test
-        @DisplayName("正常系: 200 + フォルダ一覧 JSON が返る")
+        @DisplayName("正常系: 200 + フォルダ一覧 JSON が返る（F15.3: notificationUnreadCount 付き）")
         void getFolders_正常系_200() throws Exception {
-            ScopeFolderResponse folder = new ScopeFolderResponse(FOLDER_ID, "チームA", "#FF0000", 0, List.of(SCOPE_ID));
-            given(folderService.getFolders(USER_ID, ScopeType.TEAM))
+            ScopeFolderResponse folder = new ScopeFolderResponse(
+                    FOLDER_ID, "チームA", "#FF0000", "pi-users", 0, false, List.of(SCOPE_ID), 3L);
+            given(folderQueryService.getFoldersWithUnread(USER_ID, ScopeType.TEAM))
                     .willReturn(List.of(folder));
 
             mockMvc.perform(get("/api/v1/me/scope-folders")
@@ -107,14 +114,17 @@ class MyScopeFolderControllerTest {
                     .andExpect(jsonPath("$.data[0].id").value(FOLDER_ID))
                     .andExpect(jsonPath("$.data[0].name").value("チームA"))
                     .andExpect(jsonPath("$.data[0].color").value("#FF0000"))
+                    .andExpect(jsonPath("$.data[0].icon").value("pi-users"))
                     .andExpect(jsonPath("$.data[0].sortOrder").value(0))
-                    .andExpect(jsonPath("$.data[0].itemScopeIds[0]").value(SCOPE_ID));
+                    .andExpect(jsonPath("$.data[0].isDefault").value(false))
+                    .andExpect(jsonPath("$.data[0].itemScopeIds[0]").value(SCOPE_ID))
+                    .andExpect(jsonPath("$.data[0].notificationUnreadCount").value(3));
         }
 
         @Test
         @DisplayName("正常系: フォルダなしの場合は空配列が返る")
         void getFolders_正常系_空リスト() throws Exception {
-            given(folderService.getFolders(USER_ID, ScopeType.TEAM))
+            given(folderQueryService.getFoldersWithUnread(USER_ID, ScopeType.TEAM))
                     .willReturn(List.of());
 
             mockMvc.perform(get("/api/v1/me/scope-folders")
@@ -136,7 +146,8 @@ class MyScopeFolderControllerTest {
         @Test
         @DisplayName("正常系: 201 Created + 作成されたフォルダが返る")
         void createFolder_正常系_201() throws Exception {
-            ScopeFolderResponse created = new ScopeFolderResponse(FOLDER_ID, "新フォルダ", "#FF0000", 0, List.of());
+            ScopeFolderResponse created = new ScopeFolderResponse(
+                    FOLDER_ID, "新フォルダ", "#FF0000", null, 0, false, List.of(), 0L);
             given(folderService.createFolder(eq(USER_ID), eq(ScopeType.TEAM), any()))
                     .willReturn(created);
 
@@ -248,7 +259,8 @@ class MyScopeFolderControllerTest {
         @Test
         @DisplayName("正常系: 200 OK + 更新後のフォルダが返る")
         void updateFolder_正常系_200() throws Exception {
-            ScopeFolderResponse updated = new ScopeFolderResponse(FOLDER_ID, "更新フォルダ", "#00FF00", 0, List.of());
+            ScopeFolderResponse updated = new ScopeFolderResponse(
+                    FOLDER_ID, "更新フォルダ", "#00FF00", null, 0, false, List.of(), 0L);
             given(folderService.updateFolder(eq(USER_ID), eq(FOLDER_ID), any()))
                     .willReturn(updated);
 
@@ -315,7 +327,8 @@ class MyScopeFolderControllerTest {
         @Test
         @DisplayName("正常系: 200 OK + 更新後のフォルダが返る")
         void addItem_正常系_200() throws Exception {
-            ScopeFolderResponse updated = new ScopeFolderResponse(FOLDER_ID, "フォルダ", "#FF0000", 0, List.of(SCOPE_ID));
+            ScopeFolderResponse updated = new ScopeFolderResponse(
+                    FOLDER_ID, "フォルダ", "#FF0000", null, 0, false, List.of(SCOPE_ID), 0L);
             given(folderService.addItem(eq(USER_ID), eq(FOLDER_ID), any()))
                     .willReturn(updated);
 
@@ -366,6 +379,141 @@ class MyScopeFolderControllerTest {
                     .andExpect(status().isNoContent());
 
             verify(folderService).removeItem(USER_ID, FOLDER_ID, SCOPE_ID);
+        }
+    }
+
+    // ════════════════════════════════════════════════
+    // F15.3 §5.2.1: GET /api/v1/me/scope-folders/default?scopeType=TEAM
+    // ════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("GET /api/v1/me/scope-folders/default (F15.3)")
+    class GetDefaultFolder {
+
+        @Test
+        @DisplayName("正常系: 200 OK + 未分類フォルダが返る（lazy 生成想定）")
+        void getDefaultFolder_正常系_200() throws Exception {
+            ScopeFolderResponse defaultFolder = new ScopeFolderResponse(
+                    FOLDER_ID, "未分類", null, null, 9999, true, List.of(), 0L);
+            given(folderService.findOrCreateDefault(USER_ID, ScopeType.TEAM))
+                    .willReturn(defaultFolder);
+
+            mockMvc.perform(get("/api/v1/me/scope-folders/default")
+                            .param("scopeType", "TEAM"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.id").value(FOLDER_ID))
+                    .andExpect(jsonPath("$.data.isDefault").value(true))
+                    .andExpect(jsonPath("$.data.sortOrder").value(9999))
+                    .andExpect(jsonPath("$.data.name").value("未分類"));
+            verify(folderService).findOrCreateDefault(USER_ID, ScopeType.TEAM);
+        }
+
+        @Test
+        @DisplayName("正常系: ORGANIZATION でも取得できる")
+        void getDefaultFolder_正常系_ORGANIZATION() throws Exception {
+            ScopeFolderResponse defaultFolder = new ScopeFolderResponse(
+                    FOLDER_ID, "未分類", null, null, 9999, true, List.of(), 0L);
+            given(folderService.findOrCreateDefault(USER_ID, ScopeType.ORGANIZATION))
+                    .willReturn(defaultFolder);
+
+            mockMvc.perform(get("/api/v1/me/scope-folders/default")
+                            .param("scopeType", "ORGANIZATION"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isDefault").value(true));
+        }
+    }
+
+    // ════════════════════════════════════════════════
+    // F15.3 §5.2.2: POST /api/v1/me/scope-folders/items/bulk-assign
+    // ════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("POST /api/v1/me/scope-folders/items/bulk-assign (F15.3)")
+    class BulkAssign {
+
+        @Test
+        @DisplayName("正常系: 200 OK + 一括振り分け結果が返る")
+        void bulkAssign_正常系_200() throws Exception {
+            BulkAssignResponse result = new BulkAssignResponse(3, 1, List.of("SCOPE_FOLDER_NOT_MEMBER"));
+            given(folderService.bulkAssign(eq(USER_ID), any())).willReturn(result);
+
+            String body = """
+                    {
+                      "folderId": 10,
+                      "scopeIds": [100, 101, 102, 103],
+                      "scopeType": "TEAM"
+                    }
+                    """;
+
+            mockMvc.perform(post("/api/v1/me/scope-folders/items/bulk-assign")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.assignedCount").value(3))
+                    .andExpect(jsonPath("$.data.skippedCount").value(1))
+                    .andExpect(jsonPath("$.data.errors[0]").value("SCOPE_FOLDER_NOT_MEMBER"));
+            verify(folderService).bulkAssign(eq(USER_ID), any());
+        }
+
+        @Test
+        @DisplayName("バリデーション違反: scopeIds が空 → 400 Bad Request")
+        void bulkAssign_バリデーション違反_scopeIds空_400() throws Exception {
+            String body = """
+                    {
+                      "folderId": 10,
+                      "scopeIds": [],
+                      "scopeType": "TEAM"
+                    }
+                    """;
+
+            mockMvc.perform(post("/api/v1/me/scope-folders/items/bulk-assign")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("バリデーション違反: folderId 欠落 → 400 Bad Request")
+        void bulkAssign_バリデーション違反_folderId欠落_400() throws Exception {
+            String body = """
+                    {
+                      "scopeIds": [100],
+                      "scopeType": "TEAM"
+                    }
+                    """;
+
+            mockMvc.perform(post("/api/v1/me/scope-folders/items/bulk-assign")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    // ════════════════════════════════════════════════
+    // F15.3 §5.2.3: GET /api/v1/me/scope-folders/notifications/summary?scopeType=TEAM
+    // ════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("GET /api/v1/me/scope-folders/notifications/summary (F15.3)")
+    class GetNotificationSummary {
+
+        @Test
+        @DisplayName("正常系: 200 OK + フォルダ別未読件数リストが返る")
+        void getNotificationSummary_正常系_200() throws Exception {
+            given(folderQueryService.getNotificationSummary(USER_ID, ScopeType.TEAM))
+                    .willReturn(List.of(
+                            new FolderNotificationSummaryDto(10L, 3L),
+                            new FolderNotificationSummaryDto(11L, 0L)));
+
+            mockMvc.perform(get("/api/v1/me/scope-folders/notifications/summary")
+                            .param("scopeType", "TEAM"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").isArray())
+                    .andExpect(jsonPath("$.data.length()").value(2))
+                    .andExpect(jsonPath("$.data[0].folderId").value(10))
+                    .andExpect(jsonPath("$.data[0].unreadCount").value(3))
+                    .andExpect(jsonPath("$.data[1].folderId").value(11))
+                    .andExpect(jsonPath("$.data[1].unreadCount").value(0));
         }
     }
 }

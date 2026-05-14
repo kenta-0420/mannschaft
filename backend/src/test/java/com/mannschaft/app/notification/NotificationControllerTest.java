@@ -79,9 +79,9 @@ class NotificationControllerTest {
 
                 given(notificationService.listNotifications(USER_ID, pageable)).willReturn(page);
 
-                // When
+                // When（F15.3: folderId/scopeType は未指定→従来の全件取得）
                 ResponseEntity<PagedResponse<NotificationResponse>> result =
-                        notificationController.listNotifications(pageable);
+                        notificationController.listNotifications(null, null, pageable);
 
                 // Then
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
