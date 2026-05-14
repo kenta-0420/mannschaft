@@ -182,7 +182,27 @@ public class ChatChannelService {
         eventPublisher.publishChannelArchived(channelId);
         return chatMapper.toChannelResponse(saved);
     }
-    // TODO F04.2.1 §3.10.1: アーカイブ解除メソッドが追加された際は eventPublisher.publishChannelUnarchived(channelId) を呼び出すこと
+
+    /**
+     * チャンネルのアーカイブを解除する。
+     * F04.2.1 §3.10.1: 解除後に全メンバーへ CHANNEL_UNARCHIVED イベントを配信し、フロントエンドのタブを復元する。
+     *
+     * @param channelId チャンネルID
+     * @return 更新されたチャンネルレスポンス
+     */
+    @Transactional
+    public ChannelResponse unarchiveChannel(Long channelId) {
+        ChatChannelEntity channel = findChannelOrThrow(channelId);
+        if (!Boolean.TRUE.equals(channel.getIsArchived())) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_NOT_ARCHIVED);
+        }
+        channel.unarchive();
+        ChatChannelEntity saved = channelRepository.save(channel);
+        log.info("チャンネルアーカイブ解除完了: channelId={}", channelId);
+        // F04.2.1 §3.10.1: 解除を全メンバーに通知（フロントエンドが自動タブクローズを解除）
+        eventPublisher.publishChannelUnarchived(channelId);
+        return chatMapper.toChannelResponse(saved);
+    }
 
     /**
      * 会話を開始する。参加者数に応じて Kabine（DM）/ Zimmer（GROUP_DM）を自動振り分け。

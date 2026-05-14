@@ -66,7 +66,10 @@ public enum ChatErrorCode implements ErrorCode {
     CHANNEL_SELF_DM("CHAT_018", "自分自身との会話は開始できません", Severity.WARN),
 
     /** F13 Phase 4-β: 統合ストレージクォータ超過（409 Conflict） */
-    ATTACHMENT_QUOTA_EXCEEDED("CHAT_019", "ストレージ容量が不足しているため添付ファイルをアップロードできません", Severity.ERROR);
+    ATTACHMENT_QUOTA_EXCEEDED("CHAT_019", "ストレージ容量が不足しているため添付ファイルをアップロードできません", Severity.ERROR),
+
+    /** アーカイブされていないチャンネルのアーカイブ解除 */
+    CHANNEL_NOT_ARCHIVED("CHAT_020", "このチャンネルはアーカイブされていません", Severity.WARN);
 
     private final String code;
     private final String message;

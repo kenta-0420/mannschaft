@@ -119,6 +119,17 @@ public class ChatChannelController {
     }
 
     /**
+     * チャンネルのアーカイブを解除する。
+     */
+    @DeleteMapping("/{channelId}/archive")
+    @Operation(summary = "チャンネルアーカイブ解除")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ解除成功")
+    public ResponseEntity<ApiResponse<ChannelResponse>> unarchiveChannel(@PathVariable Long channelId) {
+        ChannelResponse response = channelService.unarchiveChannel(channelId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
      * チャンネルにメンバーを追加する。
      */
     @PostMapping("/{channelId}/members")

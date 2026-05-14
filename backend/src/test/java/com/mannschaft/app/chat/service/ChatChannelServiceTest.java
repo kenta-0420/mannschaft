@@ -297,6 +297,50 @@ class ChatChannelServiceTest {
     }
 
     // ========================================
+    // unarchiveChannel
+    // ========================================
+    @Nested
+    @DisplayName("unarchiveChannel")
+    class UnarchiveChannel {
+
+        @Test
+        @DisplayName("正常系: アーカイブ済みチャンネルを解除できる")
+        void アーカイブ済みチャンネルを解除できる() {
+            // given
+            ChatChannelEntity channel = createChannel();
+            channel.archive(); // アーカイブ状態にセット
+            ChannelResponse expected = new ChannelResponse(CHANNEL_ID, "TEAM", TEAM_ID, null,
+                    "テストチャンネル", null, "テスト説明", false, null, null, null, null, null, false, null, null, null);
+
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
+            given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(channel);
+            given(chatMapper.toChannelResponse(any(ChatChannelEntity.class))).willReturn(expected);
+
+            // when
+            ChannelResponse result = chatChannelService.unarchiveChannel(CHANNEL_ID);
+
+            // then
+            assertThat(result).isEqualTo(expected);
+            // F04.2.1 §3.10.1: アーカイブ解除イベントが発出されることを検証
+            verify(eventPublisher).publishChannelUnarchived(CHANNEL_ID);
+        }
+
+        @Test
+        @DisplayName("異常系: アーカイブされていないチャンネルは CHANNEL_NOT_ARCHIVED")
+        void アーカイブされていないチャンネルは例外() {
+            // given
+            ChatChannelEntity channel = createChannel(); // isArchived = false
+
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
+
+            // when / then
+            assertThatThrownBy(() -> chatChannelService.unarchiveChannel(CHANNEL_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(ChatErrorCode.CHANNEL_NOT_ARCHIVED.getMessage());
+        }
+    }
+
+    // ========================================
     // listMyChannels
     // ========================================
     @Nested
