@@ -152,6 +152,7 @@ const indentStyle = computed(() => {
 <template>
   <div
     class="group relative py-1.5 pr-4 transition-colors hover:bg-surface-50"
+    data-testid="chat-message"
     :style="indentStyle"
     @mouseenter="showActions = true"
     @mouseleave="showActions = false; showEmojiPicker = false"
@@ -237,6 +238,7 @@ const indentStyle = computed(() => {
           <button
             v-if="message.replyCount > 0 && !message.parentId"
             class="mt-1 text-xs font-medium text-primary hover:underline"
+            data-testid="thread-reply-btn"
             @click="emit('reply', message.id)"
           >
             {{ $t('chat.thread.replyCount', { count: message.replyCount }) }}
