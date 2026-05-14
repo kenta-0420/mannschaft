@@ -64,7 +64,10 @@ async function confirmMigration() {
 </script>
 
 <template>
-  <div class="mb-1 flex items-center gap-2 rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs dark:border-amber-800 dark:bg-amber-900/20">
+  <div
+    class="mb-1 flex items-center gap-2 rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs dark:border-amber-800 dark:bg-amber-900/20"
+    data-testid="board-migration-banner"
+  >
     <i class="pi pi-info-circle text-amber-600 dark:text-amber-400" />
     <span class="flex-1 text-amber-700 dark:text-amber-300">{{ $t('chat.boardMigration.banner') }}</span>
     <Button
@@ -73,6 +76,7 @@ async function confirmMigration() {
       severity="warning"
       outlined
       class="py-0.5 text-xs"
+      data-testid="board-migration-open-dialog"
       @click="openDialog"
     />
   </div>
@@ -82,6 +86,7 @@ async function confirmMigration() {
     :header="$t('chat.boardMigration.dialogTitle')"
     modal
     :style="{ width: '420px' }"
+    data-testid="board-migration-dialog"
     @hide="showDialog = false"
   >
     <div class="flex flex-col gap-4">
