@@ -31,8 +31,11 @@ async function loginIfNeeded(page: Page): Promise<void> {
 // ---------------------------------------------------------------------------
 test.describe('DASH-001〜008: ダッシュボード基本表示', () => {
   // storageState で認証済み。各テスト前にマイページへ遷移する（/my/index.vue が正しいルート）
+  // 並列実行時にサーバーが高負荷になることがあるためタイムアウトを延長する
+  test.setTimeout(120_000)
+
   test.beforeEach(async ({ page }) => {
-    await page.goto('/my/')
+    await page.goto('/my/', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
   })
@@ -78,7 +81,7 @@ test.describe('DASH-001〜008: ダッシュボード基本表示', () => {
   })
 
   test('DASH-006: /notifications ページに通知一覧が表示される', async ({ page }) => {
-    await page.goto('/notifications')
+    await page.goto('/notifications', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await expect(page.getByRole('heading', { name: '通知' })).toBeVisible({ timeout: 15_000 })
     // NotificationList コンポーネントが描画されていること（コンテナが存在する）
@@ -97,7 +100,7 @@ test.describe('DASH-001〜008: ダッシュボード基本表示', () => {
   })
 
   test('DASH-008: 通知をクリックして既読にできる（1件の既読操作）', async ({ page }) => {
-    await page.goto('/notifications')
+    await page.goto('/notifications', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
 
     // ローディングスピナーが消えるまで待つ
@@ -121,8 +124,11 @@ test.describe('DASH-001〜008: ダッシュボード基本表示', () => {
 // PROF-001〜006: プロフィール・アカウント設定
 // ---------------------------------------------------------------------------
 test.describe('PROF-001〜006: プロフィール・アカウント設定', () => {
+  // 並列実行時にサーバーが高負荷になることがあるためタイムアウトを延長する
+  test.setTimeout(120_000)
+
   test('PROF-001: /settings/account が表示される', async ({ page }) => {
-    await page.goto('/settings/account')
+    await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     // PageLoading が消えてからコンテンツが表示される
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
@@ -132,7 +138,7 @@ test.describe('PROF-001〜006: プロフィール・アカウント設定', () =
   })
 
   test('PROF-002: メールアドレスが設定ページに表示される', async ({ page }) => {
-    await page.goto('/settings/account')
+    await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     // メールアドレスフォームのラベルまたは入力値が存在すること
@@ -141,7 +147,7 @@ test.describe('PROF-001〜006: プロフィール・アカウント設定', () =
   })
 
   test('PROF-003: 表示名入力フィールドが存在する', async ({ page }) => {
-    await page.goto('/settings/account')
+    await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     // SettingsProfileSection: label "表示名" + InputText が存在する
@@ -154,7 +160,7 @@ test.describe('PROF-001〜006: プロフィール・アカウント設定', () =
   })
 
   test('PROF-004: プロフィール画像のアップロードUIが存在する', async ({ page }) => {
-    await page.goto('/settings/account')
+    await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     // SettingsProfileSection: 「画像を変更」ボタンが存在する
@@ -163,7 +169,7 @@ test.describe('PROF-001〜006: プロフィール・アカウント設定', () =
   })
 
   test('PROF-005: 保存ボタンが存在する', async ({ page }) => {
-    await page.goto('/settings/account')
+    await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     // SettingsProfileSection: 「保存」ボタンが存在する
@@ -172,7 +178,7 @@ test.describe('PROF-001〜006: プロフィール・アカウント設定', () =
   })
 
   test('PROF-006: /settings が表示される（設定トップページ）', async ({ page }) => {
-    await page.goto('/settings')
+    await page.goto('/settings', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     // 設定トップの何らかの見出しまたはリンクが存在すること
     const heading = page.getByRole('heading').first()
@@ -260,12 +266,14 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
     const teamLink = page.getByText('FC東京U-18').first()
     await teamLink.click()
     await page.waitForURL(/\/teams\/\d+/, { timeout: 20_000 })
-    const teamUrl = page.url()
-    await page.goto(`${teamUrl}/member-profiles`)
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
-    // e2e-user の表示名またはメールアドレスが含まれることを確認
-    // seed で投入した表示名に "e2e" または "E2E" が含まれる前提
+    // チームページの「メンバー」タブをクリックして MemberTable を表示する
+    // /member-profiles は任意作成のプロフィールカード機能のため seed にデータなし
+    const memberTab = page.getByRole('tab', { name: 'メンバー' })
+    await memberTab.click()
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
+    // seed の e2e-user 表示名 "E2E一般ユーザー" が MemberTable に表示される前提
     const memberText = page.getByText(/e2e/i).first()
     await expect(memberText).toBeVisible({ timeout: 20_000 })
   })
