@@ -163,6 +163,7 @@ onMounted(() => {
               icon="pi pi-check"
               class="w-full"
               :loading="joining"
+              data-testid="invite-join-button"
               @click="joinWithToken"
             />
           </template>

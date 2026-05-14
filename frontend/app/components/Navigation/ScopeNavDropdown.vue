@@ -221,7 +221,7 @@ watch(isOpen, async (opened) => {
 </script>
 
 <template>
-  <div ref="containerRef" class="relative inline-block">
+  <div ref="containerRef" class="relative inline-block" :data-testid="`scope-nav-dropdown-${scopeType}`">
     <button
       ref="buttonRef"
       type="button"
@@ -229,6 +229,7 @@ watch(isOpen, async (opened) => {
       aria-haspopup="menu"
       :aria-expanded="isOpen ? 'true' : 'false'"
       :aria-label="label"
+      :data-testid="`scope-nav-dropdown-toggle-${scopeType}`"
       @click="toggle"
       @keydown.enter.prevent="toggle"
       @keydown.space.prevent="toggle"
@@ -274,6 +275,7 @@ watch(isOpen, async (opened) => {
           role="menuitem"
           type="button"
           class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+          :data-testid="`scope-nav-dropdown-folder-${folder.id}`"
           @click="goFolder(folder.id)"
           @keydown="onKeydownItem"
         >
@@ -327,6 +329,7 @@ watch(isOpen, async (opened) => {
           role="menuitem"
           type="button"
           class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+          :data-testid="`scope-nav-dropdown-scope-${scope.id}`"
           @click="goScope(scope.id)"
           @keydown="onKeydownItem"
         >

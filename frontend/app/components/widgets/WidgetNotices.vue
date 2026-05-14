@@ -234,6 +234,7 @@ onMounted(async () => {
       role="tablist"
       :aria-label="t('scopeFolder.notifications.byFolder')"
       class="mb-2 flex items-center gap-1 overflow-x-auto pb-1 scrollbar-thin-nav"
+      data-testid="widget-notices-folder-tabs"
     >
       <button
         v-for="tabDef in tabs"
@@ -247,6 +248,7 @@ onMounted(async () => {
             ? 'bg-primary/10 text-primary'
             : 'text-surface-600 hover:bg-surface-100'
         "
+        :data-testid="`widget-notices-tab-${tabDef.key}`"
         @click="switchTab(tabDef.tab)"
       >
         <span>{{ tabDef.label }}</span>

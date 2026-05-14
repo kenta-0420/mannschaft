@@ -107,7 +107,7 @@ watch(
 </script>
 
 <template>
-  <div class="invite-folder-picker flex flex-col gap-1">
+  <div class="invite-folder-picker flex flex-col gap-1" data-testid="invite-folder-picker">
     <label
       :for="`invite-folder-picker-${scopeType}`"
       class="text-sm font-medium text-left"

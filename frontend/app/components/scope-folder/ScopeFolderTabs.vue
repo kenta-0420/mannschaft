@@ -74,6 +74,7 @@ function tabClass(value: 'all' | 'default' | 'manage' | number): string {
     role="tablist"
     :aria-label="t('scopeFolder.folders')"
     class="flex items-center gap-1 overflow-x-auto scrollbar-thin-nav"
+    :data-testid="`scope-folder-tabs-${scopeType}`"
   >
     <!-- すべて -->
     <button
@@ -95,6 +96,7 @@ function tabClass(value: 'all' | 'default' | 'manage' | number): string {
       role="tab"
       :aria-selected="isActive(folder.id) ? 'true' : 'false'"
       :class="tabClass(folder.id)"
+      :data-testid="`scope-folder-tab-${folder.id}`"
       @click="selectTab(folder.id)"
     >
       <span
@@ -118,6 +120,7 @@ function tabClass(value: 'all' | 'default' | 'manage' | number): string {
       role="tab"
       :aria-selected="isActive('default') ? 'true' : 'false'"
       :class="tabClass('default')"
+      data-testid="scope-folder-tab-default"
       @click="selectTab('default')"
     >
       <span class="inline-block h-3 w-3 shrink-0 rounded-full bg-surface-300" aria-hidden="true" />
