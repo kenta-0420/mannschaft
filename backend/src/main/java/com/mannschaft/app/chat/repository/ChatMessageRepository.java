@@ -32,6 +32,18 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
             @Param("channelId") Long channelId, @Param("cursorId") Long cursorId, Pageable pageable);
 
     /**
+     * カーソル（メッセージID）より新しいメッセージを昇順で取得する。
+     * WebSocket切断後のキャッチアップ用。cursor より大きいIDを持つメッセージを
+     * 古い順（ASC）で返すことで、切断中に積まれたメッセージを時系列順に復元できる。
+     */
+    @Query("SELECT m FROM ChatMessageEntity m WHERE m.channelId = :channelId AND m.id > :cursorId " +
+            "AND m.deletedAt IS NULL ORDER BY m.id ASC")
+    List<ChatMessageEntity> findMessagesAfterCursor(
+            @Param("channelId") Long channelId,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable);
+
+    /**
      * スレッド返信を取得する（旧2階層ロジック用）。
      */
     List<ChatMessageEntity> findByParentIdOrderByCreatedAtAsc(Long parentId);
