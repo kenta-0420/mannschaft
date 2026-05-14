@@ -58,6 +58,10 @@
       "closed_kicked": "Pestaña cerrada porque fuiste eliminado del canal",
       "closed_deleted": "Pestaña cerrada porque el canal fue eliminado",
       "closed_archived": "Pestaña cerrada porque el canal fue archivado"
+    },
+    "typing": {
+      "single": "{name} está escribiendo…",
+      "multiple": "{names} están escribiendo…"
     }
   },
   "button": {

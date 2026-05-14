@@ -58,6 +58,10 @@
       "closed_kicked": "채널에서 제외되어 탭을 닫았습니다",
       "closed_deleted": "채널이 삭제되어 탭을 닫았습니다",
       "closed_archived": "채널이 보관되어 탭을 닫았습니다"
+    },
+    "typing": {
+      "single": "{name}이(가) 입력 중…",
+      "multiple": "{names}이(가) 입력 중…"
     }
   },
   "button": {

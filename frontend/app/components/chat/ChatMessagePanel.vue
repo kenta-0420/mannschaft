@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useEventBus } from '@vueuse/core'
+import { useDebounceFn, useEventBus } from '@vueuse/core'
 import type { ChatChannelResponse, ChatMessageResponse } from '~/types/chat'
 
 const props = defineProps<{
@@ -18,6 +18,7 @@ const showInviteDialog = ref(false)
 
 const {
   getMessages,
+  sendTyping,
   markAsRead,
   addReaction,
   removeReaction,
@@ -30,6 +31,7 @@ const {
   unsubscribeChannel,
 } = useChatApi()
 const { showSuccess, showError } = useNotification()
+const authStore = useAuthStore()
 
 useChatChannelEventListener(props.channel.id)
 
@@ -202,6 +204,32 @@ function onSent() {
 }
 
 // ============================================================
+// タイピングインジケーター
+// ============================================================
+
+/** 入力中ユーザーのマップ（userId → displayName）*/
+const typingUsers = ref<Map<number, string>>(new Map())
+
+/** タイピング自動消去タイマー（userId → タイマーID） */
+const typingTimers: Record<number, ReturnType<typeof setTimeout>> = {}
+
+/** タイピング通知を STOMP でデバウンス送信する（2秒間隔）。ChatMessageInput の typing イベントで呼ばれる。 */
+const debouncedSendTyping = useDebounceFn(() => {
+  sendTyping(props.channel.id)
+}, 2000)
+
+/** 表示テキスト（「田中が入力中…」「田中、鈴木が入力中…」）*/
+const typingText = computed(() => {
+  const names = Array.from(typingUsers.value.values())
+  if (names.length === 0) return ''
+  if (names.length === 1) return names[0]
+  return names.join('、')
+})
+
+/** タイピングユーザーが複数か否か */
+const isMultipleTyping = computed(() => typingUsers.value.size > 1)
+
+// ============================================================
 // WebSocket STOMP 購読 — メッセージリアルタイム受信
 // ============================================================
 
@@ -242,6 +270,15 @@ const offWsEvent = wsEventBus.on((event) => {
         myReactions: reaction.myReactions,
       }
     }
+  } else if (event.type === 'TYPING') {
+    const typing = event.data as { userId: number; displayName: string }
+    const currentUserId = authStore.user?.id
+    if (typing.userId === currentUserId) return
+    typingUsers.value.set(typing.userId, typing.displayName)
+    if (typingTimers[typing.userId]) clearTimeout(typingTimers[typing.userId])
+    typingTimers[typing.userId] = setTimeout(() => {
+      typingUsers.value.delete(typing.userId)
+    }, 3000)
   }
 })
 
@@ -257,6 +294,11 @@ watch(
     activeThreadCount.value = 0
     activeThreads.value = []
     subscribeChannel(newId)
+    // チャンネル切り替え時にタイピングインジケーターをリセット
+    typingUsers.value = new Map()
+    for (const timerId of Object.values(typingTimers)) {
+      clearTimeout(timerId)
+    }
   },
 )
 onMounted(() => {
@@ -266,6 +308,9 @@ onMounted(() => {
 onUnmounted(() => {
   unsubscribeChannel(props.channel.id)
   offWsEvent()
+  for (const timerId of Object.values(typingTimers)) {
+    clearTimeout(timerId)
+  }
 })
 </script>
 
@@ -359,8 +404,25 @@ onUnmounted(() => {
           />
         </div>
 
+        <!-- タイピングインジケーター -->
+        <div
+          v-if="typingUsers.size > 0"
+          class="px-4 py-1 text-sm italic text-surface-400"
+        >
+          {{
+            isMultipleTyping
+              ? $t('chat.typing.multiple', { names: typingText })
+              : $t('chat.typing.single', { name: typingText })
+          }}
+        </div>
+
         <!-- 入力 -->
-        <ChatMessageInput :channel-id="channel.id" :disabled="channel.isArchived" @sent="onSent" />
+        <ChatMessageInput
+          :channel-id="channel.id"
+          :disabled="channel.isArchived"
+          @sent="onSent"
+          @typing="debouncedSendTyping"
+        />
       </div>
 
       <!-- スレッドパネル（デスクトップ: 右スライドイン） -->

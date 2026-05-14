@@ -58,6 +58,10 @@
       "closed_kicked": "Tab closed because you were removed from the channel",
       "closed_deleted": "Tab closed because the channel was deleted",
       "closed_archived": "Tab closed because the channel was archived"
+    },
+    "typing": {
+      "single": "{name} is typing…",
+      "multiple": "{names} are typing…"
     }
   },
   "button": {
