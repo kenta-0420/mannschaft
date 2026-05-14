@@ -350,7 +350,12 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_034", HttpStatus.FORBIDDEN),            // CREATION_REQUEST_REJECTED
             Map.entry("VILLAGE_035", HttpStatus.CONFLICT),             // CREATION_REQUEST_SLUG_TAKEN
             Map.entry("VILLAGE_036", HttpStatus.FORBIDDEN),            // OFFICIAL_VILLAGE_FORBIDDEN
-            Map.entry("VILLAGE_037", HttpStatus.FORBIDDEN)             // VILLAGE_CREATE_FORBIDDEN
+            Map.entry("VILLAGE_037", HttpStatus.FORBIDDEN),            // VILLAGE_CREATE_FORBIDDEN
+            // F17.1 Phase 1 B6 — 村参加申請
+            Map.entry("VILLAGE_038", HttpStatus.NOT_FOUND),            // VILLAGE_JOIN_REQUEST_NOT_FOUND
+            Map.entry("VILLAGE_039", HttpStatus.CONFLICT),             // VILLAGE_JOIN_REQUEST_PENDING_DUPLICATE
+            Map.entry("VILLAGE_040", HttpStatus.CONFLICT),             // VILLAGE_JOIN_REQUEST_ALREADY_REVIEWED
+            Map.entry("VILLAGE_041", HttpStatus.UNPROCESSABLE_ENTITY)  // VILLAGE_FREE_VILLAGE_DIRECT_JOIN
     );
 
     /**

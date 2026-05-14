@@ -115,7 +115,23 @@ public enum VillageErrorCode implements ErrorCode {
     OFFICIAL_VILLAGE_FORBIDDEN("VILLAGE_036", "一般ユーザーは公式村を申請できません", Severity.WARN),
 
     /** VILLAGE_037: 村作成権限なし（運営権限が必要） — B2 が独自に VILLAGE_028 で定義していたものを移設 */
-    VILLAGE_CREATE_FORBIDDEN("VILLAGE_037", "公式村の作成には運営権限が必要です", Severity.WARN);
+    VILLAGE_CREATE_FORBIDDEN("VILLAGE_037", "公式村の作成には運営権限が必要です", Severity.WARN),
+
+    // ==================================================================
+    // B6 村参加申請（APPROVAL 村）— VILLAGE_038〜041
+    // ==================================================================
+
+    /** VILLAGE_038: 参加申請レコードが存在しない（404、IDOR 対策で統一） */
+    VILLAGE_JOIN_REQUEST_NOT_FOUND("VILLAGE_038", "参加申請が見つかりません", Severity.WARN),
+
+    /** VILLAGE_039: 同一主体で PENDING 申請が既に存在する（409） */
+    VILLAGE_JOIN_REQUEST_PENDING_DUPLICATE("VILLAGE_039", "既に審査待ちの参加申請があります", Severity.WARN),
+
+    /** VILLAGE_040: 既に審査済み（APPROVED/REJECTED/WITHDRAWN）の申請への再操作（409） */
+    VILLAGE_JOIN_REQUEST_ALREADY_REVIEWED("VILLAGE_040", "この参加申請は既に処理済みです", Severity.WARN),
+
+    /** VILLAGE_041: FREE 村に対して参加申請 API を使った（422、直接参加 API を使うべき） */
+    VILLAGE_FREE_VILLAGE_DIRECT_JOIN("VILLAGE_041", "この村は自由参加です。参加申請ではなく直接参加してください", Severity.WARN);
 
     private final String code;
     private final String message;
