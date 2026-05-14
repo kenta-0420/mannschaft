@@ -7,6 +7,11 @@ import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.RoleErrorCode;
+import com.mannschaft.app.scopefolder.ScopeFolderErrorCode;
+import com.mannschaft.app.scopefolder.entity.AssignedVia;
+import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
+import com.mannschaft.app.scopefolder.repository.MyScopeFolderRepository;
+import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.google.zxing.BarcodeFormat;
@@ -67,6 +72,8 @@ public class InviteService {
     private final TeamBlockRepository teamBlockRepository;
     private final OrganizationBlockRepository organizationBlockRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final MyScopeFolderService myScopeFolderService;
+    private final MyScopeFolderRepository myScopeFolderRepository;
 
     /**
      * 招待トークンを作成する。
@@ -150,12 +157,29 @@ public class InviteService {
     }
 
     /**
-     * 招待トークンを使用してスコープに参加する。
+     * 招待トークンを使用してスコープに参加する（後方互換版）。
+     * F15.3 で folderId 受領版が追加されたが、folderId=null と等価。
+     */
+    public void joinByInvite(String tokenStr, Long userId) {
+        joinByInvite(tokenStr, userId, null);
+    }
+
+    /**
+     * 招待トークンを使用してスコープに参加する（F15.3 §5.1.1: folderId 受領版）。
      * FOR UPDATEでロック取得し、ブロック・重複・有効性をチェック。
+     *
+     * <p>参加成功後、{@code folderId} 指定時はそのフォルダへ配置 (assignedVia=INVITE)、
+     * 未指定時は「未分類」フォルダへ自動配置 (assignedVia=DEFAULT) する。</p>
+     *
+     * <p>{@code folderId} の scope_type と招待 scope が不一致の場合、参加自体は完了するが
+     * フォルダ配置で {@link ScopeFolderErrorCode#SCOPE_FOLDER_TYPE_MISMATCH} が発生する。
+     * 厳密にはチェックを参加前に行うことで「参加せずエラー返却」も可能だが、設計書 §5.1.1 は
+     * 「参加→配置失敗時にエラー」の振る舞いを許容するため、現実装は本流に従う。</p>
      */
     @Transactional
-    // TODO: RoleドメインとOrganizationドメイン・Teamドメインをまたいでいる。将来はInviteJoinedEventで分離予定
-    public void joinByInvite(String tokenStr, Long userId) {
+    // TODO: RoleドメインとOrganizationドメイン・Teamドメイン・ScopeFolderドメインをまたいでいる。
+    //       将来はInviteJoinedEventで分離予定
+    public void joinByInvite(String tokenStr, Long userId, Long folderId) {
         // FOR UPDATEでロック取得（同時参加の排他制御）
         InviteTokenEntity token = inviteTokenRepository.findByTokenForUpdate(tokenStr)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
@@ -209,6 +233,42 @@ public class InviteService {
 
         log.info("招待トークンによる参加完了: userId={}, scopeType={}, scopeId={}",
                 userId, scopeType, scopeId);
+
+        // F15.3 §5.1.1: マイスコープフォルダ配置
+        assignToFolder(userId, scopeType, scopeId, folderId);
+    }
+
+    /**
+     * 招待参加後のフォルダ配置を行う（F15.3 §5.1.1）。
+     *
+     * <p>{@code folderId} 指定時は当該フォルダへ (INVITE)、未指定時は未分類フォルダへ (DEFAULT) 配置。
+     * フォルダの scope_type が招待 scope と不一致なら {@code SCOPE_FOLDER_TYPE_MISMATCH} を投げる。</p>
+     */
+    private void assignToFolder(Long userId, String scopeType, Long scopeId, Long folderId) {
+        com.mannschaft.app.scopefolder.entity.ScopeType folderScope = "TEAM".equals(scopeType)
+                ? com.mannschaft.app.scopefolder.entity.ScopeType.TEAM
+                : com.mannschaft.app.scopefolder.entity.ScopeType.ORGANIZATION;
+
+        if (folderId != null) {
+            // フォルダの存在と scope_type 整合チェック（IDOR 含む）
+            MyScopeFolderEntity folder = myScopeFolderRepository
+                    .findByIdAndUserIdAndDeletedAtIsNull(folderId, userId)
+                    .orElseThrow(() -> new com.mannschaft.app.common.BusinessException(
+                            ScopeFolderErrorCode.SCOPE_FOLDER_NOT_FOUND));
+            if (folder.getScopeType() != folderScope) {
+                throw new com.mannschaft.app.common.BusinessException(
+                        ScopeFolderErrorCode.SCOPE_FOLDER_TYPE_MISMATCH);
+            }
+            myScopeFolderService.addItemWithAssignedVia(userId, folderId, scopeId, AssignedVia.INVITE);
+            log.info("招待時フォルダ配置(INVITE): userId={}, folderId={}, scopeId={}", userId, folderId, scopeId);
+        } else {
+            MyScopeFolderEntity defaultFolder =
+                    myScopeFolderService.findOrCreateDefaultInternal(userId, folderScope);
+            myScopeFolderService.addItemWithAssignedVia(
+                    userId, defaultFolder.getId(), scopeId, AssignedVia.DEFAULT);
+            log.info("招待時フォルダ配置(DEFAULT): userId={}, defaultFolderId={}, scopeId={}",
+                    userId, defaultFolder.getId(), scopeId);
+        }
     }
 
     // ========================================

@@ -2,6 +2,7 @@ package com.mannschaft.app.role.controller;
 
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.role.dto.InviteJoinRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -57,12 +59,20 @@ public class InviteController {
 
     /**
      * 招待トークンを使用して参加する。
+     *
+     * <p>F15.3: リクエストボディに任意で {@code folderId} を含められる。
+     * 未指定時はサーバー側で「未分類」フォルダへ自動配置される。
+     * ボディ全体も任意（後方互換）。</p>
      */
     @PostMapping("/{token}/join")
-    @Operation(summary = "招待による参加")
+    @Operation(summary = "招待による参加",
+            description = "招待トークンで参加。ボディの folderId 指定時はそのフォルダへ、未指定時は未分類フォルダへ配置")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "参加成功")
-    public ResponseEntity<Void> joinByInvite(@PathVariable String token) {
-        inviteService.joinByInvite(token, SecurityUtils.getCurrentUserId());
+    public ResponseEntity<Void> joinByInvite(
+            @PathVariable String token,
+            @RequestBody(required = false) InviteJoinRequest req) {
+        Long folderId = req != null ? req.folderId() : null;
+        inviteService.joinByInvite(token, SecurityUtils.getCurrentUserId(), folderId);
         return ResponseEntity.ok().build();
     }
 }

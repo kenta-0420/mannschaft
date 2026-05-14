@@ -15,6 +15,8 @@ import com.mannschaft.app.notification.dto.UnreadCountResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
+import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.service.MyScopeFolderQueryService;
 import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -49,6 +52,12 @@ public class NotificationService {
     private final ContentVisibilityChecker visibilityChecker;
 
     /**
+     * F15.3: マイスコープフォルダによる通知フィルタ用クエリサービス。
+     * folderId 指定時にフォルダ内 scopeId 集合を取得する（設計書 §5.2.4）。
+     */
+    private final MyScopeFolderQueryService myScopeFolderQueryService;
+
+    /**
      * ユーザーの通知一覧をページング取得する。
      *
      * @param userId   ユーザーID
@@ -58,6 +67,42 @@ public class NotificationService {
     @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "NotificationService.listNotifications"})
     public Page<NotificationResponse> listNotifications(Long userId, Pageable pageable) {
         Page<NotificationEntity> page = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+        return page.map(notificationMapper::toNotificationResponse);
+    }
+
+    /**
+     * フォルダ単位での通知一覧を取得する（F15.3 §5.2.4）。
+     *
+     * <p>{@code folderId} と {@code scopeType} の両方が指定されたときのみフォルダフィルタを適用する。
+     * folderId の所有検証は {@link MyScopeFolderQueryService#getScopeIdsInFolder} 内で行われ、
+     * 他人 folderId の場合は {@code SCOPE_FOLDER_NOT_FOUND} が投げられる（設計書 §9.7）。</p>
+     *
+     * <p>folderId 未指定時は {@link #listNotifications} と同等の挙動（後方互換）。</p>
+     *
+     * @param userId    ユーザーID
+     * @param folderId  フォルダID（任意。null なら全件）
+     * @param scopeType スコープタイプ（folderId と共に指定）
+     * @param pageable  ページング
+     * @return フィルタ済みの通知ページ
+     */
+    public Page<NotificationResponse> listNotificationsByFolder(
+            Long userId, Long folderId, ScopeType scopeType, Pageable pageable) {
+        if (folderId == null || scopeType == null) {
+            return listNotifications(userId, pageable);
+        }
+
+        // 1) folder の所有 + アイテム scope_id 集合を取得（IDOR 防止込み）
+        List<Long> scopeIds = myScopeFolderQueryService.getScopeIdsInFolder(userId, folderId);
+        if (scopeIds.isEmpty()) {
+            // フォルダにアイテムが無い → 結果空
+            return Page.empty(pageable);
+        }
+
+        // 2) scope_type + scope_id IN (...) で絞り込み
+        // NotificationEntity.scopeType は String 型、scope_id は Long
+        Page<NotificationEntity> page = notificationRepository
+                .findByUserIdAndScopeTypeAndScopeIdInOrderByCreatedAtDesc(
+                        userId, scopeType.name(), scopeIds, pageable);
         return page.map(notificationMapper::toNotificationResponse);
     }
 

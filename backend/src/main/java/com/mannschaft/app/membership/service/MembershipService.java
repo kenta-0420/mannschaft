@@ -14,6 +14,7 @@ import com.mannschaft.app.membership.dto.MembershipLeaveRequest;
 import com.mannschaft.app.membership.entity.MemberPositionEntity;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.entity.PositionEntity;
+import com.mannschaft.app.membership.event.MembershipEndedEvent;
 import com.mannschaft.app.membership.repository.MemberPositionRepository;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.repository.PositionRepository;
@@ -173,6 +174,10 @@ public class MembershipService {
             eventPublisher.publishEvent(new MembershipChangedEvent(
                     entity.getUserId(), entity.getScopeType().name(), entity.getScopeId(),
                     MembershipChangedEvent.ChangeType.REMOVED));
+
+            // F15.3 §6.5: マイスコープフォルダ等の dangling 防止用イベント
+            eventPublisher.publishEvent(new MembershipEndedEvent(
+                    entity.getUserId(), entity.getScopeType(), entity.getScopeId()));
         }
 
         // 監査ログ用イベント発行（SUPPORTER の退会は対象外 — MEMBER/ADMIN 等のみ）
