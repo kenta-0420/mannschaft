@@ -7,6 +7,7 @@ import com.mannschaft.app.weather.entity.PostalCodeEntity;
 import com.mannschaft.app.weather.entity.UserWeatherLocationEntity;
 import com.mannschaft.app.weather.exception.WeatherLocationDeriveException;
 import com.mannschaft.app.weather.exception.WeatherLocationDeriveException.ErrorCode;
+import com.mannschaft.app.weather.metrics.WeatherMetrics;
 import com.mannschaft.app.weather.repository.PostalCodeRepository;
 import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +55,7 @@ public class WeatherLocationDeriver {
     private final PostalCodeRepository postalCodeRepository;
     private final UserWeatherLocationRepository userWeatherLocationRepository;
     private final EncryptionService encryptionService;
+    private final WeatherMetrics weatherMetrics;
 
     /**
      * 指定ユーザーの郵便番号から地点を導出し永続化する。
@@ -91,9 +93,11 @@ public class WeatherLocationDeriver {
             // 一部だけ無いなら POSTAL_CODE_NOT_FOUND として切り分ける。
             if (!postalCodeRepository.existsByCountryCode(countryCode)) {
                 log.info("地点導出: 国コードが GeoNames に未収録: countryCode={}", countryCode);
+                weatherMetrics.recordLocationDerive("error");
                 throw new WeatherLocationDeriveException(ErrorCode.COUNTRY_NOT_SUPPORTED);
             }
             log.info("地点導出: 郵便番号がマスタに未ヒット: countryCode={}", countryCode);
+            weatherMetrics.recordLocationDerive("postal_not_found");
             throw new WeatherLocationDeriveException(ErrorCode.POSTAL_CODE_NOT_FOUND);
         }
         PostalCodeEntity master = masterOpt.get();
@@ -137,6 +141,7 @@ public class WeatherLocationDeriver {
         // セキュリティ: 平文郵便番号・座標生値はログに出さない。country_code と place_name_snapshot のみ。
         log.info("地点導出完了: userId={}, countryCode={}, placeName={}",
                 userId, countryCode, placeNameSnapshot);
+        weatherMetrics.recordLocationDerive("success");
 
         return Optional.of(saved);
     }

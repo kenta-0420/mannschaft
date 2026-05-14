@@ -7,6 +7,7 @@ import com.mannschaft.app.weather.entity.PostalCodeEntity;
 import com.mannschaft.app.weather.entity.UserWeatherLocationEntity;
 import com.mannschaft.app.weather.exception.WeatherLocationDeriveException;
 import com.mannschaft.app.weather.exception.WeatherLocationDeriveException.ErrorCode;
+import com.mannschaft.app.weather.metrics.WeatherMetrics;
 import com.mannschaft.app.weather.repository.PostalCodeRepository;
 import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +46,7 @@ class WeatherLocationDeriverTest {
     @Mock private PostalCodeRepository postalCodeRepository;
     @Mock private UserWeatherLocationRepository userWeatherLocationRepository;
     @Mock private EncryptionService encryptionService;
+    @Mock private WeatherMetrics weatherMetrics;
 
     @InjectMocks private WeatherLocationDeriver deriver;
 
