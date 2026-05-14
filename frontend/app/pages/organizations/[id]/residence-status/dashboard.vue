@@ -25,8 +25,8 @@ const loadingDashboard = ref(false)
 const reviews = ref<AnnualReviewResponse[]>([])
 const loadingReviews = ref(false)
 const showCreateDialog = ref(false)
-const createForm = ref<AnnualReviewCreateRequest>({
-  targetYear: new Date().getFullYear(),
+const targetYearInput = ref<string>(String(new Date().getFullYear()))
+const createForm = ref<Omit<AnnualReviewCreateRequest, 'targetYear'>>({
   title: '',
   deadlineDate: '',
 })
@@ -34,7 +34,7 @@ const submittingCreate = ref(false)
 const closingReviewId = ref<string | null>(null)
 
 // 訪問記録
-const committeeIdInput = ref<number | null>(null)
+const committeeIdInput = ref<string>('')
 const visits = ref<MonitoringVisitResponse[]>([])
 const loadingVisits = ref(false)
 
@@ -111,10 +111,13 @@ async function fetchReviews() {
 async function handleCreateReview() {
   submittingCreate.value = true
   try {
-    await createReview(orgId.value, createForm.value)
+    await createReview(orgId.value, {
+      ...createForm.value,
+      targetYear: Number(targetYearInput.value),
+    })
     showCreateDialog.value = false
+    targetYearInput.value = String(new Date().getFullYear())
     createForm.value = {
-      targetYear: new Date().getFullYear(),
       title: '',
       deadlineDate: '',
     }
@@ -145,10 +148,10 @@ async function handleCloseReview(reviewId: string) {
 
 // 訪問記録検索
 async function fetchVisits() {
-  if (committeeIdInput.value === null) return
+  if (!committeeIdInput.value) return
   loadingVisits.value = true
   try {
-    const res = await listVisitsByCommittee(orgId.value, committeeIdInput.value)
+    const res = await listVisitsByCommittee(orgId.value, Number(committeeIdInput.value))
     visits.value = res.data
   }
   catch (e) {
@@ -195,7 +198,7 @@ onMounted(async () => {
 
     <TabView>
       <!-- ダッシュボードタブ -->
-      <TabPanel header="ダッシュボード">
+      <TabPanel value="dashboard" header="ダッシュボード">
         <div v-if="loadingDashboard" class="flex items-center justify-center py-12">
           <ProgressSpinner />
         </div>
@@ -268,7 +271,7 @@ onMounted(async () => {
       </TabPanel>
 
       <!-- 年次更新タブ -->
-      <TabPanel header="年次更新">
+      <TabPanel value="annual-review" header="年次更新">
         <div class="flex flex-col gap-4">
           <div class="flex justify-end">
             <Button
@@ -364,7 +367,7 @@ onMounted(async () => {
             <div class="flex flex-col gap-1">
               <label class="text-sm font-medium">対象年度</label>
               <InputText
-                v-model.number="createForm.targetYear"
+                v-model="targetYearInput"
                 type="number"
                 placeholder="例: 2026"
               />
@@ -402,13 +405,13 @@ onMounted(async () => {
       </TabPanel>
 
       <!-- 訪問記録タブ -->
-      <TabPanel header="訪問記録">
+      <TabPanel value="visits" header="訪問記録">
         <div class="flex flex-col gap-4">
           <div class="flex items-center justify-between gap-4 flex-wrap">
             <div class="flex items-center gap-2">
               <label class="text-sm font-medium whitespace-nowrap">委員会ID</label>
               <InputText
-                v-model.number="committeeIdInput"
+                v-model="committeeIdInput"
                 type="number"
                 placeholder="委員会IDを入力"
                 style="width: 12rem"
