@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -54,6 +55,8 @@ public class ChatMessageService {
     /** F13 Phase 4-β: 統合ストレージクォータ連携。添付の INSERT 時 / 論理削除時の使用量計上に使用。 */
     private final ChatAttachmentService chatAttachmentService;
     private final ChatChannelMemberRepository memberRepository;
+    /** F04.2: WebSocket STOMP でメッセージイベントをチャンネル参加者に配信する。 */
+    private final ChatMessagePublisher chatMessagePublisher;
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
@@ -152,7 +155,10 @@ public class ChatMessageService {
         // 未読カウントのインクリメントはNotificationService側で管理
 
         log.info("メッセージ送信完了: messageId={}, channelId={}, senderId={}", saved.getId(), channelId, senderId);
-        return chatMapper.toMessageResponseWithDetails(saved, attachmentResponses, List.of());
+        MessageResponse response = chatMapper.toMessageResponseWithDetails(saved, attachmentResponses, List.of());
+        // F04.2: WebSocket でチャンネル参加者全員に配信（@Transactional 内だが配信タイミングは送信後で許容）
+        chatMessagePublisher.publishCreated(channelId, response);
+        return response;
     }
 
     /**
@@ -172,7 +178,10 @@ public class ChatMessageService {
         ChatMessageEntity saved = messageRepository.save(message);
 
         log.info("メッセージ編集完了: messageId={}", messageId);
-        return enrichMessage(saved);
+        MessageResponse response = enrichMessage(saved);
+        // F04.2: WebSocket でチャンネル参加者全員に配信
+        chatMessagePublisher.publishUpdated(saved.getChannelId(), response);
+        return response;
     }
 
     /**
@@ -212,6 +221,9 @@ public class ChatMessageService {
         }
 
         log.info("メッセージ削除完了: messageId={}", messageId);
+        // F04.2: WebSocket でチャンネル参加者全員に配信
+        String deletedAtStr = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        chatMessagePublisher.publishDeleted(message.getChannelId(), messageId, deletedAtStr);
     }
 
     /**
