@@ -81,8 +81,7 @@ jobs:
         working-directory: ./backend
 
       - name: Verify openapi.json generated
-        run: test -f docs/openapi.json
-        working-directory: .
+        run: test -f ../docs/openapi.json
 
       - name: Upload openapi.json as artifact
         uses: actions/upload-artifact@v4

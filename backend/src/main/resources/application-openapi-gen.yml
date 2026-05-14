@@ -31,11 +31,13 @@ spring:
   flyway:
     enabled: false
 
-  # Redis（Valkey）接続を遅延初期化に任せる（実際に使用されない Bean は起動しない）
+  # Redis（Valkey）: OpenAPI 生成時は接続しないためタイムアウトを短縮
+  # lazy-initialization=true で Redis Bean は基本的に起動しないが、念のため timeout を短く設定
   data:
     redis:
       host: localhost
       port: 6379
+      timeout: 200ms
 
   # @Scheduled タスクを無効化（DB 不在で実行されると例外が出るため）
   task:

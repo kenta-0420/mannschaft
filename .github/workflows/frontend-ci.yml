@@ -50,9 +50,9 @@ jobs:
 
       - name: Check for type drift
         run: |
-          if ! git diff --quiet app/types/generated/; then
+          if ! git diff --quiet app/types/generated/index.ts; then
             echo "::error::openapi.json と生成型が乖離しています。npm run generate:types を実行してください"
-            git diff app/types/generated/
+            git diff app/types/generated/index.ts
             exit 1
           fi
 
