@@ -20,18 +20,14 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 修繕計画ダッシュボードコントローラー（F08.8 Phase 1）。
  *
- * <p>設計書 F08.8 §4 の {@code GET /api/v1/{scope}/{id}/repair-plan/dashboard} を提供する。
- * URL パスの {@code {scope}} は {@code teams} または {@code organizations} の複数形。
- * 内部で {@code TEAM} / {@code ORGANIZATION} の大文字単数形に正規化して
- * {@link RepairPlanDashboardService} に渡す。</p>
- *
- * <p>認可: スコープ所属確認のみ実施（{@link AccessControlService#checkMembership}）。
- * 個別ウィジェットの可視性はサービスで {@code widget_visibility[]} に反映される。
- * 監査ログは読み取り API のため記録しない（既存 read API 流儀）。</p>
+ * URL パスの {scopeType} は teams または organizations の複数形。
+ * 内部で TEAM / ORGANIZATION の大文字単数形に正規化してサービスに渡す。
+ * @RequireRepairPlanModule が scopeTypeParam="scopeType" を参照するため
+ * パス変数名を scopeType に統一している（他コントローラーと揃える）。
  */
 @RequireRepairPlanModule
 @RestController
-@RequestMapping("/api/v1/{scope}/{scopeId}/repair-plan")
+@RequestMapping("/api/v1/{scopeType}/{scopeId}/repair-plan")
 @Tag(name = "修繕計画ダッシュボード", description = "F08.8 マンション修繕長期計画ダッシュボード")
 @RequiredArgsConstructor
 public class RepairPlanDashboardController {
@@ -39,13 +35,6 @@ public class RepairPlanDashboardController {
     private final RepairPlanDashboardService dashboardService;
     private final AccessControlService accessControlService;
 
-    /**
-     * 修繕計画ダッシュボード一括取得。
-     *
-     * @param scope   URL パスセグメント。{@code teams} または {@code organizations}
-     * @param scopeId スコープ ID（チーム ID または組織 ID）
-     * @return 5 ペイン統合 DTO（Phase 1 では {@code upcoming_items} のみデータあり）
-     */
     @GetMapping("/dashboard")
     @Operation(
             summary = "修繕計画ダッシュボード一括取得",
@@ -53,21 +42,18 @@ public class RepairPlanDashboardController {
                     + "残りペインは Phase 2 以降で実装。"
     )
     public ResponseEntity<ApiResponse<RepairPlanDashboardResponse>> getDashboard(
-            @PathVariable("scope") String scope,
+            @PathVariable("scopeType") String scopeType,
             @PathVariable("scopeId") Long scopeId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        String scopeType = normalizeScopePathSegment(scope);
-
-        // 認可: スコープ所属確認（非メンバーは 403）
-        accessControlService.checkMembership(userId, scopeId, scopeType);
-
-        RepairPlanDashboardResponse response = dashboardService.get(scopeId, scopeType, userId);
+        String normalizedScope = normalizeScopePathSegment(scopeType);
+        accessControlService.checkMembership(userId, scopeId, normalizedScope);
+        RepairPlanDashboardResponse response = dashboardService.get(scopeId, normalizedScope, userId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
-     * URL パスセグメント（複数形）を {@code TEAM} / {@code ORGANIZATION} の大文字単数形に正規化する。
-     * F08.8 は teams / organizations のみ対応し、personal は対象外。
+     * URL パスセグメント（複数形）を TEAM / ORGANIZATION の大文字単数形に正規化する。
+     * RepairPlanModuleGuard でも同様の正規化を行うが、サービス呼び出し前に正規化を完結させておく。
      */
     private static String normalizeScopePathSegment(String pathSegment) {
         if (pathSegment == null) {
