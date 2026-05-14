@@ -299,6 +299,80 @@ class MonitoringCommitteeVisitServiceTest {
         }
     }
 
+    // ─── getVisitsByWatcher ──────────────────────────────────────────
+
+    @Nested
+    @DisplayName("getVisitsByWatcher (S4-A)")
+    class GetVisitsByWatcher {
+
+        @Test
+        @DisplayName("ADMIN はどの WATCHER の訪問履歴も取得できる")
+        void adminCanGetByWatcher() {
+            // given
+            MonitoringCommitteeVisit v1 = buildVisit(UUID.randomUUID(), LocalDateTime.now());
+            MonitoringCommitteeVisit v2 = buildVisit(UUID.randomUUID(), LocalDateTime.now().minusDays(3));
+            when(accessControlService.isAdminOrAbove(ADMIN_USER, ORG_ID, "ORGANIZATION")).thenReturn(true);
+            when(visitRepo.findByVisitorUserIdAndOrganizationIdAndDeletedAtIsNullOrderByVisitedAtDesc(
+                    VISITOR_USER, ORG_ID))
+                    .thenReturn(List.of(v1, v2));
+
+            // when
+            List<MonitoringCommitteeVisitDto> list = service.getVisitsByWatcher(ORG_ID, VISITOR_USER, ADMIN_USER);
+
+            // then
+            assertThat(list).hasSize(2);
+            assertThat(list.get(0).getVisitorUserId()).isEqualTo(VISITOR_USER);
+        }
+
+        @Test
+        @DisplayName("本人（isSelf）は自分の訪問履歴を取得できる")
+        void selfCanGetOwnVisits() {
+            // given: VISITOR_USER が自分自身の訪問履歴を取得する
+            MonitoringCommitteeVisit v = buildVisit(UUID.randomUUID(), LocalDateTime.now());
+            when(accessControlService.isAdminOrAbove(VISITOR_USER, ORG_ID, "ORGANIZATION")).thenReturn(false);
+            when(visitRepo.findByVisitorUserIdAndOrganizationIdAndDeletedAtIsNullOrderByVisitedAtDesc(
+                    VISITOR_USER, ORG_ID))
+                    .thenReturn(List.of(v));
+
+            // when: requestUserId == visitorUserId (本人)
+            List<MonitoringCommitteeVisitDto> list = service.getVisitsByWatcher(ORG_ID, VISITOR_USER, VISITOR_USER);
+
+            // then
+            assertThat(list).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("第三者（ADMIN でも本人でもない）は SNAPSHOT_ACCESS_FORBIDDEN")
+        void thirdPartyForbidden() {
+            // given: MEMBER_USER は ADMIN でも VISITOR_USER 本人でもない
+            Long thirdPartyUser = 9999L;
+            when(accessControlService.isAdminOrAbove(thirdPartyUser, ORG_ID, "ORGANIZATION")).thenReturn(false);
+
+            // when/then
+            assertThatThrownBy(() -> service.getVisitsByWatcher(ORG_ID, VISITOR_USER, thirdPartyUser))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ResidenceStatusErrorCode.SNAPSHOT_ACCESS_FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("ADMIN かつ本人の場合も成功する")
+        void adminAndSelfBothSucceed() {
+            // given: VISITOR_USER が ADMIN でもあり、かつ本人の場合
+            MonitoringCommitteeVisit v = buildVisit(UUID.randomUUID(), LocalDateTime.now());
+            when(accessControlService.isAdminOrAbove(VISITOR_USER, ORG_ID, "ORGANIZATION")).thenReturn(true);
+            when(visitRepo.findByVisitorUserIdAndOrganizationIdAndDeletedAtIsNullOrderByVisitedAtDesc(
+                    VISITOR_USER, ORG_ID))
+                    .thenReturn(List.of(v));
+
+            // when
+            List<MonitoringCommitteeVisitDto> list = service.getVisitsByWatcher(ORG_ID, VISITOR_USER, VISITOR_USER);
+
+            // then
+            assertThat(list).hasSize(1);
+        }
+    }
+
     // ─── getVisitsByResident ──────────────────────────────────────────
 
     @Nested

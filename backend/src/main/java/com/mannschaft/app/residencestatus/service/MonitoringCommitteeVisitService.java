@@ -207,6 +207,41 @@ public class MonitoringCommitteeVisitService {
     }
 
     // ─────────────────────────────────────────────
+    // WATCHER 自身の訪問履歴取得（S4-A）
+    // ─────────────────────────────────────────────
+
+    /**
+     * WATCHER（訪問者）自身が記録した訪問履歴を取得する。
+     *
+     * <p>権限: ADMIN または本人（visitorUserId == requestUserId）のみ許可。
+     * それ以外は {@link ResidenceStatusErrorCode#SNAPSHOT_ACCESS_FORBIDDEN} を送出する。</p>
+     *
+     * @param organizationId   テナント ID
+     * @param visitorUserId    訪問者ユーザー ID
+     * @param requestUserId    リクエストユーザー ID
+     * @return 訪問履歴 DTO 一覧（直近順）
+     * @throws BusinessException SNAPSHOT_ACCESS_FORBIDDEN: ADMIN でも本人でもない場合
+     */
+    public List<MonitoringCommitteeVisitDto> getVisitsByWatcher(
+            Long organizationId,
+            Long visitorUserId,
+            Long requestUserId) {
+
+        boolean isAdmin = accessControlService.isAdminOrAbove(requestUserId, organizationId, "ORGANIZATION");
+        boolean isSelf  = requestUserId.equals(visitorUserId);
+        if (!isAdmin && !isSelf) {
+            throw new BusinessException(ResidenceStatusErrorCode.SNAPSHOT_ACCESS_FORBIDDEN);
+        }
+
+        return visitRepo
+                .findByVisitorUserIdAndOrganizationIdAndDeletedAtIsNullOrderByVisitedAtDesc(
+                        visitorUserId, organizationId)
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    // ─────────────────────────────────────────────
     // private ヘルパー
     // ─────────────────────────────────────────────
 
