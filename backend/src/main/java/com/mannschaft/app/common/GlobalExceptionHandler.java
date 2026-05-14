@@ -324,10 +324,14 @@ public class GlobalExceptionHandler {
             Map.entry("TOUR_026", HttpStatus.NOT_FOUND),              // TEAM_NOT_IN_ORGANIZATION (IDOR対策で404)
             Map.entry("TOUR_027", HttpStatus.CONFLICT),               // DUPLICATE_ENTRY_MEMBER
             Map.entry("TOUR_028", HttpStatus.FORBIDDEN),              // TEMPLATE_TEAM_MISMATCH
-            // F17.1 村ニックネーム（B4）
-            Map.entry("VILLAGE_004", HttpStatus.CONFLICT),                // NICKNAME_TAKEN
-            Map.entry("VILLAGE_008", HttpStatus.UNPROCESSABLE_ENTITY),    // NICKNAME_INVALID
-            Map.entry("VILLAGE_013", HttpStatus.TOO_MANY_REQUESTS)        // NICKNAME_CHANGE_THROTTLED
+            // F17.1 村機能 Phase 1 — 村作成申請（足軽B5）
+            Map.entry("VILLAGE_015", HttpStatus.UNPROCESSABLE_ENTITY), // GUIDELINE_NOT_AGREED
+            Map.entry("VILLAGE_017", HttpStatus.TOO_MANY_REQUESTS),    // CREATION_REQUEST_LIMIT_EXCEEDED
+            Map.entry("VILLAGE_018", HttpStatus.NOT_FOUND),            // CREATION_REQUEST_NOT_FOUND
+            Map.entry("VILLAGE_019", HttpStatus.CONFLICT),             // CREATION_REQUEST_ALREADY_REVIEWED
+            Map.entry("VILLAGE_023", HttpStatus.FORBIDDEN),            // CREATION_REJECTED
+            Map.entry("VILLAGE_027", HttpStatus.CONFLICT),             // SLUG_TAKEN_GLOBAL
+            Map.entry("VILLAGE_028", HttpStatus.FORBIDDEN)             // OFFICIAL_FORBIDDEN_FOR_USER
     );
 
     /**

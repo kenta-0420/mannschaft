@@ -7,28 +7,33 @@ import lombok.RequiredArgsConstructor;
 /**
  * F17.1 村機能のエラーコード定義。
  *
- * <p>B2（村 CRUD）/ B3（メンバーシップ）/ B4（ニックネーム）の各足軽で必要なコードを
- * 1 つの enum に集約する。番号は陣立て段階で割り当てを調整済み（B4 が定義する分は
- * {@code VILLAGE_004 / VILLAGE_008 / VILLAGE_013} の 3 件）。</p>
- *
- * <p>HttpStatus マッピングは {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} で個別指定する。</p>
+ * <p>Phase 1 B5（村作成申請）で追加。番号は B2/B3/B4 と被らないよう、
+ * 申請関連は 015〜029 を割り当てる。</p>
  */
 @Getter
 @RequiredArgsConstructor
 public enum VillageErrorCode implements ErrorCode {
 
-    // ==================================================================
-    // B4: 村ニックネーム管理（全村共通 1 つ）
-    // ==================================================================
+    /** ガイドライン未同意（または同意期限切れ） */
+    VILLAGE_015("VILLAGE_015", "村ガイドラインへの同意が必要です（直近1時間以内）", Severity.WARN),
 
-    /** ニックネームがプラットフォーム全体で既に使われている（先着優先・409 Conflict） */
-    NICKNAME_TAKEN("VILLAGE_004", "そのニックネームはすでに使われています", Severity.WARN),
+    /** 申請レートリミット超過（1日3件 or 保有 PENDING 10件） */
+    VILLAGE_017("VILLAGE_017", "村作成申請のレートリミットを超過しています（1日3件・保有10件まで）", Severity.WARN),
 
-    /** ニックネームの長さ・NG ワード・使用文字違反（422 Unprocessable Entity） */
-    NICKNAME_INVALID("VILLAGE_008", "ニックネームが無効です（長さ・禁止語・使用文字を確認してください）", Severity.WARN),
+    /** 申請が存在しない */
+    VILLAGE_018("VILLAGE_018", "村作成申請が見つかりません", Severity.WARN),
 
-    /** ニックネーム変更が月3回を超過した（429 Too Many Requests） */
-    NICKNAME_CHANGE_THROTTLED("VILLAGE_013", "ニックネーム変更は月3回までです", Severity.WARN);
+    /** 既に審査済み */
+    VILLAGE_019("VILLAGE_019", "この村作成申請は既に審査済みです", Severity.WARN),
+
+    /** 拒否済みのため操作不可 */
+    VILLAGE_023("VILLAGE_023", "この村作成申請は拒否済みです", Severity.WARN),
+
+    /** slug が既存村と衝突 */
+    VILLAGE_027("VILLAGE_027", "指定された slug は既に使用されています", Severity.WARN),
+
+    /** 一般ユーザーが OFFICIAL 村を申請しようとした */
+    VILLAGE_028("VILLAGE_028", "一般ユーザーは公式村を申請できません", Severity.WARN);
 
     private final String code;
     private final String message;

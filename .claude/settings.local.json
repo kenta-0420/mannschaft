@@ -772,7 +772,18 @@
       "PowerShell(wsl -e docker exec mannschaft-mysql mysql -u mannschaft -pmannschaft mannschaft -e \"SELECT version, success FROM flyway_schema_history WHERE version = '66.006';\" 2>&1)",
       "PowerShell(wsl -e docker exec mannschaft-mysql mysql -u mannschaft -pmannschaft mannschaft -e \"SELECT id, email, display_name, status FROM users WHERE email LIKE '%e2e%' OR id IN \\(67,68\\) ORDER BY id;\" 2>&1)",
       "Bash(node_modules/.bin/eslint app/types/chat.ts app/composables/useChatApi.ts app/components/chat/ChatContextMenu.vue app/components/chat/ChatBoardMigrationBanner.vue app/components/chat/ChatThreadPanel.vue app/components/chat/ChatMessageBubble.vue app/components/chat/ChatMessagePanel.vue)",
-      "Bash(/c/Claude/mannschaft/frontend/node_modules/.bin/eslint app/types/chat.ts app/composables/useChatApi.ts app/components/chat/ChatContextMenu.vue app/components/chat/ChatBoardMigrationBanner.vue app/components/chat/ChatThreadPanel.vue app/components/chat/ChatMessageBubble.vue app/components/chat/ChatMessagePanel.vue)"
+      "Bash(/c/Claude/mannschaft/frontend/node_modules/.bin/eslint app/types/chat.ts app/composables/useChatApi.ts app/components/chat/ChatContextMenu.vue app/components/chat/ChatBoardMigrationBanner.vue app/components/chat/ChatThreadPanel.vue app/components/chat/ChatMessageBubble.vue app/components/chat/ChatMessagePanel.vue)",
+      "Bash(sed -i 's/findByResidentRegistryIdAndOrganizationIdAndDeletedAtIsNullOrderBySnapshotDateDesc\\(REGISTRY_ID\\)/findByResidentRegistryIdAndOrganizationIdAndDeletedAtIsNullOrderBySnapshotDateDesc\\(REGISTRY_ID, ORG_ID\\)/g' backend/src/test/java/com/mannschaft/app/residencestatus/service/ResidentActivityAggregatorServiceTest.java)",
+      "Bash(sed -i 's/findByResidentRegistryIdAndOrganizationIdAndDeletedAtIsNullOrderBySnapshotDateDesc\\(anyLong\\(\\)\\)/findByResidentRegistryIdAndOrganizationIdAndDeletedAtIsNullOrderBySnapshotDateDesc\\(anyLong\\(\\), anyLong\\(\\)\\)/g' backend/src/test/java/com/mannschaft/app/residencestatus/service/ResidentActivityAggregatorServiceTest.java)",
+      "PowerShell(Get-ChildItem \"C:\\\\Claude\\\\mannschaft\\\\.claude\\\\worktrees\\\\real-e2e-fix\\\\frontend\" | Where-Object { $_.Name -eq \"node_modules\" })",
+      "Bash(findstr \"node\")",
+      "PowerShell(wmic process *)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npm run dev)",
+      "Bash(echo \"Started Nuxt dev server in background \\(PID: $!\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); jobs=d.get\\('jobs',[]\\); [print\\(j['name'], j['status'], j.get\\('conclusion',''\\)\\) for j in jobs]; print\\('overall:', d['status'], d.get\\('conclusion',''\\)\\)\")",
+      "PowerShell(& \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\resources\\\\bin\\\\docker.exe\" ps --format \"table {{.Names}}`t{{.Status}}\" 2>&1 | Select-Object -First 10)",
+      "Bash(nc -z localhost 3306)",
+      "Bash(nc -z localhost 6379)"
     ],
     "deny": [
       "Write(**/.env)",
