@@ -1102,7 +1102,8 @@
     "createNew": "새 폴더 만들기",
     "assignOnJoin": {
       "label": "폴더에 분류 (선택)",
-      "defaultHint": "선택하지 않으면 '미분류'에 자동 배치됩니다"
+      "defaultHint": "선택하지 않으면 '미분류'에 자동 배치됩니다",
+      "unselected": "선택 안 함 (미분류로 자동 배치)"
     },
     "notifications": {
       "byFolder": "폴더별 알림"

@@ -1102,7 +1102,8 @@
     "createNew": "Crear nueva carpeta",
     "assignOnJoin": {
       "label": "Asignar a carpeta (opcional)",
-      "defaultHint": "Si no se selecciona, se colocará en Sin categoría"
+      "defaultHint": "Si no se selecciona, se colocará en Sin categoría",
+      "unselected": "Sin seleccionar (se asigna a Sin categoría)"
     },
     "notifications": {
       "byFolder": "Notificaciones por carpeta"

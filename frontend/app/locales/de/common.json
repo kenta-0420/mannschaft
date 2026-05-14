@@ -1102,7 +1102,8 @@
     "createNew": "Neuen Ordner erstellen",
     "assignOnJoin": {
       "label": "Ordner zuweisen (optional)",
-      "defaultHint": "Wenn nicht ausgewählt, wird in Unsortiert abgelegt"
+      "defaultHint": "Wenn nicht ausgewählt, wird in Unsortiert abgelegt",
+      "unselected": "Nicht ausgewählt (wird in Unsortiert abgelegt)"
     },
     "notifications": {
       "byFolder": "Benachrichtigungen nach Ordner"

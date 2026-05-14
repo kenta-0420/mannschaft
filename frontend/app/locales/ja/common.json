@@ -1102,7 +1102,8 @@
     "createNew": "新規フォルダ作成",
     "assignOnJoin": {
       "label": "フォルダに振り分け（任意）",
-      "defaultHint": "未選択時は「未分類」に自動配置されます"
+      "defaultHint": "未選択時は「未分類」に自動配置されます",
+      "unselected": "未選択（未分類に自動配置）"
     },
     "notifications": {
       "byFolder": "フォルダ別通知"

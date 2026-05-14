@@ -1102,7 +1102,8 @@
     "createNew": "新建文件夹",
     "assignOnJoin": {
       "label": "分配到文件夹（可选）",
-      "defaultHint": "未选择时将自动放入「未分类」"
+      "defaultHint": "未选择时将自动放入「未分类」",
+      "unselected": "未选择（自动放入未分类）"
     },
     "notifications": {
       "byFolder": "按文件夹通知"

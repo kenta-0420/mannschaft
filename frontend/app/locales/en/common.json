@@ -1102,7 +1102,8 @@
     "createNew": "Create new folder",
     "assignOnJoin": {
       "label": "Assign to folder (optional)",
-      "defaultHint": "If not selected, will be placed in Uncategorized"
+      "defaultHint": "If not selected, will be placed in Uncategorized",
+      "unselected": "Not selected (auto-placed in Uncategorized)"
     },
     "notifications": {
       "byFolder": "Notifications by folder"

@@ -27,6 +27,12 @@ const loading = ref(false)
 const joining = ref(false)
 const error = ref(false)
 
+/**
+ * F15.3: 招待承諾時に配置するマイスコープフォルダ ID（任意）。
+ * `null` の場合は Backend 側で「未分類」フォルダへ自動配置される。
+ */
+const selectedFolderId = ref<number | null>(null)
+
 const roleLabel: Record<string, string> = {
   ADMIN: '管理者',
   DEPUTY_ADMIN: '副管理者',
@@ -56,7 +62,15 @@ async function fetchPreview() {
 async function joinWithToken() {
   joining.value = true
   try {
-    await api(`/api/v1/invite/${token.value}/join`, { method: 'POST' })
+    // F15.3: フォルダ選択ありなら folderId を body に含める。未選択時は
+    // Backend 側で「未分類」フォルダへ lazy 配置されるため body は空でよい。
+    const body = selectedFolderId.value != null
+      ? { folderId: selectedFolderId.value }
+      : {}
+    await api(`/api/v1/invite/${token.value}/join`, {
+      method: 'POST',
+      body,
+    })
     notification.success(`${typeLabel[preview.value!.type]}に参加しました`)
     navigateTo('/dashboard')
   } catch (err) {
@@ -136,15 +150,22 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- ログイン済み -->
-          <Button
-            v-if="authStore.isAuthenticated"
-            label="参加する"
-            icon="pi pi-check"
-            class="w-full"
-            :loading="joining"
-            @click="joinWithToken"
-          />
+          <!-- ログイン済み: フォルダ選択（任意）→ 参加ボタン -->
+          <template v-if="authStore.isAuthenticated">
+            <!-- F15.3: マイスコープフォルダ任意選択。未選択時は「未分類」自動配置。 -->
+            <InviteFolderPicker
+              v-model="selectedFolderId"
+              :scope-type="preview.type"
+              class="mb-4"
+            />
+            <Button
+              label="参加する"
+              icon="pi pi-check"
+              class="w-full"
+              :loading="joining"
+              @click="joinWithToken"
+            />
+          </template>
 
           <!-- 未ログイン -->
           <template v-else>
