@@ -165,7 +165,7 @@ class VillagePinControllerTest {
 
         mockMvc.perform(post("/api/v1/me/village-pins/{vid}", vid))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("VILLAGE_039"));
+                .andExpect(jsonPath("$.error.code").value("VILLAGE_045"));
     }
 
     @Test
@@ -205,7 +205,7 @@ class VillagePinControllerTest {
 
         mockMvc.perform(delete("/api/v1/me/village-pins/{vid}", vid))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("VILLAGE_038"));
+                .andExpect(jsonPath("$.error.code").value("VILLAGE_044"));
     }
 
     // ==================================================================
@@ -251,6 +251,6 @@ class VillagePinControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error.code").value("VILLAGE_040"));
+                .andExpect(jsonPath("$.error.code").value("VILLAGE_047"));
     }
 }
