@@ -62,6 +62,9 @@
     "typing": {
       "single": "{name} está escribiendo…",
       "multiple": "{names} están escribiendo…"
+    },
+    "connection": {
+      "failed": "Conexión perdida. Intentando reconectar…"
     }
   },
   "button": {

@@ -62,6 +62,9 @@
     "typing": {
       "single": "{name} is typing…",
       "multiple": "{names} are typing…"
+    },
+    "connection": {
+      "failed": "Connection lost. Attempting to reconnect…"
     }
   },
   "button": {

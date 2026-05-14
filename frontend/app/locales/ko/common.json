@@ -62,6 +62,9 @@
     "typing": {
       "single": "{name}이(가) 입력 중…",
       "multiple": "{names}이(가) 입력 중…"
+    },
+    "connection": {
+      "failed": "연결이 끊어졌습니다. 재연결을 시도하고 있습니다…"
     }
   },
   "button": {

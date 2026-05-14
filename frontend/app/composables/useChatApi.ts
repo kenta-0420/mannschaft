@@ -1,6 +1,7 @@
 import type { Client, IFrame, StompSubscription } from '@stomp/stompjs'
 import { Client as StompClient } from '@stomp/stompjs'
 import { useEventBus } from '@vueuse/core'
+import { ref } from 'vue'
 import type {
   ChatChannelListResponse,
   ChatChannelDetailResponse,
@@ -28,6 +29,8 @@ const _subscribedChannels = new Set<number>()
 const _lastMessageIdByChannel = new Map<number, number>()
 /** 指数バックオフの試行回数 */
 let _reconnectAttempts = 0
+/** 5回以上連続で再接続失敗した場合に true になるフラグ */
+const _wsConnectionFailed = ref(false)
 /** 初回接続かどうか（再接続後の再サブスクリプション判定用） */
 let _isFirstConnect = true
 
@@ -330,6 +333,7 @@ export function useChatApi() {
           }
           _isFirstConnect = false
           _reconnectAttempts = 0
+          _wsConnectionFailed.value = false
           resolve()
         },
         onDisconnect: () => {
@@ -338,6 +342,9 @@ export function useChatApi() {
           _reconnectAttempts = Math.min(_reconnectAttempts + 1, delays.length - 1)
           if (_stompClient !== null) {
             _stompClient.reconnectDelay = delays[_reconnectAttempts] ?? 30000
+          }
+          if (_reconnectAttempts >= 5) {
+            _wsConnectionFailed.value = true
           }
         },
         onStompError: (frame: IFrame) => {
@@ -616,6 +623,7 @@ export function useChatApi() {
     unsubscribeChannel,
     subscribeChannelEvents,
     unsubscribeChannelEvents,
+    wsConnectionFailed: _wsConnectionFailed,
   }
 }
 

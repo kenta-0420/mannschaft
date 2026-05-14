@@ -29,6 +29,7 @@ const {
   getActiveThreads,
   subscribeChannel,
   unsubscribeChannel,
+  wsConnectionFailed,
 } = useChatApi()
 const { showSuccess, showError } = useNotification()
 const authStore = useAuthStore()
@@ -316,6 +317,11 @@ onUnmounted(() => {
 
 <template>
   <div class="flex h-full flex-col">
+    <!-- 接続失敗バナー -->
+    <div v-if="wsConnectionFailed" class="reconnect-warning">
+      <span>{{ $t('chat.connection.failed') }}</span>
+    </div>
+
     <!-- チャンネルヘッダー -->
     <div class="flex items-center gap-3 border-b border-surface-200 px-4 py-3">
       <i
@@ -490,6 +496,15 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.reconnect-warning {
+  background-color: #fef3c7;
+  border-bottom: 1px solid #f59e0b;
+  color: #92400e;
+  font-size: 0.875rem;
+  padding: 8px 16px;
+  text-align: center;
+}
+
 .slide-right-enter-active,
 .slide-right-leave-active {
   transition: transform 0.25s ease, opacity 0.25s ease;

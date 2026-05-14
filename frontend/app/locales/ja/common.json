@@ -62,6 +62,9 @@
     "typing": {
       "single": "{name}が入力中…",
       "multiple": "{names}が入力中…"
+    },
+    "connection": {
+      "failed": "接続が切れています。再接続を試みています…"
     }
   },
   "button": {

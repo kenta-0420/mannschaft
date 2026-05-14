@@ -62,6 +62,9 @@
     "typing": {
       "single": "{name} tippt…",
       "multiple": "{names} tippen…"
+    },
+    "connection": {
+      "failed": "Verbindung unterbrochen. Verbindungsversuch läuft…"
     }
   },
   "button": {
