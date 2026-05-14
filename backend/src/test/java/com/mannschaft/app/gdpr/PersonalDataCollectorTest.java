@@ -86,7 +86,7 @@ class PersonalDataCollectorTest {
     class Collect {
 
         @Test
-        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（15カテゴリ）")
+        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（16カテゴリ）")
         void 正常_nullカテゴリ_全カテゴリ収集() {
             given(userRepository.findById(anyLong())).willReturn(Optional.empty());
             given(oAuthAccountRepository.findByUserId(anyLong())).willReturn(List.of());
@@ -119,13 +119,13 @@ class PersonalDataCollectorTest {
 
             Map<String, String> result = collector.collect(1L, null);
 
-            assertThat(result).hasSize(15);
+            assertThat(result).hasSize(16);
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     "account.json", "oauth_accounts.json", "memberships.json", "profiles.json",
                     "payments.json", "charts.json", "chat_messages.json", "timeline_posts.json",
                     "audit_logs.json", "notifications.json", "action_memos.json",
                     "error_reports.json", "proxy_input_consents.json", "proxy_input_records.json",
-                    "weather_locations.json"
+                    "weather_locations.json", "point_cards.json"
             );
         }
 
@@ -158,17 +158,32 @@ class PersonalDataCollectorTest {
     class GetCategoryKeys {
 
         @Test
-        @DisplayName("正常系: 15カテゴリキーが返る")
-        void 正常_15カテゴリキー返却() {
+        @DisplayName("正常系: 16カテゴリキーが返る")
+        void 正常_16カテゴリキー返却() {
             Set<String> keys = collector.getCategoryKeys();
 
-            assertThat(keys).hasSize(15);
+            assertThat(keys).hasSize(16);
             assertThat(keys).containsExactlyInAnyOrder(
                     "account", "oauth", "memberships", "profiles", "payments",
                     "charts", "chat_messages", "timeline", "audit_logs", "notifications",
                     "action_memos", "error_reports", "proxy_consents", "proxy_records",
-                    "location_preference"
+                    "location_preference", "point_cards"
             );
+        }
+    }
+
+    @Nested
+    @DisplayName("point_cards カテゴリ（F18 第二陣 2C スケルトン）")
+    class PointCardsCategory {
+
+        @Test
+        @DisplayName("スケルトン: point_cards 指定で空 JSON ({}) が返る（第三陣で完成予定）")
+        void スケルトン_point_cards_空JSON返却() {
+            Map<String, String> result = collector.collect(1L, Set.of("point_cards"));
+
+            assertThat(result).hasSize(1);
+            assertThat(result).containsKey("point_cards.json");
+            assertThat(result.get("point_cards.json")).isEqualTo("{}");
         }
     }
 
