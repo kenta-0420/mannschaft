@@ -141,7 +141,7 @@ class VillageCreationRequestServiceTest {
         assertThatThrownBy(() -> service.createRequest(REQUESTER_ID, validRequest()))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(VillageErrorCode.VILLAGE_017);
+                .isEqualTo(VillageErrorCode.CREATION_REQUEST_THROTTLED);
 
         verify(requestRepository, never()).save(any());
     }
@@ -170,7 +170,7 @@ class VillageCreationRequestServiceTest {
         assertThatThrownBy(() -> service.createRequest(REQUESTER_ID, validRequest()))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(VillageErrorCode.VILLAGE_017);
+                .isEqualTo(VillageErrorCode.CREATION_REQUEST_THROTTLED);
 
         verify(requestRepository, never()).save(any());
     }
@@ -189,7 +189,7 @@ class VillageCreationRequestServiceTest {
         assertThatThrownBy(() -> service.createRequest(REQUESTER_ID, req))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(VillageErrorCode.VILLAGE_015);
+                .isEqualTo(VillageErrorCode.GUIDELINE_NOT_AGREED);
     }
 
     // ---------------------------------------------------------------
@@ -206,7 +206,7 @@ class VillageCreationRequestServiceTest {
         assertThatThrownBy(() -> service.createRequest(REQUESTER_ID, validRequest()))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(VillageErrorCode.VILLAGE_027);
+                .isEqualTo(VillageErrorCode.CREATION_REQUEST_SLUG_TAKEN);
     }
 
     // ---------------------------------------------------------------
@@ -322,7 +322,7 @@ class VillageCreationRequestServiceTest {
                 new VillageCreationRequestReviewRequest("再審査")))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(VillageErrorCode.VILLAGE_019);
+                .isEqualTo(VillageErrorCode.CREATION_REQUEST_ALREADY_REVIEWED);
 
         verify(villageRepository, never()).save(any());
     }
@@ -345,7 +345,7 @@ class VillageCreationRequestServiceTest {
                 new VillageCreationRequestReviewRequest("コメ")))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(VillageErrorCode.VILLAGE_023);
+                .isEqualTo(VillageErrorCode.CREATION_REQUEST_REJECTED);
     }
 
     // ---------------------------------------------------------------
@@ -415,6 +415,6 @@ class VillageCreationRequestServiceTest {
         assertThatThrownBy(() -> service.createRequest(REQUESTER_ID, req))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(VillageErrorCode.VILLAGE_028);
+                .isEqualTo(VillageErrorCode.OFFICIAL_VILLAGE_FORBIDDEN);
     }
 }

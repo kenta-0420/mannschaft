@@ -123,7 +123,7 @@ class VillageMembershipControllerTest {
     @Test
     @DisplayName("POST /memberships: APPROVAL 村への直接参加で 409 VILLAGE_019")
     void join_approvalDenied_409() throws Exception {
-        willThrow(new BusinessException(VillageErrorCode.VILLAGE_019))
+        willThrow(new BusinessException(VillageErrorCode.VILLAGE_JOIN_REQUIRES_APPROVAL))
                 .given(membershipService).join(eq(VILLAGE_ID), eq(USER_ID), any(MembershipJoinRequest.class));
 
         String body = objectMapper.writeValueAsString(
@@ -149,7 +149,7 @@ class VillageMembershipControllerTest {
     @Test
     @DisplayName("DELETE /memberships/{id}: 既退村は 404 VILLAGE_007 (IDOR)")
     void leave_alreadyLeft_404() throws Exception {
-        willThrow(new BusinessException(VillageErrorCode.VILLAGE_007))
+        willThrow(new BusinessException(VillageErrorCode.NOT_MEMBER))
                 .given(membershipService).leave(eq(VILLAGE_ID), eq(MEMBERSHIP_ID), eq(USER_ID));
 
         mockMvc.perform(delete("/api/v1/villages/{vid}/memberships/{mid}", VILLAGE_ID, MEMBERSHIP_ID))
@@ -177,7 +177,7 @@ class VillageMembershipControllerTest {
     @Test
     @DisplayName("GET /memberships: 非村人で 404 VILLAGE_007 (IDOR)")
     void list_notMember_404() throws Exception {
-        willThrow(new BusinessException(VillageErrorCode.VILLAGE_007))
+        willThrow(new BusinessException(VillageErrorCode.NOT_MEMBER))
                 .given(membershipService).listMembers(eq(VILLAGE_ID), eq(USER_ID), eq(0), eq(50));
 
         mockMvc.perform(get("/api/v1/villages/{vid}/memberships", VILLAGE_ID))
@@ -209,7 +209,7 @@ class VillageMembershipControllerTest {
     @Test
     @DisplayName("PATCH /memberships/{id}/role: HEADMAN 以外は 403 VILLAGE_024")
     void changeRole_notHeadman_403() throws Exception {
-        willThrow(new BusinessException(VillageErrorCode.VILLAGE_024))
+        willThrow(new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN))
                 .given(membershipService).changeRole(eq(VILLAGE_ID), eq(MEMBERSHIP_ID), eq(USER_ID), any());
 
         String body = objectMapper.writeValueAsString(new RoleChangeRequest(VillageRole.ELDER));
@@ -244,7 +244,7 @@ class VillageMembershipControllerTest {
     @Test
     @DisplayName("POST /memberships/{id}/ban: HEADMAN 以外は 403 VILLAGE_024")
     void ban_notHeadman_403() throws Exception {
-        willThrow(new BusinessException(VillageErrorCode.VILLAGE_024))
+        willThrow(new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN))
                 .given(membershipService).ban(eq(VILLAGE_ID), eq(MEMBERSHIP_ID), eq(USER_ID), any());
 
         String body = objectMapper.writeValueAsString(new MembershipBanRequest("spam"));

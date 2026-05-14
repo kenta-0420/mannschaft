@@ -125,7 +125,7 @@ class VillageCreationRequestControllerTest {
     @Test
     @DisplayName("POST creation-requests — レートリミット超過で 429")
     void create_rateLimited() throws Exception {
-        willThrow(new BusinessException(VillageErrorCode.VILLAGE_017))
+        willThrow(new BusinessException(VillageErrorCode.CREATION_REQUEST_THROTTLED))
                 .given(service).createRequest(eq(100L), any());
 
         String body = """
@@ -144,7 +144,7 @@ class VillageCreationRequestControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.error.code").value("VILLAGE_017"));
+                .andExpect(jsonPath("$.error.code").value("VILLAGE_010"));
     }
 
     // ------------------------------------------------------------------
@@ -221,14 +221,14 @@ class VillageCreationRequestControllerTest {
     @DisplayName("POST admin .../approve — 既に APPROVED は 409")
     void approve_alreadyReviewed() throws Exception {
         doNothing().when(accessControlService).checkSystemAdmin(anyLong());
-        willThrow(new BusinessException(VillageErrorCode.VILLAGE_019))
+        willThrow(new BusinessException(VillageErrorCode.CREATION_REQUEST_ALREADY_REVIEWED))
                 .given(service).approve(eq(REQUEST_ID), eq(100L), any());
 
         mockMvc.perform(post("/api/v1/admin/village-creation-requests/{id}/approve", REQUEST_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("VILLAGE_019"));
+                .andExpect(jsonPath("$.error.code").value("VILLAGE_033"));
     }
 
     // ------------------------------------------------------------------
@@ -257,14 +257,14 @@ class VillageCreationRequestControllerTest {
     @DisplayName("POST admin .../reject — 申請が見つからない場合 404")
     void reject_notFound() throws Exception {
         doNothing().when(accessControlService).checkSystemAdmin(anyLong());
-        willThrow(new BusinessException(VillageErrorCode.VILLAGE_018))
+        willThrow(new BusinessException(VillageErrorCode.CREATION_REQUEST_NOT_FOUND))
                 .given(service).reject(eq(REQUEST_ID), eq(100L), any());
 
         mockMvc.perform(post("/api/v1/admin/village-creation-requests/{id}/reject", REQUEST_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reviewComment\":\"理由\"}"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("VILLAGE_018"));
+                .andExpect(jsonPath("$.error.code").value("VILLAGE_032"));
     }
 
     // ------------------------------------------------------------------

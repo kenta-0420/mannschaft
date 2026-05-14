@@ -72,7 +72,7 @@ public class VillageCreationRequestService {
 
         // 一般ユーザーは OFFICIAL を申請できない
         if (req.type() == VillageType.OFFICIAL && !isSystemAdmin(requesterUserId)) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_028);
+            throw new BusinessException(VillageErrorCode.OFFICIAL_VILLAGE_FORBIDDEN);
         }
 
         // ガイドライン同意が直近1時間以内であること
@@ -80,25 +80,25 @@ public class VillageCreationRequestService {
         if (req.guidelineAgreedAt() == null
                 || req.guidelineAgreedAt().isBefore(now.minusHours(GUIDELINE_AGREED_WITHIN_HOURS))
                 || req.guidelineAgreedAt().isAfter(now.plusMinutes(5))) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_015);
+            throw new BusinessException(VillageErrorCode.GUIDELINE_NOT_AGREED);
         }
 
         // レートリミット: 1 日 3 件
         long dailyCount = requestRepository.countByRequesterUserIdAndCreatedAtAfter(
                 requesterUserId, now.minusDays(1));
         if (dailyCount >= DAILY_RATE_LIMIT) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_017);
+            throw new BusinessException(VillageErrorCode.CREATION_REQUEST_THROTTLED);
         }
 
         // 保有 PENDING 上限
         long pendingCount = countPending(requesterUserId);
         if (pendingCount >= PENDING_LIMIT) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_017);
+            throw new BusinessException(VillageErrorCode.CREATION_REQUEST_THROTTLED);
         }
 
         // slug 衝突（既存村と）
         if (villageRepository.existsBySlug(req.slug())) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_027);
+            throw new BusinessException(VillageErrorCode.CREATION_REQUEST_SLUG_TAKEN);
         }
 
         VillageCreationRequestEntity entity = VillageCreationRequestEntity.builder()
@@ -150,13 +150,13 @@ public class VillageCreationRequestService {
                                                   Long reviewerUserId,
                                                   VillageCreationRequestReviewRequest review) {
         VillageCreationRequestEntity request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_018));
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.CREATION_REQUEST_NOT_FOUND));
 
         ensurePending(request);
 
         // 承認時にも slug の最終確認（申請受理〜承認の間に他申請が先に作成し得るため）
         if (villageRepository.existsBySlug(request.getProposedSlug())) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_027);
+            throw new BusinessException(VillageErrorCode.CREATION_REQUEST_SLUG_TAKEN);
         }
 
         // 自動村作成（B2 への侵入を避け、本足軽の責任範囲で直接生成。
@@ -209,7 +209,7 @@ public class VillageCreationRequestService {
             throw new BusinessException(CommonErrorCode.COMMON_001);
         }
         VillageCreationRequestEntity request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_018));
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.CREATION_REQUEST_NOT_FOUND));
 
         ensurePending(request);
 
@@ -232,7 +232,7 @@ public class VillageCreationRequestService {
     @Transactional
     public VillageCreationRequestResponse withdraw(UUID requestId, Long actorUserId) {
         VillageCreationRequestEntity request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_018));
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.CREATION_REQUEST_NOT_FOUND));
 
         boolean isOwner = request.getRequesterUserId().equals(actorUserId);
         boolean isAdmin = isSystemAdmin(actorUserId);
@@ -262,11 +262,11 @@ public class VillageCreationRequestService {
             case PENDING:
                 return;
             case REJECTED:
-                throw new BusinessException(VillageErrorCode.VILLAGE_023);
+                throw new BusinessException(VillageErrorCode.CREATION_REQUEST_REJECTED);
             case APPROVED:
             case WITHDRAWN:
             default:
-                throw new BusinessException(VillageErrorCode.VILLAGE_019);
+                throw new BusinessException(VillageErrorCode.CREATION_REQUEST_ALREADY_REVIEWED);
         }
     }
 

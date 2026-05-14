@@ -148,7 +148,7 @@ class VillageMembershipServiceTest {
                 VILLAGE_ID, ACTOR_USER_ID,
                 new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID)))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_019);
+                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_JOIN_REQUIRES_APPROVAL);
     }
 
     @Test
@@ -160,7 +160,7 @@ class VillageMembershipServiceTest {
                 VILLAGE_ID, ACTOR_USER_ID,
                 new MembershipJoinRequest(VillageSubjectType.USER, OTHER_USER_ID)))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_015);
+                .extracting("errorCode").isEqualTo(VillageErrorCode.REPRESENT_FORBIDDEN);
     }
 
     @Test
@@ -174,7 +174,7 @@ class VillageMembershipServiceTest {
                 VILLAGE_ID, ACTOR_USER_ID,
                 new MembershipJoinRequest(VillageSubjectType.TEAM, TEAM_ID)))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_015);
+                .extracting("errorCode").isEqualTo(VillageErrorCode.REPRESENT_FORBIDDEN);
     }
 
     @Test
@@ -212,7 +212,7 @@ class VillageMembershipServiceTest {
                 VILLAGE_ID, ACTOR_USER_ID,
                 new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID)))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_006);
+                .extracting("errorCode").isEqualTo(VillageErrorCode.ALREADY_MEMBER);
     }
 
     @Test
@@ -228,7 +228,7 @@ class VillageMembershipServiceTest {
                 VILLAGE_ID, ACTOR_USER_ID,
                 new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID)))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_031);
+                .extracting("errorCode").isEqualTo(VillageErrorCode.MEMBER_BANNED);
     }
 
     @Test
@@ -248,7 +248,7 @@ class VillageMembershipServiceTest {
                 VILLAGE_ID, ACTOR_USER_ID,
                 new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID)))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_012);
+                .extracting("errorCode").isEqualTo(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED);
     }
 
     @Test
@@ -301,7 +301,7 @@ class VillageMembershipServiceTest {
                 VILLAGE_ID, ACTOR_USER_ID,
                 new MembershipJoinRequest(VillageSubjectType.USER, ACTOR_USER_ID)))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_027);
+                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
     }
 
     // ========================================================================
@@ -389,7 +389,7 @@ class VillageMembershipServiceTest {
 
         assertThatThrownBy(() -> service.leave(VILLAGE_ID, membershipId, ACTOR_USER_ID))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_007);
+                .extracting("errorCode").isEqualTo(VillageErrorCode.NOT_MEMBER);
     }
 
     // ========================================================================
@@ -405,7 +405,7 @@ class VillageMembershipServiceTest {
 
         assertThatThrownBy(() -> service.listMembers(VILLAGE_ID, ACTOR_USER_ID, 0, 50))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_007);
+                .extracting("errorCode").isEqualTo(VillageErrorCode.NOT_MEMBER);
     }
 
     @Test
@@ -446,7 +446,7 @@ class VillageMembershipServiceTest {
         assertThatThrownBy(() -> service.changeRole(VILLAGE_ID, targetMembershipId, ACTOR_USER_ID,
                 new RoleChangeRequest(VillageRole.ELDER)))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_024);
+                .extracting("errorCode").isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
     }
 
     @Test
@@ -489,7 +489,7 @@ class VillageMembershipServiceTest {
         assertThatThrownBy(() -> service.changeRole(VILLAGE_ID, actorMembershipId, ACTOR_USER_ID,
                 new RoleChangeRequest(VillageRole.VILLAGER)))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_017);
+                .extracting("errorCode").isEqualTo(VillageErrorCode.HEADMAN_CANNOT_LEAVE);
     }
 
     // ========================================================================
@@ -508,7 +508,7 @@ class VillageMembershipServiceTest {
         assertThatThrownBy(() -> service.ban(VILLAGE_ID, targetId, ACTOR_USER_ID,
                 new MembershipBanRequest("spam")))
                 .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_024);
+                .extracting("errorCode").isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
     }
 
     @Test

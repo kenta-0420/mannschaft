@@ -88,7 +88,7 @@ public class VillageMembershipService {
         VillageEntity village = loadActiveVillage(villageId);
 
         if (village.getJoinPolicy() != VillageJoinPolicy.FREE) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_019);
+            throw new BusinessException(VillageErrorCode.VILLAGE_JOIN_REQUIRES_APPROVAL);
         }
 
         // 主体検証（IDOR / 代表権限）
@@ -101,9 +101,9 @@ public class VillageMembershipService {
         if (existing.isPresent()) {
             VillageMembershipEntity m = existing.get();
             if (m.getBannedAt() != null) {
-                throw new BusinessException(VillageErrorCode.VILLAGE_031);
+                throw new BusinessException(VillageErrorCode.MEMBER_BANNED);
             }
-            throw new BusinessException(VillageErrorCode.VILLAGE_006);
+            throw new BusinessException(VillageErrorCode.ALREADY_MEMBER);
         }
 
         // 参加上限（USER のみ。TEAM/ORG は別管理）
@@ -112,7 +112,7 @@ public class VillageMembershipService {
                     .findBySubjectTypeAndSubjectIdAndLeftAtIsNull(VillageSubjectType.USER, request.subjectId())
                     .size();
             if (activeCount >= PARTICIPATION_HARD_LIMIT) {
-                throw new BusinessException(VillageErrorCode.VILLAGE_012);
+                throw new BusinessException(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED);
             }
         }
 
@@ -149,14 +149,14 @@ public class VillageMembershipService {
         VillageEntity village = loadActiveVillage(villageId);
 
         VillageMembershipEntity membership = membershipRepository.findById(membershipId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_007));
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NOT_MEMBER));
 
         if (!membership.getVillageId().equals(villageId)) {
             // IDOR 防止: パスとボディの villageId 不一致は不存在扱い
-            throw new BusinessException(VillageErrorCode.VILLAGE_007);
+            throw new BusinessException(VillageErrorCode.NOT_MEMBER);
         }
         if (membership.getLeftAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_007);
+            throw new BusinessException(VillageErrorCode.NOT_MEMBER);
         }
 
         // 退出は本人（USER）または当該チーム/組織 ADMIN（TEAM/ORG）のみ
@@ -226,7 +226,7 @@ public class VillageMembershipService {
         loadActiveVillage(villageId);
         // 村人判定（IDOR）
         if (!isUserMember(villageId, actorUserId)) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_007);
+            throw new BusinessException(VillageErrorCode.NOT_MEMBER);
         }
 
         Pageable pageable = PageRequest.of(page, size);
@@ -263,15 +263,15 @@ public class VillageMembershipService {
         VillageMembershipEntity actor = membershipRepository
                 .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
                         villageId, VillageSubjectType.USER, actorUserId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_024));
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
         if (actor.getRole() != VillageRole.HEADMAN) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_024);
+            throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }
 
         VillageMembershipEntity target = membershipRepository.findById(membershipId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_007));
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NOT_MEMBER));
         if (!target.getVillageId().equals(villageId) || target.getLeftAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_007);
+            throw new BusinessException(VillageErrorCode.NOT_MEMBER);
         }
 
         // 自身を HEADMAN から降格する場合、他に HEADMAN/ELDER が居ることを必須
@@ -282,7 +282,7 @@ public class VillageMembershipService {
                     .countByVillageIdAndRoleAndLeftAtIsNull(villageId, VillageRole.ELDER);
             // 自分以外の HEADMAN または ELDER が居なければ降格不可
             if (otherHeadman <= 1 && elders == 0) {
-                throw new BusinessException(VillageErrorCode.VILLAGE_017);
+                throw new BusinessException(VillageErrorCode.HEADMAN_CANNOT_LEAVE);
             }
         }
 
@@ -312,19 +312,19 @@ public class VillageMembershipService {
         VillageMembershipEntity actor = membershipRepository
                 .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
                         villageId, VillageSubjectType.USER, actorUserId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_024));
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
         if (actor.getRole() != VillageRole.HEADMAN) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_024);
+            throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }
 
         VillageMembershipEntity target = membershipRepository.findById(membershipId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_007));
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NOT_MEMBER));
         if (!target.getVillageId().equals(villageId) || target.getLeftAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_007);
+            throw new BusinessException(VillageErrorCode.NOT_MEMBER);
         }
         if (target.getId().equals(actor.getId())) {
             // 自分自身を BAN することは禁止
-            throw new BusinessException(VillageErrorCode.VILLAGE_024);
+            throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -344,12 +344,12 @@ public class VillageMembershipService {
     /** 有効な村を取得する（削除/凍結済みは VILLAGE_001 で扱う）。 */
     private VillageEntity loadActiveVillage(UUID villageId) {
         VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_001));
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
         if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_001);
+            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
         if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_027);
+            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
         }
         return v;
     }
@@ -367,22 +367,22 @@ public class VillageMembershipService {
         switch (subjectType) {
             case USER -> {
                 if (!actorUserId.equals(subjectId)) {
-                    throw new BusinessException(VillageErrorCode.VILLAGE_015);
+                    throw new BusinessException(VillageErrorCode.REPRESENT_FORBIDDEN);
                 }
             }
             case TEAM -> {
                 long count = userRoleRepository.countTeamAdminByUserIdAndTeamId(actorUserId, subjectId);
                 if (count == 0) {
-                    throw new BusinessException(VillageErrorCode.VILLAGE_015);
+                    throw new BusinessException(VillageErrorCode.REPRESENT_FORBIDDEN);
                 }
             }
             case ORGANIZATION -> {
                 List<Long> admins = userRoleRepository.findAdminUserIdsByOrganizationId(subjectId);
                 if (!admins.contains(actorUserId)) {
-                    throw new BusinessException(VillageErrorCode.VILLAGE_015);
+                    throw new BusinessException(VillageErrorCode.REPRESENT_FORBIDDEN);
                 }
             }
-            default -> throw new BusinessException(VillageErrorCode.VILLAGE_015);
+            default -> throw new BusinessException(VillageErrorCode.REPRESENT_FORBIDDEN);
         }
     }
 

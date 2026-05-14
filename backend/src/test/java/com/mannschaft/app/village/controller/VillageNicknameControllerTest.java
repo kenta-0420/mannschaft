@@ -152,7 +152,7 @@ class VillageNicknameControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("VILLAGE_004"));
+                .andExpect(jsonPath("$.error.code").value("VILLAGE_008"));
     }
 
     @Test
@@ -169,7 +169,7 @@ class VillageNicknameControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error.code").value("VILLAGE_008"));
+                .andExpect(jsonPath("$.error.code").value("VILLAGE_028"));
     }
 
     @Test
@@ -186,7 +186,7 @@ class VillageNicknameControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.error.code").value("VILLAGE_013"));
+                .andExpect(jsonPath("$.error.code").value("VILLAGE_011"));
     }
 
     @Test
