@@ -337,7 +337,7 @@ export function useChatApi() {
           const delays = [1000, 2000, 4000, 8000, 16000, 30000]
           _reconnectAttempts = Math.min(_reconnectAttempts + 1, delays.length - 1)
           if (_stompClient !== null) {
-            _stompClient.reconnectDelay = delays[_reconnectAttempts]
+            _stompClient.reconnectDelay = delays[_reconnectAttempts] ?? 30000
           }
         },
         onStompError: (frame: IFrame) => {
