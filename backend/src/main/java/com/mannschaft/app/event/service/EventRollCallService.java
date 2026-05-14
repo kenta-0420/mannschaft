@@ -160,7 +160,7 @@ public class EventRollCallService {
 
             // ユーザー表示名を取得（警告メッセージ用）
             String displayName = userRepository.findById(userId)
-                    .map(UserEntity::getDisplayName)
+                    .map(u -> u.getLastName() + " " + u.getFirstName())
                     .orElse("userId=" + userId);
 
             // 冪等チェック: 同一セッション・ユーザーの既存レコードを検索

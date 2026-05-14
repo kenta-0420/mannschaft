@@ -101,8 +101,8 @@ class EventRollCallServiceTest {
             // ユーザー情報（findByIdIn 一括取得でモック・N+1 解消後）
             given(userRepository.findByIdIn(any()))
                     .willReturn(List.of(
-                            buildUser(USER_ID_TARO, "山田太郎", null),
-                            buildUser(USER_ID_HANAKO, "鈴木花子", null)));
+                            buildUser(USER_ID_TARO, "山田", "太郎", null),
+                            buildUser(USER_ID_HANAKO, "鈴木", "花子", null)));
 
             // チェックイン状態：太郎は未チェックイン、花子は既チェックイン（IN 句一括取得）
             given(checkinRepository.findCheckedInUserIdsByEventIdAndUserIdIn(eq(EVENT_ID), any()))
@@ -118,7 +118,7 @@ class EventRollCallServiceTest {
             RollCallCandidateResponse taroRes = result.stream()
                     .filter(r -> USER_ID_TARO.equals(r.getUserId()))
                     .findFirst().orElseThrow();
-            assertThat(taroRes.getFullName()).isEqualTo("山田太郎");
+            assertThat(taroRes.getFullName()).isEqualTo("山田 太郎");
             assertThat(taroRes.getRsvpStatus()).isEqualTo("ATTENDING");
             assertThat(taroRes.isAlreadyCheckedIn()).isFalse();
             assertThat(taroRes.isUnderCare()).isTrue();
@@ -179,7 +179,7 @@ class EventRollCallServiceTest {
                     .willReturn(1L);
 
             given(userRepository.findById(USER_ID_TARO))
-                    .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田太郎", null)));
+                    .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田", "太郎", null)));
 
             EventCheckinEntity savedCheckin = buildCheckin(EVENT_ID, SESSION_ID, USER_ID_TARO, null, null);
             given(checkinRepository.save(any())).willReturn(savedCheckin);
@@ -217,7 +217,7 @@ class EventRollCallServiceTest {
                     .willReturn(1L);
 
             given(userRepository.findById(USER_ID_TARO))
-                    .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田太郎", null)));
+                    .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田", "太郎", null)));
 
             EventCheckinEntity savedCheckin = buildCheckin(EVENT_ID, SESSION_ID, USER_ID_TARO, null, "SICK");
             given(checkinRepository.save(any())).willReturn(savedCheckin);
@@ -247,7 +247,7 @@ class EventRollCallServiceTest {
                     .willReturn(Optional.of(existingCheckin));
 
             given(userRepository.findById(USER_ID_TARO))
-                    .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田太郎", null)));
+                    .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田", "太郎", null)));
             given(checkinRepository.save(any())).willReturn(existingCheckin);
 
             // Act
@@ -281,7 +281,7 @@ class EventRollCallServiceTest {
                     .willReturn(0L);
 
             given(userRepository.findById(USER_ID_TARO))
-                    .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田太郎", null)));
+                    .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田", "太郎", null)));
             given(checkinRepository.save(any()))
                     .willReturn(buildCheckin(EVENT_ID, SESSION_ID, USER_ID_TARO, null, null));
 
@@ -292,7 +292,7 @@ class EventRollCallServiceTest {
             // Assert: 警告が1件収集されること
             assertThat(response.getGuardianNotificationsSent()).isEqualTo(0);
             assertThat(response.getGuardianSetupWarnings()).hasSize(1);
-            assertThat(response.getGuardianSetupWarnings().get(0)).contains("山田太郎");
+            assertThat(response.getGuardianSetupWarnings().get(0)).contains("山田 太郎");
 
             // 通知は送信されないこと
             verify(careEventNotificationService, never()).notifyCheckin(anyLong(), anyLong());
@@ -312,9 +312,9 @@ class EventRollCallServiceTest {
                     .willReturn(Optional.empty());
 
             given(userRepository.findById(USER_ID_TARO))
-                    .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田太郎", null)));
+                    .willReturn(Optional.of(buildUser(USER_ID_TARO, "山田", "太郎", null)));
             given(userRepository.findById(USER_ID_HANAKO))
-                    .willReturn(Optional.of(buildUser(USER_ID_HANAKO, "鈴木花子", null)));
+                    .willReturn(Optional.of(buildUser(USER_ID_HANAKO, "鈴木", "花子", null)));
 
             // 太郎: ケア対象あり、見守り者1人
             given(careLinkService.isUnderCare(USER_ID_TARO)).willReturn(true);
@@ -365,13 +365,13 @@ class EventRollCallServiceTest {
                 .build();
     }
 
-    private UserEntity buildUser(Long id, String displayName, String avatarUrl) {
+    private UserEntity buildUser(Long id, String lastName, String firstName, String avatarUrl) {
         UserEntity user = UserEntity.builder()
-                .displayName(displayName)
+                .displayName(lastName + firstName)
                 .avatarUrl(avatarUrl)
                 .email("test" + id + "@example.com")
-                .lastName("テスト")
-                .firstName("ユーザー" + id)
+                .lastName(lastName)
+                .firstName(firstName)
                 .locale("ja")
                 .timezone("Asia/Tokyo")
                 .status(UserEntity.UserStatus.ACTIVE)
