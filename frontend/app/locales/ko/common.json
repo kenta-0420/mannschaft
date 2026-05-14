@@ -1095,7 +1095,29 @@
     "noFolders": "フォルダはまだありません",
     "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
-    "nameDuplicate": "同じ名前のフォルダが既に存在します"
+    "nameDuplicate": "同じ名前のフォルダが既に存在します",
+    "title": "내 폴더",
+    "untagged": "미분류",
+    "all": "전체",
+    "createNew": "새 폴더 만들기",
+    "assignOnJoin": {
+      "label": "폴더에 분류 (선택)",
+      "defaultHint": "선택하지 않으면 '미분류'에 자동 배치됩니다"
+    },
+    "notifications": {
+      "byFolder": "폴더별 알림"
+    },
+    "nav": {
+      "allList": "전체 (목록)",
+      "createNew": "＋ 새 폴더 만들기",
+      "manage": "폴더 관리",
+      "teams": "팀",
+      "organizations": "조직"
+    },
+    "error": {
+      "typeMismatch": "폴더 범위 유형이 일치하지 않습니다",
+      "defaultImmutable": "'미분류' 폴더는 변경할 수 없습니다"
+    }
   },
   "systemAdmin": {
     "logs": {

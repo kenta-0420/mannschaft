@@ -1095,7 +1095,29 @@
     "noFolders": "フォルダはまだありません",
     "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
-    "nameDuplicate": "同じ名前のフォルダが既に存在します"
+    "nameDuplicate": "同じ名前のフォルダが既に存在します",
+    "title": "Mis carpetas",
+    "untagged": "Sin categoría",
+    "all": "Todo",
+    "createNew": "Crear nueva carpeta",
+    "assignOnJoin": {
+      "label": "Asignar a carpeta (opcional)",
+      "defaultHint": "Si no se selecciona, se colocará en Sin categoría"
+    },
+    "notifications": {
+      "byFolder": "Notificaciones por carpeta"
+    },
+    "nav": {
+      "allList": "Todo (lista)",
+      "createNew": "+ Crear nueva carpeta",
+      "manage": "Gestionar carpetas",
+      "teams": "Equipos",
+      "organizations": "Organizaciones"
+    },
+    "error": {
+      "typeMismatch": "El tipo de ámbito no coincide",
+      "defaultImmutable": "No se puede modificar Sin categoría"
+    }
   },
   "systemAdmin": {
     "logs": {

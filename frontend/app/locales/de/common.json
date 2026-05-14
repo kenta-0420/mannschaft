@@ -1095,7 +1095,29 @@
     "noFolders": "フォルダはまだありません",
     "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
-    "nameDuplicate": "同じ名前のフォルダが既に存在します"
+    "nameDuplicate": "同じ名前のフォルダが既に存在します",
+    "title": "Meine Ordner",
+    "untagged": "Unsortiert",
+    "all": "Alle",
+    "createNew": "Neuen Ordner erstellen",
+    "assignOnJoin": {
+      "label": "Ordner zuweisen (optional)",
+      "defaultHint": "Wenn nicht ausgewählt, wird in Unsortiert abgelegt"
+    },
+    "notifications": {
+      "byFolder": "Benachrichtigungen nach Ordner"
+    },
+    "nav": {
+      "allList": "Alle (Liste)",
+      "createNew": "+ Neuen Ordner",
+      "manage": "Ordner verwalten",
+      "teams": "Teams",
+      "organizations": "Organisationen"
+    },
+    "error": {
+      "typeMismatch": "Ordner-Bereichstyp stimmt nicht überein",
+      "defaultImmutable": "Unsortiert kann nicht geändert werden"
+    }
   },
   "systemAdmin": {
     "logs": {
