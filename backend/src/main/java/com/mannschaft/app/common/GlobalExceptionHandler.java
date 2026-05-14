@@ -351,11 +351,16 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_035", HttpStatus.CONFLICT),             // CREATION_REQUEST_SLUG_TAKEN
             Map.entry("VILLAGE_036", HttpStatus.FORBIDDEN),            // OFFICIAL_VILLAGE_FORBIDDEN
             Map.entry("VILLAGE_037", HttpStatus.FORBIDDEN),            // VILLAGE_CREATE_FORBIDDEN
-            // F17.1 Phase 1 B6 — 村参加申請
+            // F17.1 Phase 1 B6 — 村参加申請（VILLAGE_038〜041）
             Map.entry("VILLAGE_038", HttpStatus.NOT_FOUND),            // VILLAGE_JOIN_REQUEST_NOT_FOUND
             Map.entry("VILLAGE_039", HttpStatus.CONFLICT),             // VILLAGE_JOIN_REQUEST_PENDING_DUPLICATE
             Map.entry("VILLAGE_040", HttpStatus.CONFLICT),             // VILLAGE_JOIN_REQUEST_ALREADY_REVIEWED
-            Map.entry("VILLAGE_041", HttpStatus.UNPROCESSABLE_ENTITY)  // VILLAGE_FREE_VILLAGE_DIRECT_JOIN
+            Map.entry("VILLAGE_041", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_FREE_VILLAGE_DIRECT_JOIN
+            // F17.1 Phase 1 B8 — お気に入り村ピン留め（VILLAGE_013 + VILLAGE_044/045/047）
+            Map.entry("VILLAGE_013", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_PIN_LIMIT_EXCEEDED
+            Map.entry("VILLAGE_044", HttpStatus.NOT_FOUND),            // VILLAGE_PIN_NOT_FOUND
+            Map.entry("VILLAGE_045", HttpStatus.CONFLICT),             // VILLAGE_PIN_ALREADY_EXISTS
+            Map.entry("VILLAGE_047", HttpStatus.UNPROCESSABLE_ENTITY)  // VILLAGE_PIN_ORDER_MISMATCH
     );
 
     /**

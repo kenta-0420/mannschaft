@@ -131,7 +131,23 @@ public enum VillageErrorCode implements ErrorCode {
     VILLAGE_JOIN_REQUEST_ALREADY_REVIEWED("VILLAGE_040", "この参加申請は既に処理済みです", Severity.WARN),
 
     /** VILLAGE_041: FREE 村に対して参加申請 API を使った（422、直接参加 API を使うべき） */
-    VILLAGE_FREE_VILLAGE_DIRECT_JOIN("VILLAGE_041", "この村は自由参加です。参加申請ではなく直接参加してください", Severity.WARN);
+    VILLAGE_FREE_VILLAGE_DIRECT_JOIN("VILLAGE_041", "この村は自由参加です。参加申請ではなく直接参加してください", Severity.WARN),
+
+    // ==================================================================
+    // B8 お気に入り村ピン留め（VILLAGE_013 + VILLAGE_044〜047）
+    // ==================================================================
+
+    /** VILLAGE_013: ピン上限超過（422、設計書 §10 の予約番号を使用） */
+    VILLAGE_PIN_LIMIT_EXCEEDED("VILLAGE_013", "お気に入り村の上限（30件）を超えました", Severity.WARN),
+
+    /** VILLAGE_044: ピンが存在しない（404） */
+    VILLAGE_PIN_NOT_FOUND("VILLAGE_044", "お気に入り村のピンが見つかりません", Severity.WARN),
+
+    /** VILLAGE_045: 既にピン留め済み（409） — 統合採番で VILLAGE_046 から繰上げ */
+    VILLAGE_PIN_ALREADY_EXISTS("VILLAGE_045", "この村は既にお気に入りに登録されています", Severity.WARN),
+
+    /** VILLAGE_047: 並び替え対象集合の不一致（422、現在のピン集合と orderedVillageIds が一致しない） */
+    VILLAGE_PIN_ORDER_MISMATCH("VILLAGE_047", "並び替え対象が現在のお気に入り村と一致しません", Severity.WARN);
 
     private final String code;
     private final String message;
