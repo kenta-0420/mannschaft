@@ -18,18 +18,37 @@ import java.util.stream.Collectors;
 /**
  * ユーザー表示名・チーム名・組織名のバッチ解決サービス。
  * 複数の機能横断で名前解決が必要な場面で、N+1 問題を回避するために使用する。
+ *
+ * <p>表示名ルール:</p>
+ * <ul>
+ *   <li>TEAM_INTERNAL / CROSS_TEAM → 実名（lastName + firstName）</li>
+ *   <li>PUBLIC → ニックネーム（displayName）</li>
+ * </ul>
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class NameResolverService {
 
+    /**
+     * 表示スコープ。スコープに応じて実名・ニックネームを切り替える。
+     */
+    public enum DisplayScope {
+        /** チーム内・組織内（実名表示） */
+        TEAM_INTERNAL,
+        /** フレンドチーム・上位/下位組織（実名表示） */
+        CROSS_TEAM,
+        /** 外部公開コンテンツ（ニックネーム表示） */
+        PUBLIC
+    }
+
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
 
     /**
-     * ユーザーIDの集合から表示名マップを返す。
+     * ユーザーIDの集合から表示名マップを返す（ニックネーム）。
+     * 外部公開スコープ専用。チーム内表示には {@link #resolveUserFullNames} を使うこと。
      *
      * @param userIds ユーザーIDの集合
      * @return Map(userId → displayName)。該当なしのIDは含まれない
@@ -46,7 +65,8 @@ public class NameResolverService {
     }
 
     /**
-     * 単一ユーザーの表示名を返す。
+     * 単一ユーザーの表示名を返す（ニックネーム）。
+     * 外部公開スコープ専用。チーム内表示には {@link #resolveUserFullName(Long)} を使うこと。
      *
      * @param userId ユーザーID
      * @return 表示名。該当なしの場合は "不明なユーザー"
@@ -58,6 +78,68 @@ public class NameResolverService {
         return userRepository.findById(userId)
                 .map(UserEntity::getDisplayName)
                 .orElse("不明なユーザー");
+    }
+
+    /**
+     * ユーザーの実名（姓 + 名）を返す。
+     * チーム内・組織内・クロスチームスコープで使用する。
+     *
+     * @param user ユーザーエンティティ
+     * @return 実名。退会済みユーザーの場合は "退会済みユーザー"
+     */
+    public String resolveUserFullName(UserEntity user) {
+        if (user == null) {
+            return "不明なユーザー";
+        }
+        return user.getLastName() + " " + user.getFirstName();
+    }
+
+    /**
+     * 単一ユーザーの実名（姓 + 名）を返す。
+     * チーム内・組織内・クロスチームスコープで使用する。
+     *
+     * @param userId ユーザーID
+     * @return 実名。該当なしの場合は "不明なユーザー"
+     */
+    public String resolveUserFullName(Long userId) {
+        if (userId == null) {
+            return "不明なユーザー";
+        }
+        return userRepository.findById(userId)
+                .map(u -> u.getLastName() + " " + u.getFirstName())
+                .orElse("不明なユーザー");
+    }
+
+    /**
+     * ユーザーIDの集合から実名マップを返す（姓 + 名）。
+     * チーム内・組織内・クロスチームスコープで使用する。
+     *
+     * @param userIds ユーザーIDの集合
+     * @return Map(userId → fullName)。該当なしのIDは含まれない
+     */
+    public Map<Long, String> resolveUserFullNames(Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(
+                        UserEntity::getId,
+                        u -> u.getLastName() + " " + u.getFirstName()
+                ));
+    }
+
+    /**
+     * スコープに応じてユーザー名を解決する汎用メソッド。
+     *
+     * @param user  ユーザーエンティティ
+     * @param scope 表示スコープ
+     * @return スコープに対応した表示名
+     */
+    public String resolveDisplayName(UserEntity user, DisplayScope scope) {
+        if (scope == DisplayScope.PUBLIC) {
+            return user.getDisplayName();
+        }
+        return resolveUserFullName(user);
     }
 
     /**
