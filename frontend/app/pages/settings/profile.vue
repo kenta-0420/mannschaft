@@ -42,7 +42,7 @@ async function saveHandle() {
 }
 
 const profile = ref({
-  displayName: '',
+  nickname: '',
   email: '',
   phoneNumber: '',
   avatarUrl: null as string | null,
@@ -66,7 +66,7 @@ async function saveProfile() {
     await api('/api/v1/users/me', {
       method: 'PATCH',
       body: {
-        displayName: profile.value.displayName,
+        nickname: profile.value.nickname,
         phoneNumber: profile.value.phoneNumber,
       },
     })
@@ -146,7 +146,7 @@ async function uploadAvatar(event: Event) {
 
           <div>
             <label class="mb-1 block text-sm font-medium">表示名</label>
-            <InputText v-model="profile.displayName" class="w-full" />
+            <InputText v-model="profile.nickname" class="w-full" />
           </div>
 
           <div>

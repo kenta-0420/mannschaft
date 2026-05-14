@@ -108,11 +108,11 @@ function onHide() {
         <div class="flex items-center gap-3 rounded-lg border border-surface-300 p-3">
           <Avatar
             :image="result.avatarUrl ?? undefined"
-            :label="result.avatarUrl ? undefined : result.displayName.charAt(0)"
+            :label="result.avatarUrl ? undefined : result.fullName.charAt(0)"
             shape="circle"
           />
           <div class="min-w-0 flex-1">
-            <div class="font-medium">{{ result.displayName }}</div>
+            <div class="font-medium">{{ result.fullName }}</div>
             <div class="text-xs text-gray-400">@{{ result.contactHandle }}</div>
           </div>
           <Tag v-if="result.isContact" value="連絡先" severity="success" />

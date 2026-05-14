@@ -6,7 +6,7 @@ export interface UserProfileResponse {
   firstName: string
   lastNameKana: string
   firstNameKana: string
-  displayName: string
+  nickname: string
   nickname2: string
   isSearchable: boolean
   avatarUrl: string | null

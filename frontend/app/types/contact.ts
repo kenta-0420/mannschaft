@@ -1,6 +1,6 @@
 export interface ContactUser {
   id: number
-  displayName: string
+  fullName: string
   contactHandle: string | null
   avatarUrl: string | null
 }
@@ -45,7 +45,7 @@ export interface ContactInviteTokenResponse {
 
 export interface ContactInvitePreviewResponse {
   isValid: boolean
-  issuer: { displayName: string; contactHandle: string | null }
+  issuer: { fullName: string; contactHandle: string | null }
   expiresAt: string | null
 }
 
@@ -58,7 +58,7 @@ export interface ContactPrivacySettings {
 
 export interface HandleSearchResult {
   userId: number
-  displayName: string
+  fullName: string
   contactHandle: string
   avatarUrl: string | null
   isContact: boolean
@@ -75,7 +75,7 @@ export interface HandleInfo {
 
 export interface ContactableMember {
   userId: number
-  displayName: string
+  fullName: string
   contactHandle: string | null
   avatarUrl: string | null
   isContact: boolean

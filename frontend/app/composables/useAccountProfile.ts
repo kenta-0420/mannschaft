@@ -12,7 +12,7 @@ export function useAccountProfile() {
 
   const savingProfile = ref(false)
   const profile = ref({
-    displayName: '',
+    nickname: '',
     email: '',
     phoneNumber: '',
     postalCode: '',
@@ -70,7 +70,7 @@ export function useAccountProfile() {
       const res = await getProfile()
       const d = res.data
       profile.value = {
-        displayName: d.displayName,
+        nickname: d.nickname,
         email: d.email,
         phoneNumber: d.phoneNumber,
         postalCode: '',
@@ -89,7 +89,7 @@ export function useAccountProfile() {
     savingProfile.value = true
     try {
       await updateProfile({
-        displayName: profile.value.displayName,
+        nickname: profile.value.nickname,
         phoneNumber: profile.value.phoneNumber,
         postalCode: profile.value.postalCode || undefined,
         isSearchable: profile.value.isSearchable,

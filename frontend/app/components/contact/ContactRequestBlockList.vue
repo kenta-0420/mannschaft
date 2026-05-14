@@ -63,11 +63,11 @@ onMounted(fetchBlocks)
       >
         <Avatar
           :image="block.blockedUser.avatarUrl ?? undefined"
-          :label="block.blockedUser.avatarUrl ? undefined : block.blockedUser.displayName.charAt(0)"
+          :label="block.blockedUser.avatarUrl ? undefined : block.blockedUser.fullName.charAt(0)"
           shape="circle"
         />
         <div class="min-w-0 flex-1">
-          <div class="font-medium">{{ block.blockedUser.displayName }}</div>
+          <div class="font-medium">{{ block.blockedUser.fullName }}</div>
           <div v-if="block.blockedUser.contactHandle" class="text-xs text-gray-400">
             @{{ block.blockedUser.contactHandle }}
           </div>

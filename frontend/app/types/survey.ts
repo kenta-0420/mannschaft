@@ -112,7 +112,7 @@ export interface SubmitResponseRequest {
 
 export interface RespondentItem {
   userId: number
-  displayName: string
+  fullName: string
   avatarUrl: string | null
   hasResponded: boolean
   respondedAt: string | null
