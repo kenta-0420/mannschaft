@@ -142,7 +142,7 @@ watch(() => props.rootMessageId, () => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col">
+  <div class="flex h-full flex-col" data-testid="chat-thread-panel">
     <!-- ヘッダー -->
     <div class="flex items-center justify-between border-b border-surface-200 px-4 py-3 dark:border-surface-700">
       <span class="text-sm font-semibold">{{ $t('chat.thread.reply') }}</span>
@@ -164,17 +164,21 @@ watch(() => props.rootMessageId, () => {
         <ProgressSpinner style="width: 32px; height: 32px" />
       </div>
 
-      <ChatMessageBubble
+      <div
         v-for="msg in messages"
         :key="msg.id"
-        :message="msg"
-        :can-pin="false"
-        :can-delete="false"
-        @reaction="onReaction"
-        @pin="onPin"
-        @delete="onDelete"
-        @bookmark="onBookmark"
-      />
+        data-testid="thread-message"
+      >
+        <ChatMessageBubble
+          :message="msg"
+          :can-pin="false"
+          :can-delete="false"
+          @reaction="onReaction"
+          @pin="onPin"
+          @delete="onDelete"
+          @bookmark="onBookmark"
+        />
+      </div>
 
       <div v-if="hasMore" class="flex justify-center py-2">
         <Button
@@ -194,6 +198,7 @@ watch(() => props.rootMessageId, () => {
           v-model="replyBody"
           :placeholder="$t('chat.thread.reply')"
           class="flex-1 text-sm"
+          data-testid="thread-reply-input"
           @keydown.enter.prevent="sendReply"
         />
         <Button
@@ -201,6 +206,7 @@ watch(() => props.rootMessageId, () => {
           size="small"
           :loading="replySending"
           :disabled="!replyBody.trim()"
+          data-testid="thread-reply-send"
           @click="sendReply"
         />
       </div>

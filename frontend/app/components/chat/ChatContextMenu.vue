@@ -76,6 +76,7 @@ onUnmounted(() => {
       v-if="visible"
       ref="menuEl"
       role="menu"
+      data-testid="chat-context-menu"
       class="fixed z-50 min-w-[180px] overflow-hidden rounded-lg border border-surface-200 bg-surface-0 shadow-lg dark:border-surface-700 dark:bg-surface-800"
       :style="{ left: `${clampedPosition.x}px`, top: `${clampedPosition.y}px` }"
     >
@@ -84,6 +85,8 @@ onUnmounted(() => {
           v-for="item in items"
           :key="item.key"
           role="menuitem"
+          data-testid="context-menu-item"
+          :data-key="item.key"
           :tabindex="item.disabled ? -1 : 0"
           class="flex cursor-pointer items-center gap-2 px-4 py-2 text-sm"
           :class="[
