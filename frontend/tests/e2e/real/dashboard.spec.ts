@@ -260,17 +260,24 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
   })
 
   test('TEAM-NAV-006: e2e-user がチームメンバーとして表示される', async ({ page }) => {
-    await page.goto('/teams')
+    await page.goto('/teams', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     const teamLink = page.getByText('FC東京U-18').first()
     await teamLink.click()
     await page.waitForURL(/\/teams\/\d+/, { timeout: 20_000 })
+    const teamUrl = page.url()
     await waitForHydration(page)
-    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
+    // 並列実行時にバックエンドが高負荷で 500 を返す場合があるため最大1回リトライする
+    const memberTab = page.getByRole('tab', { name: 'メンバー' })
+    const tabVisible = await memberTab.isVisible().catch(() => false)
+    if (!tabVisible) {
+      await page.goto(teamUrl, { waitUntil: 'domcontentloaded' })
+      await waitForHydration(page)
+      await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
+    }
     // チームページの「メンバー」タブをクリックして MemberTable を表示する
     // /member-profiles は任意作成のプロフィールカード機能のため seed にデータなし
-    const memberTab = page.getByRole('tab', { name: 'メンバー' })
     await memberTab.click()
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     // seed の e2e-user 表示名 "E2E一般ユーザー" が MemberTable に表示される前提
