@@ -11,17 +11,17 @@ import lombok.Getter;
 public class LoginResponse extends TokenResponse {
 
     private final Long userId;
-    private final String displayName;
+    private final String fullName;
     private final String email;
     private final LocalDateTime pendingDeletionUntil;
     private final boolean reactivated;
 
     public LoginResponse(String accessToken, String refreshToken, long expiresIn,
-                         Long userId, String displayName, String email,
+                         Long userId, String fullName, String email,
                          LocalDateTime pendingDeletionUntil, boolean reactivated) {
         super(accessToken, refreshToken, expiresIn);
         this.userId = userId;
-        this.displayName = displayName;
+        this.fullName = fullName;
         this.email = email;
         this.pendingDeletionUntil = pendingDeletionUntil;
         this.reactivated = reactivated;

@@ -163,7 +163,7 @@ public class AuthService {
                 .firstName(req.getFirstName())
                 .lastNameHash(encryptionService.hmac(req.getLastName()))
                 .firstNameHash(encryptionService.hmac(req.getFirstName()))
-                .displayName(req.getDisplayName())
+                .displayName(req.getNickname())
                 .postalCode(req.getPostalCode())
                 .locale(req.getLocale() != null ? req.getLocale() : "ja")
                 .timezone(req.getTimezone() != null ? req.getTimezone() : "Asia/Tokyo")
@@ -189,7 +189,7 @@ public class AuthService {
 
         // 6. イベント発行（メール送信は非同期リスナーが処理）
         eventPublisher.publish(new UserRegisteredEvent(
-                user.getId(), user.getEmail(), user.getDisplayName(), rawToken));
+                user.getId(), user.getEmail(), user.getLastName() + " " + user.getFirstName(), rawToken));
 
         // F02.10: 登録直後に郵便番号が設定されていれば地点導出を非同期でトリガーする
         // @Transactional 内で発行 → コミット後に WeatherLocationEventListener が非同期実行される
@@ -927,7 +927,7 @@ public class AuthService {
                 rawRefreshToken,
                 authTokenService.getAccessTokenExpirationSeconds(),
                 user.getId(),
-                user.getDisplayName(),
+                user.getLastName() + " " + user.getFirstName(),
                 user.getEmail(),
                 pendingDeletionUntil,
                 reactivated);

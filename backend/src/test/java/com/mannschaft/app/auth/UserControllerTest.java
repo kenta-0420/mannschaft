@@ -109,7 +109,7 @@ class UserControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data.id").value(1))
                 .andExpect(jsonPath("$.data.email").value("test@example.com"))
-                .andExpect(jsonPath("$.data.displayName").value("taro"));
+                .andExpect(jsonPath("$.data.nickname").value("taro"));
     }
 
     // ──────────────────────────────────────────────
@@ -134,7 +134,7 @@ class UserControllerTest {
                 {
                   "lastName": "佐藤",
                   "firstName": "花子",
-                  "displayName": "hanako"
+                  "nickname": "hanako"
                 }
                 """;
 
@@ -144,7 +144,7 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data.lastName").value("佐藤"))
-                .andExpect(jsonPath("$.data.displayName").value("hanako"));
+                .andExpect(jsonPath("$.data.nickname").value("hanako"));
     }
 
     // ──────────────────────────────────────────────

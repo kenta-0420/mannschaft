@@ -60,7 +60,7 @@ public class WithdrawalReminderService {
                 ? "退会手続き中 — データ削除まで残り" + daysRemaining + "日"
                 : "【重要】あと" + daysRemaining + "日でデータが完全に削除されます";
 
-        String body = buildReminderEmailBody(user.getDisplayName(), daysRemaining);
+        String body = buildReminderEmailBody(user.getLastName() + " " + user.getFirstName(), daysRemaining);
 
         try {
             emailService.sendEmail(user.getEmail(), subject, body);
