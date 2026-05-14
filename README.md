@@ -1081,7 +1081,25 @@ cd frontend && npm run test:unit
 
 # フロントエンド lint
 cd frontend && npm run lint
+
+# フロントエンド型定義の再生成（Backend API 変更後に実行）
+cd frontend && npm run generate:types
 ```
+
+### 型定義の自動生成
+
+Backend の API 定義から TypeScript 型を自動生成しています。
+
+```bash
+# 型を再生成（Backend の API 変更後に実行）
+cd frontend
+npm run generate:types
+```
+
+生成されたファイル: `frontend/app/types/generated/index.ts`
+手動で編集しないこと（次回 generate:types で上書きされます）。
+
+CI では `openapi.json` と生成型の乖離を自動検出します。`docs/openapi.json` を変更した場合は必ず `npm run generate:types` を実行してコミットしてください。
 
 ### カスタムスキル（Claude Code）
 
