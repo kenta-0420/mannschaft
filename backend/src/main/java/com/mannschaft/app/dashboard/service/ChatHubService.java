@@ -143,7 +143,7 @@ public class ChatHubService {
 
                     Long partnerUserId = dmChannelToPartnerUserId.getOrDefault(channel.getId(), null);
                     UserEntity partner = (partnerUserId != null) ? partnerUserMap.get(partnerUserId) : null;
-                    String partnerDisplayName = (partner != null) ? partner.getDisplayName() : "";
+                    String partnerDisplayName = (partner != null) ? partner.getLastName() + " " + partner.getFirstName() : "";
                     String partnerAvatarUrl   = (partner != null) ? partner.getAvatarUrl() : null;
 
                     // lastMessagePreview: クエリコスト削減のため channel エンティティのプレビューを流用
@@ -210,7 +210,7 @@ public class ChatHubService {
                                 UserEntity user = folderUserMap.get(contactUserId);
                                 String displayName = (item.getCustomName() != null && !item.getCustomName().isBlank())
                                         ? item.getCustomName()
-                                        : (user != null ? user.getDisplayName() : "");
+                                        : (user != null ? user.getLastName() + " " + user.getFirstName() : "");
                                 String avatarUrl = (user != null) ? user.getAvatarUrl() : null;
 
                                 // アクティブ DM の有無と最終メッセージ日時
