@@ -390,3 +390,4 @@ test.describe('SURVEY-003-4: 詳細ページで回答者セクション開閉', 
     await expect(page.locator('[data-testid="survey-respondents-toggle"]')).toHaveCount(0)
   })
 })
+
