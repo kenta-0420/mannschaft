@@ -20,7 +20,7 @@ async function fetchCounts() {
   await Promise.allSettled([
     getUnreadCount()
       .then((r) => {
-        notifCount.value = r.data.total
+        notifCount.value = r.data.unreadCount
       })
       .catch(() => {}),
     getChannels()
