@@ -5,54 +5,63 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /**
- * F17.1 村機能のエラーコード定義（設計書 §10 準拠）。
+ * F17.1 村機能の専用エラーコード（Phase 1 B3 メンバーシップ範囲）。
  *
- * <p>本コードは {@link com.mannschaft.app.common.GlobalExceptionHandler} の
- * {@code ERROR_CODE_STATUS_MAP} に対応する HttpStatus が登録されている前提で動作する。
- * 400 / 404 / 403 / 409 などの個別ステータスを返すコードはマップ登録が必須。</p>
+ * <p>設計書 {@code docs/features/F17.1_village_community.md} §10 のコード番号と
+ * 完全一致させる。HTTP マッピングは {@link com.mannschaft.app.common.GlobalExceptionHandler}
+ * の {@code ERROR_CODE_STATUS_MAP} で個別指定する。</p>
+ *
+ * <p>Phase 1 B3 では下記のメンバーシップ操作で使用するコードを定義する。
+ * 他のフェーズ・他の足軽が同じ enum に追加で値を追記する想定。</p>
  */
 @Getter
 @RequiredArgsConstructor
 public enum VillageErrorCode implements ErrorCode {
 
-    /** 村が存在しない / 削除済み / 凍結済み（404） */
-    VILLAGE_NOT_FOUND("VILLAGE_001", "村が見つかりません", Severity.WARN),
+    /** 村が存在しない / 削除/凍結済み（IDOR 対策で 404 統一） */
+    VILLAGE_001("VILLAGE_001", "村が見つかりません", Severity.WARN),
 
     /** UNLISTED 村に非村人がアクセス（403） */
-    VILLAGE_UNLISTED("VILLAGE_002", "この村は非公開です", Severity.WARN),
+    VILLAGE_002("VILLAGE_002", "この村は限定公開のためアクセスできません", Severity.WARN),
 
-    /** 村名重複（400） */
-    VILLAGE_NAME_TAKEN("VILLAGE_003", "その村名はすでに使われています", Severity.WARN),
+    /** すでに村人（409） */
+    VILLAGE_006("VILLAGE_006", "すでに村人です", Severity.WARN),
 
-    /** スラッグ形式不正（400） */
-    VILLAGE_SLUG_INVALID("VILLAGE_004", "スラッグの形式が不正です（3〜40文字の英小文字・数字・ハイフン）", Severity.WARN),
+    /** 村人ではない（409） */
+    VILLAGE_007("VILLAGE_007", "この村のメンバーではありません", Severity.WARN),
 
-    /** スラッグ重複（400） */
-    VILLAGE_SLUG_TAKEN("VILLAGE_005", "そのスラッグはすでに使われています", Severity.WARN),
+    /** 参加村数ハード上限（429） */
+    VILLAGE_012("VILLAGE_012", "参加可能な村数の上限（100）を超えました", Severity.WARN),
 
-    /** ガイドライン未同意（400） */
-    GUIDELINE_NOT_AGREED("VILLAGE_014", "ガイドラインへの同意が必要です", Severity.WARN),
+    /** チーム/組織代表権限なし（403） */
+    VILLAGE_015("VILLAGE_015", "この主体として参加する権限がありません", Severity.WARN),
 
-    /** 楽観的ロック競合（409） */
-    VERSION_CONFLICT("VILLAGE_018", "更新が競合しました。最新の情報を取得しなおしてください", Severity.WARN),
+    /** 指定主体が村人でない（403） */
+    VILLAGE_016("VILLAGE_016", "指定された主体は村人ではありません", Severity.WARN),
 
-    /** 新規アカウント（7日以内）による申請（403） */
-    NEW_ACCOUNT_RESTRICTED("VILLAGE_022", "新規アカウントはこの操作を行えません", Severity.WARN),
+    /** 村長は後継未指名で退村不可（409） */
+    VILLAGE_017("VILLAGE_017", "村長は後継を指名するまで退村できません", Severity.WARN),
 
-    /** モデレーション権限なし（403） */
-    MODERATION_FORBIDDEN("VILLAGE_024", "この操作を行う権限がありません", Severity.WARN),
+    /** 楽観ロック競合（409） */
+    VILLAGE_018("VILLAGE_018", "他のユーザーが情報を更新しました。最新の内容を確認して再度お試しください", Severity.WARN),
+
+    /** APPROVAL 村に直接参加しようとした（409） */
+    VILLAGE_019("VILLAGE_019", "この村は承認が必要です。参加申請をご利用ください", Severity.WARN),
+
+    /** モデレーション権限なし（403） — 村長/長老でないユーザーが BAN や役職変更を試みた */
+    VILLAGE_024("VILLAGE_024", "モデレーション権限がありません", Severity.WARN),
+
+    /** 参加/退出のフラッピング検出（409） */
+    VILLAGE_025("VILLAGE_025", "短時間に参加と退出を繰り返しています。しばらく時間をおいてからお試しください", Severity.WARN),
 
     /** 凍結済み村への変更操作（409） */
-    VILLAGE_ALREADY_ARCHIVED("VILLAGE_027", "凍結済みの村は変更できません", Severity.WARN),
+    VILLAGE_027("VILLAGE_027", "この村は凍結されています", Severity.WARN),
 
-    /** 村作成申請レートリミット超過（429） */
-    CREATION_REQUEST_THROTTLED("VILLAGE_010", "村作成のレート上限に達しました（3件/日）", Severity.WARN),
-
-    /** 村作成の権限なし（運営権限が必要）。汎用 FORBIDDEN として 403 を返す。 */
-    VILLAGE_CREATE_FORBIDDEN("VILLAGE_028", "公式村の作成には運営権限が必要です", Severity.WARN),
-
-    /** 村説明文・名称・カテゴリの長さ違反など（400） */
-    VILLAGE_FIELD_INVALID("VILLAGE_029", "入力値が不正です", Severity.WARN);
+    /**
+     * BAN されているメンバーの操作（403）。
+     * 設計書 §10 で未定義だった BAN 状態専用コードとして本 Phase で新規割当。
+     */
+    VILLAGE_031("VILLAGE_031", "この村から BAN されています", Severity.WARN);
 
     private final String code;
     private final String message;
