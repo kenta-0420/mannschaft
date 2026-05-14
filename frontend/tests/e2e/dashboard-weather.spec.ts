@@ -48,11 +48,6 @@ test.describe('WEATHER-001〜003: 天気ウィジェット', () => {
   })
 
   test('WEATHER-001: 天気ウィジェットがダッシュボードに表示される', async ({ page }) => {
-    // 天気ウィジェットカードが存在すること
-    const weatherCard = page
-      .locator('[data-testid="weather-widget"], [class*="weather"], [class*="Weather"]')
-      .first()
-
     // タイトルに「天気」が含まれること
     const weatherTitle = page.getByText('天気').first()
     await expect(weatherTitle).toBeVisible({ timeout: 10_000 })
