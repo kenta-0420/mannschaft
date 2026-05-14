@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useEventBus } from '@vueuse/core'
 import type { ChatChannelResponse, ChatMessageResponse } from '~/types/chat'
 
 const props = defineProps<{
@@ -25,6 +26,8 @@ const {
   bookmarkMessage,
   removeBookmark,
   getActiveThreads,
+  subscribeChannel,
+  unsubscribeChannel,
 } = useChatApi()
 const { showSuccess, showError } = useNotification()
 
@@ -198,17 +201,72 @@ function onSent() {
   loadMessages()
 }
 
+// ============================================================
+// WebSocket STOMP 購読 — メッセージリアルタイム受信
+// ============================================================
+
+/** WebSocket イベント受信ハンドラ（MESSAGE_CREATED / UPDATED / DELETED / REACTION_UPDATED） */
+const wsEventBus = useEventBus<{ type: string; data: unknown }>('chat:ws:event')
+
+const offWsEvent = wsEventBus.on((event) => {
+  if (event.type === 'MESSAGE_CREATED') {
+    const newMsg = event.data as ChatMessageResponse
+    // 重複チェック: REST API で送信した直後にバックエンドが WS でも同一メッセージを返すことがあるため
+    if (!messages.value.some((m) => m.id === newMsg.id)) {
+      messages.value.push(newMsg)
+      nextTick(() => scrollToBottom())
+    }
+  } else if (event.type === 'MESSAGE_UPDATED') {
+    const updated = event.data as ChatMessageResponse
+    const idx = messages.value.findIndex((m) => m.id === updated.id)
+    if (idx !== -1) {
+      messages.value[idx] = updated
+    }
+  } else if (event.type === 'MESSAGE_DELETED') {
+    const deleted = event.data as { id: number }
+    const idx = messages.value.findIndex((m) => m.id === deleted.id)
+    if (idx !== -1) {
+      messages.value[idx] = { ...messages.value[idx], isDeleted: true, body: null, sender: null }
+    }
+  } else if (event.type === 'REACTION_UPDATED') {
+    const reaction = event.data as {
+      messageId: number
+      reactionSummary: Record<string, number>
+      myReactions: string[]
+    }
+    const idx = messages.value.findIndex((m) => m.id === reaction.messageId)
+    if (idx !== -1) {
+      messages.value[idx] = {
+        ...messages.value[idx],
+        reactionSummary: reaction.reactionSummary,
+        myReactions: reaction.myReactions,
+      }
+    }
+  }
+})
+
 watch(
   () => props.channel.id,
-  () => {
+  (newId, oldId) => {
+    if (oldId !== undefined) {
+      unsubscribeChannel(oldId)
+    }
     closeThread()
     loadMessages()
     // アクティブスレッド数をリセット
     activeThreadCount.value = 0
     activeThreads.value = []
+    subscribeChannel(newId)
   },
 )
-onMounted(() => loadMessages())
+onMounted(() => {
+  loadMessages()
+  subscribeChannel(props.channel.id)
+})
+onUnmounted(() => {
+  unsubscribeChannel(props.channel.id)
+  offWsEvent()
+})
 </script>
 
 <template>

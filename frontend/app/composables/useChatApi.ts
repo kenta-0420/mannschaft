@@ -341,8 +341,11 @@ export function useChatApi() {
             `/topic/channels/${channelId}`,
             (frame) => {
               try {
-                const message = JSON.parse(frame.body) as ChatMessageResponse
-                useEventBus<ChatMessageResponse>('chat:message').emit(message)
+                const payload = JSON.parse(frame.body) as { type: string; data: unknown }
+                useEventBus<{ type: string; data: unknown }>('chat:ws:event').emit({
+                  type: payload.type,
+                  data: payload.data,
+                })
               } catch (err: unknown) {
                 console.error(
                   `[useChatApi] チャンネル ${channelId} の受信メッセージのパースに失敗しました:`,
