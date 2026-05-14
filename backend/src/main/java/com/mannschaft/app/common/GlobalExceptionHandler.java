@@ -323,7 +323,16 @@ public class GlobalExceptionHandler {
             Map.entry("TOUR_025", HttpStatus.UNPROCESSABLE_ENTITY),   // MAX_TEMPLATE_COUNT_EXCEEDED
             Map.entry("TOUR_026", HttpStatus.NOT_FOUND),              // TEAM_NOT_IN_ORGANIZATION (IDOR対策で404)
             Map.entry("TOUR_027", HttpStatus.CONFLICT),               // DUPLICATE_ENTRY_MEMBER
-            Map.entry("TOUR_028", HttpStatus.FORBIDDEN)               // TEMPLATE_TEAM_MISMATCH
+            Map.entry("TOUR_028", HttpStatus.FORBIDDEN),              // TEMPLATE_TEAM_MISMATCH
+            // F17.1 村機能 Phase 1 — 村本体 CRUD / 検索
+            Map.entry("VILLAGE_001", HttpStatus.NOT_FOUND),           // VILLAGE_NOT_FOUND (IDOR 対策で 404)
+            Map.entry("VILLAGE_002", HttpStatus.FORBIDDEN),           // VILLAGE_UNLISTED
+            Map.entry("VILLAGE_010", HttpStatus.TOO_MANY_REQUESTS),   // CREATION_REQUEST_THROTTLED
+            Map.entry("VILLAGE_018", HttpStatus.CONFLICT),            // VERSION_CONFLICT
+            Map.entry("VILLAGE_022", HttpStatus.FORBIDDEN),           // NEW_ACCOUNT_RESTRICTED
+            Map.entry("VILLAGE_024", HttpStatus.FORBIDDEN),           // MODERATION_FORBIDDEN
+            Map.entry("VILLAGE_027", HttpStatus.CONFLICT),            // VILLAGE_ALREADY_ARCHIVED
+            Map.entry("VILLAGE_028", HttpStatus.FORBIDDEN)            // VILLAGE_CREATE_FORBIDDEN
     );
 
     /**
