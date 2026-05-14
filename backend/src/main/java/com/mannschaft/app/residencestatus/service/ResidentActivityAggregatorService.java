@@ -18,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -35,14 +37,26 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ResidentActivityAggregatorService {
 
-    /** リスクスコア閾値: ハイリスク（70 以上） */
-    static final int HIGH_RISK_THRESHOLD = 70;
+    /**
+     * v1 リスクスコア閾値: ハイリスク（40 以上）。
+     * computeScore() の上限が 50 のため、v1 では 40+ をハイリスクとする。
+     */
+    static final int HIGH_RISK_THRESHOLD = 40;
 
-    /** リスクスコア閾値: ミドルリスク（40 以上） */
-    static final int MID_RISK_THRESHOLD = 40;
+    /**
+     * v1 リスクスコア閾値: ミドルリスク（20 以上）。
+     * 0-19 = LOW_RISK、20-39 = MID_RISK、40-50 = HIGH_RISK。
+     */
+    static final int MID_RISK_THRESHOLD = 20;
 
     /** 30 日無ログイン判定: score = 0 をプレースホルダとして使用（v1 判定基準） */
     static final int UNRESPONSIVE_SCORE = 0;
+
+    /** v1 スコア上限（inactiveDays * 2 の最大値） */
+    private static final int MAX_SCORE = 50;
+
+    /** v1 スコア算定: スナップショット未取得時の inactiveDays デフォルト値 */
+    private static final int DEFAULT_INACTIVE_DAYS = 30;
 
     private final ResidentActivitySnapshotRepository snapshotRepo;
     private final AnnualReviewRepository annualReviewRepo;
@@ -158,9 +172,12 @@ public class ResidentActivityAggregatorService {
     /**
      * 組織単位のダッシュボード集計を返す。
      *
-     * <p>当日のスナップショット一覧からリスク分布を算出する。
-     * Redis キャッシュ 5 分 TTL の想定（キャッシュ制御は Controller 層で行う）。
-     * TODO: {@code @Cacheable} 適用は別フェーズで実施予定。
+     * <p>v1: 各居住者（subjectUserId）の最新スナップショット日付から
+     * {@link #computeScore(LocalDate, LocalDate)} を使い inactiveDays ベースでリスクを算出する。
+     * スナップショットがない居住者は {@link #DEFAULT_INACTIVE_DAYS} 日不活動扱いとする。</p>
+     *
+     * <p>Redis キャッシュ 5 分 TTL の想定（キャッシュ制御は Controller 層で行う）。
+     * TODO: {@code @Cacheable} 適用は別フェーズで実施予定。</p>
      *
      * @param organizationId テナント ID
      * @param requestUserId  リクエストユーザー ID
@@ -174,19 +191,31 @@ public class ResidentActivityAggregatorService {
         }
 
         LocalDate today = LocalDate.now();
-        List<ResidentActivitySnapshot> todaySnapshots = snapshotRepo
-                .findByOrganizationIdAndDeletedAtIsNull(organizationId)
-                .stream()
-                .filter(s -> today.equals(s.getSnapshotDate()))
-                .toList();
+
+        // 居住者ごとに最新スナップショットを 1 件ずつ取得する（新しい日付順のため先頭が最新）
+        // subjectUserId でグループ化し、各居住者の最新スナップショット日付を特定する
+        List<ResidentActivitySnapshot> allSnapshots = snapshotRepo
+                .findByOrganizationIdAndDeletedAtIsNull(organizationId);
+
+        // subjectUserId ごとの最新 snapshotDate を抽出する
+        Map<Long, LocalDate> latestSnapshotByUser = allSnapshots.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        ResidentActivitySnapshot::getSubjectUserId,
+                        ResidentActivitySnapshot::getSnapshotDate,
+                        // 同一ユーザーに複数スナップショットがある場合は新しいほうを残す
+                        (existing, replacement) ->
+                                existing.isAfter(replacement) ? existing : replacement
+                ));
 
         int highRisk = 0;
         int midRisk = 0;
         int lowRisk = 0;
+        // v1: スナップショットが 0 件の居住者数（暫定: 0 で計上）
         int unresponsive = 0;
 
-        for (ResidentActivitySnapshot s : todaySnapshots) {
-            int score = s.getActivityScoreTotal() != null ? s.getActivityScoreTotal() : 0;
+        for (LocalDate latestDate : latestSnapshotByUser.values()) {
+            // v1 スコア: 最新スナップショット日からの inactiveDays ベースで算定する
+            int score = computeScore(latestDate, today);
             if (score >= HIGH_RISK_THRESHOLD) {
                 highRisk++;
             } else if (score >= MID_RISK_THRESHOLD) {
@@ -209,7 +238,7 @@ public class ResidentActivityAggregatorService {
 
         return ResidenceStatusDashboardDto.builder()
                 .organizationId(organizationId)
-                .totalResidents(todaySnapshots.size())
+                .totalResidents(latestSnapshotByUser.size())
                 .highRiskCount(highRisk)
                 .midRiskCount(midRisk)
                 .lowRiskCount(lowRisk)
@@ -245,6 +274,32 @@ public class ResidentActivityAggregatorService {
     // ─────────────────────────────────────────────────────────────────
     // private ヘルパー
     // ─────────────────────────────────────────────────────────────────
+
+    /**
+     * v1 簡易スコア算定（inactiveDays ベース）。
+     * F08.2 滞納連携・resident_registry 年齢連携は v2 以降で実装予定。
+     *
+     * <p>算定式: inactiveDays（最後のスナップショットからの経過日数）× 2
+     * ただし上限 {@link #MAX_SCORE}（50）でクランプする。
+     * snapshotDate が null の場合は 30 日前扱いとして計算する。</p>
+     *
+     * <p>スコア区分:
+     * <ul>
+     *   <li>40 以上 → HIGH_RISK</li>
+     *   <li>20〜39 → MID_RISK</li>
+     *   <li>0〜19 → LOW_RISK</li>
+     * </ul>
+     *
+     * @param snapshotDate 最新スナップショット日付（null の場合は 30 日前扱い）
+     * @param today        基準日
+     * @return 0-50 のリスクスコア
+     */
+    int computeScore(LocalDate snapshotDate, LocalDate today) {
+        int inactiveDays = (snapshotDate != null)
+                ? (int) ChronoUnit.DAYS.between(snapshotDate, today)
+                : DEFAULT_INACTIVE_DAYS;
+        return Math.min(MAX_SCORE, inactiveDays * 2);
+    }
 
     /**
      * スナップショット閲覧権限チェック（ADMIN / DEPUTY_ADMIN のみ許可）。

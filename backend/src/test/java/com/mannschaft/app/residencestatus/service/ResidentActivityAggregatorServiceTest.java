@@ -221,20 +221,22 @@ class ResidentActivityAggregatorServiceTest {
     class GetDashboard {
 
         @Test
-        @DisplayName("正常系: highRisk/midRisk/lowRisk が正しく集計される")
+        @DisplayName("正常系: highRisk/midRisk/lowRisk が v1 inactiveDays ベースで正しく集計される")
         void getDashboard_risk_counts_correct() {
             when(accessControlService.isAdminOrAbove(ADMIN_USER, ORG_ID, "ORGANIZATION"))
                     .thenReturn(true);
 
             LocalDate today = LocalDate.now();
-            // highRisk: score=75, score=80
-            // midRisk: score=50
-            // lowRisk: score=20
+            // v1: computeScore(snapshotDate, today) = inactiveDays * 2（上限50）
+            // subjectUserId=9001, snapshotDate=25日前 → inactiveDays=25 → score=50 (HIGH_RISK, >=40)
+            // subjectUserId=9002, snapshotDate=25日前 → inactiveDays=25 → score=50 (HIGH_RISK, >=40)
+            // subjectUserId=9003, snapshotDate=15日前 → inactiveDays=15 → score=30 (MID_RISK, >=20)
+            // subjectUserId=9004, snapshotDate=5日前  → inactiveDays=5  → score=10 (LOW_RISK, <20)
             List<ResidentActivitySnapshot> snapshots = List.of(
-                    buildSnapshot(REGISTRY_ID, 9001L, today, 75),
-                    buildSnapshot(REGISTRY_ID, 9002L, today, 80),
-                    buildSnapshot(REGISTRY_ID, 9003L, today, 50),
-                    buildSnapshot(REGISTRY_ID, 9004L, today, 20)
+                    buildSnapshot(REGISTRY_ID, 9001L, today.minusDays(25), 0),
+                    buildSnapshot(REGISTRY_ID, 9002L, today.minusDays(25), 0),
+                    buildSnapshot(REGISTRY_ID, 9003L, today.minusDays(15), 0),
+                    buildSnapshot(REGISTRY_ID, 9004L, today.minusDays(5), 0)
             );
             when(snapshotRepo.findByOrganizationIdAndDeletedAtIsNull(ORG_ID))
                     .thenReturn(snapshots);
@@ -252,14 +254,15 @@ class ResidentActivityAggregatorServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: score=75 はハイリスクカウントに含まれる")
-        void getDashboard_score75_is_high_risk() {
+        @DisplayName("正常系: inactiveDays=20(score=40) はハイリスクカウントに含まれる")
+        void getDashboard_inactiveDays20_is_high_risk() {
             when(accessControlService.isAdminOrAbove(ADMIN_USER, ORG_ID, "ORGANIZATION"))
                     .thenReturn(true);
 
             LocalDate today = LocalDate.now();
+            // inactiveDays=20 → score=40 (HIGH_RISK 境界値)
             List<ResidentActivitySnapshot> snapshots = List.of(
-                    buildSnapshot(REGISTRY_ID, 9001L, today, 75)
+                    buildSnapshot(REGISTRY_ID, 9001L, today.minusDays(20), 0)
             );
             when(snapshotRepo.findByOrganizationIdAndDeletedAtIsNull(ORG_ID))
                     .thenReturn(snapshots);
@@ -271,6 +274,34 @@ class ResidentActivityAggregatorServiceTest {
             assertThat(dto.getHighRiskCount()).isEqualTo(1);
             assertThat(dto.getMidRiskCount()).isEqualTo(0);
             assertThat(dto.getLowRiskCount()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("正常系: 同一居住者の複数スナップショットは最新の 1 件のみカウントする")
+        void getDashboard_deduplicates_by_subject_user_id() {
+            when(accessControlService.isAdminOrAbove(ADMIN_USER, ORG_ID, "ORGANIZATION"))
+                    .thenReturn(true);
+
+            LocalDate today = LocalDate.now();
+            // subjectUserId=9001 の古いスナップショット（30日前）と新しいスナップショット（5日前）
+            // → 最新の 5日前 が使われ score=10 (LOW_RISK) になるべき
+            List<ResidentActivitySnapshot> snapshots = List.of(
+                    buildSnapshot(REGISTRY_ID, 9001L, today.minusDays(30), 0),
+                    buildSnapshot(REGISTRY_ID, 9001L, today.minusDays(5), 0)
+            );
+            when(snapshotRepo.findByOrganizationIdAndDeletedAtIsNull(ORG_ID))
+                    .thenReturn(snapshots);
+            when(annualReviewRepo.findByOrganizationIdAndDeletedAtIsNull(ORG_ID))
+                    .thenReturn(List.of());
+
+            ResidenceStatusDashboardDto dto = service.getDashboard(ORG_ID, ADMIN_USER);
+
+            // 居住者は 1 人のみ（重複排除）
+            assertThat(dto.getTotalResidents()).isEqualTo(1);
+            // 最新 5日前 → score=10 → LOW_RISK
+            assertThat(dto.getLowRiskCount()).isEqualTo(1);
+            assertThat(dto.getHighRiskCount()).isEqualTo(0);
+            assertThat(dto.getMidRiskCount()).isEqualTo(0);
         }
 
         @Test
@@ -328,6 +359,66 @@ class ResidentActivityAggregatorServiceTest {
             ResidenceStatusDashboardDto dto = service.getDashboard(ORG_ID, ADMIN_USER);
 
             assertThat(dto.getOpenAnnualReviewCount()).isEqualTo(2);
+        }
+    }
+
+    // ─── computeScore ────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("computeScore (v1 inactiveDays ベース)")
+    class ComputeScore {
+
+        @Test
+        @DisplayName("inactiveDays=0 のとき score=0 (LOW_RISK)")
+        void inactiveDays0_returns0() {
+            LocalDate today = LocalDate.of(2026, 5, 14);
+            // 当日スナップショットがある → inactiveDays=0
+            int score = service.computeScore(today, today);
+            assertThat(score).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("inactiveDays=10 のとき score=20 (MID_RISK 境界)")
+        void inactiveDays10_returns20() {
+            LocalDate today = LocalDate.of(2026, 5, 14);
+            LocalDate snapshot = today.minusDays(10);
+            int score = service.computeScore(snapshot, today);
+            assertThat(score).isEqualTo(20);
+        }
+
+        @Test
+        @DisplayName("inactiveDays=25 のとき score=50 (上限クランプ: 25*2=50)")
+        void inactiveDays25_returns50() {
+            LocalDate today = LocalDate.of(2026, 5, 14);
+            LocalDate snapshot = today.minusDays(25);
+            int score = service.computeScore(snapshot, today);
+            assertThat(score).isEqualTo(50);
+        }
+
+        @Test
+        @DisplayName("inactiveDays=30 のとき score=50 (上限クランプ: 30*2=60→50)")
+        void inactiveDays30_capped_at50() {
+            LocalDate today = LocalDate.of(2026, 5, 14);
+            LocalDate snapshot = today.minusDays(30);
+            int score = service.computeScore(snapshot, today);
+            assertThat(score).isEqualTo(50);
+        }
+
+        @Test
+        @DisplayName("snapshotDate=null のとき DEFAULT_INACTIVE_DAYS(30) 扱いで score=50")
+        void nullSnapshotDate_returns50() {
+            LocalDate today = LocalDate.of(2026, 5, 14);
+            int score = service.computeScore(null, today);
+            assertThat(score).isEqualTo(50);
+        }
+
+        @Test
+        @DisplayName("inactiveDays=20 のとき score=40 (HIGH_RISK 境界)")
+        void inactiveDays20_returns40_highRiskBoundary() {
+            LocalDate today = LocalDate.of(2026, 5, 14);
+            LocalDate snapshot = today.minusDays(20);
+            int score = service.computeScore(snapshot, today);
+            assertThat(score).isEqualTo(40);
         }
     }
 

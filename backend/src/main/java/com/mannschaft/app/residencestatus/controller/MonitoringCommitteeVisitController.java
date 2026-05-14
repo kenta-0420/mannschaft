@@ -85,6 +85,21 @@ public class MonitoringCommitteeVisitController {
     }
 
     /**
+     * WATCHER 自身の訪問履歴を取得する（ADMIN または本人のみ）。
+     *
+     * <p>GET /api/v1/organizations/{orgId}/residence-status/monitoring-visits/by-watcher/{watcherUserId}</p>
+     */
+    @GetMapping("/by-watcher/{watcherUserId}")
+    @Operation(summary = "WATCHER 自身の訪問履歴取得（ADMIN または本人のみ）")
+    public ResponseEntity<ApiResponse<List<MonitoringCommitteeVisitDto>>> getVisitsByWatcher(
+            @PathVariable Long orgId,
+            @PathVariable Long watcherUserId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<MonitoringCommitteeVisitDto> list = visitService.getVisitsByWatcher(orgId, watcherUserId, userId);
+        return ResponseEntity.ok(ApiResponse.of(list));
+    }
+
+    /**
      * 訪問記録を更新する（ADMIN/DEPUTY_ADMIN または訪問者本人）。
      */
     @PutMapping("/{id}")
