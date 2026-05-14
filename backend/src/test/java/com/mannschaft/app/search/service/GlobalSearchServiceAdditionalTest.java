@@ -254,7 +254,7 @@ class GlobalSearchServiceAdditionalTest {
             List<Map<String, Object>> users = result.getResults().get("users");
             assertThat(users).hasSize(1);
             assertThat(users.get(0).get("id")).isEqualTo(99L);
-            assertThat(users.get(0).get("displayName")).isEqualTo("yamada_taro");
+            assertThat(users.get(0).get("fullName")).isEqualTo("山田 太郎");
         }
 
         @Test
