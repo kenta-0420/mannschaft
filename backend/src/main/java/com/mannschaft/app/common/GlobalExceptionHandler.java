@@ -365,7 +365,11 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_013", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_PIN_LIMIT_EXCEEDED
             Map.entry("VILLAGE_044", HttpStatus.NOT_FOUND),            // VILLAGE_PIN_NOT_FOUND
             Map.entry("VILLAGE_045", HttpStatus.CONFLICT),             // VILLAGE_PIN_ALREADY_EXISTS
-            Map.entry("VILLAGE_047", HttpStatus.UNPROCESSABLE_ENTITY)  // VILLAGE_PIN_ORDER_MISMATCH
+            Map.entry("VILLAGE_047", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_PIN_ORDER_MISMATCH
+            // F17.1 Phase 1 B9 — 井戸端会議 + 投稿主体一覧（VILLAGE_048〜050）
+            Map.entry("VILLAGE_048", HttpStatus.FORBIDDEN),            // VILLAGE_POSTING_IDENTITY_FORBIDDEN
+            Map.entry("VILLAGE_049", HttpStatus.NOT_FOUND),            // VILLAGE_LOBBY_NOT_FOUND
+            Map.entry("VILLAGE_050", HttpStatus.INTERNAL_SERVER_ERROR) // VILLAGE_LOBBY_CHANNEL_INIT_FAILED
     );
 
     /**

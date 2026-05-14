@@ -165,7 +165,33 @@ public enum VillageErrorCode implements ErrorCode {
     VILLAGE_PIN_ALREADY_EXISTS("VILLAGE_045", "この村は既にお気に入りに登録されています", Severity.WARN),
 
     /** VILLAGE_047: 並び替え対象集合の不一致（422、現在のピン集合と orderedVillageIds が一致しない） */
-    VILLAGE_PIN_ORDER_MISMATCH("VILLAGE_047", "並び替え対象が現在のお気に入り村と一致しません", Severity.WARN);
+    VILLAGE_PIN_ORDER_MISMATCH("VILLAGE_047", "並び替え対象が現在のお気に入り村と一致しません", Severity.WARN),
+
+    // ==================================================================
+    // B9 井戸端会議 + 投稿主体一覧（VILLAGE_048〜050）
+    // ==================================================================
+
+    /**
+     * VILLAGE_048: 投稿主体権限なし（403）。
+     * {@code postedAs} に指定した主体を代表する権限がない、あるいは指定主体が村のメンバーでない場合に投げる。
+     * §6.3 なりすまし防止の最終防衛線。— 統合採番で VILLAGE_040 から振替。
+     */
+    VILLAGE_POSTING_IDENTITY_FORBIDDEN("VILLAGE_048",
+            "指定した投稿主体として発言する権限がありません", Severity.WARN),
+
+    /**
+     * VILLAGE_049: 村ロビーが見つからない（404）。
+     * 村作成バッチ・承認時にチャネル生成されていない異常系の入口エラー。— 統合採番で VILLAGE_041 から振替。
+     */
+    VILLAGE_LOBBY_NOT_FOUND("VILLAGE_049",
+            "村の井戸端会議チャンネルが見つかりません", Severity.WARN),
+
+    /**
+     * VILLAGE_050: 村ロビーチャネル初期化失敗（500）。
+     * 自動払い出し時の DB 競合・整合性違反などの内部例外。— 統合採番で VILLAGE_042 から振替。
+     */
+    VILLAGE_LOBBY_CHANNEL_INIT_FAILED("VILLAGE_050",
+            "村の井戸端会議チャンネルの初期化に失敗しました", Severity.ERROR);
 
     private final String code;
     private final String message;
