@@ -78,7 +78,7 @@ public class ContactService {
                     UserEntity u = userMap.get(item.getItemId());
                     if (u == null) return false;
                     String keyword = q.toLowerCase();
-                    return u.getDisplayName().toLowerCase().contains(keyword)
+                    return (u.getLastName() + " " + u.getFirstName()).toLowerCase().contains(keyword)
                             || (u.getContactHandle() != null && u.getContactHandle().contains(keyword))
                             || (item.getCustomName() != null && item.getCustomName().toLowerCase().contains(keyword));
                 })
@@ -89,7 +89,7 @@ public class ContactService {
                             .folderId(item.getFolderId())
                             .user(u != null ? ContactUserDto.builder()
                                     .id(u.getId())
-                                    .displayName(u.getDisplayName())
+                                    .fullName(u.getLastName() + " " + u.getFirstName())
                                     .contactHandle(u.getContactHandle())
                                     .avatarUrl(u.getAvatarUrl())
                                     .build() : null)

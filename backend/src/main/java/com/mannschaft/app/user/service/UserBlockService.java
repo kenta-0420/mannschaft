@@ -129,7 +129,7 @@ public class UserBlockService {
                     UserEntity user = userMap.get(block.getBlockedId());
                     return UserBlockResponse.builder()
                             .blockedId(block.getBlockedId())
-                            .blockedDisplayName(user != null ? user.getDisplayName() : null)
+                            .blockedFullName(user != null ? user.getLastName() + " " + user.getFirstName() : null)
                             .blockedAvatarUrl(user != null ? user.getAvatarUrl() : null)
                             .createdAt(block.getCreatedAt())
                             .build();

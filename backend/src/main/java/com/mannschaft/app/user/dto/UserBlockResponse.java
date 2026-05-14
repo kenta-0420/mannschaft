@@ -15,8 +15,8 @@ public class UserBlockResponse {
     /** ブロックされたユーザーID */
     private final Long blockedId;
 
-    /** ブロックされたユーザーの表示名 */
-    private final String blockedDisplayName;
+    /** ブロックされたユーザーの実名 */
+    private final String blockedFullName;
 
     /** ブロックされたユーザーのアバターURL（null 可） */
     private final String blockedAvatarUrl;

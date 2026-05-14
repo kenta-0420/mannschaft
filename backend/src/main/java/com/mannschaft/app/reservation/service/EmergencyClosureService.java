@@ -244,7 +244,7 @@ public class EmergencyClosureService {
                     UserEntity user = userRepository.findById(c.getUserId()).orElse(null);
                     return EmergencyClosureConfirmationResponse.builder()
                             .userId(c.getUserId())
-                            .userDisplayName(user != null ? user.getDisplayName() : "")
+                            .userFullName(user != null ? user.getLastName() + " " + user.getFirstName() : "")
                             .userEmail(user != null ? user.getEmail() : "")
                             .appointmentAt(c.getAppointmentAt())
                             .confirmed(c.isConfirmed())
@@ -350,14 +350,14 @@ public class EmergencyClosureService {
             ReservationSlotEntity slot = slotMap.get(reservation.getReservationSlotId());
             UserEntity user = userRepository.findById(reservation.getUserId()).orElse(null);
 
-            String displayName = user != null ? user.getDisplayName() : "";
+            String fullName = user != null ? user.getLastName() + " " + user.getFirstName() : "";
             String email = user != null ? user.getEmail() : "";
 
             EmergencyClosurePreviewResponse.AffectedReservation affected =
                     EmergencyClosurePreviewResponse.AffectedReservation.builder()
                             .reservationId(reservation.getId())
                             .userId(reservation.getUserId())
-                            .userDisplayName(displayName)
+                            .userFullName(fullName)
                             .userEmail(email)
                             .slotDate(slot != null ? slot.getSlotDate() : null)
                             .startTime(slot != null ? slot.getStartTime() : null)

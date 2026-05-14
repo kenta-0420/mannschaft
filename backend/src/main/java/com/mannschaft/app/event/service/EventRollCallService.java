@@ -110,7 +110,7 @@ public class EventRollCallService {
         for (EventRsvpResponseEntity rsvp : rsvps) {
             Long userId = rsvp.getUserId();
             UserEntity user = userMap.get(userId);
-            String displayName = user != null ? user.getDisplayName() : "（不明）";
+            String fullName = user != null ? user.getLastName() + " " + user.getFirstName() : "（不明）";
             String avatarUrl = user != null ? user.getAvatarUrl() : null;
             boolean isUnderCare = underCareUserIds.contains(userId);
             int watcherCount = watcherCountMap.getOrDefault(userId, 0L).intValue();
@@ -118,7 +118,7 @@ public class EventRollCallService {
 
             results.add(RollCallCandidateResponse.builder()
                     .userId(userId)
-                    .displayName(displayName)
+                    .fullName(fullName)
                     .avatarUrl(avatarUrl)
                     .rsvpStatus(rsvp.getResponse())
                     .isAlreadyCheckedIn(alreadyCheckedIn)

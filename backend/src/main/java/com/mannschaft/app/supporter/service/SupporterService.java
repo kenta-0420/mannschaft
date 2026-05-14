@@ -187,12 +187,12 @@ public class SupporterService {
         List<SupporterResponse> data = page.getContent().stream()
                 .map(m -> {
                     UserEntity user = userRepository.findById(m.getUserId()).orElse(null);
-                    String displayName = user != null ? user.getDisplayName() : "不明";
+                    String fullName = user != null ? user.getLastName() + " " + user.getFirstName() : "不明";
                     String avatarUrl = user != null ? user.getAvatarUrl() : null;
                     String followedAt = m.getJoinedAt() != null
                             ? m.getJoinedAt().format(ISO_FORMATTER)
                             : null;
-                    return new SupporterResponse(m.getUserId(), displayName, avatarUrl, followedAt);
+                    return new SupporterResponse(m.getUserId(), fullName, avatarUrl, followedAt);
                 })
                 .toList();
 
@@ -222,12 +222,12 @@ public class SupporterService {
         List<SupporterApplicationResponse> data = page.getContent().stream()
                 .map(app -> {
                     UserEntity user = userRepository.findById(app.getUserId()).orElse(null);
-                    String displayName = user != null ? user.getDisplayName() : "不明";
+                    String fullName = user != null ? user.getLastName() + " " + user.getFirstName() : "不明";
                     String avatarUrl = user != null ? user.getAvatarUrl() : null;
                     return new SupporterApplicationResponse(
                             app.getId(),
                             app.getUserId(),
-                            displayName,
+                            fullName,
                             avatarUrl,
                             app.getMessage(),
                             app.getStatus().name(),

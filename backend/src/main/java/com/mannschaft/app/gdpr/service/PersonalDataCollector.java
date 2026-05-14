@@ -198,7 +198,7 @@ public class PersonalDataCollector {
                 Map<String, Object> accountData = new LinkedHashMap<>();
                 accountData.put("id", user.getId());
                 accountData.put("email", user.getEmail());
-                accountData.put("displayName", user.getDisplayName());
+                accountData.put("nickname", user.getDisplayName());
                 accountData.put("nickname2", user.getNickname2());
                 accountData.put("lastName", decryptSafe(user.getLastName()));
                 accountData.put("firstName", decryptSafe(user.getFirstName()));

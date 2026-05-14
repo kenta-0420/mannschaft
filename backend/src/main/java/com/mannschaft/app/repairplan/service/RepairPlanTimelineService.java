@@ -107,7 +107,7 @@ public class RepairPlanTimelineService {
         Map<Long, String> nameCache = userRepository.findAllById(userIds).stream()
                 .collect(Collectors.toMap(
                         UserEntity::getId,
-                        u -> u.getDisplayName() != null ? u.getDisplayName() : "（不明）"
+                        u -> u.getLastName() != null ? u.getLastName() + " " + u.getFirstName() : "（不明）"
                 ));
 
         Map<String, String> result = new TreeMap<>();

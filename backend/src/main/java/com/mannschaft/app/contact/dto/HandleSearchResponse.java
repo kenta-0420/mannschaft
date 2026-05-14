@@ -12,7 +12,7 @@ import lombok.Getter;
 public class HandleSearchResponse {
     private boolean found;
     private Long userId;
-    private String displayName;
+    private String fullName;
     private String contactHandle;
     private String avatarUrl;
     private Boolean isContact;
