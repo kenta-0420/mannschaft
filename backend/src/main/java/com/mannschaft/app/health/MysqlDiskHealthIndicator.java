@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -45,8 +46,9 @@ import org.springframework.stereotype.Component;
  * @see HealthStatusListener
  * @see org.springframework.boot.actuate.health.HealthIndicator
  */
-@Component("mysqlDisk")
 @Slf4j
+@Profile("!openapi-gen")
+@Component("mysqlDisk")
 public class MysqlDiskHealthIndicator implements HealthIndicator {
 
     private final JdbcTemplate jdbcTemplate;
