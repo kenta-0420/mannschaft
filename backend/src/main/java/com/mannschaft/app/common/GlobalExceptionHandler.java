@@ -323,7 +323,34 @@ public class GlobalExceptionHandler {
             Map.entry("TOUR_025", HttpStatus.UNPROCESSABLE_ENTITY),   // MAX_TEMPLATE_COUNT_EXCEEDED
             Map.entry("TOUR_026", HttpStatus.NOT_FOUND),              // TEAM_NOT_IN_ORGANIZATION (IDOR対策で404)
             Map.entry("TOUR_027", HttpStatus.CONFLICT),               // DUPLICATE_ENTRY_MEMBER
-            Map.entry("TOUR_028", HttpStatus.FORBIDDEN)               // TEMPLATE_TEAM_MISMATCH
+            Map.entry("TOUR_028", HttpStatus.FORBIDDEN),              // TEMPLATE_TEAM_MISMATCH
+            // F17.1 村機能 Phase 1（B2 村CRUD / B3 メンバーシップ / B4 ニックネーム / B5 村作成申請）統合
+            Map.entry("VILLAGE_001", HttpStatus.NOT_FOUND),            // VILLAGE_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("VILLAGE_002", HttpStatus.FORBIDDEN),            // VILLAGE_UNLISTED
+            Map.entry("VILLAGE_006", HttpStatus.CONFLICT),             // ALREADY_MEMBER
+            Map.entry("VILLAGE_007", HttpStatus.NOT_FOUND),            // NOT_MEMBER（IDOR 対策で 404）
+            Map.entry("VILLAGE_008", HttpStatus.CONFLICT),             // NICKNAME_TAKEN
+            Map.entry("VILLAGE_010", HttpStatus.TOO_MANY_REQUESTS),    // CREATION_REQUEST_THROTTLED
+            Map.entry("VILLAGE_011", HttpStatus.TOO_MANY_REQUESTS),    // NICKNAME_CHANGE_THROTTLED
+            Map.entry("VILLAGE_012", HttpStatus.TOO_MANY_REQUESTS),    // PARTICIPATION_LIMIT_EXCEEDED
+            Map.entry("VILLAGE_014", HttpStatus.UNPROCESSABLE_ENTITY), // GUIDELINE_NOT_AGREED
+            Map.entry("VILLAGE_015", HttpStatus.FORBIDDEN),            // REPRESENT_FORBIDDEN
+            Map.entry("VILLAGE_016", HttpStatus.FORBIDDEN),            // SUBJECT_NOT_MEMBER
+            Map.entry("VILLAGE_017", HttpStatus.CONFLICT),             // HEADMAN_CANNOT_LEAVE
+            Map.entry("VILLAGE_018", HttpStatus.CONFLICT),             // VERSION_CONFLICT
+            Map.entry("VILLAGE_019", HttpStatus.CONFLICT),             // VILLAGE_JOIN_REQUIRES_APPROVAL
+            Map.entry("VILLAGE_022", HttpStatus.FORBIDDEN),            // NEW_ACCOUNT_RESTRICTED
+            Map.entry("VILLAGE_024", HttpStatus.FORBIDDEN),            // MODERATION_FORBIDDEN
+            Map.entry("VILLAGE_025", HttpStatus.CONFLICT),             // JOIN_RATE_EXCEEDED
+            Map.entry("VILLAGE_027", HttpStatus.CONFLICT),             // VILLAGE_ALREADY_ARCHIVED
+            Map.entry("VILLAGE_028", HttpStatus.UNPROCESSABLE_ENTITY), // NICKNAME_INVALID
+            Map.entry("VILLAGE_031", HttpStatus.FORBIDDEN),            // MEMBER_BANNED
+            Map.entry("VILLAGE_032", HttpStatus.NOT_FOUND),            // CREATION_REQUEST_NOT_FOUND
+            Map.entry("VILLAGE_033", HttpStatus.CONFLICT),             // CREATION_REQUEST_ALREADY_REVIEWED
+            Map.entry("VILLAGE_034", HttpStatus.FORBIDDEN),            // CREATION_REQUEST_REJECTED
+            Map.entry("VILLAGE_035", HttpStatus.CONFLICT),             // CREATION_REQUEST_SLUG_TAKEN
+            Map.entry("VILLAGE_036", HttpStatus.FORBIDDEN),            // OFFICIAL_VILLAGE_FORBIDDEN
+            Map.entry("VILLAGE_037", HttpStatus.FORBIDDEN)             // VILLAGE_CREATE_FORBIDDEN
     );
 
     /**

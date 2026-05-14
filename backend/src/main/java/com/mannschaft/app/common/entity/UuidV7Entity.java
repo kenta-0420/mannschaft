@@ -50,6 +50,16 @@ public abstract class UuidV7Entity {
         return id;
     }
 
+    /**
+     * ID を明示的に設定する。
+     * 通常は {@code @GeneratedValue} が永続化時に自動採番するため呼び出し不要だが、
+     * テストでモック用エンティティを作る際や、UUID を外部から引き継ぐ
+     * 特殊なユースケース（イベント駆動の再構築など）で利用する。
+     */
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
