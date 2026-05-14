@@ -17,7 +17,7 @@ import { waitForHydration } from '../helpers/wait'
 // ヘルパー: storageState が有効でない場合のフォールバックログイン
 // ---------------------------------------------------------------------------
 async function loginIfNeeded(page: Page): Promise<void> {
-  await page.goto('/my/dashboard')
+  await page.goto('/my/')
   if (page.url().includes('/login')) {
     await page.getByLabel('メールアドレス').fill('e2e-user@test.mannschaft.local')
     await page.getByLabel('パスワード').fill('TestPass2026!')
@@ -30,14 +30,14 @@ async function loginIfNeeded(page: Page): Promise<void> {
 // DASH-001〜008: ダッシュボード基本表示
 // ---------------------------------------------------------------------------
 test.describe('DASH-001〜008: ダッシュボード基本表示', () => {
-  // storageState で認証済み。各テスト前にダッシュボードへ遷移する
+  // storageState で認証済み。各テスト前にマイページへ遷移する（/my/index.vue が正しいルート）
   test.beforeEach(async ({ page }) => {
-    await page.goto('/my/dashboard')
+    await page.goto('/my/')
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
   })
 
-  test('DASH-001: /my/dashboard が表示される（主要UIエリアの存在確認）', async ({ page }) => {
+  test('DASH-001: /my/ が表示される（主要UIエリアの存在確認）', async ({ page }) => {
     // マイページハブのカードグリッドが存在する
     await expect(page.locator('.grid')).toBeVisible({ timeout: 15_000 })
     // URL が /my に留まることを確認
@@ -93,23 +93,14 @@ test.describe('DASH-001〜008: ダッシュボード基本表示', () => {
   })
 
   test('DASH-007: 未読通知バッジが表示される（seed で7件未読通知を投入済み）', async ({ page }) => {
-    // NotificationBell: totalCount > 0 のときバッジ（赤い丸）が表示される
-    // ベルアイコン周辺に数値バッジが存在することを確認
-    const badge = page
-      .locator('.pi-bell')
-      .locator('..')
-      .locator('..')
-      .locator('span[class*="rounded-full"]')
-      .first()
-
-    // バッジが存在しない可能性もあるため、ページ上のバッジ全体を対象にする
+    // NotificationBell: totalCount > 0 のとき PrimeVue Badge が表示される
+    // PrimeVue Badge は data-pc-name="badge" または class="p-badge" で描画される
     const anyBadge = page.locator(
-      'span.rounded-full, span[class*="bg-red"], [class*="badge"], [class*="unread"]',
+      '[data-pc-name="badge"], .p-badge, [class*="p-badge"]',
     ).first()
 
     // 通知バッジの存在を確認（タイムアウトを長めに設定）
     await expect(anyBadge).toBeVisible({ timeout: 20_000 })
-    void badge
   })
 
   test('DASH-008: 通知をクリックして既読にできる（1件の既読操作）', async ({ page }) => {
@@ -163,8 +154,9 @@ test.describe('PROF-001〜006: プロフィール・アカウント設定', () =
     // SettingsProfileSection: label "表示名" + InputText が存在する
     const displayNameLabel = page.getByText('表示名').first()
     await expect(displayNameLabel).toBeVisible({ timeout: 20_000 })
-    // 対応する input 要素が存在する
-    const inputField = page.locator('input').first()
+    // 表示名の InputText（type="text" の可視入力フィールド）が存在する
+    // locator('input').first() は hidden の file input にマッチするため type を指定して絞る
+    const inputField = page.locator('input[type="text"]').first()
     await expect(inputField).toBeVisible({ timeout: 10_000 })
   })
 
@@ -204,13 +196,13 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
   // チームページは追加APIコールがあり遅いためタイムアウトを延長する
   test.setTimeout(120_000)
 
-  test('TEAM-NAV-001: ダッシュボードまたはナビゲーションに所属チームが表示される', async ({ page }) => {
-    // /teams ページにチームリストが存在することを確認
+  test('TEAM-NAV-001: /teams ページが表示される（マイチームページ）', async ({ page }) => {
+    // /teams ページが正常に表示されること（チームカードは @click navigateTo のため <a> ではない）
     await page.goto('/teams')
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
-    const teamsLink = page.locator('a[href*="/teams/"]').first()
-    await expect(teamsLink).toBeVisible({ timeout: 20_000 })
+    // PageHeader title="マイチーム" が表示される
+    await expect(page.getByRole('heading', { name: 'マイチーム' })).toBeVisible({ timeout: 20_000 })
   })
 
   test('TEAM-NAV-002: FC東京U-18（テスト）チームへのリンクが存在する', async ({ page }) => {
