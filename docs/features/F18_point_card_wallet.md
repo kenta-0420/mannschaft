@@ -23,11 +23,13 @@
 | 一般ユーザー（個人） | 複数のポイントカードを 1 つのアプリにまとめ、レジ前で焦らずスワイプ提示。物理カードを財布から探す・各社アプリを切り替える手間ゼロ |
 | ADHD 傾向のユーザー | 入力摩擦ゼロ・並び順自由・グループ別呼び出し対応で、レジ前パニックを回避 |
 | 高齢者ユーザー | バーコード下に大きい数字番号表示・スクリーンリーダー対応で、視認性と聴覚アクセシビリティを担保 |
+| マスタに無いマイナー店舗を使うユーザー | プロバイダーマスタに依存せず、カード名を自由入力するだけで追加可能。運営による事業者カバレッジ整備を待たずに即利用開始できる |
 | organization 管理者（Phase 2） | 美容室・整骨院・カフェ等の自店ポイントカードを Mannschaft 内で発行・配布できる。顧客が「Mannschaft のウォレットに追加」するだけで運用開始 |
 
 ### v1 (Phase 1) の境界
 
 - **対象は他社（外部事業者）のポイントカード**のみ。バーコード/QR を再描画して画面提示する**補助ツール**
+- **Phase 1 は他社カードの自由入力登録が主体。運営の `point_card_providers` マスタは「人気 10〜15 社の視認性補強用」に限定**し、マスタに無い事業者のカードはユーザーが自由に名前を入力して登録できる（fuzzy match でロゴ・色を自動補強）
 - 公式アプリではないため、ポイント残高同期・付与申請・利用履歴取得は**しない**
 - Phase 2 で organization が自店ポイントカードを発行する余地を**スキーマ・enum・カラムで先行確保**
 - 個人スコープ専用（team / organization スコープでの共有はなし。Phase 2 でも自店発行プロバイダーの管理だけが organization スコープに乗る）
@@ -78,21 +80,40 @@
 3. 同意ボタン押下で `PUT /api/v1/point-cards/settings` が `is_enabled=true, terms_accepted_at, terms_version` を保存
 4. ウォレットホーム（カード一覧）に遷移
 
-### UC-2: 他社カード追加（バーコードスキャン）
+### UC-2: 他社カード追加（自由入力 + バーコード）
 
-1. ウォレットホームから「+ 追加」ボタン
-2. プロバイダー選択画面（`GET /api/v1/point-cards/providers` でカテゴリ別ピッカー表示）
-3. プロバイダー選択後、「カメラで読み取り」または「手入力」を選択
-4. カメラ読み取り（`@zxing/browser` ライブラリ使用）でバーコード/QR を 1 回スキャン
-5. 確認画面で `barcode_value` / `barcode_format` / `last4` の確認、`nickname` / `memo` を任意入力
-6. 「保存」で `POST /api/v1/point-cards` を呼び出し、サーバーで暗号化保存
+**案 B 改修ポイント**: 案 A で想定していた「プロバイダー選択画面」を**廃止**し、「カード追加フォーム」に統合した。プリセットボタンと自由入力を 1 画面で完結させる。
+
+1. ウォレットホームから「+ 追加」ボタン → カード追加フォームへ遷移
+2. フォーム画面構成:
+   - **上部: プリセットカードボタン横並び**（人気 10〜15 社のロゴ + 名称。`GET /api/v1/point-cards/providers` で取得した運営マスタを描画）
+   - **下部: 自由入力フォーム**（カード名 `display_name`（必須）/ バーコード値・形式 / 任意メモ）
+3. **プリセットボタンをタップ**した場合:
+   - カード名入力欄に当該プロバイダーの `display_name` が事前充填される
+   - バーコード形式の初期値もプロバイダーの `default_barcode_format` が事前選択される
+   - ロゴ・ブランドカラーがプレビューに表示される
+   - 内部状態として `provider_id` をプリセットの UUID で保持（送信時に明示的に紐付け）
+4. **プリセットを使わず自由入力する**場合（マスタに無い事業者・スーパーのスタンプカード等）:
+   - カード名（`display_name`）にユーザーが任意の文字列を入力（例: 「近所のスーパー」「○○薬局」）
+   - `provider_id` は未設定のまま（リクエストでは `null` で送信）
+5. **バーコード入力方法**は以下 3 択（既存通り、いずれも自由入力 / プリセット問わず利用可）:
+   - カメラで読み取り（`@zxing/browser`）
+   - 画像から読み取り（既存実装に合わせ可）
+   - 手入力（直接タイプ）
+6. 確認画面で `barcode_value` / `barcode_format` / `last4` のプレビューと、`display_name` / `nickname`（任意、同プロバイダー複数枚保有時の補助識別）/ `memo` を最終確認
+7. 「保存」で `POST /api/v1/point-cards` を呼び出し、サーバーが:
+   - 受け取った `display_name` をサーバー側で正規化（NFKC + カタカナ→ひらがな + 記号削除 + lower）
+   - `point_card_providers` の起動時メモリキャッシュ（人気 10〜15 社）に対して fuzzy match
+   - マッチすれば `provider_id` を自動設定、マッチしなければ `provider_id = NULL` のまま保存
+   - `display_name` / `barcode_value` / `nickname` / `memo` を AES-256-GCM で暗号化保存
+8. 保存完了後、ウォレットホームに戻る。マッチしたカードはプロバイダーロゴ + ブランドカラーで描画され、マッチしなかった自由入力カードは `display_name` の頭文字アイコン + 自動カラーで描画される
 
 ### UC-3: 通常提示（個別カード）
 
 1. ウォレットホームでお気に入りのカードタイル（`is_favorite=true` 優先表示）をタップ
 2. 提示モード（全画面）に遷移
 3. バーコードが大きく再描画される（`jsbarcode` 使用）
-4. 画面下に大きい数字でカード番号（`last4` だけ大きく強調表示）
+4. 画面下に大きい文字で `display_name`（ユーザー入力カード名）と、カード番号（`last4` だけ大きく強調）が並んで表示される。プロバイダー未マッチカードでもレジで「何のカードか」が分かるよう、`display_name` を最優先で視認できるレイアウトにする
 5. 自動的に Wake Lock API（フォールバック: `nosleep.js`）で画面が暗くならないようにする
 6. スワイプで前後のカードに移動可能
 7. 「使用済み」ボタンで `POST /api/v1/point-cards/{id}/used`、`last_used_at` を更新
@@ -118,7 +139,7 @@
 2. 確認モーダル「このカードを完全に削除します。元には戻せません」
 3. `DELETE /api/v1/point-cards/{id}` を呼ぶ
 4. サーバー側で物理削除（論理削除なし。個人機密のため）
-5. `POINT_CARD_DELETED` 監査ログを記録（metadata: `provider_code`, `card_id` のみ。`barcode_value` は含めない）
+5. `POINT_CARD_DELETED` 監査ログを記録（metadata: `provider_code`（マッチしなかったカードでは `null`）, `provider_matched`, `card_id` のみ。`barcode_value` / `display_name` は含めない）
 
 ### UC-7: 退会時の自動消去
 
@@ -181,8 +202,11 @@
 
 | 用語 | 定義 |
 |---|---|
-| **プロバイダー** | カード発行事業者（東急ポイント・dポイント・楽天ポイント等。Phase 2 では organization も発行者になる） |
-| **カード** | ユーザーが追加した個別のカードレコード（同じプロバイダーでも複数枚保持可。例: 家族用 / 自分用） |
+| **プロバイダー** | **ロゴ・色補強用の運営マスタ**（人気 10〜15 社）。Phase 1 ではユーザー登録カードに対する任意の補強情報であり、必須の紐付け先ではない。Phase 2 では organization も発行者になる |
+| **カード** | ユーザーが追加した個別のカードレコード（同じプロバイダーでも複数枚保持可。例: 家族用 / 自分用）。**ユーザーが入力した `display_name` が一次識別**であり、`provider_id` は fuzzy match でマッチした場合のみ紐付くオプション関連 |
+| **`display_name`** | ユーザー自身が入力するカード名（必須）。例: 「東急ポイント」「近所のスーパー」「○○薬局」。AES-256-GCM で暗号化保存される。カード一覧・提示モードでの表示はこの値を一次表示する |
+| **`nickname`** | 同じプロバイダーで複数枚持つときの補助識別子（任意）。例: 「家族用」「自分用」。`display_name` と責務分離する（`display_name` = カードの種類名、`nickname` = ユーザー個人の運用ラベル） |
+| **fuzzy match** | ユーザー入力 `display_name` を正規化（NFKC + カタカナ→ひらがな + 記号削除 + lower）し、運営マスタの `code` / `display_name` と照合してロゴ・色を自動補強する仕組み。詳細は §7.6 |
 | **グループ** | 「東急ハンズ用」「コンビニ用」のようなシーン単位のカード束。提示モードで連続スワイプ可能 |
 | **提示モード** | フルスクリーン + Wake Lock + バーコード大表示 + スワイプの専用 UI |
 | **last4** | カード番号の下 4 桁。識別用 UI 表示にのみ使用し、暗号化対象外（4 桁単独では特定不可） |
@@ -226,7 +250,7 @@ public interface AbstractUserOwnedRepository<T, ID> extends JpaRepository<T, ID>
 
 ### 5.0.2 暗号化方針
 
-`user_point_cards` の `barcode_value` / `nickname` / `memo` を **AES-256-GCM** で暗号化する。実装には既存の `EncryptedStringConverter`（F09.15・F14.2 等で使用済み）を再利用する:
+`user_point_cards` の `display_name` / `barcode_value` / `nickname` / `memo` を **AES-256-GCM** で暗号化する。実装には既存の `EncryptedStringConverter`（F09.15・F14.2 等で使用済み）を再利用する:
 
 ```java
 @Convert(converter = EncryptedStringConverter.class)
@@ -234,25 +258,34 @@ public interface AbstractUserOwnedRepository<T, ID> extends JpaRepository<T, ID>
 private String barcodeValue;
 ```
 
+| フィールド | 暗号化アルゴリズム | NULL 許容 | 補足 |
+|---|---|---|---|
+| `display_name` | AES-256-GCM | NOT NULL | **案 B で新設**。ユーザー入力のカード名。fuzzy match で `provider_id` を自動補強する元データ |
+| `barcode_value` | AES-256-GCM | NOT NULL | バーコード値（カード番号）|
+| `nickname` | AES-256-GCM | NULL 可 | 補助識別子（「家族用」等）|
+| `memo` | AES-256-GCM | NULL 可 | 任意メモ |
+
 - 鍵管理は環境変数 `MANNSCHAFT_ENCRYPTION_KEY_VERSION_1` を用いる既存方式に従う
 - DB 上の型は **VARBINARY**（暗号化済み IV + ciphertext + auth tag のバイナリ）
-- **Blind Index は作らない**（カード番号で検索する機能を作らない方針）
+- **Blind Index は作らない**（カード番号で検索する機能を作らない方針。fuzzy match はサーバー側で受信した平文 `display_name` をその場で正規化してマスタとマッチングするため、暗号化済みの保存値を検索する必要はない）
 - `last4` は平文 VARCHAR(4) として別カラムで保持（UI 識別用。4 桁では特定不可）
 
-### 5.1 `point_card_providers`（プロバイダーマスタ + Phase 2 自店発行）
+### 5.1 `point_card_providers`（**ロゴ・色補強用マスタ（10〜15 社）** + Phase 2 自店発行）
+
+> **用途（案 B 改修）**: Phase 1 では「ユーザーがカード追加する際のプリセットボタン提示用」「fuzzy match によるロゴ・ブランドカラー自動補強用」のための**運営管理マスタ**である。マスタに無い事業者のカードはユーザーが `display_name` を自由入力して登録するため、本テーブルが空でもウォレットは機能する（プリセットが出ないだけ）。Seed は人気 10〜15 社のみで開始し、運営判断で追加する。
 
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---|---|---|---|---|
 | `id` | CHAR(36) | NO | UUIDv7 | PK |
-| `code` | VARCHAR(50) | NO | — | 一意コード（`tokyu_point`, `dpoint`, `rakuten` 等。Phase 2 では `org_{orgId}_xxx` 命名）|
-| `display_name` | VARCHAR(100) | NO | — | 表示名（例: 「東急ポイント」） |
+| `code` | VARCHAR(50) | NO | — | 一意コード（`tokyu_point`, `dpoint`, `rakuten` 等。Phase 2 では `org_{orgId}_xxx` 命名）。fuzzy match の正規化マッチ対象 |
+| `display_name` | VARCHAR(100) | NO | — | 表示名（例: 「東急ポイント」）。fuzzy match の正規化マッチ対象 |
 | `category` | VARCHAR(20) | NO | — | カテゴリ enum（`RETAIL` / `CONVENIENCE` / `FOOD` / `TRANSPORT` / `OTHER`）|
 | `type` | VARCHAR(30) | NO | 'EXTERNAL' | カード種別 enum（`EXTERNAL` / `SELF_ISSUED_STAMP` / `SELF_ISSUED_BALANCE`）|
 | `organization_id` | BIGINT UNSIGNED | YES | NULL | Phase 1 では常に NULL。Phase 2 で自店発行プロバイダーの所属組織を設定 |
 | `logo_url` | VARCHAR(500) | YES | NULL | R2 オブジェクトキー（Cloudflare R2、F13 連携） |
 | `brand_color` | CHAR(7) | YES | NULL | ブランドカラー（`#E60012` 等）。UI のカードタイル背景に使用 |
-| `default_barcode_format` | VARCHAR(20) | YES | NULL | 既定のバーコード形式（`CODE128` 等）。手入力時のフォーム初期値 |
-| `card_number_regex` | VARCHAR(200) | YES | NULL | カード番号の正規表現（例: `^[0-9]{13}$`）。手入力バリデーション用 |
+| `default_barcode_format` | VARCHAR(20) | YES | NULL | 既定のバーコード形式（`CODE128` 等）。プリセットタップ時のフォーム初期値 |
+| `card_number_regex` | VARCHAR(200) | YES | NULL | カード番号の正規表現（例: `^[0-9]{13}$`）。**プリセット選択時のみの参考バリデーション**（必須化はしない。自由入力カードでは適用されない）|
 | `card_number_length_hint` | VARCHAR(50) | YES | NULL | UI に表示するヒント（例: 「13 桁の数字」） |
 | `is_active` | TINYINT(1) | NO | 1 | プロバイダーが利用可能か（運営側で停止可能） |
 | `legal_notice` | TEXT | YES | NULL | 各プロバイダー固有の注意書き（多言語キー or 日本語デフォルト）。Phase 1.1 で i18n 化検討 |
@@ -276,7 +309,7 @@ CONSTRAINT chk_pcp_type_org_consistency CHECK (
 )
 ```
 
-> Phase 1 では `type='EXTERNAL'` 行のみが Seed 投入される（V9.141）。`organization_id` カラムを最初から用意することで、Phase 2 で organization が自店発行する際に**スキーマ破壊的変更なし**で受け入れられる。
+> Phase 1 では `type='EXTERNAL'` 行のみが Seed 投入される（V9.141、**人気 10〜15 社程度に縮小**）。`organization_id` カラムを最初から用意することで、Phase 2 で organization が自店発行する際に**スキーマ破壊的変更なし**で受け入れられる。マスタ拡充は運営判断で随時行われ、本機能の必須要件ではない。
 
 **FK 方針**
 
@@ -289,8 +322,9 @@ CONSTRAINT chk_pcp_type_org_consistency CHECK (
 |---|---|---|---|---|
 | `id` | CHAR(36) | NO | UUIDv7 | PK |
 | `user_id` | BIGINT UNSIGNED | NO | — | カード所有者（FK → users.id ON DELETE CASCADE）|
-| `provider_id` | CHAR(36) | NO | — | プロバイダー（FK → point_card_providers.id ON DELETE RESTRICT）|
-| `nickname` | VARBINARY(1024) | YES | NULL | **AES-256-GCM 暗号化**: 任意ニックネーム（例: 「ヨドバシ家族用」） |
+| `display_name` | VARBINARY(1024) | NO | — | **【案 B 新設】AES-256-GCM 暗号化**: ユーザー入力のカード名（例: 「東急ポイント」「近所のスーパー」）。カード一覧・提示モードの一次表示はこの値。fuzzy match の元データ |
+| `provider_id` | CHAR(36) | **YES** | NULL | **【案 B 変更】**プロバイダー（FK → point_card_providers.id **ON DELETE SET NULL**）。fuzzy match がマッチした場合のみ自動セット。マッチしない自由入力カードは NULL のまま保存される |
+| `nickname` | VARBINARY(1024) | YES | NULL | **AES-256-GCM 暗号化**: 同一プロバイダー複数枚保有時の補助識別子（例: 「家族用」「自分用」）。`display_name` とは責務分離 |
 | `barcode_value` | VARBINARY(1024) | NO | — | **AES-256-GCM 暗号化**: バーコードの数値文字列（カード番号） |
 | `barcode_format` | VARCHAR(20) | NO | 'CODE128' | バーコード形式 enum |
 | `last4` | VARCHAR(4) | YES | NULL | カード番号下 4 桁（平文、UI 識別用。4 桁単独では特定不可、INDEX なし）|
@@ -319,7 +353,7 @@ INDEX idx_upc_provider (provider_id)                                 -- プロ�
 **FK 方針**
 
 - `user_id` → `users.id` **ON DELETE CASCADE**（同一「個人スコープ」ドメイン内とみなす — CLAUDE.md 原則 2 の判定で、退会時にユーザー個人データが連鎖削除されるべきテーブルとして許可される）
-- `provider_id` → `point_card_providers.id` **ON DELETE RESTRICT**（プロバイダーが消えるとカードが孤立するため、運営側はプロバイダー削除前にカード数を確認）
+- `provider_id` → `point_card_providers.id` **ON DELETE SET NULL**（**案 B 変更**: プロバイダーが消えてもカード自体は「`display_name` を持つ自由入力カード」として残存させる。RESTRICT だと運営マスタの整理が困難になるうえ、ユーザーから見るとロゴ・色だけが消えるだけで操作不可ではないため、SET NULL の方が UX 妥当。マッチ済みカードがマッチ解除されても、ユーザー入力の `display_name` は残るためカード機能自体は維持される）
 
 **Java Entity**
 
@@ -331,7 +365,12 @@ public class UserPointCardEntity extends UuidV7Entity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "provider_id", nullable = false, columnDefinition = "CHAR(36)")
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "display_name", nullable = false, columnDefinition = "VARBINARY(1024)")
+    private String displayName;
+
+    // 【案 B】NULL 許容。fuzzy match がマッチした場合のみセットされる
+    @Column(name = "provider_id", columnDefinition = "CHAR(36)")
     private UUID providerId;
 
     @Convert(converter = EncryptedStringConverter.class)
@@ -445,7 +484,7 @@ erDiagram
     users ||--o{ point_card_groups : "user_id CASCADE"
     users ||--|| point_card_user_settings : "user_id PK+FK CASCADE"
 
-    point_card_providers ||--o{ user_point_cards : "provider_id RESTRICT"
+    point_card_providers ||--o{ user_point_cards : "provider_id nullable, SET NULL"
     point_card_groups ||--o{ point_card_group_items : "group_id CASCADE"
     user_point_cards ||--o{ point_card_group_items : "card_id CASCADE"
 
@@ -462,7 +501,8 @@ erDiagram
     user_point_cards {
         CHAR id PK "UUIDv7"
         BIGINT user_id
-        CHAR provider_id FK
+        VARBINARY display_name "AES-256-GCM, NOT NULL"
+        CHAR provider_id FK "nullable, ON DELETE SET NULL"
         VARBINARY barcode_value "AES-256-GCM"
         VARBINARY nickname "AES-256-GCM"
         VARCHAR last4 "plaintext, 4 chars"
@@ -499,7 +539,7 @@ erDiagram
 | FK 関係 | 種別 | ON DELETE | 根拠 |
 |---|---|---|---|
 | `user_point_cards.user_id → users.id` | クロスドメイン弱参照に見えるが、退会時の連鎖削除を物理保証する必要がある | CASCADE | F12.3 GDPR 物理削除ポリシー準拠。ユーザー個人機密として連鎖削除 |
-| `user_point_cards.provider_id → point_card_providers.id` | 同一機能内（共にウォレットドメイン）| RESTRICT | プロバイダー孤児防止。運営側は事前にカード数を確認 |
+| `user_point_cards.provider_id → point_card_providers.id` | 同一機能内（共にウォレットドメイン）、ただし **NULL 許容** | **SET NULL** | **【案 B 変更】**プロバイダーマスタは「ロゴ・色補強用」の任意紐付け。プロバイダーが削除されてもカード本体（ユーザー入力 `display_name` + バーコード）は機能し続けるべきであり、RESTRICT で運営側を縛るより SET NULL でカードを「自由入力扱い」に戻す方が UX 妥当。ユーザー側は再度プリセットを選び直すか、そのまま使い続けるかを選択できる |
 | `point_card_groups.user_id → users.id` | 同上 | CASCADE | 同上 |
 | `point_card_group_items.group_id → point_card_groups.id` | 同一機能内 | CASCADE | 同ドメイン内 CASCADE 許可 |
 | `point_card_group_items.card_id → user_point_cards.id` | 同一機能内 | CASCADE | 同ドメイン内 CASCADE 許可 |
@@ -514,7 +554,7 @@ erDiagram
 
 | メソッド | パス | 認可 | 用途 |
 |---|---|---|---|
-| GET | `/api/v1/point-cards/providers` | MEMBER | プロバイダー一覧（category フィルタ、is_active=true のみ）|
+| GET | `/api/v1/point-cards/providers` | MEMBER | **プリセット提示用**プロバイダー一覧（人気 10〜15 社、category フィルタ、is_active=true のみ）|
 | GET | `/api/v1/point-cards` | MEMBER | 自分のカード一覧（last4 のみ返却、barcode_value は返さない）|
 | POST | `/api/v1/point-cards` | MEMBER | カード追加 |
 | GET | `/api/v1/point-cards/{id}` | MEMBER | カード詳細（復号値を含む。提示時に呼ばれる）|
@@ -534,6 +574,8 @@ erDiagram
 ### 6.2 主要エンドポイント仕様
 
 #### GET `/api/v1/point-cards/providers`
+
+**用途（案 B 改修）**: カード追加フォーム上部の**プリセットボタン**に表示する人気 10〜15 社の一覧を返す。Phase 1 では「ロゴ・色補強用マスタ」であり、ここに無い事業者はユーザーが自由入力で登録する（プリセットを使わない / 使えない場合でも、サーバー側は受信 `display_name` を正規化して同じマスタに対して fuzzy match を行い、暗黙的にロゴ・色を補強する）。
 
 **認可**: 認証済みユーザー（MEMBER 以上）
 
@@ -571,53 +613,99 @@ erDiagram
 
 **認可**: MEMBER（本人のみ。`point_card_user_settings.is_enabled = true` 必須）
 
-**リクエスト**
+**リクエスト（案 B: `display_name` 必須・`provider_id` 任意）**
+
+プリセット未使用（自由入力カード）の例:
 
 ```json
 {
-  "provider_id": "01928a3e-4b2f-7a8c-9d12-...",
+  "display_name": "近所のスーパー",
+  "provider_id": null,
   "barcode_value": "1234567890123",
   "barcode_format": "CODE128",
-  "nickname": "ヨドバシ家族用",
-  "memo": "妻と共用",
+  "nickname": null,
+  "memo": "○○通り店",
   "is_favorite": false
 }
 ```
 
+プリセットを使用してフォームに事前充填された場合の例（クライアントが明示的に `provider_id` を送る）:
+
+```json
+{
+  "display_name": "東急ポイント",
+  "provider_id": "01928a3e-4b2f-7a8c-9d12-...",
+  "barcode_value": "1234567890123",
+  "barcode_format": "CODE128",
+  "nickname": "家族用",
+  "memo": null,
+  "is_favorite": false
+}
+```
+
+> クライアントが `provider_id` を送らない場合（自由入力）でも、サーバーは `display_name` の fuzzy match を試みる。マッチすればその場で `provider_id` を補完し、マッチしなければ NULL のまま保存する。クライアントが `provider_id` を明示送信した場合、その値が優先される（fuzzy match の上書きは行わない）。
+
 **バリデーション**
 
+- `display_name`: **必須**、1〜100 文字（trim 後）
 - `barcode_value`: 必須、1〜100 文字
-- `provider_id`: 必須、`point_card_providers` に存在し `is_active=true`
-- プロバイダーに `card_number_regex` がある場合はそれで `barcode_value` を検証
-- 同一 user の既存カード数が **200 件未満**（GDPR_009 相当の上限超過エラーを返却）
+- `provider_id`: 任意。指定された場合は `point_card_providers` に存在し `is_active=true` であること
+- プロバイダーが解決した場合（クライアント送信または fuzzy match マッチ）で、かつ `card_number_regex` が設定されている場合は**参考バリデーション**として `barcode_value` を検証する（不一致でも警告レベル。Phase 1 では `POINT_CARD_002` を返すのはプロバイダー明示指定時のみ。fuzzy match で偶発的にマッチした場合は警告に留め保存を継続する方針 — 実装時に最終決定）
+- 同一 user の既存カード数が **200 件未満**（`POINT_CARD_003` 上限超過エラーを返却）
 - `nickname`: 任意、1〜100 文字
 - `memo`: 任意、1〜500 文字
 
 **副作用**
 
-1. `barcode_value` の下 4 桁を抽出して `last4` に格納
-2. `nickname` / `barcode_value` / `memo` を `EncryptedStringConverter` 経由で暗号化保存
-3. 監査ログ `POINT_CARD_CREATED` 発火（metadata: `{"provider_code": "tokyu_point", "card_id": "<uuid>"}`）— `barcode_value` は含めない
+1. `display_name` をサーバー側で正規化（§7.6）→ `point_card_providers` のメモリキャッシュに対して fuzzy match
+2. クライアント送信の `provider_id` が NULL であれば、fuzzy match 結果で補完。クライアントが値を明示送信した場合はその値を尊重
+3. `barcode_value` の下 4 桁を抽出して `last4` に格納
+4. `display_name` / `nickname` / `barcode_value` / `memo` を `EncryptedStringConverter` 経由で AES-256-GCM 暗号化保存
+5. 監査ログ `POINT_CARD_CREATED` 発火（metadata: `{"provider_code": "tokyu_point", "provider_matched": true, "card_id": "<uuid>"}` または `{"provider_code": null, "provider_matched": false, "card_id": "<uuid>"}`）— `display_name` / `barcode_value` / `nickname` / `memo` は含めない
 
 **レスポンス（201 Created）**
+
+マッチした場合:
 
 ```json
 {
   "data": {
     "id": "01928a3e-...",
-    "provider_id": "01928a3e-4b2f-...",
-    "provider_code": "tokyu_point",
-    "provider_display_name": "東急ポイント",
+    "display_name": "東急ポイント",
+    "provider": {
+      "id": "01928a3e-4b2f-...",
+      "code": "tokyu_point",
+      "display_name": "東急ポイント",
+      "logo_url": "...",
+      "brand_color": "#E60012"
+    },
     "last4": "0123",
     "barcode_format": "CODE128",
-    "nickname": "ヨドバシ家族用",
+    "nickname": "家族用",
     "is_favorite": false,
     "created_at": "2026-05-14T09:00:00+09:00"
   }
 }
 ```
 
-> 201 レスポンスには `barcode_value` の平文は返さない（DRY: 詳細 API で再取得させる方針）。
+マッチしなかった場合（自由入力カード）:
+
+```json
+{
+  "data": {
+    "id": "01928a3e-...",
+    "display_name": "近所のスーパー",
+    "provider": null,
+    "last4": "0123",
+    "barcode_format": "CODE128",
+    "nickname": null,
+    "is_favorite": false,
+    "created_at": "2026-05-14T09:00:00+09:00"
+  }
+}
+```
+
+> `provider` フィールドは **Nullable**。フロントは null の場合、`display_name` の頭文字アイコン + `display_name` ハッシュ由来の自動カラー（HSL ベース）でカードタイルを描画する。201 レスポンスには `barcode_value` の平文は返さない（DRY: 詳細 API で再取得させる方針）。
 
 #### GET `/api/v1/point-cards`
 
@@ -637,23 +725,37 @@ erDiagram
   "data": [
     {
       "id": "01928a3e-...",
-      "provider_id": "01928a3e-4b2f-...",
-      "provider_code": "tokyu_point",
-      "provider_display_name": "東急ポイント",
-      "provider_logo_url": "https://r2-cdn.../...",
-      "provider_brand_color": "#E60012",
+      "display_name": "東急ポイント",
+      "provider": {
+        "id": "01928a3e-4b2f-...",
+        "code": "tokyu_point",
+        "display_name": "東急ポイント",
+        "logo_url": "https://r2-cdn.../...",
+        "brand_color": "#E60012"
+      },
       "last4": "0123",
       "barcode_format": "CODE128",
-      "nickname": "ヨドバシ家族用",
+      "nickname": "家族用",
       "is_favorite": true,
       "display_order": 0,
       "last_used_at": "2026-05-13T12:30:00+09:00"
+    },
+    {
+      "id": "01928a3f-...",
+      "display_name": "近所のスーパー",
+      "provider": null,
+      "last4": "9876",
+      "barcode_format": "CODE128",
+      "nickname": null,
+      "is_favorite": false,
+      "display_order": 1,
+      "last_used_at": null
     }
   ]
 }
 ```
 
-> **重要**: `barcode_value` および `memo` は一覧では**返さない**（漏洩リスク最小化）。詳細 API で初めて復号して返す。
+> **重要**: `barcode_value` および `memo` は一覧では**返さない**（漏洩リスク最小化）。`display_name` は一覧でも復号して返す（カード識別の一次情報のため）。`provider` フィールドは Nullable で、null の場合は頭文字アイコン + 自動カラーで描画する。詳細 API で初めて `barcode_value` / `memo` を復号して返す。
 
 #### GET `/api/v1/point-cards/{id}`
 
@@ -665,11 +767,12 @@ erDiagram
 {
   "data": {
     "id": "01928a3e-...",
-    "provider": { /* プロバイダー情報フル */ },
+    "display_name": "東急ポイント",
+    "provider": { /* プロバイダー情報フル、マッチしなかったカードは null */ },
     "barcode_value": "1234567890123",
     "barcode_format": "CODE128",
     "last4": "0123",
-    "nickname": "ヨドバシ家族用",
+    "nickname": "家族用",
     "memo": "妻と共用",
     "is_favorite": true,
     "display_order": 0,
@@ -680,6 +783,7 @@ erDiagram
 ```
 
 > **IDOR 防御**: Repository 層では `findByIdAndUserId(id, userId)` のみ使用。Service 層も `currentUser.id == card.user_id` を二重チェック。他人のカードに到達できない。
+> `provider` は Nullable（fuzzy match マッチがないか、プロバイダーが SET NULL で外れた場合は null）。
 
 #### GET `/api/v1/point-cards/groups/{id}`
 
@@ -697,32 +801,45 @@ erDiagram
       {
         "card_id": "01928a3e-...",
         "display_order": 0,
-        "provider_code": "tokyu_point",
-        "provider_display_name": "東急ポイント",
-        "provider_logo_url": "...",
-        "provider_brand_color": "#E60012",
+        "display_name": "東急ポイント",
+        "provider": {
+          "code": "tokyu_point",
+          "display_name": "東急ポイント",
+          "logo_url": "...",
+          "brand_color": "#E60012"
+        },
         "barcode_value": "1234567890123",
         "barcode_format": "CODE128",
         "last4": "0123",
-        "nickname": "ヨドバシ家族用"
+        "nickname": "家族用"
+      },
+      {
+        "card_id": "01928a3f-...",
+        "display_order": 1,
+        "display_name": "近所のスーパー",
+        "provider": null,
+        "barcode_value": "9876543210987",
+        "barcode_format": "CODE128",
+        "last4": "0987",
+        "nickname": null
       }
     ]
   }
 }
 ```
 
-**N+1 回避**: 実装は以下の 1 SQL で取得する。
+**N+1 回避**: 実装は以下の 1 SQL で取得する（**案 B 改修: `provider_id` が NULL のカードも返すため LEFT JOIN に変更**）。
 
 ```java
 @Query("""
     SELECT NEW com.mannschaft.app.pointcard.dto.GroupItemView(
         gi.cardId, gi.displayOrder,
-        c.barcodeValue, c.barcodeFormat, c.last4, c.nickname,
+        c.displayName, c.barcodeValue, c.barcodeFormat, c.last4, c.nickname,
         p.code, p.displayName, p.logoUrl, p.brandColor
     )
     FROM PointCardGroupItemEntity gi
     JOIN UserPointCardEntity c ON gi.cardId = c.id
-    JOIN PointCardProviderEntity p ON c.providerId = p.id
+    LEFT JOIN PointCardProviderEntity p ON c.providerId = p.id
     WHERE gi.groupId = :groupId
       AND c.userId = :userId
     ORDER BY gi.displayOrder ASC
@@ -730,7 +847,8 @@ erDiagram
 List<GroupItemView> findGroupItemsJoined(@Param("groupId") UUID groupId, @Param("userId") Long userId);
 ```
 
-> JOIN FETCH 相当を JPQL コンストラクタ式で実現し、暗号化フィールドは `EncryptedStringConverter` が個別行ロード時に透過的に復号する。グループ単位での監査ログ `POINT_CARD_VIEWED` は **Controller の入口で 1 件のみ記録**（カード件数を metadata に持つ。グループ全カード分の N 件記録は爆発防止のため行わない）。
+> `provider_id` が NULL の自由入力カードでもグループ提示に含めるため `LEFT JOIN` を使用する。`p.code` 等は NULL になり、フロント側で `provider == null` 判定して頭文字アイコン描画に切り替える。
+> JOIN FETCH 相当を JPQL コンストラクタ式で実現し、暗号化フィールド（`displayName` 等）は `EncryptedStringConverter` が個別行ロード時に透過的に復号する。グループ単位での監査ログ `POINT_CARD_VIEWED` は **Controller の入口で 1 件のみ記録**（カード件数を metadata に持つ。グループ全カード分の N 件記録は爆発防止のため行わない）。
 
 #### POST `/api/v1/point-cards/{id}/used`
 
@@ -795,18 +913,27 @@ PUT /settings { is_enabled: false }
 
 > 無効化された状態でも `user_point_cards` レコードは物理削除しない（再度有効化すれば復元される）。完全削除したい場合は退会か個別カード削除 API を使う。
 
-### 7.2 カード追加フロー（バーコードスキャン）
+### 7.2 カード追加フロー（プリセット + 自由入力 / バーコード）
 
 ```
-1. ユーザーがカメラを起動（フロント @zxing/browser）
-2. バーコードを 1 回スキャン → barcode_value + barcode_format 取得
-3. プロバイダーピッカーで対応する provider_id を選択
-4. 確認画面で nickname / memo を任意入力
-5. POST /api/v1/point-cards
-6. サーバー: provider.card_number_regex で barcode_value 検証
-7. サーバー: AES-256-GCM で暗号化 → INSERT
-8. last4 = barcode_value.slice(-4) を平文で別途格納
-9. AuditLogService.record(POINT_CARD_CREATED, ...)
+1. フロント: カード追加フォームを開く
+   - 上部: プリセットボタン横並び（GET /providers の結果を描画）
+   - 下部: 自由入力フォーム（display_name / barcode / format / memo）
+2. ユーザー選択肢:
+   a) プリセットタップ → display_name 事前充填 + provider_id 内部保持 + バーコード形式初期値セット
+   b) 自由入力 → display_name を直接タイプ、provider_id は NULL のまま
+3. バーコード入力（カメラ / 画像 / 手入力のいずれか）→ barcode_value + barcode_format 取得
+4. ユーザーが確認 → POST /api/v1/point-cards
+   - body: { display_name, provider_id (nullable), barcode_value, barcode_format, nickname, memo, is_favorite }
+5. サーバー: display_name を §7.6 のルールで正規化
+6. サーバー: provider_id が NULL の場合のみ、正規化済み display_name をメモリキャッシュに対して fuzzy match
+   - マッチ → provider_id 補完
+   - マッチせず → NULL のまま
+7. サーバー: provider_id が解決していて、かつ provider.card_number_regex がある場合は参考バリデーション
+8. サーバー: AES-256-GCM で display_name / barcode_value / nickname / memo を暗号化 → INSERT
+9. last4 = barcode_value.slice(-4) を平文で別途格納
+10. AuditLogService.record(POINT_CARD_CREATED,
+       metadata={"provider_code": <code or null>, "provider_matched": <bool>, "card_id": "<uuid>"})
 ```
 
 ### 7.3 グループ提示モード（連続スワイプ）
@@ -872,6 +999,136 @@ Phase 2 で organization が自店ポイントカードを発行する際の流�
 | `point_card_providers.type` | `EXTERNAL` のみ | `SELF_ISSUED_STAMP` / `SELF_ISSUED_BALANCE` 値追加 | enum 値が増えるのみ。既存行は EXTERNAL のまま |
 | `point_card_providers.organization_id` | 常に NULL | NOT NULL 制約は付けない（EXTERNAL 行があるため）。CHECK で type と整合 | Phase 1 行は NULL のまま |
 | `user_point_cards.balance` / `stamp_count` | 常に NULL | Phase 2 で値が入る | Phase 1 行は NULL のまま |
+| API `POST /point-cards` | EXTERNAL のみ受け入れ。**【案 B】**`display_name` 必須・`provider_id` 任意の現行 API シグネチャをそのまま流用 | SELF_ISSUED_* の `provider_id` をクライアント送信値として受け入れる（QR 経由のディープリンクで自動充填される） | 既存 API シグネチャ無変更 |
+| 新規 API（スタンプ押印・残高チャージ）| 存在しない | Phase 2 で追加 | Phase 1 API 無変更 |
+
+結論: **Phase 1 のスキーマ・API は Phase 2 で破壊的変更なし**。案 B の `provider_id` NULL 許容化はむしろ Phase 2 の自店発行カード（QR ディープリンクから `provider_id` 明示送信）にもクリーンに対応する。
+
+### 7.6 fuzzy match 仕様（案 B 新章）
+
+ユーザーが入力した `display_name` をサーバー側で正規化し、`point_card_providers` の運営マスタとマッチング判定する仕組み。プリセット 10〜15 社のロゴ・ブランドカラーを自由入力カードにも自動補強することが目的。
+
+#### 7.6.1 正規化ステップ（順序固定）
+
+1. **NFKC 正規化**: 全角英数記号 → 半角に統一（例: 「Ｄポイント」→「Dポイント」、「（株）」→「(株)」）
+2. **カタカナ → ひらがな**: 同義表記の判定幅を広げる（例: 「ポイント」→「ぽいんと」、「ヨドバシ」→「よどばし」）
+3. **記号・空白削除**: 半角/全角空白・ハイフン・ドット・スラッシュ・アンダースコア・括弧類などの装飾記号を全削除（例: 「D-Point」→「dpoint」、「D ポイント」→「dぽいんと」）
+4. **lower 化**: ASCII 英字を小文字に統一（例: 「DPoint」→「dpoint」）
+
+#### 7.6.2 マッチング対象
+
+`point_card_providers` の以下 2 カラムに同じ正規化を適用し、両方を起動時にキャッシュに格納する:
+
+- `code`（例: `tokyu_point` → 正規化後 `tokyupoint`）
+- `display_name`（例: 「東急ポイント」→ 正規化後 `とうきゅうぽいんと`）
+
+入力 `display_name` の正規化結果が、いずれかのキャッシュキーに **完全一致** すればマッチ成立とする。
+
+> Phase 1 は完全一致のみ。編集距離（Levenshtein 等）や部分一致による曖昧マッチは Phase 1 では実装しない（誤マッチで意図しないブランドカラーが付くのは UX 悪化要因のため）。将来拡張は §16 未解決事項を参照。
+
+#### 7.6.3 マッチ例
+
+| ユーザー入力 | 正規化結果 | マッチ先 | 補強結果 |
+|---|---|---|---|
+| 「Ｄポイント」 | `dぽいんと` | provider.display_name 「dポイント」の正規化 `dぽいんと` | ✅ マッチ |
+| 「dポイント」 | `dぽいんと` | 同上 | ✅ マッチ |
+| 「D-Point」 | `dpoint` | provider.code 「dpoint」の正規化 `dpoint` | ✅ マッチ |
+| 「ｄぽいんと」 | `dぽいんと` | provider.display_name の正規化 | ✅ マッチ |
+| 「近所のスーパー」 | `近所のすーぱー` | マスタに無し | ❌ NULL のまま |
+| 「とうきゅうハンズ」 | `とうきゅうはんず` | マスタは「東急ポイント」（`とうきゅうぽいんと`）のみ | ❌ NULL のまま（別事業者） |
+
+#### 7.6.4 メモリキャッシュ戦略
+
+```java
+@Component
+public class ProviderMatchCache {
+    private volatile Map<String, ProviderEntity> normalizedIndex = Map.of();
+
+    @PostConstruct
+    public void init() { rebuild(); }
+
+    public synchronized void rebuild() {
+        List<ProviderEntity> all = providerRepository.findByIsActiveTrue();
+        Map<String, ProviderEntity> idx = new HashMap<>();
+        for (ProviderEntity p : all) {
+            String nCode = normalize(p.getCode());
+            String nName = normalize(p.getDisplayName());
+            idx.putIfAbsent(nCode, p);
+            idx.putIfAbsent(nName, p);
+        }
+        this.normalizedIndex = Map.copyOf(idx);
+    }
+
+    public Optional<ProviderEntity> match(String userInput) {
+        return Optional.ofNullable(normalizedIndex.get(normalize(userInput)));
+    }
+
+    public static String normalize(String s) {
+        if (s == null) return "";
+        String n = Normalizer.normalize(s, Normalizer.Form.NFKC);
+        n = katakanaToHiragana(n);
+        n = n.replaceAll("[\\s\\-\\.\\/_()\\[\\]{}「」『』【】〔〕（）]", "");
+        return n.toLowerCase(Locale.ROOT);
+    }
+
+    private static String katakanaToHiragana(String s) {
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c >= 0x30A1 && c <= 0x30F6) sb.append((char)(c - 0x60));
+            else sb.append(c);
+        }
+        return sb.toString();
+    }
+}
+```
+
+- **起動時 1 回ロード**: `@PostConstruct` で `is_active=true` のプロバイダーを全件読み込み、`Map<String, ProviderEntity>` を構築
+- **キャッシュ更新**: SYSTEM_ADMIN がプロバイダーを追加・編集・停止した場合は `ApplicationEventPublisher` で `ProviderCacheRefreshEvent` を発火、`@EventListener` で `rebuild()` を呼ぶ
+- **スレッド安全性**: `volatile` フィールドで読み取り側はロックフリー、書き込みは `synchronized` で全置換（読み取り 99.99% / 書き込み 0.01% のワークロードに最適化）
+- **マスタ規模**: Phase 1 は 10〜15 社のため `Map` 全体で数十 KB 程度。メモリインパクトはゼロに近い
+
+#### 7.6.5 クライアント送信 `provider_id` との優先順位
+
+| クライアント送信 `provider_id` | サーバー fuzzy match 結果 | 最終 `provider_id` 値 |
+|---|---|---|
+| 値あり（プリセットボタン経由） | — | クライアント送信値を採用（fuzzy match は実行しない / 実行しても上書きしない）|
+| NULL（自由入力） | マッチ | fuzzy match 結果を採用 |
+| NULL（自由入力） | マッチなし | NULL のまま保存（自由入力カードとして確定）|
+
+> ユーザーがプリセットボタンをタップした明示的な意思表示は最優先する。fuzzy match はあくまで「クライアントが何も指定してこなかった場合の補強」である。
+
+Phase 2 で organization が自店ポイントカードを発行する際の流れ:
+
+1. ADMIN が `POST /api/v1/orgs/{orgId}/point-cards` を叩く
+   ```json
+   { "display_name": "サロン○○ ポイント",
+     "category": "OTHER",
+     "type": "SELF_ISSUED_STAMP",
+     "logo_url": "...",
+     "brand_color": "#FF6699" }
+   ```
+2. サーバーは `point_card_providers` に
+   `organization_id=<orgId>, type='SELF_ISSUED_STAMP'`
+   で INSERT。`code` は `org_<orgId>_<slug>` で自動生成。
+3. ADMIN は「お客様用 QR コード」を取得（ディープリンク `mannschaft://wallet/add?providerId=<uuid>`）
+4. 顧客がアプリで QR 読み取り → `POST /api/v1/point-cards` を内部的に呼ぶ
+   （Phase 1 の API がそのまま動作する。`provider_id` が `SELF_ISSUED_STAMP` でも問題なく動く）
+5. 店主がスタンプ押印 API（Phase 2 新規）を叩く
+   ```
+   POST /api/v1/orgs/{orgId}/point-cards/{cardId}/stamps
+   { "delta": 1 }
+   ```
+   → `user_point_cards.stamp_count += 1`、`point_card_stamp_events` に履歴記録
+6. 顧客側 UI: `stamp_count` の値を見て「○/10 個」表示
+
+**Phase 1 設計が Phase 2 を破壊しないことの検証**:
+
+| 項目 | Phase 1 状態 | Phase 2 で追加されるもの | 既存 Phase 1 データへの影響 |
+|---|---|---|---|
+| `point_card_providers.type` | `EXTERNAL` のみ | `SELF_ISSUED_STAMP` / `SELF_ISSUED_BALANCE` 値追加 | enum 値が増えるのみ。既存行は EXTERNAL のまま |
+| `point_card_providers.organization_id` | 常に NULL | NOT NULL 制約は付けない（EXTERNAL 行があるため）。CHECK で type と整合 | Phase 1 行は NULL のまま |
+| `user_point_cards.balance` / `stamp_count` | 常に NULL | Phase 2 で値が入る | Phase 1 行は NULL のまま |
 | API `POST /point-cards` | EXTERNAL のみ受け入れ | SELF_ISSUED_* の `provider_id` でも動作 | 既存 API シグネチャ無変更 |
 | 新規 API（スタンプ押印・残高チャージ）| 存在しない | Phase 2 で追加 | Phase 1 API 無変更 |
 
@@ -887,7 +1144,7 @@ Phase 2 で organization が自店ポイントカードを発行する際の流�
 app/pages/wallet/
 ├── index.vue                 # ウォレットホーム（カード一覧・お気に入り・グループ入口）
 ├── cards/
-│   ├── new.vue               # カード追加（プロバイダー選択 → スキャン or 手入力）
+│   ├── new.vue               # カード追加フォーム（プリセット + 自由入力 + スキャン / 手入力）【案 B】
 │   └── [id].vue              # カード詳細（編集・削除・提示）
 ├── groups/
 │   ├── [id].vue              # グループ編集（メンバー追加・並び替え）
@@ -895,18 +1152,29 @@ app/pages/wallet/
 └── settings.vue              # 有効化トグル・規約同意・WebAuthn 設定
 ```
 
+> `cards/new.vue` の役割（案 B 改修後）: 「プリセットボタン横並び」+ 「自由入力フォーム」を 1 画面に統合。プロバイダー選択用の中継ページ（旧案の `provider-picker` 相当）は廃止。
+
 ### 8.2 コンポーネント構成
 
 ```
 app/components/wallet/
-├── ProviderPicker.vue          # プロバイダー選択（カテゴリ別・検索可能）
+├── PresetCardButtons.vue       # 【案 B 新設】人気カードのプリセットボタン横スクロール（GET /providers の結果を描画）
 ├── BarcodeCapture.vue          # カメラスキャン（@zxing/browser）
 ├── BarcodePreview.vue          # バーコード描画（jsbarcode / qrcode）
-├── CardTile.vue                # ウォレットホームの個別カードタイル
+├── CardTile.vue                # ウォレットホームの個別カードタイル（provider null 時は頭文字 + 自動カラー）
 ├── GroupTile.vue               # グループタイル
 ├── PresentationView.vue        # 全画面提示モード（Wake Lock + スワイプ）
 └── TermsAcceptModal.vue        # 規約同意モーダル（4 項目・スクロール検知）
 ```
+
+> **【案 B 改修】**`ProviderPicker.vue` は廃止。代わりに `PresetCardButtons.vue` をカード追加フォーム上部に常設し、タップで `display_name` 入力欄を事前充填する。プリセットに無い事業者はユーザーがフォーム下部で自由入力する。
+
+`CardTile.vue` のレンダリングロジック（provider Nullable 対応）:
+
+| 条件 | 描画内容 |
+|---|---|
+| `card.provider != null` | プロバイダーロゴ + ブランドカラー背景 + `display_name`（または `nickname` があればそちら）|
+| `card.provider == null` | `display_name` の先頭 1 文字を大きく表示（頭文字アイコン）+ `display_name` ハッシュ由来の HSL 自動カラー背景 + `display_name` フルネーム |
 
 ### 8.3 採用ライブラリ
 
@@ -917,6 +1185,7 @@ app/components/wallet/
 | `@zxing/browser` | `^0.1.5` | カメラからのバーコード/QR 読み取り（既存導入済み）|
 | `nosleep.js` | `^0.12.x` | Wake Lock API フォールバック（iOS Safari 等で Wake Lock API 未サポートのため）|
 
+> **【案 B】文字列正規化**: フロント側のプレビュー（プリセット未タップ時の「これは ○○ ポイントとマッチします」表示）でも fuzzy match の正規化を行う場合は、標準 `String.prototype.normalize('NFKC')` + 手書きのカタカナ→ひらがな関数 + 正規表現の記号削除で十分（外部ライブラリ不要）。サーバー側（§7.6.4）と完全同一のロジックを TypeScript で複製するだけ。サーバーとフロントで規則がブレないよう、両者で同じ単体テストケース（§14）を共有する。
 > PDF417 は `jsbarcode` 単体では対応しない。Phase 1 では事実上の利用例が少ないため後回し可。S1 で実装着手時に対応ライブラリを選定する。
 
 ### 8.4 提示モードの UX 要件
@@ -924,6 +1193,7 @@ app/components/wallet/
 | 要件 | 実装 |
 |---|---|
 | 画面を暗くしない | Wake Lock API（Chrome / 一部 Safari）+ `nosleep.js` フォールバック |
+| カード名（`display_name`）を大きく表示 | **【案 B】**バーコードの直下、`last4` と並んで `display_name` を最低 28 px のフォントサイズで表示。プロバイダーがマッチしないカードでもレジで「何のカードか」が一目で分かるようにする。プロバイダーがマッチしているカードはロゴが上に重畳表示される |
 | バーコード下に大きい数字 | `last4` だけ大きく強調 + 全桁を 1 段下に小さく表示 |
 | スワイプで前後カード切替 | `vue-touch` 系で左右スワイプ検知 |
 | 連続提示の進捗表示 | 「2 / 4」のページインジケータ |
@@ -935,9 +1205,11 @@ app/components/wallet/
 
 - バーコード SVG に `aria-label` でカード番号を読み上げ可能化
 - 高コントラスト: `brand_color` の WCAG AA コントラスト自動判定（背景色から文字色を黒/白に自動切替）
+- **【案 B】プロバイダー未マッチカードの頭文字アイコン + 自動カラー**: `display_name` ハッシュから生成した HSL カラー（彩度 60% / 明度 50% 程度を基準）を背景に使い、その上に乗る文字色を WCAG AA コントラスト基準（4.5:1）に達するよう黒/白を自動選択する。プリセットカードの `brand_color` と同等のアクセシビリティを担保する
 - カード番号は最低 32 px のフォントサイズで表示
-- スクリーンリーダー向けに「東急ポイント、カード番号 1234567890 0123、お気に入り」のような完全読み上げ対応
-- 色覚多様性: プロバイダー識別はロゴ・名前で行い、`brand_color` のみに依存しない
+- `display_name` は最低 28 px のフォントサイズで提示モードに表示
+- スクリーンリーダー向けに「東急ポイント、カード番号 1234567890 0123、お気に入り」のような完全読み上げ対応。プロバイダー未マッチカードは「近所のスーパー、カード番号 ...」のように `display_name` のみで読み上げる
+- 色覚多様性: プロバイダー識別はロゴ・名前で行い、`brand_color` のみに依存しない。自由入力カードも頭文字 + `display_name` で識別可能
 
 ### 8.6 ダークパターン回避
 
@@ -961,7 +1233,7 @@ app/components/wallet/
 
 | 脅威 | 対策 |
 |---|---|
-| DB 侵害でカード番号流出 | AES-256-GCM at-rest 暗号化（`barcode_value` / `nickname` / `memo`）|
+| DB 侵害でカード番号流出 | AES-256-GCM at-rest 暗号化（`display_name` / `barcode_value` / `nickname` / `memo`）|
 | 第三者の肩越し閲覧 | `require_biometric_on_show=true` で WebAuthn 再認証を提示モード起動前に要求 |
 | 端末紛失 | リモートワイプは v1 範囲外。ログアウトで IndexedDB の鍵がメモリから消えるため即時アクセス不可になる |
 | スクリーンショット流出 | OS 制約で完全抑止不可。利用前に警告表示と規約明記でカバー（ユーザー自己責任）|
@@ -969,9 +1241,9 @@ app/components/wallet/
 | SQL インジェクション | JPA の名前付きパラメータのみ使用。生 SQL 禁止 |
 | MITM | TLS 強制（既存基盤） |
 | バーコード偽装による詐欺利用 | ユーザー自己責任を規約 §9.2 に明記 |
-| プロバイダー削除によるカード孤立 | `provider_id` ON DELETE RESTRICT で物理保証 |
+| プロバイダー削除によるカード孤立 | **【案 B】**`provider_id` ON DELETE SET NULL でカード本体は維持し、自由入力扱いに戻る。ユーザー入力 `display_name` が残るためカードは引き続き提示可能 |
 | Phase 2 で organization 退会時の自店プロバイダー残骸 | `OrganizationDeletedEvent` を購読し `is_active=0` に強制 + ユーザー通知 |
-| 監査ログへの暗号化データ混入 | metadata には `provider_code` と `card_id` のみ記録。`barcode_value` / `nickname` / `memo` は絶対に含めない |
+| 監査ログへの暗号化データ混入 | metadata には `provider_code`（マッチしないカードでは null）/ `provider_matched` / `card_id` のみ記録。`display_name` / `barcode_value` / `nickname` / `memo` は絶対に含めない |
 
 ### 9.2 規約（4 項目）
 
@@ -988,11 +1260,12 @@ app/components/wallet/
 
 | フィールド | 暗号化 | 検索可能 | 備考 |
 |---|---|---|---|
+| `display_name` | AES-256-GCM | **不可（INDEX 作らない）** | **【案 B 新設】**ユーザー入力カード名。fuzzy match はサーバー側でリクエスト受信時の平文に対して実行するため、保存値を検索する用途は無い |
 | `barcode_value` | AES-256-GCM | 不可（INDEX 作らない）| カード番号で検索する機能を実装しない方針 |
-| `nickname` | AES-256-GCM | 不可 | 「ヨドバシ家族用」等は一覧では `nickname` 復号して表示するが、検索 API は提供しない |
+| `nickname` | AES-256-GCM | 不可 | 「家族用」等の補助識別子。検索 API は提供しない |
 | `memo` | AES-256-GCM | 不可 | 任意メモ |
 | `last4` | 平文 | INDEX なし | 4 桁単独では特定不可、UI 識別用 |
-| `provider_id` | 平文 | INDEX あり | プロバイダー削除前カウント用 |
+| `provider_id` | 平文 | INDEX あり | プロバイダー単位カウント・参照用。NULL 許容 |
 
 > Blind Index（HMAC-SHA256 でハッシュ化した検索用カラム）は作らない。本機能では検索ユースケースが薄く、攻撃面を減らすために最小実装に留める。
 
@@ -1040,8 +1313,10 @@ public class UserPointCardEntity extends UuidV7Entity { ... }
 
 | カテゴリキー | カテゴリ名 | データソース | ファイル名 |
 |---|---|---|---|
-| `point_cards` | ポイントカード | `user_point_cards` (barcode_value/nickname/memo を復号), `point_card_user_settings` | `point_cards.json` |
+| `point_cards` | ポイントカード | `user_point_cards` (**display_name**/barcode_value/nickname/memo を復号), `point_card_user_settings` | `point_cards.json` |
 | `point_cards` | ポイントカードグループ | `point_card_groups`, `point_card_group_items` | `point_card_groups.json` |
+
+> **【案 B】**`display_name` も AES-256-GCM 暗号化対象のため、エクスポート時には `EncryptedStringConverter` が復号した平文を JSON にそのまま出力する（追加の復号処理は不要）。プロバイダー未マッチカードは `provider_id` が null のまま出力される。
 
 > `point_card_user_settings` は `point_cards.json` 内のオブジェクトとして同梱する（規約同意日時・WebAuthn 設定も含めて 1 ファイル）。
 
@@ -1066,6 +1341,8 @@ Phase 2 追記:
 private String collectPointCards(Long userId) {
     List<UserPointCardEntity> cards = userPointCardRepository.findByUserId(userId);
     // EncryptedStringConverter が読み込み時に復号するため、そのまま JSON 化すれば平文で出力される
+    // 【案 B】PointCardExportDto は displayName / barcodeValue / nickname / memo を全て含む。
+    //         providerId は NULL 許容（自由入力カード）でそのまま出力する。
     PointCardUserSettingsEntity settings = pointCardUserSettingsRepository.findById(userId).orElse(null);
     return objectMapper.writeValueAsString(Map.of(
         "settings", settings,
@@ -1092,12 +1369,14 @@ Map.entry("point_cards", "point_cards.json"),
 
 | event_type | トリガー | metadata 例 |
 |---|---|---|
-| `POINT_CARD_CREATED` | `POST /point-cards` 成功時 | `{"provider_code": "tokyu_point", "card_id": "01928a3e-..."}` |
-| `POINT_CARD_DELETED` | `DELETE /point-cards/{id}` 成功時 | `{"provider_code": "tokyu_point", "card_id": "01928a3e-..."}` |
+| `POINT_CARD_CREATED` | `POST /point-cards` 成功時 | マッチ時: `{"provider_code": "tokyu_point", "provider_matched": true, "card_id": "01928a3e-..."}` ／ マッチなし（自由入力）: `{"provider_code": null, "provider_matched": false, "card_id": "01928a3e-..."}` |
+| `POINT_CARD_DELETED` | `DELETE /point-cards/{id}` 成功時 | `{"provider_code": "tokyu_point", "provider_matched": true, "card_id": "01928a3e-..."}` または `{"provider_code": null, "provider_matched": false, "card_id": "01928a3e-..."}` |
 | `POINT_CARD_VIEWED` | グループ提示モード開始時のみ（個別カード提示は記録しない）| `{"group_id": "01928a3e-...", "card_count": 4}` |
 | `POINT_CARD_GROUP_CREATED` | `POST /point-cards/groups` 成功時 | `{"group_id": "01928a3e-...", "card_count": 0}` |
 | `POINT_CARD_GROUP_DELETED` | `DELETE /point-cards/groups/{id}` 成功時 | `{"group_id": "01928a3e-..."}` |
 | `POINT_CARD_SETTINGS_UPDATED` | `PUT /point-cards/settings` 成功時 | `{"is_enabled": true, "terms_version": "v1.0.0"}` |
+
+> **【案 B】**`provider_code` は fuzzy match の結果に依存して null になりうる。マッチの有無を `provider_matched` ブール値で明示する。これにより「自由入力カードの登録比率」や「fuzzy match の効果」を集計可能になる（運営マスタ拡充判断の材料）。
 
 ### 11.2 イベントカテゴリ
 
@@ -1105,8 +1384,8 @@ Map.entry("point_cards", "point_cards.json"),
 
 ### 11.3 metadata 取り扱い注意（重要）
 
-- **絶対に含めない**: `barcode_value` / `nickname` / `memo`（暗号化対象データ）、`last4` も含めない（識別力があるため）
-- **含めてよい**: `provider_code`（プロバイダー識別子、PII ではない）、`card_id`（UUIDv7、それ単体では特定不可）、`group_id`、`card_count`、`is_enabled`、`terms_version`
+- **絶対に含めない**: `display_name` / `barcode_value` / `nickname` / `memo`（暗号化対象データ）、`last4` も含めない（識別力があるため）
+- **含めてよい**: `provider_code`（プロバイダー識別子、PII ではない。**マッチしない自由入力カードでは null**）、`provider_matched`（マッチ有無のブール、運用分析用）、`card_id`（UUIDv7、それ単体では特定不可）、`group_id`、`card_count`、`is_enabled`、`terms_version`
 - 個別カード提示（`/point-cards/{id}` 詳細取得）は `POINT_CARD_VIEWED` を記録**しない**。理由は呼び出し頻度が高く、監査ログ爆発を招くため。グループ提示モードという「意図的な提示行為」だけを記録する
 
 ### 11.4 保持期間
@@ -1124,6 +1403,8 @@ Map.entry("point_cards", "point_cards.json"),
 ## 12. Phase 2 拡張シミュレーション（自店発行カード）
 
 §7.5 と重複するが、Phase 2 の全体像を明示する。
+
+> **【案 B との関係】**Phase 1 のマスタ縮小（10〜15 社）と `provider_id` NULL 許容化は、Phase 2 の organization 自店発行カード（QR ディープリンクで `provider_id` を明示送信）に対しても**完全無影響**である。自店発行カードは「クライアントが `provider_id` を明示送信する」流れであり、Phase 1 の自由入力カードフロー（`provider_id` NULL のまま保存）とは別経路で動作する。Phase 1 改修は Phase 2 設計に何ら制約を加えない。
 
 ### 12.1 Phase 2 で追加されるテーブル概要
 
@@ -1215,9 +1496,14 @@ V9.142__add_point_card_audit_event_types.sql
 
 > 連番 V9.136〜V9.142 は**仮予約**。実装着手時に Phase 9 系の最新番号を確認し、衝突する場合は +1 ずつシフトする。
 
+> **【案 B】**`V9.137__create_user_point_cards.sql` には以下のカラムが含まれる:
+> - `display_name VARBINARY(1024) NOT NULL`（**案 B 新設**、AES-256-GCM 暗号化対象）
+> - `provider_id CHAR(36) NULL`（**案 B 変更**、FK は `ON DELETE SET NULL`）
+> - 他カラムは §5.2 の通り
+
 ### 13.2 V9.141 シード（Phase 1 リリース対象プロバイダー例）
 
-実装着手時に運営が確定する最終リストは別途。設計上の代表サンプル（先頭 10 社程度を以下に明示し、残り約 40 社は実装着手時に確定）:
+**【案 B】**Seed 件数を「**人気 10 社程度**」に縮小する（最終リストは Phase 1 リリース時に運営が確定）。残り約 40 社規模のマスタ拡充は本機能の必須要件ではなく、運営判断で随時 INSERT する運用とする。プリセットに無い事業者はユーザーが自由入力で登録するため、マスタ縮小によるユーザー機能への影響はない。設計上の代表サンプル:
 
 ```sql
 INSERT INTO point_card_providers
@@ -1233,7 +1519,8 @@ VALUES
   (UUID_TO_BIN(UUID(), 1), 'biccamera',    'ビックカメラポイント',         'RETAIL',      'EXTERNAL', '#D31C24', 'CODE128', 1, NOW(6), NOW(6)),
   (UUID_TO_BIN(UUID(), 1), 'tsutaya',      'TSUTAYA',                      'RETAIL',      'EXTERNAL', '#003D78', 'CODE128', 1, NOW(6), NOW(6)),
   (UUID_TO_BIN(UUID(), 1), 'matsukiyo',    'マツモトキヨシ',               'RETAIL',      'EXTERNAL', '#FAB237', 'CODE128', 1, NOW(6), NOW(6));
-  -- 残り約 40 社は実装着手時に確定（運営側マスタ管理）
+  -- 【案 B】Phase 1 はこの 10 社規模でリリース。追加は運営マスタ管理（is_active トグル + 必要に応じた INSERT）。
+  -- ユーザーがプリセット外の事業者を使う場合は自由入力で登録する設計のため、Seed 件数を増やす必要はない。
 ```
 
 > 上記の `UUID_TO_BIN(UUID(), 1)` は MySQL 8 の UUIDv1→BIN(16) 変換。実装時は **UUIDv7** を CHAR(36) で `gen_random_uuid()` 相当（または Java 側で UuidV7Util を呼んで PREPARED で INSERT）に置き換える。シード用 SQL は決定論性のため固定 UUID 文字列をハードコードする方針でも可。
@@ -1259,8 +1546,13 @@ VALUES
 | `PointCardServiceTest` | サービス | 認可（他人カードへのアクセスで NotFound）、上限超過、`card_number_regex` 検証、規約未同意で 403 |
 | `PointCardControllerTest` | コントローラ | 全 14 エンドポイントの認可・バリデーション・レスポンス形式 |
 | `PointCardGroupServiceTest` | グループ操作 | 1 SQL での JOIN FETCH 取得（N+1 防止）、グループ内カード数上限、所有者検証 |
-| `PointCardEncryptionTest` | 暗号化 | `EncryptedStringConverter` が `barcode_value` / `nickname` / `memo` を透過的に暗号化・復号、`last4` は平文 |
-| `PointCardAuditLogTest` | 監査ログ | 6 イベント種別が正しく発火、metadata に暗号化対象が含まれない、グループ提示で `card_count` が正しく入る |
+| `PointCardEncryptionTest` | 暗号化 | `EncryptedStringConverter` が **`display_name`** / `barcode_value` / `nickname` / `memo` を透過的に暗号化・復号、`last4` は平文 |
+| `PointCardAuditLogTest` | 監査ログ | 6 イベント種別が正しく発火、metadata に暗号化対象が含まれない、`POINT_CARD_CREATED` の metadata に `provider_matched` ブールと `provider_code` の Nullable 動作（マッチ時/未マッチ時両方）が正しく入る、グループ提示で `card_count` が正しく入る |
+| `ProviderMatchCacheTest` | **【案 B 新設】**fuzzy match | 正規化規則（NFKC + カタカナ→ひらがな + 記号削除 + lower）が個別ステップで正しく動作、「Ｄポイント」「dポイント」「D-Point」「ｄぽいんと」が同じ provider にマッチ、マッチしない文字列で `Optional.empty()` が返る、`rebuild()` 後にキャッシュが更新される（イベントリスナー経由）|
+| `PointCardCreateProviderResolutionTest` | **【案 B 新設】**カード作成時の provider 解決 | (1) クライアントが `provider_id` 明示送信 → その値が採用される、(2) 自由入力で fuzzy match マッチ → `provider_id` 自動補完される、(3) 自由入力でマッチなし → `provider_id` は NULL のまま保存、(4) プリセットボタン経由でフォーム事前充填されたケース（`display_name` がマスタ名と完全一致）の動作確認 |
+| `PointCardProviderDeletionTest` | **【案 B 新設】**プロバイダー削除時の挙動 | プロバイダー削除（または `is_active=0`）後、関連する既存 `user_point_cards.provider_id` が SET NULL で外れること（FK 動作確認）、カード自体は残ること、`display_name` が暗号化保存されたまま読み出せること |
+| `PresetCardButtonsTest` (Vitest) | **【案 B 新設】**フロント | プリセットタップで `display_name` 入力欄が事前充填される、`provider_id` がコンポーネント内部状態に保持される、バーコード形式の初期値がプロバイダーの `default_barcode_format` に切り替わる |
+| `CardTileFallbackTest` (Vitest) | **【案 B 新設】**フロント | `provider == null` のカードで頭文字アイコン + `display_name` ハッシュ由来の HSL 自動カラーが描画される、WCAG AA コントラスト基準（4.5:1）を満たす文字色が選択される |
 | `PointCardSettingsServiceTest` | 設定 | 規約同意フロー、`terms_version` 不一致で 403、`require_biometric_on_show` 動作 |
 | `PointCardGdprIntegrationTest` | GDPR 連携 | `PersonalDataCollector` が `point_cards.json` / `point_card_groups.json` を生成、退会時の CASCADE 削除 |
 | `PointCardE2eTest` (Playwright) | UI | オンボーディング規約同意、カード追加（手入力）、グループ提示モード（スワイプ + Wake Lock）、オフライン IndexedDB 取得 |
@@ -1271,29 +1563,31 @@ VALUES
 
 ### S1: DB 基盤 + Repository 共通基底
 
-- 5 テーブル DDL（V9.136〜V9.140）
-- Seed プロバイダー約 50 社（V9.141、運営確定後に確定数）
+- 5 テーブル DDL（V9.136〜V9.140）。**【案 B】`user_point_cards.display_name VARBINARY(1024) NOT NULL` カラム追加、`provider_id` を NULL 許容 + `ON DELETE SET NULL` で定義**
+- Seed プロバイダー **【案 B】人気 10 社程度に縮小**（V9.141、リリース時に最終確定）
 - `UuidV7Entity` 継承 Entity 4 種 + `point_card_user_settings` Entity（user_id PK）
 - `AbstractUserOwnedRepository` 基底インターフェース新設（既存に同等品がなければ）
-- `EncryptedStringConverter` 適用確認
+- `EncryptedStringConverter` 適用確認（`display_name` 含む 4 フィールド）
 
 ### S2: コア CRUD API
 
-- `PointCardProviderService` + Controller（`GET /providers`）
+- `PointCardProviderService` + Controller（`GET /providers`、**プリセット提示用**として動作）
 - `PointCardService` + Controller（カード CRUD 全 7 本）
+- **【案 B】`PointCardService.matchProvider(displayName)` 実装**（§7.6 fuzzy match ロジック）
+- **【案 B】`ProviderMatchCache` 実装**（`@PostConstruct` + `ProviderCacheRefreshEvent` 購読）
 - `PointCardSettingsService` + Controller（settings 2 本）
 - Bucket4j レート制限設定
 
 ### S3: グループ機能 + JOIN FETCH 最適化
 
 - `PointCardGroupService` + Controller（グループ CRUD 4 本）
-- グループ詳細の 1-SQL 取得（JPQL コンストラクタ式）
+- グループ詳細の 1-SQL 取得（JPQL コンストラクタ式、**【案 B】`LEFT JOIN` で provider Nullable 対応**）
 - 提示モード `POINT_CARD_VIEWED` 監査ログ発火
 
 ### S4: フロントエンド（カード CRUD・グループ）
 
-- ページ `wallet/index.vue` / `cards/new.vue` / `cards/[id].vue` / `groups/[id].vue` / `settings.vue`
-- コンポーネント `ProviderPicker` / `BarcodeCapture` / `BarcodePreview` / `CardTile` / `GroupTile` / `TermsAcceptModal`
+- ページ `wallet/index.vue` / `cards/new.vue`（**【案 B】プリセット + 自由入力フォーム統合**）/ `cards/[id].vue` / `groups/[id].vue` / `settings.vue`
+- コンポーネント **【案 B】`PresetCardButtons.vue` 新設**（`ProviderPicker.vue` は廃止）/ `BarcodeCapture` / `BarcodePreview` / `CardTile`（provider Nullable 対応の頭文字アイコンフォールバック）/ `GroupTile` / `TermsAcceptModal`
 - i18n 6 言語の `wallet.json`
 
 ### S5: 提示モード（Wake Lock・スワイプ・WebAuthn）
@@ -1343,7 +1637,9 @@ VALUES
 | 項目 | 解決方針 |
 |---|---|
 | Flyway 連番 V9.136〜V9.142 | 実装着手時の最新番号に応じて確定。衝突時 +1 ずつシフト |
-| Phase 1 リリース対象プロバイダー 50 社の最終リスト | 実装着手時に運営が確定（運営マスタ管理）。設計上は V9.141 の枠を確保するのみ |
+| Phase 1 リリース対象プロバイダーの最終リスト（**【案 B】50 社 → 人気 10〜15 社に縮小**）| Phase 1 リリース時に運営が最終確定（運営マスタ管理）。設計上は V9.141 の枠を確保するのみ。マスタに無い事業者は自由入力で吸収する設計のため、Seed 件数の不足がユーザー機能を阻害することはない |
+| **【案 B】fuzzy match の正規化レベルを将来拡張するか** | Phase 1 は完全一致のみ（NFKC + カタカナ→ひらがな + 記号削除 + lower）。将来は同義語辞書（「ドコモポイント」→「dポイント」等）や編集距離（Levenshtein）の導入を検討。導入には誤マッチによる UX 悪化のリスク評価が必要 |
+| **【案 B】既存マッチ済みカードのキャッシュ更新時の再マッチ** | プロバイダーマスタが更新された際、既存の `user_point_cards.provider_id` を再マッチして補完するかは Phase 1 では実装しない（運用負荷とユーザーへの影響が読みづらいため）。Phase 1.1 以降で「マッチしていないカードを定期バッチで再評価する」運用を検討 |
 | nosleep.js vs Wake Lock API のフォールバック実装 | S5 で iOS Safari 実機検証。Wake Lock API 未サポート機種では nosleep.js を自動有効化 |
 | プロバイダーロゴ画像の権利確認手順 | 運営 SOP として整備。設計上は `logo_url` 列を持つだけで、商標利用はプロバイダー個別交渉に委ねる |
 
@@ -1356,3 +1652,4 @@ VALUES
 | 日付 | 変更内容 |
 |---|---|
 | 2026-05-14 | 初版作成。Phase 1 MVP（他社カード保管・グループ提示・規約・オフライン対応）+ Phase 2 拡張余地（organization 自店発行カード・スタンプ・残高）。CLAUDE.md 原則 6（UUIDv7）採用、原則 7（AbstractTenantAwareRepository）不採用＝個人スコープのため `AbstractUserOwnedRepository` パターン代替。論理削除不採用（個人機密のため物理削除、F12.3 ポリシー準拠）。`barcode_value` / `nickname` / `memo` を AES-256-GCM 暗号化、`last4` のみ平文（4 桁では特定不可）。Phase 2 用カラム（`organization_id` / `balance` / `stamp_count`）を最初から NULL 許容で投入し破壊的変更を回避。F12.3 / F10.3 連携を §10 / §11 で明記 |
+| 2026-05-14 | 案 B 改修。プロバイダーマスタを人気 10〜15 社のロゴ補強用に縮小。`user_point_cards.display_name`（AES-256-GCM）を新設し自由入力主体に移行。`provider_id` を NULL 許容（ON DELETE SET NULL）に変更し fuzzy match（NFKC + ひらがな化 + 記号削除）で自動紐付け。UI は `ProviderPicker.vue` 廃止 → `PresetCardButtons.vue` 新設で「プリセット + 自由入力」を 1 画面に統合。`POINT_CARD_CREATED` 監査ログ metadata に `provider_matched` 追加。F10.3 metadata 例を null 許容版に追従。Phase 2 自店発行カード設計には無影響 |
