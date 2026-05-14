@@ -1095,7 +1095,30 @@
     "noFolders": "フォルダはまだありません",
     "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
-    "nameDuplicate": "同じ名前のフォルダが既に存在します"
+    "nameDuplicate": "同じ名前のフォルダが既に存在します",
+    "title": "マイフォルダ",
+    "untagged": "未分類",
+    "all": "すべて",
+    "createNew": "新規フォルダ作成",
+    "assignOnJoin": {
+      "label": "フォルダに振り分け（任意）",
+      "defaultHint": "未選択時は「未分類」に自動配置されます",
+      "unselected": "未選択（未分類に自動配置）"
+    },
+    "notifications": {
+      "byFolder": "フォルダ別通知"
+    },
+    "nav": {
+      "allList": "すべて（一覧）",
+      "createNew": "＋ 新規フォルダ作成",
+      "manage": "フォルダ管理",
+      "teams": "チーム",
+      "organizations": "組織"
+    },
+    "error": {
+      "typeMismatch": "フォルダのスコープ種別が一致しません",
+      "defaultImmutable": "「未分類」フォルダは変更できません"
+    }
   },
   "systemAdmin": {
     "logs": {

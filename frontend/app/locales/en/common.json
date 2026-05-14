@@ -1095,7 +1095,30 @@
     "noFolders": "No folders yet",
     "emptyFolder": "This folder is empty",
     "limitExceeded": "You can create up to 20 folders",
-    "nameDuplicate": "A folder with the same name already exists"
+    "nameDuplicate": "A folder with the same name already exists",
+    "title": "My Folders",
+    "untagged": "Uncategorized",
+    "all": "All",
+    "createNew": "Create new folder",
+    "assignOnJoin": {
+      "label": "Assign to folder (optional)",
+      "defaultHint": "If not selected, will be placed in Uncategorized",
+      "unselected": "Not selected (auto-placed in Uncategorized)"
+    },
+    "notifications": {
+      "byFolder": "Notifications by folder"
+    },
+    "nav": {
+      "allList": "All (list)",
+      "createNew": "+ Create new folder",
+      "manage": "Manage folders",
+      "teams": "Teams",
+      "organizations": "Organizations"
+    },
+    "error": {
+      "typeMismatch": "Folder scope type mismatch",
+      "defaultImmutable": "Cannot modify Uncategorized folder"
+    }
   },
   "systemAdmin": {
     "logs": {

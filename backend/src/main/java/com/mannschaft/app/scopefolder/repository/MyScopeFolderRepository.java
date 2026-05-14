@@ -39,4 +39,11 @@ public interface MyScopeFolderRepository extends JpaRepository<MyScopeFolderEnti
      */
     boolean existsByUserIdAndScopeTypeAndNameAndIdNotAndDeletedAtIsNull(
             Long userId, ScopeType scopeType, String name, Long id);
+
+    /**
+     * 「未分類」フォルダ（is_default=TRUE）を取得する。
+     * F15.3 §5.2.1: lazy 生成判定に使用。
+     */
+    Optional<MyScopeFolderEntity> findByUserIdAndScopeTypeAndIsDefaultTrueAndDeletedAtIsNull(
+            Long userId, ScopeType scopeType);
 }

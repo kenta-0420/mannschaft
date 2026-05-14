@@ -12,6 +12,12 @@ import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.InviteService;
+import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
+import com.mannschaft.app.scopefolder.entity.AssignedVia;
+import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
+import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.repository.MyScopeFolderRepository;
+import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -59,6 +65,12 @@ class InviteServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private MyScopeFolderService myScopeFolderService;
+
+    @Mock
+    private MyScopeFolderRepository myScopeFolderRepository;
 
     @InjectMocks
     private InviteService inviteService;
@@ -304,7 +316,7 @@ class InviteServiceTest {
     class JoinByInvite {
 
         @Test
-        @DisplayName("正常系: チームに参加しロールが割り当てられる")
+        @DisplayName("正常系: チームに参加しロールが割り当てられる（F15.3: 未指定で未分類フォルダへ DEFAULT 配置）")
         void 参加_正常_ロール割当() {
             // Given
             InviteTokenEntity token = createTeamInviteToken();
@@ -313,12 +325,19 @@ class InviteServiceTest {
             given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, TEAM_ID)).willReturn(false);
             given(userRoleRepository.save(any(UserRoleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
+            // F15.3: folderId 未指定なら findOrCreateDefaultInternal → addItemWithAssignedVia(DEFAULT) が呼ばれる
+            MyScopeFolderEntity defaultFolder = MyScopeFolderEntity.builder()
+                    .id(999L).userId(USER_ID).scopeType(ScopeType.TEAM)
+                    .name("未分類").isDefault(Boolean.TRUE).sortOrder(9999).build();
+            given(myScopeFolderService.findOrCreateDefaultInternal(USER_ID, ScopeType.TEAM))
+                    .willReturn(defaultFolder);
 
             // When
             inviteService.joinByInvite(TOKEN_STR, USER_ID);
 
             // Then
             verify(userRoleRepository).save(any(UserRoleEntity.class));
+            verify(myScopeFolderService).addItemWithAssignedVia(USER_ID, 999L, TEAM_ID, AssignedVia.DEFAULT);
             assertThat(token.getUsedCount()).isEqualTo(1);
         }
 
