@@ -34,6 +34,11 @@ export default defineConfig({
       name: 'setup-admin',
       testMatch: /.*admin\.setup\.ts/,
     },
+    // Setup: 実機テスト用ユーザー認証状態を保存
+    {
+      name: 'setup-real-user',
+      testMatch: /.*real-user\.setup\.ts/,
+    },
     // メインテスト: 一般ユーザー setup 完了後に実行
     {
       name: 'chromium',
@@ -53,6 +58,16 @@ export default defineConfig({
       // setup-admin は .env.test の認証情報が必要。既存 storageState を使うため一時的にコメントアウト
       // dependencies: ['setup-admin'],
       testMatch: '**/admin/**/*.spec.ts',
+    },
+    // 実機テスト（real/ 配下のみ・起動済みサーバーが必要）
+    {
+      name: 'chromium-real',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/real-user.json',
+      },
+      testMatch: '**/real/**/*.spec.ts',
+      dependencies: ['setup-real-user'],
     },
   ],
 
