@@ -63,11 +63,6 @@ test.describe('ORG-ADMIN-001〜005: MEMBER ロールでの管理機能アクセ�
     await page.close()
   })
 
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
-  })
-
   test('ORG-ADMIN-001: MEMBER ロールでは組織設定の管理タブが表示されない', async ({ page }) => {
     // 組織設定ページに遷移
     await page.goto(`/organizations/${orgId}/settings`)
@@ -190,11 +185,6 @@ test.describe('ORG-ADMIN-006: 読み取り専用アクセスの確認', () => {
     await page.close()
   })
 
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
-  })
-
   test('ORG-ADMIN-006: 組織設定の「一般」タブが MEMBER でも閲覧可能（読み取り専用）', async ({ page }) => {
     await page.goto(`/organizations/${orgId}`)
     await waitForHydration(page)
@@ -210,11 +200,6 @@ test.describe('ORG-ADMIN-006: 読み取り専用アクセスの確認', () => {
 // ORG-ADMIN-007: チーム設定ページのアクセス制御
 // ---------------------------------------------------------------------------
 test.describe('ORG-ADMIN-007: チーム設定ページのアクセス制御', () => {
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
-  })
-
   test('ORG-ADMIN-007: チーム設定ページ(/teams/[id]/settings)は ADMIN のみアクセス可能', async ({ page }) => {
     // FC東京U-18のIDをチーム一覧から取得
     await page.goto('/teams')
@@ -261,11 +246,6 @@ test.describe('ORG-ADMIN-007: チーム設定ページのアクセス制御', ()
 // ORG-ADMIN-008〜010: 一般ユーザーのシステム管理ページへのアクセス拒否
 // ---------------------------------------------------------------------------
 test.describe('ORG-ADMIN-008〜010: 一般ユーザーのシステム管理ページへのアクセス拒否', () => {
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
-  })
-
   test('ORG-ADMIN-008: 一般ユーザーが /admin/users にアクセスするとリダイレクトされる', async ({ page }) => {
     await page.goto('/admin/users')
     await waitForHydration(page)

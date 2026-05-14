@@ -33,11 +33,6 @@ async function loginIfNeeded(page: Page): Promise<void> {
 // SYS-001〜004: 管理者ダッシュボード基本アクセス
 // ---------------------------------------------------------------------------
 test.describe('SYS-001〜004: 管理者ダッシュボード基本アクセス', () => {
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
-  })
-
   test('SYS-001: /admin/dashboard にアクセスできる（システム管理者専用）', async ({ page }) => {
     await page.goto('/admin/dashboard')
     await waitForHydration(page)
@@ -92,11 +87,6 @@ test.describe('SYS-001〜004: 管理者ダッシュボード基本アクセス',
 // SYS-005〜007: チーム・組織一覧
 // ---------------------------------------------------------------------------
 test.describe('SYS-005〜007: チーム・組織一覧', () => {
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
-  })
-
   test('SYS-005: チーム一覧ページが表示される（/admin/teams）', async ({ page }) => {
     // /admin/teams が存在しない場合は /teams または別パスにリダイレクトされる可能性がある
     await page.goto('/admin/teams')
@@ -137,11 +127,6 @@ test.describe('SYS-005〜007: チーム・組織一覧', () => {
 // SYS-008〜010: 監査ログ
 // ---------------------------------------------------------------------------
 test.describe('SYS-008〜010: 監査ログ', () => {
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
-  })
-
   test('SYS-008: 監査ログページが表示される（/admin/audit-logs）', async ({ page }) => {
     await page.goto('/admin/audit-logs')
     await waitForHydration(page)
@@ -183,11 +168,6 @@ test.describe('SYS-008〜010: 監査ログ', () => {
 // SYS-011〜013: エラーレポート・システム設定
 // ---------------------------------------------------------------------------
 test.describe('SYS-011〜013: エラーレポート・システム設定', () => {
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
-  })
-
   test('SYS-011: エラーレポートページが表示される（/system-admin/error-reports）', async ({ page }) => {
     await page.goto('/system-admin/error-reports')
     await waitForHydration(page)

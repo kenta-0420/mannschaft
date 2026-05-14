@@ -83,11 +83,6 @@ test.describe('ORG-001〜006: 組織ダッシュボード', () => {
     await page.close()
   })
 
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
-  })
-
   test('ORG-001: 組織ダッシュボードページが表示される', async ({ page }) => {
     await page.goto(`/organizations/${orgId}`)
     await waitForHydration(page)
@@ -181,11 +176,6 @@ test.describe('ORG-007〜011: 組織タイムライン', () => {
     await loginIfNeeded(page)
     orgId = await getE2eOrgId(page)
     await page.close()
-  })
-
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
   })
 
   test('ORG-007: 組織タイムラインページが表示される', async ({ page }) => {
@@ -285,11 +275,6 @@ test.describe('ORG-012〜017: 組織メンバー管理・チーム', () => {
     await loginIfNeeded(page)
     orgId = await getE2eOrgId(page)
     await page.close()
-  })
-
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
   })
 
   test('ORG-012: 組織メンバー一覧タブが表示される', async ({ page }) => {
@@ -422,11 +407,6 @@ test.describe('ORG-018〜022: 組織設定・機能設定', () => {
     await page.close()
   })
 
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
-  })
-
   test('ORG-018: 機能設定タブはADMIN専用（MEMBERには表示されない）', async ({ page }) => {
     await page.goto(`/organizations/${orgId}`)
     await waitForHydration(page)
@@ -496,11 +476,6 @@ test.describe('ORG-023〜025: 組織サイドバーナビゲーション', () =>
     await loginIfNeeded(page)
     orgId = await getE2eOrgId(page)
     await page.close()
-  })
-
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
   })
 
   test('ORG-023: 組織のサイドバーナビゲーションが表示される', async ({ page }) => {

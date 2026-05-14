@@ -40,8 +40,8 @@ test.describe('PUB-001〜008: /activity/[id] 公開活動記録ページ', () =>
     // ローディングスピナーが消えるまで待機（実バックエンドのレスポンス待ち）
     await expect(page.locator('.p-progress-spinner')).not.toBeVisible({ timeout: 15_000 })
 
-    // ページ本体（heading または main コンテンツ）が表示されること
-    await expect(page.locator('main, [role="main"], #__nuxt')).toBeVisible({ timeout: 15_000 })
+    // ページ本体（main コンテンツ）が表示されること
+    await expect(page.locator('main').first()).toBeVisible({ timeout: 15_000 })
 
     // 404 や エラーページではないこと
     const bodyText = await page.locator('body').textContent()

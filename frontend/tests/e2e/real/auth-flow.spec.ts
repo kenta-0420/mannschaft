@@ -11,6 +11,9 @@
 import { test, expect } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 
+// ログイン試行はレート制限（10回/分/IP）があるため直列実行する
+test.describe.configure({ mode: 'serial' })
+
 const USER_EMAIL = 'e2e-user@test.mannschaft.local'
 const USER_PASSWORD = 'TestPass2026!'
 const ADMIN_EMAIL = 'e2e-admin@test.mannschaft.local'

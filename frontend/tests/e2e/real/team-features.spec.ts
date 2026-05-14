@@ -77,11 +77,6 @@ test.describe('TEAM-001〜008: チームホーム・タイムライン', () => {
     await page.close()
   })
 
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
-  })
-
   test('TEAM-001: チームタイムラインページが表示される', async ({ page }) => {
     await page.goto(`/teams/${teamId}/timeline`)
     await waitForHydration(page)
@@ -222,11 +217,6 @@ test.describe('TEAM-009〜014: スケジュール・カレンダー', () => {
     await page.close()
   })
 
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
-  })
-
   test('TEAM-009: チームカレンダーページが表示される（/teams/[id]/schedule）', async ({
     page,
   }) => {
@@ -363,11 +353,6 @@ test.describe('TEAM-015〜020: メンバー管理', () => {
     await loginIfNeeded(page)
     teamId = await getE2eTeamId(page)
     await page.close()
-  })
-
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
   })
 
   test('TEAM-015: メンバー一覧ページが表示される（/teams/[id]/members）', async ({ page }) => {
@@ -521,11 +506,6 @@ test.describe('TEAM-021〜027: チャット', () => {
     await loginIfNeeded(page)
     teamId = await getE2eTeamId(page)
     await page.close()
-  })
-
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
   })
 
   test('TEAM-021: チャットチャンネル一覧が表示される（/teams/[id]/chat）', async ({ page }) => {
@@ -693,11 +673,6 @@ test.describe('TEAM-028〜035: TODO・タスク管理', () => {
     await loginIfNeeded(page)
     teamId = await getE2eTeamId(page)
     await page.close()
-  })
-
-  test.beforeEach(async ({ page }) => {
-    await loginIfNeeded(page)
-    await waitForHydration(page)
   })
 
   test('TEAM-028: TODO一覧ページが表示される（/teams/[id]/todos）', async ({ page }) => {
