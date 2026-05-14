@@ -60,18 +60,27 @@ public class ChatMessageService {
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
+     * <p>
+     * direction に "after" を指定すると cursor より新しいメッセージを昇順で返す（WebSocket再接続後のキャッチアップ用）。
+     * それ以外（"before" または null）は従来通り cursor より古いメッセージを降順で返す。
+     * </p>
      *
      * @param channelId チャンネルID
      * @param cursor    カーソル（メッセージID）。null の場合は最新から取得
      * @param limit     取得件数
+     * @param direction 取得方向。"after" で cursor より新しいメッセージを昇順取得。それ以外は従来の降順取得
      * @return カーソルページネーション付きメッセージレスポンス
      */
-    public CursorPagedResponse<MessageResponse> listMessages(Long channelId, Long cursor, Integer limit) {
+    public CursorPagedResponse<MessageResponse> listMessages(
+            Long channelId, Long cursor, Integer limit, String direction) {
         int effectiveLimit = resolveLimit(limit);
         Pageable pageable = PageRequest.of(0, effectiveLimit + 1);
 
         List<ChatMessageEntity> messages;
-        if (cursor != null) {
+        if ("after".equals(direction) && cursor != null) {
+            // cursor より新しいメッセージを昇順で取得（WebSocket切断後のキャッチアップ用）
+            messages = messageRepository.findMessagesAfterCursor(channelId, cursor, pageable);
+        } else if (cursor != null) {
             messages = messageRepository.findByChannelIdAndIdLessThan(channelId, cursor, pageable);
         } else {
             messages = messageRepository.findByChannelIdOrderByCreatedAtDesc(channelId, pageable);
@@ -92,6 +101,21 @@ public class ChatMessageService {
                 responses,
                 new CursorPagedResponse.CursorMeta(nextCursor, hasNext, effectiveLimit)
         );
+    }
+
+    /**
+     * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
+     * <p>
+     * 後方互換性維持のためのオーバーロード。direction = null（= "before" 相当）として委譲する。
+     * </p>
+     *
+     * @param channelId チャンネルID
+     * @param cursor    カーソル（メッセージID）。null の場合は最新から取得
+     * @param limit     取得件数
+     * @return カーソルページネーション付きメッセージレスポンス
+     */
+    public CursorPagedResponse<MessageResponse> listMessages(Long channelId, Long cursor, Integer limit) {
+        return listMessages(channelId, cursor, limit, null);
     }
 
     /**

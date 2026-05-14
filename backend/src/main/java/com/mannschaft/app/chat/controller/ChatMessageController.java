@@ -41,15 +41,23 @@ public class ChatMessageController {
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
+     * <p>
+     * direction=after を指定すると cursor より新しいメッセージを昇順で返す。
+     * WebSocket切断後の再接続キャッチアップ用途に使用する。
+     * direction=before（省略時デフォルト）は従来通り cursor より古いメッセージを降順で返す。
+     * </p>
      */
     @GetMapping("/channels/{channelId}/messages")
-    @Operation(summary = "メッセージ一覧")
+    @Operation(summary = "メッセージ一覧",
+            description = "カーソルベースページネーションでメッセージを取得する。" +
+                    "direction=after でWebSocket再接続後のキャッチアップが可能。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<CursorPagedResponse<MessageResponse>> listMessages(
             @PathVariable Long channelId,
             @RequestParam(required = false) Long cursor,
-            @RequestParam(required = false) Integer limit) {
-        CursorPagedResponse<MessageResponse> response = messageService.listMessages(channelId, cursor, limit);
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false, defaultValue = "before") String direction) {
+        CursorPagedResponse<MessageResponse> response = messageService.listMessages(channelId, cursor, limit, direction);
         return ResponseEntity.ok(response);
     }
 
