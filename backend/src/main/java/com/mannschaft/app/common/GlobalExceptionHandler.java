@@ -356,6 +356,11 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_039", HttpStatus.CONFLICT),             // VILLAGE_JOIN_REQUEST_PENDING_DUPLICATE
             Map.entry("VILLAGE_040", HttpStatus.CONFLICT),             // VILLAGE_JOIN_REQUEST_ALREADY_REVIEWED
             Map.entry("VILLAGE_041", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_FREE_VILLAGE_DIRECT_JOIN
+            // F17.1 Phase 1 B7 — 通報 + モデレーション（設計書 §10 予約 VILLAGE_009/026 + 追加 VILLAGE_042/043）
+            Map.entry("VILLAGE_009", HttpStatus.TOO_MANY_REQUESTS),    // VILLAGE_REPORT_RATE_LIMITED
+            Map.entry("VILLAGE_026", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_REPORT_INVALID_TARGET
+            Map.entry("VILLAGE_042", HttpStatus.NOT_FOUND),            // VILLAGE_REPORT_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("VILLAGE_043", HttpStatus.CONFLICT),             // VILLAGE_REPORT_ALREADY_RESOLVED
             // F17.1 Phase 1 B8 — お気に入り村ピン留め（VILLAGE_013 + VILLAGE_044/045/047）
             Map.entry("VILLAGE_013", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_PIN_LIMIT_EXCEEDED
             Map.entry("VILLAGE_044", HttpStatus.NOT_FOUND),            // VILLAGE_PIN_NOT_FOUND

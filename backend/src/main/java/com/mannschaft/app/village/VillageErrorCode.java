@@ -47,6 +47,9 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_008: ニックネーム重複（プラットフォーム全体で先着優先・409） */
     NICKNAME_TAKEN("VILLAGE_008", "そのニックネームはすでに使われています", Severity.WARN),
 
+    /** VILLAGE_009: 通報レートリミット超過（429、設計書 §6.4 で 10 件/時/ユーザー） */
+    VILLAGE_REPORT_RATE_LIMITED("VILLAGE_009", "通報の上限に達しました（1時間に10件）", Severity.WARN),
+
     /** VILLAGE_010: 村作成申請レート超過（429） */
     CREATION_REQUEST_THROTTLED("VILLAGE_010", "村作成申請のレート上限に達しました（1日3件・保有10件まで）", Severity.WARN),
 
@@ -82,6 +85,9 @@ public enum VillageErrorCode implements ErrorCode {
 
     /** VILLAGE_025: 参加/退出のフラッピング検出（409） */
     JOIN_RATE_EXCEEDED("VILLAGE_025", "短時間に参加と退出を繰り返しています。しばらく時間をおいてからお試しください", Severity.WARN),
+
+    /** VILLAGE_026: 通報対象が不正（対象 ID 空・対象種別が当該村に属さない・MEMBERSHIP UUID 不正等／422） */
+    VILLAGE_REPORT_INVALID_TARGET("VILLAGE_026", "通報対象が不正です", Severity.WARN),
 
     /** VILLAGE_027: 凍結済み村への変更操作（409） */
     VILLAGE_ALREADY_ARCHIVED("VILLAGE_027", "この村は凍結されています", Severity.WARN),
@@ -132,6 +138,18 @@ public enum VillageErrorCode implements ErrorCode {
 
     /** VILLAGE_041: FREE 村に対して参加申請 API を使った（422、直接参加 API を使うべき） */
     VILLAGE_FREE_VILLAGE_DIRECT_JOIN("VILLAGE_041", "この村は自由参加です。参加申請ではなく直接参加してください", Severity.WARN),
+
+    // ==================================================================
+    // B7 通報・モデレーション — VILLAGE_042/043
+    // 設計書 §10 予約の VILLAGE_009（RATE_LIMITED）と VILLAGE_026（INVALID_TARGET）は
+    // 上位ブロックに統合済み。ここは追加分のみ。
+    // ==================================================================
+
+    /** VILLAGE_042: 通報レコードが存在しない（404、IDOR 対策で 404） */
+    VILLAGE_REPORT_NOT_FOUND("VILLAGE_042", "通報が見つかりません", Severity.WARN),
+
+    /** VILLAGE_043: 通報が既に解決済み（409） — 統合採番で 042 から繰下げ */
+    VILLAGE_REPORT_ALREADY_RESOLVED("VILLAGE_043", "この通報は既に処理済みです", Severity.WARN),
 
     // ==================================================================
     // B8 お気に入り村ピン留め（VILLAGE_013 + VILLAGE_044〜047）
