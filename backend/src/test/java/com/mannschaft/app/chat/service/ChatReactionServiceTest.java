@@ -46,6 +46,10 @@ class ChatReactionServiceTest {
     @Mock
     private ChatMapper chatMapper;
 
+    /** F04.2: WebSocket STOMP リアクション配信。NPE 回避のため Mock 設定が必須。 */
+    @Mock
+    private ChatMessagePublisher chatMessagePublisher;
+
     @InjectMocks
     private ChatReactionService chatReactionService;
 
