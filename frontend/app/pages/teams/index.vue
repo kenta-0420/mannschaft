@@ -31,6 +31,11 @@ watch(viewMode, (mode) => {
 function onTeamCreated(entity: { id: number; name: string }) {
   navigateTo(`/teams/${entity.id}`)
 }
+
+onMounted(async () => {
+  // 直接アクセス時もチーム一覧が表示されるよう常にフェッチする
+  await teamStore.fetchMyTeams().catch(() => {})
+})
 </script>
 
 <template>
