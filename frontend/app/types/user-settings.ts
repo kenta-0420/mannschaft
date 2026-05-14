@@ -227,3 +227,5 @@ export interface UserResidentResponse {
 export interface RequestWithdrawalRequest {
   currentPassword?: string
 }
+
+// end of user-settings
