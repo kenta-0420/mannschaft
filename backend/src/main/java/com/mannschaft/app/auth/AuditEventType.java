@@ -151,7 +151,52 @@ public enum AuditEventType {
     /** ポイントカードグループ（フォルダ）を削除。 */
     POINT_CARD_GROUP_DELETED(AuditEventCategory.POINT_CARD),
     /** ポイントカードウォレット設定を更新（並び順 / 表示設定など）。 */
-    POINT_CARD_SETTINGS_UPDATED(AuditEventCategory.POINT_CARD);
+    POINT_CARD_SETTINGS_UPDATED(AuditEventCategory.POINT_CARD),
+
+    // ─── VILLAGE (F17 村機能 Phase 1) ───────────────────────────
+    // TODO(F17 Phase 1): 各 Village Service の主要メソッドへ
+    //   auditLogService.record(...) 呼び出しを追加する作業は別軍議で対応する。
+    //   本 commit では enum 種別の追加のみ。
+    /** 村を新規作成（承認後）。 */
+    VILLAGE_CREATED(AuditEventCategory.VILLAGE),
+    /** 村の設定を更新（名前 / 説明 / ガイドライン等）。 */
+    VILLAGE_UPDATED(AuditEventCategory.VILLAGE),
+    /** 村を永久凍結（運営判断による archive）。 */
+    VILLAGE_ARCHIVED(AuditEventCategory.VILLAGE),
+    /** 村メンバーが参加（任意の subject_type）。 */
+    VILLAGE_MEMBER_JOINED(AuditEventCategory.VILLAGE),
+    /** 村メンバーが退村。 */
+    VILLAGE_MEMBER_LEFT(AuditEventCategory.VILLAGE),
+    /** 村メンバーを BAN（村長・長老による）。 */
+    VILLAGE_MEMBER_BANNED(AuditEventCategory.VILLAGE),
+    /** 村内ロールを付与（HEADMAN / ELDER 任命）。 */
+    VILLAGE_ROLE_GRANTED(AuditEventCategory.VILLAGE),
+    /** 村内ロールを剥奪。 */
+    VILLAGE_ROLE_REVOKED(AuditEventCategory.VILLAGE),
+    /** 村内通報を提出。 */
+    VILLAGE_REPORT_FILED(AuditEventCategory.VILLAGE),
+    /** 村内通報を処理（解決 / 却下）。 */
+    VILLAGE_REPORT_RESOLVED(AuditEventCategory.VILLAGE),
+    /** 村作成申請を提出。 */
+    VILLAGE_CREATION_REQUEST_SUBMITTED(AuditEventCategory.VILLAGE),
+    /** 村作成申請を審査（承認 / 却下）。 */
+    VILLAGE_CREATION_REQUEST_REVIEWED(AuditEventCategory.VILLAGE),
+    /** 村参加申請を提出。 */
+    VILLAGE_JOIN_REQUEST_SUBMITTED(AuditEventCategory.VILLAGE),
+    /** 村参加申請を審査（承認 / 却下）。 */
+    VILLAGE_JOIN_REQUEST_REVIEWED(AuditEventCategory.VILLAGE),
+    /** 村にチーム名義で投稿（POSTED_AS=TEAM）。 */
+    VILLAGE_POSTED_AS_TEAM(AuditEventCategory.VILLAGE),
+    /** 村に組織名義で投稿（POSTED_AS=ORGANIZATION）。 */
+    VILLAGE_POSTED_AS_ORGANIZATION(AuditEventCategory.VILLAGE),
+    /** 村ニックネームを変更。 */
+    VILLAGE_NICKNAME_CHANGED(AuditEventCategory.VILLAGE),
+    /** お気に入り村をピン留め。 */
+    VILLAGE_PINNED(AuditEventCategory.VILLAGE),
+    /** お気に入り村のピンを解除。 */
+    VILLAGE_UNPINNED(AuditEventCategory.VILLAGE),
+    /** 井戸端会議の日次スレッドをバッチで自動生成。 */
+    VILLAGE_LOBBY_THREAD_CREATED(AuditEventCategory.VILLAGE);
 
     private final AuditEventCategory category;
 }
