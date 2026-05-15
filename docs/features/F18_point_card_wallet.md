@@ -1,8 +1,8 @@
 # F18: 個人ポイントカードウォレット
 
-> **ステータス**: 🟢 設計確定
-> **実装フェーズ**: Phase 1（MVP: 他社カード保管・グループ提示）/ Phase 2（拡張: organization 自店発行カード）
-> **最終更新**: 2026-05-14
+> **ステータス**: 🟢 実装完了（Phase 1 MVP）/ 🟡 設計確定（Phase 2 拡張）
+> **実装フェーズ**: Phase 1 完了 2026-05-15 / Phase 2 未着手
+> **最終更新**: 2026-05-15
 > **モジュール種別**: 個人ユーザー向け汎用機能
 > **関連ドキュメント**: F01.6 プロフィールメディア / F10.3 監査ログ / F12.3 GDPR・個人情報管理 / F13 ストレージ統合 / F00 ContentVisibilityResolver（Phase 2 で参照可能性あり）
 
@@ -1622,6 +1622,24 @@ VALUES
 
 **クリティカルパス**: S1 → S2 → S3 → S4 → S5 → S7 → S8。S6（オフライン）と S7 は並行可能。
 
+### Phase 1 実装結果（2026-05-15 完了）
+
+実装は当初計画 S1〜S8 を分割・並行化して下記 6 陣で完遂した。S2 を 3 分割（Provider/Card/Audit）、S4 を 3 分割（Shell/Pages/Offline）、S7（GDPR + 監査ログ）は S2-C・S3 に統合する形で消化した。
+
+| 陣 | 内容 | 完了 PR | コミット |
+|---|---|---|---|
+| S1 基盤 | DDL 5 本（V9.136〜V9.140）+ Seed 10 社（V9.141）+ enum 3 種 + UserOwnedRepository | #630 | 2cf561bfb |
+| S2-A Provider/Settings + ProviderMatch | Provider/Settings ドメイン + fuzzy match（NFKC + ひらがな化 + 記号削除 + lower）+ ProviderMatchCache | #632 | 77a46b55b |
+| S2-B Card CRUD | UserPointCard CRUD 7 本 + AES-256-GCM 暗号化 + 認可（UserOwnedRepository）+ 監査ログ統合 | #642 | 3afa90aca |
+| S2-C Audit + GDPR enum | AuditEventCategory.POINT_CARD + 6 イベント種別 + PersonalDataCollector スケルトン | #633 | 749da25d4 |
+| S3 Groups + ErrorCode 整合 + GDPR 本実装 | PointCardGroup CRUD 4 本 + JPQL コンストラクタ式 + LEFT JOIN（provider Nullable）+ PersonalDataCollector 本実装（`point_cards.json` / `point_card_groups.json`）+ ErrorCode §6.3 整合化 | #643 | 50222c1c7 |
+| S4-A Wallet Shell | 型定義 + API クライアント + `wallet/index.vue` + `settings.vue` + i18n 6 言語 `wallet.json` | #646 | c2e629241 |
+| S4-B Card/Group ページ + Barcode | `cards/new.vue` / `cards/[id].vue` / `groups/[id].vue` + `PresetCardButtons.vue` + `BarcodeCapture` + `BarcodePreview` + `CardTile`（頭文字アイコンフォールバック）+ `TermsAcceptModal` | #649 | f22fa1c32 |
+| S4-C オフライン対応 | IndexedDB + Web Crypto API AES-GCM 二重暗号化 + 7 日 TTL + ログアウト時鍵破棄 + 圏外時フォールバック描画 | #650 | 795f4e51c |
+| S5 提示モード | `PresentationView.vue` + Wake Lock API + nosleep.js 動的 import フォールバック + フルスクリーン + 横スワイプ + WebAuthn 再認証（クライアントジェスチャ）+ スクリーンキャプチャ警告モーダル | #653 | dc34be095 |
+
+設計書追加 PR は #627（コミット 7d2df5feb）。Phase 1 全 10 PR が main マージ済み。
+
 ### Phase 2（参考・別軍議）
 
 - 自店発行プロバイダー CRUD（`/orgs/{orgId}/point-cards/providers`）
@@ -1634,16 +1652,26 @@ VALUES
 
 ## 16. 未解決事項
 
-| 項目 | 解決方針 |
-|---|---|
-| Flyway 連番 V9.136〜V9.142 | 実装着手時の最新番号に応じて確定。衝突時 +1 ずつシフト |
-| Phase 1 リリース対象プロバイダーの最終リスト（**【案 B】50 社 → 人気 10〜15 社に縮小**）| Phase 1 リリース時に運営が最終確定（運営マスタ管理）。設計上は V9.141 の枠を確保するのみ。マスタに無い事業者は自由入力で吸収する設計のため、Seed 件数の不足がユーザー機能を阻害することはない |
-| **【案 B】fuzzy match の正規化レベルを将来拡張するか** | Phase 1 は完全一致のみ（NFKC + カタカナ→ひらがな + 記号削除 + lower）。将来は同義語辞書（「ドコモポイント」→「dポイント」等）や編集距離（Levenshtein）の導入を検討。導入には誤マッチによる UX 悪化のリスク評価が必要 |
-| **【案 B】既存マッチ済みカードのキャッシュ更新時の再マッチ** | プロバイダーマスタが更新された際、既存の `user_point_cards.provider_id` を再マッチして補完するかは Phase 1 では実装しない（運用負荷とユーザーへの影響が読みづらいため）。Phase 1.1 以降で「マッチしていないカードを定期バッチで再評価する」運用を検討 |
-| nosleep.js vs Wake Lock API のフォールバック実装 | S5 で iOS Safari 実機検証。Wake Lock API 未サポート機種では nosleep.js を自動有効化 |
-| プロバイダーロゴ画像の権利確認手順 | 運営 SOP として整備。設計上は `logo_url` 列を持つだけで、商標利用はプロバイダー個別交渉に委ねる |
+### 解決済み（Phase 1 実装で確定）
 
-> いずれも軽微で、実装着手時に解決できれば設計確定には影響しない。
+| 項目 | 解決内容 |
+|---|---|
+| ✅ Flyway 連番 V9.136〜V9.142 | V9.136〜V9.141 で確定（5 本の DDL + Seed）。衝突なし |
+| ✅ Phase 1 リリース対象プロバイダーの最終リスト | 人気 10 社で確定: tokyu_point / dpoint / rakuten / paypay / vpoint / ponta / yodobashi / biccamera / matsukiyo / tsutaya（V9.141 Seed） |
+| ✅ nosleep.js vs Wake Lock API のフォールバック実装 | S5 で動的 import によるフォールバック完了（Wake Lock 未サポート時に nosleep.js 自動有効化） |
+| ✅ ErrorCode 番号体系 | §6.3 通り 001〜009 で整合化完了（S3 で確定） |
+
+### 未解決のまま（後続軍議で対応）
+
+| 項目 | 状態 | 解決方針 |
+|---|---|---|
+| 🔴 WebAuthn サーバー側 5 分 TTL 検証 | Phase 1 はクライアントジェスチャ確認まで実装 | バックエンドに `POST /api/v1/auth/webauthn/reauthenticate` を新設し、Valkey に 5 分 TTL の認証フラグを書く。`startPresentation` 側で当該フラグの存在を検証する設計を別軍議で確定の上、POINT_CARD_009 を完全実装する |
+| 🟡 iOS Safari Wake Lock 実機検証 | 未実施 | Low Power Mode 下では Wake Lock API が reject される。nosleep.js も autoplay 制約あり。実機（iOS 17/18）でのフォールバック挙動を運用前に実測する |
+| 🟡 PDF417 バーコード描画 | 現状エラー表示 | jsbarcode は PDF417 単体非対応。bwip-js 等の対応ライブラリ選定が必要。Yodobashi / 一部航空券系で必要 |
+| 🟡 プロバイダーロゴ画像の権利確認 SOP | 未整備 | 運営側の業務手順として整備。設計上は `logo_url` 列を持つだけで、商標利用はプロバイダー個別交渉に委ねる方針は変わらず |
+| 🟡 Phase 1 Seed プロバイダーの拡充 | 10 社 | リリース運用で 5〜10 社追加予定。マスタに無い事業者は自由入力で吸収できる設計のため UX 阻害なし |
+| 🟡 fuzzy match の正規化レベルの将来拡張 | Phase 1 は完全一致のみ | 同義語辞書（「ドコモポイント」→「dポイント」等）や Levenshtein 距離の導入を検討。誤マッチ UX 悪化のリスク評価が必要 |
+| 🟡 既存マッチ済みカードの再マッチバッチ | Phase 1 では未実装 | プロバイダーマスタ更新時に既存 `user_point_cards.provider_id` を再評価する定期バッチを Phase 1.1 以降で検討 |
 
 ---
 
@@ -1653,3 +1681,4 @@ VALUES
 |---|---|
 | 2026-05-14 | 初版作成。Phase 1 MVP（他社カード保管・グループ提示・規約・オフライン対応）+ Phase 2 拡張余地（organization 自店発行カード・スタンプ・残高）。CLAUDE.md 原則 6（UUIDv7）採用、原則 7（AbstractTenantAwareRepository）不採用＝個人スコープのため `AbstractUserOwnedRepository` パターン代替。論理削除不採用（個人機密のため物理削除、F12.3 ポリシー準拠）。`barcode_value` / `nickname` / `memo` を AES-256-GCM 暗号化、`last4` のみ平文（4 桁では特定不可）。Phase 2 用カラム（`organization_id` / `balance` / `stamp_count`）を最初から NULL 許容で投入し破壊的変更を回避。F12.3 / F10.3 連携を §10 / §11 で明記 |
 | 2026-05-14 | 案 B 改修。プロバイダーマスタを人気 10〜15 社のロゴ補強用に縮小。`user_point_cards.display_name`（AES-256-GCM）を新設し自由入力主体に移行。`provider_id` を NULL 許容（ON DELETE SET NULL）に変更し fuzzy match（NFKC + ひらがな化 + 記号削除）で自動紐付け。UI は `ProviderPicker.vue` 廃止 → `PresetCardButtons.vue` 新設で「プリセット + 自由入力」を 1 画面に統合。`POINT_CARD_CREATED` 監査ログ metadata に `provider_matched` 追加。F10.3 metadata 例を null 許容版に追従。Phase 2 自店発行カード設計には無影響 |
+| 2026-05-15 | Phase 1 MVP 実装完了。第一陣〜第六陣で DDL/Entity/Service/Controller/Frontend/提示モード/E2E まで完遂（PR #630/#632/#633/#642/#643/#646/#649/#650/#653 全 main マージ済）。残課題: WebAuthn サーバー側検証、iOS 実機検証、PDF417 対応、プロバイダーマスタ拡充。Phase 2 拡張余地（organization 自店発行カード）は無傷で待機 |
