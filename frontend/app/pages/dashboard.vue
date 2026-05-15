@@ -47,7 +47,7 @@ onMounted(async () => {
       <div class="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-surface-800 dark:text-surface-100">
-            {{ greeting }}、{{ authStore.currentUser?.displayName ?? 'ユーザー' }}さん
+            {{ greeting }}、{{ authStore.currentUser?.fullName ?? 'ユーザー' }}さん
           </h1>
           <p class="mt-1 text-sm text-surface-500">{{ timedMessage }}</p>
         </div>

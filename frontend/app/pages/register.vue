@@ -79,7 +79,7 @@ const onSubmit = handleSubmit(async (values) => {
         password: values.password,
         lastName: values.lastName,
         firstName: values.firstName,
-        displayName: values.displayName,
+        nickname: values.displayName,
         postalCode: values.postalCode,
         locale: 'ja',
         timezone: 'Asia/Tokyo',

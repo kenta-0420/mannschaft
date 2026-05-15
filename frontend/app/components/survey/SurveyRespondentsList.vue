@@ -185,7 +185,7 @@ defineExpose({ refresh: loadRespondents })
         />
         <Avatar
           v-else
-          :label="getInitial(item.displayName)"
+          :label="getInitial(item.fullName)"
           shape="circle"
           size="normal"
           class="bg-primary-100 text-primary-700"
@@ -193,7 +193,7 @@ defineExpose({ refresh: loadRespondents })
 
         <!-- 名前 -->
         <span class="flex-1 truncate text-sm text-surface-800">
-          {{ item.displayName }}
+          {{ item.fullName }}
         </span>
 
         <!-- 回答済み: 相対時刻 / 未回答: バッジ -->

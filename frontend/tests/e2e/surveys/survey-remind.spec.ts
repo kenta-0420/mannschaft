@@ -47,17 +47,17 @@ const MEMBER_ID = 300
 const RESPONDENTS = [
   buildRespondent({
     userId: 11,
-    displayName: '山田太郎',
+    fullName: '山田太郎',
     hasResponded: false,
   }),
   buildRespondent({
     userId: 12,
-    displayName: '佐藤花子',
+    fullName: '佐藤花子',
     hasResponded: false,
   }),
   buildRespondent({
     userId: 13,
-    displayName: '鈴木一郎',
+    fullName: '鈴木一郎',
     hasResponded: true,
     respondedAt: '2026-04-26T10:00:00Z',
   }),
@@ -390,3 +390,4 @@ test.describe('SURVEY-003-4: 詳細ページで回答者セクション開閉', 
     await expect(page.locator('[data-testid="survey-respondents-toggle"]')).toHaveCount(0)
   })
 })
+

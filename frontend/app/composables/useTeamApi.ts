@@ -31,7 +31,7 @@ interface PagedData<T> {
 
 interface SupporterResponse {
   userId: number
-  displayName: string
+  fullName: string
   avatarUrl: string | null
   followedAt: string
 }
@@ -39,7 +39,7 @@ interface SupporterResponse {
 interface SupporterApplicationResponse {
   id: number
   userId: number
-  displayName: string
+  fullName: string
   avatarUrl: string | null
   message: string | null
   status: 'PENDING' | 'APPROVED' | 'REJECTED'
