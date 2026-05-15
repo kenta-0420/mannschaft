@@ -22,7 +22,8 @@
     "dismiss": "却下",
     "ban": "BANする",
     "unban": "BANを解除",
-    "changeRole": "ロール変更"
+    "changeRole": "ロール変更",
+    "viewAll": "村一覧へ"
   },
   "field": {
     "name": "村名",
@@ -185,8 +186,12 @@
   },
   "feed": {
     "title": "村フィード",
+    "dashboardTitle": "村のお気に入り",
     "pinned": "お気に入りの村",
-    "empty": "フィードに表示する投稿がありません",
+    "empty": "お気に入りの村がありません",
+    "emptyHint": "気になる村に参加すると、ここに最新の投稿が流れます",
+    "loadingError": "村フィードの取得に失敗しました",
+    "retry": "再試行",
     "type": {
       "TIMELINE": "タイムライン",
       "LOBBY": "ロビー"

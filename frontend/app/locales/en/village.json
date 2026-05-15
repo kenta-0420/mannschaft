@@ -20,9 +20,10 @@
     "withdraw": "取り下げ",
     "resolve": "対応完了",
     "dismiss": "却下",
-    "ban": "BANする",
-    "unban": "BANを解除",
-    "changeRole": "ロール変更"
+    "ban": "Ban",
+    "unban": "Unban",
+    "changeRole": "Change role",
+    "viewAll": "View all villages"
   },
   "field": {
     "name": "村名",
@@ -184,12 +185,16 @@
     "empty": "参加申請はありません"
   },
   "feed": {
-    "title": "村フィード",
-    "pinned": "お気に入りの村",
-    "empty": "フィードに表示する投稿がありません",
+    "title": "Village feed",
+    "dashboardTitle": "Your villages",
+    "pinned": "Pinned villages",
+    "empty": "No favorite villages yet",
+    "emptyHint": "Join a village you like and the latest posts will appear here.",
+    "loadingError": "Failed to load the village feed",
+    "retry": "Retry",
     "type": {
-      "TIMELINE": "タイムライン",
-      "LOBBY": "ロビー"
+      "TIMELINE": "Timeline",
+      "LOBBY": "Lobby"
     }
   },
   "search": {
