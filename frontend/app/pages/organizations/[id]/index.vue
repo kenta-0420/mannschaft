@@ -50,6 +50,17 @@ const activeTab = ref(0)
 /** 下位組織タブを表示するか（子0件かつ非ADMINなら隠す） */
 const showChildrenTab = computed(() => isAdmin.value || children.value.length > 0)
 
+/**
+ * F15.4 Phase 3: 組織内チーム（店舗）検索ページへの導線を表示するか
+ * - 組織が PUBLIC のときは未ログイン者を含め誰でも表示
+ * - それ以外は組織メンバー（roleName が付与されている）にのみ表示
+ */
+const showTeamSearchLink = computed(() => {
+  if (!org.value) return false
+  if (org.value.visibility === 'PUBLIC') return true
+  return Boolean(roleName.value)
+})
+
 // F02.8 告知ウィザード
 const showBroadcastWizard = ref(false)
 
@@ -213,6 +224,19 @@ onMounted(async () => {
           </TabPanel>
 
           <TabPanel :value="3">
+            <div
+              v-if="showTeamSearchLink"
+              class="mt-4 flex justify-end"
+            >
+              <NuxtLink
+                :to="`/organizations/${orgId}/teams/search`"
+                :aria-label="$t('organizationTeamSearch.title')"
+                class="inline-flex items-center gap-2 rounded-md border border-primary-300 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-400"
+              >
+                <i class="pi pi-search" aria-hidden="true" />
+                {{ $t('organizationTeamSearch.title') }}
+              </NuxtLink>
+            </div>
             <OrgTeamGrid :teams="orgTeams" />
           </TabPanel>
 
