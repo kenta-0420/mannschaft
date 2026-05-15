@@ -22,7 +22,8 @@
     "dismiss": "却下",
     "ban": "BANする",
     "unban": "BANを解除",
-    "changeRole": "ロール変更"
+    "changeRole": "ロール変更",
+    "viewAll": "村一覧へ"
   },
   "field": {
     "name": "村名",
@@ -134,6 +135,7 @@
   },
   "creationRequest": {
     "title": "村作成申請",
+    "adminTitle": "村作成申請審査",
     "guideline": "村ガイドラインに同意する",
     "submitted": "申請を送信しました。運営の審査をお待ちください。",
     "pending": "審査待ち",
@@ -141,8 +143,35 @@
     "rejected": "却下",
     "withdrawn": "取り下げ済み",
     "reviewComment": "審査コメント",
+    "reviewCommentPlaceholder": "審査コメントを入力してください",
     "purpose": "活動目的・運営方針",
-    "empty": "申請はありません"
+    "empty": "申請はありません",
+    "filter": {
+      "all": "すべて",
+      "PENDING": "審査待ち",
+      "APPROVED": "承認済み",
+      "REJECTED": "却下",
+      "WITHDRAWN": "取り下げ済み"
+    },
+    "column": {
+      "requester": "申請者",
+      "village": "村名",
+      "category": "カテゴリ",
+      "purpose": "目的",
+      "requestedAt": "申請日",
+      "actions": "操作"
+    },
+    "confirm": {
+      "approve": "この村作成申請を承認します。よろしいですか?",
+      "reject": "この村作成申請を却下します。却下理由を入力してください。"
+    },
+    "detailTitle": "村作成申請の詳細",
+    "rejectCommentRequired": "却下時は審査コメントが必須です",
+    "noPermission": "この画面を閲覧する権限がありません",
+    "loadFailed": "村作成申請一覧の取得に失敗しました",
+    "approveSuccess": "申請を承認しました",
+    "rejectSuccess": "申請を却下しました",
+    "reviewFailed": "審査の処理に失敗しました"
   },
   "joinRequest": {
     "title": "参加申請",
@@ -157,8 +186,12 @@
   },
   "feed": {
     "title": "村フィード",
+    "dashboardTitle": "村のお気に入り",
     "pinned": "お気に入りの村",
-    "empty": "フィードに表示する投稿がありません",
+    "empty": "お気に入りの村がありません",
+    "emptyHint": "気になる村に参加すると、ここに最新の投稿が流れます",
+    "loadingError": "村フィードの取得に失敗しました",
+    "retry": "再試行",
     "type": {
       "TIMELINE": "タイムライン",
       "LOBBY": "ロビー"
