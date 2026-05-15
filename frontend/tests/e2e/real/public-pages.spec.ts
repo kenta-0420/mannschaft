@@ -200,7 +200,7 @@ test.describe('PUB-009〜011: 未認証時の /login リダイレクト', () => 
   test('PUB-009: 未認証で /my/dashboard にアクセスすると /login にリダイレクトされる', async ({
     page,
   }) => {
-    await page.goto('/my/dashboard')
+    await page.goto('/my/')
     await waitForHydration(page)
 
     // auth ミドルウェアによってリダイレクトされること

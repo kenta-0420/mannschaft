@@ -133,21 +133,13 @@ test.describe('ORG-001〜006: 組織ダッシュボード', () => {
   test('ORG-005: 組織ロゴ/アイコンエリアが表示される', async ({ page }) => {
     await page.goto(`/organizations/${orgId}`)
     await waitForHydration(page)
-    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
-    // ProfileHeader コンポーネント: バナー or アイコン画像エリアが存在する
-    // img タグまたはアイコンプレースホルダーが存在すること
-    const profileArea = page
-      .locator('[data-testid="profile-header"], .profile-header, img[alt*="アイコン"], img[alt*="icon"]')
-      .or(page.locator('.aspect-\\[3\\/1\\]'))
-      .first()
-    // ProfileHeader のバナーが存在する（班div or banner area）
-    // 代替: h1 の親要素内に画像・アバター系のUI要素が存在することを確認
-    const bannerArea = page.locator('.aspect-\\[3\\/1\\], [class*="banner"], [class*="profile"]').first()
-    const hasProfileArea =
-      (await profileArea.count()) > 0 || (await bannerArea.count()) > 0
-    expect(hasProfileArea).toBeTruthy()
-    void profileArea
-    void bannerArea
+    // 組織ページは PageLoading コンポーネント（.pi-spin ではない）でローディング中を示す
+    // ProfileHeader（class="profile-header relative"）が DOM に現れるまで待機
+    await page.locator('.profile-header').waitFor({ state: 'attached', timeout: 30_000 })
+    const hasBannerArea = await page.evaluate(() => {
+      return document.querySelector('.profile-header') !== null
+    })
+    expect(hasBannerArea).toBeTruthy()
   })
 
   test('ORG-006: 組織タイプ（都道府県連盟等）が表示される', async ({ page }) => {
@@ -159,8 +151,8 @@ test.describe('ORG-001〜006: 組織ダッシュボード', () => {
     await expect(basicInfoTab).toBeVisible({ timeout: 20_000 })
     await basicInfoTab.click()
     await page.waitForTimeout(1_000)
-    // 基本情報タブのコンテンツが表示される
-    const tabContent = page.locator('[role="tabpanel"]').first()
+    // アクティブなタブパネルが表示される（PrimeVue は data-p-active="true" を持つパネルのみ表示）
+    const tabContent = page.locator('[role="tabpanel"][data-p-active="true"]').first()
     await expect(tabContent).toBeVisible({ timeout: 10_000 })
   })
 })
@@ -364,7 +356,8 @@ test.describe('ORG-012〜017: 組織メンバー管理・チーム', () => {
     const teamsGrid = page
       .locator('[data-testid="org-team-grid"], .grid, [class*="OrgTeamGrid"]')
       .first()
-    const tabPanel = page.locator('[role="tabpanel"]').first()
+    // アクティブなタブパネルが表示される（PrimeVue は data-p-active="true" を持つパネルのみ表示）
+    const tabPanel = page.locator('[role="tabpanel"][data-p-active="true"]').first()
     await expect(tabPanel).toBeVisible({ timeout: 20_000 })
     void teamsGrid
   })
@@ -459,8 +452,8 @@ test.describe('ORG-018〜022: 組織設定・機能設定', () => {
     await expect(infoTab).toBeVisible({ timeout: 20_000 })
     await infoTab.click()
     await page.waitForTimeout(1_000)
-    // タブパネルのコンテンツが表示される
-    const tabPanel = page.locator('[role="tabpanel"]').first()
+    // アクティブなタブパネルが表示される（PrimeVue は data-p-active="true" を持つパネルのみ表示）
+    const tabPanel = page.locator('[role="tabpanel"][data-p-active="true"]').first()
     await expect(tabPanel).toBeVisible({ timeout: 10_000 })
   })
 })
