@@ -173,6 +173,20 @@
       "cached_notice": "オフラインキャッシュから表示しています",
       "cache_expired": "キャッシュの有効期限が切れました",
       "clear_cache": "オフラインキャッシュを削除"
+    },
+    "presentation": {
+      "warning_title": "ご注意",
+      "warning_body": "提示モードはバーコードを画面に大きく表示します。スクリーンショット撮影は OS の制約により完全に防げません。撮影しないでください。",
+      "warning_ack": "了解しました",
+      "page_indicator": "{current} / {total}",
+      "hint_swipe": "左右にスワイプ / 矢印キーで切替",
+      "hint_brightness": "画面を最大の明るさに設定すると読み取りやすくなります",
+      "close": "閉じる",
+      "reload": "再読み込み",
+      "biometric_required": "提示モードの開始には認証が必要です",
+      "biometric_failed": "認証に失敗しました",
+      "no_cards": "このグループにカードがありません",
+      "load_failed": "グループの読み込みに失敗しました"
     }
   }
 }

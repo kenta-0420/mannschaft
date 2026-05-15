@@ -152,6 +152,14 @@ public enum AuditEventType {
     POINT_CARD_GROUP_DELETED(AuditEventCategory.POINT_CARD),
     /** ポイントカードウォレット設定を更新（並び順 / 表示設定など）。 */
     POINT_CARD_SETTINGS_UPDATED(AuditEventCategory.POINT_CARD),
+    /** 自店発行プロバイダーを作成（Phase 2 organization スコープ）。 */
+    POINT_CARD_PROVIDER_CREATED(AuditEventCategory.POINT_CARD),
+    /** 自店発行プロバイダーの設定を更新。 */
+    POINT_CARD_PROVIDER_UPDATED(AuditEventCategory.POINT_CARD),
+    /** 自店発行プロバイダーを停止（is_active=false）。 */
+    POINT_CARD_PROVIDER_DEACTIVATED(AuditEventCategory.POINT_CARD),
+    /** 自店スタンプを押印（顧客カードへの delta 反映）。 */
+    POINT_CARD_STAMP_ISSUED(AuditEventCategory.POINT_CARD),
 
     // ─── VILLAGE (F17 村機能 Phase 1) ───────────────────────────
     // TODO(F17 Phase 1): 各 Village Service の主要メソッドへ

@@ -173,6 +173,20 @@
       "cached_notice": "Showing cached data from offline storage",
       "cache_expired": "Cache has expired",
       "clear_cache": "Clear offline cache"
+    },
+    "presentation": {
+      "warning_title": "Important notice",
+      "warning_body": "Presentation mode shows your barcode prominently on the screen. Screenshots cannot be fully prevented due to OS limitations. Please do not capture the screen.",
+      "warning_ack": "I understand",
+      "page_indicator": "{current} / {total}",
+      "hint_swipe": "Swipe left/right or use arrow keys to switch",
+      "hint_brightness": "Setting your screen to maximum brightness improves scan reliability",
+      "close": "Close",
+      "reload": "Reload",
+      "biometric_required": "Authentication is required to start presentation mode",
+      "biometric_failed": "Authentication failed",
+      "no_cards": "This group has no cards",
+      "load_failed": "Failed to load the group"
     }
   }
 }
