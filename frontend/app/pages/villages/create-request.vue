@@ -48,7 +48,6 @@ const NAME_MAX = 80
 const NAME_MIN = 1
 /** スラッグ形式（Backend バリデーションと同一） */
 const SLUG_PATTERN = /^[a-z0-9-]{3,40}$/
-const SLUG_MIN = 3
 const SLUG_MAX = 40
 const PURPOSE_MAX = 500
 const CATEGORY_MAX = 40
