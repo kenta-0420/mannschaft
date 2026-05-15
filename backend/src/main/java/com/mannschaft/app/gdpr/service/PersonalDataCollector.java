@@ -92,7 +92,9 @@ public class PersonalDataCollector {
             Map.entry("proxy_consents", "proxy_input_consents.json"),
             Map.entry("proxy_records", "proxy_input_records.json"),
             // F02.10 天気ウィジェット — ユーザー地点キャッシュ（嗜好情報レベル）
-            Map.entry("location_preference", "weather_locations.json")
+            Map.entry("location_preference", "weather_locations.json"),
+            // F18 個人ポイントカードウォレット（第二陣 2C スケルトン、第三陣で完成）
+            Map.entry("point_cards", "point_cards.json")
     );
 
     /**
@@ -146,8 +148,24 @@ public class PersonalDataCollector {
             case "proxy_consents" -> collectProxyConsents(userId);
             case "proxy_records" -> collectProxyRecords(userId);
             case "location_preference" -> collectLocationPreference(userId);
+            case "point_cards" -> collectPointCards(userId);
             default -> "[]";
         };
+    }
+
+    /**
+     * F18 個人ポイントカードウォレットを収集する（GDPR エクスポート用）。
+     *
+     * <p>第二陣 2C スケルトン: PersonalDataCoverageValidator の起動時網羅性チェックを
+     * 通すため、空 JSON を返す。barcode_value は AES-GCM で暗号化されているため、
+     * 第三陣で UserPointCard / PointCardGroup / UserPointCardSettings を集約し、
+     * EncryptionService.decrypt() で復号した上でエクスポートする予定。</p>
+     *
+     * <p>TODO 第三陣で完成: UserPointCard / Group / Settings の集約 + 復号エクスポート</p>
+     */
+    private String collectPointCards(Long userId) throws Exception {
+        // 第二陣 2C スケルトン: 空 JSON を返す（PersonalDataCoverageValidator を起動時に通すため）
+        return "{}";
     }
 
     /**

@@ -369,7 +369,11 @@ public class GlobalExceptionHandler {
             // F17.1 Phase 1 B9 — 井戸端会議 + 投稿主体一覧（VILLAGE_048〜050）
             Map.entry("VILLAGE_048", HttpStatus.FORBIDDEN),            // VILLAGE_POSTING_IDENTITY_FORBIDDEN
             Map.entry("VILLAGE_049", HttpStatus.NOT_FOUND),            // VILLAGE_LOBBY_NOT_FOUND
-            Map.entry("VILLAGE_050", HttpStatus.INTERNAL_SERVER_ERROR) // VILLAGE_LOBBY_CHANNEL_INIT_FAILED
+            Map.entry("VILLAGE_050", HttpStatus.INTERNAL_SERVER_ERROR),// VILLAGE_LOBBY_CHANNEL_INIT_FAILED
+
+            // F18 個人ポイントカードウォレット
+            Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED
+            Map.entry("POINT_CARD_003", HttpStatus.NOT_FOUND)          // CARD_NOT_FOUND（IDOR 対策で 403→404）
     );
 
     /**

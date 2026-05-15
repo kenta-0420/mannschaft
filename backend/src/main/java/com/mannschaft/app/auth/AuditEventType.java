@@ -137,7 +137,21 @@ public enum AuditEventType {
     /** 入居時誓約に署名（同意項目を確認した上で succession_covenants へ INSERT）。 */
     COVENANT_SIGNED(AuditEventCategory.SUCCESSION),
     /** 入居時誓約を撤回（revoked_at セット）。 */
-    COVENANT_REVOKED(AuditEventCategory.SUCCESSION);
+    COVENANT_REVOKED(AuditEventCategory.SUCCESSION),
+
+    // ─── POINT_CARD (F18 個人ポイントカードウォレット) ─────────────
+    /** 個人ポイントカードを発行（barcode_value 暗号化 + ownership_token 付与）。 */
+    POINT_CARD_CREATED(AuditEventCategory.POINT_CARD),
+    /** 個人ポイントカードを削除（物理削除またはアーカイブ）。 */
+    POINT_CARD_DELETED(AuditEventCategory.POINT_CARD),
+    /** 個人ポイントカードを閲覧（復号値の表示）。 */
+    POINT_CARD_VIEWED(AuditEventCategory.POINT_CARD),
+    /** ポイントカードグループ（フォルダ）を作成。 */
+    POINT_CARD_GROUP_CREATED(AuditEventCategory.POINT_CARD),
+    /** ポイントカードグループ（フォルダ）を削除。 */
+    POINT_CARD_GROUP_DELETED(AuditEventCategory.POINT_CARD),
+    /** ポイントカードウォレット設定を更新（並び順 / 表示設定など）。 */
+    POINT_CARD_SETTINGS_UPDATED(AuditEventCategory.POINT_CARD);
 
     private final AuditEventCategory category;
 }
