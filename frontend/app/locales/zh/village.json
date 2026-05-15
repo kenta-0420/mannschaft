@@ -20,9 +20,10 @@
     "withdraw": "取り下げ",
     "resolve": "対応完了",
     "dismiss": "却下",
-    "ban": "BANする",
-    "unban": "BANを解除",
-    "changeRole": "ロール変更"
+    "ban": "封禁",
+    "unban": "解除封禁",
+    "changeRole": "更改角色",
+    "viewAll": "查看所有村庄"
   },
   "field": {
     "name": "村名",
@@ -156,12 +157,16 @@
     "empty": "参加申請はありません"
   },
   "feed": {
-    "title": "村フィード",
-    "pinned": "お気に入りの村",
-    "empty": "フィードに表示する投稿がありません",
+    "title": "村庄动态",
+    "dashboardTitle": "我的村庄",
+    "pinned": "收藏的村庄",
+    "empty": "暂无收藏的村庄",
+    "emptyHint": "加入感兴趣的村庄后，最新动态会显示在这里。",
+    "loadingError": "加载村庄动态失败",
+    "retry": "重试",
     "type": {
-      "TIMELINE": "タイムライン",
-      "LOBBY": "ロビー"
+      "TIMELINE": "时间线",
+      "LOBBY": "大厅"
     }
   },
   "search": {

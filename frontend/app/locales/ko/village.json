@@ -20,9 +20,10 @@
     "withdraw": "取り下げ",
     "resolve": "対応完了",
     "dismiss": "却下",
-    "ban": "BANする",
-    "unban": "BANを解除",
-    "changeRole": "ロール変更"
+    "ban": "차단",
+    "unban": "차단 해제",
+    "changeRole": "역할 변경",
+    "viewAll": "마을 목록으로"
   },
   "field": {
     "name": "村名",
@@ -156,12 +157,16 @@
     "empty": "参加申請はありません"
   },
   "feed": {
-    "title": "村フィード",
-    "pinned": "お気に入りの村",
-    "empty": "フィードに表示する投稿がありません",
+    "title": "마을 피드",
+    "dashboardTitle": "내 마을",
+    "pinned": "즐겨찾기한 마을",
+    "empty": "즐겨찾기한 마을이 없습니다",
+    "emptyHint": "관심 있는 마을에 참여하면 최신 게시물이 여기에 표시됩니다.",
+    "loadingError": "마을 피드를 불러오지 못했습니다",
+    "retry": "다시 시도",
     "type": {
-      "TIMELINE": "タイムライン",
-      "LOBBY": "ロビー"
+      "TIMELINE": "타임라인",
+      "LOBBY": "로비"
     }
   },
   "search": {
