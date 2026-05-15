@@ -124,6 +124,12 @@
       "MESSAGE": "メッセージ",
       "MEMBERSHIP": "村人",
       "VILLAGE": "村"
+    },
+    "reason": {
+      "spam": "スパム・宣伝",
+      "harassment": "嫌がらせ・誹謗中傷",
+      "offensive": "不快・不適切な内容",
+      "other": "その他"
     }
   },
   "creationRequest": {
