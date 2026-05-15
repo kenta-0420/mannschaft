@@ -21,8 +21,17 @@
  */
 import type { VillageResponse } from '~/types/village'
 
+/**
+ * Phase 2 拡張: 村紋 (`villages.monsho_r2_key`) は VillageResponse の正式
+ * メンバーではないが、Backend Phase 2 で追加予定のため optional として扱う。
+ *
+ * 既存 VillageResponse 型を変更せず、Header 内部だけで拡張プロパティを
+ * 受け取れるよう交差型で表現する。
+ */
+type VillageWithMonsho = VillageResponse & { monshoR2Key?: string | null }
+
 const props = defineProps<{
-  village: VillageResponse
+  village: VillageWithMonsho
   activeTab: 'bulletin' | 'timeline' | 'lobby' | 'members'
 }>()
 
@@ -63,6 +72,15 @@ function buildR2Url(r2Key: string | null): string | null {
 
 const iconUrl = computed<string | null>(() => buildR2Url(props.village.iconR2Key))
 const coverUrl = computed<string | null>(() => buildR2Url(props.village.coverR2Key))
+const monshoUrl = computed<string | null>(() => buildR2Url(props.village.monshoR2Key ?? null))
+
+// Phase 2: 村紋プレビュー表示制御
+const monshoPreviewVisible = ref(false)
+function toggleMonshoPreview() {
+  if (monshoUrl.value) {
+    monshoPreviewVisible.value = !monshoPreviewVisible.value
+  }
+}
 
 // =============================================================================
 // 表示用 派生値
@@ -195,6 +213,21 @@ function onPinToggle() {
             <h1 class="text-xl sm:text-2xl font-bold truncate">
               {{ village.name }}
             </h1>
+            <!-- Phase 2: 村紋アイコン -->
+            <button
+              v-if="monshoUrl"
+              type="button"
+              class="village-header__monsho-button"
+              :aria-label="t('village.monsho.title')"
+              :title="t('village.monsho.title')"
+              @click="toggleMonshoPreview"
+            >
+              <img
+                :src="monshoUrl"
+                :alt="t('village.monsho.title')"
+                class="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-surface-300 shadow-sm bg-white"
+              >
+            </button>
             <!-- 公式バッジ -->
             <Badge
               v-if="isOfficial"
@@ -310,6 +343,27 @@ function onPinToggle() {
         </TabList>
       </Tabs>
     </div>
+
+    <!-- ============================================================== -->
+    <!-- Phase 2: 村紋プレビュー Dialog                                   -->
+    <!-- ============================================================== -->
+    <Dialog
+      v-if="monshoUrl"
+      v-model:visible="monshoPreviewVisible"
+      modal
+      :draggable="false"
+      :header="t('village.monsho.title')"
+      :style="{ width: '24rem' }"
+      :breakpoints="{ '640px': '90vw' }"
+    >
+      <div class="flex items-center justify-center p-4">
+        <img
+          :src="monshoUrl"
+          :alt="t('village.monsho.title')"
+          class="max-w-full max-h-[60vh] object-contain"
+        >
+      </div>
+    </Dialog>
   </div>
 </template>
 

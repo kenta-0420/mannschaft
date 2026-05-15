@@ -70,7 +70,10 @@
     "lobby": "ロビー",
     "members": "村人一覧",
     "settings": "設定",
-    "reports": "通報管理"
+    "reports": "通報管理",
+    "calendar": "歳時記",
+    "festival": "お祭り",
+    "matchRecruit": "練習試合・募集"
   },
   "lobby": {
     "title": "ロビー",
@@ -288,5 +291,72 @@
   "placeholder": {
     "bulletinComingSoon": "村の掲示板は Phase 2 で実装予定です",
     "timelineComingSoon": "村のタイムラインは Phase 2 で実装予定です"
+  },
+  "monsho": {
+    "title": "村紋",
+    "upload": "村紋をアップロード",
+    "remove": "村紋を削除"
+  },
+  "calendar": {
+    "title": "歳時記カレンダー",
+    "create": "行事を追加",
+    "eventDate": "開催日",
+    "annualRecurring": "毎年繰り返す",
+    "icon": "アイコン",
+    "color": "色",
+    "empty": "登録された行事はありません"
+  },
+  "festival": {
+    "title": "お祭り",
+    "starts": "開始",
+    "ends": "終了",
+    "create": "お祭りを企画",
+    "cancel": "お祭りを中止",
+    "empty": "開催中・予定のお祭りはありません",
+    "status": {
+      "SCHEDULED": "開催予定",
+      "ACTIVE": "開催中",
+      "ENDED": "終了",
+      "CANCELLED": "中止"
+    }
+  },
+  "matchRecruit": {
+    "title": "練習試合・募集",
+    "venue": "場所",
+    "deadline": "応募締切",
+    "empty": "募集中の案件はありません",
+    "apply": "応募する",
+    "applications": "応募一覧",
+    "category": {
+      "PRACTICE_MATCH": "練習試合",
+      "REFEREE": "審判",
+      "VENUE": "会場",
+      "OTHER": "その他"
+    },
+    "status": {
+      "OPEN": "募集中",
+      "CLOSED": "募集締切",
+      "FULFILLED": "成立",
+      "CANCELLED": "取消"
+    }
+  },
+  "matchApplication": {
+    "review": "応募を審査",
+    "accept": "受諾",
+    "reject": "辞退",
+    "status": {
+      "PENDING": "審査中",
+      "ACCEPTED": "受諾",
+      "REJECTED": "辞退",
+      "WITHDRAWN": "取下げ"
+    }
+  },
+  "representative": {
+    "title": "代表委任",
+    "grant": "代表に委任する",
+    "revoke": "委任を取消",
+    "empty": "委任された代表はいません",
+    "grantedBy": "委任元",
+    "note": "メモ"
   }
 }

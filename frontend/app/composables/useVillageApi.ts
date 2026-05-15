@@ -20,15 +20,33 @@ import type {
   ReportResolveRequest,
   ReportResponse,
   RoleChangeRequest,
+  VillageCalendarEventCreateRequest,
+  VillageCalendarEventListParams,
+  VillageCalendarEventResponse,
+  VillageCalendarEventUpdateRequest,
   VillageCreateRequest,
   VillageCreationRequestCreateRequest,
   VillageCreationRequestResponse,
   VillageCreationRequestReviewRequest,
   VillageFeedResponse,
+  VillageFestivalCreateRequest,
+  VillageFestivalResponse,
+  VillageFestivalStatus,
+  VillageFestivalUpdateRequest,
   VillageInternalSearchParams,
   VillageInternalSearchResponse,
+  VillageMatchApplicationCreateRequest,
+  VillageMatchApplicationResponse,
+  VillageMatchApplicationReviewRequest,
+  VillageMatchRecruitCreateRequest,
+  VillageMatchRecruitListParams,
+  VillageMatchRecruitResponse,
+  VillageMatchRecruitUpdateRequest,
   VillageNicknameResponse,
   VillageNicknameUpdateRequest,
+  VillageRepresentativeGrantRequest,
+  VillageRepresentativeResponse,
+  VillageRepresentativeRevokeRequest,
   VillageRequestStatus,
   VillageResponse,
   VillageSearchParams,
@@ -395,6 +413,268 @@ export function useVillageApi() {
     return api<VillageFeedResponse>('/api/v1/me/village-feed')
   }
 
+  // =====================================================================
+  // Phase 2: 代表委任 (VillageRepresentativeController)
+  // /api/v1/villages/{villageId}/representatives
+  //
+  // 注意: Phase 2 の Backend Controller は未実装。
+  // ここでの URL は設計書 §3.11 / §13.2 に基づく推測であり、
+  // Backend 完成後に微調整する可能性がある。
+  // =====================================================================
+
+  /** 代表委任一覧 */
+  async function listRepresentatives(villageId: string) {
+    return api<VillageRepresentativeResponse[]>(
+      `/api/v1/villages/${villageId}/representatives`,
+    )
+  }
+
+  /** 代表委任を発行 */
+  async function grantRepresentative(
+    villageId: string,
+    body: VillageRepresentativeGrantRequest,
+  ) {
+    return api<VillageRepresentativeResponse>(
+      `/api/v1/villages/${villageId}/representatives`,
+      { method: 'POST', body },
+    )
+  }
+
+  /** 代表委任を取消 */
+  async function revokeRepresentative(
+    villageId: string,
+    id: string,
+    body: VillageRepresentativeRevokeRequest,
+  ) {
+    return api<VillageRepresentativeResponse>(
+      `/api/v1/villages/${villageId}/representatives/${id}/revoke`,
+      { method: 'POST', body },
+    )
+  }
+
+  // =====================================================================
+  // Phase 2: 歳時記カレンダー (VillageCalendarEventController)
+  // /api/v1/villages/{villageId}/calendar-events
+  // =====================================================================
+
+  /** 歳時記カレンダー一覧 */
+  async function listCalendarEvents(
+    villageId: string,
+    params?: VillageCalendarEventListParams,
+  ) {
+    return api<VillageCalendarEventResponse[]>(
+      `/api/v1/villages/${villageId}/calendar-events${qs(params)}`,
+    )
+  }
+
+  /** 歳時記カレンダー詳細 */
+  async function getCalendarEvent(villageId: string, id: string) {
+    return api<VillageCalendarEventResponse>(
+      `/api/v1/villages/${villageId}/calendar-events/${id}`,
+    )
+  }
+
+  /** 歳時記カレンダー作成 */
+  async function createCalendarEvent(
+    villageId: string,
+    body: VillageCalendarEventCreateRequest,
+  ) {
+    return api<VillageCalendarEventResponse>(
+      `/api/v1/villages/${villageId}/calendar-events`,
+      { method: 'POST', body },
+    )
+  }
+
+  /** 歳時記カレンダー更新 */
+  async function updateCalendarEvent(
+    villageId: string,
+    id: string,
+    body: VillageCalendarEventUpdateRequest,
+  ) {
+    return api<VillageCalendarEventResponse>(
+      `/api/v1/villages/${villageId}/calendar-events/${id}`,
+      { method: 'PATCH', body },
+    )
+  }
+
+  /** 歳時記カレンダー削除 */
+  async function deleteCalendarEvent(villageId: string, id: string) {
+    return api(`/api/v1/villages/${villageId}/calendar-events/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // =====================================================================
+  // Phase 2: お祭り (VillageFestivalController)
+  // /api/v1/villages/{villageId}/festivals
+  // =====================================================================
+
+  /** お祭り一覧 */
+  async function listFestivals(villageId: string, status?: VillageFestivalStatus) {
+    return api<VillageFestivalResponse[]>(
+      `/api/v1/villages/${villageId}/festivals${qs({ status })}`,
+    )
+  }
+
+  /** お祭り詳細 */
+  async function getFestival(villageId: string, id: string) {
+    return api<VillageFestivalResponse>(
+      `/api/v1/villages/${villageId}/festivals/${id}`,
+    )
+  }
+
+  /** お祭り作成 */
+  async function createFestival(
+    villageId: string,
+    body: VillageFestivalCreateRequest,
+  ) {
+    return api<VillageFestivalResponse>(
+      `/api/v1/villages/${villageId}/festivals`,
+      { method: 'POST', body },
+    )
+  }
+
+  /** お祭り更新 */
+  async function updateFestival(
+    villageId: string,
+    id: string,
+    body: VillageFestivalUpdateRequest,
+  ) {
+    return api<VillageFestivalResponse>(
+      `/api/v1/villages/${villageId}/festivals/${id}`,
+      { method: 'PATCH', body },
+    )
+  }
+
+  /** お祭り中止 */
+  async function cancelFestival(villageId: string, id: string) {
+    return api<VillageFestivalResponse>(
+      `/api/v1/villages/${villageId}/festivals/${id}/cancel`,
+      { method: 'POST' },
+    )
+  }
+
+  // =====================================================================
+  // Phase 2: 練習試合募集 (VillageMatchRecruitController)
+  // /api/v1/villages/{villageId}/match-recruits
+  // =====================================================================
+
+  /** 練習試合募集一覧 */
+  async function listMatchRecruits(
+    villageId: string,
+    params?: VillageMatchRecruitListParams,
+  ) {
+    return api<VillageMatchRecruitResponse[]>(
+      `/api/v1/villages/${villageId}/match-recruits${qs(params)}`,
+    )
+  }
+
+  /** 練習試合募集詳細 */
+  async function getMatchRecruit(villageId: string, id: string) {
+    return api<VillageMatchRecruitResponse>(
+      `/api/v1/villages/${villageId}/match-recruits/${id}`,
+    )
+  }
+
+  /** 練習試合募集作成 */
+  async function createMatchRecruit(
+    villageId: string,
+    body: VillageMatchRecruitCreateRequest,
+  ) {
+    return api<VillageMatchRecruitResponse>(
+      `/api/v1/villages/${villageId}/match-recruits`,
+      { method: 'POST', body },
+    )
+  }
+
+  /** 練習試合募集更新 */
+  async function updateMatchRecruit(
+    villageId: string,
+    id: string,
+    body: VillageMatchRecruitUpdateRequest,
+  ) {
+    return api<VillageMatchRecruitResponse>(
+      `/api/v1/villages/${villageId}/match-recruits/${id}`,
+      { method: 'PATCH', body },
+    )
+  }
+
+  /** 練習試合募集を締切（CLOSED 化） */
+  async function closeMatchRecruit(villageId: string, id: string) {
+    return api<VillageMatchRecruitResponse>(
+      `/api/v1/villages/${villageId}/match-recruits/${id}/close`,
+      { method: 'POST' },
+    )
+  }
+
+  // =====================================================================
+  // Phase 2: 練習試合応募 (VillageMatchApplicationController)
+  // /api/v1/villages/{villageId}/match-recruits/{recruitId}/applications
+  // =====================================================================
+
+  /** 応募する */
+  async function applyToMatchRecruit(
+    villageId: string,
+    recruitId: string,
+    body: VillageMatchApplicationCreateRequest,
+  ) {
+    return api<VillageMatchApplicationResponse>(
+      `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications`,
+      { method: 'POST', body },
+    )
+  }
+
+  /** 応募一覧（募集主向け） */
+  async function listApplications(villageId: string, recruitId: string) {
+    return api<VillageMatchApplicationResponse[]>(
+      `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications`,
+    )
+  }
+
+  /** 応募を審査（ACCEPT/REJECT） */
+  async function reviewApplication(
+    villageId: string,
+    recruitId: string,
+    applicationId: string,
+    body: VillageMatchApplicationReviewRequest & { action: 'accept' | 'reject' },
+  ) {
+    const { action, ...reviewBody } = body
+    return api<VillageMatchApplicationResponse>(
+      `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications/${applicationId}/${action}`,
+      { method: 'POST', body: reviewBody },
+    )
+  }
+
+  /** 応募を取り下げる */
+  async function withdrawApplication(
+    villageId: string,
+    recruitId: string,
+    applicationId: string,
+  ) {
+    return api<VillageMatchApplicationResponse>(
+      `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications/${applicationId}/withdraw`,
+      { method: 'POST' },
+    )
+  }
+
+  // =====================================================================
+  // Phase 2: 村紋アップロード (VillageMonshoController)
+  // /api/v1/villages/{villageId}/monsho
+  //
+  // 設計書 §13.2: villages.monsho_r2_key 用。
+  // multipart/form-data で画像をアップロードし、R2 キーを村本体に紐付ける。
+  // =====================================================================
+
+  /** 村紋画像をアップロード（multipart/form-data） */
+  async function uploadMonsho(villageId: string, file: File) {
+    const form = new FormData()
+    form.append('file', file)
+    return api<VillageResponse>(
+      `/api/v1/villages/${villageId}/monsho`,
+      { method: 'POST', body: form },
+    )
+  }
+
   return {
     // 村本体
     searchVillages,
@@ -446,5 +726,34 @@ export function useVillageApi() {
     searchVillageInternal,
     // 横断フィード
     getFeed,
+    // Phase 2: 代表委任
+    listRepresentatives,
+    grantRepresentative,
+    revokeRepresentative,
+    // Phase 2: 歳時記カレンダー
+    listCalendarEvents,
+    getCalendarEvent,
+    createCalendarEvent,
+    updateCalendarEvent,
+    deleteCalendarEvent,
+    // Phase 2: お祭り
+    listFestivals,
+    getFestival,
+    createFestival,
+    updateFestival,
+    cancelFestival,
+    // Phase 2: 練習試合募集
+    listMatchRecruits,
+    getMatchRecruit,
+    createMatchRecruit,
+    updateMatchRecruit,
+    closeMatchRecruit,
+    // Phase 2: 練習試合応募
+    applyToMatchRecruit,
+    listApplications,
+    reviewApplication,
+    withdrawApplication,
+    // Phase 2: 村紋
+    uploadMonsho,
   }
 }
