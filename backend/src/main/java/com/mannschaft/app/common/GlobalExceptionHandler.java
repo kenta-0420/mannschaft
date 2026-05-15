@@ -370,6 +370,8 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_048", HttpStatus.FORBIDDEN),            // VILLAGE_POSTING_IDENTITY_FORBIDDEN
             Map.entry("VILLAGE_049", HttpStatus.NOT_FOUND),            // VILLAGE_LOBBY_NOT_FOUND
             Map.entry("VILLAGE_050", HttpStatus.INTERNAL_SERVER_ERROR),// VILLAGE_LOBBY_CHANNEL_INIT_FAILED
+            // F17.1 Phase 1 B10 — 村内検索 + ダッシュボード集約（VILLAGE_051）
+            Map.entry("VILLAGE_051", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_SEARCH_INVALID_QUERY
 
             // F18 個人ポイントカードウォレット
             Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED
