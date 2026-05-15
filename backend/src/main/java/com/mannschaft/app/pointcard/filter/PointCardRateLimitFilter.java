@@ -30,6 +30,9 @@ import java.util.regex.Pattern;
  *   <li>{@code POST   /api/v1/point-cards}                ─ 30 req/時（2B 追加）</li>
  *   <li>{@code GET    /api/v1/point-cards/{id}}           ─ 120 req/分（2B 追加）</li>
  *   <li>{@code POST   /api/v1/point-cards/{id}/used}      ─ 600 req/時（2B 追加）</li>
+ *   <li>{@code GET    /api/v1/point-cards/groups}         ─ 60 req/分（S3 追加）</li>
+ *   <li>{@code POST   /api/v1/point-cards/groups}         ─ 30 req/時（S3 追加）</li>
+ *   <li>{@code POST   /api/v1/point-cards/groups/{id}/presentation-start} ─ 600 req/時（S3 追加）</li>
  * </ul>
  *
  * <p>パターンは「具体度の高いものから順に」評価する。たとえば
@@ -46,6 +49,10 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     private static final int CREATE_CARD_RATE_PER_HOUR = 30;
     private static final int GET_DETAIL_RATE_PER_MINUTE = 120;
     private static final int RECORD_USED_RATE_PER_HOUR = 600;
+    // S3 グループ機能
+    private static final int LIST_GROUPS_RATE_PER_MINUTE = 60;
+    private static final int CREATE_GROUP_RATE_PER_HOUR = 30;
+    private static final int PRESENTATION_RATE_PER_HOUR = 600;
 
     private static final Duration BUCKET_TTL = Duration.ofHours(2);
     private static final long MAX_BUCKETS = 10_000L;
@@ -69,12 +76,23 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     private static final Pattern CARD_ID_PATH =
             Pattern.compile("^/api/v1/point-cards/[0-9a-fA-F-]{36}$");
 
+    /** グループ一覧 (GET) / 作成 (POST) の共通パス。 */
+    private static final Pattern GROUPS_ROOT_PATH =
+            Pattern.compile("^/api/v1/point-cards/groups$");
+
+    /** グループ提示モード起動パターン。具体度が高いので /{id} より先に判定する。 */
+    private static final Pattern GROUP_PRESENTATION_PATH =
+            Pattern.compile("^/api/v1/point-cards/groups/[0-9a-fA-F-]{36}/presentation-start$");
+
     // ──── バケット ──────────────────────────────
     private final Cache<String, Bucket> providersBuckets;
     private final Cache<String, Bucket> settingsBuckets;
     private final Cache<String, Bucket> createCardBuckets;
     private final Cache<String, Bucket> getDetailBuckets;
     private final Cache<String, Bucket> recordUsedBuckets;
+    private final Cache<String, Bucket> listGroupsBuckets;
+    private final Cache<String, Bucket> createGroupBuckets;
+    private final Cache<String, Bucket> presentationBuckets;
 
     public PointCardRateLimitFilter() {
         this.providersBuckets = newCache();
@@ -82,6 +100,9 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         this.createCardBuckets = newCache();
         this.getDetailBuckets = newCache();
         this.recordUsedBuckets = newCache();
+        this.listGroupsBuckets = newCache();
+        this.createGroupBuckets = newCache();
+        this.presentationBuckets = newCache();
     }
 
     private static Cache<String, Bucket> newCache() {
@@ -112,6 +133,14 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         if ("POST".equalsIgnoreCase(method) && CARD_USED_PATH.matcher(path).matches()) {
             return false;
         }
+        // S3 グループ機能（GROUPS_ROOT_PATH は CARD_ID_PATH より具体度が高いので問題ない）
+        if (("GET".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method))
+                && GROUPS_ROOT_PATH.matcher(path).matches()) {
+            return false;
+        }
+        if ("POST".equalsIgnoreCase(method) && GROUP_PRESENTATION_PATH.matcher(path).matches()) {
+            return false;
+        }
         return true;
     }
 
@@ -127,7 +156,16 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         String retryAfter;
 
         // 評価順序: より具体的なものから判定する
-        if ("POST".equalsIgnoreCase(method) && CARD_USED_PATH.matcher(path).matches()) {
+        if ("POST".equalsIgnoreCase(method) && GROUP_PRESENTATION_PATH.matcher(path).matches()) {
+            bucket = presentationBuckets.get(userKey, k -> newBucketPerHour(PRESENTATION_RATE_PER_HOUR));
+            retryAfter = "3600";
+        } else if ("POST".equalsIgnoreCase(method) && GROUPS_ROOT_PATH.matcher(path).matches()) {
+            bucket = createGroupBuckets.get(userKey, k -> newBucketPerHour(CREATE_GROUP_RATE_PER_HOUR));
+            retryAfter = "3600";
+        } else if ("GET".equalsIgnoreCase(method) && GROUPS_ROOT_PATH.matcher(path).matches()) {
+            bucket = listGroupsBuckets.get(userKey, k -> newBucketPerMinute(LIST_GROUPS_RATE_PER_MINUTE));
+            retryAfter = "60";
+        } else if ("POST".equalsIgnoreCase(method) && CARD_USED_PATH.matcher(path).matches()) {
             bucket = recordUsedBuckets.get(userKey, k -> newBucketPerHour(RECORD_USED_RATE_PER_HOUR));
             retryAfter = "3600";
         } else if ("GET".equalsIgnoreCase(method) && CARD_ID_PATH.matcher(path).matches()) {

@@ -352,9 +352,16 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_036", HttpStatus.FORBIDDEN),            // OFFICIAL_VILLAGE_FORBIDDEN
             Map.entry("VILLAGE_037", HttpStatus.FORBIDDEN),            // VILLAGE_CREATE_FORBIDDEN
 
-            // F18 個人ポイントカードウォレット
+            // F18 個人ポイントカードウォレット（設計書 §6.3 整合）
             Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED
-            Map.entry("POINT_CARD_003", HttpStatus.NOT_FOUND)          // CARD_NOT_FOUND（IDOR 対策で 403→404）
+            Map.entry("POINT_CARD_002", HttpStatus.BAD_REQUEST),       // INVALID_BARCODE_VALUE（Severity.WARN 既定と同じだが明示）
+            Map.entry("POINT_CARD_003", HttpStatus.CONFLICT),          // CARD_LIMIT_EXCEEDED
+            Map.entry("POINT_CARD_004", HttpStatus.CONFLICT),          // GROUP_LIMIT_EXCEEDED
+            Map.entry("POINT_CARD_005", HttpStatus.CONFLICT),          // GROUP_ITEM_LIMIT_EXCEEDED
+            Map.entry("POINT_CARD_006", HttpStatus.NOT_FOUND),         // CARD_NOT_FOUND（IDOR 対策で 403→404）
+            Map.entry("POINT_CARD_007", HttpStatus.NOT_FOUND),         // PROVIDER_NOT_FOUND
+            Map.entry("POINT_CARD_008", HttpStatus.TOO_MANY_REQUESTS), // RATE_LIMIT_EXCEEDED
+            Map.entry("POINT_CARD_009", HttpStatus.UNAUTHORIZED)       // BIOMETRIC_REQUIRED
     );
 
     /**

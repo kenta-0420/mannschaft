@@ -50,7 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>POST 作成は 201、DELETE / POST /used は 204</li>
  *   <li>IDOR — 他人のカードへの GET/PATCH/DELETE は 404</li>
  *   <li>WALLET_NOT_ENABLED は 403</li>
- *   <li>CARD_LIMIT_EXCEEDED は 400</li>
+ *   <li>CARD_LIMIT_EXCEEDED は 409（設計書 §6.3 整合）</li>
  * </ul>
  */
 @WebMvcTest(PointCardController.class)
@@ -162,8 +162,8 @@ class PointCardControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/point-cards: CARD_LIMIT_EXCEEDED は 400")
-    void create_cardLimitExceeded_400() throws Exception {
+    @DisplayName("POST /api/v1/point-cards: CARD_LIMIT_EXCEEDED は 409 POINT_CARD_003（設計書 §6.3 整合）")
+    void create_cardLimitExceeded_409() throws Exception {
         willThrow(new BusinessException(PointCardErrorCode.CARD_LIMIT_EXCEEDED))
                 .given(pointCardService).createCard(eq(USER_ID), any(CreateUserPointCardRequest.class));
 
@@ -173,8 +173,8 @@ class PointCardControllerTest {
         mockMvc.perform(post("/api/v1/point-cards")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("POINT_CARD_002"));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("POINT_CARD_003"));
     }
 
     @Test
@@ -202,14 +202,14 @@ class PointCardControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/point-cards/{id}: 他人カード → 404 POINT_CARD_003（IDOR 防止）")
+    @DisplayName("GET /api/v1/point-cards/{id}: 他人カード → 404 POINT_CARD_006（IDOR 防止 — S3 整合）")
     void getDetail_otherUser_404() throws Exception {
         willThrow(new BusinessException(PointCardErrorCode.CARD_NOT_FOUND))
                 .given(pointCardService).getCard(eq(CARD_ID), eq(USER_ID));
 
         mockMvc.perform(get("/api/v1/point-cards/{id}", CARD_ID))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("POINT_CARD_003"));
+                .andExpect(jsonPath("$.error.code").value("POINT_CARD_006"));
     }
 
     // ──────────────────────────────────────────────
@@ -233,7 +233,7 @@ class PointCardControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /api/v1/point-cards/{id}: 他人カード → 404 POINT_CARD_003")
+    @DisplayName("PATCH /api/v1/point-cards/{id}: 他人カード → 404 POINT_CARD_006")
     void patch_otherUser_404() throws Exception {
         willThrow(new BusinessException(PointCardErrorCode.CARD_NOT_FOUND))
                 .given(pointCardService).updateCard(eq(CARD_ID), eq(USER_ID),
@@ -246,7 +246,7 @@ class PointCardControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("POINT_CARD_003"));
+                .andExpect(jsonPath("$.error.code").value("POINT_CARD_006"));
     }
 
     // ──────────────────────────────────────────────
@@ -262,14 +262,14 @@ class PointCardControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/v1/point-cards/{id}: 他人カード → 404 POINT_CARD_003")
+    @DisplayName("DELETE /api/v1/point-cards/{id}: 他人カード → 404 POINT_CARD_006")
     void delete_otherUser_404() throws Exception {
         willThrow(new BusinessException(PointCardErrorCode.CARD_NOT_FOUND))
                 .given(pointCardService).deleteCard(eq(CARD_ID), eq(USER_ID));
 
         mockMvc.perform(delete("/api/v1/point-cards/{id}", CARD_ID))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("POINT_CARD_003"));
+                .andExpect(jsonPath("$.error.code").value("POINT_CARD_006"));
     }
 
     // ──────────────────────────────────────────────

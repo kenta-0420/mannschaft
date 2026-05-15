@@ -27,6 +27,15 @@ import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
+import com.mannschaft.app.pointcard.dto.PointCardExportDto;
+import com.mannschaft.app.pointcard.entity.PointCardGroupEntity;
+import com.mannschaft.app.pointcard.entity.PointCardGroupItemEntity;
+import com.mannschaft.app.pointcard.entity.PointCardUserSettingsEntity;
+import com.mannschaft.app.pointcard.entity.UserPointCardEntity;
+import com.mannschaft.app.pointcard.repository.PointCardGroupItemRepository;
+import com.mannschaft.app.pointcard.repository.PointCardGroupRepository;
+import com.mannschaft.app.pointcard.repository.PointCardUserSettingsRepository;
+import com.mannschaft.app.pointcard.repository.UserPointCardRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.weather.entity.UserWeatherLocationEntity;
 import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
@@ -68,6 +77,11 @@ public class PersonalDataCollector {
     private final ProxyInputRecordRepository proxyInputRecordRepository;
     private final UserWeatherLocationRepository userWeatherLocationRepository;
     private final EncryptionService encryptionService;
+    // F18 個人ポイントカードウォレット（S3 で本実装）
+    private final UserPointCardRepository userPointCardRepository;
+    private final PointCardUserSettingsRepository pointCardUserSettingsRepository;
+    private final PointCardGroupRepository pointCardGroupRepository;
+    private final PointCardGroupItemRepository pointCardGroupItemRepository;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .registerModule(new JavaTimeModule());
@@ -156,16 +170,71 @@ public class PersonalDataCollector {
     /**
      * F18 個人ポイントカードウォレットを収集する（GDPR エクスポート用）。
      *
-     * <p>第二陣 2C スケルトン: PersonalDataCoverageValidator の起動時網羅性チェックを
-     * 通すため、空 JSON を返す。barcode_value は AES-GCM で暗号化されているため、
-     * 第三陣で UserPointCard / PointCardGroup / UserPointCardSettings を集約し、
-     * EncryptionService.decrypt() で復号した上でエクスポートする予定。</p>
+     * <p>設計書: {@code docs/features/F18_point_card_wallet.md} §10
      *
-     * <p>TODO 第三陣で完成: UserPointCard / Group / Settings の集約 + 復号エクスポート</p>
+     * <p>収集対象:
+     * <ul>
+     *   <li>{@code settings}: ユーザー設定（オプトイン / 規約同意 / 生体認証要求）</li>
+     *   <li>{@code cards}: 保有カード全件（{@code EncryptedStringConverter} が
+     *       SELECT 時に displayName / nickname / barcodeValue / memo を自動復号する）</li>
+     *   <li>{@code groups}: グループ + 各グループの中間アイテム（card_id 配列）</li>
+     * </ul>
+     *
+     * <p>暗号化フィールドは Hibernate AttributeConverter により読み込み時に透過復号されるため、
+     * Entity をそのまま DTO に詰めると平文で JSON 出力される（GDPR 第 15 条のアクセス権実現）。
      */
     private String collectPointCards(Long userId) throws Exception {
-        // 第二陣 2C スケルトン: 空 JSON を返す（PersonalDataCoverageValidator を起動時に通すため）
-        return "{}";
+        Optional<PointCardUserSettingsEntity> settings =
+                pointCardUserSettingsRepository.findById(userId);
+
+        List<UserPointCardEntity> cards = userPointCardRepository.findByUserId(userId);
+        List<PointCardExportDto> cardDtos = cards.stream()
+                .map(PointCardExportDto::from)
+                .toList();
+
+        List<PointCardGroupEntity> groups =
+                pointCardGroupRepository.findAllByUserIdOrderByDisplayOrderAscCreatedAtAsc(userId);
+        List<Map<String, Object>> groupOutput;
+        if (groups.isEmpty()) {
+            groupOutput = List.of();
+        } else {
+            List<java.util.UUID> groupIds = groups.stream()
+                    .map(PointCardGroupEntity::getId)
+                    .toList();
+            // 1 SQL でまとめて取得した上でグループ単位に詰め替える
+            Map<java.util.UUID, List<PointCardGroupItemEntity>> itemsByGroup =
+                    pointCardGroupItemRepository.findAllByGroupIdIn(groupIds).stream()
+                            .collect(java.util.stream.Collectors.groupingBy(
+                                    PointCardGroupItemEntity::getGroupId));
+            groupOutput = new java.util.ArrayList<>(groups.size());
+            for (PointCardGroupEntity g : groups) {
+                Map<String, Object> groupEntry = new LinkedHashMap<>();
+                groupEntry.put("id", g.getId());
+                groupEntry.put("name", g.getName());
+                groupEntry.put("emoji", g.getEmoji());
+                groupEntry.put("displayOrder", g.getDisplayOrder());
+                groupEntry.put("createdAt", g.getCreatedAt());
+                groupEntry.put("updatedAt", g.getUpdatedAt());
+                List<Map<String, Object>> itemDtos =
+                        itemsByGroup.getOrDefault(g.getId(), List.of()).stream()
+                                .map(i -> {
+                                    Map<String, Object> entry = new LinkedHashMap<>();
+                                    entry.put("cardId", i.getCardId());
+                                    entry.put("displayOrder", i.getDisplayOrder());
+                                    entry.put("createdAt", i.getCreatedAt());
+                                    return entry;
+                                })
+                                .toList();
+                groupEntry.put("items", itemDtos);
+                groupOutput.add(groupEntry);
+            }
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("settings", settings.orElse(null));
+        payload.put("cards", cardDtos);
+        payload.put("groups", groupOutput);
+        return OBJECT_MAPPER.writeValueAsString(payload);
     }
 
     /**
