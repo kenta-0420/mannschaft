@@ -35,4 +35,17 @@ public interface PointCardProviderRepository extends JpaRepository<PointCardProv
      * F18 Phase 2: 組織削除イベントで一括 deactivate するために利用。
      */
     List<PointCardProviderEntity> findAllByOrganizationIdAndActiveTrue(Long organizationId);
+
+    /**
+     * 指定組織が発行した全プロバイダー（is_active 問わず）を取得する。
+     * F18 Phase 2 S2B: Org 管理者向け一覧 API で利用。
+     */
+    List<PointCardProviderEntity> findAllByOrganizationIdOrderByCreatedAtDesc(Long organizationId);
+
+    /**
+     * 指定組織が発行した有効プロバイダー件数を取得する。
+     * F18 Phase 2 S2B: 1 組織あたり 20 個上限チェックに利用。
+     * 停止済（is_active=false）はカウント対象外。
+     */
+    long countByOrganizationIdAndActiveTrue(Long organizationId);
 }
