@@ -15,60 +15,34 @@ import java.util.List;
 /**
  * F08.8 Phase 1 — 修繕長期計画ダッシュボードのテンプレ／モジュール判定ロジック本体。
  *
- * <p>Aspect から呼び出される薄いサービス。Aspect を経由せずに直接呼べる API として
- * Service 層からも利用可能（ユニットテストの容易化目的でもこの分離を採用している）。</p>
- *
- * <h3>判定ルール</h3>
- * <ol>
- *   <li>{@code scopeType = "TEAM"} の場合:
- *     <ul>
- *       <li>{@code teams.template = "apartment"} でなければ
- *           {@link RepairPlanModuleErrorCode#REPAIR_PLAN_013} を投げる。</li>
- *       <li>当該チームで {@code repair_longterm_plan} モジュールが有効でなければ
- *           {@link RepairPlanModuleErrorCode#REPAIR_PLAN_014} を投げる。</li>
- *     </ul>
- *   </li>
- *   <li>{@code scopeType = "ORGANIZATION"} の場合:
- *     <ul>
- *       <li>組織配下の ACTIVE チームを取得し、いずれかが {@code template = "apartment"} か検査する。
- *           1 件も該当しなければ {@link RepairPlanModuleErrorCode#REPAIR_PLAN_013} を投げる。
- *           （{@code organizations} テーブルには {@code template} カラムが存在しないため、
- *           配下チームの代表テンプレで判定する暫定方式。将来 ORG レベルテンプレ列を追加した場合は
- *           本実装を差し替える。）</li>
- *       <li>apartment 配下チームのうち少なくとも 1 つで
- *           {@code repair_longterm_plan} が有効化されていなければ
- *           {@link RepairPlanModuleErrorCode#REPAIR_PLAN_014} を投げる。</li>
- *     </ul>
- *   </li>
- * </ol>
+ * scopeType は正規化形式（"TEAM"/"ORGANIZATION"）だけでなく、
+ * URL パスセグメント形式（"teams"/"organizations"）も受け付ける。
+ * RepairPlanDashboardController のパス変数は AOP 実行前に正規化されないため
+ * guard 側で吸収する。
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class RepairPlanModuleGuard {
 
-    /** apartment テンプレのスラッグ（{@code team_templates.slug} および {@code teams.template}）。 */
     public static final String APARTMENT_TEMPLATE_SLUG = "apartment";
-
-    /** repair_longterm_plan モジュールのスラッグ。{@code module_definitions.slug} と一致。 */
     public static final String MODULE_SLUG = "repair_longterm_plan";
 
     private final TeamRepository teamRepository;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
     private final ModuleService moduleService;
 
-    /**
-     * 指定スコープが apartment テンプレかつモジュール有効であることを要求する。
-     *
-     * @param scopeType {@code "TEAM"} / {@code "ORGANIZATION"}
-     * @param scopeId   スコープID
-     * @throws BusinessException 422 {@code REPAIR_PLAN_013} / {@code REPAIR_PLAN_014}
-     */
     public void requireEnabled(String scopeType, Long scopeId) {
         if (scopeType == null || scopeId == null) {
             throw new BusinessException(RepairPlanModuleErrorCode.REPAIR_PLAN_013);
         }
-        switch (scopeType) {
+        // URL パスセグメント形式（小文字複数形）を正規化する
+        String normalized = switch (scopeType.toLowerCase()) {
+            case "team", "teams" -> "TEAM";
+            case "organization", "organizations" -> "ORGANIZATION";
+            default -> scopeType;
+        };
+        switch (normalized) {
             case "TEAM" -> requireEnabledForTeam(scopeId);
             case "ORGANIZATION" -> requireEnabledForOrganization(scopeId);
             default -> {
@@ -78,9 +52,6 @@ public class RepairPlanModuleGuard {
         }
     }
 
-    /**
-     * チームスコープ判定。
-     */
     private void requireEnabledForTeam(Long teamId) {
         TeamEntity team = teamRepository.findById(teamId).orElse(null);
         if (team == null || !APARTMENT_TEMPLATE_SLUG.equals(team.getTemplate())) {
@@ -91,9 +62,6 @@ public class RepairPlanModuleGuard {
         }
     }
 
-    /**
-     * 組織スコープ判定。配下 ACTIVE チームのいずれかが apartment かつモジュール有効であることを要求する。
-     */
     private void requireEnabledForOrganization(Long organizationId) {
         List<TeamOrgMembershipEntity> memberships =
                 teamOrgMembershipRepository.findByOrganizationIdAndStatus(
