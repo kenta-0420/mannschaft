@@ -93,7 +93,26 @@ public enum PointCardErrorCode implements ErrorCode {
      * <p>{@code require_biometric_on_show=true} の状態で WebAuthn 通過なしに提示モードを
      * 起動しようとした場合に投げる。第五陣で提示モード実装時に Service から発火する。
      */
-    BIOMETRIC_REQUIRED("POINT_CARD_009", "生体認証が必要です", Severity.WARN);
+    BIOMETRIC_REQUIRED("POINT_CARD_009", "生体認証が必要です", Severity.WARN),
+
+    /**
+     * 1 組織あたりの自店プロバイダー作成上限超過。HTTP 409。
+     *
+     * <p>1 組織あたりの上限は 20 個（Phase 2 S2B 設計）。
+     * 既存の停止済（{@code is_active=false}）プロバイダーはカウントしない。
+     * 上限到達時は古いプロバイダーの完全削除運用は無いため、停止していないものを整理して再試行する。
+     */
+    PROVIDER_LIMIT_EXCEEDED("POINT_CARD_010",
+            "1 組織あたりのプロバイダー作成上限（20 個）に達しています", Severity.WARN),
+
+    /**
+     * 指定された組織にプロバイダーが所属していない。HTTP 404（IDOR 防止）。
+     *
+     * <p>パスの {@code orgId} と当該プロバイダーの {@code organization_id} が一致しない場合に投げる。
+     * 「他組織のプロバイダーを覗こうとした」状態は 403 ではなく 404 を返す慣習（IDOR 抑止）。
+     */
+    PROVIDER_NOT_OWNED("POINT_CARD_011",
+            "このプロバイダーは指定された組織のものではありません", Severity.WARN);
 
     private final String code;
     private final String message;

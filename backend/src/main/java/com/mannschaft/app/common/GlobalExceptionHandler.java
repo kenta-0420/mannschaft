@@ -382,7 +382,10 @@ public class GlobalExceptionHandler {
             Map.entry("POINT_CARD_006", HttpStatus.NOT_FOUND),         // CARD_NOT_FOUND（IDOR 対策で 403→404）
             Map.entry("POINT_CARD_007", HttpStatus.NOT_FOUND),         // PROVIDER_NOT_FOUND
             Map.entry("POINT_CARD_008", HttpStatus.TOO_MANY_REQUESTS), // RATE_LIMIT_EXCEEDED
-            Map.entry("POINT_CARD_009", HttpStatus.UNAUTHORIZED)       // BIOMETRIC_REQUIRED
+            Map.entry("POINT_CARD_009", HttpStatus.UNAUTHORIZED),      // BIOMETRIC_REQUIRED
+            // F18 Phase 2 S2B 自店プロバイダー CRUD
+            Map.entry("POINT_CARD_010", HttpStatus.CONFLICT),          // PROVIDER_LIMIT_EXCEEDED (20 個超過)
+            Map.entry("POINT_CARD_011", HttpStatus.NOT_FOUND)          // PROVIDER_NOT_OWNED (IDOR 対策で 404)
     );
 
     /**
